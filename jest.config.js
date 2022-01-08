@@ -40,6 +40,7 @@ process.env['GLOBAL_DATA_DIR'] = globals.dataDir;
 
 module.exports = {
   testEnvironment: "node",
+  cacheDirectory: '<rootDir>/tmp/jest',
   verbose: true,
   roots: [
     "<rootDir>/tests"

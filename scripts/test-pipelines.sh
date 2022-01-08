@@ -20,6 +20,8 @@ cache:
   paths:
     - ./tmp/npm/
     - ./tmp/ts-node-cache/
+    # `jest` cache is configured in jest.config.js
+    - ./tmp/jest/
 EOF
 
 printf "\n"
