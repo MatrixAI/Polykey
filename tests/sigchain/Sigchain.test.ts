@@ -6,29 +6,36 @@ import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
-import { KeyManager } from '@/keys';
+import { KeyManager, utils as keysUtils } from '@/keys';
 import { Sigchain } from '@/sigchain';
 import * as claimsUtils from '@/claims/utils';
 import * as sigchainErrors from '@/sigchain/errors';
-import { makeCrypto } from '../utils';
-
-// Mocks.
-jest.mock('@/keys/utils', () => ({
-  ...jest.requireActual('@/keys/utils'),
-  generateDeterministicKeyPair:
-    jest.requireActual('@/keys/utils').generateKeyPair,
-}));
+import * as testUtils from '../utils';
 
 describe('Sigchain', () => {
-  const password = 'password';
   const logger = new Logger('Sigchain Test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
+  const password = 'password';
+  const srcNodeId = 'NodeId1' as NodeId;
+  let mockedGenerateKeyPair: jest.SpyInstance;
+  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
+  beforeAll(async () => {
+    const globalKeyPair = await testUtils.setupGlobalKeypair();
+    mockedGenerateKeyPair = jest
+      .spyOn(keysUtils, 'generateKeyPair')
+      .mockResolvedValue(globalKeyPair);
+    mockedGenerateDeterministicKeyPair = jest
+      .spyOn(keysUtils, 'generateDeterministicKeyPair')
+      .mockResolvedValue(globalKeyPair);
+  });
+  afterAll(async () => {
+    mockedGenerateKeyPair.mockRestore();
+    mockedGenerateDeterministicKeyPair.mockRestore();
+  });
   let dataDir: string;
   let keyManager: KeyManager;
   let db: DB;
-  const srcNodeId = 'NodeId1' as NodeId;
-
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
@@ -43,7 +50,13 @@ describe('Sigchain', () => {
     db = await DB.createDB({
       dbPath,
       logger,
-      crypto: makeCrypto(keyManager.dbKey),
+      crypto: {
+        key: keyManager.dbKey,
+        ops: {
+          encrypt: keysUtils.encryptWithKey,
+          decrypt: keysUtils.decryptWithKey,
+        },
+      },
     });
   });
   afterEach(async () => {
@@ -72,9 +85,6 @@ describe('Sigchain', () => {
     await expect(async () => {
       await sigchain.getSequenceNumber();
     }).rejects.toThrow(sigchainErrors.ErrorSigchainNotRunning);
-    await expect(async () => {
-      await sigchain.getLatestClaimId();
-    }).rejects.toThrow(sigchainErrors.ErrorSigchainNotRunning);
   });
   test('async start initialises the sequence number', async () => {
     const sigchain = await Sigchain.createSigchain({ keyManager, db, logger });
@@ -89,9 +99,8 @@ describe('Sigchain', () => {
       node1: srcNodeId,
       node2: 'NodeId2' as NodeId,
     };
-    await sigchain.addClaim(cryptolink);
+    const [claimId] = await sigchain.addClaim(cryptolink);
 
-    const claimId = await sigchain.getLatestClaimId();
     expect(claimId).toBeTruthy();
     const claim = await sigchain.getClaim(claimId!);
 
@@ -134,16 +143,14 @@ describe('Sigchain', () => {
       node1: srcNodeId,
       node2: 'NodeId2' as NodeId,
     };
-    await sigchain.addClaim(cryptolink);
-    const claimId1 = await sigchain.getLatestClaimId();
+    const [claimId1] = await sigchain.addClaim(cryptolink);
 
     const cryptolink2: ClaimData = {
       type: 'node',
       node1: srcNodeId,
       node2: 'NodeId3' as NodeId,
     };
-    await sigchain.addClaim(cryptolink2);
-    const claimId2 = await sigchain.getLatestClaimId();
+    const [claimId2] = await sigchain.addClaim(cryptolink2);
 
     const claim1 = await sigchain.getClaim(claimId1!);
     const claim2 = await sigchain.getClaim(claimId2!);

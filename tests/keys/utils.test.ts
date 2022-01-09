@@ -3,14 +3,14 @@ import * as keysUtils from '@/keys/utils';
 
 describe('utils', () => {
   test('key pair copy', async () => {
-    const keyPair = await keysUtils.generateKeyPair(4096);
+    const keyPair = await keysUtils.generateKeyPair(1024);
     const keyPairPem = keysUtils.keyPairToPem(keyPair);
     const keyPair2 = keysUtils.keyPairCopy(keyPair);
     const keyPairPem2 = keysUtils.keyPairToPem(keyPair2);
     expect(keyPairPem).toStrictEqual(keyPairPem2);
   });
   test('to and from der encoding', async () => {
-    const keyPair = await keysUtils.generateKeyPair(4096);
+    const keyPair = await keysUtils.generateKeyPair(1024);
     const cert = keysUtils.generateCertificate(
       keyPair.publicKey,
       keyPair.privateKey,
@@ -24,7 +24,7 @@ describe('utils', () => {
     expect(certPem).toBe(certPem_);
   });
   test('certificate copy', async () => {
-    const keyPair = await keysUtils.generateKeyPair(4096);
+    const keyPair = await keysUtils.generateKeyPair(1024);
     const cert = keysUtils.generateCertificate(
       keyPair.publicKey,
       keyPair.privateKey,
@@ -37,7 +37,7 @@ describe('utils', () => {
     expect(certPem).toBe(certPem2);
   });
   test('encryption and decryption of private key', async () => {
-    const keyPair = await keysUtils.generateKeyPair(4096);
+    const keyPair = await keysUtils.generateKeyPair(1024);
     // Try first password
     const password = (await keysUtils.getRandomBytes(10)).toString('base64');
     const privateKeyPemEncrypted = keysUtils.encryptPrivateKey(

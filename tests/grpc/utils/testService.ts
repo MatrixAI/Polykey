@@ -4,7 +4,7 @@
  * streaming, client streaming and bidirectional streaming
  * @module
  */
-
+import type { Authenticate } from '@/client/types';
 import type { SessionToken } from '@/sessions/types';
 import type { ITestServiceServer } from '@/proto/js/polykey/v1/test_service_grpc_pb';
 import Logger from '@matrixai/logger';
@@ -17,7 +17,7 @@ function createTestService({
   authenticate,
   logger = new Logger('TestService'),
 }: {
-  authenticate: clientUtils.Authenticate;
+  authenticate: Authenticate;
   logger?: Logger;
 }) {
   const testService: ITestServiceServer = {

@@ -1,109 +1,156 @@
-import { ErrorPolykey } from '../errors';
+import { ErrorPolykey, sysexits } from '../errors';
 
 class ErrorNetwork extends ErrorPolykey {}
 
-class ErrorForwardProxyNotStarted extends ErrorNetwork {}
+class ErrorForwardProxy extends ErrorNetwork {}
 
-class ErrorForwardProxyDestroyed extends ErrorNetwork {}
+class ErrorForwardProxyNotRunning extends ErrorForwardProxy {
+  description = 'ForwardProxy is not running';
+  exitCode = sysexits.USAGE;
+}
 
-class ErrorForwardProxyInvalidUrl extends ErrorNetwork {}
+class ErrorForwardProxyInvalidUrl extends ErrorForwardProxy {
+  description = 'Invalid target host used for HTTP connect proxy';
+  exitCode = sysexits.PROTOCOL;
+}
 
-class ErrorForwardProxyMissingNodeId extends ErrorNetwork {}
+class ErrorForwardProxyMissingNodeId extends ErrorForwardProxy {
+  description = 'Node ID query parameter is required for HTTP connect proxy';
+  exitCode = sysexits.PROTOCOL;
+}
 
-class ErrorForwardProxyAuth extends ErrorNetwork {}
+class ErrorForwardProxyAuth extends ErrorForwardProxy {
+  description = 'Incorrect HTTP connect proxy password';
+  exitCode = sysexits.NOPERM;
+}
 
-class ErrorReverseProxyNotStarted extends ErrorNetwork {}
+class ErrorReverseProxy extends ErrorNetwork {}
 
-class ErrorReverseProxyDestroyed extends ErrorNetwork {}
+class ErrorReverseProxyNotRunning extends ErrorReverseProxy {
+  description = 'ReverseProxy is not running';
+  exitCode = sysexits.USAGE;
+}
 
 class ErrorConnection extends ErrorNetwork {}
 
-class ErrorConnectionMessageParse extends ErrorConnection {}
+class ErrorConnectionNotRunning extends ErrorConnection {
+  description = 'Connection is not running';
+  exitCode = sysexits.USAGE;
+}
 
-class ErrorConnectionNotStarted extends ErrorConnection {}
+class ErrorConnectionComposed extends ErrorConnection {
+  description = 'Connection is composed';
+  exitCode = sysexits.USAGE;
+}
 
-// During start error
-class ErrorConnectionStart extends ErrorConnection {}
+class ErrorConnectionNotComposed extends ErrorConnection {
+  description = 'Connection is not composed';
+  exitCode = sysexits.USAGE;
+}
 
-// Start timeout error
-class ErrorConnectionStartTimeout extends ErrorConnectionStart {}
+class ErrorConnectionMessageParse extends ErrorConnection {
+  description = 'Network message received is invalid';
+  exitCode = sysexits.TEMPFAIL;
+}
 
-// During compose error
-class ErrorConnectionCompose extends ErrorConnection {}
+class ErrorConnectionTimeout extends ErrorConnection {
+  description = 'Connection keep-alive timed out';
+  exitCode = sysexits.UNAVAILABLE;
+}
 
-// Compose timeout error
-class ErrorConnectionComposeTimeout extends ErrorConnectionCompose {}
-
-// Connection is already composed
-class ErrorConnectionComposed extends ErrorConnection {}
-
-// Not yet composed, cannot answer certain things
-class ErrorConnectionNotComposed extends ErrorConnection {}
-
-// Was not able to keep alive
-class ErrorConnectionTimeout extends ErrorConnection {}
+class ErrorConnectionEndTimeout extends ErrorConnection {
+  description = 'Connection end timed out';
+  exitCode = sysexits.UNAVAILABLE;
+}
 
 /**
- * Certificate verification errors
+ * Used by ConnectionForward and ConnectionReverse
+ */
+class ErrorConnectionStart extends ErrorConnection {
+  description = 'Connection start failed';
+  exitCode = sysexits.PROTOCOL;
+}
+
+class ErrorConnectionStartTimeout extends ErrorConnectionStart {
+  description = 'Connection start timed out';
+  exitCode = sysexits.NOHOST;
+}
+
+/**
+ * Used by ConnectionReverse
+ */
+class ErrorConnectionCompose extends ErrorConnection {
+  description = 'Connection compose failed';
+  exitCode = sysexits.PROTOCOL;
+}
+
+class ErrorConnectionComposeTimeout extends ErrorConnectionCompose {
+  description = 'Connection compose timed out';
+  exitCode = sysexits.NOHOST;
+}
+
+/**
+ * Used for certificate verification
  */
 class ErrorCertChain extends ErrorNetwork {}
 
-/**
- * When the certificate chain is empty
- */
-class ErrorCertChainEmpty extends ErrorCertChain {}
+class ErrorCertChainEmpty extends ErrorCertChain {
+  description = 'Certificate chain is empty';
+  exitCode = sysexits.PROTOCOL;
+}
 
-/**
- * The target node id is not claimed by any certificate
- */
-class ErrorCertChainUnclaimed extends ErrorCertChain {}
+class ErrorCertChainUnclaimed extends ErrorCertChain {
+  description = 'The target node id is not claimed by any certificate';
+  exitCode = sysexits.PROTOCOL;
+}
 
-/**
- * If the signature chain is broken
- */
-class ErrorCertChainBroken extends ErrorCertChain {}
+class ErrorCertChainBroken extends ErrorCertChain {
+  description = 'The signature chain is broken';
+  exitCode = sysexits.PROTOCOL;
+}
 
-/**
- * Certificate in the chain was expired
- */
-class ErrorCertChainDateInvalid extends ErrorCertChain {}
+class ErrorCertChainDateInvalid extends ErrorCertChain {
+  description = 'Certificate in the chain is expired';
+  exitCode = sysexits.PROTOCOL;
+}
 
-/**
- * Certificate is missing the common name
- */
-class ErrorCertChainNameInvalid extends ErrorCertChain {}
+class ErrorCertChainNameInvalid extends ErrorCertChain {
+  description = 'Certificate is missing the common name';
+  exitCode = sysexits.PROTOCOL;
+}
 
-/**
- * Certificate public key doesn't generate the node id
- */
-class ErrorCertChainKeyInvalid extends ErrorCertChain {}
+class ErrorCertChainKeyInvalid extends ErrorCertChain {
+  description = 'Certificate public key does not generate the Node ID';
+  exitCode = sysexits.PROTOCOL;
+}
 
-/**
- * Certificate self-signed signature is invalid
- */
-class ErrorCertChainSignatureInvalid extends ErrorCertChain {}
+class ErrorCertChainSignatureInvalid extends ErrorCertChain {
+  description = 'Certificate self-signed signature is invalid';
+  exitCode = sysexits.PROTOCOL;
+}
 
 class ErrorHostnameResolutionFailed extends ErrorNetwork {}
 
 export {
   ErrorNetwork,
-  ErrorForwardProxyNotStarted,
-  ErrorForwardProxyDestroyed,
+  ErrorForwardProxy,
+  ErrorForwardProxyNotRunning,
   ErrorForwardProxyInvalidUrl,
   ErrorForwardProxyMissingNodeId,
   ErrorForwardProxyAuth,
-  ErrorReverseProxyNotStarted,
-  ErrorReverseProxyDestroyed,
+  ErrorReverseProxy,
+  ErrorReverseProxyNotRunning,
   ErrorConnection,
+  ErrorConnectionNotRunning,
+  ErrorConnectionComposed,
+  ErrorConnectionNotComposed,
   ErrorConnectionMessageParse,
-  ErrorConnectionNotStarted,
+  ErrorConnectionTimeout,
+  ErrorConnectionEndTimeout,
   ErrorConnectionStart,
   ErrorConnectionStartTimeout,
   ErrorConnectionCompose,
   ErrorConnectionComposeTimeout,
-  ErrorConnectionComposed,
-  ErrorConnectionNotComposed,
-  ErrorConnectionTimeout,
   ErrorCertChain,
   ErrorCertChainEmpty,
   ErrorCertChainUnclaimed,

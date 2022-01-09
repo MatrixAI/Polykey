@@ -37,12 +37,6 @@ describe('Session', () => {
     await expect(session.start()).rejects.toThrow(
       sessionErrors.ErrorSessionDestroyed,
     );
-    await expect(session.readToken()).rejects.toThrow(
-      sessionErrors.ErrorSessionNotRunning,
-    );
-    await expect(session.writeToken('abc' as SessionToken)).rejects.toThrow(
-      sessionErrors.ErrorSessionNotRunning,
-    );
   });
   test('creating session', async () => {
     const session1 = await Session.createSession({

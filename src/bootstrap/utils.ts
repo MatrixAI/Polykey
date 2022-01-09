@@ -58,20 +58,22 @@ async function bootstrapState({
   await mkdirExists(fs, nodePath);
   // Setup node path and sub paths
   const statusPath = path.join(nodePath, config.defaults.statusBase);
+  const statusLockPath = path.join(nodePath, config.defaults.statusLockBase);
   const statePath = path.join(nodePath, config.defaults.stateBase);
   const dbPath = path.join(statePath, config.defaults.dbBase);
   const keysPath = path.join(statePath, config.defaults.keysBase);
   const vaultsPath = path.join(statePath, config.defaults.vaultsBase);
   const status = new Status({
+    statusPath,
+    statusLockPath,
     fs,
     logger,
-    statusPath,
   });
   try {
     await status.start({ pid: process.pid });
     if (!fresh) {
-      // Check the if number of directory entries is greater than 1 due to status.json
-      if ((await fs.promises.readdir(nodePath)).length > 1) {
+      // Check the if number of directory entries is greater than 1 due to status.json and status.lock
+      if ((await fs.promises.readdir(nodePath)).length > 2) {
         throw new bootstrapErrors.ErrorBootstrapExistingState();
       }
     }

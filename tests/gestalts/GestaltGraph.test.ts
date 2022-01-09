@@ -22,7 +22,6 @@ import {
 } from '@/gestalts';
 import { ACL } from '@/acl';
 import * as keysUtils from '@/keys/utils';
-import { makeCrypto } from '../utils';
 
 describe('GestaltGraph', () => {
   const logger = new Logger('GestaltGraph Test', LogLevel.WARN, [
@@ -49,7 +48,13 @@ describe('GestaltGraph', () => {
     db = await DB.createDB({
       dbPath,
       logger,
-      crypto: makeCrypto(await keysUtils.generateKey()),
+      crypto: {
+        key: await keysUtils.generateKey(),
+        ops: {
+          encrypt: keysUtils.encryptWithKey,
+          decrypt: keysUtils.decryptWithKey,
+        },
+      },
     });
     acl = await ACL.createACL({ db, logger });
 

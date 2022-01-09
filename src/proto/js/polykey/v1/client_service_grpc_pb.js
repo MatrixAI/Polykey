@@ -479,7 +479,18 @@ function deserialize_polykey_v1_vaults_VersionResult(buffer_arg) {
 
 var ClientServiceService = exports.ClientServiceService = {
   // Agent
-agentStatus: {
+agentLockAll: {
+    path: '/polykey.v1.ClientService/AgentLockAll',
+    requestStream: false,
+    responseStream: false,
+    requestType: polykey_v1_utils_utils_pb.EmptyMessage,
+    responseType: polykey_v1_utils_utils_pb.EmptyMessage,
+    requestSerialize: serialize_polykey_v1_utils_EmptyMessage,
+    requestDeserialize: deserialize_polykey_v1_utils_EmptyMessage,
+    responseSerialize: serialize_polykey_v1_utils_EmptyMessage,
+    responseDeserialize: deserialize_polykey_v1_utils_EmptyMessage,
+  },
+  agentStatus: {
     path: '/polykey.v1.ClientService/AgentStatus',
     requestStream: false,
     responseStream: false,
@@ -501,20 +512,8 @@ agentStatus: {
     responseSerialize: serialize_polykey_v1_utils_EmptyMessage,
     responseDeserialize: deserialize_polykey_v1_utils_EmptyMessage,
   },
-  // Session
-sessionsUnlock: {
-    path: '/polykey.v1.ClientService/SessionsUnlock',
-    requestStream: false,
-    responseStream: false,
-    requestType: polykey_v1_utils_utils_pb.EmptyMessage,
-    responseType: polykey_v1_utils_utils_pb.EmptyMessage,
-    requestSerialize: serialize_polykey_v1_utils_EmptyMessage,
-    requestDeserialize: deserialize_polykey_v1_utils_EmptyMessage,
-    responseSerialize: serialize_polykey_v1_utils_EmptyMessage,
-    responseDeserialize: deserialize_polykey_v1_utils_EmptyMessage,
-  },
-  sessionsLockAll: {
-    path: '/polykey.v1.ClientService/SessionsLockAll',
+  agentUnlock: {
+    path: '/polykey.v1.ClientService/AgentUnlock',
     requestStream: false,
     responseStream: false,
     requestType: polykey_v1_utils_utils_pb.EmptyMessage,

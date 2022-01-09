@@ -17,42 +17,31 @@ import { ForwardProxy } from '@/network';
 import * as grpcUtils from '@/grpc/utils';
 import * as nodesErrors from '@/nodes/errors';
 import { makeNodeId } from '@/nodes/utils';
+import config from '@/config';
 import { Status } from '@/status';
+import { sleep } from '@/utils';
 import * as testUtils from './utils';
-import * as testKeynodeUtils from '../utils';
+import * as testNodesUtils from '../nodes/utils';
 
-// Mocks.
 jest.mock('@/keys/utils', () => ({
   ...jest.requireActual('@/keys/utils'),
   generateDeterministicKeyPair:
     jest.requireActual('@/keys/utils').generateKeyPair,
 }));
 
-/**
- * This test file has been optimised to use only one instance of PolykeyAgent where posible.
- * Setting up the PolykeyAgent has been done in a beforeAll block.
- * Keep this in mind when adding or editing tests.
- * Any side effects need to be undone when the test has completed.
- * Preferably within a `afterEach()` since any cleanup will be skipped inside a failing test.
- *
- * - left over state can cause a test to fail in certain cases.
- * - left over state can cause similar tests to succeed when they should fail.
- * - starting or stopping the agent within tests should be done on a new instance of the polykey agent.
- * - when in doubt test each modified or added test on it's own as well as the whole file.
- * - Looking into adding a way to safely clear each domain's DB information with out breaking modules.
- */
 describe('Client service', () => {
   const password = 'password';
-  const logger = new Logger('rpcNodes Test', LogLevel.WARN, [
+  const logger = new Logger('rpcNodes Test', LogLevel.DEBUG, [
     new StreamHandler(),
   ]);
   let client: ClientServiceClient;
   let server: grpc.Server;
   let port: number;
 
+  let rootDataDir: string;
   let dataDir: string;
 
-  let polykeyAgent: PolykeyAgent;
+  let pkAgent: PolykeyAgent;
   let keyManager: KeyManager;
   let nodeManager: NodeManager;
   let polykeyServer: PolykeyAgent;
@@ -70,6 +59,10 @@ describe('Client service', () => {
   );
 
   beforeAll(async () => {
+    rootDataDir = await fs.promises.mkdtemp(
+      path.join(os.tmpdir(), 'polykey-test-'),
+    );
+
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -89,27 +82,36 @@ describe('Client service', () => {
       logger: logger,
     });
 
-    polykeyAgent = await PolykeyAgent.createPolykeyAgent({
+    pkAgent = await PolykeyAgent.createPolykeyAgent({
       password,
       nodePath: dataDir,
       logger,
       fwdProxy,
       keyManager,
+      forwardProxyConfig: {
+        connTimeoutTime: 2000,
+      },
     });
 
-    nodeManager = polykeyAgent.nodeManager;
+    nodeManager = pkAgent.nodeManager;
 
     [server, port] = await testUtils.openTestClientServer({
-      polykeyAgent,
+      pkAgent,
       secure: false,
     });
 
     client = await testUtils.openSimpleClientClient(port);
 
-    polykeyServer = await testKeynodeUtils.setupRemoteKeynode({
-      logger: logger,
+    polykeyServer = await PolykeyAgent.createPolykeyAgent({
+      password: 'password',
+      nodePath: path.join(rootDataDir, 'polykeyServer'),
+      keysConfig: {
+        rootKeyPairBits: 2048,
+      },
+      logger,
     });
-    await polykeyAgent.acl.setNodePerm(polykeyServer.nodeManager.getNodeId(), {
+
+    await pkAgent.acl.setNodePerm(polykeyServer.nodeManager.getNodeId(), {
       gestalt: {
         notify: null,
       },
@@ -123,14 +125,18 @@ describe('Client service', () => {
     });
   }, global.polykeyStartupTimeout);
   afterAll(async () => {
-    await testKeynodeUtils.cleanupRemoteKeynode(polykeyServer);
+    await polykeyServer.stop();
 
     await testUtils.closeTestClientServer(server);
     testUtils.closeSimpleClientClient(client);
 
-    await polykeyAgent.stop();
-    await polykeyAgent.destroy();
+    await pkAgent.stop();
+    await pkAgent.destroy();
 
+    await fs.promises.rm(rootDataDir, {
+      force: true,
+      recursive: true,
+    });
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
@@ -138,18 +144,18 @@ describe('Client service', () => {
     await fs.promises.rm(passwordFile);
   });
   beforeEach(async () => {
-    const sessionToken = await polykeyAgent.sessionManager.createToken();
+    const sessionToken = await pkAgent.sessionManager.createToken();
     callCredentials = testUtils.createCallCredentials(sessionToken);
-    await polykeyAgent.notificationsManager.clearNotifications();
+    await pkAgent.notificationsManager.clearNotifications();
     await polykeyServer.notificationsManager.clearNotifications();
   });
   afterEach(async () => {
     await polykeyServer.start({ password });
-    await polykeyAgent.acl.setNodePerm(polykeyServer.nodeManager.getNodeId(), {
+    await pkAgent.acl.setNodePerm(polykeyServer.nodeManager.getNodeId(), {
       gestalt: {},
       vaults: {},
     });
-    await polykeyAgent.nodeManager.clearDB();
+    await pkAgent.nodeManager.clearDB();
     await polykeyServer.nodeManager.clearDB();
   });
 
@@ -178,11 +184,19 @@ describe('Client service', () => {
     'should ping a node (online + offline)',
     async () => {
       const serverNodeId = polykeyServer.nodeManager.getNodeId();
-      await testKeynodeUtils.addRemoteDetails(polykeyAgent, polykeyServer);
+      await testNodesUtils.nodesConnect(pkAgent, polykeyServer);
       await polykeyServer.stop();
-      const statusPath = path.join(polykeyServer.nodePath, 'status.json');
+      const statusPath = path.join(
+        polykeyServer.nodePath,
+        config.defaults.statusBase,
+      );
+      const statusLockPath = path.join(
+        polykeyServer.nodePath,
+        config.defaults.statusLockBase,
+      );
       const status = new Status({
         statusPath,
+        statusLockPath,
         fs,
         logger,
       });
@@ -202,12 +216,14 @@ describe('Client service', () => {
       await polykeyServer.start({ password: 'password' });
       await status.waitFor('LIVE', 10000);
       // Update the details (changed because we started again)
-      await testKeynodeUtils.addRemoteDetails(polykeyAgent, polykeyServer);
+      await testNodesUtils.nodesConnect(pkAgent, polykeyServer);
       const res2 = await nodesPing(nodeMessage, callCredentials);
       expect(res2.getSuccess()).toEqual(true);
       // Case 3: pre-existing connection no longer active, so offline
       await polykeyServer.stop();
       await status.waitFor('DEAD', 10000);
+      // Currently need this timeout - also set COnnectionForward setTImeout to 1000
+      await sleep(3000);
       const res3 = await nodesPing(nodeMessage, callCredentials);
       expect(res3.getSuccess()).toEqual(false);
     },
@@ -236,7 +252,7 @@ describe('Client service', () => {
   test(
     'should find a node (contacts remote node)',
     async () => {
-      await testKeynodeUtils.addRemoteDetails(polykeyAgent, polykeyServer);
+      await testNodesUtils.nodesConnect(pkAgent, polykeyServer);
       // Case 2: node can be found on the remote node
       const nodeId = nodeId1;
       const nodeAddress: NodeAddress = {
@@ -261,7 +277,7 @@ describe('Client service', () => {
   test(
     'should fail to find a node (contacts remote node)',
     async () => {
-      await testKeynodeUtils.addRemoteDetails(polykeyAgent, polykeyServer);
+      await testNodesUtils.nodesConnect(pkAgent, polykeyServer);
       // Case 3: node exhausts all contacts and cannot find node
       const nodeId = nodeId1;
       // Add a single dummy node to the server node graph database
@@ -285,7 +301,7 @@ describe('Client service', () => {
     global.failedConnectionTimeout * 2,
   );
   test('should send a gestalt invite (no existing invitation)', async () => {
-    await testKeynodeUtils.addRemoteDetails(polykeyAgent, polykeyServer);
+    await testNodesUtils.nodesConnect(pkAgent, polykeyServer);
     // Node Claim Case 1: No invitations have been received
     const nodesClaim = grpcUtils.promisifyUnaryCall<utilsPB.StatusMessage>(
       client,
@@ -299,8 +315,8 @@ describe('Client service', () => {
     expect(res.getSuccess()).not.toBeTruthy();
   });
   test('should send a gestalt invite (existing invitation)', async () => {
-    await testKeynodeUtils.addRemoteDetails(polykeyAgent, polykeyServer);
-    await testKeynodeUtils.addRemoteDetails(polykeyServer, polykeyAgent);
+    await testNodesUtils.nodesConnect(pkAgent, polykeyServer);
+    await testNodesUtils.nodesConnect(polykeyServer, pkAgent);
     // Node Claim Case 2: Already received an invite; force invite
     await polykeyServer.notificationsManager.sendNotification(
       nodeManager.getNodeId(),
@@ -320,7 +336,7 @@ describe('Client service', () => {
     expect(res.getSuccess()).not.toBeTruthy();
   });
   test('should claim node', async () => {
-    await polykeyAgent.acl.setNodePerm(polykeyServer.nodeManager.getNodeId(), {
+    await pkAgent.acl.setNodePerm(polykeyServer.nodeManager.getNodeId(), {
       gestalt: {
         notify: null,
       },
@@ -332,8 +348,8 @@ describe('Client service', () => {
       },
       vaults: {},
     });
-    await testKeynodeUtils.addRemoteDetails(polykeyAgent, polykeyServer);
-    await testKeynodeUtils.addRemoteDetails(polykeyServer, polykeyAgent);
+    await testNodesUtils.nodesConnect(pkAgent, polykeyServer);
+    await testNodesUtils.nodesConnect(polykeyServer, pkAgent);
     // Node Claim Case 3: Already received an invite; claim node
     await polykeyServer.notificationsManager.sendNotification(
       nodeManager.getNodeId(),

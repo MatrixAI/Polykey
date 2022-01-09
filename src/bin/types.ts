@@ -11,6 +11,7 @@ import type { Host, Port } from '../network/types';
  */
 type AgentChildProcessInput = {
   logLevel: LogLevel;
+  workers?: number;
   agentConfig: {
     password: string;
     nodePath?: string;

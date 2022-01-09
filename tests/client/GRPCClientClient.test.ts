@@ -6,64 +6,71 @@ import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { GRPCClientClient } from '@/client';
-import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import { PolykeyAgent } from '@';
+import { utils as keysUtils } from '@/keys';
 import { Status } from '@/status';
-import * as binProcessors from '@/bin/utils/processors';
 import { Session } from '@/sessions';
-import config from '@/config';
 import { errors as clientErrors } from '@/client';
-import * as testUtils from './utils';
+import config from '@/config';
+import * as binProcessors from '@/bin/utils/processors';
+import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
+import * as testClientUtils from './utils';
+import * as testUtils from '../utils';
 
-jest.mock('@/keys/utils', () => ({
-  ...jest.requireActual('@/keys/utils'),
-  generateDeterministicKeyPair:
-    jest.requireActual('@/keys/utils').generateKeyPair,
-}));
-
-describe('GRPCClientClient', () => {
+describe(GRPCClientClient.name, () => {
   const password = 'password';
-  const logger = new Logger('GRPCClientClientTest', LogLevel.WARN, [
+  const logger = new Logger(`${GRPCClientClient.name} test`, LogLevel.WARN, [
     new StreamHandler(),
   ]);
+  let mockedGenerateKeyPair: jest.SpyInstance;
+  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
   let client: GRPCClientClient;
   let server: grpc.Server;
   let port: number;
-  let polykeyAgent: PolykeyAgent;
+  let pkAgent: PolykeyAgent;
   let dataDir: string;
   let nodePath: string;
   let nodeId: NodeId;
   let session: Session;
   beforeAll(async () => {
+    const globalKeyPair = await testUtils.setupGlobalKeypair();
+    mockedGenerateKeyPair = jest
+      .spyOn(keysUtils, 'generateKeyPair')
+      .mockResolvedValue(globalKeyPair);
+    mockedGenerateDeterministicKeyPair = jest
+      .spyOn(keysUtils, 'generateDeterministicKeyPair')
+      .mockResolvedValue(globalKeyPair);
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
     nodePath = path.join(dataDir, 'node');
-    polykeyAgent = await PolykeyAgent.createPolykeyAgent({
+    pkAgent = await PolykeyAgent.createPolykeyAgent({
       password,
       nodePath,
       logger: logger,
     });
-    nodeId = polykeyAgent.nodeManager.getNodeId();
-    [server, port] = await testUtils.openTestClientServer({
-      polykeyAgent,
+    nodeId = pkAgent.nodeManager.getNodeId();
+    [server, port] = await testClientUtils.openTestClientServer({
+      pkAgent,
     });
     const sessionTokenPath = path.join(nodePath, 'sessionToken');
     const session = new Session({ sessionTokenPath, fs, logger });
-    const sessionToken = await polykeyAgent.sessionManager.createToken();
+    const sessionToken = await pkAgent.sessionManager.createToken();
     await session.start({
       sessionToken,
     });
-  }, global.polykeyStartupTimeout);
+  });
   afterAll(async () => {
     await client.destroy();
-    await testUtils.closeTestClientServer(server);
-    await polykeyAgent.stop();
-    await polykeyAgent.destroy();
+    await testClientUtils.closeTestClientServer(server);
+    await pkAgent.stop();
+    await pkAgent.destroy();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
     });
+    mockedGenerateKeyPair.mockRestore();
+    mockedGenerateDeterministicKeyPair.mockRestore();
   });
   test('cannot be called when destroyed', async () => {
     client = await GRPCClientClient.createGRPCClientClient({
@@ -97,6 +104,7 @@ describe('GRPCClientClient', () => {
     );
     const status = new Status({
       statusPath: path.join(nodePath, config.defaults.statusBase),
+      statusLockPath: path.join(nodePath, config.defaults.statusLockBase),
       fs,
       logger,
     });

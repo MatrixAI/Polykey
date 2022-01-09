@@ -41,7 +41,7 @@ class CommandUnlock extends CommandPolykey {
         });
         const emptyMessage = new utilsPB.EmptyMessage();
         await binUtils.retryAuthentication(
-          (auth) => pkClient.grpcClient.sessionsUnlock(emptyMessage, auth),
+          (auth) => pkClient.grpcClient.agentUnlock(emptyMessage, auth),
           meta,
         );
       } finally {

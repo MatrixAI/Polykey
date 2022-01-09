@@ -3,59 +3,24 @@ import type { PrivateKeyPem, PublicKeyPem } from '@/keys/types';
 import type { IdentityId, ProviderId } from '@/identities/types';
 import type { NodeId } from '@/nodes/types';
 import type { Claim } from '@/claims/types';
-import os from 'os';
-import path from 'path';
-import fs from 'fs';
 import { createPublicKey, createPrivateKey } from 'crypto';
 import { generalVerify, GeneralSign } from 'jose';
-import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import canonicalize from 'canonicalize';
-import { KeyManager } from '@/keys';
 import { sleep } from '@/utils';
-
 import * as claimsUtils from '@/claims/utils';
 import * as claimsErrors from '@/claims/errors';
 import * as keysUtils from '@/keys/utils';
+import * as testUtils from '../utils';
 
-// Mocks.
-jest.mock('@/keys/utils', () => ({
-  ...jest.requireActual('@/keys/utils'),
-  generateDeterministicKeyPair:
-    jest.requireActual('@/keys/utils').generateKeyPair,
-}));
-
-describe('Claims utils', () => {
-  const password = 'password';
-  const logger = new Logger('Claims Test', LogLevel.WARN, [
-    new StreamHandler(),
-  ]);
-  let dataDir: string;
-  let keyManager: KeyManager;
+describe('claims/utils', () => {
   let publicKey: PublicKeyPem;
   let privateKey: PrivateKeyPem;
-
-  beforeEach(async () => {
-    dataDir = await fs.promises.mkdtemp(
-      path.join(os.tmpdir(), 'polykey-test-'),
-    );
-    const keysPath = `${dataDir}/keys`;
-    keyManager = await KeyManager.createKeyManager({
-      password,
-      keysPath,
-      logger,
-    });
-    publicKey = keyManager.getRootKeyPairPem().publicKey;
-    privateKey = keyManager.getRootKeyPairPem().privateKey;
+  beforeAll(async () => {
+    const globalKeyPair = await testUtils.setupGlobalKeypair();
+    const globalKeyPairPem = keysUtils.keyPairToPem(globalKeyPair);
+    publicKey = globalKeyPairPem.publicKey;
+    privateKey = globalKeyPairPem.privateKey;
   });
-  afterEach(async () => {
-    await keyManager.stop();
-    await keyManager.destroy();
-    await fs.promises.rm(dataDir, {
-      force: true,
-      recursive: true,
-    });
-  });
-
   test('creates a claim (both node and identity)', async () => {
     const nodeClaim = await claimsUtils.createClaim({
       privateKey,
@@ -348,7 +313,7 @@ describe('Claims utils', () => {
     expect(await claimsUtils.verifyClaimSignature(claim, publicKey)).toBe(true);
 
     // Create some dummy public key, and check that this does not verify
-    const dummyKeyPair = await keysUtils.generateKeyPair(4096);
+    const dummyKeyPair = await keysUtils.generateKeyPair(2048);
     const dummyPublicKey = await keysUtils.publicKeyToPem(
       dummyKeyPair.publicKey,
     );

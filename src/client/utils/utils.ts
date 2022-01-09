@@ -6,6 +6,7 @@ import type {
 import type { KeyManager } from '../../keys';
 import type { Session, SessionManager } from '../../sessions';
 import type { SessionToken } from '../../sessions/types';
+import type { Authenticate } from '../types';
 import * as grpc from '@grpc/grpc-js';
 import * as base64 from 'multiformats/bases/base64';
 import * as clientErrors from '../errors';
@@ -48,11 +49,6 @@ function sessionInterceptor(session: Session): Interceptor {
   };
   return interceptor;
 }
-
-type Authenticate = (
-  metadataClient: grpc.Metadata,
-  metadataServer?: grpc.Metadata,
-) => Promise<grpc.Metadata>;
 
 function authenticator(
   sessionManager: SessionManager,
@@ -143,5 +139,3 @@ export {
   encodeAuthFromSession,
   decodeAuthToSession,
 };
-
-export type { Authenticate };

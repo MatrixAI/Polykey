@@ -15,6 +15,13 @@ function parseNumber(v: string): number {
   return num;
 }
 
+function parseCoreCount(v: string): number | undefined {
+  if (v === 'all') {
+    return undefined;
+  }
+  return parseNumber(v);
+}
+
 function parseSecretPath(
   secretPath: string,
 ): [string, string, string | undefined] {
@@ -92,7 +99,7 @@ function getDefaultSeedNodes(network: string): NodeMapping {
  * Seed nodes expected to be of form 'nodeId1@host:port;nodeId2@host:port;...'
  * By default, any specified seed nodes (in CLI option, or environment variable)
  * will overwrite the default nodes in src/config.ts.
- * Special flag '<seed-nodes>' in the content indicates that the default seed
+ * Special flag `<defaults>` indicates that the default seed
  * nodes should be added to the starting seed nodes instead of being overwritten.
  */
 function parseSeedNodes(rawSeedNodes: string): [NodeMapping, boolean] {
@@ -105,7 +112,7 @@ function parseSeedNodes(rawSeedNodes: string): [NodeMapping, boolean] {
     // Empty string will occur if there's an extraneous ';' (e.g. at end of env)
     if (rawSeedNode === '') continue;
     // Append the default seed nodes if we encounter the special flag
-    if (rawSeedNode === '<default>') {
+    if (rawSeedNode === '<defaults>') {
       defaults = true;
       continue;
     }
@@ -148,6 +155,7 @@ function parseNetwork(network: string): NodeMapping {
 
 export {
   parseNumber,
+  parseCoreCount,
   parseSecretPath,
   parseGestaltId,
   getDefaultSeedNodes,

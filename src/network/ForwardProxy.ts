@@ -12,21 +12,23 @@ import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
 import ConnectionForward from './ConnectionForward';
 import * as networkUtils from './utils';
 import * as networkErrors from './errors';
-import { promisify, sleep, timerStart, timerStop } from '../utils';
+import { promisify, timerStart, timerStop } from '../utils';
 
 interface ForwardProxy extends StartStop {}
 @StartStop()
 class ForwardProxy {
   public readonly authToken: string;
   public readonly connConnectTime: number;
-  public readonly connTimeoutTime: number;
-  public readonly connPingIntervalTime: number;
+  public readonly connKeepAliveTimeoutTime: number;
+  public readonly connEndTime: number;
+  public readonly connPunchIntervalTime: number;
+  public readonly connKeepAliveIntervalTime: number;
 
   protected logger: Logger;
-  protected _proxyHost: Host;
-  protected _proxyPort: Port;
-  protected _egressHost: Host;
-  protected _egressPort: Port;
+  protected proxyHost: Host;
+  protected proxyPort: Port;
+  protected egressHost: Host;
+  protected egressPort: Port;
   protected server: http.Server;
   protected utpSocket: UTP;
   protected tlsConfig: TLSConfig;
@@ -39,23 +41,28 @@ class ForwardProxy {
   constructor({
     authToken,
     connConnectTime = 20000,
-    connTimeoutTime = 20000,
-    connPingIntervalTime = 1000,
+    connKeepAliveTimeoutTime = 20000,
+    connEndTime = 1000,
+    connPunchIntervalTime = 1000,
+    connKeepAliveIntervalTime = 1000,
     logger,
   }: {
     authToken: string;
     connConnectTime?: number;
-    connTimeoutTime?: number;
-    connPingIntervalTime?: number;
-
+    connKeepAliveTimeoutTime?: number;
+    connEndTime?: number;
+    connPunchIntervalTime?: number;
+    connKeepAliveIntervalTime?: number;
     logger?: Logger;
   }) {
     this.logger = logger ?? new Logger(ForwardProxy.name);
     this.logger.info('Creating Forward Proxy');
     this.authToken = authToken;
     this.connConnectTime = connConnectTime;
-    this.connTimeoutTime = connTimeoutTime;
-    this.connPingIntervalTime = connPingIntervalTime;
+    this.connKeepAliveTimeoutTime = connKeepAliveTimeoutTime;
+    this.connEndTime = connEndTime;
+    this.connPunchIntervalTime = connPunchIntervalTime;
+    this.connKeepAliveIntervalTime = connKeepAliveIntervalTime;
     this.server = http.createServer();
     this.server.on('request', this.handleRequest);
     this.server.on('connect', this.handleConnect);
@@ -78,28 +85,29 @@ class ForwardProxy {
     egressPort?: Port;
     tlsConfig: TLSConfig;
   }): Promise<void> {
-    this._proxyHost = proxyHost;
-    this._egressHost = egressHost;
-    this.tlsConfig = tlsConfig;
-
-    let proxyAddress = networkUtils.buildAddress(this._proxyHost, proxyPort);
-    let egressAddress = networkUtils.buildAddress(this._egressHost, egressPort);
+    let proxyAddress = networkUtils.buildAddress(proxyHost, proxyPort);
+    let egressAddress = networkUtils.buildAddress(egressHost, egressPort);
     this.logger.info(
       `Starting Forward Proxy from ${proxyAddress} to ${egressAddress}`,
     );
-    const utpSocket = UTP({ allowHalfOpen: false });
+    // Normal sockets defaults to `allowHalfOpen: false`
+    // But UTP defaults to `allowHalfOpen: true`
+    // Setting `allowHalfOpen: false` on UTP is buggy and cannot be used
+    const utpSocket = UTP({ allowHalfOpen: true });
     const utpSocketBind = promisify(utpSocket.bind).bind(utpSocket);
     await utpSocketBind(egressPort, egressHost);
-    this._egressPort = utpSocket.address().port;
+    egressPort = utpSocket.address().port;
     const serverListen = promisify(this.server.listen).bind(this.server);
-    await serverListen(proxyPort, this._proxyHost);
-    this._proxyPort = (this.server.address() as AddressInfo).port as Port;
-    proxyAddress = networkUtils.buildAddress(this._proxyHost, this._proxyPort);
-    egressAddress = networkUtils.buildAddress(
-      this._egressHost,
-      this._egressPort,
-    );
+    await serverListen(proxyPort, proxyHost);
+    proxyPort = (this.server.address() as AddressInfo).port as Port;
+    this.proxyHost = proxyHost;
+    this.proxyPort = proxyPort;
+    this.egressHost = egressHost;
+    this.egressPort = egressPort;
     this.utpSocket = utpSocket;
+    this.tlsConfig = tlsConfig;
+    proxyAddress = networkUtils.buildAddress(proxyHost, proxyPort);
+    egressAddress = networkUtils.buildAddress(egressHost, egressPort);
     this.logger.info(
       `Started Forward Proxy from ${proxyAddress} to ${egressAddress}`,
     );
@@ -107,15 +115,20 @@ class ForwardProxy {
 
   public async stop(): Promise<void> {
     this.logger.info('Stopping Forward Proxy Server');
+    // Ensure no new connections are created
+    this.server.removeAllListeners('connect');
+    this.server.on('connect', async (_request, clientSocket) => {
+      const clientSocketEnd = promisify(clientSocket.end).bind(clientSocket);
+      await clientSocketEnd('HTTP/1.1 503 Service Unavailable\r\n' + '\r\n');
+      clientSocket.destroy();
+    });
+    const connStops: Array<Promise<void>> = [];
+    for (const [_, conn] of this.connections.ingress) {
+      connStops.push(conn.stop());
+    }
     const serverClose = promisify(this.server.close).bind(this.server);
     await serverClose();
-    // Ensure no new connections are created while this is iterating
-    await Promise.all(
-      Array.from(this.connections.ingress, ([, conn]) => conn.stop()),
-    );
-    // Delay socket close by about 1 second
-    // this gives some time for the end/FIN packets to be sent
-    await sleep(1000);
+    await Promise.all(connStops);
     // Even when all connections are destroyed
     // the utp socket sometimes hangs in closing
     // here we asynchronously close and unreference it
@@ -125,30 +138,30 @@ class ForwardProxy {
     this.logger.info('Stopped Forward Proxy Server');
   }
 
-  @ready(new networkErrors.ErrorForwardProxyNotStarted())
-  get proxyHost(): Host {
-    return this._proxyHost;
+  @ready(new networkErrors.ErrorForwardProxyNotRunning())
+  public getProxyHost(): Host {
+    return this.proxyHost;
   }
 
-  @ready(new networkErrors.ErrorForwardProxyNotStarted())
-  get proxyPort(): Port {
-    return this._proxyPort;
+  @ready(new networkErrors.ErrorForwardProxyNotRunning())
+  public getProxyPort(): Port {
+    return this.proxyPort;
   }
 
-  @ready(new networkErrors.ErrorForwardProxyNotStarted())
-  get egressHost(): Host {
-    return this._egressHost;
+  @ready(new networkErrors.ErrorForwardProxyNotRunning())
+  public getEgressHost(): Host {
+    return this.egressHost;
   }
 
-  @ready(new networkErrors.ErrorForwardProxyNotStarted())
-  get egressPort(): Port {
-    return this._egressPort;
+  @ready(new networkErrors.ErrorForwardProxyNotRunning())
+  public getEgressPort(): Port {
+    return this.egressPort;
+  }
+  public getConnectionCount(): number {
+    return this.connections.ingress.size;
   }
 
-  public setTLSConfig(tlsConfig: TLSConfig): void {
-    this.tlsConfig = tlsConfig;
-  }
-
+  @ready(new networkErrors.ErrorForwardProxyNotRunning())
   public getConnectionInfoByClient(
     clientHost: Host,
     clientPort: Port,
@@ -163,13 +176,14 @@ class ForwardProxy {
     return {
       nodeId: serverNodeIds[0],
       certificates: serverCertificates,
-      egressHost: this._egressHost,
-      egressPort: this._egressPort,
+      egressHost: this.egressHost,
+      egressPort: this.egressPort,
       ingressHost: conn.host,
       ingressPort: conn.port,
     };
   }
 
+  @ready(new networkErrors.ErrorForwardProxyNotRunning())
   public getConnectionInfoByIngress(
     ingressHost: Host,
     ingressPort: Port,
@@ -184,24 +198,37 @@ class ForwardProxy {
     return {
       nodeId: serverNodeIds[0],
       certificates: serverCertificates,
-      egressHost: this._egressHost,
-      egressPort: this._egressPort,
+      egressHost: this.egressHost,
+      egressPort: this.egressPort,
       ingressHost: conn.host,
       ingressPort: conn.port,
     };
   }
 
-  get connectionCount(): number {
-    return this.connections.ingress.size;
+  @ready(new networkErrors.ErrorForwardProxyNotRunning())
+  public setTLSConfig(tlsConfig: TLSConfig): void {
+    this.tlsConfig = tlsConfig;
   }
 
-  @ready(new networkErrors.ErrorForwardProxyNotStarted())
+  /**
+   * Manually opens a connection with the ForwardProxy
+   * Usually you just use HTTP Connect requests to trigger handleConnect
+   * This will default to using `this.connConnectTime` if
+   * timer is not set or set to `undefined`
+   * It will only stop the timer if using the default timer
+   * Set timer to `null` explicitly to wait forever
+   */
+  @ready(new networkErrors.ErrorForwardProxyNotRunning(), true)
   public async openConnection(
     nodeId: NodeId,
     ingressHost: Host,
     ingressPort: Port,
     timer?: Timer,
   ): Promise<void> {
+    let timer_ = timer;
+    if (timer === undefined) {
+      timer_ = timerStart(this.connConnectTime);
+    }
     const ingressAddress = networkUtils.buildAddress(ingressHost, ingressPort);
     let lock = this.connectionLocks.get(ingressAddress);
     if (lock == null) {
@@ -210,14 +237,17 @@ class ForwardProxy {
     }
     const release = await lock.acquire();
     try {
-      await this.establishConnection(nodeId, ingressHost, ingressPort, timer);
+      await this.establishConnection(nodeId, ingressHost, ingressPort, timer_);
     } finally {
+      if (timer === undefined) {
+        timerStop(timer_!);
+      }
       release();
       this.connectionLocks.delete(ingressAddress);
     }
   }
 
-  @ready(new networkErrors.ErrorForwardProxyNotStarted())
+  @ready(new networkErrors.ErrorForwardProxyNotRunning(), true)
   public async closeConnection(
     ingressHost: Host,
     ingressPort: Port,
@@ -311,9 +341,43 @@ class ForwardProxy {
           timer,
         );
       } catch (e) {
+        if (e instanceof networkErrors.ErrorConnectionStartTimeout) {
+          if (!clientSocket.destroyed) {
+            await clientSocketEnd('HTTP/1.1 504 Gateway Timeout\r\n' + '\r\n');
+            clientSocket.destroy(e);
+          }
+          return;
+        }
+        if (e instanceof networkErrors.ErrorConnectionStart) {
+          if (!clientSocket.destroyed) {
+            await clientSocketEnd('HTTP/1.1 502 Bad Gateway\r\n' + '\r\n');
+            clientSocket.destroy(e);
+          }
+          return;
+        }
+        if (e instanceof networkErrors.ErrorCertChain) {
+          if (!clientSocket.destroyed) {
+            await clientSocketEnd(
+              'HTTP/1.1 526 Invalid SSL Certificate\r\n' + '\r\n',
+            );
+            clientSocket.destroy(e);
+          }
+          return;
+        }
+        if (e instanceof networkErrors.ErrorConnectionTimeout) {
+          if (!clientSocket.destroyed) {
+            await clientSocketEnd(
+              'HTTP/1.1 524 A Timeout Occurred\r\n' + '\r\n',
+            );
+            clientSocket.destroy(e);
+          }
+          return;
+        }
         if (e instanceof networkErrors.ErrorConnection) {
           if (!clientSocket.destroyed) {
-            await clientSocketEnd('HTTP/1.1 400 Bad Request\r\n' + '\r\n');
+            await clientSocketEnd(
+              'HTTP/1.1 500 Internal Server Error\r\n' + '\r\n',
+            );
             clientSocket.destroy(e);
           }
           return;
@@ -372,12 +436,14 @@ class ForwardProxy {
     conn = new ConnectionForward({
       nodeId,
       connections: this.connections,
-      pingIntervalTime: this.connPingIntervalTime,
       utpSocket: this.utpSocket,
       host: ingressHost,
       port: ingressPort,
       tlsConfig: this.tlsConfig,
-      timeoutTime: this.connTimeoutTime,
+      keepAliveTimeoutTime: this.connKeepAliveTimeoutTime,
+      endTime: this.connEndTime,
+      punchIntervalTime: this.connPunchIntervalTime,
+      keepAliveIntervalTime: this.connKeepAliveIntervalTime,
       logger: this.logger.getChild(
         `${ConnectionForward.name} ${ingressAddress}`,
       ),
@@ -401,7 +467,7 @@ class ForwardProxy {
    * Regular HTTP requests are not allowed
    */
   protected handleRequest = (
-    request: http.IncomingMessage,
+    _request: http.IncomingMessage,
     response: http.ServerResponse,
   ): void => {
     response.writeHead(405);

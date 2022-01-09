@@ -1,5 +1,5 @@
 import type * as grpc from '@grpc/grpc-js';
-import type { NodeInfo } from '@/nodes/types';
+import type { NodeInfo, NodeAddress } from '@/nodes/types';
 import type { NodeManager } from '@/nodes';
 import type { NotificationData } from '@/notifications/types';
 import type { ClientServiceClient } from '@/proto/js/polykey/v1/client_service_grpc_pb';
@@ -8,7 +8,6 @@ import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { utils as idUtils } from '@matrixai/id';
-
 import { PolykeyAgent } from '@';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as notificationsPB from '@/proto/js/polykey/v1/notifications/notifications_pb';
@@ -17,28 +16,14 @@ import { ForwardProxy } from '@/network';
 import * as grpcUtils from '@/grpc/utils';
 import * as vaultsUtils from '@/vaults/utils';
 import * as testUtils from './utils';
-import * as testKeynodeUtils from '../utils';
+import * as testNodesUtils from '../nodes/utils';
 
-// Mocks.
 jest.mock('@/keys/utils', () => ({
   ...jest.requireActual('@/keys/utils'),
   generateDeterministicKeyPair:
     jest.requireActual('@/keys/utils').generateKeyPair,
 }));
 
-/**
- * This test file has been optimised to use only one instance of PolykeyAgent where posible.
- * Setting up the PolykeyAgent has been done in a beforeAll block.
- * Keep this in mind when adding or editing tests.
- * Any side effects need to be undone when the test has completed.
- * Preferably within a `afterEach()` since any cleanup will be skipped inside a failing test.
- *
- * - left over state can cause a test to fail in certain cases.
- * - left over state can cause similar tests to succeed when they should fail.
- * - starting or stopping the agent within tests should be done on a new instance of the polykey agent.
- * - when in doubt test each modified or added test on it's own as well as the whole file.
- * - Looking into adding a way to safely clear each domain's DB information with out breaking modules.
- */
 describe('Notifications client service', () => {
   const password = 'password';
   const logger = new Logger('NotificationsClientServerTest', LogLevel.WARN, [
@@ -48,7 +33,7 @@ describe('Notifications client service', () => {
   let server: grpc.Server;
   let port: number;
   let dataDir: string;
-  let polykeyAgent: PolykeyAgent;
+  let pkAgent: PolykeyAgent;
   let keyManager: KeyManager;
   let nodeManager: NodeManager;
   let passwordFile: string;
@@ -75,7 +60,7 @@ describe('Notifications client service', () => {
       logger: logger,
     });
 
-    polykeyAgent = await PolykeyAgent.createPolykeyAgent({
+    pkAgent = await PolykeyAgent.createPolykeyAgent({
       password,
       nodePath: dataDir,
       logger,
@@ -83,10 +68,10 @@ describe('Notifications client service', () => {
       keyManager,
     });
 
-    nodeManager = polykeyAgent.nodeManager;
+    nodeManager = pkAgent.nodeManager;
 
     [server, port] = await testUtils.openTestClientServer({
-      polykeyAgent,
+      pkAgent,
       secure: false,
     });
 
@@ -101,8 +86,8 @@ describe('Notifications client service', () => {
     await testUtils.closeTestClientServer(server);
     testUtils.closeSimpleClientClient(client);
 
-    await polykeyAgent.stop();
-    await polykeyAgent.destroy();
+    await pkAgent.stop();
+    await pkAgent.destroy();
 
     await fs.promises.rm(dataDir, {
       force: true,
@@ -111,28 +96,49 @@ describe('Notifications client service', () => {
     await fs.promises.rm(passwordFile);
   });
   beforeEach(async () => {
-    const sessionToken = await polykeyAgent.sessionManager.createToken();
+    const sessionToken = await pkAgent.sessionManager.createToken();
     callCredentials = testUtils.createCallCredentials(sessionToken);
   });
 
   describe('Notifications RPC', () => {
+    let receiverDataDir: string;
+    let senderDataDir: string;
     let receiver: PolykeyAgent;
     let sender: PolykeyAgent;
     beforeAll(async () => {
-      receiver = await testKeynodeUtils.setupRemoteKeynode({ logger });
-      sender = await testKeynodeUtils.setupRemoteKeynode({ logger });
-
-      await sender.nodeManager.setNode(node1.id, {
-        host: polykeyAgent.revProxy.ingressHost,
-        port: polykeyAgent.revProxy.ingressPort,
+      receiverDataDir = await fs.promises.mkdtemp(
+        path.join(os.tmpdir(), 'polykey-test-'),
+      );
+      senderDataDir = await fs.promises.mkdtemp(
+        path.join(os.tmpdir(), 'polykey-test-'),
+      );
+      receiver = await PolykeyAgent.createPolykeyAgent({
+        password: 'password',
+        nodePath: receiverDataDir,
+        keysConfig: {
+          rootKeyPairBits: 2048,
+        },
+        logger,
       });
+      sender = await PolykeyAgent.createPolykeyAgent({
+        password: 'password',
+        nodePath: senderDataDir,
+        keysConfig: {
+          rootKeyPairBits: 2048,
+        },
+        logger,
+      });
+      await sender.nodeManager.setNode(node1.id, {
+        host: pkAgent.revProxy.getIngressHost(),
+        port: pkAgent.revProxy.getIngressPort(),
+      } as NodeAddress);
       await receiver.acl.setNodePerm(node1.id, {
         gestalt: {
           notify: null,
         },
         vaults: {},
       });
-      await polykeyAgent.acl.setNodePerm(sender.nodeManager.getNodeId(), {
+      await pkAgent.acl.setNodePerm(sender.nodeManager.getNodeId(), {
         gestalt: {
           notify: null,
         },
@@ -140,17 +146,25 @@ describe('Notifications client service', () => {
       });
     }, global.polykeyStartupTimeout * 2);
     afterAll(async () => {
-      await testKeynodeUtils.cleanupRemoteKeynode(receiver);
-      await testKeynodeUtils.cleanupRemoteKeynode(sender);
+      await sender.stop();
+      await receiver.stop();
+      await fs.promises.rm(senderDataDir, {
+        force: true,
+        recursive: true,
+      });
+      await fs.promises.rm(receiverDataDir, {
+        force: true,
+        recursive: true,
+      });
     });
     afterEach(async () => {
       await receiver.notificationsManager.clearNotifications();
       await sender.notificationsManager.clearNotifications();
-      await polykeyAgent.notificationsManager.clearNotifications();
+      await pkAgent.notificationsManager.clearNotifications();
     });
     test('should send notifications.', async () => {
       // Set up a remote node receiver and add its details to agent
-      await testKeynodeUtils.addRemoteDetails(polykeyAgent, receiver);
+      await testNodesUtils.nodesConnect(pkAgent, receiver);
 
       const notificationsSend =
         grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
@@ -171,7 +185,7 @@ describe('Notifications client service', () => {
         type: 'General',
         message: 'msg',
       });
-      expect(notifs[0].senderId).toEqual(polykeyAgent.nodeManager.getNodeId());
+      expect(notifs[0].senderId).toEqual(pkAgent.nodeManager.getNodeId());
       expect(notifs[0].isRead).toBeTruthy();
     });
     test('should read all notifications.', async () => {
@@ -292,8 +306,7 @@ describe('Notifications client service', () => {
       await notificationsClear(emptyMessage, callCredentials);
 
       // Call read notifications to check there are none
-      const notifs =
-        await polykeyAgent.notificationsManager.readNotifications();
+      const notifs = await pkAgent.notificationsManager.readNotifications();
       expect(notifs).toEqual([]);
     });
   });

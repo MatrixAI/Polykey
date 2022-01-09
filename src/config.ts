@@ -56,7 +56,9 @@ const config = {
   defaults: {
     nodePath: getDefaultNodePath(),
     statusBase: 'status.json',
+    statusLockBase: 'status.lock',
     stateBase: 'state',
+    stateVersionBase: 'version',
     dbBase: 'db',
     keysBase: 'keys',
     vaultsBase: 'vaults',
@@ -91,20 +93,10 @@ const config = {
       connConnectTime: 20000,
       connTimeoutTime: 20000,
     },
-    // Note: this is not used by the `PolykeyAgent`, that is defaulting to `{}`.
+    // This is not used by the `PolykeyAgent` with defaults to `{}`
     network: {
-      mainnet: {
-        v359vgrgmqf1r5g4fvisiddjknjko6bmm4qv7646jr7fi9enbfuug: {
-          host: 'testnet.polykey.io',
-          port: 1314,
-        },
-      },
-      testnet: {
-        v359vgrgmqf1r5g4fvisiddjknjko6bmm4qv7646jr7fi9enbfuug: {
-          host: '127.0.0.3',
-          port: 1314,
-        },
-      },
+      mainnet: {},
+      testnet: {},
     },
   },
 };

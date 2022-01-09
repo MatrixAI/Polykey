@@ -35,8 +35,8 @@ class TestNodeConnection extends NodeConnection {
   }): Promise<TestNodeConnection> {
     const logger_ = logger ?? new Logger('NodeConnection');
     const proxyConfig_ = {
-      host: forwardProxy.proxyHost,
-      port: forwardProxy.proxyPort,
+      host: forwardProxy.getProxyHost(),
+      port: forwardProxy.getProxyPort(),
       authToken: forwardProxy.authToken,
     } as ProxyConfig;
     return new TestNodeConnection({

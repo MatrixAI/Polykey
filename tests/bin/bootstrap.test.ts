@@ -112,7 +112,7 @@ describe('bootstrap', () => {
     global.defaultTimeout * 2,
   );
   test(
-    'concurrent bootstrapping are coalesced',
+    'concurrent bootstrapping results in 1 success',
     async () => {
       const password = 'password';
       const [bootstrapProcess1, bootstrapProcess2] = await Promise.all([

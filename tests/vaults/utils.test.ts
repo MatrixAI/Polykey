@@ -3,14 +3,16 @@ import os from 'os';
 import path from 'path';
 import { EncryptedFS } from 'encryptedfs';
 
-import Logger, { LogLevel } from '@matrixai/logger';
+import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { IdRandom } from '@matrixai/id';
 import * as utils from '@/utils';
 import * as vaultsUtils from '@/vaults/utils';
 import { isVaultId } from '@/vaults/utils';
 
 describe('Vaults utils', () => {
-  const logger = new Logger('Vaults utils tests', LogLevel.WARN);
+  const logger = new Logger('Vaults utils tests', LogLevel.WARN, [
+    new StreamHandler(),
+  ]);
   let dataDir: string;
 
   beforeEach(async () => {

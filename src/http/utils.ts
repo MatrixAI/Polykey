@@ -58,8 +58,6 @@ function terminatingHttpServer(
       return terminating;
     }
 
-    // Why the fuck do we take this out of promise...
-    // Even tho it works...
     let resolveTerminating;
     let rejectTerminating;
     terminating = new Promise((resolve, reject) => {
@@ -69,7 +67,7 @@ function terminatingHttpServer(
 
     // On new request.
     server.on('request', (incomingMessage, outgoingMessage) => {
-      // If this new request have not been responded. Close Connection.
+      // If this new request have not been responded. Close Connection.
       if (!outgoingMessage.headersSent) {
         outgoingMessage.setHeader('connection', 'close');
       }

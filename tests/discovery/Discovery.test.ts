@@ -3,17 +3,13 @@ import type { IdentityId, ProviderId } from '@/identities/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import Logger, { LogLevel } from '@matrixai/logger';
-import { Discovery } from '@/discovery';
-import PolykeyAgent from '@/PolykeyAgent';
-import * as discoveryErrors from '@/discovery/errors';
-import * as claimsUtils from '@/claims/utils';
+import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
+import { destroyed } from '@matrixai/async-init';
+import { PolykeyAgent } from '@';
+import { utils as claimsUtils } from '@/claims';
+import { Discovery, errors as discoveryErrors } from '@/discovery';
+import * as testNodesUtils from '../nodes/utils';
 import TestProvider from '../identities/TestProvider';
-import {
-  addRemoteDetails,
-  cleanupRemoteKeynode,
-  setupRemoteKeynode,
-} from '../utils';
 
 // Mocks.
 jest.mock('@/keys/utils', () => ({
@@ -23,9 +19,10 @@ jest.mock('@/keys/utils', () => ({
 }));
 
 describe('Discovery', () => {
-  // Constants.
   const password = 'password';
-  const logger = new Logger('Discovery Tests', LogLevel.WARN);
+  const logger = new Logger('Discovery Tests', LogLevel.WARN, [
+    new StreamHandler(),
+  ]);
   const testToken = {
     providerId: 'test-provider' as ProviderId,
     identityId: 'test_user' as IdentityId,
@@ -73,16 +70,17 @@ describe('Discovery', () => {
       'Starts and stops',
       async () => {
         // Not started.
-        expect(discovery.destroyed).toBeFalsy();
+        expect(discovery[destroyed]).toBeFalsy();
 
         // Starting.
         await discovery.destroy();
-        expect(discovery.destroyed).toBeTruthy();
+        expect(discovery[destroyed]).toBeTruthy();
       },
       global.polykeyStartupTimeout,
     );
   });
   describe('Discovery process', () => {
+    let rootDataDir;
     // Nodes should form the chain A->B->C
     let nodeA: PolykeyAgent;
     let nodeB: PolykeyAgent;
@@ -91,18 +89,41 @@ describe('Discovery', () => {
     let identityId: IdentityId;
 
     beforeAll(async () => {
-      // Setting up remote nodes.
-      nodeA = await setupRemoteKeynode({ logger });
-      nodeB = await setupRemoteKeynode({ logger });
-      nodeC = await setupRemoteKeynode({ logger });
-
+      rootDataDir = await fs.promises.mkdtemp(
+        path.join(os.tmpdir(), 'polykey-test-'),
+      );
+      // Setting up remote nodes
+      nodeA = await PolykeyAgent.createPolykeyAgent({
+        password: 'password',
+        nodePath: path.join(rootDataDir, 'nodeA'),
+        keysConfig: {
+          rootKeyPairBits: 2048,
+        },
+        logger,
+      });
+      nodeB = await PolykeyAgent.createPolykeyAgent({
+        password: 'password',
+        nodePath: path.join(rootDataDir, 'nodeB'),
+        keysConfig: {
+          rootKeyPairBits: 2048,
+        },
+        logger,
+      });
+      nodeC = await PolykeyAgent.createPolykeyAgent({
+        password: 'password',
+        nodePath: path.join(rootDataDir, 'nodeC'),
+        keysConfig: {
+          rootKeyPairBits: 2048,
+        },
+        logger,
+      });
       // Forming links
       // A->B->C
       // Adding connection details.
-      await addRemoteDetails(nodeA, nodeB);
-      await addRemoteDetails(nodeB, nodeA);
-      await addRemoteDetails(nodeB, nodeC);
-      await addRemoteDetails(nodeC, nodeB);
+      await testNodesUtils.nodesConnect(nodeA, nodeB);
+      await testNodesUtils.nodesConnect(nodeB, nodeA);
+      await testNodesUtils.nodesConnect(nodeB, nodeC);
+      await testNodesUtils.nodesConnect(nodeC, nodeB);
       // Adding sigchain details.
       const claimBtoC: ClaimLinkNode = {
         type: 'node',
@@ -133,16 +154,20 @@ describe('Discovery', () => {
         provider: testProvider.id,
         identity: identityId,
       };
-      const claimEncoded = await nodeB.sigchain.addClaim(claimIdentToB);
+      const [, claimEncoded] = await nodeB.sigchain.addClaim(claimIdentToB);
       const claim = await claimsUtils.decodeClaim(claimEncoded);
       await testProvider.publishClaim(identityId, claim);
     }, global.polykeyStartupTimeout * 3);
     afterAll(async () => {
-      await cleanupRemoteKeynode(nodeA);
-      await cleanupRemoteKeynode(nodeB);
-      await cleanupRemoteKeynode(nodeC);
+      await nodeC.stop();
+      await nodeB.stop();
+      await nodeA.stop();
       testProvider.links = {};
       testProvider.linkIdCounter = 0;
+      await fs.promises.rm(rootDataDir, {
+        force: true,
+        recursive: true,
+      });
     });
     beforeEach(async () => {
       await nodeA.gestaltGraph.clearDB();
@@ -195,6 +220,7 @@ describe('Discovery', () => {
     });
   });
   describe('End-to-end discovery between two gestalts', () => {
+    let rootDataDir;
     // Gestalt 1
     let nodeA: PolykeyAgent;
     let nodeB: PolykeyAgent;
@@ -206,19 +232,50 @@ describe('Discovery', () => {
 
     let testProvider: TestProvider;
     beforeAll(async () => {
+      rootDataDir = await fs.promises.mkdtemp(
+        path.join(os.tmpdir(), 'polykey-test-'),
+      );
       // Setting up remote nodes.
-      nodeA = await setupRemoteKeynode({ logger });
-      nodeB = await setupRemoteKeynode({ logger });
-      nodeC = await setupRemoteKeynode({ logger });
-      nodeD = await setupRemoteKeynode({ logger });
+      nodeA = await PolykeyAgent.createPolykeyAgent({
+        password: 'password',
+        nodePath: path.join(rootDataDir, 'nodeA'),
+        keysConfig: {
+          rootKeyPairBits: 2048,
+        },
+        logger,
+      });
+      nodeB = await PolykeyAgent.createPolykeyAgent({
+        password: 'password',
+        nodePath: path.join(rootDataDir, 'nodeB'),
+        keysConfig: {
+          rootKeyPairBits: 2048,
+        },
+        logger,
+      });
+      nodeC = await PolykeyAgent.createPolykeyAgent({
+        password: 'password',
+        nodePath: path.join(rootDataDir, 'nodeC'),
+        keysConfig: {
+          rootKeyPairBits: 2048,
+        },
+        logger,
+      });
+      nodeD = await PolykeyAgent.createPolykeyAgent({
+        password: 'password',
+        nodePath: path.join(rootDataDir, 'nodeD'),
+        keysConfig: {
+          rootKeyPairBits: 2048,
+        },
+        logger,
+      });
 
       // Adding connection details
-      await addRemoteDetails(nodeA, nodeB);
-      await addRemoteDetails(nodeA, nodeD);
-      await addRemoteDetails(nodeB, nodeA);
-      await addRemoteDetails(nodeC, nodeB);
-      await addRemoteDetails(nodeC, nodeD);
-      await addRemoteDetails(nodeD, nodeC);
+      await testNodesUtils.nodesConnect(nodeA, nodeB);
+      await testNodesUtils.nodesConnect(nodeA, nodeD);
+      await testNodesUtils.nodesConnect(nodeB, nodeA);
+      await testNodesUtils.nodesConnect(nodeC, nodeB);
+      await testNodesUtils.nodesConnect(nodeC, nodeD);
+      await testNodesUtils.nodesConnect(nodeD, nodeC);
 
       // Setting up identity provider
       testProvider = new TestProvider();
@@ -237,10 +294,14 @@ describe('Discovery', () => {
       identityIdB = (await gen2.next()).value as IdentityId;
     }, global.polykeyStartupTimeout * 4);
     afterAll(async () => {
-      await cleanupRemoteKeynode(nodeA);
-      await cleanupRemoteKeynode(nodeB);
-      await cleanupRemoteKeynode(nodeC);
-      await cleanupRemoteKeynode(nodeD);
+      await nodeD.stop();
+      await nodeC.stop();
+      await nodeB.stop();
+      await nodeA.stop();
+      await fs.promises.rm(rootDataDir, {
+        force: true,
+        recursive: true,
+      });
     });
     afterEach(async () => {
       await nodeA.gestaltGraph.clearDB();
@@ -263,7 +324,7 @@ describe('Discovery', () => {
         provider: testProvider.id,
         identity: identityIdB,
       };
-      const claimBEncoded = await nodeD.sigchain.addClaim(claimIdentToD);
+      const [, claimBEncoded] = await nodeD.sigchain.addClaim(claimIdentToD);
       const claimB = claimsUtils.decodeClaim(claimBEncoded);
       await testProvider.publishClaim(identityIdB, claimB);
 
@@ -298,7 +359,7 @@ describe('Discovery', () => {
         provider: testProvider.id,
         identity: identityIdA,
       };
-      const claimAEncoded = await nodeB.sigchain.addClaim(claimIdentToB);
+      const [, claimAEncoded] = await nodeB.sigchain.addClaim(claimIdentToB);
       const claimA = claimsUtils.decodeClaim(claimAEncoded);
       await testProvider.publishClaim(identityIdA, claimA);
 

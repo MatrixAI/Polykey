@@ -16,12 +16,10 @@ package polykey.v1;
 
 service ClientService {
   // Agent
+  rpc AgentLockAll (polykey.v1.utils.EmptyMessage) returns (polykey.v1.utils.EmptyMessage);
   rpc AgentStatus(polykey.v1.utils.EmptyMessage) returns (polykey.v1.agent.InfoMessage);
   rpc AgentStop(polykey.v1.utils.EmptyMessage) returns (polykey.v1.utils.EmptyMessage);
-
-  // Session
-  rpc SessionsUnlock (polykey.v1.utils.EmptyMessage) returns (polykey.v1.utils.EmptyMessage);
-  rpc SessionsLockAll (polykey.v1.utils.EmptyMessage) returns (polykey.v1.utils.EmptyMessage);
+  rpc AgentUnlock (polykey.v1.utils.EmptyMessage) returns (polykey.v1.utils.EmptyMessage);
 
   // Nodes
   rpc NodesAdd(polykey.v1.nodes.NodeAddress) returns (polykey.v1.utils.EmptyMessage);

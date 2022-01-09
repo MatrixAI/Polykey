@@ -2,10 +2,7 @@ import type { SessionToken } from './types';
 import type { FileSystem } from '../types';
 
 import Logger from '@matrixai/logger';
-import {
-  CreateDestroyStartStop,
-  ready,
-} from '@matrixai/async-init/dist/CreateDestroyStartStop';
+import { CreateDestroyStartStop } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import lock from 'fd-lock';
 import * as sessionErrors from './errors';
 import * as utils from '../utils';
@@ -94,7 +91,6 @@ class Session {
     this.logger.info(`Destroyed ${this.constructor.name}`);
   }
 
-  @ready(new sessionErrors.ErrorSessionNotRunning())
   public async readToken(): Promise<SessionToken | undefined> {
     let sessionTokenFile;
     try {
@@ -107,7 +103,7 @@ class Session {
       }
       const sessionTokenData = await sessionTokenFile.readFile('utf-8');
       const sessionToken = sessionTokenData.trim();
-      // WriteToken may create an empty session token file before it completes
+      // `writeToken` may create an empty session token file before it completes
       if (sessionToken === '') {
         return;
       }
@@ -126,7 +122,6 @@ class Session {
     }
   }
 
-  @ready(new sessionErrors.ErrorSessionNotRunning())
   public async writeToken(sessionToken: SessionToken): Promise<void> {
     let sessionTokenFile;
     try {

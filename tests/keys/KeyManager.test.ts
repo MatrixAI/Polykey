@@ -11,7 +11,6 @@ import * as keysErrors from '@/keys/errors';
 import * as workersUtils from '@/workers/utils';
 import * as keysUtils from '@/keys/utils';
 import { sleep } from '@/utils';
-import { makeCrypto } from '../utils';
 
 describe('KeyManager', () => {
   const password = 'password';
@@ -24,7 +23,7 @@ describe('KeyManager', () => {
   let mockedGenerateDeterministicKeyPair;
   beforeAll(async () => {
     // Key pair generated once for mocking
-    keyPair = await keysUtils.generateKeyPair(4096);
+    keyPair = await keysUtils.generateKeyPair(1024);
     workerManager = await workersUtils.createWorkerManager({
       cores: 1,
       logger,
@@ -54,8 +53,8 @@ describe('KeyManager', () => {
   test('KeyManager readiness', async () => {
     const keysPath = `${dataDir}/keys`;
     const keyManager = await KeyManager.createKeyManager({
-      password,
       keysPath,
+      password,
       logger,
     });
     await expect(async () => {
@@ -78,8 +77,8 @@ describe('KeyManager', () => {
   test('constructs root key pair, root cert, root certs and db key', async () => {
     const keysPath = `${dataDir}/keys`;
     const keyManager = await KeyManager.createKeyManager({
-      password,
       keysPath,
+      password,
       logger,
     });
     const keysPathContents = await fs.promises.readdir(keysPath);
@@ -210,8 +209,12 @@ describe('KeyManager', () => {
     });
     // No way we can encrypt 1000 bytes without a ridiculous key size
     const plainText = Buffer.from(new Array(1000 + 1).join('A'));
+    const maxSize = keysUtils.maxEncryptSize(
+      keysUtils.publicKeyBitSize(keyPair.publicKey) / 8,
+      32,
+    );
     await expect(keyManager.encryptWithRootKeyPair(plainText)).rejects.toThrow(
-      'Maximum plain text byte size is 446',
+      `Maximum plain text byte size is ${maxSize}`,
     );
     await keyManager.stop();
   });
@@ -257,16 +260,12 @@ describe('KeyManager', () => {
         logger,
       });
     }).rejects.toThrow(keysErrors.ErrorRootKeysParse);
-    await expect(
-      (async () => {
-        await KeyManager.createKeyManager({
-          password: 'newpassword',
-          keysPath,
-          logger,
-        });
-        await keyManager.stop();
-      })(),
-    ).resolves.toBeUndefined();
+    await KeyManager.createKeyManager({
+      password: 'newpassword',
+      keysPath,
+      logger,
+    });
+    await keyManager.stop();
   });
   test('can reset root certificate', async () => {
     const keysPath = `${dataDir}/keys`;
@@ -305,7 +304,13 @@ describe('KeyManager', () => {
     const db = await DB.createDB({
       dbPath,
       logger,
-      crypto: makeCrypto(keyManager.dbKey),
+      crypto: {
+        key: keyManager.dbKey,
+        ops: {
+          encrypt: keysUtils.encryptWithKey,
+          decrypt: keysUtils.decryptWithKey,
+        },
+      },
     });
     const rootKeyPair1 = keyManager.getRootKeyPair();
     const rootCert1 = keyManager.getRootCert();
@@ -348,7 +353,13 @@ describe('KeyManager', () => {
     const db = await DB.createDB({
       dbPath,
       logger,
-      crypto: makeCrypto(keyManager.dbKey),
+      crypto: {
+        key: keyManager.dbKey,
+        ops: {
+          encrypt: keysUtils.encryptWithKey,
+          decrypt: keysUtils.decryptWithKey,
+        },
+      },
     });
     const rootKeyPair1 = keyManager.getRootKeyPair();
     const rootCert1 = keyManager.getRootCert();

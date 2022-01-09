@@ -5,26 +5,28 @@ import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { PolykeyClient, PolykeyAgent } from '@';
 import { Session } from '@/sessions';
-import * as keysUtils from '@/keys/utils';
+import { utils as keysUtils } from '@/keys';
 import config from '@/config';
 import * as testUtils from './utils';
-
-jest
-  .spyOn(keysUtils, 'generateKeyPair')
-  .mockImplementation(testUtils.getGlobalKeyPair);
-jest
-  .spyOn(keysUtils, 'generateDeterministicKeyPair')
-  .mockImplementation(testUtils.getGlobalKeyPair);
 
 describe('PolykeyClient', () => {
   const password = 'password';
   const logger = new Logger('PolykeyClient Test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
+  let mockedGenerateKeyPair: jest.SpyInstance;
+  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
   let dataDir: string;
   let nodePath: string;
   let pkAgent: PolykeyAgent;
   beforeAll(async () => {
+    const globalKeyPair = await testUtils.setupGlobalKeypair();
+    mockedGenerateKeyPair = jest
+      .spyOn(keysUtils, 'generateKeyPair')
+      .mockResolvedValue(globalKeyPair);
+    mockedGenerateDeterministicKeyPair = jest
+      .spyOn(keysUtils, 'generateDeterministicKeyPair')
+      .mockResolvedValue(globalKeyPair);
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -41,6 +43,8 @@ describe('PolykeyClient', () => {
       force: true,
       recursive: true,
     });
+    mockedGenerateKeyPair.mockRestore();
+    mockedGenerateDeterministicKeyPair.mockRestore();
   });
   test('create PolykeyClient and connect to PolykeyAgent', async () => {
     const pkClient = await PolykeyClient.createPolykeyClient({

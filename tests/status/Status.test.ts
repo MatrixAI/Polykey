@@ -4,243 +4,279 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { sleep, errors as utilsErrors } from '@/utils';
+import config from '@/config';
 import { Status, errors as statusErrors } from '@/status';
 
-describe('Lockfile is', () => {
-  const logger = new Logger('Lockfile Test', LogLevel.WARN, [
+describe('Status', () => {
+  const logger = new Logger(`${Status.name} Test`, LogLevel.WARN, [
     new StreamHandler(),
   ]);
-  const waitForTimeout = 1000;
   let dataDir: string;
-  let status: Status;
-  let statusPath: string;
-
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'status-test-'));
-    statusPath = path.join(dataDir, 'status');
-    status = new Status({
-      statusPath,
-      fs: fs,
-      logger: logger,
-    });
   });
-
   afterEach(async () => {
-    await status.stop({});
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
     });
   });
-
-  test('type correct', () => {
-    expect(status).toBeInstanceOf(Status);
-  });
-
-  test('starting and stopping with correct side effects', async () => {
-    await status.start({ pid: 0 });
-    await status.readStatus();
-    expect(fs.existsSync(status.statusPath)).toBe(true);
-
-    await status.stop({ lol: 2 });
-    await sleep(1000);
-    expect(fs.existsSync(status.statusPath)).toBe(true);
-    const state = await status.readStatus();
-    expect(state?.status).toEqual('DEAD');
-  });
-
-  test('updating data and parsing it correctly', async () => {
-    await status.start({ pid: 0 });
-    const lock1 = await status.readStatus();
-    expect(lock1?.data.pid).toBeDefined();
-
-    await status.finishStart({
-      pid: 0,
-      nodeId: 'node' as NodeId,
-      clientHost: '::1' as Host,
-      clientPort: 0 as Port,
-      ingressHost: '127.0.0.1' as Host,
-      ingressPort: 0 as Port,
-      grpcHost: 'localhost',
-      grpcPort: 12345,
-      anything: 'something',
-    });
-
-    const lock2 = await status.readStatus();
-    if (lock2) {
-      expect(lock2.data.pid).toBeDefined();
-      expect(lock2.data.grpcHost).toBe('localhost');
-      expect(lock2.data.grpcPort).toBe(12345);
-      expect(lock2.data.anything).toBe('something');
-    } else {
-      throw new Error('Lock should exist');
-    }
-
-    await status.stop({});
-  });
-
-  test('Working fine when a status already exists', async () => {
-    await fs.promises.writeFile(
-      status.statusPath,
-      JSON.stringify({ pid: 66666 }),
-    );
-    await status.start({ pid: 0 });
-    let lock;
-    lock = await status.readStatus();
-    if (lock) {
-      expect(lock.data.pid).toBeDefined();
-    } else {
-      throw new Error('Lock should exist');
-    }
-
-    await status.finishStart({
-      pid: 0,
-      nodeId: 'node' as NodeId,
-      clientHost: '::1' as Host,
-      clientPort: 0 as Port,
-      ingressHost: '127.0.0.1' as Host,
-      ingressPort: 0 as Port,
-      grpcHost: 'localhost',
-      grpcPort: 12345,
-      anything: 'something',
-    });
-
-    lock = await status.readStatus();
-    if (lock) {
-      expect(lock.data.pid).toBeDefined();
-      expect(lock.data.grpcHost).toBe('localhost');
-      expect(lock.data.grpcPort).toBe(12345);
-      expect(lock.data.anything).toBe('something');
-    } else {
-      throw new Error('Lock should exist');
-    }
-
-    await status.stop({});
-  });
-  test('A running status holds a lock', async () => {
-    // Make sure that the status is running
-    await status.start({ pid: 0 });
-
-    // Try to start a new status.
-    // Creation should succeed.
-    const status2 = new Status({
-      statusPath: path.join(dataDir, 'status'),
+  test('status readiness', async () => {
+    const status = new Status({
+      statusPath: path.join(dataDir, config.defaults.statusBase),
+      statusLockPath: path.join(dataDir, config.defaults.statusLockBase),
       fs: fs,
       logger: logger,
     });
-
-    // Should be able to read the lock info.
-    const info = await status2.readStatus();
-    expect(info).toBeDefined();
-    expect(info?.data.pid).toBeDefined();
-
-    // Should fail to start a new lock.
-    await expect(() => status2.start({ pid: 0 })).rejects.toThrow(
-      statusErrors.ErrorStatusLocked,
-    );
-  });
-  test('Lockfile has multiple states.', async () => {
-    // Should be starting now.
     await status.start({ pid: 0 });
-    expect((await status.readStatus())?.status).toEqual('STARTING');
-
-    // Should be running.
+    // Should be a noop
+    await status.start({ pid: 0 });
+    expect(fs.existsSync(status.statusPath)).toBe(true);
+    expect(fs.existsSync(status.statusLockPath)).toBe(true);
+    await status.stop({ foo: 'bar' });
+    expect(fs.existsSync(status.statusPath)).toBe(true);
+    expect(fs.existsSync(status.statusLockPath)).toBe(false);
+    let statusInfo = await status.readStatus();
+    expect(statusInfo?.status).toEqual('DEAD');
+    await status.start({ pid: 0 });
+    statusInfo = await status.readStatus();
+    expect(statusInfo?.status).toEqual('STARTING');
+    await status.stop({});
+  });
+  test('status transitions', async () => {
+    const status = new Status({
+      statusPath: path.join(dataDir, config.defaults.statusBase),
+      statusLockPath: path.join(dataDir, config.defaults.statusLockBase),
+      fs: fs,
+      logger: logger,
+    });
+    await status.start({ pid: 0 });
+    const statusInfo1 = await status.readStatus();
+    expect(statusInfo1).toBeDefined();
+    expect(statusInfo1!.status).toBe('STARTING');
+    expect(statusInfo1!.data.pid).toBe(0);
+    await status.finishStart({
+      pid: 0,
+      nodeId: 'node' as NodeId,
+      clientHost: '::1' as Host,
+      clientPort: 0 as Port,
+      ingressHost: '127.0.0.1' as Host,
+      ingressPort: 0 as Port,
+      grpcHost: 'localhost',
+      grpcPort: 12345,
+      anything: 'something',
+    });
+    const statusInfo2 = await status.readStatus();
+    expect(statusInfo2).toBeDefined();
+    expect(statusInfo2!.status).toBe('LIVE');
+    expect(statusInfo2!.data.pid).toBeDefined();
+    expect(statusInfo2!.data.grpcHost).toBe('localhost');
+    expect(statusInfo2!.data.grpcPort).toBe(12345);
+    expect(statusInfo2!.data.anything).toBe('something');
+    await status.beginStop({
+      pid: 1,
+    });
+    const statusInfo3 = await status.readStatus();
+    expect(statusInfo3).toBeDefined();
+    expect(statusInfo3!.status).toBe('STOPPING');
+    expect(statusInfo3!.data.pid).toBe(1);
+    await status.stop({});
+    const statusInfo4 = await status.readStatus();
+    expect(statusInfo4).toBeDefined();
+    expect(statusInfo4!.status).toBe('DEAD');
+  });
+  test('start with existing statusPath or statusLockPath', async () => {
+    await fs.promises.writeFile(
+      path.join(dataDir, config.defaults.statusBase),
+      'hello world',
+    );
+    await fs.promises.writeFile(
+      path.join(dataDir, config.defaults.statusLockBase),
+      'hello world',
+    );
+    const status = new Status({
+      statusPath: path.join(dataDir, config.defaults.statusBase),
+      statusLockPath: path.join(dataDir, config.defaults.statusLockBase),
+      fs: fs,
+      logger: logger,
+    });
+    await status.start({ pid: 0 });
+    const statusInfo = await status.readStatus();
+    expect(statusInfo).toBeDefined();
+    expect(statusInfo!.status).toBe('STARTING');
+    expect(statusInfo!.data.pid).toBe(0);
+    await status.stop({});
+  });
+  test('readStatus on non-existent status', async () => {
+    const status = new Status({
+      statusPath: path.join(dataDir, config.defaults.statusBase),
+      statusLockPath: path.join(dataDir, config.defaults.statusLockBase),
+      fs: fs,
+      logger: logger,
+    });
+    expect(await status.readStatus()).toBeUndefined();
+  });
+  test('singleton running status', async () => {
+    const status1 = new Status({
+      statusPath: path.join(dataDir, config.defaults.statusBase),
+      statusLockPath: path.join(dataDir, config.defaults.statusLockBase),
+      fs: fs,
+      logger: logger,
+    });
+    const status2 = new Status({
+      statusPath: path.join(dataDir, config.defaults.statusBase),
+      statusLockPath: path.join(dataDir, config.defaults.statusLockBase),
+      fs: fs,
+      logger: logger,
+    });
+    await status1.start({ pid: 1 });
+    await expect(async () => {
+      await status2.start({ pid: 2 });
+    }).rejects.toThrow(statusErrors.ErrorStatusLocked);
+    // Status 2 can still read the status
+    const statusInfo = await status2.readStatus();
+    expect(statusInfo).toBeDefined();
+    expect(statusInfo!.data.pid).toBe(1);
+    await status1.stop({});
+  });
+  test('wait for transitions', async () => {
+    const status = new Status({
+      statusPath: path.join(dataDir, config.defaults.statusBase),
+      statusLockPath: path.join(dataDir, config.defaults.statusLockBase),
+      fs: fs,
+      logger: logger,
+    });
+    let statusWaitFor = status.waitFor('STARTING');
+    await status.start({ pid: 0 });
+    const statusInfoStarting = await statusWaitFor;
+    expect(statusInfoStarting!.status).toBe('STARTING');
+    statusWaitFor = status.waitFor('LIVE');
     await status.finishStart({
       clientHost: '' as Host,
       clientPort: 0 as Port,
-      nodeId: '' as NodeId,
       ingressHost: '127.0.0.1' as Host,
       ingressPort: 0 as Port,
+      nodeId: '' as NodeId,
       pid: 0,
     });
-    expect((await status.readStatus())?.status).toEqual('LIVE');
-
-    // Should be stopping.
+    const statusInfoLive = await statusWaitFor;
+    expect(statusInfoLive!.status).toBe('LIVE');
+    statusWaitFor = status.waitFor('STOPPING');
     await status.beginStop({ pid: 0 });
-    expect((await status.readStatus())?.status).toEqual('STOPPING');
-
-    // Should be removed now.
+    const statusInfoStopping = await statusWaitFor;
+    expect(statusInfoStopping!.status).toBe('STOPPING');
+    statusWaitFor = status.waitFor('DEAD');
     await status.stop({});
-    expect((await status.readStatus())?.status).toEqual('DEAD');
+    const statusInfoDead = await statusWaitFor;
+    expect(statusInfoDead!.status).toBe('DEAD');
   });
-  test('Status can wait for its status to be LIVE if started.', async () => {
-    // We want to mimic the startup procedure.
-    const delayedStart = async () => {
-      await status.start({ pid: 0 });
-      await sleep(500);
-      await status.finishStart({
-        clientHost: '' as Host,
-        clientPort: 0 as Port,
-        ingressHost: '127.0.0.1' as Host,
-        ingressPort: 0 as Port,
-        nodeId: '' as NodeId,
-        pid: 0,
-      });
-    };
-    const prom = delayedStart();
-
-    const test = await status.waitFor('LIVE', waitForTimeout);
-    expect(test.status).toEqual('LIVE');
-    await prom;
-
-    // Checking that we throw an error when we can't wait for RUNNING.
-    const delayedStop = async () => {
-      await status.beginStop({ pid: 0 });
-      await sleep(500);
-      await status.stop({});
-    };
-    const prom2 = delayedStop();
-    const test2 = status.waitFor('LIVE', waitForTimeout);
-    await expect(async () => {
-      await test2;
-    }).rejects.toThrow(utilsErrors.ErrorUtilsPollTimeout);
-    await prom2;
-
-    // Should throw if no file was found / unlocked.
-    const test3 = status.waitFor('LIVE', waitForTimeout);
-    await expect(async () => {
-      await test3;
-    }).rejects.toThrow(utilsErrors.ErrorUtilsPollTimeout);
-  });
-  test('Status can wait for its status to be DEAD if Stopping.', async () => {
-    // Should succeed if not started.
-    const test4 = await status.waitFor('DEAD', waitForTimeout);
-    expect(test4.status).toEqual('DEAD');
-
-    // Should throw an error when starting.
+  test('parse error when statusPath is corrupted', async () => {
+    const status = new Status({
+      statusPath: path.join(dataDir, config.defaults.statusBase),
+      statusLockPath: path.join(dataDir, config.defaults.statusLockBase),
+      fs: fs,
+      logger: logger,
+    });
     await status.start({ pid: 0 });
-    const test = status.waitFor('LIVE', waitForTimeout);
-    await expect(async () => {
-      await test;
-    }).rejects.toThrow(utilsErrors.ErrorUtilsPollTimeout);
-
-    // Should throw an error whens started.
-    await status.start({ pid: 0 });
-    const test2 = status.waitFor('DEAD', waitForTimeout);
-    await expect(async () => {
-      await test2;
-    }).rejects.toThrow(utilsErrors.ErrorUtilsPollTimeout);
-
-    // Should wait and succeed when stopping.
-    const delayedStart = async () => {
-      await status.beginStop({ pid: 0 });
-      await sleep(500);
-      await status.stop({});
-    };
-    const prom2 = delayedStart();
-    const test3 = await status.waitFor('DEAD', waitForTimeout);
-    expect(test3.status).toEqual('DEAD');
-    await prom2;
-  });
-  test('should throw an error when failing to parse.', async () => {
-    // Creating the status file.
-    await status.start({ pid: 0 });
-    // Corrupting the status file.
-    await fs.promises.writeFile(statusPath, '{');
-    // Should throw.
+    await fs.promises.writeFile(status.statusPath, '{');
     await expect(() => status.readStatus()).rejects.toThrow(
       statusErrors.ErrorStatusParse,
     );
+    await status.stop({});
+  });
+  test('status transitions are serialised', async () => {
+    const status = new Status({
+      statusPath: path.join(dataDir, config.defaults.statusBase),
+      statusLockPath: path.join(dataDir, config.defaults.statusLockBase),
+      fs: fs,
+      logger: logger,
+    });
+    await status.start({ pid: 0 });
+    // The key point here is that there are no parsing errors
+    // And that the status info is always defined
+    for (let i = 0; i < 100; i++) {
+      const [, statusInfo1, , , , statusInfo2] = await Promise.all([
+        status.finishStart({
+          clientHost: '' as Host,
+          clientPort: 0 as Port,
+          ingressHost: '127.0.0.1' as Host,
+          ingressPort: 3425 as Port,
+          nodeId: '' as NodeId,
+          pid: 0,
+        }),
+        status.readStatus(),
+        status.beginStop({
+          pid: 4,
+        }),
+        status.finishStart({
+          clientHost: '' as Host,
+          clientPort: 3445 as Port,
+          ingressHost: '127.0.0.1' as Host,
+          ingressPort: 0 as Port,
+          nodeId: '' as NodeId,
+          pid: 0,
+        }),
+        status.beginStop({
+          pid: 2,
+        }),
+        status.readStatus(),
+        status.finishStart({
+          clientHost: '' as Host,
+          clientPort: 0 as Port,
+          ingressHost: '127.0.0.1' as Host,
+          ingressPort: 0 as Port,
+          nodeId: '' as NodeId,
+          pid: 0,
+        }),
+      ]);
+      expect(statusInfo1).toBeDefined();
+      expect(statusInfo2).toBeDefined();
+      expect(['LIVE', 'STARTING', 'STOPPING']).toContainEqual(
+        statusInfo1!.status,
+      );
+      expect(['LIVE', 'STARTING', 'STOPPING']).toContainEqual(
+        statusInfo2!.status,
+      );
+    }
+    await status.stop({ pid: 0 });
+  });
+  test('wait for has at-least-once semantics', async () => {
+    const status = new Status({
+      statusPath: path.join(dataDir, config.defaults.statusBase),
+      statusLockPath: path.join(dataDir, config.defaults.statusLockBase),
+      fs: fs,
+      logger: logger,
+    });
+    await status.start({ pid: 0 });
+    // `waitFor` relies on filesystem watching
+    // It does not guarantee exactly-once semantics for status events
+    // In this case, it is possible that upon reacting to `LIVE` status
+    // When it reads the status, it has already changed to `STOPPING`
+    // Which means the `statusWaitFor` never resolves
+    const statusWaitFor = status.waitFor('LIVE', 1000);
+    const p1 = status.finishStart({
+      clientHost: '' as Host,
+      clientPort: 0 as Port,
+      ingressHost: '127.0.0.1' as Host,
+      ingressPort: 0 as Port,
+      nodeId: '' as NodeId,
+      pid: 0,
+    });
+    const p2 = status.beginStop({ pid: 1 });
+    try {
+      const statusInfo = await statusWaitFor;
+      expect(statusInfo!.status).toBe('LIVE');
+      logger.info('Succeeds waiting for LIVE');
+    } catch (e) {
+      expect(e).toBeInstanceOf(statusErrors.ErrorStatusTimeout);
+      logger.info('Times out waiting for LIVE');
+    }
+    await Promise.all([p1, p2]);
+    // The last promise to be resolved might be p1 and not p2
+    const statusInfo = await status.readStatus();
+    expect(
+      statusInfo!.status === 'LIVE' || statusInfo!.status === 'STOPPING',
+    ).toBe(true);
+    await status.stop({});
   });
 });

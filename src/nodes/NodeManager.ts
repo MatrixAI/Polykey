@@ -42,13 +42,11 @@ class NodeManager {
   protected db: DB;
   protected logger: Logger;
   protected lock: Mutex = new Mutex();
-
   protected nodeGraph: NodeGraph;
   protected sigchain: Sigchain;
   protected keyManager: KeyManager;
   protected fwdProxy: ForwardProxy;
   protected revProxy: ReverseProxy;
-
   // Active connections to other nodes
   protected connections: NodeConnectionMap = new Map();
   // Node ID -> node address mappings for the seed nodes
@@ -125,20 +123,26 @@ class NodeManager {
   }: {
     fresh?: boolean;
   } = {}) {
-    this.logger.info(`Starting ${this.constructor.name}`);
-    // Instantiate the node graph (containing Kademlia implementation)
-    this.nodeGraph = await NodeGraph.createNodeGraph({
-      db: this.db,
-      nodeManager: this,
-      logger: this.logger,
-      fresh,
-    });
-    // Add the seed nodes to the NodeGraph
-    for (const id in this.seedNodes) {
-      const seedNodeId = id as NodeId;
-      await this.nodeGraph.setNode(seedNodeId, this.seedNodes[seedNodeId]);
+    try {
+      this.logger.info(`Starting ${this.constructor.name}`);
+      // Instantiate the node graph (containing Kademlia implementation)
+      this.nodeGraph = await NodeGraph.createNodeGraph({
+        db: this.db,
+        nodeManager: this,
+        logger: this.logger,
+        fresh,
+      });
+      // Add the seed nodes to the NodeGraph
+      for (const id in this.seedNodes) {
+        const seedNodeId = id as NodeId;
+        await this.nodeGraph.setNode(seedNodeId, this.seedNodes[seedNodeId]);
+      }
+      this.logger.info(`Started ${this.constructor.name}`);
+    } catch (e) {
+      this.logger.warn(`Failed Starting ${this.constructor.name}`);
+      await this.nodeGraph.stop();
+      throw e;
     }
-    this.logger.info(`Started ${this.constructor.name}`);
   }
 
   public async stop() {

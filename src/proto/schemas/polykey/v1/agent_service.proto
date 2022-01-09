@@ -16,7 +16,7 @@ service AgentService {
   rpc VaultsGitInfoGet (polykey.v1.vaults.Vault) returns (stream polykey.v1.vaults.PackChunk);
   rpc VaultsGitPackGet(stream polykey.v1.vaults.PackChunk) returns (stream polykey.v1.vaults.PackChunk);
   rpc VaultsScan (polykey.v1.nodes.Node) returns (stream polykey.v1.vaults.Vault);
-  rpc VaultsPermisssionsCheck (polykey.v1.vaults.NodePermission) returns (polykey.v1.vaults.NodePermissionAllowed);
+  rpc VaultsPermissionsCheck (polykey.v1.vaults.NodePermission) returns (polykey.v1.vaults.NodePermissionAllowed);
 
   // Nodes
   rpc NodesClosestLocalNodesGet (polykey.v1.nodes.Node) returns (polykey.v1.nodes.NodeTable);

@@ -12,7 +12,9 @@ let
     }
     ''
     mkdir -p $out/lib/node_modules/${utils.node2nixDev.packageName}
-    # copy only the dist
+    # copy the package.json
+    cp ${utils.node2nixDev}/lib/node_modules/${utils.node2nixDev.packageName}/package.json $out/lib/node_modules/${utils.node2nixDev.packageName}/
+    # copy the dist
     cp -r ${utils.node2nixDev}/lib/node_modules/${utils.node2nixDev.packageName}/dist $out/lib/node_modules/${utils.node2nixDev.packageName}/
     # copy over the production dependencies
     if [ -d "${utils.node2nixProd}/lib/node_modules" ]; then

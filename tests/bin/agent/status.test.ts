@@ -6,6 +6,7 @@ import { Status } from '@/status';
 import * as binErrors from '@/bin/errors';
 import config from '@/config';
 import * as testBinUtils from '../utils';
+import * as testUtils from '../../utils';
 
 describe('status', () => {
   const logger = new Logger('status test', LogLevel.WARN, [
@@ -30,11 +31,24 @@ describe('status', () => {
       const password = 'abc123';
       const status = new Status({
         statusPath: path.join(dataDir, 'polykey', config.defaults.statusBase),
+        statusLockPath: path.join(
+          dataDir,
+          'polykey',
+          config.defaults.statusLockBase,
+        ),
         fs,
         logger,
       });
       const agentProcess = await testBinUtils.pkSpawn(
-        ['agent', 'start', '--root-key-pair-bits', '1024', '--verbose'],
+        [
+          'agent',
+          'start',
+          '--root-key-pair-bits',
+          '1024',
+          '--workers',
+          '0',
+          '--verbose',
+        ],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
           PK_PASSWORD: password,
@@ -53,13 +67,16 @@ describe('status', () => {
         dataDir,
       ));
       expect(exitCode).toBe(0);
+      // If the command was slow, it may have become LIVE already
       expect(JSON.parse(stdout)).toMatchObject({
-        status: 'STARTING',
+        status: expect.stringMatching(/STARTING|LIVE/),
         pid: agentProcess.pid,
       });
       await status.waitFor('LIVE');
+      const agentProcessExit = testBinUtils.processExit(agentProcess);
       agentProcess.kill('SIGTERM');
-      await status.waitFor('STOPPING');
+      // Cannot wait for STOPPING because waitFor polling may miss the transition
+      await status.waitFor('DEAD');
       ({ exitCode, stdout } = await testBinUtils.pkStdio(
         ['agent', 'status', '--format', 'json'],
         {
@@ -69,11 +86,12 @@ describe('status', () => {
         dataDir,
       ));
       expect(exitCode).toBe(0);
+      // If the command was slow, it may have become DEAD already
+      // If it is DEAD, then pid property will be `undefined`
       expect(JSON.parse(stdout)).toMatchObject({
-        status: 'STOPPING',
-        pid: agentProcess.pid,
+        status: expect.stringMatching(/STOPPING|DEAD/),
       });
-      await testBinUtils.processExit(agentProcess);
+      await agentProcessExit;
       ({ exitCode, stdout } = await testBinUtils.pkStdio(
         ['agent', 'status', '--format', 'json'],
         {
@@ -103,16 +121,23 @@ describe('status', () => {
     );
   });
   describe('status with global agent', () => {
-    let pkAgentClose;
+    let globalAgentDir;
+    let globalAgentPassword;
+    let globalAgentClose;
     beforeAll(async () => {
-      pkAgentClose = await testBinUtils.pkAgent();
-    }, global.maxTimeout);
+      ({ globalAgentDir, globalAgentPassword, globalAgentClose } =
+        await testUtils.setupGlobalAgent(logger));
+    }, globalThis.maxTimeout);
     afterAll(async () => {
-      await pkAgentClose();
+      await globalAgentClose();
     });
     test('status on LIVE agent', async () => {
       const status = new Status({
-        statusPath: path.join(global.binAgentDir, config.defaults.statusBase),
+        statusPath: path.join(globalAgentDir, config.defaults.statusBase),
+        statusLockPath: path.join(
+          globalAgentDir,
+          config.defaults.statusLockBase,
+        ),
         fs,
         logger,
       });
@@ -120,10 +145,10 @@ describe('status', () => {
       const { exitCode, stdout } = await testBinUtils.pkStdio(
         ['agent', 'status', '--format', 'json', '--verbose'],
         {
-          PK_NODE_PATH: global.binAgentDir,
-          PK_PASSWORD: global.binAgentPassword,
+          PK_NODE_PATH: globalAgentDir,
+          PK_PASSWORD: globalAgentPassword,
         },
-        global.binAgentDir,
+        globalAgentDir,
       );
       expect(exitCode).toBe(0);
       expect(JSON.parse(stdout)).toMatchObject({
@@ -147,16 +172,23 @@ describe('status', () => {
     });
     test('status on remote LIVE agent', async () => {
       const passwordPath = path.join(dataDir, 'password');
-      await fs.promises.writeFile(passwordPath, global.binAgentPassword);
+      await fs.promises.writeFile(passwordPath, globalAgentPassword);
       const status = new Status({
-        statusPath: path.join(global.binAgentDir, config.defaults.statusBase),
+        statusPath: path.join(globalAgentDir, config.defaults.statusBase),
+        statusLockPath: path.join(
+          globalAgentDir,
+          config.defaults.statusLockBase,
+        ),
         fs,
         logger,
       });
       const statusInfo = (await status.readStatus())!;
+      // This still needs a `nodePath` because of session token path
       const { exitCode, stdout } = await testBinUtils.pkStdio([
         'agent',
         'status',
+        '--node-path',
+        dataDir,
         '--password-file',
         passwordPath,
         '--node-id',

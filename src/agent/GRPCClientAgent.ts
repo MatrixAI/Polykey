@@ -1,6 +1,11 @@
-import type { Host, Port, ProxyConfig } from '../network/types';
+import type { ClientDuplexStream } from '@grpc/grpc-js';
+import type { ClientReadableStream } from '@grpc/grpc-js/build/src/call';
+import type {
+  AsyncGeneratorReadableStreamClient,
+  AsyncGeneratorDuplexStreamClient,
+} from '../grpc/types';
 import type { NodeId } from '../nodes/types';
-import type { TLSConfig } from '../network/types';
+import type { Host, Port, ProxyConfig, TLSConfig } from '../network/types';
 import type * as utilsPB from '../proto/js/polykey/v1/utils/utils_pb';
 import type * as vaultsPB from '../proto/js/polykey/v1/vaults/vaults_pb';
 import type * as nodesPB from '../proto/js/polykey/v1/nodes/nodes_pb';
@@ -37,7 +42,6 @@ class GRPCClientAgent extends GRPCClient<AgentServiceClient> {
     timeout?: number;
     logger?: Logger;
   }): Promise<GRPCClientAgent> {
-    logger.info(`Creating ${this.name}`);
     const { client, serverCertChain, flowCountInterceptor } =
       await super.createClient({
         clientConstructor: AgentServiceClient,
@@ -60,14 +64,11 @@ class GRPCClientAgent extends GRPCClient<AgentServiceClient> {
       flowCountInterceptor,
       logger,
     });
-    logger.info(`Created ${this.name}`);
     return grpcClientAgent;
   }
 
   public async destroy() {
-    this.logger.info(`Destroying ${this.constructor.name}`);
     await super.destroy();
-    this.logger.info(`Destroyed ${this.constructor.name}`);
   }
 
   @ready(new agentErrors.ErrorAgentClientDestroyed())
@@ -79,7 +80,12 @@ class GRPCClientAgent extends GRPCClient<AgentServiceClient> {
   }
 
   @ready(new agentErrors.ErrorAgentClientDestroyed())
-  public vaultsGitInfoGet(...args) {
+  public vaultsGitInfoGet(
+    ...args
+  ): AsyncGeneratorReadableStreamClient<
+    vaultsPB.PackChunk,
+    ClientReadableStream<vaultsPB.PackChunk>
+  > {
     return grpcUtils.promisifyReadableStreamCall<vaultsPB.PackChunk>(
       this.client,
       this.client.vaultsGitInfoGet,
@@ -87,12 +93,19 @@ class GRPCClientAgent extends GRPCClient<AgentServiceClient> {
   }
 
   @ready(new agentErrors.ErrorAgentClientDestroyed())
-  public vaultsGitPackGet(...args) {
+  public vaultsGitPackGet(
+    ...args
+  ): ClientDuplexStream<vaultsPB.PackChunk, vaultsPB.PackChunk> {
     return this.client.vaultsGitPackGet(...args);
   }
 
   @ready(new agentErrors.ErrorAgentClientDestroyed())
-  public vaultsScan(...args) {
+  public vaultsScan(
+    ...args
+  ): AsyncGeneratorReadableStreamClient<
+    vaultsPB.Vault,
+    ClientReadableStream<vaultsPB.Vault>
+  > {
     return grpcUtils.promisifyReadableStreamCall<vaultsPB.Vault>(
       this.client,
       this.client.vaultsScan,
@@ -140,15 +153,21 @@ class GRPCClientAgent extends GRPCClient<AgentServiceClient> {
   }
 
   @ready(new agentErrors.ErrorAgentClientDestroyed())
-  public vaultsPermisssionsCheck(...args) {
+  public vaultsPermissionsCheck(...args) {
     return grpcUtils.promisifyUnaryCall<vaultsPB.NodePermissionAllowed>(
       this.client,
-      this.client.vaultsPermisssionsCheck,
+      this.client.vaultsPermissionsCheck,
     )(...args);
   }
 
   @ready(new agentErrors.ErrorAgentClientDestroyed())
-  public nodesCrossSignClaim(...args) {
+  public nodesCrossSignClaim(
+    ...args
+  ): AsyncGeneratorDuplexStreamClient<
+    nodesPB.CrossSign,
+    nodesPB.CrossSign,
+    ClientDuplexStream<nodesPB.CrossSign, nodesPB.CrossSign>
+  > {
     return grpcUtils.promisifyDuplexStreamCall<
       nodesPB.CrossSign,
       nodesPB.CrossSign

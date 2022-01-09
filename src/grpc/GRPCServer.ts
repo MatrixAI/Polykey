@@ -27,7 +27,7 @@ class GRPCServer {
   protected tlsConfig?: TLSConfig;
   protected _secured: boolean = false;
 
-  constructor({ logger }: { logger?: Logger }) {
+  constructor({ logger }: { logger?: Logger } = {}) {
     this.logger = logger ?? new Logger(this.constructor.name);
   }
 

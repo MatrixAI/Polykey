@@ -2,6 +2,7 @@ import type { StdioOptions } from 'child_process';
 import type { AgentChildProcessInput, AgentChildProcessOutput } from '../types';
 import type PolykeyAgent from '../../PolykeyAgent';
 import type { RecoveryCode } from '../../keys/types';
+import type { PolykeyWorkerManagerInterface } from '../../workers/types';
 import path from 'path';
 import child_process from 'child_process';
 import process from 'process';
@@ -26,6 +27,7 @@ class CommandStart extends CommandPolykey {
     this.addOption(binOptions.connTimeoutTime);
     this.addOption(binOptions.seedNodes);
     this.addOption(binOptions.network);
+    this.addOption(binOptions.workers);
     this.addOption(binOptions.background);
     this.addOption(binOptions.backgroundOutFile);
     this.addOption(binOptions.backgroundErrFile);
@@ -36,6 +38,9 @@ class CommandStart extends CommandPolykey {
       options.clientPort =
         options.clientPort ?? config.defaults.networkConfig.clientPort;
       const { default: PolykeyAgent } = await import('../../PolykeyAgent');
+      const { WorkerManager, utils: workersUtils } = await import(
+        '../../workers'
+      );
       let password: string | undefined;
       if (options.fresh) {
         // If fresh, then get a new password
@@ -165,6 +170,7 @@ class CommandStart extends CommandPolykey {
         });
         const messageIn: AgentChildProcessInput = {
           logLevel: this.logger.getEffectiveLevel(),
+          workers: options.workers,
           agentConfig,
         };
         agentProcess.send(messageIn, (e) => {
@@ -180,15 +186,26 @@ class CommandStart extends CommandPolykey {
         // Change process name to polykey-agent
         process.title = 'polykey-agent';
         // eslint-disable-next-line prefer-const
-        let pkAgent: PolykeyAgent | undefined;
+        let pkAgent: PolykeyAgent;
+        // eslint-disable-next-line prefer-const
+        let workerManager: PolykeyWorkerManagerInterface;
         this.exitHandlers.handlers.push(async () => {
-          if (pkAgent != null) await pkAgent.stop();
+          pkAgent?.unsetWorkerManager();
+          await workerManager?.destroy();
+          await pkAgent?.stop();
         });
         pkAgent = await PolykeyAgent.createPolykeyAgent({
           fs: this.fs,
           logger: this.logger.getChild(PolykeyAgent.name),
           ...agentConfig,
         });
+        if (options.workers !== 0) {
+          workerManager = await workersUtils.createWorkerManager({
+            cores: options.workers,
+            logger: this.logger.getChild(WorkerManager.name),
+          });
+          pkAgent.setWorkerManager(workerManager);
+        }
         recoveryCodeOut = pkAgent.keyManager.getRecoveryCode();
       }
       // Recovery code is only available if it was newly generated

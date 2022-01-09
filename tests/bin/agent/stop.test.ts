@@ -34,6 +34,8 @@ describe('stop', () => {
           // 1024 is the smallest size and is faster to start
           '--root-key-pair-bits',
           '1024',
+          '--workers',
+          '0',
         ],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -44,6 +46,11 @@ describe('stop', () => {
       expect(exitCode).toBe(0);
       const status = new Status({
         statusPath: path.join(dataDir, 'polykey', config.defaults.statusBase),
+        statusLockPath: path.join(
+          dataDir,
+          'polykey',
+          config.defaults.statusLockBase,
+        ),
         fs,
         logger,
       });
@@ -67,6 +74,11 @@ describe('stop', () => {
       await fs.promises.writeFile(passwordPath, password);
       const status = new Status({
         statusPath: path.join(dataDir, 'polykey', config.defaults.statusBase),
+        statusLockPath: path.join(
+          dataDir,
+          'polykey',
+          config.defaults.statusLockBase,
+        ),
         fs,
         logger,
       });
@@ -77,6 +89,8 @@ describe('stop', () => {
           // 1024 is the smallest size and is faster to start
           '--root-key-pair-bits',
           '1024',
+          '--workers',
+          '0',
         ],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -85,6 +99,7 @@ describe('stop', () => {
         dataDir,
       );
       expect(exitCode).toBe(0);
+      await status.waitFor('LIVE');
       // Simultaneous calls to stop must use pkExec
       const [agentStop1, agentStop2] = await Promise.all([
         testBinUtils.pkExec(
@@ -102,7 +117,10 @@ describe('stop', () => {
           dataDir,
         ),
       ]);
-      await status.waitFor('STOPPING');
+      // Cannot await for STOPPING
+      // It's not reliable until file watching is implemented
+      // So just 1 ms delay until sending another stop command
+      await sleep(1);
       const agentStop3 = await testBinUtils.pkStdio(
         ['agent', 'stop', '--node-path', path.join(dataDir, 'polykey')],
         {
@@ -118,8 +136,16 @@ describe('stop', () => {
         },
         dataDir,
       );
-      expect(agentStop1.exitCode).toBe(0);
-      expect(agentStop2.exitCode).toBe(0);
+      // If the GRPC server gets closed after the GRPC connection is established
+      // then it's possible that one of these exit codes is 1
+      if (agentStop1.exitCode === 1) {
+        expect(agentStop2.exitCode).toBe(0);
+      } else if (agentStop2.exitCode === 1) {
+        expect(agentStop1.exitCode).toBe(0);
+      } else {
+        expect(agentStop1.exitCode).toBe(0);
+        expect(agentStop2.exitCode).toBe(0);
+      }
       expect(agentStop3.exitCode).toBe(0);
       expect(agentStop4.exitCode).toBe(0);
     },
@@ -131,6 +157,11 @@ describe('stop', () => {
       const password = 'abc123';
       const status = new Status({
         statusPath: path.join(dataDir, 'polykey', config.defaults.statusBase),
+        statusLockPath: path.join(
+          dataDir,
+          'polykey',
+          config.defaults.statusLockBase,
+        ),
         fs,
         logger,
       });
@@ -141,6 +172,8 @@ describe('stop', () => {
           // 1024 is the smallest size and is faster to start
           '--root-key-pair-bits',
           '1024',
+          '--workers',
+          '0',
           '--verbose',
         ],
         {
@@ -187,6 +220,8 @@ describe('stop', () => {
           // 1024 is the smallest size and is faster to start
           '--root-key-pair-bits',
           '1024',
+          '--workers',
+          '0',
         ],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -196,6 +231,11 @@ describe('stop', () => {
       );
       const status = new Status({
         statusPath: path.join(dataDir, 'polykey', config.defaults.statusBase),
+        statusLockPath: path.join(
+          dataDir,
+          'polykey',
+          config.defaults.statusLockBase,
+        ),
         fs,
         logger,
       });

@@ -220,7 +220,9 @@ class Sigchain {
    * Appends a claim (of any type) to the sigchain.
    */
   @ready(new sigchainErrors.ErrorSigchainNotRunning())
-  public async addClaim(claimData: ClaimData): Promise<ClaimEncoded> {
+  public async addClaim(
+    claimData: ClaimData,
+  ): Promise<[ClaimId, ClaimEncoded]> {
     return await this._transaction(async () => {
       const prevSequenceNumber = await this.getSequenceNumber();
       const newSequenceNumber = prevSequenceNumber + 1;
@@ -232,11 +234,12 @@ class Sigchain {
       });
 
       // Add the claim to the sigchain database, and update the sequence number
+      const claimId = this.generateClaimId();
       const ops: Array<DBOp> = [
         {
           type: 'put',
           domain: this.sigchainClaimsDbDomain,
-          key: idUtils.toBuffer(this.generateClaimId()),
+          key: idUtils.toBuffer(claimId),
           value: claim,
         },
         {
@@ -247,7 +250,7 @@ class Sigchain {
         },
       ];
       await this.db.batch(ops);
-      return claim;
+      return [claimId, claim];
     });
   }
 
@@ -424,21 +427,6 @@ class Sigchain {
   }
 
   @ready(new sigchainErrors.ErrorSigchainNotRunning())
-  public async getLatestClaimId(): Promise<ClaimId | undefined> {
-    return await this._transaction(async () => {
-      let latestId: ClaimId | undefined;
-      const keyStream = this.sigchainClaimsDb.createKeyStream({
-        limit: 1,
-        reverse: true,
-      });
-      for await (const o of keyStream) {
-        latestId = o as any as ClaimId;
-      }
-      return latestId;
-    });
-  }
-
-  @ready(new sigchainErrors.ErrorSigchainNotRunning())
   public async getSeqMap(): Promise<Record<number, ClaimId>> {
     const map: Record<number, ClaimId> = {};
     const claimStream = this.sigchainClaimsDb.createKeyStream();
@@ -460,6 +448,20 @@ class Sigchain {
         this.sequenceNumberKey,
         0,
       );
+    });
+  }
+
+  protected async getLatestClaimId(): Promise<ClaimId | undefined> {
+    return await this._transaction(async () => {
+      let latestId: ClaimId | undefined;
+      const keyStream = this.sigchainClaimsDb.createKeyStream({
+        limit: 1,
+        reverse: true,
+      });
+      for await (const o of keyStream) {
+        latestId = o as any as ClaimId;
+      }
+      return latestId;
     });
   }
 }

@@ -1,8 +1,9 @@
 import type { Interceptor } from '@grpc/grpc-js';
+import type { ClientReadableStream } from '@grpc/grpc-js/build/src/call';
+import type { AsyncGeneratorReadableStreamClient } from '../grpc/types';
 import type { Session } from '../sessions';
 import type { NodeId } from '../nodes/types';
 import type { Host, Port, TLSConfig, ProxyConfig } from '../network/types';
-
 import type * as utilsPB from '../proto/js/polykey/v1/utils/utils_pb';
 import type * as agentPB from '../proto/js/polykey/v1/agent/agent_pb';
 import type * as vaultsPB from '../proto/js/polykey/v1/vaults/vaults_pb';
@@ -48,7 +49,6 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     timeout?: number;
     logger?: Logger;
   }): Promise<GRPCClientClient> {
-    logger.info(`Creating ${this.name}`);
     const interceptors: Array<Interceptor> = [];
     if (session != null) {
       interceptors.push(clientUtils.sessionInterceptor(session));
@@ -76,14 +76,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
       flowCountInterceptor,
       logger,
     });
-    logger.info(`Created ${this.name}`);
     return grpcClientClient;
   }
 
   public async destroy() {
-    this.logger.info(`Destroying ${this.constructor.name}`);
     await super.destroy();
-    this.logger.info(`Destroyed ${this.constructor.name}`);
   }
 
   @ready(new clientErrors.ErrorClientClientDestroyed())
@@ -103,23 +100,28 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   }
 
   @ready(new clientErrors.ErrorClientClientDestroyed())
-  public sessionsUnlock(...args) {
+  public agentUnlock(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
       this.client,
-      this.client.sessionsUnlock,
+      this.client.agentUnlock,
     )(...args);
   }
 
   @ready(new clientErrors.ErrorClientClientDestroyed())
-  public sessionsLockAll(...args) {
+  public agentLockAll(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
       this.client,
-      this.client.sessionsLockAll,
+      this.client.agentLockAll,
     )(...args);
   }
 
   @ready(new clientErrors.ErrorClientClientDestroyed())
-  public vaultsList(...args) {
+  public vaultsList(
+    ...args
+  ): AsyncGeneratorReadableStreamClient<
+    vaultsPB.List,
+    ClientReadableStream<vaultsPB.List>
+  > {
     return grpcUtils.promisifyReadableStreamCall<vaultsPB.List>(
       this.client,
       this.client.vaultsList,
@@ -167,7 +169,12 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   }
 
   @ready(new clientErrors.ErrorClientClientDestroyed())
-  public vaultsScan(...args) {
+  public vaultsScan(
+    ...args
+  ): AsyncGeneratorReadableStreamClient<
+    vaultsPB.List,
+    ClientReadableStream<vaultsPB.List>
+  > {
     return grpcUtils.promisifyReadableStreamCall<vaultsPB.List>(
       this.client,
       this.client.vaultsScan,
@@ -191,7 +198,12 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   }
 
   @ready(new clientErrors.ErrorClientClientDestroyed())
-  public vaultPermissions(...args) {
+  public vaultPermissions(
+    ...args
+  ): AsyncGeneratorReadableStreamClient<
+    vaultsPB.Permission,
+    ClientReadableStream<vaultsPB.Permission>
+  > {
     return grpcUtils.promisifyReadableStreamCall<vaultsPB.Permission>(
       this.client,
       this.client.vaultsPermissions,
@@ -199,7 +211,12 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   }
 
   @ready(new clientErrors.ErrorClientClientDestroyed())
-  public vaultsSecretsList(...args) {
+  public vaultsSecretsList(
+    ...args
+  ): AsyncGeneratorReadableStreamClient<
+    secretsPB.Secret,
+    ClientReadableStream<secretsPB.Secret>
+  > {
     return grpcUtils.promisifyReadableStreamCall<secretsPB.Secret>(
       this.client,
       this.client.vaultsSecretsList,
@@ -279,7 +296,12 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   }
 
   @ready(new clientErrors.ErrorClientClientDestroyed())
-  public vaultsLog(...args) {
+  public vaultsLog(
+    ...args
+  ): AsyncGeneratorReadableStreamClient<
+    vaultsPB.LogEntry,
+    ClientReadableStream<vaultsPB.LogEntry>
+  > {
     return grpcUtils.promisifyReadableStreamCall<vaultsPB.LogEntry>(
       this.client,
       this.client.vaultsLog,
@@ -359,7 +381,12 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   }
 
   @ready(new clientErrors.ErrorClientClientDestroyed())
-  public keysCertsChainGet(...args) {
+  public keysCertsChainGet(
+    ...args
+  ): AsyncGeneratorReadableStreamClient<
+    keysPB.Certificate,
+    ClientReadableStream<keysPB.Certificate>
+  > {
     return grpcUtils.promisifyReadableStreamCall<keysPB.Certificate>(
       this.client,
       this.client.keysCertsChainGet,
@@ -367,7 +394,12 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   }
 
   @ready(new clientErrors.ErrorClientClientDestroyed())
-  public gestaltsGestaltList(...args) {
+  public gestaltsGestaltList(
+    ...args
+  ): AsyncGeneratorReadableStreamClient<
+    gestaltsPB.Gestalt,
+    ClientReadableStream<gestaltsPB.Gestalt>
+  > {
     return grpcUtils.promisifyReadableStreamCall<gestaltsPB.Gestalt>(
       this.client,
       this.client.gestaltsGestaltList,
