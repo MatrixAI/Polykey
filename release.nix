@@ -20,9 +20,9 @@ let
         pkg . \
           --targets linux-${arch} \
           --no-bytecode \
+          --public \
           --public-packages "*" \
-          --output out\
-          --verbose
+          --output out
       '';
       installPhase = ''
         cp out $out
@@ -46,6 +46,7 @@ let
         pkg . \
           --targets win-${arch} \
           --no-bytecode \
+          --public \
           --public-packages "*" \
           --output out.exe
       '';
@@ -71,6 +72,7 @@ let
         pkg . \
           --targets macos-${arch} \
           --no-bytecode \
+          --public \
           --public-packages "*" \
           --output out
       '';
