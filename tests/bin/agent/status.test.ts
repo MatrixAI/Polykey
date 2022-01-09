@@ -183,9 +183,12 @@ describe('status', () => {
         logger,
       });
       const statusInfo = (await status.readStatus())!;
+      // This still needs a `nodePath` because of session token path
       const { exitCode, stdout } = await testBinUtils.pkStdio([
         'agent',
         'status',
+        '--node-path',
+        dataDir,
         '--password-file',
         passwordPath,
         '--node-id',
