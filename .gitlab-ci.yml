@@ -25,7 +25,7 @@ stages:
   - quality
   - release
 
-.lint:
+lint:
   image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
   stage: check
   interruptible: true
@@ -36,7 +36,7 @@ stages:
         npm run lint;
         '
 
-.nix-dry:
+nix-dry:
   stage: check
   image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
   script:
@@ -101,7 +101,6 @@ nix:
           --attr package.macos.x64.macho)"
     - cp -r $builds ./builds/
   only:
-    - qa-testing
     - master
   artifacts:
     paths:
@@ -122,7 +121,6 @@ application run:
     - $build_application/bin/polykey
   only:
     - master
-    - qa-testing
 
 docker run:
   stage: quality
@@ -139,7 +137,6 @@ docker run:
     - image="$(docker load --input ./builds/*docker* | cut -d' ' -f3)"
     - docker run "$image"
   only:
-    - qa-testing
     - master
 
 linux run:
@@ -150,7 +147,6 @@ linux run:
   script:
     - for f in ./builds/*-linux-*; do "$f"; done
   only:
-    - qa-testing
     - master
 
 windows run:
@@ -162,7 +158,6 @@ windows run:
   tags:
     - windows
   only:
-    - qa-testing
     - master
 
 macos run:
@@ -173,7 +168,6 @@ macos run:
    script:
       - for f in ./builds/*-macos-*; do "$f"; done
    only:
-     - qa-testing
      - master
    tags:
      - shared-macos-amd64
