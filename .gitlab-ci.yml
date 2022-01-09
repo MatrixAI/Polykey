@@ -5,7 +5,9 @@ variables:
   # Prefer offline node module installation
   NPM_CONFIG_PREFER_OFFLINE: "true"
   # `ts-node` has its own cache
-  TS_CACHED_TRANSPILE_CACHE: "./tmp/ts-node-cache"
+  # It must use an absolute path, otherwise ts-node calls will CWD
+  TS_CACHED_TRANSPILE_CACHE: "${CI_PROJECT_DIR}/tmp/ts-node-cache"
+  TS_CACHED_TRANSPILE_PORTABLE: "true"
 
 # Cached directories shared between jobs & pipelines per-branch
 cache:
@@ -60,6 +62,12 @@ test-generate:
 
 test:
   stage: test
+  # Don't implicitly inherit top-level variables in child pipeline
+  # All inherited variables should be explicitly defined here
+  # Note that variables defined here override any variables defined in the child pipeline
+  # This causes a bug with $CI_PROJECT_DIR, which is expanded into an empty string
+  inherit:
+    variables: false
   trigger:
     include:
       - artifact: tmp/test-pipelines.yml

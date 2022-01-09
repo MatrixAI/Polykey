@@ -12,7 +12,9 @@ variables:
   # Prefer offline node module installation
   NPM_CONFIG_PREFER_OFFLINE: "true"
   # `ts-node` has its own cache
-  TS_CACHED_TRANSPILE_CACHE: "./tmp/ts-node-cache"
+  # It must use an absolute path, otherwise ts-node calls will CWD
+  TS_CACHED_TRANSPILE_CACHE: "${CI_PROJECT_DIR}/tmp/ts-node-cache"
+  TS_CACHED_TRANSPILE_PORTABLE: "true"
 
 # Cached directories shared between jobs & pipelines per-branch
 cache:
