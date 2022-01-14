@@ -139,6 +139,7 @@ class TestProvider extends Provider {
     return {
       ...identityClaim,
       id: linkId,
+      url: 'test.com',
     };
   }
 

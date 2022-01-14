@@ -16,6 +16,11 @@ message Token {
   string token = 1;
 }
 
+message Claim {
+  string claim_id = 1;
+  string url = 2;
+}
+
 message AuthenticationProcess {
   oneof step {
     AuthenticationRequest request = 1;

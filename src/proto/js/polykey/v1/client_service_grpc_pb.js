@@ -58,6 +58,17 @@ function deserialize_polykey_v1_identities_AuthenticationProcess(buffer_arg) {
   return polykey_v1_identities_identities_pb.AuthenticationProcess.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_polykey_v1_identities_Claim(arg) {
+  if (!(arg instanceof polykey_v1_identities_identities_pb.Claim)) {
+    throw new Error('Expected argument of type polykey.v1.identities.Claim');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_polykey_v1_identities_Claim(buffer_arg) {
+  return polykey_v1_identities_identities_pb.Claim.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_polykey_v1_identities_Info(arg) {
   if (!(arg instanceof polykey_v1_identities_identities_pb.Info)) {
     throw new Error('Expected argument of type polykey.v1.identities.Info');
@@ -994,11 +1005,11 @@ identitiesAuthenticate: {
     requestStream: false,
     responseStream: false,
     requestType: polykey_v1_identities_identities_pb.Provider,
-    responseType: polykey_v1_utils_utils_pb.EmptyMessage,
+    responseType: polykey_v1_identities_identities_pb.Claim,
     requestSerialize: serialize_polykey_v1_identities_Provider,
     requestDeserialize: deserialize_polykey_v1_identities_Provider,
-    responseSerialize: serialize_polykey_v1_utils_EmptyMessage,
-    responseDeserialize: deserialize_polykey_v1_utils_EmptyMessage,
+    responseSerialize: serialize_polykey_v1_identities_Claim,
+    responseDeserialize: deserialize_polykey_v1_identities_Claim,
   },
   // Gestalts
 gestaltsGestaltList: {

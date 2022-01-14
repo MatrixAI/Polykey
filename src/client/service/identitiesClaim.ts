@@ -4,12 +4,11 @@ import type { NodeManager } from '../../nodes';
 import type { Sigchain } from '../../sigchain';
 import type { IdentitiesManager } from '../../identities';
 import type { IdentityId, ProviderId } from '../../identities/types';
-import type * as identitiesPB from '../../proto/js/polykey/v1/identities/identities_pb';
 import * as clientErrors from '../errors';
 import { utils as grpcUtils } from '../../grpc';
 import { utils as claimsUtils } from '../../claims';
 import { errors as identitiesErrors } from '../../identities';
-import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
+import * as identitiesPB from '../../proto/js/polykey/v1/identities/identities_pb';
 
 /**
  * Augments the keynode with a new identity.
@@ -26,10 +25,10 @@ function identitiesClaim({
   authenticate: Authenticate;
 }) {
   return async (
-    call: grpc.ServerUnaryCall<identitiesPB.Provider, utilsPB.EmptyMessage>,
-    callback: grpc.sendUnaryData<utilsPB.EmptyMessage>,
+    call: grpc.ServerUnaryCall<identitiesPB.Provider, identitiesPB.Claim>,
+    callback: grpc.sendUnaryData<identitiesPB.Claim>,
   ): Promise<void> => {
-    const response = new utilsPB.EmptyMessage();
+    const response = new identitiesPB.Claim();
     try {
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
@@ -51,7 +50,11 @@ function identitiesClaim({
       });
       // Publish claim on identity
       const claimDecoded = claimsUtils.decodeClaim(claim);
-      await provider.publishClaim(identityId, claimDecoded);
+      const claimData = await provider.publishClaim(identityId, claimDecoded);
+      response.setClaimId(claimData.id);
+      if (claimData.url) {
+        response.setUrl(claimData.url)
+      }
       callback(null, response);
       return;
     } catch (err) {

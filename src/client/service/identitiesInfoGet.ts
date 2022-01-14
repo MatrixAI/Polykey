@@ -1,7 +1,5 @@
 import type * as grpc from '@grpc/grpc-js';
 import type { Authenticate } from '../types';
-import type { NodeManager } from '../../nodes';
-import type { Sigchain } from '../../sigchain';
 import type { IdentitiesManager } from '../../identities';
 import type { ProviderId } from '../../identities/types';
 import { utils as grpcUtils } from '../../grpc';
@@ -15,8 +13,6 @@ function identitiesInfoGet({
   authenticate,
 }: {
   identitiesManager: IdentitiesManager;
-  sigchain: Sigchain;
-  nodeManager: NodeManager;
   authenticate: Authenticate;
 }) {
   return async (

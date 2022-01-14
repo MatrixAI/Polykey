@@ -495,7 +495,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   }
 
   @ready(new clientErrors.ErrorClientClientDestroyed())
-  public identitiesGetToken(...args) {
+  public identitiesTokenGet(...args) {
     return grpcUtils.promisifyUnaryCall<identitiesPB.Token>(
       this.client,
       this.client.identitiesTokenGet,
@@ -560,7 +560,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
 
   @ready(new clientErrors.ErrorClientClientDestroyed())
   public identitiesInfoGetConnected(...args) {
-    return grpcUtils.promisifyUnaryCall<identitiesPB.ProviderSearch>(
+    return grpcUtils.promisifyReadableStreamCall<identitiesPB.Info>(
       this.client,
       this.client.identitiesInfoGetConnected,
     )(...args);
@@ -576,7 +576,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
 
   @ready(new clientErrors.ErrorClientClientDestroyed())
   public identitiesClaim(...args) {
-    return grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
+    return grpcUtils.promisifyUnaryCall<identitiesPB.Claim>(
       this.client,
       this.client.identitiesClaim,
     )(...args);
