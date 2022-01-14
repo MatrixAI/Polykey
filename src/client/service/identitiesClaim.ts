@@ -53,7 +53,7 @@ function identitiesClaim({
       const claimData = await provider.publishClaim(identityId, claimDecoded);
       response.setClaimId(claimData.id);
       if (claimData.url) {
-        response.setUrl(claimData.url)
+        response.setUrl(claimData.url);
       }
       callback(null, response);
       return;

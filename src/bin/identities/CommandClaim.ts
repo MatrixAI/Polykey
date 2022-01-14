@@ -46,9 +46,19 @@ class CommandClaim extends CommandPolykey {
         const providerMessage = new identitiesPB.Provider();
         providerMessage.setProviderId(providerId);
         providerMessage.setIdentityId(identityId);
-        await binUtils.retryAuthentication(
+        const claimMessage = await binUtils.retryAuthentication(
           (auth) => pkClient.grpcClient.identitiesClaim(providerMessage, auth),
           meta,
+        );
+        const output = [`Claim Id: ${claimMessage.getClaimId()}`];
+        if (claimMessage.getUrl()) {
+          output.push(`Url: ${claimMessage.getUrl()}`);
+        }
+        process.stdout.write(
+          binUtils.outputFormatter({
+            type: options.format === 'json' ? 'json' : 'list',
+            data: output,
+          }),
         );
       } finally {
         if (pkClient! != null) await pkClient.stop();
