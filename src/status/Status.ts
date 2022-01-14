@@ -12,6 +12,7 @@ import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
 import * as statusErrors from './errors';
 import * as statusUtils from './utils';
 import { sleep, poll } from '../utils';
+import * as errors from '../errors';
 
 interface Status extends StartStop {}
 @StartStop()
@@ -130,7 +131,6 @@ class Status {
           path: e.path,
         });
       }
-      // `writeStatus` may create an empty status file before it completes
       if (statusData === '') {
         return;
       }
@@ -158,7 +158,7 @@ class Status {
   }
 
   protected async writeStatus(statusInfo: StatusInfo): Promise<void> {
-    this.logger.info(`Writing Status file to ${this.statusPath}`);
+    this.logger.info(`Writing ${this.constructor.name} to ${this.statusPath}`);
     let statusFile;
     try {
       // Cannot use 'w', it truncates immediately
@@ -195,30 +195,113 @@ class Status {
     }
   }
 
+  @ready(new statusErrors.ErrorStatusNotRunning())
+  public async updateStatusLive(
+    data: Partial<StatusLive['data']>,
+  ): Promise<StatusInfo> {
+    this.logger.info(`Updating ${this.constructor.name} LIVE`);
+    let statusFile;
+    try {
+      try {
+        statusFile = await this.fs.promises.open(this.statusPath, 'r+');
+      } catch (e) {
+        throw new statusErrors.ErrorStatusRead(e.message, {
+          errno: e.errno,
+          syscall: e.syscall,
+          code: e.code,
+          path: e.path,
+        });
+      }
+      while (!lock(statusFile.fd)) {
+        await sleep(2);
+      }
+      let statusData;
+      try {
+        statusData = (await statusFile.readFile('utf-8')).trim();
+      } catch (e) {
+        throw new statusErrors.ErrorStatusRead(e.message, {
+          errno: e.errno,
+          syscall: e.syscall,
+          code: e.code,
+          path: e.path,
+        });
+      }
+      let statusInfo;
+      try {
+        statusInfo = JSON.parse(statusData);
+      } catch (e) {
+        throw new statusErrors.ErrorStatusParse('JSON parsing failed');
+      }
+      if (!statusUtils.statusValidate(statusInfo)) {
+        throw new statusErrors.ErrorStatusParse(
+          'StatusInfo validation failed',
+          {
+            errors: statusUtils.statusValidate.errors,
+          },
+        );
+      }
+      if (statusInfo.status !== 'LIVE') {
+        throw new statusErrors.ErrorStatusLiveUpdate(
+          `${this.constructor.name} is not LIVE`,
+        );
+      }
+      Object.assign(statusInfo.data, data);
+      try {
+        await statusFile.truncate();
+        await statusFile.write(
+          JSON.stringify(statusInfo, undefined, 2) + '\n',
+          0,
+          'utf-8',
+        );
+      } catch (e) {
+        throw new statusErrors.ErrorStatusWrite(e.message, {
+          errno: e.errno,
+          syscall: e.syscall,
+          code: e.code,
+          path: e.path,
+        });
+      }
+      return statusInfo;
+    } finally {
+      if (statusFile != null) {
+        lock.unlock(statusFile.fd);
+        await statusFile.close();
+      }
+    }
+  }
+
   public async waitFor(
     status: StatusInfo['status'],
     timeout?: number,
   ): Promise<StatusInfo> {
-    const statusInfo = await poll<StatusInfo | undefined>(
-      async () => {
-        return await this.readStatus();
-      },
-      (e, statusInfo) => {
-        if (e != null) return true;
-        // DEAD status is a special case
-        // it is acceptable for the status file to not exist
-        if (
-          status === 'DEAD' &&
-          (statusInfo == null || statusInfo.status === 'DEAD')
-        ) {
-          return true;
-        }
-        if (statusInfo?.status === status) return true;
-        return false;
-      },
-      50,
-      timeout,
-    );
+    let statusInfo;
+    try {
+      statusInfo = await poll<StatusInfo | undefined>(
+        async () => {
+          return await this.readStatus();
+        },
+        (e, statusInfo) => {
+          if (e != null) return true;
+          // DEAD status is a special case
+          // it is acceptable for the status file to not exist
+          if (
+            status === 'DEAD' &&
+            (statusInfo == null || statusInfo.status === 'DEAD')
+          ) {
+            return true;
+          }
+          if (statusInfo?.status === status) return true;
+          return false;
+        },
+        50,
+        timeout,
+      );
+    } catch (e) {
+      if (e instanceof errors.ErrorUtilsPollTimeout) {
+        throw new errors.ErrorStatusTimeout();
+      }
+      throw e;
+    }
     if (statusInfo == null) {
       return {
         status: 'DEAD',

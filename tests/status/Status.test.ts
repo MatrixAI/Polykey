@@ -116,6 +116,50 @@ describe('Status', () => {
     });
     expect(await status.readStatus()).toBeUndefined();
   });
+  test('updating live status', async () => {
+    const status = new Status({
+      statusPath: path.join(dataDir, config.defaults.statusBase),
+      statusLockPath: path.join(dataDir, config.defaults.statusLockBase),
+      fs: fs,
+      logger: logger,
+    });
+    await status.start({ pid: 0 });
+    await expect(status.updateStatusLive({})).rejects.toThrow(
+      statusErrors.ErrorStatusLiveUpdate,
+    );
+    const statusData1 = {
+      pid: 0,
+      nodeId: 'node' as NodeId,
+      clientHost: '::1' as Host,
+      clientPort: 0 as Port,
+      ingressHost: '127.0.0.1' as Host,
+      ingressPort: 0 as Port,
+      grpcHost: 'localhost',
+      grpcPort: 12345,
+      anything: 'something',
+    };
+    await status.finishStart(statusData1);
+    const statusInfo = await status.updateStatusLive({
+      nodeId: 'new node' as NodeId,
+      anotherthing: 'something',
+    });
+    expect(statusInfo).toStrictEqual({
+      status: 'LIVE',
+      data: {
+        ...statusData1,
+        nodeId: 'new node' as NodeId,
+        anotherthing: 'something',
+      },
+    });
+    await status.beginStop({ pid: 0 });
+    await expect(status.updateStatusLive({})).rejects.toThrow(
+      statusErrors.ErrorStatusLiveUpdate,
+    );
+    await status.stop({});
+    await expect(status.updateStatusLive({})).rejects.toThrow(
+      statusErrors.ErrorStatusNotRunning,
+    );
+  });
   test('singleton running status', async () => {
     const status1 = new Status({
       statusPath: path.join(dataDir, config.defaults.statusBase),

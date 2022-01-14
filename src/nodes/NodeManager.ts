@@ -370,6 +370,7 @@ class NodeManager {
 
   @ready(new nodesErrors.ErrorNodeManagerNotRunning())
   public async refreshBuckets(): Promise<void> {
+    this.logger.info('Refreshing buckets');
     return await this.nodeGraph.refreshBuckets();
   }
 

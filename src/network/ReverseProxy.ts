@@ -193,6 +193,7 @@ class ReverseProxy {
 
   @ready(new networkErrors.ErrorReverseProxyNotRunning())
   public setTLSConfig(tlsConfig: TLSConfig): void {
+    this.logger.info(`Updating ${this.constructor.name} TLS Config`);
     this.tlsConfig = tlsConfig;
   }
 

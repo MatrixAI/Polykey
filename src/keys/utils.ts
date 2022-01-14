@@ -40,6 +40,8 @@ bip39.setDefaultWordlist('english');
 const ivSize = 16;
 const authTagSize = 16;
 
+const eventRootKeyPairChange = Symbol('rootKeyPairChange');
+
 async function generateKeyPair(bits: number): Promise<KeyPair> {
   const generateKeyPair = utils
     .promisify(pki.rsa.generateKeyPair)
@@ -566,6 +568,7 @@ async function decryptWithKey(
 }
 
 export {
+  eventRootKeyPairChange,
   publicKeyToPem,
   publicKeyFromPem,
   publicKeyToAsn1,

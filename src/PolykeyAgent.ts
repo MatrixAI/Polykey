@@ -3,6 +3,7 @@ import type { PolykeyWorkerManagerInterface } from './workers/types';
 import type { Host, Port } from './network/types';
 import type { NodeMapping } from './nodes/types';
 
+import type { RootKeyPairChangeData } from './keys/types';
 import path from 'path';
 import process from 'process';
 import Logger from '@matrixai/logger';
@@ -22,6 +23,7 @@ import { SessionManager } from './sessions';
 import { GRPCServer } from './grpc';
 import { IdentitiesManager, providers } from './identities';
 import { ForwardProxy, ReverseProxy } from './network';
+import { EventBus, captureRejectionSymbol } from './events';
 import { createAgentService, AgentServiceService } from './agent';
 import { createClientService, ClientServiceService } from './client';
 import config from './config';
@@ -151,6 +153,9 @@ class PolykeyAgent {
     const dbPath = path.join(statePath, config.defaults.dbBase);
     const keysPath = path.join(statePath, config.defaults.keysBase);
     const vaultsPath = path.join(statePath, config.defaults.vaultsBase);
+    const events = new EventBus({
+      captureRejections: true,
+    });
     try {
       status =
         status ??
@@ -177,6 +182,12 @@ class PolykeyAgent {
           keysPath,
           password,
           fs,
+          rootKeyPairChange: async (keyPairData: RootKeyPairChangeData) => {
+            await events.emitAsync(
+              keysUtils.eventRootKeyPairChange,
+              keyPairData,
+            );
+          },
           logger: logger.getChild(KeyManager.name),
           fresh,
         }));
@@ -345,6 +356,7 @@ class PolykeyAgent {
       sessionManager,
       grpcServerAgent,
       grpcServerClient,
+      events,
       fs,
       logger,
     });
@@ -375,6 +387,7 @@ class PolykeyAgent {
   public readonly sessionManager: SessionManager;
   public readonly grpcServerAgent: GRPCServer;
   public readonly grpcServerClient: GRPCServer;
+  public readonly events: EventBus;
   public readonly fs: FileSystem;
 
   protected logger: Logger;
@@ -398,6 +411,7 @@ class PolykeyAgent {
     sessionManager,
     grpcServerClient,
     grpcServerAgent,
+    events,
     fs,
     logger,
   }: {
@@ -419,6 +433,7 @@ class PolykeyAgent {
     sessionManager: SessionManager;
     grpcServerClient: GRPCServer;
     grpcServerAgent: GRPCServer;
+    events: EventBus;
     fs: FileSystem;
     logger: Logger;
   }) {
@@ -441,6 +456,7 @@ class PolykeyAgent {
     this.sessionManager = sessionManager;
     this.grpcServerClient = grpcServerClient;
     this.grpcServerAgent = grpcServerAgent;
+    this.events = events;
     this.fs = fs;
   }
 
@@ -455,6 +471,38 @@ class PolykeyAgent {
   }) {
     try {
       this.logger.info(`Starting ${this.constructor.name}`);
+      // Set up error handling for event handlers
+      this.events[captureRejectionSymbol] = (err, event) => {
+        let msg = `EventBus error for ${event}`;
+        if (err instanceof errors.ErrorPolykey) {
+          msg += `: ${err.name}: ${err.description}`;
+          if (err.message !== '') {
+            msg += ` - ${err.message}`;
+          }
+        } else {
+          msg += `: ${err.name}`;
+          if (err.message !== '') {
+            msg += `: ${err.message}`;
+          }
+        }
+        this.logger.error(msg);
+        throw err;
+      };
+      // Register handlers for root key pair propagation
+      this.events.on(
+        keysUtils.eventRootKeyPairChange,
+        async (keyChangeData: RootKeyPairChangeData) => {
+          this.logger.info('Propagating root keypair change');
+          await this.status.updateStatusLive({
+            nodeId: keyChangeData.nodeId,
+          });
+          await this.nodeManager.refreshBuckets();
+          this.fwdProxy.setTLSConfig(keyChangeData.tlsConfig);
+          this.revProxy.setTLSConfig(keyChangeData.tlsConfig);
+          this.grpcServerClient.setTLSConfig(keyChangeData.tlsConfig);
+          this.logger.info('Propagated root keypair change');
+        },
+      );
       const networkConfig_ = {
         ...config.defaults.networkConfig,
         ...utils.filterEmptyObject(networkConfig),
@@ -562,6 +610,7 @@ class PolykeyAgent {
       await this.keyManager?.stop();
       await this.schema?.stop();
       await this.status?.stop({});
+      this.events.removeAllListeners(keysUtils.eventRootKeyPairChange);
       throw e;
     }
   }
@@ -589,6 +638,7 @@ class PolykeyAgent {
     await this.keyManager.stop();
     await this.schema.stop();
     await this.status.stop({});
+    this.events.removeAllListeners(keysUtils.eventRootKeyPairChange);
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 

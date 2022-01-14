@@ -1,5 +1,7 @@
+import type { NodeId } from '../nodes/types';
 import type { asn1, pki } from 'node-forge';
 import type { Opaque } from '../types';
+import type { TLSConfig } from '../network/types';
 
 type PublicKey = pki.rsa.PublicKey;
 type PrivateKey = pki.rsa.PrivateKey;
@@ -24,6 +26,13 @@ type CertificatePem = string;
 type CertificatePemChain = string;
 type RecoveryCode = Opaque<'RecoveryCode', string>;
 
+type RootKeyPairChangeData = {
+  nodeId: NodeId;
+  tlsConfig: TLSConfig;
+};
+
+type RootKeyPairChange = (keyPairData: RootKeyPairChangeData) => Promise<void>;
+
 export type {
   PublicKey,
   PrivateKey,
@@ -41,4 +50,6 @@ export type {
   CertificatePem,
   CertificatePemChain,
   RecoveryCode,
+  RootKeyPairChangeData,
+  RootKeyPairChange,
 };

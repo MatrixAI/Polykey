@@ -19,6 +19,11 @@ class ErrorStatusWrite extends ErrorStatus {
   exitCode = sysexits.IOERR;
 }
 
+class ErrorStatusLiveUpdate extends ErrorStatus {
+  description = 'Failed to update LIVE status info';
+  exitCode = sysexits.USAGE;
+}
+
 class ErrorStatusParse extends ErrorStatus {
   description = 'Failed to parse status info';
   exitCode = sysexits.CONFIG;
@@ -35,6 +40,7 @@ export {
   ErrorStatusLocked,
   ErrorStatusRead,
   ErrorStatusWrite,
+  ErrorStatusLiveUpdate,
   ErrorStatusParse,
   ErrorStatusTimeout,
 };

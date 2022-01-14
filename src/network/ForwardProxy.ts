@@ -207,6 +207,7 @@ class ForwardProxy {
 
   @ready(new networkErrors.ErrorForwardProxyNotRunning())
   public setTLSConfig(tlsConfig: TLSConfig): void {
+    this.logger.info(`Updating ${this.constructor.name} TLS Config`);
     this.tlsConfig = tlsConfig;
   }
 

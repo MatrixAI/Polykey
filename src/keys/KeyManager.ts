@@ -5,6 +5,8 @@ import type {
   CertificatePem,
   CertificatePemChain,
   RecoveryCode,
+  RootKeyPairChangeData,
+  RootKeyPairChange,
 } from './types';
 import type { FileSystem } from '../types';
 import type { NodeId } from '../nodes/types';
@@ -42,6 +44,7 @@ class KeyManager {
 
   protected fs: FileSystem;
   protected logger: Logger;
+  protected rootKeyPairChange: RootKeyPairChange;
   protected rootKeyPair: KeyPair;
   protected recoveryCode: RecoveryCode | undefined;
   protected _dbKey: Buffer;
@@ -60,6 +63,7 @@ class KeyManager {
     rootCertDuration = 31536000,
     dbKeyBits = 256,
     vaultKeyBits = 256,
+    rootKeyPairChange = async () => {},
     fs = require('fs'),
     logger = new Logger(this.name),
     recoveryCode,
@@ -71,6 +75,7 @@ class KeyManager {
     rootCertDuration?: number;
     dbKeyBits?: number;
     vaultKeyBits?: number;
+    rootKeyPairChange?: RootKeyPairChange;
     fs?: FileSystem;
     logger?: Logger;
     recoveryCode?: RecoveryCode;
@@ -84,6 +89,7 @@ class KeyManager {
       rootKeyPairBits,
       dbKeyBits,
       vaultKeyBits,
+      rootKeyPairChange,
       fs,
       logger,
     });
@@ -102,6 +108,7 @@ class KeyManager {
     rootCertDuration,
     dbKeyBits,
     vaultKeyBits,
+    rootKeyPairChange,
     fs,
     logger,
   }: {
@@ -110,6 +117,7 @@ class KeyManager {
     rootCertDuration: number;
     dbKeyBits: number;
     vaultKeyBits: number;
+    rootKeyPairChange: RootKeyPairChange;
     fs: FileSystem;
     logger: Logger;
   }) {
@@ -125,6 +133,7 @@ class KeyManager {
     this.rootCertDuration = rootCertDuration;
     this.dbKeyBits = dbKeyBits;
     this.vaultKeyBits = vaultKeyBits;
+    this.rootKeyPairChange = rootKeyPairChange;
     this.fs = fs;
   }
 
@@ -442,6 +451,15 @@ class KeyManager {
     this.rootKeyPair = rootKeyPair;
     this.recoveryCode = recoveryCodeNew;
     this.rootCert = rootCert;
+    // Update topic about key change
+    const data: RootKeyPairChangeData = {
+      nodeId: this.getNodeId(),
+      tlsConfig: {
+        keyPrivatePem: this.getRootKeyPairPem().privateKey,
+        certChainPem: await this.getRootCertChainPem(),
+      },
+    };
+    await this.rootKeyPairChange(data);
   }
 
   /**
@@ -481,6 +499,15 @@ class KeyManager {
     this.rootKeyPair = rootKeyPair;
     this.recoveryCode = recoveryCodeNew;
     this.rootCert = rootCert;
+    // Update topic about key change
+    const data: RootKeyPairChangeData = {
+      nodeId: this.getNodeId(),
+      tlsConfig: {
+        keyPrivatePem: this.getRootKeyPairPem().privateKey,
+        certChainPem: await this.getRootCertChainPem(),
+      },
+    };
+    await this.rootKeyPairChange(data);
   }
 
   /**
