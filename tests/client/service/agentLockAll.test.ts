@@ -3,24 +3,22 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
+import { DB } from '@matrixai/db';
 import { Metadata } from '@grpc/grpc-js';
-import { running } from '@matrixai/async-init';
-import { PolykeyAgent } from '@';
-import { utils as keysUtils } from '@/keys';
+import { KeyManager, utils as keysUtils } from '@/keys';
+import { SessionManager } from '@/sessions';
 import { GRPCServer } from '@/grpc';
-import { Status } from '@/status';
 import {
   GRPCClientClient,
   ClientServiceService,
   utils as clientUtils,
 } from '@/client';
-import agentStop from '@/client/service/agentStop';
-import config from '@/config';
+import agentLockAll from '@/client/service/agentLockAll';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as testUtils from '../../utils';
 
-describe('agentStop', () => {
-  const logger = new Logger('agentStop test', LogLevel.WARN, [
+describe('agentLockall', () => {
+  const logger = new Logger('agentLockall test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
   const password = 'helloworld';
@@ -42,25 +40,42 @@ describe('agentStop', () => {
     mockedGenerateDeterministicKeyPair.mockRestore();
   });
   let dataDir: string;
-  let nodePath: string;
-  let pkAgent: PolykeyAgent;
+  let sessionManager: SessionManager;
+  let db: DB;
+  let keyManager: KeyManager;
   let grpcServer: GRPCServer;
   let grpcClient: GRPCClientClient;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
-    nodePath = path.join(dataDir, 'polykey');
-    // Note that by doing this, the agent the call is stopping is a separate agent
-    pkAgent = await PolykeyAgent.createPolykeyAgent({
+    const keysPath = path.join(dataDir, 'keys');
+    keyManager = await KeyManager.createKeyManager({
       password,
-      nodePath,
+      keysPath,
+      logger,
+    });
+    const dbPath = path.join(dataDir, 'db');
+    db = await DB.createDB({
+      dbPath,
+      logger,
+      crypto: {
+        key: keyManager.dbKey,
+        ops: {
+          encrypt: keysUtils.encryptWithKey,
+          decrypt: keysUtils.decryptWithKey,
+        },
+      },
+    });
+    sessionManager = await SessionManager.createSessionManager({
+      db,
+      keyManager,
       logger,
     });
     const clientService = {
-      agentStop: agentStop({
+      agentLockAll: agentLockAll({
         authenticate,
-        pkAgent: pkAgent as unknown as PolykeyAgent,
+        sessionManager,
       }),
     };
     grpcServer = new GRPCServer({ logger });
@@ -70,7 +85,7 @@ describe('agentStop', () => {
       port: 0 as Port,
     });
     grpcClient = await GRPCClientClient.createGRPCClientClient({
-      nodeId: pkAgent.keyManager.getNodeId(),
+      nodeId: keyManager.getNodeId(),
       host: '127.0.0.1' as Host,
       port: grpcServer.port,
       logger,
@@ -79,32 +94,22 @@ describe('agentStop', () => {
   afterEach(async () => {
     await grpcClient.destroy();
     await grpcServer.stop();
-    await pkAgent.stop();
+    await sessionManager.stop();
+    await db.stop();
+    await keyManager.stop();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
     });
   });
-  test('stops the agent', async () => {
-    const statusPath = path.join(nodePath, config.defaults.statusBase);
-    const statusLockPath = path.join(nodePath, config.defaults.statusLockBase);
-    const status = new Status({
-      statusPath,
-      statusLockPath,
-      fs,
-      logger,
-    });
+  test('locks all sessions', async () => {
+    const token = await sessionManager.createToken();
     const request = new utilsPB.EmptyMessage();
-    const response = await grpcClient.agentStop(
+    const response = await grpcClient.agentLockAll(
       request,
       clientUtils.encodeAuthFromPassword(password),
     );
     expect(response).toBeInstanceOf(utilsPB.EmptyMessage);
-    // It may already be stopping
-    expect(await status.readStatus()).toMatchObject({
-      status: expect.stringMatching(/LIVE|STOPPING|DEAD/),
-    });
-    await status.waitFor('DEAD');
-    expect(pkAgent[running]).toBe(false);
+    expect(await sessionManager.verifyToken(token)).toBeFalsy();
   });
 });
