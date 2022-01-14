@@ -685,9 +685,7 @@ describe('CLI Identities', () => {
       // B->C
       // Adding connection details.
       await testNodesUtils.nodesConnect(polykeyAgent, nodeB);
-      await testNodesUtils.nodesConnect(nodeB, polykeyAgent);
       await testNodesUtils.nodesConnect(nodeB, nodeC);
-      await testNodesUtils.nodesConnect(nodeC, nodeB);
       // Adding sigchain details.
       const claimBtoC: ClaimLinkNode = {
         type: 'node',

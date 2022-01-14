@@ -83,11 +83,19 @@ function bigIntToBuffer(number: BigInt) {
   return u8;
 }
 
+/**
+ * Adds each node's details to the other
+ */
 async function nodesConnect(localNode: PolykeyAgent, remoteNode: PolykeyAgent) {
   // Add remote node's details to local node
   await localNode.nodeManager.setNode(remoteNode.nodeManager.getNodeId(), {
     host: remoteNode.revProxy.getIngressHost(),
     port: remoteNode.revProxy.getIngressPort(),
+  } as NodeAddress);
+  // Add local node's details to remote node
+  await remoteNode.nodeManager.setNode(localNode.nodeManager.getNodeId(), {
+    host: localNode.revProxy.getIngressHost(),
+    port: localNode.revProxy.getIngressPort(),
   } as NodeAddress);
 }
 
