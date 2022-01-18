@@ -142,7 +142,7 @@ class Schema {
   }
 
   public async readVersion(): Promise<StateVersion | undefined> {
-    return await this.lock.read(async () => {
+    return await this.lock.withRead(async () => {
       let stateVersionData: string;
       try {
         stateVersionData = await this.fs.promises.readFile(
@@ -169,7 +169,7 @@ class Schema {
   }
 
   protected async writeVersion(stateVersion: StateVersion): Promise<void> {
-    return await this.lock.write(async () => {
+    return await this.lock.withWrite(async () => {
       try {
         await this.fs.promises.writeFile(
           this.stateVersionPath,
@@ -191,7 +191,7 @@ class Schema {
    * This is only called when the version is older.
    */
   protected async upgradeVersion(_stateVersion: StateVersion): Promise<void> {
-    return await this.lock.write(async () => {
+    return await this.lock.withWrite(async () => {
       // TODO: to be implemented
       throw new schemaErrors.ErrorSchemaVersionTooOld();
     });

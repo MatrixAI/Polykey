@@ -77,7 +77,7 @@
     "@matrixai/logger": "^2.1.0",
     "@matrixai/workers": "^1.2.5",
     "ajv": "^7.0.4",
-    "async-mutex": "^0.2.4",
+    "async-mutex": "^0.3.2",
     "bip39": "^3.0.3",
     "canonicalize": "^1.0.5",
     "cheerio": "^1.0.0-rc.5",
