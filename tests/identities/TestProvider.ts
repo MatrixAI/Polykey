@@ -163,8 +163,9 @@ class TestProvider extends Provider {
       return;
     }
     return {
-      id: claimId,
       ...linkClaim,
+      id: claimId,
+      url: 'test.com',
     };
   }
 

@@ -35,7 +35,7 @@ describe('verify', () => {
   });
   test('verifies a file', async () => {
     const dataPath = path.join(globalAgentDir, 'data');
-    const secret = Buffer.from('sign-me', 'binary');
+    await fs.promises.writeFile(dataPath, 'sign-me', { encoding: 'binary' });
     const { stdout } = await testBinUtils.pkStdio(
       ['keys', 'root', '-pk'],
       {
@@ -46,7 +46,10 @@ describe('verify', () => {
     );
     const keyPair = stdout.split('\t\t');
     const privKey = keysUtils.privateKeyFromPem(keyPair[2]) as PrivateKey;
-    const signed = keysUtils.signWithPrivateKey(privKey, secret);
+    const signed = keysUtils.signWithPrivateKey(
+      privKey,
+      Buffer.from('sign-me', 'binary'),
+    );
     const signatureTrue = path.join(globalAgentDir, 'data2');
     await fs.promises.writeFile(signatureTrue, signed, {
       encoding: 'binary',
