@@ -3,7 +3,7 @@ import type { IdentitiesManager } from '@/identities';
 import type { GestaltGraph } from '@/gestalts';
 import type { NodeManager } from '@/nodes';
 import type { IdentityId, IdentityInfo, ProviderId } from '@/identities/types';
-import type { NodeInfo } from '@/nodes/types';
+import type { NodeIdEncoded, NodeInfo } from '@/nodes/types';
 import type * as gestaltsPB from '@/proto/js/polykey/v1/gestalts/gestalts_pb';
 import type { ClientServiceClient } from '@/proto/js/polykey/v1/client_service_grpc_pb';
 import os from 'os';
@@ -47,9 +47,9 @@ describe('Client service', () => {
   let passwordFile: string;
   let callCredentials: grpc.Metadata;
 
-  const nodeId2 = nodesUtils.makeNodeId(
-    'vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg',
-  );
+  const nodeId2Encoded =
+    'vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg' as NodeIdEncoded;
+  const nodeId2 = nodesUtils.decodeNodeId(nodeId2Encoded);
 
   const testToken = {
     providerId: 'test-provider' as ProviderId,
@@ -59,7 +59,7 @@ describe('Client service', () => {
     },
   };
   const node2: NodeInfo = {
-    id: nodeId2,
+    id: nodeId2Encoded,
     chain: {},
   };
   const identity1: IdentityInfo = {
@@ -120,7 +120,7 @@ describe('Client service', () => {
     client = await testUtils.openSimpleClientClient(port);
 
     node1 = {
-      id: nodeManager.getNodeId(),
+      id: nodesUtils.encodeNodeId(nodeManager.getNodeId()),
       chain: {},
     };
   }, global.polykeyStartupTimeout);
@@ -167,14 +167,14 @@ describe('Client service', () => {
       identity1.providerId,
       identity1.identityId,
     );
-    await gestaltGraph.getGestaltByNode(node2.id);
+    await gestaltGraph.getGestaltByNode(nodeId2);
     const gestaltsString = JSON.stringify(gestalts);
     expect(gestaltsString).toContain(identity1.providerId);
     expect(gestaltsString).toContain(identity1.identityId);
-    expect(gestaltsString).toContain(node2.id);
+    expect(gestaltsString).toContain(nodesUtils.encodeNodeId(nodeId2));
     expect(gestalts).toHaveLength(2);
 
-    await gestaltGraph.unsetNode(node2.id);
+    await gestaltGraph.unsetNode(nodeId2);
     await gestaltGraph.unsetIdentity(
       identity1.providerId,
       identity1.identityId,
@@ -183,19 +183,24 @@ describe('Client service', () => {
   test('should set independent node and identity gestalts', async () => {
     await gestaltGraph.setNode(node2);
     await gestaltGraph.setIdentity(identity1);
-    const gestaltNode = await gestaltGraph.getGestaltByNode(node2.id);
+    const gestaltNode = await gestaltGraph.getGestaltByNode(nodeId2);
     const gestaltIdentity = await gestaltGraph.getGestaltByIdentity(
       identity1.providerId,
       identity1.identityId,
     );
-    const gkNode = gestaltsUtils.keyFromNode(node2.id);
+    const gkNode = gestaltsUtils.keyFromNode(nodeId2);
     const gkIdentity = gestaltsUtils.keyFromIdentity(
       identity1.providerId,
       identity1.identityId,
     );
     expect(gestaltNode).toStrictEqual({
       matrix: { [gkNode]: {} },
-      nodes: { [gkNode]: node2 },
+      nodes: {
+        [gkNode]: {
+          id: nodesUtils.encodeNodeId(nodeId2),
+          chain: {},
+        },
+      },
       identities: {},
     });
     expect(gestaltIdentity).toStrictEqual({
@@ -212,7 +217,7 @@ describe('Client service', () => {
     await createGestaltState();
 
     const nodeMessage = new nodesPB.Node();
-    nodeMessage.setNodeId(node2.id);
+    nodeMessage.setNodeId(nodesUtils.encodeNodeId(nodeId2));
 
     // Making the call
     const res = await gestaltsGetNode(nodeMessage, callCredentials);
@@ -220,7 +225,7 @@ describe('Client service', () => {
 
     expect(jsonString).toContain('IdentityIdABC'); // Contains IdentityID
     expect(jsonString).toContain('github.com'); // Contains github provider
-    expect(jsonString).toContain(node2.id); // Contains NodeId
+    expect(jsonString).toContain(nodesUtils.encodeNodeId(nodeId2)); // Contains NodeId
   });
   test('should get gestalt from identity.', async () => {
     const gestaltsGetIdentity = grpcUtils.promisifyUnaryCall<gestaltsPB.Graph>(
@@ -237,7 +242,7 @@ describe('Client service', () => {
 
     expect(jsonString).toContain('IdentityIdABC'); // Contains IdentityID
     expect(jsonString).toContain('github.com'); // Contains github provider
-    expect(jsonString).toContain(node2.id); // Contains NodeId
+    expect(jsonString).toContain(nodesUtils.encodeNodeId(nodeId2)); // Contains NodeId
   });
   test('should discover gestalt via Node.', async () => {
     const gestaltsDiscoverNode =
@@ -247,7 +252,7 @@ describe('Client service', () => {
       );
 
     const nodeMessage = new nodesPB.Node();
-    nodeMessage.setNodeId(node2.id);
+    nodeMessage.setNodeId(nodesUtils.encodeNodeId(nodeId2));
     // I have no idea how to test this. so we just check for expected error for now
     await expect(() =>
       gestaltsDiscoverNode(nodeMessage, callCredentials),
@@ -282,19 +287,19 @@ describe('Client service', () => {
       );
     await gestaltGraph.setNode(node1);
     await gestaltGraph.setNode(node2);
-    await gestaltGraph.setGestaltActionByNode(node2.id, 'scan');
-    await gestaltGraph.setGestaltActionByNode(node2.id, 'notify');
+    await gestaltGraph.setGestaltActionByNode(nodeId2, 'scan');
+    await gestaltGraph.setGestaltActionByNode(nodeId2, 'notify');
 
     const nodeMessage = new nodesPB.Node();
 
-    nodeMessage.setNodeId(node2.id);
+    nodeMessage.setNodeId(nodesUtils.encodeNodeId(nodeId2));
     // Should have permissions scan and notify as above
     const test1 = await gestaltsGetActionsByNode(nodeMessage, callCredentials);
     expect(test1.getActionList().length).toBe(2);
     expect(test1.getActionList().includes('scan')).toBeTruthy();
     expect(test1.getActionList().includes('notify')).toBeTruthy();
 
-    nodeMessage.setNodeId(nodeManager.getNodeId());
+    nodeMessage.setNodeId(nodesUtils.encodeNodeId(nodeManager.getNodeId()));
     // Should have no permissions
     const test2 = await gestaltsGetActionsByNode(nodeMessage, callCredentials);
     expect(test2.getActionList().length).toBe(0);
@@ -352,18 +357,18 @@ describe('Client service', () => {
 
     const setActionsMessage = new permissionsPB.ActionSet();
     const nodeMessage = new nodesPB.Node();
-    nodeMessage.setNodeId(node2.id);
+    nodeMessage.setNodeId(nodesUtils.encodeNodeId(nodeId2));
     setActionsMessage.setNode(nodeMessage);
     setActionsMessage.setAction('scan');
     // Should have permissions scan and notify as above
     await gestaltsSetActionByNode(setActionsMessage, callCredentials);
 
-    const check1 = await gestaltGraph.getGestaltActionsByNode(node2.id);
+    const check1 = await gestaltGraph.getGestaltActionsByNode(nodeId2);
     expect(Object.keys(check1!)).toContain('scan');
 
     setActionsMessage.setAction('notify');
     await gestaltsSetActionByNode(setActionsMessage, callCredentials);
-    const check2 = await gestaltGraph.getGestaltActionsByNode(node2.id);
+    const check2 = await gestaltGraph.getGestaltActionsByNode(nodeId2);
     expect(Object.keys(check2!)).toContain('notify');
   });
   test('should set gestalt permissions by Identity.', async () => {
@@ -409,11 +414,11 @@ describe('Client service', () => {
       );
     await gestaltGraph.setNode(node1);
     await gestaltGraph.setNode(node2);
-    await gestaltGraph.setGestaltActionByNode(node2.id, 'scan');
-    await gestaltGraph.setGestaltActionByNode(node2.id, 'notify');
+    await gestaltGraph.setGestaltActionByNode(nodeId2, 'scan');
+    await gestaltGraph.setGestaltActionByNode(nodeId2, 'notify');
 
     const nodeMessage = new nodesPB.Node();
-    nodeMessage.setNodeId(node2.id);
+    nodeMessage.setNodeId(nodesUtils.encodeNodeId(nodeId2));
 
     const setActionsMessage = new permissionsPB.ActionSet();
     setActionsMessage.setNode(nodeMessage);
@@ -421,7 +426,7 @@ describe('Client service', () => {
 
     // Should have permissions scan and notify as above
     await gestaltsUnsetActionByNode(setActionsMessage, callCredentials);
-    const check1 = await gestaltGraph.getGestaltActionsByNode(node2.id);
+    const check1 = await gestaltGraph.getGestaltActionsByNode(nodeId2);
     const keys = Object.keys(check1!);
     expect(keys.length).toBe(1);
     expect(keys).toContain('notify');
@@ -429,7 +434,7 @@ describe('Client service', () => {
 
     setActionsMessage.setAction('notify');
     await gestaltsUnsetActionByNode(setActionsMessage, callCredentials);
-    const check2 = await gestaltGraph.getGestaltActionsByNode(node2.id);
+    const check2 = await gestaltGraph.getGestaltActionsByNode(nodeId2);
     const keys2 = Object.keys(check2!);
     expect(keys2.length).toBe(0);
   });
@@ -464,14 +469,14 @@ describe('Client service', () => {
 
     // Should have permissions scan and notify as above
     await gestaltsUnsetActionByIdentity(setActionsMessage, callCredentials);
-    const check1 = await gestaltGraph.getGestaltActionsByNode(node2.id);
+    const check1 = await gestaltGraph.getGestaltActionsByNode(nodeId2);
     const keys = Object.keys(check1!);
     expect(keys.length).toBe(1);
     expect(keys).toContain('notify');
     expect(keys.includes('scan')).toBeFalsy();
     setActionsMessage.setAction('notify');
     await gestaltsUnsetActionByIdentity(setActionsMessage, callCredentials);
-    const check2 = await gestaltGraph.getGestaltActionsByNode(node2.id);
+    const check2 = await gestaltGraph.getGestaltActionsByNode(nodeId2);
     const keys2 = Object.keys(check2!);
     expect(keys2.length).toBe(0);
   });

@@ -1,7 +1,7 @@
-import type { NodeData, NodeId } from './types';
+import type { NodeData, NodeId, NodeIdEncoded } from './types';
 
-import { ErrorInvalidNodeId } from './errors';
-import { fromMultibase, isIdString, makeIdString } from '../GenericIdTypes';
+import { IdInternal, utils as idUtils } from '@matrixai/id';
+import * as nodesErrors from './errors';
 
 /**
  * Compute the distance between two nodes.
@@ -9,8 +9,8 @@ import { fromMultibase, isIdString, makeIdString } from '../GenericIdTypes';
  * where ^ = bitwise XOR operator
  */
 function calculateDistance(nodeId1: NodeId, nodeId2: NodeId): BigInt {
-  const bufferId1 = nodeIdToU8(nodeId1);
-  const bufferId2 = nodeIdToU8(nodeId2);
+  const bufferId1: Buffer = nodeId1.toBuffer();
+  const bufferId2: Buffer = nodeId2.toBuffer();
   let distance = BigInt(0);
   let i = 0;
   const min = Math.min(bufferId1.length, bufferId2.length);
@@ -55,27 +55,6 @@ function calculateBucketIndex(
 }
 
 /**
- * Validates that a provided node ID string is a valid node ID.
- */
-function isNodeId(nodeId: string): nodeId is NodeId {
-  return isIdString<NodeId>(nodeId, 32);
-}
-
-function makeNodeId(arg: any): NodeId {
-  return makeIdString<NodeId>(arg, 32, 'base32hex');
-}
-
-/**
- * Node ID to an array of 8-bit unsigned ints
- */
-function nodeIdToU8(id: string): Uint8Array {
-  // Converting from the multibase string to a buffer of hopefully 32 bytes.
-  const byteArray = fromMultibase(id);
-  if (byteArray == null) throw new ErrorInvalidNodeId();
-  return byteArray;
-}
-
-/**
  * A sorting compareFn to sort an array of NodeData by increasing distance.
  */
 function sortByDistance(a: NodeData, b: NodeData) {
@@ -88,11 +67,27 @@ function sortByDistance(a: NodeData, b: NodeData) {
   }
 }
 
+function encodeNodeId(nodeId: NodeId): NodeIdEncoded {
+  return idUtils.toMultibase(nodeId, 'base32hex') as NodeIdEncoded;
+}
+
+function decodeNodeId(nodeIdEncoded: NodeIdEncoded | string): NodeId {
+  const nodeId = IdInternal.fromMultibase<NodeId>(nodeIdEncoded);
+  if (nodeId == null)
+    throw new nodesErrors.ErrorInvalidNodeId(
+      `Was not a valid multibase: ${nodeIdEncoded}`,
+    );
+  if (nodeId.length !== 32)
+    throw new nodesErrors.ErrorInvalidNodeId(
+      `Was not 32 bytes long: ${nodeIdEncoded}`,
+    );
+  return nodeId;
+}
+
 export {
   calculateDistance,
   calculateBucketIndex,
-  isNodeId,
-  makeNodeId,
-  nodeIdToU8,
   sortByDistance,
+  encodeNodeId,
+  decodeNodeId,
 };

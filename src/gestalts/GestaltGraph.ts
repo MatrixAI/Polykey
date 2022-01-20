@@ -1,15 +1,15 @@
 import type { Buffer } from 'buffer';
 import type {
+  Gestalt,
   GestaltAction,
   GestaltActions,
-  GestaltKey,
-  GestaltNodeKey,
   GestaltIdentityKey,
+  GestaltKey,
   GestaltKeySet,
-  Gestalt,
+  GestaltNodeKey,
 } from './types';
 import type { NodeId, NodeInfo } from '../nodes/types';
-import type { ProviderId, IdentityId, IdentityInfo } from '../identities/types';
+import type { IdentityId, IdentityInfo, ProviderId } from '../identities/types';
 import type { Permission } from '../acl/types';
 import type { DB, DBLevel, DBOp } from '@matrixai/db';
 import type { ACL } from '../acl';
@@ -24,6 +24,7 @@ import * as gestaltsUtils from './utils';
 import * as gestaltsErrors from './errors';
 import { utils as aclUtils } from '../acl';
 import * as utils from '../utils';
+import { utils as nodesUtils } from '../nodes';
 
 interface GestaltGraph extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
@@ -282,7 +283,7 @@ class GestaltGraph {
       if (gId.type === 'node') {
         ops.push(
           ...(await this.unlinkNodeAndIdentityOps(
-            gId.nodeId,
+            nodesUtils.decodeNodeId(gId.nodeId),
             providerId,
             identityId,
           )),
@@ -316,7 +317,9 @@ class GestaltGraph {
 
   @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
   public async setNodeOps(nodeInfo: NodeInfo): Promise<Array<DBOp>> {
-    const nodeKey = gestaltsUtils.keyFromNode(nodeInfo.id);
+    const nodeKey = gestaltsUtils.keyFromNode(
+      nodesUtils.decodeNodeId(nodeInfo.id),
+    );
     const ops: Array<DBOp> = [];
     let nodeKeyKeys = await this.db.get<GestaltKeySet>(
       this.graphMatrixDbDomain,
@@ -326,10 +329,13 @@ class GestaltGraph {
       nodeKeyKeys = {};
       // Sets the gestalt in the acl
       ops.push(
-        ...(await this.acl.setNodePermOps(nodeInfo.id, {
-          gestalt: {},
-          vaults: {},
-        })),
+        ...(await this.acl.setNodePermOps(
+          nodesUtils.decodeNodeId(nodeInfo.id),
+          {
+            gestalt: {},
+            vaults: {},
+          },
+        )),
       );
     }
     ops.push(
@@ -383,7 +389,12 @@ class GestaltGraph {
     for (const key of Object.keys(nodeKeyKeys) as Array<GestaltKey>) {
       const gId = gestaltsUtils.ungestaltKey(key);
       if (gId.type === 'node') {
-        ops.push(...(await this.unlinkNodeAndNodeOps(nodeId, gId.nodeId)));
+        ops.push(
+          ...(await this.unlinkNodeAndNodeOps(
+            nodeId,
+            nodesUtils.decodeNodeId(gId.nodeId),
+          )),
+        );
       } else if (gId.type === 'identity') {
         ops.push(
           ...(await this.unlinkNodeAndIdentityOps(
@@ -425,7 +436,9 @@ class GestaltGraph {
     identityInfo: IdentityInfo,
   ): Promise<Array<DBOp>> {
     const ops: Array<DBOp> = [];
-    const nodeKey = gestaltsUtils.keyFromNode(nodeInfo.id);
+    const nodeKey = gestaltsUtils.keyFromNode(
+      nodesUtils.decodeNodeId(nodeInfo.id),
+    );
     const identityKey = gestaltsUtils.keyFromIdentity(
       identityInfo.providerId,
       identityInfo.identityId,
@@ -475,10 +488,13 @@ class GestaltGraph {
     //     join node gestalt's permission to the identity gestalt
     if (nodeNew && identityNew) {
       ops.push(
-        ...(await this.acl.setNodePermOps(nodeInfo.id, {
-          gestalt: {},
-          vaults: {},
-        })),
+        ...(await this.acl.setNodePermOps(
+          nodesUtils.decodeNodeId(nodeInfo.id),
+          {
+            gestalt: {},
+            vaults: {},
+          },
+        )),
       );
     } else if (
       !nodeNew &&
@@ -489,12 +505,13 @@ class GestaltGraph {
         Object.keys(identityKeyKeys) as Array<GestaltKey>,
         [identityKey],
       );
-      const identityNodeIds = Array.from(
-        identityNodeKeys,
-        (key) => gestaltsUtils.ungestaltKey(key).nodeId,
+      const identityNodeIds = Array.from(identityNodeKeys, (key) =>
+        gestaltsUtils.nodeFromKey(key),
       );
       // These must exist
-      const nodePerm = (await this.acl.getNodePerm(nodeInfo.id)) as Permission;
+      const nodePerm = (await this.acl.getNodePerm(
+        nodesUtils.decodeNodeId(nodeInfo.id),
+      )) as Permission;
       const identityPerm = (await this.acl.getNodePerm(
         identityNodeIds[0],
       )) as Permission;
@@ -505,7 +522,7 @@ class GestaltGraph {
       // and the perm record update
       ops.push(
         ...(await this.acl.joinNodePermOps(
-          nodeInfo.id,
+          nodesUtils.decodeNodeId(nodeInfo.id),
           identityNodeIds,
           permNew,
         )),
@@ -513,10 +530,13 @@ class GestaltGraph {
     } else if (nodeNew && !identityNew) {
       if (utils.isEmptyObject(identityKeyKeys)) {
         ops.push(
-          ...(await this.acl.setNodePermOps(nodeInfo.id, {
-            gestalt: {},
-            vaults: {},
-          })),
+          ...(await this.acl.setNodePermOps(
+            nodesUtils.decodeNodeId(nodeInfo.id),
+            {
+              gestalt: {},
+              vaults: {},
+            },
+          )),
         );
       } else {
         let identityNodeKey: GestaltNodeKey;
@@ -524,11 +544,11 @@ class GestaltGraph {
           identityNodeKey = gK as GestaltNodeKey;
           break;
         }
-        const identityNodeId = gestaltsUtils.ungestaltKey(
-          identityNodeKey!,
-        ).nodeId;
+        const identityNodeId = gestaltsUtils.nodeFromKey(identityNodeKey!);
         ops.push(
-          ...(await this.acl.joinNodePermOps(identityNodeId, [nodeInfo.id])),
+          ...(await this.acl.joinNodePermOps(identityNodeId, [
+            nodesUtils.decodeNodeId(nodeInfo.id),
+          ])),
         );
       }
     }
@@ -582,8 +602,10 @@ class GestaltGraph {
     nodeInfo2: NodeInfo,
   ): Promise<Array<DBOp>> {
     const ops: Array<DBOp> = [];
-    const nodeKey1 = gestaltsUtils.keyFromNode(nodeInfo1.id);
-    const nodeKey2 = gestaltsUtils.keyFromNode(nodeInfo2.id);
+    const nodeIdEncoded1 = nodesUtils.decodeNodeId(nodeInfo1.id);
+    const nodeIdEncoded2 = nodesUtils.decodeNodeId(nodeInfo2.id);
+    const nodeKey1 = gestaltsUtils.keyFromNode(nodeIdEncoded1);
+    const nodeKey2 = gestaltsUtils.keyFromNode(nodeIdEncoded2);
     let nodeKeyKeys1 = await this.db.get<GestaltKeySet>(
       this.graphMatrixDbDomain,
       nodeKey1,
@@ -623,7 +645,7 @@ class GestaltGraph {
     //   join node 1 gestalt's permission to the node 2 gestalt
     if (nodeNew1 && nodeNew2) {
       ops.push(
-        ...(await this.acl.setNodesPermOps([nodeInfo1.id, nodeInfo2.id], {
+        ...(await this.acl.setNodesPermOps([nodeIdEncoded1, nodeIdEncoded2], {
           gestalt: {},
           vaults: {},
         })),
@@ -633,16 +655,15 @@ class GestaltGraph {
         Object.keys(nodeKeyKeys2) as Array<GestaltKey>,
         [nodeKey2],
       );
-      const nodeNodeIds2 = Array.from(
-        nodeNodeKeys2,
-        (key) => gestaltsUtils.ungestaltKey(key).nodeId,
+      const nodeNodeIds2 = Array.from(nodeNodeKeys2, (key) =>
+        gestaltsUtils.nodeFromKey(key),
       );
       // These must exist
       const nodePerm1 = (await this.acl.getNodePerm(
-        nodeInfo1.id,
+        nodeIdEncoded1,
       )) as Permission;
       const nodePerm2 = (await this.acl.getNodePerm(
-        nodeInfo2.id,
+        nodeIdEncoded2,
       )) as Permission;
       // Union the perms together
       const permNew = aclUtils.permUnion(nodePerm1, nodePerm2);
@@ -651,18 +672,18 @@ class GestaltGraph {
       // and the perm record update
       ops.push(
         ...(await this.acl.joinNodePermOps(
-          nodeInfo1.id,
+          nodeIdEncoded1,
           nodeNodeIds2,
           permNew,
         )),
       );
     } else if (nodeNew1 && !nodeNew2) {
       ops.push(
-        ...(await this.acl.joinNodePermOps(nodeInfo2.id, [nodeInfo1.id])),
+        ...(await this.acl.joinNodePermOps(nodeIdEncoded2, [nodeIdEncoded1])),
       );
     } else if (!nodeNew1 && nodeNew2) {
       ops.push(
-        ...(await this.acl.joinNodePermOps(nodeInfo1.id, [nodeInfo2.id])),
+        ...(await this.acl.joinNodePermOps(nodeIdEncoded1, [nodeIdEncoded2])),
       );
     }
     nodeKeyKeys1[nodeKey2] = null;
@@ -761,9 +782,8 @@ class GestaltGraph {
           [nodeKey],
         );
       if (!gestaltIdentityKeys.has(identityKey)) {
-        const nodeIds = Array.from(
-          gestaltNodeKeys,
-          (key) => gestaltsUtils.ungestaltKey(key).nodeId,
+        const nodeIds = Array.from(gestaltNodeKeys, (key) =>
+          gestaltsUtils.nodeFromKey(key),
         );
         // It is assumed that an existing gestalt has a permission
         const perm = (await this.acl.getNodePerm(nodeId)) as Permission;
@@ -832,9 +852,8 @@ class GestaltGraph {
         [nodeKey1],
       );
       if (!gestaltNodeKeys.has(nodeKey2)) {
-        const nodeIds = Array.from(
-          gestaltNodeKeys,
-          (key) => gestaltsUtils.ungestaltKey(key).nodeId,
+        const nodeIds = Array.from(gestaltNodeKeys, (key) =>
+          gestaltsUtils.nodeFromKey(key),
         );
         // It is assumed that an existing gestalt has a permission
         const perm = (await this.acl.getNodePerm(nodeId1)) as Permission;
@@ -892,7 +911,7 @@ class GestaltGraph {
         )) as GestaltKeySet;
         let nodeId: NodeId | undefined;
         for (const nodeKey in gestaltKeySet) {
-          nodeId = gestaltsUtils.ungestaltKey(nodeKey as GestaltNodeKey).nodeId;
+          nodeId = gestaltsUtils.nodeFromKey(nodeKey as GestaltNodeKey);
           break;
         }
         if (nodeId == null) {
@@ -952,7 +971,7 @@ class GestaltGraph {
         )) as GestaltKeySet;
         let nodeId: NodeId | undefined;
         for (const nodeKey in gestaltKeySet) {
-          nodeId = gestaltsUtils.ungestaltKey(nodeKey as GestaltNodeKey).nodeId;
+          nodeId = gestaltsUtils.nodeFromKey(nodeKey as GestaltNodeKey);
           break;
         }
         // If there are no linked nodes, this cannot proceed
@@ -1009,7 +1028,7 @@ class GestaltGraph {
         )) as GestaltKeySet;
         let nodeId: NodeId | undefined;
         for (const nodeKey in gestaltKeySet) {
-          nodeId = gestaltsUtils.ungestaltKey(nodeKey as GestaltNodeKey).nodeId;
+          nodeId = gestaltsUtils.nodeFromKey(nodeKey as GestaltNodeKey);
           break;
         }
         // If there are no linked nodes, this cannot proceed

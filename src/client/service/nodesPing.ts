@@ -24,9 +24,8 @@ function nodesPing({
     try {
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
-      const status = await nodeManager.pingNode(
-        nodesUtils.makeNodeId(call.request.getNodeId()),
-      );
+      const nodeId = nodesUtils.decodeNodeId(call.request.getNodeId());
+      const status = await nodeManager.pingNode(nodeId);
       response.setSuccess(status);
       callback(null, response);
       return;

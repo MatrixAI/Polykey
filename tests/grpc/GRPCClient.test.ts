@@ -17,6 +17,7 @@ import { errors as grpcErrors } from '@/grpc';
 import * as clientUtils from '@/client/utils';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as utils from './utils';
+import * as testUtils from '../utils';
 
 describe('GRPCClient', () => {
   const logger = new Logger('GRPCClient Test', LogLevel.WARN, [
@@ -59,7 +60,9 @@ describe('GRPCClient', () => {
         },
       },
     });
-    const keyManager = { getNodeId: () => 'nodeID' as NodeId } as KeyManager; // Cheeky mocking.
+    const keyManager = {
+      getNodeId: () => testUtils.generateRandomNodeId(),
+    } as KeyManager; // Cheeky mocking.
     sessionManager = await SessionManager.createSessionManager({
       db,
       keyManager,

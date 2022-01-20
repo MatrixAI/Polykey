@@ -22,9 +22,8 @@ function gestaltsActionsGetByNode({
     try {
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
-      const result = await gestaltGraph.getGestaltActionsByNode(
-        nodesUtils.makeNodeId(info.getNodeId()),
-      );
+      const nodeId = nodesUtils.decodeNodeId(info.getNodeId());
+      const result = await gestaltGraph.getGestaltActionsByNode(nodeId);
       if (result == null) {
         // Node doesn't exist, so no permissions. might throw error instead TBD.
         response.setActionList([]);

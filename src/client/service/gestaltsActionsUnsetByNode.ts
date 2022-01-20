@@ -25,7 +25,7 @@ function gestaltsActionsUnsetByNode({
       call.sendMetadata(metadata);
       // Setting the action.
       const action = gestaltsUtils.makeGestaltAction(info.getAction());
-      const nodeId = nodesUtils.makeNodeId(info.getNode()?.getNodeId());
+      const nodeId = nodesUtils.decodeNodeId(info.getNode()!.getNodeId());
       await gestaltGraph.unsetGestaltActionByNode(nodeId, action);
       callback(null, response);
       return;

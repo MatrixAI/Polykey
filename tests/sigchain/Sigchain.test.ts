@@ -1,5 +1,5 @@
 import type { ProviderId, IdentityId } from '@/identities/types';
-import type { NodeId } from '@/nodes/types';
+import type { NodeIdEncoded } from '@/nodes/types';
 import type { Claim, ClaimData } from '@/claims/types';
 import os from 'os';
 import path from 'path';
@@ -10,6 +10,7 @@ import { KeyManager, utils as keysUtils } from '@/keys';
 import { Sigchain } from '@/sigchain';
 import * as claimsUtils from '@/claims/utils';
 import * as sigchainErrors from '@/sigchain/errors';
+import { utils as nodesUtils } from '@/nodes';
 import * as testUtils from '../utils';
 
 describe('Sigchain', () => {
@@ -17,7 +18,28 @@ describe('Sigchain', () => {
     new StreamHandler(),
   ]);
   const password = 'password';
-  const srcNodeId = 'NodeId1' as NodeId;
+  const srcNodeIdEncoded = nodesUtils.encodeNodeId(
+    testUtils.generateRandomNodeId(),
+  );
+  const nodeId2Encoded = nodesUtils.encodeNodeId(
+    testUtils.generateRandomNodeId(),
+  );
+  const nodeId3Encoded = nodesUtils.encodeNodeId(
+    testUtils.generateRandomNodeId(),
+  );
+  const nodeIdAEncoded = nodesUtils.encodeNodeId(
+    testUtils.generateRandomNodeId(),
+  );
+  const nodeIdBEncoded = nodesUtils.encodeNodeId(
+    testUtils.generateRandomNodeId(),
+  );
+  const nodeIdCEncoded = nodesUtils.encodeNodeId(
+    testUtils.generateRandomNodeId(),
+  );
+  const nodeIdDEncoded = nodesUtils.encodeNodeId(
+    testUtils.generateRandomNodeId(),
+  );
+
   let mockedGenerateKeyPair: jest.SpyInstance;
   let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
   beforeAll(async () => {
@@ -96,8 +118,8 @@ describe('Sigchain', () => {
     const sigchain = await Sigchain.createSigchain({ keyManager, db, logger });
     const cryptolink: ClaimData = {
       type: 'node',
-      node1: srcNodeId,
-      node2: 'NodeId2' as NodeId,
+      node1: srcNodeIdEncoded,
+      node2: nodeId2Encoded,
     };
     const [claimId] = await sigchain.addClaim(cryptolink);
 
@@ -112,8 +134,8 @@ describe('Sigchain', () => {
         seq: 1,
         data: {
           type: 'node',
-          node1: srcNodeId,
-          node2: 'NodeId2' as NodeId,
+          node1: srcNodeIdEncoded,
+          node2: nodeId2Encoded,
         },
         iat: expect.any(Number),
       },
@@ -123,10 +145,10 @@ describe('Sigchain', () => {
 
     // Check the signature is valid
     expect(Object.keys(decoded.signatures).length).toBe(1);
-    expect(decoded.signatures[srcNodeId]).toBeDefined;
-    expect(decoded.signatures[srcNodeId].header).toStrictEqual({
+    expect(decoded.signatures[srcNodeIdEncoded]).toBeDefined;
+    expect(decoded.signatures[srcNodeIdEncoded].header).toStrictEqual({
       alg: 'RS256',
-      kid: srcNodeId,
+      kid: srcNodeIdEncoded,
     });
     const verified = await claimsUtils.verifyClaimSignature(
       claim,
@@ -140,15 +162,15 @@ describe('Sigchain', () => {
     const sigchain = await Sigchain.createSigchain({ keyManager, db, logger });
     const cryptolink: ClaimData = {
       type: 'node',
-      node1: srcNodeId,
-      node2: 'NodeId2' as NodeId,
+      node1: srcNodeIdEncoded,
+      node2: nodeId2Encoded,
     };
     const [claimId1] = await sigchain.addClaim(cryptolink);
 
     const cryptolink2: ClaimData = {
       type: 'node',
-      node1: srcNodeId,
-      node2: 'NodeId3' as NodeId,
+      node1: srcNodeIdEncoded,
+      node2: nodeId3Encoded,
     };
     const [claimId2] = await sigchain.addClaim(cryptolink2);
 
@@ -163,8 +185,8 @@ describe('Sigchain', () => {
         seq: 1,
         data: {
           type: 'node',
-          node1: srcNodeId,
-          node2: 'NodeId2' as NodeId,
+          node1: srcNodeIdEncoded,
+          node2: nodeId2Encoded,
         },
         iat: expect.any(Number),
       },
@@ -178,8 +200,8 @@ describe('Sigchain', () => {
         seq: 2,
         data: {
           type: 'node',
-          node1: srcNodeId,
-          node2: 'NodeId3' as NodeId,
+          node1: srcNodeIdEncoded,
+          node2: nodeId3Encoded,
         },
         iat: expect.any(Number),
       },
@@ -189,10 +211,10 @@ describe('Sigchain', () => {
 
     // Check the signature is valid in each claim
     expect(Object.keys(decoded1.signatures).length).toBe(1);
-    expect(decoded1.signatures[srcNodeId]).toBeDefined;
-    expect(decoded1.signatures[srcNodeId].header).toStrictEqual({
+    expect(decoded1.signatures[srcNodeIdEncoded]).toBeDefined;
+    expect(decoded1.signatures[srcNodeIdEncoded].header).toStrictEqual({
       alg: 'RS256',
-      kid: srcNodeId,
+      kid: srcNodeIdEncoded,
     });
     const verified1 = await claimsUtils.verifyClaimSignature(
       claim1,
@@ -201,10 +223,10 @@ describe('Sigchain', () => {
     expect(verified1).toBe(true);
 
     expect(Object.keys(decoded2.signatures).length).toBe(1);
-    expect(decoded2.signatures[srcNodeId]).toBeDefined;
-    expect(decoded2.signatures[srcNodeId].header).toStrictEqual({
+    expect(decoded2.signatures[srcNodeIdEncoded]).toBeDefined;
+    expect(decoded2.signatures[srcNodeIdEncoded].header).toStrictEqual({
       alg: 'RS256',
-      kid: srcNodeId,
+      kid: srcNodeIdEncoded,
     });
     const verified2 = await claimsUtils.verifyClaimSignature(
       claim2,
@@ -236,10 +258,10 @@ describe('Sigchain', () => {
       seq: seq1 + 1,
       data: {
         type: 'node',
-        node1: 'A' as NodeId,
-        node2: 'B' as NodeId,
+        node1: nodeIdAEncoded,
+        node2: nodeIdBEncoded,
       },
-      kid: 'A' as NodeId,
+      kid: nodeIdAEncoded,
     });
     await sigchain.addExistingClaim(claim1);
     const hPrev2 = await sigchain.getHashPrevious();
@@ -254,10 +276,10 @@ describe('Sigchain', () => {
       seq: seq2 + 1,
       data: {
         type: 'node',
-        node1: 'A' as NodeId,
-        node2: 'C' as NodeId,
+        node1: nodeIdAEncoded,
+        node2: nodeIdCEncoded,
       },
-      kid: 'A' as NodeId,
+      kid: nodeIdAEncoded,
     });
     await sigchain.addExistingClaim(claim2);
     const hPrev3 = await sigchain.getHashPrevious();
@@ -272,10 +294,10 @@ describe('Sigchain', () => {
       seq: seq3 + 1,
       data: {
         type: 'node',
-        node1: 'A' as NodeId,
-        node2: 'D' as NodeId,
+        node1: nodeIdAEncoded,
+        node2: nodeIdDEncoded,
       },
-      kid: 'D' as NodeId,
+      kid: nodeIdDEncoded,
     });
     await expect(() =>
       sigchain.addExistingClaim(claimInvalidHash),
@@ -288,10 +310,10 @@ describe('Sigchain', () => {
       seq: 1,
       data: {
         type: 'node',
-        node1: 'A' as NodeId,
-        node2: 'D' as NodeId,
+        node1: nodeIdAEncoded,
+        node2: nodeIdDEncoded,
       },
-      kid: 'D' as NodeId,
+      kid: nodeIdDEncoded,
     });
     await expect(() =>
       sigchain.addExistingClaim(claimInvalidSeqNum),
@@ -299,20 +321,23 @@ describe('Sigchain', () => {
   });
   test('retrieves chain data', async () => {
     const sigchain = await Sigchain.createSigchain({ keyManager, db, logger });
+    const node2s: NodeIdEncoded[] = [];
 
     // Add 10 claims
     for (let i = 1; i <= 5; i++) {
+      const node2 = nodesUtils.encodeNodeId(testUtils.generateRandomNodeId());
+      node2s.push(node2);
       const nodeLink: ClaimData = {
         type: 'node',
-        node1: srcNodeId,
-        node2: ('NodeId' + i.toString()) as NodeId,
+        node1: srcNodeIdEncoded,
+        node2: node2,
       };
       await sigchain.addClaim(nodeLink);
     }
     for (let i = 6; i <= 10; i++) {
       const identityLink: ClaimData = {
         type: 'identity',
-        node: srcNodeId,
+        node: srcNodeIdEncoded,
         provider: ('ProviderId' + i.toString()) as ProviderId,
         identity: ('IdentityId' + i.toString()) as IdentityId,
       };
@@ -325,15 +350,16 @@ describe('Sigchain', () => {
       const claim = chainData[chainDataKeys[i - 1]];
       const decodedClaim = claimsUtils.decodeClaim(claim);
       if (i <= 5) {
+        const node2 = node2s[i - 1];
         expect(decodedClaim.payload.data).toEqual({
           type: 'node',
-          node1: srcNodeId,
-          node2: ('NodeId' + i.toString()) as NodeId,
+          node1: srcNodeIdEncoded,
+          node2: node2,
         });
       } else {
         expect(decodedClaim.payload.data).toEqual({
           type: 'identity',
-          node: srcNodeId,
+          node: srcNodeIdEncoded,
           provider: ('ProviderId' + i.toString()) as ProviderId,
           identity: ('IdentityId' + i.toString()) as IdentityId,
         });
@@ -342,22 +368,25 @@ describe('Sigchain', () => {
   });
   test('retrieves all cryptolinks (nodes and identities) from sigchain (in expected lexicographic order)', async () => {
     const sigchain = await Sigchain.createSigchain({ keyManager, db, logger });
+    const nodes: NodeIdEncoded[] = [];
 
     // Add 30 claims
     for (let i = 1; i <= 30; i++) {
       // If even, add a node link
       if (i % 2 === 0) {
+        const node2 = nodesUtils.encodeNodeId(testUtils.generateRandomNodeId());
+        nodes[i] = node2;
         const nodeLink: ClaimData = {
           type: 'node',
-          node1: srcNodeId,
-          node2: ('NodeId' + i.toString()) as NodeId,
+          node1: srcNodeIdEncoded,
+          node2: node2,
         };
         await sigchain.addClaim(nodeLink);
         // If odd, add an identity link
       } else {
         const identityLink: ClaimData = {
           type: 'identity',
-          node: srcNodeId,
+          node: srcNodeIdEncoded,
           provider: ('ProviderId' + i.toString()) as ProviderId,
           identity: ('IdentityId' + i.toString()) as IdentityId,
         };
@@ -382,6 +411,7 @@ describe('Sigchain', () => {
       expect(seqNum).toBe(expectedSeqNum);
 
       // Verify the structure of claim
+      const node2 = nodes[expectedSeqNum];
       const expected: Claim = {
         payload: {
           hPrev: claimsUtils.hashClaim(
@@ -390,8 +420,8 @@ describe('Sigchain', () => {
           seq: expectedSeqNum,
           data: {
             type: 'node',
-            node1: srcNodeId,
-            node2: ('NodeId' + expectedSeqNum.toString()) as NodeId,
+            node1: srcNodeIdEncoded,
+            node2: node2,
           },
           iat: expect.any(Number),
         },
@@ -400,10 +430,10 @@ describe('Sigchain', () => {
       expect(d).toEqual(expected);
       // Verify the signature
       expect(Object.keys(d.signatures).length).toBe(1);
-      expect(d.signatures[srcNodeId]).toBeDefined;
-      expect(d.signatures[srcNodeId].header).toStrictEqual({
+      expect(d.signatures[srcNodeIdEncoded]).toBeDefined;
+      expect(d.signatures[srcNodeIdEncoded].header).toStrictEqual({
         alg: 'RS256',
-        kid: srcNodeId,
+        kid: srcNodeIdEncoded,
       });
       const verified = await claimsUtils.verifyClaimSignature(
         nodeLinks[i],
@@ -442,7 +472,7 @@ describe('Sigchain', () => {
           seq: expectedSeqNum,
           data: {
             type: 'identity',
-            node: srcNodeId,
+            node: srcNodeIdEncoded,
             provider: ('ProviderId' + expectedSeqNum.toString()) as ProviderId,
             identity: ('IdentityId' + expectedSeqNum.toString()) as IdentityId,
           },
@@ -453,10 +483,10 @@ describe('Sigchain', () => {
       expect(id).toEqual(expected);
       // Verify the signature
       expect(Object.keys(id.signatures).length).toBe(1);
-      expect(id.signatures[srcNodeId]).toBeDefined;
-      expect(id.signatures[srcNodeId].header).toStrictEqual({
+      expect(id.signatures[srcNodeIdEncoded]).toBeDefined;
+      expect(id.signatures[srcNodeIdEncoded].header).toStrictEqual({
         alg: 'RS256',
-        kid: srcNodeId,
+        kid: srcNodeIdEncoded,
       });
       const verified = await claimsUtils.verifyClaimSignature(
         nodeLinks[i],

@@ -1,9 +1,7 @@
 import type { NodeId, NodeAddress } from '@/nodes/types';
 
 import type { PolykeyAgent } from '@';
-import * as nodesUtils from '@/nodes/utils';
-import { makeNodeId } from '@/nodes/utils';
-import { fromMultibase } from '@/GenericIdTypes';
+import { IdInternal } from '@matrixai/id';
 
 /**
  * Generates a node ID that, according to Kademlia, will be placed into 'nodeId's
@@ -14,7 +12,7 @@ import { fromMultibase } from '@/GenericIdTypes';
  */
 function generateNodeIdForBucket(nodeId: NodeId, bucketIndex: number): NodeId {
   const lowerBoundDistance = BigInt(2) ** BigInt(bucketIndex);
-  const bufferId = nodesUtils.nodeIdToU8(nodeId);
+  const bufferId = Buffer.from(nodeId.toBuffer());
   // Console.log(bufferId);
   const bufferDistance = bigIntToBuffer(lowerBoundDistance);
   // Console.log(bufferDistance);
@@ -25,7 +23,7 @@ function generateNodeIdForBucket(nodeId: NodeId, bucketIndex: number): NodeId {
   // Reverse the buffers such that we XOR from right to left
   bufferId.reverse();
   bufferDistance.reverse();
-  const newIdArray = new Uint8Array(max);
+  const newIdArray = Buffer.alloc(max);
 
   // XOR the 'rightmost' bytes first
   for (let i = 0; i < bufferId.length && i < bufferDistance.length; i++) {
@@ -43,8 +41,7 @@ function generateNodeIdForBucket(nodeId: NodeId, bucketIndex: number): NodeId {
   // Reverse the XORed array back to normal
   newIdArray.reverse();
   // Convert to an ASCII string
-  // console.log(newIdArray);
-  return makeNodeId(newIdArray);
+  return IdInternal.fromBuffer<NodeId>(newIdArray);
 }
 
 /**
@@ -57,10 +54,10 @@ function generateNodeIdForBucket(nodeId: NodeId, bucketIndex: number): NodeId {
  * nodes appearing in larger-indexed buckets.
  */
 function incrementNodeId(nodeId: NodeId): NodeId {
-  const nodeIdArray = fromMultibase(nodeId)!;
+  const nodeIdArray = Buffer.from(nodeId.toBuffer());
   const lastCharIndex = nodeIdArray.length - 1;
   nodeIdArray[lastCharIndex] = nodeIdArray[lastCharIndex] + 1;
-  return makeNodeId(nodeIdArray);
+  return IdInternal.fromBuffer<NodeId>(nodeIdArray);
 }
 
 /**

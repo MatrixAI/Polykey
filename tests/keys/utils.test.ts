@@ -91,9 +91,9 @@ describe('utils', () => {
         256,
         recoveryCode,
       );
-      const nodeId1 = keysUtils.publicKeyToFingerprint(keyPair1.publicKey);
-      const nodeId2 = keysUtils.publicKeyToFingerprint(keyPair2.publicKey);
-      expect(nodeId1).toBe(nodeId2);
+      const nodeId1 = keysUtils.publicKeyToNodeId(keyPair1.publicKey);
+      const nodeId2 = keysUtils.publicKeyToNodeId(keyPair2.publicKey);
+      expect(nodeId1).toStrictEqual(nodeId2);
     },
     global.defaultTimeout * 2,
   );

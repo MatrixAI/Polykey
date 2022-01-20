@@ -18,11 +18,10 @@ import {
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import * as nodesUtils from './utils';
 import * as nodesErrors from './errors';
-import * as claimsUtils from '../claims/utils';
-import * as claimsErrors from '../claims/errors';
-import * as keysUtils from '../keys/utils';
-import * as vaultsUtils from '../vaults/utils';
-import * as grpcErrors from '../grpc/errors';
+import { utils as claimsUtils, errors as claimsErrors } from '../claims';
+import { utils as keysUtils } from '../keys';
+import { utils as vaultsUtils } from '../vaults';
+import { errors as grpcErrors } from '../grpc';
 import { GRPCClientAgent } from '../agent';
 import * as utilsPB from '../proto/js/polykey/v1/utils/utils_pb';
 import * as nodesPB from '../proto/js/polykey/v1/nodes/nodes_pb';
@@ -190,9 +189,9 @@ class NodeConnection {
     // 5. When finished, you have a connection to other node
     // The GRPCClient is ready to be used for requests
     this.logger.info(
-      `Started ${
-        this.constructor.name
-      } from ${this.keyManager.getNodeId()} to ${this.targetNodeId}`,
+      `Started ${this.constructor.name} from ${nodesUtils.encodeNodeId(
+        this.keyManager.getNodeId(),
+      )} to ${nodesUtils.encodeNodeId(this.targetNodeId)}`,
     );
   }
 
@@ -247,7 +246,7 @@ class NodeConnection {
     const certificates = this.getRootCertChain();
     let publicKey: PublicKeyPem | null = null;
     for (const cert of certificates) {
-      if (networkUtils.certNodeId(cert) === expectedNodeId) {
+      if (networkUtils.certNodeId(cert).equals(expectedNodeId)) {
         publicKey = keysUtils.publicKeyToPem(
           cert.publicKey as PublicKey,
         ) as PublicKeyPem;
@@ -266,19 +265,20 @@ class NodeConnection {
   public async getClosestNodes(targetNodeId: NodeId): Promise<Array<NodeData>> {
     // Construct the message
     const nodeIdMessage = new nodesPB.Node();
-    nodeIdMessage.setNodeId(targetNodeId);
+    nodeIdMessage.setNodeId(nodesUtils.encodeNodeId(targetNodeId));
     // Send through client
     const response = await this.client.nodesClosestLocalNodesGet(nodeIdMessage);
     const nodes: Array<NodeData> = [];
     // Loop over each map element (from the returned response) and populate nodes
-    response.getNodeTableMap().forEach((address, nodeId: string) => {
+    response.getNodeTableMap().forEach((address, nodeIdEncoded: string) => {
+      const nodeId: NodeId = nodesUtils.decodeNodeId(nodeIdEncoded);
       nodes.push({
-        id: nodeId as NodeId,
+        id: nodeId,
         address: {
           host: address.getHost() as Host | Hostname,
           port: address.getPort() as Port,
         },
-        distance: nodesUtils.calculateDistance(targetNodeId, nodeId as NodeId),
+        distance: nodesUtils.calculateDistance(targetNodeId, nodeId),
       });
     });
     return nodes;
@@ -302,8 +302,8 @@ class NodeConnection {
     signature: Buffer,
   ): Promise<void> {
     const relayMsg = new nodesPB.Relay();
-    relayMsg.setSrcId(sourceNodeId);
-    relayMsg.setTargetId(targetNodeId);
+    relayMsg.setSrcId(sourceNodeId.toString());
+    relayMsg.setTargetId(targetNodeId.toString());
     relayMsg.setEgressAddress(egressAddress);
     relayMsg.setSignature(signature.toString());
     await this.client.nodesHolePunchMessageSend(relayMsg);
@@ -420,7 +420,7 @@ class NodeConnection {
         {
           claim: constructedIntermediaryClaim,
           privateKey: this.keyManager.getRootKeyPairPem().privateKey,
-          signeeNodeId: this.keyManager.getNodeId(),
+          signeeNodeId: nodesUtils.encodeNodeId(this.keyManager.getNodeId()),
         },
       );
       // Should never be reached, but just for type safety

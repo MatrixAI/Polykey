@@ -22,7 +22,7 @@ function nodesHolePunchMessageSend({
       // back to the source node.
       if (
         nodeManager.getNodeId() ===
-        nodesUtils.makeNodeId(call.request.getTargetId())
+        nodesUtils.decodeNodeId(call.request.getTargetId())
       ) {
         const [host, port] = networkUtils.parseAddress(
           call.request.getEgressAddress(),
@@ -32,7 +32,7 @@ function nodesHolePunchMessageSend({
         // If so, ask the nodeManager to relay to the node
       } else if (
         await nodeManager.knowsNode(
-          nodesUtils.makeNodeId(call.request.getSrcId()),
+          nodesUtils.decodeNodeId(call.request.getSrcId()),
         )
       ) {
         await nodeManager.relayHolePunchMessage(call.request);

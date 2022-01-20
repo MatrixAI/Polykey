@@ -1,7 +1,6 @@
 import type { Socket } from 'net';
 import type { KeyPairPem } from '@/keys/types';
 import type { Host, Port } from '@/network/types';
-import type { NodeId } from '@/nodes/types';
 import http from 'http';
 import net from 'net';
 import tls from 'tls';
@@ -14,6 +13,7 @@ import {
 } from '@/network';
 import * as keysUtils from '@/keys/utils';
 import { promisify, promise, timerStart, timerStop, poll } from '@/utils';
+import { utils as nodesUtils } from '@/nodes';
 import * as testUtils from '../utils';
 
 /**
@@ -58,6 +58,11 @@ describe(ForwardProxy.name, () => {
   const logger = new Logger(`${ForwardProxy.name} test`, LogLevel.WARN, [
     new StreamHandler(),
   ]);
+  const nodeIdABC = testUtils.generateRandomNodeId();
+  const nodeIdABCEncoded = nodesUtils.encodeNodeId(nodeIdABC);
+  const nodeIdSome = testUtils.generateRandomNodeId();
+  const nodeIdSomeEncoded = nodesUtils.encodeNodeId(nodeIdSome);
+  const nodeIdRandom = testUtils.generateRandomNodeId();
   const authToken = 'abc123';
   let keyPairPem: KeyPairPem;
   let certPem: string;
@@ -137,7 +142,7 @@ describe(ForwardProxy.name, () => {
         fwdProxy.getProxyHost(),
         fwdProxy.getProxyPort(),
         'incorrect auth token',
-        `127.0.0.1:80?nodeId=${encodeURIComponent('SOMENODEID')}`,
+        `127.0.0.1:80?nodeId=${encodeURIComponent(nodeIdSomeEncoded)}`,
       ),
     ).rejects.toThrow('407');
     // No node id
@@ -155,7 +160,7 @@ describe(ForwardProxy.name, () => {
         fwdProxy.getProxyHost(),
         fwdProxy.getProxyPort(),
         authToken,
-        `?nodeId=${encodeURIComponent('SOMENODEID')}`,
+        `?nodeId=${encodeURIComponent(nodeIdSomeEncoded)}`,
       ),
     ).rejects.toThrow('400');
     await fwdProxy.stop();
@@ -173,14 +178,14 @@ describe(ForwardProxy.name, () => {
     });
     // Cannot open connection to port 0
     await expect(() =>
-      fwdProxy.openConnection('abc' as NodeId, '127.0.0.1' as Host, 0 as Port),
+      fwdProxy.openConnection(nodeIdABC, '127.0.0.1' as Host, 0 as Port),
     ).rejects.toThrow(networkErrors.ErrorConnectionStart);
     await expect(() =>
       httpConnect(
         fwdProxy.getProxyHost(),
         fwdProxy.getProxyPort(),
         authToken,
-        `127.0.0.1:0?nodeId=${encodeURIComponent('abc')}`,
+        `127.0.0.1:0?nodeId=${encodeURIComponent(nodeIdABCEncoded)}`,
       ),
     ).rejects.toThrow('502');
     await fwdProxy.stop();
@@ -215,7 +220,7 @@ describe(ForwardProxy.name, () => {
     const utpSocketHangPort = utpSocketHang.address().port;
     await expect(() =>
       fwdProxy.openConnection(
-        'abc' as NodeId,
+        nodeIdABC,
         '127.0.0.1' as Host,
         utpSocketHangPort as Port,
       ),
@@ -225,7 +230,7 @@ describe(ForwardProxy.name, () => {
     const timer = timerStart(2000);
     await expect(() =>
       fwdProxy.openConnection(
-        'abc' as NodeId,
+        nodeIdABC,
         '127.0.0.1' as Host,
         utpSocketHangPort as Port,
         timer,
@@ -238,7 +243,9 @@ describe(ForwardProxy.name, () => {
         fwdProxy.getProxyHost(),
         fwdProxy.getProxyPort(),
         authToken,
-        `127.0.0.1:${utpSocketHangPort}?nodeId=${encodeURIComponent('abc')}`,
+        `127.0.0.1:${utpSocketHangPort}?nodeId=${encodeURIComponent(
+          nodeIdABCEncoded,
+        )}`,
       ),
     ).rejects.toThrow('504');
     expect(recievedCount).toBe(3);
@@ -272,7 +279,7 @@ describe(ForwardProxy.name, () => {
     const utpSocketEndPort = utpSocketEnd.address().port;
     await expect(() =>
       fwdProxy.openConnection(
-        'abc' as NodeId,
+        nodeIdABC,
         '127.0.0.1' as Host,
         utpSocketEndPort as Port,
       ),
@@ -281,7 +288,7 @@ describe(ForwardProxy.name, () => {
     // The actual error is UTP_ECONNRESET to be precise
     await expect(() =>
       fwdProxy.openConnection(
-        'abc' as NodeId,
+        nodeIdABC,
         '127.0.0.1' as Host,
         utpSocketEndPort as Port,
       ),
@@ -293,7 +300,9 @@ describe(ForwardProxy.name, () => {
         fwdProxy.getProxyHost(),
         fwdProxy.getProxyPort(),
         authToken,
-        `127.0.0.1:${utpSocketEndPort}?nodeId=${encodeURIComponent('abc')}`,
+        `127.0.0.1:${utpSocketEndPort}?nodeId=${encodeURIComponent(
+          nodeIdABCEncoded,
+        )}`,
       ),
     ).rejects.toThrow('502');
     expect(recievedCount).toBe(3);
@@ -381,7 +390,7 @@ describe(ForwardProxy.name, () => {
     // This is a TLS handshake failure
     await expect(() =>
       fwdProxy.openConnection(
-        'somerandomnodeid' as NodeId,
+        nodeIdRandom,
         utpSocketHost as Host,
         utpSocketPort as Port,
       ),
@@ -489,7 +498,7 @@ describe(ForwardProxy.name, () => {
         fwdProxy.getProxyPort(),
         authToken,
         `${utpSocketHost}:${utpSocketPort}?nodeId=${encodeURIComponent(
-          'somerandomnodeid',
+          nodeIdSomeEncoded,
         )}`,
       ),
     ).rejects.toThrow('502');
@@ -603,7 +612,7 @@ describe(ForwardProxy.name, () => {
     expect(fwdProxy.getConnectionCount()).toBe(0);
     await expect(() =>
       fwdProxy.openConnection(
-        'somerandomnodeid' as NodeId,
+        nodeIdRandom,
         utpSocketHost as Host,
         utpSocketPort as Port,
       ),
@@ -721,7 +730,7 @@ describe(ForwardProxy.name, () => {
         fwdProxy.getProxyPort(),
         authToken,
         `${utpSocketHost}:${utpSocketPort}?nodeId=${encodeURIComponent(
-          'somerandomnodeid',
+          nodeIdSomeEncoded,
         )}`,
       ),
     ).rejects.toThrow('526');
@@ -1026,6 +1035,7 @@ describe(ForwardProxy.name, () => {
     );
     const serverCertPem = keysUtils.certToPem(serverCert);
     const serverNodeId = networkUtils.certNodeId(serverCert);
+    const serverNodeIdEncoded = nodesUtils.encodeNodeId(serverNodeId);
     const fwdProxy = new ForwardProxy({
       authToken,
       logger: logger.getChild(
@@ -1114,7 +1124,7 @@ describe(ForwardProxy.name, () => {
       fwdProxy.getProxyPort(),
       authToken,
       `${utpSocketHost}:${utpSocketPort}?nodeId=${encodeURIComponent(
-        serverNodeId,
+        serverNodeIdEncoded,
       )}`,
     );
     await expect(remoteReadyP).resolves.toBeUndefined();
@@ -1172,6 +1182,7 @@ describe(ForwardProxy.name, () => {
     );
     const serverCertPem = keysUtils.certToPem(serverCert);
     const serverNodeId = networkUtils.certNodeId(serverCert);
+    const serverNodeIdEncoded = nodesUtils.encodeNodeId(serverNodeId);
     const fwdProxy = new ForwardProxy({
       authToken,
       logger: logger.getChild(
@@ -1263,7 +1274,7 @@ describe(ForwardProxy.name, () => {
       fwdProxy.getProxyPort(),
       authToken,
       `${utpSocketHost}:${utpSocketPort}?nodeId=${encodeURIComponent(
-        serverNodeId,
+        serverNodeIdEncoded,
       )}`,
     );
     await expect(remoteReadyP).resolves.toBeUndefined();
@@ -1341,6 +1352,7 @@ describe(ForwardProxy.name, () => {
     );
     const serverCertPem = keysUtils.certToPem(serverCert);
     const serverNodeId = networkUtils.certNodeId(serverCert);
+    const serverNodeIdEncoded = nodesUtils.encodeNodeId(serverNodeId);
     const fwdProxy = new ForwardProxy({
       authToken,
       logger: logger.getChild(
@@ -1429,7 +1441,7 @@ describe(ForwardProxy.name, () => {
       fwdProxy.getProxyPort(),
       authToken,
       `${utpSocketHost}:${utpSocketPort}?nodeId=${encodeURIComponent(
-        serverNodeId,
+        serverNodeIdEncoded,
       )}`,
     );
     await expect(remoteReadyP).resolves.toBeUndefined();
@@ -1497,6 +1509,7 @@ describe(ForwardProxy.name, () => {
     );
     const serverCertPem = keysUtils.certToPem(serverCert);
     const serverNodeId = networkUtils.certNodeId(serverCert);
+    const serverNodeIdEncoded = nodesUtils.encodeNodeId(serverNodeId);
     const fwdProxy = new ForwardProxy({
       authToken,
       logger,
@@ -1588,7 +1601,7 @@ describe(ForwardProxy.name, () => {
       fwdProxy.getProxyPort(),
       authToken,
       `${utpSocketHost}:${utpSocketPort}?nodeId=${encodeURIComponent(
-        serverNodeId,
+        serverNodeIdEncoded,
       )}`,
     );
     expect(clientSocket).toBeInstanceOf(net.Socket);
@@ -1740,6 +1753,7 @@ describe(ForwardProxy.name, () => {
     );
     const serverCertPem = keysUtils.certToPem(serverCert);
     const serverNodeId = networkUtils.certNodeId(serverCert);
+    const serverNodeIdEncoded = nodesUtils.encodeNodeId(serverNodeId);
     const fwdProxy = new ForwardProxy({
       authToken,
       connKeepAliveTimeoutTime: 1000,
@@ -1828,7 +1842,7 @@ describe(ForwardProxy.name, () => {
       fwdProxy.getProxyPort(),
       authToken,
       `${utpSocketHost}:${utpSocketPort}?nodeId=${encodeURIComponent(
-        serverNodeId,
+        serverNodeIdEncoded,
       )}`,
     );
     await expect(remoteReadyP).resolves.toBeUndefined();

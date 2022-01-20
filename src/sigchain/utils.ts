@@ -1,9 +1,9 @@
 import type { PublicKeyPem } from '../keys/types';
 import type { ChainData, ChainDataEncoded } from './types';
 import type { ClaimId, ClaimIdString } from '../claims/types';
+import type { NodeIdEncoded } from '../nodes/types';
 
-import type { NodeId } from '../nodes/types';
-import { IdSortable } from '@matrixai/id';
+import { IdInternal, IdSortable } from '@matrixai/id';
 import * as claimsUtils from '../claims/utils';
 import { isIdString, isId, makeIdString, makeId } from '../GenericIdTypes';
 
@@ -45,10 +45,10 @@ function makeClaimIdString(arg) {
   return makeIdString<ClaimIdString>(arg);
 }
 
-function createClaimIdGenerator(nodeId: NodeId, lastClaimId?: ClaimId) {
+function createClaimIdGenerator(nodeId: NodeIdEncoded, lastClaimId?: ClaimId) {
   const generator = new IdSortable({
     lastId: lastClaimId,
-    nodeId: Buffer.from(nodeId),
+    nodeId: IdInternal.fromString(nodeId).toBuffer(),
   });
   return () => makeClaimId(Buffer.from(generator.get()));
 }

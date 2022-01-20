@@ -7,6 +7,7 @@ import type * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 import process from 'process';
 import * as grpcUtils from '../../grpc/utils';
 import * as agentPB from '../../proto/js/polykey/v1/agent/agent_pb';
+import { utils as nodeUtils } from '../../nodes';
 
 function agentStatus({
   authenticate,
@@ -32,7 +33,7 @@ function agentStatus({
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
       response.setPid(process.pid);
-      response.setNodeId(keyManager.getNodeId());
+      response.setNodeId(nodeUtils.encodeNodeId(keyManager.getNodeId()));
       response.setClientHost(grpcServerClient.host);
       response.setClientPort(grpcServerClient.port);
       response.setIngressHost(revProxy.getIngressHost());

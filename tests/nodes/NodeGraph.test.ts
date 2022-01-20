@@ -6,12 +6,12 @@ import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
+import { IdInternal } from '@matrixai/id';
 import { NodeManager, errors as nodesErrors } from '@/nodes';
 import { KeyManager, utils as keysUtils } from '@/keys';
 import { ForwardProxy, ReverseProxy } from '@/network';
 import * as nodesUtils from '@/nodes/utils';
 import { Sigchain } from '@/sigchain';
-import { makeNodeId } from '@/nodes/utils';
 import * as nodesTestUtils from './utils';
 
 // Mocks.
@@ -27,27 +27,21 @@ describe('NodeGraph', () => {
   let nodeGraph: NodeGraph;
   let nodeId: NodeId;
 
-  const nodeId1 = makeNodeId(
-    new Uint8Array([
-      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-      0, 0, 0, 0, 0, 0, 5,
-    ]),
-  );
-  const nodeId2 = makeNodeId(
-    new Uint8Array([
-      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-      0, 0, 0, 0, 0, 0, 8,
-    ]),
-  );
-  const nodeId3 = makeNodeId(
-    new Uint8Array([
-      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-      0, 0, 0, 0, 0, 0, 124,
-    ]),
-  );
+  const nodeId1 = IdInternal.create<NodeId>([
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 5,
+  ]);
+  const nodeId2 = IdInternal.create<NodeId>([
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 8,
+  ]);
+  const nodeId3 = IdInternal.create<NodeId>([
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 124,
+  ]);
   // Const nodeId2 = makeNodeId('vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg');
   // const nodeId3 = makeNodeId('v359vgrgmqf1r5g4fvisiddjknjko6bmm4qv7646jr7fi9enbfuug');
-  const dummyNode = makeNodeId(
+  const dummyNode = nodesUtils.decodeNodeId(
     'vi3et1hrpv2m2lrplcm7cu913kr45v51cak54vm68anlbvuf83ra0',
   );
 
@@ -63,7 +57,7 @@ describe('NodeGraph', () => {
   let sigchain: Sigchain;
 
   const nodeIdGenerator = (number: number) => {
-    const idArray = new Uint8Array([
+    const idArray = [
       223,
       24,
       34,
@@ -96,8 +90,8 @@ describe('NodeGraph', () => {
       23,
       77,
       number,
-    ]);
-    return makeNodeId(idArray);
+    ];
+    return IdInternal.create<NodeId>(idArray);
   };
 
   beforeAll(async () => {
@@ -582,7 +576,7 @@ describe('NodeGraph', () => {
       let nodeCount = 0;
       for (const b of newBuckets) {
         for (const n of Object.keys(b)) {
-          const nodeId = makeNodeId(n);
+          const nodeId = IdInternal.fromString<NodeId>(n);
           // Check that it was a node in the original DB
           expect(initialNodes[nodeId]).toBeDefined();
           // Check it's in the correct bucket

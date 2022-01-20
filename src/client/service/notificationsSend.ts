@@ -22,7 +22,7 @@ function notificationsSend({
     try {
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
-      const receivingId = nodesUtils.makeNodeId(call.request.getReceiverId());
+      const receivingId = nodesUtils.decodeNodeId(call.request.getReceiverId());
       const data = {
         type: 'General',
         message: call.request.getData()?.getMessage(),

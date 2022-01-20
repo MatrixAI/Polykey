@@ -21,9 +21,8 @@ function gestaltsGestaltGetByNode({
     try {
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
-      const gestalt = await gestaltGraph.getGestaltByNode(
-        nodesUtils.makeNodeId(call.request.getNodeId()),
-      );
+      const nodeId = nodesUtils.decodeNodeId(call.request.getNodeId()!);
+      const gestalt = await gestaltGraph.getGestaltByNode(nodeId);
       if (gestalt != null) {
         response.setGestaltGraph(JSON.stringify(gestalt));
       }

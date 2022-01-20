@@ -17,8 +17,8 @@ function vaultsScan({
     call: grpc.ServerWritableStream<nodesPB.Node, vaultsPB.List>,
   ): Promise<void> => {
     const genWritable = grpcUtils.generatorWritable(call);
-    // Const nodeId = makeNodeId(call.request.getNodeId());
-
+    // Const possibleNodeId = nodesUtils.decodeNodeId(call.request.getNodeId());
+    // const nodeId = nodesUtils.validateNodeId(possibleNodeId);
     try {
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);

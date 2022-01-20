@@ -29,23 +29,17 @@ function nodesAdd({
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
       // Validate the passed node ID and host
-      const validNodeId = nodesUtils.isNodeId(call.request.getNodeId());
-      if (!validNodeId) {
-        throw new nodesErrors.ErrorInvalidNodeId();
-      }
+      const nodeId = nodesUtils.decodeNodeId(call.request.getNodeId());
       const validHost = networkUtils.isValidHost(
         call.request.getAddress()!.getHost(),
       );
       if (!validHost) {
         throw new nodesErrors.ErrorInvalidHost();
       }
-      await nodeManager.setNode(
-        nodesUtils.makeNodeId(call.request.getNodeId()),
-        {
-          host: call.request.getAddress()!.getHost(),
-          port: call.request.getAddress()!.getPort(),
-        } as NodeAddress,
-      );
+      await nodeManager.setNode(nodeId, {
+        host: call.request.getAddress()!.getHost(),
+        port: call.request.getAddress()!.getPort(),
+      } as NodeAddress);
       callback(null, response);
       return;
     } catch (err) {

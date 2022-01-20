@@ -71,7 +71,7 @@ describe('renew', () => {
     expect(fwdTLSConfig1).toEqual(expectedTLSConfig1);
     expect(revTLSConfig1).toEqual(expectedTLSConfig1);
     expect(serverTLSConfig1).toEqual(expectedTLSConfig1);
-    expect(nodeId1).toBe(nodeIdStatus1);
+    expect(nodeId1.equals(nodeIdStatus1)).toBe(true);
     // Renew keypair
     const passPath = path.join(dataDir, 'passwordNew');
     await fs.promises.writeFile(passPath, 'password-new');
@@ -104,7 +104,7 @@ describe('renew', () => {
     expect(rootKeyPair2.publicKey).not.toBe(rootKeyPair1.publicKey);
     expect(nodeId1).not.toBe(nodeId2);
     expect(nodeIdStatus1).not.toBe(nodeIdStatus2);
-    expect(nodeId2).toBe(nodeIdStatus2);
+    expect(nodeId2.equals(nodeIdStatus2)).toBe(true);
     // Revert side effects
     await fs.promises.writeFile(passPath, password);
     ({ exitCode } = await testBinUtils.pkStdio(

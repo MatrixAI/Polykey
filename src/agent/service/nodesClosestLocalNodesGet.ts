@@ -19,7 +19,7 @@ function nodesClosestLocalNodesGet({
   ): Promise<void> => {
     const response = new nodesPB.NodeTable();
     try {
-      const targetNodeId = nodesUtils.makeNodeId(call.request.getNodeId());
+      const targetNodeId = nodesUtils.decodeNodeId(call.request.getNodeId());
       // Get all local nodes that are closest to the target node from the request
       const closestNodes = await nodeManager.getClosestLocalNodes(targetNodeId);
       for (const node of closestNodes) {
@@ -27,7 +27,9 @@ function nodesClosestLocalNodesGet({
         addressMessage.setHost(node.address.host);
         addressMessage.setPort(node.address.port);
         // Add the node to the response's map (mapping of node ID -> node address)
-        response.getNodeTableMap().set(node.id, addressMessage);
+        response
+          .getNodeTableMap()
+          .set(nodesUtils.encodeNodeId(node.id), addressMessage);
       }
     } catch (err) {
       callback(grpcUtils.fromError(err), response);

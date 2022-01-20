@@ -11,6 +11,7 @@ import { Mutex } from 'async-mutex';
 import * as sessionsUtils from './utils';
 import * as sessionsErrors from './errors';
 import * as keysUtils from '../keys/utils';
+import { utils as nodesUtils } from '../nodes';
 
 interface SessionManager extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
@@ -154,8 +155,8 @@ class SessionManager {
     expiry: number | undefined = this.expiry,
   ): Promise<SessionToken> {
     const payload = {
-      iss: this.keyManager.getNodeId(),
-      sub: this.keyManager.getNodeId(),
+      iss: nodesUtils.encodeNodeId(this.keyManager.getNodeId()),
+      sub: nodesUtils.encodeNodeId(this.keyManager.getNodeId()),
     };
     const token = await sessionsUtils.createSessionToken(
       payload,

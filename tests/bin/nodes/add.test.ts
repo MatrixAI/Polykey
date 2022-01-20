@@ -3,9 +3,11 @@ import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
+import { IdInternal } from '@matrixai/id';
 import PolykeyAgent from '@/PolykeyAgent';
 import * as nodesUtils from '@/nodes/utils';
 import * as testBinUtils from '../utils';
+import * as testUtils from '../../utils';
 
 jest.mock('@/keys/utils', () => ({
   ...jest.requireActual('@/keys/utils'),
@@ -21,10 +23,8 @@ describe('add', () => {
   let passwordFile: string;
   let polykeyAgent: PolykeyAgent;
 
-  const validNodeId = nodesUtils.makeNodeId(
-    'vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0',
-  );
-  const invalidNodeId = 'INVALIDID' as NodeId;
+  const validNodeId = testUtils.generateRandomNodeId();
+  const invalidNodeId = IdInternal.fromString<NodeId>('INVALIDID');
   const validHost = '0.0.0.0';
   const invalidHost = 'INVALIDHOST';
   const port = 55555;
@@ -69,7 +69,7 @@ describe('add', () => {
   test('add a node', async () => {
     const commands = genCommands([
       'add',
-      validNodeId,
+      nodesUtils.encodeNodeId(validNodeId),
       validHost,
       port.toString(),
     ]);
@@ -87,7 +87,7 @@ describe('add', () => {
     async () => {
       const commands = genCommands([
         'add',
-        invalidNodeId,
+        nodesUtils.encodeNodeId(invalidNodeId),
         validHost,
         port.toString(),
       ]);
@@ -102,7 +102,7 @@ describe('add', () => {
     async () => {
       const commands = genCommands([
         'add',
-        validNodeId,
+        nodesUtils.encodeNodeId(validNodeId),
         invalidHost,
         port.toString(),
       ]);

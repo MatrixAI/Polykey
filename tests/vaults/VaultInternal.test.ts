@@ -9,14 +9,8 @@ import { VaultInternal } from '@/vaults';
 import { generateVaultId, generateVaultKey } from '@/vaults/utils';
 import * as vaultsErrors from '@/vaults/errors';
 import { sleep } from '@/utils';
-import { KeyManager } from '@/keys';
-
-// Mocks.
-jest.mock('@/keys/utils', () => ({
-  ...jest.requireActual('@/keys/utils'),
-  generateDeterministicKeyPair:
-    jest.requireActual('@/keys/utils').generateKeyPair,
-}));
+import { KeyManager, utils as keysUtils } from '@/keys';
+import * as testUtils from '../utils';
 
 describe('VaultInternal', () => {
   let dataDir: string;
@@ -28,8 +22,21 @@ describe('VaultInternal', () => {
   let efs: EncryptedFS;
   const logger = new Logger('Vault', LogLevel.WARN, [new StreamHandler()]);
   let keyManager: KeyManager;
+  let mockedGenerateKeyPair: jest.SpyInstance;
+  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
 
   beforeEach(async () => {
+    const globalKeyPair = await testUtils.setupGlobalKeypair();
+    mockedGenerateKeyPair = jest
+      .spyOn(keysUtils, 'generateKeyPair')
+      .mockResolvedValue(globalKeyPair);
+    mockedGenerateDeterministicKeyPair = jest
+      .spyOn(keysUtils, 'generateDeterministicKeyPair')
+      .mockResolvedValue(globalKeyPair);
+
+    dataDir = await fs.promises.mkdtemp(
+      path.join(os.tmpdir(), 'polykey-test-'),
+    );
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -59,6 +66,8 @@ describe('VaultInternal', () => {
   });
 
   afterEach(async () => {
+    mockedGenerateKeyPair.mockRestore();
+    mockedGenerateDeterministicKeyPair.mockRestore();
     await vault.destroy();
     await efs.stop();
     await efs.destroy();

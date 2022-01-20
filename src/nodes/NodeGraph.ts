@@ -11,6 +11,7 @@ import {
   CreateDestroyStartStop,
   ready,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
+import { IdInternal } from '@matrixai/id';
 import * as nodesUtils from './utils';
 import * as nodesErrors from './errors';
 
@@ -410,7 +411,7 @@ class NodeGraph {
       // 2. Re-add all the nodes from all buckets
       for (const b of buckets) {
         for (const n of Object.keys(b)) {
-          const nodeId = n as NodeId;
+          const nodeId: NodeId = IdInternal.fromString(n);
           const newIndex = this.getBucketIndex(nodeId);
           let expectedBucket = tempBuckets[newIndex];
           // The following is more or less copied from setNodeOps
@@ -472,7 +473,8 @@ class NodeGraph {
     // Iterate over all of the nodes in each bucket
     const distanceToNodes: Array<NodeData> = [];
     buckets.forEach(function (bucket) {
-      for (const nodeId of Object.keys(bucket) as Array<NodeId>) {
+      for (const nodeIdString of Object.keys(bucket)) {
+        const nodeId: NodeId = IdInternal.fromString(nodeIdString);
         // Compute the distance from the node, and add it to the array.
         distanceToNodes.push({
           id: nodeId,
@@ -559,7 +561,7 @@ class NodeGraph {
         if (contacted[nodeData.id]) {
           continue;
         }
-        if (nodeData.id === targetNodeId) {
+        if (nodeData.id.equals(targetNodeId)) {
           // FoundTarget = true;
           // Attempt to create a connection to the node. Will throw an error
           // (ErrorConnectionStart, from ConnectionForward) if the connection

@@ -1,5 +1,4 @@
 import type { Host, Port } from '@/network/types';
-import type { NodeId } from '@/nodes/types';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { Metadata } from '@grpc/grpc-js';
 import { GRPCServer } from '@/grpc';
@@ -10,6 +9,7 @@ import {
 } from '@/client';
 import agentUnlock from '@/client/service/agentUnlock';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
+import { utils as nodesUtils } from '@/nodes';
 
 describe('agentUnlock', () => {
   const logger = new Logger('agentUnlock test', LogLevel.WARN, [
@@ -33,7 +33,9 @@ describe('agentUnlock', () => {
       port: 0 as Port,
     });
     grpcClient = await GRPCClientClient.createGRPCClientClient({
-      nodeId: 'vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg' as NodeId,
+      nodeId: nodesUtils.decodeNodeId(
+        'vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg',
+      ),
       host: '127.0.0.1' as Host,
       port: grpcServer.port,
       logger,

@@ -55,7 +55,9 @@ describe('PolykeyClient', () => {
       fs,
       logger,
     });
-    expect(pkClient.grpcClient.nodeId).toBe(pkAgent.keyManager.getNodeId());
+    expect(pkClient.grpcClient.nodeId).toStrictEqual(
+      pkAgent.keyManager.getNodeId(),
+    );
     expect(pkClient.grpcClient.host).toBe(pkAgent.grpcServerClient.host);
     expect(pkClient.grpcClient.port).toBe(pkAgent.grpcServerClient.port);
     expect(pkClient.grpcClient.secured).toBe(true);

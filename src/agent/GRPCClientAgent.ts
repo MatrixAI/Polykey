@@ -13,7 +13,8 @@ import type * as notificationsPB from '../proto/js/polykey/v1/notifications/noti
 import Logger from '@matrixai/logger';
 import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
 import * as agentErrors from './errors';
-import { GRPCClient, utils as grpcUtils } from '../grpc';
+import * as grpcUtils from '../grpc/utils';
+import GRPCClient from '../grpc/GRPCClient';
 import { AgentServiceClient } from '../proto/js/polykey/v1/agent_service_grpc_pb';
 
 interface GRPCClientAgent extends CreateDestroy {}

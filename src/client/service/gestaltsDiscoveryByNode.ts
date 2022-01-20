@@ -23,9 +23,8 @@ function gestaltsDiscoveryByNode({
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
       // Constructing identity info.
-      const gen = discovery.discoverGestaltByNode(
-        nodesUtils.makeNodeId(info.getNodeId()),
-      );
+      const nodeId = nodesUtils.decodeNodeId(info.getNodeId()!);
+      const gen = discovery.discoverGestaltByNode(nodeId);
       for await (const _ of gen) {
         // Empty
       }

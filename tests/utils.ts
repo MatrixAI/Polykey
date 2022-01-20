@@ -1,8 +1,10 @@
 import type { StatusLive } from '@/status/types';
+import type { NodeId } from '@/nodes/types';
 import path from 'path';
 import fs from 'fs';
 import lock from 'fd-lock';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
+import { IdInternal } from '@matrixai/id';
 import { PolykeyAgent } from '@';
 import { Status } from '@/status';
 import { utils as keysUtils } from '@/keys';
@@ -169,4 +171,10 @@ async function setupGlobalAgent(
   };
 }
 
-export { setupGlobalKeypair, setupGlobalAgent };
+function generateRandomNodeId(): NodeId {
+  // Make it easy to read with an identifier
+  const random = keysUtils.getRandomBytesSync(16).toString('hex');
+  return IdInternal.fromString<NodeId>(random);
+}
+
+export { setupGlobalKeypair, setupGlobalAgent, generateRandomNodeId };

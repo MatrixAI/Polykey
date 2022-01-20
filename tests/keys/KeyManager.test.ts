@@ -124,7 +124,7 @@ describe('KeyManager', () => {
         recoveryCode,
       });
       expect(await keyManager.checkPassword('newpassword')).toBe(true);
-      expect(keyManager.getNodeId()).toBe(nodeId);
+      expect(keyManager.getNodeId()).toStrictEqual(nodeId);
       await keyManager.stop();
     },
     global.defaultTimeout * 2,
@@ -157,7 +157,7 @@ describe('KeyManager', () => {
       expect(keyManager2.getRecoveryCode()).toBe(recoveryCode);
       const nodeId2 = keyManager2.getNodeId();
       await keyManager2.stop();
-      expect(nodeId1).toBe(nodeId2);
+      expect(nodeId1).toStrictEqual(nodeId2);
     },
     global.defaultTimeout * 2,
   );

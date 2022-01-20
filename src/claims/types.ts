@@ -1,5 +1,5 @@
 import type { Opaque } from '../types';
-import type { NodeId } from '../nodes/types';
+import type { NodeIdEncoded } from '../nodes/types';
 import type { ProviderId, IdentityId } from '../identities/types';
 import type { GeneralJWS, FlattenedJWSInput } from 'jose';
 import type { Id, IdString } from '../GenericIdTypes';
@@ -19,7 +19,7 @@ type Claim = {
     data: ClaimData; // Our custom payload data
     iat: number; // Timestamp (initialised at JWS field)
   };
-  signatures: Record<NodeId | string, SignatureData>; // Signee node ID -> claim signature // FIXME: the string union on VaultId is to prevent some false errors.
+  signatures: Record<NodeIdEncoded, SignatureData>; // Signee node ID -> claim signature
 };
 
 /**
@@ -38,7 +38,7 @@ type SignatureData = {
   signature: string;
   header: {
     alg: string; // Signing algorithm (e.g. RS256 for RSA keys)
-    kid: NodeId; // Node ID of the signing keynode
+    kid: NodeIdEncoded; // Node ID of the signing keynode
   };
 };
 
@@ -84,12 +84,12 @@ type ClaimData = ClaimLinkNode | ClaimLinkIdentity;
 // Cryptolink (to either a node or an identity)
 type ClaimLinkNode = {
   type: 'node';
-  node1: NodeId;
-  node2: NodeId;
+  node1: NodeIdEncoded;
+  node2: NodeIdEncoded;
 };
 type ClaimLinkIdentity = {
   type: 'identity';
-  node: NodeId;
+  node: NodeIdEncoded;
   provider: ProviderId;
   identity: IdentityId;
 };

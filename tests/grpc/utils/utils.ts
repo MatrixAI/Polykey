@@ -8,6 +8,7 @@ import {
   TestServiceService,
   TestServiceClient,
 } from '@/proto/js/polykey/v1/test_service_grpc_pb';
+import { utils as nodesUtils } from '@/nodes';
 import createTestService from './testService';
 
 async function openTestServer(
@@ -57,7 +58,7 @@ async function openTestClientSecure(
 ): Promise<TestServiceClient> {
   const clientOptions = {
     // Prevents complaints with having an ip address as the server name
-    'grpc.ssl_target_name_override': nodeId,
+    'grpc.ssl_target_name_override': nodesUtils.encodeNodeId(nodeId),
   };
   const clientCredentials = grpcUtils.clientSecureCredentials(
     keyPrivatePem,

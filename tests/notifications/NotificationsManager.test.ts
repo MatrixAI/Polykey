@@ -22,6 +22,8 @@ import { AgentServiceService, createAgentService } from '@/agent';
 
 import * as networkUtils from '@/network/utils';
 import { generateVaultId } from '@/vaults/utils';
+import { utils as nodesUtils } from '@/nodes';
+import * as testUtils from '../utils';
 
 // Mocks.
 jest.mock('@/keys/utils', () => ({
@@ -33,7 +35,7 @@ jest.mock('@/keys/utils', () => ({
 describe('NotificationsManager', () => {
   const password = 'password';
   const node: NodeInfo = {
-    id: 'NodeId' as NodeId,
+    id: nodesUtils.encodeNodeId(testUtils.generateRandomNodeId()),
     chain: {},
   };
   const logger = new Logger('NotificationsManager Test', LogLevel.WARN, [
@@ -359,7 +361,7 @@ describe('NotificationsManager', () => {
     );
     const notifs = await receiverNotificationsManager.readNotifications();
     expect(notifs[0].data).toEqual(notificationData);
-    expect(notifs[0].senderId).toEqual(senderNodeId);
+    expect(notifs[0].senderId).toEqual(nodesUtils.encodeNodeId(senderNodeId));
     expect(notifs[0].isRead).toBeTruthy();
 
     await senderNotificationsManager.stop();

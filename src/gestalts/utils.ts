@@ -12,6 +12,7 @@ import type { IdentityId, ProviderId } from '../identities/types';
 
 import canonicalize from 'canonicalize';
 import { ErrorGestaltsInvalidAction } from './errors';
+import { utils as nodesUtils } from '../nodes';
 
 /**
  * Construct GestaltKey from GestaltId
@@ -37,7 +38,10 @@ function ungestaltKey(gestaltKey: GestaltKey): GestaltId {
  * Construct GestaltKey from NodeId
  */
 function keyFromNode(nodeId: NodeId): GestaltNodeKey {
-  return gestaltKey({ type: 'node', nodeId }) as GestaltNodeKey;
+  return gestaltKey({
+    type: 'node',
+    nodeId: nodesUtils.encodeNodeId(nodeId),
+  }) as GestaltNodeKey;
 }
 
 /**
@@ -60,7 +64,7 @@ function keyFromIdentity(
  */
 function nodeFromKey(nodeKey: GestaltNodeKey): NodeId {
   const node = ungestaltKey(nodeKey) as GestaltNodeId;
-  return node.nodeId;
+  return nodesUtils.decodeNodeId(node.nodeId);
 }
 
 /**

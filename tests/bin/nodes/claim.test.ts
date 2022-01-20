@@ -1,9 +1,10 @@
-import type { NodeId } from '@/nodes/types';
+import type { NodeId, NodeIdEncoded } from '@/nodes/types';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
+import { utils as nodesUtils } from '@/nodes';
 import * as testBinUtils from '../utils';
 import * as testNodesUtils from '../../nodes/utils';
 
@@ -25,6 +26,7 @@ describe('claim', () => {
 
   let keynodeId: NodeId;
   let remoteOnlineNodeId: NodeId;
+  let remoteOnlineNodeIdEncoded: NodeIdEncoded;
 
   // Helper functions
   function genCommands(options: Array<string>) {
@@ -57,6 +59,7 @@ describe('claim', () => {
       logger,
     });
     remoteOnlineNodeId = remoteOnline.nodeManager.getNodeId();
+    remoteOnlineNodeIdEncoded = nodesUtils.encodeNodeId(remoteOnlineNodeId);
     await testNodesUtils.nodesConnect(polykeyAgent, remoteOnline);
 
     await remoteOnline.nodeManager.setNode(keynodeId, {
@@ -106,11 +109,14 @@ describe('claim', () => {
   test(
     'send a gestalt invite',
     async () => {
-      const commands = genCommands(['claim', remoteOnlineNodeId]);
+      const commands = genCommands([
+        'claim',
+        nodesUtils.encodeNodeId(remoteOnlineNodeId),
+      ]);
       const result = await testBinUtils.pkStdio(commands);
       expect(result.exitCode).toBe(0); // Succeeds.
       expect(result.stdout).toContain('Gestalt Invite');
-      expect(result.stdout).toContain(remoteOnlineNodeId);
+      expect(result.stdout).toContain(remoteOnlineNodeIdEncoded);
     },
     global.polykeyStartupTimeout * 4,
   );
@@ -121,23 +127,26 @@ describe('claim', () => {
     // Needs to be forced, as the local node has already received an invitation
     const commands = genCommands([
       'claim',
-      remoteOnlineNodeId,
+      nodesUtils.encodeNodeId(remoteOnlineNodeId),
       '--force-invite',
     ]);
     const result = await testBinUtils.pkStdio(commands, {}, dataDir);
     expect(result.exitCode).toBe(0); // Succeeds.
     expect(result.stdout).toContain('Gestalt Invite');
-    expect(result.stdout).toContain(remoteOnlineNodeId);
+    expect(result.stdout).toContain(remoteOnlineNodeIdEncoded);
   });
   test('claim the remote node', async () => {
     await remoteOnline.notificationsManager.sendNotification(keynodeId, {
       type: 'GestaltInvite',
     });
     // Received an invitation, so will attempt to perform the claiming process
-    const commands = genCommands(['claim', remoteOnlineNodeId]);
+    const commands = genCommands([
+      'claim',
+      nodesUtils.encodeNodeId(remoteOnlineNodeId),
+    ]);
     const result = await testBinUtils.pkStdio(commands, {}, dataDir);
     expect(result.exitCode).toBe(0); // Succeeds.
     expect(result.stdout).toContain('cryptolink claim');
-    expect(result.stdout).toContain(remoteOnlineNodeId);
+    expect(result.stdout).toContain(remoteOnlineNodeIdEncoded);
   });
 });

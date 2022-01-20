@@ -37,6 +37,9 @@ describe('ping', () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
+    rootDataDir = await fs.promises.mkdtemp(
+      path.join(os.tmpdir(), 'polykey-test-'),
+    );
     nodePath = path.join(dataDir, 'keynode');
     passwordFile = path.join(dataDir, 'passwordFile');
     await fs.promises.writeFile(passwordFile, 'password');
@@ -95,7 +98,10 @@ describe('ping', () => {
   test(
     'fail when pinging an offline node',
     async () => {
-      const commands = genCommands(['ping', remoteOfflineNodeId]);
+      const commands = genCommands([
+        'ping',
+        nodesUtils.encodeNodeId(remoteOfflineNodeId),
+      ]);
       const result = await testBinUtils.pkStdio(commands, {}, dataDir);
       expect(result.exitCode).toBe(1); // Should fail with no response. for automation purposes.
       expect(result.stdout).toContain('No response received');
@@ -103,7 +109,7 @@ describe('ping', () => {
       // Checking for json output
       const commands2 = genCommands([
         'ping',
-        remoteOfflineNodeId,
+        nodesUtils.encodeNodeId(remoteOfflineNodeId),
         '--format',
         'json',
       ]);
@@ -116,16 +122,24 @@ describe('ping', () => {
   test(
     'fail if node cannot be found',
     async () => {
-      const fakeNodeId = nodesUtils.makeNodeId(
+      const fakeNodeId = nodesUtils.decodeNodeId(
         'vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0',
       );
-      const commands = genCommands(['ping', fakeNodeId]);
-      const result = await testBinUtils.pkStdio(commands, {}, dataDir);
+      const commands = genCommands([
+        'ping',
+        nodesUtils.encodeNodeId(fakeNodeId),
+      ]);
+      const result = await testBinUtils.pk(commands);
       expect(result.exitCode).not.toBe(0); // Should fail if node doesn't exist.
       expect(result.stdout).toContain('Failed to resolve node ID');
 
       // Json format.
-      const commands2 = genCommands(['ping', fakeNodeId, '--format', 'json']);
+      const commands2 = genCommands([
+        'ping',
+        nodesUtils.encodeNodeId(fakeNodeId),
+        '--format',
+        'json',
+      ]);
       const result2 = await testBinUtils.pkStdio(commands2, {}, dataDir);
       expect(result2.exitCode).not.toBe(0); // Should fail if node doesn't exist.
       expect(result2.stdout).toContain('success');
@@ -136,7 +150,10 @@ describe('ping', () => {
     global.failedConnectionTimeout * 2,
   );
   test('succeed when pinging a live node', async () => {
-    const commands = genCommands(['ping', remoteOnlineNodeId]);
+    const commands = genCommands([
+      'ping',
+      nodesUtils.encodeNodeId(remoteOnlineNodeId),
+    ]);
     const result = await testBinUtils.pkStdio(commands, {}, dataDir);
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain('Node is Active.');
@@ -144,7 +161,7 @@ describe('ping', () => {
     // Checking for Json output.
     const commands2 = genCommands([
       'ping',
-      remoteOnlineNodeId,
+      nodesUtils.encodeNodeId(remoteOnlineNodeId),
       '--format',
       'json',
     ]);

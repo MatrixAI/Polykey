@@ -8,6 +8,7 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { utils as idUtils } from '@matrixai/id';
 import PolykeyAgent from '@/PolykeyAgent';
 import { makeVaultId } from '@/vaults/utils';
+import { utils as nodesUtils } from '@/nodes';
 import * as testBinUtils from '../utils';
 
 jest.mock('@/keys/utils', () => ({
@@ -106,7 +107,11 @@ describe('CLI Notifications', () => {
         },
         vaults: {},
       });
-      const commands = genCommandsSender(['send', receiverNodeId, 'msg']);
+      const commands = genCommandsSender([
+        'send',
+        nodesUtils.encodeNodeId(receiverNodeId),
+        'msg',
+      ]);
       const result = await testBinUtils.pkStdio(commands, {}, senderDataDir);
       expect(result.exitCode).toBe(0); // Succeeds
       const notifications =
@@ -121,7 +126,11 @@ describe('CLI Notifications', () => {
         gestalt: {},
         vaults: {},
       });
-      const commands = genCommandsSender(['send', receiverNodeId, 'msg']);
+      const commands = genCommandsSender([
+        'send',
+        nodesUtils.encodeNodeId(receiverNodeId),
+        'msg',
+      ]);
       const result = await testBinUtils.pkStdio(commands, {}, senderDataDir);
       expect(result.exitCode).toBe(0); // Succeeds
       const notifications =
@@ -139,17 +148,17 @@ describe('CLI Notifications', () => {
       });
       const senderCommands1 = genCommandsSender([
         'send',
-        receiverNodeId,
+        nodesUtils.encodeNodeId(receiverNodeId),
         'msg1',
       ]);
       const senderCommands2 = genCommandsSender([
         'send',
-        receiverNodeId,
+        nodesUtils.encodeNodeId(receiverNodeId),
         'msg2',
       ]);
       const senderCommands3 = genCommandsSender([
         'send',
-        receiverNodeId,
+        nodesUtils.encodeNodeId(receiverNodeId),
         'msg3',
       ]);
       await testBinUtils.pkStdio(senderCommands1, {}, senderDataDir);
@@ -167,7 +176,7 @@ describe('CLI Notifications', () => {
       expect(result1.stdout).toContain('msg3');
       const senderCommands4 = genCommandsSender([
         'send',
-        receiverNodeId,
+        nodesUtils.encodeNodeId(receiverNodeId),
         'msg4',
       ]);
       await testBinUtils.pkStdio(senderCommands4, {}, senderDataDir);
@@ -191,17 +200,17 @@ describe('CLI Notifications', () => {
       });
       const senderCommands1 = genCommandsSender([
         'send',
-        receiverNodeId,
+        nodesUtils.encodeNodeId(receiverNodeId),
         'msg1',
       ]);
       const senderCommands2 = genCommandsSender([
         'send',
-        receiverNodeId,
+        nodesUtils.encodeNodeId(receiverNodeId),
         'msg2',
       ]);
       const senderCommands3 = genCommandsSender([
         'send',
-        receiverNodeId,
+        nodesUtils.encodeNodeId(receiverNodeId),
         'msg3',
       ]);
       await testBinUtils.pkStdio(senderCommands1, {}, senderDataDir);
@@ -211,7 +220,7 @@ describe('CLI Notifications', () => {
       await testBinUtils.pkStdio(receiverCommands1, {}, receiverDataDir);
       const senderCommands4 = genCommandsSender([
         'send',
-        receiverNodeId,
+        nodesUtils.encodeNodeId(receiverNodeId),
         'msg4',
       ]);
       await testBinUtils.pkStdio(senderCommands4, {}, senderDataDir);
@@ -236,17 +245,17 @@ describe('CLI Notifications', () => {
       });
       const senderCommands1 = genCommandsSender([
         'send',
-        receiverNodeId,
+        nodesUtils.encodeNodeId(receiverNodeId),
         'msg1',
       ]);
       const senderCommands2 = genCommandsSender([
         'send',
-        receiverNodeId,
+        nodesUtils.encodeNodeId(receiverNodeId),
         'msg2',
       ]);
       const senderCommands3 = genCommandsSender([
         'send',
-        receiverNodeId,
+        nodesUtils.encodeNodeId(receiverNodeId),
         'msg3',
       ]);
       await testBinUtils.pkStdio(senderCommands1, {}, senderDataDir);
@@ -272,17 +281,17 @@ describe('CLI Notifications', () => {
       });
       const senderCommands1 = genCommandsSender([
         'send',
-        receiverNodeId,
+        nodesUtils.encodeNodeId(receiverNodeId),
         'msg1',
       ]);
       const senderCommands2 = genCommandsSender([
         'send',
-        receiverNodeId,
+        nodesUtils.encodeNodeId(receiverNodeId),
         'msg2',
       ]);
       const senderCommands3 = genCommandsSender([
         'send',
-        receiverNodeId,
+        nodesUtils.encodeNodeId(receiverNodeId),
         'msg3',
       ]);
       await testBinUtils.pkStdio(senderCommands1, {}, senderDataDir);
@@ -344,7 +353,7 @@ describe('CLI Notifications', () => {
       };
       const notificationData3: NotificationData = {
         type: 'VaultShare',
-        vaultId: makeVaultId(idUtils.fromString('vaultId')).toString(),
+        vaultId: makeVaultId(idUtils.fromString('vaultIdxxxxxxxxx')).toString(),
         vaultName: 'vaultName' as VaultName,
         actions: {
           clone: null,
@@ -381,17 +390,17 @@ describe('CLI Notifications', () => {
       });
       const senderCommands1 = genCommandsSender([
         'send',
-        receiverNodeId,
+        nodesUtils.encodeNodeId(receiverNodeId),
         'msg1',
       ]);
       const senderCommands2 = genCommandsSender([
         'send',
-        receiverNodeId,
+        nodesUtils.encodeNodeId(receiverNodeId),
         'msg2',
       ]);
       const senderCommands3 = genCommandsSender([
         'send',
-        receiverNodeId,
+        nodesUtils.encodeNodeId(receiverNodeId),
         'msg3',
       ]);
       await testBinUtils.pkStdio(senderCommands1, {}, senderDataDir);
