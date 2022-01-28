@@ -18,6 +18,7 @@ import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
 import * as discoveryErrors from './errors';
 import * as gestaltsUtils from '../gestalts/utils';
 import * as claimsUtils from '../claims/utils';
+import { utils as nodesUtils } from '../nodes';
 
 interface Discovery extends CreateDestroy {}
 @CreateDestroy()
@@ -112,7 +113,8 @@ class Discovery {
         // The sigchain data of the vertex (containing all cryptolinks)
         let vertexChainData: ChainData = {};
         // If the vertex we've found is our own node, we simply get our own chain
-        if (vertexGId.nodeId === this.nodeManager.getNodeId()) {
+        const nodeId = nodesUtils.decodeNodeId(vertexGId.nodeId);
+        if (nodeId.equals(this.nodeManager.getNodeId())) {
           const vertexChainDataEncoded = await this.nodeManager.getChainData();
           // Decode all our claims - no need to verify (on our own sigchain)
           for (const c in vertexChainDataEncoded) {
@@ -123,9 +125,7 @@ class Discovery {
           }
           // Otherwise, request the verified chain data from the node
         } else {
-          vertexChainData = await this.nodeManager.requestChainData(
-            vertexGId.nodeId,
-          );
+          vertexChainData = await this.nodeManager.requestChainData(nodeId);
         }
 
         // TODO: for now, the chain data is treated as a 'disjoint' set of
@@ -136,7 +136,7 @@ class Discovery {
 
         // Now have the NodeInfo of this vertex
         const vertexNodeInfo: NodeInfo = {
-          id: vertexGId.nodeId,
+          id: nodesUtils.encodeNodeId(nodeId),
           chain: vertexChainData,
         };
 
@@ -150,12 +150,14 @@ class Discovery {
           // If the claim is to a node
           if (claim.payload.data.type === 'node') {
             // Get the chain data of the linked node
-            const linkedVertexNodeId = claim.payload.data.node2;
+            const linkedVertexNodeId = nodesUtils.decodeNodeId(
+              claim.payload.data.node2,
+            );
             const linkedVertexChainData =
               await this.nodeManager.requestChainData(linkedVertexNodeId);
             // With this verified chain, we can link
             const linkedVertexNodeInfo: NodeInfo = {
-              id: linkedVertexNodeId,
+              id: nodesUtils.encodeNodeId(linkedVertexNodeId),
               chain: linkedVertexChainData,
             };
             await this.gestaltGraph.linkNodeAndNode(
@@ -200,7 +202,7 @@ class Discovery {
           }
         }
         // Add this node vertex to the visited
-        visitedVertices.add(gestaltsUtils.keyFromNode(vertexGId.nodeId));
+        visitedVertices.add(gestaltsUtils.keyFromNode(nodeId));
       } else if (vertexGId.type === 'identity') {
         // If the next vertex is an identity, perform a social discovery
         // Firstly get the identity info of this identity
@@ -222,14 +224,14 @@ class Discovery {
           // Claims on an identity provider will always be node -> identity
           // So just cast payload data as such
           const data = claim.payload.data as ClaimLinkIdentity;
-          const linkedVertexNodeId = data.node;
+          const linkedVertexNodeId = nodesUtils.decodeNodeId(data.node);
           // Get the chain data of this claimed node (so that we can link in GG)
           const linkedVertexChainData = await this.nodeManager.requestChainData(
             linkedVertexNodeId,
           );
           // With this verified chain, we can link
           const linkedVertexNodeInfo: NodeInfo = {
-            id: linkedVertexNodeId,
+            id: nodesUtils.encodeNodeId(linkedVertexNodeId),
             chain: linkedVertexChainData,
           };
           await this.gestaltGraph.linkNodeAndIdentity(
@@ -314,7 +316,7 @@ class Discovery {
       // Verify the claim with the public key of the node
       const verified = await claimsUtils.verifyClaimSignature(
         encoded,
-        await this.nodeManager.getPublicKey(data.node),
+        await this.nodeManager.getPublicKey(nodesUtils.decodeNodeId(data.node)),
       );
       // If verified, add to the record
       if (verified) {

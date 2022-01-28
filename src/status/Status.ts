@@ -6,13 +6,16 @@ import type {
   StatusDead,
 } from './types';
 import type { FileSystem, FileHandle } from '../types';
+import type { NodeId } from '../nodes/types';
 import Logger from '@matrixai/logger';
 import lock from 'fd-lock';
 import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
+import { IdInternal } from '@matrixai/id';
 import * as statusErrors from './errors';
 import * as statusUtils from './utils';
 import { sleep, poll } from '../utils';
 import * as errors from '../errors';
+import { utils as nodesUtils } from '../nodes';
 
 interface Status extends StartStop {}
 @StartStop()
@@ -136,7 +139,7 @@ class Status {
       }
       let statusInfo;
       try {
-        statusInfo = JSON.parse(statusData);
+        statusInfo = JSON.parse(statusData, this.nodeIdReviver);
       } catch (e) {
         throw new statusErrors.ErrorStatusParse('JSON parsing failed');
       }
@@ -175,7 +178,7 @@ class Status {
       try {
         await statusFile.truncate();
         await statusFile.write(
-          JSON.stringify(statusInfo, undefined, 2) + '\n',
+          JSON.stringify(statusInfo, this.nodeIdReplacer, 2) + '\n',
           0,
           'utf-8',
         );
@@ -228,7 +231,7 @@ class Status {
       }
       let statusInfo;
       try {
-        statusInfo = JSON.parse(statusData);
+        statusInfo = JSON.parse(statusData, this.nodeIdReviver);
       } catch (e) {
         throw new statusErrors.ErrorStatusParse('JSON parsing failed');
       }
@@ -249,7 +252,7 @@ class Status {
       try {
         await statusFile.truncate();
         await statusFile.write(
-          JSON.stringify(statusInfo, undefined, 2) + '\n',
+          JSON.stringify(statusInfo, this.nodeIdReplacer, 2) + '\n',
           0,
           'utf-8',
         );
@@ -310,6 +313,17 @@ class Status {
     }
     return statusInfo;
   }
+
+  private nodeIdReplacer = (key, value) => {
+    if (key === 'nodeId')
+      return nodesUtils.encodeNodeId(IdInternal.create<NodeId>(value.data));
+    return value;
+  };
+
+  private nodeIdReviver = (key, value) => {
+    if (key === 'nodeId') return nodesUtils.decodeNodeId(value);
+    return value;
+  };
 }
 
 export default Status;

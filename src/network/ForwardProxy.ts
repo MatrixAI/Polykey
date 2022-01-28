@@ -13,6 +13,7 @@ import ConnectionForward from './ConnectionForward';
 import * as networkUtils from './utils';
 import * as networkErrors from './errors';
 import { promisify, timerStart, timerStop } from '../utils';
+import { utils as nodesUtils } from '../nodes';
 
 interface ForwardProxy extends StartStop {}
 @StartStop()
@@ -299,7 +300,11 @@ class ForwardProxy {
       return;
     }
     const url = new URL(`pk://${request.url}`);
-    const nodeId = url.searchParams.get('nodeId') as NodeId | null;
+    const nodeIdEncodedForURL = url.searchParams.get('nodeId');
+    const nodeId =
+      nodeIdEncodedForURL != null
+        ? nodesUtils.decodeNodeId(nodeIdEncodedForURL)
+        : undefined;
     if (nodeId == null) {
       await clientSocketEnd('HTTP/1.1 400 Bad Request\r\n' + '\r\n');
       clientSocket.destroy(new networkErrors.ErrorForwardProxyMissingNodeId());

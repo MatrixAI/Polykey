@@ -9,6 +9,7 @@ import { utils as grpcUtils } from '../../grpc';
 import { utils as claimsUtils } from '../../claims';
 import { errors as identitiesErrors } from '../../identities';
 import * as identitiesPB from '../../proto/js/polykey/v1/identities/identities_pb';
+import { utils as nodeUtils } from '../../nodes';
 
 /**
  * Augments the keynode with a new identity.
@@ -44,7 +45,7 @@ function identitiesClaim({
       // Create identity claim on our node
       const [, claim] = await sigchain.addClaim({
         type: 'identity',
-        node: nodeManager.getNodeId(),
+        node: nodeUtils.encodeNodeId(nodeManager.getNodeId()),
         provider: providerId,
         identity: identityId,
       });

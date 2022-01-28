@@ -5,7 +5,7 @@ import type {
   SignatureData,
   ClaimIntermediary,
 } from './types';
-import type { NodeId } from '../nodes/types';
+import type { NodeIdEncoded } from '../nodes/types';
 import type { PublicKeyPem, PrivateKeyPem } from '../keys/types';
 import type { POJO } from '../types';
 
@@ -15,13 +15,13 @@ import { createPublicKey, createPrivateKey } from 'crypto';
 import { GeneralSign, generalVerify, generateKeyPair, base64url } from 'jose';
 import { md } from 'node-forge';
 import canonicalize from 'canonicalize';
-
 import {
   claimIdentityValidate,
   claimNodeSinglySignedValidate,
   claimNodeDoublySignedValidate,
 } from './schema';
 import * as claimsErrors from './errors';
+
 import * as nodesPB from '../proto/js/polykey/v1/nodes/nodes_pb';
 
 /**
@@ -47,7 +47,7 @@ async function createClaim({
   hPrev: string | null;
   seq: number;
   data: ClaimData;
-  kid: NodeId;
+  kid: NodeIdEncoded;
   alg?: string;
 }): Promise<ClaimEncoded> {
   const payload = {
@@ -79,7 +79,7 @@ async function signExistingClaim({
 }: {
   claim: ClaimEncoded;
   privateKey: PrivateKeyPem;
-  kid: NodeId;
+  kid: NodeIdEncoded;
   alg?: string;
 }): Promise<ClaimEncoded> {
   const decodedClaim = await decodeClaim(claim);
@@ -111,7 +111,7 @@ async function signIntermediaryClaim({
 }: {
   claim: ClaimIntermediary;
   privateKey: PrivateKeyPem;
-  signeeNodeId: NodeId;
+  signeeNodeId: NodeIdEncoded;
   alg?: string;
 }): Promise<ClaimEncoded> {
   // Won't ever be undefined (at least in agentService), but for type safety
@@ -161,7 +161,7 @@ function hashClaim(claim: ClaimEncoded): string {
  */
 function decodeClaim(claim: ClaimEncoded): Claim {
   const textDecoder = new TextDecoder();
-  const signatures: Record<NodeId, SignatureData> = {};
+  const signatures: Record<NodeIdEncoded, SignatureData> = {};
   // Add each of the signatures and their decoded headers
   for (const data of claim.signatures) {
     // Again, should never be reached
@@ -223,12 +223,18 @@ function decodeClaim(claim: ClaimEncoded): Claim {
  * Decodes the header of a ClaimEncoded.
  * Assumes encoded header is of form { alg: string, kid: NodeId }.
  */
-function decodeClaimHeader(header: string): { alg: string; kid: NodeId } {
+function decodeClaimHeader(header: string): {
+  alg: string;
+  kid: NodeIdEncoded;
+} {
   const textDecoder = new TextDecoder();
   const decodedHeader = JSON.parse(
     textDecoder.decode(base64url.decode(header)),
   );
-  return { alg: decodedHeader.alg, kid: decodedHeader.kid as NodeId };
+  return {
+    alg: decodedHeader.alg,
+    kid: decodedHeader.kid,
+  };
 }
 
 /**
@@ -251,13 +257,14 @@ async function encodeClaim(claim: Claim): Promise<ClaimEncoded> {
   );
   // Sign the new claim with dummy private keys for now
   for (const nodeId in claim.signatures) {
-    const signatureData = claim.signatures[nodeId as NodeId];
+    const signatureData = claim.signatures[nodeId];
     const header = signatureData.header;
     // Create a dummy private key for the current alg
     const { privateKey } = await generateKeyPair(header.alg);
-    unsignedClaim
-      .addSignature(privateKey)
-      .setProtectedHeader({ alg: header.alg, kid: header.kid });
+    unsignedClaim.addSignature(privateKey).setProtectedHeader({
+      alg: header.alg,
+      kid: header.kid,
+    });
   }
   const incorrectClaim = await unsignedClaim.sign();
 
@@ -275,7 +282,7 @@ async function encodeClaim(claim: Claim): Promise<ClaimEncoded> {
     const decodedHeader = JSON.parse(
       textDecoder.decode(base64url.decode(data.protected)),
     );
-    const nodeId = decodedHeader.kid as NodeId;
+    const nodeId = decodedHeader.kid;
     // Get the correct signature from the original passed Claim
     const correctSignature = claim.signatures[nodeId].signature;
     correctSignatureData.push({

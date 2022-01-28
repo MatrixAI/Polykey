@@ -9,7 +9,6 @@ import type {
   NodeMapping,
   NodeData,
   NodeBucket,
-  NodeConnectionMap,
 } from '../nodes/types';
 import type { SignedNotification } from '../notifications/types';
 import type { Host, Hostname, Port } from '../network/types';
@@ -26,12 +25,30 @@ import {
   CreateDestroyStartStop,
   ready,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
+import { IdInternal } from '@matrixai/id';
 import NodeGraph from './NodeGraph';
 import NodeConnection from './NodeConnection';
 import * as nodesErrors from './errors';
 import { utils as networkUtils, errors as networkErrors } from '../network';
 import * as sigchainUtils from '../sigchain/utils';
 import * as claimsUtils from '../claims/utils';
+import { utils as nodesUtils } from '../nodes';
+
+/**
+ * Data structure to store all NodeConnections. If a connection to a node n does
+ * not exist, no entry for n will exist in the map. Alternatively, if a
+ * connection is currently being instantiated by some thread, an entry will
+ * exist in the map, but only with the lock (no connection object). Once a
+ * connection is instantiated, the entry in the map is updated to include the
+ * connection object.
+ */
+type NodeConnectionMap = Map<
+  string,
+  {
+    connection?: NodeConnection;
+    lock: MutexInterface;
+  }
+>;
 
 interface NodeManager extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
@@ -134,7 +151,7 @@ class NodeManager {
       });
       // Add the seed nodes to the NodeGraph
       for (const id in this.seedNodes) {
-        const seedNodeId = id as NodeId;
+        const seedNodeId: NodeId = IdInternal.fromString(id);
         await this.nodeGraph.setNode(seedNodeId, this.seedNodes[seedNodeId]);
       }
       this.logger.info(`Started ${this.constructor.name}`);
@@ -154,7 +171,7 @@ class NodeManager {
       // TODO: Potentially, we could instead re-start any connections in start
       // This assumes that after stopping the proxies, their connections are
       // also still valid on restart though.
-      this.connections.delete(targetNodeId);
+      this.connections.delete(targetNodeId.toString());
     }
     await this.nodeGraph.stop();
     this.logger.info(`Stopped ${this.constructor.name}`);
@@ -298,10 +315,10 @@ class NodeManager {
       const claimId = c as ClaimIdString;
       const payload = verifiedChainData[claimId].payload;
       if (payload.data.type === 'node') {
-        const endNodeId = payload.data.node2;
+        const endNodeId = nodesUtils.decodeNodeId(payload.data.node2);
         let endPublicKey: PublicKeyPem;
         // If the claim points back to our own node, don't attempt to connect
-        if (endNodeId === this.getNodeId()) {
+        if (endNodeId.equals(this.getNodeId())) {
           endPublicKey = this.keyManager.getRootKeyPairPem().publicKey;
           // Otherwise, get the public key from the root cert chain (by connection)
         } else {
@@ -339,8 +356,8 @@ class NodeManager {
       // 2. Create your intermediary claim
       const singlySignedClaim = await sigchain.createIntermediaryClaim({
         type: 'node',
-        node1: this.getNodeId(),
-        node2: targetNodeId,
+        node1: nodesUtils.encodeNodeId(this.getNodeId()),
+        node2: nodesUtils.encodeNodeId(targetNodeId),
       });
       // Receive back your verified doubly signed claim.
       const doublySignedClaim = await connection.claimNode(singlySignedClaim);
@@ -385,11 +402,11 @@ class NodeManager {
   @ready(new nodesErrors.ErrorNodeManagerNotRunning())
   public async relayHolePunchMessage(message: nodesPB.Relay): Promise<void> {
     const conn = await this.getConnectionToNode(
-      message.getTargetId() as NodeId,
+      nodesUtils.decodeNodeId(message.getTargetId()),
     );
     await conn.sendHolePunchMessage(
-      message.getSrcId() as NodeId,
-      message.getTargetId() as NodeId,
+      nodesUtils.decodeNodeId(message.getSrcId()),
+      nodesUtils.decodeNodeId(message.getTargetId()),
       message.getEgressAddress(),
       Buffer.from(message.getSignature()),
     );
@@ -419,7 +436,7 @@ class NodeManager {
   ): Promise<NodeConnection> {
     let connection: NodeConnection | undefined;
     let lock: MutexInterface;
-    let connAndLock = this.connections.get(targetNodeId);
+    let connAndLock = this.connections.get(targetNodeId.toString());
     if (connAndLock != null) {
       ({ connection, lock } = connAndLock);
       if (connection != null) {
@@ -441,7 +458,7 @@ class NodeManager {
     } else {
       lock = new Mutex();
       connAndLock = { lock };
-      this.connections.set(targetNodeId, connAndLock);
+      this.connections.set(targetNodeId.toString(), connAndLock);
       let release;
       try {
         release = await lock.acquire();
@@ -481,7 +498,7 @@ class NodeManager {
       logger: this.logger,
     });
     // Add it to the map of active connections
-    this.connections.set(targetNodeId, { connection, lock });
+    this.connections.set(targetNodeId.toString(), { connection, lock });
     return connection;
   }
 
@@ -507,7 +524,7 @@ class NodeManager {
     this.seedNodes = {};
     try {
       for (const id in this.seedNodes) {
-        const seedNodeId = id as NodeId;
+        const seedNodeId: NodeId = IdInternal.fromString(id);
         try {
           connections.set(
             seedNodeId,
@@ -605,9 +622,9 @@ class NodeManager {
    * Retrieves all the vaults for a peers node
    */
   @ready(new nodesErrors.ErrorNodeManagerNotRunning())
-  public async scanNodeVaults(nodeId: string): Promise<Array<string>> {
+  public async scanNodeVaults(nodeId: NodeId): Promise<Array<string>> {
     // Create a connection to another node
-    const connection = await this.getConnectionToNode(nodeId as NodeId);
+    const connection = await this.getConnectionToNode(nodeId);
     // Scan the vaults of the node over the connection
     return await connection.scanVaults();
   }

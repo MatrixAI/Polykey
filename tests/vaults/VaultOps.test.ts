@@ -1,5 +1,4 @@
 import type { Vault, VaultId } from '@/vaults/types';
-import type { NodeId } from '@/nodes/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -11,13 +10,7 @@ import { VaultInternal, vaultOps } from '@/vaults';
 import { KeyManager } from '@/keys';
 import { generateVaultId } from '@/vaults/utils';
 import * as keysUtils from '@/keys/utils';
-
-// Mocks.
-jest.mock('@/keys/utils', () => ({
-  ...jest.requireActual('@/keys/utils'),
-  generateDeterministicKeyPair:
-    jest.requireActual('@/keys/utils').generateKeyPair,
-}));
+import * as testUtils from '../utils';
 
 describe('VaultOps', () => {
   const password = 'password';
@@ -28,19 +21,31 @@ describe('VaultOps', () => {
 
   let dataDir: string;
 
+  let keyManager: KeyManager;
   let baseEfs: EncryptedFS;
 
   let vaultId: VaultId;
   let vaultInternal: VaultInternal;
   let vault: Vault;
 
+  let mockedGenerateKeyPair: jest.SpyInstance;
+  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
+
   beforeAll(async () => {
+    const globalKeyPair = await testUtils.setupGlobalKeypair();
+    mockedGenerateKeyPair = jest
+      .spyOn(keysUtils, 'generateKeyPair')
+      .mockResolvedValue(globalKeyPair);
+    mockedGenerateDeterministicKeyPair = jest
+      .spyOn(keysUtils, 'generateDeterministicKeyPair')
+      .mockResolvedValue(globalKeyPair);
+
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
     const keysPath = path.join(dataDir, 'keys');
 
-    const keyManager = await KeyManager.createKeyManager({
+    keyManager = await KeyManager.createKeyManager({
       keysPath,
       password,
       logger,
@@ -53,13 +58,15 @@ describe('VaultOps', () => {
       logger,
     });
     await baseEfs.start();
-    await keyManager.stop();
-    await keyManager.destroy();
   });
 
   afterAll(async () => {
+    mockedGenerateKeyPair.mockRestore();
+    mockedGenerateDeterministicKeyPair.mockRestore();
     await baseEfs.stop();
     await baseEfs.destroy();
+    await keyManager.stop();
+    await keyManager.destroy();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
@@ -71,13 +78,8 @@ describe('VaultOps', () => {
     await baseEfs.mkdir(path.join(idUtils.toString(vaultId), 'contents'), {
       recursive: true,
     });
-    const fakeKeynode = {
-      getNodeId: () => {
-        return 'DummyNodeId' as NodeId;
-      },
-    };
     vaultInternal = await VaultInternal.create({
-      keyManager: fakeKeynode as KeyManager,
+      keyManager: keyManager,
       vaultId,
       efs: baseEfs,
       logger: logger.getChild(VaultInternal.name),

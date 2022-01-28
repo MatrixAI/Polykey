@@ -6,6 +6,7 @@ import fs from 'fs';
 import Logger, { StreamHandler, LogLevel } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 
+import { IdInternal } from '@matrixai/id';
 import { ForwardProxy, ReverseProxy } from '@/network';
 import { NodeConnection, NodeManager } from '@/nodes';
 import { VaultManager } from '@/vaults';
@@ -20,9 +21,9 @@ import { NotificationsManager } from '@/notifications';
 import * as nodesUtils from '@/nodes/utils';
 import * as nodesErrors from '@/nodes/errors';
 import * as networkErrors from '@/network/errors';
-import { makeNodeId } from '@/nodes/utils';
 import { poll } from '@/utils';
 import * as nodesTestUtils from './utils';
+import * as testUtils from '../utils';
 
 // Mocks.
 jest.mock('@/keys/utils', () => ({
@@ -34,7 +35,7 @@ jest.mock('@/keys/utils', () => ({
 describe('NodeConnection', () => {
   const password = 'password';
   const node: NodeInfo = {
-    id: 'NodeId' as NodeId,
+    id: nodesUtils.encodeNodeId(testUtils.generateRandomNodeId()),
     chain: {},
   };
   const logger = new Logger('NodeConnection Test', LogLevel.WARN, [
@@ -63,7 +64,7 @@ describe('NodeConnection', () => {
 
   let agentServer: GRPCServer;
 
-  const nodeIdGenerator = (number: number) => {
+  const nodeIdGenerator = (number: number): NodeId => {
     const idArray = new Uint8Array([
       223,
       24,
@@ -98,7 +99,7 @@ describe('NodeConnection', () => {
       77,
       number,
     ]);
-    return makeNodeId(idArray);
+    return IdInternal.fromBuffer<NodeId>(Buffer.from(idArray));
   };
 
   // Meep IPs unique. Ideally we'd use the generated IP and port. But this is good for now.
@@ -292,6 +293,7 @@ describe('NodeConnection', () => {
       targetPort: targetPort,
       forwardProxy: clientFwdProxy,
       keyManager: clientKeyManager,
+      connTimeout: 1000,
       logger: logger,
     });
     await expect(nodeConnection.destroy()).rejects.toThrow(
@@ -308,7 +310,9 @@ describe('NodeConnection', () => {
       nodeConnection.getRootCertChain();
     }).toThrow(nodesErrors.ErrorNodeConnectionNotRunning);
     await expect(async () => {
-      await nodeConnection.getClosestNodes('abc' as NodeId);
+      await nodeConnection.getClosestNodes(
+        IdInternal.fromString<NodeId>('abc'),
+      );
     }).rejects.toThrow(nodesErrors.ErrorNodeConnectionNotRunning);
     // Explicitly close the connection such that there's no interference in next test
     await serverRevProxy.closeConnection(sourceHost, sourcePort);
@@ -330,6 +334,7 @@ describe('NodeConnection', () => {
       },
       (e) => {
         if (e instanceof networkErrors.ErrorConnectionNotComposed) return false;
+        if (e instanceof networkErrors.ErrorConnectionNotRunning) return false;
         return true;
       },
     );
@@ -351,7 +356,7 @@ describe('NodeConnection', () => {
         targetNodeId: targetNodeId,
         targetHost: '128.0.0.1' as Host,
         targetPort: 12345 as Port,
-        connTimeout: 300,
+        connTimeout: 1000,
         forwardProxy: clientFwdProxy,
         keyManager: clientKeyManager,
         logger: logger,
@@ -420,7 +425,7 @@ describe('NodeConnection', () => {
     // const vault5 = await serverVaultManager.createVault('Vault5' as VaultName);
 
     await serverGestaltGraph.setNode({
-      id: sourceNodeId,
+      id: nodesUtils.encodeNodeId(sourceNodeId),
       chain: {},
     });
 

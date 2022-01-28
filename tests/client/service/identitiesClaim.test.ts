@@ -1,7 +1,7 @@
 import type { Host, Port } from '@/network/types';
-import type { NodeId } from '@/nodes/types';
 import type { IdentityId, ProviderId } from '@/identities/types';
 import type { ClaimLinkIdentity } from '@/claims/types';
+import type { NodeIdEncoded } from '@/nodes/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -42,7 +42,7 @@ describe('identitiesClaim', () => {
   };
   const claimData: ClaimLinkIdentity = {
     type: 'identity',
-    node: 'vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg' as NodeId,
+    node: 'vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg' as NodeIdEncoded,
     provider: testToken.providerId,
     identity: testToken.identityId,
   };

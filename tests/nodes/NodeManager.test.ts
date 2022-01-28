@@ -7,14 +7,15 @@ import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
+import { IdInternal } from '@matrixai/id';
 import { PolykeyAgent } from '@';
 import { KeyManager, utils as keysUtils } from '@/keys';
 import { NodeManager, errors as nodesErrors } from '@/nodes';
 import { ForwardProxy, ReverseProxy } from '@/network';
 import { Sigchain } from '@/sigchain';
 import { utils as claimsUtils } from '@/claims';
-import { makeNodeId } from '@/nodes/utils';
 import { sleep } from '@/utils';
+import { utils as nodesUtils } from '@/nodes';
 
 // Mocks.
 jest.mock('@/keys/utils', () => ({
@@ -42,13 +43,13 @@ describe('NodeManager', () => {
   const serverHost = '::1' as Host;
   const serverPort = 1 as Port;
 
-  const nodeId1 = makeNodeId(
+  const nodeId1 = nodesUtils.decodeNodeId(
     'vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0',
   );
-  const nodeId2 = makeNodeId(
+  const nodeId2 = nodesUtils.decodeNodeId(
     'vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg',
   );
-  const dummyNode = makeNodeId(
+  const dummyNode = nodesUtils.decodeNodeId(
     'vi3et1hrpv2m2lrplcm7cu913kr45v51cak54vm68anlbvuf83ra0',
   );
 
@@ -193,7 +194,9 @@ describe('NodeManager', () => {
       expect(initialConnLock).toBeUndefined();
       await nodeManager.getConnectionToNode(targetNodeId);
       // @ts-ignore get connection + lock from protected NodeConnectionMap
-      const finalConnLock = nodeManager.connections.get(targetNodeId);
+      const finalConnLock = nodeManager.connections.get(
+        targetNodeId.toString(),
+      );
       // Check entry is in map and lock is released
       expect(finalConnLock).toBeDefined();
       expect(finalConnLock?.lock.isLocked()).toBeFalsy();
@@ -228,7 +231,9 @@ describe('NodeManager', () => {
       // @ts-ignore accessing protected NodeConnectionMap
       expect(nodeManager.connections.size).toBe(1);
       // @ts-ignore get connection + lock from protected NodeConnectionMap
-      const finalConnLock = nodeManager.connections.get(targetNodeId);
+      const finalConnLock = nodeManager.connections.get(
+        targetNodeId.toString(),
+      );
       // Check entry is in map and lock is released
       expect(finalConnLock).toBeDefined();
       expect(finalConnLock?.lock.isLocked()).toBeFalsy();
@@ -516,7 +521,9 @@ describe('NodeManager', () => {
           },
           signatures: expect.any(Object),
         });
-        const signatureNodeIds = Object.keys(decoded.signatures) as NodeId[];
+        const signatureNodeIds = Object.keys(decoded.signatures).map(
+          (idString) => IdInternal.fromString<NodeId>(idString),
+        );
         expect(signatureNodeIds.length).toBe(2);
         // Verify the 2 signatures
         expect(signatureNodeIds).toContain(xNodeId);
@@ -550,7 +557,9 @@ describe('NodeManager', () => {
           },
           signatures: expect.any(Object),
         });
-        const signatureNodeIds = Object.keys(decoded.signatures) as NodeId[];
+        const signatureNodeIds = Object.keys(decoded.signatures).map(
+          (idString) => IdInternal.fromString<NodeId>(idString),
+        );
         expect(signatureNodeIds.length).toBe(2);
         // Verify the 2 signatures
         expect(signatureNodeIds).toContain(xNodeId);

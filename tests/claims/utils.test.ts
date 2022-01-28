@@ -1,7 +1,6 @@
 import type { GeneralJWSInput } from 'jose';
 import type { PrivateKeyPem, PublicKeyPem } from '@/keys/types';
 import type { IdentityId, ProviderId } from '@/identities/types';
-import type { NodeId } from '@/nodes/types';
 import type { Claim } from '@/claims/types';
 import { createPublicKey, createPrivateKey } from 'crypto';
 import { generalVerify, GeneralSign } from 'jose';
@@ -9,10 +8,17 @@ import canonicalize from 'canonicalize';
 import { sleep } from '@/utils';
 import * as claimsUtils from '@/claims/utils';
 import * as claimsErrors from '@/claims/errors';
-import * as keysUtils from '@/keys/utils';
+import { utils as keysUtils } from '@/keys';
+import { utils as nodesUtils } from '@/nodes';
 import * as testUtils from '../utils';
 
 describe('claims/utils', () => {
+  // Node Ids
+  const nodeId1 = testUtils.generateRandomNodeId();
+  const nodeId1Encoded = nodesUtils.encodeNodeId(nodeId1);
+  const nodeId2 = testUtils.generateRandomNodeId();
+  const nodeId2Encoded = nodesUtils.encodeNodeId(nodeId2);
+
   let publicKey: PublicKeyPem;
   let privateKey: PrivateKeyPem;
   beforeAll(async () => {
@@ -28,10 +34,10 @@ describe('claims/utils', () => {
       seq: 1,
       data: {
         type: 'node',
-        node1: 'node1' as NodeId,
-        node2: 'node2' as NodeId,
+        node1: nodeId1Encoded,
+        node2: nodeId2Encoded,
       },
-      kid: 'node1' as NodeId,
+      kid: nodeId1Encoded,
     });
     const identityClaim = await claimsUtils.createClaim({
       privateKey,
@@ -39,11 +45,11 @@ describe('claims/utils', () => {
       seq: 1,
       data: {
         type: 'identity',
-        node: 'node1' as NodeId,
+        node: nodeId1Encoded,
         provider: 'provider1' as ProviderId,
         identity: 'identity1' as IdentityId,
       },
-      kid: 'node1' as NodeId,
+      kid: nodeId1Encoded,
     });
 
     // Verify the claims with the module itself (to check the fields)
@@ -52,7 +58,10 @@ describe('claims/utils', () => {
     const jwkPublicKey = createPublicKey(publicKey);
     const { payload: nodePayload, protectedHeader: nodeProtectedHeader } =
       await generalVerify(nodeClaim as GeneralJWSInput, jwkPublicKey);
-    expect(nodeProtectedHeader).toStrictEqual({ alg: 'RS256', kid: 'node1' });
+    expect(nodeProtectedHeader).toStrictEqual({
+      alg: 'RS256',
+      kid: nodeId1Encoded,
+    });
     const textDecoder = new TextDecoder();
     const decodedNodePayload = JSON.parse(textDecoder.decode(nodePayload));
     expect(decodedNodePayload).toStrictEqual({
@@ -60,8 +69,8 @@ describe('claims/utils', () => {
       seq: 1,
       data: {
         type: 'node',
-        node1: 'node1' as NodeId,
-        node2: 'node2' as NodeId,
+        node1: nodeId1Encoded,
+        node2: nodeId2Encoded,
       },
       iat: expect.any(Number),
     });
@@ -72,7 +81,7 @@ describe('claims/utils', () => {
     } = await generalVerify(identityClaim as GeneralJWSInput, jwkPublicKey);
     expect(identityProtectedHeader).toStrictEqual({
       alg: 'RS256',
-      kid: 'node1',
+      kid: nodeId1Encoded,
     });
     const decodedIdentityPayload = JSON.parse(
       textDecoder.decode(identityPayload),
@@ -82,7 +91,7 @@ describe('claims/utils', () => {
       seq: 1,
       data: {
         type: 'identity',
-        node: 'node1' as NodeId,
+        node: nodeId1Encoded,
         provider: 'provider1' as ProviderId,
         identity: 'identity1' as IdentityId,
       },
@@ -96,10 +105,10 @@ describe('claims/utils', () => {
       seq: 1,
       data: {
         type: 'node',
-        node1: 'node1' as NodeId,
-        node2: 'node2' as NodeId,
+        node1: nodeId1Encoded,
+        node2: nodeId2Encoded,
       },
-      kid: 'node1' as NodeId,
+      kid: nodeId1Encoded,
     });
     const decoded = claimsUtils.decodeClaim(claim);
     expect(decoded).toStrictEqual({
@@ -108,8 +117,8 @@ describe('claims/utils', () => {
         seq: 1,
         data: {
           type: 'node',
-          node1: 'node1' as NodeId,
-          node2: 'node2' as NodeId,
+          node1: nodeId1Encoded,
+          node2: nodeId2Encoded,
         },
         iat: expect.any(Number),
       },
@@ -119,12 +128,12 @@ describe('claims/utils', () => {
     // Check we only have 1 signature
     expect(Object.keys(decoded.signatures).length).toBe(1);
     // Check signature of 'node1'
-    expect(decoded.signatures['node1']).toBeDefined();
-    const header = decoded.signatures['node1'].header;
-    const signature = decoded.signatures['node1'].signature;
+    expect(decoded.signatures[nodeId1Encoded]).toBeDefined();
+    const header = decoded.signatures[nodeId1Encoded].header;
+    const signature = decoded.signatures[nodeId1Encoded].signature;
     expect(typeof signature).toBe('string');
     expect(header.alg).toBe('RS256');
-    expect(header.kid).toBe('node1');
+    expect(header.kid).toBe(nodeId1Encoded);
   });
   test('decodes a doubly signed node claim', async () => {
     const claim = await claimsUtils.createClaim({
@@ -133,16 +142,16 @@ describe('claims/utils', () => {
       seq: 1,
       data: {
         type: 'node',
-        node1: 'node1' as NodeId,
-        node2: 'node2' as NodeId,
+        node1: nodeId1Encoded,
+        node2: nodeId2Encoded,
       },
-      kid: 'node1' as NodeId,
+      kid: nodeId1Encoded,
     });
     // Add another signature to the claim
     const doublySignedClaim = await claimsUtils.signExistingClaim({
       claim,
       privateKey,
-      kid: 'node2' as NodeId,
+      kid: nodeId2Encoded,
     });
     const decoded = claimsUtils.decodeClaim(doublySignedClaim);
     expect(decoded).toStrictEqual({
@@ -151,8 +160,8 @@ describe('claims/utils', () => {
         seq: 1,
         data: {
           type: 'node',
-          node1: 'node1' as NodeId,
-          node2: 'node2' as NodeId,
+          node1: nodeId1Encoded,
+          node2: nodeId2Encoded,
         },
         iat: expect.any(Number),
       },
@@ -162,19 +171,19 @@ describe('claims/utils', () => {
     // Check we have both signatures
     expect(Object.keys(decoded.signatures).length).toBe(2);
     // Check signature of 'node1'
-    expect(decoded.signatures['node1']).toBeDefined();
-    const header1 = decoded.signatures['node1'].header;
-    const signature1 = decoded.signatures['node1'].signature;
+    expect(decoded.signatures[nodeId1Encoded]).toBeDefined();
+    const header1 = decoded.signatures[nodeId1Encoded].header;
+    const signature1 = decoded.signatures[nodeId1Encoded].signature;
     expect(typeof signature1).toBe('string');
     expect(header1.alg).toBe('RS256');
-    expect(header1.kid).toBe('node1');
+    expect(header1.kid).toBe(nodeId1Encoded);
     // Check signature of 'node2'
-    expect(decoded.signatures['node2']).toBeDefined();
-    const header2 = decoded.signatures['node2'].header;
-    const signature2 = decoded.signatures['node2'].signature;
+    expect(decoded.signatures[nodeId2Encoded]).toBeDefined();
+    const header2 = decoded.signatures[nodeId2Encoded].header;
+    const signature2 = decoded.signatures[nodeId2Encoded].signature;
     expect(typeof signature2).toBe('string');
     expect(header2.alg).toBe('RS256');
-    expect(header2.kid).toBe('node2');
+    expect(header2.kid).toBe(nodeId2Encoded);
   });
   test('decodes an identity claim', async () => {
     const claim = await claimsUtils.createClaim({
@@ -183,11 +192,11 @@ describe('claims/utils', () => {
       seq: 1,
       data: {
         type: 'identity',
-        node: 'node1' as NodeId,
+        node: nodeId1Encoded,
         provider: 'provider1' as ProviderId,
         identity: 'identity1' as IdentityId,
       },
-      kid: 'node1' as NodeId,
+      kid: nodeId1Encoded,
     });
     const decoded = claimsUtils.decodeClaim(claim);
     expect(decoded).toStrictEqual({
@@ -196,7 +205,7 @@ describe('claims/utils', () => {
         seq: 1,
         data: {
           type: 'identity',
-          node: 'node1' as NodeId,
+          node: nodeId1Encoded,
           provider: 'provider1' as ProviderId,
           identity: 'identity1' as IdentityId,
         },
@@ -208,12 +217,12 @@ describe('claims/utils', () => {
     // Check we only have 1 signature
     expect(Object.keys(decoded.signatures).length).toBe(1);
     // Check signature of 'node1'
-    expect(decoded.signatures['node1']).toBeDefined();
-    const header = decoded.signatures['node1'].header;
-    const signature = decoded.signatures['node1'].signature;
+    expect(decoded.signatures[nodeId1Encoded]).toBeDefined();
+    const header = decoded.signatures[nodeId1Encoded].header;
+    const signature = decoded.signatures[nodeId1Encoded].signature;
     expect(typeof signature).toBe('string');
     expect(header.alg).toBe('RS256');
-    expect(header.kid).toBe('node1');
+    expect(header.kid).toBe(nodeId1Encoded);
   });
   test('fails to decode an invalid claim', async () => {
     const payload = {
@@ -224,9 +233,10 @@ describe('claims/utils', () => {
     const canonicalizedPayload = canonicalize(payload);
     const byteEncoder = new TextEncoder();
     const claim = new GeneralSign(byteEncoder.encode(canonicalizedPayload));
-    claim
-      .addSignature(createPrivateKey(privateKey))
-      .setProtectedHeader({ alg: 'RS256', kid: 'node1' as NodeId });
+    claim.addSignature(createPrivateKey(privateKey)).setProtectedHeader({
+      alg: 'RS256',
+      kid: nodeId1Encoded,
+    });
     const signedClaim = await claim.sign();
     expect(() => claimsUtils.decodeClaim(signedClaim)).toThrow(
       claimsErrors.ErrorClaimValidationFailed,
@@ -239,10 +249,10 @@ describe('claims/utils', () => {
       seq: 1,
       data: {
         type: 'node',
-        node1: 'node1' as NodeId,
-        node2: 'node2' as NodeId,
+        node1: nodeId1Encoded,
+        node2: nodeId2Encoded,
       },
-      kid: 'node1' as NodeId,
+      kid: nodeId1Encoded,
     });
     expect(claim.signatures[0].protected).toBeDefined();
     const decodedHeader = claimsUtils.decodeClaimHeader(
@@ -250,7 +260,7 @@ describe('claims/utils', () => {
     );
     expect(decodedHeader).toStrictEqual({
       alg: 'RS256',
-      kid: 'node1' as NodeId,
+      kid: nodeId1Encoded,
     });
   });
   test('re-encodes a claim', async () => {
@@ -260,10 +270,10 @@ describe('claims/utils', () => {
       seq: 1,
       data: {
         type: 'node',
-        node1: 'node1' as NodeId,
-        node2: 'node2' as NodeId,
+        node1: nodeId1Encoded,
+        node2: nodeId2Encoded,
       },
-      kid: 'node1' as NodeId,
+      kid: nodeId1Encoded,
     });
     const decodedClaim = claimsUtils.decodeClaim(claim);
     const reEncodedClaim = await claimsUtils.encodeClaim(decodedClaim);
@@ -288,12 +298,15 @@ describe('claims/utils', () => {
       seq: 1,
       data: {
         type: 'node',
-        node1: 'node1' as NodeId,
-        node2: 'node2' as NodeId,
+        node1: nodeId1Encoded,
+        node2: nodeId2Encoded,
       },
       iat: expect.any(Number),
     });
-    expect(protectedHeader).toStrictEqual({ alg: 'RS256', kid: 'node1' });
+    expect(protectedHeader).toStrictEqual({
+      alg: 'RS256',
+      kid: nodeId1Encoded,
+    });
 
     // TODO: Check when using multiple signatures
     // Order of signatures array (probably) doesn't matter
@@ -305,10 +318,10 @@ describe('claims/utils', () => {
       seq: 1,
       data: {
         type: 'node',
-        node1: 'node1' as NodeId,
-        node2: 'node2' as NodeId,
+        node1: nodeId1Encoded,
+        node2: nodeId2Encoded,
       },
-      kid: 'node1' as NodeId,
+      kid: nodeId1Encoded,
     });
     expect(await claimsUtils.verifyClaimSignature(claim, publicKey)).toBe(true);
 
@@ -328,10 +341,10 @@ describe('claims/utils', () => {
       seq: 1,
       data: {
         type: 'node',
-        node1: 'node1' as NodeId,
-        node2: 'node2' as NodeId,
+        node1: nodeId1Encoded,
+        node2: nodeId2Encoded,
       },
-      kid: 'node1' as NodeId,
+      kid: nodeId1Encoded,
     });
     const hash1 = claimsUtils.hashClaim(claim1);
     expect(claimsUtils.verifyHashOfClaim(claim1, hash1)).toBe(true);
@@ -345,10 +358,10 @@ describe('claims/utils', () => {
       seq: 1,
       data: {
         type: 'node',
-        node1: 'node1' as NodeId,
-        node2: 'node2' as NodeId,
+        node1: nodeId1Encoded,
+        node2: nodeId2Encoded,
       },
-      kid: 'node1' as NodeId,
+      kid: nodeId1Encoded,
     });
     const hash2 = claimsUtils.hashClaim(claim2);
     expect(claimsUtils.verifyHashOfClaim(claim2, hash2)).toBe(true);
@@ -363,17 +376,17 @@ describe('claims/utils', () => {
         seq: 1,
         data: {
           type: 'node',
-          node1: 'node1' as NodeId,
-          node2: 'node2' as NodeId,
+          node1: nodeId1Encoded,
+          node2: nodeId2Encoded,
         },
         iat: Date.now(), // Timestamp (initialised at JWS field)
       },
       signatures: {
-        node1: {
+        [nodeId1Encoded]: {
           signature: 'signature',
           header: {
             alg: 'RS256',
-            kid: 'node1' as NodeId,
+            kid: nodeId1Encoded,
           },
         },
       }, // Signee node ID -> claim signature
@@ -388,24 +401,24 @@ describe('claims/utils', () => {
         seq: 1,
         data: {
           type: 'node',
-          node1: 'node1' as NodeId,
-          node2: 'node2' as NodeId,
+          node1: nodeId1Encoded,
+          node2: nodeId2Encoded,
         },
         iat: Date.now(), // Timestamp (initialised at JWS field)
       },
       signatures: {
-        node1: {
+        [nodeId1Encoded]: {
           signature: 'signature',
           header: {
             alg: 'RS256',
-            kid: 'node1' as NodeId,
+            kid: nodeId1Encoded,
           },
         },
-        node2: {
+        [nodeId2Encoded]: {
           signature: 'signature',
           header: {
             alg: 'RS256',
-            kid: 'node2' as NodeId,
+            kid: nodeId2Encoded,
           },
         },
       }, // Signee node ID -> claim signature
@@ -420,18 +433,18 @@ describe('claims/utils', () => {
         seq: 3,
         data: {
           type: 'identity',
-          node: 'node1' as NodeId,
+          node: nodeId1Encoded,
           identity: 'identity1' as IdentityId,
           provider: 'provider1' as ProviderId,
         },
         iat: Date.now(),
       },
       signatures: {
-        node1: {
+        [nodeId1Encoded]: {
           signature: 'signature',
           header: {
             alg: 'RS256',
-            kid: 'node1' as NodeId,
+            kid: nodeId1Encoded,
           },
         },
       },
@@ -447,8 +460,8 @@ describe('claims/utils', () => {
         seq: 1,
         data: {
           type: 'node',
-          node1: 'node1' as NodeId,
-          node2: 'node2' as NodeId,
+          node1: nodeId1Encoded,
+          node2: nodeId2Encoded,
         },
         iat: Date.now(), // Timestamp (initialised at JWS field)
       },
@@ -457,7 +470,7 @@ describe('claims/utils', () => {
           signature: 'signature',
           header: {
             alg: 'RS256',
-            kid: 'node1',
+            kid: nodeId1Encoded,
           },
         },
       }, // Signee node ID -> claim signature
@@ -481,12 +494,12 @@ describe('claims/utils', () => {
     expect(() => claimsUtils.validateSinglySignedNodeClaim(claim)).toThrow(
       claimsErrors.ErrorSinglySignedClaimValidationFailed,
     );
-    claim.payload.data.node1 = 'node1';
+    claim.payload.data.node1 = nodeId1Encoded;
     claim.payload.data.node2 = 2;
     expect(() => claimsUtils.validateSinglySignedNodeClaim(claim)).toThrow(
       claimsErrors.ErrorSinglySignedClaimValidationFailed,
     );
-    claim.payload.data.node2 = 'node2';
+    claim.payload.data.node2 = nodeId2Encoded;
     claim.payload.iat = 'invalid';
     expect(() => claimsUtils.validateSinglySignedNodeClaim(claim)).toThrow(
       claimsErrors.ErrorSinglySignedClaimValidationFailed,
@@ -502,14 +515,14 @@ describe('claims/utils', () => {
         signature: 'signature',
         header: {
           alg: 'RS256',
-          kid: 'node1',
+          kid: nodeId1Encoded,
         },
       },
       node2: {
         signature: 'signature',
         header: {
           alg: 'RS256',
-          kid: 'node2',
+          kid: nodeId2Encoded,
         },
       },
     };
@@ -531,8 +544,8 @@ describe('claims/utils', () => {
         seq: 1,
         data: {
           type: 'node',
-          node1: 'node1' as NodeId,
-          node2: 'node2' as NodeId,
+          node1: nodeId1Encoded,
+          node2: nodeId2Encoded,
         },
         iat: Date.now(), // Timestamp (initialised at JWS field)
       },
@@ -541,14 +554,14 @@ describe('claims/utils', () => {
           signature: 'signature',
           header: {
             alg: 'RS256',
-            kid: 'node1',
+            kid: nodeId1Encoded,
           },
         },
         node2: {
           signature: 'signature',
           header: {
             alg: 'RS256',
-            kid: 'node2',
+            kid: nodeId2Encoded,
           },
         },
       }, // Signee node ID -> claim signature
@@ -572,12 +585,12 @@ describe('claims/utils', () => {
     expect(() => claimsUtils.validateDoublySignedNodeClaim(claim)).toThrow(
       claimsErrors.ErrorDoublySignedClaimValidationFailed,
     );
-    claim.payload.data.node1 = 'node1';
+    claim.payload.data.node1 = nodeId1Encoded;
     claim.payload.data.node2 = 2;
     expect(() => claimsUtils.validateDoublySignedNodeClaim(claim)).toThrow(
       claimsErrors.ErrorDoublySignedClaimValidationFailed,
     );
-    claim.payload.data.node2 = 'node2';
+    claim.payload.data.node2 = nodeId2Encoded;
     claim.payload.iat = 'invalid';
     expect(() => claimsUtils.validateDoublySignedNodeClaim(claim)).toThrow(
       claimsErrors.ErrorDoublySignedClaimValidationFailed,
@@ -588,7 +601,7 @@ describe('claims/utils', () => {
         signature: 'signature',
         header: {
           alg: 'RS256',
-          kid: 'node1',
+          kid: nodeId1Encoded,
         },
       },
     };
@@ -601,14 +614,14 @@ describe('claims/utils', () => {
         signature: 'signature',
         header: {
           alg: 'RS256',
-          kid: 'node1',
+          kid: nodeId1Encoded,
         },
       },
       node2: {
         signature: 'signature',
         header: {
           alg: 'RS256',
-          kid: 'node2',
+          kid: nodeId2Encoded,
         },
       },
       node3: {
@@ -637,7 +650,7 @@ describe('claims/utils', () => {
         seq: 1,
         data: {
           type: 'identity',
-          node: 'node1' as NodeId,
+          node: nodeId1Encoded,
           identity: 'identity1' as IdentityId,
           provider: 'provider1' as ProviderId,
         },
@@ -648,7 +661,7 @@ describe('claims/utils', () => {
           signature: 'signature',
           header: {
             alg: 'RS256',
-            kid: 'node1',
+            kid: nodeId1Encoded,
           },
         },
       },
@@ -672,7 +685,7 @@ describe('claims/utils', () => {
     expect(() => claimsUtils.validateIdentityClaim(claim)).toThrow(
       claimsErrors.ErrorSinglySignedClaimValidationFailed,
     );
-    claim.payload.data.node = 'node1';
+    claim.payload.data.node = nodeId1Encoded;
     claim.payload.data.identity = 2;
     expect(() => claimsUtils.validateIdentityClaim(claim)).toThrow(
       claimsErrors.ErrorSinglySignedClaimValidationFailed,
@@ -698,14 +711,14 @@ describe('claims/utils', () => {
         signature: 'signature',
         header: {
           alg: 'RS256',
-          kid: 'node1',
+          kid: nodeId1Encoded,
         },
       },
       node2: {
         signature: 'signature',
         header: {
           alg: 'RS256',
-          kid: 'node2',
+          kid: nodeId2Encoded,
         },
       },
     };
@@ -717,7 +730,7 @@ describe('claims/utils', () => {
         signature: 'signature',
         header: {
           alg: 'RS256',
-          kid: 'node1',
+          kid: nodeId1Encoded,
         },
       },
     };

@@ -30,7 +30,7 @@ function nodesClaim({
     try {
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
-      const remoteNodeId = nodesUtils.makeNodeId(call.request.getNodeId());
+      const remoteNodeId = nodesUtils.decodeNodeId(call.request.getNodeId());
       const gestaltInvite = await notificationsManager.findGestaltInvite(
         remoteNodeId,
       );

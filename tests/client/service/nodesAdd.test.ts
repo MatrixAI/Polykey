@@ -1,5 +1,4 @@
 import type { Host, Port } from '@/network/types';
-import type { NodeId } from '@/nodes/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -19,6 +18,7 @@ import {
 import nodesAdd from '@/client/service/nodesAdd';
 import * as nodesPB from '@/proto/js/polykey/v1/nodes/nodes_pb';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
+import { utils as nodesUtils } from '@/nodes';
 import * as testUtils from '../../utils';
 
 describe('nodesAdd', () => {
@@ -147,7 +147,9 @@ describe('nodesAdd', () => {
     );
     expect(response).toBeInstanceOf(utilsPB.EmptyMessage);
     const result = await nodeManager.getNode(
-      'vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0' as NodeId,
+      nodesUtils.decodeNodeId(
+        'vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0',
+      ),
     );
     expect(result).toBeDefined();
     expect(result!.host).toBe('127.0.0.1');

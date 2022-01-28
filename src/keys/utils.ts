@@ -1,39 +1,39 @@
 import type {
+  Certificate,
+  CertificateAsn1,
+  CertificatePem,
   KeyPair,
   KeyPairAsn1,
   KeyPairPem,
-  PublicKey,
   PrivateKey,
-  PrivateKeyPem,
-  Certificate,
-  PublicKeyFingerprintBytes,
-  PublicKeyFingerprint,
-  CertificateAsn1,
-  CertificatePem,
-  PublicKeyAsn1,
   PrivateKeyAsn1,
+  PrivateKeyPem,
+  PublicKey,
+  PublicKeyAsn1,
   PublicKeyPem,
   RecoveryCode,
 } from './types';
 
+import type { NodeId } from '../nodes/types';
 import { Buffer } from 'buffer';
 import {
-  pki,
+  asn1,
+  cipher,
   md,
+  mgf,
+  pkcs5,
+  pki,
   pss,
   random,
-  cipher,
-  mgf,
-  asn1,
-  pkcs5,
   util as forgeUtil,
 } from 'node-forge';
 import * as bip39 from 'bip39';
+import { IdInternal } from '@matrixai/id';
 import * as keysErrors from './errors';
 import config from '../config';
 import * as utils from '../utils';
-import { never } from '../utils'; // Using never as utils.never seems to cause a build error. function thinks it could return undefined.
-import { makeNodeId } from '../nodes/utils';
+import { never } from '../utils';
+import { utils as nodesUtils } from '../nodes';
 
 bip39.setDefaultWordlist('english');
 
@@ -165,22 +165,14 @@ function keyPairCopy(keyPair: KeyPair): KeyPair {
   return keyPairFromAsn1(keyPairToAsn1(keyPair));
 }
 
-function publicKeyToFingerprintBytes(
-  publicKey: PublicKey,
-): PublicKeyFingerprintBytes {
+function publicKeyToNodeId(publicKey: PublicKey): NodeId {
   const fString = pki.getPublicKeyFingerprint(publicKey, {
     type: 'SubjectPublicKeyInfo',
     md: md.sha256.create(),
     encoding: 'binary',
   });
-  return fString;
-}
-
-function publicKeyToFingerprint(publicKey: PublicKey): PublicKeyFingerprint {
-  const fString = publicKeyToFingerprintBytes(publicKey);
   const fTypedArray = forgeUtil.binary.raw.decode(fString);
-  const f = makeNodeId(fTypedArray);
-  return f;
+  return IdInternal.create<NodeId>(fTypedArray);
 }
 
 function encryptPrivateKey(
@@ -239,14 +231,16 @@ function generateCertificate(
     ...subjectAttrsExtra,
     {
       name: 'commonName',
-      value: publicKeyToFingerprint(subjectPublicKey),
+      value: nodesUtils.encodeNodeId(publicKeyToNodeId(subjectPublicKey)),
     },
   ];
   const issuerAttrs = [
     ...issuerAttrsExtra,
     {
       name: 'commonName',
-      value: publicKeyToFingerprint(publicKeyFromPrivateKey(issuerPrivateKey)),
+      value: nodesUtils.encodeNodeId(
+        publicKeyToNodeId(publicKeyFromPrivateKey(issuerPrivateKey)),
+      ),
     },
   ];
   cert.setSubject(subjectAttrs);
@@ -287,7 +281,7 @@ function generateCertificate(
       altNames: [
         {
           type: 2,
-          value: publicKeyToFingerprint(subjectPublicKey),
+          value: nodesUtils.encodeNodeId(publicKeyToNodeId(subjectPublicKey)),
         },
         {
           type: 7,
@@ -588,8 +582,7 @@ export {
   keyPairToPemEncrypted,
   keyPairFromPemEncrypted,
   keyPairCopy,
-  publicKeyToFingerprintBytes,
-  publicKeyToFingerprint,
+  publicKeyToNodeId,
   encryptPrivateKey,
   decryptPrivateKey,
   publicKeyFromPrivateKey,

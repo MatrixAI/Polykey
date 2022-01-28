@@ -10,6 +10,7 @@ import { IPv4, IPv6, Validator } from 'ip-num';
 import * as networkErrors from './errors';
 import { isEmptyObject, promisify } from '../utils';
 import { utils as keysUtils } from '../keys';
+import { utils as nodesUtils } from '../nodes';
 
 const pingBuffer = serializeNetworkMessage({
   type: 'ping',
@@ -168,7 +169,7 @@ function isTLSSocket(socket: Socket | TLSSocket): socket is TLSSocket {
  */
 function certNodeId(cert: Certificate): NodeId {
   const commonName = cert.subject.getField({ type: '2.5.4.3' });
-  return commonName.value as NodeId;
+  return nodesUtils.decodeNodeId(commonName.value);
 }
 
 /**
@@ -214,10 +215,8 @@ function verifyServerCertificateChain(
         },
       );
     }
-    const certNodeId = keysUtils.publicKeyToFingerprint(
-      cert.publicKey as PublicKey,
-    );
-    if (commonName.value !== certNodeId) {
+    const certNodeId = keysUtils.publicKeyToNodeId(cert.publicKey as PublicKey);
+    if (commonName.value !== nodesUtils.encodeNodeId(certNodeId)) {
       throw new networkErrors.ErrorCertChainKeyInvalid(
         'Chain certificate public key does not generate its node id',
         {
@@ -237,7 +236,7 @@ function verifyServerCertificateChain(
         },
       );
     }
-    if (commonName.value === nodeId) {
+    if (commonName.value === nodesUtils.encodeNodeId(nodeId)) {
       // Found the certificate claiming the nodeId
       certClaim = cert;
       certClaimIndex = certIndex;
@@ -311,10 +310,8 @@ function verifyClientCertificateChain(certChain: Array<Certificate>): void {
         },
       );
     }
-    const certNodeId = keysUtils.publicKeyToFingerprint(
-      cert.publicKey as PublicKey,
-    );
-    if (commonName.value !== certNodeId) {
+    const certNodeId = keysUtils.publicKeyToNodeId(cert.publicKey as PublicKey);
+    if (commonName.value !== nodesUtils.encodeNodeId(certNodeId)) {
       throw new networkErrors.ErrorCertChainKeyInvalid(
         'Chain certificate public key does not generate its node id',
         {

@@ -39,6 +39,7 @@ import * as utils from '../utils';
 import * as gitUtils from '../git/utils';
 import * as gitErrors from '../git/errors';
 import * as gestaltErrors from '../gestalts/errors';
+import { utils as nodesUtils } from '../nodes';
 
 interface VaultManager extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
@@ -354,8 +355,16 @@ class VaultManager {
         const nodes = gestalt.nodes;
         for (const node in nodes) {
           await this.acl.setNodeAction(nodeId, 'scan');
-          await this.acl.setVaultAction(vaultId, nodes[node].id, 'pull');
-          await this.acl.setVaultAction(vaultId, nodes[node].id, 'clone');
+          await this.acl.setVaultAction(
+            vaultId,
+            nodesUtils.decodeNodeId(nodes[node].id),
+            'pull',
+          );
+          await this.acl.setVaultAction(
+            vaultId,
+            nodesUtils.decodeNodeId(nodes[node].id),
+            'clone',
+          );
         }
         await this.notificationsManager.sendNotification(nodeId, {
           type: 'VaultShare',
@@ -642,7 +651,7 @@ class VaultManager {
           ref: 'HEAD',
           singleBranch: true,
           author: {
-            name: pullNodeId,
+            name: nodesUtils.encodeNodeId(pullNodeId!),
           },
         });
       } catch (err) {

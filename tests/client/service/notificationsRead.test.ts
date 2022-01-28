@@ -1,5 +1,4 @@
 import type { Host, Port } from '@/network/types';
-import type { NodeId } from '@/nodes/types';
 import type { VaultName } from '@/vaults/types';
 import fs from 'fs';
 import path from 'path';
@@ -9,7 +8,7 @@ import { Metadata } from '@grpc/grpc-js';
 import { DB } from '@matrixai/db';
 import { KeyManager, utils as keysUtils } from '@/keys';
 import { GRPCServer } from '@/grpc';
-import { NodeManager } from '@/nodes';
+import { NodeManager, utils as nodesUtils } from '@/nodes';
 import { Sigchain } from '@/sigchain';
 import { ForwardProxy, ReverseProxy } from '@/network';
 import { NotificationsManager } from '@/notifications';
@@ -27,6 +26,8 @@ describe('notificationsRead', () => {
   const logger = new Logger('notificationsRead test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
+  const nodeIdSender = testUtils.generateRandomNodeId();
+  const nodeIdSenderEncoded = nodesUtils.encodeNodeId(nodeIdSender);
   const password = 'helloworld';
   const authenticate = async (metaClient, metaServer = new Metadata()) =>
     metaServer;
@@ -49,7 +50,7 @@ describe('notificationsRead', () => {
             type: 'General',
             message: 'test',
           },
-          senderId: 'sender' as NodeId,
+          senderId: nodeIdSenderEncoded,
           isRead: true,
         },
       ])
@@ -59,7 +60,7 @@ describe('notificationsRead', () => {
             type: 'General',
             message: 'test1',
           },
-          senderId: 'sender' as NodeId,
+          senderId: nodeIdSenderEncoded,
           isRead: true,
         },
         {
@@ -67,7 +68,7 @@ describe('notificationsRead', () => {
             type: 'General',
             message: 'test2',
           },
-          senderId: 'sender' as NodeId,
+          senderId: nodeIdSenderEncoded,
           isRead: true,
         },
       ])
@@ -77,7 +78,7 @@ describe('notificationsRead', () => {
             type: 'General',
             message: 'test2',
           },
-          senderId: 'sender' as NodeId,
+          senderId: nodeIdSenderEncoded,
           isRead: true,
         },
         {
@@ -85,7 +86,7 @@ describe('notificationsRead', () => {
             type: 'General',
             message: 'test1',
           },
-          senderId: 'sender' as NodeId,
+          senderId: nodeIdSenderEncoded,
           isRead: true,
         },
       ])
@@ -94,7 +95,7 @@ describe('notificationsRead', () => {
           data: {
             type: 'GestaltInvite',
           },
-          senderId: 'sender' as NodeId,
+          senderId: nodeIdSenderEncoded,
           isRead: true,
         },
       ])
@@ -109,7 +110,7 @@ describe('notificationsRead', () => {
               pull: null,
             },
           },
-          senderId: 'sender' as NodeId,
+          senderId: nodeIdSenderEncoded,
           isRead: true,
         },
       ])
@@ -240,7 +241,7 @@ describe('notificationsRead', () => {
     expect(output).toHaveLength(1);
     expect(output[0].hasGeneral()).toBeTruthy();
     expect(output[0].getGeneral()!.getMessage()).toBe('test');
-    expect(output[0].getSenderId()).toBe('sender');
+    expect(output[0].getSenderId()).toBe(nodeIdSenderEncoded);
     expect(output[0].getIsRead()).toBeTruthy();
     // Check request was parsed correctly
     expect(mockedReadNotifications.mock.calls[0][0].unread).toBeFalsy();
@@ -261,11 +262,11 @@ describe('notificationsRead', () => {
     expect(output).toHaveLength(2);
     expect(output[0].hasGeneral()).toBeTruthy();
     expect(output[0].getGeneral()!.getMessage()).toBe('test1');
-    expect(output[0].getSenderId()).toBe('sender');
+    expect(output[0].getSenderId()).toBe(nodeIdSenderEncoded);
     expect(output[0].getIsRead()).toBeTruthy();
     expect(output[1].hasGeneral()).toBeTruthy();
     expect(output[1].getGeneral()!.getMessage()).toBe('test2');
-    expect(output[1].getSenderId()).toBe('sender');
+    expect(output[1].getSenderId()).toBe(nodeIdSenderEncoded);
     expect(output[1].getIsRead()).toBeTruthy();
     // Check request was parsed correctly
     expect(mockedReadNotifications.mock.calls[1][0].unread).toBeTruthy();
@@ -286,11 +287,11 @@ describe('notificationsRead', () => {
     expect(output).toHaveLength(2);
     expect(output[0].hasGeneral()).toBeTruthy();
     expect(output[0].getGeneral()!.getMessage()).toBe('test2');
-    expect(output[0].getSenderId()).toBe('sender');
+    expect(output[0].getSenderId()).toBe(nodeIdSenderEncoded);
     expect(output[0].getIsRead()).toBeTruthy();
     expect(output[1].hasGeneral()).toBeTruthy();
     expect(output[1].getGeneral()!.getMessage()).toBe('test1');
-    expect(output[1].getSenderId()).toBe('sender');
+    expect(output[1].getSenderId()).toBe(nodeIdSenderEncoded);
     expect(output[1].getIsRead()).toBeTruthy();
     // Check request was parsed correctly
     expect(mockedReadNotifications.mock.calls[2][0].unread).toBeFalsy();
@@ -311,7 +312,7 @@ describe('notificationsRead', () => {
     expect(output).toHaveLength(1);
     expect(output[0].hasGestaltInvite()).toBeTruthy();
     expect(output[0].getGestaltInvite()).toBe('GestaltInvite');
-    expect(output[0].getSenderId()).toBe('sender');
+    expect(output[0].getSenderId()).toBe(nodeIdSenderEncoded);
     expect(output[0].getIsRead()).toBeTruthy();
     // Check request was parsed correctly
     expect(mockedReadNotifications.mock.calls[3][0].unread).toBeFalsy();
@@ -335,7 +336,7 @@ describe('notificationsRead', () => {
     expect(output[0].getVaultShare()!.getVaultName()).toBe('vault');
     expect(output[0].getVaultShare()!.getActionsList()).toContain('clone');
     expect(output[0].getVaultShare()!.getActionsList()).toContain('pull');
-    expect(output[0].getSenderId()).toBe('sender');
+    expect(output[0].getSenderId()).toBe(nodeIdSenderEncoded);
     expect(output[0].getIsRead()).toBeTruthy();
     // Check request was parsed correctly
     expect(mockedReadNotifications.mock.calls[4][0].unread).toBeFalsy();

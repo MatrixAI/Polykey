@@ -1,5 +1,5 @@
 import type * as grpc from '@grpc/grpc-js';
-import type { NodeAddress, NodeInfo } from '@/nodes/types';
+import type { NodeAddress, NodeIdEncoded, NodeInfo } from '@/nodes/types';
 import type { ClaimIdString, ClaimIntermediary } from '@/claims/types';
 import type { Host, Port, TLSConfig } from '@/network/types';
 import fs from 'fs';
@@ -19,11 +19,11 @@ import { errors as agentErrors } from '@/agent';
 import { ForwardProxy, ReverseProxy } from '@/network';
 import { NotificationsManager } from '@/notifications';
 import { utils as claimsUtils, errors as claimsErrors } from '@/claims';
-import { makeNodeId } from '@/nodes/utils';
 import * as keysUtils from '@/keys/utils';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as vaultsPB from '@/proto/js/polykey/v1/vaults/vaults_pb';
 import * as nodesPB from '@/proto/js/polykey/v1/nodes/nodes_pb';
+import { utils as nodesUtils } from '@/nodes';
 import * as testAgentUtils from './utils';
 import * as testUtils from '../utils';
 import TestNodeConnection from '../nodes/TestNodeConnection';
@@ -34,9 +34,10 @@ describe(GRPCClientAgent.name, () => {
     new StreamHandler(),
   ]);
   const node1: NodeInfo = {
-    id: makeNodeId('v359vgrgmqf1r5g4fvisiddjknjko6bmm4qv7646jr7fi9enbfuug'),
+    id: 'v359vgrgmqf1r5g4fvisiddjknjko6bmm4qv7646jr7fi9enbfuug' as NodeIdEncoded,
     chain: {},
   };
+  const nodeId1 = nodesUtils.decodeNodeId(node1.id);
   let mockedGenerateKeyPair: jest.SpyInstance;
   let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
   beforeAll(async () => {
@@ -197,7 +198,7 @@ describe(GRPCClientAgent.name, () => {
     // Await vaultManager.setVaultPermissions('12345' as NodeId, vault.vaultId);
     // await vaultManager.unsetVaultPermissions('12345' as NodeId, vault.vaultId);
     const vaultPermMessage = new vaultsPB.NodePermission();
-    vaultPermMessage.setNodeId(node1.id);
+    vaultPermMessage.setNodeId(nodesUtils.encodeNodeId(nodeId1));
     // VaultPermMessage.setVaultId(vault.vaultId);
     const response = await client.vaultsPermissionsCheck(vaultPermMessage);
     expect(response.getPermission()).toBeFalsy();
@@ -211,7 +212,7 @@ describe(GRPCClientAgent.name, () => {
     // const vault = await vaultManager.createVault('TestAgentVault' as VaultName);
     await gestaltGraph.setNode(node1);
     const nodeIdMessage = new nodesPB.Node();
-    nodeIdMessage.setNodeId(node1.id);
+    nodeIdMessage.setNodeId(nodesUtils.encodeNodeId(nodeId1));
     const response = client.vaultsScan(nodeIdMessage);
     const data: string[] = [];
     for await (const resp of response) {
@@ -252,12 +253,14 @@ describe(GRPCClientAgent.name, () => {
 
     let xToYNodeConnection: TestNodeConnection;
 
-    const nodeIdX = makeNodeId(
+    const nodeIdX = nodesUtils.decodeNodeId(
       'vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0',
     );
-    const nodeIdY = makeNodeId(
+    const nodeIdXEncoded = nodesUtils.encodeNodeId(nodeIdX);
+    const nodeIdY = nodesUtils.decodeNodeId(
       'vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg',
     );
+    const nodeIdYEncoded = nodesUtils.encodeNodeId(nodeIdY);
 
     beforeEach(async () => {
       yKeysPath = path.join(dataDir, 'keys-y');
@@ -280,7 +283,7 @@ describe(GRPCClientAgent.name, () => {
         logger: logger,
       });
       // @ts-ignore - force push into the protected connections map
-      nodeManager.connections.set(nodeIdY, {
+      nodeManager.connections.set(nodeIdY.toString(), {
         connection: xToYNodeConnection,
         lock: new Mutex(),
       });
@@ -308,10 +311,10 @@ describe(GRPCClientAgent.name, () => {
           seq: 1,
           data: {
             type: 'node',
-            node1: nodeIdY,
-            node2: nodeIdX,
+            node1: nodeIdYEncoded,
+            node2: nodeIdXEncoded,
           },
-          kid: nodeIdY,
+          kid: nodeIdYEncoded,
         });
         const intermediary: ClaimIntermediary = {
           payload: claim.payload,
@@ -364,7 +367,7 @@ describe(GRPCClientAgent.name, () => {
         const doublyResponse = await claimsUtils.signIntermediaryClaim({
           claim: constructedIntermediary,
           privateKey: yKeyManager.getRootKeyPairPem().privateKey,
-          signeeNodeId: nodeIdY,
+          signeeNodeId: nodeIdYEncoded,
         });
         const doublyMessage = claimsUtils.createCrossSignMessage({
           doublySignedClaim: doublyResponse,

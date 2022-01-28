@@ -14,6 +14,7 @@ import { errors as clientErrors } from '@/client';
 import config from '@/config';
 import * as binProcessors from '@/bin/utils/processors';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
+import { utils as nodesUtils } from '@/nodes';
 import * as testClientUtils from './utils';
 import * as testUtils from '../utils';
 
@@ -112,7 +113,9 @@ describe(GRPCClientClient.name, () => {
     const emptyMessage = new utilsPB.EmptyMessage();
     const response = await client.agentStatus(emptyMessage, meta);
     expect(typeof response.getPid()).toBe('number');
-    expect(response.getNodeId()).toBe(statusInfo.data.nodeId);
+    expect(response.getNodeId()).toBe(
+      nodesUtils.encodeNodeId(statusInfo.data.nodeId),
+    );
     expect(response.getClientHost()).toBe(statusInfo.data.clientHost);
     expect(response.getClientPort()).toBe(statusInfo.data.clientPort);
     expect(response.getIngressHost()).toBe(statusInfo.data.ingressHost);

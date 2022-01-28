@@ -1,7 +1,8 @@
 import type { IdentityId, ProviderId } from '../../identities/types';
 import type { Host, Hostname, Port } from '../../network/types';
-import type { NodeAddress, NodeId, NodeMapping } from '../../nodes/types';
+import type { NodeId, NodeMapping } from '../../nodes/types';
 import commander from 'commander';
+import { IdInternal } from '@matrixai/id';
 import * as nodesUtils from '../../nodes/utils';
 import * as networkUtils from '../../network/utils';
 import config from '../../config';
@@ -48,7 +49,7 @@ function parseGestaltId(gestaltId: string) {
     const parsed = parseIdentityString(gestaltId);
     providerId = parsed.providerId;
     identityId = parsed.identityId;
-  } else if (nodesUtils.isNodeId(gestaltId)) {
+  } else if (gestaltId != null) {
     nodeId = gestaltId;
   } else {
     throw new commander.InvalidArgumentError(
@@ -85,12 +86,11 @@ function getDefaultSeedNodes(network: string): NodeMapping {
       never();
   }
   for (const id in source) {
-    const seedNodeId = id as NodeId;
-    const seedNodeAddress: NodeAddress = {
+    const seedNodeId = IdInternal.fromString<NodeId>(id);
+    seedNodes[seedNodeId] = {
       host: source[seedNodeId].host as Host | Hostname,
       port: source[seedNodeId].port as Port,
     };
-    seedNodes[seedNodeId] = seedNodeAddress;
   }
   return seedNodes;
 }
@@ -122,7 +122,8 @@ function parseSeedNodes(rawSeedNodes: string): [NodeMapping, boolean] {
         `${rawSeedNode} is not of format 'nodeId@host:port'`,
       );
     }
-    if (!nodesUtils.isNodeId(idHostPort[0])) {
+    const seedNodeId = nodesUtils.decodeNodeId(idHostPort[0]);
+    if (seedNodeId == null) {
       throw new commander.InvalidOptionArgumentError(
         `${idHostPort[0]} is not a valid node ID`,
       );
@@ -133,12 +134,10 @@ function parseSeedNodes(rawSeedNodes: string): [NodeMapping, boolean] {
       );
     }
     const port = parseNumber(idHostPort[2]);
-    const seedNodeId = idHostPort[0] as NodeId;
-    const seedNodeAddress: NodeAddress = {
+    seedNodeMappings[seedNodeId] = {
       host: idHostPort[1] as Host | Hostname,
       port: port as Port,
     };
-    seedNodeMappings[seedNodeId] = seedNodeAddress;
   }
   return [seedNodeMappings, defaults];
 }

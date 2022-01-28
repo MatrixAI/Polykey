@@ -21,6 +21,7 @@ import * as vaultsPB from '../proto/js/polykey/v1/vaults/vaults_pb';
 import * as nodesPB from '../proto/js/polykey/v1/nodes/nodes_pb';
 import * as keysUtils from '../keys/utils';
 import { isIdString, isId, makeIdString, makeId } from '../GenericIdTypes';
+import { utils as nodesUtils } from '../nodes';
 
 async function generateVaultKey(bits: number = 256): Promise<VaultKey> {
   return (await keysUtils.generateKey(bits)) as VaultKey;
@@ -232,7 +233,7 @@ async function requestVaultNames(
   nodeId: NodeId,
 ): Promise<string[]> {
   const request = new nodesPB.Node();
-  request.setNodeId(nodeId);
+  request.setNodeId(nodesUtils.encodeNodeId(nodeId));
   const vaultList = client.vaultsScan(request);
   const data: string[] = [];
   for await (const vault of vaultList) {

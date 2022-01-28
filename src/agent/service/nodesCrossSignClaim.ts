@@ -6,6 +6,7 @@ import type { KeyManager } from '../../keys';
 import type * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
 import { utils as grpcUtils } from '../../grpc';
 import { utils as claimsUtils, errors as claimsErrors } from '../../claims';
+import { utils as nodesUtils } from '../../nodes';
 
 function nodesCrossSignClaim({
   keyManager,
@@ -66,7 +67,7 @@ function nodesCrossSignClaim({
         }
         // Verify the claim
         const senderPublicKey = await nodeManager.getPublicKey(
-          payloadData.node1,
+          nodesUtils.decodeNodeId(payloadData.node1),
         );
         const verified = await claimsUtils.verifyClaimSignature(
           constructedEncodedClaim,
@@ -79,12 +80,12 @@ function nodesCrossSignClaim({
         const doublySignedClaim = await claimsUtils.signIntermediaryClaim({
           claim: constructedIntermediaryClaim,
           privateKey: keyManager.getRootKeyPairPem().privateKey,
-          signeeNodeId: nodeManager.getNodeId(),
+          signeeNodeId: nodesUtils.encodeNodeId(nodeManager.getNodeId()),
         });
         // Then create your own intermediary node claim (from X -> Y)
         const singlySignedClaim = await sigchain.createIntermediaryClaim({
           type: 'node',
-          node1: nodeManager.getNodeId(),
+          node1: nodesUtils.encodeNodeId(nodeManager.getNodeId()),
           node2: payloadData.node1,
         });
         // Should never be reached, but just for type safety

@@ -1,12 +1,12 @@
-import type { NodeInfo } from '@/nodes/types';
+import type { NodeIdEncoded, NodeInfo } from '@/nodes/types';
 import type { Vault, VaultName } from '@/vaults/types';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
-import { makeNodeId } from '@/nodes/utils';
 import { makeVaultIdPretty } from '@/vaults/utils';
+import { utils as nodesUtils } from '@/nodes';
 import * as testBinUtils from '../utils';
 
 jest.mock('@/keys/utils', () => ({
@@ -39,26 +39,26 @@ describe('CLI vaults', () => {
   let vaultName: VaultName;
 
   // Constants
-  const nodeId1 = makeNodeId(
-    'vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0',
-  );
-  const nodeId2 = makeNodeId(
-    'vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg',
-  );
-  const nodeId3 = makeNodeId(
-    'v359vgrgmqf1r5g4fvisiddjknjko6bmm4qv7646jr7fi9enbfuug',
-  );
+  const nodeId1Encoded =
+    'vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0' as NodeIdEncoded;
+  const nodeId1 = nodesUtils.decodeNodeId(nodeId1Encoded);
+  const nodeId2Encoded =
+    'vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg' as NodeIdEncoded;
+  // Const nodeId2 = nodesUtils.decodeNodeId(nodeId2Encoded);
+  const nodeId3Encoded =
+    'v359vgrgmqf1r5g4fvisiddjknjko6bmm4qv7646jr7fi9enbfuug' as NodeIdEncoded;
+  // Const nodeId3 = nodesUtils.decodeNodeId(nodeId3Encoded);
 
   const node1: NodeInfo = {
-    id: nodeId1,
+    id: nodeId1Encoded,
     chain: {},
   };
   const node2: NodeInfo = {
-    id: nodeId2,
+    id: nodeId2Encoded,
     chain: {},
   };
   const node3: NodeInfo = {
-    id: nodeId3,
+    id: nodeId3Encoded,
     chain: {},
   };
 
@@ -212,7 +212,14 @@ describe('CLI vaults', () => {
   });
   describe.skip('commandSetPermsVault', () => {
     test('should share a vault', async () => {
-      command = ['vaults', 'share', '-np', dataDir, vaultName, node1.id];
+      command = [
+        'vaults',
+        'share',
+        '-np',
+        dataDir,
+        vaultName,
+        nodesUtils.encodeNodeId(nodeId1),
+      ];
       await polykeyAgent.vaultManager.createVault(vaultName);
       const id = await polykeyAgent.vaultManager.getVaultId(vaultName);
       expect(id).toBeTruthy();
@@ -232,7 +239,14 @@ describe('CLI vaults', () => {
   });
   describe.skip('commandUnsetPermsVault', () => {
     test('should un-share a vault', async () => {
-      command = ['vaults', 'unshare', '-np', dataDir, vaultName, node1.id];
+      command = [
+        'vaults',
+        'unshare',
+        '-np',
+        dataDir,
+        vaultName,
+        nodesUtils.encodeNodeId(nodeId1),
+      ];
       // Creating vault.
       await polykeyAgent.vaultManager.createVault(vaultName);
       const id = await polykeyAgent.vaultManager.getVaultId(vaultName);
@@ -295,7 +309,7 @@ describe('CLI vaults', () => {
         expect(id).toBeTruthy();
 
         await targetPolykeyAgent.gestaltGraph.setNode({
-          id: polykeyAgent.nodeManager.getNodeId(),
+          id: nodesUtils.encodeNodeId(polykeyAgent.nodeManager.getNodeId()),
           chain: {},
         });
         fail();
@@ -329,7 +343,7 @@ describe('CLI vaults', () => {
           '-np',
           dataDir,
           '-ni',
-          targetNodeId as string,
+          nodesUtils.encodeNodeId(targetNodeId),
           '-vi',
           makeVaultIdPretty(vault.vaultId),
         ];
@@ -371,7 +385,7 @@ describe('CLI vaults', () => {
         expect(id).toBeTruthy();
 
         await targetPolykeyAgent.gestaltGraph.setNode({
-          id: polykeyAgent.nodeManager.getNodeId(),
+          id: nodesUtils.encodeNodeId(polykeyAgent.nodeManager.getNodeId()),
           chain: {},
         });
         fail();
@@ -422,7 +436,7 @@ describe('CLI vaults', () => {
           '-vn',
           vaultName,
           '-ni',
-          targetNodeId,
+          nodesUtils.encodeNodeId(targetNodeId),
         ];
 
         const result = await testBinUtils.pkStdio([...command]);
@@ -496,7 +510,7 @@ describe('CLI vaults', () => {
         '-np',
         dataDir,
         '-ni',
-        targetNodeId as string,
+        nodesUtils.encodeNodeId(targetNodeId),
       ];
       const result = await testBinUtils.pkStdio([...command]);
       expect(result.exitCode).toBe(0);

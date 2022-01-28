@@ -16,7 +16,9 @@ import { DB } from '@matrixai/db';
 import { IdentitiesManager, providers } from '@/identities';
 import * as identitiesErrors from '@/identities/errors';
 import * as keysUtils from '@/keys/utils';
+import { utils as nodesUtils } from '@/nodes';
 import TestProvider from './TestProvider';
+import * as testUtils from '../utils';
 
 describe('IdentitiesManager', () => {
   const logger = new Logger('IdentitiesManager Test', LogLevel.WARN, [
@@ -215,12 +217,14 @@ describe('IdentitiesManager', () => {
     expect(identityDatas).toHaveLength(1);
     expect(identityDatas).not.toContainEqual(identityData);
     // Now publish a claim
+    const nodeIdSome = testUtils.generateRandomNodeId();
+    const nodeIdSomeEncoded = nodesUtils.encodeNodeId(nodeIdSome);
     const signatures: Record<NodeId, SignatureData> = {};
-    signatures['somenode' as NodeId] = {
+    signatures[nodeIdSome] = {
       signature: 'examplesignature',
       header: {
         alg: 'RS256',
-        kid: 'somenode' as NodeId,
+        kid: nodeIdSomeEncoded,
       },
     };
     const rawClaim: Claim = {
@@ -230,7 +234,7 @@ describe('IdentitiesManager', () => {
         iat: Math.floor(Date.now() / 1000),
         data: {
           type: 'identity',
-          node: 'somenode' as NodeId,
+          node: nodesUtils.encodeNodeId(nodeIdSome),
           provider: testProvider.id,
           identity: identityId,
         } as ClaimData,

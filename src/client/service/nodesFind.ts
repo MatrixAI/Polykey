@@ -25,10 +25,11 @@ function nodesFind({
     try {
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
-      const nodeId = nodesUtils.makeNodeId(call.request.getNodeId());
+      const nodeIdEncoded = call.request.getNodeId();
+      const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded);
       const address = await nodeManager.findNode(nodeId);
       response
-        .setNodeId(nodeId)
+        .setNodeId(nodeIdEncoded)
         .setAddress(
           new nodesPB.Address().setHost(address.host).setPort(address.port),
         );

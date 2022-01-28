@@ -562,7 +562,7 @@ describe('start', () => {
       const statusInfo2 = await status.waitFor('LIVE');
       expect(statusInfo2.status).toBe('LIVE');
       // Node Id hasn't changed
-      expect(statusInfo1.data.nodeId).toBe(statusInfo2.data.nodeId);
+      expect(statusInfo1.data.nodeId).toStrictEqual(statusInfo2.data.nodeId);
       agentProcess2.kill('SIGTERM');
       await testBinUtils.processExit(agentProcess2);
       // Check that the password has changed
@@ -578,7 +578,7 @@ describe('start', () => {
       const statusInfo3 = await status.waitFor('LIVE');
       expect(statusInfo3.status).toBe('LIVE');
       // Node ID hasn't changed
-      expect(statusInfo1.data.nodeId).toBe(statusInfo3.data.nodeId);
+      expect(statusInfo1.data.nodeId).toStrictEqual(statusInfo3.data.nodeId);
       agentProcess3.kill('SIGTERM');
       await testBinUtils.processExit(agentProcess3);
       // Checks deterministic generation using the same recovery code
@@ -608,7 +608,7 @@ describe('start', () => {
       const statusInfo4 = await status.waitFor('LIVE');
       expect(statusInfo4.status).toBe('LIVE');
       // Same Node ID as before
-      expect(statusInfo1.data.nodeId).toBe(statusInfo4.data.nodeId);
+      expect(statusInfo1.data.nodeId).toStrictEqual(statusInfo4.data.nodeId);
       agentProcess4.kill('SIGTERM');
       await testBinUtils.processExit(agentProcess4);
     },

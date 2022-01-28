@@ -1,6 +1,6 @@
 import type { Host, Port } from '@/network/types';
-import type { NodeId } from '@/nodes/types';
 import type { Notification } from '@/notifications/types';
+import type { NodeIdEncoded } from '@/nodes/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -35,7 +35,8 @@ describe('nodesClaim', () => {
     data: {
       type: 'GestaltInvite',
     },
-    senderId: 'vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg' as NodeId,
+    senderId:
+      'vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg' as NodeIdEncoded,
     isRead: false,
   };
   let mockedGenerateKeyPair: jest.SpyInstance;

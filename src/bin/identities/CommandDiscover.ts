@@ -50,7 +50,7 @@ class CommandDiscover extends CommandPolykey {
           port: clientOptions.clientPort,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-        if (gestaltId.nodeId) {
+        if (gestaltId.nodeId != null) {
           // Discovery by Node.
           const nodeMessage = new nodesPB.Node();
           nodeMessage.setNodeId(gestaltId.nodeId);

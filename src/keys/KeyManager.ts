@@ -23,7 +23,6 @@ import {
 import * as keysUtils from './utils';
 import * as keysErrors from './errors';
 import * as utils from '../utils';
-import * as networkUtils from '../network/utils';
 
 /**
  * Manage Root Keys and Root Certificates
@@ -277,7 +276,7 @@ class KeyManager {
    */
   @ready(new keysErrors.ErrorKeyManagerNotRunning())
   public getNodeId(): NodeId {
-    return networkUtils.certNodeId(this.getRootCert());
+    return keysUtils.publicKeyToNodeId(this.rootKeyPair.publicKey);
   }
 
   @ready(new keysErrors.ErrorKeyManagerNotRunning())

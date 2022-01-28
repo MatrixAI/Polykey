@@ -7,9 +7,9 @@ import type {
   ClaimIntermediary,
   ClaimType,
 } from '../claims/types';
-import type { NodeId } from '../nodes/types';
 import type { KeyManager } from '../keys';
 import type { DB, DBLevel, DBOp } from '@matrixai/db';
+import type { NodeIdEncoded } from '../nodes/types';
 
 import Logger from '@matrixai/logger';
 import { Mutex } from 'async-mutex';
@@ -21,6 +21,7 @@ import { utils as idUtils } from '@matrixai/id';
 import * as sigchainErrors from './errors';
 import * as claimsUtils from '../claims/utils';
 import { createClaimIdGenerator, makeClaimIdString } from '../sigchain/utils';
+import { utils as nodesUtils } from '../nodes';
 
 interface Sigchain extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
@@ -139,7 +140,7 @@ class Sigchain {
     // Creating the ID generator
     const latestId = await this.getLatestClaimId();
     this.generateClaimId = createClaimIdGenerator(
-      this.keyManager.getNodeId(),
+      nodesUtils.encodeNodeId(this.keyManager.getNodeId()),
       latestId,
     );
     this.logger.info(`Started ${this.constructor.name}`);
@@ -200,7 +201,7 @@ class Sigchain {
     alg?: string;
   }): Promise<ClaimEncoded> {
     // Get kid from the claim data
-    let kid: NodeId;
+    let kid: NodeIdEncoded;
     if (data.type === 'node') {
       kid = data.node1;
     } else {

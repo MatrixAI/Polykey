@@ -1,17 +1,26 @@
-import type { NodeId } from '@/nodes/types';
 import type { Host, Port } from '@/network/types';
+import type { StatusLive } from '@/status/types';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import config from '@/config';
 import { Status, errors as statusErrors } from '@/status';
+import * as testUtils from '../utils';
 
 describe('Status', () => {
   const logger = new Logger(`${Status.name} Test`, LogLevel.WARN, [
     new StreamHandler(),
   ]);
   let dataDir: string;
+
+  const nodeId1 = testUtils.generateRandomNodeId();
+  // Const nodeId1Encoded = nodesUtils.encodeNodeId(nodeId1);
+  const nodeId2 = testUtils.generateRandomNodeId();
+  // Const nodeId2Encoded = nodesUtils.encodeNodeId(nodeId2);
+  const nodeId3 = testUtils.generateRandomNodeId();
+  // Const nodeId3Encoded = nodesUtils.encodeNodeId(nodeId3);
+
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'status-test-'));
   });
@@ -57,7 +66,7 @@ describe('Status', () => {
     expect(statusInfo1!.data.pid).toBe(0);
     await status.finishStart({
       pid: 0,
-      nodeId: 'node' as NodeId,
+      nodeId: nodeId1,
       clientHost: '::1' as Host,
       clientPort: 0 as Port,
       ingressHost: '127.0.0.1' as Host,
@@ -127,9 +136,9 @@ describe('Status', () => {
     await expect(status.updateStatusLive({})).rejects.toThrow(
       statusErrors.ErrorStatusLiveUpdate,
     );
-    const statusData1 = {
+    const statusData1: StatusLive['data'] = {
       pid: 0,
-      nodeId: 'node' as NodeId,
+      nodeId: nodeId1,
       clientHost: '::1' as Host,
       clientPort: 0 as Port,
       ingressHost: '127.0.0.1' as Host,
@@ -140,15 +149,15 @@ describe('Status', () => {
     };
     await status.finishStart(statusData1);
     const statusInfo = await status.updateStatusLive({
-      nodeId: 'new node' as NodeId,
-      anotherthing: 'something',
+      nodeId: nodeId2,
+      anotherThing: 'something',
     });
     expect(statusInfo).toStrictEqual({
       status: 'LIVE',
       data: {
         ...statusData1,
-        nodeId: 'new node' as NodeId,
-        anotherthing: 'something',
+        nodeId: nodeId2,
+        anotherThing: 'something',
       },
     });
     await status.beginStop({ pid: 0 });
@@ -200,7 +209,7 @@ describe('Status', () => {
       clientPort: 0 as Port,
       ingressHost: '127.0.0.1' as Host,
       ingressPort: 0 as Port,
-      nodeId: '' as NodeId,
+      nodeId: nodeId3,
       pid: 0,
     });
     const statusInfoLive = await statusWaitFor;
@@ -245,7 +254,7 @@ describe('Status', () => {
           clientPort: 0 as Port,
           ingressHost: '127.0.0.1' as Host,
           ingressPort: 3425 as Port,
-          nodeId: '' as NodeId,
+          nodeId: nodeId3,
           pid: 0,
         }),
         status.readStatus(),
@@ -257,7 +266,7 @@ describe('Status', () => {
           clientPort: 3445 as Port,
           ingressHost: '127.0.0.1' as Host,
           ingressPort: 0 as Port,
-          nodeId: '' as NodeId,
+          nodeId: nodeId3,
           pid: 0,
         }),
         status.beginStop({
@@ -269,7 +278,7 @@ describe('Status', () => {
           clientPort: 0 as Port,
           ingressHost: '127.0.0.1' as Host,
           ingressPort: 0 as Port,
-          nodeId: '' as NodeId,
+          nodeId: nodeId3,
           pid: 0,
         }),
       ]);
@@ -303,7 +312,7 @@ describe('Status', () => {
       clientPort: 0 as Port,
       ingressHost: '127.0.0.1' as Host,
       ingressPort: 0 as Port,
-      nodeId: '' as NodeId,
+      nodeId: nodeId3,
       pid: 0,
     });
     const p2 = status.beginStop({ pid: 1 });

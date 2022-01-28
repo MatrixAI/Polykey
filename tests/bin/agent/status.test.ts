@@ -5,6 +5,7 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { Status } from '@/status';
 import * as binErrors from '@/bin/errors';
 import config from '@/config';
+import { utils as nodesUtils } from '@/nodes';
 import * as testBinUtils from '../utils';
 import * as testUtils from '../../utils';
 
@@ -154,7 +155,7 @@ describe('status', () => {
       expect(JSON.parse(stdout)).toMatchObject({
         status: 'LIVE',
         pid: expect.any(Number),
-        nodeId: statusInfo.data.nodeId,
+        nodeId: nodesUtils.encodeNodeId(statusInfo.data.nodeId),
         clientHost: statusInfo.data.clientHost,
         clientPort: statusInfo.data.clientPort,
         ingressHost: statusInfo.data.ingressHost,
@@ -192,7 +193,7 @@ describe('status', () => {
         '--password-file',
         passwordPath,
         '--node-id',
-        statusInfo.data.nodeId,
+        nodesUtils.encodeNodeId(statusInfo.data.nodeId),
         '--client-host',
         statusInfo.data.clientHost,
         '--client-port',
@@ -205,7 +206,7 @@ describe('status', () => {
       expect(JSON.parse(stdout)).toMatchObject({
         status: 'LIVE',
         pid: expect.any(Number),
-        nodeId: statusInfo.data.nodeId,
+        nodeId: nodesUtils.encodeNodeId(statusInfo.data.nodeId),
         clientHost: statusInfo.data.clientHost,
         clientPort: statusInfo.data.clientPort,
         ingressHost: statusInfo.data.ingressHost,

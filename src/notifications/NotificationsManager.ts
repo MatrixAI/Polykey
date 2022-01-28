@@ -20,6 +20,7 @@ import { utils as idUtils } from '@matrixai/id';
 import * as notificationsUtils from './utils';
 import * as notificationsErrors from './errors';
 import { createNotificationIdGenerator } from './utils';
+import { utils as nodesUtils } from '../nodes';
 
 const MESSAGE_COUNT_KEY = 'numMessages';
 
@@ -189,7 +190,7 @@ class NotificationsManager {
   public async sendNotification(nodeId: NodeId, data: NotificationData) {
     const notification = {
       data: data,
-      senderId: this.nodeManager.getNodeId(),
+      senderId: nodesUtils.encodeNodeId(this.nodeManager.getNodeId()),
       isRead: false,
     };
     const signedNotification = await notificationsUtils.signNotification(
@@ -205,7 +206,9 @@ class NotificationsManager {
   @ready(new notificationsErrors.ErrorNotificationsNotRunning())
   public async receiveNotification(notification: Notification) {
     await this._transaction(async () => {
-      const nodePerms = await this.acl.getNodePerm(notification.senderId);
+      const nodePerms = await this.acl.getNodePerm(
+        nodesUtils.decodeNodeId(notification.senderId),
+      );
       if (nodePerms === undefined) {
         throw new notificationsErrors.ErrorNotificationsPermissionsNotFound();
       }
@@ -293,7 +296,7 @@ class NotificationsManager {
     for (const notification of notifications) {
       if (
         notification.data.type === 'GestaltInvite' &&
-        notification.senderId === fromNode
+        nodesUtils.decodeNodeId(notification.senderId).equals(fromNode)
       ) {
         return notification;
       }

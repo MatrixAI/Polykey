@@ -1,12 +1,11 @@
-import type NodeConnection from './NodeConnection';
-import type { MutexInterface } from 'async-mutex';
 import type { Opaque } from '../types';
 import type { Host, Hostname, Port } from '../network/types';
 import type { Claim, ClaimId } from '../claims/types';
 import type { ChainData } from '../sigchain/types';
-import type { IdString } from '../GenericIdTypes';
+import type { Id } from '@matrixai/id';
 
-type NodeId = Opaque<'NodeId', IdString>;
+type NodeId = Opaque<'NodeId', Id>;
+type NodeIdEncoded = Opaque<'NodeIdEncoded', string>;
 
 type NodeAddress = {
   host: Host | Hostname;
@@ -39,7 +38,7 @@ type NodeClaim = Claim & {
  * chain: maps ClaimId (lexicographic integer of sequence number) -> Claim
  */
 type NodeInfo = {
-  id: NodeId;
+  id: NodeIdEncoded;
   chain: ChainData;
 };
 
@@ -52,22 +51,6 @@ type NodeBucket = {
     lastUpdated: Date;
   };
 };
-
-/**
- * Data structure to store all NodeConnections. If a connection to a node n does
- * not exist, no entry for n will exist in the map. Alternatively, if a
- * connection is currently being instantiated by some thread, an entry will
- * exist in the map, but only with the lock (no connection object). Once a
- * connection is instantiated, the entry in the map is updated to include the
- * connection object.
- */
-type NodeConnectionMap = Map<
-  NodeId,
-  {
-    connection?: NodeConnection;
-    lock: MutexInterface;
-  }
->;
 
 // Only 1 domain, so don't need a 'domain' value (like /gestalts/types.ts)
 type NodeGraphOp_ = {
@@ -86,6 +69,7 @@ type NodeGraphOp =
 
 export type {
   NodeId,
+  NodeIdEncoded,
   NodeAddress,
   NodeMapping,
   NodeData,
@@ -93,6 +77,5 @@ export type {
   NodeInfo,
   NodeBucketIndex,
   NodeBucket,
-  NodeConnectionMap,
   NodeGraphOp,
 };

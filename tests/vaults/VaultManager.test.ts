@@ -23,21 +23,15 @@ import { NotificationsManager } from '@/notifications';
 
 import { errors as vaultErrors } from '@/vaults';
 import { utils as vaultUtils } from '@/vaults';
-import { makeVaultId } from '@/vaults/utils';
-
-// Mocks.
-jest.mock('@/keys/utils', () => ({
-  ...jest.requireActual('@/keys/utils'),
-  generateDeterministicKeyPair:
-    jest.requireActual('@/keys/utils').generateKeyPair,
-}));
+import { utils as nodesUtils } from '@/nodes';
+import * as testUtils from '../utils';
 
 describe('VaultManager', () => {
   const password = 'password';
   const logger = new Logger('VaultManager Test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
-  const nonExistantVaultId = makeVaultId(idUtils.fromString('DoesNotExist'));
+  const nonExistantVaultId = idUtils.fromString('DoesNotExist') as VaultId;
   let dataDir: string;
   let vaultsPath: string;
   let vaultsKey: VaultKey;
@@ -68,7 +62,18 @@ describe('VaultManager', () => {
   const secondVaultName = 'SecondTestVault' as VaultName;
   const thirdVaultName = 'ThirdTestVault' as VaultName;
 
+  let mockedGenerateKeyPair: jest.SpyInstance;
+  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
+
   beforeAll(async () => {
+    const globalKeyPair = await testUtils.setupGlobalKeypair();
+    mockedGenerateKeyPair = jest
+      .spyOn(keysUtils, 'generateKeyPair')
+      .mockResolvedValue(globalKeyPair);
+    mockedGenerateDeterministicKeyPair = jest
+      .spyOn(keysUtils, 'generateDeterministicKeyPair')
+      .mockResolvedValue(globalKeyPair);
+
     fwdProxy = new ForwardProxy({
       authToken: 'abc',
       logger: logger,
@@ -168,6 +173,8 @@ describe('VaultManager', () => {
     });
   });
   afterAll(async () => {
+    mockedGenerateKeyPair.mockRestore();
+    mockedGenerateDeterministicKeyPair.mockRestore();
     await fwdProxy.stop();
   });
 
@@ -585,7 +592,7 @@ describe('VaultManager', () => {
         certChainPem: await targetKeyManager.getRootCertChainPem(),
       };
       node = {
-        id: nodeManager.getNodeId(),
+        id: nodesUtils.encodeNodeId(nodeManager.getNodeId()),
         chain: { nodes: {}, identities: {} } as ChainData,
       };
       targetFwdProxy = new ForwardProxy({
@@ -674,7 +681,7 @@ describe('VaultManager', () => {
       });
       altNodeId = altKeyManager.getNodeId();
       await targetGestaltGraph.setNode({
-        id: altNodeId,
+        id: nodesUtils.encodeNodeId(altNodeId),
         chain: {},
       });
       altRevTLSConfig = {

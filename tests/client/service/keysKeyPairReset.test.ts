@@ -120,7 +120,7 @@ describe('keysKeyPairReset', () => {
     expect(fwdTLSConfig1).toEqual(expectedTLSConfig1);
     expect(revTLSConfig1).toEqual(expectedTLSConfig1);
     expect(serverTLSConfig1).toEqual(expectedTLSConfig1);
-    expect(nodeId1).toBe(nodeIdStatus1);
+    expect(nodeId1.equals(nodeIdStatus1)).toBe(true);
     // Run command
     const request = new keysPB.Key();
     request.setName('somepassphrase');
@@ -150,6 +150,6 @@ describe('keysKeyPairReset', () => {
     expect(rootKeyPair2.publicKey).not.toBe(rootKeyPair1.publicKey);
     expect(nodeId1).not.toBe(nodeId2);
     expect(nodeIdStatus1).not.toBe(nodeIdStatus2);
-    expect(nodeId2).toBe(nodeIdStatus2);
+    expect(nodeId2.equals(nodeIdStatus2)).toBe(true);
   });
 });

@@ -16,6 +16,7 @@ import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
 import * as vaultsUtils from './utils';
 import * as vaultsErrors from './errors';
 import { makeVaultIdPretty } from './utils';
+import { utils as nodesUtils } from '../nodes';
 
 const lastTag = 'last';
 
@@ -237,7 +238,7 @@ class VaultInternal {
           dir: this.baseDir,
           gitdir: this.gitDir,
           author: {
-            name: this.keyManager.getNodeId(),
+            name: nodesUtils.encodeNodeId(this.keyManager.getNodeId()),
           },
           message: message.toString(),
         });

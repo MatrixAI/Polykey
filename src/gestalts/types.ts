@@ -1,5 +1,5 @@
 import type { Opaque } from '../types';
-import type { NodeId, NodeInfo } from '../nodes/types';
+import type { NodeIdEncoded, NodeInfo } from '../nodes/types';
 import type { IdentityId, ProviderId, IdentityInfo } from '../identities/types';
 
 type GestaltAction = 'notify' | 'scan';
@@ -8,7 +8,7 @@ type GestaltActions = Partial<Record<GestaltAction, null>>;
 type GestaltId = GestaltNodeId | GestaltIdentityId;
 type GestaltNodeId = {
   type: 'node';
-  nodeId: NodeId;
+  nodeId: NodeIdEncoded;
 };
 type GestaltIdentityId = {
   type: 'identity';

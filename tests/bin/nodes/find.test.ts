@@ -107,7 +107,10 @@ describe('find', () => {
   });
 
   test('find an online node', async () => {
-    const commands = genCommands(['find', remoteOnlineNodeId]);
+    const commands = genCommands([
+      'find',
+      nodesUtils.encodeNodeId(remoteOnlineNodeId),
+    ]);
     const result = await testBinUtils.pkStdio(commands, {}, dataDir);
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain('Found node at');
@@ -117,7 +120,7 @@ describe('find', () => {
     // Checking json format.
     const commands2 = genCommands([
       'find',
-      remoteOnlineNodeId,
+      nodesUtils.encodeNodeId(remoteOnlineNodeId),
       '--format',
       'json',
     ]);
@@ -132,10 +135,15 @@ describe('find', () => {
     expect(result2.stdout).toContain('host');
     expect(result2.stdout).toContain('port');
     expect(result2.stdout).toContain('id');
-    expect(result2.stdout).toContain(remoteOnlineNodeId);
+    expect(result2.stdout).toContain(
+      nodesUtils.encodeNodeId(remoteOnlineNodeId),
+    );
   });
   test('find an offline node', async () => {
-    const commands = genCommands(['find', remoteOfflineNodeId]);
+    const commands = genCommands([
+      'find',
+      nodesUtils.encodeNodeId(remoteOfflineNodeId),
+    ]);
     const result = await testBinUtils.pkStdio(commands, {}, dataDir);
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain('Found node at');
@@ -145,7 +153,7 @@ describe('find', () => {
     // Checking json format.
     const commands2 = genCommands([
       'find',
-      remoteOfflineNodeId,
+      nodesUtils.encodeNodeId(remoteOfflineNodeId),
       '--format',
       'json',
     ]);
@@ -160,23 +168,30 @@ describe('find', () => {
     expect(result2.stdout).toContain('host');
     expect(result2.stdout).toContain('port');
     expect(result2.stdout).toContain('id');
-    expect(result2.stdout).toContain(remoteOfflineNodeId);
+    expect(result2.stdout).toContain(
+      nodesUtils.encodeNodeId(remoteOfflineNodeId),
+    );
   });
   test(
     'fail to find an unknown node',
     async () => {
-      const unknownNodeId = nodesUtils.makeNodeId(
+      const unknownNodeId = nodesUtils.decodeNodeId(
         'vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg',
       );
-      const commands = genCommands(['find', unknownNodeId]);
+      const commands = genCommands([
+        'find',
+        nodesUtils.encodeNodeId(unknownNodeId),
+      ]);
       const result = await testBinUtils.pkStdio(commands, {}, dataDir);
       expect(result.exitCode).toBe(1);
-      expect(result.stdout).toContain(`Failed to find node ${unknownNodeId}`);
+      expect(result.stdout).toContain(
+        `Failed to find node ${nodesUtils.encodeNodeId(unknownNodeId)}`,
+      );
 
       // Checking json format.
       const commands2 = genCommands([
         'find',
-        unknownNodeId,
+        nodesUtils.encodeNodeId(unknownNodeId),
         '--format',
         'json',
       ]);

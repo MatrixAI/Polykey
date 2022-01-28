@@ -17,6 +17,7 @@ import * as grpcErrors from './errors';
 import { utils as keysUtils } from '../keys';
 import { utils as networkUtils, errors as networkErrors } from '../network';
 import { promisify, promise, timerStart, timerStop } from '../utils';
+import { utils as nodeUtils } from '../nodes';
 
 abstract class GRPCClient<T extends Client> {
   /**
@@ -58,6 +59,7 @@ abstract class GRPCClient<T extends Client> {
     flowCountInterceptor: grpcUtils.FlowCountInterceptor;
     serverCertChain?: Array<Certificate>;
   }> {
+    const nodeIdEncoded = nodeUtils.encodeNodeId(nodeId);
     const address = networkUtils.buildAddress(host, port);
     logger.info(`Creating ${this.name} connecting to ${address}`);
     let channelCredentials: ChannelCredentials;
@@ -79,7 +81,7 @@ abstract class GRPCClient<T extends Client> {
     // The channel options is needed to be able to look up the server certificate
     const channelOptions: ChannelOptions = {
       // Prevents complaints with having an ip address as the server name
-      'grpc.ssl_target_name_override': nodeId,
+      'grpc.ssl_target_name_override': nodeIdEncoded,
     };
     const flowCountInterceptor = new grpcUtils.FlowCountInterceptor();
     const clientOptions: ClientOptions = {
@@ -99,13 +101,13 @@ abstract class GRPCClient<T extends Client> {
       );
       // Encode as a URI in order to preserve the '+' characters when retrieving
       // in ForwardProxy from the http_connect_target URL
-      const encodedNodeId = encodeURIComponent(nodeId);
+      const nodeIdEncodedForURI = encodeURIComponent(nodeIdEncoded);
       // Ignore proxy env variables
       channelOptions['grpc.enable_http_proxy'] = 0;
       // The proxy target target is the true address
       channelOptions[
         'grpc.http_connect_target'
-      ] = `dns:${address}/?nodeId=${encodedNodeId}`;
+      ] = `dns:${address}/?nodeId=${nodeIdEncodedForURI}`;
       channelOptions['grpc.http_connect_creds'] = proxyConfig.authToken;
       client = new clientConstructor(proxyAddress, channelCredentials, {
         ...channelOptions,
@@ -130,7 +132,7 @@ abstract class GRPCClient<T extends Client> {
         port,
       );
       const socket = session.socket as TLSSocket;
-      const serverCertChain = networkUtils.getCertificateChain(socket);
+      serverCertChain = networkUtils.getCertificateChain(socket);
       try {
         networkUtils.verifyServerCertificateChain(nodeId, serverCertChain);
       } catch (e) {

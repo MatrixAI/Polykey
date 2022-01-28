@@ -8,7 +8,7 @@ import { Metadata } from '@grpc/grpc-js';
 import { DB } from '@matrixai/db';
 import { KeyManager, utils as keysUtils } from '@/keys';
 import { GRPCServer } from '@/grpc';
-import { NodeManager } from '@/nodes';
+import { NodeManager, utils as nodesUtils } from '@/nodes';
 import { Sigchain } from '@/sigchain';
 import { ForwardProxy, ReverseProxy } from '@/network';
 import {
@@ -182,9 +182,9 @@ describe('notificationsSend', () => {
     // Check we signed and sent the notification
     expect(mockedSignNotification.mock.calls.length).toBe(1);
     expect(mockedSendNotification.mock.calls.length).toBe(1);
-    expect(mockedSendNotification.mock.calls[0][0]).toBe(
-      'vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0',
-    );
+    expect(
+      nodesUtils.encodeNodeId(mockedSendNotification.mock.calls[0][0]),
+    ).toBe('vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0');
     expect(mockedSendNotification.mock.calls[0][1]).toBe('signedNotification');
     // Check notification content
     expect(mockedSignNotification.mock.calls[0][0]).toEqual({
@@ -192,7 +192,7 @@ describe('notificationsSend', () => {
         type: 'General',
         message: 'test',
       },
-      senderId: keyManager.getNodeId(),
+      senderId: nodesUtils.encodeNodeId(keyManager.getNodeId()),
       isRead: false,
     });
   });
