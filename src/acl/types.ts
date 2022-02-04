@@ -1,11 +1,10 @@
 import type { Opaque } from '../types';
 import type { GestaltAction } from '../gestalts/types';
 import type { VaultActions, VaultId } from '../vaults/types';
-import type { Id, IdString } from '../GenericIdTypes';
+import type { Id } from '@matrixai/id';
 
 type PermissionId = Opaque<'PermissionId', Id>;
-
-type PermissionIdString = Opaque<'PermissionIdString', IdString>;
+type PermissionIdString = Opaque<'PermissionIdString', string>;
 
 type Permission = {
   gestalt: GestaltActions;
