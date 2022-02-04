@@ -60,16 +60,14 @@ function keyFromIdentity(
 
 /**
  * Deconstruct GestaltKey to NodeId
- * This is a partial function.
  */
 function nodeFromKey(nodeKey: GestaltNodeKey): NodeId {
   const node = ungestaltKey(nodeKey) as GestaltNodeId;
-  return nodesUtils.decodeNodeId(node.nodeId);
+  return nodesUtils.decodeNodeId(node.nodeId)!;
 }
 
 /**
  * Deconstruct GestaltKey to IdentityId and ProviderId
- * This is a partial function.
  */
 function identityFromKey(
   identityKey: GestaltIdentityKey,

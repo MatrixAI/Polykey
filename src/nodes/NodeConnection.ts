@@ -271,7 +271,7 @@ class NodeConnection {
     const nodes: Array<NodeData> = [];
     // Loop over each map element (from the returned response) and populate nodes
     response.getNodeTableMap().forEach((address, nodeIdEncoded: string) => {
-      const nodeId: NodeId = nodesUtils.decodeNodeId(nodeIdEncoded);
+      const nodeId: NodeId = nodesUtils.decodeNodeId(nodeIdEncoded)!;
       nodes.push({
         id: nodeId,
         address: {

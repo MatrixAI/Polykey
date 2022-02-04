@@ -21,6 +21,7 @@ import {
   vaultShareNotificationValidate,
 } from './schema';
 import * as notificationsErrors from './errors';
+import * as nodesUtils from '../nodes/utils';
 
 function createNotificationIdGenerator(
   lastId?: NotificationId,
@@ -88,7 +89,11 @@ async function verifyAndDecodeNotif(notifJWT: string): Promise<Notification> {
 function validateNotification(
   notification: Record<string, unknown>,
 ): Notification {
-  if (notificationValidate(notification)) {
+  // Also ensure the sender's node ID is valid
+  if (
+    notificationValidate(notification) &&
+    nodesUtils.decodeNodeId(notification['senderId'])
+  ) {
     return notification as Notification;
   } else {
     for (const err of notificationValidate.errors as DefinedError[]) {

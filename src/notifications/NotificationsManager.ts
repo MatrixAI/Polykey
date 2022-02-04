@@ -207,7 +207,7 @@ class NotificationsManager {
   public async receiveNotification(notification: Notification) {
     await this._transaction(async () => {
       const nodePerms = await this.acl.getNodePerm(
-        nodesUtils.decodeNodeId(notification.senderId),
+        nodesUtils.decodeNodeId(notification.senderId)!,
       );
       if (nodePerms === undefined) {
         throw new notificationsErrors.ErrorNotificationsPermissionsNotFound();
@@ -296,7 +296,7 @@ class NotificationsManager {
     for (const notification of notifications) {
       if (
         notification.data.type === 'GestaltInvite' &&
-        nodesUtils.decodeNodeId(notification.senderId).equals(fromNode)
+        nodesUtils.decodeNodeId(notification.senderId)!.equals(fromNode)
       ) {
         return notification;
       }

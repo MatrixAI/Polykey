@@ -124,7 +124,7 @@ describe('ping', () => {
     async () => {
       const fakeNodeId = nodesUtils.decodeNodeId(
         'vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0',
-      );
+      )!;
       const commands = genCommands([
         'ping',
         nodesUtils.encodeNodeId(fakeNodeId),

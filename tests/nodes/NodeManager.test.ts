@@ -45,13 +45,13 @@ describe('NodeManager', () => {
 
   const nodeId1 = nodesUtils.decodeNodeId(
     'vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0',
-  );
+  )!;
   const nodeId2 = nodesUtils.decodeNodeId(
     'vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg',
-  );
+  )!;
   const dummyNode = nodesUtils.decodeNodeId(
     'vi3et1hrpv2m2lrplcm7cu913kr45v51cak54vm68anlbvuf83ra0',
-  );
+  )!;
 
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(

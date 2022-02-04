@@ -113,7 +113,7 @@ class Discovery {
         // The sigchain data of the vertex (containing all cryptolinks)
         let vertexChainData: ChainData = {};
         // If the vertex we've found is our own node, we simply get our own chain
-        const nodeId = nodesUtils.decodeNodeId(vertexGId.nodeId);
+        const nodeId = nodesUtils.decodeNodeId(vertexGId.nodeId)!;
         if (nodeId.equals(this.nodeManager.getNodeId())) {
           const vertexChainDataEncoded = await this.nodeManager.getChainData();
           // Decode all our claims - no need to verify (on our own sigchain)
@@ -152,7 +152,7 @@ class Discovery {
             // Get the chain data of the linked node
             const linkedVertexNodeId = nodesUtils.decodeNodeId(
               claim.payload.data.node2,
-            );
+            )!;
             const linkedVertexChainData =
               await this.nodeManager.requestChainData(linkedVertexNodeId);
             // With this verified chain, we can link
@@ -224,7 +224,7 @@ class Discovery {
           // Claims on an identity provider will always be node -> identity
           // So just cast payload data as such
           const data = claim.payload.data as ClaimLinkIdentity;
-          const linkedVertexNodeId = nodesUtils.decodeNodeId(data.node);
+          const linkedVertexNodeId = nodesUtils.decodeNodeId(data.node)!;
           // Get the chain data of this claimed node (so that we can link in GG)
           const linkedVertexChainData = await this.nodeManager.requestChainData(
             linkedVertexNodeId,
@@ -316,7 +316,9 @@ class Discovery {
       // Verify the claim with the public key of the node
       const verified = await claimsUtils.verifyClaimSignature(
         encoded,
-        await this.nodeManager.getPublicKey(nodesUtils.decodeNodeId(data.node)),
+        await this.nodeManager.getPublicKey(
+          nodesUtils.decodeNodeId(data.node)!,
+        ),
       );
       // If verified, add to the record
       if (verified) {

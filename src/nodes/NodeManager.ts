@@ -315,7 +315,8 @@ class NodeManager {
       const claimId = c as ClaimIdEncoded;
       const payload = verifiedChainData[claimId].payload;
       if (payload.data.type === 'node') {
-        const endNodeId = nodesUtils.decodeNodeId(payload.data.node2);
+        // TODO: remove ! assertion and perform exception handling in #310
+        const endNodeId = nodesUtils.decodeNodeId(payload.data.node2)!;
         let endPublicKey: PublicKeyPem;
         // If the claim points back to our own node, don't attempt to connect
         if (endNodeId.equals(this.getNodeId())) {
@@ -402,11 +403,11 @@ class NodeManager {
   @ready(new nodesErrors.ErrorNodeManagerNotRunning())
   public async relayHolePunchMessage(message: nodesPB.Relay): Promise<void> {
     const conn = await this.getConnectionToNode(
-      nodesUtils.decodeNodeId(message.getTargetId()),
+      nodesUtils.decodeNodeId(message.getTargetId())!,
     );
     await conn.sendHolePunchMessage(
-      nodesUtils.decodeNodeId(message.getSrcId()),
-      nodesUtils.decodeNodeId(message.getTargetId()),
+      nodesUtils.decodeNodeId(message.getSrcId())!,
+      nodesUtils.decodeNodeId(message.getTargetId())!,
       message.getEgressAddress(),
       Buffer.from(message.getSignature()),
     );

@@ -37,7 +37,7 @@ describe(GRPCClientAgent.name, () => {
     id: 'v359vgrgmqf1r5g4fvisiddjknjko6bmm4qv7646jr7fi9enbfuug' as NodeIdEncoded,
     chain: {},
   };
-  const nodeId1 = nodesUtils.decodeNodeId(node1.id);
+  const nodeId1 = nodesUtils.decodeNodeId(node1.id)!;
   let mockedGenerateKeyPair: jest.SpyInstance;
   let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
   beforeAll(async () => {
@@ -255,11 +255,11 @@ describe(GRPCClientAgent.name, () => {
 
     const nodeIdX = nodesUtils.decodeNodeId(
       'vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0',
-    );
+    )!;
     const nodeIdXEncoded = nodesUtils.encodeNodeId(nodeIdX);
     const nodeIdY = nodesUtils.decodeNodeId(
       'vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg',
-    );
+    )!;
     const nodeIdYEncoded = nodesUtils.encodeNodeId(nodeIdY);
 
     beforeEach(async () => {
