@@ -144,15 +144,20 @@ function getClientSession(
 }
 
 /**
- * Serializes ErrorPolykey instances into GRPC errors
+ * Serializes Error instances into GRPC errors
  * Use this on the sending side to send exceptions
  * Do not send exceptions to clients you do not trust
  */
-function fromError(error: errors.ErrorPolykey): ServerStatusResponse {
+function fromError(error: Error): ServerStatusResponse {
   const metadata = new grpc.Metadata();
+  // If the error is not ErrorPolykey, wrap it up so it can be serialised
+  // TODO: add additional metadata regarding the network location of the error
+  if (!(error instanceof errors.ErrorPolykey)) {
+    error = new errors.ErrorPolykey(error.message);
+  }
   metadata.set('name', error.name);
   metadata.set('message', error.message);
-  metadata.set('data', JSON.stringify(error.data));
+  metadata.set('data', JSON.stringify((error as errors.ErrorPolykey).data));
   return {
     metadata,
   };
