@@ -246,7 +246,7 @@ class NodeConnection {
     const certificates = this.getRootCertChain();
     let publicKey: PublicKeyPem | null = null;
     for (const cert of certificates) {
-      if (networkUtils.certNodeId(cert).equals(expectedNodeId)) {
+      if (keysUtils.certNodeId(cert)!.equals(expectedNodeId)) {
         publicKey = keysUtils.publicKeyToPem(
           cert.publicKey as PublicKey,
         ) as PublicKeyPem;

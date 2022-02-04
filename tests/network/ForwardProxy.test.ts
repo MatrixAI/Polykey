@@ -762,7 +762,7 @@ describe(ForwardProxy.name, () => {
       86400,
     );
     const serverCertPem = keysUtils.certToPem(serverCert);
-    const serverNodeId = networkUtils.certNodeId(serverCert);
+    const serverNodeId = keysUtils.certNodeId(serverCert)!;
     const fwdProxy = new ForwardProxy({
       authToken,
       logger: logger.getChild(
@@ -886,7 +886,7 @@ describe(ForwardProxy.name, () => {
       86400,
     );
     const serverCertPem = keysUtils.certToPem(serverCert);
-    const serverNodeId = networkUtils.certNodeId(serverCert);
+    const serverNodeId = keysUtils.certNodeId(serverCert)!;
     const fwdProxy = new ForwardProxy({
       authToken,
       connEndTime: 5000,
@@ -1034,7 +1034,7 @@ describe(ForwardProxy.name, () => {
       86400,
     );
     const serverCertPem = keysUtils.certToPem(serverCert);
-    const serverNodeId = networkUtils.certNodeId(serverCert);
+    const serverNodeId = keysUtils.certNodeId(serverCert)!;
     const serverNodeIdEncoded = nodesUtils.encodeNodeId(serverNodeId);
     const fwdProxy = new ForwardProxy({
       authToken,
@@ -1181,7 +1181,7 @@ describe(ForwardProxy.name, () => {
       86400,
     );
     const serverCertPem = keysUtils.certToPem(serverCert);
-    const serverNodeId = networkUtils.certNodeId(serverCert);
+    const serverNodeId = keysUtils.certNodeId(serverCert)!;
     const serverNodeIdEncoded = nodesUtils.encodeNodeId(serverNodeId);
     const fwdProxy = new ForwardProxy({
       authToken,
@@ -1351,7 +1351,7 @@ describe(ForwardProxy.name, () => {
       86400,
     );
     const serverCertPem = keysUtils.certToPem(serverCert);
-    const serverNodeId = networkUtils.certNodeId(serverCert);
+    const serverNodeId = keysUtils.certNodeId(serverCert)!;
     const serverNodeIdEncoded = nodesUtils.encodeNodeId(serverNodeId);
     const fwdProxy = new ForwardProxy({
       authToken,
@@ -1508,7 +1508,7 @@ describe(ForwardProxy.name, () => {
       86400,
     );
     const serverCertPem = keysUtils.certToPem(serverCert);
-    const serverNodeId = networkUtils.certNodeId(serverCert);
+    const serverNodeId = keysUtils.certNodeId(serverCert)!;
     const serverNodeIdEncoded = nodesUtils.encodeNodeId(serverNodeId);
     const fwdProxy = new ForwardProxy({
       authToken,
@@ -1637,7 +1637,7 @@ describe(ForwardProxy.name, () => {
       86400,
     );
     const serverCertPem = keysUtils.certToPem(serverCert);
-    const serverNodeId = networkUtils.certNodeId(serverCert);
+    const serverNodeId = keysUtils.certNodeId(serverCert)!;
     const fwdProxy = new ForwardProxy({
       authToken,
       connKeepAliveTimeoutTime: 1000,
@@ -1752,7 +1752,7 @@ describe(ForwardProxy.name, () => {
       86400,
     );
     const serverCertPem = keysUtils.certToPem(serverCert);
-    const serverNodeId = networkUtils.certNodeId(serverCert);
+    const serverNodeId = keysUtils.certNodeId(serverCert)!;
     const serverNodeIdEncoded = nodesUtils.encodeNodeId(serverNodeId);
     const fwdProxy = new ForwardProxy({
       authToken,
@@ -1892,7 +1892,7 @@ describe(ForwardProxy.name, () => {
       86400,
     );
     const serverCertPem = keysUtils.certToPem(serverCert);
-    const serverNodeId = networkUtils.certNodeId(serverCert);
+    const serverNodeId = keysUtils.certNodeId(serverCert)!;
     const fwdProxy = new ForwardProxy({
       authToken,
       logger,
@@ -1986,7 +1986,7 @@ describe(ForwardProxy.name, () => {
       86400,
     );
     const serverCertPem1 = keysUtils.certToPem(serverCert1);
-    const serverNodeId1 = networkUtils.certNodeId(serverCert1);
+    const serverNodeId1 = keysUtils.certNodeId(serverCert1)!;
     // Second server keys
     const serverKeyPair2 = await keysUtils.generateKeyPair(1024);
     const serverKeyPairPem2 = keysUtils.keyPairToPem(serverKeyPair2);
@@ -1997,7 +1997,7 @@ describe(ForwardProxy.name, () => {
       86400,
     );
     const serverCertPem2 = keysUtils.certToPem(serverCert2);
-    const serverNodeId2 = networkUtils.certNodeId(serverCert2);
+    const serverNodeId2 = keysUtils.certNodeId(serverCert2)!;
     const fwdProxy = new ForwardProxy({
       authToken,
       logger,

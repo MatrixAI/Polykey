@@ -165,14 +165,6 @@ function isTLSSocket(socket: Socket | TLSSocket): socket is TLSSocket {
 }
 
 /**
- * Acquires the NodeId from a certificate
- */
-function certNodeId(cert: Certificate): NodeId {
-  const commonName = cert.subject.getField({ type: '2.5.4.3' });
-  return nodesUtils.decodeNodeId(commonName.value);
-}
-
-/**
  * Verify the server certificate chain when connecting to it from a client
  * This is a custom verification intended to verify that the server owned
  * the relevant NodeId.
@@ -362,7 +354,6 @@ export {
   serializeNetworkMessage,
   unserializeNetworkMessage,
   isTLSSocket,
-  certNodeId,
   getCertificateChain,
   verifyServerCertificateChain,
   verifyClientCertificateChain,

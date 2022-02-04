@@ -30,10 +30,9 @@ import {
 import * as bip39 from 'bip39';
 import { IdInternal } from '@matrixai/id';
 import * as keysErrors from './errors';
-import config from '../config';
-import * as utils from '../utils';
-import { never } from '../utils';
 import { utils as nodesUtils } from '../nodes';
+import config from '../config';
+import { promisify, getUnixtime, never } from '../utils';
 
 bip39.setDefaultWordlist('english');
 
@@ -43,9 +42,7 @@ const authTagSize = 16;
 const eventRootKeyPairChange = Symbol('rootKeyPairChange');
 
 async function generateKeyPair(bits: number): Promise<KeyPair> {
-  const generateKeyPair = utils
-    .promisify(pki.rsa.generateKeyPair)
-    .bind(pki.rsa);
+  const generateKeyPair = promisify(pki.rsa.generateKeyPair).bind(pki.rsa);
   return await generateKeyPair({ bits });
 }
 
@@ -65,9 +62,7 @@ async function generateDeterministicKeyPair(
       md.sha512.create(),
     );
   };
-  const generateKeyPair = utils
-    .promisify(pki.rsa.generateKeyPair)
-    .bind(pki.rsa);
+  const generateKeyPair = promisify(pki.rsa.generateKeyPair).bind(pki.rsa);
   return await generateKeyPair({ bits, prng });
 }
 
@@ -221,7 +216,7 @@ function generateCertificate(
   const now = new Date();
   const cert = pki.createCertificate();
   cert.publicKey = subjectPublicKey;
-  cert.serialNumber = utils.getUnixtime(now).toString();
+  cert.serialNumber = getUnixtime(now).toString();
   const notBeforeDate = new Date(now.getTime());
   const notAfterDate = new Date(now.getTime());
   notAfterDate.setSeconds(notAfterDate.getSeconds() + duration);
@@ -407,7 +402,6 @@ function certVerifiedNode(cert: Certificate): boolean {
   });
   // Calculate the certificate digest
   const certDigest = md.sha256.create();
-
   let verified;
   try {
     cert.setExtensions(extensionsFiltered);
@@ -429,6 +423,17 @@ function certVerifiedNode(cert: Certificate): boolean {
     cert.setExtensions(extensionsOrig);
   }
   return verified;
+}
+
+/**
+ * Acquires the NodeId from a certificate
+ */
+function certNodeId(cert: Certificate): NodeId | undefined {
+  const commonName = cert.subject.getField({ type: '2.5.4.3' });
+  if (commonName == null) {
+    return;
+  }
+  return nodesUtils.decodeNodeId(commonName.value);
 }
 
 function encryptWithPublicKey(publicKey: PublicKey, plainText: Buffer): Buffer {
@@ -597,6 +602,7 @@ export {
   certIssued,
   certVerified,
   certVerifiedNode,
+  certNodeId,
   encryptWithPublicKey,
   decryptWithPrivateKey,
   signWithPrivateKey,

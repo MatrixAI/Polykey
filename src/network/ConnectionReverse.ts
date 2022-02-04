@@ -328,7 +328,7 @@ class ConnectionReverse extends Connection {
     if (!this._composed) {
       throw new networkErrors.ErrorConnectionNotComposed();
     }
-    return this.clientCertChain.map((c) => networkUtils.certNodeId(c));
+    return this.clientCertChain.map((c) => keysUtils.certNodeId(c)!);
   }
 
   protected startKeepAliveTimeout() {
