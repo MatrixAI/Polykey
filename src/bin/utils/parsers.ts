@@ -21,6 +21,26 @@ function validateParserToArgParser<T>(
   };
 }
 
+/**
+ * Converts a validation parser to commander variadic argument parser.
+ * Variadic options/arguments are always space-separated.
+ */
+function validateParserToArgListParser<T>(
+  validate: (data: string) => T,
+): (data: string) => Array<T> {
+  return (data: string) => {
+    try {
+      return data.split(' ').map(validate);
+    } catch (e) {
+      if (e instanceof validationErrors.ErrorParse) {
+        throw new commander.InvalidArgumentError(e.message);
+      } else {
+        throw e;
+      }
+    }
+  };
+}
+
 const parseInteger = validateParserToArgParser(validationUtils.parseInteger);
 const parseNumber = validateParserToArgParser(validationUtils.parseNumber);
 const parseNodeId = validateParserToArgParser(validationUtils.parseNodeId);
@@ -36,6 +56,16 @@ const parsePort = validateParserToArgParser(validationUtils.parsePort);
 const parseNetwork = validateParserToArgParser(validationUtils.parseNetwork);
 const parseSeedNodes = validateParserToArgParser(
   validationUtils.parseSeedNodes,
+);
+const parseProviderId = validateParserToArgParser(
+  validationUtils.parseProviderId,
+);
+const parseIdentityId = validateParserToArgParser(
+  validationUtils.parseIdentityId,
+);
+
+const parseProviderIdList = validateParserToArgListParser(
+  validationUtils.parseProviderId,
 );
 
 function parseCoreCount(v: string): number | undefined {
@@ -70,6 +100,9 @@ export {
   parsePort,
   parseNetwork,
   parseSeedNodes,
+  parseProviderId,
+  parseIdentityId,
+  parseProviderIdList,
   parseCoreCount,
   parseSecretPath,
 };

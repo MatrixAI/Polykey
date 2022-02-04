@@ -1,6 +1,8 @@
+import type { IdentityData } from './types';
 import os from 'os';
 import process from 'process';
 import spawn from 'cross-spawn';
+import { Searcher } from 'fast-fuzzy';
 
 function browser(url: string): void {
   let platform = process.platform;
@@ -47,4 +49,40 @@ function browser(url: string): void {
   browserProcess.unref();
 }
 
-export { browser };
+/**
+ * Check whether a given identity matches at least one search term from a list.
+ * Use this to filter a list of identiy datas e.g. filtering connected
+ * identities or a list of identity lookups.
+ * If the provider has a native search ability, use that instead of this.
+ */
+function matchIdentityData(
+  identityData: IdentityData,
+  searchTerms: Array<string>,
+): boolean {
+  if (searchTerms.length < 1) {
+    return true;
+  }
+  const searcher = new Searcher([identityData], {
+    keySelector: (obj) => [
+      obj.identityId,
+      obj.name || '',
+      obj.email || '',
+      obj.url || '',
+    ],
+    threshold: 0.8,
+  });
+  let matched = false;
+  for (const searchTerm of searchTerms) {
+    if (searcher.search(searchTerm).length > 0) {
+      matched = true;
+      break;
+    }
+  }
+  if (matched) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
+export { browser, matchIdentityData };

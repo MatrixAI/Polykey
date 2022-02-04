@@ -14,15 +14,12 @@ import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
-
-import {
-  GestaltGraph,
-  utils as gestaltsUtils,
-  errors as gestaltErrors,
-} from '@/gestalts';
+import { GestaltGraph } from '@/gestalts';
 import { ACL } from '@/acl';
+import * as gestaltsErrors from '@/gestalts/errors';
+import * as gestaltsUtils from '@/gestalts/utils';
 import * as keysUtils from '@/keys/utils';
-import { utils as nodesUtils } from '@/nodes';
+import * as nodesUtils from '@/nodes/utils';
 import * as testUtils from '../utils';
 
 describe('GestaltGraph', () => {
@@ -152,17 +149,17 @@ describe('GestaltGraph', () => {
       logger,
     });
     await expect(gestaltGraph.destroy()).rejects.toThrow(
-      gestaltErrors.ErrorGestaltsGraphRunning,
+      gestaltsErrors.ErrorGestaltsGraphRunning,
     );
     // Should be a noop
     await gestaltGraph.start();
     await gestaltGraph.stop();
     await gestaltGraph.destroy();
     await expect(gestaltGraph.start()).rejects.toThrow(
-      gestaltErrors.ErrorGestaltsGraphDestroyed,
+      gestaltsErrors.ErrorGestaltsGraphDestroyed,
     );
     await expect(gestaltGraph.getGestalts()).rejects.toThrow(
-      gestaltErrors.ErrorGestaltsGraphNotRunning,
+      gestaltsErrors.ErrorGestaltsGraphNotRunning,
     );
   });
   test('get, set and unset node', async () => {
@@ -536,17 +533,23 @@ describe('GestaltGraph', () => {
       acl,
       logger,
     });
-    const nodeInfo: NodeInfo = {
+    const nodeInfo1: NodeInfo = {
       id: nodeIdABCEncoded,
       chain: {},
     };
-    await gestaltGraph.setNode(nodeInfo);
+    const nodeInfo2: NodeInfo = {
+      id: nodeIdDEFEncoded,
+      chain: {},
+    };
     const identityInfo: IdentityInfo = {
       providerId: 'github.com' as ProviderId,
       identityId: 'abc' as IdentityId,
       claims: {},
     };
+    await gestaltGraph.setNode(nodeInfo1);
+    await gestaltGraph.setNode(nodeInfo2);
     await gestaltGraph.setIdentity(identityInfo);
+    await gestaltGraph.linkNodeAndIdentity(nodeInfo1, identityInfo);
     const gestalts = await gestaltGraph.getGestalts();
     const identityGestalt = await gestaltGraph.getGestaltByIdentity(
       identityInfo.providerId,
@@ -558,11 +561,12 @@ describe('GestaltGraph', () => {
     expect(gestalts).toHaveLength(2);
 
     // Check if the two combine after linking.
-    await gestaltGraph.linkNodeAndIdentity(nodeInfo, identityInfo);
+    await gestaltGraph.linkNodeAndNode(nodeInfo1, nodeInfo2);
     const gestalts2 = await gestaltGraph.getGestalts();
     expect(gestalts2).toHaveLength(1);
     const gestalts2String = JSON.stringify(gestalts2[0]);
-    expect(gestalts2String).toContain(nodeInfo.id);
+    expect(gestalts2String).toContain(nodeInfo1.id);
+    expect(gestalts2String).toContain(nodeInfo2.id);
     expect(gestalts2String).toContain(identityInfo.providerId);
     expect(gestalts2String).toContain(identityInfo.identityId);
 

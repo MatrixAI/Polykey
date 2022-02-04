@@ -1,0 +1,352 @@
+import type { Host, Port } from '@/network/types';
+import type { NodeIdEncoded } from '@/nodes/types';
+import type { IdentityId } from '@/identities/types';
+import type { ClaimLinkIdentity } from '@/claims/types';
+import type { ChainData } from '@/sigchain/types';
+import type { Gestalt } from '@/gestalts/types';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
+import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
+import { Metadata } from '@grpc/grpc-js';
+import { DB } from '@matrixai/db';
+import { PolykeyAgent } from '@';
+import { KeyManager } from '@/keys';
+import { GestaltGraph } from '@/gestalts';
+import { ACL } from '@/acl';
+import { GRPCServer } from '@/grpc';
+import { Discovery } from '@/discovery';
+import { IdentitiesManager } from '@/identities';
+import { NodeConnectionManager, NodeGraph, NodeManager } from '@/nodes';
+import { Sigchain } from '@/sigchain';
+import { ForwardProxy, ReverseProxy } from '@/network';
+import { GRPCClientClient, ClientServiceService } from '@/client';
+import gestaltsGestaltTrustByNode from '@/client/service/gestaltsGestaltTrustByNode';
+import { poll } from '@/utils';
+import * as nodesPB from '@/proto/js/polykey/v1/nodes/nodes_pb';
+import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
+import * as nodesUtils from '@/nodes/utils';
+import * as claimsUtils from '@/claims/utils';
+import * as keysUtils from '@/keys/utils';
+import * as clientUtils from '@/client/utils';
+import * as testUtils from '../../utils';
+import TestProvider from '../../identities/TestProvider';
+
+describe('gestaltsGestaltTrustByNode', () => {
+  const logger = new Logger('gestaltsGestaltTrustByNode test', LogLevel.WARN, [
+    new StreamHandler(),
+  ]);
+  const password = 'helloworld';
+  const authenticate = async (metaClient, metaServer = new Metadata()) =>
+    metaServer;
+  const testProvider = new TestProvider();
+  // Create node to trust
+  const connectedIdentity = 'trusted-node' as IdentityId;
+  let nodeDataDir: string;
+  let node: PolykeyAgent;
+  let nodeId: NodeIdEncoded;
+  const nodeChainData: ChainData = {};
+  let mockedRequestChainData: jest.SpyInstance;
+  let mockedGenerateKeyPair: jest.SpyInstance;
+  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
+  beforeAll(async () => {
+    const globalKeyPair = await testUtils.setupGlobalKeypair();
+    const nodeKeyPair = await keysUtils.generateKeyPair(2048);
+    mockedRequestChainData = jest
+      .spyOn(NodeManager.prototype, 'requestChainData')
+      .mockResolvedValue(nodeChainData);
+    mockedGenerateKeyPair = jest
+      .spyOn(keysUtils, 'generateKeyPair')
+      .mockResolvedValueOnce(nodeKeyPair)
+      .mockResolvedValue(globalKeyPair);
+    mockedGenerateDeterministicKeyPair = jest
+      .spyOn(keysUtils, 'generateDeterministicKeyPair')
+      .mockResolvedValueOnce(nodeKeyPair)
+      .mockResolvedValue(globalKeyPair);
+    nodeDataDir = await fs.promises.mkdtemp(
+      path.join(os.tmpdir(), 'trusted-node-'),
+    );
+    const nodePath = path.join(nodeDataDir, 'polykey');
+    node = await PolykeyAgent.createPolykeyAgent({
+      password,
+      nodePath,
+      logger,
+    });
+    nodeId = nodesUtils.encodeNodeId(node.keyManager.getNodeId());
+    node.identitiesManager.registerProvider(testProvider);
+    await node.identitiesManager.putToken(testProvider.id, connectedIdentity, {
+      accessToken: 'abc123',
+    });
+    testProvider.users['trusted-node'] = {};
+    const identityClaim: ClaimLinkIdentity = {
+      type: 'identity',
+      node: nodesUtils.encodeNodeId(node.keyManager.getNodeId()),
+      provider: testProvider.id,
+      identity: connectedIdentity,
+    };
+    const [claimId, claimEncoded] = await node.sigchain.addClaim(identityClaim);
+    const claim = claimsUtils.decodeClaim(claimEncoded);
+    nodeChainData[claimId] = claim;
+    await testProvider.publishClaim(connectedIdentity, claim);
+  }, global.maxTimeout);
+  afterAll(async () => {
+    await node.stop();
+    await fs.promises.rm(nodeDataDir, {
+      force: true,
+      recursive: true,
+    });
+    mockedGenerateKeyPair.mockRestore();
+    mockedGenerateDeterministicKeyPair.mockRestore();
+    mockedRequestChainData.mockRestore();
+  });
+  const authToken = 'abc123';
+  let dataDir: string;
+  let discovery: Discovery;
+  let gestaltGraph: GestaltGraph;
+  let identitiesManager: IdentitiesManager;
+  let nodeManager: NodeManager;
+  let nodeConnectionManager: NodeConnectionManager;
+  let nodeGraph: NodeGraph;
+  let sigchain: Sigchain;
+  let fwdProxy: ForwardProxy;
+  let revProxy: ReverseProxy;
+  let acl: ACL;
+  let db: DB;
+  let keyManager: KeyManager;
+  let grpcServer: GRPCServer;
+  let grpcClient: GRPCClientClient;
+  beforeEach(async () => {
+    dataDir = await fs.promises.mkdtemp(
+      path.join(os.tmpdir(), 'polykey-test-'),
+    );
+    const keysPath = path.join(dataDir, 'keys');
+    keyManager = await KeyManager.createKeyManager({
+      password,
+      keysPath,
+      logger,
+    });
+    const dbPath = path.join(dataDir, 'db');
+    db = await DB.createDB({
+      dbPath,
+      logger,
+      crypto: {
+        key: keyManager.dbKey,
+        ops: {
+          encrypt: keysUtils.encryptWithKey,
+          decrypt: keysUtils.decryptWithKey,
+        },
+      },
+    });
+    acl = await ACL.createACL({
+      db,
+      logger,
+    });
+    gestaltGraph = await GestaltGraph.createGestaltGraph({
+      db,
+      acl,
+      logger,
+    });
+    identitiesManager = await IdentitiesManager.createIdentitiesManager({
+      db,
+      logger,
+    });
+    identitiesManager.registerProvider(testProvider);
+    await identitiesManager.putToken(
+      testProvider.id,
+      'test-user' as IdentityId,
+      {
+        accessToken: 'def456',
+      },
+    );
+    fwdProxy = new ForwardProxy({
+      authToken,
+      logger,
+    });
+    await fwdProxy.start({
+      tlsConfig: {
+        keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
+        certChainPem: await keyManager.getRootCertChainPem(),
+      },
+    });
+    revProxy = new ReverseProxy({ logger });
+    await revProxy.start({
+      serverHost: '1.1.1.1' as Host,
+      serverPort: 1 as Port,
+      tlsConfig: {
+        keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
+        certChainPem: await keyManager.getRootCertChainPem(),
+      },
+    });
+    sigchain = await Sigchain.createSigchain({
+      db,
+      keyManager,
+      logger,
+    });
+    nodeGraph = await NodeGraph.createNodeGraph({
+      db,
+      keyManager,
+      logger: logger.getChild('NodeGraph'),
+    });
+    nodeConnectionManager = new NodeConnectionManager({
+      keyManager,
+      nodeGraph,
+      fwdProxy,
+      revProxy,
+      connConnectTime: 2000,
+      connTimeoutTime: 2000,
+      logger: logger.getChild('NodeConnectionManager'),
+    });
+    await nodeConnectionManager.start();
+    nodeManager = new NodeManager({
+      db,
+      keyManager,
+      sigchain,
+      nodeGraph,
+      nodeConnectionManager,
+      logger: logger.getChild('nodeManager'),
+    });
+    await nodeManager.setNode(nodesUtils.decodeNodeId(nodeId)!, {
+      host: node.revProxy.getIngressHost(),
+      port: node.revProxy.getIngressPort(),
+    });
+    discovery = await Discovery.createDiscovery({
+      db,
+      keyManager,
+      gestaltGraph,
+      identitiesManager,
+      nodeManager,
+      sigchain,
+      logger,
+    });
+    const clientService = {
+      gestaltsGestaltTrustByNode: gestaltsGestaltTrustByNode({
+        authenticate,
+        gestaltGraph,
+        discovery,
+      }),
+    };
+    grpcServer = new GRPCServer({ logger });
+    await grpcServer.start({
+      services: [[ClientServiceService, clientService]],
+      host: '127.0.0.1' as Host,
+      port: 0 as Port,
+    });
+    grpcClient = await GRPCClientClient.createGRPCClientClient({
+      nodeId: keyManager.getNodeId(),
+      host: '127.0.0.1' as Host,
+      port: grpcServer.port,
+      logger,
+    });
+  });
+  afterEach(async () => {
+    await grpcClient.destroy();
+    await grpcServer.stop();
+    await discovery.stop();
+    await nodeConnectionManager.stop();
+    await nodeGraph.stop();
+    await revProxy.stop();
+    await fwdProxy.stop();
+    await sigchain.stop();
+    await identitiesManager.stop();
+    await gestaltGraph.stop();
+    await acl.stop();
+    await db.stop();
+    await keyManager.stop();
+    await fs.promises.rm(dataDir, {
+      force: true,
+      recursive: true,
+    });
+  });
+  test('trusts a node (already set in gestalt graph)', async () => {
+    await gestaltGraph.setNode({
+      id: nodeId,
+      chain: {},
+    });
+    const request = new nodesPB.Node();
+    request.setNodeId(nodeId);
+    const response = await grpcClient.gestaltsGestaltTrustByNode(
+      request,
+      clientUtils.encodeAuthFromPassword(password),
+    );
+    expect(response).toBeInstanceOf(utilsPB.EmptyMessage);
+    expect(
+      await gestaltGraph.getGestaltActionsByNode(
+        nodesUtils.decodeNodeId(nodeId)!,
+      ),
+    ).toEqual({
+      notify: null,
+    });
+    // Reverse side effects
+    await gestaltGraph.unsetNode(nodesUtils.decodeNodeId(nodeId)!);
+    await gestaltGraph.unsetIdentity(testProvider.id, connectedIdentity);
+  });
+  test('trusts a node (new node)', async () => {
+    const request = new nodesPB.Node();
+    request.setNodeId(nodeId);
+    const response = await grpcClient.gestaltsGestaltTrustByNode(
+      request,
+      clientUtils.encodeAuthFromPassword(password),
+    );
+    expect(response).toBeInstanceOf(utilsPB.EmptyMessage);
+    expect(
+      await gestaltGraph.getGestaltActionsByNode(
+        nodesUtils.decodeNodeId(nodeId)!,
+      ),
+    ).toEqual({
+      notify: null,
+    });
+    // Reverse side effects
+    await gestaltGraph.unsetNode(nodesUtils.decodeNodeId(nodeId)!);
+    await gestaltGraph.unsetIdentity(testProvider.id, connectedIdentity);
+  });
+  test('trust extends to entire gestalt', async () => {
+    const request = new nodesPB.Node();
+    request.setNodeId(nodeId);
+    const response = await grpcClient.gestaltsGestaltTrustByNode(
+      request,
+      clientUtils.encodeAuthFromPassword(password),
+    );
+    expect(response).toBeInstanceOf(utilsPB.EmptyMessage);
+    expect(
+      await gestaltGraph.getGestaltActionsByNode(
+        nodesUtils.decodeNodeId(nodeId)!,
+      ),
+    ).toEqual({
+      notify: null,
+    });
+    // Give discovery process time to complete before checking identity actions
+    // Wait for both identity and node to be set in GG
+    await poll<Gestalt>(
+      async () => {
+        const gestalts = await poll<Array<Gestalt>>(
+          async () => {
+            return await gestaltGraph.getGestalts();
+          },
+          (_, result) => {
+            if (result.length === 1) return true;
+            return false;
+          },
+          100,
+        );
+        return gestalts[0];
+      },
+      (_, result) => {
+        if (result === undefined) return false;
+        if (Object.keys(result.matrix).length === 2) return true;
+        return false;
+      },
+      100,
+    );
+    expect(
+      await gestaltGraph.getGestaltActionsByIdentity(
+        testProvider.id,
+        connectedIdentity,
+      ),
+    ).toEqual({
+      notify: null,
+    });
+    // Reverse side effects
+    await gestaltGraph.unsetNode(nodesUtils.decodeNodeId(nodeId)!);
+    await gestaltGraph.unsetIdentity(testProvider.id, connectedIdentity);
+  });
+});

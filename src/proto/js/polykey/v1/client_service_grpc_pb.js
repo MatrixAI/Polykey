@@ -80,6 +80,17 @@ function deserialize_polykey_v1_identities_Info(buffer_arg) {
   return polykey_v1_identities_identities_pb.Info.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_polykey_v1_identities_OptionalProvider(arg) {
+  if (!(arg instanceof polykey_v1_identities_identities_pb.OptionalProvider)) {
+    throw new Error('Expected argument of type polykey.v1.identities.OptionalProvider');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_polykey_v1_identities_OptionalProvider(buffer_arg) {
+  return polykey_v1_identities_identities_pb.OptionalProvider.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_polykey_v1_identities_Provider(arg) {
   if (!(arg instanceof polykey_v1_identities_identities_pb.Provider)) {
     throw new Error('Expected argument of type polykey.v1.identities.Provider');
@@ -934,6 +945,17 @@ identitiesAuthenticate: {
     responseSerialize: serialize_polykey_v1_identities_AuthenticationProcess,
     responseDeserialize: deserialize_polykey_v1_identities_AuthenticationProcess,
   },
+  identitiesAuthenticatedGet: {
+    path: '/polykey.v1.ClientService/IdentitiesAuthenticatedGet',
+    requestStream: false,
+    responseStream: true,
+    requestType: polykey_v1_identities_identities_pb.OptionalProvider,
+    responseType: polykey_v1_identities_identities_pb.Provider,
+    requestSerialize: serialize_polykey_v1_identities_OptionalProvider,
+    requestDeserialize: deserialize_polykey_v1_identities_OptionalProvider,
+    responseSerialize: serialize_polykey_v1_identities_Provider,
+    responseDeserialize: deserialize_polykey_v1_identities_Provider,
+  },
   identitiesTokenPut: {
     path: '/polykey.v1.ClientService/IdentitiesTokenPut',
     requestStream: false,
@@ -981,16 +1003,16 @@ identitiesAuthenticate: {
   identitiesInfoGet: {
     path: '/polykey.v1.ClientService/IdentitiesInfoGet',
     requestStream: false,
-    responseStream: false,
-    requestType: polykey_v1_identities_identities_pb.Provider,
-    responseType: polykey_v1_identities_identities_pb.Provider,
-    requestSerialize: serialize_polykey_v1_identities_Provider,
-    requestDeserialize: deserialize_polykey_v1_identities_Provider,
-    responseSerialize: serialize_polykey_v1_identities_Provider,
-    responseDeserialize: deserialize_polykey_v1_identities_Provider,
+    responseStream: true,
+    requestType: polykey_v1_identities_identities_pb.ProviderSearch,
+    responseType: polykey_v1_identities_identities_pb.Info,
+    requestSerialize: serialize_polykey_v1_identities_ProviderSearch,
+    requestDeserialize: deserialize_polykey_v1_identities_ProviderSearch,
+    responseSerialize: serialize_polykey_v1_identities_Info,
+    responseDeserialize: deserialize_polykey_v1_identities_Info,
   },
-  identitiesInfoGetConnected: {
-    path: '/polykey.v1.ClientService/IdentitiesInfoGetConnected',
+  identitiesInfoConnectedGet: {
+    path: '/polykey.v1.ClientService/IdentitiesInfoConnectedGet',
     requestStream: false,
     responseStream: true,
     requestType: polykey_v1_identities_identities_pb.ProviderSearch,
@@ -1044,6 +1066,28 @@ gestaltsGestaltList: {
     requestDeserialize: deserialize_polykey_v1_identities_Provider,
     responseSerialize: serialize_polykey_v1_gestalts_Graph,
     responseDeserialize: deserialize_polykey_v1_gestalts_Graph,
+  },
+  gestaltsGestaltTrustByNode: {
+    path: '/polykey.v1.ClientService/GestaltsGestaltTrustByNode',
+    requestStream: false,
+    responseStream: false,
+    requestType: polykey_v1_nodes_nodes_pb.Node,
+    responseType: polykey_v1_utils_utils_pb.EmptyMessage,
+    requestSerialize: serialize_polykey_v1_nodes_Node,
+    requestDeserialize: deserialize_polykey_v1_nodes_Node,
+    responseSerialize: serialize_polykey_v1_utils_EmptyMessage,
+    responseDeserialize: deserialize_polykey_v1_utils_EmptyMessage,
+  },
+  gestaltsGestaltTrustByIdentity: {
+    path: '/polykey.v1.ClientService/GestaltsGestaltTrustByIdentity',
+    requestStream: false,
+    responseStream: false,
+    requestType: polykey_v1_identities_identities_pb.Provider,
+    responseType: polykey_v1_utils_utils_pb.EmptyMessage,
+    requestSerialize: serialize_polykey_v1_identities_Provider,
+    requestDeserialize: deserialize_polykey_v1_identities_Provider,
+    responseSerialize: serialize_polykey_v1_utils_EmptyMessage,
+    responseDeserialize: deserialize_polykey_v1_utils_EmptyMessage,
   },
   gestaltsDiscoveryByNode: {
     path: '/polykey.v1.ClientService/GestaltsDiscoveryByNode',

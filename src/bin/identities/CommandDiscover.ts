@@ -10,9 +10,7 @@ class CommandDiscover extends CommandPolykey {
   constructor(...args: ConstructorParameters<typeof CommandPolykey>) {
     super(...args);
     this.name('discover');
-    this.description(
-      'Starts Discovery Process using Node or Identity as a Starting Point',
-    );
+    this.description('Adds a Node or Identity to the Discovery Queue');
     this.argument(
       '<gestaltId>',
       'Node ID or `Provider ID:Identity ID`',
