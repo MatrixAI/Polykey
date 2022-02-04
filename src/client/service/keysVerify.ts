@@ -16,8 +16,8 @@ function keysVerify({
     call: grpc.ServerUnaryCall<keysPB.Crypto, utilsPB.StatusMessage>,
     callback: grpc.sendUnaryData<utilsPB.StatusMessage>,
   ): Promise<void> => {
-    const response = new utilsPB.StatusMessage();
     try {
+      const response = new utilsPB.StatusMessage();
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
       const status = await keyManager.verifyWithRootKeyPair(
@@ -27,8 +27,8 @@ function keysVerify({
       response.setSuccess(status);
       callback(null, response);
       return;
-    } catch (err) {
-      callback(grpcUtils.fromError(err), null);
+    } catch (e) {
+      callback(grpcUtils.fromError(e));
       return;
     }
   };

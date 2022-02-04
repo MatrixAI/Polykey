@@ -16,16 +16,15 @@ function keysPasswordChange({
     call: grpc.ServerUnaryCall<sessionsPB.Password, utilsPB.EmptyMessage>,
     callback: grpc.sendUnaryData<utilsPB.EmptyMessage>,
   ): Promise<void> => {
-    const response = new utilsPB.EmptyMessage();
     try {
+      const response = new utilsPB.EmptyMessage();
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
-
       await keyManager.changePassword(call.request.getPassword());
       callback(null, response);
       return;
-    } catch (err) {
-      callback(grpcUtils.fromError(err), null);
+    } catch (e) {
+      callback(grpcUtils.fromError(e));
       return;
     }
   };

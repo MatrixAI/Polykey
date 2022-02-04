@@ -27,8 +27,8 @@ function agentStop({
       call.sendMetadata(metadata);
       // Respond first to close the GRPC connection
       callback(null, response);
-    } catch (err) {
-      callback(grpcUtils.fromError(err), null);
+    } catch (e) {
+      callback(grpcUtils.fromError(e));
       return;
     }
     // Stop is called after GRPC resources are cleared

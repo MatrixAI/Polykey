@@ -1,12 +1,15 @@
 import type * as grpc from '@grpc/grpc-js';
 import type { ClaimEncoded, ClaimIntermediary } from '../../claims/types';
 import type { NodeManager } from '../../nodes';
+import type { NodeId } from '../../nodes/types';
 import type { Sigchain } from '../../sigchain';
 import type { KeyManager } from '../../keys';
 import type * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
 import { utils as grpcUtils } from '../../grpc';
 import { utils as claimsUtils, errors as claimsErrors } from '../../claims';
 import { utils as nodesUtils } from '../../nodes';
+import { validateSync, utils as validationUtils } from '../../validation';
+import { matchSync } from '../../utils';
 
 function nodesCrossSignClaim({
   keyManager,
@@ -65,10 +68,23 @@ function nodesCrossSignClaim({
         if (payloadData.type !== 'node') {
           throw new claimsErrors.ErrorNodesClaimType();
         }
-        // Verify the claim
-        const senderPublicKey = await nodeManager.getPublicKey(
-          nodesUtils.decodeNodeId(payloadData.node1),
+        const {
+          nodeId,
+        }: {
+          nodeId: NodeId;
+        } = validateSync(
+          (keyPath, value) => {
+            return matchSync(keyPath)(
+              [['nodeId'], () => validationUtils.parseNodeId(value)],
+              () => value,
+            );
+          },
+          {
+            nodeId: payloadData.node1,
+          },
         );
+        // Verify the claim
+        const senderPublicKey = await nodeManager.getPublicKey(nodeId);
         const verified = await claimsUtils.verifyClaimSignature(
           constructedEncodedClaim,
           senderPublicKey,
@@ -141,11 +157,13 @@ function nodesCrossSignClaim({
         await sigchain.addExistingClaim(constructedDoublySignedClaim);
         // Close the stream
         await genClaims.next(null);
+        return;
       });
     } catch (e) {
       await genClaims.throw(e);
       // TODO: Handle the exception on this server - throw e?
       // throw e;
+      return;
     }
   };
 }

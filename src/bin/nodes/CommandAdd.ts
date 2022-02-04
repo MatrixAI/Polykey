@@ -1,22 +1,26 @@
 import type PolykeyClient from '../../PolykeyClient';
+import type { NodeId } from '../../nodes/types';
+import type { Host, Port } from '../../network/types';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils/utils';
 import * as binProcessors from '../utils/processors';
 import * as binOptions from '../utils/options';
+import * as binParsers from '../utils/parsers';
 
 class CommandAdd extends CommandPolykey {
   constructor(...args: ConstructorParameters<typeof CommandPolykey>) {
     super(...args);
     this.name('add');
     this.description('Add a Node to the Node Graph');
-    this.argument('<nodeId>', 'Id of the node to add');
-    this.argument('<host>', 'Address of the node');
-    this.argument('<port>', 'Port of the node');
+    this.argument('<nodeId>', 'Id of the node to add', binParsers.parseNodeId);
+    this.argument('<host>', 'Address of the node', binParsers.parseHost);
+    this.argument('<port>', 'Port of the node', binParsers.parsePort);
     this.addOption(binOptions.nodeId);
     this.addOption(binOptions.clientHost);
     this.addOption(binOptions.clientPort);
-    this.action(async (nodeId, host, port, options) => {
+    this.action(async (nodeId: NodeId, host: Host, port: Port, options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
+      const nodesUtils = await import('../../nodes/utils');
       const nodesPB = await import('../../proto/js/polykey/v1/nodes/nodes_pb');
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
@@ -43,7 +47,7 @@ class CommandAdd extends CommandPolykey {
           logger: this.logger.getChild(PolykeyClient.name),
         });
         const nodeAddressMessage = new nodesPB.NodeAddress();
-        nodeAddressMessage.setNodeId(nodeId);
+        nodeAddressMessage.setNodeId(nodesUtils.encodeNodeId(nodeId));
         nodeAddressMessage.setAddress(
           new nodesPB.Address().setHost(host).setPort(port),
         );

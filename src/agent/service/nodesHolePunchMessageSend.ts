@@ -1,9 +1,11 @@
 import type * as grpc from '@grpc/grpc-js';
 import type { NodeManager } from '../../nodes';
+import type { NodeId } from '../../nodes/types';
 import type * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
 import { utils as networkUtils } from '../../network';
 import { utils as grpcUtils } from '../../grpc';
-import { utils as nodesUtils } from '../../nodes';
+import { validateSync, utils as validationUtils } from '../../validation';
+import { matchSync } from '../../utils';
 import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 
 function nodesHolePunchMessageSend({
@@ -15,32 +17,49 @@ function nodesHolePunchMessageSend({
     call: grpc.ServerUnaryCall<nodesPB.Relay, utilsPB.EmptyMessage>,
     callback: grpc.sendUnaryData<utilsPB.EmptyMessage>,
   ): Promise<void> => {
-    const response = new utilsPB.EmptyMessage();
     try {
+      const response = new utilsPB.EmptyMessage();
+      const {
+        targetId,
+        sourceId,
+      }: {
+        targetId: NodeId;
+        sourceId: NodeId;
+      } = validateSync(
+        (keyPath, value) => {
+          return matchSync(keyPath)(
+            [
+              ['targetId'],
+              ['sourceId'],
+              () => validationUtils.parseNodeId(value),
+            ],
+            () => value,
+          );
+        },
+        {
+          targetId: call.request.getTargetId(),
+          sourceId: call.request.getSrcId(),
+        },
+      );
       // Firstly, check if this node is the desired node
       // If so, then we want to make this node start sending hole punching packets
       // back to the source node.
-      if (
-        nodeManager.getNodeId() ===
-        nodesUtils.decodeNodeId(call.request.getTargetId())
-      ) {
+      if (nodeManager.getNodeId() === targetId) {
         const [host, port] = networkUtils.parseAddress(
           call.request.getEgressAddress(),
         );
         await nodeManager.openConnection(host, port);
         // Otherwise, find if node in table
         // If so, ask the nodeManager to relay to the node
-      } else if (
-        await nodeManager.knowsNode(
-          nodesUtils.decodeNodeId(call.request.getSrcId()),
-        )
-      ) {
+      } else if (await nodeManager.knowsNode(sourceId)) {
         await nodeManager.relayHolePunchMessage(call.request);
       }
-    } catch (err) {
-      callback(grpcUtils.fromError(err), response);
+      callback(null, response);
+      return;
+    } catch (e) {
+      callback(grpcUtils.fromError(e));
+      return;
     }
-    callback(null, response);
   };
 }
 

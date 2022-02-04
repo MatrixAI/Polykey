@@ -1,21 +1,28 @@
 import type PolykeyClient from '../../PolykeyClient';
+import type { NodeId } from '../../nodes/types';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
 import * as binOptions from '../utils/options';
 import * as binProcessors from '../utils/processors';
+import * as binParsers from '../utils/parsers';
 
 class CommandSend extends CommandPolykey {
   constructor(...args: ConstructorParameters<typeof CommandPolykey>) {
     super(...args);
     this.name('send');
     this.description('Send a Notification with a Message to another Node');
-    this.argument('<nodeId>', 'Id of the node to send a message to');
+    this.argument(
+      '<nodeId>',
+      'Id of the node to send a message to',
+      binParsers.parseNodeId,
+    );
     this.argument('<message>', 'Message to send');
     this.addOption(binOptions.nodeId);
     this.addOption(binOptions.clientHost);
     this.addOption(binOptions.clientPort);
-    this.action(async (node, message, options) => {
+    this.action(async (nodeId: NodeId, message, options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
+      const nodesUtils = await import('../../nodes/utils');
       const notificationsPB = await import(
         '../../proto/js/polykey/v1/notifications/notifications_pb'
       );
@@ -46,7 +53,7 @@ class CommandSend extends CommandPolykey {
         const notificationsSendMessage = new notificationsPB.Send();
         const generalMessage = new notificationsPB.General();
         generalMessage.setMessage(message);
-        notificationsSendMessage.setReceiverId(node);
+        notificationsSendMessage.setReceiverId(nodesUtils.encodeNodeId(nodeId));
         notificationsSendMessage.setData(generalMessage);
         await binUtils.retryAuthentication(
           (auth) =>

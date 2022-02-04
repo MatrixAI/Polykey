@@ -1,8 +1,10 @@
 import type PolykeyClient from '../../PolykeyClient';
+import type { NodeId } from '../../nodes/types';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
 import * as binOptions from '../utils/options';
 import * as binProcessors from '../utils/processors';
+import * as binParsers from '../utils/parsers';
 
 class CommandShare extends CommandPolykey {
   constructor(...args: ConstructorParameters<typeof CommandPolykey>) {
@@ -10,12 +12,17 @@ class CommandShare extends CommandPolykey {
     this.name('share');
     this.description('Set the Permissions of a Vault for a Node');
     this.argument('<vaultName>', 'Name of the vault to be shared');
-    this.argument('<nodeId>', 'Id of the node to share to');
+    this.argument(
+      '<nodeId>',
+      'Id of the node to share to',
+      binParsers.parseNodeId,
+    );
     this.addOption(binOptions.nodeId);
     this.addOption(binOptions.clientHost);
     this.addOption(binOptions.clientPort);
-    this.action(async (vaultName, nodeId, options) => {
+    this.action(async (vaultName, nodeId: NodeId, options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
+      const nodesUtils = await import('../../nodes/utils');
       const vaultsPB = await import(
         '../../proto/js/polykey/v1/vaults/vaults_pb'
       );
@@ -50,7 +57,7 @@ class CommandShare extends CommandPolykey {
         setVaultPermsMessage.setVault(vaultMessage);
         setVaultPermsMessage.setNode(nodeMessage);
         vaultMessage.setNameOrId(vaultName);
-        nodeMessage.setNodeId(nodeId);
+        nodeMessage.setNodeId(nodesUtils.encodeNodeId(nodeId));
         await binUtils.retryAuthentication(
           (auth) =>
             pkClient.grpcClient.vaultsPermissionsSet(

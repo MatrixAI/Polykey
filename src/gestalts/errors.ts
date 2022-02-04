@@ -12,8 +12,6 @@ class ErrorGestaltsGraphNodeIdMissing extends ErrorGestalts {}
 
 class ErrorGestaltsGraphIdentityIdMissing extends ErrorGestalts {}
 
-class ErrorGestaltsInvalidAction extends ErrorGestalts {}
-
 export {
   ErrorGestalts,
   ErrorGestaltsGraphRunning,
@@ -21,5 +19,4 @@ export {
   ErrorGestaltsGraphDestroyed,
   ErrorGestaltsGraphNodeIdMissing,
   ErrorGestaltsGraphIdentityIdMissing,
-  ErrorGestaltsInvalidAction,
 };

@@ -1,6 +1,8 @@
 /**
  * Options and Arguments used by commands
- * Use PolykeyCommand.addOption or PolykeyCommand.addArgument
+ * Use `PolykeyCommand.addOption`
+ * The option parsers will parse parameters and environment variables
+ * but not the default value
  * @module
  */
 import commander from 'commander';
@@ -48,7 +50,9 @@ const fresh = new commander.Option(
 /**
  * Node ID used for connecting to a remote agent
  */
-const nodeId = new commander.Option('-ni, --node-id <id>').env('PK_NODE_ID');
+const nodeId = new commander.Option('-ni, --node-id <id>')
+  .env('PK_NODE_ID')
+  .argParser(binParsers.parseNodeId);
 
 /**
  * Client host used for connecting to remote agent
@@ -56,7 +60,9 @@ const nodeId = new commander.Option('-ni, --node-id <id>').env('PK_NODE_ID');
 const clientHost = new commander.Option(
   '-ch, --client-host <host>',
   'Client Host Address',
-).env('PK_CLIENT_HOST');
+)
+  .env('PK_CLIENT_HOST')
+  .argParser(binParsers.parseHost);
 
 /**
  * Client port used for connecting to remote agent
@@ -65,29 +71,30 @@ const clientPort = new commander.Option(
   '-cp, --client-port <port>',
   'Client Port',
 )
-  .argParser(binParsers.parseNumber)
-  .env('PK_CLIENT_PORT');
+  .env('PK_CLIENT_PORT')
+  .argParser(binParsers.parsePort);
 
 const ingressHost = new commander.Option(
   '-ih, --ingress-host <host>',
   'Ingress host',
 )
   .env('PK_INGRESS_HOST')
+  .argParser(binParsers.parseHost)
   .default(config.defaults.networkConfig.ingressHost);
 
 const ingressPort = new commander.Option(
   '-ip, --ingress-port <port>',
   'Ingress Port',
 )
-  .argParser(binParsers.parseNumber)
   .env('PK_INGRESS_PORT')
+  .argParser(binParsers.parsePort)
   .default(config.defaults.networkConfig.ingressPort);
 
 const connTimeoutTime = new commander.Option(
   '--connection-timeout <ms>',
   'Timeout value for connection establishment between nodes',
 )
-  .argParser(binParsers.parseNumber)
+  .argParser(binParsers.parseInteger)
   .default(config.defaults.forwardProxyConfig.connTimeoutTime);
 
 const passwordFile = new commander.Option(
@@ -123,7 +130,7 @@ const backgroundErrFile = new commander.Option(
 const rootKeyPairBits = new commander.Option(
   '-rkpb --root-key-pair-bits <bitsize>',
   'Bit size of root key pair',
-).argParser(binParsers.parseNumber);
+).argParser(binParsers.parseInteger);
 
 const seedNodes = new commander.Option(
   '-sn, --seed-nodes [nodeId1@host:port;nodeId2@host:port;...]',

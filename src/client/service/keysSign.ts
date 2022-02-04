@@ -15,19 +15,18 @@ function keysSign({
     call: grpc.ServerUnaryCall<keysPB.Crypto, keysPB.Crypto>,
     callback: grpc.sendUnaryData<keysPB.Crypto>,
   ): Promise<void> => {
-    const response = new keysPB.Crypto();
     try {
+      const response = new keysPB.Crypto();
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
-
       const signature = await keyManager.signWithRootKeyPair(
         Buffer.from(call.request.getData(), 'binary'),
       );
       response.setSignature(signature.toString('binary'));
       callback(null, response);
       return;
-    } catch (err) {
-      callback(grpcUtils.fromError(err), null);
+    } catch (e) {
+      callback(grpcUtils.fromError(e));
       return;
     }
   };

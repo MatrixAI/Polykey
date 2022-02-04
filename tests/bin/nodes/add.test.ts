@@ -6,6 +6,7 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { IdInternal } from '@matrixai/id';
 import PolykeyAgent from '@/PolykeyAgent';
 import * as nodesUtils from '@/nodes/utils';
+import { sysexits } from '@/utils';
 import * as testBinUtils from '../utils';
 import * as testUtils from '../../utils';
 
@@ -92,8 +93,7 @@ describe('add', () => {
         port.toString(),
       ]);
       const result = await testBinUtils.pkStdio(commands, {}, dataDir);
-      expect(result.exitCode).not.toBe(0);
-      expect(result.stderr).toContain('Invalid node ID.');
+      expect(result.exitCode).toBe(sysexits.USAGE);
     },
     global.failedConnectionTimeout,
   );
@@ -107,8 +107,7 @@ describe('add', () => {
         port.toString(),
       ]);
       const result = await testBinUtils.pkStdio(commands, {}, dataDir);
-      expect(result.exitCode).not.toBe(0);
-      expect(result.stderr).toContain('Invalid IP address.');
+      expect(result.exitCode).toBe(sysexits.USAGE);
 
       // Checking if node was added.
       const res = await polykeyAgent.nodeManager.getNode(validNodeId);

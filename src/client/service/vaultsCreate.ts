@@ -29,8 +29,8 @@ function vaultsCreate({
       response.setNameOrId(vaultsUtils.makeVaultIdPretty(vault.vaultId));
       callback(null, response);
       return;
-    } catch (err) {
-      callback(grpcUtils.fromError(err), null);
+    } catch (e) {
+      callback(grpcUtils.fromError(e));
       return;
     }
   };

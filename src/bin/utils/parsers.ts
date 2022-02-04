@@ -1,33 +1,56 @@
-import type { IdentityId, ProviderId } from '../../identities/types';
-import type { Host, Hostname, Port } from '../../network/types';
 import type { NodeId, NodeMapping } from '../../nodes/types';
+import type { Host, Hostname, Port } from '../../network/types';
 import commander from 'commander';
 import { IdInternal } from '@matrixai/id';
 import * as nodesUtils from '../../nodes/utils';
 import * as networkUtils from '../../network/utils';
+import * as validationUtils from '../../validation/utils';
+import * as validationErrors from '../../validation/errors';
 import config from '../../config';
 import { never } from '../../utils';
 
-function parseNumber(v: string): number {
-  const num = parseInt(v);
-  if (isNaN(num)) {
-    throw new commander.InvalidArgumentError(`${v} is not a number`);
-  }
-  return num;
+/**
+ * Converts a validation parser to commander argument parser
+ */
+function validateParserToArgParser<T>(
+  validate: (data: string) => T,
+): (data: string) => T {
+  return (data: string) => {
+    try {
+      return validate(data);
+    } catch (e) {
+      if (e instanceof validationErrors.ErrorParse) {
+        throw new commander.InvalidArgumentError(e.message);
+      } else {
+        throw e;
+      }
+    }
+  };
 }
+
+const parseInteger = validateParserToArgParser(validationUtils.parseInteger);
+const parseNumber = validateParserToArgParser(validationUtils.parseNumber);
+const parseNodeId = validateParserToArgParser(validationUtils.parseNodeId);
+const parseGestaltId = validateParserToArgParser(
+  validationUtils.parseGestaltId,
+);
+const parseHost = validateParserToArgParser(validationUtils.parseHost);
+const parseHostname = validateParserToArgParser(validationUtils.parseHostname);
+const parseHostOrHostname = validateParserToArgParser(
+  validationUtils.parseHostOrHostname,
+);
+const parsePort = validateParserToArgParser(validationUtils.parsePort);
 
 function parseCoreCount(v: string): number | undefined {
   if (v === 'all') {
     return undefined;
   }
-  return parseNumber(v);
+  return parseInt(v);
 }
 
-function parseSecretPath(
-  secretPath: string,
-): [string, string, string | undefined] {
+function parseSecretPath(secretPath: string): [string, string, string?] {
   // E.g. If 'vault1:a/b/c', ['vault1', 'a/b/c'] is returned
-  //      If 'vault1:a/b/c=VARIABLE', ['vault1, 'a/b/c', 'VAIRABLE'] is returned
+  //      If 'vault1:a/b/c=VARIABLE', ['vault1, 'a/b/c', 'VARIABLE'] is returned
   const secretPathRegex =
     /^([\w-]+)(?::)([\w\-\\\/\.\$]+)(?:=)?([a-zA-Z_][\w]+)?$/;
   if (!secretPathRegex.test(secretPath)) {
@@ -37,36 +60,6 @@ function parseSecretPath(
   }
   const [, vaultName, directoryPath] = secretPath.match(secretPathRegex)!;
   return [vaultName, directoryPath, undefined];
-}
-
-function parseGestaltId(gestaltId: string) {
-  let providerId: string | null = null;
-  let identityId: string | null = null;
-  let nodeId: string | null = null;
-
-  const identityStringRegex = /^(.+):(.+)$/;
-  if (identityStringRegex.test(gestaltId)) {
-    const parsed = parseIdentityString(gestaltId);
-    providerId = parsed.providerId;
-    identityId = parsed.identityId;
-  } else if (gestaltId != null) {
-    nodeId = gestaltId;
-  } else {
-    throw new commander.InvalidArgumentError(
-      `${gestaltId} is not a valid Node ID or Identity String`,
-    );
-  }
-  return { providerId, identityId, nodeId };
-}
-
-function parseIdentityString(identityString: string): {
-  providerId: ProviderId;
-  identityId: IdentityId;
-} {
-  const split = identityString.split(':');
-  const providerId = split[0] as ProviderId;
-  const identityId = split[1] as IdentityId;
-  return { providerId, identityId };
 }
 
 /**
@@ -128,15 +121,15 @@ function parseSeedNodes(rawSeedNodes: string): [NodeMapping, boolean] {
         `${idHostPort[0]} is not a valid node ID`,
       );
     }
-    if (!networkUtils.isValidHostname(idHostPort[1])) {
+    if (!networkUtils.isHostname(idHostPort[1])) {
       throw new commander.InvalidOptionArgumentError(
         `${idHostPort[1]} is not a valid hostname`,
       );
     }
-    const port = parseNumber(idHostPort[2]);
+    const port = parsePort(idHostPort[2]);
     seedNodeMappings[seedNodeId] = {
       host: idHostPort[1] as Host | Hostname,
-      port: port as Port,
+      port: port,
     };
   }
   return [seedNodeMappings, defaults];
@@ -153,10 +146,16 @@ function parseNetwork(network: string): NodeMapping {
 }
 
 export {
+  parseInteger,
   parseNumber,
   parseCoreCount,
   parseSecretPath,
+  parseNodeId,
   parseGestaltId,
+  parseHost,
+  parseHostname,
+  parseHostOrHostname,
+  parsePort,
   getDefaultSeedNodes,
   parseSeedNodes,
   parseNetwork,

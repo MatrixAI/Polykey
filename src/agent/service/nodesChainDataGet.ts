@@ -13,8 +13,8 @@ function nodesChainDataGet({ nodeManager }: { nodeManager: NodeManager }) {
     call: grpc.ServerUnaryCall<utilsPB.EmptyMessage, nodesPB.ChainData>,
     callback: grpc.sendUnaryData<nodesPB.ChainData>,
   ): Promise<void> => {
-    const response = new nodesPB.ChainData();
     try {
+      const response = new nodesPB.ChainData();
       const chainData = await nodeManager.getChainData();
       // Iterate through each claim in the chain, and serialize for transport
       for (const c in chainData) {
@@ -34,10 +34,12 @@ function nodesChainDataGet({ nodeManager }: { nodeManager: NodeManager }) {
         // Add the serialized claim
         response.getChainDataMap().set(claimId, claimMessage);
       }
-    } catch (err) {
-      callback(grpcUtils.fromError(err), response);
+      callback(null, response);
+      return;
+    } catch (e) {
+      callback(grpcUtils.fromError(e));
+      return;
     }
-    callback(null, response);
   };
 }
 

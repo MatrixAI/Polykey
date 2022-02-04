@@ -2,8 +2,10 @@ import type * as grpc from '@grpc/grpc-js';
 import type { Authenticate } from '../types';
 import type { IdentitiesManager } from '../../identities';
 import type { IdentityId, ProviderId } from '../../identities/types';
-import * as clientErrors from '../errors';
 import { utils as grpcUtils } from '../../grpc';
+import { errors as identitiesErrors } from '../../identities';
+import { validateSync, utils as validationUtils } from '../../validation';
+import { matchSync } from '../../utils';
 import * as identitiesPB from '../../proto/js/polykey/v1/identities/identities_pb';
 
 function identitiesInfoGetConnected({
@@ -23,20 +25,33 @@ function identitiesInfoGetConnected({
     try {
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
-      const providerId = call.request
-        .getProvider()
-        ?.getProviderId() as ProviderId;
-      const identityId = call.request
-        .getProvider()
-        ?.getIdentityId() as IdentityId;
+      const {
+        providerId,
+        identityId,
+      }: {
+        providerId: ProviderId;
+        identityId: IdentityId;
+      } = validateSync(
+        (keyPath, value) => {
+          return matchSync(keyPath)(
+            [['providerId'], () => validationUtils.parseProviderId(value)],
+            [['identityId'], () => validationUtils.parseIdentityId(value)],
+            () => value,
+          );
+        },
+        {
+          providerId: call.request.getProvider()?.getProviderId(),
+          identityId: call.request.getProvider()?.getIdentityId(),
+        },
+      );
       const provider = identitiesManager.getProvider(providerId);
-      if (provider == null) throw new clientErrors.ErrorClientInvalidProvider();
-
+      if (provider == null) {
+        throw new identitiesErrors.ErrorProviderMissing();
+      }
       const identities = provider.getConnectedIdentityDatas(
         identityId,
         call.request.getSearchTermList(),
       );
-
       for await (const identity of identities) {
         const identityInfoMessage = new identitiesPB.Info();
         const providerMessage = new identitiesPB.Provider();
@@ -50,8 +65,8 @@ function identitiesInfoGetConnected({
       }
       await genWritable.next(null);
       return;
-    } catch (err) {
-      await genWritable.throw(err);
+    } catch (e) {
+      await genWritable.throw(e);
       return;
     }
   };

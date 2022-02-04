@@ -4,6 +4,8 @@ import type { GestaltGraph } from '../../gestalts';
 import type { IdentityId, ProviderId } from '../../identities/types';
 import type * as identitiesPB from '../../proto/js/polykey/v1/identities/identities_pb';
 import { utils as grpcUtils } from '../../grpc';
+import { validateSync, utils as validationUtils } from '../../validation';
+import { matchSync } from '../../utils';
 import * as gestaltsPB from '../../proto/js/polykey/v1/gestalts/gestalts_pb';
 
 function gestaltsGestaltGetByIdentity({
@@ -17,21 +19,40 @@ function gestaltsGestaltGetByIdentity({
     call: grpc.ServerUnaryCall<identitiesPB.Provider, gestaltsPB.Graph>,
     callback: grpc.sendUnaryData<gestaltsPB.Graph>,
   ): Promise<void> => {
-    const response = new gestaltsPB.Graph();
     try {
+      const response = new gestaltsPB.Graph();
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
+      const {
+        providerId,
+        identityId,
+      }: {
+        providerId: ProviderId;
+        identityId: IdentityId;
+      } = validateSync(
+        (keyPath, value) => {
+          return matchSync(keyPath)(
+            [['providerId'], () => validationUtils.parseProviderId(value)],
+            [['identityId'], () => validationUtils.parseIdentityId(value)],
+            () => value,
+          );
+        },
+        {
+          providerId: call.request.getProviderId(),
+          identityId: call.request.getIdentityId(),
+        },
+      );
       const gestalt = await gestaltGraph.getGestaltByIdentity(
-        call.request.getProviderId() as ProviderId,
-        call.request.getIdentityId() as IdentityId,
+        providerId,
+        identityId,
       );
       if (gestalt != null) {
         response.setGestaltGraph(JSON.stringify(gestalt));
       }
       callback(null, response);
       return;
-    } catch (err) {
-      callback(grpcUtils.fromError(err), null);
+    } catch (e) {
+      callback(grpcUtils.fromError(e));
       return;
     }
   };

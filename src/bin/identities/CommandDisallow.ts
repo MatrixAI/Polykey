@@ -1,4 +1,5 @@
 import type PolykeyClient from '../../PolykeyClient';
+import type { GestaltId } from '../../gestalts/types';
 import CommandPolykey from '../CommandPolykey';
 import * as binOptions from '../utils/options';
 import * as binUtils from '../utils';
@@ -19,7 +20,7 @@ class CommandDisallow extends CommandPolykey {
     this.addOption(binOptions.nodeId);
     this.addOption(binOptions.clientHost);
     this.addOption(binOptions.clientPort);
-    this.action(async (gestaltId, permissions, options) => {
+    this.action(async (gestaltId: GestaltId, permissions, options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
       const identitiesPB = await import(
         '../../proto/js/polykey/v1/identities/identities_pb'
@@ -54,8 +55,8 @@ class CommandDisallow extends CommandPolykey {
         });
         const setActionMessage = new permissionsPB.ActionSet();
         setActionMessage.setAction(permissions);
-        if (gestaltId.nodeId) {
-          // Setting by Node.
+        if (gestaltId.type === 'node') {
+          // Setting by Node
           const nodeMessage = new nodesPB.Node();
           nodeMessage.setNodeId(gestaltId.nodeId);
           setActionMessage.setNode(nodeMessage);

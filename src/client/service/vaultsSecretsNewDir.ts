@@ -28,8 +28,8 @@ function vaultsSecretsNewDir({
     call: grpc.ServerUnaryCall<secretsPB.Directory, utilsPB.EmptyMessage>,
     callback: grpc.sendUnaryData<utilsPB.StatusMessage>,
   ): Promise<void> => {
-    const response = new utilsPB.StatusMessage();
     try {
+      const response = new utilsPB.StatusMessage();
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
 
@@ -48,8 +48,8 @@ function vaultsSecretsNewDir({
       response.setSuccess(true);
       callback(null, response);
       return;
-    } catch (err) {
-      callback(grpcUtils.fromError(err), null);
+    } catch (e) {
+      callback(grpcUtils.fromError(e));
       return;
     }
   };

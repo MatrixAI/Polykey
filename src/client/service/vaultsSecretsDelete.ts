@@ -25,8 +25,8 @@ function vaultsSecretsDelete({
     call: grpc.ServerUnaryCall<secretsPB.Secret, utilsPB.StatusMessage>,
     callback: grpc.sendUnaryData<utilsPB.StatusMessage>,
   ): Promise<void> => {
-    const response = new utilsPB.StatusMessage();
     try {
+      const response = new utilsPB.StatusMessage();
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
 
@@ -45,8 +45,8 @@ function vaultsSecretsDelete({
       response.setSuccess(true);
       callback(null, response);
       return;
-    } catch (err) {
-      callback(grpcUtils.fromError(err), null);
+    } catch (e) {
+      callback(grpcUtils.fromError(e));
       return;
     }
   };

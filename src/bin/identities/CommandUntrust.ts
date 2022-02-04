@@ -1,4 +1,5 @@
 import type PolykeyClient from '../../PolykeyClient';
+import type { GestaltId } from '../../gestalts/types';
 import CommandPolykey from '../CommandPolykey';
 import * as binOptions from '../utils/options';
 import * as binUtils from '../utils';
@@ -12,13 +13,13 @@ class CommandUntrust extends CommandPolykey {
     this.description('Untrust a Keynode or Identity');
     this.argument(
       '<gestaltId>',
-      'Node ID or `Provider Id:Identity Id`',
+      'Node ID or `Provider ID:Identity ID`',
       parsers.parseGestaltId,
     );
     this.addOption(binOptions.nodeId);
     this.addOption(binOptions.clientHost);
     this.addOption(binOptions.clientPort);
-    this.action(async (gestaltId, options) => {
+    this.action(async (gestaltId: GestaltId, options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
       const identitiesPB = await import(
         '../../proto/js/polykey/v1/identities/identities_pb'
@@ -54,7 +55,7 @@ class CommandUntrust extends CommandPolykey {
         const action = 'notify';
         const setActionMessage = new permissionsPB.ActionSet();
         setActionMessage.setAction(action);
-        if (gestaltId.nodeId) {
+        if (gestaltId.type === 'node') {
           // Setting by Node.
           const nodeMessage = new nodesPB.Node();
           nodeMessage.setNodeId(gestaltId.nodeId);

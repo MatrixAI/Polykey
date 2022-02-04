@@ -1,5 +1,6 @@
-import type gestaltsPB from '../../proto/js/polykey/v1/gestalts/gestalts_pb';
 import type PolykeyClient from '../../PolykeyClient';
+import type { GestaltId } from '../../gestalts/types';
+import type gestaltsPB from '../../proto/js/polykey/v1/gestalts/gestalts_pb';
 import CommandPolykey from '../CommandPolykey';
 import * as binOptions from '../utils/options';
 import * as binUtils from '../utils';
@@ -15,13 +16,13 @@ class CommandGet extends CommandPolykey {
     );
     this.argument(
       '<gestaltId>',
-      'Node ID or `Provider Id:Identity Id`',
+      'Node ID or `Provider ID:Identity ID`',
       parsers.parseGestaltId,
     );
     this.addOption(binOptions.nodeId);
     this.addOption(binOptions.clientHost);
     this.addOption(binOptions.clientPort);
-    this.action(async (gestaltId, options) => {
+    this.action(async (gestaltId: GestaltId, options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
       const identitiesPB = await import(
         '../../proto/js/polykey/v1/identities/identities_pb'
@@ -52,8 +53,8 @@ class CommandGet extends CommandPolykey {
           logger: this.logger.getChild(PolykeyClient.name),
         });
         let res: gestaltsPB.Graph;
-        if (gestaltId.nodeId) {
-          // Getting from node.
+        if (gestaltId.type === 'node') {
+          // Getting from node
           const nodeMessage = new nodesPB.Node();
           nodeMessage.setNodeId(gestaltId.nodeId);
           res = await binUtils.retryAuthentication(

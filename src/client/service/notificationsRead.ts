@@ -15,8 +15,8 @@ function notificationsRead({
     call: grpc.ServerUnaryCall<notificationsPB.Read, notificationsPB.List>,
     callback: grpc.sendUnaryData<notificationsPB.List>,
   ): Promise<void> => {
-    const response = new notificationsPB.List();
     try {
+      const response = new notificationsPB.List();
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
       const unread = call.request.getUnread();
@@ -63,8 +63,8 @@ function notificationsRead({
       response.setNotificationList(notifMessages);
       callback(null, response);
       return;
-    } catch (err) {
-      callback(grpcUtils.fromError(err), null);
+    } catch (e) {
+      callback(grpcUtils.fromError(e));
       return;
     }
   };

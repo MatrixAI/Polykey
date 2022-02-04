@@ -4,16 +4,17 @@ import type {
   VaultKey,
   VaultList,
   VaultName,
+  VaultAction,
   FileSystemReadable,
   VaultIdPretty,
 } from './types';
 import type { FileSystem } from '../types';
 import type { NodeId } from '../nodes/types';
-
 import type { GRPCClientAgent } from '../agent';
 import path from 'path';
 import { IdRandom } from '@matrixai/id';
 import * as grpc from '@grpc/grpc-js';
+import { vaultActions } from './types';
 import * as vaultsErrors from './errors';
 import { GitRequest } from '../git';
 import { promisify } from '../utils';
@@ -244,6 +245,11 @@ async function requestVaultNames(
   return data;
 }
 
+function isVaultAction(action: any): action is VaultAction {
+  if (typeof action !== 'string') return false;
+  return (vaultActions as Readonly<Array<string>>).includes(action);
+}
+
 export {
   isVaultId,
   isVaultIdPretty,
@@ -257,4 +263,5 @@ export {
   readdirRecursivelyEFS2,
   constructGitHandler,
   searchVaultName,
+  isVaultAction,
 };

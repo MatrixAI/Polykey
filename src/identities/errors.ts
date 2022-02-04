@@ -3,7 +3,9 @@ import { ErrorPolykey } from '../errors';
 class ErrorIdentities extends ErrorPolykey {}
 
 class ErrorIdentitiesManagerRunning extends ErrorIdentities {}
+
 class ErrorIdentitiesManagerNotRunning extends ErrorIdentities {}
+
 class ErrorIdentitiesManagerDestroyed extends ErrorIdentities {}
 
 class ErrorProviderDuplicate extends ErrorIdentities {}
@@ -16,6 +18,8 @@ class ErrorProviderUnauthenticated extends ErrorIdentities {}
 
 class ErrorProviderUnimplemented extends ErrorIdentities {}
 
+class ErrorProviderMissing extends ErrorIdentities {}
+
 export {
   ErrorIdentities,
   ErrorIdentitiesManagerRunning,
@@ -26,4 +30,5 @@ export {
   ErrorProviderAuthentication,
   ErrorProviderUnauthenticated,
   ErrorProviderUnimplemented,
+  ErrorProviderMissing,
 };

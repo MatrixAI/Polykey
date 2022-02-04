@@ -8,8 +8,8 @@ function vaultsSecretsStat({ authenticate }: { authenticate: Authenticate }) {
     call: grpc.ServerUnaryCall<vaultsPB.Vault, vaultsPB.Stat>,
     callback: grpc.sendUnaryData<vaultsPB.Stat>,
   ): Promise<void> => {
-    const response = new vaultsPB.Stat();
     try {
+      const response = new vaultsPB.Stat();
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
 
@@ -22,8 +22,8 @@ function vaultsSecretsStat({ authenticate }: { authenticate: Authenticate }) {
       // response.setStats(JSON.stringify(stats)););
       callback(null, response);
       return;
-    } catch (err) {
-      callback(grpcUtils.fromError(err), null);
+    } catch (e) {
+      callback(grpcUtils.fromError(e));
       return;
     }
   };

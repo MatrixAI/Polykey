@@ -3,6 +3,8 @@ import type { Authenticate } from '../types';
 import type { IdentitiesManager } from '../../identities';
 import type { ProviderId } from '../../identities/types';
 import { utils as grpcUtils } from '../../grpc';
+import { validateSync, utils as validationUtils } from '../../validation';
+import { matchSync } from '../../utils';
 import * as identitiesPB from '../../proto/js/polykey/v1/identities/identities_pb';
 
 /**
@@ -19,12 +21,25 @@ function identitiesInfoGet({
     call: grpc.ServerUnaryCall<identitiesPB.Provider, identitiesPB.Provider>,
     callback: grpc.sendUnaryData<identitiesPB.Provider>,
   ): Promise<void> => {
-    const response = new identitiesPB.Provider();
     try {
+      const response = new identitiesPB.Provider();
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
-      // Get's an identity out of all identities.
-      const providerId = call.request.getProviderId() as ProviderId;
+      const {
+        providerId,
+      }: {
+        providerId: ProviderId;
+      } = validateSync(
+        (keyPath, value) => {
+          return matchSync(keyPath)(
+            [['providerId'], () => validationUtils.parseProviderId(value)],
+            () => value,
+          );
+        },
+        {
+          providerId: call.request.getProviderId(),
+        },
+      );
       const provider = identitiesManager.getProvider(providerId);
       if (provider !== undefined) {
         const identities = await provider.getAuthIdentityIds();
@@ -35,8 +50,8 @@ function identitiesInfoGet({
       }
       callback(null, response);
       return;
-    } catch (err) {
-      callback(grpcUtils.fromError(err), null);
+    } catch (e) {
+      callback(grpcUtils.fromError(e));
       return;
     }
   };

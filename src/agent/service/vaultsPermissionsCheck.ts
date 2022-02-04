@@ -26,8 +26,8 @@ function vaultsPermissionsCheck(_) {
       //   response.setPermission(true);
       // }
       // callback(null, response);
-    } catch (err) {
-      callback(grpcUtils.fromError(err), null);
+    } catch (e) {
+      callback(grpcUtils.fromError(e));
     }
   };
 }

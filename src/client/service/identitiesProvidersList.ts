@@ -16,17 +16,16 @@ function identitiesProvidersList({
     call: grpc.ServerUnaryCall<utilsPB.EmptyMessage, identitiesPB.Provider>,
     callback: grpc.sendUnaryData<identitiesPB.Provider>,
   ): Promise<void> => {
-    const response = new identitiesPB.Provider();
     try {
+      const response = new identitiesPB.Provider();
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
-
       const providers = identitiesManager.getProviders();
       response.setProviderId(JSON.stringify(Object.keys(providers)));
       callback(null, response);
       return;
-    } catch (err) {
-      callback(grpcUtils.fromError(err), null);
+    } catch (e) {
+      callback(grpcUtils.fromError(e));
       return;
     }
   };

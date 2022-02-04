@@ -485,7 +485,7 @@ class NodeManager {
     const targetAddress = await this.findNode(targetNodeId);
     // If the stored host is not a valid host (IP address), then we assume it to
     // be a hostname
-    const targetHostname = !(await networkUtils.isValidHost(targetAddress.host))
+    const targetHostname = !(await networkUtils.isHost(targetAddress.host))
       ? (targetAddress.host as Hostname)
       : undefined;
     const connection = await NodeConnection.createNodeConnection({

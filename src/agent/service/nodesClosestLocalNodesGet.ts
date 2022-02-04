@@ -1,7 +1,10 @@
 import type * as grpc from '@grpc/grpc-js';
 import type { NodeManager } from '../../nodes';
+import type { NodeId } from '../../nodes/types';
 import { utils as grpcUtils } from '../../grpc';
 import { utils as nodesUtils } from '../../nodes';
+import { validateSync, utils as validationUtils } from '../../validation';
+import { matchSync } from '../../utils';
 import * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
 
 /**
@@ -17,11 +20,25 @@ function nodesClosestLocalNodesGet({
     call: grpc.ServerUnaryCall<nodesPB.Node, nodesPB.NodeTable>,
     callback: grpc.sendUnaryData<nodesPB.NodeTable>,
   ): Promise<void> => {
-    const response = new nodesPB.NodeTable();
     try {
-      const targetNodeId = nodesUtils.decodeNodeId(call.request.getNodeId());
+      const response = new nodesPB.NodeTable();
+      const {
+        nodeId,
+      }: {
+        nodeId: NodeId;
+      } = validateSync(
+        (keyPath, value) => {
+          return matchSync(keyPath)(
+            [['nodeId'], () => validationUtils.parseNodeId(value)],
+            () => value,
+          );
+        },
+        {
+          nodeId: call.request.getNodeId(),
+        },
+      );
       // Get all local nodes that are closest to the target node from the request
-      const closestNodes = await nodeManager.getClosestLocalNodes(targetNodeId);
+      const closestNodes = await nodeManager.getClosestLocalNodes(nodeId);
       for (const node of closestNodes) {
         const addressMessage = new nodesPB.Address();
         addressMessage.setHost(node.address.host);
@@ -31,10 +48,12 @@ function nodesClosestLocalNodesGet({
           .getNodeTableMap()
           .set(nodesUtils.encodeNodeId(node.id), addressMessage);
       }
-    } catch (err) {
-      callback(grpcUtils.fromError(err), response);
+      callback(null, response);
+      return;
+    } catch (e) {
+      callback(grpcUtils.fromError(e));
+      return;
     }
-    callback(null, response);
   };
 }
 

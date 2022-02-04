@@ -1,8 +1,11 @@
 import type * as grpc from '@grpc/grpc-js';
 import type { Authenticate } from '../types';
 import type { NodeManager } from '../../nodes';
+import type { NodeId } from '../../nodes/types';
 import { utils as nodesUtils } from '../../nodes';
 import { utils as grpcUtils } from '../../grpc';
+import { validateSync, utils as validationUtils } from '../../validation';
+import { matchSync } from '../../utils';
 import * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
 
 /**
@@ -21,22 +24,35 @@ function nodesFind({
     call: grpc.ServerUnaryCall<nodesPB.Node, nodesPB.NodeAddress>,
     callback: grpc.sendUnaryData<nodesPB.NodeAddress>,
   ): Promise<void> => {
-    const response = new nodesPB.NodeAddress();
     try {
+      const response = new nodesPB.NodeAddress();
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
-      const nodeIdEncoded = call.request.getNodeId();
-      const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded);
+      const {
+        nodeId,
+      }: {
+        nodeId: NodeId;
+      } = validateSync(
+        (keyPath, value) => {
+          return matchSync(keyPath)(
+            [['nodeId'], () => validationUtils.parseNodeId(value)],
+            () => value,
+          );
+        },
+        {
+          nodeId: call.request.getNodeId(),
+        },
+      );
       const address = await nodeManager.findNode(nodeId);
       response
-        .setNodeId(nodeIdEncoded)
+        .setNodeId(nodesUtils.encodeNodeId(nodeId))
         .setAddress(
           new nodesPB.Address().setHost(address.host).setPort(address.port),
         );
       callback(null, response);
       return;
-    } catch (err) {
-      callback(grpcUtils.fromError(err), null);
+    } catch (e) {
+      callback(grpcUtils.fromError(e));
       return;
     }
   };
