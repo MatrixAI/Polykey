@@ -10,11 +10,9 @@ import type {
 import type { KeyPairPem } from '../keys/types';
 import type { NodeId } from '../nodes/types';
 import type { VaultId } from '../vaults/types';
-
 import type { DefinedError } from 'ajv';
 import { createPublicKey, createPrivateKey } from 'crypto';
 import { SignJWT, exportJWK, jwtVerify, EmbeddedJWK } from 'jose';
-
 import { IdSortable } from '@matrixai/id';
 import {
   notificationValidate,
@@ -23,23 +21,14 @@ import {
   vaultShareNotificationValidate,
 } from './schema';
 import * as notificationsErrors from './errors';
-import { isId, makeId } from '../GenericIdTypes';
-
-function isNotificationId(arg: any): arg is NotificationId {
-  return isId<NotificationId>(arg);
-}
-
-function makeNotificationId(arg: any) {
-  return makeId<NotificationId>(arg);
-}
 
 function createNotificationIdGenerator(
   lastId?: NotificationId,
 ): NotificationIdGenerator {
-  const idSortableGenerator = new IdSortable({
+  const generator = new IdSortable<NotificationId>({
     lastId,
   });
-  return (): NotificationId => makeNotificationId(idSortableGenerator.get());
+  return () => generator.get();
 }
 
 function constructGestaltInviteMessage(nodeId: NodeId): string {
@@ -149,8 +138,6 @@ function validateVaultShareNotification(
 }
 
 export {
-  isNotificationId,
-  makeNotificationId,
   createNotificationIdGenerator,
   signNotification,
   verifyAndDecodeNotif,
