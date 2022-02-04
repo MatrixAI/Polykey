@@ -1,11 +1,6 @@
 import type { PublicKeyPem } from '../keys/types';
 import type { ChainData, ChainDataEncoded } from './types';
-import type { ClaimId, ClaimIdString } from '../claims/types';
-import type { NodeIdEncoded } from '../nodes/types';
-
-import { IdInternal, IdSortable } from '@matrixai/id';
 import * as claimsUtils from '../claims/utils';
-import { isIdString, isId, makeIdString, makeId } from '../GenericIdTypes';
 
 /**
  * Verifies each claim in a ChainDataEncoded record, and returns a ChainData
@@ -29,35 +24,4 @@ async function verifyChainData(
   return decodedChain;
 }
 
-function isClaimId(arg): arg is ClaimId {
-  return isId<ClaimId>(arg);
-}
-
-function makeClaimId(arg) {
-  return makeId<ClaimId>(arg);
-}
-
-function isClaimIdString(arg): arg is ClaimIdString {
-  return isIdString<ClaimIdString>(arg);
-}
-
-function makeClaimIdString(arg) {
-  return makeIdString<ClaimIdString>(arg);
-}
-
-function createClaimIdGenerator(nodeId: NodeIdEncoded, lastClaimId?: ClaimId) {
-  const generator = new IdSortable({
-    lastId: lastClaimId,
-    nodeId: IdInternal.fromString(nodeId).toBuffer(),
-  });
-  return () => makeClaimId(Buffer.from(generator.get()));
-}
-
-export {
-  verifyChainData,
-  isClaimId,
-  makeClaimId,
-  isClaimIdString,
-  makeClaimIdString,
-  createClaimIdGenerator,
-};
+export { verifyChainData };

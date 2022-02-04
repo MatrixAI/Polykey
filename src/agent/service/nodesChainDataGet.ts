@@ -1,5 +1,5 @@
 import type * as grpc from '@grpc/grpc-js';
-import type { ClaimIdString } from '../../claims/types';
+import type { ClaimIdEncoded } from '../../claims/types';
 import type { NodeManager } from '../../nodes';
 import type * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 import { utils as grpcUtils } from '../../grpc';
@@ -18,7 +18,7 @@ function nodesChainDataGet({ nodeManager }: { nodeManager: NodeManager }) {
       const chainData = await nodeManager.getChainData();
       // Iterate through each claim in the chain, and serialize for transport
       for (const c in chainData) {
-        const claimId = c as ClaimIdString;
+        const claimId = c as ClaimIdEncoded;
         const claim = chainData[claimId];
         const claimMessage = new nodesPB.AgentClaim();
         // Will always have a payload (never undefined) so cast as string

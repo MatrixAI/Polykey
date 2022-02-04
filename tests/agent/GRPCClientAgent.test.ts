@@ -1,6 +1,6 @@
 import type * as grpc from '@grpc/grpc-js';
 import type { NodeAddress, NodeIdEncoded, NodeInfo } from '@/nodes/types';
-import type { ClaimIdString, ClaimIntermediary } from '@/claims/types';
+import type { ClaimIdEncoded, ClaimIntermediary } from '@/claims/types';
 import type { Host, Port, TLSConfig } from '@/network/types';
 import fs from 'fs';
 import os from 'os';
@@ -389,7 +389,7 @@ describe(GRPCClientAgent.name, () => {
         expect(Object.keys(chain).length).toBe(1);
         // Iterate just to be safe, but expected to only have this single claim
         for (const c of Object.keys(chain)) {
-          const claimId = c as ClaimIdString;
+          const claimId = c as ClaimIdEncoded;
           expect(chain[claimId]).toStrictEqual(doublyResponse);
         }
       },

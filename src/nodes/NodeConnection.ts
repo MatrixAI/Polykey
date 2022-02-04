@@ -7,7 +7,7 @@ import type { Certificate, PublicKey, PublicKeyPem } from '../keys/types';
 import type {
   ClaimEncoded,
   ClaimIntermediary,
-  ClaimIdString,
+  ClaimIdEncoded,
 } from '../claims/types';
 
 import type { ForwardProxy } from '../network';
@@ -332,7 +332,7 @@ class NodeConnection {
     const response = await this.client.nodesChainDataGet(emptyMsg);
     // Reconstruct each claim from the returned ChainDataMessage
     response.getChainDataMap().forEach((claimMsg, id: string) => {
-      const claimId = id as ClaimIdString;
+      const claimId = id as ClaimIdEncoded;
       // Reconstruct the signatures array
       const signatures: Array<{ signature: string; protected: string }> = [];
       for (const signatureData of claimMsg.getSignaturesList()) {

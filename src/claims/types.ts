@@ -1,8 +1,8 @@
+import type { Id } from '@matrixai/id';
+import type { GeneralJWS, FlattenedJWSInput } from 'jose';
 import type { Opaque } from '../types';
 import type { NodeIdEncoded } from '../nodes/types';
 import type { ProviderId, IdentityId } from '../identities/types';
-import type { GeneralJWS, FlattenedJWSInput } from 'jose';
-import type { Id, IdString } from '../GenericIdTypes';
 
 /**
  * A JSON-ified, decoded version of the ClaimEncoded type.
@@ -43,13 +43,13 @@ type SignatureData = {
 };
 
 /**
- * An arbitraty string serving as a unique identitifer for a particular claim.
+ * An arbitrary string serving as a unique identitifer for a particular claim.
  * Depending on the domain the claim is used in, its implementation detail will
  * differ. For example, the sigchain domain uses a lexicographic-integer as the
  * claim ID (representing the sequence number key of the claim).
  */
 type ClaimId = Opaque<'ClaimId', Id>;
-type ClaimIdString = Opaque<'ClaimIdString', IdString>;
+type ClaimIdEncoded = Opaque<'ClaimIdEncoded', string>;
 
 type ClaimIdGenerator = () => ClaimId;
 
@@ -104,7 +104,7 @@ export type {
   ClaimIntermediary,
   SignatureData,
   ClaimId,
-  ClaimIdString,
+  ClaimIdEncoded,
   ClaimIdGenerator,
   ClaimEncoded,
   ClaimData,

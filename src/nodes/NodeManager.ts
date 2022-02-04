@@ -2,7 +2,7 @@ import type { KeyManager } from '../keys';
 import type { PublicKeyPem } from '../keys/types';
 import type { Sigchain } from '../sigchain';
 import type { ChainData, ChainDataEncoded } from '../sigchain/types';
-import type { ClaimIdString } from '../claims/types';
+import type { ClaimIdEncoded } from '../claims/types';
 import type {
   NodeId,
   NodeAddress,
@@ -312,7 +312,7 @@ class NodeManager {
     // node on the other end of the claim
     // e.g. a node claim from A -> B, verify with B's public key
     for (const c in verifiedChainData) {
-      const claimId = c as ClaimIdString;
+      const claimId = c as ClaimIdEncoded;
       const payload = verifiedChainData[claimId].payload;
       if (payload.data.type === 'node') {
         const endNodeId = nodesUtils.decodeNodeId(payload.data.node2);

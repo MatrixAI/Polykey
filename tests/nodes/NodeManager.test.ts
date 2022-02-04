@@ -1,4 +1,4 @@
-import type { ClaimIdString } from '@/claims/types';
+import type { ClaimIdEncoded } from '@/claims/types';
 import type { CertificatePem, KeyPairPem, PublicKeyPem } from '@/keys/types';
 import type { Host, Port } from '@/network/types';
 import type { NodeId, NodeAddress } from '@/nodes/types';
@@ -505,7 +505,7 @@ describe('NodeManager', () => {
       expect(Object.keys(xChain).length).toBe(1);
       // Iterate just to be safe, but expected to only have this single claim
       for (const c of Object.keys(xChain)) {
-        const claimId = c as ClaimIdString;
+        const claimId = c as ClaimIdEncoded;
         const claim = xChain[claimId];
         const decoded = claimsUtils.decodeClaim(claim);
         expect(decoded).toStrictEqual({
@@ -541,7 +541,7 @@ describe('NodeManager', () => {
       expect(Object.keys(yChain).length).toBe(1);
       // Iterate just to be safe, but expected to only have this single claim
       for (const c of Object.keys(yChain)) {
-        const claimId = c as ClaimIdString;
+        const claimId = c as ClaimIdEncoded;
         const claim = yChain[claimId];
         const decoded = claimsUtils.decodeClaim(claim);
         expect(decoded).toStrictEqual({
