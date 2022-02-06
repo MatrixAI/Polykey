@@ -312,14 +312,23 @@ class Status {
     return statusInfo;
   }
 
-  protected statusReplacer = (key, value) => {
+  /**
+   * Replacer used during encoding to JSON
+   * This is a function expression and not an arrow function expression
+   * because it needs to access the `this` inside the JSON.stringify
+   * in order to encode the `NodeId` before the `toJSON` of IdInternal is called
+   */
+  protected statusReplacer = function (key: string, value: any): any {
     if (key === 'nodeId') {
-      return nodesUtils.encodeNodeId(value.data);
+      return nodesUtils.encodeNodeId(this[key]);
     }
     return value;
   };
 
-  protected statusReviver = (key, value) => {
+  /**
+   * Reviver used during decoding from JSON
+   */
+  protected statusReviver = function (key: string, value: any): any {
     if (key === 'nodeId') {
       value = nodesUtils.decodeNodeId(value);
       if (value == null) {
