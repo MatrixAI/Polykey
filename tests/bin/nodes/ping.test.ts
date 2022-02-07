@@ -101,6 +101,10 @@ describe('ping', () => {
       const commands = genCommands([
         'ping',
         nodesUtils.encodeNodeId(remoteOfflineNodeId),
+        '-c',
+        '1',
+        '-ad',
+        '100',
       ]);
       const result = await testBinUtils.pkStdio(commands, {}, dataDir);
       expect(result.exitCode).toBe(1); // Should fail with no response. for automation purposes.

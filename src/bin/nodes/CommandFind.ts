@@ -7,6 +7,7 @@ import * as binOptions from '../utils/options';
 import * as binProcessors from '../utils/processors';
 import * as binParsers from '../utils/parsers';
 import * as binErrors from '../errors';
+import { sleep } from '../../utils';
 
 class CommandFind extends CommandPolykey {
   constructor(...args: ConstructorParameters<typeof CommandPolykey>) {
@@ -17,6 +18,8 @@ class CommandFind extends CommandPolykey {
     this.addOption(binOptions.nodeId);
     this.addOption(binOptions.clientHost);
     this.addOption(binOptions.clientPort);
+    this.addOption(binOptions.retryCount);
+    this.addOption(binOptions.retryInterval);
     this.action(async (nodeId: NodeId, options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
       const nodesPB = await import('../../proto/js/polykey/v1/nodes/nodes_pb');
@@ -57,28 +60,42 @@ class CommandFind extends CommandPolykey {
           host: '',
           port: 0,
         };
-        try {
-          const response = await binUtils.retryAuthentication(
-            (auth) => pkClient.grpcClient.nodesFind(nodeMessage, auth),
-            meta,
-          );
-          result.success = true;
-          result.id = response.getNodeId();
-          result.host = response.getAddress()!.getHost();
-          result.port = response.getAddress()!.getPort();
-          result.message = `Found node at ${networkUtils.buildAddress(
-            result.host as Host,
-            result.port as Port,
-          )}`;
-        } catch (err) {
-          if (!(err instanceof nodesErrors.ErrorNodeGraphNodeNotFound))
-            throw err;
-          // Else failed to find the node.
-          result.success = false;
-          result.id = nodesUtils.encodeNodeId(nodeId);
-          result.host = '';
-          result.port = 0;
-          result.message = `Failed to find node ${result.id}`;
+        let attemptCount = 1;
+        const maxAttempts: number | undefined = options.retryCount;
+        const attemptDelay: number = options.retryInterval;
+        while (true) {
+          try {
+            const response = await binUtils.retryAuthentication(
+              (auth) => pkClient.grpcClient.nodesFind(nodeMessage, auth),
+              meta,
+            );
+            result.success = true;
+            result.id = response.getNodeId();
+            result.host = response.getAddress()!.getHost();
+            result.port = response.getAddress()!.getPort();
+            result.message = `Found node at ${networkUtils.buildAddress(
+              result.host as Host,
+              result.port as Port,
+            )}`;
+            break;
+          } catch (err) {
+            if (!(err instanceof nodesErrors.ErrorNodeGraphNodeNotFound)) {
+              throw err;
+            }
+            if (maxAttempts !== undefined && attemptCount < maxAttempts) {
+              // Delay and continue.
+              attemptCount++;
+              await sleep(attemptDelay);
+              continue;
+            }
+            // Else failed to find the node.
+            result.success = false;
+            result.id = nodesUtils.encodeNodeId(nodeId);
+            result.host = '';
+            result.port = 0;
+            result.message = `Failed to find node ${result.id}`;
+            break;
+          }
         }
         let output: any = result;
         if (options.format === 'human') output = [result.message];
@@ -90,7 +107,7 @@ class CommandFind extends CommandPolykey {
         );
         // Like ping it should error when failing to find node for automation reasons.
         if (!result.success)
-          throw new binErrors.ErrorNodeFindFailed(result.message);
+          throw new binErrors.ErrorCLINodeFindFailed(result.message);
       } finally {
         if (pkClient! != null) await pkClient.stop();
       }

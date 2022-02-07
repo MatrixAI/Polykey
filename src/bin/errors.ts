@@ -51,13 +51,12 @@ class ErrorCLIFileRead extends ErrorCLI {
   exitCode = sysexits.NOINPUT;
 }
 
-
-class ErrorNodeFindFailed extends ErrorCLI {
+class ErrorCLINodeFindFailed extends ErrorCLI {
   description = 'Failed to find the node in the DHT';
   exitCode = 1;
 }
 
-class ErrorNodePingFailed extends ErrorCLI {
+class ErrorCLINodePingFailed extends ErrorCLI {
   description = 'Node was not online or not found.';
   exitCode = 1;
 }
@@ -73,6 +72,6 @@ export {
   ErrorCLIPasswordFileRead,
   ErrorCLIRecoveryCodeFileRead,
   ErrorCLIFileRead,
-  ErrorNodeFindFailed,
-  ErrorNodePingFailed,
+  ErrorCLINodeFindFailed,
+  ErrorCLINodePingFailed,
 };
