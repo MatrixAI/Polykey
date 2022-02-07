@@ -1,9 +1,11 @@
 import type * as grpc from '@grpc/grpc-js';
 import type { Authenticate } from '../types';
 import type { Discovery } from '../../discovery';
+import type { NodeId } from '../../nodes/types';
 import type * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
 import { utils as grpcUtils } from '../../grpc';
-import { utils as nodesUtils } from '../../nodes';
+import { validateSync, utils as validationUtils } from '../../validation';
+import { matchSync } from '../../utils';
 import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 
 function gestaltsDiscoveryByNode({
@@ -17,21 +19,33 @@ function gestaltsDiscoveryByNode({
     call: grpc.ServerUnaryCall<nodesPB.Node, utilsPB.EmptyMessage>,
     callback: grpc.sendUnaryData<utilsPB.EmptyMessage>,
   ): Promise<void> => {
-    const info = call.request;
-    const response = new utilsPB.EmptyMessage();
     try {
+      const response = new utilsPB.EmptyMessage();
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
-      // Constructing identity info.
-      const nodeId = nodesUtils.decodeNodeId(info.getNodeId()!);
+      const {
+        nodeId,
+      }: {
+        nodeId: NodeId;
+      } = validateSync(
+        (keyPath, value) => {
+          return matchSync(keyPath)(
+            [['nodeId'], () => validationUtils.parseNodeId(value)],
+            () => value,
+          );
+        },
+        {
+          nodeId: call.request.getNodeId(),
+        },
+      );
       const gen = discovery.discoverGestaltByNode(nodeId);
       for await (const _ of gen) {
         // Empty
       }
       callback(null, response);
       return;
-    } catch (err) {
-      callback(grpcUtils.fromError(err), null);
+    } catch (e) {
+      callback(grpcUtils.fromError(e));
       return;
     }
   };

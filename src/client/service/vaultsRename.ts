@@ -24,8 +24,8 @@ function vaultsRename({
     call: grpc.ServerUnaryCall<vaultsPB.Rename, vaultsPB.Vault>,
     callback: grpc.sendUnaryData<vaultsPB.Vault>,
   ): Promise<void> => {
-    const response = new vaultsPB.Vault();
     try {
+      const response = new vaultsPB.Vault();
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
       const vaultMessage = call.request.getVault();
@@ -42,8 +42,8 @@ function vaultsRename({
       response.setNameOrId(vaultsUtils.makeVaultIdPretty(vaultId));
       callback(null, response);
       return;
-    } catch (err) {
-      callback(grpcUtils.fromError(err), null);
+    } catch (e) {
+      callback(grpcUtils.fromError(e));
       return;
     }
   };

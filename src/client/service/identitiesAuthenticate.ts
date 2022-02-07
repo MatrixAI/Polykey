@@ -2,10 +2,11 @@ import type * as grpc from '@grpc/grpc-js';
 import type { Authenticate } from '../types';
 import type { IdentitiesManager } from '../../identities';
 import type { ProviderId } from '../../identities/types';
-import * as clientErrors from '../errors';
 import { utils as grpcUtils } from '../../grpc';
+import { errors as identitiesErrors } from '../../identities';
+import { validateSync, utils as validationUtils } from '../../validation';
+import { matchSync, never } from '../../utils';
 import * as identitiesPB from '../../proto/js/polykey/v1/identities/identities_pb';
-import { never } from '../../utils';
 
 function identitiesAuthenticate({
   identitiesManager,
@@ -24,11 +25,24 @@ function identitiesAuthenticate({
     try {
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
-      const provider = identitiesManager.getProvider(
-        call.request.getProviderId() as ProviderId,
+      const {
+        providerId,
+      }: {
+        providerId: ProviderId;
+      } = validateSync(
+        (keyPath, value) => {
+          return matchSync(keyPath)(
+            [['providerId'], () => validationUtils.parseProviderId(value)],
+            () => value,
+          );
+        },
+        {
+          providerId: call.request.getProviderId(),
+        },
       );
+      const provider = identitiesManager.getProvider(providerId);
       if (provider == null) {
-        throw new clientErrors.ErrorClientInvalidProvider();
+        throw new identitiesErrors.ErrorProviderMissing();
       }
       const authFlow = provider.authenticate();
       let authFlowResult = await authFlow.next();

@@ -17,12 +17,9 @@ function vaultsScan({
     call: grpc.ServerWritableStream<nodesPB.Node, vaultsPB.List>,
   ): Promise<void> => {
     const genWritable = grpcUtils.generatorWritable(call);
-    // Const possibleNodeId = nodesUtils.decodeNodeId(call.request.getNodeId());
-    // const nodeId = nodesUtils.validateNodeId(possibleNodeId);
     try {
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
-
       const vaults = await vaultManager.listVaults();
       vaults.forEach(async (vaultId, vaultName) => {
         const vaultListMessage = new vaultsPB.List();
@@ -32,8 +29,8 @@ function vaultsScan({
       });
       await genWritable.next(null);
       return;
-    } catch (err) {
-      await genWritable.throw(err);
+    } catch (e) {
+      await genWritable.throw(e);
       return;
     }
   };

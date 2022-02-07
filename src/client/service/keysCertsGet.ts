@@ -16,16 +16,16 @@ function keysCertsGet({
     call: grpc.ServerUnaryCall<utilsPB.EmptyMessage, keysPB.Certificate>,
     callback: grpc.sendUnaryData<keysPB.Certificate>,
   ): Promise<void> => {
-    const response = new keysPB.Certificate();
     try {
+      const response = new keysPB.Certificate();
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
       const cert = keyManager.getRootCertPem();
       response.setCert(cert);
       callback(null, response);
       return;
-    } catch (err) {
-      callback(grpcUtils.fromError(err), null);
+    } catch (e) {
+      callback(grpcUtils.fromError(e));
       return;
     }
   };

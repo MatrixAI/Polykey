@@ -35,8 +35,8 @@ function vaultsPermissionsUnset({
       response.setSuccess(true);
       callback(null, response);
       return;
-    } catch (err) {
-      callback(grpcUtils.fromError(err), null);
+    } catch (e) {
+      callback(grpcUtils.fromError(e));
       return;
     }
   };

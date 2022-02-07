@@ -1,30 +1,25 @@
-import { ErrorPolykey } from '../errors';
+import { ErrorPolykey, sysexits } from '../errors';
 
 class ErrorClient extends ErrorPolykey {}
 
 class ErrorClientClientDestroyed extends ErrorClient {
   description = 'GRPCClientClient has been destroyed';
-  exitCode = 64;
+  exitCode = sysexits.USAGE;
 }
 
 class ErrorClientAuthMissing extends ErrorClient {
   description = 'Authorisation metadata is required but missing';
-  exitCode = 77;
+  exitCode = sysexits.NOPERM;
 }
 
 class ErrorClientAuthFormat extends ErrorClient {
   description = 'Authorisation metadata has invalid format';
-  exitCode = 64;
+  exitCode = sysexits.USAGE;
 }
 
 class ErrorClientAuthDenied extends ErrorClient {
   description = 'Authorisation metadata is incorrect or expired';
-  exitCode = 77;
-}
-
-class ErrorClientInvalidProvider extends ErrorClient {
-  description = 'Provider Id is invalid or does not exist';
-  exitCode = 70;
+  exitCode = sysexits.NOPERM;
 }
 
 export {
@@ -33,5 +28,4 @@ export {
   ErrorClientAuthMissing,
   ErrorClientAuthFormat,
   ErrorClientAuthDenied,
-  ErrorClientInvalidProvider,
 };

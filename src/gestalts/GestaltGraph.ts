@@ -283,7 +283,7 @@ class GestaltGraph {
       if (gId.type === 'node') {
         ops.push(
           ...(await this.unlinkNodeAndIdentityOps(
-            nodesUtils.decodeNodeId(gId.nodeId),
+            nodesUtils.decodeNodeId(gId.nodeId)!,
             providerId,
             identityId,
           )),
@@ -318,7 +318,7 @@ class GestaltGraph {
   @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
   public async setNodeOps(nodeInfo: NodeInfo): Promise<Array<DBOp>> {
     const nodeKey = gestaltsUtils.keyFromNode(
-      nodesUtils.decodeNodeId(nodeInfo.id),
+      nodesUtils.decodeNodeId(nodeInfo.id)!,
     );
     const ops: Array<DBOp> = [];
     let nodeKeyKeys = await this.db.get<GestaltKeySet>(
@@ -330,7 +330,7 @@ class GestaltGraph {
       // Sets the gestalt in the acl
       ops.push(
         ...(await this.acl.setNodePermOps(
-          nodesUtils.decodeNodeId(nodeInfo.id),
+          nodesUtils.decodeNodeId(nodeInfo.id)!,
           {
             gestalt: {},
             vaults: {},
@@ -392,7 +392,7 @@ class GestaltGraph {
         ops.push(
           ...(await this.unlinkNodeAndNodeOps(
             nodeId,
-            nodesUtils.decodeNodeId(gId.nodeId),
+            nodesUtils.decodeNodeId(gId.nodeId)!,
           )),
         );
       } else if (gId.type === 'identity') {
@@ -437,7 +437,7 @@ class GestaltGraph {
   ): Promise<Array<DBOp>> {
     const ops: Array<DBOp> = [];
     const nodeKey = gestaltsUtils.keyFromNode(
-      nodesUtils.decodeNodeId(nodeInfo.id),
+      nodesUtils.decodeNodeId(nodeInfo.id)!,
     );
     const identityKey = gestaltsUtils.keyFromIdentity(
       identityInfo.providerId,
@@ -489,7 +489,7 @@ class GestaltGraph {
     if (nodeNew && identityNew) {
       ops.push(
         ...(await this.acl.setNodePermOps(
-          nodesUtils.decodeNodeId(nodeInfo.id),
+          nodesUtils.decodeNodeId(nodeInfo.id)!,
           {
             gestalt: {},
             vaults: {},
@@ -510,7 +510,7 @@ class GestaltGraph {
       );
       // These must exist
       const nodePerm = (await this.acl.getNodePerm(
-        nodesUtils.decodeNodeId(nodeInfo.id),
+        nodesUtils.decodeNodeId(nodeInfo.id)!,
       )) as Permission;
       const identityPerm = (await this.acl.getNodePerm(
         identityNodeIds[0],
@@ -522,7 +522,7 @@ class GestaltGraph {
       // and the perm record update
       ops.push(
         ...(await this.acl.joinNodePermOps(
-          nodesUtils.decodeNodeId(nodeInfo.id),
+          nodesUtils.decodeNodeId(nodeInfo.id)!,
           identityNodeIds,
           permNew,
         )),
@@ -531,7 +531,7 @@ class GestaltGraph {
       if (utils.isEmptyObject(identityKeyKeys)) {
         ops.push(
           ...(await this.acl.setNodePermOps(
-            nodesUtils.decodeNodeId(nodeInfo.id),
+            nodesUtils.decodeNodeId(nodeInfo.id)!,
             {
               gestalt: {},
               vaults: {},
@@ -547,7 +547,7 @@ class GestaltGraph {
         const identityNodeId = gestaltsUtils.nodeFromKey(identityNodeKey!);
         ops.push(
           ...(await this.acl.joinNodePermOps(identityNodeId, [
-            nodesUtils.decodeNodeId(nodeInfo.id),
+            nodesUtils.decodeNodeId(nodeInfo.id)!,
           ])),
         );
       }
@@ -602,8 +602,8 @@ class GestaltGraph {
     nodeInfo2: NodeInfo,
   ): Promise<Array<DBOp>> {
     const ops: Array<DBOp> = [];
-    const nodeIdEncoded1 = nodesUtils.decodeNodeId(nodeInfo1.id);
-    const nodeIdEncoded2 = nodesUtils.decodeNodeId(nodeInfo2.id);
+    const nodeIdEncoded1 = nodesUtils.decodeNodeId(nodeInfo1.id)!;
+    const nodeIdEncoded2 = nodesUtils.decodeNodeId(nodeInfo2.id)!;
     const nodeKey1 = gestaltsUtils.keyFromNode(nodeIdEncoded1);
     const nodeKey2 = gestaltsUtils.keyFromNode(nodeIdEncoded2);
     let nodeKeyKeys1 = await this.db.get<GestaltKeySet>(

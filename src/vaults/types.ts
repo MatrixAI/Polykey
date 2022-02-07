@@ -7,6 +7,8 @@ import type { FdIndex } from 'encryptedfs/dist/fd/types';
 import type { EncryptedFS } from 'encryptedfs';
 import type { Id, IdString } from '../GenericIdTypes';
 
+const vaultActions = ['clone', 'pull'] as const;
+
 /**
  * Randomly generated vault ID for each new vault
  */
@@ -21,7 +23,7 @@ type VaultKey = Opaque<'VaultKey', Buffer>;
 /**
  * Actions relating to what is possible with vaults
  */
-type VaultAction = 'clone' | 'pull';
+type VaultAction = typeof vaultActions[number];
 
 type VaultList = Map<VaultName, VaultId>;
 
@@ -147,6 +149,8 @@ type CommitLog = {
   timeStamp: number;
   message: string;
 };
+
+export { vaultActions };
 
 export type {
   VaultId,

@@ -43,7 +43,7 @@ describe('NodeGraph', () => {
   // const nodeId3 = makeNodeId('v359vgrgmqf1r5g4fvisiddjknjko6bmm4qv7646jr7fi9enbfuug');
   const dummyNode = nodesUtils.decodeNodeId(
     'vi3et1hrpv2m2lrplcm7cu913kr45v51cak54vm68anlbvuf83ra0',
-  );
+  )!;
 
   const logger = new Logger('NodeGraph Test', LogLevel.WARN, [
     new StreamHandler(),

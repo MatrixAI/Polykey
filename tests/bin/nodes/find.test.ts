@@ -177,7 +177,7 @@ describe('find', () => {
     async () => {
       const unknownNodeId = nodesUtils.decodeNodeId(
         'vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg',
-      );
+      )!;
       const commands = genCommands([
         'find',
         nodesUtils.encodeNodeId(unknownNodeId),

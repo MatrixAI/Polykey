@@ -1,3 +1,4 @@
+import type { DB, DBLevel, DBOp } from '@matrixai/db';
 import type { ChainDataEncoded } from './types';
 import type {
   ClaimData,
@@ -8,19 +9,16 @@ import type {
   ClaimType,
 } from '../claims/types';
 import type { KeyManager } from '../keys';
-import type { DB, DBLevel, DBOp } from '@matrixai/db';
 import type { NodeIdEncoded } from '../nodes/types';
-
 import Logger from '@matrixai/logger';
+import { IdInternal } from '@matrixai/id';
 import { Mutex } from 'async-mutex';
 import {
   CreateDestroyStartStop,
   ready,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
-import { utils as idUtils } from '@matrixai/id';
 import * as sigchainErrors from './errors';
 import * as claimsUtils from '../claims/utils';
-import { createClaimIdGenerator, makeClaimIdString } from '../sigchain/utils';
 import { utils as nodesUtils } from '../nodes';
 
 interface Sigchain extends CreateDestroyStartStop {}
@@ -139,7 +137,7 @@ class Sigchain {
 
     // Creating the ID generator
     const latestId = await this.getLatestClaimId();
-    this.generateClaimId = createClaimIdGenerator(
+    this.generateClaimId = claimsUtils.createClaimIdGenerator(
       nodesUtils.encodeNodeId(this.keyManager.getNodeId()),
       latestId,
     );
@@ -240,7 +238,7 @@ class Sigchain {
         {
           type: 'put',
           domain: this.sigchainClaimsDbDomain,
-          key: idUtils.toBuffer(claimId),
+          key: claimId.toBuffer(),
           value: claim,
         },
         {
@@ -280,7 +278,7 @@ class Sigchain {
         {
           type: 'put',
           domain: this.sigchainClaimsDbDomain,
-          key: idUtils.toBuffer(this.generateClaimId()),
+          key: this.generateClaimId().toBuffer(),
           value: claim,
         },
         {
@@ -327,13 +325,13 @@ class Sigchain {
     return await this._transaction(async () => {
       const chainData: ChainDataEncoded = {};
       for await (const o of this.sigchainClaimsDb.createReadStream()) {
-        const claimId = (o as any).key as ClaimId;
+        const claimId = IdInternal.fromBuffer<ClaimId>((o as any).key);
         const encryptedClaim = (o as any).value;
         const claim = await this.db.deserializeDecrypt<ClaimEncoded>(
           encryptedClaim,
           false,
         );
-        chainData[makeClaimIdString(claimId)] = claim;
+        chainData[claimsUtils.encodeClaimId(claimId)] = claim;
       }
       return chainData;
     });
@@ -418,7 +416,7 @@ class Sigchain {
     return await this._transaction(async () => {
       const claim = await this.db.get<ClaimEncoded>(
         this.sigchainClaimsDbDomain,
-        idUtils.toBuffer(claimId),
+        claimId.toBuffer(),
       );
       if (claim == null) {
         throw new sigchainErrors.ErrorSigchainClaimUndefined();
@@ -433,7 +431,7 @@ class Sigchain {
     const claimStream = this.sigchainClaimsDb.createKeyStream();
     let seq = 1;
     for await (const o of claimStream) {
-      map[seq] = o as any as ClaimId;
+      map[seq] = IdInternal.fromBuffer<ClaimId>(o);
       seq++;
     }
     return map;
@@ -460,7 +458,7 @@ class Sigchain {
         reverse: true,
       });
       for await (const o of keyStream) {
-        latestId = o as any as ClaimId;
+        latestId = IdInternal.fromBuffer<ClaimId>(o);
       }
       return latestId;
     });

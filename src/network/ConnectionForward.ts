@@ -295,7 +295,7 @@ class ConnectionForward extends Connection {
 
   @ready(new networkErrors.ErrorConnectionNotRunning())
   public getServerNodeIds(): Array<NodeId> {
-    return this.serverCertChain.map((c) => networkUtils.certNodeId(c));
+    return this.serverCertChain.map((c) => keysUtils.certNodeId(c)!);
   }
 
   protected async startKeepAliveInterval(): Promise<void> {

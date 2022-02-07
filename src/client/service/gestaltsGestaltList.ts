@@ -29,8 +29,8 @@ function gestaltsGestaltList({
       }
       await genWritable.next(null);
       return;
-    } catch (err) {
-      await genWritable.throw(err);
+    } catch (e) {
+      await genWritable.throw(e);
       return;
     }
   };

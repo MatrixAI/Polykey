@@ -1,26 +1,29 @@
-import type { Host, Port } from '../../network/types';
-
 import type PolykeyClient from '../../PolykeyClient';
+import type { NodeId } from '../../nodes/types';
+import type { Host, Port } from '../../network/types';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
 import * as binOptions from '../utils/options';
 import * as binProcessors from '../utils/processors';
+import * as binParsers from '../utils/parsers';
+import * as binErrors from '../errors';
 
 class CommandFind extends CommandPolykey {
   constructor(...args: ConstructorParameters<typeof CommandPolykey>) {
     super(...args);
     this.name('find');
     this.description('Attempt to Find a Node');
-    this.argument('<nodeId>', 'Id of the node to find');
+    this.argument('<nodeId>', 'Id of the node to find', binParsers.parseNodeId);
     this.addOption(binOptions.nodeId);
     this.addOption(binOptions.clientHost);
     this.addOption(binOptions.clientPort);
-    this.action(async (nodeId, options) => {
+    this.action(async (nodeId: NodeId, options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
       const nodesPB = await import('../../proto/js/polykey/v1/nodes/nodes_pb');
+      const nodesUtils = await import('../../nodes/utils');
       const networkUtils = await import('../../network/utils');
-      const CLIErrors = await import('../errors');
       const nodesErrors = await import('../../nodes/errors');
+
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -46,7 +49,7 @@ class CommandFind extends CommandPolykey {
           logger: this.logger.getChild(PolykeyClient.name),
         });
         const nodeMessage = new nodesPB.Node();
-        nodeMessage.setNodeId(nodeId);
+        nodeMessage.setNodeId(nodesUtils.encodeNodeId(nodeId));
         const result = {
           success: false,
           message: '',
@@ -72,7 +75,7 @@ class CommandFind extends CommandPolykey {
             throw err;
           // Else failed to find the node.
           result.success = false;
-          result.id = nodeId;
+          result.id = nodesUtils.encodeNodeId(nodeId);
           result.host = '';
           result.port = 0;
           result.message = `Failed to find node ${result.id}`;
@@ -87,7 +90,7 @@ class CommandFind extends CommandPolykey {
         );
         // Like ping it should error when failing to find node for automation reasons.
         if (!result.success)
-          throw new CLIErrors.ErrorNodeFindFailed(result.message);
+          throw new binErrors.ErrorNodeFindFailed(result.message);
       } finally {
         if (pkClient! != null) await pkClient.stop();
       }

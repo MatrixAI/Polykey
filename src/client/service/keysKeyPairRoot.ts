@@ -16,8 +16,8 @@ function keysKeyPairRoot({
     call: grpc.ServerUnaryCall<utilsPB.EmptyMessage, keysPB.KeyPair>,
     callback: grpc.sendUnaryData<keysPB.KeyPair>,
   ): Promise<void> => {
-    const response = new keysPB.KeyPair();
     try {
+      const response = new keysPB.KeyPair();
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
       const keyPair = keyManager.getRootKeyPairPem();
@@ -25,8 +25,8 @@ function keysKeyPairRoot({
       response.setPrivate(keyPair.privateKey);
       callback(null, response);
       return;
-    } catch (err) {
-      callback(grpcUtils.fromError(err), null);
+    } catch (e) {
+      callback(grpcUtils.fromError(e));
       return;
     }
   };

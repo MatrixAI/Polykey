@@ -9,9 +9,8 @@ import type {
 } from './types';
 import type { NodeId } from '../nodes/types';
 import type { IdentityId, ProviderId } from '../identities/types';
-
 import canonicalize from 'canonicalize';
-import { ErrorGestaltsInvalidAction } from './errors';
+import { gestaltActions } from './types';
 import { utils as nodesUtils } from '../nodes';
 
 /**
@@ -60,16 +59,14 @@ function keyFromIdentity(
 
 /**
  * Deconstruct GestaltKey to NodeId
- * This is a partial function.
  */
 function nodeFromKey(nodeKey: GestaltNodeKey): NodeId {
   const node = ungestaltKey(nodeKey) as GestaltNodeId;
-  return nodesUtils.decodeNodeId(node.nodeId);
+  return nodesUtils.decodeNodeId(node.nodeId)!;
 }
 
 /**
  * Deconstruct GestaltKey to IdentityId and ProviderId
- * This is a partial function.
  */
 function identityFromKey(
   identityKey: GestaltIdentityKey,
@@ -78,15 +75,9 @@ function identityFromKey(
   return [identity.providerId, identity.identityId];
 }
 
-const validGestaltAction = ['notify', 'scan'];
-function isGestaltAction(arg: any): arg is GestaltAction {
-  if (typeof arg !== 'string') return false;
-  return validGestaltAction.includes(arg);
-}
-
-function makeGestaltAction(value: string): GestaltAction {
-  if (isGestaltAction(value)) return value;
-  throw new ErrorGestaltsInvalidAction(`${value} is not a valid GestaltAction`);
+function isGestaltAction(action: any): action is GestaltAction {
+  if (typeof action !== 'string') return false;
+  return (gestaltActions as Readonly<Array<string>>).includes(action);
 }
 
 export {
@@ -97,5 +88,4 @@ export {
   nodeFromKey,
   identityFromKey,
   isGestaltAction,
-  makeGestaltAction,
 };

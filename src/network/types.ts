@@ -6,11 +6,24 @@ import type {
 } from '../keys/types';
 import type { Opaque } from '../types';
 
-// Host is always an IP address
+/**
+ * Host is always an IP address
+ */
 type Host = Opaque<'Host', string>;
-// Specifically for hostname domain names (i.e. to be resolved to an IP address)
+
+/**
+ * Hostnames are resolved to IP addresses
+ */
 type Hostname = Opaque<'Hostname', string>;
+
+/**
+ * Ports are numbers from 0 to 65535
+ */
 type Port = Opaque<'Port', number>;
+
+/**
+ * Combination of `<HOST>:<PORT>`
+ */
 type Address = Opaque<'Address', string>;
 
 type TLSConfig = {

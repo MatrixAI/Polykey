@@ -2,7 +2,9 @@ import type { Opaque } from '../types';
 import type { NodeIdEncoded, NodeInfo } from '../nodes/types';
 import type { IdentityId, ProviderId, IdentityInfo } from '../identities/types';
 
-type GestaltAction = 'notify' | 'scan';
+const gestaltActions = ['notify', 'scan'] as const;
+
+type GestaltAction = typeof gestaltActions[number];
 type GestaltActions = Partial<Record<GestaltAction, null>>;
 
 type GestaltId = GestaltNodeId | GestaltIdentityId;
@@ -29,6 +31,8 @@ type Gestalt = {
   nodes: GestaltNodes;
   identities: GestaltIdentities;
 };
+
+export { gestaltActions };
 
 export type {
   GestaltAction,

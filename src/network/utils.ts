@@ -8,9 +8,9 @@ import { Buffer } from 'buffer';
 import dns from 'dns';
 import { IPv4, IPv6, Validator } from 'ip-num';
 import * as networkErrors from './errors';
-import { isEmptyObject, promisify } from '../utils';
 import { utils as keysUtils } from '../keys';
 import { utils as nodesUtils } from '../nodes';
+import { isEmptyObject, promisify } from '../utils';
 
 const pingBuffer = serializeNetworkMessage({
   type: 'ping',
@@ -19,6 +19,35 @@ const pingBuffer = serializeNetworkMessage({
 const pongBuffer = serializeNetworkMessage({
   type: 'pong',
 });
+
+/**
+ * Validates that a provided host address is a valid IPv4 or IPv6 address.
+ */
+function isHost(host: any): host is Host {
+  if (typeof host !== 'string') return false;
+  const [isIPv4] = Validator.isValidIPv4String(host);
+  const [isIPv6] = Validator.isValidIPv6String(host);
+  return isIPv4 || isIPv6;
+}
+
+/**
+ * Validates hostname as per RFC 1123
+ */
+function isHostname(hostname: any): hostname is Hostname {
+  if (typeof hostname !== 'string') return false;
+  const regex =
+    /^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])$/;
+  return regex.test(hostname);
+}
+
+/**
+ * Ports must be numbers between 0 and 65535 inclusive
+ */
+function isPort(port: any): port is Port {
+  if (typeof port !== 'number') return false;
+  if (port < 0 || port > 65535) return false;
+  return true;
+}
 
 /**
  * Given a bearer token, return a authentication token string.
@@ -56,31 +85,11 @@ function parseAddress(address: string): [Host, Port] {
 }
 
 /**
- * Validates that a provided host address is a valid IPv4 or IPv6 address.
- */
-function isValidHost(host: string): boolean {
-  const [isIPv4] = Validator.isValidIPv4String(host);
-  const [isIPv6] = Validator.isValidIPv6String(host);
-  return isIPv4 || isIPv6;
-}
-
-/**
- * Validates that a provided hostname is valid, as per RFC 1123.
- */
-function isValidHostname(hostname: string): boolean {
-  return hostname.match(
-    /^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])$/,
-  )
-    ? true
-    : false;
-}
-
-/**
- * Resolves a provided hostname to its respective IP address (type Host).
+ * Resolves a provided hostname to its respective IP address (type Host)
  */
 async function resolveHost(host: Host | Hostname): Promise<Host> {
   // If already IPv4/IPv6 address, return it
-  if (isValidHost(host)) {
+  if (isHost(host)) {
     return host as Host;
   }
   const lookup = promisify(dns.lookup).bind(dns);
@@ -162,14 +171,6 @@ function getCertificateChain(socket: TLSSocket): Array<Certificate> {
  */
 function isTLSSocket(socket: Socket | TLSSocket): socket is TLSSocket {
   return (socket as TLSSocket).encrypted;
-}
-
-/**
- * Acquires the NodeId from a certificate
- */
-function certNodeId(cert: Certificate): NodeId {
-  const commonName = cert.subject.getField({ type: '2.5.4.3' });
-  return nodesUtils.decodeNodeId(commonName.value);
 }
 
 /**
@@ -352,17 +353,17 @@ function verifyClientCertificateChain(certChain: Array<Certificate>): void {
 export {
   pingBuffer,
   pongBuffer,
+  isHost,
+  isHostname,
+  isPort,
   toAuthToken,
   buildAddress,
   parseAddress,
-  isValidHost,
-  isValidHostname,
   resolveHost,
   resolvesZeroIP,
   serializeNetworkMessage,
   unserializeNetworkMessage,
   isTLSSocket,
-  certNodeId,
   getCertificateChain,
   verifyServerCertificateChain,
   verifyClientCertificateChain,

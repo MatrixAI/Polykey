@@ -7,7 +7,7 @@ import type { Certificate, PublicKey, PublicKeyPem } from '../keys/types';
 import type {
   ClaimEncoded,
   ClaimIntermediary,
-  ClaimIdString,
+  ClaimIdEncoded,
 } from '../claims/types';
 
 import type { ForwardProxy } from '../network';
@@ -246,7 +246,7 @@ class NodeConnection {
     const certificates = this.getRootCertChain();
     let publicKey: PublicKeyPem | null = null;
     for (const cert of certificates) {
-      if (networkUtils.certNodeId(cert).equals(expectedNodeId)) {
+      if (keysUtils.certNodeId(cert)!.equals(expectedNodeId)) {
         publicKey = keysUtils.publicKeyToPem(
           cert.publicKey as PublicKey,
         ) as PublicKeyPem;
@@ -271,7 +271,7 @@ class NodeConnection {
     const nodes: Array<NodeData> = [];
     // Loop over each map element (from the returned response) and populate nodes
     response.getNodeTableMap().forEach((address, nodeIdEncoded: string) => {
-      const nodeId: NodeId = nodesUtils.decodeNodeId(nodeIdEncoded);
+      const nodeId: NodeId = nodesUtils.decodeNodeId(nodeIdEncoded)!;
       nodes.push({
         id: nodeId,
         address: {
@@ -332,7 +332,7 @@ class NodeConnection {
     const response = await this.client.nodesChainDataGet(emptyMsg);
     // Reconstruct each claim from the returned ChainDataMessage
     response.getChainDataMap().forEach((claimMsg, id: string) => {
-      const claimId = id as ClaimIdString;
+      const claimId = id as ClaimIdEncoded;
       // Reconstruct the signatures array
       const signatures: Array<{ signature: string; protected: string }> = [];
       for (const signatureData of claimMsg.getSignaturesList()) {

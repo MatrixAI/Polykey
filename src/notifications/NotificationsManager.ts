@@ -9,8 +9,8 @@ import type { DB, DBLevel } from '@matrixai/db';
 import type { KeyManager } from '../keys';
 import type { NodeManager } from '../nodes';
 import type { NodeId } from '../nodes/types';
-
 import Logger from '@matrixai/logger';
+import { IdInternal } from '@matrixai/id';
 import { Mutex } from 'async-mutex';
 import {
   CreateDestroyStartStop,
@@ -134,7 +134,7 @@ class NotificationsManager {
       reverse: true,
     });
     for await (const o of keyStream) {
-      latestId = o as any as NotificationId;
+      latestId = IdInternal.fromBuffer<NotificationId>(o);
     }
     this.notificationIdGenerator = createNotificationIdGenerator(latestId);
     this.logger.info(`Started ${this.constructor.name}`);
@@ -207,7 +207,7 @@ class NotificationsManager {
   public async receiveNotification(notification: Notification) {
     await this._transaction(async () => {
       const nodePerms = await this.acl.getNodePerm(
-        nodesUtils.decodeNodeId(notification.senderId),
+        nodesUtils.decodeNodeId(notification.senderId)!,
       );
       if (nodePerms === undefined) {
         throw new notificationsErrors.ErrorNotificationsPermissionsNotFound();
@@ -296,7 +296,7 @@ class NotificationsManager {
     for (const notification of notifications) {
       if (
         notification.data.type === 'GestaltInvite' &&
-        nodesUtils.decodeNodeId(notification.senderId).equals(fromNode)
+        nodesUtils.decodeNodeId(notification.senderId)!.equals(fromNode)
       ) {
         return notification;
       }
@@ -349,7 +349,9 @@ class NotificationsManager {
     return await this._transaction(async () => {
       const notificationIds: Array<NotificationId> = [];
       for await (const o of this.notificationsMessagesDb.createReadStream()) {
-        const notificationId = (o as any).key as NotificationId;
+        const notificationId = IdInternal.fromBuffer<NotificationId>(
+          (o as any).key,
+        );
         const data = (o as any).value as Buffer;
         const notification = await this.db.deserializeDecrypt<Notification>(
           data,

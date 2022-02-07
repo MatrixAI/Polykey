@@ -95,6 +95,7 @@ abstract class Provider {
     } catch (e) {
       return;
     }
+    // TODO: Add node ID validation here?
     if (!schema.claimIdentityValidate(claim)) {
       return;
     }

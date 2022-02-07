@@ -41,7 +41,7 @@ describe('CLI vaults', () => {
   // Constants
   const nodeId1Encoded =
     'vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0' as NodeIdEncoded;
-  const nodeId1 = nodesUtils.decodeNodeId(nodeId1Encoded);
+  const nodeId1 = nodesUtils.decodeNodeId(nodeId1Encoded)!;
   const nodeId2Encoded =
     'vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg' as NodeIdEncoded;
   // Const nodeId2 = nodesUtils.decodeNodeId(nodeId2Encoded);

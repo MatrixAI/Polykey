@@ -357,12 +357,12 @@ class VaultManager {
           await this.acl.setNodeAction(nodeId, 'scan');
           await this.acl.setVaultAction(
             vaultId,
-            nodesUtils.decodeNodeId(nodes[node].id),
+            nodesUtils.decodeNodeId(nodes[node].id)!,
             'pull',
           );
           await this.acl.setVaultAction(
             vaultId,
-            nodesUtils.decodeNodeId(nodes[node].id),
+            nodesUtils.decodeNodeId(nodes[node].id)!,
             'clone',
           );
         }

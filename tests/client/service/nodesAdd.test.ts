@@ -149,7 +149,7 @@ describe('nodesAdd', () => {
     const result = await nodeManager.getNode(
       nodesUtils.decodeNodeId(
         'vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0',
-      ),
+      )!,
     );
     expect(result).toBeDefined();
     expect(result!.host).toBe('127.0.0.1');

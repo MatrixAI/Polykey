@@ -1,7 +1,5 @@
 import type { NodeData, NodeId, NodeIdEncoded } from './types';
-
-import { IdInternal, utils as idUtils } from '@matrixai/id';
-import * as nodesErrors from './errors';
+import { IdInternal } from '@matrixai/id';
 
 /**
  * Compute the distance between two nodes.
@@ -68,19 +66,22 @@ function sortByDistance(a: NodeData, b: NodeData) {
 }
 
 function encodeNodeId(nodeId: NodeId): NodeIdEncoded {
-  return idUtils.toMultibase(nodeId, 'base32hex') as NodeIdEncoded;
+  return nodeId.toMultibase('base32hex') as NodeIdEncoded;
 }
 
-function decodeNodeId(nodeIdEncoded: NodeIdEncoded | string): NodeId {
+function decodeNodeId(nodeIdEncoded: any): NodeId | undefined {
+  if (typeof nodeIdEncoded !== 'string') {
+    return;
+  }
   const nodeId = IdInternal.fromMultibase<NodeId>(nodeIdEncoded);
-  if (nodeId == null)
-    throw new nodesErrors.ErrorInvalidNodeId(
-      `Was not a valid multibase: ${nodeIdEncoded}`,
-    );
-  if (nodeId.length !== 32)
-    throw new nodesErrors.ErrorInvalidNodeId(
-      `Was not 32 bytes long: ${nodeIdEncoded}`,
-    );
+  if (nodeId == null) {
+    return;
+  }
+  // All NodeIds are 32 bytes long
+  // The NodeGraph requires a fixed size for Node Ids
+  if (nodeId.length !== 32) {
+    return;
+  }
   return nodeId;
 }
 

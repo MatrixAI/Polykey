@@ -68,7 +68,7 @@ describe('identitiesAuthenticate', () => {
     grpcClient = await GRPCClientClient.createGRPCClientClient({
       nodeId: nodesUtils.decodeNodeId(
         'vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg',
-      ),
+      )!,
       host: '127.0.0.1' as Host,
       port: grpcServer.port,
       logger,

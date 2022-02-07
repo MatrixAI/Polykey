@@ -19,8 +19,6 @@ import { NodeManager } from '@/nodes';
 import { NotificationsManager } from '@/notifications';
 import { ForwardProxy, ReverseProxy } from '@/network';
 import { AgentServiceService, createAgentService } from '@/agent';
-
-import * as networkUtils from '@/network/utils';
 import { generateVaultId } from '@/vaults/utils';
 import { utils as nodesUtils } from '@/nodes';
 import * as testUtils from '../utils';
@@ -95,7 +93,7 @@ describe('NotificationsManager', () => {
     });
     senderKeyPairPem = senderKeyManager.getRootKeyPairPem();
     senderCertPem = senderKeyManager.getRootCertPem();
-    senderNodeId = networkUtils.certNodeId(senderKeyManager.getRootCert());
+    senderNodeId = keysUtils.certNodeId(senderKeyManager.getRootCert())!;
     fwdTLSConfig = {
       keyPrivatePem: senderKeyPairPem.privateKey,
       certChainPem: senderCertPem,
@@ -186,7 +184,7 @@ describe('NotificationsManager', () => {
         messageCap: 5,
         logger: logger,
       });
-    receiverNodeId = networkUtils.certNodeId(receiverKeyManager.getRootCert());
+    receiverNodeId = keysUtils.certNodeId(receiverKeyManager.getRootCert())!;
     await receiverGestaltGraph.setNode(node);
     await receiverNodeManager.start();
 

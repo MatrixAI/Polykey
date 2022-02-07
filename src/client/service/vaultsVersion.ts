@@ -24,8 +24,8 @@ function vaultsVersion({
     call: grpc.ServerUnaryCall<vaultsPB.Version, vaultsPB.VersionResult>,
     callback: grpc.sendUnaryData<vaultsPB.VersionResult>,
   ): Promise<void> => {
-    const response = new vaultsPB.VersionResult();
     try {
+      const response = new vaultsPB.VersionResult();
       // Checking session token
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
@@ -60,8 +60,8 @@ function vaultsVersion({
       // Sending message
       callback(null, response);
       return;
-    } catch (err) {
-      callback(grpcUtils.fromError(err), null);
+    } catch (e) {
+      callback(grpcUtils.fromError(e));
       return;
     }
   };

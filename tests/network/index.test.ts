@@ -2,7 +2,7 @@ import type { Host, Port } from '@/network/types';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import grpc from '@grpc/grpc-js';
 import { utils as keysUtils } from '@/keys';
-import { ForwardProxy, ReverseProxy, utils as networkUtils } from '@/network';
+import { ForwardProxy, ReverseProxy } from '@/network';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import { sleep } from '@/utils';
 import { openTestServer, closeTestServer, GRPCClientTest } from '../grpc/utils';
@@ -30,7 +30,7 @@ describe('network index', () => {
       12332432423,
     );
     clientCertPem = keysUtils.certToPem(clientCert);
-    clientNodeId = networkUtils.certNodeId(clientCert);
+    clientNodeId = keysUtils.certNodeId(clientCert)!;
     // Server keys
     const serverKeyPair = await keysUtils.generateKeyPair(1024);
     serverKeyPairPem = keysUtils.keyPairToPem(serverKeyPair);
@@ -41,7 +41,7 @@ describe('network index', () => {
       12332432423,
     );
     serverCertPem = keysUtils.certToPem(serverCert);
-    serverNodeId = networkUtils.certNodeId(serverCert);
+    serverNodeId = keysUtils.certNodeId(serverCert)!;
   });
   let server;
   let revProxy;

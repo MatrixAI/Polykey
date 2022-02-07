@@ -4,12 +4,13 @@ import type { NodeManager } from '../../nodes';
 import type { Sigchain } from '../../sigchain';
 import type { IdentitiesManager } from '../../identities';
 import type { IdentityId, ProviderId } from '../../identities/types';
-import * as clientErrors from '../errors';
 import { utils as grpcUtils } from '../../grpc';
 import { utils as claimsUtils } from '../../claims';
+import { utils as nodesUtils } from '../../nodes';
 import { errors as identitiesErrors } from '../../identities';
+import { validateSync, utils as validationUtils } from '../../validation';
+import { matchSync } from '../../utils';
 import * as identitiesPB from '../../proto/js/polykey/v1/identities/identities_pb';
-import { utils as nodeUtils } from '../../nodes';
 
 /**
  * Augments the keynode with a new identity.
@@ -29,15 +30,34 @@ function identitiesClaim({
     call: grpc.ServerUnaryCall<identitiesPB.Provider, identitiesPB.Claim>,
     callback: grpc.sendUnaryData<identitiesPB.Claim>,
   ): Promise<void> => {
-    const response = new identitiesPB.Claim();
     try {
+      const response = new identitiesPB.Claim();
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
+      const {
+        providerId,
+        identityId,
+      }: {
+        providerId: ProviderId;
+        identityId: IdentityId;
+      } = validateSync(
+        (keyPath, value) => {
+          return matchSync(keyPath)(
+            [['providerId'], () => validationUtils.parseProviderId(value)],
+            [['identityId'], () => validationUtils.parseIdentityId(value)],
+            () => value,
+          );
+        },
+        {
+          providerId: call.request.getProviderId(),
+          identityId: call.request.getIdentityId(),
+        },
+      );
       // Check provider is authenticated
-      const providerId = call.request.getProviderId() as ProviderId;
       const provider = identitiesManager.getProvider(providerId);
-      if (provider == null) throw new clientErrors.ErrorClientInvalidProvider();
-      const identityId = call.request.getIdentityId() as IdentityId;
+      if (provider == null) {
+        throw new identitiesErrors.ErrorProviderMissing();
+      }
       const identities = await provider.getAuthIdentityIds();
       if (!identities.includes(identityId)) {
         throw new identitiesErrors.ErrorProviderUnauthenticated();
@@ -45,7 +65,7 @@ function identitiesClaim({
       // Create identity claim on our node
       const [, claim] = await sigchain.addClaim({
         type: 'identity',
-        node: nodeUtils.encodeNodeId(nodeManager.getNodeId()),
+        node: nodesUtils.encodeNodeId(nodeManager.getNodeId()),
         provider: providerId,
         identity: identityId,
       });
@@ -58,8 +78,8 @@ function identitiesClaim({
       }
       callback(null, response);
       return;
-    } catch (err) {
-      callback(grpcUtils.fromError(err), null);
+    } catch (e) {
+      callback(grpcUtils.fromError(e));
       return;
     }
   };

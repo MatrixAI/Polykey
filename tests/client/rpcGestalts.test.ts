@@ -49,7 +49,7 @@ describe('Client service', () => {
 
   const nodeId2Encoded =
     'vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg' as NodeIdEncoded;
-  const nodeId2 = nodesUtils.decodeNodeId(nodeId2Encoded);
+  const nodeId2 = nodesUtils.decodeNodeId(nodeId2Encoded)!;
 
   const testToken = {
     providerId: 'test-provider' as ProviderId,

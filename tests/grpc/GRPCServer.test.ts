@@ -8,7 +8,6 @@ import { DB } from '@matrixai/db';
 import { GRPCServer, utils as grpcUtils } from '@/grpc';
 import { KeyManager, utils as keysUtils } from '@/keys';
 import { SessionManager } from '@/sessions';
-import * as networkUtils from '@/network/utils';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as grpcErrors from '@/grpc/errors';
 import * as clientUtils from '@/client/utils';
@@ -143,7 +142,7 @@ describe('GRPCServer', () => {
         certChainPem: keysUtils.certToPem(serverCert),
       },
     });
-    const nodeIdServer = networkUtils.certNodeId(serverCert);
+    const nodeIdServer = keysUtils.certNodeId(serverCert)!;
     const clientKeyPair = await keysUtils.generateKeyPair(4096);
     const clientCert = keysUtils.generateCertificate(
       clientKeyPair.publicKey,
@@ -203,7 +202,7 @@ describe('GRPCServer', () => {
       31536000,
     );
     // First client connection
-    const nodeIdServer1 = networkUtils.certNodeId(serverCert1);
+    const nodeIdServer1 = keysUtils.certNodeId(serverCert1)!;
     const client1 = await testGrpcUtils.openTestClientSecure(
       nodeIdServer1,
       server.port,
@@ -240,7 +239,7 @@ describe('GRPCServer', () => {
     const m2_ = await pCall2;
     expect(m2_.getChallenge()).toBe(m2.getChallenge());
     // Second client connection
-    const nodeIdServer2 = networkUtils.certNodeId(serverCert2);
+    const nodeIdServer2 = keysUtils.certNodeId(serverCert2)!;
     const client2 = await testGrpcUtils.openTestClientSecure(
       nodeIdServer2,
       server.port,
@@ -286,7 +285,7 @@ describe('GRPCServer', () => {
         certChainPem: keysUtils.certToPem(serverCert),
       },
     });
-    const nodeIdServer = networkUtils.certNodeId(serverCert);
+    const nodeIdServer = keysUtils.certNodeId(serverCert)!;
     const clientKeyPair = await keysUtils.generateKeyPair(4096);
     const clientCert = keysUtils.generateCertificate(
       clientKeyPair.publicKey,

@@ -12,7 +12,6 @@ import { DB } from '@matrixai/db';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { utils as keysUtils } from '@/keys';
 import { Session, SessionManager } from '@/sessions';
-import { utils as networkUtils } from '@/network';
 import { errors as grpcErrors } from '@/grpc';
 import * as clientUtils from '@/client/utils';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
@@ -47,7 +46,7 @@ describe('GRPCClient', () => {
       serverKeyPair.privateKey,
       31536000,
     );
-    nodeIdServer = networkUtils.certNodeId(serverCert);
+    nodeIdServer = keysUtils.certNodeId(serverCert)!;
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
       dbPath,

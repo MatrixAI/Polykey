@@ -1,5 +1,5 @@
 import type * as grpc from '@grpc/grpc-js';
-import type { ClaimIdString } from '../../claims/types';
+import type { ClaimIdEncoded } from '../../claims/types';
 import type { NodeManager } from '../../nodes';
 import type * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 import { utils as grpcUtils } from '../../grpc';
@@ -13,12 +13,12 @@ function nodesChainDataGet({ nodeManager }: { nodeManager: NodeManager }) {
     call: grpc.ServerUnaryCall<utilsPB.EmptyMessage, nodesPB.ChainData>,
     callback: grpc.sendUnaryData<nodesPB.ChainData>,
   ): Promise<void> => {
-    const response = new nodesPB.ChainData();
     try {
+      const response = new nodesPB.ChainData();
       const chainData = await nodeManager.getChainData();
       // Iterate through each claim in the chain, and serialize for transport
       for (const c in chainData) {
-        const claimId = c as ClaimIdString;
+        const claimId = c as ClaimIdEncoded;
         const claim = chainData[claimId];
         const claimMessage = new nodesPB.AgentClaim();
         // Will always have a payload (never undefined) so cast as string
@@ -34,10 +34,12 @@ function nodesChainDataGet({ nodeManager }: { nodeManager: NodeManager }) {
         // Add the serialized claim
         response.getChainDataMap().set(claimId, claimMessage);
       }
-    } catch (err) {
-      callback(grpcUtils.fromError(err), response);
+      callback(null, response);
+      return;
+    } catch (e) {
+      callback(grpcUtils.fromError(e));
+      return;
     }
-    callback(null, response);
   };
 }
 

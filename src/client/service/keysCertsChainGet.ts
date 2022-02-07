@@ -19,7 +19,6 @@ function keysCertsChainGet({
     try {
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
-
       const certs: Array<string> = await keyManager.getRootCertChainPems();
       let certMessage: keysPB.Certificate;
       for (const cert of certs) {
@@ -29,8 +28,8 @@ function keysCertsChainGet({
       }
       await genWritable.next(null);
       return;
-    } catch (err) {
-      await genWritable.throw(err);
+    } catch (e) {
+      await genWritable.throw(e);
       return;
     }
   };

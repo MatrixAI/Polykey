@@ -2,7 +2,7 @@ import type { KeyManager } from '../keys';
 import type { PublicKeyPem } from '../keys/types';
 import type { Sigchain } from '../sigchain';
 import type { ChainData, ChainDataEncoded } from '../sigchain/types';
-import type { ClaimIdString } from '../claims/types';
+import type { ClaimIdEncoded } from '../claims/types';
 import type {
   NodeId,
   NodeAddress,
@@ -312,10 +312,11 @@ class NodeManager {
     // node on the other end of the claim
     // e.g. a node claim from A -> B, verify with B's public key
     for (const c in verifiedChainData) {
-      const claimId = c as ClaimIdString;
+      const claimId = c as ClaimIdEncoded;
       const payload = verifiedChainData[claimId].payload;
       if (payload.data.type === 'node') {
-        const endNodeId = nodesUtils.decodeNodeId(payload.data.node2);
+        // TODO: remove ! assertion and perform exception handling in #310
+        const endNodeId = nodesUtils.decodeNodeId(payload.data.node2)!;
         let endPublicKey: PublicKeyPem;
         // If the claim points back to our own node, don't attempt to connect
         if (endNodeId.equals(this.getNodeId())) {
@@ -402,11 +403,11 @@ class NodeManager {
   @ready(new nodesErrors.ErrorNodeManagerNotRunning())
   public async relayHolePunchMessage(message: nodesPB.Relay): Promise<void> {
     const conn = await this.getConnectionToNode(
-      nodesUtils.decodeNodeId(message.getTargetId()),
+      nodesUtils.decodeNodeId(message.getTargetId())!,
     );
     await conn.sendHolePunchMessage(
-      nodesUtils.decodeNodeId(message.getSrcId()),
-      nodesUtils.decodeNodeId(message.getTargetId()),
+      nodesUtils.decodeNodeId(message.getSrcId())!,
+      nodesUtils.decodeNodeId(message.getTargetId())!,
       message.getEgressAddress(),
       Buffer.from(message.getSignature()),
     );
@@ -484,7 +485,7 @@ class NodeManager {
     const targetAddress = await this.findNode(targetNodeId);
     // If the stored host is not a valid host (IP address), then we assume it to
     // be a hostname
-    const targetHostname = !(await networkUtils.isValidHost(targetAddress.host))
+    const targetHostname = !(await networkUtils.isHost(targetAddress.host))
       ? (targetAddress.host as Hostname)
       : undefined;
     const connection = await NodeConnection.createNodeConnection({

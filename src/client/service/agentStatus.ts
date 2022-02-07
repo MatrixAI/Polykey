@@ -28,8 +28,8 @@ function agentStatus({
     call: grpc.ServerUnaryCall<utilsPB.EmptyMessage, agentPB.InfoMessage>,
     callback: grpc.sendUnaryData<agentPB.InfoMessage>,
   ): Promise<void> => {
-    const response = new agentPB.InfoMessage();
     try {
+      const response = new agentPB.InfoMessage();
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
       response.setPid(process.pid);
@@ -49,8 +49,8 @@ function agentStatus({
       response.setRootCertChainPem(await keyManager.getRootCertChainPem());
       callback(null, response);
       return;
-    } catch (err) {
-      callback(grpcUtils.fromError(err), null);
+    } catch (e) {
+      callback(grpcUtils.fromError(e));
       return;
     }
   };

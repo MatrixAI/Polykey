@@ -25,8 +25,8 @@ function vaultsSecretsMkdir({
     call: grpc.ServerUnaryCall<vaultsPB.Mkdir, utilsPB.EmptyMessage>,
     callback: grpc.sendUnaryData<utilsPB.StatusMessage>,
   ): Promise<void> => {
-    const response = new utilsPB.StatusMessage();
     try {
+      const response = new utilsPB.StatusMessage();
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
 
@@ -47,8 +47,8 @@ function vaultsSecretsMkdir({
       response.setSuccess(true);
       callback(null, response);
       return;
-    } catch (err) {
-      callback(grpcUtils.fromError(err), null);
+    } catch (e) {
+      callback(grpcUtils.fromError(e));
       return;
     }
   };

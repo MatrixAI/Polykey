@@ -45,16 +45,6 @@ class ErrorNodeConnectionInfoNotExist extends ErrorNodes {}
 
 class ErrorNodeConnectionPublicKeyNotFound extends ErrorNodes {}
 
-class ErrorInvalidNodeId extends ErrorNodes {
-  description: string = 'Invalid node ID.';
-  exitCode: number = 64;
-}
-
-class ErrorInvalidHost extends ErrorNodes {
-  description: string = 'Invalid IP address.';
-  exitCode: number = 64;
-}
-
 export {
   ErrorNodes,
   ErrorNodeManagerRunning,
@@ -76,6 +66,4 @@ export {
   ErrorNodeConnectionNotExist,
   ErrorNodeConnectionInfoNotExist,
   ErrorNodeConnectionPublicKeyNotFound,
-  ErrorInvalidNodeId,
-  ErrorInvalidHost,
 };

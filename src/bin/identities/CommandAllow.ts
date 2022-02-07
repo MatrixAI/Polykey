@@ -1,8 +1,9 @@
 import type PolykeyClient from '../../PolykeyClient';
+import type { GestaltId } from '../../gestalts/types';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
 import * as binOptions from '../utils/options';
-import * as parsers from '../utils/parsers';
+import * as binParsers from '../utils/parsers';
 import * as binProcessors from '../utils/processors';
 
 class CommandAllow extends CommandPolykey {
@@ -12,14 +13,14 @@ class CommandAllow extends CommandPolykey {
     this.description('Allow Permission for Identity');
     this.argument(
       '<gestaltId>',
-      'Node ID or `Provider Id:Identity Id`',
-      parsers.parseGestaltId,
+      'Node ID or `Provider ID:Identity ID`',
+      binParsers.parseGestaltId,
     );
     this.argument('<permissions>', 'permission to set');
     this.addOption(binOptions.nodeId);
     this.addOption(binOptions.clientHost);
     this.addOption(binOptions.clientPort);
-    this.action(async (gestaltId, permissions, options) => {
+    this.action(async (gestaltId: GestaltId, permissions, options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
       const identitiesPB = await import(
         '../../proto/js/polykey/v1/identities/identities_pb'
@@ -54,7 +55,7 @@ class CommandAllow extends CommandPolykey {
         });
         const setActionMessage = new permissionsPB.ActionSet();
         setActionMessage.setAction(permissions);
-        if (gestaltId.nodeId) {
+        if (gestaltId.type === 'node') {
           // Setting by Node
           const nodeMessage = new nodesPB.Node();
           nodeMessage.setNodeId(gestaltId.nodeId);

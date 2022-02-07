@@ -1,4 +1,5 @@
 import type PolykeyClient from '../../PolykeyClient';
+import type { GestaltId } from '../../gestalts/types';
 import CommandPolykey from '../CommandPolykey';
 import * as binOptions from '../utils/options';
 import * as binUtils from '../utils';
@@ -12,13 +13,13 @@ class CommandPermissions extends CommandPolykey {
     this.description('Gets the Permissions for a Node or Identity');
     this.argument(
       '<gestaltId>',
-      'Node ID or `Provider Id:Identity Id`',
+      'Node ID or `Provider ID:Identity ID`',
       parsers.parseGestaltId,
     );
     this.addOption(binOptions.nodeId);
     this.addOption(binOptions.clientHost);
     this.addOption(binOptions.clientPort);
-    this.action(async (gestaltId, options) => {
+    this.action(async (gestaltId: GestaltId, options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
       const identitiesPB = await import(
         '../../proto/js/polykey/v1/identities/identities_pb'
@@ -49,8 +50,8 @@ class CommandPermissions extends CommandPolykey {
           logger: this.logger.getChild(PolykeyClient.name),
         });
         let actions: string[] = [];
-        if (gestaltId.nodeId) {
-          // Getting by Node.
+        if (gestaltId.type === 'node') {
+          // Getting by Node
           const nodeMessage = new nodesPB.Node();
           nodeMessage.setNodeId(gestaltId.nodeId);
           const res = await binUtils.retryAuthentication(

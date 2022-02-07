@@ -25,8 +25,8 @@ function vaultsSecretsGet({
     call: grpc.ServerUnaryCall<secretsPB.Secret, utilsPB.EmptyMessage>,
     callback: grpc.sendUnaryData<secretsPB.Secret>,
   ): Promise<void> => {
-    const response = new secretsPB.Secret();
     try {
+      const response = new secretsPB.Secret();
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
 
@@ -45,8 +45,8 @@ function vaultsSecretsGet({
       response.setSecretContent(secretContent);
       callback(null, response);
       return;
-    } catch (err) {
-      callback(grpcUtils.fromError(err), null);
+    } catch (e) {
+      callback(grpcUtils.fromError(e));
       return;
     }
   };

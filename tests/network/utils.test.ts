@@ -28,7 +28,7 @@ describe('utils', () => {
       networkUtils.resolveHost('www.google.com' as Host),
     ).resolves.toBeDefined();
     const host = await networkUtils.resolveHost('www.google.com' as Host);
-    expect(networkUtils.isValidHost(host)).toBeTruthy();
+    expect(networkUtils.isHost(host)).toBeTruthy();
     await expect(
       networkUtils.resolveHost('invalidHostname' as Host),
     ).rejects.toThrow(networkErrors.ErrorHostnameResolutionFailed);

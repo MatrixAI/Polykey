@@ -1,11 +1,12 @@
 import type * as grpc from '@grpc/grpc-js';
 import type { Authenticate } from '../types';
 import type { NodeManager } from '../../nodes';
-import type { NodeAddress } from '../../nodes/types';
+import type { NodeId, NodeAddress } from '../../nodes/types';
+import type { Host, Hostname, Port } from '../../network/types';
 import type * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
-import { utils as nodesUtils, errors as nodesErrors } from '../../nodes';
 import { utils as grpcUtils } from '../../grpc';
-import { utils as networkUtils } from '../../network';
+import { validateSync, utils as validationUtils } from '../../validation';
+import { matchSync } from '../../utils';
 import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 
 /**
@@ -24,26 +25,41 @@ function nodesAdd({
     call: grpc.ServerUnaryCall<nodesPB.NodeAddress, utilsPB.EmptyMessage>,
     callback: grpc.sendUnaryData<utilsPB.EmptyMessage>,
   ): Promise<void> => {
-    const response = new utilsPB.EmptyMessage();
     try {
+      const response = new utilsPB.EmptyMessage();
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
-      // Validate the passed node ID and host
-      const nodeId = nodesUtils.decodeNodeId(call.request.getNodeId());
-      const validHost = networkUtils.isValidHost(
-        call.request.getAddress()!.getHost(),
+      const {
+        nodeId,
+        host,
+        port,
+      }: {
+        nodeId: NodeId;
+        host: Host | Hostname;
+        port: Port;
+      } = validateSync(
+        (keyPath, value) => {
+          return matchSync(keyPath)(
+            [['nodeId'], () => validationUtils.parseNodeId(value)],
+            [['host'], () => validationUtils.parseHostOrHostname(value)],
+            [['port'], () => validationUtils.parsePort(value)],
+            () => value,
+          );
+        },
+        {
+          nodeId: call.request.getNodeId(),
+          host: call.request.getAddress()?.getHost(),
+          port: call.request.getAddress()?.getPort(),
+        },
       );
-      if (!validHost) {
-        throw new nodesErrors.ErrorInvalidHost();
-      }
       await nodeManager.setNode(nodeId, {
-        host: call.request.getAddress()!.getHost(),
-        port: call.request.getAddress()!.getPort(),
+        host,
+        port,
       } as NodeAddress);
       callback(null, response);
       return;
-    } catch (err) {
-      callback(grpcUtils.fromError(err), null);
+    } catch (e) {
+      callback(grpcUtils.fromError(e));
       return;
     }
   };

@@ -1,4 +1,5 @@
 import type PolykeyClient from '../../PolykeyClient';
+import type { GestaltId } from '../../gestalts/types';
 import CommandPolykey from '../CommandPolykey';
 import * as binOptions from '../utils/options';
 import * as binUtils from '../utils';
@@ -14,13 +15,13 @@ class CommandDiscover extends CommandPolykey {
     );
     this.argument(
       '<gestaltId>',
-      'Node ID or `Provider Id:Identity Id`',
+      'Node ID or `Provider ID:Identity ID`',
       parsers.parseGestaltId,
     );
     this.addOption(binOptions.nodeId);
     this.addOption(binOptions.clientHost);
     this.addOption(binOptions.clientPort);
-    this.action(async (gestaltId, options) => {
+    this.action(async (gestaltId: GestaltId, options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
       const identitiesPB = await import(
         '../../proto/js/polykey/v1/identities/identities_pb'
@@ -50,8 +51,8 @@ class CommandDiscover extends CommandPolykey {
           port: clientOptions.clientPort,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-        if (gestaltId.nodeId != null) {
-          // Discovery by Node.
+        if (gestaltId.type === 'node') {
+          // Discovery by Node
           const nodeMessage = new nodesPB.Node();
           nodeMessage.setNodeId(gestaltId.nodeId);
           await binUtils.retryAuthentication(

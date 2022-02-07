@@ -16,8 +16,8 @@ function keysKeyPairRenew({
     call: grpc.ServerUnaryCall<keysPB.Key, utilsPB.EmptyMessage>,
     callback: grpc.sendUnaryData<utilsPB.EmptyMessage>,
   ): Promise<void> => {
-    const response = new utilsPB.EmptyMessage();
     try {
+      const response = new utilsPB.EmptyMessage();
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
       // Other domains will be updated accordingly via the `EventBus` so we
@@ -25,8 +25,8 @@ function keysKeyPairRenew({
       await keyManager.renewRootKeyPair(call.request.getName());
       callback(null, response);
       return;
-    } catch (err) {
-      callback(grpcUtils.fromError(err), null);
+    } catch (e) {
+      callback(grpcUtils.fromError(e));
       return;
     }
   };

@@ -1,6 +1,6 @@
 import type { FileSystem } from '../../types';
 import type { RecoveryCode } from '../../keys/types';
-import type { NodeId, NodeIdEncoded } from '../../nodes/types';
+import type { NodeId } from '../../nodes/types';
 import type { Host, Port } from '../../network/types';
 import type {
   StatusStarting,
@@ -17,7 +17,6 @@ import * as binErrors from '../errors';
 import * as clientUtils from '../../client/utils';
 import { Status } from '../../status';
 import config from '../../config';
-import { utils as nodesUtils } from '../../nodes';
 
 /**
  * Prompts for existing password
@@ -192,7 +191,7 @@ async function processRecoveryCode(
  */
 async function processClientOptions(
   nodePath: string,
-  nodeId?: NodeIdEncoded,
+  nodeId?: NodeId,
   clientHost?: Host,
   clientPort?: Port,
   fs = require('fs'),
@@ -215,15 +214,14 @@ async function processClientOptions(
     if (statusInfo === undefined || statusInfo.status !== 'LIVE') {
       throw new binErrors.ErrorCLIStatusNotLive();
     }
-    if (nodeId == null)
-      nodeId = nodesUtils.encodeNodeId(statusInfo.data.nodeId);
+    if (nodeId == null) nodeId = statusInfo.data.nodeId;
     if (clientHost == null) clientHost = statusInfo.data.clientHost;
     if (clientPort == null) clientPort = statusInfo.data.clientPort;
   }
   return {
-    nodeId: nodesUtils.decodeNodeId(nodeId),
-    clientHost: clientHost,
-    clientPort: clientPort,
+    nodeId,
+    clientHost,
+    clientPort,
   };
 }
 
@@ -235,7 +233,7 @@ async function processClientOptions(
  */
 async function processClientStatus(
   nodePath: string,
-  nodeId?: NodeIdEncoded,
+  nodeId?: NodeId,
   clientHost?: Host,
   clientPort?: Port,
   fs = require('fs'),
@@ -263,14 +261,12 @@ async function processClientStatus(
       clientPort: Port;
     }
 > {
-  let nodeIdDecoded: NodeId | undefined =
-    nodeId != null ? nodesUtils.decodeNodeId(nodeId) : undefined;
   // If all parameters are set, no status and no statusInfo is used
-  if (nodeIdDecoded != null && clientHost != null && clientPort != null) {
+  if (nodeId != null && clientHost != null && clientPort != null) {
     return {
       statusInfo: undefined,
       status: undefined,
-      nodeId: nodeIdDecoded,
+      nodeId,
       clientHost,
       clientPort,
     };
@@ -290,13 +286,13 @@ async function processClientStatus(
     throw new binErrors.ErrorCLIStatusMissing();
   }
   if (statusInfo.status === 'LIVE') {
-    if (nodeIdDecoded == null) nodeIdDecoded = statusInfo.data.nodeId;
+    if (nodeId == null) nodeId = statusInfo.data.nodeId;
     if (clientHost == null) clientHost = statusInfo.data.clientHost;
     if (clientPort == null) clientPort = statusInfo.data.clientPort;
     return {
       statusInfo,
       status,
-      nodeId: nodeIdDecoded,
+      nodeId,
       clientHost,
       clientPort,
     };
@@ -304,7 +300,7 @@ async function processClientStatus(
   return {
     statusInfo,
     status,
-    nodeId: nodeIdDecoded,
+    nodeId,
     clientHost,
     clientPort,
   };
