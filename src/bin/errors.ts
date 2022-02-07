@@ -51,28 +51,12 @@ class ErrorCLIFileRead extends ErrorCLI {
   exitCode = sysexits.NOINPUT;
 }
 
-class ErrorSecretPathFormat extends ErrorCLI {
-  description = "Secret name needs to be of format: '<vaultName>:<secretPath>'";
-  exitCode = 64;
-}
-
-class ErrorVaultNameAmbiguous extends ErrorCLI {
-  description =
-    'There is more than 1 Vault with this name. Please specify a Vault ID';
-  exitCode = 1;
-}
-
-class ErrorSecretsUndefined extends ErrorCLI {
-  description = 'At least one secret must be specified as an argument';
-  exitCode = 64;
-}
-
-class ErrorNodeFindFailed extends ErrorCLI {
+class ErrorCLINodeFindFailed extends ErrorCLI {
   description = 'Failed to find the node in the DHT';
   exitCode = 1;
 }
 
-class ErrorNodePingFailed extends ErrorCLI {
+class ErrorCLINodePingFailed extends ErrorCLI {
   description = 'Node was not online or not found.';
   exitCode = 1;
 }
@@ -88,9 +72,6 @@ export {
   ErrorCLIPasswordFileRead,
   ErrorCLIRecoveryCodeFileRead,
   ErrorCLIFileRead,
-  ErrorSecretPathFormat,
-  ErrorVaultNameAmbiguous,
-  ErrorSecretsUndefined,
-  ErrorNodeFindFailed,
-  ErrorNodePingFailed,
+  ErrorCLINodeFindFailed,
+  ErrorCLINodePingFailed,
 };

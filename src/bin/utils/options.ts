@@ -155,6 +155,19 @@ const workers = new commander.Option(
   .argParser(binParsers.parseCoreCount)
   .default(undefined);
 
+
+const retryCount = new commander.Option(
+  '-rc --retry-count <retryCount>',
+  'Number of attempts before failing',
+).argParser(binParsers.parseNumber);
+
+const retryInterval = new commander.Option(
+  '-ri --retry-interval <retryInterval>',
+  'Number of milliseconds between each attempt',
+)
+  .argParser(binParsers.parseNumber)
+  .default(5000);
+
 export {
   nodePath,
   format,
@@ -176,4 +189,6 @@ export {
   seedNodes,
   network,
   workers,
+  retryCount,
+  retryInterval,
 };

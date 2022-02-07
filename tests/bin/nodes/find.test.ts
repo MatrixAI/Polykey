@@ -181,6 +181,10 @@ describe('find', () => {
       const commands = genCommands([
         'find',
         nodesUtils.encodeNodeId(unknownNodeId),
+        '-c',
+        '3',
+        '-ad',
+        '100',
       ]);
       const result = await testBinUtils.pkStdio(commands, {}, dataDir);
       expect(result.exitCode).toBe(1);

@@ -6,6 +6,7 @@ import * as binOptions from '../utils/options';
 import * as binProcessors from '../utils/processors';
 import * as binParsers from '../utils/parsers';
 import * as binErrors from '../errors';
+import { sleep } from '../../utils';
 
 class CommandPing extends CommandPolykey {
   constructor(...args: ConstructorParameters<typeof CommandPolykey>) {
@@ -16,6 +17,8 @@ class CommandPing extends CommandPolykey {
     this.addOption(binOptions.nodeId);
     this.addOption(binOptions.clientHost);
     this.addOption(binOptions.clientPort);
+    this.addOption(binOptions.retryCount);
+    this.addOption(binOptions.retryInterval);
     this.action(async (nodeId: NodeId, options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
       const nodesUtils = await import('../../nodes/utils');
@@ -49,26 +52,43 @@ class CommandPing extends CommandPolykey {
         nodeMessage.setNodeId(nodesUtils.encodeNodeId(nodeId));
         let statusMessage;
         let error;
-        try {
-          statusMessage = await binUtils.retryAuthentication(
-            (auth) => pkClient.grpcClient.nodesPing(nodeMessage, auth),
-            meta,
-          );
-        } catch (err) {
-          if (err instanceof nodesErrors.ErrorNodeGraphNodeNotFound) {
-            error = new binErrors.ErrorNodePingFailed(
-              `Failed to resolve node ID ${nodesUtils.encodeNodeId(
-                nodeId,
-              )} to an address.`,
+        let attemptCount = 1;
+        const maxAttempts: number | undefined = options.retryCount;
+        const attemptDelay: number = options.retryInterval;
+        while (true) {
+          try {
+            statusMessage = await binUtils.retryAuthentication(
+              (auth) => pkClient.grpcClient.nodesPing(nodeMessage, auth),
+              meta,
             );
-          } else {
-            throw err;
+            if (statusMessage.getSuccess()) break;
+            if (maxAttempts !== undefined && attemptCount < maxAttempts) {
+              // Delay and continue
+              attemptCount++;
+              await sleep(attemptDelay);
+              continue;
+            }
+            break;
+          } catch (err) {
+            if (err instanceof nodesErrors.ErrorNodeGraphNodeNotFound)
+              throw err;
+            if (maxAttempts !== undefined && attemptCount < maxAttempts) {
+              // Delay and continue
+              attemptCount++;
+              await sleep(attemptDelay);
+              continue;
+            }
+            error = new binErrors.ErrorCLINodePingFailed(
+              `Failed to resolve node ID ${nodesUtils.encodeNodeId(nodeId)} to an address`,
+            );
+            break;
           }
         }
         const status = { success: false, message: '' };
         status.success = statusMessage ? statusMessage.getSuccess() : false;
-        if (!status.success && !error)
-          error = new binErrors.ErrorNodePingFailed('No response received');
+        if (!status.success && !error) {
+          error = new binErrors.ErrorCLINodePingFailed('No response received');
+        }
         if (status.success) status.message = 'Node is Active.';
         else status.message = error.message;
         const output: any =
