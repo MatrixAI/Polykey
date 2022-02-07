@@ -431,7 +431,8 @@ class Sigchain {
     const claimStream = this.sigchainClaimsDb.createKeyStream();
     let seq = 1;
     for await (const o of claimStream) {
-      map[seq] = IdInternal.fromBuffer<ClaimId>(o);
+      // FIXME: really a buffer?
+      map[seq] = IdInternal.fromBuffer<ClaimId>(o as Buffer);
       seq++;
     }
     return map;
@@ -458,7 +459,8 @@ class Sigchain {
         reverse: true,
       });
       for await (const o of keyStream) {
-        latestId = IdInternal.fromBuffer<ClaimId>(o);
+        // FIXME: really a buffer?
+        latestId = IdInternal.fromBuffer<ClaimId>(o as Buffer);
       }
       return latestId;
     });

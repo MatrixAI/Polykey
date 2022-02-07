@@ -1,81 +1,117 @@
-import { ErrorPolykey } from '../errors';
+import { ErrorPolykey, sysexits } from '../errors';
 
 class ErrorVaults extends ErrorPolykey {}
 
+class ErrorVaultManagerRunning extends ErrorVaults {
+  description = 'VaultManager is running';
+  exitCode = sysexits.USAGE;
+}
+
+class ErrorVaultManagerNotRunning extends ErrorVaults {
+  description = 'VaultManager is not running';
+  exitCode = sysexits.USAGE;
+}
+
+class ErrorVaultManagerDestroyed extends ErrorVaults {
+  description = 'VaultManager is destroyed';
+  exitCode = sysexits.USAGE;
+}
+
+class ErrorVaultManagerKey extends ErrorVaults {
+  description = 'Vault key is invalid';
+  exitCode = sysexits.CONFIG;
+}
+
+class ErrorVaultManagerEFS extends ErrorVaults {
+  description = 'EFS failed';
+  exitCode = sysexits.UNAVAILABLE;
+}
+
+class ErrorVault extends ErrorVaults {}
+
+class ErrorVaultRunning extends ErrorVault {
+  description = 'Vault is running';
+  exitCode = sysexits.USAGE;
+}
+
+class ErrorVaultNotRunning extends ErrorVault {
+  description = 'Vault is not running';
+  exitCode = sysexits.USAGE;
+}
+
+class ErrorVaultDestroyed extends ErrorVault {
+  description = 'Vault is destroyed';
+  exitCode = sysexits.USAGE;
+}
+
+class ErrorVaultReferenceInvalid extends ErrorVault {
+  description = 'Reference is invalid';
+  exitCode = sysexits.USAGE;
+}
+
+class ErrorVaultReferenceMissing extends ErrorVault {
+  description = 'Reference does not exist';
+  exitCode = sysexits.USAGE;
+}
+
+// Yes it is immutable
+// But this is because you don't own the vault right now
+
+class ErrorVaultImmutable extends ErrorVaults {
+  description = 'Vault cannot be mutated';
+  exitCode = sysexits.USAGE;
+}
+
+// --- these need to be reviewed
+
+class ErrorVaultsVaultUndefined extends ErrorVaults {
+  description = 'Vault does not exist';
+  exitCode = 10;
+}
+
+class ErrorVaultsVaultDefined extends ErrorVaults {}
+
+class ErrorVaultsRecursive extends ErrorVaults {}
+
+class ErrorVaultsVaultUnlinked extends ErrorVaults {}
+
+class ErrorVaultsCreateVaultId extends ErrorVaults {}
+
+class ErrorVaultsInvalidVaultId extends ErrorVaults {} // TODO: Assign a proper error code and message.
+
+class ErrorVaultsMergeConflict extends ErrorVaults {}
+
+class ErrorVaultsPermissionDenied extends ErrorVaults {}
+
 class ErrorSecrets extends ErrorPolykey {}
 
-class ErrorVaultManagerRunning extends ErrorVaults {}
+class ErrorSecretsSecretUndefined extends ErrorSecrets {}
 
-class ErrorVaultManagerNotRunning extends ErrorVaults {}
-
-class ErrorVaultManagerDestroyed extends ErrorVaults {}
-
-class ErrorVaultUndefined extends ErrorVaults {
-  description: string = 'Vault does not exist';
-  exitCode: number = 10;
-}
-
-class ErrorVaultDefined extends ErrorVaults {}
-
-class ErrorRemoteVaultUndefined extends ErrorVaults {}
-
-class ErrorVaultUninitialised extends ErrorVaults {}
-
-class ErrorVaultNotStarted extends ErrorVaults {}
-
-class ErrorVaultDestroyed extends ErrorVaults {}
-
-class ErrorRecursive extends ErrorVaults {}
-
-class ErrorVaultModified extends ErrorVaults {}
-
-class ErrorMalformedVaultDBValue extends ErrorVaults {}
-
-class ErrorVaultUnlinked extends ErrorVaults {}
-
-class ErrorCreateVaultId extends ErrorVaults {}
-
-class ErrorInvalidVaultId extends ErrorVaults {} // TODO: Assign a proper error code and message.
-
-class ErrorVaultMergeConflict extends ErrorVaults {}
-
-class ErrorVaultCommitUndefined extends ErrorVaults {
-  description: string = 'Commit does not exist';
-  exitCode: number = 10;
-}
-
-class ErrorSecretUndefined extends ErrorSecrets {}
-
-class ErrorSecretDefined extends ErrorSecrets {}
-
-class ErrorReadingSecret extends ErrorSecrets {}
-
-class ErrorGitFile extends ErrorSecrets {}
-
-class ErrorVaultsInvalidVaultId extends ErrorVaults {}
+class ErrorSecretsSecretDefined extends ErrorSecrets {}
 
 export {
   ErrorVaults,
   ErrorVaultManagerRunning,
   ErrorVaultManagerNotRunning,
   ErrorVaultManagerDestroyed,
-  ErrorVaultUndefined,
-  ErrorVaultDefined,
-  ErrorRemoteVaultUndefined,
-  ErrorVaultUninitialised,
-  ErrorVaultNotStarted,
+  ErrorVaultManagerKey,
+  ErrorVaultManagerEFS,
+  ErrorVault,
+  ErrorVaultRunning,
+  ErrorVaultNotRunning,
   ErrorVaultDestroyed,
-  ErrorRecursive,
-  ErrorVaultModified,
-  ErrorMalformedVaultDBValue,
-  ErrorVaultUnlinked,
-  ErrorCreateVaultId,
-  ErrorInvalidVaultId,
-  ErrorVaultMergeConflict,
-  ErrorVaultCommitUndefined,
-  ErrorSecretUndefined,
-  ErrorSecretDefined,
-  ErrorReadingSecret,
-  ErrorGitFile,
+  ErrorVaultReferenceInvalid,
+  ErrorVaultReferenceMissing,
+  ErrorVaultImmutable,
+  ErrorVaultsVaultUndefined,
+  ErrorVaultsVaultDefined,
+  ErrorVaultsRecursive,
+  ErrorVaultsVaultUnlinked,
+  ErrorVaultsCreateVaultId,
   ErrorVaultsInvalidVaultId,
+  ErrorVaultsMergeConflict,
+  ErrorVaultsPermissionDenied,
+  ErrorSecrets,
+  ErrorSecretsSecretUndefined,
+  ErrorSecretsSecretDefined,
 };

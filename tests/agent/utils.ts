@@ -6,6 +6,8 @@ import type { VaultManager } from '@/vaults';
 import type { NodeGraph, NodeConnectionManager, NodeManager } from '@/nodes';
 import type { Sigchain } from '@/sigchain';
 import type { NotificationsManager } from '@/notifications';
+import type { ACL } from '@/acl';
+import type { GestaltGraph } from '@/gestalts';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as grpc from '@grpc/grpc-js';
 import { promisify } from '@/utils';
@@ -24,6 +26,8 @@ async function openTestAgentServer({
   nodeGraph,
   sigchain,
   notificationsManager,
+  acl,
+  gestaltGraph,
 }: {
   keyManager: KeyManager;
   vaultManager: VaultManager;
@@ -32,15 +36,19 @@ async function openTestAgentServer({
   nodeGraph: NodeGraph;
   sigchain: Sigchain;
   notificationsManager: NotificationsManager;
+  acl: ACL;
+  gestaltGraph: GestaltGraph;
 }) {
   const agentService: IAgentServiceServer = createAgentService({
     keyManager,
     vaultManager,
     nodeManager,
     nodeGraph,
-    sigchain: sigchain,
-    notificationsManager: notificationsManager,
-    nodeConnectionManager: nodeConnectionManager,
+    sigchain,
+    notificationsManager,
+    nodeConnectionManager,
+    acl,
+    gestaltGraph,
   });
 
   const server = new grpc.Server();

@@ -144,7 +144,8 @@ class NotificationsManager {
       reverse: true,
     });
     for await (const o of keyStream) {
-      latestId = IdInternal.fromBuffer<NotificationId>(o);
+      // FIXME: really a buffer?
+      latestId = IdInternal.fromBuffer<NotificationId>(o as Buffer);
     }
     this.notificationIdGenerator = createNotificationIdGenerator(latestId);
     this.logger.info(`Started ${this.constructor.name}`);

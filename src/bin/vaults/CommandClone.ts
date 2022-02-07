@@ -11,7 +11,7 @@ class CommandClone extends CommandPolykey {
     super(...args);
     this.name('clone');
     this.description('Clone a Vault from Another Node');
-    this.argument('<vaultNameOrId>', 'Id of the vault to be cloned');
+    this.argument('<vaultNameOrId>', 'Name or Id of the vault to be cloned');
     this.argument(
       '<nodeId>',
       'Id of the node to clone the vault from',

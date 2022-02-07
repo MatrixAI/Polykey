@@ -62,6 +62,7 @@ const config = {
     dbBase: 'db',
     keysBase: 'keys',
     vaultsBase: 'vaults',
+    efsBase: 'efs',
     tokenBase: 'token',
     keysConfig: {
       rootKeyPairBits: 4096,

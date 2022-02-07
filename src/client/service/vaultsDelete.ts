@@ -33,7 +33,7 @@ function vaultsDelete({
       const nameOrId = vaultMessage.getNameOrId();
       let vaultId = await vaultManager.getVaultId(nameOrId as VaultName);
       if (!vaultId) vaultId = decodeVaultId(nameOrId);
-      if (!vaultId) throw new vaultsErrors.ErrorVaultUndefined();
+      if (!vaultId) throw new vaultsErrors.ErrorVaultsVaultUndefined();
       await vaultManager.destroyVault(vaultId);
       response.setSuccess(true);
       callback(null, response);

@@ -1,5 +1,5 @@
 import type { Authenticate } from '../types';
-import type { Vault, VaultName } from '../../vaults/types';
+import type { VaultId, VaultName } from '../../vaults/types';
 import type { VaultManager } from '../../vaults';
 import type * as grpc from '@grpc/grpc-js';
 import type * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
@@ -19,14 +19,14 @@ function vaultsCreate({
     callback: grpc.sendUnaryData<vaultsPB.Vault>,
   ): Promise<void> => {
     const response = new vaultsPB.Vault();
-    let vault: Vault;
+    let vaultId: VaultId;
     try {
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
-      vault = await vaultManager.createVault(
+      vaultId = await vaultManager.createVault(
         call.request.getNameOrId() as VaultName,
       );
-      response.setNameOrId(vaultsUtils.makeVaultIdPretty(vault.vaultId));
+      response.setNameOrId(vaultsUtils.encodeVaultId(vaultId));
       callback(null, response);
       return;
     } catch (e) {

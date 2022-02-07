@@ -8,6 +8,7 @@ import CommandList from './CommandList';
 import CommandMkdir from './CommandMkdir';
 import CommandRename from './CommandRename';
 import CommandUpdate from './CommandUpdate';
+import commandStat from './CommandStat';
 import CommandPolykey from '../CommandPolykey';
 
 class CommandSecrets extends CommandPolykey {
@@ -25,6 +26,7 @@ class CommandSecrets extends CommandPolykey {
     this.addCommand(new CommandMkdir(...args));
     this.addCommand(new CommandRename(...args));
     this.addCommand(new CommandUpdate(...args));
+    this.addCommand(new commandStat(...args));
   }
 }
 

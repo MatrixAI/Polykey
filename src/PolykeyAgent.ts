@@ -310,20 +310,6 @@ class PolykeyAgent {
           sigchain,
           logger: logger.getChild(Discovery.name),
         }));
-      vaultManager =
-        vaultManager ??
-        (await VaultManager.createVaultManager({
-          vaultsKey: keyManager.vaultKey,
-          vaultsPath,
-          keyManager,
-          nodeConnectionManager,
-          gestaltGraph,
-          acl,
-          db,
-          fs,
-          logger: logger.getChild(VaultManager.name),
-          fresh,
-        }));
       notificationsManager =
         notificationsManager ??
         (await NotificationsManager.createNotificationsManager({
@@ -333,6 +319,21 @@ class PolykeyAgent {
           nodeManager,
           keyManager,
           logger: logger.getChild(NotificationsManager.name),
+          fresh,
+        }));
+      vaultManager =
+        vaultManager ??
+        (await VaultManager.createVaultManager({
+          vaultsPath,
+          keyManager,
+          nodeConnectionManager,
+          nodeManager,
+          notificationsManager,
+          gestaltGraph,
+          acl,
+          db,
+          fs,
+          logger: logger.getChild(VaultManager.name),
           fresh,
         }));
       sessionManager =
@@ -561,6 +562,8 @@ class PolykeyAgent {
         sigchain: this.sigchain,
         nodeConnectionManager: this.nodeConnectionManager,
         notificationsManager: this.notificationsManager,
+        acl: this.acl,
+        gestaltGraph: this.gestaltGraph,
       });
       const clientService = createClientService({
         pkAgent: this,

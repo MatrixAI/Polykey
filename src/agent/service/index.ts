@@ -7,6 +7,8 @@ import type {
 } from '../../nodes';
 import type { NotificationsManager } from '../../notifications';
 import type { Sigchain } from '../../sigchain';
+import type { ACL } from '../../acl';
+import type { GestaltGraph } from '../../gestalts';
 import type { IAgentServiceServer } from '../../proto/js/polykey/v1/agent_service_grpc_pb';
 import echo from './echo';
 import nodesChainDataGet from './nodesChainDataGet';
@@ -17,7 +19,6 @@ import nodesHolePunchMessageSend from './nodesHolePunchMessageSend';
 import notificationsSend from './notificationsSend';
 import vaultsGitInfoGet from './vaultsGitInfoGet';
 import vaultsGitPackGet from './vaultsGitPackGet';
-import vaultsPermissionsCheck from './vaultsPermissionsCheck';
 import vaultsScan from './vaultsScan';
 import { AgentServiceService } from '../../proto/js/polykey/v1/agent_service_grpc_pb';
 
@@ -29,7 +30,9 @@ function createService(container: {
   nodeGraph: NodeGraph;
   notificationsManager: NotificationsManager;
   sigchain: Sigchain;
-}) {
+  acl: ACL;
+  gestaltGraph: GestaltGraph;
+}): IAgentServiceServer {
   const container_ = {
     ...container,
   };
@@ -43,7 +46,6 @@ function createService(container: {
     notificationsSend: notificationsSend(container_),
     vaultsGitInfoGet: vaultsGitInfoGet(container_),
     vaultsGitPackGet: vaultsGitPackGet(container_),
-    vaultsPermissionsCheck: vaultsPermissionsCheck(container_),
     vaultsScan: vaultsScan(container_),
   };
   return service;

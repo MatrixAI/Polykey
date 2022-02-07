@@ -2,20 +2,13 @@
  * Adds a secret to the vault
  */
 import type Logger from '@matrixai/logger';
-import type {
-  FileOptions,
-  SecretContent,
-  SecretList,
-  SecretName,
-  Vault,
-} from './types';
-import type { FileSystem } from '../types';
+import type { Vault } from './Vault';
 import path from 'path';
 import * as vaultsErrors from './errors';
 import * as vaultsUtils from './utils';
 
 // TODO: tests
-// - add succeded
+// - add succeeded
 // - secret exists
 // - secret with directory
 // Might just drop the return type.
@@ -23,13 +16,13 @@ import * as vaultsUtils from './utils';
 // - Add locking?
 async function addSecret(
   vault: Vault,
-  secretName: SecretName,
-  content: SecretContent,
+  secretName: string,
+  content: Buffer | string,
   logger?: Logger,
 ): Promise<void> {
-  await vault.commit(async (efs) => {
+  await vault.writeF(async (efs) => {
     if (await efs.exists(secretName)) {
-      throw new vaultsErrors.ErrorSecretDefined(
+      throw new vaultsErrors.ErrorSecretsSecretDefined(
         `${secretName} already exists, try updating instead`,
       );
     }
@@ -56,14 +49,14 @@ async function addSecret(
 // - invalid name
 async function updateSecret(
   vault: Vault,
-  secretName: SecretName,
-  content: SecretContent,
+  secretName: string,
+  content: Buffer | string,
   logger?: Logger,
 ): Promise<void> {
-  await vault.commit(async (efs) => {
+  await vault.writeF(async (efs) => {
     // Throw error if secret does not exist
     if (!(await efs.exists(secretName))) {
-      throw new vaultsErrors.ErrorSecretUndefined(
+      throw new vaultsErrors.ErrorSecretsSecretUndefined(
         'Secret does not exist, try adding it instead.',
       );
     }
@@ -83,15 +76,15 @@ async function updateSecret(
 // - invalid name
 async function renameSecret(
   vault: Vault,
-  currSecretName: SecretName,
-  newSecretName: SecretName,
+  currstring: string,
+  newstring: string,
   logger?: Logger,
 ): Promise<void> {
-  await vault.commit(async (efs) => {
-    await efs.rename(currSecretName, newSecretName);
+  await vault.writeF(async (efs) => {
+    await efs.rename(currstring, newstring);
   });
   logger?.info(
-    `Renamed secret at ${currSecretName} to ${newSecretName} in vault ${vault.vaultId}`,
+    `Renamed secret at ${currstring} to ${newstring} in vault ${vault.vaultId}`,
   );
 }
 
@@ -102,17 +95,29 @@ async function renameSecret(
 // - read existing file
 // - try to read non-existent file
 // - read directory?
-async function getSecret(
-  vault: Vault,
-  secretName: SecretName,
-): Promise<Buffer> {
+async function getSecret(vault: Vault, secretName: string): Promise<Buffer> {
   try {
-    return await vault.access(async (efs) => {
+    return await vault.readF(async (efs) => {
       return (await efs.readFile(secretName)) as Buffer;
     });
   } catch (err) {
     if (err.code === 'ENOENT') {
-      throw new vaultsErrors.ErrorSecretUndefined(
+      throw new vaultsErrors.ErrorSecretsSecretUndefined(
+        `Secret with name: ${secretName} does not exist`,
+      );
+    }
+    throw err;
+  }
+}
+
+async function statSecret(vault: Vault, secretName: string) {
+  try {
+    return await vault.readF(async (efs) => {
+      return await efs.stat(secretName);
+    });
+  } catch (err) {
+    if (err.code === 'ENOENT') {
+      throw new vaultsErrors.ErrorSecretsSecretUndefined(
         `Secret with name: ${secretName} does not exist`,
       );
     }
@@ -129,11 +134,11 @@ async function getSecret(
 // - delete a full and empty directory with and without recursive.
 async function deleteSecret(
   vault: Vault,
-  secretName: SecretName,
+  secretName: string,
   fileOptions?: FileOptions,
   logger?: Logger,
 ): Promise<void> {
-  await vault.commit(async (efs) => {
+  await vault.writeF(async (efs) => {
     if ((await efs.stat(secretName)).isDirectory()) {
       await efs.rmdir(secretName, fileOptions);
       logger?.info(`Deleted directory at '${secretName}'`);
@@ -142,7 +147,7 @@ async function deleteSecret(
       await efs.unlink(secretName);
       logger?.info(`Deleted secret at '${secretName}'`);
     } else {
-      throw new vaultsErrors.ErrorSecretUndefined(
+      throw new vaultsErrors.ErrorSecretsSecretUndefined(
         `path '${secretName}' does not exist in vault`,
       );
     }
@@ -155,18 +160,18 @@ async function deleteSecret(
  */
 async function mkdir(
   vault: Vault,
-  dirPath: SecretName,
+  dirPath: string,
   fileOptions?: FileOptions,
   logger?: Logger,
 ): Promise<void> {
   const recursive = !!fileOptions?.recursive;
 
-  await vault.commit(async (efs) => {
+  await vault.writeF(async (efs) => {
     try {
       await efs.mkdir(dirPath, fileOptions);
     } catch (err) {
       if (err.code === 'ENOENT' && !recursive) {
-        throw new vaultsErrors.ErrorRecursive(
+        throw new vaultsErrors.ErrorVaultsRecursive(
           `Could not create directory '${dirPath}' without recursive option`,
         );
       }
@@ -184,13 +189,13 @@ async function mkdir(
 // - adding a file.
 async function addSecretDirectory(
   vault: Vault,
-  secretDirectory: SecretName,
-  fs: FileSystem,
+  secretDirectory: string,
+  fs = require('fs'),
   logger?: Logger,
 ): Promise<void> {
   const absoluteDirPath = path.resolve(secretDirectory);
 
-  await vault.commit(async (efs) => {
+  await vault.writeF(async (efs) => {
     for await (const secretPath of vaultsUtils.readdirRecursively(
       fs,
       absoluteDirPath,
@@ -237,10 +242,10 @@ async function addSecretDirectory(
 // TODO: tests
 // - read secrets.
 // - no secrets
-async function listSecrets(vault: Vault): Promise<SecretList> {
-  return await vault.access(async (efs) => {
-    const secrets: SecretList = [];
-    for await (const secret of vaultsUtils.readdirRecursivelyEFS(efs, '.')) {
+async function listSecrets(vault: Vault): Promise<string[]> {
+  return await vault.readF(async (efs) => {
+    const secrets: string[] = [];
+    for await (const secret of vaultsUtils.readdirRecursively(efs)) {
       secrets.push(secret);
     }
     return secrets;
@@ -252,6 +257,7 @@ export {
   updateSecret,
   renameSecret,
   getSecret,
+  statSecret,
   deleteSecret,
   mkdir,
   addSecretDirectory,

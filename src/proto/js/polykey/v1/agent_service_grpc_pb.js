@@ -117,26 +117,26 @@ function deserialize_polykey_v1_utils_EmptyMessage(buffer_arg) {
   return polykey_v1_utils_utils_pb.EmptyMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_polykey_v1_vaults_NodePermission(arg) {
-  if (!(arg instanceof polykey_v1_vaults_vaults_pb.NodePermission)) {
-    throw new Error('Expected argument of type polykey.v1.vaults.NodePermission');
+function serialize_polykey_v1_vaults_InfoRequest(arg) {
+  if (!(arg instanceof polykey_v1_vaults_vaults_pb.InfoRequest)) {
+    throw new Error('Expected argument of type polykey.v1.vaults.InfoRequest');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
-function deserialize_polykey_v1_vaults_NodePermission(buffer_arg) {
-  return polykey_v1_vaults_vaults_pb.NodePermission.deserializeBinary(new Uint8Array(buffer_arg));
+function deserialize_polykey_v1_vaults_InfoRequest(buffer_arg) {
+  return polykey_v1_vaults_vaults_pb.InfoRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_polykey_v1_vaults_NodePermissionAllowed(arg) {
-  if (!(arg instanceof polykey_v1_vaults_vaults_pb.NodePermissionAllowed)) {
-    throw new Error('Expected argument of type polykey.v1.vaults.NodePermissionAllowed');
+function serialize_polykey_v1_vaults_List(arg) {
+  if (!(arg instanceof polykey_v1_vaults_vaults_pb.List)) {
+    throw new Error('Expected argument of type polykey.v1.vaults.List');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
-function deserialize_polykey_v1_vaults_NodePermissionAllowed(buffer_arg) {
-  return polykey_v1_vaults_vaults_pb.NodePermissionAllowed.deserializeBinary(new Uint8Array(buffer_arg));
+function deserialize_polykey_v1_vaults_List(buffer_arg) {
+  return polykey_v1_vaults_vaults_pb.List.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_polykey_v1_vaults_PackChunk(arg) {
@@ -148,17 +148,6 @@ function serialize_polykey_v1_vaults_PackChunk(arg) {
 
 function deserialize_polykey_v1_vaults_PackChunk(buffer_arg) {
   return polykey_v1_vaults_vaults_pb.PackChunk.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_polykey_v1_vaults_Vault(arg) {
-  if (!(arg instanceof polykey_v1_vaults_vaults_pb.Vault)) {
-    throw new Error('Expected argument of type polykey.v1.vaults.Vault');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_polykey_v1_vaults_Vault(buffer_arg) {
-  return polykey_v1_vaults_vaults_pb.Vault.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 
@@ -180,10 +169,10 @@ vaultsGitInfoGet: {
     path: '/polykey.v1.AgentService/VaultsGitInfoGet',
     requestStream: false,
     responseStream: true,
-    requestType: polykey_v1_vaults_vaults_pb.Vault,
+    requestType: polykey_v1_vaults_vaults_pb.InfoRequest,
     responseType: polykey_v1_vaults_vaults_pb.PackChunk,
-    requestSerialize: serialize_polykey_v1_vaults_Vault,
-    requestDeserialize: deserialize_polykey_v1_vaults_Vault,
+    requestSerialize: serialize_polykey_v1_vaults_InfoRequest,
+    requestDeserialize: deserialize_polykey_v1_vaults_InfoRequest,
     responseSerialize: serialize_polykey_v1_vaults_PackChunk,
     responseDeserialize: deserialize_polykey_v1_vaults_PackChunk,
   },
@@ -203,22 +192,11 @@ vaultsGitInfoGet: {
     requestStream: false,
     responseStream: true,
     requestType: polykey_v1_nodes_nodes_pb.Node,
-    responseType: polykey_v1_vaults_vaults_pb.Vault,
+    responseType: polykey_v1_vaults_vaults_pb.List,
     requestSerialize: serialize_polykey_v1_nodes_Node,
     requestDeserialize: deserialize_polykey_v1_nodes_Node,
-    responseSerialize: serialize_polykey_v1_vaults_Vault,
-    responseDeserialize: deserialize_polykey_v1_vaults_Vault,
-  },
-  vaultsPermissionsCheck: {
-    path: '/polykey.v1.AgentService/VaultsPermissionsCheck',
-    requestStream: false,
-    responseStream: false,
-    requestType: polykey_v1_vaults_vaults_pb.NodePermission,
-    responseType: polykey_v1_vaults_vaults_pb.NodePermissionAllowed,
-    requestSerialize: serialize_polykey_v1_vaults_NodePermission,
-    requestDeserialize: deserialize_polykey_v1_vaults_NodePermission,
-    responseSerialize: serialize_polykey_v1_vaults_NodePermissionAllowed,
-    responseDeserialize: deserialize_polykey_v1_vaults_NodePermissionAllowed,
+    responseSerialize: serialize_polykey_v1_vaults_List,
+    responseDeserialize: deserialize_polykey_v1_vaults_List,
   },
   // Nodes
 nodesClosestLocalNodesGet: {

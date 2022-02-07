@@ -129,7 +129,6 @@ describe(`${NodeManager.name} test`, () => {
       recursive: true,
     });
   });
-
   test(
     'pings node',
     async () => {

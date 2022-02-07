@@ -51,10 +51,10 @@ describe(ACL.name, () => {
         },
       },
     });
-    vaultId1 = vaultsUtils.makeVaultId(idUtils.fromString('vault1xxxxxxxxxx'));
-    vaultId2 = vaultsUtils.makeVaultId(idUtils.fromString('vault2xxxxxxxxxx'));
-    vaultId3 = vaultsUtils.makeVaultId(idUtils.fromString('vault3xxxxxxxxxx'));
-    vaultId4 = vaultsUtils.makeVaultId(idUtils.fromString('vault4xxxxxxxxxx'));
+    vaultId1 = vaultsUtils.generateVaultId();
+    vaultId2 = vaultsUtils.generateVaultId();
+    vaultId3 = vaultsUtils.generateVaultId();
+    vaultId4 = vaultsUtils.generateVaultId();
   });
   afterEach(async () => {
     await db.stop();
@@ -144,7 +144,7 @@ describe(ACL.name, () => {
         notify: null,
       },
       vaults: {
-        vault1xxxxxxxxxx: { pull: null },
+        [vaultId1]: { pull: null },
       },
     });
     // Gestalt2
@@ -153,7 +153,7 @@ describe(ACL.name, () => {
         notify: null,
       },
       vaults: {
-        vault2xxxxxxxxxx: { clone: null },
+        [vaultId2]: { clone: null },
       },
     });
     // Check g1 perm
@@ -215,7 +215,7 @@ describe(ACL.name, () => {
         notify: null,
       },
       vaults: {
-        vault1xxxxxxxxxx: { pull: null },
+        [vaultId1]: { pull: null },
       },
     });
     await acl.unsetVaultAction(vaultId1, nodeIdG1First, 'pull');
@@ -227,7 +227,7 @@ describe(ACL.name, () => {
         notify: null,
       },
       vaults: {
-        vault1xxxxxxxxxx: {},
+        [vaultId1]: {},
       },
     });
     await acl.setVaultAction(vaultId1, nodeIdG1First, 'pull');
@@ -237,13 +237,13 @@ describe(ACL.name, () => {
     expect(vaultPerm[nodeIdG1First].vaults[vaultId1]).toHaveProperty('clone');
     const vaultPerms = await acl.getVaultPerms();
     expect(vaultPerms).toEqual({
-      vault1xxxxxxxxxx: {
+      [vaultId1]: {
         [nodeIdG1First]: {
           gestalt: {
             notify: null,
           },
           vaults: {
-            vault1xxxxxxxxxx: { pull: null, clone: null },
+            [vaultId1]: { pull: null, clone: null },
           },
         },
       },
@@ -257,7 +257,7 @@ describe(ACL.name, () => {
         notify: null,
       },
       vaults: {
-        vault1xxxxxxxxxx: { pull: null },
+        [vaultId1]: { pull: null },
       },
     };
     await acl.setNodesPerm(
@@ -288,7 +288,7 @@ describe(ACL.name, () => {
         notify: null,
       },
       vaults: {
-        vault1xxxxxxxxxx: { clone: null },
+        [vaultId1]: { clone: null },
       },
     });
     await acl.setVaultAction(vaultId1, nodeIdG1First, 'pull');
@@ -302,39 +302,39 @@ describe(ACL.name, () => {
     expect(vaultPerm1[nodeIdG1First].vaults[vaultId1]).toHaveProperty('pull');
     const vaultPerms = await acl.getVaultPerms();
     expect(vaultPerms).toMatchObject({
-      vault1xxxxxxxxxx: {
+      [vaultId1]: {
         [nodeIdG1First]: {
           gestalt: {
             notify: null,
           },
           vaults: {
-            vault1xxxxxxxxxx: { clone: null, pull: null },
-            vault2xxxxxxxxxx: { clone: null, pull: null },
-            vault3xxxxxxxxxx: { clone: null, pull: null },
+            [vaultId1]: { clone: null, pull: null },
+            [vaultId2]: { clone: null, pull: null },
+            [vaultId3]: { clone: null, pull: null },
           },
         },
       },
-      vault2xxxxxxxxxx: {
+      [vaultId2]: {
         [nodeIdG1First]: {
           gestalt: {
             notify: null,
           },
           vaults: {
-            vault1xxxxxxxxxx: { clone: null, pull: null },
-            vault2xxxxxxxxxx: { clone: null, pull: null },
-            vault3xxxxxxxxxx: { clone: null, pull: null },
+            [vaultId1]: { clone: null, pull: null },
+            [vaultId2]: { clone: null, pull: null },
+            [vaultId3]: { clone: null, pull: null },
           },
         },
       },
-      vault3xxxxxxxxxx: {
+      [vaultId3]: {
         [nodeIdG1First]: {
           gestalt: {
             notify: null,
           },
           vaults: {
-            vault1xxxxxxxxxx: { clone: null, pull: null },
-            vault2xxxxxxxxxx: { clone: null, pull: null },
-            vault3xxxxxxxxxx: { clone: null, pull: null },
+            [vaultId1]: { clone: null, pull: null },
+            [vaultId2]: { clone: null, pull: null },
+            [vaultId3]: { clone: null, pull: null },
           },
         },
       },
@@ -355,7 +355,7 @@ describe(ACL.name, () => {
         notify: null,
       },
       vaults: {
-        vault1xxxxxxxxxx: { pull: null },
+        [vaultId1]: { pull: null },
       },
     };
     await acl.setNodesPerm(
@@ -395,8 +395,8 @@ describe(ACL.name, () => {
           notify: null,
         },
         vaults: {
-          vault1xxxxxxxxxx: { clone: null },
-          vault2xxxxxxxxxx: { pull: null },
+          [vaultId1]: { clone: null },
+          [vaultId2]: { pull: null },
         },
       },
     });
@@ -409,7 +409,7 @@ describe(ACL.name, () => {
           notify: null,
         },
         vaults: {
-          vault2xxxxxxxxxx: { pull: null },
+          [vaultId2]: { pull: null },
         },
       },
     });
@@ -457,8 +457,8 @@ describe(ACL.name, () => {
           notify: null,
         },
         vaults: {
-          vault1xxxxxxxxxx: {},
-          vault4xxxxxxxxxx: { pull: null },
+          [vaultId1]: {},
+          [vaultId4]: { pull: null },
         },
       },
       [nodeIdG1Fourth]: {
@@ -466,8 +466,8 @@ describe(ACL.name, () => {
           notify: null,
         },
         vaults: {
-          vault1xxxxxxxxxx: {},
-          vault4xxxxxxxxxx: { pull: null },
+          [vaultId1]: {},
+          [vaultId4]: { pull: null },
         },
       },
       [nodeIdG1Third]: {
@@ -475,8 +475,8 @@ describe(ACL.name, () => {
           notify: null,
         },
         vaults: {
-          vault1xxxxxxxxxx: {},
-          vault4xxxxxxxxxx: { pull: null },
+          [vaultId1]: {},
+          [vaultId4]: { pull: null },
         },
       },
     });
@@ -486,8 +486,8 @@ describe(ACL.name, () => {
           notify: null,
         },
         vaults: {
-          vault1xxxxxxxxxx: { clone: null },
-          vault4xxxxxxxxxx: { clone: null },
+          [vaultId1]: { clone: null },
+          [vaultId4]: { clone: null },
         },
       },
       [nodeIdG2Second]: {
@@ -495,8 +495,8 @@ describe(ACL.name, () => {
           notify: null,
         },
         vaults: {
-          vault1xxxxxxxxxx: { clone: null },
-          vault4xxxxxxxxxx: { clone: null },
+          [vaultId1]: { clone: null },
+          [vaultId4]: { clone: null },
         },
       },
     });

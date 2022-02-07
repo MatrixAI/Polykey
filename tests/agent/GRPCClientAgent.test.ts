@@ -1,5 +1,4 @@
 import type { TLSConfig } from '@/network/types';
-import type { NodeIdEncoded, NodeInfo } from '@/nodes/types';
 import type * as grpc from '@grpc/grpc-js';
 import fs from 'fs';
 import path from 'path';
@@ -19,11 +18,8 @@ import GRPCClientAgent from '@/agent/GRPCClientAgent';
 import VaultManager from '@/vaults/VaultManager';
 import NotificationsManager from '@/notifications/NotificationsManager';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
-import * as vaultsPB from '@/proto/js/polykey/v1/vaults/vaults_pb';
-import * as nodesPB from '@/proto/js/polykey/v1/nodes/nodes_pb';
 import * as agentErrors from '@/agent/errors';
 import * as keysUtils from '@/keys/utils';
-import * as nodesUtils from '@/nodes/utils';
 import * as testAgentUtils from './utils';
 import * as testUtils from '../utils';
 
@@ -32,11 +28,6 @@ describe(GRPCClientAgent.name, () => {
   const logger = new Logger(`${GRPCClientAgent.name} test`, LogLevel.WARN, [
     new StreamHandler(),
   ]);
-  const node1: NodeInfo = {
-    id: 'v359vgrgmqf1r5g4fvisiddjknjko6bmm4qv7646jr7fi9enbfuug' as NodeIdEncoded,
-    chain: {},
-  };
-  const nodeId1 = nodesUtils.decodeNodeId(node1.id)!;
   let mockedGenerateKeyPair: jest.SpyInstance;
   let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
   beforeAll(async () => {
@@ -159,10 +150,11 @@ describe(GRPCClientAgent.name, () => {
       keyManager: keyManager,
       vaultsPath: vaultsPath,
       nodeConnectionManager: nodeConnectionManager,
-      vaultsKey: keyManager.vaultKey,
+      nodeManager: nodeManager,
       db: db,
       acl: acl,
       gestaltGraph: gestaltGraph,
+      notificationsManager: notificationsManager,
       fs: fs,
       logger: logger,
     });
@@ -174,6 +166,8 @@ describe(GRPCClientAgent.name, () => {
       sigchain,
       nodeGraph,
       notificationsManager,
+      acl,
+      gestaltGraph,
     });
     client = await testAgentUtils.openTestAgentClient(port);
   }, global.defaultTimeout);
@@ -207,46 +201,6 @@ describe(GRPCClientAgent.name, () => {
     await client.echo(echoMessage);
     const response = await client.echo(echoMessage);
     expect(response.getChallenge()).toBe('yes');
-  });
-  test.skip('can check permissions', async () => {
-    // FIXME: permissions not implemented on vaults.
-    // const vault = await vaultManager.createVault('TestAgentVault' as VaultName);
-    await gestaltGraph.setNode(node1);
-    // Await vaultManager.setVaultPermissions('12345' as NodeId, vault.vaultId);
-    // await vaultManager.unsetVaultPermissions('12345' as NodeId, vault.vaultId);
-    const vaultPermMessage = new vaultsPB.NodePermission();
-    vaultPermMessage.setNodeId(nodesUtils.encodeNodeId(nodeId1));
-    // VaultPermMessage.setVaultId(vault.vaultId);
-    const response = await client.vaultsPermissionsCheck(vaultPermMessage);
-    expect(response.getPermission()).toBeFalsy();
-    // Await vaultManager.setVaultPermissions('12345' as NodeId, vault.vaultId);
-    const response2 = await client.vaultsPermissionsCheck(vaultPermMessage);
-    expect(response2.getPermission()).toBeTruthy();
-    // Await vaultManager.deleteVault(vault.vaultId);
-  });
-  test.skip('can scan vaults', async () => {
-    // FIXME, permissions not implemented on vaults
-    // const vault = await vaultManager.createVault('TestAgentVault' as VaultName);
-    await gestaltGraph.setNode(node1);
-    const nodeIdMessage = new nodesPB.Node();
-    nodeIdMessage.setNodeId(nodesUtils.encodeNodeId(nodeId1));
-    const response = client.vaultsScan(nodeIdMessage);
-    const data: string[] = [];
-    for await (const resp of response) {
-      const chunk = resp.getNameOrId();
-      data.push(Buffer.from(chunk).toString());
-    }
-    expect(data).toStrictEqual([]);
-    fail();
-    // Await vaultManager.setVaultPermissions('12345' as NodeId, vault.vaultId);
-    // const response2 = client.vaultsScan(nodeIdMessage);
-    // Const data2: string[] = [];
-    // for await (const resp of response2) {
-    // Const chunk = resp.getNameOrId();
-    // Data2.push(Buffer.from(chunk).toString());
-    // }
-    // Expect(data2).toStrictEqual([`${vault.vaultName}\t${vault.vaultId}`]);
-    // await vaultManager.deleteVault(vault.vaultId);
   });
   test('Can connect over insecure connection.', async () => {
     const echoMessage = new utilsPB.EchoMessage();

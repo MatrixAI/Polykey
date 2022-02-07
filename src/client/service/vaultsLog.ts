@@ -37,20 +37,20 @@ function vaultsLog({
       const nameOrId = vaultMessage.getNameOrId();
       let vaultId = await vaultManager.getVaultId(nameOrId as VaultName);
       if (!vaultId) vaultId = decodeVaultId(nameOrId);
-      if (!vaultId) throw new vaultsErrors.ErrorVaultUndefined();
-      const vault = await vaultManager.openVault(vaultId);
-
+      if (!vaultId) throw new vaultsErrors.ErrorVaultsVaultUndefined();
       // Getting the log
       const depth = vaultsLogMessage.getLogDepth();
       let commitId: string | undefined = vaultsLogMessage.getCommitId();
       commitId = commitId ? commitId : undefined;
-      const log = await vault.log(depth, commitId);
-
+      const log = await vaultManager.withVaults([vaultId], async (vault) => {
+        return await vault.log(commitId, depth);
+      });
       const vaultsLogEntryMessage = new vaultsPB.LogEntry();
       for (const entry of log) {
-        vaultsLogEntryMessage.setOid(entry.oid);
-        vaultsLogEntryMessage.setCommitter(entry.committer);
-        vaultsLogEntryMessage.setTimeStamp(entry.timeStamp);
+        vaultsLogEntryMessage.setOid(entry.commitId);
+        vaultsLogEntryMessage.setCommitter(entry.committer.name);
+        // FIXME: we can make this a google.protobuf.Timestamp field?
+        vaultsLogEntryMessage.setTimeStamp(entry.committer.timestamp.getTime());
         vaultsLogEntryMessage.setMessage(entry.message);
         await genWritable.next(vaultsLogEntryMessage);
       }

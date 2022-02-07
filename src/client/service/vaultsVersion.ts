@@ -29,9 +29,7 @@ function vaultsVersion({
       // Checking session token
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
-
       const vaultsVersionMessage = call.request;
-
       // Getting vault ID
       const vaultMessage = vaultsVersionMessage.getVault();
       if (vaultMessage == null) {
@@ -41,22 +39,22 @@ function vaultsVersion({
       const nameOrId = vaultMessage.getNameOrId();
       let vaultId = await vaultManager.getVaultId(nameOrId as VaultName);
       if (!vaultId) vaultId = decodeVaultId(nameOrId);
-      if (!vaultId) throw new vaultsErrors.ErrorVaultUndefined();
-
+      if (!vaultId) throw new vaultsErrors.ErrorVaultsVaultUndefined();
       // Doing the deed
-      const vault = await vaultManager.openVault(vaultId);
-      const latestOid = (await vault.log())[0].oid;
       const versionId = vaultsVersionMessage.getVersionId();
-
-      await vault.version(versionId);
-      const currentVersionId = (await vault.log(0, versionId))[0]?.oid;
-
+      const [latestOid, currentVersionId] = await vaultManager.withVaults(
+        [vaultId],
+        async (vault) => {
+          const latestOid = (await vault.log())[0].commitId;
+          await vault.version(versionId);
+          const currentVersionId = (await vault.log(versionId, 0))[0]?.commitId;
+          return [latestOid, currentVersionId];
+        },
+      );
       // Checking if latest version ID.
       const isLatestVersion = latestOid === currentVersionId;
-
       // Creating message
       response.setIsLatestVersion(isLatestVersion);
-
       // Sending message
       callback(null, response);
       return;

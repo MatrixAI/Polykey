@@ -66,12 +66,12 @@ import vaultsCreate from './vaultsCreate';
 import vaultsDelete from './vaultsDelete';
 import vaultsList from './vaultsList';
 import vaultsLog from './vaultsLog';
-import vaultsPermissions from './vaultsPermissions';
-import vaultsPermissionsSet from './vaultsPermissionsSet';
-import vaultsPermissionsUnset from './vaultsPermissionsUnset';
+import vaultsPermissionsGet from './vaultsPermissionsGet';
 import vaultsPull from './vaultsPull';
 import vaultsRename from './vaultsRename';
 import vaultsScan from './vaultsScan';
+import vaultsShare from './vaultsShare';
+import vaultsUnshare from './vaultsUnshare';
 import vaultsVersion from './vaultsVersion';
 import vaultsSecretsDelete from './vaultsSecretsDelete';
 import vaultsSecretsEdit from './vaultsSecretsEdit';
@@ -169,12 +169,12 @@ function createService({
     vaultsDelete: vaultsDelete(container),
     vaultsList: vaultsList(container),
     vaultsLog: vaultsLog(container),
-    vaultsPermissions: vaultsPermissions(container),
-    vaultsPermissionsSet: vaultsPermissionsSet(container),
-    vaultsPermissionsUnset: vaultsPermissionsUnset(container),
+    vaultsPermissionsGet: vaultsPermissionsGet(container),
     vaultsPull: vaultsPull(container),
     vaultsRename: vaultsRename(container),
     vaultsScan: vaultsScan(container),
+    vaultsShare: vaultsShare(container),
+    vaultsUnshare: vaultsUnshare(container),
     vaultsVersion: vaultsVersion(container),
     vaultsSecretsDelete: vaultsSecretsDelete(container),
     vaultsSecretsEdit: vaultsSecretsEdit(container),

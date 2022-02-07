@@ -160,17 +160,6 @@ async function bootstrapState({
       sigchain,
       logger: logger.getChild(NodeManager.name),
     });
-    const vaultManager = await VaultManager.createVaultManager({
-      acl,
-      db,
-      gestaltGraph,
-      keyManager,
-      nodeConnectionManager,
-      vaultsKey: keyManager.vaultKey,
-      vaultsPath,
-      logger: logger.getChild(VaultManager.name),
-      fresh,
-    });
     const notificationsManager =
       await NotificationsManager.createNotificationsManager({
         acl,
@@ -181,6 +170,18 @@ async function bootstrapState({
         logger: logger.getChild(NotificationsManager.name),
         fresh,
       });
+    const vaultManager = await VaultManager.createVaultManager({
+      acl,
+      db,
+      gestaltGraph,
+      keyManager,
+      nodeConnectionManager,
+      vaultsPath,
+      nodeManager,
+      notificationsManager,
+      logger: logger.getChild(VaultManager.name),
+      fresh,
+    });
     const sessionManager = await SessionManager.createSessionManager({
       db,
       keyManager,

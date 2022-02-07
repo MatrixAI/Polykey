@@ -14,9 +14,8 @@ import * as testUtils from '../utils';
 describe('Notifications utils', () => {
   const nodeId = testUtils.generateRandomNodeId();
   const nodeIdEncoded = nodesUtils.encodeNodeId(nodeId);
-  const vaultId = vaultsUtils
-    .makeVaultId(IdInternal.fromString('vaultIdxxxxxxxxx'))
-    .toString();
+  const vaultId = vaultUtils.generateVaultId();
+  const vaultIdEncoded = vaultUtils.encodeVaultId(vaultId);
 
   test('generates notification ids', async () => {
     const generator = notificationsUtils.createNotificationIdGenerator();
@@ -62,7 +61,7 @@ describe('Notifications utils', () => {
     const vaultShareNotification: Notification = {
       data: {
         type: 'VaultShare',
-        vaultId: vaultId,
+        vaultId: vaultIdEncoded,
         vaultName: 'vaultName' as VaultName,
         actions: {
           clone: null,
@@ -143,7 +142,7 @@ describe('Notifications utils', () => {
     const vaultShareNotification: Notification = {
       data: {
         type: 'VaultShare',
-        vaultId: vaultId,
+        vaultId: vaultIdEncoded,
         vaultName: 'vaultName' as VaultName,
         actions: {
           clone: null,
@@ -237,7 +236,7 @@ describe('Notifications utils', () => {
     const vaultShareNotification: Notification = {
       data: {
         type: 'VaultShare',
-        vaultId: vaultId,
+        vaultId: vaultIdEncoded,
         vaultName: 'vaultName' as VaultName,
         actions: {
           clone: null,

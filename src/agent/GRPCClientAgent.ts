@@ -99,18 +99,25 @@ class GRPCClientAgent extends GRPCClient<AgentServiceClient> {
   @ready(new agentErrors.ErrorAgentClientDestroyed())
   public vaultsGitPackGet(
     ...args
-  ): ClientDuplexStream<vaultsPB.PackChunk, vaultsPB.PackChunk> {
-    return this.client.vaultsGitPackGet(...args);
+  ): AsyncGeneratorDuplexStreamClient<
+    vaultsPB.PackChunk,
+    vaultsPB.PackChunk,
+    ClientDuplexStream<vaultsPB.PackChunk, vaultsPB.PackChunk>
+  > {
+    return grpcUtils.promisifyDuplexStreamCall(
+      this.client,
+      this.client.vaultsGitPackGet,
+    )(...args);
   }
 
   @ready(new agentErrors.ErrorAgentClientDestroyed())
   public vaultsScan(
     ...args
   ): AsyncGeneratorReadableStreamClient<
-    vaultsPB.Vault,
-    ClientReadableStream<vaultsPB.Vault>
+    vaultsPB.List,
+    ClientReadableStream<vaultsPB.List>
   > {
-    return grpcUtils.promisifyReadableStreamCall<vaultsPB.Vault>(
+    return grpcUtils.promisifyReadableStreamCall<vaultsPB.List>(
       this.client,
       this.client.vaultsScan,
     )(...args);
@@ -153,14 +160,6 @@ class GRPCClientAgent extends GRPCClient<AgentServiceClient> {
     return grpcUtils.promisifyUnaryCall<notificationsPB.AgentNotification>(
       this.client,
       this.client.notificationsSend,
-    )(...args);
-  }
-
-  @ready(new agentErrors.ErrorAgentClientDestroyed())
-  public vaultsPermissionsCheck(...args) {
-    return grpcUtils.promisifyUnaryCall<vaultsPB.NodePermissionAllowed>(
-      this.client,
-      this.client.vaultsPermissionsCheck,
     )(...args);
   }
 

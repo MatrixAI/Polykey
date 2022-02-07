@@ -1,249 +1,210 @@
-import type { EncryptedFS } from 'encryptedfs';
 import type {
   VaultId,
-  VaultKey,
-  VaultList,
-  VaultName,
+  VaultIdEncoded,
+  VaultRef,
   VaultAction,
-  FileSystemReadable,
-  VaultIdPretty,
+  CommitId,
 } from './types';
-import type { FileSystem } from '../types';
-import type { NodeId } from '../nodes/types';
+import type { FileSystem, POJO } from '../types';
 import type { GRPCClientAgent } from '../agent';
+import type { NodeId } from '../nodes/types';
+
 import path from 'path';
-import { IdRandom } from '@matrixai/id';
+import { IdInternal, IdRandom, utils as idUtils } from '@matrixai/id';
 import * as grpc from '@grpc/grpc-js';
-import { vaultActions } from './types';
-import * as vaultsErrors from './errors';
-import { GitRequest } from '../git';
-import { promisify } from '../utils';
+import { tagLast, refs, vaultActions } from './types';
+import * as nodesUtils from '../nodes/utils';
 import * as vaultsPB from '../proto/js/polykey/v1/vaults/vaults_pb';
 import * as nodesPB from '../proto/js/polykey/v1/nodes/nodes_pb';
-import * as keysUtils from '../keys/utils';
-import { isIdString, isId, makeIdString, makeId } from '../GenericIdTypes';
-import { utils as nodesUtils } from '../nodes';
-
-async function generateVaultKey(bits: number = 256): Promise<VaultKey> {
-  return (await keysUtils.generateKey(bits)) as VaultKey;
-}
-
-function isVaultId(arg: any) {
-  return isId<VaultId>(arg);
-}
 
 /**
- * This will return arg as a valid VaultId or throw an error if it can't be converted.
- * This will take a multibase string of the ID or the raw Buffer of the ID.
- * @param arg - The variable we wish to convert
- * @throws vaultsErrors.ErrorInvalidVaultId  if the arg can't be converted into a VaultId
- * @returns VaultId
+ * Vault history is designed for linear-history
+ * The canonical branch represents the one and only true timeline
+ * In the future, we can introduce non-linear history
+ * Where branches are automatically made when new timelines are created
  */
-function makeVaultId(arg: any): VaultId {
-  return makeId<VaultId>(arg);
-}
+const canonicalBranch = 'master';
 
-function isVaultIdPretty(arg: any): arg is VaultIdPretty {
-  return isIdString<VaultIdPretty>(arg);
-}
+const vaultIdGenerator = new IdRandom<VaultId>();
 
-function makeVaultIdPretty(arg: any): VaultIdPretty {
-  return makeIdString<VaultIdPretty>(arg);
-}
-
-const randomIdGenerator = new IdRandom();
 function generateVaultId(): VaultId {
-  return makeVaultId(randomIdGenerator.get());
+  return vaultIdGenerator.get();
 }
 
-async function fileExists(fs: FileSystem, path: string): Promise<boolean> {
-  try {
-    const fh = await fs.promises.open(path, 'r');
-    await fh.close();
-  } catch (err) {
-    if (err.code === 'ENOENT') {
-      return false;
-    }
-  }
-  return true;
+function encodeVaultId(vaultId: VaultId): VaultIdEncoded {
+  return vaultId.toMultibase('base58btc') as VaultIdEncoded;
 }
 
-async function* readdirRecursively(fs, dir: string) {
-  const dirents = await fs.promises.readdir(dir, { withFileTypes: true });
-  for (const dirent of dirents) {
-    const res = path.resolve(dir, dirent.name);
-    if (dirent.isDirectory()) {
-      yield* readdirRecursively(fs, res);
-    } else if (dirent.isFile()) {
-      yield res;
-    }
+function decodeVaultId(vaultIdEncoded: any): VaultId | undefined {
+  if (typeof vaultIdEncoded !== 'string') {
+    return;
   }
-}
-
-async function* readdirRecursivelyEFS(
-  efs: FileSystemReadable,
-  dir: string,
-  dirs?: boolean,
-) {
-  const dirents = await efs.readdir(dir);
-  let secretPath: string;
-  for (const dirent of dirents) {
-    const res = dirent.toString(); // Makes string | buffer a string.
-    secretPath = path.join(dir, res);
-    if ((await efs.stat(secretPath)).isDirectory() && dirent !== '.git') {
-      if (dirs === true) {
-        yield secretPath;
-      }
-      yield* readdirRecursivelyEFS(efs, secretPath, dirs);
-    } else if ((await efs.stat(secretPath)).isFile()) {
-      yield secretPath;
-    }
+  const vaultId = IdInternal.fromMultibase<VaultId>(vaultIdEncoded);
+  if (vaultId == null) {
+    return;
   }
-}
-
-async function* readdirRecursivelyEFS2(
-  fs: EncryptedFS,
-  dir: string,
-  dirs?: boolean,
-): AsyncGenerator<string> {
-  const dirents = await fs.readdir(dir);
-  let secretPath: string;
-  for (const dirent of dirents) {
-    const res = dirent.toString();
-    secretPath = path.join(dir, res);
-    if (dirent !== '.git') {
-      try {
-        await fs.readdir(secretPath);
-        if (dirs === true) {
-          yield secretPath;
-        }
-        yield* readdirRecursivelyEFS2(fs, secretPath, dirs);
-      } catch (err) {
-        if (err.code === 'ENOTDIR') {
-          yield secretPath;
-        }
-      }
-    }
-  }
+  return vaultId;
 }
 
 /**
- * Searches a list of vaults for the given vault Id and associated name
- * @throws If the vault Id does not exist
+ * Vault reference can be HEAD, any of the special tags or a commit ID
  */
-function searchVaultName(vaultList: VaultList, vaultId: VaultId): VaultName {
-  let vaultName: VaultName | undefined;
-
-  // Search each element in the list of vaults
-  for (const elem in vaultList) {
-    // List is of form <vaultName>\t<vaultId>
-    const value = vaultList[elem].split('\t');
-    if (value[1] === vaultId) {
-      vaultName = value[0];
-      break;
-    }
-  }
-  if (vaultName == null) {
-    throw new vaultsErrors.ErrorRemoteVaultUndefined(
-      `${vaultId} does not exist on connected node`,
-    );
-  }
-  return vaultName;
+function validateRef(ref: any): ref is VaultRef {
+  return refs.includes(ref) || validateCommitId(ref);
 }
 
 /**
- * Creates a GitRequest object from the desired node connection.
- * @param client GRPC connection to desired node
- * @param nodeId
+ * Commit ids are SHA1 hashes encoded as 40-character long lowercase hexadecimal strings
  */
-async function constructGitHandler(
-  client: GRPCClientAgent,
-  nodeId: NodeId,
-): Promise<GitRequest> {
-  const gitRequest = new GitRequest(
-    ((vaultNameOrId: string) => requestInfo(vaultNameOrId, client)).bind(this),
-    ((vaultNameOrId: string, body: Buffer) =>
-      requestPack(vaultNameOrId, body, client)).bind(this),
-    (() => requestVaultNames(client, nodeId)).bind(this),
-  );
-  return gitRequest;
+function validateCommitId(commitId: any): commitId is CommitId {
+  return /^[a-f0-9]{40}$/.test(commitId);
 }
 
-/**
- * Requests remote info from the connected node for the named vault.
- * @param vaultId ID of the desired vault
- * @param client A connection object to the node
- * @returns Async Generator of Uint8Arrays representing the Info Response
- */
-async function* requestInfo(
-  vaultNameOrId: string,
-  client: GRPCClientAgent,
-): AsyncGenerator<Uint8Array> {
-  const request = new vaultsPB.Vault();
-  request.setNameOrId(vaultNameOrId);
-  const response = client.vaultsGitInfoGet(request);
-  for await (const resp of response) {
-    yield resp.getChunk_asU8();
-  }
+function commitAuthor(nodeId: NodeId): { name: string; email: string } {
+  return {
+    name: nodesUtils.encodeNodeId(nodeId),
+    email: '',
+  };
 }
 
-/**
- * Requests a pack from the connected node for the named vault
- * @param vaultId ID of vault
- * @param body contains the pack request
- * @param client A connection object to the node
- * @returns AsyncGenerator of Uint8Arrays representing the Pack Response
- */
-async function* requestPack(
-  vaultNameOrId: string,
-  body: Buffer,
-  client: GRPCClientAgent,
-): AsyncGenerator<Uint8Array> {
-  const responseBuffers: Array<Buffer> = [];
+// Function isVaultId(arg: any) {
+//   return isId<VaultId>(arg);
+// }
+// /**
+//  * This will return arg as a valid VaultId or throw an error if it can't be converted.
+//  * This will take a multibase string of the ID or the raw Buffer of the ID.
+//  * @param arg - The variable we wish to convert
+//  * @throws vaultsErrors.ErrorInvalidVaultId  if the arg can't be converted into a VaultId
+//  * @returns VaultId
+//  */
+// function makeVaultId(arg: any): VaultId {
+//   return makeId<VaultId>(arg);
+// }
+// function isVaultIdPretty(arg: any): arg is VaultIdPretty {
+//   return isIdString<VaultIdPretty>(arg);
+// }
+// function makeVaultIdPretty(arg: any): VaultIdPretty {
+//   return makeIdString<VaultIdPretty>(arg);
+// }
 
-  const meta = new grpc.Metadata();
-  // FIXME make it a VaultIdReadable
-  meta.set('vaultNameOrId', vaultNameOrId);
+// async function fileExists(fs: FileSystem, path: string): Promise<boolean> {
+//   try {
+//     const fh = await fs.promises.open(path, 'r');
+//     await fh.close();
+//   } catch (err) {
+//     if (err.code === 'ENOENT') {
+//       return false;
+//     }
+//   }
+//   return true;
+// }
 
-  const stream = client.vaultsGitPackGet(meta);
-  const write = promisify(stream.write).bind(stream);
+// async function* readdirRecursively(fs, dir = '.') {
+//   const dirents = await fs.promises.readdir(dir);
+//   for (const dirent of dirents) {
+//     const res = path.join(dir, dirent.toString());
+//     const stat = await fs.promises.stat(res);
+//     if (stat.isDirectory()) {
+//       yield* readdirRecursively(fs, res);
+//     } else if (stat.isFile()) {
+//       yield res;
+//     }
+//   }
+// }
 
-  stream.on('data', (d) => {
-    responseBuffers.push(d.getChunk_asU8());
-  });
-
-  const chunk = new vaultsPB.PackChunk();
-  chunk.setChunk(body);
-  write(chunk);
-  stream.end();
-
-  yield await new Promise<Uint8Array>((resolve) => {
-    stream.once('end', () => {
-      resolve(Buffer.concat(responseBuffers));
-    });
-  });
-}
-
-/**
- * Requests the vault names from the connected node.
- * @param client A connection object to the node
- * @param nodeId
- */
-async function requestVaultNames(
-  client: GRPCClientAgent,
-  nodeId: NodeId,
-): Promise<string[]> {
-  const request = new nodesPB.Node();
-  request.setNodeId(nodesUtils.encodeNodeId(nodeId));
-  const vaultList = client.vaultsScan(request);
-  const data: string[] = [];
-  for await (const vault of vaultList) {
-    const vaultMessage = vault.getNameOrId();
-    data.push(vaultMessage);
-  }
-
-  return data;
-}
+// async function request(
+//   client: GRPCClientAgent,
+//   nodeId: NodeId,
+//   vaultNameOrId: VaultId | VaultName,
+// ) {
+//   const requestMessage = new vaultsPB.InfoRequest();
+//   const vaultMessage = new vaultsPB.Vault();
+//   const nodeMessage = new nodesPB.Node();
+//   nodeMessage.setNodeId(nodeId);
+//   requestMessage.setAction('clone');
+//   if (typeof vaultNameOrId === 'string') {
+//     vaultMessage.setNameOrId(vaultNameOrId);
+//   } else {
+//     // To have consistency between GET and POST, send the user
+//     // readable form of the vault Id
+//     vaultMessage.setNameOrId(makeVaultIdPretty(vaultNameOrId));
+//   }
+//   requestMessage.setVault(vaultMessage);
+//   requestMessage.setNode(nodeMessage);
+//   const response = client.vaultsGitInfoGet(requestMessage);
+//   let vaultName, remoteVaultId;
+//   response.stream.on('metadata', async (meta) => {
+//     // Receive the Id of the remote vault
+//     vaultName = meta.get('vaultName').pop();
+//     if (vaultName) vaultName = vaultName.toString();
+//     const vId = meta.get('vaultId').pop();
+//     if (vId) remoteVaultId = makeVaultId(vId.toString());
+//   });
+//   // Collet the response buffers from the GET request
+//   const infoResponse: Uint8Array[] = [];
+//   for await (const resp of response) {
+//     infoResponse.push(resp.getChunk_asU8());
+//   }
+//   const metadata = new grpc.Metadata();
+//   if (typeof vaultNameOrId === 'string') {
+//     metadata.set('vaultNameOrId', vaultNameOrId);
+//   } else {
+//     // Metadata only accepts the user readable form of the vault Id
+//     // as the string form has illegal characters
+//     metadata.set('vaultNameOrId', makeVaultIdPretty(vaultNameOrId));
+//   }
+//   return [
+//     async function ({
+//       url,
+//       method = 'GET',
+//       headers = {},
+//       body = [Buffer.from('')],
+//     }: {
+//       url: string;
+//       method: string;
+//       headers: POJO;
+//       body: Buffer[];
+//     }) {
+//       if (method === 'GET') {
+//         // Send back the GET request info response
+//         return {
+//           url: url,
+//           method: method,
+//           body: infoResponse,
+//           headers: headers,
+//           statusCode: 200,
+//           statusMessage: 'OK',
+//         };
+//       } else if (method === 'POST') {
+//         const responseBuffers: Array<Uint8Array> = [];
+//         const stream = client.vaultsGitPackGet(metadata);
+//         const chunk = new vaultsPB.PackChunk();
+//         // Body is usually an async generator but in the cases we are using,
+//         // only the first value is used
+//         chunk.setChunk(body[0]);
+//         // Tell the server what commit we need
+//         await stream.write(chunk);
+//         let packResponse = (await stream.read()).value;
+//         while (packResponse != null) {
+//           responseBuffers.push(packResponse.getChunk_asU8());
+//           packResponse = (await stream.read()).value;
+//         }
+//         return {
+//           url: url,
+//           method: method,
+//           body: responseBuffers,
+//           headers: headers,
+//           statusCode: 200,
+//           statusMessage: 'OK',
+//         };
+//       } else {
+//         throw new Error('Method not supported');
+//       }
+//     },
+//     vaultName,
+//     remoteVaultId,
+//   ];
+// }
 
 function isVaultAction(action: any): action is VaultAction {
   if (typeof action !== 'string') return false;
@@ -251,17 +212,14 @@ function isVaultAction(action: any): action is VaultAction {
 }
 
 export {
-  isVaultId,
-  isVaultIdPretty,
-  makeVaultId,
-  makeVaultIdPretty,
-  generateVaultKey,
+  tagLast,
+  refs,
+  canonicalBranch,
   generateVaultId,
-  fileExists,
-  readdirRecursively,
-  readdirRecursivelyEFS,
-  readdirRecursivelyEFS2,
-  constructGitHandler,
-  searchVaultName,
+  encodeVaultId,
+  decodeVaultId,
+  validateRef,
+  validateCommitId,
+  commitAuthor,
   isVaultAction,
 };

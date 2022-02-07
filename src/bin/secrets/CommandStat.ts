@@ -1,32 +1,33 @@
+import type { Stat } from 'encryptedfs';
 import type PolykeyClient from '../../PolykeyClient';
-import type { NodeId } from '../../nodes/types';
-import CommandPolykey from '../CommandPolykey';
-import * as binUtils from '../utils';
-import * as binOptions from '../utils/options';
 import * as binProcessors from '../utils/processors';
-import * as binParsers from '../utils/parsers';
+import * as parsers from '../utils/parsers';
+import * as binUtils from '../utils';
 
-class CommandUnshare extends CommandPolykey {
+import CommandPolykey from '../CommandPolykey';
+import * as binOptions from '../utils/options';
+
+class CommandStat extends CommandPolykey {
   constructor(...args: ConstructorParameters<typeof CommandPolykey>) {
     super(...args);
-    this.name('unshare');
-    this.description('Unset the Permissions of a Vault for a Node');
-    this.argument('<vaultName>', 'Name of the vault to be unshared');
+    this.name('stat');
+    this.description('Vaults Stat');
     this.argument(
-      '<nodeId>',
-      'Id of the node to unshare with',
-      binParsers.parseNodeId,
+      '<secretPath>',
+      'Path to where the secret, specified as <vaultName>:<directoryPath>',
+      parsers.parseSecretPath,
     );
     this.addOption(binOptions.nodeId);
     this.addOption(binOptions.clientHost);
     this.addOption(binOptions.clientPort);
-    this.action(async (vaultName, nodeId: NodeId, options) => {
+    this.action(async (secretPath, options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
-      const nodesUtils = await import('../../nodes/utils');
       const vaultsPB = await import(
         '../../proto/js/polykey/v1/vaults/vaults_pb'
       );
-      const nodesPB = await import('../../proto/js/polykey/v1/nodes/nodes_pb');
+      const secretsPB = await import(
+        '../../proto/js/polykey/v1/secrets/secrets_pb'
+      );
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -51,17 +52,30 @@ class CommandUnshare extends CommandPolykey {
           port: clientOptions.clientPort,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-        const unsetVaultPermsMessage = new vaultsPB.PermUnset();
+
+        const secretMessage = new secretsPB.Secret();
         const vaultMessage = new vaultsPB.Vault();
-        const nodeMessage = new nodesPB.Node();
-        unsetVaultPermsMessage.setVault(vaultMessage);
-        unsetVaultPermsMessage.setNode(nodeMessage);
-        vaultMessage.setNameOrId(vaultName);
-        nodeMessage.setNodeId(nodesUtils.encodeNodeId(nodeId));
-        await binUtils.retryAuthentication(
-          (auth) =>
-            pkClient.grpcClient.vaultsUnshare(unsetVaultPermsMessage, auth),
+        vaultMessage.setNameOrId(secretPath[0]);
+        secretMessage.setVault(vaultMessage);
+        secretMessage.setSecretName(secretPath[1]);
+        // Get the secret's stat.
+        const response = await binUtils.retryAuthentication(
+          (auth) => pkClient.grpcClient.vaultsSecretsStat(secretMessage, auth),
           meta,
+        );
+
+        const stat: Stat = JSON.parse(response.getJson());
+        const data: string[] = [`Stats for "${secretPath[1]}"`];
+        for (const key in stat) {
+          data.push(`${key}: ${stat[key]}`);
+        }
+
+        // Print out the result.
+        process.stdout.write(
+          binUtils.outputFormatter({
+            type: options.format === 'json' ? 'json' : 'list',
+            data,
+          }),
         );
       } finally {
         if (pkClient! != null) await pkClient.stop();
@@ -70,4 +84,4 @@ class CommandUnshare extends CommandPolykey {
   }
 }
 
-export default CommandUnshare;
+export default CommandStat;

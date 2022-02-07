@@ -36,10 +36,10 @@ function vaultsRename({
       const nameOrId = vaultMessage.getNameOrId();
       let vaultId = await vaultManager.getVaultId(nameOrId as VaultName);
       if (!vaultId) vaultId = decodeVaultId(nameOrId);
-      if (!vaultId) throw new vaultsErrors.ErrorVaultUndefined();
+      if (!vaultId) throw new vaultsErrors.ErrorVaultsVaultUndefined();
       const newName = call.request.getNewName() as VaultName;
       await vaultManager.renameVault(vaultId, newName);
-      response.setNameOrId(vaultsUtils.makeVaultIdPretty(vaultId));
+      response.setNameOrId(vaultsUtils.encodeVaultId(vaultId));
       callback(null, response);
       return;
     } catch (e) {

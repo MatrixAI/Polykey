@@ -1,173 +1,175 @@
-import type VaultInternal from './VaultInternal';
-import type { Opaque } from '../types';
-import type { NodeId } from '../nodes/types';
-import type { MutexInterface } from 'async-mutex';
+import type { Id } from '@matrixai/id';
+import type { EncryptedFS } from 'encryptedfs';
 import type { Callback, Path } from 'encryptedfs/dist/types';
 import type { FdIndex } from 'encryptedfs/dist/fd/types';
-import type { EncryptedFS } from 'encryptedfs';
-import type { Id, IdString } from '../GenericIdTypes';
+import type { Opaque } from '../types';
 
 const vaultActions = ['clone', 'pull'] as const;
 
-/**
- * Randomly generated vault ID for each new vault
- */
-type VaultId = Opaque<'VaultId', Id>;
-
-type VaultIdPretty = Opaque<'VaultIdPretty', IdString>;
-
-type VaultName = Opaque<'VaultName', string>;
-
-type VaultKey = Opaque<'VaultKey', Buffer>;
-
-/**
- * Actions relating to what is possible with vaults
- */
 type VaultAction = typeof vaultActions[number];
 
-type VaultList = Map<VaultName, VaultId>;
+/**
+ * Special tags that are managed by VaultInternal
+ * They are used to refer to specific commits
+ * These may or may not be implemented using Git tags
+ */
+const tagLast = 'last';
 
-type VaultMetadata = {
-  name: VaultName;
-  id: VaultId;
-  remoteNode: NodeId;
-  remoteVault: VaultId;
+/**
+ * Tuple of static references
+ */
+const refs = ['HEAD', tagLast] as const;
+
+type VaultId = Opaque<'VaultId', Id>;
+
+type VaultIdEncoded = Opaque<'VaultIdEncoded', string>;
+
+type VaultRef = typeof refs[number];
+
+type CommitId = Opaque<'CommitId', string>;
+
+type CommitLog = {
+  commitId: CommitId;
+  parent: Array<CommitId>;
+  author: {
+    name: string;
+    timestamp: Date;
+  };
+  committer: {
+    name: string;
+    timestamp: Date;
+  };
+  message: string;
 };
 
-type SecretName = string;
-
-type SecretList = string[];
-
-type SecretContent = Buffer | string;
-
-type VaultMap = Map<
-  string,
-  {
-    vault?: VaultInternal;
-    lock: MutexInterface;
-  }
->;
-
-type FileOptions = {
-  recursive?: boolean;
-};
-
-type VaultActions = Partial<Record<VaultAction, null>>;
-
+/**
+ * Readonly-only interface for EncryptedFS
+ * Note that open flags type are not complete
+ * Combinations of the flags can be used as well
+ */
 interface FileSystemReadable {
-  chdir: typeof EncryptedFS.prototype.chdir;
-  access: typeof EncryptedFS.prototype.access;
-  chmod: typeof EncryptedFS.prototype.chmod;
-  chown: typeof EncryptedFS.prototype.chown;
-  chownr: typeof EncryptedFS.prototype.chownr;
-  close: typeof EncryptedFS.prototype.close;
-  createReadStream: typeof EncryptedFS.prototype.createReadStream;
-  exists: typeof EncryptedFS.prototype.exists;
-  fchmod: typeof EncryptedFS.prototype.fchmod;
-  fchown: typeof EncryptedFS.prototype.fchown;
-  fstat: typeof EncryptedFS.prototype.fstat;
-  futimes: typeof EncryptedFS.prototype.futimes;
-  lchmod: typeof EncryptedFS.prototype.lchmod;
-  lchown: typeof EncryptedFS.prototype.lchown;
-  lseek: typeof EncryptedFS.prototype.lseek;
-  lstat: typeof EncryptedFS.prototype.lstat;
+  constants: EncryptedFS['constants'];
+  promises: FileSystemReadable;
+  access: EncryptedFS['access'];
+  close: EncryptedFS['close'];
+  createReadStream: EncryptedFS['createReadStream'];
+  exists: EncryptedFS['exists'];
+  fstat: EncryptedFS['fstat'];
+  lseek: EncryptedFS['lseek'];
+  lstat: EncryptedFS['lstat'];
   open(
     path: Path,
-    flags: 'r' | 'rs' | 'r+' | 'rs+',
+    flags:
+      | 'r'
+      | EncryptedFS['constants']['O_RDONLY']
+      | EncryptedFS['constants']['O_DIRECTORY']
+      | EncryptedFS['constants']['O_NOATIME']
+      | EncryptedFS['constants']['O_DIRECT']
+      | EncryptedFS['constants']['O_NONBLOCK'],
     mode?: number,
   ): Promise<FdIndex>;
   open(
     path: Path,
-    flags: 'r' | 'rs' | 'r+' | 'rs+',
+    flags:
+      | 'r'
+      | EncryptedFS['constants']['O_RDONLY']
+      | EncryptedFS['constants']['O_DIRECTORY']
+      | EncryptedFS['constants']['O_NOATIME']
+      | EncryptedFS['constants']['O_DIRECT']
+      | EncryptedFS['constants']['O_NONBLOCK'],
     callback: Callback<[FdIndex]>,
   ): Promise<void>;
   open(
     path: Path,
-    flags: 'r' | 'rs' | 'r+' | 'rs+',
+    flags:
+      | 'r'
+      | EncryptedFS['constants']['O_RDONLY']
+      | EncryptedFS['constants']['O_DIRECTORY']
+      | EncryptedFS['constants']['O_NOATIME']
+      | EncryptedFS['constants']['O_DIRECT']
+      | EncryptedFS['constants']['O_NONBLOCK'],
     mode: number,
     callback: Callback<[FdIndex]>,
   ): Promise<void>;
-  read: typeof EncryptedFS.prototype.read;
-  readdir: typeof EncryptedFS.prototype.readdir;
-  readFile: typeof EncryptedFS.prototype.readFile;
-  readlink: typeof EncryptedFS.prototype.readlink;
-  realpath: typeof EncryptedFS.prototype.realpath;
-  stat: typeof EncryptedFS.prototype.stat;
-  utimes: typeof EncryptedFS.prototype.utimes;
+  read: EncryptedFS['read'];
+  readdir: EncryptedFS['readdir'];
+  readFile: EncryptedFS['readFile'];
+  readlink: EncryptedFS['readlink'];
+  realpath: EncryptedFS['realpath'];
+  stat: EncryptedFS['stat'];
 }
 
+/**
+ * Readable & Writable interface for EncryptedFS
+ */
 interface FileSystemWritable extends FileSystemReadable {
-  chdir: typeof EncryptedFS.prototype.chdir;
-  access: typeof EncryptedFS.prototype.access;
-  appendFile: typeof EncryptedFS.prototype.appendFile;
-  chmod: typeof EncryptedFS.prototype.chmod;
-  chown: typeof EncryptedFS.prototype.chown;
-  chownr: typeof EncryptedFS.prototype.chownr;
-  close: typeof EncryptedFS.prototype.close;
-  copyFile: typeof EncryptedFS.prototype.copyFile;
-  createWriteStream: typeof EncryptedFS.prototype.createWriteStream;
-  fallocate: typeof EncryptedFS.prototype.fallocate;
-  fchmod: typeof EncryptedFS.prototype.fchmod;
-  fchown: typeof EncryptedFS.prototype.fchown;
-  ftruncate: typeof EncryptedFS.prototype.ftruncate;
-  futimes: typeof EncryptedFS.prototype.futimes;
-  lchmod: typeof EncryptedFS.prototype.lchmod;
-  lchown: typeof EncryptedFS.prototype.lchown;
-  link: typeof EncryptedFS.prototype.link;
-  lseek: typeof EncryptedFS.prototype.lseek;
-  mkdir: typeof EncryptedFS.prototype.mkdir;
-  mkdtemp: typeof EncryptedFS.prototype.mkdtemp;
-  mknod: typeof EncryptedFS.prototype.mknod;
-  open: typeof EncryptedFS.prototype.open;
-  rename: typeof EncryptedFS.prototype.rename;
-  rmdir: typeof EncryptedFS.prototype.rmdir;
-  symlink: typeof EncryptedFS.prototype.symlink;
-  truncate: typeof EncryptedFS.prototype.truncate;
-  unlink: typeof EncryptedFS.prototype.unlink;
-  utimes: typeof EncryptedFS.prototype.utimes;
-  write: typeof EncryptedFS.prototype.write;
-  writeFile: typeof EncryptedFS.prototype.writeFile;
+  promises: FileSystemWritable;
+  appendFile: EncryptedFS['appendFile'];
+  chmod: EncryptedFS['chmod'];
+  chown: EncryptedFS['chown'];
+  chownr: EncryptedFS['chownr'];
+  copyFile: EncryptedFS['copyFile'];
+  createWriteStream: EncryptedFS['createWriteStream'];
+  fallocate: EncryptedFS['fallocate'];
+  fchmod: EncryptedFS['fchmod'];
+  fchown: EncryptedFS['fchown'];
+  fdatasync: EncryptedFS['fdatasync'];
+  fsync: EncryptedFS['fsync'];
+  ftruncate: EncryptedFS['ftruncate'];
+  futimes: EncryptedFS['futimes'];
+  lchmod: EncryptedFS['lchmod'];
+  lchown: EncryptedFS['lchown'];
+  link: EncryptedFS['link'];
+  mkdir: EncryptedFS['mkdir'];
+  mkdtemp: EncryptedFS['mkdtemp'];
+  mknod: EncryptedFS['mknod'];
+  open: EncryptedFS['open'];
+  rename: EncryptedFS['rename'];
+  rmdir: EncryptedFS['rmdir'];
+  symlink: EncryptedFS['symlink'];
+  truncate: EncryptedFS['truncate'];
+  unlink: EncryptedFS['unlink'];
+  utimes: EncryptedFS['utimes'];
+  write: EncryptedFS['write'];
+  writeFile: EncryptedFS['writeFile'];
 }
 
-type CommitType = typeof VaultInternal.prototype.commit;
-type AccessType = typeof VaultInternal.prototype.access;
-type LogType = typeof VaultInternal.prototype.log;
-type VersionType = typeof VaultInternal.prototype.version;
-interface Vault {
-  baseDir: typeof VaultInternal.prototype.baseDir;
-  gitDir: typeof VaultInternal.prototype.gitDir;
-  vaultId: typeof VaultInternal.prototype.vaultId;
-  commit(...arg: Parameters<CommitType>): ReturnType<CommitType>;
-  access: AccessType;
-  log(...arg: Parameters<LogType>): ReturnType<LogType>;
-  version(...arg: Parameters<VersionType>): ReturnType<VersionType>;
-}
+type VaultName = string; // FIXME, placeholder, remove?
 
-type CommitLog = {
-  oid: string;
-  committer: string;
-  timeStamp: number;
-  message: string;
-};
+// type VaultKey = Opaque<'VaultKey', Buffer>;
+
+// /**
+//  * Actions relating to what is possible with vaults
+//  */
+// type VaultAction = 'clone' | 'pull';
+
+// type SecretName = string;
+
+// type SecretList = string[];
+
+// type SecretContent = Buffer | string;
+
+// type FileOptions = {
+//   recursive?: boolean;
+// };
+
+// FIXME: temp placeholder
+type VaultActions = Partial<Record<VaultAction, null>>;
 
 export { vaultActions };
 
 export type {
   VaultId,
-  VaultIdPretty,
+  VaultIdEncoded,
+  VaultRef,
   VaultAction,
-  VaultKey,
-  VaultName,
-  VaultList,
-  VaultMap,
-  VaultMetadata,
-  VaultActions,
-  SecretName,
-  SecretList,
-  SecretContent,
-  FileOptions,
+  CommitId,
+  CommitLog,
   FileSystemReadable,
   FileSystemWritable,
-  Vault,
-  CommitLog,
+  // FIXME: placeholder types
+  VaultName,
+  VaultActions,
 };
+
+export { tagLast, refs };

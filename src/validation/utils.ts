@@ -9,7 +9,7 @@
 import type { NodeId, SeedNodes } from '../nodes/types';
 import type { ProviderId, IdentityId } from '../identities/types';
 import type { GestaltAction, GestaltId } from '../gestalts/types';
-import type { VaultAction } from '../vaults/types';
+import type { VaultAction, VaultId } from '../vaults/types';
 import type { Host, Hostname, Port } from '../network/types';
 import type { ClaimId } from '../claims/types';
 import * as validationErrors from './errors';
@@ -77,6 +77,16 @@ function parseClaimId(data: any): ClaimId {
   if (data == null) {
     throw new validationErrors.ErrorParse(
       'Claim ID must be multibase base32hex encoded strings',
+    );
+  }
+  return data;
+}
+
+function parseVaultId(data: any): VaultId {
+  data = vaultsUtils.decodeVaultId(data);
+  if (data == null) {
+    throw new validationErrors.ErrorParse(
+      'Vault ID must be multibase base58btc encoded strings',
     );
   }
   return data;
@@ -249,6 +259,7 @@ export {
   parseNodeId,
   parseGestaltId,
   parseClaimId,
+  parseVaultId,
   parseGestaltAction,
   parseVaultAction,
   parseProviderId,

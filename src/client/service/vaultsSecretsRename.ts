@@ -42,11 +42,12 @@ function vaultsSecretsRename({
       const nameOrId = vaultMessage.getNameOrId();
       let vaultId = await vaultManager.getVaultId(nameOrId as VaultName);
       if (!vaultId) vaultId = decodeVaultId(nameOrId);
-      if (!vaultId) throw new vaultsErrors.ErrorVaultUndefined();
-      const vault = await vaultManager.openVault(vaultId);
+      if (!vaultId) throw new vaultsErrors.ErrorVaultsVaultUndefined();
       const oldSecret = secretMessage.getSecretName();
       const newSecret = call.request.getNewName();
-      await vaultOps.renameSecret(vault, oldSecret, newSecret);
+      await vaultManager.withVaults([vaultId], async (vault) => {
+        await vaultOps.renameSecret(vault, oldSecret, newSecret);
+      });
       response.setSuccess(true);
       callback(null, response);
       return;
