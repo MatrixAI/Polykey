@@ -32,9 +32,13 @@ function vaultsSecretsList({
       const nameOrId = vaultMessage.getNameOrId();
       let vaultId = await vaultManager.getVaultId(nameOrId as VaultName);
       if (!vaultId) vaultId = decodeVaultId(nameOrId);
-      if (!vaultId) throw new vaultsErrors.ErrorVaultUndefined();
-      const vault = await vaultManager.openVault(vaultId);
-      const secrets = await vaultOps.listSecrets(vault);
+      if (!vaultId) throw new vaultsErrors.ErrorVaultsVaultUndefined();
+      const secrets = await vaultManager.withVaults(
+        [vaultId],
+        async (vault) => {
+          return await vaultOps.listSecrets(vault);
+        },
+      );
       let secretMessage: secretsPB.Secret;
       for (const secret of secrets) {
         secretMessage = new secretsPB.Secret();

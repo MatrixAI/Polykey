@@ -32,7 +32,6 @@ function vaultsSecretsNewDir({
       const response = new utilsPB.StatusMessage();
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
-
       const vaultMessage = call.request.getVault();
       if (vaultMessage == null) {
         callback({ code: grpc.status.NOT_FOUND }, null);
@@ -41,10 +40,11 @@ function vaultsSecretsNewDir({
       const nameOrId = vaultMessage.getNameOrId();
       let vaultId = await vaultManager.getVaultId(nameOrId as VaultName);
       if (!vaultId) vaultId = decodeVaultId(nameOrId);
-      if (!vaultId) throw new vaultsErrors.ErrorVaultUndefined();
-      const vault = await vaultManager.openVault(vaultId);
+      if (!vaultId) throw new vaultsErrors.ErrorVaultsVaultUndefined();
       const secretsPath = call.request.getSecretDirectory();
-      await vaultOps.addSecretDirectory(vault, secretsPath, fs);
+      await vaultManager.withVaults([vaultId], async (vault) => {
+        await vaultOps.addSecretDirectory(vault, secretsPath, fs);
+      });
       response.setSuccess(true);
       callback(null, response);
       return;

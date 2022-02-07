@@ -29,7 +29,6 @@ function vaultsSecretsMkdir({
       const response = new utilsPB.StatusMessage();
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
-
       const vaultMkdirMessge = call.request;
       const vaultMessage = vaultMkdirMessge.getVault();
       if (vaultMessage == null) {
@@ -39,10 +38,11 @@ function vaultsSecretsMkdir({
       const nameOrId = vaultMessage.getNameOrId();
       let vaultId = await vaultManager.getVaultId(nameOrId as VaultName);
       if (!vaultId) vaultId = decodeVaultId(nameOrId);
-      if (!vaultId) throw new vaultsErrors.ErrorVaultUndefined();
-      const vault = await vaultManager.openVault(vaultId);
-      await vaultOps.mkdir(vault, vaultMkdirMessge.getDirName(), {
-        recursive: vaultMkdirMessge.getRecursive(),
+      if (!vaultId) throw new vaultsErrors.ErrorVaultsVaultUndefined();
+      await vaultManager.withVaults([vaultId], async (vault) => {
+        await vaultOps.mkdir(vault, vaultMkdirMessge.getDirName(), {
+          recursive: vaultMkdirMessge.getRecursive(),
+        });
       });
       response.setSuccess(true);
       callback(null, response);

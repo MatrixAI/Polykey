@@ -89,3 +89,23 @@ export namespace Directory {
         secretDirectory: string,
     }
 }
+
+export class Stat extends jspb.Message { 
+    getJson(): string;
+    setJson(value: string): Stat;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): Stat.AsObject;
+    static toObject(includeInstance: boolean, msg: Stat): Stat.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: Stat, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): Stat;
+    static deserializeBinaryFromReader(message: Stat, reader: jspb.BinaryReader): Stat;
+}
+
+export namespace Stat {
+    export type AsObject = {
+        json: string,
+    }
+}

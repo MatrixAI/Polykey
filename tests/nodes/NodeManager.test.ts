@@ -2,6 +2,7 @@ import type { ClaimIdEncoded } from '@/claims/types';
 import type { CertificatePem, KeyPairPem, PublicKeyPem } from '@/keys/types';
 import type { Host, Port } from '@/network/types';
 import type { NodeId, NodeAddress } from '@/nodes/types';
+import type { VaultName, VaultId } from '@/vaults/types';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
@@ -16,6 +17,7 @@ import { Sigchain } from '@/sigchain';
 import { utils as claimsUtils } from '@/claims';
 import { sleep } from '@/utils';
 import { utils as nodesUtils } from '@/nodes';
+import { errors as vaultsErrors } from '@/vaults';
 
 // Mocks.
 jest.mock('@/keys/utils', () => ({
@@ -270,6 +272,94 @@ describe('NodeManager', () => {
       global.failedConnectionTimeout * 2,
     );
   });
+
+  describe('Scanning nodes', () => {
+    let server: PolykeyAgent;
+    let serverNodeId: NodeId;
+    let serverNodeAddress: NodeAddress;
+    let allDataDir: string;
+
+    beforeAll(async () => {
+      allDataDir = await fs.promises.mkdtemp(
+        path.join(os.tmpdir(), 'polykey-test-'),
+      );
+      server = await PolykeyAgent.createPolykeyAgent({
+        password,
+        logger,
+        nodePath: path.join(allDataDir, 'server'),
+      });
+      serverNodeId = server.nodeManager.getNodeId();
+      serverNodeAddress = {
+        host: server.revProxy.getIngressHost(),
+        port: server.revProxy.getIngressPort(),
+      };
+    }, global.polykeyStartupTimeout * 2);
+
+    afterAll(async () => {
+      await server.stop();
+      await server.destroy();
+      await fs.promises.rm(allDataDir, { force: true, recursive: true });
+    });
+
+    test('scans the targets vaults', async () => {
+      await nodeManager.setNode(serverNodeId, serverNodeAddress);
+      await server.gestaltGraph.setNode({
+        id: nodesUtils.encodeNodeId(nodeManager.getNodeId()),
+        chain: {},
+      });
+      await server.gestaltGraph.setGestaltActionByNode(
+        nodeManager.getNodeId(),
+        'scan',
+      );
+
+      const vaultName1 = 'vn1' as VaultName;
+      const vaultName2 = 'vn2' as VaultName;
+      const vaultName3 = 'vn3' as VaultName;
+      const v1Id = await server.vaultManager.createVault(vaultName1);
+      const v2Id = await server.vaultManager.createVault(vaultName2);
+      const v3Id = await server.vaultManager.createVault(vaultName3);
+
+      const vaultList: Array<[VaultName, VaultId]> = [];
+
+      vaultList.push([vaultName1, v1Id]);
+      vaultList.push([vaultName2, v2Id]);
+      vaultList.push([vaultName3, v3Id]);
+
+      const vaults = await nodeManager.scanNodeVaults(serverNodeId);
+      expect(vaults.sort()).toStrictEqual(vaultList.sort());
+
+      await server.gestaltGraph.unsetGestaltActionByNode(
+        nodeManager.getNodeId(),
+        'scan',
+      );
+    });
+
+    test('fails to scan the targets vaults without permission', async () => {
+      await nodeManager.setNode(serverNodeId, serverNodeAddress);
+      await server.gestaltGraph.setNode({
+        id: nodesUtils.encodeNodeId(nodeManager.getNodeId()),
+        chain: {},
+      });
+
+      const vaultName1 = 'vn1' as VaultName;
+      const vaultName2 = 'vn2' as VaultName;
+      const vaultName3 = 'vn3' as VaultName;
+      const v1Id = await server.vaultManager.createVault(vaultName1);
+      const v2Id = await server.vaultManager.createVault(vaultName2);
+      const v3Id = await server.vaultManager.createVault(vaultName3);
+
+      const vaultList: Array<[VaultName, VaultId]> = [];
+
+      vaultList.push([vaultName1, v1Id]);
+      vaultList.push([vaultName2, v2Id]);
+      vaultList.push([vaultName3, v3Id]);
+
+      await expect(() =>
+        nodeManager.scanNodeVaults(serverNodeId),
+      ).rejects.toThrow(vaultsErrors.ErrorVaultsPermissionDenied);
+    });
+  });
+
   test(
     'pings node',
     async () => {

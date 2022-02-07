@@ -29,7 +29,6 @@ function vaultsSecretsGet({
       const response = new secretsPB.Secret();
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
-
       const vaultMessage = call.request.getVault();
       if (vaultMessage == null) {
         callback({ code: grpc.status.NOT_FOUND }, null);
@@ -38,10 +37,14 @@ function vaultsSecretsGet({
       const nameOrId = vaultMessage.getNameOrId();
       let vaultId = await vaultManager.getVaultId(nameOrId as VaultName);
       if (!vaultId) vaultId = decodeVaultId(nameOrId);
-      if (!vaultId) throw new vaultsErrors.ErrorVaultUndefined();
-      const vault = await vaultManager.openVault(vaultId);
+      if (!vaultId) throw new vaultsErrors.ErrorVaultsVaultUndefined();
       const secretName = call.request.getSecretName();
-      const secretContent = await vaultOps.getSecret(vault, secretName);
+      const secretContent = await vaultManager.withVaults(
+        [vaultId],
+        async (vault) => {
+          return await vaultOps.getSecret(vault, secretName);
+        },
+      );
       response.setSecretContent(secretContent);
       callback(null, response);
       return;

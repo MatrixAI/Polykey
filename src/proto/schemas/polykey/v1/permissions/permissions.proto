@@ -9,6 +9,11 @@ message Actions {
   repeated string action = 1;
 }
 
+message NodeActions {
+  polykey.v1.nodes.Node node = 1;
+  repeated string actions = 2;
+}
+
 message ActionSet {
   oneof node_or_provider {
     polykey.v1.nodes.Node node = 1;

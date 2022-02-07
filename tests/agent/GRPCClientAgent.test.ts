@@ -21,7 +21,6 @@ import { NotificationsManager } from '@/notifications';
 import { utils as claimsUtils, errors as claimsErrors } from '@/claims';
 import * as keysUtils from '@/keys/utils';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
-import * as vaultsPB from '@/proto/js/polykey/v1/vaults/vaults_pb';
 import * as nodesPB from '@/proto/js/polykey/v1/nodes/nodes_pb';
 import { utils as nodesUtils } from '@/nodes';
 import * as testAgentUtils from './utils';
@@ -33,11 +32,6 @@ describe(GRPCClientAgent.name, () => {
   const logger = new Logger(`${GRPCClientAgent.name} test`, LogLevel.WARN, [
     new StreamHandler(),
   ]);
-  const node1: NodeInfo = {
-    id: 'v359vgrgmqf1r5g4fvisiddjknjko6bmm4qv7646jr7fi9enbfuug' as NodeIdEncoded,
-    chain: {},
-  };
-  const nodeId1 = nodesUtils.decodeNodeId(node1.id)!;
   let mockedGenerateKeyPair: jest.SpyInstance;
   let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
   beforeAll(async () => {
@@ -141,13 +135,13 @@ describe(GRPCClientAgent.name, () => {
         logger: logger,
       });
     vaultManager = await VaultManager.createVaultManager({
-      keyManager: keyManager,
       vaultsPath: vaultsPath,
+      keyManager: keyManager,
       nodeManager: nodeManager,
-      vaultsKey: keyManager.vaultKey,
       db: db,
       acl: acl,
       gestaltGraph: gestaltGraph,
+      notificationsManager: notificationsManager,
       fs: fs,
       logger: logger,
     });
@@ -158,6 +152,8 @@ describe(GRPCClientAgent.name, () => {
       nodeManager,
       sigchain,
       notificationsManager,
+      acl,
+      gestaltGraph,
     });
     client = await testAgentUtils.openTestAgentClient(port);
   }, global.polykeyStartupTimeout);
@@ -190,46 +186,6 @@ describe(GRPCClientAgent.name, () => {
     await client.echo(echoMessage);
     const response = await client.echo(echoMessage);
     expect(response.getChallenge()).toBe('yes');
-  });
-  test.skip('can check permissions', async () => {
-    // FIXME: permissions not implemented on vaults.
-    // const vault = await vaultManager.createVault('TestAgentVault' as VaultName);
-    await gestaltGraph.setNode(node1);
-    // Await vaultManager.setVaultPermissions('12345' as NodeId, vault.vaultId);
-    // await vaultManager.unsetVaultPermissions('12345' as NodeId, vault.vaultId);
-    const vaultPermMessage = new vaultsPB.NodePermission();
-    vaultPermMessage.setNodeId(nodesUtils.encodeNodeId(nodeId1));
-    // VaultPermMessage.setVaultId(vault.vaultId);
-    const response = await client.vaultsPermissionsCheck(vaultPermMessage);
-    expect(response.getPermission()).toBeFalsy();
-    // Await vaultManager.setVaultPermissions('12345' as NodeId, vault.vaultId);
-    const response2 = await client.vaultsPermissionsCheck(vaultPermMessage);
-    expect(response2.getPermission()).toBeTruthy();
-    // Await vaultManager.deleteVault(vault.vaultId);
-  });
-  test.skip('can scan vaults', async () => {
-    // FIXME, permissions not implemented on vaults
-    // const vault = await vaultManager.createVault('TestAgentVault' as VaultName);
-    await gestaltGraph.setNode(node1);
-    const nodeIdMessage = new nodesPB.Node();
-    nodeIdMessage.setNodeId(nodesUtils.encodeNodeId(nodeId1));
-    const response = client.vaultsScan(nodeIdMessage);
-    const data: string[] = [];
-    for await (const resp of response) {
-      const chunk = resp.getNameOrId();
-      data.push(Buffer.from(chunk).toString());
-    }
-    expect(data).toStrictEqual([]);
-    fail();
-    // Await vaultManager.setVaultPermissions('12345' as NodeId, vault.vaultId);
-    // const response2 = client.vaultsScan(nodeIdMessage);
-    // Const data2: string[] = [];
-    // for await (const resp of response2) {
-    // Const chunk = resp.getNameOrId();
-    // Data2.push(Buffer.from(chunk).toString());
-    // }
-    // Expect(data2).toStrictEqual([`${vault.vaultName}\t${vault.vaultId}`]);
-    // await vaultManager.deleteVault(vault.vaultId);
   });
   test('Can connect over insecure connection.', async () => {
     const echoMessage = new utilsPB.EchoMessage();

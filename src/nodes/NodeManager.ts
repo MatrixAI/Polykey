@@ -3,6 +3,7 @@ import type { PublicKeyPem } from '../keys/types';
 import type { Sigchain } from '../sigchain';
 import type { ChainData, ChainDataEncoded } from '../sigchain/types';
 import type { ClaimIdEncoded } from '../claims/types';
+import type { VaultName, VaultId } from '../vaults/types';
 import type {
   NodeId,
   NodeAddress,
@@ -623,11 +624,13 @@ class NodeManager {
    * Retrieves all the vaults for a peers node
    */
   @ready(new nodesErrors.ErrorNodeManagerNotRunning())
-  public async scanNodeVaults(nodeId: NodeId): Promise<Array<string>> {
+  public async scanNodeVaults(
+    nodeId: NodeId,
+  ): Promise<Array<[VaultName, VaultId]>> {
     // Create a connection to another node
     const connection = await this.getConnectionToNode(nodeId);
     // Scan the vaults of the node over the connection
-    return await connection.scanVaults();
+    return await connection.scanVaults(this.getNodeId());
   }
 
   public async clearDB() {

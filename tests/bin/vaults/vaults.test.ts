@@ -1,5 +1,5 @@
-import type { NodeIdEncoded, NodeInfo } from '@/nodes/types';
-import type { Vault, VaultName } from '@/vaults/types';
+import type { NodeIdEncoded, NodeAddress, NodeInfo } from '@/nodes/types';
+import type { VaultId, Vault, VaultName } from '@/vaults/types';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
@@ -7,6 +7,8 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
 import { makeVaultIdPretty } from '@/vaults/utils';
 import { utils as nodesUtils } from '@/nodes';
+import { utils as vaultsUtils } from '@/vaults';
+import * as vaultsPB from '@/proto/js/polykey/v1/vaults/vaults_pb';
 import * as testBinUtils from '../utils';
 
 jest.mock('@/keys/utils', () => ({
@@ -38,16 +40,12 @@ describe('CLI vaults', () => {
   let vaultNumber: number;
   let vaultName: VaultName;
 
-  // Constants
   const nodeId1Encoded =
     'vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0' as NodeIdEncoded;
-  const nodeId1 = nodesUtils.decodeNodeId(nodeId1Encoded)!;
   const nodeId2Encoded =
     'vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg' as NodeIdEncoded;
-  // Const nodeId2 = nodesUtils.decodeNodeId(nodeId2Encoded);
   const nodeId3Encoded =
     'v359vgrgmqf1r5g4fvisiddjknjko6bmm4qv7646jr7fi9enbfuug' as NodeIdEncoded;
-  // Const nodeId3 = nodesUtils.decodeNodeId(nodeId3Encoded);
 
   const node1: NodeInfo = {
     id: nodeId1Encoded,
@@ -199,265 +197,9 @@ describe('CLI vaults', () => {
       expect(namesList).not.toContain(vaultName);
     });
   });
-  describe.skip('commandVaultStats', () => {
-    test('should return the stats of a vault', async () => {
-      command = ['vaults', 'stat', '-np', dataDir, vaultName];
-      await polykeyAgent.vaultManager.createVault(vaultName);
-      const id = polykeyAgent.vaultManager.getVaultId(vaultName);
-      expect(id).toBeTruthy();
-
-      const result = await testBinUtils.pkStdio([...command], {}, dataDir);
-      expect(result.exitCode).toBe(0);
-    });
-  });
-  describe.skip('commandSetPermsVault', () => {
-    test('should share a vault', async () => {
-      command = [
-        'vaults',
-        'share',
-        '-np',
-        dataDir,
-        vaultName,
-        nodesUtils.encodeNodeId(nodeId1),
-      ];
-      await polykeyAgent.vaultManager.createVault(vaultName);
-      const id = await polykeyAgent.vaultManager.getVaultId(vaultName);
-      expect(id).toBeTruthy();
-
-      const result = await testBinUtils.pkStdio([...command], {}, dataDir);
-      expect(result.exitCode).toBe(0);
-      fail();
-      // FIXME methods not implemented.
-      // const sharedNodes = await polykeyAgent.vaults.getVaultPermissions(
-      //   id!,
-      //   undefined,
-      // );
-      // const sharedNodesString = JSON.stringify(sharedNodes);
-      // expect(sharedNodesString).toContain(node1.id);
-      // expect(sharedNodesString).not.toContain(node2.id);
-    });
-  });
-  describe.skip('commandUnsetPermsVault', () => {
-    test('should un-share a vault', async () => {
-      command = [
-        'vaults',
-        'unshare',
-        '-np',
-        dataDir,
-        vaultName,
-        nodesUtils.encodeNodeId(nodeId1),
-      ];
-      // Creating vault.
-      await polykeyAgent.vaultManager.createVault(vaultName);
-      const id = await polykeyAgent.vaultManager.getVaultId(vaultName);
-      expect(id).toBeTruthy();
-
-      // Init sharing.
-      fail();
-      // FIXME methods not implemented.
-      // await polykeyAgent.vaults.setVaultPermissions(node1.id, id!);
-      // await polykeyAgent.vaults.setVaultPermissions(node2.id, id!);
-      // await polykeyAgent.vaults.setVaultPermissions(node3.id, id!);
-
-      const result = await testBinUtils.pkStdio([...command]);
-      expect(result.exitCode).toBe(0);
-      // Const sharedNodes = await polykeyAgent.vaults.getVaultPermissions(
-      //   id!,
-      //   undefined,
-      // );
-      // expect(sharedNodes[node1.id]['pull']).toBeUndefined();
-      // expect(sharedNodes[node2.id]['pull']).toBeNull();
-      // expect(sharedNodes[node3.id]['pull']).toBeNull();
-    });
-  });
-  describe.skip('commandVaultPermissions', () => {
-    test('should get permissions of a vault', async () => {
-      command = ['vaults', 'perms', '-np', dataDir, vaultName];
-
-      await polykeyAgent.vaultManager.createVault(vaultName);
-      const id = await polykeyAgent.vaultManager.getVaultId(vaultName);
-      expect(id).toBeTruthy();
-
-      fail();
-      // FIXME methods not implemented.
-      // await polykeyAgent.vaults.setVaultPermissions(node1.id, vault.vaultId);
-      // await polykeyAgent.vaults.setVaultPermissions(node2.id, vault.vaultId);
-      // await polykeyAgent.vaults.setVaultPermissions(node3.id, vault.vaultId);
-
-      // await polykeyAgent.vaults.unsetVaultPermissions(node2.id, vault.vaultId);
-
-      const result = await testBinUtils.pkStdio([...command]);
-      expect(result.exitCode).toBe(0);
-    });
-  });
-  describe.skip('commandPullVault', () => {
-    test(
-      'should clone a vault',
-      async () => {
-        const dataDir2 = await fs.promises.mkdtemp(
-          path.join(os.tmpdir(), 'polykey-test-'),
-        );
-        const targetPolykeyAgent = await PolykeyAgent.createPolykeyAgent({
-          password,
-          nodePath: dataDir2,
-          logger: logger,
-        });
-        const vault = await targetPolykeyAgent.vaultManager.createVault(
-          vaultName,
-        );
-        const id = await targetPolykeyAgent.vaultManager.getVaultId(vaultName);
-        expect(id).toBeTruthy();
-
-        await targetPolykeyAgent.gestaltGraph.setNode({
-          id: nodesUtils.encodeNodeId(polykeyAgent.nodeManager.getNodeId()),
-          chain: {},
-        });
-        fail();
-        // FIXME methods not implemented.
-        // await targetPolykeyAgent.vaults.setVaultPermissions(
-        //   polykeyAgent.nodes.getNodeId(),
-        //   vault.vaultId,
-        // );
-
-        const targetNodeId = targetPolykeyAgent.nodeManager.getNodeId();
-        const targetHost = targetPolykeyAgent.revProxy.getIngressHost();
-        const targetPort = targetPolykeyAgent.revProxy.getIngressPort();
-        await polykeyAgent.nodeManager.setNode(targetNodeId, {
-          host: targetHost,
-          port: targetPort,
-        });
-        // Client agent: Start sending hole-punching packets to the target
-        await polykeyAgent.nodeManager.getConnectionToNode(targetNodeId);
-        const clientEgressHost = polykeyAgent.fwdProxy.getEgressHost();
-        const clientEgressPort = polykeyAgent.fwdProxy.getEgressPort();
-        // Server agent: start sending hole-punching packets back to the 'client'
-        // agent (in order to establish a connection)
-        await targetPolykeyAgent.nodeManager.openConnection(
-          clientEgressHost,
-          clientEgressPort,
-        );
-
-        command = [
-          'vaults',
-          'clone',
-          '-np',
-          dataDir,
-          '-ni',
-          nodesUtils.encodeNodeId(targetNodeId),
-          '-vi',
-          makeVaultIdPretty(vault.vaultId),
-        ];
-
-        // Vault does not exist on the source PolykeyAgent so the pull command throws an error which
-        // caught, the error is checked and if it is ErrorVaultUndefined, then the Agent attempts a
-        // clone instead
-        const result = await testBinUtils.pkStdio([...command]);
-        expect(result.exitCode).toBe(0);
-
-        // Const list = (await polykeyAgent.vaults.listVaults()).map(
-        //   (vault) => vault,
-        // );
-        // expect(JSON.stringify(list)).toContain(vaultName);
-
-        await targetPolykeyAgent.stop();
-        await targetPolykeyAgent.destroy();
-        await fs.promises.rm(dataDir2, {
-          force: true,
-          recursive: true,
-        });
-      },
-      global.defaultTimeout * 2,
-    );
-    test(
-      'should pull a vault',
-      async () => {
-        const dataDir2 = await fs.promises.mkdtemp(
-          path.join(os.tmpdir(), 'polykey-test-'),
-        );
-        const targetPolykeyAgent = await PolykeyAgent.createPolykeyAgent({
-          password,
-          nodePath: dataDir2,
-          logger: logger,
-        });
-        await targetPolykeyAgent.vaultManager.createVault(vaultName);
-
-        const id = await targetPolykeyAgent.vaultManager.getVaultId(vaultName);
-        expect(id).toBeTruthy();
-
-        await targetPolykeyAgent.gestaltGraph.setNode({
-          id: nodesUtils.encodeNodeId(polykeyAgent.nodeManager.getNodeId()),
-          chain: {},
-        });
-        fail();
-        // FIXME methods not implemented.
-        // await targetPolykeyAgent.vaults.setVaultPermissions(
-        //   polykeyAgent.nodes.getNodeId(),
-        //   vault.vaultId,
-        // );
-
-        const targetNodeId = targetPolykeyAgent.nodeManager.getNodeId();
-        const targetHost = targetPolykeyAgent.revProxy.getIngressHost();
-        const targetPort = targetPolykeyAgent.revProxy.getIngressPort();
-        await polykeyAgent.nodeManager.setNode(targetNodeId, {
-          host: targetHost,
-          port: targetPort,
-        });
-        // Client agent: Start sending hole-punching packets to the target
-        await polykeyAgent.nodeManager.getConnectionToNode(targetNodeId);
-        const clientEgressHost = polykeyAgent.fwdProxy.getEgressHost();
-        const clientEgressPort = polykeyAgent.fwdProxy.getEgressPort();
-        // Server agent: start sending hole-punching packets back to the 'client'
-        // agent (in order to establish a connection)
-        await targetPolykeyAgent.nodeManager.openConnection(
-          clientEgressHost,
-          clientEgressPort,
-        );
-        // Await polykeyAgent.vaults.cloneVault(vault.vaultId, targetNodeId);
-
-        // await vault.addSecret('MySecret', 'This secret will be pulled');
-
-        // const list = (await polykeyAgent.vaults.listVaults()).map(
-        //   (vault) => vault,
-        // );
-        // const filteredList = list.filter((value) => {
-        //   return value.name === vaultName;
-        // });
-        // expect(filteredList.length).toBe(1);
-        // const clonedVault = await polykeyAgent.vaults.getVault(
-        //   filteredList[0].id,
-        // );
-        // await expect(clonedVault.listSecrets()).resolves.toStrictEqual([]);
-
-        command = [
-          'vaults',
-          'pull',
-          '-np',
-          dataDir,
-          '-vn',
-          vaultName,
-          '-ni',
-          nodesUtils.encodeNodeId(targetNodeId),
-        ];
-
-        const result = await testBinUtils.pkStdio([...command]);
-        expect(result.exitCode).toBe(0);
-
-        // Await expect(clonedVault.listSecrets()).resolves.toStrictEqual([
-        //   'MySecret',
-        // ]);
-        // await expect(clonedVault.getSecret('MySecret')).resolves.toStrictEqual(
-        //   'This secret will be pulled',
-        // );
-
-        await targetPolykeyAgent.stop();
-        await targetPolykeyAgent.destroy();
-        await fs.promises.rm(dataDir2, { recursive: true });
-      },
-      global.defaultTimeout * 2,
-    );
-  });
-  describe.skip('commandScanVault', () => {
-    test('should scan a node for vaults', async () => {
+  test(
+    'should clone and pull a vault',
+    async () => {
       const dataDir2 = await fs.promises.mkdtemp(
         path.join(os.tmpdir(), 'polykey-test-'),
       );
@@ -465,6 +207,172 @@ describe('CLI vaults', () => {
         password,
         nodePath: dataDir2,
         logger: logger,
+      });
+      const vaultId = await targetPolykeyAgent.vaultManager.createVault(
+        vaultName,
+      );
+      await targetPolykeyAgent.vaultManager.withVaults(
+        [vaultId],
+        async (vault) => {
+          await vault.commit(async (efs) => {
+            await efs.writeFile('secret 1', 'secret the first');
+          });
+        },
+      );
+
+      await targetPolykeyAgent.gestaltGraph.setNode({
+        id: polykeyAgent.nodeManager.getNodeId(),
+        chain: {},
+      });
+      const targetNodeId = targetPolykeyAgent.nodeManager.getNodeId();
+      await polykeyAgent.nodeManager.setNode(targetNodeId, {
+        host: targetPolykeyAgent.revProxy.getIngressHost(),
+        port: targetPolykeyAgent.revProxy.getIngressPort(),
+      });
+      await targetPolykeyAgent.nodeManager.setNode(
+        polykeyAgent.nodeManager.getNodeId(),
+        {
+          host: polykeyAgent.revProxy.getIngressHost(),
+          port: polykeyAgent.revProxy.getIngressPort(),
+        },
+      );
+      await polykeyAgent.acl.setNodePerm(targetNodeId, {
+        gestalt: {
+          notify: null,
+        },
+        vaults: {},
+      });
+
+      await targetPolykeyAgent.vaultManager.shareVault(
+        vaultId,
+        polykeyAgent.nodeManager.getNodeId(),
+      );
+
+      command = [
+        'vaults',
+        'clone',
+        '-np',
+        dataDir,
+        vaultsUtils.makeVaultIdPretty(vaultId),
+        targetNodeId,
+      ];
+
+      let result = await testBinUtils.pkStdio([...command], {}, dataDir);
+      expect(result.exitCode).toBe(0);
+
+      const clonedVaultId = await polykeyAgent.vaultManager.getVaultId(
+        vaultName,
+      );
+
+      await polykeyAgent.vaultManager.withVaults(
+        [clonedVaultId!],
+        async (clonedVault) => {
+          const file = await clonedVault.access(async (efs) => {
+            return await efs.readFile('secret 1', { encoding: 'utf8' });
+          });
+          expect(file).toBe('secret the first');
+        },
+      );
+
+      await polykeyAgent.vaultManager.destroyVault(clonedVaultId!);
+      command = ['vaults', 'clone', '-np', dataDir, vaultName, targetNodeId];
+      result = await testBinUtils.pkStdio([...command], {}, dataDir);
+      expect(result.exitCode).toBe(0);
+
+      const secondClonedVaultId = await polykeyAgent.vaultManager.getVaultId(
+        vaultName,
+      );
+      await polykeyAgent.vaultManager.withVaults(
+        [secondClonedVaultId!],
+        async (secondClonedVault) => {
+          const file = await secondClonedVault.access(async (efs) => {
+            return await efs.readFile('secret 1', { encoding: 'utf8' });
+          });
+          expect(file).toBe('secret the first');
+        },
+      );
+
+      await targetPolykeyAgent.vaultManager.withVaults(
+        [vaultId],
+        async (vault) => {
+          await vault.commit(async (efs) => {
+            await efs.writeFile('secret 2', 'secret the second');
+          });
+        },
+      );
+
+      command = ['vaults', 'pull', '-np', dataDir, vaultName];
+      result = await testBinUtils.pkStdio([...command], {}, dataDir);
+      expect(result.exitCode).toBe(0);
+
+      await polykeyAgent.vaultManager.withVaults(
+        [secondClonedVaultId!],
+        async (secondClonedVault) => {
+          const file = await secondClonedVault.access(async (efs) => {
+            return await efs.readFile('secret 2', { encoding: 'utf8' });
+          });
+          expect(file).toBe('secret the second');
+        },
+      );
+
+      command = [
+        'vaults',
+        'pull',
+        '-np',
+        dataDir,
+        '-pv',
+        'InvalidName',
+        vaultsUtils.makeVaultIdPretty(secondClonedVaultId),
+        targetNodeId,
+      ];
+      result = await testBinUtils.pkStdio([...command], {}, dataDir);
+      expect(result.exitCode).toBe(10);
+      expect(result.stderr).toContain('ErrorVaultsVaultUndefined');
+
+      command = [
+        'vaults',
+        'pull',
+        '-np',
+        dataDir,
+        '-pv',
+        vaultName,
+        vaultsUtils.makeVaultIdPretty(secondClonedVaultId),
+        'InvalidNodeId',
+      ];
+      result = await testBinUtils.pkStdio([...command], {}, dataDir);
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toContain('ErrorInvalidId');
+
+      await targetPolykeyAgent.stop();
+      await targetPolykeyAgent.destroy();
+      await fs.promises.rm(dataDir2, {
+        force: true,
+        recursive: true,
+      });
+    },
+    global.defaultTimeout * 3,
+  );
+  test(
+    'share and unshare vaults',
+    async () => {
+      const dataDir2 = await fs.promises.mkdtemp(
+        path.join(os.tmpdir(), 'polykey-test-'),
+      );
+      const targetPolykeyAgent = await PolykeyAgent.createPolykeyAgent({
+        password,
+        nodePath: dataDir2,
+        logger: logger,
+      });
+      const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
+      await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
+        await vault.commit(async (efs) => {
+          await efs.writeFile('secret 1', 'secret');
+        });
+      });
+
+      await polykeyAgent.gestaltGraph.setNode({
+        id: targetPolykeyAgent.nodeManager.getNodeId(),
+        chain: {},
       });
 
       const targetNodeId = targetPolykeyAgent.nodeManager.getNodeId();
@@ -474,96 +382,132 @@ describe('CLI vaults', () => {
         host: targetHost,
         port: targetPort,
       });
-      // Client agent: Start sending hole-punching packets to the target
-      await polykeyAgent.nodeManager.getConnectionToNode(targetNodeId);
-      const clientEgressHost = polykeyAgent.fwdProxy.getEgressHost();
-      const clientEgressPort = polykeyAgent.fwdProxy.getEgressPort();
-      // Server agent: start sending hole-punching packets back to the 'client'
-      // agent (in order to establish a connection)
-      await targetPolykeyAgent.nodeManager.openConnection(
-        clientEgressHost,
-        clientEgressPort,
+
+      await targetPolykeyAgent.nodeManager.setNode(
+        polykeyAgent.nodeManager.getNodeId(),
+        {
+          host: polykeyAgent.revProxy.getIngressHost(),
+          port: polykeyAgent.revProxy.getIngressPort(),
+        },
+      );
+      await targetPolykeyAgent.acl.setNodePerm(
+        polykeyAgent.nodeManager.getNodeId(),
+        {
+          gestalt: {
+            notify: null,
+          },
+          vaults: {},
+        },
       );
 
-      await targetPolykeyAgent.vaultManager.createVault(
-        `${vaultName}-Vault1` as VaultName,
-      );
-      await targetPolykeyAgent.vaultManager.createVault(
-        `${vaultName}-Vault2` as VaultName,
-      );
-      await targetPolykeyAgent.vaultManager.createVault(
-        `${vaultName}-Vault3` as VaultName,
-      );
+      await expect(() =>
+        targetPolykeyAgent.vaultManager.cloneVault(
+          polykeyAgent.nodeManager.getNodeId(),
+          vaultId,
+        ),
+      ).rejects.toThrow();
 
-      const targetVaults = (
-        await targetPolykeyAgent.vaultManager.listVaults()
-      ).keys();
-      const namesList: string[] = [];
-      for await (const name of targetVaults) {
-        namesList.push(name);
-      }
-      expect(namesList.length).toBe(3);
+      command = ['vaults', 'share', '-np', dataDir, vaultName, targetNodeId];
+      let result = await testBinUtils.pkStdio([...command], {}, dataDir);
+      expect(result.exitCode).toBe(0);
+
+      const clonedVaultId = await targetPolykeyAgent.vaultManager.cloneVault(
+        polykeyAgent.nodeManager.getNodeId(),
+        vaultId,
+      );
+      await targetPolykeyAgent.vaultManager.withVaults(
+        [clonedVaultId],
+        async (clonedVault) => {
+          const file = await clonedVault.access(async (efs) => {
+            return await efs.readFile('secret 1', { encoding: 'utf8' });
+          });
+          expect(file).toBe('secret');
+        },
+      );
 
       command = [
         'vaults',
-        'scan',
+        'unshare',
         '-np',
         dataDir,
-        '-ni',
+        vaultsUtils.makeVaultIdPretty(vaultId),
         nodesUtils.encodeNodeId(targetNodeId),
       ];
-      const result = await testBinUtils.pkStdio([...command]);
+
+      result = await testBinUtils.pkStdio([...command], {}, dataDir);
       expect(result.exitCode).toBe(0);
+
+      await expect(() =>
+        targetPolykeyAgent.vaultManager.cloneVault(
+          polykeyAgent.nodeManager.getNodeId(),
+          vaultId,
+        ),
+      ).rejects.toThrow();
 
       await targetPolykeyAgent.stop();
       await targetPolykeyAgent.destroy();
-      await fs.promises.rmdir(dataDir2, { recursive: true });
-    });
-  });
+      await fs.promises.rm(dataDir2, { recursive: true });
+    },
+    global.defaultTimeout * 2,
+  );
   describe('commandVaultVersion', () => {
     test('should switch the version of a vault', async () => {
-      const vault = await polykeyAgent.vaultManager.createVault(vaultName);
+      const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
       const id = polykeyAgent.vaultManager.getVaultId(vaultName);
       expect(id).toBeTruthy();
 
       const secret1 = { name: 'Secret-1', content: 'Secret-1-content' };
       const secret2 = { name: 'Secret-1', content: 'Secret-2-content' };
 
-      await vault.commit(async (efs) => {
-        await efs.writeFile(secret1.name, secret1.content);
-      });
-      const ver1Oid = (await vault.log(1))[0].oid;
+      const ver1Oid = await polykeyAgent.vaultManager.withVaults(
+        [vaultId],
+        async (vault) => {
+          await vault.commit(async (efs) => {
+            await efs.writeFile(secret1.name, secret1.content);
+          });
+          const ver1Oid = (await vault.log(1))[0].oid;
 
-      await vault.commit(async (efs) => {
-        await efs.writeFile(secret2.name, secret2.content);
-      });
+          await vault.commit(async (efs) => {
+            await efs.writeFile(secret2.name, secret2.content);
+          });
+          return ver1Oid;
+        },
+      );
 
       const command = ['vaults', 'version', '-np', dataDir, vaultName, ver1Oid];
 
       const result = await testBinUtils.pkStdio([...command], {}, dataDir);
       expect(result.exitCode).toBe(0);
 
-      const fileContents = await vault.access(async (efs) => {
-        return (await efs.readFile(secret1.name)).toString();
+      await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
+        const fileContents = await vault.access(async (efs) => {
+          return (await efs.readFile(secret1.name)).toString();
+        });
+        expect(fileContents).toStrictEqual(secret1.content);
       });
-      expect(fileContents).toStrictEqual(secret1.content);
     });
     test('should switch the version of a vault to the latest version', async () => {
-      const vault = await polykeyAgent.vaultManager.createVault(vaultName);
+      const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
       const id = polykeyAgent.vaultManager.getVaultId(vaultName);
       expect(id).toBeTruthy();
 
       const secret1 = { name: 'Secret-1', content: 'Secret-1-content' };
       const secret2 = { name: 'Secret-1', content: 'Secret-2-content' };
 
-      await vault.commit(async (efs) => {
-        await efs.writeFile(secret1.name, secret1.content);
-      });
-      const ver1Oid = (await vault.log(1))[0].oid;
+      const ver1Oid = await polykeyAgent.vaultManager.withVaults(
+        [vaultId],
+        async (vault) => {
+          await vault.commit(async (efs) => {
+            await efs.writeFile(secret1.name, secret1.content);
+          });
+          const ver1Oid = (await vault.log(1))[0].oid;
 
-      await vault.commit(async (efs) => {
-        await efs.writeFile(secret2.name, secret2.content);
-      });
+          await vault.commit(async (efs) => {
+            await efs.writeFile(secret2.name, secret2.content);
+          });
+          return ver1Oid;
+        },
+      );
 
       const command = ['vaults', 'version', '-np', dataDir, vaultName, ver1Oid];
 
@@ -592,7 +536,7 @@ describe('CLI vaults', () => {
       const result = await testBinUtils.pkStdio([...command], {}, dataDir);
       expect(result.exitCode).toBe(10);
 
-      expect(result.stderr).toContain('ErrorVaultCommitUndefined');
+      expect(result.stderr).toContain('ErrorVaultsCommitUndefined');
     });
     test('should throw an error if the vault is not found', async () => {
       const command = [
@@ -606,38 +550,40 @@ describe('CLI vaults', () => {
 
       const result = await testBinUtils.pkStdio([...command], {}, dataDir);
       expect(result.exitCode).toBe(10);
-      expect(result.stderr).toContain('ErrorVaultUndefined');
+      expect(result.stderr).toContain('ErrorVaultsVaultUndefined');
     });
   });
   describe('commandVaultLog', () => {
     const secret1 = { name: 'secret1', content: 'Secret-1-content' };
     const secret2 = { name: 'secret2', content: 'Secret-2-content' };
 
-    let vault: Vault;
+    let vaultId: VaultId;
     let commit1Oid: string;
     let commit2Oid: string;
     let commit3Oid: string;
 
     beforeEach(async () => {
-      vault = await polykeyAgent.vaultManager.createVault(vaultName);
+      vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
 
-      await vault.commit(async (efs) => {
-        await efs.writeFile(secret1.name, secret1.content);
-      });
-      commit1Oid = (await vault.log(0))[0].oid;
+      await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
+        await vault.commit(async (efs) => {
+          await efs.writeFile(secret1.name, secret1.content);
+        });
+        commit1Oid = (await vault.log(0))[0].oid;
 
-      await vault.commit(async (efs) => {
-        await efs.writeFile(secret2.name, secret2.content);
-      });
-      commit2Oid = (await vault.log(0))[0].oid;
+        await vault.commit(async (efs) => {
+          await efs.writeFile(secret2.name, secret2.content);
+        });
+        commit2Oid = (await vault.log(0))[0].oid;
 
-      await vault.commit(async (efs) => {
-        await efs.unlink(secret2.name);
+        await vault.commit(async (efs) => {
+          await efs.unlink(secret2.name);
+        });
+        commit3Oid = (await vault.log(0))[0].oid;
       });
-      commit3Oid = (await vault.log(0))[0].oid;
     });
     afterEach(async () => {
-      await polykeyAgent.vaultManager.destroyVault(vault.vaultId);
+      await polykeyAgent.vaultManager.destroyVault(vaultId);
     });
 
     test('Should get all commits', async () => {
@@ -678,5 +624,187 @@ describe('CLI vaults', () => {
       expect(result.stdout).not.toContain(commit3Oid);
     });
     test.todo('test formatting of the output');
+  });
+  describe('commandScanNode', () => {
+    test(
+      'should return the vaults names and ids of the remote vault',
+      async () => {
+        let remoteOnline: PolykeyAgent | undefined;
+        try {
+          remoteOnline = await PolykeyAgent.createPolykeyAgent({
+            password,
+            logger,
+            nodePath: path.join(dataDir, 'remoteOnline'),
+          });
+          const remoteOnlineNodeId = remoteOnline.keyManager.getNodeId();
+          await polykeyAgent.nodeManager.setNode(remoteOnlineNodeId, {
+            host: remoteOnline.revProxy.getIngressHost(),
+            port: remoteOnline.revProxy.getIngressPort(),
+          } as NodeAddress);
+
+          await remoteOnline.gestaltGraph.setNode({
+            id: polykeyAgent.nodeManager.getNodeId(),
+            chain: {},
+          });
+
+          await remoteOnline.gestaltGraph.setGestaltActionByNode(
+            polykeyAgent.nodeManager.getNodeId(),
+            'scan',
+          );
+
+          const vault1Id = await remoteOnline.vaultManager.createVault(
+            'Vault1' as VaultName,
+          );
+          const vault2Id = await remoteOnline.vaultManager.createVault(
+            'Vault2' as VaultName,
+          );
+          const vault3Id = await remoteOnline.vaultManager.createVault(
+            'Vault3' as VaultName,
+          );
+          const commands = [
+            'vaults',
+            'scan',
+            remoteOnlineNodeId,
+            '-np',
+            dataDir,
+          ];
+          const result = await testBinUtils.pkStdio(
+            commands,
+            { PK_PASSWORD: 'password' },
+            dataDir,
+          );
+          expect(result.exitCode).toBe(0);
+          expect(result.stdout).toContain(
+            `Vault1\t\t${vaultsUtils.makeVaultIdPretty(vault1Id)}`,
+          );
+          expect(result.stdout).toContain(
+            `Vault2\t\t${vaultsUtils.makeVaultIdPretty(vault2Id)}`,
+          );
+          expect(result.stdout).toContain(
+            `Vault3\t\t${vaultsUtils.makeVaultIdPretty(vault3Id)}`,
+          );
+        } finally {
+          await remoteOnline?.stop();
+          await remoteOnline?.destroy();
+        }
+      },
+      global.defaultTimeout * 2,
+    );
+  });
+  describe('commandPermissions', () => {
+    test('Should return nodeIds and their permissions', async () => {
+      let remoteKeynode1: PolykeyAgent | undefined;
+      let remoteKeynode2: PolykeyAgent | undefined;
+      try {
+        // A ridiculous amount of setup.
+        const vaultId1 = await polykeyAgent.vaultManager.createVault(
+          'vault1' as VaultName,
+        );
+        const vaultId2 = await polykeyAgent.vaultManager.createVault(
+          'vault2' as VaultName,
+        );
+
+        remoteKeynode1 = await PolykeyAgent.createPolykeyAgent({
+          password,
+          logger: logger.getChild('Remote Keynode 1'),
+          nodePath: path.join(dataDir, 'remoteKeynode1'),
+        });
+        remoteKeynode2 = await PolykeyAgent.createPolykeyAgent({
+          password,
+          logger: logger.getChild('Remote Keynode 2'),
+          nodePath: path.join(dataDir, 'remoteKeynode2'),
+        });
+
+        const targetNodeId1 = remoteKeynode1.nodeManager.getNodeId();
+        const targetNodeId2 = remoteKeynode2.nodeManager.getNodeId();
+        await polykeyAgent.gestaltGraph.setNode({
+          id: targetNodeId1,
+          chain: {},
+        });
+        await polykeyAgent.gestaltGraph.setNode({
+          id: targetNodeId2,
+          chain: {},
+        });
+        await polykeyAgent.nodeManager.setNode(targetNodeId1, {
+          host: remoteKeynode1.revProxy.getIngressHost(),
+          port: remoteKeynode1.revProxy.getIngressPort(),
+        });
+        await polykeyAgent.nodeManager.setNode(targetNodeId2, {
+          host: remoteKeynode2.revProxy.getIngressHost(),
+          port: remoteKeynode2.revProxy.getIngressPort(),
+        });
+
+        await remoteKeynode1.nodeManager.setNode(
+          polykeyAgent.nodeManager.getNodeId(),
+          {
+            host: polykeyAgent.revProxy.getIngressHost(),
+            port: polykeyAgent.revProxy.getIngressPort(),
+          },
+        );
+        await remoteKeynode2.nodeManager.setNode(
+          polykeyAgent.nodeManager.getNodeId(),
+          {
+            host: polykeyAgent.revProxy.getIngressHost(),
+            port: polykeyAgent.revProxy.getIngressPort(),
+          },
+        );
+        await remoteKeynode1.acl.setNodePerm(
+          polykeyAgent.nodeManager.getNodeId(),
+          {
+            gestalt: {
+              notify: null,
+            },
+            vaults: {},
+          },
+        );
+        await remoteKeynode2.acl.setNodePerm(
+          polykeyAgent.nodeManager.getNodeId(),
+          {
+            gestalt: {
+              notify: null,
+            },
+            vaults: {},
+          },
+        );
+
+        await polykeyAgent.vaultManager.shareVault(vaultId1, targetNodeId1);
+        await polykeyAgent.vaultManager.shareVault(vaultId1, targetNodeId2);
+        await polykeyAgent.vaultManager.shareVault(vaultId2, targetNodeId1);
+
+        const vaultMessage = new vaultsPB.Vault();
+        vaultMessage.setNameOrId(vaultsUtils.makeVaultIdPretty(vaultId1));
+
+        // Now we call and test the command
+        const command1 = ['vaults', 'permissions', 'vault1', '-np', dataDir];
+        const result1 = await testBinUtils.pkStdio(
+          command1,
+          { PK_PASSWORD: 'password' },
+          dataDir,
+        );
+        expect(result1.exitCode).toBe(0);
+        expect(result1.stdout).toContain(remoteKeynode1.keyManager.getNodeId());
+        expect(result1.stdout).toContain(remoteKeynode2.keyManager.getNodeId());
+        expect(result1.stdout).toContain('pull');
+        expect(result1.stdout).toContain('clone');
+
+        // And the other vault
+        const command2 = ['vaults', 'permissions', 'vault2', '-np', dataDir];
+        const result2 = await testBinUtils.pkStdio(
+          command2,
+          { PK_PASSWORD: 'password' },
+          dataDir,
+        );
+        expect(result2.exitCode).toBe(0);
+        expect(result2.stdout).toContain(targetNodeId1);
+        expect(result2.stdout).not.toContain(targetNodeId2);
+        expect(result2.stdout).toContain('pull');
+        expect(result2.stdout).toContain('clone');
+      } finally {
+        await remoteKeynode1?.stop();
+        await remoteKeynode1?.destroy();
+        await remoteKeynode2?.stop();
+        await remoteKeynode2?.destroy();
+      }
+    });
   });
 });

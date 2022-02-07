@@ -1,5 +1,6 @@
 import type { Host, Port, ConnectionInfo } from '@/network/types';
 import type { NodeId, NodeInfo, NodeData } from '@/nodes/types';
+import type { VaultName, VaultId } from '@/vaults/types';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
@@ -174,14 +175,22 @@ describe('NodeConnection', () => {
       revProxy: serverRevProxy,
       logger: logger,
     });
+    serverNotificationsManager =
+      await NotificationsManager.createNotificationsManager({
+        acl: serverACL,
+        db: serverDb,
+        nodeManager: serverNodeManager,
+        keyManager: serverKeyManager,
+        logger: logger,
+      });
     serverVaultManager = await VaultManager.createVaultManager({
-      keyManager: serverKeyManager,
       vaultsPath: serverVaultsPath,
+      keyManager: serverKeyManager,
       nodeManager: serverNodeManager,
-      vaultsKey: serverKeyManager.vaultKey,
       db: serverDb,
       acl: serverACL,
       gestaltGraph: serverGestaltGraph,
+      notificationsManager: serverNotificationsManager,
       fs: fs,
       logger: logger,
     });
@@ -201,6 +210,8 @@ describe('NodeConnection', () => {
       nodeManager: serverNodeManager,
       sigchain: serverSigchain,
       notificationsManager: serverNotificationsManager,
+      acl: serverACL,
+      gestaltGraph: serverGestaltGraph,
     });
     agentServer = new GRPCServer({
       logger: logger,
@@ -424,56 +435,47 @@ describe('NodeConnection', () => {
     // const vault4 = await serverVaultManager.createVault('Vault4' as VaultName);
     // const vault5 = await serverVaultManager.createVault('Vault5' as VaultName);
 
-    await serverGestaltGraph.setNode({
-      id: nodesUtils.encodeNodeId(sourceNodeId),
-      chain: {},
+    test('scans the servers vaults', async () => {
+      await serverGestaltGraph.setNode({
+        id: nodesUtils.encodeNodeId(sourceNodeId),
+        chain: {},
+      });
+
+      await serverGestaltGraph.setGestaltActionByNode(sourceNodeId, 'scan');
+
+      const conn = await NodeConnection.createNodeConnection({
+        targetNodeId: targetNodeId,
+        targetHost: targetHost,
+        targetPort: targetPort,
+        forwardProxy: clientFwdProxy,
+        keyManager: clientKeyManager,
+        logger: logger,
+      });
+      await conn.start({});
+      // Await serverRevProxy.openConnection(sourceHost, sourcePort);
+      const vaultName1 = 'vn1' as VaultName;
+      const vaultName2 = 'vn2' as VaultName;
+      const vaultName3 = 'vn3' as VaultName;
+      const v1Id = await serverVaultManager.createVault(vaultName1);
+      const v2Id = await serverVaultManager.createVault(vaultName2);
+      const v3Id = await serverVaultManager.createVault(vaultName3);
+
+      const vaultList: Array<[VaultName, VaultId]> = [];
+
+      vaultList.push([vaultName1, v1Id]);
+      vaultList.push([vaultName2, v2Id]);
+      vaultList.push([vaultName3, v3Id]);
+
+      const vaults = await conn.scanVaults(sourceNodeId);
+
+      expect(vaults.sort()).toStrictEqual(vaultList.sort());
+
+      await conn.stop();
+      await serverRevProxy.closeConnection(
+        clientFwdProxy.getEgressHost(),
+        clientFwdProxy.getEgressPort(),
+      );
+      await conn.destroy();
     });
-
-    const conn = await NodeConnection.createNodeConnection({
-      targetNodeId: targetNodeId,
-      targetHost: targetHost,
-      targetPort: targetPort,
-      forwardProxy: clientFwdProxy,
-      keyManager: clientKeyManager,
-      logger: logger,
-    });
-    await serverRevProxy.openConnection(sourceHost, sourcePort);
-
-    const vaultList: string[] = [];
-
-    let vaults = await conn.scanVaults();
-
-    expect(vaults.sort()).toStrictEqual(vaultList.sort());
-
-    fail('Not Implemented');
-    // FIXME
-    // await serverVaultManager.setVaultPermissions(sourceNodeId, vault1.vaultId);
-    // await serverVaultManager.setVaultPermissions(sourceNodeId, vault2.vaultId);
-    // await serverVaultManager.setVaultPermissions(sourceNodeId, vault3.vaultId);
-
-    vaults = await conn.scanVaults();
-
-    // VaultList.push(`${vault1.vaultName}\t${vault1.vaultId}`);
-    // vaultList.push(`${vault2.vaultName}\t${vault2.vaultId}`);
-    // vaultList.push(`${vault3.vaultName}\t${vault3.vaultId}`);
-
-    expect(vaults.sort()).toStrictEqual(vaultList.sort());
-
-    // Await serverVaultManager.setVaultPermissions(sourceNodeId, vault4.vaultId);
-    // await serverVaultManager.setVaultPermissions(sourceNodeId, vault5.vaultId);
-
-    vaults = await conn.scanVaults();
-
-    // VaultList.push(`${vault4.vaultName}\t${vault4.vaultId}`);
-    // vaultList.push(`${vault5.vaultName}\t${vault5.vaultId}`);
-
-    expect(vaults.sort()).toStrictEqual(vaultList.sort());
-
-    await conn.stop();
-    await serverRevProxy.closeConnection(
-      clientFwdProxy.getEgressHost(),
-      clientFwdProxy.getEgressPort(),
-    );
-    await conn.destroy();
   });
 });

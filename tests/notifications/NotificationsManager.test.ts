@@ -164,14 +164,23 @@ describe('NotificationsManager', () => {
       revProxy: revProxy,
       logger: logger,
     });
+    receiverNotificationsManager =
+      await NotificationsManager.createNotificationsManager({
+        acl: receiverACL,
+        db: receiverDb,
+        nodeManager: receiverNodeManager,
+        keyManager: receiverKeyManager,
+        messageCap: 5,
+        logger: logger,
+      });
     receiverVaultManager = await VaultManager.createVaultManager({
-      keyManager: receiverKeyManager,
       vaultsPath: receiverVaultsPath,
+      keyManager: receiverKeyManager,
       nodeManager: receiverNodeManager,
-      vaultsKey: receiverKeyManager.vaultKey,
       db: receiverDb,
       acl: receiverACL,
       gestaltGraph: receiverGestaltGraph,
+      notificationsManager: receiverNotificationsManager,
       fs: fs,
       logger: logger,
     });
@@ -194,6 +203,8 @@ describe('NotificationsManager', () => {
       nodeManager: receiverNodeManager,
       sigchain: receiverSigchain,
       notificationsManager: receiverNotificationsManager,
+      acl: receiverACL,
+      gestaltGraph: receiverGestaltGraph,
     });
     agentServer = new GRPCServer({
       logger: logger,

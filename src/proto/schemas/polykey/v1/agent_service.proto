@@ -13,10 +13,9 @@ service AgentService {
   rpc Echo(polykey.v1.utils.EchoMessage) returns (polykey.v1.utils.EchoMessage);
 
   // Vaults
-  rpc VaultsGitInfoGet (polykey.v1.vaults.Vault) returns (stream polykey.v1.vaults.PackChunk);
+  rpc VaultsGitInfoGet (polykey.v1.vaults.InfoRequest) returns (stream polykey.v1.vaults.PackChunk);
   rpc VaultsGitPackGet(stream polykey.v1.vaults.PackChunk) returns (stream polykey.v1.vaults.PackChunk);
-  rpc VaultsScan (polykey.v1.nodes.Node) returns (stream polykey.v1.vaults.Vault);
-  rpc VaultsPermissionsCheck (polykey.v1.vaults.NodePermission) returns (polykey.v1.vaults.NodePermissionAllowed);
+  rpc VaultsScan (polykey.v1.nodes.Node) returns (stream polykey.v1.vaults.List);
 
   // Nodes
   rpc NodesClosestLocalNodesGet (polykey.v1.nodes.Node) returns (polykey.v1.nodes.NodeTable);

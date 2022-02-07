@@ -11,16 +11,13 @@ class CommandPull extends CommandPolykey {
     super(...args);
     this.name('pull');
     this.description('Pull a Vault from Another Node');
-    this.argument(
-      '<nodeId>',
-      'Id of the node to pull the vault from',
-      binParsers.parseNodeId,
-    );
-    this.argument('<vaultName>', 'Name of the vault to be pulled');
+    this.argument('<vaultNameOrId>', 'Name of the vault to be pulled into');
+    this.argument('[targetNodeId]', '(Optional) target node to pull from', binParsers.parseNodeId);
+    this.addOption(binOptions.pullVault);
     this.addOption(binOptions.nodeId);
     this.addOption(binOptions.clientHost);
     this.addOption(binOptions.clientPort);
-    this.action(async (nodeId: NodeId, vaultName, options) => {
+    this.action(async (vaultNameOrId, targetNodeId: NodeId | undefined, options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
       const nodesUtils = await import('../../nodes/utils');
       const vaultsPB = await import(
@@ -52,12 +49,19 @@ class CommandPull extends CommandPolykey {
           logger: this.logger.getChild(PolykeyClient.name),
         });
         const vaultMessage = new vaultsPB.Vault();
+        const pullVaultMessage = new vaultsPB.Vault();
         const nodeMessage = new nodesPB.Node();
         const vaultPullMessage = new vaultsPB.Pull();
         vaultPullMessage.setVault(vaultMessage);
-        vaultPullMessage.setNode(nodeMessage);
-        nodeMessage.setNodeId(nodesUtils.encodeNodeId(nodeId));
-        vaultMessage.setNameOrId(vaultName);
+        vaultMessage.setNameOrId(vaultNameOrId);
+        if (targetNodeId != null) {
+          nodeMessage.setNodeId(nodesUtils.encodeNodeId(targetNodeId));
+          vaultPullMessage.setNode(nodeMessage);
+        }
+        if (options.pullVault) {
+          vaultPullMessage.setPullVault(pullVaultMessage);
+          pullVaultMessage.setNameOrId(options.pullVault);
+        }
         await binUtils.retryAuthentication(
           (auth) => pkClient.grpcClient.vaultsPull(vaultPullMessage, auth),
           meta,

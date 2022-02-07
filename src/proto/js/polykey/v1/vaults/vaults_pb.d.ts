@@ -117,6 +117,11 @@ export class Pull extends jspb.Message {
     getNode(): polykey_v1_nodes_nodes_pb.Node | undefined;
     setNode(value?: polykey_v1_nodes_nodes_pb.Node): Pull;
 
+    hasPullVault(): boolean;
+    clearPullVault(): void;
+    getPullVault(): Vault | undefined;
+    setPullVault(value?: Vault): Pull;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): Pull.AsObject;
     static toObject(includeInstance: boolean, msg: Pull): Pull.AsObject;
@@ -131,6 +136,7 @@ export namespace Pull {
     export type AsObject = {
         vault?: Vault.AsObject,
         node?: polykey_v1_nodes_nodes_pb.Node.AsObject,
+        pullVault?: Vault.AsObject,
     }
 }
 
@@ -394,6 +400,38 @@ export namespace LogEntry {
         committer: string,
         timeStamp: number,
         message: string,
+    }
+}
+
+export class InfoRequest extends jspb.Message { 
+
+    hasVault(): boolean;
+    clearVault(): void;
+    getVault(): Vault | undefined;
+    setVault(value?: Vault): InfoRequest;
+
+    hasNode(): boolean;
+    clearNode(): void;
+    getNode(): polykey_v1_nodes_nodes_pb.Node | undefined;
+    setNode(value?: polykey_v1_nodes_nodes_pb.Node): InfoRequest;
+    getAction(): string;
+    setAction(value: string): InfoRequest;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): InfoRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: InfoRequest): InfoRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: InfoRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): InfoRequest;
+    static deserializeBinaryFromReader(message: InfoRequest, reader: jspb.BinaryReader): InfoRequest;
+}
+
+export namespace InfoRequest {
+    export type AsObject = {
+        vault?: Vault.AsObject,
+        node?: polykey_v1_nodes_nodes_pb.Node.AsObject,
+        action: string,
     }
 }
 

@@ -32,6 +32,7 @@ message Mkdir {
 message Pull {
   Vault vault = 1;
   polykey.v1.nodes.Node node = 2;
+  Vault pull_vault = 3;
 }
 
 message Clone {
@@ -86,6 +87,11 @@ message LogEntry {
 }
 
 // Agent specific.
+message InfoRequest {
+  Vault vault = 1;
+  polykey.v1.nodes.Node node = 2;
+  string action = 3;
+}
 
 message PackChunk {
   bytes chunk = 1;

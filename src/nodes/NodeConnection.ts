@@ -9,6 +9,7 @@ import type {
   ClaimIntermediary,
   ClaimIdEncoded,
 } from '../claims/types';
+import type { VaultName, VaultId } from '../vaults/types';
 
 import type { ForwardProxy } from '../network';
 import Logger from '@matrixai/logger';
@@ -449,13 +450,20 @@ class NodeConnection {
    * Retrieves all the vaults for a peers node
    */
   @ready(new nodesErrors.ErrorNodeConnectionNotRunning())
-  public async scanVaults(): Promise<Array<string>> {
-    // Create the handler for git to scan from
-    const gitRequest = await vaultsUtils.constructGitHandler(
-      this.client,
-      this.keyManager.getNodeId(),
-    );
-    return await gitRequest.scanVaults();
+  public async scanVaults(
+    nodeId: NodeId,
+  ): Promise<Array<[VaultName, VaultId]>> {
+    const nodeIdMessage = new nodesPB.Node();
+    nodeIdMessage.setNodeId(nodeId);
+    const vaults: Array<[VaultName, VaultId]> = [];
+    const genReadable = this.client.vaultsScan(nodeIdMessage);
+    for await (const vault of genReadable) {
+      vaults.push([
+        vault.getVaultName() as VaultName,
+        vaultsUtils.makeVaultId(vault.getVaultId()),
+      ]);
+    }
+    return vaults;
   }
 }
 

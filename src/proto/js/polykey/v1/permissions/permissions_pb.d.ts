@@ -30,6 +30,34 @@ export namespace Actions {
     }
 }
 
+export class NodeActions extends jspb.Message { 
+
+    hasNode(): boolean;
+    clearNode(): void;
+    getNode(): polykey_v1_nodes_nodes_pb.Node | undefined;
+    setNode(value?: polykey_v1_nodes_nodes_pb.Node): NodeActions;
+    clearActionsList(): void;
+    getActionsList(): Array<string>;
+    setActionsList(value: Array<string>): NodeActions;
+    addActions(value: string, index?: number): string;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): NodeActions.AsObject;
+    static toObject(includeInstance: boolean, msg: NodeActions): NodeActions.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: NodeActions, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): NodeActions;
+    static deserializeBinaryFromReader(message: NodeActions, reader: jspb.BinaryReader): NodeActions;
+}
+
+export namespace NodeActions {
+    export type AsObject = {
+        node?: polykey_v1_nodes_nodes_pb.Node.AsObject,
+        actionsList: Array<string>,
+    }
+}
+
 export class ActionSet extends jspb.Message { 
 
     hasNode(): boolean;

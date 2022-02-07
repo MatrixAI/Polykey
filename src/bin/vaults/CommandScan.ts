@@ -1,109 +1,71 @@
-// Import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-// import PolykeyClient from '../../PolykeyClient';
-// import * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
-// import * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
-// import * as utils from '../../utils';
-// import * as binUtils from '../utils';
-// import * as grpcErrors from '../../grpc/errors';
+import type { Metadata } from '@grpc/grpc-js';
 
-// import CommandPolykey from '../CommandPolykey';
-// import * as binOptions from '../utils/options';
+import CommandPolykey from '../CommandPolykey';
+import * as binUtils from '../utils';
+import * as binOptions from '../utils/options';
+import * as binProcessors from '../utils/processors';
 
-// class CommandScan extends CommandPolykey {
-//   constructor(...args: ConstructorParameters<typeof CommandPolykey>) {
-//     super(...args);
-//     this.name('scan');
-//     this.description('Vaults Scan');
-//     this.requiredOption(
-//       '-ni, --node-id <nodeId>',
-//       '(required) Id of the node to be scanned',
-//     );
-//     this.addOption(binOptions.nodeId);
-//     this.addOption(binOptions.clientHost);
-//     this.addOption(binOptions.clientPort);
-//     this.action(async (options) => {
+class CommandScan extends CommandPolykey {
+  constructor(...args: ConstructorParameters<typeof CommandPolykey>) {
+    super(...args);
+    this.name('scan');
+    this.description('Scans a node to reveal their vaults');
+    this.argument('<nodeId>', 'Id of the node to scan');
+    this.addOption(binOptions.nodeId);
+    this.addOption(binOptions.clientHost);
+    this.addOption(binOptions.clientPort);
+    this.action(async (nodeId, options) => {
+      const { default: PolykeyClient } = await import('../../PolykeyClient');
+      const nodesPB = await import('../../proto/js/polykey/v1/nodes/nodes_pb');
 
-//     });
-//   }
-// }
+      const clientOptions = await binProcessors.processClientOptions(
+        options.nodePath,
+        options.nodeId,
+        options.clientHost,
+        options.clientPort,
+        this.fs,
+        this.logger.getChild(binProcessors.processClientOptions.name),
+      );
+      const client = await PolykeyClient.createPolykeyClient({
+        nodeId: clientOptions.nodeId,
+        host: clientOptions.clientHost,
+        port: clientOptions.clientPort,
+        logger: this.logger.getChild(PolykeyClient.name),
+      });
 
-// export default CommandScan;
+      const meta = await binProcessors.processAuthentication(
+        options.passwordFile,
+        this.fs,
+      );
 
-// OLD COMMAND
-// const commandScanVaults = binUtils.createCommand('scan', {
-//   description: 'Lists the vaults of another node',
-//   aliases: ['fetch'],
-//   nodePath: true,
-//   verbose: true,
-//   format: true,
-// });
-// commandScanVaults.requiredOption(
-//   '-ni, --node-id <nodeId>',
-//   '(required) Id of the node to be scanned',
-// );
-// commandScanVaults.action(async (options) => {
-//   const clientConfig = {};
-//   clientConfig['logger'] = new Logger('CLI Logger', LogLevel.WARN, [
-//     new StreamHandler(),
-//   ]);
-//   if (options.verbose) {
-//     clientConfig['logger'].setLevel(LogLevel.DEBUG);
-//   }
-//   if (options.nodePath) {
-//     clientConfig['nodePath'] = options.nodePath;
-//   }
-//   clientConfig['nodePath'] = options.nodePath
-//     ? options.nodePath
-//     : utils.getDefaultNodePath();
+      try {
+        const grpcClient = client.grpcClient;
+        const nodeMessage = new nodesPB.Node();
+        nodeMessage.setNodeId(nodeId);
 
-//   const client = await PolykeyClient.createPolykeyClient(clientConfig);
-//   const nodeMessage = new nodesPB.Node();
-//   nodeMessage.setNodeId(options.nodeId);
+        const data = await binUtils.retryAuthentication(
+          async (meta: Metadata) => {
+            const data: Array<string> = [];
+            const stream = grpcClient.vaultsScan(nodeMessage, meta);
+            for await (const vault of stream) {
+              data.push(`${vault.getVaultName()}\t\t${vault.getVaultId()}`);
+            }
+            return data;
+          },
+          meta,
+        );
 
-//   try {
-//     await client.start({});
-//     const grpcClient = client.grpcClient;
+        process.stdout.write(
+          binUtils.outputFormatter({
+            type: options.format === 'json' ? 'json' : 'list',
+            data: data,
+          }),
+        );
+      } finally {
+        await client.stop();
+      }
+    });
+  }
+}
 
-//     const data: Array<string> = [];
-//     const response = await binUtils.streamCallCARL(
-//       client,
-//       setupStreamCall<vaultsPB.List>(
-//         client,
-//         client.grpcClient.vaultsScan,
-//       ),
-//     )(nodeMessage);
-
-//     for await (const vault of response.data) {
-//       data.push(`${vault.getVaultName()}`);
-//     }
-//     await response.refresh;
-//     process.stdout.write(
-//       binUtils.outputFormatter({
-//         type: options.format === 'json' ? 'json' : 'list',
-//         data: data,
-//       }),
-//     );
-//   } catch (err) {
-//     if (err instanceof grpcErrors.ErrorGRPCClientTimeout) {
-//       process.stderr.write(`${err.message}\n`);
-//     } else if (err instanceof grpcErrors.ErrorGRPCServerNotStarted) {
-//       process.stderr.write(`${err.message}\n`);
-//     } else {
-//       process.stderr.write(
-//         binUtils.outputFormatter({
-//           type: 'error',
-//           description: err.description,
-//           message: err.message,
-//         }),
-//       );
-//       throw err;
-//     }
-//   } finally {
-//     await client.stop();
-//     options.nodePath = undefined;
-//     options.verbose = undefined;
-//     options.format = undefined;
-//   }
-// });
-
-// export default commandScanVaults;
+export default CommandScan;

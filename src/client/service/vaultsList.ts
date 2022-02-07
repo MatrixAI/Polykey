@@ -23,7 +23,6 @@ function vaultsList({
     try {
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
-
       const vaults = await vaultManager.listVaults();
       for await (const [vaultName, vaultId] of vaults) {
         const vaultListMessage = new vaultsPB.List();

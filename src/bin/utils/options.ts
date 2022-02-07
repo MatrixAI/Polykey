@@ -155,6 +155,11 @@ const workers = new commander.Option(
   .argParser(binParsers.parseCoreCount)
   .default(undefined);
 
+const pullVault = new commander.Option(
+  '-pv, --pull-vault <pullVaultNameOrId>',
+  'Name or Id of the vault to pull from',
+);
+
 export {
   nodePath,
   format,
@@ -176,4 +181,5 @@ export {
   seedNodes,
   network,
   workers,
+  pullVault,
 };

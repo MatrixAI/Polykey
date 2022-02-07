@@ -1,4 +1,6 @@
 import type { Vault, VaultId } from '@/vaults/types';
+import type { NodeId } from '@/nodes/types';
+import type { KeyManager } from '@/keys';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -7,26 +9,23 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { utils as idUtils } from '@matrixai/id';
 import * as errors from '@/vaults/errors';
 import { VaultInternal, vaultOps } from '@/vaults';
-import { KeyManager } from '@/keys';
-import { generateVaultId } from '@/vaults/utils';
+import * as vaultsUtils from '@/vaults/utils';
 import * as keysUtils from '@/keys/utils';
 import * as testUtils from '../utils';
 
 describe('VaultOps', () => {
-  const password = 'password';
   const logger = new Logger('VaultOps', LogLevel.WARN, [new StreamHandler()]);
-  // Const probeLogger = new Logger('vaultOpsProbe', LogLevel.INFO, [
-  //   new StreamHandler(),
-  // ]);
 
   let dataDir: string;
-
-  let keyManager: KeyManager;
   let baseEfs: EncryptedFS;
-
   let vaultId: VaultId;
   let vaultInternal: VaultInternal;
   let vault: Vault;
+  const fakeKeyManager = {
+    getNodeId: () => {
+      return 'DummyNodeId' as NodeId;
+    },
+  } as KeyManager;
 
   let mockedGenerateKeyPair: jest.SpyInstance;
   let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
@@ -43,17 +42,10 @@ describe('VaultOps', () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
-    const keysPath = path.join(dataDir, 'keys');
-
-    keyManager = await KeyManager.createKeyManager({
-      keysPath,
-      password,
-      logger,
-    });
-
     const dbPath = path.join(dataDir, 'db');
+    const dbKey = await vaultsUtils.generateVaultKey();
     baseEfs = await EncryptedFS.createEncryptedFS({
-      dbKey: keyManager.dbKey,
+      dbKey,
       dbPath,
       logger,
     });
@@ -74,12 +66,12 @@ describe('VaultOps', () => {
   });
 
   beforeEach(async () => {
-    vaultId = generateVaultId();
+    vaultId = vaultsUtils.generateVaultId();
     await baseEfs.mkdir(path.join(idUtils.toString(vaultId), 'contents'), {
       recursive: true,
     });
     vaultInternal = await VaultInternal.create({
-      keyManager: keyManager,
+      keyManager: fakeKeyManager,
       vaultId,
       efs: baseEfs,
       logger: logger.getChild(VaultInternal.name),
@@ -87,14 +79,8 @@ describe('VaultOps', () => {
     });
     vault = vaultInternal as Vault;
   });
-  afterEach(async () => {
-    await vaultInternal.destroy();
-  });
 
   test('adding a secret', async () => {
-    // Await vault.access(async efs => {
-    //   console.log(await efs.readdir('.'));
-    // })
     await vaultOps.addSecret(vault, 'secret-1', 'secret-content');
     const dir = await vault.access(async (efs) => {
       return await efs.readdir('.');
@@ -107,7 +93,7 @@ describe('VaultOps', () => {
     expect(secret.toString()).toBe('secret-content');
     await expect(() =>
       vaultOps.getSecret(vault, 'doesnotexist'),
-    ).rejects.toThrow(errors.ErrorSecretUndefined);
+    ).rejects.toThrow(errors.ErrorSecretsSecretUndefined);
   });
   test('able to make directories', async () => {
     await vaultOps.mkdir(vault, 'dir-1', { recursive: true });
@@ -214,7 +200,7 @@ describe('VaultOps', () => {
   test('deleting a secret within a directory', async () => {
     await expect(() =>
       vaultOps.mkdir(vault, path.join('dir-1', 'dir-2')),
-    ).rejects.toThrow(errors.ErrorRecursive);
+    ).rejects.toThrow(errors.ErrorVaultsRecursive);
     await vaultOps.mkdir(vault, path.join('dir-1', 'dir-2'), {
       recursive: true,
     });
@@ -223,14 +209,9 @@ describe('VaultOps', () => {
       path.join('dir-1', 'dir-2', 'secret-1'),
       'secret-content',
     );
-    await vaultOps.deleteSecret(
-      vault,
-      path.join('dir-1', 'dir-2'),
-      {
-        recursive: true,
-      },
-      logger,
-    );
+    await vaultOps.deleteSecret(vault, path.join('dir-1', 'dir-2'), {
+      recursive: true,
+    });
     await expect(
       vault.access((efs) => efs.readdir('dir-1')),
     ).resolves.not.toContain('dir-2');

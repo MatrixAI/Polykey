@@ -9,7 +9,6 @@ import type {
   SecretName,
   Vault,
 } from './types';
-import type { FileSystem } from '../types';
 import path from 'path';
 import * as vaultsErrors from './errors';
 import * as vaultsUtils from './utils';
@@ -29,7 +28,7 @@ async function addSecret(
 ): Promise<void> {
   await vault.commit(async (efs) => {
     if (await efs.exists(secretName)) {
-      throw new vaultsErrors.ErrorSecretDefined(
+      throw new vaultsErrors.ErrorSecretsSecretDefined(
         `${secretName} already exists, try updating instead`,
       );
     }
@@ -63,7 +62,7 @@ async function updateSecret(
   await vault.commit(async (efs) => {
     // Throw error if secret does not exist
     if (!(await efs.exists(secretName))) {
-      throw new vaultsErrors.ErrorSecretUndefined(
+      throw new vaultsErrors.ErrorSecretsSecretUndefined(
         'Secret does not exist, try adding it instead.',
       );
     }
@@ -112,7 +111,22 @@ async function getSecret(
     });
   } catch (err) {
     if (err.code === 'ENOENT') {
-      throw new vaultsErrors.ErrorSecretUndefined(
+      throw new vaultsErrors.ErrorSecretsSecretUndefined(
+        `Secret with name: ${secretName} does not exist`,
+      );
+    }
+    throw err;
+  }
+}
+
+async function statSecret(vault: Vault, secretName: SecretName) {
+  try {
+    return await vault.access(async (efs) => {
+      return await efs.stat(secretName);
+    });
+  } catch (err) {
+    if (err.code === 'ENOENT') {
+      throw new vaultsErrors.ErrorSecretsSecretUndefined(
         `Secret with name: ${secretName} does not exist`,
       );
     }
@@ -142,7 +156,7 @@ async function deleteSecret(
       await efs.unlink(secretName);
       logger?.info(`Deleted secret at '${secretName}'`);
     } else {
-      throw new vaultsErrors.ErrorSecretUndefined(
+      throw new vaultsErrors.ErrorSecretsSecretUndefined(
         `path '${secretName}' does not exist in vault`,
       );
     }
@@ -166,7 +180,7 @@ async function mkdir(
       await efs.mkdir(dirPath, fileOptions);
     } catch (err) {
       if (err.code === 'ENOENT' && !recursive) {
-        throw new vaultsErrors.ErrorRecursive(
+        throw new vaultsErrors.ErrorVaultsRecursive(
           `Could not create directory '${dirPath}' without recursive option`,
         );
       }
@@ -185,7 +199,7 @@ async function mkdir(
 async function addSecretDirectory(
   vault: Vault,
   secretDirectory: SecretName,
-  fs: FileSystem,
+  fs = require('fs'),
   logger?: Logger,
 ): Promise<void> {
   const absoluteDirPath = path.resolve(secretDirectory);
@@ -240,7 +254,7 @@ async function addSecretDirectory(
 async function listSecrets(vault: Vault): Promise<SecretList> {
   return await vault.access(async (efs) => {
     const secrets: SecretList = [];
-    for await (const secret of vaultsUtils.readdirRecursivelyEFS(efs, '.')) {
+    for await (const secret of vaultsUtils.readdirRecursively(efs)) {
       secrets.push(secret);
     }
     return secrets;
@@ -252,6 +266,7 @@ export {
   updateSecret,
   renameSecret,
   getSecret,
+  statSecret,
   deleteSecret,
   mkdir,
   addSecretDirectory,
