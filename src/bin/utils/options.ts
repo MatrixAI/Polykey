@@ -160,6 +160,18 @@ const pullVault = new commander.Option(
   'Name or Id of the vault to pull from',
 );
 
+const retryCount = new commander.Option(
+  '-rc --retry-count <retryCount>',
+  'Number of attempts before failing',
+).argParser(binParsers.parseNumber);
+
+const retryInterval = new commander.Option(
+  '-ri --retry-interval <retryInterval>',
+  'Number of milliseconds between each attempt',
+)
+  .argParser(binParsers.parseNumber)
+  .default(5000);
+
 export {
   nodePath,
   format,
@@ -182,4 +194,6 @@ export {
   network,
   workers,
   pullVault,
+  retryCount,
+  retryInterval,
 };
