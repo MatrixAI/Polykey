@@ -221,10 +221,11 @@ describe('CLI vaults', () => {
       );
 
       await targetPolykeyAgent.gestaltGraph.setNode({
-        id: polykeyAgent.nodeManager.getNodeId(),
+        id: nodesUtils.encodeNodeId(polykeyAgent.nodeManager.getNodeId()),
         chain: {},
       });
       const targetNodeId = targetPolykeyAgent.nodeManager.getNodeId();
+      const targetNodeIdEncoded = nodesUtils.encodeNodeId(targetNodeId);
       await polykeyAgent.nodeManager.setNode(targetNodeId, {
         host: targetPolykeyAgent.revProxy.getIngressHost(),
         port: targetPolykeyAgent.revProxy.getIngressPort(),
@@ -254,7 +255,7 @@ describe('CLI vaults', () => {
         '-np',
         dataDir,
         vaultsUtils.encodeVaultId(vaultId),
-        targetNodeId,
+        targetNodeIdEncoded,
       ];
 
       let result = await testBinUtils.pkStdio([...command], {}, dataDir);
@@ -279,9 +280,9 @@ describe('CLI vaults', () => {
       result = await testBinUtils.pkStdio([...command], {}, dataDir);
       expect(result.exitCode).toBe(0);
 
-      const secondClonedVaultId = await polykeyAgent.vaultManager.getVaultId(
+      const secondClonedVaultId = (await polykeyAgent.vaultManager.getVaultId(
         vaultName,
-      );
+      ))!;
       await polykeyAgent.vaultManager.withVaults(
         [secondClonedVaultId!],
         async (secondClonedVault) => {
@@ -323,7 +324,7 @@ describe('CLI vaults', () => {
         '-pv',
         'InvalidName',
         vaultsUtils.encodeVaultId(secondClonedVaultId),
-        targetNodeId,
+        targetNodeIdEncoded,
       ];
       result = await testBinUtils.pkStdio([...command], {}, dataDir);
       expect(result.exitCode).toBe(10);
@@ -371,7 +372,7 @@ describe('CLI vaults', () => {
       });
 
       await polykeyAgent.gestaltGraph.setNode({
-        id: targetPolykeyAgent.nodeManager.getNodeId(),
+        id: nodesUtils.encodeNodeId(targetPolykeyAgent.nodeManager.getNodeId()),
         chain: {},
       });
 
@@ -637,13 +638,14 @@ describe('CLI vaults', () => {
             nodePath: path.join(dataDir, 'remoteOnline'),
           });
           const remoteOnlineNodeId = remoteOnline.keyManager.getNodeId();
+          const remoteOnlineNodeIdEncoded = nodesUtils.encodeNodeId(remoteOnlineNodeId);
           await polykeyAgent.nodeManager.setNode(remoteOnlineNodeId, {
             host: remoteOnline.revProxy.getIngressHost(),
             port: remoteOnline.revProxy.getIngressPort(),
           } as NodeAddress);
 
           await remoteOnline.gestaltGraph.setNode({
-            id: polykeyAgent.nodeManager.getNodeId(),
+            id: nodesUtils.encodeNodeId(polykeyAgent.nodeManager.getNodeId()),
             chain: {},
           });
 
@@ -664,7 +666,7 @@ describe('CLI vaults', () => {
           const commands = [
             'vaults',
             'scan',
-            remoteOnlineNodeId,
+            remoteOnlineNodeIdEncoded,
             '-np',
             dataDir,
           ];
@@ -718,11 +720,11 @@ describe('CLI vaults', () => {
         const targetNodeId1 = remoteKeynode1.nodeManager.getNodeId();
         const targetNodeId2 = remoteKeynode2.nodeManager.getNodeId();
         await polykeyAgent.gestaltGraph.setNode({
-          id: targetNodeId1,
+          id: nodesUtils.encodeNodeId(targetNodeId1),
           chain: {},
         });
         await polykeyAgent.gestaltGraph.setNode({
-          id: targetNodeId2,
+          id: nodesUtils.encodeNodeId(targetNodeId2),
           chain: {},
         });
         await polykeyAgent.nodeManager.setNode(targetNodeId1, {

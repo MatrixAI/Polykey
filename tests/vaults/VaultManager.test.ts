@@ -1,4 +1,4 @@
-import type { NodeId } from '@/nodes/types';
+import type { NodeId, NodeIdEncoded } from '@/nodes/types';
 import type { VaultId, VaultName } from '@/vaults/types';
 import type { GestaltGraph } from '@/gestalts';
 import type { ACL } from '@/acl';
@@ -39,8 +39,11 @@ describe('VaultManager', () => {
   let remoteVaultId: VaultId;
 
   let localKeynodeId: NodeId;
+  let localKeynodeIdEncoded: NodeIdEncoded;
   let remoteKeynode1Id: NodeId;
+  let remoteKeynode1IdEncoded: NodeIdEncoded;
   let remoteKeynode2Id: NodeId;
+  let remoteKeynode2IdEncoded: NodeIdEncoded;
 
   const secretNames = ['Secret1', 'Secret2', 'Secret3', 'Secret4'];
 
@@ -66,6 +69,7 @@ describe('VaultManager', () => {
     gestaltGraph = localKeynode.gestaltGraph;
     vaultManager = localKeynode.vaultManager;
     localKeynodeId = localKeynode.keyManager.getNodeId();
+    localKeynodeIdEncoded = nodesUtils.encodeNodeId(localKeynodeId);
 
     remoteKeynode1 = await PolykeyAgent.createPolykeyAgent({
       password,
@@ -73,12 +77,14 @@ describe('VaultManager', () => {
       nodePath: path.join(allDataDir, 'remoteKeynode1'),
     });
     remoteKeynode1Id = remoteKeynode1.keyManager.getNodeId();
+    remoteKeynode1IdEncoded = nodesUtils.encodeNodeId(remoteKeynode1Id);
     remoteKeynode2 = await PolykeyAgent.createPolykeyAgent({
       password,
       logger: logger.getChild('Remote Keynode 2'),
       nodePath: path.join(allDataDir, 'remoteKeynode2'),
     });
     remoteKeynode2Id = remoteKeynode2.keyManager.getNodeId();
+    remoteKeynode2IdEncoded = nodesUtils.encodeNodeId(remoteKeynode2Id);
 
     // Adding details to each agent.
     await localKeynode.nodeManager.setNode(remoteKeynode1Id, {
@@ -107,27 +113,27 @@ describe('VaultManager', () => {
     });
 
     await gestaltGraph.setNode({
-      id: remoteKeynode1Id,
+      id: remoteKeynode1IdEncoded,
       chain: {},
     });
     await gestaltGraph.setNode({
-      id: remoteKeynode2Id,
+      id: remoteKeynode2IdEncoded,
       chain: {},
     });
     await remoteKeynode1.gestaltGraph.setNode({
-      id: localKeynodeId,
+      id: localKeynodeIdEncoded,
       chain: {},
     });
     await remoteKeynode1.gestaltGraph.setNode({
-      id: remoteKeynode2Id,
+      id: remoteKeynode2IdEncoded,
       chain: {},
     });
     await remoteKeynode2.gestaltGraph.setNode({
-      id: localKeynodeId,
+      id: localKeynodeIdEncoded,
       chain: {},
     });
     await remoteKeynode2.gestaltGraph.setNode({
-      id: remoteKeynode1Id,
+      id: remoteKeynode1IdEncoded,
       chain: {},
     });
 

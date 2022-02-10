@@ -23,7 +23,7 @@ describe('VaultOps', () => {
   let vault: Vault;
   const fakeKeyManager = {
     getNodeId: () => {
-      return 'DummyNodeId' as NodeId;
+      return testUtils.generateRandomNodeId();
     },
   } as KeyManager;
 

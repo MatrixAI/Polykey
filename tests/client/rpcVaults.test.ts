@@ -19,6 +19,7 @@ import * as vaultErrors from '@/vaults/errors';
 import * as vaultsUtils from '@/vaults/utils';
 import { vaultOps } from '@/vaults';
 import * as clientUtils from './utils';
+import * as nodesUtils from '@/nodes/utils';
 
 jest.mock('@/keys/utils', () => ({
   ...jest.requireActual('@/keys/utils'),
@@ -361,11 +362,11 @@ describe('Vaults client service', () => {
         });
 
         await pkAgent.gestaltGraph.setNode({
-          id: remoteKeynode1.nodeManager.getNodeId(),
+          id: nodesUtils.encodeNodeId(remoteKeynode1.nodeManager.getNodeId()),
           chain: {},
         });
         await pkAgent.gestaltGraph.setNode({
-          id: remoteKeynode2.nodeManager.getNodeId(),
+          id: nodesUtils.encodeNodeId(remoteKeynode2.nodeManager.getNodeId()),
           chain: {},
         });
 
