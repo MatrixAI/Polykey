@@ -168,7 +168,7 @@ describe('Vaults client service', () => {
 
       const vaultRenameMessage = new vaultsPB.Rename();
       const vaultMessage = new vaultsPB.Vault();
-      vaultMessage.setNameOrId(vaultsUtils.makeVaultIdPretty(vaultId1));
+      vaultMessage.setNameOrId(vaultsUtils.encodeVaultId(vaultId1));
       vaultRenameMessage.setVault(vaultMessage);
       vaultRenameMessage.setNewName(vaultList[1]);
 
@@ -242,7 +242,7 @@ describe('Vaults client service', () => {
       test('should fail to find a non existent version', async () => {
         // Revert the version
         const vaultMessage = new vaultsPB.Vault();
-        vaultMessage.setNameOrId(vaultsUtils.makeVaultIdPretty(vaultId));
+        vaultMessage.setNameOrId(vaultsUtils.encodeVaultId(vaultId));
         const vaultVersionMessage = new vaultsPB.Version();
         vaultVersionMessage.setVault(vaultMessage);
         vaultVersionMessage.setVersionId('invalidOid');
@@ -415,7 +415,7 @@ describe('Vaults client service', () => {
         await vaultManager.shareVault(vaultId2, targetNodeId1);
 
         const vaultMessage = new vaultsPB.Vault();
-        vaultMessage.setNameOrId(vaultsUtils.makeVaultIdPretty(vaultId1));
+        vaultMessage.setNameOrId(vaultsUtils.encodeVaultId(vaultId1));
 
         const permissionsStream = vaultsPermissionsGet(
           vaultMessage,
@@ -428,7 +428,7 @@ describe('Vaults client service', () => {
         }
         expect(list).toHaveLength(2);
 
-        vaultMessage.setNameOrId(vaultsUtils.makeVaultIdPretty(vaultId2));
+        vaultMessage.setNameOrId(vaultsUtils.encodeVaultId(vaultId2));
         const permissionStream2 = vaultsPermissionsGet(
           vaultMessage,
           callCredentials,
@@ -456,7 +456,7 @@ describe('Vaults client service', () => {
       const dirPath = 'dir/dir1/dir2';
       const vaultMkdirMessage = new vaultsPB.Mkdir();
       const vaultMessage = new vaultsPB.Vault();
-      vaultMessage.setNameOrId(vaultsUtils.makeVaultIdPretty(vaultId));
+      vaultMessage.setNameOrId(vaultsUtils.encodeVaultId(vaultId));
       vaultMkdirMessage.setVault(vaultMessage);
       vaultMkdirMessage.setDirName(dirPath);
       vaultMkdirMessage.setRecursive(true);
@@ -484,7 +484,7 @@ describe('Vaults client service', () => {
       });
 
       const vaultMessage = new vaultsPB.Vault();
-      vaultMessage.setNameOrId(vaultsUtils.makeVaultIdPretty(vaultId));
+      vaultMessage.setNameOrId(vaultsUtils.encodeVaultId(vaultId));
       const secretsStream = listSecretsVault(vaultMessage, callCredentials);
       const names: Array<string> = [];
       for await (const secret of secretsStream) {
@@ -510,7 +510,7 @@ describe('Vaults client service', () => {
 
       const secretMessage = new secretsPB.Secret();
       const vaultMessage = new vaultsPB.Vault();
-      vaultMessage.setNameOrId(vaultsUtils.makeVaultIdPretty(vaultId));
+      vaultMessage.setNameOrId(vaultsUtils.encodeVaultId(vaultId));
       secretMessage.setVault(vaultMessage);
       secretMessage.setSecretName(secretList[0]);
       await deleteSecretVault(secretMessage, callCredentials);
@@ -535,7 +535,7 @@ describe('Vaults client service', () => {
       });
       const secretMessage = new secretsPB.Secret();
       const vaultMessage = new vaultsPB.Vault();
-      vaultMessage.setNameOrId(vaultsUtils.makeVaultIdPretty(vaultId));
+      vaultMessage.setNameOrId(vaultsUtils.encodeVaultId(vaultId));
       secretMessage.setVault(vaultMessage);
       secretMessage.setSecretName(secretList[0]);
       secretMessage.setSecretContent(Buffer.from('content-change'));
@@ -562,7 +562,7 @@ describe('Vaults client service', () => {
       });
       const secretMessage = new secretsPB.Secret();
       const vaultMessage = new vaultsPB.Vault();
-      vaultMessage.setNameOrId(vaultsUtils.makeVaultIdPretty(vaultId));
+      vaultMessage.setNameOrId(vaultsUtils.encodeVaultId(vaultId));
       secretMessage.setVault(vaultMessage);
       secretMessage.setSecretName(secretList[0]);
       const secret = await getSecretVault(secretMessage, callCredentials);
@@ -585,7 +585,7 @@ describe('Vaults client service', () => {
       const vaultMessage = new vaultsPB.Vault();
       const secretMessage = new secretsPB.Secret();
 
-      vaultMessage.setNameOrId(vaultsUtils.makeVaultIdPretty(vaultId));
+      vaultMessage.setNameOrId(vaultsUtils.encodeVaultId(vaultId));
       secretMessage.setSecretName(secretList[0]);
       secretMessage.setVault(vaultMessage);
       secretRenameMessage.setNewName(secretList[1]);
@@ -610,7 +610,7 @@ describe('Vaults client service', () => {
       const secretMessage = new secretsPB.Secret();
       const vaultMessage = new vaultsPB.Vault();
 
-      vaultMessage.setNameOrId(vaultsUtils.makeVaultIdPretty(vaultId));
+      vaultMessage.setNameOrId(vaultsUtils.encodeVaultId(vaultId));
       secretMessage.setVault(vaultMessage);
       secretMessage.setSecretName(secretList[0]);
       secretMessage.setSecretContent(Buffer.from(secretList[0]));
@@ -639,7 +639,7 @@ describe('Vaults client service', () => {
       const vaultId = await vaultManager.createVault(vaultList[0]);
       const secretDirectoryMessage = new secretsPB.Directory();
       const vaultMessage = new vaultsPB.Vault();
-      vaultMessage.setNameOrId(vaultsUtils.makeVaultIdPretty(vaultId));
+      vaultMessage.setNameOrId(vaultsUtils.encodeVaultId(vaultId));
       secretDirectoryMessage.setVault(vaultMessage);
       secretDirectoryMessage.setSecretDirectory(secretDir);
       await newDirSecretVault(secretDirectoryMessage, callCredentials);
@@ -663,7 +663,7 @@ describe('Vaults client service', () => {
       });
       const secretMessage = new secretsPB.Secret();
       const vaultMessage = new vaultsPB.Vault();
-      vaultMessage.setNameOrId(vaultsUtils.makeVaultIdPretty(vaultId));
+      vaultMessage.setNameOrId(vaultsUtils.encodeVaultId(vaultId));
       secretMessage.setVault(vaultMessage);
       secretMessage.setSecretName(secretList[0]);
       const result = await getSecretStat(secretMessage, callCredentials);

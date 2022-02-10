@@ -26,7 +26,7 @@ function vaultsCreate({
       vaultId = await vaultManager.createVault(
         call.request.getNameOrId() as VaultName,
       );
-      response.setNameOrId(vaultsUtils.makeVaultIdPretty(vaultId));
+      response.setNameOrId(vaultsUtils.encodeVaultId(vaultId));
       callback(null, response);
       return;
     } catch (e) {

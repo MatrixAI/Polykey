@@ -42,7 +42,7 @@ function vaultsScan({
       for (const vault of list) {
         const vaultListMessage = new vaultsPB.List();
         vaultListMessage.setVaultName(vault[0]);
-        vaultListMessage.setVaultId(vaultsUtils.makeVaultIdPretty(vault[1]));
+        vaultListMessage.setVaultId(vaultsUtils.encodeVaultId(vault[1]));
         await genWritable.next(vaultListMessage);
       }
       await genWritable.next(null);

@@ -5,7 +5,7 @@ import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
-import { makeVaultIdPretty } from '@/vaults/utils';
+import { encodeVaultId } from '@/vaults/utils';
 import { utils as nodesUtils } from '@/nodes';
 import { utils as vaultsUtils } from '@/vaults';
 import * as vaultsPB from '@/proto/js/polykey/v1/vaults/vaults_pb';
@@ -253,7 +253,7 @@ describe('CLI vaults', () => {
         'clone',
         '-np',
         dataDir,
-        vaultsUtils.makeVaultIdPretty(vaultId),
+        vaultsUtils.encodeVaultId(vaultId),
         targetNodeId,
       ];
 
@@ -322,7 +322,7 @@ describe('CLI vaults', () => {
         dataDir,
         '-pv',
         'InvalidName',
-        vaultsUtils.makeVaultIdPretty(secondClonedVaultId),
+        vaultsUtils.encodeVaultId(secondClonedVaultId),
         targetNodeId,
       ];
       result = await testBinUtils.pkStdio([...command], {}, dataDir);
@@ -336,7 +336,7 @@ describe('CLI vaults', () => {
         dataDir,
         '-pv',
         vaultName,
-        vaultsUtils.makeVaultIdPretty(secondClonedVaultId),
+        vaultsUtils.encodeVaultId(secondClonedVaultId),
         'InvalidNodeId',
       ];
       result = await testBinUtils.pkStdio([...command], {}, dataDir);
@@ -430,7 +430,7 @@ describe('CLI vaults', () => {
         'unshare',
         '-np',
         dataDir,
-        vaultsUtils.makeVaultIdPretty(vaultId),
+        vaultsUtils.encodeVaultId(vaultId),
         nodesUtils.encodeNodeId(targetNodeId),
       ];
 
@@ -675,13 +675,13 @@ describe('CLI vaults', () => {
           );
           expect(result.exitCode).toBe(0);
           expect(result.stdout).toContain(
-            `Vault1\t\t${vaultsUtils.makeVaultIdPretty(vault1Id)}`,
+            `Vault1\t\t${vaultsUtils.encodeVaultId(vault1Id)}`,
           );
           expect(result.stdout).toContain(
-            `Vault2\t\t${vaultsUtils.makeVaultIdPretty(vault2Id)}`,
+            `Vault2\t\t${vaultsUtils.encodeVaultId(vault2Id)}`,
           );
           expect(result.stdout).toContain(
-            `Vault3\t\t${vaultsUtils.makeVaultIdPretty(vault3Id)}`,
+            `Vault3\t\t${vaultsUtils.encodeVaultId(vault3Id)}`,
           );
         } finally {
           await remoteOnline?.stop();
@@ -772,7 +772,7 @@ describe('CLI vaults', () => {
         await polykeyAgent.vaultManager.shareVault(vaultId2, targetNodeId1);
 
         const vaultMessage = new vaultsPB.Vault();
-        vaultMessage.setNameOrId(vaultsUtils.makeVaultIdPretty(vaultId1));
+        vaultMessage.setNameOrId(vaultsUtils.encodeVaultId(vaultId1));
 
         // Now we call and test the command
         const command1 = ['vaults', 'permissions', 'vault1', '-np', dataDir];

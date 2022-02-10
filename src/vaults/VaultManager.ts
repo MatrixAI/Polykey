@@ -324,7 +324,7 @@ class VaultManager {
     this.vaultMap.set(vaultId, { lock });
     return await this.transact(async () => {
       this.logger.info(
-        `Storing metadata for Vault ${vaultsUtils.makeVaultIdPretty(vaultId)}`,
+        `Storing metadata for Vault ${vaultsUtils.encodeVaultId(vaultId)}`,
       );
       await this.db.put(this.vaultsMetaDbDomain, idUtils.toBuffer(vaultId), {
         name: vaultName,
@@ -363,14 +363,14 @@ class VaultManager {
   @ready(new vaultsErrors.ErrorVaultManagerNotRunning())
   public async destroyVault(vaultId: VaultId) {
     this.logger.info(
-      `Destroying Vault ${vaultsUtils.makeVaultIdPretty(vaultId)}`,
+      `Destroying Vault ${vaultsUtils.encodeVaultId(vaultId)}`,
     );
     await this.transact(async () => {
       const vaultMeta = await this.getVaultMeta(vaultId);
       if (!vaultMeta) return;
       await this.db.del(this.vaultsMetaDbDomain, idUtils.toBuffer(vaultId));
       this.vaultMap.delete(vaultId);
-      await this.efs.rmdir(vaultsUtils.makeVaultIdPretty(vaultId), {
+      await this.efs.rmdir(vaultsUtils.encodeVaultId(vaultId), {
         recursive: true,
       });
     }, [vaultId]);
@@ -437,7 +437,7 @@ class VaultManager {
     newVaultName: VaultName,
   ): Promise<void> {
     this.logger.info(
-      `Renaming Vault ${vaultsUtils.makeVaultIdPretty(vaultId)}`,
+      `Renaming Vault ${vaultsUtils.encodeVaultId(vaultId)}`,
     );
     await this.transact(async () => {
       const meta = await this.db.get<VaultMetadata>(
@@ -558,7 +558,7 @@ class VaultManager {
     const lock = new Mutex();
     this.vaultMap.set(vaultId, { lock });
     this.logger.info(
-      `Cloning Vault ${vaultsUtils.makeVaultIdPretty(
+      `Cloning Vault ${vaultsUtils.encodeVaultId(
         vaultId,
       )} on Node ${nodeId}`,
     );
@@ -566,7 +566,7 @@ class VaultManager {
       // Make the directory where the .git files will be auto generated and
       // where the contents will be cloned to ('contents' file)
       await this.efs.mkdir(
-        path.join(vaultsUtils.makeVaultIdPretty(vaultId), 'contents'),
+        path.join(vaultsUtils.encodeVaultId(vaultId), 'contents'),
         { recursive: true },
       );
       const [request, vaultName, remoteVaultId] = await vaultsUtils.request(
@@ -578,8 +578,8 @@ class VaultManager {
         await git.clone({
           fs: this.efs,
           http: { request },
-          dir: path.join(vaultsUtils.makeVaultIdPretty(vaultId), 'contents'),
-          gitdir: path.join(vaultsUtils.makeVaultIdPretty(vaultId), '.git'),
+          dir: path.join(vaultsUtils.encodeVaultId(vaultId), 'contents'),
+          gitdir: path.join(vaultsUtils.encodeVaultId(vaultId), '.git'),
           url: 'http://',
           singleBranch: true,
         });
@@ -594,8 +594,8 @@ class VaultManager {
       const workingDirIndex = (
         await git.log({
           fs: this.efs,
-          dir: path.join(vaultsUtils.makeVaultIdPretty(vaultId), 'contents'),
-          gitdir: path.join(vaultsUtils.makeVaultIdPretty(vaultId), '.git'),
+          dir: path.join(vaultsUtils.encodeVaultId(vaultId), 'contents'),
+          gitdir: path.join(vaultsUtils.encodeVaultId(vaultId), '.git'),
           depth: 1,
         })
       ).pop()!;
@@ -615,7 +615,7 @@ class VaultManager {
       });
       this.vaultMap.set(vaultId, { lock, vault });
       this.logger.info(
-        `Cloned Vault ${vaultsUtils.makeVaultIdPretty(
+        `Cloned Vault ${vaultsUtils.encodeVaultId(
           vaultId,
         )} on Node ${nodeId}`,
       );
@@ -665,7 +665,7 @@ class VaultManager {
         }
       }
       this.logger.info(
-        `Pulling Vault ${vaultsUtils.makeVaultIdPretty(
+        `Pulling Vault ${vaultsUtils.encodeVaultId(
           vaultId,
         )} from Node ${pullNodeId}`,
       );
@@ -682,8 +682,8 @@ class VaultManager {
         await git.pull({
           fs: this.efs,
           http: { request },
-          dir: path.join(vaultsUtils.makeVaultIdPretty(vaultId), 'contents'),
-          gitdir: path.join(vaultsUtils.makeVaultIdPretty(vaultId), '.git'),
+          dir: path.join(vaultsUtils.encodeVaultId(vaultId), 'contents'),
+          gitdir: path.join(vaultsUtils.encodeVaultId(vaultId), '.git'),
           url: `http://`,
           ref: 'HEAD',
           singleBranch: true,
@@ -714,7 +714,7 @@ class VaultManager {
       const vault = await this.getVault(vaultId);
       // Store the working directory commit state in the '.git' directory
       this.logger.info(
-        `Pulled Vault ${vaultsUtils.makeVaultIdPretty(
+        `Pulled Vault ${vaultsUtils.encodeVaultId(
           vaultId,
         )} from Node ${pullNodeId}`,
       );
@@ -738,8 +738,8 @@ class VaultManager {
     // Read the commit state of the vault
     const uploadPack = await gitUtils.uploadPack({
       fs: this.efs,
-      dir: path.join(vaultsUtils.makeVaultIdPretty(vaultId), 'contents'),
-      gitdir: path.join(vaultsUtils.makeVaultIdPretty(vaultId), '.git'),
+      dir: path.join(vaultsUtils.encodeVaultId(vaultId), 'contents'),
+      gitdir: path.join(vaultsUtils.encodeVaultId(vaultId), '.git'),
       advertiseRefs: true,
     });
     for (const buffer of uploadPack) {
@@ -761,8 +761,8 @@ class VaultManager {
       const wantedObjectId = body.toString().slice(9, 49);
       const packResult = await gitUtils.packObjects({
         fs: this.efs,
-        dir: path.join(vaultsUtils.makeVaultIdPretty(vaultId), 'contents'),
-        gitdir: path.join(vaultsUtils.makeVaultIdPretty(vaultId), '.git'),
+        dir: path.join(vaultsUtils.encodeVaultId(vaultId), 'contents'),
+        gitdir: path.join(vaultsUtils.encodeVaultId(vaultId), '.git'),
         refs: [wantedObjectId],
       });
       // Generate a contents and progress stream

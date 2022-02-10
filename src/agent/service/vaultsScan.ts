@@ -42,7 +42,7 @@ function vaultsScan({
       for (const vault of listResponse) {
         if (vault !== null) {
           response.setVaultName(vault[0]);
-          response.setVaultId(vaultsUtils.makeVaultIdPretty(vault[1]));
+          response.setVaultId(vaultsUtils.encodeVaultId(vault[1]));
           await genWritable.next(response);
         } else {
           await genWritable.next(null);

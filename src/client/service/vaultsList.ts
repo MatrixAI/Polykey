@@ -27,7 +27,7 @@ function vaultsList({
       for await (const [vaultName, vaultId] of vaults) {
         const vaultListMessage = new vaultsPB.List();
         vaultListMessage.setVaultName(vaultName);
-        vaultListMessage.setVaultId(vaultsUtils.makeVaultIdPretty(vaultId));
+        vaultListMessage.setVaultId(vaultsUtils.encodeVaultId(vaultId));
         await genWritable.next(((_) => vaultListMessage)());
       }
       await genWritable.next(null);
