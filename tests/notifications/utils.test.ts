@@ -9,16 +9,15 @@ import * as notificationsUtils from '@/notifications/utils';
 import * as notificationsErrors from '@/notifications/errors';
 import { createNotificationIdGenerator } from '@/notifications/utils';
 import { sleep } from '@/utils';
-import { makeVaultId } from '@/vaults/utils';
 import { utils as nodesUtils } from '@/nodes';
 import * as testUtils from '../utils';
+import * as vaultUtils from '@/vaults/utils';
 
 describe('Notifications utils', () => {
   const nodeId = testUtils.generateRandomNodeId();
   const nodeIdEncoded = nodesUtils.encodeNodeId(nodeId);
-  const vaultId = makeVaultId(
-    idUtils.fromString('vaultIdxxxxxxxxx'),
-  ).toString();
+  const vaultId = vaultUtils.generateVaultId();
+  const vaultIdEncoded = vaultUtils.encodeVaultId(vaultId);
 
   test('generates notification ids', async () => {
     const generator = createNotificationIdGenerator();
@@ -64,7 +63,7 @@ describe('Notifications utils', () => {
     const vaultShareNotification: Notification = {
       data: {
         type: 'VaultShare',
-        vaultId: vaultId,
+        vaultId: vaultIdEncoded,
         vaultName: 'vaultName' as VaultName,
         actions: {
           clone: null,
@@ -145,7 +144,7 @@ describe('Notifications utils', () => {
     const vaultShareNotification: Notification = {
       data: {
         type: 'VaultShare',
-        vaultId: vaultId,
+        vaultId: vaultIdEncoded,
         vaultName: 'vaultName' as VaultName,
         actions: {
           clone: null,
@@ -239,7 +238,7 @@ describe('Notifications utils', () => {
     const vaultShareNotification: Notification = {
       data: {
         type: 'VaultShare',
-        vaultId: vaultId,
+        vaultId: vaultIdEncoded,
         vaultName: 'vaultName' as VaultName,
         actions: {
           clone: null,

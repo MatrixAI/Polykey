@@ -145,7 +145,7 @@ interface FileSystemWritable extends FileSystemReadable {
 //   }
 // >;
 
-// type VaultName = Opaque<'VaultName', string>;
+type VaultName = string; // FIXME, placeholder, remove?
 
 // type VaultKey = Opaque<'VaultKey', Buffer>;
 
@@ -195,7 +195,7 @@ export type {
   FileSystemWritable,
   // VaultIdPretty,
   // VaultKey,
-  // VaultName,
+  VaultName,
   // VaultList,
   // VaultMap,
   // VaultMetadata,

@@ -138,9 +138,7 @@ describe('Vaults client service', () => {
       const vaultId = await createVault(vaultMessage, callCredentials);
       const vaultNames = await vaultManager.listVaults();
       expect(vaultNames.get(vaultList[0])).toBeTruthy();
-      expect(vaultNames.get(vaultList[0])).toStrictEqual(
-        vaultsUtils.makeVaultId(vaultId.getNameOrId()),
-      );
+      expect(vaultNames.get(vaultList[0])).toStrictEqual(vaultId.getNameOrId());
     });
     test('should delete vaults', async () => {
       const deleteVault = grpcUtils.promisifyUnaryCall<utilsPB.StatusMessage>(
@@ -174,7 +172,7 @@ describe('Vaults client service', () => {
       vaultRenameMessage.setNewName(vaultList[1]);
 
       const vaultId2 = await renameVault(vaultRenameMessage, callCredentials);
-      expect(vaultsUtils.makeVaultId(vaultId2.getNameOrId())).toStrictEqual(
+      expect(vaultsUtils.decodeVaultId(vaultId2.getNameOrId())).toStrictEqual(
         vaultId1,
       );
 
@@ -249,7 +247,7 @@ describe('Vaults client service', () => {
         vaultVersionMessage.setVersionId('invalidOid');
         const version = vaultsVersion(vaultVersionMessage, callCredentials);
         await expect(version).rejects.toThrow(
-          vaultErrors.ErrorVaultsCommitUndefined,
+          vaultErrors.ErrorVaultReferenceMissing,
         );
       });
     });

@@ -28,6 +28,7 @@ import * as utilsPB from '../proto/js/polykey/v1/utils/utils_pb';
 import * as nodesPB from '../proto/js/polykey/v1/nodes/nodes_pb';
 import * as notificationsPB from '../proto/js/polykey/v1/notifications/notifications_pb';
 import { utils as networkUtils } from '../network';
+import * as validationUtils from '../validation/utils';
 
 /**
  * Encapsulates the unidirectional client-side connection of one node to another.
@@ -454,13 +455,13 @@ class NodeConnection {
     nodeId: NodeId,
   ): Promise<Array<[VaultName, VaultId]>> {
     const nodeIdMessage = new nodesPB.Node();
-    nodeIdMessage.setNodeId(nodeId);
+    nodeIdMessage.setNodeId(nodesUtils.encodeNodeId(nodeId));
     const vaults: Array<[VaultName, VaultId]> = [];
     const genReadable = this.client.vaultsScan(nodeIdMessage);
     for await (const vault of genReadable) {
       vaults.push([
         vault.getVaultName() as VaultName,
-        vaultsUtils.makeVaultId(vault.getVaultId()),
+        validationUtils.parseVaultId(vault.getVaultId()),
       ]);
     }
     return vaults;

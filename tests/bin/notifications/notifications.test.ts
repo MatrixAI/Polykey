@@ -7,7 +7,7 @@ import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { utils as idUtils } from '@matrixai/id';
 import PolykeyAgent from '@/PolykeyAgent';
-import { makeVaultId } from '@/vaults/utils';
+import * as vaultsUtils from '@/vaults/utils';
 import { utils as nodesUtils } from '@/nodes';
 import * as testBinUtils from '../utils';
 
@@ -353,7 +353,7 @@ describe('CLI Notifications', () => {
       };
       const notificationData3: NotificationData = {
         type: 'VaultShare',
-        vaultId: makeVaultId(idUtils.fromString('vaultIdxxxxxxxxx')).toString(),
+        vaultId: vaultsUtils.encodeVaultId(vaultsUtils.generateVaultId()),
         vaultName: 'vaultName' as VaultName,
         actions: {
           clone: null,

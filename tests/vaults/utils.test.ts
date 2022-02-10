@@ -6,7 +6,6 @@ import { EncryptedFS } from 'encryptedfs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { IdRandom } from '@matrixai/id';
 import * as vaultsUtils from '@/vaults/utils';
-import { isVaultId } from '@/vaults/utils';
 
 describe('Vaults utils', () => {
   const logger = new Logger('Vaults utils tests', LogLevel.WARN, [
