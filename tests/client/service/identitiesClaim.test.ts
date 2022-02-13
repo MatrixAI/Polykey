@@ -22,6 +22,7 @@ import {
 import identitiesClaim from '@/client/service/identitiesClaim';
 import * as identitiesPB from '@/proto/js/polykey/v1/identities/identities_pb';
 import * as claimsUtils from '@/claims/utils';
+import * as validationErrors from '@/validation/errors';
 import TestProvider from '../../identities/TestProvider';
 import * as testUtils from '../../utils';
 
@@ -198,5 +199,32 @@ describe('identitiesClaim', () => {
       testToken.providerId,
       testToken.identityId,
     );
+  });
+  test('cannot claim invalid identity', async () => {
+    const request = new identitiesPB.Provider();
+    request.setIdentityId('');
+    request.setProviderId(testToken.providerId);
+    await expect(
+      grpcClient.identitiesClaim(
+        request,
+        clientUtils.encodeAuthFromPassword(password),
+      ),
+    ).rejects.toThrow(validationErrors.ErrorValidation);
+    request.setIdentityId(testToken.identityId);
+    request.setProviderId('');
+    await expect(
+      grpcClient.identitiesClaim(
+        request,
+        clientUtils.encodeAuthFromPassword(password),
+      ),
+    ).rejects.toThrow(validationErrors.ErrorValidation);
+    request.setIdentityId('');
+    request.setProviderId('');
+    await expect(
+      grpcClient.identitiesClaim(
+        request,
+        clientUtils.encodeAuthFromPassword(password),
+      ),
+    ).rejects.toThrow(validationErrors.ErrorValidation);
   });
 });

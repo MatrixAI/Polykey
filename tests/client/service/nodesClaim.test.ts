@@ -22,6 +22,7 @@ import {
 import nodesClaim from '@/client/service/nodesClaim';
 import * as nodesPB from '@/proto/js/polykey/v1/nodes/nodes_pb';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
+import * as validationErrors from '@/validation/errors';
 import * as testUtils from '../../utils';
 
 describe('nodesClaim', () => {
@@ -211,5 +212,15 @@ describe('nodesClaim', () => {
     );
     expect(response).toBeInstanceOf(utilsPB.StatusMessage);
     expect(response.getSuccess()).toBeTruthy();
+  });
+  test('cannot claim an invalid node', async () => {
+    const request = new nodesPB.Claim();
+    request.setNodeId('nodeId');
+    await expect(
+      grpcClient.nodesClaim(
+        request,
+        clientUtils.encodeAuthFromPassword(password),
+      ),
+    ).rejects.toThrow(validationErrors.ErrorValidation);
   });
 });

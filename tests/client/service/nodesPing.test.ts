@@ -18,6 +18,7 @@ import {
 import nodesPing from '@/client/service/nodesPing';
 import * as nodesPB from '@/proto/js/polykey/v1/nodes/nodes_pb';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
+import * as validationErrors from '@/validation/errors';
 import * as testUtils from '../../utils';
 
 describe('nodesPing', () => {
@@ -157,5 +158,15 @@ describe('nodesPing', () => {
     );
     expect(response).toBeInstanceOf(utilsPB.StatusMessage);
     expect(response.getSuccess()).toBeTruthy();
+  });
+  test('cannot ping an invalid node', async () => {
+    const request = new nodesPB.Node();
+    request.setNodeId('nodeId');
+    await expect(
+      grpcClient.nodesPing(
+        request,
+        clientUtils.encodeAuthFromPassword(password),
+      ),
+    ).rejects.toThrow(validationErrors.ErrorValidation);
   });
 });
