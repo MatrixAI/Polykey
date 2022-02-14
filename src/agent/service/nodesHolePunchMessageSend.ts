@@ -1,17 +1,22 @@
 import type * as grpc from '@grpc/grpc-js';
-import type { NodeManager } from '../../nodes';
+import type { NodeManager, NodeConnectionManager } from '../../nodes';
+import type KeyManager from '../../keys/KeyManager';
 import type { NodeId } from '../../nodes/types';
 import type * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
-import { utils as networkUtils } from '../../network';
+import * as networkUtils from '../../network/utils';
 import { utils as grpcUtils } from '../../grpc';
 import { validateSync, utils as validationUtils } from '../../validation';
 import { matchSync } from '../../utils';
 import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 
 function nodesHolePunchMessageSend({
+  keyManager,
   nodeManager,
+  nodeConnectionManager,
 }: {
+  keyManager: KeyManager;
   nodeManager: NodeManager;
+  nodeConnectionManager: NodeConnectionManager;
 }) {
   return async (
     call: grpc.ServerUnaryCall<nodesPB.Relay, utilsPB.EmptyMessage>,
@@ -44,15 +49,15 @@ function nodesHolePunchMessageSend({
       // Firstly, check if this node is the desired node
       // If so, then we want to make this node start sending hole punching packets
       // back to the source node.
-      if (nodeManager.getNodeId() === targetId) {
+      if (keyManager.getNodeId().equals(targetId)) {
         const [host, port] = networkUtils.parseAddress(
           call.request.getEgressAddress(),
         );
-        await nodeManager.openConnection(host, port);
+        await nodeConnectionManager.holePunchReverse(host, port);
         // Otherwise, find if node in table
         // If so, ask the nodeManager to relay to the node
       } else if (await nodeManager.knowsNode(sourceId)) {
-        await nodeManager.relayHolePunchMessage(call.request);
+        await nodeConnectionManager.relayHolePunchMessage(call.request);
       }
       callback(null, response);
       return;

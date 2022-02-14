@@ -3,9 +3,10 @@ import type { Session } from '@/sessions';
 import type { NodeId } from '@/nodes/types';
 import type { Host, Port, TLSConfig, ProxyConfig } from '@/network/types';
 import type * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
+import type { ClientReadableStream } from '@grpc/grpc-js/build/src/call';
+import type { AsyncGeneratorReadableStreamClient } from '@/grpc/types';
 import Logger from '@matrixai/logger';
 import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
-
 import { GRPCClient, utils as grpcUtils } from '@/grpc';
 import * as clientUtils from '@/client/utils';
 import { TestServiceClient } from '@/proto/js/polykey/v1/test_service_grpc_pb';
@@ -21,6 +22,7 @@ class GRPCClientTest extends GRPCClient<TestServiceClient> {
     proxyConfig,
     session,
     timeout = Infinity,
+    destroyCallback,
     logger = new Logger(this.name),
   }: {
     nodeId: NodeId;
@@ -30,6 +32,7 @@ class GRPCClientTest extends GRPCClient<TestServiceClient> {
     proxyConfig?: ProxyConfig;
     session?: Session;
     timeout?: number;
+    destroyCallback?: () => Promise<void>;
     logger?: Logger;
   }): Promise<GRPCClientTest> {
     logger.info(`Creating ${this.name}`);
@@ -56,6 +59,7 @@ class GRPCClientTest extends GRPCClient<TestServiceClient> {
       tlsConfig,
       proxyConfig,
       serverCertChain,
+      destroyCallback,
       logger,
     });
     logger.info(`Created ${this.name}`);
@@ -109,6 +113,27 @@ class GRPCClientTest extends GRPCClient<TestServiceClient> {
     return grpcUtils.promisifyUnaryCall<utilsPB.EchoMessage>(
       this.client,
       this.client.unaryAuthenticated,
+    )(...args);
+  }
+
+  @ready()
+  public serverStreamFail(
+    ...args
+  ): AsyncGeneratorReadableStreamClient<
+    utilsPB.EchoMessage,
+    ClientReadableStream<utilsPB.EchoMessage>
+  > {
+    return grpcUtils.promisifyReadableStreamCall<utilsPB.EchoMessage>(
+      this.client,
+      this.client.serverStreamFail,
+    )(...args);
+  }
+
+  @ready()
+  public unaryFail(...args) {
+    return grpcUtils.promisifyUnaryCall<utilsPB.EchoMessage>(
+      this.client,
+      this.client.unaryFail,
     )(...args);
   }
 }

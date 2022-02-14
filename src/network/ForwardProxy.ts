@@ -3,7 +3,6 @@ import type { Host, Port, Address, ConnectionInfo, TLSConfig } from './types';
 import type { ConnectionsForward } from './ConnectionForward';
 import type { NodeId } from '../nodes/types';
 import type { Timer } from '../types';
-
 import http from 'http';
 import UTP from 'utp-native';
 import { Mutex } from 'async-mutex';
@@ -12,8 +11,8 @@ import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
 import ConnectionForward from './ConnectionForward';
 import * as networkUtils from './utils';
 import * as networkErrors from './errors';
+import * as nodesUtils from '../nodes/utils';
 import { promisify, timerStart, timerStop } from '../utils';
-import { utils as nodesUtils } from '../nodes';
 
 interface ForwardProxy extends StartStop {}
 @StartStop()

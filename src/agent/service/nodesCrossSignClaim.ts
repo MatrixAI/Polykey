@@ -96,12 +96,12 @@ function nodesCrossSignClaim({
         const doublySignedClaim = await claimsUtils.signIntermediaryClaim({
           claim: constructedIntermediaryClaim,
           privateKey: keyManager.getRootKeyPairPem().privateKey,
-          signeeNodeId: nodesUtils.encodeNodeId(nodeManager.getNodeId()),
+          signeeNodeId: nodesUtils.encodeNodeId(keyManager.getNodeId()),
         });
         // Then create your own intermediary node claim (from X -> Y)
         const singlySignedClaim = await sigchain.createIntermediaryClaim({
           type: 'node',
-          node1: nodesUtils.encodeNodeId(nodeManager.getNodeId()),
+          node1: nodesUtils.encodeNodeId(keyManager.getNodeId()),
           node2: payloadData.node1,
         });
         // Should never be reached, but just for type safety

@@ -11,8 +11,9 @@ import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
 import * as grpc from '@grpc/grpc-js';
 import * as grpcUtils from './utils';
 import * as grpcErrors from './errors';
-import { utils as networkUtils, errors as networkErrors } from '../network';
-import { promisify, timerStart, timerStop } from '../utils';
+import * as networkUtils from '../network/utils';
+import * as networkErrors from '../network/errors';
+import { promisify, timerStart, timerStop } from '../utils/utils';
 
 interface GRPCServer extends StartStop {}
 @StartStop()

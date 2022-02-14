@@ -5,13 +5,8 @@ import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
 import { vaultOps } from '@/vaults';
+import * as keysUtils from '@/keys/utils';
 import * as testBinUtils from '../utils';
-
-jest.mock('@/keys/utils', () => ({
-  ...jest.requireActual('@/keys/utils'),
-  generateDeterministicKeyPair:
-    jest.requireActual('@/keys/utils').generateKeyPair,
-}));
 
 describe('CLI secrets', () => {
   const password = 'password';
@@ -21,7 +16,15 @@ describe('CLI secrets', () => {
   let passwordFile: string;
   let command: Array<string>;
 
+  const mockedGenerateDeterministicKeyPair = jest.spyOn(
+    keysUtils,
+    'generateDeterministicKeyPair',
+  );
+
   beforeAll(async () => {
+    mockedGenerateDeterministicKeyPair.mockImplementation((bits, _) => {
+      return keysUtils.generateKeyPair(bits);
+    });
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );

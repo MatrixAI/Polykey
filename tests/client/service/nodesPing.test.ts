@@ -7,7 +7,7 @@ import { Metadata } from '@grpc/grpc-js';
 import { DB } from '@matrixai/db';
 import { KeyManager, utils as keysUtils } from '@/keys';
 import { GRPCServer } from '@/grpc';
-import { NodeManager } from '@/nodes';
+import { NodeConnectionManager, NodeGraph, NodeManager } from '@/nodes';
 import { Sigchain } from '@/sigchain';
 import { ForwardProxy, ReverseProxy } from '@/network';
 import {
@@ -51,6 +51,8 @@ describe('nodesPing', () => {
   });
   const authToken = 'abc123';
   let dataDir: string;
+  let nodeGraph: NodeGraph;
+  let nodeConnectionManager: NodeConnectionManager;
   let nodeManager: NodeManager;
   let sigchain: Sigchain;
   let fwdProxy: ForwardProxy;
@@ -98,12 +100,27 @@ describe('nodesPing', () => {
       keyManager,
       logger,
     });
-    nodeManager = await NodeManager.createNodeManager({
+    nodeGraph = await NodeGraph.createNodeGraph({
       db,
       keyManager,
-      sigchain,
+      logger: logger.getChild('NodeGraph'),
+    });
+    nodeConnectionManager = new NodeConnectionManager({
+      keyManager,
+      nodeGraph,
       fwdProxy,
       revProxy,
+      connConnectTime: 2000,
+      connTimeoutTime: 2000,
+      logger: logger.getChild('NodeConnectionManager'),
+    });
+    await nodeConnectionManager.start();
+    nodeManager = new NodeManager({
+      db,
+      keyManager,
+      nodeConnectionManager,
+      nodeGraph,
+      sigchain,
       logger,
     });
     const clientService = {
@@ -128,8 +145,9 @@ describe('nodesPing', () => {
   afterEach(async () => {
     await grpcClient.destroy();
     await grpcServer.stop();
-    await nodeManager.stop();
     await sigchain.stop();
+    await nodeGraph.stop();
+    await nodeConnectionManager.stop();
     await revProxy.stop();
     await fwdProxy.stop();
     await db.stop();

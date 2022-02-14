@@ -52,6 +52,11 @@
         "ignoreConsecutiveComments": true
       }
     ],
+    "curly": [
+      "error",
+      "multi-line",
+      "consistent"
+    ],
     "import/order": [
       "error",
       {

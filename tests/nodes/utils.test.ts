@@ -1,6 +1,6 @@
 import type { NodeId } from '@/nodes/types';
 import { IdInternal } from '@matrixai/id';
-import { utils as nodesUtils } from '@/nodes';
+import * as nodesUtils from '@/nodes/utils';
 
 describe('Nodes utils', () => {
   test('basic distance calculation', async () => {
@@ -27,7 +27,7 @@ describe('Nodes utils', () => {
       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
       0, 0, 0, 0, 0, 0, 0,
     ]);
-    const bucketIndex = nodesUtils.calculateBucketIndex(nodeId1, nodeId2, 256);
+    const bucketIndex = nodesUtils.calculateBucketIndex(nodeId1, nodeId2);
     expect(bucketIndex).toBe(0);
   });
   test('calculates correct arbitrary bucket (bucket 63)', async () => {
@@ -39,7 +39,7 @@ describe('Nodes utils', () => {
       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
       0, 0, 0, 0, 0, 0, 0,
     ]);
-    const bucketIndex = nodesUtils.calculateBucketIndex(nodeId1, nodeId2, 256);
+    const bucketIndex = nodesUtils.calculateBucketIndex(nodeId1, nodeId2);
     expect(bucketIndex).toBe(63);
   });
   test('calculates correct last bucket (bucket 255)', async () => {
@@ -51,7 +51,7 @@ describe('Nodes utils', () => {
       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
       0, 0, 0, 0, 0, 0, 0,
     ]);
-    const bucketIndex = nodesUtils.calculateBucketIndex(nodeId1, nodeId2, 256);
+    const bucketIndex = nodesUtils.calculateBucketIndex(nodeId1, nodeId2);
     expect(bucketIndex).toBe(255);
   });
 });

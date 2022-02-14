@@ -11,6 +11,9 @@ import type { IdentityClaim, IdentityClaimId } from '../identities/types';
 
 import * as identitiesErrors from './errors';
 import { schema } from '../claims';
+import { utils as validationUtils, validateSync } from '../validation';
+import { matchSync } from '../utils/matchers';
+import * as validationErrors from '../validation/errors';
 
 type GetTokens = () => Promise<ProviderTokens>;
 type GetToken = (identityId: IdentityId) => Promise<TokenData | undefined>;
@@ -95,9 +98,23 @@ abstract class Provider {
     } catch (e) {
       return;
     }
-    // TODO: Add node ID validation here?
     if (!schema.claimIdentityValidate(claim)) {
       return;
+    }
+    // We want to validate the NodeId in the data
+    try {
+      validateSync((keyPath, value) => {
+        return matchSync(keyPath)(
+          [
+            ['payload', 'data', 'nodeId'],
+            () => validationUtils.parseNodeId(value),
+          ],
+          () => value,
+        );
+      }, claim);
+    } catch (e) {
+      if (!(e instanceof validationErrors.ErrorParse)) return;
+      throw e;
     }
     return claim;
   }

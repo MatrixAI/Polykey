@@ -8,7 +8,12 @@ import { Metadata } from '@grpc/grpc-js';
 import { DB } from '@matrixai/db';
 import { KeyManager, utils as keysUtils } from '@/keys';
 import { GRPCServer } from '@/grpc';
-import { NodeManager, utils as nodesUtils } from '@/nodes';
+import {
+  NodeConnectionManager,
+  NodeGraph,
+  NodeManager,
+  utils as nodesUtils,
+} from '@/nodes';
 import { Sigchain } from '@/sigchain';
 import { ForwardProxy, ReverseProxy } from '@/network';
 import {
@@ -24,6 +29,7 @@ import {
 import notificationsSend from '@/client/service/notificationsSend';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as notificationsPB from '@/proto/js/polykey/v1/notifications/notifications_pb';
+import { GRPCClientAgent } from '@/agent';
 import * as testUtils from '../../utils';
 
 describe('notificationsSend', () => {
@@ -51,8 +57,8 @@ describe('notificationsSend', () => {
         return 'signedNotification' as SignedNotification;
       });
     mockedSendNotification = jest
-      .spyOn(NodeManager.prototype, 'sendNotification')
-      .mockResolvedValue(undefined);
+      .spyOn(GRPCClientAgent.prototype, 'notificationsSend')
+      .mockResolvedValue(new notificationsPB.AgentNotification());
   });
   afterAll(async () => {
     mockedGenerateKeyPair.mockRestore();
@@ -62,6 +68,8 @@ describe('notificationsSend', () => {
   });
   const authToken = 'abc123';
   let dataDir: string;
+  let nodeGraph: NodeGraph;
+  let nodeConnectionManager: NodeConnectionManager;
   let nodeManager: NodeManager;
   let notificationsManager: NotificationsManager;
   let acl: ACL;
@@ -115,18 +123,34 @@ describe('notificationsSend', () => {
       keyManager,
       logger,
     });
-    nodeManager = await NodeManager.createNodeManager({
+    nodeGraph = await NodeGraph.createNodeGraph({
       db,
       keyManager,
-      sigchain,
+      logger: logger.getChild('NodeGraph'),
+    });
+    nodeConnectionManager = new NodeConnectionManager({
+      keyManager,
+      nodeGraph,
       fwdProxy,
       revProxy,
+      connConnectTime: 2000,
+      connTimeoutTime: 2000,
+      logger: logger.getChild('NodeConnectionManager'),
+    });
+    await nodeConnectionManager.start();
+    nodeManager = new NodeManager({
+      db,
+      keyManager,
+      nodeGraph,
+      nodeConnectionManager,
+      sigchain,
       logger,
     });
     notificationsManager =
       await NotificationsManager.createNotificationsManager({
         acl,
         db,
+        nodeConnectionManager,
         nodeManager,
         keyManager,
         logger,
@@ -154,7 +178,8 @@ describe('notificationsSend', () => {
     await grpcClient.destroy();
     await grpcServer.stop();
     await notificationsManager.stop();
-    await nodeManager.stop();
+    await nodeGraph.stop();
+    await nodeConnectionManager.stop();
     await sigchain.stop();
     await revProxy.stop();
     await fwdProxy.stop();
@@ -167,13 +192,13 @@ describe('notificationsSend', () => {
     });
   });
   test('sends a notification', async () => {
+    const receiverNodeIdEncoded =
+      'vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0';
     const generalMessage = new notificationsPB.General();
     generalMessage.setMessage('test');
     const request = new notificationsPB.Send();
     request.setData(generalMessage);
-    request.setReceiverId(
-      'vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0',
-    );
+    request.setReceiverId(receiverNodeIdEncoded);
     const response = await grpcClient.notificationsSend(
       request,
       clientUtils.encodeAuthFromPassword(password),
@@ -184,7 +209,7 @@ describe('notificationsSend', () => {
     expect(mockedSendNotification.mock.calls.length).toBe(1);
     expect(
       nodesUtils.encodeNodeId(mockedSendNotification.mock.calls[0][0]),
-    ).toBe('vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0');
+    ).toBe(receiverNodeIdEncoded);
     expect(mockedSendNotification.mock.calls[0][1]).toBe('signedNotification');
     // Check notification content
     expect(mockedSignNotification.mock.calls[0][0]).toEqual({

@@ -6,11 +6,10 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { Mutex } from 'async-mutex';
 import { DB } from '@matrixai/db';
 import { GRPCClientAgent } from '@/agent';
 import { KeyManager } from '@/keys';
-import { NodeManager } from '@/nodes';
+import { NodeConnectionManager, NodeGraph, NodeManager } from '@/nodes';
 import { VaultManager } from '@/vaults';
 import { Sigchain } from '@/sigchain';
 import { ACL } from '@/acl';
@@ -24,6 +23,7 @@ import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as vaultsPB from '@/proto/js/polykey/v1/vaults/vaults_pb';
 import * as nodesPB from '@/proto/js/polykey/v1/nodes/nodes_pb';
 import { utils as nodesUtils } from '@/nodes';
+import { RWLock } from '@/utils';
 import * as testAgentUtils from './utils';
 import * as testUtils from '../utils';
 import TestNodeConnection from '../nodes/TestNodeConnection';
@@ -62,6 +62,8 @@ describe(GRPCClientAgent.name, () => {
   let dbPath: string;
   let keyManager: KeyManager;
   let vaultManager: VaultManager;
+  let nodeGraph: NodeGraph;
+  let nodeConnectionManager: NodeConnectionManager;
   let nodeManager: NodeManager;
   let sigchain: Sigchain;
   let acl: ACL;
@@ -123,18 +125,32 @@ describe(GRPCClientAgent.name, () => {
       db: db,
       logger: logger,
     });
-    nodeManager = await NodeManager.createNodeManager({
+    nodeGraph = await NodeGraph.createNodeGraph({
+      db,
+      keyManager,
+      logger,
+    });
+    nodeConnectionManager = new NodeConnectionManager({
+      keyManager,
+      nodeGraph,
+      fwdProxy: fwdProxy,
+      revProxy: revProxy,
+      logger,
+    });
+    await nodeConnectionManager.start();
+    nodeManager = new NodeManager({
       db: db,
       sigchain: sigchain,
       keyManager: keyManager,
-      fwdProxy: fwdProxy,
-      revProxy: revProxy,
+      nodeGraph: nodeGraph,
+      nodeConnectionManager: nodeConnectionManager,
       logger: logger,
     });
     notificationsManager =
       await NotificationsManager.createNotificationsManager({
         acl: acl,
         db: db,
+        nodeConnectionManager: nodeConnectionManager,
         nodeManager: nodeManager,
         keyManager: keyManager,
         messageCap: 5,
@@ -143,7 +159,7 @@ describe(GRPCClientAgent.name, () => {
     vaultManager = await VaultManager.createVaultManager({
       keyManager: keyManager,
       vaultsPath: vaultsPath,
-      nodeManager: nodeManager,
+      nodeConnectionManager: nodeConnectionManager,
       vaultsKey: keyManager.vaultKey,
       db: db,
       acl: acl,
@@ -151,12 +167,13 @@ describe(GRPCClientAgent.name, () => {
       fs: fs,
       logger: logger,
     });
-    await nodeManager.start();
     [server, port] = await testAgentUtils.openTestAgentServer({
       keyManager,
       vaultManager,
       nodeManager,
+      nodeConnectionManager,
       sigchain,
+      nodeGraph,
       notificationsManager,
     });
     client = await testAgentUtils.openTestAgentClient(port);
@@ -167,7 +184,8 @@ describe(GRPCClientAgent.name, () => {
     await vaultManager.stop();
     await notificationsManager.stop();
     await sigchain.stop();
-    await nodeManager.stop();
+    await nodeConnectionManager.stop();
+    await nodeGraph.stop();
     await gestaltGraph.stop();
     await acl.stop();
     await fwdProxy.stop();
@@ -275,19 +293,18 @@ describe(GRPCClientAgent.name, () => {
       // that it can be used to verify the claim signature
       xToYNodeConnection = await TestNodeConnection.createTestNodeConnection({
         publicKey: yKeyManager.getRootKeyPairPem().publicKey,
-        targetNodeId: nodeIdY,
         targetHost: 'unnecessary' as Host,
         targetPort: 0 as Port,
-        forwardProxy: fwdProxy,
-        keyManager: keyManager,
+        fwdProxy: fwdProxy,
+        destroyCallback: async () => {},
         logger: logger,
       });
       // @ts-ignore - force push into the protected connections map
-      nodeManager.connections.set(nodeIdY.toString(), {
+      nodeConnectionManager.connections.set(nodeIdY.toString(), {
         connection: xToYNodeConnection,
-        lock: new Mutex(),
+        lock: new RWLock(),
       });
-      await nodeManager.setNode(nodeIdY, {
+      await nodeGraph.setNode(nodeIdY, {
         host: 'unnecessary' as Host,
         port: 0 as Port,
       } as NodeAddress);

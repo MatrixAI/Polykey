@@ -9,8 +9,10 @@ import type {
   IdentityClaims,
 } from '../identities/types';
 import type { NodeManager } from '../nodes';
+import type { Sigchain } from '../sigchain';
+import type { KeyManager } from '../keys';
 import type { Provider, IdentitiesManager } from '../identities';
-import type { Claim, ClaimIdEncoded, ClaimLinkIdentity } from '../claims/types';
+import type { ClaimIdEncoded, Claim, ClaimLinkIdentity } from '../claims/types';
 
 import type { ChainData } from '../sigchain/types';
 import Logger from '@matrixai/logger';
@@ -26,44 +28,58 @@ class Discovery {
   protected gestaltGraph: GestaltGraph;
   protected identitiesManager: IdentitiesManager;
   protected nodeManager: NodeManager;
+  protected sigchain: Sigchain;
+  protected keyManager: KeyManager;
   protected logger: Logger;
 
   static async createDiscovery({
+    keyManager,
     gestaltGraph,
     identitiesManager,
     nodeManager,
+    sigchain,
     logger = new Logger(this.name),
   }: {
+    keyManager: KeyManager;
     gestaltGraph: GestaltGraph;
     identitiesManager: IdentitiesManager;
     nodeManager: NodeManager;
+    sigchain: Sigchain;
     logger?: Logger;
   }): Promise<Discovery> {
     logger.info(`Creating ${this.name}`);
     const discovery = new Discovery({
+      keyManager,
       gestaltGraph,
       identitiesManager,
       logger: logger,
       nodeManager,
+      sigchain,
     });
     logger.info(`Created ${this.name}`);
     return discovery;
   }
 
   constructor({
+    keyManager,
     gestaltGraph,
     identitiesManager,
     nodeManager,
+    sigchain,
     logger,
   }: {
+    keyManager: KeyManager;
     gestaltGraph: GestaltGraph;
     identitiesManager: IdentitiesManager;
     nodeManager: NodeManager;
+    sigchain: Sigchain;
     logger: Logger;
   }) {
+    this.keyManager = keyManager;
     this.gestaltGraph = gestaltGraph;
     this.identitiesManager = identitiesManager;
     this.nodeManager = nodeManager;
+    this.sigchain = sigchain;
     this.logger = logger;
   }
 
@@ -114,13 +130,13 @@ class Discovery {
         let vertexChainData: ChainData = {};
         // If the vertex we've found is our own node, we simply get our own chain
         const nodeId = nodesUtils.decodeNodeId(vertexGId.nodeId)!;
-        if (nodeId.equals(this.nodeManager.getNodeId())) {
-          const vertexChainDataEncoded = await this.nodeManager.getChainData();
+        if (nodeId.equals(this.keyManager.getNodeId())) {
+          const vertexChainDataEncoded = await this.sigchain.getChainData();
           // Decode all our claims - no need to verify (on our own sigchain)
-          for (const c in vertexChainDataEncoded) {
-            const claimId = c as ClaimIdEncoded;
-            vertexChainData[claimId] = claimsUtils.decodeClaim(
-              vertexChainDataEncoded[claimId],
+          let claimIdEncoded: ClaimIdEncoded;
+          for (claimIdEncoded in vertexChainDataEncoded) {
+            vertexChainData[claimIdEncoded] = claimsUtils.decodeClaim(
+              vertexChainDataEncoded[claimIdEncoded],
             );
           }
           // Otherwise, request the verified chain data from the node
@@ -144,8 +160,9 @@ class Discovery {
         // TODO: because we're iterating over keys in a record, I don't believe
         // that this will iterate in lexicographical order of keys. For now,
         // this doesn't matter though (because of the previous comment).
-        for (const claimId in vertexChainData) {
-          const claim: Claim = vertexChainData[claimId as ClaimIdEncoded];
+        let claimIdEncoded: ClaimIdEncoded;
+        for (claimIdEncoded in vertexChainData) {
+          const claim = vertexChainData[claimIdEncoded];
 
           // If the claim is to a node
           if (claim.payload.data.type === 'node') {

@@ -1,5 +1,5 @@
 import type * as grpc from '@grpc/grpc-js';
-import type { NodeManager } from '../../nodes';
+import type { NodeConnectionManager } from '../../nodes';
 import type { NodeId } from '../../nodes/types';
 import { utils as grpcUtils } from '../../grpc';
 import { utils as nodesUtils } from '../../nodes';
@@ -12,9 +12,9 @@ import * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
  * to some provided node ID.
  */
 function nodesClosestLocalNodesGet({
-  nodeManager,
+  nodeConnectionManager,
 }: {
-  nodeManager: NodeManager;
+  nodeConnectionManager: NodeConnectionManager;
 }) {
   return async (
     call: grpc.ServerUnaryCall<nodesPB.Node, nodesPB.NodeTable>,
@@ -38,7 +38,9 @@ function nodesClosestLocalNodesGet({
         },
       );
       // Get all local nodes that are closest to the target node from the request
-      const closestNodes = await nodeManager.getClosestLocalNodes(nodeId);
+      const closestNodes = await nodeConnectionManager.getClosestLocalNodes(
+        nodeId,
+      );
       for (const node of closestNodes) {
         const addressMessage = new nodesPB.Address();
         addressMessage.setHost(node.address.host);

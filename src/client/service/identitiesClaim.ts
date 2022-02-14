@@ -1,6 +1,6 @@
 import type * as grpc from '@grpc/grpc-js';
 import type { Authenticate } from '../types';
-import type { NodeManager } from '../../nodes';
+import type KeyManager from '../../keys/KeyManager';
 import type { Sigchain } from '../../sigchain';
 import type { IdentitiesManager } from '../../identities';
 import type { IdentityId, ProviderId } from '../../identities/types';
@@ -18,12 +18,12 @@ import * as identitiesPB from '../../proto/js/polykey/v1/identities/identities_p
 function identitiesClaim({
   identitiesManager,
   sigchain,
-  nodeManager,
+  keyManager,
   authenticate,
 }: {
   identitiesManager: IdentitiesManager;
   sigchain: Sigchain;
-  nodeManager: NodeManager;
+  keyManager: KeyManager;
   authenticate: Authenticate;
 }) {
   return async (
@@ -65,7 +65,7 @@ function identitiesClaim({
       // Create identity claim on our node
       const [, claim] = await sigchain.addClaim({
         type: 'identity',
-        node: nodesUtils.encodeNodeId(nodeManager.getNodeId()),
+        node: nodesUtils.encodeNodeId(keyManager.getNodeId()),
         provider: providerId,
         identity: identityId,
       });

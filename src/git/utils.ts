@@ -250,8 +250,9 @@ async function resolve(
           })
         ).toString() || packedMap[ref].line; // FIXME: not sure what is going on here.
     } catch (err) {
-      if (err.code === 'ENOENT')
+      if (err.code === 'ENOENT') {
         throw new gitErrors.ErrorGitUndefinedRefs(`Ref ${ref} cannot be found`);
+      }
     }
     if (sha != null) {
       return resolve(fs, gitdir, sha.trim(), depth); // FIXME: sha is string or config?
@@ -1213,8 +1214,9 @@ async function pack({
   function writeObject(object: Uint8Array, stype: string): void {
     // Object type is encoded in bits 654
     const type = types[stype];
-    if (type === undefined)
+    if (type === undefined) {
       throw new gitErrors.ErrorGitUndefinedType('Unrecognized type: ' + stype);
+    }
     // The length encoding get complicated.
     let length = object.length;
     // Whether the next byte is part of the variable-length encoded number

@@ -1,7 +1,6 @@
 import type * as grpc from '@grpc/grpc-js';
 import type { IdentitiesManager } from '@/identities';
 import type { GestaltGraph } from '@/gestalts';
-import type { NodeManager } from '@/nodes';
 import type { IdentityId, IdentityInfo, ProviderId } from '@/identities/types';
 import type { NodeIdEncoded, NodeInfo } from '@/nodes/types';
 import type * as gestaltsPB from '@/proto/js/polykey/v1/gestalts/gestalts_pb';
@@ -41,7 +40,6 @@ describe('Client service', () => {
   let dataDir: string;
   let pkAgent: PolykeyAgent;
   let keyManager: KeyManager;
-  let nodeManager: NodeManager;
   let gestaltGraph: GestaltGraph;
   let identitiesManager: IdentitiesManager;
   let passwordFile: string;
@@ -104,7 +102,6 @@ describe('Client service', () => {
       keyManager,
     });
 
-    nodeManager = pkAgent.nodeManager;
     gestaltGraph = pkAgent.gestaltGraph;
     identitiesManager = pkAgent.identitiesManager;
 
@@ -120,7 +117,7 @@ describe('Client service', () => {
     client = await testUtils.openSimpleClientClient(port);
 
     node1 = {
-      id: nodesUtils.encodeNodeId(nodeManager.getNodeId()),
+      id: nodesUtils.encodeNodeId(pkAgent.keyManager.getNodeId()),
       chain: {},
     };
   }, global.polykeyStartupTimeout);
@@ -299,7 +296,9 @@ describe('Client service', () => {
     expect(test1.getActionList().includes('scan')).toBeTruthy();
     expect(test1.getActionList().includes('notify')).toBeTruthy();
 
-    nodeMessage.setNodeId(nodesUtils.encodeNodeId(nodeManager.getNodeId()));
+    nodeMessage.setNodeId(
+      nodesUtils.encodeNodeId(pkAgent.keyManager.getNodeId()),
+    );
     // Should have no permissions
     const test2 = await gestaltsGetActionsByNode(nodeMessage, callCredentials);
     expect(test2.getActionList().length).toBe(0);

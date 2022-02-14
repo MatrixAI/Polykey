@@ -50,7 +50,7 @@ describe('renew', () => {
   });
   test('resets the keypair', async () => {
     const rootKeyPair1 = pkAgent.keyManager.getRootKeyPairPem();
-    const nodeId1 = pkAgent.nodeManager.getNodeId();
+    const nodeId1 = pkAgent.keyManager.getNodeId();
     // @ts-ignore - get protected property
     const fwdTLSConfig1 = pkAgent.fwdProxy.tlsConfig;
     // @ts-ignore - get protected property
@@ -85,7 +85,7 @@ describe('renew', () => {
     );
     expect(exitCode).toBe(0);
     const rootKeyPair2 = pkAgent.keyManager.getRootKeyPairPem();
-    const nodeId2 = pkAgent.nodeManager.getNodeId();
+    const nodeId2 = pkAgent.keyManager.getNodeId();
     // @ts-ignore - get protected property
     const fwdTLSConfig2 = pkAgent.fwdProxy.tlsConfig;
     // @ts-ignore - get protected property

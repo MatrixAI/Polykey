@@ -20,8 +20,9 @@ function vaultsGitPackGet({ vaultManager }: { vaultManager: VaultManager }) {
       const body = Buffer.concat(clientBodyBuffers);
       const meta = call.metadata;
       const vaultNameOrId = meta.get('vaultNameOrId').pop()!.toString();
-      if (vaultNameOrId == null)
+      if (vaultNameOrId == null) {
         throw new grpcErrors.ErrorGRPC('vault-name not in metadata.');
+      }
       let vaultId;
       try {
         vaultId = vaultsUtils.makeVaultId(vaultNameOrId);

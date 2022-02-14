@@ -71,8 +71,9 @@ class CommandFind extends CommandPolykey {
             result.port as Port,
           )}`;
         } catch (err) {
-          if (!(err instanceof nodesErrors.ErrorNodeGraphNodeNotFound))
+          if (!(err instanceof nodesErrors.ErrorNodeGraphNodeIdNotFound)) {
             throw err;
+          }
           // Else failed to find the node.
           result.success = false;
           result.id = nodesUtils.encodeNodeId(nodeId);
@@ -89,8 +90,9 @@ class CommandFind extends CommandPolykey {
           }),
         );
         // Like ping it should error when failing to find node for automation reasons.
-        if (!result.success)
+        if (!result.success) {
           throw new binErrors.ErrorNodeFindFailed(result.message);
+        }
       } finally {
         if (pkClient! != null) await pkClient.stop();
       }

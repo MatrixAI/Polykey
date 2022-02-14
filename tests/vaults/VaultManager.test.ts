@@ -11,7 +11,7 @@ import { DB } from '@matrixai/db';
 import { utils as idUtils } from '@matrixai/id';
 
 import { KeyManager, utils as keysUtils } from '@/keys';
-import { NodeManager } from '@/nodes';
+import { NodeConnectionManager, NodeGraph, NodeManager } from '@/nodes';
 import { Sigchain } from '@/sigchain';
 import { VaultManager, vaultOps } from '@/vaults';
 import { ACL } from '@/acl';
@@ -39,6 +39,8 @@ describe('VaultManager', () => {
   let db: DB;
   let acl: ACL;
   let gestaltGraph: GestaltGraph;
+  let nodeGraph: NodeGraph;
+  let nodeConnectionManager: NodeConnectionManager;
   let nodeManager: NodeManager;
   let vaultManager: VaultManager;
   let sigchain: Sigchain;
@@ -125,16 +127,27 @@ describe('VaultManager', () => {
       db: db,
       logger: logger,
     });
-
-    nodeManager = await NodeManager.createNodeManager({
+    nodeGraph = await NodeGraph.createNodeGraph({
       db: db,
-      sigchain: sigchain,
       keyManager: keyManager,
+      logger: logger,
+    });
+    nodeConnectionManager = new NodeConnectionManager({
+      keyManager,
+      nodeGraph,
       fwdProxy: fwdProxy,
       revProxy: revProxy,
       logger: logger,
     });
-    await nodeManager.start();
+    await nodeConnectionManager.start();
+    nodeManager = new NodeManager({
+      db: db,
+      sigchain: sigchain,
+      keyManager: keyManager,
+      nodeGraph: nodeGraph,
+      nodeConnectionManager: nodeConnectionManager,
+      logger: logger,
+    });
 
     acl = await ACL.createACL({
       db: db,
@@ -151,7 +164,7 @@ describe('VaultManager', () => {
       keyManager: keyManager,
       vaultsPath,
       vaultsKey,
-      nodeManager,
+      nodeConnectionManager,
       db,
       acl: acl,
       gestaltGraph: gestaltGraph,
@@ -165,7 +178,8 @@ describe('VaultManager', () => {
     await gestaltGraph.stop();
     await acl.stop();
     await db.stop();
-    await nodeManager.stop();
+    await nodeConnectionManager.stop();
+    await nodeGraph.stop();
     await keyManager.stop();
     await fs.promises.rm(dataDir, {
       force: true,
@@ -317,7 +331,7 @@ describe('VaultManager', () => {
         keyManager: keyManager,
         vaultsPath,
         vaultsKey,
-        nodeManager,
+        nodeConnectionManager,
         gestaltGraph,
         acl,
         db,
@@ -370,7 +384,7 @@ describe('VaultManager', () => {
       keyManager: keyManager,
       vaultsPath,
       vaultsKey,
-      nodeManager,
+      nodeConnectionManager,
       db,
       acl: acl,
       gestaltGraph: gestaltGraph,
@@ -437,7 +451,7 @@ describe('VaultManager', () => {
         keyManager: keyManager,
         vaultsPath,
         vaultsKey,
-        nodeManager,
+        nodeConnectionManager,
         db,
         acl: acl,
         gestaltGraph: gestaltGraph,
@@ -506,7 +520,7 @@ describe('VaultManager', () => {
   //       nodes: {},
   //     } as ChainData,
   //   };
-
+  //
   //   await gestaltGraph.setNode(node1);
   //   await gestaltGraph.setNode(node2);
   //   await gestaltGraph.setNode(node3);
@@ -516,7 +530,7 @@ describe('VaultManager', () => {
   //   await gestaltGraph.linkNodeAndNode(node1, node2);
   //   await gestaltGraph.linkNodeAndIdentity(node1, id1);
   //   await gestaltGraph.linkNodeAndIdentity(node4, id2);
-
+  //
   //   await vaultManager.start({});
   //   const vault = await vaultManager.createVault('Test');
   //   await vaultManager.setVaultPermissions('123' as NodeId, vault.vaultId);
@@ -526,20 +540,20 @@ describe('VaultManager', () => {
   //   expect(record['345']['pull']).toBeNull();
   //   expect(record['678']).toBeUndefined();
   //   expect(record['890']).toBeUndefined();
-
+  //
   //   await vaultManager.unsetVaultPermissions('345' as NodeId, vault.vaultId);
   //   record = await vaultManager.getVaultPermissions(vault.vaultId);
   //   expect(record).not.toBeUndefined();
   //   expect(record['123']['pull']).toBeUndefined();
   //   expect(record['345']['pull']).toBeUndefined();
-
+  //
   //   await gestaltGraph.unlinkNodeAndNode(node1.id, node2.id);
   //   await vaultManager.setVaultPermissions('345' as NodeId, vault.vaultId);
   //   record = await vaultManager.getVaultPermissions(vault.vaultId);
   //   expect(record).not.toBeUndefined();
   //   expect(record['123']['pull']).toBeUndefined();
   //   expect(record['345']['pull']).toBeNull();
-
+  //
   //   await vaultManager.stop();
   // });
   // /* TESTING TODO:
@@ -552,6 +566,9 @@ describe('VaultManager', () => {
     let targetDb: DB, altDb: DB;
     let targetACL: ACL, altACL: ACL;
     let targetGestaltGraph: GestaltGraph, altGestaltGraph: GestaltGraph;
+    let targetNodeGraph: NodeGraph, altNodeGraph: NodeGraph;
+    let targetNodeConnectionManager: NodeConnectionManager,
+      altNodeConnectionManager: NodeConnectionManager;
     let targetNodeManager: NodeManager, altNodeManager: NodeManager;
     let targetVaultManager: VaultManager, altVaultManager: VaultManager;
     let targetSigchain: Sigchain, altSigchain: Sigchain;
@@ -592,7 +609,7 @@ describe('VaultManager', () => {
         certChainPem: await targetKeyManager.getRootCertChainPem(),
       };
       node = {
-        id: nodesUtils.encodeNodeId(nodeManager.getNodeId()),
+        id: nodesUtils.encodeNodeId(keyManager.getNodeId()),
         chain: { nodes: {}, identities: {} } as ChainData,
       };
       targetFwdProxy = new ForwardProxy({
@@ -615,15 +632,26 @@ describe('VaultManager', () => {
         db: targetDb,
         logger: logger,
       });
-      targetNodeManager = await NodeManager.createNodeManager({
+      targetNodeGraph = await NodeGraph.createNodeGraph({
         db: targetDb,
-        sigchain: targetSigchain,
         keyManager: targetKeyManager,
+        logger: logger,
+      });
+      targetNodeConnectionManager = new NodeConnectionManager({
+        keyManager: targetKeyManager,
+        nodeGraph: targetNodeGraph,
         fwdProxy: targetFwdProxy,
         revProxy: revProxy,
         logger: logger,
       });
-      await targetNodeManager.start();
+      targetNodeManager = new NodeManager({
+        db: targetDb,
+        sigchain: targetSigchain,
+        keyManager: targetKeyManager,
+        nodeGraph: nodeGraph,
+        nodeConnectionManager: targetNodeConnectionManager,
+        logger: logger,
+      });
       targetACL = await ACL.createACL({
         db: targetDb,
         logger: logger,
@@ -632,6 +660,7 @@ describe('VaultManager', () => {
         await NotificationsManager.createNotificationsManager({
           acl: targetACL,
           db: targetDb,
+          nodeConnectionManager: targetNodeConnectionManager,
           nodeManager: targetNodeManager,
           keyManager: targetKeyManager,
           messageCap: 5,
@@ -648,7 +677,7 @@ describe('VaultManager', () => {
         keyManager: keyManager,
         vaultsPath: path.join(targetDataDir, 'vaults'),
         vaultsKey: targetVaultKey,
-        nodeManager: targetNodeManager,
+        nodeConnectionManager: targetNodeConnectionManager,
         db: targetDb,
         acl: targetACL,
         gestaltGraph: targetGestaltGraph,
@@ -659,8 +688,10 @@ describe('VaultManager', () => {
         keyManager: targetKeyManager,
         vaultManager: targetVaultManager,
         nodeManager: targetNodeManager,
+        nodeGraph: targetNodeGraph,
         sigchain: targetSigchain,
         notificationsManager: targetNotificationsManager,
+        nodeConnectionManager,
       });
       targetAgentServer = new GRPCServer({
         logger: logger,
@@ -712,15 +743,27 @@ describe('VaultManager', () => {
         db: altDb,
         logger: logger,
       });
-      altNodeManager = await NodeManager.createNodeManager({
+      altNodeGraph = await NodeGraph.createNodeGraph({
         db: altDb,
-        sigchain: altSigchain,
         keyManager: altKeyManager,
+        logger: logger,
+      });
+      altNodeConnectionManager = new NodeConnectionManager({
+        keyManager: altKeyManager,
+        nodeGraph: altNodeGraph,
         fwdProxy: altFwdProxy,
         revProxy: altRevProxy,
         logger: logger,
       });
-      await altNodeManager.start();
+      await altNodeConnectionManager.start();
+      altNodeManager = new NodeManager({
+        db: altDb,
+        sigchain: altSigchain,
+        keyManager: altKeyManager,
+        nodeGraph: nodeGraph,
+        nodeConnectionManager: altNodeConnectionManager,
+        logger: logger,
+      });
       altACL = await ACL.createACL({
         db: altDb,
         logger: logger,
@@ -729,6 +772,7 @@ describe('VaultManager', () => {
         await NotificationsManager.createNotificationsManager({
           acl: altACL,
           db: altDb,
+          nodeConnectionManager: altNodeConnectionManager,
           nodeManager: altNodeManager,
           keyManager: altKeyManager,
           messageCap: 5,
@@ -745,7 +789,7 @@ describe('VaultManager', () => {
         keyManager: keyManager,
         vaultsPath: path.join(altDataDir, 'vaults'),
         vaultsKey: altVaultKey,
-        nodeManager: altNodeManager,
+        nodeConnectionManager: altNodeConnectionManager,
         db: altDb,
         acl: altACL,
         gestaltGraph: altGestaltGraph,
@@ -755,8 +799,10 @@ describe('VaultManager', () => {
         keyManager: altKeyManager,
         vaultManager: altVaultManager,
         nodeManager: altNodeManager,
+        nodeGraph: altNodeGraph,
         sigchain: altSigchain,
         notificationsManager: altNotificationsManager,
+        nodeConnectionManager,
       });
       altAgentServer = new GRPCServer({
         logger: logger,
@@ -803,7 +849,8 @@ describe('VaultManager', () => {
       await targetNotificationsManager.stop();
       await targetACL.stop();
       await targetDb.stop();
-      await targetNodeManager.stop();
+      await targetNodeConnectionManager.stop();
+      await targetNodeGraph.stop();
       await targetKeyManager.stop();
       await fs.promises.rm(targetDataDir, {
         force: true,
@@ -815,7 +862,8 @@ describe('VaultManager', () => {
       await altNotificationsManager.stop();
       await altACL.stop();
       await altDb.stop();
-      await altNodeManager.stop();
+      await altNodeConnectionManager.stop();
+      await altNodeGraph.stop();
       await altKeyManager.stop();
       await fs.promises.rm(altDataDir, {
         force: true,
@@ -848,7 +896,7 @@ describe('VaultManager', () => {
           host: targetHost,
           port: targetPort,
         } as NodeAddress);
-        await nodeManager.getConnectionToNode(targetNodeId);
+        await nodeConnectionManager.withConnF(targetNodeId, async () => {});
         await revProxy.openConnection(sourceHost, sourcePort);
         await vaultManager.cloneVault(targetNodeId, vault.vaultId);
         const vaultId = await vaultManager.getVaultId(vaultName);
@@ -888,6 +936,7 @@ describe('VaultManager', () => {
       },
       global.defaultTimeout * 2,
     );
+    //  TODO: what is this? do we need it?
     //   Test(
     //     'reject clone and pull ops when permissions are not set',
     //     async () => {

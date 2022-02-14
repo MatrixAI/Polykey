@@ -7,7 +7,7 @@ import type {
 import type { ACL } from '../acl';
 import type { DB, DBLevel } from '@matrixai/db';
 import type { KeyManager } from '../keys';
-import type { NodeManager } from '../nodes';
+import type { NodeManager, NodeConnectionManager } from '../nodes';
 import type { NodeId } from '../nodes/types';
 import Logger from '@matrixai/logger';
 import { IdInternal } from '@matrixai/id';
@@ -20,6 +20,7 @@ import { utils as idUtils } from '@matrixai/id';
 import * as notificationsUtils from './utils';
 import * as notificationsErrors from './errors';
 import { createNotificationIdGenerator } from './utils';
+import * as notificationsPB from '../proto/js/polykey/v1/notifications/notifications_pb';
 import { utils as nodesUtils } from '../nodes';
 
 const MESSAGE_COUNT_KEY = 'numMessages';
@@ -38,6 +39,7 @@ class NotificationsManager {
   protected db: DB;
   protected keyManager: KeyManager;
   protected nodeManager: NodeManager;
+  protected nodeConnectionManager: NodeConnectionManager;
 
   protected messageCap: number;
 
@@ -56,6 +58,7 @@ class NotificationsManager {
   static async createNotificationsManager({
     acl,
     db,
+    nodeConnectionManager,
     nodeManager,
     keyManager,
     messageCap = 10000,
@@ -64,6 +67,7 @@ class NotificationsManager {
   }: {
     acl: ACL;
     db: DB;
+    nodeConnectionManager: NodeConnectionManager;
     nodeManager: NodeManager;
     keyManager: KeyManager;
     messageCap?: number;
@@ -77,6 +81,7 @@ class NotificationsManager {
       keyManager,
       logger,
       messageCap,
+      nodeConnectionManager,
       nodeManager,
     });
 
@@ -88,6 +93,7 @@ class NotificationsManager {
   constructor({
     acl,
     db,
+    nodeConnectionManager,
     nodeManager,
     keyManager,
     messageCap,
@@ -95,6 +101,7 @@ class NotificationsManager {
   }: {
     acl: ACL;
     db: DB;
+    nodeConnectionManager: NodeConnectionManager;
     nodeManager: NodeManager;
     keyManager: KeyManager;
     messageCap: number;
@@ -105,6 +112,7 @@ class NotificationsManager {
     this.acl = acl;
     this.db = db;
     this.keyManager = keyManager;
+    this.nodeConnectionManager = nodeConnectionManager;
     this.nodeManager = nodeManager;
   }
 
@@ -190,14 +198,19 @@ class NotificationsManager {
   public async sendNotification(nodeId: NodeId, data: NotificationData) {
     const notification = {
       data: data,
-      senderId: nodesUtils.encodeNodeId(this.nodeManager.getNodeId()),
+      senderId: nodesUtils.encodeNodeId(this.keyManager.getNodeId()),
       isRead: false,
     };
     const signedNotification = await notificationsUtils.signNotification(
       notification,
       this.keyManager.getRootKeyPairPem(),
     );
-    await this.nodeManager.sendNotification(nodeId, signedNotification);
+    const notificationMsg = new notificationsPB.AgentNotification();
+    notificationMsg.setContent(signedNotification);
+    await this.nodeConnectionManager.withConnF(nodeId, async (connection) => {
+      const client = connection.getClient();
+      await client.notificationsSend(notificationMsg);
+    });
   }
 
   /**

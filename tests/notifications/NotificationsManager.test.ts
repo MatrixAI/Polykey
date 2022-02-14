@@ -15,7 +15,7 @@ import { GRPCServer } from '@/grpc';
 import { KeyManager, utils as keysUtils } from '@/keys';
 import { VaultManager } from '@/vaults';
 import { GestaltGraph } from '@/gestalts';
-import { NodeManager } from '@/nodes';
+import { NodeConnectionManager, NodeGraph, NodeManager } from '@/nodes';
 import { NotificationsManager } from '@/notifications';
 import { ForwardProxy, ReverseProxy } from '@/network';
 import { AgentServiceService, createAgentService } from '@/agent';
@@ -40,15 +40,17 @@ describe('NotificationsManager', () => {
     new StreamHandler(),
   ]);
   const authToken = 'AUTH';
-  let fwdProxy: ForwardProxy;
-  let revProxy: ReverseProxy;
+  let senderFwdProxy: ForwardProxy;
+  let receiverRevProxy: ReverseProxy;
   let fwdTLSConfig: TLSConfig;
 
   let keysDataDir: string;
   let receiverDataDir: string;
   let receiverKeyManager: KeyManager;
   let receiverVaultManager: VaultManager;
+  let receiverNodeGraph: NodeGraph;
   let receiverNodeManager: NodeManager;
+  let receiverNodeConnectionManager: NodeConnectionManager;
   let receiverSigchain: Sigchain;
   let receiverACL: ACL;
   let receiverGestaltGraph: GestaltGraph;
@@ -60,6 +62,8 @@ describe('NotificationsManager', () => {
   let senderDb: DB;
   let senderACL: ACL;
   let senderSigchain: Sigchain;
+  let senderNodeGraph: NodeGraph;
+  let senderNodeConnectionManager: NodeConnectionManager;
   let senderNodeManager: NodeManager;
 
   let senderNodeId: NodeId, receiverNodeId: NodeId;
@@ -113,14 +117,6 @@ describe('NotificationsManager', () => {
       certChainPem: receiverCertPem,
     };
 
-    fwdProxy = new ForwardProxy({
-      authToken: authToken,
-      logger: logger,
-    });
-    revProxy = new ReverseProxy({
-      logger: logger,
-    });
-
     // Server setup
     const receiverVaultsPath = path.join(receiverDataDir, 'receiverVaults');
     const receiverDbPath = path.join(receiverDataDir, 'receiverDb');
@@ -156,18 +152,34 @@ describe('NotificationsManager', () => {
       authToken: '',
       logger: logger,
     });
-    receiverNodeManager = await NodeManager.createNodeManager({
+    receiverRevProxy = new ReverseProxy({
+      logger: logger,
+    });
+    receiverNodeGraph = await NodeGraph.createNodeGraph({
+      db: receiverDb,
+      keyManager: receiverKeyManager,
+      logger: logger,
+    });
+    receiverNodeConnectionManager = new NodeConnectionManager({
+      keyManager: receiverKeyManager,
+      nodeGraph: receiverNodeGraph,
+      fwdProxy: receiverFwdProxy,
+      revProxy: receiverRevProxy,
+      logger,
+    });
+    await receiverNodeConnectionManager.start();
+    receiverNodeManager = new NodeManager({
       db: receiverDb,
       sigchain: receiverSigchain,
       keyManager: receiverKeyManager,
-      fwdProxy: receiverFwdProxy,
-      revProxy: revProxy,
+      nodeGraph: receiverNodeGraph,
+      nodeConnectionManager: receiverNodeConnectionManager,
       logger: logger,
     });
     receiverVaultManager = await VaultManager.createVaultManager({
       keyManager: receiverKeyManager,
       vaultsPath: receiverVaultsPath,
-      nodeManager: receiverNodeManager,
+      nodeConnectionManager: receiverNodeConnectionManager,
       vaultsKey: receiverKeyManager.vaultKey,
       db: receiverDb,
       acl: receiverACL,
@@ -179,6 +191,7 @@ describe('NotificationsManager', () => {
       await NotificationsManager.createNotificationsManager({
         acl: receiverACL,
         db: receiverDb,
+        nodeConnectionManager: receiverNodeConnectionManager,
         nodeManager: receiverNodeManager,
         keyManager: receiverKeyManager,
         messageCap: 5,
@@ -186,13 +199,14 @@ describe('NotificationsManager', () => {
       });
     receiverNodeId = keysUtils.certNodeId(receiverKeyManager.getRootCert())!;
     await receiverGestaltGraph.setNode(node);
-    await receiverNodeManager.start();
 
     agentService = createAgentService({
       keyManager: receiverKeyManager,
       vaultManager: receiverVaultManager,
       nodeManager: receiverNodeManager,
+      nodeGraph: receiverNodeGraph,
       sigchain: receiverSigchain,
+      nodeConnectionManager: receiverNodeConnectionManager,
       notificationsManager: receiverNotificationsManager,
     });
     agentServer = new GRPCServer({
@@ -203,13 +217,13 @@ describe('NotificationsManager', () => {
       host: receiverHost,
     });
 
-    await revProxy.start({
+    await receiverRevProxy.start({
       serverHost: receiverHost,
       serverPort: agentServer.port,
       ingressHost: receiverHost,
       tlsConfig: revTLSConfig,
     });
-    receiverIngressPort = revProxy.getIngressPort();
+    receiverIngressPort = receiverRevProxy.getIngressPort();
   }, global.polykeyStartupTimeout * 2);
 
   beforeEach(async () => {
@@ -221,6 +235,10 @@ describe('NotificationsManager', () => {
     );
     // Won't be used so don't need to start
     const senderRevProxy = new ReverseProxy({
+      logger: logger,
+    });
+    senderFwdProxy = new ForwardProxy({
+      authToken: authToken,
       logger: logger,
     });
     senderDb = await DB.createDB({
@@ -241,25 +259,37 @@ describe('NotificationsManager', () => {
       db: senderDb,
       logger,
     });
-    senderNodeManager = await NodeManager.createNodeManager({
+    senderNodeGraph = await NodeGraph.createNodeGraph({
+      db: senderDb,
+      keyManager: senderKeyManager,
+      logger,
+    });
+    senderNodeConnectionManager = new NodeConnectionManager({
+      keyManager: senderKeyManager,
+      nodeGraph: senderNodeGraph,
+      fwdProxy: senderFwdProxy,
+      revProxy: senderRevProxy,
+      logger,
+    });
+    await senderNodeConnectionManager.start();
+    senderNodeManager = new NodeManager({
       db: senderDb,
       sigchain: senderSigchain,
       keyManager: senderKeyManager,
-      fwdProxy,
-      revProxy: senderRevProxy,
+      nodeGraph: senderNodeGraph,
+      nodeConnectionManager: senderNodeConnectionManager,
       logger,
     });
 
     await senderACL.stop();
-    await fwdProxy.start({
+    await senderFwdProxy.start({
       tlsConfig: fwdTLSConfig,
       proxyHost: senderHost,
       // ProxyPort: senderPort,
       egressHost: senderHost,
       // EgressPort: senderPort,
     });
-    await senderNodeManager.start();
-    await senderNodeManager.setNode(receiverNodeId, {
+    await senderNodeGraph.setNode(receiverNodeId, {
       host: receiverHost,
       port: receiverIngressPort,
     } as NodeAddress);
@@ -269,9 +299,10 @@ describe('NotificationsManager', () => {
   }, global.polykeyStartupTimeout * 2);
 
   afterEach(async () => {
-    await senderNodeManager.stop();
+    await senderNodeConnectionManager.stop();
+    await senderNodeGraph.stop();
     await senderACL.stop();
-    await fwdProxy.stop();
+    await senderFwdProxy.stop();
     await senderDb.stop();
     await fs.promises.rm(senderDataDir, {
       force: true,
@@ -285,10 +316,11 @@ describe('NotificationsManager', () => {
     await receiverSigchain.stop();
     await receiverGestaltGraph.stop();
     await receiverVaultManager.stop();
-    await receiverNodeManager.stop();
+    await receiverNodeConnectionManager.stop();
+    await receiverNodeGraph.stop();
     await receiverNotificationsManager.stop();
     await agentServer.stop();
-    await revProxy.stop();
+    await receiverRevProxy.stop();
     await receiverKeyManager.stop();
     await receiverDb.stop();
     await fs.promises.rm(receiverDataDir, {
@@ -302,6 +334,7 @@ describe('NotificationsManager', () => {
       await NotificationsManager.createNotificationsManager({
         acl: senderACL,
         db: senderDb,
+        nodeConnectionManager: senderNodeConnectionManager,
         nodeManager: senderNodeManager,
         keyManager: senderKeyManager,
         logger,
@@ -338,6 +371,7 @@ describe('NotificationsManager', () => {
       await NotificationsManager.createNotificationsManager({
         acl: senderACL,
         db: senderDb,
+        nodeConnectionManager: senderNodeConnectionManager,
         nodeManager: senderNodeManager,
         keyManager: senderKeyManager,
         logger,
@@ -370,6 +404,7 @@ describe('NotificationsManager', () => {
       await NotificationsManager.createNotificationsManager({
         acl: senderACL,
         db: senderDb,
+        nodeConnectionManager: senderNodeConnectionManager,
         nodeManager: senderNodeManager,
         keyManager: senderKeyManager,
         logger,
@@ -399,6 +434,7 @@ describe('NotificationsManager', () => {
       await NotificationsManager.createNotificationsManager({
         acl: senderACL,
         db: senderDb,
+        nodeConnectionManager: senderNodeConnectionManager,
         nodeManager: senderNodeManager,
         keyManager: senderKeyManager,
         logger,
@@ -448,6 +484,7 @@ describe('NotificationsManager', () => {
       await NotificationsManager.createNotificationsManager({
         acl: senderACL,
         db: senderDb,
+        nodeConnectionManager: senderNodeConnectionManager,
         nodeManager: senderNodeManager,
         keyManager: senderKeyManager,
         logger,
@@ -499,6 +536,7 @@ describe('NotificationsManager', () => {
       await NotificationsManager.createNotificationsManager({
         acl: senderACL,
         db: senderDb,
+        nodeConnectionManager: senderNodeConnectionManager,
         nodeManager: senderNodeManager,
         keyManager: senderKeyManager,
         logger,
@@ -519,7 +557,7 @@ describe('NotificationsManager', () => {
     );
     const notifs = await receiverNotificationsManager.readNotifications();
     expect(notifs[0].data).toEqual(notificationData);
-    expect(notifs[0].senderId).toEqual(senderNodeId);
+    expect(notifs[0].senderId).toEqual(nodesUtils.encodeNodeId(senderNodeId));
     expect(notifs[0].isRead).toBeTruthy();
 
     await senderNotificationsManager.stop();
@@ -530,6 +568,7 @@ describe('NotificationsManager', () => {
       await NotificationsManager.createNotificationsManager({
         acl: senderACL,
         db: senderDb,
+        nodeConnectionManager: senderNodeConnectionManager,
         nodeManager: senderNodeManager,
         keyManager: senderKeyManager,
         logger,
@@ -558,7 +597,7 @@ describe('NotificationsManager', () => {
     );
     const notifs = await receiverNotificationsManager.readNotifications();
     expect(notifs[0].data).toEqual(notificationData);
-    expect(notifs[0].senderId).toEqual(senderNodeId);
+    expect(notifs[0].senderId).toEqual(nodesUtils.encodeNodeId(senderNodeId));
     expect(notifs[0].isRead).toBeTruthy();
 
     await senderNotificationsManager.stop();

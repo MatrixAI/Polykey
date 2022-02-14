@@ -33,14 +33,16 @@ class GRPCClientAgent extends GRPCClient<AgentServiceClient> {
     tlsConfig,
     proxyConfig,
     timeout = Infinity,
+    destroyCallback = async () => {},
     logger = new Logger(this.name),
   }: {
     nodeId: NodeId;
     host: Host;
     port: Port;
-    proxyConfig?: ProxyConfig;
     tlsConfig?: Partial<TLSConfig>;
+    proxyConfig?: ProxyConfig;
     timeout?: number;
+    destroyCallback?: () => Promise<void>;
     logger?: Logger;
   }): Promise<GRPCClientAgent> {
     const { client, serverCertChain, flowCountInterceptor } =
@@ -63,6 +65,7 @@ class GRPCClientAgent extends GRPCClient<AgentServiceClient> {
       proxyConfig,
       serverCertChain,
       flowCountInterceptor,
+      destroyCallback,
       logger,
     });
     return grpcClientAgent;

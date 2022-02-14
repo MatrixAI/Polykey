@@ -12,8 +12,9 @@ import { KeyManager, utils as keyUtils } from '../keys';
 import { Sigchain } from '../sigchain';
 import { ACL } from '../acl';
 import { GestaltGraph } from '../gestalts';
-import { ForwardProxy, ReverseProxy } from '../network';
-import { NodeManager } from '../nodes';
+import ForwardProxy from '../network/ForwardProxy';
+import ReverseProxy from '../network/ReverseProxy';
+import { NodeConnectionManager, NodeGraph, NodeManager } from '../nodes';
 import { VaultManager } from '../vaults';
 import { NotificationsManager } from '../notifications';
 import { mkdirExists } from '../utils';
@@ -138,21 +139,33 @@ async function bootstrapState({
     const revProxy = new ReverseProxy({
       logger: logger.getChild(ReverseProxy.name),
     });
-    const nodeManager = await NodeManager.createNodeManager({
+    const nodeGraph = await NodeGraph.createNodeGraph({
       db,
+      fresh,
       keyManager,
-      sigchain,
+      logger: logger.getChild(NodeGraph.name),
+    });
+    const nodeConnectionManager = new NodeConnectionManager({
+      keyManager,
+      nodeGraph,
       fwdProxy,
       revProxy,
+      logger: logger.getChild(NodeConnectionManager.name),
+    });
+    const nodeManager = new NodeManager({
+      db,
+      keyManager,
+      nodeGraph,
+      nodeConnectionManager,
+      sigchain,
       logger: logger.getChild(NodeManager.name),
-      fresh,
     });
     const vaultManager = await VaultManager.createVaultManager({
       acl,
       db,
       gestaltGraph,
       keyManager,
-      nodeManager,
+      nodeConnectionManager,
       vaultsKey: keyManager.vaultKey,
       vaultsPath,
       logger: logger.getChild(VaultManager.name),
@@ -162,6 +175,7 @@ async function bootstrapState({
       await NotificationsManager.createNotificationsManager({
         acl,
         db,
+        nodeConnectionManager,
         nodeManager,
         keyManager,
         logger: logger.getChild(NotificationsManager.name),
@@ -178,7 +192,6 @@ async function bootstrapState({
     await sessionManager.stop();
     await notificationsManager.stop();
     await vaultManager.stop();
-    await nodeManager.stop();
     await gestaltGraph.stop();
     await acl.stop();
     await sigchain.stop();

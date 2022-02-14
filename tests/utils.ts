@@ -172,7 +172,6 @@ async function setupGlobalAgent(
 }
 
 function generateRandomNodeId(): NodeId {
-  // Make it easy to read with an identifier
   const random = keysUtils.getRandomBytesSync(16).toString('hex');
   return IdInternal.fromString<NodeId>(random);
 }

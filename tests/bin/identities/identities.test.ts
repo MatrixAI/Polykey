@@ -9,15 +9,10 @@ import { PolykeyAgent } from '@';
 import * as claimsUtils from '@/claims/utils';
 import * as identitiesUtils from '@/identities/utils';
 import { utils as nodesUtils } from '@/nodes';
+import * as keysUtils from '@/keys/utils';
 import * as testBinUtils from '../utils';
 import * as testNodesUtils from '../../nodes/utils';
 import TestProvider from '../../identities/TestProvider';
-
-jest.mock('@/keys/utils', () => ({
-  ...jest.requireActual('@/keys/utils'),
-  generateDeterministicKeyPair:
-    jest.requireActual('@/keys/utils').generateKeyPair,
-}));
 
 function identityString(
   providerId: ProviderId,
@@ -99,8 +94,17 @@ describe('CLI Identities', () => {
     return ['identities', ...options, '-np', nodePath];
   }
 
+  const mockedGenerateDeterministicKeyPair = jest.spyOn(
+    keysUtils,
+    'generateDeterministicKeyPair',
+  );
+
   // Setup and teardown
   beforeAll(async () => {
+    mockedGenerateDeterministicKeyPair.mockImplementation((bits, _) => {
+      return keysUtils.generateKeyPair(bits);
+    });
+
     // This handles the expensive setting up of the polykey agent.
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
@@ -114,7 +118,7 @@ describe('CLI Identities', () => {
       logger: logger,
     });
 
-    keynode.id = nodesUtils.encodeNodeId(polykeyAgent.nodeManager.getNodeId());
+    keynode.id = nodesUtils.encodeNodeId(polykeyAgent.keyManager.getNodeId());
 
     testProvider = new TestProvider();
     polykeyAgent.identitiesManager.registerProvider(testProvider);
@@ -680,13 +684,13 @@ describe('CLI Identities', () => {
       // Adding sigchain details.
       const claimBtoC: ClaimLinkNode = {
         type: 'node',
-        node1: nodesUtils.encodeNodeId(nodeB.nodeManager.getNodeId()),
-        node2: nodesUtils.encodeNodeId(nodeC.nodeManager.getNodeId()),
+        node1: nodesUtils.encodeNodeId(nodeB.keyManager.getNodeId()),
+        node2: nodesUtils.encodeNodeId(nodeC.keyManager.getNodeId()),
       };
       const claimCtoB: ClaimLinkNode = {
         type: 'node',
-        node1: nodesUtils.encodeNodeId(nodeC.nodeManager.getNodeId()),
-        node2: nodesUtils.encodeNodeId(nodeB.nodeManager.getNodeId()),
+        node1: nodesUtils.encodeNodeId(nodeC.keyManager.getNodeId()),
+        node2: nodesUtils.encodeNodeId(nodeB.keyManager.getNodeId()),
       };
       await nodeB.sigchain.addClaim(claimBtoC);
       await nodeB.sigchain.addClaim(claimCtoB);
@@ -700,7 +704,7 @@ describe('CLI Identities', () => {
 
       const claimIdentToB: ClaimLinkIdentity = {
         type: 'identity',
-        node: nodesUtils.encodeNodeId(nodeB.nodeManager.getNodeId()),
+        node: nodesUtils.encodeNodeId(nodeB.keyManager.getNodeId()),
         provider: testProvider.id,
         identity: identityId,
       };
@@ -738,7 +742,7 @@ describe('CLI Identities', () => {
         'discover',
         '-np',
         nodePath,
-        nodesUtils.encodeNodeId(nodeB.nodeManager.getNodeId()),
+        nodesUtils.encodeNodeId(nodeB.keyManager.getNodeId()),
         '-vvvv',
       ];
       const result = await testBinUtils.pkStdio(commands);
@@ -749,10 +753,10 @@ describe('CLI Identities', () => {
       expect(gestalt.length).not.toBe(0);
       const gestaltString = JSON.stringify(gestalt);
       expect(gestaltString).toContain(
-        nodesUtils.encodeNodeId(nodeB.nodeManager.getNodeId()),
+        nodesUtils.encodeNodeId(nodeB.keyManager.getNodeId()),
       );
       expect(gestaltString).toContain(
-        nodesUtils.encodeNodeId(nodeC.nodeManager.getNodeId()),
+        nodesUtils.encodeNodeId(nodeC.keyManager.getNodeId()),
       );
       expect(gestaltString).toContain(identityId);
       // Unauthenticate identity
@@ -782,10 +786,10 @@ describe('CLI Identities', () => {
       expect(gestalt.length).not.toBe(0);
       const gestaltString = JSON.stringify(gestalt);
       expect(gestaltString).toContain(
-        nodesUtils.encodeNodeId(nodeB.nodeManager.getNodeId()),
+        nodesUtils.encodeNodeId(nodeB.keyManager.getNodeId()),
       );
       expect(gestaltString).toContain(
-        nodesUtils.encodeNodeId(nodeC.nodeManager.getNodeId()),
+        nodesUtils.encodeNodeId(nodeC.keyManager.getNodeId()),
       );
       expect(gestaltString).toContain(identityId);
       // Unauthenticate identity

@@ -7,7 +7,7 @@ import { Metadata } from '@grpc/grpc-js';
 import { DB } from '@matrixai/db';
 import { KeyManager, utils as keysUtils } from '@/keys';
 import { GRPCServer } from '@/grpc';
-import { NodeManager } from '@/nodes';
+import { NodeConnectionManager, NodeGraph, NodeManager } from '@/nodes';
 import { Sigchain } from '@/sigchain';
 import { ForwardProxy, ReverseProxy } from '@/network';
 import {
@@ -46,6 +46,8 @@ describe('nodesAdd', () => {
   });
   const authToken = 'abc123';
   let dataDir: string;
+  let nodeGraph: NodeGraph;
+  let nodeConnectionManager: NodeConnectionManager;
   let nodeManager: NodeManager;
   let sigchain: Sigchain;
   let fwdProxy: ForwardProxy;
@@ -93,12 +95,27 @@ describe('nodesAdd', () => {
       keyManager,
       logger,
     });
-    nodeManager = await NodeManager.createNodeManager({
+    nodeGraph = await NodeGraph.createNodeGraph({
       db,
       keyManager,
-      sigchain,
+      logger: logger.getChild('NodeGraph'),
+    });
+    nodeConnectionManager = new NodeConnectionManager({
+      keyManager,
+      nodeGraph,
       fwdProxy,
       revProxy,
+      connConnectTime: 2000,
+      connTimeoutTime: 2000,
+      logger: logger.getChild('NodeConnectionManager'),
+    });
+    await nodeConnectionManager.start();
+    nodeManager = new NodeManager({
+      db,
+      keyManager,
+      nodeConnectionManager,
+      nodeGraph,
+      sigchain,
       logger,
     });
     const clientService = {
@@ -123,8 +140,8 @@ describe('nodesAdd', () => {
   afterEach(async () => {
     await grpcClient.destroy();
     await grpcServer.stop();
-    await nodeManager.stop();
-    await nodeManager.destroy();
+    await nodeGraph.stop();
+    await nodeConnectionManager.stop();
     await sigchain.stop();
     await revProxy.stop();
     await fwdProxy.stop();
@@ -147,7 +164,7 @@ describe('nodesAdd', () => {
       clientUtils.encodeAuthFromPassword(password),
     );
     expect(response).toBeInstanceOf(utilsPB.EmptyMessage);
-    const result = await nodeManager.getNode(
+    const result = await nodeGraph.getNode(
       nodesUtils.decodeNodeId(
         'vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0',
       )!,

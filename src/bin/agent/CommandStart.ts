@@ -174,12 +174,13 @@ class CommandStart extends CommandPolykey {
           agentConfig,
         };
         agentProcess.send(messageIn, (e) => {
-          if (e != null)
+          if (e != null) {
             rejectAgentProcessP(
               new binErrors.ErrorCLIPolykeyAgentProcess(
                 'Failed sending agent process message',
               ),
             );
+          }
         });
         await agentProcessP;
       } else {

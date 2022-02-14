@@ -1,9 +1,7 @@
-import type { NodeId, NodeAddress, NodeBucket, NodeData } from './types';
-import type { Host, Hostname, Port } from '../network/types';
 import type { DB, DBLevel, DBOp } from '@matrixai/db';
-import type { NodeConnection } from '../nodes';
-
-import type NodeManager from './NodeManager';
+import type { NodeId, NodeAddress, NodeBucket } from './types';
+import type KeyManager from '../keys/KeyManager';
+import type { Host, Hostname, Port } from '../network/types';
 import { Mutex } from 'async-mutex';
 import lexi from 'lexicographic-integer';
 import Logger from '@matrixai/logger';
@@ -25,16 +23,12 @@ interface NodeGraph extends CreateDestroyStartStop {}
   new nodesErrors.ErrorNodeGraphDestroyed(),
 )
 class NodeGraph {
-  // Internally, node ID is a 32 byte array
-  public readonly nodeIdBits: number = 256;
   // Max number of nodes in each k-bucket (a.k.a. k)
   public readonly maxNodesPerBucket: number = 20;
-  // Max parallel connections (a.k.a. alpha)
-  public readonly maxConcurrentNodeConnections: number = 3;
 
   protected logger: Logger;
   protected db: DB;
-  protected nodeManager: NodeManager;
+  protected keyManager: KeyManager;
   protected nodeGraphDbDomain: string = this.constructor.name;
   protected nodeGraphBucketsDbDomain: Array<string> = [
     this.nodeGraphDbDomain,
@@ -46,19 +40,19 @@ class NodeGraph {
 
   public static async createNodeGraph({
     db,
-    nodeManager,
+    keyManager,
     logger = new Logger(this.name),
     fresh = false,
   }: {
     db: DB;
-    nodeManager: NodeManager;
+    keyManager: KeyManager;
     logger?: Logger;
     fresh?: boolean;
   }): Promise<NodeGraph> {
     logger.info(`Creating ${this.name}`);
     const nodeGraph = new NodeGraph({
       db,
-      nodeManager,
+      keyManager,
       logger,
     });
     await nodeGraph.start({ fresh });
@@ -68,16 +62,16 @@ class NodeGraph {
 
   constructor({
     db,
-    nodeManager,
+    keyManager,
     logger,
   }: {
     db: DB;
-    nodeManager: NodeManager;
+    keyManager: KeyManager;
     logger: Logger;
   }) {
     this.logger = logger;
     this.db = db;
-    this.nodeManager = nodeManager;
+    this.keyManager = keyManager;
   }
 
   get locked(): boolean {
@@ -145,40 +139,10 @@ class NodeGraph {
   }
 
   /**
-   * Perform an initial database synchronisation: get the k closest nodes
-   * from each seed node and add them to this database
-   * For now, we also attempt to establish a connection to each of them.
-   * If these nodes are offline, this will impose a performance penalty,
-   * so we should investigate performing this in the background if possible.
-   * Alternatively, we can also just add the nodes to our database without
-   * establishing connection.
-   * This has been removed from start() as there's a chicken-egg scenario
-   * where we require the NodeGraph instance to be created in order to get
-   * connections.
+   * Retrieves the node Address
+   * @param nodeId node ID of the target node
+   * @returns Node Address of the target node
    */
-  public async syncNodeGraph() {
-    for (const [, conn] of await this.nodeManager.getConnectionsToSeedNodes()) {
-      const nodes = await conn.getClosestNodes(this.nodeManager.getNodeId());
-      for (const n of nodes) {
-        await this.setNode(n.id, n.address);
-        try {
-          await this.nodeManager.getConnectionToNode(n.id);
-        } catch (e) {
-          if (e instanceof nodesErrors.ErrorNodeConnectionTimeout) {
-            continue;
-          } else {
-            throw e;
-          }
-        }
-      }
-    }
-  }
-
-  @ready(new nodesErrors.ErrorNodeGraphNotRunning())
-  public getNodeId(): NodeId {
-    return this.nodeManager.getNodeId();
-  }
-
   @ready(new nodesErrors.ErrorNodeGraphNotRunning())
   public async getNode(nodeId: NodeId): Promise<NodeAddress | undefined> {
     return await this._transaction(async () => {
@@ -194,6 +158,21 @@ class NodeGraph {
     });
   }
 
+  /**
+   * Determines whether a node ID -> node address mapping exists in this node's
+   * node table.
+   * @param targetNodeId the node ID of the node to find
+   * @returns true if the node exists in the table, false otherwise
+   */
+  @ready(new nodesErrors.ErrorNodeGraphNotRunning())
+  public async knowsNode(targetNodeId: NodeId): Promise<boolean> {
+    return !!(await this.getNode(targetNodeId));
+  }
+
+  /**
+   * Returns the specified bucket if it exists
+   * @param bucketIndex
+   */
   @ready(new nodesErrors.ErrorNodeGraphNotRunning())
   public async getBucket(bucketIndex: number): Promise<NodeBucket | undefined> {
     return await this._transaction(async () => {
@@ -228,7 +207,7 @@ class NodeGraph {
     });
   }
 
-  public async setNodeOps(
+  protected async setNodeOps(
     nodeId: NodeId,
     nodeAddress: NodeAddress,
   ): Promise<Array<DBOp>> {
@@ -245,7 +224,7 @@ class NodeGraph {
       lastUpdated: new Date(),
     };
     // Perform the check on size after we add/update the node. If it's an update,
-    // then we don't need to perform the deletion.
+    // then we don't need to perform the deletion
     let bucketEntries = Object.entries(bucket);
     if (bucketEntries.length > this.maxNodesPerBucket) {
       const leastActive = bucketEntries.reduce((prev, curr) => {
@@ -286,7 +265,7 @@ class NodeGraph {
     });
   }
 
-  public async updateNodeOps(
+  protected async updateNodeOps(
     nodeId: NodeId,
     nodeAddress?: NodeAddress,
   ): Promise<Array<DBOp>> {
@@ -308,11 +287,15 @@ class NodeGraph {
         value: bucket,
       });
     } else {
-      throw new nodesErrors.ErrorNodeGraphNodeIdMissing();
+      throw new nodesErrors.ErrorNodeGraphNodeIdNotFound();
     }
     return ops;
   }
 
+  /**
+   * Removes a node from the bucket database
+   * @param nodeId
+   */
   @ready(new nodesErrors.ErrorNodeGraphNotRunning())
   public async unsetNode(nodeId: NodeId): Promise<void> {
     return await this._transaction(async () => {
@@ -321,7 +304,7 @@ class NodeGraph {
     });
   }
 
-  public async unsetNodeOps(nodeId: NodeId): Promise<Array<DBOp>> {
+  protected async unsetNodeOps(nodeId: NodeId): Promise<Array<DBOp>> {
     const bucketIndex = this.getBucketIndex(nodeId);
     const bucket = await this.db.get<NodeBucket>(
       this.nodeGraphBucketsDbDomain,
@@ -356,17 +339,15 @@ class NodeGraph {
    */
   protected getBucketIndex(nodeId: NodeId): string {
     const index = nodesUtils.calculateBucketIndex(
-      this.getNodeId(),
+      this.keyManager.getNodeId(),
       nodeId,
-      this.nodeIdBits,
     );
     return lexi.pack(index, 'hex') as string;
   }
 
-  // Ok so here is where we must start refactoring this
-
-  // this might be better to stream this directly to where it is being used
-  // cause the subsequent functions are using this
+  /**
+   * Returns all of the buckets in an array
+   */
   @ready(new nodesErrors.ErrorNodeGraphNotRunning())
   public async getAllBuckets(): Promise<Array<NodeBucket>> {
     return await this._transaction(async () => {
@@ -411,7 +392,7 @@ class NodeGraph {
       // 2. Re-add all the nodes from all buckets
       for (const b of buckets) {
         for (const n of Object.keys(b)) {
-          const nodeId: NodeId = IdInternal.fromString(n);
+          const nodeId = IdInternal.fromString<NodeId>(n);
           const newIndex = this.getBucketIndex(nodeId);
           let expectedBucket = tempBuckets[newIndex];
           // The following is more or less copied from setNodeOps
@@ -424,7 +405,7 @@ class NodeGraph {
             address: b[nodeId].address,
             lastUpdated: b[nodeId].lastUpdated,
           };
-          // If, with the old node added, we exceed the limit...
+          // If, with the old node added, we exceed the limit
           if (bucketEntries.length > this.maxNodesPerBucket) {
             // Then, with the old node added, find the least active and remove
             const leastActive = bucketEntries.reduce((prev, curr) => {
@@ -448,157 +429,6 @@ class NodeGraph {
       }
       await this.db.batch(ops);
     });
-  }
-
-  /**
-   * Finds the set of nodes (of size k) known by the current node (i.e. in its
-   * buckets database) that have the smallest distance to the target node (i.e.
-   * are closest to the target node).
-   * i.e. FIND_NODE RPC from Kademlia spec
-   *
-   * @param targetNodeId the node ID to find other nodes closest to it
-   * @param numClosest the number of closest nodes to return (by default, returns
-   * according to the maximum number of nodes per bucket)
-   * @returns a mapping containing exactly k nodeIds -> nodeAddresses (unless the
-   * current node has less than k nodes in all of its buckets, in which case it
-   * returns all nodes it has knowledge of)
-   */
-  @ready(new nodesErrors.ErrorNodeGraphNotRunning())
-  public async getClosestLocalNodes(
-    targetNodeId: NodeId,
-    numClosest: number = this.maxNodesPerBucket,
-  ): Promise<Array<NodeData>> {
-    // Retrieve all nodes from buckets in database
-    const buckets = await this.getAllBuckets();
-    // Iterate over all of the nodes in each bucket
-    const distanceToNodes: Array<NodeData> = [];
-    buckets.forEach(function (bucket) {
-      for (const nodeIdString of Object.keys(bucket)) {
-        const nodeId: NodeId = IdInternal.fromString(nodeIdString);
-        // Compute the distance from the node, and add it to the array.
-        distanceToNodes.push({
-          id: nodeId,
-          address: bucket[nodeId].address,
-          distance: nodesUtils.calculateDistance(nodeId, targetNodeId),
-        });
-      }
-    });
-    // Sort the array (based on the distance at index 1)
-    distanceToNodes.sort(nodesUtils.sortByDistance);
-    // Return the closest k nodes (i.e. the first k), or all nodes if < k in array
-    return distanceToNodes.slice(0, numClosest);
-  }
-
-  /**
-   * Attempts to locate a target node in the network (using Kademlia).
-   * Adds all discovered, active nodes to the current node's database (up to k
-   * discovered nodes).
-   * Once the target node is found, the method returns and stops trying to locate
-   * other nodes.
-   *
-   * Ultimately, attempts to perform a "DNS resolution" on the given target node
-   * ID (i.e. given a node ID, retrieves the node address, containing its IP and
-   * port).
-   * @param targetNodeId ID of the node attempting to be found (i.e. attempting
-   * to find its IP address and port)
-   * @returns whether the target node was located in the process
-   */
-  @ready(new nodesErrors.ErrorNodeGraphNotRunning())
-  public async getClosestGlobalNodes(
-    targetNodeId: NodeId,
-  ): Promise<NodeAddress | undefined> {
-    // Let foundTarget: boolean = false;
-    let foundAddress: NodeAddress | undefined = undefined;
-    // Get the closest alpha nodes to the target node (set as shortlist)
-    const shortlist: Array<NodeData> = await this.getClosestLocalNodes(
-      targetNodeId,
-      this.maxConcurrentNodeConnections,
-    );
-    // If we have no nodes at all in our database (even after synchronising),
-    // then we should throw an error. We aren't going to find any others.
-    if (shortlist.length === 0) {
-      throw new nodesErrors.ErrorNodeGraphEmptyDatabase();
-    }
-    // Need to keep track of the nodes that have been contacted.
-    // Not sufficient to simply check if there's already a pre-existing connection
-    // in nodeConnections - what if there's been more than 1 invocation of
-    // getClosestGlobalNodes()?
-    const contacted: { [nodeId: string]: boolean } = {};
-    // Iterate until we've found found and contacted k nodes
-    while (Object.keys(contacted).length <= this.maxNodesPerBucket) {
-      // While (!foundTarget) {
-      // Remove the node from the front of the array
-      const nextNode = shortlist.shift();
-      // If we have no nodes left in the shortlist, then stop
-      if (nextNode == null) {
-        break;
-      }
-      // Skip if the node has already been contacted
-      if (contacted[nextNode.id]) {
-        continue;
-      }
-      // Connect to the node (check if pre-existing connection exists, otherwise
-      // create a new one)
-      let nodeConnection: NodeConnection;
-      try {
-        // Add the node to the database so that we can find its address in
-        // call to getConnectionToNode
-        await this.setNode(nextNode.id, nextNode.address);
-        nodeConnection = await this.nodeManager.getConnectionToNode(
-          nextNode.id,
-        );
-      } catch (e) {
-        // If we can't connect to the node, then skip it.
-        continue;
-      }
-      contacted[nextNode.id] = true;
-      // Ask the node to get their own closest nodes to the target.
-      const foundClosest = await nodeConnection.getClosestNodes(targetNodeId);
-      // Check to see if any of these are the target node. At the same time, add
-      // them to the shortlist.
-      for (const nodeData of foundClosest) {
-        // Ignore any nodes that have been contacted
-        if (contacted[nodeData.id]) {
-          continue;
-        }
-        if (nodeData.id.equals(targetNodeId)) {
-          // FoundTarget = true;
-          // Attempt to create a connection to the node. Will throw an error
-          // (ErrorConnectionStart, from ConnectionForward) if the connection
-          // cannot be established
-
-          // TODO: For now, will simply add this target node without creating a
-          // connection to it.
-          // await this.nodeManager.createConnectionToNode(
-          //   nodeData.id,
-          //   nodeData.address,
-          // );
-          await this.setNode(nodeData.id, nodeData.address);
-          foundAddress = nodeData.address;
-          // We have found the target node, so we can stop trying to look for it
-          // in the shortlist.
-          break;
-        }
-        shortlist.push(nodeData);
-      }
-      // To make the number of jumps relatively short, should connect to the node/s
-      // closest to the target first, and ask if they know of any closer nodes.
-      // Then we can simply unshift the first (closest) element from the shortlist.
-      shortlist.sort(function (a: NodeData, b: NodeData) {
-        if (a.distance > b.distance) {
-          return 1;
-        } else if (a.distance < b.distance) {
-          return -1;
-        } else {
-          return 0;
-        }
-      });
-    }
-    return foundAddress;
-  }
-
-  public async clearDB() {
-    await this.nodeGraphDb.clear();
   }
 }
 

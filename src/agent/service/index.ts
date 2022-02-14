@@ -1,6 +1,10 @@
 import type { KeyManager } from '../../keys';
 import type { VaultManager } from '../../vaults';
-import type { NodeManager } from '../../nodes';
+import type {
+  NodeGraph,
+  NodeManager,
+  NodeConnectionManager,
+} from '../../nodes';
 import type { NotificationsManager } from '../../notifications';
 import type { Sigchain } from '../../sigchain';
 import type { IAgentServiceServer } from '../../proto/js/polykey/v1/agent_service_grpc_pb';
@@ -20,7 +24,9 @@ import { AgentServiceService } from '../../proto/js/polykey/v1/agent_service_grp
 function createService(container: {
   keyManager: KeyManager;
   vaultManager: VaultManager;
+  nodeConnectionManager: NodeConnectionManager;
   nodeManager: NodeManager;
+  nodeGraph: NodeGraph;
   notificationsManager: NotificationsManager;
   sigchain: Sigchain;
 }) {

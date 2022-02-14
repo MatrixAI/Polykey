@@ -49,6 +49,7 @@ type SignatureData = {
  * claim ID (representing the sequence number key of the claim).
  */
 type ClaimId = Opaque<'ClaimId', Id>;
+type ClaimIdString = Opaque<'ClaimIdString', string>;
 type ClaimIdEncoded = Opaque<'ClaimIdEncoded', string>;
 
 type ClaimIdGenerator = () => ClaimId;
@@ -104,6 +105,7 @@ export type {
   ClaimIntermediary,
   SignatureData,
   ClaimId,
+  ClaimIdString,
   ClaimIdEncoded,
   ClaimIdGenerator,
   ClaimEncoded,

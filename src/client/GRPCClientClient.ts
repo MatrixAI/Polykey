@@ -38,6 +38,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     proxyConfig,
     session,
     timeout = Infinity,
+    destroyCallback = async () => {},
     logger = new Logger(this.name),
   }: {
     nodeId: NodeId;
@@ -47,6 +48,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     proxyConfig?: ProxyConfig;
     session?: Session;
     timeout?: number;
+    destroyCallback?: () => Promise<void>;
     logger?: Logger;
   }): Promise<GRPCClientClient> {
     const interceptors: Array<Interceptor> = [];
@@ -74,6 +76,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
       proxyConfig,
       serverCertChain,
       flowCountInterceptor,
+      destroyCallback,
       logger,
     });
     return grpcClientClient;

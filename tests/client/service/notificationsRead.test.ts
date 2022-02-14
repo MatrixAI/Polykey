@@ -8,7 +8,12 @@ import { Metadata } from '@grpc/grpc-js';
 import { DB } from '@matrixai/db';
 import { KeyManager, utils as keysUtils } from '@/keys';
 import { GRPCServer } from '@/grpc';
-import { NodeManager, utils as nodesUtils } from '@/nodes';
+import {
+  NodeConnectionManager,
+  NodeGraph,
+  NodeManager,
+  utils as nodesUtils,
+} from '@/nodes';
 import { Sigchain } from '@/sigchain';
 import { ForwardProxy, ReverseProxy } from '@/network';
 import { NotificationsManager } from '@/notifications';
@@ -123,6 +128,8 @@ describe('notificationsRead', () => {
   });
   const authToken = 'abc123';
   let dataDir: string;
+  let nodeGraph: NodeGraph;
+  let nodeConnectionManager: NodeConnectionManager;
   let nodeManager: NodeManager;
   let notificationsManager: NotificationsManager;
   let acl: ACL;
@@ -176,18 +183,34 @@ describe('notificationsRead', () => {
       keyManager,
       logger,
     });
-    nodeManager = await NodeManager.createNodeManager({
+    nodeGraph = await NodeGraph.createNodeGraph({
       db,
       keyManager,
-      sigchain,
+      logger: logger.getChild('NodeGraph'),
+    });
+    nodeConnectionManager = new NodeConnectionManager({
+      keyManager,
+      nodeGraph,
       fwdProxy,
       revProxy,
+      connConnectTime: 2000,
+      connTimeoutTime: 2000,
+      logger: logger.getChild('NodeConnectionManager'),
+    });
+    await nodeConnectionManager.start();
+    nodeManager = new NodeManager({
+      db,
+      keyManager,
+      nodeGraph,
+      nodeConnectionManager,
+      sigchain,
       logger,
     });
     notificationsManager =
       await NotificationsManager.createNotificationsManager({
         acl,
         db,
+        nodeConnectionManager,
         nodeManager,
         keyManager,
         logger,
@@ -215,8 +238,9 @@ describe('notificationsRead', () => {
     await grpcClient.destroy();
     await grpcServer.stop();
     await notificationsManager.stop();
-    await nodeManager.stop();
     await sigchain.stop();
+    await nodeGraph.stop();
+    await nodeConnectionManager.stop();
     await revProxy.stop();
     await fwdProxy.stop();
     await acl.stop();

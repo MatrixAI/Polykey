@@ -1,69 +1,79 @@
-import { ErrorPolykey } from '../errors';
+import { ErrorPolykey, sysexits } from '../errors';
 
 class ErrorNodes extends ErrorPolykey {}
 
-class ErrorNodeManagerRunning extends ErrorNodes {}
-
-class ErrorNodeManagerNotRunning extends ErrorNodes {}
-
-class ErrorNodeManagerDestroyed extends ErrorNodes {}
-
-class ErrorNodeGraphRunning extends ErrorNodes {}
-
-class ErrorNodeGraphNotRunning extends ErrorNodes {}
-
-class ErrorNodeGraphDestroyed extends ErrorNodes {}
-
-// Cannot locate a node through getClosestGlobalNodes
-
-class ErrorNodeGraphNodeNotFound extends ErrorNodes {}
-
-class ErrorNodeGraphNodeIdMissing extends ErrorNodes {}
-
-class ErrorNodeGraphSelfConnect extends ErrorNodes {}
-
-class ErrorNodeGraphEmptyDatabase extends ErrorNodes {}
-
-class ErrorNodeGraphInvalidBucketIndex extends ErrorNodes {}
-
-class ErrorNodeConnectionRunning extends ErrorNodes {}
-
-class ErrorNodeConnectionNotRunning extends ErrorNodes {}
-class ErrorNodeGraphOversizedBucket extends ErrorNodes {
-  description: 'Bucket invalidly contains more nodes than capacity';
+class ErrorNodeGraphRunning extends ErrorNodes {
+  description = 'NodeGraph is running';
+  exitCode = sysexits.USAGE;
 }
 
-class ErrorNodeConnectionDestroyed extends ErrorNodes {}
+class ErrorNodeGraphNotRunning extends ErrorNodes {
+  description = 'NodeGraph is not running';
+  exitCode = sysexits.USAGE;
+}
+
+class ErrorNodeGraphDestroyed extends ErrorNodes {
+  description = 'NodeGraph is destroyed';
+  exitCode = sysexits.USAGE;
+}
+
+class ErrorNodeGraphNodeIdNotFound extends ErrorNodes {
+  description = 'Could not find NodeId';
+  exitCode = sysexits.NOUSER;
+}
+
+class ErrorNodeGraphEmptyDatabase extends ErrorNodes {
+  description = 'NodeGraph database was empty';
+  exitCode = sysexits.USAGE;
+}
+
+class ErrorNodeGraphOversizedBucket extends ErrorNodes {
+  description: 'Bucket invalidly contains more nodes than capacity';
+  exitCode = sysexits.USAGE;
+}
+
+class ErrorNodeGraphSameNodeId extends ErrorNodes {
+  description: 'NodeId must be different for valid bucket calculation';
+  exitCode = sysexits.USAGE;
+}
+
+class ErrorNodeConnectionDestroyed extends ErrorNodes {
+  description = 'NodeConnection is destroyed';
+  exitCode = sysexits.USAGE;
+}
 
 class ErrorNodeConnectionTimeout extends ErrorNodes {
   description: 'A node connection could not be established (timed out)';
+  exitCode = sysexits.UNAVAILABLE;
 }
 
-class ErrorNodeConnectionNotExist extends ErrorNodes {}
+class ErrorNodeConnectionInfoNotExist extends ErrorNodes {
+  description: 'NodeConnection info was not found';
+  exitCode = sysexits.UNAVAILABLE;
+}
 
-class ErrorNodeConnectionInfoNotExist extends ErrorNodes {}
+class ErrorNodeConnectionPublicKeyNotFound extends ErrorNodes {
+  description: 'Public key was not found';
+  exitCode = sysexits.UNAVAILABLE;
+}
 
-class ErrorNodeConnectionPublicKeyNotFound extends ErrorNodes {}
+class ErrorNodeConnectionManagerNotRunning extends ErrorNodes {
+  description = 'NodeConnectionManager is not running';
+  exitCode = sysexits.USAGE;
+}
 
 export {
   ErrorNodes,
-  ErrorNodeManagerRunning,
-  ErrorNodeManagerNotRunning,
-  ErrorNodeManagerDestroyed,
   ErrorNodeGraphRunning,
   ErrorNodeGraphNotRunning,
   ErrorNodeGraphDestroyed,
-  ErrorNodeGraphNodeNotFound,
-  ErrorNodeGraphNodeIdMissing,
-  ErrorNodeGraphSelfConnect,
+  ErrorNodeGraphNodeIdNotFound,
   ErrorNodeGraphEmptyDatabase,
-  ErrorNodeGraphInvalidBucketIndex,
-  ErrorNodeConnectionRunning,
-  ErrorNodeConnectionNotRunning,
   ErrorNodeGraphOversizedBucket,
+  ErrorNodeGraphSameNodeId,
   ErrorNodeConnectionDestroyed,
   ErrorNodeConnectionTimeout,
-  ErrorNodeConnectionNotExist,
   ErrorNodeConnectionInfoNotExist,
   ErrorNodeConnectionPublicKeyNotFound,
+  ErrorNodeConnectionManagerNotRunning,
 };

@@ -12,6 +12,7 @@ import * as grpc from '@grpc/grpc-js';
 import { utils as grpcUtils, errors as grpcErrors } from '@/grpc';
 import * as clientUtils from '@/client/utils';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
+import { sleep } from '@/utils';
 
 function createTestService({
   authenticate,
@@ -176,6 +177,46 @@ function createTestService({
         const message = new utilsPB.EchoMessage();
         message.setChallenge(challenge);
         callback(null, message);
+      }
+    },
+    serverStreamFail: async (
+      call: grpc.ServerWritableStream<utilsPB.EchoMessage, utilsPB.EchoMessage>,
+    ): Promise<void> => {
+      const genWritable = grpcUtils.generatorWritable(call);
+      try {
+        const echoMessage = new utilsPB.EchoMessage().setChallenge('Hello!');
+        for (let i = 0; i < 10; i++) {
+          await sleep(100);
+          await genWritable.write(echoMessage);
+        }
+        const message = call.request.getChallenge();
+        if (message === 'exit') process.exit(0);
+        if (message === 'kill') process.kill(process.pid);
+        if (message === 'sigkill') process.kill(process.pid, 9);
+        for (let i = 0; i < 10; i++) {
+          await sleep(100);
+          await genWritable.write(echoMessage);
+        }
+        await genWritable.write(null);
+      } catch (err) {
+        await genWritable.throw(err);
+      }
+    },
+    unaryFail: async (
+      call: grpc.ServerUnaryCall<utilsPB.EchoMessage, utilsPB.EchoMessage>,
+      callback: grpc.sendUnaryData<utilsPB.EchoMessage>,
+    ): Promise<void> => {
+      try {
+        // Wait a long time and then close the server.
+        await sleep(2000);
+        const message = call.request.getChallenge();
+        if (message === 'exit') process.exit(0);
+        if (message === 'kill') process.kill(process.pid);
+        if (message === 'sigkill') process.kill(process.pid, 9);
+        await sleep(2000);
+        callback(null, new utilsPB.EchoMessage().setChallenge('hello!'));
+      } catch (err) {
+        callback(grpcUtils.fromError(err));
       }
     },
   };

@@ -324,8 +324,9 @@ class VaultInternal {
       });
       this.workingDir = commit_;
     } catch (err) {
-      if (err.code === 'NotFoundError')
+      if (err.code === 'NotFoundError') {
         throw new vaultsErrors.ErrorVaultCommitUndefined();
+      }
       throw err;
     }
   }

@@ -24,6 +24,7 @@ import * as binUtils from './utils';
 import PolykeyAgent from '../PolykeyAgent';
 import { WorkerManager, utils as workersUtils } from '../workers';
 import ErrorPolykey from '../ErrorPolykey';
+import grpcSetLogger from '../grpc/utils/setLogger';
 import { promisify, promise } from '../utils';
 
 process.title = 'polykey-agent';
@@ -43,6 +44,8 @@ async function main(_argv = process.argv): Promise<number> {
   });
   const messageIn = await messageInP;
   logger.setLevel(messageIn.logLevel);
+  // Set the global upstream GRPC logger
+  grpcSetLogger(logger.getChild('grpc'));
   let pkAgent: PolykeyAgent;
   let workerManager: PolykeyWorkerManagerInterface;
   exitHandlers.handlers.push(async () => {
