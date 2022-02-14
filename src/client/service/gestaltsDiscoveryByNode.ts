@@ -3,9 +3,10 @@ import type { Authenticate } from '../types';
 import type { Discovery } from '../../discovery';
 import type { NodeId } from '../../nodes/types';
 import type * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
-import { utils as grpcUtils } from '../../grpc';
-import { validateSync, utils as validationUtils } from '../../validation';
+import { validateSync } from '../../validation';
 import { matchSync } from '../../utils';
+import * as grpcUtils from '../../grpc/utils';
+import * as validationUtils from '../../validation/utils';
 import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 
 function gestaltsDiscoveryByNode({
@@ -38,10 +39,7 @@ function gestaltsDiscoveryByNode({
           nodeId: call.request.getNodeId(),
         },
       );
-      const gen = discovery.discoverGestaltByNode(nodeId);
-      for await (const _ of gen) {
-        // Empty
-      }
+      await discovery.queueDiscoveryByNode(nodeId);
       callback(null, response);
       return;
     } catch (e) {

@@ -29,6 +29,57 @@ export namespace Provider {
     }
 }
 
+export class OptionalProvider extends jspb.Message { 
+
+    hasProviderId(): boolean;
+    clearProviderId(): void;
+    getProviderId(): string;
+    setProviderId(value: string): OptionalProvider;
+
+    getOptionalProviderIdCase(): OptionalProvider.OptionalProviderIdCase;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): OptionalProvider.AsObject;
+    static toObject(includeInstance: boolean, msg: OptionalProvider): OptionalProvider.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: OptionalProvider, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): OptionalProvider;
+    static deserializeBinaryFromReader(message: OptionalProvider, reader: jspb.BinaryReader): OptionalProvider;
+}
+
+export namespace OptionalProvider {
+    export type AsObject = {
+        providerId: string,
+    }
+
+    export enum OptionalProviderIdCase {
+        OPTIONAL_PROVIDER_ID_NOT_SET = 0,
+        PROVIDER_ID = 1,
+    }
+
+}
+
+export class Token extends jspb.Message { 
+    getToken(): string;
+    setToken(value: string): Token;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): Token.AsObject;
+    static toObject(includeInstance: boolean, msg: Token): Token.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: Token, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): Token;
+    static deserializeBinaryFromReader(message: Token, reader: jspb.BinaryReader): Token;
+}
+
+export namespace Token {
+    export type AsObject = {
+        token: string,
+    }
+}
+
 export class TokenSpecific extends jspb.Message { 
 
     hasProvider(): boolean;
@@ -51,26 +102,6 @@ export class TokenSpecific extends jspb.Message {
 export namespace TokenSpecific {
     export type AsObject = {
         provider?: Provider.AsObject,
-        token: string,
-    }
-}
-
-export class Token extends jspb.Message { 
-    getToken(): string;
-    setToken(value: string): Token;
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): Token.AsObject;
-    static toObject(includeInstance: boolean, msg: Token): Token.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: Token, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): Token;
-    static deserializeBinaryFromReader(message: Token, reader: jspb.BinaryReader): Token;
-}
-
-export namespace Token {
-    export type AsObject = {
         token: string,
     }
 }
@@ -183,14 +214,26 @@ export namespace AuthenticationResponse {
 
 export class ProviderSearch extends jspb.Message { 
 
-    hasProvider(): boolean;
-    clearProvider(): void;
-    getProvider(): Provider | undefined;
-    setProvider(value?: Provider): ProviderSearch;
+    hasAuthIdentityId(): boolean;
+    clearAuthIdentityId(): void;
+    getAuthIdentityId(): string;
+    setAuthIdentityId(value: string): ProviderSearch;
+    getIdentityId(): string;
+    setIdentityId(value: string): ProviderSearch;
+    getDisconnected(): boolean;
+    setDisconnected(value: boolean): ProviderSearch;
+    getLimit(): string;
+    setLimit(value: string): ProviderSearch;
     clearSearchTermList(): void;
     getSearchTermList(): Array<string>;
     setSearchTermList(value: Array<string>): ProviderSearch;
     addSearchTerm(value: string, index?: number): string;
+    clearProviderIdList(): void;
+    getProviderIdList(): Array<string>;
+    setProviderIdList(value: Array<string>): ProviderSearch;
+    addProviderId(value: string, index?: number): string;
+
+    getOptionalAuthIdentityIdCase(): ProviderSearch.OptionalAuthIdentityIdCase;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ProviderSearch.AsObject;
@@ -204,9 +247,19 @@ export class ProviderSearch extends jspb.Message {
 
 export namespace ProviderSearch {
     export type AsObject = {
-        provider?: Provider.AsObject,
+        authIdentityId: string,
+        identityId: string,
+        disconnected: boolean,
+        limit: string,
         searchTermList: Array<string>,
+        providerIdList: Array<string>,
     }
+
+    export enum OptionalAuthIdentityIdCase {
+        OPTIONAL_AUTH_IDENTITY_ID_NOT_SET = 0,
+        AUTH_IDENTITY_ID = 1,
+    }
+
 }
 
 export class Info extends jspb.Message { 

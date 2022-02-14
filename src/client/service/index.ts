@@ -33,10 +33,13 @@ import gestaltsDiscoveryByNode from './gestaltsDiscoveryByNode';
 import gestaltsGestaltGetByIdentity from './gestaltsGestaltGetByIdentity';
 import gestaltsGestaltGetByNode from './gestaltsGestaltGetByNode';
 import gestaltsGestaltList from './gestaltsGestaltList';
+import gestaltsGestaltTrustByIdentity from './gestaltsGestaltTrustByIdentity';
+import gestaltsGestaltTrustByNode from './gestaltsGestaltTrustByNode';
 import identitiesAuthenticate from './identitiesAuthenticate';
+import identitiesAuthenticatedGet from './identitiesAuthenticatedGet';
 import identitiesClaim from './identitiesClaim';
 import identitiesInfoGet from './identitiesInfoGet';
-import identitiesInfoGetConnected from './identitiesInfoGetConnected';
+import identitiesInfoConnectedGet from './identitiesInfoConnectedGet';
 import identitiesProvidersList from './identitiesProvidersList';
 import identitiesTokenDelete from './identitiesTokenDelete';
 import identitiesTokenGet from './identitiesTokenGet';
@@ -133,10 +136,13 @@ function createService({
     gestaltsGestaltGetByIdentity: gestaltsGestaltGetByIdentity(container),
     gestaltsGestaltGetByNode: gestaltsGestaltGetByNode(container),
     gestaltsGestaltList: gestaltsGestaltList(container),
+    gestaltsGestaltTrustByIdentity: gestaltsGestaltTrustByIdentity(container),
+    gestaltsGestaltTrustByNode: gestaltsGestaltTrustByNode(container),
     identitiesAuthenticate: identitiesAuthenticate(container),
+    identitiesAuthenticatedGet: identitiesAuthenticatedGet(container),
     identitiesClaim: identitiesClaim(container),
     identitiesInfoGet: identitiesInfoGet(container),
-    identitiesInfoGetConnected: identitiesInfoGetConnected(container),
+    identitiesInfoConnectedGet: identitiesInfoConnectedGet(container),
     identitiesProvidersList: identitiesProvidersList(container),
     identitiesTokenDelete: identitiesTokenDelete(container),
     identitiesTokenGet: identitiesTokenGet(container),

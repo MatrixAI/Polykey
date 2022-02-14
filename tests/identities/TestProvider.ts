@@ -4,18 +4,20 @@ import type {
   IdentityId,
   TokenData,
   IdentityData,
+  IdentityClaim,
+  IdentityClaimId,
   ProviderAuthenticateRequest,
 } from '@/identities/types';
 import type { Claim } from '@/claims/types';
-import type { IdentityClaim, IdentityClaimId } from '@/identities/types';
-
-import { Provider, errors as identitiesErrors } from '@/identities';
+import { Provider } from '@/identities';
+import * as identitiesUtils from '@/identities/utils';
+import * as identitiesErrors from '@/identities/errors';
 
 class TestProvider extends Provider {
-  public readonly id = 'test-provider' as ProviderId;
+  public readonly id: ProviderId;
 
   public linkIdCounter: number = 0;
-  protected users: Record<IdentityId | string, POJO>; // FIXME: the string union on VaultId is to prevent some false errors.
+  public users: Record<IdentityId | string, POJO>; // FIXME: the string union on VaultId is to prevent some false errors.
   public links: Record<IdentityClaimId | string, string>; // FIXME: the string union on VaultId is to prevent some false errors.
   protected userLinks: Record<
     IdentityId | string,
@@ -23,14 +25,13 @@ class TestProvider extends Provider {
   >; // FIXME: the string union on VaultId is to prevent some false errors.
   protected userTokens: Record<string, IdentityId>;
 
-  public constructor() {
+  public constructor(providerId: ProviderId = 'test-provider' as ProviderId) {
     super();
+    this.id = providerId;
     this.users = {
       test_user: {
         email: 'test_user@test.com',
-      },
-      test_user2: {
-        email: 'test_user2@test.com',
+        connected: ['connected_identity'],
       },
     };
     this.userTokens = {
@@ -91,12 +92,15 @@ class TestProvider extends Provider {
     return {
       providerId: this.id,
       identityId: identityId,
+      name: user.name ?? undefined,
       email: user.email ?? undefined,
+      url: user.url ?? undefined,
     };
   }
 
   public async *getConnectedIdentityDatas(
     authIdentityId: IdentityId,
+    searchTerms: Array<string> = [],
   ): AsyncGenerator<IdentityData> {
     let tokenData = await this.getToken(authIdentityId);
     if (!tokenData) {
@@ -106,16 +110,27 @@ class TestProvider extends Provider {
     }
     tokenData = await this.checkToken(tokenData, authIdentityId);
     for (const [k, v] of Object.entries(this.users) as Array<
-      [IdentityId, { email: string }]
+      [
+        IdentityId,
+        { name: string; email: string; url: string; connected: Array<string> },
+      ]
     >) {
       if (k === authIdentityId) {
         continue;
       }
-      yield {
+      if (!this.users[authIdentityId].connected.includes(k)) {
+        continue;
+      }
+      const data: IdentityData = {
         providerId: this.id,
         identityId: k,
+        name: v.name ?? undefined,
         email: v.email ?? undefined,
+        url: v.url ?? undefined,
       };
+      if (identitiesUtils.matchIdentityData(data, searchTerms)) {
+        yield data;
+      }
     }
     return;
   }
@@ -134,7 +149,10 @@ class TestProvider extends Provider {
     const linkId = this.linkIdCounter.toString() as IdentityClaimId;
     this.linkIdCounter++;
     this.links[linkId] = JSON.stringify(identityClaim);
-    const links = this.userLinks[authIdentityId] ?? [];
+    this.userLinks[authIdentityId] = this.userLinks[authIdentityId]
+      ? this.userLinks[authIdentityId]
+      : [];
+    const links = this.userLinks[authIdentityId];
     links.push(linkId);
     return {
       ...identityClaim,

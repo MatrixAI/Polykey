@@ -1,5 +1,6 @@
 import CommandAllow from './CommandAllow';
 import CommandAuthenticate from './CommandAuthenticate';
+import CommandAuthenticated from './CommandAuthenticated';
 import CommandClaim from './CommandClaim';
 import CommandDisallow from './CommandDisallow';
 import CommandDiscover from './CommandDiscover';
@@ -18,6 +19,7 @@ class CommandIdentities extends CommandPolykey {
     this.description('Identities Operations');
     this.addCommand(new CommandAllow(...args));
     this.addCommand(new CommandAuthenticate(...args));
+    this.addCommand(new CommandAuthenticated(...args));
     this.addCommand(new CommandClaim(...args));
     this.addCommand(new CommandDisallow(...args));
     this.addCommand(new CommandDiscover(...args));

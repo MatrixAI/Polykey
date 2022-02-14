@@ -3,18 +3,18 @@ import type {
   ProviderId,
   TokenData,
   IdentityData,
+  IdentityClaim,
+  IdentityClaimId,
   ProviderAuthenticateRequest,
 } from '../../types';
 import type { Claim } from '../../../claims/types';
-import type { IdentityClaim, IdentityClaimId } from '../../../identities/types';
-
 import { fetch, Request, Headers } from 'cross-fetch';
-import { Searcher } from 'fast-fuzzy';
 import cheerio from 'cheerio';
 import Logger from '@matrixai/logger';
-import { sleep } from '../../../utils';
 import Provider from '../../Provider';
 import * as identitiesErrors from '../../errors';
+import * as identitiesUtils from '../../utils';
+import { sleep } from '../../../utils';
 
 class GitHubProvider extends Provider {
   public readonly id = 'github.com' as ProviderId;
@@ -304,7 +304,10 @@ class GitHubProvider extends Provider {
           authIdentityId,
           item.login,
         );
-        if (identityData && this.matchIdentityData(identityData, searchTerms)) {
+        if (
+          identityData &&
+          identitiesUtils.matchIdentityData(identityData, searchTerms)
+        ) {
           yield identityData;
         }
       }
@@ -347,7 +350,10 @@ class GitHubProvider extends Provider {
           authIdentityId,
           item.login,
         );
-        if (identityData && this.matchIdentityData(identityData, searchTerms)) {
+        if (
+          identityData &&
+          identitiesUtils.matchIdentityData(identityData, searchTerms)
+        ) {
           yield identityData;
         }
       }
@@ -531,36 +537,6 @@ class GitHubProvider extends Provider {
       ...options,
       headers,
     }) as Request;
-  }
-
-  protected matchIdentityData(
-    identityData: IdentityData,
-    searchTerms: Array<string>,
-  ): boolean {
-    if (searchTerms.length < 1) {
-      return true;
-    }
-    const searcher = new Searcher([identityData], {
-      keySelector: (obj) => [
-        obj.identityId,
-        obj.name || '',
-        obj.email || '',
-        obj.url || '',
-      ],
-      threshold: 0.8,
-    });
-    let matched = false;
-    for (const searchTerm of searchTerms) {
-      if (searcher.search(searchTerm).length > 0) {
-        matched = true;
-        break;
-      }
-    }
-    if (matched) {
-      return true;
-    } else {
-      return false;
-    }
   }
 
   protected extractClaimIds(html: string): Array<IdentityClaimId> {

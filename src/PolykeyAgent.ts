@@ -2,7 +2,6 @@ import type { FileSystem } from './types';
 import type { PolykeyWorkerManagerInterface } from './workers/types';
 import type { Host, Port } from './network/types';
 import type { SeedNodes } from './nodes/types';
-
 import type { RootKeyPairChangeData } from './keys/types';
 import path from 'path';
 import process from 'process';
@@ -303,6 +302,7 @@ class PolykeyAgent {
       discovery =
         discovery ??
         (await Discovery.createDiscovery({
+          db,
           keyManager,
           gestaltGraph,
           identitiesManager,
@@ -358,7 +358,7 @@ class PolykeyAgent {
       await sessionManager?.stop();
       await notificationsManager?.stop();
       await vaultManager?.stop();
-      await discovery?.destroy();
+      await discovery?.stop();
       await revProxy?.stop();
       await fwdProxy?.stop();
       await gestaltGraph?.stop();
@@ -626,6 +626,7 @@ class PolykeyAgent {
       await this.nodeConnectionManager.start();
       await this.nodeGraph.start({ fresh });
       await this.nodeConnectionManager.syncNodeGraph();
+      await this.discovery.start({ fresh });
       await this.vaultManager.start({ fresh });
       await this.notificationsManager.start({ fresh });
       await this.sessionManager.start({ fresh });
@@ -644,7 +645,7 @@ class PolykeyAgent {
       await this.sessionManager?.stop();
       await this.notificationsManager?.stop();
       await this.vaultManager?.stop();
-      await this.discovery?.destroy();
+      await this.discovery?.stop();
       await this.revProxy?.stop();
       await this.fwdProxy?.stop();
       await this.grpcServerAgent?.stop();
@@ -671,9 +672,9 @@ class PolykeyAgent {
     await this.sessionManager.stop();
     await this.notificationsManager.stop();
     await this.vaultManager.stop();
-    await this.discovery.destroy();
     await this.nodeConnectionManager.stop();
     await this.nodeGraph.stop();
+    await this.discovery.stop();
     await this.revProxy.stop();
     await this.fwdProxy.stop();
     await this.grpcServerAgent.stop();
@@ -698,6 +699,7 @@ class PolykeyAgent {
     await this.notificationsManager.destroy();
     await this.vaultManager.destroy();
     await this.nodeGraph.destroy();
+    await this.discovery.destroy();
     await this.gestaltGraph.destroy();
     await this.acl.destroy();
     await this.sigchain.destroy();

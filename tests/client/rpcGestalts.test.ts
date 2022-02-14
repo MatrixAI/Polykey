@@ -3,22 +3,23 @@ import type { IdentitiesManager } from '@/identities';
 import type { GestaltGraph } from '@/gestalts';
 import type { IdentityId, IdentityInfo, ProviderId } from '@/identities/types';
 import type { NodeIdEncoded, NodeInfo } from '@/nodes/types';
-import type * as gestaltsPB from '@/proto/js/polykey/v1/gestalts/gestalts_pb';
+import type { Discovery } from '@/discovery';
 import type { ClientServiceClient } from '@/proto/js/polykey/v1/client_service_grpc_pb';
+import type * as gestaltsPB from '@/proto/js/polykey/v1/gestalts/gestalts_pb';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { PolykeyAgent } from '@';
+import { NodeManager } from '@/nodes';
+import { KeyManager } from '@/keys';
+import { ForwardProxy } from '@/network';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as nodesPB from '@/proto/js/polykey/v1/nodes/nodes_pb';
 import * as identitiesPB from '@/proto/js/polykey/v1/identities/identities_pb';
 import * as permissionsPB from '@/proto/js/polykey/v1/permissions/permissions_pb';
-import { KeyManager } from '@/keys';
-import { ForwardProxy } from '@/network';
 import * as grpcUtils from '@/grpc/utils';
 import * as gestaltsUtils from '@/gestalts/utils';
-import * as nodesErrors from '@/nodes/errors';
 import * as nodesUtils from '@/nodes/utils';
 import * as testUtils from './utils';
 import TestProvider from '../identities/TestProvider';
@@ -42,6 +43,7 @@ describe('Client service', () => {
   let keyManager: KeyManager;
   let gestaltGraph: GestaltGraph;
   let identitiesManager: IdentitiesManager;
+  let discovery: Discovery;
   let passwordFile: string;
   let callCredentials: grpc.Metadata;
 
@@ -104,6 +106,7 @@ describe('Client service', () => {
 
     gestaltGraph = pkAgent.gestaltGraph;
     identitiesManager = pkAgent.identitiesManager;
+    discovery = pkAgent.discovery;
 
     // Adding provider
     const testProvider = new TestProvider();
@@ -242,6 +245,10 @@ describe('Client service', () => {
     expect(jsonString).toContain(nodesUtils.encodeNodeId(nodeId2)); // Contains NodeId
   });
   test('should discover gestalt via Node.', async () => {
+    const mockedRequestChainData = jest
+      .spyOn(NodeManager.prototype, 'requestChainData')
+      .mockResolvedValue({});
+
     const gestaltsDiscoverNode =
       grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
         client,
@@ -250,12 +257,20 @@ describe('Client service', () => {
 
     const nodeMessage = new nodesPB.Node();
     nodeMessage.setNodeId(nodesUtils.encodeNodeId(nodeId2));
-    // I have no idea how to test this. so we just check for expected error for now
-    await expect(() =>
-      gestaltsDiscoverNode(nodeMessage, callCredentials),
-    ).rejects.toThrow(nodesErrors.ErrorNodeGraphEmptyDatabase);
+    expect(
+      await gestaltsDiscoverNode(nodeMessage, callCredentials),
+    ).toBeInstanceOf(utilsPB.EmptyMessage);
+
+    // Revert side-effects
+    await discovery.stop();
+    await discovery.start({ fresh: true });
+    mockedRequestChainData.mockRestore();
   });
   test('should discover gestalt via Identity.', async () => {
+    const mockedRequestChainData = jest
+      .spyOn(NodeManager.prototype, 'requestChainData')
+      .mockResolvedValue({});
+
     const gestaltsDiscoverIdentity =
       grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
         client,
@@ -271,10 +286,14 @@ describe('Client service', () => {
     const providerMessage = new identitiesPB.Provider();
     providerMessage.setProviderId(testToken.providerId);
     providerMessage.setIdentityId(testToken.identityId);
-    // Technically contains a node, but no other thing, will succeed with no results
     expect(
       await gestaltsDiscoverIdentity(providerMessage, callCredentials),
     ).toBeInstanceOf(utilsPB.EmptyMessage);
+
+    // Revert side-effects
+    await discovery.stop();
+    await discovery.start({ fresh: true });
+    mockedRequestChainData.mockRestore();
   });
   test('should get gestalt permissions by node.', async () => {
     const gestaltsGetActionsByNode =

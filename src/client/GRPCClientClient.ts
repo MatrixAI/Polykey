@@ -19,7 +19,8 @@ import Logger from '@matrixai/logger';
 import * as clientErrors from './errors';
 import * as clientUtils from './utils';
 import { ClientServiceClient } from '../proto/js/polykey/v1/client_service_grpc_pb';
-import { GRPCClient, utils as grpcUtils } from '../grpc';
+import { GRPCClient } from '../grpc';
+import * as grpcUtils from '../grpc/utils';
 
 interface GRPCClientClient extends CreateDestroy {}
 @CreateDestroy()
@@ -490,6 +491,22 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   }
 
   @ready(new clientErrors.ErrorClientClientDestroyed())
+  public gestaltsGestaltTrustByNode(...args) {
+    return grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
+      this.client,
+      this.client.gestaltsGestaltTrustByNode,
+    )(...args);
+  }
+
+  @ready(new clientErrors.ErrorClientClientDestroyed())
+  public gestaltsGestaltTrustByIdentity(...args) {
+    return grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
+      this.client,
+      this.client.gestaltsGestaltTrustByIdentity,
+    )(...args);
+  }
+
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public identitiesTokenPut(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
       this.client,
@@ -562,16 +579,16 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   }
 
   @ready(new clientErrors.ErrorClientClientDestroyed())
-  public identitiesInfoGetConnected(...args) {
+  public identitiesInfoConnectedGet(...args) {
     return grpcUtils.promisifyReadableStreamCall<identitiesPB.Info>(
       this.client,
-      this.client.identitiesInfoGetConnected,
+      this.client.identitiesInfoConnectedGet,
     )(...args);
   }
 
   @ready(new clientErrors.ErrorClientClientDestroyed())
   public identitiesInfoGet(...args) {
-    return grpcUtils.promisifyUnaryCall<identitiesPB.Provider>(
+    return grpcUtils.promisifyReadableStreamCall<identitiesPB.Info>(
       this.client,
       this.client.identitiesInfoGet,
     )(...args);
@@ -582,6 +599,14 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     return grpcUtils.promisifyUnaryCall<identitiesPB.Claim>(
       this.client,
       this.client.identitiesClaim,
+    )(...args);
+  }
+
+  @ready(new clientErrors.ErrorClientClientDestroyed())
+  public identitiesAuthenticatedGet(...args) {
+    return grpcUtils.promisifyReadableStreamCall<identitiesPB.Provider>(
+      this.client,
+      this.client.identitiesAuthenticatedGet,
     )(...args);
   }
 

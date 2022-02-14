@@ -1,4 +1,4 @@
-import type { Buffer } from 'buffer';
+import type { DB, DBLevel, DBOp } from '@matrixai/db';
 import type {
   Gestalt,
   GestaltAction,
@@ -10,10 +10,8 @@ import type {
 } from './types';
 import type { NodeId, NodeInfo } from '../nodes/types';
 import type { IdentityId, IdentityInfo, ProviderId } from '../identities/types';
-import type { Permission } from '../acl/types';
-import type { DB, DBLevel, DBOp } from '@matrixai/db';
 import type { ACL } from '../acl';
-
+import type { Permission } from '../acl/types';
 import { Mutex } from 'async-mutex';
 import Logger from '@matrixai/logger';
 import {
@@ -22,9 +20,9 @@ import {
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import * as gestaltsUtils from './utils';
 import * as gestaltsErrors from './errors';
-import { utils as aclUtils } from '../acl';
+import * as aclUtils from '../acl/utils';
 import * as utils from '../utils';
-import { utils as nodesUtils } from '../nodes';
+import * as nodesUtils from '../nodes/utils';
 
 interface GestaltGraph extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
@@ -156,12 +154,13 @@ class GestaltGraph {
       }
       const gestalts: Array<Gestalt> = [];
       let gestalt: Gestalt;
-      for (const [gK, gKs] of unvisited) {
+      for (const gKSet of unvisited) {
         gestalt = {
           matrix: {},
           nodes: {},
           identities: {},
         };
+        const gK = gKSet[0];
         const queue = [gK];
         while (true) {
           const vertex = queue.shift();
@@ -170,7 +169,11 @@ class GestaltGraph {
             break;
           }
           const gId = gestaltsUtils.ungestaltKey(vertex);
-          const vertexKeys = gKs;
+          const vertexKeys = unvisited.get(vertex);
+          if (vertexKeys == null) {
+            // This should not happen
+            break;
+          }
           gestalt.matrix[vertex] = vertexKeys;
           if (gId.type === 'node') {
             const nodeInfo = await this.db.get<NodeInfo>(

@@ -1,7 +1,9 @@
 import type PolykeyClient from '../../PolykeyClient';
+import type { IdentityId, ProviderId } from '../../identities/types';
 import CommandPolykey from '../CommandPolykey';
 import * as binOptions from '../utils/options';
 import * as binUtils from '../utils';
+import * as parsers from '../utils/parsers';
 import * as binProcessors from '../utils/processors';
 
 class CommandSearch extends CommandPolykey {
@@ -10,13 +12,37 @@ class CommandSearch extends CommandPolykey {
     this.name('search');
     this.description('Searches a Provider for any Connected Identities');
     this.argument(
-      '<providerId>',
-      'Name of the digital identity provider to search on',
+      '[searchTerms...]',
+      'Search parameters to apply to connected identities',
+    );
+    this.option(
+      '-pi, --provider-id [providerId...]',
+      'Digital identity provider(s) to search on',
+      parsers.parseProviderIdList,
+    );
+    this.option(
+      '-aii, --auth-identity-id, [authIdentityId]',
+      'Name of your own authenticated identity to find connected identities of',
+      parsers.parseIdentityId,
+    );
+    this.option(
+      '-ii, --identity-id [identityId]',
+      'Name of the digital identity to search for',
+      parsers.parseIdentityId,
+    );
+    this.option(
+      '-d, --disconnected',
+      'Include disconnected identities in search',
+    );
+    this.option(
+      '-l, --limit [number]',
+      'Limit the number of search results to display to a specific number',
+      parsers.parseInteger,
     );
     this.addOption(binOptions.nodeId);
     this.addOption(binOptions.clientHost);
     this.addOption(binOptions.clientPort);
-    this.action(async (providerId, options) => {
+    this.action(async (searchTerms, options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
       const identitiesPB = await import(
         '../../proto/js/polykey/v1/identities/identities_pb'
@@ -34,7 +60,11 @@ class CommandSearch extends CommandPolykey {
         this.fs,
       );
       let pkClient: PolykeyClient;
+      let genReadable: ReturnType<
+        typeof pkClient.grpcClient.identitiesInfoConnectedGet
+      >;
       this.exitHandlers.handlers.push(async () => {
+        if (genReadable != null) genReadable.stream.cancel();
         if (pkClient != null) await pkClient.stop();
       });
       try {
@@ -45,25 +75,49 @@ class CommandSearch extends CommandPolykey {
           port: clientOptions.clientPort,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-        const providerMessage = new identitiesPB.Provider();
-        providerMessage.setProviderId(providerId);
-        const res = await binUtils.retryAuthentication(
-          (auth) =>
-            pkClient.grpcClient.identitiesInfoGet(providerMessage, auth),
-          meta,
-        );
-        let output = '';
-        if (res.getIdentityId() && res.getProviderId()) {
-          output = `${res.getProviderId()}:${res.getIdentityId()}`;
-        } else {
-          this.logger.info('No Connected Identities found for Provider');
+        const providerSearchMessage = new identitiesPB.ProviderSearch();
+        providerSearchMessage.setSearchTermList(searchTerms);
+        if (options.providerId) {
+          providerSearchMessage.setProviderIdList(options.providerId);
         }
-        process.stdout.write(
-          binUtils.outputFormatter({
-            type: options.format === 'json' ? 'json' : 'list',
-            data: [output],
-          }),
-        );
+        if (options.authIdentityId) {
+          providerSearchMessage.setAuthIdentityId(options.authIdentityId);
+        }
+        if (options.disconnected) {
+          providerSearchMessage.setDisconnected(true);
+        }
+        if (options.limit) {
+          providerSearchMessage.setLimit(options.limit);
+        }
+        await binUtils.retryAuthentication(async (auth) => {
+          if (options.identity) {
+            providerSearchMessage.setIdentityId(options.identity);
+            genReadable = pkClient.grpcClient.identitiesInfoGet(
+              providerSearchMessage,
+              auth,
+            );
+          } else {
+            genReadable = pkClient.grpcClient.identitiesInfoConnectedGet(
+              providerSearchMessage,
+              auth,
+            );
+          }
+          for await (const val of genReadable) {
+            const output = {
+              providerId: val.getProvider()!.getProviderId() as ProviderId,
+              identityId: val.getProvider()!.getIdentityId() as IdentityId,
+              name: val.getName(),
+              email: val.getEmail(),
+              url: val.getUrl(),
+            };
+            process.stdout.write(
+              binUtils.outputFormatter({
+                type: options.format === 'json' ? 'json' : 'dict',
+                data: output,
+              }),
+            );
+          }
+        }, meta);
       } finally {
         if (pkClient! != null) await pkClient.stop();
       }

@@ -64,18 +64,21 @@ service ClientService {
 
   // Identities
   rpc IdentitiesAuthenticate(polykey.v1.identities.Provider) returns (stream polykey.v1.identities.AuthenticationProcess);
+  rpc IdentitiesAuthenticatedGet(polykey.v1.identities.OptionalProvider) returns (stream polykey.v1.identities.Provider);
   rpc IdentitiesTokenPut(polykey.v1.identities.TokenSpecific) returns (polykey.v1.utils.EmptyMessage);
   rpc IdentitiesTokenGet(polykey.v1.identities.Provider) returns (polykey.v1.identities.Token);
   rpc IdentitiesTokenDelete(polykey.v1.identities.Provider) returns (polykey.v1.utils.EmptyMessage);
   rpc IdentitiesProvidersList(polykey.v1.utils.EmptyMessage) returns (polykey.v1.identities.Provider);
-  rpc IdentitiesInfoGet(polykey.v1.identities.Provider) returns (polykey.v1.identities.Provider);
-  rpc IdentitiesInfoGetConnected(polykey.v1.identities.ProviderSearch) returns (stream polykey.v1.identities.Info);
+  rpc IdentitiesInfoGet(polykey.v1.identities.ProviderSearch) returns (stream polykey.v1.identities.Info);
+  rpc IdentitiesInfoConnectedGet(polykey.v1.identities.ProviderSearch) returns (stream polykey.v1.identities.Info);
   rpc IdentitiesClaim(polykey.v1.identities.Provider) returns (polykey.v1.identities.Claim);
 
   // Gestalts
   rpc GestaltsGestaltList(polykey.v1.utils.EmptyMessage) returns (stream polykey.v1.gestalts.Gestalt);
   rpc GestaltsGestaltGetByNode(polykey.v1.nodes.Node) returns (polykey.v1.gestalts.Graph);
   rpc GestaltsGestaltGetByIdentity(polykey.v1.identities.Provider) returns (polykey.v1.gestalts.Graph);
+  rpc GestaltsGestaltTrustByNode(polykey.v1.nodes.Node) returns (polykey.v1.utils.EmptyMessage);
+  rpc GestaltsGestaltTrustByIdentity(polykey.v1.identities.Provider) returns (polykey.v1.utils.EmptyMessage);
   rpc GestaltsDiscoveryByNode(polykey.v1.nodes.Node) returns (polykey.v1.utils.EmptyMessage);
   rpc GestaltsDiscoveryByIdentity(polykey.v1.identities.Provider) returns (polykey.v1.utils.EmptyMessage);
   rpc GestaltsActionsGetByNode(polykey.v1.nodes.Node) returns (polykey.v1.permissions.Actions);

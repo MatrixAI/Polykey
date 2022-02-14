@@ -1,26 +1,29 @@
 import type { ClaimLinkIdentity } from '@/claims/types';
 import type { IdentityId, ProviderId } from '@/identities/types';
 import type { Host, Port } from '@/network/types';
+import type { Gestalt } from '@/gestalts/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { destroyed } from '@matrixai/async-init';
 import { DB } from '@matrixai/db';
 import { PolykeyAgent } from '@';
-import { utils as claimsUtils } from '@/claims';
-import { Discovery, errors as discoveryErrors } from '@/discovery';
+import { Discovery } from '@/discovery';
 import { GestaltGraph } from '@/gestalts';
 import { IdentitiesManager } from '@/identities';
 import { NodeConnectionManager, NodeGraph, NodeManager } from '@/nodes';
-import { KeyManager, utils as keysUtils } from '@/keys';
+import { KeyManager } from '@/keys';
 import { ACL } from '@/acl';
 import { Sigchain } from '@/sigchain';
 import { ForwardProxy, ReverseProxy } from '@/network';
-import { utils as nodesUtils } from '@/nodes';
-import TestProvider from '../identities/TestProvider';
-import * as testUtils from '../utils';
+import { poll } from '@/utils';
+import * as nodesUtils from '@/nodes/utils';
+import * as claimsUtils from '@/claims/utils';
+import * as discoveryErrors from '@/discovery/errors';
+import * as keysUtils from '@/keys/utils';
 import * as testNodesUtils from '../nodes/utils';
+import * as testUtils from '../utils';
+import TestProvider from '../identities/TestProvider';
 
 describe('Discovery', () => {
   const password = 'password';
@@ -99,6 +102,11 @@ describe('Discovery', () => {
       logger: logger.getChild('identities'),
     });
     identitiesManager.registerProvider(testProvider);
+    await identitiesManager.putToken(
+      testToken.providerId,
+      testToken.identityId,
+      testToken.tokenData,
+    );
     sigchain = await Sigchain.createSigchain({
       db,
       keyManager,
@@ -174,6 +182,7 @@ describe('Discovery', () => {
     await nodeA.identitiesManager.putToken(testToken.providerId, identityId, {
       accessToken: 'def456',
     });
+    testProvider.users[identityId] = {};
     const identityClaim: ClaimLinkIdentity = {
       type: 'identity',
       node: nodesUtils.encodeNodeId(nodeB.keyManager.getNodeId()),
@@ -186,9 +195,11 @@ describe('Discovery', () => {
   }, global.maxTimeout);
   afterAll(async () => {
     await nodeA.stop();
+    await nodeA.destroy();
     await nodeB.stop();
-    await nodeGraph.stop();
+    await nodeB.destroy();
     await nodeConnectionManager.stop();
+    await nodeGraph.stop();
     await revProxy.stop();
     await fwdProxy.stop();
     await sigchain.stop();
@@ -206,6 +217,7 @@ describe('Discovery', () => {
   });
   test('discovery readiness', async () => {
     const discovery = await Discovery.createDiscovery({
+      db,
       keyManager,
       gestaltGraph,
       identitiesManager,
@@ -213,18 +225,22 @@ describe('Discovery', () => {
       sigchain,
       logger,
     });
-    expect(discovery[destroyed]).toBeFalsy();
+    await expect(discovery.destroy()).rejects.toThrow(
+      discoveryErrors.ErrorDiscoveryRunning,
+    );
+    await discovery.start();
+    await discovery.stop();
     await discovery.destroy();
-    expect(discovery[destroyed]).toBeTruthy();
-    expect(() => {
-      discovery.discoverGestaltByIdentity('' as ProviderId, '' as IdentityId);
-    }).toThrow(discoveryErrors.ErrorDiscoveryDestroyed);
-    expect(() => {
-      discovery.discoverGestaltByNode(testUtils.generateRandomNodeId());
-    }).toThrow(discoveryErrors.ErrorDiscoveryDestroyed);
+    await expect(
+      discovery.queueDiscoveryByIdentity('' as ProviderId, '' as IdentityId),
+    ).rejects.toThrow(discoveryErrors.ErrorDiscoveryNotRunning);
+    await expect(
+      discovery.queueDiscoveryByNode(testUtils.generateRandomNodeId()),
+    ).rejects.toThrow(discoveryErrors.ErrorDiscoveryNotRunning);
   });
   test('discovery by node', async () => {
     const discovery = await Discovery.createDiscovery({
+      db,
       keyManager,
       gestaltGraph,
       identitiesManager,
@@ -232,14 +248,34 @@ describe('Discovery', () => {
       sigchain,
       logger,
     });
-    const discoverProcess = discovery.discoverGestaltByNode(
-      nodeA.keyManager.getNodeId(),
+    await discovery.queueDiscoveryByNode(nodeA.keyManager.getNodeId());
+    const gestalt = await poll<Gestalt>(
+      async () => {
+        const gestalts = await poll<Array<Gestalt>>(
+          async () => {
+            return await gestaltGraph.getGestalts();
+          },
+          (_, result) => {
+            if (result.length === 1) return true;
+            return false;
+          },
+          100,
+        );
+        return gestalts[0];
+      },
+      (_, result) => {
+        if (result === undefined) return false;
+        if (Object.keys(result.matrix).length === 3) return true;
+        return false;
+      },
+      100,
     );
-    for await (const _step of discoverProcess) {
-      // Waiting for the discovery process to finish.
-    }
-    const gestalt = await gestaltGraph.getGestalts();
-    expect(gestalt.length).not.toBe(0);
+    const gestaltMatrix = gestalt.matrix;
+    const gestaltNodes = gestalt.nodes;
+    const gestaltIdentities = gestalt.identities;
+    expect(Object.keys(gestaltMatrix)).toHaveLength(3);
+    expect(Object.keys(gestaltNodes)).toHaveLength(2);
+    expect(Object.keys(gestaltIdentities)).toHaveLength(1);
     const gestaltString = JSON.stringify(gestalt);
     expect(gestaltString).toContain(
       nodesUtils.encodeNodeId(nodeA.keyManager.getNodeId()),
@@ -248,17 +284,16 @@ describe('Discovery', () => {
       nodesUtils.encodeNodeId(nodeB.keyManager.getNodeId()),
     );
     expect(gestaltString).toContain(identityId);
+    // Reverse side-effects
+    await gestaltGraph.unsetNode(nodeA.keyManager.getNodeId());
+    await gestaltGraph.unsetNode(nodeB.keyManager.getNodeId());
+    await gestaltGraph.unsetIdentity(testToken.providerId, identityId);
+    await discovery.stop();
     await discovery.destroy();
-    await gestaltGraph.stop();
-    await gestaltGraph.destroy();
-    gestaltGraph = await GestaltGraph.createGestaltGraph({
-      db,
-      acl,
-      logger,
-    });
   });
   test('discovery by identity', async () => {
     const discovery = await Discovery.createDiscovery({
+      db,
       keyManager,
       gestaltGraph,
       identitiesManager,
@@ -266,14 +301,34 @@ describe('Discovery', () => {
       sigchain,
       logger,
     });
-    const discoverProcess = discovery.discoverGestaltByNode(
-      nodeA.keyManager.getNodeId(),
+    await discovery.queueDiscoveryByIdentity(testToken.providerId, identityId);
+    const gestalt = await poll<Gestalt>(
+      async () => {
+        const gestalts = await poll<Array<Gestalt>>(
+          async () => {
+            return await gestaltGraph.getGestalts();
+          },
+          (_, result) => {
+            if (result.length === 1) return true;
+            return false;
+          },
+          100,
+        );
+        return gestalts[0];
+      },
+      (_, result) => {
+        if (result === undefined) return false;
+        if (Object.keys(result.matrix).length === 3) return true;
+        return false;
+      },
+      100,
     );
-    for await (const _step of discoverProcess) {
-      // Waiting for the discovery process to finish.
-    }
-    const gestalt = await gestaltGraph.getGestalts();
-    expect(gestalt.length).not.toBe(0);
+    const gestaltMatrix = gestalt.matrix;
+    const gestaltNodes = gestalt.nodes;
+    const gestaltIdentities = gestalt.identities;
+    expect(Object.keys(gestaltMatrix)).toHaveLength(3);
+    expect(Object.keys(gestaltNodes)).toHaveLength(2);
+    expect(Object.keys(gestaltIdentities)).toHaveLength(1);
     const gestaltString = JSON.stringify(gestalt);
     expect(gestaltString).toContain(
       nodesUtils.encodeNodeId(nodeA.keyManager.getNodeId()),
@@ -282,13 +337,177 @@ describe('Discovery', () => {
       nodesUtils.encodeNodeId(nodeB.keyManager.getNodeId()),
     );
     expect(gestaltString).toContain(identityId);
+    // Reverse side-effects
+    await gestaltGraph.unsetNode(nodeA.keyManager.getNodeId());
+    await gestaltGraph.unsetNode(nodeB.keyManager.getNodeId());
+    await gestaltGraph.unsetIdentity(testToken.providerId, identityId);
+    await discovery.stop();
     await discovery.destroy();
-    await gestaltGraph.stop();
-    await gestaltGraph.destroy();
-    gestaltGraph = await GestaltGraph.createGestaltGraph({
+  });
+  test('updates previously discovered gestalts', async () => {
+    const discovery = await Discovery.createDiscovery({
       db,
-      acl,
+      keyManager,
+      gestaltGraph,
+      identitiesManager,
+      nodeManager,
+      sigchain,
       logger,
     });
+    await discovery.queueDiscoveryByNode(nodeA.keyManager.getNodeId());
+    const gestalt1 = await poll<Gestalt>(
+      async () => {
+        const gestalts = await poll<Array<Gestalt>>(
+          async () => {
+            return await gestaltGraph.getGestalts();
+          },
+          (_, result) => {
+            if (result.length === 1) return true;
+            return false;
+          },
+          100,
+        );
+        return gestalts[0];
+      },
+      (_, result) => {
+        if (result === undefined) return false;
+        if (Object.keys(result.matrix).length === 3) return true;
+        return false;
+      },
+      100,
+    );
+    const gestaltMatrix1 = gestalt1.matrix;
+    const gestaltNodes1 = gestalt1.nodes;
+    const gestaltIdentities1 = gestalt1.identities;
+    expect(Object.keys(gestaltMatrix1)).toHaveLength(3);
+    expect(Object.keys(gestaltNodes1)).toHaveLength(2);
+    expect(Object.keys(gestaltIdentities1)).toHaveLength(1);
+    const gestaltString1 = JSON.stringify(gestalt1);
+    expect(gestaltString1).toContain(
+      nodesUtils.encodeNodeId(nodeA.keyManager.getNodeId()),
+    );
+    expect(gestaltString1).toContain(
+      nodesUtils.encodeNodeId(nodeB.keyManager.getNodeId()),
+    );
+    expect(gestaltString1).toContain(identityId);
+    // Add another linked identity
+    const identityId2 = 'other-gestalt2' as IdentityId;
+    await nodeA.identitiesManager.putToken(testToken.providerId, identityId2, {
+      accessToken: 'ghi789',
+    });
+    testProvider.users[identityId2] = {};
+    const identityClaim: ClaimLinkIdentity = {
+      type: 'identity',
+      node: nodesUtils.encodeNodeId(nodeA.keyManager.getNodeId()),
+      provider: testProvider.id,
+      identity: identityId2,
+    };
+    const [, claimEncoded] = await nodeA.sigchain.addClaim(identityClaim);
+    const claim = claimsUtils.decodeClaim(claimEncoded);
+    await testProvider.publishClaim(identityId2, claim);
+    // Note that eventually we would like to add in a system of revisiting
+    // already discovered vertices, however for now we must do this manually.
+    await discovery.queueDiscoveryByNode(nodeA.keyManager.getNodeId());
+    const gestalt2 = await poll<Gestalt>(
+      async () => {
+        const gestalts = await poll<Array<Gestalt>>(
+          async () => {
+            return await gestaltGraph.getGestalts();
+          },
+          (_, result) => {
+            if (result.length === 1) return true;
+            return false;
+          },
+          100,
+        );
+        return gestalts[0];
+      },
+      (_, result) => {
+        if (result === undefined) return false;
+        if (Object.keys(result.matrix).length === 4) return true;
+        return false;
+      },
+      100,
+    );
+    const gestaltMatrix2 = gestalt2.matrix;
+    const gestaltNodes2 = gestalt2.nodes;
+    const gestaltIdentities2 = gestalt2.identities;
+    expect(Object.keys(gestaltMatrix2)).toHaveLength(4);
+    expect(Object.keys(gestaltNodes2)).toHaveLength(2);
+    expect(Object.keys(gestaltIdentities2)).toHaveLength(2);
+    const gestaltString2 = JSON.stringify(gestalt2);
+    expect(gestaltString2).toContain(
+      nodesUtils.encodeNodeId(nodeA.keyManager.getNodeId()),
+    );
+    expect(gestaltString2).toContain(
+      nodesUtils.encodeNodeId(nodeB.keyManager.getNodeId()),
+    );
+    expect(gestaltString2).toContain(identityId);
+    expect(gestaltString2).toContain(identityId2);
+    // Reverse side-effects
+    await gestaltGraph.unsetNode(nodeA.keyManager.getNodeId());
+    await gestaltGraph.unsetNode(nodeB.keyManager.getNodeId());
+    await gestaltGraph.unsetIdentity(testToken.providerId, identityId);
+    await gestaltGraph.unsetIdentity(testToken.providerId, identityId2);
+    // Can just remove the user that the claim is for as this will cause the
+    // claim to be dropped during discovery
+    delete testProvider.users[identityId2];
+    await discovery.stop();
+    await discovery.destroy();
+  });
+  test('discovery persistence across restarts', async () => {
+    const discovery = await Discovery.createDiscovery({
+      db,
+      keyManager,
+      gestaltGraph,
+      identitiesManager,
+      nodeManager,
+      sigchain,
+      logger,
+    });
+    await discovery.queueDiscoveryByNode(nodeA.keyManager.getNodeId());
+    await discovery.stop();
+    await discovery.start();
+    const gestalt = await poll<Gestalt>(
+      async () => {
+        const gestalts = await poll<Array<Gestalt>>(
+          async () => {
+            return await gestaltGraph.getGestalts();
+          },
+          (_, result) => {
+            if (result.length === 1) return true;
+            return false;
+          },
+          100,
+        );
+        return gestalts[0];
+      },
+      (_, result) => {
+        if (result === undefined) return false;
+        if (Object.keys(result.matrix).length === 3) return true;
+        return false;
+      },
+      100,
+    );
+    const gestaltMatrix = gestalt.matrix;
+    const gestaltNodes = gestalt.nodes;
+    const gestaltIdentities = gestalt.identities;
+    expect(Object.keys(gestaltMatrix)).toHaveLength(3);
+    expect(Object.keys(gestaltNodes)).toHaveLength(2);
+    expect(Object.keys(gestaltIdentities)).toHaveLength(1);
+    const gestaltString = JSON.stringify(gestalt);
+    expect(gestaltString).toContain(
+      nodesUtils.encodeNodeId(nodeA.keyManager.getNodeId()),
+    );
+    expect(gestaltString).toContain(
+      nodesUtils.encodeNodeId(nodeB.keyManager.getNodeId()),
+    );
+    expect(gestaltString).toContain(identityId);
+    // Reverse side-effects
+    await gestaltGraph.unsetNode(nodeA.keyManager.getNodeId());
+    await gestaltGraph.unsetNode(nodeB.keyManager.getNodeId());
+    await gestaltGraph.unsetIdentity(testToken.providerId, identityId);
+    await discovery.stop();
+    await discovery.destroy();
   });
 });

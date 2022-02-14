@@ -6,14 +6,19 @@ message Provider {
   string provider_id = 1;
   string identity_id = 2;
 }
-
-message TokenSpecific {
-  Provider provider = 1;
-  string token = 2;
+message OptionalProvider {
+  oneof optional_provider_id {
+    string provider_id = 1;
+  }
 }
 
 message Token {
   string token = 1;
+}
+
+message TokenSpecific {
+  Provider provider = 1;
+  string token = 2;
 }
 
 message Claim {
@@ -38,8 +43,14 @@ message AuthenticationResponse {
 }
 
 message ProviderSearch {
-  Provider provider = 1;
-  repeated string search_term = 2;
+  oneof optional_auth_identity_id {
+    string auth_identity_id = 1;
+  }
+  string identity_id = 2;
+  bool disconnected = 3;
+  string limit = 4;
+  repeated string search_term = 5;
+  repeated string provider_id = 6;
 }
 
 message Info {

@@ -12,11 +12,10 @@ import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
-
 import { IdentitiesManager, providers } from '@/identities';
 import * as identitiesErrors from '@/identities/errors';
 import * as keysUtils from '@/keys/utils';
-import { utils as nodesUtils } from '@/nodes';
+import * as nodesUtils from '@/nodes/utils';
 import TestProvider from './TestProvider';
 import * as testUtils from '../utils';
 
@@ -208,6 +207,9 @@ describe('IdentitiesManager', () => {
     expect(identityData).toBeDefined();
     expect(identityData).toHaveProperty('providerId', testProvider.id);
     expect(identityData).toHaveProperty('identityId', identityId);
+    // Give the provider a connected identity to discover
+    testProvider.users['some-user'] = {};
+    testProvider.users[identityId].connected = ['some-user'];
     const identityDatas: Array<IdentityData> = [];
     for await (const identityData_ of testProvider.getConnectedIdentityDatas(
       identityId,
