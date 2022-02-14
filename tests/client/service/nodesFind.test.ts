@@ -17,6 +17,7 @@ import {
 } from '@/client';
 import nodesFind from '@/client/service/nodesFind';
 import * as nodesPB from '@/proto/js/polykey/v1/nodes/nodes_pb';
+import * as validationErrors from '@/validation/errors';
 import * as testUtils from '../../utils';
 
 describe('nodesFind', () => {
@@ -152,5 +153,15 @@ describe('nodesFind', () => {
     );
     expect(response.getAddress()!.getHost()).toBe('127.0.0.1');
     expect(response.getAddress()!.getPort()).toBe(11111);
+  });
+  test('cannot find an invalid node', async () => {
+    const request = new nodesPB.Node();
+    request.setNodeId('nodeId');
+    await expect(
+      grpcClient.nodesFind(
+        request,
+        clientUtils.encodeAuthFromPassword(password),
+      ),
+    ).rejects.toThrow(validationErrors.ErrorValidation);
   });
 });

@@ -16,6 +16,7 @@ import {
 import identitiesAuthenticate from '@/client/service/identitiesAuthenticate';
 import * as identitiesPB from '@/proto/js/polykey/v1/identities/identities_pb';
 import { utils as nodesUtils } from '@/nodes';
+import * as validationErrors from '@/validation/errors';
 import TestProvider from '../../identities/TestProvider';
 
 describe('identitiesAuthenticate', () => {
@@ -87,7 +88,6 @@ describe('identitiesAuthenticate', () => {
   test('authenticates identity', async () => {
     const request = new identitiesPB.Provider();
     request.setProviderId(testToken.providerId);
-    request.setIdentityId(testToken.identityId);
     const response = grpcClient.identitiesAuthenticate(
       request,
       clientUtils.encodeAuthFromPassword(password),
@@ -122,5 +122,17 @@ describe('identitiesAuthenticate', () => {
       testToken.providerId,
       testToken.identityId,
     );
+  });
+  test('cannot authenticate invalid provider', async () => {
+    const request = new identitiesPB.Provider();
+    request.setProviderId('');
+    await expect(
+      grpcClient
+        .identitiesAuthenticate(
+          request,
+          clientUtils.encodeAuthFromPassword(password),
+        )
+        .next(),
+    ).rejects.toThrow(validationErrors.ErrorValidation);
   });
 });

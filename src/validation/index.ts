@@ -41,13 +41,13 @@ async function validate(
     data = await parse_([], data, { undefined: data });
   } catch (e) {
     if (e instanceof validationErrors.ErrorParse) {
-      throw new validationErrors.ErrorValidation(errors);
+      throw validationErrors.ErrorValidation.createFromErrors(errors);
     } else {
       throw e;
     }
   }
   if (errors.length > 0) {
-    throw new validationErrors.ErrorValidation(errors);
+    throw validationErrors.ErrorValidation.createFromErrors(errors);
   }
   return data;
 }
@@ -88,13 +88,13 @@ function validateSync(
     data = parse_([], data, { undefined: data });
   } catch (e) {
     if (e instanceof validationErrors.ErrorParse) {
-      throw new validationErrors.ErrorValidation(errors);
+      throw validationErrors.ErrorValidation.createFromErrors(errors);
     } else {
       throw e;
     }
   }
   if (errors.length > 0) {
-    throw new validationErrors.ErrorValidation(errors);
+    throw validationErrors.ErrorValidation.createFromErrors(errors);
   }
   return data;
 }
