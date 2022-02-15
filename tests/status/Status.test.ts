@@ -12,15 +12,10 @@ describe('Status', () => {
   const logger = new Logger(`${Status.name} Test`, LogLevel.WARN, [
     new StreamHandler(),
   ]);
-  let dataDir: string;
-
   const nodeId1 = testUtils.generateRandomNodeId();
-  // Const nodeId1Encoded = nodesUtils.encodeNodeId(nodeId1);
   const nodeId2 = testUtils.generateRandomNodeId();
-  // Const nodeId2Encoded = nodesUtils.encodeNodeId(nodeId2);
   const nodeId3 = testUtils.generateRandomNodeId();
-  // Const nodeId3Encoded = nodesUtils.encodeNodeId(nodeId3);
-
+  let dataDir: string;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'status-test-'));
   });
@@ -69,6 +64,10 @@ describe('Status', () => {
       nodeId: nodeId1,
       clientHost: '::1' as Host,
       clientPort: 0 as Port,
+      agentHost: '::1' as Host,
+      agentPort: 0 as Port,
+      forwardHost: '::1' as Host,
+      forwardPort: 0 as Port,
       proxyHost: '::1' as Host,
       proxyPort: 0 as Port,
       grpcHost: 'localhost',
@@ -141,6 +140,10 @@ describe('Status', () => {
       nodeId: nodeId1,
       clientHost: '::1' as Host,
       clientPort: 0 as Port,
+      agentHost: '::1' as Host,
+      agentPort: 0 as Port,
+      forwardHost: '::1' as Host,
+      forwardPort: 0 as Port,
       proxyPort: 0 as Port,
       proxyHost: '::1' as Host,
       grpcHost: 'localhost',
@@ -205,12 +208,16 @@ describe('Status', () => {
     expect(statusInfoStarting!.status).toBe('STARTING');
     statusWaitFor = status.waitFor('LIVE');
     await status.finishStart({
+      pid: 0,
+      nodeId: nodeId3,
       clientHost: '' as Host,
       clientPort: 0 as Port,
+      agentHost: '::1' as Host,
+      agentPort: 0 as Port,
+      forwardHost: '::1' as Host,
+      forwardPort: 0 as Port,
       proxyHost: '' as Host,
       proxyPort: 0 as Port,
-      nodeId: nodeId3,
-      pid: 0,
     });
     const statusInfoLive = await statusWaitFor;
     expect(statusInfoLive!.status).toBe('LIVE');
@@ -252,6 +259,10 @@ describe('Status', () => {
         status.finishStart({
           clientHost: '' as Host,
           clientPort: 0 as Port,
+          agentHost: '::1' as Host,
+          agentPort: 0 as Port,
+          forwardHost: '::1' as Host,
+          forwardPort: 0 as Port,
           proxyHost: '127.0.0.1' as Host,
           proxyPort: 3425 as Port,
           nodeId: nodeId3,
@@ -264,6 +275,10 @@ describe('Status', () => {
         status.finishStart({
           clientHost: '' as Host,
           clientPort: 3445 as Port,
+          agentHost: '::1' as Host,
+          agentPort: 0 as Port,
+          forwardHost: '::1' as Host,
+          forwardPort: 0 as Port,
           proxyHost: '127.0.0.1' as Host,
           proxyPort: 0 as Port,
           nodeId: nodeId3,
@@ -276,6 +291,10 @@ describe('Status', () => {
         status.finishStart({
           clientHost: '' as Host,
           clientPort: 0 as Port,
+          agentHost: '::1' as Host,
+          agentPort: 0 as Port,
+          forwardHost: '::1' as Host,
+          forwardPort: 0 as Port,
           proxyHost: '127.0.0.1' as Host,
           proxyPort: 0 as Port,
           nodeId: nodeId3,
@@ -310,6 +329,10 @@ describe('Status', () => {
     const p1 = status.finishStart({
       clientHost: '' as Host,
       clientPort: 0 as Port,
+      agentHost: '::1' as Host,
+      agentPort: 0 as Port,
+      forwardHost: '::1' as Host,
+      forwardPort: 0 as Port,
       proxyHost: '127.0.0.1' as Host,
       proxyPort: 0 as Port,
       nodeId: nodeId3,

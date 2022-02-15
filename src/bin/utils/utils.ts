@@ -1,5 +1,4 @@
 import type { POJO } from '../../types';
-
 import process from 'process';
 import { LogLevel } from '@matrixai/logger';
 import * as grpc from '@grpc/grpc-js';
@@ -48,7 +47,11 @@ type OutputObject =
 function outputFormatter(msg: OutputObject): string {
   let output = '';
   if (msg.type === 'list') {
-    for (const elem in msg.data) {
+    for (let elem in msg.data) {
+      // Empty string for null or undefined values
+      if (elem == null) {
+        elem = '';
+      }
       output += `${msg.data[elem]}\n`;
     }
   } else if (msg.type === 'table') {
@@ -56,15 +59,29 @@ function outputFormatter(msg: OutputObject): string {
       output += `${key}\t`;
     }
     output = output.substring(0, output.length - 1) + `\n`;
-    for (const elem in msg.data) {
-      for (const key in msg.data[elem]) {
-        output += `${msg.data[elem][key]}\t`;
+    for (const row of msg.data) {
+      for (const key in row) {
+        let value = row[key];
+        // Empty string for null or undefined values
+        if (value == null) {
+          value = '';
+        }
+        value = value.toString();
+        // Remove the last line terminator if it exists
+        // This may exist if the value is multi-line string
+        value = value.replace(/(?:\r\n|\n)$/, '');
+        output += `${value}\t`;
       }
       output = output.substring(0, output.length - 1) + `\n`;
     }
   } else if (msg.type === 'dict') {
     for (const key in msg.data) {
-      let value = msg.data[key].toString();
+      let value = msg.data[key];
+      // Empty string for null or undefined values
+      if (value == null) {
+        value = '';
+      }
+      value = value.toString();
       // Remove the last line terminator if it exists
       // This may exist if the value is multi-line string
       value = value.replace(/(?:\r\n|\n)$/, '');

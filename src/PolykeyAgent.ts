@@ -2,7 +2,7 @@ import type { FileSystem } from './types';
 import type { PolykeyWorkerManagerInterface } from './workers/types';
 import type { Host, Port } from './network/types';
 import type { SeedNodes } from './nodes/types';
-import type { RootKeyPairChangeData } from './keys/types';
+import type { KeyManagerChangeData } from './keys/types';
 import path from 'path';
 import process from 'process';
 import Logger from '@matrixai/logger';
@@ -49,6 +49,16 @@ interface PolykeyAgent extends CreateDestroyStartStop {}
   new errors.ErrorPolykeyAgentDestroyed(),
 )
 class PolykeyAgent {
+  /**
+   * Event symbols
+   * These represent event topics
+   */
+  public static readonly eventSymbols = {
+    [KeyManager.name]: Symbol(KeyManager.name)
+  } as {
+    readonly KeyManager: unique symbol
+  };
+
   public static async createPolykeyAgent({
     // Required parameters
     password,
@@ -182,12 +192,10 @@ class PolykeyAgent {
           keysPath,
           password,
           fs,
-          rootKeyPairChange: async (keyPairData: RootKeyPairChangeData) => {
-            await events.emitAsync(
-              keysUtils.eventRootKeyPairChange,
-              keyPairData,
-            );
-          },
+          changeCallback: (data) => events.emitAsync(
+            PolykeyAgent.eventSymbols.KeyManager,
+            data
+          ),
           logger: logger.getChild(KeyManager.name),
           fresh,
         }));
@@ -284,8 +292,6 @@ class PolykeyAgent {
           nodeConnectionManager,
           logger: logger.getChild(NodeManager.name),
         });
-      // Discovery uses in-memory CreateDestroy pattern
-      // Therefore it should be destroyed during stop
       discovery =
         discovery ??
         (await Discovery.createDiscovery({
@@ -513,18 +519,22 @@ class PolykeyAgent {
         this.logger.error(msg);
         throw err;
       };
-      // Register handlers for root key pair propagation
+      // Register event handlers
       this.events.on(
-        keysUtils.eventRootKeyPairChange,
-        async (keyChangeData: RootKeyPairChangeData) => {
-          this.logger.info('Propagating root keypair change');
+        PolykeyAgent.eventSymbols.KeyManager,
+        async (data: KeyManagerChangeData) => {
+          this.logger.info(`${KeyManager.name} change propagating`);
           await this.status.updateStatusLive({
-            nodeId: keyChangeData.nodeId,
+            nodeId: data.nodeId
           });
           await this.nodeManager.refreshBuckets();
-          this.proxy.setTLSConfig(keyChangeData.tlsConfig);
-          this.grpcServerClient.setTLSConfig(keyChangeData.tlsConfig);
-          this.logger.info('Propagated root keypair change');
+          const tlsConfig = {
+            keyPrivatePem: keysUtils.privateKeyToPem(data.rootKeyPair.privateKey),
+            certChainPem: await this.keyManager.getRootCertChainPem()
+          };
+          this.grpcServerClient.setTLSConfig(tlsConfig);
+          this.proxy.setTLSConfig(tlsConfig);
+          this.logger.info(`${KeyManager.name} change propagated`);
         },
       );
       const networkConfig_ = {
@@ -613,6 +623,10 @@ class PolykeyAgent {
         nodeId: this.keyManager.getNodeId(),
         clientHost: this.grpcServerClient.getHost(),
         clientPort: this.grpcServerClient.getPort(),
+        agentHost: this.grpcServerAgent.getHost(),
+        agentPort: this.grpcServerClient.getPort(),
+        forwardHost: this.proxy.getForwardHost(),
+        forwardPort: this.proxy.getForwardPort(),
         proxyHost: this.proxy.getProxyHost(),
         proxyPort: this.proxy.getProxyPort(),
       });
@@ -635,7 +649,7 @@ class PolykeyAgent {
       await this.keyManager?.stop();
       await this.schema?.stop();
       await this.status?.stop({});
-      this.events.removeAllListeners(keysUtils.eventRootKeyPairChange);
+      this.events.removeAllListeners();
       throw e;
     }
   }
@@ -663,7 +677,7 @@ class PolykeyAgent {
     await this.keyManager.stop();
     await this.schema.stop();
     await this.status.stop({});
-    this.events.removeAllListeners(keysUtils.eventRootKeyPairChange);
+    this.events.removeAllListeners();
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 

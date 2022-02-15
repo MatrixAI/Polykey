@@ -75,7 +75,6 @@ class CommandStatus extends CommandPolykey {
         const forwardPort = response.getForwardPort();
         const rootPublicKeyPem = response.getRootPublicKeyPem();
         const rootCertPem = response.getRootCertPem();
-        const rootCertChainPem = response.getRootCertChainPem();
         process.stdout.write(
           binUtils.outputFormatter({
             type: options.format === 'json' ? 'json' : 'dict',
@@ -93,7 +92,6 @@ class CommandStatus extends CommandPolykey {
               forwardPort,
               rootPublicKeyPem,
               rootCertPem,
-              rootCertChainPem,
             },
           }),
         );

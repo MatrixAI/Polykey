@@ -5,13 +5,11 @@ import type {
   CertificatePem,
   CertificatePemChain,
   RecoveryCode,
-  RootKeyPairChangeData,
-  RootKeyPairChange,
+  KeyManagerChangeData,
 } from './types';
 import type { FileSystem } from '../types';
 import type { NodeId } from '../nodes/types';
 import type { PolykeyWorkerManagerInterface } from '../workers/types';
-
 import path from 'path';
 import { Buffer } from 'buffer';
 import Logger from '@matrixai/logger';
@@ -38,7 +36,7 @@ class KeyManager {
     rootKeyPairBits = 4096,
     rootCertDuration = 31536000,
     dbKeyBits = 256,
-    rootKeyPairChange = async () => {},
+    changeCallback = () => {},
     fs = require('fs'),
     logger = new Logger(this.name),
     recoveryCode,
@@ -49,7 +47,7 @@ class KeyManager {
     rootKeyPairBits?: number;
     rootCertDuration?: number;
     dbKeyBits?: number;
-    rootKeyPairChange?: RootKeyPairChange;
+    changeCallback?: (data: KeyManagerChangeData) => any;
     fs?: FileSystem;
     logger?: Logger;
     recoveryCode?: RecoveryCode;
@@ -62,7 +60,7 @@ class KeyManager {
       rootCertDuration,
       rootKeyPairBits,
       dbKeyBits,
-      rootKeyPairChange,
+      changeCallback,
       fs,
       logger,
     });
@@ -84,7 +82,6 @@ class KeyManager {
 
   protected fs: FileSystem;
   protected logger: Logger;
-  protected rootKeyPairChange: RootKeyPairChange;
   protected rootKeyPair: KeyPair;
   protected recoveryCode: RecoveryCode | undefined;
   protected _dbKey: Buffer;
@@ -93,13 +90,14 @@ class KeyManager {
   protected rootKeyPairBits: number;
   protected rootCertDuration: number;
   protected dbKeyBits: number;
+  protected changeCallback: (data: KeyManagerChangeData) => any;
 
   constructor({
     keysPath,
     rootKeyPairBits,
     rootCertDuration,
     dbKeyBits,
-    rootKeyPairChange,
+    changeCallback,
     fs,
     logger,
   }: {
@@ -107,7 +105,7 @@ class KeyManager {
     rootKeyPairBits: number;
     rootCertDuration: number;
     dbKeyBits: number;
-    rootKeyPairChange: RootKeyPairChange;
+    changeCallback: (data: KeyManagerChangeData) => any;
     fs: FileSystem;
     logger: Logger;
   }) {
@@ -121,7 +119,7 @@ class KeyManager {
     this.rootKeyPairBits = rootKeyPairBits;
     this.rootCertDuration = rootCertDuration;
     this.dbKeyBits = dbKeyBits;
-    this.rootKeyPairChange = rootKeyPairChange;
+    this.changeCallback = changeCallback;
     this.fs = fs;
   }
 
@@ -431,15 +429,13 @@ class KeyManager {
     this.rootKeyPair = rootKeyPair;
     this.recoveryCode = recoveryCodeNew;
     this.rootCert = rootCert;
-    // Update topic about key change
-    const data: RootKeyPairChangeData = {
+    // Call change callback with copies of changed data
+    await this.changeCallback({
       nodeId: this.getNodeId(),
-      tlsConfig: {
-        keyPrivatePem: this.getRootKeyPairPem().privateKey,
-        certChainPem: await this.getRootCertChainPem(),
-      },
-    };
-    await this.rootKeyPairChange(data);
+      rootKeyPair: this.getRootKeyPair(),
+      rootCert: this.getRootCert(),
+      recoveryCode: recoveryCodeNew,
+    });
   }
 
   /**
@@ -477,15 +473,13 @@ class KeyManager {
     this.rootKeyPair = rootKeyPair;
     this.recoveryCode = recoveryCodeNew;
     this.rootCert = rootCert;
-    // Update topic about key change
-    const data: RootKeyPairChangeData = {
+    // Call change callback with copies of changed data
+    await this.changeCallback({
       nodeId: this.getNodeId(),
-      tlsConfig: {
-        keyPrivatePem: this.getRootKeyPairPem().privateKey,
-        certChainPem: await this.getRootCertChainPem(),
-      },
-    };
-    await this.rootKeyPairChange(data);
+      rootKeyPair: this.getRootKeyPair(),
+      rootCert: this.getRootCert(),
+      recoveryCode: recoveryCodeNew,
+    });
   }
 
   /**
@@ -511,6 +505,12 @@ class KeyManager {
     await this.garbageCollectRootCerts(true);
     await this.writeRootCert(rootCert);
     this.rootCert = rootCert;
+    // Call change callback with copies of changed data
+    await this.changeCallback({
+      nodeId: this.getNodeId(),
+      rootKeyPair: this.getRootKeyPair(),
+      rootCert: this.getRootCert(),
+    });
   }
 
   @ready(new keysErrors.ErrorKeyManagerNotRunning())

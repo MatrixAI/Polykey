@@ -79,8 +79,7 @@ proto.polykey.v1.agent.InfoMessage.toObject = function(includeInstance, msg) {
     forwardHost: jspb.Message.getFieldWithDefault(msg, 11, ""),
     forwardPort: jspb.Message.getFieldWithDefault(msg, 12, 0),
     rootPublicKeyPem: jspb.Message.getFieldWithDefault(msg, 13, ""),
-    rootCertPem: jspb.Message.getFieldWithDefault(msg, 14, ""),
-    rootCertChainPem: jspb.Message.getFieldWithDefault(msg, 15, "")
+    rootCertPem: jspb.Message.getFieldWithDefault(msg, 14, "")
   };
 
   if (includeInstance) {
@@ -164,10 +163,6 @@ proto.polykey.v1.agent.InfoMessage.deserializeBinaryFromReader = function(msg, r
     case 14:
       var value = /** @type {string} */ (reader.readString());
       msg.setRootCertPem(value);
-      break;
-    case 15:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setRootCertChainPem(value);
       break;
     default:
       reader.skipField();
@@ -279,13 +274,6 @@ proto.polykey.v1.agent.InfoMessage.serializeBinaryToWriter = function(message, w
   if (f.length > 0) {
     writer.writeString(
       14,
-      f
-    );
-  }
-  f = message.getRootCertChainPem();
-  if (f.length > 0) {
-    writer.writeString(
-      15,
       f
     );
   }
@@ -505,24 +493,6 @@ proto.polykey.v1.agent.InfoMessage.prototype.getRootCertPem = function() {
  */
 proto.polykey.v1.agent.InfoMessage.prototype.setRootCertPem = function(value) {
   return jspb.Message.setProto3StringField(this, 14, value);
-};
-
-
-/**
- * optional string root_cert_chain_pem = 15;
- * @return {string}
- */
-proto.polykey.v1.agent.InfoMessage.prototype.getRootCertChainPem = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 15, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.polykey.v1.agent.InfoMessage} returns this
- */
-proto.polykey.v1.agent.InfoMessage.prototype.setRootCertChainPem = function(value) {
-  return jspb.Message.setProto3StringField(this, 15, value);
 };
 
 

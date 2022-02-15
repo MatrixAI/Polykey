@@ -20,8 +20,9 @@ import 'threads';
 process.removeAllListeners('SIGINT');
 process.removeAllListeners('SIGTERM');
 import Logger, { StreamHandler } from '@matrixai/logger';
-import * as binUtils from './utils';
 import PolykeyAgent from '../PolykeyAgent';
+import * as binUtils from './utils';
+import * as nodesUtils from '../nodes/utils';
 import { WorkerManager, utils as workersUtils } from '../workers';
 import ErrorPolykey from '../ErrorPolykey';
 import grpcSetLogger from '../grpc/utils/setLogger';
@@ -118,6 +119,18 @@ async function main(_argv = process.argv): Promise<number> {
   const messageOut: AgentChildProcessOutput = {
     status: 'SUCCESS',
     recoveryCode: pkAgent.keyManager.getRecoveryCode(),
+    pid: process.pid,
+    nodeId: nodesUtils.encodeNodeId(pkAgent.keyManager.getNodeId()),
+    clientHost: pkAgent.grpcServerClient.getHost(),
+    clientPort: pkAgent.grpcServerClient.getPort(),
+    agentHost: pkAgent.grpcServerAgent.getHost(),
+    agentPort: pkAgent.grpcServerAgent.getPort(),
+    proxyHost: pkAgent.fwdProxy.getProxyHost(),
+    proxyPort: pkAgent.fwdProxy.getProxyPort(),
+    egressHost: pkAgent.fwdProxy.getEgressHost(),
+    egressPort: pkAgent.fwdProxy.getEgressPort(),
+    ingressHost: pkAgent.revProxy.getIngressHost(),
+    ingressPort: pkAgent.revProxy.getIngressPort(),
   };
   try {
     await processSend(messageOut);

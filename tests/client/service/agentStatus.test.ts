@@ -122,15 +122,14 @@ describe('agentStatus', () => {
       nodeId: expect.any(String),
       clientHost: expect.any(String),
       clientPort: expect.any(Number),
-      proxyHost: expect.any(String),
-      proxyPort: expect.any(Number),
       agentHost: expect.any(String),
       agentPort: expect.any(Number),
       forwardHost: expect.any(String),
       forwardPort: expect.any(Number),
+      proxyHost: expect.any(String),
+      proxyPort: expect.any(Number),
       rootPublicKeyPem: expect.any(String),
       rootCertPem: expect.any(String),
-      rootCertChainPem: expect.any(String),
     });
   });
 });

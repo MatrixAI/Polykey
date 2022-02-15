@@ -8,8 +8,8 @@ import * as jestMockProps from 'jest-mock-props';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
 import Status from '@/status/Status';
-import config from '@/config';
 import * as statusErrors from '@/status/errors';
+import config from '@/config';
 import * as testBinUtils from '../utils';
 import * as testUtils from '../../utils';
 
@@ -46,6 +46,8 @@ describe('start', () => {
           '--workers',
           '0',
           '--verbose',
+          '--format',
+          'json'
         ],
         {
           PK_PASSWORD: password,
@@ -54,16 +56,31 @@ describe('start', () => {
         logger,
       );
       const rlOut = readline.createInterface(agentProcess.stdout!);
-      const recoveryCode = await new Promise<RecoveryCode>(
+      const stdout = await new Promise<string>(
         (resolve, reject) => {
           rlOut.once('line', resolve);
           rlOut.once('close', reject);
         },
       );
-      expect(typeof recoveryCode).toBe('string');
+      const statusLiveData = JSON.parse(stdout);
+      expect(statusLiveData).toMatchObject({
+        pid: agentProcess.pid,
+        nodeId: expect.any(String),
+        clientHost: expect.any(String),
+        clientPort: expect.any(Number),
+        ingressHost: expect.any(String),
+        ingressPort: expect.any(Number),
+        egressHost: expect.any(String),
+        egressPort: expect.any(Number),
+        agentHost: expect.any(String),
+        agentPort: expect.any(Number),
+        proxyHost: expect.any(String),
+        proxyPort: expect.any(Number),
+        recoveryCode: expect.any(String)
+      });
       expect(
-        recoveryCode.split(' ').length === 12 ||
-          recoveryCode.split(' ').length === 24,
+        statusLiveData.recoveryCode.split(' ').length === 12 ||
+          statusLiveData.recoveryCode.split(' ').length === 24,
       ).toBe(true);
       agentProcess.kill('SIGTERM');
       const [exitCode, signal] = await testBinUtils.processExit(agentProcess);
@@ -111,6 +128,8 @@ describe('start', () => {
           '--workers',
           '0',
           '--verbose',
+          '--format',
+          'json'
         ],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -132,16 +151,33 @@ describe('start', () => {
         });
       });
       const rlOut = readline.createInterface(agentProcess.stdout!);
-      const recoveryCode = await new Promise<RecoveryCode>(
+      const stdout = await new Promise<string>(
         (resolve, reject) => {
           rlOut.once('line', resolve);
           rlOut.once('close', reject);
         },
       );
-      expect(typeof recoveryCode).toBe('string');
+      const statusLiveData = JSON.parse(stdout);
+      expect(statusLiveData).toMatchObject({
+        pid: expect.any(Number),
+        nodeId: expect.any(String),
+        clientHost: expect.any(String),
+        clientPort: expect.any(Number),
+        ingressHost: expect.any(String),
+        ingressPort: expect.any(Number),
+        egressHost: expect.any(String),
+        egressPort: expect.any(Number),
+        agentHost: expect.any(String),
+        agentPort: expect.any(Number),
+        proxyHost: expect.any(String),
+        proxyPort: expect.any(Number),
+        recoveryCode: expect.any(String)
+      });
+      // The foreground process PID should nto be the background process PID
+      expect(statusLiveData.pid).not.toBe(agentProcess.pid);
       expect(
-        recoveryCode.split(' ').length === 12 ||
-          recoveryCode.split(' ').length === 24,
+        statusLiveData.recoveryCode.split(' ').length === 12 ||
+          statusLiveData.recoveryCode.split(' ').length === 24,
       ).toBe(true);
       await agentProcessExit;
       // Make sure that the daemon does output the recovery code
@@ -494,6 +530,8 @@ describe('start', () => {
           '0',
           '--fresh',
           '--verbose',
+          '--format',
+          'json'
         ],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -503,16 +541,31 @@ describe('start', () => {
         logger.getChild('agentProcess2'),
       );
       const rlOut = readline.createInterface(agentProcess2.stdout!);
-      const recoveryCode = await new Promise<RecoveryCode>(
+      const stdout = await new Promise<string>(
         (resolve, reject) => {
           rlOut.once('line', resolve);
           rlOut.once('close', reject);
         },
       );
-      expect(typeof recoveryCode).toBe('string');
+      const statusLiveData = JSON.parse(stdout);
+      expect(statusLiveData).toMatchObject({
+        pid: agentProcess2.pid,
+        nodeId: expect.any(String),
+        clientHost: expect.any(String),
+        clientPort: expect.any(Number),
+        ingressHost: expect.any(String),
+        ingressPort: expect.any(Number),
+        egressHost: expect.any(String),
+        egressPort: expect.any(Number),
+        agentHost: expect.any(String),
+        agentPort: expect.any(Number),
+        proxyHost: expect.any(String),
+        proxyPort: expect.any(Number),
+        recoveryCode: expect.any(String)
+      });
       expect(
-        recoveryCode.split(' ').length === 12 ||
-          recoveryCode.split(' ').length === 24,
+        statusLiveData.recoveryCode.split(' ').length === 12 ||
+          statusLiveData.recoveryCode.split(' ').length === 24,
       ).toBe(true);
       agentProcess2.kill('SIGQUIT');
       await testBinUtils.processExit(agentProcess2);
@@ -562,6 +615,8 @@ describe('start', () => {
           '--workers',
           '0',
           '--verbose',
+          '--format',
+          'json'
         ],
         {
           PK_PASSWORD: password1,
@@ -570,12 +625,14 @@ describe('start', () => {
         logger.getChild('agentProcess1'),
       );
       const rlOut = readline.createInterface(agentProcess1.stdout!);
-      const recoveryCode = await new Promise<RecoveryCode>(
+      const stdout = await new Promise<string>(
         (resolve, reject) => {
           rlOut.once('line', resolve);
           rlOut.once('close', reject);
         },
       );
+      const statusLiveData = JSON.parse(stdout);
+      const recoveryCode = statusLiveData.recoveryCode;
       const statusInfo1 = (await status.readStatus())!;
       agentProcess1.kill('SIGTERM');
       await testBinUtils.processExit(agentProcess1);

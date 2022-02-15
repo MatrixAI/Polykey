@@ -31,8 +31,6 @@ export class InfoMessage extends jspb.Message {
     setRootPublicKeyPem(value: string): InfoMessage;
     getRootCertPem(): string;
     setRootCertPem(value: string): InfoMessage;
-    getRootCertChainPem(): string;
-    setRootCertChainPem(value: string): InfoMessage;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): InfoMessage.AsObject;
@@ -58,6 +56,5 @@ export namespace InfoMessage {
         forwardPort: number,
         rootPublicKeyPem: string,
         rootCertPem: string,
-        rootCertChainPem: string,
     }
 }

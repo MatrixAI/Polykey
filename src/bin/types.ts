@@ -2,6 +2,12 @@ import type { LogLevel } from '@matrixai/logger';
 import type { POJO } from '../types';
 import type { RecoveryCode } from '../keys/types';
 import type { Host, Port } from '../network/types';
+import type { StatusLive } from '../status/types';
+import type { NodeIdEncoded } from '../nodes/types';
+
+type AgentStatusLiveData = Omit<StatusLive['data'], 'nodeId'> & {
+  nodeId: NodeIdEncoded;
+};
 
 /**
  * PolykeyAgent Starting Input when Backgrounded
@@ -48,17 +54,17 @@ type AgentChildProcessInput = {
 };
 
 /**
- * PolykeyAgent Starting Output when Backgrounded
+ * PolykeyAgent starting output when backgrounded
  * The error property contains arbitrary error properties
  */
 type AgentChildProcessOutput =
   | {
       status: 'SUCCESS';
       recoveryCode?: RecoveryCode;
-    }
+    } & AgentStatusLiveData
   | {
       status: 'FAILURE';
       error: POJO;
     };
 
-export type { AgentChildProcessInput, AgentChildProcessOutput };
+export type { AgentStatusLiveData, AgentChildProcessInput, AgentChildProcessOutput };

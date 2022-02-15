@@ -170,7 +170,6 @@ describe('status', () => {
         forwardPort: expect.any(Number),
         rootPublicKeyPem: expect.any(String),
         rootCertPem: expect.any(String),
-        rootCertChainPem: expect.any(String),
       });
     });
     test('status on remote LIVE agent', async () => {
@@ -219,7 +218,6 @@ describe('status', () => {
         forwardPort: expect.any(Number),
         rootPublicKeyPem: expect.any(String),
         rootCertPem: expect.any(String),
-        rootCertChainPem: expect.any(String),
       });
     });
   });

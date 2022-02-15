@@ -1,5 +1,9 @@
 import type { StdioOptions } from 'child_process';
-import type { AgentChildProcessInput, AgentChildProcessOutput } from '../types';
+import type {
+  AgentStatusLiveData,
+  AgentChildProcessInput,
+  AgentChildProcessOutput
+} from '../types';
 import type PolykeyAgent from '../../PolykeyAgent';
 import type { RecoveryCode } from '../../keys/types';
 import type { PolykeyWorkerManagerInterface } from '../../workers/types';
@@ -7,6 +11,7 @@ import path from 'path';
 import child_process from 'child_process';
 import process from 'process';
 import CommandPolykey from '../CommandPolykey';
+import * as binUtils from '../utils';
 import * as binOptions from '../utils/options';
 import * as binProcessors from '../utils/processors';
 import * as binErrors from '../errors';
@@ -41,6 +46,7 @@ class CommandStart extends CommandPolykey {
       const { WorkerManager, utils: workersUtils } = await import(
         '../../workers'
       );
+      const nodesUtils = await import('../../nodes/utils');
       let password: string | undefined;
       if (options.fresh) {
         // If fresh, then get a new password
@@ -101,6 +107,7 @@ class CommandStart extends CommandPolykey {
         seedNodes: seedNodes_,
         fresh: options.fresh,
       };
+      let statusLiveData: AgentStatusLiveData;
       let recoveryCodeOut: RecoveryCode | undefined;
       if (options.background) {
         const stdio: StdioOptions = ['ignore', 'ignore', 'ignore', 'ipc'];
@@ -140,6 +147,9 @@ class CommandStart extends CommandPolykey {
             agentProcess.unref();
             agentProcess.disconnect();
             recoveryCodeOut = messageOut.recoveryCode;
+            statusLiveData = {...messageOut};
+            delete statusLiveData['recoveryCode'];
+            delete statusLiveData['status'];
             resolveAgentProcessP();
             return;
           } else {
@@ -211,11 +221,30 @@ class CommandStart extends CommandPolykey {
           pkAgent.setWorkerManager(workerManager);
         }
         recoveryCodeOut = pkAgent.keyManager.getRecoveryCode();
+        statusLiveData = {
+          pid: process.pid,
+          nodeId: nodesUtils.encodeNodeId(pkAgent.keyManager.getNodeId()),
+          clientHost: pkAgent.grpcServerClient.getHost(),
+          clientPort: pkAgent.grpcServerClient.getPort(),
+          agentHost: pkAgent.grpcServerAgent.getHost(),
+          agentPort: pkAgent.grpcServerAgent.getPort(),
+          proxyHost: pkAgent.fwdProxy.getProxyHost(),
+          proxyPort: pkAgent.fwdProxy.getProxyPort(),
+          egressHost: pkAgent.fwdProxy.getEgressHost(),
+          egressPort: pkAgent.fwdProxy.getEgressPort(),
+          ingressHost: pkAgent.revProxy.getIngressHost(),
+          ingressPort: pkAgent.revProxy.getIngressPort(),
+        };
       }
-      // Recovery code is only available if it was newly generated
-      if (recoveryCodeOut != null) {
-        process.stdout.write(recoveryCodeOut + '\n');
-      }
+      process.stdout.write(
+        binUtils.outputFormatter({
+          type: options.format === 'json' ? 'json' : 'dict',
+          data: {
+            ...statusLiveData!,
+            recoveryCode: recoveryCodeOut,
+          },
+        }),
+      );
     });
   }
 }

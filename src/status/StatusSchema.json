@@ -31,6 +31,10 @@
             "nodeId": { "type": "object" },
             "clientHost": { "type": "string" },
             "clientPort": { "type": "number" },
+            "agentHost": { "type": "string" },
+            "agentPort": { "type": "number" },
+            "forwardHost": { "type": "string" },
+            "forwardPort": { "type": "number" },
             "proxyHost": { "type": "string" },
             "proxyPort": { "type": "number" }
           },
@@ -39,6 +43,10 @@
             "nodeId",
             "clientHost",
             "clientPort",
+            "agentHost",
+            "agentPort",
+            "forwardHost",
+            "forwardPort",
             "proxyHost",
             "proxyPort"
           ]

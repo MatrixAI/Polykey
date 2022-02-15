@@ -15,5 +15,4 @@ message InfoMessage {
   uint32 forward_port = 12;
   string root_public_key_pem = 13;
   string root_cert_pem = 14;
-  string root_cert_chain_pem = 15;
 }
