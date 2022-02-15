@@ -97,7 +97,7 @@ in
         mkdir -m 1777 tmp
       '';
       config = {
-        Cmd = [ "/bin/polykey" ];
+        Entrypoint = [ "/bin/polykey" ];
       };
     };
     package = {
