@@ -14,6 +14,7 @@ import { Schema } from './schema';
 import { VaultManager } from './vaults';
 import { ACL } from './acl';
 import { NodeConnectionManager, NodeGraph, NodeManager } from './nodes';
+import * as nodesUtils from './nodes/utils';
 import { NotificationsManager } from './notifications';
 import { GestaltGraph } from './gestalts';
 import { Sigchain } from './sigchain';
@@ -190,6 +191,14 @@ class PolykeyAgent {
           logger: logger.getChild(KeyManager.name),
           fresh,
         }));
+      // Remove your own node ID if provided as a seed node
+      const nodeIdOwn = keyManager.getNodeId();
+      const nodeIdEncodedOwn = Object.keys(seedNodes).find(nodeIdEncoded => {
+        return nodeIdOwn.equals(nodesUtils.decodeNodeId(nodeIdEncoded)!);
+      });
+      if (nodeIdEncodedOwn != null) {
+        delete seedNodes[nodeIdEncodedOwn];
+      }
       db =
         db ??
         (await DB.createDB({
