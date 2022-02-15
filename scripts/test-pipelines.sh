@@ -59,7 +59,7 @@ test $test_dir:
   interruptible: true
   script:
     - >
-        nix-shell -I nixpkgs=./pkgs.nix --packages nodejs --run '
+        nix-shell -I nixpkgs=./pkgs.nix --packages nodejs iproute2 utillinux nftables iptables --run '
         npm ci;
         npm test -- ${test_files[@]};
         '
@@ -76,7 +76,7 @@ test index:
   interruptible: true
   script:
     - >
-        nix-shell -I nixpkgs=./pkgs.nix --packages nodejs --run '
+        nix-shell -I nixpkgs=./pkgs.nix --packages nodejs iptables-legacy --run '
         npm ci;
         npm test -- ${test_files[@]};
         '

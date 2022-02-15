@@ -11,6 +11,7 @@ in
       grpc-tools
       grpcurl
       utils.pkg
+      utillinux
     ];
     PKG_CACHE_PATH = utils.pkgCachePath;
     PKG_IGNORE_TAG = 1;
