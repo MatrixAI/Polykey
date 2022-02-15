@@ -74,8 +74,14 @@ class CommandStart extends CommandPolykey {
         options.recoveryCodeFile,
         this.fs,
       );
+      // Will be `[{}, true]` if `--seed-nodes` is not set
+      // Will be '[{}, true]' if `--seed-nodes='<defaults>'`
+      // Will be '[{...}, true]' if `--seed-nodes='...;<defaults>'`
+      // Will be '[{}, false]' if `--seed-nodes=''`
+      // Will be '[{...}, false]' if `--seed-nodes='...'`
       const [seedNodes, defaults] = options.seedNodes;
-      if (defaults) Object.assign(seedNodes, options.network);
+      let seedNodes_ = seedNodes;
+      if (defaults) seedNodes_ = {...options.network, ...seedNodes};
       const agentConfig = {
         password,
         nodePath: options.nodePath,
@@ -92,7 +98,7 @@ class CommandStart extends CommandPolykey {
           proxyHost: options.proxyHost,
           proxyPort: options.proxyPort,
         },
-        seedNodes,
+        seedNodes: seedNodes_,
         fresh: options.fresh,
       };
       let recoveryCodeOut: RecoveryCode | undefined;
