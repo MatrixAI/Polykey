@@ -27,10 +27,6 @@ describe('Vaults utils', () => {
     });
   });
 
-  test('VaultId type guard works', async () => {
-    const vaultId = vaultsUtils.generateVaultId();
-    expect(vaultsUtils.decodeVaultId(vaultId)).toBeTruthy();
-  });
   test('EFS can be read recursively', async () => {
     const key = await keysUtils.generateKey(256);
     const efs = await EncryptedFS.createEncryptedFS({

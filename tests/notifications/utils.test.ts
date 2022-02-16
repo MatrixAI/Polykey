@@ -2,8 +2,7 @@ import type { Notification, NotificationData } from '@/notifications/types';
 import type { VaultActions, VaultName } from '@/vaults/types';
 import { createPublicKey } from 'crypto';
 import { EmbeddedJWK, jwtVerify, exportJWK } from 'jose';
-import { IdInternal } from '@matrixai/id';
-import { sleep } from '@/utils';
+
 import * as keysUtils from '@/keys/utils';
 import * as notificationsUtils from '@/notifications/utils';
 import * as notificationsErrors from '@/notifications/errors';

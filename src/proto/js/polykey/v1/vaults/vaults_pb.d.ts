@@ -409,11 +409,6 @@ export class InfoRequest extends jspb.Message {
     clearVault(): void;
     getVault(): Vault | undefined;
     setVault(value?: Vault): InfoRequest;
-
-    hasNode(): boolean;
-    clearNode(): void;
-    getNode(): polykey_v1_nodes_nodes_pb.Node | undefined;
-    setNode(value?: polykey_v1_nodes_nodes_pb.Node): InfoRequest;
     getAction(): string;
     setAction(value: string): InfoRequest;
 
@@ -430,7 +425,6 @@ export class InfoRequest extends jspb.Message {
 export namespace InfoRequest {
     export type AsObject = {
         vault?: Vault.AsObject,
-        node?: polykey_v1_nodes_nodes_pb.Node.AsObject,
         action: string,
     }
 }

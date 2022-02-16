@@ -8,7 +8,7 @@ type PermissionIdString = Opaque<'PermissionIdString', string>;
 
 type Permission = {
   gestalt: GestaltActions;
-  vaults: Record<VaultId | string, VaultActions>; // FIXME: the string union on VaultId is to prevent some false errors.
+  vaults: Record<VaultId, VaultActions>;
 };
 
 type GestaltActions = Partial<Record<GestaltAction, null>>;

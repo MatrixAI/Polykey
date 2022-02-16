@@ -2,7 +2,7 @@ import type * as grpc from '@grpc/grpc-js';
 import type { GestaltGraph } from '../../gestalts';
 import type { VaultManager } from '../../vaults';
 import type * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
-import * as validationUtils from '@/validation/utils';
+import * as validationUtils from '../../validation/utils';
 import * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
 import { utils as vaultsUtils, errors as vaultsErrors } from '../../vaults';
 import { utils as grpcUtils } from '../../grpc';

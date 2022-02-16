@@ -7,7 +7,6 @@ import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
-import { utils as idUtils } from '@matrixai/id';
 import { ACL, errors as aclErrors } from '@/acl';
 import { utils as keysUtils } from '@/keys';
 import { utils as vaultsUtils } from '@/vaults';

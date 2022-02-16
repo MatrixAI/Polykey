@@ -254,7 +254,6 @@ describe(`${NodeConnection.name} test`, () => {
       keyManager: serverKeyManager,
       vaultsPath: serverVaultsPath,
       nodeConnectionManager: dummyNodeConnectionManager,
-      nodeManager: serverNodeManager,
       notificationsManager: serverNotificationsManager,
       db: serverDb,
       acl: serverACL,

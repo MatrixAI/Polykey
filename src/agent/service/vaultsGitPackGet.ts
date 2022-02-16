@@ -1,11 +1,24 @@
 import type * as grpc from '@grpc/grpc-js';
 import type { VaultName } from '../../vaults/types';
 import type { VaultManager } from '../../vaults';
+import type { ConnectionInfoGet } from '../../agent/types';
+import type ACL from '../../acl/ACL';
+import * as nodesUtils from '../../nodes/utils';
 import { errors as grpcErrors, utils as grpcUtils } from '../../grpc';
 import { utils as vaultsUtils, errors as vaultsErrors } from '../../vaults';
 import * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
+import * as validationUtils from '../../validation/utils';
+import * as agentErrors from '../errors';
 
-function vaultsGitPackGet({ vaultManager }: { vaultManager: VaultManager }) {
+function vaultsGitPackGet({
+  vaultManager,
+  acl,
+  connectionInfoGet,
+}: {
+  vaultManager: VaultManager;
+  acl: ACL;
+  connectionInfoGet: ConnectionInfoGet;
+}) {
   return async (
     call: grpc.ServerDuplexStream<vaultsPB.PackChunk, vaultsPB.PackChunk>,
   ) => {
@@ -15,6 +28,16 @@ function vaultsGitPackGet({ vaultManager }: { vaultManager: VaultManager }) {
     clientBodyBuffers.push(clientRequest!.getChunk_asU8());
     const body = Buffer.concat(clientBodyBuffers);
     const meta = call.metadata;
+    // Getting the NodeId from the ReverseProxy connection info
+    const connectionInfo = connectionInfoGet(call);
+    // If this is getting run the connection exists
+    // It SHOULD exist here
+    if (connectionInfo == null) {
+      throw new agentErrors.ErrorConnectionInfoMissing();
+    }
+    const nodeId = connectionInfo.nodeId;
+    const nodeIdEncoded = nodesUtils.encodeNodeId(nodeId);
+    // Getting vaultId
     const vaultNameOrId = meta.get('vaultNameOrId').pop()!.toString();
     if (vaultNameOrId == null) {
       throw new grpcErrors.ErrorGRPC('vault-name not in metadata');
@@ -22,7 +45,28 @@ function vaultsGitPackGet({ vaultManager }: { vaultManager: VaultManager }) {
     let vaultId = await vaultManager.getVaultId(vaultNameOrId as VaultName);
     vaultId = vaultId ?? vaultsUtils.decodeVaultId(vaultNameOrId);
     if (vaultId == null) {
-      await genDuplex.throw(new vaultsErrors.ErrorVaultsVaultUndefined());
+      await genDuplex.throw(
+        // Throwing permission error to hide information about vaults existence
+        new vaultsErrors.ErrorVaultsPermissionDenied(
+          `No permissions found for ${nodeIdEncoded}`,
+        ),
+      );
+      return;
+    }
+    // Checking permissions
+    const permissions = await acl.getNodePerm(nodeId);
+    const vaultPerms = permissions?.vaults[vaultId];
+    const actionType = validationUtils.parseVaultAction(
+      meta.get('vaultAction').pop(),
+    );
+    if (vaultPerms?.[actionType] !== null) {
+      await genDuplex.throw(
+        new vaultsErrors.ErrorVaultsPermissionDenied(
+          `${nodeIdEncoded} does not have permission to ${actionType} from vault ${vaultsUtils.encodeVaultId(
+            vaultId,
+          )}`,
+        ),
+      );
       return;
     }
     const response = new vaultsPB.PackChunk();

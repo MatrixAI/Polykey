@@ -1,19 +1,23 @@
 import type { VaultName } from '../../vaults/types';
 import type { VaultManager } from '../../vaults';
 import type { ACL } from '../../acl';
+import type { ConnectionInfoGet } from '../../agent/types';
 import * as grpc from '@grpc/grpc-js';
-import { utils as idUtils } from '@matrixai/id';
 import { utils as grpcUtils } from '../../grpc';
 import { utils as vaultsUtils, errors as vaultsErrors } from '../../vaults';
 import * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
 import * as validationUtils from '../../validation/utils';
+import * as nodesUtils from '../../nodes/utils';
+import * as agentErrors from '../errors';
 
 function vaultsGitInfoGet({
   vaultManager,
   acl,
+  connectionInfoGet,
 }: {
   vaultManager: VaultManager;
   acl: ACL;
+  connectionInfoGet: ConnectionInfoGet;
 }) {
   return async (
     call: grpc.ServerWritableStream<vaultsPB.InfoRequest, vaultsPB.PackChunk>,
@@ -25,11 +29,6 @@ function vaultsGitInfoGet({
       await genWritable.throw({ code: grpc.status.NOT_FOUND });
       return;
     }
-    const nodeMessage = request.getNode();
-    if (nodeMessage == null) {
-      await genWritable.throw({ code: grpc.status.NOT_FOUND });
-      return;
-    }
     let vaultName;
     const vaultNameOrId = vaultMessage.getNameOrId();
     let vaultId = await vaultManager.getVaultId(vaultNameOrId as VaultName);
@@ -37,30 +36,41 @@ function vaultsGitInfoGet({
     if (!vaultId) {
       try {
         vaultId = validationUtils.parseVaultId(vaultNameOrId);
-        vaultName = (await vaultManager.getVaultMeta(vaultId)).name;
+        vaultName = (await vaultManager.getVaultMeta(vaultId))?.vaultName;
       } catch (err) {
         await genWritable.throw(new vaultsErrors.ErrorVaultsVaultUndefined());
         return;
       }
     }
-    const nodeId = validationUtils.parseNodeId(nodeMessage.getNodeId());
-    const actionType = request.getAction();
-    const perms = await acl.getNodePerm(nodeId);
-    if (!perms) {
-      await genWritable.throw(new vaultsErrors.ErrorVaultsPermissionDenied());
+    // Getting the NodeId from the ReverseProxy connection info
+    const connectionInfo = connectionInfoGet(call);
+    // If this is getting run the connection exists
+    // It SHOULD exist here
+    if (connectionInfo == null) {
+      throw new agentErrors.ErrorConnectionInfoMissing();
+    }
+    const nodeId = connectionInfo.nodeId;
+    const nodeIdEncoded = nodesUtils.encodeNodeId(nodeId);
+    const actionType = validationUtils.parseVaultAction(request.getAction());
+    const permissions = await acl.getNodePerm(nodeId);
+    if (permissions == null) {
+      await genWritable.throw(
+        new vaultsErrors.ErrorVaultsPermissionDenied(
+          `No permissions found for ${nodeIdEncoded}`,
+        ),
+      );
       return;
     }
-    const vaultPerms = perms.vaults[idUtils.toString(vaultId)];
-    try {
-      if (vaultPerms[actionType] !== null) {
-        await genWritable.throw(new vaultsErrors.ErrorVaultsPermissionDenied());
-        return;
-      }
-    } catch (err) {
-      if (err instanceof TypeError) {
-        await genWritable.throw(new vaultsErrors.ErrorVaultsPermissionDenied());
-        return;
-      }
+    const vaultPerms = permissions.vaults[vaultId];
+    if (vaultPerms[actionType] !== null) {
+      await genWritable.throw(
+        new vaultsErrors.ErrorVaultsPermissionDenied(
+          `${nodeIdEncoded} does not have permission to ${actionType} from vault ${vaultsUtils.encodeVaultId(
+            vaultId,
+          )}`,
+        ),
+      );
+      return;
     }
     const meta = new grpc.Metadata();
     meta.set('vaultName', vaultName);

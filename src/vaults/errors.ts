@@ -54,11 +54,13 @@ class ErrorVaultReferenceMissing extends ErrorVault {
   exitCode = sysexits.USAGE;
 }
 
-// Yes it is immutable
-// But this is because you don't own the vault right now
+class ErrorVaultRemoteDefined extends ErrorVaults {
+  description = 'Vault is a clone of a remote vault and can not be mutated';
+  exitCode = sysexits.USAGE;
+}
 
-class ErrorVaultImmutable extends ErrorVaults {
-  description = 'Vault cannot be mutated';
+class ErrorVaultRemoteUndefined extends ErrorVaults {
+  description = 'Vault has no remote set and can not be pulled';
   exitCode = sysexits.USAGE;
 }
 
@@ -83,6 +85,11 @@ class ErrorVaultsMergeConflict extends ErrorVaults {}
 
 class ErrorVaultsPermissionDenied extends ErrorVaults {}
 
+class ErrorVaultsNameConflict extends ErrorVaults {
+  description = 'Unique name could not be created';
+  exitCode = sysexits.UNAVAILABLE;
+}
+
 class ErrorSecrets extends ErrorPolykey {}
 
 class ErrorSecretsSecretUndefined extends ErrorSecrets {}
@@ -102,7 +109,8 @@ export {
   ErrorVaultDestroyed,
   ErrorVaultReferenceInvalid,
   ErrorVaultReferenceMissing,
-  ErrorVaultImmutable,
+  ErrorVaultRemoteDefined,
+  ErrorVaultRemoteUndefined,
   ErrorVaultsVaultUndefined,
   ErrorVaultsVaultDefined,
   ErrorVaultsRecursive,
@@ -111,6 +119,7 @@ export {
   ErrorVaultsInvalidVaultId,
   ErrorVaultsMergeConflict,
   ErrorVaultsPermissionDenied,
+  ErrorVaultsNameConflict,
   ErrorSecrets,
   ErrorSecretsSecretUndefined,
   ErrorSecretsSecretDefined,

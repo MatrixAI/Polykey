@@ -3264,7 +3264,6 @@ proto.polykey.v1.vaults.InfoRequest.prototype.toObject = function(opt_includeIns
 proto.polykey.v1.vaults.InfoRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
     vault: (f = msg.getVault()) && proto.polykey.v1.vaults.Vault.toObject(includeInstance, f),
-    node: (f = msg.getNode()) && polykey_v1_nodes_nodes_pb.Node.toObject(includeInstance, f),
     action: jspb.Message.getFieldWithDefault(msg, 3, "")
   };
 
@@ -3307,11 +3306,6 @@ proto.polykey.v1.vaults.InfoRequest.deserializeBinaryFromReader = function(msg, 
       reader.readMessage(value,proto.polykey.v1.vaults.Vault.deserializeBinaryFromReader);
       msg.setVault(value);
       break;
-    case 2:
-      var value = new polykey_v1_nodes_nodes_pb.Node;
-      reader.readMessage(value,polykey_v1_nodes_nodes_pb.Node.deserializeBinaryFromReader);
-      msg.setNode(value);
-      break;
     case 3:
       var value = /** @type {string} */ (reader.readString());
       msg.setAction(value);
@@ -3351,14 +3345,6 @@ proto.polykey.v1.vaults.InfoRequest.serializeBinaryToWriter = function(message, 
       1,
       f,
       proto.polykey.v1.vaults.Vault.serializeBinaryToWriter
-    );
-  }
-  f = message.getNode();
-  if (f != null) {
-    writer.writeMessage(
-      2,
-      f,
-      polykey_v1_nodes_nodes_pb.Node.serializeBinaryToWriter
     );
   }
   f = message.getAction();
@@ -3405,43 +3391,6 @@ proto.polykey.v1.vaults.InfoRequest.prototype.clearVault = function() {
  */
 proto.polykey.v1.vaults.InfoRequest.prototype.hasVault = function() {
   return jspb.Message.getField(this, 1) != null;
-};
-
-
-/**
- * optional polykey.v1.nodes.Node node = 2;
- * @return {?proto.polykey.v1.nodes.Node}
- */
-proto.polykey.v1.vaults.InfoRequest.prototype.getNode = function() {
-  return /** @type{?proto.polykey.v1.nodes.Node} */ (
-    jspb.Message.getWrapperField(this, polykey_v1_nodes_nodes_pb.Node, 2));
-};
-
-
-/**
- * @param {?proto.polykey.v1.nodes.Node|undefined} value
- * @return {!proto.polykey.v1.vaults.InfoRequest} returns this
-*/
-proto.polykey.v1.vaults.InfoRequest.prototype.setNode = function(value) {
-  return jspb.Message.setWrapperField(this, 2, value);
-};
-
-
-/**
- * Clears the message field making it undefined.
- * @return {!proto.polykey.v1.vaults.InfoRequest} returns this
- */
-proto.polykey.v1.vaults.InfoRequest.prototype.clearNode = function() {
-  return this.setNode(undefined);
-};
-
-
-/**
- * Returns whether this field is set.
- * @return {boolean}
- */
-proto.polykey.v1.vaults.InfoRequest.prototype.hasNode = function() {
-  return jspb.Message.getField(this, 2) != null;
 };
 
 

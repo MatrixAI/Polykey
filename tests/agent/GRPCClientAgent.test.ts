@@ -147,7 +147,6 @@ describe(GRPCClientAgent.name, () => {
       keyManager: keyManager,
       vaultsPath: vaultsPath,
       nodeConnectionManager: nodeConnectionManager,
-      nodeManager: nodeManager,
       db: db,
       acl: acl,
       gestaltGraph: gestaltGraph,

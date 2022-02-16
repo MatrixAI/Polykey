@@ -327,7 +327,6 @@ class PolykeyAgent {
           vaultsPath,
           keyManager,
           nodeConnectionManager,
-          nodeManager,
           notificationsManager,
           gestaltGraph,
           acl,

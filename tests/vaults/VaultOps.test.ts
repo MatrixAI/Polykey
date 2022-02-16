@@ -1,12 +1,13 @@
 import type { VaultId } from '@/vaults/types';
 import type { Vault } from '@/vaults/Vault';
-import type { KeyManager } from '@/keys';
+import type KeyManager from '@/keys/KeyManager';
+import type { DBDomain, DBLevel } from '@matrixai/db';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { EncryptedFS } from 'encryptedfs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { utils as idUtils } from '@matrixai/id';
+import { DB } from '@matrixai/db';
 import * as errors from '@/vaults/errors';
 import { VaultInternal, vaultOps } from '@/vaults';
 import * as vaultsUtils from '@/vaults/utils';
@@ -21,6 +22,9 @@ describe('VaultOps', () => {
   let vaultId: VaultId;
   let vaultInternal: VaultInternal;
   let vault: Vault;
+  let db: DB;
+  let vaultsDb: DBLevel;
+  let vaultsDbDomain: DBDomain;
   const dummyKeyManager = {
     getNodeId: () => {
       return testUtils.generateRandomNodeId();
@@ -30,7 +34,7 @@ describe('VaultOps', () => {
   let mockedGenerateKeyPair: jest.SpyInstance;
   let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
 
-  beforeAll(async () => {
+  beforeEach(async () => {
     const globalKeyPair = await testUtils.setupGlobalKeypair();
     mockedGenerateKeyPair = jest
       .spyOn(keysUtils, 'generateKeyPair')
@@ -42,7 +46,7 @@ describe('VaultOps', () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
-    const dbPath = path.join(dataDir, 'db');
+    const dbPath = path.join(dataDir, 'efsDb');
     const dbKey = await keysUtils.generateKey();
     baseEfs = await EncryptedFS.createEncryptedFS({
       dbKey,
@@ -50,9 +54,36 @@ describe('VaultOps', () => {
       logger,
     });
     await baseEfs.start();
+
+    vaultId = vaultsUtils.generateVaultId();
+    await baseEfs.mkdir(
+      path.join(vaultsUtils.encodeVaultId(vaultId), 'contents'),
+      {
+        recursive: true,
+      },
+    );
+    db = await DB.createDB({ dbPath: path.join(dataDir, 'db'), logger });
+    vaultsDbDomain = ['vaults'];
+    vaultsDb = await db.level(vaultsDbDomain[0]);
+    vaultInternal = await VaultInternal.createVaultInternal({
+      keyManager: dummyKeyManager,
+      vaultId,
+      efs: baseEfs,
+      logger: logger.getChild(VaultInternal.name),
+      fresh: true,
+      db,
+      vaultsDbDomain,
+      vaultsDb,
+      vaultName: 'VaultName',
+    });
+    vault = vaultInternal as Vault;
   });
 
-  afterAll(async () => {
+  afterEach(async () => {
+    await vaultInternal.stop();
+    await vaultInternal.destroy();
+    await db.stop();
+    await db.destroy();
     mockedGenerateKeyPair.mockRestore();
     mockedGenerateDeterministicKeyPair.mockRestore();
     await baseEfs.stop();
@@ -61,21 +92,6 @@ describe('VaultOps', () => {
       force: true,
       recursive: true,
     });
-  });
-
-  beforeEach(async () => {
-    vaultId = vaultsUtils.generateVaultId();
-    await baseEfs.mkdir(path.join(idUtils.toString(vaultId), 'contents'), {
-      recursive: true,
-    });
-    vaultInternal = await VaultInternal.create({
-      keyManager: dummyKeyManager,
-      vaultId,
-      efs: baseEfs,
-      logger: logger.getChild(VaultInternal.name),
-      fresh: true,
-    });
-    vault = vaultInternal as Vault;
   });
 
   test('adding a secret', async () => {

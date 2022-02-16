@@ -177,7 +177,6 @@ async function bootstrapState({
       keyManager,
       nodeConnectionManager,
       vaultsPath,
-      nodeManager,
       notificationsManager,
       logger: logger.getChild(VaultManager.name),
       fresh,

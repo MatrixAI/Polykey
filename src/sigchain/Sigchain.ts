@@ -440,7 +440,7 @@ class Sigchain {
 
   @ready(new sigchainErrors.ErrorSigchainNotRunning())
   public async clearDB() {
-    this.sigchainDb.clear();
+    await this.sigchainDb.clear();
 
     await this._transaction(async () => {
       await this.db.put(

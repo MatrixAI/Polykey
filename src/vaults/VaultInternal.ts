@@ -2,27 +2,44 @@ import type { ReadCommitResult } from 'isomorphic-git';
 import type { EncryptedFS } from 'encryptedfs';
 import type { DB, DBDomain, DBLevel } from '@matrixai/db';
 import type {
-  VaultId,
-  VaultRef,
   CommitId,
   CommitLog,
   FileSystemReadable,
   FileSystemWritable,
+  VaultAction,
+  VaultId,
+  VaultIdEncoded,
+  VaultName,
+  VaultRef,
 } from './types';
-import type { KeyManager } from '../keys';
-import type { NodeId } from '../nodes/types';
-import type { ResourceAcquire } from '../utils';
+import type KeyManager from '../keys/KeyManager';
+import type { NodeId, NodeIdEncoded } from '../nodes/types';
+import type NodeConnectionManager from '../nodes/NodeConnectionManager';
+import type { ResourceAcquire } from '../utils/context';
+import type GRPCClientAgent from '../agent/GRPCClientAgent';
+import type { POJO } from '../types';
 import path from 'path';
 import git from 'isomorphic-git';
-import { Mutex } from 'async-mutex';
+import * as grpc from '@grpc/grpc-js';
 import Logger from '@matrixai/logger';
 import {
   CreateDestroyStartStop,
   ready,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
-import * as vaultsUtils from './utils';
 import * as vaultsErrors from './errors';
-import { withF, withG } from '../utils';
+import * as vaultsUtils from './utils';
+import * as nodesUtils from '../nodes/utils';
+import * as validationUtils from '../validation/utils';
+import { withF, withG } from '../utils/context';
+import { RWLock } from '../utils/locks';
+import * as vaultsPB from '../proto/js/polykey/v1/vaults/vaults_pb';
+import { never } from '../utils/utils';
+
+// TODO: this might be temp?
+export type RemoteInfo = {
+  remoteNode: NodeIdEncoded;
+  remoteVault: VaultIdEncoded;
+};
 
 interface VaultInternal extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
@@ -32,22 +49,22 @@ interface VaultInternal extends CreateDestroyStartStop {}
 class VaultInternal {
   public static async createVaultInternal({
     vaultId,
+    vaultName,
     db,
     vaultsDb,
     vaultsDbDomain,
     keyManager,
     efs,
-    remote = false,
     logger = new Logger(this.name),
     fresh = false,
   }: {
     vaultId: VaultId;
+    vaultName?: VaultName;
     db: DB;
     vaultsDb: DBLevel;
     vaultsDbDomain: DBDomain;
     keyManager: KeyManager;
     efs: EncryptedFS;
-    remote?: boolean;
     logger?: Logger;
     fresh?: boolean;
   }): Promise<VaultInternal> {
@@ -62,34 +79,36 @@ class VaultInternal {
       efs,
       logger,
     });
-    await vault.start({ fresh });
+    await vault.start({ fresh, vaultName });
     logger.info(`Created ${this.name} - ${vaultIdEncoded}`);
     return vault;
   }
 
   public static async cloneVaultInternal({
+    targetNodeId,
+    targetVaultNameOrId,
     vaultId,
     db,
     vaultsDb,
     vaultsDbDomain,
     keyManager,
+    nodeConnectionManager,
     efs,
     logger = new Logger(this.name),
   }: {
+    targetNodeId: NodeId;
+    targetVaultNameOrId: VaultId | VaultName;
     vaultId: VaultId;
     db: DB;
     vaultsDb: DBLevel;
     vaultsDbDomain: DBDomain;
     efs: EncryptedFS;
     keyManager: KeyManager;
-    remote?: boolean;
+    nodeConnectionManager: NodeConnectionManager;
     logger?: Logger;
   }): Promise<VaultInternal> {
     const vaultIdEncoded = vaultsUtils.encodeVaultId(vaultId);
     logger.info(`Cloning ${this.name} - ${vaultIdEncoded}`);
-    // TODO:
-    // Perform the cloning operation to preseed state
-    // and also seed the remote state
     const vault = new VaultInternal({
       vaultId,
       db,
@@ -99,10 +118,62 @@ class VaultInternal {
       efs,
       logger,
     });
-    await vault.start();
+    // This error flag will contain the error returned by the cloning grpc stream
+    let error;
+    // Make the directory where the .git files will be auto generated and
+    // where the contents will be cloned to ('contents' file)
+    await efs.mkdir(vault.vaultDataDir, { recursive: true });
+    let vaultName: VaultName;
+    let remoteVaultId: VaultId;
+    let remote: RemoteInfo;
+    try {
+      [vaultName, remoteVaultId] = await nodeConnectionManager.withConnF(
+        targetNodeId,
+        async (connection) => {
+          const client = connection.getClient();
+          const [request, vaultName, remoteVaultId] = await vault.request(
+            client,
+            targetVaultNameOrId,
+            'clone',
+          );
+          await git.clone({
+            fs: efs,
+            http: { request },
+            dir: vault.vaultDataDir,
+            gitdir: vault.vaultGitDir,
+            url: 'http://',
+            singleBranch: true,
+          });
+          return [vaultName, remoteVaultId];
+        },
+      );
+      remote = {
+        remoteNode: nodesUtils.encodeNodeId(targetNodeId),
+        remoteVault: vaultsUtils.encodeVaultId(remoteVaultId),
+      };
+    } catch (e) {
+      // If the error flag set and we have the generalised SmartHttpError from
+      // isomorphic git then we need to throw the polykey error
+      if (e instanceof git.Errors.SmartHttpError && error) {
+        throw error;
+      }
+      throw e;
+    }
+
+    await vault.start({ vaultName });
+    // Setting the remote in the metadata
+    await vault.db.put(
+      vault.vaultMetadataDbDomain,
+      VaultInternal.remoteKey,
+      remote,
+    );
     logger.info(`Cloned ${this.name} - ${vaultIdEncoded}`);
     return vault;
   }
+
+  static dirtyKey = 'dirty';
+  static remoteKey = 'remote';
+  static nameKey = 'key';
 
   public readonly vaultId: VaultId;
   public readonly vaultIdEncoded: string;
@@ -113,17 +184,22 @@ class VaultInternal {
   protected db: DB;
   protected vaultsDbDomain: DBDomain;
   protected vaultsDb: DBLevel;
-  protected vaultDbDomain: DBDomain;
-  protected vaultDb: DBLevel;
+  protected vaultMetadataDbDomain: DBDomain;
+  protected vaultMetadataDb: DBLevel;
   protected keyManager: KeyManager;
+  protected vaultsNamesDomain: DBDomain;
   protected efs: EncryptedFS;
   protected efsVault: EncryptedFS;
-  protected remote: boolean;
-  protected _lock: Mutex = new Mutex();
+  protected lock: RWLock = new RWLock();
 
-  public lock: ResourceAcquire<Mutex> = async () => {
-    const release = await this._lock.acquire();
-    return [async () => release(), this._lock];
+  public readLock: ResourceAcquire = async () => {
+    const release = await this.lock.acquireRead();
+    return [async () => release()];
+  };
+
+  public writeLock: ResourceAcquire = async () => {
+    const release = await this.lock.acquireWrite();
+    return [async () => release()];
   };
 
   constructor({
@@ -156,18 +232,31 @@ class VaultInternal {
     this.efs = efs;
   }
 
+  /**
+   *
+   * @param fresh Clears all state before starting
+   * @param vaultName Name of the vault, Only used when creating a new vault
+   */
   public async start({
     fresh = false,
+    vaultName,
   }: {
     fresh?: boolean;
+    vaultName?: VaultName;
   } = {}): Promise<void> {
     this.logger.info(
       `Starting ${this.constructor.name} - ${this.vaultIdEncoded}`,
     );
-    const vaultDbDomain = [...this.vaultsDbDomain, this.vaultIdEncoded];
-    const vaultDb = await this.db.level(this.vaultIdEncoded, this.vaultsDb);
+    this.vaultMetadataDbDomain = [...this.vaultsDbDomain, this.vaultIdEncoded];
+    this.vaultsNamesDomain = [...this.vaultsDbDomain, 'names'];
+    this.vaultMetadataDb = await this.db.level(
+      this.vaultIdEncoded,
+      this.vaultsDb,
+    );
+    // Let's backup any metadata.
+
     if (fresh) {
-      await vaultDb.clear();
+      await this.vaultMetadataDb.clear();
       try {
         await this.efs.rmdir(this.vaultIdEncoded, {
           recursive: true,
@@ -178,18 +267,25 @@ class VaultInternal {
         }
       }
     }
-    await this.efs.mkdir(this.vaultIdEncoded, { recursive: true });
-    await this.efs.mkdir(this.vaultDataDir, { recursive: true });
-    await this.efs.mkdir(this.vaultGitDir, { recursive: true });
-    await this.setupMeta();
+    await this.mkdirExists(this.vaultIdEncoded);
+    await this.mkdirExists(this.vaultDataDir);
+    await this.mkdirExists(this.vaultGitDir);
+    await this.setupMeta({ vaultName });
     await this.setupGit();
-    const efsVault = await this.efs.chroot(this.vaultDataDir);
-    this.vaultDbDomain = vaultDbDomain;
-    this.vaultDb = vaultDb;
-    this.efsVault = efsVault;
+    this.efsVault = await this.efs.chroot(this.vaultDataDir);
     this.logger.info(
       `Started ${this.constructor.name} - ${this.vaultIdEncoded}`,
     );
+  }
+
+  private async mkdirExists(directory: string) {
+    try {
+      await this.efs.mkdir(directory, { recursive: true });
+    } catch (e) {
+      if (e.code !== 'EEXIST') {
+        throw e;
+      }
+    }
   }
 
   public async stop(): Promise<void> {
@@ -207,23 +303,17 @@ class VaultInternal {
     );
     const vaultDb = await this.db.level(this.vaultIdEncoded, this.vaultsDb);
     await vaultDb.clear();
-    await this.efs.rmdir(this.vaultIdEncoded, {
-      recursive: true,
-    });
+    try {
+      await this.efs.rmdir(this.vaultIdEncoded, {
+        recursive: true,
+      });
+    } catch (e) {
+      if (e.code !== 'ENOENT') throw e;
+      // Otherwise ignore
+    }
     this.logger.info(
       `Destroyed ${this.constructor.name} - ${this.vaultIdEncoded}`,
     );
-  }
-
-  // Is remote?
-  // well we don't just get remote
-  // we keep track of it
-  public async getRemote(): Promise<[NodeId, VaultId]> {
-    // Get the remote if exists
-    // if undefined you consider this to be not remote
-    // and therefore can proceed
-    // return Promise of [NodeId, VaultId]
-    throw Error('Not implemented');
   }
 
   @ready(new vaultsErrors.ErrorVaultNotRunning())
@@ -291,7 +381,7 @@ class VaultInternal {
 
   @ready(new vaultsErrors.ErrorVaultNotRunning())
   public async readF<T>(f: (fs: FileSystemReadable) => Promise<T>): Promise<T> {
-    return withF([this.lock], async () => {
+    return withF([this.readLock], async () => {
       return await f(this.efsVault);
     });
   }
@@ -300,8 +390,9 @@ class VaultInternal {
   public readG<T, TReturn, TNext>(
     g: (fs: FileSystemReadable) => AsyncGenerator<T, TReturn, TNext>,
   ): AsyncGenerator<T, TReturn, TNext> {
-    return withG([this.lock], async function* () {
-      return yield* g(this.efsVault);
+    const efsVault = this.efsVault;
+    return withG([this.readLock], async function* () {
+      return yield* g(efsVault);
     });
   }
 
@@ -309,29 +400,40 @@ class VaultInternal {
   public async writeF(
     f: (fs: FileSystemWritable) => Promise<void>,
   ): Promise<void> {
-    return withF([this.lock], async () => {
-      await this.db.put(this.vaultsDbDomain, 'dirty', true);
-      // This should really be an internal property
-      // get whether this is remote, and the remote address
-      // if it is, we consider this repo an "attached repo"
-      // this vault is a "mirrored" vault
-      if (this.remote) {
-        // Mirrored vaults are immutable
-        throw new vaultsErrors.ErrorVaultImmutable();
-      }
+    // This should really be an internal property
+    // get whether this is remote, and the remote address
+    // if it is, we consider this repo an "attached repo"
+    // this vault is a "mirrored" vault
+    if (
+      (await this.db.get(
+        this.vaultMetadataDbDomain,
+        VaultInternal.remoteKey,
+      )) != null
+    ) {
+      // Mirrored vaults are immutable
+      throw new vaultsErrors.ErrorVaultRemoteDefined();
+    }
+    return withF([this.writeLock], async () => {
+      await this.db.put(
+        this.vaultMetadataDbDomain,
+        VaultInternal.dirtyKey,
+        true,
+      );
 
       // We have to chroot it
       // and then remove it
-      // but this is done byitself?
-
+      // but this is done by itself?
       await f(this.efsVault);
-
-      await this.db.put(this.vaultsDbDomain, 'dirty', false);
+      await this.db.put(
+        this.vaultMetadataDbDomain,
+        VaultInternal.dirtyKey,
+        false,
+      );
     });
 
     //   Const message: string[] = [];
     //   try {
-
+    //
     //     // If the version of the vault has been changed, checkout the working
     //     // directory to this point in history and discard any unlinked commits
     //     await git.checkout({
@@ -480,40 +582,172 @@ class VaultInternal {
   public writeG<T, TReturn, TNext>(
     g: (fs: FileSystemWritable) => AsyncGenerator<T, TReturn, TNext>,
   ): AsyncGenerator<T, TReturn, TNext> {
-    return withG([this.lock], async function* () {
-      const result = yield* g(this.efsVault);
-      // At the end of the geneartor
+    const efsVault = this.efsVault;
+    const db = this.db;
+    const vaultDbDomain = this.vaultMetadataDbDomain;
+    return withG([this.writeLock], async function* () {
+      if ((await db.get(vaultDbDomain, VaultInternal.remoteKey)) != null) {
+        // Mirrored vaults are immutable
+        throw new vaultsErrors.ErrorVaultRemoteDefined();
+      }
+      await db.put(vaultDbDomain, VaultInternal.dirtyKey, true);
+      const result = yield* g(efsVault);
+      // At the end of the generator
       // you need to do this
       // but just before
       // you need to finish it up
 
       // DO what you need to do here, create the commit
+      await db.put(vaultDbDomain, VaultInternal.dirtyKey, false);
       return result;
     });
+  }
+
+  // TODO: this needs to respect the write lock since we are writing to the EFS
+  @ready(new vaultsErrors.ErrorVaultNotRunning())
+  public async pullVault({
+    nodeConnectionManager,
+    pullNodeId,
+    pullVaultNameOrId,
+  }: {
+    nodeConnectionManager: NodeConnectionManager;
+    pullNodeId?: NodeId;
+    pullVaultNameOrId?: VaultId | VaultName;
+  }) {
+    // This error flag will contain the error returned by the cloning grpc stream
+    let error;
+    // Keeps track of whether the metadata needs changing to avoid unnecessary db ops
+    // 0 = no change, 1 = change with vault Id, 2 = change with vault name
+    let metaChange = 0;
+    const remoteInfo = await this.db.get<RemoteInfo>(
+      this.vaultMetadataDbDomain,
+      VaultInternal.remoteKey,
+    );
+    if (remoteInfo == null) throw new vaultsErrors.ErrorVaultRemoteUndefined();
+
+    if (pullNodeId == null) {
+      pullNodeId = nodesUtils.decodeNodeId(remoteInfo.remoteNode)!;
+    } else {
+      metaChange = 1;
+      remoteInfo.remoteNode = nodesUtils.encodeNodeId(pullNodeId);
+    }
+    if (pullVaultNameOrId == null) {
+      pullVaultNameOrId = vaultsUtils.decodeVaultId(remoteInfo.remoteVault!)!;
+    } else {
+      metaChange = 1;
+      if (typeof pullVaultNameOrId === 'string') {
+        metaChange = 2;
+      } else {
+        remoteInfo.remoteVault = vaultsUtils.encodeVaultId(pullVaultNameOrId);
+      }
+    }
+    this.logger.info(
+      `Pulling Vault ${vaultsUtils.encodeVaultId(
+        this.vaultId,
+      )} from Node ${pullNodeId}`,
+    );
+    let remoteVaultId: VaultId;
+    try {
+      remoteVaultId = await nodeConnectionManager.withConnF(
+        pullNodeId!,
+        async (connection) => {
+          const client = connection.getClient();
+          const [request, , remoteVaultId] = await this.request(
+            client,
+            pullVaultNameOrId!,
+            'pull',
+          );
+          await withF([this.writeLock], async () => {
+            await git.pull({
+              fs: this.efs,
+              http: { request },
+              dir: this.vaultDataDir,
+              gitdir: this.vaultGitDir,
+              url: `http://`,
+              ref: 'HEAD',
+              singleBranch: true,
+              author: {
+                name: nodesUtils.encodeNodeId(pullNodeId!),
+              },
+            });
+          });
+          return remoteVaultId;
+        },
+      );
+    } catch (err) {
+      // If the error flag set and we have the generalised SmartHttpError from
+      // isomorphic git then we need to throw the polykey error
+      if (err instanceof git.Errors.SmartHttpError && error) {
+        throw error;
+      } else if (err instanceof git.Errors.MergeNotSupportedError) {
+        throw new vaultsErrors.ErrorVaultsMergeConflict();
+      }
+      throw err;
+    }
+    if (metaChange !== 0) {
+      if (metaChange === 2) {
+        remoteInfo.remoteVault = vaultsUtils.encodeVaultId(remoteVaultId);
+      }
+      await this.db.put(
+        this.vaultMetadataDbDomain,
+        VaultInternal.remoteKey,
+        remoteInfo,
+      );
+    }
+    this.logger.info(
+      `Pulled Vault ${vaultsUtils.encodeVaultId(
+        this.vaultId,
+      )} from Node ${pullNodeId}`,
+    );
   }
 
   /**
    * Setup the vault metadata
    */
-  protected async setupMeta(): Promise<void> {
+  protected async setupMeta({
+    vaultName,
+  }: {
+    vaultName?: VaultName;
+  }): Promise<void> {
     // Setup the vault metadata
-    // setup metadata
     // and you need to make certain preparations
     // the meta gets created first
     // if the SoT is the database
-    // are we suposed to check this?
-
-    if ((await this.db.get<boolean>(this.vaultDbDomain, 'remote')) == null) {
-      await this.db.put(this.vaultDbDomain, 'remote', true);
-    }
+    // are we supposed to check this?
 
     // If this is not existing
     // setup default vaults db
-    await this.db.get<boolean>(this.vaultsDbDomain, 'dirty');
+    if (
+      (await this.db.get<boolean>(
+        this.vaultMetadataDbDomain,
+        VaultInternal.dirtyKey,
+      )) == null
+    ) {
+      await this.db.put(
+        this.vaultMetadataDbDomain,
+        VaultInternal.dirtyKey,
+        true,
+      );
+    }
+
+    // Set up vault Name
+    if (
+      (await this.db.get<string>(
+        this.vaultMetadataDbDomain,
+        VaultInternal.nameKey,
+      )) == null &&
+      vaultName != null
+    ) {
+      await this.db.put(
+        this.vaultMetadataDbDomain,
+        VaultInternal.nameKey,
+        vaultName,
+      );
+    }
 
     // Remote: [NodeId, VaultId] | undefined
     // dirty: boolean
-    // name: string
+    // name: string | undefined
   }
 
   /**
@@ -554,7 +788,17 @@ class VaultInternal {
         gitdir: this.vaultGitDir,
         author: vaultsUtils.commitAuthor(this.keyManager.getNodeId()),
         message: 'Initial Commit',
+        ref: 'HEAD',
       })) as CommitId;
+      // Update master ref
+      await git.writeRef({
+        fs: this.efs,
+        dir: this.vaultDataDir,
+        gitdir: this.vaultGitDir,
+        ref: vaultsUtils.canonicalBranchRef,
+        value: commitIdLatest,
+        force: true,
+      });
     } else {
       // Force checkout out to the latest commit
       // This ensures that any uncommitted state is dropped
@@ -567,6 +811,98 @@ class VaultInternal {
       });
     }
     return commitIdLatest;
+  }
+
+  protected async request(
+    client: GRPCClientAgent,
+    vaultNameOrId: VaultId | VaultName,
+    vaultAction: VaultAction,
+  ): Promise<any[]> {
+    const requestMessage = new vaultsPB.InfoRequest();
+    const vaultMessage = new vaultsPB.Vault();
+    requestMessage.setAction(vaultAction);
+    if (typeof vaultNameOrId === 'string') {
+      vaultMessage.setNameOrId(vaultNameOrId);
+    } else {
+      // To have consistency between GET and POST, send the user
+      // readable form of the vault Id
+      vaultMessage.setNameOrId(vaultsUtils.encodeVaultId(vaultNameOrId));
+    }
+    requestMessage.setVault(vaultMessage);
+    const response = client.vaultsGitInfoGet(requestMessage);
+    let vaultName, remoteVaultId;
+    response.stream.on('metadata', async (meta) => {
+      // Receive the Id of the remote vault
+      vaultName = meta.get('vaultName').pop();
+      if (vaultName) vaultName = vaultName.toString();
+      const vId = meta.get('vaultId').pop();
+      if (vId) remoteVaultId = validationUtils.parseVaultId(vId.toString());
+    });
+    // Collect the response buffers from the GET request
+    const infoResponse: Uint8Array[] = [];
+    for await (const resp of response) {
+      infoResponse.push(resp.getChunk_asU8());
+    }
+    const metadata = new grpc.Metadata();
+    metadata.set('vaultAction', vaultAction);
+    if (typeof vaultNameOrId === 'string') {
+      metadata.set('vaultNameOrId', vaultNameOrId);
+    } else {
+      // Metadata only accepts the user readable form of the vault Id
+      // as the string form has illegal characters
+      metadata.set('vaultNameOrId', vaultsUtils.encodeVaultId(vaultNameOrId));
+    }
+    return [
+      async function ({
+        url,
+        method = 'GET',
+        headers = {},
+        body = [Buffer.from('')],
+      }: {
+        url: string;
+        method: string;
+        headers: POJO;
+        body: Buffer[];
+      }) {
+        if (method === 'GET') {
+          // Send back the GET request info response
+          return {
+            url: url,
+            method: method,
+            body: infoResponse,
+            headers: headers,
+            statusCode: 200,
+            statusMessage: 'OK',
+          };
+        } else if (method === 'POST') {
+          const responseBuffers: Array<Uint8Array> = [];
+          const stream = client.vaultsGitPackGet(metadata);
+          const chunk = new vaultsPB.PackChunk();
+          // Body is usually an async generator but in the cases we are using,
+          // only the first value is used
+          chunk.setChunk(body[0]);
+          // Tell the server what commit we need
+          await stream.write(chunk);
+          let packResponse = (await stream.read()).value;
+          while (packResponse != null) {
+            responseBuffers.push(packResponse.getChunk_asU8());
+            packResponse = (await stream.read()).value;
+          }
+          return {
+            url: url,
+            method: method,
+            body: responseBuffers,
+            headers: headers,
+            statusCode: 200,
+            statusMessage: 'OK',
+          };
+        } else {
+          never();
+        }
+      },
+      vaultName,
+      remoteVaultId,
+    ];
   }
 }
 

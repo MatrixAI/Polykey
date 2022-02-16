@@ -7,6 +7,11 @@ import path from 'path';
 import * as vaultsErrors from './errors';
 import * as vaultsUtils from './utils';
 
+// TODO: remove?
+type FileOptions = {
+  recursive?: boolean;
+};
+
 // TODO: tests
 // - add succeeded
 // - secret exists

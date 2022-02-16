@@ -1,60 +1,62 @@
-import type { MutexInterface } from 'async-mutex';
 import type { DB, DBDomain, DBLevel } from '@matrixai/db';
-import type { VaultId, VaultName, VaultActions } from './types';
+import type {
+  VaultId,
+  VaultName,
+  VaultActions,
+  VaultIdString,
+  VaultIdEncoded,
+} from './types';
 import type { Vault } from './Vault';
-
 import type { FileSystem } from '../types';
 import type { PolykeyWorkerManagerInterface } from '../workers/types';
 import type { NodeId } from '../nodes/types';
+import type KeyManager from '../keys/KeyManager';
+import type NodeConnectionManager from '../nodes/NodeConnectionManager';
+import type GestaltGraph from '../gestalts/GestaltGraph';
+import type NotificationsManager from '../notifications/NotificationsManager';
+import type ACL from '../acl/ACL';
 
-import type { KeyManager } from '../keys';
-import type { NodeConnectionManager, NodeManager } from '../nodes';
-import type { GestaltGraph } from '../gestalts';
-import type { ACL } from '../acl';
-import type { NotificationsManager } from '../notifications';
-
+import type { RemoteInfo } from './VaultInternal';
+import type { ResourceAcquire } from '../utils/context';
+import type { VaultAction } from './types';
 import path from 'path';
 import { PassThrough } from 'readable-stream';
-import { Mutex } from 'async-mutex';
-import git from 'isomorphic-git';
-import { EncryptedFS, errors as encryptedfsErrors } from 'encryptedfs';
+import { EncryptedFS, errors as encryptedFsErrors } from 'encryptedfs';
 import Logger from '@matrixai/logger';
 import {
   CreateDestroyStartStop,
   ready,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
-import { IdInternal, utils as idUtils } from '@matrixai/id';
+import { IdInternal } from '@matrixai/id';
 import VaultInternal from './VaultInternal';
 import * as vaultsUtils from '../vaults/utils';
 import * as vaultsErrors from '../vaults/errors';
 import * as gitUtils from '../git/utils';
 import * as gitErrors from '../git/errors';
-import { utils as nodesUtils } from '../nodes';
-import { utils as keysUtils } from '../keys';
-import * as validationUtils from '../validation/utils';
+import * as nodesUtils from '../nodes/utils';
+import * as keysUtils from '../keys/utils';
 import config from '../config';
-import { mkdirExists } from '../utils';
-import * as nodesPB from '../proto/js/polykey/v1/nodes/nodes_pb';
+import { mkdirExists } from '../utils/utils';
+import { RWLock } from '../utils/locks';
+import { withF, withG } from '../utils/context';
+import * as utilsPB from '../proto/js/polykey/v1/utils/utils_pb';
 
 /**
  * Object map pattern for each vault
  */
 type VaultMap = Map<
-  VaultId,
+  VaultIdString,
   {
     vault?: VaultInternal;
-    lock: MutexInterface;
+    lock: RWLock;
   }
 >;
 
 type VaultList = Map<VaultName, VaultId>;
-
-// FIXME: this will be removed when moved into VaultInternal.
 type VaultMetadata = {
-  name: VaultName;
-  workingDirectoryIndex: string;
-  remoteNode?: NodeId;
-  remoteVault?: string;
+  dirty: boolean;
+  vaultName: VaultName;
+  remoteInfo?: RemoteInfo;
 };
 
 interface VaultManager extends CreateDestroyStartStop {}
@@ -69,7 +71,6 @@ class VaultManager {
     acl,
     keyManager,
     nodeConnectionManager,
-    nodeManager,
     gestaltGraph,
     notificationsManager,
     keyBits = 256,
@@ -82,7 +83,6 @@ class VaultManager {
     acl: ACL;
     keyManager: KeyManager;
     nodeConnectionManager: NodeConnectionManager;
-    nodeManager: NodeManager;
     gestaltGraph: GestaltGraph;
     notificationsManager: NotificationsManager;
     keyBits?: 128 | 192 | 256;
@@ -98,7 +98,6 @@ class VaultManager {
       acl,
       keyManager,
       nodeConnectionManager,
-      nodeManager,
       gestaltGraph,
       notificationsManager,
       keyBits,
@@ -119,16 +118,15 @@ class VaultManager {
   protected db: DB;
   protected acl: ACL;
   protected keyManager: KeyManager;
-  // FIXME, add this to create and constructor
   protected nodeConnectionManager: NodeConnectionManager;
-  protected nodeManager: NodeManager;
   protected gestaltGraph: GestaltGraph;
   protected notificationsManager: NotificationsManager;
   protected vaultsDbDomain: DBDomain = [this.constructor.name];
   protected vaultsDb: DBLevel;
+  protected vaultsNamesDbDomain: DBDomain = [...this.vaultsDbDomain, 'names'];
+  protected vaultsNamesDb: DBLevel;
+  protected vaultsNamesLock: RWLock = new RWLock();
   // VaultId -> VaultMetadata
-  protected vaultsMetaDbDomain: DBDomain = [this.vaultsDbDomain[0], 'meta'];
-  protected vaultsMetaDb: DBLevel;
   protected vaultMap: VaultMap = new Map();
   protected vaultKey: Buffer;
   protected efs: EncryptedFS;
@@ -139,7 +137,6 @@ class VaultManager {
     acl,
     keyManager,
     nodeConnectionManager,
-    nodeManager,
     gestaltGraph,
     notificationsManager,
     keyBits,
@@ -151,7 +148,6 @@ class VaultManager {
     acl: ACL;
     keyManager: KeyManager;
     nodeConnectionManager: NodeConnectionManager;
-    nodeManager: NodeManager;
     gestaltGraph: GestaltGraph;
     notificationsManager: NotificationsManager;
     keyBits: 128 | 192 | 256;
@@ -165,7 +161,6 @@ class VaultManager {
     this.acl = acl;
     this.keyManager = keyManager;
     this.nodeConnectionManager = nodeConnectionManager;
-    this.nodeManager = nodeManager;
     this.gestaltGraph = gestaltGraph;
     this.notificationsManager = notificationsManager;
     this.keyBits = keyBits;
@@ -180,12 +175,11 @@ class VaultManager {
     try {
       this.logger.info(`Starting ${this.constructor.name}`);
       const vaultsDb = await this.db.level(this.vaultsDbDomain[0]);
-      const vaultsMetaDb = await this.db.level(
-        this.vaultsMetaDbDomain[1],
-        this.vaultsDb,
+      const vaultsNamesDb = await this.db.level(
+        this.vaultsNamesDbDomain[1],
+        vaultsDb,
       );
       if (fresh) {
-        await vaultsMetaDb.clear();
         await vaultsDb.clear();
         await this.fs.promises.rm(this.vaultsPath, {
           force: true,
@@ -202,7 +196,7 @@ class VaultManager {
           logger: this.logger.getChild('EncryptedFileSystem'),
         });
       } catch (e) {
-        if (e instanceof encryptedfsErrors.ErrorEncryptedFSKey) {
+        if (e instanceof encryptedFsErrors.ErrorEncryptedFSKey) {
           throw new vaultsErrors.ErrorVaultManagerKey();
         }
         throw new vaultsErrors.ErrorVaultManagerEFS(e.message, {
@@ -213,7 +207,7 @@ class VaultManager {
         });
       }
       this.vaultsDb = vaultsDb;
-      this.vaultsMetaDb = vaultsMetaDb;
+      this.vaultsNamesDb = vaultsNamesDb;
       this.vaultKey = vaultKey;
       this.efs = efs;
       this.logger.info(`Started ${this.constructor.name}`);
@@ -230,28 +224,13 @@ class VaultManager {
     // Iterate over vaults in memory and destroy them, ensuring that
     // the working directory commit state is saved
 
-    for (const [vaultId, vaultAndLock] of this.vaultMap) {
-      // This is locking each vault... before it tries to do this
-      // but if we are calling stop now
-      // we will have blocked all the other methods
-      // so in this sense, it actually waits for all vault locks to be relinquished
-      // before attempting to do anything here
-      // now if start stop has their own lock
-      // this this applies already just be calling stop
-      // in that it waits for stop to finish
-
-      await this.transact(async () => {
-        // Think about it, maybe we should use stop instead
-        // it will be clearer!!
-        // await vaultAndLock.vault?.stop();
-
-        await vaultAndLock.vault?.destroy();
-      }, [vaultId]);
+    for (const [vaultIdString, vaultAndLock] of this.vaultMap) {
+      const vaultId = IdInternal.fromString<VaultId>(vaultIdString);
+      await withF([this.getWriteLock(vaultId)], async () => {
+        await vaultAndLock.vault?.stop();
+      });
+      this.vaultMap.delete(vaultIdString);
     }
-
-    // Need to figure out if this id thing is a good idea
-    // the id should already be workable as a string
-    // i forgot if it also works under map
 
     await this.efs.stop();
     this.vaultMap = new Map();
@@ -264,7 +243,9 @@ class VaultManager {
     // If the DB was stopped, the existing sublevel `this.vaultsDb` will not be valid
     // Therefore we recreate the sublevel here
     const vaultsDb = await this.db.level(this.vaultsDbDomain[0]);
+    // Clearing all vaults db data
     await vaultsDb.clear();
+    // Is it necessary to remove the vaults domain?
     await this.fs.promises.rm(this.vaultsPath, {
       force: true,
       recursive: true,
@@ -280,50 +261,29 @@ class VaultManager {
     this.efs.unsetWorkerManager();
   }
 
-  // The with locks thing
-  // can be generalised a bit
-  // we can address the with locking mechanism in general
-  // with withF and withG
-  // this will become our generic of way locking anything
-
-  // REPLACE THE FOLLOWING 3 functions
-  // replace this transact with our new withF and withG mechanisms
-  // all we need to do is create `ResourceAcquire` types in this domain
-
-  /**
-   * By default will not lock anything
-   */
-  public async transact<T>(f: () => Promise<T>, vaults: Array<VaultId> = []) {
-    // Will lock nothing by default
-    return await this.withLocks(f, vaults.map(this.getLock.bind(this)));
-  }
-
-  protected async withLocks<T>(
-    f: () => Promise<T>,
-    locks: Array<MutexInterface> = [],
-  ): Promise<T> {
-    const releases: Array<MutexInterface.Releaser> = [];
-    for (const lock of locks) {
-      // Take the lock for each vault in memory and acquire it
-      releases.push(await lock.acquire());
-    }
-    try {
-      return await f();
-    } finally {
-      // Release the vault locks in the opposite order
-      releases.reverse();
-      for (const r of releases) {
-        r();
-      }
-    }
-  }
-
-  protected getLock(vaultId: VaultId): MutexInterface {
-    const vaultAndLock = this.vaultMap.get(vaultId);
+  protected getLock(vaultId: VaultId): RWLock {
+    const vaultIdString = vaultId.toString() as VaultIdString;
+    const vaultAndLock = this.vaultMap.get(vaultIdString);
     if (vaultAndLock != null) return vaultAndLock.lock;
-    const lock = new Mutex();
-    this.vaultMap.set(vaultId, { lock });
+    const lock = new RWLock();
+    this.vaultMap.set(vaultIdString, { lock });
     return lock;
+  }
+
+  protected getReadLock(vaultId: VaultId): ResourceAcquire {
+    const lock = this.getLock(vaultId);
+    return async () => {
+      const release = await lock.acquireRead();
+      return [async () => release()];
+    };
+  }
+
+  protected getWriteLock(vaultId: VaultId): ResourceAcquire {
+    const lock = this.getLock(vaultId);
+    return async () => {
+      const release = await lock.acquireWrite();
+      return [async () => release()];
+    };
   }
 
   /**
@@ -335,26 +295,45 @@ class VaultManager {
 
   @ready(new vaultsErrors.ErrorVaultManagerNotRunning())
   public async createVault(vaultName: VaultName): Promise<VaultId> {
+    // Adding vault to name map
     const vaultId = await this.generateVaultId();
-    const lock = new Mutex();
-    this.vaultMap.set(vaultId, { lock });
-    return await this.transact(async () => {
-      this.logger.info(
-        `Storing metadata for Vault ${vaultsUtils.encodeVaultId(vaultId)}`,
+    await this.vaultsNamesLock.withWrite(async () => {
+      const vaultIdBuffer = await this.db.get(
+        this.vaultsNamesDbDomain,
+        vaultName,
+        true,
       );
-      await this.db.put(this.vaultsMetaDbDomain, idUtils.toBuffer(vaultId), {
-        name: vaultName,
-      });
-      const vault = await VaultInternal.create({
+      // Check if the vault name already exists;
+      if (vaultIdBuffer != null) {
+        throw new vaultsErrors.ErrorVaultsVaultDefined();
+      }
+      await this.db.put(
+        this.vaultsNamesDbDomain,
+        vaultName,
+        vaultId.toBuffer(),
+        true,
+      );
+    });
+    const lock = new RWLock();
+    const vaultIdString = vaultId.toString() as VaultIdString;
+    this.vaultMap.set(vaultIdString, { lock });
+    return await withF([this.getWriteLock(vaultId)], async () => {
+      // Creating vault
+      const vault = await VaultInternal.createVaultInternal({
         vaultId,
+        vaultName,
         keyManager: this.keyManager,
         efs: this.efs,
         logger: this.logger.getChild(VaultInternal.name),
+        db: this.db,
+        vaultsDb: this.vaultsDb,
+        vaultsDbDomain: this.vaultsDbDomain,
         fresh: true,
       });
-      this.vaultMap.set(vaultId, { lock, vault });
+      // Adding vault to object map
+      this.vaultMap.set(vaultIdString, { lock, vault });
       return vault.vaultId;
-    }, [vaultId]);
+    });
   }
 
   /**
@@ -362,13 +341,33 @@ class VaultManager {
    * and parses it to return the associated vault name
    */
   @ready(new vaultsErrors.ErrorVaultManagerNotRunning())
-  public async getVaultMeta(vaultId: VaultId): Promise<VaultMetadata> {
-    const vaultMeta = await this.db.get<VaultMetadata>(
-      this.vaultsMetaDbDomain,
-      idUtils.toBuffer(vaultId),
+  public async getVaultMeta(
+    vaultId: VaultId,
+  ): Promise<VaultMetadata | undefined> {
+    // First check if the metadata exists
+    const vaultIdEncoded = vaultsUtils.encodeVaultId(vaultId);
+    const vaultDbDomain = [...this.vaultsDbDomain, vaultIdEncoded];
+    const vaultDb = await this.db.level(vaultIdEncoded, this.vaultsDb);
+    // Return if metadata has no data
+    if ((await this.db.count(vaultDb)) === 0) return;
+    // Obtain the metadata;
+    const dirty = (await this.db.get<boolean>(
+      vaultDbDomain,
+      VaultInternal.dirtyKey,
+    ))!;
+    const vaultName = (await this.db.get<VaultName>(
+      vaultDbDomain,
+      VaultInternal.nameKey,
+    ))!;
+    const remoteInfo = await this.db.get<RemoteInfo>(
+      vaultDbDomain,
+      VaultInternal.remoteKey,
     );
-    if (vaultMeta == null) throw new vaultsErrors.ErrorVaultsVaultUndefined();
-    return vaultMeta;
+    return {
+      dirty,
+      vaultName,
+      remoteInfo,
+    };
   }
 
   /**
@@ -377,68 +376,54 @@ class VaultManager {
    */
   @ready(new vaultsErrors.ErrorVaultManagerNotRunning())
   public async destroyVault(vaultId: VaultId) {
+    const vaultMeta = await this.getVaultMeta(vaultId);
+    if (vaultMeta == null) return;
+    const vaultName = vaultMeta.vaultName;
     this.logger.info(`Destroying Vault ${vaultsUtils.encodeVaultId(vaultId)}`);
-    await this.transact(async () => {
-      const vaultMeta = await this.getVaultMeta(vaultId);
-      if (!vaultMeta) return;
-      await this.db.del(this.vaultsMetaDbDomain, idUtils.toBuffer(vaultId));
-      this.vaultMap.delete(vaultId);
-      await this.efs.rmdir(vaultsUtils.encodeVaultId(vaultId), {
-        recursive: true,
+    const vaultIdString = vaultId.toString() as VaultIdString;
+    await withF([this.getWriteLock(vaultId)], async () => {
+      const vault = await this.getVault(vaultId);
+      // Destroying vault state and metadata
+      await vault.stop();
+      await vault.destroy();
+      // Removing from map
+      this.vaultMap.delete(vaultIdString);
+      // Removing name->id mapping
+      await this.vaultsNamesLock.withWrite(async () => {
+        await this.db.del(this.vaultsNamesDbDomain, vaultName);
       });
-    }, [vaultId]);
+    });
+    this.logger.info(`Destroyed Vault ${vaultsUtils.encodeVaultId(vaultId)}`);
   }
 
-  // /**
-  //  * Constructs or returns the in-memory instance of a vault
-  //  * from metadata using a given vault Id
-  //  */
-  // @ready(new vaultsErrors.ErrorVaultManagerNotRunning())
-  // private async openVault(vaultId: VaultId): Promise<Vault> {
-  //   const vaultMeta = await this.getVaultMeta(vaultId);
-  //   if (!vaultMeta) throw new vaultsErrors.ErrorVaultsVaultUndefined();
-  //   return await this.getVault(vaultId);
-  // }
-
   /**
-   * Writes the working directory commit state of a vault Id
-   * and removes the vault from memory
+   * Removes vault from the vault map
    */
   @ready(new vaultsErrors.ErrorVaultManagerNotRunning())
   public async closeVault(vaultId: VaultId) {
-    const vaultMeta = await this.getVaultMeta(vaultId);
-    if (!vaultMeta) throw new vaultsErrors.ErrorVaultsVaultUndefined();
-    const vault = await this.getVault(vaultId);
-    // Updating workingDirectoryIndex in the vault metadata.
-    vaultMeta.workingDirectoryIndex = vault.getworkingDirIndex();
-    await this.db.put(
-      this.vaultsMetaDbDomain,
-      idUtils.toBuffer(vaultId),
-      vaultMeta,
-    );
-    await vault.destroy();
-    this.vaultMap.delete(vaultId);
+    if ((await this.getVaultName(vaultId)) == null) {
+      throw new vaultsErrors.ErrorVaultsVaultUndefined();
+    }
+    const vaultIdString = vaultId.toString() as VaultIdString;
+    await withF([this.getWriteLock(vaultId)], async () => {
+      const vault = await this.getVault(vaultId);
+      await vault.stop();
+      this.vaultMap.delete(vaultIdString);
+    });
   }
 
   /**
    * Lists the vault name and associated vault Id of all
    * the vaults stored
    */
-  // FIXME: this will have to peek into the vaults metadata.
-  //  This will be inside the vaultInternal now. Need to work this out.
   @ready(new vaultsErrors.ErrorVaultManagerNotRunning())
   public async listVaults(): Promise<VaultList> {
     const vaults: VaultList = new Map();
-    // Stream all the vault Id and associated metadata values
-    for await (const o of this.vaultsMetaDb.createReadStream({})) {
-      const dbMeta = (o as any).value;
-      const dbId = (o as any).key;
-      // Manually decrypt the vault metadata
-      const vaultMeta = await this.db.deserializeDecrypt<VaultMetadata>(
-        dbMeta,
-        false,
-      );
-      vaults.set(vaultMeta.name, IdInternal.fromBuffer<VaultId>(dbId));
+    // Stream of vaultName VaultId key value pairs
+    for await (const vaultNameBuffer of this.vaultsNamesDb.createKeyStream()) {
+      const vaultName = vaultNameBuffer.toString() as VaultName;
+      const vaultId = (await this.getVaultId(vaultName))!;
+      vaults.set(vaultName, vaultId);
     }
     return vaults;
   }
@@ -451,20 +436,35 @@ class VaultManager {
     vaultId: VaultId,
     newVaultName: VaultName,
   ): Promise<void> {
-    this.logger.info(`Renaming Vault ${vaultsUtils.encodeVaultId(vaultId)}`);
-    await this.transact(async () => {
-      const meta = await this.db.get<VaultMetadata>(
-        this.vaultsMetaDbDomain,
-        idUtils.toBuffer(vaultId),
-      );
-      if (!meta) throw new vaultsErrors.ErrorVaultsVaultUndefined();
-      meta.name = newVaultName;
-      await this.db.put(
-        this.vaultsMetaDbDomain,
-        idUtils.toBuffer(vaultId),
-        meta,
-      );
-    }, [vaultId]);
+    await withF([this.getWriteLock(vaultId)], async () => {
+      this.logger.info(`Renaming Vault ${vaultsUtils.encodeVaultId(vaultId)}`);
+      // Checking if new name exists
+      if (await this.getVaultId(newVaultName)) {
+        throw new vaultsErrors.ErrorVaultsVaultDefined();
+      }
+      // Checking if vault exists
+      const vaultMetadata = await this.getVaultMeta(vaultId);
+      if (vaultMetadata == null) {
+        throw new vaultsErrors.ErrorVaultsVaultUndefined();
+      }
+      const oldVaultName = vaultMetadata.vaultName;
+      // Updating metadata with new name;
+      const vaultDbDomain = [
+        ...this.vaultsDbDomain,
+        vaultsUtils.encodeVaultId(vaultId),
+      ];
+      await this.db.put(vaultDbDomain, VaultInternal.nameKey, newVaultName);
+      // Updating name->id map
+      await this.vaultsNamesLock.withWrite(async () => {
+        await this.db.del(this.vaultsNamesDbDomain, oldVaultName);
+        await this.db.put(
+          this.vaultsNamesDbDomain,
+          newVaultName,
+          vaultId.toBuffer(),
+          true,
+        );
+      });
+    });
   }
 
   /**
@@ -472,24 +472,28 @@ class VaultManager {
    */
   @ready(new vaultsErrors.ErrorVaultManagerNotRunning())
   public async getVaultId(vaultName: VaultName): Promise<VaultId | undefined> {
-    // Stream all the metadata and associated vault Id values
-    for await (const o of this.vaultsMetaDb.createReadStream({})) {
-      const dbMeta = (o as any).value;
-      const dbId = (o as any).key;
-      // Manually decrypt the vault metadata
-      const vaultMeta = await this.db.deserializeDecrypt<VaultMetadata>(
-        dbMeta,
-        false,
+    return await this.vaultsNamesLock.withWrite(async () => {
+      const vaultIdBuffer = await this.db.get(
+        this.vaultsNamesDbDomain,
+        vaultName,
+        true,
       );
-      // If the name metadata matches the given name, return the associated vault Id
-      if (vaultName === vaultMeta.name) {
-        return IdInternal.fromBuffer<VaultId>(dbId);
-      }
-    }
+      if (vaultIdBuffer == null) return;
+      return IdInternal.fromBuffer<VaultId>(vaultIdBuffer);
+    });
   }
 
   /**
-   * Returns a dictionary of VaultActions for each node.
+   * Retreives the vault name associated with a vault Id
+   */
+  @ready(new vaultsErrors.ErrorVaultManagerNotRunning())
+  public async getVaultName(vaultId: VaultId): Promise<VaultName | undefined> {
+    const metadata = await this.getVaultMeta(vaultId);
+    return metadata?.vaultName;
+  }
+
+  /**
+   * Returns a dictionary of VaultActions for each node
    * @param vaultId
    */
   @ready(new vaultsErrors.ErrorVaultManagerNotRunning())
@@ -498,7 +502,7 @@ class VaultManager {
   ): Promise<Record<NodeId, VaultActions>> {
     const rawPermissions = await this.acl.getVaultPerm(vaultId);
     const permissions: Record<NodeId, VaultActions> = {};
-    // Getting the relevant information.
+    // Getting the relevant information
     for (const nodeId in rawPermissions) {
       permissions[nodeId] = rawPermissions[nodeId].vaults[vaultId];
     }
@@ -513,26 +517,20 @@ class VaultManager {
   public async shareVault(vaultId: VaultId, nodeId: NodeId): Promise<void> {
     const vaultMeta = await this.getVaultMeta(vaultId);
     if (!vaultMeta) throw new vaultsErrors.ErrorVaultsVaultUndefined();
-    await this.transact(async () => {
-      await this.gestaltGraph._transaction(async () => {
-        await this.acl._transaction(async () => {
-          // Node Id permissions translated to other nodes in
-          // a gestalt by other domains
-          await this.gestaltGraph.setGestaltActionByNode(nodeId, 'scan');
-          await this.acl.setVaultAction(vaultId, nodeId, 'pull');
-          await this.acl.setVaultAction(vaultId, nodeId, 'clone');
-          await this.notificationsManager.sendNotification(nodeId, {
-            type: 'VaultShare',
-            vaultId: vaultId.toString(),
-            vaultName: vaultMeta.name,
-            actions: {
-              clone: null,
-              pull: null,
-            },
-          });
-        });
-      });
-    }, [vaultId]);
+    // Node Id permissions translated to other nodes in
+    // a gestalt by other domains
+    await this.gestaltGraph.setGestaltActionByNode(nodeId, 'scan');
+    await this.acl.setVaultAction(vaultId, nodeId, 'pull');
+    await this.acl.setVaultAction(vaultId, nodeId, 'clone');
+    await this.notificationsManager.sendNotification(nodeId, {
+      type: 'VaultShare',
+      vaultId: vaultsUtils.encodeVaultId(vaultId),
+      vaultName: vaultMeta.vaultName,
+      actions: {
+        clone: null,
+        pull: null,
+      },
+    });
   }
 
   /**
@@ -543,13 +541,9 @@ class VaultManager {
   public async unshareVault(vaultId: VaultId, nodeId: NodeId): Promise<void> {
     const vaultMeta = await this.getVaultMeta(vaultId);
     if (!vaultMeta) throw new vaultsErrors.ErrorVaultsVaultUndefined();
-    return await this.gestaltGraph._transaction(async () => {
-      return await this.acl._transaction(async () => {
-        await this.gestaltGraph.unsetGestaltActionByNode(nodeId, 'scan');
-        await this.acl.unsetVaultAction(vaultId, nodeId, 'pull');
-        await this.acl.unsetVaultAction(vaultId, nodeId, 'clone');
-      });
-    });
+    await this.gestaltGraph.unsetGestaltActionByNode(nodeId, 'scan');
+    await this.acl.unsetVaultAction(vaultId, nodeId, 'pull');
+    await this.acl.unsetVaultAction(vaultId, nodeId, 'clone');
   }
 
   /**
@@ -561,75 +555,64 @@ class VaultManager {
     nodeId: NodeId,
     vaultNameOrId: VaultId | VaultName,
   ): Promise<VaultId> {
-    // This error flag will contain the error returned by the cloning grpc stream
-    let error;
-    // Let vaultName, remoteVaultId;
-    const thisNodeId = this.keyManager.getNodeId();
-    const nodeConnection = await this.nodeManager.getConnectionToNode(nodeId);
-    const client = nodeConnection.getClient();
     const vaultId = await this.generateVaultId();
-    const lock = new Mutex();
-    this.vaultMap.set(vaultId, { lock });
+    const lock = new RWLock();
+    const vaultIdString = vaultId.toString() as VaultIdString;
+    this.vaultMap.set(vaultIdString, { lock });
     this.logger.info(
       `Cloning Vault ${vaultsUtils.encodeVaultId(vaultId)} on Node ${nodeId}`,
     );
-    return await this.transact(async () => {
-      // Make the directory where the .git files will be auto generated and
-      // where the contents will be cloned to ('contents' file)
-      await this.efs.mkdir(
-        path.join(vaultsUtils.encodeVaultId(vaultId), 'contents'),
-        { recursive: true },
-      );
-      const [request, vaultName, remoteVaultId] = await vaultsUtils.request(
-        client,
-        thisNodeId,
-        vaultNameOrId,
-      );
-      try {
-        await git.clone({
-          fs: this.efs,
-          http: { request },
-          dir: path.join(vaultsUtils.encodeVaultId(vaultId), 'contents'),
-          gitdir: path.join(vaultsUtils.encodeVaultId(vaultId), '.git'),
-          url: 'http://',
-          singleBranch: true,
-        });
-      } catch (err) {
-        // If the error flag set and we have the generalised SmartHttpError from
-        // isomorphic git then we need to throw the polykey error
-        if (err instanceof git.Errors.SmartHttpError && error) {
-          throw error;
-        }
-        throw err;
-      }
-      const workingDirIndex = (
-        await git.log({
-          fs: this.efs,
-          dir: path.join(vaultsUtils.encodeVaultId(vaultId), 'contents'),
-          gitdir: path.join(vaultsUtils.encodeVaultId(vaultId), '.git'),
-          depth: 1,
-        })
-      ).pop()!;
-      // Store the node and vault Id to be used as default remote values when pulling
-      await this.db.put(this.vaultsMetaDbDomain, idUtils.toBuffer(vaultId), {
-        name: vaultName,
-        workingDirectoryIndex: workingDirIndex.oid,
-        remoteNode: nodeId,
-        remoteVault: remoteVaultId.toString(),
-      } as VaultMetadata);
-      const vault = await VaultInternal.create({
+    return await withF([this.getWriteLock(vaultId)], async () => {
+      const vault = await VaultInternal.cloneVaultInternal({
+        targetNodeId: nodeId,
+        targetVaultNameOrId: vaultNameOrId,
         vaultId,
+        db: this.db,
+        nodeConnectionManager: this.nodeConnectionManager,
+        vaultsDb: this.vaultsDb,
+        vaultsDbDomain: this.vaultsDbDomain,
         keyManager: this.keyManager,
         efs: this.efs,
         logger: this.logger.getChild(VaultInternal.name),
-        remote: true,
       });
-      this.vaultMap.set(vaultId, { lock, vault });
+      this.vaultMap.set(vaultIdString, { lock, vault });
+      const vaultMetadata = (await this.getVaultMeta(vaultId))!;
+      const baseVaultName = vaultMetadata.vaultName;
+      // Need to check if the name is taken, 10 attempts
+      let newVaultName = baseVaultName;
+      let attempts = 1;
+      while (true) {
+        const existingVaultId = await this.db.get(
+          this.vaultsNamesDbDomain,
+          newVaultName,
+        );
+        if (existingVaultId == null) break;
+        newVaultName = `${baseVaultName}-${attempts}`;
+        if (attempts >= 50) {
+          throw new vaultsErrors.ErrorVaultsNameConflict(
+            `Too many copies of ${baseVaultName}`,
+          );
+        }
+        attempts++;
+      }
+      // Set the vaultName -> vaultId mapping
+      await this.db.put(
+        this.vaultsNamesDbDomain,
+        newVaultName,
+        vaultId.toBuffer(),
+        true,
+      );
+      // Update vault metadata
+      await this.db.put(
+        [...this.vaultsDbDomain, vaultsUtils.encodeVaultId(vaultId)],
+        VaultInternal.nameKey,
+        newVaultName,
+      );
       this.logger.info(
         `Cloned Vault ${vaultsUtils.encodeVaultId(vaultId)} on Node ${nodeId}`,
       );
       return vault.vaultId;
-    }, [vaultId]);
+    });
   }
 
   /**
@@ -644,93 +627,16 @@ class VaultManager {
     vaultId: VaultId;
     pullNodeId?: NodeId;
     pullVaultNameOrId?: VaultId | VaultName;
-  }): Promise<VaultId> {
-    return await this.transact(async () => {
-      // This error flag will contain the error returned by the cloning grpc stream
-      let error;
-      // Keeps track of whether the metadata needs changing to avoid unnecessary db ops
-      // 0 = no change, 1 = change with vault Id, 2 = change with vault name
-      let metaChange = 0;
-      const thisNodeId = this.keyManager.getNodeId();
-      const vaultMeta = await this.db.get<VaultMetadata>(
-        this.vaultsMetaDbDomain,
-        idUtils.toBuffer(vaultId),
-      );
-      if (!vaultMeta) throw new vaultsErrors.ErrorVaultsVaultUnlinked();
-      if (pullNodeId == null) {
-        pullNodeId = vaultMeta.remoteNode;
-      } else {
-        metaChange = 1;
-        vaultMeta.remoteNode = pullNodeId;
-      }
-      if (pullVaultNameOrId == null) {
-        pullVaultNameOrId = IdInternal.fromString<VaultId>(
-          vaultMeta.remoteVault!,
-        );
-      } else {
-        metaChange = 1;
-        if (typeof pullVaultNameOrId === 'string') {
-          metaChange = 2;
-        } else {
-          vaultMeta.remoteVault = pullVaultNameOrId.toString();
-        }
-      }
-      this.logger.info(
-        `Pulling Vault ${vaultsUtils.encodeVaultId(
-          vaultId,
-        )} from Node ${pullNodeId}`,
-      );
-      const nodeConnection = await this.nodeManager.getConnectionToNode(
-        pullNodeId!,
-      );
-      const client = nodeConnection.getClient();
-      const [request,, remoteVaultId] = await vaultsUtils.request(
-        client,
-        thisNodeId,
-        pullVaultNameOrId!,
-      );
-      try {
-        await git.pull({
-          fs: this.efs,
-          http: { request },
-          dir: path.join(vaultsUtils.encodeVaultId(vaultId), 'contents'),
-          gitdir: path.join(vaultsUtils.encodeVaultId(vaultId), '.git'),
-          url: `http://`,
-          ref: 'HEAD',
-          singleBranch: true,
-          author: {
-            name: nodesUtils.encodeNodeId(pullNodeId!),
-          },
-        });
-      } catch (err) {
-        // If the error flag set and we have the generalised SmartHttpError from
-        // isomorphic git then we need to throw the polykey error
-        if (err instanceof git.Errors.SmartHttpError && error) {
-          throw error;
-        } else if (err instanceof git.Errors.MergeNotSupportedError) {
-          throw new vaultsErrors.ErrorVaultsMergeConflict(
-            'Merge Conflicts are not supported yet',
-          );
-        }
-        throw err;
-      }
-      if (metaChange !== 0) {
-        if (metaChange === 2) vaultMeta.remoteVault = remoteVaultId;
-        await this.db.put(
-          this.vaultsMetaDbDomain,
-          idUtils.toBuffer(vaultId),
-          vaultMeta,
-        );
-      }
+  }): Promise<void> {
+    if ((await this.getVaultName(vaultId)) == null) return;
+    await withF([this.getWriteLock(vaultId)], async () => {
       const vault = await this.getVault(vaultId);
-      // Store the working directory commit state in the '.git' directory
-      this.logger.info(
-        `Pulled Vault ${vaultsUtils.encodeVaultId(
-          vaultId,
-        )} from Node ${pullNodeId}`,
-      );
-      return vault.vaultId;
-    }, [vaultId]);
+      await vault.pullVault({
+        nodeConnectionManager: this.nodeConnectionManager,
+        pullNodeId,
+        pullVaultNameOrId,
+      });
+    });
   }
 
   /**
@@ -738,24 +644,29 @@ class VaultManager {
    * cloned or pulled from
    */
   @ready(new vaultsErrors.ErrorVaultManagerNotRunning())
-  public async *handleInfoRequest(
-    vaultId: VaultId,
-  ): AsyncGenerator<Buffer | null> {
-    // Adehrance to git protocol
-    yield Buffer.from(
-      gitUtils.createGitPacketLine('# service=git-upload-pack\n'),
+  public async *handleInfoRequest(vaultId: VaultId): AsyncGenerator<Buffer> {
+    const efs = this.efs;
+    const vault = await this.getVault(vaultId);
+    return yield* withG(
+      [this.getReadLock(vaultId), vault.readLock],
+      async function* (): AsyncGenerator<Buffer, void> {
+        // Adherence to git protocol
+        yield Buffer.from(
+          gitUtils.createGitPacketLine('# service=git-upload-pack\n'),
+        );
+        yield Buffer.from('0000');
+        // Read the commit state of the vault
+        const uploadPack = await gitUtils.uploadPack({
+          fs: efs,
+          dir: path.join(vaultsUtils.encodeVaultId(vaultId), 'contents'),
+          gitdir: path.join(vaultsUtils.encodeVaultId(vaultId), '.git'),
+          advertiseRefs: true,
+        });
+        for (const buffer of uploadPack) {
+          yield buffer;
+        }
+      },
     );
-    yield Buffer.from('0000');
-    // Read the commit state of the vault
-    const uploadPack = await gitUtils.uploadPack({
-      fs: this.efs,
-      dir: path.join(vaultsUtils.encodeVaultId(vaultId), 'contents'),
-      gitdir: path.join(vaultsUtils.encodeVaultId(vaultId), '.git'),
-      advertiseRefs: true,
-    });
-    for (const buffer of uploadPack) {
-      yield buffer;
-    }
   }
 
   /**
@@ -767,67 +678,118 @@ class VaultManager {
     vaultId: VaultId,
     body: Buffer,
   ): Promise<[PassThrough, PassThrough]> {
-    if (body.toString().slice(4, 8) === 'want') {
-      // Parse the request to get the wanted git object
-      const wantedObjectId = body.toString().slice(9, 49);
-      const packResult = await gitUtils.packObjects({
-        fs: this.efs,
-        dir: path.join(vaultsUtils.encodeVaultId(vaultId), 'contents'),
-        gitdir: path.join(vaultsUtils.encodeVaultId(vaultId), '.git'),
-        refs: [wantedObjectId],
-      });
-      // Generate a contents and progress stream
-      const readable = new PassThrough();
-      const progressStream = new PassThrough();
-      const sideBand = gitUtils.mux(
-        'side-band-64',
-        readable,
-        packResult.packstream,
-        progressStream,
-      );
-      return [sideBand, progressStream];
-    } else {
-      throw new gitErrors.ErrorGitUnimplementedMethod(
-        `Request of type '${body
-          .toString()
-          .slice(4, 8)}' not valid, expected 'want'`,
-      );
-    }
+    const vault = await this.getVault(vaultId);
+    return await withF(
+      [this.getReadLock(vaultId), vault.readLock],
+      async () => {
+        if (body.toString().slice(4, 8) === 'want') {
+          // Parse the request to get the wanted git object
+          const wantedObjectId = body.toString().slice(9, 49);
+          const packResult = await gitUtils.packObjects({
+            fs: this.efs,
+            dir: path.join(vaultsUtils.encodeVaultId(vaultId), 'contents'),
+            gitdir: path.join(vaultsUtils.encodeVaultId(vaultId), '.git'),
+            refs: [wantedObjectId],
+          });
+          // Generate a contents and progress stream
+          const readable = new PassThrough();
+          const progressStream = new PassThrough();
+          const sideBand = gitUtils.mux(
+            'side-band-64',
+            readable,
+            packResult.packstream,
+            progressStream,
+          );
+          return [sideBand, progressStream];
+        } else {
+          throw new gitErrors.ErrorGitUnimplementedMethod(
+            `Request of type '${body
+              .toString()
+              .slice(4, 8)}' not valid, expected 'want'`,
+          );
+        }
+      },
+    );
   }
 
   /**
    * Retrieves all the vaults for a peers node
    */
-  public async scanNodeVaults(
-    nodeId: NodeId,
-  ): Promise<Array<[VaultName, VaultId]>> {
+  public async *scanVaults(targetNodeId: NodeId): AsyncGenerator<{
+    vaultName: VaultName;
+    vaultIdEncoded: VaultIdEncoded;
+    vaultPermissions: VaultAction[];
+  }> {
     // Create a connection to another node
-    return await this.nodeConnectionManager.withConnF(
-      nodeId,
-      async (connection) => {
+    return yield* this.nodeConnectionManager.withConnG(
+      targetNodeId,
+      async function* (connection): AsyncGenerator<{
+        vaultName: VaultName;
+        vaultIdEncoded: VaultIdEncoded;
+        vaultPermissions: VaultAction[];
+      }> {
         const client = connection.getClient();
-        const nodeIdMessage = new nodesPB.Node();
-        nodeIdMessage.setNodeId(
-          nodesUtils.encodeNodeId(this.keyManager.getNodeId()),
-        );
-        const vaults: Array<[VaultName, VaultId]> = [];
-        const genReadable = client.vaultsScan(nodeIdMessage);
+        const genReadable = client.vaultsScan(new utilsPB.EmptyMessage());
         for await (const vault of genReadable) {
-          vaults.push([
-            vault.getVaultName() as VaultName,
-            validationUtils.parseVaultId(vault.getVaultId()),
-          ]);
+          const vaultName = vault.getVaultName() as VaultName;
+          const vaultIdEncoded = vault.getVaultId() as VaultIdEncoded;
+          const vaultPermissions =
+            vault.getVaultPermissionsList() as VaultAction[];
+          yield { vaultName, vaultIdEncoded, vaultPermissions };
         }
-        return vaults;
       },
     );
+  }
+
+  /**
+   * Returns all the shared vaults for a NodeId.
+   */
+  public async *handleScanVaults(
+    nodeId: NodeId,
+  ): AsyncGenerator<{
+    vaultId: VaultId;
+    vaultName: VaultName;
+    vaultPermissions: VaultAction[];
+  }> {
+    // Checking permission
+    const nodeIdEncoded = nodesUtils.encodeNodeId(nodeId);
+    const permissions = await this.acl.getNodePerm(nodeId);
+    if (permissions == null) {
+      throw new vaultsErrors.ErrorVaultsPermissionDenied(
+        `No permissions found for ${nodeIdEncoded}`,
+      );
+    }
+    if (permissions.gestalt.scan === undefined) {
+      throw new vaultsErrors.ErrorVaultsPermissionDenied(
+        `Scanning is not allowed for ${nodeIdEncoded}`,
+      );
+    }
+
+    // Getting the list of vaults
+    const vaults = permissions.vaults;
+    for (const vaultIdString of Object.keys(vaults)) {
+      // Getting vault permissions
+      const vaultId = IdInternal.fromString<VaultId>(vaultIdString);
+      const vaultPermissions = Object.keys(
+        vaults[vaultIdString],
+      ) as VaultAction[];
+      // Getting the vault name
+      const metadata = await this.getVaultMeta(vaultId);
+      const vaultName = metadata!.vaultName;
+      const element = {
+        vaultId,
+        vaultName,
+        vaultPermissions,
+      };
+      yield element;
+    }
   }
 
   @ready(new vaultsErrors.ErrorVaultManagerNotRunning())
   protected async generateVaultId(): Promise<VaultId> {
     let vaultId = vaultsUtils.generateVaultId();
     let i = 0;
-    while (await this.efs.exists(idUtils.toString(vaultId))) {
+    while (await this.efs.exists(vaultsUtils.encodeVaultId(vaultId))) {
       i++;
       if (i > 50) {
         throw new vaultsErrors.ErrorVaultsCreateVaultId(
@@ -842,8 +804,9 @@ class VaultManager {
   @ready(new vaultsErrors.ErrorVaultManagerNotRunning())
   protected async getVault(vaultId: VaultId): Promise<VaultInternal> {
     let vault: VaultInternal | undefined;
-    let lock: MutexInterface;
-    let vaultAndLock = this.vaultMap.get(vaultId);
+    let lock: RWLock;
+    const vaultIdString = vaultId.toString() as VaultIdString;
+    let vaultAndLock = this.vaultMap.get(vaultIdString);
     if (vaultAndLock != null) {
       ({ vault, lock } = vaultAndLock);
       // Lock and vault exist
@@ -853,62 +816,57 @@ class VaultManager {
       // Only lock exists
       let release;
       try {
-        release = await lock.acquire();
-        ({ vault, lock } = vaultAndLock);
+        release = await lock.acquireWrite();
+        ({ vault } = vaultAndLock);
         if (vault != null) {
           return vault;
         }
-        const vaultMeta = await this.db.get<VaultMetadata>(
-          this.vaultsMetaDbDomain,
-          idUtils.toBuffer(vaultId),
-        );
-        let remote;
-        if (vaultMeta) {
-          if (vaultMeta.remoteVault || vaultMeta.remoteNode) {
-            remote = true;
-          }
+        // Only create if the vault state already exists
+        if ((await this.getVaultMeta(vaultId)) == null) {
+          throw new vaultsErrors.ErrorVaultsVaultUndefined(
+            `Vault ${vaultsUtils.encodeVaultId(vaultId)} doesn't exist`,
+          );
         }
-        vault = await VaultInternal.create({
+        vault = await VaultInternal.createVaultInternal({
           vaultId,
           keyManager: this.keyManager,
           efs: this.efs,
           logger: this.logger.getChild(VaultInternal.name),
-          remote,
+          db: this.db,
+          vaultsDb: this.vaultsDb,
+          vaultsDbDomain: this.vaultsDbDomain,
         });
         vaultAndLock.vault = vault;
-        this.vaultMap.set(vaultId, vaultAndLock);
+        this.vaultMap.set(vaultIdString, vaultAndLock);
         return vault;
       } finally {
         release();
       }
     } else {
       // Neither vault nor lock exists
-      lock = new Mutex();
+      lock = new RWLock();
       vaultAndLock = { lock };
-      this.vaultMap.set(vaultId, vaultAndLock);
+      this.vaultMap.set(vaultIdString, vaultAndLock);
       let release;
       try {
-        release = await lock.acquire();
-        const vaultMeta = await this.db.get<VaultMetadata>(
-          this.vaultsMetaDbDomain,
-          idUtils.toBuffer(vaultId),
-        );
-        let remote;
-        if (vaultMeta) {
-          if (vaultMeta.remoteVault || vaultMeta.remoteNode) {
-            remote = true;
-          }
+        release = await lock.acquireWrite();
+        // Only create if the vault state already exists
+        if ((await this.getVaultMeta(vaultId)) == null) {
+          throw new vaultsErrors.ErrorVaultsVaultUndefined(
+            `Vault ${vaultsUtils.encodeVaultId(vaultId)} doesn't exist`,
+          );
         }
-        vault = await VaultInternal.create({
+        vault = await VaultInternal.createVaultInternal({
           vaultId,
           keyManager: this.keyManager,
           efs: this.efs,
-          workingDirIndex: vaultMeta?.workingDirectoryIndex,
+          db: this.db,
+          vaultsDb: this.vaultsDb,
+          vaultsDbDomain: this.vaultsDbDomain,
           logger: this.logger.getChild(VaultInternal.name),
-          remote,
         });
         vaultAndLock.vault = vault;
-        this.vaultMap.set(vaultId, vaultAndLock);
+        this.vaultMap.set(vaultIdString, vaultAndLock);
         return vault;
       } finally {
         release();
@@ -919,9 +877,9 @@ class VaultManager {
   // THIS can also be replaced with generic withF and withG
 
   /**
-   * Takes a function and runs it with the listed vaults. locking is handled automatically.
-   * @param vaultIds List of vault ID for vaults you wish to use.
-   * @param f Function you wish to run with the provided vaults.
+   * Takes a function and runs it with the listed vaults. locking is handled automatically
+   * @param vaultIds List of vault ID for vaults you wish to use
+   * @param f Function you wish to run with the provided vaults
    */
   @ready(new vaultsErrors.ErrorVaultManagerNotRunning())
   public async withVaults<T>(
@@ -929,10 +887,10 @@ class VaultManager {
     f: (...args: Vault[]) => Promise<T>,
   ): Promise<T> {
     // Stages:
-    // 1. Obtain vaults,
-    // 2. Call function with vaults while locking the vaults.
-    // 3. Catch any problems and preform clean up in finally.
-    // 4. return result.
+    // 1. Obtain vaults
+    // 2. Call function with vaults while locking the vaults
+    // 3. Catch any problems and preform clean up in finally
+    // 4. return result
 
     const vaults = await Promise.all(
       vaultIds.map(async (vaultId) => {
@@ -940,15 +898,15 @@ class VaultManager {
       }),
     );
 
-    // Obtaining locks.
+    // Obtaining locks
     const vaultLocks = vaultIds.map((vaultId) => {
-      return this.getLock(vaultId);
+      return this.getReadLock(vaultId);
     });
 
-    // Running the function with locking.
-    return await this.withLocks(() => {
+    // Running the function with locking
+    return await withF(vaultLocks, () => {
       return f(...vaults);
-    }, vaultLocks);
+    });
   }
 
   protected async setupKey(bits: 128 | 192 | 256): Promise<Buffer> {

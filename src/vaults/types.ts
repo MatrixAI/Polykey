@@ -21,8 +21,8 @@ const tagLast = 'last';
 const refs = ['HEAD', tagLast] as const;
 
 type VaultId = Opaque<'VaultId', Id>;
-
 type VaultIdEncoded = Opaque<'VaultIdEncoded', string>;
+type VaultIdString = Opaque<'VaultIdString', string>;
 
 type VaultRef = typeof refs[number];
 
@@ -161,6 +161,7 @@ export { vaultActions };
 export type {
   VaultId,
   VaultIdEncoded,
+  VaultIdString,
   VaultRef,
   VaultAction,
   CommitId,
