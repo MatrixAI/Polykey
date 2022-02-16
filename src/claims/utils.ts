@@ -485,15 +485,7 @@ function encodeClaimId(claimId: ClaimId): ClaimIdEncoded {
 }
 
 function decodeClaimId(claimIdEncoded: string): ClaimId | undefined {
-  let claimId: ClaimId | undefined;
-  try {
-    claimId = IdInternal.fromMultibase<ClaimId>(claimIdEncoded);
-  } catch (e) {
-    if (e instanceof SyntaxError) {
-      return;
-    }
-    throw e;
-  }
+  const claimId = IdInternal.fromMultibase<ClaimId>(claimIdEncoded);
   if (claimId == null) {
     return;
   }

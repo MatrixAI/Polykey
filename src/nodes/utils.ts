@@ -63,15 +63,7 @@ function decodeNodeId(nodeIdEncoded: any): NodeId | undefined {
   if (typeof nodeIdEncoded !== 'string') {
     return;
   }
-  let nodeId: NodeId | undefined;
-  try {
-    nodeId = IdInternal.fromMultibase<NodeId>(nodeIdEncoded);
-  } catch (e) {
-    if (e instanceof SyntaxError) {
-      return;
-    }
-    throw e;
-  }
+  const nodeId = IdInternal.fromMultibase<NodeId>(nodeIdEncoded);
   if (nodeId == null) {
     return;
   }
