@@ -228,12 +228,10 @@ class CommandStart extends CommandPolykey {
           clientPort: pkAgent.grpcServerClient.getPort(),
           agentHost: pkAgent.grpcServerAgent.getHost(),
           agentPort: pkAgent.grpcServerAgent.getPort(),
-          proxyHost: pkAgent.fwdProxy.getProxyHost(),
-          proxyPort: pkAgent.fwdProxy.getProxyPort(),
-          egressHost: pkAgent.fwdProxy.getEgressHost(),
-          egressPort: pkAgent.fwdProxy.getEgressPort(),
-          ingressHost: pkAgent.revProxy.getIngressHost(),
-          ingressPort: pkAgent.revProxy.getIngressPort(),
+          proxyHost: pkAgent.proxy.getProxyHost(),
+          proxyPort: pkAgent.proxy.getProxyPort(),
+          forwardHost: pkAgent.proxy.getForwardHost(),
+          forwardPort: pkAgent.proxy.getForwardPort(),
         };
       }
       process.stdout.write(

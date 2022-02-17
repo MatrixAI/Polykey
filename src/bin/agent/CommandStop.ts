@@ -32,7 +32,9 @@ class CommandStop extends CommandPolykey {
         this.logger.info('Agent is already stopping');
         return;
       } else if (statusInfo?.status === 'STARTING') {
-        throw new binErrors.ErrorCLIStatusStarting();
+        throw new binErrors.ErrorCLIPolykeyAgentStatus(
+          'agent is starting'
+        );
       }
       const meta = await binProcessors.processAuthentication(
         options.passwordFile,

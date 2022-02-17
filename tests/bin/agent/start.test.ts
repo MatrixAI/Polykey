@@ -68,14 +68,12 @@ describe('start', () => {
         nodeId: expect.any(String),
         clientHost: expect.any(String),
         clientPort: expect.any(Number),
-        ingressHost: expect.any(String),
-        ingressPort: expect.any(Number),
-        egressHost: expect.any(String),
-        egressPort: expect.any(Number),
         agentHost: expect.any(String),
         agentPort: expect.any(Number),
         proxyHost: expect.any(String),
         proxyPort: expect.any(Number),
+        forwardHost: expect.any(String),
+        forwardPort: expect.any(Number),
         recoveryCode: expect.any(String)
       });
       expect(
@@ -163,14 +161,12 @@ describe('start', () => {
         nodeId: expect.any(String),
         clientHost: expect.any(String),
         clientPort: expect.any(Number),
-        ingressHost: expect.any(String),
-        ingressPort: expect.any(Number),
-        egressHost: expect.any(String),
-        egressPort: expect.any(Number),
         agentHost: expect.any(String),
         agentPort: expect.any(Number),
         proxyHost: expect.any(String),
         proxyPort: expect.any(Number),
+        forwardHost: expect.any(String),
+        forwardPort: expect.any(Number),
         recoveryCode: expect.any(String)
       });
       // The foreground process PID should nto be the background process PID
@@ -553,14 +549,12 @@ describe('start', () => {
         nodeId: expect.any(String),
         clientHost: expect.any(String),
         clientPort: expect.any(Number),
-        ingressHost: expect.any(String),
-        ingressPort: expect.any(Number),
-        egressHost: expect.any(String),
-        egressPort: expect.any(Number),
         agentHost: expect.any(String),
         agentPort: expect.any(Number),
         proxyHost: expect.any(String),
         proxyPort: expect.any(Number),
+        forwardHost: expect.any(String),
+        forwardPort: expect.any(Number),
         recoveryCode: expect.any(String)
       });
       expect(

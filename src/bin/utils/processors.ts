@@ -13,9 +13,10 @@ import path from 'path';
 import prompts from 'prompts';
 import * as grpc from '@grpc/grpc-js';
 import Logger from '@matrixai/logger';
-import * as binErrors from '../errors';
+import Status from '../../status/Status';
 import * as clientUtils from '../../client/utils';
-import { Status } from '../../status';
+import * as binErrors from '../errors';
+import { arrayZip } from '../../utils';
 import config from '../../config';
 
 /**
@@ -185,7 +186,7 @@ async function processRecoveryCode(
  * 1. Reads --node-id, --client-host, --client-port
  * 2. Reads PK_NODE_ID, PK_CLIENT_HOST, PK_CLIENT_PORT
  * 3. Command-specific defaults
- * 4. Reads Status
+ * 4. If no options are set, reads Status
  * Step 2 is done during option construction
  * Step 3 is done in CommandPolykey classes
  */
@@ -201,7 +202,13 @@ async function processClientOptions(
   clientHost: Host;
   clientPort: Port;
 }> {
-  if (nodeId == null || clientHost == null || clientPort == null) {
+  if (nodeId != null && clientHost != null && clientPort != null) {
+    return {
+      nodeId,
+      clientHost,
+      clientPort,
+    };
+  } else if (nodeId == null && clientHost == null && clientPort == null) {
     const statusPath = path.join(nodePath, config.defaults.statusBase);
     const statusLockPath = path.join(nodePath, config.defaults.statusLockBase);
     const status = new Status({
@@ -212,24 +219,39 @@ async function processClientOptions(
     });
     const statusInfo = await status.readStatus();
     if (statusInfo === undefined || statusInfo.status !== 'LIVE') {
-      throw new binErrors.ErrorCLIStatusNotLive();
+      throw new binErrors.ErrorCLIPolykeyAgentStatus(
+        'agent is not live'
+      );
     }
-    if (nodeId == null) nodeId = statusInfo.data.nodeId;
-    if (clientHost == null) clientHost = statusInfo.data.clientHost;
-    if (clientPort == null) clientPort = statusInfo.data.clientPort;
+    return {
+      nodeId: statusInfo.data.nodeId,
+      clientHost: statusInfo.data.clientHost,
+      clientPort: statusInfo.data.clientPort,
+    };
+  } else {
+    const errorMsg = arrayZip(
+      [nodeId, clientHost, clientPort],
+      [
+        'missing node ID, provide it with --node-id or PK_NODE_ID',
+        'missing client host, provide it with --client-host or PK_CLIENT_HOST',
+        'missing client port, provide it with --client-port or PK_CLIENT_PORT'
+      ]
+    ).flatMap(([option, msg]) => {
+      if (option == null) {
+        return [msg];
+      } else {
+        return [];
+      }
+    }).join('; ');
+    throw new binErrors.ErrorCLIClientOptions(errorMsg);
   }
-  return {
-    nodeId,
-    clientHost,
-    clientPort,
-  };
 }
 
 /**
  * Process client status
  * Options are used for connecting PolykeyClient
  * Variant of processClientOptions
- * Use this when you need always need the status info
+ * Use this when you need always need the status info when reading the status
  */
 async function processClientStatus(
   nodePath: string,
@@ -261,7 +283,6 @@ async function processClientStatus(
       clientPort: Port;
     }
 > {
-  // If all parameters are set, no status and no statusInfo is used
   if (nodeId != null && clientHost != null && clientPort != null) {
     return {
       statusInfo: undefined,
@@ -270,40 +291,61 @@ async function processClientStatus(
       clientHost,
       clientPort,
     };
+  } else if (nodeId == null && clientHost == null && clientPort == null) {
+    const statusPath = path.join(nodePath, config.defaults.statusBase);
+    const statusLockPath = path.join(nodePath, config.defaults.statusLockBase);
+    const status = new Status({
+      statusPath,
+      statusLockPath,
+      fs,
+      logger: logger.getChild(Status.name),
+    });
+    const statusInfo = await status.readStatus();
+    if (statusInfo == null) {
+      return {
+        statusInfo: { status: 'DEAD', data: {} },
+        status,
+        nodeId: undefined,
+        clientHost: undefined,
+        clientPort: undefined,
+      };
+    } else if (statusInfo.status === 'LIVE') {
+      nodeId = statusInfo.data.nodeId;
+      clientHost = statusInfo.data.clientHost;
+      clientPort = statusInfo.data.clientPort;
+      return {
+        statusInfo,
+        status,
+        nodeId,
+        clientHost,
+        clientPort,
+      };
+    } else {
+      return {
+        statusInfo,
+        status,
+        nodeId: undefined,
+        clientHost: undefined,
+        clientPort: undefined,
+      };
+    }
+  } else {
+    const errorMsg = arrayZip(
+      [nodeId, clientHost, clientPort],
+      [
+        'missing node ID, provide it with --node-id or PK_NODE_ID',
+        'missing client host, provide it with --client-host or PK_CLIENT_HOST',
+        'missing client port, provide it with --client-port or PK_CLIENT_PORT'
+      ]
+    ).flatMap(([option, msg]) => {
+      if (option == null) {
+        return [msg];
+      } else {
+        return [];
+      }
+    }).join('; ');
+    throw new binErrors.ErrorCLIClientOptions(errorMsg);
   }
-  const statusPath = path.join(nodePath, config.defaults.statusBase);
-  const statusLockPath = path.join(nodePath, config.defaults.statusLockBase);
-  const status = new Status({
-    statusPath,
-    statusLockPath,
-    fs,
-    logger: logger.getChild(Status.name),
-  });
-  const statusInfo = await status.readStatus();
-  // If not all parameters are set, and that the status doesn't exist
-  // Then this an exception
-  if (statusInfo == null) {
-    throw new binErrors.ErrorCLIStatusMissing();
-  }
-  if (statusInfo.status === 'LIVE') {
-    if (nodeId == null) nodeId = statusInfo.data.nodeId;
-    if (clientHost == null) clientHost = statusInfo.data.clientHost;
-    if (clientPort == null) clientPort = statusInfo.data.clientPort;
-    return {
-      statusInfo,
-      status,
-      nodeId,
-      clientHost,
-      clientPort,
-    };
-  }
-  return {
-    statusInfo,
-    status,
-    nodeId,
-    clientHost,
-    clientPort,
-  };
 }
 
 /**

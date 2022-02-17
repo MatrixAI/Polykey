@@ -3,9 +3,8 @@ import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import Status from '@/status/Status';
-import config from '@/config';
 import * as nodesUtils from '@/nodes/utils';
-import * as binErrors from '@/bin/errors';
+import config from '@/config';
 import * as testBinUtils from '../utils';
 import * as testUtils from '../../utils';
 
@@ -113,17 +112,16 @@ describe('status', () => {
     global.defaultTimeout * 2,
   );
   test('status on missing agent', async () => {
-    const { exitCode, stderr } = await testBinUtils.pkStdio(
-      ['agent', 'status', '--verbose'],
+    const { exitCode, stdout } = await testBinUtils.pkStdio(
+      ['agent', 'status', '--format', 'json'],
       {
         PK_NODE_PATH: path.join(dataDir, 'polykey'),
       },
     );
-    testBinUtils.expectProcessError(
-      exitCode,
-      stderr,
-      new binErrors.ErrorCLIStatusMissing(),
-    );
+    expect(exitCode).toBe(0);
+    expect(JSON.parse(stdout)).toMatchObject({
+      status: 'DEAD',
+    });
   });
   describe('status with global agent', () => {
     let globalAgentDir;

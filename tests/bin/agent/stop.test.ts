@@ -206,7 +206,7 @@ describe('stop', () => {
       testBinUtils.expectProcessError(
         exitCode,
         stderr,
-        new binErrors.ErrorCLIStatusStarting(),
+        new binErrors.ErrorCLIPolykeyAgentStatus('agent is starting'),
       );
       await status.waitFor('LIVE');
       await testBinUtils.pkStdio(

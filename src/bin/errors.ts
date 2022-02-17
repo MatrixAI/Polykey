@@ -8,31 +8,15 @@ class ErrorCLINodePath extends ErrorCLI {
   exitCode = sysexits.USAGE;
 }
 
-class ErrorCLIStatusMissing extends ErrorCLI {
+class ErrorCLIClientOptions extends ErrorCLI {
   description =
-    'Could not resolve nodeId, clientHost or clientPort from non-existent Status';
+    'Missing required client options';
   exitCode = sysexits.USAGE;
-}
-
-class ErrorCLIStatusNotLive extends ErrorCLI {
-  description =
-    'Could not resolve nodeId, clientHost or clientPort from Status';
-  exitCode = sysexits.USAGE;
-}
-
-class ErrorCLIStatusStarting extends ErrorCLI {
-  description = 'Agent is starting';
-  exitCode = sysexits.TEMPFAIL;
-}
-
-class ErrorCLIPolykeyAgentProcess extends ErrorCLI {
-  description = 'PolykeyAgent process could not be started';
-  exitCode = sysexits.OSERR;
 }
 
 class ErrorCLIPasswordMissing extends ErrorCLI {
   description =
-    'Password is necessary, provide it via PK_PASSWORD, --password-file or when prompted';
+    'Password is necessary, provide it via --password-file, PK_PASSWORD or when prompted';
   exitCode = sysexits.USAGE;
 }
 
@@ -51,6 +35,16 @@ class ErrorCLIFileRead extends ErrorCLI {
   exitCode = sysexits.NOINPUT;
 }
 
+class ErrorCLIPolykeyAgentStatus extends ErrorCLI {
+  description = 'PolykeyAgent agent status';
+  exitCode = sysexits.TEMPFAIL;
+}
+
+class ErrorCLIPolykeyAgentProcess extends ErrorCLI {
+  description = 'PolykeyAgent process could not be started';
+  exitCode = sysexits.OSERR;
+}
+
 class ErrorNodeFindFailed extends ErrorCLI {
   description = 'Failed to find the node in the DHT';
   exitCode = 1;
@@ -64,14 +58,13 @@ class ErrorNodePingFailed extends ErrorCLI {
 export {
   ErrorCLI,
   ErrorCLINodePath,
+  ErrorCLIClientOptions,
   ErrorCLIPasswordMissing,
-  ErrorCLIStatusMissing,
-  ErrorCLIStatusStarting,
-  ErrorCLIStatusNotLive,
-  ErrorCLIPolykeyAgentProcess,
   ErrorCLIPasswordFileRead,
   ErrorCLIRecoveryCodeFileRead,
   ErrorCLIFileRead,
+  ErrorCLIPolykeyAgentStatus,
+  ErrorCLIPolykeyAgentProcess,
   ErrorNodeFindFailed,
   ErrorNodePingFailed,
 };
