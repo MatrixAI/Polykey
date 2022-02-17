@@ -50,11 +50,11 @@ function parseGestaltId(data: any): GestaltId {
   if (typeof data !== 'string') {
     throw new validationErrors.ErrorParse('Gestalt ID must be string');
   }
-  data = nodesUtils.decodeNodeId(data);
-  if (data != null) {
+  const node = nodesUtils.decodeNodeId(data);
+  if (node != null) {
     return {
       type: 'node',
-      nodeId: data,
+      nodeId: nodesUtils.encodeNodeId(node),
     };
   }
   const match = (data as string).match(/^(.+):(.+)$/);
