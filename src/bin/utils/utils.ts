@@ -75,6 +75,7 @@ function outputFormatter(msg: OutputObject): string {
     }
   } else if (msg.type === 'json') {
     output = JSON.stringify(msg.data);
+    output += '\n';
   } else if (msg.type === 'error') {
     output += `${msg.name}: ${msg.description}`;
     if (msg.message) {
