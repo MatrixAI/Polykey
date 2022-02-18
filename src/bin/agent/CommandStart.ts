@@ -239,7 +239,9 @@ class CommandStart extends CommandPolykey {
           type: options.format === 'json' ? 'json' : 'dict',
           data: {
             ...statusLiveData!,
-            recoveryCode: recoveryCodeOut,
+            ...(recoveryCodeOut != null
+              ? { recoveryCode: recoveryCodeOut }
+              : {}),
           },
         }),
       );
