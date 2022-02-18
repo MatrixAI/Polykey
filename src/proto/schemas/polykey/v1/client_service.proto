@@ -26,6 +26,7 @@ service ClientService {
   rpc NodesPing(polykey.v1.nodes.Node) returns (polykey.v1.utils.StatusMessage);
   rpc NodesClaim(polykey.v1.nodes.Claim) returns (polykey.v1.utils.StatusMessage);
   rpc NodesFind(polykey.v1.nodes.Node) returns (polykey.v1.nodes.NodeAddress);
+  rpc NodesGetAll(polykey.v1.utils.EmptyMessage) returns (polykey.v1.nodes.NodeBuckets);
 
   // Keys
   rpc KeysKeyPairRoot (polykey.v1.utils.EmptyMessage) returns (polykey.v1.keys.KeyPair);

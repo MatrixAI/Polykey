@@ -58,6 +58,7 @@ import nodesAdd from './nodesAdd';
 import nodesClaim from './nodesClaim';
 import nodesFind from './nodesFind';
 import nodesPing from './nodesPing';
+import nodesGetAll from './nodesGetAll';
 import notificationsClear from './notificationsClear';
 import notificationsRead from './notificationsRead';
 import notificationsSend from './notificationsSend';
@@ -161,6 +162,7 @@ function createService({
     nodesClaim: nodesClaim(container),
     nodesFind: nodesFind(container),
     nodesPing: nodesPing(container),
+    nodesGetAll: nodesGetAll(container),
     notificationsClear: notificationsClear(container),
     notificationsRead: notificationsRead(container),
     notificationsSend: notificationsSend(container),

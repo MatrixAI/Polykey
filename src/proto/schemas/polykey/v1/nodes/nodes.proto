@@ -25,6 +25,11 @@ message Claim {
   bool force_invite = 2;
 }
 
+// Bucket index -> a node bucket (from NodeGraph)
+message NodeBuckets {
+  map<int32, NodeTable> buckets = 1;
+}
+
 // Agent specific.
 
 message Connection {

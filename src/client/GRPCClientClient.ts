@@ -566,6 +566,14 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   }
 
   @ready(new clientErrors.ErrorClientClientDestroyed())
+  public nodesGetAll(...args) {
+    return grpcUtils.promisifyUnaryCall<nodesPB.NodeBuckets>(
+      this.client,
+      this.client.nodesGetAll,
+    )(...args);
+  }
+
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public identitiesAuthenticate(...args) {
     return grpcUtils.promisifyReadableStreamCall<identitiesPB.AuthenticationProcess>(
       this.client,
