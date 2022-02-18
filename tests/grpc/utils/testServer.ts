@@ -1,7 +1,10 @@
+/**
+ * This is spawned as a background process for use in some NodeConnection.test.ts tests
+ * @module
+ */
 import * as grpc from '@grpc/grpc-js';
 import * as utils from './index';
 
-// This is spawned as a background process for use in some NodeConnection.test.ts tests
 async function main() {
   const authenticate = async (metaClient, metaServer = new grpc.Metadata()) =>
     metaServer;
