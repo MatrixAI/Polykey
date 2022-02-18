@@ -98,6 +98,28 @@ export namespace Claim {
     }
 }
 
+export class NodeBuckets extends jspb.Message { 
+
+    getBucketsMap(): jspb.Map<number, NodeTable>;
+    clearBucketsMap(): void;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): NodeBuckets.AsObject;
+    static toObject(includeInstance: boolean, msg: NodeBuckets): NodeBuckets.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: NodeBuckets, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): NodeBuckets;
+    static deserializeBinaryFromReader(message: NodeBuckets, reader: jspb.BinaryReader): NodeBuckets;
+}
+
+export namespace NodeBuckets {
+    export type AsObject = {
+
+        bucketsMap: Array<[number, NodeTable.AsObject]>,
+    }
+}
+
 export class Connection extends jspb.Message { 
     getAId(): string;
     setAId(value: string): Connection;

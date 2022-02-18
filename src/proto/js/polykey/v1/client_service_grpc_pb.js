@@ -212,6 +212,17 @@ function deserialize_polykey_v1_nodes_NodeAddress(buffer_arg) {
   return polykey_v1_nodes_nodes_pb.NodeAddress.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_polykey_v1_nodes_NodeBuckets(arg) {
+  if (!(arg instanceof polykey_v1_nodes_nodes_pb.NodeBuckets)) {
+    throw new Error('Expected argument of type polykey.v1.nodes.NodeBuckets');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_polykey_v1_nodes_NodeBuckets(buffer_arg) {
+  return polykey_v1_nodes_nodes_pb.NodeBuckets.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_polykey_v1_notifications_List(arg) {
   if (!(arg instanceof polykey_v1_notifications_notifications_pb.List)) {
     throw new Error('Expected argument of type polykey.v1.notifications.List');
@@ -556,6 +567,17 @@ nodesAdd: {
     requestDeserialize: deserialize_polykey_v1_nodes_Node,
     responseSerialize: serialize_polykey_v1_nodes_NodeAddress,
     responseDeserialize: deserialize_polykey_v1_nodes_NodeAddress,
+  },
+  nodesGetAll: {
+    path: '/polykey.v1.ClientService/NodesGetAll',
+    requestStream: false,
+    responseStream: false,
+    requestType: polykey_v1_utils_utils_pb.EmptyMessage,
+    responseType: polykey_v1_nodes_nodes_pb.NodeBuckets,
+    requestSerialize: serialize_polykey_v1_utils_EmptyMessage,
+    requestDeserialize: deserialize_polykey_v1_utils_EmptyMessage,
+    responseSerialize: serialize_polykey_v1_nodes_NodeBuckets,
+    responseDeserialize: deserialize_polykey_v1_nodes_NodeBuckets,
   },
   // Keys
 keysKeyPairRoot: {
