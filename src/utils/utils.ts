@@ -203,6 +203,23 @@ function arrayUnset<T>(items: Array<T>, item: T) {
   }
 }
 
+function arrayZip<T1, T2>(a: Array<T1>, b: Array<T2>): Array<[T1, T2]> {
+  return Array.from(Array(Math.min(b.length, a.length)), (_, i) => [
+    a[i],
+    b[i],
+  ]);
+}
+
+function arrayZipWithPadding<T1, T2>(
+  a: Array<T1>,
+  b: Array<T2>,
+): Array<[T1 | undefined, T2 | undefined]> {
+  return Array.from(Array(Math.max(b.length, a.length)), (_, i) => [
+    a[i],
+    b[i],
+  ]);
+}
+
 function debounce<P extends any[]>(
   f: (...params: P) => any,
   timeout: number = 0,
@@ -231,5 +248,7 @@ export {
   timerStop,
   arraySet,
   arrayUnset,
+  arrayZip,
+  arrayZipWithPadding,
   debounce,
 };
