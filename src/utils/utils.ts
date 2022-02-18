@@ -203,6 +203,17 @@ function arrayUnset<T>(items: Array<T>, item: T) {
   }
 }
 
+function debounce<P extends any[]>(
+  f: (...params: P) => any,
+  timeout: number = 0
+): (...param: P) => void {
+  let timer: ReturnType<typeof setTimeout>;
+  return function (this: any, ...args: any[]) {
+    clearTimeout(timer);
+    timer = setTimeout(() => f.apply(this, args), timeout);
+  };
+}
+
 export {
   getDefaultNodePath,
   never,
@@ -220,4 +231,5 @@ export {
   timerStop,
   arraySet,
   arrayUnset,
+  debounce
 };
