@@ -237,7 +237,7 @@ describe('Discovery', () => {
       discovery.queueDiscoveryByIdentity('' as ProviderId, '' as IdentityId),
     ).rejects.toThrow(discoveryErrors.ErrorDiscoveryNotRunning);
     await expect(
-      discovery.queueDiscoveryByNode(testUtils.generateRandomNodeId()),
+      discovery.queueDiscoveryByNode(testNodesUtils.generateRandomNodeId()),
     ).rejects.toThrow(discoveryErrors.ErrorDiscoveryNotRunning);
   });
   test('discovery by node', async () => {

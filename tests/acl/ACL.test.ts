@@ -10,7 +10,7 @@ import { DB } from '@matrixai/db';
 import { ACL, errors as aclErrors } from '@/acl';
 import { utils as keysUtils } from '@/keys';
 import { utils as vaultsUtils } from '@/vaults';
-import * as testUtils from '../utils';
+import * as testNodesUtils from '../nodes/utils';
 
 describe(ACL.name, () => {
   const logger = new Logger(`${ACL.name} test`, LogLevel.WARN, [
@@ -18,14 +18,14 @@ describe(ACL.name, () => {
   ]);
 
   // Node Ids
-  const nodeIdX = testUtils.generateRandomNodeId();
-  const nodeIdY = testUtils.generateRandomNodeId();
-  const nodeIdG1First = testUtils.generateRandomNodeId();
-  const nodeIdG1Second = testUtils.generateRandomNodeId();
-  const nodeIdG1Third = testUtils.generateRandomNodeId();
-  const nodeIdG1Fourth = testUtils.generateRandomNodeId();
-  const nodeIdG2First = testUtils.generateRandomNodeId();
-  const nodeIdG2Second = testUtils.generateRandomNodeId();
+  const nodeIdX = testNodesUtils.generateRandomNodeId();
+  const nodeIdY = testNodesUtils.generateRandomNodeId();
+  const nodeIdG1First = testNodesUtils.generateRandomNodeId();
+  const nodeIdG1Second = testNodesUtils.generateRandomNodeId();
+  const nodeIdG1Third = testNodesUtils.generateRandomNodeId();
+  const nodeIdG1Fourth = testNodesUtils.generateRandomNodeId();
+  const nodeIdG2First = testNodesUtils.generateRandomNodeId();
+  const nodeIdG2Second = testNodesUtils.generateRandomNodeId();
 
   let dataDir: string;
   let db: DB;

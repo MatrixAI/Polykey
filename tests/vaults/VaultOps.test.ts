@@ -14,6 +14,7 @@ import * as vaultOps from '@/vaults/VaultOps';
 import * as vaultsUtils from '@/vaults/utils';
 import * as keysUtils from '@/keys/utils';
 import * as testUtils from '../utils';
+import * as testNodesUtils from '../nodes/utils';
 
 describe('VaultOps', () => {
   const logger = new Logger('VaultOps', LogLevel.WARN, [new StreamHandler()]);
@@ -28,7 +29,7 @@ describe('VaultOps', () => {
   let vaultsDbDomain: DBDomain;
   const dummyKeyManager = {
     getNodeId: () => {
-      return testUtils.generateRandomNodeId();
+      return testNodesUtils.generateRandomNodeId();
     },
   } as KeyManager;
 

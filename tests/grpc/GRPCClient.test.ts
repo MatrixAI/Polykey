@@ -10,13 +10,14 @@ import path from 'path';
 import fs from 'fs';
 import { DB } from '@matrixai/db';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { utils as keysUtils } from '@/keys';
-import { Session, SessionManager } from '@/sessions';
-import { errors as grpcErrors } from '@/grpc';
+import Session from '@/sessions/Session';
+import SessionManager from '@/sessions/SessionManager';
+import * as keysUtils from '@/keys/utils';
+import * as grpcErrors from '@/grpc/errors';
 import * as clientUtils from '@/client/utils';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as utils from './utils';
-import * as testUtils from '../utils';
+import * as testNodesUtils from '../nodes/utils';
 
 describe('GRPCClient', () => {
   const logger = new Logger('GRPCClient Test', LogLevel.WARN, [
@@ -60,7 +61,7 @@ describe('GRPCClient', () => {
       },
     });
     const keyManager = {
-      getNodeId: () => testUtils.generateRandomNodeId(),
+      getNodeId: () => testNodesUtils.generateRandomNodeId(),
     } as KeyManager; // Cheeky mocking.
     sessionManager = await SessionManager.createSessionManager({
       db,

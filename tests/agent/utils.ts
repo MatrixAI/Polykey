@@ -1,5 +1,4 @@
 import type { Host, Port, ProxyConfig } from '@/network/types';
-
 import type { IAgentServiceServer } from '@/proto/js/polykey/v1/agent_service_grpc_pb';
 import type { KeyManager } from '@/keys';
 import type { VaultManager } from '@/vaults';
@@ -18,7 +17,7 @@ import {
   GRPCClientAgent,
   AgentServiceService,
 } from '@/agent';
-import * as testUtils from '../utils';
+import * as testNodesUtils from '../nodes/utils';
 
 async function openTestAgentServer({
   keyManager,
@@ -81,7 +80,7 @@ async function openTestAgentClient(
     new StreamHandler(),
   ]);
   const agentClient = await GRPCClientAgent.createGRPCClientAgent({
-    nodeId: nodeId ?? testUtils.generateRandomNodeId(),
+    nodeId: nodeId ?? testNodesUtils.generateRandomNodeId(),
     host: '127.0.0.1' as Host,
     port: port as Port,
     logger: logger,

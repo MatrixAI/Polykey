@@ -13,8 +13,9 @@ import {
 } from '@/network';
 import * as keysUtils from '@/keys/utils';
 import { promisify, promise, timerStart, timerStop, poll } from '@/utils';
-import { utils as nodesUtils } from '@/nodes';
+import * as nodesUtils from '@/nodes/utils';
 import * as testUtils from '../utils';
+import * as testNodesUtils from '../nodes/utils';
 
 /**
  * Mock HTTP Connect Request
@@ -113,11 +114,11 @@ describe(Proxy.name, () => {
   const logger = new Logger(`${Proxy.name} test`, LogLevel.WARN, [
     new StreamHandler(),
   ]);
-  const nodeIdABC = testUtils.generateRandomNodeId();
+  const nodeIdABC = testNodesUtils.generateRandomNodeId();
   const nodeIdABCEncoded = nodesUtils.encodeNodeId(nodeIdABC);
-  const nodeIdSome = testUtils.generateRandomNodeId();
+  const nodeIdSome = testNodesUtils.generateRandomNodeId();
   const nodeIdSomeEncoded = nodesUtils.encodeNodeId(nodeIdSome);
-  const nodeIdRandom = testUtils.generateRandomNodeId();
+  const nodeIdRandom = testNodesUtils.generateRandomNodeId();
   const authToken = 'abc123';
   let keyPairPem: KeyPairPem;
   let certPem: string;

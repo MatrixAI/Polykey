@@ -73,6 +73,14 @@ class RWLock {
     return this.readersLock.isLocked() || this.writersLock.isLocked();
   }
 
+  public isLockedReader(): boolean {
+    return this.readersLock.isLocked();
+  }
+
+  public isLockedWriter(): boolean {
+    return this.writersLock.isLocked();
+  }
+
   public async waitForUnlock(): Promise<void> {
     await Promise.all([
       this.readersLock.waitForUnlock(),

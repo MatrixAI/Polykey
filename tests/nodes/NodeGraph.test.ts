@@ -1,59 +1,46 @@
-import type { Host, Port } from '@/network/types';
-import type { NodeAddress, NodeData, NodeId } from '@/nodes/types';
+import type {
+  NodeId,
+  NodeData,
+  NodeAddress,
+  NodeBucket,
+  NodeBucketIndex,
+} from '@/nodes/types';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { IdInternal } from '@matrixai/id';
-import NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import NodeGraph from '@/nodes/NodeGraph';
-import * as nodesErrors from '@/nodes/errors';
 import KeyManager from '@/keys/KeyManager';
 import * as keysUtils from '@/keys/utils';
-import Proxy from '@/network/Proxy';
 
 import * as nodesUtils from '@/nodes/utils';
-import Sigchain from '@/sigchain/Sigchain';
-import * as nodesTestUtils from './utils';
+import * as nodesErrors from '@/nodes/errors';
+import * as utils from '@/utils';
+import * as testNodesUtils from './utils';
+import * as testUtils from '../utils';
 
 describe(`${NodeGraph.name} test`, () => {
-  const localHost = '127.0.0.1' as Host;
-  const port = 0 as Port;
   const password = 'password';
-  let nodeGraph: NodeGraph;
-  let nodeId: NodeId;
-
-  const nodeId1 = IdInternal.create<NodeId>([
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 5,
-  ]);
-  const dummyNode = nodesUtils.decodeNodeId(
-    'vi3et1hrpv2m2lrplcm7cu913kr45v51cak54vm68anlbvuf83ra0',
-  )!;
-
-  const logger = new Logger(`${NodeGraph.name} test`, LogLevel.ERROR, [
+  const logger = new Logger(`${NodeGraph.name} test`, LogLevel.WARN, [
     new StreamHandler(),
   ]);
-  let proxy: Proxy;
+  let mockedGenerateKeyPair: jest.SpyInstance;
+  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
   let dataDir: string;
   let keyManager: KeyManager;
+  let dbKey: Buffer;
+  let dbPath: string;
   let db: DB;
-  let nodeConnectionManager: NodeConnectionManager;
-  let sigchain: Sigchain;
-
-  const hostGen = (i: number) => `${i}.${i}.${i}.${i}` as Host;
-
-  const mockedGenerateDeterministicKeyPair = jest.spyOn(
-    keysUtils,
-    'generateDeterministicKeyPair',
-  );
-
-  beforeEach(async () => {
-    mockedGenerateDeterministicKeyPair.mockImplementation((bits, _) => {
-      return keysUtils.generateKeyPair(bits);
-    });
-
+  beforeAll(async () => {
+    const globalKeyPair = await testUtils.setupGlobalKeypair();
+    mockedGenerateKeyPair = jest
+      .spyOn(keysUtils, 'generateKeyPair')
+      .mockResolvedValue(globalKeyPair);
+    mockedGenerateDeterministicKeyPair = jest
+      .spyOn(keysUtils, 'generateDeterministicKeyPair')
+      .mockResolvedValue(globalKeyPair);
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -63,559 +50,669 @@ describe(`${NodeGraph.name} test`, () => {
       keysPath,
       logger,
     });
-    proxy = new Proxy({
-      authToken: 'auth',
-      logger: logger,
+    dbKey = await keysUtils.generateKey();
+    dbPath = `${dataDir}/db`;
+  });
+  afterAll(async () => {
+    await keyManager.stop();
+    await fs.promises.rm(dataDir, {
+      force: true,
+      recursive: true,
     });
-    await proxy.start({
-      serverHost: localHost,
-      serverPort: port,
-      tlsConfig: {
-        keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
-        certChainPem: await keyManager.getRootCertChainPem(),
-      },
-    });
-    const dbPath = `${dataDir}/db`;
+    mockedGenerateKeyPair.mockRestore();
+    mockedGenerateDeterministicKeyPair.mockRestore();
+  });
+  beforeEach(async () => {
     db = await DB.createDB({
       dbPath,
       logger,
       crypto: {
-        key: keyManager.dbKey,
+        key: dbKey,
         ops: {
           encrypt: keysUtils.encryptWithKey,
           decrypt: keysUtils.decryptWithKey,
         },
       },
     });
-    sigchain = await Sigchain.createSigchain({
-      keyManager: keyManager,
-      db: db,
-      logger: logger,
-    });
-    nodeGraph = await NodeGraph.createNodeGraph({
-      db,
-      keyManager,
-      logger,
-    });
-    nodeConnectionManager = new NodeConnectionManager({
-      keyManager: keyManager,
-      nodeGraph: nodeGraph,
-      proxy: proxy,
-      logger: logger,
-    });
-    await nodeConnectionManager.start();
-    // Retrieve the NodeGraph reference from NodeManager
-    nodeId = keyManager.getNodeId();
   });
-
   afterEach(async () => {
     await db.stop();
-    await sigchain.stop();
-    await nodeConnectionManager.stop();
-    await nodeGraph.stop();
-    await keyManager.stop();
-    await proxy.stop();
-    await fs.promises.rm(dataDir, {
-      force: true,
-      recursive: true,
-    });
+    await db.destroy();
   });
-
-  test('NodeGraph readiness', async () => {
-    const nodeGraph2 = await NodeGraph.createNodeGraph({
+  test('get, set and unset node IDs', async () => {
+    const nodeGraph = await NodeGraph.createNodeGraph({
       db,
       keyManager,
       logger,
     });
-    // @ts-ignore
-    await expect(nodeGraph2.destroy()).rejects.toThrow(
-      nodesErrors.ErrorNodeGraphRunning,
-    );
-    // Should be a noop
-    await nodeGraph2.start();
-    await nodeGraph2.stop();
-    await nodeGraph2.destroy();
-    await expect(async () => {
-      await nodeGraph2.start();
-    }).rejects.toThrow(nodesErrors.ErrorNodeGraphDestroyed);
-    await expect(async () => {
-      await nodeGraph2.getBucket(0);
-    }).rejects.toThrow(nodesErrors.ErrorNodeGraphNotRunning);
-    await expect(async () => {
-      await nodeGraph2.getBucket(0);
-    }).rejects.toThrow(nodesErrors.ErrorNodeGraphNotRunning);
-  });
-  test('knows node (true and false case)', async () => {
-    // Known node
-    const nodeAddress1: NodeAddress = {
-      host: '127.0.0.1' as Host,
-      port: 11111 as Port,
-    };
-    await nodeGraph.setNode(nodeId1, nodeAddress1);
-    expect(await nodeGraph.knowsNode(nodeId1)).toBeTruthy();
+    let nodeId1: NodeId;
+    do {
+      nodeId1 = testNodesUtils.generateRandomNodeId();
+    } while (nodeId1.equals(keyManager.getNodeId()));
+    let nodeId2: NodeId;
+    do {
+      nodeId2 = testNodesUtils.generateRandomNodeId();
+    } while (nodeId2.equals(keyManager.getNodeId()));
 
-    // Unknown node
-    expect(await nodeGraph.knowsNode(dummyNode)).toBeFalsy();
-  });
-  test('finds correct node address', async () => {
-    // New node added
-    const newNode2Id = nodeId1;
-    const newNode2Address = { host: '227.1.1.1', port: 4567 } as NodeAddress;
-    await nodeGraph.setNode(newNode2Id, newNode2Address);
-
-    // Get node address
-    const foundAddress = await nodeGraph.getNode(newNode2Id);
-    expect(foundAddress).toEqual({ host: '227.1.1.1', port: 4567 });
-  });
-  test('unable to find node address', async () => {
-    // New node added
-    const newNode2Id = nodeId1;
-    const newNode2Address = { host: '227.1.1.1', port: 4567 } as NodeAddress;
-    await nodeGraph.setNode(newNode2Id, newNode2Address);
-
-    // Get node address (of non-existent node)
-    const foundAddress = await nodeGraph.getNode(dummyNode);
-    expect(foundAddress).toBeUndefined();
-  });
-  test('adds a single node into a bucket', async () => {
-    // New node added
-    const newNode2Id = nodesTestUtils.generateNodeIdForBucket(nodeId, 1);
-    const newNode2Address = { host: '227.1.1.1', port: 4567 } as NodeAddress;
-    await nodeGraph.setNode(newNode2Id, newNode2Address);
-
-    // Check new node is in retrieved bucket from database
-    // bucketIndex = 1 as "NODEID1" XOR "NODEID2" = 3
-    const bucket = await nodeGraph.getBucket(1);
-    expect(bucket).toBeDefined();
-    expect(bucket![newNode2Id]).toEqual({
-      address: { host: '227.1.1.1', port: 4567 },
-      lastUpdated: expect.any(Date),
-    });
-  });
-  test('adds multiple nodes into the same bucket', async () => {
-    // Add 3 new nodes into bucket 4
-    const bucketIndex = 4;
-    const newNode1Id = nodesTestUtils.generateNodeIdForBucket(
-      nodeId,
-      bucketIndex,
-      0,
-    );
-    const newNode1Address = { host: '4.4.4.4', port: 4444 } as NodeAddress;
-    await nodeGraph.setNode(newNode1Id, newNode1Address);
-
-    const newNode2Id = nodesTestUtils.generateNodeIdForBucket(
-      nodeId,
-      bucketIndex,
-      1,
-    );
-    const newNode2Address = { host: '5.5.5.5', port: 5555 } as NodeAddress;
-    await nodeGraph.setNode(newNode2Id, newNode2Address);
-
-    const newNode3Id = nodesTestUtils.generateNodeIdForBucket(
-      nodeId,
-      bucketIndex,
-      2,
-    );
-    const newNode3Address = { host: '6.6.6.6', port: 6666 } as NodeAddress;
-    await nodeGraph.setNode(newNode3Id, newNode3Address);
-    // Based on XOR values, all 3 nodes should appear in bucket 4
-    const bucket = await nodeGraph.getBucket(4);
-    expect(bucket).toBeDefined();
-    if (!bucket) fail('bucket should be defined, letting TS know');
-    expect(bucket[newNode1Id]).toEqual({
-      address: { host: '4.4.4.4', port: 4444 },
-      lastUpdated: expect.any(Date),
-    });
-    expect(bucket[newNode2Id]).toEqual({
-      address: { host: '5.5.5.5', port: 5555 },
-      lastUpdated: expect.any(Date),
-    });
-    expect(bucket[newNode3Id]).toEqual({
-      address: { host: '6.6.6.6', port: 6666 },
-      lastUpdated: expect.any(Date),
-    });
-  });
-  test('adds a single node into different buckets', async () => {
-    // New node for bucket 3
-    const newNode1Id = nodesTestUtils.generateNodeIdForBucket(nodeId, 3);
-    const newNode1Address = { host: '1.1.1.1', port: 1111 } as NodeAddress;
-    await nodeGraph.setNode(newNode1Id, newNode1Address);
-    // New node for bucket 255 (the highest possible bucket)
-    const newNode2Id = nodesTestUtils.generateNodeIdForBucket(nodeId, 255);
-    const newNode2Address = { host: '2.2.2.2', port: 2222 } as NodeAddress;
-    await nodeGraph.setNode(newNode2Id, newNode2Address);
-
-    const bucket3 = await nodeGraph.getBucket(3);
-    const bucket351 = await nodeGraph.getBucket(255);
-    if (bucket3 && bucket351) {
-      expect(bucket3[newNode1Id]).toEqual({
-        address: { host: '1.1.1.1', port: 1111 },
-        lastUpdated: expect.any(Date),
-      });
-      expect(bucket351[newNode2Id]).toEqual({
-        address: { host: '2.2.2.2', port: 2222 },
-        lastUpdated: expect.any(Date),
-      });
-    } else {
-      // Should be unreachable
-      fail('Bucket undefined');
-    }
-  });
-  test('deletes a single node (and removes bucket)', async () => {
-    // New node for bucket 2
-    const newNode1Id = nodesTestUtils.generateNodeIdForBucket(nodeId, 2);
-    const newNode1Address = { host: '4.4.4.4', port: 4444 } as NodeAddress;
-    await nodeGraph.setNode(newNode1Id, newNode1Address);
-
-    // Check the bucket is there first
-    const bucket = await nodeGraph.getBucket(2);
-    if (bucket) {
-      expect(bucket[newNode1Id]).toEqual({
-        address: { host: '4.4.4.4', port: 4444 },
-        lastUpdated: expect.any(Date),
-      });
-    } else {
-      // Should be unreachable
-      fail('Bucket undefined');
-    }
-
-    // Delete the node
-    await nodeGraph.unsetNode(newNode1Id);
-    // Check bucket no longer exists
-    const newBucket = await nodeGraph.getBucket(2);
-    expect(newBucket).toBeUndefined();
-  });
-  test('deletes a single node (and retains remainder of bucket)', async () => {
-    // Add 3 new nodes into bucket 4
-    const bucketIndex = 4;
-    const newNode1Id = nodesTestUtils.generateNodeIdForBucket(
-      nodeId,
-      bucketIndex,
-      0,
-    );
-    const newNode1Address = { host: '4.4.4.4', port: 4444 } as NodeAddress;
-    await nodeGraph.setNode(newNode1Id, newNode1Address);
-
-    const newNode2Id = nodesTestUtils.generateNodeIdForBucket(
-      nodeId,
-      bucketIndex,
-      1,
-    );
-    const newNode2Address = { host: '5.5.5.5', port: 5555 } as NodeAddress;
-    await nodeGraph.setNode(newNode2Id, newNode2Address);
-
-    const newNode3Id = nodesTestUtils.generateNodeIdForBucket(
-      nodeId,
-      bucketIndex,
-      2,
-    );
-    const newNode3Address = { host: '6.6.6.6', port: 6666 } as NodeAddress;
-    await nodeGraph.setNode(newNode3Id, newNode3Address);
-    // Based on XOR values, all 3 nodes should appear in bucket 4
-    const bucket = await nodeGraph.getBucket(bucketIndex);
-    if (bucket) {
-      expect(bucket[newNode1Id]).toEqual({
-        address: { host: '4.4.4.4', port: 4444 },
-        lastUpdated: expect.any(Date),
-      });
-      expect(bucket[newNode2Id]).toEqual({
-        address: { host: '5.5.5.5', port: 5555 },
-        lastUpdated: expect.any(Date),
-      });
-      expect(bucket[newNode3Id]).toEqual({
-        address: { host: '6.6.6.6', port: 6666 },
-        lastUpdated: expect.any(Date),
-      });
-    } else {
-      // Should be unreachable
-      fail('Bucket undefined');
-    }
-
-    // Delete the node
-    await nodeGraph.unsetNode(newNode1Id);
-    // Check node no longer exists in the bucket
-    const newBucket = await nodeGraph.getBucket(bucketIndex);
-    if (newBucket) {
-      expect(newBucket[newNode1Id]).toBeUndefined();
-      expect(bucket[newNode2Id]).toEqual({
-        address: { host: '5.5.5.5', port: 5555 },
-        lastUpdated: expect.any(Date),
-      });
-      expect(bucket[newNode3Id]).toEqual({
-        address: { host: '6.6.6.6', port: 6666 },
-        lastUpdated: expect.any(Date),
-      });
-    } else {
-      // Should be unreachable
-      fail('New bucket undefined');
-    }
-  });
-  test('enforces k-bucket size, removing least active node when a new node is discovered', async () => {
-    // Add k nodes to the database (importantly, they all go into the same bucket)
-    const bucketIndex = 59;
-    // Keep a record of the first node ID that we added
-    const firstNodeId = nodesTestUtils.generateNodeIdForBucket(
-      nodeId,
-      bucketIndex,
-    );
-    for (let i = 1; i <= nodeGraph.maxNodesPerBucket; i++) {
-      // Add the current node ID
-      const nodeAddress = {
-        host: hostGen(i),
-        port: i as Port,
-      };
-      await nodeGraph.setNode(
-        nodesTestUtils.generateNodeIdForBucket(nodeId, bucketIndex, i),
-        nodeAddress,
-      );
-      // Increment the current node ID
-    }
-    // All of these nodes are in bucket 59
-    const originalBucket = await nodeGraph.getBucket(bucketIndex);
-    if (originalBucket) {
-      expect(Object.keys(originalBucket).length).toBe(
-        nodeGraph.maxNodesPerBucket,
-      );
-    } else {
-      // Should be unreachable
-      fail('Bucket undefined');
-    }
-
-    // Attempt to add a new node into this full bucket (increment the last node
-    // ID that was added)
-    const newNodeId = nodesTestUtils.generateNodeIdForBucket(
-      nodeId,
-      bucketIndex,
-      nodeGraph.maxNodesPerBucket + 1,
-    );
-    const newNodeAddress = { host: '0.0.0.1' as Host, port: 1234 as Port };
-    await nodeGraph.setNode(newNodeId, newNodeAddress);
-
-    const finalBucket = await nodeGraph.getBucket(bucketIndex);
-    if (finalBucket) {
-      // We should still have a full bucket (but no more)
-      expect(Object.keys(finalBucket).length).toEqual(
-        nodeGraph.maxNodesPerBucket,
-      );
-      // Ensure that this new node is in the bucket
-      expect(finalBucket[newNodeId]).toEqual({
-        address: newNodeAddress,
-        lastUpdated: expect.any(Date),
-      });
-      // NODEID1 should have been removed from this bucket (as this was the least active)
-      // The first node added should have been removed from this bucket (as this
-      // was the least active, purely because it was inserted first)
-      expect(finalBucket[firstNodeId]).toBeUndefined();
-    } else {
-      // Should be unreachable
-      fail('Bucket undefined');
-    }
-  });
-  test('enforces k-bucket size, retaining all nodes if adding a pre-existing node', async () => {
-    // Add k nodes to the database (importantly, they all go into the same bucket)
-    const bucketIndex = 59;
-    const currNodeId = nodesTestUtils.generateNodeIdForBucket(
-      nodeId,
-      bucketIndex,
-    );
-    // Keep a record of the first node ID that we added
-    // const firstNodeId = currNodeId;
-    let increment = 1;
-    for (let i = 1; i <= nodeGraph.maxNodesPerBucket; i++) {
-      // Add the current node ID
-      const nodeAddress = {
-        host: hostGen(i),
-        port: i as Port,
-      };
-      await nodeGraph.setNode(
-        nodesTestUtils.generateNodeIdForBucket(nodeId, bucketIndex, increment),
-        nodeAddress,
-      );
-      // Increment the current node ID - skip for the last one to keep currNodeId
-      // as the last added node ID
-      if (i !== nodeGraph.maxNodesPerBucket) {
-        increment++;
-      }
-    }
-    // All of these nodes are in bucket 59
-    const originalBucket = await nodeGraph.getBucket(bucketIndex);
-    if (originalBucket) {
-      expect(Object.keys(originalBucket).length).toBe(
-        nodeGraph.maxNodesPerBucket,
-      );
-    } else {
-      // Should be unreachable
-      fail('Bucket undefined');
-    }
-
-    // If we tried to re-add the first node, it would simply remove the original
-    // first node, as this is the "least active"
-    // We instead want to check that we don't mistakenly delete a node if we're
-    // updating an existing one
-    // So, re-add the last node
-    const newLastAddress: NodeAddress = {
-      host: '30.30.30.30' as Host,
-      port: 30 as Port,
-    };
-    await nodeGraph.setNode(currNodeId, newLastAddress);
-
-    const finalBucket = await nodeGraph.getBucket(bucketIndex);
-    if (finalBucket) {
-      // We should still have a full bucket
-      expect(Object.keys(finalBucket).length).toEqual(
-        nodeGraph.maxNodesPerBucket,
-      );
-      // Ensure that this new node is in the bucket
-      expect(finalBucket[currNodeId]).toEqual({
-        address: newLastAddress,
-        lastUpdated: expect.any(Date),
-      });
-    } else {
-      // Should be unreachable
-      fail('Bucket undefined');
-    }
-  });
-  test('retrieves all buckets (in expected lexicographic order)', async () => {
-    // Bucket 0 is expected to never have any nodes (as nodeId XOR 0 = nodeId)
-    // Bucket 1 (minimum):
-
-    const node1Id = nodesTestUtils.generateNodeIdForBucket(nodeId, 1);
-    const node1Address = { host: '1.1.1.1', port: 1111 } as NodeAddress;
-    await nodeGraph.setNode(node1Id, node1Address);
-
-    // Bucket 4 (multiple nodes in 1 bucket):
-    const node41Id = nodesTestUtils.generateNodeIdForBucket(nodeId, 4);
-    const node41Address = { host: '41.41.41.41', port: 4141 } as NodeAddress;
-    await nodeGraph.setNode(node41Id, node41Address);
-    const node42Id = nodesTestUtils.generateNodeIdForBucket(nodeId, 4, 1);
-    const node42Address = { host: '42.42.42.42', port: 4242 } as NodeAddress;
-    await nodeGraph.setNode(node42Id, node42Address);
-
-    // Bucket 10 (lexicographic ordering - should appear after 2):
-    const node10Id = nodesTestUtils.generateNodeIdForBucket(nodeId, 10);
-    const node10Address = { host: '10.10.10.10', port: 1010 } as NodeAddress;
-    await nodeGraph.setNode(node10Id, node10Address);
-
-    // Bucket 255 (maximum):
-    const node255Id = nodesTestUtils.generateNodeIdForBucket(nodeId, 255);
-    const node255Address = {
-      host: '255.255.255.255',
-      port: 255,
-    } as NodeAddress;
-    await nodeGraph.setNode(node255Id, node255Address);
-
-    const buckets = await nodeGraph.getAllBuckets();
-    expect(buckets.length).toBe(4);
-    // Buckets should be returned in lexicographic ordering (using hex keys to
-    // ensure the bucket indexes are in numberical order)
-    expect(buckets).toEqual([
-      {
-        [node1Id]: {
-          address: { host: '1.1.1.1', port: 1111 },
-          lastUpdated: expect.any(String),
-        },
+    await nodeGraph.setNode(nodeId1, {
+      host: '10.0.0.1',
+      port: 1234,
+    } as NodeAddress);
+    const nodeData1 = await nodeGraph.getNode(nodeId1);
+    expect(nodeData1).toStrictEqual({
+      address: {
+        host: '10.0.0.1',
+        port: 1234,
       },
-      {
-        [node41Id]: {
-          address: { host: '41.41.41.41', port: 4141 },
-          lastUpdated: expect.any(String),
-        },
-        [node42Id]: {
-          address: { host: '42.42.42.42', port: 4242 },
-          lastUpdated: expect.any(String),
-        },
+      lastUpdated: expect.any(Number),
+    });
+    await utils.sleep(1000);
+    await nodeGraph.setNode(nodeId2, {
+      host: 'abc.com',
+      port: 8978,
+    } as NodeAddress);
+    const nodeData2 = await nodeGraph.getNode(nodeId2);
+    expect(nodeData2).toStrictEqual({
+      address: {
+        host: 'abc.com',
+        port: 8978,
       },
+      lastUpdated: expect.any(Number),
+    });
+    expect(nodeData2!.lastUpdated > nodeData1!.lastUpdated).toBe(true);
+    const nodes = await utils.asyncIterableArray(nodeGraph.getNodes());
+    expect(nodes).toHaveLength(2);
+    expect(nodes).toContainEqual([
+      nodeId1,
       {
-        [node10Id]: {
-          address: { host: '10.10.10.10', port: 1010 },
-          lastUpdated: expect.any(String),
+        address: {
+          host: '10.0.0.1',
+          port: 1234,
         },
-      },
-      {
-        [node255Id]: {
-          address: { host: '255.255.255.255', port: 255 },
-          lastUpdated: expect.any(String),
-        },
+        lastUpdated: expect.any(Number),
       },
     ]);
+    expect(nodes).toContainEqual([
+      nodeId2,
+      {
+        address: {
+          host: 'abc.com',
+          port: 8978,
+        },
+        lastUpdated: expect.any(Number),
+      },
+    ]);
+    await nodeGraph.unsetNode(nodeId1);
+    expect(await nodeGraph.getNode(nodeId1)).toBeUndefined();
+    expect(await utils.asyncIterableArray(nodeGraph.getNodes())).toStrictEqual([
+      [
+        nodeId2,
+        {
+          address: {
+            host: 'abc.com',
+            port: 8978,
+          },
+          lastUpdated: expect.any(Number),
+        },
+      ],
+    ]);
+    await nodeGraph.unsetNode(nodeId2);
+    await nodeGraph.stop();
   });
-  test(
-    'refreshes buckets',
-    async () => {
-      const initialNodes: Record<NodeId, NodeData> = {};
-      // Generate and add some nodes
-      for (let i = 1; i < 255; i += 20) {
-        const newNodeId = nodesTestUtils.generateNodeIdForBucket(
-          keyManager.getNodeId(),
-          i,
+  test('get all nodes', async () => {
+    const nodeGraph = await NodeGraph.createNodeGraph({
+      db,
+      keyManager,
+      logger,
+    });
+    let nodeIds = Array.from({ length: 25 }, () => {
+      return testNodesUtils.generateRandomNodeId();
+    });
+    nodeIds = nodeIds.filter(
+      (nodeId) => !nodeId.equals(keyManager.getNodeId()),
+    );
+    let bucketIndexes: Array<NodeBucketIndex>;
+    let nodes: Array<[NodeId, NodeData]>;
+    nodes = await utils.asyncIterableArray(nodeGraph.getNodes());
+    expect(nodes).toHaveLength(0);
+    for (const nodeId of nodeIds) {
+      await utils.sleep(100);
+      await nodeGraph.setNode(nodeId, {
+        host: '127.0.0.1',
+        port: 55555,
+      } as NodeAddress);
+    }
+    nodes = await utils.asyncIterableArray(nodeGraph.getNodes());
+    expect(nodes).toHaveLength(25);
+    // Sorted by bucket indexes ascending
+    bucketIndexes = nodes.map(([nodeId]) =>
+      nodesUtils.bucketIndex(keyManager.getNodeId(), nodeId),
+    );
+    expect(
+      bucketIndexes.slice(1).every((bucketIndex, i) => {
+        return bucketIndexes[i] <= bucketIndex;
+      }),
+    ).toBe(true);
+    // Sorted by bucket indexes ascending explicitly
+    nodes = await utils.asyncIterableArray(nodeGraph.getNodes('asc'));
+    bucketIndexes = nodes.map(([nodeId]) =>
+      nodesUtils.bucketIndex(keyManager.getNodeId(), nodeId),
+    );
+    expect(
+      bucketIndexes.slice(1).every((bucketIndex, i) => {
+        return bucketIndexes[i] <= bucketIndex;
+      }),
+    ).toBe(true);
+    nodes = await utils.asyncIterableArray(nodeGraph.getNodes('desc'));
+    expect(nodes).toHaveLength(25);
+    // Sorted by bucket indexes descending
+    bucketIndexes = nodes.map(([nodeId]) =>
+      nodesUtils.bucketIndex(keyManager.getNodeId(), nodeId),
+    );
+    expect(
+      bucketIndexes.slice(1).every((bucketIndex, i) => {
+        return bucketIndexes[i] >= bucketIndex;
+      }),
+    ).toBe(true);
+    await nodeGraph.stop();
+  });
+  test('setting same node ID throws error', async () => {
+    const nodeGraph = await NodeGraph.createNodeGraph({
+      db,
+      keyManager,
+      logger,
+    });
+    await expect(
+      nodeGraph.setNode(keyManager.getNodeId(), {
+        host: '127.0.0.1',
+        port: 55555,
+      } as NodeAddress),
+    ).rejects.toThrow(nodesErrors.ErrorNodeGraphSameNodeId);
+    await nodeGraph.stop();
+  });
+  test('get bucket with 1 node', async () => {
+    const nodeGraph = await NodeGraph.createNodeGraph({
+      db,
+      keyManager,
+      logger,
+    });
+    let nodeId: NodeId;
+    do {
+      nodeId = testNodesUtils.generateRandomNodeId();
+    } while (nodeId.equals(keyManager.getNodeId()));
+    // Set one node
+    await nodeGraph.setNode(nodeId, {
+      host: '127.0.0.1',
+      port: 55555,
+    } as NodeAddress);
+    const bucketIndex = nodesUtils.bucketIndex(keyManager.getNodeId(), nodeId);
+    const bucket = await nodeGraph.getBucket(bucketIndex);
+    expect(bucket).toHaveLength(1);
+    expect(bucket[0]).toStrictEqual([
+      nodeId,
+      {
+        address: {
+          host: '127.0.0.1',
+          port: 55555,
+        },
+        lastUpdated: expect.any(Number),
+      },
+    ]);
+    expect(await nodeGraph.getBucketMeta(bucketIndex)).toStrictEqual({
+      count: 1,
+    });
+    // Adjacent bucket should be empty
+    let bucketIndex_: number;
+    if (bucketIndex >= nodeId.length * 8 - 1) {
+      bucketIndex_ = bucketIndex - 1;
+    } else if (bucketIndex === 0) {
+      bucketIndex_ = bucketIndex + 1;
+    } else {
+      bucketIndex_ = bucketIndex + 1;
+    }
+    expect(await nodeGraph.getBucket(bucketIndex_)).toHaveLength(0);
+    expect(await nodeGraph.getBucketMeta(bucketIndex_)).toStrictEqual({
+      count: 0,
+    });
+    await nodeGraph.stop();
+  });
+  test('get bucket with multiple nodes', async () => {
+    const nodeGraph = await NodeGraph.createNodeGraph({
+      db,
+      keyManager,
+      logger,
+    });
+    // Contiguous node IDs starting from 0
+    let nodeIds = Array.from({ length: 25 }, (_, i) =>
+      IdInternal.create<NodeId>(
+        utils.bigInt2Bytes(BigInt(i), keyManager.getNodeId().byteLength),
+      ),
+    );
+    nodeIds = nodeIds.filter(
+      (nodeId) => !nodeId.equals(keyManager.getNodeId()),
+    );
+    for (const nodeId of nodeIds) {
+      await utils.sleep(100);
+      await nodeGraph.setNode(nodeId, {
+        host: '127.0.0.1',
+        port: 55555,
+      } as NodeAddress);
+    }
+    // Use first and last buckets because node IDs may be split between buckets
+    const bucketIndexFirst = nodesUtils.bucketIndex(
+      keyManager.getNodeId(),
+      nodeIds[0],
+    );
+    const bucketIndexLast = nodesUtils.bucketIndex(
+      keyManager.getNodeId(),
+      nodeIds[nodeIds.length - 1],
+    );
+    const bucketFirst = await nodeGraph.getBucket(bucketIndexFirst);
+    const bucketLast = await nodeGraph.getBucket(bucketIndexLast);
+    let bucket: NodeBucket;
+    let bucketIndex: NodeBucketIndex;
+    if (bucketFirst.length >= bucketLast.length) {
+      bucket = bucketFirst;
+      bucketIndex = bucketIndexFirst;
+    } else {
+      bucket = bucketLast;
+      bucketIndex = bucketIndexLast;
+    }
+    expect(bucket.length > 1).toBe(true);
+    let bucketNodeIds = bucket.map(([nodeId]) => nodeId);
+    // The node IDs must be sorted lexicographically
+    expect(
+      bucketNodeIds.slice(1).every((nodeId, i) => {
+        return Buffer.compare(bucketNodeIds[i], nodeId) < 1;
+      }),
+    ).toBe(true);
+    // Sort by node ID asc
+    bucket = await nodeGraph.getBucket(bucketIndex, 'nodeId', 'asc');
+    bucketNodeIds = bucket.map(([nodeId]) => nodeId);
+    expect(
+      bucketNodeIds.slice(1).every((nodeId, i) => {
+        return Buffer.compare(bucketNodeIds[i], nodeId) < 0;
+      }),
+    ).toBe(true);
+    // Sort by node ID desc
+    bucket = await nodeGraph.getBucket(bucketIndex, 'nodeId', 'desc');
+    bucketNodeIds = bucket.map(([nodeId]) => nodeId);
+    expect(
+      bucketNodeIds.slice(1).every((nodeId, i) => {
+        return Buffer.compare(bucketNodeIds[i], nodeId) > 0;
+      }),
+    ).toBe(true);
+    // Sort by distance asc
+    bucket = await nodeGraph.getBucket(bucketIndex, 'distance', 'asc');
+    let bucketDistances = bucket.map(([nodeId]) =>
+      nodesUtils.nodeDistance(keyManager.getNodeId(), nodeId),
+    );
+    expect(
+      bucketDistances.slice(1).every((distance, i) => {
+        return bucketDistances[i] <= distance;
+      }),
+    ).toBe(true);
+    // Sort by distance desc
+    bucket = await nodeGraph.getBucket(bucketIndex, 'distance', 'desc');
+    bucketDistances = bucket.map(([nodeId]) =>
+      nodesUtils.nodeDistance(keyManager.getNodeId(), nodeId),
+    );
+    expect(
+      bucketDistances.slice(1).every((distance, i) => {
+        return bucketDistances[i] >= distance;
+      }),
+    ).toBe(true);
+    // Sort by lastUpdated asc
+    bucket = await nodeGraph.getBucket(bucketIndex, 'lastUpdated', 'asc');
+    let bucketLastUpdateds = bucket.map(([, nodeData]) => nodeData.lastUpdated);
+    expect(
+      bucketLastUpdateds.slice(1).every((lastUpdated, i) => {
+        return bucketLastUpdateds[i] <= lastUpdated;
+      }),
+    ).toBe(true);
+    bucket = await nodeGraph.getBucket(bucketIndex, 'lastUpdated', 'desc');
+    bucketLastUpdateds = bucket.map(([, nodeData]) => nodeData.lastUpdated);
+    expect(
+      bucketLastUpdateds.slice(1).every((lastUpdated, i) => {
+        return bucketLastUpdateds[i] >= lastUpdated;
+      }),
+    ).toBe(true);
+    await nodeGraph.stop();
+  });
+  test('get all buckets', async () => {
+    const nodeGraph = await NodeGraph.createNodeGraph({
+      db,
+      keyManager,
+      logger,
+    });
+    const now = utils.getUnixtime();
+    for (let i = 0; i < 50; i++) {
+      await utils.sleep(50);
+      await nodeGraph.setNode(testNodesUtils.generateRandomNodeId(), {
+        host: '127.0.0.1',
+        port: utils.getRandomInt(0, 2 ** 16),
+      } as NodeAddress);
+    }
+    let bucketIndex_ = -1;
+    // Ascending order
+    for await (const [bucketIndex, bucket] of nodeGraph.getBuckets(
+      'nodeId',
+      'asc',
+    )) {
+      expect(bucketIndex > bucketIndex_).toBe(true);
+      bucketIndex_ = bucketIndex;
+      expect(bucket.length > 0).toBe(true);
+      expect(bucket.length <= nodeGraph.nodeBucketLimit).toBe(true);
+      for (const [nodeId, nodeData] of bucket) {
+        expect(nodeId.byteLength).toBe(32);
+        expect(nodesUtils.bucketIndex(keyManager.getNodeId(), nodeId)).toBe(
+          bucketIndex,
         );
-        const nodeAddress = {
-          host: hostGen(i),
-          port: i as Port,
-        };
-        await nodeGraph.setNode(newNodeId, nodeAddress);
-        initialNodes[newNodeId] = {
-          id: newNodeId,
-          address: nodeAddress,
-          distance: nodesUtils.calculateDistance(
-            keyManager.getNodeId(),
-            newNodeId,
-          ),
-        };
+        expect(nodeData.address.host).toBe('127.0.0.1');
+        // Port of 0 is not allowed
+        expect(nodeData.address.port > 0).toBe(true);
+        expect(nodeData.address.port < 2 ** 16).toBe(true);
+        expect(nodeData.lastUpdated >= now).toBe(true);
       }
-
-      // Renew the keypair
-      await keyManager.renewRootKeyPair('newPassword');
-      // Reset the test's node ID state
-      nodeId = keyManager.getNodeId();
-      // Refresh the buckets
-      await nodeGraph.refreshBuckets();
-
-      // Get all the new buckets, and expect that each node is in the correct bucket
-      const newBuckets = await nodeGraph.getAllBuckets();
-      let nodeCount = 0;
-      for (const b of newBuckets) {
-        for (const n of Object.keys(b)) {
-          const nodeId = IdInternal.fromString<NodeId>(n);
-          // Check that it was a node in the original DB
-          expect(initialNodes[nodeId]).toBeDefined();
-          // Check it's in the correct bucket
-          const expectedIndex = nodesUtils.calculateBucketIndex(
-            keyManager.getNodeId(),
-            nodeId,
-          );
-          const expectedBucket = await nodeGraph.getBucket(expectedIndex);
-          expect(expectedBucket).toBeDefined();
-          expect(expectedBucket![nodeId]).toBeDefined();
-          // Check it has the correct address
-          expect(b[nodeId].address).toEqual(initialNodes[nodeId].address);
-          nodeCount++;
+      const bucketNodeIds = bucket.map(([nodeId]) => nodeId);
+      expect(
+        bucketNodeIds.slice(1).every((nodeId, i) => {
+          return Buffer.compare(bucketNodeIds[i], nodeId) < 0;
+        }),
+      ).toBe(true);
+    }
+    // There must have been at least 1 bucket
+    expect(bucketIndex_).not.toBe(-1);
+    // Descending order
+    bucketIndex_ = keyManager.getNodeId().length * 8;
+    for await (const [bucketIndex, bucket] of nodeGraph.getBuckets(
+      'nodeId',
+      'desc',
+    )) {
+      expect(bucketIndex < bucketIndex_).toBe(true);
+      bucketIndex_ = bucketIndex;
+      expect(bucket.length > 0).toBe(true);
+      expect(bucket.length <= nodeGraph.nodeBucketLimit).toBe(true);
+      for (const [nodeId, nodeData] of bucket) {
+        expect(nodeId.byteLength).toBe(32);
+        expect(nodesUtils.bucketIndex(keyManager.getNodeId(), nodeId)).toBe(
+          bucketIndex,
+        );
+        expect(nodeData.address.host).toBe('127.0.0.1');
+        // Port of 0 is not allowed
+        expect(nodeData.address.port > 0).toBe(true);
+        expect(nodeData.address.port < 2 ** 16).toBe(true);
+        expect(nodeData.lastUpdated >= now).toBe(true);
+      }
+      const bucketNodeIds = bucket.map(([nodeId]) => nodeId);
+      expect(
+        bucketNodeIds.slice(1).every((nodeId, i) => {
+          return Buffer.compare(bucketNodeIds[i], nodeId) > 0;
+        }),
+      ).toBe(true);
+    }
+    expect(bucketIndex_).not.toBe(keyManager.getNodeId().length * 8);
+    // Distance ascending order
+    // Lower distance buckets first
+    bucketIndex_ = -1;
+    for await (const [bucketIndex, bucket] of nodeGraph.getBuckets(
+      'distance',
+      'asc',
+    )) {
+      expect(bucketIndex > bucketIndex_).toBe(true);
+      bucketIndex_ = bucketIndex;
+      expect(bucket.length > 0).toBe(true);
+      expect(bucket.length <= nodeGraph.nodeBucketLimit).toBe(true);
+      for (const [nodeId, nodeData] of bucket) {
+        expect(nodeId.byteLength).toBe(32);
+        expect(nodesUtils.bucketIndex(keyManager.getNodeId(), nodeId)).toBe(
+          bucketIndex,
+        );
+        expect(nodeData.address.host).toBe('127.0.0.1');
+        // Port of 0 is not allowed
+        expect(nodeData.address.port > 0).toBe(true);
+        expect(nodeData.address.port < 2 ** 16).toBe(true);
+        expect(nodeData.lastUpdated >= now).toBe(true);
+      }
+      const bucketDistances = bucket.map(([nodeId]) =>
+        nodesUtils.nodeDistance(keyManager.getNodeId(), nodeId),
+      );
+      // It's the LAST bucket that fails this
+      expect(
+        bucketDistances.slice(1).every((distance, i) => {
+          return bucketDistances[i] <= distance;
+        }),
+      ).toBe(true);
+    }
+    // Distance descending order
+    // Higher distance buckets first
+    bucketIndex_ = keyManager.getNodeId().length * 8;
+    for await (const [bucketIndex, bucket] of nodeGraph.getBuckets(
+      'distance',
+      'desc',
+    )) {
+      expect(bucketIndex < bucketIndex_).toBe(true);
+      bucketIndex_ = bucketIndex;
+      expect(bucket.length > 0).toBe(true);
+      expect(bucket.length <= nodeGraph.nodeBucketLimit).toBe(true);
+      for (const [nodeId, nodeData] of bucket) {
+        expect(nodeId.byteLength).toBe(32);
+        expect(nodesUtils.bucketIndex(keyManager.getNodeId(), nodeId)).toBe(
+          bucketIndex,
+        );
+        expect(nodeData.address.host).toBe('127.0.0.1');
+        // Port of 0 is not allowed
+        expect(nodeData.address.port > 0).toBe(true);
+        expect(nodeData.address.port < 2 ** 16).toBe(true);
+        expect(nodeData.lastUpdated >= now).toBe(true);
+      }
+      const bucketDistances = bucket.map(([nodeId]) =>
+        nodesUtils.nodeDistance(keyManager.getNodeId(), nodeId),
+      );
+      expect(
+        bucketDistances.slice(1).every((distance, i) => {
+          return bucketDistances[i] >= distance;
+        }),
+      ).toBe(true);
+    }
+    // Last updated ascending order
+    // Bucket index is ascending
+    bucketIndex_ = -1;
+    for await (const [bucketIndex, bucket] of nodeGraph.getBuckets(
+      'lastUpdated',
+      'asc',
+    )) {
+      expect(bucketIndex > bucketIndex_).toBe(true);
+      bucketIndex_ = bucketIndex;
+      expect(bucket.length > 0).toBe(true);
+      expect(bucket.length <= nodeGraph.nodeBucketLimit).toBe(true);
+      for (const [nodeId, nodeData] of bucket) {
+        expect(nodeId.byteLength).toBe(32);
+        expect(nodesUtils.bucketIndex(keyManager.getNodeId(), nodeId)).toBe(
+          bucketIndex,
+        );
+        expect(nodeData.address.host).toBe('127.0.0.1');
+        // Port of 0 is not allowed
+        expect(nodeData.address.port > 0).toBe(true);
+        expect(nodeData.address.port < 2 ** 16).toBe(true);
+        expect(nodeData.lastUpdated >= now).toBe(true);
+      }
+      const bucketLastUpdateds = bucket.map(
+        ([, nodeData]) => nodeData.lastUpdated,
+      );
+      expect(
+        bucketLastUpdateds.slice(1).every((lastUpdated, i) => {
+          return bucketLastUpdateds[i] <= lastUpdated;
+        }),
+      ).toBe(true);
+    }
+    // Last updated descending order
+    // Bucket index is descending
+    bucketIndex_ = keyManager.getNodeId().length * 8;
+    for await (const [bucketIndex, bucket] of nodeGraph.getBuckets(
+      'lastUpdated',
+      'desc',
+    )) {
+      expect(bucketIndex < bucketIndex_).toBe(true);
+      bucketIndex_ = bucketIndex;
+      expect(bucket.length > 0).toBe(true);
+      expect(bucket.length <= nodeGraph.nodeBucketLimit).toBe(true);
+      for (const [nodeId, nodeData] of bucket) {
+        expect(nodeId.byteLength).toBe(32);
+        expect(nodesUtils.bucketIndex(keyManager.getNodeId(), nodeId)).toBe(
+          bucketIndex,
+        );
+        expect(nodeData.address.host).toBe('127.0.0.1');
+        // Port of 0 is not allowed
+        expect(nodeData.address.port > 0).toBe(true);
+        expect(nodeData.address.port < 2 ** 16).toBe(true);
+        expect(nodeData.lastUpdated >= now).toBe(true);
+      }
+      const bucketLastUpdateds = bucket.map(
+        ([, nodeData]) => nodeData.lastUpdated,
+      );
+      expect(
+        bucketLastUpdateds.slice(1).every((lastUpdated, i) => {
+          return bucketLastUpdateds[i] >= lastUpdated;
+        }),
+      ).toBe(true);
+    }
+    await nodeGraph.stop();
+  });
+  test('reset buckets', async () => {
+    const nodeGraph = await NodeGraph.createNodeGraph({
+      db,
+      keyManager,
+      logger,
+    });
+    const now = utils.getUnixtime();
+    for (let i = 0; i < 100; i++) {
+      await nodeGraph.setNode(testNodesUtils.generateRandomNodeId(), {
+        host: '127.0.0.1',
+        port: utils.getRandomInt(0, 2 ** 16),
+      } as NodeAddress);
+    }
+    const buckets0 = await utils.asyncIterableArray(nodeGraph.getBuckets());
+    // Reset the buckets according to the new node ID
+    // Note that this should normally be only executed when the key manager NodeID changes
+    // This means methods that use the KeyManager's node ID cannot be used here in this test
+    const nodeIdNew1 = testNodesUtils.generateRandomNodeId();
+    await nodeGraph.resetBuckets(nodeIdNew1);
+    const buckets1 = await utils.asyncIterableArray(nodeGraph.getBuckets());
+    expect(buckets1.length > 0).toBe(true);
+    for (const [bucketIndex, bucket] of buckets1) {
+      expect(bucket.length > 0).toBe(true);
+      for (const [nodeId, nodeData] of bucket) {
+        expect(nodeId.byteLength).toBe(32);
+        expect(nodesUtils.bucketIndex(nodeIdNew1, nodeId)).toBe(bucketIndex);
+        expect(nodeData.address.host).toBe('127.0.0.1');
+        // Port of 0 is not allowed
+        expect(nodeData.address.port > 0).toBe(true);
+        expect(nodeData.address.port < 2 ** 16).toBe(true);
+        expect(nodeData.lastUpdated >= now).toBe(true);
+      }
+    }
+    expect(buckets1).not.toStrictEqual(buckets0);
+    // Resetting again should change the space
+    const nodeIdNew2 = testNodesUtils.generateRandomNodeId();
+    await nodeGraph.resetBuckets(nodeIdNew2);
+    const buckets2 = await utils.asyncIterableArray(nodeGraph.getBuckets());
+    expect(buckets2.length > 0).toBe(true);
+    for (const [bucketIndex, bucket] of buckets2) {
+      expect(bucket.length > 0).toBe(true);
+      for (const [nodeId, nodeData] of bucket) {
+        expect(nodeId.byteLength).toBe(32);
+        expect(nodesUtils.bucketIndex(nodeIdNew2, nodeId)).toBe(bucketIndex);
+        expect(nodeData.address.host).toBe('127.0.0.1');
+        // Port of 0 is not allowed
+        expect(nodeData.address.port > 0).toBe(true);
+        expect(nodeData.address.port < 2 ** 16).toBe(true);
+        expect(nodeData.lastUpdated >= now).toBe(true);
+      }
+    }
+    expect(buckets2).not.toStrictEqual(buckets1);
+    // Resetting to the same NodeId results in the same bucket structure
+    await nodeGraph.resetBuckets(nodeIdNew2);
+    const buckets3 = await utils.asyncIterableArray(nodeGraph.getBuckets());
+    expect(buckets3).toStrictEqual(buckets2);
+    // Resetting to an existing NodeId
+    const nodeIdExisting = buckets3[0][1][0][0];
+    let nodeIdExistingFound = false;
+    await nodeGraph.resetBuckets(nodeIdExisting);
+    const buckets4 = await utils.asyncIterableArray(nodeGraph.getBuckets());
+    expect(buckets4.length > 0).toBe(true);
+    for (const [bucketIndex, bucket] of buckets4) {
+      expect(bucket.length > 0).toBe(true);
+      for (const [nodeId, nodeData] of bucket) {
+        if (nodeId.equals(nodeIdExisting)) {
+          nodeIdExistingFound = true;
         }
+        expect(nodeId.byteLength).toBe(32);
+        expect(nodesUtils.bucketIndex(nodeIdExisting, nodeId)).toBe(
+          bucketIndex,
+        );
+        expect(nodeData.address.host).toBe('127.0.0.1');
+        // Port of 0 is not allowed
+        expect(nodeData.address.port > 0).toBe(true);
+        expect(nodeData.address.port < 2 ** 16).toBe(true);
+        expect(nodeData.lastUpdated >= now).toBe(true);
       }
-      // We had less than k (20) nodes, so we expect that all nodes will be re-added
-      // If we had more than k nodes, we may lose some of them (because the nodes
-      // may be re-added to newly full buckets)
-      expect(Object.keys(initialNodes).length).toEqual(nodeCount);
-    },
-    global.defaultTimeout * 4,
-  );
-  test('updates node', async () => {
-    // New node added
-    const node1Id = nodesTestUtils.generateNodeIdForBucket(nodeId, 2);
-    const node1Address = { host: '1.1.1.1', port: 1 } as NodeAddress;
-    await nodeGraph.setNode(node1Id, node1Address);
-
-    // Check new node is in retrieved bucket from database
-    const bucket = await nodeGraph.getBucket(2);
-    const time1 = bucket![node1Id].lastUpdated;
-
-    // Update node and check that time is later
-    const newNode1Address = { host: '2.2.2.2', port: 2 } as NodeAddress;
-    await nodeGraph.updateNode(node1Id, newNode1Address);
-
-    const bucket2 = await nodeGraph.getBucket(2);
-    const time2 = bucket2![node1Id].lastUpdated;
-    expect(bucket2![node1Id].address).toEqual(newNode1Address);
-    expect(time1 < time2).toBeTruthy();
+    }
+    expect(buckets4).not.toStrictEqual(buckets3);
+    // The existing node ID should not be put into the NodeGraph
+    expect(nodeIdExistingFound).toBe(false);
+    await nodeGraph.stop();
+  });
+  test('reset buckets is persistent', async () => {
+    const nodeGraph = await NodeGraph.createNodeGraph({
+      db,
+      keyManager,
+      logger,
+    });
+    const now = utils.getUnixtime();
+    for (let i = 0; i < 100; i++) {
+      await nodeGraph.setNode(testNodesUtils.generateRandomNodeId(), {
+        host: '127.0.0.1',
+        port: utils.getRandomInt(0, 2 ** 16),
+      } as NodeAddress);
+    }
+    const nodeIdNew1 = testNodesUtils.generateRandomNodeId();
+    await nodeGraph.resetBuckets(nodeIdNew1);
+    await nodeGraph.stop();
+    await nodeGraph.start();
+    const buckets1 = await utils.asyncIterableArray(nodeGraph.getBuckets());
+    expect(buckets1.length > 0).toBe(true);
+    for (const [bucketIndex, bucket] of buckets1) {
+      expect(bucket.length > 0).toBe(true);
+      for (const [nodeId, nodeData] of bucket) {
+        expect(nodeId.byteLength).toBe(32);
+        expect(nodesUtils.bucketIndex(nodeIdNew1, nodeId)).toBe(bucketIndex);
+        expect(nodeData.address.host).toBe('127.0.0.1');
+        // Port of 0 is not allowed
+        expect(nodeData.address.port > 0).toBe(true);
+        expect(nodeData.address.port < 2 ** 16).toBe(true);
+        expect(nodeData.lastUpdated >= now).toBe(true);
+      }
+    }
+    const nodeIdNew2 = testNodesUtils.generateRandomNodeId();
+    await nodeGraph.resetBuckets(nodeIdNew2);
+    await nodeGraph.stop();
+    await nodeGraph.start();
+    const buckets2 = await utils.asyncIterableArray(nodeGraph.getBuckets());
+    expect(buckets2.length > 0).toBe(true);
+    for (const [bucketIndex, bucket] of buckets2) {
+      expect(bucket.length > 0).toBe(true);
+      for (const [nodeId, nodeData] of bucket) {
+        expect(nodeId.byteLength).toBe(32);
+        expect(nodesUtils.bucketIndex(nodeIdNew2, nodeId)).toBe(bucketIndex);
+        expect(nodeData.address.host).toBe('127.0.0.1');
+        // Port of 0 is not allowed
+        expect(nodeData.address.port > 0).toBe(true);
+        expect(nodeData.address.port < 2 ** 16).toBe(true);
+        expect(nodeData.lastUpdated >= now).toBe(true);
+      }
+    }
+    expect(buckets2).not.toStrictEqual(buckets1);
+    await nodeGraph.stop();
   });
 });

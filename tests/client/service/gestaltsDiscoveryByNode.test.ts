@@ -26,6 +26,7 @@ import * as clientUtils from '@/client/utils/utils';
 import * as keysUtils from '@/keys/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as testUtils from '../../utils';
+import * as testNodesUtils from '../../nodes/utils';
 
 describe('gestaltsDiscoveryByNode', () => {
   const logger = new Logger('gestaltsDiscoveryByNode test', LogLevel.WARN, [
@@ -35,7 +36,7 @@ describe('gestaltsDiscoveryByNode', () => {
   const authenticate = async (metaClient, metaServer = new Metadata()) =>
     metaServer;
   const node: NodeInfo = {
-    id: nodesUtils.encodeNodeId(testUtils.generateRandomNodeId()),
+    id: nodesUtils.encodeNodeId(testNodesUtils.generateRandomNodeId()),
     chain: {},
   };
   let mockedGenerateKeyPair: jest.SpyInstance;

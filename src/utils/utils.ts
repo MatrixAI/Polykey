@@ -220,6 +220,67 @@ function arrayZipWithPadding<T1, T2>(
   ]);
 }
 
+async function asyncIterableArray<T>(
+  iterable: AsyncIterable<T>,
+): Promise<Array<T>> {
+  const arr: Array<T> = [];
+  for await (const item of iterable) {
+    arr.push(item);
+  }
+  return arr;
+}
+
+function bufferSplit(
+  input: Buffer,
+  delimiter?: Buffer,
+  limit?: number,
+  remaining: boolean = false,
+): Array<Buffer> {
+  const output: Array<Buffer> = [];
+  let delimiterOffset = 0;
+  let delimiterIndex = 0;
+  let i = 0;
+  if (delimiter != null) {
+    while (true) {
+      if (i === limit) break;
+      delimiterIndex = input.indexOf(delimiter, delimiterOffset);
+      if (delimiterIndex > -1) {
+        output.push(input.subarray(delimiterOffset, delimiterIndex));
+        delimiterOffset = delimiterIndex + delimiter.byteLength;
+      } else {
+        const chunk = input.subarray(delimiterOffset);
+        output.push(chunk);
+        delimiterOffset += chunk.byteLength;
+        break;
+      }
+      i++;
+    }
+  } else {
+    for (; delimiterIndex < input.byteLength; ) {
+      if (i === limit) break;
+      delimiterIndex++;
+      const chunk = input.subarray(delimiterOffset, delimiterIndex);
+      output.push(chunk);
+      delimiterOffset += chunk.byteLength;
+      i++;
+    }
+  }
+  // If remaining, then the rest of the input including delimiters is extracted
+  if (
+    remaining &&
+    limit != null &&
+    output.length > 0 &&
+    delimiterIndex > -1 &&
+    delimiterIndex <= input.byteLength
+  ) {
+    const inputRemaining = input.subarray(
+      delimiterIndex - output[output.length - 1].byteLength,
+    );
+    output[output.length - 1] = inputRemaining;
+  }
+  return output;
+}
+
 function debounce<P extends any[]>(
   f: (...params: P) => any,
   timeout: number = 0,
@@ -250,5 +311,7 @@ export {
   arrayUnset,
   arrayZip,
   arrayZipWithPadding,
+  asyncIterableArray,
+  bufferSplit,
   debounce,
 };

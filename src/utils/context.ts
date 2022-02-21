@@ -2,7 +2,7 @@ type ResourceAcquire<Resource = void> = () => Promise<
   readonly [ResourceRelease, Resource?]
 >;
 
-type ResourceRelease = () => Promise<void>;
+type ResourceRelease = (e?: Error) => Promise<void>;
 
 type Resources<T extends readonly ResourceAcquire<any>[]> = {
   [K in keyof T]: T[K] extends ResourceAcquire<infer R> ? R : never;
@@ -22,6 +22,7 @@ async function withF<
 ): Promise<T> {
   const releases: Array<ResourceRelease> = [];
   const resources: Array<unknown> = [];
+  let e_: Error | undefined;
   try {
     for (const acquire of acquires) {
       const [release, resource] = await acquire();
@@ -29,10 +30,13 @@ async function withF<
       resources.push(resource);
     }
     return await f(resources as unknown as Resources<ResourceAcquires>);
+  } catch (e) {
+    e_ = e;
+    throw e;
   } finally {
     releases.reverse();
     for (const release of releases) {
-      await release();
+      await release(e_);
     }
   }
 }
@@ -55,6 +59,7 @@ async function* withG<
 ): AsyncGenerator<T, TReturn, TNext> {
   const releases: Array<ResourceRelease> = [];
   const resources: Array<unknown> = [];
+  let e_: Error | undefined;
   try {
     for (const acquire of acquires) {
       const [release, resource] = await acquire();
@@ -62,10 +67,13 @@ async function* withG<
       resources.push(resource);
     }
     return yield* g(resources as unknown as Resources<ResourceAcquires>);
+  } catch (e) {
+    e_ = e;
+    throw e;
   } finally {
     releases.reverse();
     for (const release of releases) {
-      await release();
+      await release(e_);
     }
   }
 }

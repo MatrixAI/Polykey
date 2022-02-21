@@ -45,10 +45,12 @@ function isHostname(hostname: any): hostname is Hostname {
 
 /**
  * Ports must be numbers between 0 and 65535 inclusive
+ * If connect is true, then port must be a number between 1 and 65535 inclusive
  */
-function isPort(port: any): port is Port {
+function isPort(port: any, connect: boolean = false): port is Port {
   if (typeof port !== 'number') return false;
   if (port < 0 || port > 65535) return false;
+  if (connect && port === 0) return false;
   return true;
 }
 

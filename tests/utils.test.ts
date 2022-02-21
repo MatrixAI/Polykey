@@ -258,4 +258,115 @@ describe('utils', () => {
     expect(acquireOrder).toStrictEqual([lock1, lock2]);
     expect(releaseOrder).toStrictEqual([lock2, lock1]);
   });
+  test.only('splitting buffers', () => {
+    const s1 = '';
+    expect(s1.split('')).toStrictEqual([]);
+    const b1 = Buffer.from(s1);
+    expect(utils.bufferSplit(b1)).toStrictEqual([]);
+
+    const s2 = '!';
+    expect(s2.split('!')).toStrictEqual(['', '']);
+    const b2 = Buffer.from(s2);
+    expect(utils.bufferSplit(b2, Buffer.from('!'))).toStrictEqual([
+      Buffer.from(''),
+      Buffer.from(''),
+    ]);
+
+    const s3 = '!a';
+    expect(s3.split('!')).toStrictEqual(['', 'a']);
+    const b3 = Buffer.from(s3);
+    expect(utils.bufferSplit(b3, Buffer.from('!'))).toStrictEqual([
+      Buffer.from(''),
+      Buffer.from('a'),
+    ]);
+
+    const s4 = 'a!';
+    expect(s4.split('!')).toStrictEqual(['a', '']);
+    const b4 = Buffer.from(s4);
+    expect(utils.bufferSplit(b4, Buffer.from('!'))).toStrictEqual([
+      Buffer.from('a'),
+      Buffer.from(''),
+    ]);
+
+    const s5 = 'a!b';
+    expect(s5.split('!')).toStrictEqual(['a', 'b']);
+    const b5 = Buffer.from(s5);
+    expect(utils.bufferSplit(b5, Buffer.from('!'))).toStrictEqual([
+      Buffer.from('a'),
+      Buffer.from('b'),
+    ]);
+
+    const s6 = '!a!b';
+    expect(s6.split('!')).toStrictEqual(['', 'a', 'b']);
+    const b6 = Buffer.from(s6);
+    expect(utils.bufferSplit(b6, Buffer.from('!'))).toStrictEqual([
+      Buffer.from(''),
+      Buffer.from('a'),
+      Buffer.from('b'),
+    ]);
+
+    const s7 = 'a!b!';
+    expect(s7.split('!')).toStrictEqual(['a', 'b', '']);
+    const b7 = Buffer.from(s7);
+    expect(utils.bufferSplit(b7, Buffer.from('!'))).toStrictEqual([
+      Buffer.from('a'),
+      Buffer.from('b'),
+      Buffer.from(''),
+    ]);
+
+    const s8 = '!a!b!';
+    expect(s8.split('!')).toStrictEqual(['', 'a', 'b', '']);
+    const b8 = Buffer.from(s8);
+    expect(utils.bufferSplit(b8, Buffer.from('!'))).toStrictEqual([
+      Buffer.from(''),
+      Buffer.from('a'),
+      Buffer.from('b'),
+      Buffer.from(''),
+    ]);
+
+    const s9 = '!a!b!';
+    expect(s8.split('!', 2)).toStrictEqual(['', 'a']);
+    expect(s8.split('!', 3)).toStrictEqual(['', 'a', 'b']);
+    expect(s8.split('!', 4)).toStrictEqual(['', 'a', 'b', '']);
+    const b9 = Buffer.from(s9);
+    expect(utils.bufferSplit(b9, Buffer.from('!'), 2)).toStrictEqual([
+      Buffer.from(''),
+      Buffer.from('a'),
+    ]);
+    expect(utils.bufferSplit(b9, Buffer.from('!'), 3)).toStrictEqual([
+      Buffer.from(''),
+      Buffer.from('a'),
+      Buffer.from('b'),
+    ]);
+    expect(utils.bufferSplit(b9, Buffer.from('!'), 4)).toStrictEqual([
+      Buffer.from(''),
+      Buffer.from('a'),
+      Buffer.from('b'),
+      Buffer.from(''),
+    ]);
+
+    const s10 = 'abcd';
+    expect(s10.split('')).toStrictEqual(['a', 'b', 'c', 'd']);
+    const b10 = Buffer.from(s10);
+    expect(utils.bufferSplit(b10)).toStrictEqual([
+      Buffer.from('a'),
+      Buffer.from('b'),
+      Buffer.from('c'),
+      Buffer.from('d'),
+    ]);
+
+    // Splitting while concatenating the remaining chunk
+    const b11 = Buffer.from('!a!b!');
+    expect(utils.bufferSplit(b11, Buffer.from('!'), 3, true)).toStrictEqual([
+      Buffer.from(''),
+      Buffer.from('a'),
+      Buffer.from('b!'),
+    ]);
+    const b12 = Buffer.from('!ab!cd!e!!!!');
+    expect(utils.bufferSplit(b12, Buffer.from('!'), 3, true)).toStrictEqual([
+      Buffer.from(''),
+      Buffer.from('ab'),
+      Buffer.from('cd!e!!!!'),
+    ]);
+  });
 });

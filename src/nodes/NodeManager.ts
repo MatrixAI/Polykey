@@ -306,7 +306,7 @@ class NodeManager {
   public async getNodeAddress(
     nodeId: NodeId,
   ): Promise<NodeAddress | undefined> {
-    return await this.nodeGraph.getNode(nodeId);
+    return (await this.nodeGraph.getNode(nodeId))?.address;
   }
 
   /**
@@ -315,7 +315,7 @@ class NodeManager {
    * @returns true if the node exists in the table, false otherwise
    */
   public async knowsNode(targetNodeId: NodeId): Promise<boolean> {
-    return await this.nodeGraph.knowsNode(targetNodeId);
+    return (await this.nodeGraph.getNode(targetNodeId)) != null;
   }
 
   /**
@@ -335,15 +335,16 @@ class NodeManager {
     return await this.nodeGraph.setNode(nodeId, nodeAddress);
   }
 
-  /**
-   * Updates the node in the NodeGraph
-   */
-  public async updateNode(
-    nodeId: NodeId,
-    nodeAddress?: NodeAddress,
-  ): Promise<void> {
-    return await this.nodeGraph.updateNode(nodeId, nodeAddress);
-  }
+  // FIXME
+  // /**
+  //  * Updates the node in the NodeGraph
+  //  */
+  // public async updateNode(
+  //   nodeId: NodeId,
+  //   nodeAddress?: NodeAddress,
+  // ): Promise<void> {
+  //   return await this.nodeGraph.updateNode(nodeId, nodeAddress);
+  // }
 
   /**
    * Removes a node from the NodeGraph
@@ -352,19 +353,22 @@ class NodeManager {
     return await this.nodeGraph.unsetNode(nodeId);
   }
 
-  /**
-   * Gets all buckets from the NodeGraph
-   */
-  public async getAllBuckets(): Promise<Array<NodeBucket>> {
-    return await this.nodeGraph.getAllBuckets();
-  }
+  // FIXME
+  // /**
+  //  * Gets all buckets from the NodeGraph
+  //  */
+  // public async getAllBuckets(): Promise<Array<NodeBucket>> {
+  //   return await this.nodeGraph.getBuckets();
+  // }
 
+  // FIXME
   /**
    * To be called on key renewal. Re-orders all nodes in all buckets with respect
    * to the new node ID.
    */
   public async refreshBuckets(): Promise<void> {
-    return await this.nodeGraph.refreshBuckets();
+    throw Error('fixme');
+    // Return await this.nodeGraph.refreshBuckets();
   }
 }
 

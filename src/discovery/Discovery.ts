@@ -148,7 +148,7 @@ class Discovery {
       reverse: true,
     });
     for await (const o of keyStream) {
-      latestId = IdInternal.fromBuffer<DiscoveryQueueId>(o);
+      latestId = IdInternal.fromBuffer<DiscoveryQueueId>(o as Buffer);
     }
     this.discoveryQueueIdGenerator =
       discoveryUtils.createDiscoveryQueueIdGenerator(latestId);
@@ -208,8 +208,9 @@ class Discovery {
     while (true) {
       if (!(await this.queueIsEmpty())) {
         for await (const o of this.discoveryQueueDb.createReadStream()) {
-          const vertexId = IdInternal.fromBuffer(o.key) as DiscoveryQueueId;
-          const data = o.value as Buffer;
+          const kv = o as any;
+          const vertexId = IdInternal.fromBuffer(kv.key) as DiscoveryQueueId;
+          const data = kv.value as Buffer;
           const vertex = await this.db.deserializeDecrypt<GestaltKey>(
             data,
             false,
@@ -438,7 +439,9 @@ class Discovery {
         limit: 1,
       });
       for await (const o of keyStream) {
-        nextDiscoveryQueueId = IdInternal.fromBuffer<DiscoveryQueueId>(o);
+        nextDiscoveryQueueId = IdInternal.fromBuffer<DiscoveryQueueId>(
+          o as Buffer,
+        );
       }
       if (nextDiscoveryQueueId == null) {
         return true;

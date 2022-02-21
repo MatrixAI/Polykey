@@ -20,19 +20,19 @@ import * as gestaltsErrors from '@/gestalts/errors';
 import * as gestaltsUtils from '@/gestalts/utils';
 import * as keysUtils from '@/keys/utils';
 import * as nodesUtils from '@/nodes/utils';
-import * as testUtils from '../utils';
+import * as testNodesUtils from '../nodes/utils';
 
 describe('GestaltGraph', () => {
   const logger = new Logger('GestaltGraph Test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
-  const nodeIdABC = testUtils.generateRandomNodeId();
+  const nodeIdABC = testNodesUtils.generateRandomNodeId();
   const nodeIdABCEncoded = nodesUtils.encodeNodeId(nodeIdABC);
-  const nodeIdDEE = testUtils.generateRandomNodeId();
+  const nodeIdDEE = testNodesUtils.generateRandomNodeId();
   const nodeIdDEEEncoded = nodesUtils.encodeNodeId(nodeIdDEE);
-  const nodeIdDEF = testUtils.generateRandomNodeId();
+  const nodeIdDEF = testNodesUtils.generateRandomNodeId();
   const nodeIdDEFEncoded = nodesUtils.encodeNodeId(nodeIdDEF);
-  const nodeIdZZZ = testUtils.generateRandomNodeId();
+  const nodeIdZZZ = testNodesUtils.generateRandomNodeId();
   const nodeIdZZZEncoded = nodesUtils.encodeNodeId(nodeIdZZZ);
 
   let dataDir: string;
