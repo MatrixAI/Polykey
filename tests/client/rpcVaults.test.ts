@@ -138,7 +138,9 @@ describe('Vaults client service', () => {
       const vaultId = await createVault(vaultMessage, callCredentials);
       const vaultNames = await vaultManager.listVaults();
       expect(vaultNames.get(vaultList[0])).toBeTruthy();
-      expect(vaultNames.get(vaultList[0])).toStrictEqual(vaultId.getNameOrId());
+      expect(
+        vaultsUtils.encodeVaultId(vaultNames.get(vaultList[0])!),
+      ).toStrictEqual(vaultId.getNameOrId());
     });
     test('should delete vaults', async () => {
       const deleteVault = grpcUtils.promisifyUnaryCall<utilsPB.StatusMessage>(

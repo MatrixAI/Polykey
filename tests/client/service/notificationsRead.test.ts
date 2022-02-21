@@ -1,5 +1,5 @@
 import type { Host, Port } from '@/network/types';
-import type { VaultName } from '@/vaults/types';
+import type { VaultIdEncoded, VaultName } from '@/vaults/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -106,7 +106,7 @@ describe('notificationsRead', () => {
         {
           data: {
             type: 'VaultShare',
-            vaultId: 'vault',
+            vaultId: 'vault' as VaultIdEncoded,
             vaultName: 'vault' as VaultName,
             actions: {
               clone: null,

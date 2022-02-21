@@ -13,8 +13,8 @@ import * as testUtils from '../utils';
 describe('Notifications utils', () => {
   const nodeId = testUtils.generateRandomNodeId();
   const nodeIdEncoded = nodesUtils.encodeNodeId(nodeId);
-  const vaultId = vaultUtils.generateVaultId();
-  const vaultIdEncoded = vaultUtils.encodeVaultId(vaultId);
+  const vaultId = vaultsUtils.generateVaultId();
+  const vaultIdEncoded = vaultsUtils.encodeVaultId(vaultId);
 
   test('generates notification ids', async () => {
     const generator = notificationsUtils.createNotificationIdGenerator();
@@ -37,7 +37,6 @@ describe('Notifications utils', () => {
       currentId = generator();
       expect(Buffer.compare(lastId, currentId)).toBeTruthy();
       lastId = currentId;
-      await sleep(10);
     }
   });
 
@@ -110,7 +109,7 @@ describe('Notifications utils', () => {
     result = await jwtVerify(signedVaultShareNotification, EmbeddedJWK, {});
     expect(result.payload.data).toEqual({
       type: 'VaultShare',
-      vaultId: vaultId,
+      vaultId: vaultIdEncoded,
       vaultName: 'vaultName',
       actions: {
         clone: null,
@@ -195,7 +194,7 @@ describe('Notifications utils', () => {
       );
     expect(decodedVaultShareNotification.data).toEqual({
       type: 'VaultShare',
-      vaultId: vaultId,
+      vaultId: vaultIdEncoded,
       vaultName: 'vaultName',
       actions: {
         clone: null,

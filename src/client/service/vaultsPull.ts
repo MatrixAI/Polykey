@@ -1,19 +1,12 @@
 import type { Authenticate } from '../types';
 import type { VaultManager } from '../../vaults';
-import type { VaultId, VaultName } from '../../vaults/types';
+import type { VaultName } from '../../vaults/types';
 import type * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
 import * as grpc from '@grpc/grpc-js';
-import { utils as idUtils } from '@matrixai/id';
-import { errors as vaultsErrors } from '../../vaults';
 import { utils as grpcUtils } from '../../grpc';
 import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 import * as validationUtils from '../../validation/utils';
-
-function decodeVaultId(input: string): VaultId | undefined {
-  return idUtils.fromMultibase(input)
-    ? (idUtils.fromMultibase(input) as VaultId)
-    : undefined;
-}
+import * as vaultsUtils from '../../vaults/utils';
 
 function vaultsPull({
   authenticate,
@@ -38,8 +31,7 @@ function vaultsPull({
       }
       const nameOrId = vaultMessage.getNameOrId();
       let vaultId = await vaultManager.getVaultId(nameOrId as VaultName);
-      if (!vaultId) vaultId = decodeVaultId(nameOrId);
-      if (!vaultId) throw new vaultsErrors.ErrorVaultsVaultUndefined();
+      vaultId = vaultId ?? validationUtils.parseVaultId(nameOrId);
       let nodeId;
       const nodeMessage = call.request.getNode();
       if (nodeMessage == null) {
@@ -52,12 +44,9 @@ function vaultsPull({
       if (pullVaultMessage == null) {
         pullVault = null;
       } else {
-        try {
-          pullVault = decodeVaultId(pullVaultMessage.getNameOrId());
-        } catch (err) {
-          // Do nothing
-        }
-        if (!pullVault) pullVault = pullVaultMessage.getNameOrId();
+        pullVault = vaultsUtils.decodeVaultId(pullVaultMessage.getNameOrId());
+        pullVault = pullVault ?? pullVaultMessage.getNameOrId();
+        if (pullVault == null) pullVault = pullVaultMessage.getNameOrId();
       }
       await vaultManager.pullVault({
         vaultId,

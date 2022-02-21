@@ -1,19 +1,13 @@
 import type { DiscoveryQueueId, DiscoveryQueueIdGenerator } from './types';
 import { IdSortable } from '@matrixai/id';
-import { makeId } from '../GenericIdTypes';
-
-function makeDiscoveryQueueId(arg: any) {
-  return makeId<DiscoveryQueueId>(arg);
-}
 
 function createDiscoveryQueueIdGenerator(
   lastId?: DiscoveryQueueId,
 ): DiscoveryQueueIdGenerator {
-  const idSortableGenerator = new IdSortable({
+  const idSortableGenerator = new IdSortable<DiscoveryQueueId>({
     lastId,
   });
-  return (): DiscoveryQueueId =>
-    makeDiscoveryQueueId(idSortableGenerator.get());
+  return (): DiscoveryQueueId => idSortableGenerator.get();
 }
 
-export { makeDiscoveryQueueId, createDiscoveryQueueIdGenerator };
+export { createDiscoveryQueueIdGenerator };

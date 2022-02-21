@@ -201,7 +201,8 @@ class ACL {
       const vaultPerms: Record<VaultId, Record<NodeId, Permission>> = {};
       const ops: Array<DBOp> = [];
       for await (const o of this.aclVaultsDb.createReadStream()) {
-        const vaultId = (o as any).key as VaultId;
+        const vaultIdBuffer = (o as any).key as Buffer;
+        const vaultId = IdInternal.fromBuffer<VaultId>(vaultIdBuffer);
         const data = (o as any).value as Buffer;
         const nodeIds = await this.db.deserializeDecrypt<Record<NodeId, null>>(
           data,

@@ -1,7 +1,7 @@
+import type { Id } from '@matrixai/id';
 import type { Opaque } from '../types';
 import type { NodeIdEncoded } from '../nodes/types';
-import type { VaultName, VaultActions } from '../vaults/types';
-import type { Id, IdString } from '../GenericIdTypes';
+import type { VaultName, VaultActions, VaultIdEncoded } from '../vaults/types';
 
 type NotificationId = Opaque<'NotificationId', Id>;
 
@@ -12,7 +12,7 @@ type GestaltInvite = {
 };
 type VaultShare = {
   type: 'VaultShare';
-  vaultId: IdString;
+  vaultId: VaultIdEncoded;
   vaultName: VaultName;
   actions: VaultActions;
 };

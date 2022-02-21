@@ -33,7 +33,7 @@ function vaultsGitInfoGet({
     const vaultNameOrId = vaultMessage.getNameOrId();
     let vaultId = await vaultManager.getVaultId(vaultNameOrId as VaultName);
     vaultName = vaultNameOrId;
-    if (!vaultId) {
+    if (vaultId == null) {
       try {
         vaultId = validationUtils.parseVaultId(vaultNameOrId);
         vaultName = (await vaultManager.getVaultMeta(vaultId))?.vaultName;

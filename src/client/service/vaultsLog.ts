@@ -1,17 +1,10 @@
 import type { Authenticate } from '../types';
-import type { VaultId, VaultName } from '../../vaults/types';
+import type { VaultName } from '../../vaults/types';
 import type { VaultManager } from '../../vaults';
 import * as grpc from '@grpc/grpc-js';
-import { utils as idUtils } from '@matrixai/id';
 import { utils as grpcUtils } from '../../grpc';
-import { errors as vaultsErrors } from '../../vaults';
 import * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
-
-function decodeVaultId(input: string): VaultId | undefined {
-  return idUtils.fromMultibase(input)
-    ? (idUtils.fromMultibase(input) as VaultId)
-    : undefined;
-}
+import * as validationUtils from '../../validation/utils';
 
 function vaultsLog({
   vaultManager,
@@ -36,8 +29,7 @@ function vaultsLog({
       }
       const nameOrId = vaultMessage.getNameOrId();
       let vaultId = await vaultManager.getVaultId(nameOrId as VaultName);
-      if (!vaultId) vaultId = decodeVaultId(nameOrId);
-      if (!vaultId) throw new vaultsErrors.ErrorVaultsVaultUndefined();
+      vaultId = vaultId ?? validationUtils.parseVaultId(nameOrId);
       // Getting the log
       const depth = vaultsLogMessage.getLogDepth();
       let commitId: string | undefined = vaultsLogMessage.getCommitId();

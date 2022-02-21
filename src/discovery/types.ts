@@ -1,5 +1,5 @@
 import type { Opaque } from '../types';
-import type { Id } from '../GenericIdTypes';
+import type { Id } from '@matrixai/id';
 
 /**
  * Used to preserve order in the Discovery Queue.
