@@ -33,6 +33,7 @@ import * as GRPCErrors from '@/grpc/errors';
 import * as nodesUtils from '@/nodes/utils';
 import * as agentErrors from '@/agent/errors';
 import * as grpcUtils from '@/grpc/utils';
+import * as testNodesUtils from './utils';
 import * as testUtils from '../utils';
 import * as grpcTestUtils from '../grpc/utils';
 import * as agentTestUtils from '../agent/utils';
@@ -72,7 +73,7 @@ describe('${NodeConnection.name} test', () => {
 
   const password = 'password';
   const node: NodeInfo = {
-    id: nodesUtils.encodeNodeId(testUtils.generateRandomNodeId()),
+    id: nodesUtils.encodeNodeId(testNodesUtils.generateRandomNodeId()),
     chain: {},
   };
 
@@ -703,7 +704,7 @@ describe('${NodeConnection.name} test', () => {
     "should call `killSelf and throw if the server %s's during testUnaryFail",
     async (option) => {
       let nodeConnection:
-        | NodeConnection<grpcTestUtils.GRPCClientTest>
+        | NodeConnection<testGrpcUtils.GRPCClientTest>
         | undefined;
       let testProxy: Proxy | undefined;
       let testProcess: child_process.ChildProcessWithoutNullStreams | undefined;
@@ -748,7 +749,7 @@ describe('${NodeConnection.name} test', () => {
           targetHost: testProxy.getProxyHost(),
           targetPort: testProxy.getProxyPort(),
           clientFactory: (args) =>
-            grpcTestUtils.GRPCClientTest.createGRPCClientTest(args),
+            testGrpcUtils.GRPCClientTest.createGRPCClientTest(args),
         });
 
         const client = nodeConnection.getClient();
@@ -773,7 +774,7 @@ describe('${NodeConnection.name} test', () => {
     "should call `killSelf and throw if the server %s's during testStreamFail",
     async (option) => {
       let nodeConnection:
-        | NodeConnection<grpcTestUtils.GRPCClientTest>
+        | NodeConnection<testGrpcUtils.GRPCClientTest>
         | undefined;
       let testProxy: Proxy | undefined;
       let testProcess: child_process.ChildProcessWithoutNullStreams | undefined;
@@ -818,7 +819,7 @@ describe('${NodeConnection.name} test', () => {
           targetHost: testProxy.getProxyHost(),
           targetPort: testProxy.getProxyPort(),
           clientFactory: (args) =>
-            grpcTestUtils.GRPCClientTest.createGRPCClientTest(args),
+            testGrpcUtils.GRPCClientTest.createGRPCClientTest(args),
         });
 
         const client = nodeConnection.getClient();

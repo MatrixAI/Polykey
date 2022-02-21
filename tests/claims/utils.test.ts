@@ -11,12 +11,13 @@ import * as claimsErrors from '@/claims/errors';
 import { utils as keysUtils } from '@/keys';
 import { utils as nodesUtils } from '@/nodes';
 import * as testUtils from '../utils';
+import * as testNodesUtils from '../nodes/utils';
 
 describe('claims/utils', () => {
   // Node Ids
-  const nodeId1 = testUtils.generateRandomNodeId();
+  const nodeId1 = testNodesUtils.generateRandomNodeId();
   const nodeId1Encoded = nodesUtils.encodeNodeId(nodeId1);
-  const nodeId2 = testUtils.generateRandomNodeId();
+  const nodeId2 = testNodesUtils.generateRandomNodeId();
   const nodeId2Encoded = nodesUtils.encodeNodeId(nodeId2);
 
   let publicKey: PublicKeyPem;

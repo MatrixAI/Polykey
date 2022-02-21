@@ -313,7 +313,7 @@ class NodeManager {
     nodeId: NodeId,
     tran?: DBTransaction,
   ): Promise<NodeAddress | undefined> {
-    return await this.nodeGraph.getNode(nodeId, tran);
+    return (await this.nodeGraph.getNode(nodeId, tran))?.address;
   }
 
   /**
@@ -326,7 +326,7 @@ class NodeManager {
     targetNodeId: NodeId,
     tran?: DBTransaction,
   ): Promise<boolean> {
-    return await this.nodeGraph.knowsNode(targetNodeId, tran);
+    return (await this.nodeGraph.getNode(targetNodeId, tran)) != null;
   }
 
   /**
@@ -350,16 +350,16 @@ class NodeManager {
     return await this.nodeGraph.setNode(nodeId, nodeAddress, tran);
   }
 
-  /**
-   * Updates the node in the NodeGraph
-   */
-  public async updateNode(
-    nodeId: NodeId,
-    nodeAddress?: NodeAddress,
-    tran?: DBTransaction,
-  ): Promise<void> {
-    return await this.nodeGraph.updateNode(nodeId, nodeAddress, tran);
-  }
+  // /**
+  //  * Updates the node in the NodeGraph
+  //  */
+  // public async updateNode(
+  //   nodeId: NodeId,
+  //   nodeAddress?: NodeAddress,
+  //   tran?: DBTransaction,
+  // ): Promise<void> {
+  //   return await this.nodeGraph.updateNode(nodeId, nodeAddress, tran);
+  // }
 
   /**
    * Removes a node from the NodeGraph
@@ -368,19 +368,21 @@ class NodeManager {
     return await this.nodeGraph.unsetNode(nodeId, tran);
   }
 
-  /**
-   * Gets all buckets from the NodeGraph
-   */
-  public async getAllBuckets(tran?: DBTransaction): Promise<Array<NodeBucket>> {
-    return await this.nodeGraph.getAllBuckets(tran);
-  }
+  // /**
+  //  * Gets all buckets from the NodeGraph
+  //  */
+  // public async getAllBuckets(tran?: DBTransaction): Promise<Array<NodeBucket>> {
+  //   return await this.nodeGraph.getAllBuckets(tran);
+  // }
 
+  // FIXME
   /**
    * To be called on key renewal. Re-orders all nodes in all buckets with respect
    * to the new node ID.
    */
   public async refreshBuckets(tran?: DBTransaction): Promise<void> {
-    return await this.nodeGraph.refreshBuckets(tran);
+    throw Error('fixme');
+    // Return await this.nodeGraph.refreshBuckets(tran);
   }
 }
 

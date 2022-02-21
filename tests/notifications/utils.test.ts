@@ -2,16 +2,15 @@ import type { Notification, NotificationData } from '@/notifications/types';
 import type { VaultActions, VaultName } from '@/vaults/types';
 import { createPublicKey } from 'crypto';
 import { EmbeddedJWK, jwtVerify, exportJWK } from 'jose';
-
 import * as keysUtils from '@/keys/utils';
 import * as notificationsUtils from '@/notifications/utils';
 import * as notificationsErrors from '@/notifications/errors';
 import * as vaultsUtils from '@/vaults/utils';
 import * as nodesUtils from '@/nodes/utils';
-import * as testUtils from '../utils';
+import * as testNodesUtils from '../nodes/utils';
 
 describe('Notifications utils', () => {
-  const nodeId = testUtils.generateRandomNodeId();
+  const nodeId = testNodesUtils.generateRandomNodeId();
   const nodeIdEncoded = nodesUtils.encodeNodeId(nodeId);
   const vaultId = vaultsUtils.generateVaultId();
   const vaultIdEncoded = vaultsUtils.encodeVaultId(vaultId);
@@ -206,7 +205,7 @@ describe('Notifications utils', () => {
   });
 
   test('validates correct notifications', async () => {
-    const nodeIdOther = testUtils.generateRandomNodeId();
+    const nodeIdOther = testNodesUtils.generateRandomNodeId();
     const nodeIdOtherEncoded = nodesUtils.encodeNodeId(nodeIdOther);
     const generalNotification: Notification = {
       data: {

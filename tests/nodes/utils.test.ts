@@ -1,48 +1,69 @@
 import type { NodeId } from '@/nodes/types';
+import os from 'os';
+import path from 'path';
+import fs from 'fs';
+import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
+import lexi from 'lexicographic-integer';
 import { IdInternal } from '@matrixai/id';
+import { DB } from '@matrixai/db';
 import * as nodesUtils from '@/nodes/utils';
+import * as keysUtils from '@/keys/utils';
+import * as utils from '@/utils';
+import * as testNodesUtils from './utils';
 
-describe('Nodes utils', () => {
-  test('basic distance calculation', async () => {
-    const nodeId1 = IdInternal.create<NodeId>([
-      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-      0, 0, 0, 0, 0, 0, 5,
-    ]);
-    const nodeId2 = IdInternal.create<NodeId>([
-      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 23, 0,
-      0, 0, 0, 0, 0, 0, 0, 1,
-    ]);
-
-    const distance = nodesUtils.calculateDistance(nodeId1, nodeId2);
-    expect(distance).toEqual(316912758671486456376015716356n);
+describe('nodes/utils', () => {
+  const logger = new Logger(`nodes/utils test`, LogLevel.WARN, [
+    new StreamHandler(),
+  ]);
+  let dataDir: string;
+  let db: DB;
+  beforeEach(async () => {
+    dataDir = await fs.promises.mkdtemp(
+      path.join(os.tmpdir(), 'polykey-test-'),
+    );
+    const dbKey = await keysUtils.generateKey();
+    const dbPath = `${dataDir}/db`;
+    db = await DB.createDB({
+      dbPath,
+      logger,
+      crypto: {
+        key: dbKey,
+        ops: {
+          encrypt: keysUtils.encryptWithKey,
+          decrypt: keysUtils.decryptWithKey,
+        },
+      },
+    });
   });
-  test('calculates correct first bucket (bucket 0)', async () => {
-    // "1" XOR "0" = distance of 1
-    // Therefore, bucket 0
-    const nodeId1 = IdInternal.create<NodeId>([
-      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-      0, 0, 0, 0, 0, 0, 1,
-    ]);
-    const nodeId2 = IdInternal.create<NodeId>([
-      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-      0, 0, 0, 0, 0, 0, 0,
-    ]);
-    const bucketIndex = nodesUtils.calculateBucketIndex(nodeId1, nodeId2);
+  afterEach(async () => {
+    await db.stop();
+    await fs.promises.rm(dataDir, {
+      force: true,
+      recursive: true,
+    });
+  });
+  test('calculating bucket index from the same node ID', () => {
+    const nodeId1 = IdInternal.create<NodeId>([0]);
+    const nodeId2 = IdInternal.create<NodeId>([0]);
+    const distance = nodesUtils.nodeDistance(nodeId1, nodeId2);
+    expect(distance).toBe(0n);
+    expect(() => nodesUtils.bucketIndex(nodeId1, nodeId2)).toThrow(RangeError);
+  });
+  test('calculating bucket index 0', () => {
+    // Distance is calculated based on XOR operation
+    // 1 ^ 0 == 1
+    // Distance of 1 is bucket 0
+    const nodeId1 = IdInternal.create<NodeId>([1]);
+    const nodeId2 = IdInternal.create<NodeId>([0]);
+    const distance = nodesUtils.nodeDistance(nodeId1, nodeId2);
+    const bucketIndex = nodesUtils.bucketIndex(nodeId1, nodeId2);
+    expect(distance).toBe(1n);
     expect(bucketIndex).toBe(0);
+    // Triangle inequality 2^i <= distance < 2^(i + 1)
+    expect(2 ** bucketIndex <= distance).toBe(true);
+    expect(distance < 2 ** (bucketIndex + 1)).toBe(true);
   });
-  test('calculates correct arbitrary bucket (bucket 63)', async () => {
-    const nodeId1 = IdInternal.create<NodeId>([
-      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-      255, 0, 0, 0, 0, 0, 0, 0,
-    ]);
-    const nodeId2 = IdInternal.create<NodeId>([
-      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-      0, 0, 0, 0, 0, 0, 0,
-    ]);
-    const bucketIndex = nodesUtils.calculateBucketIndex(nodeId1, nodeId2);
-    expect(bucketIndex).toBe(63);
-  });
-  test('calculates correct last bucket (bucket 255)', async () => {
+  test('calculating bucket index 255', () => {
     const nodeId1 = IdInternal.create<NodeId>([
       255, 255, 255, 255, 255, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -51,7 +72,103 @@ describe('Nodes utils', () => {
       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
       0, 0, 0, 0, 0, 0, 0,
     ]);
-    const bucketIndex = nodesUtils.calculateBucketIndex(nodeId1, nodeId2);
+    const distance = nodesUtils.nodeDistance(nodeId1, nodeId2);
+    const bucketIndex = nodesUtils.bucketIndex(nodeId1, nodeId2);
     expect(bucketIndex).toBe(255);
+    // Triangle inequality 2^i <= distance < 2^(i + 1)
+    expect(2 ** bucketIndex <= distance).toBe(true);
+    expect(distance < 2 ** (bucketIndex + 1)).toBe(true);
+  });
+  test('calculating bucket index randomly', () => {
+    for (let i = 0; i < 1000; i++) {
+      const nodeId1 = testNodesUtils.generateRandomNodeId();
+      const nodeId2 = testNodesUtils.generateRandomNodeId();
+      if (nodeId1.equals(nodeId2)) {
+        continue;
+      }
+      const distance = nodesUtils.nodeDistance(nodeId1, nodeId2);
+      const bucketIndex = nodesUtils.bucketIndex(nodeId1, nodeId2);
+      // Triangle inequality 2^i <= distance < 2^(i + 1)
+      expect(2 ** bucketIndex <= distance).toBe(true);
+      expect(distance < 2 ** (bucketIndex + 1)).toBe(true);
+    }
+  });
+  test('parse NodeGraph buckets db key', async () => {
+    const bucketsDb = await db.level('buckets');
+    const data: Array<{
+      bucketIndex: number;
+      bucketKey: string;
+      nodeId: NodeId;
+      key: Buffer;
+    }> = [];
+    for (let i = 0; i < 1000; i++) {
+      const bucketIndex = Math.floor(Math.random() * (255 + 1));
+      const bucketKey = nodesUtils.bucketKey(bucketIndex);
+      const nodeId = testNodesUtils.generateRandomNodeId();
+      data.push({
+        bucketIndex,
+        bucketKey,
+        nodeId,
+        key: Buffer.concat([Buffer.from(bucketKey), nodeId]),
+      });
+      const bucketDomain = ['buckets', bucketKey];
+      await db.put(bucketDomain, nodesUtils.bucketDbKey(nodeId), null);
+    }
+    // LevelDB will store keys in lexicographic order
+    // Use the key property as a concatenated buffer of the bucket key and node ID
+    data.sort((a, b) => Buffer.compare(a.key, b.key));
+    let i = 0;
+    for await (const key of bucketsDb.createKeyStream()) {
+      const { bucketIndex, bucketKey, nodeId } = nodesUtils.parseBucketsDbKey(
+        key as Buffer,
+      );
+      expect(bucketIndex).toBe(data[i].bucketIndex);
+      expect(bucketKey).toBe(data[i].bucketKey);
+      expect(nodeId.equals(data[i].nodeId)).toBe(true);
+      i++;
+    }
+  });
+  test('parse NodeGraph lastUpdated buckets db key', async () => {
+    const lastUpdatedDb = await db.level('lastUpdated');
+    const data: Array<{
+      bucketIndex: number;
+      bucketKey: string;
+      lastUpdated: number;
+      nodeId: NodeId;
+      key: Buffer;
+    }> = [];
+    for (let i = 0; i < 1000; i++) {
+      const bucketIndex = Math.floor(Math.random() * (255 + 1));
+      const bucketKey = lexi.pack(bucketIndex, 'hex');
+      const lastUpdated = utils.getUnixtime();
+      const nodeId = testNodesUtils.generateRandomNodeId();
+      const lastUpdatedKey = nodesUtils.lastUpdatedBucketDbKey(
+        lastUpdated,
+        nodeId,
+      );
+      data.push({
+        bucketIndex,
+        bucketKey,
+        lastUpdated,
+        nodeId,
+        key: Buffer.concat([Buffer.from(bucketKey), lastUpdatedKey]),
+      });
+      const lastUpdatedDomain = ['lastUpdated', bucketKey];
+      await db.put(lastUpdatedDomain, lastUpdatedKey, null);
+    }
+    // LevelDB will store keys in lexicographic order
+    // Use the key property as a concatenated buffer of
+    // the bucket key and last updated and node ID
+    data.sort((a, b) => Buffer.compare(a.key, b.key));
+    let i = 0;
+    for await (const key of lastUpdatedDb.createKeyStream()) {
+      const { bucketIndex, bucketKey, lastUpdated, nodeId } =
+        nodesUtils.parseLastUpdatedBucketsDbKey(key as Buffer);
+      expect(bucketIndex).toBe(data[i].bucketIndex);
+      expect(bucketKey).toBe(data[i].bucketKey);
+      expect(lastUpdated).toBe(data[i].lastUpdated);
+      expect(nodeId.equals(data[i].nodeId)).toBe(true);
+      i++;
+    }
   });
 });

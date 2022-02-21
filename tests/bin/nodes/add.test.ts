@@ -11,11 +11,12 @@ import * as nodesUtils from '@/nodes/utils';
 import * as keysUtils from '@/keys/utils';
 import * as testBinUtils from '../utils';
 import * as testUtils from '../../utils';
+import * as testNodesUtils from '../../nodes/utils';
 
 describe('add', () => {
   const logger = new Logger('add test', LogLevel.WARN, [new StreamHandler()]);
   const password = 'helloworld';
-  const validNodeId = testUtils.generateRandomNodeId();
+  const validNodeId = testNodesUtils.generateRandomNodeId();
   const invalidNodeId = IdInternal.fromString<NodeId>('INVALIDID');
   const validHost = '0.0.0.0';
   const invalidHost = 'INVALIDHOST';

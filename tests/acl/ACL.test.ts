@@ -12,6 +12,7 @@ import * as aclErrors from '@/acl/errors';
 import * as keysUtils from '@/keys/utils';
 import * as vaultsUtils from '@/vaults/utils';
 import * as testUtils from '../utils';
+import * as testNodesUtils from '../nodes/utils';
 
 describe(ACL.name, () => {
   const logger = new Logger(`${ACL.name} test`, LogLevel.WARN, [
@@ -19,14 +20,14 @@ describe(ACL.name, () => {
   ]);
 
   // Node Ids
-  const nodeIdX = testUtils.generateRandomNodeId();
-  const nodeIdY = testUtils.generateRandomNodeId();
-  const nodeIdG1First = testUtils.generateRandomNodeId();
-  const nodeIdG1Second = testUtils.generateRandomNodeId();
-  const nodeIdG1Third = testUtils.generateRandomNodeId();
-  const nodeIdG1Fourth = testUtils.generateRandomNodeId();
-  const nodeIdG2First = testUtils.generateRandomNodeId();
-  const nodeIdG2Second = testUtils.generateRandomNodeId();
+  const nodeIdX = testNodesUtils.generateRandomNodeId();
+  const nodeIdY = testNodesUtils.generateRandomNodeId();
+  const nodeIdG1First = testNodesUtils.generateRandomNodeId();
+  const nodeIdG1Second = testNodesUtils.generateRandomNodeId();
+  const nodeIdG1Third = testNodesUtils.generateRandomNodeId();
+  const nodeIdG1Fourth = testNodesUtils.generateRandomNodeId();
+  const nodeIdG2First = testNodesUtils.generateRandomNodeId();
+  const nodeIdG2Second = testNodesUtils.generateRandomNodeId();
 
   let dataDir: string;
   let db: DB;
@@ -108,16 +109,28 @@ describe(ACL.name, () => {
     await expect(acl.setNodesPerm([], {} as Permission)).rejects.toThrow(
       aclErrors.ErrorACLNotRunning,
     );
+    await expect(acl.setNodesPermOps([], {} as Permission)).rejects.toThrow(
+      aclErrors.ErrorACLNotRunning,
+    );
     await expect(acl.setNodePerm(nodeIdX, {} as Permission)).rejects.toThrow(
       aclErrors.ErrorACLNotRunning,
     );
+    await expect(acl.setNodePermOps(nodeIdX, {} as Permission)).rejects.toThrow(
+      aclErrors.ErrorACLNotRunning,
+    );
     await expect(acl.unsetNodePerm(nodeIdX)).rejects.toThrow(
+      aclErrors.ErrorACLNotRunning,
+    );
+    await expect(acl.unsetNodePermOps(nodeIdX)).rejects.toThrow(
       aclErrors.ErrorACLNotRunning,
     );
     await expect(acl.unsetVaultPerms(1 as VaultId)).rejects.toThrow(
       aclErrors.ErrorACLNotRunning,
     );
     await expect(acl.joinNodePerm(nodeIdX, [])).rejects.toThrow(
+      aclErrors.ErrorACLNotRunning,
+    );
+    await expect(acl.joinNodePermOps(nodeIdX, [])).rejects.toThrow(
       aclErrors.ErrorACLNotRunning,
     );
     await expect(acl.joinVaultPerms(1 as VaultId, [])).rejects.toThrow(
