@@ -63,8 +63,8 @@ class CommandLog extends CommandPolykey {
               meta,
             );
             for await (const commit of stream) {
-              const timeStamp = commit.getTimeStamp();
-              const date = new Date(timeStamp);
+              const timestamp = commit.getTimeStamp();
+              const date = timestamp!.toDate();
               data.push(`commit ${commit.getOid()}`);
               data.push(`committer ${commit.getCommitter()}`);
               data.push(`Date: ${date.toDateString()}`);

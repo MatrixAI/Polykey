@@ -64,26 +64,35 @@ class ErrorVaultRemoteUndefined extends ErrorVaults {
   exitCode = sysexits.USAGE;
 }
 
-// --- these need to be reviewed
-
 class ErrorVaultsVaultUndefined extends ErrorVaults {
   description = 'Vault does not exist';
-  exitCode = 10;
+  exitCode = sysexits.USAGE;
 }
 
-class ErrorVaultsVaultDefined extends ErrorVaults {}
+class ErrorVaultsVaultDefined extends ErrorVaults {
+  description = 'Vault already exists';
+  exitCode = sysexits.USAGE;
+}
 
-class ErrorVaultsRecursive extends ErrorVaults {}
+class ErrorVaultsRecursive extends ErrorVaults {
+  description = 'Recursive option was not set';
+  exitCode = sysexits.USAGE;
+}
 
-class ErrorVaultsVaultUnlinked extends ErrorVaults {}
+class ErrorVaultsCreateVaultId extends ErrorVaults {
+  description = 'Failed to create unique VaultId';
+  exitCode = sysexits.SOFTWARE;
+}
 
-class ErrorVaultsCreateVaultId extends ErrorVaults {}
+class ErrorVaultsMergeConflict extends ErrorVaults {
+  description = 'Merge Conflicts are not supported yet';
+  exitCode = sysexits.SOFTWARE;
+}
 
-class ErrorVaultsInvalidVaultId extends ErrorVaults {} // TODO: Assign a proper error code and message.
-
-class ErrorVaultsMergeConflict extends ErrorVaults {}
-
-class ErrorVaultsPermissionDenied extends ErrorVaults {}
+class ErrorVaultsPermissionDenied extends ErrorVaults {
+  description = 'Permission was denied';
+  exitCode = sysexits.NOPERM;
+}
 
 class ErrorVaultsNameConflict extends ErrorVaults {
   description = 'Unique name could not be created';
@@ -92,9 +101,15 @@ class ErrorVaultsNameConflict extends ErrorVaults {
 
 class ErrorSecrets extends ErrorPolykey {}
 
-class ErrorSecretsSecretUndefined extends ErrorSecrets {}
+class ErrorSecretsSecretUndefined extends ErrorSecrets {
+  description = 'Secret does not exist';
+  exitCode = sysexits.USAGE;
+}
 
-class ErrorSecretsSecretDefined extends ErrorSecrets {}
+class ErrorSecretsSecretDefined extends ErrorSecrets {
+  description = 'Secret already exists';
+  exitCode = sysexits.USAGE;
+}
 
 export {
   ErrorVaults,
@@ -114,9 +129,7 @@ export {
   ErrorVaultsVaultUndefined,
   ErrorVaultsVaultDefined,
   ErrorVaultsRecursive,
-  ErrorVaultsVaultUnlinked,
   ErrorVaultsCreateVaultId,
-  ErrorVaultsInvalidVaultId,
   ErrorVaultsMergeConflict,
   ErrorVaultsPermissionDenied,
   ErrorVaultsNameConflict,

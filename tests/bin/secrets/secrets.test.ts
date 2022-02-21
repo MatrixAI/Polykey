@@ -278,7 +278,7 @@ describe('CLI secrets', () => {
   });
   describe('commandStat', () => {
     test('should retrieve secrets', async () => {
-      const vaultName = 'Vault3' as VaultName;
+      const vaultName = 'Vault9';
       const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
 
       await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {

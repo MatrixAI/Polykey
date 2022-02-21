@@ -6,6 +6,7 @@
 
 import * as jspb from "google-protobuf";
 import * as polykey_v1_nodes_nodes_pb from "../../../polykey/v1/nodes/nodes_pb";
+import * as google_protobuf_timestamp_pb from "google-protobuf/google/protobuf/timestamp_pb";
 
 export class Vault extends jspb.Message { 
     getNameOrId(): string;
@@ -379,8 +380,11 @@ export class LogEntry extends jspb.Message {
     setOid(value: string): LogEntry;
     getCommitter(): string;
     setCommitter(value: string): LogEntry;
-    getTimeStamp(): number;
-    setTimeStamp(value: number): LogEntry;
+
+    hasTimeStamp(): boolean;
+    clearTimeStamp(): void;
+    getTimeStamp(): google_protobuf_timestamp_pb.Timestamp | undefined;
+    setTimeStamp(value?: google_protobuf_timestamp_pb.Timestamp): LogEntry;
     getMessage(): string;
     setMessage(value: string): LogEntry;
 
@@ -398,7 +402,7 @@ export namespace LogEntry {
     export type AsObject = {
         oid: string,
         committer: string,
-        timeStamp: number,
+        timeStamp?: google_protobuf_timestamp_pb.Timestamp.AsObject,
         message: string,
     }
 }

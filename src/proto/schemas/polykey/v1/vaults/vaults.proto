@@ -1,6 +1,7 @@
 syntax = "proto3";
 
 import "polykey/v1/nodes/nodes.proto";
+import "google/protobuf/timestamp.proto";
 
 package polykey.v1.vaults;
 
@@ -82,7 +83,7 @@ message Log {
 message LogEntry {
   string oid = 1;
   string committer = 2;
-  uint64 time_stamp = 4;
+  google.protobuf.Timestamp time_stamp = 4;
   string message = 3;
 }
 

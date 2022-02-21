@@ -1,11 +1,11 @@
 import type { Authenticate } from '../types';
 import type { VaultName } from '../../vaults/types';
-import type { VaultManager } from '../../vaults';
+import type VaultManager from '../../vaults/VaultManager';
 import type * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
 import * as grpc from '@grpc/grpc-js';
 import * as validationUtils from '../../validation/utils';
-import { utils as grpcUtils } from '../../grpc';
-import { vaultOps } from '../../vaults';
+import * as grpcUtils from '../../grpc/utils';
+import * as vaultOps from '../../vaults/VaultOps';
 import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 
 function vaultsSecretsMkdir({

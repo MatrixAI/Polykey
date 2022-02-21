@@ -1,5 +1,5 @@
 import type * as grpc from '@grpc/grpc-js';
-import type { VaultManager } from '@/vaults';
+import type VaultManager from '@/vaults/VaultManager';
 import type { VaultId, VaultName } from '@/vaults/types';
 import type { ClientServiceClient } from '@/proto/js/polykey/v1/client_service_grpc_pb';
 import type { Stat } from 'encryptedfs';
@@ -12,12 +12,12 @@ import { PolykeyAgent } from '@';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as vaultsPB from '@/proto/js/polykey/v1/vaults/vaults_pb';
 import * as secretsPB from '@/proto/js/polykey/v1/secrets/secrets_pb';
-import { KeyManager } from '@/keys';
-import { ForwardProxy } from '@/network';
+import KeyManager from '@/keys/KeyManager';
+import ForwardProxy from '@/network/ForwardProxy';
 import * as grpcUtils from '@/grpc/utils';
 import * as vaultErrors from '@/vaults/errors';
 import * as vaultsUtils from '@/vaults/utils';
-import { vaultOps } from '@/vaults';
+import * as vaultOps from '@/vaults/VaultOps';
 import * as nodesUtils from '@/nodes/utils';
 import * as clientUtils from './utils';
 

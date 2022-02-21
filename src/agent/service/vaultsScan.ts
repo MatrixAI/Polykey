@@ -1,56 +1,50 @@
 import type * as grpc from '@grpc/grpc-js';
-import type { GestaltGraph } from '../../gestalts';
-import type { VaultManager } from '../../vaults';
-import type * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
-import * as validationUtils from '../../validation/utils';
+import type VaultManager from '../../vaults/VaultManager';
+import type * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
+import type { ConnectionInfoGet } from '../../agent/types';
+import type ACL from '../../acl/ACL';
+import * as agentErrors from '../../agent/errors';
 import * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
-import { utils as vaultsUtils, errors as vaultsErrors } from '../../vaults';
-import { utils as grpcUtils } from '../../grpc';
+import * as vaultsUtils from '../../vaults/utils';
+import * as grpcUtils from '../../grpc/utils';
 
 function vaultsScan({
   vaultManager,
-  gestaltGraph,
+  acl,
+  connectionInfoGet,
 }: {
   vaultManager: VaultManager;
-  gestaltGraph: GestaltGraph;
+  acl: ACL;
+  connectionInfoGet: ConnectionInfoGet;
 }) {
   return async (
-    call: grpc.ServerWritableStream<nodesPB.Node, vaultsPB.List>,
+    call: grpc.ServerWritableStream<utilsPB.EmptyMessage, vaultsPB.List>,
   ): Promise<void> => {
     const genWritable = grpcUtils.generatorWritable(call);
-    const response = new vaultsPB.List();
-    const nodeId = validationUtils.parseNodeId(call.request.getNodeId());
-    const perms = await gestaltGraph.getGestaltActionsByNode(nodeId);
-    if (!perms) {
-      await genWritable.throw(new vaultsErrors.ErrorVaultsPermissionDenied());
-      return;
+    const listMessage = new vaultsPB.List();
+    // Getting the NodeId from the ReverseProxy connection info
+    const connectionInfo = connectionInfoGet(call);
+    // If this is getting run the connection exists
+    // It SHOULD exist here
+    if (connectionInfo == null) {
+      throw new agentErrors.ErrorConnectionInfoMissing();
     }
+    const nodeId = connectionInfo.nodeId;
     try {
-      if (perms['scan'] !== null) {
-        await genWritable.throw(new vaultsErrors.ErrorVaultsPermissionDenied());
-        return;
-      }
-    } catch (err) {
-      if (err instanceof TypeError) {
-        await genWritable.throw(new vaultsErrors.ErrorVaultsPermissionDenied());
-        return;
-      }
-      throw err;
-    }
-    try {
-      const listResponse = await vaultManager.listVaults();
-      for (const vault of listResponse) {
-        if (vault !== null) {
-          response.setVaultName(vault[0]);
-          response.setVaultId(vaultsUtils.encodeVaultId(vault[1]));
-          await genWritable.next(response);
-        } else {
-          await genWritable.next(null);
-        }
+      const listResponse = vaultManager.handleScanVaults(nodeId, acl);
+      for await (const {
+        vaultId,
+        vaultName,
+        vaultPermissions,
+      } of listResponse) {
+        listMessage.setVaultId(vaultsUtils.encodeVaultId(vaultId));
+        listMessage.setVaultName(vaultName);
+        listMessage.setVaultPermissionsList(vaultPermissions);
+        await genWritable.next(listMessage);
       }
       await genWritable.next(null);
-    } catch (err) {
-      await genWritable.throw(err);
+    } catch (e) {
+      await genWritable.throw(e);
     }
   };
 }

@@ -14,8 +14,7 @@ import path from 'path';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { IdInternal } from '@matrixai/id';
 import { DB } from '@matrixai/db';
-import { destroyed } from '@matrixai/async-init';
-import { running } from '@matrixai/async-init/dist/utils';
+import { destroyed, running } from '@matrixai/async-init';
 import git from 'isomorphic-git';
 import ACL from '@/acl/ACL';
 import GestaltGraph from '@/gestalts/GestaltGraph';
@@ -30,7 +29,7 @@ import ForwardProxy from '@/network/ForwardProxy';
 import * as vaultsUtils from '@/vaults/utils';
 import * as keysUtils from '@/keys/utils';
 import { sleep } from '@/utils';
-import { VaultInternal } from '@/vaults';
+import VaultInternal from '@/vaults/VaultInternal';
 import * as testsUtils from '../utils';
 
 const mockedGenerateDeterministicKeyPair = jest
@@ -227,7 +226,7 @@ describe('VaultManager', () => {
       // @ts-ignore: protected method
       const vault = await vaultManager.getVault(secondVaultId);
       await vaultManager.destroyVault(secondVaultId);
-      // The mapping should be gone.
+      // The mapping should be gone
       expect((await vaultManager.listVaults()).size).toBe(0);
       // The vault should be destroyed
       expect(vault[destroyed]).toBe(true);
@@ -475,7 +474,7 @@ describe('VaultManager', () => {
     let localNodeIdEncoded: NodeIdEncoded;
 
     beforeAll(async () => {
-      // Creating agents.
+      // Creating agents
       allDataDir = await fs.promises.mkdtemp(
         path.join(os.tmpdir(), 'polykey-test-'),
       );
@@ -495,7 +494,7 @@ describe('VaultManager', () => {
       remoteKeynode2Id = remoteKeynode2.keyManager.getNodeId();
       remoteKeynode2IdEncoded = nodesUtils.encodeNodeId(remoteKeynode2Id);
 
-      // Adding details to each agent.
+      // Adding details to each agent
       await remoteKeynode1.nodeGraph.setNode(remoteKeynode2Id, {
         host: remoteKeynode2.revProxy.getIngressHost(),
         port: remoteKeynode2.revProxy.getIngressPort(),
@@ -1344,7 +1343,7 @@ describe('VaultManager', () => {
     });
   });
   test('handleScanVaults should list all vaults with permissions', async () => {
-    // 1. we need to set up state.
+    // 1. we need to set up state
     const acl = await ACL.createACL({
       db,
       logger,
@@ -1365,7 +1364,7 @@ describe('VaultManager', () => {
       logger: logger.getChild(VaultManager.name),
     });
     try {
-      // Setting up state.
+      // Setting up state
       const nodeId1 = testsUtils.generateRandomNodeId();
       const nodeId2 = testsUtils.generateRandomNodeId();
       await gestaltGraph.setNode({
@@ -1421,7 +1420,7 @@ describe('VaultManager', () => {
     }
   });
   test('ScanVaults should get all vaults with permissions from remote node', async () => {
-    // 1. we need to set up state.
+    // 1. we need to set up state
     const remoteAgent = await PolykeyAgent.createPolykeyAgent({
       password: 'password',
       nodePath: path.join(dataDir, 'remoteNode'),
@@ -1476,7 +1475,7 @@ describe('VaultManager', () => {
       logger: logger.getChild(VaultManager.name),
     });
     try {
-      // Setting up state.
+      // Setting up state
       const targetNodeId = remoteAgent.keyManager.getNodeId();
       const nodeId1 = keyManager.getNodeId();
 

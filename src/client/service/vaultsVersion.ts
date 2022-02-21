@@ -1,9 +1,9 @@
 import type { Authenticate } from '../types';
 import type { VaultName } from '../../vaults/types';
-import type { VaultManager } from '../../vaults';
+import type VaultManager from '../../vaults/VaultManager';
 import * as grpc from '@grpc/grpc-js';
 import * as validationUtils from '../../validation/utils';
-import { utils as grpcUtils } from '../../grpc';
+import * as grpcUtils from '../../grpc/utils';
 import * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
 
 function vaultsVersion({
@@ -43,7 +43,7 @@ function vaultsVersion({
           return [latestOid, currentVersionId];
         },
       );
-      // Checking if latest version ID.
+      // Checking if latest version ID
       const isLatestVersion = latestOid === currentVersionId;
       // Creating message
       response.setIsLatestVersion(isLatestVersion);

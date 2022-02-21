@@ -28,6 +28,7 @@ import {
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import * as vaultsErrors from './errors';
 import * as vaultsUtils from './utils';
+import { tagLast } from './types';
 import * as nodesUtils from '../nodes/utils';
 import * as validationUtils from '../validation/utils';
 import { withF, withG } from '../utils/context';
@@ -35,7 +36,6 @@ import { RWLock } from '../utils/locks';
 import * as vaultsPB from '../proto/js/polykey/v1/vaults/vaults_pb';
 import { never } from '../utils/utils';
 
-// TODO: this might be temp?
 export type RemoteInfo = {
   remoteNode: NodeIdEncoded;
   remoteVault: VaultIdEncoded;
@@ -253,7 +253,7 @@ class VaultInternal {
       this.vaultIdEncoded,
       this.vaultsDb,
     );
-    // Let's backup any metadata.
+    // Let's backup any metadata
 
     if (fresh) {
       await this.vaultMetadataDb.clear();
@@ -356,7 +356,7 @@ class VaultInternal {
    * This changes the working directory and updates the HEAD reference
    */
   @ready(new vaultsErrors.ErrorVaultNotRunning())
-  public async version(ref: string | VaultRef = 'HEAD'): Promise<void> {
+  public async version(ref: string | VaultRef = tagLast): Promise<void> {
     if (!vaultsUtils.validateRef(ref)) {
       throw new vaultsErrors.ErrorVaultReferenceInvalid();
     }
@@ -372,7 +372,10 @@ class VaultInternal {
         force: true,
       });
     } catch (e) {
-      if (e instanceof git.Errors.NotFoundError) {
+      if (
+        e instanceof git.Errors.NotFoundError ||
+        e instanceof git.Errors.CommitNotFetchedError
+      ) {
         throw new vaultsErrors.ErrorVaultReferenceMissing();
       }
       throw e;
@@ -419,163 +422,21 @@ class VaultInternal {
         VaultInternal.dirtyKey,
         true,
       );
-
-      // We have to chroot it
-      // and then remove it
-      // but this is done by itself?
-      await f(this.efsVault);
+      try {
+        await f(this.efsVault);
+        // After doing mutation we need to commit the new history
+        await this.createCommit();
+      } catch (e) {
+        // Error implies dirty state
+        await this.cleanWorkingDirectory();
+        throw e;
+      }
       await this.db.put(
         this.vaultMetadataDbDomain,
         VaultInternal.dirtyKey,
         false,
       );
     });
-
-    //   Const message: string[] = [];
-    //   try {
-    //
-    //     // If the version of the vault has been changed, checkout the working
-    //     // directory to this point in history and discard any unlinked commits
-    //     await git.checkout({
-    //       fs: this.efs,
-    //       dir: this.vaultDataDir,
-    //       gitdir: this.vaultGitDir,
-    //       ref: this.workingDirIndex,
-    //     });
-    //
-    //     // Efs/someVaultId/contents
-    //     await f(this.efsVault);
-    //     // Get the status of each file in the working directory
-    //     // https://isomorphic-git.org/docs/en/statusMatrix
-    //     const statusMatrix = await git.statusMatrix({
-    //       fs: this.efsRoot,
-    //       dir: this.baseDir,
-    //       gitdir: this.gitDir,
-    //     });
-    //     for (let [
-    //       filePath,
-    //       HEADStatus,
-    //       workingDirStatus,
-    //       stageStatus,
-    //     ] of statusMatrix) {
-    //       // Reset the index of files that are marked as 'unmodified'
-    //       // The working directory, HEAD and staging area are all the same
-    //       // https://github.com/MatrixAI/js-polykey/issues/260
-    //       if (
-    //         HEADStatus === workingDirStatus &&
-    //         workingDirStatus === stageStatus
-    //       ) {
-    //         await git.resetIndex({
-    //           fs: this.efsRoot,
-    //           dir: this.baseDir,
-    //           gitdir: this.gitDir,
-    //           filepath: filePath,
-    //         });
-    //         // Check if the file is still 'unmodified' and leave
-    //         // it out of the commit if it is
-    //         [filePath, HEADStatus, workingDirStatus, stageStatus] = (
-    //           await git.statusMatrix({
-    //             fs: this.efsRoot,
-    //             dir: this.baseDir,
-    //             gitdir: this.gitDir,
-    //             filepaths: [filePath],
-    //           })
-    //         ).pop()!;
-    //         if (
-    //           HEADStatus === workingDirStatus &&
-    //           workingDirStatus === stageStatus
-    //         )
-    //           continue;
-    //       }
-    //       // We want files in the working directory that are both different
-    //       // from the head commit and the staged changes
-    //       // If working directory and stage status are not equal then filepath has unstaged
-    //       // changes in the working directory relative to both the HEAD and staging
-    //       // area that need to be added
-    //       // https://isomorphic-git.org/docs/en/statusMatrix
-    //       if (workingDirStatus !== stageStatus) {
-    //         let status: 'added' | 'modified' | 'deleted';
-    //         // If the working directory status is 0 then the file has
-    //         // been deleted
-    //         if (workingDirStatus === 0) {
-    //           status = 'deleted';
-    //           await git.remove({
-    //             fs: this.efsRoot,
-    //             dir: this.baseDir,
-    //             gitdir: this.gitDir,
-    //             filepath: filePath,
-    //           });
-    //         } else {
-    //           await git.add({
-    //             fs: this.efsRoot,
-    //             dir: this.baseDir,
-    //             gitdir: this.gitDir,
-    //             filepath: filePath,
-    //           });
-    //           // Check whether the file already exists inside the HEAD
-    //           // commit and if it does then it is unmodified
-    //           if (HEADStatus === 1) {
-    //             status = 'modified';
-    //           } else {
-    //             status = 'added';
-    //           }
-    //         }
-    //         message.push(filePath + ' ' + status);
-    //       }
-    //     }
-    //     // Check if there were actual changes made to any files
-    //     if (message.length !== 0) {
-    //       this.logger.info(
-    //         `Committing to Vault '${vaultsUtils.makeVaultIdPretty(
-    //           this.vaultId,
-    //         )}'`,
-    //       );
-    //       this.workingDirIndex = await git.commit({
-    //         fs: this.efsRoot,
-    //         dir: this.baseDir,
-    //         gitdir: this.gitDir,
-    //         author: {
-    //           name: this.keyManager.getNodeId(),
-    //         },
-    //         message: message.toString(),
-    //       });
-    //     }
-    //   } finally {
-    //     // Check the status matrix for any unstaged file changes
-    //     // which are considered dirty commits
-    //     const statusMatrix = await git.statusMatrix({
-    //       fs: this.efsRoot,
-    //       dir: this.baseDir,
-    //       gitdir: this.gitDir,
-    //     });
-    //     for await (const [filePath, _, workingDirStatus] of statusMatrix) {
-    //       // For all files stage all changes, this is needed
-    //       // so that we can check out all untracked files as well
-    //       if (workingDirStatus === 0) {
-    //         await git.remove({
-    //           fs: this.efsRoot,
-    //           dir: this.baseDir,
-    //           gitdir: this.gitDir,
-    //           filepath: filePath,
-    //         });
-    //       } else {
-    //         await git.add({
-    //           fs: this.efsRoot,
-    //           dir: this.baseDir,
-    //           gitdir: this.gitDir,
-    //           filepath: filePath,
-    //         });
-    //       }
-    //     }
-    //     // Remove the staged dirty commits by checking out
-    //     await git.checkout({
-    //       fs: this.efsRoot,
-    //       dir: this.baseDir,
-    //       gitdir: this.gitDir,
-    //       ref: this.workingDirIndex,
-    //     });
-    //     release();
-    //   }
   }
 
   @ready(new vaultsErrors.ErrorVaultNotRunning())
@@ -585,25 +446,35 @@ class VaultInternal {
     const efsVault = this.efsVault;
     const db = this.db;
     const vaultDbDomain = this.vaultMetadataDbDomain;
+    const createCommit = () => this.createCommit();
+    const cleanWorkingDirectory = () => this.cleanWorkingDirectory();
     return withG([this.writeLock], async function* () {
       if ((await db.get(vaultDbDomain, VaultInternal.remoteKey)) != null) {
         // Mirrored vaults are immutable
         throw new vaultsErrors.ErrorVaultRemoteDefined();
       }
       await db.put(vaultDbDomain, VaultInternal.dirtyKey, true);
-      const result = yield* g(efsVault);
-      // At the end of the generator
-      // you need to do this
-      // but just before
-      // you need to finish it up
 
-      // DO what you need to do here, create the commit
+      let result;
+      // Do what you need to do here, create the commit
+      try {
+        result = yield* g(efsVault);
+        // At the end of the generator
+        // you need to do this
+        // but just before
+        // you need to finish it up
+        // After doing mutation we need to commit the new history
+        await createCommit();
+      } catch (e) {
+        // Error implies dirty state
+        await cleanWorkingDirectory();
+        throw e;
+      }
       await db.put(vaultDbDomain, VaultInternal.dirtyKey, false);
       return result;
     });
   }
 
-  // TODO: this needs to respect the write lock since we are writing to the EFS
   @ready(new vaultsErrors.ErrorVaultNotRunning())
   public async pullVault({
     nodeConnectionManager,
@@ -726,7 +597,7 @@ class VaultInternal {
       await this.db.put(
         this.vaultMetadataDbDomain,
         VaultInternal.dirtyKey,
-        true,
+        false,
       );
     }
 
@@ -750,10 +621,6 @@ class VaultInternal {
     // name: string | undefined
   }
 
-  /**
-   * TODO: review what happens when you are cloning
-   * Or you need to load a particular commit object ID here
-   */
   protected async setupGit(): Promise<string> {
     // Initialization is idempotent
     // It works even with an existing git repository
@@ -800,15 +667,26 @@ class VaultInternal {
         force: true,
       });
     } else {
-      // Force checkout out to the latest commit
-      // This ensures that any uncommitted state is dropped
-      await git.checkout({
-        fs: this.efs,
-        dir: this.vaultDataDir,
-        gitdir: this.vaultGitDir,
-        ref: vaultsUtils.canonicalBranch,
-        force: true,
-      });
+      // Checking for dirty
+      if (
+        (await this.db.get<boolean>(
+          this.vaultMetadataDbDomain,
+          VaultInternal.dirtyKey,
+        )) === true
+      ) {
+        // Force checkout out to the latest commit
+        // This ensures that any uncommitted state is dropped
+        await this.cleanWorkingDirectory();
+        // Do global GC operation
+        await this.garbageCollectGitObjects();
+
+        // Setting dirty back to false
+        await this.db.put(
+          this.vaultMetadataDbDomain,
+          VaultInternal.dirtyKey,
+          false,
+        );
+      }
     }
     return commitIdLatest;
   }
@@ -903,6 +781,257 @@ class VaultInternal {
       vaultName,
       remoteVaultId,
     ];
+  }
+
+  /**
+   * Creates a commit while moving the canonicalBranch reference
+   */
+  protected async createCommit() {
+    // Checking if commit is appending or branching
+    const headRef = await git.resolveRef({
+      fs: this.efs,
+      dir: this.vaultDataDir,
+      gitdir: this.vaultGitDir,
+      ref: 'HEAD',
+    });
+    const masterRef = await git.resolveRef({
+      fs: this.efs,
+      dir: this.vaultDataDir,
+      gitdir: this.vaultGitDir,
+      ref: vaultsUtils.canonicalBranchRef,
+    });
+    const nodeIdEncoded = nodesUtils.encodeNodeId(this.keyManager.getNodeId());
+    // Staging changes and creating commit message
+    const message: string[] = [];
+    // Get the status of each file in the working directory
+    // https://isomorphic-git.org/docs/en/statusMatrix
+    const statusMatrix = await git.statusMatrix({
+      fs: this.efs,
+      dir: this.vaultDataDir,
+      gitdir: this.vaultGitDir,
+    });
+    for (let [
+      filePath,
+      HEADStatus,
+      workingDirStatus,
+      stageStatus,
+    ] of statusMatrix) {
+      // Reset the index of files that are marked as 'unmodified'
+      // The working directory, HEAD and staging area are all the same
+      // https://github.com/MatrixAI/js-polykey/issues/260
+      if (HEADStatus === workingDirStatus && workingDirStatus === stageStatus) {
+        await git.resetIndex({
+          fs: this.efs,
+          dir: this.vaultDataDir,
+          gitdir: this.vaultGitDir,
+          filepath: filePath,
+        });
+        // Check if the file is still 'unmodified' and leave
+        // it out of the commit if it is
+        [filePath, HEADStatus, workingDirStatus, stageStatus] = (
+          await git.statusMatrix({
+            fs: this.efs,
+            dir: this.vaultDataDir,
+            gitdir: this.vaultGitDir,
+            filepaths: [filePath],
+          })
+        ).pop()!;
+        if (
+          HEADStatus === workingDirStatus &&
+          workingDirStatus === stageStatus
+        ) {
+          continue;
+        }
+      }
+      // We want files in the working directory that are both different
+      // from the head commit and the staged changes
+      // If working directory and stage status are not equal then filepath has un-staged
+      // changes in the working directory relative to both the HEAD and staging
+      // area that need to be added
+      // https://isomorphic-git.org/docs/en/statusMatrix
+      if (workingDirStatus !== stageStatus) {
+        let status: 'added' | 'modified' | 'deleted';
+        // If the working directory status is 0 then the file has
+        // been deleted
+        if (workingDirStatus === 0) {
+          status = 'deleted';
+          await git.remove({
+            fs: this.efs,
+            dir: this.vaultDataDir,
+            gitdir: this.vaultGitDir,
+            filepath: filePath,
+          });
+        } else {
+          await git.add({
+            fs: this.efs,
+            dir: this.vaultDataDir,
+            gitdir: this.vaultGitDir,
+            filepath: filePath,
+          });
+          // Check whether the file already exists inside the HEAD
+          // commit and if it does then it is unmodified
+          if (HEADStatus === 1) {
+            status = 'modified';
+          } else {
+            status = 'added';
+          }
+        }
+        message.push(`${filePath} ${status}`);
+      }
+    }
+    // Skip commit if no changes were made
+    if (message.length !== 0) {
+      // Creating commit
+      const commitRef = await git.commit({
+        fs: this.efs,
+        dir: this.vaultDataDir,
+        gitdir: this.vaultGitDir,
+        author: {
+          name: nodeIdEncoded,
+        },
+        message: message.toString(),
+        ref: 'HEAD',
+      });
+      // Updating branch pointer
+      await git.writeRef({
+        fs: this.efs,
+        dir: this.vaultDataDir,
+        gitdir: this.vaultGitDir,
+        ref: vaultsUtils.canonicalBranchRef,
+        value: commitRef,
+        force: true,
+      });
+      // We clean old history if a commit was made on previous version
+      if (headRef !== masterRef) {
+        // Delete old commits following chain from masterRef -> headRef
+        let currentRef = masterRef;
+        while (currentRef !== headRef) {
+          // Read commit info
+          const commit = await git.readCommit({
+            fs: this.efs,
+            dir: this.vaultDataDir,
+            gitdir: this.vaultGitDir,
+            oid: currentRef,
+          });
+          // Delete commit
+          await vaultsUtils.deleteObject(
+            this.efs,
+            this.vaultGitDir,
+            commit.oid,
+          );
+          // Getting new ref
+          const nextRef = commit.commit.parent.pop();
+          if (nextRef == null) break;
+          currentRef = nextRef;
+        }
+      }
+    }
+  }
+
+  /**
+   * Cleans the git working directory by checking out the canonicalBranch
+   */
+  protected async cleanWorkingDirectory() {
+    // Check the status matrix for any un-staged file changes
+    // which are considered dirty commits
+    const statusMatrix = await git.statusMatrix({
+      fs: this.efs,
+      dir: this.vaultDataDir,
+      gitdir: this.vaultGitDir,
+    });
+    for await (const [filePath, , workingDirStatus] of statusMatrix) {
+      // For all files stage all changes, this is needed
+      // so that we can check out all untracked files as well
+      if (workingDirStatus === 0) {
+        await git.remove({
+          fs: this.efs,
+          dir: this.vaultDataDir,
+          gitdir: this.vaultGitDir,
+          filepath: filePath,
+        });
+      } else {
+        await git.add({
+          fs: this.efs,
+          dir: this.vaultDataDir,
+          gitdir: this.vaultGitDir,
+          filepath: filePath,
+        });
+      }
+    }
+    // Remove the staged dirty commits by checking out
+    await git.checkout({
+      fs: this.efs,
+      dir: this.vaultDataDir,
+      gitdir: this.vaultGitDir,
+      ref: vaultsUtils.canonicalBranchRef,
+      force: true,
+    });
+  }
+
+  /**
+   * Deletes any git objects that can't be reached from the canonicalBranch
+   */
+  protected async garbageCollectGitObjects() {
+    // To garbage collect the git objects,
+    // we need to walk all objects connected to the master branch
+    // and delete the object files that are not touched by this walk
+    const touchedOids = {};
+    const masterRef = await git.resolveRef({
+      fs: this.efs,
+      dir: this.vaultDataDir,
+      gitdir: this.vaultGitDir,
+      ref: vaultsUtils.canonicalBranch,
+    });
+    const queuedOids: string[] = [masterRef];
+    while (queuedOids.length > 0) {
+      const currentOid = queuedOids.shift()!;
+      if (touchedOids[currentOid] === null) continue;
+      const result = await git.readObject({
+        fs: this.efs,
+        dir: this.vaultDataDir,
+        gitdir: this.vaultGitDir,
+        oid: currentOid,
+      });
+      touchedOids[result.oid] = result.type;
+      if (result.format !== 'parsed') continue;
+      switch (result.type) {
+        case 'commit':
+          {
+            const object = result.object;
+            queuedOids.push(...object.parent);
+            queuedOids.push(object.tree);
+          }
+          break;
+        case 'tree':
+          {
+            const object = result.object;
+            for (const item of object) {
+              touchedOids[item.oid] = item.type;
+            }
+          }
+          break;
+        default: {
+          never();
+        }
+      }
+    }
+    // Walking all objects
+    const objectPath = path.join(this.vaultGitDir, 'objects');
+    const buckets = (await this.efs.readdir(objectPath)).filter((item) => {
+      return item !== 'info' && item !== 'pack';
+    });
+    for (const bucket of buckets) {
+      const bucketPath = path.join(objectPath, bucket.toString());
+      const oids = await this.efs.readdir(bucketPath);
+      for (const shortOid of oids) {
+        const oidPath = path.join(bucketPath, shortOid.toString());
+        const oid = bucket.toString() + shortOid.toString();
+        if (touchedOids[oid] === undefined) {
+          // Removing unused objects
+          await this.efs.unlink(oidPath);
+        }
+      }
+    }
   }
 }
 

@@ -7,7 +7,6 @@ import path from 'path';
 import * as vaultsErrors from './errors';
 import * as vaultsUtils from './utils';
 
-// TODO: remove?
 type FileOptions = {
   recursive?: boolean;
 };
@@ -16,8 +15,8 @@ type FileOptions = {
 // - add succeeded
 // - secret exists
 // - secret with directory
-// Might just drop the return type.
-// I don't see a case where it would be false without an error.
+// Might just drop the return type
+// I don't see a case where it would be false without an error
 // - Add locking?
 async function addSecret(
   vault: Vault,
@@ -136,7 +135,7 @@ async function statSecret(vault: Vault, secretName: string) {
 // TODO: tests
 // - delete a secret
 // - Secret doesn't exist
-// - delete a full and empty directory with and without recursive.
+// - delete a full and empty directory with and without recursive
 async function deleteSecret(
   vault: Vault,
   secretName: string,
@@ -191,7 +190,7 @@ async function mkdir(
 // TODO: tests
 // - adding existing directory
 // - adding non-existent directory
-// - adding a file.
+// - adding a file
 async function addSecretDirectory(
   vault: Vault,
   secretDirectory: string,
@@ -245,7 +244,7 @@ async function addSecretDirectory(
  * Retrieves a list of the secrets in a vault
  */
 // TODO: tests
-// - read secrets.
+// - read secrets
 // - no secrets
 async function listSecrets(vault: Vault): Promise<string[]> {
   return await vault.readF(async (efs) => {

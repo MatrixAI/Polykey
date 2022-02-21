@@ -137,14 +137,13 @@ class NotificationsManager {
     this.notificationsDb = notificationsDb;
     this.notificationsMessagesDb = notificationsMessagesDb;
 
-    // Getting latest ID and creating ID generator FIXME, does this need to be a transaction?
+    // Getting latest ID and creating ID generator
     let latestId: NotificationId | undefined;
     const keyStream = this.notificationsMessagesDb.createKeyStream({
       limit: 1,
       reverse: true,
     });
     for await (const o of keyStream) {
-      // FIXME: really a buffer?
       latestId = IdInternal.fromBuffer<NotificationId>(o as Buffer);
     }
     this.notificationIdGenerator = createNotificationIdGenerator(latestId);

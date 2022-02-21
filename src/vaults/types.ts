@@ -134,24 +134,7 @@ interface FileSystemWritable extends FileSystemReadable {
   writeFile: EncryptedFS['writeFile'];
 }
 
-type VaultName = string; // FIXME, placeholder, remove?
-
-// type VaultKey = Opaque<'VaultKey', Buffer>;
-
-// /**
-//  * Actions relating to what is possible with vaults
-//  */
-// type VaultAction = 'clone' | 'pull';
-
-// type SecretName = string;
-
-// type SecretList = string[];
-
-// type SecretContent = Buffer | string;
-
-// type FileOptions = {
-//   recursive?: boolean;
-// };
+type VaultName = string;
 
 // FIXME: temp placeholder
 type VaultActions = Partial<Record<VaultAction, null>>;
@@ -168,7 +151,6 @@ export type {
   CommitLog,
   FileSystemReadable,
   FileSystemWritable,
-  // FIXME: placeholder types
   VaultName,
   VaultActions,
 };

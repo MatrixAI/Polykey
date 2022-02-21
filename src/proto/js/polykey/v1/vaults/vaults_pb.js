@@ -16,6 +16,8 @@ var global = Function('return this')();
 
 var polykey_v1_nodes_nodes_pb = require('../../../polykey/v1/nodes/nodes_pb.js');
 goog.object.extend(proto, polykey_v1_nodes_nodes_pb);
+var google_protobuf_timestamp_pb = require('google-protobuf/google/protobuf/timestamp_pb.js');
+goog.object.extend(proto, google_protobuf_timestamp_pb);
 goog.exportSymbol('proto.polykey.v1.vaults.Clone', null, global);
 goog.exportSymbol('proto.polykey.v1.vaults.InfoRequest', null, global);
 goog.exportSymbol('proto.polykey.v1.vaults.List', null, global);
@@ -3045,7 +3047,7 @@ proto.polykey.v1.vaults.LogEntry.toObject = function(includeInstance, msg) {
   var f, obj = {
     oid: jspb.Message.getFieldWithDefault(msg, 1, ""),
     committer: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    timeStamp: jspb.Message.getFieldWithDefault(msg, 4, 0),
+    timeStamp: (f = msg.getTimeStamp()) && google_protobuf_timestamp_pb.Timestamp.toObject(includeInstance, f),
     message: jspb.Message.getFieldWithDefault(msg, 3, "")
   };
 
@@ -3092,7 +3094,8 @@ proto.polykey.v1.vaults.LogEntry.deserializeBinaryFromReader = function(msg, rea
       msg.setCommitter(value);
       break;
     case 4:
-      var value = /** @type {number} */ (reader.readUint64());
+      var value = new google_protobuf_timestamp_pb.Timestamp;
+      reader.readMessage(value,google_protobuf_timestamp_pb.Timestamp.deserializeBinaryFromReader);
       msg.setTimeStamp(value);
       break;
     case 3:
@@ -3143,10 +3146,11 @@ proto.polykey.v1.vaults.LogEntry.serializeBinaryToWriter = function(message, wri
     );
   }
   f = message.getTimeStamp();
-  if (f !== 0) {
-    writer.writeUint64(
+  if (f != null) {
+    writer.writeMessage(
       4,
-      f
+      f,
+      google_protobuf_timestamp_pb.Timestamp.serializeBinaryToWriter
     );
   }
   f = message.getMessage();
@@ -3196,20 +3200,39 @@ proto.polykey.v1.vaults.LogEntry.prototype.setCommitter = function(value) {
 
 
 /**
- * optional uint64 time_stamp = 4;
- * @return {number}
+ * optional google.protobuf.Timestamp time_stamp = 4;
+ * @return {?proto.google.protobuf.Timestamp}
  */
 proto.polykey.v1.vaults.LogEntry.prototype.getTimeStamp = function() {
-  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 4, 0));
+  return /** @type{?proto.google.protobuf.Timestamp} */ (
+    jspb.Message.getWrapperField(this, google_protobuf_timestamp_pb.Timestamp, 4));
 };
 
 
 /**
- * @param {number} value
+ * @param {?proto.google.protobuf.Timestamp|undefined} value
+ * @return {!proto.polykey.v1.vaults.LogEntry} returns this
+*/
+proto.polykey.v1.vaults.LogEntry.prototype.setTimeStamp = function(value) {
+  return jspb.Message.setWrapperField(this, 4, value);
+};
+
+
+/**
+ * Clears the message field making it undefined.
  * @return {!proto.polykey.v1.vaults.LogEntry} returns this
  */
-proto.polykey.v1.vaults.LogEntry.prototype.setTimeStamp = function(value) {
-  return jspb.Message.setProto3IntField(this, 4, value);
+proto.polykey.v1.vaults.LogEntry.prototype.clearTimeStamp = function() {
+  return this.setTimeStamp(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.polykey.v1.vaults.LogEntry.prototype.hasTimeStamp = function() {
+  return jspb.Message.getField(this, 4) != null;
 };
 
 

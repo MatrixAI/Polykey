@@ -1,18 +1,19 @@
 import type { VaultId } from '@/vaults/types';
 import type { Vault } from '@/vaults/Vault';
-import type { KeyManager } from '@/keys';
+import type KeyManager from '@/keys/KeyManager';
 import type { DBDomain, DBLevel } from '@matrixai/db';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
+import { DB } from '@matrixai/db';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { EncryptedFS } from 'encryptedfs';
-import { DB } from '@matrixai/db';
-import { VaultInternal } from '@/vaults';
-import { generateVaultId } from '@/vaults/utils';
+import git from 'isomorphic-git';
+import { tagLast } from '@/vaults/types';
+import VaultInternal from '@/vaults/VaultInternal';
 import * as vaultsErrors from '@/vaults/errors';
 import { sleep } from '@/utils';
-import { utils as keysUtils } from '@/keys';
+import * as keysUtils from '@/keys/utils';
 import * as vaultsUtils from '@/vaults/utils';
 import * as testsUtils from '../utils';
 
@@ -44,6 +45,13 @@ describe('VaultInternal', () => {
   } as KeyManager;
   const secret1 = { name: 'secret-1', content: 'secret-content-1' };
   const secret2 = { name: 'secret-2', content: 'secret-content-2' };
+  const secret3 = { name: 'secret-3', content: 'secret-content-3' };
+
+  const runGen = async (gen) => {
+    for await (const _ of gen) {
+      // Do nothing
+    }
+  };
 
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
@@ -74,7 +82,7 @@ describe('VaultInternal', () => {
     vaultsDbDomain = ['vaults'];
     vaultsDb = await db.level(vaultsDbDomain[0]);
 
-    vaultId = generateVaultId();
+    vaultId = vaultsUtils.generateVaultId();
     vault = await VaultInternal.createVaultInternal({
       vaultId,
       keyManager: fakeKeyManager,
@@ -132,6 +140,9 @@ describe('VaultInternal', () => {
     await vault.writeF(async (efs) => {
       await efs.writeFile('secret-1', 'secret-content');
     });
+    await vault.writeF(async (efs) => {
+      await efs.writeFile('secret-2', 'secret-content');
+    });
     await vault.stop();
     vault = await VaultInternal.createVaultInternal({
       vaultId,
@@ -140,7 +151,7 @@ describe('VaultInternal', () => {
       logger,
       fresh: false,
       db,
-      vaultName: 'testVault2',
+      vaultName: 'testVault1',
       vaultsDb,
       vaultsDbDomain,
     });
@@ -150,6 +161,7 @@ describe('VaultInternal', () => {
       );
     });
   });
+  // Mutation and history
   test('can change to the current commit', async () => {
     let commit = (await vault.log(undefined, 1))[0];
     await vault.version(commit.commitId);
@@ -178,8 +190,8 @@ describe('VaultInternal', () => {
     await vault.writeF(async (efs) => {
       await efs.writeFile('test3', 'testdata3');
     });
-    await vault.version(initCommit);
     const endCommit = (await vault.log(undefined, 1))[0].commitId;
+    await vault.version(initCommit);
     let files = await vault.readF(async (efs) => {
       return await efs.readdir('.');
     });
@@ -211,12 +223,11 @@ describe('VaultInternal', () => {
       await efs.write(fd, 'testdata6', 3, 6);
       await efs.close(fd);
     });
-    await vault.version(fourthCommit);
-    await vault.writeF(async (efs) => {
-      await efs.writeFile('test4', 'testdata4');
-    });
+    await expect(vault.version(fourthCommit)).rejects.toThrow(
+      vaultsErrors.ErrorVaultReferenceMissing,
+    );
   });
-  test('can change to the HEAD commit', async () => {
+  test('can change to the latest commit', async () => {
     const initCommit = (await vault.log(undefined, 1))[0].commitId;
     await vault.writeF(async (efs) => {
       await efs.writeFile('test1', 'testdata1');
@@ -228,7 +239,7 @@ describe('VaultInternal', () => {
       await efs.writeFile('test3', 'testdata3');
     });
     await vault.version(initCommit);
-    await vault.version('HEAD');
+    await vault.version(tagLast);
     let files = await vault.readF(async (efs) => {
       return await efs.readdir('.');
     });
@@ -271,6 +282,17 @@ describe('VaultInternal', () => {
       await efs.writeFile('secret-1', 'secret-content');
     });
   });
+  test('read operation allowed', async () => {
+    await vault.writeF(async (efs) => {
+      await efs.writeFile(secret1.name, secret1.content);
+      await efs.writeFile(secret2.name, secret2.content);
+    });
+    await vault.readF(async (efs) => {
+      expect((await efs.readFile(secret1.name)).toString()).toEqual(
+        secret1.content,
+      );
+    });
+  });
   test('concurrent write operations prevented', async () => {
     await Promise.all([
       vault.writeF(async (efs) => {
@@ -293,14 +315,13 @@ describe('VaultInternal', () => {
     const log = await vault.log();
     expect(log.length).toEqual(4);
   });
-  test('commit added if mutation in write', async () => {
+  test('commit added if mutation in writeF', async () => {
     const commit = (await vault.log())[0].commitId;
     await vault.writeF(async (efs) => {
       await efs.writeFile('secret-1', 'secret-content');
     });
     const log = await vault.log();
     expect(log).toHaveLength(2);
-    expect(log[0].message).toContain('secret-1');
     expect(log[0].commitId).not.toStrictEqual(commit);
   });
   test('no commit added if no mutation in write', async () => {
@@ -348,7 +369,7 @@ describe('VaultInternal', () => {
       await efs.rename(secret1.name, `${secret1.name}-new`);
       await efs.unlink(secret2.name);
     });
-    // Checking changes.
+    // Checking changes
     await vault.readF(async (efs) => {
       expect(await efs.exists(secret1.name)).toBeFalsy();
       expect(await efs.exists(`${secret1.name}-new`)).toBeTruthy();
@@ -369,39 +390,28 @@ describe('VaultInternal', () => {
       }),
     ).rejects.toThrow();
 
-    // Make sure secret1 wasn't written when the above commit failed.
+    // Make sure secret1 wasn't written when the above commit failed
     await vault.readF(async (efs) => {
       expect(await efs.readdir('.')).not.toContain(secret1.name);
     });
 
-    // No new commit.
+    // No new commit
     expect(await vault.log()).toHaveLength(1);
 
-    // Succeeding commit operation.
+    // Succeeding commit operation
     await vault.writeF(async (efs) => {
       await efs.writeFile(secret2.name, secret2.content);
     });
 
-    // Secret 1 shouldn't exist while secret2 exists.
+    // Secret 1 shouldn't exist while secret2 exists
     await vault.readF(async (efs) => {
       const directory = await efs.readdir('.');
       expect(directory).not.toContain(secret1.name); //
       expect(directory).toContain(secret2.name);
     });
 
-    // Has a new commit.
+    // Has a new commit
     expect(await vault.log()).toHaveLength(2);
-  });
-  test('read operation allowed', async () => {
-    await vault.writeF(async (efs) => {
-      await efs.writeFile(secret1.name, secret1.content);
-      await efs.writeFile(secret2.name, secret2.content);
-    });
-    await vault.readF(async (efs) => {
-      expect((await efs.readFile(secret1.name)).toString()).toEqual(
-        secret1.content,
-      );
-    });
   });
   test('concurrent read operations allowed', async () => {
     await vault.writeF(async (efs) => {
@@ -457,7 +467,7 @@ describe('VaultInternal', () => {
     // Converting a vault to the interface
     const vaultInterface = vault as Vault;
 
-    // Using the avaliable functions.
+    // Using the avaliable functions
     await vaultInterface.writeF(async (efs) => {
       await efs.writeFile('test', 'testContent');
     });
@@ -479,7 +489,7 @@ describe('VaultInternal', () => {
 
     // Can we convert back?
     const vaultNormal = vaultInterface as VaultInternal;
-    expect(vaultNormal.destroy).toBeTruthy(); // This exists again.
+    expect(vaultNormal.destroy).toBeTruthy(); // This exists again
   });
   test('cannot commit when the remote field is set', async () => {
     // Write remote metadata
@@ -500,168 +510,227 @@ describe('VaultInternal', () => {
       }),
     ).rejects.toThrow(vaultsErrors.ErrorVaultRemoteDefined);
   });
-  // Old locking tests
-  // TODO: review and remove?
-  test('write locks read', async () => {
+  test('cannot checkout old commits after branching commit', async () => {
+    await vault.writeF(async (efs) => {
+      await efs.writeFile('test1', 'testdata1');
+    });
+    const secondCommit = (await vault.log(undefined, 1))[0].commitId;
+    await vault.writeF(async (efs) => {
+      await efs.writeFile('test2', 'testdata2');
+    });
+    const thirdCommit = (await vault.log(undefined, 1))[0].commitId;
+    await vault.writeF(async (efs) => {
+      await efs.writeFile('test3', 'testdata3');
+    });
+    const fourthCommit = (await vault.log(undefined, 1))[0].commitId;
+    await vault.version(secondCommit);
+    await vault.writeF(async (efs) => {
+      await efs.writeFile('test4', 'testdata4');
+    });
+    await expect(() => {
+      return vault.version(thirdCommit);
+    }).rejects.toThrow();
+    await expect(() => {
+      return vault.version(fourthCommit);
+    }).rejects.toThrow();
+  });
+  test('can recover from dirty state', async () => {
     await vault.writeF(async (efs) => {
       await efs.writeFile('secret-1', 'secret-content');
     });
-
-    await Promise.all([
-      vault.writeF(async (efs) => {
-        await efs.writeFile('secret-1', 'SUPER-DUPER-SECRET-CONTENT');
-      }),
-      vault.readF(async (efs) => {
-        expect((await efs.readFile('secret-1')).toString()).toEqual(
-          'SUPER-DUPER-SECRET-CONTENT',
-        );
-      }),
-    ]);
-  });
-  test('read locks write', async () => {
     await vault.writeF(async (efs) => {
-      await efs.writeFile(secret1.name, secret1.content);
-      await efs.writeFile(secret2.name, secret2.content);
+      await efs.writeFile('secret-2', 'secret-content');
     });
-    await Promise.all([
-      vault.readF(async (efs) => {
-        expect((await efs.readFile(secret1.name)).toString()).toEqual(
-          secret1.content,
-        );
-      }),
-      vault.writeF(async (efs) => {
-        await efs.writeFile(secret1.name, 'NEW-CONTENT');
-      }),
-      vault.readF(async (efs) => {
-        expect((await efs.readFile(secret1.name)).toString()).toEqual(
-          'NEW-CONTENT',
-        );
-      }),
-    ]);
+    // Write files to the working directory
+    // @ts-ignore: kidnap vault EFS
+    const vaultEFS = vault.efsVault;
+    await vaultEFS.writeFile('dirty', 'dirtyData');
+    await vaultEFS.writeFile('secret-1', 'dirtyData');
+    // Setting dirty flag true
+    const vaultMetadataDbDomain = [
+      ...vaultsDbDomain,
+      vaultsUtils.encodeVaultId(vaultId),
+    ];
+    await db.put(vaultMetadataDbDomain, VaultInternal.dirtyKey, true);
+
+    // Restarting vault
+    await vault.stop();
+    await vault.start({});
+
+    // Checking if working directory was cleaned
+    // and head was moved to latest commit
+    await vault.readF(async (efs) => {
+      const files = await efs.readdir('.');
+      expect(files).toContain('secret-1');
+      expect((await efs.readFile('secret-1')).toString()).toEqual(
+        'secret-content',
+      );
+      expect(files).toContain('secret-2');
+      expect(files).not.toContain('dirty');
+    });
   });
-  test('locking occurs when making a commit.', async () => {
-    // We want to check if the locking is happening. so we need a way to see if an operation is being blocked.
-
-    let resolveDelay;
-    const delayPromise = new Promise((resolve, _reject) => {
-      resolveDelay = resolve;
+  test('clean errant commits recovering from dirty state', async () => {
+    await vault.writeF(async (efs) => {
+      await efs.writeFile('secret-1', 'secret-content');
     });
-    let firstCommitResolved = false;
-    let firstCommitResolveTime;
-
-    // @ts-ignore
-    expect(vault.lock.isLocked()).toBeFalsy();
-
-    const commit1 = vault.writeF(async (efs) => {
-      await efs.writeFile(secret1.name, secret1.content);
-      await delayPromise; // Hold the lock hostage.
-      firstCommitResolved = true;
-      firstCommitResolveTime = Date.now();
+    await vault.writeF(async (efs) => {
+      await efs.writeFile('secret-2', 'secret-content');
     });
-
-    // Now that we are holding the lock hostage,
-    // @ts-ignore
-    expect(vault.lock.isLocked()).toBeTruthy();
-    // We want to check if any action resolves before the lock is released.
-
-    let secondCommitResolved = false;
-    let secondCommitResolveTime;
-    const commit2 = vault.writeF(async (efs) => {
-      await efs.writeFile(secret2.name, secret2.content);
-      secondCommitResolved = true;
-      await sleep(2);
-      secondCommitResolveTime = Date.now();
-    });
-
-    // Give plenty of time for a commit to resolve.
-    await sleep(200);
-
-    // Now we want to check for the expected conditions.
-    // 1. Both commist have not completed.
-    // commit 1 is holding the lock.
-    expect(firstCommitResolved).toBeFalsy();
-    expect(secondCommitResolved).toBeFalsy();
-
-    // 2. We release the hostage so both should resolve.
-    await sleep(200);
-    resolveDelay();
-    await commit1;
-    await commit2;
-    expect(firstCommitResolved).toBeTruthy();
-    expect(secondCommitResolved).toBeTruthy();
-    expect(secondCommitResolveTime).toBeGreaterThan(firstCommitResolveTime);
-    // @ts-ignore
-    expect(vault.lock.isLocked()).toBeFalsy();
-
-    // Commit order should be commit2 -> commit1 -> init
+    // Creating out of history commits
+    // @ts-ignore: kidnap vault EFS
+    const vaultEFS = vault.efs;
     const log = await vault.log();
-    expect(log[0].message).toContain(secret2.name);
-    expect(log[1].message).toContain(secret1.name);
+    const ref = log[1].commitId;
+    await efs.writeFile(path.join(vault.vaultDataDir, 'newfile1'), 'hello');
+    const newRef1 = await git.commit({
+      fs: vaultEFS,
+      dir: vault.vaultDataDir,
+      gitdir: vault.vaultGitDir,
+      author: {
+        name: 'test',
+        email: 'test',
+      },
+      message: 'test',
+      ref: ref,
+    });
+    await efs.writeFile(path.join(vault.vaultDataDir, 'newfile2'), 'world');
+    const newRef2 = await git.commit({
+      fs: vaultEFS,
+      dir: vault.vaultDataDir,
+      gitdir: vault.vaultGitDir,
+      author: {
+        name: 'test',
+        email: 'test',
+      },
+      message: 'test',
+      ref: newRef1,
+    });
+
+    // Setting dirty flag true
+    const vaultMetadataDbDomain = [
+      ...vaultsDbDomain,
+      vaultsUtils.encodeVaultId(vaultId),
+    ];
+    await db.put(vaultMetadataDbDomain, VaultInternal.dirtyKey, true);
+
+    // Restarting vault
+    await vault.stop();
+    await vault.start({});
+
+    // Checking if errant commits were cleaned up
+    await expect(vault.version(newRef1)).rejects.toThrow();
+    await expect(vault.version(newRef2)).rejects.toThrow();
   });
-  test('locking occurs when making an access.', async () => {
-    await vault.writeF(async (efs) => {
-      await efs.writeFile(secret1.name, secret1.content);
-      await efs.writeFile(secret2.name, secret2.content);
+  test('commit added if mutation in writeG', async () => {
+    const commit = (await vault.log())[0].commitId;
+    const gen = vault.writeG(async function* (efs): AsyncGenerator {
+      yield await efs.writeFile('secret-1', 'secret-content');
     });
-    // We want to check if the locking is happening. so we need a way to see if an operation is being blocked.
-    let resolveDelay;
-    const delayPromise = new Promise((resolve, _reject) => {
-      resolveDelay = resolve;
-    });
-    let firstCommitResolved = false;
-    let firstCommitResolveTime;
-
-    // @ts-ignore
-    expect(vault.lock.isLocked()).toBeFalsy();
-
-    const commit1 = vault.readF(async (efs) => {
-      await efs.readFile(secret1.name);
-      await delayPromise; // Hold the lock hostage.
-      firstCommitResolved = true;
-      firstCommitResolveTime = Date.now();
-    });
-
-    // Now that we are holding the lock hostage,
-    // we want to check if any action resolves before the lock is released.
-    // @ts-ignore
-    expect(vault.lock.isLocked()).toBeTruthy();
-
-    let secondCommitResolved = false;
-    let secondCommitResolveTime;
-    const commit2 = vault.readF(async (efs) => {
-      await efs.readFile(secret2.name);
-      secondCommitResolved = true;
-      await sleep(10);
-      secondCommitResolveTime = Date.now();
-    });
-
-    // Give plenty of time for a commit to resolve.
-    await sleep(200);
-
-    // Now we want to check for the expected conditions.
-    // 1. Both commist have not completed.
-    // commit 1 is holding the lock.
-    expect(firstCommitResolved).toBeFalsy();
-    expect(secondCommitResolved).toBeFalsy();
-
-    // 2. We release the hostage so both should resolve.
-    await sleep(200);
-    resolveDelay();
-    await commit1;
-    await commit2;
-    expect(firstCommitResolved).toBeTruthy();
-    expect(secondCommitResolved).toBeTruthy();
-    expect(secondCommitResolveTime).toBeGreaterThan(firstCommitResolveTime);
-    // @ts-ignore
-    expect(vault.lock.isLocked()).toBeFalsy();
-  });
-  // Locking tests
-  const waitDelay = 200;
-  const runGen = async (gen) => {
     for await (const _ of gen) {
       // Do nothing
     }
-  };
+    const log = await vault.log();
+    expect(log).toHaveLength(2);
+    expect(log[0].commitId).not.toStrictEqual(commit);
+  });
+  test('no commit added if no mutation in writeG', async () => {
+    const commit = (await vault.log())[0].commitId;
+    const gen = vault.writeG(async function* (_efs): AsyncGenerator {});
+    for await (const _ of gen) {
+      // Do nothing
+    }
+    const log = await vault.log();
+    expect(log).toHaveLength(1);
+    expect(log[0].message).not.toContain('secret-1');
+    expect(log[0].commitId).toStrictEqual(commit);
+  });
+  test('no mutation to vault when part of a commit operation fails in writeG', async () => {
+    const gen = vault.writeG(async function* (efs): AsyncGenerator {
+      yield await efs.writeFile(secret1.name, secret1.content);
+      yield await efs.rename('notValid', 'randomName'); // Throws
+    });
+    // Failing commit operation
+    await expect(() => runGen(gen)).rejects.toThrow();
+
+    // Make sure secret1 wasn't written when the above commit failed
+    await vault.readF(async (efs) => {
+      expect(await efs.readdir('.')).not.toContain(secret1.name);
+    });
+    // No new commit
+    expect(await vault.log()).toHaveLength(1);
+  });
+  test('no commit after readG', async () => {
+    await vault.writeF(async (efs) => {
+      await efs.writeFile(secret1.name, secret1.content);
+      await efs.writeFile(secret2.name, secret2.content);
+    });
+    const commit = (await vault.log())[0].commitId;
+    const gen = await vault.readG(async function* (efs): AsyncGenerator {
+      yield expect((await efs.readFile(secret1.name)).toString()).toEqual(
+        secret1.content,
+      );
+    });
+    await runGen(gen);
+    const log = await vault.log();
+    expect(log).toHaveLength(2);
+    expect(log[0].commitId).toStrictEqual(commit);
+  });
+  test('garbage collection', async () => {
+    await vault.writeF(async (efs) => {
+      await efs.writeFile(secret1.name, secret1.content);
+    });
+    await vault.writeF(async (efs) => {
+      await efs.writeFile(secret2.name, secret2.content);
+    });
+    await vault.writeF(async (efs) => {
+      await efs.writeFile(secret3.name, secret3.content);
+    });
+    // @ts-ignore: kidnap efs
+    const vaultEfs = vault.efs;
+    // @ts-ignore: kidnap efs
+    const vaultEfsData = vault.efsVault;
+    const quickCommit = async (ref: string, secret: string) => {
+      await vaultEfsData.writeFile(secret, secret);
+      await git.add({
+        fs: vaultEfs,
+        dir: vault.vaultDataDir,
+        gitdir: vault.vaultGitDir,
+        filepath: secret,
+      });
+      return await git.commit({
+        fs: vaultEfs,
+        dir: vault.vaultDataDir,
+        gitdir: vault.vaultGitDir,
+        author: {
+          name: 'test',
+          email: 'test',
+        },
+        message: 'test',
+        ref: ref,
+      });
+    };
+    const log = await vault.log();
+    let num = 5;
+    const refs: string[] = [];
+    for (const logElement of log) {
+      refs.push(await quickCommit(logElement.commitId, `secret-${num++}`));
+    }
+    // @ts-ignore
+    await vault.garbageCollectGitObjects();
+
+    for (const ref of refs) {
+      await expect(
+        git.checkout({
+          fs: vaultEfs,
+          dir: vault.vaultDataDir,
+          gitdir: vault.vaultGitDir,
+          ref,
+        }),
+      ).rejects.toThrow(git.Errors.CommitNotFetchedError);
+    }
+  });
+  // Locking tests
+  const waitDelay = 200;
   test('writeF respects read and write locking', async () => {
     // @ts-ignore: kidnap lock
     const lock = vault.lock;
@@ -792,8 +861,7 @@ describe('VaultInternal', () => {
     expect(finished.length).toBe(4);
     releaseRead();
   });
-  test.todo('pullVault respects write locking');
-  // Life- cycle
+  // Life-cycle
   test('can create with CreateVaultInternal', async () => {
     let vault1: VaultInternal | undefined;
     try {
@@ -807,7 +875,7 @@ describe('VaultInternal', () => {
         vaultsDbDomain,
         logger,
       });
-      // Data exists for vault now.
+      // Data exists for vault now
       expect(await efs.readdir('.')).toContain(
         vaultsUtils.encodeVaultId(vaultId1),
       );
@@ -830,7 +898,7 @@ describe('VaultInternal', () => {
         vaultsDbDomain,
         logger,
       });
-      // Data exists for vault now.
+      // Data exists for vault now
       expect(await efs.readdir('.')).toContain(
         vaultsUtils.encodeVaultId(vaultId1),
       );
@@ -863,7 +931,6 @@ describe('VaultInternal', () => {
       await vault2?.destroy();
     }
   });
-  test.todo('can create with CloneVaultInternal');
   test('stop is idempotent', async () => {
     // Should complete with no errors
     await vault.stop();

@@ -1,9 +1,9 @@
 import type { Authenticate } from '../types';
-import type { VaultManager } from '../../vaults';
+import type VaultManager from '../../vaults/VaultManager';
 import type { VaultName } from '../../vaults/types';
 import type * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
 import * as grpc from '@grpc/grpc-js';
-import { utils as grpcUtils } from '../../grpc';
+import * as grpcUtils from '../../grpc/utils';
 import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 import * as validationUtils from '../../validation/utils';
 import * as vaultsUtils from '../../vaults/utils';

@@ -1,8 +1,9 @@
 import type { Authenticate } from '../types';
 import type { VaultName } from '../../vaults/types';
-import type { VaultManager } from '../../vaults';
+import type VaultManager from '../../vaults/VaultManager';
 import * as grpc from '@grpc/grpc-js';
-import { utils as grpcUtils } from '../../grpc';
+import { Timestamp } from 'google-protobuf/google/protobuf/timestamp_pb';
+import * as grpcUtils from '../../grpc/utils';
 import * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
 import * as validationUtils from '../../validation/utils';
 
@@ -20,7 +21,7 @@ function vaultsLog({
     try {
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
-      // Getting the vault.
+      // Getting the vault
       const vaultsLogMessage = call.request;
       const vaultMessage = vaultsLogMessage.getVault();
       if (vaultMessage == null) {
@@ -41,8 +42,9 @@ function vaultsLog({
       for (const entry of log) {
         vaultsLogEntryMessage.setOid(entry.commitId);
         vaultsLogEntryMessage.setCommitter(entry.committer.name);
-        // FIXME: we can make this a google.protobuf.Timestamp field?
-        vaultsLogEntryMessage.setTimeStamp(entry.committer.timestamp.getTime());
+        const timestampMessage = new Timestamp();
+        timestampMessage.fromDate(entry.committer.timestamp);
+        vaultsLogEntryMessage.setTimeStamp(timestampMessage);
         vaultsLogEntryMessage.setMessage(entry.message);
         await genWritable.next(vaultsLogEntryMessage);
       }

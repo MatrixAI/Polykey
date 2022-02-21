@@ -1,11 +1,13 @@
 import type * as grpc from '@grpc/grpc-js';
 import type { VaultName } from '../../vaults/types';
-import type { VaultManager } from '../../vaults';
+import type VaultManager from '../../vaults/VaultManager';
 import type { ConnectionInfoGet } from '../../agent/types';
 import type ACL from '../../acl/ACL';
 import * as nodesUtils from '../../nodes/utils';
-import { errors as grpcErrors, utils as grpcUtils } from '../../grpc';
-import { utils as vaultsUtils, errors as vaultsErrors } from '../../vaults';
+import * as grpcErrors from '../../grpc/errors';
+import * as grpcUtils from '../../grpc/utils';
+import * as vaultsErrors from '../../vaults/errors';
+import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
 import * as validationUtils from '../../validation/utils';
 import * as agentErrors from '../errors';

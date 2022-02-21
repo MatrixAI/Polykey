@@ -1,3 +1,4 @@
+import type { VaultId } from '@/vaults/types';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -52,7 +53,6 @@ describe('Vaults utils', () => {
     }
     expect(files.sort()).toStrictEqual([filePath1, filePath2].sort());
   });
-
   test('fs can be read recursively', async () => {
     await fs.promises.mkdir(path.join(dataDir, 'dir'), { recursive: true });
     await fs.promises.mkdir(path.join(dataDir, 'dir', 'dir2', 'dir3'), {
@@ -73,8 +73,16 @@ describe('Vaults utils', () => {
     }
     expect(files.sort()).toStrictEqual([filePath1, filePath2].sort());
   });
-  test('makeVaultId converts a buffer', async () => {
-    const randomIdGen = new IdRandom();
-    Buffer.from(randomIdGen.get());
+  test('decodeNodeId does not throw an error', async () => {
+    const randomIdGen = new IdRandom<VaultId>();
+    const vaultId = randomIdGen.get();
+    const vaultIdEncoded = vaultsUtils.encodeVaultId(vaultId);
+
+    expect(vaultsUtils.decodeVaultId(vaultIdEncoded)).toBeDefined();
+    expect(vaultsUtils.decodeVaultId('invalidVaultIdEncoded')).toBeUndefined();
+    expect(
+      vaultsUtils.decodeVaultId('zF4VfF3uRhSqgxTOOLONGxTRdVKauV9'),
+    ).toBeUndefined();
+    expect(vaultsUtils.decodeVaultId('zF4VfxTOOSHORTxTV9')).toBeUndefined();
   });
 });

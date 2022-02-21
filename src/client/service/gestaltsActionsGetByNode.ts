@@ -36,7 +36,7 @@ function gestaltsActionsGetByNode({
       );
       const result = await gestaltGraph.getGestaltActionsByNode(nodeId);
       if (result == null) {
-        // Node doesn't exist, so no permissions. might throw error instead TBD.
+        // Node doesn't exist, so no permissions
         response.setActionList([]);
       } else {
         // Contains permission

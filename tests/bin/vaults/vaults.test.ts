@@ -5,10 +5,10 @@ import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
-import { utils as nodesUtils } from '@/nodes';
-import { utils as vaultsUtils } from '@/vaults';
+import * as nodesUtils from '@/nodes/utils';
+import * as vaultsUtils from '@/vaults/utils';
 import sysexits from '@/utils/sysexits';
-import { NotificationsManager } from '@/notifications';
+import NotificationsManager from '@/notifications/NotificationsManager';
 import * as testBinUtils from '../utils';
 import * as testUtils from '../../utils';
 
