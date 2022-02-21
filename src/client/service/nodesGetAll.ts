@@ -3,11 +3,11 @@ import type { Authenticate } from '../types';
 import type { NodeGraph } from '../../nodes';
 import type { KeyManager } from '../../keys';
 import type { NodeId } from '../../nodes/types';
+import type * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 import { IdInternal } from '@matrixai/id';
 import { utils as nodesUtils } from '../../nodes';
 import { utils as grpcUtils } from '../../grpc';
 import * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
-import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 
 /**
  * Retrieves all nodes from all buckets in the NodeGraph.
@@ -29,24 +29,28 @@ function nodesGetAll({
       const response = new nodesPB.NodeBuckets();
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
-      const buckets = await nodeGraph.getAllBuckets();
+      // FIXME:
+      // const buckets = await nodeGraph.getAllBuckets();
+      const buckets: any = [];
       for (const b of buckets) {
         let index;
         for (const id of Object.keys(b)) {
-          const encodedId = nodesUtils.encodeNodeId(IdInternal.fromString<NodeId>(id));
+          const encodedId = nodesUtils.encodeNodeId(
+            IdInternal.fromString<NodeId>(id),
+          );
           const address = new nodesPB.Address()
             .setHost(b[id].address.host)
             .setPort(b[id].address.port);
           // For every node in every bucket, add it to our message
           if (!index) {
-            index = nodesUtils.calculateBucketIndex(
+            index = nodesUtils.bucketIndex(
               keyManager.getNodeId(),
-              IdInternal.fromString<NodeId>(id)
+              IdInternal.fromString<NodeId>(id),
             );
           }
-          // Need to either add node to an existing bucket, or create a new 
+          // Need to either add node to an existing bucket, or create a new
           // bucket (if doesn't exist)
-          let bucket = response.getBucketsMap().get(index);
+          const bucket = response.getBucketsMap().get(index);
           if (bucket) {
             bucket.getNodeTableMap().set(encodedId, address);
           } else {

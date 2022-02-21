@@ -13,6 +13,7 @@ import * as sigchainErrors from '@/sigchain/errors';
 import * as nodesUtils from '@/nodes/utils';
 import * as keysUtils from '@/keys/utils';
 import * as testUtils from '../utils';
+import * as testNodesUtils from '../nodes/utils';
 
 describe('Sigchain', () => {
   const logger = new Logger('Sigchain Test', LogLevel.WARN, [
@@ -20,25 +21,25 @@ describe('Sigchain', () => {
   ]);
   const password = 'password';
   const srcNodeIdEncoded = nodesUtils.encodeNodeId(
-    testUtils.generateRandomNodeId(),
+    testNodesUtils.generateRandomNodeId(),
   );
   const nodeId2Encoded = nodesUtils.encodeNodeId(
-    testUtils.generateRandomNodeId(),
+    testNodesUtils.generateRandomNodeId(),
   );
   const nodeId3Encoded = nodesUtils.encodeNodeId(
-    testUtils.generateRandomNodeId(),
+    testNodesUtils.generateRandomNodeId(),
   );
   const nodeIdAEncoded = nodesUtils.encodeNodeId(
-    testUtils.generateRandomNodeId(),
+    testNodesUtils.generateRandomNodeId(),
   );
   const nodeIdBEncoded = nodesUtils.encodeNodeId(
-    testUtils.generateRandomNodeId(),
+    testNodesUtils.generateRandomNodeId(),
   );
   const nodeIdCEncoded = nodesUtils.encodeNodeId(
-    testUtils.generateRandomNodeId(),
+    testNodesUtils.generateRandomNodeId(),
   );
   const nodeIdDEncoded = nodesUtils.encodeNodeId(
-    testUtils.generateRandomNodeId(),
+    testNodesUtils.generateRandomNodeId(),
   );
 
   let mockedGenerateKeyPair: jest.SpyInstance;
@@ -344,7 +345,9 @@ describe('Sigchain', () => {
 
     // Add 10 claims
     for (let i = 1; i <= 5; i++) {
-      const node2 = nodesUtils.encodeNodeId(testUtils.generateRandomNodeId());
+      const node2 = nodesUtils.encodeNodeId(
+        testNodesUtils.generateRandomNodeId(),
+      );
       node2s.push(node2);
       const nodeLink: ClaimData = {
         type: 'node',
@@ -393,7 +396,9 @@ describe('Sigchain', () => {
     for (let i = 1; i <= 30; i++) {
       // If even, add a node link
       if (i % 2 === 0) {
-        const node2 = nodesUtils.encodeNodeId(testUtils.generateRandomNodeId());
+        const node2 = nodesUtils.encodeNodeId(
+          testNodesUtils.generateRandomNodeId(),
+        );
         nodes[i] = node2;
         const nodeLink: ClaimData = {
           type: 'node',

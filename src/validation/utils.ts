@@ -165,7 +165,7 @@ function parseHostOrHostname(data: any): Host | Hostname {
  * Parses number into a Port
  * Data can be a string-number
  */
-function parsePort(data: any): Port {
+function parsePort(data: any, connect: boolean = false): Port {
   if (typeof data === 'string') {
     try {
       data = parseInteger(data);
@@ -176,10 +176,16 @@ function parsePort(data: any): Port {
       throw e;
     }
   }
-  if (!networkUtils.isPort(data)) {
-    throw new validationErrors.ErrorParse(
-      'Port must be a number between 0 and 65535 inclusive',
-    );
+  if (!networkUtils.isPort(data, connect)) {
+    if (!connect) {
+      throw new validationErrors.ErrorParse(
+        'Port must be a number between 0 and 65535 inclusive',
+      );
+    } else {
+      throw new validationErrors.ErrorParse(
+        'Port must be a number between 1 and 65535 inclusive',
+      );
+    }
   }
   return data;
 }

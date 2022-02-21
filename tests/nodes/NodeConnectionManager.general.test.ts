@@ -19,8 +19,7 @@ import * as keysUtils from '@/keys/utils';
 import * as grpcUtils from '@/grpc/utils';
 import * as nodesPB from '@/proto/js/polykey/v1/nodes/nodes_pb';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
-import * as nodesTestUtils from './utils';
-import * as testUtils from '../utils';
+import * as testNodesUtils from './utils';
 
 describe(`${NodeConnectionManager.name} general test`, () => {
   const logger = new Logger(
@@ -419,11 +418,11 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     try {
       // Generate the node ID to find the closest nodes to (in bucket 100)
       const nodeId = keyManager.getNodeId();
-      const nodeIdToFind = nodesTestUtils.generateNodeIdForBucket(nodeId, 100);
+      const nodeIdToFind = testNodesUtils.generateNodeIdForBucket(nodeId, 100);
       // Now generate and add 20 nodes that will be close to this node ID
       const addedClosestNodes: NodeData[] = [];
       for (let i = 1; i < 101; i += 5) {
-        const closeNodeId = nodesTestUtils.generateNodeIdForBucket(
+        const closeNodeId = testNodesUtils.generateNodeIdForBucket(
           nodeIdToFind,
           i,
         );
@@ -489,7 +488,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       // Now generate and add 20 nodes that will be close to this node ID
       const addedClosestNodes: NodeData[] = [];
       for (let i = 1; i < 101; i += 5) {
-        const closeNodeId = nodesTestUtils.generateNodeIdForBucket(
+        const closeNodeId = testNodesUtils.generateNodeIdForBucket(
           targetNodeId,
           i,
         );
@@ -551,8 +550,8 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       // To test this we need to...
       // 2. call relayHolePunchMessage
       // 3. check that the relevant call was made.
-      const sourceNodeId = testUtils.generateRandomNodeId();
-      const targetNodeId = testUtils.generateRandomNodeId();
+      const sourceNodeId = testNodesUtils.generateRandomNodeId();
+      const targetNodeId = testNodesUtils.generateRandomNodeId();
       await nodeConnectionManager.sendHolePunchMessage(
         remoteNodeId1,
         sourceNodeId,
@@ -588,7 +587,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       // To test this we need to...
       // 2. call relayHolePunchMessage
       // 3. check that the relevant call was made.
-      const sourceNodeId = testUtils.generateRandomNodeId();
+      const sourceNodeId = testNodesUtils.generateRandomNodeId();
       const relayMessage = new nodesPB.Relay();
       relayMessage.setSrcId(nodesUtils.encodeNodeId(sourceNodeId));
       relayMessage.setTargetId(nodesUtils.encodeNodeId(remoteNodeId1));
