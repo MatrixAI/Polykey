@@ -54,13 +54,17 @@ class CommandGetAll extends CommandPolykey {
         let output: any = {};
         for (const [bucketIndex, bucket] of result.getBucketsMap().entries()) {
           output[bucketIndex] = {};
-          for (const [encodedId, address] of bucket.getNodeTableMap().entries()) {
+          for (const [encodedId, address] of bucket
+            .getNodeTableMap()
+            .entries()) {
             output[bucketIndex][encodedId] = {};
             output[bucketIndex][encodedId].host = address.getHost();
             output[bucketIndex][encodedId].port = address.getPort();
           }
         }
-        if (options.format === 'human') output = [result.getBucketsMap().getEntryList()];
+        if (options.format === 'human') {
+          output = [result.getBucketsMap().getEntryList()];
+        }
         process.stdout.write(
           binUtils.outputFormatter({
             type: options.format === 'json' ? 'json' : 'list',

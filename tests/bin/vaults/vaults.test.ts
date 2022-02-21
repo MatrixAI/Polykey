@@ -11,7 +11,7 @@ import * as vaultsUtils from '@/vaults/utils';
 import sysexits from '@/utils/sysexits';
 import NotificationsManager from '@/notifications/NotificationsManager';
 import * as testBinUtils from '../utils';
-import * as testUtils from '../../utils';
+import * as testNodesUtils from '../../nodes/utils';
 
 jest.mock('@/keys/utils', () => ({
   ...jest.requireActual('@/keys/utils'),
@@ -378,7 +378,7 @@ describe('CLI vaults', () => {
         mockedSendNotification.mockImplementation(async (_) => {});
         const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
         const vaultIdEncoded = vaultsUtils.encodeVaultId(vaultId);
-        const targetNodeId = testUtils.generateRandomNodeId();
+        const targetNodeId = testNodesUtils.generateRandomNodeId();
         const targetNodeIdEncoded = nodesUtils.encodeNodeId(targetNodeId);
         await polykeyAgent.gestaltGraph.setNode({
           id: nodesUtils.encodeNodeId(targetNodeId),
@@ -418,7 +418,7 @@ describe('CLI vaults', () => {
       );
       const vaultIdEncoded1 = vaultsUtils.encodeVaultId(vaultId1);
       const vaultIdEncoded2 = vaultsUtils.encodeVaultId(vaultId2);
-      const targetNodeId = testUtils.generateRandomNodeId();
+      const targetNodeId = testNodesUtils.generateRandomNodeId();
       const targetNodeIdEncoded = nodesUtils.encodeNodeId(targetNodeId);
       await polykeyAgent.gestaltGraph.setNode({
         id: nodesUtils.encodeNodeId(targetNodeId),
@@ -489,7 +489,7 @@ describe('CLI vaults', () => {
       );
       const vaultIdEncoded1 = vaultsUtils.encodeVaultId(vaultId1);
       const vaultIdEncoded2 = vaultsUtils.encodeVaultId(vaultId2);
-      const targetNodeId = testUtils.generateRandomNodeId();
+      const targetNodeId = testNodesUtils.generateRandomNodeId();
       const targetNodeIdEncoded = nodesUtils.encodeNodeId(targetNodeId);
       await polykeyAgent.gestaltGraph.setNode({
         id: nodesUtils.encodeNodeId(targetNodeId),

@@ -6,15 +6,15 @@ import path from 'path';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import config from '@/config';
 import { Status, errors as statusErrors } from '@/status';
-import * as testUtils from '../utils';
+import * as testNodesUtils from '../nodes/utils';
 
 describe('Status', () => {
   const logger = new Logger(`${Status.name} Test`, LogLevel.WARN, [
     new StreamHandler(),
   ]);
-  const nodeId1 = testUtils.generateRandomNodeId();
-  const nodeId2 = testUtils.generateRandomNodeId();
-  const nodeId3 = testUtils.generateRandomNodeId();
+  const nodeId1 = testNodesUtils.generateRandomNodeId();
+  const nodeId2 = testNodesUtils.generateRandomNodeId();
+  const nodeId3 = testNodesUtils.generateRandomNodeId();
   let dataDir: string;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'status-test-'));

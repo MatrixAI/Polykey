@@ -10,6 +10,7 @@ import type {
   NodeId,
   NodeIdString,
   SeedNodes,
+  NodeEntry,
 } from './types';
 import type { DBTransaction } from '@matrixai/db';
 import { withF } from '@matrixai/resources';
@@ -367,7 +368,7 @@ class NodeConnectionManager {
   public async findNode(targetNodeId: NodeId): Promise<NodeAddress> {
     // First check if we already have an existing ID -> address record
 
-    let address = await this.nodeGraph.getNode(targetNodeId);
+    let address = (await this.nodeGraph.getNode(targetNodeId))?.address;
     // Otherwise, attempt to locate it by contacting network
     if (address == null) {
       address = await this.getClosestGlobalNodes(targetNodeId);
@@ -461,7 +462,7 @@ class NodeConnectionManager {
     // getClosestGlobalNodes()?
     const contacted: { [nodeId: string]: boolean } = {};
     // Iterate until we've found and contacted k nodes
-    while (Object.keys(contacted).length <= this.nodeGraph.maxNodesPerBucket) {
+    while (Object.keys(contacted).length <= this.nodeGraph.nodeBucketLimit) {
       // While (!foundTarget) {
       // Remove the node from the front of the array
       const nextNode = shortlist.shift();
@@ -492,27 +493,31 @@ class NodeConnectionManager {
       );
       // Check to see if any of these are the target node. At the same time, add
       // them to the shortlist
-      for (const nodeData of foundClosest) {
+      for (const [nodeId, nodeData] of foundClosest) {
         // Ignore any nodes that have been contacted
-        if (contacted[nodeData.id]) {
+        if (contacted[nodeId]) {
           continue;
         }
-        if (nodeData.id.equals(targetNodeId)) {
-          await this.nodeGraph.setNode(nodeData.id, nodeData.address);
+        if (nodeId.equals(targetNodeId)) {
+          await this.nodeGraph.setNode(nodeId, nodeData.address);
           foundAddress = nodeData.address;
           // We have found the target node, so we can stop trying to look for it
           // in the shortlist
           break;
         }
-        shortlist.push(nodeData);
+        shortlist.push([nodeId, nodeData]);
       }
       // To make the number of jumps relatively short, should connect to the nodes
       // closest to the target first, and ask if they know of any closer nodes
       // than we can simply unshift the first (closest) element from the shortlist
-      shortlist.sort(function (a: NodeData, b: NodeData) {
-        if (a.distance > b.distance) {
+      const distance = (nodeId: NodeId) =>
+        nodesUtils.nodeDistance(targetNodeId, nodeId);
+      shortlist.sort(function ([nodeIdA], [nodeIdB]) {
+        const distanceA = distance(nodeIdA);
+        const distanceB = distance(nodeIdB);
+        if (distanceA > distanceB) {
           return 1;
-        } else if (a.distance < b.distance) {
+        } else if (distanceA < distanceB) {
           return -1;
         } else {
           return 0;
@@ -533,7 +538,7 @@ class NodeConnectionManager {
   public async getRemoteNodeClosestNodes(
     nodeId: NodeId,
     targetNodeId: NodeId,
-  ): Promise<Array<NodeData>> {
+  ): Promise<Array<[NodeId, NodeData]>> {
     // Construct the message
     const nodeIdMessage = new nodesPB.Node();
     nodeIdMessage.setNodeId(nodesUtils.encodeNodeId(targetNodeId));
@@ -541,20 +546,22 @@ class NodeConnectionManager {
     return this.withConnF(nodeId, async (connection) => {
       const client = await connection.getClient();
       const response = await client.nodesClosestLocalNodesGet(nodeIdMessage);
-      const nodes: Array<NodeData> = [];
+      const nodes: Array<[NodeId, NodeData]> = [];
       // Loop over each map element (from the returned response) and populate nodes
       response.getNodeTableMap().forEach((address, nodeIdString: string) => {
         const nodeId = nodesUtils.decodeNodeId(nodeIdString);
         // If the nodeId is not valid we don't add it to the list of nodes
         if (nodeId != null) {
-          nodes.push({
-            id: nodeId,
-            address: {
-              host: address.getHost() as Host | Hostname,
-              port: address.getPort() as Port,
+          nodes.push([
+            nodeId,
+            {
+              address: {
+                host: address.getHost() as Host | Hostname,
+                port: address.getPort() as Port,
+              },
+              lastUpdated: 0, // FIXME?
             },
-            distance: nodesUtils.calculateDistance(targetNodeId, nodeId),
-          });
+          ]);
         }
       });
       return nodes;
@@ -588,8 +595,9 @@ class NodeConnectionManager {
         seedNodeId,
         this.keyManager.getNodeId(),
       );
-      for (const n of nodes) {
-        await this.nodeGraph.setNode(n.id, n.address);
+      for (const [nodeId, nodeData] of nodes) {
+        // FIXME: this should be the `nodeManager.setNode`
+        await this.nodeGraph.setNode(nodeId, nodeData.address);
       }
     }
   }

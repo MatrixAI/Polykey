@@ -17,7 +17,7 @@ import * as grpcErrors from '@/grpc/errors';
 import * as clientUtils from '@/client/utils';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as utils from './utils';
-import * as testUtils from '../utils';
+import * as testNodesUtils from '../nodes/utils';
 import { expectRemoteError } from '../utils';
 
 describe('GRPCClient', () => {
@@ -62,7 +62,7 @@ describe('GRPCClient', () => {
       },
     });
     const keyManager = {
-      getNodeId: () => testUtils.generateRandomNodeId(),
+      getNodeId: () => testNodesUtils.generateRandomNodeId(),
     } as KeyManager; // Cheeky mocking.
     sessionManager = await SessionManager.createSessionManager({
       db,

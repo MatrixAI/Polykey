@@ -86,6 +86,24 @@ interface FileSystem {
 
 type FileHandle = fs.promises.FileHandle;
 
+type FunctionPropertyNames<T> = {
+  [K in keyof T]: T[K] extends (...args: any[]) => any ? K : never;
+}[keyof T];
+
+/**
+ * Functional properties of an object
+ */
+type FunctionProperties<T> = Pick<T, FunctionPropertyNames<T>>;
+
+type NonFunctionPropertyNames<T> = {
+  [K in keyof T]: T[K] extends (...args: any[]) => any ? never : K;
+}[keyof T];
+
+/**
+ * Non-functional properties of an object
+ */
+type NonFunctionProperties<T> = Pick<T, NonFunctionPropertyNames<T>>;
+
 export type {
   POJO,
   Opaque,
@@ -99,4 +117,6 @@ export type {
   Timer,
   FileSystem,
   FileHandle,
+  FunctionProperties,
+  NonFunctionProperties,
 };

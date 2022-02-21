@@ -1,8 +1,26 @@
 import type { NodeId, NodeAddress } from '@/nodes/types';
-
 import type PolykeyAgent from '@/PolykeyAgent';
 import { IdInternal } from '@matrixai/id';
+import * as keysUtils from '@/keys/utils';
 import { bigInt2Bytes } from '@/utils';
+
+/**
+ * Generate random `NodeId`
+ * If `readable` is `true`, then it will generate a `NodeId` where
+ * its binary string form will only contain hex characters
+ * However the `NodeId` will not be uniformly random as it will not cover
+ * the full space of possible node IDs
+ * Prefer to keep `readable` `false` if possible to ensure tests are robust
+ */
+function generateRandomNodeId(readable: boolean = false): NodeId {
+  if (readable) {
+    const random = keysUtils.getRandomBytesSync(16).toString('hex');
+    return IdInternal.fromString<NodeId>(random);
+  } else {
+    const random = keysUtils.getRandomBytesSync(32);
+    return IdInternal.fromBuffer<NodeId>(random);
+  }
+}
 
 /**
  * Generate a deterministic NodeId for a specific bucket given an existing NodeId
@@ -61,4 +79,4 @@ async function nodesConnect(localNode: PolykeyAgent, remoteNode: PolykeyAgent) {
   } as NodeAddress);
 }
 
-export { generateNodeIdForBucket, nodesConnect };
+export { generateRandomNodeId, generateNodeIdForBucket, nodesConnect };

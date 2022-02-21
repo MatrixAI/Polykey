@@ -37,6 +37,11 @@ class ErrorNodeGraphSameNodeId<T> extends ErrorNodes<T> {
   exitCode = sysexits.USAGE;
 }
 
+class ErrorNodeGraphBucketIndex<T> extends ErrorNodes<T> {
+  static description: 'Bucket index is out of range';
+  exitCode = sysexits.USAGE;
+}
+
 class ErrorNodeConnectionDestroyed<T> extends ErrorNodes<T> {
   static description = 'NodeConnection is destroyed';
   exitCode = sysexits.USAGE;
@@ -76,6 +81,7 @@ export {
   ErrorNodeGraphEmptyDatabase,
   ErrorNodeGraphOversizedBucket,
   ErrorNodeGraphSameNodeId,
+  ErrorNodeGraphBucketIndex,
   ErrorNodeConnectionDestroyed,
   ErrorNodeConnectionTimeout,
   ErrorNodeConnectionInfoNotExist,

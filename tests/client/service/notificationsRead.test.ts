@@ -24,12 +24,13 @@ import * as keysUtils from '@/keys/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as clientUtils from '@/client/utils';
 import * as testUtils from '../../utils';
+import * as testNodesUtils from '../../nodes/utils';
 
 describe('notificationsRead', () => {
   const logger = new Logger('notificationsRead test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
-  const nodeIdSender = testUtils.generateRandomNodeId();
+  const nodeIdSender = testNodesUtils.generateRandomNodeId();
   const nodeIdSenderEncoded = nodesUtils.encodeNodeId(nodeIdSender);
   const password = 'helloworld';
   const authenticate = async (metaClient, metaServer = new Metadata()) =>
