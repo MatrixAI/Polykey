@@ -9,7 +9,7 @@ class CommandScan extends CommandPolykey {
   constructor(...args: ConstructorParameters<typeof CommandPolykey>) {
     super(...args);
     this.name('scan');
-    this.description('Scans a node to reveal their vaults');
+    this.description('Scans a node to reveal their shared vaults');
     this.argument('<nodeId>', 'Id of the node to scan');
     this.addOption(binOptions.nodeId);
     this.addOption(binOptions.clientHost);
@@ -27,6 +27,7 @@ class CommandScan extends CommandPolykey {
         this.logger.getChild(binProcessors.processClientOptions.name),
       );
       const client = await PolykeyClient.createPolykeyClient({
+        nodePath: options.nodePath,
         nodeId: clientOptions.nodeId,
         host: clientOptions.clientHost,
         port: clientOptions.clientPort,
@@ -48,7 +49,10 @@ class CommandScan extends CommandPolykey {
             const data: Array<string> = [];
             const stream = grpcClient.vaultsScan(nodeMessage, meta);
             for await (const vault of stream) {
-              data.push(`${vault.getVaultName()}\t\t${vault.getVaultId()}`);
+              const vaultName = vault.getVaultName();
+              const vaultIdEncoded = vault.getVaultId();
+              const permissions = vault.getVaultPermissionsList().join(',');
+              data.push(`${vaultName}\t\t${vaultIdEncoded}\t\t${permissions}`);
             }
             return data;
           },

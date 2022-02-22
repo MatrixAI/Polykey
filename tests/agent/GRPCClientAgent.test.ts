@@ -285,7 +285,7 @@ describe(GRPCClientAgent.name, () => {
         proxyHost: localHost,
       });
       clientWithProxies2 = await GRPCClientAgent.createGRPCClientAgent({
-        host: '127.0.0.1' as Host,
+        host: localHost,
         logger,
         nodeId: keyManager.getNodeId(),
         port: revProxy.getIngressPort(),
@@ -296,7 +296,7 @@ describe(GRPCClientAgent.name, () => {
         },
         timeout: 5000,
       });
-    }, 26000);
+    });
     afterEach(async () => {
       await testAgentUtils.closeTestAgentClient(clientWithProxies1);
       await clientFwdProxy1.stop();
@@ -304,7 +304,7 @@ describe(GRPCClientAgent.name, () => {
       await testAgentUtils.closeTestAgentClient(clientWithProxies2);
       await clientFwdProxy2.stop();
       await clientKeyManager2.stop();
-    }, 25000);
+    });
     test('connectionInfoGetter returns correct information for each connection', async () => {
       // We can't directly spy on the connectionInfoGetter result
       // but we can check that it called `getConnectionInfoByProxy` properly

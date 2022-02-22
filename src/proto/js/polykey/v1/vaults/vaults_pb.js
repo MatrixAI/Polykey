@@ -70,7 +70,7 @@ if (goog.DEBUG && !COMPILED) {
  * @constructor
  */
 proto.polykey.v1.vaults.List = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
+  jspb.Message.initialize(this, opt_data, 0, -1, proto.polykey.v1.vaults.List.repeatedFields_, null);
 };
 goog.inherits(proto.polykey.v1.vaults.List, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
@@ -589,6 +589,13 @@ proto.polykey.v1.vaults.Vault.prototype.setNameOrId = function(value) {
 
 
 
+/**
+ * List of repeated fields within this message type.
+ * @private {!Array<number>}
+ * @const
+ */
+proto.polykey.v1.vaults.List.repeatedFields_ = [3];
+
 
 
 if (jspb.Message.GENERATE_TO_OBJECT) {
@@ -621,7 +628,8 @@ proto.polykey.v1.vaults.List.prototype.toObject = function(opt_includeInstance) 
 proto.polykey.v1.vaults.List.toObject = function(includeInstance, msg) {
   var f, obj = {
     vaultName: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    vaultId: jspb.Message.getFieldWithDefault(msg, 2, "")
+    vaultId: jspb.Message.getFieldWithDefault(msg, 2, ""),
+    vaultPermissionsList: (f = jspb.Message.getRepeatedField(msg, 3)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -666,6 +674,10 @@ proto.polykey.v1.vaults.List.deserializeBinaryFromReader = function(msg, reader)
       var value = /** @type {string} */ (reader.readString());
       msg.setVaultId(value);
       break;
+    case 3:
+      var value = /** @type {string} */ (reader.readString());
+      msg.addVaultPermissions(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -709,6 +721,13 @@ proto.polykey.v1.vaults.List.serializeBinaryToWriter = function(message, writer)
       f
     );
   }
+  f = message.getVaultPermissionsList();
+  if (f.length > 0) {
+    writer.writeRepeatedString(
+      3,
+      f
+    );
+  }
 };
 
 
@@ -745,6 +764,43 @@ proto.polykey.v1.vaults.List.prototype.getVaultId = function() {
  */
 proto.polykey.v1.vaults.List.prototype.setVaultId = function(value) {
   return jspb.Message.setProto3StringField(this, 2, value);
+};
+
+
+/**
+ * repeated string vault_permissions = 3;
+ * @return {!Array<string>}
+ */
+proto.polykey.v1.vaults.List.prototype.getVaultPermissionsList = function() {
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 3));
+};
+
+
+/**
+ * @param {!Array<string>} value
+ * @return {!proto.polykey.v1.vaults.List} returns this
+ */
+proto.polykey.v1.vaults.List.prototype.setVaultPermissionsList = function(value) {
+  return jspb.Message.setField(this, 3, value || []);
+};
+
+
+/**
+ * @param {string} value
+ * @param {number=} opt_index
+ * @return {!proto.polykey.v1.vaults.List} returns this
+ */
+proto.polykey.v1.vaults.List.prototype.addVaultPermissions = function(value, opt_index) {
+  return jspb.Message.addToRepeatedField(this, 3, value, opt_index);
+};
+
+
+/**
+ * Clears the list making it empty but non-null.
+ * @return {!proto.polykey.v1.vaults.List} returns this
+ */
+proto.polykey.v1.vaults.List.prototype.clearVaultPermissionsList = function() {
+  return this.setVaultPermissionsList([]);
 };
 
 

@@ -33,6 +33,10 @@ export class List extends jspb.Message {
     setVaultName(value: string): List;
     getVaultId(): string;
     setVaultId(value: string): List;
+    clearVaultPermissionsList(): void;
+    getVaultPermissionsList(): Array<string>;
+    setVaultPermissionsList(value: Array<string>): List;
+    addVaultPermissions(value: string, index?: number): string;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): List.AsObject;
@@ -48,6 +52,7 @@ export namespace List {
     export type AsObject = {
         vaultName: string,
         vaultId: string,
+        vaultPermissionsList: Array<string>,
     }
 }
 

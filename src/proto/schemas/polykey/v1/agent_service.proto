@@ -15,7 +15,7 @@ service AgentService {
   // Vaults
   rpc VaultsGitInfoGet (polykey.v1.vaults.InfoRequest) returns (stream polykey.v1.vaults.PackChunk);
   rpc VaultsGitPackGet(stream polykey.v1.vaults.PackChunk) returns (stream polykey.v1.vaults.PackChunk);
-  rpc VaultsScan (polykey.v1.nodes.Node) returns (stream polykey.v1.vaults.List);
+  rpc VaultsScan (polykey.v1.utils.EmptyMessage) returns (stream polykey.v1.vaults.List);
 
   // Nodes
   rpc NodesClosestLocalNodesGet (polykey.v1.nodes.Node) returns (polykey.v1.nodes.NodeTable);
