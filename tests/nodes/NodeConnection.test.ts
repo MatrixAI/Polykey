@@ -282,6 +282,7 @@ describe(`${NodeConnection.name} test`, () => {
       notificationsManager: serverNotificationsManager,
       acl: serverACL,
       gestaltGraph: serverGestaltGraph,
+      revProxy: serverRevProxy,
     });
     agentServer = new GRPCServer({
       logger: logger,

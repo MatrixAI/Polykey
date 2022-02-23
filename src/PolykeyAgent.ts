@@ -564,6 +564,7 @@ class PolykeyAgent {
         notificationsManager: this.notificationsManager,
         acl: this.acl,
         gestaltGraph: this.gestaltGraph,
+        revProxy: this.revProxy,
       });
       const clientService = createClientService({
         pkAgent: this,

@@ -1,4 +1,4 @@
-import type { Host, Port } from '@/network/types';
+import type { Host, Port, ProxyConfig } from '@/network/types';
 
 import type { IAgentServiceServer } from '@/proto/js/polykey/v1/agent_service_grpc_pb';
 import type { KeyManager } from '@/keys';
@@ -8,6 +8,8 @@ import type { Sigchain } from '@/sigchain';
 import type { NotificationsManager } from '@/notifications';
 import type { ACL } from '@/acl';
 import type { GestaltGraph } from '@/gestalts';
+import type { NodeId } from 'nodes/types';
+import type { ReverseProxy } from 'network/index';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as grpc from '@grpc/grpc-js';
 import { promisify } from '@/utils';
@@ -28,6 +30,7 @@ async function openTestAgentServer({
   notificationsManager,
   acl,
   gestaltGraph,
+  revProxy,
 }: {
   keyManager: KeyManager;
   vaultManager: VaultManager;
@@ -38,6 +41,7 @@ async function openTestAgentServer({
   notificationsManager: NotificationsManager;
   acl: ACL;
   gestaltGraph: GestaltGraph;
+  revProxy: ReverseProxy;
 }) {
   const agentService: IAgentServiceServer = createAgentService({
     keyManager,
@@ -49,6 +53,7 @@ async function openTestAgentServer({
     nodeConnectionManager,
     acl,
     gestaltGraph,
+    revProxy,
   });
 
   const server = new grpc.Server();
@@ -67,16 +72,21 @@ async function closeTestAgentServer(server) {
   await tryShutdown();
 }
 
-async function openTestAgentClient(port: number): Promise<GRPCClientAgent> {
+async function openTestAgentClient(
+  port: number,
+  nodeId?: NodeId,
+  proxyConfig?: ProxyConfig,
+): Promise<GRPCClientAgent> {
   const logger = new Logger('AgentClientTest', LogLevel.WARN, [
     new StreamHandler(),
   ]);
   const agentClient = await GRPCClientAgent.createGRPCClientAgent({
-    nodeId: testUtils.generateRandomNodeId(),
+    nodeId: nodeId ?? testUtils.generateRandomNodeId(),
     host: '127.0.0.1' as Host,
     port: port as Port,
     logger: logger,
     destroyCallback: async () => {},
+    proxyConfig,
     timeout: 30000,
   });
   return agentClient;
