@@ -19,7 +19,6 @@ import {
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import * as sigchainErrors from './errors';
 import * as claimsUtils from '../claims/utils';
-import { utils as nodesUtils } from '../nodes';
 
 interface Sigchain extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
@@ -138,7 +137,7 @@ class Sigchain {
     // Creating the ID generator
     const latestId = await this.getLatestClaimId();
     this.generateClaimId = claimsUtils.createClaimIdGenerator(
-      nodesUtils.encodeNodeId(this.keyManager.getNodeId()),
+      this.keyManager.getNodeId(),
       latestId,
     );
     this.logger.info(`Started ${this.constructor.name}`);

@@ -23,6 +23,7 @@ import * as identitiesPB from '@/proto/js/polykey/v1/identities/identities_pb';
 import * as clientUtils from '@/client/utils/utils';
 import * as keysUtils from '@/keys/utils';
 import * as claimsUtils from '@/claims/utils';
+import * as nodesUtils from '@/nodes/utils';
 import * as validationErrors from '@/validation/errors';
 import * as testUtils from '../../utils';
 import TestProvider from '../../identities/TestProvider';
@@ -47,7 +48,9 @@ describe('identitiesClaim', () => {
     provider: testToken.providerId,
     identity: testToken.identityId,
   };
-  const claimId = claimsUtils.createClaimIdGenerator(claimData.node)();
+  const claimId = claimsUtils.createClaimIdGenerator(
+    nodesUtils.decodeNodeId(claimData.node)!,
+  )();
   let mockedGenerateKeyPair: jest.SpyInstance;
   let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
   let mockedAddClaim: jest.SpyInstance;

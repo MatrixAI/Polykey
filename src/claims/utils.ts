@@ -7,7 +7,7 @@ import type {
   SignatureData,
   ClaimIntermediary,
 } from './types';
-import type { NodeIdEncoded } from '../nodes/types';
+import type { NodeId, NodeIdEncoded } from '../nodes/types';
 import type { PublicKeyPem, PrivateKeyPem } from '../keys/types';
 import type { POJO } from '../types';
 import type { GeneralJWSInput } from 'jose';
@@ -492,10 +492,14 @@ function decodeClaimId(claimIdEncoded: string): ClaimId | undefined {
   return claimId;
 }
 
-function createClaimIdGenerator(nodeId: NodeIdEncoded, lastClaimId?: ClaimId) {
+/**
+ * Generator for `ClaimId`
+ * Make sure the `nodeId` is set to this node's own `NodeId`
+ */
+function createClaimIdGenerator(nodeId: NodeId, lastClaimId?: ClaimId) {
   const generator = new IdSortable<ClaimId>({
     lastId: lastClaimId,
-    nodeId: IdInternal.fromString(nodeId).toBuffer(),
+    nodeId,
   });
   return () => generator.get();
 }
