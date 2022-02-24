@@ -6,14 +6,14 @@ import fs from 'fs';
 import lock from 'fd-lock';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { IdInternal } from '@matrixai/id';
-import { sleep } from '@/utils';
-import config from '@/config';
 import PolykeyAgent from '@/PolykeyAgent';
 import Status from '@/status/Status';
 import GRPCClientClient from '@/client/GRPCClientClient';
-import * as keysUtils from '@/keys/utils';
 import * as clientUtils from '@/client/utils';
+import * as keysUtils from '@/keys/utils';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
+import { sleep } from '@/utils';
+import config from '@/config';
 
 /**
  * Setup the global keypair
