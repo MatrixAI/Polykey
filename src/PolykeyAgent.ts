@@ -712,6 +712,25 @@ class PolykeyAgent {
     this.logger.info(`Destroyed ${this.constructor.name}`);
   }
 
+  public async restart({
+    password,
+    networkConfig = {},
+    fresh = false,
+  }: {
+    password: string;
+    networkConfig?: NetworkConfig;
+    fresh?: boolean;
+  }) {
+    this.logger.info(`Restarting ${this.constructor.name}`);
+    await this.stop();
+    await this.start({
+      password,
+      networkConfig,
+      fresh,
+    });
+    this.logger.info(`Restarted ${this.constructor.name}`);
+  }
+
   public setWorkerManager(workerManager: PolykeyWorkerManagerInterface) {
     this.db.setWorkerManager(workerManager);
     this.keyManager.setWorkerManager(workerManager);

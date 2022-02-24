@@ -67,3 +67,38 @@ export namespace InfoMessage {
         rootCertChainPem: string,
     }
 }
+
+export class RestartMessage extends jspb.Message { 
+    getPassword(): string;
+    setPassword(value: string): RestartMessage;
+    getClientHost(): string;
+    setClientHost(value: string): RestartMessage;
+    getClientPort(): number;
+    setClientPort(value: number): RestartMessage;
+    getIngressHost(): string;
+    setIngressHost(value: string): RestartMessage;
+    getIngressPort(): number;
+    setIngressPort(value: number): RestartMessage;
+    getFresh(): boolean;
+    setFresh(value: boolean): RestartMessage;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): RestartMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: RestartMessage): RestartMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: RestartMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): RestartMessage;
+    static deserializeBinaryFromReader(message: RestartMessage, reader: jspb.BinaryReader): RestartMessage;
+}
+
+export namespace RestartMessage {
+    export type AsObject = {
+        password: string,
+        clientHost: string,
+        clientPort: number,
+        ingressHost: string,
+        ingressPort: number,
+        fresh: boolean,
+    }
+}

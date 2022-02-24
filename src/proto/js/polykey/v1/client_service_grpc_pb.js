@@ -25,6 +25,17 @@ function deserialize_polykey_v1_agent_InfoMessage(buffer_arg) {
   return polykey_v1_agent_agent_pb.InfoMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_polykey_v1_agent_RestartMessage(arg) {
+  if (!(arg instanceof polykey_v1_agent_agent_pb.RestartMessage)) {
+    throw new Error('Expected argument of type polykey.v1.agent.RestartMessage');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_polykey_v1_agent_RestartMessage(buffer_arg) {
+  return polykey_v1_agent_agent_pb.RestartMessage.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_polykey_v1_gestalts_Gestalt(arg) {
   if (!(arg instanceof polykey_v1_gestalts_gestalts_pb.Gestalt)) {
     throw new Error('Expected argument of type polykey.v1.gestalts.Gestalt');
@@ -509,6 +520,17 @@ agentLockAll: {
     responseType: polykey_v1_utils_utils_pb.EmptyMessage,
     requestSerialize: serialize_polykey_v1_utils_EmptyMessage,
     requestDeserialize: deserialize_polykey_v1_utils_EmptyMessage,
+    responseSerialize: serialize_polykey_v1_utils_EmptyMessage,
+    responseDeserialize: deserialize_polykey_v1_utils_EmptyMessage,
+  },
+  agentRestart: {
+    path: '/polykey.v1.ClientService/AgentRestart',
+    requestStream: false,
+    responseStream: false,
+    requestType: polykey_v1_agent_agent_pb.RestartMessage,
+    responseType: polykey_v1_utils_utils_pb.EmptyMessage,
+    requestSerialize: serialize_polykey_v1_agent_RestartMessage,
+    requestDeserialize: deserialize_polykey_v1_agent_RestartMessage,
     responseSerialize: serialize_polykey_v1_utils_EmptyMessage,
     responseDeserialize: deserialize_polykey_v1_utils_EmptyMessage,
   },
