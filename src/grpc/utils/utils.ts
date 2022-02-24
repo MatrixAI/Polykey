@@ -6,6 +6,7 @@ import type {
   ClientDuplexStream,
 } from '@grpc/grpc-js/build/src/call';
 import type {
+  ServerSurfaceCall,
   ServerStatusResponse,
   ServerReadableStream,
   ServerWritableStream,
@@ -140,6 +141,17 @@ function getClientSession(
   }
   const session: Http2Session = subchannel.session;
   return session;
+}
+
+/**
+ * Acquire the HTTP2 session for a GRPC connection from the server side
+ * This relies on monkey patching the gRPC library internals
+ * The `ServerSurfaceCall` is expected to be an instance of `Http2ServerCallStream`
+ * It will contain `stream` property, which will contain the `session` property
+ */
+function getServerSession(call: ServerSurfaceCall): Http2Session {
+  // @ts-ignore
+  return call.stream.session;
 }
 
 /**
@@ -487,6 +499,7 @@ export {
   clientSecureCredentials,
   serverSecureCredentials,
   getClientSession,
+  getServerSession,
   generatorReadable,
   generatorWritable,
   generatorDuplex,
