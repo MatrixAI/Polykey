@@ -1,9 +1,11 @@
+import path from 'path';
+import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as testBinUtils from '../utils';
 import * as testUtils from '../../utils';
 
-describe('certchain', () => {
-  const logger = new Logger('certchain test', LogLevel.WARN, [
+describe('sign-verify', () => {
+  const logger = new Logger('sign-verify test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
   let globalAgentDir;
@@ -16,22 +18,14 @@ describe('certchain', () => {
   afterAll(async () => {
     await globalAgentClose();
   });
-  test('certchain gets the certificate chain', async () => {
-    let { exitCode, stdout } = await testBinUtils.pkStdio(
-      ['keys', 'certchain', '--format', 'json'],
-      {
-        PK_NODE_PATH: globalAgentDir,
-        PK_PASSWORD: globalAgentPassword,
-      },
-      globalAgentDir,
-    );
-    expect(exitCode).toBe(0);
-    expect(JSON.parse(stdout)).toEqual({
-      certchain: expect.any(Array),
+  test('signs and verifies a file', async () => {
+    let exitCode, stdout;
+    const dataPath = path.join(globalAgentDir, 'data');
+    await fs.promises.writeFile(dataPath, 'sign-me', {
+      encoding: 'binary',
     });
-    const certChainCommand = JSON.parse(stdout).certchain.join('\n');
     ({ exitCode, stdout } = await testBinUtils.pkStdio(
-      ['agent', 'status', '--format', 'json'],
+      ['keys', 'sign', dataPath, '--format', 'json'],
       {
         PK_NODE_PATH: globalAgentDir,
         PK_PASSWORD: globalAgentPassword,
@@ -39,7 +33,25 @@ describe('certchain', () => {
       globalAgentDir,
     ));
     expect(exitCode).toBe(0);
-    const certChainStatus = JSON.parse(stdout).rootCertChainPem;
-    expect(certChainCommand).toBe(certChainStatus);
+    expect(JSON.parse(stdout)).toEqual({
+      signature: expect.any(String),
+    });
+    const signed = JSON.parse(stdout).signature;
+    const signaturePath = path.join(globalAgentDir, 'data2');
+    await fs.promises.writeFile(signaturePath, signed, {
+      encoding: 'binary',
+    });
+    ({ exitCode, stdout } = await testBinUtils.pkStdio(
+      ['keys', 'verify', dataPath, signaturePath, '--format', 'json'],
+      {
+        PK_NODE_PATH: globalAgentDir,
+        PK_PASSWORD: globalAgentPassword,
+      },
+      globalAgentDir,
+    ));
+    expect(exitCode).toBe(0);
+    expect(JSON.parse(stdout)).toEqual({
+      signatureVerified: true,
+    });
   });
 });

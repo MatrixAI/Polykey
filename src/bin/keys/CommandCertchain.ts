@@ -47,14 +47,21 @@ class CommandsCertchain extends CommandPolykey {
             auth,
           );
           for await (const cert of stream) {
-            data.push(`Certificate:\t\t${cert.getCert()}`);
+            data.push(cert.getCert());
           }
           return data;
         }, meta);
+        const result = {
+          certchain: data,
+        };
+        let output: any = result;
+        if (options.format === 'human') {
+          output = [`Root Certificate Chain:\t\t${result.certchain}`];
+        }
         process.stdout.write(
           binUtils.outputFormatter({
             type: options.format === 'json' ? 'json' : 'list',
-            data: data,
+            data: output,
           }),
         );
       } finally {

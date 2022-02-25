@@ -45,20 +45,23 @@ class CommandRoot extends CommandPolykey {
           (auth) => pkClient.grpcClient.keysKeyPairRoot(emptyMessage, auth),
           meta,
         );
+        const result: any = {
+          publicKey: keyPair.getPublic(),
+        };
+        if (options.privateKey) result.privateKey = keyPair.getPrivate();
+        let output: any = result;
+        if (options.format === 'human') {
+          output = [`Public key:\t\t${result.publicKey}`];
+          if (options.privateKey) {
+            output.push(`Private key:\t\t${result.private}`);
+          }
+        }
         process.stdout.write(
           binUtils.outputFormatter({
             type: options.format === 'json' ? 'json' : 'list',
-            data: [`public key:\t\t${keyPair.getPublic()}...`],
+            data: output,
           }),
         );
-        if (options.privateKey) {
-          process.stdout.write(
-            binUtils.outputFormatter({
-              type: options.format === 'json' ? 'json' : 'list',
-              data: [`private key:\t\t${keyPair.getPrivate()}...`],
-            }),
-          );
-        }
       } finally {
         if (pkClient! != null) await pkClient.stop();
       }

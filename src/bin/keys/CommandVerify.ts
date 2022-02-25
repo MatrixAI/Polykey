@@ -72,10 +72,17 @@ class CommandVerify extends CommandPolykey {
           (auth) => pkClient.grpcClient.keysVerify(cryptoMessage, auth),
           meta,
         );
+        const result = {
+          signatureVerified: response.getSuccess(),
+        };
+        let output: any = result;
+        if (options.format === 'human') {
+          output = [`Signature verified:\t\t${result.signatureVerified}`];
+        }
         process.stdout.write(
           binUtils.outputFormatter({
             type: options.format === 'json' ? 'json' : 'list',
-            data: [`Signature verification:\t\t${response.getSuccess()}`],
+            data: output,
           }),
         );
       } finally {

@@ -1,6 +1,3 @@
-import os from 'os';
-import path from 'path';
-import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as testBinUtils from '../utils';
 import * as testUtils from '../../utils';
@@ -17,18 +14,6 @@ describe('root', () => {
   afterAll(async () => {
     await globalAgentClose();
   });
-  let dataDir: string;
-  beforeEach(async () => {
-    dataDir = await fs.promises.mkdtemp(
-      path.join(os.tmpdir(), 'polykey-test-'),
-    );
-  });
-  afterEach(async () => {
-    await fs.promises.rm(dataDir, {
-      force: true,
-      recursive: true,
-    });
-  });
   test('root gets the public key', async () => {
     const { exitCode, stdout } = await testBinUtils.pkStdio(
       ['keys', 'root', '--format', 'json'],
@@ -39,11 +24,13 @@ describe('root', () => {
       globalAgentDir,
     );
     expect(exitCode).toBe(0);
-    expect(stdout).toContain('public key:');
+    expect(JSON.parse(stdout)).toEqual({
+      publicKey: expect.any(String),
+    });
   });
-  test('root gets the keypair', async () => {
+  test('root gets public and private keys', async () => {
     const { exitCode, stdout } = await testBinUtils.pkStdio(
-      ['keys', 'root', '-pk', '--format', 'json'],
+      ['keys', 'root', '--private-key', '--format', 'json'],
       {
         PK_NODE_PATH: globalAgentDir,
         PK_PASSWORD: globalAgentPassword,
@@ -51,7 +38,9 @@ describe('root', () => {
       globalAgentDir,
     );
     expect(exitCode).toBe(0);
-    expect(stdout).toContain('public key:');
-    expect(stdout).toContain('private key:');
+    expect(JSON.parse(stdout)).toEqual({
+      publicKey: expect.any(String),
+      privateKey: expect.any(String),
+    });
   });
 });

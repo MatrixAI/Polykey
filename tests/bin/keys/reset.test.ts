@@ -1,17 +1,15 @@
-import type { TLSConfig } from '@/network/types';
+import type { Host } from '@/network/types';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
+import PolykeyAgent from '@/PolykeyAgent';
 import * as keysUtils from '@/keys/utils';
-import { Status } from '@/status';
-import { PolykeyAgent } from '@';
-import config from '@/config';
 import * as testUtils from '../../utils';
 import * as testBinUtils from '../utils';
 
-describe('renew', () => {
-  const logger = new Logger('renew test', LogLevel.WARN, [new StreamHandler()]);
+describe('reset', () => {
+  const logger = new Logger('reset test', LogLevel.WARN, [new StreamHandler()]);
   const password = 'helloworld';
   let dataDir: string;
   let nodePath: string;
@@ -36,9 +34,16 @@ describe('renew', () => {
     pkAgent = await PolykeyAgent.createPolykeyAgent({
       password,
       nodePath,
+      networkConfig: {
+        proxyHost: '127.0.0.1' as Host,
+        egressHost: '127.0.0.1' as Host,
+        ingressHost: '127.0.0.1' as Host,
+        agentHost: '127.0.0.1' as Host,
+        clientHost: '127.0.0.1' as Host,
+      },
       logger,
     });
-  }, globalThis.maxTimeout);
+  }, global.defaultTimeout * 2);
   afterAll(async () => {
     await pkAgent.stop();
     await fs.promises.rm(dataDir, {
@@ -49,34 +54,9 @@ describe('renew', () => {
     mockedGenerateDeterministicKeyPair.mockRestore();
   });
   test('resets the keypair', async () => {
-    const rootKeyPair1 = pkAgent.keyManager.getRootKeyPairPem();
-    const nodeId1 = pkAgent.keyManager.getNodeId();
-    // @ts-ignore - get protected property
-    const fwdTLSConfig1 = pkAgent.fwdProxy.tlsConfig;
-    // @ts-ignore - get protected property
-    const revTLSConfig1 = pkAgent.revProxy.tlsConfig;
-    // @ts-ignore - get protected property
-    const serverTLSConfig1 = pkAgent.grpcServerClient.tlsConfig;
-    const expectedTLSConfig1: TLSConfig = {
-      keyPrivatePem: rootKeyPair1.privateKey,
-      certChainPem: await pkAgent.keyManager.getRootCertChainPem(),
-    };
-    const status = new Status({
-      statusPath: path.join(nodePath, config.defaults.statusBase),
-      statusLockPath: path.join(nodePath, config.defaults.statusLockBase),
-      fs,
-      logger,
-    });
-    const nodeIdStatus1 = (await status.readStatus())!.data.nodeId;
-    expect(fwdTLSConfig1).toEqual(expectedTLSConfig1);
-    expect(revTLSConfig1).toEqual(expectedTLSConfig1);
-    expect(serverTLSConfig1).toEqual(expectedTLSConfig1);
-    expect(nodeId1.equals(nodeIdStatus1)).toBe(true);
-    // Renew keypair
-    const passPath = path.join(dataDir, 'passwordNew');
-    await fs.promises.writeFile(passPath, 'password-new');
-    let { exitCode } = await testBinUtils.pkStdio(
-      ['keys', 'reset', '-pnf', passPath],
+    // Get previous keypair and nodeId
+    let { exitCode, stdout } = await testBinUtils.pkStdio(
+      ['keys', 'root', '--private-key', '--format', 'json'],
       {
         PK_NODE_PATH: nodePath,
         PK_PASSWORD: password,
@@ -84,31 +64,59 @@ describe('renew', () => {
       dataDir,
     );
     expect(exitCode).toBe(0);
-    const rootKeyPair2 = pkAgent.keyManager.getRootKeyPairPem();
-    const nodeId2 = pkAgent.keyManager.getNodeId();
-    // @ts-ignore - get protected property
-    const fwdTLSConfig2 = pkAgent.fwdProxy.tlsConfig;
-    // @ts-ignore - get protected property
-    const revTLSConfig2 = pkAgent.revProxy.tlsConfig;
-    // @ts-ignore - get protected property
-    const serverTLSConfig2 = pkAgent.grpcServerClient.tlsConfig;
-    const expectedTLSConfig2: TLSConfig = {
-      keyPrivatePem: rootKeyPair2.privateKey,
-      certChainPem: await pkAgent.keyManager.getRootCertChainPem(),
-    };
-    const nodeIdStatus2 = (await status.readStatus())!.data.nodeId;
-    expect(fwdTLSConfig2).toEqual(expectedTLSConfig2);
-    expect(revTLSConfig2).toEqual(expectedTLSConfig2);
-    expect(serverTLSConfig2).toEqual(expectedTLSConfig2);
-    expect(rootKeyPair2.privateKey).not.toBe(rootKeyPair1.privateKey);
-    expect(rootKeyPair2.publicKey).not.toBe(rootKeyPair1.publicKey);
-    expect(nodeId1).not.toBe(nodeId2);
-    expect(nodeIdStatus1).not.toBe(nodeIdStatus2);
-    expect(nodeId2.equals(nodeIdStatus2)).toBe(true);
+    const prevPublicKey = JSON.parse(stdout).publicKey;
+    const prevPrivateKey = JSON.parse(stdout).privateKey;
+    ({ exitCode, stdout } = await testBinUtils.pkStdio(
+      ['agent', 'status', '--format', 'json'],
+      {
+        PK_NODE_PATH: nodePath,
+        PK_PASSWORD: password,
+      },
+      dataDir,
+    ));
+    expect(exitCode).toBe(0);
+    const prevNodeId = JSON.parse(stdout).nodeId;
+    // Reset keypair
+    const passPath = path.join(dataDir, 'reset-password');
+    await fs.promises.writeFile(passPath, 'password-new');
+    ({ exitCode } = await testBinUtils.pkStdio(
+      ['keys', 'reset', '--password-new-file', passPath],
+      {
+        PK_NODE_PATH: nodePath,
+        PK_PASSWORD: password,
+      },
+      dataDir,
+    ));
+    expect(exitCode).toBe(0);
+    // Get new keypair and nodeId and compare against old
+    ({ exitCode, stdout } = await testBinUtils.pkStdio(
+      ['keys', 'root', '--private-key', '--format', 'json'],
+      {
+        PK_NODE_PATH: nodePath,
+        PK_PASSWORD: 'password-new',
+      },
+      dataDir,
+    ));
+    expect(exitCode).toBe(0);
+    const newPublicKey = JSON.parse(stdout).publicKey;
+    const newPrivateKey = JSON.parse(stdout).privateKey;
+    ({ exitCode, stdout } = await testBinUtils.pkStdio(
+      ['agent', 'status', '--format', 'json'],
+      {
+        PK_NODE_PATH: nodePath,
+        PK_PASSWORD: 'password-new',
+      },
+      dataDir,
+    ));
+    expect(exitCode).toBe(0);
+    const newNodeId = JSON.parse(stdout).nodeId;
+    expect(newPublicKey).not.toBe(prevPublicKey);
+    expect(newPrivateKey).not.toBe(prevPrivateKey);
+    expect(newNodeId).not.toBe(prevNodeId);
     // Revert side effects
     await fs.promises.writeFile(passPath, password);
     ({ exitCode } = await testBinUtils.pkStdio(
-      ['keys', 'password', '-pnf', passPath],
+      ['keys', 'password', '--password-new-file', passPath],
       {
         PK_NODE_PATH: nodePath,
         PK_PASSWORD: 'password-new',

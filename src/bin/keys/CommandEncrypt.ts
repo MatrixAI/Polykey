@@ -63,10 +63,17 @@ class CommandEncypt extends CommandPolykey {
           (auth) => pkClient.grpcClient.keysEncrypt(cryptoMessage, auth),
           meta,
         );
+        const result = {
+          encryptedData: response.getData(),
+        };
+        let output: any = result;
+        if (options.format === 'human') {
+          output = [`Encrypted data:\t\t${result.encryptedData}`];
+        }
         process.stdout.write(
           binUtils.outputFormatter({
             type: options.format === 'json' ? 'json' : 'list',
-            data: [`Encrypted data:\t\t${response.getData()}`],
+            data: output,
           }),
         );
       } finally {

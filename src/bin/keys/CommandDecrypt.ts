@@ -63,10 +63,17 @@ class CommandDecrypt extends CommandPolykey {
           (auth) => pkClient.grpcClient.keysDecrypt(cryptoMessage, auth),
           meta,
         );
+        const result = {
+          decryptedData: response.getData(),
+        };
+        let output: any = result;
+        if (options.format === 'human') {
+          output = [`Decrypted data:\t\t${result.decryptedData}`];
+        }
         process.stdout.write(
           binUtils.outputFormatter({
             type: options.format === 'json' ? 'json' : 'list',
-            data: [`Decrypted data:\t\t${response.getData()}`],
+            data: output,
           }),
         );
       } finally {
