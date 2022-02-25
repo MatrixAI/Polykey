@@ -6,25 +6,23 @@ import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { Metadata } from '@grpc/grpc-js';
 import { DB } from '@matrixai/db';
-import { KeyManager, utils as keysUtils } from '@/keys';
-import { GRPCServer } from '@/grpc';
-import {
-  NodeConnectionManager,
-  NodeGraph,
-  NodeManager,
-  utils as nodesUtils,
-} from '@/nodes';
-import { Sigchain } from '@/sigchain';
-import { ForwardProxy, ReverseProxy } from '@/network';
-import { NotificationsManager } from '@/notifications';
-import { ACL } from '@/acl';
-import {
-  GRPCClientClient,
-  ClientServiceService,
-  utils as clientUtils,
-} from '@/client';
+import KeyManager from '@/keys/KeyManager';
+import GRPCServer from '@/grpc/GRPCServer';
+import NodeConnectionManager from '@/nodes/NodeConnectionManager';
+import NodeGraph from '@/nodes/NodeGraph';
+import NodeManager from '@/nodes/NodeManager';
+import Sigchain from '@/sigchain/Sigchain';
+import ForwardProxy from '@/network/ForwardProxy';
+import ReverseProxy from '@/network/ReverseProxy';
+import NotificationsManager from '@/notifications/NotificationsManager';
+import ACL from '@/acl/ACL';
+import GRPCClientClient from '@/client/GRPCClientClient';
 import notificationsRead from '@/client/service/notificationsRead';
+import { ClientServiceService } from '@/proto/js/polykey/v1/client_service_grpc_pb';
 import * as notificationsPB from '@/proto/js/polykey/v1/notifications/notifications_pb';
+import * as keysUtils from '@/keys/utils';
+import * as nodesUtils from '@/nodes/utils';
+import * as clientUtils from '@/client/utils';
 import * as testUtils from '../../utils';
 
 describe('notificationsRead', () => {
@@ -230,7 +228,7 @@ describe('notificationsRead', () => {
     grpcClient = await GRPCClientClient.createGRPCClientClient({
       nodeId: keyManager.getNodeId(),
       host: '127.0.0.1' as Host,
-      port: grpcServer.port,
+      port: grpcServer.getPort(),
       logger,
     });
   });
