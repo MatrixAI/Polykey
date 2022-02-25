@@ -115,47 +115,11 @@ class CommandRead extends CommandPolykey {
             notificationsUtils.validateNotification(notification),
           );
         }
-        if (notifications.length === 0) {
+        for (const notification of notifications) {
           process.stdout.write(
             binUtils.outputFormatter({
-              type: options.format === 'json' ? 'json' : 'list',
-              data: [`No notifications to display`],
-            }),
-          );
-        } else {
-          const output: any = [];
-          let notifCount = 1;
-          for (const notification of notifications) {
-            output.push(`${notifCount} - `);
-            switch (notification.data.type) {
-              case 'General': {
-                output.push(
-                  `Message from Keynode with ID ${notification.senderId}: ${notification.data.message}`,
-                );
-                output.push('');
-                break;
-              }
-              case 'GestaltInvite': {
-                output.push(
-                  `Keynode with ID ${notification.senderId} has invited you to join their Gestalt. Type the following command to accept their invitation: nodes claim ${notification.senderId}`,
-                );
-                output.push('');
-                break;
-              }
-              case 'VaultShare': {
-                output.push(
-                  `Keynode with ID ${notification.senderId} has shared their vault '${notification.data.vaultName}' with you.`,
-                );
-                output.push('');
-                break;
-              }
-            }
-            notifCount++;
-          }
-          process.stdout.write(
-            binUtils.outputFormatter({
-              type: options.format === 'json' ? 'json' : 'list',
-              data: output,
+              type: options.format === 'json' ? 'json' : 'dict',
+              data: notification,
             }),
           );
         }

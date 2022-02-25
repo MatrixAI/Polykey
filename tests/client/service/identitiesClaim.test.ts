@@ -1,30 +1,31 @@
-import type { Host, Port } from '@/network/types';
-import type { IdentityId, ProviderId } from '@/identities/types';
 import type { ClaimLinkIdentity } from '@/claims/types';
 import type { NodeIdEncoded } from '@/nodes/types';
+import type { IdentityId, ProviderId } from '@/identities/types';
+import type { Host, Port } from '@/network/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { Metadata } from '@grpc/grpc-js';
 import { DB } from '@matrixai/db';
-import { KeyManager, utils as keysUtils } from '@/keys';
-import { GRPCServer } from '@/grpc';
-import { IdentitiesManager } from '@/identities';
-import { NodeConnectionManager, NodeGraph } from '@/nodes';
-import { Sigchain } from '@/sigchain';
-import { ForwardProxy, ReverseProxy } from '@/network';
-import {
-  GRPCClientClient,
-  ClientServiceService,
-  utils as clientUtils,
-} from '@/client';
+import { Metadata } from '@grpc/grpc-js';
+import KeyManager from '@/keys/KeyManager';
+import IdentitiesManager from '@/identities/IdentitiesManager';
+import NodeConnectionManager from '@/nodes/NodeConnectionManager';
+import NodeGraph from '@/nodes/NodeGraph';
+import Sigchain from '@/sigchain/Sigchain';
+import ForwardProxy from '@/network/ForwardProxy';
+import ReverseProxy from '@/network/ReverseProxy';
+import GRPCServer from '@/grpc/GRPCServer';
+import GRPCClientClient from '@/client/GRPCClientClient';
 import identitiesClaim from '@/client/service/identitiesClaim';
+import { ClientServiceService } from '@/proto/js/polykey/v1/client_service_grpc_pb';
 import * as identitiesPB from '@/proto/js/polykey/v1/identities/identities_pb';
+import * as clientUtils from '@/client/utils/utils';
+import * as keysUtils from '@/keys/utils';
 import * as claimsUtils from '@/claims/utils';
 import * as validationErrors from '@/validation/errors';
-import TestProvider from '../../identities/TestProvider';
 import * as testUtils from '../../utils';
+import TestProvider from '../../identities/TestProvider';
 
 describe('identitiesClaim', () => {
   const logger = new Logger('identitiesClaim test', LogLevel.WARN, [
@@ -163,7 +164,7 @@ describe('identitiesClaim', () => {
     grpcClient = await GRPCClientClient.createGRPCClientClient({
       nodeId: keyManager.getNodeId(),
       host: '127.0.0.1' as Host,
-      port: grpcServer.port,
+      port: grpcServer.getPort(),
       logger,
     });
   });

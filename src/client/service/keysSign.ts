@@ -22,6 +22,7 @@ function keysSign({
       const signature = await keyManager.signWithRootKeyPair(
         Buffer.from(call.request.getData(), 'binary'),
       );
+      response.setData(call.request.getData());
       response.setSignature(signature.toString('binary'));
       callback(null, response);
       return;

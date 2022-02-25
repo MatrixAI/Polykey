@@ -18,10 +18,9 @@ class CommandSearch extends CommandPolykey {
     this.option(
       '-pi, --provider-id [providerId...]',
       'Digital identity provider(s) to search on',
-      parsers.parseProviderIdList,
     );
     this.option(
-      '-aii, --auth-identity-id, [authIdentityId]',
+      '-aii, --auth-identity-id [authIdentityId]',
       'Name of your own authenticated identity to find connected identities of',
       parsers.parseIdentityId,
     );
@@ -87,11 +86,11 @@ class CommandSearch extends CommandPolykey {
           providerSearchMessage.setDisconnected(true);
         }
         if (options.limit) {
-          providerSearchMessage.setLimit(options.limit);
+          providerSearchMessage.setLimit(options.limit.toString());
         }
         await binUtils.retryAuthentication(async (auth) => {
-          if (options.identity) {
-            providerSearchMessage.setIdentityId(options.identity);
+          if (options.identityId) {
+            providerSearchMessage.setIdentityId(options.identityId);
             genReadable = pkClient.grpcClient.identitiesInfoGet(
               providerSearchMessage,
               auth,

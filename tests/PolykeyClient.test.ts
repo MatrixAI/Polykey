@@ -49,8 +49,8 @@ describe('PolykeyClient', () => {
   test('create PolykeyClient and connect to PolykeyAgent', async () => {
     const pkClient = await PolykeyClient.createPolykeyClient({
       nodeId: pkAgent.keyManager.getNodeId(),
-      host: pkAgent.grpcServerClient.host,
-      port: pkAgent.grpcServerClient.port,
+      host: pkAgent.grpcServerClient.getHost(),
+      port: pkAgent.grpcServerClient.getPort(),
       nodePath,
       fs,
       logger,
@@ -58,8 +58,8 @@ describe('PolykeyClient', () => {
     expect(pkClient.grpcClient.nodeId).toStrictEqual(
       pkAgent.keyManager.getNodeId(),
     );
-    expect(pkClient.grpcClient.host).toBe(pkAgent.grpcServerClient.host);
-    expect(pkClient.grpcClient.port).toBe(pkAgent.grpcServerClient.port);
+    expect(pkClient.grpcClient.host).toBe(pkAgent.grpcServerClient.getHost());
+    expect(pkClient.grpcClient.port).toBe(pkAgent.grpcServerClient.getPort());
     expect(pkClient.grpcClient.secured).toBe(true);
     await pkClient.stop();
   });
@@ -73,8 +73,8 @@ describe('PolykeyClient', () => {
     // Using fresh: true means that any token would be destroyed
     const pkClient = await PolykeyClient.createPolykeyClient({
       nodeId: pkAgent.keyManager.getNodeId(),
-      host: pkAgent.grpcServerClient.host,
-      port: pkAgent.grpcServerClient.port,
+      host: pkAgent.grpcServerClient.getHost(),
+      port: pkAgent.grpcServerClient.getPort(),
       nodePath,
       fs,
       logger,

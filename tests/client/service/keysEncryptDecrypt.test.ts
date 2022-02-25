@@ -4,19 +4,19 @@ import path from 'path';
 import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { Metadata } from '@grpc/grpc-js';
-import { GRPCServer } from '@/grpc';
-import { KeyManager, utils as keysUtils } from '@/keys';
-import {
-  GRPCClientClient,
-  ClientServiceService,
-  utils as clientUtils,
-} from '@/client';
-import keysSign from '@/client/service/keysSign';
+import KeyManager from '@/keys/KeyManager';
+import GRPCServer from '@/grpc/GRPCServer';
+import GRPCClientClient from '@/client/GRPCClientClient';
+import keysEncrypt from '@/client/service/keysEncrypt';
+import keysDecrypt from '@/client/service/keysDecrypt';
+import { ClientServiceService } from '@/proto/js/polykey/v1/client_service_grpc_pb';
 import * as keysPB from '@/proto/js/polykey/v1/keys/keys_pb';
+import * as clientUtils from '@/client/utils/utils';
+import * as keysUtils from '@/keys/utils';
 import * as testUtils from '../../utils';
 
-describe('keysSign', () => {
-  const logger = new Logger('keysSign test', LogLevel.WARN, [
+describe('keysEncryptDecrypt', () => {
+  const logger = new Logger('keysEncryptDecrypt test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
   const password = 'helloworld';
@@ -52,7 +52,11 @@ describe('keysSign', () => {
       logger,
     });
     const clientService = {
-      keysSign: keysSign({
+      keysEncrypt: keysEncrypt({
+        authenticate,
+        keyManager,
+      }),
+      keysDecrypt: keysDecrypt({
         authenticate,
         keyManager,
       }),
@@ -66,7 +70,7 @@ describe('keysSign', () => {
     grpcClient = await GRPCClientClient.createGRPCClientClient({
       nodeId: keyManager.getNodeId(),
       host: '127.0.0.1' as Host,
-      port: grpcServer.port,
+      port: grpcServer.getPort(),
       logger,
     });
   });
@@ -79,19 +83,20 @@ describe('keysSign', () => {
       recursive: true,
     });
   });
-  test('signs with root keypair', async () => {
-    const data = Buffer.from('abc');
+  test('encrypts and decrypts data', async () => {
+    const plainText = Buffer.from('abc');
     const request = new keysPB.Crypto();
-    request.setData(data.toString('binary'));
-    const response = await grpcClient.keysSign(
+    request.setData(plainText.toString('binary'));
+    const encrypted = await grpcClient.keysEncrypt(
       request,
       clientUtils.encodeAuthFromPassword(password),
     );
-    expect(response).toBeInstanceOf(keysPB.Crypto);
-    const verified = await keyManager.verifyWithRootKeyPair(
-      data,
-      Buffer.from(response.getSignature(), 'binary'),
+    expect(encrypted).toBeInstanceOf(keysPB.Crypto);
+    const response = await grpcClient.keysDecrypt(
+      encrypted,
+      clientUtils.encodeAuthFromPassword(password),
     );
-    expect(verified).toBeTruthy();
+    expect(response).toBeInstanceOf(keysPB.Crypto);
+    expect(response.getData()).toBe('abc');
   });
 });

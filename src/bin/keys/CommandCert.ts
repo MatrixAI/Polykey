@@ -44,10 +44,17 @@ class CommandCert extends CommandPolykey {
           (auth) => pkClient.grpcClient.keysCertsGet(emptyMessage, auth),
           meta,
         );
+        const result = {
+          cert: response.getCert(),
+        };
+        let output: any = result;
+        if (options.format === 'human') {
+          output = [`Root certificate:\t\t${result.cert}`];
+        }
         process.stdout.write(
           binUtils.outputFormatter({
             type: options.format === 'json' ? 'json' : 'list',
-            data: [`Root certificate:\t\t${response.getCert()}`],
+            data: output,
           }),
         );
       } finally {

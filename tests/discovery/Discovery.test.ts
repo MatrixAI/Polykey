@@ -117,6 +117,8 @@ describe('Discovery', () => {
       logger: logger.getChild('fwxProxy'),
     });
     await fwdProxy.start({
+      proxyHost: '127.0.0.1' as Host,
+      egressHost: '127.0.0.1' as Host,
       tlsConfig: {
         keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
         certChainPem: await keyManager.getRootCertChainPem(),
@@ -126,6 +128,7 @@ describe('Discovery', () => {
     await revProxy.start({
       serverHost: '127.0.0.1' as Host,
       serverPort: 55555 as Port,
+      ingressHost: '127.0.0.1' as Host,
       tlsConfig: {
         keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
         certChainPem: await keyManager.getRootCertChainPem(),
@@ -158,6 +161,13 @@ describe('Discovery', () => {
     nodeA = await PolykeyAgent.createPolykeyAgent({
       password: password,
       nodePath: path.join(dataDir, 'nodeA'),
+      networkConfig: {
+        proxyHost: '127.0.0.1' as Host,
+        egressHost: '127.0.0.1' as Host,
+        ingressHost: '127.0.0.1' as Host,
+        agentHost: '127.0.0.1' as Host,
+        clientHost: '127.0.0.1' as Host,
+      },
       keysConfig: {
         rootKeyPairBits: 2048,
       },
@@ -166,6 +176,13 @@ describe('Discovery', () => {
     nodeB = await PolykeyAgent.createPolykeyAgent({
       password: password,
       nodePath: path.join(dataDir, 'nodeB'),
+      networkConfig: {
+        proxyHost: '127.0.0.1' as Host,
+        egressHost: '127.0.0.1' as Host,
+        ingressHost: '127.0.0.1' as Host,
+        agentHost: '127.0.0.1' as Host,
+        clientHost: '127.0.0.1' as Host,
+      },
       keysConfig: {
         rootKeyPairBits: 2048,
       },
@@ -195,9 +212,7 @@ describe('Discovery', () => {
   }, global.maxTimeout);
   afterAll(async () => {
     await nodeA.stop();
-    await nodeA.destroy();
     await nodeB.stop();
-    await nodeB.destroy();
     await nodeConnectionManager.stop();
     await nodeGraph.stop();
     await revProxy.stop();

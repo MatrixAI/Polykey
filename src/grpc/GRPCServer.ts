@@ -20,8 +20,8 @@ interface GRPCServer extends StartStop {}
 class GRPCServer {
   protected services: Services;
   protected logger: Logger;
-  protected _host: Host;
-  protected _port: Port;
+  protected host: Host;
+  protected port: Port;
   protected server: grpc.Server;
   protected clientCertChains: WeakMap<Http2Session, Array<Certificate>> =
     new WeakMap();
@@ -47,10 +47,10 @@ class GRPCServer {
     port?: Port;
     tlsConfig?: TLSConfig;
   }): Promise<void> {
-    this._host = host;
+    this.host = host;
     this.tlsConfig = tlsConfig;
     this.services = services;
-    let address = networkUtils.buildAddress(this._host, port);
+    let address = networkUtils.buildAddress(this.host, port);
     this.logger.info(`Starting ${this.constructor.name} on ${address}`);
     let serverCredentials: ServerCredentials;
     if (this.tlsConfig == null) {
@@ -68,7 +68,7 @@ class GRPCServer {
     }
     const bindAsync = promisify(server.bindAsync).bind(server);
     try {
-      this._port = await bindAsync(address, serverCredentials);
+      this.port = await bindAsync(address, serverCredentials);
     } catch (e) {
       throw new grpcErrors.ErrorGRPCServerBind(e.message);
     }
@@ -117,7 +117,7 @@ class GRPCServer {
     if (serverCredentials._isSecure()) {
       this._secured = true;
     }
-    address = networkUtils.buildAddress(this._host, this._port);
+    address = networkUtils.buildAddress(this.host, this.port);
     this.logger.info(`Started ${this.constructor.name} on ${address}`);
   }
 
@@ -154,14 +154,22 @@ class GRPCServer {
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
+  /**
+   * Gets the host
+   * Wildcard host `0.0.0.0` or `::` is not resolved
+   */
   @ready(new grpcErrors.ErrorGRPCServerNotRunning())
-  get host(): Host {
-    return this._host;
+  public getHost(): Host {
+    return this.host;
   }
 
+  /**
+   * Gets the resolved port
+   * Use the resolved port for connections
+   */
   @ready(new grpcErrors.ErrorGRPCServerNotRunning())
-  get port(): Port {
-    return this._port;
+  public getPort(): Port {
+    return this.port;
   }
 
   @ready(new grpcErrors.ErrorGRPCServerNotRunning())

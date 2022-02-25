@@ -1,17 +1,19 @@
 import type { StatusLive } from '@/status/types';
 import type { NodeId } from '@/nodes/types';
+import type { Host } from '@/network/types';
 import path from 'path';
 import fs from 'fs';
 import lock from 'fd-lock';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { IdInternal } from '@matrixai/id';
-import { PolykeyAgent } from '@';
-import { Status } from '@/status';
-import { utils as keysUtils } from '@/keys';
-import { GRPCClientClient, utils as clientUtils } from '@/client';
-import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import { sleep } from '@/utils';
 import config from '@/config';
+import PolykeyAgent from '@/PolykeyAgent';
+import Status from '@/status/Status';
+import GRPCClientClient from '@/client/GRPCClientClient';
+import * as keysUtils from '@/keys/utils';
+import * as clientUtils from '@/client/utils';
+import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 
 /**
  * Setup the global keypair
@@ -112,6 +114,13 @@ async function setupGlobalAgent(
     await PolykeyAgent.createPolykeyAgent({
       password: globalAgentPassword,
       nodePath: globalAgentDir,
+      networkConfig: {
+        proxyHost: '127.0.0.1' as Host,
+        egressHost: '127.0.0.1' as Host,
+        ingressHost: '127.0.0.1' as Host,
+        agentHost: '127.0.0.1' as Host,
+        clientHost: '127.0.0.1' as Host,
+      },
       keysConfig: {
         rootKeyPairBits: 2048,
       },

@@ -63,10 +63,17 @@ class CommandSign extends CommandPolykey {
           (auth) => pkClient.grpcClient.keysSign(cryptoMessage, auth),
           meta,
         );
+        const result = {
+          signature: response.getSignature(),
+        };
+        let output: any = result;
+        if (options.format === 'human') {
+          output = [`Signature:\t\t${result.signature}`];
+        }
         process.stdout.write(
           binUtils.outputFormatter({
             type: options.format === 'json' ? 'json' : 'list',
-            data: [`Signature:\t\t${response.getSignature()}`],
+            data: output,
           }),
         );
       } finally {

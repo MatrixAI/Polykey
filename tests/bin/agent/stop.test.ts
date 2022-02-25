@@ -2,11 +2,11 @@ import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { Status } from '@/status';
+import Status from '@/status/Status';
 import config from '@/config';
+import { sleep } from '@/utils';
 import * as binErrors from '@/bin/errors';
 import * as clientErrors from '@/client/errors';
-import { sleep } from '@/utils';
 import * as testBinUtils from '../utils';
 
 describe('stop', () => {
@@ -34,6 +34,10 @@ describe('stop', () => {
           // 1024 is the smallest size and is faster to start
           '--root-key-pair-bits',
           '1024',
+          '--client-host',
+          '127.0.0.1',
+          '--ingress-host',
+          '127.0.0.1',
           '--workers',
           '0',
         ],
@@ -89,6 +93,10 @@ describe('stop', () => {
           // 1024 is the smallest size and is faster to start
           '--root-key-pair-bits',
           '1024',
+          '--client-host',
+          '127.0.0.1',
+          '--ingress-host',
+          '127.0.0.1',
           '--workers',
           '0',
         ],
@@ -172,6 +180,10 @@ describe('stop', () => {
           // 1024 is the smallest size and is faster to start
           '--root-key-pair-bits',
           '1024',
+          '--client-host',
+          '127.0.0.1',
+          '--ingress-host',
+          '127.0.0.1',
           '--workers',
           '0',
           '--verbose',
@@ -220,6 +232,10 @@ describe('stop', () => {
           // 1024 is the smallest size and is faster to start
           '--root-key-pair-bits',
           '1024',
+          '--client-host',
+          '127.0.0.1',
+          '--ingress-host',
+          '127.0.0.1',
           '--workers',
           '0',
         ],

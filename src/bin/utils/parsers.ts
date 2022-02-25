@@ -47,6 +47,9 @@ const parseNodeId = validateParserToArgParser(validationUtils.parseNodeId);
 const parseGestaltId = validateParserToArgParser(
   validationUtils.parseGestaltId,
 );
+const parseGestaltAction = validateParserToArgParser(
+  validationUtils.parseGestaltAction,
+);
 const parseHost = validateParserToArgParser(validationUtils.parseHost);
 const parseHostname = validateParserToArgParser(validationUtils.parseHostname);
 const parseHostOrHostname = validateParserToArgParser(
@@ -94,6 +97,7 @@ export {
   parseNumber,
   parseNodeId,
   parseGestaltId,
+  parseGestaltAction,
   parseHost,
   parseHostname,
   parseHostOrHostname,

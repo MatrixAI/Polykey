@@ -82,7 +82,7 @@ describe('GRPCServer', () => {
     // Noop
     await server.stop();
     expect(() => {
-      server.port;
+      server.getPort();
     }).toThrow(grpcErrors.ErrorGRPCServerNotRunning);
     expect(() => {
       server.closeServerForce();
@@ -113,8 +113,8 @@ describe('GRPCServer', () => {
         certChainPem: keysUtils.certToPem(cert),
       },
     });
-    expect(typeof server.port).toBe('number');
-    expect(server.port).toBeGreaterThan(0);
+    expect(typeof server.getPort()).toBe('number');
+    expect(server.getPort()).toBeGreaterThan(0);
     await server.stop();
   });
   test('connecting to the server securely', async () => {
@@ -152,7 +152,7 @@ describe('GRPCServer', () => {
     );
     const client = await testGrpcUtils.openTestClientSecure(
       nodeIdServer,
-      server.port,
+      server.getPort(),
       keysUtils.privateKeyToPem(clientKeyPair.privateKey),
       keysUtils.certToPem(clientCert),
     );
@@ -163,7 +163,7 @@ describe('GRPCServer', () => {
     const m = new utilsPB.EchoMessage();
     m.setChallenge('a98u3e4d');
     const pCall = unary(m);
-    expect(pCall.call.getPeer()).toBe(`dns:127.0.0.1:${server.port}`);
+    expect(pCall.call.getPeer()).toBe(`dns:127.0.0.1:${server.getPort()}`);
     const m_ = await pCall;
     expect(m_.getChallenge()).toBe(m.getChallenge());
     testGrpcUtils.closeTestClientSecure(client);
@@ -205,7 +205,7 @@ describe('GRPCServer', () => {
     const nodeIdServer1 = keysUtils.certNodeId(serverCert1)!;
     const client1 = await testGrpcUtils.openTestClientSecure(
       nodeIdServer1,
-      server.port,
+      server.getPort(),
       keysUtils.privateKeyToPem(clientKeyPair.privateKey),
       keysUtils.certToPem(clientCert),
     );
@@ -216,7 +216,7 @@ describe('GRPCServer', () => {
     const m1 = new utilsPB.EchoMessage();
     m1.setChallenge('98f7g98dfg71');
     const pCall1 = unary1(m1);
-    expect(pCall1.call.getPeer()).toBe(`dns:127.0.0.1:${server.port}`);
+    expect(pCall1.call.getPeer()).toBe(`dns:127.0.0.1:${server.getPort()}`);
     const m1_ = await pCall1;
     expect(m1_.getChallenge()).toBe(m1.getChallenge());
     // Change key and certificate
@@ -235,14 +235,14 @@ describe('GRPCServer', () => {
     const m2 = new utilsPB.EchoMessage();
     m2.setChallenge('12308947239847');
     const pCall2 = unary1(m2);
-    expect(pCall2.call.getPeer()).toBe(`dns:127.0.0.1:${server.port}`);
+    expect(pCall2.call.getPeer()).toBe(`dns:127.0.0.1:${server.getPort()}`);
     const m2_ = await pCall2;
     expect(m2_.getChallenge()).toBe(m2.getChallenge());
     // Second client connection
     const nodeIdServer2 = keysUtils.certNodeId(serverCert2)!;
     const client2 = await testGrpcUtils.openTestClientSecure(
       nodeIdServer2,
-      server.port,
+      server.getPort(),
       keysUtils.privateKeyToPem(clientKeyPair.privateKey),
       keysUtils.certToPem(clientCert),
     );
@@ -253,7 +253,7 @@ describe('GRPCServer', () => {
     const m3 = new utilsPB.EchoMessage();
     m3.setChallenge('aa89fusd98f');
     const pCall3 = unary2(m3);
-    expect(pCall3.call.getPeer()).toBe(`dns:127.0.0.1:${server.port}`);
+    expect(pCall3.call.getPeer()).toBe(`dns:127.0.0.1:${server.getPort()}`);
     const m3_ = await pCall3;
     expect(m3_.getChallenge()).toBe(m3.getChallenge());
     testGrpcUtils.closeTestClientSecure(client1);
@@ -295,7 +295,7 @@ describe('GRPCServer', () => {
     );
     const client = await testGrpcUtils.openTestClientSecure(
       nodeIdServer,
-      server.port,
+      server.getPort(),
       keysUtils.privateKeyToPem(clientKeyPair.privateKey),
       keysUtils.certToPem(clientCert),
     );

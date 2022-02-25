@@ -5,9 +5,10 @@ import fs from 'fs';
 import readline from 'readline';
 import * as jestMockProps from 'jest-mock-props';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { PolykeyAgent } from '@';
-import { Status, errors as statusErrors } from '@/status';
+import PolykeyAgent from '@/PolykeyAgent';
+import Status from '@/status/Status';
 import config from '@/config';
+import * as statusErrors from '@/status/errors';
 import * as testBinUtils from '../utils';
 import * as testUtils from '../../utils';
 
@@ -37,6 +38,10 @@ describe('start', () => {
           path.join(dataDir, 'polykey'),
           '--root-key-pair-bits',
           '1024',
+          '--client-host',
+          '127.0.0.1',
+          '--ingress-host',
+          '127.0.0.1',
           '--workers',
           '0',
           '--verbose',
@@ -93,6 +98,10 @@ describe('start', () => {
           passwordPath,
           '--root-key-pair-bits',
           '1024',
+          '--client-host',
+          '127.0.0.1',
+          '--ingress-host',
+          '127.0.0.1',
           '--background',
           '--background-out-file',
           path.join(dataDir, 'out.log'),
@@ -173,6 +182,10 @@ describe('start', () => {
             'start',
             '--root-key-pair-bits',
             '1024',
+            '--client-host',
+            '127.0.0.1',
+            '--ingress-host',
+            '127.0.0.1',
             '--workers',
             '0',
             '--verbose',
@@ -190,6 +203,10 @@ describe('start', () => {
             'start',
             '--root-key-pair-bits',
             '1024',
+            '--client-host',
+            '127.0.0.1',
+            '--ingress-host',
+            '127.0.0.1',
             '--workers',
             '0',
             '--verbose',
@@ -263,6 +280,10 @@ describe('start', () => {
             'start',
             '--root-key-pair-bits',
             '1024',
+            '--client-host',
+            '127.0.0.1',
+            '--ingress-host',
+            '127.0.0.1',
             '--workers',
             '0',
             '--verbose',
@@ -343,6 +364,10 @@ describe('start', () => {
           'start',
           '--root-key-pair-bits',
           '1024',
+          '--client-host',
+          '127.0.0.1',
+          '--ingress-host',
+          '127.0.0.1',
           '--workers',
           '0',
           '--verbose',
@@ -371,6 +396,10 @@ describe('start', () => {
           'start',
           '--root-key-pair-bits',
           '1024',
+          '--client-host',
+          '127.0.0.1',
+          '--ingress-host',
+          '127.0.0.1',
           '--workers',
           '0',
           '--verbose',
@@ -415,6 +444,10 @@ describe('start', () => {
           'start',
           '--root-key-pair-bits',
           '1024',
+          '--client-host',
+          '127.0.0.1',
+          '--ingress-host',
+          '127.0.0.1',
           '--workers',
           '0',
           '--verbose',
@@ -452,6 +485,10 @@ describe('start', () => {
           'start',
           '--root-key-pair-bits',
           '1024',
+          '--client-host',
+          '127.0.0.1',
+          '--ingress-host',
+          '127.0.0.1',
           '--workers',
           '0',
           '--fresh',
@@ -517,6 +554,10 @@ describe('start', () => {
           path.join(dataDir, 'polykey'),
           '--root-key-pair-bits',
           '1024',
+          '--client-host',
+          '127.0.0.1',
+          '--ingress-host',
+          '127.0.0.1',
           '--workers',
           '0',
           '--verbose',
@@ -548,6 +589,10 @@ describe('start', () => {
           recoveryCodePath,
           '--root-key-pair-bits',
           '2048',
+          '--client-host',
+          '127.0.0.1',
+          '--ingress-host',
+          '127.0.0.1',
           '--workers',
           '0',
           '--verbose',
@@ -593,6 +638,10 @@ describe('start', () => {
           'start',
           '--root-key-pair-bits',
           '1024',
+          '--client-host',
+          '127.0.0.1',
+          '--ingress-host',
+          '127.0.0.1',
           '--workers',
           '0',
           '--verbose',
@@ -700,8 +749,8 @@ describe('start', () => {
       seedNodeHost1 = globalAgentStatus.data.ingressHost;
       seedNodePort1 = globalAgentStatus.data.ingressPort;
       seedNodeId2 = agent.keyManager.getNodeId();
-      seedNodeHost2 = agent.grpcServerAgent.host;
-      seedNodePort2 = agent.grpcServerAgent.port;
+      seedNodeHost2 = agent.grpcServerAgent.getHost();
+      seedNodePort2 = agent.grpcServerAgent.getPort();
     }, globalThis.maxTimeout);
     afterAll(async () => {
       await agent.stop();
@@ -744,6 +793,10 @@ describe('start', () => {
             'start',
             '--root-key-pair-bits',
             '1024',
+            '--client-host',
+            '127.0.0.1',
+            '--ingress-host',
+            '127.0.0.1',
             '--workers',
             '0',
             '--seed-nodes',
@@ -804,6 +857,10 @@ describe('start', () => {
             'start',
             '--root-key-pair-bits',
             '1024',
+            '--client-host',
+            '127.0.0.1',
+            '--ingress-host',
+            '127.0.0.1',
             '--workers',
             '0',
             '--verbose',

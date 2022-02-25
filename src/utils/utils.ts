@@ -205,7 +205,7 @@ function arrayUnset<T>(items: Array<T>, item: T) {
 
 function debounce<P extends any[]>(
   f: (...params: P) => any,
-  timeout: number = 0
+  timeout: number = 0,
 ): (...param: P) => void {
   let timer: ReturnType<typeof setTimeout>;
   return function (this: any, ...args: any[]) {
@@ -231,5 +231,5 @@ export {
   timerStop,
   arraySet,
   arrayUnset,
-  debounce
+  debounce,
 };

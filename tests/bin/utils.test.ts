@@ -15,7 +15,7 @@ describe('bin/utils', () => {
         type: 'json',
         data: ['Testing', 'the', 'list', 'output'],
       }),
-    ).toBe('["Testing","the","list","output"]');
+    ).toBe('["Testing","the","list","output"]\n');
   });
   test('table in human and in json format', () => {
     // Table
@@ -38,7 +38,7 @@ describe('bin/utils', () => {
         ],
       }),
     ).toBe(
-      '[{"key1":"value1","key2":"value2"},{"key1":"data1","key2":"data2"}]',
+      '[{"key1":"value1","key2":"value2"},{"key1":"data1","key2":"data2"}]\n',
     );
   });
   test('dict in human and in json format', () => {
@@ -61,6 +61,6 @@ describe('bin/utils', () => {
         type: 'json',
         data: { key1: 'value1', key2: 'value2' },
       }),
-    ).toBe('{"key1":"value1","key2":"value2"}');
+    ).toBe('{"key1":"value1","key2":"value2"}\n');
   });
 });

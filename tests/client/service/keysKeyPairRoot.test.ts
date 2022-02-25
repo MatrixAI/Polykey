@@ -4,16 +4,15 @@ import path from 'path';
 import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { Metadata } from '@grpc/grpc-js';
-import { GRPCServer } from '@/grpc';
-import { KeyManager, utils as keysUtils } from '@/keys';
-import {
-  GRPCClientClient,
-  ClientServiceService,
-  utils as clientUtils,
-} from '@/client';
+import KeyManager from '@/keys/KeyManager';
+import GRPCServer from '@/grpc/GRPCServer';
+import GRPCClientClient from '@/client/GRPCClientClient';
 import keysKeyPairRoot from '@/client/service/keysKeyPairRoot';
+import { ClientServiceService } from '@/proto/js/polykey/v1/client_service_grpc_pb';
 import * as keysPB from '@/proto/js/polykey/v1/keys/keys_pb';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
+import * as clientUtils from '@/client/utils/utils';
+import * as keysUtils from '@/keys/utils';
 import * as testUtils from '../../utils';
 
 describe('keysKeyPairRoot', () => {
@@ -68,7 +67,7 @@ describe('keysKeyPairRoot', () => {
     grpcClient = await GRPCClientClient.createGRPCClientClient({
       nodeId: keyManager.getNodeId(),
       host: '127.0.0.1' as Host,
-      port: grpcServer.port,
+      port: grpcServer.getPort(),
       logger,
     });
   });

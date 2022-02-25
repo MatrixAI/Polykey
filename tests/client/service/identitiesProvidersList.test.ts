@@ -1,22 +1,20 @@
-import type { Host, Port } from '@/network/types';
 import type { ProviderId } from '@/identities/types';
+import type { Host, Port } from '@/network/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { Metadata } from '@grpc/grpc-js';
 import { DB } from '@matrixai/db';
-import { GRPCServer } from '@/grpc';
-import { IdentitiesManager } from '@/identities';
-import {
-  GRPCClientClient,
-  ClientServiceService,
-  utils as clientUtils,
-} from '@/client';
+import { Metadata } from '@grpc/grpc-js';
+import IdentitiesManager from '@/identities/IdentitiesManager';
+import GRPCServer from '@/grpc/GRPCServer';
+import GRPCClientClient from '@/client/GRPCClientClient';
 import identitiesProvidersList from '@/client/service/identitiesProvidersList';
-import * as identitiesPB from '@/proto/js/polykey/v1/identities/identities_pb';
+import { ClientServiceService } from '@/proto/js/polykey/v1/client_service_grpc_pb';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
-import { utils as nodesUtils } from '@/nodes';
+import * as identitiesPB from '@/proto/js/polykey/v1/identities/identities_pb';
+import * as clientUtils from '@/client/utils/utils';
+import * as nodesUtils from '@/nodes/utils';
 import TestProvider from '../../identities/TestProvider';
 
 describe('identitiesProvidersList', () => {
@@ -75,7 +73,7 @@ describe('identitiesProvidersList', () => {
         'vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg',
       )!,
       host: '127.0.0.1' as Host,
-      port: grpcServer.port,
+      port: grpcServer.getPort(),
       logger,
     });
   });

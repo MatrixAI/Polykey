@@ -35,14 +35,14 @@ function agentStatus({
       call.sendMetadata(metadata);
       response.setPid(process.pid);
       response.setNodeId(nodeUtils.encodeNodeId(keyManager.getNodeId()));
-      response.setClientHost(grpcServerClient.host);
-      response.setClientPort(grpcServerClient.port);
+      response.setClientHost(grpcServerClient.getHost());
+      response.setClientPort(grpcServerClient.getPort());
       response.setIngressHost(revProxy.getIngressHost());
       response.setIngressPort(revProxy.getIngressPort());
       response.setEgressHost(fwdProxy.getEgressHost());
       response.setEgressPort(fwdProxy.getEgressPort());
-      response.setAgentHost(grpcServerAgent.host);
-      response.setAgentPort(grpcServerAgent.port);
+      response.setAgentHost(grpcServerAgent.getHost());
+      response.setAgentPort(grpcServerAgent.getPort());
       response.setProxyHost(fwdProxy.getProxyHost());
       response.setProxyPort(fwdProxy.getProxyPort());
       response.setRootPublicKeyPem(keyManager.getRootKeyPairPem().publicKey);

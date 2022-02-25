@@ -1,34 +1,38 @@
-import type { Host, Port } from '@/network/types';
 import type { NodeIdEncoded } from '@/nodes/types';
-import type { IdentityId } from '@/identities/types';
 import type { ClaimLinkIdentity } from '@/claims/types';
 import type { ChainData } from '@/sigchain/types';
 import type { Gestalt } from '@/gestalts/types';
+import type { IdentityId } from '@/identities/types';
+import type { Host, Port } from '@/network/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { Metadata } from '@grpc/grpc-js';
 import { DB } from '@matrixai/db';
-import { PolykeyAgent } from '@';
-import { KeyManager } from '@/keys';
-import { GestaltGraph } from '@/gestalts';
-import { ACL } from '@/acl';
-import { GRPCServer } from '@/grpc';
-import { Discovery } from '@/discovery';
-import { IdentitiesManager } from '@/identities';
-import { NodeConnectionManager, NodeGraph, NodeManager } from '@/nodes';
-import { Sigchain } from '@/sigchain';
-import { ForwardProxy, ReverseProxy } from '@/network';
-import { GRPCClientClient, ClientServiceService } from '@/client';
+import { Metadata } from '@grpc/grpc-js';
+import PolykeyAgent from '@/PolykeyAgent';
+import KeyManager from '@/keys/KeyManager';
+import Discovery from '@/discovery/Discovery';
+import IdentitiesManager from '@/identities/IdentitiesManager';
+import NodeConnectionManager from '@/nodes/NodeConnectionManager';
+import NodeGraph from '@/nodes/NodeGraph';
+import NodeManager from '@/nodes/NodeManager';
+import Sigchain from '@/sigchain/Sigchain';
+import ForwardProxy from '@/network/ForwardProxy';
+import ReverseProxy from '@/network/ReverseProxy';
+import GestaltGraph from '@/gestalts/GestaltGraph';
+import ACL from '@/acl/ACL';
+import GRPCServer from '@/grpc/GRPCServer';
+import GRPCClientClient from '@/client/GRPCClientClient';
 import gestaltsGestaltTrustByNode from '@/client/service/gestaltsGestaltTrustByNode';
+import { ClientServiceService } from '@/proto/js/polykey/v1/client_service_grpc_pb';
 import { poll } from '@/utils';
-import * as nodesPB from '@/proto/js/polykey/v1/nodes/nodes_pb';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
-import * as nodesUtils from '@/nodes/utils';
+import * as nodesPB from '@/proto/js/polykey/v1/nodes/nodes_pb';
 import * as claimsUtils from '@/claims/utils';
 import * as keysUtils from '@/keys/utils';
-import * as clientUtils from '@/client/utils';
+import * as clientUtils from '@/client/utils/utils';
+import * as nodesUtils from '@/nodes/utils';
 import * as testUtils from '../../utils';
 import TestProvider from '../../identities/TestProvider';
 
@@ -70,6 +74,13 @@ describe('gestaltsGestaltTrustByNode', () => {
     node = await PolykeyAgent.createPolykeyAgent({
       password,
       nodePath,
+      networkConfig: {
+        proxyHost: '127.0.0.1' as Host,
+        egressHost: '127.0.0.1' as Host,
+        ingressHost: '127.0.0.1' as Host,
+        agentHost: '127.0.0.1' as Host,
+        clientHost: '127.0.0.1' as Host,
+      },
       logger,
     });
     nodeId = nodesUtils.encodeNodeId(node.keyManager.getNodeId());
@@ -234,7 +245,7 @@ describe('gestaltsGestaltTrustByNode', () => {
     grpcClient = await GRPCClientClient.createGRPCClientClient({
       nodeId: keyManager.getNodeId(),
       host: '127.0.0.1' as Host,
-      port: grpcServer.port,
+      port: grpcServer.getPort(),
       logger,
     });
   });

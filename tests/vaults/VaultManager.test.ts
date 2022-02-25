@@ -814,7 +814,7 @@ describe('VaultManager', () => {
 
       await revProxy.start({
         serverHost: targetHost,
-        serverPort: targetAgentServer.port,
+        serverPort: targetAgentServer.getPort(),
         ingressHost: targetHost,
         ingressPort: targetPort,
         tlsConfig: revTLSConfig,
@@ -822,7 +822,7 @@ describe('VaultManager', () => {
 
       await altRevProxy.start({
         serverHost: altHostIn,
-        serverPort: altAgentServer.port,
+        serverPort: altAgentServer.getPort(),
         ingressHost: altHostIn,
         ingressPort: altPortIn,
         tlsConfig: altRevTLSConfig,

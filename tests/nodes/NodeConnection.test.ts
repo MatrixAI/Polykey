@@ -289,7 +289,7 @@ describe(`${NodeConnection.name} test`, () => {
     });
     await serverRevProxy.start({
       serverHost: localHost,
-      serverPort: agentServer.port,
+      serverPort: agentServer.getPort(),
       ingressHost: localHost,
       tlsConfig: serverTLSConfig,
     });

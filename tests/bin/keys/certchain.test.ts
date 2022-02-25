@@ -1,6 +1,3 @@
-import os from 'os';
-import path from 'path';
-import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as testBinUtils from '../utils';
 import * as testUtils from '../../utils';
@@ -19,20 +16,8 @@ describe('certchain', () => {
   afterAll(async () => {
     await globalAgentClose();
   });
-  let dataDir: string;
-  beforeEach(async () => {
-    dataDir = await fs.promises.mkdtemp(
-      path.join(os.tmpdir(), 'polykey-test-'),
-    );
-  });
-  afterEach(async () => {
-    await fs.promises.rm(dataDir, {
-      force: true,
-      recursive: true,
-    });
-  });
   test('certchain gets the certificate chain', async () => {
-    const { exitCode, stdout } = await testBinUtils.pkStdio(
+    let { exitCode, stdout } = await testBinUtils.pkStdio(
       ['keys', 'certchain', '--format', 'json'],
       {
         PK_NODE_PATH: globalAgentDir,
@@ -41,6 +26,20 @@ describe('certchain', () => {
       globalAgentDir,
     );
     expect(exitCode).toBe(0);
-    expect(stdout).toContain('Certificate:');
+    expect(JSON.parse(stdout)).toEqual({
+      certchain: expect.any(Array),
+    });
+    const certChainCommand = JSON.parse(stdout).certchain.join('\n');
+    ({ exitCode, stdout } = await testBinUtils.pkStdio(
+      ['agent', 'status', '--format', 'json'],
+      {
+        PK_NODE_PATH: globalAgentDir,
+        PK_PASSWORD: globalAgentPassword,
+      },
+      globalAgentDir,
+    ));
+    expect(exitCode).toBe(0);
+    const certChainStatus = JSON.parse(stdout).rootCertChainPem;
+    expect(certChainCommand).toBe(certChainStatus);
   });
 });
