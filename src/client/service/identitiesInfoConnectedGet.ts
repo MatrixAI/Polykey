@@ -81,7 +81,7 @@ function identitiesInfoConnectedGet({
         // if not authenticated
         const authIdentities = await provider.getAuthIdentityIds();
         if (authIdentities.length === 0) {
-          break;
+          continue;
         }
         const authIdentityId =
           identityId === undefined ? authIdentities[0] : identityId;

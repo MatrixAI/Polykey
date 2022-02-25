@@ -1,4 +1,4 @@
-import type { ProviderId } from '@/identities/types';
+import type { IdentityId, ProviderId } from '@/identities/types';
 import type { Host, Port } from '@/network/types';
 import fs from 'fs';
 import path from 'path';
@@ -9,7 +9,9 @@ import { Metadata } from '@grpc/grpc-js';
 import IdentitiesManager from '@/identities/IdentitiesManager';
 import GRPCServer from '@/grpc/GRPCServer';
 import GRPCClientClient from '@/client/GRPCClientClient';
-import identitiesProvidersList from '@/client/service/identitiesProvidersList';
+import identitiesTokenPut from '@/client/service/identitiesTokenPut';
+import identitiesTokenGet from '@/client/service/identitiesTokenGet';
+import identitiesTokenDelete from '@/client/service/identitiesTokenDelete';
 import { ClientServiceService } from '@/proto/js/polykey/v1/client_service_grpc_pb';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as identitiesPB from '@/proto/js/polykey/v1/identities/identities_pb';
@@ -17,27 +19,20 @@ import * as clientUtils from '@/client/utils/utils';
 import * as nodesUtils from '@/nodes/utils';
 import TestProvider from '../../identities/TestProvider';
 
-describe('identitiesProvidersList', () => {
-  const logger = new Logger('identitiesProvidersList test', LogLevel.WARN, [
+describe('identitiesTokenPutDeleteGet', () => {
+  const logger = new Logger('identitiesTokenPutDeleteGet test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
   const password = 'helloworld';
   const authenticate = async (metaClient, metaServer = new Metadata()) =>
     metaServer;
-  const id1 = 'provider1' as ProviderId;
-  const id2 = 'provider2' as ProviderId;
-  const providers = {};
-  providers[id1] = new TestProvider();
-  providers[id2] = new TestProvider();
-  let mockedGetProviders: jest.SpyInstance;
-  beforeAll(async () => {
-    mockedGetProviders = jest
-      .spyOn(IdentitiesManager.prototype, 'getProviders')
-      .mockReturnValue(providers);
-  });
-  afterAll(async () => {
-    mockedGetProviders.mockRestore();
-  });
+  const testToken = {
+    providerId: 'test-provider' as ProviderId,
+    identityId: 'test_user' as IdentityId,
+    tokenData: {
+      accessToken: 'abc123',
+    },
+  };
   let dataDir: string;
   let identitiesManager: IdentitiesManager;
   let db: DB;
@@ -56,8 +51,17 @@ describe('identitiesProvidersList', () => {
       db,
       logger,
     });
+    identitiesManager.registerProvider(new TestProvider());
     const clientService = {
-      identitiesProvidersList: identitiesProvidersList({
+      identitiesTokenPut: identitiesTokenPut({
+        authenticate,
+        identitiesManager,
+      }),
+      identitiesTokenGet: identitiesTokenGet({
+        authenticate,
+        identitiesManager,
+      }),
+      identitiesTokenDelete: identitiesTokenDelete({
         authenticate,
         identitiesManager,
       }),
@@ -87,14 +91,38 @@ describe('identitiesProvidersList', () => {
       recursive: true,
     });
   });
-  test('lists providers', async () => {
-    const request = new utilsPB.EmptyMessage();
-    const response = await grpcClient.identitiesProvidersList(
-      request,
+  test('puts/deletes/gets tokens', async () => {
+    // Put token
+    const putRequest = new identitiesPB.TokenSpecific();
+    const providerMessage = new identitiesPB.Provider();
+    providerMessage.setProviderId(testToken.providerId);
+    providerMessage.setIdentityId(testToken.identityId);
+    putRequest.setProvider(providerMessage);
+    putRequest.setToken(testToken.tokenData.accessToken);
+    const putResponse = await grpcClient.identitiesTokenPut(
+      putRequest,
       clientUtils.encodeAuthFromPassword(password),
     );
-    expect(response).toBeInstanceOf(identitiesPB.Provider);
-    expect(response.getProviderId()).toContain('provider1');
-    expect(response.getProviderId()).toContain('provider2');
+    expect(putResponse).toBeInstanceOf(utilsPB.EmptyMessage);
+    // Get token
+    const getPutResponse = await grpcClient.identitiesTokenGet(
+      providerMessage,
+      clientUtils.encodeAuthFromPassword(password),
+    );
+    expect(getPutResponse).toBeInstanceOf(identitiesPB.Token);
+    expect(JSON.parse(getPutResponse.getToken())).toEqual(testToken.tokenData);
+    // Delete token
+    const deleteResponse = await grpcClient.identitiesTokenDelete(
+      providerMessage,
+      clientUtils.encodeAuthFromPassword(password),
+    );
+    expect(deleteResponse).toBeInstanceOf(utilsPB.EmptyMessage);
+    // Check token was deleted
+    const getDeleteResponse = await grpcClient.identitiesTokenGet(
+      providerMessage,
+      clientUtils.encodeAuthFromPassword(password),
+    );
+    expect(getDeleteResponse).toBeInstanceOf(identitiesPB.Token);
+    expect(getDeleteResponse.getToken()).toEqual('');
   });
 });

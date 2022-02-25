@@ -75,7 +75,7 @@ function identitiesInfoGet({
         // require the identity to be connected
         const authIdentities = await provider.getAuthIdentityIds();
         if (authIdentities.length === 0) {
-          break;
+          continue;
         }
         // Get identity data
         identities.push(

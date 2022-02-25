@@ -4,19 +4,17 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { Metadata } from '@grpc/grpc-js';
 import { DB } from '@matrixai/db';
-import { GRPCServer } from '@/grpc';
-import { IdentitiesManager } from '@/identities';
-import {
-  GRPCClientClient,
-  ClientServiceService,
-  utils as clientUtils,
-} from '@/client';
+import { Metadata } from '@grpc/grpc-js';
+import IdentitiesManager from '@/identities/IdentitiesManager';
+import GRPCServer from '@/grpc/GRPCServer';
+import GRPCClientClient from '@/client/GRPCClientClient';
 import identitiesAuthenticate from '@/client/service/identitiesAuthenticate';
+import { ClientServiceService } from '@/proto/js/polykey/v1/client_service_grpc_pb';
 import * as identitiesPB from '@/proto/js/polykey/v1/identities/identities_pb';
-import { utils as nodesUtils } from '@/nodes';
 import * as validationErrors from '@/validation/errors';
+import * as clientUtils from '@/client/utils/utils';
+import * as nodesUtils from '@/nodes/utils';
 import TestProvider from '../../identities/TestProvider';
 
 describe('identitiesAuthenticate', () => {
@@ -71,7 +69,7 @@ describe('identitiesAuthenticate', () => {
         'vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg',
       )!,
       host: '127.0.0.1' as Host,
-      port: grpcServer.port,
+      port: grpcServer.getPort(),
       logger,
     });
   });
