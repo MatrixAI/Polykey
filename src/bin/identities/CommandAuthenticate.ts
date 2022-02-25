@@ -2,6 +2,7 @@ import type PolykeyClient from '../../PolykeyClient';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
 import * as binOptions from '../utils/options';
+import * as parsers from '../utils/parsers';
 import * as binProcessors from '../utils/processors';
 import * as identitiesUtils from '../../identities/utils';
 
@@ -10,8 +11,16 @@ class CommandAuthenticate extends CommandPolykey {
     super(...args);
     this.name('authenticate');
     this.description('Authenticate a Digital Identity Provider');
-    this.argument('<providerId>', 'Name of the digital identity provider');
-    this.argument('<identityId>', 'Digital identity to authenticate');
+    this.argument(
+      '<providerId>',
+      'Name of the digital identity provider',
+      parsers.parseProviderId,
+    );
+    this.argument(
+      '<identityId>',
+      'Digital identity to authenticate',
+      parsers.parseIdentityId,
+    );
     this.addOption(binOptions.nodeId);
     this.addOption(binOptions.clientHost);
     this.addOption(binOptions.clientPort);

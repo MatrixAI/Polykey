@@ -2,6 +2,7 @@ import type PolykeyClient from '../../PolykeyClient';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
 import * as binOptions from '../utils/options';
+import * as parsers from '../utils/parsers';
 import * as binProcessors from '../utils/processors';
 
 class CommandClaim extends CommandPolykey {
@@ -9,8 +10,16 @@ class CommandClaim extends CommandPolykey {
     super(...args);
     this.name('claim');
     this.description('Claim a Digital Identity for this Keynode');
-    this.argument('<providerId>', 'Name of the digital identity provider');
-    this.argument('<identityId>', 'Digital identity to claim');
+    this.argument(
+      '<providerId>',
+      'Name of the digital identity provider',
+      parsers.parseProviderId,
+    );
+    this.argument(
+      '<identityId>',
+      'Digital identity to claim',
+      parsers.parseIdentityId,
+    );
     this.addOption(binOptions.nodeId);
     this.addOption(binOptions.clientHost);
     this.addOption(binOptions.clientPort);

@@ -16,7 +16,11 @@ class CommandAllow extends CommandPolykey {
       'Node ID or `Provider ID:Identity ID`',
       binParsers.parseGestaltId,
     );
-    this.argument('<permissions>', 'permission to set');
+    this.argument(
+      '<permissions>',
+      'Permission to set',
+      binParsers.parseGestaltAction,
+    );
     this.addOption(binOptions.nodeId);
     this.addOption(binOptions.clientHost);
     this.addOption(binOptions.clientPort);

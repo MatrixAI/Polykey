@@ -77,8 +77,10 @@ class CommandPermissions extends CommandPolykey {
         }
         process.stdout.write(
           binUtils.outputFormatter({
-            type: options.format === 'json' ? 'json' : 'list',
-            data: [`Permissions: ${actions}`],
+            type: options.format === 'json' ? 'json' : 'dict',
+            data: {
+              permissions: actions,
+            },
           }),
         );
       } finally {

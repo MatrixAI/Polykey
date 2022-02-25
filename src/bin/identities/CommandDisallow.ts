@@ -16,7 +16,11 @@ class CommandDisallow extends CommandPolykey {
       'Node ID or `Provider Id:Identity Id`',
       parsers.parseGestaltId,
     );
-    this.argument('<permissions>', 'Permission to unset');
+    this.argument(
+      '<permissions>',
+      'Permission to unset',
+      parsers.parseGestaltAction,
+    );
     this.addOption(binOptions.nodeId);
     this.addOption(binOptions.clientHost);
     this.addOption(binOptions.clientPort);
