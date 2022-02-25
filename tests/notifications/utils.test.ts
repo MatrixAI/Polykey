@@ -2,26 +2,24 @@ import type { Notification, NotificationData } from '@/notifications/types';
 import type { VaultActions, VaultName } from '@/vaults/types';
 import { createPublicKey } from 'crypto';
 import { EmbeddedJWK, jwtVerify, exportJWK } from 'jose';
-import { utils as idUtils } from '@matrixai/id';
-
+import { IdInternal } from '@matrixai/id';
+import { sleep } from '@/utils';
 import * as keysUtils from '@/keys/utils';
 import * as notificationsUtils from '@/notifications/utils';
 import * as notificationsErrors from '@/notifications/errors';
-import { createNotificationIdGenerator } from '@/notifications/utils';
-import { sleep } from '@/utils';
-import { makeVaultId } from '@/vaults/utils';
-import { utils as nodesUtils } from '@/nodes';
+import * as vaultsUtils from '@/vaults/utils';
+import * as nodesUtils from '@/nodes/utils';
 import * as testUtils from '../utils';
 
 describe('Notifications utils', () => {
   const nodeId = testUtils.generateRandomNodeId();
   const nodeIdEncoded = nodesUtils.encodeNodeId(nodeId);
-  const vaultId = makeVaultId(
-    idUtils.fromString('vaultIdxxxxxxxxx'),
-  ).toString();
+  const vaultId = vaultsUtils
+    .makeVaultId(IdInternal.fromString('vaultIdxxxxxxxxx'))
+    .toString();
 
   test('generates notification ids', async () => {
-    const generator = createNotificationIdGenerator();
+    const generator = notificationsUtils.createNotificationIdGenerator();
     let oldId = generator();
     let currentId;
 
@@ -32,12 +30,12 @@ describe('Notifications utils', () => {
     }
   });
   test('Generator maintains order between instances', async () => {
-    let generator = createNotificationIdGenerator();
+    let generator = notificationsUtils.createNotificationIdGenerator();
     let lastId = generator();
     let currentId;
 
     for (let i = 0; i < 100; i++) {
-      generator = createNotificationIdGenerator(lastId);
+      generator = notificationsUtils.createNotificationIdGenerator(lastId);
       currentId = generator();
       expect(Buffer.compare(lastId, currentId)).toBeTruthy();
       lastId = currentId;

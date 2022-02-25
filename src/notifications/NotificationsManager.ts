@@ -120,7 +120,9 @@ class NotificationsManager {
     return this.lock.isLocked();
   }
 
-  async start({ fresh }: { fresh: boolean }): Promise<void> {
+  public async start({
+    fresh = false,
+  }: { fresh?: boolean } = {}): Promise<void> {
     this.logger.info(`Starting ${this.constructor.name}`);
     // Sub-level stores MESSAGE_COUNT_KEY -> number (of messages)
     const notificationsDb = await this.db.level(this.notificationsDomain);
@@ -148,12 +150,12 @@ class NotificationsManager {
     this.logger.info(`Started ${this.constructor.name}`);
   }
 
-  async stop() {
+  public async stop() {
     this.logger.info(`Stopping ${this.constructor.name}`);
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
-  async destroy() {
+  public async destroy() {
     this.logger.info(`Destroying ${this.constructor.name}`);
     const notificationsDb = await this.db.level(this.notificationsDomain);
     await notificationsDb.clear();
@@ -165,7 +167,6 @@ class NotificationsManager {
    * This does not ensure atomicity of the underlying database
    * Database atomicity still depends on the underlying operation
    */
-  @ready(new notificationsErrors.ErrorNotificationsNotRunning())
   public async transaction<T>(
     f: (notificationsManager: NotificationsManager) => Promise<T>,
   ): Promise<T> {
@@ -181,7 +182,6 @@ class NotificationsManager {
    * Transaction wrapper that will not lock if the operation was executed
    * within a transaction context
    */
-  @ready(new notificationsErrors.ErrorNotificationsNotRunning())
   public async _transaction<T>(f: () => Promise<T>): Promise<T> {
     if (this.lock.isLocked()) {
       return await f();

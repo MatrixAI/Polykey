@@ -18,7 +18,7 @@ describe('GRPC utils', () => {
       metaServer;
     [server, port] = await utils.openTestServer(authenticate, logger);
     client = await utils.openTestClient(port);
-  }, global.polykeyStartupTimeout);
+  }, global.defaultTimeout);
   afterAll(async () => {
     utils.closeTestClient(client);
     setTimeout(() => {
