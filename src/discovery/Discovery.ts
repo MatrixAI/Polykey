@@ -2,9 +2,11 @@ import type { MutexInterface } from 'async-mutex';
 import type { DB, DBLevel } from '@matrixai/db';
 import type { DiscoveryQueueId, DiscoveryQueueIdGenerator } from './types';
 import type { NodeId, NodeInfo } from '../nodes/types';
-import type { GestaltGraph } from '../gestalts';
+import type NodeManager from '../nodes/NodeManager';
+import type GestaltGraph from '../gestalts/GestaltGraph';
 import type { GestaltKey } from '../gestalts/types';
-import type { Provider, IdentitiesManager } from '../identities';
+import type Provider from '../identities/Provider';
+import type IdentitiesManager from '../identities/IdentitiesManager';
 import type {
   IdentityInfo,
   ProviderId,
@@ -12,7 +14,6 @@ import type {
   IdentityClaimId,
   IdentityClaims,
 } from '../identities/types';
-import type { NodeManager } from '../nodes';
 import type { Sigchain } from '../sigchain';
 import type { KeyManager } from '../keys';
 import type { ClaimIdEncoded, Claim, ClaimLinkIdentity } from '../claims/types';
@@ -29,6 +30,7 @@ import { IdInternal } from '@matrixai/id';
 import * as idUtils from '@matrixai/id/dist/utils';
 import * as discoveryUtils from './utils';
 import * as discoveryErrors from './errors';
+import * as nodesErrors from '../nodes/errors';
 import * as utils from '../utils';
 import * as gestaltsUtils from '../gestalts/utils';
 import * as claimsUtils from '../claims/utils';
@@ -160,6 +162,7 @@ class Discovery {
     if (this.queuePlugRelease != null) {
       this.queuePlugRelease();
     }
+    await this.discoveryQueue.return();
     await this.discoveryProcess;
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
@@ -228,7 +231,19 @@ class Discovery {
               }
               // Otherwise, request the verified chain data from the node
             } else {
-              vertexChainData = await this.nodeManager.requestChainData(nodeId);
+              try {
+                vertexChainData = await this.nodeManager.requestChainData(
+                  nodeId,
+                );
+              } catch (e) {
+                this.visitedVertices.add(vertex);
+                await this.removeKeyFromDiscoveryQueue(vertexId);
+                this.logger.error(
+                  `Failed to discover ${vertexGId.nodeId} - ${e.toString()}`,
+                );
+                yield;
+                continue;
+              }
             }
             // TODO: for now, the chain data is treated as a 'disjoint' set of
             // cryptolink claims from a node to another node/identity
@@ -260,8 +275,31 @@ class Discovery {
                 const linkedVertexNodeId = node1Id.equals(nodeId)
                   ? node2Id
                   : node1Id;
-                const linkedVertexChainData =
-                  await this.nodeManager.requestChainData(linkedVertexNodeId);
+                const linkedVertexGK =
+                  gestaltsUtils.keyFromNode(linkedVertexNodeId);
+                let linkedVertexChainData: ChainData;
+                try {
+                  linkedVertexChainData =
+                    await this.nodeManager.requestChainData(linkedVertexNodeId);
+                } catch (e) {
+                  if (
+                    e instanceof nodesErrors.ErrorNodeConnectionDestroyed ||
+                    e instanceof nodesErrors.ErrorNodeConnectionTimeout
+                  ) {
+                    if (!this.visitedVertices.has(linkedVertexGK)) {
+                      await this.pushKeyToDiscoveryQueue(linkedVertexGK);
+                    }
+                    this.logger.error(
+                      `Failed to discover ${nodesUtils.encodeNodeId(
+                        linkedVertexNodeId,
+                      )} - ${e.toString()}`,
+                    );
+                    yield;
+                    continue;
+                  } else {
+                    throw e;
+                  }
+                }
                 // With this verified chain, we can link
                 const linkedVertexNodeInfo: NodeInfo = {
                   id: nodesUtils.encodeNodeId(linkedVertexNodeId),
@@ -272,8 +310,6 @@ class Discovery {
                   linkedVertexNodeInfo,
                 );
                 // Add this vertex to the queue if it hasn't already been visited
-                const linkedVertexGK =
-                  gestaltsUtils.keyFromNode(linkedVertexNodeId);
                 if (!this.visitedVertices.has(linkedVertexGK)) {
                   await this.pushKeyToDiscoveryQueue(linkedVertexGK);
                 }
@@ -324,9 +360,31 @@ class Discovery {
               // So just cast payload data as such
               const data = claim.payload.data as ClaimLinkIdentity;
               const linkedVertexNodeId = nodesUtils.decodeNodeId(data.node)!;
+              const linkedVertexGK =
+                gestaltsUtils.keyFromNode(linkedVertexNodeId);
               // Get the chain data of this claimed node (so that we can link in GG)
-              const linkedVertexChainData =
-                await this.nodeManager.requestChainData(linkedVertexNodeId);
+              let linkedVertexChainData: ChainData;
+              try {
+                linkedVertexChainData = await this.nodeManager.requestChainData(
+                  linkedVertexNodeId,
+                );
+              } catch (e) {
+                if (
+                  e instanceof nodesErrors.ErrorNodeConnectionDestroyed ||
+                  e instanceof nodesErrors.ErrorNodeConnectionTimeout
+                ) {
+                  if (!this.visitedVertices.has(linkedVertexGK)) {
+                    await this.pushKeyToDiscoveryQueue(linkedVertexGK);
+                  }
+                  yield;
+                  this.logger.error(
+                    `Failed to discover ${data.node} - ${e.toString()}`,
+                  );
+                  continue;
+                } else {
+                  throw e;
+                }
+              }
               // With this verified chain, we can link
               const linkedVertexNodeInfo: NodeInfo = {
                 id: nodesUtils.encodeNodeId(linkedVertexNodeId),
@@ -337,8 +395,6 @@ class Discovery {
                 vertexIdentityInfo,
               );
               // Add this vertex to the queue if it is not present
-              const linkedVertexGK =
-                gestaltsUtils.keyFromNode(linkedVertexNodeId);
               if (!this.visitedVertices.has(linkedVertexGK)) {
                 await this.pushKeyToDiscoveryQueue(linkedVertexGK);
               }
@@ -393,10 +449,17 @@ class Discovery {
 
   /**
    * Push a Gestalt Key to the Discovery Queue. This process also unlocks
-   * the queue if it was previously locked (due to being empty).
+   * the queue if it was previously locked (due to being empty)
+   * Will only add the Key if it does not already exist in the queue
    */
   protected async pushKeyToDiscoveryQueue(gk: GestaltKey) {
     await utils.withF([this.transaction], async () => {
+      const valueStream = this.discoveryQueueDb.createValueStream({});
+      for await (const key of valueStream) {
+        if (key === gk) {
+          return;
+        }
+      }
       const discoveryQueueId = this.discoveryQueueIdGenerator();
       await this.db.put(
         this.discoveryQueueDbDomain,

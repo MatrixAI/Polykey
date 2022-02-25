@@ -491,10 +491,10 @@ class PolykeyAgent {
     this.gestaltGraph = gestaltGraph;
     this.fwdProxy = fwdProxy;
     this.revProxy = revProxy;
+    this.discovery = discovery;
     this.nodeGraph = nodeGraph;
     this.nodeConnectionManager = nodeConnectionManager;
     this.nodeManager = nodeManager;
-    this.discovery = discovery;
     this.vaultManager = vaultManager;
     this.notificationsManager = notificationsManager;
     this.sessionManager = sessionManager;
@@ -516,8 +516,8 @@ class PolykeyAgent {
     try {
       this.logger.info(`Starting ${this.constructor.name}`);
       // Set up error handling for event handlers
-      this.events[captureRejectionSymbol] = (err, event) => {
-        let msg = `EventBus error for ${event}`;
+      this.events[captureRejectionSymbol] = (err, event: symbol) => {
+        let msg = `EventBus error for ${event.toString()}`;
         if (err instanceof errors.ErrorPolykey) {
           msg += `: ${err.name}: ${err.description}`;
           if (err.message !== '') {
@@ -617,8 +617,8 @@ class PolykeyAgent {
         tlsConfig,
       });
       await this.revProxy.start({
-        serverHost: this.grpcServerAgent.host,
-        serverPort: this.grpcServerAgent.port,
+        serverHost: this.grpcServerAgent.getHost(),
+        serverPort: this.grpcServerAgent.getPort(),
         ingressHost: networkConfig_.ingressHost,
         ingressPort: networkConfig_.ingressPort,
         tlsConfig,
@@ -633,8 +633,8 @@ class PolykeyAgent {
       await this.status.finishStart({
         pid: process.pid,
         nodeId: this.keyManager.getNodeId(),
-        clientHost: this.grpcServerClient.host,
-        clientPort: this.grpcServerClient.port,
+        clientHost: this.grpcServerClient.getHost(),
+        clientPort: this.grpcServerClient.getPort(),
         ingressHost: this.revProxy.getIngressHost(),
         ingressPort: this.revProxy.getIngressPort(),
       });
@@ -672,9 +672,9 @@ class PolykeyAgent {
     await this.sessionManager.stop();
     await this.notificationsManager.stop();
     await this.vaultManager.stop();
+    await this.discovery.stop();
     await this.nodeConnectionManager.stop();
     await this.nodeGraph.stop();
-    await this.discovery.stop();
     await this.revProxy.stop();
     await this.fwdProxy.stop();
     await this.grpcServerAgent.stop();
@@ -698,8 +698,8 @@ class PolykeyAgent {
     await this.sessionManager.destroy();
     await this.notificationsManager.destroy();
     await this.vaultManager.destroy();
-    await this.nodeGraph.destroy();
     await this.discovery.destroy();
+    await this.nodeGraph.destroy();
     await this.gestaltGraph.destroy();
     await this.acl.destroy();
     await this.sigchain.destroy();
