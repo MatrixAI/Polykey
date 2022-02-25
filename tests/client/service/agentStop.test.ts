@@ -5,18 +5,16 @@ import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { Metadata } from '@grpc/grpc-js';
 import { running } from '@matrixai/async-init';
-import { PolykeyAgent } from '@';
-import { utils as keysUtils } from '@/keys';
-import { GRPCServer } from '@/grpc';
-import { Status } from '@/status';
-import {
-  GRPCClientClient,
-  ClientServiceService,
-  utils as clientUtils,
-} from '@/client';
+import PolykeyAgent from '@/PolykeyAgent';
+import Status from '@/status/Status';
+import GRPCServer from '@/grpc/GRPCServer';
+import GRPCClientClient from '@/client/GRPCClientClient';
 import agentStop from '@/client/service/agentStop';
 import config from '@/config';
+import { ClientServiceService } from '@/proto/js/polykey/v1/client_service_grpc_pb';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
+import * as keysUtils from '@/keys/utils';
+import * as clientUtils from '@/client/utils/utils';
 import * as testUtils from '../../utils';
 
 describe('agentStop', () => {
@@ -72,7 +70,7 @@ describe('agentStop', () => {
     grpcClient = await GRPCClientClient.createGRPCClientClient({
       nodeId: pkAgent.keyManager.getNodeId(),
       host: '127.0.0.1' as Host,
-      port: grpcServer.port,
+      port: grpcServer.getPort(),
       logger,
     });
   });

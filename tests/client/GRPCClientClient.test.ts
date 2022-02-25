@@ -1,20 +1,16 @@
-import type * as grpc from '@grpc/grpc-js';
 import type { Host, Port } from '@/network/types';
 import type { NodeId } from '@/nodes/types';
+import type * as grpc from '@grpc/grpc-js';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { GRPCClientClient } from '@/client';
-import { PolykeyAgent } from '@';
-import { utils as keysUtils } from '@/keys';
-import { Status } from '@/status';
-import { Session } from '@/sessions';
-import { errors as clientErrors } from '@/client';
-import config from '@/config';
-import * as binProcessors from '@/bin/utils/processors';
+import GRPCClientClient from '@/client/GRPCClientClient';
+import PolykeyAgent from '@/PolykeyAgent';
+import Session from '@/sessions/Session';
+import * as keysUtils from '@/keys/utils';
+import * as clientErrors from '@/client/errors';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
-import { utils as nodesUtils } from '@/nodes';
 import * as testClientUtils from './utils';
 import * as testUtils from '../utils';
 
@@ -87,48 +83,5 @@ describe(GRPCClientClient.name, () => {
     await expect(async () => {
       await client.agentStatus(new utilsPB.EmptyMessage());
     }).rejects.toThrow(clientErrors.ErrorClientClientDestroyed);
-  });
-  test('can get status', async () => {
-    client = await GRPCClientClient.createGRPCClientClient({
-      nodeId: nodeId,
-      host: '127.0.0.1' as Host,
-      port: port as Port,
-      tlsConfig: { keyPrivatePem: undefined, certChainPem: undefined },
-      logger: logger,
-      timeout: 10000,
-      session: session,
-    });
-    await fs.promises.writeFile(path.join(dataDir, 'password'), password);
-    const meta = await binProcessors.processAuthentication(
-      path.join(dataDir, 'password'),
-      fs,
-    );
-    const status = new Status({
-      statusPath: path.join(nodePath, config.defaults.statusBase),
-      statusLockPath: path.join(nodePath, config.defaults.statusLockBase),
-      fs,
-      logger,
-    });
-    const statusInfo = (await status.readStatus())!;
-    const emptyMessage = new utilsPB.EmptyMessage();
-    const response = await client.agentStatus(emptyMessage, meta);
-    expect(typeof response.getPid()).toBe('number');
-    expect(response.getNodeId()).toBe(
-      nodesUtils.encodeNodeId(statusInfo.data.nodeId),
-    );
-    expect(response.getClientHost()).toBe(statusInfo.data.clientHost);
-    expect(response.getClientPort()).toBe(statusInfo.data.clientPort);
-    expect(response.getIngressHost()).toBe(statusInfo.data.ingressHost);
-    expect(response.getIngressPort()).toBe(statusInfo.data.ingressPort);
-    expect(typeof response.getEgressHost()).toBe('string');
-    expect(typeof response.getEgressPort()).toBe('number');
-    expect(typeof response.getAgentHost()).toBe('string');
-    expect(typeof response.getAgentPort()).toBe('number');
-    expect(typeof response.getProxyHost()).toBe('string');
-    expect(typeof response.getProxyPort()).toBe('number');
-    expect(typeof response.getRootPublicKeyPem()).toBe('string');
-    expect(typeof response.getRootCertPem()).toBe('string');
-    expect(typeof response.getRootCertChainPem()).toBe('string');
-    await client.destroy();
   });
 });

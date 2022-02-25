@@ -1,15 +1,13 @@
 import type { Host, Port } from '@/network/types';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { Metadata } from '@grpc/grpc-js';
-import { GRPCServer } from '@/grpc';
-import {
-  GRPCClientClient,
-  ClientServiceService,
-  utils as clientUtils,
-} from '@/client';
+import GRPCServer from '@/grpc/GRPCServer';
+import GRPCClientClient from '@/client/GRPCClientClient';
 import agentUnlock from '@/client/service/agentUnlock';
+import { ClientServiceService } from '@/proto/js/polykey/v1/client_service_grpc_pb';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
-import { utils as nodesUtils } from '@/nodes';
+import * as nodesUtils from '@/nodes/utils';
+import * as clientUtils from '@/client/utils/utils';
 
 describe('agentUnlock', () => {
   const logger = new Logger('agentUnlock test', LogLevel.WARN, [
@@ -37,7 +35,7 @@ describe('agentUnlock', () => {
         'vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg',
       )!,
       host: '127.0.0.1' as Host,
-      port: grpcServer.port,
+      port: grpcServer.getPort(),
       logger,
     });
   });

@@ -3,18 +3,17 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { DB } from '@matrixai/db';
 import { Metadata } from '@grpc/grpc-js';
-import { KeyManager, utils as keysUtils } from '@/keys';
-import { SessionManager } from '@/sessions';
-import { GRPCServer } from '@/grpc';
-import {
-  GRPCClientClient,
-  ClientServiceService,
-  utils as clientUtils,
-} from '@/client';
+import { DB } from '@matrixai/db';
+import SessionManager from '@/sessions/SessionManager';
+import KeyManager from '@/keys/KeyManager';
+import GRPCServer from '@/grpc/GRPCServer';
+import GRPCClientClient from '@/client/GRPCClientClient';
 import agentLockAll from '@/client/service/agentLockAll';
+import { ClientServiceService } from '@/proto/js/polykey/v1/client_service_grpc_pb';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
+import * as keysUtils from '@/keys/utils';
+import * as clientUtils from '@/client/utils/utils';
 import * as testUtils from '../../utils';
 
 describe('agentLockall', () => {
@@ -87,7 +86,7 @@ describe('agentLockall', () => {
     grpcClient = await GRPCClientClient.createGRPCClientClient({
       nodeId: keyManager.getNodeId(),
       host: '127.0.0.1' as Host,
-      port: grpcServer.port,
+      port: grpcServer.getPort(),
       logger,
     });
   });
