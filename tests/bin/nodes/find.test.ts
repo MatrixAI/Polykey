@@ -9,62 +9,66 @@ import * as nodesUtils from '@/nodes/utils';
 import * as keysUtils from '@/keys/utils';
 import * as testBinUtils from '../utils';
 import * as testNodesUtils from '../../nodes/utils';
+import * as testUtils from '../../utils';
 
 describe('find', () => {
-  const password = 'password';
   const logger = new Logger('find test', LogLevel.WARN, [new StreamHandler()]);
-  let rootDataDir: string;
+  const password = 'helloworld';
+  let mockedGenerateKeyPair: jest.SpyInstance;
+  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
   let dataDir: string;
   let nodePath: string;
-  let passwordFile: string;
   let polykeyAgent: PolykeyAgent;
   let remoteOnline: PolykeyAgent;
   let remoteOffline: PolykeyAgent;
-
   let remoteOnlineNodeId: NodeId;
   let remoteOfflineNodeId: NodeId;
-
   let remoteOnlineHost: Host;
   let remoteOnlinePort: Port;
   let remoteOfflineHost: Host;
   let remoteOfflinePort: Port;
-
-  // Helper functions
-  function genCommands(options: Array<string>) {
-    return ['nodes', ...options, '-np', nodePath];
-  }
-
-  const mockedGenerateDeterministicKeyPair = jest.spyOn(
-    keysUtils,
-    'generateDeterministicKeyPair',
-  );
-
   beforeAll(async () => {
-    mockedGenerateDeterministicKeyPair.mockImplementation((bits, _) => {
-      return keysUtils.generateKeyPair(bits);
-    });
-
-    rootDataDir = await fs.promises.mkdtemp(
-      path.join(os.tmpdir(), 'polykey-test-'),
-    );
+    const globalKeyPair = await testUtils.setupGlobalKeypair();
+    mockedGenerateKeyPair = jest
+      .spyOn(keysUtils, 'generateKeyPair')
+      .mockResolvedValueOnce(globalKeyPair);
+    mockedGenerateDeterministicKeyPair = jest
+      .spyOn(keysUtils, 'generateDeterministicKeyPair')
+      .mockResolvedValueOnce(globalKeyPair);
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
     nodePath = path.join(dataDir, 'keynode');
-    passwordFile = path.join(dataDir, 'passwordFile');
-    await fs.promises.writeFile(passwordFile, 'password');
     polykeyAgent = await PolykeyAgent.createPolykeyAgent({
       password,
-      nodePath: nodePath,
-      logger: logger,
+      nodePath,
+      networkConfig: {
+        proxyHost: '127.0.0.1' as Host,
+        egressHost: '127.0.0.1' as Host,
+        ingressHost: '127.0.0.1' as Host,
+        agentHost: '127.0.0.1' as Host,
+        clientHost: '127.0.0.1' as Host,
+      },
+      nodeConnectionManagerConfig: {
+        connConnectTime: 2000,
+        connTimeoutTime: 2000,
+      },
+      seedNodes: {}, // Explicitly no seed nodes on startup
+      logger,
     });
-
     // Setting up a remote keynode
     remoteOnline = await PolykeyAgent.createPolykeyAgent({
-      password: 'password',
-      nodePath: path.join(rootDataDir, 'remoteOnline'),
+      password,
+      nodePath: path.join(dataDir, 'remoteOnline'),
+      networkConfig: {
+        proxyHost: '127.0.0.1' as Host,
+        egressHost: '127.0.0.1' as Host,
+        ingressHost: '127.0.0.1' as Host,
+        agentHost: '127.0.0.1' as Host,
+        clientHost: '127.0.0.1' as Host,
+      },
       keysConfig: {
-        rootKeyPairBits: 2048,
+        rootKeyPairBits: 1024,
       },
       logger,
     });
@@ -72,13 +76,19 @@ describe('find', () => {
     remoteOnlineHost = remoteOnline.revProxy.getIngressHost();
     remoteOnlinePort = remoteOnline.revProxy.getIngressPort();
     await testNodesUtils.nodesConnect(polykeyAgent, remoteOnline);
-
     // Setting up an offline remote keynode
     remoteOffline = await PolykeyAgent.createPolykeyAgent({
-      password: 'password',
-      nodePath: path.join(rootDataDir, 'remoteOffline'),
+      password,
+      nodePath: path.join(dataDir, 'remoteOffline'),
+      networkConfig: {
+        proxyHost: '127.0.0.1' as Host,
+        egressHost: '127.0.0.1' as Host,
+        ingressHost: '127.0.0.1' as Host,
+        agentHost: '127.0.0.1' as Host,
+        clientHost: '127.0.0.1' as Host,
+      },
       keysConfig: {
-        rootKeyPairBits: 2048,
+        rootKeyPairBits: 1024,
       },
       logger,
     });
@@ -87,132 +97,94 @@ describe('find', () => {
     remoteOfflinePort = remoteOffline.revProxy.getIngressPort();
     await testNodesUtils.nodesConnect(polykeyAgent, remoteOffline);
     await remoteOffline.stop();
-
-    // Authorize session
-    await testBinUtils.pkStdio(
-      ['agent', 'unlock', '-np', nodePath, '--password-file', passwordFile],
-      {},
-      nodePath,
-    );
-  }, global.polykeyStartupTimeout * 3);
+  }, global.defaultTimeout * 3);
   afterAll(async () => {
     await polykeyAgent.stop();
     await polykeyAgent.destroy();
     await remoteOnline.stop();
+    await remoteOnline.destroy();
     await remoteOffline.stop();
+    await remoteOffline.destroy();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
     });
-    await fs.promises.rm(rootDataDir, {
-      force: true,
-      recursive: true,
-    });
+    mockedGenerateKeyPair.mockRestore();
+    mockedGenerateDeterministicKeyPair.mockRestore();
   });
-
-  test('find an online node', async () => {
-    const commands = genCommands([
-      'find',
-      nodesUtils.encodeNodeId(remoteOnlineNodeId),
-    ]);
-    const result = await testBinUtils.pkStdio(commands, {}, dataDir);
-    expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain('Found node at');
-    expect(result.stdout).toContain(remoteOnlineHost);
-    expect(result.stdout).toContain(remoteOnlinePort);
-
-    // Checking json format.
-    const commands2 = genCommands([
-      'find',
-      nodesUtils.encodeNodeId(remoteOnlineNodeId),
-      '--format',
-      'json',
-    ]);
-    const result2 = await testBinUtils.pkStdio(commands2, {}, dataDir);
-    expect(result2.exitCode).toBe(0);
-    expect(result2.stdout).toContain('success');
-    expect(result2.stdout).toContain('true');
-    expect(result2.stdout).toContain('message');
-    expect(result2.stdout).toContain(
-      `Found node at ${remoteOnlineHost}:${remoteOnlinePort}`,
-    );
-    expect(result2.stdout).toContain('host');
-    expect(result2.stdout).toContain('port');
-    expect(result2.stdout).toContain('id');
-    expect(result2.stdout).toContain(
-      nodesUtils.encodeNodeId(remoteOnlineNodeId),
-    );
-  });
-  test('find an offline node', async () => {
-    const commands = genCommands([
-      'find',
-      nodesUtils.encodeNodeId(remoteOfflineNodeId),
-    ]);
-    const result = await testBinUtils.pkStdio(commands, {}, dataDir);
-    expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain('Found node at');
-    expect(result.stdout).toContain(remoteOfflineHost);
-    expect(result.stdout).toContain(remoteOfflinePort);
-
-    // Checking json format.
-    const commands2 = genCommands([
-      'find',
-      nodesUtils.encodeNodeId(remoteOfflineNodeId),
-      '--format',
-      'json',
-    ]);
-    const result2 = await testBinUtils.pkStdio(commands2, {}, dataDir);
-    expect(result2.exitCode).toBe(0);
-    expect(result2.stdout).toContain('success');
-    expect(result2.stdout).toContain('true');
-    expect(result2.stdout).toContain('message');
-    expect(result2.stdout).toContain(
-      `Found node at ${remoteOfflineHost}:${remoteOfflinePort}`,
-    );
-    expect(result2.stdout).toContain('host');
-    expect(result2.stdout).toContain('port');
-    expect(result2.stdout).toContain('id');
-    expect(result2.stdout).toContain(
-      nodesUtils.encodeNodeId(remoteOfflineNodeId),
-    );
-  });
-  test(
-    'fail to find an unknown node',
-    async () => {
-      const unknownNodeId = nodesUtils.decodeNodeId(
-        'vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg',
-      )!;
-      const commands = genCommands([
+  test('finds an online node', async () => {
+    const { exitCode, stdout } = await testBinUtils.pkStdio(
+      [
+        'nodes',
         'find',
-        nodesUtils.encodeNodeId(unknownNodeId),
-      ]);
-      const result = await testBinUtils.pkStdio(commands, {}, dataDir);
-      expect(result.exitCode).toBe(1);
-      expect(result.stdout).toContain(
-        `Failed to find node ${nodesUtils.encodeNodeId(unknownNodeId)}`,
-      );
-
-      // Checking json format.
-      const commands2 = genCommands([
-        'find',
-        nodesUtils.encodeNodeId(unknownNodeId),
+        nodesUtils.encodeNodeId(remoteOnlineNodeId),
         '--format',
         'json',
-      ]);
-      const result2 = await testBinUtils.pkStdio(commands2, {}, dataDir);
-      expect(result2.exitCode).toBe(1);
-      expect(result2.stdout).toContain(`message`);
-      expect(result2.stdout).toContain(
-        `Failed to find node ${nodesUtils.encodeNodeId(unknownNodeId)}`,
-      );
-      expect(result2.stdout).toContain('id');
-      expect(result2.stdout).toContain(nodesUtils.encodeNodeId(unknownNodeId));
-      expect(result2.stdout).toContain('port');
-      expect(result2.stdout).toContain('0');
-      expect(result2.stdout).toContain('host');
-      expect(result2.stdout).toContain('success');
-      expect(result2.stdout).toContain('false');
-    },
-    global.failedConnectionTimeout * 2,
-  );
+      ],
+      {
+        PK_NODE_PATH: nodePath,
+        PK_PASSWORD: password,
+      },
+      dataDir,
+    );
+    expect(exitCode).toBe(0);
+    expect(JSON.parse(stdout)).toEqual({
+      success: true,
+      message: `Found node at ${remoteOnlineHost}:${remoteOnlinePort}`,
+      id: nodesUtils.encodeNodeId(remoteOnlineNodeId),
+      host: remoteOnlineHost,
+      port: remoteOnlinePort,
+    });
+  });
+  test('finds an offline node', async () => {
+    const { exitCode, stdout } = await testBinUtils.pkStdio(
+      [
+        'nodes',
+        'find',
+        nodesUtils.encodeNodeId(remoteOfflineNodeId),
+        '--format',
+        'json',
+      ],
+      {
+        PK_NODE_PATH: nodePath,
+        PK_PASSWORD: password,
+      },
+      dataDir,
+    );
+    expect(exitCode).toBe(0);
+    expect(JSON.parse(stdout)).toEqual({
+      success: true,
+      message: `Found node at ${remoteOfflineHost}:${remoteOfflinePort}`,
+      id: nodesUtils.encodeNodeId(remoteOfflineNodeId),
+      host: remoteOfflineHost,
+      port: remoteOfflinePort,
+    });
+  });
+  test('fails to find an unknown node', async () => {
+    const unknownNodeId = nodesUtils.decodeNodeId(
+      'vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg',
+    );
+    const { exitCode, stdout } = await testBinUtils.pkStdio(
+      [
+        'nodes',
+        'find',
+        nodesUtils.encodeNodeId(unknownNodeId!),
+        '--format',
+        'json',
+      ],
+      {
+        PK_NODE_PATH: nodePath,
+        PK_PASSWORD: password,
+      },
+      dataDir,
+    );
+    expect(exitCode).toBe(1);
+    expect(JSON.parse(stdout)).toEqual({
+      success: false,
+      message: `Failed to find node ${nodesUtils.encodeNodeId(unknownNodeId!)}`,
+      id: nodesUtils.encodeNodeId(unknownNodeId!),
+      host: '',
+      port: 0,
+    });
+  });
 });
