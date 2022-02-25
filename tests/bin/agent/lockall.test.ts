@@ -1,10 +1,9 @@
-import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import prompts from 'prompts';
 import { mocked } from 'ts-jest/utils';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { Session } from '@/sessions';
+import Session from '@/sessions/Session';
 import config from '@/config';
 import * as clientErrors from '@/client/errors';
 import * as testBinUtils from '../utils';
@@ -29,18 +28,6 @@ describe('lockall', () => {
   }, globalThis.maxTimeout);
   afterAll(async () => {
     await globalAgentClose();
-  });
-  let dataDir: string;
-  beforeEach(async () => {
-    dataDir = await fs.promises.mkdtemp(
-      path.join(os.tmpdir(), 'polykey-test-'),
-    );
-  });
-  afterEach(async () => {
-    await fs.promises.rm(dataDir, {
-      force: true,
-      recursive: true,
-    });
   });
   test('lockall deletes the session token', async () => {
     await testBinUtils.pkStdio(

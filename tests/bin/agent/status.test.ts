@@ -2,10 +2,10 @@ import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { Status } from '@/status';
-import * as binErrors from '@/bin/errors';
+import Status from '@/status/Status';
 import config from '@/config';
-import { utils as nodesUtils } from '@/nodes';
+import * as nodesUtils from '@/nodes/utils';
+import * as binErrors from '@/bin/errors';
 import * as testBinUtils from '../utils';
 import * as testUtils from '../../utils';
 
@@ -46,6 +46,10 @@ describe('status', () => {
           'start',
           '--root-key-pair-bits',
           '1024',
+          '--client-host',
+          '127.0.0.1',
+          '--ingress-host',
+          '127.0.0.1',
           '--workers',
           '0',
           '--verbose',

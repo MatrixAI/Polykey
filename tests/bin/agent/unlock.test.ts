@@ -1,8 +1,7 @@
-import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { Session } from '@/sessions';
+import Session from '@/sessions/Session';
 import config from '@/config';
 import * as testBinUtils from '../utils';
 import * as testUtils from '../../utils';
@@ -20,18 +19,6 @@ describe('unlock', () => {
   }, globalThis.maxTimeout);
   afterAll(async () => {
     await globalAgentClose();
-  });
-  let dataDir: string;
-  beforeEach(async () => {
-    dataDir = await fs.promises.mkdtemp(
-      path.join(os.tmpdir(), 'polykey-test-'),
-    );
-  });
-  afterEach(async () => {
-    await fs.promises.rm(dataDir, {
-      force: true,
-      recursive: true,
-    });
   });
   test('unlock acquires session token', async () => {
     // Fresh session, to delete the token
