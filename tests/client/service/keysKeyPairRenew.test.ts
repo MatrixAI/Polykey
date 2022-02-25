@@ -1,25 +1,23 @@
 import type { Host, Port, TLSConfig } from '@/network/types';
-import type { ReverseProxy } from '@/network';
-import type { KeyManager } from '@/keys';
-import type { ForwardProxy } from '@/network';
-import type { Status } from '@/status';
+import type ForwardProxy from '@/network/ForwardProxy';
+import type ReverseProxy from '@/network/ReverseProxy';
+import type Status from '@/status/Status';
+import type KeyManager from '@/keys/KeyManager';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { Metadata } from '@grpc/grpc-js';
-import { NodeGraph } from '@/nodes';
-import { utils as keysUtils } from '@/keys';
-import { GRPCServer } from '@/grpc';
-import { PolykeyAgent } from '@';
-import {
-  GRPCClientClient,
-  ClientServiceService,
-  utils as clientUtils,
-} from '@/client';
+import NodeGraph from '@/nodes/NodeGraph';
+import PolykeyAgent from '@/PolykeyAgent';
+import GRPCServer from '@/grpc/GRPCServer';
+import GRPCClientClient from '@/client/GRPCClientClient';
 import keysKeyPairRenew from '@/client/service/keysKeyPairRenew';
+import { ClientServiceService } from '@/proto/js/polykey/v1/client_service_grpc_pb';
 import * as keysPB from '@/proto/js/polykey/v1/keys/keys_pb';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
+import * as clientUtils from '@/client/utils/utils';
+import * as keysUtils from '@/keys/utils';
 import * as testUtils from '../../utils';
 
 describe('keysKeyPairRenew', () => {
@@ -89,7 +87,7 @@ describe('keysKeyPairRenew', () => {
     grpcClient = await GRPCClientClient.createGRPCClientClient({
       nodeId: keyManager.getNodeId(),
       host: '127.0.0.1' as Host,
-      port: grpcServer.port,
+      port: grpcServer.getPort(),
       logger,
     });
   });
