@@ -195,113 +195,37 @@ export namespace Stat {
     }
 }
 
-export class PermSet extends jspb.Message { 
+export class Permissions extends jspb.Message { 
 
     hasVault(): boolean;
     clearVault(): void;
     getVault(): Vault | undefined;
-    setVault(value?: Vault): PermSet;
+    setVault(value?: Vault): Permissions;
 
     hasNode(): boolean;
     clearNode(): void;
     getNode(): polykey_v1_nodes_nodes_pb.Node | undefined;
-    setNode(value?: polykey_v1_nodes_nodes_pb.Node): PermSet;
+    setNode(value?: polykey_v1_nodes_nodes_pb.Node): Permissions;
+    clearVaultPermissionsList(): void;
+    getVaultPermissionsList(): Array<string>;
+    setVaultPermissionsList(value: Array<string>): Permissions;
+    addVaultPermissions(value: string, index?: number): string;
 
     serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): PermSet.AsObject;
-    static toObject(includeInstance: boolean, msg: PermSet): PermSet.AsObject;
+    toObject(includeInstance?: boolean): Permissions.AsObject;
+    static toObject(includeInstance: boolean, msg: Permissions): Permissions.AsObject;
     static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
     static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: PermSet, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): PermSet;
-    static deserializeBinaryFromReader(message: PermSet, reader: jspb.BinaryReader): PermSet;
+    static serializeBinaryToWriter(message: Permissions, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): Permissions;
+    static deserializeBinaryFromReader(message: Permissions, reader: jspb.BinaryReader): Permissions;
 }
 
-export namespace PermSet {
+export namespace Permissions {
     export type AsObject = {
         vault?: Vault.AsObject,
         node?: polykey_v1_nodes_nodes_pb.Node.AsObject,
-    }
-}
-
-export class PermUnset extends jspb.Message { 
-
-    hasVault(): boolean;
-    clearVault(): void;
-    getVault(): Vault | undefined;
-    setVault(value?: Vault): PermUnset;
-
-    hasNode(): boolean;
-    clearNode(): void;
-    getNode(): polykey_v1_nodes_nodes_pb.Node | undefined;
-    setNode(value?: polykey_v1_nodes_nodes_pb.Node): PermUnset;
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): PermUnset.AsObject;
-    static toObject(includeInstance: boolean, msg: PermUnset): PermUnset.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: PermUnset, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): PermUnset;
-    static deserializeBinaryFromReader(message: PermUnset, reader: jspb.BinaryReader): PermUnset;
-}
-
-export namespace PermUnset {
-    export type AsObject = {
-        vault?: Vault.AsObject,
-        node?: polykey_v1_nodes_nodes_pb.Node.AsObject,
-    }
-}
-
-export class PermGet extends jspb.Message { 
-
-    hasVault(): boolean;
-    clearVault(): void;
-    getVault(): Vault | undefined;
-    setVault(value?: Vault): PermGet;
-
-    hasNode(): boolean;
-    clearNode(): void;
-    getNode(): polykey_v1_nodes_nodes_pb.Node | undefined;
-    setNode(value?: polykey_v1_nodes_nodes_pb.Node): PermGet;
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): PermGet.AsObject;
-    static toObject(includeInstance: boolean, msg: PermGet): PermGet.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: PermGet, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): PermGet;
-    static deserializeBinaryFromReader(message: PermGet, reader: jspb.BinaryReader): PermGet;
-}
-
-export namespace PermGet {
-    export type AsObject = {
-        vault?: Vault.AsObject,
-        node?: polykey_v1_nodes_nodes_pb.Node.AsObject,
-    }
-}
-
-export class Permission extends jspb.Message { 
-    getNodeId(): string;
-    setNodeId(value: string): Permission;
-    getAction(): string;
-    setAction(value: string): Permission;
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): Permission.AsObject;
-    static toObject(includeInstance: boolean, msg: Permission): Permission.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: Permission, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): Permission;
-    static deserializeBinaryFromReader(message: Permission, reader: jspb.BinaryReader): Permission;
-}
-
-export namespace Permission {
-    export type AsObject = {
-        nodeId: string,
-        action: string,
+        vaultPermissionsList: Array<string>,
     }
 }
 

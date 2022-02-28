@@ -3,7 +3,6 @@ import type VaultManager from '@/vaults/VaultManager';
 import type { VaultId, VaultName } from '@/vaults/types';
 import type { ClientServiceClient } from '@/proto/js/polykey/v1/client_service_grpc_pb';
 import type { Stat } from 'encryptedfs';
-import type * as permissionsPB from '@/proto/js/polykey/v1/permissions/permissions_pb';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
@@ -342,9 +341,9 @@ describe('Vaults client service', () => {
     });
     test('should get vault permissions', async () => {
       const vaultsPermissionsGet =
-        grpcUtils.promisifyReadableStreamCall<permissionsPB.NodeActions>(
+        grpcUtils.promisifyReadableStreamCall<vaultsPB.Permissions>(
           client,
-          client.vaultsPermissionsGet,
+          client.vaultsPermissionGet,
         );
 
       let remoteKeynode1: PolykeyAgent | undefined;
@@ -360,7 +359,6 @@ describe('Vaults client service', () => {
           logger: logger.getChild('Remote Keynode 2'),
           nodePath: path.join(dataDir, 'remoteKeynode2'),
         });
-
         const targetNodeId1 = remoteKeynode1.keyManager.getNodeId();
         const targetNodeId2 = remoteKeynode2.keyManager.getNodeId();
         const pkAgentNodeId = pkAgent.keyManager.getNodeId();
@@ -382,14 +380,11 @@ describe('Vaults client service', () => {
           port: remoteKeynode2.revProxy.getIngressPort(),
         });
 
-        await remoteKeynode1.nodeManager.setNode(
-          pkAgent.keyManager.getNodeId(),
-          {
-            host: pkAgent.revProxy.getIngressHost(),
-            port: pkAgent.revProxy.getIngressPort(),
-          },
-        );
-        await remoteKeynode2.nodeManager.setNode(targetNodeId2, {
+        await remoteKeynode1.nodeManager.setNode(pkAgentNodeId, {
+          host: pkAgent.revProxy.getIngressHost(),
+          port: pkAgent.revProxy.getIngressPort(),
+        });
+        await remoteKeynode2.nodeManager.setNode(pkAgentNodeId, {
           host: pkAgent.revProxy.getIngressHost(),
           port: pkAgent.revProxy.getIngressPort(),
         });
@@ -409,9 +404,24 @@ describe('Vaults client service', () => {
         const vaultId1 = await vaultManager.createVault(vaultList[0]);
         const vaultId2 = await vaultManager.createVault(vaultList[1]);
 
-        await vaultManager.shareVault(vaultId1, targetNodeId1);
-        await vaultManager.shareVault(vaultId1, targetNodeId2);
-        await vaultManager.shareVault(vaultId2, targetNodeId1);
+        await pkAgent.gestaltGraph.setGestaltActionByNode(
+          targetNodeId1,
+          'scan',
+        );
+        await pkAgent.acl.setVaultAction(vaultId1, targetNodeId1, 'clone');
+        await pkAgent.acl.setVaultAction(vaultId1, targetNodeId1, 'pull');
+        await pkAgent.gestaltGraph.setGestaltActionByNode(
+          targetNodeId2,
+          'scan',
+        );
+        await pkAgent.acl.setVaultAction(vaultId1, targetNodeId2, 'clone');
+        await pkAgent.acl.setVaultAction(vaultId1, targetNodeId2, 'pull');
+        await pkAgent.gestaltGraph.setGestaltActionByNode(
+          targetNodeId1,
+          'scan',
+        );
+        await pkAgent.acl.setVaultAction(vaultId2, targetNodeId1, 'clone');
+        await pkAgent.acl.setVaultAction(vaultId2, targetNodeId1, 'pull');
 
         const vaultMessage = new vaultsPB.Vault();
         vaultMessage.setNameOrId(vaultsUtils.encodeVaultId(vaultId1));
@@ -422,7 +432,9 @@ describe('Vaults client service', () => {
         );
         const list: Record<string, unknown>[] = [];
         for await (const permission of permissionsStream) {
-          expect(permission.getActionsList()).toEqual(['pull', 'clone']);
+          const permissionsList = permission.getVaultPermissionsList();
+          expect(permissionsList).toContain('pull');
+          expect(permissionsList).toContain('clone');
           list.push(permission.toObject());
         }
         expect(list).toHaveLength(2);
@@ -433,10 +445,12 @@ describe('Vaults client service', () => {
           callCredentials,
         );
         for await (const permission of permissionStream2) {
-          expect(permission.getActionsList()).toEqual(['pull', 'clone']);
+          const permissionsList = permission.getVaultPermissionsList();
+          expect(permissionsList).toContain('pull');
+          expect(permissionsList).toContain('clone');
           const node = permission.getNode();
           const nodeId = node?.getNodeId();
-          expect(nodeId).toEqual(targetNodeId1);
+          expect(nodeId).toEqual(nodesUtils.encodeNodeId(targetNodeId1));
         }
       } finally {
         await remoteKeynode1?.stop();

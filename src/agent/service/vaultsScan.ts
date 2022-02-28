@@ -2,7 +2,6 @@ import type * as grpc from '@grpc/grpc-js';
 import type VaultManager from '../../vaults/VaultManager';
 import type * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 import type { ConnectionInfoGet } from '../../agent/types';
-import type ACL from '../../acl/ACL';
 import * as agentErrors from '../../agent/errors';
 import * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
 import * as vaultsUtils from '../../vaults/utils';
@@ -10,11 +9,9 @@ import * as grpcUtils from '../../grpc/utils';
 
 function vaultsScan({
   vaultManager,
-  acl,
   connectionInfoGet,
 }: {
   vaultManager: VaultManager;
-  acl: ACL;
   connectionInfoGet: ConnectionInfoGet;
 }) {
   return async (
@@ -31,7 +28,7 @@ function vaultsScan({
     }
     const nodeId = connectionInfo.nodeId;
     try {
-      const listResponse = vaultManager.handleScanVaults(nodeId, acl);
+      const listResponse = vaultManager.handleScanVaults(nodeId);
       for await (const {
         vaultId,
         vaultName,

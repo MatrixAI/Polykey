@@ -52,12 +52,12 @@ interface IClientServiceService extends grpc.ServiceDefinition<grpc.UntypedServi
     vaultsSecretsNew: IClientServiceService_IVaultsSecretsNew;
     vaultsSecretsNewDir: IClientServiceService_IVaultsSecretsNewDir;
     vaultsSecretsStat: IClientServiceService_IvaultsSecretsStat;
-    vaultsPermissionsGet: IClientServiceService_IVaultsPermissionsGet;
-    vaultsShare: IClientServiceService_IVaultsShare;
-    vaultsUnshare: IClientServiceService_IVaultsUnshare;
     vaultsVersion: IClientServiceService_IVaultsVersion;
     vaultsLog: IClientServiceService_IVaultsLog;
     vaultsScan: IClientServiceService_IVaultsScan;
+    vaultsPermissionSet: IClientServiceService_IVaultsPermissionSet;
+    vaultsPermissionUnset: IClientServiceService_IVaultsPermissionUnset;
+    vaultsPermissionGet: IClientServiceService_IVaultsPermissionGet;
     identitiesAuthenticate: IClientServiceService_IIdentitiesAuthenticate;
     identitiesAuthenticatedGet: IClientServiceService_IIdentitiesAuthenticatedGet;
     identitiesTokenPut: IClientServiceService_IIdentitiesTokenPut;
@@ -382,33 +382,6 @@ interface IClientServiceService_IvaultsSecretsStat extends grpc.MethodDefinition
     responseSerialize: grpc.serialize<polykey_v1_secrets_secrets_pb.Stat>;
     responseDeserialize: grpc.deserialize<polykey_v1_secrets_secrets_pb.Stat>;
 }
-interface IClientServiceService_IVaultsPermissionsGet extends grpc.MethodDefinition<polykey_v1_vaults_vaults_pb.Vault, polykey_v1_permissions_permissions_pb.NodeActions> {
-    path: "/polykey.v1.ClientService/VaultsPermissionsGet";
-    requestStream: false;
-    responseStream: true;
-    requestSerialize: grpc.serialize<polykey_v1_vaults_vaults_pb.Vault>;
-    requestDeserialize: grpc.deserialize<polykey_v1_vaults_vaults_pb.Vault>;
-    responseSerialize: grpc.serialize<polykey_v1_permissions_permissions_pb.NodeActions>;
-    responseDeserialize: grpc.deserialize<polykey_v1_permissions_permissions_pb.NodeActions>;
-}
-interface IClientServiceService_IVaultsShare extends grpc.MethodDefinition<polykey_v1_vaults_vaults_pb.PermSet, polykey_v1_utils_utils_pb.StatusMessage> {
-    path: "/polykey.v1.ClientService/VaultsShare";
-    requestStream: false;
-    responseStream: false;
-    requestSerialize: grpc.serialize<polykey_v1_vaults_vaults_pb.PermSet>;
-    requestDeserialize: grpc.deserialize<polykey_v1_vaults_vaults_pb.PermSet>;
-    responseSerialize: grpc.serialize<polykey_v1_utils_utils_pb.StatusMessage>;
-    responseDeserialize: grpc.deserialize<polykey_v1_utils_utils_pb.StatusMessage>;
-}
-interface IClientServiceService_IVaultsUnshare extends grpc.MethodDefinition<polykey_v1_vaults_vaults_pb.PermUnset, polykey_v1_utils_utils_pb.StatusMessage> {
-    path: "/polykey.v1.ClientService/VaultsUnshare";
-    requestStream: false;
-    responseStream: false;
-    requestSerialize: grpc.serialize<polykey_v1_vaults_vaults_pb.PermUnset>;
-    requestDeserialize: grpc.deserialize<polykey_v1_vaults_vaults_pb.PermUnset>;
-    responseSerialize: grpc.serialize<polykey_v1_utils_utils_pb.StatusMessage>;
-    responseDeserialize: grpc.deserialize<polykey_v1_utils_utils_pb.StatusMessage>;
-}
 interface IClientServiceService_IVaultsVersion extends grpc.MethodDefinition<polykey_v1_vaults_vaults_pb.Version, polykey_v1_vaults_vaults_pb.VersionResult> {
     path: "/polykey.v1.ClientService/VaultsVersion";
     requestStream: false;
@@ -435,6 +408,33 @@ interface IClientServiceService_IVaultsScan extends grpc.MethodDefinition<polyke
     requestDeserialize: grpc.deserialize<polykey_v1_nodes_nodes_pb.Node>;
     responseSerialize: grpc.serialize<polykey_v1_vaults_vaults_pb.List>;
     responseDeserialize: grpc.deserialize<polykey_v1_vaults_vaults_pb.List>;
+}
+interface IClientServiceService_IVaultsPermissionSet extends grpc.MethodDefinition<polykey_v1_vaults_vaults_pb.Permissions, polykey_v1_utils_utils_pb.StatusMessage> {
+    path: "/polykey.v1.ClientService/VaultsPermissionSet";
+    requestStream: false;
+    responseStream: false;
+    requestSerialize: grpc.serialize<polykey_v1_vaults_vaults_pb.Permissions>;
+    requestDeserialize: grpc.deserialize<polykey_v1_vaults_vaults_pb.Permissions>;
+    responseSerialize: grpc.serialize<polykey_v1_utils_utils_pb.StatusMessage>;
+    responseDeserialize: grpc.deserialize<polykey_v1_utils_utils_pb.StatusMessage>;
+}
+interface IClientServiceService_IVaultsPermissionUnset extends grpc.MethodDefinition<polykey_v1_vaults_vaults_pb.Permissions, polykey_v1_utils_utils_pb.StatusMessage> {
+    path: "/polykey.v1.ClientService/VaultsPermissionUnset";
+    requestStream: false;
+    responseStream: false;
+    requestSerialize: grpc.serialize<polykey_v1_vaults_vaults_pb.Permissions>;
+    requestDeserialize: grpc.deserialize<polykey_v1_vaults_vaults_pb.Permissions>;
+    responseSerialize: grpc.serialize<polykey_v1_utils_utils_pb.StatusMessage>;
+    responseDeserialize: grpc.deserialize<polykey_v1_utils_utils_pb.StatusMessage>;
+}
+interface IClientServiceService_IVaultsPermissionGet extends grpc.MethodDefinition<polykey_v1_vaults_vaults_pb.Vault, polykey_v1_vaults_vaults_pb.Permissions> {
+    path: "/polykey.v1.ClientService/VaultsPermissionGet";
+    requestStream: false;
+    responseStream: true;
+    requestSerialize: grpc.serialize<polykey_v1_vaults_vaults_pb.Vault>;
+    requestDeserialize: grpc.deserialize<polykey_v1_vaults_vaults_pb.Vault>;
+    responseSerialize: grpc.serialize<polykey_v1_vaults_vaults_pb.Permissions>;
+    responseDeserialize: grpc.deserialize<polykey_v1_vaults_vaults_pb.Permissions>;
 }
 interface IClientServiceService_IIdentitiesAuthenticate extends grpc.MethodDefinition<polykey_v1_identities_identities_pb.Provider, polykey_v1_identities_identities_pb.AuthenticationProcess> {
     path: "/polykey.v1.ClientService/IdentitiesAuthenticate";
@@ -698,12 +698,12 @@ export interface IClientServiceServer extends grpc.UntypedServiceImplementation 
     vaultsSecretsNew: grpc.handleUnaryCall<polykey_v1_secrets_secrets_pb.Secret, polykey_v1_utils_utils_pb.StatusMessage>;
     vaultsSecretsNewDir: grpc.handleUnaryCall<polykey_v1_secrets_secrets_pb.Directory, polykey_v1_utils_utils_pb.StatusMessage>;
     vaultsSecretsStat: grpc.handleUnaryCall<polykey_v1_secrets_secrets_pb.Secret, polykey_v1_secrets_secrets_pb.Stat>;
-    vaultsPermissionsGet: grpc.handleServerStreamingCall<polykey_v1_vaults_vaults_pb.Vault, polykey_v1_permissions_permissions_pb.NodeActions>;
-    vaultsShare: grpc.handleUnaryCall<polykey_v1_vaults_vaults_pb.PermSet, polykey_v1_utils_utils_pb.StatusMessage>;
-    vaultsUnshare: grpc.handleUnaryCall<polykey_v1_vaults_vaults_pb.PermUnset, polykey_v1_utils_utils_pb.StatusMessage>;
     vaultsVersion: grpc.handleUnaryCall<polykey_v1_vaults_vaults_pb.Version, polykey_v1_vaults_vaults_pb.VersionResult>;
     vaultsLog: grpc.handleServerStreamingCall<polykey_v1_vaults_vaults_pb.Log, polykey_v1_vaults_vaults_pb.LogEntry>;
     vaultsScan: grpc.handleServerStreamingCall<polykey_v1_nodes_nodes_pb.Node, polykey_v1_vaults_vaults_pb.List>;
+    vaultsPermissionSet: grpc.handleUnaryCall<polykey_v1_vaults_vaults_pb.Permissions, polykey_v1_utils_utils_pb.StatusMessage>;
+    vaultsPermissionUnset: grpc.handleUnaryCall<polykey_v1_vaults_vaults_pb.Permissions, polykey_v1_utils_utils_pb.StatusMessage>;
+    vaultsPermissionGet: grpc.handleServerStreamingCall<polykey_v1_vaults_vaults_pb.Vault, polykey_v1_vaults_vaults_pb.Permissions>;
     identitiesAuthenticate: grpc.handleServerStreamingCall<polykey_v1_identities_identities_pb.Provider, polykey_v1_identities_identities_pb.AuthenticationProcess>;
     identitiesAuthenticatedGet: grpc.handleServerStreamingCall<polykey_v1_identities_identities_pb.OptionalProvider, polykey_v1_identities_identities_pb.Provider>;
     identitiesTokenPut: grpc.handleUnaryCall<polykey_v1_identities_identities_pb.TokenSpecific, polykey_v1_utils_utils_pb.EmptyMessage>;
@@ -828,14 +828,6 @@ export interface IClientServiceClient {
     vaultsSecretsStat(request: polykey_v1_secrets_secrets_pb.Secret, callback: (error: grpc.ServiceError | null, response: polykey_v1_secrets_secrets_pb.Stat) => void): grpc.ClientUnaryCall;
     vaultsSecretsStat(request: polykey_v1_secrets_secrets_pb.Secret, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: polykey_v1_secrets_secrets_pb.Stat) => void): grpc.ClientUnaryCall;
     vaultsSecretsStat(request: polykey_v1_secrets_secrets_pb.Secret, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: polykey_v1_secrets_secrets_pb.Stat) => void): grpc.ClientUnaryCall;
-    vaultsPermissionsGet(request: polykey_v1_vaults_vaults_pb.Vault, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<polykey_v1_permissions_permissions_pb.NodeActions>;
-    vaultsPermissionsGet(request: polykey_v1_vaults_vaults_pb.Vault, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<polykey_v1_permissions_permissions_pb.NodeActions>;
-    vaultsShare(request: polykey_v1_vaults_vaults_pb.PermSet, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.StatusMessage) => void): grpc.ClientUnaryCall;
-    vaultsShare(request: polykey_v1_vaults_vaults_pb.PermSet, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.StatusMessage) => void): grpc.ClientUnaryCall;
-    vaultsShare(request: polykey_v1_vaults_vaults_pb.PermSet, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.StatusMessage) => void): grpc.ClientUnaryCall;
-    vaultsUnshare(request: polykey_v1_vaults_vaults_pb.PermUnset, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.StatusMessage) => void): grpc.ClientUnaryCall;
-    vaultsUnshare(request: polykey_v1_vaults_vaults_pb.PermUnset, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.StatusMessage) => void): grpc.ClientUnaryCall;
-    vaultsUnshare(request: polykey_v1_vaults_vaults_pb.PermUnset, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.StatusMessage) => void): grpc.ClientUnaryCall;
     vaultsVersion(request: polykey_v1_vaults_vaults_pb.Version, callback: (error: grpc.ServiceError | null, response: polykey_v1_vaults_vaults_pb.VersionResult) => void): grpc.ClientUnaryCall;
     vaultsVersion(request: polykey_v1_vaults_vaults_pb.Version, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: polykey_v1_vaults_vaults_pb.VersionResult) => void): grpc.ClientUnaryCall;
     vaultsVersion(request: polykey_v1_vaults_vaults_pb.Version, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: polykey_v1_vaults_vaults_pb.VersionResult) => void): grpc.ClientUnaryCall;
@@ -843,6 +835,14 @@ export interface IClientServiceClient {
     vaultsLog(request: polykey_v1_vaults_vaults_pb.Log, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<polykey_v1_vaults_vaults_pb.LogEntry>;
     vaultsScan(request: polykey_v1_nodes_nodes_pb.Node, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<polykey_v1_vaults_vaults_pb.List>;
     vaultsScan(request: polykey_v1_nodes_nodes_pb.Node, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<polykey_v1_vaults_vaults_pb.List>;
+    vaultsPermissionSet(request: polykey_v1_vaults_vaults_pb.Permissions, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    vaultsPermissionSet(request: polykey_v1_vaults_vaults_pb.Permissions, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    vaultsPermissionSet(request: polykey_v1_vaults_vaults_pb.Permissions, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    vaultsPermissionUnset(request: polykey_v1_vaults_vaults_pb.Permissions, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    vaultsPermissionUnset(request: polykey_v1_vaults_vaults_pb.Permissions, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    vaultsPermissionUnset(request: polykey_v1_vaults_vaults_pb.Permissions, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    vaultsPermissionGet(request: polykey_v1_vaults_vaults_pb.Vault, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<polykey_v1_vaults_vaults_pb.Permissions>;
+    vaultsPermissionGet(request: polykey_v1_vaults_vaults_pb.Vault, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<polykey_v1_vaults_vaults_pb.Permissions>;
     identitiesAuthenticate(request: polykey_v1_identities_identities_pb.Provider, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<polykey_v1_identities_identities_pb.AuthenticationProcess>;
     identitiesAuthenticate(request: polykey_v1_identities_identities_pb.Provider, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<polykey_v1_identities_identities_pb.AuthenticationProcess>;
     identitiesAuthenticatedGet(request: polykey_v1_identities_identities_pb.OptionalProvider, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<polykey_v1_identities_identities_pb.Provider>;
@@ -1013,14 +1013,6 @@ export class ClientServiceClient extends grpc.Client implements IClientServiceCl
     public vaultsSecretsStat(request: polykey_v1_secrets_secrets_pb.Secret, callback: (error: grpc.ServiceError | null, response: polykey_v1_secrets_secrets_pb.Stat) => void): grpc.ClientUnaryCall;
     public vaultsSecretsStat(request: polykey_v1_secrets_secrets_pb.Secret, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: polykey_v1_secrets_secrets_pb.Stat) => void): grpc.ClientUnaryCall;
     public vaultsSecretsStat(request: polykey_v1_secrets_secrets_pb.Secret, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: polykey_v1_secrets_secrets_pb.Stat) => void): grpc.ClientUnaryCall;
-    public vaultsPermissionsGet(request: polykey_v1_vaults_vaults_pb.Vault, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<polykey_v1_permissions_permissions_pb.NodeActions>;
-    public vaultsPermissionsGet(request: polykey_v1_vaults_vaults_pb.Vault, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<polykey_v1_permissions_permissions_pb.NodeActions>;
-    public vaultsShare(request: polykey_v1_vaults_vaults_pb.PermSet, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.StatusMessage) => void): grpc.ClientUnaryCall;
-    public vaultsShare(request: polykey_v1_vaults_vaults_pb.PermSet, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.StatusMessage) => void): grpc.ClientUnaryCall;
-    public vaultsShare(request: polykey_v1_vaults_vaults_pb.PermSet, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.StatusMessage) => void): grpc.ClientUnaryCall;
-    public vaultsUnshare(request: polykey_v1_vaults_vaults_pb.PermUnset, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.StatusMessage) => void): grpc.ClientUnaryCall;
-    public vaultsUnshare(request: polykey_v1_vaults_vaults_pb.PermUnset, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.StatusMessage) => void): grpc.ClientUnaryCall;
-    public vaultsUnshare(request: polykey_v1_vaults_vaults_pb.PermUnset, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.StatusMessage) => void): grpc.ClientUnaryCall;
     public vaultsVersion(request: polykey_v1_vaults_vaults_pb.Version, callback: (error: grpc.ServiceError | null, response: polykey_v1_vaults_vaults_pb.VersionResult) => void): grpc.ClientUnaryCall;
     public vaultsVersion(request: polykey_v1_vaults_vaults_pb.Version, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: polykey_v1_vaults_vaults_pb.VersionResult) => void): grpc.ClientUnaryCall;
     public vaultsVersion(request: polykey_v1_vaults_vaults_pb.Version, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: polykey_v1_vaults_vaults_pb.VersionResult) => void): grpc.ClientUnaryCall;
@@ -1028,6 +1020,14 @@ export class ClientServiceClient extends grpc.Client implements IClientServiceCl
     public vaultsLog(request: polykey_v1_vaults_vaults_pb.Log, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<polykey_v1_vaults_vaults_pb.LogEntry>;
     public vaultsScan(request: polykey_v1_nodes_nodes_pb.Node, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<polykey_v1_vaults_vaults_pb.List>;
     public vaultsScan(request: polykey_v1_nodes_nodes_pb.Node, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<polykey_v1_vaults_vaults_pb.List>;
+    public vaultsPermissionSet(request: polykey_v1_vaults_vaults_pb.Permissions, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    public vaultsPermissionSet(request: polykey_v1_vaults_vaults_pb.Permissions, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    public vaultsPermissionSet(request: polykey_v1_vaults_vaults_pb.Permissions, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    public vaultsPermissionUnset(request: polykey_v1_vaults_vaults_pb.Permissions, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    public vaultsPermissionUnset(request: polykey_v1_vaults_vaults_pb.Permissions, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    public vaultsPermissionUnset(request: polykey_v1_vaults_vaults_pb.Permissions, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    public vaultsPermissionGet(request: polykey_v1_vaults_vaults_pb.Vault, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<polykey_v1_vaults_vaults_pb.Permissions>;
+    public vaultsPermissionGet(request: polykey_v1_vaults_vaults_pb.Vault, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<polykey_v1_vaults_vaults_pb.Permissions>;
     public identitiesAuthenticate(request: polykey_v1_identities_identities_pb.Provider, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<polykey_v1_identities_identities_pb.AuthenticationProcess>;
     public identitiesAuthenticate(request: polykey_v1_identities_identities_pb.Provider, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<polykey_v1_identities_identities_pb.AuthenticationProcess>;
     public identitiesAuthenticatedGet(request: polykey_v1_identities_identities_pb.OptionalProvider, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<polykey_v1_identities_identities_pb.Provider>;

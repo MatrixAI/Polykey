@@ -8,7 +8,6 @@ import PolykeyAgent from '@/PolykeyAgent';
 import * as nodesUtils from '@/nodes/utils';
 import * as vaultsUtils from '@/vaults/utils';
 import sysexits from '@/utils/sysexits';
-import * as vaultsPB from '@/proto/js/polykey/v1/vaults/vaults_pb';
 import NotificationsManager from '@/notifications/NotificationsManager';
 import * as testBinUtils from '../utils';
 import * as testUtils from '../../utils';
@@ -802,121 +801,5 @@ describe('CLI vaults', () => {
       },
       global.defaultTimeout * 2,
     );
-  });
-  describe('commandPermissions', () => {
-    test('Should return nodeIds and their permissions', async () => {
-      let remoteKeynode1: PolykeyAgent | undefined;
-      let remoteKeynode2: PolykeyAgent | undefined;
-      try {
-        // A ridiculous amount of setup.
-        const vaultId1 = await polykeyAgent.vaultManager.createVault(
-          'vault1' as VaultName,
-        );
-        const vaultId2 = await polykeyAgent.vaultManager.createVault(
-          'vault2' as VaultName,
-        );
-
-        remoteKeynode1 = await PolykeyAgent.createPolykeyAgent({
-          password,
-          logger: logger.getChild('Remote Keynode 1'),
-          nodePath: path.join(dataDir, 'remoteKeynode1'),
-        });
-        remoteKeynode2 = await PolykeyAgent.createPolykeyAgent({
-          password,
-          logger: logger.getChild('Remote Keynode 2'),
-          nodePath: path.join(dataDir, 'remoteKeynode2'),
-        });
-
-        const targetNodeId1 = remoteKeynode1.keyManager.getNodeId();
-        const targetNodeId2 = remoteKeynode2.keyManager.getNodeId();
-        await polykeyAgent.gestaltGraph.setNode({
-          id: nodesUtils.encodeNodeId(targetNodeId1),
-          chain: {},
-        });
-        await polykeyAgent.gestaltGraph.setNode({
-          id: nodesUtils.encodeNodeId(targetNodeId2),
-          chain: {},
-        });
-        await polykeyAgent.nodeManager.setNode(targetNodeId1, {
-          host: remoteKeynode1.revProxy.getIngressHost(),
-          port: remoteKeynode1.revProxy.getIngressPort(),
-        });
-        await polykeyAgent.nodeManager.setNode(targetNodeId2, {
-          host: remoteKeynode2.revProxy.getIngressHost(),
-          port: remoteKeynode2.revProxy.getIngressPort(),
-        });
-
-        await remoteKeynode1.nodeManager.setNode(
-          polykeyAgent.keyManager.getNodeId(),
-          {
-            host: polykeyAgent.revProxy.getIngressHost(),
-            port: polykeyAgent.revProxy.getIngressPort(),
-          },
-        );
-        await remoteKeynode2.nodeManager.setNode(
-          polykeyAgent.keyManager.getNodeId(),
-          {
-            host: polykeyAgent.revProxy.getIngressHost(),
-            port: polykeyAgent.revProxy.getIngressPort(),
-          },
-        );
-        await remoteKeynode1.acl.setNodePerm(
-          polykeyAgent.keyManager.getNodeId(),
-          {
-            gestalt: {
-              notify: null,
-            },
-            vaults: {},
-          },
-        );
-        await remoteKeynode2.acl.setNodePerm(
-          polykeyAgent.keyManager.getNodeId(),
-          {
-            gestalt: {
-              notify: null,
-            },
-            vaults: {},
-          },
-        );
-
-        await polykeyAgent.vaultManager.shareVault(vaultId1, targetNodeId1);
-        await polykeyAgent.vaultManager.shareVault(vaultId1, targetNodeId2);
-        await polykeyAgent.vaultManager.shareVault(vaultId2, targetNodeId1);
-
-        const vaultMessage = new vaultsPB.Vault();
-        vaultMessage.setNameOrId(vaultsUtils.encodeVaultId(vaultId1));
-
-        // Now we call and test the command
-        const command1 = ['vaults', 'permissions', 'vault1', '-np', dataDir];
-        const result1 = await testBinUtils.pkStdio(
-          command1,
-          { PK_PASSWORD: 'password' },
-          dataDir,
-        );
-        expect(result1.exitCode).toBe(0);
-        expect(result1.stdout).toContain(remoteKeynode1.keyManager.getNodeId());
-        expect(result1.stdout).toContain(remoteKeynode2.keyManager.getNodeId());
-        expect(result1.stdout).toContain('pull');
-        expect(result1.stdout).toContain('clone');
-
-        // And the other vault
-        const command2 = ['vaults', 'permissions', 'vault2', '-np', dataDir];
-        const result2 = await testBinUtils.pkStdio(
-          command2,
-          { PK_PASSWORD: 'password' },
-          dataDir,
-        );
-        expect(result2.exitCode).toBe(0);
-        expect(result2.stdout).toContain(targetNodeId1);
-        expect(result2.stdout).not.toContain(targetNodeId2);
-        expect(result2.stdout).toContain('pull');
-        expect(result2.stdout).toContain('clone');
-      } finally {
-        await remoteKeynode1?.stop();
-        await remoteKeynode1?.destroy();
-        await remoteKeynode2?.stop();
-        await remoteKeynode2?.destroy();
-      }
-    });
   });
 });

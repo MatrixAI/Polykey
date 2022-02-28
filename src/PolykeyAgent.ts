@@ -578,6 +578,7 @@ class PolykeyAgent {
         sessionManager: this.sessionManager,
         vaultManager: this.vaultManager,
         sigchain: this.sigchain,
+        acl: this.acl,
         grpcServerClient: this.grpcServerClient,
         grpcServerAgent: this.grpcServerAgent,
         fwdProxy: this.fwdProxy,

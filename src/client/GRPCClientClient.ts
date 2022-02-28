@@ -186,26 +186,26 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   }
 
   @ready(new clientErrors.ErrorClientClientDestroyed())
-  public vaultsPermissionsGet(...args) {
-    return grpcUtils.promisifyReadableStreamCall<permissionsPB.NodeActions>(
+  public vaultsPermissionGet(...args) {
+    return grpcUtils.promisifyReadableStreamCall<vaultsPB.Permissions>(
       this.client,
-      this.client.vaultsPermissionsGet,
+      this.client.vaultsPermissionGet,
     )(...args);
   }
 
   @ready(new clientErrors.ErrorClientClientDestroyed())
-  public vaultsShare(...args) {
+  public vaultsPermissionSet(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.StatusMessage>(
       this.client,
-      this.client.vaultsShare,
+      this.client.vaultsPermissionSet,
     )(...args);
   }
 
   @ready(new clientErrors.ErrorClientClientDestroyed())
-  public vaultsUnshare(...args) {
+  public vaultsPermissionUnset(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.StatusMessage>(
       this.client,
-      this.client.vaultsUnshare,
+      this.client.vaultsPermissionUnset,
     )(...args);
   }
 

@@ -63,7 +63,7 @@ function vaultsGitInfoGet({
       return;
     }
     const vaultPerms = permissions.vaults[vaultId];
-    if (vaultPerms[actionType] !== null) {
+    if (vaultPerms?.[actionType] !== null) {
       await genWritable.throw(
         new vaultsErrors.ErrorVaultsPermissionDenied(
           `${nodeIdEncoded} does not have permission to ${actionType} from vault ${vaultsUtils.encodeVaultId(

@@ -52,14 +52,19 @@ class CommandShare extends CommandPolykey {
           logger: this.logger.getChild(PolykeyClient.name),
         });
         const vaultMessage = new vaultsPB.Vault();
-        const nodeMessage = new nodesPB.Node();
-        const setVaultPermsMessage = new vaultsPB.PermSet();
-        setVaultPermsMessage.setVault(vaultMessage);
-        setVaultPermsMessage.setNode(nodeMessage);
         vaultMessage.setNameOrId(vaultName);
+        const nodeMessage = new nodesPB.Node();
         nodeMessage.setNodeId(nodesUtils.encodeNodeId(nodeId));
+        const vaultsPermissionsList = new vaultsPB.Permissions();
+        vaultsPermissionsList.setVault(vaultMessage);
+        vaultsPermissionsList.setNode(nodeMessage);
+        vaultsPermissionsList.setVaultPermissionsList(['pull', 'clone']);
         await binUtils.retryAuthentication(
-          (auth) => pkClient.grpcClient.vaultsShare(setVaultPermsMessage, auth),
+          (auth) =>
+            pkClient.grpcClient.vaultsPermissionSet(
+              vaultsPermissionsList,
+              auth,
+            ),
           meta,
         );
       } finally {

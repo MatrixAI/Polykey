@@ -36,6 +36,7 @@ async function openTestClientServer({
     notificationsManager: pkAgent.notificationsManager,
     discovery: pkAgent.discovery,
     sigchain: pkAgent.sigchain,
+    acl: pkAgent.acl,
     fwdProxy: pkAgent.fwdProxy,
     revProxy: pkAgent.revProxy,
     grpcServerClient: pkAgent.grpcServerClient,

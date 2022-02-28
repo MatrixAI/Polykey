@@ -136,7 +136,6 @@ interface FileSystemWritable extends FileSystemReadable {
 
 type VaultName = string;
 
-// FIXME: temp placeholder
 type VaultActions = Partial<Record<VaultAction, null>>;
 
 export { vaultActions };

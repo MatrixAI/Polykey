@@ -55,9 +55,9 @@ service ClientService {
   rpc VaultsSecretsNew(polykey.v1.secrets.Secret) returns (polykey.v1.utils.StatusMessage);
   rpc VaultsSecretsNewDir(polykey.v1.secrets.Directory) returns (polykey.v1.utils.StatusMessage);
   rpc vaultsSecretsStat(polykey.v1.secrets.Secret) returns (polykey.v1.secrets.Stat);
-  rpc VaultsPermissionsGet(polykey.v1.vaults.Vault) returns (stream polykey.v1.permissions.NodeActions);
-  rpc VaultsShare(polykey.v1.vaults.PermSet) returns (polykey.v1.utils.StatusMessage);
-  rpc VaultsUnshare(polykey.v1.vaults.PermUnset) returns (polykey.v1.utils.StatusMessage);
+  rpc VaultsPermissionGet(polykey.v1.vaults.Vault) returns (stream polykey.v1.vaults.Permissions);
+  rpc VaultsPermissionSet(polykey.v1.vaults.Permissions) returns (polykey.v1.utils.StatusMessage);
+  rpc VaultsPermissionUnset(polykey.v1.vaults.Permissions) returns (polykey.v1.utils.StatusMessage);
   rpc VaultsVersion(polykey.v1.vaults.Version) returns (polykey.v1.vaults.VersionResult);
   rpc VaultsLog(polykey.v1.vaults.Log) returns (stream polykey.v1.vaults.LogEntry);
   rpc VaultsScan(polykey.v1.nodes.Node) returns (stream polykey.v1.vaults.List);

@@ -12,7 +12,6 @@ class CommandPermissions extends CommandPolykey {
     this.alias('perms');
     this.description('Sets the permissions of a vault for Node Ids');
     this.argument('<vaultName>', 'Name or ID of the vault');
-    // This.argument('[nodeId]', '(optional) nodeId to check permission on');
     this.addOption(binOptions.nodeId);
     this.addOption(binOptions.clientHost);
     this.addOption(binOptions.clientPort);
@@ -54,13 +53,13 @@ class CommandPermissions extends CommandPolykey {
 
         const data: Array<string> = [];
         await binUtils.retryAuthentication(async (auth) => {
-          const permissionStream = pkClient.grpcClient.vaultsPermissionsGet(
+          const permissionStream = pkClient.grpcClient.vaultsPermissionGet(
             vaultMessage,
             auth,
           );
           for await (const permission of permissionStream) {
             const nodeId = permission.getNode()?.getNodeId();
-            const actions = permission.getActionsList().join(', ');
+            const actions = permission.getVaultPermissionsList().join(', ');
             data.push(`${nodeId}: ${actions}`);
           }
           return true;
