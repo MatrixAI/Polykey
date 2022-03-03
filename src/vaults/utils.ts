@@ -7,9 +7,9 @@ import type {
 } from './types';
 import type { NodeId } from '../nodes/types';
 
-import { IdInternal, IdRandom } from '@matrixai/id';
 import type { EncryptedFS } from 'encryptedfs';
 import path from 'path';
+import { IdInternal, IdRandom } from '@matrixai/id';
 import { tagLast, refs, vaultActions } from './types';
 import * as nodesUtils from '../nodes/utils';
 

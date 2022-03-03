@@ -310,7 +310,7 @@ describe('VaultManager', () => {
       await vaultManager?.destroy();
     }
   });
-  test.skip('cannot concurrently create vaults with the same name', async () => {
+  test('cannot concurrently create vaults with the same name', async () => {
     const vaultManager = await VaultManager.createVaultManager({
       vaultsPath,
       keyManager: dummyKeyManager,
