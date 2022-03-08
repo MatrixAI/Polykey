@@ -248,6 +248,14 @@ describe('Vaults client service', () => {
         vaultVersionMessage.setVersionId('invalidOid');
         const version = vaultsVersion(vaultVersionMessage, callCredentials);
         await expect(version).rejects.toThrow(
+          vaultErrors.ErrorVaultReferenceInvalid,
+        );
+
+        vaultVersionMessage.setVersionId(
+          '7660aa9a2fee90e875c2d19e5deefe882ca1d4d9',
+        );
+        const version2 = vaultsVersion(vaultVersionMessage, callCredentials);
+        await expect(version2).rejects.toThrow(
           vaultErrors.ErrorVaultReferenceMissing,
         );
       });
