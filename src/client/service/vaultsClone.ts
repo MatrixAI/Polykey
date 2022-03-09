@@ -1,10 +1,19 @@
 import type { Authenticate } from '../types';
+import type VaultManager from '../../vaults/VaultManager';
 import type * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
 import * as grpc from '@grpc/grpc-js';
-import { utils as grpcUtils } from '../../grpc';
+import * as grpcUtils from '../../grpc/utils';
 import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
+import * as validationUtils from '../../validation/utils';
+import * as vaultsUtils from '../../vaults/utils';
 
-function vaultsClone({ authenticate }: { authenticate: Authenticate }) {
+function vaultsClone({
+  authenticate,
+  vaultManager,
+}: {
+  authenticate: Authenticate;
+  vaultManager: VaultManager;
+}) {
   return async (
     call: grpc.ServerUnaryCall<vaultsPB.Clone, utilsPB.StatusMessage>,
     callback: grpc.sendUnaryData<utilsPB.StatusMessage>,
@@ -25,13 +34,13 @@ function vaultsClone({ authenticate }: { authenticate: Authenticate }) {
         return;
       }
       // Vault id
-      // const vaultId = parseVaultInput(vaultMessage, vaultManager);
+      let vaultId;
+      const vaultNameOrId = vaultMessage.getNameOrId();
+      vaultId = vaultsUtils.decodeVaultId(vaultNameOrId);
+      vaultId = vaultId ?? vaultNameOrId;
       // Node id
-      // const id = makeNodeId(nodeMessage.getNodeId());
-
-      throw Error('Not implemented');
-      // FIXME, not fully implemented
-      // await vaultManager.cloneVault(vaultId, id);
+      const nodeId = validationUtils.parseNodeId(nodeMessage.getNodeId());
+      await vaultManager.cloneVault(nodeId, vaultId);
       response.setSuccess(true);
       callback(null, response);
       return;

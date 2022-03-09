@@ -69,7 +69,11 @@ describe('Git utils', () => {
   });
   describe('list refs', () => {
     test('on master', async () => {
-      const refs = await gitUtils.listRefs(efs, '.git', 'refs/heads');
+      const refs = await gitUtils.listRefs(
+        efs,
+        '.git',
+        path.join('refs', 'heads'),
+      );
       expect(refs).toEqual(['master']);
     });
   });
@@ -85,11 +89,10 @@ describe('Git utils', () => {
       expect(gitEncodedString.equals(Buffer.from('0004'))).toBe(true);
     });
     test('an upload pack', async () => {
-      const uploadPackBuffers = (await gitUtils.uploadPack(
-        efs,
-        '.git',
-        true,
-      )) as Buffer[];
+      const uploadPackBuffers = (await gitUtils.uploadPack({
+        fs: efs,
+        advertiseRefs: true,
+      })) as Buffer[];
       const uploadPack = Buffer.concat(uploadPackBuffers);
       expect(uploadPack.toString('utf8')).toBe(
         `007d${firstCommit.oid} HEAD\0side-band-64k symref=HEAD:refs/heads/master agent=git/isomorphic-git@1.8.1
@@ -100,20 +103,23 @@ describe('Git utils', () => {
   });
   describe('resolve refs', () => {
     test('to a commit oid', async () => {
-      const ref = await gitUtils.resolve(efs, '.git', commits[0].oid);
+      const ref = await gitUtils.resolve({
+        fs: efs,
+        ref: commits[0].oid,
+      });
       expect(ref).toBe(firstCommit.oid);
     });
     test('to HEAD', async () => {
-      const ref = await gitUtils.resolve(efs, '.git', 'HEAD');
+      const ref = await gitUtils.resolve({ fs: efs, ref: 'HEAD' });
       expect(ref).toBe(firstCommit.oid);
     });
     test('to HEAD including depth', async () => {
-      const ref = await gitUtils.resolve(efs, '.git', 'HEAD', 2);
+      const ref = await gitUtils.resolve({ fs: efs, ref: 'HEAD', depth: 2 });
       expect(ref).toBe('refs/heads/master');
     });
     test('to non-existant refs', async () => {
       await expect(() =>
-        gitUtils.resolve(efs, '.git', 'this-is-not-a-ref'),
+        gitUtils.resolve({ fs: efs, ref: 'this-is-not-a-ref' }),
       ).rejects.toThrow(gitErrors.ErrorGitUndefinedRefs);
     });
   });
@@ -122,6 +128,7 @@ describe('Git utils', () => {
       await expect(() =>
         gitUtils.readObject({
           fs: efs,
+          dir: '.',
           gitdir: '.git',
           oid: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
         }),
@@ -130,6 +137,7 @@ describe('Git utils', () => {
     test('parsed', async () => {
       const ref = await gitUtils.readObject({
         fs: efs,
+        dir: '.',
         gitdir: '.git',
         oid: firstCommit.oid,
       });
@@ -139,6 +147,7 @@ describe('Git utils', () => {
     test('content', async () => {
       const ref = await gitUtils.readObject({
         fs: efs,
+        dir: '.',
         gitdir: '.git',
         oid: firstCommit.oid,
         format: 'content',
@@ -163,6 +172,7 @@ describe('Git utils', () => {
     test('wrapped', async () => {
       const ref = await gitUtils.readObject({
         fs: efs,
+        dir: '.',
         gitdir: '.git',
         oid: firstCommit.oid,
         format: 'wrapped',
@@ -187,6 +197,7 @@ describe('Git utils', () => {
     test('deflated', async () => {
       const ref = await gitUtils.readObject({
         fs: efs,
+        dir: '.',
         gitdir: '.git',
         oid: firstCommit.oid,
         format: 'deflated',
@@ -209,6 +220,7 @@ describe('Git utils', () => {
       );
       const ref = await gitUtils.readObject({
         fs: efs,
+        dir: '.',
         gitdir: '.git',
         oid: firstCommit.oid,
         format: 'deflated',

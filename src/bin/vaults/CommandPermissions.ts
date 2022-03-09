@@ -1,115 +1,82 @@
-// Import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-// import PolykeyClient from '../../PolykeyClient';
-// import * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
-// import * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
-// import * as utils from '../../utils';
-// import * as binUtils from '../utils';
-// import * as grpcErrors from '../../grpc/errors';
+import type PolykeyClient from '../../PolykeyClient';
+import * as binProcessors from '../utils/processors';
+import * as binUtils from '../utils';
 
-// import CommandPolykey from '../CommandPolykey';
-// import * as binOptions from '../utils/options';
+import CommandPolykey from '../CommandPolykey';
+import * as binOptions from '../utils/options';
 
-// class CommandPermissions extends CommandPolykey {
-//   constructor(...args: ConstructorParameters<typeof CommandPolykey>) {
-//     super(...args);
-//     this.name('permissions');
-//     this.description('Vaults Permissions');
-//     this.arguments('<vaultName> [nodeId]');
-//     this.addOption(binOptions.nodeId);
-//     this.addOption(binOptions.clientHost);
-//     this.addOption(binOptions.clientPort);
-//     this.action(async (vaultName, nodeId, options) => {
+class CommandPermissions extends CommandPolykey {
+  constructor(...args: ConstructorParameters<typeof CommandPolykey>) {
+    super(...args);
+    this.name('permissions');
+    this.alias('perms');
+    this.description('Sets the permissions of a vault for Node Ids');
+    this.argument('<vaultName>', 'Name or ID of the vault');
+    this.addOption(binOptions.nodeId);
+    this.addOption(binOptions.clientHost);
+    this.addOption(binOptions.clientPort);
+    this.action(async (vaultName, options) => {
+      const { default: PolykeyClient } = await import('../../PolykeyClient');
+      const vaultsPB = await import(
+        '../../proto/js/polykey/v1/vaults/vaults_pb'
+      );
+      const clientOptions = await binProcessors.processClientOptions(
+        options.nodePath,
+        options.nodeId,
+        options.clientHost,
+        options.clientPort,
+        this.fs,
+        this.logger.getChild(binProcessors.processClientOptions.name),
+      );
+      const meta = await binProcessors.processAuthentication(
+        options.passwordFile,
+        this.fs,
+      );
+      let pkClient: PolykeyClient;
+      this.exitHandlers.handlers.push(async () => {
+        if (pkClient != null) await pkClient.stop();
+      });
 
-//     });
-//   }
-// }
+      try {
+        pkClient = await PolykeyClient.createPolykeyClient({
+          nodePath: options.nodePath,
+          nodeId: clientOptions.nodeId,
+          host: clientOptions.clientHost,
+          port: clientOptions.clientPort,
+          logger: this.logger.getChild(PolykeyClient.name),
+        });
 
-// export default CommandPermissions;
+        const vaultMessage = new vaultsPB.Vault();
+        vaultMessage.setNameOrId(vaultName);
 
-// OLD COMMAND
-// const permissions = binUtils.createCommand('permissions', {
-//   description: {
-//     description: 'Sets the permissions of a vault for Node Ids',
-//     args: {
-//       vaultName: 'Name or ID of the vault',
-//       nodeId: '(optional) nodeId to check permission on',
-//     },
-//   },
-//   aliases: ['perms'],
-//   nodePath: true,
-//   verbose: true,
-//   format: true,
-// });
-// permissions.arguments('<vaultName> [nodeId]');
-// permissions.action(async (vaultName, nodeId, options) => {
-//   const clientConfig = {};
-//   clientConfig['logger'] = new Logger('CLI Logger', LogLevel.WARN, [
-//     new StreamHandler(),
-//   ]);
-//   if (options.verbose) {
-//     clientConfig['logger'].setLevel(LogLevel.DEBUG);
-//   }
-//   clientConfig['nodePath'] = options.nodePath
-//     ? options.nodePath
-//     : utils.getDefaultNodePath();
+        await pkClient.start();
 
-//   const client = await PolykeyClient.createPolykeyClient(clientConfig);
+        const data: Array<string> = [];
+        await binUtils.retryAuthentication(async (auth) => {
+          const permissionStream = pkClient.grpcClient.vaultsPermissionGet(
+            vaultMessage,
+            auth,
+          );
+          for await (const permission of permissionStream) {
+            const nodeId = permission.getNode()?.getNodeId();
+            const actions = permission.getVaultPermissionsList().join(', ');
+            data.push(`${nodeId}: ${actions}`);
+          }
+          return true;
+        }, meta);
 
-//   const vaultMessage = new vaultsPB.Vault();
-//   vaultMessage.setNameOrId(vaultName);
+        if (data.length === 0) data.push('No permissions were found');
+        process.stdout.write(
+          binUtils.outputFormatter({
+            type: options.format === 'json' ? 'json' : 'list',
+            data: data,
+          }),
+        );
+      } finally {
+        if (pkClient! != null) await pkClient.stop();
+      }
+    });
+  }
+}
 
-//   const nodeMessage = new nodesPB.Node();
-//   nodeMessage.setNodeId(nodeId);
-
-//   const getVaultMessage = new vaultsPB.PermGet();
-//   getVaultMessage.setVault(vaultMessage);
-//   getVaultMessage.setNode(nodeMessage);
-
-//   try {
-//     await client.start({});
-//     const grpcClient = client.grpcClient;
-
-//     const data: Array<string> = [];
-//     const response = await binUtils.streamCallCARL(
-//       client,
-//       setupStreamCall<vaultsPB.Permission>(
-//         client,
-//         client.grpcClient.vaultPermissions,
-//       ),
-//     )(getVaultMessage);
-
-//     for await (const perm of response.data) {
-//       data.push(`${perm.getNodeId()}:\t\t${perm.getAction()}`);
-//     }
-//     await response.refresh;
-
-//     process.stdout.write(
-//       binUtils.outputFormatter({
-//         type: options.format === 'json' ? 'json' : 'list',
-//         data: data,
-//       }),
-//     );
-//   } catch (err) {
-//     if (err instanceof grpcErrors.ErrorGRPCClientTimeout) {
-//       process.stderr.write(`${err.message}\n`);
-//     } else if (err instanceof grpcErrors.ErrorGRPCServerNotStarted) {
-//       process.stderr.write(`${err.message}\n`);
-//     } else {
-//       process.stderr.write(
-//         binUtils.outputFormatter({
-//           type: 'error',
-//           description: err.description,
-//           message: err.message,
-//         }),
-//       );
-//     }
-//     throw err;
-//   } finally {
-//     await client.stop();
-//     options.nodePath = undefined;
-//     options.verbose = undefined;
-//     options.format = undefined;
-//   }
-// });
-
-// export default permissions;
+export default CommandPermissions;

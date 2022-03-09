@@ -253,8 +253,8 @@ describe(`${NodeConnection.name} test`, () => {
     serverVaultManager = await VaultManager.createVaultManager({
       keyManager: serverKeyManager,
       vaultsPath: serverVaultsPath,
-      nodeConnectionManager: serverNodeConnectionManager,
-      vaultsKey: serverKeyManager.vaultKey,
+      nodeConnectionManager: dummyNodeConnectionManager,
+      notificationsManager: serverNotificationsManager,
       db: serverDb,
       acl: serverACL,
       gestaltGraph: serverGestaltGraph,
@@ -279,6 +279,9 @@ describe(`${NodeConnection.name} test`, () => {
       nodeGraph: serverNodeGraph,
       sigchain: serverSigchain,
       notificationsManager: serverNotificationsManager,
+      acl: serverACL,
+      gestaltGraph: serverGestaltGraph,
+      revProxy: serverRevProxy,
     });
     agentServer = new GRPCServer({
       logger: logger,

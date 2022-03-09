@@ -13,6 +13,7 @@ import type { NotificationsManager } from '../../notifications';
 import type { Discovery } from '../../discovery';
 import type { Sigchain } from '../../sigchain';
 import type { GRPCServer } from '../../grpc';
+import type ACL from '../../acl/ACL';
 import type ForwardProxy from '../../network/ForwardProxy';
 import type ReverseProxy from '../../network/ReverseProxy';
 import type { IClientServiceServer } from '../../proto/js/polykey/v1/client_service_grpc_pb';
@@ -66,9 +67,9 @@ import vaultsCreate from './vaultsCreate';
 import vaultsDelete from './vaultsDelete';
 import vaultsList from './vaultsList';
 import vaultsLog from './vaultsLog';
-import vaultsPermissions from './vaultsPermissions';
-import vaultsPermissionsSet from './vaultsPermissionsSet';
-import vaultsPermissionsUnset from './vaultsPermissionsUnset';
+import vaultsPermissionGet from './vaultsPermissionGet';
+import vaultsPermissionSet from './vaultsPermissionSet';
+import vaultsPermissionUnset from './vaultsPermissionUnset';
 import vaultsPull from './vaultsPull';
 import vaultsRename from './vaultsRename';
 import vaultsScan from './vaultsScan';
@@ -104,6 +105,7 @@ function createService({
   notificationsManager: NotificationsManager;
   discovery: Discovery;
   sigchain: Sigchain;
+  acl: ACL;
   grpcServerClient: GRPCServer;
   grpcServerAgent: GRPCServer;
   fwdProxy: ForwardProxy;
@@ -169,9 +171,9 @@ function createService({
     vaultsDelete: vaultsDelete(container),
     vaultsList: vaultsList(container),
     vaultsLog: vaultsLog(container),
-    vaultsPermissions: vaultsPermissions(container),
-    vaultsPermissionsSet: vaultsPermissionsSet(container),
-    vaultsPermissionsUnset: vaultsPermissionsUnset(container),
+    vaultsPermissionSet: vaultsPermissionSet(container),
+    vaultsPermissionUnset: vaultsPermissionUnset(container),
+    vaultsPermissionGet: vaultsPermissionGet(container),
     vaultsPull: vaultsPull(container),
     vaultsRename: vaultsRename(container),
     vaultsScan: vaultsScan(container),

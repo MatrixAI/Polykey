@@ -1,10 +1,20 @@
 import type { Authenticate } from '../types';
+import type VaultManager from '../../vaults/VaultManager';
+import type { VaultName } from '../../vaults/types';
 import type * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
 import * as grpc from '@grpc/grpc-js';
-import { utils as grpcUtils } from '../../grpc';
+import * as grpcUtils from '../../grpc/utils';
 import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
+import * as validationUtils from '../../validation/utils';
+import * as vaultsUtils from '../../vaults/utils';
 
-function vaultsPull({ authenticate }: { authenticate: Authenticate }) {
+function vaultsPull({
+  authenticate,
+  vaultManager,
+}: {
+  authenticate: Authenticate;
+  vaultManager: VaultManager;
+}) {
   return async (
     call: grpc.ServerUnaryCall<vaultsPB.Pull, utilsPB.StatusMessage>,
     callback: grpc.sendUnaryData<utilsPB.StatusMessage>,
@@ -19,17 +29,30 @@ function vaultsPull({ authenticate }: { authenticate: Authenticate }) {
         callback({ code: grpc.status.NOT_FOUND }, null);
         return;
       }
+      const nameOrId = vaultMessage.getNameOrId();
+      let vaultId = await vaultManager.getVaultId(nameOrId as VaultName);
+      vaultId = vaultId ?? validationUtils.parseVaultId(nameOrId);
+      let nodeId;
       const nodeMessage = call.request.getNode();
       if (nodeMessage == null) {
-        callback({ code: grpc.status.NOT_FOUND }, null);
-        return;
+        nodeId = null;
+      } else {
+        nodeId = validationUtils.parseNodeId(nodeMessage.getNodeId());
       }
-      // Vault name
-      // const vaultId = await parseVaultInput(vaultMessage, vaultManager);
-      // Node id
-      // const id = makeNodeId(nodeMessage.getNodeId());
-
-      // Await vaultManager.pullVault(vaultId, id);
+      let pullVault;
+      const pullVaultMessage = call.request.getPullVault();
+      if (pullVaultMessage == null) {
+        pullVault = null;
+      } else {
+        pullVault = vaultsUtils.decodeVaultId(pullVaultMessage.getNameOrId());
+        pullVault = pullVault ?? pullVaultMessage.getNameOrId();
+        if (pullVault == null) pullVault = pullVaultMessage.getNameOrId();
+      }
+      await vaultManager.pullVault({
+        vaultId,
+        pullNodeId: nodeId,
+        pullVaultNameOrId: pullVault,
+      });
       response.setSuccess(true);
       callback(null, response);
       return;

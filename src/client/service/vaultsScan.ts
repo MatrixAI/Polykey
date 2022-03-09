@@ -1,9 +1,12 @@
 import type { Authenticate } from '../types';
-import type { VaultManager } from '../../vaults';
+import type { NodeId } from '../../nodes/types';
 import type * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
 import type * as grpc from '@grpc/grpc-js';
-import { utils as grpcUtils } from '../../grpc';
-import { utils as vaultsUtils } from '../../vaults';
+import type VaultManager from '../../vaults/VaultManager';
+import * as grpcUtils from '../../grpc/utils';
+import { validateSync } from '../../validation';
+import * as validationUtils from '../../validation/utils';
+import { matchSync } from '../../utils';
 import * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
 
 function vaultsScan({
@@ -20,13 +23,32 @@ function vaultsScan({
     try {
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
-      const vaults = await vaultManager.listVaults();
-      vaults.forEach(async (vaultId, vaultName) => {
-        const vaultListMessage = new vaultsPB.List();
+      const {
+        nodeId,
+      }: {
+        nodeId: NodeId;
+      } = validateSync(
+        (keyPath, value) => {
+          return matchSync(keyPath)(
+            [['nodeId'], () => validationUtils.parseNodeId(value)],
+            () => value,
+          );
+        },
+        {
+          nodeId: call.request.getNodeId(),
+        },
+      );
+      const vaultListMessage = new vaultsPB.List();
+      for await (const {
+        vaultIdEncoded,
+        vaultName,
+        vaultPermissions,
+      } of vaultManager.scanVaults(nodeId)) {
         vaultListMessage.setVaultName(vaultName);
-        vaultListMessage.setVaultId(vaultsUtils.makeVaultIdPretty(vaultId));
+        vaultListMessage.setVaultId(vaultIdEncoded);
+        vaultListMessage.setVaultPermissionsList(vaultPermissions);
         await genWritable.next(vaultListMessage);
-      });
+      }
       await genWritable.next(null);
       return;
     } catch (e) {

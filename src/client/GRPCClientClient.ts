@@ -186,31 +186,26 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   }
 
   @ready(new clientErrors.ErrorClientClientDestroyed())
-  public vaultsPermissionsSet(...args) {
-    return grpcUtils.promisifyUnaryCall<utilsPB.StatusMessage>(
+  public vaultsPermissionGet(...args) {
+    return grpcUtils.promisifyReadableStreamCall<vaultsPB.Permissions>(
       this.client,
-      this.client.vaultsPermissionsSet,
+      this.client.vaultsPermissionGet,
     )(...args);
   }
 
   @ready(new clientErrors.ErrorClientClientDestroyed())
-  public vaultsPermissionsUnset(...args) {
+  public vaultsPermissionSet(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.StatusMessage>(
       this.client,
-      this.client.vaultsPermissionsUnset,
+      this.client.vaultsPermissionSet,
     )(...args);
   }
 
   @ready(new clientErrors.ErrorClientClientDestroyed())
-  public vaultPermissions(
-    ...args
-  ): AsyncGeneratorReadableStreamClient<
-    vaultsPB.Permission,
-    ClientReadableStream<vaultsPB.Permission>
-  > {
-    return grpcUtils.promisifyReadableStreamCall<vaultsPB.Permission>(
+  public vaultsPermissionUnset(...args) {
+    return grpcUtils.promisifyUnaryCall<utilsPB.StatusMessage>(
       this.client,
-      this.client.vaultsPermissions,
+      this.client.vaultsPermissionUnset,
     )(...args);
   }
 
@@ -236,14 +231,6 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   }
 
   @ready(new clientErrors.ErrorClientClientDestroyed())
-  public vaultsSecretsStat(...args) {
-    return grpcUtils.promisifyUnaryCall<vaultsPB.Stat>(
-      this.client,
-      this.client.vaultsSecretsStat,
-    )(...args);
-  }
-
-  @ready(new clientErrors.ErrorClientClientDestroyed())
   public vaultsSecretsDelete(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.StatusMessage>(
       this.client,
@@ -264,6 +251,14 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     return grpcUtils.promisifyUnaryCall<secretsPB.Secret>(
       this.client,
       this.client.vaultsSecretsGet,
+    )(...args);
+  }
+
+  @ready(new clientErrors.ErrorClientClientDestroyed())
+  public vaultsSecretsStat(...args) {
+    return grpcUtils.promisifyUnaryCall<secretsPB.Stat>(
+      this.client,
+      this.client.vaultsSecretsStat,
     )(...args);
   }
 

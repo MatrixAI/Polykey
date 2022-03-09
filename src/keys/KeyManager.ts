@@ -12,7 +12,6 @@ import type { FileSystem } from '../types';
 import type { NodeId } from '../nodes/types';
 import type { PolykeyWorkerManagerInterface } from '../workers/types';
 
-import type { VaultKey } from '../vaults/types';
 import path from 'path';
 import { Buffer } from 'buffer';
 import Logger from '@matrixai/logger';
@@ -33,35 +32,12 @@ interface KeyManager extends CreateDestroyStartStop {}
   new keysErrors.ErrorKeyManagerDestroyed(),
 )
 class KeyManager {
-  public readonly keysPath: string;
-  public readonly rootPubPath: string;
-  public readonly rootKeyPath: string;
-  public readonly rootCertPath: string;
-  public readonly rootCertsPath: string;
-  public readonly dbKeyPath: string;
-  public readonly vaultKeyPath: string;
-
-  protected fs: FileSystem;
-  protected logger: Logger;
-  protected rootKeyPairChange: RootKeyPairChange;
-  protected rootKeyPair: KeyPair;
-  protected recoveryCode: RecoveryCode | undefined;
-  protected _dbKey: Buffer;
-  protected _vaultKey: Buffer;
-  protected rootCert: Certificate;
-  protected workerManager?: PolykeyWorkerManagerInterface;
-  protected rootKeyPairBits: number;
-  protected rootCertDuration: number;
-  protected dbKeyBits: number;
-  protected vaultKeyBits: number;
-
   static async createKeyManager({
     keysPath,
     password,
     rootKeyPairBits = 4096,
     rootCertDuration = 31536000,
     dbKeyBits = 256,
-    vaultKeyBits = 256,
     rootKeyPairChange = async () => {},
     fs = require('fs'),
     logger = new Logger(this.name),
@@ -73,7 +49,6 @@ class KeyManager {
     rootKeyPairBits?: number;
     rootCertDuration?: number;
     dbKeyBits?: number;
-    vaultKeyBits?: number;
     rootKeyPairChange?: RootKeyPairChange;
     fs?: FileSystem;
     logger?: Logger;
@@ -87,7 +62,6 @@ class KeyManager {
       rootCertDuration,
       rootKeyPairBits,
       dbKeyBits,
-      vaultKeyBits,
       rootKeyPairChange,
       fs,
       logger,
@@ -101,12 +75,30 @@ class KeyManager {
     return keyManager;
   }
 
+  public readonly keysPath: string;
+  public readonly rootPubPath: string;
+  public readonly rootKeyPath: string;
+  public readonly rootCertPath: string;
+  public readonly rootCertsPath: string;
+  public readonly dbKeyPath: string;
+
+  protected fs: FileSystem;
+  protected logger: Logger;
+  protected rootKeyPairChange: RootKeyPairChange;
+  protected rootKeyPair: KeyPair;
+  protected recoveryCode: RecoveryCode | undefined;
+  protected _dbKey: Buffer;
+  protected rootCert: Certificate;
+  protected workerManager?: PolykeyWorkerManagerInterface;
+  protected rootKeyPairBits: number;
+  protected rootCertDuration: number;
+  protected dbKeyBits: number;
+
   constructor({
     keysPath,
     rootKeyPairBits,
     rootCertDuration,
     dbKeyBits,
-    vaultKeyBits,
     rootKeyPairChange,
     fs,
     logger,
@@ -115,7 +107,6 @@ class KeyManager {
     rootKeyPairBits: number;
     rootCertDuration: number;
     dbKeyBits: number;
-    vaultKeyBits: number;
     rootKeyPairChange: RootKeyPairChange;
     fs: FileSystem;
     logger: Logger;
@@ -127,11 +118,9 @@ class KeyManager {
     this.rootCertPath = path.join(keysPath, 'root.crt');
     this.rootCertsPath = path.join(keysPath, 'root_certs');
     this.dbKeyPath = path.join(keysPath, 'db.key');
-    this.vaultKeyPath = path.join(keysPath, 'vault.key');
     this.rootKeyPairBits = rootKeyPairBits;
     this.rootCertDuration = rootCertDuration;
     this.dbKeyBits = dbKeyBits;
-    this.vaultKeyBits = vaultKeyBits;
     this.rootKeyPairChange = rootKeyPairChange;
     this.fs = fs;
   }
@@ -182,7 +171,6 @@ class KeyManager {
     this.recoveryCode = recoveryCode;
     this.rootCert = rootCert;
     this._dbKey = await this.setupKey(this.dbKeyPath, this.dbKeyBits);
-    this._vaultKey = await this.setupKey(this.vaultKeyPath, this.vaultKeyBits);
     this.logger.info(`Started ${this.constructor.name}`);
   }
 
@@ -203,11 +191,6 @@ class KeyManager {
   @ready(new keysErrors.ErrorKeyManagerNotRunning())
   get dbKey(): Buffer {
     return this._dbKey;
-  }
-
-  @ready(new keysErrors.ErrorKeyManagerNotRunning())
-  get vaultKey(): VaultKey {
-    return this._vaultKey as VaultKey;
   }
 
   @ready(new keysErrors.ErrorKeyManagerNotRunning())
@@ -410,7 +393,6 @@ class KeyManager {
   ): Promise<void> {
     this.logger.info('Renewing root key pair');
     const keysDbKeyPlain = await this.readKey(this.dbKeyPath);
-    const keysVaultKeyPlain = await this.readKey(this.vaultKeyPath);
     const recoveryCodeNew = keysUtils.generateRecoveryCode();
     const rootKeyPair = await this.generateKeyPair(bits, recoveryCodeNew);
     const now = new Date();
@@ -445,7 +427,6 @@ class KeyManager {
       this.writeRootKeyPair(rootKeyPair, password),
       this.writeRootCert(rootCert),
       this.writeKey(keysDbKeyPlain, this.dbKeyPath, rootKeyPair),
-      this.writeKey(keysVaultKeyPlain, this.vaultKeyPath, rootKeyPair),
     ]);
     this.rootKeyPair = rootKeyPair;
     this.recoveryCode = recoveryCodeNew;
@@ -476,7 +457,6 @@ class KeyManager {
   ): Promise<void> {
     this.logger.info('Resetting root key pair');
     const keysDbKeyPlain = await this.readKey(this.dbKeyPath);
-    const keysVaultKeyPlain = await this.readKey(this.vaultKeyPath);
     const recoveryCodeNew = keysUtils.generateRecoveryCode();
     const rootKeyPair = await this.generateKeyPair(bits, recoveryCodeNew);
     const rootCert = keysUtils.generateCertificate(
@@ -493,7 +473,6 @@ class KeyManager {
       this.writeRootKeyPair(rootKeyPair, password),
       this.writeRootCert(rootCert),
       this.writeKey(keysDbKeyPlain, this.dbKeyPath, rootKeyPair),
-      this.writeKey(keysVaultKeyPlain, this.vaultKeyPath, rootKeyPair),
     ]);
     this.rootKeyPair = rootKeyPair;
     this.recoveryCode = recoveryCodeNew;

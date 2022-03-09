@@ -1,6 +1,7 @@
 syntax = "proto3";
 
 import "polykey/v1/nodes/nodes.proto";
+import "google/protobuf/timestamp.proto";
 
 package polykey.v1.vaults;
 
@@ -16,6 +17,7 @@ message Vault {
 message List {
   string vault_name = 1;
   string vault_id = 2;
+  repeated string vault_permissions = 3;
 }
 
 message Rename {
@@ -32,6 +34,7 @@ message Mkdir {
 message Pull {
   Vault vault = 1;
   polykey.v1.nodes.Node node = 2;
+  Vault pull_vault = 3;
 }
 
 message Clone {
@@ -43,24 +46,10 @@ message Stat {
   string stats = 1;
 }
 
-message PermSet {
+message Permissions {
   Vault vault = 1;
   polykey.v1.nodes.Node node = 2;
-}
-
-message PermUnset {
-  Vault vault = 1;
-  polykey.v1.nodes.Node node = 2;
-}
-
-message PermGet {
-  Vault vault = 1;
-  polykey.v1.nodes.Node node = 2;
-}
-
-message Permission {
-  string node_id = 1;
-  string action = 2;
+  repeated string vault_permissions = 3;
 }
 
 message Version {
@@ -81,11 +70,15 @@ message Log {
 message LogEntry {
   string oid = 1;
   string committer = 2;
-  uint64 time_stamp = 4;
+  google.protobuf.Timestamp time_stamp = 4;
   string message = 3;
 }
 
 // Agent specific.
+message InfoRequest {
+  Vault vault = 1;
+  string action = 3;
+}
 
 message PackChunk {
   bytes chunk = 1;

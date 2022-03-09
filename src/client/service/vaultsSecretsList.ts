@@ -1,18 +1,12 @@
 import type { Authenticate } from '../types';
-import type { VaultId, VaultName } from '../../vaults/types';
-import type { VaultManager } from '../../vaults';
+import type { VaultName } from '../../vaults/types';
+import type VaultManager from '../../vaults/VaultManager';
 import type * as grpc from '@grpc/grpc-js';
 import type * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
-import { utils as idUtils } from '@matrixai/id';
-import { utils as grpcUtils } from '../../grpc';
-import { vaultOps, errors as vaultsErrors } from '../../vaults';
+import * as validationUtils from '../../validation/utils';
+import * as grpcUtils from '../../grpc/utils';
+import * as vaultOps from '../../vaults/VaultOps';
 import * as secretsPB from '../../proto/js/polykey/v1/secrets/secrets_pb';
-
-function decodeVaultId(input: string): VaultId | undefined {
-  return idUtils.fromMultibase(input)
-    ? (idUtils.fromMultibase(input) as VaultId)
-    : undefined;
-}
 
 function vaultsSecretsList({
   vaultManager,
@@ -31,10 +25,13 @@ function vaultsSecretsList({
       const vaultMessage = call.request;
       const nameOrId = vaultMessage.getNameOrId();
       let vaultId = await vaultManager.getVaultId(nameOrId as VaultName);
-      if (!vaultId) vaultId = decodeVaultId(nameOrId);
-      if (!vaultId) throw new vaultsErrors.ErrorVaultUndefined();
-      const vault = await vaultManager.openVault(vaultId);
-      const secrets = await vaultOps.listSecrets(vault);
+      vaultId = vaultId ?? validationUtils.parseVaultId(nameOrId);
+      const secrets = await vaultManager.withVaults(
+        [vaultId],
+        async (vault) => {
+          return await vaultOps.listSecrets(vault);
+        },
+      );
       let secretMessage: secretsPB.Secret;
       for (const secret of secrets) {
         secretMessage = new secretsPB.Secret();

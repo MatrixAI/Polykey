@@ -1,37 +1,41 @@
-import type { Vault, VaultId } from '@/vaults/types';
+import type { VaultId } from '@/vaults/types';
+import type { Vault } from '@/vaults/Vault';
+import type KeyManager from '@/keys/KeyManager';
+import type { DBDomain, DBLevel } from '@matrixai/db';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { EncryptedFS } from 'encryptedfs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { utils as idUtils } from '@matrixai/id';
+import { DB } from '@matrixai/db';
 import * as errors from '@/vaults/errors';
-import { VaultInternal, vaultOps } from '@/vaults';
-import { KeyManager } from '@/keys';
-import { generateVaultId } from '@/vaults/utils';
+import VaultInternal from '@/vaults/VaultInternal';
+import * as vaultOps from '@/vaults/VaultOps';
+import * as vaultsUtils from '@/vaults/utils';
 import * as keysUtils from '@/keys/utils';
 import * as testUtils from '../utils';
 
 describe('VaultOps', () => {
-  const password = 'password';
   const logger = new Logger('VaultOps', LogLevel.WARN, [new StreamHandler()]);
-  // Const probeLogger = new Logger('vaultOpsProbe', LogLevel.INFO, [
-  //   new StreamHandler(),
-  // ]);
 
   let dataDir: string;
-
-  let keyManager: KeyManager;
   let baseEfs: EncryptedFS;
-
   let vaultId: VaultId;
   let vaultInternal: VaultInternal;
   let vault: Vault;
+  let db: DB;
+  let vaultsDb: DBLevel;
+  let vaultsDbDomain: DBDomain;
+  const dummyKeyManager = {
+    getNodeId: () => {
+      return testUtils.generateRandomNodeId();
+    },
+  } as KeyManager;
 
   let mockedGenerateKeyPair: jest.SpyInstance;
   let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
 
-  beforeAll(async () => {
+  beforeEach(async () => {
     const globalKeyPair = await testUtils.setupGlobalKeypair();
     mockedGenerateKeyPair = jest
       .spyOn(keysUtils, 'generateKeyPair')
@@ -43,60 +47,57 @@ describe('VaultOps', () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
-    const keysPath = path.join(dataDir, 'keys');
-
-    keyManager = await KeyManager.createKeyManager({
-      keysPath,
-      password,
-      logger,
-    });
-
-    const dbPath = path.join(dataDir, 'db');
+    const dbPath = path.join(dataDir, 'efsDb');
+    const dbKey = await keysUtils.generateKey();
     baseEfs = await EncryptedFS.createEncryptedFS({
-      dbKey: keyManager.dbKey,
+      dbKey,
       dbPath,
       logger,
     });
     await baseEfs.start();
+
+    vaultId = vaultsUtils.generateVaultId();
+    await baseEfs.mkdir(
+      path.join(vaultsUtils.encodeVaultId(vaultId), 'contents'),
+      {
+        recursive: true,
+      },
+    );
+    db = await DB.createDB({ dbPath: path.join(dataDir, 'db'), logger });
+    vaultsDbDomain = ['vaults'];
+    vaultsDb = await db.level(vaultsDbDomain[0]);
+    vaultInternal = await VaultInternal.createVaultInternal({
+      keyManager: dummyKeyManager,
+      vaultId,
+      efs: baseEfs,
+      logger: logger.getChild(VaultInternal.name),
+      fresh: true,
+      db,
+      vaultsDbDomain,
+      vaultsDb,
+      vaultName: 'VaultName',
+    });
+    vault = vaultInternal as Vault;
   });
 
-  afterAll(async () => {
+  afterEach(async () => {
+    await vaultInternal.stop();
+    await vaultInternal.destroy();
+    await db.stop();
+    await db.destroy();
     mockedGenerateKeyPair.mockRestore();
     mockedGenerateDeterministicKeyPair.mockRestore();
     await baseEfs.stop();
     await baseEfs.destroy();
-    await keyManager.stop();
-    await keyManager.destroy();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
     });
   });
 
-  beforeEach(async () => {
-    vaultId = generateVaultId();
-    await baseEfs.mkdir(path.join(idUtils.toString(vaultId), 'contents'), {
-      recursive: true,
-    });
-    vaultInternal = await VaultInternal.create({
-      keyManager: keyManager,
-      vaultId,
-      efs: baseEfs,
-      logger: logger.getChild(VaultInternal.name),
-      fresh: true,
-    });
-    vault = vaultInternal as Vault;
-  });
-  afterEach(async () => {
-    await vaultInternal.destroy();
-  });
-
   test('adding a secret', async () => {
-    // Await vault.access(async efs => {
-    //   console.log(await efs.readdir('.'));
-    // })
     await vaultOps.addSecret(vault, 'secret-1', 'secret-content');
-    const dir = await vault.access(async (efs) => {
+    const dir = await vault.readF(async (efs) => {
       return await efs.readdir('.');
     });
     expect(dir).toContain('secret-1');
@@ -107,7 +108,7 @@ describe('VaultOps', () => {
     expect(secret.toString()).toBe('secret-content');
     await expect(() =>
       vaultOps.getSecret(vault, 'doesnotexist'),
-    ).rejects.toThrow(errors.ErrorSecretUndefined);
+    ).rejects.toThrow(errors.ErrorSecretsSecretUndefined);
   });
   test('able to make directories', async () => {
     await vaultOps.mkdir(vault, 'dir-1', { recursive: true });
@@ -120,7 +121,7 @@ describe('VaultOps', () => {
       path.join('dir-3', 'dir-4', 'secret-1'),
       'secret-content',
     );
-    await vault.access(async (efs) => {
+    await vault.readF(async (efs) => {
       const dir = await efs.readdir('.');
       expect(dir).toContain('dir-1');
       expect(dir).toContain('dir-2');
@@ -143,9 +144,9 @@ describe('VaultOps', () => {
           (await vaultOps.getSecret(vault, name)).toString(),
         ).toStrictEqual(content);
 
-        await expect(
-          vault.access((efs) => efs.readdir('.')),
-        ).resolves.toContain(name);
+        await expect(vault.readF((efs) => efs.readdir('.'))).resolves.toContain(
+          name,
+        );
       }
     },
     global.defaultTimeout * 4,
@@ -207,14 +208,14 @@ describe('VaultOps', () => {
     await expect(() => vaultOps.deleteSecret(vault, 'dir-1')).rejects.toThrow();
     await vaultOps.deleteSecret(vault, path.join('dir-1', 'secret-2'));
     await vaultOps.deleteSecret(vault, 'dir-1');
-    await expect(
-      vault.access((efs) => efs.readdir('.')),
-    ).resolves.not.toContain('secret-1');
+    await expect(vault.readF((efs) => efs.readdir('.'))).resolves.not.toContain(
+      'secret-1',
+    );
   });
   test('deleting a secret within a directory', async () => {
     await expect(() =>
       vaultOps.mkdir(vault, path.join('dir-1', 'dir-2')),
-    ).rejects.toThrow(errors.ErrorRecursive);
+    ).rejects.toThrow(errors.ErrorVaultsRecursive);
     await vaultOps.mkdir(vault, path.join('dir-1', 'dir-2'), {
       recursive: true,
     });
@@ -223,16 +224,11 @@ describe('VaultOps', () => {
       path.join('dir-1', 'dir-2', 'secret-1'),
       'secret-content',
     );
-    await vaultOps.deleteSecret(
-      vault,
-      path.join('dir-1', 'dir-2'),
-      {
-        recursive: true,
-      },
-      logger,
-    );
+    await vaultOps.deleteSecret(vault, path.join('dir-1', 'dir-2'), {
+      recursive: true,
+    });
     await expect(
-      vault.access((efs) => efs.readdir('dir-1')),
+      vault.readF((efs) => efs.readdir('dir-1')),
     ).resolves.not.toContain('dir-2');
   });
   test(
@@ -247,7 +243,7 @@ describe('VaultOps', () => {
         ).toStrictEqual(content);
         await vaultOps.deleteSecret(vault, name, { recursive: true });
         await expect(
-          vault.access((efs) => efs.readdir('.')),
+          vault.readF((efs) => efs.readdir('.')),
         ).resolves.not.toContain(name);
       }
     },
@@ -256,7 +252,7 @@ describe('VaultOps', () => {
   test('renaming a secret', async () => {
     await vaultOps.addSecret(vault, 'secret-1', 'secret-content');
     await vaultOps.renameSecret(vault, 'secret-1', 'secret-change');
-    const dir = vault.access((efs) => efs.readdir('.'));
+    const dir = vault.readF((efs) => efs.readdir('.'));
     await expect(dir).resolves.not.toContain('secret-1');
     await expect(dir).resolves.toContain('secret-change');
   });
@@ -273,9 +269,9 @@ describe('VaultOps', () => {
       path.join(dirPath, 'secret-1'),
       path.join(dirPath, 'secret-change'),
     );
-    await expect(
-      vault.access((efs) => efs.readdir(dirPath)),
-    ).resolves.toContain(`secret-change`);
+    await expect(vault.readF((efs) => efs.readdir(dirPath))).resolves.toContain(
+      `secret-change`,
+    );
   });
   test('listing secrets', async () => {
     await vaultOps.addSecret(vault, 'secret-1', 'secret-content');
@@ -384,7 +380,7 @@ describe('VaultOps', () => {
 
     await vaultOps.addSecretDirectory(vault, secretDir, fs);
     await expect(
-      vault.access((efs) => efs.readdir(secretDirName)),
+      vault.readF((efs) => efs.readdir(secretDirName)),
     ).resolves.toContain('secret');
 
     await fs.promises.rm(secretDir, {
@@ -516,7 +512,7 @@ describe('VaultOps', () => {
 
       for (let j = 0; j < 8; j++) {
         await expect(
-          vault.access((efs) => efs.readdir(secretDirName)),
+          vault.readF((efs) => efs.readdir(secretDirName)),
         ).resolves.toContain('secret ' + j.toString());
       }
       expect(

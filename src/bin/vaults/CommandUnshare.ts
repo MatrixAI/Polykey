@@ -51,17 +51,18 @@ class CommandUnshare extends CommandPolykey {
           port: clientOptions.clientPort,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-        const unsetVaultPermsMessage = new vaultsPB.PermUnset();
+        const vaultsPermissionsMessage = new vaultsPB.Permissions();
         const vaultMessage = new vaultsPB.Vault();
-        const nodeMessage = new nodesPB.Node();
-        unsetVaultPermsMessage.setVault(vaultMessage);
-        unsetVaultPermsMessage.setNode(nodeMessage);
         vaultMessage.setNameOrId(vaultName);
+        const nodeMessage = new nodesPB.Node();
         nodeMessage.setNodeId(nodesUtils.encodeNodeId(nodeId));
+        vaultsPermissionsMessage.setVault(vaultMessage);
+        vaultsPermissionsMessage.setNode(nodeMessage);
+        vaultsPermissionsMessage.setVaultPermissionsList(['clone', 'pull']);
         await binUtils.retryAuthentication(
           (auth) =>
-            pkClient.grpcClient.vaultsPermissionsUnset(
-              unsetVaultPermsMessage,
+            pkClient.grpcClient.vaultsPermissionUnset(
+              vaultsPermissionsMessage,
               auth,
             ),
           meta,

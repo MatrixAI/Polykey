@@ -1,18 +1,12 @@
 import type { Authenticate } from '../types';
-import type { VaultId, VaultName } from '../../vaults/types';
-import type { VaultManager } from '../../vaults';
+import type { VaultName } from '../../vaults/types';
+import type VaultManager from '../../vaults/VaultManager';
 import type * as secretsPB from '../../proto/js/polykey/v1/secrets/secrets_pb';
 import * as grpc from '@grpc/grpc-js';
-import { utils as idUtils } from '@matrixai/id';
-import { utils as grpcUtils } from '../../grpc';
-import { vaultOps, errors as vaultsErrors } from '../../vaults';
+import * as validationUtils from '../../validation/utils';
+import * as grpcUtils from '../../grpc/utils';
+import * as vaultOps from '../../vaults/VaultOps';
 import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
-
-function decodeVaultId(input: string): VaultId | undefined {
-  return idUtils.fromMultibase(input)
-    ? (idUtils.fromMultibase(input) as VaultId)
-    : undefined;
-}
 
 function vaultsSecretsRename({
   vaultManager,
@@ -41,12 +35,12 @@ function vaultsSecretsRename({
       }
       const nameOrId = vaultMessage.getNameOrId();
       let vaultId = await vaultManager.getVaultId(nameOrId as VaultName);
-      if (!vaultId) vaultId = decodeVaultId(nameOrId);
-      if (!vaultId) throw new vaultsErrors.ErrorVaultUndefined();
-      const vault = await vaultManager.openVault(vaultId);
+      vaultId = vaultId ?? validationUtils.parseVaultId(nameOrId);
       const oldSecret = secretMessage.getSecretName();
       const newSecret = call.request.getNewName();
-      await vaultOps.renameSecret(vault, oldSecret, newSecret);
+      await vaultManager.withVaults([vaultId], async (vault) => {
+        await vaultOps.renameSecret(vault, oldSecret, newSecret);
+      });
       response.setSuccess(true);
       callback(null, response);
       return;

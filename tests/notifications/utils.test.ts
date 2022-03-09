@@ -2,8 +2,7 @@ import type { Notification, NotificationData } from '@/notifications/types';
 import type { VaultActions, VaultName } from '@/vaults/types';
 import { createPublicKey } from 'crypto';
 import { EmbeddedJWK, jwtVerify, exportJWK } from 'jose';
-import { IdInternal } from '@matrixai/id';
-import { sleep } from '@/utils';
+
 import * as keysUtils from '@/keys/utils';
 import * as notificationsUtils from '@/notifications/utils';
 import * as notificationsErrors from '@/notifications/errors';
@@ -14,9 +13,8 @@ import * as testUtils from '../utils';
 describe('Notifications utils', () => {
   const nodeId = testUtils.generateRandomNodeId();
   const nodeIdEncoded = nodesUtils.encodeNodeId(nodeId);
-  const vaultId = vaultsUtils
-    .makeVaultId(IdInternal.fromString('vaultIdxxxxxxxxx'))
-    .toString();
+  const vaultId = vaultsUtils.generateVaultId();
+  const vaultIdEncoded = vaultsUtils.encodeVaultId(vaultId);
 
   test('generates notification ids', async () => {
     const generator = notificationsUtils.createNotificationIdGenerator();
@@ -39,7 +37,6 @@ describe('Notifications utils', () => {
       currentId = generator();
       expect(Buffer.compare(lastId, currentId)).toBeTruthy();
       lastId = currentId;
-      await sleep(10);
     }
   });
 
@@ -62,7 +59,7 @@ describe('Notifications utils', () => {
     const vaultShareNotification: Notification = {
       data: {
         type: 'VaultShare',
-        vaultId: vaultId,
+        vaultId: vaultIdEncoded,
         vaultName: 'vaultName' as VaultName,
         actions: {
           clone: null,
@@ -112,7 +109,7 @@ describe('Notifications utils', () => {
     result = await jwtVerify(signedVaultShareNotification, EmbeddedJWK, {});
     expect(result.payload.data).toEqual({
       type: 'VaultShare',
-      vaultId: vaultId,
+      vaultId: vaultIdEncoded,
       vaultName: 'vaultName',
       actions: {
         clone: null,
@@ -143,7 +140,7 @@ describe('Notifications utils', () => {
     const vaultShareNotification: Notification = {
       data: {
         type: 'VaultShare',
-        vaultId: vaultId,
+        vaultId: vaultIdEncoded,
         vaultName: 'vaultName' as VaultName,
         actions: {
           clone: null,
@@ -197,7 +194,7 @@ describe('Notifications utils', () => {
       );
     expect(decodedVaultShareNotification.data).toEqual({
       type: 'VaultShare',
-      vaultId: vaultId,
+      vaultId: vaultIdEncoded,
       vaultName: 'vaultName',
       actions: {
         clone: null,
@@ -237,7 +234,7 @@ describe('Notifications utils', () => {
     const vaultShareNotification: Notification = {
       data: {
         type: 'VaultShare',
-        vaultId: vaultId,
+        vaultId: vaultIdEncoded,
         vaultName: 'vaultName' as VaultName,
         actions: {
           clone: null,

@@ -1,17 +1,10 @@
 import type { Authenticate } from '../types';
-import type { VaultId, VaultName } from '../../vaults/types';
-import type { VaultManager } from '../../vaults';
+import type { VaultName } from '../../vaults/types';
+import type VaultManager from '../../vaults/VaultManager';
 import * as grpc from '@grpc/grpc-js';
-import { utils as idUtils } from '@matrixai/id';
-import { utils as grpcUtils } from '../../grpc';
-import { errors as vaultsErrors } from '../../vaults';
+import * as validationUtils from '../../validation/utils';
+import * as grpcUtils from '../../grpc/utils';
 import * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
-
-function decodeVaultId(input: string): VaultId | undefined {
-  return idUtils.fromMultibase(input)
-    ? (idUtils.fromMultibase(input) as VaultId)
-    : undefined;
-}
 
 function vaultsVersion({
   vaultManager,
@@ -29,9 +22,7 @@ function vaultsVersion({
       // Checking session token
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
-
       const vaultsVersionMessage = call.request;
-
       // Getting vault ID
       const vaultMessage = vaultsVersionMessage.getVault();
       if (vaultMessage == null) {
@@ -40,23 +31,22 @@ function vaultsVersion({
       }
       const nameOrId = vaultMessage.getNameOrId();
       let vaultId = await vaultManager.getVaultId(nameOrId as VaultName);
-      if (!vaultId) vaultId = decodeVaultId(nameOrId);
-      if (!vaultId) throw new vaultsErrors.ErrorVaultUndefined();
-
+      vaultId = vaultId ?? validationUtils.parseVaultId(nameOrId);
       // Doing the deed
-      const vault = await vaultManager.openVault(vaultId);
-      const latestOid = (await vault.log())[0].oid;
       const versionId = vaultsVersionMessage.getVersionId();
-
-      await vault.version(versionId);
-      const currentVersionId = (await vault.log(0, versionId))[0]?.oid;
-
-      // Checking if latest version ID.
+      const [latestOid, currentVersionId] = await vaultManager.withVaults(
+        [vaultId],
+        async (vault) => {
+          const latestOid = (await vault.log())[0].commitId;
+          await vault.version(versionId);
+          const currentVersionId = (await vault.log(versionId, 0))[0]?.commitId;
+          return [latestOid, currentVersionId];
+        },
+      );
+      // Checking if latest version ID
       const isLatestVersion = latestOid === currentVersionId;
-
       // Creating message
       response.setIsLatestVersion(isLatestVersion);
-
       // Sending message
       callback(null, response);
       return;

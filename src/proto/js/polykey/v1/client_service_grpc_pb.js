@@ -300,6 +300,17 @@ function deserialize_polykey_v1_secrets_Secret(buffer_arg) {
   return polykey_v1_secrets_secrets_pb.Secret.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_polykey_v1_secrets_Stat(arg) {
+  if (!(arg instanceof polykey_v1_secrets_secrets_pb.Stat)) {
+    throw new Error('Expected argument of type polykey.v1.secrets.Stat');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_polykey_v1_secrets_Stat(buffer_arg) {
+  return polykey_v1_secrets_secrets_pb.Stat.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_polykey_v1_sessions_Password(arg) {
   if (!(arg instanceof polykey_v1_sessions_sessions_pb.Password)) {
     throw new Error('Expected argument of type polykey.v1.sessions.Password');
@@ -388,48 +399,15 @@ function deserialize_polykey_v1_vaults_Mkdir(buffer_arg) {
   return polykey_v1_vaults_vaults_pb.Mkdir.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_polykey_v1_vaults_PermGet(arg) {
-  if (!(arg instanceof polykey_v1_vaults_vaults_pb.PermGet)) {
-    throw new Error('Expected argument of type polykey.v1.vaults.PermGet');
+function serialize_polykey_v1_vaults_Permissions(arg) {
+  if (!(arg instanceof polykey_v1_vaults_vaults_pb.Permissions)) {
+    throw new Error('Expected argument of type polykey.v1.vaults.Permissions');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
-function deserialize_polykey_v1_vaults_PermGet(buffer_arg) {
-  return polykey_v1_vaults_vaults_pb.PermGet.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_polykey_v1_vaults_PermSet(arg) {
-  if (!(arg instanceof polykey_v1_vaults_vaults_pb.PermSet)) {
-    throw new Error('Expected argument of type polykey.v1.vaults.PermSet');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_polykey_v1_vaults_PermSet(buffer_arg) {
-  return polykey_v1_vaults_vaults_pb.PermSet.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_polykey_v1_vaults_PermUnset(arg) {
-  if (!(arg instanceof polykey_v1_vaults_vaults_pb.PermUnset)) {
-    throw new Error('Expected argument of type polykey.v1.vaults.PermUnset');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_polykey_v1_vaults_PermUnset(buffer_arg) {
-  return polykey_v1_vaults_vaults_pb.PermUnset.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_polykey_v1_vaults_Permission(arg) {
-  if (!(arg instanceof polykey_v1_vaults_vaults_pb.Permission)) {
-    throw new Error('Expected argument of type polykey.v1.vaults.Permission');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_polykey_v1_vaults_Permission(buffer_arg) {
-  return polykey_v1_vaults_vaults_pb.Permission.deserializeBinary(new Uint8Array(buffer_arg));
+function deserialize_polykey_v1_vaults_Permissions(buffer_arg) {
+  return polykey_v1_vaults_vaults_pb.Permissions.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_polykey_v1_vaults_Pull(arg) {
@@ -452,17 +430,6 @@ function serialize_polykey_v1_vaults_Rename(arg) {
 
 function deserialize_polykey_v1_vaults_Rename(buffer_arg) {
   return polykey_v1_vaults_vaults_pb.Rename.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_polykey_v1_vaults_Stat(arg) {
-  if (!(arg instanceof polykey_v1_vaults_vaults_pb.Stat)) {
-    throw new Error('Expected argument of type polykey.v1.vaults.Stat');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_polykey_v1_vaults_Stat(buffer_arg) {
-  return polykey_v1_vaults_vaults_pb.Stat.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_polykey_v1_vaults_Vault(arg) {
@@ -768,17 +735,6 @@ vaultsList: {
     responseSerialize: serialize_polykey_v1_utils_StatusMessage,
     responseDeserialize: deserialize_polykey_v1_utils_StatusMessage,
   },
-  vaultsScan: {
-    path: '/polykey.v1.ClientService/VaultsScan',
-    requestStream: false,
-    responseStream: true,
-    requestType: polykey_v1_nodes_nodes_pb.Node,
-    responseType: polykey_v1_vaults_vaults_pb.List,
-    requestSerialize: serialize_polykey_v1_nodes_Node,
-    requestDeserialize: deserialize_polykey_v1_nodes_Node,
-    responseSerialize: serialize_polykey_v1_vaults_List,
-    responseDeserialize: deserialize_polykey_v1_vaults_List,
-  },
   vaultsSecretsList: {
     path: '/polykey.v1.ClientService/VaultsSecretsList',
     requestStream: false,
@@ -800,17 +756,6 @@ vaultsList: {
     requestDeserialize: deserialize_polykey_v1_vaults_Mkdir,
     responseSerialize: serialize_polykey_v1_utils_StatusMessage,
     responseDeserialize: deserialize_polykey_v1_utils_StatusMessage,
-  },
-  vaultsSecretsStat: {
-    path: '/polykey.v1.ClientService/VaultsSecretsStat',
-    requestStream: false,
-    responseStream: false,
-    requestType: polykey_v1_vaults_vaults_pb.Vault,
-    responseType: polykey_v1_vaults_vaults_pb.Stat,
-    requestSerialize: serialize_polykey_v1_vaults_Vault,
-    requestDeserialize: deserialize_polykey_v1_vaults_Vault,
-    responseSerialize: serialize_polykey_v1_vaults_Stat,
-    responseDeserialize: deserialize_polykey_v1_vaults_Stat,
   },
   vaultsSecretsDelete: {
     path: '/polykey.v1.ClientService/VaultsSecretsDelete',
@@ -878,38 +823,16 @@ vaultsList: {
     responseSerialize: serialize_polykey_v1_utils_StatusMessage,
     responseDeserialize: deserialize_polykey_v1_utils_StatusMessage,
   },
-  vaultsPermissionsSet: {
-    path: '/polykey.v1.ClientService/VaultsPermissionsSet',
+  vaultsSecretsStat: {
+    path: '/polykey.v1.ClientService/vaultsSecretsStat',
     requestStream: false,
     responseStream: false,
-    requestType: polykey_v1_vaults_vaults_pb.PermSet,
-    responseType: polykey_v1_utils_utils_pb.StatusMessage,
-    requestSerialize: serialize_polykey_v1_vaults_PermSet,
-    requestDeserialize: deserialize_polykey_v1_vaults_PermSet,
-    responseSerialize: serialize_polykey_v1_utils_StatusMessage,
-    responseDeserialize: deserialize_polykey_v1_utils_StatusMessage,
-  },
-  vaultsPermissionsUnset: {
-    path: '/polykey.v1.ClientService/VaultsPermissionsUnset',
-    requestStream: false,
-    responseStream: false,
-    requestType: polykey_v1_vaults_vaults_pb.PermUnset,
-    responseType: polykey_v1_utils_utils_pb.StatusMessage,
-    requestSerialize: serialize_polykey_v1_vaults_PermUnset,
-    requestDeserialize: deserialize_polykey_v1_vaults_PermUnset,
-    responseSerialize: serialize_polykey_v1_utils_StatusMessage,
-    responseDeserialize: deserialize_polykey_v1_utils_StatusMessage,
-  },
-  vaultsPermissions: {
-    path: '/polykey.v1.ClientService/VaultsPermissions',
-    requestStream: false,
-    responseStream: true,
-    requestType: polykey_v1_vaults_vaults_pb.PermGet,
-    responseType: polykey_v1_vaults_vaults_pb.Permission,
-    requestSerialize: serialize_polykey_v1_vaults_PermGet,
-    requestDeserialize: deserialize_polykey_v1_vaults_PermGet,
-    responseSerialize: serialize_polykey_v1_vaults_Permission,
-    responseDeserialize: deserialize_polykey_v1_vaults_Permission,
+    requestType: polykey_v1_secrets_secrets_pb.Secret,
+    responseType: polykey_v1_secrets_secrets_pb.Stat,
+    requestSerialize: serialize_polykey_v1_secrets_Secret,
+    requestDeserialize: deserialize_polykey_v1_secrets_Secret,
+    responseSerialize: serialize_polykey_v1_secrets_Stat,
+    responseDeserialize: deserialize_polykey_v1_secrets_Stat,
   },
   vaultsVersion: {
     path: '/polykey.v1.ClientService/VaultsVersion',
@@ -932,6 +855,50 @@ vaultsList: {
     requestDeserialize: deserialize_polykey_v1_vaults_Log,
     responseSerialize: serialize_polykey_v1_vaults_LogEntry,
     responseDeserialize: deserialize_polykey_v1_vaults_LogEntry,
+  },
+  vaultsScan: {
+    path: '/polykey.v1.ClientService/VaultsScan',
+    requestStream: false,
+    responseStream: true,
+    requestType: polykey_v1_nodes_nodes_pb.Node,
+    responseType: polykey_v1_vaults_vaults_pb.List,
+    requestSerialize: serialize_polykey_v1_nodes_Node,
+    requestDeserialize: deserialize_polykey_v1_nodes_Node,
+    responseSerialize: serialize_polykey_v1_vaults_List,
+    responseDeserialize: deserialize_polykey_v1_vaults_List,
+  },
+  vaultsPermissionSet: {
+    path: '/polykey.v1.ClientService/VaultsPermissionSet',
+    requestStream: false,
+    responseStream: false,
+    requestType: polykey_v1_vaults_vaults_pb.Permissions,
+    responseType: polykey_v1_utils_utils_pb.StatusMessage,
+    requestSerialize: serialize_polykey_v1_vaults_Permissions,
+    requestDeserialize: deserialize_polykey_v1_vaults_Permissions,
+    responseSerialize: serialize_polykey_v1_utils_StatusMessage,
+    responseDeserialize: deserialize_polykey_v1_utils_StatusMessage,
+  },
+  vaultsPermissionUnset: {
+    path: '/polykey.v1.ClientService/VaultsPermissionUnset',
+    requestStream: false,
+    responseStream: false,
+    requestType: polykey_v1_vaults_vaults_pb.Permissions,
+    responseType: polykey_v1_utils_utils_pb.StatusMessage,
+    requestSerialize: serialize_polykey_v1_vaults_Permissions,
+    requestDeserialize: deserialize_polykey_v1_vaults_Permissions,
+    responseSerialize: serialize_polykey_v1_utils_StatusMessage,
+    responseDeserialize: deserialize_polykey_v1_utils_StatusMessage,
+  },
+  vaultsPermissionGet: {
+    path: '/polykey.v1.ClientService/VaultsPermissionGet',
+    requestStream: false,
+    responseStream: true,
+    requestType: polykey_v1_vaults_vaults_pb.Vault,
+    responseType: polykey_v1_vaults_vaults_pb.Permissions,
+    requestSerialize: serialize_polykey_v1_vaults_Vault,
+    requestDeserialize: deserialize_polykey_v1_vaults_Vault,
+    responseSerialize: serialize_polykey_v1_vaults_Permissions,
+    responseDeserialize: deserialize_polykey_v1_vaults_Permissions,
   },
   // Identities
 identitiesAuthenticate: {

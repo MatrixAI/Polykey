@@ -1,18 +1,12 @@
 import type { Authenticate } from '../types';
-import type { VaultId, VaultName } from '../../vaults/types';
-import type { VaultManager } from '../../vaults';
+import type { VaultName } from '../../vaults/types';
+import type VaultManager from '../../vaults/VaultManager';
 import type * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 import * as grpc from '@grpc/grpc-js';
-import { utils as idUtils } from '@matrixai/id';
-import { utils as grpcUtils } from '../../grpc';
-import { vaultOps, errors as vaultsErrors } from '../../vaults';
+import * as validationUtils from '../../validation/utils';
+import * as grpcUtils from '../../grpc/utils';
+import * as vaultOps from '../../vaults/VaultOps';
 import * as secretsPB from '../../proto/js/polykey/v1/secrets/secrets_pb';
-
-function decodeVaultId(input: string): VaultId | undefined {
-  return idUtils.fromMultibase(input)
-    ? (idUtils.fromMultibase(input) as VaultId)
-    : undefined;
-}
 
 function vaultsSecretsGet({
   vaultManager,
@@ -29,7 +23,6 @@ function vaultsSecretsGet({
       const response = new secretsPB.Secret();
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
-
       const vaultMessage = call.request.getVault();
       if (vaultMessage == null) {
         callback({ code: grpc.status.NOT_FOUND }, null);
@@ -37,11 +30,14 @@ function vaultsSecretsGet({
       }
       const nameOrId = vaultMessage.getNameOrId();
       let vaultId = await vaultManager.getVaultId(nameOrId as VaultName);
-      if (!vaultId) vaultId = decodeVaultId(nameOrId);
-      if (!vaultId) throw new vaultsErrors.ErrorVaultUndefined();
-      const vault = await vaultManager.openVault(vaultId);
+      vaultId = vaultId ?? validationUtils.parseVaultId(nameOrId);
       const secretName = call.request.getSecretName();
-      const secretContent = await vaultOps.getSecret(vault, secretName);
+      const secretContent = await vaultManager.withVaults(
+        [vaultId],
+        async (vault) => {
+          return await vaultOps.getSecret(vault, secretName);
+        },
+      );
       response.setSecretContent(secretContent);
       callback(null, response);
       return;

@@ -212,7 +212,7 @@ describe('NotificationsManager', () => {
     };
     const vaultNotification: NotificationData = {
       type: 'VaultShare',
-      vaultId: vaultsUtils.generateVaultId().toString(),
+      vaultId: vaultsUtils.encodeVaultId(vaultsUtils.generateVaultId()),
       vaultName: 'vaultName' as VaultName,
       actions: {
         clone: null,
@@ -276,7 +276,7 @@ describe('NotificationsManager', () => {
     };
     const vaultNotification: NotificationData = {
       type: 'VaultShare',
-      vaultId: vaultsUtils.generateVaultId().toString(),
+      vaultId: vaultsUtils.encodeVaultId(vaultsUtils.generateVaultId()),
       vaultName: 'vaultName' as VaultName,
       actions: {
         clone: null,
@@ -341,7 +341,7 @@ describe('NotificationsManager', () => {
     const notification3: Notification = {
       data: {
         type: 'VaultShare',
-        vaultId: vaultsUtils.generateVaultId().toString(),
+        vaultId: vaultsUtils.encodeVaultId(vaultsUtils.generateVaultId()),
         vaultName: 'vaultName' as VaultName,
         actions: {
           clone: null,

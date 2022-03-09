@@ -431,7 +431,7 @@ class Sigchain {
     const claimStream = this.sigchainClaimsDb.createKeyStream();
     let seq = 1;
     for await (const o of claimStream) {
-      map[seq] = IdInternal.fromBuffer<ClaimId>(o);
+      map[seq] = IdInternal.fromBuffer<ClaimId>(o as Buffer);
       seq++;
     }
     return map;
@@ -439,7 +439,7 @@ class Sigchain {
 
   @ready(new sigchainErrors.ErrorSigchainNotRunning())
   public async clearDB() {
-    this.sigchainDb.clear();
+    await this.sigchainDb.clear();
 
     await this._transaction(async () => {
       await this.db.put(
@@ -458,7 +458,7 @@ class Sigchain {
         reverse: true,
       });
       for await (const o of keyStream) {
-        latestId = IdInternal.fromBuffer<ClaimId>(o);
+        latestId = IdInternal.fromBuffer<ClaimId>(o as Buffer);
       }
       return latestId;
     });
