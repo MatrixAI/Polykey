@@ -1,6 +1,6 @@
 import type { Authenticate } from '../types';
 import type { VaultName } from '../../vaults/types';
-import type { VaultManager } from '../../vaults';
+import type VaultManager from '../../vaults/VaultManager';
 import type GestaltGraph from '../../gestalts/GestaltGraph';
 import type ACL from '../../acl/ACL';
 import type NotificationsManager from '../../notifications/NotificationsManager';
@@ -10,7 +10,7 @@ import * as grpc from '@grpc/grpc-js';
 import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
 import * as validationUtils from '../../validation/utils';
-import { utils as grpcUtils } from '../../grpc';
+import * as grpcUtils from '../../grpc/utils';
 import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 
 function vaultsPermissionSet({

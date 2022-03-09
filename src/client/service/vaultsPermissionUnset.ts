@@ -1,13 +1,13 @@
 import type { Authenticate } from '../types';
 import type { VaultName } from '../../vaults/types';
-import type { VaultManager } from '../../vaults';
+import type VaultManager from '../../vaults/VaultManager';
 import type GestaltGraph from '../../gestalts/GestaltGraph';
 import type ACL from '../../acl/ACL';
 import type * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
 import * as grpc from '@grpc/grpc-js';
 import * as vaultsErrors from '../../vaults/errors';
 import * as validationUtils from '../../validation/utils';
-import { utils as grpcUtils } from '../../grpc';
+import * as grpcUtils from '../../grpc/utils';
 import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 
 function vaultsPermissionUnset({
@@ -54,7 +54,7 @@ function vaultsPermissionUnset({
       for (const action of actions) {
         await acl.unsetVaultAction(vaultId, nodeId, action);
       }
-      // We need to check if there are still shared vaults.
+      // We need to check if there are still shared vaults
       const nodePermissions = await acl.getNodePerm(nodeId);
       // Remove scan permissions if no more shared vaults
       if (nodePermissions != null) {

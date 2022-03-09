@@ -5,6 +5,7 @@ import * as grpc from '@grpc/grpc-js';
 import * as grpcUtils from '../../grpc/utils';
 import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 import * as validationUtils from '../../validation/utils';
+import * as vaultsUtils from '../../vaults/utils';
 
 function vaultsClone({
   authenticate,
@@ -35,8 +36,8 @@ function vaultsClone({
       // Vault id
       let vaultId;
       const vaultNameOrId = vaultMessage.getNameOrId();
-      vaultId = vaultManager.getVaultId(vaultNameOrId);
-      vaultId = vaultId ?? validationUtils.parseVaultId(vaultId);
+      vaultId = vaultsUtils.decodeVaultId(vaultNameOrId);
+      vaultId = vaultId ?? vaultNameOrId;
       // Node id
       const nodeId = validationUtils.parseNodeId(nodeMessage.getNodeId());
       await vaultManager.cloneVault(nodeId, vaultId);

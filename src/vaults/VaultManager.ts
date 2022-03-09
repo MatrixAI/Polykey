@@ -744,9 +744,7 @@ class VaultManager {
   /**
    * Returns all the shared vaults for a NodeId.
    */
-  public async *handleScanVaults(
-    nodeId: NodeId,
-  ): AsyncGenerator<{
+  public async *handleScanVaults(nodeId: NodeId): AsyncGenerator<{
     vaultId: VaultId;
     vaultName: VaultName;
     vaultPermissions: VaultAction[];

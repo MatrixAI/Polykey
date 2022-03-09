@@ -1,12 +1,12 @@
 import type { Authenticate } from '../types';
-import type { VaultManager } from '../../vaults';
+import type VaultManager from '../../vaults/VaultManager';
 import type { VaultName } from '../../vaults/types';
 import type * as grpc from '@grpc/grpc-js';
 import type { VaultActions } from '../../vaults/types';
 import type ACL from '../../acl/ACL';
 import type { NodeId, NodeIdEncoded } from 'nodes/types';
 import { IdInternal } from '@matrixai/id';
-import { utils as grpcUtils } from '../../grpc';
+import * as grpcUtils from '../../grpc/utils';
 import * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
 import * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
 import * as validationUtils from '../../validation/utils';
@@ -37,7 +37,7 @@ function vaultsPermissionGet({
       // Getting permissions
       const rawPermissions = await acl.getVaultPerm(vaultId);
       const permissionList: Record<NodeIdEncoded, VaultActions> = {};
-      // Getting the relevant information.
+      // Getting the relevant information
       for (const nodeId in rawPermissions) {
         permissionList[nodeId] = rawPermissions[nodeId].vaults[vaultId];
       }
@@ -46,7 +46,7 @@ function vaultsPermissionGet({
       vaultPermissionsMessage.setVault(vaultMessage);
       const nodeMessage = new nodesPB.Node();
 
-      // Constructing the message.
+      // Constructing the message
       for (const nodeIdString in permissionList) {
         const nodeId = IdInternal.fromString<NodeId>(nodeIdString);
         nodeMessage.setNodeId(nodesUtils.encodeNodeId(nodeId));

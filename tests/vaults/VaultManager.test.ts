@@ -463,7 +463,7 @@ describe('VaultManager', () => {
       await vaultManager?.destroy();
     }
   });
-  describe.skip('With remote agents', () => {
+  describe('With remote agents', () => {
     let allDataDir: string;
     let keyManager: KeyManager;
     let fwdProxy: ForwardProxy;
@@ -1388,7 +1388,7 @@ describe('VaultManager', () => {
       // No permissions for vault3
 
       // scanning vaults
-      const gen = vaultManager.handleScanVaults(nodeId1, acl);
+      const gen = vaultManager.handleScanVaults(nodeId1);
       const vaults: Record<VaultId, [VaultName, VaultAction[]]> = {};
       for await (const vault of gen) {
         vaults[vault.vaultId] = [vault.vaultName, vault.vaultPermissions];
@@ -1399,14 +1399,14 @@ describe('VaultManager', () => {
 
       // Should throw due to no permission
       await expect(async () => {
-        for await (const _ of vaultManager.handleScanVaults(nodeId2, acl)) {
+        for await (const _ of vaultManager.handleScanVaults(nodeId2)) {
           // Should throw
         }
       }).rejects.toThrow(vaultsErrors.ErrorVaultsPermissionDenied);
       // Should throw due to lack of scan permission
       await gestaltGraph.setGestaltActionByNode(nodeId2, 'notify');
       await expect(async () => {
-        for await (const _ of vaultManager.handleScanVaults(nodeId2, acl)) {
+        for await (const _ of vaultManager.handleScanVaults(nodeId2)) {
           // Should throw
         }
       }).rejects.toThrow(vaultsErrors.ErrorVaultsPermissionDenied);
