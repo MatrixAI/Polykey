@@ -3,6 +3,7 @@
  */
 import type Logger from '@matrixai/logger';
 import type { Vault } from './Vault';
+import type { Stat } from 'encryptedfs';
 import path from 'path';
 import * as vaultsErrors from './errors';
 import * as vaultsUtils from './utils';
@@ -114,7 +115,7 @@ async function getSecret(vault: Vault, secretName: string): Promise<Buffer> {
   }
 }
 
-async function statSecret(vault: Vault, secretName: string) {
+async function statSecret(vault: Vault, secretName: string): Promise<Stat> {
   try {
     return await vault.readF(async (efs) => {
       return await efs.stat(secretName);
