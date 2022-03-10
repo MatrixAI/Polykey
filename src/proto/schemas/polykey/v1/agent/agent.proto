@@ -19,3 +19,12 @@ message InfoMessage {
   string root_cert_pem = 14;
   string root_cert_chain_pem = 15;
 }
+
+message RestartMessage {
+  string password = 1;
+  string client_host = 2;
+  uint32 client_port = 3;
+  string ingress_host = 4;
+  uint32 ingress_port = 5;
+  bool fresh = 6;
+}

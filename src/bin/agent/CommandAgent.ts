@@ -1,5 +1,6 @@
 import CommandLock from './CommandLock';
 import CommandLockAll from './CommandLockAll';
+import CommandRestart from './CommandRestart';
 import CommandStart from './CommandStart';
 import CommandStatus from './CommandStatus';
 import CommandStop from './CommandStop';
@@ -13,6 +14,7 @@ class CommandAgent extends CommandPolykey {
     this.description('Agent Operations');
     this.addCommand(new CommandLock(...args));
     this.addCommand(new CommandLockAll(...args));
+    this.addCommand(new CommandRestart(...args));
     this.addCommand(new CommandStart(...args));
     this.addCommand(new CommandStatus(...args));
     this.addCommand(new CommandStop(...args));

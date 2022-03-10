@@ -120,6 +120,14 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   }
 
   @ready(new clientErrors.ErrorClientClientDestroyed())
+  public agentRestart(...args) {
+    return grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
+      this.client,
+      this.client.agentRestart,
+    )(...args);
+  }
+
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public vaultsList(
     ...args
   ): AsyncGeneratorReadableStreamClient<

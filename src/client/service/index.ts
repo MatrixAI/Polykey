@@ -20,6 +20,7 @@ import type { IClientServiceServer } from '../../proto/js/polykey/v1/client_serv
 import type { FileSystem } from '../../types';
 import Logger from '@matrixai/logger';
 import agentLockAll from './agentLockAll';
+import agentRestart from './agentRestart';
 import agentStatus from './agentStatus';
 import agentStop from './agentStop';
 import agentUnlock from './agentUnlock';
@@ -124,6 +125,7 @@ function createService({
   };
   const service: IClientServiceServer = {
     agentLockAll: agentLockAll(container),
+    agentRestart: agentRestart(container),
     agentStatus: agentStatus(container),
     agentStop: agentStop(container),
     agentUnlock: agentUnlock(container),

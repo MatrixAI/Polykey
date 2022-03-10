@@ -17,6 +17,7 @@ package polykey.v1;
 service ClientService {
   // Agent
   rpc AgentLockAll (polykey.v1.utils.EmptyMessage) returns (polykey.v1.utils.EmptyMessage);
+  rpc AgentRestart (polykey.v1.agent.RestartMessage) returns (polykey.v1.utils.EmptyMessage);
   rpc AgentStatus(polykey.v1.utils.EmptyMessage) returns (polykey.v1.agent.InfoMessage);
   rpc AgentStop(polykey.v1.utils.EmptyMessage) returns (polykey.v1.utils.EmptyMessage);
   rpc AgentUnlock (polykey.v1.utils.EmptyMessage) returns (polykey.v1.utils.EmptyMessage);
