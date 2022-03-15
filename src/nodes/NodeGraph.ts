@@ -105,7 +105,7 @@ class NodeGraph {
     // Bucket metadata sublevel: `!meta<space>!<lexi(NodeBucketIndex)>!<key> -> value`
     this.nodeGraphMetaDbPath = [...this.nodeGraphDbPath, 'meta' + space];
     // Bucket sublevel: `!buckets<space>!<lexi(NodeBucketIndex)>!<NodeId> -> NodeData`
-    // The BucketIndex can range from 0 to NodeId bitsize minus 1
+    // The BucketIndex can range from 0 to NodeId bit-size minus 1
     // So 256 bits means 256 buckets of 0 to 255
     this.nodeGraphBucketsDbPath = [...this.nodeGraphDbPath, 'buckets' + space];
     // Last updated sublevel: `!lastUpdated<space>!<lexi(NodeBucketIndex)>!<lexi(lastUpdated)>-<NodeId> -> NodeId`
@@ -166,7 +166,7 @@ class NodeGraph {
   }
 
   /**
-   * Get all nodes
+   * Get all nodes.
    * Nodes are always sorted by `NodeBucketIndex` first
    * Then secondly by the node IDs
    * The `order` parameter applies to both, for example possible sorts:
@@ -340,7 +340,7 @@ class NodeGraph {
   }
 
   /**
-   * Gets all buckets
+   * Gets all buckets.
    * Buckets are always sorted by `NodeBucketIndex` first
    * Then secondly by the `sort` parameter
    * The `order` parameter applies to both, for example possible sorts:
@@ -580,6 +580,136 @@ class NodeGraph {
         break;
     }
     return value;
+  }
+
+  /**
+   * Finds the set of nodes (of size k) known by the current node (i.e. in its
+   * buckets' database) that have the smallest distance to the target node (i.e.
+   * are closest to the target node).
+   * i.e. FIND_NODE RPC from Kademlia spec
+   *
+   * Used by the RPC service.
+   *
+   * @param nodeId the node ID to find other nodes closest to it
+   * @param limit the number of the closest nodes to return (by default, returns
+   * according to the maximum number of nodes per bucket)
+   * @param tran
+   * @returns a mapping containing exactly k nodeIds -> nodeAddresses (unless the
+   * current node has less than k nodes in all of its buckets, in which case it
+   * returns all nodes it has knowledge of)
+   */
+  @ready(new nodesErrors.ErrorNodeGraphNotRunning())
+  public async getClosestNodes(
+    nodeId: NodeId,
+    limit: number = this.nodeBucketLimit,
+    tran: DBTransaction,
+  ): Promise<NodeBucket> {
+    // Buckets map to the target node in the following way;
+    // 1. 0, 1, ..., T-1 -> T
+    // 2. T -> 0, 1, ..., T-1
+    // 3. T+1, T+2, ..., 255 are unchanged
+    // We need to obtain nodes in the following bucket order
+    // 1. T
+    // 2. iterate over 0 ---> T-1
+    // 3. iterate over T+1 ---> K
+    // Need to work out the relevant bucket to start from
+    const startingBucket = nodesUtils.bucketIndex(
+      this.keyManager.getNodeId(),
+      nodeId,
+    );
+    // Getting the whole target's bucket first
+    const nodeIds: NodeBucket = await this.getBucket(
+      startingBucket,
+      undefined,
+      undefined,
+      tran,
+    );
+    // We need to iterate over the key stream
+    // When streaming we want all nodes in the starting bucket
+    // The keys takes the form `!(lexpack bucketId)!(nodeId)`
+    // We can just use `!(lexpack bucketId)` to start from
+    // Less than `!(bucketId 101)!` gets us buckets 100 and lower
+    // greater than `!(bucketId 99)!` gets up buckets 100 and greater
+    const prefix = Buffer.from([33]); // Code for `!` prefix
+    if (nodeIds.length < limit) {
+      // Just before target bucket
+      const bucketId = Buffer.from(nodesUtils.bucketKey(startingBucket));
+      const endKeyLower = Buffer.concat([prefix, bucketId, prefix]);
+      const remainingLimit = limit - nodeIds.length;
+      // Iterate over lower buckets
+      tran.iterator<NodeData>(
+        {
+          lt: endKeyLower,
+          limit: remainingLimit,
+          valueAsBuffer: false,
+        },
+        this.nodeGraphBucketsDbPath,
+      );
+      for await (const [key, nodeData] of tran.iterator<NodeData>(
+        {
+          lt: endKeyLower,
+          limit: remainingLimit,
+          valueAsBuffer: false,
+        },
+        this.nodeGraphBucketsDbPath,
+      )) {
+        const info = nodesUtils.parseBucketsDbKey(key as unknown as Buffer);
+        nodeIds.push([info.nodeId, nodeData]);
+      }
+    }
+    if (nodeIds.length < limit) {
+      // Just after target bucket
+      const bucketId = Buffer.from(nodesUtils.bucketKey(startingBucket + 1));
+      const startKeyUpper = Buffer.concat([prefix, bucketId, prefix]);
+      const remainingLimit = limit - nodeIds.length;
+      // Iterate over ids further away
+      tran.iterator(
+        {
+          gt: startKeyUpper,
+          limit: remainingLimit,
+        },
+        this.nodeGraphBucketsDbPath,
+      );
+      for await (const [key, nodeData] of tran.iterator<NodeData>(
+        {
+          gt: startKeyUpper,
+          limit: remainingLimit,
+          valueAsBuffer: false,
+        },
+        this.nodeGraphBucketsDbPath,
+      )) {
+        const info = nodesUtils.parseBucketsDbKey(key as unknown as Buffer);
+        nodeIds.push([info.nodeId, nodeData]);
+      }
+    }
+    // If no nodes were found, return nothing
+    if (nodeIds.length === 0) return [];
+    // Need to get the whole of the last bucket
+    const lastBucketIndex = nodesUtils.bucketIndex(
+      this.keyManager.getNodeId(),
+      nodeIds[nodeIds.length - 1][0],
+    );
+    const lastBucket = await this.getBucket(
+      lastBucketIndex,
+      undefined,
+      undefined,
+      tran,
+    );
+    // Pop off elements of the same bucket to avoid duplicates
+    let element = nodeIds.pop();
+    while (
+      element != null &&
+      nodesUtils.bucketIndex(this.keyManager.getNodeId(), element[0]) ===
+        lastBucketIndex
+    ) {
+      element = nodeIds.pop();
+    }
+    if (element != null) nodeIds.push(element);
+    // Adding last bucket to the list
+    nodeIds.push(...lastBucket);
+
+    nodesUtils.bucketSortByDistance(nodeIds, nodeId, 'asc');
+    return nodeIds.slice(0, limit);
   }
 
   /**
