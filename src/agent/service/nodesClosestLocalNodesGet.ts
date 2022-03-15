@@ -1,6 +1,6 @@
 import type * as grpc from '@grpc/grpc-js';
+import type { NodeGraph } from '../../nodes';
 import type { DB } from '@matrixai/db';
-import type NodeConnectionManager from '../../nodes/NodeConnectionManager';
 import type { NodeId } from '../../nodes/types';
 import type Logger from '@matrixai/logger';
 import * as grpcUtils from '../../grpc/utils';
@@ -16,11 +16,11 @@ import * as agentUtils from '../utils';
  * to some provided node ID.
  */
 function nodesClosestLocalNodesGet({
-  nodeConnectionManager,
+  nodeGraph,
   db,
   logger,
 }: {
-  nodeConnectionManager: NodeConnectionManager;
+  nodeGraph: NodeGraph;
   db: DB;
   logger: Logger;
 }) {
@@ -47,21 +47,16 @@ function nodesClosestLocalNodesGet({
       );
       // Get all local nodes that are closest to the target node from the request
       const closestNodes = await db.withTransactionF(
-        async (tran) =>
-          await nodeConnectionManager.getClosestLocalNodes(
-            nodeId,
-            undefined,
-            tran,
-          ),
+        async (tran) => await nodeGraph.getClosestNodes(nodeId, tran),
       );
-      for (const node of closestNodes) {
+      for (const [nodeId, nodeData] of closestNodes) {
         const addressMessage = new nodesPB.Address();
-        addressMessage.setHost(node.address.host);
-        addressMessage.setPort(node.address.port);
+        addressMessage.setHost(nodeData.address.host);
+        addressMessage.setPort(nodeData.address.port);
         // Add the node to the response's map (mapping of node ID -> node address)
         response
           .getNodeTableMap()
-          .set(nodesUtils.encodeNodeId(node.id), addressMessage);
+          .set(nodesUtils.encodeNodeId(nodeId), addressMessage);
       }
       callback(null, response);
       return;

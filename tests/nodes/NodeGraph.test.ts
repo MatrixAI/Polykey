@@ -172,7 +172,7 @@ describe(`${NodeGraph.name} test`, () => {
       (nodeId) => !nodeId.equals(keyManager.getNodeId()),
     );
     let bucketIndexes: Array<NodeBucketIndex>;
-    let nodes: Array<[NodeId, NodeData]>;
+    let nodes: NodeBucket;
     nodes = await utils.asyncIterableArray(nodeGraph.getNodes());
     expect(nodes).toHaveLength(0);
     for (const nodeId of nodeIds) {
@@ -713,6 +713,345 @@ describe(`${NodeGraph.name} test`, () => {
       }
     }
     expect(buckets2).not.toStrictEqual(buckets1);
+    await nodeGraph.stop();
+  });
+  test('get closest nodes, 40 nodes lower than target, take 20', async () => {
+    const nodeGraph = await NodeGraph.createNodeGraph({
+      db,
+      keyManager,
+      logger,
+    });
+    const baseNodeId = keyManager.getNodeId();
+    const nodeIds: NodeBucket = [];
+    // Add 1 node to each bucket
+    for (let i = 0; i < 40; i++) {
+      const nodeId = testNodesUtils.generateNodeIdForBucket(
+        baseNodeId,
+        50 + i,
+        i,
+      );
+      nodeIds.push([nodeId, {} as NodeData]);
+      await nodeGraph.setNode(nodeId, {
+        host: '127.0.0.1',
+        port: utils.getRandomInt(0, 2 ** 16),
+      } as NodeAddress);
+    }
+    const targetNodeId = testNodesUtils.generateNodeIdForBucket(
+      baseNodeId,
+      100,
+      2,
+    );
+    const result = await nodeGraph.getClosestNodes(targetNodeId, 20);
+    nodesUtils.bucketSortByDistance(nodeIds, targetNodeId);
+    const a = nodeIds.map((a) => nodesUtils.encodeNodeId(a[0]));
+    const b = result.map((a) => nodesUtils.encodeNodeId(a[0]));
+    // Are the closest nodes out of all of the nodes
+    expect(a.slice(0, b.length)).toEqual(b);
+
+    // Check that the list is strictly ascending
+    const closestNodeDistances = result.map(([nodeId]) =>
+      nodesUtils.nodeDistance(targetNodeId, nodeId),
+    );
+    expect(
+      closestNodeDistances.slice(1).every((distance, i) => {
+        return closestNodeDistances[i] < distance;
+      }),
+    ).toBe(true);
+    await nodeGraph.stop();
+  });
+  test('get closest nodes, 15 nodes lower than target, take 20', async () => {
+    const nodeGraph = await NodeGraph.createNodeGraph({
+      db,
+      keyManager,
+      logger,
+    });
+    const baseNodeId = keyManager.getNodeId();
+    const nodeIds: NodeBucket = [];
+    // Add 1 node to each bucket
+    for (let i = 0; i < 15; i++) {
+      const nodeId = testNodesUtils.generateNodeIdForBucket(
+        baseNodeId,
+        50 + i,
+        i,
+      );
+      nodeIds.push([nodeId, {} as NodeData]);
+      await nodeGraph.setNode(nodeId, {
+        host: '127.0.0.1',
+        port: utils.getRandomInt(0, 2 ** 16),
+      } as NodeAddress);
+    }
+    const targetNodeId = testNodesUtils.generateNodeIdForBucket(
+      baseNodeId,
+      100,
+      2,
+    );
+    const result = await nodeGraph.getClosestNodes(targetNodeId);
+    nodesUtils.bucketSortByDistance(nodeIds, targetNodeId);
+    const a = nodeIds.map((a) => nodesUtils.encodeNodeId(a[0]));
+    const b = result.map((a) => nodesUtils.encodeNodeId(a[0]));
+    // Are the closest nodes out of all of the nodes
+    expect(a.slice(0, b.length)).toEqual(b);
+
+    // Check that the list is strictly ascending
+    const closestNodeDistances = result.map(([nodeId]) =>
+      nodesUtils.nodeDistance(targetNodeId, nodeId),
+    );
+    expect(
+      closestNodeDistances.slice(1).every((distance, i) => {
+        return closestNodeDistances[i] < distance;
+      }),
+    ).toBe(true);
+    await nodeGraph.stop();
+  });
+  test('get closest nodes, 10 nodes lower than target, 30 nodes above,  take 20', async () => {
+    const nodeGraph = await NodeGraph.createNodeGraph({
+      db,
+      keyManager,
+      logger,
+    });
+    const baseNodeId = keyManager.getNodeId();
+    const nodeIds: NodeBucket = [];
+    // Add 1 node to each bucket
+    for (let i = 0; i < 40; i++) {
+      const nodeId = testNodesUtils.generateNodeIdForBucket(
+        baseNodeId,
+        90 + i,
+        i,
+      );
+      nodeIds.push([nodeId, {} as NodeData]);
+      await nodeGraph.setNode(nodeId, {
+        host: '127.0.0.1',
+        port: utils.getRandomInt(0, 2 ** 16),
+      } as NodeAddress);
+    }
+    const targetNodeId = testNodesUtils.generateNodeIdForBucket(
+      baseNodeId,
+      100,
+      2,
+    );
+    const result = await nodeGraph.getClosestNodes(targetNodeId);
+    nodesUtils.bucketSortByDistance(nodeIds, targetNodeId);
+    const a = nodeIds.map((a) => nodesUtils.encodeNodeId(a[0]));
+    const b = result.map((a) => nodesUtils.encodeNodeId(a[0]));
+    // Are the closest nodes out of all of the nodes
+    expect(a.slice(0, b.length)).toEqual(b);
+
+    // Check that the list is strictly ascending
+    const closestNodeDistances = result.map(([nodeId]) =>
+      nodesUtils.nodeDistance(targetNodeId, nodeId),
+    );
+    expect(
+      closestNodeDistances.slice(1).every((distance, i) => {
+        return closestNodeDistances[i] < distance;
+      }),
+    ).toBe(true);
+    await nodeGraph.stop();
+  });
+  test('get closest nodes, 10 nodes lower than target, 30 nodes above,  take 5', async () => {
+    const nodeGraph = await NodeGraph.createNodeGraph({
+      db,
+      keyManager,
+      logger,
+    });
+    const baseNodeId = keyManager.getNodeId();
+    const nodeIds: NodeBucket = [];
+    // Add 1 node to each bucket
+    for (let i = 0; i < 40; i++) {
+      const nodeId = testNodesUtils.generateNodeIdForBucket(
+        baseNodeId,
+        90 + i,
+        i,
+      );
+      nodeIds.push([nodeId, {} as NodeData]);
+      await nodeGraph.setNode(nodeId, {
+        host: '127.0.0.1',
+        port: utils.getRandomInt(0, 2 ** 16),
+      } as NodeAddress);
+    }
+    const targetNodeId = testNodesUtils.generateNodeIdForBucket(
+      baseNodeId,
+      100,
+      2,
+    );
+    const result = await nodeGraph.getClosestNodes(targetNodeId, 5);
+    nodesUtils.bucketSortByDistance(nodeIds, targetNodeId);
+    const a = nodeIds.map((a) => nodesUtils.encodeNodeId(a[0]));
+    const b = result.map((a) => nodesUtils.encodeNodeId(a[0]));
+    // Are the closest nodes out of all of the nodes
+    expect(a.slice(0, b.length)).toEqual(b);
+
+    // Check that the list is strictly ascending
+    const closestNodeDistances = result.map(([nodeId]) =>
+      nodesUtils.nodeDistance(targetNodeId, nodeId),
+    );
+    expect(
+      closestNodeDistances.slice(1).every((distance, i) => {
+        return closestNodeDistances[i] < distance;
+      }),
+    ).toBe(true);
+    await nodeGraph.stop();
+  });
+  test('get closest nodes, 5 nodes lower than target, 10 nodes above,  take 20', async () => {
+    const nodeGraph = await NodeGraph.createNodeGraph({
+      db,
+      keyManager,
+      logger,
+    });
+    const baseNodeId = keyManager.getNodeId();
+    const nodeIds: NodeBucket = [];
+    // Add 1 node to each bucket
+    for (let i = 0; i < 15; i++) {
+      const nodeId = testNodesUtils.generateNodeIdForBucket(
+        baseNodeId,
+        95 + i,
+        i,
+      );
+      nodeIds.push([nodeId, {} as NodeData]);
+      await nodeGraph.setNode(nodeId, {
+        host: '127.0.0.1',
+        port: utils.getRandomInt(0, 2 ** 16),
+      } as NodeAddress);
+    }
+    const targetNodeId = testNodesUtils.generateNodeIdForBucket(
+      baseNodeId,
+      100,
+      2,
+    );
+    const result = await nodeGraph.getClosestNodes(targetNodeId);
+    nodesUtils.bucketSortByDistance(nodeIds, targetNodeId);
+    const a = nodeIds.map((a) => nodesUtils.encodeNodeId(a[0]));
+    const b = result.map((a) => nodesUtils.encodeNodeId(a[0]));
+    // Are the closest nodes out of all of the nodes
+    expect(a.slice(0, b.length)).toEqual(b);
+
+    // Check that the list is strictly ascending
+    const closestNodeDistances = result.map(([nodeId]) =>
+      nodesUtils.nodeDistance(targetNodeId, nodeId),
+    );
+    expect(
+      closestNodeDistances.slice(1).every((distance, i) => {
+        return closestNodeDistances[i] < distance;
+      }),
+    ).toBe(true);
+    await nodeGraph.stop();
+  });
+  test('get closest nodes, 40 nodes above target,  take 20', async () => {
+    const nodeGraph = await NodeGraph.createNodeGraph({
+      db,
+      keyManager,
+      logger,
+    });
+    const baseNodeId = keyManager.getNodeId();
+    const nodeIds: NodeBucket = [];
+    // Add 1 node to each bucket
+    for (let i = 0; i < 40; i++) {
+      const nodeId = testNodesUtils.generateNodeIdForBucket(
+        baseNodeId,
+        101 + i,
+        i,
+      );
+      nodeIds.push([nodeId, {} as NodeData]);
+      await nodeGraph.setNode(nodeId, {
+        host: '127.0.0.1',
+        port: utils.getRandomInt(0, 2 ** 16),
+      } as NodeAddress);
+    }
+    const targetNodeId = testNodesUtils.generateNodeIdForBucket(
+      baseNodeId,
+      100,
+      2,
+    );
+    const result = await nodeGraph.getClosestNodes(targetNodeId);
+    nodesUtils.bucketSortByDistance(nodeIds, targetNodeId);
+    const a = nodeIds.map((a) => nodesUtils.encodeNodeId(a[0]));
+    const b = result.map((a) => nodesUtils.encodeNodeId(a[0]));
+    // Are the closest nodes out of all of the nodes
+    expect(a.slice(0, b.length)).toEqual(b);
+
+    // Check that the list is strictly ascending
+    const closestNodeDistances = result.map(([nodeId]) =>
+      nodesUtils.nodeDistance(targetNodeId, nodeId),
+    );
+    expect(
+      closestNodeDistances.slice(1).every((distance, i) => {
+        return closestNodeDistances[i] < distance;
+      }),
+    ).toBe(true);
+    await nodeGraph.stop();
+  });
+  test('get closest nodes, 15 nodes above target,  take 20', async () => {
+    const nodeGraph = await NodeGraph.createNodeGraph({
+      db,
+      keyManager,
+      logger,
+    });
+    const baseNodeId = keyManager.getNodeId();
+    const nodeIds: NodeBucket = [];
+    // Add 1 node to each bucket
+    for (let i = 0; i < 15; i++) {
+      const nodeId = testNodesUtils.generateNodeIdForBucket(
+        baseNodeId,
+        101 + i,
+        i,
+      );
+      nodeIds.push([nodeId, {} as NodeData]);
+      await nodeGraph.setNode(nodeId, {
+        host: '127.0.0.1',
+        port: utils.getRandomInt(0, 2 ** 16),
+      } as NodeAddress);
+    }
+    const targetNodeId = testNodesUtils.generateNodeIdForBucket(
+      baseNodeId,
+      100,
+      2,
+    );
+    const result = await nodeGraph.getClosestNodes(targetNodeId);
+    nodesUtils.bucketSortByDistance(nodeIds, targetNodeId);
+    const a = nodeIds.map((a) => nodesUtils.encodeNodeId(a[0]));
+    const b = result.map((a) => nodesUtils.encodeNodeId(a[0]));
+    // Are the closest nodes out of all of the nodes
+    expect(a.slice(0, b.length)).toEqual(b);
+
+    // Check that the list is strictly ascending
+    const closestNodeDistances = result.map(([nodeId]) =>
+      nodesUtils.nodeDistance(targetNodeId, nodeId),
+    );
+    expect(
+      closestNodeDistances.slice(1).every((distance, i) => {
+        return closestNodeDistances[i] < distance;
+      }),
+    ).toBe(true);
+    await nodeGraph.stop();
+  });
+  test('get closest nodes, no nodes, take 20', async () => {
+    const nodeGraph = await NodeGraph.createNodeGraph({
+      db,
+      keyManager,
+      logger,
+    });
+    const baseNodeId = keyManager.getNodeId();
+    const nodeIds: NodeBucket = [];
+    const targetNodeId = testNodesUtils.generateNodeIdForBucket(
+      baseNodeId,
+      100,
+      2,
+    );
+    const result = await nodeGraph.getClosestNodes(targetNodeId);
+    nodesUtils.bucketSortByDistance(nodeIds, targetNodeId);
+    const a = nodeIds.map((a) => nodesUtils.encodeNodeId(a[0]));
+    const b = result.map((a) => nodesUtils.encodeNodeId(a[0]));
+    // Are the closest nodes out of all of the nodes
+    expect(a.slice(0, b.length)).toEqual(b);
+
+    // Check that the list is strictly ascending
+    const closestNodeDistances = result.map(([nodeId]) =>
+      nodesUtils.nodeDistance(targetNodeId, nodeId),
+    );
+    expect(
+      closestNodeDistances.slice(1).every((distance, i) => {
+        return closestNodeDistances[i] < distance;
+      }),
+    ).toBe(true);
     await nodeGraph.stop();
   });
 });
