@@ -438,47 +438,6 @@ class NodeConnectionManager {
   }
 
   /**
-   * Finds the set of nodes (of size k) known by the current node (i.e. in its
-   * buckets database) that have the smallest distance to the target node (i.e.
-   * are closest to the target node).
-   * i.e. FIND_NODE RPC from Kademlia spec
-   *
-   * Used by the RPC service.
-   *
-   * @param targetNodeId the node ID to find other nodes closest to it
-   * @param numClosest the number of closest nodes to return (by default, returns
-   * according to the maximum number of nodes per bucket)
-   * @returns a mapping containing exactly k nodeIds -> nodeAddresses (unless the
-   * current node has less than k nodes in all of its buckets, in which case it
-   * returns all nodes it has knowledge of)
-   */
-  @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
-  public async getClosestLocalNodes(
-    targetNodeId: NodeId,
-    numClosest: number = this.nodeGraph.maxNodesPerBucket,
-  ): Promise<Array<NodeData>> {
-    // Retrieve all nodes from buckets in database
-    const buckets = await this.nodeGraph.getAllBuckets();
-    // Iterate over all of the nodes in each bucket
-    const distanceToNodes: Array<NodeData> = [];
-    buckets.forEach(function (bucket) {
-      for (const nodeIdString of Object.keys(bucket)) {
-        // Compute the distance from the node, and add it to the array
-        const nodeId = IdInternal.fromString<NodeId>(nodeIdString);
-        distanceToNodes.push({
-          id: nodeId,
-          address: bucket[nodeId].address,
-          distance: nodesUtils.calculateDistance(nodeId, targetNodeId),
-        });
-      }
-    });
-    // Sort the array (based on the distance at index 1)
-    distanceToNodes.sort(nodesUtils.sortByDistance);
-    // Return the closest k nodes (i.e. the first k), or all nodes if < k in array
-    return distanceToNodes.slice(0, numClosest);
-  }
-
-  /**
    * Attempts to locate a target node in the network (using Kademlia).
    * Adds all discovered, active nodes to the current node's database (up to k
    * discovered nodes).
@@ -499,7 +458,7 @@ class NodeConnectionManager {
     // Let foundTarget: boolean = false;
     let foundAddress: NodeAddress | undefined = undefined;
     // Get the closest alpha nodes to the target node (set as shortlist)
-    const shortlist: Array<NodeData> = await this.getClosestLocalNodes(
+    const shortlist = await this.nodeGraph.getClosestNodes(
       targetNodeId,
       this.initialClosestNodes,
     );
@@ -522,8 +481,9 @@ class NodeConnectionManager {
       if (nextNode == null) {
         break;
       }
+      const [nextNodeId, nextNodeAddress] = nextNode;
       // Skip if the node has already been contacted
-      if (contacted[nextNode.id]) {
+      if (contacted[nextNodeId]) {
         continue;
       }
       // Connect to the node (check if pre-existing connection exists, otherwise
@@ -531,16 +491,16 @@ class NodeConnectionManager {
       try {
         // Add the node to the database so that we can find its address in
         // call to getConnectionToNode
-        await this.nodeGraph.setNode(nextNode.id, nextNode.address);
-        await this.getConnection(nextNode.id);
+        await this.nodeGraph.setNode(nextNodeId, nextNodeAddress.address);
+        await this.getConnection(nextNodeId);
       } catch (e) {
         // If we can't connect to the node, then skip it
         continue;
       }
-      contacted[nextNode.id] = true;
+      contacted[nextNodeId] = true;
       // Ask the node to get their own closest nodes to the target
       const foundClosest = await this.getRemoteNodeClosestNodes(
-        nextNode.id,
+        nextNodeId,
         targetNodeId,
       );
       // Check to see if any of these are the target node. At the same time, add

@@ -1,5 +1,5 @@
 import type * as grpc from '@grpc/grpc-js';
-import type { NodeConnectionManager } from '../../nodes';
+import type { NodeGraph } from '../../nodes';
 import type { NodeId } from '../../nodes/types';
 import { utils as grpcUtils } from '../../grpc';
 import { utils as nodesUtils } from '../../nodes';
@@ -11,11 +11,7 @@ import * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
  * Retrieves the local nodes (i.e. from the current node) that are closest
  * to some provided node ID.
  */
-function nodesClosestLocalNodesGet({
-  nodeConnectionManager,
-}: {
-  nodeConnectionManager: NodeConnectionManager;
-}) {
+function nodesClosestLocalNodesGet({ nodeGraph }: { nodeGraph: NodeGraph }) {
   return async (
     call: grpc.ServerUnaryCall<nodesPB.Node, nodesPB.NodeTable>,
     callback: grpc.sendUnaryData<nodesPB.NodeTable>,
@@ -38,17 +34,15 @@ function nodesClosestLocalNodesGet({
         },
       );
       // Get all local nodes that are closest to the target node from the request
-      const closestNodes = await nodeConnectionManager.getClosestLocalNodes(
-        nodeId,
-      );
-      for (const node of closestNodes) {
+      const closestNodes = await nodeGraph.getClosestNodes(nodeId);
+      for (const [nodeId, nodeData] of closestNodes) {
         const addressMessage = new nodesPB.Address();
-        addressMessage.setHost(node.address.host);
-        addressMessage.setPort(node.address.port);
+        addressMessage.setHost(nodeData.address.host);
+        addressMessage.setPort(nodeData.address.port);
         // Add the node to the response's map (mapping of node ID -> node address)
         response
           .getNodeTableMap()
-          .set(nodesUtils.encodeNodeId(node.id), addressMessage);
+          .set(nodesUtils.encodeNodeId(nodeId), addressMessage);
       }
       callback(null, response);
       return;

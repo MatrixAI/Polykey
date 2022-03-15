@@ -74,7 +74,6 @@ describe(`${NodeConnectionManager.name} general test`, () => {
   let keyManager: KeyManager;
   let db: DB;
   let proxy: Proxy;
-
   let nodeGraph: NodeGraph;
 
   let remoteNode1: PolykeyAgent;
@@ -336,129 +335,6 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     },
     global.failedConnectionTimeout * 2,
   );
-  test('finds a single closest node', async () => {
-    // NodeConnectionManager under test
-    const nodeConnectionManager = new NodeConnectionManager({
-      keyManager,
-      nodeGraph,
-      proxy,
-      logger: nodeConnectionManagerLogger,
-    });
-    await nodeConnectionManager.start();
-    try {
-      // New node added
-      const newNode2Id = nodeId1;
-      const newNode2Address = { host: '227.1.1.1', port: 4567 } as NodeAddress;
-      await nodeGraph.setNode(newNode2Id, newNode2Address);
-
-      // Find the closest nodes to some node, NODEID3
-      const closest = await nodeConnectionManager.getClosestLocalNodes(nodeId3);
-      expect(closest).toContainEqual({
-        id: newNode2Id,
-        distance: 121n,
-        address: { host: '227.1.1.1', port: 4567 },
-      });
-    } finally {
-      await nodeConnectionManager.stop();
-    }
-  });
-  test('finds 3 closest nodes', async () => {
-    const nodeConnectionManager = new NodeConnectionManager({
-      keyManager,
-      nodeGraph,
-      proxy,
-      logger: nodeConnectionManagerLogger,
-    });
-    await nodeConnectionManager.start();
-    try {
-      // Add 3 nodes
-      await nodeGraph.setNode(nodeId1, {
-        host: '2.2.2.2',
-        port: 2222,
-      } as NodeAddress);
-      await nodeGraph.setNode(nodeId2, {
-        host: '3.3.3.3',
-        port: 3333,
-      } as NodeAddress);
-      await nodeGraph.setNode(nodeId3, {
-        host: '4.4.4.4',
-        port: 4444,
-      } as NodeAddress);
-
-      // Find the closest nodes to some node, NODEID4
-      const closest = await nodeConnectionManager.getClosestLocalNodes(nodeId3);
-      expect(closest.length).toBe(5);
-      expect(closest).toContainEqual({
-        id: nodeId3,
-        distance: 0n,
-        address: { host: '4.4.4.4', port: 4444 },
-      });
-      expect(closest).toContainEqual({
-        id: nodeId2,
-        distance: 116n,
-        address: { host: '3.3.3.3', port: 3333 },
-      });
-      expect(closest).toContainEqual({
-        id: nodeId1,
-        distance: 121n,
-        address: { host: '2.2.2.2', port: 2222 },
-      });
-    } finally {
-      await nodeConnectionManager.stop();
-    }
-  });
-  test('finds the 20 closest nodes', async () => {
-    const nodeConnectionManager = new NodeConnectionManager({
-      keyManager,
-      nodeGraph,
-      proxy,
-      logger: nodeConnectionManagerLogger,
-    });
-    await nodeConnectionManager.start();
-    try {
-      // Generate the node ID to find the closest nodes to (in bucket 100)
-      const nodeId = keyManager.getNodeId();
-      const nodeIdToFind = testNodesUtils.generateNodeIdForBucket(nodeId, 100);
-      // Now generate and add 20 nodes that will be close to this node ID
-      const addedClosestNodes: NodeData[] = [];
-      for (let i = 1; i < 101; i += 5) {
-        const closeNodeId = testNodesUtils.generateNodeIdForBucket(
-          nodeIdToFind,
-          i,
-        );
-        const nodeAddress = {
-          host: (i + '.' + i + '.' + i + '.' + i) as Host,
-          port: i as Port,
-        };
-        await nodeGraph.setNode(closeNodeId, nodeAddress);
-        addedClosestNodes.push({
-          id: closeNodeId,
-          address: nodeAddress,
-          distance: nodesUtils.calculateDistance(nodeIdToFind, closeNodeId),
-        });
-      }
-      // Now create and add 10 more nodes that are far away from this node
-      for (let i = 1; i <= 10; i++) {
-        const farNodeId = nodeIdGenerator(i);
-        const nodeAddress = {
-          host: `${i}.${i}.${i}.${i}` as Host,
-          port: i as Port,
-        };
-        await nodeGraph.setNode(farNodeId, nodeAddress);
-      }
-
-      // Find the closest nodes to the original generated node ID
-      const closest = await nodeConnectionManager.getClosestLocalNodes(
-        nodeIdToFind,
-      );
-      // We should always only receive k nodes
-      expect(closest.length).toBe(nodeGraph.maxNodesPerBucket);
-      // Retrieved closest nodes should be exactly the same as the ones we added
-      expect(closest).toEqual(addedClosestNodes);
-    } finally {
-      await nodeConnectionManager.stop();
-    }
-  });
   test('receives 20 closest local nodes from connected target', async () => {
     let serverPKAgent: PolykeyAgent | undefined;
     let nodeConnectionManager: NodeConnectionManager | undefined;
