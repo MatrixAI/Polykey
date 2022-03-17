@@ -3,7 +3,7 @@ import type { ClientReadableStream } from '@grpc/grpc-js/build/src/call';
 import type { AsyncGeneratorReadableStreamClient } from '../grpc/types';
 import type { Session } from '../sessions';
 import type { NodeId } from '../nodes/types';
-import type { Host, Port, TLSConfig, ProxyConfig } from '../network/types';
+import type { Host, Port, ProxyConfig, TLSConfig } from '../network/types';
 import type * as utilsPB from '../proto/js/polykey/v1/utils/utils_pb';
 import type * as agentPB from '../proto/js/polykey/v1/agent/agent_pb';
 import type * as vaultsPB from '../proto/js/polykey/v1/vaults/vaults_pb';
@@ -68,7 +68,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         interceptors,
         logger,
       });
-    const grpcClientClient = new GRPCClientClient({
+    return new GRPCClientClient({
       client,
       nodeId,
       host,
@@ -80,7 +80,6 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
       destroyCallback,
       logger,
     });
-    return grpcClientClient;
   }
 
   public async destroy() {
@@ -905,6 +904,12 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public nodesGetAll(...args) {
     return grpcUtils.promisifyUnaryCall<nodesPB.NodeBuckets>(
       this.client,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+        command: this.identitiesAuthenticate.name,
+      },
       this.client.nodesGetAll,
     )(...args);
   }

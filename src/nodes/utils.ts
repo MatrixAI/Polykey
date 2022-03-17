@@ -1,12 +1,9 @@
 import type {
-  NodeData,
   NodeId,
   NodeIdEncoded,
   NodeBucket,
-  NodeIdString,
   NodeBucketIndex,
 } from './types';
-import { utils as dbUtils } from '@matrixai/db';
 import { IdInternal } from '@matrixai/id';
 import lexi from 'lexicographic-integer';
 import { bytes2BigInt, bufferSplit } from '../utils';

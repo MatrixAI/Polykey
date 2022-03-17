@@ -46,7 +46,8 @@ function nodesClosestLocalNodesGet({
       );
       // Get all local nodes that are closest to the target node from the request
       const closestNodes = await db.withTransactionF(
-        async (tran) => await nodeGraph.getClosestNodes(nodeId, tran),
+        async (tran) =>
+          await nodeGraph.getClosestNodes(nodeId, undefined, tran),
       );
       for (const [nodeId, nodeData] of closestNodes) {
         const addressMessage = new nodesPB.Address();
