@@ -8,6 +8,7 @@ import type { ChainData, ChainDataEncoded } from '../sigchain/types';
 import type { NodeId, NodeAddress, NodeBucket } from '../nodes/types';
 import type { ClaimEncoded } from '../claims/types';
 import Logger from '@matrixai/logger';
+import { getUnixtime } from '@/utils';
 import * as nodesErrors from './errors';
 import * as nodesUtils from './utils';
 import { utils as validationUtils } from '../validation';
@@ -17,6 +18,7 @@ import * as networkErrors from '../network/errors';
 import * as networkUtils from '../network/utils';
 import * as sigchainUtils from '../sigchain/utils';
 import * as claimsUtils from '../claims/utils';
+import { NodeData } from '../nodes/types';
 
 class NodeManager {
   protected db: DB;
@@ -53,6 +55,10 @@ class NodeManager {
    * Determines whether a node in the Polykey network is online.
    * @return true if online, false if offline
    */
+  // FIXME: We shouldn't be trying to find the node just to ping it
+  //  since we are usually pinging it during the find procedure anyway.
+  //  I think we should be providing the address of what we're trying to ping,
+  //  possibly make it an optional parameter?
   public async pingNode(targetNodeId: NodeId): Promise<boolean> {
     const targetAddress: NodeAddress =
       await this.nodeConnectionManager.findNode(targetNodeId);
@@ -326,13 +332,46 @@ class NodeManager {
   }
 
   /**
-   * Sets a node in the NodeGraph
+   * Adds a node to the node graph.
+   * Updates the node if the node already exists.
+   *
    */
   public async setNode(
     nodeId: NodeId,
     nodeAddress: NodeAddress,
+    force = false,
   ): Promise<void> {
-    return await this.nodeGraph.setNode(nodeId, nodeAddress);
+    // When adding a node we need to handle 3 cases
+    // 1. The node already exists. We need to update it's last updated field
+    // 2. The node doesn't exist and bucket has room.
+    //  We need to add the node to the bucket
+    // 3. The node doesn't exist and the bucket is full.
+    //  We need to ping the oldest node. If the ping succeeds we need to update
+    //  the lastUpdated of the oldest node and drop the new one. If the ping
+    //  fails we delete the old node and add in the new one.
+    const nodeData = await this.nodeGraph.getNode(nodeId);
+    // If this is a new entry, check the bucket limit
+    const [bucketIndex] = this.nodeGraph.bucketIndex(nodeId);
+    const count = await this.nodeGraph.getBucketMetaProp(bucketIndex, 'count');
+    if (nodeData != null || count < this.nodeGraph.nodeBucketLimit) {
+      // Either already exists or has room in the bucket
+      // We want to add or update the node
+      await this.nodeGraph.setNode(nodeId, nodeAddress);
+    } else {
+      // We want to add a node but the bucket is full
+      // We need to ping the oldest node
+      const oldestNodeId = (await this.nodeGraph.getOldestNode(bucketIndex))!;
+      if ((await this.pingNode(oldestNodeId)) && !force) {
+        // The node responded, we need to update it's info and drop the new node
+        const oldestNode = (await this.nodeGraph.getNode(oldestNodeId))!;
+        await this.nodeGraph.setNode(oldestNodeId, oldestNode.address);
+      } else {
+        // The node could not be contacted or force was set,
+        // we drop it in favor of the new node
+        await this.nodeGraph.unsetNode(oldestNodeId);
+        await this.nodeGraph.setNode(nodeId, nodeAddress);
+      }
+    }
   }
 
   // FIXME

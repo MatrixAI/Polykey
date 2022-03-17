@@ -257,6 +257,12 @@ class NodeGraph {
     }
   }
 
+  /**
+   * Will add a node to the node graph and increment the bucket count.
+   * If the node already existed it will be updated.
+   * @param nodeId NodeId to add to the NodeGraph
+   * @param nodeAddress Address information to add
+   */
   @ready(new nodesErrors.ErrorNodeGraphNotRunning())
   public async setNode(
     nodeId: NodeId,
@@ -269,54 +275,52 @@ class NodeGraph {
       bucketDomain,
       nodesUtils.bucketDbKey(nodeId),
     );
-    // If this is a new entry, check the bucket limit
-    if (nodeData == null) {
-      const count = await this.getBucketMetaProp(bucketIndex, 'count');
-      if (count < this.nodeBucketLimit) {
-        // Increment the bucket count
-        this.setBucketMetaProp(bucketIndex, 'count', count + 1);
-      } else {
-        // Remove the oldest entry in the bucket
-        const lastUpdatedBucketDb = await this.db.level(
-          bucketKey,
-          this.nodeGraphLastUpdatedDb,
-        );
-        let oldestLastUpdatedKey: Buffer;
-        let oldestNodeId: NodeId;
-        for await (const key of lastUpdatedBucketDb.createKeyStream({
-          limit: 1,
-        })) {
-          oldestLastUpdatedKey = key as Buffer;
-          ({ nodeId: oldestNodeId } = nodesUtils.parseLastUpdatedBucketDbKey(
-            key as Buffer,
-          ));
-        }
-        await this.db.del(bucketDomain, oldestNodeId!.toBuffer());
-        await this.db.del(lastUpdatedDomain, oldestLastUpdatedKey!);
-      }
-    } else {
-      // This is an existing entry, so the index entry must be reset
+    if (nodeData != null) {
+      // If the node already exists we want to remove the old `lastUpdated`
       const lastUpdatedKey = nodesUtils.lastUpdatedBucketDbKey(
         nodeData.lastUpdated,
         nodeId,
       );
       await this.db.del(lastUpdatedDomain, lastUpdatedKey);
+    } else {
+      // It didn't exist so we want to increment the bucket count
+      const count = await this.getBucketMetaProp(bucketIndex, 'count');
+      await this.setBucketMetaProp(bucketIndex, 'count', count + 1);
     }
     const lastUpdated = getUnixtime();
     await this.db.put(bucketDomain, nodesUtils.bucketDbKey(nodeId), {
       address: nodeAddress,
       lastUpdated,
     });
-    const lastUpdatedKey = nodesUtils.lastUpdatedBucketDbKey(
+    const newLastUpdatedKey = nodesUtils.lastUpdatedBucketDbKey(
       lastUpdated,
       nodeId,
     );
     await this.db.put(
       lastUpdatedDomain,
-      lastUpdatedKey,
+      newLastUpdatedKey,
       nodesUtils.bucketDbKey(nodeId),
       true,
     );
+  }
+
+  @ready(new nodesErrors.ErrorNodeGraphNotRunning())
+  public async getOldestNode(bucketIndex: number): Promise<NodeId | undefined> {
+    const bucketKey = nodesUtils.bucketKey(bucketIndex);
+    // Remove the oldest entry in the bucket
+    const lastUpdatedBucketDb = await this.db.level(
+      bucketKey,
+      this.nodeGraphLastUpdatedDb,
+    );
+    let oldestLastUpdatedKey: Buffer;
+    let oldestNodeId: NodeId | undefined;
+    for await (const key of lastUpdatedBucketDb.createKeyStream({ limit: 1 })) {
+      oldestLastUpdatedKey = key as Buffer;
+      ({ nodeId: oldestNodeId } = nodesUtils.parseLastUpdatedBucketDbKey(
+        key as Buffer,
+      ));
+    }
+    return oldestNodeId;
   }
 
   @ready(new nodesErrors.ErrorNodeGraphNotRunning())
@@ -330,7 +334,7 @@ class NodeGraph {
     );
     if (nodeData != null) {
       const count = await this.getBucketMetaProp(bucketIndex, 'count');
-      this.setBucketMetaProp(bucketIndex, 'count', count - 1);
+      await this.setBucketMetaProp(bucketIndex, 'count', count - 1);
       await this.db.del(bucketDomain, nodesUtils.bucketDbKey(nodeId));
       const lastUpdatedKey = nodesUtils.lastUpdatedBucketDbKey(
         nodeData.lastUpdated,
@@ -790,7 +794,7 @@ class NodeGraph {
    * The bucket key is the string encoded version of bucket index
    * that preserves lexicographic order
    */
-  protected bucketIndex(nodeId: NodeId): [NodeBucketIndex, string] {
+  public bucketIndex(nodeId: NodeId): [NodeBucketIndex, string] {
     const nodeIdOwn = this.keyManager.getNodeId();
     if (nodeId.equals(nodeIdOwn)) {
       throw new nodesErrors.ErrorNodeGraphSameNodeId();
