@@ -53,6 +53,10 @@ class NodeManager {
    * Determines whether a node in the Polykey network is online.
    * @return true if online, false if offline
    */
+  // FIXME: We shouldn't be trying to find the node just to ping it
+  //  since we are usually pinging it during the find procedure anyway.
+  //  I think we should be providing the address of what we're trying to ping,
+  //  possibly make it an optional parameter?
   public async pingNode(targetNodeId: NodeId): Promise<boolean> {
     const targetAddress: NodeAddress =
       await this.nodeConnectionManager.findNode(targetNodeId);
@@ -311,7 +315,7 @@ class NodeManager {
    */
   public async getNodeAddress(
     nodeId: NodeId,
-    tran?: DBTransaction,
+    tran: DBTransaction,
   ): Promise<NodeAddress | undefined> {
     return (await this.nodeGraph.getNode(nodeId, tran))?.address;
   }
@@ -324,7 +328,7 @@ class NodeManager {
    */
   public async knowsNode(
     targetNodeId: NodeId,
-    tran?: DBTransaction,
+    tran: DBTransaction,
   ): Promise<boolean> {
     return (await this.nodeGraph.getNode(targetNodeId, tran)) != null;
   }
@@ -334,22 +338,68 @@ class NodeManager {
    */
   public async getBucket(
     bucketIndex: number,
-    tran?: DBTransaction,
+    tran: DBTransaction,
   ): Promise<NodeBucket | undefined> {
-    return await this.nodeGraph.getBucket(bucketIndex, tran);
+    return await this.nodeGraph.getBucket(
+      bucketIndex,
+      undefined,
+      undefined,
+      tran,
+    );
   }
 
   /**
-   * Sets a node in the NodeGraph
+   * Adds a node to the node graph.
+   * Updates the node if the node already exists.
+   *
    */
   public async setNode(
     nodeId: NodeId,
     nodeAddress: NodeAddress,
-    tran?: DBTransaction,
+    force = false,
+    tran: DBTransaction,
   ): Promise<void> {
-    return await this.nodeGraph.setNode(nodeId, nodeAddress, tran);
+    // When adding a node we need to handle 3 cases
+    // 1. The node already exists. We need to update it's last updated field
+    // 2. The node doesn't exist and bucket has room.
+    //  We need to add the node to the bucket
+    // 3. The node doesn't exist and the bucket is full.
+    //  We need to ping the oldest node. If the ping succeeds we need to update
+    //  the lastUpdated of the oldest node and drop the new one. If the ping
+    //  fails we delete the old node and add in the new one.
+    const nodeData = await this.nodeGraph.getNode(nodeId, tran);
+    // If this is a new entry, check the bucket limit
+    const [bucketIndex] = this.nodeGraph.bucketIndex(nodeId);
+    const count = await this.nodeGraph.getBucketMetaProp(
+      bucketIndex,
+      'count',
+      tran,
+    );
+    if (nodeData != null || count < this.nodeGraph.nodeBucketLimit) {
+      // Either already exists or has room in the bucket
+      // We want to add or update the node
+      await this.nodeGraph.setNode(nodeId, nodeAddress, tran);
+    } else {
+      // We want to add a node but the bucket is full
+      // We need to ping the oldest node
+      const oldestNodeId = (await this.nodeGraph.getOldestNode(
+        bucketIndex,
+        tran,
+      ))!;
+      if ((await this.pingNode(oldestNodeId)) && !force) {
+        // The node responded, we need to update it's info and drop the new node
+        const oldestNode = (await this.nodeGraph.getNode(oldestNodeId, tran))!;
+        await this.nodeGraph.setNode(oldestNodeId, oldestNode.address, tran);
+      } else {
+        // The node could not be contacted or force was set,
+        // we drop it in favor of the new node
+        await this.nodeGraph.unsetNode(oldestNodeId, tran);
+        await this.nodeGraph.setNode(nodeId, nodeAddress, tran);
+      }
+    }
   }
 
+  // FIXME
   // /**
   //  * Updates the node in the NodeGraph
   //  */
@@ -364,10 +414,11 @@ class NodeManager {
   /**
    * Removes a node from the NodeGraph
    */
-  public async unsetNode(nodeId: NodeId, tran?: DBTransaction): Promise<void> {
+  public async unsetNode(nodeId: NodeId, tran: DBTransaction): Promise<void> {
     return await this.nodeGraph.unsetNode(nodeId, tran);
   }
 
+  // FIXME
   // /**
   //  * Gets all buckets from the NodeGraph
   //  */

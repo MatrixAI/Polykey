@@ -11,7 +11,6 @@ import ACL from '@/acl/ACL';
 import * as aclErrors from '@/acl/errors';
 import * as keysUtils from '@/keys/utils';
 import * as vaultsUtils from '@/vaults/utils';
-import * as testUtils from '../utils';
 import * as testNodesUtils from '../nodes/utils';
 
 describe(ACL.name, () => {
@@ -109,28 +108,16 @@ describe(ACL.name, () => {
     await expect(acl.setNodesPerm([], {} as Permission)).rejects.toThrow(
       aclErrors.ErrorACLNotRunning,
     );
-    await expect(acl.setNodesPermOps([], {} as Permission)).rejects.toThrow(
-      aclErrors.ErrorACLNotRunning,
-    );
     await expect(acl.setNodePerm(nodeIdX, {} as Permission)).rejects.toThrow(
       aclErrors.ErrorACLNotRunning,
     );
-    await expect(acl.setNodePermOps(nodeIdX, {} as Permission)).rejects.toThrow(
-      aclErrors.ErrorACLNotRunning,
-    );
     await expect(acl.unsetNodePerm(nodeIdX)).rejects.toThrow(
-      aclErrors.ErrorACLNotRunning,
-    );
-    await expect(acl.unsetNodePermOps(nodeIdX)).rejects.toThrow(
       aclErrors.ErrorACLNotRunning,
     );
     await expect(acl.unsetVaultPerms(1 as VaultId)).rejects.toThrow(
       aclErrors.ErrorACLNotRunning,
     );
     await expect(acl.joinNodePerm(nodeIdX, [])).rejects.toThrow(
-      aclErrors.ErrorACLNotRunning,
-    );
-    await expect(acl.joinNodePermOps(nodeIdX, [])).rejects.toThrow(
       aclErrors.ErrorACLNotRunning,
     );
     await expect(acl.joinVaultPerms(1 as VaultId, [])).rejects.toThrow(
