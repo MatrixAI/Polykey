@@ -154,8 +154,14 @@ class NodeGraph {
   @ready(new nodesErrors.ErrorNodeGraphNotRunning())
   public async getNode(
     nodeId: NodeId,
-    tran: DBTransaction,
+    tran?: DBTransaction,
   ): Promise<NodeData | undefined> {
+    if (tran == null) {
+      return this.db.withTransactionF(async (tran) =>
+        this.getNode(nodeId, tran),
+      );
+    }
+
     const [bucketIndex] = this.bucketIndex(nodeId);
     const bucketDomain = [
       ...this.nodeGraphBucketsDbPath,
@@ -176,8 +182,15 @@ class NodeGraph {
   @ready(new nodesErrors.ErrorNodeGraphNotRunning())
   public async *getNodes(
     order: 'asc' | 'desc' = 'asc',
-    tran: DBTransaction,
+    tran?: DBTransaction,
   ): AsyncGenerator<[NodeId, NodeData]> {
+    if (tran == null) {
+      const getNodes = (tran) => this.getNodes(order, tran);
+      return yield* this.db.withTransactionG(async function* (tran) {
+        return yield* getNodes(tran);
+      });
+    }
+
     for await (const [key, nodeData] of tran.iterator<NodeData>(
       {
         reverse: order !== 'asc',
@@ -190,12 +203,25 @@ class NodeGraph {
     }
   }
 
+  /**
+   * Will add a node to the node graph and increment the bucket count.
+   * If the node already existed it will be updated.
+   * @param nodeId NodeId to add to the NodeGraph
+   * @param nodeAddress Address information to add
+   * @param tran
+   */
   @ready(new nodesErrors.ErrorNodeGraphNotRunning())
   public async setNode(
     nodeId: NodeId,
     nodeAddress: NodeAddress,
-    tran: DBTransaction,
+    tran?: DBTransaction,
   ): Promise<void> {
+    if (tran == null) {
+      return this.db.withTransactionF(async (tran) =>
+        this.setNode(nodeId, nodeAddress, tran),
+      );
+    }
+
     const [bucketIndex, bucketKey] = this.bucketIndex(nodeId);
     const lastUpdatedPath = [...this.nodeGraphLastUpdatedDbPath, bucketKey];
     const bucketPath = [...this.nodeGraphBucketsDbPath, bucketKey];
@@ -203,57 +229,67 @@ class NodeGraph {
       ...bucketPath,
       nodesUtils.bucketDbKey(nodeId),
     ]);
-    // If this is a new entry, check the bucket limit
-    if (nodeData == null) {
-      const count = await this.getBucketMetaProp(bucketIndex, 'count', tran);
-      if (count < this.nodeBucketLimit) {
-        // Increment the bucket count
-        await this.setBucketMetaProp(bucketIndex, 'count', count + 1, tran);
-      } else {
-        // Remove the oldest entry in the bucket
-        let oldestLastUpdatedKey: Buffer;
-        let oldestNodeId: NodeId;
-        for await (const [key] of tran.iterator(
-          {
-            limit: 1,
-            values: false,
-          },
-          this.nodeGraphLastUpdatedDbPath,
-        )) {
-          oldestLastUpdatedKey = key as unknown as Buffer;
-          ({ nodeId: oldestNodeId } = nodesUtils.parseLastUpdatedBucketDbKey(
-            key as unknown as Buffer,
-          ));
-        }
-        await tran.del([...bucketPath, oldestNodeId!.toBuffer()]);
-        await tran.del([...lastUpdatedPath, oldestLastUpdatedKey!]);
-      }
-    } else {
-      // This is an existing entry, so the index entry must be reset
+    if (nodeData != null) {
+      // If the node already exists we want to remove the old `lastUpdated`
       const lastUpdatedKey = nodesUtils.lastUpdatedBucketDbKey(
         nodeData.lastUpdated,
         nodeId,
       );
       await tran.del([...lastUpdatedPath, lastUpdatedKey]);
+    } else {
+      // It didn't exist so we want to increment the bucket count
+      const count = await this.getBucketMetaProp(bucketIndex, 'count', tran);
+      await this.setBucketMetaProp(bucketIndex, 'count', count + 1, tran);
     }
     const lastUpdated = getUnixtime();
     await tran.put([...bucketPath, nodesUtils.bucketDbKey(nodeId)], {
       address: nodeAddress,
       lastUpdated,
     });
-    const lastUpdatedKey = nodesUtils.lastUpdatedBucketDbKey(
+    const newLastUpdatedKey = nodesUtils.lastUpdatedBucketDbKey(
       lastUpdated,
       nodeId,
     );
     await tran.put(
-      [...lastUpdatedPath, lastUpdatedKey],
+      [...lastUpdatedPath, newLastUpdatedKey],
       nodesUtils.bucketDbKey(nodeId),
       true,
     );
   }
 
   @ready(new nodesErrors.ErrorNodeGraphNotRunning())
-  public async unsetNode(nodeId: NodeId, tran: DBTransaction): Promise<void> {
+  public async getOldestNode(
+    bucketIndex: number,
+    tran?: DBTransaction,
+  ): Promise<NodeId | undefined> {
+    if (tran == null) {
+      return this.db.withTransactionF(async (tran) =>
+        this.getOldestNode(bucketIndex, tran),
+      );
+    }
+
+    const bucketKey = nodesUtils.bucketKey(bucketIndex);
+    // Remove the oldest entry in the bucket
+    let oldestNodeId: NodeId | undefined;
+    for await (const [key] of tran.iterator({ limit: 1 }, [
+      ...this.nodeGraphLastUpdatedDbPath,
+      bucketKey,
+    ])) {
+      ({ nodeId: oldestNodeId } = nodesUtils.parseLastUpdatedBucketDbKey(
+        key as unknown as Buffer,
+      ));
+    }
+    return oldestNodeId;
+  }
+
+  @ready(new nodesErrors.ErrorNodeGraphNotRunning())
+  public async unsetNode(nodeId: NodeId, tran?: DBTransaction): Promise<void> {
+    if (tran == null) {
+      return this.db.withTransactionF(async (tran) =>
+        this.unsetNode(nodeId, tran),
+      );
+    }
+
     const [bucketIndex, bucketKey] = this.bucketIndex(nodeId);
     const bucketPath = [...this.nodeGraphBucketsDbPath, bucketKey];
     const lastUpdatedPath = [...this.nodeGraphLastUpdatedDbPath, bucketKey];
@@ -284,8 +320,14 @@ class NodeGraph {
     bucketIndex: NodeBucketIndex,
     sort: 'nodeId' | 'distance' | 'lastUpdated' = 'nodeId',
     order: 'asc' | 'desc' = 'asc',
-    tran: DBTransaction,
+    tran?: DBTransaction,
   ): Promise<NodeBucket> {
+    if (tran == null) {
+      return this.db.withTransactionF(async (tran) =>
+        this.getBucket(bucketIndex, sort, order, tran),
+      );
+    }
+
     if (bucketIndex < 0 || bucketIndex >= this.nodeIdBits) {
       throw new nodesErrors.ErrorNodeGraphBucketIndex(
         `bucketIndex must be between 0 and ${this.nodeIdBits - 1} inclusive`,
@@ -355,8 +397,15 @@ class NodeGraph {
   public async *getBuckets(
     sort: 'nodeId' | 'distance' | 'lastUpdated' = 'nodeId',
     order: 'asc' | 'desc' = 'asc',
-    tran: DBTransaction,
+    tran?: DBTransaction,
   ): AsyncGenerator<[NodeBucketIndex, NodeBucket]> {
+    if (tran == null) {
+      const getBuckets = (tran) => this.getBuckets(sort, order, tran);
+      return yield* this.db.withTransactionG(async function* (tran) {
+        return yield* getBuckets(tran);
+      });
+    }
+
     let bucketIndex: NodeBucketIndex | undefined = undefined;
     let bucket: NodeBucket = [];
     if (sort === 'nodeId' || sort === 'distance') {
@@ -448,8 +497,14 @@ class NodeGraph {
   @ready(new nodesErrors.ErrorNodeGraphNotRunning())
   public async resetBuckets(
     nodeIdOwn: NodeId,
-    tran: DBTransaction,
+    tran?: DBTransaction,
   ): Promise<void> {
+    if (tran == null) {
+      return this.db.withTransactionF(async (tran) =>
+        this.resetBuckets(nodeIdOwn, tran),
+      );
+    }
+
     // Setup new space
     const spaceNew = this.space === '0' ? '1' : '0';
     const nodeGraphMetaDbPathNew = [...this.nodeGraphDbPath, 'meta' + spaceNew];
@@ -536,8 +591,14 @@ class NodeGraph {
   @ready(new nodesErrors.ErrorNodeGraphNotRunning())
   public async getBucketMeta(
     bucketIndex: NodeBucketIndex,
-    tran: DBTransaction,
+    tran?: DBTransaction,
   ): Promise<NodeBucketMeta> {
+    if (tran == null) {
+      return this.db.withTransactionF(async (tran) =>
+        this.getBucketMeta(bucketIndex, tran),
+      );
+    }
+
     if (bucketIndex < 0 || bucketIndex >= this.nodeIdBits) {
       throw new nodesErrors.ErrorNodeGraphBucketIndex(
         `bucketIndex must be between 0 and ${this.nodeIdBits - 1} inclusive`,
@@ -561,8 +622,14 @@ class NodeGraph {
   public async getBucketMetaProp<Key extends keyof NodeBucketMeta>(
     bucketIndex: NodeBucketIndex,
     key: Key,
-    tran: DBTransaction,
+    tran?: DBTransaction,
   ): Promise<NodeBucketMeta[Key]> {
+    if (tran == null) {
+      return this.db.withTransactionF(async (tran) =>
+        this.getBucketMetaProp(bucketIndex, key, tran),
+      );
+    }
+
     if (bucketIndex < 0 || bucketIndex >= this.nodeIdBits) {
       throw new nodesErrors.ErrorNodeGraphBucketIndex(
         `bucketIndex must be between 0 and ${this.nodeIdBits - 1} inclusive`,
@@ -602,8 +669,14 @@ class NodeGraph {
   public async getClosestNodes(
     nodeId: NodeId,
     limit: number = this.nodeBucketLimit,
-    tran: DBTransaction,
+    tran?: DBTransaction,
   ): Promise<NodeBucket> {
+    if (tran == null) {
+      return this.db.withTransactionF(async (tran) =>
+        this.getClosestNodes(nodeId, limit, tran),
+      );
+    }
+
     // Buckets map to the target node in the following way;
     // 1. 0, 1, ..., T-1 -> T
     // 2. T -> 0, 1, ..., T-1
@@ -736,7 +809,7 @@ class NodeGraph {
    * The bucket key is the string encoded version of bucket index
    * that preserves lexicographic order
    */
-  protected bucketIndex(nodeId: NodeId): [NodeBucketIndex, string] {
+  public bucketIndex(nodeId: NodeId): [NodeBucketIndex, string] {
     const nodeIdOwn = this.keyManager.getNodeId();
     if (nodeId.equals(nodeIdOwn)) {
       throw new nodesErrors.ErrorNodeGraphSameNodeId();

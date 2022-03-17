@@ -67,6 +67,7 @@ function nodesAdd({
             host,
             port,
           } as NodeAddress,
+          undefined,
           tran,
         ),
       );

@@ -10,9 +10,7 @@ import type {
   NodeId,
   NodeIdString,
   SeedNodes,
-  NodeEntry,
 } from './types';
-import type { DBTransaction } from '@matrixai/db';
 import { withF } from '@matrixai/resources';
 import Logger from '@matrixai/logger';
 import { ready, StartStop } from '@matrixai/async-init/dist/StartStop';
@@ -103,7 +101,7 @@ class NodeConnectionManager {
     this.logger.info(`Starting ${this.constructor.name}`);
     for (const nodeIdEncoded in this.seedNodes) {
       const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded)!;
-      await this.nodeGraph.setNode(nodeId, this.seedNodes[nodeIdEncoded]);
+      await this.nodeGraph.setNode(nodeId, this.seedNodes[nodeIdEncoded]); // FIXME: also fine implicit transactions
     }
     this.logger.info(`Started ${this.constructor.name}`);
   }
@@ -243,6 +241,7 @@ class NodeConnectionManager {
           )}`,
         );
         // Creating the connection and set in map
+        // FIXME: this is fine, just use the implicit tran. fix this when adding optional transactions
         const targetAddress = await this.findNode(targetNodeId);
         // If the stored host is not a valid host (IP address),
         // then we assume it to be a hostname
@@ -363,6 +362,7 @@ class NodeConnectionManager {
    * Retrieves the node address. If an entry doesn't exist in the db, then
    * proceeds to locate it using Kademlia.
    * @param targetNodeId Id of the node we are tying to find
+   * @param tran
    */
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
   public async findNode(targetNodeId: NodeId): Promise<NodeAddress> {
@@ -405,6 +405,7 @@ class NodeConnectionManager {
     // Let foundTarget: boolean = false;
     let foundAddress: NodeAddress | undefined = undefined;
     // Get the closest alpha nodes to the target node (set as shortlist)
+    // FIXME: no tran
     const shortlist = await this.nodeGraph.getClosestNodes(
       targetNodeId,
       this.initialClosestNodes,
@@ -438,6 +439,7 @@ class NodeConnectionManager {
       try {
         // Add the node to the database so that we can find its address in
         // call to getConnectionToNode
+        // FIXME: no tran
         await this.nodeGraph.setNode(nextNodeId, nextNodeAddress.address);
         await this.getConnection(nextNodeId);
       } catch (e) {
@@ -458,6 +460,7 @@ class NodeConnectionManager {
           continue;
         }
         if (nodeId.equals(targetNodeId)) {
+          // FIXME: no tran
           await this.nodeGraph.setNode(nodeId, nodeData.address);
           foundAddress = nodeData.address;
           // We have found the target node, so we can stop trying to look for it
@@ -556,6 +559,7 @@ class NodeConnectionManager {
       );
       for (const [nodeId, nodeData] of nodes) {
         // FIXME: this should be the `nodeManager.setNode`
+        // FIXME: no tran needed
         await this.nodeGraph.setNode(nodeId, nodeData.address);
       }
     }
