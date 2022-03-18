@@ -67,14 +67,12 @@ class CommandStatus extends CommandPolykey {
         const nodeId = response.getNodeId();
         const clientHost = response.getClientHost();
         const clientPort = response.getClientPort();
-        const ingressHost = response.getIngressHost();
-        const ingressPort = response.getIngressPort();
-        const egressHost = response.getEgressHost();
-        const egressPort = response.getEgressPort();
-        const agentHost = response.getAgentHost();
-        const agentPort = response.getAgentPort();
         const proxyHost = response.getProxyHost();
         const proxyPort = response.getProxyPort();
+        const agentHost = response.getAgentHost();
+        const agentPort = response.getAgentPort();
+        const forwardHost = response.getForwardHost();
+        const forwardPort = response.getForwardPort();
         const rootPublicKeyPem = response.getRootPublicKeyPem();
         const rootCertPem = response.getRootCertPem();
         const rootCertChainPem = response.getRootCertChainPem();
@@ -87,14 +85,12 @@ class CommandStatus extends CommandPolykey {
               nodeId,
               clientHost,
               clientPort,
-              ingressHost,
-              ingressPort,
-              egressHost,
-              egressPort,
-              agentHost,
-              agentPort,
               proxyHost,
               proxyPort,
+              agentHost,
+              agentPort,
+              forwardHost,
+              forwardPort,
               rootPublicKeyPem,
               rootCertPem,
               rootCertChainPem,

@@ -10,7 +10,7 @@ import type { Sigchain } from '../../sigchain';
 import type { ACL } from '../../acl';
 import type { GestaltGraph } from '../../gestalts';
 import type { IAgentServiceServer } from '../../proto/js/polykey/v1/agent_service_grpc_pb';
-import type ReverseProxy from '../../network/ReverseProxy';
+import type Proxy from '../../network/Proxy';
 import echo from './echo';
 import nodesChainDataGet from './nodesChainDataGet';
 import nodesClaimsGet from './nodesClaimsGet';
@@ -34,9 +34,9 @@ function createService(container: {
   sigchain: Sigchain;
   acl: ACL;
   gestaltGraph: GestaltGraph;
-  revProxy: ReverseProxy;
+  proxy: Proxy;
 }): IAgentServiceServer {
-  const connectionInfoGet = agentUtils.connectionInfoGetter(container.revProxy);
+  const connectionInfoGet = agentUtils.connectionInfoGetter(container.proxy);
   const container_ = {
     ...container,
     connectionInfoGet: connectionInfoGet,

@@ -14,8 +14,7 @@ import type { Discovery } from '../../discovery';
 import type { Sigchain } from '../../sigchain';
 import type { GRPCServer } from '../../grpc';
 import type ACL from '../../acl/ACL';
-import type ForwardProxy from '../../network/ForwardProxy';
-import type ReverseProxy from '../../network/ReverseProxy';
+import type Proxy from '../../network/Proxy';
 import type { IClientServiceServer } from '../../proto/js/polykey/v1/client_service_grpc_pb';
 import type { FileSystem } from '../../types';
 import Logger from '@matrixai/logger';
@@ -108,8 +107,7 @@ function createService({
   acl: ACL;
   grpcServerClient: GRPCServer;
   grpcServerAgent: GRPCServer;
-  fwdProxy: ForwardProxy;
-  revProxy: ReverseProxy;
+  proxy: Proxy;
   logger?: Logger;
   fs?: FileSystem;
 }) {

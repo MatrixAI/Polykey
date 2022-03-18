@@ -14,8 +14,8 @@ import NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import NodeGraph from '@/nodes/NodeGraph';
 import NodeManager from '@/nodes/NodeManager';
 import Sigchain from '@/sigchain/Sigchain';
-import ForwardProxy from '@/network/ForwardProxy';
-import ReverseProxy from '@/network/ReverseProxy';
+import Proxy from '@/network/Proxy';
+
 import GRPCServer from '@/grpc/GRPCServer';
 import GRPCClientClient from '@/client/GRPCClientClient';
 import nodesClaim from '@/client/service/nodesClaim';
@@ -81,8 +81,8 @@ describe('nodesClaim', () => {
   let notificationsManager: NotificationsManager;
   let acl: ACL;
   let sigchain: Sigchain;
-  let fwdProxy: ForwardProxy;
-  let revProxy: ReverseProxy;
+  let proxy: Proxy;
+
   let db: DB;
   let keyManager: KeyManager;
   let grpcServer: GRPCServer;
@@ -106,24 +106,17 @@ describe('nodesClaim', () => {
       db,
       logger,
     });
-    fwdProxy = new ForwardProxy({
+    proxy = new Proxy({
       authToken,
       logger,
     });
-    await fwdProxy.start({
+    await proxy.start({
       tlsConfig: {
         keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
         certChainPem: await keyManager.getRootCertChainPem(),
       },
-    });
-    revProxy = new ReverseProxy({ logger });
-    await revProxy.start({
-      serverHost: '1.1.1.1' as Host,
-      serverPort: 1 as Port,
-      tlsConfig: {
-        keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
-        certChainPem: await keyManager.getRootCertChainPem(),
-      },
+      serverHost: '127.0.0.1' as Host,
+      serverPort: 0 as Port,
     });
     sigchain = await Sigchain.createSigchain({
       db,
@@ -138,8 +131,7 @@ describe('nodesClaim', () => {
     nodeConnectionManager = new NodeConnectionManager({
       keyManager,
       nodeGraph,
-      fwdProxy,
-      revProxy,
+      proxy,
       connConnectTime: 2000,
       connTimeoutTime: 2000,
       logger: logger.getChild('NodeConnectionManager'),
@@ -189,8 +181,7 @@ describe('nodesClaim', () => {
     await nodeGraph.stop();
     await notificationsManager.stop();
     await sigchain.stop();
-    await revProxy.stop();
-    await fwdProxy.stop();
+    await proxy.stop();
     await acl.stop();
     await db.stop();
     await keyManager.stop();

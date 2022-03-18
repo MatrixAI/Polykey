@@ -18,8 +18,7 @@ import NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import NodeGraph from '@/nodes/NodeGraph';
 import NodeManager from '@/nodes/NodeManager';
 import Sigchain from '@/sigchain/Sigchain';
-import ForwardProxy from '@/network/ForwardProxy';
-import ReverseProxy from '@/network/ReverseProxy';
+import Proxy from '@/network/Proxy';
 import GestaltGraph from '@/gestalts/GestaltGraph';
 import ACL from '@/acl/ACL';
 import GRPCServer from '@/grpc/GRPCServer';
@@ -79,8 +78,7 @@ describe('gestaltsGestaltTrustByIdentity', () => {
       nodePath,
       networkConfig: {
         proxyHost: '127.0.0.1' as Host,
-        egressHost: '127.0.0.1' as Host,
-        ingressHost: '127.0.0.1' as Host,
+        forwardHost: '127.0.0.1' as Host,
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },
@@ -122,8 +120,8 @@ describe('gestaltsGestaltTrustByIdentity', () => {
   let nodeConnectionManager: NodeConnectionManager;
   let nodeGraph: NodeGraph;
   let sigchain: Sigchain;
-  let fwdProxy: ForwardProxy;
-  let revProxy: ReverseProxy;
+  let proxy: Proxy;
+
   let acl: ACL;
   let db: DB;
   let keyManager: KeyManager;
@@ -172,20 +170,13 @@ describe('gestaltsGestaltTrustByIdentity', () => {
         accessToken: 'def456',
       },
     );
-    fwdProxy = new ForwardProxy({
+    proxy = new Proxy({
       authToken,
       logger,
     });
-    await fwdProxy.start({
-      tlsConfig: {
-        keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
-        certChainPem: await keyManager.getRootCertChainPem(),
-      },
-    });
-    revProxy = new ReverseProxy({ logger });
-    await revProxy.start({
-      serverHost: '1.1.1.1' as Host,
-      serverPort: 1 as Port,
+    await proxy.start({
+      serverHost: '127.0.0.1' as Host,
+      serverPort: 0 as Port,
       tlsConfig: {
         keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
         certChainPem: await keyManager.getRootCertChainPem(),
@@ -204,8 +195,7 @@ describe('gestaltsGestaltTrustByIdentity', () => {
     nodeConnectionManager = new NodeConnectionManager({
       keyManager,
       nodeGraph,
-      fwdProxy,
-      revProxy,
+      proxy,
       connConnectTime: 2000,
       connTimeoutTime: 2000,
       logger: logger.getChild('NodeConnectionManager'),
@@ -220,8 +210,8 @@ describe('gestaltsGestaltTrustByIdentity', () => {
       logger: logger.getChild('nodeManager'),
     });
     await nodeManager.setNode(nodesUtils.decodeNodeId(nodeId)!, {
-      host: node.revProxy.getIngressHost(),
-      port: node.revProxy.getIngressPort(),
+      host: node.proxy.getProxyHost(),
+      port: node.proxy.getProxyPort(),
     });
     discovery = await Discovery.createDiscovery({
       db,
@@ -258,8 +248,7 @@ describe('gestaltsGestaltTrustByIdentity', () => {
     await discovery.stop();
     await nodeConnectionManager.stop();
     await nodeGraph.stop();
-    await revProxy.stop();
-    await fwdProxy.stop();
+    await proxy.stop();
     await sigchain.stop();
     await identitiesManager.stop();
     await gestaltGraph.stop();

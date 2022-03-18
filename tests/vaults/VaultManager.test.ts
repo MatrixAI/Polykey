@@ -6,7 +6,6 @@ import type {
   VaultName,
 } from '@/vaults/types';
 import type NotificationsManager from '@/notifications/NotificationsManager';
-import type ReverseProxy from '@/network/ReverseProxy';
 import type { Host, Port, TLSConfig } from '@/network/types';
 import fs from 'fs';
 import os from 'os';
@@ -25,7 +24,7 @@ import VaultManager from '@/vaults/VaultManager';
 import * as vaultsErrors from '@/vaults/errors';
 import NodeGraph from '@/nodes/NodeGraph';
 import * as nodesUtils from '@/nodes/utils';
-import ForwardProxy from '@/network/ForwardProxy';
+import Proxy from '@/network/Proxy';
 import * as vaultsUtils from '@/vaults/utils';
 import * as keysUtils from '@/keys/utils';
 import { sleep } from '@/utils';
@@ -39,6 +38,8 @@ const mockedGenerateDeterministicKeyPair = jest
   });
 
 describe('VaultManager', () => {
+  const localHost = '127.0.0.1' as Host;
+  const port = 0 as Port;
   const logger = new Logger('VaultManager Test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
@@ -466,7 +467,7 @@ describe('VaultManager', () => {
   describe('With remote agents', () => {
     let allDataDir: string;
     let keyManager: KeyManager;
-    let fwdProxy: ForwardProxy;
+    let proxy: Proxy;
     let nodeGraph: NodeGraph;
     let nodeConnectionManager: NodeConnectionManager;
     let remoteKeynode1: PolykeyAgent, remoteKeynode2: PolykeyAgent;
@@ -496,12 +497,12 @@ describe('VaultManager', () => {
 
       // Adding details to each agent
       await remoteKeynode1.nodeGraph.setNode(remoteKeynode2Id, {
-        host: remoteKeynode2.revProxy.getIngressHost(),
-        port: remoteKeynode2.revProxy.getIngressPort(),
+        host: remoteKeynode2.proxy.getProxyHost(),
+        port: remoteKeynode2.proxy.getProxyPort(),
       });
       await remoteKeynode2.nodeGraph.setNode(remoteKeynode1Id, {
-        host: remoteKeynode1.revProxy.getIngressHost(),
-        port: remoteKeynode1.revProxy.getIngressPort(),
+        host: remoteKeynode1.proxy.getProxyHost(),
+        port: remoteKeynode1.proxy.getProxyPort(),
       });
 
       await remoteKeynode1.gestaltGraph.setNode({
@@ -536,7 +537,7 @@ describe('VaultManager', () => {
         keyManager: dummyKeyManager,
         logger,
       });
-      fwdProxy = new ForwardProxy({
+      proxy = new Proxy({
         authToken: 'auth',
         logger,
       });
@@ -554,34 +555,33 @@ describe('VaultManager', () => {
         certChainPem: await keyManager.getRootCertChainPem(),
       };
 
-      await fwdProxy.start({ tlsConfig });
-      const dummyRevProxy = {
-        getIngressHost: () => 'localhost' as Host,
-        getIngressPort: () => 0 as Port,
-      } as ReverseProxy;
+      await proxy.start({
+        tlsConfig,
+        serverHost: localHost,
+        serverPort: port,
+      });
 
       nodeConnectionManager = new NodeConnectionManager({
         keyManager,
         nodeGraph,
-        fwdProxy,
-        revProxy: dummyRevProxy,
+        proxy,
         logger,
       });
       await nodeConnectionManager.start();
 
       await nodeGraph.setNode(remoteKeynode1Id, {
-        host: remoteKeynode1.revProxy.getIngressHost(),
-        port: remoteKeynode1.revProxy.getIngressPort(),
+        host: remoteKeynode1.proxy.getProxyHost(),
+        port: remoteKeynode1.proxy.getProxyPort(),
       });
       await nodeGraph.setNode(remoteKeynode2Id, {
-        host: remoteKeynode2.revProxy.getIngressHost(),
-        port: remoteKeynode2.revProxy.getIngressPort(),
+        host: remoteKeynode2.proxy.getProxyHost(),
+        port: remoteKeynode2.proxy.getProxyPort(),
       });
     });
     afterEach(async () => {
       await remoteKeynode1.vaultManager.destroyVault(remoteVaultId);
       await nodeConnectionManager.stop();
-      await fwdProxy.stop();
+      await proxy.stop();
       await nodeGraph.stop();
       await nodeGraph.destroy();
       await keyManager.stop();
@@ -1440,7 +1440,7 @@ describe('VaultManager', () => {
       keyManager: dummyKeyManager,
       logger,
     });
-    const fwdProxy = new ForwardProxy({
+    const proxy = new Proxy({
       authToken: 'auth',
       logger,
     });
@@ -1449,18 +1449,19 @@ describe('VaultManager', () => {
       password: 'password',
       logger,
     });
-    await fwdProxy.start({
+    await proxy.start({
       tlsConfig: {
         keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
         certChainPem: await keyManager.getRootCertChainPem(),
       },
+      serverHost: localHost,
+      serverPort: port,
     });
     const nodeConnectionManager = new NodeConnectionManager({
       keyManager,
       logger,
       nodeGraph,
-      fwdProxy,
-      revProxy: {} as ReverseProxy,
+      proxy,
       connConnectTime: 1000,
     });
     await nodeConnectionManager.start();
@@ -1482,7 +1483,7 @@ describe('VaultManager', () => {
       // Letting nodeGraph know where the remote agent is
       await nodeGraph.setNode(targetNodeId, {
         host: 'localhost' as Host,
-        port: remoteAgent.revProxy.getIngressPort(),
+        port: remoteAgent.proxy.getProxyPort(),
       });
 
       await remoteAgent.gestaltGraph.setNode({
@@ -1545,7 +1546,7 @@ describe('VaultManager', () => {
       await vaultManager.stop();
       await vaultManager.destroy();
       await nodeConnectionManager.stop();
-      await fwdProxy.stop();
+      await proxy.stop();
       await nodeGraph.stop();
       await nodeGraph.destroy();
       await gestaltGraph.stop();

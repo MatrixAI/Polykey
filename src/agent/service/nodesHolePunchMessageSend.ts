@@ -51,7 +51,7 @@ function nodesHolePunchMessageSend({
       // back to the source node.
       if (keyManager.getNodeId().equals(targetId)) {
         const [host, port] = networkUtils.parseAddress(
-          call.request.getEgressAddress(),
+          call.request.getProxyAddress(),
         );
         await nodeConnectionManager.holePunchReverse(host, port);
         // Otherwise, find if node in table

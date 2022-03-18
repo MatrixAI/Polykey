@@ -1,6 +1,5 @@
 import type { Host, Port, TLSConfig } from '@/network/types';
-import type ForwardProxy from '@/network/ForwardProxy';
-import type ReverseProxy from '@/network/ReverseProxy';
+import type Proxy from '@/network/Proxy';
 import type Status from '@/status/Status';
 import type KeyManager from '@/keys/KeyManager';
 import fs from 'fs';
@@ -51,8 +50,8 @@ describe('keysKeyPairReset', () => {
   let dataDir: string;
   let keyManager: KeyManager;
   let grpcServerClient: GRPCServer;
-  let fwdProxy: ForwardProxy;
-  let revProxy: ReverseProxy;
+  let proxy: Proxy;
+
   let status: Status;
   let grpcServer: GRPCServer;
   let grpcClient: GRPCClientClient;
@@ -69,8 +68,7 @@ describe('keysKeyPairReset', () => {
     });
     keyManager = pkAgent.keyManager;
     grpcServerClient = pkAgent.grpcServerClient;
-    fwdProxy = pkAgent.fwdProxy;
-    revProxy = pkAgent.revProxy;
+    proxy = pkAgent.proxy;
     status = pkAgent.status;
     const clientService = {
       keysKeyPairReset: keysKeyPairReset({
@@ -104,9 +102,7 @@ describe('keysKeyPairReset', () => {
     const rootKeyPair1 = keyManager.getRootKeyPairPem();
     const nodeId1 = keyManager.getNodeId();
     // @ts-ignore - get protected property
-    const fwdTLSConfig1 = fwdProxy.tlsConfig;
-    // @ts-ignore - get protected property
-    const revTLSConfig1 = revProxy.tlsConfig;
+    const fwdTLSConfig1 = proxy.tlsConfig;
     // @ts-ignore - get protected property
     const serverTLSConfig1 = grpcServerClient.tlsConfig;
     const expectedTLSConfig1: TLSConfig = {
@@ -116,7 +112,6 @@ describe('keysKeyPairReset', () => {
     const nodeIdStatus1 = (await status.readStatus())!.data.nodeId;
     expect(mockedRefreshBuckets.mock.calls).toHaveLength(0);
     expect(fwdTLSConfig1).toEqual(expectedTLSConfig1);
-    expect(revTLSConfig1).toEqual(expectedTLSConfig1);
     expect(serverTLSConfig1).toEqual(expectedTLSConfig1);
     expect(nodeId1.equals(nodeIdStatus1)).toBe(true);
     // Run command
@@ -130,9 +125,7 @@ describe('keysKeyPairReset', () => {
     const rootKeyPair2 = keyManager.getRootKeyPairPem();
     const nodeId2 = keyManager.getNodeId();
     // @ts-ignore - get protected property
-    const fwdTLSConfig2 = fwdProxy.tlsConfig;
-    // @ts-ignore - get protected property
-    const revTLSConfig2 = revProxy.tlsConfig;
+    const fwdTLSConfig2 = proxy.tlsConfig;
     // @ts-ignore - get protected property
     const serverTLSConfig2 = grpcServerClient.tlsConfig;
     const expectedTLSConfig2: TLSConfig = {
@@ -142,7 +135,6 @@ describe('keysKeyPairReset', () => {
     const nodeIdStatus2 = (await status.readStatus())!.data.nodeId;
     expect(mockedRefreshBuckets.mock.calls).toHaveLength(1);
     expect(fwdTLSConfig2).toEqual(expectedTLSConfig2);
-    expect(revTLSConfig2).toEqual(expectedTLSConfig2);
     expect(serverTLSConfig2).toEqual(expectedTLSConfig2);
     expect(rootKeyPair2.privateKey).not.toBe(rootKeyPair1.privateKey);
     expect(rootKeyPair2.publicKey).not.toBe(rootKeyPair1.publicKey);

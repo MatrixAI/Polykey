@@ -74,28 +74,22 @@ const clientPort = new commander.Option(
   .env('PK_CLIENT_PORT')
   .argParser(binParsers.parsePort);
 
-const ingressHost = new commander.Option(
-  '-ih, --ingress-host <host>',
-  'Ingress host',
-)
-  .env('PK_INGRESS_HOST')
+const proxyHost = new commander.Option('-ph, --proxy-host <host>', 'Proxy host')
+  .env('PK_PROXY_HOST')
   .argParser(binParsers.parseHost)
-  .default(config.defaults.networkConfig.ingressHost);
+  .default(config.defaults.networkConfig.proxyHost);
 
-const ingressPort = new commander.Option(
-  '-ip, --ingress-port <port>',
-  'Ingress Port',
-)
-  .env('PK_INGRESS_PORT')
+const proxyPort = new commander.Option('-pp, --proxy-port <port>', 'Proxy Port')
+  .env('PK_PROXY_PORT')
   .argParser(binParsers.parsePort)
-  .default(config.defaults.networkConfig.ingressPort);
+  .default(config.defaults.networkConfig.proxyPort);
 
 const connTimeoutTime = new commander.Option(
   '--connection-timeout <ms>',
   'Timeout value for connection establishment between nodes',
 )
   .argParser(binParsers.parseInteger)
-  .default(config.defaults.forwardProxyConfig.connTimeoutTime);
+  .default(config.defaults.proxyConfig.connTimeoutTime);
 
 const passwordFile = new commander.Option(
   '-pf, --password-file <path>',
@@ -168,8 +162,8 @@ export {
   nodeId,
   clientHost,
   clientPort,
-  ingressHost,
-  ingressPort,
+  proxyHost,
+  proxyPort,
   connTimeoutTime,
   recoveryCodeFile,
   passwordFile,

@@ -14,7 +14,7 @@ import * as keysUtils from '../keys/utils';
 import { promise, timerStart, timerStop } from '../utils';
 
 type ConnectionsForward = {
-  ingress: Map<Address, ConnectionForward>;
+  proxy: Map<Address, ConnectionForward>;
   client: Map<Address, ConnectionForward>;
 };
 
@@ -199,7 +199,7 @@ class ConnectionForward extends Connection {
     }
     await this.startKeepAliveInterval();
     this.serverCertChain = serverCertChain;
-    this.connections.ingress.set(this.address, this);
+    this.connections.proxy.set(this.address, this);
     this.startKeepAliveTimeout();
     this.logger.info('Started Connection Forward');
   }
@@ -226,7 +226,7 @@ class ConnectionForward extends Connection {
       endPs.push(this.endGracefully(this.clientSocket, this.endTime));
     }
     await Promise.all(endPs);
-    this.connections.ingress.delete(this.address);
+    this.connections.proxy.delete(this.address);
     this.connections.client.delete(this.clientAddress);
     this.logger.info('Stopped Connection Forward');
   }

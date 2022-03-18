@@ -21,8 +21,7 @@ import { Discovery } from './discovery';
 import { SessionManager } from './sessions';
 import { GRPCServer } from './grpc';
 import { IdentitiesManager, providers } from './identities';
-import ForwardProxy from './network/ForwardProxy';
-import ReverseProxy from './network/ReverseProxy';
+import Proxy from './network/Proxy';
 import { EventBus, captureRejectionSymbol } from './events';
 import { createAgentService, AgentServiceService } from './agent';
 import { createClientService, ClientServiceService } from './client';
@@ -31,13 +30,10 @@ import * as utils from './utils';
 import * as errors from './errors';
 
 type NetworkConfig = {
+  forwardHost?: Host;
+  forwardPort?: Port;
   proxyHost?: Host;
   proxyPort?: Port;
-  egressHost?: Host;
-  egressPort?: Port;
-  // ReverseProxy
-  ingressHost?: Host;
-  ingressPort?: Port;
   // GRPCServer for agent service
   agentHost?: Host;
   agentPort?: Port;
@@ -59,8 +55,7 @@ class PolykeyAgent {
     nodePath = config.defaults.nodePath,
     keysConfig = {},
     networkConfig = {},
-    forwardProxyConfig = {},
-    reverseProxyConfig = {},
+    proxyConfig = {},
     nodeConnectionManagerConfig = {},
     seedNodes = {},
     // Optional dependencies
@@ -72,8 +67,7 @@ class PolykeyAgent {
     sigchain,
     acl,
     gestaltGraph,
-    fwdProxy,
-    revProxy,
+    proxy,
     nodeGraph,
     nodeConnectionManager,
     nodeManager,
@@ -95,15 +89,11 @@ class PolykeyAgent {
       dbKeyBits?: number;
       recoveryCode?: string;
     };
-    forwardProxyConfig?: {
+    proxyConfig?: {
       authToken?: string;
       connConnectTime?: number;
       connTimeoutTime?: number;
       connPingIntervalTime?: number;
-    };
-    reverseProxyConfig?: {
-      connConnectTime?: number;
-      connTimeoutTime?: number;
     };
     nodeConnectionManagerConfig?: {
       connConnectTime?: number;
@@ -120,8 +110,7 @@ class PolykeyAgent {
     sigchain?: Sigchain;
     acl?: ACL;
     gestaltGraph?: GestaltGraph;
-    fwdProxy?: ForwardProxy;
-    revProxy?: ReverseProxy;
+    proxy?: Proxy;
     nodeGraph?: NodeGraph;
     nodeConnectionManager?: NodeConnectionManager;
     nodeManager?: NodeManager;
@@ -147,14 +136,10 @@ class PolykeyAgent {
       ...config.defaults.keysConfig,
       ...utils.filterEmptyObject(keysConfig),
     };
-    const forwardProxyConfig_ = {
+    const proxyConfig_ = {
       authToken: (await keysUtils.getRandomBytes(10)).toString(),
-      ...config.defaults.forwardProxyConfig,
-      ...utils.filterEmptyObject(forwardProxyConfig),
-    };
-    const reverseProxyConfig_ = {
-      ...config.defaults.reverseProxyConfig,
-      ...utils.filterEmptyObject(reverseProxyConfig),
+      ...config.defaults.proxyConfig,
+      ...utils.filterEmptyObject(proxyConfig),
     };
     const nodeConnectionManagerConfig_ = {
       ...config.defaults.nodeConnectionManagerConfig,
@@ -256,17 +241,11 @@ class PolykeyAgent {
           logger: logger.getChild(GestaltGraph.name),
           fresh,
         }));
-      fwdProxy =
-        fwdProxy ??
-        new ForwardProxy({
-          ...forwardProxyConfig_,
-          logger: logger.getChild(ForwardProxy.name),
-        });
-      revProxy =
-        revProxy ??
-        new ReverseProxy({
-          ...reverseProxyConfig_,
-          logger: logger.getChild(ReverseProxy.name),
+      proxy =
+        proxy ??
+        new Proxy({
+          ...proxyConfig_,
+          logger: logger.getChild(Proxy.name),
         });
       nodeGraph =
         nodeGraph ??
@@ -281,8 +260,7 @@ class PolykeyAgent {
         new NodeConnectionManager({
           keyManager,
           nodeGraph,
-          fwdProxy,
-          revProxy,
+          proxy,
           seedNodes,
           ...nodeConnectionManagerConfig_,
           logger: logger.getChild(NodeConnectionManager.name),
@@ -359,8 +337,7 @@ class PolykeyAgent {
       await notificationsManager?.stop();
       await vaultManager?.stop();
       await discovery?.stop();
-      await revProxy?.stop();
-      await fwdProxy?.stop();
+      await proxy?.stop();
       await gestaltGraph?.stop();
       await acl?.stop();
       await sigchain?.stop();
@@ -381,8 +358,7 @@ class PolykeyAgent {
       sigchain,
       acl,
       gestaltGraph,
-      fwdProxy,
-      revProxy,
+      proxy,
       nodeGraph,
       nodeConnectionManager,
       nodeManager,
@@ -414,8 +390,7 @@ class PolykeyAgent {
   public readonly sigchain: Sigchain;
   public readonly acl: ACL;
   public readonly gestaltGraph: GestaltGraph;
-  public readonly fwdProxy: ForwardProxy;
-  public readonly revProxy: ReverseProxy;
+  public readonly proxy: Proxy;
   public readonly nodeGraph: NodeGraph;
   public readonly nodeConnectionManager: NodeConnectionManager;
   public readonly nodeManager: NodeManager;
@@ -440,8 +415,7 @@ class PolykeyAgent {
     sigchain,
     acl,
     gestaltGraph,
-    fwdProxy,
-    revProxy,
+    proxy,
     nodeGraph,
     nodeConnectionManager,
     nodeManager,
@@ -464,8 +438,7 @@ class PolykeyAgent {
     sigchain: Sigchain;
     acl: ACL;
     gestaltGraph: GestaltGraph;
-    fwdProxy: ForwardProxy;
-    revProxy: ReverseProxy;
+    proxy: Proxy;
     nodeGraph: NodeGraph;
     nodeConnectionManager: NodeConnectionManager;
     nodeManager: NodeManager;
@@ -489,8 +462,7 @@ class PolykeyAgent {
     this.sigchain = sigchain;
     this.acl = acl;
     this.gestaltGraph = gestaltGraph;
-    this.fwdProxy = fwdProxy;
-    this.revProxy = revProxy;
+    this.proxy = proxy;
     this.discovery = discovery;
     this.nodeGraph = nodeGraph;
     this.nodeConnectionManager = nodeConnectionManager;
@@ -541,8 +513,7 @@ class PolykeyAgent {
             nodeId: keyChangeData.nodeId,
           });
           await this.nodeManager.refreshBuckets();
-          this.fwdProxy.setTLSConfig(keyChangeData.tlsConfig);
-          this.revProxy.setTLSConfig(keyChangeData.tlsConfig);
+          this.proxy.setTLSConfig(keyChangeData.tlsConfig);
           this.grpcServerClient.setTLSConfig(keyChangeData.tlsConfig);
           this.logger.info('Propagated root keypair change');
         },
@@ -563,7 +534,7 @@ class PolykeyAgent {
         notificationsManager: this.notificationsManager,
         acl: this.acl,
         gestaltGraph: this.gestaltGraph,
-        revProxy: this.revProxy,
+        proxy: this.proxy,
       });
       const clientService = createClientService({
         pkAgent: this,
@@ -581,8 +552,7 @@ class PolykeyAgent {
         acl: this.acl,
         grpcServerClient: this.grpcServerClient,
         grpcServerAgent: this.grpcServerAgent,
-        fwdProxy: this.fwdProxy,
-        revProxy: this.revProxy,
+        proxy: this.proxy,
         fs: this.fs,
       });
       // Starting modules
@@ -613,18 +583,13 @@ class PolykeyAgent {
         host: networkConfig_.agentHost,
         port: networkConfig_.agentPort,
       });
-      await this.fwdProxy.start({
-        proxyHost: networkConfig_.proxyHost,
-        proxyPort: networkConfig_.proxyPort,
-        egressHost: networkConfig_.egressHost,
-        egressPort: networkConfig_.egressPort,
-        tlsConfig,
-      });
-      await this.revProxy.start({
+      await this.proxy.start({
+        forwardHost: networkConfig_.forwardHost,
+        forwardPort: networkConfig_.forwardPort,
         serverHost: this.grpcServerAgent.getHost(),
         serverPort: this.grpcServerAgent.getPort(),
-        ingressHost: networkConfig_.ingressHost,
-        ingressPort: networkConfig_.ingressPort,
+        proxyHost: networkConfig_.proxyHost,
+        proxyPort: networkConfig_.proxyPort,
         tlsConfig,
       });
       await this.nodeConnectionManager.start();
@@ -639,8 +604,8 @@ class PolykeyAgent {
         nodeId: this.keyManager.getNodeId(),
         clientHost: this.grpcServerClient.getHost(),
         clientPort: this.grpcServerClient.getPort(),
-        ingressHost: this.revProxy.getIngressHost(),
-        ingressPort: this.revProxy.getIngressPort(),
+        proxyHost: this.proxy.getProxyHost(),
+        proxyPort: this.proxy.getProxyPort(),
       });
       this.logger.info(`Started ${this.constructor.name}`);
     } catch (e) {
@@ -650,8 +615,7 @@ class PolykeyAgent {
       await this.notificationsManager?.stop();
       await this.vaultManager?.stop();
       await this.discovery?.stop();
-      await this.revProxy?.stop();
-      await this.fwdProxy?.stop();
+      await this.proxy?.stop();
       await this.grpcServerAgent?.stop();
       await this.grpcServerClient?.stop();
       await this.gestaltGraph?.stop();
@@ -679,8 +643,7 @@ class PolykeyAgent {
     await this.discovery.stop();
     await this.nodeConnectionManager.stop();
     await this.nodeGraph.stop();
-    await this.revProxy.stop();
-    await this.fwdProxy.stop();
+    await this.proxy.stop();
     await this.grpcServerAgent.stop();
     await this.grpcServerClient.stop();
     await this.gestaltGraph.stop();

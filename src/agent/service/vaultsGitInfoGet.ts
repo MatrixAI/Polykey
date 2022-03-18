@@ -50,7 +50,7 @@ function vaultsGitInfoGet({
     if (connectionInfo == null) {
       throw new agentErrors.ErrorConnectionInfoMissing();
     }
-    const nodeId = connectionInfo.nodeId;
+    const nodeId = connectionInfo.remoteNodeId;
     const nodeIdEncoded = nodesUtils.encodeNodeId(nodeId);
     const actionType = validationUtils.parseVaultAction(request.getAction());
     const permissions = await acl.getNodePerm(nodeId);

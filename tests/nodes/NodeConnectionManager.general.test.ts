@@ -10,8 +10,8 @@ import PolykeyAgent from '@/PolykeyAgent';
 import KeyManager from '@/keys/KeyManager';
 import NodeGraph from '@/nodes/NodeGraph';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
-import ForwardProxy from '@/network/ForwardProxy';
-import ReverseProxy from '@/network/ReverseProxy';
+import Proxy from '@/network/Proxy';
+
 import GRPCClientAgent from '@/agent/GRPCClientAgent';
 import * as nodesUtils from '@/nodes/utils';
 import * as nodesErrors from '@/nodes/errors';
@@ -51,6 +51,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     'vi3et1hrpv2m2lrplcm7cu913kr45v51cak54vm68anlbvuf83ra0',
   )!;
 
+  const localHost = '127.0.0.1' as Host;
   const serverHost = '127.0.0.1' as Host;
   const serverPort = 55555 as Port;
 
@@ -73,8 +74,8 @@ describe(`${NodeConnectionManager.name} general test`, () => {
   let dataDir2: string;
   let keyManager: KeyManager;
   let db: DB;
-  let fwdProxy: ForwardProxy;
-  let revProxy: ReverseProxy;
+  let proxy: Proxy;
+
   let nodeGraph: NodeGraph;
 
   let remoteNode1: PolykeyAgent;
@@ -188,28 +189,23 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
       certChainPem: keysUtils.certToPem(keyManager.getRootCert()),
     };
-    fwdProxy = new ForwardProxy({
+    proxy = new Proxy({
       authToken: 'auth',
-      logger: logger.getChild('fwdProxy'),
+      logger: logger.getChild('proxy'),
     });
-    await fwdProxy.start({
+    await proxy.start({
       tlsConfig,
-    });
-    revProxy = new ReverseProxy({
-      logger: logger.getChild('revProxy'),
-    });
-    await revProxy.start({
       serverHost,
       serverPort,
-      tlsConfig,
+      proxyHost: localHost,
     });
     await nodeGraph.setNode(remoteNodeId1, {
-      host: remoteNode1.revProxy.getIngressHost(),
-      port: remoteNode1.revProxy.getIngressPort(),
+      host: remoteNode1.proxy.getProxyHost(),
+      port: remoteNode1.proxy.getProxyPort(),
     });
     await nodeGraph.setNode(remoteNodeId2, {
-      host: remoteNode2.revProxy.getIngressHost(),
-      port: remoteNode2.revProxy.getIngressPort(),
+      host: remoteNode2.proxy.getProxyHost(),
+      port: remoteNode2.proxy.getProxyPort(),
     });
   });
 
@@ -220,8 +216,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     await db.destroy();
     await keyManager.stop();
     await keyManager.destroy();
-    await revProxy.stop();
-    await fwdProxy.stop();
+    await proxy.stop();
   });
 
   // General functionality
@@ -230,8 +225,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     const nodeConnectionManager = new NodeConnectionManager({
       keyManager,
       nodeGraph,
-      fwdProxy,
-      revProxy,
+      proxy,
       logger: nodeConnectionManagerLogger,
     });
     await nodeConnectionManager.start();
@@ -258,8 +252,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       const nodeConnectionManager = new NodeConnectionManager({
         keyManager,
         nodeGraph,
-        fwdProxy,
-        revProxy,
+        proxy,
         logger: nodeConnectionManagerLogger,
       });
       await nodeConnectionManager.start();
@@ -276,8 +269,8 @@ describe(`${NodeConnectionManager.name} general test`, () => {
           logger: nodeConnectionManagerLogger,
         });
         await nodeGraph.setNode(server.keyManager.getNodeId(), {
-          host: server.revProxy.getIngressHost(),
-          port: server.revProxy.getIngressPort(),
+          host: server.proxy.getProxyHost(),
+          port: server.proxy.getProxyPort(),
         } as NodeAddress);
         await server.nodeGraph.setNode(nodeId, nodeAddress);
         const foundAddress2 = await nodeConnectionManager.findNode(nodeId);
@@ -297,8 +290,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       const nodeConnectionManager = new NodeConnectionManager({
         keyManager,
         nodeGraph,
-        fwdProxy,
-        revProxy,
+        proxy,
         logger: nodeConnectionManagerLogger,
       });
       await nodeConnectionManager.start();
@@ -311,8 +303,8 @@ describe(`${NodeConnectionManager.name} general test`, () => {
           logger: nodeConnectionManagerLogger,
         });
         await nodeGraph.setNode(server.keyManager.getNodeId(), {
-          host: server.revProxy.getIngressHost(),
-          port: server.revProxy.getIngressPort(),
+          host: server.proxy.getProxyHost(),
+          port: server.proxy.getProxyPort(),
         } as NodeAddress);
         // Add a dummy node to the server node graph database
         // Server will not be able to connect to this node (the only node in its
@@ -338,8 +330,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     const nodeConnectionManager = new NodeConnectionManager({
       keyManager,
       nodeGraph,
-      fwdProxy,
-      revProxy,
+      proxy,
       logger: nodeConnectionManagerLogger,
     });
     await nodeConnectionManager.start();
@@ -364,8 +355,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     const nodeConnectionManager = new NodeConnectionManager({
       keyManager,
       nodeGraph,
-      fwdProxy,
-      revProxy,
+      proxy,
       logger: nodeConnectionManagerLogger,
     });
     await nodeConnectionManager.start();
@@ -410,8 +400,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     const nodeConnectionManager = new NodeConnectionManager({
       keyManager,
       nodeGraph,
-      fwdProxy,
-      revProxy,
+      proxy,
       logger: nodeConnectionManagerLogger,
     });
     await nodeConnectionManager.start();
@@ -471,16 +460,15 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       nodeConnectionManager = new NodeConnectionManager({
         keyManager,
         nodeGraph,
-        fwdProxy,
-        revProxy,
+        proxy,
         logger: logger.getChild('NodeConnectionManager'),
       });
 
       await nodeConnectionManager.start();
       const targetNodeId = serverPKAgent.keyManager.getNodeId();
       await nodeGraph.setNode(targetNodeId, {
-        host: serverPKAgent.revProxy.getIngressHost(),
-        port: serverPKAgent.revProxy.getIngressPort(),
+        host: serverPKAgent.proxy.getProxyHost(),
+        port: serverPKAgent.proxy.getProxyPort(),
       });
 
       // Now generate and add 20 nodes that will be close to this node ID
@@ -541,8 +529,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       nodeConnectionManager = new NodeConnectionManager({
         keyManager,
         nodeGraph,
-        fwdProxy,
-        revProxy,
+        proxy,
         logger: nodeConnectionManagerLogger,
       });
       await nodeConnectionManager.start();
@@ -579,8 +566,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       nodeConnectionManager = new NodeConnectionManager({
         keyManager,
         nodeGraph,
-        fwdProxy,
-        revProxy,
+        proxy,
         logger: nodeConnectionManagerLogger,
       });
       await nodeConnectionManager.start();
@@ -592,7 +578,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       relayMessage.setSrcId(nodesUtils.encodeNodeId(sourceNodeId));
       relayMessage.setTargetId(nodesUtils.encodeNodeId(remoteNodeId1));
       relayMessage.setSignature('');
-      relayMessage.setEgressAddress('');
+      relayMessage.setProxyAddress('');
       await nodeConnectionManager.relayHolePunchMessage(relayMessage);
 
       expect(mockedNodesHolePunchMessageSend).toHaveBeenCalled();

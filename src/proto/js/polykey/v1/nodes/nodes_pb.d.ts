@@ -132,8 +132,8 @@ export class Relay extends jspb.Message {
     setSrcId(value: string): Relay;
     getTargetId(): string;
     setTargetId(value: string): Relay;
-    getEgressAddress(): string;
-    setEgressAddress(value: string): Relay;
+    getProxyAddress(): string;
+    setProxyAddress(value: string): Relay;
     getSignature(): string;
     setSignature(value: string): Relay;
 
@@ -151,7 +151,7 @@ export namespace Relay {
     export type AsObject = {
         srcId: string,
         targetId: string,
-        egressAddress: string,
+        proxyAddress: string,
         signature: string,
     }
 }

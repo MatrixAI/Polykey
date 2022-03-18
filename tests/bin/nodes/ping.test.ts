@@ -40,12 +40,11 @@ describe('ping', () => {
       nodePath,
       networkConfig: {
         proxyHost: '127.0.0.1' as Host,
-        egressHost: '127.0.0.1' as Host,
-        ingressHost: '127.0.0.1' as Host,
+        forwardHost: '127.0.0.1' as Host,
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },
-      forwardProxyConfig: {
+      proxyConfig: {
         connConnectTime: 2000,
       },
       nodeConnectionManagerConfig: {
@@ -61,8 +60,7 @@ describe('ping', () => {
       nodePath: path.join(dataDir, 'remoteOnline'),
       networkConfig: {
         proxyHost: '127.0.0.1' as Host,
-        egressHost: '127.0.0.1' as Host,
-        ingressHost: '127.0.0.1' as Host,
+        forwardHost: '127.0.0.1' as Host,
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },
@@ -79,8 +77,7 @@ describe('ping', () => {
       nodePath: path.join(dataDir, 'remoteOffline'),
       networkConfig: {
         proxyHost: '127.0.0.1' as Host,
-        egressHost: '127.0.0.1' as Host,
-        ingressHost: '127.0.0.1' as Host,
+        forwardHost: '127.0.0.1' as Host,
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },

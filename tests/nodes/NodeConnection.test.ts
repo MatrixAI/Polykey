@@ -9,8 +9,8 @@ import * as child_process from 'child_process';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { destroyed } from '@matrixai/async-init';
-import ReverseProxy from '@/network/ReverseProxy';
-import ForwardProxy from '@/network/ForwardProxy';
+
+import Proxy from '@/network/Proxy';
 import NodeConnection from '@/nodes/NodeConnection';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import NodeGraph from '@/nodes/NodeGraph';
@@ -90,14 +90,14 @@ describe(`${NodeConnection.name} test`, () => {
   let serverGestaltGraph: GestaltGraph;
   let serverDb: DB;
   let serverNotificationsManager: NotificationsManager;
-  let serverRevProxy: ReverseProxy;
+  let serverProxy: Proxy;
 
   // Client
   let clientDataDir: string;
   let sourceNodeId: NodeId;
   let clientKeyManager: KeyManager;
   const authToken = 'AUTH';
-  let clientFwdProxy: ForwardProxy;
+  let clientproxy: Proxy;
 
   let agentServer: GRPCServer;
   let tlsConfig: TLSConfig;
@@ -218,12 +218,8 @@ describe(`${NodeConnection.name} test`, () => {
       logger: logger,
     });
 
-    const serverFwdProxy = new ForwardProxy({
+    serverProxy = new Proxy({
       authToken: '',
-      logger: logger,
-    });
-
-    serverRevProxy = new ReverseProxy({
       logger: logger,
     });
 
@@ -236,8 +232,7 @@ describe(`${NodeConnection.name} test`, () => {
     serverNodeConnectionManager = new NodeConnectionManager({
       keyManager: serverKeyManager,
       nodeGraph: serverNodeGraph,
-      fwdProxy: serverFwdProxy,
-      revProxy: serverRevProxy,
+      proxy: serverProxy,
       logger,
     });
     await serverNodeConnectionManager.start();
@@ -281,7 +276,7 @@ describe(`${NodeConnection.name} test`, () => {
       notificationsManager: serverNotificationsManager,
       acl: serverACL,
       gestaltGraph: serverGestaltGraph,
-      revProxy: serverRevProxy,
+      proxy: serverProxy,
     });
     agentServer = new GRPCServer({
       logger: logger,
@@ -290,13 +285,13 @@ describe(`${NodeConnection.name} test`, () => {
       services: [[AgentServiceService, agentService]],
       host: localHost,
     });
-    await serverRevProxy.start({
+    await serverProxy.start({
       serverHost: localHost,
       serverPort: agentServer.getPort(),
-      ingressHost: localHost,
+      proxyHost: localHost,
       tlsConfig: serverTLSConfig,
     });
-    targetPort = serverRevProxy.getIngressPort();
+    targetPort = serverProxy.getProxyPort();
     targetNodeId = serverKeyManager.getNodeId();
 
     // Client setup
@@ -316,16 +311,18 @@ describe(`${NodeConnection.name} test`, () => {
     };
 
     sourceNodeId = clientKeyManager.getNodeId();
-    clientFwdProxy = new ForwardProxy({
+    clientproxy = new Proxy({
       authToken: authToken,
       logger: logger,
     });
-    await clientFwdProxy.start({
-      proxyHost: localHost,
+    await clientproxy.start({
+      forwardHost: localHost,
       tlsConfig: clientTLSConfig,
-      egressHost: localHost,
+      proxyHost: localHost,
+      serverHost: localHost,
+      serverPort: 0 as Port,
     });
-    sourcePort = clientFwdProxy.getEgressPort();
+    sourcePort = clientproxy.getProxyPort();
 
     // Other setup
     const globalKeyPair = await testUtils.setupGlobalKeypair();
@@ -342,7 +339,7 @@ describe(`${NodeConnection.name} test`, () => {
   }, global.polykeyStartupTimeout * 2);
 
   afterEach(async () => {
-    await clientFwdProxy.stop();
+    await clientproxy.stop();
     await clientKeyManager.stop();
     await clientKeyManager.destroy();
     await fs.promises.rm(clientDataDir, {
@@ -364,7 +361,7 @@ describe(`${NodeConnection.name} test`, () => {
     await serverNotificationsManager.stop();
     await serverNotificationsManager.destroy();
     await agentServer.stop();
-    await serverRevProxy.stop();
+    await serverProxy.stop();
     await serverKeyManager.stop();
     await serverKeyManager.destroy();
     await serverDb.stop();
@@ -381,7 +378,7 @@ describe(`${NodeConnection.name} test`, () => {
       targetNodeId: targetNodeId,
       targetHost: localHost,
       targetPort: targetPort,
-      fwdProxy: clientFwdProxy,
+      proxy: clientproxy,
       keyManager: clientKeyManager,
       nodeConnectionManager: dummyNodeConnectionManager,
       destroyCallback,
@@ -395,9 +392,9 @@ describe(`${NodeConnection.name} test`, () => {
       nodeConnection.getRootCertChain();
     }).toThrow(nodesErrors.ErrorNodeConnectionDestroyed);
     // Explicitly close the connection such that there's no interference in next test
-    await serverRevProxy.closeConnection(
+    await serverProxy.closeConnectionReverse(
       localHost,
-      clientFwdProxy.getEgressPort(),
+      clientproxy.getProxyPort(),
     );
   });
   test('connects to its target (via direct connection)', async () => {
@@ -405,7 +402,7 @@ describe(`${NodeConnection.name} test`, () => {
       targetNodeId: targetNodeId,
       targetHost: localHost,
       targetPort: targetPort,
-      fwdProxy: clientFwdProxy,
+      proxy: clientproxy,
       keyManager: clientKeyManager,
       nodeConnectionManager: dummyNodeConnectionManager,
       destroyCallback,
@@ -417,7 +414,7 @@ describe(`${NodeConnection.name} test`, () => {
     // attempt to acquire the connection info, we need to wait and poll it
     const connInfo = await poll<ConnectionInfo | undefined>(
       async () => {
-        return serverRevProxy.getConnectionInfoByEgress(localHost, sourcePort);
+        return serverProxy.getConnectionInfoByProxy(localHost, sourcePort);
       },
       (e) => {
         if (e instanceof networkErrors.ErrorConnectionNotComposed) return false;
@@ -427,12 +424,12 @@ describe(`${NodeConnection.name} test`, () => {
     );
     expect(connInfo).toBeDefined();
     expect(connInfo).toMatchObject({
-      nodeId: sourceNodeId,
-      certificates: expect.any(Array),
-      egressHost: localHost,
-      egressPort: sourcePort,
-      ingressHost: localHost,
-      ingressPort: targetPort,
+      remoteNodeId: sourceNodeId,
+      remoteCertificates: expect.any(Array),
+      localHost: localHost,
+      localPort: targetPort,
+      remoteHost: localHost,
+      remotePort: sourcePort,
     });
     await conn.destroy();
   });
@@ -449,14 +446,14 @@ describe(`${NodeConnection.name} test`, () => {
       const killSelf = jest.fn();
       nodeConnection = await NodeConnection.createNodeConnection({
         connConnectTime: 500,
-        fwdProxy: clientFwdProxy,
+        proxy: clientproxy,
         keyManager: clientKeyManager,
         logger: logger,
         nodeConnectionManager: dummyNodeConnectionManager,
         destroyCallback: killSelf,
-        targetHost: polykeyAgent.revProxy.getIngressHost(),
+        targetHost: polykeyAgent.proxy.getProxyHost(),
         targetNodeId: polykeyAgent.keyManager.getNodeId(),
-        targetPort: polykeyAgent.revProxy.getIngressPort(),
+        targetPort: polykeyAgent.proxy.getProxyPort(),
         clientFactory: (args) => GRPCClientAgent.createGRPCClientAgent(args),
       });
 
@@ -484,7 +481,7 @@ describe(`${NodeConnection.name} test`, () => {
         targetHost: '128.0.0.1' as Host,
         targetPort: 12345 as Port,
         connConnectTime: 300,
-        fwdProxy: clientFwdProxy,
+        proxy: clientproxy,
         keyManager: clientKeyManager,
         nodeConnectionManager: dummyNodeConnectionManager,
         destroyCallback,
@@ -500,7 +497,7 @@ describe(`${NodeConnection.name} test`, () => {
         targetNodeId: targetNodeId,
         targetHost: localHost,
         targetPort: targetPort,
-        fwdProxy: clientFwdProxy,
+        proxy: clientproxy,
         keyManager: clientKeyManager,
         nodeConnectionManager: dummyNodeConnectionManager,
         destroyCallback,
@@ -521,7 +518,7 @@ describe(`${NodeConnection.name} test`, () => {
         targetNodeId: targetNodeId,
         targetHost: localHost,
         targetPort: targetPort,
-        fwdProxy: clientFwdProxy,
+        proxy: clientproxy,
         keyManager: clientKeyManager,
         nodeConnectionManager: dummyNodeConnectionManager,
         destroyCallback,
@@ -539,33 +536,34 @@ describe(`${NodeConnection.name} test`, () => {
     }
   });
   test('should call `killSelf if connection is closed based on bad certificate', async () => {
-    let revProxy: ReverseProxy | undefined;
+    let proxy: Proxy | undefined;
     let nodeConnection: NodeConnection<GRPCClientAgent> | undefined;
     let server;
     try {
       server = tcpServer();
-      revProxy = new ReverseProxy({
+      proxy = new Proxy({
         logger: logger,
+        authToken: '',
       });
       await server.serverListen(0);
-      await revProxy.start({
+      await proxy.start({
         serverHost: server.serverHost(),
         serverPort: server.serverPort(),
-        ingressHost: '127.0.0.1' as Host,
+        proxyHost: localHost,
         tlsConfig,
       });
       // Have a nodeConnection try to connect to it
       const killSelf = jest.fn();
       const nodeConnectionP = NodeConnection.createNodeConnection({
         connConnectTime: 500,
-        fwdProxy: clientFwdProxy,
+        proxy: clientproxy,
         keyManager: clientKeyManager,
         logger: logger,
         nodeConnectionManager: dummyNodeConnectionManager,
         destroyCallback: killSelf,
-        targetHost: revProxy.getIngressHost(),
+        targetHost: proxy.getProxyHost(),
         targetNodeId: targetNodeId,
-        targetPort: revProxy.getIngressPort(),
+        targetPort: proxy.getProxyPort(),
         clientFactory: (args) => GRPCClientAgent.createGRPCClientAgent(args),
       });
 
@@ -577,37 +575,38 @@ describe(`${NodeConnection.name} test`, () => {
       // Resolves if the shutdownCallback was called
     } finally {
       await server?.serverClose();
-      await revProxy?.stop();
+      await proxy?.stop();
       await nodeConnection?.destroy();
     }
   });
   test('should call `killSelf if connection is closed before TLS is established', async () => {
-    let revProxy: ReverseProxy | undefined;
+    let proxy: Proxy | undefined;
     let server;
     try {
       server = tcpServer(false, true);
-      revProxy = new ReverseProxy({
+      proxy = new Proxy({
         logger: logger,
+        authToken: '',
       });
       await server.serverListen(0);
-      await revProxy.start({
+      await proxy.start({
         serverHost: server.serverHost(),
         serverPort: server.serverPort(),
-        ingressHost: '127.0.0.1' as Host,
+        proxyHost: localHost,
         tlsConfig,
       });
       // Have a nodeConnection try to connect to it
       const killSelf = jest.fn();
       const nodeConnectionP = NodeConnection.createNodeConnection({
         connConnectTime: 500,
-        fwdProxy: clientFwdProxy,
+        proxy: clientproxy,
         keyManager: clientKeyManager,
         logger: logger,
         nodeConnectionManager: dummyNodeConnectionManager,
         destroyCallback: killSelf,
-        targetHost: revProxy.getIngressHost(),
+        targetHost: proxy.getProxyHost(),
         targetNodeId: targetNodeId,
-        targetPort: revProxy.getIngressPort(),
+        targetPort: proxy.getProxyPort(),
         clientFactory: (args) => GRPCClientAgent.createGRPCClientAgent(args),
       });
 
@@ -619,7 +618,7 @@ describe(`${NodeConnection.name} test`, () => {
       // Resolves if the shutdownCallback was called
     } finally {
       await server?.serverClose();
-      await revProxy?.stop();
+      await proxy?.stop();
     }
   });
   test('should call `killSelf if the Agent is stopped.', async () => {
@@ -635,14 +634,14 @@ describe(`${NodeConnection.name} test`, () => {
       const killSelf = jest.fn();
       nodeConnection = await NodeConnection.createNodeConnection({
         connConnectTime: 500,
-        fwdProxy: clientFwdProxy,
+        proxy: clientproxy,
         keyManager: clientKeyManager,
         logger: logger,
         nodeConnectionManager: dummyNodeConnectionManager,
         destroyCallback: killSelf,
-        targetHost: polykeyAgent.revProxy.getIngressHost(),
+        targetHost: polykeyAgent.proxy.getProxyHost(),
         targetNodeId: polykeyAgent.keyManager.getNodeId(),
-        targetPort: polykeyAgent.revProxy.getIngressPort(),
+        targetPort: polykeyAgent.proxy.getProxyPort(),
         clientFactory: (args) => GRPCClientAgent.createGRPCClientAgent(args),
       });
 
@@ -666,7 +665,7 @@ describe(`${NodeConnection.name} test`, () => {
       let nodeConnection:
         | NodeConnection<grpcTestUtils.GRPCClientTest>
         | undefined;
-      let testRevProxy: ReverseProxy | undefined;
+      let testProxy: Proxy | undefined;
       let testProcess: child_process.ChildProcessWithoutNullStreams | undefined;
       try {
         const testProcess = child_process.spawn('ts-node', [
@@ -681,11 +680,14 @@ describe(`${NodeConnection.name} test`, () => {
         // TestProcess.stderr.on('data', data => console.log(data.toString()));
 
         // Lets make a reverse proxy
-        testRevProxy = new ReverseProxy({ logger: logger });
-        await testRevProxy.start({
+        testProxy = new Proxy({
+          authToken: '',
+          logger: logger,
+        });
+        await testProxy.start({
           serverHost: '127.0.0.1' as Host,
           serverPort: Number(await waitP.p) as Port,
-          ingressHost: '127.0.0.1' as Host,
+          proxyHost: localHost,
           tlsConfig: serverTLSConfig,
         });
 
@@ -694,7 +696,7 @@ describe(`${NodeConnection.name} test`, () => {
         const killSelfP = promise<null>();
         nodeConnection = await NodeConnection.createNodeConnection({
           connConnectTime: 2000,
-          fwdProxy: clientFwdProxy,
+          proxy: clientproxy,
           keyManager: clientKeyManager,
           logger: logger,
           nodeConnectionManager: dummyNodeConnectionManager,
@@ -703,8 +705,8 @@ describe(`${NodeConnection.name} test`, () => {
             killSelfP.resolveP(null);
           },
           targetNodeId: serverKeyManager.getNodeId(),
-          targetHost: testRevProxy.getIngressHost(),
-          targetPort: testRevProxy.getIngressPort(),
+          targetHost: testProxy.getProxyHost(),
+          targetPort: testProxy.getProxyPort(),
           clientFactory: (args) =>
             grpcTestUtils.GRPCClientTest.createGRPCClientTest(args),
         });
@@ -721,7 +723,7 @@ describe(`${NodeConnection.name} test`, () => {
         expect(killSelfCheck).toHaveBeenCalled();
       } finally {
         testProcess?.kill(9);
-        await testRevProxy?.stop();
+        await testProxy?.stop();
         await nodeConnection?.destroy();
       }
     },
@@ -732,7 +734,7 @@ describe(`${NodeConnection.name} test`, () => {
       let nodeConnection:
         | NodeConnection<grpcTestUtils.GRPCClientTest>
         | undefined;
-      let testRevProxy: ReverseProxy | undefined;
+      let testProxy: Proxy | undefined;
       let testProcess: child_process.ChildProcessWithoutNullStreams | undefined;
       try {
         const testProcess = child_process.spawn('ts-node', [
@@ -747,11 +749,14 @@ describe(`${NodeConnection.name} test`, () => {
         // TestProcess.stderr.on('data', data => console.log(data.toString()));
 
         // Lets make a reverse proxy
-        testRevProxy = new ReverseProxy({ logger: logger });
-        await testRevProxy.start({
+        testProxy = new Proxy({
+          authToken: '',
+          logger: logger,
+        });
+        await testProxy.start({
           serverHost: '127.0.0.1' as Host,
           serverPort: Number(await waitP.p) as Port,
-          ingressHost: '127.0.0.1' as Host,
+          proxyHost: localHost,
           tlsConfig: serverTLSConfig,
         });
 
@@ -760,7 +765,7 @@ describe(`${NodeConnection.name} test`, () => {
         const killSelfP = promise<null>();
         nodeConnection = await NodeConnection.createNodeConnection({
           connConnectTime: 2000,
-          fwdProxy: clientFwdProxy,
+          proxy: clientproxy,
           keyManager: clientKeyManager,
           logger: logger,
           nodeConnectionManager: dummyNodeConnectionManager,
@@ -769,8 +774,8 @@ describe(`${NodeConnection.name} test`, () => {
             killSelfP.resolveP(null);
           },
           targetNodeId: serverKeyManager.getNodeId(),
-          targetHost: testRevProxy.getIngressHost(),
-          targetPort: testRevProxy.getIngressPort(),
+          targetHost: testProxy.getProxyHost(),
+          targetPort: testProxy.getProxyPort(),
           clientFactory: (args) =>
             grpcTestUtils.GRPCClientTest.createGRPCClientTest(args),
         });
@@ -790,7 +795,7 @@ describe(`${NodeConnection.name} test`, () => {
         expect(killSelfCheck).toHaveBeenCalled();
       } finally {
         testProcess?.kill(9);
-        await testRevProxy?.stop();
+        await testProxy?.stop();
         await nodeConnection?.destroy();
       }
     },

@@ -37,7 +37,7 @@ message Connection {
 message Relay {
   string src_id = 1;
   string target_id = 2;
-  string egress_address = 3;
+  string proxy_address = 3;
   string signature = 4;
 }
 

@@ -32,13 +32,10 @@ type AgentChildProcessInput = {
       connTimeoutTime?: number;
     };
     networkConfig?: {
+      forwardHost?: Host;
+      forwardPort?: Port;
       proxyHost?: Host;
       proxyPort?: Port;
-      egressHost?: Host;
-      egressPort?: Port;
-      // ReverseProxy
-      ingressHost?: Host;
-      ingressPort?: Port;
       // GRPCServer for agent service
       agentHost?: Host;
       agentPort?: Port;

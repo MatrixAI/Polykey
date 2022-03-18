@@ -16,8 +16,8 @@ type StatusLive = {
     nodeId: NodeId;
     clientHost: Host;
     clientPort: Port;
-    ingressHost: Host;
-    ingressPort: Port;
+    proxyHost: Host;
+    proxyPort: Port;
     [key: string]: any;
   };
 };

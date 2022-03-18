@@ -9,7 +9,7 @@ import type { NotificationsManager } from '@/notifications';
 import type { ACL } from '@/acl';
 import type { GestaltGraph } from '@/gestalts';
 import type { NodeId } from 'nodes/types';
-import type { ReverseProxy } from 'network/index';
+import type Proxy from 'network/Proxy';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as grpc from '@grpc/grpc-js';
 import { promisify } from '@/utils';
@@ -30,7 +30,7 @@ async function openTestAgentServer({
   notificationsManager,
   acl,
   gestaltGraph,
-  revProxy,
+  proxy,
 }: {
   keyManager: KeyManager;
   vaultManager: VaultManager;
@@ -41,7 +41,7 @@ async function openTestAgentServer({
   notificationsManager: NotificationsManager;
   acl: ACL;
   gestaltGraph: GestaltGraph;
-  revProxy: ReverseProxy;
+  proxy: Proxy;
 }) {
   const agentService: IAgentServiceServer = createAgentService({
     keyManager,
@@ -53,7 +53,7 @@ async function openTestAgentServer({
     nodeConnectionManager,
     acl,
     gestaltGraph,
-    revProxy,
+    proxy,
   });
 
   const server = new grpc.Server();

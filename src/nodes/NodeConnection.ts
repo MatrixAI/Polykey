@@ -2,7 +2,7 @@ import type { NodeId } from './types';
 import type { Host, Hostname, Port } from '../network/types';
 import type KeyManager from '../keys/KeyManager';
 import type { Certificate, PublicKey, PublicKeyPem } from '../keys/types';
-import type ForwardProxy from '../network/ForwardProxy';
+import type Proxy from '../network/Proxy';
 import type GRPCClient from '../grpc/GRPCClient';
 import type NodeConnectionManager from './NodeConnectionManager';
 import Logger from '@matrixai/logger';
@@ -30,7 +30,7 @@ class NodeConnection<T extends GRPCClient> {
 
   protected logger: Logger;
   protected destroyCallback: () => Promise<void>;
-  protected fwdProxy: ForwardProxy;
+  protected proxy: Proxy;
   protected client: T;
 
   static async createNodeConnection<T extends GRPCClient>({
@@ -39,7 +39,7 @@ class NodeConnection<T extends GRPCClient> {
     targetPort,
     targetHostname,
     connConnectTime = 20000,
-    fwdProxy,
+    proxy,
     keyManager,
     clientFactory,
     nodeConnectionManager,
@@ -51,7 +51,7 @@ class NodeConnection<T extends GRPCClient> {
     targetPort: Port;
     targetHostname?: Hostname;
     connConnectTime?: number;
-    fwdProxy: ForwardProxy;
+    proxy: Proxy;
     keyManager: KeyManager;
     clientFactory: (...args) => Promise<T>;
     nodeConnectionManager: NodeConnectionManager;
@@ -60,29 +60,29 @@ class NodeConnection<T extends GRPCClient> {
   }): Promise<NodeConnection<T>> {
     logger.info(`Creating ${this.name}`);
     const proxyConfig = {
-      host: fwdProxy.getProxyHost(),
-      port: fwdProxy.getProxyPort(),
-      authToken: fwdProxy.authToken,
+      host: proxy.getForwardHost(),
+      port: proxy.getForwardPort(),
+      authToken: proxy.authToken,
     };
-    // 1. Get the egress port of the fwdProxy (used for hole punching)
-    const egressAddress = networkUtils.buildAddress(
-      fwdProxy.getEgressHost(),
-      fwdProxy.getEgressPort(),
+    // 1. Get the proxy port of the fwdProxy (used for hole punching)
+    const proxyAddress = networkUtils.buildAddress(
+      proxy.getProxyHost(),
+      proxy.getProxyPort(),
     );
     const signature = await keyManager.signWithRootKeyPair(
-      Buffer.from(egressAddress),
+      Buffer.from(proxyAddress),
     );
     // 2. Ask fwdProxy for connection to target (the revProxy of other node)
     // 2. Start sending hole-punching packets to the target (via the client start -
     // this establishes a HTTP CONNECT request with the forward proxy)
-    // 3. Relay the egress port to the broker/s (such that they can inform the other node)
+    // 3. Relay the proxy port to the broker/s (such that they can inform the other node)
     // 4. Start sending hole-punching packets to other node (done in openConnection())
     // Done in parallel
     const nodeConnection = new NodeConnection<T>({
       host: targetHost,
       port: targetPort,
       hostname: targetHostname,
-      fwdProxy: fwdProxy,
+      proxy: proxy,
       destroyCallback,
       logger,
     });
@@ -100,7 +100,7 @@ class NodeConnection<T extends GRPCClient> {
             nodeId,
             keyManager.getNodeId(),
             targetNodeId,
-            egressAddress,
+            proxyAddress,
             signature,
           );
         });
@@ -146,14 +146,14 @@ class NodeConnection<T extends GRPCClient> {
     host,
     port,
     hostname,
-    fwdProxy,
+    proxy,
     destroyCallback,
     logger,
   }: {
     host: Host;
     port: Port;
     hostname?: Hostname;
-    fwdProxy: ForwardProxy;
+    proxy: Proxy;
     destroyCallback: () => Promise<void>;
     logger: Logger;
   }) {
@@ -161,7 +161,7 @@ class NodeConnection<T extends GRPCClient> {
     this.host = host;
     this.port = port;
     this.hostname = hostname;
-    this.fwdProxy = fwdProxy;
+    this.proxy = proxy;
     this.destroyCallback = destroyCallback;
   }
 
@@ -192,14 +192,11 @@ class NodeConnection<T extends GRPCClient> {
    */
   @ready(new nodesErrors.ErrorNodeConnectionDestroyed())
   public getRootCertChain(): Array<Certificate> {
-    const connInfo = this.fwdProxy.getConnectionInfoByIngress(
-      this.host,
-      this.port,
-    );
+    const connInfo = this.proxy.getConnectionInfoByProxy(this.host, this.port);
     if (connInfo == null) {
       throw new nodesErrors.ErrorNodeConnectionInfoNotExist();
     }
-    return connInfo.certificates;
+    return connInfo.remoteCertificates;
   }
 
   /**

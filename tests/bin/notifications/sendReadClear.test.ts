@@ -52,31 +52,29 @@ describe('send/read/claim', () => {
       nodePath: nodePathSender,
       networkConfig: {
         proxyHost: '127.0.0.1' as Host,
-        egressHost: '127.0.0.1' as Host,
-        ingressHost: '127.0.0.1' as Host,
+        forwardHost: '127.0.0.1' as Host,
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },
       logger,
     });
     senderId = sender.keyManager.getNodeId();
-    senderHost = sender.revProxy.getIngressHost();
-    senderPort = sender.revProxy.getIngressPort();
+    senderHost = sender.proxy.getProxyHost();
+    senderPort = sender.proxy.getProxyPort();
     receiver = await PolykeyAgent.createPolykeyAgent({
       password,
       nodePath: nodePathReceiver,
       networkConfig: {
         proxyHost: '127.0.0.1' as Host,
-        egressHost: '127.0.0.1' as Host,
-        ingressHost: '127.0.0.1' as Host,
+        forwardHost: '127.0.0.1' as Host,
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },
       logger,
     });
     receiverId = receiver.keyManager.getNodeId();
-    receiverHost = receiver.revProxy.getIngressHost();
-    receiverPort = receiver.revProxy.getIngressPort();
+    receiverHost = receiver.proxy.getProxyHost();
+    receiverPort = receiver.proxy.getProxyPort();
   });
   afterAll(async () => {
     await receiver.stop();

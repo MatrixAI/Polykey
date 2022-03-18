@@ -10,8 +10,8 @@ import PolykeyAgent from '@/PolykeyAgent';
 import KeyManager from '@/keys/KeyManager';
 import NodeGraph from '@/nodes/NodeGraph';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
-import ForwardProxy from '@/network/ForwardProxy';
-import ReverseProxy from '@/network/ReverseProxy';
+import Proxy from '@/network/Proxy';
+
 import * as nodesUtils from '@/nodes/utils';
 import * as keysUtils from '@/keys/utils';
 import * as grpcUtils from '@/grpc/utils';
@@ -43,6 +43,7 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
     0, 0, 0, 0, 0, 0, 124,
   ]);
 
+  const localHost = '127.0.0.1' as Host;
   const serverHost = '127.0.0.1' as Host;
   const serverPort = 55555 as Port;
 
@@ -62,15 +63,12 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
 
   const nop = async () => {};
 
-  //
   let dataDir: string;
   let dataDir2: string;
   let keyManager: KeyManager;
   let db: DB;
-  let fwdProxy: ForwardProxy;
-  let revProxy: ReverseProxy;
+  let proxy: Proxy;
   let nodeGraph: NodeGraph;
-
   let remoteNode1: PolykeyAgent;
   let remoteNode2: PolykeyAgent;
   let remoteNodeId1: NodeId;
@@ -143,28 +141,23 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
       keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
       certChainPem: keysUtils.certToPem(keyManager.getRootCert()),
     };
-    fwdProxy = new ForwardProxy({
+    proxy = new Proxy({
       authToken: 'auth',
-      logger: logger.getChild('fwdProxy'),
+      logger: logger.getChild('proxy'),
     });
-    await fwdProxy.start({
+    await proxy.start({
       tlsConfig,
-    });
-    revProxy = new ReverseProxy({
-      logger: logger.getChild('revProxy'),
-    });
-    await revProxy.start({
       serverHost,
       serverPort,
-      tlsConfig,
+      proxyHost: localHost,
     });
     await nodeGraph.setNode(remoteNodeId1, {
-      host: remoteNode1.revProxy.getIngressHost(),
-      port: remoteNode1.revProxy.getIngressPort(),
+      host: remoteNode1.proxy.getProxyHost(),
+      port: remoteNode1.proxy.getProxyPort(),
     });
     await nodeGraph.setNode(remoteNodeId2, {
-      host: remoteNode2.revProxy.getIngressHost(),
-      port: remoteNode2.revProxy.getIngressPort(),
+      host: remoteNode2.proxy.getProxyHost(),
+      port: remoteNode2.proxy.getProxyPort(),
     });
   });
 
@@ -175,8 +168,7 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
     await db.destroy();
     await keyManager.stop();
     await keyManager.destroy();
-    await revProxy.stop();
-    await fwdProxy.stop();
+    await proxy.stop();
   });
 
   // Timeouts
@@ -187,8 +179,7 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
       nodeConnectionManager = new NodeConnectionManager({
         keyManager,
         nodeGraph,
-        fwdProxy,
-        revProxy,
+        proxy,
         connTimeoutTime: 500,
         logger: nodeConnectionManagerLogger,
       });
@@ -225,8 +216,7 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
       nodeConnectionManager = new NodeConnectionManager({
         keyManager,
         nodeGraph,
-        fwdProxy,
-        revProxy,
+        proxy,
         connTimeoutTime: 1000,
         logger: nodeConnectionManagerLogger,
       });
@@ -279,8 +269,7 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
       nodeConnectionManager = new NodeConnectionManager({
         keyManager,
         nodeGraph,
-        fwdProxy,
-        revProxy,
+        proxy,
         logger: nodeConnectionManagerLogger,
       });
       await nodeConnectionManager.start();

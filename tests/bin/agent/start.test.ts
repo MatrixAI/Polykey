@@ -1,4 +1,5 @@
 import type { RecoveryCode } from '@/keys/types';
+import type { StatusLive } from '@/status/types';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
@@ -40,7 +41,7 @@ describe('start', () => {
           '1024',
           '--client-host',
           '127.0.0.1',
-          '--ingress-host',
+          '--proxy-host',
           '127.0.0.1',
           '--workers',
           '0',
@@ -100,7 +101,7 @@ describe('start', () => {
           '1024',
           '--client-host',
           '127.0.0.1',
-          '--ingress-host',
+          '--proxy-host',
           '127.0.0.1',
           '--background',
           '--background-out-file',
@@ -184,7 +185,7 @@ describe('start', () => {
             '1024',
             '--client-host',
             '127.0.0.1',
-            '--ingress-host',
+            '--proxy-host',
             '127.0.0.1',
             '--workers',
             '0',
@@ -205,7 +206,7 @@ describe('start', () => {
             '1024',
             '--client-host',
             '127.0.0.1',
-            '--ingress-host',
+            '--proxy-host',
             '127.0.0.1',
             '--workers',
             '0',
@@ -282,7 +283,7 @@ describe('start', () => {
             '1024',
             '--client-host',
             '127.0.0.1',
-            '--ingress-host',
+            '--proxy-host',
             '127.0.0.1',
             '--workers',
             '0',
@@ -366,7 +367,7 @@ describe('start', () => {
           '1024',
           '--client-host',
           '127.0.0.1',
-          '--ingress-host',
+          '--proxy-host',
           '127.0.0.1',
           '--workers',
           '0',
@@ -398,7 +399,7 @@ describe('start', () => {
           '1024',
           '--client-host',
           '127.0.0.1',
-          '--ingress-host',
+          '--proxy-host',
           '127.0.0.1',
           '--workers',
           '0',
@@ -446,7 +447,7 @@ describe('start', () => {
           '1024',
           '--client-host',
           '127.0.0.1',
-          '--ingress-host',
+          '--proxy-host',
           '127.0.0.1',
           '--workers',
           '0',
@@ -487,7 +488,7 @@ describe('start', () => {
           '1024',
           '--client-host',
           '127.0.0.1',
-          '--ingress-host',
+          '--proxy-host',
           '127.0.0.1',
           '--workers',
           '0',
@@ -556,7 +557,7 @@ describe('start', () => {
           '1024',
           '--client-host',
           '127.0.0.1',
-          '--ingress-host',
+          '--proxy-host',
           '127.0.0.1',
           '--workers',
           '0',
@@ -591,7 +592,7 @@ describe('start', () => {
           '2048',
           '--client-host',
           '127.0.0.1',
-          '--ingress-host',
+          '--proxy-host',
           '127.0.0.1',
           '--workers',
           '0',
@@ -640,7 +641,7 @@ describe('start', () => {
           '1024',
           '--client-host',
           '127.0.0.1',
-          '--ingress-host',
+          '--proxy-host',
           '127.0.0.1',
           '--workers',
           '0',
@@ -680,8 +681,8 @@ describe('start', () => {
       // Make sure these ports are not occupied
       const clientHost = '127.0.0.2';
       const clientPort = 55555;
-      const ingressHost = '127.0.0.3';
-      const ingressPort = 55556;
+      const proxyHost = '127.0.0.3';
+      const proxyPort = 55556;
       const agentProcess = await testBinUtils.pkSpawn(
         [
           'agent',
@@ -694,10 +695,10 @@ describe('start', () => {
           clientHost,
           '--client-port',
           clientPort.toString(),
-          '--ingress-host',
-          ingressHost,
-          '--ingress-port',
-          ingressPort.toString(),
+          '--proxy-host',
+          proxyHost,
+          '--proxy-port',
+          proxyPort.toString(),
           '--verbose',
         ],
         {
@@ -720,7 +721,7 @@ describe('start', () => {
     global.defaultTimeout * 2,
   );
   describe('start with global agent', () => {
-    let globalAgentStatus;
+    let globalAgentStatus: StatusLive;
     let globalAgentClose;
     let agentDataDir;
     let agent: PolykeyAgent;
@@ -746,8 +747,8 @@ describe('start', () => {
         logger,
       });
       seedNodeId1 = globalAgentStatus.data.nodeId;
-      seedNodeHost1 = globalAgentStatus.data.ingressHost;
-      seedNodePort1 = globalAgentStatus.data.ingressPort;
+      seedNodeHost1 = globalAgentStatus.data.proxyHost;
+      seedNodePort1 = globalAgentStatus.data.proxyPort;
       seedNodeId2 = agent.keyManager.getNodeId();
       seedNodeHost2 = agent.grpcServerAgent.getHost();
       seedNodePort2 = agent.grpcServerAgent.getPort();
@@ -795,7 +796,7 @@ describe('start', () => {
             '1024',
             '--client-host',
             '127.0.0.1',
-            '--ingress-host',
+            '--proxy-host',
             '127.0.0.1',
             '--workers',
             '0',
@@ -859,7 +860,7 @@ describe('start', () => {
             '1024',
             '--client-host',
             '127.0.0.1',
-            '--ingress-host',
+            '--proxy-host',
             '127.0.0.1',
             '--workers',
             '0',

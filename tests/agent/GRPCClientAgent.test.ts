@@ -13,8 +13,8 @@ import NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import NodeGraph from '@/nodes/NodeGraph';
 import NodeManager from '@/nodes/NodeManager';
 import Sigchain from '@/sigchain/Sigchain';
-import ForwardProxy from '@/network/ForwardProxy';
-import ReverseProxy from '@/network/ReverseProxy';
+import Proxy from '@/network/Proxy';
+
 import GRPCClientAgent from '@/agent/GRPCClientAgent';
 import VaultManager from '@/vaults/VaultManager';
 import NotificationsManager from '@/notifications/NotificationsManager';
@@ -40,7 +40,7 @@ describe(GRPCClientAgent.name, () => {
   });
   let client: GRPCClientAgent;
   let server: grpc.Server;
-  let port: number;
+  let port: Port;
   let dataDir: string;
   let keysPath: string;
   let vaultsPath: string;
@@ -55,8 +55,8 @@ describe(GRPCClientAgent.name, () => {
   let gestaltGraph: GestaltGraph;
   let db: DB;
   let notificationsManager: NotificationsManager;
-  let fwdProxy: ForwardProxy;
-  let revProxy: ReverseProxy;
+  let proxy: Proxy;
+
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
@@ -74,16 +74,8 @@ describe(GRPCClientAgent.name, () => {
       keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
       certChainPem: await keyManager.getRootCertChainPem(),
     };
-    fwdProxy = new ForwardProxy({
+    proxy = new Proxy({
       authToken: 'abc',
-      logger: logger,
-    });
-    await fwdProxy.start({
-      tlsConfig,
-      egressHost: host,
-      proxyHost: host,
-    });
-    revProxy = new ReverseProxy({
       logger: logger,
     });
     db = await DB.createDB({
@@ -120,8 +112,7 @@ describe(GRPCClientAgent.name, () => {
     nodeConnectionManager = new NodeConnectionManager({
       keyManager,
       nodeGraph,
-      fwdProxy: fwdProxy,
-      revProxy: revProxy,
+      proxy,
       logger,
     });
     await nodeConnectionManager.start();
@@ -164,20 +155,20 @@ describe(GRPCClientAgent.name, () => {
       notificationsManager,
       acl,
       gestaltGraph,
-      revProxy,
-    });
-    await revProxy.start({
-      ingressHost: host,
-      serverHost: host,
-      serverPort: port as Port,
-      tlsConfig: tlsConfig,
+      proxy,
     });
     client = await testAgentUtils.openTestAgentClient(port);
+    await proxy.start({
+      tlsConfig,
+      proxyHost: host,
+      forwardHost: host,
+      serverHost: host,
+      serverPort: port,
+    });
   }, global.defaultTimeout);
   afterEach(async () => {
     await testAgentUtils.closeTestAgentClient(client);
     await testAgentUtils.closeTestAgentServer(server);
-    await revProxy.stop();
     await vaultManager.stop();
     await notificationsManager.stop();
     await sigchain.stop();
@@ -185,7 +176,7 @@ describe(GRPCClientAgent.name, () => {
     await nodeGraph.stop();
     await gestaltGraph.stop();
     await acl.stop();
-    await fwdProxy.stop();
+    await proxy.stop();
     await db.stop();
     await keyManager.stop();
     await fs.promises.rm(dataDir, {
@@ -221,12 +212,12 @@ describe(GRPCClientAgent.name, () => {
     const localHost = '127.0.0.1' as Host;
 
     let clientWithProxies1: GRPCClientAgent;
-    let clientFwdProxy1: ForwardProxy;
+    let clientProxy1: Proxy;
     let clientKeyManager1: KeyManager;
     let nodeId1: NodeId;
 
     let clientWithProxies2: GRPCClientAgent;
-    let clientFwdProxy2: ForwardProxy;
+    let clientProxy2: Proxy;
     let clientKeyManager2: KeyManager;
     let nodeId2: NodeId;
 
@@ -235,7 +226,7 @@ describe(GRPCClientAgent.name, () => {
         path.join(os.tmpdir(), 'polykey-test-'),
       );
       // Setting up clients
-      clientFwdProxy1 = new ForwardProxy({
+      clientProxy1 = new Proxy({
         authToken: 'auth',
         logger,
       });
@@ -245,28 +236,30 @@ describe(GRPCClientAgent.name, () => {
         logger,
       });
       nodeId1 = clientKeyManager1.getNodeId();
-      await clientFwdProxy1.start({
+      await clientProxy1.start({
         tlsConfig: {
           keyPrivatePem: clientKeyManager1.getRootKeyPairPem().privateKey,
           certChainPem: await clientKeyManager1.getRootCertChainPem(),
         },
-        egressHost: localHost,
         proxyHost: localHost,
+        forwardHost: localHost,
+        serverHost: host,
+        serverPort: port,
       });
       clientWithProxies1 = await GRPCClientAgent.createGRPCClientAgent({
         host: localHost,
         nodeId: keyManager.getNodeId(),
-        port: revProxy.getIngressPort(),
+        port: proxy.getProxyPort(),
         proxyConfig: {
-          host: clientFwdProxy1.getProxyHost(),
-          port: clientFwdProxy1.getProxyPort(),
-          authToken: clientFwdProxy1.authToken,
+          host: clientProxy1.getForwardHost(),
+          port: clientProxy1.getForwardPort(),
+          authToken: clientProxy1.authToken,
         },
         timeout: 5000,
         logger,
       });
 
-      clientFwdProxy2 = new ForwardProxy({
+      clientProxy2 = new Proxy({
         authToken: 'auth',
         logger,
       });
@@ -276,58 +269,60 @@ describe(GRPCClientAgent.name, () => {
         logger,
       });
       nodeId2 = clientKeyManager2.getNodeId();
-      await clientFwdProxy2.start({
+      await clientProxy2.start({
         tlsConfig: {
           keyPrivatePem: clientKeyManager2.getRootKeyPairPem().privateKey,
           certChainPem: await clientKeyManager2.getRootCertChainPem(),
         },
-        egressHost: localHost,
         proxyHost: localHost,
+        forwardHost: localHost,
+        serverHost: host,
+        serverPort: port,
       });
       clientWithProxies2 = await GRPCClientAgent.createGRPCClientAgent({
         host: localHost,
         logger,
         nodeId: keyManager.getNodeId(),
-        port: revProxy.getIngressPort(),
+        port: proxy.getProxyPort(),
         proxyConfig: {
-          host: clientFwdProxy2.getProxyHost(),
-          port: clientFwdProxy2.getProxyPort(),
-          authToken: clientFwdProxy2.authToken,
+          host: clientProxy2.getForwardHost(),
+          port: clientProxy2.getForwardPort(),
+          authToken: clientProxy2.authToken,
         },
         timeout: 5000,
       });
     });
     afterEach(async () => {
       await testAgentUtils.closeTestAgentClient(clientWithProxies1);
-      await clientFwdProxy1.stop();
+      await clientProxy1.stop();
       await clientKeyManager1.stop();
       await testAgentUtils.closeTestAgentClient(clientWithProxies2);
-      await clientFwdProxy2.stop();
+      await clientProxy2.stop();
       await clientKeyManager2.stop();
     });
     test('connectionInfoGetter returns correct information for each connection', async () => {
       // We can't directly spy on the connectionInfoGetter result
       // but we can check that it called `getConnectionInfoByProxy` properly
       const getConnectionInfoByProxySpy = jest.spyOn(
-        ReverseProxy.prototype,
-        'getConnectionInfoByProxy',
+        Proxy.prototype,
+        'getConnectionInfoByReverse',
       );
       await clientWithProxies1.echo(new utilsPB.EchoMessage());
       await clientWithProxies2.echo(new utilsPB.EchoMessage());
       // It should've returned the expected information
       const returnedInfo1 = getConnectionInfoByProxySpy.mock.results[0].value;
-      expect(returnedInfo1.ingressPort).toEqual(revProxy.getIngressPort());
-      expect(returnedInfo1.ingressHost).toEqual(localHost);
-      expect(returnedInfo1.egressPort).toEqual(clientFwdProxy1.getEgressPort());
-      expect(returnedInfo1.egressHost).toEqual(localHost);
-      expect(returnedInfo1.nodeId).toStrictEqual(nodeId1);
+      expect(returnedInfo1.localPort).toEqual(proxy.getProxyPort());
+      expect(returnedInfo1.localHost).toEqual(localHost);
+      expect(returnedInfo1.remotePort).toEqual(clientProxy1.getProxyPort());
+      expect(returnedInfo1.remoteHost).toEqual(localHost);
+      expect(returnedInfo1.remoteNodeId).toStrictEqual(nodeId1);
       // Checking second call
       const returnedInfo2 = getConnectionInfoByProxySpy.mock.results[1].value;
-      expect(returnedInfo2.ingressPort).toEqual(revProxy.getIngressPort());
-      expect(returnedInfo2.ingressHost).toEqual(localHost);
-      expect(returnedInfo2.egressPort).toEqual(clientFwdProxy2.getEgressPort());
-      expect(returnedInfo2.egressHost).toEqual(localHost);
-      expect(returnedInfo2.nodeId).toStrictEqual(nodeId2);
+      expect(returnedInfo2.localPort).toEqual(proxy.getProxyPort());
+      expect(returnedInfo2.localHost).toEqual(localHost);
+      expect(returnedInfo2.remotePort).toEqual(clientProxy2.getProxyPort());
+      expect(returnedInfo2.remoteHost).toEqual(localHost);
+      expect(returnedInfo2.remoteNodeId).toStrictEqual(nodeId2);
     });
   });
 });
