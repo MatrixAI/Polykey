@@ -402,7 +402,6 @@ describe(`${NodeGraph.name} test`, () => {
       expect(bucketIndex > bucketIndex_).toBe(true);
       bucketIndex_ = bucketIndex;
       expect(bucket.length > 0).toBe(true);
-      expect(bucket.length <= nodeGraph.nodeBucketLimit).toBe(true);
       for (const [nodeId, nodeData] of bucket) {
         expect(nodeId.byteLength).toBe(32);
         expect(nodesUtils.bucketIndex(keyManager.getNodeId(), nodeId)).toBe(
@@ -432,7 +431,6 @@ describe(`${NodeGraph.name} test`, () => {
       expect(bucketIndex < bucketIndex_).toBe(true);
       bucketIndex_ = bucketIndex;
       expect(bucket.length > 0).toBe(true);
-      expect(bucket.length <= nodeGraph.nodeBucketLimit).toBe(true);
       for (const [nodeId, nodeData] of bucket) {
         expect(nodeId.byteLength).toBe(32);
         expect(nodesUtils.bucketIndex(keyManager.getNodeId(), nodeId)).toBe(
@@ -462,7 +460,6 @@ describe(`${NodeGraph.name} test`, () => {
       expect(bucketIndex > bucketIndex_).toBe(true);
       bucketIndex_ = bucketIndex;
       expect(bucket.length > 0).toBe(true);
-      expect(bucket.length <= nodeGraph.nodeBucketLimit).toBe(true);
       for (const [nodeId, nodeData] of bucket) {
         expect(nodeId.byteLength).toBe(32);
         expect(nodesUtils.bucketIndex(keyManager.getNodeId(), nodeId)).toBe(
@@ -494,7 +491,6 @@ describe(`${NodeGraph.name} test`, () => {
       expect(bucketIndex < bucketIndex_).toBe(true);
       bucketIndex_ = bucketIndex;
       expect(bucket.length > 0).toBe(true);
-      expect(bucket.length <= nodeGraph.nodeBucketLimit).toBe(true);
       for (const [nodeId, nodeData] of bucket) {
         expect(nodeId.byteLength).toBe(32);
         expect(nodesUtils.bucketIndex(keyManager.getNodeId(), nodeId)).toBe(
@@ -525,7 +521,6 @@ describe(`${NodeGraph.name} test`, () => {
       expect(bucketIndex > bucketIndex_).toBe(true);
       bucketIndex_ = bucketIndex;
       expect(bucket.length > 0).toBe(true);
-      expect(bucket.length <= nodeGraph.nodeBucketLimit).toBe(true);
       for (const [nodeId, nodeData] of bucket) {
         expect(nodeId.byteLength).toBe(32);
         expect(nodesUtils.bucketIndex(keyManager.getNodeId(), nodeId)).toBe(
@@ -556,7 +551,6 @@ describe(`${NodeGraph.name} test`, () => {
       expect(bucketIndex < bucketIndex_).toBe(true);
       bucketIndex_ = bucketIndex;
       expect(bucket.length > 0).toBe(true);
-      expect(bucket.length <= nodeGraph.nodeBucketLimit).toBe(true);
       for (const [nodeId, nodeData] of bucket) {
         expect(nodeId.byteLength).toBe(32);
         expect(nodesUtils.bucketIndex(keyManager.getNodeId(), nodeId)).toBe(
