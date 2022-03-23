@@ -59,8 +59,7 @@ describe('allow/disallow/permissions', () => {
       nodePath,
       networkConfig: {
         proxyHost: '127.0.0.1' as Host,
-        egressHost: '127.0.0.1' as Host,
-        ingressHost: '127.0.0.1' as Host,
+        forwardHost: '127.0.0.1' as Host,
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },
@@ -74,16 +73,15 @@ describe('allow/disallow/permissions', () => {
       nodePath: nodePathGestalt,
       networkConfig: {
         proxyHost: '127.0.0.1' as Host,
-        egressHost: '127.0.0.1' as Host,
-        ingressHost: '127.0.0.1' as Host,
+        forwardHost: '127.0.0.1' as Host,
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },
       logger,
     });
     nodeId = node.keyManager.getNodeId();
-    nodeHost = node.revProxy.getIngressHost();
-    nodePort = node.revProxy.getIngressPort();
+    nodeHost = node.proxy.getProxyHost();
+    nodePort = node.proxy.getProxyPort();
     node.identitiesManager.registerProvider(provider);
     await node.identitiesManager.putToken(provider.id, identity, {
       accessToken: 'def456',

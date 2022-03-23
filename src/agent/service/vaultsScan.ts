@@ -26,7 +26,7 @@ function vaultsScan({
     if (connectionInfo == null) {
       throw new agentErrors.ErrorConnectionInfoMissing();
     }
-    const nodeId = connectionInfo.nodeId;
+    const nodeId = connectionInfo.remoteNodeId;
     try {
       const listResponse = vaultManager.handleScanVaults(nodeId);
       for await (const {

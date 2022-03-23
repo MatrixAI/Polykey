@@ -2,33 +2,26 @@ import { ErrorPolykey, sysexits } from '../errors';
 
 class ErrorNetwork extends ErrorPolykey {}
 
-class ErrorForwardProxy extends ErrorNetwork {}
+class ErrorProxy extends ErrorNetwork {}
 
-class ErrorForwardProxyNotRunning extends ErrorForwardProxy {
-  description = 'ForwardProxy is not running';
+class ErrorProxyNotRunning extends ErrorProxy {
+  description = 'Proxy is not running';
   exitCode = sysexits.USAGE;
 }
 
-class ErrorForwardProxyInvalidUrl extends ErrorForwardProxy {
+class ErrorProxyConnectInvalidUrl extends ErrorProxy {
   description = 'Invalid target host used for HTTP connect proxy';
   exitCode = sysexits.PROTOCOL;
 }
 
-class ErrorForwardProxyMissingNodeId extends ErrorForwardProxy {
+class ErrorProxyConnectMissingNodeId extends ErrorProxy {
   description = 'Node ID query parameter is required for HTTP connect proxy';
   exitCode = sysexits.PROTOCOL;
 }
 
-class ErrorForwardProxyAuth extends ErrorForwardProxy {
+class ErrorProxyConnectAuth extends ErrorProxy {
   description = 'Incorrect HTTP connect proxy password';
   exitCode = sysexits.NOPERM;
-}
-
-class ErrorReverseProxy extends ErrorNetwork {}
-
-class ErrorReverseProxyNotRunning extends ErrorReverseProxy {
-  description = 'ReverseProxy is not running';
-  exitCode = sysexits.USAGE;
 }
 
 class ErrorConnection extends ErrorNetwork {}
@@ -133,13 +126,11 @@ class ErrorHostnameResolutionFailed extends ErrorNetwork {}
 
 export {
   ErrorNetwork,
-  ErrorForwardProxy,
-  ErrorForwardProxyNotRunning,
-  ErrorForwardProxyInvalidUrl,
-  ErrorForwardProxyMissingNodeId,
-  ErrorForwardProxyAuth,
-  ErrorReverseProxy,
-  ErrorReverseProxyNotRunning,
+  ErrorProxy,
+  ErrorProxyNotRunning,
+  ErrorProxyConnectInvalidUrl,
+  ErrorProxyConnectMissingNodeId,
+  ErrorProxyConnectAuth,
   ErrorConnection,
   ErrorConnectionNotRunning,
   ErrorConnectionComposed,

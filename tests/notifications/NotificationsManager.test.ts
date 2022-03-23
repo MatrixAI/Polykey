@@ -16,8 +16,8 @@ import NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import NodeGraph from '@/nodes/NodeGraph';
 import NodeManager from '@/nodes/NodeManager';
 import NotificationsManager from '@/notifications/NotificationsManager';
-import ForwardProxy from '@/network/ForwardProxy';
-import ReverseProxy from '@/network/ReverseProxy';
+import Proxy from '@/network/Proxy';
+
 import * as notificationsErrors from '@/notifications/errors';
 import * as vaultsUtils from '@/vaults/utils';
 import * as nodesUtils from '@/nodes/utils';
@@ -54,8 +54,8 @@ describe('NotificationsManager', () => {
   let nodeManager: NodeManager;
   let keyManager: KeyManager;
   let sigchain: Sigchain;
-  let fwdProxy: ForwardProxy;
-  let revProxy: ReverseProxy;
+  let proxy: Proxy;
+
   let receiver: PolykeyAgent;
   beforeAll(async () => {
     const globalKeyPair = await testUtils.setupGlobalKeypair();
@@ -95,24 +95,17 @@ describe('NotificationsManager', () => {
       keyManager,
       logger,
     });
-    fwdProxy = new ForwardProxy({
+    proxy = new Proxy({
       authToken: 'abc123',
       logger,
     });
-    await fwdProxy.start({
+    await proxy.start({
       tlsConfig: {
         keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
         certChainPem: await keyManager.getRootCertChainPem(),
       },
-    });
-    revProxy = new ReverseProxy({ logger });
-    await revProxy.start({
       serverHost: '127.0.0.1' as Host,
-      serverPort: 55555 as Port,
-      tlsConfig: {
-        keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
-        certChainPem: await keyManager.getRootCertChainPem(),
-      },
+      serverPort: 0 as Port,
     });
     nodeGraph = await NodeGraph.createNodeGraph({
       db,
@@ -122,8 +115,7 @@ describe('NotificationsManager', () => {
     nodeConnectionManager = new NodeConnectionManager({
       nodeGraph,
       keyManager,
-      fwdProxy,
-      revProxy,
+      proxy,
       logger,
     });
     await nodeConnectionManager.start();
@@ -145,16 +137,15 @@ describe('NotificationsManager', () => {
       logger,
     });
     await nodeGraph.setNode(receiver.keyManager.getNodeId(), {
-      host: receiver.revProxy.getIngressHost(),
-      port: receiver.revProxy.getIngressPort(),
+      host: receiver.proxy.getProxyHost(),
+      port: receiver.proxy.getProxyPort(),
     });
   }, global.defaultTimeout);
   afterAll(async () => {
     await receiver.stop();
     await nodeConnectionManager.stop();
     await nodeGraph.stop();
-    await revProxy.stop();
-    await fwdProxy.stop();
+    await proxy.stop();
     await sigchain.stop();
     await acl.stop();
     await db.stop();

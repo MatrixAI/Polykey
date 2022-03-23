@@ -11,13 +11,15 @@ import NodeGraph from '@/nodes/NodeGraph';
 import * as nodesErrors from '@/nodes/errors';
 import KeyManager from '@/keys/KeyManager';
 import * as keysUtils from '@/keys/utils';
-import ForwardProxy from '@/network/ForwardProxy';
-import ReverseProxy from '@/network/ReverseProxy';
+import Proxy from '@/network/Proxy';
+
 import * as nodesUtils from '@/nodes/utils';
 import Sigchain from '@/sigchain/Sigchain';
 import * as nodesTestUtils from './utils';
 
 describe(`${NodeGraph.name} test`, () => {
+  const localHost = '127.0.0.1' as Host;
+  const port = 0 as Port;
   const password = 'password';
   let nodeGraph: NodeGraph;
   let nodeId: NodeId;
@@ -33,8 +35,7 @@ describe(`${NodeGraph.name} test`, () => {
   const logger = new Logger(`${NodeGraph.name} test`, LogLevel.ERROR, [
     new StreamHandler(),
   ]);
-  let fwdProxy: ForwardProxy;
-  let revProxy: ReverseProxy;
+  let proxy: Proxy;
   let dataDir: string;
   let keyManager: KeyManager;
   let db: DB;
@@ -62,16 +63,13 @@ describe(`${NodeGraph.name} test`, () => {
       keysPath,
       logger,
     });
-    fwdProxy = new ForwardProxy({
+    proxy = new Proxy({
       authToken: 'auth',
       logger: logger,
     });
-
-    revProxy = new ReverseProxy({
-      logger: logger,
-    });
-
-    await fwdProxy.start({
+    await proxy.start({
+      serverHost: localHost,
+      serverPort: port,
       tlsConfig: {
         keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
         certChainPem: await keyManager.getRootCertChainPem(),
@@ -102,8 +100,7 @@ describe(`${NodeGraph.name} test`, () => {
     nodeConnectionManager = new NodeConnectionManager({
       keyManager: keyManager,
       nodeGraph: nodeGraph,
-      fwdProxy: fwdProxy,
-      revProxy: revProxy,
+      proxy: proxy,
       logger: logger,
     });
     await nodeConnectionManager.start();
@@ -117,7 +114,7 @@ describe(`${NodeGraph.name} test`, () => {
     await nodeConnectionManager.stop();
     await nodeGraph.stop();
     await keyManager.stop();
-    await fwdProxy.stop();
+    await proxy.stop();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,

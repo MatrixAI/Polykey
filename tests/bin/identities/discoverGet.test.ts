@@ -52,8 +52,7 @@ describe('discover/get', () => {
       nodePath: path.join(dataDir, 'nodeA'),
       networkConfig: {
         proxyHost: '127.0.0.1' as Host,
-        egressHost: '127.0.0.1' as Host,
-        ingressHost: '127.0.0.1' as Host,
+        forwardHost: '127.0.0.1' as Host,
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },
@@ -63,15 +62,14 @@ describe('discover/get', () => {
       logger,
     });
     nodeAId = nodeA.keyManager.getNodeId();
-    nodeAHost = nodeA.revProxy.getIngressHost();
-    nodeAPort = nodeA.revProxy.getIngressPort();
+    nodeAHost = nodeA.proxy.getProxyHost();
+    nodeAPort = nodeA.proxy.getProxyPort();
     nodeB = await PolykeyAgent.createPolykeyAgent({
       password,
       nodePath: path.join(dataDir, 'nodeB'),
       networkConfig: {
         proxyHost: '127.0.0.1' as Host,
-        egressHost: '127.0.0.1' as Host,
-        ingressHost: '127.0.0.1' as Host,
+        forwardHost: '127.0.0.1' as Host,
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },
@@ -96,8 +94,7 @@ describe('discover/get', () => {
       nodePath,
       networkConfig: {
         proxyHost: '127.0.0.1' as Host,
-        egressHost: '127.0.0.1' as Host,
-        ingressHost: '127.0.0.1' as Host,
+        forwardHost: '127.0.0.1' as Host,
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },

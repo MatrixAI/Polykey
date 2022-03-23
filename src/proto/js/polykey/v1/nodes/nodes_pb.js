@@ -1207,7 +1207,7 @@ proto.polykey.v1.nodes.Relay.toObject = function(includeInstance, msg) {
   var f, obj = {
     srcId: jspb.Message.getFieldWithDefault(msg, 1, ""),
     targetId: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    egressAddress: jspb.Message.getFieldWithDefault(msg, 3, ""),
+    proxyAddress: jspb.Message.getFieldWithDefault(msg, 3, ""),
     signature: jspb.Message.getFieldWithDefault(msg, 4, "")
   };
 
@@ -1255,7 +1255,7 @@ proto.polykey.v1.nodes.Relay.deserializeBinaryFromReader = function(msg, reader)
       break;
     case 3:
       var value = /** @type {string} */ (reader.readString());
-      msg.setEgressAddress(value);
+      msg.setProxyAddress(value);
       break;
     case 4:
       var value = /** @type {string} */ (reader.readString());
@@ -1304,7 +1304,7 @@ proto.polykey.v1.nodes.Relay.serializeBinaryToWriter = function(message, writer)
       f
     );
   }
-  f = message.getEgressAddress();
+  f = message.getProxyAddress();
   if (f.length > 0) {
     writer.writeString(
       3,
@@ -1358,10 +1358,10 @@ proto.polykey.v1.nodes.Relay.prototype.setTargetId = function(value) {
 
 
 /**
- * optional string egress_address = 3;
+ * optional string proxy_address = 3;
  * @return {string}
  */
-proto.polykey.v1.nodes.Relay.prototype.getEgressAddress = function() {
+proto.polykey.v1.nodes.Relay.prototype.getProxyAddress = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
 };
 
@@ -1370,7 +1370,7 @@ proto.polykey.v1.nodes.Relay.prototype.getEgressAddress = function() {
  * @param {string} value
  * @return {!proto.polykey.v1.nodes.Relay} returns this
  */
-proto.polykey.v1.nodes.Relay.prototype.setEgressAddress = function(value) {
+proto.polykey.v1.nodes.Relay.prototype.setProxyAddress = function(value) {
   return jspb.Message.setProto3StringField(this, 3, value);
 };
 

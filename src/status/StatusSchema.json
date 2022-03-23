@@ -31,16 +31,16 @@
             "nodeId": { "type": "object" },
             "clientHost": { "type": "string" },
             "clientPort": { "type": "number" },
-            "ingressHost": { "type": "string" },
-            "ingressPort": { "type": "number" }
+            "proxyHost": { "type": "string" },
+            "proxyPort": { "type": "number" }
           },
           "required": [
             "pid",
             "nodeId",
             "clientHost",
             "clientPort",
-            "ingressHost",
-            "ingressPort"
+            "proxyHost",
+            "proxyPort"
           ]
         }
       }

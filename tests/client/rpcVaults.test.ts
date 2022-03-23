@@ -12,7 +12,7 @@ import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as vaultsPB from '@/proto/js/polykey/v1/vaults/vaults_pb';
 import * as secretsPB from '@/proto/js/polykey/v1/secrets/secrets_pb';
 import KeyManager from '@/keys/KeyManager';
-import ForwardProxy from '@/network/ForwardProxy';
+import Proxy from '@/network/Proxy';
 import * as grpcUtils from '@/grpc/utils';
 import * as vaultErrors from '@/vaults/errors';
 import * as vaultsUtils from '@/vaults/utils';
@@ -64,7 +64,7 @@ describe('Vaults client service', () => {
       logger,
     });
 
-    const fwdProxy = new ForwardProxy({
+    const proxy = new Proxy({
       authToken: 'abc',
       logger: logger,
     });
@@ -73,7 +73,7 @@ describe('Vaults client service', () => {
       password,
       nodePath: dataDir,
       logger,
-      fwdProxy,
+      proxy,
       keyManager,
     });
 
@@ -380,21 +380,21 @@ describe('Vaults client service', () => {
         });
 
         await pkAgent.nodeManager.setNode(targetNodeId1, {
-          host: remoteKeynode1.revProxy.getIngressHost(),
-          port: remoteKeynode1.revProxy.getIngressPort(),
+          host: remoteKeynode1.proxy.getProxyHost(),
+          port: remoteKeynode1.proxy.getProxyPort(),
         });
         await pkAgent.nodeManager.setNode(targetNodeId2, {
-          host: remoteKeynode2.revProxy.getIngressHost(),
-          port: remoteKeynode2.revProxy.getIngressPort(),
+          host: remoteKeynode2.proxy.getProxyHost(),
+          port: remoteKeynode2.proxy.getProxyPort(),
         });
 
         await remoteKeynode1.nodeManager.setNode(pkAgentNodeId, {
-          host: pkAgent.revProxy.getIngressHost(),
-          port: pkAgent.revProxy.getIngressPort(),
+          host: pkAgent.proxy.getProxyHost(),
+          port: pkAgent.proxy.getProxyPort(),
         });
         await remoteKeynode2.nodeManager.setNode(pkAgentNodeId, {
-          host: pkAgent.revProxy.getIngressHost(),
-          port: pkAgent.revProxy.getIngressPort(),
+          host: pkAgent.proxy.getProxyHost(),
+          port: pkAgent.proxy.getProxyPort(),
         });
         await remoteKeynode1.acl.setNodePerm(pkAgentNodeId, {
           gestalt: {

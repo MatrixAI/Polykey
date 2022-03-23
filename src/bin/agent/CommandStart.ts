@@ -22,8 +22,8 @@ class CommandStart extends CommandPolykey {
     this.addOption(binOptions.rootKeyPairBits);
     this.addOption(binOptions.clientHost);
     this.addOption(binOptions.clientPort);
-    this.addOption(binOptions.ingressHost);
-    this.addOption(binOptions.ingressPort);
+    this.addOption(binOptions.proxyHost);
+    this.addOption(binOptions.proxyPort);
     this.addOption(binOptions.connTimeoutTime);
     this.addOption(binOptions.seedNodes);
     this.addOption(binOptions.network);
@@ -83,17 +83,14 @@ class CommandStart extends CommandPolykey {
           rootKeyPairBits: options.rootKeyPairBits,
           recoveryCode: recoveryCodeIn,
         },
-        forwardProxyConfig: {
-          connTimeoutTime: options.connTimeoutTime,
-        },
-        reverseProxyConfig: {
+        proxyConfig: {
           connTimeoutTime: options.connTimeoutTime,
         },
         networkConfig: {
           clientHost: options.clientHost,
           clientPort: options.clientPort,
-          ingressHost: options.ingressHost,
-          ingressPort: options.ingressPort,
+          proxyHost: options.proxyHost,
+          proxyPort: options.proxyPort,
         },
         seedNodes,
         fresh: options.fresh,

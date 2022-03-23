@@ -71,13 +71,10 @@ const config = {
     },
     networkConfig: {
       // ForwardProxy
-      proxyHost: '127.0.0.1' as Host,
+      forwardHost: '127.0.0.1' as Host,
+      forwardPort: 0 as Port,
+      proxyHost: '0.0.0.0' as Host,
       proxyPort: 0 as Port,
-      egressHost: '0.0.0.0' as Host,
-      egressPort: 0 as Port,
-      // ReverseProxy
-      ingressHost: '0.0.0.0' as Host,
-      ingressPort: 0 as Port,
       // GRPCServer for agent service
       agentHost: '127.0.0.1' as Host,
       agentPort: 0 as Port,
@@ -85,14 +82,10 @@ const config = {
       clientHost: '127.0.0.1' as Host,
       clientPort: 0 as Port,
     },
-    forwardProxyConfig: {
+    proxyConfig: {
       connConnectTime: 20000,
       connTimeoutTime: 20000,
       connPingIntervalTime: 1000,
-    },
-    reverseProxyConfig: {
-      connConnectTime: 20000,
-      connTimeoutTime: 20000,
     },
     nodeConnectionManagerConfig: {
       connConnectTime: 20000,

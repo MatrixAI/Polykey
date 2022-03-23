@@ -2,7 +2,7 @@ import type { PublicKeyPem } from '@/keys/types';
 import type { AbstractConstructorParameters } from '@/types';
 
 import type { Host, Port } from '@/network/types';
-import type ForwardProxy from '@/network/ForwardProxy';
+import type Proxy from '@/network/Proxy';
 import type GRPCClientAgent from '@/agent/GRPCClientAgent';
 import Logger from '@matrixai/logger';
 import NodeConnection from '@/nodes/NodeConnection';
@@ -19,14 +19,14 @@ class TestNodeConnection extends NodeConnection<GRPCClientAgent> {
     publicKey,
     targetHost,
     targetPort,
-    fwdProxy,
+    proxy,
     destroyCallback,
     logger,
   }: {
     publicKey: PublicKeyPem | null;
     targetHost: Host;
     targetPort: Port;
-    fwdProxy: ForwardProxy;
+    proxy: Proxy;
     destroyCallback: () => Promise<void>;
     logger?: Logger;
   }): Promise<TestNodeConnection> {
@@ -37,7 +37,7 @@ class TestNodeConnection extends NodeConnection<GRPCClientAgent> {
       host: targetHost,
       port: targetPort,
       destroyCallback,
-      fwdProxy,
+      proxy,
     });
   }
 

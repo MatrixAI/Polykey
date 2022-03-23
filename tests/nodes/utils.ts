@@ -51,13 +51,13 @@ function generateNodeIdForBucket(
 async function nodesConnect(localNode: PolykeyAgent, remoteNode: PolykeyAgent) {
   // Add remote node's details to local node
   await localNode.nodeManager.setNode(remoteNode.keyManager.getNodeId(), {
-    host: remoteNode.revProxy.getIngressHost(),
-    port: remoteNode.revProxy.getIngressPort(),
+    host: remoteNode.proxy.getProxyHost(),
+    port: remoteNode.proxy.getProxyPort(),
   } as NodeAddress);
   // Add local node's details to remote node
   await remoteNode.nodeManager.setNode(localNode.keyManager.getNodeId(), {
-    host: localNode.revProxy.getIngressHost(),
-    port: localNode.revProxy.getIngressPort(),
+    host: localNode.proxy.getProxyHost(),
+    port: localNode.proxy.getProxyPort(),
   } as NodeAddress);
 }
 

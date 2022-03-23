@@ -13,8 +13,8 @@ import PolykeyAgent from '@/PolykeyAgent';
 import KeyManager from '@/keys/KeyManager';
 import NodeGraph from '@/nodes/NodeGraph';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
-import ForwardProxy from '@/network/ForwardProxy';
-import ReverseProxy from '@/network/ReverseProxy';
+import Proxy from '@/network/Proxy';
+
 import * as nodesUtils from '@/nodes/utils';
 import * as nodesErrors from '@/nodes/errors';
 import * as keysUtils from '@/keys/utils';
@@ -51,6 +51,7 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
     'vi3et1hrpv2m2lrplcm7cu913kr45v51cak54vm68anlbvuf83ra0',
   )!;
 
+  const localHost = '127.0.0.1' as Host;
   const serverHost = '127.0.0.1' as Host;
   const serverPort = 55555 as Port;
 
@@ -75,8 +76,7 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
   let nodePath: string;
   let keyManager: KeyManager;
   let db: DB;
-  let fwdProxy: ForwardProxy;
-  let revProxy: ReverseProxy;
+  let defaultProxy: Proxy;
   let nodeGraph: NodeGraph;
 
   let tlsConfig2: TLSConfig;
@@ -122,22 +122,16 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
       keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
       certChainPem: keysUtils.certToPem(keyManager.getRootCert()),
     };
-    fwdProxy = new ForwardProxy({
+    defaultProxy = new Proxy({
       authToken: 'auth',
-      logger: logger.getChild('fwdProxy'),
+      logger: logger.getChild('proxy'),
     });
-    await fwdProxy.start({
-      tlsConfig,
-    });
-    revProxy = new ReverseProxy({
-      logger: logger.getChild('revProxy'),
-    });
-    await revProxy.start({
+    await defaultProxy.start({
       serverHost,
       serverPort,
+      proxyHost: localHost,
       tlsConfig,
     });
-
     // Other setup
     const globalKeyPair = await testUtils.setupGlobalKeypair();
     const cert = keysUtils.generateCertificate(
@@ -159,13 +153,12 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
     await db.destroy();
     await keyManager.stop();
     await keyManager.destroy();
-    await revProxy.stop();
-    await fwdProxy.stop();
+    await defaultProxy.stop();
   });
 
   /**
    * Mock TCP server
-   * This is the server that the ReverseProxy will be proxying to
+   * This is the server that the Proxy will be proxying to
    */
   function tcpServer(end: boolean = false, fastEnd: boolean = false) {
     const { p: serverConnP, resolveP: resolveServerConnP } = promise<void>();
@@ -229,28 +222,28 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
   test('closed based on bad certificate during createConnection ', async () => {
     let server;
     let nodeConnectionManager: NodeConnectionManager | undefined;
-    let revProxy: ReverseProxy | undefined;
+    let proxy: Proxy | undefined;
     try {
       server = tcpServer();
-      revProxy = new ReverseProxy({
+      proxy = new Proxy({
         logger: logger,
+        authToken: '',
       });
       await server.serverListen(0);
-      await revProxy.start({
+      await proxy.start({
         serverHost: server.serverHost(),
         serverPort: server.serverPort(),
-        ingressHost: '127.0.0.1' as Host,
+        proxyHost: localHost,
         tlsConfig: tlsConfig2,
       });
       await nodeGraph.setNode(dummyNodeId, {
-        host: revProxy.getIngressHost(),
-        port: revProxy.getIngressPort(),
+        host: proxy.getProxyHost(),
+        port: proxy.getProxyPort(),
       });
       nodeConnectionManager = new NodeConnectionManager({
         keyManager,
         nodeGraph,
-        fwdProxy,
-        revProxy,
+        proxy,
         logger: logger,
         connConnectTime: 2000,
       });
@@ -262,35 +255,35 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
       ).rejects.toThrow(nodesErrors.ErrorNodeConnectionTimeout);
     } finally {
       await nodeConnectionManager?.stop();
-      await revProxy?.stop();
+      await proxy?.stop();
       await server?.serverClose();
     }
   });
   test('closed based on bad certificate during withConnection', async () => {
     let server;
     let nodeConnectionManager: NodeConnectionManager | undefined;
-    let revProxy: ReverseProxy | undefined;
+    let proxy: Proxy | undefined;
     try {
       server = tcpServer();
-      revProxy = new ReverseProxy({
+      proxy = new Proxy({
         logger: logger,
+        authToken: '',
       });
       await server.serverListen(0);
-      await revProxy.start({
+      await proxy.start({
         serverHost: server.serverHost(),
         serverPort: server.serverPort(),
-        ingressHost: '127.0.0.1' as Host,
+        proxyHost: localHost,
         tlsConfig: tlsConfig2,
       });
       await nodeGraph.setNode(dummyNodeId, {
-        host: revProxy.getIngressHost(),
-        port: revProxy.getIngressPort(),
+        host: proxy.getProxyHost(),
+        port: proxy.getProxyPort(),
       });
       nodeConnectionManager = new NodeConnectionManager({
         keyManager,
         nodeGraph,
-        fwdProxy,
-        revProxy,
+        proxy,
         logger: logger,
         connConnectTime: 2000,
       });
@@ -305,35 +298,35 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
       );
     } finally {
       await nodeConnectionManager?.stop();
-      await revProxy?.stop();
+      await proxy?.stop();
       await server?.serverClose();
     }
   });
   test('closed before TLS is established', async () => {
     let server;
     let nodeConnectionManager: NodeConnectionManager | undefined;
-    let revProxy: ReverseProxy | undefined;
+    let proxy: Proxy | undefined;
     try {
       server = tcpServer(false, true);
-      revProxy = new ReverseProxy({
+      proxy = new Proxy({
         logger: logger,
+        authToken: '',
       });
       await server.serverListen(0);
-      await revProxy.start({
+      await proxy.start({
         serverHost: server.serverHost(),
         serverPort: server.serverPort(),
-        ingressHost: '127.0.0.1' as Host,
+        proxyHost: localHost,
         tlsConfig: tlsConfig2,
       });
       await nodeGraph.setNode(dummyNodeId, {
-        host: revProxy.getIngressHost(),
-        port: revProxy.getIngressPort(),
+        host: proxy.getProxyHost(),
+        port: proxy.getProxyPort(),
       });
       nodeConnectionManager = new NodeConnectionManager({
         keyManager,
         nodeGraph,
-        fwdProxy,
-        revProxy,
+        proxy,
         logger: logger,
         connConnectTime: 2000,
       });
@@ -351,7 +344,7 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
       );
     } finally {
       await nodeConnectionManager?.stop();
-      await revProxy?.stop();
+      await proxy?.stop();
       await server?.serverClose();
     }
   });
@@ -367,14 +360,13 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
 
       const agentNodeId = polykeyAgent.keyManager.getNodeId();
       await nodeGraph.setNode(agentNodeId, {
-        host: polykeyAgent.revProxy.getIngressHost(),
-        port: polykeyAgent.revProxy.getIngressPort(),
+        host: polykeyAgent.proxy.getProxyHost(),
+        port: polykeyAgent.proxy.getProxyPort(),
       });
       nodeConnectionManager = new NodeConnectionManager({
         keyManager,
         nodeGraph,
-        fwdProxy,
-        revProxy,
+        proxy: defaultProxy,
         logger: logger,
         connConnectTime: 2000,
       });
@@ -420,15 +412,14 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
       });
       const agentNodeId = polykeyAgent.keyManager.getNodeId();
       await nodeGraph.setNode(agentNodeId, {
-        host: polykeyAgent.revProxy.getIngressHost(),
-        port: polykeyAgent.revProxy.getIngressPort(),
+        host: polykeyAgent.proxy.getProxyHost(),
+        port: polykeyAgent.proxy.getProxyPort(),
       });
 
       nodeConnectionManager = new NodeConnectionManager({
         keyManager,
         nodeGraph,
-        fwdProxy,
-        revProxy,
+        proxy: defaultProxy,
         logger: logger,
         connConnectTime: 2000,
       });
@@ -497,14 +488,13 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
 
       const agentNodeId = polykeyAgent.keyManager.getNodeId();
       await nodeGraph.setNode(agentNodeId, {
-        host: polykeyAgent.revProxy.getIngressHost(),
-        port: polykeyAgent.revProxy.getIngressPort(),
+        host: polykeyAgent.proxy.getProxyHost(),
+        port: polykeyAgent.proxy.getProxyPort(),
       });
       nodeConnectionManager = new NodeConnectionManager({
         keyManager,
         nodeGraph,
-        fwdProxy,
-        revProxy,
+        proxy: defaultProxy,
         logger: logger,
         connConnectTime: 2000,
       });
@@ -566,14 +556,13 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
 
       const agentNodeId = polykeyAgent.keyManager.getNodeId();
       await nodeGraph.setNode(agentNodeId, {
-        host: polykeyAgent.revProxy.getIngressHost(),
-        port: polykeyAgent.revProxy.getIngressPort(),
+        host: polykeyAgent.proxy.getProxyHost(),
+        port: polykeyAgent.proxy.getProxyPort(),
       });
       nodeConnectionManager = new NodeConnectionManager({
         keyManager,
         nodeGraph,
-        fwdProxy,
-        revProxy,
+        proxy: defaultProxy,
         logger: logger,
         connConnectTime: 2000,
       });
@@ -640,14 +629,13 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
 
       const agentNodeId = polykeyAgent.keyManager.getNodeId();
       await nodeGraph.setNode(agentNodeId, {
-        host: polykeyAgent.revProxy.getIngressHost(),
-        port: polykeyAgent.revProxy.getIngressPort(),
+        host: polykeyAgent.proxy.getProxyHost(),
+        port: polykeyAgent.proxy.getProxyPort(),
       });
       nodeConnectionManager = new NodeConnectionManager({
         keyManager,
         nodeGraph,
-        fwdProxy,
-        revProxy,
+        proxy: defaultProxy,
         logger: logger,
         connConnectTime: 2000,
       });
@@ -714,14 +702,13 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
 
       const agentNodeId = polykeyAgent.keyManager.getNodeId();
       await nodeGraph.setNode(agentNodeId, {
-        host: polykeyAgent.revProxy.getIngressHost(),
-        port: polykeyAgent.revProxy.getIngressPort(),
+        host: polykeyAgent.proxy.getProxyHost(),
+        port: polykeyAgent.proxy.getProxyPort(),
       });
       nodeConnectionManager = new NodeConnectionManager({
         keyManager,
         nodeGraph,
-        fwdProxy,
-        revProxy,
+        proxy: defaultProxy,
         logger: logger,
         connConnectTime: 2000,
       });

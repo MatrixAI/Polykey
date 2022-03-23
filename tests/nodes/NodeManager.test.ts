@@ -6,38 +6,39 @@ import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
+import UTP from 'utp-native';
 import PolykeyAgent from '@/PolykeyAgent';
 import KeyManager from '@/keys/KeyManager';
 import * as keysUtils from '@/keys/utils';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import NodeGraph from '@/nodes/NodeGraph';
 import NodeManager from '@/nodes/NodeManager';
-import ForwardProxy from '@/network/ForwardProxy';
-import ReverseProxy from '@/network/ReverseProxy';
+import Proxy from '@/network/Proxy';
 import Sigchain from '@/sigchain/Sigchain';
 import * as claimsUtils from '@/claims/utils';
-import { sleep } from '@/utils';
+import { promisify, sleep } from '@/utils';
 import * as nodesUtils from '@/nodes/utils';
 
 describe(`${NodeManager.name} test`, () => {
   const password = 'password';
-  const logger = new Logger(`${NodeManager.name} test`, LogLevel.ERROR, [
+  const logger = new Logger(`${NodeManager.name} test`, LogLevel.WARN, [
     new StreamHandler(),
   ]);
   let dataDir: string;
   let nodeGraph: NodeGraph;
   let nodeConnectionManager: NodeConnectionManager;
-  let fwdProxy: ForwardProxy;
-  let revProxy: ReverseProxy;
+  let proxy: Proxy;
   let keyManager: KeyManager;
   let keyPairPem: KeyPairPem;
   let certPem: CertificatePem;
   let db: DB;
   let sigchain: Sigchain;
+  let utpSocket: UTP;
 
   const serverHost = '::1' as Host;
-  const serverPort = 1 as Port;
-  ``;
+  const externalHost = '127.0.0.1' as Host;
+  const serverPort = 0 as Port;
+  const externalPort = 0 as Port;
   const mockedGenerateDeterministicKeyPair = jest.spyOn(
     keysUtils,
     'generateDeterministicKeyPair',
@@ -62,23 +63,18 @@ describe(`${NodeManager.name} test`, () => {
     keyPairPem = keyManager.getRootKeyPairPem();
     certPem = keysUtils.certToPem(cert);
 
-    fwdProxy = new ForwardProxy({
+    proxy = new Proxy({
       authToken: 'abc',
       logger: logger,
     });
-    revProxy = new ReverseProxy({
-      logger: logger,
-    });
-
-    await fwdProxy.start({
-      tlsConfig: {
-        keyPrivatePem: keyPairPem.privateKey,
-        certChainPem: certPem,
-      },
-    });
-    await revProxy.start({
+    utpSocket = new UTP({ allowHalfOpen: true });
+    const utpSocketBind = promisify(utpSocket.bind).bind(utpSocket);
+    await utpSocketBind(55555, '127.0.0.1');
+    await proxy.start({
       serverHost,
       serverPort,
+      proxyHost: externalHost,
+      proxyPort: externalPort,
       tlsConfig: {
         keyPrivatePem: keyPairPem.privateKey,
         certChainPem: certPem,
@@ -106,8 +102,7 @@ describe(`${NodeManager.name} test`, () => {
     nodeConnectionManager = new NodeConnectionManager({
       keyManager,
       nodeGraph,
-      fwdProxy,
-      revProxy,
+      proxy,
       logger,
     });
     await nodeConnectionManager.start();
@@ -122,8 +117,9 @@ describe(`${NodeManager.name} test`, () => {
     await db.destroy();
     await keyManager.stop();
     await keyManager.destroy();
-    await fwdProxy.stop();
-    await revProxy.stop();
+    await proxy.stop();
+    utpSocket.close();
+    utpSocket.unref();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
@@ -144,8 +140,8 @@ describe(`${NodeManager.name} test`, () => {
         });
         const serverNodeId = server.keyManager.getNodeId();
         let serverNodeAddress: NodeAddress = {
-          host: server.revProxy.getIngressHost(),
-          port: server.revProxy.getIngressPort(),
+          host: server.proxy.getProxyHost(),
+          port: server.proxy.getProxyPort(),
         };
         await nodeGraph.setNode(serverNodeId, serverNodeAddress);
 
@@ -168,8 +164,8 @@ describe(`${NodeManager.name} test`, () => {
         await server.start({ password: 'password' });
         // Update the node address (only changes because we start and stop)
         serverNodeAddress = {
-          host: server.revProxy.getIngressHost(),
-          port: server.revProxy.getIngressPort(),
+          host: server.proxy.getProxyHost(),
+          port: server.proxy.getProxyPort(),
         };
         await nodeGraph.setNode(serverNodeId, serverNodeAddress);
         // Check if active
@@ -207,8 +203,8 @@ describe(`${NodeManager.name} test`, () => {
       });
       const serverNodeId = server.keyManager.getNodeId();
       const serverNodeAddress: NodeAddress = {
-        host: server.revProxy.getIngressHost(),
-        port: server.revProxy.getIngressPort(),
+        host: server.proxy.getProxyHost(),
+        port: server.proxy.getProxyPort(),
       };
       await nodeGraph.setNode(serverNodeId, serverNodeAddress);
 
@@ -267,8 +263,8 @@ describe(`${NodeManager.name} test`, () => {
 
       xNodeId = x.keyManager.getNodeId();
       xNodeAddress = {
-        host: x.revProxy.getIngressHost(),
-        port: x.revProxy.getIngressPort(),
+        host: externalHost,
+        port: x.proxy.getProxyPort(),
       };
       xPublicKey = x.keyManager.getRootKeyPairPem().publicKey;
 
@@ -285,8 +281,8 @@ describe(`${NodeManager.name} test`, () => {
       });
       yNodeId = y.keyManager.getNodeId();
       yNodeAddress = {
-        host: y.revProxy.getIngressHost(),
-        port: y.revProxy.getIngressPort(),
+        host: externalHost,
+        port: y.proxy.getProxyPort(),
       };
       yPublicKey = y.keyManager.getRootKeyPairPem().publicKey;
 

@@ -5,8 +5,7 @@ import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { Metadata } from '@grpc/grpc-js';
 import KeyManager from '@/keys/KeyManager';
-import ForwardProxy from '@/network/ForwardProxy';
-import ReverseProxy from '@/network/ReverseProxy';
+import Proxy from '@/network/Proxy';
 import GRPCServer from '@/grpc/GRPCServer';
 import GRPCClientClient from '@/client/GRPCClientClient';
 import agentStatus from '@/client/service/agentStatus';
@@ -44,8 +43,7 @@ describe('agentStatus', () => {
   let keyManager: KeyManager;
   let grpcServerClient: GRPCServer;
   let grpcServerAgent: GRPCServer;
-  let fwdProxy: ForwardProxy;
-  let revProxy: ReverseProxy;
+  let proxy: Proxy;
   let grpcServer: GRPCServer;
   let grpcClient: GRPCClientClient;
   beforeEach(async () => {
@@ -66,20 +64,13 @@ describe('agentStatus', () => {
     await grpcServerAgent.start({
       services: [],
     });
-    fwdProxy = new ForwardProxy({
+    proxy = new Proxy({
       authToken,
       logger,
     });
-    await fwdProxy.start({
-      tlsConfig: {
-        keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
-        certChainPem: await keyManager.getRootCertChainPem(),
-      },
-    });
-    revProxy = new ReverseProxy({ logger });
-    await revProxy.start({
-      serverHost: '1.1.1.1' as Host,
-      serverPort: 1 as Port,
+    await proxy.start({
+      serverHost: '127.0.0.1' as Host,
+      serverPort: 0 as Port,
       tlsConfig: {
         keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
         certChainPem: await keyManager.getRootCertChainPem(),
@@ -91,8 +82,7 @@ describe('agentStatus', () => {
         keyManager,
         grpcServerClient,
         grpcServerAgent,
-        fwdProxy,
-        revProxy,
+        proxy,
       }),
     };
     grpcServer = new GRPCServer({ logger });
@@ -111,8 +101,7 @@ describe('agentStatus', () => {
   afterEach(async () => {
     await grpcClient.destroy();
     await grpcServer.stop();
-    await revProxy.stop();
-    await fwdProxy.stop();
+    await proxy.stop();
     await grpcServerAgent.stop();
     await grpcServerClient.stop();
     await keyManager.stop();
@@ -133,14 +122,12 @@ describe('agentStatus', () => {
       nodeId: expect.any(String),
       clientHost: expect.any(String),
       clientPort: expect.any(Number),
-      ingressHost: expect.any(String),
-      ingressPort: expect.any(Number),
-      egressHost: expect.any(String),
-      egressPort: expect.any(Number),
-      agentHost: expect.any(String),
-      agentPort: expect.any(Number),
       proxyHost: expect.any(String),
       proxyPort: expect.any(Number),
+      agentHost: expect.any(String),
+      agentPort: expect.any(Number),
+      forwardHost: expect.any(String),
+      forwardPort: expect.any(Number),
       rootPublicKeyPem: expect.any(String),
       rootCertPem: expect.any(String),
       rootCertChainPem: expect.any(String),

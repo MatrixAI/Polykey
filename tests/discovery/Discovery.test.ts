@@ -15,7 +15,7 @@ import { NodeConnectionManager, NodeGraph, NodeManager } from '@/nodes';
 import { KeyManager } from '@/keys';
 import { ACL } from '@/acl';
 import { Sigchain } from '@/sigchain';
-import { ForwardProxy, ReverseProxy } from '@/network';
+import Proxy from '@/network/Proxy';
 import { poll } from '@/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as claimsUtils from '@/claims/utils';
@@ -53,8 +53,7 @@ describe('Discovery', () => {
   let acl: ACL;
   let keyManager: KeyManager;
   let sigchain: Sigchain;
-  let fwdProxy: ForwardProxy;
-  let revProxy: ReverseProxy;
+  let proxy: Proxy;
   // Other gestalt
   let nodeA: PolykeyAgent;
   let nodeB: PolykeyAgent;
@@ -112,23 +111,15 @@ describe('Discovery', () => {
       keyManager,
       logger: logger.getChild('sigChain'),
     });
-    fwdProxy = new ForwardProxy({
+    proxy = new Proxy({
       authToken: 'abc123',
       logger: logger.getChild('fwxProxy'),
     });
-    await fwdProxy.start({
-      proxyHost: '127.0.0.1' as Host,
-      egressHost: '127.0.0.1' as Host,
-      tlsConfig: {
-        keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
-        certChainPem: await keyManager.getRootCertChainPem(),
-      },
-    });
-    revProxy = new ReverseProxy({ logger: logger.getChild('revProxy') });
-    await revProxy.start({
+    await proxy.start({
+      forwardHost: '127.0.0.1' as Host,
       serverHost: '127.0.0.1' as Host,
-      serverPort: 55555 as Port,
-      ingressHost: '127.0.0.1' as Host,
+      serverPort: 0 as Port,
+      proxyHost: '127.0.0.1' as Host,
       tlsConfig: {
         keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
         certChainPem: await keyManager.getRootCertChainPem(),
@@ -142,8 +133,7 @@ describe('Discovery', () => {
     nodeConnectionManager = new NodeConnectionManager({
       keyManager,
       nodeGraph,
-      fwdProxy,
-      revProxy,
+      proxy,
       connConnectTime: 2000,
       connTimeoutTime: 2000,
       logger: logger.getChild('NodeConnectionManager'),
@@ -163,8 +153,7 @@ describe('Discovery', () => {
       nodePath: path.join(dataDir, 'nodeA'),
       networkConfig: {
         proxyHost: '127.0.0.1' as Host,
-        egressHost: '127.0.0.1' as Host,
-        ingressHost: '127.0.0.1' as Host,
+        forwardHost: '127.0.0.1' as Host,
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },
@@ -178,8 +167,7 @@ describe('Discovery', () => {
       nodePath: path.join(dataDir, 'nodeB'),
       networkConfig: {
         proxyHost: '127.0.0.1' as Host,
-        egressHost: '127.0.0.1' as Host,
-        ingressHost: '127.0.0.1' as Host,
+        forwardHost: '127.0.0.1' as Host,
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },
@@ -190,8 +178,8 @@ describe('Discovery', () => {
     });
     await testNodesUtils.nodesConnect(nodeA, nodeB);
     await nodeGraph.setNode(nodeA.keyManager.getNodeId(), {
-      host: nodeA.revProxy.getIngressHost(),
-      port: nodeA.revProxy.getIngressPort(),
+      host: nodeA.proxy.getProxyHost(),
+      port: nodeA.proxy.getProxyPort(),
     });
     await nodeA.nodeManager.claimNode(nodeB.keyManager.getNodeId());
     nodeA.identitiesManager.registerProvider(testProvider);
@@ -215,8 +203,7 @@ describe('Discovery', () => {
     await nodeB.stop();
     await nodeConnectionManager.stop();
     await nodeGraph.stop();
-    await revProxy.stop();
-    await fwdProxy.stop();
+    await proxy.stop();
     await sigchain.stop();
     await identitiesManager.stop();
     await gestaltGraph.stop();

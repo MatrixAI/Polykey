@@ -72,14 +72,12 @@ proto.polykey.v1.agent.InfoMessage.toObject = function(includeInstance, msg) {
     nodeId: jspb.Message.getFieldWithDefault(msg, 2, ""),
     clientHost: jspb.Message.getFieldWithDefault(msg, 3, ""),
     clientPort: jspb.Message.getFieldWithDefault(msg, 4, 0),
-    ingressHost: jspb.Message.getFieldWithDefault(msg, 5, ""),
-    ingressPort: jspb.Message.getFieldWithDefault(msg, 6, 0),
-    egressHost: jspb.Message.getFieldWithDefault(msg, 7, ""),
-    egressPort: jspb.Message.getFieldWithDefault(msg, 8, 0),
+    proxyHost: jspb.Message.getFieldWithDefault(msg, 5, ""),
+    proxyPort: jspb.Message.getFieldWithDefault(msg, 6, 0),
     agentHost: jspb.Message.getFieldWithDefault(msg, 9, ""),
     agentPort: jspb.Message.getFieldWithDefault(msg, 10, 0),
-    proxyHost: jspb.Message.getFieldWithDefault(msg, 11, ""),
-    proxyPort: jspb.Message.getFieldWithDefault(msg, 12, 0),
+    forwardHost: jspb.Message.getFieldWithDefault(msg, 11, ""),
+    forwardPort: jspb.Message.getFieldWithDefault(msg, 12, 0),
     rootPublicKeyPem: jspb.Message.getFieldWithDefault(msg, 13, ""),
     rootCertPem: jspb.Message.getFieldWithDefault(msg, 14, ""),
     rootCertChainPem: jspb.Message.getFieldWithDefault(msg, 15, "")
@@ -137,19 +135,11 @@ proto.polykey.v1.agent.InfoMessage.deserializeBinaryFromReader = function(msg, r
       break;
     case 5:
       var value = /** @type {string} */ (reader.readString());
-      msg.setIngressHost(value);
+      msg.setProxyHost(value);
       break;
     case 6:
       var value = /** @type {number} */ (reader.readUint32());
-      msg.setIngressPort(value);
-      break;
-    case 7:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setEgressHost(value);
-      break;
-    case 8:
-      var value = /** @type {number} */ (reader.readUint32());
-      msg.setEgressPort(value);
+      msg.setProxyPort(value);
       break;
     case 9:
       var value = /** @type {string} */ (reader.readString());
@@ -161,11 +151,11 @@ proto.polykey.v1.agent.InfoMessage.deserializeBinaryFromReader = function(msg, r
       break;
     case 11:
       var value = /** @type {string} */ (reader.readString());
-      msg.setProxyHost(value);
+      msg.setForwardHost(value);
       break;
     case 12:
       var value = /** @type {number} */ (reader.readUint32());
-      msg.setProxyPort(value);
+      msg.setForwardPort(value);
       break;
     case 13:
       var value = /** @type {string} */ (reader.readString());
@@ -236,31 +226,17 @@ proto.polykey.v1.agent.InfoMessage.serializeBinaryToWriter = function(message, w
       f
     );
   }
-  f = message.getIngressHost();
+  f = message.getProxyHost();
   if (f.length > 0) {
     writer.writeString(
       5,
       f
     );
   }
-  f = message.getIngressPort();
+  f = message.getProxyPort();
   if (f !== 0) {
     writer.writeUint32(
       6,
-      f
-    );
-  }
-  f = message.getEgressHost();
-  if (f.length > 0) {
-    writer.writeString(
-      7,
-      f
-    );
-  }
-  f = message.getEgressPort();
-  if (f !== 0) {
-    writer.writeUint32(
-      8,
       f
     );
   }
@@ -278,14 +254,14 @@ proto.polykey.v1.agent.InfoMessage.serializeBinaryToWriter = function(message, w
       f
     );
   }
-  f = message.getProxyHost();
+  f = message.getForwardHost();
   if (f.length > 0) {
     writer.writeString(
       11,
       f
     );
   }
-  f = message.getProxyPort();
+  f = message.getForwardPort();
   if (f !== 0) {
     writer.writeUint32(
       12,
@@ -389,10 +365,10 @@ proto.polykey.v1.agent.InfoMessage.prototype.setClientPort = function(value) {
 
 
 /**
- * optional string ingress_host = 5;
+ * optional string proxy_host = 5;
  * @return {string}
  */
-proto.polykey.v1.agent.InfoMessage.prototype.getIngressHost = function() {
+proto.polykey.v1.agent.InfoMessage.prototype.getProxyHost = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 5, ""));
 };
 
@@ -401,16 +377,16 @@ proto.polykey.v1.agent.InfoMessage.prototype.getIngressHost = function() {
  * @param {string} value
  * @return {!proto.polykey.v1.agent.InfoMessage} returns this
  */
-proto.polykey.v1.agent.InfoMessage.prototype.setIngressHost = function(value) {
+proto.polykey.v1.agent.InfoMessage.prototype.setProxyHost = function(value) {
   return jspb.Message.setProto3StringField(this, 5, value);
 };
 
 
 /**
- * optional uint32 ingress_port = 6;
+ * optional uint32 proxy_port = 6;
  * @return {number}
  */
-proto.polykey.v1.agent.InfoMessage.prototype.getIngressPort = function() {
+proto.polykey.v1.agent.InfoMessage.prototype.getProxyPort = function() {
   return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 6, 0));
 };
 
@@ -419,44 +395,8 @@ proto.polykey.v1.agent.InfoMessage.prototype.getIngressPort = function() {
  * @param {number} value
  * @return {!proto.polykey.v1.agent.InfoMessage} returns this
  */
-proto.polykey.v1.agent.InfoMessage.prototype.setIngressPort = function(value) {
+proto.polykey.v1.agent.InfoMessage.prototype.setProxyPort = function(value) {
   return jspb.Message.setProto3IntField(this, 6, value);
-};
-
-
-/**
- * optional string egress_host = 7;
- * @return {string}
- */
-proto.polykey.v1.agent.InfoMessage.prototype.getEgressHost = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 7, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.polykey.v1.agent.InfoMessage} returns this
- */
-proto.polykey.v1.agent.InfoMessage.prototype.setEgressHost = function(value) {
-  return jspb.Message.setProto3StringField(this, 7, value);
-};
-
-
-/**
- * optional uint32 egress_port = 8;
- * @return {number}
- */
-proto.polykey.v1.agent.InfoMessage.prototype.getEgressPort = function() {
-  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 8, 0));
-};
-
-
-/**
- * @param {number} value
- * @return {!proto.polykey.v1.agent.InfoMessage} returns this
- */
-proto.polykey.v1.agent.InfoMessage.prototype.setEgressPort = function(value) {
-  return jspb.Message.setProto3IntField(this, 8, value);
 };
 
 
@@ -497,10 +437,10 @@ proto.polykey.v1.agent.InfoMessage.prototype.setAgentPort = function(value) {
 
 
 /**
- * optional string proxy_host = 11;
+ * optional string forward_host = 11;
  * @return {string}
  */
-proto.polykey.v1.agent.InfoMessage.prototype.getProxyHost = function() {
+proto.polykey.v1.agent.InfoMessage.prototype.getForwardHost = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 11, ""));
 };
 
@@ -509,16 +449,16 @@ proto.polykey.v1.agent.InfoMessage.prototype.getProxyHost = function() {
  * @param {string} value
  * @return {!proto.polykey.v1.agent.InfoMessage} returns this
  */
-proto.polykey.v1.agent.InfoMessage.prototype.setProxyHost = function(value) {
+proto.polykey.v1.agent.InfoMessage.prototype.setForwardHost = function(value) {
   return jspb.Message.setProto3StringField(this, 11, value);
 };
 
 
 /**
- * optional uint32 proxy_port = 12;
+ * optional uint32 forward_port = 12;
  * @return {number}
  */
-proto.polykey.v1.agent.InfoMessage.prototype.getProxyPort = function() {
+proto.polykey.v1.agent.InfoMessage.prototype.getForwardPort = function() {
   return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 12, 0));
 };
 
@@ -527,7 +467,7 @@ proto.polykey.v1.agent.InfoMessage.prototype.getProxyPort = function() {
  * @param {number} value
  * @return {!proto.polykey.v1.agent.InfoMessage} returns this
  */
-proto.polykey.v1.agent.InfoMessage.prototype.setProxyPort = function(value) {
+proto.polykey.v1.agent.InfoMessage.prototype.setForwardPort = function(value) {
   return jspb.Message.setProto3IntField(this, 12, value);
 };
 

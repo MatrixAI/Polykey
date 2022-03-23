@@ -44,8 +44,7 @@ describe('find', () => {
       nodePath,
       networkConfig: {
         proxyHost: '127.0.0.1' as Host,
-        egressHost: '127.0.0.1' as Host,
-        ingressHost: '127.0.0.1' as Host,
+        forwardHost: '127.0.0.1' as Host,
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },
@@ -62,8 +61,7 @@ describe('find', () => {
       nodePath: path.join(dataDir, 'remoteOnline'),
       networkConfig: {
         proxyHost: '127.0.0.1' as Host,
-        egressHost: '127.0.0.1' as Host,
-        ingressHost: '127.0.0.1' as Host,
+        forwardHost: '127.0.0.1' as Host,
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },
@@ -73,8 +71,8 @@ describe('find', () => {
       logger,
     });
     remoteOnlineNodeId = remoteOnline.keyManager.getNodeId();
-    remoteOnlineHost = remoteOnline.revProxy.getIngressHost();
-    remoteOnlinePort = remoteOnline.revProxy.getIngressPort();
+    remoteOnlineHost = remoteOnline.proxy.getProxyHost();
+    remoteOnlinePort = remoteOnline.proxy.getProxyPort();
     await testNodesUtils.nodesConnect(polykeyAgent, remoteOnline);
     // Setting up an offline remote keynode
     remoteOffline = await PolykeyAgent.createPolykeyAgent({
@@ -82,8 +80,7 @@ describe('find', () => {
       nodePath: path.join(dataDir, 'remoteOffline'),
       networkConfig: {
         proxyHost: '127.0.0.1' as Host,
-        egressHost: '127.0.0.1' as Host,
-        ingressHost: '127.0.0.1' as Host,
+        forwardHost: '127.0.0.1' as Host,
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },
@@ -93,8 +90,8 @@ describe('find', () => {
       logger,
     });
     remoteOfflineNodeId = remoteOffline.keyManager.getNodeId();
-    remoteOfflineHost = remoteOffline.revProxy.getIngressHost();
-    remoteOfflinePort = remoteOffline.revProxy.getIngressPort();
+    remoteOfflineHost = remoteOffline.proxy.getProxyHost();
+    remoteOfflinePort = remoteOffline.proxy.getProxyPort();
     await testNodesUtils.nodesConnect(polykeyAgent, remoteOffline);
     await remoteOffline.stop();
   }, global.defaultTimeout * 3);

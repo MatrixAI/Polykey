@@ -12,8 +12,7 @@ import { KeyManager, utils as keyUtils } from '../keys';
 import { Sigchain } from '../sigchain';
 import { ACL } from '../acl';
 import { GestaltGraph } from '../gestalts';
-import ForwardProxy from '../network/ForwardProxy';
-import ReverseProxy from '../network/ReverseProxy';
+import Proxy from '../network/Proxy';
 import { NodeConnectionManager, NodeGraph, NodeManager } from '../nodes';
 import { VaultManager } from '../vaults';
 import { NotificationsManager } from '../notifications';
@@ -132,12 +131,9 @@ async function bootstrapState({
       fresh,
     });
     // Proxies are constructed only, but not started
-    const fwdProxy = new ForwardProxy({
+    const proxy = new Proxy({
       authToken: '',
-      logger: logger.getChild(ForwardProxy.name),
-    });
-    const revProxy = new ReverseProxy({
-      logger: logger.getChild(ReverseProxy.name),
+      logger: logger.getChild(Proxy.name),
     });
     const nodeGraph = await NodeGraph.createNodeGraph({
       db,
@@ -148,8 +144,7 @@ async function bootstrapState({
     const nodeConnectionManager = new NodeConnectionManager({
       keyManager,
       nodeGraph,
-      fwdProxy,
-      revProxy,
+      proxy,
       logger: logger.getChild(NodeConnectionManager.name),
     });
     const nodeManager = new NodeManager({

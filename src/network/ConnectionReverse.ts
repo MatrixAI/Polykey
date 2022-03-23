@@ -15,8 +15,8 @@ import * as keysUtils from '../keys/utils';
 import { promise, timerStart, timerStop } from '../utils';
 
 type ConnectionsReverse = {
-  egress: Map<Address, ConnectionReverse>;
   proxy: Map<Address, ConnectionReverse>;
+  reverse: Map<Address, ConnectionReverse>;
 };
 
 interface ConnectionReverse extends StartStop {}
@@ -173,8 +173,8 @@ class ConnectionReverse extends Connection {
       this.utpSocket.off('message', this.handleMessage);
       throw new networkErrors.ErrorConnectionStartTimeout();
     }
-    this.connections.egress.set(this.address, this);
-    this.connections.proxy.set(this.proxyAddress, this);
+    this.connections.proxy.set(this.address, this);
+    this.connections.reverse.set(this.proxyAddress, this);
     this.startKeepAliveTimeout();
     this.logger.info('Started Connection Reverse');
   }
@@ -203,8 +203,8 @@ class ConnectionReverse extends Connection {
       endPs.push(this.endGracefully(this.tlsSocket, this.endTime));
     }
     await Promise.all(endPs);
-    this.connections.egress.delete(this.address);
-    this.connections.proxy.delete(this.proxyAddress);
+    this.connections.proxy.delete(this.address);
+    this.connections.reverse.delete(this.proxyAddress);
     this.logger.info('Stopped Connection Reverse');
   }
 

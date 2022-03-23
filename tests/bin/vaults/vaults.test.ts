@@ -228,14 +228,14 @@ describe('CLI vaults', () => {
       const targetNodeId = targetPolykeyAgent.keyManager.getNodeId();
       const targetNodeIdEncoded = nodesUtils.encodeNodeId(targetNodeId);
       await polykeyAgent.nodeManager.setNode(targetNodeId, {
-        host: targetPolykeyAgent.revProxy.getIngressHost(),
-        port: targetPolykeyAgent.revProxy.getIngressPort(),
+        host: targetPolykeyAgent.proxy.getProxyHost(),
+        port: targetPolykeyAgent.proxy.getProxyPort(),
       });
       await targetPolykeyAgent.nodeManager.setNode(
         polykeyAgent.keyManager.getNodeId(),
         {
-          host: polykeyAgent.revProxy.getIngressHost(),
-          port: polykeyAgent.revProxy.getIngressPort(),
+          host: polykeyAgent.proxy.getProxyHost(),
+          port: polykeyAgent.proxy.getProxyPort(),
         },
       );
       await polykeyAgent.acl.setNodePerm(targetNodeId, {
@@ -706,8 +706,8 @@ describe('CLI vaults', () => {
           const remoteOnlineNodeIdEncoded =
             nodesUtils.encodeNodeId(remoteOnlineNodeId);
           await polykeyAgent.nodeManager.setNode(remoteOnlineNodeId, {
-            host: remoteOnline.revProxy.getIngressHost(),
-            port: remoteOnline.revProxy.getIngressPort(),
+            host: remoteOnline.proxy.getProxyHost(),
+            port: remoteOnline.proxy.getProxyPort(),
           } as NodeAddress);
 
           await remoteOnline.gestaltGraph.setNode({

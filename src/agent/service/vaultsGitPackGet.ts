@@ -37,7 +37,7 @@ function vaultsGitPackGet({
     if (connectionInfo == null) {
       throw new agentErrors.ErrorConnectionInfoMissing();
     }
-    const nodeId = connectionInfo.nodeId;
+    const nodeId = connectionInfo.remoteNodeId;
     const nodeIdEncoded = nodesUtils.encodeNodeId(nodeId);
     // Getting vaultId
     const vaultNameOrId = meta.get('vaultNameOrId').pop()!.toString();

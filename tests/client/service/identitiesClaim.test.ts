@@ -13,8 +13,8 @@ import IdentitiesManager from '@/identities/IdentitiesManager';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import NodeGraph from '@/nodes/NodeGraph';
 import Sigchain from '@/sigchain/Sigchain';
-import ForwardProxy from '@/network/ForwardProxy';
-import ReverseProxy from '@/network/ReverseProxy';
+import Proxy from '@/network/Proxy';
+
 import GRPCServer from '@/grpc/GRPCServer';
 import GRPCClientClient from '@/client/GRPCClientClient';
 import identitiesClaim from '@/client/service/identitiesClaim';
@@ -82,8 +82,8 @@ describe('identitiesClaim', () => {
   let nodeGraph: NodeGraph;
   let nodeConnectionManager: NodeConnectionManager;
   let sigchain: Sigchain;
-  let fwdProxy: ForwardProxy;
-  let revProxy: ReverseProxy;
+  let proxy: Proxy;
+
   let db: DB;
   let keyManager: KeyManager;
   let grpcServer: GRPCServer;
@@ -109,20 +109,13 @@ describe('identitiesClaim', () => {
     });
     testProvider = new TestProvider();
     identitiesManager.registerProvider(testProvider);
-    fwdProxy = new ForwardProxy({
+    proxy = new Proxy({
       authToken,
       logger,
     });
-    await fwdProxy.start({
-      tlsConfig: {
-        keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
-        certChainPem: await keyManager.getRootCertChainPem(),
-      },
-    });
-    revProxy = new ReverseProxy({ logger });
-    await revProxy.start({
-      serverHost: '1.1.1.1' as Host,
-      serverPort: 1 as Port,
+    await proxy.start({
+      serverHost: '127.0.0.1' as Host,
+      serverPort: 0 as Port,
       tlsConfig: {
         keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
         certChainPem: await keyManager.getRootCertChainPem(),
@@ -140,10 +133,9 @@ describe('identitiesClaim', () => {
     });
     nodeConnectionManager = new NodeConnectionManager({
       connConnectTime: 2000,
-      fwdProxy,
+      proxy,
       keyManager,
       nodeGraph,
-      revProxy,
       logger: logger.getChild('nodeConnectionManager'),
     });
     await nodeConnectionManager.start();
@@ -174,8 +166,7 @@ describe('identitiesClaim', () => {
     await nodeConnectionManager.stop();
     await nodeGraph.stop();
     await sigchain.stop();
-    await revProxy.stop();
-    await fwdProxy.stop();
+    await proxy.stop();
     await identitiesManager.stop();
     await db.stop();
     await keyManager.stop();

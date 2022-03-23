@@ -1,6 +1,5 @@
 import type KeyManager from '../keys/KeyManager';
-import type ReverseProxy from '../network/ReverseProxy';
-import type ForwardProxy from '../network/ForwardProxy';
+import type Proxy from '../network/Proxy';
 import type { Host, Hostname, Port } from '../network/types';
 import type { ResourceAcquire } from '../utils';
 import type { Timer } from '../types';
@@ -54,8 +53,7 @@ class NodeConnectionManager {
   protected logger: Logger;
   protected nodeGraph: NodeGraph;
   protected keyManager: KeyManager;
-  protected fwdProxy: ForwardProxy;
-  protected revProxy: ReverseProxy;
+  protected proxy: Proxy;
   protected seedNodes: SeedNodes;
   /**
    * Data structure to store all NodeConnections. If a connection to a node n does
@@ -72,8 +70,7 @@ class NodeConnectionManager {
   public constructor({
     keyManager,
     nodeGraph,
-    fwdProxy,
-    revProxy,
+    proxy,
     seedNodes = {},
     initialClosestNodes = 3,
     connConnectTime = 20000,
@@ -82,8 +79,7 @@ class NodeConnectionManager {
   }: {
     nodeGraph: NodeGraph;
     keyManager: KeyManager;
-    fwdProxy: ForwardProxy;
-    revProxy: ReverseProxy;
+    proxy: Proxy;
     seedNodes?: SeedNodes;
     initialClosestNodes?: number;
     connConnectTime?: number;
@@ -93,8 +89,7 @@ class NodeConnectionManager {
     this.logger = logger ?? new Logger(NodeConnectionManager.name);
     this.keyManager = keyManager;
     this.nodeGraph = nodeGraph;
-    this.fwdProxy = fwdProxy;
-    this.revProxy = revProxy;
+    this.proxy = proxy;
     this.seedNodes = seedNodes;
     this.initialClosestNodes = initialClosestNodes;
     this.connConnectTime = connConnectTime;
@@ -318,7 +313,7 @@ class NodeConnectionManager {
       targetHost: targetHost,
       targetHostname: targetHostname,
       targetPort: targetAddress.port,
-      fwdProxy: this.fwdProxy,
+      proxy: this.proxy,
       keyManager: this.keyManager,
       nodeConnectionManager: this,
       destroyCallback,
@@ -371,17 +366,17 @@ class NodeConnectionManager {
    * A connection is established if the client node's forward proxy is sending
    * hole punching packets at the same time as this node (acting as the server)
    * sends hole-punching packets back to the client's forward proxy.
-   * @param egressHost host of the client's forward proxy
-   * @param egressPort port of the client's forward proxy
+   * @param proxyHost host of the client's forward proxy
+   * @param proxyPort port of the client's forward proxy
    * @param timer Connection timeout timer
    */
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
   public async holePunchReverse(
-    egressHost: Host,
-    egressPort: Port,
+    proxyHost: Host,
+    proxyPort: Port,
     timer?: Timer,
   ): Promise<void> {
-    await this.revProxy.openConnection(egressHost, egressPort, timer);
+    await this.proxy.openConnectionReverse(proxyHost, proxyPort, timer);
   }
 
   /**
@@ -394,17 +389,17 @@ class NodeConnectionManager {
    * This is not needed to be called when doing hole punching since the
    * ForwardProxy automatically starts the process.
    * @param nodeId Node Id of the node we are connecting to
-   * @param ingressHost Ingress host of the reverse proxy
-   * @param ingressPort Ingress port of the reverse proxy
+   * @param proxyHost Proxy host of the reverse proxy
+   * @param proxyPort Proxy port of the reverse proxy
    * @param timer Connection timeout timer
    */
   public async holePunchForward(
     nodeId: NodeId,
-    ingressHost: Host,
-    ingressPort: Port,
+    proxyHost: Host,
+    proxyPort: Port,
     timer?: Timer,
   ): Promise<void> {
-    await this.fwdProxy.openConnection(nodeId, ingressHost, ingressPort, timer);
+    await this.proxy.openConnectionForward(nodeId, proxyHost, proxyPort, timer);
   }
 
   /**
@@ -648,22 +643,22 @@ class NodeConnectionManager {
    * @param relayNodeId node ID of the relay node (i.e. the seed node)
    * @param sourceNodeId node ID of the current node (i.e. the sender)
    * @param targetNodeId node ID of the target node to hole punch
-   * @param egressAddress stringified address of `egressHost:egressPort`
+   * @param proxyAddress stringified address of `proxyHost:proxyPort`
    * @param signature signature to verify source node is sender (signature based
-   * on egressAddress as message)
+   * on proxyAddress as message)
    */
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
   public async sendHolePunchMessage(
     relayNodeId: NodeId,
     sourceNodeId: NodeId,
     targetNodeId: NodeId,
-    egressAddress: string,
+    proxyAddress: string,
     signature: Buffer,
   ): Promise<void> {
     const relayMsg = new nodesPB.Relay();
     relayMsg.setSrcId(nodesUtils.encodeNodeId(sourceNodeId));
     relayMsg.setTargetId(nodesUtils.encodeNodeId(targetNodeId));
-    relayMsg.setEgressAddress(egressAddress);
+    relayMsg.setProxyAddress(proxyAddress);
     relayMsg.setSignature(signature.toString());
     await this.withConnF(relayNodeId, async (connection) => {
       const client = connection.getClient();
@@ -685,7 +680,7 @@ class NodeConnectionManager {
       validationUtils.parseNodeId(message.getTargetId()),
       validationUtils.parseNodeId(message.getSrcId()),
       validationUtils.parseNodeId(message.getTargetId()),
-      message.getEgressAddress(),
+      message.getProxyAddress(),
       Buffer.from(message.getSignature()),
     );
   }

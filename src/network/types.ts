@@ -37,13 +37,22 @@ type ProxyConfig = {
   authToken: string;
 };
 
+/**
+ * Proxy connection information
+ * @property remoteNodeId - NodeId of the remote connecting node
+ * @property remoteCertificates - Certificate chain of the remote connecting node
+ * @property localHost - Proxy host of the local connecting node
+ * @property localPort - Proxy port of the local connecting node
+ * @property remoteHost - Proxy host of the remote connecting node
+ * @property remotePort - Proxy port of the remote connecting node
+ */
 type ConnectionInfo = {
-  nodeId: NodeId;
-  certificates: Array<Certificate>;
-  egressHost: Host;
-  egressPort: Port;
-  ingressHost: Host;
-  ingressPort: Port;
+  remoteNodeId: NodeId;
+  remoteCertificates: Array<Certificate>;
+  localHost: Host;
+  localPort: Port;
+  remoteHost: Host;
+  remotePort: Port;
 };
 
 type PingMessage = {

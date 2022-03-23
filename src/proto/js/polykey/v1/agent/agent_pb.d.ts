@@ -15,22 +15,18 @@ export class InfoMessage extends jspb.Message {
     setClientHost(value: string): InfoMessage;
     getClientPort(): number;
     setClientPort(value: number): InfoMessage;
-    getIngressHost(): string;
-    setIngressHost(value: string): InfoMessage;
-    getIngressPort(): number;
-    setIngressPort(value: number): InfoMessage;
-    getEgressHost(): string;
-    setEgressHost(value: string): InfoMessage;
-    getEgressPort(): number;
-    setEgressPort(value: number): InfoMessage;
-    getAgentHost(): string;
-    setAgentHost(value: string): InfoMessage;
-    getAgentPort(): number;
-    setAgentPort(value: number): InfoMessage;
     getProxyHost(): string;
     setProxyHost(value: string): InfoMessage;
     getProxyPort(): number;
     setProxyPort(value: number): InfoMessage;
+    getAgentHost(): string;
+    setAgentHost(value: string): InfoMessage;
+    getAgentPort(): number;
+    setAgentPort(value: number): InfoMessage;
+    getForwardHost(): string;
+    setForwardHost(value: string): InfoMessage;
+    getForwardPort(): number;
+    setForwardPort(value: number): InfoMessage;
     getRootPublicKeyPem(): string;
     setRootPublicKeyPem(value: string): InfoMessage;
     getRootCertPem(): string;
@@ -54,14 +50,12 @@ export namespace InfoMessage {
         nodeId: string,
         clientHost: string,
         clientPort: number,
-        ingressHost: string,
-        ingressPort: number,
-        egressHost: string,
-        egressPort: number,
-        agentHost: string,
-        agentPort: number,
         proxyHost: string,
         proxyPort: number,
+        agentHost: string,
+        agentPort: number,
+        forwardHost: string,
+        forwardPort: number,
         rootPublicKeyPem: string,
         rootCertPem: string,
         rootCertChainPem: string,
