@@ -18,6 +18,7 @@ import Sigchain from '@/sigchain/Sigchain';
 import * as claimsUtils from '@/claims/utils';
 import { promisify, sleep } from '@/utils';
 import * as nodesUtils from '@/nodes/utils';
+import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as nodesTestUtils from './utils';
 
 describe(`${NodeManager.name} test`, () => {
@@ -605,5 +606,46 @@ describe(`${NodeManager.name} test`, () => {
     const oldestNodeNew = await nodeGraph.getNode(oldestNodeId!);
     expect(oldestNodeNew).toBeUndefined();
     nodeManagerPingMock.mockRestore();
+  });
+  test('should add node when an incoming connection is established', async () => {
+    let server: PolykeyAgent | undefined;
+    try {
+      server = await PolykeyAgent.createPolykeyAgent({
+        password: 'password',
+        nodePath: path.join(dataDir, 'server'),
+        keysConfig: {
+          rootKeyPairBits: 2048,
+        },
+        logger: logger,
+      });
+      const serverNodeId = server.keyManager.getNodeId();
+      const serverNodeAddress: NodeAddress = {
+        host: server.proxy.getProxyHost(),
+        port: server.proxy.getProxyPort(),
+      };
+      await nodeGraph.setNode(serverNodeId, serverNodeAddress);
+
+      const expectedHost = proxy.getProxyHost();
+      const expectedPort = proxy.getProxyPort();
+      const expectedNodeId = keyManager.getNodeId();
+
+      const nodeData = await server.nodeGraph.getNode(expectedNodeId);
+      expect(nodeData).toBeUndefined();
+
+      // Now we want to connect to the server by making an echo request.
+      await nodeConnectionManager.withConnF(serverNodeId, async (conn) => {
+        const client = conn.getClient();
+        await client.echo(new utilsPB.EchoMessage().setChallenge('hello'));
+      });
+
+      const nodeData2 = await server.nodeGraph.getNode(expectedNodeId);
+      expect(nodeData2).toBeDefined();
+      expect(nodeData2?.address.host).toEqual(expectedHost);
+      expect(nodeData2?.address.port).toEqual(expectedPort);
+    } finally {
+      // Clean up
+      await server?.stop();
+      await server?.destroy();
+    }
   });
 });

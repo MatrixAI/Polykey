@@ -1,6 +1,6 @@
 import type { FileSystem } from './types';
 import type { PolykeyWorkerManagerInterface } from './workers/types';
-import type { Host, Port } from './network/types';
+import type { ConnectionData, Host, Port } from './network/types';
 import type { SeedNodes } from './nodes/types';
 import type { KeyManagerChangeData } from './keys/types';
 import path from 'path';
@@ -8,6 +8,7 @@ import process from 'process';
 import Logger from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { CreateDestroyStartStop } from '@matrixai/async-init/dist/CreateDestroyStartStop';
+import * as networkUtils from '@/network/utils';
 import { KeyManager, utils as keysUtils } from './keys';
 import { Status } from './status';
 import { Schema } from './schema';
@@ -55,8 +56,10 @@ class PolykeyAgent {
    */
   public static readonly eventSymbols = {
     [KeyManager.name]: Symbol(KeyManager.name),
+    [Proxy.name]: Symbol(Proxy.name),
   } as {
     readonly KeyManager: unique symbol;
+    readonly Proxy: unique symbol;
   };
 
   public static async createPolykeyAgent({
@@ -262,6 +265,8 @@ class PolykeyAgent {
         proxy ??
         new Proxy({
           ...proxyConfig_,
+          connectionEstablishedCallback: (data) =>
+            events.emitAsync(PolykeyAgent.eventSymbols.Proxy, data),
           logger: logger.getChild(Proxy.name),
         });
       nodeGraph =
@@ -537,6 +542,27 @@ class PolykeyAgent {
           this.grpcServerClient.setTLSConfig(tlsConfig);
           this.proxy.setTLSConfig(tlsConfig);
           this.logger.info(`${KeyManager.name} change propagated`);
+        },
+      );
+      this.events.on(
+        PolykeyAgent.eventSymbols.Proxy,
+        async (data: ConnectionData) => {
+          if (data.type === 'reverse') {
+            const address = networkUtils.buildAddress(
+              data.remoteHost,
+              data.remotePort,
+            );
+            const nodeIdEncoded = nodesUtils.encodeNodeId(data.remoteNodeId);
+            this.logger.info(
+              `Reverse connection adding ${nodeIdEncoded}:${address} to ${NodeGraph.name}`,
+            );
+            // Reverse connection was established and authenticated,
+            //  add it to the node graph
+            await this.nodeManager.setNode(data.remoteNodeId, {
+              host: data.remoteHost,
+              port: data.remotePort,
+            });
+          }
         },
       );
       const networkConfig_ = {
