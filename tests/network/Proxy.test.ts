@@ -1,6 +1,6 @@
 import type { Socket, AddressInfo } from 'net';
 import type { KeyPairPem } from '@/keys/types';
-import type { Host, Port } from '@/network/types';
+import type { ConnectionData, Host, Port } from '@/network/types';
 import http from 'http';
 import net from 'net';
 import tls from 'tls';
@@ -2935,5 +2935,121 @@ describe(Proxy.name, () => {
     utpSocket.close();
     utpSocket.unref();
     await serverClose();
+  });
+  test('connectionEstablishedCallback is called when a ReverseConnection is established', async () => {
+    const clientKeyPair = await keysUtils.generateKeyPair(1024);
+    const clientKeyPairPem = keysUtils.keyPairToPem(clientKeyPair);
+    const clientCert = keysUtils.generateCertificate(
+      clientKeyPair.publicKey,
+      clientKeyPair.privateKey,
+      clientKeyPair.privateKey,
+      86400,
+    );
+    const clientCertPem = keysUtils.certToPem(clientCert);
+    const {
+      serverListen,
+      serverClose,
+      serverConnP,
+      serverConnEndP,
+      serverConnClosedP,
+      serverHost,
+      serverPort,
+    } = tcpServer();
+    await serverListen(0, '127.0.0.1');
+    const clientNodeId = keysUtils.certNodeId(clientCert)!;
+    let callbackData: ConnectionData | undefined;
+    const proxy = new Proxy({
+      logger: logger,
+      authToken: '',
+      connectionEstablishedCallback: (data) => {
+        callbackData = data;
+      },
+    });
+    await proxy.start({
+      serverHost: serverHost(),
+      serverPort: serverPort(),
+      proxyHost: localHost,
+      tlsConfig: {
+        keyPrivatePem: keyPairPem.privateKey,
+        certChainPem: certPem,
+      },
+    });
+
+    const proxyHost = proxy.getProxyHost();
+    const proxyPort = proxy.getProxyPort();
+    const { p: clientReadyP, resolveP: resolveClientReadyP } = promise<void>();
+    const { p: clientSecureConnectP, resolveP: resolveClientSecureConnectP } =
+      promise<void>();
+    const { p: clientCloseP, resolveP: resolveClientCloseP } = promise<void>();
+    const utpSocket = UTP({ allowHalfOpen: true });
+    const utpSocketBind = promisify(utpSocket.bind).bind(utpSocket);
+    const handleMessage = async (data: Buffer) => {
+      const msg = networkUtils.unserializeNetworkMessage(data);
+      if (msg.type === 'ping') {
+        resolveClientReadyP();
+        await send(networkUtils.pongBuffer);
+      }
+    };
+    utpSocket.on('message', handleMessage);
+    const send = async (data: Buffer) => {
+      const utpSocketSend = promisify(utpSocket.send).bind(utpSocket);
+      await utpSocketSend(data, 0, data.byteLength, proxyPort, proxyHost);
+    };
+    await utpSocketBind(0, '127.0.0.1');
+    const utpSocketPort = utpSocket.address().port;
+    await proxy.openConnectionReverse(
+      '127.0.0.1' as Host,
+      utpSocketPort as Port,
+    );
+    const utpConn = utpSocket.connect(proxyPort, proxyHost);
+    const tlsSocket = tls.connect(
+      {
+        key: Buffer.from(clientKeyPairPem.privateKey, 'ascii'),
+        cert: Buffer.from(clientCertPem, 'ascii'),
+        socket: utpConn,
+        rejectUnauthorized: false,
+      },
+      () => {
+        resolveClientSecureConnectP();
+      },
+    );
+    let tlsSocketEnded = false;
+    tlsSocket.on('end', () => {
+      tlsSocketEnded = true;
+      if (utpConn.destroyed) {
+        tlsSocket.destroy();
+      } else {
+        tlsSocket.end();
+        tlsSocket.destroy();
+      }
+    });
+    tlsSocket.on('close', () => {
+      resolveClientCloseP();
+    });
+    await send(networkUtils.pingBuffer);
+    expect(proxy.getConnectionReverseCount()).toBe(1);
+    await clientReadyP;
+    await clientSecureConnectP;
+    await serverConnP;
+    await proxy.closeConnectionReverse(
+      '127.0.0.1' as Host,
+      utpSocketPort as Port,
+    );
+    expect(proxy.getConnectionReverseCount()).toBe(0);
+    await clientCloseP;
+    await serverConnEndP;
+    await serverConnClosedP;
+    expect(tlsSocketEnded).toBe(true);
+    utpSocket.off('message', handleMessage);
+    utpSocket.close();
+    utpSocket.unref();
+    await proxy.stop();
+    await serverClose();
+
+    // Checking callback data
+    expect(callbackData?.remoteNodeId.equals(clientNodeId)).toBe(true);
+    expect(callbackData?.remoteHost).toEqual('127.0.0.1');
+    expect(callbackData?.remotePort).toEqual(utpSocketPort);
+    expect(callbackData?.type).toEqual('reverse');
   });
 });

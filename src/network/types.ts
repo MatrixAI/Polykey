@@ -55,6 +55,15 @@ type ConnectionInfo = {
   remotePort: Port;
 };
 
+type ConnectionData = {
+  remoteNodeId: NodeId;
+  remoteHost: Host;
+  remotePort: Port;
+  type: 'forward' | 'reverse';
+};
+
+type ConnectionEstablishedCallback = (data: ConnectionData) => any;
+
 type PingMessage = {
   type: 'ping';
 };
@@ -73,6 +82,8 @@ export type {
   TLSConfig,
   ProxyConfig,
   ConnectionInfo,
+  ConnectionData,
+  ConnectionEstablishedCallback,
   PingMessage,
   PongMessage,
   NetworkMessage,
