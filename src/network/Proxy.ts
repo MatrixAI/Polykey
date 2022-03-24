@@ -1,5 +1,12 @@
 import type { AddressInfo, Socket } from 'net';
-import type { Host, Port, Address, ConnectionInfo, TLSConfig } from './types';
+import type {
+  Host,
+  Port,
+  Address,
+  ConnectionInfo,
+  TLSConfig,
+  ConnectionEstablishedCallback,
+} from './types';
 import type { ConnectionsForward } from './ConnectionForward';
 import type { NodeId } from '../nodes/types';
 import type { Timer } from '../types';
@@ -48,6 +55,7 @@ class Proxy {
     proxy: new Map(),
     reverse: new Map(),
   };
+  protected connectionEstablishedCallback: ConnectionEstablishedCallback;
 
   constructor({
     authToken,
@@ -56,6 +64,7 @@ class Proxy {
     connEndTime = 1000,
     connPunchIntervalTime = 1000,
     connKeepAliveIntervalTime = 1000,
+    connectionEstablishedCallback = () => {},
     logger,
   }: {
     authToken: string;
@@ -64,6 +73,7 @@ class Proxy {
     connEndTime?: number;
     connPunchIntervalTime?: number;
     connKeepAliveIntervalTime?: number;
+    connectionEstablishedCallback?: ConnectionEstablishedCallback;
     logger?: Logger;
   }) {
     this.logger = logger ?? new Logger(Proxy.name);
@@ -77,6 +87,7 @@ class Proxy {
     this.server = http.createServer();
     this.server.on('request', this.handleRequest);
     this.server.on('connect', this.handleConnectForward);
+    this.connectionEstablishedCallback = connectionEstablishedCallback;
     this.logger.info(`Created ${Proxy.name}`);
   }
 
@@ -521,6 +532,14 @@ class Proxy {
       timer,
     );
     conn.compose(clientSocket);
+    // With the connection composed without error we can assume that the
+    //  connection was established and verified
+    await this.connectionEstablishedCallback({
+      remoteNodeId: conn.getServerNodeIds()[0],
+      remoteHost: conn.host,
+      remotePort: conn.port,
+      type: 'forward',
+    });
   }
 
   protected async establishConnectionForward(
@@ -687,6 +706,14 @@ class Proxy {
       timer,
     );
     await conn.compose(utpConn, timer);
+    // With the connection composed without error we can assume that the
+    //  connection was established and verified
+    await this.connectionEstablishedCallback({
+      remoteNodeId: conn.getClientNodeIds()[0],
+      remoteHost: conn.host,
+      remotePort: conn.port,
+      type: 'reverse',
+    });
   }
 
   protected async establishConnectionReverse(
