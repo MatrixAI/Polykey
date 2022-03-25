@@ -55,31 +55,16 @@ class NodeManager {
   /**
    * Determines whether a node in the Polykey network is online.
    * @return true if online, false if offline
+   * @param nodeId - NodeId of the node we're pinging
+   * @param address - Optional Host and Port we want to ping
+   * @param timeout - Optional timeout
    */
-  // FIXME: We shouldn't be trying to find the node just to ping it
-  //  since we are usually pinging it during the find procedure anyway.
-  //  I think we should be providing the address of what we're trying to ping,
-  //  possibly make it an optional parameter?
-  public async pingNode(targetNodeId: NodeId): Promise<boolean> {
-    const targetAddress: NodeAddress =
-      await this.nodeConnectionManager.findNode(targetNodeId);
-    try {
-      // Attempt to open a connection via the forward proxy
-      // i.e. no NodeConnection object created (no need for GRPCClient)
-      await this.nodeConnectionManager.holePunchForward(
-        targetNodeId,
-        await networkUtils.resolveHost(targetAddress.host),
-        targetAddress.port,
-      );
-    } catch (e) {
-      // If the connection request times out, then return false
-      if (e instanceof networkErrors.ErrorConnectionStart) {
-        return false;
-      }
-      // Throw any other error back up the callstack
-      throw e;
-    }
-    return true;
+  public async pingNode(
+    nodeId: NodeId,
+    address?: NodeAddress,
+    timeout?: number,
+  ): Promise<boolean> {
+    return this.nodeConnectionManager.pingNode(nodeId, address, timeout);
   }
 
   /**
