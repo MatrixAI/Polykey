@@ -35,6 +35,7 @@ import * as GRPCErrors from '@/grpc/errors';
 import * as nodesUtils from '@/nodes/utils';
 import * as agentErrors from '@/agent/errors';
 import * as grpcUtils from '@/grpc/utils';
+import { timerStart } from '@/utils';
 import * as testNodesUtils from './utils';
 import * as testUtils from '../utils';
 import * as testGrpcUtils from '../grpc/utils';
@@ -490,7 +491,7 @@ describe(`${NodeConnection.name} test`, () => {
       // Have a nodeConnection try to connect to it
       const killSelf = jest.fn();
       nodeConnection = await NodeConnection.createNodeConnection({
-        connConnectTime: 500,
+        timer: timerStart(500),
         proxy: clientproxy,
         keyManager: clientKeyManager,
         logger: logger,
@@ -525,7 +526,7 @@ describe(`${NodeConnection.name} test`, () => {
         targetNodeId: targetNodeId,
         targetHost: '128.0.0.1' as Host,
         targetPort: 12345 as Port,
-        connConnectTime: 300,
+        timer: timerStart(300),
         proxy: clientproxy,
         keyManager: clientKeyManager,
         nodeConnectionManager: dummyNodeConnectionManager,
@@ -600,7 +601,7 @@ describe(`${NodeConnection.name} test`, () => {
       // Have a nodeConnection try to connect to it
       const killSelf = jest.fn();
       const nodeConnectionP = NodeConnection.createNodeConnection({
-        connConnectTime: 500,
+        timer: timerStart(500),
         proxy: clientproxy,
         keyManager: clientKeyManager,
         logger: logger,
@@ -643,7 +644,7 @@ describe(`${NodeConnection.name} test`, () => {
       // Have a nodeConnection try to connect to it
       const killSelf = jest.fn();
       const nodeConnectionP = NodeConnection.createNodeConnection({
-        connConnectTime: 500,
+        timer: timerStart(500),
         proxy: clientproxy,
         keyManager: clientKeyManager,
         logger: logger,
@@ -681,7 +682,7 @@ describe(`${NodeConnection.name} test`, () => {
       // Have a nodeConnection try to connect to it
       const killSelf = jest.fn();
       nodeConnection = await NodeConnection.createNodeConnection({
-        connConnectTime: 500,
+        timer: timerStart(500),
         proxy: clientproxy,
         keyManager: clientKeyManager,
         logger: logger,
@@ -743,7 +744,7 @@ describe(`${NodeConnection.name} test`, () => {
         const killSelfCheck = jest.fn();
         const killSelfP = promise<null>();
         nodeConnection = await NodeConnection.createNodeConnection({
-          connConnectTime: 2000,
+          timer: timerStart(2000),
           proxy: clientproxy,
           keyManager: clientKeyManager,
           logger: logger,
@@ -812,7 +813,7 @@ describe(`${NodeConnection.name} test`, () => {
         const killSelfCheck = jest.fn();
         const killSelfP = promise<null>();
         nodeConnection = await NodeConnection.createNodeConnection({
-          connConnectTime: 2000,
+          timer: timerStart(2000),
           proxy: clientproxy,
           keyManager: clientKeyManager,
           logger: logger,

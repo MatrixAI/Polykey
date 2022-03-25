@@ -12,7 +12,7 @@ import {
 } from '@/proto/js/polykey/v1/client_service_grpc_pb';
 import { createClientService } from '@/client';
 import PolykeyClient from '@/PolykeyClient';
-import { promisify } from '@/utils';
+import { promisify, timerStart } from '@/utils';
 import * as grpcUtils from '@/grpc/utils';
 
 async function openTestClientServer({
@@ -81,7 +81,7 @@ async function openTestClientClient(
     port: port,
     fs,
     logger,
-    timeout: 30000,
+    timer: timerStart(30000),
   });
 
   return pkc;

@@ -5,6 +5,7 @@ import type { Certificate, PublicKey, PublicKeyPem } from '../keys/types';
 import type Proxy from '../network/Proxy';
 import type GRPCClient from '../grpc/GRPCClient';
 import type NodeConnectionManager from './NodeConnectionManager';
+import type { Timer } from '../types';
 import Logger from '@matrixai/logger';
 import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
 import * as asyncInit from '@matrixai/async-init';
@@ -38,7 +39,7 @@ class NodeConnection<T extends GRPCClient> {
     targetHost,
     targetPort,
     targetHostname,
-    connConnectTime = 20000,
+    timer,
     proxy,
     keyManager,
     clientFactory,
@@ -50,7 +51,7 @@ class NodeConnection<T extends GRPCClient> {
     targetHost: Host;
     targetPort: Port;
     targetHostname?: Hostname;
-    connConnectTime?: number;
+    timer?: Timer;
     proxy: Proxy;
     keyManager: KeyManager;
     clientFactory: (...args) => Promise<T>;
@@ -125,7 +126,7 @@ class NodeConnection<T extends GRPCClient> {
               await nodeConnection.destroy();
             }
           },
-          timeout: connConnectTime,
+          timer: timer,
         }),
         holePunchPromises,
       ]);

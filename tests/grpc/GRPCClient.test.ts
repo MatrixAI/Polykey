@@ -16,6 +16,7 @@ import * as keysUtils from '@/keys/utils';
 import * as grpcErrors from '@/grpc/errors';
 import * as clientUtils from '@/client/utils';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
+import { timerStart } from '@/utils';
 import * as utils from './utils';
 import * as testNodesUtils from '../nodes/utils';
 
@@ -109,7 +110,7 @@ describe('GRPCClient', () => {
         keyPrivatePem: keysUtils.privateKeyToPem(clientKeyPair.privateKey),
         certChainPem: keysUtils.certToPem(clientCert),
       },
-      timeout: 1000,
+      timer: timerStart(1000),
       logger,
     });
     await client.destroy();
@@ -123,7 +124,7 @@ describe('GRPCClient', () => {
         keyPrivatePem: keysUtils.privateKeyToPem(clientKeyPair.privateKey),
         certChainPem: keysUtils.certToPem(clientCert),
       },
-      timeout: 1000,
+      timer: timerStart(1000),
       logger,
     });
     const m = new utilsPB.EchoMessage();
@@ -156,7 +157,7 @@ describe('GRPCClient', () => {
         certChainPem: keysUtils.certToPem(clientCert),
       },
       session,
-      timeout: 1000,
+      timer: timerStart(1000),
       logger,
     });
     let pCall: PromiseUnaryCall<utilsPB.EchoMessage>;
@@ -192,7 +193,7 @@ describe('GRPCClient', () => {
         keyPrivatePem: keysUtils.privateKeyToPem(clientKeyPair.privateKey),
         certChainPem: keysUtils.certToPem(clientCert),
       },
-      timeout: 1000,
+      timer: timerStart(1000),
       logger,
     });
     const challenge = 'f9s8d7f4';
@@ -235,7 +236,7 @@ describe('GRPCClient', () => {
         certChainPem: keysUtils.certToPem(clientCert),
       },
       session,
-      timeout: 1000,
+      timer: timerStart(1000),
       logger,
     });
     const challenge = 'f9s8d7f4';
@@ -260,7 +261,7 @@ describe('GRPCClient', () => {
         keyPrivatePem: keysUtils.privateKeyToPem(clientKeyPair.privateKey),
         certChainPem: keysUtils.certToPem(clientCert),
       },
-      timeout: 1000,
+      timer: timerStart(1000),
       logger,
     });
     const [stream, response] = client.clientStream();
@@ -298,7 +299,7 @@ describe('GRPCClient', () => {
         certChainPem: keysUtils.certToPem(clientCert),
       },
       session,
-      timeout: 1000,
+      timer: timerStart(1000),
       logger,
     });
     const [stream] = client.clientStream();
@@ -321,7 +322,7 @@ describe('GRPCClient', () => {
         keyPrivatePem: keysUtils.privateKeyToPem(clientKeyPair.privateKey),
         certChainPem: keysUtils.certToPem(clientCert),
       },
-      timeout: 1000,
+      timer: timerStart(1000),
       logger,
     });
     const stream = client.duplexStream();
@@ -356,7 +357,7 @@ describe('GRPCClient', () => {
         certChainPem: keysUtils.certToPem(clientCert),
       },
       session,
-      timeout: 1000,
+      timer: timerStart(1000),
       logger,
     });
     const stream = client.duplexStream();

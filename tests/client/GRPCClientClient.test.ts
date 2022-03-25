@@ -11,6 +11,7 @@ import Session from '@/sessions/Session';
 import * as keysUtils from '@/keys/utils';
 import * as clientErrors from '@/client/errors';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
+import { timerStart } from '@/utils';
 import * as testClientUtils from './utils';
 import * as testUtils from '../utils';
 
@@ -76,7 +77,7 @@ describe(GRPCClientClient.name, () => {
       port: port as Port,
       tlsConfig: { keyPrivatePem: undefined, certChainPem: undefined },
       logger: logger,
-      timeout: 10000,
+      timer: timerStart(10000),
       session: session,
     });
     await client.destroy();

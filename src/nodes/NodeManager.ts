@@ -7,6 +7,7 @@ import type Sigchain from '../sigchain/Sigchain';
 import type { ChainData, ChainDataEncoded } from '../sigchain/types';
 import type { NodeId, NodeAddress, NodeBucket } from '../nodes/types';
 import type { ClaimEncoded } from '../claims/types';
+import type { Timer } from '../types';
 import Logger from '@matrixai/logger';
 import { getUnixtime } from '@/utils';
 import * as nodesErrors from './errors';
