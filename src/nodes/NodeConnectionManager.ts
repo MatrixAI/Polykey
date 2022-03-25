@@ -26,6 +26,7 @@ import * as networkUtils from '../network/utils';
 import * as agentErrors from '../agent/errors';
 import * as grpcErrors from '../grpc/errors';
 import * as nodesPB from '../proto/js/polykey/v1/nodes/nodes_pb';
+import { timerStart } from '../utils';
 
 type ConnectionAndTimer = {
   connection: NodeConnection<GRPCClientAgent>;
@@ -123,14 +124,22 @@ class NodeConnectionManager {
    * itself is such that we can pass targetNodeId as a parameter (as opposed to
    * an acquire function with no parameters).
    * @param targetNodeId Id of target node to communicate with
+   * @param timer Connection timeout timer
+   * @param address Optional address to connect to
    * @returns ResourceAcquire Resource API for use in with contexts
    */
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
   public async acquireConnection(
     targetNodeId: NodeId,
+    timer?: Timer,
+    address?: NodeAddress,
   ): Promise<ResourceAcquire<NodeConnection<GRPCClientAgent>>> {
     return async () => {
-      const { connection, timer } = await this.getConnection(targetNodeId);
+      const { connection, timer } = await this.getConnection(
+        targetNodeId,
+        address,
+        timer,
+      );
       // Acquire the read lock and the release function
       const [release] = await this.connectionLocks.lock([
         targetNodeId.toString(),
@@ -164,14 +173,16 @@ class NodeConnectionManager {
    * for use with normal arrow function
    * @param targetNodeId Id of target node to communicate with
    * @param f Function to handle communication
+   * @param timer Connection timeout timer
    */
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
   public async withConnF<T>(
     targetNodeId: NodeId,
     f: (conn: NodeConnection<GRPCClientAgent>) => Promise<T>,
+    timer?: Timer,
   ): Promise<T> {
     return await withF(
-      [await this.acquireConnection(targetNodeId)],
+      [await this.acquireConnection(targetNodeId, timer, undefined)],
       async ([conn]) => {
         this.logger.info(
           `withConnF calling function with connection to ${nodesUtils.encodeNodeId(
@@ -190,6 +201,7 @@ class NodeConnectionManager {
    * for use with a generator function
    * @param targetNodeId Id of target node to communicate with
    * @param g Generator function to handle communication
+   * @param timer Connection timeout timer
    */
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
   public async *withConnG<T, TReturn, TNext>(
@@ -197,8 +209,13 @@ class NodeConnectionManager {
     g: (
       conn: NodeConnection<GRPCClientAgent>,
     ) => AsyncGenerator<T, TReturn, TNext>,
+    timer?: Timer,
   ): AsyncGenerator<T, TReturn, TNext> {
-    const acquire = await this.acquireConnection(targetNodeId);
+    const acquire = await this.acquireConnection(
+      targetNodeId,
+      timer,
+      undefined,
+    );
     const [release, conn] = await acquire();
     let caughtError;
     try {
@@ -216,10 +233,14 @@ class NodeConnectionManager {
    * Create a connection to another node (without performing any function).
    * This is a NOOP if a connection already exists.
    * @param targetNodeId Id of node we are creating connection to
-   * @returns ConnectionAndLock that was created or exists in the connection map.
+   * @param address Optional address to connect to
+   * @param timer Connection timeout timer
+   * @returns ConnectionAndLock that was created or exists in the connection map
    */
   protected async getConnection(
     targetNodeId: NodeId,
+    address?: NodeAddress,
+    timer?: Timer,
   ): Promise<ConnectionAndTimer> {
     this.logger.info(
       `Getting connection to ${nodesUtils.encodeNodeId(targetNodeId)}`,
@@ -273,7 +294,7 @@ class NodeConnectionManager {
           keyManager: this.keyManager,
           nodeConnectionManager: this,
           destroyCallback,
-          connConnectTime: this.connConnectTime,
+          timer: timer ?? timerStart(this.connConnectTime),
           logger: this.logger.getChild(
             `${NodeConnection.name} ${targetHost}:${targetAddress.port}`,
           ),
@@ -281,13 +302,13 @@ class NodeConnectionManager {
             GRPCClientAgent.createGRPCClientAgent(args),
         });
         // Creating TTL timeout
-        const timer = setTimeout(async () => {
+        const timeToLiveTimer = setTimeout(async () => {
           await this.destroyConnection(targetNodeId);
         }, this.connTimeoutTime);
 
         const newConnAndTimer: ConnectionAndTimer = {
           connection: newConnection,
-          timer: timer,
+          timer: timeToLiveTimer,
         };
         this.connections.set(targetNodeIdString, newConnAndTimer);
         return newConnAndTimer;
@@ -396,11 +417,13 @@ class NodeConnectionManager {
    * port).
    * @param targetNodeId ID of the node attempting to be found (i.e. attempting
    * to find its IP address and port)
+   * @param timer Connection timeout timer
    * @returns whether the target node was located in the process
    */
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
   public async getClosestGlobalNodes(
     targetNodeId: NodeId,
+    timer?: Timer,
   ): Promise<NodeAddress | undefined> {
     // Let foundTarget: boolean = false;
     let foundAddress: NodeAddress | undefined = undefined;
@@ -441,7 +464,7 @@ class NodeConnectionManager {
         // call to getConnectionToNode
         // FIXME: no tran
         await this.nodeGraph.setNode(nextNodeId, nextNodeAddress.address);
-        await this.getConnection(nextNodeId);
+        await this.getConnection(nextNodeId, undefined, timer);
       } catch (e) {
         // If we can't connect to the node, then skip it
         continue;
@@ -451,11 +474,12 @@ class NodeConnectionManager {
       const foundClosest = await this.getRemoteNodeClosestNodes(
         nextNodeId,
         targetNodeId,
+        timer,
       );
       // Check to see if any of these are the target node. At the same time, add
       // them to the shortlist
       for (const [nodeId, nodeData] of foundClosest) {
-        // Ignore any nodes that have been contacted
+        // Ignore a`ny nodes that have been contacted
         if (contacted[nodeId]) {
           continue;
         }
@@ -494,40 +518,46 @@ class NodeConnectionManager {
    * target node ID.
    * @param nodeId the node ID to search on
    * @param targetNodeId the node ID to find other nodes closest to it
+   * @param timer Connection timeout timer
    * @returns list of nodes and their IP/port that are closest to the target
    */
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
   public async getRemoteNodeClosestNodes(
     nodeId: NodeId,
     targetNodeId: NodeId,
+    timer?: Timer,
   ): Promise<Array<[NodeId, NodeData]>> {
     // Construct the message
     const nodeIdMessage = new nodesPB.Node();
     nodeIdMessage.setNodeId(nodesUtils.encodeNodeId(targetNodeId));
     // Send through client
-    return this.withConnF(nodeId, async (connection) => {
-      const client = await connection.getClient();
-      const response = await client.nodesClosestLocalNodesGet(nodeIdMessage);
-      const nodes: Array<[NodeId, NodeData]> = [];
-      // Loop over each map element (from the returned response) and populate nodes
-      response.getNodeTableMap().forEach((address, nodeIdString: string) => {
-        const nodeId = nodesUtils.decodeNodeId(nodeIdString);
-        // If the nodeId is not valid we don't add it to the list of nodes
-        if (nodeId != null) {
-          nodes.push([
-            nodeId,
-            {
-              address: {
-                host: address.getHost() as Host | Hostname,
-                port: address.getPort() as Port,
+    return this.withConnF(
+      nodeId,
+      async (connection) => {
+        const client = await connection.getClient();
+        const response = await client.nodesClosestLocalNodesGet(nodeIdMessage);
+        const nodes: Array<[NodeId, NodeData]> = [];
+        // Loop over each map element (from the returned response) and populate nodes
+        response.getNodeTableMap().forEach((address, nodeIdString: string) => {
+          const nodeId = nodesUtils.decodeNodeId(nodeIdString);
+          // If the nodeId is not valid we don't add it to the list of nodes
+          if (nodeId != null) {
+            nodes.push([
+              nodeId,
+              {
+                address: {
+                  host: address.getHost() as Host | Hostname,
+                  port: address.getPort() as Port,
+                },
+                lastUpdated: 0, // FIXME?
               },
-              lastUpdated: 0, // FIXME?
-            },
-          ]);
-        }
-      });
-      return nodes;
-    });
+            ]);
+          }
+        });
+        return nodes;
+      },
+      timer,
+    );
   }
 
   /**
@@ -541,13 +571,14 @@ class NodeConnectionManager {
    * This has been removed from start() as there's a chicken-egg scenario
    * where we require the NodeGraph instance to be created in order to get
    * connections.
+   * @param timer Connection timeout timer
    */
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
-  public async syncNodeGraph() {
+  public async syncNodeGraph(timer?: Timer) {
     for (const seedNodeId of this.getSeedNodes()) {
       // Check if the connection is viable
       try {
-        await this.getConnection(seedNodeId);
+        await this.getConnection(seedNodeId, undefined, timer);
       } catch (e) {
         if (e instanceof nodesErrors.ErrorNodeConnectionTimeout) continue;
         throw e;
@@ -556,6 +587,7 @@ class NodeConnectionManager {
       const nodes = await this.getRemoteNodeClosestNodes(
         seedNodeId,
         this.keyManager.getNodeId(),
+        timer,
       );
       for (const [nodeId, nodeData] of nodes) {
         // FIXME: this should be the `nodeManager.setNode`
@@ -574,6 +606,7 @@ class NodeConnectionManager {
    * @param targetNodeId node ID of the target node to hole punch
    * @param proxyAddress string of address in the form `proxyHost:proxyPort`
    * @param signature signature to verify source node is sender (signature based
+   * @param timer Connection timeout timer
    * on proxyAddress as message)
    */
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
@@ -583,16 +616,21 @@ class NodeConnectionManager {
     targetNodeId: NodeId,
     proxyAddress: string,
     signature: Buffer,
+    timer?: Timer,
   ): Promise<void> {
     const relayMsg = new nodesPB.Relay();
     relayMsg.setSrcId(nodesUtils.encodeNodeId(sourceNodeId));
     relayMsg.setTargetId(nodesUtils.encodeNodeId(targetNodeId));
     relayMsg.setProxyAddress(proxyAddress);
     relayMsg.setSignature(signature.toString());
-    await this.withConnF(relayNodeId, async (connection) => {
-      const client = connection.getClient();
-      await client.nodesHolePunchMessageSend(relayMsg);
-    });
+    await this.withConnF(
+      relayNodeId,
+      async (connection) => {
+        const client = connection.getClient();
+        await client.nodesHolePunchMessageSend(relayMsg);
+      },
+      timer,
+    );
   }
 
   /**
@@ -602,15 +640,20 @@ class NodeConnectionManager {
    * node).
    * @param message the original relay message (assumed to be created in
    * nodeConnection.start())
+   * @param timer Connection timeout timer
    */
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
-  public async relayHolePunchMessage(message: nodesPB.Relay): Promise<void> {
+  public async relayHolePunchMessage(
+    message: nodesPB.Relay,
+    timer?: Timer,
+  ): Promise<void> {
     await this.sendHolePunchMessage(
       validationUtils.parseNodeId(message.getTargetId()),
       validationUtils.parseNodeId(message.getSrcId()),
       validationUtils.parseNodeId(message.getTargetId()),
       message.getProxyAddress(),
       Buffer.from(message.getSignature()),
+      timer,
     );
   }
 

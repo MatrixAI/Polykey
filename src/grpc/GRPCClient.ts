@@ -9,6 +9,7 @@ import type {
 import type { NodeId } from '../nodes/types';
 import type { Certificate } from '../keys/types';
 import type { Host, Port, TLSConfig, ProxyConfig } from '../network/types';
+import type { Timer } from '../types';
 import http2 from 'http2';
 import Logger from '@matrixai/logger';
 import * as grpc from '@grpc/grpc-js';
@@ -44,7 +45,7 @@ abstract class GRPCClient<T extends Client = Client> {
     port,
     tlsConfig,
     proxyConfig,
-    timeout = Infinity,
+    timer,
     interceptors = [],
     logger = new Logger(this.name),
   }: {
@@ -58,7 +59,7 @@ abstract class GRPCClient<T extends Client = Client> {
     port: Port;
     tlsConfig?: Partial<TLSConfig>;
     proxyConfig?: ProxyConfig;
-    timeout?: number;
+    timer?: Timer;
     interceptors?: Array<Interceptor>;
     logger?: Logger;
   }): Promise<{
@@ -123,9 +124,17 @@ abstract class GRPCClient<T extends Client = Client> {
     }
     const waitForReady = promisify(client.waitForReady).bind(client);
     // Add the current unix time because grpc expects the milliseconds since unix epoch
-    timeout += Date.now();
     try {
-      await waitForReady(timeout);
+      if (timer != null) {
+        await Promise.race([timer.timerP, waitForReady(Infinity)]);
+        // If the timer resolves first we throw a timeout error
+        if (timer?.timedOut === true) {
+          throw new grpcErrors.ErrorGRPCClientTimeout();
+        }
+      } else {
+        // No timer given so we wait forever
+        await waitForReady(Infinity);
+      }
     } catch (e) {
       // If we fail here then we leak the client object...
       client.close();
