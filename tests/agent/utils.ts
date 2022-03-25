@@ -19,6 +19,7 @@ import {
   createAgentService,
   GRPCClientAgent,
 } from '@/agent';
+import { timerStart } from '@/utils';
 import * as testNodesUtils from '../nodes/utils';
 
 async function openTestAgentServer({
@@ -94,7 +95,7 @@ async function openTestAgentClient(
     logger: logger,
     destroyCallback: async () => {},
     proxyConfig,
-    timeout: 30000,
+    timer: timerStart(30000),
   });
 }
 

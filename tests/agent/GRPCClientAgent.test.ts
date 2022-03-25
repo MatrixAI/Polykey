@@ -21,6 +21,7 @@ import NotificationsManager from '@/notifications/NotificationsManager';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as agentErrors from '@/agent/errors';
 import * as keysUtils from '@/keys/utils';
+import { timerStart } from '@/utils';
 import * as testAgentUtils from './utils';
 
 describe(GRPCClientAgent.name, () => {
@@ -257,7 +258,7 @@ describe(GRPCClientAgent.name, () => {
           port: clientProxy1.getForwardPort(),
           authToken: clientProxy1.authToken,
         },
-        timeout: 5000,
+        timer: timerStart(5000),
         logger,
       });
 
@@ -291,7 +292,7 @@ describe(GRPCClientAgent.name, () => {
           port: clientProxy2.getForwardPort(),
           authToken: clientProxy2.authToken,
         },
-        timeout: 5000,
+        timer: timerStart(5000),
       });
     });
     afterEach(async () => {

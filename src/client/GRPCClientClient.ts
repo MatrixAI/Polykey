@@ -14,6 +14,7 @@ import type * as identitiesPB from '../proto/js/polykey/v1/identities/identities
 import type * as keysPB from '../proto/js/polykey/v1/keys/keys_pb';
 import type * as permissionsPB from '../proto/js/polykey/v1/permissions/permissions_pb';
 import type * as secretsPB from '../proto/js/polykey/v1/secrets/secrets_pb';
+import type { Timer } from '../types';
 import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
 import Logger from '@matrixai/logger';
 import * as clientErrors from './errors';
@@ -38,7 +39,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     tlsConfig,
     proxyConfig,
     session,
-    timeout = Infinity,
+    timer,
     destroyCallback = async () => {},
     logger = new Logger(this.name),
   }: {
@@ -48,7 +49,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     tlsConfig?: Partial<TLSConfig>;
     proxyConfig?: ProxyConfig;
     session?: Session;
-    timeout?: number;
+    timer?: Timer;
     destroyCallback?: () => Promise<void>;
     logger?: Logger;
   }): Promise<GRPCClientClient> {
@@ -64,7 +65,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         port,
         tlsConfig,
         proxyConfig,
-        timeout,
+        timer,
         interceptors,
         logger,
       });

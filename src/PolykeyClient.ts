@@ -1,4 +1,4 @@
-import type { FileSystem } from './types';
+import type { FileSystem, Timer } from './types';
 import type { NodeId } from './nodes/types';
 import type { Host, Port } from './network/types';
 
@@ -29,7 +29,7 @@ class PolykeyClient {
     nodePath = config.defaults.nodePath,
     session,
     grpcClient,
-    timeout,
+    timer,
     fs = require('fs'),
     logger = new Logger(this.name),
     fresh = false,
@@ -38,7 +38,7 @@ class PolykeyClient {
     host: Host;
     port: Port;
     nodePath?: string;
-    timeout?: number;
+    timer?: Timer;
     session?: Session;
     grpcClient?: GRPCClientClient;
     fs?: FileSystem;
@@ -66,7 +66,7 @@ class PolykeyClient {
         port,
         tlsConfig: { keyPrivatePem: undefined, certChainPem: undefined },
         session,
-        timeout,
+        timer,
         logger: logger.getChild(GRPCClientClient.name),
       }));
     const pkClient = new PolykeyClient({
