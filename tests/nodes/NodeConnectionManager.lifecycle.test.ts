@@ -1,4 +1,9 @@
-import type { NodeId, NodeIdString, SeedNodes } from '@/nodes/types';
+import type {
+  NodeAddress,
+  NodeId,
+  NodeIdString,
+  SeedNodes,
+} from '@/nodes/types';
 import type { Host, Port } from '@/network/types';
 import fs from 'fs';
 import path from 'path';
@@ -100,7 +105,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       password,
       nodePath: path.join(dataDir2, 'remoteNode1'),
       networkConfig: {
-        proxyHost: '127.0.0.1' as Host,
+        proxyHost: serverHost,
       },
       logger: logger.getChild('remoteNode1'),
     });
@@ -110,7 +115,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       password,
       nodePath: path.join(dataDir2, 'remoteNode2'),
       networkConfig: {
-        proxyHost: '127.0.0.1' as Host,
+        proxyHost: serverHost,
       },
       logger: logger.getChild('remoteNode2'),
     });
@@ -496,6 +501,161 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       }
     } finally {
       // Clean up
+      await nodeConnectionManager?.stop();
+    }
+  });
+
+  // New ping tests
+  test('should ping node', async () => {
+    // NodeConnectionManager under test
+    let nodeConnectionManager: NodeConnectionManager | undefined;
+    try {
+      nodeConnectionManager = new NodeConnectionManager({
+        keyManager,
+        nodeGraph,
+        proxy,
+        logger: nodeConnectionManagerLogger,
+      });
+      await nodeConnectionManager.start();
+      // @ts-ignore: kidnap connections
+      const connections = nodeConnectionManager.connections;
+      await expect(nodeConnectionManager.pingNode(remoteNodeId1)).resolves.toBe(
+        true,
+      );
+      const finalConnLock = connections.get(
+        remoteNodeId1.toString() as NodeIdString,
+      );
+      // Check entry is in map and lock is released
+      expect(finalConnLock).toBeDefined();
+      expect(finalConnLock?.lock.isLocked()).toBeFalsy();
+    } finally {
+      await nodeConnectionManager?.stop();
+    }
+  });
+  test('should ping node with address', async () => {
+    // NodeConnectionManager under test
+    let nodeConnectionManager: NodeConnectionManager | undefined;
+    try {
+      nodeConnectionManager = new NodeConnectionManager({
+        keyManager,
+        nodeGraph,
+        proxy,
+        logger: nodeConnectionManagerLogger,
+      });
+      await nodeConnectionManager.start();
+      const remoteNodeAddress1: NodeAddress = {
+        host: remoteNode1.proxy.getProxyHost(),
+        port: remoteNode1.proxy.getProxyPort(),
+      };
+      await nodeConnectionManager.pingNode(remoteNodeId1, remoteNodeAddress1);
+    } finally {
+      await nodeConnectionManager?.stop();
+    }
+  });
+  test('should ping node with address when connection exists', async () => {
+    // NodeConnectionManager under test
+    let nodeConnectionManager: NodeConnectionManager | undefined;
+    try {
+      nodeConnectionManager = new NodeConnectionManager({
+        keyManager,
+        nodeGraph,
+        proxy,
+        logger: nodeConnectionManagerLogger,
+      });
+      await nodeConnectionManager.start();
+      const remoteNodeAddress1: NodeAddress = {
+        host: remoteNode1.proxy.getProxyHost(),
+        port: remoteNode1.proxy.getProxyPort(),
+      };
+      await nodeConnectionManager.withConnF(remoteNodeId1, nop);
+      await nodeConnectionManager.pingNode(remoteNodeId1, remoteNodeAddress1);
+    } finally {
+      await nodeConnectionManager?.stop();
+    }
+  });
+  test('should fail to ping non existent node', async () => {
+    // NodeConnectionManager under test
+    let nodeConnectionManager: NodeConnectionManager | undefined;
+    try {
+      nodeConnectionManager = new NodeConnectionManager({
+        keyManager,
+        nodeGraph,
+        proxy,
+        logger: nodeConnectionManagerLogger,
+      });
+      await nodeConnectionManager.start();
+
+      // Pinging node
+      expect(
+        await nodeConnectionManager.pingNode(
+          remoteNodeId1,
+          { host: '127.1.2.3' as Host, port: 55555 as Port },
+          timerStart(1000),
+        ),
+      ).toEqual(false);
+    } finally {
+      await nodeConnectionManager?.stop();
+    }
+  });
+  test('should fail to ping node with wrong address when connection exists', async () => {
+    // NodeConnectionManager under test
+    let nodeConnectionManager: NodeConnectionManager | undefined;
+    try {
+      nodeConnectionManager = new NodeConnectionManager({
+        keyManager,
+        nodeGraph,
+        proxy,
+        logger: nodeConnectionManagerLogger,
+      });
+      await nodeConnectionManager.start();
+      await nodeConnectionManager.withConnF(remoteNodeId1, nop);
+      expect(
+        await nodeConnectionManager.pingNode(
+          remoteNodeId1,
+          { host: '127.1.2.3' as Host, port: 55555 as Port },
+          timerStart(1000),
+        ),
+      ).toEqual(false);
+    } finally {
+      await nodeConnectionManager?.stop();
+    }
+  });
+  test('should fail to ping node if NodeId does not match', async () => {
+    // NodeConnectionManager under test
+    let nodeConnectionManager: NodeConnectionManager | undefined;
+    try {
+      nodeConnectionManager = new NodeConnectionManager({
+        keyManager,
+        nodeGraph,
+        proxy,
+        logger: nodeConnectionManagerLogger,
+      });
+      await nodeConnectionManager.start();
+      const remoteNodeAddress1: NodeAddress = {
+        host: remoteNode1.proxy.getProxyHost(),
+        port: remoteNode1.proxy.getProxyPort(),
+      };
+      const remoteNodeAddress2: NodeAddress = {
+        host: remoteNode2.proxy.getProxyHost(),
+        port: remoteNode2.proxy.getProxyPort(),
+      };
+
+      expect(
+        await nodeConnectionManager.pingNode(
+          remoteNodeId1,
+          remoteNodeAddress2,
+          timerStart(1000),
+        ),
+      ).toEqual(false);
+
+      expect(
+        await nodeConnectionManager.pingNode(
+          remoteNodeId2,
+          remoteNodeAddress1,
+          timerStart(1000),
+        ),
+      ).toEqual(false);
+    } finally {
       await nodeConnectionManager?.stop();
     }
   });

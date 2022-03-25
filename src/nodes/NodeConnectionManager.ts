@@ -666,6 +666,50 @@ class NodeConnectionManager {
       (nodeIdEncoded) => nodesUtils.decodeNodeId(nodeIdEncoded)!,
     );
   }
+
+  /**
+   * Checks if a connection can be made to the target. Returns true if the
+   * connection can be authenticated, it's certificate matches the nodeId and
+   * the addresses match if provided. Otherwise returns false.
+   * @param nodeId - NodeId of the target
+   * @param address - Optional address of the target
+   * @param connConnectTime - Optional timeout for making the connection.
+   */
+  @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
+  public async pingNode(
+    nodeId: NodeId,
+    address?: NodeAddress,
+    connConnectTime?: number,
+  ): Promise<boolean> {
+    // If we can create a connection then we have punched though the NAT,
+    // authenticated and confimed the nodeId matches
+    let connAndLock: ConnectionAndLock;
+    try {
+      connAndLock = await this.createConnection(
+        nodeId,
+        address,
+        connConnectTime,
+      );
+    } catch (e) {
+      if (
+        e instanceof nodesErrors.ErrorNodeConnectionDestroyed ||
+        e instanceof nodesErrors.ErrorNodeConnectionTimeout ||
+        e instanceof grpcErrors.ErrorGRPC ||
+        e instanceof agentErrors.ErrorAgentClientDestroyed
+      ) {
+        // Failed to connect, returning false
+        return false;
+      }
+      throw e;
+    }
+    const remoteHost = connAndLock.connection?.host;
+    const remotePort = connAndLock.connection?.port;
+    // If address wasn't set then nothing to check
+    if (address == null) return true;
+    // Check if the address information match in case there was an
+    // existing connection
+    return address.host === remoteHost && address.port === remotePort;
+  }
 }
 
 export default NodeConnectionManager;
