@@ -17,6 +17,7 @@ import * as nodesUtils from '@/nodes/utils';
 import * as nodesErrors from '@/nodes/errors';
 import * as keysUtils from '@/keys/utils';
 import * as grpcUtils from '@/grpc/utils';
+import { timerStart } from '@/utils';
 
 describe(`${NodeConnectionManager.name} lifecycle test`, () => {
   const logger = new Logger(

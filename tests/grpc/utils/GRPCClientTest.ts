@@ -5,6 +5,7 @@ import type { Host, Port, TLSConfig, ProxyConfig } from '@/network/types';
 import type * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import type { ClientReadableStream } from '@grpc/grpc-js/build/src/call';
 import type { AsyncGeneratorReadableStreamClient } from '@/grpc/types';
+import type { Timer } from '@/types';
 import Logger from '@matrixai/logger';
 import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
 import GRPCClient from '@/grpc/GRPCClient';
@@ -22,7 +23,7 @@ class GRPCClientTest extends GRPCClient<TestServiceClient> {
     tlsConfig,
     proxyConfig,
     session,
-    timeout = Infinity,
+    timer,
     destroyCallback,
     logger = new Logger(this.name),
   }: {
@@ -32,7 +33,7 @@ class GRPCClientTest extends GRPCClient<TestServiceClient> {
     tlsConfig?: TLSConfig;
     proxyConfig?: ProxyConfig;
     session?: Session;
-    timeout?: number;
+    timer?: Timer;
     destroyCallback?: () => Promise<void>;
     logger?: Logger;
   }): Promise<GRPCClientTest> {
@@ -48,7 +49,7 @@ class GRPCClientTest extends GRPCClient<TestServiceClient> {
       port,
       tlsConfig,
       proxyConfig,
-      timeout,
+      timer,
       interceptors,
       logger,
     });
