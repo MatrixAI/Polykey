@@ -21,6 +21,9 @@ in
       set +o allexport
       set -v
 
+      # Enables npm link to work
+      export npm_config_prefix=~/.npm
+
       export PATH="$(pwd)/dist/bin:$(npm bin):$PATH"
 
       # pkg is installed in package.json
