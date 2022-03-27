@@ -193,7 +193,7 @@ class PolykeyAgent {
         }));
       // Remove your own node ID if provided as a seed node
       const nodeIdOwn = keyManager.getNodeId();
-      const nodeIdEncodedOwn = Object.keys(seedNodes).find(nodeIdEncoded => {
+      const nodeIdEncodedOwn = Object.keys(seedNodes).find((nodeIdEncoded) => {
         return nodeIdOwn.equals(nodesUtils.decodeNodeId(nodeIdEncoded)!);
       });
       if (nodeIdEncodedOwn != null) {

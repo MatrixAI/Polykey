@@ -81,7 +81,7 @@ class CommandStart extends CommandPolykey {
       // Will be '[{...}, false]' if `--seed-nodes='...'`
       const [seedNodes, defaults] = options.seedNodes;
       let seedNodes_ = seedNodes;
-      if (defaults) seedNodes_ = {...options.network, ...seedNodes};
+      if (defaults) seedNodes_ = { ...options.network, ...seedNodes };
       const agentConfig = {
         password,
         nodePath: options.nodePath,
