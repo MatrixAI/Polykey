@@ -57,14 +57,10 @@ class NodeManager {
    * @return true if online, false if offline
    * @param nodeId - NodeId of the node we're pinging
    * @param address - Optional Host and Port we want to ping
-   * @param timeout - Optional timeout
+   * @param timer Connection timeout timer
    */
-  public async pingNode(
-    nodeId: NodeId,
-    address?: NodeAddress,
-    timeout?: number,
-  ): Promise<boolean> {
-    return this.nodeConnectionManager.pingNode(nodeId, address, timeout);
+  public async pingNode(nodeId: NodeId, address?: NodeAddress, timer?: Timer): Promise<boolean> {
+    return this.nodeConnectionManager.pingNode(nodeId, address, timer);
   }
 
   /**
@@ -320,13 +316,23 @@ class NodeManager {
   /**
    * Adds a node to the node graph.
    * Updates the node if the node already exists.
-   *
+   * @param nodeId - Id of the node we wish to add
+   * @param nodeAddress - Expected address of the node we want to add
+   * @param authenticate - Flag for if we want to authenticate the node we're adding
+   * @param force - Flag for if we want to add the node without authenticating or if the bucket is full.
+   * This will drop the oldest node in favor of the new.
+   * @param timer Connection timeout timer
    */
   public async setNode(
     nodeId: NodeId,
     nodeAddress: NodeAddress,
-    force = false,
+    authenticate: boolean = true,
+    force: boolean = false,
+    timer?: Timer,
   ): Promise<void> {
+    // if we fail to ping and authenticate the new node we return
+    // skip if force is true or authenticate is false
+    if (!force && authenticate && !(await this.pingNode(nodeId, nodeAddress, timer))) return
     // When adding a node we need to handle 3 cases
     // 1. The node already exists. We need to update it's last updated field
     // 2. The node doesn't exist and bucket has room.
@@ -347,7 +353,7 @@ class NodeManager {
       // We want to add a node but the bucket is full
       // We need to ping the oldest node
       const oldestNodeId = (await this.nodeGraph.getOldestNode(bucketIndex))!;
-      if ((await this.pingNode(oldestNodeId)) && !force) {
+      if ((await this.pingNode(oldestNodeId, undefined, timer)) && !force) {
         // The node responded, we need to update it's info and drop the new node
         const oldestNode = (await this.nodeGraph.getNode(oldestNodeId))!;
         await this.nodeGraph.setNode(oldestNodeId, oldestNode.address);
