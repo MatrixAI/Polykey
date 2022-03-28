@@ -1,23 +1,32 @@
 import type {
+  DB,
+  DBTransaction,
+  KeyPath,
+  LevelPath
+} from '@matrixai/db';
+import type {
   PermissionId,
   PermissionIdString,
   Permission,
   VaultActions,
 } from './types';
-import type { DB, DBLevel, DBOp } from '@matrixai/db';
+import type { Locks } from '../locks';
 import type { NodeId } from '../nodes/types';
 import type { GestaltAction } from '../gestalts/types';
 import type { VaultAction, VaultId } from '../vaults/types';
 import type { Ref } from '../types';
-import { Mutex } from 'async-mutex';
+
 import Logger from '@matrixai/logger';
 import { IdInternal } from '@matrixai/id';
+import { RWLockWriter } from '@matrixai/async-locks';
 import {
   CreateDestroyStartStop,
   ready,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import * as aclUtils from './utils';
 import * as aclErrors from './errors';
+import { utils as dbUtils } from '@matrixai/db';
+import { withF } from '@matrixai/resources';
 
 interface ACL extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
@@ -27,15 +36,17 @@ interface ACL extends CreateDestroyStartStop {}
 class ACL {
   static async createACL({
     db,
+    locks,
     logger = new Logger(this.name),
     fresh = false,
   }: {
     db: DB;
+    locks: Locks;
     logger?: Logger;
     fresh?: boolean;
   }): Promise<ACL> {
     logger.info(`Creating ${this.name}`);
-    const acl = new ACL({ db, logger });
+    const acl = new ACL({ db, locks, logger });
     await acl.start({ fresh });
     logger.info(`Created ${this.name}`);
     return acl;
@@ -43,24 +54,55 @@ class ACL {
 
   protected logger: Logger;
   protected db: DB;
-  protected aclDbDomain: string = this.constructor.name;
-  protected aclPermsDbDomain: Array<string> = [this.aclDbDomain, 'perms'];
-  protected aclNodesDbDomain: Array<string> = [this.aclDbDomain, 'nodes'];
-  protected aclVaultsDbDomain: Array<string> = [this.aclDbDomain, 'vaults'];
-  protected aclDb: DBLevel;
-  protected aclPermsDb: DBLevel;
-  protected aclNodesDb: DBLevel;
-  protected aclVaultsDb: DBLevel;
-  protected lock: Mutex = new Mutex();
+  protected locks: Locks;
+
+  protected aclDbPath: LevelPath = [this.constructor.name];
+  /**
+   * Perms stores PermissionId -> Ref<Permission>
+   */
+  protected aclPermsDbPath: LevelPath = [this.constructor.name, 'perms'];
+  /**
+   * Nodes stores NodeId -> PermissionId
+   */
+  protected aclNodesDbPath: LevelPath = [this.constructor.name, 'nodes'];
+  /**
+   * Vaults stores VaultIdString -> Record<NodeId, null>
+   * note that the NodeId in each record must be in their own unique gestalt
+   * the NodeId in each record may be missing if it had been previously deleted
+   */
+  protected aclVaultsDbPath: LevelPath = [this.constructor.name, 'vaults'];
+
+  // lock across the usages of the DB
+  // it makes sense to use
+  // Symbol.for("key")
+  // symbol for is found in teh global registry, if it doesn't exist, it is added to the global registry and returned
+  // we can identify our locks by this
+  // to do this, we should have a global lock system in case we want to LOCK across multiple domains
+  // then other domains can also ensure those locks are being done as well
+  // and it is a like a PATH for a specific domain
+  // we can pass a keyPath
+  // and we can lock a level path
+  // well right now it can only be a keypath
+  // this.acquireLock(key: Buffer)
+  // and we identify our key buffer into a collection
+  // we can do a collection struce
+  // the symbols don't quite make sense, since we cannot attach a lock there anyway
+  // so we have to do this as well
+  // if it is not the DB problem we can just do this
+  // this.acquireLock()
+
+  // KeyPath | string | Buffer
+  // locking an entire level is an interesting idea
+  // then you could have a very specific locking system
+  // No more single mutex
+  // protected lock: Mutex = new Mutex();
+
   protected generatePermId: () => PermissionId;
 
-  constructor({ db, logger }: { db: DB; logger: Logger }) {
+  constructor({ db, locks, logger }: { db: DB; locks: Locks; logger: Logger }) {
     this.logger = logger;
     this.db = db;
-  }
-
-  get locked(): boolean {
-    return this.lock.isLocked();
+    this.locks = locks;
   }
 
   public async start({
@@ -69,22 +111,9 @@ class ACL {
     fresh?: boolean;
   } = {}): Promise<void> {
     this.logger.info(`Starting ${this.constructor.name}`);
-    const aclDb = await this.db.level(this.aclDbDomain);
-    // Perms stores PermissionId -> Ref<Permission>
-    const aclPermsDb = await this.db.level(this.aclPermsDbDomain[1], aclDb);
-    // Nodes stores NodeId -> PermissionId
-    const aclNodesDb = await this.db.level(this.aclNodesDbDomain[1], aclDb);
-    // Vaults stores VaultIdString -> Record<NodeId, null>
-    // note that the NodeId in each array must be in their own unique gestalt
-    // the NodeId in each array may be missing if it had been previously deleted
-    const aclVaultsDb = await this.db.level(this.aclVaultsDbDomain[1], aclDb);
     if (fresh) {
-      await aclDb.clear();
+      await this.db.clear(this.aclDbPath);
     }
-    this.aclDb = aclDb;
-    this.aclPermsDb = aclPermsDb;
-    this.aclNodesDb = aclNodesDb;
-    this.aclVaultsDb = aclVaultsDb;
     this.generatePermId = aclUtils.createPermIdGenerator();
     this.logger.info(`Started ${this.constructor.name}`);
   }
@@ -96,60 +125,36 @@ class ACL {
 
   public async destroy() {
     this.logger.info(`Destroying ${this.constructor.name}`);
-    const aclDb = await this.db.level(this.aclDbDomain);
-    await aclDb.clear();
+    await this.db.clear(this.aclDbPath);
     this.logger.info(`Destroyed ${this.constructor.name}`);
-  }
-
-  /**
-   * Run several operations within the same lock
-   * This does not ensure atomicity of the underlying database
-   * Database atomicity still depends on the underlying operation
-   */
-  @ready(new aclErrors.ErrorACLNotRunning())
-  public async transaction<T>(f: (acl: ACL) => Promise<T>): Promise<T> {
-    const release = await this.lock.acquire();
-    try {
-      return await f(this);
-    } finally {
-      release();
-    }
-  }
-
-  /**
-   * Transaction wrapper that will not lock if the operation was executed
-   * within a transaction context
-   */
-  @ready(new aclErrors.ErrorACLNotRunning())
-  public async _transaction<T>(f: () => Promise<T>): Promise<T> {
-    if (this.lock.isLocked()) {
-      return await f();
-    } else {
-      return await this.transaction(f);
-    }
   }
 
   @ready(new aclErrors.ErrorACLNotRunning())
   public async sameNodePerm(
     nodeId1: NodeId,
     nodeId2: NodeId,
+    tran?: DBTransaction,
   ): Promise<boolean> {
-    return await this._transaction(async () => {
-      const permId1 = await this.db.get(
-        this.aclNodesDbDomain,
-        nodeId1.toBuffer(),
-        true,
+    const nodeId1Path = [...this.aclNodesDbPath, nodeId1.toBuffer()] as unknown as KeyPath;
+    const nodeId2Path = [...this.aclNodesDbPath, nodeId2.toBuffer()] as unknown as KeyPath;
+    if (tran == null) {
+      return withF(
+        [
+          this.db.transaction(),
+          this.locks.lockRead(
+            dbUtils.keyPathToKey(nodeId1Path).toString('binary'),
+            dbUtils.keyPathToKey(nodeId2Path).toString('binary')
+          ),
+        ],
+        async ([tran]) => this.sameNodePerm(nodeId1, nodeId2, tran)
       );
-      const permId2 = await this.db.get(
-        this.aclNodesDbDomain,
-        nodeId2.toBuffer(),
-        true,
-      );
-      if (permId1 != null && permId2 != null && permId1 === permId2) {
-        return true;
-      }
-      return false;
-    });
+    }
+    const permId1 = await tran.get(nodeId1Path, true);
+    const permId2 = await tran.get(nodeId2Path, true);
+    if (permId1 != null && permId2 != null) {
+      return IdInternal.fromBuffer(permId1).equals(IdInternal.fromBuffer(permId2));
+    }
+    return false;
   }
 
   @ready(new aclErrors.ErrorACLNotRunning())

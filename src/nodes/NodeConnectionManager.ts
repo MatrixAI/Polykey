@@ -1,7 +1,7 @@
+import type { ResourceAcquire } from '@matrixai/resources';
 import type KeyManager from '../keys/KeyManager';
 import type Proxy from '../network/Proxy';
 import type { Host, Hostname, Port } from '../network/types';
-import type { ResourceAcquire } from '../utils';
 import type { Timer } from '../types';
 import type NodeGraph from './NodeGraph';
 import type {
@@ -24,12 +24,13 @@ import * as networkUtils from '../network/utils';
 import * as agentErrors from '../agent/errors';
 import * as grpcErrors from '../grpc/errors';
 import * as nodesPB from '../proto/js/polykey/v1/nodes/nodes_pb';
-import { RWLock, withF } from '../utils';
+import { withF } from '@matrixai/resources';
+import { RWLockWriter } from '@matrixai/async-locks';
 
 type ConnectionAndLock = {
   connection?: NodeConnection<GRPCClientAgent>;
   timer?: NodeJS.Timer;
-  lock: RWLock;
+  lock: RWLockWriter;
 };
 
 interface NodeConnectionManager extends StartStop {}
@@ -231,7 +232,7 @@ class NodeConnectionManager {
       `Getting connection to ${nodesUtils.encodeNodeId(targetNodeId)}`,
     );
     let connection: NodeConnection<GRPCClientAgent> | undefined;
-    let lock: RWLock;
+    let lock: RWLockWriter;
     let connAndLock = this.connections.get(
       targetNodeId.toString() as NodeIdString,
     );
@@ -260,7 +261,7 @@ class NodeConnectionManager {
         return await this.establishNodeConnection(targetNodeId, lock);
       });
     } else {
-      lock = new RWLock();
+      lock = new RWLockWriter();
       connAndLock = { lock };
       this.connections.set(
         targetNodeId.toString() as NodeIdString,
@@ -290,7 +291,7 @@ class NodeConnectionManager {
    */
   protected async establishNodeConnection(
     targetNodeId: NodeId,
-    lock: RWLock,
+    lock: RWLockWriter,
   ): Promise<ConnectionAndLock> {
     const targetAddress = await this.findNode(targetNodeId);
     // If the stored host is not a valid host (IP address), then we assume it to

@@ -1,4 +1,5 @@
 import type { DB, DBDomain, DBLevel } from '@matrixai/db';
+import type { ResourceAcquire } from '@matrixai/resources';
 import type {
   VaultId,
   VaultName,
@@ -15,9 +16,7 @@ import type NodeConnectionManager from '../nodes/NodeConnectionManager';
 import type GestaltGraph from '../gestalts/GestaltGraph';
 import type NotificationsManager from '../notifications/NotificationsManager';
 import type ACL from '../acl/ACL';
-
 import type { RemoteInfo } from './VaultInternal';
-import type { ResourceAcquire } from '../utils/context';
 import type { VaultAction } from './types';
 import path from 'path';
 import { PassThrough } from 'readable-stream';
@@ -28,6 +27,8 @@ import {
   ready,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import { IdInternal } from '@matrixai/id';
+import { withF, withG } from '@matrixai/resources';
+import { RWLockWriter } from '@matrixai/async-locks';
 import VaultInternal from './VaultInternal';
 import * as vaultsUtils from '../vaults/utils';
 import * as vaultsErrors from '../vaults/errors';
@@ -37,8 +38,6 @@ import * as nodesUtils from '../nodes/utils';
 import * as keysUtils from '../keys/utils';
 import config from '../config';
 import { mkdirExists } from '../utils/utils';
-import { RWLock } from '../utils/locks';
-import { withF, withG } from '../utils/context';
 import * as utilsPB from '../proto/js/polykey/v1/utils/utils_pb';
 
 /**
@@ -48,7 +47,7 @@ type VaultMap = Map<
   VaultIdString,
   {
     vault?: VaultInternal;
-    lock: RWLock;
+    lock: RWLockWriter;
   }
 >;
 
@@ -125,7 +124,7 @@ class VaultManager {
   protected vaultsDb: DBLevel;
   protected vaultsNamesDbDomain: DBDomain = [...this.vaultsDbDomain, 'names'];
   protected vaultsNamesDb: DBLevel;
-  protected vaultsNamesLock: RWLock = new RWLock();
+  protected vaultsNamesLock: RWLockWriter = new RWLockWriter();
   // VaultId -> VaultMetadata
   protected vaultMap: VaultMap = new Map();
   protected vaultKey: Buffer;
@@ -261,11 +260,11 @@ class VaultManager {
     this.efs.unsetWorkerManager();
   }
 
-  protected getLock(vaultId: VaultId): RWLock {
+  protected getLock(vaultId: VaultId): RWLockWriter {
     const vaultIdString = vaultId.toString() as VaultIdString;
     const vaultAndLock = this.vaultMap.get(vaultIdString);
     if (vaultAndLock != null) return vaultAndLock.lock;
-    const lock = new RWLock();
+    const lock = new RWLockWriter();
     this.vaultMap.set(vaultIdString, { lock });
     return lock;
   }
@@ -314,7 +313,7 @@ class VaultManager {
         true,
       );
     });
-    const lock = new RWLock();
+    const lock = new RWLockWriter();
     const vaultIdString = vaultId.toString() as VaultIdString;
     this.vaultMap.set(vaultIdString, { lock });
     return await withF([this.getWriteLock(vaultId)], async () => {
@@ -556,7 +555,7 @@ class VaultManager {
     vaultNameOrId: VaultId | VaultName,
   ): Promise<VaultId> {
     const vaultId = await this.generateVaultId();
-    const lock = new RWLock();
+    const lock = new RWLockWriter();
     const vaultIdString = vaultId.toString() as VaultIdString;
     this.vaultMap.set(vaultIdString, { lock });
     this.logger.info(
@@ -802,7 +801,7 @@ class VaultManager {
   @ready(new vaultsErrors.ErrorVaultManagerNotRunning())
   protected async getVault(vaultId: VaultId): Promise<VaultInternal> {
     let vault: VaultInternal | undefined;
-    let lock: RWLock;
+    let lock: RWLockWriter;
     const vaultIdString = vaultId.toString() as VaultIdString;
     let vaultAndLock = this.vaultMap.get(vaultIdString);
     if (vaultAndLock != null) {
@@ -842,7 +841,7 @@ class VaultManager {
       }
     } else {
       // Neither vault nor lock exists
-      lock = new RWLock();
+      lock = new RWLockWriter();
       vaultAndLock = { lock };
       this.vaultMap.set(vaultIdString, vaultAndLock);
       let release;
