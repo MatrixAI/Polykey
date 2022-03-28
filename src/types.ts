@@ -13,6 +13,11 @@ type POJO = { [key: string]: any };
 type Opaque<K, T> = T & { __TYPE__: K };
 
 /**
+ * Non-empty array
+ */
+type NonEmptyArray<T> = [T, ...T[]];
+
+/**
  * Allows extension of constructors that use POJOs
  */
 type AbstractConstructorParameters<T> = ConstructorParameters<
@@ -75,6 +80,7 @@ type FileHandle = fs.promises.FileHandle;
 export type {
   POJO,
   Opaque,
+  NonEmptyArray,
   AbstractConstructorParameters,
   Initial,
   InitialParameters,

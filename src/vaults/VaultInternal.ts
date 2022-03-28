@@ -1,6 +1,7 @@
 import type { ReadCommitResult } from 'isomorphic-git';
 import type { EncryptedFS } from 'encryptedfs';
 import type { DB, DBDomain, DBLevel } from '@matrixai/db';
+import type { ResourceAcquire } from '@matrixai/resources';
 import type {
   CommitId,
   CommitLog,
@@ -15,7 +16,6 @@ import type {
 import type KeyManager from '../keys/KeyManager';
 import type { NodeId, NodeIdEncoded } from '../nodes/types';
 import type NodeConnectionManager from '../nodes/NodeConnectionManager';
-import type { ResourceAcquire } from '../utils/context';
 import type GRPCClientAgent from '../agent/GRPCClientAgent';
 import type { POJO } from '../types';
 import path from 'path';
@@ -26,13 +26,13 @@ import {
   CreateDestroyStartStop,
   ready,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
+import { withF, withG } from '@matrixai/resources';
+import { RWLockWriter } from '@matrixai/async-locks';
 import * as vaultsErrors from './errors';
 import * as vaultsUtils from './utils';
 import { tagLast } from './types';
 import * as nodesUtils from '../nodes/utils';
 import * as validationUtils from '../validation/utils';
-import { withF, withG } from '../utils/context';
-import { RWLock } from '../utils/locks';
 import * as vaultsPB from '../proto/js/polykey/v1/vaults/vaults_pb';
 import { never } from '../utils/utils';
 
@@ -190,7 +190,7 @@ class VaultInternal {
   protected vaultsNamesDomain: DBDomain;
   protected efs: EncryptedFS;
   protected efsVault: EncryptedFS;
-  protected lock: RWLock = new RWLock();
+  protected lock: RWLockWriter = new RWLockWriter();
 
   public readLock: ResourceAcquire = async () => {
     const release = await this.lock.acquireRead();

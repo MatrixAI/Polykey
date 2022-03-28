@@ -1,9 +1,9 @@
 import type { StateVersion } from './types';
 import type { FileSystem } from '../types';
-
 import path from 'path';
 import Logger from '@matrixai/logger';
 import { CreateDestroyStartStop } from '@matrixai/async-init/dist/CreateDestroyStartStop';
+import { RWLockWriter } from '@matrixai/async-locks';
 import * as schemaErrors from './errors';
 import * as utils from '../utils';
 import config from '../config';
@@ -17,14 +17,12 @@ class Schema {
   public static async createSchema({
     statePath,
     stateVersion = config.stateVersion as StateVersion,
-    lock = new utils.RWLock(),
     fs = require('fs'),
     logger = new Logger(this.name),
     fresh = false,
   }: {
     statePath: string;
     stateVersion?: StateVersion;
-    lock?: utils.RWLock;
     fs?: FileSystem;
     logger?: Logger;
     fresh?: boolean;
@@ -33,7 +31,6 @@ class Schema {
     const schema = new Schema({
       statePath,
       stateVersion,
-      lock,
       fs,
       logger,
     });
@@ -45,20 +42,18 @@ class Schema {
   public readonly statePath: string;
   public readonly stateVersionPath: string;
   public readonly stateVersion: StateVersion;
-  protected lock: utils.RWLock;
+  protected lock: RWLockWriter = new RWLockWriter();
   protected fs: FileSystem;
   protected logger: Logger;
 
   public constructor({
     statePath,
     stateVersion = config.stateVersion as StateVersion,
-    lock = new utils.RWLock(),
     fs = require('fs'),
     logger,
   }: {
     statePath: string;
     stateVersion?: StateVersion;
-    lock?: utils.RWLock;
     fs?: FileSystem;
     logger?: Logger;
   }) {
@@ -69,7 +64,6 @@ class Schema {
       config.defaults.stateVersionBase,
     );
     this.stateVersion = stateVersion;
-    this.lock = lock;
     this.fs = fs;
   }
 
@@ -142,7 +136,7 @@ class Schema {
   }
 
   public async readVersion(): Promise<StateVersion | undefined> {
-    return await this.lock.withRead(async () => {
+    return await this.lock.withReadF(async () => {
       let stateVersionData: string;
       try {
         stateVersionData = await this.fs.promises.readFile(
@@ -169,7 +163,7 @@ class Schema {
   }
 
   protected async writeVersion(stateVersion: StateVersion): Promise<void> {
-    return await this.lock.withWrite(async () => {
+    return await this.lock.withWriteF(async () => {
       try {
         await this.fs.promises.writeFile(
           this.stateVersionPath,
@@ -191,7 +185,7 @@ class Schema {
    * This is only called when the version is older.
    */
   protected async upgradeVersion(_stateVersion: StateVersion): Promise<void> {
-    return await this.lock.withWrite(async () => {
+    return await this.lock.withWriteF(async () => {
       // TODO: to be implemented
       throw new schemaErrors.ErrorSchemaVersionTooOld();
     });
