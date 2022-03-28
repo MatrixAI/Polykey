@@ -673,23 +673,15 @@ class NodeConnectionManager {
    * the addresses match if provided. Otherwise returns false.
    * @param nodeId - NodeId of the target
    * @param address - Optional address of the target
-   * @param connConnectTime - Optional timeout for making the connection.
+   * @param timer Connection timeout timer
    */
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
-  public async pingNode(
-    nodeId: NodeId,
-    address?: NodeAddress,
-    connConnectTime?: number,
-  ): Promise<boolean> {
+  public async pingNode(nodeId: NodeId, address?: NodeAddress, timer?: Timer): Promise<boolean> {
     // If we can create a connection then we have punched though the NAT,
-    // authenticated and confimed the nodeId matches
+    // authenticated and confirmed the nodeId matches
     let connAndLock: ConnectionAndLock;
     try {
-      connAndLock = await this.createConnection(
-        nodeId,
-        address,
-        connConnectTime,
-      );
+      connAndLock = await this.createConnection(nodeId, address, timer);
     } catch (e) {
       if (
         e instanceof nodesErrors.ErrorNodeConnectionDestroyed ||
