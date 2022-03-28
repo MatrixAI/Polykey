@@ -58,13 +58,17 @@ type AgentChildProcessInput = {
  * The error property contains arbitrary error properties
  */
 type AgentChildProcessOutput =
-  | {
+  | ({
       status: 'SUCCESS';
       recoveryCode?: RecoveryCode;
-    } & AgentStatusLiveData
+    } & AgentStatusLiveData)
   | {
       status: 'FAILURE';
       error: POJO;
     };
 
-export type { AgentStatusLiveData, AgentChildProcessInput, AgentChildProcessOutput };
+export type {
+  AgentStatusLiveData,
+  AgentChildProcessInput,
+  AgentChildProcessOutput,
+};

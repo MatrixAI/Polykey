@@ -219,9 +219,7 @@ async function processClientOptions(
     });
     const statusInfo = await status.readStatus();
     if (statusInfo === undefined || statusInfo.status !== 'LIVE') {
-      throw new binErrors.ErrorCLIPolykeyAgentStatus(
-        'agent is not live'
-      );
+      throw new binErrors.ErrorCLIPolykeyAgentStatus('agent is not live');
     }
     return {
       nodeId: statusInfo.data.nodeId,
@@ -234,15 +232,17 @@ async function processClientOptions(
       [
         'missing node ID, provide it with --node-id or PK_NODE_ID',
         'missing client host, provide it with --client-host or PK_CLIENT_HOST',
-        'missing client port, provide it with --client-port or PK_CLIENT_PORT'
-      ]
-    ).flatMap(([option, msg]) => {
-      if (option == null) {
-        return [msg];
-      } else {
-        return [];
-      }
-    }).join('; ');
+        'missing client port, provide it with --client-port or PK_CLIENT_PORT',
+      ],
+    )
+      .flatMap(([option, msg]) => {
+        if (option == null) {
+          return [msg];
+        } else {
+          return [];
+        }
+      })
+      .join('; ');
     throw new binErrors.ErrorCLIClientOptions(errorMsg);
   }
 }
@@ -335,15 +335,17 @@ async function processClientStatus(
       [
         'missing node ID, provide it with --node-id or PK_NODE_ID',
         'missing client host, provide it with --client-host or PK_CLIENT_HOST',
-        'missing client port, provide it with --client-port or PK_CLIENT_PORT'
-      ]
-    ).flatMap(([option, msg]) => {
-      if (option == null) {
-        return [msg];
-      } else {
-        return [];
-      }
-    }).join('; ');
+        'missing client port, provide it with --client-port or PK_CLIENT_PORT',
+      ],
+    )
+      .flatMap(([option, msg]) => {
+        if (option == null) {
+          return [msg];
+        } else {
+          return [];
+        }
+      })
+      .join('; ');
     throw new binErrors.ErrorCLIClientOptions(errorMsg);
   }
 }

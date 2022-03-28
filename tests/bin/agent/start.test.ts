@@ -47,7 +47,7 @@ describe('start', () => {
           '0',
           '--verbose',
           '--format',
-          'json'
+          'json',
         ],
         {
           PK_PASSWORD: password,
@@ -56,12 +56,10 @@ describe('start', () => {
         logger,
       );
       const rlOut = readline.createInterface(agentProcess.stdout!);
-      const stdout = await new Promise<string>(
-        (resolve, reject) => {
-          rlOut.once('line', resolve);
-          rlOut.once('close', reject);
-        },
-      );
+      const stdout = await new Promise<string>((resolve, reject) => {
+        rlOut.once('line', resolve);
+        rlOut.once('close', reject);
+      });
       const statusLiveData = JSON.parse(stdout);
       expect(statusLiveData).toMatchObject({
         pid: agentProcess.pid,
@@ -74,7 +72,7 @@ describe('start', () => {
         proxyPort: expect.any(Number),
         forwardHost: expect.any(String),
         forwardPort: expect.any(Number),
-        recoveryCode: expect.any(String)
+        recoveryCode: expect.any(String),
       });
       expect(
         statusLiveData.recoveryCode.split(' ').length === 12 ||
@@ -127,7 +125,7 @@ describe('start', () => {
           '0',
           '--verbose',
           '--format',
-          'json'
+          'json',
         ],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -149,12 +147,10 @@ describe('start', () => {
         });
       });
       const rlOut = readline.createInterface(agentProcess.stdout!);
-      const stdout = await new Promise<string>(
-        (resolve, reject) => {
-          rlOut.once('line', resolve);
-          rlOut.once('close', reject);
-        },
-      );
+      const stdout = await new Promise<string>((resolve, reject) => {
+        rlOut.once('line', resolve);
+        rlOut.once('close', reject);
+      });
       const statusLiveData = JSON.parse(stdout);
       expect(statusLiveData).toMatchObject({
         pid: expect.any(Number),
@@ -167,7 +163,7 @@ describe('start', () => {
         proxyPort: expect.any(Number),
         forwardHost: expect.any(String),
         forwardPort: expect.any(Number),
-        recoveryCode: expect.any(String)
+        recoveryCode: expect.any(String),
       });
       // The foreground process PID should nto be the background process PID
       expect(statusLiveData.pid).not.toBe(agentProcess.pid);
@@ -527,7 +523,7 @@ describe('start', () => {
           '--fresh',
           '--verbose',
           '--format',
-          'json'
+          'json',
         ],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -537,12 +533,10 @@ describe('start', () => {
         logger.getChild('agentProcess2'),
       );
       const rlOut = readline.createInterface(agentProcess2.stdout!);
-      const stdout = await new Promise<string>(
-        (resolve, reject) => {
-          rlOut.once('line', resolve);
-          rlOut.once('close', reject);
-        },
-      );
+      const stdout = await new Promise<string>((resolve, reject) => {
+        rlOut.once('line', resolve);
+        rlOut.once('close', reject);
+      });
       const statusLiveData = JSON.parse(stdout);
       expect(statusLiveData).toMatchObject({
         pid: agentProcess2.pid,
@@ -555,7 +549,7 @@ describe('start', () => {
         proxyPort: expect.any(Number),
         forwardHost: expect.any(String),
         forwardPort: expect.any(Number),
-        recoveryCode: expect.any(String)
+        recoveryCode: expect.any(String),
       });
       expect(
         statusLiveData.recoveryCode.split(' ').length === 12 ||
@@ -610,7 +604,7 @@ describe('start', () => {
           '0',
           '--verbose',
           '--format',
-          'json'
+          'json',
         ],
         {
           PK_PASSWORD: password1,
@@ -619,12 +613,10 @@ describe('start', () => {
         logger.getChild('agentProcess1'),
       );
       const rlOut = readline.createInterface(agentProcess1.stdout!);
-      const stdout = await new Promise<string>(
-        (resolve, reject) => {
-          rlOut.once('line', resolve);
-          rlOut.once('close', reject);
-        },
-      );
+      const stdout = await new Promise<string>((resolve, reject) => {
+        rlOut.once('line', resolve);
+        rlOut.once('close', reject);
+      });
       const statusLiveData = JSON.parse(stdout);
       const recoveryCode = statusLiveData.recoveryCode;
       const statusInfo1 = (await status.readStatus())!;

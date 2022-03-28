@@ -54,9 +54,9 @@ class PolykeyAgent {
    * These represent event topics
    */
   public static readonly eventSymbols = {
-    [KeyManager.name]: Symbol(KeyManager.name)
+    [KeyManager.name]: Symbol(KeyManager.name),
   } as {
-    readonly KeyManager: unique symbol
+    readonly KeyManager: unique symbol;
   };
 
   public static async createPolykeyAgent({
@@ -192,10 +192,8 @@ class PolykeyAgent {
           keysPath,
           password,
           fs,
-          changeCallback: (data) => events.emitAsync(
-            PolykeyAgent.eventSymbols.KeyManager,
-            data
-          ),
+          changeCallback: (data) =>
+            events.emitAsync(PolykeyAgent.eventSymbols.KeyManager, data),
           logger: logger.getChild(KeyManager.name),
           fresh,
         }));
@@ -525,12 +523,14 @@ class PolykeyAgent {
         async (data: KeyManagerChangeData) => {
           this.logger.info(`${KeyManager.name} change propagating`);
           await this.status.updateStatusLive({
-            nodeId: data.nodeId
+            nodeId: data.nodeId,
           });
           await this.nodeManager.refreshBuckets();
           const tlsConfig = {
-            keyPrivatePem: keysUtils.privateKeyToPem(data.rootKeyPair.privateKey),
-            certChainPem: await this.keyManager.getRootCertChainPem()
+            keyPrivatePem: keysUtils.privateKeyToPem(
+              data.rootKeyPair.privateKey,
+            ),
+            certChainPem: await this.keyManager.getRootCertChainPem(),
           };
           this.grpcServerClient.setTLSConfig(tlsConfig);
           this.proxy.setTLSConfig(tlsConfig);

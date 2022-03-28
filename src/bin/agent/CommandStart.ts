@@ -2,7 +2,7 @@ import type { StdioOptions } from 'child_process';
 import type {
   AgentStatusLiveData,
   AgentChildProcessInput,
-  AgentChildProcessOutput
+  AgentChildProcessOutput,
 } from '../types';
 import type PolykeyAgent from '../../PolykeyAgent';
 import type { RecoveryCode } from '../../keys/types';
@@ -147,7 +147,7 @@ class CommandStart extends CommandPolykey {
             agentProcess.unref();
             agentProcess.disconnect();
             recoveryCodeOut = messageOut.recoveryCode;
-            statusLiveData = {...messageOut};
+            statusLiveData = { ...messageOut };
             delete statusLiveData['recoveryCode'];
             delete statusLiveData['status'];
             resolveAgentProcessP();

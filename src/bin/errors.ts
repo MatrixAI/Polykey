@@ -9,8 +9,7 @@ class ErrorCLINodePath extends ErrorCLI {
 }
 
 class ErrorCLIClientOptions extends ErrorCLI {
-  description =
-    'Missing required client options';
+  description = 'Missing required client options';
   exitCode = sysexits.USAGE;
 }
 
