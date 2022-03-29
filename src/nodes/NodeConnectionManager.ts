@@ -12,6 +12,7 @@ import type {
   SeedNodes,
   NodeEntry,
   NodeBucket,
+  NodeIdString,
 } from './types';
 import { withF } from '@matrixai/resources';
 import Logger from '@matrixai/logger';

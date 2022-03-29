@@ -14,8 +14,6 @@ import * as nodesUtils from './utils';
 import * as validationUtils from '../validation/utils';
 import * as utilsPB from '../proto/js/polykey/v1/utils/utils_pb';
 import * as claimsErrors from '../claims/errors';
-import * as networkErrors from '../network/errors';
-import * as networkUtils from '../network/utils';
 import * as sigchainUtils from '../sigchain/utils';
 import * as claimsUtils from '../claims/utils';
 

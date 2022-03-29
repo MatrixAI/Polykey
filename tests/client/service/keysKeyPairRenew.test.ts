@@ -7,7 +7,6 @@ import path from 'path';
 import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { Metadata } from '@grpc/grpc-js';
-import NodeGraph from '@/nodes/NodeGraph';
 import PolykeyAgent from '@/PolykeyAgent';
 import GRPCServer from '@/grpc/GRPCServer';
 import GRPCClientClient from '@/client/GRPCClientClient';

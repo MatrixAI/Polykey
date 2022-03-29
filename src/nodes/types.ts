@@ -1,5 +1,5 @@
 import type { Id } from '@matrixai/id';
-import type { Opaque, NonFunctionProperties } from '../types';
+import type { Opaque } from '../types';
 import type { Host, Hostname, Port } from '../network/types';
 import type { Claim, ClaimId } from '../claims/types';
 import type { ChainData } from '../sigchain/types';
@@ -33,7 +33,7 @@ type NodeBucketMeta = {
   count: number;
 };
 
-type NodeBucketMetaProps = NonFunctionProperties<NodeBucketMeta>;
+// Type NodeBucketMetaProps = NonFunctionProperties<NodeBucketMeta>;
 
 // Just make the bucket entries also
 // bucketIndex anot as a key

@@ -1,10 +1,4 @@
-import type {
-  NodeAddress,
-  NodeBucket,
-  NodeData,
-  NodeId,
-  SeedNodes,
-} from '@/nodes/types';
+import type { NodeAddress, NodeBucket, NodeId, SeedNodes } from '@/nodes/types';
 import type { Host, Port } from '@/network/types';
 import fs from 'fs';
 import path from 'path';
@@ -404,7 +398,6 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       );
       // Sort the received nodes on distance such that we can check its equality
       // with addedClosestNodes
-      console.log('sorting');
       nodesUtils.bucketSortByDistance(closest, targetNodeId);
       expect(closest.length).toBe(20);
       expect(closest).toEqual(addedClosestNodes);
