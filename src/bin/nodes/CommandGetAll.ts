@@ -43,14 +43,10 @@ class CommandGetAll extends CommandPolykey {
           logger: this.logger.getChild(PolykeyClient.name),
         });
         const emptyMessage = new utilsPB.EmptyMessage();
-        try {
-          result = await binUtils.retryAuthentication(
-            (auth) => pkClient.grpcClient.nodesGetAll(emptyMessage, auth),
-            meta,
-          );
-        } catch (err) {
-          throw err;
-        }
+        result = await binUtils.retryAuthentication(
+          (auth) => pkClient.grpcClient.nodesGetAll(emptyMessage, auth),
+          meta,
+        );
         let output: any = {};
         for (const [bucketIndex, bucket] of result.getBucketsMap().entries()) {
           output[bucketIndex] = {};

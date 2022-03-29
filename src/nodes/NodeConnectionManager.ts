@@ -10,8 +10,6 @@ import type {
   NodeData,
   SeedNodes,
   NodeIdString,
-  NodeEntry,
-  NodeBucket,
 } from './types';
 import Logger from '@matrixai/logger';
 import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';

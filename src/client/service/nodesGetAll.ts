@@ -1,6 +1,5 @@
 import type * as grpc from '@grpc/grpc-js';
 import type { Authenticate } from '../types';
-import type { NodeGraph } from '../../nodes';
 import type { KeyManager } from '../../keys';
 import type { NodeId } from '../../nodes/types';
 import type * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
@@ -13,11 +12,11 @@ import * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
  * Retrieves all nodes from all buckets in the NodeGraph.
  */
 function nodesGetAll({
-  nodeGraph,
+  // NodeGraph,
   keyManager,
   authenticate,
 }: {
-  nodeGraph: NodeGraph;
+  // NodeGraph: NodeGraph;
   keyManager: KeyManager;
   authenticate: Authenticate;
 }) {

@@ -1,14 +1,6 @@
-import type {
-  DB,
-  DBDomain,
-  DBLevel,
-  DBOp,
-  DBTransaction,
-  Transaction,
-} from '@matrixai/db';
+import type { DB, DBDomain, DBLevel } from '@matrixai/db';
 import type {
   NodeId,
-  NodeIdString,
   NodeAddress,
   NodeBucket,
   NodeData,
@@ -26,7 +18,7 @@ import {
 import { IdInternal } from '@matrixai/id';
 import * as nodesUtils from './utils';
 import * as nodesErrors from './errors';
-import { RWLock, withF, withG, getUnixtime } from '../utils';
+import { RWLock, getUnixtime } from '../utils';
 
 /**
  * NodeGraph is an implementation of Kademlia for maintaining peer to peer information
@@ -248,9 +240,7 @@ class NodeGraph {
     for await (const o of this.nodeGraphBucketsDb.createReadStream({
       reverse: order === 'asc' ? false : true,
     })) {
-      const { nodeId, bucketIndex } = nodesUtils.parseBucketsDbKey(
-        (o as any).key as Buffer,
-      );
+      const { nodeId } = nodesUtils.parseBucketsDbKey((o as any).key as Buffer);
       const data = (o as any).value as Buffer;
       const nodeData = await this.db.deserializeDecrypt<NodeData>(data, false);
       yield [nodeId, nodeData];
@@ -312,10 +302,8 @@ class NodeGraph {
       bucketKey,
       this.nodeGraphLastUpdatedDb,
     );
-    let oldestLastUpdatedKey: Buffer;
     let oldestNodeId: NodeId | undefined;
     for await (const key of lastUpdatedBucketDb.createKeyStream({ limit: 1 })) {
-      oldestLastUpdatedKey = key as Buffer;
       ({ nodeId: oldestNodeId } = nodesUtils.parseLastUpdatedBucketDbKey(
         key as Buffer,
       ));
@@ -609,9 +597,9 @@ class NodeGraph {
     // Swap to the new space
     await this.db.put(this.nodeGraphDbDomain, 'space', spaceNew);
     // Clear old space
-    this.nodeGraphMetaDb.clear();
-    this.nodeGraphBucketsDb.clear();
-    this.nodeGraphLastUpdatedDb.clear();
+    await this.nodeGraphMetaDb.clear();
+    await this.nodeGraphBucketsDb.clear();
+    await this.nodeGraphLastUpdatedDb.clear();
     // Swap the spaces
     this.space = spaceNew;
     this.nodeGraphMetaDbDomain = nodeGraphMetaDbDomainNew;

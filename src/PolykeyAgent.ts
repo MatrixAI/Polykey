@@ -8,7 +8,7 @@ import process from 'process';
 import Logger from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { CreateDestroyStartStop } from '@matrixai/async-init/dist/CreateDestroyStartStop';
-import * as networkUtils from '@/network/utils';
+import * as networkUtils from './network/utils';
 import { KeyManager, utils as keysUtils } from './keys';
 import { Status } from './status';
 import { Schema } from './schema';
