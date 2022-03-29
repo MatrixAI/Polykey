@@ -84,12 +84,12 @@ const proxyPort = new commander.Option('-pp, --proxy-port <port>', 'Proxy Port')
   .argParser(binParsers.parsePort)
   .default(config.defaults.networkConfig.proxyPort);
 
-const connTimeoutTime = new commander.Option(
+const connConnectTime = new commander.Option(
   '--connection-timeout <ms>',
   'Timeout value for connection establishment between nodes',
 )
   .argParser(binParsers.parseInteger)
-  .default(config.defaults.proxyConfig.connTimeoutTime);
+  .default(config.defaults.proxyConfig.connConnectTime);
 
 const passwordFile = new commander.Option(
   '-pf, --password-file <path>',
@@ -164,7 +164,7 @@ export {
   clientPort,
   proxyHost,
   proxyPort,
-  connTimeoutTime,
+  connConnectTime,
   recoveryCodeFile,
   passwordFile,
   passwordNewFile,

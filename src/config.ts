@@ -84,8 +84,10 @@ const config = {
     },
     proxyConfig: {
       connConnectTime: 20000,
-      connTimeoutTime: 20000,
-      connPingIntervalTime: 1000,
+      connKeepAliveTimeoutTime: 20000,
+      connEndTime: 1000,
+      connPunchIntervalTime: 1000,
+      connKeepAliveIntervalTime: 1000,
     },
     nodeConnectionManagerConfig: {
       connConnectTime: 20000,

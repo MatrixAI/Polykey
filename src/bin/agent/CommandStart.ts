@@ -29,7 +29,7 @@ class CommandStart extends CommandPolykey {
     this.addOption(binOptions.clientPort);
     this.addOption(binOptions.proxyHost);
     this.addOption(binOptions.proxyPort);
-    this.addOption(binOptions.connTimeoutTime);
+    this.addOption(binOptions.connConnectTime);
     this.addOption(binOptions.seedNodes);
     this.addOption(binOptions.network);
     this.addOption(binOptions.workers);
@@ -96,7 +96,7 @@ class CommandStart extends CommandPolykey {
           recoveryCode: recoveryCodeIn,
         },
         proxyConfig: {
-          connTimeoutTime: options.connTimeoutTime,
+          connConnectTime: options.connectionTimeout,
         },
         networkConfig: {
           clientHost: options.clientHost,

@@ -40,6 +40,6 @@ describe('certchain', () => {
     ));
     expect(exitCode).toBe(0);
     const certChainStatus = JSON.parse(stdout).rootCertChainPem;
-    expect(certChainCommand).toBe(certChainStatus);
+    expect(certChainCommand.rootPublicKeyPem).toBe(certChainStatus);
   });
 });

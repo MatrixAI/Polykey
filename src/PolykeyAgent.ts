@@ -103,8 +103,10 @@ class PolykeyAgent {
     proxyConfig?: {
       authToken?: string;
       connConnectTime?: number;
-      connTimeoutTime?: number;
-      connPingIntervalTime?: number;
+      connKeepAliveTimeoutTime?: number;
+      connEndTime?: number;
+      connPunchIntervalTime?: number;
+      connKeepAliveIntervalTime?: number;
     };
     nodeConnectionManagerConfig?: {
       connConnectTime?: number;
