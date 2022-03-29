@@ -17,6 +17,7 @@ import * as keysPB from '@/proto/js/polykey/v1/keys/keys_pb';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as clientUtils from '@/client/utils/utils';
 import * as keysUtils from '@/keys/utils';
+import { NodeManager } from '@/nodes';
 import * as testUtils from '../../utils';
 
 describe('keysKeyPairRenew', () => {
@@ -32,7 +33,7 @@ describe('keysKeyPairRenew', () => {
   beforeAll(async () => {
     const globalKeyPair = await testUtils.setupGlobalKeypair();
     const newKeyPair = await keysUtils.generateKeyPair(1024);
-    mockedRefreshBuckets = jest.spyOn(NodeGraph.prototype, 'refreshBuckets');
+    mockedRefreshBuckets = jest.spyOn(NodeManager.prototype, 'refreshBuckets');
     mockedGenerateKeyPair = jest
       .spyOn(keysUtils, 'generateKeyPair')
       .mockResolvedValueOnce(globalKeyPair)

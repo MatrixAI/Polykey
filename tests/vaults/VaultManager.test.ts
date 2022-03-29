@@ -29,7 +29,7 @@ import * as vaultsUtils from '@/vaults/utils';
 import * as keysUtils from '@/keys/utils';
 import { sleep } from '@/utils';
 import VaultInternal from '@/vaults/VaultInternal';
-import * as testsUtils from '../utils';
+import * as nodeTestUtils from '../nodes/utils';
 
 const mockedGenerateDeterministicKeyPair = jest
   .spyOn(keysUtils, 'generateDeterministicKeyPair')
@@ -63,7 +63,7 @@ describe('VaultManager', () => {
   let db: DB;
 
   // We only ever use this to get NodeId, No need to create a whole one
-  const nodeId = testsUtils.generateRandomNodeId();
+  const nodeId = nodeTestUtils.generateRandomNodeId();
   const dummyKeyManager = {
     getNodeId: () => nodeId,
   } as KeyManager;
@@ -1371,8 +1371,8 @@ describe('VaultManager', () => {
     });
     try {
       // Setting up state
-      const nodeId1 = testsUtils.generateRandomNodeId();
-      const nodeId2 = testsUtils.generateRandomNodeId();
+      const nodeId1 = nodeTestUtils.generateRandomNodeId();
+      const nodeId2 = nodeTestUtils.generateRandomNodeId();
       await gestaltGraph.setNode({
         id: nodesUtils.encodeNodeId(nodeId1),
         chain: {},
