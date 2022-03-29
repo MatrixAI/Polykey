@@ -166,8 +166,7 @@ describe('nodesAdd', () => {
       )!,
     );
     expect(result).toBeDefined();
-    expect(result!.host).toBe('127.0.0.1');
-    expect(result!.port).toBe(11111);
+    expect(result!.address).toBe('127.0.0.1:11111');
   });
   test('cannot add invalid node', async () => {
     // Invalid host

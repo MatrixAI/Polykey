@@ -15,7 +15,7 @@ import * as vaultsErrors from '@/vaults/errors';
 import { sleep } from '@/utils';
 import * as keysUtils from '@/keys/utils';
 import * as vaultsUtils from '@/vaults/utils';
-import * as testsUtils from '../utils';
+import * as nodeTestUtils from '../nodes/utils';
 
 jest.mock('@/keys/utils', () => ({
   ...jest.requireActual('@/keys/utils'),
@@ -39,7 +39,7 @@ describe('VaultInternal', () => {
 
   const fakeKeyManager = {
     getNodeId: () => {
-      return testsUtils.generateRandomNodeId();
+      return nodeTestUtils.generateRandomNodeId();
     },
   } as KeyManager;
   const secret1 = { name: 'secret-1', content: 'secret-content-1' };

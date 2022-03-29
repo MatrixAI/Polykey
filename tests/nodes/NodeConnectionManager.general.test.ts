@@ -1,4 +1,4 @@
-import type { NodeAddress, NodeData, NodeId, SeedNodes } from '@/nodes/types';
+import type { NodeAddress, NodeBucket, NodeId, SeedNodes } from '@/nodes/types';
 import type { Host, Port } from '@/network/types';
 import fs from 'fs';
 import path from 'path';
@@ -362,7 +362,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       });
 
       // Now generate and add 20 nodes that will be close to this node ID
-      const addedClosestNodes: NodeData[] = [];
+      const addedClosestNodes: NodeBucket = [];
       for (let i = 1; i < 101; i += 5) {
         const closeNodeId = testNodesUtils.generateNodeIdForBucket(
           targetNodeId,
@@ -373,11 +373,13 @@ describe(`${NodeConnectionManager.name} general test`, () => {
           port: i as Port,
         };
         await serverPKAgent.nodeGraph.setNode(closeNodeId, nodeAddress);
-        addedClosestNodes.push({
-          id: closeNodeId,
-          address: nodeAddress,
-          distance: nodesUtils.calculateDistance(targetNodeId, closeNodeId),
-        });
+        addedClosestNodes.push([
+          closeNodeId,
+          {
+            address: nodeAddress,
+            lastUpdated: 0,
+          },
+        ]);
       }
       // Now create and add 10 more nodes that are far away from this node
       for (let i = 1; i <= 10; i++) {
@@ -396,7 +398,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       );
       // Sort the received nodes on distance such that we can check its equality
       // with addedClosestNodes
-      closest.sort(nodesUtils.sortByDistance);
+      nodesUtils.bucketSortByDistance(closest, targetNodeId);
       expect(closest.length).toBe(20);
       expect(closest).toEqual(addedClosestNodes);
     } finally {
