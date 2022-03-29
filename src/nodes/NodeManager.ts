@@ -57,7 +57,11 @@ class NodeManager {
    * @param address - Optional Host and Port we want to ping
    * @param timer Connection timeout timer
    */
-  public async pingNode(nodeId: NodeId, address?: NodeAddress, timer?: Timer): Promise<boolean> {
+  public async pingNode(
+    nodeId: NodeId,
+    address?: NodeAddress,
+    timer?: Timer,
+  ): Promise<boolean> {
     return this.nodeConnectionManager.pingNode(nodeId, address, timer);
   }
 
@@ -348,9 +352,15 @@ class NodeManager {
     timer?: Timer,
     tran: DBTransaction,
   ): Promise<void> {
-    // if we fail to ping and authenticate the new node we return
+    // If we fail to ping and authenticate the new node we return
     // skip if force is true or authenticate is false
-    if (!force && authenticate && !(await this.pingNode(nodeId, nodeAddress, timer))) return
+    if (
+      !force &&
+      authenticate &&
+      !(await this.pingNode(nodeId, nodeAddress, timer))
+    ) {
+      return;
+    }
     // When adding a node we need to handle 3 cases
     // 1. The node already exists. We need to update it's last updated field
     // 2. The node doesn't exist and bucket has room.
