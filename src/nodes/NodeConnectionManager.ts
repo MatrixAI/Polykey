@@ -10,6 +10,9 @@ import type {
   NodeId,
   NodeIdString,
   SeedNodes,
+  NodeEntry,
+  NodeBucket,
+  NodeIdString,
 } from './types';
 import { withF } from '@matrixai/resources';
 import Logger from '@matrixai/logger';
@@ -676,7 +679,11 @@ class NodeConnectionManager {
    * @param timer Connection timeout timer
    */
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
-  public async pingNode(nodeId: NodeId, address?: NodeAddress, timer?: Timer): Promise<boolean> {
+  public async pingNode(
+    nodeId: NodeId,
+    address?: NodeAddress,
+    timer?: Timer,
+  ): Promise<boolean> {
     // If we can create a connection then we have punched though the NAT,
     // authenticated and confirmed the nodeId matches
     let connAndLock: ConnectionAndLock;

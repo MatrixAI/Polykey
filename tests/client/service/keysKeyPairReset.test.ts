@@ -7,7 +7,6 @@ import path from 'path';
 import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { Metadata } from '@grpc/grpc-js';
-import NodeGraph from '@/nodes/NodeGraph';
 import PolykeyAgent from '@/PolykeyAgent';
 import GRPCServer from '@/grpc/GRPCServer';
 import GRPCClientClient from '@/client/GRPCClientClient';
@@ -17,6 +16,7 @@ import * as keysPB from '@/proto/js/polykey/v1/keys/keys_pb';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as clientUtils from '@/client/utils/utils';
 import * as keysUtils from '@/keys/utils';
+import { NodeManager } from '@/nodes';
 import * as testUtils from '../../utils';
 
 describe('keysKeyPairReset', () => {
@@ -32,7 +32,7 @@ describe('keysKeyPairReset', () => {
   beforeAll(async () => {
     const globalKeyPair = await testUtils.setupGlobalKeypair();
     const newKeyPair = await keysUtils.generateKeyPair(1024);
-    mockedRefreshBuckets = jest.spyOn(NodeGraph.prototype, 'refreshBuckets');
+    mockedRefreshBuckets = jest.spyOn(NodeManager.prototype, 'refreshBuckets');
     mockedGenerateKeyPair = jest
       .spyOn(keysUtils, 'generateKeyPair')
       .mockResolvedValueOnce(globalKeyPair)
