@@ -130,14 +130,9 @@ class NodeConnectionManager {
   public async acquireConnection(
     targetNodeId: NodeId,
     timer?: Timer,
-    address?: NodeAddress,
   ): Promise<ResourceAcquire<NodeConnection<GRPCClientAgent>>> {
     return async () => {
-      const connAndLock = await this.getConnection(
-        targetNodeId,
-        address,
-        timer,
-      );
+      const connAndLock = await this.getConnection(targetNodeId, timer);
       // Acquire the read lock and the release function
       const release = await connAndLock.lock.acquireRead();
       // Resetting TTL timer
@@ -169,7 +164,7 @@ class NodeConnectionManager {
   ): Promise<T> {
     try {
       return await withF(
-        [await this.acquireConnection(targetNodeId, timer, undefined)],
+        [await this.acquireConnection(targetNodeId, timer)],
         async ([conn]) => {
           this.logger.info(
             `withConnF calling function with connection to ${nodesUtils.encodeNodeId(
@@ -209,11 +204,7 @@ class NodeConnectionManager {
     ) => AsyncGenerator<T, TReturn, TNext>,
     timer?: Timer,
   ): AsyncGenerator<T, TReturn, TNext> {
-    const acquire = await this.acquireConnection(
-      targetNodeId,
-      timer,
-      undefined,
-    );
+    const acquire = await this.acquireConnection(targetNodeId, timer);
     const [release, conn] = await acquire();
     try {
       return yield* await g(conn!);
@@ -238,13 +229,11 @@ class NodeConnectionManager {
    * Create a connection to another node (without performing any function).
    * This is a NOOP if a connection already exists.
    * @param targetNodeId Id of node we are creating connection to
-   * @param address Optional address to connect to
    * @param timer Connection timeout timer
    * @returns ConnectionAndLock that was create or exists in the connection map
    */
   protected async getConnection(
     targetNodeId: NodeId,
-    address?: NodeAddress,
     timer?: Timer,
   ): Promise<ConnectionAndLock> {
     this.logger.info(
@@ -277,12 +266,7 @@ class NodeConnectionManager {
           )}`,
         );
         // Creating the connection and set in map
-        return await this.establishNodeConnection(
-          targetNodeId,
-          lock,
-          address,
-          timer,
-        );
+        return await this.establishNodeConnection(targetNodeId, lock, timer);
       });
     } else {
       lock = new RWLock();
@@ -298,12 +282,7 @@ class NodeConnectionManager {
           )}`,
         );
         // Creating the connection and set in map
-        return await this.establishNodeConnection(
-          targetNodeId,
-          lock,
-          address,
-          timer,
-        );
+        return await this.establishNodeConnection(targetNodeId, lock, timer);
       });
     }
   }
@@ -316,17 +295,15 @@ class NodeConnectionManager {
    * This only adds the connection to the connection map if the connection was established.
    * @param targetNodeId Id of node we are establishing connection to
    * @param lock Lock associated with connection
-   * @param address Optional address to connect to
    * @param timer Connection timeout timer
    * @returns ConnectionAndLock that was added to the connection map
    */
   protected async establishNodeConnection(
     targetNodeId: NodeId,
     lock: RWLock,
-    address?: NodeAddress,
     timer?: Timer,
   ): Promise<ConnectionAndLock> {
-    const targetAddress = address ?? (await this.findNode(targetNodeId));
+    const targetAddress = await this.findNode(targetNodeId);
     // If the stored host is not a valid host (IP address), then we assume it to
     // be a hostname
     const targetHostname = !networkUtils.isHost(targetAddress.host)
@@ -527,7 +504,7 @@ class NodeConnectionManager {
         // Add the node to the database so that we can find its address in
         // call to getConnectionToNode
         await this.nodeGraph.setNode(nextNodeId, nextNodeAddress.address);
-        await this.getConnection(nextNodeId, undefined, timer);
+        await this.getConnection(nextNodeId, timer);
       } catch (e) {
         // If we can't connect to the node, then skip it
         continue;
@@ -640,7 +617,7 @@ class NodeConnectionManager {
     for (const seedNodeId of this.getSeedNodes()) {
       // Check if the connection is viable
       try {
-        await this.getConnection(seedNodeId, undefined, timer);
+        await this.getConnection(seedNodeId, timer);
       } catch (e) {
         if (e instanceof nodesErrors.ErrorNodeConnectionTimeout) continue;
         throw e;
@@ -734,39 +711,48 @@ class NodeConnectionManager {
    * connection can be authenticated, it's certificate matches the nodeId and
    * the addresses match if provided. Otherwise returns false.
    * @param nodeId - NodeId of the target
-   * @param address - Optional address of the target
+   * @param host - Host of the target node
+   * @param port - Port of the target node
    * @param timer Connection timeout timer
    */
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
   public async pingNode(
     nodeId: NodeId,
-    address?: NodeAddress,
+    host: Host,
+    port: Port,
     timer?: Timer,
   ): Promise<boolean> {
     // If we can create a connection then we have punched though the NAT,
     // authenticated and confirmed the nodeId matches
-    let connAndLock: ConnectionAndLock;
+    const proxyAddress = networkUtils.buildAddress(
+      this.proxy.getProxyHost(),
+      this.proxy.getProxyPort(),
+    );
+    const signature = await this.keyManager.signWithRootKeyPair(
+      Buffer.from(proxyAddress),
+    );
+    const holePunchPromises = Array.from(this.getSeedNodes(), (seedNodeId) => {
+      return this.sendHolePunchMessage(
+        seedNodeId,
+        this.keyManager.getNodeId(),
+        nodeId,
+        proxyAddress,
+        signature,
+      );
+    });
+    const forwardPunchPromise = this.holePunchForward(
+      nodeId,
+      host,
+      port,
+      timer,
+    );
+
     try {
-      connAndLock = await this.createConnection(nodeId, address, timer);
+      await Promise.all([forwardPunchPromise, ...holePunchPromises]);
     } catch (e) {
-      if (
-        e instanceof nodesErrors.ErrorNodeConnectionDestroyed ||
-        e instanceof nodesErrors.ErrorNodeConnectionTimeout ||
-        e instanceof grpcErrors.ErrorGRPC ||
-        e instanceof agentErrors.ErrorAgentClientDestroyed
-      ) {
-        // Failed to connect, returning false
-        return false;
-      }
-      throw e;
+      return false;
     }
-    const remoteHost = connAndLock.connection?.host;
-    const remotePort = connAndLock.connection?.port;
-    // If address wasn't set then nothing to check
-    if (address == null) return true;
-    // Check if the address information match in case there was an
-    // existing connection
-    return address.host === remoteHost && address.port === remotePort;
+    return true;
   }
 }
 
