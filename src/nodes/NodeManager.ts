@@ -68,8 +68,10 @@ class NodeManager {
     const targetHost = await networkUtils.resolveHost(targetAddress.host);
     return await this.nodeConnectionManager.pingNode(
       nodeId,
-      targetHost,
-      targetAddress.port,
+      {
+        host: targetHost,
+        port: targetAddress.port,
+      },
       timer,
     );
   }
@@ -351,6 +353,7 @@ class NodeManager {
    * @param force - Flag for if we want to add the node without authenticating or if the bucket is full.
    * This will drop the oldest node in favor of the new.
    * @param timer Connection timeout timer
+   * @param tran
    */
   public async setNode(
     nodeId: NodeId,
@@ -382,34 +385,54 @@ class NodeManager {
     } else {
       // We want to add a node but the bucket is full
       // We need to ping the oldest node
-      const oldestNodeId = (await this.nodeGraph.getOldestNode(
+      const oldestNodeIds = (await this.nodeGraph.getOldestNode(
         bucketIndex,
+        3,
         tran,
       ))!;
-      if ((await this.pingNode(oldestNodeId, undefined, timer)) && !force) {
-        // The node responded, we need to update it's info and drop the new node
-        const oldestNode = (await this.nodeGraph.getNode(oldestNodeId, tran))!;
-        await this.nodeGraph.setNode(oldestNodeId, oldestNode.address, tran);
-      } else {
-        // The node could not be contacted or force was set,
-        // we drop it in favor of the new node
-        await this.nodeGraph.unsetNode(oldestNodeId, tran);
+      if (force) {
+        // We just add the new node anyway without checking the old one
+        const oldNodeId = oldestNodeIds[0];
+        await this.nodeGraph.unsetNode(oldNodeId, tran);
+        await this.nodeGraph.setNode(nodeId, nodeAddress, tran);
+        return;
+      }
+      // We want to concurrently ping the nodes
+      const pingPromises = oldestNodeIds.map((nodeId) => {
+        const doPing = async (): Promise<{
+          nodeId: NodeId;
+          success: boolean;
+        }> => {
+          // This needs to return nodeId and ping result
+          const data = await this.nodeGraph.getNode(nodeId, tran);
+          if (data == null) return { nodeId, success: false };
+          const result = await this.pingNode(nodeId, undefined, timer);
+          return { nodeId, success: result };
+        };
+        return doPing();
+      });
+      const pingResults = await Promise.all(pingPromises);
+      for (const { nodeId, success } of pingResults) {
+        if (success) {
+          // Ping succeeded, update the node
+          const node = (await this.nodeGraph.getNode(nodeId, tran))!;
+          await this.nodeGraph.setNode(nodeId, node.address, tran);
+        } else {
+          // Otherwise we remove the node
+          await this.nodeGraph.unsetNode(nodeId, tran);
+        }
+      }
+      // Check if we now have room and add the new node
+      const count = await this.nodeGraph.getBucketMetaProp(
+        bucketIndex,
+        'count',
+        tran,
+      );
+      if (count < this.nodeGraph.nodeBucketLimit) {
         await this.nodeGraph.setNode(nodeId, nodeAddress, tran);
       }
     }
   }
-
-  // FIXME
-  // /**
-  //  * Updates the node in the NodeGraph
-  //  */
-  // public async updateNode(
-  //   nodeId: NodeId,
-  //   nodeAddress?: NodeAddress,
-  //   tran?: DBTransaction,
-  // ): Promise<void> {
-  //   return await this.nodeGraph.updateNode(nodeId, nodeAddress, tran);
-  // }
 
   /**
    * Removes a node from the NodeGraph
