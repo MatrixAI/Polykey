@@ -11,6 +11,7 @@ import type { Timer } from '../types';
 import Logger from '@matrixai/logger';
 import * as nodesErrors from './errors';
 import * as nodesUtils from './utils';
+import * as networkUtils from '../network/utils';
 import * as validationUtils from '../validation/utils';
 import * as utilsPB from '../proto/js/polykey/v1/utils/utils_pb';
 import * as claimsErrors from '../claims/errors';
@@ -60,7 +61,17 @@ class NodeManager {
     address?: NodeAddress,
     timer?: Timer,
   ): Promise<boolean> {
-    return this.nodeConnectionManager.pingNode(nodeId, address, timer);
+    // We need to attempt a connection using the proxies
+    // For now we will just do a forward connect + relay message
+    const targetAddress =
+      address ?? (await this.nodeConnectionManager.findNode(nodeId));
+    const targetHost = await networkUtils.resolveHost(targetAddress.host);
+    return await this.nodeConnectionManager.pingNode(
+      nodeId,
+      targetHost,
+      targetAddress.port,
+      timer,
+    );
   }
 
   /**
