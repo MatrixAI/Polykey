@@ -1,14 +1,21 @@
-import type { DB, DBTransaction, LevelPath } from '@matrixai/db';
+import type {
+  DB,
+  DBTransaction,
+  KeyPath,
+  LevelPath
+} from '@matrixai/db';
 import type {
   PermissionId,
   PermissionIdString,
   Permission,
   VaultActions,
 } from './types';
+import type { Locks } from '../locks';
 import type { NodeId } from '../nodes/types';
 import type { GestaltAction } from '../gestalts/types';
 import type { VaultAction, VaultId } from '../vaults/types';
 import type { Ref } from '../types';
+
 import Logger from '@matrixai/logger';
 import { IdInternal } from '@matrixai/id';
 import { RWLockWriter } from '@matrixai/async-locks';
@@ -18,6 +25,7 @@ import {
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import * as aclUtils from './utils';
 import * as aclErrors from './errors';
+import { utils as dbUtils } from '@matrixai/db';
 import { withF } from '@matrixai/resources';
 
 interface ACL extends CreateDestroyStartStop {}
@@ -28,15 +36,17 @@ interface ACL extends CreateDestroyStartStop {}
 class ACL {
   static async createACL({
     db,
+    locks,
     logger = new Logger(this.name),
     fresh = false,
   }: {
     db: DB;
+    locks: Locks;
     logger?: Logger;
     fresh?: boolean;
   }): Promise<ACL> {
     logger.info(`Creating ${this.name}`);
-    const acl = new ACL({ db, logger });
+    const acl = new ACL({ db, locks, logger });
     await acl.start({ fresh });
     logger.info(`Created ${this.name}`);
     return acl;
@@ -44,6 +54,7 @@ class ACL {
 
   protected logger: Logger;
   protected db: DB;
+  protected locks: Locks;
 
   protected aclDbPath: LevelPath = [this.constructor.name];
   /**
@@ -61,18 +72,38 @@ class ACL {
    */
   protected aclVaultsDbPath: LevelPath = [this.constructor.name, 'vaults'];
 
+  // lock across the usages of the DB
+  // it makes sense to use
+  // Symbol.for("key")
+  // symbol for is found in teh global registry, if it doesn't exist, it is added to the global registry and returned
+  // we can identify our locks by this
+  // to do this, we should have a global lock system in case we want to LOCK across multiple domains
+  // then other domains can also ensure those locks are being done as well
+  // and it is a like a PATH for a specific domain
+  // we can pass a keyPath
+  // and we can lock a level path
+  // well right now it can only be a keypath
+  // this.acquireLock(key: Buffer)
+  // and we identify our key buffer into a collection
+  // we can do a collection struce
+  // the symbols don't quite make sense, since we cannot attach a lock there anyway
+  // so we have to do this as well
+  // if it is not the DB problem we can just do this
+  // this.acquireLock()
+
+  // KeyPath | string | Buffer
+  // locking an entire level is an interesting idea
+  // then you could have a very specific locking system
   // No more single mutex
   // protected lock: Mutex = new Mutex();
+
   protected generatePermId: () => PermissionId;
 
-  constructor({ db, logger }: { db: DB; logger: Logger }) {
+  constructor({ db, locks, logger }: { db: DB; locks: Locks; logger: Logger }) {
     this.logger = logger;
     this.db = db;
+    this.locks = locks;
   }
-
-  // get locked(): boolean {
-  //   return this.lock.isLocked();
-  // }
 
   public async start({
     fresh = false,
@@ -98,70 +129,32 @@ class ACL {
     this.logger.info(`Destroyed ${this.constructor.name}`);
   }
 
-  // /**
-  //  * Run several operations within the same lock
-  //  * This does not ensure atomicity of the underlying database
-  //  * Database atomicity still depends on the underlying operation
-  //  */
-  // @ready(new aclErrors.ErrorACLNotRunning())
-  // public async transaction<T>(f: (acl: ACL) => Promise<T>): Promise<T> {
-  //   const release = await this.lock.acquire();
-  //   try {
-  //     return await f(this);
-  //   } finally {
-  //     release();
-  //   }
-  // }
-
-  // /**
-  //  * Transaction wrapper that will not lock if the operation was executed
-  //  * within a transaction context
-  //  */
-  // @ready(new aclErrors.ErrorACLNotRunning())
-  // public async _transaction<T>(f: () => Promise<T>): Promise<T> {
-  //   if (this.lock.isLocked()) {
-  //     return await f();
-  //   } else {
-  //     return await this.transaction(f);
-  //   }
-  // }
-
   @ready(new aclErrors.ErrorACLNotRunning())
   public async sameNodePerm(
     nodeId1: NodeId,
     nodeId2: NodeId,
     tran?: DBTransaction,
   ): Promise<boolean> {
-
-    // now what this does is creat a new transaction
-    // a read-commited that is
-    // but what we need to do is esnure we are locking what nodeid1 and nodeid2 will be read
-    // so we need to lock relative to node id?
-
+    const nodeId1Path = [...this.aclNodesDbPath, nodeId1.toBuffer()] as unknown as KeyPath;
+    const nodeId2Path = [...this.aclNodesDbPath, nodeId2.toBuffer()] as unknown as KeyPath;
     if (tran == null) {
       return withF(
-        [this.db.transaction()],
+        [
+          this.db.transaction(),
+          this.locks.lockRead(
+            dbUtils.keyPathToKey(nodeId1Path).toString('binary'),
+            dbUtils.keyPathToKey(nodeId2Path).toString('binary')
+          ),
+        ],
         async ([tran]) => this.sameNodePerm(nodeId1, nodeId2, tran)
       );
     }
-
-
-    return await this._transaction(async () => {
-      const permId1 = await this.db.get(
-        this.aclNodesDbDomain,
-        nodeId1.toBuffer(),
-        true,
-      );
-      const permId2 = await this.db.get(
-        this.aclNodesDbDomain,
-        nodeId2.toBuffer(),
-        true,
-      );
-      if (permId1 != null && permId2 != null && permId1 === permId2) {
-        return true;
-      }
-      return false;
-    });
+    const permId1 = await tran.get(nodeId1Path, true);
+    const permId2 = await tran.get(nodeId2Path, true);
+    if (permId1 != null && permId2 != null) {
+      return IdInternal.fromBuffer(permId1).equals(IdInternal.fromBuffer(permId2));
+    }
+    return false;
   }
 
   @ready(new aclErrors.ErrorACLNotRunning())
