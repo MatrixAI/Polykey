@@ -9,6 +9,7 @@ import type { NodeId, NodeAddress, NodeBucket } from '../nodes/types';
 import type { ClaimEncoded } from '../claims/types';
 import type { Timer } from '../types';
 import Logger from '@matrixai/logger';
+import { StartStop } from '@matrixai/async-init/dist/StartStop';
 import * as nodesErrors from './errors';
 import * as nodesUtils from './utils';
 import * as networkUtils from '../network/utils';
@@ -18,6 +19,8 @@ import * as claimsErrors from '../claims/errors';
 import * as sigchainUtils from '../sigchain/utils';
 import * as claimsUtils from '../claims/utils';
 
+interface NodeManager extends StartStop {}
+@StartStop()
 class NodeManager {
   protected db: DB;
   protected logger: Logger;
@@ -47,6 +50,18 @@ class NodeManager {
     this.sigchain = sigchain;
     this.nodeConnectionManager = nodeConnectionManager;
     this.nodeGraph = nodeGraph;
+  }
+
+  public async start() {
+    this.logger.info(`Starting ${this.constructor.name}`);
+    this.setNodeQueueRunner = this.startSetNodeQueue();
+    this.logger.info(`Started ${this.constructor.name}`);
+  }
+
+  public async stop() {
+    this.logger.info(`Stopping ${this.constructor.name}`);
+    await this.stopSetNodeQueue();
+    this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
   /**
