@@ -230,6 +230,11 @@ class NodeGraph {
       nodesUtils.bucketDbKey(nodeId),
     ]);
     if (nodeData != null) {
+      this.logger.debug(
+        `Updating node ${nodesUtils.encodeNodeId(
+          nodeId,
+        )} in bucket ${bucketIndex}`,
+      );
       // If the node already exists we want to remove the old `lastUpdated`
       const lastUpdatedKey = nodesUtils.lastUpdatedBucketDbKey(
         nodeData.lastUpdated,
@@ -237,6 +242,11 @@ class NodeGraph {
       );
       await tran.del([...lastUpdatedPath, lastUpdatedKey]);
     } else {
+      this.logger.debug(
+        `Adding node ${nodesUtils.encodeNodeId(
+          nodeId,
+        )} to bucket ${bucketIndex}`,
+      );
       // It didn't exist so we want to increment the bucket count
       const count = await this.getBucketMetaProp(bucketIndex, 'count', tran);
       await this.setBucketMetaProp(bucketIndex, 'count', count + 1, tran);
@@ -294,6 +304,11 @@ class NodeGraph {
       nodesUtils.bucketDbKey(nodeId),
     ]);
     if (nodeData != null) {
+      this.logger.debug(
+        `Removing node ${nodesUtils.encodeNodeId(
+          nodeId,
+        )} from bucket ${bucketIndex}`,
+      );
       const count = await this.getBucketMetaProp(bucketIndex, 'count', tran);
       await this.setBucketMetaProp(bucketIndex, 'count', count - 1, tran);
       await tran.del([...bucketPath, nodesUtils.bucketDbKey(nodeId)]);
