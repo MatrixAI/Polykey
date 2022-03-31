@@ -16,14 +16,15 @@ import NodeManager from '@/nodes/NodeManager';
 import Proxy from '@/network/Proxy';
 import Sigchain from '@/sigchain/Sigchain';
 import * as claimsUtils from '@/claims/utils';
-import { promisify, sleep } from '@/utils';
+import { promise, promisify, sleep } from '@/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as nodesTestUtils from './utils';
+import { generateNodeIdForBucket } from './utils';
 
 describe(`${NodeManager.name} test`, () => {
   const password = 'password';
-  const logger = new Logger(`${NodeManager.name} test`, LogLevel.WARN, [
+  const logger = new Logger(`${NodeManager.name} test`, LogLevel.DEBUG, [
     new StreamHandler(),
   ]);
   let dataDir: string;
@@ -39,14 +40,22 @@ describe(`${NodeManager.name} test`, () => {
 
   const serverHost = '::1' as Host;
   const externalHost = '127.0.0.1' as Host;
+  const localhost = '127.0.0.1' as Host;
+  const port = 55556 as Port;
   const serverPort = 0 as Port;
   const externalPort = 0 as Port;
   const mockedGenerateDeterministicKeyPair = jest.spyOn(
     keysUtils,
     'generateDeterministicKeyPair',
   );
+  const mockedPingNode = jest.fn(); // Jest.spyOn(NodeManager.prototype, 'pingNode');
+  const dummyNodeConnectionManager = {
+    pingNode: mockedPingNode,
+  } as unknown as NodeConnectionManager;
 
   beforeEach(async () => {
+    mockedPingNode.mockClear();
+    mockedPingNode.mockImplementation(async (_) => true);
     mockedGenerateDeterministicKeyPair.mockImplementation((bits, _) => {
       return keysUtils.generateKeyPair(bits);
     });
@@ -110,6 +119,8 @@ describe(`${NodeManager.name} test`, () => {
     await nodeConnectionManager.start();
   });
   afterEach(async () => {
+    mockedPingNode.mockClear();
+    mockedPingNode.mockImplementation(async (_) => true);
     await nodeConnectionManager.stop();
     await nodeGraph.stop();
     await nodeGraph.destroy();
@@ -645,5 +656,183 @@ describe(`${NodeManager.name} test`, () => {
       await server?.stop();
       await server?.destroy();
     }
+  });
+  test('should not add nodes to full bucket if pings succeeds', async () => {
+    const tempNodeGraph = await NodeGraph.createNodeGraph({
+      db,
+      keyManager,
+      logger,
+    });
+    mockedPingNode.mockImplementation(async (_) => true);
+    const nodeManager = new NodeManager({
+      db,
+      sigchain: {} as Sigchain,
+      keyManager,
+      nodeGraph: tempNodeGraph,
+      nodeConnectionManager: dummyNodeConnectionManager,
+      logger,
+    });
+    await nodeManager.start();
+    const nodeId = keyManager.getNodeId();
+    const address = { host: localhost, port };
+    // Let's fill a bucket
+    for (let i = 0; i < nodeGraph.nodeBucketLimit; i++) {
+      const newNode = generateNodeIdForBucket(nodeId, 100, i);
+      await nodeManager.setNode(newNode, address);
+    }
+
+    // Helpers
+    const listBucket = async (bucketIndex: number) => {
+      const bucket = await nodeManager.getBucket(bucketIndex);
+      return bucket?.map(([nodeId]) => nodesUtils.encodeNodeId(nodeId));
+    };
+
+    // Pings succeed, node not added
+    mockedPingNode.mockImplementation(async (_) => true);
+    const newNode = generateNodeIdForBucket(nodeId, 100, 21);
+    await nodeManager.setNode(newNode, address);
+    expect(await listBucket(100)).not.toContain(
+      nodesUtils.encodeNodeId(newNode),
+    );
+
+    // Clean up
+    await nodeManager.queueDrained();
+    await nodeManager.stop();
+    await tempNodeGraph.stop();
+    await tempNodeGraph.destroy();
+  });
+  test('should add nodes to full bucket if pings fail', async () => {
+    const tempNodeGraph = await NodeGraph.createNodeGraph({
+      db,
+      keyManager,
+      logger,
+    });
+    mockedPingNode.mockImplementation(async (_) => true);
+    const nodeManager = new NodeManager({
+      db,
+      sigchain: {} as Sigchain,
+      keyManager,
+      nodeGraph: tempNodeGraph,
+      nodeConnectionManager: dummyNodeConnectionManager,
+      logger,
+    });
+    await nodeManager.start();
+    const nodeId = keyManager.getNodeId();
+    const address = { host: localhost, port };
+    // Let's fill a bucket
+    for (let i = 0; i < nodeGraph.nodeBucketLimit; i++) {
+      const newNode = generateNodeIdForBucket(nodeId, 100, i);
+      await nodeManager.setNode(newNode, address);
+    }
+
+    // Helpers
+    const listBucket = async (bucketIndex: number) => {
+      const bucket = await nodeManager.getBucket(bucketIndex);
+      return bucket?.map(([nodeId]) => nodesUtils.encodeNodeId(nodeId));
+    };
+
+    // Pings fail, new nodes get added
+    mockedPingNode.mockImplementation(async (_) => false);
+    const newNode1 = generateNodeIdForBucket(nodeId, 100, 22);
+    const newNode2 = generateNodeIdForBucket(nodeId, 100, 23);
+    const newNode3 = generateNodeIdForBucket(nodeId, 100, 24);
+    await nodeManager.setNode(newNode1, address);
+    await nodeManager.setNode(newNode2, address);
+    await nodeManager.setNode(newNode3, address);
+    await nodeManager.queueDrained();
+    const list = await listBucket(100);
+    expect(list).toContain(nodesUtils.encodeNodeId(newNode1));
+    expect(list).toContain(nodesUtils.encodeNodeId(newNode2));
+    expect(list).toContain(nodesUtils.encodeNodeId(newNode3));
+
+    // Clean up
+    await nodeManager.queueDrained();
+    await nodeManager.stop();
+    await tempNodeGraph.stop();
+    await tempNodeGraph.destroy();
+  });
+  test('should not block when bucket is full', async () => {
+    const tempNodeGraph = await NodeGraph.createNodeGraph({
+      db,
+      keyManager,
+      logger,
+    });
+    mockedPingNode.mockImplementation(async (_) => true);
+    const nodeManager = new NodeManager({
+      db,
+      sigchain: {} as Sigchain,
+      keyManager,
+      nodeGraph: tempNodeGraph,
+      nodeConnectionManager: dummyNodeConnectionManager,
+      logger,
+    });
+    await nodeManager.start();
+    const nodeId = keyManager.getNodeId();
+    const address = { host: localhost, port };
+    // Let's fill a bucket
+    for (let i = 0; i < nodeGraph.nodeBucketLimit; i++) {
+      const newNode = generateNodeIdForBucket(nodeId, 100, i);
+      await nodeManager.setNode(newNode, address);
+    }
+
+    // Set node does not block
+    const delayPing = promise();
+    mockedPingNode.mockImplementation(async (_) => {
+      await delayPing.p;
+      return true;
+    });
+    const newNode4 = generateNodeIdForBucket(nodeId, 100, 25);
+    await expect(
+      nodeManager.setNode(newNode4, address),
+    ).resolves.toBeUndefined();
+    delayPing.resolveP(null);
+    await nodeManager.queueDrained();
+
+    // Clean up
+    await nodeManager.queueDrained();
+    await nodeManager.stop();
+    await tempNodeGraph.stop();
+    await tempNodeGraph.destroy();
+  });
+  test('should block when blocking is set to true', async () => {
+    const tempNodeGraph = await NodeGraph.createNodeGraph({
+      db,
+      keyManager,
+      logger,
+    });
+    mockedPingNode.mockImplementation(async (_) => true);
+    const nodeManager = new NodeManager({
+      db,
+      sigchain: {} as Sigchain,
+      keyManager,
+      nodeGraph: tempNodeGraph,
+      nodeConnectionManager: dummyNodeConnectionManager,
+      logger,
+    });
+    await nodeManager.start();
+    const nodeId = keyManager.getNodeId();
+    const address = { host: localhost, port };
+    // Let's fill a bucket
+    for (let i = 0; i < nodeGraph.nodeBucketLimit; i++) {
+      const newNode = generateNodeIdForBucket(nodeId, 100, i);
+      await nodeManager.setNode(newNode, address);
+    }
+
+    // Set node can block
+    mockedPingNode.mockClear();
+    mockedPingNode.mockImplementation(async (_) => {
+      return true;
+    });
+    const newNode5 = generateNodeIdForBucket(nodeId, 100, 25);
+    await expect(
+      nodeManager.setNode(newNode5, address, true),
+    ).resolves.toBeUndefined();
+    expect(mockedPingNode).toBeCalled();
+
+    // CLean up
+    await nodeManager.queueDrained();
+    await nodeManager.stop();
+    await tempNodeGraph.stop();
+    await tempNodeGraph.destroy();
   });
 });
