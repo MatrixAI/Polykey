@@ -325,11 +325,10 @@ class NodeManager {
   }
 
   /**
-   * Adds a node to the node graph.
+   * Adds a node to the node graph. This assumes that you have already authenticated the node.
    * Updates the node if the node already exists.
    * @param nodeId - Id of the node we wish to add
    * @param nodeAddress - Expected address of the node we want to add
-   * @param authenticate - Flag for if we want to authenticate the node we're adding
    * @param force - Flag for if we want to add the node without authenticating or if the bucket is full.
    * This will drop the oldest node in favor of the new.
    * @param timer Connection timeout timer
@@ -337,19 +336,9 @@ class NodeManager {
   public async setNode(
     nodeId: NodeId,
     nodeAddress: NodeAddress,
-    authenticate: boolean = true,
     force: boolean = false,
     timer?: Timer,
   ): Promise<void> {
-    // If we fail to ping and authenticate the new node we return
-    // skip if force is true or authenticate is false
-    if (
-      !force &&
-      authenticate &&
-      !(await this.pingNode(nodeId, nodeAddress, timer))
-    ) {
-      return;
-    }
     // When adding a node we need to handle 3 cases
     // 1. The node already exists. We need to update it's last updated field
     // 2. The node doesn't exist and bucket has room.
