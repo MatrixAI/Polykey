@@ -295,20 +295,22 @@ class NodeGraph {
   }
 
   @ready(new nodesErrors.ErrorNodeGraphNotRunning())
-  public async getOldestNode(bucketIndex: number): Promise<NodeId | undefined> {
+  public async getOldestNode(
+    bucketIndex: number,
+    limit: number = 1,
+  ): Promise<Array<NodeId>> {
     const bucketKey = nodesUtils.bucketKey(bucketIndex);
     // Remove the oldest entry in the bucket
     const lastUpdatedBucketDb = await this.db.level(
       bucketKey,
       this.nodeGraphLastUpdatedDb,
     );
-    let oldestNodeId: NodeId | undefined;
-    for await (const key of lastUpdatedBucketDb.createKeyStream({ limit: 1 })) {
-      ({ nodeId: oldestNodeId } = nodesUtils.parseLastUpdatedBucketDbKey(
-        key as Buffer,
-      ));
+    const oldestNodeIds: Array<NodeId> = [];
+    for await (const key of lastUpdatedBucketDb.createKeyStream({ limit })) {
+      const { nodeId } = nodesUtils.parseLastUpdatedBucketDbKey(key as Buffer);
+      oldestNodeIds.push(nodeId);
     }
-    return oldestNodeId;
+    return oldestNodeIds;
   }
 
   @ready(new nodesErrors.ErrorNodeGraphNotRunning())

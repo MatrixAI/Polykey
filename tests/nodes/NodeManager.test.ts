@@ -508,7 +508,7 @@ describe(`${NodeManager.name} test`, () => {
     // Mocking ping
     const nodeManagerPingMock = jest.spyOn(NodeManager.prototype, 'pingNode');
     nodeManagerPingMock.mockResolvedValue(true);
-    const oldestNodeId = await nodeGraph.getOldestNode(bucketIndex);
+    const oldestNodeId = (await nodeGraph.getOldestNode(bucketIndex)).pop();
     const oldestNode = await nodeGraph.getNode(oldestNodeId!);
     // Waiting for a second to tick over
     await sleep(1100);
@@ -552,7 +552,7 @@ describe(`${NodeManager.name} test`, () => {
     // Mocking ping
     const nodeManagerPingMock = jest.spyOn(NodeManager.prototype, 'pingNode');
     nodeManagerPingMock.mockResolvedValue(true);
-    const oldestNodeId = await nodeGraph.getOldestNode(bucketIndex);
+    const oldestNodeId = (await nodeGraph.getOldestNode(bucketIndex)).pop();
     // Adding a new node with bucket full
     await nodeManager.setNode(nodeId, { port: 55555 } as NodeAddress, true);
     // Bucket still contains max nodes
@@ -593,7 +593,7 @@ describe(`${NodeManager.name} test`, () => {
     // Mocking ping
     const nodeManagerPingMock = jest.spyOn(NodeManager.prototype, 'pingNode');
     nodeManagerPingMock.mockResolvedValue(false);
-    const oldestNodeId = await nodeGraph.getOldestNode(bucketIndex);
+    const oldestNodeId = (await nodeGraph.getOldestNode(bucketIndex)).pop();
     // Adding a new node with bucket full
     await nodeManager.setNode(nodeId, { port: 55555 } as NodeAddress, true);
     // Bucket still contains max nodes

@@ -358,30 +358,52 @@ class NodeManager {
     } else {
       // We want to add a node but the bucket is full
       // We need to ping the oldest node
-      const oldestNodeId = (await this.nodeGraph.getOldestNode(bucketIndex))!;
-      if ((await this.pingNode(oldestNodeId, undefined, timer)) && !force) {
-        // The node responded, we need to update it's info and drop the new node
-        const oldestNode = (await this.nodeGraph.getNode(oldestNodeId))!;
-        await this.nodeGraph.setNode(oldestNodeId, oldestNode.address);
-      } else {
-        // The node could not be contacted or force was set,
-        // we drop it in favor of the new node
-        await this.nodeGraph.unsetNode(oldestNodeId);
+      const oldestNodeIds = (await this.nodeGraph.getOldestNode(
+        bucketIndex,
+        3,
+      ))!;
+      if (force) {
+        // We just add the new node anyway without checking the old one
+        const oldNodeId = oldestNodeIds[0];
+        await this.nodeGraph.unsetNode(oldNodeId);
+        await this.nodeGraph.setNode(nodeId, nodeAddress);
+        return;
+      }
+      // We want to concurrently ping the nodes
+      const pingPromises = oldestNodeIds.map((nodeId) => {
+        const doPing = async (): Promise<{
+          nodeId: NodeId;
+          success: boolean;
+        }> => {
+          // This needs to return nodeId and ping result
+          const data = await this.nodeGraph.getNode(nodeId);
+          if (data == null) return { nodeId, success: false };
+          const result = await this.pingNode(nodeId, undefined, timer);
+          return { nodeId, success: result };
+        };
+        return doPing();
+      });
+      const pingResults = await Promise.all(pingPromises);
+      for (const { nodeId, success } of pingResults) {
+        if (success) {
+          // Ping succeeded, update the node
+          const node = (await this.nodeGraph.getNode(nodeId))!;
+          await this.nodeGraph.setNode(nodeId, node.address);
+        } else {
+          // Otherwise we remove the node
+          await this.nodeGraph.unsetNode(nodeId);
+        }
+      }
+      // Check if we now have room and add the new node
+      const count = await this.nodeGraph.getBucketMetaProp(
+        bucketIndex,
+        'count',
+      );
+      if (count < this.nodeGraph.nodeBucketLimit) {
         await this.nodeGraph.setNode(nodeId, nodeAddress);
       }
     }
   }
-
-  // FIXME
-  // /**
-  //  * Updates the node in the NodeGraph
-  //  */
-  // public async updateNode(
-  //   nodeId: NodeId,
-  //   nodeAddress?: NodeAddress,
-  // ): Promise<void> {
-  //   return await this.nodeGraph.updateNode(nodeId, nodeAddress);
-  // }
 
   /**
    * Removes a node from the NodeGraph
