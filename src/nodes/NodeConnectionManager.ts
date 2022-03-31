@@ -135,14 +135,9 @@ class NodeConnectionManager {
   public async acquireConnection(
     targetNodeId: NodeId,
     timer?: Timer,
-    address?: NodeAddress,
   ): Promise<ResourceAcquire<NodeConnection<GRPCClientAgent>>> {
     return async () => {
-      const { connection, timer } = await this.getConnection(
-        targetNodeId,
-        address,
-        timer,
-      );
+      const { connection, timer } = await this.getConnection(targetNodeId, timer);
       // Acquire the read lock and the release function
       const [release] = await this.connectionLocks.lock([
         targetNodeId.toString(),
@@ -185,7 +180,7 @@ class NodeConnectionManager {
     timer?: Timer,
   ): Promise<T> {
     return await withF(
-      [await this.acquireConnection(targetNodeId, timer, undefined)],
+      [await this.acquireConnection(targetNodeId, timer)],
       async ([conn]) => {
         this.logger.info(
           `withConnF calling function with connection to ${nodesUtils.encodeNodeId(
@@ -214,11 +209,7 @@ class NodeConnectionManager {
     ) => AsyncGenerator<T, TReturn, TNext>,
     timer?: Timer,
   ): AsyncGenerator<T, TReturn, TNext> {
-    const acquire = await this.acquireConnection(
-      targetNodeId,
-      timer,
-      undefined,
-    );
+    const acquire = await this.acquireConnection(targetNodeId, timer);
     const [release, conn] = await acquire();
     let caughtError;
     try {
@@ -236,13 +227,11 @@ class NodeConnectionManager {
    * Create a connection to another node (without performing any function).
    * This is a NOOP if a connection already exists.
    * @param targetNodeId Id of node we are creating connection to
-   * @param address Optional address to connect to
    * @param timer Connection timeout timer
    * @returns ConnectionAndLock that was created or exists in the connection map
    */
   protected async getConnection(
     targetNodeId: NodeId,
-    address?: NodeAddress,
     timer?: Timer,
   ): Promise<ConnectionAndTimer> {
     this.logger.info(
@@ -467,7 +456,7 @@ class NodeConnectionManager {
         // call to getConnectionToNode
         // FIXME: no tran
         await this.nodeGraph.setNode(nextNodeId, nextNodeAddress.address);
-        await this.getConnection(nextNodeId, undefined, timer);
+        await this.getConnection(nextNodeId, timer);
       } catch (e) {
         // If we can't connect to the node, then skip it
         continue;
@@ -581,7 +570,7 @@ class NodeConnectionManager {
     for (const seedNodeId of this.getSeedNodes()) {
       // Check if the connection is viable
       try {
-        await this.getConnection(seedNodeId, undefined, timer);
+        await this.getConnection(seedNodeId, timer);
       } catch (e) {
         if (e instanceof nodesErrors.ErrorNodeConnectionTimeout) continue;
         throw e;
@@ -675,39 +664,48 @@ class NodeConnectionManager {
    * connection can be authenticated, it's certificate matches the nodeId and
    * the addresses match if provided. Otherwise returns false.
    * @param nodeId - NodeId of the target
-   * @param address - Optional address of the target
+   * @param host - Host of the target node
+   * @param port - Port of the target node
    * @param timer Connection timeout timer
    */
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
   public async pingNode(
     nodeId: NodeId,
-    address?: NodeAddress,
+    host: Host,
+    port: Port,
     timer?: Timer,
   ): Promise<boolean> {
     // If we can create a connection then we have punched though the NAT,
     // authenticated and confirmed the nodeId matches
-    let connAndLock: ConnectionAndLock;
+    const proxyAddress = networkUtils.buildAddress(
+      this.proxy.getProxyHost(),
+      this.proxy.getProxyPort(),
+    );
+    const signature = await this.keyManager.signWithRootKeyPair(
+      Buffer.from(proxyAddress),
+    );
+    const holePunchPromises = Array.from(this.getSeedNodes(), (seedNodeId) => {
+      return this.sendHolePunchMessage(
+        seedNodeId,
+        this.keyManager.getNodeId(),
+        nodeId,
+        proxyAddress,
+        signature,
+      );
+    });
+    const forwardPunchPromise = this.holePunchForward(
+      nodeId,
+      host,
+      port,
+      timer,
+    );
+
     try {
-      connAndLock = await this.createConnection(nodeId, address, timer);
+      await Promise.all([forwardPunchPromise, ...holePunchPromises]);
     } catch (e) {
-      if (
-        e instanceof nodesErrors.ErrorNodeConnectionDestroyed ||
-        e instanceof nodesErrors.ErrorNodeConnectionTimeout ||
-        e instanceof grpcErrors.ErrorGRPC ||
-        e instanceof agentErrors.ErrorAgentClientDestroyed
-      ) {
-        // Failed to connect, returning false
-        return false;
-      }
-      throw e;
+      return false;
     }
-    const remoteHost = connAndLock.connection?.host;
-    const remotePort = connAndLock.connection?.port;
-    // If address wasn't set then nothing to check
-    if (address == null) return true;
-    // Check if the address information match in case there was an
-    // existing connection
-    return address.host === remoteHost && address.port === remotePort;
+    return true;
   }
 }
 
