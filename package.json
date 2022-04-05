@@ -75,7 +75,7 @@
     "@matrixai/async-init": "^1.6.0",
     "@matrixai/async-locks": "^2.0.0",
     "@matrixai/db": "^3.2.0",
-    "@matrixai/errors": "^1.0.0",
+    "@matrixai/errors": "^1.0.1",
     "@matrixai/id": "^3.3.2",
     "@matrixai/logger": "^2.1.0",
     "@matrixai/resources": "^1.0.0",
