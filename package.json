@@ -74,7 +74,8 @@
     "@grpc/grpc-js": "1.3.7",
     "@matrixai/async-init": "^1.6.0",
     "@matrixai/async-locks": "^2.0.0",
-    "@matrixai/db": "^3.1.0",
+    "@matrixai/db": "^3.2.0",
+    "@matrixai/errors": "^1.0.0",
     "@matrixai/id": "^3.3.2",
     "@matrixai/logger": "^2.1.0",
     "@matrixai/resources": "^1.0.0",
@@ -101,7 +102,6 @@
     "readable-stream": "^3.6.0",
     "resource-counter": "^1.2.4",
     "threads": "^1.6.5",
-    "ts-custom-error": "^3.2.0",
     "utp-native": "^2.5.3",
     "uuid": "^8.3.0"
   },
