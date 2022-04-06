@@ -129,7 +129,7 @@ class NodeConnectionManager {
     targetNodeId: NodeId,
   ): Promise<ResourceAcquire<NodeConnection<GRPCClientAgent>>> {
     return async () => {
-      const connAndLock = await this.createConnection(targetNodeId);
+      const connAndLock = await this.getConnection(targetNodeId);
       // Acquire the read lock and the release function
       const release = await connAndLock.lock.acquireRead();
       // Resetting TTL timer
@@ -161,6 +161,11 @@ class NodeConnectionManager {
       return await withF(
         [await this.acquireConnection(targetNodeId)],
         async ([conn]) => {
+          this.logger.info(
+            `withConnF calling function with connection to ${nodesUtils.encodeNodeId(
+              targetNodeId,
+            )}`,
+          );
           return await f(conn);
         },
       );
@@ -219,11 +224,11 @@ class NodeConnectionManager {
    * @param targetNodeId Id of node we are creating connection to
    * @returns ConnectionAndLock that was create or exists in the connection map.
    */
-  protected async createConnection(
+  protected async getConnection(
     targetNodeId: NodeId,
   ): Promise<ConnectionAndLock> {
     this.logger.info(
-      `Creating connection to ${nodesUtils.encodeNodeId(targetNodeId)}`,
+      `Getting connection to ${nodesUtils.encodeNodeId(targetNodeId)}`,
     );
     let connection: NodeConnection<GRPCClientAgent> | undefined;
     let lock: RWLock;
@@ -241,10 +246,13 @@ class NodeConnectionManager {
           targetNodeId.toString() as NodeIdString,
         );
         if (connAndLock != null && connAndLock.connection != null) {
+          this.logger.info(
+            `existing entry found for ${nodesUtils.encodeNodeId(targetNodeId)}`,
+          );
           return connAndLock;
         }
         this.logger.info(
-          `existing lock: creating connection to ${nodesUtils.encodeNodeId(
+          `existing lock, creating connection to ${nodesUtils.encodeNodeId(
             targetNodeId,
           )}`,
         );
@@ -260,7 +268,7 @@ class NodeConnectionManager {
       );
       return await lock.withWrite(async () => {
         this.logger.info(
-          `no existing entry: creating connection to ${nodesUtils.encodeNodeId(
+          `no existing entry, creating connection to ${nodesUtils.encodeNodeId(
             targetNodeId,
           )}`,
         );
@@ -318,7 +326,9 @@ class NodeConnectionManager {
       nodeConnectionManager: this,
       destroyCallback,
       connConnectTime: this.connConnectTime,
-      logger: this.logger.getChild(`${targetHost}:${targetAddress.port}`),
+      logger: this.logger.getChild(
+        `${NodeConnection.name} ${targetHost}:${targetAddress.port}`,
+      ),
       clientFactory: async (args) =>
         GRPCClientAgent.createGRPCClientAgent(args),
     });
@@ -521,7 +531,7 @@ class NodeConnectionManager {
         // Add the node to the database so that we can find its address in
         // call to getConnectionToNode
         await this.nodeGraph.setNode(nextNode.id, nextNode.address);
-        await this.createConnection(nextNode.id);
+        await this.getConnection(nextNode.id);
       } catch (e) {
         // If we can't connect to the node, then skip it
         continue;
@@ -620,7 +630,7 @@ class NodeConnectionManager {
     for (const seedNodeId of this.getSeedNodes()) {
       // Check if the connection is viable
       try {
-        await this.createConnection(seedNodeId);
+        await this.getConnection(seedNodeId);
       } catch (e) {
         if (e instanceof nodesErrors.ErrorNodeConnectionTimeout) continue;
         throw e;

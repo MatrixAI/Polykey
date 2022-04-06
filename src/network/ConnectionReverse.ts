@@ -295,7 +295,9 @@ class ConnectionReverse extends Connection {
         await this.stop();
       });
       this.tlsSocket.pipe(this.serverSocket, { end: false });
-      this.serverSocket.pipe(this.tlsSocket, { end: false });
+      this.tlsSocket.once('data', () => {
+        this.serverSocket.pipe(this.tlsSocket as TLSSocket, { end: false });
+      });
       this.clientCertChain = clientCertChain;
       this.logger.info('Composed Connection Reverse');
     } catch (e) {

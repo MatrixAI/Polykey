@@ -139,12 +139,18 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     remoteNode1 = await PolykeyAgent.createPolykeyAgent({
       password,
       nodePath: path.join(dataDir2, 'remoteNode1'),
+      networkConfig: {
+        proxyHost: '127.0.0.1' as Host,
+      },
       logger: logger.getChild('remoteNode1'),
     });
     remoteNodeId1 = remoteNode1.keyManager.getNodeId();
     remoteNode2 = await PolykeyAgent.createPolykeyAgent({
       password,
       nodePath: path.join(dataDir2, 'remoteNode2'),
+      networkConfig: {
+        proxyHost: '127.0.0.1' as Host,
+      },
       logger: logger.getChild('remoteNode2'),
     });
     remoteNodeId2 = remoteNode2.keyManager.getNodeId();
@@ -266,6 +272,9 @@ describe(`${NodeConnectionManager.name} general test`, () => {
         const server = await PolykeyAgent.createPolykeyAgent({
           nodePath: path.join(dataDir, 'node2'),
           password,
+          networkConfig: {
+            proxyHost: '127.0.0.1' as Host,
+          },
           logger: nodeConnectionManagerLogger,
         });
         await nodeGraph.setNode(server.keyManager.getNodeId(), {
@@ -300,6 +309,9 @@ describe(`${NodeConnectionManager.name} general test`, () => {
         const server = await PolykeyAgent.createPolykeyAgent({
           nodePath: path.join(dataDir, 'node3'),
           password,
+          networkConfig: {
+            proxyHost: '127.0.0.1' as Host,
+          },
           logger: nodeConnectionManagerLogger,
         });
         await nodeGraph.setNode(server.keyManager.getNodeId(), {
@@ -456,6 +468,9 @@ describe(`${NodeConnectionManager.name} general test`, () => {
         password,
         logger: logger.getChild('serverPKAgent'),
         nodePath: path.join(dataDir, 'serverPKAgent'),
+        networkConfig: {
+          proxyHost: '127.0.0.1' as Host,
+        },
       });
       nodeConnectionManager = new NodeConnectionManager({
         keyManager,

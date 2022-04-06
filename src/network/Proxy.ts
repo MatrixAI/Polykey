@@ -434,6 +434,13 @@ class Proxy {
           timer,
         );
       } catch (e) {
+        if (e instanceof networkErrors.ErrorProxyConnectInvalidUrl) {
+          if (!clientSocket.destroyed) {
+            await clientSocketEnd('HTTP/1.1 400 Bad Request\r\n' + '\r\n');
+            clientSocket.destroy(e);
+          }
+          return;
+        }
         if (e instanceof networkErrors.ErrorConnectionStartTimeout) {
           if (!clientSocket.destroyed) {
             await clientSocketEnd('HTTP/1.1 504 Gateway Timeout\r\n' + '\r\n');
@@ -519,6 +526,9 @@ class Proxy {
     proxyPort: Port,
     timer?: Timer,
   ): Promise<ConnectionForward> {
+    if (networkUtils.isHostWildcard(proxyHost)) {
+      throw new networkErrors.ErrorProxyConnectInvalidUrl();
+    }
     const proxyAddress = networkUtils.buildAddress(proxyHost, proxyPort);
     let conn: ConnectionForward | undefined;
     conn = this.connectionsForward.proxy.get(proxyAddress);
@@ -681,6 +691,9 @@ class Proxy {
     proxyPort: Port,
     timer?: Timer,
   ): Promise<ConnectionReverse> {
+    if (networkUtils.isHostWildcard(proxyHost)) {
+      throw new networkErrors.ErrorProxyConnectInvalidUrl();
+    }
     const proxyAddress = networkUtils.buildAddress(proxyHost, proxyPort);
     let conn = this.connectionsReverse.proxy.get(proxyAddress);
     if (conn != null) {

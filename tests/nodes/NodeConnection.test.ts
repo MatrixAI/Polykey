@@ -433,6 +433,47 @@ describe(`${NodeConnection.name} test`, () => {
     });
     await conn.destroy();
   });
+  test('connects to its target but proxies connect first', async () => {
+    await clientproxy.openConnectionForward(
+      targetNodeId,
+      localHost,
+      targetPort,
+    );
+    const conn = await NodeConnection.createNodeConnection({
+      targetNodeId: targetNodeId,
+      targetHost: localHost,
+      targetPort: targetPort,
+      proxy: clientproxy,
+      keyManager: clientKeyManager,
+      nodeConnectionManager: dummyNodeConnectionManager,
+      destroyCallback,
+      logger: logger,
+      clientFactory: async (args) =>
+        GRPCClientAgent.createGRPCClientAgent(args),
+    });
+    // Because the connection will not have enough time to compose before we
+    // attempt to acquire the connection info, we need to wait and poll it
+    const connInfo = await poll<ConnectionInfo | undefined>(
+      async () => {
+        return serverProxy.getConnectionInfoByProxy(localHost, sourcePort);
+      },
+      (e) => {
+        if (e instanceof networkErrors.ErrorConnectionNotComposed) return false;
+        if (e instanceof networkErrors.ErrorConnectionNotRunning) return false;
+        return true;
+      },
+    );
+    expect(connInfo).toBeDefined();
+    expect(connInfo).toMatchObject({
+      remoteNodeId: sourceNodeId,
+      remoteCertificates: expect.any(Array),
+      localHost: localHost,
+      localPort: targetPort,
+      remoteHost: localHost,
+      remotePort: sourcePort,
+    });
+    await conn.destroy();
+  });
   test('grpcCall after connection drops', async () => {
     let nodeConnection: NodeConnection<GRPCClientAgent> | undefined;
     let polykeyAgent: PolykeyAgent | undefined;
@@ -441,6 +482,9 @@ describe(`${NodeConnection.name} test`, () => {
         password,
         nodePath: path.join(dataDir, 'PolykeyAgent3'),
         logger: logger,
+        networkConfig: {
+          proxyHost: localHost,
+        },
       });
       // Have a nodeConnection try to connect to it
       const killSelf = jest.fn();
@@ -629,6 +673,9 @@ describe(`${NodeConnection.name} test`, () => {
         password,
         nodePath: path.join(dataDir, 'PolykeyAgent3'),
         logger: logger,
+        networkConfig: {
+          proxyHost: localHost,
+        },
       });
       // Have a nodeConnection try to connect to it
       const killSelf = jest.fn();

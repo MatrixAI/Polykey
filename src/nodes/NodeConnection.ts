@@ -59,6 +59,10 @@ class NodeConnection<T extends GRPCClient> {
     logger?: Logger;
   }): Promise<NodeConnection<T>> {
     logger.info(`Creating ${this.name}`);
+    // Checking if attempting to connect to a wildcard IP
+    if (networkUtils.isHostWildcard(targetHost)) {
+      throw new nodesErrors.ErrorNodeConnectionHostWildcard();
+    }
     const proxyConfig = {
       host: proxy.getForwardHost(),
       port: proxy.getForwardPort(),

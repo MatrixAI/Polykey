@@ -52,6 +52,9 @@ describe('nodesCrossSignClaim', () => {
         rootKeyPairBits: 2048,
       },
       seedNodes: {}, // Explicitly no seed nodes on startup
+      networkConfig: {
+        proxyHost: '127.0.0.1' as Host,
+      },
       logger,
     });
     localId = pkAgent.keyManager.getNodeId();
@@ -63,6 +66,9 @@ describe('nodesCrossSignClaim', () => {
         rootKeyPairBits: 2048,
       },
       seedNodes: {}, // Explicitly no seed nodes on startup
+      networkConfig: {
+        proxyHost: '127.0.0.1' as Host,
+      },
       logger,
     });
     remoteId = remoteNode.keyManager.getNodeId();

@@ -29,6 +29,10 @@ function isHost(host: any): host is Host {
   return isIPv4 || isIPv6;
 }
 
+function isHostWildcard(host: Host): boolean {
+  return host === '0.0.0.0' || host === '::';
+}
+
 /**
  * Validates hostname as per RFC 1123
  */
@@ -353,6 +357,7 @@ export {
   pingBuffer,
   pongBuffer,
   isHost,
+  isHostWildcard,
   isHostname,
   isPort,
   toAuthToken,
