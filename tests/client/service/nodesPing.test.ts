@@ -108,7 +108,6 @@ describe('nodesPing', () => {
       connTimeoutTime: 2000,
       logger: logger.getChild('NodeConnectionManager'),
     });
-    await nodeConnectionManager.start();
     nodeManager = new NodeManager({
       db,
       keyManager,
@@ -117,6 +116,7 @@ describe('nodesPing', () => {
       sigchain,
       logger,
     });
+    await nodeConnectionManager.start({ nodeManager });
     const clientService = {
       nodesPing: nodesPing({
         authenticate,

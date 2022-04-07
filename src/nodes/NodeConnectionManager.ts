@@ -11,6 +11,7 @@ import type {
   SeedNodes,
   NodeIdString,
 } from './types';
+import type NodeManager from './NodeManager';
 import Logger from '@matrixai/logger';
 import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
 import { IdInternal } from '@matrixai/id';
@@ -54,6 +55,8 @@ class NodeConnectionManager {
   protected nodeGraph: NodeGraph;
   protected keyManager: KeyManager;
   protected proxy: Proxy;
+  // NodeManager has to be passed in during start to allow co-dependency
+  protected nodeManager: NodeManager | undefined;
   protected seedNodes: SeedNodes;
   /**
    * Data structure to store all NodeConnections. If a connection to a node n does
@@ -96,8 +99,9 @@ class NodeConnectionManager {
     this.connTimeoutTime = connTimeoutTime;
   }
 
-  public async start() {
+  public async start({ nodeManager }: { nodeManager: NodeManager }) {
     this.logger.info(`Starting ${this.constructor.name}`);
+    this.nodeManager = nodeManager;
     for (const nodeIdEncoded in this.seedNodes) {
       const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded)!;
       await this.nodeGraph.setNode(nodeId, this.seedNodes[nodeIdEncoded]);
@@ -107,6 +111,7 @@ class NodeConnectionManager {
 
   public async stop() {
     this.logger.info(`Stopping ${this.constructor.name}`);
+    this.nodeManager = undefined;
     for (const [nodeId, connAndLock] of this.connections) {
       if (connAndLock == null) continue;
       if (connAndLock.connection == null) continue;
@@ -343,6 +348,9 @@ class NodeConnectionManager {
       clientFactory: async (args) =>
         GRPCClientAgent.createGRPCClientAgent(args),
     });
+    // We can assume connection was established and destination was valid,
+    // we can add the target to the nodeGraph
+    await this.nodeManager?.setNode(targetNodeId, targetAddress);
     // Creating TTL timeout
     const timeToLiveTimer = setTimeout(async () => {
       await this.destroyConnection(targetNodeId);

@@ -133,7 +133,6 @@ describe('gestaltsDiscoveryByIdentity', () => {
       connTimeoutTime: 2000,
       logger: logger.getChild('NodeConnectionManager'),
     });
-    await nodeConnectionManager.start();
     nodeManager = new NodeManager({
       db,
       keyManager,
@@ -142,6 +141,8 @@ describe('gestaltsDiscoveryByIdentity', () => {
       sigchain,
       logger,
     });
+    await nodeManager.start();
+    await nodeConnectionManager.start({ nodeManager });
     discovery = await Discovery.createDiscovery({
       db,
       keyManager,
@@ -176,6 +177,7 @@ describe('gestaltsDiscoveryByIdentity', () => {
     await discovery.stop();
     await nodeGraph.stop();
     await nodeConnectionManager.stop();
+    await nodeManager.stop();
     await sigchain.stop();
     await proxy.stop();
     await identitiesManager.stop();

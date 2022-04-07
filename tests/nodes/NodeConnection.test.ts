@@ -237,8 +237,6 @@ describe(`${NodeConnection.name} test`, () => {
       proxy: serverProxy,
       logger,
     });
-    await serverNodeConnectionManager.start();
-
     serverNodeManager = new NodeManager({
       db: serverDb,
       sigchain: serverSigchain,
@@ -247,6 +245,8 @@ describe(`${NodeConnection.name} test`, () => {
       nodeConnectionManager: serverNodeConnectionManager,
       logger: logger,
     });
+    await serverNodeManager.start();
+    await serverNodeConnectionManager.start({ nodeManager: serverNodeManager });
     serverVaultManager = await VaultManager.createVaultManager({
       keyManager: serverKeyManager,
       vaultsPath: serverVaultsPath,
@@ -360,6 +360,7 @@ describe(`${NodeConnection.name} test`, () => {
     await serverNodeGraph.stop();
     await serverNodeGraph.destroy();
     await serverNodeConnectionManager.stop();
+    await serverNodeManager.stop();
     await serverNotificationsManager.stop();
     await serverNotificationsManager.destroy();
     await agentServer.stop();

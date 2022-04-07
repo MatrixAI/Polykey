@@ -1,5 +1,6 @@
 import type { NodeId, SeedNodes } from '@/nodes/types';
 import type { Host, Port } from '@/network/types';
+import type NodeManager from 'nodes/NodeManager';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -77,6 +78,7 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
     keysUtils,
     'generateDeterministicKeyPair',
   );
+  const dummyNodeManager = { setNode: jest.fn() } as unknown as NodeManager;
 
   beforeAll(async () => {
     mockedGenerateDeterministicKeyPair.mockImplementation((bits, _) => {
@@ -187,7 +189,7 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
         seedNodes: dummySeedNodes,
         logger: logger,
       });
-      await nodeConnectionManager.start();
+      await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
       const seedNodes = nodeConnectionManager.getSeedNodes();
       expect(seedNodes).toContainEqual(nodeId1);
       expect(seedNodes).toContainEqual(nodeId2);
@@ -210,7 +212,7 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
       seedNodes: dummySeedNodes,
       logger: logger,
     });
-    await nodeConnectionManager.start();
+    await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
     try {
       const seedNodes = nodeConnectionManager.getSeedNodes();
       expect(seedNodes).toHaveLength(3);
@@ -248,7 +250,7 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
         host: serverHost,
         port: serverPort,
       });
-      await nodeConnectionManager.start();
+      await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
       await nodeConnectionManager.syncNodeGraph();
       expect(await nodeGraph.getNode(nodeId1)).toBeDefined();
       expect(await nodeGraph.getNode(nodeId2)).toBeDefined();
@@ -290,7 +292,7 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
         connConnectTime: 500,
         logger: logger,
       });
-      await nodeConnectionManager.start();
+      await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
       // This should complete without error
       await nodeConnectionManager.syncNodeGraph();
       // Information on remotes are found

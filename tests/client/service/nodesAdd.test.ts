@@ -103,7 +103,6 @@ describe('nodesAdd', () => {
       connTimeoutTime: 2000,
       logger: logger.getChild('NodeConnectionManager'),
     });
-    await nodeConnectionManager.start();
     nodeManager = new NodeManager({
       db,
       keyManager,
@@ -112,6 +111,8 @@ describe('nodesAdd', () => {
       sigchain,
       logger,
     });
+    await nodeManager.start();
+    await nodeConnectionManager.start({ nodeManager });
     const clientService = {
       nodesAdd: nodesAdd({
         authenticate,

@@ -1,6 +1,7 @@
 import type { AddressInfo } from 'net';
 import type { NodeId, NodeIdString, SeedNodes } from '@/nodes/types';
 import type { Host, Port, TLSConfig } from '@/network/types';
+import type NodeManager from '@/nodes/NodeManager';
 import net from 'net';
 import fs from 'fs';
 import path from 'path';
@@ -85,6 +86,7 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
     keysUtils,
     'generateDeterministicKeyPair',
   );
+  const dummyNodeManager = { setNode: jest.fn() } as unknown as NodeManager;
 
   beforeEach(async () => {
     mockedGenerateDeterministicKeyPair.mockImplementation((bits, _) => {
@@ -247,7 +249,7 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
         logger: logger,
         connConnectTime: 2000,
       });
-      await nodeConnectionManager.start();
+      await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
 
       // Attempt a connection
       await expect(
@@ -287,7 +289,7 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
         logger: logger,
         connConnectTime: 2000,
       });
-      await nodeConnectionManager.start();
+      await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
 
       // Attempt a connection
       const resultP = nodeConnectionManager.withConnF(dummyNodeId, async () => {
@@ -330,7 +332,7 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
         logger: logger,
         connConnectTime: 2000,
       });
-      await nodeConnectionManager.start();
+      await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
 
       // Attempt a connection
       const connectionAttemptP = nodeConnectionManager.withConnF(
@@ -373,7 +375,7 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
         logger: logger,
         connConnectTime: 2000,
       });
-      await nodeConnectionManager.start();
+      await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
 
       // @ts-ignore: kidnapping connection map
       const connections = nodeConnectionManager.connections;
@@ -429,7 +431,7 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
         logger: logger,
         connConnectTime: 2000,
       });
-      await nodeConnectionManager.start();
+      await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
 
       // @ts-ignore: kidnapping connection map
       const connections = nodeConnectionManager.connections;
@@ -507,7 +509,7 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
         logger: logger,
         connConnectTime: 2000,
       });
-      await nodeConnectionManager.start();
+      await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
 
       // @ts-ignore: kidnapping connection map
       const connections = nodeConnectionManager.connections;
@@ -578,7 +580,7 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
         logger: logger,
         connConnectTime: 2000,
       });
-      await nodeConnectionManager.start();
+      await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
 
       // @ts-ignore: kidnapping connection map
       const connections = nodeConnectionManager.connections;
@@ -654,7 +656,7 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
         logger: logger,
         connConnectTime: 2000,
       });
-      await nodeConnectionManager.start();
+      await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
 
       // @ts-ignore: kidnapping connection map
       const connections = nodeConnectionManager.connections;
@@ -730,7 +732,7 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
         logger: logger,
         connConnectTime: 2000,
       });
-      await nodeConnectionManager.start();
+      await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
 
       // @ts-ignore: kidnapping connection map
       const connections = nodeConnectionManager.connections;

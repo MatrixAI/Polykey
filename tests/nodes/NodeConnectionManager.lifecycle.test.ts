@@ -1,10 +1,6 @@
-import type {
-  NodeAddress,
-  NodeId,
-  NodeIdString,
-  SeedNodes,
-} from '@/nodes/types';
+import type { NodeId, NodeIdString, SeedNodes } from '@/nodes/types';
 import type { Host, Port } from '@/network/types';
+import type NodeManager from 'nodes/NodeManager';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -89,6 +85,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     keysUtils,
     'generateDeterministicKeyPair',
   );
+  const dummyNodeManager = { setNode: jest.fn() } as unknown as NodeManager;
 
   beforeAll(async () => {
     mockedGenerateDeterministicKeyPair.mockImplementation((bits, _) => {
@@ -199,7 +196,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
         proxy,
         logger: nodeConnectionManagerLogger,
       });
-      await nodeConnectionManager.start();
+      await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
       // @ts-ignore: kidnap connections
       const connections = nodeConnectionManager.connections;
       const initialConnLock = connections.get(
@@ -226,7 +223,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
         proxy,
         logger: nodeConnectionManagerLogger,
       });
-      await nodeConnectionManager.start();
+      await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
       // @ts-ignore: kidnap connections
       const connections = nodeConnectionManager.connections;
       const initialConnLock = connections.get(
@@ -269,7 +266,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
         proxy,
         logger: nodeConnectionManagerLogger,
       });
-      await nodeConnectionManager.start();
+      await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
       // @ts-ignore: kidnap connections
       const connections = nodeConnectionManager.connections;
       const initialConnLock = connections.get(
@@ -303,7 +300,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
         proxy,
         logger: nodeConnectionManagerLogger,
       });
-      await nodeConnectionManager.start();
+      await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
 
       // @ts-ignore: kidnap connections
       const connections = nodeConnectionManager.connections;
@@ -368,7 +365,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
         connConnectTime: 500,
         logger: nodeConnectionManagerLogger,
       });
-      await nodeConnectionManager.start();
+      await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
       // Add the dummy node
       await nodeGraph.setNode(dummyNodeId, {
         host: '125.0.0.1' as Host,
@@ -404,7 +401,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
         proxy,
         logger: nodeConnectionManagerLogger,
       });
-      await nodeConnectionManager.start();
+      await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
       // @ts-ignore accessing protected NodeConnectionMap
       const connections = nodeConnectionManager.connections;
       expect(connections.size).toBe(0);
@@ -432,7 +429,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
         proxy,
         logger: nodeConnectionManagerLogger,
       });
-      await nodeConnectionManager.start();
+      await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
       // @ts-ignore accessing protected NodeConnectionMap
       const connections = nodeConnectionManager.connections;
       expect(connections.size).toBe(0);
@@ -467,7 +464,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
         proxy,
         logger: nodeConnectionManagerLogger,
       });
-      await nodeConnectionManager.start();
+      await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
       // @ts-ignore: kidnap connections
       const connections = nodeConnectionManager.connections;
       const initialConnLock = connections.get(
@@ -504,7 +501,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
         proxy,
         logger: nodeConnectionManagerLogger,
       });
-      await nodeConnectionManager.start();
+      await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
       // Do testing
       // set up connections
       await nodeConnectionManager.withConnF(remoteNodeId1, nop);
@@ -534,32 +531,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
   });
 
   // New ping tests
-  test('should ping node', async () => {
-    // NodeConnectionManager under test
-    let nodeConnectionManager: NodeConnectionManager | undefined;
-    try {
-      nodeConnectionManager = new NodeConnectionManager({
-        keyManager,
-        nodeGraph,
-        proxy,
-        logger: nodeConnectionManagerLogger,
-      });
-      await nodeConnectionManager.start();
-      // @ts-ignore: kidnap connections
-      const connections = nodeConnectionManager.connections;
-      await expect(nodeConnectionManager.pingNode(remoteNodeId1)).resolves.toBe(
-        true,
-      );
-      const finalConnLock = connections.get(
-        remoteNodeId1.toString() as NodeIdString,
-      );
-      // Check entry is in map and lock is released
-      expect(finalConnLock).toBeDefined();
-      expect(finalConnLock?.lock.isLocked()).toBeFalsy();
-    } finally {
-      await nodeConnectionManager?.stop();
-    }
-  });
   test('should ping node with address', async () => {
     // NodeConnectionManager under test
     let nodeConnectionManager: NodeConnectionManager | undefined;
@@ -570,33 +541,12 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
         proxy,
         logger: nodeConnectionManagerLogger,
       });
-      await nodeConnectionManager.start();
-      const remoteNodeAddress1: NodeAddress = {
-        host: remoteNode1.proxy.getProxyHost(),
-        port: remoteNode1.proxy.getProxyPort(),
-      };
-      await nodeConnectionManager.pingNode(remoteNodeId1, remoteNodeAddress1);
-    } finally {
-      await nodeConnectionManager?.stop();
-    }
-  });
-  test('should ping node with address when connection exists', async () => {
-    // NodeConnectionManager under test
-    let nodeConnectionManager: NodeConnectionManager | undefined;
-    try {
-      nodeConnectionManager = new NodeConnectionManager({
-        keyManager,
-        nodeGraph,
-        proxy,
-        logger: nodeConnectionManagerLogger,
-      });
-      await nodeConnectionManager.start();
-      const remoteNodeAddress1: NodeAddress = {
-        host: remoteNode1.proxy.getProxyHost(),
-        port: remoteNode1.proxy.getProxyPort(),
-      };
-      await nodeConnectionManager.withConnF(remoteNodeId1, nop);
-      await nodeConnectionManager.pingNode(remoteNodeId1, remoteNodeAddress1);
+      await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
+      await nodeConnectionManager.pingNode(
+        remoteNodeId1,
+        remoteNode1.proxy.getProxyHost(),
+        remoteNode1.proxy.getProxyPort(),
+      );
     } finally {
       await nodeConnectionManager?.stop();
     }
@@ -611,36 +561,14 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
         proxy,
         logger: nodeConnectionManagerLogger,
       });
-      await nodeConnectionManager.start();
+      await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
 
       // Pinging node
       expect(
         await nodeConnectionManager.pingNode(
           remoteNodeId1,
-          { host: '127.1.2.3' as Host, port: 55555 as Port },
-          timerStart(1000),
-        ),
-      ).toEqual(false);
-    } finally {
-      await nodeConnectionManager?.stop();
-    }
-  });
-  test('should fail to ping node with wrong address when connection exists', async () => {
-    // NodeConnectionManager under test
-    let nodeConnectionManager: NodeConnectionManager | undefined;
-    try {
-      nodeConnectionManager = new NodeConnectionManager({
-        keyManager,
-        nodeGraph,
-        proxy,
-        logger: nodeConnectionManagerLogger,
-      });
-      await nodeConnectionManager.start();
-      await nodeConnectionManager.withConnF(remoteNodeId1, nop);
-      expect(
-        await nodeConnectionManager.pingNode(
-          remoteNodeId1,
-          { host: '127.1.2.3' as Host, port: 55555 as Port },
+          '127.1.2.3' as Host,
+          55555 as Port,
           timerStart(1000),
         ),
       ).toEqual(false);
@@ -658,20 +586,13 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
         proxy,
         logger: nodeConnectionManagerLogger,
       });
-      await nodeConnectionManager.start();
-      const remoteNodeAddress1: NodeAddress = {
-        host: remoteNode1.proxy.getProxyHost(),
-        port: remoteNode1.proxy.getProxyPort(),
-      };
-      const remoteNodeAddress2: NodeAddress = {
-        host: remoteNode2.proxy.getProxyHost(),
-        port: remoteNode2.proxy.getProxyPort(),
-      };
+      await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
 
       expect(
         await nodeConnectionManager.pingNode(
           remoteNodeId1,
-          remoteNodeAddress2,
+          remoteNode2.proxy.getProxyHost(),
+          remoteNode2.proxy.getProxyPort(),
           timerStart(1000),
         ),
       ).toEqual(false);
@@ -679,7 +600,8 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       expect(
         await nodeConnectionManager.pingNode(
           remoteNodeId2,
-          remoteNodeAddress1,
+          remoteNode1.proxy.getProxyHost(),
+          remoteNode1.proxy.getProxyPort(),
           timerStart(1000),
         ),
       ).toEqual(false);
