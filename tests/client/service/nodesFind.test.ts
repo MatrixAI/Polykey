@@ -1,4 +1,5 @@
 import type { Host, Port } from '@/network/types';
+import type NodeManager from '@/nodes/NodeManager';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -108,7 +109,7 @@ describe('nodesFind', () => {
       connTimeoutTime: 2000,
       logger: logger.getChild('NodeConnectionManager'),
     });
-    await nodeConnectionManager.start();
+    await nodeConnectionManager.start({ nodeManager: {} as NodeManager });
     const clientService = {
       nodesFind: nodesFind({
         authenticate,

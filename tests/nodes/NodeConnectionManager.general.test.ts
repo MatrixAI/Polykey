@@ -1,5 +1,6 @@
 import type { NodeAddress, NodeBucket, NodeId, SeedNodes } from '@/nodes/types';
 import type { Host, Port } from '@/network/types';
+import type NodeManager from '@/nodes/NodeManager';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -124,6 +125,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     keysUtils,
     'generateDeterministicKeyPair',
   );
+  const dummyNodeManager = { setNode: jest.fn() } as unknown as NodeManager;
 
   beforeAll(async () => {
     mockedGenerateDeterministicKeyPair.mockImplementation((bits, _) => {
@@ -232,7 +234,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       proxy,
       logger: nodeConnectionManagerLogger,
     });
-    await nodeConnectionManager.start();
+    await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
     try {
       // Case 1: node already exists in the local node graph (no contact required)
       const nodeId = nodeId1;
@@ -259,7 +261,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
         proxy,
         logger: nodeConnectionManagerLogger,
       });
-      await nodeConnectionManager.start();
+      await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
       try {
         // Case 2: node can be found on the remote node
         const nodeId = nodeId1;
@@ -300,7 +302,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
         proxy,
         logger: nodeConnectionManagerLogger,
       });
-      await nodeConnectionManager.start();
+      await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
       try {
         // Case 3: node exhausts all contacts and cannot find node
         const nodeId = nodeId1;
@@ -354,7 +356,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
         logger: logger.getChild('NodeConnectionManager'),
       });
 
-      await nodeConnectionManager.start();
+      await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
       const targetNodeId = serverPKAgent.keyManager.getNodeId();
       await nodeGraph.setNode(targetNodeId, {
         host: serverPKAgent.proxy.getProxyHost(),
@@ -424,7 +426,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
         proxy,
         logger: nodeConnectionManagerLogger,
       });
-      await nodeConnectionManager.start();
+      await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
       // To test this we need to...
       // 2. call relayHolePunchMessage
       // 3. check that the relevant call was made.
@@ -461,7 +463,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
         proxy,
         logger: nodeConnectionManagerLogger,
       });
-      await nodeConnectionManager.start();
+      await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
       // To test this we need to...
       // 2. call relayHolePunchMessage
       // 3. check that the relevant call was made.

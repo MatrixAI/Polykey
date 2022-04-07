@@ -2,6 +2,7 @@ import type { ClaimLinkIdentity } from '@/claims/types';
 import type { NodeIdEncoded } from '@/nodes/types';
 import type { IdentityId, ProviderId } from '@/identities/types';
 import type { Host, Port } from '@/network/types';
+import type NodeManager from '@/nodes/NodeManager';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -55,6 +56,7 @@ describe('identitiesClaim', () => {
   let mockedGenerateKeyPair: jest.SpyInstance;
   let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
   let mockedAddClaim: jest.SpyInstance;
+  const dummyNodeManager = { setNode: jest.fn() } as unknown as NodeManager;
   beforeAll(async () => {
     const globalKeyPair = await testUtils.setupGlobalKeypair();
     const claim = await claimsUtils.createClaim({
@@ -142,7 +144,7 @@ describe('identitiesClaim', () => {
       nodeGraph,
       logger: logger.getChild('nodeConnectionManager'),
     });
-    await nodeConnectionManager.start();
+    await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
     const clientService = {
       identitiesClaim: identitiesClaim({
         authenticate,

@@ -7,6 +7,7 @@ import type {
 } from '@/vaults/types';
 import type NotificationsManager from '@/notifications/NotificationsManager';
 import type { Host, Port, TLSConfig } from '@/network/types';
+import type NodeManager from '@/nodes/NodeManager';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -493,7 +494,7 @@ describe('VaultManager', () => {
         logger: logger.getChild('Remote Keynode 1'),
         nodePath: path.join(allDataDir, 'remoteKeynode1'),
         networkConfig: {
-          proxyHost: '127.0.0.1' as Host,
+          proxyHost: localHost,
         },
       });
       remoteKeynode1Id = remoteKeynode1.keyManager.getNodeId();
@@ -503,7 +504,7 @@ describe('VaultManager', () => {
         logger: logger.getChild('Remote Keynode 2'),
         nodePath: path.join(allDataDir, 'remoteKeynode2'),
         networkConfig: {
-          proxyHost: '127.0.0.1' as Host,
+          proxyHost: localHost,
         },
       });
       remoteKeynode2Id = remoteKeynode2.keyManager.getNodeId();
@@ -581,7 +582,9 @@ describe('VaultManager', () => {
         proxy,
         logger,
       });
-      await nodeConnectionManager.start();
+      await nodeConnectionManager.start({
+        nodeManager: { setNode: jest.fn() } as unknown as NodeManager,
+      });
 
       await nodeGraph.setNode(remoteKeynode1Id, {
         host: remoteKeynode1.proxy.getProxyHost(),
@@ -1454,7 +1457,7 @@ describe('VaultManager', () => {
       password: 'password',
       nodePath: path.join(dataDir, 'remoteNode'),
       networkConfig: {
-        proxyHost: '127.0.0.1' as Host,
+        proxyHost: localHost,
       },
       logger,
     });
@@ -1496,7 +1499,9 @@ describe('VaultManager', () => {
       proxy,
       connConnectTime: 1000,
     });
-    await nodeConnectionManager.start();
+    await nodeConnectionManager.start({
+      nodeManager: { setNode: jest.fn() } as unknown as NodeManager,
+    });
     const vaultManager = await VaultManager.createVaultManager({
       vaultsPath,
       keyManager,
