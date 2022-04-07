@@ -301,6 +301,7 @@ class PolykeyAgent {
           nodeConnectionManager,
           logger: logger.getChild(NodeManager.name),
         });
+      await nodeManager.start();
       discovery =
         discovery ??
         (await Discovery.createDiscovery({
@@ -646,7 +647,8 @@ class PolykeyAgent {
         proxyPort: networkConfig_.proxyPort,
         tlsConfig,
       });
-      await this.nodeConnectionManager.start();
+      await this.nodeManager.start();
+      await this.nodeConnectionManager.start({ nodeManager: this.nodeManager });
       await this.nodeGraph.start({ fresh });
       await this.nodeConnectionManager.syncNodeGraph();
       await this.discovery.start({ fresh });
@@ -701,6 +703,7 @@ class PolykeyAgent {
     await this.discovery.stop();
     await this.nodeConnectionManager.stop();
     await this.nodeGraph.stop();
+    await this.nodeManager.stop();
     await this.proxy.stop();
     await this.grpcServerAgent.stop();
     await this.grpcServerClient.stop();

@@ -118,7 +118,6 @@ describe('NotificationsManager', () => {
       proxy,
       logger,
     });
-    await nodeConnectionManager.start();
     nodeManager = new NodeManager({
       db,
       keyManager,
@@ -127,6 +126,8 @@ describe('NotificationsManager', () => {
       nodeGraph,
       logger,
     });
+    await nodeManager.start();
+    await nodeConnectionManager.start({ nodeManager });
     // Set up node for receiving notifications
     receiver = await PolykeyAgent.createPolykeyAgent({
       password: password,
