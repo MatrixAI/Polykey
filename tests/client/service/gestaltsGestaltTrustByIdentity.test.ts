@@ -199,7 +199,6 @@ describe('gestaltsGestaltTrustByIdentity', () => {
       connTimeoutTime: 2000,
       logger: logger.getChild('NodeConnectionManager'),
     });
-    await nodeConnectionManager.start();
     nodeManager = new NodeManager({
       db,
       keyManager,
@@ -208,6 +207,8 @@ describe('gestaltsGestaltTrustByIdentity', () => {
       nodeConnectionManager,
       logger: logger.getChild('nodeManager'),
     });
+    await nodeManager.start();
+    await nodeConnectionManager.start({ nodeManager });
     await nodeManager.setNode(nodesUtils.decodeNodeId(nodeId)!, {
       host: node.proxy.getProxyHost(),
       port: node.proxy.getProxyPort(),
@@ -248,6 +249,7 @@ describe('gestaltsGestaltTrustByIdentity', () => {
     await grpcServer.stop();
     await discovery.stop();
     await nodeConnectionManager.stop();
+    await nodeManager.stop();
     await nodeGraph.stop();
     await proxy.stop();
     await sigchain.stop();

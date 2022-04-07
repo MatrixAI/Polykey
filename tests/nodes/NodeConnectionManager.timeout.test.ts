@@ -1,5 +1,6 @@
 import type { NodeId, NodeIdString, SeedNodes } from '@/nodes/types';
 import type { Host, Port } from '@/network/types';
+import type NodeManager from 'nodes/NodeManager';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -78,6 +79,7 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
     keysUtils,
     'generateDeterministicKeyPair',
   );
+  const dummyNodeManager = { setNode: jest.fn() } as unknown as NodeManager;
 
   beforeAll(async () => {
     mockedGenerateDeterministicKeyPair.mockImplementation((bits, _) => {
@@ -189,7 +191,7 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
         connTimeoutTime: 500,
         logger: nodeConnectionManagerLogger,
       });
-      await nodeConnectionManager.start();
+      await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
       // @ts-ignore: kidnap connections
       const connections = nodeConnectionManager.connections;
       // @ts-ignore: kidnap connections
@@ -226,7 +228,7 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
         connTimeoutTime: 1000,
         logger: nodeConnectionManagerLogger,
       });
-      await nodeConnectionManager.start();
+      await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
       // @ts-ignore: kidnap connections
       const connections = nodeConnectionManager.connections;
       // @ts-ignore: kidnap connections
@@ -278,7 +280,7 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
         proxy,
         logger: nodeConnectionManagerLogger,
       });
-      await nodeConnectionManager.start();
+      await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
       // @ts-ignore: kidnap connections
       const connections = nodeConnectionManager.connections;
       // @ts-ignore: kidnap connections

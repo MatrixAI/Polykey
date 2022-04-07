@@ -134,7 +134,6 @@ describe('nodesClaim', () => {
       connTimeoutTime: 2000,
       logger: logger.getChild('NodeConnectionManager'),
     });
-    await nodeConnectionManager.start();
     nodeManager = new NodeManager({
       db,
       keyManager,
@@ -143,6 +142,8 @@ describe('nodesClaim', () => {
       nodeConnectionManager,
       logger,
     });
+    await nodeManager.start();
+    await nodeConnectionManager.start({ nodeManager });
     notificationsManager =
       await NotificationsManager.createNotificationsManager({
         acl,

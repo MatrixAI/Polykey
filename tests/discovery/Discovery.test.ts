@@ -138,7 +138,6 @@ describe('Discovery', () => {
       connTimeoutTime: 2000,
       logger: logger.getChild('NodeConnectionManager'),
     });
-    await nodeConnectionManager.start();
     nodeManager = new NodeManager({
       db,
       keyManager,
@@ -147,6 +146,8 @@ describe('Discovery', () => {
       nodeConnectionManager,
       logger: logger.getChild('nodeManager'),
     });
+    await nodeManager.start();
+    await nodeConnectionManager.start({ nodeManager });
     // Set up other gestalt
     nodeA = await PolykeyAgent.createPolykeyAgent({
       password: password,
@@ -202,6 +203,7 @@ describe('Discovery', () => {
     await nodeA.stop();
     await nodeB.stop();
     await nodeConnectionManager.stop();
+    await nodeManager.stop();
     await nodeGraph.stop();
     await proxy.stop();
     await sigchain.stop();

@@ -116,7 +116,6 @@ describe(GRPCClientAgent.name, () => {
       proxy,
       logger,
     });
-    await nodeConnectionManager.start();
     nodeManager = new NodeManager({
       db: db,
       sigchain: sigchain,
@@ -125,6 +124,8 @@ describe(GRPCClientAgent.name, () => {
       nodeConnectionManager: nodeConnectionManager,
       logger: logger,
     });
+    await nodeManager.start();
+    await nodeConnectionManager.start({ nodeManager });
     notificationsManager =
       await NotificationsManager.createNotificationsManager({
         acl: acl,
@@ -176,6 +177,7 @@ describe(GRPCClientAgent.name, () => {
     await notificationsManager.stop();
     await sigchain.stop();
     await nodeConnectionManager.stop();
+    await nodeManager.stop();
     await nodeGraph.stop();
     await gestaltGraph.stop();
     await acl.stop();
