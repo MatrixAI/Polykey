@@ -97,12 +97,18 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     remoteNode1 = await PolykeyAgent.createPolykeyAgent({
       password,
       nodePath: path.join(dataDir2, 'remoteNode1'),
+      networkConfig: {
+        proxyHost: '127.0.0.1' as Host,
+      },
       logger: logger.getChild('remoteNode1'),
     });
     remoteNodeId1 = remoteNode1.keyManager.getNodeId();
     remoteNode2 = await PolykeyAgent.createPolykeyAgent({
       password,
       nodePath: path.join(dataDir2, 'remoteNode2'),
+      networkConfig: {
+        proxyHost: '127.0.0.1' as Host,
+      },
       logger: logger.getChild('remoteNode2'),
     });
     remoteNodeId2 = remoteNode2.keyManager.getNodeId();

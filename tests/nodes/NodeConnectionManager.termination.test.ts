@@ -355,6 +355,9 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
       polykeyAgent = await PolykeyAgent.createPolykeyAgent({
         password,
         nodePath: nodePath,
+        networkConfig: {
+          proxyHost: '127.0.0.1' as Host,
+        },
         logger: logger,
       });
 
@@ -408,6 +411,9 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
       polykeyAgent = await PolykeyAgent.createPolykeyAgent({
         password,
         nodePath: nodePath,
+        networkConfig: {
+          proxyHost: '127.0.0.1' as Host,
+        },
         logger: logger,
       });
       const agentNodeId = polykeyAgent.keyManager.getNodeId();
@@ -483,6 +489,9 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
       polykeyAgent = await PolykeyAgent.createPolykeyAgent({
         password,
         nodePath: nodePath,
+        networkConfig: {
+          proxyHost: '127.0.0.1' as Host,
+        },
         logger: logger,
       });
 
@@ -551,6 +560,9 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
       polykeyAgent = await PolykeyAgent.createPolykeyAgent({
         password,
         nodePath: nodePath,
+        networkConfig: {
+          proxyHost: '127.0.0.1' as Host,
+        },
         logger: logger,
       });
 
@@ -624,6 +636,9 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
       polykeyAgent = await PolykeyAgent.createPolykeyAgent({
         password,
         nodePath: nodePath,
+        networkConfig: {
+          proxyHost: '127.0.0.1' as Host,
+        },
         logger: logger,
       });
 
@@ -697,6 +712,9 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
       polykeyAgent = await PolykeyAgent.createPolykeyAgent({
         password,
         nodePath: nodePath,
+        networkConfig: {
+          proxyHost: '127.0.0.1' as Host,
+        },
         logger: logger,
       });
 

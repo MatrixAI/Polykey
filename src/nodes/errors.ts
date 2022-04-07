@@ -62,6 +62,11 @@ class ErrorNodeConnectionManagerNotRunning extends ErrorNodes {
   exitCode = sysexits.USAGE;
 }
 
+class ErrorNodeConnectionHostWildcard extends ErrorNodes {
+  description = 'An IP wildcard was provided for the target host';
+  exitCode = sysexits.USAGE;
+}
+
 export {
   ErrorNodes,
   ErrorNodeGraphRunning,
@@ -76,4 +81,5 @@ export {
   ErrorNodeConnectionInfoNotExist,
   ErrorNodeConnectionPublicKeyNotFound,
   ErrorNodeConnectionManagerNotRunning,
+  ErrorNodeConnectionHostWildcard,
 };

@@ -134,6 +134,9 @@ describe('NotificationsManager', () => {
       keysConfig: {
         rootKeyPairBits: 1024,
       },
+      networkConfig: {
+        proxyHost: '127.0.0.1' as Host,
+      },
       logger,
     });
     await nodeGraph.setNode(receiver.keyManager.getNodeId(), {

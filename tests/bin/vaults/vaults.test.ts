@@ -1,5 +1,6 @@
 import type { NodeIdEncoded, NodeAddress, NodeInfo } from '@/nodes/types';
 import type { VaultId, VaultName } from '@/vaults/types';
+import type { Host } from '@/network/types';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
@@ -207,6 +208,9 @@ describe('CLI vaults', () => {
       const targetPolykeyAgent = await PolykeyAgent.createPolykeyAgent({
         password,
         nodePath: dataDir2,
+        networkConfig: {
+          proxyHost: '127.0.0.1' as Host,
+        },
         logger: logger,
       });
       const vaultId = await targetPolykeyAgent.vaultManager.createVault(
@@ -701,6 +705,9 @@ describe('CLI vaults', () => {
             password,
             logger,
             nodePath: path.join(dataDir, 'remoteOnline'),
+            networkConfig: {
+              proxyHost: '127.0.0.1' as Host,
+            },
           });
           const remoteOnlineNodeId = remoteOnline.keyManager.getNodeId();
           const remoteOnlineNodeIdEncoded =

@@ -136,6 +136,9 @@ describe(`${NodeManager.name} test`, () => {
           keysConfig: {
             rootKeyPairBits: 2048,
           },
+          networkConfig: {
+            proxyHost: '127.0.0.1' as Host,
+          },
           logger: logger,
         });
         const serverNodeId = server.keyManager.getNodeId();
@@ -161,7 +164,12 @@ describe(`${NodeManager.name} test`, () => {
         const active1 = await nodeManager.pingNode(serverNodeId);
         expect(active1).toBe(false);
         // Bring server node online
-        await server.start({ password: 'password' });
+        await server.start({
+          password: 'password',
+          networkConfig: {
+            proxyHost: '127.0.0.1' as Host,
+          },
+        });
         // Update the node address (only changes because we start and stop)
         serverNodeAddress = {
           host: server.proxy.getProxyHost(),
@@ -198,6 +206,9 @@ describe(`${NodeManager.name} test`, () => {
         nodePath: path.join(dataDir, 'server'),
         keysConfig: {
           rootKeyPairBits: 2048,
+        },
+        networkConfig: {
+          proxyHost: '127.0.0.1' as Host,
         },
         logger: logger,
       });
@@ -258,6 +269,9 @@ describe(`${NodeManager.name} test`, () => {
         keysConfig: {
           rootKeyPairBits: 2048,
         },
+        networkConfig: {
+          proxyHost: '127.0.0.1' as Host,
+        },
         logger,
       });
 
@@ -276,6 +290,9 @@ describe(`${NodeManager.name} test`, () => {
         nodePath: yDataDir,
         keysConfig: {
           rootKeyPairBits: 2048,
+        },
+        networkConfig: {
+          proxyHost: '127.0.0.1' as Host,
         },
         logger,
       });

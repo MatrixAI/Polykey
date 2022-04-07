@@ -92,12 +92,18 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
       password,
       nodePath: path.join(dataDir2, 'remoteNode1'),
       logger: logger.getChild('remoteNode1'),
+      networkConfig: {
+        proxyHost: '127.0.0.1' as Host,
+      },
     });
     remoteNodeId1 = remoteNode1.keyManager.getNodeId();
     remoteNode2 = await PolykeyAgent.createPolykeyAgent({
       password,
       nodePath: path.join(dataDir2, 'remoteNode2'),
       logger: logger.getChild('remoteNode2'),
+      networkConfig: {
+        proxyHost: '127.0.0.1' as Host,
+      },
     });
     remoteNodeId2 = remoteNode2.keyManager.getNodeId();
   });

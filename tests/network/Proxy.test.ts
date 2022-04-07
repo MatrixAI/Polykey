@@ -208,6 +208,15 @@ describe(Proxy.name, () => {
         `127.0.0.1:80?nodeId=${encodeURIComponent(nodeIdSomeEncoded)}`,
       ),
     ).rejects.toThrow('407');
+    // Wildcard as host
+    await expect(() =>
+      httpConnect(
+        proxy.getForwardHost(),
+        proxy.getForwardPort(),
+        authToken,
+        `0.0.0.0:80?nodeId=${encodeURIComponent(nodeIdSomeEncoded)}`,
+      ),
+    ).rejects.toThrow('400');
     // No node id
     await expect(() =>
       httpConnect(

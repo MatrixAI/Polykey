@@ -484,6 +484,9 @@ describe('VaultManager', () => {
         password,
         logger: logger.getChild('Remote Keynode 1'),
         nodePath: path.join(allDataDir, 'remoteKeynode1'),
+        networkConfig: {
+          proxyHost: '127.0.0.1' as Host,
+        },
       });
       remoteKeynode1Id = remoteKeynode1.keyManager.getNodeId();
       remoteKeynode1IdEncoded = nodesUtils.encodeNodeId(remoteKeynode1Id);
@@ -491,6 +494,9 @@ describe('VaultManager', () => {
         password,
         logger: logger.getChild('Remote Keynode 2'),
         nodePath: path.join(allDataDir, 'remoteKeynode2'),
+        networkConfig: {
+          proxyHost: '127.0.0.1' as Host,
+        },
       });
       remoteKeynode2Id = remoteKeynode2.keyManager.getNodeId();
       remoteKeynode2IdEncoded = nodesUtils.encodeNodeId(remoteKeynode2Id);
@@ -1424,6 +1430,9 @@ describe('VaultManager', () => {
     const remoteAgent = await PolykeyAgent.createPolykeyAgent({
       password: 'password',
       nodePath: path.join(dataDir, 'remoteNode'),
+      networkConfig: {
+        proxyHost: '127.0.0.1' as Host,
+      },
       logger,
     });
     const acl = await ACL.createACL({
