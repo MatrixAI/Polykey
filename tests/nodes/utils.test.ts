@@ -171,4 +171,22 @@ describe('nodes/utils', () => {
       i++;
     }
   });
+  test('should generate random distance for a bucket', async () => {
+    // Const baseNodeId = testNodesUtils.generateRandomNodeId();
+    const zeroNodeId = IdInternal.fromBuffer<NodeId>(Buffer.alloc(32, 0));
+    for (let i = 0; i < 255; i++) {
+      const randomDistance = nodesUtils.generateRandomDistanceForBucket(i);
+      expect(nodesUtils.bucketIndex(zeroNodeId, randomDistance)).toEqual(i);
+    }
+  });
+  test('should generate random NodeId for a bucket', async () => {
+    const baseNodeId = testNodesUtils.generateRandomNodeId();
+    for (let i = 0; i < 255; i++) {
+      const randomDistance = nodesUtils.generateRandomNodeIdForBucket(
+        baseNodeId,
+        i,
+      );
+      expect(nodesUtils.bucketIndex(baseNodeId, randomDistance)).toEqual(i);
+    }
+  });
 });
