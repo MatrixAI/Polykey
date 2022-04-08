@@ -7,6 +7,7 @@ import type {
 import { IdInternal } from '@matrixai/id';
 import lexi from 'lexicographic-integer';
 import { bytes2BigInt, bufferSplit } from '../utils';
+import * as keysUtils from '../keys/utils';
 
 // FIXME:
 const prefixBuffer = Buffer.from([33]);
@@ -283,6 +284,44 @@ function bucketSortByDistance(
   }
 }
 
+function generateRandomDistanceForBucket(bucketIndex: NodeBucketIndex): NodeId {
+  const buffer = keysUtils.getRandomBytesSync(32);
+  // Calculate the most significant byte for bucket
+  const base = bucketIndex / 8;
+  const mSigByte = Math.floor(base);
+  const mSigBit = (base - mSigByte) * 8 + 1;
+  const mSigByteIndex = buffer.length - mSigByte - 1;
+  // Creating masks
+  // AND mask should look like 0b00011111
+  // OR mask should look like  0b00010000
+  const shift = 8 - mSigBit;
+  const andMask = 0b11111111 >>> shift;
+  const orMask = 0b10000000 >>> shift;
+  let byte = buffer[mSigByteIndex];
+  byte = byte & andMask; // Forces 0 for bits above bucket bit
+  byte = byte | orMask; // Forces 1 in the desired bucket bit
+  buffer[mSigByteIndex] = byte;
+  // Zero out byte 'above' mSigByte
+  for (let byteIndex = 0; byteIndex < mSigByteIndex; byteIndex++) {
+    buffer[byteIndex] = 0;
+  }
+  return IdInternal.fromBuffer<NodeId>(buffer);
+}
+
+function xOrNodeId(node1: NodeId, node2: NodeId): NodeId {
+  const xOrNodeArray = node1.map((byte, i) => byte ^ node2[i]);
+  const xOrNodeBuffer = Buffer.from(xOrNodeArray);
+  return IdInternal.fromBuffer<NodeId>(xOrNodeBuffer);
+}
+
+function generateRandomNodeIdForBucket(
+  nodeId: NodeId,
+  bucket: NodeBucketIndex,
+): NodeId {
+  const randomDistanceForBucket = generateRandomDistanceForBucket(bucket);
+  return xOrNodeId(nodeId, randomDistanceForBucket);
+}
+
 export {
   prefixBuffer,
   encodeNodeId,
@@ -299,4 +338,7 @@ export {
   parseLastUpdatedBucketDbKey,
   nodeDistance,
   bucketSortByDistance,
+  generateRandomDistanceForBucket,
+  xOrNodeId,
+  generateRandomNodeIdForBucket,
 };

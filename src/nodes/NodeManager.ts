@@ -5,11 +5,17 @@ import type KeyManager from '../keys/KeyManager';
 import type { PublicKeyPem } from '../keys/types';
 import type Sigchain from '../sigchain/Sigchain';
 import type { ChainData, ChainDataEncoded } from '../sigchain/types';
-import type { NodeId, NodeAddress, NodeBucket } from '../nodes/types';
+import type {
+  NodeId,
+  NodeAddress,
+  NodeBucket,
+  NodeBucketIndex,
+} from '../nodes/types';
 import type { ClaimEncoded } from '../claims/types';
 import type { Timer } from '../types';
 import Logger from '@matrixai/logger';
 import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
+import { IdInternal } from '@matrixai/id';
 import * as nodesErrors from './errors';
 import * as nodesUtils from './utils';
 import * as networkUtils from '../network/utils';
@@ -514,7 +520,7 @@ class NodeManager {
   //   return await this.nodeGraph.getAllBuckets(tran);
   // }
 
-  // FIXME
+  // FIXME potentially confusing name, should we rename this to renewBuckets?
   /**
    * To be called on key renewal. Re-orders all nodes in all buckets with respect
    * to the new node ID.
@@ -608,6 +614,24 @@ class NodeManager {
   @ready(new nodesErrors.ErrorNodeManagerNotRunning())
   public async queueDrained(): Promise<void> {
     await this.setNodeQueueEmpty;
+  }
+
+  /**
+   * Kademlia refresh bucket operation.
+   * It picks a random node within a bucket and does a search for that node.
+   * Connections during the search will will share node information with other
+   * nodes.
+   * @param bucketIndex
+   */
+  private async refreshBucket(bucketIndex: NodeBucketIndex) {
+    // We need to generate a random nodeId for this bucket
+    const nodeId = this.keyManager.getNodeId();
+    const bucketRandomNodeId = nodesUtils.generateRandomNodeIdForBucket(
+      nodeId,
+      bucketIndex,
+    );
+    // We then need to start a findNode procedure
+    await this.nodeConnectionManager.findNode(bucketRandomNodeId);
   }
 }
 
