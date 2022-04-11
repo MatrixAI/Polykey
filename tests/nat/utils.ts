@@ -8,7 +8,7 @@ import readline from 'readline';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as testBinUtils from '../bin/utils';
 
-type NATType = 'eim' | 'edm' | 'dmz';
+type NATType = 'eim' | 'edm' | 'dmz' | 'edmSimple';
 
 // Constants for all util functions
 // Veth pairs (ends)
@@ -35,6 +35,8 @@ const router2SeedHostIp = '192.168.0.2';
 // Subnet mask
 const subnetMask = '/24';
 // Ports
+const agent1Port = '55551';
+const agent2Port = '55552';
 const mappedPort = '55555';
 
 /**
@@ -266,28 +268,6 @@ function setupSeedNamespaceInterfaces(
     nsenter(usrnsPid, seedNetnsPid) +
       `ip route add ${router2SeedHostIp} dev ${seedRouter2Host}`,
   );
-  const router1SeedRouting = nsenter(usrnsPid, router1NetnsPid).concat(
-    'iptables --table nat ',
-    '--append POSTROUTING ',
-    '--protocol udp ',
-    `--source ${agent1HostIp}${subnetMask} `,
-    `--out-interface ${router1SeedHost} `,
-    '--jump SNAT ',
-    `--to-source ${router1SeedHostIp}:${mappedPort} `,
-    '--persistent',
-  );
-  const router2SeedRouting = nsenter(usrnsPid, router2NetnsPid).concat(
-    'iptables --table nat ',
-    '--append POSTROUTING ',
-    '--protocol udp ',
-    `--source ${agent2HostIp}${subnetMask} `,
-    `--out-interface ${router2SeedHost} `,
-    '--jump SNAT ',
-    `--to-source ${router2SeedHostIp}:${mappedPort} `,
-    '--persistent',
-  );
-  child_process.exec(router1SeedRouting);
-  child_process.exec(router2SeedRouting);
 }
 
 /**
@@ -486,23 +466,40 @@ function setupDMZ(
 function setupNATEndpointIndependentMapping(
   usrnsPid: number,
   routerNsPid: number,
+  agentIp: string,
   routerExt: string,
+  routerInt: string,
 ) {
   const natCommand = nsenter(usrnsPid, routerNsPid).concat(
     'iptables --table nat ',
     '--append POSTROUTING ',
     '--protocol udp ',
+    `--source ${agentIp}${subnetMask} `,
     `--out-interface ${routerExt} `,
-    '--jump MASQUERADE ',
-    `--to-ports ${mappedPort}`,
+    '--jump MASQUERADE',
+  );
+  const acceptLocalCommand = nsenter(usrnsPid, routerNsPid).concat(
+    'iptables --table filter ',
+    '--append INPUT ',
+    `--in-interface ${routerInt} `,
+    '--jump ACCEPT',
+  );
+  const acceptEstablishedCommand = nsenter(usrnsPid, routerNsPid).concat(
+    'iptables --table filter ',
+    '--append INPUT ',
+    `--match conntrack `,
+    '--cstate RELATED,ESTABLISHED ',
+    '--jump ACCEPT',
   );
   const dropCommand = nsenter(usrnsPid, routerNsPid).concat(
     'iptables --table filter ',
     '--append INPUT ',
     '--jump DROP',
   );
-  child_process.exec(natCommand);
+  child_process.exec(acceptLocalCommand);
+  child_process.exec(acceptEstablishedCommand);
   child_process.exec(dropCommand);
+  child_process.exec(natCommand);
 }
 
 /**
@@ -524,6 +521,70 @@ function setupNATEndpointDependentMapping(
   child_process.exec(command);
 }
 
+/**
+ * Setup Port-Restricted Cone NAT for a namespace (on the router namespace)
+ */
+function setupNATSimplifiedEDMAgent(
+  usrnsPid: number,
+  routerNsPid: number,
+  agentIp: string,
+  routerExt: string,
+  routerInt: string,
+) {
+  const natCommand = nsenter(usrnsPid, routerNsPid).concat(
+    'iptables --table nat ',
+    '--append POSTROUTING ',
+    '--protocol udp ',
+    `--source ${agentIp}${subnetMask} `,
+    `--out-interface ${routerExt} `,
+    '--jump MASQUERADE ',
+    '--to-ports 44444',
+  );
+  const acceptLocalCommand = nsenter(usrnsPid, routerNsPid).concat(
+    'iptables --table filter ',
+    '--append INPUT ',
+    `--in-interface ${routerInt} `,
+    '--jump ACCEPT',
+  );
+  const acceptEstablishedCommand = nsenter(usrnsPid, routerNsPid).concat(
+    'iptables --table filter ',
+    '--append INPUT ',
+    `--match conntrack `,
+    '--cstate RELATED,ESTABLISHED ',
+    '--jump ACCEPT',
+  );
+  const dropCommand = nsenter(usrnsPid, routerNsPid).concat(
+    'iptables --table filter ',
+    '--append INPUT ',
+    '--jump DROP',
+  );
+  child_process.exec(acceptLocalCommand);
+  child_process.exec(acceptEstablishedCommand);
+  child_process.exec(dropCommand);
+  child_process.exec(natCommand);
+}
+
+/**
+ * Setup Port-Restricted Cone NAT for a namespace (on the router namespace)
+ */
+function setupNATSimplifiedEDMSeed(
+  usrnsPid: number,
+  routerNsPid: number,
+  agentIp: string,
+  routerExt: string,
+) {
+  const natCommand = nsenter(usrnsPid, routerNsPid).concat(
+    'iptables --table nat ',
+    '--append POSTROUTING ',
+    '--protocol udp ',
+    `--source ${agentIp}${subnetMask} `,
+    `--out-interface ${routerExt} `,
+    '--jump MASQUERADE ',
+    '--to-ports 55555',
+  );
+  child_process.exec(natCommand);
+}
+
 async function setupNATWithSeedNode(
   agent1NAT: NATType,
   agent2NAT: NATType,
@@ -535,14 +596,149 @@ async function setupNATWithSeedNode(
     path.join(os.tmpdir(), 'polykey-test-'),
   );
   const password = 'password';
-  // Create a user namespace containing four network namespaces
-  // Two agents and two routers
+  // Create a user namespace containing five network namespaces
+  // Two agents, two routers, one seed node
   const usrns = createUserNamespace();
   const seedNetns = createNetworkNamespace(usrns.pid);
   const agent1Netns = createNetworkNamespace(usrns.pid);
   const agent2Netns = createNetworkNamespace(usrns.pid);
   const router1Netns = createNetworkNamespace(usrns.pid);
   const router2Netns = createNetworkNamespace(usrns.pid);
+  // Apply appropriate NAT rules
+  switch (agent1NAT) {
+    case 'dmz': {
+      setupDMZ(
+        usrns.pid,
+        router1Netns.pid,
+        agent1HostIp,
+        agent1Port,
+        agent1RouterHostExt,
+        agent1RouterHostExtIp,
+      );
+      setupDMZ(
+        usrns.pid,
+        router1Netns.pid,
+        agent1HostIp,
+        agent1Port,
+        router1SeedHost,
+        router1SeedHostIp,
+      );
+      break;
+    }
+    case 'eim': {
+      setupNATEndpointIndependentMapping(
+        usrns.pid,
+        router1Netns.pid,
+        agent1HostIp,
+        agent1RouterHostExt,
+        agent1RouterHostInt,
+      );
+      setupNATEndpointIndependentMapping(
+        usrns.pid,
+        router1Netns.pid,
+        agent1HostIp,
+        router1SeedHost,
+        agent1RouterHostInt,
+      );
+      break;
+    }
+    case 'edm': {
+      setupNATEndpointDependentMapping(
+        usrns.pid,
+        router1Netns.pid,
+        agent1RouterHostExt,
+      );
+      setupNATEndpointDependentMapping(
+        usrns.pid,
+        router1Netns.pid,
+        router1SeedHost,
+      );
+      break;
+    }
+    case 'edmSimple': {
+      setupNATSimplifiedEDMAgent(
+        usrns.pid,
+        router1Netns.pid,
+        agent1HostIp,
+        agent1RouterHostExt,
+        agent1RouterHostInt,
+      );
+      setupNATSimplifiedEDMSeed(
+        usrns.pid,
+        router1Netns.pid,
+        agent1HostIp,
+        router1SeedHost,
+      );
+      break;
+    }
+  }
+  switch (agent2NAT) {
+    case 'dmz': {
+      setupDMZ(
+        usrns.pid,
+        router2Netns.pid,
+        agent2HostIp,
+        agent2Port,
+        agent2RouterHostExt,
+        agent2RouterHostExtIp,
+      );
+      setupDMZ(
+        usrns.pid,
+        router2Netns.pid,
+        agent2HostIp,
+        agent2Port,
+        router2SeedHost,
+        router2SeedHostIp,
+      );
+      break;
+    }
+    case 'eim': {
+      setupNATEndpointIndependentMapping(
+        usrns.pid,
+        router2Netns.pid,
+        agent2HostIp,
+        agent2RouterHostExt,
+        agent2RouterHostInt,
+      );
+      setupNATEndpointIndependentMapping(
+        usrns.pid,
+        router2Netns.pid,
+        agent2HostIp,
+        router2SeedHost,
+        agent2RouterHostInt,
+      );
+      break;
+    }
+    case 'edm': {
+      setupNATEndpointDependentMapping(
+        usrns.pid,
+        router2Netns.pid,
+        agent2RouterHostExt,
+      );
+      setupNATEndpointDependentMapping(
+        usrns.pid,
+        router2Netns.pid,
+        router2SeedHost,
+      );
+      break;
+    }
+    case 'edmSimple': {
+      setupNATSimplifiedEDMAgent(
+        usrns.pid,
+        router2Netns.pid,
+        agent2HostIp,
+        agent2RouterHostExt,
+        agent2RouterHostInt,
+      );
+      setupNATSimplifiedEDMSeed(
+        usrns.pid,
+        router2Netns.pid,
+        agent2HostIp,
+        router2SeedHost,
+      );
+      break;
+    }
+  }
   setupNetworkNamespaceInterfaces(
     usrns.pid,
     agent1Netns.pid,
@@ -605,6 +801,8 @@ async function setupNATWithSeedNode(
       '127.0.0.1',
       '--proxy-host',
       `${agent1HostIp}`,
+      '--proxy-port',
+      `${agent1Port}`,
       '--workers',
       '0',
       '--connection-timeout',
@@ -641,6 +839,8 @@ async function setupNATWithSeedNode(
       '127.0.0.1',
       '--proxy-host',
       `${agent2HostIp}`,
+      '--proxy-port',
+      `${agent2Port}`,
       '--workers',
       '0',
       '--connection-timeout',
@@ -665,10 +865,14 @@ async function setupNATWithSeedNode(
   const nodeId2 = JSON.parse(stdoutNode2).nodeId;
   // Until nodes add the information of nodes that connect to them must
   // do it manually
+  const agent1ProxyPort =
+    agent1NAT === 'dmz' || agent1NAT === 'edmSimple' ? mappedPort : agent1Port;
+  const agent2ProxyPort =
+    agent2NAT === 'dmz' || agent2NAT === 'edmSimple' ? mappedPort : agent2Port;
   await pkExecNs(
     usrns.pid,
     seedNode.pid,
-    ['nodes', 'add', nodeId1, agent1RouterHostExtIp, mappedPort],
+    ['nodes', 'add', nodeId1, agent1RouterHostExtIp, agent1ProxyPort],
     {
       PK_NODE_PATH: path.join(dataDir, 'seed'),
       PK_PASSWORD: password,
@@ -678,72 +882,13 @@ async function setupNATWithSeedNode(
   await pkExecNs(
     usrns.pid,
     seedNode.pid,
-    ['nodes', 'add', nodeId2, agent2RouterHostExtIp, mappedPort],
+    ['nodes', 'add', nodeId2, agent2RouterHostExtIp, agent2ProxyPort],
     {
       PK_NODE_PATH: path.join(dataDir, 'seed'),
       PK_PASSWORD: password,
     },
     dataDir,
   );
-  // Apply appropriate NAT rules
-  switch (agent1NAT) {
-    case 'dmz': {
-      setupDMZ(
-        usrns.pid,
-        router1Netns.pid,
-        agent1HostIp,
-        JSON.parse(stdoutNode1).proxyPort,
-        agent1RouterHostExt,
-        agent1RouterHostExtIp,
-      );
-      break;
-    }
-    case 'eim': {
-      setupNATEndpointIndependentMapping(
-        usrns.pid,
-        router1Netns.pid,
-        agent1RouterHostExt,
-      );
-      break;
-    }
-    case 'edm': {
-      setupNATEndpointDependentMapping(
-        usrns.pid,
-        router1Netns.pid,
-        agent1RouterHostExt,
-      );
-      break;
-    }
-  }
-  switch (agent2NAT) {
-    case 'dmz': {
-      setupDMZ(
-        usrns.pid,
-        router2Netns.pid,
-        agent2HostIp,
-        JSON.parse(stdoutNode2).proxyPort,
-        agent2RouterHostExt,
-        agent2RouterHostExtIp,
-      );
-      break;
-    }
-    case 'eim': {
-      setupNATEndpointIndependentMapping(
-        usrns.pid,
-        router2Netns.pid,
-        agent2RouterHostExt,
-      );
-      break;
-    }
-    case 'edm': {
-      setupNATEndpointDependentMapping(
-        usrns.pid,
-        router2Netns.pid,
-        agent2RouterHostExt,
-      );
-      break;
-    }
-  }
   return {
     userPid: usrns.pid,
     agent1Pid: agent1Netns.pid,
@@ -799,6 +944,89 @@ async function setupNAT(
   const agent2Netns = createNetworkNamespace(usrns.pid);
   const router1Netns = createNetworkNamespace(usrns.pid);
   const router2Netns = createNetworkNamespace(usrns.pid);
+  // Apply appropriate NAT rules
+  switch (agent1NAT) {
+    case 'dmz': {
+      setupDMZ(
+        usrns.pid,
+        router1Netns.pid,
+        agent1HostIp,
+        agent1Port,
+        agent1RouterHostExt,
+        agent1RouterHostExtIp,
+      );
+      break;
+    }
+    case 'eim': {
+      setupNATEndpointIndependentMapping(
+        usrns.pid,
+        router1Netns.pid,
+        agent1HostIp,
+        agent1RouterHostExt,
+        agent1RouterHostInt,
+      );
+      break;
+    }
+    case 'edm': {
+      setupNATEndpointDependentMapping(
+        usrns.pid,
+        router1Netns.pid,
+        agent1RouterHostExt,
+      );
+      break;
+    }
+    case 'edmSimple': {
+      setupNATSimplifiedEDMAgent(
+        usrns.pid,
+        router1Netns.pid,
+        agent1HostIp,
+        agent1RouterHostExt,
+        agent1RouterHostInt,
+      );
+      break;
+    }
+  }
+  switch (agent2NAT) {
+    case 'dmz': {
+      setupDMZ(
+        usrns.pid,
+        router2Netns.pid,
+        agent2HostIp,
+        agent2Port,
+        agent2RouterHostExt,
+        agent2RouterHostExtIp,
+      );
+      break;
+    }
+    case 'eim': {
+      setupNATEndpointIndependentMapping(
+        usrns.pid,
+        router2Netns.pid,
+        agent2HostIp,
+        agent2RouterHostExt,
+        agent2RouterHostInt,
+      );
+      break;
+    }
+    case 'edm': {
+      setupNATEndpointDependentMapping(
+        usrns.pid,
+        router2Netns.pid,
+        agent2RouterHostExt,
+      );
+      break;
+    }
+    case 'edmSimple': {
+      setupNATSimplifiedEDMAgent(
+        usrns.pid,
+        router2Netns.pid,
+        agent2HostIp,
+        agent2RouterHostExt,
+        agent2RouterHostInt,
+      );
+      break;
+    }
+  }
   setupNetworkNamespaceInterfaces(
     usrns.pid,
     agent1Netns.pid,
@@ -820,11 +1048,13 @@ async function setupNAT(
       '127.0.0.1',
       '--proxy-host',
       `${agent1HostIp}`,
+      '--proxy-port',
+      `${agent1Port}`,
       '--connection-timeout',
       '1000',
       '--workers',
       '0',
-      '-vv',
+      '--verbose',
       '--format',
       'json',
     ],
@@ -840,7 +1070,6 @@ async function setupNAT(
     rlOutNode1.once('close', reject);
   });
   const nodeId1 = JSON.parse(stdoutNode1).nodeId;
-  const proxyPort1 = JSON.parse(stdoutNode1).proxyPort;
   const agent2 = await pkSpawnNs(
     usrns.pid,
     agent2Netns.pid,
@@ -855,11 +1084,13 @@ async function setupNAT(
       '127.0.0.1',
       '--proxy-host',
       `${agent2HostIp}`,
+      '--proxy-port',
+      `${agent2Port}`,
       '--connection-timeout',
       '1000',
       '--workers',
       '0',
-      '-vv',
+      '--verbose',
       '--format',
       'json',
     ],
@@ -875,66 +1106,6 @@ async function setupNAT(
     rlOutNode2.once('close', reject);
   });
   const nodeId2 = JSON.parse(stdoutNode2).nodeId;
-  const proxyPort2 = JSON.parse(stdoutNode2).proxyPort;
-  // Apply appropriate NAT rules
-  switch (agent1NAT) {
-    case 'dmz': {
-      setupDMZ(
-        usrns.pid,
-        router1Netns.pid,
-        agent1HostIp,
-        proxyPort1,
-        agent1RouterHostExt,
-        agent1RouterHostExtIp,
-      );
-      break;
-    }
-    case 'eim': {
-      setupNATEndpointIndependentMapping(
-        usrns.pid,
-        router1Netns.pid,
-        agent1RouterHostExt,
-      );
-      break;
-    }
-    case 'edm': {
-      setupNATEndpointDependentMapping(
-        usrns.pid,
-        router1Netns.pid,
-        agent1RouterHostExt,
-      );
-      break;
-    }
-  }
-  switch (agent2NAT) {
-    case 'dmz': {
-      setupDMZ(
-        usrns.pid,
-        router2Netns.pid,
-        agent2HostIp,
-        proxyPort2,
-        agent2RouterHostExt,
-        agent2RouterHostExtIp,
-      );
-      break;
-    }
-    case 'eim': {
-      setupNATEndpointIndependentMapping(
-        usrns.pid,
-        router2Netns.pid,
-        agent2RouterHostExt,
-      );
-      break;
-    }
-    case 'edm': {
-      setupNATEndpointDependentMapping(
-        usrns.pid,
-        router2Netns.pid,
-        agent2RouterHostExt,
-      );
-      break;
-    }
-  }
   return {
     userPid: usrns.pid,
     agent1Pid: agent1Netns.pid,
@@ -945,10 +1116,20 @@ async function setupNAT(
     agent2NodePath: path.join(dataDir, 'agent2'),
     agent1NodeId: nodeId1,
     agent1Host: agent1RouterHostExtIp,
-    agent1ProxyPort: mappedPort,
+    agent1ProxyPort:
+      agent1NAT === 'dmz'
+        ? mappedPort
+        : agent1NAT === 'edmSimple'
+        ? '44444'
+        : agent1Port,
     agent2NodeId: nodeId2,
     agent2Host: agent2RouterHostExtIp,
-    agent2ProxyPort: mappedPort,
+    agent2ProxyPort:
+      agent2NAT === 'dmz'
+        ? mappedPort
+        : agent2NAT === 'edmSimple'
+        ? '44444'
+        : agent2Port,
     tearDownNAT: async () => {
       agent2.kill('SIGTERM');
       await testBinUtils.processExit(agent2);
