@@ -24,7 +24,7 @@ import { generateNodeIdForBucket } from './utils';
 
 describe(`${NodeManager.name} test`, () => {
   const password = 'password';
-  const logger = new Logger(`${NodeManager.name} test`, LogLevel.DEBUG, [
+  const logger = new Logger(`${NodeManager.name} test`, LogLevel.WARN, [
     new StreamHandler(),
   ]);
   let dataDir: string;
@@ -861,6 +861,111 @@ describe(`${NodeManager.name} test`, () => {
       ).resolves.toBeUndefined();
       expect(mockedPingNode).toBeCalled();
     } finally {
+      await nodeManager.stop();
+    }
+  });
+  test('should update deadline when updating a bucket', async () => {
+    const refreshBucketTimeout = 100000;
+    const nodeManager = new NodeManager({
+      db,
+      sigchain: {} as Sigchain,
+      keyManager,
+      nodeGraph,
+      nodeConnectionManager: dummyNodeConnectionManager,
+      refreshBucketTimerDefault: refreshBucketTimeout,
+      logger,
+    });
+    const mockRefreshBucket = jest.spyOn(
+      NodeManager.prototype,
+      'refreshBucket',
+    );
+    try {
+      mockRefreshBucket.mockImplementation(async () => {});
+      await nodeManager.start();
+      await nodeConnectionManager.start({ nodeManager });
+      // @ts-ignore: kidnap map
+      const deadlineMap = nodeManager.refreshBucketDeadlineMap;
+      // Getting starting value
+      const bucket = 0;
+      const startingDeadline = deadlineMap.get(bucket);
+      const nodeId = nodesTestUtils.generateNodeIdForBucket(
+        keyManager.getNodeId(),
+        bucket,
+      );
+      await sleep(1000);
+      await nodeManager.setNode(nodeId, {} as NodeAddress);
+      // Deadline should be updated
+      const newDeadline = deadlineMap.get(bucket);
+      expect(newDeadline).not.toEqual(startingDeadline);
+    } finally {
+      mockRefreshBucket.mockRestore();
+      await nodeManager.stop();
+    }
+  });
+  test('should add buckets to the queue when exceeding deadline', async () => {
+    const refreshBucketTimeout = 100;
+    const nodeManager = new NodeManager({
+      db,
+      sigchain: {} as Sigchain,
+      keyManager,
+      nodeGraph,
+      nodeConnectionManager: dummyNodeConnectionManager,
+      refreshBucketTimerDefault: refreshBucketTimeout,
+      logger,
+    });
+    const mockRefreshBucket = jest.spyOn(
+      NodeManager.prototype,
+      'refreshBucket',
+    );
+    const mockRefreshBucketQueueAdd = jest.spyOn(
+      NodeManager.prototype,
+      'refreshBucketQueueAdd',
+    );
+    try {
+      mockRefreshBucket.mockImplementation(async () => {});
+      await nodeManager.start();
+      await nodeConnectionManager.start({ nodeManager });
+      // Getting starting value
+      expect(mockRefreshBucketQueueAdd).toHaveBeenCalledTimes(0);
+      await sleep(200);
+      expect(mockRefreshBucketQueueAdd).toHaveBeenCalledTimes(256);
+    } finally {
+      mockRefreshBucketQueueAdd.mockRestore();
+      mockRefreshBucket.mockRestore();
+      await nodeManager.stop();
+    }
+  });
+  test('should digest queue to refresh buckets', async () => {
+    const refreshBucketTimeout = 1000000;
+    const nodeManager = new NodeManager({
+      db,
+      sigchain: {} as Sigchain,
+      keyManager,
+      nodeGraph,
+      nodeConnectionManager: dummyNodeConnectionManager,
+      refreshBucketTimerDefault: refreshBucketTimeout,
+      logger,
+    });
+    const mockRefreshBucket = jest.spyOn(
+      NodeManager.prototype,
+      'refreshBucket',
+    );
+    try {
+      await nodeManager.start();
+      await nodeConnectionManager.start({ nodeManager });
+      mockRefreshBucket.mockImplementation(async () => {});
+      nodeManager.refreshBucketQueueAdd(1);
+      nodeManager.refreshBucketQueueAdd(2);
+      nodeManager.refreshBucketQueueAdd(3);
+      nodeManager.refreshBucketQueueAdd(4);
+      nodeManager.refreshBucketQueueAdd(5);
+      await nodeManager.refreshBucketQueueDrained();
+      expect(mockRefreshBucket).toHaveBeenCalledTimes(5);
+
+      // Add buckets to queue
+      // check if refresh buckets was called
+    } finally {
+      mockRefreshBucket.mockRestore();
       await nodeManager.stop();
     }
   });
