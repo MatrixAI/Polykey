@@ -590,9 +590,21 @@ class NodeConnectionManager {
         timer,
       );
       for (const [nodeId, nodeData] of nodes) {
-        // FIXME: this should be the `nodeManager.setNode`
-        // FIXME: no tran needed
-        await this.nodeGraph.setNode(nodeId, nodeData.address);
+        // FIXME: needs to ping the node right? we want to be non-blocking
+        try {
+          // FIXME: no tran needed
+        await this.nodeManager?.setNode(nodeId, nodeData.address);
+        } catch (e) {
+          if (!(e instanceof nodesErrors.ErrorNodeGraphSameNodeId)) throw e;
+        }
+      }
+      // Refreshing every bucket above the closest node
+      const [closestNode] = (
+        await this.nodeGraph.getClosestNodes(this.keyManager.getNodeId(), 1)
+      ).pop()!;
+      const [bucketIndex] = this.nodeGraph.bucketIndex(closestNode);
+      for (let i = bucketIndex; i < this.nodeGraph.nodeIdBits; i++) {
+        this.nodeManager?.refreshBucketQueueAdd(i);
       }
     }
   }

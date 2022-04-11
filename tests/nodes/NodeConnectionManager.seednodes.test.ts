@@ -1,12 +1,13 @@
 import type { NodeId, SeedNodes } from '@/nodes/types';
 import type { Host, Port } from '@/network/types';
-import type NodeManager from 'nodes/NodeManager';
+import type { Sigchain } from '@/sigchain';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { DB } from '@matrixai/db';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { IdInternal } from '@matrixai/id';
+import NodeManager from '@/nodes/NodeManager';
 import PolykeyAgent from '@/PolykeyAgent';
 import KeyManager from '@/keys/KeyManager';
 import NodeGraph from '@/nodes/NodeGraph';
@@ -78,7 +79,10 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
     keysUtils,
     'generateDeterministicKeyPair',
   );
-  const dummyNodeManager = { setNode: jest.fn() } as unknown as NodeManager;
+  const dummyNodeManager = {
+    setNode: jest.fn(),
+    refreshBucketQueueAdd: jest.fn(),
+  } as unknown as NodeManager;
 
   beforeAll(async () => {
     mockedGenerateDeterministicKeyPair.mockImplementation((bits, _) => {
@@ -225,6 +229,12 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
   });
   test('should synchronise nodeGraph', async () => {
     let nodeConnectionManager: NodeConnectionManager | undefined;
+    let nodeManager: NodeManager | undefined;
+    const mockedRefreshBucket = jest.spyOn(
+      NodeManager.prototype,
+      'refreshBucket',
+    );
+    mockedRefreshBucket.mockImplementation(async () => {});
     try {
       const seedNodes: SeedNodes = {};
       seedNodes[nodesUtils.encodeNodeId(remoteNodeId1)] = {
@@ -242,6 +252,15 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
         seedNodes,
         logger: logger,
       });
+      nodeManager = new NodeManager({
+        db,
+        keyManager,
+        logger,
+        nodeConnectionManager,
+        nodeGraph,
+        sigchain: {} as Sigchain,
+      });
+      await nodeManager.start();
       await remoteNode1.nodeGraph.setNode(nodeId1, {
         host: serverHost,
         port: serverPort,
@@ -250,17 +269,77 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
         host: serverHost,
         port: serverPort,
       });
-      await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
+      await nodeConnectionManager.start({ nodeManager });
       await nodeConnectionManager.syncNodeGraph();
       expect(await nodeGraph.getNode(nodeId1)).toBeDefined();
       expect(await nodeGraph.getNode(nodeId2)).toBeDefined();
       expect(await nodeGraph.getNode(dummyNodeId)).toBeUndefined();
     } finally {
+      mockedRefreshBucket.mockRestore();
+      await nodeManager?.stop();
+      await nodeConnectionManager?.stop();
+    }
+  });
+  test('should call refreshBucket when syncing nodeGraph', async () => {
+    let nodeConnectionManager: NodeConnectionManager | undefined;
+    let nodeManager: NodeManager | undefined;
+    const mockedRefreshBucket = jest.spyOn(
+      NodeManager.prototype,
+      'refreshBucket',
+    );
+    mockedRefreshBucket.mockImplementation(async () => {});
+    try {
+      const seedNodes: SeedNodes = {};
+      seedNodes[nodesUtils.encodeNodeId(remoteNodeId1)] = {
+        host: remoteNode1.proxy.getProxyHost(),
+        port: remoteNode1.proxy.getProxyPort(),
+      };
+      seedNodes[nodesUtils.encodeNodeId(remoteNodeId2)] = {
+        host: remoteNode2.proxy.getProxyHost(),
+        port: remoteNode2.proxy.getProxyPort(),
+      };
+      nodeConnectionManager = new NodeConnectionManager({
+        keyManager,
+        nodeGraph,
+        proxy,
+        seedNodes,
+        logger: logger,
+      });
+      nodeManager = new NodeManager({
+        db,
+        keyManager,
+        logger,
+        nodeConnectionManager,
+        nodeGraph,
+        sigchain: {} as Sigchain,
+      });
+      await nodeManager.start();
+      await remoteNode1.nodeGraph.setNode(nodeId1, {
+        host: serverHost,
+        port: serverPort,
+      });
+      await remoteNode2.nodeGraph.setNode(nodeId2, {
+        host: serverHost,
+        port: serverPort,
+      });
+      await nodeConnectionManager.start({ nodeManager });
+      await nodeConnectionManager.syncNodeGraph();
+      await nodeManager.refreshBucketQueueDrained();
+      expect(mockedRefreshBucket).toHaveBeenCalled();
+    } finally {
+      mockedRefreshBucket.mockRestore();
+      await nodeManager?.stop();
       await nodeConnectionManager?.stop();
     }
   });
   test('should handle an offline seed node when synchronising nodeGraph', async () => {
     let nodeConnectionManager: NodeConnectionManager | undefined;
+    let nodeManager: NodeManager | undefined;
+    const mockedRefreshBucket = jest.spyOn(
+      NodeManager.prototype,
+      'refreshBucket',
+    );
+    mockedRefreshBucket.mockImplementation(async () => {});
     try {
       const seedNodes: SeedNodes = {};
       seedNodes[nodesUtils.encodeNodeId(remoteNodeId1)] = {
@@ -292,14 +371,25 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
         connConnectTime: 500,
         logger: logger,
       });
-      await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
+      nodeManager = new NodeManager({
+        db,
+        keyManager,
+        logger,
+        nodeConnectionManager,
+        nodeGraph,
+        sigchain: {} as Sigchain,
+      });
+      await nodeManager.start();
+      await nodeConnectionManager.start({ nodeManager });
       // This should complete without error
       await nodeConnectionManager.syncNodeGraph();
       // Information on remotes are found
       expect(await nodeGraph.getNode(nodeId1)).toBeDefined();
       expect(await nodeGraph.getNode(nodeId2)).toBeDefined();
     } finally {
+      mockedRefreshBucket.mockRestore();
       await nodeConnectionManager?.stop();
+      await nodeManager?.stop();
     }
   });
 });
