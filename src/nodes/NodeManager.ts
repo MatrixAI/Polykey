@@ -115,7 +115,7 @@ class NodeManager {
     // We need to attempt a connection using the proxies
     // For now we will just do a forward connect + relay message
     const targetAddress =
-      address ?? (await this.nodeConnectionManager.findNode(nodeId));
+      address ?? (await this.nodeConnectionManager.findNode(nodeId))!;
     const targetHost = await networkUtils.resolveHost(targetAddress.host);
     return await this.nodeConnectionManager.pingNode(
       nodeId,

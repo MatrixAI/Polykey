@@ -701,10 +701,10 @@ class NodeGraph {
     // 2. iterate over 0 ---> T-1
     // 3. iterate over T+1 ---> K
     // Need to work out the relevant bucket to start from
-    const startingBucket = nodesUtils.bucketIndex(
-      this.keyManager.getNodeId(),
-      nodeId,
-    );
+    const localNodeId = this.keyManager.getNodeId();
+    const startingBucket = localNodeId.equals(nodeId)
+      ? 0
+      : nodesUtils.bucketIndex(this.keyManager.getNodeId(), nodeId);
     // Getting the whole target's bucket first
     const nodeIds: NodeBucket = await this.getBucket(startingBucket);
     // We need to iterate over the key stream
