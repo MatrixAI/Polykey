@@ -170,14 +170,16 @@ function promisify<
   };
 }
 
-/**
- * Deconstructed promise
- */
-function promise<T>(): {
+export type PromiseType<T> = {
   p: Promise<T>;
   resolveP: (value: T | PromiseLike<T>) => void;
   rejectP: (reason?: any) => void;
-} {
+};
+
+/**
+ * Deconstructed promise
+ */
+function promise<T>(): PromiseType<T> {
   let resolveP, rejectP;
   const p = new Promise<T>((resolve, reject) => {
     resolveP = resolve;
