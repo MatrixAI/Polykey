@@ -5,11 +5,17 @@ import type KeyManager from '../keys/KeyManager';
 import type { PublicKeyPem } from '../keys/types';
 import type Sigchain from '../sigchain/Sigchain';
 import type { ChainData, ChainDataEncoded } from '../sigchain/types';
-import type { NodeId, NodeAddress, NodeBucket, NodeBucketIndex } from '../nodes/types';
+import type {
+  NodeId,
+  NodeAddress,
+  NodeBucket,
+  NodeBucketIndex,
+} from '../nodes/types';
 import type { ClaimEncoded } from '../claims/types';
 import type { Timer } from '../types';
 import Logger from '@matrixai/logger';
 import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
+import { IdInternal } from '@matrixai/id';
 import * as nodesErrors from './errors';
 import * as nodesUtils from './utils';
 import * as networkUtils from '../network/utils';
@@ -19,7 +25,6 @@ import * as claimsErrors from '../claims/errors';
 import * as sigchainUtils from '../sigchain/utils';
 import * as claimsUtils from '../claims/utils';
 import { timerStart } from '../utils/utils';
-import { IdInternal } from '@matrixai/id';
 
 interface NodeManager extends StartStop {}
 @StartStop()
@@ -488,7 +493,7 @@ class NodeManager {
   //   return await this.nodeGraph.getBuckets();
   // }
 
-  // FIXME
+  // FIXME potentially confusing name, should we rename this to renewBuckets?
   /**
    * To be called on key renewal. Re-orders all nodes in all buckets with respect
    * to the new node ID.
@@ -584,27 +589,23 @@ class NodeManager {
     await this.setNodeQueueEmpty;
   }
 
+  /**
+   * Kademlia refresh bucket operation.
+   * It picks a random node within a bucket and does a search for that node.
+   * Connections during the search will will share node information with other
+   * nodes.
+   * @param bucketIndex
+   */
   private async refreshBucket(bucketIndex: NodeBucketIndex) {
     // We need to generate a random nodeId for this bucket
-    const bucketRandomNodeId = this.generateRandomNodeIdForBucket(bucketIndex);
+    const nodeId = this.keyManager.getNodeId();
+    const bucketRandomNodeId = nodesUtils.generateRandomNodeIdForBucket(
+      nodeId,
+      bucketIndex,
+    );
     // We then need to start a findNode procedure
     await this.nodeConnectionManager.findNode(bucketRandomNodeId);
   }
-
-  // FIXME: make a proper method here..
-  //  this needs to fit within the range of the wanted bucket
-  private generateRandomNodeIdForBucket(bucketIndex: NodeBucketIndex): NodeId {
-    const buffer = Buffer.alloc(32) //TODO: make this random
-    // calculate the most significant byte for bucket
-    const base = bucketIndex / 8
-    const mSigByte = Math.floor(base)
-    const mSigBit = (base-mSigByte) * 8;
-    // TODO:
-    //  1. zero upper bytes down to mSigByte
-    //  2. mask mSigByte to zero out bits above bucket, force 1 in bucket bit and lower bits unchanged.
-    return IdInternal.fromBuffer<NodeId>(buffer)
-  }
-
 }
 
 export default NodeManager;
