@@ -2,18 +2,13 @@ import type KeyManager from '../keys/KeyManager';
 import type Proxy from '../network/Proxy';
 import type { Host, Hostname, Port } from '../network/types';
 import type { ResourceAcquire } from '../utils';
+import { RWLock, timerStart, withF } from '../utils';
 import type { Timer } from '../types';
 import type NodeGraph from './NodeGraph';
-import type {
-  NodeId,
-  NodeAddress,
-  NodeData,
-  SeedNodes,
-  NodeIdString,
-} from './types';
+import type { NodeAddress, NodeData, NodeId, NodeIdString, SeedNodes } from './types';
 import type NodeManager from './NodeManager';
 import Logger from '@matrixai/logger';
-import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
+import { ready, StartStop } from '@matrixai/async-init/dist/StartStop';
 import { IdInternal } from '@matrixai/id';
 import { status } from '@matrixai/async-init';
 import NodeConnection from './NodeConnection';
@@ -25,7 +20,7 @@ import * as networkUtils from '../network/utils';
 import * as agentErrors from '../agent/errors';
 import * as grpcErrors from '../grpc/errors';
 import * as nodesPB from '../proto/js/polykey/v1/nodes/nodes_pb';
-import { RWLock, timerStart, withF } from '../utils';
+import { CancellablePromise, Cancellation } from 'real-cancellable-promise';
 
 type ConnectionAndLock = {
   connection?: NodeConnection<GRPCClientAgent>;
@@ -161,6 +156,7 @@ class NodeConnectionManager {
    * @param f Function to handle communication
    * @param timer Connection timeout timer
    */
+  // TODO: make cancellable
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
   public async withConnF<T>(
     targetNodeId: NodeId,
@@ -237,6 +233,7 @@ class NodeConnectionManager {
    * @param timer Connection timeout timer
    * @returns ConnectionAndLock that was create or exists in the connection map
    */
+  // TODO: make cancellable
   protected async getConnection(
     targetNodeId: NodeId,
     timer?: Timer,
@@ -471,93 +468,104 @@ class NodeConnectionManager {
    * @returns whether the target node was located in the process
    */
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
-  public async getClosestGlobalNodes(
+  public getClosestGlobalNodes(
     targetNodeId: NodeId,
     timer?: Timer,
-  ): Promise<NodeAddress | undefined> {
-    // Let foundTarget: boolean = false;
-    let foundAddress: NodeAddress | undefined = undefined;
-    // Get the closest alpha nodes to the target node (set as shortlist)
-    const shortlist = await this.nodeGraph.getClosestNodes(
-      targetNodeId,
-      this.initialClosestNodes,
-    );
-    // If we have no nodes at all in our database (even after synchronising),
-    // then we should throw an error. We aren't going to find any others
-    if (shortlist.length === 0) {
-      throw new nodesErrors.ErrorNodeGraphEmptyDatabase();
+  ): CancellablePromise<NodeAddress | undefined> {
+    const cancellable: Array<() => void> = [];
+    let cancelFlag = false;
+    const cancel = () => {
+      // Flag or start cancel
+      cancelFlag = true;
+      cancellable.forEach(cancel => cancel());
     }
-    // Need to keep track of the nodes that have been contacted
-    // Not sufficient to simply check if there's already a pre-existing connection
-    // in nodeConnections - what if there's been more than 1 invocation of
-    // getClosestGlobalNodes()?
-    const contacted: { [nodeId: string]: boolean } = {};
-    // Iterate until we've found found and contacted k nodes
-    while (Object.keys(contacted).length <= this.nodeGraph.nodeBucketLimit) {
-      // While (!foundTarget) {
-      // Remove the node from the front of the array
-      const nextNode = shortlist.shift();
-      // If we have no nodes left in the shortlist, then stop
-      if (nextNode == null) {
-        break;
-      }
-      const [nextNodeId, nextNodeAddress] = nextNode;
-      // Skip if the node has already been contacted
-      if (contacted[nextNodeId]) {
-        continue;
-      }
-      // Connect to the node (check if pre-existing connection exists, otherwise
-      // create a new one)
-      try {
-        // Add the node to the database so that we can find its address in
-        // call to getConnectionToNode
-        await this.nodeGraph.setNode(nextNodeId, nextNodeAddress.address);
-        await this.getConnection(nextNodeId, timer);
-      } catch (e) {
-        // If we can't connect to the node, then skip it
-        continue;
-      }
-      contacted[nextNodeId] = true;
-      // Ask the node to get their own closest nodes to the target
-      const foundClosest = await this.getRemoteNodeClosestNodes(
-        nextNodeId,
+    const doThing = async (): Promise<NodeAddress | undefined> => {
+      // Let foundTarget: boolean = false;
+      let foundAddress: NodeAddress | undefined = undefined;
+      // Get the closest alpha nodes to the target node (set as shortlist)
+      const shortlist = await this.nodeGraph.getClosestNodes(
         targetNodeId,
-        timer,
+        this.initialClosestNodes,
       );
-      // Check to see if any of these are the target node. At the same time, add
-      // them to the shortlist
-      for (const [nodeId, nodeData] of foundClosest) {
-        // Ignore a`ny nodes that have been contacted
-        if (contacted[nodeId]) {
-          continue;
-        }
-        if (nodeId.equals(targetNodeId)) {
-          await this.nodeGraph.setNode(nodeId, nodeData.address);
-          foundAddress = nodeData.address;
-          // We have found the target node, so we can stop trying to look for it
-          // in the shortlist
+      // If we have no nodes at all in our database (even after synchronising),
+      // then we should throw an error. We aren't going to find any others
+      if (shortlist.length === 0) {
+        throw new nodesErrors.ErrorNodeGraphEmptyDatabase();
+      }
+      // Need to keep track of the nodes that have been contacted
+      // Not sufficient to simply check if there's already a pre-existing connection
+      // in nodeConnections - what if there's been more than 1 invocation of
+      // getClosestGlobalNodes()?
+      const contacted: { [nodeId: string]: boolean } = {};
+      // Iterate until we've found found and contacted k nodes
+      while (Object.keys(contacted).length <= this.nodeGraph.nodeBucketLimit) {
+        if (cancelFlag) throw new Cancellation();
+        // While (!foundTarget) {
+        // Remove the node from the front of the array
+        const nextNode = shortlist.shift();
+        // If we have no nodes left in the shortlist, then stop
+        if (nextNode == null) {
           break;
         }
-        shortlist.push([nodeId, nodeData]);
-      }
-      // To make the number of jumps relatively short, should connect to the nodes
-      // closest to the target first, and ask if they know of any closer nodes
-      // Then we can simply unshift the first (closest) element from the shortlist
-      const distance = (nodeId: NodeId) =>
-        nodesUtils.nodeDistance(targetNodeId, nodeId);
-      shortlist.sort(function ([nodeIdA], [nodeIdB]) {
-        const distanceA = distance(nodeIdA);
-        const distanceB = distance(nodeIdB);
-        if (distanceA > distanceB) {
-          return 1;
-        } else if (distanceA < distanceB) {
-          return -1;
-        } else {
-          return 0;
+        const [nextNodeId, nextNodeAddress] = nextNode;
+        // Skip if the node has already been contacted
+        if (contacted[nextNodeId]) {
+          continue;
         }
-      });
+        // Connect to the node (check if pre-existing connection exists, otherwise
+        // create a new one)
+        try {
+          // Add the node to the database so that we can find its address in
+          // call to getConnectionToNode
+          await this.nodeGraph.setNode(nextNodeId, nextNodeAddress.address);
+          await this.getConnection(nextNodeId, timer);
+        } catch (e) {
+          // If we can't connect to the node, then skip it
+          continue;
+        }
+        contacted[nextNodeId] = true;
+        // Ask the node to get their own closest nodes to the target
+        const foundClosest = await this.getRemoteNodeClosestNodes(
+          nextNodeId,
+          targetNodeId,
+          timer,
+        );
+        // Check to see if any of these are the target node. At the same time, add
+        // them to the shortlist
+        for (const [nodeId, nodeData] of foundClosest) {
+          // Ignore a`ny nodes that have been contacted
+          if (contacted[nodeId]) {
+            continue;
+          }
+          if (nodeId.equals(targetNodeId)) {
+            await this.nodeGraph.setNode(nodeId, nodeData.address);
+            foundAddress = nodeData.address;
+            // We have found the target node, so we can stop trying to look for it
+            // in the shortlist
+            break;
+          }
+          shortlist.push([nodeId, nodeData]);
+        }
+        // To make the number of jumps relatively short, should connect to the nodes
+        // closest to the target first, and ask if they know of any closer nodes
+        // Then we can simply unshift the first (closest) element from the shortlist
+        const distance = (nodeId: NodeId) =>
+          nodesUtils.nodeDistance(targetNodeId, nodeId);
+        shortlist.sort(function([nodeIdA], [nodeIdB]) {
+          const distanceA = distance(nodeIdA);
+          const distanceB = distance(nodeIdB);
+          if (distanceA > distanceB) {
+            return 1;
+          } else if (distanceA < distanceB) {
+            return -1;
+          } else {
+            return 0;
+          }
+        });
+      }
+      return foundAddress;
     }
-    return foundAddress;
+    return new CancellablePromise(doThing(), cancel)
   }
 
   /**
@@ -568,43 +576,48 @@ class NodeConnectionManager {
    * @param timer Connection timeout timer
    * @returns list of nodes and their IP/port that are closest to the target
    */
+  //TODO: make cancellable
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
-  public async getRemoteNodeClosestNodes(
+  public getRemoteNodeClosestNodes(
     nodeId: NodeId,
     targetNodeId: NodeId,
     timer?: Timer,
-  ): Promise<Array<[NodeId, NodeData]>> {
-    // Construct the message
-    const nodeIdMessage = new nodesPB.Node();
-    nodeIdMessage.setNodeId(nodesUtils.encodeNodeId(targetNodeId));
-    // Send through client
-    return this.withConnF(
-      nodeId,
-      async (connection) => {
-        const client = await connection.getClient();
-        const response = await client.nodesClosestLocalNodesGet(nodeIdMessage);
-        const nodes: Array<[NodeId, NodeData]> = [];
-        // Loop over each map element (from the returned response) and populate nodes
-        response.getNodeTableMap().forEach((address, nodeIdString: string) => {
-          const nodeId = nodesUtils.decodeNodeId(nodeIdString);
-          // If the nodeId is not valid we don't add it to the list of nodes
-          if (nodeId != null) {
-            nodes.push([
-              nodeId,
-              {
-                address: {
-                  host: address.getHost() as Host | Hostname,
-                  port: address.getPort() as Port,
+  ): CancellablePromise<Array<[NodeId, NodeData]>> {
+    const cancel = () => {};
+     const doThing = async() => {
+      // Construct the message
+      const nodeIdMessage = new nodesPB.Node();
+      nodeIdMessage.setNodeId(nodesUtils.encodeNodeId(targetNodeId));
+      // Send through client
+      return this.withConnF(
+        nodeId,
+        async (connection) => {
+          const client = await connection.getClient();
+          const response = await client.nodesClosestLocalNodesGet(nodeIdMessage);
+          const nodes: Array<[NodeId, NodeData]> = [];
+          // Loop over each map element (from the returned response) and populate nodes
+          response.getNodeTableMap().forEach((address, nodeIdString: string) => {
+            const nodeId = nodesUtils.decodeNodeId(nodeIdString);
+            // If the nodeId is not valid we don't add it to the list of nodes
+            if (nodeId != null) {
+              nodes.push([
+                nodeId,
+                {
+                  address: {
+                    host: address.getHost() as Host | Hostname,
+                    port: address.getPort() as Port,
+                  },
+                  lastUpdated: 0, // FIXME?
                 },
-                lastUpdated: 0, // FIXME?
-              },
-            ]);
-          }
-        });
-        return nodes;
-      },
-      timer,
-    );
+              ]);
+            }
+          });
+          return nodes;
+        },
+        timer,
+      );
+    }
+    return new CancellablePromise(doThing(), cancel);
   }
 
   /**

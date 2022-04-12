@@ -2,6 +2,8 @@ import type { ResourceAcquire } from '@/utils';
 import os from 'os';
 import { Mutex } from 'async-mutex';
 import * as utils from '@/utils';
+import { CancellablePromise, Cancellation } from 'real-cancellable-promise';
+import { promise, sleep } from '@/utils';
 
 describe('utils', () => {
   test('getting default node path', () => {
@@ -258,7 +260,7 @@ describe('utils', () => {
     expect(acquireOrder).toStrictEqual([lock1, lock2]);
     expect(releaseOrder).toStrictEqual([lock2, lock1]);
   });
-  test.only('splitting buffers', () => {
+  test('splitting buffers', () => {
     const s1 = '';
     expect(s1.split('')).toStrictEqual([]);
     const b1 = Buffer.from(s1);
@@ -369,4 +371,26 @@ describe('utils', () => {
       Buffer.from('cd!e!!!!'),
     ]);
   });
+  test('testing abort controller a', async () => {
+
+    let cancel;
+    const prom = new Promise((resolve, reject ) => {
+      cancel = () => {reject(new Cancellation())}
+    })
+    const cancellablePromise = new CancellablePromise(prom, cancel)
+
+    cancellablePromise.cancel()
+
+    await cancellablePromise // throws a Cancellation object that subclasses Error
+
+
+  })
+  test('testing abort controller a', async () => {
+    const testDec = () => {
+      return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
+        descriptor.testPrio = value;
+      };
+    }
+
+  })
 });
