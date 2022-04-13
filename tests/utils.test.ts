@@ -4,6 +4,8 @@ import { Mutex } from 'async-mutex';
 import * as utils from '@/utils';
 import { CancellablePromise, Cancellation } from 'real-cancellable-promise';
 import { promise, sleep } from '@/utils';
+import { AbortController, AbortSignal } from 'node-abort-controller';
+import { once } from 'cluster';
 
 describe('utils', () => {
   test('getting default node path', () => {
@@ -386,9 +388,101 @@ describe('utils', () => {
 
   })
   test('testing abort controller a', async () => {
-    const testDec = () => {
-      return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
-        descriptor.testPrio = value;
+    // what happens when we don't throw when canceling
+    const waitProm = promise<void>();
+    const cancel = () => waitProm.resolveP();
+    const prom = async () => {
+      await waitProm.p;
+    }
+    const canProm = new CancellablePromise(prom(), cancel);
+    canProm.cancel();
+    await canProm;
+    // the promise is cancelled but will still try to finish in the background
+  })
+  test('using AbortController', async () => {
+
+    const otherFun = async (timeout: number, options?: { signal?: AbortSignal }) => {
+      const { signal } = { ...options };
+      if (signal?.aborted === true) throw new Cancellation('aborted otherFun');
+      await sleep(timeout);
+    }
+
+    const testfun = async (options?: { signal?: AbortSignal }) => {
+      const { signal } = { ...options };
+      // do thing
+      while(true) {
+      if (signal?.aborted === true) throw new Cancellation('aborted testfun');
+      await otherFun(100, { signal });
+      await otherFun(100);
+      await otherFun(100, { signal });
+      await otherFun(100);
+      }
+    }
+
+    // Using with just the AbortController
+    const controller = new AbortController();
+    const funProm = testfun({ signal: controller.signal });
+    setTimeout(() => controller.abort(), 1000);
+    // await expect(funProm).rejects.toThrow();
+    await funProm;
+
+    // If we were to convert to a cancel-able promise
+    const controller2 = new AbortController();
+    const canProm = new CancellablePromise(testfun({ signal: controller2.signal }), () => controller2.abort())
+    setTimeout(() => canProm.cancel(), 1000);
+    // await expect(canProm).rejects.toThrow();
+    await canProm;
+
+    // if the function was a CancellablePromise then we could
+
+    const testfun2 = async (options?: {signal: AbortSignal}) => {
+      const { signal } = { ...options };
+      // creating the cancellable promise
+      const controller = new AbortController();
+      const canProm = new CancellablePromise(testfun({signal: controller.signal}), () => controller.abort());
+      const canceller = () => canProm.cancel();
+      signal?.addEventListener('abort', canceller, {once: true});
+      try {
+        await canProm;
+      } finally {
+        signal?.removeEventListener('abort', canceller);
+      }
+    }
+
+    // running
+    const controller3 = new AbortController();
+    const canProm3 = new CancellablePromise(testfun({ signal: controller3.signal }), () => controller3.abort())
+    setTimeout(() => canProm3.cancel(), 1000);
+    await canProm3;
+
+
+    // type F = (...params: [...Array<unknown>, { signal: number }]) => unknown;
+    type OptionalSignal<A> = A extends {signal?: AbortSignal} ? A : never;
+    type testOption = {signal: AbortSignal};
+    type B = OptionalSignal<testOption>;
+    function testasd<T>(op: T) {
+      op
+    }
+    type F = (...params: [...Array<unknown>, {signal?: AbortSignal}]) => unknown;
+    function wrapCancel<T extends (...args: any[]) => Promise<unknown>>(func: T): (...funcArgs: Parameters<T>) => CancellablePromise<ReturnType<T>> {
+      return (...args: Parameters<T>) => {
+        const controller = new AbortController();
+        return new CancellablePromise(func(...args, {signal: controller.signal}), () => controller.abort());
+      }
+    }
+    const a = wrapCancel(testfun);
+    const testprom = a();
+
+
+    function logDuration<T extends (...args: any[]) => any>(func: T): (...funcArgs: Parameters<T>) => ReturnType<T> {
+      const funcName = func.name;
+
+      // Return a new function that tracks how long the original took
+      return (...args: Parameters<T>): ReturnType<T> => {
+        console.time(funcName);
+        const results = func(...args);
+        console.timeEnd(funcName);
+        return results;
       };
     }
 
