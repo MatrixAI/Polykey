@@ -14,8 +14,10 @@ import type {
 import type { ClaimEncoded } from '../claims/types';
 import type { Timer } from '../types';
 import type { PromiseType } from '../utils/utils';
+import type { AbortSignal } from 'node-abort-controller';
 import Logger from '@matrixai/logger';
 import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
+import { AbortController } from 'node-abort-controller';
 import * as nodesErrors from './errors';
 import * as nodesUtils from './utils';
 import * as networkUtils from '../network/utils';
@@ -57,6 +59,7 @@ class NodeManager {
   protected refreshBucketQueueRunner: Promise<void>;
   protected refreshBucketQueuePlug_: PromiseType<void>;
   protected refreshBucketQueueDrained_: PromiseType<void>;
+  protected refreshBucketQueueAbortController: AbortController;
 
   constructor({
     db,
@@ -647,8 +650,13 @@ class NodeManager {
    * Connections during the search will will share node information with other
    * nodes.
    * @param bucketIndex
+   * @param options
    */
-  public async refreshBucket(bucketIndex: NodeBucketIndex) {
+  public async refreshBucket(
+    bucketIndex: NodeBucketIndex,
+    options: { signal?: AbortSignal } = {},
+  ) {
+    const { signal } = { ...options };
     // We need to generate a random nodeId for this bucket
     const nodeId = this.keyManager.getNodeId();
     const bucketRandomNodeId = nodesUtils.generateRandomNodeIdForBucket(
@@ -656,7 +664,7 @@ class NodeManager {
       bucketIndex,
     );
     // We then need to start a findNode procedure
-    await this.nodeConnectionManager.findNode(bucketRandomNodeId);
+    await this.nodeConnectionManager.findNode(bucketRandomNodeId, { signal });
   }
 
   // Refresh bucket activity timer methods
@@ -752,6 +760,7 @@ class NodeManager {
     this.refreshBucketQueueRunning = true;
     this.refreshBucketQueuePlug();
     let iterator: IterableIterator<NodeBucketIndex> | undefined;
+    this.refreshBucketQueueAbortController = new AbortController();
     const pace = async () => {
       // Wait for plug
       await this.refreshBucketQueuePlug_.p;
@@ -772,7 +781,14 @@ class NodeManager {
       this.logger.debug(
         `processing refreshBucket for bucket ${bucketIndex}, ${this.refreshBucketQueue.size} left in queue`,
       );
-      await this.refreshBucket(bucketIndex);
+      try {
+        await this.refreshBucket(bucketIndex, {
+          signal: this.refreshBucketQueueAbortController.signal,
+        });
+      } catch (e) {
+        if (e instanceof nodesErrors.ErrorNodeAborted) break;
+        throw e;
+      }
       // Remove from queue and update bucket deadline
       this.refreshBucketQueue.delete(bucketIndex);
       this.refreshBucketUpdateDeadline(bucketIndex);
@@ -782,6 +798,7 @@ class NodeManager {
 
   private async stopRefreshBucketQueue(): Promise<void> {
     // Flag end and await queue finish
+    this.refreshBucketQueueAbortController.abort();
     this.refreshBucketQueueRunning = false;
     this.refreshBucketQueueUnplug();
   }

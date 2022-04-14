@@ -2,6 +2,11 @@ import { ErrorPolykey, sysexits } from '../errors';
 
 class ErrorNodes<T> extends ErrorPolykey<T> {}
 
+class ErrorNodeAborted extends ErrorNodes {
+  description = 'Operation was aborted';
+  exitCode = sysexits.USAGE;
+}
+
 class ErrorNodeManagerNotRunning extends ErrorNodes {
   static description = 'NodeManager is not running';
   exitCode = sysexits.USAGE;
@@ -79,6 +84,7 @@ class ErrorNodeConnectionHostWildcard<T> extends ErrorNodes<T> {
 
 export {
   ErrorNodes,
+  ErrorNodeAborted,
   ErrorNodeManagerNotRunning,
   ErrorNodeGraphRunning,
   ErrorNodeGraphNotRunning,

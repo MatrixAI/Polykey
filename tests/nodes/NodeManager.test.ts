@@ -19,6 +19,7 @@ import * as claimsUtils from '@/claims/utils';
 import { promise, promisify, sleep } from '@/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
+import * as nodesErrors from '@/nodes/errors';
 import * as nodesTestUtils from './utils';
 import { generateNodeIdForBucket } from './utils';
 
@@ -964,6 +965,45 @@ describe(`${NodeManager.name} test`, () => {
 
       // Add buckets to queue
       // check if refresh buckets was called
+    } finally {
+      mockRefreshBucket.mockRestore();
+      await nodeManager.stop();
+    }
+  });
+  test('should abort refreshBucket queue when stopping', async () => {
+    const refreshBucketTimeout = 1000000;
+    const nodeManager = new NodeManager({
+      db,
+      sigchain: {} as Sigchain,
+      keyManager,
+      nodeGraph,
+      nodeConnectionManager: dummyNodeConnectionManager,
+      refreshBucketTimerDefault: refreshBucketTimeout,
+      logger,
+    });
+    const mockRefreshBucket = jest.spyOn(
+      NodeManager.prototype,
+      'refreshBucket',
+    );
+    try {
+      await nodeManager.start();
+      await nodeConnectionManager.start({ nodeManager });
+      mockRefreshBucket.mockImplementation(
+        async (bucket, options: { signal?: AbortSignal } = {}) => {
+          const { signal } = { ...options };
+          const prom = promise<void>();
+          signal?.addEventListener('abort', () =>
+            prom.rejectP(new nodesErrors.ErrorNodeAborted()),
+          );
+          await prom.p;
+        },
+      );
+      nodeManager.refreshBucketQueueAdd(1);
+      nodeManager.refreshBucketQueueAdd(2);
+      nodeManager.refreshBucketQueueAdd(3);
+      nodeManager.refreshBucketQueueAdd(4);
+      nodeManager.refreshBucketQueueAdd(5);
+      await nodeManager.stop();
     } finally {
       mockRefreshBucket.mockRestore();
       await nodeManager.stop();
