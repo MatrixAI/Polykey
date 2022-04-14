@@ -12,6 +12,7 @@ import type {
   NodeIdString,
 } from './types';
 import type NodeManager from './NodeManager';
+import type { AbortSignal } from 'node-abort-controller';
 import Logger from '@matrixai/logger';
 import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
 import { IdInternal } from '@matrixai/id';
@@ -435,15 +436,21 @@ class NodeConnectionManager {
    * Retrieves the node address. If an entry doesn't exist in the db, then
    * proceeds to locate it using Kademlia.
    * @param targetNodeId Id of the node we are tying to find
+   * @param options
    */
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
-  public async findNode(targetNodeId: NodeId): Promise<NodeAddress> {
+  public async findNode(
+    targetNodeId: NodeId,
+    options: { signal?: AbortSignal } = {},
+  ): Promise<NodeAddress> {
+    const { signal } = { ...options };
     // First check if we already have an existing ID -> address record
-
     let address = (await this.nodeGraph.getNode(targetNodeId))?.address;
     // Otherwise, attempt to locate it by contacting network
     if (address == null) {
-      address = await this.getClosestGlobalNodes(targetNodeId);
+      address = await this.getClosestGlobalNodes(targetNodeId, undefined, {
+        signal,
+      });
       // TODO: This currently just does one iteration
       // If not found in this single iteration, we throw an exception
       if (address == null) {
@@ -468,13 +475,16 @@ class NodeConnectionManager {
    * @param targetNodeId ID of the node attempting to be found (i.e. attempting
    * to find its IP address and port)
    * @param timer Connection timeout timer
+   * @param options
    * @returns whether the target node was located in the process
    */
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
   public async getClosestGlobalNodes(
     targetNodeId: NodeId,
     timer?: Timer,
+    options: { signal?: AbortSignal } = {},
   ): Promise<NodeAddress | undefined> {
+    const { signal } = { ...options };
     // Let foundTarget: boolean = false;
     let foundAddress: NodeAddress | undefined = undefined;
     // Get the closest alpha nodes to the target node (set as shortlist)
@@ -494,6 +504,7 @@ class NodeConnectionManager {
     const contacted: { [nodeId: string]: boolean } = {};
     // Iterate until we've found found and contacted k nodes
     while (Object.keys(contacted).length <= this.nodeGraph.nodeBucketLimit) {
+      if (signal?.aborted) throw new nodesErrors.ErrorNodeAborted();
       // While (!foundTarget) {
       // Remove the node from the front of the array
       const nextNode = shortlist.shift();
@@ -527,6 +538,7 @@ class NodeConnectionManager {
       // Check to see if any of these are the target node. At the same time, add
       // them to the shortlist
       for (const [nodeId, nodeData] of foundClosest) {
+        if (signal?.aborted) throw new nodesErrors.ErrorNodeAborted();
         // Ignore a`ny nodes that have been contacted
         if (contacted[nodeId]) {
           continue;
