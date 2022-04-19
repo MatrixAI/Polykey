@@ -459,8 +459,7 @@ class NodeManager {
         // Updating the refreshBucket timer
         this.refreshBucketUpdateDeadline(bucketIndex);
         return;
-      }
-      if (blocking) {
+      } else if (blocking) {
         this.logger.debug(
           `Bucket was full and blocking was true, garbage collecting old nodes to add ${nodesUtils.encodeNodeId(
             nodeId,
