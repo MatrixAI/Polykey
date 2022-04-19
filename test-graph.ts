@@ -21,19 +21,52 @@ function isPowerOfFour(x: number) {
   return true;
 }
 
-for (let n = 0; n < 256; n++) {
-  g.addNode(n, IdInternal.create<NodeId>(utils.bigInt2Bytes(BigInt(n), 1)));
+function randomNodesConnect(nodeIds: Set<number>, limit: number, ownNodeId: number, graph: typeof g) {
+  const usedJs = new Set<number>();
+  for (let i = 0; i < limit; i++) {
+    let j;
+    while (true) {
+      j = Math.floor(Math.random() * 256);
+      if (nodeIds[j] === ownNodeId) continue;
+      if (!usedJs.has(j)) break;
+    }
+    if (!nodeIds.has(j)) continue;
+    usedJs.add(j);
+    graph.addLink(ownNodeId, j);
+  }
 }
 
-for (let i = 0; i < 255; i++) {
-  for (let j = i + 1; j < 256; j++) {
-    const id1 = g.getNode(i)!.data;
-    const id2 = g.getNode(j)!.data;
-    if (id1 === undefined || id2 === undefined) continue;
-    if (nodesUtils.nodeDistance(id1, id2) < BigInt(10)) {
-      g.addLink(i, j);
+function randomNodes(limit: number): Set<number> {
+  const usedJs = new Set<number>();
+  for (let i = 0; i < limit; i++) {
+    let j;
+    while (true) {
+      j = Math.floor(Math.random() * 256);
+      if (!usedJs.has(j)) break;
     }
+    usedJs.add(j);
   }
+  return usedJs;
+}
+
+const nodes = randomNodes(100);
+
+for (const i of nodes) {
+  g.addNode(i, IdInternal.create<NodeId>(utils.bigInt2Bytes(BigInt(i), 1)));
+}
+
+for (const i of nodes) {
+  randomNodesConnect(nodes, 2, i, g);
+  // for (let j = i + 1; j < 256; j++) {
+  //   const n1 = g.getNode(i);
+  //   const n2 = g.getNode(j);
+  //   if (n1 === undefined || n2 === undefined) continue;
+  //   const id1 = n1.data;
+  //   const id2 = n2.data;
+  //   if (isPowerOfTwo(Number(nodesUtils.nodeDistance(id1, id2)))) {
+  //     g.addLink(i, j);
+  //   }
+  // }
 }
 
 // for (let i = 0; i < 256; i += 2) {
