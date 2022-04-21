@@ -2,7 +2,7 @@ import type { AddressInfo } from 'net';
 import type { NodeId, NodeIdString, SeedNodes } from '@/nodes/types';
 import type { Host, Port, TLSConfig } from '@/network/types';
 import type NodeManager from '@/nodes/NodeManager';
-import type SetNodeQueue from '@/nodes/SetNodeQueue';
+import type Queue from '@/nodes/Queue';
 import net from 'net';
 import fs from 'fs';
 import path from 'path';
@@ -247,7 +247,7 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
         keyManager,
         nodeGraph,
         proxy,
-        setNodeQueue: {} as SetNodeQueue,
+        queue: {} as Queue,
         logger: logger,
         connConnectTime: 2000,
       });
@@ -288,7 +288,7 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
         keyManager,
         nodeGraph,
         proxy,
-        setNodeQueue: {} as SetNodeQueue,
+        queue: {} as Queue,
         logger: logger,
         connConnectTime: 2000,
       });
@@ -332,7 +332,7 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
         keyManager,
         nodeGraph,
         proxy,
-        setNodeQueue: {} as SetNodeQueue,
+        queue: {} as Queue,
         logger: logger,
         connConnectTime: 2000,
       });
@@ -376,7 +376,7 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
         keyManager,
         nodeGraph,
         proxy: defaultProxy,
-        setNodeQueue: {} as SetNodeQueue,
+        queue: {} as Queue,
         logger: logger,
         connConnectTime: 2000,
       });
@@ -434,7 +434,7 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
         keyManager,
         nodeGraph,
         proxy: defaultProxy,
-        setNodeQueue: {} as SetNodeQueue,
+        queue: {} as Queue,
         logger: logger,
         connConnectTime: 2000,
       });
@@ -514,7 +514,7 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
         keyManager,
         nodeGraph,
         proxy: defaultProxy,
-        setNodeQueue: {} as SetNodeQueue,
+        queue: {} as Queue,
         logger: logger,
         connConnectTime: 2000,
       });
@@ -587,7 +587,7 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
         keyManager,
         nodeGraph,
         proxy: defaultProxy,
-        setNodeQueue: {} as SetNodeQueue,
+        queue: {} as Queue,
         logger: logger,
         connConnectTime: 2000,
       });
@@ -665,7 +665,7 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
         keyManager,
         nodeGraph,
         proxy: defaultProxy,
-        setNodeQueue: {} as SetNodeQueue,
+        queue: {} as Queue,
         logger: logger,
         connConnectTime: 2000,
       });
@@ -743,7 +743,7 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
         keyManager,
         nodeGraph,
         proxy: defaultProxy,
-        setNodeQueue: {} as SetNodeQueue,
+        queue: {} as Queue,
         logger: logger,
         connConnectTime: 2000,
       });

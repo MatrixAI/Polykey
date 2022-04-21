@@ -6,6 +6,7 @@ import path from 'path';
 import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
+import Queue from '@/nodes/Queue';
 import GestaltGraph from '@/gestalts/GestaltGraph';
 import ACL from '@/acl/ACL';
 import KeyManager from '@/keys/KeyManager';
@@ -22,7 +23,6 @@ import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as agentErrors from '@/agent/errors';
 import * as keysUtils from '@/keys/utils';
 import { timerStart } from '@/utils';
-import SetNodeQueue from '@/nodes/SetNodeQueue';
 import * as testAgentUtils from './utils';
 
 describe(GRPCClientAgent.name, () => {
@@ -50,7 +50,7 @@ describe(GRPCClientAgent.name, () => {
   let keyManager: KeyManager;
   let vaultManager: VaultManager;
   let nodeGraph: NodeGraph;
-  let setNodeQueue: SetNodeQueue;
+  let queue: Queue;
   let nodeConnectionManager: NodeConnectionManager;
   let nodeManager: NodeManager;
   let sigchain: Sigchain;
@@ -112,12 +112,12 @@ describe(GRPCClientAgent.name, () => {
       keyManager,
       logger,
     });
-    setNodeQueue = new SetNodeQueue({ logger });
+    queue = new Queue({ logger });
     nodeConnectionManager = new NodeConnectionManager({
       keyManager,
       nodeGraph,
       proxy,
-      setNodeQueue,
+      queue,
       logger,
     });
     nodeManager = new NodeManager({
@@ -126,10 +126,10 @@ describe(GRPCClientAgent.name, () => {
       keyManager: keyManager,
       nodeGraph: nodeGraph,
       nodeConnectionManager: nodeConnectionManager,
-      setNodeQueue,
+      queue,
       logger: logger,
     });
-    await setNodeQueue.start();
+    await queue.start();
     await nodeManager.start();
     await nodeConnectionManager.start({ nodeManager });
     notificationsManager =
@@ -184,7 +184,7 @@ describe(GRPCClientAgent.name, () => {
     await sigchain.stop();
     await nodeConnectionManager.stop();
     await nodeManager.stop();
-    await setNodeQueue.stop();
+    await queue.stop();
     await nodeGraph.stop();
     await gestaltGraph.stop();
     await acl.stop();
