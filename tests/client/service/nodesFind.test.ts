@@ -20,6 +20,7 @@ import * as nodesPB from '@/proto/js/polykey/v1/nodes/nodes_pb';
 import * as clientUtils from '@/client/utils/utils';
 import * as keysUtils from '@/keys/utils';
 import * as validationErrors from '@/validation/errors';
+import SetNodeQueue from '@/nodes/SetNodeQueue';
 import * as testUtils from '../../utils';
 import { expectRemoteError } from '../../utils';
 
@@ -56,6 +57,7 @@ describe('nodesFind', () => {
   const authToken = 'abc123';
   let dataDir: string;
   let nodeGraph: NodeGraph;
+  let setNodeQueue: SetNodeQueue;
   let nodeConnectionManager: NodeConnectionManager;
   let sigchain: Sigchain;
   let proxy: Proxy;
@@ -101,14 +103,19 @@ describe('nodesFind', () => {
       keyManager,
       logger: logger.getChild('NodeGraph'),
     });
+    setNodeQueue = new SetNodeQueue({
+      logger: logger.getChild('SetNodeQueue'),
+    });
     nodeConnectionManager = new NodeConnectionManager({
       keyManager,
       nodeGraph,
       proxy,
+      setNodeQueue,
       connConnectTime: 2000,
       connTimeoutTime: 2000,
       logger: logger.getChild('NodeConnectionManager'),
     });
+    await setNodeQueue.start();
     await nodeConnectionManager.start({ nodeManager: {} as NodeManager });
     const clientService = {
       nodesFind: nodesFind({
@@ -136,6 +143,7 @@ describe('nodesFind', () => {
     await sigchain.stop();
     await nodeGraph.stop();
     await nodeConnectionManager.stop();
+    await setNodeQueue.stop();
     await proxy.stop();
     await db.stop();
     await keyManager.stop();

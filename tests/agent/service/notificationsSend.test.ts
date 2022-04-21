@@ -27,6 +27,7 @@ import * as notificationsPB from '@/proto/js/polykey/v1/notifications/notificati
 import * as keysUtils from '@/keys/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as notificationsUtils from '@/notifications/utils';
+import SetNodeQueue from '@/nodes/SetNodeQueue';
 import * as testUtils from '../../utils';
 import { expectRemoteError } from '../../utils';
 
@@ -40,6 +41,7 @@ describe('notificationsSend', () => {
   let senderKeyManager: KeyManager;
   let dataDir: string;
   let nodeGraph: NodeGraph;
+  let setNodeQueue: SetNodeQueue;
   let nodeConnectionManager: NodeConnectionManager;
   let nodeManager: NodeManager;
   let notificationsManager: NotificationsManager;
@@ -109,10 +111,14 @@ describe('notificationsSend', () => {
       keyManager,
       logger: logger.getChild('NodeGraph'),
     });
+    setNodeQueue = new SetNodeQueue({
+      logger: logger.getChild('SetNodeQueue'),
+    });
     nodeConnectionManager = new NodeConnectionManager({
       keyManager,
       nodeGraph,
       proxy,
+      setNodeQueue,
       connConnectTime: 2000,
       connTimeoutTime: 2000,
       logger: logger.getChild('NodeConnectionManager'),
@@ -123,8 +129,10 @@ describe('notificationsSend', () => {
       nodeGraph,
       nodeConnectionManager,
       sigchain,
+      setNodeQueue,
       logger,
     });
+    await setNodeQueue.start();
     await nodeManager.start();
     await nodeConnectionManager.start({ nodeManager });
     notificationsManager =

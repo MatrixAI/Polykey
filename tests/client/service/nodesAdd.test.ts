@@ -22,6 +22,7 @@ import * as nodesUtils from '@/nodes/utils';
 import * as clientUtils from '@/client/utils/utils';
 import * as keysUtils from '@/keys/utils';
 import * as validationErrors from '@/validation/errors';
+import SetNodeQueue from '@/nodes/SetNodeQueue';
 import * as testUtils from '../../utils';
 import { expectRemoteError } from '../../utils';
 
@@ -50,6 +51,7 @@ describe('nodesAdd', () => {
   const authToken = 'abc123';
   let dataDir: string;
   let nodeGraph: NodeGraph;
+  let setNodeQueue: SetNodeQueue;
   let nodeConnectionManager: NodeConnectionManager;
   let nodeManager: NodeManager;
   let sigchain: Sigchain;
@@ -96,10 +98,14 @@ describe('nodesAdd', () => {
       keyManager,
       logger: logger.getChild('NodeGraph'),
     });
+    setNodeQueue = new SetNodeQueue({
+      logger: logger.getChild('SetNodeQueue'),
+    });
     nodeConnectionManager = new NodeConnectionManager({
       keyManager,
       nodeGraph,
       proxy,
+      setNodeQueue,
       connConnectTime: 2000,
       connTimeoutTime: 2000,
       logger: logger.getChild('NodeConnectionManager'),
@@ -110,8 +116,10 @@ describe('nodesAdd', () => {
       nodeConnectionManager,
       nodeGraph,
       sigchain,
+      setNodeQueue,
       logger,
     });
+    await setNodeQueue.start();
     await nodeManager.start();
     await nodeConnectionManager.start({ nodeManager });
     const clientService = {
@@ -140,6 +148,7 @@ describe('nodesAdd', () => {
     await grpcServer.stop();
     await nodeGraph.stop();
     await nodeConnectionManager.stop();
+    await setNodeQueue.stop();
     await sigchain.stop();
     await proxy.stop();
     await db.stop();

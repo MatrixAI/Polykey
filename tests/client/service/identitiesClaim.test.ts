@@ -26,6 +26,7 @@ import * as keysUtils from '@/keys/utils';
 import * as claimsUtils from '@/claims/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as validationErrors from '@/validation/errors';
+import SetNodeQueue from '@/nodes/SetNodeQueue';
 import * as testUtils from '../../utils';
 import TestProvider from '../../identities/TestProvider';
 import { expectRemoteError } from '../../utils';
@@ -86,6 +87,7 @@ describe('identitiesClaim', () => {
   let testProvider: TestProvider;
   let identitiesManager: IdentitiesManager;
   let nodeGraph: NodeGraph;
+  let setNodeQueue: SetNodeQueue;
   let nodeConnectionManager: NodeConnectionManager;
   let sigchain: Sigchain;
   let proxy: Proxy;
@@ -137,13 +139,18 @@ describe('identitiesClaim', () => {
       keyManager,
       logger: logger.getChild('NodeGraph'),
     });
+    setNodeQueue = new SetNodeQueue({
+      logger: logger.getChild('SetNodeQueue'),
+    });
     nodeConnectionManager = new NodeConnectionManager({
       connConnectTime: 2000,
       proxy,
       keyManager,
       nodeGraph,
-      logger: logger.getChild('nodeConnectionManager'),
+      setNodeQueue,
+      logger: logger.getChild('NodeConnectionManager'),
     });
+    await setNodeQueue.start();
     await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
     const clientService = {
       identitiesClaim: identitiesClaim({
@@ -172,6 +179,7 @@ describe('identitiesClaim', () => {
     await grpcClient.destroy();
     await grpcServer.stop();
     await nodeConnectionManager.stop();
+    await setNodeQueue.stop();
     await nodeGraph.stop();
     await sigchain.stop();
     await proxy.stop();

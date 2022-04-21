@@ -4,6 +4,7 @@ import type Proxy from '../network/Proxy';
 import type { Host, Hostname, Port } from '../network/types';
 import type { Timer } from '../types';
 import type NodeGraph from './NodeGraph';
+import type SetNodeQueue from './SetNodeQueue';
 import type {
   NodeAddress,
   NodeData,
@@ -60,6 +61,7 @@ class NodeConnectionManager {
   protected nodeGraph: NodeGraph;
   protected keyManager: KeyManager;
   protected proxy: Proxy;
+  protected setNodeQueue: SetNodeQueue;
   // NodeManager has to be passed in during start to allow co-dependency
   protected nodeManager: NodeManager | undefined;
   protected seedNodes: SeedNodes;
@@ -80,6 +82,7 @@ class NodeConnectionManager {
     keyManager,
     nodeGraph,
     proxy,
+    setNodeQueue,
     seedNodes = {},
     initialClosestNodes = 3,
     connConnectTime = 20000,
@@ -89,6 +92,7 @@ class NodeConnectionManager {
     nodeGraph: NodeGraph;
     keyManager: KeyManager;
     proxy: Proxy;
+    setNodeQueue: SetNodeQueue;
     seedNodes?: SeedNodes;
     initialClosestNodes?: number;
     connConnectTime?: number;
@@ -99,6 +103,7 @@ class NodeConnectionManager {
     this.keyManager = keyManager;
     this.nodeGraph = nodeGraph;
     this.proxy = proxy;
+    this.setNodeQueue = setNodeQueue;
     this.seedNodes = seedNodes;
     this.initialClosestNodes = initialClosestNodes;
     this.connConnectTime = connConnectTime;
@@ -301,7 +306,7 @@ class NodeConnectionManager {
         });
         // We can assume connection was established and destination was valid,
         // we can add the target to the nodeGraph
-        await this.nodeManager?.setNode(targetNodeId, targetAddress);
+        await this.nodeManager?.setNode(targetNodeId, targetAddress, false);
         // Creating TTL timeout
         const timeToLiveTimer = setTimeout(async () => {
           await this.destroyConnection(targetNodeId);
@@ -574,18 +579,12 @@ class NodeConnectionManager {
   /**
    * Perform an initial database synchronisation: get k of the closest nodes
    * from each seed node and add them to this database
-   * For now, we also attempt to establish a connection to each of them.
-   * If these nodes are offline, this will impose a performance penalty,
-   * so we should investigate performing this in the background if possible.
-   * Alternatively, we can also just add the nodes to our database without
-   * establishing connection.
-   * This has been removed from start() as there's a chicken-egg scenario
-   * where we require the NodeGraph instance to be created in order to get
-   * connections.
-   * @param timer Connection timeout timer
+   * Establish a proxy connection to each node before adding it
+   * By default this operation is blocking, set `block` to false to make it
+   * non-blocking
    */
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
-  public async syncNodeGraph(timer?: Timer) {
+  public async syncNodeGraph(block: boolean = true, timer?: Timer) {
     for (const seedNodeId of this.getSeedNodes()) {
       // Check if the connection is viable
       try {
@@ -594,28 +593,43 @@ class NodeConnectionManager {
         if (e instanceof nodesErrors.ErrorNodeConnectionTimeout) continue;
         throw e;
       }
-
       const nodes = await this.getRemoteNodeClosestNodes(
         seedNodeId,
         this.keyManager.getNodeId(),
         timer,
       );
       for (const [nodeId, nodeData] of nodes) {
-        // FIXME: needs to ping the node right? we want to be non-blocking
-        try {
-          // FIXME: no tran needed
-        await this.nodeManager?.setNode(nodeId, nodeData.address);
-        } catch (e) {
-          if (!(e instanceof nodesErrors.ErrorNodeGraphSameNodeId)) throw e;
+        if (!block) {
+          this.setNodeQueue.queueSetNode(() =>
+            this.nodeManager!.setNode(nodeId, nodeData.address),
+          );
+        } else {
+          try {
+            // FIXME: no tran neededawait this.nodeManager?.setNode(nodeId, nodeData.address);
+          } catch (e) {
+            if (!(e instanceof nodesErrors.ErrorNodeGraphSameNodeId)) throw e;
+          }
         }
       }
       // Refreshing every bucket above the closest node
-      const [closestNode] = (
-        await this.nodeGraph.getClosestNodes(this.keyManager.getNodeId(), 1)
-      ).pop()!;
-      const [bucketIndex] = this.nodeGraph.bucketIndex(closestNode);
-      for (let i = bucketIndex; i < this.nodeGraph.nodeIdBits; i++) {
-        this.nodeManager?.refreshBucketQueueAdd(i);
+      if (!block) {
+        this.setNodeQueue.queueSetNode(async () => {
+          const [closestNode] = (
+            await this.nodeGraph.getClosestNodes(this.keyManager.getNodeId(), 1)
+          ).pop()!;
+          const [bucketIndex] = this.nodeGraph.bucketIndex(closestNode);
+          for (let i = bucketIndex; i < this.nodeGraph.nodeIdBits; i++) {
+            this.nodeManager?.refreshBucketQueueAdd(i);
+          }
+        });
+      } else {
+        const [closestNode] = (
+          await this.nodeGraph.getClosestNodes(this.keyManager.getNodeId(), 1)
+        ).pop()!;
+        const [bucketIndex] = this.nodeGraph.bucketIndex(closestNode);
+        for (let i = bucketIndex; i < this.nodeGraph.nodeIdBits; i++) {
+          this.nodeManager?.refreshBucketQueueAdd(i);
+        }
       }
     }
   }

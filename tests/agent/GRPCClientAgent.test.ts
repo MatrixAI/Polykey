@@ -22,6 +22,7 @@ import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as agentErrors from '@/agent/errors';
 import * as keysUtils from '@/keys/utils';
 import { timerStart } from '@/utils';
+import SetNodeQueue from '@/nodes/SetNodeQueue';
 import * as testAgentUtils from './utils';
 
 describe(GRPCClientAgent.name, () => {
@@ -49,6 +50,7 @@ describe(GRPCClientAgent.name, () => {
   let keyManager: KeyManager;
   let vaultManager: VaultManager;
   let nodeGraph: NodeGraph;
+  let setNodeQueue: SetNodeQueue;
   let nodeConnectionManager: NodeConnectionManager;
   let nodeManager: NodeManager;
   let sigchain: Sigchain;
@@ -110,10 +112,12 @@ describe(GRPCClientAgent.name, () => {
       keyManager,
       logger,
     });
+    setNodeQueue = new SetNodeQueue({ logger });
     nodeConnectionManager = new NodeConnectionManager({
       keyManager,
       nodeGraph,
       proxy,
+      setNodeQueue,
       logger,
     });
     nodeManager = new NodeManager({
@@ -122,8 +126,10 @@ describe(GRPCClientAgent.name, () => {
       keyManager: keyManager,
       nodeGraph: nodeGraph,
       nodeConnectionManager: nodeConnectionManager,
+      setNodeQueue,
       logger: logger,
     });
+    await setNodeQueue.start();
     await nodeManager.start();
     await nodeConnectionManager.start({ nodeManager });
     notificationsManager =
@@ -178,6 +184,7 @@ describe(GRPCClientAgent.name, () => {
     await sigchain.stop();
     await nodeConnectionManager.stop();
     await nodeManager.stop();
+    await setNodeQueue.stop();
     await nodeGraph.stop();
     await gestaltGraph.stop();
     await acl.stop();
