@@ -33,6 +33,7 @@ import * as claimsUtils from '@/claims/utils';
 import * as keysUtils from '@/keys/utils';
 import * as clientUtils from '@/client/utils/utils';
 import * as nodesUtils from '@/nodes/utils';
+import SetNodeQueue from '@/nodes/SetNodeQueue';
 import * as testUtils from '../../utils';
 import TestProvider from '../../identities/TestProvider';
 
@@ -114,6 +115,7 @@ describe('gestaltsGestaltTrustByNode', () => {
   let discovery: Discovery;
   let gestaltGraph: GestaltGraph;
   let identitiesManager: IdentitiesManager;
+  let setNodeQueue: SetNodeQueue;
   let nodeManager: NodeManager;
   let nodeConnectionManager: NodeConnectionManager;
   let nodeGraph: NodeGraph;
@@ -190,10 +192,14 @@ describe('gestaltsGestaltTrustByNode', () => {
       keyManager,
       logger: logger.getChild('NodeGraph'),
     });
+    setNodeQueue = new SetNodeQueue({
+      logger: logger.getChild('SetNodeQueue'),
+    });
     nodeConnectionManager = new NodeConnectionManager({
       keyManager,
       nodeGraph,
       proxy,
+      setNodeQueue,
       connConnectTime: 2000,
       connTimeoutTime: 2000,
       logger: logger.getChild('NodeConnectionManager'),
@@ -201,11 +207,13 @@ describe('gestaltsGestaltTrustByNode', () => {
     nodeManager = new NodeManager({
       db,
       keyManager,
-      sigchain,
-      nodeGraph,
       nodeConnectionManager,
-      logger: logger.getChild('nodeManager'),
+      nodeGraph,
+      sigchain,
+      setNodeQueue,
+      logger,
     });
+    await setNodeQueue.start();
     await nodeManager.start();
     await nodeConnectionManager.start({ nodeManager });
     await nodeManager.setNode(nodesUtils.decodeNodeId(nodeId)!, {
@@ -249,6 +257,7 @@ describe('gestaltsGestaltTrustByNode', () => {
     await discovery.stop();
     await nodeConnectionManager.stop();
     await nodeManager.stop();
+    await setNodeQueue.stop();
     await nodeGraph.stop();
     await proxy.stop();
     await sigchain.stop();

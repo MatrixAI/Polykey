@@ -8,6 +8,7 @@ import type {
 import type NotificationsManager from '@/notifications/NotificationsManager';
 import type { Host, Port, TLSConfig } from '@/network/types';
 import type NodeManager from '@/nodes/NodeManager';
+import type SetNodeQueue from '@/nodes/SetNodeQueue';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -580,6 +581,7 @@ describe('VaultManager', () => {
         keyManager,
         nodeGraph,
         proxy,
+        setNodeQueue: {} as SetNodeQueue,
         logger,
       });
       await nodeConnectionManager.start({
@@ -1497,6 +1499,7 @@ describe('VaultManager', () => {
       logger,
       nodeGraph,
       proxy,
+      setNodeQueue: {} as SetNodeQueue,
       connConnectTime: 1000,
     });
     await nodeConnectionManager.start({

@@ -23,6 +23,7 @@ import * as notificationsPB from '@/proto/js/polykey/v1/notifications/notificati
 import * as keysUtils from '@/keys/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as clientUtils from '@/client/utils';
+import SetNodeQueue from '@/nodes/SetNodeQueue';
 import * as testUtils from '../../utils';
 import * as testNodesUtils from '../../nodes/utils';
 
@@ -128,6 +129,7 @@ describe('notificationsRead', () => {
   const authToken = 'abc123';
   let dataDir: string;
   let nodeGraph: NodeGraph;
+  let setNodeQueue: SetNodeQueue;
   let nodeConnectionManager: NodeConnectionManager;
   let nodeManager: NodeManager;
   let notificationsManager: NotificationsManager;
@@ -180,10 +182,14 @@ describe('notificationsRead', () => {
       keyManager,
       logger: logger.getChild('NodeGraph'),
     });
+    setNodeQueue = new SetNodeQueue({
+      logger: logger.getChild('SetNodeQueue'),
+    });
     nodeConnectionManager = new NodeConnectionManager({
       keyManager,
       nodeGraph,
       proxy,
+      setNodeQueue,
       connConnectTime: 2000,
       connTimeoutTime: 2000,
       logger: logger.getChild('NodeConnectionManager'),
@@ -191,11 +197,13 @@ describe('notificationsRead', () => {
     nodeManager = new NodeManager({
       db,
       keyManager,
-      nodeGraph,
       nodeConnectionManager,
+      nodeGraph,
       sigchain,
+      setNodeQueue,
       logger,
     });
+    await setNodeQueue.start();
     await nodeManager.start();
     await nodeConnectionManager.start({ nodeManager });
     notificationsManager =
@@ -235,6 +243,7 @@ describe('notificationsRead', () => {
     await sigchain.stop();
     await nodeGraph.stop();
     await nodeConnectionManager.stop();
+    await setNodeQueue.stop();
     await proxy.stop();
     await acl.stop();
     await db.stop();

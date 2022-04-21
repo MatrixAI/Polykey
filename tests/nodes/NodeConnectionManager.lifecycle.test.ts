@@ -19,6 +19,7 @@ import * as nodesErrors from '@/nodes/errors';
 import * as keysUtils from '@/keys/utils';
 import * as grpcUtils from '@/grpc/utils';
 import { timerStart } from '@/utils';
+import SetNodeQueue from '@/nodes/SetNodeQueue';
 
 describe(`${NodeConnectionManager.name} lifecycle test`, () => {
   const logger = new Logger(
@@ -76,6 +77,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
   let proxy: Proxy;
 
   let nodeGraph: NodeGraph;
+  let setNodeQueue: SetNodeQueue;
 
   let remoteNode1: PolykeyAgent;
   let remoteNode2: PolykeyAgent;
@@ -154,6 +156,10 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       keyManager,
       logger: logger.getChild('NodeGraph'),
     });
+    setNodeQueue = new SetNodeQueue({
+      logger: logger.getChild('SetNodeQueue'),
+    });
+    await setNodeQueue.start();
     const tlsConfig = {
       keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
       certChainPem: keysUtils.certToPem(keyManager.getRootCert()),
@@ -179,6 +185,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
   });
 
   afterEach(async () => {
+    await setNodeQueue.stop();
     await nodeGraph.stop();
     await nodeGraph.destroy();
     await db.stop();
@@ -197,6 +204,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
         keyManager,
         nodeGraph,
         proxy,
+        setNodeQueue,
         logger: nodeConnectionManagerLogger,
       });
       await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
@@ -222,6 +230,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
         keyManager,
         nodeGraph,
         proxy,
+        setNodeQueue,
         logger: nodeConnectionManagerLogger,
       });
       await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
@@ -256,6 +265,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
         keyManager,
         nodeGraph,
         proxy,
+        setNodeQueue,
         logger: nodeConnectionManagerLogger,
       });
       await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
@@ -284,6 +294,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
         keyManager,
         nodeGraph,
         proxy,
+        setNodeQueue,
         logger: nodeConnectionManagerLogger,
       });
       await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
@@ -336,6 +347,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
         keyManager,
         nodeGraph,
         proxy,
+        setNodeQueue,
         connConnectTime: 500,
         logger: nodeConnectionManagerLogger,
       });
@@ -377,6 +389,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
         keyManager,
         nodeGraph,
         proxy,
+        setNodeQueue,
         logger: nodeConnectionManagerLogger,
       });
       await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
@@ -403,6 +416,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
         keyManager,
         nodeGraph,
         proxy,
+        setNodeQueue,
         logger: nodeConnectionManagerLogger,
       });
       await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
@@ -436,6 +450,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
         keyManager,
         nodeGraph,
         proxy,
+        setNodeQueue,
         logger: nodeConnectionManagerLogger,
       });
       await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
@@ -469,6 +484,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
         keyManager,
         nodeGraph,
         proxy,
+        setNodeQueue,
         logger: nodeConnectionManagerLogger,
       });
       await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
@@ -511,6 +527,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
         keyManager,
         nodeGraph,
         proxy,
+        setNodeQueue,
         logger: nodeConnectionManagerLogger,
       });
       await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
@@ -531,6 +548,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
         keyManager,
         nodeGraph,
         proxy,
+        setNodeQueue,
         logger: nodeConnectionManagerLogger,
       });
       await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
@@ -556,6 +574,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
         keyManager,
         nodeGraph,
         proxy,
+        setNodeQueue,
         logger: nodeConnectionManagerLogger,
       });
       await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
