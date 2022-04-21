@@ -8,6 +8,7 @@ import { createPrivateKey, createPublicKey } from 'crypto';
 import { exportJWK, SignJWT } from 'jose';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
+import Queue from '@/nodes/Queue';
 import KeyManager from '@/keys/KeyManager';
 import GRPCServer from '@/grpc/GRPCServer';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
@@ -27,7 +28,6 @@ import * as notificationsPB from '@/proto/js/polykey/v1/notifications/notificati
 import * as keysUtils from '@/keys/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as notificationsUtils from '@/notifications/utils';
-import SetNodeQueue from '@/nodes/SetNodeQueue';
 import * as testUtils from '../../utils';
 
 describe('notificationsSend', () => {
@@ -40,7 +40,7 @@ describe('notificationsSend', () => {
   let senderKeyManager: KeyManager;
   let dataDir: string;
   let nodeGraph: NodeGraph;
-  let setNodeQueue: SetNodeQueue;
+  let queue: Queue;
   let nodeConnectionManager: NodeConnectionManager;
   let nodeManager: NodeManager;
   let notificationsManager: NotificationsManager;
@@ -110,14 +110,14 @@ describe('notificationsSend', () => {
       keyManager,
       logger: logger.getChild('NodeGraph'),
     });
-    setNodeQueue = new SetNodeQueue({
-      logger: logger.getChild('SetNodeQueue'),
+    queue = new Queue({
+      logger: logger.getChild('queue'),
     });
     nodeConnectionManager = new NodeConnectionManager({
       keyManager,
       nodeGraph,
       proxy,
-      setNodeQueue,
+      queue,
       connConnectTime: 2000,
       connTimeoutTime: 2000,
       logger: logger.getChild('NodeConnectionManager'),
@@ -128,10 +128,10 @@ describe('notificationsSend', () => {
       nodeGraph,
       nodeConnectionManager,
       sigchain,
-      setNodeQueue,
+      queue,
       logger,
     });
-    await setNodeQueue.start();
+    await queue.start();
     await nodeManager.start();
     await nodeConnectionManager.start({ nodeManager });
     notificationsManager =

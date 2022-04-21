@@ -5,6 +5,7 @@ import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { Metadata } from '@grpc/grpc-js';
 import { DB } from '@matrixai/db';
+import Queue from '@/nodes/Queue';
 import KeyManager from '@/keys/KeyManager';
 import GRPCServer from '@/grpc/GRPCServer';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
@@ -21,7 +22,6 @@ import { ClientServiceService } from '@/proto/js/polykey/v1/client_service_grpc_
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as keysUtils from '@/keys/utils';
 import * as clientUtils from '@/client/utils/utils';
-import SetNodeQueue from '@/nodes/SetNodeQueue';
 import * as testUtils from '../../utils';
 
 describe('notificationsClear', () => {
@@ -54,7 +54,7 @@ describe('notificationsClear', () => {
   const authToken = 'abc123';
   let dataDir: string;
   let nodeGraph: NodeGraph;
-  let setNodeQueue: SetNodeQueue;
+  let queue: Queue;
   let nodeConnectionManager: NodeConnectionManager;
   let nodeManager: NodeManager;
   let notificationsManager: NotificationsManager;
@@ -107,14 +107,14 @@ describe('notificationsClear', () => {
       keyManager,
       logger: logger.getChild('NodeGraph'),
     });
-    setNodeQueue = new SetNodeQueue({
-      logger: logger.getChild('SetNodeQueue'),
+    queue = new Queue({
+      logger: logger.getChild('queue'),
     });
     nodeConnectionManager = new NodeConnectionManager({
       keyManager,
       nodeGraph,
       proxy,
-      setNodeQueue,
+      queue,
       connConnectTime: 2000,
       connTimeoutTime: 2000,
       logger: logger.getChild('NodeConnectionManager'),
@@ -125,10 +125,10 @@ describe('notificationsClear', () => {
       nodeConnectionManager,
       nodeGraph,
       sigchain,
-      setNodeQueue,
+      queue,
       logger,
     });
-    await setNodeQueue.start();
+    await queue.start();
     await nodeManager.start();
     await nodeConnectionManager.start({ nodeManager });
     notificationsManager =
@@ -165,7 +165,7 @@ describe('notificationsClear', () => {
     await notificationsManager.stop();
     await nodeGraph.stop();
     await nodeConnectionManager.stop();
-    await setNodeQueue.stop();
+    await queue.stop();
     await sigchain.stop();
     await proxy.stop();
     await acl.stop();

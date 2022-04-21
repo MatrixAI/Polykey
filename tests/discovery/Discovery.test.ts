@@ -7,6 +7,7 @@ import path from 'path';
 import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
+import Queue from '@/nodes/Queue';
 import { PolykeyAgent } from '@';
 import { Discovery } from '@/discovery';
 import { GestaltGraph } from '@/gestalts';
@@ -21,7 +22,6 @@ import * as nodesUtils from '@/nodes/utils';
 import * as claimsUtils from '@/claims/utils';
 import * as discoveryErrors from '@/discovery/errors';
 import * as keysUtils from '@/keys/utils';
-import SetNodeQueue from '@/nodes/SetNodeQueue';
 import * as testNodesUtils from '../nodes/utils';
 import * as testUtils from '../utils';
 import TestProvider from '../identities/TestProvider';
@@ -48,7 +48,7 @@ describe('Discovery', () => {
   let gestaltGraph: GestaltGraph;
   let identitiesManager: IdentitiesManager;
   let nodeGraph: NodeGraph;
-  let setNodeQueue: SetNodeQueue;
+  let queue: Queue;
   let nodeConnectionManager: NodeConnectionManager;
   let nodeManager: NodeManager;
   let db: DB;
@@ -132,14 +132,14 @@ describe('Discovery', () => {
       keyManager,
       logger: logger.getChild('NodeGraph'),
     });
-    setNodeQueue = new SetNodeQueue({
-      logger: logger.getChild('SetNodeQueue'),
+    queue = new Queue({
+      logger: logger.getChild('queue'),
     });
     nodeConnectionManager = new NodeConnectionManager({
       keyManager,
       nodeGraph,
       proxy,
-      setNodeQueue,
+      queue,
       connConnectTime: 2000,
       connTimeoutTime: 2000,
       logger: logger.getChild('NodeConnectionManager'),
@@ -150,10 +150,10 @@ describe('Discovery', () => {
       nodeConnectionManager,
       nodeGraph,
       sigchain,
-      setNodeQueue,
+      queue,
       logger,
     });
-    await setNodeQueue.start();
+    await queue.start();
     await nodeManager.start();
     await nodeConnectionManager.start({ nodeManager });
     // Set up other gestalt
@@ -212,7 +212,7 @@ describe('Discovery', () => {
     await nodeB.stop();
     await nodeConnectionManager.stop();
     await nodeManager.stop();
-    await setNodeQueue.stop();
+    await queue.stop();
     await nodeGraph.stop();
     await proxy.stop();
     await sigchain.stop();

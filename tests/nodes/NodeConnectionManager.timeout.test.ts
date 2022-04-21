@@ -1,7 +1,7 @@
 import type { NodeId, NodeIdString, SeedNodes } from '@/nodes/types';
 import type { Host, Port } from '@/network/types';
 import type NodeManager from 'nodes/NodeManager';
-import type SetNodeQueue from '@/nodes/SetNodeQueue';
+import type Queue from '@/nodes/Queue';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -189,7 +189,7 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
         keyManager,
         nodeGraph,
         proxy,
-        setNodeQueue: {} as SetNodeQueue,
+        queue: {} as Queue,
         connTimeoutTime: 500,
         logger: nodeConnectionManagerLogger,
       });
@@ -227,7 +227,7 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
         keyManager,
         nodeGraph,
         proxy,
-        setNodeQueue: {} as SetNodeQueue,
+        queue: {} as Queue,
         connTimeoutTime: 1000,
         logger: nodeConnectionManagerLogger,
       });
@@ -281,7 +281,7 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
         keyManager,
         nodeGraph,
         proxy,
-        setNodeQueue: {} as SetNodeQueue,
+        queue: {} as Queue,
         logger: nodeConnectionManagerLogger,
       });
       await nodeConnectionManager.start({ nodeManager: dummyNodeManager });

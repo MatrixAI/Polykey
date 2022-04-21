@@ -5,6 +5,7 @@ import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { Metadata } from '@grpc/grpc-js';
+import Queue from '@/nodes/Queue';
 import KeyManager from '@/keys/KeyManager';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import NodeGraph from '@/nodes/NodeGraph';
@@ -22,7 +23,6 @@ import * as nodesUtils from '@/nodes/utils';
 import * as clientUtils from '@/client/utils/utils';
 import * as keysUtils from '@/keys/utils';
 import * as validationErrors from '@/validation/errors';
-import SetNodeQueue from '@/nodes/SetNodeQueue';
 import * as testUtils from '../../utils';
 
 describe('nodesAdd', () => {
@@ -50,7 +50,7 @@ describe('nodesAdd', () => {
   const authToken = 'abc123';
   let dataDir: string;
   let nodeGraph: NodeGraph;
-  let setNodeQueue: SetNodeQueue;
+  let queue: Queue;
   let nodeConnectionManager: NodeConnectionManager;
   let nodeManager: NodeManager;
   let sigchain: Sigchain;
@@ -97,14 +97,14 @@ describe('nodesAdd', () => {
       keyManager,
       logger: logger.getChild('NodeGraph'),
     });
-    setNodeQueue = new SetNodeQueue({
-      logger: logger.getChild('SetNodeQueue'),
+    queue = new Queue({
+      logger: logger.getChild('queue'),
     });
     nodeConnectionManager = new NodeConnectionManager({
       keyManager,
       nodeGraph,
       proxy,
-      setNodeQueue,
+      queue,
       connConnectTime: 2000,
       connTimeoutTime: 2000,
       logger: logger.getChild('NodeConnectionManager'),
@@ -115,10 +115,10 @@ describe('nodesAdd', () => {
       nodeConnectionManager,
       nodeGraph,
       sigchain,
-      setNodeQueue,
+      queue,
       logger,
     });
-    await setNodeQueue.start();
+    await queue.start();
     await nodeManager.start();
     await nodeConnectionManager.start({ nodeManager });
     const clientService = {
@@ -145,7 +145,7 @@ describe('nodesAdd', () => {
     await grpcServer.stop();
     await nodeGraph.stop();
     await nodeConnectionManager.stop();
-    await setNodeQueue.stop();
+    await queue.stop();
     await sigchain.stop();
     await proxy.stop();
     await db.stop();

@@ -8,6 +8,7 @@ import process from 'process';
 import Logger from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { CreateDestroyStartStop } from '@matrixai/async-init/dist/CreateDestroyStartStop';
+import Queue from './nodes/Queue';
 import * as networkUtils from './network/utils';
 import { KeyManager, utils as keysUtils } from './keys';
 import { Status } from './status';
@@ -30,7 +31,6 @@ import { createClientService, ClientServiceService } from './client';
 import config from './config';
 import * as utils from './utils';
 import * as errors from './errors';
-import SetNodeQueue from './nodes/SetNodeQueue';
 
 type NetworkConfig = {
   forwardHost?: Host;
@@ -84,7 +84,7 @@ class PolykeyAgent {
     gestaltGraph,
     proxy,
     nodeGraph,
-    setNodeQueue,
+    queue,
     nodeConnectionManager,
     nodeManager,
     discovery,
@@ -130,7 +130,7 @@ class PolykeyAgent {
     gestaltGraph?: GestaltGraph;
     proxy?: Proxy;
     nodeGraph?: NodeGraph;
-    setNodeQueue?: SetNodeQueue;
+    queue?: Queue;
     nodeConnectionManager?: NodeConnectionManager;
     nodeManager?: NodeManager;
     discovery?: Discovery;
@@ -280,10 +280,10 @@ class PolykeyAgent {
           keyManager,
           logger: logger.getChild(NodeGraph.name),
         }));
-      setNodeQueue =
-        setNodeQueue ??
-        new SetNodeQueue({
-          logger: logger.getChild(SetNodeQueue.name),
+      queue =
+        queue ??
+        new Queue({
+          logger: logger.getChild(Queue.name),
         });
       nodeConnectionManager =
         nodeConnectionManager ??
@@ -291,7 +291,7 @@ class PolykeyAgent {
           keyManager,
           nodeGraph,
           proxy,
-          setNodeQueue,
+          queue,
           seedNodes,
           ...nodeConnectionManagerConfig_,
           logger: logger.getChild(NodeConnectionManager.name),
@@ -304,7 +304,7 @@ class PolykeyAgent {
           keyManager,
           nodeGraph,
           nodeConnectionManager,
-          setNodeQueue,
+          queue,
           logger: logger.getChild(NodeManager.name),
         });
       await nodeManager.start();
@@ -391,7 +391,7 @@ class PolykeyAgent {
       gestaltGraph,
       proxy,
       nodeGraph,
-      setNodeQueue,
+      queue,
       nodeConnectionManager,
       nodeManager,
       discovery,
@@ -424,7 +424,7 @@ class PolykeyAgent {
   public readonly gestaltGraph: GestaltGraph;
   public readonly proxy: Proxy;
   public readonly nodeGraph: NodeGraph;
-  public readonly setNodeQueue: SetNodeQueue;
+  public readonly queue: Queue;
   public readonly nodeConnectionManager: NodeConnectionManager;
   public readonly nodeManager: NodeManager;
   public readonly discovery: Discovery;
@@ -450,7 +450,7 @@ class PolykeyAgent {
     gestaltGraph,
     proxy,
     nodeGraph,
-    setNodeQueue,
+    queue,
     nodeConnectionManager,
     nodeManager,
     discovery,
@@ -474,7 +474,7 @@ class PolykeyAgent {
     gestaltGraph: GestaltGraph;
     proxy: Proxy;
     nodeGraph: NodeGraph;
-    setNodeQueue: SetNodeQueue;
+    queue: Queue;
     nodeConnectionManager: NodeConnectionManager;
     nodeManager: NodeManager;
     discovery: Discovery;
@@ -500,7 +500,7 @@ class PolykeyAgent {
     this.proxy = proxy;
     this.discovery = discovery;
     this.nodeGraph = nodeGraph;
-    this.setNodeQueue = setNodeQueue;
+    this.queue = queue;
     this.nodeConnectionManager = nodeConnectionManager;
     this.nodeManager = nodeManager;
     this.vaultManager = vaultManager;
@@ -659,7 +659,7 @@ class PolykeyAgent {
         proxyPort: networkConfig_.proxyPort,
         tlsConfig,
       });
-      await this.setNodeQueue.start();
+      await this.queue.start();
       await this.nodeManager.start();
       await this.nodeConnectionManager.start({ nodeManager: this.nodeManager });
       await this.nodeGraph.start({ fresh });
@@ -717,7 +717,7 @@ class PolykeyAgent {
     await this.nodeConnectionManager.stop();
     await this.nodeGraph.stop();
     await this.nodeManager.stop();
-    await this.setNodeQueue.stop();
+    await this.queue.stop();
     await this.proxy.stop();
     await this.grpcServerAgent.stop();
     await this.grpcServerClient.stop();

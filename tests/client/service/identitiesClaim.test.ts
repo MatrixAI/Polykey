@@ -9,6 +9,7 @@ import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { Metadata } from '@grpc/grpc-js';
+import Queue from '@/nodes/Queue';
 import KeyManager from '@/keys/KeyManager';
 import IdentitiesManager from '@/identities/IdentitiesManager';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
@@ -26,7 +27,6 @@ import * as keysUtils from '@/keys/utils';
 import * as claimsUtils from '@/claims/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as validationErrors from '@/validation/errors';
-import SetNodeQueue from '@/nodes/SetNodeQueue';
 import * as testUtils from '../../utils';
 import TestProvider from '../../identities/TestProvider';
 
@@ -86,7 +86,7 @@ describe('identitiesClaim', () => {
   let testProvider: TestProvider;
   let identitiesManager: IdentitiesManager;
   let nodeGraph: NodeGraph;
-  let setNodeQueue: SetNodeQueue;
+  let queue: Queue;
   let nodeConnectionManager: NodeConnectionManager;
   let sigchain: Sigchain;
   let proxy: Proxy;
@@ -138,18 +138,18 @@ describe('identitiesClaim', () => {
       keyManager,
       logger: logger.getChild('NodeGraph'),
     });
-    setNodeQueue = new SetNodeQueue({
-      logger: logger.getChild('SetNodeQueue'),
+    queue = new Queue({
+      logger: logger.getChild('queue'),
     });
     nodeConnectionManager = new NodeConnectionManager({
       connConnectTime: 2000,
       proxy,
       keyManager,
       nodeGraph,
-      setNodeQueue,
+      queue,
       logger: logger.getChild('NodeConnectionManager'),
     });
-    await setNodeQueue.start();
+    await queue.start();
     await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
     const clientService = {
       identitiesClaim: identitiesClaim({
@@ -176,7 +176,7 @@ describe('identitiesClaim', () => {
     await grpcClient.destroy();
     await grpcServer.stop();
     await nodeConnectionManager.stop();
-    await setNodeQueue.stop();
+    await queue.stop();
     await nodeGraph.stop();
     await sigchain.stop();
     await proxy.stop();

@@ -4,7 +4,7 @@ import path from 'path';
 import Logger from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import * as bootstrapErrors from './errors';
-import SetNodeQueue from '../nodes/SetNodeQueue';
+import Queue from '../nodes/Queue';
 import { IdentitiesManager } from '../identities';
 import { SessionManager } from '../sessions';
 import { Status } from '../status';
@@ -142,12 +142,12 @@ async function bootstrapState({
       keyManager,
       logger: logger.getChild(NodeGraph.name),
     });
-    const setNodeQueue = new SetNodeQueue({ logger });
+    const queue = new Queue({ logger });
     const nodeConnectionManager = new NodeConnectionManager({
       keyManager,
       nodeGraph,
       proxy,
-      setNodeQueue,
+      queue,
       logger: logger.getChild(NodeConnectionManager.name),
     });
     const nodeManager = new NodeManager({
@@ -156,7 +156,7 @@ async function bootstrapState({
       nodeGraph,
       nodeConnectionManager,
       sigchain,
-      setNodeQueue,
+      queue,
       logger: logger.getChild(NodeManager.name),
     });
     const notificationsManager =
