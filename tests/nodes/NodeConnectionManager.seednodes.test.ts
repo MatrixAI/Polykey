@@ -17,6 +17,7 @@ import Proxy from '@/network/Proxy';
 import * as nodesUtils from '@/nodes/utils';
 import * as keysUtils from '@/keys/utils';
 import * as grpcUtils from '@/grpc/utils';
+import SetNodeQueue from '@/nodes/SetNodeQueue';
 
 describe(`${NodeConnectionManager.name} seed nodes test`, () => {
   const logger = new Logger(
@@ -190,6 +191,9 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
         keyManager,
         nodeGraph,
         proxy,
+        setNodeQueue: new SetNodeQueue({
+          logger: logger.getChild('SetNodeQueue'),
+        }),
         seedNodes: dummySeedNodes,
         logger: logger,
       });
@@ -213,6 +217,9 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
       keyManager,
       nodeGraph,
       proxy,
+      setNodeQueue: new SetNodeQueue({
+        logger: logger.getChild('SetNodeQueue'),
+      }),
       seedNodes: dummySeedNodes,
       logger: logger,
     });
@@ -230,6 +237,7 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
   test('should synchronise nodeGraph', async () => {
     let nodeConnectionManager: NodeConnectionManager | undefined;
     let nodeManager: NodeManager | undefined;
+    let setNodeQueue: SetNodeQueue | undefined;
     const mockedRefreshBucket = jest.spyOn(
       NodeManager.prototype,
       'refreshBucket',
@@ -245,10 +253,12 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
         host: remoteNode2.proxy.getProxyHost(),
         port: remoteNode2.proxy.getProxyPort(),
       };
+      setNodeQueue = new SetNodeQueue({ logger });
       nodeConnectionManager = new NodeConnectionManager({
         keyManager,
         nodeGraph,
         proxy,
+        setNodeQueue,
         seedNodes,
         logger: logger,
       });
@@ -258,8 +268,10 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
         logger,
         nodeConnectionManager,
         nodeGraph,
+        setNodeQueue,
         sigchain: {} as Sigchain,
       });
+      await setNodeQueue.start();
       await nodeManager.start();
       await remoteNode1.nodeGraph.setNode(nodeId1, {
         host: serverHost,
@@ -278,11 +290,13 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
       mockedRefreshBucket.mockRestore();
       await nodeManager?.stop();
       await nodeConnectionManager?.stop();
+      await setNodeQueue?.stop();
     }
   });
   test('should call refreshBucket when syncing nodeGraph', async () => {
     let nodeConnectionManager: NodeConnectionManager | undefined;
     let nodeManager: NodeManager | undefined;
+    let setNodeQueue: SetNodeQueue | undefined;
     const mockedRefreshBucket = jest.spyOn(
       NodeManager.prototype,
       'refreshBucket',
@@ -298,10 +312,12 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
         host: remoteNode2.proxy.getProxyHost(),
         port: remoteNode2.proxy.getProxyPort(),
       };
+      setNodeQueue = new SetNodeQueue({ logger });
       nodeConnectionManager = new NodeConnectionManager({
         keyManager,
         nodeGraph,
         proxy,
+        setNodeQueue,
         seedNodes,
         logger: logger,
       });
@@ -312,7 +328,9 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
         nodeConnectionManager,
         nodeGraph,
         sigchain: {} as Sigchain,
+        setNodeQueue,
       });
+      await setNodeQueue.start();
       await nodeManager.start();
       await remoteNode1.nodeGraph.setNode(nodeId1, {
         host: serverHost,
@@ -330,11 +348,13 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
       mockedRefreshBucket.mockRestore();
       await nodeManager?.stop();
       await nodeConnectionManager?.stop();
+      await setNodeQueue?.stop();
     }
   });
   test('should handle an offline seed node when synchronising nodeGraph', async () => {
     let nodeConnectionManager: NodeConnectionManager | undefined;
     let nodeManager: NodeManager | undefined;
+    let setNodeQueue: SetNodeQueue | undefined;
     const mockedRefreshBucket = jest.spyOn(
       NodeManager.prototype,
       'refreshBucket',
@@ -363,10 +383,12 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
         host: serverHost,
         port: serverPort,
       });
+      setNodeQueue = new SetNodeQueue({ logger });
       nodeConnectionManager = new NodeConnectionManager({
         keyManager,
         nodeGraph,
         proxy,
+        setNodeQueue,
         seedNodes,
         connConnectTime: 500,
         logger: logger,
@@ -378,7 +400,9 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
         nodeConnectionManager,
         nodeGraph,
         sigchain: {} as Sigchain,
+        setNodeQueue,
       });
+      await setNodeQueue.start();
       await nodeManager.start();
       await nodeConnectionManager.start({ nodeManager });
       // This should complete without error
@@ -390,6 +414,7 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
       mockedRefreshBucket.mockRestore();
       await nodeConnectionManager?.stop();
       await nodeManager?.stop();
+      await setNodeQueue?.stop();
     }
   });
 });
