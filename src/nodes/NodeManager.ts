@@ -1,7 +1,7 @@
 import type { DB, DBTransaction } from '@matrixai/db';
 import type NodeConnectionManager from './NodeConnectionManager';
 import type NodeGraph from './NodeGraph';
-import type SetNodeQueue from './SetNodeQueue';
+import type Queue from './Queue';
 import type KeyManager from '../keys/KeyManager';
 import type { PublicKeyPem } from '../keys/types';
 import type Sigchain from '../sigchain/Sigchain';
@@ -38,7 +38,7 @@ class NodeManager {
   protected keyManager: KeyManager;
   protected nodeConnectionManager: NodeConnectionManager;
   protected nodeGraph: NodeGraph;
-  protected setNodeQueue: SetNodeQueue;
+  protected queue: Queue;
   // Refresh bucket timer
   protected refreshBucketDeadlineMap: Map<NodeBucketIndex, number> = new Map();
   protected refreshBucketTimer: NodeJS.Timer;
@@ -57,7 +57,7 @@ class NodeManager {
     sigchain,
     nodeConnectionManager,
     nodeGraph,
-    setNodeQueue,
+    queue,
     refreshBucketTimerDefault = 3600000, // 1 hour in milliseconds
     logger,
   }: {
@@ -66,7 +66,7 @@ class NodeManager {
     sigchain: Sigchain;
     nodeConnectionManager: NodeConnectionManager;
     nodeGraph: NodeGraph;
-    setNodeQueue: SetNodeQueue;
+    queue: Queue;
     refreshBucketTimerDefault?: number;
     logger?: Logger;
   }) {
@@ -76,7 +76,7 @@ class NodeManager {
     this.sigchain = sigchain;
     this.nodeConnectionManager = nodeConnectionManager;
     this.nodeGraph = nodeGraph;
-    this.setNodeQueue = setNodeQueue;
+    this.queue = queue;
     this.refreshBucketTimerDefault = refreshBucketTimerDefault;
   }
 
@@ -470,7 +470,7 @@ class NodeManager {
           )} to queue`,
         );
         // Re-attempt this later asynchronously by adding the the queue
-        this.setNodeQueue.queueSetNode(() =>
+        this.queue.push(() =>
           this.setNode(nodeId, nodeAddress, true, false, timeout),
         );
       }

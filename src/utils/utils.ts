@@ -179,7 +179,7 @@ export type PromiseType<T> = {
 /**
  * Deconstructed promise
  */
-function promise<T>(): PromiseType<T> {
+function promise<T = void>(): PromiseType<T> {
   let resolveP, rejectP;
   const p = new Promise<T>((resolve, reject) => {
     resolveP = resolve;

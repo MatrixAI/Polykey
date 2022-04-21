@@ -4,7 +4,7 @@ import type Proxy from '../network/Proxy';
 import type { Host, Hostname, Port } from '../network/types';
 import type { Timer } from '../types';
 import type NodeGraph from './NodeGraph';
-import type SetNodeQueue from './SetNodeQueue';
+import type Queue from './Queue';
 import type {
   NodeAddress,
   NodeData,
@@ -61,7 +61,7 @@ class NodeConnectionManager {
   protected nodeGraph: NodeGraph;
   protected keyManager: KeyManager;
   protected proxy: Proxy;
-  protected setNodeQueue: SetNodeQueue;
+  protected queue: Queue;
   // NodeManager has to be passed in during start to allow co-dependency
   protected nodeManager: NodeManager | undefined;
   protected seedNodes: SeedNodes;
@@ -82,7 +82,7 @@ class NodeConnectionManager {
     keyManager,
     nodeGraph,
     proxy,
-    setNodeQueue,
+    queue,
     seedNodes = {},
     initialClosestNodes = 3,
     connConnectTime = 20000,
@@ -92,7 +92,7 @@ class NodeConnectionManager {
     nodeGraph: NodeGraph;
     keyManager: KeyManager;
     proxy: Proxy;
-    setNodeQueue: SetNodeQueue;
+    queue: Queue;
     seedNodes?: SeedNodes;
     initialClosestNodes?: number;
     connConnectTime?: number;
@@ -103,7 +103,7 @@ class NodeConnectionManager {
     this.keyManager = keyManager;
     this.nodeGraph = nodeGraph;
     this.proxy = proxy;
-    this.setNodeQueue = setNodeQueue;
+    this.queue = queue;
     this.seedNodes = seedNodes;
     this.initialClosestNodes = initialClosestNodes;
     this.connConnectTime = connConnectTime;
@@ -600,7 +600,7 @@ class NodeConnectionManager {
       );
       for (const [nodeId, nodeData] of nodes) {
         if (!block) {
-          this.setNodeQueue.queueSetNode(() =>
+          this.queue.push(() =>
             this.nodeManager!.setNode(nodeId, nodeData.address),
           );
         } else {
@@ -612,17 +612,7 @@ class NodeConnectionManager {
         }
       }
       // Refreshing every bucket above the closest node
-      if (!block) {
-        this.setNodeQueue.queueSetNode(async () => {
-          const [closestNode] = (
-            await this.nodeGraph.getClosestNodes(this.keyManager.getNodeId(), 1)
-          ).pop()!;
-          const [bucketIndex] = this.nodeGraph.bucketIndex(closestNode);
-          for (let i = bucketIndex; i < this.nodeGraph.nodeIdBits; i++) {
-            this.nodeManager?.refreshBucketQueueAdd(i);
-          }
-        });
-      } else {
+      const refreshBuckets = async () => {
         const [closestNode] = (
           await this.nodeGraph.getClosestNodes(this.keyManager.getNodeId(), 1)
         ).pop()!;
@@ -630,6 +620,11 @@ class NodeConnectionManager {
         for (let i = bucketIndex; i < this.nodeGraph.nodeIdBits; i++) {
           this.nodeManager?.refreshBucketQueueAdd(i);
         }
+      };
+      if (!block) {
+        this.queue.push(refreshBuckets);
+      } else {
+        await refreshBuckets();
       }
     }
   }
