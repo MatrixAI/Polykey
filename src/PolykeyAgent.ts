@@ -663,7 +663,7 @@ class PolykeyAgent {
       await this.nodeManager.start();
       await this.nodeConnectionManager.start({ nodeManager: this.nodeManager });
       await this.nodeGraph.start({ fresh });
-      await this.nodeConnectionManager.syncNodeGraph();
+      await this.nodeConnectionManager.syncNodeGraph(false);
       await this.discovery.start({ fresh });
       await this.vaultManager.start({ fresh });
       await this.notificationsManager.start({ fresh });
