@@ -12,8 +12,8 @@ class ErrorNodeManagerNotRunning extends ErrorNodes {
   exitCode = sysexits.USAGE;
 }
 
-class ErrorSetNodeQueueNotRunning extends ErrorNodes {
-  static description = 'SetNodeQueue is not running';
+class ErrorQueueNotRunning extends ErrorNodes {
+  static description = 'queue is not running';
   exitCode = sysexits.USAGE;
 }
 
@@ -91,7 +91,7 @@ export {
   ErrorNodes,
   ErrorNodeAborted,
   ErrorNodeManagerNotRunning,
-  ErrorSetNodeQueueNotRunning,
+  ErrorQueueNotRunning,
   ErrorNodeGraphRunning,
   ErrorNodeGraphNotRunning,
   ErrorNodeGraphDestroyed,
