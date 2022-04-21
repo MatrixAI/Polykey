@@ -36,6 +36,7 @@ import * as nodesUtils from '@/nodes/utils';
 import * as agentErrors from '@/agent/errors';
 import * as grpcUtils from '@/grpc/utils';
 import { timerStart } from '@/utils';
+import SetNodeQueue from '@/nodes/SetNodeQueue';
 import * as testNodesUtils from './utils';
 import * as testUtils from '../utils';
 import * as testGrpcUtils from '../grpc/utils';
@@ -85,6 +86,7 @@ describe(`${NodeConnection.name} test`, () => {
   let serverKeyManager: KeyManager;
   let serverVaultManager: VaultManager;
   let serverNodeGraph: NodeGraph;
+  let serverSetNodeQueue: SetNodeQueue;
   let serverNodeConnectionManager: NodeConnectionManager;
   let serverNodeManager: NodeManager;
   let serverSigchain: Sigchain;
@@ -231,10 +233,12 @@ describe(`${NodeConnection.name} test`, () => {
       logger,
     });
 
+    serverSetNodeQueue = new SetNodeQueue({ logger });
     serverNodeConnectionManager = new NodeConnectionManager({
       keyManager: serverKeyManager,
       nodeGraph: serverNodeGraph,
       proxy: serverProxy,
+      setNodeQueue: serverSetNodeQueue,
       logger,
     });
     serverNodeManager = new NodeManager({
@@ -243,8 +247,10 @@ describe(`${NodeConnection.name} test`, () => {
       keyManager: serverKeyManager,
       nodeGraph: serverNodeGraph,
       nodeConnectionManager: serverNodeConnectionManager,
+      setNodeQueue: serverSetNodeQueue,
       logger: logger,
     });
+    await serverSetNodeQueue.start();
     await serverNodeManager.start();
     await serverNodeConnectionManager.start({ nodeManager: serverNodeManager });
     serverVaultManager = await VaultManager.createVaultManager({
@@ -361,6 +367,7 @@ describe(`${NodeConnection.name} test`, () => {
     await serverNodeGraph.destroy();
     await serverNodeConnectionManager.stop();
     await serverNodeManager.stop();
+    await serverSetNodeQueue.stop();
     await serverNotificationsManager.stop();
     await serverNotificationsManager.destroy();
     await agentServer.stop();

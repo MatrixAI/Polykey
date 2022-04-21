@@ -24,6 +24,7 @@ import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as identitiesPB from '@/proto/js/polykey/v1/identities/identities_pb';
 import * as clientUtils from '@/client/utils/utils';
 import * as keysUtils from '@/keys/utils';
+import SetNodeQueue from '@/nodes/SetNodeQueue';
 import * as testUtils from '../../utils';
 
 describe('gestaltsDiscoveryByIdentity', () => {
@@ -59,6 +60,7 @@ describe('gestaltsDiscoveryByIdentity', () => {
   let gestaltGraph: GestaltGraph;
   let identitiesManager: IdentitiesManager;
   let nodeGraph: NodeGraph;
+  let setNodeQueue: SetNodeQueue;
   let nodeConnectionManager: NodeConnectionManager;
   let nodeManager: NodeManager;
   let sigchain: Sigchain;
@@ -125,10 +127,14 @@ describe('gestaltsDiscoveryByIdentity', () => {
       keyManager,
       logger: logger.getChild('NodeGraph'),
     });
+    setNodeQueue = new SetNodeQueue({
+      logger: logger.getChild('SetNodeQueue'),
+    });
     nodeConnectionManager = new NodeConnectionManager({
       keyManager,
       nodeGraph,
       proxy,
+      setNodeQueue,
       connConnectTime: 2000,
       connTimeoutTime: 2000,
       logger: logger.getChild('NodeConnectionManager'),
@@ -139,8 +145,10 @@ describe('gestaltsDiscoveryByIdentity', () => {
       nodeConnectionManager,
       nodeGraph,
       sigchain,
+      setNodeQueue,
       logger,
     });
+    await setNodeQueue.start();
     await nodeManager.start();
     await nodeConnectionManager.start({ nodeManager });
     discovery = await Discovery.createDiscovery({
@@ -178,6 +186,7 @@ describe('gestaltsDiscoveryByIdentity', () => {
     await nodeGraph.stop();
     await nodeConnectionManager.stop();
     await nodeManager.stop();
+    await setNodeQueue.stop();
     await sigchain.stop();
     await proxy.stop();
     await identitiesManager.stop();

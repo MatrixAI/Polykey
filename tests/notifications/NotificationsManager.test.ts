@@ -22,6 +22,7 @@ import * as notificationsErrors from '@/notifications/errors';
 import * as vaultsUtils from '@/vaults/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as keysUtils from '@/keys/utils';
+import SetNodeQueue from '@/nodes/SetNodeQueue';
 import * as testUtils from '../utils';
 
 describe('NotificationsManager', () => {
@@ -50,6 +51,7 @@ describe('NotificationsManager', () => {
   let acl: ACL;
   let db: DB;
   let nodeGraph: NodeGraph;
+  let setNodeQueue: SetNodeQueue;
   let nodeConnectionManager: NodeConnectionManager;
   let nodeManager: NodeManager;
   let keyManager: KeyManager;
@@ -112,10 +114,12 @@ describe('NotificationsManager', () => {
       keyManager,
       logger,
     });
+    setNodeQueue = new SetNodeQueue({ logger });
     nodeConnectionManager = new NodeConnectionManager({
       nodeGraph,
       keyManager,
       proxy,
+      setNodeQueue,
       logger,
     });
     nodeManager = new NodeManager({
@@ -124,8 +128,10 @@ describe('NotificationsManager', () => {
       sigchain,
       nodeConnectionManager,
       nodeGraph,
+      setNodeQueue,
       logger,
     });
+    await setNodeQueue.start();
     await nodeManager.start();
     await nodeConnectionManager.start({ nodeManager });
     // Set up node for receiving notifications
@@ -147,6 +153,7 @@ describe('NotificationsManager', () => {
   }, global.defaultTimeout);
   afterAll(async () => {
     await receiver.stop();
+    await setNodeQueue.stop();
     await nodeConnectionManager.stop();
     await nodeGraph.stop();
     await proxy.stop();

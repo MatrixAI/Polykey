@@ -25,6 +25,7 @@ import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as clientUtils from '@/client/utils/utils';
 import * as keysUtils from '@/keys/utils';
 import * as validationErrors from '@/validation/errors';
+import SetNodeQueue from '@/nodes/SetNodeQueue';
 import * as testUtils from '../../utils';
 
 describe('nodesClaim', () => {
@@ -76,6 +77,7 @@ describe('nodesClaim', () => {
   const authToken = 'abc123';
   let dataDir: string;
   let nodeGraph: NodeGraph;
+  let setNodeQueue: SetNodeQueue;
   let nodeConnectionManager: NodeConnectionManager;
   let nodeManager: NodeManager;
   let notificationsManager: NotificationsManager;
@@ -128,10 +130,14 @@ describe('nodesClaim', () => {
       keyManager,
       logger: logger.getChild('NodeGraph'),
     });
+    setNodeQueue = new SetNodeQueue({
+      logger: logger.getChild('SetNodeQueue'),
+    });
     nodeConnectionManager = new NodeConnectionManager({
       keyManager,
       nodeGraph,
       proxy,
+      setNodeQueue,
       connConnectTime: 2000,
       connTimeoutTime: 2000,
       logger: logger.getChild('NodeConnectionManager'),
@@ -139,11 +145,13 @@ describe('nodesClaim', () => {
     nodeManager = new NodeManager({
       db,
       keyManager,
-      sigchain,
-      nodeGraph,
       nodeConnectionManager,
+      nodeGraph,
+      sigchain,
+      setNodeQueue,
       logger,
     });
+    await setNodeQueue.start();
     await nodeManager.start();
     await nodeConnectionManager.start({ nodeManager });
     notificationsManager =
@@ -179,6 +187,7 @@ describe('nodesClaim', () => {
     await grpcClient.destroy();
     await grpcServer.stop();
     await nodeConnectionManager.stop();
+    await setNodeQueue.stop();
     await nodeGraph.stop();
     await notificationsManager.stop();
     await sigchain.stop();

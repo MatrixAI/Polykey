@@ -1,6 +1,7 @@
 import type { DB } from '@matrixai/db';
 import type NodeConnectionManager from './NodeConnectionManager';
 import type NodeGraph from './NodeGraph';
+import type SetNodeQueue from './SetNodeQueue';
 import type KeyManager from '../keys/KeyManager';
 import type { PublicKeyPem } from '../keys/types';
 import type Sigchain from '../sigchain/Sigchain';
@@ -37,18 +38,7 @@ class NodeManager {
   protected keyManager: KeyManager;
   protected nodeConnectionManager: NodeConnectionManager;
   protected nodeGraph: NodeGraph;
-  // SetNodeQueue
-  protected endQueue: boolean = false;
-  protected setNodeQueue: Array<{
-    nodeId: NodeId;
-    nodeAddress: NodeAddress;
-    timeout?: number;
-  }> = [];
-  protected setNodeQueuePlug: Promise<void>;
-  protected setNodeQueueUnplug: (() => void) | undefined;
-  protected setNodeQueueRunner: Promise<void>;
-  protected setNodeQueueEmpty: Promise<void>;
-  protected setNodeQueueDrained: () => void;
+  protected setNodeQueue: SetNodeQueue;
   // Refresh bucket timer
   protected refreshBucketDeadlineMap: Map<NodeBucketIndex, number> = new Map();
   protected refreshBucketTimer: NodeJS.Timer;
@@ -67,6 +57,7 @@ class NodeManager {
     sigchain,
     nodeConnectionManager,
     nodeGraph,
+    setNodeQueue,
     refreshBucketTimerDefault = 3600000, // 1 hour in milliseconds
     logger,
   }: {
@@ -75,6 +66,7 @@ class NodeManager {
     sigchain: Sigchain;
     nodeConnectionManager: NodeConnectionManager;
     nodeGraph: NodeGraph;
+    setNodeQueue: SetNodeQueue;
     refreshBucketTimerDefault?: number;
     logger?: Logger;
   }) {
@@ -84,12 +76,12 @@ class NodeManager {
     this.sigchain = sigchain;
     this.nodeConnectionManager = nodeConnectionManager;
     this.nodeGraph = nodeGraph;
+    this.setNodeQueue = setNodeQueue;
     this.refreshBucketTimerDefault = refreshBucketTimerDefault;
   }
 
   public async start() {
     this.logger.info(`Starting ${this.constructor.name}`);
-    this.setNodeQueueRunner = this.startSetNodeQueue();
     this.startRefreshBucketTimers();
     this.refreshBucketQueueRunner = this.startRefreshBucketQueue();
     this.logger.info(`Started ${this.constructor.name}`);
@@ -97,7 +89,6 @@ class NodeManager {
 
   public async stop() {
     this.logger.info(`Stopping ${this.constructor.name}`);
-    await this.stopSetNodeQueue();
     await this.stopRefreshBucketTimers();
     await this.stopRefreshBucketQueue();
     this.logger.info(`Stopped ${this.constructor.name}`);
@@ -379,11 +370,12 @@ class NodeManager {
   }
 
   /**
-   * Adds a node to the node graph. This assumes that you have already authenticated the node.
-   * Updates the node if the node already exists.
+   * Adds a node to the node graph. This assumes that you have already authenticated the node
+   * Updates the node if the node already exists
+   * This operation is blocking by default - set `block` to false to make it non-blocking
    * @param nodeId - Id of the node we wish to add
    * @param nodeAddress - Expected address of the node we want to add
-   * @param blocking - Flag for if the operation should block or utilize the async queue
+   * @param block - Flag for if the operation should block or utilize the async queue
    * @param force - Flag for if we want to add the node without authenticating or if the bucket is full.
    * This will drop the oldest node in favor of the new.
    * @param timeout Connection timeout timeout
@@ -392,7 +384,7 @@ class NodeManager {
   public async setNode(
     nodeId: NodeId,
     nodeAddress: NodeAddress,
-    blocking: boolean = false,
+    block: boolean = true,
     force: boolean = false,
     timeout?: number,
   ): Promise<void> {
@@ -432,7 +424,7 @@ class NodeManager {
         // Updating the refreshBucket timer
         this.refreshBucketUpdateDeadline(bucketIndex);
         return;
-      } else if (blocking) {
+      } else if (block) {
         this.logger.debug(
           `Bucket was full and blocking was true, garbage collecting old nodes to add ${nodesUtils.encodeNodeId(
             nodeId,
@@ -451,7 +443,9 @@ class NodeManager {
           )} to queue`,
         );
         // Re-attempt this later asynchronously by adding the the queue
-        this.queueSetNode(nodeId, nodeAddress, timeout);
+        this.setNodeQueue.queueSetNode(() =>
+          this.setNode(nodeId, nodeAddress, true, false, timeout),
+        );
       }
     }
   }
@@ -528,92 +522,6 @@ class NodeManager {
   public async refreshBuckets(): Promise<void> {
     throw Error('fixme');
     // Return await this.nodeGraph.refreshBuckets();
-  }
-
-  // SetNode queue
-
-  /**
-   * This adds a setNode operation to the queue
-   */
-  private queueSetNode(
-    nodeId: NodeId,
-    nodeAddress: NodeAddress,
-    timeout?: number,
-  ): void {
-    this.logger.debug(`Adding ${nodesUtils.encodeNodeId(nodeId)} to queue`);
-    this.setNodeQueue.push({
-      nodeId,
-      nodeAddress,
-      timeout,
-    });
-    this.unplugQueue();
-  }
-
-  /**
-   * This starts the process of digesting the queue
-   */
-  private async startSetNodeQueue(): Promise<void> {
-    this.logger.debug('Starting setNodeQueue');
-    this.plugQueue();
-    // While queue hasn't ended
-    while (true) {
-      // Wait for queue to be unplugged
-      await this.setNodeQueuePlug;
-      if (this.endQueue) break;
-      const job = this.setNodeQueue.shift();
-      if (job == null) {
-        // If the queue is empty then we pause the queue
-        this.plugQueue();
-        continue;
-      }
-      // Process the job
-      this.logger.debug(
-        `SetNodeQueue processing job for: ${nodesUtils.encodeNodeId(
-          job.nodeId,
-        )}`,
-      );
-      await this.setNode(job.nodeId, job.nodeAddress, true, false, job.timeout);
-    }
-    this.logger.debug('SetNodeQueue has ended');
-  }
-
-  private async stopSetNodeQueue(): Promise<void> {
-    this.logger.debug('Stopping setNodeQueue');
-    // Tell the queue runner to end
-    this.endQueue = true;
-    this.unplugQueue();
-    // Wait for runner to finish it's current job
-    await this.setNodeQueueRunner;
-  }
-
-  private plugQueue(): void {
-    if (this.setNodeQueueUnplug == null) {
-      this.logger.debug('Plugging setNodeQueue');
-      // Pausing queue
-      this.setNodeQueuePlug = new Promise((resolve) => {
-        this.setNodeQueueUnplug = resolve;
-      });
-      // Signaling queue is empty
-      if (this.setNodeQueueDrained != null) this.setNodeQueueDrained();
-    }
-  }
-
-  private unplugQueue(): void {
-    if (this.setNodeQueueUnplug != null) {
-      this.logger.debug('Unplugging setNodeQueue');
-      // Starting queue
-      this.setNodeQueueUnplug();
-      this.setNodeQueueUnplug = undefined;
-      // Signalling queue is running
-      this.setNodeQueueEmpty = new Promise((resolve) => {
-        this.setNodeQueueDrained = resolve;
-      });
-    }
-  }
-
-  @ready(new nodesErrors.ErrorNodeManagerNotRunning())
-  public async queueDrained(): Promise<void> {
-    await this.setNodeQueueEmpty;
   }
 
   /**

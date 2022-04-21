@@ -20,6 +20,7 @@ import * as keysUtils from '@/keys/utils';
 import * as grpcUtils from '@/grpc/utils';
 import * as nodesPB from '@/proto/js/polykey/v1/nodes/nodes_pb';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
+import SetNodeQueue from '@/nodes/SetNodeQueue';
 import * as testNodesUtils from './utils';
 
 describe(`${NodeConnectionManager.name} general test`, () => {
@@ -76,6 +77,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
   let db: DB;
   let proxy: Proxy;
   let nodeGraph: NodeGraph;
+  let setNodeQueue: SetNodeQueue;
 
   let remoteNode1: PolykeyAgent;
   let remoteNode2: PolykeyAgent;
@@ -191,6 +193,10 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       keyManager,
       logger: logger.getChild('NodeGraph'),
     });
+    setNodeQueue = new SetNodeQueue({
+      logger: logger.getChild('SetNodeQueue'),
+    });
+    await setNodeQueue.start();
     const tlsConfig = {
       keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
       certChainPem: keysUtils.certToPem(keyManager.getRootCert()),
@@ -216,6 +222,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
   });
 
   afterEach(async () => {
+    await setNodeQueue.stop();
     await nodeGraph.stop();
     await nodeGraph.destroy();
     await db.stop();
@@ -232,6 +239,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       keyManager,
       nodeGraph,
       proxy,
+      setNodeQueue,
       logger: nodeConnectionManagerLogger,
     });
     await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
@@ -259,6 +267,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
         keyManager,
         nodeGraph,
         proxy,
+        setNodeQueue,
         logger: nodeConnectionManagerLogger,
       });
       await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
@@ -300,6 +309,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
         keyManager,
         nodeGraph,
         proxy,
+        setNodeQueue,
         logger: nodeConnectionManagerLogger,
       });
       await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
@@ -353,6 +363,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
         keyManager,
         nodeGraph,
         proxy,
+        setNodeQueue,
         logger: logger.getChild('NodeConnectionManager'),
       });
 
@@ -424,6 +435,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
         keyManager,
         nodeGraph,
         proxy,
+        setNodeQueue,
         logger: nodeConnectionManagerLogger,
       });
       await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
@@ -461,6 +473,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
         keyManager,
         nodeGraph,
         proxy,
+        setNodeQueue,
         logger: nodeConnectionManagerLogger,
       });
       await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
