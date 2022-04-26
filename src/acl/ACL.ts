@@ -1,9 +1,4 @@
-import type {
-  DB,
-  DBTransaction,
-  KeyPath,
-  LevelPath
-} from '@matrixai/db';
+import type { DB, DBTransaction, KeyPath, LevelPath } from '@matrixai/db';
 import type {
   PermissionId,
   PermissionIdString,
@@ -18,15 +13,14 @@ import type { Ref } from '../types';
 
 import Logger from '@matrixai/logger';
 import { IdInternal } from '@matrixai/id';
-import { RWLockWriter } from '@matrixai/async-locks';
 import {
   CreateDestroyStartStop,
   ready,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
-import * as aclUtils from './utils';
-import * as aclErrors from './errors';
 import { utils as dbUtils } from '@matrixai/db';
 import { withF } from '@matrixai/resources';
+import * as aclUtils from './utils';
+import * as aclErrors from './errors';
 
 interface ACL extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
@@ -36,17 +30,15 @@ interface ACL extends CreateDestroyStartStop {}
 class ACL {
   static async createACL({
     db,
-    locks,
     logger = new Logger(this.name),
     fresh = false,
   }: {
     db: DB;
-    locks: Locks;
     logger?: Logger;
     fresh?: boolean;
   }): Promise<ACL> {
     logger.info(`Creating ${this.name}`);
-    const acl = new ACL({ db, locks, logger });
+    const acl = new ACL({ db, logger });
     await acl.start({ fresh });
     logger.info(`Created ${this.name}`);
     return acl;
@@ -72,7 +64,7 @@ class ACL {
    */
   protected aclVaultsDbPath: LevelPath = [this.constructor.name, 'vaults'];
 
-  // lock across the usages of the DB
+  // Lock across the usages of the DB
   // it makes sense to use
   // Symbol.for("key")
   // symbol for is found in teh global registry, if it doesn't exist, it is added to the global registry and returned
@@ -99,10 +91,9 @@ class ACL {
 
   protected generatePermId: () => PermissionId;
 
-  constructor({ db, locks, logger }: { db: DB; locks: Locks; logger: Logger }) {
+  constructor({ db, logger }: { db: DB; logger: Logger }) {
     this.logger = logger;
     this.db = db;
-    this.locks = locks;
   }
 
   public async start({
@@ -135,24 +126,32 @@ class ACL {
     nodeId2: NodeId,
     tran?: DBTransaction,
   ): Promise<boolean> {
-    const nodeId1Path = [...this.aclNodesDbPath, nodeId1.toBuffer()] as unknown as KeyPath;
-    const nodeId2Path = [...this.aclNodesDbPath, nodeId2.toBuffer()] as unknown as KeyPath;
+    const nodeId1Path = [
+      ...this.aclNodesDbPath,
+      nodeId1.toBuffer(),
+    ] as unknown as KeyPath;
+    const nodeId2Path = [
+      ...this.aclNodesDbPath,
+      nodeId2.toBuffer(),
+    ] as unknown as KeyPath;
     if (tran == null) {
       return withF(
         [
           this.db.transaction(),
           this.locks.lockRead(
             dbUtils.keyPathToKey(nodeId1Path).toString('binary'),
-            dbUtils.keyPathToKey(nodeId2Path).toString('binary')
+            dbUtils.keyPathToKey(nodeId2Path).toString('binary'),
           ),
         ],
-        async ([tran]) => this.sameNodePerm(nodeId1, nodeId2, tran)
+        async ([tran]) => this.sameNodePerm(nodeId1, nodeId2, tran),
       );
     }
     const permId1 = await tran.get(nodeId1Path, true);
     const permId2 = await tran.get(nodeId2Path, true);
     if (permId1 != null && permId2 != null) {
-      return IdInternal.fromBuffer(permId1).equals(IdInternal.fromBuffer(permId2));
+      return IdInternal.fromBuffer(permId1).equals(
+        IdInternal.fromBuffer(permId2),
+      );
     }
     return false;
   }

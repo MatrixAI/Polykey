@@ -1,16 +1,31 @@
-import { ErrorPolykey } from '../errors';
+import { ErrorPolykey, sysexits } from '../errors';
 
-class ErrorGestalts extends ErrorPolykey {}
+class ErrorGestalts<T> extends ErrorPolykey<T> {}
 
-class ErrorGestaltsGraphRunning extends ErrorGestalts {}
+class ErrorGestaltsGraphRunning<T> extends ErrorGestalts<T> {
+  static description = 'GestaltGraph is running';
+  exitCode = sysexits.USAGE;
+}
 
-class ErrorGestaltsGraphNotRunning extends ErrorGestalts {}
+class ErrorGestaltsGraphNotRunning<T> extends ErrorGestalts<T> {
+  static description = 'GestaltGraph is not running';
+  exitCode = sysexits.USAGE;
+}
 
-class ErrorGestaltsGraphDestroyed extends ErrorGestalts {}
+class ErrorGestaltsGraphDestroyed<T> extends ErrorGestalts<T> {
+  static description = 'GestaltGraph is destroyed';
+  exitCode = sysexits.USAGE;
+}
 
-class ErrorGestaltsGraphNodeIdMissing extends ErrorGestalts {}
+class ErrorGestaltsGraphNodeIdMissing<T> extends ErrorGestalts<T> {
+  static description = 'Could not find NodeId';
+  exitCode = sysexits.NOUSER;
+}
 
-class ErrorGestaltsGraphIdentityIdMissing extends ErrorGestalts {}
+class ErrorGestaltsGraphIdentityIdMissing<T> extends ErrorGestalts<T> {
+  static description = 'Could not find IdentityId';
+  exitCode = sysexits.NOUSER;
+}
 
 export {
   ErrorGestalts,

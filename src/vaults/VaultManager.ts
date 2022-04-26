@@ -199,10 +199,12 @@ class VaultManager {
           throw new vaultsErrors.ErrorVaultManagerKey();
         }
         throw new vaultsErrors.ErrorVaultManagerEFS(e.message, {
-          errno: e.errno,
-          syscall: e.syscall,
-          code: e.code,
-          path: e.path,
+          data: {
+            errno: e.errno,
+            syscall: e.syscall,
+            code: e.code,
+            path: e.path,
+          },
         });
       }
       this.vaultsDb = vaultsDb;
@@ -934,10 +936,12 @@ class VaultManager {
         return false;
       }
       throw new vaultsErrors.ErrorVaultManagerEFS(e.message, {
-        errno: e.errno,
-        syscall: e.syscall,
-        code: e.code,
-        path: e.path,
+        data: {
+          errno: e.errno,
+          syscall: e.syscall,
+          code: e.code,
+          path: e.path,
+        },
       });
     }
   }

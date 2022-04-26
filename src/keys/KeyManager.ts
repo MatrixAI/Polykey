@@ -269,10 +269,12 @@ class KeyManager {
       });
     } catch (e) {
       throw new keysErrors.ErrorRootKeysRead(e.message, {
-        errno: e.errno,
-        syscall: e.syscall,
-        code: e.code,
-        path: e.path,
+        data: {
+          errno: e.errno,
+          syscall: e.syscall,
+          code: e.code,
+          path: e.path,
+        },
       });
     }
     try {
@@ -414,10 +416,12 @@ class KeyManager {
       );
     } catch (e) {
       throw new keysErrors.ErrorRootCertRenew(e.message, {
-        errno: e.errno,
-        syscall: e.syscall,
-        code: e.code,
-        path: e.path,
+        data: {
+          errno: e.errno,
+          syscall: e.syscall,
+          code: e.code,
+          path: e.path,
+        },
       });
     }
     await this.garbageCollectRootCerts();
@@ -535,10 +539,12 @@ class KeyManager {
       }
     } catch (e) {
       throw new keysErrors.ErrorRootCertsGC(e.message, {
-        errno: e.errno,
-        syscall: e.syscall,
-        code: e.code,
-        path: e.path,
+        data: {
+          errno: e.errno,
+          syscall: e.syscall,
+          code: e.code,
+          path: e.path,
+        },
       });
     }
   }
@@ -630,10 +636,12 @@ class KeyManager {
         return false;
       }
       throw new keysErrors.ErrorRootKeysRead(e.message, {
-        errno: e.errno,
-        syscall: e.syscall,
-        code: e.code,
-        path: e.path,
+        data: {
+          errno: e.errno,
+          syscall: e.syscall,
+          code: e.code,
+          path: e.path,
+        },
       });
     }
     return true;
@@ -649,10 +657,12 @@ class KeyManager {
       ]);
     } catch (e) {
       throw new keysErrors.ErrorRootKeysRead(e.message, {
-        errno: e.errno,
-        syscall: e.syscall,
-        code: e.code,
-        path: e.path,
+        data: {
+          errno: e.errno,
+          syscall: e.syscall,
+          code: e.code,
+          path: e.path,
+        },
       });
     }
     let keyPair;
@@ -693,10 +703,12 @@ class KeyManager {
       ]);
     } catch (e) {
       throw new keysErrors.ErrorRootKeysWrite(e.message, {
-        errno: e.errno,
-        syscall: e.syscall,
-        code: e.code,
-        path: e.path,
+        data: {
+          errno: e.errno,
+          syscall: e.syscall,
+          code: e.code,
+          path: e.path,
+        },
       });
     }
   }
@@ -717,10 +729,12 @@ class KeyManager {
       });
     } catch (e) {
       throw new keysErrors.ErrorRootKeysRead(e.message, {
-        errno: e.errno,
-        syscall: e.syscall,
-        code: e.code,
-        path: e.path,
+        data: {
+          errno: e.errno,
+          syscall: e.syscall,
+          code: e.code,
+          path: e.path,
+        },
       });
     }
     const rootKeyPairBits = keysUtils.publicKeyBitSize(
@@ -764,10 +778,12 @@ class KeyManager {
         return false;
       }
       throw new keysErrors.ErrorDBKeyRead(e.message, {
-        errno: e.errno,
-        syscall: e.syscall,
-        code: e.code,
-        path: e.path,
+        data: {
+          errno: e.errno,
+          syscall: e.syscall,
+          code: e.code,
+          path: e.path,
+        },
       });
     }
     return true;
@@ -780,10 +796,12 @@ class KeyManager {
       keysDbKeyCipher = await this.fs.promises.readFile(keyPath);
     } catch (e) {
       throw new keysErrors.ErrorDBKeyRead(e.message, {
-        errno: e.errno,
-        syscall: e.syscall,
-        code: e.code,
-        path: e.path,
+        data: {
+          errno: e.errno,
+          syscall: e.syscall,
+          code: e.code,
+          path: e.path,
+        },
       });
     }
     let keysDbKeyPlain;
@@ -814,10 +832,12 @@ class KeyManager {
       await this.fs.promises.rename(`${keyPath}.tmp`, keyPath);
     } catch (e) {
       throw new keysErrors.ErrorDBKeyWrite(e.message, {
-        errno: e.errno,
-        syscall: e.syscall,
-        code: e.code,
-        path: e.path,
+        data: {
+          errno: e.errno,
+          syscall: e.syscall,
+          code: e.code,
+          path: e.path,
+        },
       });
     }
   }
@@ -855,10 +875,12 @@ class KeyManager {
         return false;
       }
       throw new keysErrors.ErrorRootCertRead(e.message, {
-        errno: e.errno,
-        syscall: e.syscall,
-        code: e.code,
-        path: e.path,
+        data: {
+          errno: e.errno,
+          syscall: e.syscall,
+          code: e.code,
+          path: e.path,
+        },
       });
     }
     return true;
@@ -873,10 +895,12 @@ class KeyManager {
       });
     } catch (e) {
       throw new keysErrors.ErrorRootCertRead(e.message, {
-        errno: e.errno,
-        syscall: e.syscall,
-        code: e.code,
-        path: e.path,
+        data: {
+          errno: e.errno,
+          syscall: e.syscall,
+          code: e.code,
+          path: e.path,
+        },
       });
     }
     const rootCert = keysUtils.certFromPem(rootCertPem);
@@ -894,10 +918,12 @@ class KeyManager {
       );
     } catch (e) {
       throw new keysErrors.ErrorRootCertWrite(e.message, {
-        errno: e.errno,
-        syscall: e.syscall,
-        code: e.code,
-        path: e.path,
+        data: {
+          errno: e.errno,
+          syscall: e.syscall,
+          code: e.code,
+          path: e.path,
+        },
       });
     }
   }
@@ -913,10 +939,12 @@ class KeyManager {
       rootCertsNames = await this.fs.promises.readdir(this.rootCertsPath);
     } catch (e) {
       throw new keysErrors.ErrorRootCertRead(e.message, {
-        errno: e.errno,
-        syscall: e.syscall,
-        code: e.code,
-        path: e.path,
+        data: {
+          errno: e.errno,
+          syscall: e.syscall,
+          code: e.code,
+          path: e.path,
+        },
       });
     }
     rootCertsNames.sort((a, b) => {
@@ -950,10 +978,12 @@ class KeyManager {
       );
     } catch (e) {
       throw new keysErrors.ErrorRootCertRead(e.message, {
-        errno: e.errno,
-        syscall: e.syscall,
-        code: e.code,
-        path: e.path,
+        data: {
+          errno: e.errno,
+          syscall: e.syscall,
+          code: e.code,
+          path: e.path,
+        },
       });
     }
     return rootCertsPems;

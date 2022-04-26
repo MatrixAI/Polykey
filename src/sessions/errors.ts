@@ -1,18 +1,36 @@
-import { ErrorPolykey } from '../errors';
+import { ErrorPolykey, sysexits } from '../errors';
 
-class ErrorSessions extends ErrorPolykey {}
+class ErrorSessions<T> extends ErrorPolykey<T> {}
 
-class ErrorSessionRunning extends ErrorSessions {}
+class ErrorSessionRunning<T> extends ErrorSessions<T> {
+  static description = 'Session is running';
+  exitCode = sysexits.USAGE;
+}
 
-class ErrorSessionNotRunning extends ErrorSessions {}
+class ErrorSessionNotRunning<T> extends ErrorSessions<T> {
+  static description = 'Session is not running';
+  exitCode = sysexits.USAGE;
+}
 
-class ErrorSessionDestroyed extends ErrorSessions {}
+class ErrorSessionDestroyed<T> extends ErrorSessions<T> {
+  static description = 'Session is destroyed';
+  exitCode = sysexits.USAGE;
+}
 
-class ErrorSessionManagerRunning extends ErrorSessions {}
+class ErrorSessionManagerRunning<T> extends ErrorSessions<T> {
+  static description = 'SessionManager is running';
+  exitCode = sysexits.USAGE;
+}
 
-class ErrorSessionManagerNotRunning extends ErrorSessions {}
+class ErrorSessionManagerNotRunning<T> extends ErrorSessions<T> {
+  static description = 'SessionManager is not running';
+  exitCode = sysexits.USAGE;
+}
 
-class ErrorSessionManagerDestroyed extends ErrorSessions {}
+class ErrorSessionManagerDestroyed<T> extends ErrorSessions<T> {
+  static description = 'SessionManager is destroyed';
+  exitCode = sysexits.USAGE;
+}
 
 export {
   ErrorSessions,

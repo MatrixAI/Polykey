@@ -1,9 +1,9 @@
 import { ErrorPolykey, sysexits } from '../errors';
 
-class ErrorBootstrap extends ErrorPolykey {}
+class ErrorBootstrap<T> extends ErrorPolykey<T> {}
 
-class ErrorBootstrapExistingState extends ErrorBootstrap {
-  description = 'Node path is occupied with existing state';
+class ErrorBootstrapExistingState<T> extends ErrorBootstrap<T> {
+  static description = 'Node path is occupied with existing state';
   exitCode = sysexits.USAGE;
 }
 

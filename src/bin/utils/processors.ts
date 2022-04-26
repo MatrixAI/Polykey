@@ -89,10 +89,12 @@ async function processPassword(
       password = (await fs.promises.readFile(passwordFile, 'utf-8')).trim();
     } catch (e) {
       throw new binErrors.ErrorCLIPasswordFileRead(e.message, {
-        errno: e.errno,
-        syscall: e.syscall,
-        code: e.code,
-        path: e.path,
+        data: {
+          errno: e.errno,
+          syscall: e.syscall,
+          code: e.code,
+          path: e.path,
+        },
       });
     }
   } else if (typeof process.env['PK_PASSWORD'] === 'string') {
@@ -131,10 +133,12 @@ async function processNewPassword(
       ).trim();
     } catch (e) {
       throw new binErrors.ErrorCLIPasswordFileRead(e.message, {
-        errno: e.errno,
-        syscall: e.syscall,
-        code: e.code,
-        path: e.path,
+        data: {
+          errno: e.errno,
+          syscall: e.syscall,
+          code: e.code,
+          path: e.path,
+        },
       });
     }
   } else if (!existing && typeof process.env['PK_PASSWORD'] === 'string') {
@@ -167,10 +171,12 @@ async function processRecoveryCode(
       ).trim();
     } catch (e) {
       throw new binErrors.ErrorCLIRecoveryCodeFileRead(e.message, {
-        errno: e.errno,
-        syscall: e.syscall,
-        code: e.code,
-        path: e.path,
+        data: {
+          errno: e.errno,
+          syscall: e.syscall,
+          code: e.code,
+          path: e.path,
+        },
       });
     }
   } else if (typeof process.env['PK_RECOVERY_CODE'] === 'string') {
@@ -372,10 +378,12 @@ async function processAuthentication(
       password = (await fs.promises.readFile(passwordFile, 'utf-8')).trim();
     } catch (e) {
       throw new binErrors.ErrorCLIPasswordFileRead(e.message, {
-        errno: e.errno,
-        syscall: e.syscall,
-        code: e.code,
-        path: e.path,
+        data: {
+          errno: e.errno,
+          syscall: e.syscall,
+          code: e.code,
+          path: e.path,
+        },
       });
     }
     meta = clientUtils.encodeAuthFromPassword(password);

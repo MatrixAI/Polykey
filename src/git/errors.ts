@@ -1,18 +1,30 @@
-import { ErrorPolykey } from '../errors';
+import { ErrorPolykey, sysexits } from '../errors';
 
-class ErrorGit extends ErrorPolykey {}
+class ErrorGit<T> extends ErrorPolykey<T> {}
 
-class ErrorRepositoryUndefined extends ErrorGit {}
+class ErrorRepositoryUndefined<T> extends ErrorGit<T> {}
 
-class ErrorGitPermissionDenied extends ErrorGit {}
+class ErrorGitPermissionDenied<T> extends ErrorGit<T> {}
 
-class ErrorGitUndefinedRefs extends ErrorGit {}
+class ErrorGitUndefinedRefs<T> extends ErrorGit<T> {
+  static description = 'Invalid ref';
+  exitCode = sysexits.UNKNOWN;
+}
 
-class ErrorGitUndefinedType extends ErrorGit {}
+class ErrorGitUndefinedType<T> extends ErrorGit<T> {
+  static description = 'Invalid data type';
+  exitCode = sysexits.CONFIG;
+}
 
-class ErrorGitReadObject extends ErrorGit {}
+class ErrorGitReadObject<T> extends ErrorGit<T> {
+  static description = 'Failed to read object';
+  exitCode = sysexits.IOERR;
+}
 
-class ErrorGitUnimplementedMethod extends ErrorGit {}
+class ErrorGitUnimplementedMethod<T> extends ErrorGit<T> {
+  static description = 'Invalid request';
+  exitCode = sysexits.USAGE;
+}
 
 export {
   ErrorGit,

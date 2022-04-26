@@ -157,9 +157,11 @@ class ConnectionReverse extends Connection {
       this.serverSocket.destroy();
       this.utpSocket.off('message', this.handleMessage);
       throw new networkErrors.ErrorConnectionStart(e.message, {
-        code: e.code,
-        errno: e.errno,
-        syscall: e.syscall,
+        data: {
+          code: e.code,
+          errno: e.errno,
+          syscall: e.syscall,
+        },
       });
     } finally {
       clearInterval(punchInterval);
@@ -247,9 +249,11 @@ class ConnectionReverse extends Connection {
           tlsSocket.destroy();
         }
         throw new networkErrors.ErrorConnectionCompose(e.message, {
-          code: e.code,
-          errno: e.errno,
-          syscall: e.syscall,
+          data: {
+            code: e.code,
+            errno: e.errno,
+            syscall: e.syscall,
+          },
         });
       }
       tlsSocket.on('error', async (e) => {
