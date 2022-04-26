@@ -1,18 +1,18 @@
+import type { PromiseType } from '../utils';
 import Logger from '@matrixai/logger';
 import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
 import * as nodesErrors from './errors';
+import { promise } from '../utils';
 
 interface Queue extends StartStop {}
 @StartStop()
 class Queue {
   protected logger: Logger;
-  protected endQueue: boolean = false;
+  protected end: boolean = false;
   protected queue: Array<() => Promise<void>> = [];
-  protected queuePlug: Promise<void>;
-  protected queueUnplug: (() => void) | undefined;
-  protected queueRunner: Promise<void>;
-  protected queueEmpty: Promise<void>;
-  protected queueDrainedSignal: () => void;
+  protected runner: Promise<void>;
+  protected plug_: PromiseType<void>;
+  protected drained_: PromiseType<void>;
 
   constructor({ logger }: { logger?: Logger }) {
     this.logger = logger ?? new Logger(this.constructor.name);
@@ -20,87 +20,71 @@ class Queue {
 
   public async start() {
     this.logger.info(`Starting ${this.constructor.name}`);
-    this.queueRunner = this.startqueue();
+    const start = async () => {
+      this.logger.debug('Starting queue');
+      this.plug();
+      const pace = async () => {
+        await this.plug_.p;
+        return !this.end;
+      };
+      // While queue hasn't ended
+      while (await pace()) {
+        const job = this.queue.shift();
+        if (job == null) {
+          // If the queue is empty then we pause the queue
+          this.plug();
+          continue;
+        }
+        try {
+          await job();
+        } catch (e) {
+          if (!(e instanceof nodesErrors.ErrorNodeGraphSameNodeId)) throw e;
+        }
+      }
+      this.logger.debug('queue has ended');
+    };
+    this.runner = start();
     this.logger.info(`Started ${this.constructor.name}`);
   }
 
   public async stop() {
     this.logger.info(`Stopping ${this.constructor.name}`);
-    await this.stopqueue();
+    this.logger.debug('Stopping queue');
+    // Tell the queue runner to end
+    this.end = true;
+    this.unplug();
+    // Wait for runner to finish it's current job
+    await this.runner;
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
   /**
    * This adds a setNode operation to the queue
    */
-  public queuePush(f: () => Promise<void>): void {
+  public push(f: () => Promise<void>): void {
     this.queue.push(f);
-    this.unplugQueue();
-  }
-
-  /**
-   * This starts the process of digesting the queue
-   */
-  private async startqueue(): Promise<void> {
-    this.logger.debug('Starting queue');
-    this.plugQueue();
-    // While queue hasn't ended
-    while (true) {
-      // Wait for queue to be unplugged
-      await this.queuePlug;
-      if (this.endQueue) break;
-      const job = this.queue.shift();
-      if (job == null) {
-        // If the queue is empty then we pause the queue
-        this.plugQueue();
-        continue;
-      }
-      try {
-        await job();
-      } catch (e) {
-        if (!(e instanceof nodesErrors.ErrorNodeGraphSameNodeId)) throw e;
-      }
-    }
-    this.logger.debug('queue has ended');
-  }
-
-  private async stopqueue(): Promise<void> {
-    this.logger.debug('Stopping queue');
-    // Tell the queue runner to end
-    this.endQueue = true;
-    this.unplugQueue();
-    // Wait for runner to finish it's current job
-    await this.queueRunner;
-  }
-
-  private plugQueue(): void {
-    if (this.queueUnplug == null) {
-      this.logger.debug('Plugging queue');
-      // Pausing queue
-      this.queuePlug = new Promise((resolve) => {
-        this.queueUnplug = resolve;
-      });
-      // Signaling queue is empty
-      if (this.queueDrainedSignal != null) this.queueDrainedSignal();
-    }
-  }
-
-  private unplugQueue(): void {
-    if (this.queueUnplug != null) {
-      this.logger.debug('Unplugging queue');
-      // Starting queue
-      this.queueUnplug();
-      this.queueUnplug = undefined;
-      // Signalling queue is running
-      this.queueEmpty = new Promise((resolve) => {
-        this.queueDrainedSignal = resolve;
-      });
-    }
+    this.unplug();
   }
 
   @ready(new nodesErrors.ErrorQueueNotRunning())
-  public async queueDrained(): Promise<void> {
-    await this.queueEmpty;
+  public async drained(): Promise<void> {
+    await this.drained_.p;
+  }
+
+  private plug(): void {
+    this.logger.debug('Plugging queue');
+    // Pausing queue
+    this.plug_ = promise();
+    // Signaling queue is empty
+    this.drained_.resolveP();
+  }
+
+  private unplug(): void {
+    this.logger.debug('Unplugging queue');
+    // Starting queue
+    this.plug_.resolveP();
+    // Signalling queue is running
+    this.drained_ = promise();
   }
 }
 

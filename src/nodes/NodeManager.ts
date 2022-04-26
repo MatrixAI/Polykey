@@ -470,7 +470,7 @@ class NodeManager {
           )} to queue`,
         );
         // Re-attempt this later asynchronously by adding the the queue
-        this.queue.queuePush(() =>
+        this.queue.push(() =>
           this.setNode(nodeId, nodeAddress, true, false, timeout),
         );
       }
