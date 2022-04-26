@@ -1,113 +1,114 @@
 import { ErrorPolykey, sysexits } from '../errors';
 
-class ErrorVaults extends ErrorPolykey {}
+class ErrorVaults<T> extends ErrorPolykey<T> {}
 
-class ErrorVaultManagerRunning extends ErrorVaults {
-  description = 'VaultManager is running';
+class ErrorVaultManagerRunning<T> extends ErrorVaults<T> {
+  static description = 'VaultManager is running';
   exitCode = sysexits.USAGE;
 }
 
-class ErrorVaultManagerNotRunning extends ErrorVaults {
-  description = 'VaultManager is not running';
+class ErrorVaultManagerNotRunning<T> extends ErrorVaults<T> {
+  static description = 'VaultManager is not running';
   exitCode = sysexits.USAGE;
 }
 
-class ErrorVaultManagerDestroyed extends ErrorVaults {
-  description = 'VaultManager is destroyed';
+class ErrorVaultManagerDestroyed<T> extends ErrorVaults<T> {
+  static description = 'VaultManager is destroyed';
   exitCode = sysexits.USAGE;
 }
 
-class ErrorVaultManagerKey extends ErrorVaults {
-  description = 'Vault key is invalid';
+class ErrorVaultManagerKey<T> extends ErrorVaults<T> {
+  static description = 'Vault key is invalid';
   exitCode = sysexits.CONFIG;
 }
 
-class ErrorVaultManagerEFS extends ErrorVaults {
-  description = 'EFS failed';
+class ErrorVaultManagerEFS<T> extends ErrorVaults<T> {
+  static description = 'EFS failed';
   exitCode = sysexits.UNAVAILABLE;
 }
 
-class ErrorVault extends ErrorVaults {}
+class ErrorVault<T> extends ErrorVaults<T> {}
 
-class ErrorVaultRunning extends ErrorVault {
-  description = 'Vault is running';
+class ErrorVaultRunning<T> extends ErrorVault<T> {
+  static description = 'Vault is running';
   exitCode = sysexits.USAGE;
 }
 
-class ErrorVaultNotRunning extends ErrorVault {
-  description = 'Vault is not running';
+class ErrorVaultNotRunning<T> extends ErrorVault<T> {
+  static description = 'Vault is not running';
   exitCode = sysexits.USAGE;
 }
 
-class ErrorVaultDestroyed extends ErrorVault {
-  description = 'Vault is destroyed';
+class ErrorVaultDestroyed<T> extends ErrorVault<T> {
+  static description = 'Vault is destroyed';
   exitCode = sysexits.USAGE;
 }
 
-class ErrorVaultReferenceInvalid extends ErrorVault {
-  description = 'Reference is invalid';
+class ErrorVaultReferenceInvalid<T> extends ErrorVault<T> {
+  static description = 'Reference is invalid';
   exitCode = sysexits.USAGE;
 }
 
-class ErrorVaultReferenceMissing extends ErrorVault {
-  description = 'Reference does not exist';
+class ErrorVaultReferenceMissing<T> extends ErrorVault<T> {
+  static description = 'Reference does not exist';
   exitCode = sysexits.USAGE;
 }
 
-class ErrorVaultRemoteDefined extends ErrorVaults {
-  description = 'Vault is a clone of a remote vault and can not be mutated';
+class ErrorVaultRemoteDefined<T> extends ErrorVaults<T> {
+  static description =
+    'Vault is a clone of a remote vault and can not be mutated';
   exitCode = sysexits.USAGE;
 }
 
-class ErrorVaultRemoteUndefined extends ErrorVaults {
-  description = 'Vault has no remote set and can not be pulled';
+class ErrorVaultRemoteUndefined<T> extends ErrorVaults<T> {
+  static description = 'Vault has no remote set and can not be pulled';
   exitCode = sysexits.USAGE;
 }
 
-class ErrorVaultsVaultUndefined extends ErrorVaults {
-  description = 'Vault does not exist';
+class ErrorVaultsVaultUndefined<T> extends ErrorVaults<T> {
+  static description = 'Vault does not exist';
   exitCode = sysexits.USAGE;
 }
 
-class ErrorVaultsVaultDefined extends ErrorVaults {
-  description = 'Vault already exists';
+class ErrorVaultsVaultDefined<T> extends ErrorVaults<T> {
+  static description = 'Vault already exists';
   exitCode = sysexits.USAGE;
 }
 
-class ErrorVaultsRecursive extends ErrorVaults {
-  description = 'Recursive option was not set';
+class ErrorVaultsRecursive<T> extends ErrorVaults<T> {
+  static description = 'Recursive option was not set';
   exitCode = sysexits.USAGE;
 }
 
-class ErrorVaultsCreateVaultId extends ErrorVaults {
-  description = 'Failed to create unique VaultId';
+class ErrorVaultsCreateVaultId<T> extends ErrorVaults<T> {
+  static description = 'Failed to create unique VaultId';
   exitCode = sysexits.SOFTWARE;
 }
 
-class ErrorVaultsMergeConflict extends ErrorVaults {
-  description = 'Merge Conflicts are not supported yet';
+class ErrorVaultsMergeConflict<T> extends ErrorVaults<T> {
+  static description = 'Merge Conflicts are not supported yet';
   exitCode = sysexits.SOFTWARE;
 }
 
-class ErrorVaultsPermissionDenied extends ErrorVaults {
-  description = 'Permission was denied';
+class ErrorVaultsPermissionDenied<T> extends ErrorVaults<T> {
+  static description = 'Permission was denied';
   exitCode = sysexits.NOPERM;
 }
 
-class ErrorVaultsNameConflict extends ErrorVaults {
-  description = 'Unique name could not be created';
+class ErrorVaultsNameConflict<T> extends ErrorVaults<T> {
+  static description = 'Unique name could not be created';
   exitCode = sysexits.UNAVAILABLE;
 }
 
-class ErrorSecrets extends ErrorPolykey {}
+class ErrorSecrets<T> extends ErrorPolykey<T> {}
 
-class ErrorSecretsSecretUndefined extends ErrorSecrets {
-  description = 'Secret does not exist';
+class ErrorSecretsSecretUndefined<T> extends ErrorSecrets<T> {
+  static description = 'Secret does not exist';
   exitCode = sysexits.USAGE;
 }
 
-class ErrorSecretsSecretDefined extends ErrorSecrets {
-  description = 'Secret already exists';
+class ErrorSecretsSecretDefined<T> extends ErrorSecrets<T> {
+  static description = 'Secret already exists';
   exitCode = sysexits.USAGE;
 }
 

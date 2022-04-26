@@ -40,7 +40,7 @@ async function main(_argv = process.argv): Promise<number> {
   const processSend = promisify<void>(process.send!.bind(process));
   const { p: messageInP, resolveP: resolveMessageInP } =
     promise<AgentChildProcessInput>();
-  process.once('message', (data) => {
+  process.once('message', (data: AgentChildProcessInput) => {
     resolveMessageInP(data);
   });
   const messageIn = await messageInP;

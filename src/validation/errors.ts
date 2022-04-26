@@ -1,20 +1,20 @@
-import { CustomError } from 'ts-custom-error';
+import { AbstractError } from '@matrixai/errors';
 import { ErrorPolykey, sysexits } from '../errors';
 
 /**
  * Generic error containing all parsing errors that occurred during
  * execution.
  */
-class ErrorValidation extends ErrorPolykey {
-  description = 'Input data failed validation';
+class ErrorValidation<T> extends ErrorPolykey<T> {
+  static description = 'Input data failed validation';
   exitCode = sysexits.DATAERR;
-  public errors: Array<ErrorParse>;
+  public errors: Array<ErrorParse<T>>;
   constructor(message, data) {
     super(message, data);
     if (data.errors != null) {
-      const errors: Array<ErrorParse> = [];
+      const errors: Array<ErrorParse<T>> = [];
       for (const eData of data.errors) {
-        const errorParse = new ErrorParse(eData.message);
+        const errorParse = new ErrorParse<T>(eData.message);
         errorParse.keyPath = eData.keyPath;
         errorParse.value = eData.value;
         errorParse.context = eData.context;
@@ -28,7 +28,7 @@ class ErrorValidation extends ErrorPolykey {
    * This packages an `ErrorParse` array into the `data` property
    * This is to allow encoding to and decoding from GRPC errors
    */
-  static createFromErrors(errors: Array<ErrorParse>): ErrorValidation {
+  static createFromErrors<T>(errors: Array<ErrorParse<T>>): ErrorValidation<T> {
     const message = errors.map((e) => e.message).join('; ');
     const data = {
       errors: errors.map((e) => ({
@@ -38,7 +38,7 @@ class ErrorValidation extends ErrorPolykey {
         context: e.context,
       })),
     };
-    const e = new ErrorValidation(message, data);
+    const e = new ErrorValidation<T>(message, data);
     e.errors = errors;
     return e;
   }
@@ -51,13 +51,12 @@ class ErrorValidation extends ErrorPolykey {
  * While JS allows us to throw POJOs directly, having a nominal type
  * is easier to check against
  */
-class ErrorParse extends CustomError {
+class ErrorParse<T> extends AbstractError<T> {
+  static description: string = 'Failed to parse data into valid format';
+  exitCode = sysexits.DATAERR;
   public keyPath: Array<string>;
   public value: any;
   public context: object;
-  constructor(message?: string) {
-    super(message);
-  }
 }
 
 export { ErrorValidation, ErrorParse };

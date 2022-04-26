@@ -1,39 +1,71 @@
-import { ErrorPolykey } from '../errors';
+import { ErrorPolykey, sysexits } from '../errors';
 
-class ErrorNotifications extends ErrorPolykey {}
+class ErrorNotifications<T> extends ErrorPolykey<T> {}
 
-class ErrorNotificationsUnknownNode extends ErrorNotifications {}
+class ErrorNotificationsRunning<T> extends ErrorNotifications<T> {
+  static description = 'NotiticationsManager is running';
+  exitCode = sysexits.USAGE;
+}
 
-class ErrorNotificationsRunning extends ErrorNotifications {}
+class ErrorNotificationsNotRunning<T> extends ErrorNotifications<T> {
+  static description = 'NotiticationsManager is not running';
+  exitCode = sysexits.USAGE;
+}
 
-class ErrorNotificationsNotRunning extends ErrorNotifications {}
+class ErrorNotificationsDestroyed<T> extends ErrorNotifications<T> {
+  static description = 'NotiticationsManager is destroyed';
+  exitCode = sysexits.USAGE;
+}
 
-class ErrorNotificationsDestroyed extends ErrorNotifications {}
+class ErrorNotificationsPermissionsNotFound<T> extends ErrorNotifications<T> {
+  static description = 'Could not find permissions for NodeId';
+  exitCode = sysexits.NOUSER;
+}
 
-class ErrorNotificationsPermissionsNotFound extends ErrorNotifications {}
+class ErrorNotificationsDb<T> extends ErrorNotifications<T> {
+  static description = 'Database consistency error';
+  exitCode = sysexits.IOERR;
+}
 
-class ErrorNotificationsDb extends ErrorNotifications {}
-
-class ErrorNotificationsParse extends ErrorNotifications {}
+class ErrorNotificationsParse<T> extends ErrorNotifications<T> {
+  static description = 'Unable to verify notification';
+  exitCode = sysexits.IOERR;
+}
 
 /**
  * Exceptions raised when validating a Notification against a JSON schema
  */
-class ErrorSchemaValidate extends ErrorNotifications {}
+class ErrorSchemaValidate<T> extends ErrorNotifications<T> {}
 
-class ErrorNotificationsInvalidType extends ErrorSchemaValidate {}
+class ErrorNotificationsInvalidType<T> extends ErrorSchemaValidate<T> {
+  static description = 'Invalid notification type';
+  exitCode = sysexits.USAGE;
+}
 
-class ErrorNotificationsGeneralInvalid extends ErrorSchemaValidate {}
+class ErrorNotificationsGeneralInvalid<T> extends ErrorSchemaValidate<T> {
+  static description = 'Invalid notification data';
+  exitCode = sysexits.USAGE;
+}
 
-class ErrorNotificationsGestaltInviteInvalid extends ErrorSchemaValidate {}
+class ErrorNotificationsGestaltInviteInvalid<
+  T,
+> extends ErrorSchemaValidate<T> {
+  static description = 'Invalid notification data';
+  exitCode = sysexits.USAGE;
+}
 
-class ErrorNotificationsVaultShareInvalid extends ErrorSchemaValidate {}
+class ErrorNotificationsVaultShareInvalid<T> extends ErrorSchemaValidate<T> {
+  static description = 'Invalid notification data';
+  exitCode = sysexits.USAGE;
+}
 
-class ErrorNotificationsValidationFailed extends ErrorSchemaValidate {}
+class ErrorNotificationsValidationFailed<T> extends ErrorSchemaValidate<T> {
+  static description = 'Notification does not match schema';
+  exitCode = sysexits.USAGE;
+}
 
 export {
   ErrorNotifications,
-  ErrorNotificationsUnknownNode,
   ErrorNotificationsRunning,
   ErrorNotificationsNotRunning,
   ErrorNotificationsDestroyed,

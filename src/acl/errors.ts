@@ -1,18 +1,36 @@
-import { ErrorPolykey } from '../errors';
+import { ErrorPolykey, sysexits } from '../errors';
 
-class ErrorACL extends ErrorPolykey {}
+class ErrorACL<T> extends ErrorPolykey<T> {}
 
-class ErrorACLRunning extends ErrorACL {}
+class ErrorACLRunning<T> extends ErrorACL<T> {
+  static description = 'ACL is running';
+  exitCode = sysexits.USAGE;
+}
 
-class ErrorACLNotRunning extends ErrorACL {}
+class ErrorACLNotRunning<T> extends ErrorACL<T> {
+  static description = 'ACL is not running';
+  exitCode = sysexits.USAGE;
+}
 
-class ErrorACLDestroyed extends ErrorACL {}
+class ErrorACLDestroyed<T> extends ErrorACL<T> {
+  static description = 'ACL is destroyed';
+  exitCode = sysexits.USAGE;
+}
 
-class ErrorACLNodeIdMissing extends ErrorACL {}
+class ErrorACLNodeIdMissing<T> extends ErrorACL<T> {
+  static description = 'Could not find NodeId';
+  exitCode = sysexits.NOUSER;
+}
 
-class ErrorACLVaultIdMissing extends ErrorACL {}
+class ErrorACLVaultIdMissing<T> extends ErrorACL<T> {
+  static description = 'Could not find VaultId';
+  exitCode = sysexits.DATAERR;
+}
 
-class ErrorACLNodeIdExists extends ErrorACL {}
+class ErrorACLNodeIdExists<T> extends ErrorACL<T> {
+  static description = 'NodeId already exists';
+  exitCode = sysexits.DATAERR;
+}
 
 export {
   ErrorACL,

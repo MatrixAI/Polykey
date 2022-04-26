@@ -175,8 +175,10 @@ class CommandStart extends CommandPolykey {
             new binErrors.ErrorCLIPolykeyAgentProcess(
               'Agent process closed during fork',
               {
-                code,
-                signal,
+                data: {
+                  code,
+                  signal,
+                },
               },
             ),
           );
