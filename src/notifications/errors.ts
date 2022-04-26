@@ -1,35 +1,37 @@
 import { ErrorPolykey } from '../errors';
 
-class ErrorNotifications extends ErrorPolykey {}
+class ErrorNotifications<T> extends ErrorPolykey<T> {}
 
-class ErrorNotificationsUnknownNode extends ErrorNotifications {}
+class ErrorNotificationsUnknownNode<T> extends ErrorNotifications<T> {}
 
-class ErrorNotificationsRunning extends ErrorNotifications {}
+class ErrorNotificationsRunning<T> extends ErrorNotifications<T> {}
 
-class ErrorNotificationsNotRunning extends ErrorNotifications {}
+class ErrorNotificationsNotRunning<T> extends ErrorNotifications<T> {}
 
-class ErrorNotificationsDestroyed extends ErrorNotifications {}
+class ErrorNotificationsDestroyed<T> extends ErrorNotifications<T> {}
 
-class ErrorNotificationsPermissionsNotFound extends ErrorNotifications {}
+class ErrorNotificationsPermissionsNotFound<T> extends ErrorNotifications<T> {}
 
-class ErrorNotificationsDb extends ErrorNotifications {}
+class ErrorNotificationsDb<T> extends ErrorNotifications<T> {}
 
-class ErrorNotificationsParse extends ErrorNotifications {}
+class ErrorNotificationsParse<T> extends ErrorNotifications<T> {}
 
 /**
  * Exceptions raised when validating a Notification against a JSON schema
  */
-class ErrorSchemaValidate extends ErrorNotifications {}
+class ErrorSchemaValidate<T> extends ErrorNotifications<T> {}
 
-class ErrorNotificationsInvalidType extends ErrorSchemaValidate {}
+class ErrorNotificationsInvalidType<T> extends ErrorSchemaValidate<T> {}
 
-class ErrorNotificationsGeneralInvalid extends ErrorSchemaValidate {}
+class ErrorNotificationsGeneralInvalid<T> extends ErrorSchemaValidate<T> {}
 
-class ErrorNotificationsGestaltInviteInvalid extends ErrorSchemaValidate {}
+class ErrorNotificationsGestaltInviteInvalid<
+  T,
+> extends ErrorSchemaValidate<T> {}
 
-class ErrorNotificationsVaultShareInvalid extends ErrorSchemaValidate {}
+class ErrorNotificationsVaultShareInvalid<T> extends ErrorSchemaValidate<T> {}
 
-class ErrorNotificationsValidationFailed extends ErrorSchemaValidate {}
+class ErrorNotificationsValidationFailed<T> extends ErrorSchemaValidate<T> {}
 
 export {
   ErrorNotifications,

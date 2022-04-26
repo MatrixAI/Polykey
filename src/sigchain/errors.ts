@@ -1,26 +1,26 @@
 import { ErrorPolykey } from '../errors';
 
-class ErrorSigchain extends ErrorPolykey {}
+class ErrorSigchain<T> extends ErrorPolykey<T> {}
 
-class ErrorSigchainRunning extends ErrorSigchain {}
+class ErrorSigchainRunning<T> extends ErrorSigchain<T> {}
 
-class ErrorSigchainNotRunning extends ErrorSigchain {}
+class ErrorSigchainNotRunning<T> extends ErrorSigchain<T> {}
 
-class ErrorSigchainDestroyed extends ErrorSigchain {}
+class ErrorSigchainDestroyed<T> extends ErrorSigchain<T> {}
 
-class ErrorSigchainSequenceNumUndefined extends ErrorSigchain {}
+class ErrorSigchainSequenceNumUndefined<T> extends ErrorSigchain<T> {}
 
-class ErrorSigchainClaimUndefined extends ErrorSigchain {}
+class ErrorSigchainClaimUndefined<T> extends ErrorSigchain<T> {}
 
-class ErrorSigchainInvalidSequenceNum extends ErrorSigchain {}
+class ErrorSigchainInvalidSequenceNum<T> extends ErrorSigchain<T> {}
 
-class ErrorSigchainInvalidHash extends ErrorSigchain {}
+class ErrorSigchainInvalidHash<T> extends ErrorSigchain<T> {}
 
-class ErrorSighainClaimVerificationFailed extends ErrorSigchain {}
+class ErrorSighainClaimVerificationFailed<T> extends ErrorSigchain<T> {}
 
-class ErrorSigchainDecrypt extends ErrorSigchain {}
+class ErrorSigchainDecrypt<T> extends ErrorSigchain<T> {}
 
-class ErrorSigchainParse extends ErrorSigchain {}
+class ErrorSigchainParse<T> extends ErrorSigchain<T> {}
 
 export {
   ErrorSigchainRunning,

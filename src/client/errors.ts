@@ -1,24 +1,24 @@
 import { ErrorPolykey, sysexits } from '../errors';
 
-class ErrorClient extends ErrorPolykey {}
+class ErrorClient<T> extends ErrorPolykey<T> {}
 
-class ErrorClientClientDestroyed extends ErrorClient {
-  description = 'GRPCClientClient has been destroyed';
+class ErrorClientClientDestroyed<T> extends ErrorClient<T> {
+  static description = 'GRPCClientClient has been destroyed';
   exitCode = sysexits.USAGE;
 }
 
-class ErrorClientAuthMissing extends ErrorClient {
-  description = 'Authorisation metadata is required but missing';
+class ErrorClientAuthMissing<T> extends ErrorClient<T> {
+  static description = 'Authorisation metadata is required but missing';
   exitCode = sysexits.NOPERM;
 }
 
-class ErrorClientAuthFormat extends ErrorClient {
-  description = 'Authorisation metadata has invalid format';
+class ErrorClientAuthFormat<T> extends ErrorClient<T> {
+  static description = 'Authorisation metadata has invalid format';
   exitCode = sysexits.USAGE;
 }
 
-class ErrorClientAuthDenied extends ErrorClient {
-  description = 'Authorisation metadata is incorrect or expired';
+class ErrorClientAuthDenied<T> extends ErrorClient<T> {
+  static description = 'Authorisation metadata is incorrect or expired';
   exitCode = sysexits.NOPERM;
 }
 

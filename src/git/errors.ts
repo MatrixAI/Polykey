@@ -1,18 +1,18 @@
 import { ErrorPolykey } from '../errors';
 
-class ErrorGit extends ErrorPolykey {}
+class ErrorGit<T> extends ErrorPolykey<T> {}
 
-class ErrorRepositoryUndefined extends ErrorGit {}
+class ErrorRepositoryUndefined<T> extends ErrorGit<T> {}
 
-class ErrorGitPermissionDenied extends ErrorGit {}
+class ErrorGitPermissionDenied<T> extends ErrorGit<T> {}
 
-class ErrorGitUndefinedRefs extends ErrorGit {}
+class ErrorGitUndefinedRefs<T> extends ErrorGit<T> {}
 
-class ErrorGitUndefinedType extends ErrorGit {}
+class ErrorGitUndefinedType<T> extends ErrorGit<T> {}
 
-class ErrorGitReadObject extends ErrorGit {}
+class ErrorGitReadObject<T> extends ErrorGit<T> {}
 
-class ErrorGitUnimplementedMethod extends ErrorGit {}
+class ErrorGitUnimplementedMethod<T> extends ErrorGit<T> {}
 
 export {
   ErrorGit,

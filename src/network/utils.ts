@@ -201,11 +201,13 @@ function verifyServerCertificateChain(
       throw new networkErrors.ErrorCertChainDateInvalid(
         'Chain certificate date is invalid',
         {
-          cert,
-          certIndex,
-          notBefore: cert.validity.notBefore,
-          notAfter: cert.validity.notAfter,
-          now,
+          data: {
+            cert,
+            certIndex,
+            notBefore: cert.validity.notBefore,
+            notAfter: cert.validity.notAfter,
+            now,
+          },
         },
       );
     }
@@ -214,8 +216,10 @@ function verifyServerCertificateChain(
       throw new networkErrors.ErrorCertChainNameInvalid(
         'Chain certificate common name attribute is missing',
         {
-          cert,
-          certIndex,
+          data: {
+            cert,
+            certIndex,
+          },
         },
       );
     }
@@ -224,10 +228,12 @@ function verifyServerCertificateChain(
       throw new networkErrors.ErrorCertChainKeyInvalid(
         'Chain certificate public key does not generate its node id',
         {
-          cert,
-          certIndex,
-          nodeId: certNodeId,
-          commonName: commonName.value,
+          data: {
+            cert,
+            certIndex,
+            nodeId: certNodeId,
+            commonName: commonName.value,
+          },
         },
       );
     }
@@ -235,8 +241,10 @@ function verifyServerCertificateChain(
       throw new networkErrors.ErrorCertChainSignatureInvalid(
         'Chain certificate does not have a valid node-signature',
         {
-          cert,
-          certIndex,
+          data: {
+            cert,
+            certIndex,
+          },
         },
       );
     }
@@ -251,7 +259,7 @@ function verifyServerCertificateChain(
     throw new networkErrors.ErrorCertChainUnclaimed(
       'Node ID is not claimed by any certificate',
       {
-        nodeId,
+        data: { nodeId },
       },
     );
   }
@@ -268,9 +276,11 @@ function verifyServerCertificateChain(
         throw new networkErrors.ErrorCertChainBroken(
           'Chain certificate is not signed by parent certificate',
           {
-            cert: certChild,
-            certIndex: certIndex - 1,
-            certParent,
+            data: {
+              cert: certChild,
+              certIndex: certIndex - 1,
+              certParent,
+            },
           },
         );
       }
@@ -296,11 +306,13 @@ function verifyClientCertificateChain(certChain: Array<Certificate>): void {
       throw new networkErrors.ErrorCertChainDateInvalid(
         'Chain certificate date is invalid',
         {
-          cert,
-          certIndex,
-          notBefore: cert.validity.notBefore,
-          notAfter: cert.validity.notAfter,
-          now,
+          data: {
+            cert,
+            certIndex,
+            notBefore: cert.validity.notBefore,
+            notAfter: cert.validity.notAfter,
+            now,
+          },
         },
       );
     }
@@ -309,8 +321,10 @@ function verifyClientCertificateChain(certChain: Array<Certificate>): void {
       throw new networkErrors.ErrorCertChainNameInvalid(
         'Chain certificate common name attribute is missing',
         {
-          cert,
-          certIndex,
+          data: {
+            cert,
+            certIndex,
+          },
         },
       );
     }
@@ -319,10 +333,12 @@ function verifyClientCertificateChain(certChain: Array<Certificate>): void {
       throw new networkErrors.ErrorCertChainKeyInvalid(
         'Chain certificate public key does not generate its node id',
         {
-          cert,
-          certIndex,
-          nodeId: certNodeId,
-          commonName: commonName.value,
+          data: {
+            cert,
+            certIndex,
+            nodeId: certNodeId,
+            commonName: commonName.value,
+          },
         },
       );
     }
@@ -330,8 +346,10 @@ function verifyClientCertificateChain(certChain: Array<Certificate>): void {
       throw new networkErrors.ErrorCertChainSignatureInvalid(
         'Chain certificate does not have a valid node-signature',
         {
-          cert,
-          certIndex,
+          data: {
+            cert,
+            certIndex,
+          },
         },
       );
     }
@@ -343,9 +361,11 @@ function verifyClientCertificateChain(certChain: Array<Certificate>): void {
         throw new networkErrors.ErrorCertChainSignatureInvalid(
           'Chain certificate is not signed by parent certificate',
           {
-            cert,
-            certIndex,
-            certParent: certNext,
+            data: {
+              cert,
+              certIndex,
+              certParent: certNext,
+            },
           },
         );
       }

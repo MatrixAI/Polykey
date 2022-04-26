@@ -1,24 +1,24 @@
 import { ErrorPolykey } from '../errors';
 
-class ErrorIdentities extends ErrorPolykey {}
+class ErrorIdentities<T> extends ErrorPolykey<T> {}
 
-class ErrorIdentitiesManagerRunning extends ErrorIdentities {}
+class ErrorIdentitiesManagerRunning<T> extends ErrorIdentities<T> {}
 
-class ErrorIdentitiesManagerNotRunning extends ErrorIdentities {}
+class ErrorIdentitiesManagerNotRunning<T> extends ErrorIdentities<T> {}
 
-class ErrorIdentitiesManagerDestroyed extends ErrorIdentities {}
+class ErrorIdentitiesManagerDestroyed<T> extends ErrorIdentities<T> {}
 
-class ErrorProviderDuplicate extends ErrorIdentities {}
+class ErrorProviderDuplicate<T> extends ErrorIdentities<T> {}
 
-class ErrorProviderCall extends ErrorIdentities {}
+class ErrorProviderCall<T> extends ErrorIdentities<T> {}
 
-class ErrorProviderAuthentication extends ErrorIdentities {}
+class ErrorProviderAuthentication<T> extends ErrorIdentities<T> {}
 
-class ErrorProviderUnauthenticated extends ErrorIdentities {}
+class ErrorProviderUnauthenticated<T> extends ErrorIdentities<T> {}
 
-class ErrorProviderUnimplemented extends ErrorIdentities {}
+class ErrorProviderUnimplemented<T> extends ErrorIdentities<T> {}
 
-class ErrorProviderMissing extends ErrorIdentities {}
+class ErrorProviderMissing<T> extends ErrorIdentities<T> {}
 
 export {
   ErrorIdentities,

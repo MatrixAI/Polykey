@@ -1,18 +1,18 @@
 import { ErrorPolykey } from '../errors';
 
-class ErrorACL extends ErrorPolykey {}
+class ErrorACL<T> extends ErrorPolykey<T> {}
 
-class ErrorACLRunning extends ErrorACL {}
+class ErrorACLRunning<T> extends ErrorACL<T> {}
 
-class ErrorACLNotRunning extends ErrorACL {}
+class ErrorACLNotRunning<T> extends ErrorACL<T> {}
 
-class ErrorACLDestroyed extends ErrorACL {}
+class ErrorACLDestroyed<T> extends ErrorACL<T> {}
 
-class ErrorACLNodeIdMissing extends ErrorACL {}
+class ErrorACLNodeIdMissing<T> extends ErrorACL<T> {}
 
-class ErrorACLVaultIdMissing extends ErrorACL {}
+class ErrorACLVaultIdMissing<T> extends ErrorACL<T> {}
 
-class ErrorACLNodeIdExists extends ErrorACL {}
+class ErrorACLNodeIdExists<T> extends ErrorACL<T> {}
 
 export {
   ErrorACL,

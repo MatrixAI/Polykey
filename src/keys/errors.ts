@@ -1,50 +1,50 @@
 import { ErrorPolykey, sysexits } from '../errors';
 
-class ErrorKeys extends ErrorPolykey {}
+class ErrorKeys<T> extends ErrorPolykey<T> {}
 
-class ErrorKeyManagerRunning extends ErrorKeys {}
+class ErrorKeyManagerRunning<T> extends ErrorKeys<T> {}
 
-class ErrorKeyManagerNotRunning extends ErrorKeys {}
+class ErrorKeyManagerNotRunning<T> extends ErrorKeys<T> {}
 
-class ErrorKeyManagerDestroyed extends ErrorKeys {}
+class ErrorKeyManagerDestroyed<T> extends ErrorKeys<T> {}
 
-class ErrorKeysPasswordInvalid extends ErrorKeys {
-  description = 'Password has invalid format';
+class ErrorKeysPasswordInvalid<T> extends ErrorKeys<T> {
+  static description = 'Password has invalid format';
   exitCode = sysexits.USAGE;
 }
 
-class ErrorKeysRecoveryCodeInvalid extends ErrorKeys {
-  description = 'Recovery code has invalid format';
+class ErrorKeysRecoveryCodeInvalid<T> extends ErrorKeys<T> {
+  static description = 'Recovery code has invalid format';
   exitCode = sysexits.USAGE;
 }
 
-class ErrorKeysRecoveryCodeIncorrect extends ErrorKeys {
-  description =
+class ErrorKeysRecoveryCodeIncorrect<T> extends ErrorKeys<T> {
+  static description =
     "Recovered key pair's public key does not match the root public key";
   exitCode = sysexits.USAGE;
 }
 
-class ErrorRootKeysRead extends ErrorKeys {}
+class ErrorRootKeysRead<T> extends ErrorKeys<T> {}
 
-class ErrorRootKeysParse extends ErrorKeys {}
+class ErrorRootKeysParse<T> extends ErrorKeys<T> {}
 
-class ErrorRootKeysWrite extends ErrorKeys {}
+class ErrorRootKeysWrite<T> extends ErrorKeys<T> {}
 
-class ErrorRootCertRead extends ErrorKeys {}
+class ErrorRootCertRead<T> extends ErrorKeys<T> {}
 
-class ErrorRootCertWrite extends ErrorKeys {}
+class ErrorRootCertWrite<T> extends ErrorKeys<T> {}
 
-class ErrorRootCertRenew extends ErrorKeys {}
+class ErrorRootCertRenew<T> extends ErrorKeys<T> {}
 
-class ErrorRootCertsGC extends ErrorKeys {}
+class ErrorRootCertsGC<T> extends ErrorKeys<T> {}
 
-class ErrorEncryptSize extends ErrorKeys {}
+class ErrorEncryptSize<T> extends ErrorKeys<T> {}
 
-class ErrorDBKeyRead extends ErrorKeys {}
+class ErrorDBKeyRead<T> extends ErrorKeys<T> {}
 
-class ErrorDBKeyWrite extends ErrorKeys {}
+class ErrorDBKeyWrite<T> extends ErrorKeys<T> {}
 
-class ErrorDBKeyParse extends ErrorKeys {}
+class ErrorDBKeyParse<T> extends ErrorKeys<T> {}
 
 export {
   ErrorKeys,

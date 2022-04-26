@@ -112,10 +112,12 @@ class Status {
           return;
         }
         throw new statusErrors.ErrorStatusRead(e.message, {
-          errno: e.errno,
-          syscall: e.syscall,
-          code: e.code,
-          path: e.path,
+          data: {
+            errno: e.errno,
+            syscall: e.syscall,
+            code: e.code,
+            path: e.path,
+          },
         });
       }
       while (!lock(statusFile.fd)) {
@@ -126,10 +128,12 @@ class Status {
         statusData = (await statusFile.readFile('utf-8')).trim();
       } catch (e) {
         throw new statusErrors.ErrorStatusRead(e.message, {
-          errno: e.errno,
-          syscall: e.syscall,
-          code: e.code,
-          path: e.path,
+          data: {
+            errno: e.errno,
+            syscall: e.syscall,
+            code: e.code,
+            path: e.path,
+          },
         });
       }
       if (statusData === '') {
@@ -145,7 +149,7 @@ class Status {
         throw new statusErrors.ErrorStatusParse(
           'StatusInfo validation failed',
           {
-            errors: statusUtils.statusValidate.errors,
+            data: { errors: statusUtils.statusValidate.errors },
           },
         );
       }
@@ -182,10 +186,12 @@ class Status {
         );
       } catch (e) {
         throw new statusErrors.ErrorStatusWrite(e.message, {
-          errno: e.errno,
-          syscall: e.syscall,
-          code: e.code,
-          path: e.path,
+          data: {
+            errno: e.errno,
+            syscall: e.syscall,
+            code: e.code,
+            path: e.path,
+          },
         });
       }
     } finally {
@@ -207,10 +213,12 @@ class Status {
         statusFile = await this.fs.promises.open(this.statusPath, 'r+');
       } catch (e) {
         throw new statusErrors.ErrorStatusRead(e.message, {
-          errno: e.errno,
-          syscall: e.syscall,
-          code: e.code,
-          path: e.path,
+          data: {
+            errno: e.errno,
+            syscall: e.syscall,
+            code: e.code,
+            path: e.path,
+          },
         });
       }
       while (!lock(statusFile.fd)) {
@@ -221,10 +229,12 @@ class Status {
         statusData = (await statusFile.readFile('utf-8')).trim();
       } catch (e) {
         throw new statusErrors.ErrorStatusRead(e.message, {
-          errno: e.errno,
-          syscall: e.syscall,
-          code: e.code,
-          path: e.path,
+          data: {
+            errno: e.errno,
+            syscall: e.syscall,
+            code: e.code,
+            path: e.path,
+          },
         });
       }
       let statusInfo;
@@ -237,7 +247,7 @@ class Status {
         throw new statusErrors.ErrorStatusParse(
           'StatusInfo validation failed',
           {
-            errors: statusUtils.statusValidate.errors,
+            data: { errors: statusUtils.statusValidate.errors },
           },
         );
       }
@@ -256,10 +266,12 @@ class Status {
         );
       } catch (e) {
         throw new statusErrors.ErrorStatusWrite(e.message, {
-          errno: e.errno,
-          syscall: e.syscall,
-          code: e.code,
-          path: e.path,
+          data: {
+            errno: e.errno,
+            syscall: e.syscall,
+            code: e.code,
+            path: e.path,
+          },
         });
       }
       return statusInfo;

@@ -1,16 +1,16 @@
 import { ErrorPolykey } from '../errors';
 
-class ErrorGestalts extends ErrorPolykey {}
+class ErrorGestalts<T> extends ErrorPolykey<T> {}
 
-class ErrorGestaltsGraphRunning extends ErrorGestalts {}
+class ErrorGestaltsGraphRunning<T> extends ErrorGestalts<T> {}
 
-class ErrorGestaltsGraphNotRunning extends ErrorGestalts {}
+class ErrorGestaltsGraphNotRunning<T> extends ErrorGestalts<T> {}
 
-class ErrorGestaltsGraphDestroyed extends ErrorGestalts {}
+class ErrorGestaltsGraphDestroyed<T> extends ErrorGestalts<T> {}
 
-class ErrorGestaltsGraphNodeIdMissing extends ErrorGestalts {}
+class ErrorGestaltsGraphNodeIdMissing<T> extends ErrorGestalts<T> {}
 
-class ErrorGestaltsGraphIdentityIdMissing extends ErrorGestalts {}
+class ErrorGestaltsGraphIdentityIdMissing<T> extends ErrorGestalts<T> {}
 
 export {
   ErrorGestalts,

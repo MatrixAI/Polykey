@@ -1,54 +1,61 @@
 import { ErrorPolykey } from '../errors';
 
-class ErrorClaims extends ErrorPolykey {}
+class ErrorClaims<T> extends ErrorPolykey<T> {}
 
-class ErrorClaimsUndefinedCanonicalizedClaim extends ErrorClaims {}
+class ErrorClaimsUndefinedCanonicalizedClaim<T> extends ErrorClaims<T> {}
 
-class ErrorClaimsUndefinedClaimPayload extends ErrorClaims {}
+class ErrorClaimsUndefinedClaimPayload<T> extends ErrorClaims<T> {}
 
-class ErrorClaimsUndefinedSignatureHeader extends ErrorClaims {}
+class ErrorClaimsUndefinedSignatureHeader<T> extends ErrorClaims<T> {}
 
 /**
  * Exceptions arising in cross-signing process (GRPC)
  */
-class ErrorCrossSign extends ErrorClaims {}
+class ErrorCrossSign<T> extends ErrorClaims<T> {}
 
-class ErrorEmptyStream extends ErrorCrossSign {}
+class ErrorEmptyStream<T> extends ErrorCrossSign<T> {}
 
-class ErrorUndefinedSinglySignedClaim extends ErrorCrossSign {
-  description: string = 'An expected singly signed claim was not received';
+class ErrorUndefinedSinglySignedClaim<T> extends ErrorCrossSign<T> {
+  static description: string =
+    'An expected singly signed claim was not received';
 }
 
-class ErrorUndefinedDoublySignedClaim extends ErrorCrossSign {
-  description: string = 'An expected doubly signed claim was not received';
+class ErrorUndefinedDoublySignedClaim<T> extends ErrorCrossSign<T> {
+  static description: string =
+    'An expected doubly signed claim was not received';
 }
 
-class ErrorUndefinedSignature extends ErrorCrossSign {
-  description: string = 'A received claim does not have an expected signature';
+class ErrorUndefinedSignature<T> extends ErrorCrossSign<T> {
+  static description: string =
+    'A received claim does not have an expected signature';
 }
 
-class ErrorSinglySignedClaimVerificationFailed extends ErrorCrossSign {}
+class ErrorSinglySignedClaimVerificationFailed<T> extends ErrorCrossSign<T> {}
 
-class ErrorDoublySignedClaimVerificationFailed extends ErrorCrossSign {}
+class ErrorDoublySignedClaimVerificationFailed<T> extends ErrorCrossSign<T> {}
 
 /**
  * Exceptions arising during schema validation
  */
-class ErrorSchemaValidate extends ErrorClaims {}
+class ErrorSchemaValidate<T> extends ErrorClaims<T> {}
 
-class ErrorClaimValidationFailed extends ErrorSchemaValidate {}
+class ErrorClaimValidationFailed<T> extends ErrorSchemaValidate<T> {}
 
-class ErrorNodesClaimType extends ErrorSchemaValidate {}
+class ErrorNodesClaimType<T> extends ErrorSchemaValidate<T> {}
 
-class ErrorIdentitiesClaimType extends ErrorSchemaValidate {}
+class ErrorIdentitiesClaimType<T> extends ErrorSchemaValidate<T> {}
 
-class ErrorSinglySignedClaimNumSignatures extends ErrorSchemaValidate {}
+class ErrorSinglySignedClaimNumSignatures<T> extends ErrorSchemaValidate<T> {}
 
-class ErrorDoublySignedClaimNumSignatures extends ErrorSchemaValidate {}
+class ErrorDoublySignedClaimNumSignatures<T> extends ErrorSchemaValidate<T> {}
 
-class ErrorSinglySignedClaimValidationFailed extends ErrorSchemaValidate {}
+class ErrorSinglySignedClaimValidationFailed<
+  T,
+> extends ErrorSchemaValidate<T> {}
 
-class ErrorDoublySignedClaimValidationFailed extends ErrorSchemaValidate {}
+class ErrorDoublySignedClaimValidationFailed<
+  T,
+> extends ErrorSchemaValidate<T> {}
 
 export {
   ErrorClaims,

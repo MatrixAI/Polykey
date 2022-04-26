@@ -1,5 +1,5 @@
 import type { ResourceAcquire, ResourceRelease } from '@matrixai/resources';
-import type { NonEmptyArray } from '@/types';
+import type { NonEmptyArray } from '../types';
 import { RWLockWriter } from '@matrixai/async-locks';
 
 /**
@@ -18,7 +18,9 @@ class Locks {
    * The ids will be sorted before locking to ensure lock-hierarchy
    * in order to prevent deadlocks
    */
-  public lockRead(...ids: NonEmptyArray<string>): ResourceAcquire<NonEmptyArray<RWLockWriter>> {
+  public lockRead(
+    ...ids: NonEmptyArray<string>
+  ): ResourceAcquire<NonEmptyArray<RWLockWriter>> {
     return async () => {
       ids.sort();
       const locks: Array<[string, ResourceRelease, RWLockWriter]> = [];
@@ -55,7 +57,7 @@ class Locks {
             }
           }
         },
-        locks.map(([,,lock]) => lock) as NonEmptyArray<RWLockWriter>
+        locks.map(([, , lock]) => lock) as NonEmptyArray<RWLockWriter>,
       ];
     };
   }
@@ -65,7 +67,9 @@ class Locks {
    * The ids will be sorted before locking to ensure lock-hierarchy
    * in order to prevent deadlocks
    */
-  public lockWrite(...ids: NonEmptyArray<string>): ResourceAcquire<NonEmptyArray<RWLockWriter>> {
+  public lockWrite(
+    ...ids: NonEmptyArray<string>
+  ): ResourceAcquire<NonEmptyArray<RWLockWriter>> {
     return async () => {
       ids.sort();
       const locks: Array<[string, ResourceRelease, RWLockWriter]> = [];
@@ -102,7 +106,7 @@ class Locks {
             }
           }
         },
-        locks.map(([,,lock]) => lock) as NonEmptyArray<RWLockWriter>
+        locks.map(([, , lock]) => lock) as NonEmptyArray<RWLockWriter>,
       ];
     };
   }

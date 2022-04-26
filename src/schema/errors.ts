@@ -1,30 +1,30 @@
 import { ErrorPolykey } from '../errors';
 
-class ErrorSchema extends ErrorPolykey {}
+class ErrorSchema<T> extends ErrorPolykey<T> {}
 
-class ErrorSchemaRunning extends ErrorSchema {}
+class ErrorSchemaRunning<T> extends ErrorSchema<T> {}
 
-class ErrorSchemaNotRunning extends ErrorSchema {}
+class ErrorSchemaNotRunning<T> extends ErrorSchema<T> {}
 
-class ErrorSchemaDestroyed extends ErrorSchema {}
+class ErrorSchemaDestroyed<T> extends ErrorSchema<T> {}
 
-class ErrorSchemaStateCreate extends ErrorSchema {}
+class ErrorSchemaStateCreate<T> extends ErrorSchema<T> {}
 
-class ErrorSchemaStateDelete extends ErrorSchema {}
+class ErrorSchemaStateDelete<T> extends ErrorSchema<T> {}
 
-class ErrorSchemaVersionRead extends ErrorSchema {}
+class ErrorSchemaVersionRead<T> extends ErrorSchema<T> {}
 
-class ErrorSchemaVersionParse extends ErrorSchema {}
+class ErrorSchemaVersionParse<T> extends ErrorSchema<T> {}
 
-class ErrorSchemaVersionWrite extends ErrorSchema {}
+class ErrorSchemaVersionWrite<T> extends ErrorSchema<T> {}
 
-class ErrorSchemaVersionTooNew extends ErrorSchema {}
+class ErrorSchemaVersionTooNew<T> extends ErrorSchema<T> {}
 
-class ErrorSchemaVersionTooOld extends ErrorSchema {}
+class ErrorSchemaVersionTooOld<T> extends ErrorSchema<T> {}
 
-class ErrorSchemaMigrationFail extends ErrorSchema {}
+class ErrorSchemaMigrationFail<T> extends ErrorSchema<T> {}
 
-class ErrorSchemaMigrationMissing extends ErrorSchema {}
+class ErrorSchemaMigrationMissing<T> extends ErrorSchema<T> {}
 
 export {
   ErrorSchema,

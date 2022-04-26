@@ -1,128 +1,129 @@
 import { ErrorPolykey, sysexits } from '../errors';
 
-class ErrorNetwork extends ErrorPolykey {}
+class ErrorNetwork<T> extends ErrorPolykey<T> {}
 
-class ErrorProxy extends ErrorNetwork {}
+class ErrorProxy<T> extends ErrorNetwork<T> {}
 
-class ErrorProxyNotRunning extends ErrorProxy {
-  description = 'Proxy is not running';
+class ErrorProxyNotRunning<T> extends ErrorProxy<T> {
+  static description = 'Proxy is not running';
   exitCode = sysexits.USAGE;
 }
 
-class ErrorProxyConnectInvalidUrl extends ErrorProxy {
-  description = 'Invalid target host used for HTTP connect proxy';
+class ErrorProxyConnectInvalidUrl<T> extends ErrorProxy<T> {
+  static description = 'Invalid target host used for HTTP connect proxy';
   exitCode = sysexits.PROTOCOL;
 }
 
-class ErrorProxyConnectMissingNodeId extends ErrorProxy {
-  description = 'Node ID query parameter is required for HTTP connect proxy';
+class ErrorProxyConnectMissingNodeId<T> extends ErrorProxy<T> {
+  static description =
+    'Node ID query parameter is required for HTTP connect proxy';
   exitCode = sysexits.PROTOCOL;
 }
 
-class ErrorProxyConnectAuth extends ErrorProxy {
-  description = 'Incorrect HTTP connect proxy password';
+class ErrorProxyConnectAuth<T> extends ErrorProxy<T> {
+  static description = 'Incorrect HTTP connect proxy password';
   exitCode = sysexits.NOPERM;
 }
 
-class ErrorConnection extends ErrorNetwork {}
+class ErrorConnection<T> extends ErrorNetwork<T> {}
 
-class ErrorConnectionNotRunning extends ErrorConnection {
-  description = 'Connection is not running';
+class ErrorConnectionNotRunning<T> extends ErrorConnection<T> {
+  static description = 'Connection is not running';
   exitCode = sysexits.USAGE;
 }
 
-class ErrorConnectionComposed extends ErrorConnection {
-  description = 'Connection is composed';
+class ErrorConnectionComposed<T> extends ErrorConnection<T> {
+  static description = 'Connection is composed';
   exitCode = sysexits.USAGE;
 }
 
-class ErrorConnectionNotComposed extends ErrorConnection {
-  description = 'Connection is not composed';
+class ErrorConnectionNotComposed<T> extends ErrorConnection<T> {
+  static description = 'Connection is not composed';
   exitCode = sysexits.USAGE;
 }
 
-class ErrorConnectionMessageParse extends ErrorConnection {
-  description = 'Network message received is invalid';
+class ErrorConnectionMessageParse<T> extends ErrorConnection<T> {
+  static description = 'Network message received is invalid';
   exitCode = sysexits.TEMPFAIL;
 }
 
-class ErrorConnectionTimeout extends ErrorConnection {
-  description = 'Connection keep-alive timed out';
+class ErrorConnectionTimeout<T> extends ErrorConnection<T> {
+  static description = 'Connection keep-alive timed out';
   exitCode = sysexits.UNAVAILABLE;
 }
 
-class ErrorConnectionEndTimeout extends ErrorConnection {
-  description = 'Connection end timed out';
+class ErrorConnectionEndTimeout<T> extends ErrorConnection<T> {
+  static description = 'Connection end timed out';
   exitCode = sysexits.UNAVAILABLE;
 }
 
 /**
  * Used by ConnectionForward and ConnectionReverse
  */
-class ErrorConnectionStart extends ErrorConnection {
-  description = 'Connection start failed';
+class ErrorConnectionStart<T> extends ErrorConnection<T> {
+  static description = 'Connection start failed';
   exitCode = sysexits.PROTOCOL;
 }
 
-class ErrorConnectionStartTimeout extends ErrorConnectionStart {
-  description = 'Connection start timed out';
+class ErrorConnectionStartTimeout<T> extends ErrorConnectionStart<T> {
+  static description = 'Connection start timed out';
   exitCode = sysexits.NOHOST;
 }
 
 /**
  * Used by ConnectionReverse
  */
-class ErrorConnectionCompose extends ErrorConnection {
-  description = 'Connection compose failed';
+class ErrorConnectionCompose<T> extends ErrorConnection<T> {
+  static description = 'Connection compose failed';
   exitCode = sysexits.PROTOCOL;
 }
 
-class ErrorConnectionComposeTimeout extends ErrorConnectionCompose {
-  description = 'Connection compose timed out';
+class ErrorConnectionComposeTimeout<T> extends ErrorConnectionCompose<T> {
+  static description = 'Connection compose timed out';
   exitCode = sysexits.NOHOST;
 }
 
 /**
  * Used for certificate verification
  */
-class ErrorCertChain extends ErrorNetwork {}
+class ErrorCertChain<T> extends ErrorNetwork<T> {}
 
-class ErrorCertChainEmpty extends ErrorCertChain {
-  description = 'Certificate chain is empty';
+class ErrorCertChainEmpty<T> extends ErrorCertChain<T> {
+  static description = 'Certificate chain is empty';
   exitCode = sysexits.PROTOCOL;
 }
 
-class ErrorCertChainUnclaimed extends ErrorCertChain {
-  description = 'The target node id is not claimed by any certificate';
+class ErrorCertChainUnclaimed<T> extends ErrorCertChain<T> {
+  static description = 'The target node id is not claimed by any certificate';
   exitCode = sysexits.PROTOCOL;
 }
 
-class ErrorCertChainBroken extends ErrorCertChain {
-  description = 'The signature chain is broken';
+class ErrorCertChainBroken<T> extends ErrorCertChain<T> {
+  static description = 'The signature chain is broken';
   exitCode = sysexits.PROTOCOL;
 }
 
-class ErrorCertChainDateInvalid extends ErrorCertChain {
-  description = 'Certificate in the chain is expired';
+class ErrorCertChainDateInvalid<T> extends ErrorCertChain<T> {
+  static description = 'Certificate in the chain is expired';
   exitCode = sysexits.PROTOCOL;
 }
 
-class ErrorCertChainNameInvalid extends ErrorCertChain {
-  description = 'Certificate is missing the common name';
+class ErrorCertChainNameInvalid<T> extends ErrorCertChain<T> {
+  static description = 'Certificate is missing the common name';
   exitCode = sysexits.PROTOCOL;
 }
 
-class ErrorCertChainKeyInvalid extends ErrorCertChain {
-  description = 'Certificate public key does not generate the Node ID';
+class ErrorCertChainKeyInvalid<T> extends ErrorCertChain<T> {
+  static description = 'Certificate public key does not generate the Node ID';
   exitCode = sysexits.PROTOCOL;
 }
 
-class ErrorCertChainSignatureInvalid extends ErrorCertChain {
-  description = 'Certificate self-signed signature is invalid';
+class ErrorCertChainSignatureInvalid<T> extends ErrorCertChain<T> {
+  static description = 'Certificate self-signed signature is invalid';
   exitCode = sysexits.PROTOCOL;
 }
 
-class ErrorHostnameResolutionFailed extends ErrorNetwork {}
+class ErrorHostnameResolutionFailed<T> extends ErrorNetwork<T> {}
 
 export {
   ErrorNetwork,

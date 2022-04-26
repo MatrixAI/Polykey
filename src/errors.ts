@@ -1,26 +1,26 @@
 import ErrorPolykey from './ErrorPolykey';
 import sysexits from './utils/sysexits';
 
-class ErrorPolykeyUnimplemented extends ErrorPolykey {
-  description = 'This is an unimplemented functionality';
+class ErrorPolykeyUnimplemented<T> extends ErrorPolykey<T> {
+  static description = 'This is an unimplemented functionality';
   exitCode = sysexits.UNAVAILABLE;
 }
 
-class ErrorPolykeyAgentRunning extends ErrorPolykey {}
+class ErrorPolykeyAgentRunning<T> extends ErrorPolykey<T> {}
 
-class ErrorPolykeyAgentNotRunning extends ErrorPolykey {}
+class ErrorPolykeyAgentNotRunning<T> extends ErrorPolykey<T> {}
 
-class ErrorPolykeyAgentDestroyed extends ErrorPolykey {}
+class ErrorPolykeyAgentDestroyed<T> extends ErrorPolykey<T> {}
 
-class ErrorPolykeyClientRunning extends ErrorPolykey {}
+class ErrorPolykeyClientRunning<T> extends ErrorPolykey<T> {}
 
-class ErrorPolykeyClientNotRunning extends ErrorPolykey {}
+class ErrorPolykeyClientNotRunning<T> extends ErrorPolykey<T> {}
 
-class ErrorPolykeyClientDestroyed extends ErrorPolykey {}
+class ErrorPolykeyClientDestroyed<T> extends ErrorPolykey<T> {}
 
-class ErrorInvalidId extends ErrorPolykey {}
+class ErrorInvalidId<T> extends ErrorPolykey<T> {}
 
-class ErrorInvalidConfigEnvironment extends ErrorPolykey {}
+class ErrorInvalidConfigEnvironment<T> extends ErrorPolykey<T> {}
 
 export {
   sysexits,

@@ -74,10 +74,12 @@ class CommandEdit extends CommandPolykey {
           content = await this.fs.promises.readFile(tmpFile);
         } catch (e) {
           throw new binErrors.ErrorCLIFileRead(e.message, {
-            errno: e.errno,
-            syscall: e.syscall,
-            code: e.code,
-            path: e.path,
+            data: {
+              errno: e.errno,
+              syscall: e.syscall,
+              code: e.code,
+              path: e.path,
+            },
           });
         }
         secretMessage.setVault(vaultMessage);

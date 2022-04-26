@@ -165,9 +165,11 @@ class ConnectionForward extends Connection {
       }
       this.utpSocket.off('message', this.handleMessage);
       throw new networkErrors.ErrorConnectionStart(e.message, {
-        code: e.code,
-        errno: e.errno,
-        syscall: e.syscall,
+        data: {
+          code: e.code,
+          errno: e.errno,
+          syscall: e.syscall,
+        },
       });
     } finally {
       clearInterval(punchInterval);

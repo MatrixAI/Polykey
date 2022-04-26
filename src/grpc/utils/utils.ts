@@ -168,7 +168,7 @@ function fromError(error: Error): ServerStatusResponse {
   }
   metadata.set('name', error.name);
   metadata.set('message', error.message);
-  metadata.set('data', JSON.stringify((error as errors.ErrorPolykey).data));
+  metadata.set('data', JSON.stringify((error as errors.ErrorPolykey<unknown>).data));
   return {
     metadata,
   };
@@ -178,7 +178,7 @@ function fromError(error: Error): ServerStatusResponse {
  * Deserialized GRPC errors into ErrorPolykey
  * Use this on the receiving side to receive exceptions
  */
-function toError(e: ServiceError): errors.ErrorPolykey {
+function toError<T>(e: ServiceError): errors.ErrorPolykey<T> {
   const errorName = e.metadata.get('name')[0] as string;
   const errorMessage = e.metadata.get('message')[0] as string;
   const errorData = e.metadata.get('data')[0] as string;
@@ -197,12 +197,14 @@ function toError(e: ServiceError): errors.ErrorPolykey {
         errorData != null &&
         errorName in errors
       ) {
-        return new errors[errorName](errorMessage, JSON.parse(errorData));
+        return new errors[errorName](errorMessage, { data: JSON.parse(errorData) });
       } else {
-        return new grpcErrors.ErrorGRPCClientCall(e.message, {
-          code: e.code,
-          details: e.details,
-          metadata: e.metadata.getMap(),
+        return new grpcErrors.ErrorGRPCClientCall<T>(e.message, {
+          data: {
+            code: e.code,
+            details: e.details,
+            metadata: e.metadata.getMap(),
+          },
         });
       }
     }

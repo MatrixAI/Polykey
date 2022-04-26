@@ -1,15 +1,15 @@
 import { ErrorPolykey, sysexits } from '../errors';
 
-class ErrorAgent extends ErrorPolykey {}
+class ErrorAgent<T> extends ErrorPolykey<T> {}
 
-class ErrorAgentRunning extends ErrorPolykey {}
+class ErrorAgentRunning<T> extends ErrorPolykey<T> {}
 
-class ErrorAgentClientNotStarted extends ErrorAgent {}
+class ErrorAgentClientNotStarted<T> extends ErrorAgent<T> {}
 
-class ErrorAgentClientDestroyed extends ErrorAgent {}
+class ErrorAgentClientDestroyed<T> extends ErrorAgent<T> {}
 
-class ErrorConnectionInfoMissing extends ErrorAgent {
-  description = 'Vault already exists';
+class ErrorConnectionInfoMissing<T> extends ErrorAgent<T> {
+  static description = 'Vault already exists';
   exitCode = sysexits.UNAVAILABLE;
 }
 

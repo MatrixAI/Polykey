@@ -1,12 +1,12 @@
 import { ErrorPolykey } from '../errors';
 
-class ErrorDiscovery extends ErrorPolykey {}
+class ErrorDiscovery<T> extends ErrorPolykey<T> {}
 
-class ErrorDiscoveryRunning extends ErrorDiscovery {}
+class ErrorDiscoveryRunning<T> extends ErrorDiscovery<T> {}
 
-class ErrorDiscoveryDestroyed extends ErrorDiscovery {}
+class ErrorDiscoveryDestroyed<T> extends ErrorDiscovery<T> {}
 
-class ErrorDiscoveryNotRunning extends ErrorDiscovery {}
+class ErrorDiscoveryNotRunning<T> extends ErrorDiscovery<T> {}
 
 export {
   ErrorDiscovery,
