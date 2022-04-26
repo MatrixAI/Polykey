@@ -1,26 +1,45 @@
-import { ErrorPolykey } from '../errors';
+import { ErrorPolykey, sysexits } from '../errors';
 
-class ErrorSigchain extends ErrorPolykey {}
+class ErrorSigchain<T> extends ErrorPolykey<T> {}
 
-class ErrorSigchainRunning extends ErrorSigchain {}
+class ErrorSigchainRunning<T> extends ErrorSigchain<T> {
+  static description = 'Sigchain is running';
+  exitCode = sysexits.USAGE;
+}
 
-class ErrorSigchainNotRunning extends ErrorSigchain {}
+class ErrorSigchainNotRunning<T> extends ErrorSigchain<T> {
+  static description = 'Sigchain is not running';
+  exitCode = sysexits.USAGE;
+}
 
-class ErrorSigchainDestroyed extends ErrorSigchain {}
+class ErrorSigchainDestroyed<T> extends ErrorSigchain<T> {
+  static description = 'Sigchain is destroyed';
+  exitCode = sysexits.USAGE;
+}
 
-class ErrorSigchainSequenceNumUndefined extends ErrorSigchain {}
+class ErrorSigchainSequenceNumUndefined<T> extends ErrorSigchain<T> {
+  static description = 'Invalid database state';
+  exitCode = sysexits.IOERR;
+}
 
-class ErrorSigchainClaimUndefined extends ErrorSigchain {}
+class ErrorSigchainClaimUndefined<T> extends ErrorSigchain<T> {
+  static description = 'Could not retrieve claim';
+  exitCode = sysexits.USAGE;
+}
 
-class ErrorSigchainInvalidSequenceNum extends ErrorSigchain {}
+class ErrorSigchainInvalidSequenceNum<T> extends ErrorSigchain<T> {
+  static description = 'Claim has invalid sequence number';
+  exitCode = sysexits.USAGE;
+}
 
-class ErrorSigchainInvalidHash extends ErrorSigchain {}
+class ErrorSigchainInvalidHash<T> extends ErrorSigchain<T> {
+  static description = 'Claim has invalid hash';
+  exitCode = sysexits.USAGE;
+}
 
-class ErrorSighainClaimVerificationFailed extends ErrorSigchain {}
+class ErrorSigchainDecrypt<T> extends ErrorSigchain<T> {}
 
-class ErrorSigchainDecrypt extends ErrorSigchain {}
-
-class ErrorSigchainParse extends ErrorSigchain {}
+class ErrorSigchainParse<T> extends ErrorSigchain<T> {}
 
 export {
   ErrorSigchainRunning,
@@ -30,7 +49,6 @@ export {
   ErrorSigchainClaimUndefined,
   ErrorSigchainInvalidSequenceNum,
   ErrorSigchainInvalidHash,
-  ErrorSighainClaimVerificationFailed,
   ErrorSigchainDecrypt,
   ErrorSigchainParse,
 };

@@ -65,10 +65,12 @@ class CommandUpdate extends CommandPolykey {
           content = await this.fs.promises.readFile(directoryPath);
         } catch (e) {
           throw new binErrors.ErrorCLIFileRead(e.message, {
-            errno: e.errno,
-            syscall: e.syscall,
-            code: e.code,
-            path: e.path,
+            data: {
+              errno: e.errno,
+              syscall: e.syscall,
+              code: e.code,
+              path: e.path,
+            },
           });
         }
         secretMessage.setSecretContent(content);

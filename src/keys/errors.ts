@@ -1,50 +1,92 @@
 import { ErrorPolykey, sysexits } from '../errors';
 
-class ErrorKeys extends ErrorPolykey {}
+class ErrorKeys<T> extends ErrorPolykey<T> {}
 
-class ErrorKeyManagerRunning extends ErrorKeys {}
-
-class ErrorKeyManagerNotRunning extends ErrorKeys {}
-
-class ErrorKeyManagerDestroyed extends ErrorKeys {}
-
-class ErrorKeysPasswordInvalid extends ErrorKeys {
-  description = 'Password has invalid format';
+class ErrorKeyManagerRunning<T> extends ErrorKeys<T> {
+  static description = 'KeyManager is running';
   exitCode = sysexits.USAGE;
 }
 
-class ErrorKeysRecoveryCodeInvalid extends ErrorKeys {
-  description = 'Recovery code has invalid format';
+class ErrorKeyManagerNotRunning<T> extends ErrorKeys<T> {
+  static description = 'KeyManager is not running';
   exitCode = sysexits.USAGE;
 }
 
-class ErrorKeysRecoveryCodeIncorrect extends ErrorKeys {
-  description =
+class ErrorKeyManagerDestroyed<T> extends ErrorKeys<T> {
+  static description = 'KeyManager is destroyed';
+  exitCode = sysexits.USAGE;
+}
+
+class ErrorKeysPasswordInvalid<T> extends ErrorKeys<T> {
+  static description = 'Password has invalid format';
+  exitCode = sysexits.USAGE;
+}
+
+class ErrorKeysRecoveryCodeInvalid<T> extends ErrorKeys<T> {
+  static description = 'Recovery code has invalid format';
+  exitCode = sysexits.USAGE;
+}
+
+class ErrorKeysRecoveryCodeIncorrect<T> extends ErrorKeys<T> {
+  static description =
     "Recovered key pair's public key does not match the root public key";
   exitCode = sysexits.USAGE;
 }
 
-class ErrorRootKeysRead extends ErrorKeys {}
+class ErrorRootKeysRead<T> extends ErrorKeys<T> {
+  static description = 'Unable to read root keypair';
+  exitCode = sysexits.IOERR;
+}
 
-class ErrorRootKeysParse extends ErrorKeys {}
+class ErrorRootKeysParse<T> extends ErrorKeys<T> {
+  static description = 'Unable to parse root keypair';
+  exitCode = sysexits.IOERR;
+}
 
-class ErrorRootKeysWrite extends ErrorKeys {}
+class ErrorRootKeysWrite<T> extends ErrorKeys<T> {
+  static description = 'Unable to write root keypair';
+  exitCode = sysexits.IOERR;
+}
 
-class ErrorRootCertRead extends ErrorKeys {}
+class ErrorRootCertRead<T> extends ErrorKeys<T> {
+  static description = 'Unable to read root certificate';
+  exitCode = sysexits.IOERR;
+}
 
-class ErrorRootCertWrite extends ErrorKeys {}
+class ErrorRootCertWrite<T> extends ErrorKeys<T> {
+  static description = 'Unable to write root certificate';
+  exitCode = sysexits.IOERR;
+}
 
-class ErrorRootCertRenew extends ErrorKeys {}
+class ErrorRootCertRenew<T> extends ErrorKeys<T> {
+  static description = 'Unable to renew root certificate';
+  exitCode = sysexits.IOERR;
+}
 
-class ErrorRootCertsGC extends ErrorKeys {}
+class ErrorRootCertsGC<T> extends ErrorKeys<T> {
+  static description = 'Unexpected error during garbage collection';
+  exitCode = sysexits.IOERR;
+}
 
-class ErrorEncryptSize extends ErrorKeys {}
+class ErrorEncryptSize<T> extends ErrorKeys<T> {
+  static description = 'Cannot encrypt data with key bit size';
+  exitCode = sysexits.USAGE;
+}
 
-class ErrorDBKeyRead extends ErrorKeys {}
+class ErrorDBKeyRead<T> extends ErrorKeys<T> {
+  static description = 'Unable to read key';
+  exitCode = sysexits.IOERR;
+}
 
-class ErrorDBKeyWrite extends ErrorKeys {}
+class ErrorDBKeyWrite<T> extends ErrorKeys<T> {
+  static description = 'Unable to write key';
+  exitCode = sysexits.IOERR;
+}
 
-class ErrorDBKeyParse extends ErrorKeys {}
+class ErrorDBKeyParse<T> extends ErrorKeys<T> {
+  static description = 'Unable to decrypt key';
+  exitCode = sysexits.IOERR;
+}
 
 export {
   ErrorKeys,

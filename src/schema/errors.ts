@@ -1,30 +1,60 @@
-import { ErrorPolykey } from '../errors';
+import { ErrorPolykey, sysexits } from '../errors';
 
-class ErrorSchema extends ErrorPolykey {}
+class ErrorSchema<T> extends ErrorPolykey<T> {}
 
-class ErrorSchemaRunning extends ErrorSchema {}
+class ErrorSchemaRunning<T> extends ErrorSchema<T> {
+  static description = 'Schema is running';
+  exitCode = sysexits.USAGE;
+}
 
-class ErrorSchemaNotRunning extends ErrorSchema {}
+class ErrorSchemaNotRunning<T> extends ErrorSchema<T> {
+  static description = 'Schema is not running';
+  exitCode = sysexits.USAGE;
+}
 
-class ErrorSchemaDestroyed extends ErrorSchema {}
+class ErrorSchemaDestroyed<T> extends ErrorSchema<T> {
+  static description = 'Schema is destroyed';
+  exitCode = sysexits.USAGE;
+}
 
-class ErrorSchemaStateCreate extends ErrorSchema {}
+class ErrorSchemaStateCreate<T> extends ErrorSchema<T> {
+  static description = 'Unable to create schema state';
+  exitCode = sysexits.IOERR;
+}
 
-class ErrorSchemaStateDelete extends ErrorSchema {}
+class ErrorSchemaStateDelete<T> extends ErrorSchema<T> {
+  static description = 'Unable to delete schema state';
+  exitCode = sysexits.IOERR;
+}
 
-class ErrorSchemaVersionRead extends ErrorSchema {}
+class ErrorSchemaVersionRead<T> extends ErrorSchema<T> {
+  static description = 'Unable to read schema version';
+  exitCode = sysexits.IOERR;
+}
 
-class ErrorSchemaVersionParse extends ErrorSchema {}
+class ErrorSchemaVersionParse<T> extends ErrorSchema<T> {
+  static description = 'Invalid schema version';
+  exitCode = sysexits.IOERR;
+}
 
-class ErrorSchemaVersionWrite extends ErrorSchema {}
+class ErrorSchemaVersionWrite<T> extends ErrorSchema<T> {
+  static description = 'Unable to write schema version';
+  exitCode = sysexits.IOERR;
+}
 
-class ErrorSchemaVersionTooNew extends ErrorSchema {}
+class ErrorSchemaVersionTooNew<T> extends ErrorSchema<T> {
+  static description = 'Invalid state version';
+  exitCode = sysexits.USAGE;
+}
 
-class ErrorSchemaVersionTooOld extends ErrorSchema {}
+class ErrorSchemaVersionTooOld<T> extends ErrorSchema<T> {
+  static description = 'Unable to upgrade schema version';
+  exitCode = sysexits.USAGE;
+}
 
-class ErrorSchemaMigrationFail extends ErrorSchema {}
+class ErrorSchemaMigrationFail<T> extends ErrorSchema<T> {}
 
-class ErrorSchemaMigrationMissing extends ErrorSchema {}
+class ErrorSchemaMigrationMissing<T> extends ErrorSchema<T> {}
 
 export {
   ErrorSchema,

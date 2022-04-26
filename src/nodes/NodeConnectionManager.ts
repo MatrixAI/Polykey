@@ -15,6 +15,8 @@ import Logger from '@matrixai/logger';
 import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
 import { IdInternal } from '@matrixai/id';
 import { status } from '@matrixai/async-init';
+import { withF } from '@matrixai/resources';
+import { RWLockWriter } from '@matrixai/async-locks';
 import NodeConnection from './NodeConnection';
 import * as nodesUtils from './utils';
 import * as nodesErrors from './errors';
@@ -24,8 +26,6 @@ import * as networkUtils from '../network/utils';
 import * as agentErrors from '../agent/errors';
 import * as grpcErrors from '../grpc/errors';
 import * as nodesPB from '../proto/js/polykey/v1/nodes/nodes_pb';
-import { withF } from '@matrixai/resources';
-import { RWLockWriter } from '@matrixai/async-locks';
 
 type ConnectionAndLock = {
   connection?: NodeConnection<GRPCClientAgent>;

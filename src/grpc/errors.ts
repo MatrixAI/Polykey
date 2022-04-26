@@ -1,32 +1,51 @@
-import { ErrorPolykey } from '../errors';
+import { ErrorPolykey, sysexits } from '../errors';
 
-class ErrorGRPC extends ErrorPolykey {}
+class ErrorGRPC<T> extends ErrorPolykey<T> {}
 
-class ErrorGRPCClientTimeout extends ErrorGRPC {
-  description = 'Client connection timed out';
+class ErrorGRPCClientTimeout<T> extends ErrorGRPC<T> {
+  static description = 'Client connection timed out';
+  exitCode = sysexits.UNAVAILABLE;
 }
 
-class ErrorGRPCClientVerification extends ErrorGRPC {
-  description = 'Client could not verify server certificate';
+class ErrorGRPCClientVerification<T> extends ErrorGRPC<T> {
+  static description = 'Client could not verify server certificate';
+  exitCode = sysexits.UNAVAILABLE;
 }
 
-class ErrorGRPCClientChannelNotReady extends ErrorGRPC {
-  description = 'Client channel or subchannel is not ready';
+class ErrorGRPCClientChannelNotReady<T> extends ErrorGRPC<T> {
+  static description = 'Client channel or subchannel is not ready';
+  exitCode = sysexits.UNAVAILABLE;
 }
 
-class ErrorGRPCClientCall extends ErrorGRPC {
-  description = 'Generic call error';
+class ErrorGRPCClientCall<T> extends ErrorGRPC<T> {
+  static description = 'Generic call error';
+  exitCode = sysexits.UNAVAILABLE;
 }
 
-class ErrorGRPCServerNotRunning extends ErrorGRPC {}
+class ErrorGRPCServerNotRunning<T> extends ErrorGRPC<T> {
+  static description = 'GRPC Server is not running';
+  exitCode = sysexits.USAGE;
+}
 
-class ErrorGRPCServerBind extends ErrorGRPC {}
+class ErrorGRPCServerBind<T> extends ErrorGRPC<T> {
+  static description = 'Could not bind to server';
+  exitCode = sysexits.UNAVAILABLE;
+}
 
-class ErrorGRPCServerShutdown extends ErrorGRPC {}
+class ErrorGRPCServerShutdown<T> extends ErrorGRPC<T> {
+  static description = 'Error during shutdown';
+  exitCode = sysexits.UNAVAILABLE;
+}
 
-class ErrorGRPCServerNotSecured extends ErrorGRPC {}
+class ErrorGRPCServerNotSecured<T> extends ErrorGRPC<T> {
+  static description = 'Server is not secured';
+  exitCode = sysexits.NOPERM;
+}
 
-class ErrorGRPCServerVerification extends ErrorGRPC {}
+class ErrorGRPCServerVerification<T> extends ErrorGRPC<T> {
+  static description = 'Failed to verify server certificate';
+  exitCode = sysexits.UNAVAILABLE;
+}
 
 export {
   ErrorGRPC,

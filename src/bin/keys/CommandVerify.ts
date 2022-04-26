@@ -60,10 +60,12 @@ class CommandVerify extends CommandPolykey {
           });
         } catch (e) {
           throw new binErrors.ErrorCLIFileRead(e.message, {
-            errno: e.errno,
-            syscall: e.syscall,
-            code: e.code,
-            path: e.path,
+            data: {
+              errno: e.errno,
+              syscall: e.syscall,
+              code: e.code,
+              path: e.path,
+            },
           });
         }
         cryptoMessage.setData(data);

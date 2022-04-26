@@ -82,10 +82,12 @@ class Schema {
         });
       } catch (e) {
         throw new schemaErrors.ErrorSchemaStateDelete(e.message, {
-          errno: e.errno,
-          syscall: e.syscall,
-          code: e.code,
-          path: e.path,
+          data: {
+            errno: e.errno,
+            syscall: e.syscall,
+            code: e.code,
+            path: e.path,
+          },
         });
       }
     }
@@ -93,10 +95,12 @@ class Schema {
       await utils.mkdirExists(this.fs, this.statePath);
     } catch (e) {
       throw new schemaErrors.ErrorSchemaStateCreate(e.message, {
-        errno: e.errno,
-        syscall: e.syscall,
-        code: e.code,
-        path: e.path,
+        data: {
+          errno: e.errno,
+          syscall: e.syscall,
+          code: e.code,
+          path: e.path,
+        },
       });
     }
     const stateVersion = await this.readVersion();
@@ -126,10 +130,12 @@ class Schema {
       });
     } catch (e) {
       throw new schemaErrors.ErrorSchemaStateDelete(e.message, {
-        errno: e.errno,
-        syscall: e.syscall,
-        code: e.code,
-        path: e.path,
+        data: {
+          errno: e.errno,
+          syscall: e.syscall,
+          code: e.code,
+          path: e.path,
+        },
       });
     }
     this.logger.info(`Destroyed ${this.constructor.name}`);
@@ -148,10 +154,12 @@ class Schema {
           return;
         }
         throw new schemaErrors.ErrorSchemaVersionRead(e.message, {
-          errno: e.errno,
-          syscall: e.syscall,
-          code: e.code,
-          path: e.path,
+          data: {
+            errno: e.errno,
+            syscall: e.syscall,
+            code: e.code,
+            path: e.path,
+          },
         });
       }
       const stateVersion = parseInt(stateVersionData.trim());
@@ -172,10 +180,12 @@ class Schema {
         );
       } catch (e) {
         throw new schemaErrors.ErrorSchemaVersionWrite(e.message, {
-          errno: e.errno,
-          syscall: e.syscall,
-          code: e.code,
-          path: e.path,
+          data: {
+            errno: e.errno,
+            syscall: e.syscall,
+            code: e.code,
+            path: e.path,
+          },
         });
       }
     });

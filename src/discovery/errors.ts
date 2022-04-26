@@ -1,12 +1,21 @@
-import { ErrorPolykey } from '../errors';
+import { ErrorPolykey, sysexits } from '../errors';
 
-class ErrorDiscovery extends ErrorPolykey {}
+class ErrorDiscovery<T> extends ErrorPolykey<T> {}
 
-class ErrorDiscoveryRunning extends ErrorDiscovery {}
+class ErrorDiscoveryRunning<T> extends ErrorDiscovery<T> {
+  static description = 'Discovery is running';
+  exitCode = sysexits.USAGE;
+}
 
-class ErrorDiscoveryDestroyed extends ErrorDiscovery {}
+class ErrorDiscoveryDestroyed<T> extends ErrorDiscovery<T> {
+  static description = 'Discovery is destroyed';
+  exitCode = sysexits.USAGE;
+}
 
-class ErrorDiscoveryNotRunning extends ErrorDiscovery {}
+class ErrorDiscoveryNotRunning<T> extends ErrorDiscovery<T> {
+  static description = 'Discovery is not running';
+  exitCode = sysexits.USAGE;
+}
 
 export {
   ErrorDiscovery,

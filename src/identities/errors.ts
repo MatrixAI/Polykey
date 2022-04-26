@@ -1,24 +1,51 @@
-import { ErrorPolykey } from '../errors';
+import { ErrorPolykey, sysexits } from '../errors';
 
-class ErrorIdentities extends ErrorPolykey {}
+class ErrorIdentities<T> extends ErrorPolykey<T> {}
 
-class ErrorIdentitiesManagerRunning extends ErrorIdentities {}
+class ErrorIdentitiesManagerRunning<T> extends ErrorIdentities<T> {
+  static description = 'IdentitiesManager is running';
+  exitCode = sysexits.USAGE;
+}
 
-class ErrorIdentitiesManagerNotRunning extends ErrorIdentities {}
+class ErrorIdentitiesManagerNotRunning<T> extends ErrorIdentities<T> {
+  static description = 'IdentitiesManager is not running';
+  exitCode = sysexits.USAGE;
+}
 
-class ErrorIdentitiesManagerDestroyed extends ErrorIdentities {}
+class ErrorIdentitiesManagerDestroyed<T> extends ErrorIdentities<T> {
+  static description = 'IdentitiesManager is destroyed';
+  exitCode = sysexits.USAGE;
+}
 
-class ErrorProviderDuplicate extends ErrorIdentities {}
+class ErrorProviderDuplicate<T> extends ErrorIdentities<T> {
+  static description = 'Provider has already been registered';
+  exitCode = sysexits.USAGE;
+}
 
-class ErrorProviderCall extends ErrorIdentities {}
+class ErrorProviderCall<T> extends ErrorIdentities<T> {
+  static description = 'Invalid response received from provider';
+  exitCode = sysexits.UNAVAILABLE;
+}
 
-class ErrorProviderAuthentication extends ErrorIdentities {}
+class ErrorProviderAuthentication<T> extends ErrorIdentities<T> {
+  static description = 'Could not authenticate provider';
+  exitCode = sysexits.UNKNOWN;
+}
 
-class ErrorProviderUnauthenticated extends ErrorIdentities {}
+class ErrorProviderUnauthenticated<T> extends ErrorIdentities<T> {
+  static description = 'Provider has not been authenticated or access token is expired or invalid';
+  exitCode = sysexits.NOPERM;
+}
 
-class ErrorProviderUnimplemented extends ErrorIdentities {}
+class ErrorProviderUnimplemented<T> extends ErrorIdentities<T> {
+  static description = 'Functionality is unavailable';
+  exitCode = sysexits.USAGE;
+}
 
-class ErrorProviderMissing extends ErrorIdentities {}
+class ErrorProviderMissing<T> extends ErrorIdentities<T> {
+  static description = 'Provider has not been registered';
+  exitCode = sysexits.USAGE;
+}
 
 export {
   ErrorIdentities,
