@@ -820,7 +820,7 @@ describe(`${NodeManager.name} test`, () => {
       await nodeManager.setNode(newNode1, address);
       await nodeManager.setNode(newNode2, address);
       await nodeManager.setNode(newNode3, address);
-      await queue.queueDrained();
+      await queue.drained();
       const list = await listBucket(100);
       expect(list).toContain(nodesUtils.encodeNodeId(newNode1));
       expect(list).toContain(nodesUtils.encodeNodeId(newNode2));
@@ -870,8 +870,8 @@ describe(`${NodeManager.name} test`, () => {
       await expect(
         nodeManager.setNode(newNode4, address, false),
       ).resolves.toBeUndefined();
-      delayPing.resolveP(null);
-      await queue.queueDrained();
+      delayPing.resolveP();
+      await queue.drained();
     } finally {
       await nodeManager.stop();
       await queue.stop();

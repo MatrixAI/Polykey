@@ -648,7 +648,7 @@ class NodeConnectionManager {
       );
       for (const [nodeId, nodeData] of nodes) {
         if (!block) {
-          this.queue.queuePush(() =>
+          this.queue.push(() =>
             this.nodeManager!.setNode(nodeId, nodeData.address),
           );
         } else {
@@ -660,17 +660,7 @@ class NodeConnectionManager {
         }
       }
       // Refreshing every bucket above the closest node
-      if (!block) {
-        this.queue.queuePush(async () => {
-          const [closestNode] = (
-            await this.nodeGraph.getClosestNodes(this.keyManager.getNodeId(), 1)
-          ).pop()!;
-          const [bucketIndex] = this.nodeGraph.bucketIndex(closestNode);
-          for (let i = bucketIndex; i < this.nodeGraph.nodeIdBits; i++) {
-            this.nodeManager?.refreshBucketQueueAdd(i);
-          }
-        });
-      } else {
+      const refreshBuckets = async () => {
         const [closestNode] = (
           await this.nodeGraph.getClosestNodes(this.keyManager.getNodeId(), 1)
         ).pop()!;
@@ -678,6 +668,11 @@ class NodeConnectionManager {
         for (let i = bucketIndex; i < this.nodeGraph.nodeIdBits; i++) {
           this.nodeManager?.refreshBucketQueueAdd(i);
         }
+      };
+      if (!block) {
+        this.queue.push(refreshBuckets);
+      } else {
+        await refreshBuckets();
       }
     }
   }
