@@ -18,7 +18,7 @@ let
       buildPhase = ''
         cp ${./package.json} package.json
         pkg . \
-          --targets linux-${arch} \
+          --targets node${utils.nodeVersion}-linux-${arch} \
           --no-bytecode \
           --public \
           --public-packages "*" \
@@ -44,7 +44,7 @@ let
       buildPhase = ''
         cp ${./package.json} package.json
         pkg . \
-          --targets win-${arch} \
+          --targets node${utils.nodeVersion}-win-${arch} \
           --no-bytecode \
           --public \
           --public-packages "*" \
@@ -70,7 +70,7 @@ let
       buildPhase = ''
         cp ${./package.json} package.json
         pkg . \
-          --targets macos-${arch} \
+          --targets node${utils.nodeVersion}-macos-${arch} \
           --no-bytecode \
           --public \
           --public-packages "*" \
