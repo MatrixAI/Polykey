@@ -58,6 +58,7 @@ class CommandSign extends CommandPolykey {
               code: e.code,
               path: e.path,
             },
+            cause: e,
           });
         }
         cryptoMessage.setData(data);

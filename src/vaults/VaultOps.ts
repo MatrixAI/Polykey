@@ -109,6 +109,7 @@ async function getSecret(vault: Vault, secretName: string): Promise<Buffer> {
     if (err.code === 'ENOENT') {
       throw new vaultsErrors.ErrorSecretsSecretUndefined(
         `Secret with name: ${secretName} does not exist`,
+        { cause: err },
       );
     }
     throw err;
@@ -124,6 +125,7 @@ async function statSecret(vault: Vault, secretName: string): Promise<Stat> {
     if (err.code === 'ENOENT') {
       throw new vaultsErrors.ErrorSecretsSecretUndefined(
         `Secret with name: ${secretName} does not exist`,
+        { cause: err },
       );
     }
     throw err;
@@ -178,6 +180,7 @@ async function mkdir(
       if (err.code === 'ENOENT' && !recursive) {
         throw new vaultsErrors.ErrorVaultsRecursive(
           `Could not create directory '${dirPath}' without recursive option`,
+          { cause: err },
         );
       }
     }
