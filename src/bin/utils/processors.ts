@@ -95,6 +95,7 @@ async function processPassword(
           code: e.code,
           path: e.path,
         },
+        cause: e,
       });
     }
   } else if (typeof process.env['PK_PASSWORD'] === 'string') {
@@ -139,6 +140,7 @@ async function processNewPassword(
           code: e.code,
           path: e.path,
         },
+        cause: e,
       });
     }
   } else if (!existing && typeof process.env['PK_PASSWORD'] === 'string') {
@@ -177,6 +179,7 @@ async function processRecoveryCode(
           code: e.code,
           path: e.path,
         },
+        cause: e,
       });
     }
   } else if (typeof process.env['PK_RECOVERY_CODE'] === 'string') {
@@ -384,6 +387,7 @@ async function processAuthentication(
           code: e.code,
           path: e.path,
         },
+        cause: e,
       });
     }
     meta = clientUtils.encodeAuthFromPassword(password);

@@ -58,6 +58,7 @@ class CommandEncypt extends CommandPolykey {
               code: e.code,
               path: e.path,
             },
+            cause: e,
           });
         }
         cryptoMessage.setData(plainText);

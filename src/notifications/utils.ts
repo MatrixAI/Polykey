@@ -78,7 +78,7 @@ async function verifyAndDecodeNotif(notifJWT: string): Promise<Notification> {
       throw err;
     } else {
       // Error came from jose
-      throw new notificationsErrors.ErrorNotificationsParse();
+      throw new notificationsErrors.ErrorNotificationsParse(err.message, { cause: err });
     }
   }
 }

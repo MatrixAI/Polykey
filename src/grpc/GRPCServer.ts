@@ -70,7 +70,7 @@ class GRPCServer {
     try {
       this.port = await bindAsync(address, serverCredentials);
     } catch (e) {
-      throw new grpcErrors.ErrorGRPCServerBind(e.message);
+      throw new grpcErrors.ErrorGRPCServerBind(e.message, { cause: e });
     }
     if (serverCredentials._isSecure()) {
       // @ts-ignore hack for private property
@@ -100,8 +100,10 @@ class GRPCServer {
                   `Failed GRPC client certificate verification connecting from ${address}`,
                 );
                 const e_ = new grpcErrors.ErrorGRPCServerVerification(
-                  `${e.name}: ${e.message}`,
-                  e.data,
+                  `${e.name}: ${e.message}`, {
+                    data: e.data,
+                    cause: e,
+                  },
                 );
                 session.destroy(e_, http2.constants.NGHTTP2_PROTOCOL_ERROR);
               } else {
@@ -140,7 +142,7 @@ class GRPCServer {
         ...(timer != null ? [timer.timerP] : []),
       ]);
     } catch (e) {
-      throw new grpcErrors.ErrorGRPCServerShutdown(e.message);
+      throw new grpcErrors.ErrorGRPCServerShutdown(e.message, { cause: e });
     } finally {
       if (timer != null) timerStop(timer);
     }

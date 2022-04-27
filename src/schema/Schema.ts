@@ -88,6 +88,7 @@ class Schema {
             code: e.code,
             path: e.path,
           },
+          cause: e,
         });
       }
     }
@@ -101,6 +102,7 @@ class Schema {
           code: e.code,
           path: e.path,
         },
+        cause: e,
       });
     }
     const stateVersion = await this.readVersion();
@@ -136,6 +138,7 @@ class Schema {
           code: e.code,
           path: e.path,
         },
+        cause: e,
       });
     }
     this.logger.info(`Destroyed ${this.constructor.name}`);
@@ -160,6 +163,7 @@ class Schema {
             code: e.code,
             path: e.path,
           },
+          cause: e,
         });
       }
       const stateVersion = parseInt(stateVersionData.trim());
@@ -186,6 +190,7 @@ class Schema {
             code: e.code,
             path: e.path,
           },
+          cause: e,
         });
       }
     });
