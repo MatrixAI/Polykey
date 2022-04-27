@@ -123,7 +123,10 @@ class ErrorCertChainSignatureInvalid<T> extends ErrorCertChain<T> {
   exitCode = sysexits.PROTOCOL;
 }
 
-class ErrorHostnameResolutionFailed<T> extends ErrorNetwork<T> {}
+class ErrorHostnameResolutionFailed<T> extends ErrorNetwork<T> {
+  static description = 'Unable to resolve hostname';
+  exitCode = sysexits.USAGE;
+}
 
 export {
   ErrorNetwork,

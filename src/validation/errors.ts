@@ -53,6 +53,7 @@ class ErrorValidation<T> extends ErrorPolykey<T> {
  */
 class ErrorParse<T> extends AbstractError<T> {
   static description: string = 'Failed to parse data into valid format';
+  exitCode = sysexits.DATAERR;
   public keyPath: Array<string>;
   public value: any;
   public context: object;

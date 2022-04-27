@@ -2,7 +2,10 @@ import { ErrorPolykey, sysexits } from '../errors';
 
 class ErrorStatus<T> extends ErrorPolykey<T> {}
 
-class ErrorStatusNotRunning<T> extends ErrorStatus<T> {}
+class ErrorStatusNotRunning<T> extends ErrorStatus<T> {
+  static description = 'Status is not running';
+  exitCode = sysexits.USAGE;
+}
 
 class ErrorStatusLocked<T> extends ErrorStatus<T> {
   static description = 'Status is locked by another process';

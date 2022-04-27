@@ -6,17 +6,35 @@ class ErrorPolykeyUnimplemented<T> extends ErrorPolykey<T> {
   exitCode = sysexits.UNAVAILABLE;
 }
 
-class ErrorPolykeyAgentRunning<T> extends ErrorPolykey<T> {}
+class ErrorPolykeyAgentRunning<T> extends ErrorPolykey<T> {
+  static description = 'PolykeyAgent is running';
+  exitCode = sysexits.USAGE;
+}
 
-class ErrorPolykeyAgentNotRunning<T> extends ErrorPolykey<T> {}
+class ErrorPolykeyAgentNotRunning<T> extends ErrorPolykey<T> {
+  static description = 'PolykeyAgent is not running';
+  exitCode = sysexits.USAGE;
+}
 
-class ErrorPolykeyAgentDestroyed<T> extends ErrorPolykey<T> {}
+class ErrorPolykeyAgentDestroyed<T> extends ErrorPolykey<T> {
+  static description = 'PolykeyAgent is destroyed';
+  exitCode = sysexits.USAGE;
+}
 
-class ErrorPolykeyClientRunning<T> extends ErrorPolykey<T> {}
+class ErrorPolykeyClientRunning<T> extends ErrorPolykey<T> {
+  static description = 'PolykeyClient is running';
+  exitCode = sysexits.USAGE;
+}
 
-class ErrorPolykeyClientNotRunning<T> extends ErrorPolykey<T> {}
+class ErrorPolykeyClientNotRunning<T> extends ErrorPolykey<T> {
+  static description = 'PolykeyClient is not running';
+  exitCode = sysexits.USAGE;
+}
 
-class ErrorPolykeyClientDestroyed<T> extends ErrorPolykey<T> {}
+class ErrorPolykeyClientDestroyed<T> extends ErrorPolykey<T> {
+  static description = 'PolykeyClient is destroyed';
+  exitCode = sysexits.USAGE;
+}
 
 class ErrorInvalidId<T> extends ErrorPolykey<T> {}
 
