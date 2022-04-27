@@ -88,9 +88,9 @@ describe('KeyManager', () => {
     expect(keysPathContents).toContain('root_certs');
     expect(keysPathContents).toContain('db.key');
     expect(keyManager.dbKey.toString()).toBeTruthy();
-    const rootKeyPairPem = await keyManager.getRootKeyPairPem();
+    const rootKeyPairPem = keyManager.getRootKeyPairPem();
     expect(rootKeyPairPem).not.toBeUndefined();
-    const rootCertPem = await keyManager.getRootCertPem();
+    const rootCertPem = keyManager.getRootCertPem();
     expect(rootCertPem).not.toBeUndefined();
     const rootCertPems = await keyManager.getRootCertChainPems();
     expect(rootCertPems.length).toBe(1);

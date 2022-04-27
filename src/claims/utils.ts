@@ -62,7 +62,7 @@ async function createClaim({
   const byteEncoder = new TextEncoder();
   const claim = new GeneralSign(byteEncoder.encode(canonicalizedPayload));
   claim
-    .addSignature(await createPrivateKey(privateKey))
+    .addSignature(createPrivateKey(privateKey))
     .setProtectedHeader({ alg: alg, kid: kid });
   const signedClaim = await claim.sign();
   return signedClaim as ClaimEncoded;
@@ -83,14 +83,14 @@ async function signExistingClaim({
   kid: NodeIdEncoded;
   alg?: string;
 }): Promise<ClaimEncoded> {
-  const decodedClaim = await decodeClaim(claim);
+  const decodedClaim = decodeClaim(claim);
   // Reconstruct the claim with our own signature
   // Make the payload contents deterministic
   const canonicalizedPayload = canonicalize(decodedClaim.payload);
   const byteEncoder = new TextEncoder();
   const newClaim = new GeneralSign(byteEncoder.encode(canonicalizedPayload));
   newClaim
-    .addSignature(await createPrivateKey(privateKey))
+    .addSignature(createPrivateKey(privateKey))
     .setProtectedHeader({ alg: alg, kid: kid });
   const signedClaim = await newClaim.sign();
   // Add our signature to the existing claim

@@ -550,7 +550,7 @@ class NodeConnectionManager {
     return this.withConnF(
       nodeId,
       async (connection) => {
-        const client = await connection.getClient();
+        const client = connection.getClient();
         const response = await client.nodesClosestLocalNodesGet(nodeIdMessage);
         const nodes: Array<[NodeId, NodeData]> = [];
         // Loop over each map element (from the returned response) and populate nodes

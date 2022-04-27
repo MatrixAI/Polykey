@@ -379,6 +379,7 @@ class NodeGraph {
           const nodeId = IdInternal.fromBuffer<NodeId>(nodeIdBuffer);
           bucketDbIterator.seek(nodeIdBuffer);
           // @ts-ignore
+          // eslint-disable-next-line
           const iteratorResult = await bucketDbIterator.next();
           if (iteratorResult == null) never();
           const [, nodeData] = iteratorResult;
@@ -477,6 +478,7 @@ class NodeGraph {
             nodesUtils.parseLastUpdatedBucketsDbKey(key as unknown as Buffer);
           bucketsDbIterator.seek(nodesUtils.bucketsDbKey(bucketIndex_, nodeId));
           // @ts-ignore
+          // eslint-disable-next-line
           const iteratorResult = await bucketsDbIterator.next();
           if (iteratorResult == null) never();
           const [, nodeData] = iteratorResult;

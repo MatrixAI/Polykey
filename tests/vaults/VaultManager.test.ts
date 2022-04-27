@@ -1337,7 +1337,7 @@ describe('VaultManager', () => {
           });
           await sleep(200);
           expect(pullVaultMock).not.toHaveBeenCalled();
-          await releaseWrite();
+          releaseWrite();
           await pullP;
           expect(pullVaultMock).toHaveBeenCalled();
           pullVaultMock.mockClear();
@@ -1363,16 +1363,16 @@ describe('VaultManager', () => {
           });
           await sleep(200);
           expect(gitPullMock).not.toHaveBeenCalled();
-          await releaseVaultWrite();
-          await pullP2;
-          expect(gitPullMock).toHaveBeenCalled();
-        } finally {
-          pullVaultMock.mockRestore();
-          gitPullMock.mockRestore();
-          await vaultManager?.stop();
-          await vaultManager?.destroy();
-        }
-      },
+          releaseVaultWrite();
+        await pullP2;
+        expect(gitPullMock).toHaveBeenCalled();
+      } finally {
+        pullVaultMock.mockRestore();
+        gitPullMock.mockRestore();
+        await vaultManager?.stop();
+        await vaultManager?.destroy();
+      }
+    },
       global.failedConnectionTimeout,
     );
   });

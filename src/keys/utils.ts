@@ -508,7 +508,7 @@ function publicKeyBitSize(publicKey: PublicKey): number {
 }
 
 async function getRandomBytes(size: number): Promise<Buffer> {
-  return Buffer.from(await random.getBytes(size), 'binary');
+  return Buffer.from(random.getBytes(size), 'binary');
 }
 
 function getRandomBytesSync(size: number): Buffer {
