@@ -145,6 +145,7 @@ describe('nodesAdd', () => {
     await grpcServer.stop();
     await nodeGraph.stop();
     await nodeConnectionManager.stop();
+    await nodeManager.stop();
     await queue.stop();
     await sigchain.stop();
     await proxy.stop();
@@ -173,7 +174,7 @@ describe('nodesAdd', () => {
       )!,
     );
     expect(result).toBeDefined();
-    expect(result!.address).toBe('127.0.0.1:11111');
+    expect(result!.address).toEqual({ host: '127.0.0.1', port: 11111 });
   });
   test('cannot add invalid node', async () => {
     // Invalid host

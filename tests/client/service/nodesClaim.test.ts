@@ -187,6 +187,7 @@ describe('nodesClaim', () => {
     await grpcClient.destroy();
     await grpcServer.stop();
     await nodeConnectionManager.stop();
+    await nodeManager.stop();
     await queue.stop();
     await nodeGraph.stop();
     await notificationsManager.stop();

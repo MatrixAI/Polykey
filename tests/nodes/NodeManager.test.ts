@@ -147,6 +147,7 @@ describe(`${NodeManager.name} test`, () => {
     'pings node',
     async () => {
       let server: PolykeyAgent | undefined;
+      let nodeManager: NodeManager | undefined;
       try {
         server = await PolykeyAgent.createPolykeyAgent({
           password: 'password',
@@ -166,7 +167,7 @@ describe(`${NodeManager.name} test`, () => {
         };
         await nodeGraph.setNode(serverNodeId, serverNodeAddress);
 
-        const nodeManager = new NodeManager({
+        nodeManager = new NodeManager({
           db,
           sigchain,
           keyManager,
@@ -213,6 +214,7 @@ describe(`${NodeManager.name} test`, () => {
         expect(active3).toBe(false);
       } finally {
         // Clean up
+        await nodeManager?.stop();
         await server?.stop();
         await server?.destroy();
       }
@@ -221,6 +223,7 @@ describe(`${NodeManager.name} test`, () => {
   ); // Ping needs to timeout (takes 20 seconds + setup + pulldown)
   test('getPublicKey', async () => {
     let server: PolykeyAgent | undefined;
+    let nodeManager: NodeManager | undefined;
     try {
       server = await PolykeyAgent.createPolykeyAgent({
         password: 'password',
@@ -240,7 +243,7 @@ describe(`${NodeManager.name} test`, () => {
       };
       await nodeGraph.setNode(serverNodeId, serverNodeAddress);
 
-      const nodeManager = new NodeManager({
+      nodeManager = new NodeManager({
         db,
         sigchain,
         keyManager,
@@ -258,6 +261,7 @@ describe(`${NodeManager.name} test`, () => {
       expect(key).toEqual(expectedKey);
     } finally {
       // Clean up
+      await nodeManager?.stop();
       await server?.stop();
       await server?.destroy();
     }
@@ -427,29 +431,34 @@ describe(`${NodeManager.name} test`, () => {
       }
     });
     test('can request chain data', async () => {
-      // Cross signing claims
-      await y.nodeManager.claimNode(xNodeId);
+      let nodeManager: NodeManager | undefined;
+      try {
+        // Cross signing claims
+        await y.nodeManager.claimNode(xNodeId);
 
-      const nodeManager = new NodeManager({
-        db,
-        sigchain,
-        keyManager,
-        nodeGraph,
-        nodeConnectionManager,
-        queue,
-        logger,
-      });
-      await nodeManager.start();
-      await nodeConnectionManager.start({ nodeManager });
+        nodeManager = new NodeManager({
+          db,
+          sigchain,
+          keyManager,
+          nodeGraph,
+          nodeConnectionManager,
+          queue,
+          logger,
+        });
+        await nodeManager.start();
+        await nodeConnectionManager.start({ nodeManager });
 
-      await nodeGraph.setNode(xNodeId, xNodeAddress);
+        await nodeGraph.setNode(xNodeId, xNodeAddress);
 
-      // We want to get the public key of the server
-      const chainData = JSON.stringify(
-        await nodeManager.requestChainData(xNodeId),
-      );
-      expect(chainData).toContain(nodesUtils.encodeNodeId(xNodeId));
-      expect(chainData).toContain(nodesUtils.encodeNodeId(yNodeId));
+        // We want to get the public key of the server
+        const chainData = JSON.stringify(
+          await nodeManager.requestChainData(xNodeId),
+        );
+        expect(chainData).toContain(nodesUtils.encodeNodeId(xNodeId));
+        expect(chainData).toContain(nodesUtils.encodeNodeId(yNodeId));
+      } finally {
+        await nodeManager?.stop();
+      }
     });
   });
   test('should add a node when bucket has room', async () => {
@@ -705,6 +714,9 @@ describe(`${NodeManager.name} test`, () => {
         nodePath: path.join(dataDir, 'server'),
         keysConfig: {
           rootKeyPairBits: 2048,
+        },
+        networkConfig: {
+          proxyHost: localhost,
         },
         logger: logger,
       });

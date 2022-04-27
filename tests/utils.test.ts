@@ -258,7 +258,7 @@ describe('utils', () => {
     expect(acquireOrder).toStrictEqual([lock1, lock2]);
     expect(releaseOrder).toStrictEqual([lock2, lock1]);
   });
-  test.only('splitting buffers', () => {
+  test('splitting buffers', () => {
     const s1 = '';
     expect(s1.split('')).toStrictEqual([]);
     const b1 = Buffer.from(s1);

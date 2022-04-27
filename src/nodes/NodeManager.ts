@@ -506,22 +506,12 @@ class NodeManager {
     return await this.nodeGraph.unsetNode(nodeId);
   }
 
-  // FIXME
-  // /**
-  //  * Gets all buckets from the NodeGraph
-  //  */
-  // public async getAllBuckets(): Promise<Array<NodeBucket>> {
-  //   return await this.nodeGraph.getBuckets();
-  // }
-
-  // FIXME potentially confusing name, should we rename this to renewBuckets?
   /**
    * To be called on key renewal. Re-orders all nodes in all buckets with respect
    * to the new node ID.
    */
-  public async refreshBuckets(): Promise<void> {
-    throw Error('fixme');
-    // Return await this.nodeGraph.refreshBuckets();
+  public async resetBuckets(): Promise<void> {
+    return await this.nodeGraph.resetBuckets(this.keyManager.getNodeId());
   }
 
   /**

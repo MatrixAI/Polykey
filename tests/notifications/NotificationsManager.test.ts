@@ -155,6 +155,7 @@ describe('NotificationsManager', () => {
     await receiver.stop();
     await queue.stop();
     await nodeConnectionManager.stop();
+    await nodeManager.stop();
     await nodeGraph.stop();
     await proxy.stop();
     await sigchain.stop();

@@ -166,6 +166,8 @@ describe('notificationsSend', () => {
     await grpcServer.stop();
     await notificationsManager.stop();
     await nodeConnectionManager.stop();
+    await queue.stop();
+    await nodeManager.stop();
     await sigchain.stop();
     await sigchain.stop();
     await proxy.stop();

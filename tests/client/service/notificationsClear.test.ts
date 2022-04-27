@@ -165,6 +165,7 @@ describe('notificationsClear', () => {
     await notificationsManager.stop();
     await nodeGraph.stop();
     await nodeConnectionManager.stop();
+    await nodeManager.stop();
     await queue.stop();
     await sigchain.stop();
     await proxy.stop();

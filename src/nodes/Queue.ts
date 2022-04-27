@@ -11,8 +11,8 @@ class Queue {
   protected end: boolean = false;
   protected queue: Array<() => Promise<void>> = [];
   protected runner: Promise<void>;
-  protected plug_: PromiseType<void>;
-  protected drained_: PromiseType<void>;
+  protected plug_: PromiseType<void> = promise();
+  protected drained_: PromiseType<void> = promise();
 
   constructor({ logger }: { logger?: Logger }) {
     this.logger = logger ?? new Logger(this.constructor.name);
