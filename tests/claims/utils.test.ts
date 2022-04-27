@@ -328,9 +328,7 @@ describe('claims/utils', () => {
 
     // Create some dummy public key, and check that this does not verify
     const dummyKeyPair = await keysUtils.generateKeyPair(2048);
-    const dummyPublicKey = await keysUtils.publicKeyToPem(
-      dummyKeyPair.publicKey,
-    );
+    const dummyPublicKey = keysUtils.publicKeyToPem(dummyKeyPair.publicKey);
     expect(await claimsUtils.verifyClaimSignature(claim, dummyPublicKey)).toBe(
       false,
     );

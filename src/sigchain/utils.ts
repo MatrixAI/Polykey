@@ -19,7 +19,7 @@ async function verifyChainData(
       continue;
     }
     // If verified, add the claim to the decoded chain
-    decodedChain[claimId] = await claimsUtils.decodeClaim(encodedClaim);
+    decodedChain[claimId] = claimsUtils.decodeClaim(encodedClaim);
   }
   return decodedChain;
 }

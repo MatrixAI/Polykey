@@ -194,7 +194,7 @@ describe('utils', () => {
     expect(await g1.next()).toStrictEqual({ value: 'second', done: false });
     expect(await g1.next()).toStrictEqual({ value: 'last', done: true });
     // Noop resource
-    const g2 = await utils.withG(
+    const g2 = utils.withG(
       [
         async () => {
           return [async () => {}];

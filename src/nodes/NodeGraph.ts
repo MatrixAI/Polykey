@@ -406,6 +406,7 @@ class NodeGraph {
           const nodeId = IdInternal.fromBuffer<NodeId>(nodeIdBuffer);
           bucketDbIterator.seek(nodeIdBuffer);
           // @ts-ignore
+          // eslint-disable-next-line
           const [, bucketData] = await bucketDbIterator.next();
           const nodeData = await this.db.deserializeDecrypt<NodeData>(
             bucketData,
@@ -415,7 +416,7 @@ class NodeGraph {
         }
       } finally {
         // @ts-ignore
-        await bucketDbIterator.end();
+        bucketDbIterator.end();
       }
     }
     return bucket;
@@ -493,6 +494,7 @@ class NodeGraph {
             nodesUtils.parseLastUpdatedBucketsDbKey(key as Buffer);
           bucketsDbIterator.seek(nodesUtils.bucketsDbKey(bucketIndex_, nodeId));
           // @ts-ignore
+          // eslint-disable-next-line
           const [, bucketData] = await bucketsDbIterator.next();
           const nodeData = await this.db.deserializeDecrypt<NodeData>(
             bucketData,
@@ -518,7 +520,7 @@ class NodeGraph {
         }
       } finally {
         // @ts-ignore
-        await bucketsDbIterator.end();
+        bucketsDbIterator.end();
       }
     }
   }

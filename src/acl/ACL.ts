@@ -341,7 +341,7 @@ class ACL {
       );
       const ops: Array<DBOp> = [];
       if (permId == null) {
-        const permId = await this.generatePermId();
+        const permId = this.generatePermId();
         const permRef = {
           count: 1,
           object: {
@@ -554,7 +554,7 @@ class ACL {
         });
       }
     }
-    const permId = await this.generatePermId();
+    const permId = this.generatePermId();
     const permRef = {
       count: nodeIds.length,
       object: perm,
@@ -597,7 +597,7 @@ class ACL {
     );
     const ops: Array<DBOp> = [];
     if (permId == null) {
-      const permId = await this.generatePermId();
+      const permId = this.generatePermId();
       const permRef = {
         count: 1,
         object: perm,
