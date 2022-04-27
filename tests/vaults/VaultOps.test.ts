@@ -355,7 +355,7 @@ describe('VaultOps', () => {
       expect(
         (await vaultOps.getSecret(vault, '.hidingSecret')).toString(),
       ).toStrictEqual('change_contents');
-      await expect(
+      expect(
         (
           await vaultOps.getSecret(vault, '.hidingDir/.hiddenInSecret')
         ).toString(),

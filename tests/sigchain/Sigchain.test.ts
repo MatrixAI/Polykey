@@ -237,7 +237,7 @@ describe('Sigchain', () => {
     expect(verified2).toBe(true);
 
     // Check the hash of the previous claim is correct
-    const verifiedHash = await claimsUtils.verifyHashOfClaim(
+    const verifiedHash = claimsUtils.verifyHashOfClaim(
       claim1,
       decoded2.payload.hPrev as string,
     );

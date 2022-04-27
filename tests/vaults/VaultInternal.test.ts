@@ -668,7 +668,7 @@ describe('VaultInternal', () => {
       await efs.writeFile(secret2.name, secret2.content);
     });
     const commit = (await vault.log())[0].commitId;
-    const gen = await vault.readG(async function* (efs): AsyncGenerator {
+    const gen = vault.readG(async function* (efs): AsyncGenerator {
       yield expect((await efs.readFile(secret1.name)).toString()).toEqual(
         secret1.content,
       );

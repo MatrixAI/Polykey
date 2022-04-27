@@ -609,7 +609,7 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
       const firstConnection = firstConnAndLock?.connection;
 
       // Resolves if the shutdownCallback was called
-      const gen = await nodeConnectionManager.withConnG(
+      const gen = nodeConnectionManager.withConnG(
         agentNodeId,
         async function* (): AsyncGenerator<string, void, void> {
           // Throw an error here
