@@ -514,7 +514,7 @@ class GitHubProvider extends Provider {
         );
       }
       const data = await response.text();
-      const claimIds = await this.extractClaimIds(data);
+      const claimIds = this.extractClaimIds(data);
       for (const claimId of claimIds) {
         const claim = await this.getClaim(authIdentityId, claimId);
         if (claim != null) {

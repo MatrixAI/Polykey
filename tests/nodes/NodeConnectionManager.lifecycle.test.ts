@@ -313,7 +313,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       };
 
       // Creating the generator
-      const gen = await nodeConnectionManager.withConnG(
+      const gen = nodeConnectionManager.withConnG(
         remoteNodeId1,
         async function* () {
           yield* testGenerator();
