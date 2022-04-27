@@ -243,6 +243,7 @@ describe('notificationsRead', () => {
     await sigchain.stop();
     await nodeGraph.stop();
     await nodeConnectionManager.stop();
+    await nodeManager.stop();
     await queue.stop();
     await proxy.stop();
     await acl.stop();

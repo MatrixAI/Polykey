@@ -32,7 +32,7 @@ describe('keysKeyPairRenew', () => {
   beforeAll(async () => {
     const globalKeyPair = await testUtils.setupGlobalKeypair();
     const newKeyPair = await keysUtils.generateKeyPair(1024);
-    mockedRefreshBuckets = jest.spyOn(NodeManager.prototype, 'refreshBuckets');
+    mockedRefreshBuckets = jest.spyOn(NodeManager.prototype, 'resetBuckets');
     mockedGenerateKeyPair = jest
       .spyOn(keysUtils, 'generateKeyPair')
       .mockResolvedValueOnce(globalKeyPair)
