@@ -551,7 +551,7 @@ class PolykeyAgent {
           await this.status.updateStatusLive({
             nodeId: data.nodeId,
           });
-          await this.nodeManager.refreshBuckets();
+          await this.nodeManager.resetBuckets();
           const tlsConfig = {
             keyPrivatePem: keysUtils.privateKeyToPem(
               data.rootKeyPair.privateKey,
