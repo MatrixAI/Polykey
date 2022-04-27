@@ -129,7 +129,7 @@ abstract class GRPCClient<T extends Client = Client> {
     } catch (e) {
       // If we fail here then we leak the client object...
       client.close();
-      throw new grpcErrors.ErrorGRPCClientTimeout();
+      throw new grpcErrors.ErrorGRPCClientTimeout(e.message, { cause: e });
     }
     let serverCertChain: Array<Certificate> | undefined;
     if (channelCredentials._isSecure()) {
@@ -151,8 +151,10 @@ abstract class GRPCClient<T extends Client = Client> {
             `Failed GRPC server certificate verification connecting to ${address}`,
           );
           const e_ = new grpcErrors.ErrorGRPCClientVerification(
-            `${e.name}: ${e.message}`,
-            e.data,
+            `${e.name}: ${e.message}`,{
+              data: e.data,
+              cause: e,
+            },
           );
           session.destroy(e_, http2.constants.NGHTTP2_PROTOCOL_ERROR);
         }

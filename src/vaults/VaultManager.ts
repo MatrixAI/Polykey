@@ -196,7 +196,7 @@ class VaultManager {
         });
       } catch (e) {
         if (e instanceof encryptedFsErrors.ErrorEncryptedFSKey) {
-          throw new vaultsErrors.ErrorVaultManagerKey();
+          throw new vaultsErrors.ErrorVaultManagerKey(e.message, { cause: e });
         }
         throw new vaultsErrors.ErrorVaultManagerEFS(e.message, {
           data: {
@@ -205,6 +205,7 @@ class VaultManager {
             code: e.code,
             path: e.path,
           },
+          cause: e,
         });
       }
       this.vaultsDb = vaultsDb;
@@ -942,6 +943,7 @@ class VaultManager {
           code: e.code,
           path: e.path,
         },
+        cause: e,
       });
     }
   }

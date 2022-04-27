@@ -120,7 +120,7 @@ class GitHubProvider extends Provider {
           data = await response.json();
         } catch (e) {
           throw new identitiesErrors.ErrorProviderAuthentication(
-            'Provider access token response is not valid JSON',
+            'Provider access token response is not valid JSON', { cause: e },
           );
         }
         if (data.error) {
@@ -200,6 +200,7 @@ class GitHubProvider extends Provider {
     } catch (e) {
       throw new identitiesErrors.ErrorProviderCall(
         `Provider response body is not valid JSON`,
+        { cause: e },
       );
     }
     return data.login;
@@ -246,6 +247,7 @@ class GitHubProvider extends Provider {
     } catch (e) {
       throw new identitiesErrors.ErrorProviderCall(
         `Provider response body is not valid JSON`,
+        { cause: e },
       );
     }
     return {
@@ -297,6 +299,7 @@ class GitHubProvider extends Provider {
       } catch (e) {
         throw new identitiesErrors.ErrorProviderCall(
           `Provider response body is not valid JSON`,
+          { cause: e },
         );
       }
       for (const item of data) {
@@ -343,6 +346,7 @@ class GitHubProvider extends Provider {
       } catch (e) {
         throw new identitiesErrors.ErrorProviderCall(
           `Provider response body is not valid JSON`,
+          { cause: e },
         );
       }
       for (const item of data) {
@@ -414,6 +418,7 @@ class GitHubProvider extends Provider {
     } catch (e) {
       throw new identitiesErrors.ErrorProviderCall(
         `Provider response body is not valid JSON`,
+        { cause: e },
       );
     }
     return {
@@ -466,6 +471,7 @@ class GitHubProvider extends Provider {
     } catch (e) {
       throw new identitiesErrors.ErrorProviderCall(
         `Provider response body is not valid JSON`,
+        { cause: e },
       );
     }
     const linkClaimData = data.files[this.gistFilename]?.content;

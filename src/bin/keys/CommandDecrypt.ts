@@ -58,6 +58,7 @@ class CommandDecrypt extends CommandPolykey {
               code: e.code,
               path: e.path,
             },
+            cause: e,
           });
         }
         cryptoMessage.setData(cipherText);

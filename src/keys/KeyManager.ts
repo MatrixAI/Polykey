@@ -275,6 +275,7 @@ class KeyManager {
           code: e.code,
           path: e.path,
         },
+        cause: e,
       });
     }
     try {
@@ -422,6 +423,7 @@ class KeyManager {
           code: e.code,
           path: e.path,
         },
+        cause: e,
       });
     }
     await this.garbageCollectRootCerts();
@@ -545,6 +547,7 @@ class KeyManager {
           code: e.code,
           path: e.path,
         },
+        cause: e,
       });
     }
   }
@@ -642,6 +645,7 @@ class KeyManager {
           code: e.code,
           path: e.path,
         },
+        cause: e,
       });
     }
     return true;
@@ -663,6 +667,7 @@ class KeyManager {
           code: e.code,
           path: e.path,
         },
+        cause: e,
       });
     }
     let keyPair;
@@ -675,7 +680,7 @@ class KeyManager {
         password,
       );
     } catch (e) {
-      throw new keysErrors.ErrorRootKeysParse(e.message);
+      throw new keysErrors.ErrorRootKeysParse(e.message, { cause: e });
     }
     return keyPair;
   }
@@ -709,6 +714,7 @@ class KeyManager {
           code: e.code,
           path: e.path,
         },
+        cause: e,
       });
     }
   }
@@ -735,6 +741,7 @@ class KeyManager {
           code: e.code,
           path: e.path,
         },
+        cause: e,
       });
     }
     const rootKeyPairBits = keysUtils.publicKeyBitSize(
@@ -784,6 +791,7 @@ class KeyManager {
           code: e.code,
           path: e.path,
         },
+        cause: e,
       });
     }
     return true;
@@ -802,6 +810,7 @@ class KeyManager {
           code: e.code,
           path: e.path,
         },
+        cause: e,
       });
     }
     let keysDbKeyPlain;
@@ -811,7 +820,7 @@ class KeyManager {
         keysDbKeyCipher,
       );
     } catch (e) {
-      throw new keysErrors.ErrorDBKeyParse(e.message);
+      throw new keysErrors.ErrorDBKeyParse(e.message, { cause: e });
     }
     return keysDbKeyPlain;
   }
@@ -838,6 +847,7 @@ class KeyManager {
           code: e.code,
           path: e.path,
         },
+        cause: e,
       });
     }
   }
@@ -881,6 +891,7 @@ class KeyManager {
           code: e.code,
           path: e.path,
         },
+        cause: e,
       });
     }
     return true;
@@ -901,6 +912,7 @@ class KeyManager {
           code: e.code,
           path: e.path,
         },
+        cause: e,
       });
     }
     const rootCert = keysUtils.certFromPem(rootCertPem);
@@ -924,6 +936,7 @@ class KeyManager {
           code: e.code,
           path: e.path,
         },
+        cause: e,
       });
     }
   }
@@ -945,6 +958,7 @@ class KeyManager {
           code: e.code,
           path: e.path,
         },
+        cause: e,
       });
     }
     rootCertsNames.sort((a, b) => {
@@ -984,6 +998,7 @@ class KeyManager {
           code: e.code,
           path: e.path,
         },
+        cause: e,
       });
     }
     return rootCertsPems;
