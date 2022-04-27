@@ -80,6 +80,7 @@ class CommandEdit extends CommandPolykey {
               code: e.code,
               path: e.path,
             },
+            cause: e,
           });
         }
         secretMessage.setVault(vaultMessage);

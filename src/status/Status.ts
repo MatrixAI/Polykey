@@ -118,6 +118,7 @@ class Status {
             code: e.code,
             path: e.path,
           },
+          cause: e,
         });
       }
       while (!lock(statusFile.fd)) {
@@ -134,6 +135,7 @@ class Status {
             code: e.code,
             path: e.path,
           },
+          cause: e,
         });
       }
       if (statusData === '') {
@@ -143,7 +145,7 @@ class Status {
       try {
         statusInfo = JSON.parse(statusData, this.statusReviver);
       } catch (e) {
-        throw new statusErrors.ErrorStatusParse('JSON parsing failed');
+        throw new statusErrors.ErrorStatusParse('JSON parsing failed', {cause: e});
       }
       if (!statusUtils.statusValidate(statusInfo)) {
         throw new statusErrors.ErrorStatusParse(
@@ -192,6 +194,7 @@ class Status {
             code: e.code,
             path: e.path,
           },
+          cause: e,
         });
       }
     } finally {
@@ -219,6 +222,7 @@ class Status {
             code: e.code,
             path: e.path,
           },
+          cause: e,
         });
       }
       while (!lock(statusFile.fd)) {
@@ -235,13 +239,14 @@ class Status {
             code: e.code,
             path: e.path,
           },
+          cause: e,
         });
       }
       let statusInfo;
       try {
         statusInfo = JSON.parse(statusData, this.statusReviver);
       } catch (e) {
-        throw new statusErrors.ErrorStatusParse('JSON parsing failed');
+        throw new statusErrors.ErrorStatusParse('JSON parsing failed', { cause: e });
       }
       if (!statusUtils.statusValidate(statusInfo)) {
         throw new statusErrors.ErrorStatusParse(
@@ -272,6 +277,7 @@ class Status {
             code: e.code,
             path: e.path,
           },
+          cause: e,
         });
       }
       return statusInfo;
@@ -311,7 +317,7 @@ class Status {
       );
     } catch (e) {
       if (e instanceof errors.ErrorUtilsPollTimeout) {
-        throw new errors.ErrorStatusTimeout();
+        throw new errors.ErrorStatusTimeout(e.message, { cause: e });
       }
       throw e;
     }

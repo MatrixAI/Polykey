@@ -170,6 +170,7 @@ class ConnectionForward extends Connection {
           errno: e.errno,
           syscall: e.syscall,
         },
+        cause: e,
       });
     } finally {
       clearInterval(punchInterval);

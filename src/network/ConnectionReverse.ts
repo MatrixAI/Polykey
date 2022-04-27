@@ -162,6 +162,7 @@ class ConnectionReverse extends Connection {
           errno: e.errno,
           syscall: e.syscall,
         },
+        cause: e,
       });
     } finally {
       clearInterval(punchInterval);
@@ -254,6 +255,7 @@ class ConnectionReverse extends Connection {
             errno: e.errno,
             syscall: e.syscall,
           },
+          cause: e,
         });
       }
       tlsSocket.on('error', async (e) => {

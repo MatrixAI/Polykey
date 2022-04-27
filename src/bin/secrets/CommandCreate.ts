@@ -71,6 +71,7 @@ class CommandCreate extends CommandPolykey {
               code: e.code,
               path: e.path,
             },
+            cause: e,
           });
         }
         secretMessage.setSecretContent(content);

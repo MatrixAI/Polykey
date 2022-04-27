@@ -376,7 +376,7 @@ class VaultInternal {
         e instanceof git.Errors.NotFoundError ||
         e instanceof git.Errors.CommitNotFetchedError
       ) {
-        throw new vaultsErrors.ErrorVaultReferenceMissing();
+        throw new vaultsErrors.ErrorVaultReferenceMissing(e.message, { cause: e });
       }
       throw e;
     }
@@ -551,7 +551,7 @@ class VaultInternal {
       if (err instanceof git.Errors.SmartHttpError && error) {
         throw error;
       } else if (err instanceof git.Errors.MergeNotSupportedError) {
-        throw new vaultsErrors.ErrorVaultsMergeConflict();
+        throw new vaultsErrors.ErrorVaultsMergeConflict(err.message, { cause: err });
       }
       throw err;
     }
