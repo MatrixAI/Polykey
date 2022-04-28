@@ -16,7 +16,6 @@ import Proxy from '@/network/Proxy';
 
 import GRPCClientAgent from '@/agent/GRPCClientAgent';
 import * as nodesUtils from '@/nodes/utils';
-import * as nodesErrors from '@/nodes/errors';
 import * as keysUtils from '@/keys/utils';
 import * as grpcUtils from '@/grpc/utils';
 import * as nodesPB from '@/proto/js/polykey/v1/nodes/nodes_pb';
@@ -336,9 +335,9 @@ describe(`${NodeConnectionManager.name} general test`, () => {
           port: 22222 as Port,
         } as NodeAddress);
         // Un-findable Node cannot be found
-        await expect(() =>
-          nodeConnectionManager.findNode(nodeId),
-        ).rejects.toThrowError(nodesErrors.ErrorNodeGraphNodeIdNotFound);
+        await expect(nodeConnectionManager.findNode(nodeId)).resolves.toEqual(
+          undefined,
+        );
 
         await server.stop();
       } finally {

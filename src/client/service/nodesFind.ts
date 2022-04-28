@@ -9,6 +9,7 @@ import { validateSync } from '../../validation';
 import * as validationUtils from '../../validation/utils';
 import { matchSync } from '../../utils';
 import * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
+import * as nodesErrors from '../../nodes/errors';
 
 /**
  * Attempts to get the node address of a provided node ID (by contacting
@@ -48,6 +49,7 @@ function nodesFind({
         },
       );
       const address = await nodeConnectionManager.findNode(nodeId);
+      if (address == null) throw new nodesErrors.ErrorNodeGraphNodeIdNotFound();
       response
         .setNodeId(nodesUtils.encodeNodeId(nodeId))
         .setAddress(
