@@ -117,7 +117,7 @@
     "@types/jest": "^27.0.2",
     "@types/nexpect": "^0.4.31",
     "@types/node": "^16.11.7",
-    "@types/node-forge": "^0.9.7",
+    "@types/node-forge": "^0.10.4",
     "@types/pako": "^1.0.2",
     "@types/prompts": "^2.0.13",
     "@types/readable-stream": "^2.3.11",
