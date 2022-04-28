@@ -50,6 +50,7 @@ function nodesFind({
         },
       );
       const address = await nodeConnectionManager.findNode(nodeId);
+      if (address == null) throw new nodesErrors.ErrorNodeGraphNodeIdNotFound();
       response
         .setNodeId(nodesUtils.encodeNodeId(nodeId))
         .setAddress(
