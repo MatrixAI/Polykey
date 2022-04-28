@@ -47,8 +47,8 @@ class NodeManager {
   protected refreshBucketQueue: Set<NodeBucketIndex> = new Set();
   protected refreshBucketQueueRunning: boolean = false;
   protected refreshBucketQueueRunner: Promise<void>;
-  protected refreshBucketQueuePlug_: PromiseType<void>;
-  protected refreshBucketQueueDrained_: PromiseType<void>;
+  protected refreshBucketQueuePlug_: PromiseType<void> = promise();
+  protected refreshBucketQueueDrained_: PromiseType<void> = promise();
   protected refreshBucketQueueAbortController: AbortController;
 
   constructor({
@@ -109,7 +109,10 @@ class NodeManager {
     // We need to attempt a connection using the proxies
     // For now we will just do a forward connect + relay message
     const targetAddress =
-      address ?? (await this.nodeConnectionManager.findNode(nodeId))!;
+      address ?? (await this.nodeConnectionManager.findNode(nodeId));
+    if (targetAddress == null) {
+      throw new nodesErrors.ErrorNodeGraphNodeIdNotFound();
+    }
     const targetHost = await networkUtils.resolveHost(targetAddress.host);
     return await this.nodeConnectionManager.pingNode(
       nodeId,
