@@ -315,6 +315,9 @@ class NodeConnectionManager {
     timer?: Timer,
   ): Promise<ConnectionAndLock> {
     const targetAddress = await this.findNode(targetNodeId);
+    if (targetAddress == null) {
+      throw new nodesErrors.ErrorNodeGraphNodeIdNotFound();
+    }
     // If the stored host is not a valid host (IP address), then we assume it to
     // be a hostname
     const targetHostname = !networkUtils.isHost(targetAddress.host)
@@ -447,23 +450,17 @@ class NodeConnectionManager {
   public async findNode(
     targetNodeId: NodeId,
     options: { signal?: AbortSignal } = {},
-  ): Promise<NodeAddress> {
+  ): Promise<NodeAddress | undefined> {
     const { signal } = { ...options };
     // First check if we already have an existing ID -> address record
     let address = (await this.nodeGraph.getNode(targetNodeId))?.address;
     // Otherwise, attempt to locate it by contacting network
-    if (address == null) {
-      address = await this.getClosestGlobalNodes(targetNodeId, undefined, {
+    address =
+      address ??
+      (await this.getClosestGlobalNodes(targetNodeId, undefined, {
         signal,
-      });
-      // TODO: This currently just does one iteration
-      // If not found in this single iteration, we throw an exception
-      if (address == null) {
-        throw new nodesErrors.ErrorNodeGraphNodeIdNotFound();
-      }
-    }
-    // We ensure that we always return a NodeAddress (either by lookup, or
-    // network search) - if we can't locate it from either, we throw an exception
+      }));
+    // TODO: This currently just does one iteration
     return address;
   }
 
@@ -633,6 +630,7 @@ class NodeConnectionManager {
    */
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
   public async syncNodeGraph(block: boolean = true, timer?: Timer) {
+    this.logger.info('Syncing nodeGraph');
     for (const seedNodeId of this.getSeedNodes()) {
       // Check if the connection is viable
       try {
@@ -646,6 +644,7 @@ class NodeConnectionManager {
         this.keyManager.getNodeId(),
         timer,
       );
+      // FIXME: we need to ping a node before setting it
       for (const [nodeId, nodeData] of nodes) {
         if (!block) {
           this.queue.push(() =>
