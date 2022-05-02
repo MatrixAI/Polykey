@@ -227,7 +227,6 @@ function parseSeedNodes(data: any): [SeedNodes, boolean] {
       if (e instanceof TypeError) {
         throw new validationErrors.ErrorParse(
           'Seed nodes must be of format `nodeId@host:port;...`',
-          { cause: e },
         );
       }
       throw e;
@@ -246,7 +245,6 @@ function parseSeedNodes(data: any): [SeedNodes, boolean] {
       if (e instanceof validationErrors.ErrorParse) {
         throw new validationErrors.ErrorParse(
           'Seed nodes must be of format `nodeId@host:port;...`',
-          { cause: e },
         );
       }
       throw e;

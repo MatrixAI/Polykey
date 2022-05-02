@@ -5,16 +5,16 @@ import { ErrorPolykey, sysexits } from '../errors';
  * Generic error containing all parsing errors that occurred during
  * execution.
  */
-class ErrorValidation<T> extends ErrorPolykey<T> {
+class ErrorValidation extends ErrorPolykey<void> {
   static description = 'Input data failed validation';
   exitCode = sysexits.DATAERR;
-  public errors: Array<ErrorParse<T>>;
+  public errors: Array<ErrorParse>;
   constructor(message, data) {
     super(message, data);
     if (data.errors != null) {
-      const errors: Array<ErrorParse<T>> = [];
+      const errors: Array<ErrorParse> = [];
       for (const eData of data.errors) {
-        const errorParse = new ErrorParse<T>(eData.message);
+        const errorParse = new ErrorParse(eData.message);
         errorParse.keyPath = eData.keyPath;
         errorParse.value = eData.value;
         errorParse.context = eData.context;
@@ -28,7 +28,7 @@ class ErrorValidation<T> extends ErrorPolykey<T> {
    * This packages an `ErrorParse` array into the `data` property
    * This is to allow encoding to and decoding from GRPC errors
    */
-  static createFromErrors<T>(errors: Array<ErrorParse<T>>): ErrorValidation<T> {
+  static createFromErrors(errors: Array<ErrorParse>): ErrorValidation {
     const message = errors.map((e) => e.message).join('; ');
     const data = {
       errors: errors.map((e) => ({
@@ -38,7 +38,7 @@ class ErrorValidation<T> extends ErrorPolykey<T> {
         context: e.context,
       })),
     };
-    const e = new ErrorValidation<T>(message, data);
+    const e = new ErrorValidation(message, data);
     e.errors = errors;
     return e;
   }
@@ -51,7 +51,7 @@ class ErrorValidation<T> extends ErrorPolykey<T> {
  * While JS allows us to throw POJOs directly, having a nominal type
  * is easier to check against
  */
-class ErrorParse<T> extends AbstractError<T> {
+class ErrorParse extends AbstractError<void> {
   static description: string = 'Failed to parse data into valid format';
   exitCode = sysexits.DATAERR;
   public keyPath: Array<string>;
