@@ -18,7 +18,7 @@ function vaultsSecretsList({
   return async (
     call: grpc.ServerWritableStream<vaultsPB.Vault, secretsPB.Secret>,
   ): Promise<void> => {
-    const genWritable = grpcUtils.generatorWritable(call);
+    const genWritable = grpcUtils.generatorWritable(call, false);
     try {
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);

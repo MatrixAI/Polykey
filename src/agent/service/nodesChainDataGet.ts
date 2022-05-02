@@ -37,7 +37,7 @@ function nodesChainDataGet({ sigchain }: { sigchain: Sigchain }) {
       callback(null, response);
       return;
     } catch (e) {
-      callback(grpcUtils.fromError(e));
+      callback(grpcUtils.fromError(e, true));
       return;
     }
   };

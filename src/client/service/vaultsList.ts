@@ -19,7 +19,7 @@ function vaultsList({
     // Call.on('error', (e) => console.error(e));
     // call.on('close', () => console.log('Got close'));
     // call.on('finish', () => console.log('Got finish'));
-    const genWritable = grpcUtils.generatorWritable(call);
+    const genWritable = grpcUtils.generatorWritable(call, false);
     try {
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);

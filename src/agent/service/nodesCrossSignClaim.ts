@@ -25,7 +25,7 @@ function nodesCrossSignClaim({
   ) => {
     // TODO: Move all "await genClaims.throw" to a final catch(). Wrap this
     // entire thing in a try block. And re-throw whatever error is caught
-    const genClaims = grpcUtils.generatorDuplex(call);
+    const genClaims = grpcUtils.generatorDuplex(call, true);
     try {
       await sigchain.transaction(async (sigchain) => {
         const readStatus = await genClaims.read();
