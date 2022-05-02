@@ -16,7 +16,7 @@ function gestaltsGestaltList({
   return async (
     call: grpc.ServerWritableStream<utilsPB.EmptyMessage, gestaltsPB.Gestalt>,
   ): Promise<void> => {
-    const genWritable = grpcUtils.generatorWritable(call);
+    const genWritable = grpcUtils.generatorWritable(call, false);
     let gestaltMessage: gestaltsPB.Gestalt;
     try {
       const metadata = await authenticate(call.metadata);

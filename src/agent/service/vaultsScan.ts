@@ -17,7 +17,7 @@ function vaultsScan({
   return async (
     call: grpc.ServerWritableStream<utilsPB.EmptyMessage, vaultsPB.List>,
   ): Promise<void> => {
-    const genWritable = grpcUtils.generatorWritable(call);
+    const genWritable = grpcUtils.generatorWritable(call, true);
     const listMessage = new vaultsPB.List();
     // Getting the NodeId from the ReverseProxy connection info
     const connectionInfo = connectionInfoGet(call);
