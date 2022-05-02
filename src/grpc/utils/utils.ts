@@ -32,6 +32,7 @@ import { Buffer } from 'buffer';
 import * as grpc from '@grpc/grpc-js';
 import * as grpcErrors from '../errors';
 import * as errors from '../../errors';
+import ErrorPolykeyRemote, { reviver, replacer, sensitiveReplacer } from '../../ErrorPolykeyRemote';
 import { promisify, promise, never } from '../../utils/utils';
 
 /**
@@ -158,17 +159,16 @@ function getServerSession(call: ServerSurfaceCall): Http2Session {
  * Serializes Error instances into GRPC errors
  * Use this on the sending side to send exceptions
  * Do not send exceptions to clients you do not trust
+ * If sending to an agent (rather than a client), set sensitive to true to
+ * prevent sensitive information from being propagated
  */
-function fromError(error: Error): ServerStatusResponse {
+function fromError(error: Error, sensitive: boolean = false): ServerStatusResponse {
   const metadata = new grpc.Metadata();
-  // If the error is not ErrorPolykey, wrap it up so it can be serialised
-  // TODO: add additional metadata regarding the network location of the error
-  if (!(error instanceof errors.ErrorPolykey)) {
-    error = new errors.ErrorPolykey(error.message);
+  if (sensitive) {
+    metadata.set('error', JSON.stringify(error, sensitiveReplacer));
+  } else {
+    metadata.set('error', JSON.stringify(error, replacer));
   }
-  metadata.set('name', error.name);
-  metadata.set('message', error.message);
-  metadata.set('data', JSON.stringify((error as errors.ErrorPolykey<unknown>).data));
   return {
     metadata,
   };
@@ -178,9 +178,7 @@ function fromError(error: Error): ServerStatusResponse {
  * Deserialized GRPC errors into ErrorPolykey
  * Use this on the receiving side to receive exceptions
  */
-function toError<T>(e: ServiceError): errors.ErrorPolykey<T> {
-  const errorName = e.metadata.get('name')[0] as string;
-  const errorMessage = e.metadata.get('message')[0] as string;
+function toError(e: ServiceError): errors.ErrorPolykey<any> {
   const errorData = e.metadata.get('data')[0] as string;
   // Grpc.status is an enum
   // this will iterate the enum values then enum keys
@@ -192,14 +190,12 @@ function toError<T>(e: ServiceError): errors.ErrorPolykey<T> {
     if (isNaN(parseInt(key)) && e.code === grpc.status[key]) {
       if (
         key === 'UNKNOWN' &&
-        errorName != null &&
-        errorMessage != null &&
-        errorData != null &&
-        errorName in errors
+        errorData != null
       ) {
-        return new errors[errorName](errorMessage, { data: JSON.parse(errorData) });
+        const error = JSON.parse(errorData, reviver);
+        return new ErrorPolykeyRemote(error.message, { cause: error });
       } else {
-        return new grpcErrors.ErrorGRPCClientCall<T>(e.message, {
+        return new grpcErrors.ErrorGRPCClientCall(e.message, {
           data: {
             code: e.code,
             details: e.details,
