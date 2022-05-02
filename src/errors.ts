@@ -6,6 +6,16 @@ class ErrorPolykeyUnimplemented<T> extends ErrorPolykey<T> {
   exitCode = sysexits.UNAVAILABLE;
 }
 
+class ErrorPolykeyUnknown<T> extends ErrorPolykey<T> {
+  static description = 'Unable to deserialise to known error';
+  exitCode = sysexits.UNKNOWN;
+}
+
+class ErrorPolykeyRemote<T> extends ErrorPolykey<T> {
+  static description = 'Remote error from RPC call';
+  exitCode = sysexits.UNAVAILABLE;
+}
+
 class ErrorPolykeyAgentRunning<T> extends ErrorPolykey<T> {
   static description = 'PolykeyAgent is running';
   exitCode = sysexits.USAGE;
@@ -44,6 +54,8 @@ export {
   sysexits,
   ErrorPolykey,
   ErrorPolykeyUnimplemented,
+  ErrorPolykeyUnknown,
+  ErrorPolykeyRemote,
   ErrorPolykeyAgentRunning,
   ErrorPolykeyAgentNotRunning,
   ErrorPolykeyAgentDestroyed,

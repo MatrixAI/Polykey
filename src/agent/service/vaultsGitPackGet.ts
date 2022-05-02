@@ -24,7 +24,7 @@ function vaultsGitPackGet({
   return async (
     call: grpc.ServerDuplexStream<vaultsPB.PackChunk, vaultsPB.PackChunk>,
   ) => {
-    const genDuplex = grpcUtils.generatorDuplex(call);
+    const genDuplex = grpcUtils.generatorDuplex(call, true);
     const clientBodyBuffers: Uint8Array[] = [];
     const clientRequest = (await genDuplex.read()).value;
     clientBodyBuffers.push(clientRequest!.getChunk_asU8());

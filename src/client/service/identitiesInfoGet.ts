@@ -27,7 +27,7 @@ function identitiesInfoGet({
       identitiesPB.Info
     >,
   ): Promise<void> => {
-    const genWritable = grpcUtils.generatorWritable(call);
+    const genWritable = grpcUtils.generatorWritable(call, false);
     try {
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);

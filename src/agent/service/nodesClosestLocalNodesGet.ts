@@ -53,7 +53,7 @@ function nodesClosestLocalNodesGet({
       callback(null, response);
       return;
     } catch (e) {
-      callback(grpcUtils.fromError(e));
+      callback(grpcUtils.fromError(e, true));
       return;
     }
   };

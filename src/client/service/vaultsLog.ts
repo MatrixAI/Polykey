@@ -17,7 +17,7 @@ function vaultsLog({
   return async (
     call: grpc.ServerWritableStream<vaultsPB.Log, vaultsPB.LogEntry>,
   ): Promise<void> => {
-    const genWritable = grpcUtils.generatorWritable(call);
+    const genWritable = grpcUtils.generatorWritable(call, false);
     try {
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
