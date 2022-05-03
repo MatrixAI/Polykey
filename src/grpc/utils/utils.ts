@@ -29,10 +29,10 @@ import type {
 } from '../types';
 import type { CertificatePemChain, PrivateKeyPem } from '../../keys/types';
 import { Buffer } from 'buffer';
+import { AbstractError } from '@matrixai/errors';
 import * as grpc from '@grpc/grpc-js';
 import * as grpcErrors from '../errors';
 import * as errors from '../../errors';
-import ErrorPolykeyRemote, { reviver, replacer, sensitiveReplacer } from '../../ErrorPolykeyRemote';
 import { promisify, promise, never } from '../../utils/utils';
 
 /**
@@ -160,7 +160,7 @@ function getServerSession(call: ServerSurfaceCall): Http2Session {
  * Use this on the sending side to send exceptions
  * Do not send exceptions to clients you do not trust
  * If sending to an agent (rather than a client), set sensitive to true to
- * prevent sensitive information from being propagated
+ * prevent sensitive information from being sent over the network
  */
 function fromError(error: Error, sensitive: boolean = false): ServerStatusResponse {
   const metadata = new grpc.Metadata();
@@ -179,7 +179,7 @@ function fromError(error: Error, sensitive: boolean = false): ServerStatusRespon
  * Use this on the receiving side to receive exceptions
  */
 function toError(e: ServiceError): errors.ErrorPolykey<any> {
-  const errorData = e.metadata.get('data')[0] as string;
+  const errorData = e.metadata.get('error')[0] as string;
   // Grpc.status is an enum
   // this will iterate the enum values then enum keys
   // they will all be of string type
@@ -192,8 +192,8 @@ function toError(e: ServiceError): errors.ErrorPolykey<any> {
         key === 'UNKNOWN' &&
         errorData != null
       ) {
-        const error = JSON.parse(errorData, reviver);
-        return new ErrorPolykeyRemote(error.message, { cause: error });
+        const error: Error = JSON.parse(errorData, reviver);
+        return new errors.ErrorPolykeyRemote(error.message, { cause: error });
       } else {
         return new grpcErrors.ErrorGRPCClientCall(e.message, {
           data: {
@@ -206,6 +206,124 @@ function toError(e: ServiceError): errors.ErrorPolykey<any> {
     }
   }
   never();
+}
+
+/**
+ * Replacer function for serialising errors over GRPC (used by `JSON.stringify`
+ * in `fromError`)
+ * Polykey errors are handled by their inbuilt `toJSON` method , so this only
+ * serialises other errors
+ */
+ function replacer(key: string, value: any): any {
+  if (value instanceof AbstractError) {
+    // Include the standard properties from an AbstractError
+    return {
+      type: value.name,
+      data: {
+        description: value.description,
+        message: value.message,
+        timestamp: value.timestamp,
+        data: value.data,
+        cause: value.cause,
+        stack: value.stack,
+      }
+    }
+  } else if (value instanceof Error) {
+    // If it's some other type of error then only serialise the message and
+    // stack (and the type of the error)
+    return {
+      type: value.name,
+      data: {
+        message: value.message,
+        stack: value.stack,
+      }
+    }
+  } else {
+    // If it's not an error then just leave as is
+    return value;
+  }
+}
+
+/**
+ * The same as `replacer`, however this will additionally filter out any
+ * sensitive data that should not be sent over the network when sending to an
+ * agent (as opposed to a client)
+ */
+function sensitiveReplacer(key: string, value: any) {
+  if (key === 'stack') {
+    return;
+  } else {
+    return replacer(key, value);
+  }
+}
+
+/**
+ * Error constructors for non-Polykey errors
+ * Allows these errors to be reconstructed from GRPC metadata
+ */
+const otherErrors = {
+  'Error': Error,
+  'EvalError': EvalError,
+  'RangeError': RangeError,
+  'ReferenceError': ReferenceError,
+  'SyntaxError': SyntaxError,
+  'TypeError': TypeError,
+  'URIError': URIError
+};
+
+/**
+ * Reviver function for deserialising errors sent over GRPC (used by
+ * `JSON.parse` in `toError`)
+ * The final result returned will always be an error - if the deserialised
+ * data is of an unknown type then this will be wrapped as an
+ * `ErrorPolykeyUnknown`
+ */
+function reviver(key: string, value: any): any {
+  // If the value is an error then reconstruct it
+  if (typeof value === 'object' && typeof value.type === 'string' && typeof value.data === 'object') {
+    const message = value.data.message ?? '';
+    if (value.type in errors) {
+      const error = new errors[value.type](
+        message,
+        {
+          timestamp: value.data.timestamp,
+          data: value.data.data,
+          cause: value.data.cause,
+        },
+      );
+      error.exitCode = value.data.exitCode;
+      if (value.data.stack) {
+        error.stack = value.data.stack;
+      }
+      return error;
+    } else if (value.type in otherErrors) {
+      const error = new otherErrors[value.type](message);
+      if (value.data.stack) {
+        error.stack = value.data.stack;
+      }
+      return error;
+    } else {
+      const error = new errors.ErrorPolykeyUnknown('', { data: value });
+      if (value.data.stack) {
+        error.stack = value.data.stack;
+      }
+      return error;
+    }
+  } else if (key === '') {
+    // The value is not an error
+    const error = new errors.ErrorPolykeyUnknown('', { data: value });
+    return error;
+  } else if (key === 'timestamp') {
+    // Encode timestamps
+    const timestampParsed = Date.parse(value);
+    if (!isNaN(timestampParsed)) {
+      return new Date(timestampParsed);
+    } else {
+      return undefined;
+    }
+  } else {
+    return value;
+  }
 }
 
 /**
@@ -322,12 +440,15 @@ function promisifyReadableStreamCall<TRead>(
  */
 function generatorWritable<TWrite>(
   stream: ClientWritableStream<TWrite>,
+  sensitive: boolean,
 ): AsyncGeneratorWritableStream<TWrite, ClientWritableStream<TWrite>>;
 function generatorWritable<TWrite>(
   stream: ServerWritableStream<any, TWrite>,
+  sensitive: boolean,
 ): AsyncGeneratorWritableStream<TWrite, ServerWritableStream<any, TWrite>>;
 function generatorWritable<TWrite>(
   stream: ClientWritableStream<TWrite> | ServerWritableStream<any, TWrite>,
+  sensitive: boolean = false,
 ) {
   const streamWrite = promisify(stream.write).bind(stream);
   const gf = async function* () {
@@ -336,7 +457,7 @@ function generatorWritable<TWrite>(
       try {
         vW = yield;
       } catch (e) {
-        stream.emit('error', fromError(e));
+        stream.emit('error', fromError(e, sensitive));
         stream.end();
         return;
       }
@@ -389,6 +510,7 @@ function promisifyWritableStreamCall<TWrite, TReturn>(
     });
     const g = generatorWritable<TWrite>(
       stream,
+      false,
     ) as AsyncGeneratorWritableStreamClient<
       TWrite,
       ClientWritableStream<TWrite>
@@ -408,15 +530,18 @@ function promisifyWritableStreamCall<TWrite, TReturn>(
  */
 function generatorDuplex<TRead, TWrite>(
   stream: ClientDuplexStream<TWrite, TRead>,
+  sensitive: boolean,
 ): AsyncGeneratorDuplexStream<TRead, TWrite, ClientDuplexStream<TWrite, TRead>>;
 function generatorDuplex<TRead, TWrite>(
   stream: ServerDuplexStream<TRead, TWrite>,
+  sensitive: boolean,
 ): AsyncGeneratorDuplexStream<TRead, TWrite, ServerDuplexStream<TRead, TWrite>>;
 function generatorDuplex<TRead, TWrite>(
   stream: ClientDuplexStream<TWrite, TRead> | ServerDuplexStream<TRead, TWrite>,
+  sensitive: boolean = false,
 ) {
   const gR = generatorReadable(stream as any);
-  const gW = generatorWritable(stream as any);
+  const gW = generatorWritable(stream as any, sensitive);
   const gf = async function* () {
     let vR: any, vW: any;
     while (true) {
@@ -481,6 +606,7 @@ function promisifyDuplexStreamCall<TRead, TWrite>(
     });
     const g = generatorDuplex<TRead, TWrite>(
       stream,
+      false,
     ) as AsyncGeneratorDuplexStreamClient<
       TRead,
       TWrite,

@@ -4,6 +4,7 @@ import * as grpc from '@grpc/grpc-js';
 import { getLogger } from '@grpc/grpc-js/build/src/logging';
 import * as grpcUtils from '@/grpc/utils';
 import * as grpcErrors from '@/grpc/errors';
+import * as errors from '@/errors';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as utils from './utils';
 
@@ -57,13 +58,14 @@ describe('GRPC utils', () => {
     const messageTo = new utilsPB.EchoMessage();
     messageTo.setChallenge('error');
     const pCall = unary(messageTo);
-    await expect(pCall).rejects.toThrow(grpcErrors.ErrorGRPC);
+    await expect(pCall).rejects.toThrow(errors.ErrorPolykeyRemote);
     try {
       await pCall;
     } catch (e) {
       // This information comes from the server
       expect(e.message).toBe('test error');
-      expect(e.data).toMatchObject({
+      expect(e.cause).toBeInstanceOf(grpcErrors.ErrorGRPC);
+      expect(e.cause.data).toMatchObject({
         grpc: true,
       });
     }
@@ -103,7 +105,7 @@ describe('GRPC utils', () => {
     const messageTo = new utilsPB.EchoMessage();
     messageTo.setChallenge(challenge);
     const stream = serverStream(messageTo);
-    await expect(() => stream.next()).rejects.toThrow(grpcErrors.ErrorGRPC);
+    await expect(() => stream.next()).rejects.toThrow(errors.ErrorPolykeyRemote);
     // The generator will have ended
     // the internal stream will be automatically destroyed
     const result = await stream.next();
@@ -274,7 +276,7 @@ describe('GRPC utils', () => {
     const messageTo = new utilsPB.EchoMessage();
     messageTo.setChallenge('error');
     await genDuplex.write(messageTo);
-    await expect(() => genDuplex.read()).rejects.toThrow(grpcErrors.ErrorGRPC);
+    await expect(() => genDuplex.read()).rejects.toThrow(errors.ErrorPolykeyRemote);
     expect(genDuplex.stream.destroyed).toBe(true);
     expect(genDuplex.stream.getPeer()).toBe(`127.0.0.1:${port}`);
   });
@@ -287,9 +289,123 @@ describe('GRPC utils', () => {
     const messageTo = new utilsPB.EchoMessage();
     messageTo.setChallenge('error');
     await expect(() => genDuplex.next(messageTo)).rejects.toThrow(
-      grpcErrors.ErrorGRPC,
+      errors.ErrorPolykeyRemote,
     );
     expect(genDuplex.stream.destroyed).toBe(true);
     expect(genDuplex.stream.getPeer()).toBe(`127.0.0.1:${port}`);
+  });
+  test('serialising and deserialising Polykey errors', async () => {
+    const timestamp = new Date();
+    const error = new errors.ErrorPolykey('test error', {
+      timestamp,
+      data: {
+        int: 1,
+        str: 'one',
+      },
+    });
+    error.exitCode = 255;
+    const serialised = grpcUtils.fromError(error).metadata!;
+    const stringifiedError = serialised.get('error')[0] as string;
+    const parsedError = JSON.parse(stringifiedError);
+    expect(parsedError).toMatchObject({
+      type: 'ErrorPolykey',
+      data: expect.any(Object),
+    });
+    const deserialisedError = grpcUtils.toError({
+      name: '',
+      message: '',
+      code: 2,
+      details: '',
+      metadata: serialised
+    });
+    expect(deserialisedError).toBeInstanceOf(errors.ErrorPolykeyRemote);
+    expect(deserialisedError.message).toBe('test error');
+    expect(deserialisedError.cause).toBeInstanceOf(errors.ErrorPolykey);
+    expect(deserialisedError.cause.message).toBe('test error');
+    expect(deserialisedError.cause.exitCode).toBe(255);
+    expect(deserialisedError.cause.timestamp).toEqual(timestamp);
+    expect(deserialisedError.cause.data).toEqual(error.data);
+    expect(deserialisedError.cause.stack).toBe(error.stack);
+  });
+  test('serialising and deserialising generic errors', async () => {
+    const error = new TypeError('test error');
+    const serialised = grpcUtils.fromError(error).metadata!;
+    const stringifiedError = serialised.get('error')[0] as string;
+    const parsedError = JSON.parse(stringifiedError);
+    expect(parsedError).toMatchObject({
+      type: 'TypeError',
+      data: expect.any(Object),
+    });
+    const deserialisedError = grpcUtils.toError({
+      name: '',
+      message: '',
+      code: 2,
+      details: '',
+      metadata: serialised
+    });
+    expect(deserialisedError).toBeInstanceOf(errors.ErrorPolykeyRemote);
+    expect(deserialisedError.message).toBe('test error');
+    expect(deserialisedError.cause).toBeInstanceOf(TypeError);
+    expect(deserialisedError.cause.message).toBe('test error');
+    expect(deserialisedError.cause.stack).toBe(error.stack);
+  });
+  test('serialising and deserialising non-errors', async () => {
+    const error = 'not an error' as unknown as Error;
+    const serialised = grpcUtils.fromError(error).metadata!;
+    const stringifiedError = serialised.get('error')[0] as string;
+    const parsedError = JSON.parse(stringifiedError);
+    expect(parsedError).toEqual('not an error');
+    const deserialisedError = grpcUtils.toError({
+      name: '',
+      message: '',
+      code: 2,
+      details: '',
+      metadata: serialised
+    });
+    expect(deserialisedError).toBeInstanceOf(errors.ErrorPolykeyRemote);
+    expect(deserialisedError.message).toBe('');
+    expect(deserialisedError.cause).toBeInstanceOf(errors.ErrorPolykeyUnknown);
+    expect(deserialisedError.cause.message).toBe('');
+    expect(deserialisedError.cause.data).toEqual('not an error');
+  });
+  test('serialising and deserialising sensitive errors', async () => {
+    const timestamp = new Date();
+    const error = new errors.ErrorPolykey('test error', {
+      timestamp,
+      data: {
+        int: 1,
+        str: 'one',
+      },
+    });
+    error.exitCode = 255;
+    const serialised = grpcUtils.fromError(error, true).metadata!;
+    const stringifiedError = serialised.get('error')[0] as string;
+    const parsedError = JSON.parse(stringifiedError);
+    // Stack is the only thing that should not be serialised
+    expect(parsedError).toEqual({
+      type: 'ErrorPolykey',
+      data: {
+        description: errors.ErrorPolykey.description,
+        message: 'test error',
+        exitCode: 255,
+        timestamp: expect.any(String),
+        data: error.data,
+      },
+    });
+    const deserialisedError = grpcUtils.toError({
+      name: '',
+      message: '',
+      code: 2,
+      details: '',
+      metadata: serialised
+    });
+    expect(deserialisedError).toBeInstanceOf(errors.ErrorPolykeyRemote);
+    expect(deserialisedError.message).toBe('test error');
+    expect(deserialisedError.cause).toBeInstanceOf(errors.ErrorPolykey);
+    expect(deserialisedError.cause.message).toBe('test error');
+    expect(deserialisedError.cause.exitCode).toBe(255);
+    expect(deserialisedError.cause.timestamp).toEqual(timestamp);
+    expect(deserialisedError.cause.data).toEqual(error.data);
+    expect(deserialisedError.cause.stack).not.toBe(error.stack);
   });
 });

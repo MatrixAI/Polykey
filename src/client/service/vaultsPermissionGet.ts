@@ -24,7 +24,7 @@ function vaultsPermissionGet({
   return async (
     call: grpc.ServerWritableStream<vaultsPB.Vault, vaultsPB.Permissions>,
   ): Promise<void> => {
-    const genWritable = grpcUtils.generatorWritable(call);
+    const genWritable = grpcUtils.generatorWritable(call, false);
     try {
       const vaultMessage = call.request;
       const metadata = await authenticate(call.metadata);

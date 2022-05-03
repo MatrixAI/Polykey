@@ -23,7 +23,7 @@ function vaultsGitInfoGet({
   return async (
     call: grpc.ServerWritableStream<vaultsPB.InfoRequest, vaultsPB.PackChunk>,
   ): Promise<void> => {
-    const genWritable = grpcUtils.generatorWritable(call);
+    const genWritable = grpcUtils.generatorWritable(call, true);
     const request = call.request;
     const vaultMessage = request.getVault();
     if (vaultMessage == null) {

@@ -43,7 +43,7 @@ function createTestService({
         // we'll send back an error
         callback(
           grpcUtils.fromError(
-            new grpcErrors.ErrorGRPC('test error', { grpc: true }),
+            new grpcErrors.ErrorGRPC('test error', { data: { grpc: true } }),
           ),
         );
       } else {
@@ -67,13 +67,13 @@ function createTestService({
         );
         call.sendMetadata(meta);
       }
-      const genWritable = grpcUtils.generatorWritable(call);
+      const genWritable = grpcUtils.generatorWritable(call, false);
       const messageFrom = call.request;
       const messageTo = new utilsPB.EchoMessage();
       const challenge = messageFrom.getChallenge();
       if (challenge === 'error') {
         await genWritable.throw(
-          new grpcErrors.ErrorGRPC('test error', { grpc: true }),
+          new grpcErrors.ErrorGRPC('test error', { data: { grpc: true } }),
         );
       } else {
         // Will send back a number of message
@@ -131,7 +131,7 @@ function createTestService({
         );
         call.sendMetadata(meta);
       }
-      const genDuplex = grpcUtils.generatorDuplex(call);
+      const genDuplex = grpcUtils.generatorDuplex(call, false);
       const readStatus = await genDuplex.read();
       // If nothing to read, end and destroy
       if (readStatus.done) {
@@ -143,7 +143,7 @@ function createTestService({
       const incomingMessage = readStatus.value;
       if (incomingMessage.getChallenge() === 'error') {
         await genDuplex.throw(
-          new grpcErrors.ErrorGRPC('test error', { grpc: true }),
+          new grpcErrors.ErrorGRPC('test error', { data: { grpc: true } }),
         );
       } else {
         const outgoingMessage = new utilsPB.EchoMessage();
@@ -169,7 +169,7 @@ function createTestService({
         // we'll send back an error
         callback(
           grpcUtils.fromError(
-            new grpcErrors.ErrorGRPC('test error', { grpc: true }),
+            new grpcErrors.ErrorGRPC('test error', { data: { grpc: true } }),
           ),
         );
       } else {
@@ -182,7 +182,7 @@ function createTestService({
     serverStreamFail: async (
       call: grpc.ServerWritableStream<utilsPB.EchoMessage, utilsPB.EchoMessage>,
     ): Promise<void> => {
-      const genWritable = grpcUtils.generatorWritable(call);
+      const genWritable = grpcUtils.generatorWritable(call, false);
       try {
         const echoMessage = new utilsPB.EchoMessage().setChallenge('Hello!');
         for (let i = 0; i < 10; i++) {
