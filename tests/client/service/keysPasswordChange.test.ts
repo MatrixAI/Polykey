@@ -62,6 +62,7 @@ describe('keysPasswordChange', () => {
       keysPasswordChange: keysPasswordChange({
         authenticate,
         keyManager,
+        logger,
       }),
     };
     grpcServer = new GRPCServer({ logger });

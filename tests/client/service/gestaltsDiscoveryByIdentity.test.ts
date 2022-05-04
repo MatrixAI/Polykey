@@ -155,6 +155,7 @@ describe('gestaltsDiscoveryByIdentity', () => {
       gestaltsDiscoveryByIdentity: gestaltsDiscoveryByIdentity({
         authenticate,
         discovery,
+        logger,
       }),
     };
     grpcServer = new GRPCServer({ logger });

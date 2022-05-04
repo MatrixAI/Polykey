@@ -4,6 +4,7 @@ import type VaultManager from '../../vaults/VaultManager';
 import type GestaltGraph from '../../gestalts/GestaltGraph';
 import type ACL from '../../acl/ACL';
 import type * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
+import type Logger from '@matrixai/logger';
 import * as grpc from '@grpc/grpc-js';
 import * as vaultsErrors from '../../vaults/errors';
 import * as validationUtils from '../../validation/utils';
@@ -11,15 +12,17 @@ import * as grpcUtils from '../../grpc/utils';
 import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 
 function vaultsPermissionUnset({
-  vaultManager,
   authenticate,
+  vaultManager,
   gestaltGraph,
   acl,
+  logger,
 }: {
-  vaultManager: VaultManager;
   authenticate: Authenticate;
+  vaultManager: VaultManager;
   gestaltGraph: GestaltGraph;
   acl: ACL;
+  logger: Logger;
 }) {
   return async (
     call: grpc.ServerUnaryCall<vaultsPB.Permissions, utilsPB.StatusMessage>,
@@ -73,6 +76,7 @@ function vaultsPermissionUnset({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
+      logger.error(e);
       return;
     }
   };

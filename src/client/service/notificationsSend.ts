@@ -3,6 +3,7 @@ import type { Authenticate } from '../types';
 import type { NotificationsManager } from '../../notifications';
 import type { NodeId } from '../../nodes/types';
 import type * as notificationsPB from '../../proto/js/polykey/v1/notifications/notifications_pb';
+import type Logger from '@matrixai/logger';
 import { utils as grpcUtils } from '../../grpc';
 import { utils as notificationsUtils } from '../../notifications';
 import { validateSync, utils as validationUtils } from '../../validation';
@@ -10,11 +11,13 @@ import { matchSync } from '../../utils';
 import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 
 function notificationsSend({
-  notificationsManager,
   authenticate,
+  notificationsManager,
+  logger,
 }: {
-  notificationsManager: NotificationsManager;
   authenticate: Authenticate;
+  notificationsManager: NotificationsManager;
+  logger: Logger;
 }) {
   return async (
     call: grpc.ServerUnaryCall<notificationsPB.Send, utilsPB.EmptyMessage>,
@@ -50,6 +53,7 @@ function notificationsSend({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
+      logger.error(e);
       return;
     }
   };

@@ -56,6 +56,7 @@ describe('keysKeyPairRoot', () => {
       keysKeyPairRoot: keysKeyPairRoot({
         authenticate,
         keyManager,
+        logger,
       }),
     };
     grpcServer = new GRPCServer({ logger });

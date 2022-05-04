@@ -3,6 +3,7 @@ import type { Authenticate } from '../types';
 import type { NodeId } from '../../nodes/types';
 import type { GestaltGraph } from '../../gestalts';
 import type * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
+import type Logger from '@matrixai/logger';
 import { utils as grpcUtils } from '../../grpc';
 import { validateSync, utils as validationUtils } from '../../validation';
 import { matchSync } from '../../utils';
@@ -11,9 +12,11 @@ import * as permissionsPB from '../../proto/js/polykey/v1/permissions/permission
 function gestaltsActionsGetByNode({
   authenticate,
   gestaltGraph,
+  logger,
 }: {
   authenticate: Authenticate;
   gestaltGraph: GestaltGraph;
+  logger: Logger;
 }) {
   return async (
     call: grpc.ServerUnaryCall<nodesPB.Node, permissionsPB.Actions>,
@@ -47,6 +50,7 @@ function gestaltsActionsGetByNode({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
+      logger.error(e);
       return;
     }
   };

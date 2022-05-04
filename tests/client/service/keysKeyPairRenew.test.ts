@@ -74,6 +74,7 @@ describe('keysKeyPairRenew', () => {
       keysKeyPairRenew: keysKeyPairRenew({
         authenticate,
         keyManager,
+        logger,
       }),
     };
     grpcServer = new GRPCServer({ logger });

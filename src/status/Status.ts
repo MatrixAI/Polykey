@@ -145,7 +145,9 @@ class Status {
       try {
         statusInfo = JSON.parse(statusData, this.statusReviver);
       } catch (e) {
-        throw new statusErrors.ErrorStatusParse('JSON parsing failed', {cause: e});
+        throw new statusErrors.ErrorStatusParse('JSON parsing failed', {
+          cause: e,
+        });
       }
       if (!statusUtils.statusValidate(statusInfo)) {
         throw new statusErrors.ErrorStatusParse(
@@ -246,7 +248,9 @@ class Status {
       try {
         statusInfo = JSON.parse(statusData, this.statusReviver);
       } catch (e) {
-        throw new statusErrors.ErrorStatusParse('JSON parsing failed', { cause: e });
+        throw new statusErrors.ErrorStatusParse('JSON parsing failed', {
+          cause: e,
+        });
       }
       if (!statusUtils.statusValidate(statusInfo)) {
         throw new statusErrors.ErrorStatusParse(

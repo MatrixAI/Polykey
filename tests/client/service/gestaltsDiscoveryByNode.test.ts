@@ -155,6 +155,7 @@ describe('gestaltsDiscoveryByNode', () => {
       gestaltsDiscoveryByNode: gestaltsDiscoveryByNode({
         authenticate,
         discovery,
+        logger,
       }),
     };
     grpcServer = new GRPCServer({ logger });

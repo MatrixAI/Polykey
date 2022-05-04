@@ -2,6 +2,7 @@ import type * as grpc from '@grpc/grpc-js';
 import type { Authenticate } from '../types';
 import type { NodeConnectionManager } from '../../nodes';
 import type { NodeId } from '../../nodes/types';
+import type Logger from '@matrixai/logger';
 import { utils as nodesUtils } from '../../nodes';
 import { utils as grpcUtils } from '../../grpc';
 import { validateSync, utils as validationUtils } from '../../validation';
@@ -14,11 +15,13 @@ import * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
  * @throws ErrorNodeGraphNodeNotFound if node address cannot be found
  */
 function nodesFind({
-  nodeConnectionManager,
   authenticate,
+  nodeConnectionManager,
+  logger,
 }: {
-  nodeConnectionManager: NodeConnectionManager;
   authenticate: Authenticate;
+  nodeConnectionManager: NodeConnectionManager;
+  logger: Logger;
 }) {
   return async (
     call: grpc.ServerUnaryCall<nodesPB.Node, nodesPB.NodeAddress>,
@@ -53,6 +56,7 @@ function nodesFind({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
+      logger.error(e);
       return;
     }
   };

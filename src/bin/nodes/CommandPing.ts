@@ -59,7 +59,8 @@ class CommandPing extends CommandPolykey {
             error = new binErrors.ErrorNodePingFailed(
               `Failed to resolve node ID ${nodesUtils.encodeNodeId(
                 nodeId,
-              )} to an address.`, { cause: err },
+              )} to an address.`,
+              { cause: err },
             );
           } else {
             throw err;

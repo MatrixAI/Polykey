@@ -52,6 +52,7 @@ describe('identitiesInfoConnectedGet', () => {
       identitiesInfoConnectedGet: identitiesInfoConnectedGet({
         authenticate,
         identitiesManager,
+        logger,
       }),
     };
     grpcServer = new GRPCServer({ logger });

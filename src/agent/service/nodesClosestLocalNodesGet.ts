@@ -1,6 +1,7 @@
 import type * as grpc from '@grpc/grpc-js';
 import type { NodeConnectionManager } from '../../nodes';
 import type { NodeId } from '../../nodes/types';
+import type Logger from '@matrixai/logger';
 import { utils as grpcUtils } from '../../grpc';
 import { utils as nodesUtils } from '../../nodes';
 import { validateSync, utils as validationUtils } from '../../validation';
@@ -13,8 +14,10 @@ import * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
  */
 function nodesClosestLocalNodesGet({
   nodeConnectionManager,
+  logger,
 }: {
   nodeConnectionManager: NodeConnectionManager;
+  logger: Logger;
 }) {
   return async (
     call: grpc.ServerUnaryCall<nodesPB.Node, nodesPB.NodeTable>,
@@ -54,6 +57,7 @@ function nodesClosestLocalNodesGet({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e, true));
+      logger.error(e);
       return;
     }
   };

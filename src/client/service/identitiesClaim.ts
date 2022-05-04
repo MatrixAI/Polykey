@@ -4,6 +4,7 @@ import type KeyManager from '../../keys/KeyManager';
 import type { Sigchain } from '../../sigchain';
 import type { IdentitiesManager } from '../../identities';
 import type { IdentityId, ProviderId } from '../../identities/types';
+import type Logger from '@matrixai/logger';
 import { utils as grpcUtils } from '../../grpc';
 import { utils as claimsUtils } from '../../claims';
 import { utils as nodesUtils } from '../../nodes';
@@ -16,15 +17,17 @@ import * as identitiesPB from '../../proto/js/polykey/v1/identities/identities_p
  * Augments the keynode with a new identity.
  */
 function identitiesClaim({
+  authenticate,
   identitiesManager,
   sigchain,
   keyManager,
-  authenticate,
+  logger,
 }: {
+  authenticate: Authenticate;
   identitiesManager: IdentitiesManager;
   sigchain: Sigchain;
   keyManager: KeyManager;
-  authenticate: Authenticate;
+  logger: Logger;
 }) {
   return async (
     call: grpc.ServerUnaryCall<identitiesPB.Provider, identitiesPB.Claim>,
@@ -80,6 +83,7 @@ function identitiesClaim({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
+      logger.error(e);
       return;
     }
   };

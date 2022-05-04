@@ -4,6 +4,7 @@ import type KeyManager from '../../keys/KeyManager';
 import type GRPCServer from '../../grpc/GRPCServer';
 import type Proxy from '../../network/Proxy';
 import type * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
+import type Logger from '@matrixai/logger';
 import process from 'process';
 import * as grpcUtils from '../../grpc/utils';
 import * as nodesUtils from '../../nodes/utils';
@@ -15,12 +16,14 @@ function agentStatus({
   grpcServerClient,
   grpcServerAgent,
   proxy,
+  logger,
 }: {
   authenticate: Authenticate;
   keyManager: KeyManager;
   grpcServerClient: GRPCServer;
   grpcServerAgent: GRPCServer;
   proxy: Proxy;
+  logger: Logger;
 }) {
   return async (
     call: grpc.ServerUnaryCall<utilsPB.EmptyMessage, agentPB.InfoMessage>,
@@ -46,6 +49,7 @@ function agentStatus({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
+      logger.error(e);
       return;
     }
   };

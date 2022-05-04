@@ -22,6 +22,7 @@ describe('agentUnlock', () => {
     const clientService = {
       agentUnlock: agentUnlock({
         authenticate,
+        logger,
       }),
     };
     grpcServer = new GRPCServer({ logger });

@@ -2,6 +2,7 @@ import type { Authenticate } from '../types';
 import type { VaultName } from '../../vaults/types';
 import type VaultManager from '../../vaults/VaultManager';
 import type * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
+import type Logger from '@matrixai/logger';
 import * as grpc from '@grpc/grpc-js';
 import * as validationUtils from '../../validation/utils';
 import * as grpcUtils from '../../grpc/utils';
@@ -9,11 +10,13 @@ import * as vaultOps from '../../vaults/VaultOps';
 import * as secretsPB from '../../proto/js/polykey/v1/secrets/secrets_pb';
 
 function vaultsSecretsGet({
-  vaultManager,
   authenticate,
+  vaultManager,
+  logger,
 }: {
-  vaultManager: VaultManager;
   authenticate: Authenticate;
+  vaultManager: VaultManager;
+  logger: Logger;
 }) {
   return async (
     call: grpc.ServerUnaryCall<secretsPB.Secret, utilsPB.EmptyMessage>,
@@ -43,6 +46,7 @@ function vaultsSecretsGet({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
+      logger.error(e);
       return;
     }
   };

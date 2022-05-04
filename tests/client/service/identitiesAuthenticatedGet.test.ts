@@ -48,6 +48,7 @@ describe('identitiesAuthenticatedGet', () => {
       identitiesAuthenticatedGet: identitiesAuthenticatedGet({
         authenticate,
         identitiesManager,
+        logger,
       }),
     };
     grpcServer = new GRPCServer({ logger });

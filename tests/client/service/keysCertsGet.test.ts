@@ -60,6 +60,7 @@ describe('keysCertsGet', () => {
       keysCertsGet: keysCertsGet({
         authenticate,
         keyManager,
+        logger,
       }),
     };
     grpcServer = new GRPCServer({ logger });

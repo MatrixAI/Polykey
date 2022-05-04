@@ -11,7 +11,7 @@ import type { NodeId } from '../nodes/types';
 import type { IdentityId, ProviderId } from '../identities/types';
 import canonicalize from 'canonicalize';
 import { gestaltActions } from './types';
-import { utils as nodesUtils } from '../nodes';
+import * as nodesUtils from '../nodes/utils';
 
 /**
  * Construct GestaltKey from GestaltId

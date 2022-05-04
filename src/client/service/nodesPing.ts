@@ -3,6 +3,7 @@ import type { Authenticate } from '../types';
 import type { NodeManager } from '../../nodes';
 import type { NodeId } from '../../nodes/types';
 import type * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
+import type Logger from '@matrixai/logger';
 import { utils as grpcUtils } from '../../grpc';
 import { validateSync, utils as validationUtils } from '../../validation';
 import { matchSync } from '../../utils';
@@ -12,11 +13,13 @@ import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
  * Checks if a remote node is online.
  */
 function nodesPing({
-  nodeManager,
   authenticate,
+  nodeManager,
+  logger,
 }: {
-  nodeManager: NodeManager;
   authenticate: Authenticate;
+  nodeManager: NodeManager;
+  logger: Logger;
 }) {
   return async (
     call: grpc.ServerUnaryCall<nodesPB.Node, utilsPB.StatusMessage>,
@@ -47,6 +50,7 @@ function nodesPing({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
+      logger.error(e);
       return;
     }
   };

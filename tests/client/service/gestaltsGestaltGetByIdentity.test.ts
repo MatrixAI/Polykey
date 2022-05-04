@@ -89,6 +89,7 @@ describe('gestaltsGestaltGetByIdentity', () => {
       gestaltsGestaltGetByIdentity: gestaltsGestaltGetByIdentity({
         authenticate,
         gestaltGraph,
+        logger,
       }),
     };
     grpcServer = new GRPCServer({ logger });

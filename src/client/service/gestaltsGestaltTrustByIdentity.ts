@@ -4,6 +4,7 @@ import type { GestaltGraph } from '../../gestalts';
 import type { IdentityId, ProviderId } from '../../identities/types';
 import type { Discovery } from '../../discovery';
 import type * as identitiesPB from '../../proto/js/polykey/v1/identities/identities_pb';
+import type Logger from '@matrixai/logger';
 import { validateSync } from '../../validation';
 import { matchSync } from '../../utils';
 import * as grpcUtils from '../../grpc/utils';
@@ -14,10 +15,12 @@ function gestaltsGestaltTrustByIdentity({
   authenticate,
   gestaltGraph,
   discovery,
+  logger,
 }: {
   authenticate: Authenticate;
   gestaltGraph: GestaltGraph;
   discovery: Discovery;
+  logger: Logger;
 }) {
   return async (
     call: grpc.ServerUnaryCall<identitiesPB.Provider, utilsPB.EmptyMessage>,
@@ -70,6 +73,7 @@ function gestaltsGestaltTrustByIdentity({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
+      logger.error(e);
       return;
     }
   };

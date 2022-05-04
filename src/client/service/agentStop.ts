@@ -1,6 +1,7 @@
 import type * as grpc from '@grpc/grpc-js';
 import type { Authenticate } from '../types';
 import type PolykeyAgent from '../../PolykeyAgent';
+import type Logger from '@matrixai/logger';
 import { status, running } from '@matrixai/async-init';
 import * as grpcUtils from '../../grpc/utils';
 import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
@@ -8,9 +9,11 @@ import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 function agentStop({
   authenticate,
   pkAgent,
+  logger,
 }: {
   authenticate: Authenticate;
   pkAgent: PolykeyAgent;
+  logger: Logger;
 }) {
   return async (
     call: grpc.ServerUnaryCall<utilsPB.EmptyMessage, utilsPB.EmptyMessage>,
@@ -29,6 +32,7 @@ function agentStop({
       callback(null, response);
     } catch (e) {
       callback(grpcUtils.fromError(e));
+      logger.error(e);
       return;
     }
     // Stop is called after GRPC resources are cleared

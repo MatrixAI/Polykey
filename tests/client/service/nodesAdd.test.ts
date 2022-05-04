@@ -116,6 +116,7 @@ describe('nodesAdd', () => {
       nodesAdd: nodesAdd({
         authenticate,
         nodeManager,
+        logger,
       }),
     };
     grpcServer = new GRPCServer({ logger });
