@@ -1,16 +1,15 @@
-import type { KeyManager } from '../../keys';
-import type { VaultManager } from '../../vaults';
-import type {
-  NodeGraph,
-  NodeManager,
-  NodeConnectionManager,
-} from '../../nodes';
-import type { NotificationsManager } from '../../notifications';
-import type { Sigchain } from '../../sigchain';
-import type { ACL } from '../../acl';
-import type { GestaltGraph } from '../../gestalts';
+import type KeyManager from '../../keys/KeyManager';
+import type VaultManager from '../../vaults/VaultManager';
+import type NodeGraph from '../../nodes/NodeGraph';
+import type NodeManager from '../../nodes/NodeManager';
+import type NodeConnectionManager from '../../nodes/NodeConnectionManager';
+import type NotificationsManager from '../../notifications/NotificationsManager';
+import type Sigchain from '../../sigchain/Sigchain';
+import type ACL from '../../acl/ACL';
+import type GestaltGraph from '../../gestalts/GestaltGraph';
 import type { IAgentServiceServer } from '../../proto/js/polykey/v1/agent_service_grpc_pb';
 import type Proxy from '../../network/Proxy';
+import Logger from '@matrixai/logger';
 import echo from './echo';
 import nodesChainDataGet from './nodesChainDataGet';
 import nodesClaimsGet from './nodesClaimsGet';
@@ -24,7 +23,11 @@ import vaultsScan from './vaultsScan';
 import { AgentServiceService } from '../../proto/js/polykey/v1/agent_service_grpc_pb';
 import * as agentUtils from '../utils';
 
-function createService(container: {
+function createService({
+  proxy,
+  logger = new Logger(createService.name),
+  ...containerRest
+}: {
   keyManager: KeyManager;
   vaultManager: VaultManager;
   nodeConnectionManager: NodeConnectionManager;
@@ -35,23 +38,25 @@ function createService(container: {
   acl: ACL;
   gestaltGraph: GestaltGraph;
   proxy: Proxy;
+  logger?: Logger;
 }): IAgentServiceServer {
-  const connectionInfoGet = agentUtils.connectionInfoGetter(container.proxy);
-  const container_ = {
-    ...container,
+  const connectionInfoGet = agentUtils.connectionInfoGetter(proxy);
+  const container = {
+    ...containerRest,
+    logger,
     connectionInfoGet: connectionInfoGet,
   };
   const service: IAgentServiceServer = {
-    echo: echo(container_),
-    nodesChainDataGet: nodesChainDataGet(container_),
-    nodesClaimsGet: nodesClaimsGet(container_),
-    nodesClosestLocalNodesGet: nodesClosestLocalNodesGet(container_),
-    nodesCrossSignClaim: nodesCrossSignClaim(container_),
-    nodesHolePunchMessageSend: nodesHolePunchMessageSend(container_),
-    notificationsSend: notificationsSend(container_),
-    vaultsGitInfoGet: vaultsGitInfoGet(container_),
-    vaultsGitPackGet: vaultsGitPackGet(container_),
-    vaultsScan: vaultsScan(container_),
+    echo: echo(container),
+    nodesChainDataGet: nodesChainDataGet(container),
+    nodesClaimsGet: nodesClaimsGet(container),
+    nodesClosestLocalNodesGet: nodesClosestLocalNodesGet(container),
+    nodesCrossSignClaim: nodesCrossSignClaim(container),
+    nodesHolePunchMessageSend: nodesHolePunchMessageSend(container),
+    notificationsSend: notificationsSend(container),
+    vaultsGitInfoGet: vaultsGitInfoGet(container),
+    vaultsGitPackGet: vaultsGitPackGet(container),
+    vaultsScan: vaultsScan(container),
   };
   return service;
 }

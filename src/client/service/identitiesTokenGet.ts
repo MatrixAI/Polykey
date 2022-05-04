@@ -2,17 +2,20 @@ import type * as grpc from '@grpc/grpc-js';
 import type { Authenticate } from '../types';
 import type { IdentitiesManager } from '../../identities';
 import type { IdentityId, ProviderId } from '../../identities/types';
+import type Logger from '@matrixai/logger';
 import { utils as grpcUtils } from '../../grpc';
 import { validateSync, utils as validationUtils } from '../../validation';
 import { matchSync } from '../../utils';
 import * as identitiesPB from '../../proto/js/polykey/v1/identities/identities_pb';
 
 function identitiesTokenGet({
-  identitiesManager,
   authenticate,
+  identitiesManager,
+  logger,
 }: {
-  identitiesManager: IdentitiesManager;
   authenticate: Authenticate;
+  identitiesManager: IdentitiesManager;
+  logger: Logger;
 }) {
   return async (
     call: grpc.ServerUnaryCall<identitiesPB.Provider, identitiesPB.Token>,
@@ -47,6 +50,7 @@ function identitiesTokenGet({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
+      logger.error(e);
       return;
     }
   };

@@ -1,6 +1,7 @@
 import type { Authenticate } from '../types';
 import type { VaultName } from '../../vaults/types';
 import type VaultManager from '../../vaults/VaultManager';
+import type Logger from '@matrixai/logger';
 import * as grpc from '@grpc/grpc-js';
 import { Timestamp } from 'google-protobuf/google/protobuf/timestamp_pb';
 import * as grpcUtils from '../../grpc/utils';
@@ -8,11 +9,13 @@ import * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
 import * as validationUtils from '../../validation/utils';
 
 function vaultsLog({
-  vaultManager,
   authenticate,
+  vaultManager,
+  logger,
 }: {
-  vaultManager: VaultManager;
   authenticate: Authenticate;
+  vaultManager: VaultManager;
+  logger: Logger;
 }) {
   return async (
     call: grpc.ServerWritableStream<vaultsPB.Log, vaultsPB.LogEntry>,
@@ -52,6 +55,7 @@ function vaultsLog({
       return;
     } catch (e) {
       await genWritable.throw(e);
+      logger.error(e);
       return;
     }
   };

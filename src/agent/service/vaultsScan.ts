@@ -2,6 +2,7 @@ import type * as grpc from '@grpc/grpc-js';
 import type VaultManager from '../../vaults/VaultManager';
 import type * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 import type { ConnectionInfoGet } from '../../agent/types';
+import type Logger from '@matrixai/logger';
 import * as agentErrors from '../../agent/errors';
 import * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
 import * as vaultsUtils from '../../vaults/utils';
@@ -9,9 +10,11 @@ import * as grpcUtils from '../../grpc/utils';
 
 function vaultsScan({
   vaultManager,
+  logger,
   connectionInfoGet,
 }: {
   vaultManager: VaultManager;
+  logger: Logger;
   connectionInfoGet: ConnectionInfoGet;
 }) {
   return async (
@@ -42,6 +45,7 @@ function vaultsScan({
       await genWritable.next(null);
     } catch (e) {
       await genWritable.throw(e);
+      logger.error(e);
     }
   };
 }

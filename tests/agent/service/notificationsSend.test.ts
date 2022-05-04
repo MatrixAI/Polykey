@@ -137,6 +137,7 @@ describe('notificationsSend', () => {
     const agentService = {
       notificationsSend: notificationsSend({
         notificationsManager,
+        logger,
       }),
     };
     grpcServer = new GRPCServer({ logger });

@@ -2,13 +2,20 @@ import type * as grpc from '@grpc/grpc-js';
 import type { Sigchain } from '../../sigchain';
 import type * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 import type { ClaimIdEncoded } from '../../claims/types';
+import type Logger from '@matrixai/logger';
 import { utils as grpcUtils } from '../../grpc';
 import * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
 
 /**
  * Retrieves the ChainDataEncoded of this node.
  */
-function nodesChainDataGet({ sigchain }: { sigchain: Sigchain }) {
+function nodesChainDataGet({
+  sigchain,
+  logger,
+}: {
+  sigchain: Sigchain;
+  logger: Logger;
+}) {
   return async (
     call: grpc.ServerUnaryCall<utilsPB.EmptyMessage, nodesPB.ChainData>,
     callback: grpc.sendUnaryData<nodesPB.ChainData>,
@@ -38,6 +45,7 @@ function nodesChainDataGet({ sigchain }: { sigchain: Sigchain }) {
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e, true));
+      logger.error(e);
       return;
     }
   };

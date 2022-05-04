@@ -1,6 +1,7 @@
 import type { Authenticate } from '../types';
 import type VaultManager from '../../vaults/VaultManager';
 import type * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
+import type Logger from '@matrixai/logger';
 import * as grpc from '@grpc/grpc-js';
 import * as grpcUtils from '../../grpc/utils';
 import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
@@ -10,9 +11,11 @@ import * as vaultsUtils from '../../vaults/utils';
 function vaultsClone({
   authenticate,
   vaultManager,
+  logger,
 }: {
   authenticate: Authenticate;
   vaultManager: VaultManager;
+  logger: Logger;
 }) {
   return async (
     call: grpc.ServerUnaryCall<vaultsPB.Clone, utilsPB.StatusMessage>,
@@ -46,6 +49,7 @@ function vaultsClone({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
+      logger.error(e);
       return;
     }
   };

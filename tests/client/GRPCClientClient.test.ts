@@ -1,6 +1,6 @@
+import type * as grpc from '@grpc/grpc-js';
 import type { Host, Port } from '@/network/types';
 import type { NodeId } from '@/nodes/types';
-import type * as grpc from '@grpc/grpc-js';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';

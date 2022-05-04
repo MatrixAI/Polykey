@@ -83,6 +83,7 @@ describe('agentStatus', () => {
         grpcServerClient,
         grpcServerAgent,
         proxy,
+        logger,
       }),
     };
     grpcServer = new GRPCServer({ logger });

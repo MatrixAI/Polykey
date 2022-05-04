@@ -2,6 +2,7 @@ import type * as grpc from '@grpc/grpc-js';
 import type { Authenticate } from '../types';
 import type { IdentitiesManager } from '../../identities';
 import type { ProviderId } from '../../identities/types';
+import type Logger from '@matrixai/logger';
 import { validateSync } from '../../validation';
 import { matchSync } from '../../utils';
 import * as grpcUtils from '../../grpc/utils';
@@ -9,11 +10,13 @@ import * as validationUtils from '../../validation/utils';
 import * as identitiesPB from '../../proto/js/polykey/v1/identities/identities_pb';
 
 function identitiesAuthenticatedGet({
-  identitiesManager,
   authenticate,
+  identitiesManager,
+  logger,
 }: {
-  identitiesManager: IdentitiesManager;
   authenticate: Authenticate;
+  identitiesManager: IdentitiesManager;
+  logger: Logger;
 }) {
   return async (
     call: grpc.ServerWritableStream<
@@ -60,6 +63,7 @@ function identitiesAuthenticatedGet({
       return;
     } catch (e) {
       await genWritable.throw(e);
+      logger.error(e);
       return;
     }
   };

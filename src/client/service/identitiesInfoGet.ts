@@ -6,6 +6,7 @@ import type {
   IdentityId,
   ProviderId,
 } from '../../identities/types';
+import type Logger from '@matrixai/logger';
 import { validateSync } from '../../validation';
 import { matchSync } from '../../utils';
 import * as grpcUtils from '../../grpc/utils';
@@ -15,11 +16,13 @@ import * as identitiesErrors from '../../identities/errors';
 import * as identitiesPB from '../../proto/js/polykey/v1/identities/identities_pb';
 
 function identitiesInfoGet({
-  identitiesManager,
   authenticate,
+  identitiesManager,
+  logger,
 }: {
-  identitiesManager: IdentitiesManager;
   authenticate: Authenticate;
+  identitiesManager: IdentitiesManager;
+  logger: Logger;
 }) {
   return async (
     call: grpc.ServerWritableStream<
@@ -109,6 +112,7 @@ function identitiesInfoGet({
       return;
     } catch (e) {
       await genWritable.throw(e);
+      logger.error(e);
       return;
     }
   };

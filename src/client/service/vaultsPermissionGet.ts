@@ -5,6 +5,7 @@ import type * as grpc from '@grpc/grpc-js';
 import type { VaultActions } from '../../vaults/types';
 import type ACL from '../../acl/ACL';
 import type { NodeId, NodeIdEncoded } from 'nodes/types';
+import type Logger from '@matrixai/logger';
 import { IdInternal } from '@matrixai/id';
 import * as grpcUtils from '../../grpc/utils';
 import * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
@@ -16,10 +17,12 @@ function vaultsPermissionGet({
   authenticate,
   vaultManager,
   acl,
+  logger,
 }: {
   authenticate: Authenticate;
   vaultManager: VaultManager;
   acl: ACL;
+  logger: Logger;
 }) {
   return async (
     call: grpc.ServerWritableStream<vaultsPB.Vault, vaultsPB.Permissions>,
@@ -57,8 +60,9 @@ function vaultsPermissionGet({
       }
       await genWritable.next(null);
       return;
-    } catch (err) {
-      await genWritable.throw(err);
+    } catch (e) {
+      await genWritable.throw(e);
+      logger.error(e);
       return;
     }
   };

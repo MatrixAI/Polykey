@@ -121,6 +121,7 @@ describe('nodesPing', () => {
       nodesPing: nodesPing({
         authenticate,
         nodeManager,
+        logger,
       }),
     };
     grpcServer = new GRPCServer({ logger });

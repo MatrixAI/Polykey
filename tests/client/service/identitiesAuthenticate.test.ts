@@ -56,6 +56,7 @@ describe('identitiesAuthenticate', () => {
       identitiesAuthenticate: identitiesAuthenticate({
         authenticate,
         identitiesManager,
+        logger,
       }),
     };
     grpcServer = new GRPCServer({ logger });

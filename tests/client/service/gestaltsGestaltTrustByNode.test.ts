@@ -225,6 +225,7 @@ describe('gestaltsGestaltTrustByNode', () => {
         authenticate,
         gestaltGraph,
         discovery,
+        logger,
       }),
     };
     grpcServer = new GRPCServer({ logger });

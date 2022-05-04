@@ -75,6 +75,7 @@ describe('agentLockall', () => {
       agentLockAll: agentLockAll({
         authenticate,
         sessionManager,
+        logger,
       }),
     };
     grpcServer = new GRPCServer({ logger });
