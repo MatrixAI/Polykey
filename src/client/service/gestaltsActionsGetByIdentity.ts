@@ -1,12 +1,14 @@
+import type Logger from '@matrixai/logger';
 import type * as grpc from '@grpc/grpc-js';
 import type { Authenticate } from '../types';
-import type { GestaltGraph } from '../../gestalts';
+import type GestaltGraph from '../../gestalts/GestaltGraph';
 import type { IdentityId, ProviderId } from '../../identities/types';
 import type * as identitiesPB from '../../proto/js/polykey/v1/identities/identities_pb';
-import type Logger from '@matrixai/logger';
-import { utils as grpcUtils } from '../../grpc';
-import { validateSync, utils as validationUtils } from '../../validation';
-import { matchSync } from '../../utils';
+import { matchSync } from '../../utils/matchers';
+import { validateSync } from '../../validation';
+import * as validationUtils from '../../validation/utils';
+import * as validationErrors from '../../validation/errors';
+import * as grpcUtils from '../../grpc/utils';
 import * as permissionsPB from '../../proto/js/polykey/v1/permissions/permissions_pb';
 
 function gestaltsActionsGetByIdentity({
@@ -58,7 +60,9 @@ function gestaltsActionsGetByIdentity({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
-      logger.error(e);
+      if (!(e instanceof validationErrors.ErrorValidation)) {
+        logger.error(e);
+      }
       return;
     }
   };
