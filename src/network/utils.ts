@@ -101,7 +101,9 @@ async function resolveHost(host: Host | Hostname): Promise<Host> {
     // Resolve the hostname and get the IPv4 address
     resolvedHost = await lookup(host, 4);
   } catch (e) {
-    throw new networkErrors.ErrorHostnameResolutionFailed(e.message, { cause: e });
+    throw new networkErrors.ErrorHostnameResolutionFailed(e.message, {
+      cause: e,
+    });
   }
   // Returns an array of [ resolved address, family (4 or 6) ]
   return resolvedHost[0] as Host;

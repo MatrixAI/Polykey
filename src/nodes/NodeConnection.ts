@@ -135,7 +135,9 @@ class NodeConnection<T extends GRPCClient> {
       await nodeConnection.destroy();
       // If the connection times out, re-throw this with a higher level nodes exception
       if (e instanceof grpcErrors.ErrorGRPCClientTimeout) {
-        throw new nodesErrors.ErrorNodeConnectionTimeout(e.message, { cause: e });
+        throw new nodesErrors.ErrorNodeConnectionTimeout(e.message, {
+          cause: e,
+        });
       }
       throw e;
     }

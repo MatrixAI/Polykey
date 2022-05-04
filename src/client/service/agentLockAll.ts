@@ -1,15 +1,18 @@
 import type * as grpc from '@grpc/grpc-js';
 import type { Authenticate } from '../types';
 import type { SessionManager } from '../../sessions';
+import type Logger from '@matrixai/logger';
 import * as grpcUtils from '../../grpc/utils';
 import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 
 function agentLockAll({
-  sessionManager,
   authenticate,
+  sessionManager,
+  logger,
 }: {
-  sessionManager: SessionManager;
   authenticate: Authenticate;
+  sessionManager: SessionManager;
+  logger: Logger;
 }) {
   return async (
     call: grpc.ServerUnaryCall<utilsPB.EmptyMessage, utilsPB.EmptyMessage>,
@@ -24,6 +27,7 @@ function agentLockAll({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
+      logger.error(e);
       return;
     }
   };

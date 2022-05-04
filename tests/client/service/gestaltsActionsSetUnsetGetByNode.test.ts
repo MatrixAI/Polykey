@@ -66,14 +66,17 @@ describe('gestaltsActionsByNode', () => {
       gestaltsActionsSetByNode: gestaltsActionsSetByNode({
         authenticate,
         gestaltGraph,
+        logger,
       }),
       gestaltsActionsGetByNode: gestaltsActionsGetByNode({
         authenticate,
         gestaltGraph,
+        logger,
       }),
       gestaltsActionsUnsetByNode: gestaltsActionsUnsetByNode({
         authenticate,
         gestaltGraph,
+        logger,
       }),
     };
     grpcServer = new GRPCServer({ logger });

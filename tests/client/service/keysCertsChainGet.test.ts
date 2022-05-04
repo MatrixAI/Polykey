@@ -61,6 +61,7 @@ describe('keysCertsChainGet', () => {
       keysCertsChainGet: keysCertsChainGet({
         authenticate,
         keyManager,
+        logger,
       }),
     };
     grpcServer = new GRPCServer({ logger });

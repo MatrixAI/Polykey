@@ -33,7 +33,8 @@ class ErrorProviderAuthentication<T> extends ErrorIdentities<T> {
 }
 
 class ErrorProviderUnauthenticated<T> extends ErrorIdentities<T> {
-  static description = 'Provider has not been authenticated or access token is expired or invalid';
+  static description =
+    'Provider has not been authenticated or access token is expired or invalid';
   exitCode = sysexits.NOPERM;
 }
 

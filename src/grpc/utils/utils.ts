@@ -162,7 +162,10 @@ function getServerSession(call: ServerSurfaceCall): Http2Session {
  * If sending to an agent (rather than a client), set sensitive to true to
  * prevent sensitive information from being sent over the network
  */
-function fromError(error: Error, sensitive: boolean = false): ServerStatusResponse {
+function fromError(
+  error: Error,
+  sensitive: boolean = false,
+): ServerStatusResponse {
   const metadata = new grpc.Metadata();
   if (sensitive) {
     metadata.set('error', JSON.stringify(error, sensitiveReplacer));
@@ -188,10 +191,7 @@ function toError(e: ServiceError): errors.ErrorPolykey<any> {
     // check if the error code matches a known grpc status
     // @ts-ignore grpc.status[key] is in fact a string
     if (isNaN(parseInt(key)) && e.code === grpc.status[key]) {
-      if (
-        key === 'UNKNOWN' &&
-        errorData != null
-      ) {
+      if (key === 'UNKNOWN' && errorData != null) {
         const error: Error = JSON.parse(errorData, reviver);
         return new errors.ErrorPolykeyRemote(error.message, { cause: error });
       } else {
@@ -214,7 +214,7 @@ function toError(e: ServiceError): errors.ErrorPolykey<any> {
  * Polykey errors are handled by their inbuilt `toJSON` method , so this only
  * serialises other errors
  */
- function replacer(key: string, value: any): any {
+function replacer(key: string, value: any): any {
   if (value instanceof AbstractError) {
     // Include the standard properties from an AbstractError
     return {
@@ -226,8 +226,8 @@ function toError(e: ServiceError): errors.ErrorPolykey<any> {
         data: value.data,
         cause: value.cause,
         stack: value.stack,
-      }
-    }
+      },
+    };
   } else if (value instanceof Error) {
     // If it's some other type of error then only serialise the message and
     // stack (and the type of the error)
@@ -236,8 +236,8 @@ function toError(e: ServiceError): errors.ErrorPolykey<any> {
       data: {
         message: value.message,
         stack: value.stack,
-      }
-    }
+      },
+    };
   } else {
     // If it's not an error then just leave as is
     return value;
@@ -262,13 +262,13 @@ function sensitiveReplacer(key: string, value: any) {
  * Allows these errors to be reconstructed from GRPC metadata
  */
 const otherErrors = {
-  'Error': Error,
-  'EvalError': EvalError,
-  'RangeError': RangeError,
-  'ReferenceError': ReferenceError,
-  'SyntaxError': SyntaxError,
-  'TypeError': TypeError,
-  'URIError': URIError
+  Error: Error,
+  EvalError: EvalError,
+  RangeError: RangeError,
+  ReferenceError: ReferenceError,
+  SyntaxError: SyntaxError,
+  TypeError: TypeError,
+  URIError: URIError,
 };
 
 /**
@@ -280,17 +280,18 @@ const otherErrors = {
  */
 function reviver(key: string, value: any): any {
   // If the value is an error then reconstruct it
-  if (typeof value === 'object' && typeof value.type === 'string' && typeof value.data === 'object') {
+  if (
+    typeof value === 'object' &&
+    typeof value.type === 'string' &&
+    typeof value.data === 'object'
+  ) {
     const message = value.data.message ?? '';
     if (value.type in errors) {
-      const error = new errors[value.type](
-        message,
-        {
-          timestamp: value.data.timestamp,
-          data: value.data.data,
-          cause: value.data.cause,
-        },
-      );
+      const error = new errors[value.type](message, {
+        timestamp: value.data.timestamp,
+        data: value.data.data,
+        cause: value.data.cause,
+      });
       error.exitCode = value.data.exitCode;
       if (value.data.stack) {
         error.stack = value.data.stack;

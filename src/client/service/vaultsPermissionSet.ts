@@ -6,6 +6,7 @@ import type ACL from '../../acl/ACL';
 import type NotificationsManager from '../../notifications/NotificationsManager';
 import type { VaultActions } from '../../vaults/types';
 import type * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
+import type Logger from '@matrixai/logger';
 import * as grpc from '@grpc/grpc-js';
 import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
@@ -14,17 +15,19 @@ import * as grpcUtils from '../../grpc/utils';
 import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 
 function vaultsPermissionSet({
-  vaultManager,
   authenticate,
+  vaultManager,
   gestaltGraph,
   acl,
   notificationsManager,
+  logger,
 }: {
-  vaultManager: VaultManager;
   authenticate: Authenticate;
+  vaultManager: VaultManager;
   gestaltGraph: GestaltGraph;
   acl: ACL;
   notificationsManager: NotificationsManager;
+  logger: Logger;
 }) {
   return async (
     call: grpc.ServerUnaryCall<vaultsPB.Permissions, utilsPB.StatusMessage>,
@@ -74,6 +77,7 @@ function vaultsPermissionSet({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
+      logger.error(e);
       return;
     }
   };

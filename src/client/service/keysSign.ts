@@ -1,15 +1,18 @@
 import type * as grpc from '@grpc/grpc-js';
 import type { Authenticate } from '../types';
 import type { KeyManager } from '../../keys';
+import type Logger from '@matrixai/logger';
 import { utils as grpcUtils } from '../../grpc';
 import * as keysPB from '../../proto/js/polykey/v1/keys/keys_pb';
 
 function keysSign({
-  keyManager,
   authenticate,
+  keyManager,
+  logger,
 }: {
-  keyManager: KeyManager;
   authenticate: Authenticate;
+  keyManager: KeyManager;
+  logger: Logger;
 }) {
   return async (
     call: grpc.ServerUnaryCall<keysPB.Crypto, keysPB.Crypto>,
@@ -28,6 +31,7 @@ function keysSign({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
+      logger.error(e);
       return;
     }
   };

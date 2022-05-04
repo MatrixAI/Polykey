@@ -92,6 +92,7 @@ describe('gestaltsGestaltList', () => {
       gestaltsGestaltList: gestaltsGestaltList({
         authenticate,
         gestaltGraph,
+        logger,
       }),
     };
     grpcServer = new GRPCServer({ logger });

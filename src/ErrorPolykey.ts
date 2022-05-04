@@ -9,24 +9,24 @@ class ErrorPolykey<T> extends AbstractError<T> {
     _key: string = '',
     options: {
       description?: boolean;
-      message?: boolean,
-      exitCode?: boolean,
+      message?: boolean;
+      exitCode?: boolean;
       timestamp?: boolean;
       data?: boolean;
       cause?: boolean;
       stack?: boolean;
-    } = {}
+    } = {},
   ): {
     type: string;
     data: {
       description?: string;
       message?: string;
-      exitCode?: number,
-      timestamp?: Date,
+      exitCode?: number;
+      timestamp?: Date;
       data?: POJO;
-      cause?: T,
-      stack?: string
-    }
+      cause?: T;
+      stack?: string;
+    };
   } {
     options.description ??= true;
     options.message ??= true;
@@ -54,7 +54,7 @@ class ErrorPolykey<T> extends AbstractError<T> {
     if (options.stack) data.stack = this.stack;
     return {
       type: this.name,
-      data
+      data,
     };
   }
 }

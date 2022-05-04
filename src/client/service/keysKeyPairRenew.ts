@@ -2,15 +2,18 @@ import type * as grpc from '@grpc/grpc-js';
 import type { Authenticate } from '../types';
 import type { KeyManager } from '../../keys';
 import type * as keysPB from '../../proto/js/polykey/v1/keys/keys_pb';
+import type Logger from '@matrixai/logger';
 import { utils as grpcUtils } from '../../grpc';
 import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 
 function keysKeyPairRenew({
-  keyManager,
   authenticate,
+  keyManager,
+  logger,
 }: {
-  keyManager: KeyManager;
   authenticate: Authenticate;
+  keyManager: KeyManager;
+  logger: Logger;
 }) {
   return async (
     call: grpc.ServerUnaryCall<keysPB.Key, utilsPB.EmptyMessage>,
@@ -27,6 +30,7 @@ function keysKeyPairRenew({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
+      logger.error(e);
       return;
     }
   };

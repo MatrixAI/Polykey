@@ -85,16 +85,12 @@ class ErrorDoublySignedClaimNumSignatures<T> extends ErrorSchemaValidate<T> {
   exitCode = sysexits.CONFIG;
 }
 
-class ErrorSinglySignedClaimValidationFailed<
-  T,
-> extends ErrorSchemaValidate<T> {
+class ErrorSinglySignedClaimValidationFailed<T> extends ErrorSchemaValidate<T> {
   static description = 'Claim data does not match schema';
   exitCode = sysexits.CONFIG;
 }
 
-class ErrorDoublySignedClaimValidationFailed<
-  T,
-> extends ErrorSchemaValidate<T> {
+class ErrorDoublySignedClaimValidationFailed<T> extends ErrorSchemaValidate<T> {
   static description = 'Claim data does not match schema';
   exitCode = sysexits.CONFIG;
 }

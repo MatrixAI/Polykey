@@ -3,17 +3,20 @@ import type { VaultName } from '../../vaults/types';
 import type VaultManager from '../../vaults/VaultManager';
 import type * as grpc from '@grpc/grpc-js';
 import type * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
+import type Logger from '@matrixai/logger';
 import * as validationUtils from '../../validation/utils';
 import * as grpcUtils from '../../grpc/utils';
 import * as vaultOps from '../../vaults/VaultOps';
 import * as secretsPB from '../../proto/js/polykey/v1/secrets/secrets_pb';
 
 function vaultsSecretsList({
-  vaultManager,
   authenticate,
+  vaultManager,
+  logger,
 }: {
-  vaultManager: VaultManager;
   authenticate: Authenticate;
+  vaultManager: VaultManager;
+  logger: Logger;
 }) {
   return async (
     call: grpc.ServerWritableStream<vaultsPB.Vault, secretsPB.Secret>,
@@ -42,6 +45,7 @@ function vaultsSecretsList({
       return;
     } catch (e) {
       await genWritable.throw(e);
+      logger.error(e);
       return;
     }
   };

@@ -74,6 +74,7 @@ describe('keysKeyPairReset', () => {
       keysKeyPairReset: keysKeyPairReset({
         authenticate,
         keyManager,
+        logger,
       }),
     };
     grpcServer = new GRPCServer({ logger });

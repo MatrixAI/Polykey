@@ -56,10 +56,12 @@ describe('keysSignVerify', () => {
       keysSign: keysSign({
         authenticate,
         keyManager,
+        logger,
       }),
       keysVerify: keysVerify({
         authenticate,
         keyManager,
+        logger,
       }),
     };
     grpcServer = new GRPCServer({ logger });

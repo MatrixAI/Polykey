@@ -47,9 +47,7 @@ class ErrorNotificationsGeneralInvalid<T> extends ErrorSchemaValidate<T> {
   exitCode = sysexits.USAGE;
 }
 
-class ErrorNotificationsGestaltInviteInvalid<
-  T,
-> extends ErrorSchemaValidate<T> {
+class ErrorNotificationsGestaltInviteInvalid<T> extends ErrorSchemaValidate<T> {
   static description = 'Invalid notification data';
   exitCode = sysexits.USAGE;
 }

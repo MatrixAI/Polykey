@@ -1,6 +1,7 @@
 import type { Authenticate } from '../types';
 import type { VaultName } from '../../vaults/types';
 import type VaultManager from '../../vaults/VaultManager';
+import type Logger from '@matrixai/logger';
 import * as grpc from '@grpc/grpc-js';
 import * as validationUtils from '../../validation/utils';
 import * as grpcUtils from '../../grpc/utils';
@@ -8,11 +9,13 @@ import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
 
 function vaultsRename({
-  vaultManager,
   authenticate,
+  vaultManager,
+  logger,
 }: {
-  vaultManager: VaultManager;
   authenticate: Authenticate;
+  vaultManager: VaultManager;
+  logger: Logger;
 }) {
   return async (
     call: grpc.ServerUnaryCall<vaultsPB.Rename, vaultsPB.Vault>,
@@ -37,6 +40,7 @@ function vaultsRename({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
+      logger.error(e);
       return;
     }
   };

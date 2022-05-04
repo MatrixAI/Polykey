@@ -55,10 +55,12 @@ describe('keysEncryptDecrypt', () => {
       keysEncrypt: keysEncrypt({
         authenticate,
         keyManager,
+        logger,
       }),
       keysDecrypt: keysDecrypt({
         authenticate,
         keyManager,
+        logger,
       }),
     };
     grpcServer = new GRPCServer({ logger });

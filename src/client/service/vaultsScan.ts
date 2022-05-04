@@ -3,6 +3,7 @@ import type { NodeId } from '../../nodes/types';
 import type * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
 import type * as grpc from '@grpc/grpc-js';
 import type VaultManager from '../../vaults/VaultManager';
+import type Logger from '@matrixai/logger';
 import * as grpcUtils from '../../grpc/utils';
 import { validateSync } from '../../validation';
 import * as validationUtils from '../../validation/utils';
@@ -10,11 +11,13 @@ import { matchSync } from '../../utils';
 import * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
 
 function vaultsScan({
-  vaultManager,
   authenticate,
+  vaultManager,
+  logger,
 }: {
-  vaultManager: VaultManager;
   authenticate: Authenticate;
+  vaultManager: VaultManager;
+  logger: Logger;
 }) {
   return async (
     call: grpc.ServerWritableStream<nodesPB.Node, vaultsPB.List>,
@@ -53,6 +56,7 @@ function vaultsScan({
       return;
     } catch (e) {
       await genWritable.throw(e);
+      logger.error(e);
       return;
     }
   };

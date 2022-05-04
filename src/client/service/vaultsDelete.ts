@@ -3,16 +3,19 @@ import type { VaultName } from '../../vaults/types';
 import type VaultManager from '../../vaults/VaultManager';
 import type * as grpc from '@grpc/grpc-js';
 import type * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
+import type Logger from '@matrixai/logger';
 import * as grpcUtils from '../../grpc/utils';
 import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 import * as validationUtils from '../../validation/utils';
 
 function vaultsDelete({
-  vaultManager,
   authenticate,
+  vaultManager,
+  logger,
 }: {
-  vaultManager: VaultManager;
   authenticate: Authenticate;
+  vaultManager: VaultManager;
+  logger: Logger;
 }) {
   return async (
     call: grpc.ServerUnaryCall<vaultsPB.Vault, utilsPB.StatusMessage>,
@@ -32,6 +35,7 @@ function vaultsDelete({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
+      logger.error(e);
       return;
     }
   };
