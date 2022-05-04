@@ -59,6 +59,7 @@ describe('agentStop', () => {
       agentStop: agentStop({
         authenticate,
         pkAgent: pkAgent as unknown as PolykeyAgent,
+        logger,
       }),
     };
     grpcServer = new GRPCServer({ logger });

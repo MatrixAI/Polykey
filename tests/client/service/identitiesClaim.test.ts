@@ -148,6 +148,7 @@ describe('identitiesClaim', () => {
         identitiesManager,
         sigchain,
         keyManager,
+        logger,
       }),
     };
     grpcServer = new GRPCServer({ logger });

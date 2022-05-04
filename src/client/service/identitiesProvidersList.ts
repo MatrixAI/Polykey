@@ -2,15 +2,18 @@ import type * as grpc from '@grpc/grpc-js';
 import type { Authenticate } from '../types';
 import type { IdentitiesManager } from '../../identities';
 import type * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
+import type Logger from '@matrixai/logger';
 import { utils as grpcUtils } from '../../grpc';
 import * as identitiesPB from '../../proto/js/polykey/v1/identities/identities_pb';
 
 function identitiesProvidersList({
-  identitiesManager,
   authenticate,
+  identitiesManager,
+  logger,
 }: {
-  identitiesManager: IdentitiesManager;
   authenticate: Authenticate;
+  identitiesManager: IdentitiesManager;
+  logger: Logger;
 }) {
   return async (
     call: grpc.ServerUnaryCall<utilsPB.EmptyMessage, identitiesPB.Provider>,
@@ -26,6 +29,7 @@ function identitiesProvidersList({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
+      logger.error(e);
       return;
     }
   };

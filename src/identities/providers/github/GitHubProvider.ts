@@ -120,7 +120,8 @@ class GitHubProvider extends Provider {
           data = await response.json();
         } catch (e) {
           throw new identitiesErrors.ErrorProviderAuthentication(
-            'Provider access token response is not valid JSON', { cause: e },
+            'Provider access token response is not valid JSON',
+            { cause: e },
           );
         }
         if (data.error) {

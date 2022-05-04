@@ -60,6 +60,7 @@ describe('identitiesProvidersList', () => {
       identitiesProvidersList: identitiesProvidersList({
         authenticate,
         identitiesManager,
+        logger,
       }),
     };
     grpcServer = new GRPCServer({ logger });

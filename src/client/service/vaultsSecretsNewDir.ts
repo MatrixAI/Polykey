@@ -3,6 +3,7 @@ import type { VaultName } from '../../vaults/types';
 import type VaultManager from '../../vaults/VaultManager';
 import type { FileSystem } from '../../types';
 import type * as secretsPB from '../../proto/js/polykey/v1/secrets/secrets_pb';
+import type Logger from '@matrixai/logger';
 import * as grpc from '@grpc/grpc-js';
 import * as validationUtils from '../../validation/utils';
 import * as grpcUtils from '../../grpc/utils';
@@ -10,13 +11,15 @@ import * as vaultOps from '../../vaults/VaultOps';
 import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 
 function vaultsSecretsNewDir({
-  vaultManager,
   authenticate,
+  vaultManager,
   fs,
+  logger,
 }: {
-  vaultManager: VaultManager;
   authenticate: Authenticate;
+  vaultManager: VaultManager;
   fs: FileSystem;
+  logger: Logger;
 }) {
   return async (
     call: grpc.ServerUnaryCall<secretsPB.Directory, utilsPB.EmptyMessage>,
@@ -43,6 +46,7 @@ function vaultsSecretsNewDir({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
+      logger.error(e);
       return;
     }
   };

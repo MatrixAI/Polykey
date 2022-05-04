@@ -5,6 +5,7 @@ import type { NodeId } from '../../nodes/types';
 import type { Sigchain } from '../../sigchain';
 import type { KeyManager } from '../../keys';
 import type * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
+import type Logger from '@matrixai/logger';
 import { utils as grpcUtils } from '../../grpc';
 import { utils as claimsUtils, errors as claimsErrors } from '../../claims';
 import { utils as nodesUtils } from '../../nodes';
@@ -15,16 +16,16 @@ function nodesCrossSignClaim({
   keyManager,
   nodeManager,
   sigchain,
+  logger,
 }: {
   keyManager: KeyManager;
   nodeManager: NodeManager;
   sigchain: Sigchain;
+  logger: Logger;
 }) {
   return async (
     call: grpc.ServerDuplexStream<nodesPB.CrossSign, nodesPB.CrossSign>,
   ) => {
-    // TODO: Move all "await genClaims.throw" to a final catch(). Wrap this
-    // entire thing in a try block. And re-throw whatever error is caught
     const genClaims = grpcUtils.generatorDuplex(call, true);
     try {
       await sigchain.transaction(async (sigchain) => {
@@ -149,9 +150,7 @@ function nodesCrossSignClaim({
             senderPublicKey,
           ));
         if (!verifiedDoubly) {
-          await genClaims.throw(
-            new claimsErrors.ErrorDoublySignedClaimVerificationFailed(),
-          );
+          throw new claimsErrors.ErrorDoublySignedClaimVerificationFailed();
         }
         // If verified, then we can safely add to our sigchain
         await sigchain.addExistingClaim(constructedDoublySignedClaim);
@@ -161,8 +160,7 @@ function nodesCrossSignClaim({
       });
     } catch (e) {
       await genClaims.throw(e);
-      // TODO: Handle the exception on this server - throw e?
-      // throw e;
+      logger.error(e);
       return;
     }
   };

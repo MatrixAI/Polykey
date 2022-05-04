@@ -72,14 +72,17 @@ describe('gestaltsActionsByIdentity', () => {
       gestaltsActionsSetByIdentity: gestaltsActionsSetByIdentity({
         authenticate,
         gestaltGraph,
+        logger,
       }),
       gestaltsActionsGetByIdentity: gestaltsActionsGetByIdentity({
         authenticate,
         gestaltGraph,
+        logger,
       }),
       gestaltsActionsUnsetByIdentity: gestaltsActionsUnsetByIdentity({
         authenticate,
         gestaltGraph,
+        logger,
       }),
     };
     grpcServer = new GRPCServer({ logger });

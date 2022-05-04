@@ -3,6 +3,7 @@ import type { NodeManager, NodeConnectionManager } from '../../nodes';
 import type KeyManager from '../../keys/KeyManager';
 import type { NodeId } from '../../nodes/types';
 import type * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
+import type Logger from '@matrixai/logger';
 import * as networkUtils from '../../network/utils';
 import { utils as grpcUtils } from '../../grpc';
 import { validateSync, utils as validationUtils } from '../../validation';
@@ -13,10 +14,12 @@ function nodesHolePunchMessageSend({
   keyManager,
   nodeManager,
   nodeConnectionManager,
+  logger,
 }: {
   keyManager: KeyManager;
   nodeManager: NodeManager;
   nodeConnectionManager: NodeConnectionManager;
+  logger: Logger;
 }) {
   return async (
     call: grpc.ServerUnaryCall<nodesPB.Relay, utilsPB.EmptyMessage>,
@@ -63,6 +66,7 @@ function nodesHolePunchMessageSend({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e, true));
+      logger.error(e);
       return;
     }
   };

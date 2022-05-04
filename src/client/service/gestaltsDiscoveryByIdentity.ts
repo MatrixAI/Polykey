@@ -3,6 +3,7 @@ import type { Authenticate } from '../types';
 import type { Discovery } from '../../discovery';
 import type { IdentityId, ProviderId } from '../../identities/types';
 import type * as identitiesPB from '../../proto/js/polykey/v1/identities/identities_pb';
+import type Logger from '@matrixai/logger';
 import { validateSync } from '../../validation';
 import { matchSync } from '../../utils';
 import * as grpcUtils from '../../grpc/utils';
@@ -12,9 +13,11 @@ import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 function gestaltsDiscoveryByIdentity({
   authenticate,
   discovery,
+  logger,
 }: {
   authenticate: Authenticate;
   discovery: Discovery;
+  logger: Logger;
 }) {
   return async (
     call: grpc.ServerUnaryCall<identitiesPB.Provider, utilsPB.EmptyMessage>,
@@ -48,6 +51,7 @@ function gestaltsDiscoveryByIdentity({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
+      logger.error(e);
       return;
     }
   };

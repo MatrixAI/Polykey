@@ -110,8 +110,9 @@ describe('nodesFind', () => {
     await nodeConnectionManager.start();
     const clientService = {
       nodesFind: nodesFind({
-        nodeConnectionManager,
         authenticate,
+        nodeConnectionManager,
+        logger,
       }),
     };
     grpcServer = new GRPCServer({ logger });

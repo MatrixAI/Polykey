@@ -2,15 +2,18 @@ import type * as grpc from '@grpc/grpc-js';
 import type { Authenticate } from '../types';
 import type { KeyManager } from '../../keys';
 import type * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
+import type Logger from '@matrixai/logger';
 import { utils as grpcUtils } from '../../grpc';
 import * as keysPB from '../../proto/js/polykey/v1/keys/keys_pb';
 
 function keysCertsChainGet({
-  keyManager,
   authenticate,
+  keyManager,
+  logger,
 }: {
-  keyManager: KeyManager;
   authenticate: Authenticate;
+  keyManager: KeyManager;
+  logger: Logger;
 }) {
   return async (
     call: grpc.ServerWritableStream<utilsPB.EmptyMessage, keysPB.Certificate>,
@@ -30,6 +33,7 @@ function keysCertsChainGet({
       return;
     } catch (e) {
       await genWritable.throw(e);
+      logger.error(e);
       return;
     }
   };

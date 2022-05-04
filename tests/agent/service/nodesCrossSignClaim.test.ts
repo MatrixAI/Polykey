@@ -5,6 +5,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
+import { ErrorPolykeyRemote } from '@/errors';
 import PolykeyAgent from '@/PolykeyAgent';
 import GRPCServer from '@/grpc/GRPCServer';
 import GRPCClientAgent from '@/agent/GRPCClientAgent';
@@ -14,7 +15,6 @@ import * as nodesPB from '@/proto/js/polykey/v1/nodes/nodes_pb';
 import * as keysUtils from '@/keys/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as claimsUtils from '@/claims/utils';
-import * as claimsErrors from '@/claims/errors';
 import * as testNodesUtils from '../../nodes/utils';
 import * as testUtils from '../../utils';
 
@@ -78,6 +78,7 @@ describe('nodesCrossSignClaim', () => {
         keyManager: pkAgent.keyManager,
         nodeManager: pkAgent.nodeManager,
         sigchain: pkAgent.sigchain,
+        logger,
       }),
     };
     grpcServer = new GRPCServer({ logger });
@@ -204,9 +205,7 @@ describe('nodesCrossSignClaim', () => {
     // 2. X <- sends its intermediary signed claim <- Y
     const crossSignMessageUndefinedSingly = new nodesPB.CrossSign();
     await genClaims.write(crossSignMessageUndefinedSingly);
-    await expect(() => genClaims.read()).rejects.toThrow(
-      claimsErrors.ErrorUndefinedSinglySignedClaim,
-    );
+    await expect(() => genClaims.read()).rejects.toThrow(ErrorPolykeyRemote);
     expect(genClaims.stream.destroyed).toBe(true);
     // Check sigchain's lock is released
     expect(pkAgent.sigchain.locked).toBe(false);
@@ -226,9 +225,7 @@ describe('nodesCrossSignClaim', () => {
       intermediaryNoSignature,
     );
     await genClaims.write(crossSignMessageUndefinedSinglySignature);
-    await expect(() => genClaims.read()).rejects.toThrow(
-      claimsErrors.ErrorUndefinedSignature,
-    );
+    await expect(() => genClaims.read()).rejects.toThrow(ErrorPolykeyRemote);
     expect(genClaims.stream.destroyed).toBe(true);
     // Check sigchain's lock is released
     expect(pkAgent.sigchain.locked).toBe(false);

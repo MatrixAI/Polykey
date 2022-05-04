@@ -1,15 +1,18 @@
 import type * as grpc from '@grpc/grpc-js';
 import type { Authenticate } from '../types';
 import type { NotificationsManager } from '../../notifications';
+import type Logger from '@matrixai/logger';
 import { utils as grpcUtils } from '../../grpc';
 import * as notificationsPB from '../../proto/js/polykey/v1/notifications/notifications_pb';
 
 function notificationsRead({
-  notificationsManager,
   authenticate,
+  notificationsManager,
+  logger,
 }: {
-  notificationsManager: NotificationsManager;
   authenticate: Authenticate;
+  notificationsManager: NotificationsManager;
+  logger: Logger;
 }) {
   return async (
     call: grpc.ServerUnaryCall<notificationsPB.Read, notificationsPB.List>,
@@ -65,6 +68,7 @@ function notificationsRead({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
+      logger.error(e);
       return;
     }
   };

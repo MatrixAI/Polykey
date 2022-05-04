@@ -100,7 +100,8 @@ class GRPCServer {
                   `Failed GRPC client certificate verification connecting from ${address}`,
                 );
                 const e_ = new grpcErrors.ErrorGRPCServerVerification(
-                  `${e.name}: ${e.message}`, {
+                  `${e.name}: ${e.message}`,
+                  {
                     data: e.data,
                     cause: e,
                   },

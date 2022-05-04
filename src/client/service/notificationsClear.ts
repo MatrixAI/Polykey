@@ -1,15 +1,18 @@
 import type * as grpc from '@grpc/grpc-js';
 import type { Authenticate } from '../types';
 import type { NotificationsManager } from '../../notifications';
+import type Logger from '@matrixai/logger';
 import { utils as grpcUtils } from '../../grpc';
 import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 
 function notificationsClear({
-  notificationsManager,
   authenticate,
+  notificationsManager,
+  logger,
 }: {
-  notificationsManager: NotificationsManager;
   authenticate: Authenticate;
+  notificationsManager: NotificationsManager;
+  logger: Logger;
 }) {
   return async (
     call: grpc.ServerUnaryCall<utilsPB.EmptyMessage, utilsPB.EmptyMessage>,
@@ -24,6 +27,7 @@ function notificationsClear({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
+      logger.error(e);
       return;
     }
   };

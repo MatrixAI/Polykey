@@ -151,7 +151,8 @@ abstract class GRPCClient<T extends Client = Client> {
             `Failed GRPC server certificate verification connecting to ${address}`,
           );
           const e_ = new grpcErrors.ErrorGRPCClientVerification(
-            `${e.name}: ${e.message}`,{
+            `${e.name}: ${e.message}`,
+            {
               data: e.data,
               cause: e,
             },
