@@ -8,7 +8,7 @@ import type {
   ClaimIntermediary,
   ClaimType,
 } from '../claims/types';
-import type { KeyManager } from '../keys';
+import type KeyManager from '../keys/KeyManager';
 import type { NodeIdEncoded } from '../nodes/types';
 import Logger from '@matrixai/logger';
 import { IdInternal } from '@matrixai/id';
