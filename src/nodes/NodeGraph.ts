@@ -1,8 +1,7 @@
-import type { DB, DBLevel, DBOp } from '@matrixai/db';
+import type { DB, DBTransaction, KeyPath, LevelPath } from '@matrixai/db';
 import type { NodeId, NodeAddress, NodeBucket } from './types';
 import type KeyManager from '../keys/KeyManager';
 import type { Host, Hostname, Port } from '../network/types';
-import { Mutex } from 'async-mutex';
 import lexi from 'lexicographic-integer';
 import Logger from '@matrixai/logger';
 import {
@@ -10,6 +9,8 @@ import {
   ready,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import { IdInternal } from '@matrixai/id';
+import { utils as dbUtils } from '@matrixai/db';
+import { withF } from '@matrixai/resources';
 import * as nodesUtils from './utils';
 import * as nodesErrors from './errors';
 
@@ -23,21 +24,6 @@ interface NodeGraph extends CreateDestroyStartStop {}
   new nodesErrors.ErrorNodeGraphDestroyed(),
 )
 class NodeGraph {
-  // Max number of nodes in each k-bucket (a.k.a. k)
-  public readonly maxNodesPerBucket: number = 20;
-
-  protected logger: Logger;
-  protected db: DB;
-  protected keyManager: KeyManager;
-  protected nodeGraphDbDomain: string = this.constructor.name;
-  protected nodeGraphBucketsDbDomain: Array<string> = [
-    this.nodeGraphDbDomain,
-    'buckets',
-  ];
-  protected nodeGraphDb: DBLevel;
-  protected nodeGraphBucketsDb: DBLevel;
-  protected lock: Mutex = new Mutex();
-
   public static async createNodeGraph({
     db,
     keyManager,
@@ -60,6 +46,23 @@ class NodeGraph {
     return nodeGraph;
   }
 
+  /**
+   * Max number of nodes in each k-bucket (a.k.a. k)
+   */
+  public readonly maxNodesPerBucket: number = 20;
+
+  protected logger: Logger;
+  protected db: DB;
+  protected keyManager: KeyManager;
+  protected nodeGraphDbPath: LevelPath = [this.constructor.name];
+  /**
+   * Buckets stores NodeBucketIndex -> NodeBucket
+   */
+  protected nodeGraphBucketsDbPath: LevelPath = [
+    this.constructor.name,
+    'buckets',
+  ];
+
   constructor({
     db,
     keyManager,
@@ -74,27 +77,15 @@ class NodeGraph {
     this.keyManager = keyManager;
   }
 
-  get locked(): boolean {
-    return this.lock.isLocked();
-  }
-
   public async start({
     fresh = false,
   }: {
     fresh?: boolean;
   } = {}) {
     this.logger.info(`Starting ${this.constructor.name}`);
-    const nodeGraphDb = await this.db.level(this.nodeGraphDbDomain);
-    // Buckets stores NodeBucketIndex -> NodeBucket
-    const nodeGraphBucketsDb = await this.db.level(
-      this.nodeGraphBucketsDbDomain[1],
-      nodeGraphDb,
-    );
     if (fresh) {
-      await nodeGraphDb.clear();
+      await this.db.clear(this.nodeGraphDbPath);
     }
-    this.nodeGraphDb = nodeGraphDb;
-    this.nodeGraphBucketsDb = nodeGraphBucketsDb;
     this.logger.info(`Started ${this.constructor.name}`);
   }
 
@@ -105,37 +96,18 @@ class NodeGraph {
 
   public async destroy() {
     this.logger.info(`Destroying ${this.constructor.name}`);
-    const nodeGraphDb = await this.db.level(this.nodeGraphDbDomain);
-    await nodeGraphDb.clear();
+    await this.db.clear(this.nodeGraphDbPath);
     this.logger.info(`Destroyed ${this.constructor.name}`);
   }
 
-  /**
-   * Run several operations within the same lock
-   * This does not ensure atomicity of the underlying database
-   * Database atomicity still depends on the underlying operation
-   */
-  public async transaction<T>(
-    f: (nodeGraph: NodeGraph) => Promise<T>,
+  @ready(new nodesErrors.ErrorNodeGraphNotRunning())
+  public async withTransactionF<T>(
+    f: (tran: DBTransaction) => Promise<T>,
   ): Promise<T> {
-    const release = await this.lock.acquire();
-    try {
-      return await f(this);
-    } finally {
-      release();
-    }
-  }
-
-  /**
-   * Transaction wrapper that will not lock if the operation was executed
-   * within a transaction context
-   */
-  public async _transaction<T>(f: () => Promise<T>): Promise<T> {
-    if (this.lock.isLocked()) {
-      return await f();
-    } else {
-      return await this.transaction(f);
-    }
+    return withF(
+      [this.db.transaction()],
+      ([tran]) => f(tran),
+    );
   }
 
   /**
@@ -144,18 +116,24 @@ class NodeGraph {
    * @returns Node Address of the target node
    */
   @ready(new nodesErrors.ErrorNodeGraphNotRunning())
-  public async getNode(nodeId: NodeId): Promise<NodeAddress | undefined> {
-    return await this._transaction(async () => {
-      const bucketIndex = this.getBucketIndex(nodeId);
-      const bucket = await this.db.get<NodeBucket>(
-        this.nodeGraphBucketsDbDomain,
-        bucketIndex,
+  public async getNode(nodeId: NodeId, tran?: DBTransaction): Promise<NodeAddress | undefined> {
+    if (tran == null) {
+      return this.withTransactionF(async (tran) =>
+        this.getNode(nodeId, tran),
       );
-      if (bucket != null && nodeId in bucket) {
-        return bucket[nodeId].address;
-      }
-      return;
-    });
+    }
+    const bucketIndex = this.getBucketIndex(nodeId);
+    const bucketPath = [
+      ...this.nodeGraphBucketsDbPath,
+      bucketIndex,
+    ] as unknown as KeyPath;
+    const bucket = await tran.get<NodeBucket>(
+      bucketPath,
+    );
+    if (bucket != null && nodeId in bucket) {
+      return bucket[nodeId].address;
+    }
+    return;
   }
 
   /**
@@ -174,47 +152,51 @@ class NodeGraph {
    * @param bucketIndex
    */
   @ready(new nodesErrors.ErrorNodeGraphNotRunning())
-  public async getBucket(bucketIndex: number): Promise<NodeBucket | undefined> {
-    return await this._transaction(async () => {
-      const bucket = await this.db.get<NodeBucket>(
-        this.nodeGraphBucketsDbDomain,
-        lexi.pack(bucketIndex, 'hex'),
+  public async getBucket(bucketIndex: number, tran?: DBTransaction): Promise<NodeBucket | undefined> {
+    if (tran == null) {
+      return this.withTransactionF(async (tran) =>
+        this.getBucket(bucketIndex, tran),
       );
-      // Cast the non-primitive types correctly (ensures type safety when using them)
-      for (const nodeId in bucket) {
-        bucket[nodeId].address.host = bucket[nodeId].address.host as
-          | Host
-          | Hostname;
-        bucket[nodeId].address.port = bucket[nodeId].address.port as Port;
-        bucket[nodeId].lastUpdated = new Date(bucket[nodeId].lastUpdated);
-      }
-      return bucket;
-    });
+    }
+    const bucketPath = [
+      ...this.nodeGraphBucketsDbPath,
+      lexi.pack(bucketIndex, 'hex'),
+    ] as unknown as KeyPath;
+    const bucket = await tran.get<NodeBucket>(
+      bucketPath,
+    );
+    // Cast the non-primitive types correctly (ensures type safety when using them)
+    for (const nodeId in bucket) {
+      bucket[nodeId].address.host = bucket[nodeId].address.host as
+        | Host
+        | Hostname;
+      bucket[nodeId].address.port = bucket[nodeId].address.port as Port;
+      bucket[nodeId].lastUpdated = new Date(bucket[nodeId].lastUpdated);
+    }
+    return bucket;
   }
 
   /**
    * Sets a node to the bucket database
    * This may delete an existing node if the bucket is filled up
    */
-  @ready(new nodesErrors.ErrorNodeGraphNotRunning())
   public async setNode(
     nodeId: NodeId,
     nodeAddress: NodeAddress,
+    tran?: DBTransaction,
   ): Promise<void> {
-    return await this._transaction(async () => {
-      const ops = await this.setNodeOps(nodeId, nodeAddress);
-      await this.db.batch(ops);
-    });
-  }
-
-  protected async setNodeOps(
-    nodeId: NodeId,
-    nodeAddress: NodeAddress,
-  ): Promise<Array<DBOp>> {
+    if (tran == null) {
+      return this.withTransactionF(async (tran) =>
+        this.setNode(nodeId, nodeAddress, tran),
+      );
+    }
     const bucketIndex = this.getBucketIndex(nodeId);
-    let bucket = await this.db.get<NodeBucket>(
-      this.nodeGraphBucketsDbDomain,
+    const bucketPath = [
+      ...this.nodeGraphBucketsDbPath,
       bucketIndex,
+    ] as unknown as KeyPath;
+    let bucket = await tran.get<NodeBucket>(
+      bucketPath,
     );
     if (bucket == null) {
       bucket = {};
@@ -239,14 +221,7 @@ class NodeGraph {
         throw new nodesErrors.ErrorNodeGraphOversizedBucket();
       }
     }
-    return [
-      {
-        type: 'put',
-        domain: this.nodeGraphBucketsDbDomain,
-        key: bucketIndex,
-        value: bucket,
-      },
-    ];
+    await tran.put(bucketPath, bucket);
   }
 
   /**
@@ -258,38 +233,30 @@ class NodeGraph {
   public async updateNode(
     nodeId: NodeId,
     nodeAddress?: NodeAddress,
+    tran?: DBTransaction,
   ): Promise<void> {
-    return await this._transaction(async () => {
-      const ops = await this.updateNodeOps(nodeId, nodeAddress);
-      await this.db.batch(ops);
-    });
-  }
-
-  protected async updateNodeOps(
-    nodeId: NodeId,
-    nodeAddress?: NodeAddress,
-  ): Promise<Array<DBOp>> {
+    if (tran == null) {
+      return this.withTransactionF(async (tran) =>
+        this.updateNode(nodeId, nodeAddress, tran),
+      );
+    }
     const bucketIndex = this.getBucketIndex(nodeId);
-    const bucket = await this.db.get<NodeBucket>(
-      this.nodeGraphBucketsDbDomain,
+    const bucketPath = [
+      ...this.nodeGraphBucketsDbPath,
       bucketIndex,
+    ] as unknown as KeyPath;
+    const bucket = await tran.get<NodeBucket>(
+      bucketPath,
     );
-    const ops: Array<DBOp> = [];
     if (bucket != null && nodeId in bucket) {
       bucket[nodeId].lastUpdated = new Date();
       if (nodeAddress != null) {
         bucket[nodeId].address = nodeAddress;
       }
-      ops.push({
-        type: 'put',
-        domain: this.nodeGraphBucketsDbDomain,
-        key: bucketIndex,
-        value: bucket,
-      });
+      await tran.put(bucketPath, bucket);
     } else {
       throw new nodesErrors.ErrorNodeGraphNodeIdNotFound();
     }
-    return ops;
   }
 
   /**
@@ -297,39 +264,29 @@ class NodeGraph {
    * @param nodeId
    */
   @ready(new nodesErrors.ErrorNodeGraphNotRunning())
-  public async unsetNode(nodeId: NodeId): Promise<void> {
-    return await this._transaction(async () => {
-      const ops = await this.unsetNodeOps(nodeId);
-      await this.db.batch(ops);
-    });
-  }
-
-  protected async unsetNodeOps(nodeId: NodeId): Promise<Array<DBOp>> {
+  public async unsetNode(nodeId: NodeId, tran?: DBTransaction): Promise<void> {
+    if (tran == null) {
+      return this.withTransactionF(async (tran) =>
+        this.unsetNode(nodeId, tran),
+      );
+    }
     const bucketIndex = this.getBucketIndex(nodeId);
-    const bucket = await this.db.get<NodeBucket>(
-      this.nodeGraphBucketsDbDomain,
+    const bucketPath = [
+      ...this.nodeGraphBucketsDbPath,
       bucketIndex,
+    ] as unknown as KeyPath;
+    const bucket = await tran.get<NodeBucket>(
+      bucketPath
     );
-    const ops: Array<DBOp> = [];
     if (bucket == null) {
-      return ops;
+      return;
     }
     delete bucket[nodeId];
     if (Object.keys(bucket).length === 0) {
-      ops.push({
-        type: 'del',
-        domain: this.nodeGraphBucketsDbDomain,
-        key: bucketIndex,
-      });
+      await tran.del(bucketPath);
     } else {
-      ops.push({
-        type: 'put',
-        domain: this.nodeGraphBucketsDbDomain,
-        key: bucketIndex,
-        value: bucket,
-      });
+      await tran.put(bucketPath, bucket);
     }
-    return ops;
   }
 
   /**
@@ -349,19 +306,20 @@ class NodeGraph {
    * Returns all of the buckets in an array
    */
   @ready(new nodesErrors.ErrorNodeGraphNotRunning())
-  public async getAllBuckets(): Promise<Array<NodeBucket>> {
-    return await this._transaction(async () => {
-      const buckets: Array<NodeBucket> = [];
-      for await (const o of this.nodeGraphBucketsDb.createReadStream()) {
-        const data = (o as any).value as Buffer;
-        const bucket = await this.db.deserializeDecrypt<NodeBucket>(
-          data,
-          false,
-        );
-        buckets.push(bucket);
-      }
-      return buckets;
-    });
+  public async getAllBuckets(tran?: DBTransaction): Promise<Array<NodeBucket>> {
+    if (tran == null) {
+      return this.withTransactionF(async (tran) =>
+        this.getAllBuckets(tran),
+      );
+    }
+    const buckets: Array<NodeBucket> = [];
+    for await (const [v] of tran.iterator({ key: false }, [
+      ...this.nodeGraphBucketsDbPath,
+    ])) {
+      const bucket = dbUtils.deserialize<NodeBucket>(v);
+      buckets.push(bucket);
+    }
+    return buckets;
   }
 
   /**
@@ -372,63 +330,65 @@ class NodeGraph {
    * will be removed.
    */
   @ready(new nodesErrors.ErrorNodeGraphNotRunning())
-  public async refreshBuckets(): Promise<void> {
-    return await this._transaction(async () => {
-      const ops: Array<DBOp> = [];
-      // Get a local copy of all the buckets
-      const buckets = await this.getAllBuckets();
-      // Wrap as a batch operation. We want to rollback if we encounter any
-      // errors (such that we don't clear the DB without re-adding the nodes)
-      // 1. Delete every bucket
-      for await (const k of this.nodeGraphBucketsDb.createKeyStream()) {
-        const hexBucketIndex = k as string;
-        ops.push({
-          type: 'del',
-          domain: this.nodeGraphBucketsDbDomain,
-          key: hexBucketIndex,
-        });
-      }
-      const tempBuckets: Record<string, NodeBucket> = {};
-      // 2. Re-add all the nodes from all buckets
-      for (const b of buckets) {
-        for (const n of Object.keys(b)) {
-          const nodeId = IdInternal.fromString<NodeId>(n);
-          const newIndex = this.getBucketIndex(nodeId);
-          let expectedBucket = tempBuckets[newIndex];
-          // The following is more or less copied from setNodeOps
-          if (expectedBucket == null) {
-            expectedBucket = {};
-          }
-          const bucketEntries = Object.entries(expectedBucket);
-          // Add the old node
-          expectedBucket[nodeId] = {
-            address: b[nodeId].address,
-            lastUpdated: b[nodeId].lastUpdated,
-          };
-          // If, with the old node added, we exceed the limit
-          if (bucketEntries.length > this.maxNodesPerBucket) {
-            // Then, with the old node added, find the least active and remove
-            const leastActive = bucketEntries.reduce((prev, curr) => {
-              return prev[1].lastUpdated < curr[1].lastUpdated ? prev : curr;
-            });
-            delete expectedBucket[leastActive[0]];
-          }
-          // Add this reconstructed bucket (with old node) into the temp storage
-          tempBuckets[newIndex] = expectedBucket;
+  public async refreshBuckets(tran?: DBTransaction): Promise<void> {
+    if (tran == null) {
+      return this.withTransactionF(async (tran) =>
+        this.refreshBuckets(tran),
+      );
+    }
+    // Get a local copy of all the buckets
+    const buckets = await this.getAllBuckets();
+    // Wrap as a batch operation. We want to rollback if we encounter any
+    // errors (such that we don't clear the DB without re-adding the nodes)
+    // 1. Delete every bucket
+    for await (const [k] of tran.iterator({ value: false }, [
+      ...this.nodeGraphBucketsDbPath,
+    ])) {
+      const hexBucketIndex = dbUtils.deserialize(k);
+      const hexBucketPath = [
+        ...this.nodeGraphBucketsDbPath,
+        hexBucketIndex,
+      ] as unknown as KeyPath;
+      await tran.del(hexBucketPath);
+    }
+    const tempBuckets: Record<string, NodeBucket> = {};
+    // 2. Re-add all the nodes from all buckets
+    for (const b of buckets) {
+      for (const n of Object.keys(b)) {
+        const nodeId = IdInternal.fromString<NodeId>(n);
+        const newIndex = this.getBucketIndex(nodeId);
+        let expectedBucket = tempBuckets[newIndex];
+        // The following is more or less copied from setNodeOps
+        if (expectedBucket == null) {
+          expectedBucket = {};
         }
+        const bucketEntries = Object.entries(expectedBucket);
+        // Add the old node
+        expectedBucket[nodeId] = {
+          address: b[nodeId].address,
+          lastUpdated: b[nodeId].lastUpdated,
+        };
+        // If, with the old node added, we exceed the limit
+        if (bucketEntries.length > this.maxNodesPerBucket) {
+          // Then, with the old node added, find the least active and remove
+          const leastActive = bucketEntries.reduce((prev, curr) => {
+            return prev[1].lastUpdated < curr[1].lastUpdated ? prev : curr;
+          });
+          delete expectedBucket[leastActive[0]];
+        }
+        // Add this reconstructed bucket (with old node) into the temp storage
+        tempBuckets[newIndex] = expectedBucket;
       }
-      // Now that we've reconstructed all the buckets, perform batch operations
-      // on a bucket level (i.e. per bucket, instead of per node)
-      for (const bucketIndex in tempBuckets) {
-        ops.push({
-          type: 'put',
-          domain: this.nodeGraphBucketsDbDomain,
-          key: bucketIndex,
-          value: tempBuckets[bucketIndex],
-        });
-      }
-      await this.db.batch(ops);
-    });
+    }
+    // Now that we've reconstructed all the buckets, perform batch operations
+    // on a bucket level (i.e. per bucket, instead of per node)
+    for (const bucketIndex in tempBuckets) {
+      const bucketPath = [
+        ...this.nodeGraphBucketsDbPath,
+        bucketIndex,
+      ] as unknown as KeyPath;
+      await tran.put(bucketPath, tempBuckets[bucketIndex]);
+    }
   }
 }
 

@@ -17,7 +17,6 @@ import {
   ready,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import { utils as dbUtils } from '@matrixai/db';
-import { Lock, LockBox } from '@matrixai/async-locks';
 import { withF } from '@matrixai/resources';
 import * as aclUtils from './utils';
 import * as aclErrors from './errors';
@@ -46,7 +45,6 @@ class ACL {
 
   protected logger: Logger;
   protected db: DB;
-  protected locks: LockBox<Lock> = new LockBox();
 
   protected aclDbPath: LevelPath = [this.constructor.name];
   /**
@@ -63,31 +61,6 @@ class ACL {
    * the NodeId in each record may be missing if it had been previously deleted
    */
   protected aclVaultsDbPath: LevelPath = [this.constructor.name, 'vaults'];
-
-  // Lock across the usages of the DB
-  // it makes sense to use
-  // Symbol.for("key")
-  // symbol for is found in teh global registry, if it doesn't exist, it is added to the global registry and returned
-  // we can identify our locks by this
-  // to do this, we should have a global lock system in case we want to LOCK across multiple domains
-  // then other domains can also ensure those locks are being done as well
-  // and it is a like a PATH for a specific domain
-  // we can pass a keyPath
-  // and we can lock a level path
-  // well right now it can only be a keypath
-  // this.acquireLock(key: Buffer)
-  // and we identify our key buffer into a collection
-  // we can do a collection struce
-  // the symbols don't quite make sense, since we cannot attach a lock there anyway
-  // so we have to do this as well
-  // if it is not the DB problem we can just do this
-  // this.acquireLock()
-
-  // KeyPath | string | Buffer
-  // locking an entire level is an interesting idea
-  // then you could have a very specific locking system
-  // No more single mutex
-  // protected lock: Mutex = new Mutex();
 
   protected generatePermId: () => PermissionId;
 
@@ -122,17 +95,10 @@ class ACL {
 
   @ready(new aclErrors.ErrorACLNotRunning())
   public async withTransactionF<T>(
-    ...params: [
-      ...keyPaths: Array<KeyPath>,
-      f: (tran: DBTransaction) => Promise<T>,
-    ]
+    f: (tran: DBTransaction) => Promise<T>,
   ): Promise<T> {
-    const f = params.pop() as (tran: DBTransaction) => Promise<T>;
-    const lockRequests = (params as Array<KeyPath>).map<
-      [KeyPath, typeof Lock]
-    >((keyPath) => [keyPath, Lock]);
     return withF(
-      [this.db.transaction(), this.locks.lock(...lockRequests)],
+      [this.db.transaction()],
       ([tran]) => f(tran),
     );
   }
@@ -143,6 +109,11 @@ class ACL {
     nodeId2: NodeId,
     tran?: DBTransaction,
   ): Promise<boolean> {
+    if (tran == null) {
+      return this.withTransactionF(async (tran) =>
+        this.sameNodePerm(nodeId1, nodeId2, tran),
+      );
+    }
     const nodeId1Path = [
       ...this.aclNodesDbPath,
       nodeId1.toBuffer(),
@@ -151,11 +122,6 @@ class ACL {
       ...this.aclNodesDbPath,
       nodeId2.toBuffer(),
     ] as unknown as KeyPath;
-    if (tran == null) {
-      return this.withTransactionF(nodeId1Path, nodeId2Path, async (tran) =>
-        this.sameNodePerm(nodeId1, nodeId2, tran),
-      );
-    }
     const permId1 = await tran.get(nodeId1Path, true);
     const permId2 = await tran.get(nodeId2Path, true);
     if (permId1 != null && permId2 != null) {
@@ -168,102 +134,110 @@ class ACL {
 
   @ready(new aclErrors.ErrorACLNotRunning())
   public async getNodePerms(tran?: DBTransaction): Promise<Array<Record<NodeId, Permission>>> {
-    return await this._transaction(async () => {
-      const permIds: Record<
-        PermissionIdString,
-        Record<NodeId, Permission>
-      > = {};
-      for await (const o of this.aclNodesDb.createReadStream()) {
-        const nodeId = IdInternal.fromBuffer<NodeId>((o as any).key);
-        const data = (o as any).value as Buffer;
-        const permId = IdInternal.fromBuffer<PermissionId>(
-          await this.db.deserializeDecrypt(data, true),
-        );
-        let nodePerm: Record<NodeId, Permission>;
-        if (permId in permIds) {
-          nodePerm = permIds[permId];
-          // Get the first existing perm object
-          let perm: Permission;
-          for (const nodeId_ in nodePerm) {
-            perm = nodePerm[nodeId_];
-            break;
-          }
-          // All perm objects are shared
-          nodePerm[nodeId] = perm!;
-        } else {
-          const permRef = (await this.db.get(
-            this.aclPermsDbDomain,
-            permId.toBuffer(),
-          )) as Ref<Permission>;
-          nodePerm = { [nodeId]: permRef.object };
-          permIds[permId] = nodePerm;
+    if (tran == null) {
+      return this.withTransactionF(async (tran) =>
+        this.getNodePerms(tran),
+      );
+    }
+    const permIds: Record<
+      PermissionIdString,
+      Record<NodeId, Permission>
+    > = {};
+    for await (const [k, v] of tran.iterator(undefined, [
+      ...this.aclNodesDbPath,
+    ])) {
+      const nodeId = IdInternal.fromBuffer<NodeId>(k);
+      const permId = IdInternal.fromBuffer<PermissionId>(dbUtils.deserialize(v));
+      let nodePerm: Record<NodeId, Permission>;
+      if (permId in permIds) {
+        nodePerm = permIds[permId];
+        // Get the first existing perm object
+        let perm: Permission;
+        for (const nodeId_ in nodePerm) {
+          perm = nodePerm[nodeId_];
+          break;
         }
+        // All perm objects are shared
+        nodePerm[nodeId] = perm!;
+      } else {
+        const permIdPath = [
+          ...this.aclPermsDbPath,
+          permId.toBuffer(),
+        ] as unknown as KeyPath;
+        const permRef = (await tran.get(
+          permIdPath,
+        )) as Ref<Permission>;
+        nodePerm = { [nodeId]: permRef.object };
+        permIds[permId] = nodePerm;
       }
-      const nodePerms_: Array<Record<NodeId, Permission>> = [];
-      for (const permId in permIds) {
-        nodePerms_.push(permIds[permId]);
-      }
-      return nodePerms_;
-    });
+    }
+    const nodePerms_: Array<Record<NodeId, Permission>> = [];
+    for (const permId in permIds) {
+      nodePerms_.push(permIds[permId]);
+    }
+    return nodePerms_;
   }
 
   @ready(new aclErrors.ErrorACLNotRunning())
   public async getVaultPerms(tran?: DBTransaction): Promise<
     Record<VaultId, Record<NodeId, Permission>>
   > {
-    return await this._transaction(async () => {
-      const vaultPerms: Record<VaultId, Record<NodeId, Permission>> = {};
-      const ops: Array<DBOp> = [];
-      for await (const o of this.aclVaultsDb.createReadStream()) {
-        const vaultIdBuffer = (o as any).key as Buffer;
-        const vaultId = IdInternal.fromBuffer<VaultId>(vaultIdBuffer);
-        const data = (o as any).value as Buffer;
-        const nodeIds = await this.db.deserializeDecrypt<Record<NodeId, null>>(
-          data,
-          false,
+    if (tran == null) {
+      return this.withTransactionF(async (tran) =>
+        this.getVaultPerms(tran),
+      );
+    }
+    const vaultPerms: Record<VaultId, Record<NodeId, Permission>> = {};
+    for await (const [k, v] of tran.iterator(undefined, [
+      ...this.aclVaultsDbPath,
+    ])) {
+      const vaultId = IdInternal.fromBuffer<VaultId>(k);
+      const nodeIds = dbUtils.deserialize<Record<NodeId, null>>(v);
+      const nodePerm: Record<NodeId, Permission> = {};
+      const nodeIdsGc: Set<NodeId> = new Set();
+      for (const nodeIdString in nodeIds) {
+        const nodeId: NodeId = IdInternal.fromString(nodeIdString);
+        const nodeIdPath = [
+          ...this.aclNodesDbPath,
+          nodeId.toBuffer(),
+        ] as unknown as KeyPath;
+        const permId = await tran.get(
+          nodeIdPath,
+          true,
         );
-        const nodePerm: Record<NodeId, Permission> = {};
-        const nodeIdsGc: Set<NodeId> = new Set();
-        for (const nodeIdString in nodeIds) {
-          const nodeId: NodeId = IdInternal.fromString(nodeIdString);
-          const permId = await this.db.get(
-            this.aclNodesDbDomain,
-            nodeId.toBuffer(),
-            true,
-          );
-          if (permId == null) {
-            // Invalid node id
-            nodeIdsGc.add(nodeId);
-            continue;
-          }
-          const permRef = (await this.db.get(
-            this.aclPermsDbDomain,
-            permId,
-          )) as Ref<Permission>;
-          if (!(vaultId in permRef.object.vaults)) {
-            // Vault id is missing from the perm
-            nodeIdsGc.add(nodeId);
-            continue;
-          }
-          nodePerm[nodeId] = permRef.object;
+        if (permId == null) {
+          // Invalid node id
+          nodeIdsGc.add(nodeId);
+          continue;
         }
-        if (nodeIdsGc.size > 0) {
-          // Remove invalid node ids
-          for (const nodeId of nodeIdsGc) {
-            delete nodeIds[nodeId];
-          }
-          ops.push({
-            type: 'put',
-            domain: this.aclVaultsDbDomain,
-            key: vaultId.toBuffer(),
-            value: nodeIds,
-          });
+        const permIdPath = [
+          ...this.aclPermsDbPath,
+          permId,
+        ] as unknown as KeyPath;
+        const permRef = (await tran.get(
+          permIdPath,
+        )) as Ref<Permission>;
+        if (!(vaultId in permRef.object.vaults)) {
+          // Vault id is missing from the perm
+          nodeIdsGc.add(nodeId);
+          continue;
         }
-        vaultPerms[vaultId] = nodePerm;
+        nodePerm[nodeId] = permRef.object;
       }
-      await this.db.batch(ops);
-      return vaultPerms;
-    });
+      if (nodeIdsGc.size > 0) {
+        // Remove invalid node ids
+        for (const nodeId of nodeIdsGc) {
+          delete nodeIds[nodeId];
+        }
+        const vaultIdPath = [
+          ...this.aclVaultsDbPath,
+          vaultId.toBuffer(),
+        ] as unknown as KeyPath;
+        await tran.put(vaultIdPath, nodeIds);
+      }
+      vaultPerms[vaultId] = nodePerm;
+    }
+    return vaultPerms;
   }
 
   /**
@@ -275,15 +249,15 @@ class ACL {
     nodeId: NodeId,
     tran?: DBTransaction,
   ): Promise<Permission | undefined> {
+    if (tran == null) {
+      return this.withTransactionF(async (tran) =>
+        this.getNodePerm(nodeId, tran),
+      );
+    }
     const nodeIdPath = [
       ...this.aclNodesDbPath,
       nodeId.toBuffer(),
     ] as unknown as KeyPath;
-    if (tran == null) {
-      return this.withTransactionF(nodeIdPath, async (tran) =>
-        this.getNodePerm(nodeId, tran),
-      );
-    }
     const permId = await tran.get(nodeIdPath, true);
     if (permId == null) {
       return;
@@ -306,15 +280,15 @@ class ACL {
     vaultId: VaultId,
     tran?: DBTransaction,
   ): Promise<Record<NodeId, Permission>> {
+    if (tran == null) {
+      return this.withTransactionF(async (tran) =>
+        this.getVaultPerm(vaultId, tran),
+      );
+    }
     const vaultIdPath = [
       ...this.aclVaultsDbPath,
       vaultId.toBuffer(),
     ] as unknown as KeyPath;
-    if (tran == null) {
-      return this.withTransactionF(vaultIdPath, async (tran) =>
-        this.getVaultPerm(vaultId, tran),
-      );
-    }
     const nodeIds = await tran.get<Record<NodeId, null>>(
       vaultIdPath
     );
@@ -368,15 +342,15 @@ class ACL {
     action: GestaltAction,
     tran?: DBTransaction,
   ): Promise<void> {
+    if (tran == null) {
+      return this.withTransactionF(async (tran) =>
+        this.setNodeAction(nodeId, action, tran),
+      );
+    }
     const nodeIdPath = [
       ...this.aclNodesDbPath,
       nodeId.toBuffer(),
     ] as unknown as KeyPath;
-    if (tran == null) {
-      return this.withTransactionF(nodeIdPath, async (tran) =>
-        this.setNodeAction(nodeId, action, tran),
-      );
-    }
     const permId = await tran.get(
       nodeIdPath,
       true,
@@ -417,15 +391,15 @@ class ACL {
     action: GestaltAction,
     tran?: DBTransaction,
   ): Promise<void> {
+    if (tran == null) {
+      return this.withTransactionF(async (tran) =>
+        this.unsetNodeAction(nodeId, action, tran),
+      );
+    }
     const nodeIdPath = [
       ...this.aclNodesDbPath,
       nodeId.toBuffer(),
     ] as unknown as KeyPath;
-    if (tran == null) {
-      return this.withTransactionF(nodeIdPath, async (tran) =>
-        this.unsetNodeAction(nodeId, action, tran),
-      );
-    }
     const permId = await tran.get(
       nodeIdPath,
       true,
@@ -451,6 +425,11 @@ class ACL {
     action: VaultAction,
     tran?: DBTransaction,
   ): Promise<void> {
+    if (tran == null) {
+      return this.withTransactionF(async (tran) =>
+        this.setVaultAction(vaultId, nodeId, action, tran),
+      );
+    }
     const vaultIdPath = [
       ...this.aclVaultsDbPath,
       vaultId.toBuffer(),
@@ -459,11 +438,6 @@ class ACL {
       ...this.aclNodesDbPath,
       nodeId.toBuffer(),
     ] as unknown as KeyPath;
-    if (tran == null) {
-      return this.withTransactionF(vaultIdPath, nodeIdPath, async (tran) =>
-        this.setVaultAction(vaultId, nodeId, action, tran),
-      );
-    }
     const nodeIds =
       (await tran.get<Record<NodeId, null>>(
         vaultIdPath
@@ -480,7 +454,7 @@ class ACL {
       ...this.aclPermsDbPath,
       permId,
     ] as unknown as KeyPath;
-    const permRef = (await this.db.get(
+    const permRef = (await tran.get(
       permIdPath,
     )) as Ref<Permission>;
     let actions: VaultActions | undefined = permRef.object.vaults[vaultId];
@@ -501,6 +475,11 @@ class ACL {
     action: VaultAction,
     tran?: DBTransaction,
   ): Promise<void> {
+    if (tran == null) {
+      return this.withTransactionF(async (tran) =>
+        this.unsetVaultAction(vaultId, nodeId, action, tran),
+      );
+    }
     const vaultIdPath = [
       ...this.aclVaultsDbPath,
       vaultId.toBuffer(),
@@ -509,11 +488,6 @@ class ACL {
       ...this.aclNodesDbPath,
       nodeId.toBuffer(),
     ] as unknown as KeyPath;
-    if (tran == null) {
-      return this.withTransactionF(vaultIdPath, nodeIdPath, async (tran) =>
-        this.unsetVaultAction(vaultId, nodeId, action, tran),
-      );
-    }
     const nodeIds = await tran.get<Record<NodeId, null>>(
       vaultIdPath
     );
@@ -553,15 +527,15 @@ class ACL {
     perm: Permission,
     tran?: DBTransaction,
   ): Promise<void> {
+    if (tran == null) {
+      return this.withTransactionF(async (tran) =>
+        this.setNodesPerm(nodeIds, perm, tran),
+      );
+    }
     const nodeIdPaths = nodeIds.map((nodeId) => [
       ...this.aclNodesDbPath,
       nodeId.toBuffer(),
     ] as unknown as KeyPath);
-    if (tran == null) {
-      return this.withTransactionF(...nodeIdPaths, async (tran) =>
-        this.setNodesPerm(nodeIds, perm, tran),
-      );
-    }
     const permIdCounts: Record<PermissionIdString, number> = {};
     for (const nodeIdPath of nodeIdPaths) {
       const permIdBuffer = await tran.get(
@@ -611,15 +585,15 @@ class ACL {
     perm: Permission,
     tran?: DBTransaction,
   ): Promise<void> {
+    if (tran == null) {
+      return this.withTransactionF(async (tran) =>
+        this.setNodePerm(nodeId, perm, tran),
+      );
+    }
     const nodeIdPath = [
       ...this.aclNodesDbPath,
       nodeId.toBuffer(),
     ] as unknown as KeyPath;
-    if (tran == null) {
-      return this.withTransactionF(nodeIdPath, async (tran) =>
-        this.setNodePerm(nodeId, perm, tran),
-      );
-    }
     const permId = await tran.get(
       nodeIdPath,
       true,
@@ -655,15 +629,15 @@ class ACL {
     nodeId: NodeId,
     tran?: DBTransaction,
   ): Promise<void> {
+    if (tran == null) {
+      return this.withTransactionF(async (tran) =>
+        this.unsetNodePerm(nodeId, tran),
+      );
+    }
     const nodeIdPath = [
       ...this.aclNodesDbPath,
       nodeId.toBuffer(),
     ] as unknown as KeyPath;
-    if (tran == null) {
-      return this.withTransactionF(nodeIdPath, async (tran) =>
-        this.unsetNodePerm(nodeId, tran),
-      );
-    }
     const permId = await tran.get(
       nodeIdPath,
       true,
@@ -694,15 +668,15 @@ class ACL {
     vaultId: VaultId,
     tran?: DBTransaction,
   ): Promise<void> {
+    if (tran == null) {
+      return this.withTransactionF(async (tran) =>
+        this.unsetVaultPerms(vaultId, tran),
+      );
+    }
     const vaultIdPath = [
       ...this.aclVaultsDbPath,
       vaultId.toBuffer(),
     ] as unknown as KeyPath;
-    if (tran == null) {
-      return this.withTransactionF(vaultIdPath, async (tran) =>
-        this.unsetVaultPerms(vaultId, tran),
-      );
-    }
     const nodeIds = await tran.get<Record<NodeId, null>>(
       vaultIdPath,
     );
@@ -743,41 +717,41 @@ class ACL {
     nodeIdsJoin: Array<NodeId>,
     perm?: Permission,
     tran?: DBTransaction,
-  ): Promise<void> {
-    await this._transaction(async () => {
-      const ops = await this.joinNodePermOps(nodeId, nodeIdsJoin, perm);
-      await this.db.batch(ops);
-    });
-  }
-
-  @ready(new aclErrors.ErrorACLNotRunning())
-  public async joinNodePermOps(
-    nodeId: NodeId,
-    nodeIdsJoin: Array<NodeId>,
-    perm?: Permission,
-    tran?: DBTransaction,
-  ): Promise<Array<DBOp>> {
-    const permId = await this.db.get(
-      this.aclNodesDbDomain,
+    ): Promise<void> {
+    if (tran == null) {
+      return this.withTransactionF(async (tran) =>
+        this.joinNodePerm(nodeId, nodeIdsJoin, perm, tran),
+      );
+    }
+    const nodeIdPath = [
+      ...this.aclNodesDbPath,
       nodeId.toBuffer(),
+    ] as unknown as KeyPath;
+    const nodeIdsJoinPaths = nodeIdsJoin.map((nodeId) => [
+      ...this.aclNodesDbPath,
+      nodeId.toBuffer(),
+    ] as unknown as KeyPath);
+    const permId = await tran.get(
+      nodeIdPath,
       true,
     );
     if (permId == null) {
       throw new aclErrors.ErrorACLNodeIdMissing();
     }
-    const ops: Array<DBOp> = [];
-    const permRef = (await this.db.get(
-      this.aclPermsDbDomain,
+    const permIdPath = [
+      ...this.aclPermsDbPath,
       permId,
+    ] as unknown as KeyPath;
+    const permRef = (await tran.get(
+      permIdPath,
     )) as Ref<Permission>;
     // Optionally replace the permission record for the target
     if (perm != null) {
       permRef.object = perm;
     }
-    for (const nodeIdJoin of nodeIdsJoin) {
-      const permIdJoin = await this.db.get(
-        this.aclNodesDbDomain,
-        nodeIdJoin.toBuffer(),
+    for (const nodeIdJoinPath of nodeIdsJoinPaths) {
+      const permIdJoin = await tran.get(
+        nodeIdJoinPath,
         true,
       );
       if (permIdJoin === permId) {
@@ -785,41 +759,23 @@ class ACL {
       }
       ++permRef.count;
       if (permIdJoin != null) {
-        const permJoin = (await this.db.get(
-          this.aclPermsDbDomain,
+        const permIdJoinPath = [
+          ...this.aclPermsDbPath,
           permIdJoin,
+        ] as unknown as KeyPath;
+        const permJoin = (await tran.get(
+          permIdJoinPath
         )) as Ref<Permission>;
         --permJoin.count;
         if (permJoin.count === 0) {
-          ops.push({
-            type: 'del',
-            domain: this.aclPermsDbDomain,
-            key: permIdJoin,
-          });
+          await tran.del(permIdJoinPath);
         } else {
-          ops.push({
-            type: 'put',
-            domain: this.aclPermsDbDomain,
-            key: permIdJoin,
-            value: permJoin,
-          });
+          await tran.put(permIdJoinPath, permJoin);
         }
       }
-      ops.push({
-        type: 'put',
-        domain: this.aclNodesDbDomain,
-        key: nodeIdJoin.toBuffer(),
-        value: permId,
-        raw: true,
-      });
+      await tran.put(nodeIdJoinPath, permId);
     }
-    ops.push({
-      type: 'put',
-      domain: this.aclPermsDbDomain,
-      key: permId,
-      value: permRef,
-    });
-    return ops;
+    await tran.put(permIdPath, permRef);
   }
 
   @ready(new aclErrors.ErrorACLNotRunning())
@@ -828,32 +784,34 @@ class ACL {
     vaultIdsJoin: Array<VaultId>,
     tran?: DBTransaction,
   ): Promise<void> {
-    await this._transaction(async () => {
-      const ops = await this.joinVaultPermsOps(vaultId, vaultIdsJoin);
-      await this.db.batch(ops);
-    });
-  }
-
-  @ready(new aclErrors.ErrorACLNotRunning())
-  private async joinVaultPermsOps(
-    vaultId: VaultId,
-    vaultIdsJoin: Array<VaultId>,
-    tran: DBTransaction,
-  ): Promise<Array<DBOp>> {
-    const nodeIds = await this.db.get<Record<NodeId, null>>(
-      this.aclVaultsDbDomain,
+    if (tran == null) {
+      return this.withTransactionF(async (tran) =>
+        this.joinVaultPerms(vaultId, vaultIdsJoin, tran),
+      );
+    }
+    const vaultIdPath = [
+      ...this.aclVaultsDbPath,
       vaultId.toBuffer(),
+    ] as unknown as KeyPath;
+    const vaultIdsJoinPaths = vaultIdsJoin.map((vaultId) => [
+      ...this.aclVaultsDbPath,
+      vaultId.toBuffer(),
+    ] as unknown as KeyPath);
+    const nodeIds = await tran.get<Record<NodeId, null>>(
+      vaultIdPath,
     );
     if (nodeIds == null) {
       throw new aclErrors.ErrorACLVaultIdMissing();
     }
-    const ops: Array<DBOp> = [];
     const nodeIdsGc: Set<NodeId> = new Set();
     for (const nodeIdString in nodeIds) {
       const nodeId: NodeId = IdInternal.fromString(nodeIdString);
-      const permId = await this.db.get(
-        this.aclNodesDbDomain,
+      const nodeIdPath = [
+        ...this.aclNodesDbPath,
         nodeId.toBuffer(),
+      ] as unknown as KeyPath;
+      const permId = await tran.get(
+        nodeIdPath,
         true,
       );
       if (permId == null) {
@@ -861,9 +819,12 @@ class ACL {
         nodeIdsGc.add(nodeId);
         continue;
       }
-      const permRef = (await this.db.get(
-        this.aclPermsDbDomain,
+      const permIdPath = [
+        ...this.aclPermsDbPath,
         permId,
+      ] as unknown as KeyPath;
+      const permRef = (await tran.get(
+        permIdPath,
       )) as Ref<Permission>;
       if (!(vaultId in permRef.object.vaults)) {
         // Vault id is missing from the perm
@@ -875,34 +836,18 @@ class ACL {
       for (const vaultIdJoin of vaultIdsJoin) {
         permRef.object.vaults[vaultIdJoin] = vaultActions;
       }
-      ops.push({
-        type: 'put',
-        domain: this.aclPermsDbDomain,
-        key: permId,
-        value: permRef,
-      });
+      await tran.put(permIdPath, permRef);
     }
-    for (const vaultIdJoin of vaultIdsJoin) {
-      ops.push({
-        type: 'put',
-        domain: this.aclVaultsDbDomain,
-        key: vaultIdJoin.toBuffer(),
-        value: nodeIds,
-      });
+    for (const vaultIdJoinPath of vaultIdsJoinPaths) {
+      await tran.put(vaultIdJoinPath, nodeIds);
     }
     if (nodeIdsGc.size > 0) {
       // Remove invalid node ids
       for (const nodeId of nodeIdsGc) {
         delete nodeIds[nodeId];
       }
-      ops.push({
-        type: 'put',
-        domain: this.aclVaultsDbDomain,
-        key: vaultId.toBuffer(),
-        value: nodeIds,
-      });
+      await tran.put(vaultIdPath, nodeIds);
     }
-    return ops;
   }
 }
 
