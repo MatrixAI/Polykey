@@ -1,27 +1,28 @@
+import type { DB, DBTransaction, KeyPath, LevelPath } from '@matrixai/db';
 import type {
   NotificationId,
   Notification,
   NotificationData,
   NotificationIdGenerator,
 } from './types';
-import type { ACL } from '../acl';
-import type { DB, DBLevel } from '@matrixai/db';
-import type { KeyManager } from '../keys';
-import type { NodeManager, NodeConnectionManager } from '../nodes';
+import type ACL from '../acl/ACL';
+import type KeyManager from '../keys/KeyManager';
+import type NodeManager from '../nodes/NodeManager';
+import type NodeConnectionManager from '../nodes/NodeConnectionManager';
 import type { NodeId } from '../nodes/types';
 import Logger from '@matrixai/logger';
 import { IdInternal } from '@matrixai/id';
-import { Mutex } from 'async-mutex';
 import {
   CreateDestroyStartStop,
   ready,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import { utils as idUtils } from '@matrixai/id';
+import { utils as dbUtils } from '@matrixai/db';
+import { withF } from '@matrixai/resources';
 import * as notificationsUtils from './utils';
 import * as notificationsErrors from './errors';
-import { createNotificationIdGenerator } from './utils';
 import * as notificationsPB from '../proto/js/polykey/v1/notifications/notifications_pb';
-import { utils as nodesUtils } from '../nodes';
+import * as nodesUtils from '../nodes/utils';
 
 const MESSAGE_COUNT_KEY = 'numMessages';
 
@@ -34,27 +35,6 @@ interface NotificationsManager extends CreateDestroyStartStop {}
   new notificationsErrors.ErrorNotificationsDestroyed(),
 )
 class NotificationsManager {
-  protected logger: Logger;
-  protected acl: ACL;
-  protected db: DB;
-  protected keyManager: KeyManager;
-  protected nodeManager: NodeManager;
-  protected nodeConnectionManager: NodeConnectionManager;
-
-  protected messageCap: number;
-
-  protected notificationsDomain: string = this.constructor.name;
-  protected notificationsDbDomain: Array<string> = [this.notificationsDomain];
-  protected notificationsMessagesDbDomain: Array<string> = [
-    this.notificationsDomain,
-    'messages',
-  ];
-  protected notificationsDb: DBLevel;
-  protected notificationsMessagesDb: DBLevel;
-  protected lock: Mutex = new Mutex();
-
-  protected notificationIdGenerator: NotificationIdGenerator;
-
   static async createNotificationsManager({
     acl,
     db,
@@ -90,6 +70,29 @@ class NotificationsManager {
     return notificationsManager;
   }
 
+  protected logger: Logger;
+  protected acl: ACL;
+  protected db: DB;
+  protected keyManager: KeyManager;
+  protected nodeManager: NodeManager;
+  protected nodeConnectionManager: NodeConnectionManager;
+
+  protected messageCap: number;
+
+  /**
+   * Top level stores MESSAGE_COUNT_KEY -> number (of messages)
+   */
+  protected notificationsDbPath: LevelPath = [this.constructor.name];
+  /**
+   * Messages stores NotificationId -> string (message)
+   */
+  protected notificationsMessagesDbPath: LevelPath = [
+    this.constructor.name,
+    'messages',
+  ];
+
+  protected notificationIdGenerator: NotificationIdGenerator;
+
   constructor({
     acl,
     db,
@@ -116,33 +119,26 @@ class NotificationsManager {
     this.nodeManager = nodeManager;
   }
 
-  get locked(): boolean {
-    return this.lock.isLocked();
-  }
-
   public async start({
     fresh = false,
   }: { fresh?: boolean } = {}): Promise<void> {
     this.logger.info(`Starting ${this.constructor.name}`);
-    // Sub-level stores MESSAGE_COUNT_KEY -> number (of messages)
-    const notificationsDb = await this.db.level(this.notificationsDomain);
-    // Sub-sub-level stores NotificationId -> string (message)
-    const notificationsMessagesDb = await this.db.level(
-      this.notificationsMessagesDbDomain[1],
-      notificationsDb,
-    );
     if (fresh) {
-      await notificationsDb.clear();
+      await this.db.clear(this.notificationsDbPath);
     }
-    this.notificationsDb = notificationsDb;
-    this.notificationsMessagesDb = notificationsMessagesDb;
-
     // Getting latest ID and creating ID generator
     let latestId: NotificationId | undefined;
-    const keyStream = this.notificationsMessagesDb.createKeyStream({
-      limit: 1,
-      reverse: true,
-    });
+    // for await (const [k] of tran.iterator({ value: false }, [
+    //   ...this.nodeGraphBucketsDbPath,
+    // ])) {
+    // const keyStream = this.notificationsMessagesDb.createKeyStream({
+    //   limit: 1,
+    //   reverse: true,
+    // });
+    await withF(
+      [this.db.transaction()],
+      ([tran]) => async (tran) => tran.iterator({ limit: 1, reverse: true, value: false }, [...this.notificationsMessagesDbPath])
+  }
     for await (const o of keyStream) {
       latestId = IdInternal.fromBuffer<NotificationId>(o as Buffer);
     }

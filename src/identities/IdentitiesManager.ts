@@ -4,15 +4,14 @@ import type {
   ProviderTokens,
   TokenData,
 } from './types';
-import type { DB, DBLevel } from '@matrixai/db';
+import type { DB, DBTransaction, KeyPath, LevelPath } from '@matrixai/db';
 import type Provider from './Provider';
-
-import { Mutex } from 'async-mutex';
 import Logger from '@matrixai/logger';
 import {
   CreateDestroyStartStop,
   ready,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
+import { withF } from '@matrixai/resources';
 import * as identitiesErrors from './errors';
 
 interface IdentitiesManager extends CreateDestroyStartStop {}
@@ -21,18 +20,6 @@ interface IdentitiesManager extends CreateDestroyStartStop {}
   new identitiesErrors.ErrorIdentitiesManagerDestroyed(),
 )
 class IdentitiesManager {
-  protected logger: Logger;
-  protected db: DB;
-  protected identitiesDbDomain: string = this.constructor.name;
-  protected identitiesTokensDbDomain: Array<string> = [
-    this.identitiesDbDomain,
-    'tokens',
-  ];
-  protected identitiesDb: DBLevel;
-  protected identitiesTokensDb: DBLevel;
-  protected lock: Mutex = new Mutex();
-  protected providers: Map<ProviderId, Provider> = new Map();
-
   static async createIdentitiesManager({
     db,
     logger = new Logger(this.name),
@@ -49,29 +36,29 @@ class IdentitiesManager {
     return identitiesManager;
   }
 
+  protected logger: Logger;
+  protected db: DB;
+  protected identitiesDbPath: LevelPath = [this.constructor.name];
+  /**
+   * Tokens stores ProviderId -> ProviderTokens
+   */
+  protected identitiesTokensDbPath: LevelPath = [
+    this.constructor.name,
+    'tokens',
+  ];
+  protected providers: Map<ProviderId, Provider> = new Map();
+
   constructor({ db, logger }: { db: DB; logger: Logger }) {
     this.logger = logger;
     this.db = db;
   }
 
-  get locked(): boolean {
-    return this.lock.isLocked();
-  }
-
   public async start({ fresh = false }: { fresh?: boolean } = {}) {
     this.logger.info(`Starting ${this.constructor.name}`);
-    const identitiesDb = await this.db.level(this.identitiesDbDomain);
-    // Tokens stores ProviderId -> ProviderTokens
-    const identitiesTokensDb = await this.db.level(
-      this.identitiesTokensDbDomain[1],
-      identitiesDb,
-    );
     if (fresh) {
-      await identitiesDb.clear();
+      await this.db.clear(this.identitiesDbPath);
       this.providers = new Map();
     }
-    this.identitiesDb = identitiesDb;
-    this.identitiesTokensDb = identitiesTokensDb;
     this.logger.info(`Started ${this.constructor.name}`);
   }
 
@@ -82,38 +69,16 @@ class IdentitiesManager {
 
   async destroy() {
     this.logger.info(`Destroying ${this.constructor.name}`);
-    const identitiesDb = await this.db.level(this.identitiesDbDomain);
-    await identitiesDb.clear();
+    await this.db.clear(this.identitiesDbPath);
     this.providers = new Map();
     this.logger.info(`Destroyed ${this.constructor.name}`);
   }
 
-  /**
-   * Run several operations within the same lock
-   * This does not ensure atomicity of the underlying database
-   * Database atomicity still depends on the underlying operation
-   */
-  public async transaction<T>(
-    f: (identitiesManager: IdentitiesManager) => Promise<T>,
+  @ready(new identitiesErrors.ErrorIdentitiesManagerNotRunning())
+  public async withTransactionF<T>(
+    f: (tran: DBTransaction) => Promise<T>,
   ): Promise<T> {
-    const release = await this.lock.acquire();
-    try {
-      return await f(this);
-    } finally {
-      release();
-    }
-  }
-
-  /**
-   * Transaction wrapper that will not lock if the operation was executed
-   * within a transaction context
-   */
-  public async _transaction<T>(f: () => Promise<T>): Promise<T> {
-    if (this.lock.isLocked()) {
-      return await f();
-    } else {
-      return await this.transaction(f);
-    }
+    return withF([this.db.transaction()], ([tran]) => f(tran));
   }
 
   @ready(new identitiesErrors.ErrorIdentitiesManagerNotRunning())
@@ -146,34 +111,46 @@ class IdentitiesManager {
   }
 
   @ready(new identitiesErrors.ErrorIdentitiesManagerNotRunning())
-  public async getTokens(providerId: ProviderId): Promise<ProviderTokens> {
-    return await this._transaction(async () => {
-      const providerTokens = await this.db.get<ProviderTokens>(
-        this.identitiesTokensDbDomain,
-        providerId,
+  public async getTokens(
+    providerId: ProviderId,
+    tran?: DBTransaction,
+  ): Promise<ProviderTokens> {
+    if (tran == null) {
+      return this.withTransactionF(async (tran) =>
+        this.getTokens(providerId, tran),
       );
-      if (providerTokens == null) {
-        return {};
-      }
-      return providerTokens;
-    });
+    }
+    const providerIdPath = [
+      ...this.identitiesTokensDbPath,
+      providerId,
+    ] as unknown as KeyPath;
+    const providerTokens = await tran.get<ProviderTokens>(providerIdPath);
+    if (providerTokens == null) {
+      return {};
+    }
+    return providerTokens;
   }
 
   @ready(new identitiesErrors.ErrorIdentitiesManagerNotRunning())
   public async getToken(
     providerId: ProviderId,
     identityId: IdentityId,
+    tran?: DBTransaction,
   ): Promise<TokenData | undefined> {
-    return await this._transaction(async () => {
-      const providerTokens = await this.db.get<ProviderTokens>(
-        this.identitiesTokensDbDomain,
-        providerId,
+    if (tran == null) {
+      return this.withTransactionF(async (tran) =>
+        this.getToken(providerId, identityId, tran),
       );
-      if (providerTokens == null) {
-        return undefined;
-      }
-      return providerTokens[identityId];
-    });
+    }
+    const providerIdPath = [
+      ...this.identitiesTokensDbPath,
+      providerId,
+    ] as unknown as KeyPath;
+    const providerTokens = await tran.get<ProviderTokens>(providerIdPath);
+    if (providerTokens == null) {
+      return undefined;
+    }
+    return providerTokens[identityId];
   }
 
   @ready(new identitiesErrors.ErrorIdentitiesManagerNotRunning())
@@ -181,39 +158,47 @@ class IdentitiesManager {
     providerId: ProviderId,
     identityId: IdentityId,
     tokenData: TokenData,
+    tran?: DBTransaction,
   ): Promise<void> {
-    return await this._transaction(async () => {
-      const providerTokens = await this.getTokens(providerId);
-      providerTokens[identityId] = tokenData;
-      await this.db.put(
-        this.identitiesTokensDbDomain,
-        providerId,
-        providerTokens,
+    if (tran == null) {
+      return this.withTransactionF(async (tran) =>
+        this.putToken(providerId, identityId, tokenData, tran),
       );
-    });
+    }
+    const providerTokens = await this.getTokens(providerId);
+    providerTokens[identityId] = tokenData;
+    const providerIdPath = [
+      ...this.identitiesTokensDbPath,
+      providerId,
+    ] as unknown as KeyPath;
+    await tran.put(providerIdPath, providerTokens);
   }
 
   @ready(new identitiesErrors.ErrorIdentitiesManagerNotRunning())
   public async delToken(
     providerId: ProviderId,
     identityId: IdentityId,
+    tran?: DBTransaction,
   ): Promise<void> {
-    return await this._transaction(async () => {
-      const providerTokens = await this.getTokens(providerId);
-      if (!(identityId in providerTokens)) {
-        return;
-      }
-      delete providerTokens[identityId];
-      if (!Object.keys(providerTokens).length) {
-        await this.db.del(this.identitiesTokensDbDomain, providerId);
-        return;
-      }
-      await this.db.put(
-        this.identitiesTokensDbDomain,
-        providerId,
-        providerTokens,
+    if (tran == null) {
+      return this.withTransactionF(async (tran) =>
+        this.delToken(providerId, identityId, tran),
       );
-    });
+    }
+    const providerTokens = await this.getTokens(providerId, tran);
+    if (!(identityId in providerTokens)) {
+      return;
+    }
+    delete providerTokens[identityId];
+    const providerIdPath = [
+      ...this.identitiesTokensDbPath,
+      providerId,
+    ] as unknown as KeyPath;
+    if (!Object.keys(providerTokens).length) {
+      await tran.del(providerIdPath);
+      return;
+    }
+    await tran.put(providerIdPath, providerTokens);
   }
 }
 

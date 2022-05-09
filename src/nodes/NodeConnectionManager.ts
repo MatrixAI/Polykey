@@ -132,7 +132,7 @@ class NodeConnectionManager {
     return async () => {
       const connAndLock = await this.getConnection(targetNodeId);
       // Acquire the read lock and the release function
-      const release = await connAndLock.lock.acquireRead();
+      const release = connAndLock.lock.read();
       // Resetting TTL timer
       connAndLock.timer?.refresh();
       // Return tuple of [ResourceRelease, Resource]
@@ -241,7 +241,7 @@ class NodeConnectionManager {
       // Connection already exists, so return
       if (connection != null) return connAndLock;
       // Acquire the write (creation) lock
-      return await lock.withWrite(async () => {
+      return await lock.withWriteF(async () => {
         // Once lock is released, check again if the conn now exists
         connAndLock = this.connections.get(
           targetNodeId.toString() as NodeIdString,
@@ -267,7 +267,7 @@ class NodeConnectionManager {
         targetNodeId.toString() as NodeIdString,
         connAndLock,
       );
-      return await lock.withWrite(async () => {
+      return await lock.withWriteF(async () => {
         this.logger.info(
           `no existing entry, creating connection to ${nodesUtils.encodeNodeId(
             targetNodeId,
@@ -360,7 +360,7 @@ class NodeConnectionManager {
     const lock = connAndLock.lock;
 
     // If the connection exists then we lock, destroy and remove it from the map
-    await lock.withWrite(async () => {
+    await lock.withWriteF(async () => {
       // Destroying connection
       await connection.destroy();
       // Destroying TTL timer

@@ -1,5 +1,4 @@
-import type { MutexInterface } from 'async-mutex';
-import type { DB, DBLevel } from '@matrixai/db';
+import type { DB, DBTransaction, KeyPath, LevelPath } from '@matrixai/db';
 import type { DiscoveryQueueId, DiscoveryQueueIdGenerator } from './types';
 import type { NodeId, NodeInfo } from '../nodes/types';
 import type NodeManager from '../nodes/NodeManager';
@@ -18,7 +17,6 @@ import type { Sigchain } from '../sigchain';
 import type { KeyManager } from '../keys';
 import type { ClaimIdEncoded, Claim, ClaimLinkIdentity } from '../claims/types';
 import type { ChainData } from '../sigchain/types';
-import type { ResourceAcquire } from '../utils';
 import { Mutex } from 'async-mutex';
 import Logger from '@matrixai/logger';
 import {
@@ -27,6 +25,9 @@ import {
   status,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import { IdInternal } from '@matrixai/id';
+import { withF } from '@matrixai/resources';
+import { Lock, LockBox } from '@matrixai/async-locks';
+import { utils as dbUtils } from '@matrixai/db';
 import * as idUtils from '@matrixai/id/dist/utils';
 import * as discoveryUtils from './utils';
 import * as discoveryErrors from './errors';
@@ -88,9 +89,8 @@ class Discovery {
     this.discoveryDbDomain,
     'queue',
   ];
-  protected discoveryDb: DBLevel;
-  protected discoveryQueueDb: DBLevel;
-  protected lock: Mutex = new Mutex();
+  protected discoveryDbPath: LevelPath = [this.constructor.name];
+  protected discoveryQueueDbPath: LevelPath = [this.constructor.name, 'queue'];
   protected discoveryQueueIdGenerator: DiscoveryQueueIdGenerator;
   protected visitedVertices = new Set<GestaltKey>();
   protected discoveryQueue: AsyncGenerator<void, void, void>;
