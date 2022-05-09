@@ -10,7 +10,7 @@ import type { ClaimEncoded } from '../claims/types';
 import Logger from '@matrixai/logger';
 import * as nodesErrors from './errors';
 import * as nodesUtils from './utils';
-import { utils as validationUtils } from '../validation';
+import * as validationUtils from '../validation/utils';
 import * as utilsPB from '../proto/js/polykey/v1/utils/utils_pb';
 import * as claimsErrors from '../claims/errors';
 import * as networkErrors from '../network/errors';

@@ -7,9 +7,10 @@ import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
-import { ACL, errors as aclErrors } from '@/acl';
-import { utils as keysUtils } from '@/keys';
-import { utils as vaultsUtils } from '@/vaults';
+import ACL from '@/acl/ACL';
+import * as aclErrors from '@/acl/errors';
+import * as keysUtils from '@/keys/utils';
+import * as vaultsUtils from '@/vaults/utils';
 import * as testUtils from '../utils';
 
 describe(ACL.name, () => {
@@ -107,28 +108,16 @@ describe(ACL.name, () => {
     await expect(acl.setNodesPerm([], {} as Permission)).rejects.toThrow(
       aclErrors.ErrorACLNotRunning,
     );
-    await expect(acl.setNodesPermOps([], {} as Permission)).rejects.toThrow(
-      aclErrors.ErrorACLNotRunning,
-    );
     await expect(acl.setNodePerm(nodeIdX, {} as Permission)).rejects.toThrow(
       aclErrors.ErrorACLNotRunning,
     );
-    await expect(acl.setNodePermOps(nodeIdX, {} as Permission)).rejects.toThrow(
-      aclErrors.ErrorACLNotRunning,
-    );
     await expect(acl.unsetNodePerm(nodeIdX)).rejects.toThrow(
-      aclErrors.ErrorACLNotRunning,
-    );
-    await expect(acl.unsetNodePermOps(nodeIdX)).rejects.toThrow(
       aclErrors.ErrorACLNotRunning,
     );
     await expect(acl.unsetVaultPerms(1 as VaultId)).rejects.toThrow(
       aclErrors.ErrorACLNotRunning,
     );
     await expect(acl.joinNodePerm(nodeIdX, [])).rejects.toThrow(
-      aclErrors.ErrorACLNotRunning,
-    );
-    await expect(acl.joinNodePermOps(nodeIdX, [])).rejects.toThrow(
       aclErrors.ErrorACLNotRunning,
     );
     await expect(acl.joinVaultPerms(1 as VaultId, [])).rejects.toThrow(
@@ -417,35 +406,45 @@ describe(ACL.name, () => {
   test('transactional operations', async () => {
     const acl = await ACL.createACL({ db, logger });
     const p1 = acl.getNodePerms();
-    const p2 = acl.transaction(async (acl) => {
-      await acl.setNodesPerm([nodeIdG1First, nodeIdG1Second] as Array<NodeId>, {
-        gestalt: {
-          notify: null,
+    const p2 = acl.withTransactionF(async (tran) => {
+      await acl.setNodesPerm(
+        [nodeIdG1First, nodeIdG1Second] as Array<NodeId>,
+        {
+          gestalt: {
+            notify: null,
+          },
+          vaults: {},
         },
-        vaults: {},
-      });
-      await acl.setNodesPerm([nodeIdG2First, nodeIdG2Second] as Array<NodeId>, {
-        gestalt: {
-          notify: null,
+        tran,
+      );
+      await acl.setNodesPerm(
+        [nodeIdG2First, nodeIdG2Second] as Array<NodeId>,
+        {
+          gestalt: {
+            notify: null,
+          },
+          vaults: {},
         },
-        vaults: {},
-      });
-      await acl.setVaultAction(vaultId1, nodeIdG1First, 'pull');
-      await acl.setVaultAction(vaultId1, nodeIdG2First, 'clone');
-      await acl.joinNodePerm(nodeIdG1Second, [
-        nodeIdG1Third,
-        nodeIdG1Fourth,
-      ] as Array<NodeId>);
+        tran,
+      );
+      await acl.setVaultAction(vaultId1, nodeIdG1First, 'pull', tran);
+      await acl.setVaultAction(vaultId1, nodeIdG2First, 'clone', tran);
+      await acl.joinNodePerm(
+        nodeIdG1Second,
+        [nodeIdG1Third, nodeIdG1Fourth] as Array<NodeId>,
+        undefined,
+        tran,
+      );
       // V3 and v4 joins v1
       // this means v3 and v4 now has g1 and g2 permissions
-      await acl.joinVaultPerms(vaultId1, [vaultId3, vaultId4]);
+      await acl.joinVaultPerms(vaultId1, [vaultId3, vaultId4], tran);
       // Removing v3
-      await acl.unsetVaultPerms(vaultId3);
+      await acl.unsetVaultPerms(vaultId3, tran);
       // Removing g1-second
-      await acl.unsetNodePerm(nodeIdG1Second);
+      await acl.unsetNodePerm(nodeIdG1Second, tran);
       // Unsetting pull just for v1 for g1
-      await acl.unsetVaultAction(vaultId1, nodeIdG1First, 'pull');
-      return await acl.getNodePerms();
+      await acl.unsetVaultAction(vaultId1, nodeIdG1First, 'pull', tran);
+      return await acl.getNodePerms(tran);
     });
     const p3 = acl.getNodePerms();
     const results = await Promise.all([p1, p2, p3]);
