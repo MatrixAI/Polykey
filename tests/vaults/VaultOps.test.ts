@@ -1,7 +1,7 @@
 import type { VaultId } from '@/vaults/types';
 import type { Vault } from '@/vaults/Vault';
 import type KeyManager from '@/keys/KeyManager';
-import type { DBDomain, DBLevel } from '@matrixai/db';
+import type { LevelPath } from '@matrixai/db';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -24,8 +24,7 @@ describe('VaultOps', () => {
   let vaultInternal: VaultInternal;
   let vault: Vault;
   let db: DB;
-  let vaultsDb: DBLevel;
-  let vaultsDbDomain: DBDomain;
+  let vaultsDbPath: LevelPath;
   const dummyKeyManager = {
     getNodeId: () => {
       return testUtils.generateRandomNodeId();
@@ -64,8 +63,7 @@ describe('VaultOps', () => {
       },
     );
     db = await DB.createDB({ dbPath: path.join(dataDir, 'db'), logger });
-    vaultsDbDomain = ['vaults'];
-    vaultsDb = await db.level(vaultsDbDomain[0]);
+    vaultsDbPath = ['vaults'];
     vaultInternal = await VaultInternal.createVaultInternal({
       keyManager: dummyKeyManager,
       vaultId,
@@ -73,8 +71,7 @@ describe('VaultOps', () => {
       logger: logger.getChild(VaultInternal.name),
       fresh: true,
       db,
-      vaultsDbDomain,
-      vaultsDb,
+      vaultsDbPath: vaultsDbPath,
       vaultName: 'VaultName',
     });
     vault = vaultInternal as Vault;

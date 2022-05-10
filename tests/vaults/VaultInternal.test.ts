@@ -1,7 +1,7 @@
 import type { VaultId } from '@/vaults/types';
 import type { Vault } from '@/vaults/Vault';
 import type KeyManager from '@/keys/KeyManager';
-import type { DBDomain, DBLevel } from '@matrixai/db';
+import type { LevelPath } from '@matrixai/db';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
@@ -35,8 +35,7 @@ describe('VaultInternal', () => {
   let efs: EncryptedFS;
 
   let db: DB;
-  let vaultsDb: DBLevel;
-  let vaultsDbDomain: DBDomain;
+  let vaultsDbPath: LevelPath;
 
   const fakeKeyManager = {
     getNodeId: () => {
@@ -79,8 +78,7 @@ describe('VaultInternal', () => {
       fs: fs,
       logger: logger,
     });
-    vaultsDbDomain = ['vaults'];
-    vaultsDb = await db.level(vaultsDbDomain[0]);
+    vaultsDbPath = ['vaults'];
 
     vaultId = vaultsUtils.generateVaultId();
     vault = await VaultInternal.createVaultInternal({
@@ -90,8 +88,7 @@ describe('VaultInternal', () => {
       logger,
       fresh: true,
       db,
-      vaultsDb,
-      vaultsDbDomain,
+      vaultsDbPath,
       vaultName: 'testVault',
     });
   });
@@ -152,8 +149,7 @@ describe('VaultInternal', () => {
       fresh: false,
       db,
       vaultName: 'testVault1',
-      vaultsDb,
-      vaultsDbDomain,
+      vaultsDbPath,
     });
     await vault.readF(async (efs) => {
       expect((await efs.readFile('secret-1')).toString()).toStrictEqual(
@@ -494,8 +490,11 @@ describe('VaultInternal', () => {
   test('cannot commit when the remote field is set', async () => {
     // Write remote metadata
     await db.put(
-      [...vaultsDbDomain, vaultsUtils.encodeVaultId(vaultId)],
-      VaultInternal.remoteKey,
+      [
+        ...vaultsDbPath,
+        vaultsUtils.encodeVaultId(vaultId),
+        VaultInternal.remoteKey,
+      ],
       { remoteNode: '', remoteVault: '' },
     );
     const commit = (await vault.log(undefined, 1))[0];
@@ -510,30 +509,34 @@ describe('VaultInternal', () => {
       }),
     ).rejects.toThrow(vaultsErrors.ErrorVaultRemoteDefined);
   });
-  test('cannot checkout old commits after branching commit', async () => {
-    await vault.writeF(async (efs) => {
-      await efs.writeFile('test1', 'testdata1');
-    });
-    const secondCommit = (await vault.log(undefined, 1))[0].commitId;
-    await vault.writeF(async (efs) => {
-      await efs.writeFile('test2', 'testdata2');
-    });
-    const thirdCommit = (await vault.log(undefined, 1))[0].commitId;
-    await vault.writeF(async (efs) => {
-      await efs.writeFile('test3', 'testdata3');
-    });
-    const fourthCommit = (await vault.log(undefined, 1))[0].commitId;
-    await vault.version(secondCommit);
-    await vault.writeF(async (efs) => {
-      await efs.writeFile('test4', 'testdata4');
-    });
-    await expect(() => {
-      return vault.version(thirdCommit);
-    }).rejects.toThrow();
-    await expect(() => {
-      return vault.version(fourthCommit);
-    }).rejects.toThrow();
-  });
+  test(
+    'cannot checkout old commits after branching commit',
+    async () => {
+      await vault.writeF(async (efs) => {
+        await efs.writeFile('test1', 'testdata1');
+      });
+      const secondCommit = (await vault.log(undefined, 1))[0].commitId;
+      await vault.writeF(async (efs) => {
+        await efs.writeFile('test2', 'testdata2');
+      });
+      const thirdCommit = (await vault.log(undefined, 1))[0].commitId;
+      await vault.writeF(async (efs) => {
+        await efs.writeFile('test3', 'testdata3');
+      });
+      const fourthCommit = (await vault.log(undefined, 1))[0].commitId;
+      await vault.version(secondCommit);
+      await vault.writeF(async (efs) => {
+        await efs.writeFile('test4', 'testdata4');
+      });
+      await expect(() => {
+        return vault.version(thirdCommit);
+      }).rejects.toThrow();
+      await expect(() => {
+        return vault.version(fourthCommit);
+      }).rejects.toThrow();
+    },
+    global.defaultTimeout,
+  );
   test('can recover from dirty state', async () => {
     await vault.writeF(async (efs) => {
       await efs.writeFile('secret-1', 'secret-content');
@@ -547,11 +550,11 @@ describe('VaultInternal', () => {
     await vaultEFS.writeFile('dirty', 'dirtyData');
     await vaultEFS.writeFile('secret-1', 'dirtyData');
     // Setting dirty flag true
-    const vaultMetadataDbDomain = [
-      ...vaultsDbDomain,
+    const vaultMetadataDbPath = [
+      ...vaultsDbPath,
       vaultsUtils.encodeVaultId(vaultId),
     ];
-    await db.put(vaultMetadataDbDomain, VaultInternal.dirtyKey, true);
+    await db.put([...vaultMetadataDbPath, VaultInternal.dirtyKey], true);
 
     // Restarting vault
     await vault.stop();
@@ -607,11 +610,11 @@ describe('VaultInternal', () => {
     });
 
     // Setting dirty flag true
-    const vaultMetadataDbDomain = [
-      ...vaultsDbDomain,
+    const vaultMetadataDbPath = [
+      ...vaultsDbPath,
       vaultsUtils.encodeVaultId(vaultId),
     ];
-    await db.put(vaultMetadataDbDomain, VaultInternal.dirtyKey, true);
+    await db.put([...vaultMetadataDbPath, VaultInternal.dirtyKey], true);
 
     // Restarting vault
     await vault.stop();
@@ -735,7 +738,7 @@ describe('VaultInternal', () => {
     // @ts-ignore: kidnap lock
     const lock = vault.lock;
     // Hold a write lock
-    const releaseWrite = await lock.acquireWrite();
+    const [releaseWrite] = await lock.write()();
 
     let finished = false;
     const writeP = vault.writeF(async () => {
@@ -743,17 +746,17 @@ describe('VaultInternal', () => {
     });
     await sleep(waitDelay);
     expect(finished).toBe(false);
-    releaseWrite();
+    await releaseWrite();
     await writeP;
     expect(finished).toBe(true);
 
-    const releaseRead = await lock.acquireRead();
+    const [releaseRead] = await lock.read()();
     finished = false;
     const writeP2 = vault.writeF(async () => {
       finished = true;
     });
     await sleep(waitDelay);
-    releaseRead();
+    await releaseRead();
     await writeP2;
     expect(finished).toBe(true);
   });
@@ -761,7 +764,7 @@ describe('VaultInternal', () => {
     // @ts-ignore: kidnap lock
     const lock = vault.lock;
     // Hold a write lock
-    const releaseWrite = await lock.acquireWrite();
+    const [releaseWrite] = await lock.write()();
 
     let finished = false;
     const writeGen = vault.writeG(async function* () {
@@ -772,11 +775,11 @@ describe('VaultInternal', () => {
     const runP = runGen(writeGen);
     await sleep(waitDelay);
     expect(finished).toBe(false);
-    releaseWrite();
+    await releaseWrite();
     await runP;
     expect(finished).toBe(true);
 
-    const releaseRead = await lock.acquireRead();
+    const [releaseRead] = await lock.read()();
     finished = false;
     const writeGen2 = vault.writeG(async function* () {
       yield;
@@ -785,7 +788,7 @@ describe('VaultInternal', () => {
     });
     const runP2 = runGen(writeGen2);
     await sleep(waitDelay);
-    releaseRead();
+    await releaseRead();
     await runP2;
     expect(finished).toBe(true);
   });
@@ -793,7 +796,7 @@ describe('VaultInternal', () => {
     // @ts-ignore: kidnap lock
     const lock = vault.lock;
     // Hold a write lock
-    const releaseWrite = await lock.acquireWrite();
+    const [releaseWrite] = await lock.write()();
 
     let finished = false;
     const writeP = vault.readF(async () => {
@@ -801,7 +804,7 @@ describe('VaultInternal', () => {
     });
     await sleep(waitDelay);
     expect(finished).toBe(false);
-    releaseWrite();
+    await releaseWrite();
     await writeP;
     expect(finished).toBe(true);
   });
@@ -809,7 +812,7 @@ describe('VaultInternal', () => {
     // @ts-ignore: kidnap lock
     const lock = vault.lock;
     // Hold a write lock
-    const releaseWrite = await lock.acquireWrite();
+    const [releaseWrite] = await lock.write()();
     let finished = false;
     const writeGen = vault.readG(async function* () {
       yield;
@@ -819,7 +822,7 @@ describe('VaultInternal', () => {
     const runP = runGen(writeGen);
     await sleep(waitDelay);
     expect(finished).toBe(false);
-    releaseWrite();
+    await releaseWrite();
     await runP;
     expect(finished).toBe(true);
   });
@@ -827,7 +830,7 @@ describe('VaultInternal', () => {
     // @ts-ignore: kidnap lock
     const lock = vault.lock;
     // Hold a write lock
-    const releaseRead = await lock.acquireRead();
+    const [releaseRead] = await lock.read()();
     const finished: boolean[] = [];
     const doThing = async () => {
       finished.push(true);
@@ -839,13 +842,13 @@ describe('VaultInternal', () => {
       vault.readF(doThing),
     ]);
     expect(finished.length).toBe(4);
-    releaseRead();
+    await releaseRead();
   });
   test('readG allows concurrent reads', async () => {
     // @ts-ignore: kidnap lock
     const lock = vault.lock;
     // Hold a write lock
-    const releaseRead = await lock.acquireRead();
+    const [releaseRead] = await lock.read()();
     const finished: boolean[] = [];
     const doThing = async function* () {
       yield;
@@ -859,7 +862,7 @@ describe('VaultInternal', () => {
       runGen(vault.readG(doThing)),
     ]);
     expect(finished.length).toBe(4);
-    releaseRead();
+    await releaseRead();
   });
   // Life-cycle
   test('can create with CreateVaultInternal', async () => {
@@ -871,8 +874,7 @@ describe('VaultInternal', () => {
         efs,
         keyManager: fakeKeyManager,
         vaultId: vaultId1,
-        vaultsDb,
-        vaultsDbDomain,
+        vaultsDbPath,
         logger,
       });
       // Data exists for vault now
@@ -894,8 +896,7 @@ describe('VaultInternal', () => {
         efs,
         keyManager: fakeKeyManager,
         vaultId: vaultId1,
-        vaultsDb,
-        vaultsDbDomain,
+        vaultsDbPath,
         logger,
       });
       // Data exists for vault now
@@ -914,8 +915,7 @@ describe('VaultInternal', () => {
         efs,
         keyManager: fakeKeyManager,
         vaultId: vaultId1,
-        vaultsDb,
-        vaultsDbDomain,
+        vaultsDbPath,
         logger,
       });
 

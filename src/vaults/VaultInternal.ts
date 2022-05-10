@@ -1,7 +1,6 @@
 import type { ReadCommitResult } from 'isomorphic-git';
 import type { EncryptedFS } from 'encryptedfs';
-import type { DB, DBDomain, DBLevel } from '@matrixai/db';
-import type { ResourceAcquire } from '@matrixai/resources';
+import type { DB, DBTransaction, LevelPath } from '@matrixai/db';
 import type {
   CommitId,
   CommitLog,
@@ -51,35 +50,50 @@ class VaultInternal {
     vaultId,
     vaultName,
     db,
-    vaultsDb,
-    vaultsDbDomain,
+    vaultsDbPath,
     keyManager,
     efs,
     logger = new Logger(this.name),
     fresh = false,
+    tran,
   }: {
     vaultId: VaultId;
     vaultName?: VaultName;
     db: DB;
-    vaultsDb: DBLevel;
-    vaultsDbDomain: DBDomain;
+    vaultsDbPath: LevelPath;
     keyManager: KeyManager;
     efs: EncryptedFS;
     logger?: Logger;
     fresh?: boolean;
+    tran?: DBTransaction;
   }): Promise<VaultInternal> {
+    if (tran == null) {
+      return await db.withTransactionF(async (tran) =>
+        this.createVaultInternal({
+          vaultId,
+          vaultName,
+          db,
+          vaultsDbPath,
+          keyManager,
+          efs,
+          logger,
+          fresh,
+          tran,
+        }),
+      );
+    }
+
     const vaultIdEncoded = vaultsUtils.encodeVaultId(vaultId);
     logger.info(`Creating ${this.name} - ${vaultIdEncoded}`);
     const vault = new VaultInternal({
       vaultId,
       db,
-      vaultsDb,
-      vaultsDbDomain,
+      vaultsDbPath,
       keyManager,
       efs,
       logger,
     });
-    await vault.start({ fresh, vaultName });
+    await vault.start({ fresh, vaultName, tran });
     logger.info(`Created ${this.name} - ${vaultIdEncoded}`);
     return vault;
   }
@@ -89,31 +103,47 @@ class VaultInternal {
     targetVaultNameOrId,
     vaultId,
     db,
-    vaultsDb,
-    vaultsDbDomain,
+    vaultsDbPath,
     keyManager,
     nodeConnectionManager,
     efs,
     logger = new Logger(this.name),
+    tran,
   }: {
     targetNodeId: NodeId;
     targetVaultNameOrId: VaultId | VaultName;
     vaultId: VaultId;
     db: DB;
-    vaultsDb: DBLevel;
-    vaultsDbDomain: DBDomain;
+    vaultsDbPath: LevelPath;
     efs: EncryptedFS;
     keyManager: KeyManager;
     nodeConnectionManager: NodeConnectionManager;
     logger?: Logger;
+    tran?: DBTransaction;
   }): Promise<VaultInternal> {
+    if (tran == null) {
+      return await db.withTransactionF(async (tran) =>
+        this.cloneVaultInternal({
+          targetNodeId,
+          targetVaultNameOrId,
+          vaultId,
+          db,
+          vaultsDbPath,
+          keyManager,
+          nodeConnectionManager,
+          efs,
+          logger,
+          tran,
+        }),
+      );
+    }
+
     const vaultIdEncoded = vaultsUtils.encodeVaultId(vaultId);
     logger.info(`Cloning ${this.name} - ${vaultIdEncoded}`);
     const vault = new VaultInternal({
       vaultId,
       db,
-      vaultsDb,
-      vaultsDbDomain,
+      vaultsDbPath,
       keyManager,
       efs,
       logger,
@@ -160,11 +190,10 @@ class VaultInternal {
       throw e;
     }
 
-    await vault.start({ vaultName });
+    await vault.start({ vaultName, tran });
     // Setting the remote in the metadata
-    await vault.db.put(
-      vault.vaultMetadataDbDomain,
-      VaultInternal.remoteKey,
+    await tran.put(
+      [...vault.vaultMetadataDbPath, VaultInternal.remoteKey],
       remote,
     );
     logger.info(`Cloned ${this.name} - ${vaultIdEncoded}`);
@@ -182,39 +211,29 @@ class VaultInternal {
 
   protected logger: Logger;
   protected db: DB;
-  protected vaultsDbDomain: DBDomain;
-  protected vaultsDb: DBLevel;
-  protected vaultMetadataDbDomain: DBDomain;
-  protected vaultMetadataDb: DBLevel;
+  protected vaultsDbPath: LevelPath;
+  protected vaultMetadataDbPath: LevelPath;
   protected keyManager: KeyManager;
-  protected vaultsNamesDomain: DBDomain;
+  protected vaultsNamesPath: LevelPath;
   protected efs: EncryptedFS;
   protected efsVault: EncryptedFS;
   protected lock: RWLockWriter = new RWLockWriter();
 
-  public readLock: ResourceAcquire = async () => {
-    const release = await this.lock.acquireRead();
-    return [async () => release()];
-  };
-
-  public writeLock: ResourceAcquire = async () => {
-    const release = await this.lock.acquireWrite();
-    return [async () => release()];
-  };
+  public getLock(): RWLockWriter {
+    return this.lock;
+  }
 
   constructor({
     vaultId,
     db,
-    vaultsDbDomain,
-    vaultsDb,
+    vaultsDbPath,
     keyManager,
     efs,
     logger,
   }: {
     vaultId: VaultId;
     db: DB;
-    vaultsDbDomain: DBDomain;
-    vaultsDb: DBLevel;
+    vaultsDbPath: LevelPath;
     keyManager: KeyManager;
     efs: EncryptedFS;
     logger: Logger;
@@ -226,8 +245,7 @@ class VaultInternal {
     this.vaultDataDir = path.join(vaultIdEncoded, 'data');
     this.vaultGitDir = path.join(vaultIdEncoded, '.git');
     this.db = db;
-    this.vaultsDbDomain = vaultsDbDomain;
-    this.vaultsDb = vaultsDb;
+    this.vaultsDbPath = vaultsDbPath;
     this.keyManager = keyManager;
     this.efs = efs;
   }
@@ -236,27 +254,38 @@ class VaultInternal {
    *
    * @param fresh Clears all state before starting
    * @param vaultName Name of the vault, Only used when creating a new vault
+   * @param tran
    */
   public async start({
     fresh = false,
     vaultName,
+    tran,
   }: {
     fresh?: boolean;
     vaultName?: VaultName;
+    tran?: DBTransaction;
   } = {}): Promise<void> {
+    if (tran == null) {
+      return await this.db.withTransactionF(async (tran) =>
+        this.start_(fresh, tran, vaultName),
+      );
+    }
+    return await this.start_(fresh, tran, vaultName);
+  }
+
+  protected async start_(
+    fresh: boolean,
+    tran: DBTransaction,
+    vaultName?: VaultName,
+  ) {
     this.logger.info(
       `Starting ${this.constructor.name} - ${this.vaultIdEncoded}`,
     );
-    this.vaultMetadataDbDomain = [...this.vaultsDbDomain, this.vaultIdEncoded];
-    this.vaultsNamesDomain = [...this.vaultsDbDomain, 'names'];
-    this.vaultMetadataDb = await this.db.level(
-      this.vaultIdEncoded,
-      this.vaultsDb,
-    );
+    this.vaultMetadataDbPath = [...this.vaultsDbPath, this.vaultIdEncoded];
+    this.vaultsNamesPath = [...this.vaultsDbPath, 'names'];
     // Let's backup any metadata
-
     if (fresh) {
-      await this.vaultMetadataDb.clear();
+      await tran.clear(this.vaultMetadataDbPath);
       try {
         await this.efs.rmdir(this.vaultIdEncoded, {
           recursive: true,
@@ -270,15 +299,15 @@ class VaultInternal {
     await this.mkdirExists(this.vaultIdEncoded);
     await this.mkdirExists(this.vaultDataDir);
     await this.mkdirExists(this.vaultGitDir);
-    await this.setupMeta({ vaultName });
-    await this.setupGit();
+    await this.setupMeta({ vaultName, tran });
+    await this.setupGit(tran);
     this.efsVault = await this.efs.chroot(this.vaultDataDir);
     this.logger.info(
       `Started ${this.constructor.name} - ${this.vaultIdEncoded}`,
     );
   }
 
-  private async mkdirExists(directory: string) {
+  protected async mkdirExists(directory: string) {
     try {
       await this.efs.mkdir(directory, { recursive: true });
     } catch (e) {
@@ -297,12 +326,20 @@ class VaultInternal {
     );
   }
 
-  public async destroy(): Promise<void> {
+  public async destroy(tran?: DBTransaction): Promise<void> {
+    if (tran == null) {
+      return await this.db.withTransactionF(async (tran) =>
+        this.destroy_(tran),
+      );
+    }
+    return await this.destroy_(tran);
+  }
+
+  protected async destroy_(tran: DBTransaction) {
     this.logger.info(
       `Destroying ${this.constructor.name} - ${this.vaultIdEncoded}`,
     );
-    const vaultDb = await this.db.level(this.vaultIdEncoded, this.vaultsDb);
-    await vaultDb.clear();
+    await tran.clear(this.vaultMetadataDbPath);
     try {
       await this.efs.rmdir(this.vaultIdEncoded, {
         recursive: true,
@@ -386,7 +423,7 @@ class VaultInternal {
 
   @ready(new vaultsErrors.ErrorVaultNotRunning())
   public async readF<T>(f: (fs: FileSystemReadable) => Promise<T>): Promise<T> {
-    return withF([this.readLock], async () => {
+    return withF([this.lock.read()], async () => {
       return await f(this.efsVault);
     });
   }
@@ -396,7 +433,7 @@ class VaultInternal {
     g: (fs: FileSystemReadable) => AsyncGenerator<T, TReturn, TNext>,
   ): AsyncGenerator<T, TReturn, TNext> {
     const efsVault = this.efsVault;
-    return withG([this.readLock], async function* () {
+    return withG([this.lock.read()], async function* () {
       return yield* g(efsVault);
     });
   }
@@ -404,24 +441,28 @@ class VaultInternal {
   @ready(new vaultsErrors.ErrorVaultNotRunning())
   public async writeF(
     f: (fs: FileSystemWritable) => Promise<void>,
+    tran?: DBTransaction,
   ): Promise<void> {
+    if (tran == null) {
+      return this.db.withTransactionF(async (tran) => this.writeF(f, tran));
+    }
+
     // This should really be an internal property
     // get whether this is remote, and the remote address
     // if it is, we consider this repo an "attached repo"
     // this vault is a "mirrored" vault
     if (
-      (await this.db.get(
-        this.vaultMetadataDbDomain,
+      (await tran.get([
+        ...this.vaultMetadataDbPath,
         VaultInternal.remoteKey,
-      )) != null
+      ])) != null
     ) {
       // Mirrored vaults are immutable
       throw new vaultsErrors.ErrorVaultRemoteDefined();
     }
-    return withF([this.writeLock], async () => {
-      await this.db.put(
-        this.vaultMetadataDbDomain,
-        VaultInternal.dirtyKey,
+    return withF([this.lock.write()], async () => {
+      await tran.put(
+        [...this.vaultMetadataDbPath, VaultInternal.dirtyKey],
         true,
       );
       try {
@@ -433,9 +474,8 @@ class VaultInternal {
         await this.cleanWorkingDirectory();
         throw e;
       }
-      await this.db.put(
-        this.vaultMetadataDbDomain,
-        VaultInternal.dirtyKey,
+      await tran.put(
+        [...this.vaultMetadataDbPath, VaultInternal.dirtyKey],
         false,
       );
     });
@@ -444,18 +484,25 @@ class VaultInternal {
   @ready(new vaultsErrors.ErrorVaultNotRunning())
   public writeG<T, TReturn, TNext>(
     g: (fs: FileSystemWritable) => AsyncGenerator<T, TReturn, TNext>,
+    tran?: DBTransaction,
   ): AsyncGenerator<T, TReturn, TNext> {
+    if (tran == null) {
+      return this.db.withTransactionG((tran) => this.writeG(g, tran));
+    }
+
     const efsVault = this.efsVault;
-    const db = this.db;
-    const vaultDbDomain = this.vaultMetadataDbDomain;
+    const vaultMetadataDbPath = this.vaultMetadataDbPath;
     const createCommit = () => this.createCommit();
     const cleanWorkingDirectory = () => this.cleanWorkingDirectory();
-    return withG([this.writeLock], async function* () {
-      if ((await db.get(vaultDbDomain, VaultInternal.remoteKey)) != null) {
+    return withG([this.lock.write()], async function* () {
+      if (
+        (await tran.get([...vaultMetadataDbPath, VaultInternal.remoteKey])) !=
+        null
+      ) {
         // Mirrored vaults are immutable
         throw new vaultsErrors.ErrorVaultRemoteDefined();
       }
-      await db.put(vaultDbDomain, VaultInternal.dirtyKey, true);
+      await tran.put([...vaultMetadataDbPath, VaultInternal.dirtyKey], true);
 
       let result;
       // Do what you need to do here, create the commit
@@ -472,7 +519,7 @@ class VaultInternal {
         await cleanWorkingDirectory();
         throw e;
       }
-      await db.put(vaultDbDomain, VaultInternal.dirtyKey, false);
+      await tran.put([...vaultMetadataDbPath, VaultInternal.dirtyKey], false);
       return result;
     });
   }
@@ -482,20 +529,33 @@ class VaultInternal {
     nodeConnectionManager,
     pullNodeId,
     pullVaultNameOrId,
+    tran,
   }: {
     nodeConnectionManager: NodeConnectionManager;
     pullNodeId?: NodeId;
     pullVaultNameOrId?: VaultId | VaultName;
-  }) {
+    tran?: DBTransaction;
+  }): Promise<void> {
+    if (tran == null) {
+      return this.db.withTransactionF(async (tran) =>
+        this.pullVault({
+          nodeConnectionManager,
+          pullNodeId,
+          pullVaultNameOrId,
+          tran,
+        }),
+      );
+    }
+
     // This error flag will contain the error returned by the cloning grpc stream
     let error;
     // Keeps track of whether the metadata needs changing to avoid unnecessary db ops
     // 0 = no change, 1 = change with vault Id, 2 = change with vault name
     let metaChange = 0;
-    const remoteInfo = await this.db.get<RemoteInfo>(
-      this.vaultMetadataDbDomain,
+    const remoteInfo = await tran.get<RemoteInfo>([
+      ...this.vaultMetadataDbPath,
       VaultInternal.remoteKey,
-    );
+    ]);
     if (remoteInfo == null) throw new vaultsErrors.ErrorVaultRemoteUndefined();
 
     if (pullNodeId == null) {
@@ -530,7 +590,7 @@ class VaultInternal {
             pullVaultNameOrId!,
             'pull',
           );
-          await withF([this.writeLock], async () => {
+          await withF([this.lock.write()], async () => {
             await git.pull({
               fs: this.efs,
               http: { request },
@@ -563,9 +623,8 @@ class VaultInternal {
       if (metaChange === 2) {
         remoteInfo.remoteVault = vaultsUtils.encodeVaultId(remoteVaultId);
       }
-      await this.db.put(
-        this.vaultMetadataDbDomain,
-        VaultInternal.remoteKey,
+      await tran.put(
+        [...this.vaultMetadataDbPath, VaultInternal.remoteKey],
         remoteInfo,
       );
     }
@@ -581,8 +640,10 @@ class VaultInternal {
    */
   protected async setupMeta({
     vaultName,
+    tran,
   }: {
     vaultName?: VaultName;
+    tran: DBTransaction;
   }): Promise<void> {
     // Setup the vault metadata
     // and you need to make certain preparations
@@ -593,29 +654,27 @@ class VaultInternal {
     // If this is not existing
     // setup default vaults db
     if (
-      (await this.db.get<boolean>(
-        this.vaultMetadataDbDomain,
+      (await tran.get<boolean>([
+        ...this.vaultMetadataDbPath,
         VaultInternal.dirtyKey,
-      )) == null
+      ])) == null
     ) {
-      await this.db.put(
-        this.vaultMetadataDbDomain,
-        VaultInternal.dirtyKey,
+      await tran.put(
+        [...this.vaultMetadataDbPath, VaultInternal.dirtyKey],
         false,
       );
     }
 
     // Set up vault Name
     if (
-      (await this.db.get<string>(
-        this.vaultMetadataDbDomain,
+      (await tran.get<string>([
+        ...this.vaultMetadataDbPath,
         VaultInternal.nameKey,
-      )) == null &&
+      ])) == null &&
       vaultName != null
     ) {
-      await this.db.put(
-        this.vaultMetadataDbDomain,
-        VaultInternal.nameKey,
+      await tran.put(
+        [...this.vaultMetadataDbPath, VaultInternal.nameKey],
         vaultName,
       );
     }
@@ -625,7 +684,7 @@ class VaultInternal {
     // name: string | undefined
   }
 
-  protected async setupGit(): Promise<string> {
+  protected async setupGit(tran: DBTransaction): Promise<string> {
     // Initialization is idempotent
     // It works even with an existing git repository
     await git.init({
@@ -673,10 +732,10 @@ class VaultInternal {
     } else {
       // Checking for dirty
       if (
-        (await this.db.get<boolean>(
-          this.vaultMetadataDbDomain,
+        (await tran.get<boolean>([
+          ...this.vaultMetadataDbPath,
           VaultInternal.dirtyKey,
-        )) === true
+        ])) === true
       ) {
         // Force checkout out to the latest commit
         // This ensures that any uncommitted state is dropped
@@ -685,9 +744,8 @@ class VaultInternal {
         await this.garbageCollectGitObjects();
 
         // Setting dirty back to false
-        await this.db.put(
-          this.vaultMetadataDbDomain,
-          VaultInternal.dirtyKey,
+        await tran.put(
+          [...this.vaultMetadataDbPath, VaultInternal.dirtyKey],
           false,
         );
       }
