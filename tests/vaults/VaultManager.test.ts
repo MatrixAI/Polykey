@@ -139,44 +139,50 @@ describe('VaultManager', () => {
       await vaultManager?.destroy();
     }
   });
-  test('can create many vaults and open a vault', async () => {
-    const vaultManager = await VaultManager.createVaultManager({
-      vaultsPath,
-      keyManager: dummyKeyManager,
-      gestaltGraph: {} as GestaltGraph,
-      nodeConnectionManager: {} as NodeConnectionManager,
-      acl: {} as ACL,
-      notificationsManager: {} as NotificationsManager,
-      db,
-      logger: logger.getChild(VaultManager.name),
-    });
-    try {
-      const vaultNames = [
-        'Vault1',
-        'Vault2',
-        'Vault3',
-        'Vault4',
-        'Vault5',
-        'Vault6',
-        'Vault7',
-        'Vault8',
-        'Vault9',
-        'Vault10',
-        'Vault11',
-        'Vault12',
-        'Vault13',
-        'Vault14',
-        'Vault15',
-      ];
-      for (const vaultName of vaultNames) {
-        await vaultManager.createVault(vaultName as VaultName);
+  test(
+    'can create many vaults and open a vault',
+    async () => {
+      const vaultManager = await VaultManager.createVaultManager({
+        vaultsPath,
+        keyManager: dummyKeyManager,
+        gestaltGraph: {} as GestaltGraph,
+        nodeConnectionManager: {} as NodeConnectionManager,
+        acl: {} as ACL,
+        notificationsManager: {} as NotificationsManager,
+        db,
+        logger: logger.getChild(VaultManager.name),
+      });
+      try {
+        const vaultNames = [
+          'Vault1',
+          'Vault2',
+          'Vault3',
+          'Vault4',
+          'Vault5',
+          'Vault6',
+          'Vault7',
+          'Vault8',
+          'Vault9',
+          'Vault10',
+          'Vault11',
+          'Vault12',
+          'Vault13',
+          'Vault14',
+          'Vault15',
+        ];
+        for (const vaultName of vaultNames) {
+          await vaultManager.createVault(vaultName as VaultName);
+        }
+        expect((await vaultManager.listVaults()).size).toEqual(
+          vaultNames.length,
+        );
+      } finally {
+        await vaultManager?.stop();
+        await vaultManager?.destroy();
       }
-      expect((await vaultManager.listVaults()).size).toEqual(vaultNames.length);
-    } finally {
-      await vaultManager?.stop();
-      await vaultManager?.destroy();
-    }
-  });
+    },
+    global.defaultTimeout * 2,
+  );
   test('can rename a vault', async () => {
     const vaultManager = await VaultManager.createVaultManager({
       vaultsPath,
@@ -1302,7 +1308,7 @@ describe('VaultManager', () => {
         const vaultsMap = vaultManager.vaultMap;
         const vaultAndLock = vaultsMap.get(vaultId.toString() as VaultIdString);
         const lock = vaultAndLock!.lock;
-        const releaseWrite = await lock.acquireWrite();
+        const [releaseWrite] = await lock.write()();
 
         // Pulling vault respects VaultManager write lock
         const pullP = vaultManager.pullVault({
@@ -1329,7 +1335,7 @@ describe('VaultManager', () => {
         const vault = vaultAndLock!.vault!;
         // @ts-ignore: kidnap vault lock
         const vaultLock = vault.lock;
-        const releaseVaultWrite = await vaultLock.acquireWrite();
+        const [releaseVaultWrite] = await vaultLock.write()();
         // Pulling vault respects VaultManager write lock
         gitPullMock.mockClear();
         const pullP2 = vaultManager.pullVault({
@@ -1586,7 +1592,7 @@ describe('VaultManager', () => {
       const vaultAndLock = vaultMap.get(vaultId.toString() as VaultIdString)!;
       const lock = vaultAndLock.lock;
       const vault = vaultAndLock.vault!;
-      const release = await lock.acquireWrite();
+      const [release] = await lock.write()();
       // Try to destroy
       const closeP = vaultManager.closeVault(vaultId);
       await sleep(1000);
@@ -1596,7 +1602,7 @@ describe('VaultManager', () => {
         vaultMap.get(vaultId.toString() as VaultIdString)!.vault,
       ).toBeDefined();
       // Release the lock
-      release();
+      await release();
       await closeP;
       expect(vault[running]).toBe(false);
       expect(vaultMap.get(vaultId.toString() as VaultIdString)).toBeUndefined();
@@ -1625,7 +1631,7 @@ describe('VaultManager', () => {
       const vaultAndLock = vaultMap.get(vaultId.toString() as VaultIdString)!;
       const lock = vaultAndLock.lock;
       const vault = vaultAndLock.vault!;
-      const release = await lock.acquireWrite();
+      const [release] = await lock.write()();
       // Try to destroy
       const destroyP = vaultManager.destroyVault(vaultId);
       await sleep(1000);
@@ -1635,7 +1641,7 @@ describe('VaultManager', () => {
         vaultMap.get(vaultId.toString() as VaultIdString)!.vault,
       ).toBeDefined();
       // Release the lock
-      release();
+      await release();
       await destroyP;
       expect(vault[destroyed]).toBe(true);
       expect(vaultMap.get(vaultId.toString() as VaultIdString)).toBeUndefined();
@@ -1663,7 +1669,7 @@ describe('VaultManager', () => {
       // Getting and holding the lock
       const vaultAndLock = vaultMap.get(vaultId.toString() as VaultIdString)!;
       const lock = vaultAndLock.lock;
-      const release = await lock.acquireWrite();
+      const [release] = await lock.write()();
       // Try to use vault
       let finished = false;
       const withP = vaultManager.withVaults([vaultId], async () => {
@@ -1673,7 +1679,7 @@ describe('VaultManager', () => {
       // Shouldn't be destroyed
       expect(finished).toBe(false);
       // Release the lock
-      release();
+      await release();
       await withP;
       expect(finished).toBe(true);
     } finally {
@@ -1713,6 +1719,7 @@ describe('VaultManager', () => {
       db,
       logger: logger.getChild(VaultManager.name),
     });
+
     try {
       await expect(
         Promise.all([
@@ -1834,8 +1841,7 @@ describe('VaultManager', () => {
       await vaultManager.stop();
       await vaultManager.destroy();
       // Vaults DB should be empty
-      const vaultsDb = await db.level(VaultManager.constructor.name);
-      expect(await db.count(vaultsDb)).toBe(0);
+      expect(await db.count([VaultManager.constructor.name])).toBe(0);
       vaultManager2 = await VaultManager.createVaultManager({
         vaultsPath,
         keyManager: dummyKeyManager,
