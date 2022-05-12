@@ -152,7 +152,7 @@ class Discovery {
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
-  public async destroy() {
+  public async destroy(): Promise<void> {
     this.logger.info(`Destroying ${this.constructor.name}`);
     await this.db.clear(this.discoveryDbPath);
     this.logger.info(`Destroyed ${this.constructor.name}`);
@@ -162,7 +162,7 @@ class Discovery {
    * Queues a node for discovery. Internally calls `pushKeyToDiscoveryQueue`.
    */
   @ready(new discoveryErrors.ErrorDiscoveryNotRunning())
-  public async queueDiscoveryByNode(nodeId: NodeId) {
+  public async queueDiscoveryByNode(nodeId: NodeId): Promise<void> {
     const nodeKey = gestaltsUtils.keyFromNode(nodeId);
     await this.pushKeyToDiscoveryQueue(nodeKey);
   }
@@ -175,7 +175,7 @@ class Discovery {
   public async queueDiscoveryByIdentity(
     providerId: ProviderId,
     identityId: IdentityId,
-  ) {
+  ): Promise<void> {
     const identityKey = gestaltsUtils.keyFromIdentity(providerId, identityId);
     await this.pushKeyToDiscoveryQueue(identityKey);
   }
@@ -429,7 +429,9 @@ class Discovery {
    * the queue if it was previously locked (due to being empty)
    * Will only add the Key if it does not already exist in the queue
    */
-  protected async pushKeyToDiscoveryQueue(gestaltKey: GestaltKey) {
+  protected async pushKeyToDiscoveryQueue(
+    gestaltKey: GestaltKey,
+  ): Promise<void> {
     await this.lock.withF(async () => {
       await this.db.withTransactionF(async (tran) => {
         const valueIterator = tran.iterator({}, this.discoveryQueueDbPath);
@@ -453,7 +455,9 @@ class Discovery {
    * only be done after a Key has been discovered in order to remove it from
    * the beginning of the queue.
    */
-  protected async removeKeyFromDiscoveryQueue(keyId: DiscoveryQueueId) {
+  protected async removeKeyFromDiscoveryQueue(
+    keyId: DiscoveryQueueId,
+  ): Promise<void> {
     await this.lock.withF(async () => {
       await this.db.del([
         ...this.discoveryQueueDbPath,
