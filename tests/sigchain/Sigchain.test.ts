@@ -6,11 +6,12 @@ import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
-import { KeyManager, utils as keysUtils } from '@/keys';
-import { Sigchain } from '@/sigchain';
+import KeyManager from '@/keys/KeyManager';
+import Sigchain from '@/sigchain/Sigchain';
 import * as claimsUtils from '@/claims/utils';
 import * as sigchainErrors from '@/sigchain/errors';
-import { utils as nodesUtils } from '@/nodes';
+import * as nodesUtils from '@/nodes/utils';
+import * as keysUtils from '@/keys/utils';
 import * as testUtils from '../utils';
 
 describe('Sigchain', () => {
@@ -92,7 +93,7 @@ describe('Sigchain', () => {
     });
   });
 
-  test('session readiness', async () => {
+  test('sigchain readiness', async () => {
     const sigchain = await Sigchain.createSigchain({ keyManager, db, logger });
     await expect(async () => {
       await sigchain.destroy();
