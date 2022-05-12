@@ -161,7 +161,10 @@ class NotificationsManager {
    * The `data` parameter must match one of the NotificationData types outlined in ./types
    */
   @ready(new notificationsErrors.ErrorNotificationsNotRunning())
-  public async sendNotification(nodeId: NodeId, data: NotificationData) {
+  public async sendNotification(
+    nodeId: NodeId,
+    data: NotificationData,
+  ): Promise<void> {
     const notification = {
       data: data,
       senderId: nodesUtils.encodeNodeId(this.keyManager.getNodeId()),
@@ -183,7 +186,7 @@ class NotificationsManager {
    * Receive a notification
    */
   @ready(new notificationsErrors.ErrorNotificationsNotRunning())
-  public async receiveNotification(notification: Notification) {
+  public async receiveNotification(notification: Notification): Promise<void> {
     return await resources.withF(
       [this.db.transaction(), this.lock.lock()],
       async ([tran]) => {
@@ -398,13 +401,7 @@ class NotificationsManager {
   protected async removeNotification(
     messageId: NotificationId,
     tran: DBTransaction,
-  ) {
-    if (tran == null) {
-      return this.db.withTransactionF(async (tran) =>
-        this.removeNotification(messageId, tran),
-      );
-    }
-
+  ): Promise<void> {
     const numMessages = await tran.get<number>([
       ...this.notificationsDbPath,
       MESSAGE_COUNT_KEY,
