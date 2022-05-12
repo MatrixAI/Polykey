@@ -18,6 +18,7 @@ import {
   ready,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import { utils as idUtils } from '@matrixai/id';
+import * as resources from '@matrixai/resources';
 import * as notificationsUtils from './utils';
 import * as notificationsErrors from './errors';
 import * as notificationsPB from '../proto/js/polykey/v1/notifications/notifications_pb';
@@ -120,32 +121,26 @@ class NotificationsManager {
 
   public async start({
     fresh = false,
-    tran,
-  }: { fresh?: boolean; tran?: DBTransaction } = {}): Promise<void> {
-    if (tran == null) {
-      return await this.db.withTransactionF((tran) => this.start_(fresh, tran));
-    }
-    return await this.start_(fresh, tran);
-  }
+  }: { fresh?: boolean } = {}): Promise<void> {
+    await this.db.withTransactionF(async (tran) => {
+      this.logger.info(`Starting ${this.constructor.name}`);
+      if (fresh) {
+        await tran.clear(this.notificationsDbPath);
+      }
 
-  protected async start_(fresh: boolean, tran: DBTransaction) {
-    this.logger.info(`Starting ${this.constructor.name}`);
-    if (fresh) {
-      await tran.clear(this.notificationsDbPath);
-    }
-
-    // Getting latest ID and creating ID generator
-    let latestId: NotificationId | undefined;
-    const keyIterator = tran.iterator(
-      { limit: 1, reverse: true },
-      this.notificationsMessagesDbPath,
-    );
-    for await (const [key] of keyIterator) {
-      latestId = IdInternal.fromBuffer<NotificationId>(key);
-    }
-    this.notificationIdGenerator =
-      notificationsUtils.createNotificationIdGenerator(latestId);
-    this.logger.info(`Started ${this.constructor.name}`);
+      // Getting latest ID and creating ID generator
+      let latestId: NotificationId | undefined;
+      const keyIterator = tran.iterator(
+        { limit: 1, reverse: true },
+        this.notificationsMessagesDbPath,
+      );
+      for await (const [key] of keyIterator) {
+        latestId = IdInternal.fromBuffer<NotificationId>(key);
+      }
+      this.notificationIdGenerator =
+        notificationsUtils.createNotificationIdGenerator(latestId);
+      this.logger.info(`Started ${this.constructor.name}`);
+    });
   }
 
   public async stop() {
@@ -153,46 +148,12 @@ class NotificationsManager {
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
-  public async destroy(tran?: DBTransaction) {
-    if (tran == null) {
-      return await this.db.withTransactionF(async (tran) => {
-        await this.destroy_(tran);
-      });
-    }
-    return await this.destroy_(tran);
-  }
-
-  protected async destroy_(tran: DBTransaction) {
+  public async destroy() {
     this.logger.info(`Destroying ${this.constructor.name}`);
-    await tran.clear(this.notificationsDbPath);
-    this.logger.info(`Destroyed ${this.constructor.name}`);
-  }
-
-  /**
-   * Run several operations within the same lock
-   * This does not ensure atomicity of the underlying database
-   * Database atomicity still depends on the underlying operation
-   */
-  // TODO: Remove this!!
-  public async transaction<T>(
-    f: (notificationsManager: NotificationsManager) => Promise<T>,
-  ): Promise<T> {
-    return await this.lock.withF(async () => {
-      return await f(this);
+    await this.db.withTransactionF(async (tran) => {
+      await tran.clear(this.notificationsDbPath);
     });
-  }
-
-  /**
-   * Transaction wrapper that will not lock if the operation was executed
-   * within a transaction context
-   */
-  // TODO: Remove this!!
-  public async _transaction<T>(f: () => Promise<T>): Promise<T> {
-    if (this.lock.isLocked()) {
-      return await f();
-    } else {
-      return await this.transaction(f);
-    }
+    this.logger.info(`Destroyed ${this.constructor.name}`);
   }
 
   /**
@@ -222,56 +183,50 @@ class NotificationsManager {
    * Receive a notification
    */
   @ready(new notificationsErrors.ErrorNotificationsNotRunning())
-  public async receiveNotification(
-    notification: Notification,
-    tran: DBTransaction,
-  ) {
-    if (tran == null) {
-      return this.db.withTransactionF(async (tran) =>
-        this.receiveNotification(notification, tran),
-      );
-    }
-
-    await this._transaction(async () => {
-      const nodePerms = await this.acl.getNodePerm(
-        nodesUtils.decodeNodeId(notification.senderId)!,
-      );
-      if (nodePerms === undefined) {
-        throw new notificationsErrors.ErrorNotificationsPermissionsNotFound();
-      }
-      // Only keep the message if the sending node has the correct permissions
-      if (Object.keys(nodePerms.gestalt).includes('notify')) {
-        // If the number stored in notificationsDb >= 10000
-        let numMessages = await tran.get<number>([
-          ...this.notificationsDbPath,
-          MESSAGE_COUNT_KEY,
-        ]);
-        if (numMessages === undefined) {
-          numMessages = 0;
-          await tran.put([...this.notificationsDbPath, MESSAGE_COUNT_KEY], 0);
-        }
-        if (numMessages >= this.messageCap) {
-          // Remove the oldest notification from notificationsMessagesDb
-          const oldestId = await this.getOldestNotificationId(tran);
-          await this.removeNotification(oldestId!, tran);
-        }
-        // Store the new notification in notificationsMessagesDb
-        const notificationId = this.notificationIdGenerator();
-        await tran.put(
-          [
-            ...this.notificationsMessagesDbPath,
-            idUtils.toBuffer(notificationId),
-          ],
-          notification,
+  public async receiveNotification(notification: Notification) {
+    return await resources.withF(
+      [this.db.transaction(), this.lock.lock()],
+      async ([tran]) => {
+        const nodePerms = await this.acl.getNodePerm(
+          nodesUtils.decodeNodeId(notification.senderId)!,
         );
-        // Number of messages += 1
-        const newNumMessages = numMessages + 1;
-        await tran.put(
-          [...this.notificationsDbPath, MESSAGE_COUNT_KEY],
-          newNumMessages,
-        );
-      }
-    });
+        if (nodePerms === undefined) {
+          throw new notificationsErrors.ErrorNotificationsPermissionsNotFound();
+        }
+        // Only keep the message if the sending node has the correct permissions
+        if (Object.keys(nodePerms.gestalt).includes('notify')) {
+          // If the number stored in notificationsDb >= 10000
+          let numMessages = await tran.get<number>([
+            ...this.notificationsDbPath,
+            MESSAGE_COUNT_KEY,
+          ]);
+          if (numMessages === undefined) {
+            numMessages = 0;
+            await tran.put([...this.notificationsDbPath, MESSAGE_COUNT_KEY], 0);
+          }
+          if (numMessages >= this.messageCap) {
+            // Remove the oldest notification from notificationsMessagesDb
+            const oldestId = await this.getOldestNotificationId(tran);
+            await this.removeNotification(oldestId!, tran);
+          }
+          // Store the new notification in notificationsMessagesDb
+          const notificationId = this.notificationIdGenerator();
+          await tran.put(
+            [
+              ...this.notificationsMessagesDbPath,
+              idUtils.toBuffer(notificationId),
+            ],
+            notification,
+          );
+          // Number of messages += 1
+          const newNumMessages = numMessages + 1;
+          await tran.put(
+            [...this.notificationsDbPath, MESSAGE_COUNT_KEY],
+            newNumMessages,
+          );
+        }
+      },
+    );
   }
 
   /**
@@ -282,42 +237,39 @@ class NotificationsManager {
     unread = false,
     number = 'all',
     order = 'newest',
-    tran,
   }: {
     unread?: boolean;
     number?: number | 'all';
     order?: 'newest' | 'oldest';
-    tran?: DBTransaction;
   } = {}): Promise<Array<Notification>> {
-    if (tran == null) {
-      return this.db.withTransactionF(async (tran) =>
-        this.readNotifications({ unread, number, order, tran }),
-      );
-    }
+    return await resources.withF(
+      [this.db.transaction(), this.lock.lock()],
+      async ([tran]) => {
+        let notificationIds: Array<NotificationId>;
+        if (unread) {
+          notificationIds = await this.getNotificationIds('unread', tran);
+        } else {
+          notificationIds = await this.getNotificationIds('all', tran);
+        }
 
-    let notificationIds: Array<NotificationId>;
-    if (unread) {
-      notificationIds = await this.getNotificationIds('unread', tran);
-    } else {
-      notificationIds = await this.getNotificationIds('all', tran);
-    }
+        if (order === 'newest') {
+          notificationIds.reverse();
+        }
 
-    if (order === 'newest') {
-      notificationIds.reverse();
-    }
+        if (number === 'all' || number > notificationIds.length) {
+          number = notificationIds.length;
+        }
+        notificationIds = notificationIds.slice(0, number);
 
-    if (number === 'all' || number > notificationIds.length) {
-      number = notificationIds.length;
-    }
-    notificationIds = notificationIds.slice(0, number);
+        const notifications: Array<Notification> = [];
+        for (const id of notificationIds) {
+          const notification = await this.readNotificationById(id, tran);
+          notifications.push(notification!);
+        }
 
-    const notifications: Array<Notification> = [];
-    for (const id of notificationIds) {
-      const notification = await this.readNotificationById(id, tran);
-      notifications.push(notification!);
-    }
-
-    return notifications;
+        return notifications;
+      },
+    );
   }
 
   /**
@@ -327,124 +279,110 @@ class NotificationsManager {
   @ready(new notificationsErrors.ErrorNotificationsNotRunning())
   public async findGestaltInvite(
     fromNode: NodeId,
-    tran: DBTransaction,
   ): Promise<Notification | undefined> {
-    if (tran == null) {
-      return this.db.withTransactionF(async (tran) =>
-        this.findGestaltInvite(fromNode, tran),
-      );
-    }
-
-    const notifications = await this.getNotifications('all', tran);
-    for (const notification of notifications) {
-      if (
-        notification.data.type === 'GestaltInvite' &&
-        nodesUtils.decodeNodeId(notification.senderId)!.equals(fromNode)
-      ) {
-        return notification;
-      }
-    }
+    return await resources.withF(
+      [this.db.transaction(), this.lock.lock()],
+      async ([tran]) => {
+        const notifications = await this.getNotifications('all', tran);
+        for (const notification of notifications) {
+          if (
+            notification.data.type === 'GestaltInvite' &&
+            nodesUtils.decodeNodeId(notification.senderId)!.equals(fromNode)
+          ) {
+            return notification;
+          }
+        }
+      },
+    );
   }
 
   /**
    * Removes all notifications
    */
   @ready(new notificationsErrors.ErrorNotificationsNotRunning())
-  public async clearNotifications(tran: DBTransaction) {
-    if (tran == null) {
-      return this.db.withTransactionF(async (tran) =>
-        this.clearNotifications(tran),
-      );
-    }
-
-    await this._transaction(async () => {
-      const notificationIds = await this.getNotificationIds('all', tran);
-      const numMessages = await tran.get<number>([
-        ...this.notificationsDbPath,
-        MESSAGE_COUNT_KEY,
-      ]);
-      if (numMessages !== undefined) {
-        for (const id of notificationIds) {
-          await this.removeNotification(id, tran);
+  public async clearNotifications(): Promise<void> {
+    await resources.withF(
+      [this.db.transaction(), this.lock.lock()],
+      async ([tran]) => {
+        const notificationIds = await this.getNotificationIds('all', tran);
+        const numMessages = await tran.get<number>([
+          ...this.notificationsDbPath,
+          MESSAGE_COUNT_KEY,
+        ]);
+        if (numMessages !== undefined) {
+          for (const id of notificationIds) {
+            await this.removeNotification(id, tran);
+          }
         }
-      }
-    });
+      },
+    );
   }
 
   protected async readNotificationById(
     notificationId: NotificationId,
     tran: DBTransaction,
   ): Promise<Notification | undefined> {
-    return await this._transaction(async () => {
-      const notification = await tran.get<Notification>([
-        ...this.notificationsMessagesDbPath,
-        idUtils.toBuffer(notificationId),
-      ]);
-      if (notification === undefined) {
-        return undefined;
-      }
-      notification.isRead = true;
-      await tran.put(
-        [...this.notificationsMessagesDbPath, idUtils.toBuffer(notificationId)],
-        notification,
-      );
-      return notification;
-    });
+    const notification = await tran.get<Notification>([
+      ...this.notificationsMessagesDbPath,
+      idUtils.toBuffer(notificationId),
+    ]);
+    if (notification === undefined) {
+      return undefined;
+    }
+    notification.isRead = true;
+    await tran.put(
+      [...this.notificationsMessagesDbPath, idUtils.toBuffer(notificationId)],
+      notification,
+    );
+    return notification;
   }
 
   protected async getNotificationIds(
     type: 'unread' | 'all',
     tran: DBTransaction,
   ): Promise<Array<NotificationId>> {
-    return await this._transaction(async () => {
-      const notificationIds: Array<NotificationId> = [];
-      const messageInterator = tran.iterator(
-        {},
-        this.notificationsMessagesDbPath,
+    const notificationIds: Array<NotificationId> = [];
+    const messageIterator = tran.iterator({}, this.notificationsMessagesDbPath);
+    for await (const [key, value] of messageIterator) {
+      const notificationId = IdInternal.fromBuffer<NotificationId>(key);
+      const notification = await this.db.deserializeDecrypt<Notification>(
+        value,
+        false,
       );
-      for await (const [key, value] of messageInterator) {
-        const notificationId = IdInternal.fromBuffer<NotificationId>(key);
-        const notification = await this.db.deserializeDecrypt<Notification>(
-          value,
-          false,
-        );
-        if (type === 'all') {
+      if (type === 'all') {
+        notificationIds.push(notificationId);
+      } else if (type === 'unread') {
+        if (!notification.isRead) {
           notificationIds.push(notificationId);
-        } else if (type === 'unread') {
-          if (!notification.isRead) {
-            notificationIds.push(notificationId);
-          }
         }
       }
-      return notificationIds;
-    });
+    }
+    return notificationIds;
   }
 
   protected async getNotifications(
     type: 'unread' | 'all',
     tran: DBTransaction,
   ): Promise<Array<Notification>> {
-    return await this._transaction(async () => {
-      const notifications: Array<Notification> = [];
-      // This.notificationsMessagesDb.createValueStream()
-      for await (const [, value] of tran.iterator(
-        {},
-        this.notificationsMessagesDbPath,
-      )) {
-        const notification = await this.db.deserializeDecrypt<Notification>(
-          value,
-          false,
-        );
-        if (type === 'all') {
+    const notifications: Array<Notification> = [];
+    // This.notificationsMessagesDb.createValueStream()
+    for await (const [, value] of tran.iterator(
+      {},
+      this.notificationsMessagesDbPath,
+    )) {
+      const notification = await this.db.deserializeDecrypt<Notification>(
+        value,
+        false,
+      );
+      if (type === 'all') {
+        notifications.push(notification);
+      } else if (type === 'unread') {
+        if (!notification.isRead) {
           notifications.push(notification);
-        } else if (type === 'unread') {
-          if (!notification.isRead) {
-            notifications.push(notification);
-          }
         }
       }
-      return notifications;
-    });
+    }
+    return notifications;
   }
 
   protected async getOldestNotificationId(
@@ -467,24 +405,22 @@ class NotificationsManager {
       );
     }
 
-    await this._transaction(async () => {
-      const numMessages = await tran.get<number>([
-        ...this.notificationsDbPath,
-        MESSAGE_COUNT_KEY,
-      ]);
-      if (numMessages === undefined) {
-        throw new notificationsErrors.ErrorNotificationsDb();
-      }
+    const numMessages = await tran.get<number>([
+      ...this.notificationsDbPath,
+      MESSAGE_COUNT_KEY,
+    ]);
+    if (numMessages === undefined) {
+      throw new notificationsErrors.ErrorNotificationsDb();
+    }
 
-      await tran.del([
-        ...this.notificationsMessagesDbPath,
-        idUtils.toBuffer(messageId),
-      ]);
-      await tran.put(
-        [...this.notificationsDbPath, MESSAGE_COUNT_KEY],
-        numMessages - 1,
-      );
-    });
+    await tran.del([
+      ...this.notificationsMessagesDbPath,
+      idUtils.toBuffer(messageId),
+    ]);
+    await tran.put(
+      [...this.notificationsDbPath, MESSAGE_COUNT_KEY],
+      numMessages - 1,
+    );
   }
 }
 
