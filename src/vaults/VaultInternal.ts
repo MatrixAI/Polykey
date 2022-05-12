@@ -535,7 +535,7 @@ class VaultInternal {
     pullNodeId?: NodeId;
     pullVaultNameOrId?: VaultId | VaultName;
     tran?: DBTransaction;
-  }) {
+  }): Promise<void> {
     if (tran == null) {
       return this.db.withTransactionF(async (tran) =>
         this.pullVault({

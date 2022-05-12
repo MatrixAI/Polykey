@@ -80,7 +80,6 @@ class VaultManager {
     fs = require('fs'),
     logger = new Logger(this.name),
     fresh = false,
-    tran,
   }: {
     vaultsPath: string;
     db: DB;
@@ -93,27 +92,7 @@ class VaultManager {
     fs?: FileSystem;
     logger?: Logger;
     fresh?: boolean;
-    tran?: DBTransaction;
   }) {
-    if (tran == null) {
-      return await db.withTransactionF(async (tran) =>
-        this.createVaultManager({
-          vaultsPath,
-          db,
-          acl,
-          keyManager,
-          nodeConnectionManager,
-          gestaltGraph,
-          notificationsManager,
-          keyBits,
-          fs,
-          logger,
-          fresh,
-          tran,
-        }),
-      );
-    }
-
     logger.info(`Creating ${this.name}`);
     logger.info(`Setting vaults path to ${vaultsPath}`);
     const vaultManager = new VaultManager({
@@ -128,7 +107,7 @@ class VaultManager {
       fs,
       logger,
     });
-    await vaultManager.start({ fresh, tran });
+    await vaultManager.start({ fresh });
     logger.info(`Created ${this.name}`);
     return vaultManager;
   }
@@ -191,60 +170,53 @@ class VaultManager {
 
   public async start({
     fresh = false,
-    tran,
   }: {
     fresh?: boolean;
-    tran?: DBTransaction;
-  }): Promise<void> {
-    if (tran == null) {
-      return await this.db.withTransactionF(async (tran) =>
-        this.start_(fresh, tran),
-      );
-    }
-    return await this.start_(fresh, tran);
-  }
-
-  protected async start_(fresh: boolean, tran: DBTransaction) {
-    try {
-      this.logger.info(`Starting ${this.constructor.name}`);
-      if (fresh) {
-        await tran.clear(this.vaultsDbPath);
-        await this.fs.promises.rm(this.vaultsPath, {
-          force: true,
-          recursive: true,
-        });
-      }
-      await mkdirExists(this.fs, this.vaultsPath);
-      const vaultKey = await this.setupKey(this.keyBits, tran);
-      let efs;
+  } = {}): Promise<void> {
+    await this.db.withTransactionF(async (tran) => {
       try {
-        efs = await EncryptedFS.createEncryptedFS({
-          dbPath: this.efsPath,
-          dbKey: vaultKey,
-          logger: this.logger.getChild('EncryptedFileSystem'),
-        });
-      } catch (e) {
-        if (e instanceof encryptedFsErrors.ErrorEncryptedFSKey) {
-          throw new vaultsErrors.ErrorVaultManagerKey(e.message, { cause: e });
+        this.logger.info(`Starting ${this.constructor.name}`);
+        if (fresh) {
+          await tran.clear(this.vaultsDbPath);
+          await this.fs.promises.rm(this.vaultsPath, {
+            force: true,
+            recursive: true,
+          });
         }
-        throw new vaultsErrors.ErrorVaultManagerEFS(e.message, {
-          data: {
-            errno: e.errno,
-            syscall: e.syscall,
-            code: e.code,
-            path: e.path,
-          },
-          cause: e,
-        });
+        await mkdirExists(this.fs, this.vaultsPath);
+        const vaultKey = await this.setupKey(this.keyBits, tran);
+        let efs;
+        try {
+          efs = await EncryptedFS.createEncryptedFS({
+            dbPath: this.efsPath,
+            dbKey: vaultKey,
+            logger: this.logger.getChild('EncryptedFileSystem'),
+          });
+        } catch (e) {
+          if (e instanceof encryptedFsErrors.ErrorEncryptedFSKey) {
+            throw new vaultsErrors.ErrorVaultManagerKey(e.message, {
+              cause: e,
+            });
+          }
+          throw new vaultsErrors.ErrorVaultManagerEFS(e.message, {
+            data: {
+              errno: e.errno,
+              syscall: e.syscall,
+              code: e.code,
+              path: e.path,
+            },
+            cause: e,
+          });
+        }
+        this.vaultKey = vaultKey;
+        this.efs = efs;
+        this.logger.info(`Started ${this.constructor.name}`);
+      } catch (e) {
+        this.logger.warn(`Failed Starting ${this.constructor.name}`);
+        await this.efs?.stop();
+        throw e;
       }
-      this.vaultKey = vaultKey;
-      this.efs = efs;
-      this.logger.info(`Started ${this.constructor.name}`);
-    } catch (e) {
-      this.logger.warn(`Failed Starting ${this.constructor.name}`);
-      await this.efs?.stop();
-      throw e;
-    }
+    });
   }
 
   public async stop(): Promise<void> {
@@ -265,20 +237,11 @@ class VaultManager {
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
-  public async destroy(tran?: DBTransaction): Promise<void> {
-    if (tran == null) {
-      return await this.db.withTransactionF(async (tran) =>
-        this.destroy_(tran),
-      );
-    }
-    return await this.destroy_(tran);
-  }
-
-  protected async destroy_(tran: DBTransaction) {
+  public async destroy(): Promise<void> {
     this.logger.info(`Destroying ${this.constructor.name}`);
     await this.efs.destroy();
     // Clearing all vaults db data
-    await tran.clear(this.vaultsDbPath);
+    await this.db.clear(this.vaultsDbPath);
     // Is it necessary to remove the vaults domain?
     await this.fs.promises.rm(this.vaultsPath, {
       force: true,
@@ -415,7 +378,10 @@ class VaultManager {
    * given vault Id
    */
   @ready(new vaultsErrors.ErrorVaultManagerNotRunning())
-  public async destroyVault(vaultId: VaultId, tran?: DBTransaction) {
+  public async destroyVault(
+    vaultId: VaultId,
+    tran?: DBTransaction,
+  ): Promise<void> {
     if (tran == null) {
       return this.db.withTransactionF(async (tran) =>
         this.destroyVault(vaultId, tran),
@@ -446,7 +412,10 @@ class VaultManager {
    * Removes vault from the vault map
    */
   @ready(new vaultsErrors.ErrorVaultManagerNotRunning())
-  public async closeVault(vaultId: VaultId, tran?: DBTransaction) {
+  public async closeVault(
+    vaultId: VaultId,
+    tran?: DBTransaction,
+  ): Promise<void> {
     if (tran == null) {
       return this.db.withTransactionF(async (tran) =>
         this.closeVault(vaultId, tran),
