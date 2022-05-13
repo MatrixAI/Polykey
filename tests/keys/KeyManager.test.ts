@@ -315,7 +315,7 @@ describe('KeyManager', () => {
     const rootKeyPair1 = keyManager.getRootKeyPair();
     const rootCert1 = keyManager.getRootCert();
     await sleep(2000); // Let's just make sure there is time diff
-    await db.put(['test'], 'hello', 'world');
+    await db.put(['test', 'hello'], 'world');
     // Reset root key pair takes time
     await keyManager.resetRootKeyPair('password');
     expect(keyManager.getRecoveryCode()).toBeDefined();
@@ -339,7 +339,7 @@ describe('KeyManager', () => {
     );
     await db.stop();
     await db.start();
-    expect(await db.get(['test'], 'hello')).toBe('world');
+    expect(await db.get(['test', 'hello'])).toBe('world');
     await keyManager.stop();
   });
   test('can renew root key pair', async () => {
@@ -364,7 +364,7 @@ describe('KeyManager', () => {
     const rootKeyPair1 = keyManager.getRootKeyPair();
     const rootCert1 = keyManager.getRootCert();
     await sleep(2000); // Let's just make sure there is time diff
-    await db.put(['test'], 'hello', 'world');
+    await db.put(['test', 'hello'], 'world');
     await keyManager.renewRootKeyPair('newpassword');
     expect(keyManager.getRecoveryCode()).toBeDefined();
     const rootKeyPair2 = keyManager.getRootKeyPair();
@@ -393,7 +393,7 @@ describe('KeyManager', () => {
     expect(keysUtils.certVerified(rootCert1, rootCert2)).toBe(true);
     await db.stop();
     await db.start();
-    expect(await db.get(['test'], 'hello')).toBe('world');
+    expect(await db.get(['test', 'hello'])).toBe('world');
     await keyManager.stop();
   });
   test('order of certificate chain should be leaf to root', async () => {
