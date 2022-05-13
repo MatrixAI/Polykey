@@ -132,13 +132,13 @@ class NodeConnectionManager {
     return async () => {
       const connAndLock = await this.getConnection(targetNodeId);
       // Acquire the read lock and the release function
-      const release = connAndLock.lock.read();
+      const [release] = await connAndLock.lock.read()();
       // Resetting TTL timer
       connAndLock.timer?.refresh();
       // Return tuple of [ResourceRelease, Resource]
       return [
         async () => {
-          release();
+          await release();
         },
         connAndLock.connection,
       ];
