@@ -348,10 +348,7 @@ class NotificationsManager {
     const messageIterator = tran.iterator({}, this.notificationsMessagesDbPath);
     for await (const [key, value] of messageIterator) {
       const notificationId = IdInternal.fromBuffer<NotificationId>(key);
-      const notification = await this.db.deserializeDecrypt<Notification>(
-        value,
-        false,
-      );
+      const notification = JSON.parse(value.toString()) as Notification;
       if (type === 'all') {
         notificationIds.push(notificationId);
       } else if (type === 'unread') {
@@ -373,10 +370,7 @@ class NotificationsManager {
       {},
       this.notificationsMessagesDbPath,
     )) {
-      const notification = await this.db.deserializeDecrypt<Notification>(
-        value,
-        false,
-      );
+      const notification = JSON.parse(value.toString()) as Notification;
       if (type === 'all') {
         notifications.push(notification);
       } else if (type === 'unread') {
