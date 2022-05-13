@@ -3,8 +3,9 @@ import type {
   Interceptor,
   InterceptorOptions,
 } from '@grpc/grpc-js/build/src/client-interceptors';
-import type { KeyManager } from '../../keys';
-import type { Session, SessionManager } from '../../sessions';
+import type KeyManager from '../../keys/KeyManager';
+import type Session from '../../sessions/Session';
+import type SessionManager from '../../sessions/SessionManager';
 import type { SessionToken } from '../../sessions/types';
 import type { Authenticate } from '../types';
 import * as grpc from '@grpc/grpc-js';

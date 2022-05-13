@@ -5,6 +5,7 @@ import path from 'path';
 import os from 'os';
 import { DB } from '@matrixai/db';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
+import { withF } from '@matrixai/resources';
 import { IdInternal } from '@matrixai/id';
 import PolykeyAgent from '@/PolykeyAgent';
 import KeyManager from '@/keys/KeyManager';
@@ -16,7 +17,6 @@ import * as nodesUtils from '@/nodes/utils';
 import * as nodesErrors from '@/nodes/errors';
 import * as keysUtils from '@/keys/utils';
 import * as grpcUtils from '@/grpc/utils';
-import { withF } from '@/utils';
 
 describe(`${NodeConnectionManager.name} lifecycle test`, () => {
   const logger = new Logger(
