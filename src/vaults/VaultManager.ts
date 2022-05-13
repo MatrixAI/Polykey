@@ -1,5 +1,5 @@
-import type { DB, DBTransaction, KeyPath, LevelPath } from '@matrixai/db';
-import type { ResourceAcquire } from '@matrixai/resources';
+import type { DB, DBTransaction, LevelPath } from '@matrixai/db';
+import type { ResourceAcquire, ResourceRelease } from '@matrixai/resources';
 import type {
   VaultId,
   VaultName,
@@ -258,7 +258,8 @@ class VaultManager {
     this.efs.unsetWorkerManager();
   }
 
-  protected getLock(vaultId: VaultId): RWLockWriter {
+  public getLock(vaultId: VaultId): RWLockWriter {
+    // Console.log(new Error(vaultId.toMultibase('base32hex')).stack);
     const vaultIdString = vaultId.toString() as VaultIdString;
     const vaultAndLock = this.vaultMap.get(vaultIdString);
     if (vaultAndLock != null) return vaultAndLock.lock;
@@ -296,7 +297,7 @@ class VaultManager {
     }
     // Adding vault to name map
     const vaultId = await this.generateVaultId();
-    await this.vaultsNamesLock.withWriteF(async () => {
+    return await this.vaultsNamesLock.withWriteF(async () => {
       const vaultIdBuffer = await tran.get(
         [...this.vaultsNamesDbPath, vaultName],
         true,
@@ -310,26 +311,26 @@ class VaultManager {
         vaultId.toBuffer(),
         true,
       );
-    });
-    const lock = new RWLockWriter();
-    const vaultIdString = vaultId.toString() as VaultIdString;
-    this.vaultMap.set(vaultIdString, { lock });
-    return await withF([this.getWriteLock(vaultId)], async () => {
-      // Creating vault
-      const vault = await VaultInternal.createVaultInternal({
-        vaultId,
-        vaultName,
-        keyManager: this.keyManager,
-        efs: this.efs,
-        logger: this.logger.getChild(VaultInternal.name),
-        db: this.db,
-        vaultsDbPath: this.vaultsDbPath,
-        fresh: true,
-        tran,
+      const lock = new RWLockWriter();
+      const vaultIdString = vaultId.toString() as VaultIdString;
+      this.vaultMap.set(vaultIdString, { lock });
+      return await withF([this.getWriteLock(vaultId)], async () => {
+        // Creating vault
+        const vault = await VaultInternal.createVaultInternal({
+          vaultId,
+          vaultName,
+          keyManager: this.keyManager,
+          efs: this.efs,
+          logger: this.logger.getChild(VaultInternal.name),
+          db: this.db,
+          vaultsDbPath: this.vaultsDbPath,
+          fresh: true,
+          tran,
+        });
+        // Adding vault to object map
+        this.vaultMap.set(vaultIdString, { lock, vault });
+        return vault.vaultId;
       });
-      // Adding vault to object map
-      this.vaultMap.set(vaultIdString, { lock, vault });
-      return vault.vaultId;
     });
   }
 
@@ -445,12 +446,12 @@ class VaultManager {
 
     const vaults: VaultList = new Map();
     // Stream of vaultName VaultId key value pairs
-    for await (const [, vaultNameBuffer] of tran.iterator(
+    for await (const [vaultNameBuffer, vaultIdBuffer] of tran.iterator(
       undefined,
       this.vaultsNamesDbPath,
     )) {
       const vaultName = vaultNameBuffer.toString() as VaultName;
-      const vaultId = (await this.getVaultId(vaultName, tran))!;
+      const vaultId = IdInternal.fromBuffer<VaultId>(vaultIdBuffer);
       vaults.set(vaultName, vaultId);
     }
     return vaults;
@@ -863,9 +864,10 @@ class VaultManager {
     vaultPermissions: VaultAction[];
   }> {
     if (tran == null) {
-      return this.db.withTransactionF(async (tran) =>
-        this.handleScanVaults(nodeId, tran),
-      );
+      const fml = (tran) => this.handleScanVaults(nodeId, tran);
+      return yield* this.db.withTransactionG(async function* (tran) {
+        return yield* fml(tran);
+      });
     }
 
     // Checking permission
@@ -940,9 +942,9 @@ class VaultManager {
         return vault;
       }
       // Only lock exists
-      let release: ResourceAcquire<RWLockWriter> | undefined;
+      let release: ResourceRelease | undefined;
       try {
-        release = await lock.write();
+        [release] = await lock.write()();
         ({ vault } = vaultAndLock);
         if (vault != null) {
           return vault;
@@ -973,9 +975,9 @@ class VaultManager {
       lock = new RWLockWriter();
       vaultAndLock = { lock };
       this.vaultMap.set(vaultIdString, vaultAndLock);
-      let release: ResourceAcquire<RWLockWriter> | undefined;
+      let release: ResourceRelease | undefined;
       try {
-        release = await lock.write();
+        [release] = await lock.write()();
         // Only create if the vault state already exists
         if ((await this.getVaultMeta(vaultId, tran)) == null) {
           throw new vaultsErrors.ErrorVaultsVaultUndefined(
