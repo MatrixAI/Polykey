@@ -1,17 +1,16 @@
-import type { DB, DBLevel } from '@matrixai/db';
+import type { DB, DBTransaction, LevelPath } from '@matrixai/db';
 import type { SessionToken } from './types';
-import type { KeyManager } from '../keys';
-
+import type KeyManager from '../keys/KeyManager';
 import Logger from '@matrixai/logger';
 import {
   CreateDestroyStartStop,
   ready,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
-import { Mutex } from 'async-mutex';
+import { withF } from '@matrixai/resources';
 import * as sessionsUtils from './utils';
 import * as sessionsErrors from './errors';
 import * as keysUtils from '../keys/utils';
-import { utils as nodesUtils } from '../nodes';
+import * as nodesUtils from '../nodes/utils';
 
 interface SessionManager extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
@@ -53,10 +52,7 @@ class SessionManager {
   protected logger: Logger;
   protected db: DB;
   protected keyManager: KeyManager;
-  protected sessionsDbDomain: string = this.constructor.name;
-  protected sessionsDb: DBLevel;
-  protected lock: Mutex = new Mutex();
-  protected key: Uint8Array;
+  protected sessionsDbPath: LevelPath = [this.constructor.name];
 
   public constructor({
     db,
@@ -78,23 +74,16 @@ class SessionManager {
     this.keyBits = keyBits;
   }
 
-  get locked(): boolean {
-    return this.lock.isLocked();
-  }
-
   public async start({
     fresh = false,
   }: {
     fresh?: boolean;
   } = {}): Promise<void> {
     this.logger.info(`Starting ${this.constructor.name}`);
-    const sessionsDb = await this.db.level(this.sessionsDbDomain);
     if (fresh) {
-      await sessionsDb.clear();
+      await this.db.clear(this.sessionsDbPath);
     }
-    const key = await this.setupKey(this.keyBits);
-    this.sessionsDb = sessionsDb;
-    this.key = key;
+    await this.setupKey(this.keyBits);
     this.logger.info(`Started ${this.constructor.name}`);
   }
 
@@ -105,44 +94,24 @@ class SessionManager {
 
   public async destroy() {
     this.logger.info(`Destroying ${this.constructor.name}`);
-    const sessionsDb = await this.db.level(this.sessionsDbDomain);
-    await sessionsDb.clear();
+    await this.db.clear(this.sessionsDbPath);
     this.logger.info(`Destroyed ${this.constructor.name}`);
   }
 
-  /**
-   * Run several operations within the same lock
-   * This does not ensure atomicity of the underlying database
-   * Database atomicity still depends on the underlying operation
-   */
-  public async transaction<T>(f: (that: this) => Promise<T>): Promise<T> {
-    const release = await this.lock.acquire();
-    try {
-      return await f(this);
-    } finally {
-      release();
-    }
-  }
-
-  /**
-   * Transaction wrapper that will not lock if the operation was executed
-   * within a transaction context
-   */
-  protected async _transaction<T>(f: () => Promise<T>): Promise<T> {
-    if (this.locked) {
-      return await f();
-    } else {
-      return await this.transaction(f);
-    }
+  @ready(new sessionsErrors.ErrorSessionManagerNotRunning())
+  public async withTransactionF<T>(
+    f: (tran: DBTransaction) => Promise<T>,
+  ): Promise<T> {
+    return withF([this.db.transaction()], ([tran]) => f(tran));
   }
 
   @ready(new sessionsErrors.ErrorSessionManagerNotRunning())
-  public async resetKey(): Promise<void> {
-    await this._transaction(async () => {
-      const key = await this.generateKey(this.keyBits);
-      await this.db.put([this.sessionsDbDomain], 'key', key, true);
-      this.key = key;
-    });
+  public async resetKey(tran?: DBTransaction): Promise<void> {
+    if (tran == null) {
+      return this.withTransactionF(async (tran) => this.resetKey(tran));
+    }
+    const key = await this.generateKey(this.keyBits);
+    await tran.put([...this.sessionsDbPath, 'key'], key, true);
   }
 
   /**
@@ -153,35 +122,49 @@ class SessionManager {
   @ready(new sessionsErrors.ErrorSessionManagerNotRunning())
   public async createToken(
     expiry: number | undefined = this.expiry,
+    tran?: DBTransaction,
   ): Promise<SessionToken> {
+    if (tran == null) {
+      return this.withTransactionF(async (tran) =>
+        this.createToken(expiry, tran),
+      );
+    }
     const payload = {
       iss: nodesUtils.encodeNodeId(this.keyManager.getNodeId()),
       sub: nodesUtils.encodeNodeId(this.keyManager.getNodeId()),
     };
-    const token = await sessionsUtils.createSessionToken(
-      payload,
-      this.key,
-      expiry,
-    );
+    const key = await tran.get([...this.sessionsDbPath, 'key'], true);
+    const token = await sessionsUtils.createSessionToken(payload, key!, expiry);
     return token;
   }
 
   @ready(new sessionsErrors.ErrorSessionManagerNotRunning())
-  public async verifyToken(token: SessionToken): Promise<boolean> {
-    const result = await sessionsUtils.verifySessionToken(token, this.key);
+  public async verifyToken(
+    token: SessionToken,
+    tran?: DBTransaction,
+  ): Promise<boolean> {
+    if (tran == null) {
+      return this.withTransactionF(async (tran) =>
+        this.verifyToken(token, tran),
+      );
+    }
+    const key = await tran.get([...this.sessionsDbPath, 'key'], true);
+    const result = await sessionsUtils.verifySessionToken(token, key!);
     return result !== undefined;
   }
 
   protected async setupKey(bits: 128 | 192 | 256): Promise<Buffer> {
-    let key: Buffer | undefined;
-    key = await this.db.get([this.sessionsDbDomain], 'key', true);
-    if (key != null) {
+    return withF([this.db.transaction()], async ([tran]) => {
+      let key: Buffer | undefined;
+      key = await tran.get([...this.sessionsDbPath, 'key'], true);
+      if (key != null) {
+        return key;
+      }
+      this.logger.info('Generating sessions key');
+      key = await this.generateKey(bits);
+      await tran.put([...this.sessionsDbPath, 'key'], key, true);
       return key;
-    }
-    this.logger.info('Generating sessions key');
-    key = await this.generateKey(bits);
-    await this.db.put([this.sessionsDbDomain], 'key', key, true);
-    return key;
+    });
   }
 
   protected async generateKey(bits: 128 | 192 | 256): Promise<Buffer> {
