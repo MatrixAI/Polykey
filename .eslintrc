@@ -11,26 +11,24 @@
     "eslint:recommended",
     "plugin:@typescript-eslint/recommended",
     "plugin:prettier/recommended",
-    "prettier",
-    "prettier/@typescript-eslint"
+    "prettier"
   ],
   "plugins": [
     "import"
   ],
   "parserOptions": {
     "project": "tsconfig.json",
-    "sourceType": "module",
-    "ecmaVersion": 2021
+    "sourceType": "module"
   },
   "rules": {
     "linebreak-style": ["error", "unix"],
     "no-empty": 1,
-    "no-undef": 0,
     "no-useless-catch": 1,
     "no-prototype-builtins": 1,
     "no-constant-condition": 0,
     "no-useless-escape" : 0,
     "no-console": "error",
+    "require-yield": 0,
     "eqeqeq": ["error", "smart"],
     "spaced-comment": [
       "warn",
@@ -118,6 +116,12 @@
       {
         "selector": "default",
         "format": ["camelCase"],
+        "leadingUnderscore": "allow",
+        "trailingUnderscore": "allowSingleOrDouble"
+      },
+      {
+        "selector": "function",
+        "format": ["camelCase", "PascalCase"],
         "leadingUnderscore": "allow",
         "trailingUnderscore": "allowSingleOrDouble"
       },
