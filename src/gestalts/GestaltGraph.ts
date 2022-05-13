@@ -53,8 +53,14 @@ class GestaltGraph {
   protected db: DB;
   protected acl: ACL;
   protected gestaltGraphDbPath: LevelPath = [this.constructor.name];
-  protected gestaltGraphMatrixDbPath: LevelPath = [this.constructor.name, 'matrix'];
-  protected gestaltGraphNodesDbPath: LevelPath = [this.constructor.name, 'nodes'];
+  protected gestaltGraphMatrixDbPath: LevelPath = [
+    this.constructor.name,
+    'matrix',
+  ];
+  protected gestaltGraphNodesDbPath: LevelPath = [
+    this.constructor.name,
+    'nodes',
+  ];
   protected gestaltGraphIdentitiesDbPath: LevelPath = [
     this.constructor.name,
     'identities',
@@ -89,18 +95,13 @@ class GestaltGraph {
   public async withTransactionF<T>(
     f: (tran: DBTransaction) => Promise<T>,
   ): Promise<T> {
-    return withF(
-      [this.db.transaction()],
-      ([tran]) => f(tran),
-    );
+    return withF([this.db.transaction()], ([tran]) => f(tran));
   }
 
   @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
   public async getGestalts(tran?: DBTransaction): Promise<Array<Gestalt>> {
     if (tran == null) {
-      return this.withTransactionF(async (tran) =>
-        this.getGestalts(tran),
-      );
+      return this.withTransactionF(async (tran) => this.getGestalts(tran));
     }
     const unvisited: Map<GestaltKey, GestaltKeySet> = new Map();
     for await (const [k, v] of tran.iterator(undefined, [
@@ -138,18 +139,14 @@ class GestaltGraph {
             ...this.gestaltGraphNodesDbPath,
             vertex as GestaltNodeKey,
           ] as unknown as KeyPath;
-          const nodeInfo = await tran.get<NodeInfo>(
-            vertexPath,
-          );
+          const nodeInfo = await tran.get<NodeInfo>(vertexPath);
           gestalt.nodes[vertex] = nodeInfo!;
         } else if (gId.type === 'identity') {
           const vertexPath = [
             ...this.gestaltGraphIdentitiesDbPath,
             vertex as GestaltIdentityKey,
           ] as unknown as KeyPath;
-          const identityInfo = await tran.get<IdentityInfo>(
-            vertexPath,
-          );
+          const identityInfo = await tran.get<IdentityInfo>(vertexPath);
           gestalt.identities[vertex] = identityInfo!;
         }
         unvisited.delete(vertex);
@@ -163,7 +160,10 @@ class GestaltGraph {
   }
 
   @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
-  public async getGestaltByNode(nodeId: NodeId, tran?: DBTransaction): Promise<Gestalt | undefined> {
+  public async getGestaltByNode(
+    nodeId: NodeId,
+    tran?: DBTransaction,
+  ): Promise<Gestalt | undefined> {
     if (tran == null) {
       return this.withTransactionF(async (tran) =>
         this.getGestaltByNode(nodeId, tran),
@@ -207,9 +207,7 @@ class GestaltGraph {
       identityKey,
     ] as unknown as KeyPath;
     const identityKeyKeys =
-      (await tran.get<GestaltKeySet>(
-        identityKeyPath,
-      )) ?? {};
+      (await tran.get<GestaltKeySet>(identityKeyPath)) ?? {};
     await tran.put(identityKeyPath, identityKeyKeys);
     const identityInfoPath = [
       ...this.gestaltGraphIdentitiesDbPath,
@@ -234,9 +232,7 @@ class GestaltGraph {
       ...this.gestaltGraphMatrixDbPath,
       identityKey,
     ] as unknown as KeyPath;
-    const identityKeyKeys = await tran.get<GestaltKeySet>(
-      identityKeyPath,
-    );
+    const identityKeyKeys = await tran.get<GestaltKeySet>(identityKeyPath);
     if (identityKeyKeys == null) {
       return;
     }
@@ -267,7 +263,10 @@ class GestaltGraph {
    * to a new gestalt permission in the acl
    */
   @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
-  public async setNode(nodeInfo: NodeInfo, tran?: DBTransaction): Promise<void> {
+  public async setNode(
+    nodeInfo: NodeInfo,
+    tran?: DBTransaction,
+  ): Promise<void> {
     if (tran == null) {
       return this.withTransactionF(async (tran) =>
         this.setNode(nodeInfo, tran),
@@ -280,9 +279,7 @@ class GestaltGraph {
       ...this.gestaltGraphMatrixDbPath,
       nodeKey,
     ] as unknown as KeyPath;
-    let nodeKeyKeys = await tran.get<GestaltKeySet>(
-      nodeKeyPath,
-    );
+    let nodeKeyKeys = await tran.get<GestaltKeySet>(nodeKeyPath);
     if (nodeKeyKeys == null) {
       nodeKeyKeys = {};
       // Sets the gestalt in the acl
@@ -320,9 +317,7 @@ class GestaltGraph {
       ...this.gestaltGraphMatrixDbPath,
       nodeKey,
     ] as unknown as KeyPath;
-    const nodeKeyKeys = await tran.get<GestaltKeySet>(
-      nodeKeyPath,
-    );
+    const nodeKeyKeys = await tran.get<GestaltKeySet>(nodeKeyPath);
     if (nodeKeyKeys == null) {
       return;
     }
@@ -381,12 +376,8 @@ class GestaltGraph {
       ...this.gestaltGraphMatrixDbPath,
       identityKey,
     ] as unknown as KeyPath;
-    let nodeKeyKeys = await tran.get<GestaltKeySet>(
-      nodeKeyPath,
-    );
-    let identityKeyKeys = await tran.get<GestaltKeySet>(
-      identityKeyPath,
-    );
+    let nodeKeyKeys = await tran.get<GestaltKeySet>(nodeKeyPath);
+    let identityKeyKeys = await tran.get<GestaltKeySet>(identityKeyPath);
     // If they are already connected we do nothing
     if (
       nodeKeyKeys &&
@@ -481,9 +472,12 @@ class GestaltGraph {
           break;
         }
         const identityNodeId = gestaltsUtils.nodeFromKey(identityNodeKey!);
-        await this.acl.joinNodePerm(identityNodeId, [
-          nodesUtils.decodeNodeId(nodeInfo.id)!,
-        ], undefined, tran);
+        await this.acl.joinNodePerm(
+          identityNodeId,
+          [nodesUtils.decodeNodeId(nodeInfo.id)!],
+          undefined,
+          tran,
+        );
       }
     }
     nodeKeyKeys[identityKey] = null;
@@ -525,12 +519,8 @@ class GestaltGraph {
       ...this.gestaltGraphMatrixDbPath,
       nodeKey2,
     ] as unknown as KeyPath;
-    let nodeKeyKeys1 = await tran.get<GestaltKeySet>(
-      nodeKey1Path,
-    );
-    let nodeKeyKeys2 = await tran.get<GestaltKeySet>(
-      nodeKey2Path,
-    );
+    let nodeKeyKeys1 = await tran.get<GestaltKeySet>(nodeKey1Path);
+    let nodeKeyKeys2 = await tran.get<GestaltKeySet>(nodeKey2Path);
     // If they are already connected we do nothing
     if (
       nodeKeyKeys1 &&
@@ -561,10 +551,14 @@ class GestaltGraph {
     // if node 1 is new but node 2 exists
     //   join node 1 gestalt's permission to the node 2 gestalt
     if (nodeNew1 && nodeNew2) {
-      await this.acl.setNodesPerm([nodeIdEncoded1, nodeIdEncoded2], {
-        gestalt: {},
-        vaults: {},
-      }, tran);
+      await this.acl.setNodesPerm(
+        [nodeIdEncoded1, nodeIdEncoded2],
+        {
+          gestalt: {},
+          vaults: {},
+        },
+        tran,
+      );
     } else if (!nodeNew1 && !nodeNew2) {
       const [, nodeNodeKeys2] = await this.traverseGestalt(
         Object.keys(nodeKeyKeys2) as Array<GestaltKey>,
@@ -588,16 +582,21 @@ class GestaltGraph {
       // Node perm 1 is updated and node perm 2 is joined to node perm 2
       // this has to be done as 1 call to acl in order to combine ref count update
       // and the perm record update
+      await this.acl.joinNodePerm(nodeIdEncoded1, nodeNodeIds2, permNew, tran);
+    } else if (nodeNew1 && !nodeNew2) {
       await this.acl.joinNodePerm(
-        nodeIdEncoded1,
-        nodeNodeIds2,
-        permNew,
+        nodeIdEncoded2,
+        [nodeIdEncoded1],
+        undefined,
         tran,
       );
-    } else if (nodeNew1 && !nodeNew2) {
-      await this.acl.joinNodePerm(nodeIdEncoded2, [nodeIdEncoded1], undefined, tran);
     } else if (!nodeNew1 && nodeNew2) {
-      await this.acl.joinNodePerm(nodeIdEncoded1, [nodeIdEncoded2], undefined, tran);
+      await this.acl.joinNodePerm(
+        nodeIdEncoded1,
+        [nodeIdEncoded2],
+        undefined,
+        tran,
+      );
     }
     nodeKeyKeys1[nodeKey2] = null;
     nodeKeyKeys2[nodeKey1] = null;
@@ -637,12 +636,8 @@ class GestaltGraph {
       ...this.gestaltGraphMatrixDbPath,
       identityKey,
     ] as unknown as KeyPath;
-    const nodeKeyKeys = await tran.get<GestaltKeySet>(
-      nodeKeyPath,
-    );
-    const identityKeyKeys = await tran.get<GestaltKeySet>(
-      identityKeyPath,
-    );
+    const nodeKeyKeys = await tran.get<GestaltKeySet>(nodeKeyPath);
+    const identityKeyKeys = await tran.get<GestaltKeySet>(identityKeyPath);
     let unlinking = false;
     if (nodeKeyKeys && identityKey in nodeKeyKeys) {
       unlinking = true;
@@ -696,12 +691,8 @@ class GestaltGraph {
       ...this.gestaltGraphMatrixDbPath,
       nodeKey2,
     ] as unknown as KeyPath;
-    const nodeKeyKeys1 = await tran.get<GestaltKeySet>(
-      nodeKey1Path,
-    );
-    const nodeKeyKeys2 = await tran.get<GestaltKeySet>(
-      nodeKey2Path,
-    );
+    const nodeKeyKeys1 = await tran.get<GestaltKeySet>(nodeKey1Path);
+    const nodeKeyKeys2 = await tran.get<GestaltKeySet>(nodeKey2Path);
     let unlinking = false;
     if (nodeKeyKeys1 && nodeKey2 in nodeKeyKeys1) {
       unlinking = true;
@@ -748,10 +739,7 @@ class GestaltGraph {
       ...this.gestaltGraphNodesDbPath,
       nodeKey,
     ] as unknown as KeyPath;
-    if (
-      (await tran.get<NodeInfo>(nodeKeyPath)) ==
-      null
-    ) {
+    if ((await tran.get<NodeInfo>(nodeKeyPath)) == null) {
       return;
     }
     const perm = await this.acl.getNodePerm(nodeId, tran);
@@ -772,19 +760,12 @@ class GestaltGraph {
         this.getGestaltActionsByIdentity(providerId, identityId, tran),
       );
     }
-    const identityKey = gestaltsUtils.keyFromIdentity(
-      providerId,
-      identityId,
-    );
+    const identityKey = gestaltsUtils.keyFromIdentity(providerId, identityId);
     const identityKeyPath = [
       ...this.gestaltGraphIdentitiesDbPath,
       identityKey,
     ] as unknown as KeyPath;
-    if (
-      (await tran.get<IdentityInfo>(
-        identityKeyPath,
-      )) == null
-    ) {
+    if ((await tran.get<IdentityInfo>(identityKeyPath)) == null) {
       return;
     }
     const gestaltKeyPath = [
@@ -825,10 +806,7 @@ class GestaltGraph {
       ...this.gestaltGraphNodesDbPath,
       nodeKey,
     ] as unknown as KeyPath;
-    if (
-      (await tran.get<NodeInfo>(nodeKeyPath)) ==
-      null
-    ) {
+    if ((await tran.get<NodeInfo>(nodeKeyPath)) == null) {
       throw new gestaltsErrors.ErrorGestaltsGraphNodeIdMissing();
     }
     await this.acl.setNodeAction(nodeId, action, tran);
@@ -846,28 +824,19 @@ class GestaltGraph {
         this.setGestaltActionByIdentity(providerId, identityId, action, tran),
       );
     }
-    const identityKey = gestaltsUtils.keyFromIdentity(
-      providerId,
-      identityId,
-    );
+    const identityKey = gestaltsUtils.keyFromIdentity(providerId, identityId);
     const identityKeyPath = [
       ...this.gestaltGraphIdentitiesDbPath,
       identityKey,
     ] as unknown as KeyPath;
-    if (
-      (await tran.get<IdentityInfo>(
-        identityKeyPath,
-      )) == null
-    ) {
+    if ((await tran.get<IdentityInfo>(identityKeyPath)) == null) {
       throw new gestaltsErrors.ErrorGestaltsGraphIdentityIdMissing();
     }
     const gestaltKeyPath = [
       ...this.gestaltGraphMatrixDbPath,
       identityKey,
     ] as unknown as KeyPath;
-    const gestaltKeySet = (await tran.get(
-      gestaltKeyPath,
-    )) as GestaltKeySet;
+    const gestaltKeySet = (await tran.get(gestaltKeyPath)) as GestaltKeySet;
     let nodeId: NodeId | undefined;
     for (const nodeKey in gestaltKeySet) {
       nodeId = gestaltsUtils.nodeFromKey(nodeKey as GestaltNodeKey);
@@ -896,10 +865,7 @@ class GestaltGraph {
       ...this.gestaltGraphNodesDbPath,
       nodeKey,
     ] as unknown as KeyPath;
-    if (
-      (await tran.get<NodeInfo>(nodeKeyPath)) ==
-      null
-    ) {
+    if ((await tran.get<NodeInfo>(nodeKeyPath)) == null) {
       throw new gestaltsErrors.ErrorGestaltsGraphNodeIdMissing();
     }
     await this.acl.unsetNodeAction(nodeId, action, tran);
@@ -917,28 +883,19 @@ class GestaltGraph {
         this.unsetGestaltActionByIdentity(providerId, identityId, action, tran),
       );
     }
-    const identityKey = gestaltsUtils.keyFromIdentity(
-      providerId,
-      identityId,
-    );
+    const identityKey = gestaltsUtils.keyFromIdentity(providerId, identityId);
     const identityKeyPath = [
       ...this.gestaltGraphIdentitiesDbPath,
       identityKey,
     ] as unknown as KeyPath;
-    if (
-      (await tran.get<IdentityInfo>(
-        identityKeyPath
-      )) == null
-    ) {
+    if ((await tran.get<IdentityInfo>(identityKeyPath)) == null) {
       throw new gestaltsErrors.ErrorGestaltsGraphIdentityIdMissing();
     }
     const gestaltKeyPath = [
       ...this.gestaltGraphMatrixDbPath,
       identityKey,
     ] as unknown as KeyPath;
-    const gestaltKeySet = (await tran.get(
-      gestaltKeyPath,
-    )) as GestaltKeySet;
+    const gestaltKeySet = (await tran.get(gestaltKeyPath)) as GestaltKeySet;
     let nodeId: NodeId | undefined;
     for (const nodeKey in gestaltKeySet) {
       nodeId = gestaltsUtils.nodeFromKey(nodeKey as GestaltNodeKey);
@@ -973,9 +930,7 @@ class GestaltGraph {
         ...this.gestaltGraphMatrixDbPath,
         vertex,
       ] as unknown as KeyPath;
-      const vertexKeys = await tran.get<GestaltKeySet>(
-        vertexPath,
-      );
+      const vertexKeys = await tran.get<GestaltKeySet>(vertexPath);
       if (vertexKeys == null) {
         return;
       }
@@ -986,18 +941,14 @@ class GestaltGraph {
           ...this.gestaltGraphNodesDbPath,
           vertex as GestaltNodeKey,
         ] as unknown as KeyPath;
-        const nodeInfo = await tran.get<NodeInfo>(
-          nodePath,
-        );
+        const nodeInfo = await tran.get<NodeInfo>(nodePath);
         gestalt.nodes[vertex] = nodeInfo!;
       } else if (gId.type === 'identity') {
         const identityPath = [
           ...this.gestaltGraphIdentitiesDbPath,
           vertex as GestaltIdentityKey,
         ] as unknown as KeyPath;
-        const identityInfo = await tran.get<IdentityInfo>(
-          identityPath,
-        );
+        const identityInfo = await tran.get<IdentityInfo>(identityPath);
         gestalt.identities[vertex] = identityInfo!;
       }
       visited.add(vertex);
@@ -1035,9 +986,7 @@ class GestaltGraph {
         ...this.gestaltGraphMatrixDbPath,
         vertex,
       ] as unknown as KeyPath;
-      const vertexKeys = await tran.get<GestaltKeySet>(
-        vertexPath,
-      );
+      const vertexKeys = await tran.get<GestaltKeySet>(vertexPath);
       if (vertexKeys == null) {
         break;
       }
