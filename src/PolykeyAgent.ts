@@ -563,6 +563,7 @@ class PolykeyAgent {
       });
       const clientService = createClientService({
         pkAgent: this,
+        db: this.db,
         discovery: this.discovery,
         gestaltGraph: this.gestaltGraph,
         identitiesManager: this.identitiesManager,
