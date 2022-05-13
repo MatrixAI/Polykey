@@ -114,16 +114,14 @@ class ACL {
         this.sameNodePerm(nodeId1, nodeId2, tran),
       );
     }
-    const nodeId1Path = [
+    const permId1 = await tran.get([
       ...this.aclNodesDbPath,
       nodeId1.toBuffer(),
-    ] as unknown as KeyPath;
-    const nodeId2Path = [
+    ], true);
+    const permId2 = await tran.get([
       ...this.aclNodesDbPath,
       nodeId2.toBuffer(),
-    ] as unknown as KeyPath;
-    const permId1 = await tran.get(nodeId1Path, true);
-    const permId2 = await tran.get(nodeId2Path, true);
+    ], true);
     if (permId1 != null && permId2 != null) {
       return IdInternal.fromBuffer(permId1).equals(
         IdInternal.fromBuffer(permId2),
@@ -147,7 +145,7 @@ class ACL {
       ...this.aclNodesDbPath,
     ])) {
       const nodeId = IdInternal.fromBuffer<NodeId>(k);
-      const permId = IdInternal.fromBuffer<PermissionId>(dbUtils.deserialize(v));
+      const permId = IdInternal.fromBuffer<PermissionId>(v);
       let nodePerm: Record<NodeId, Permission>;
       if (permId in permIds) {
         nodePerm = permIds[permId];
@@ -160,12 +158,11 @@ class ACL {
         // All perm objects are shared
         nodePerm[nodeId] = perm!;
       } else {
-        const permIdPath = [
-          ...this.aclPermsDbPath,
-          permId.toBuffer(),
-        ] as unknown as KeyPath;
         const permRef = (await tran.get(
-          permIdPath,
+          [
+            ...this.aclPermsDbPath,
+            permId.toBuffer(),
+          ], false,
         )) as Ref<Permission>;
         nodePerm = { [nodeId]: permRef.object };
         permIds[permId] = nodePerm;
@@ -197,12 +194,11 @@ class ACL {
       const nodeIdsGc: Set<NodeId> = new Set();
       for (const nodeIdString in nodeIds) {
         const nodeId: NodeId = IdInternal.fromString(nodeIdString);
-        const nodeIdPath = [
-          ...this.aclNodesDbPath,
-          nodeId.toBuffer(),
-        ] as unknown as KeyPath;
         const permId = await tran.get(
-          nodeIdPath,
+          [
+            ...this.aclNodesDbPath,
+            nodeId.toBuffer(),
+          ],
           true,
         );
         if (permId == null) {
@@ -210,12 +206,12 @@ class ACL {
           nodeIdsGc.add(nodeId);
           continue;
         }
-        const permIdPath = [
-          ...this.aclPermsDbPath,
-          permId,
-        ] as unknown as KeyPath;
         const permRef = (await tran.get(
-          permIdPath,
+          [
+            ...this.aclPermsDbPath,
+            permId,
+          ],
+          false,
         )) as Ref<Permission>;
         if (!(vaultId in permRef.object.vaults)) {
           // Vault id is missing from the perm
@@ -229,11 +225,10 @@ class ACL {
         for (const nodeId of nodeIdsGc) {
           delete nodeIds[nodeId];
         }
-        const vaultIdPath = [
+        await tran.put([
           ...this.aclVaultsDbPath,
           vaultId.toBuffer(),
-        ] as unknown as KeyPath;
-        await tran.put(vaultIdPath, nodeIds);
+        ], nodeIds);
       }
       vaultPerms[vaultId] = nodePerm;
     }
@@ -254,19 +249,17 @@ class ACL {
         this.getNodePerm(nodeId, tran),
       );
     }
-    const nodeIdPath = [
+    const permId = await tran.get([
       ...this.aclNodesDbPath,
       nodeId.toBuffer(),
-    ] as unknown as KeyPath;
-    const permId = await tran.get(nodeIdPath, true);
+    ], true);
     if (permId == null) {
       return;
     }
-    const permIdPath = [
+    const perm = (await tran.get([
       ...this.aclPermsDbPath,
       permId,
-    ] as unknown as KeyPath;
-    const perm = (await tran.get(permIdPath)) as Ref<Permission>;
+    ], false)) as Ref<Permission>;
     return perm.object;
   }
 
@@ -285,12 +278,11 @@ class ACL {
         this.getVaultPerm(vaultId, tran),
       );
     }
-    const vaultIdPath = [
-      ...this.aclVaultsDbPath,
-      vaultId.toBuffer(),
-    ] as unknown as KeyPath;
     const nodeIds = await tran.get<Record<NodeId, null>>(
-      vaultIdPath
+      [
+        ...this.aclVaultsDbPath,
+        vaultId.toBuffer(),
+      ], false,
     );
     if (nodeIds == null) {
       return {};
@@ -299,12 +291,11 @@ class ACL {
     const nodeIdsGc: Set<NodeId> = new Set();
     for (const nodeIdString in nodeIds) {
       const nodeId: NodeId = IdInternal.fromString(nodeIdString);
-      const nodeIdPath = [
-        ...this.aclNodesDbPath,
-        nodeId.toBuffer(),
-      ] as unknown as KeyPath;
       const permId = await tran.get(
-        nodeIdPath,
+        [
+          ...this.aclNodesDbPath,
+          nodeId.toBuffer(),
+        ],
         true,
       );
       if (permId == null) {
@@ -312,12 +303,11 @@ class ACL {
         nodeIdsGc.add(nodeId);
         continue;
       }
-      const permIdPath = [
-        ...this.aclPermsDbPath,
-        permId,
-      ] as unknown as KeyPath;
       const permRef = (await tran.get(
-        permIdPath,
+        [
+          ...this.aclPermsDbPath,
+          permId,
+        ], false,
       )) as Ref<Permission>;
       if (!(vaultId in permRef.object.vaults)) {
         // Vault id is missing from the perm
@@ -331,7 +321,10 @@ class ACL {
       for (const nodeId of nodeIdsGc) {
         delete nodeIds[nodeId];
       }
-      await tran.put(vaultIdPath, nodeIds);
+      await tran.put([
+        ...this.aclVaultsDbPath,
+        vaultId.toBuffer(),
+      ], nodeIds, false);
     }
     return perms;
   }
@@ -347,12 +340,11 @@ class ACL {
         this.setNodeAction(nodeId, action, tran),
       );
     }
-    const nodeIdPath = [
-      ...this.aclNodesDbPath,
-      nodeId.toBuffer(),
-    ] as unknown as KeyPath;
     const permId = await tran.get(
-      nodeIdPath,
+      [
+        ...this.aclNodesDbPath,
+        nodeId.toBuffer(),
+      ],
       true,
     );
     if (permId == null) {
@@ -366,22 +358,26 @@ class ACL {
           vaults: {},
         },
       };
-      const permIdPath = [
+      await tran.put([
         ...this.aclPermsDbPath,
         permId.toBuffer(),
-      ] as unknown as KeyPath;
-      await tran.put(permIdPath, permRef);
-      await tran.put(nodeIdPath, permId.toBuffer());
+      ], permRef, false);
+      await tran.put([
+        ...this.aclNodesDbPath,
+        nodeId.toBuffer(),
+      ], permId.toBuffer(), true);
     } else {
-      const permIdPath = [
-        ...this.aclPermsDbPath,
-        permId,
-      ] as unknown as KeyPath;
       const permRef = (await tran.get(
-        permIdPath
+        [
+          ...this.aclPermsDbPath,
+          permId,
+        ], false,
       )) as Ref<Permission>;
       permRef.object.gestalt[action] = null;
-      await tran.put(permIdPath, permRef);
+      await tran.put([
+        ...this.aclPermsDbPath,
+        permId,
+      ], permRef, false);
     }
   }
 
@@ -396,26 +392,28 @@ class ACL {
         this.unsetNodeAction(nodeId, action, tran),
       );
     }
-    const nodeIdPath = [
-      ...this.aclNodesDbPath,
-      nodeId.toBuffer(),
-    ] as unknown as KeyPath;
     const permId = await tran.get(
-      nodeIdPath,
+      [
+        ...this.aclNodesDbPath,
+        nodeId.toBuffer(),
+      ],
       true,
     );
     if (permId == null) {
       return;
     }
-    const permIdPath = [
-      ...this.aclPermsDbPath,
-      permId,
-    ] as unknown as KeyPath;
     const permRef = (await tran.get(
-      permIdPath
+      [
+        ...this.aclPermsDbPath,
+        permId,
+      ],
+      false,
     )) as Ref<Permission>;
     delete permRef.object.gestalt[action];
-    await tran.put(permIdPath, permRef);
+    await tran.put([
+      ...this.aclPermsDbPath,
+      permId,
+    ], permRef, false);
   }
 
   @ready(new aclErrors.ErrorACLNotRunning())
@@ -430,32 +428,29 @@ class ACL {
         this.setVaultAction(vaultId, nodeId, action, tran),
       );
     }
-    const vaultIdPath = [
-      ...this.aclVaultsDbPath,
-      vaultId.toBuffer(),
-    ] as unknown as KeyPath;
-    const nodeIdPath = [
-      ...this.aclNodesDbPath,
-      nodeId.toBuffer(),
-    ] as unknown as KeyPath;
     const nodeIds =
       (await tran.get<Record<NodeId, null>>(
-        vaultIdPath
+        [
+          ...this.aclVaultsDbPath,
+          vaultId.toBuffer(),
+        ], false,
       )) ?? {};
     const permId = await tran.get(
-      nodeIdPath,
+      [
+        ...this.aclNodesDbPath,
+        nodeId.toBuffer(),
+      ],
       true,
     );
     if (permId == null) {
       throw new aclErrors.ErrorACLNodeIdMissing();
     }
     nodeIds[nodeId] = null;
-    const permIdPath = [
-      ...this.aclPermsDbPath,
-      permId,
-    ] as unknown as KeyPath;
     const permRef = (await tran.get(
-      permIdPath,
+      [
+        ...this.aclPermsDbPath,
+        permId,
+      ], false
     )) as Ref<Permission>;
     let actions: VaultActions | undefined = permRef.object.vaults[vaultId];
     if (actions == null) {
@@ -463,9 +458,18 @@ class ACL {
       permRef.object.vaults[vaultId] = actions;
     }
     actions[action] = null;
-    await tran.put(permIdPath, permRef);
-    await tran.put(nodeIdPath, permId);
-    await tran.put(vaultIdPath, nodeIds);
+    await tran.put([
+      ...this.aclPermsDbPath,
+      permId,
+    ], permRef, false);
+    await tran.put([
+      ...this.aclNodesDbPath,
+      nodeId.toBuffer(),
+    ], permId, true);
+    await tran.put([
+      ...this.aclVaultsDbPath,
+      vaultId.toBuffer(),
+    ], nodeIds, false);
   }
 
   @ready(new aclErrors.ErrorACLNotRunning())
@@ -480,40 +484,40 @@ class ACL {
         this.unsetVaultAction(vaultId, nodeId, action, tran),
       );
     }
-    const vaultIdPath = [
-      ...this.aclVaultsDbPath,
-      vaultId.toBuffer(),
-    ] as unknown as KeyPath;
-    const nodeIdPath = [
-      ...this.aclNodesDbPath,
-      nodeId.toBuffer(),
-    ] as unknown as KeyPath;
     const nodeIds = await tran.get<Record<NodeId, null>>(
-      vaultIdPath
+      [
+        ...this.aclVaultsDbPath,
+        vaultId.toBuffer(),
+      ], false,
     );
     if (nodeIds == null || !(nodeId in nodeIds)) {
       return;
     }
     const permId = await tran.get(
-      nodeIdPath,
+      [
+        ...this.aclNodesDbPath,
+        nodeId.toBuffer(),
+      ],
       true,
     );
     if (permId == null) {
       return;
     }
-    const permIdPath = [
-      ...this.aclPermsDbPath,
-      permId,
-    ] as unknown as KeyPath;
     const permRef = (await tran.get(
-      permIdPath
+      [
+        ...this.aclPermsDbPath,
+        permId,
+      ], false,
     )) as Ref<Permission>;
     const actions: VaultActions | undefined = permRef.object.vaults[vaultId];
     if (actions == null) {
       return;
     }
     delete actions[action];
-    await tran.put(permIdPath, permRef);
+    await tran.put([
+      ...this.aclPermsDbPath,
+      permId,
+    ], permRef, false);
   }
 
   /**
@@ -532,14 +536,13 @@ class ACL {
         this.setNodesPerm(nodeIds, perm, tran),
       );
     }
-    const nodeIdPaths = nodeIds.map((nodeId) => [
-      ...this.aclNodesDbPath,
-      nodeId.toBuffer(),
-    ] as unknown as KeyPath);
     const permIdCounts: Record<PermissionIdString, number> = {};
-    for (const nodeIdPath of nodeIdPaths) {
+    for (const nodeId of nodeIds) {
       const permIdBuffer = await tran.get(
-        nodeIdPath,
+        [
+          ...this.aclNodesDbPath,
+          nodeId.toBuffer(),
+        ],
         true,
       );
       if (permIdBuffer == null) {
@@ -550,18 +553,23 @@ class ACL {
     }
     for (const permIdString in permIdCounts) {
       const permId = IdInternal.fromString<PermissionId>(permIdString);
-      const permIdPath = [
-        ...this.aclPermsDbPath,
-        permId.toBuffer(),
-      ] as unknown as KeyPath;
       const permRef = (await tran.get(
-        permIdPath,
+        [
+          ...this.aclPermsDbPath,
+          permId.toBuffer(),
+        ], false,
       )) as Ref<Permission>;
       permRef.count = permRef.count - permIdCounts[permId];
       if (permRef.count === 0) {
-        await tran.del(permIdPath);
+        await tran.del([
+          ...this.aclPermsDbPath,
+          permId.toBuffer(),
+        ]);
       } else {
-        await tran.put(permIdPath, permRef);
+        await tran.put([
+          ...this.aclPermsDbPath,
+          permId.toBuffer(),
+        ], permRef, false);
       }
     }
     const permId = this.generatePermId();
@@ -569,13 +577,15 @@ class ACL {
       count: nodeIds.length,
       object: perm,
     };
-    const permIdPath = [
+    await tran.put([
       ...this.aclPermsDbPath,
       permId.toBuffer(),
-    ] as unknown as KeyPath;
-    await tran.put(permIdPath, permRef);
-    for (const nodeIdPath of nodeIdPaths) {
-      await tran.put(nodeIdPath, permId.toBuffer());
+    ], permRef, false);
+    for (const nodeId of nodeIds) {
+      await tran.put([
+        ...this.aclNodesDbPath,
+        nodeId.toBuffer(),
+      ], permId.toBuffer(), true);
     }
   }
 
@@ -590,12 +600,11 @@ class ACL {
         this.setNodePerm(nodeId, perm, tran),
       );
     }
-    const nodeIdPath = [
-      ...this.aclNodesDbPath,
-      nodeId.toBuffer(),
-    ] as unknown as KeyPath;
     const permId = await tran.get(
-      nodeIdPath,
+      [
+        ...this.aclNodesDbPath,
+        nodeId.toBuffer(),
+      ],
       true,
     );
     if (permId == null) {
@@ -604,23 +613,27 @@ class ACL {
         count: 1,
         object: perm,
       };
-      const permIdPath = [
+      await tran.put([
         ...this.aclPermsDbPath,
         permId.toBuffer(),
-      ] as unknown as KeyPath;
-      await tran.put(permIdPath, permRef);
-      await tran.put(nodeIdPath, permId.toBuffer());
+      ], permRef, false);
+      await tran.put([
+        ...this.aclNodesDbPath,
+        nodeId.toBuffer(),
+      ], permId.toBuffer(), true);
     } else {
       // The entire gestalt's perm gets replaced, therefore the count stays the same
-      const permIdPath = [
-        ...this.aclPermsDbPath,
-        permId,
-      ] as unknown as KeyPath;
       const permRef = (await tran.get(
-        permIdPath,
+        [
+          ...this.aclPermsDbPath,
+          permId,
+        ], false,
       )) as Ref<Permission>;
       permRef.object = perm;
-      await tran.put(permIdPath, permRef);
+      await tran.put([
+        ...this.aclPermsDbPath,
+        permId,
+      ], permRef, false);
     }
   }
 
@@ -634,31 +647,39 @@ class ACL {
         this.unsetNodePerm(nodeId, tran),
       );
     }
-    const nodeIdPath = [
-      ...this.aclNodesDbPath,
-      nodeId.toBuffer(),
-    ] as unknown as KeyPath;
     const permId = await tran.get(
-      nodeIdPath,
+      [
+        ...this.aclNodesDbPath,
+        nodeId.toBuffer(),
+      ],
       true,
     );
     if (permId == null) {
       return;
     }
-    const permIdPath = [
-      ...this.aclNodesDbPath,
-      permId,
-    ] as unknown as KeyPath;
     const permRef = (await tran.get(
-      permIdPath,
+      [
+        ...this.aclPermsDbPath,
+        permId,
+      ],
+      false,
     )) as Ref<Permission>;
     const count = --permRef.count;
     if (count === 0) {
-      await tran.del(permIdPath);
+      await tran.del([
+        ...this.aclPermsDbPath,
+        permId,
+      ]);
     } else {
-      await tran.put(permIdPath, permRef);
+      await tran.put([
+        ...this.aclPermsDbPath,
+        permId,
+      ], permRef, false);
     }
-    await tran.del(nodeIdPath);
+    await tran.del([
+      ...this.aclNodesDbPath,
+      nodeId.toBuffer(),
+    ]);
     // We do not remove the node id from the vaults
     // they can be removed later upon inspection
   }
@@ -673,24 +694,22 @@ class ACL {
         this.unsetVaultPerms(vaultId, tran),
       );
     }
-    const vaultIdPath = [
-      ...this.aclVaultsDbPath,
-      vaultId.toBuffer(),
-    ] as unknown as KeyPath;
     const nodeIds = await tran.get<Record<NodeId, null>>(
-      vaultIdPath,
+      [
+        ...this.aclVaultsDbPath,
+        vaultId.toBuffer(),
+      ], false,
     );
     if (nodeIds == null) {
       return;
     }
     for (const nodeIdString in nodeIds) {
       const nodeId: NodeId = IdInternal.fromString(nodeIdString);
-      const nodeIdPath = [
-        ...this.aclNodesDbPath,
-        nodeId.toBuffer(),
-      ] as unknown as KeyPath;
       const permId = await tran.get(
-        nodeIdPath,
+        [
+          ...this.aclNodesDbPath,
+          nodeId.toBuffer(),
+        ],
         true,
       );
       // Skip if the nodeId doesn't exist
@@ -698,17 +717,23 @@ class ACL {
       if (permId == null) {
         continue;
       }
-      const permIdPath = [
-        ...this.aclPermsDbPath,
-        permId,
-      ] as unknown as KeyPath;
       const perm = (await tran.get(
-        permIdPath,
+        [
+          ...this.aclPermsDbPath,
+          permId,
+        ],
+        false,
       )) as Ref<Permission>;
       delete perm.object.vaults[vaultId];
-      await tran.put(permIdPath, perm);
+      await tran.put([
+        ...this.aclPermsDbPath,
+        permId,
+      ], perm, false);
     }
-    await tran.del(vaultIdPath);
+    await tran.del([
+      ...this.aclVaultsDbPath,
+      vaultId.toBuffer(),
+    ]);
   }
 
   @ready(new aclErrors.ErrorACLNotRunning())
@@ -723,35 +748,33 @@ class ACL {
         this.joinNodePerm(nodeId, nodeIdsJoin, perm, tran),
       );
     }
-    const nodeIdPath = [
-      ...this.aclNodesDbPath,
-      nodeId.toBuffer(),
-    ] as unknown as KeyPath;
-    const nodeIdsJoinPaths = nodeIdsJoin.map((nodeId) => [
-      ...this.aclNodesDbPath,
-      nodeId.toBuffer(),
-    ] as unknown as KeyPath);
     const permId = await tran.get(
-      nodeIdPath,
+      [
+        ...this.aclNodesDbPath,
+        nodeId.toBuffer(),
+      ],
       true,
     );
     if (permId == null) {
       throw new aclErrors.ErrorACLNodeIdMissing();
     }
-    const permIdPath = [
-      ...this.aclPermsDbPath,
-      permId,
-    ] as unknown as KeyPath;
     const permRef = (await tran.get(
-      permIdPath,
+      [
+        ...this.aclPermsDbPath,
+        permId,
+      ],
+      false,
     )) as Ref<Permission>;
     // Optionally replace the permission record for the target
     if (perm != null) {
       permRef.object = perm;
     }
-    for (const nodeIdJoinPath of nodeIdsJoinPaths) {
+    for (const nodeIdJoin of nodeIdsJoin) {
       const permIdJoin = await tran.get(
-        nodeIdJoinPath,
+        [
+          ...this.aclNodesDbPath,
+          nodeIdJoin.toBuffer(),
+        ],
         true,
       );
       if (permIdJoin === permId) {
@@ -759,23 +782,35 @@ class ACL {
       }
       ++permRef.count;
       if (permIdJoin != null) {
-        const permIdJoinPath = [
-          ...this.aclPermsDbPath,
-          permIdJoin,
-        ] as unknown as KeyPath;
         const permJoin = (await tran.get(
-          permIdJoinPath
+          [
+            ...this.aclPermsDbPath,
+            permIdJoin,
+          ],
+          false,
         )) as Ref<Permission>;
         --permJoin.count;
         if (permJoin.count === 0) {
-          await tran.del(permIdJoinPath);
+          await tran.del([
+            ...this.aclPermsDbPath,
+            permIdJoin,
+          ]);
         } else {
-          await tran.put(permIdJoinPath, permJoin);
+          await tran.put([
+            ...this.aclPermsDbPath,
+            permIdJoin,
+          ], permJoin, false);
         }
       }
-      await tran.put(nodeIdJoinPath, permId);
+      await tran.put([
+        ...this.aclNodesDbPath,
+        nodeIdJoin.toBuffer(),
+      ], permId, true);
     }
-    await tran.put(permIdPath, permRef);
+    await tran.put([
+      ...this.aclPermsDbPath,
+      permId,
+    ], permRef, false);
   }
 
   @ready(new aclErrors.ErrorACLNotRunning())
@@ -789,16 +824,12 @@ class ACL {
         this.joinVaultPerms(vaultId, vaultIdsJoin, tran),
       );
     }
-    const vaultIdPath = [
-      ...this.aclVaultsDbPath,
-      vaultId.toBuffer(),
-    ] as unknown as KeyPath;
-    const vaultIdsJoinPaths = vaultIdsJoin.map((vaultId) => [
-      ...this.aclVaultsDbPath,
-      vaultId.toBuffer(),
-    ] as unknown as KeyPath);
     const nodeIds = await tran.get<Record<NodeId, null>>(
-      vaultIdPath,
+      [
+        ...this.aclVaultsDbPath,
+        vaultId.toBuffer(),
+      ],
+      false,
     );
     if (nodeIds == null) {
       throw new aclErrors.ErrorACLVaultIdMissing();
@@ -806,12 +837,11 @@ class ACL {
     const nodeIdsGc: Set<NodeId> = new Set();
     for (const nodeIdString in nodeIds) {
       const nodeId: NodeId = IdInternal.fromString(nodeIdString);
-      const nodeIdPath = [
-        ...this.aclNodesDbPath,
-        nodeId.toBuffer(),
-      ] as unknown as KeyPath;
       const permId = await tran.get(
-        nodeIdPath,
+        [
+          ...this.aclNodesDbPath,
+          nodeId.toBuffer(),
+        ],
         true,
       );
       if (permId == null) {
@@ -819,12 +849,11 @@ class ACL {
         nodeIdsGc.add(nodeId);
         continue;
       }
-      const permIdPath = [
-        ...this.aclPermsDbPath,
-        permId,
-      ] as unknown as KeyPath;
       const permRef = (await tran.get(
-        permIdPath,
+        [
+          ...this.aclPermsDbPath,
+          permId,
+        ], false,
       )) as Ref<Permission>;
       if (!(vaultId in permRef.object.vaults)) {
         // Vault id is missing from the perm
@@ -836,17 +865,26 @@ class ACL {
       for (const vaultIdJoin of vaultIdsJoin) {
         permRef.object.vaults[vaultIdJoin] = vaultActions;
       }
-      await tran.put(permIdPath, permRef);
+      await tran.put([
+        ...this.aclPermsDbPath,
+        permId,
+      ], permRef, false);
     }
-    for (const vaultIdJoinPath of vaultIdsJoinPaths) {
-      await tran.put(vaultIdJoinPath, nodeIds);
+    for (const vaultIdJoin of vaultIdsJoin) {
+      await tran.put([
+        ...this.aclVaultsDbPath,
+        vaultIdJoin.toBuffer(),
+      ], nodeIds, false);
     }
     if (nodeIdsGc.size > 0) {
       // Remove invalid node ids
       for (const nodeId of nodeIdsGc) {
         delete nodeIds[nodeId];
       }
-      await tran.put(vaultIdPath, nodeIds);
+      await tran.put([
+        ...this.aclVaultsDbPath,
+        vaultId.toBuffer(),
+      ], nodeIds, false);
     }
   }
 }
