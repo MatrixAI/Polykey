@@ -407,24 +407,34 @@ describe(ACL.name, () => {
     const acl = await ACL.createACL({ db, logger });
     const p1 = acl.getNodePerms();
     const p2 = acl.withTransactionF(async (tran) => {
-      await acl.setNodesPerm([nodeIdG1First, nodeIdG1Second] as Array<NodeId>, {
-        gestalt: {
-          notify: null,
+      await acl.setNodesPerm(
+        [nodeIdG1First, nodeIdG1Second] as Array<NodeId>,
+        {
+          gestalt: {
+            notify: null,
+          },
+          vaults: {},
         },
-        vaults: {},
-      }, tran);
-      await acl.setNodesPerm([nodeIdG2First, nodeIdG2Second] as Array<NodeId>, {
-        gestalt: {
-          notify: null,
+        tran,
+      );
+      await acl.setNodesPerm(
+        [nodeIdG2First, nodeIdG2Second] as Array<NodeId>,
+        {
+          gestalt: {
+            notify: null,
+          },
+          vaults: {},
         },
-        vaults: {},
-      }, tran);
+        tran,
+      );
       await acl.setVaultAction(vaultId1, nodeIdG1First, 'pull', tran);
       await acl.setVaultAction(vaultId1, nodeIdG2First, 'clone', tran);
-      await acl.joinNodePerm(nodeIdG1Second, [
-        nodeIdG1Third,
-        nodeIdG1Fourth,
-      ] as Array<NodeId>, undefined, tran);
+      await acl.joinNodePerm(
+        nodeIdG1Second,
+        [nodeIdG1Third, nodeIdG1Fourth] as Array<NodeId>,
+        undefined,
+        tran,
+      );
       // V3 and v4 joins v1
       // this means v3 and v4 now has g1 and g2 permissions
       await acl.joinVaultPerms(vaultId1, [vaultId3, vaultId4], tran);
