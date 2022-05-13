@@ -1,3 +1,4 @@
+import type { DB } from '@matrixai/db';
 import type PolykeyAgent from '../../PolykeyAgent';
 import type { KeyManager } from '../../keys';
 import type { VaultManager } from '../../vaults';
@@ -88,11 +89,13 @@ import { ClientServiceService } from '../../proto/js/polykey/v1/client_service_g
 function createService({
   keyManager,
   sessionManager,
+  db,
   logger = new Logger(createService.name),
   fs = require('fs'),
   ...containerRest
 }: {
   pkAgent: PolykeyAgent;
+  db: DB;
   keyManager: KeyManager;
   vaultManager: VaultManager;
   nodeGraph: NodeGraph;
@@ -116,6 +119,7 @@ function createService({
     ...containerRest,
     keyManager,
     sessionManager,
+    db,
     logger,
     fs,
     authenticate,

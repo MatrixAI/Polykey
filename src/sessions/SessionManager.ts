@@ -160,7 +160,7 @@ class SessionManager {
   }
 
   protected async setupKey(bits: 128 | 192 | 256): Promise<Buffer> {
-    return withF([this.db.transaction()], async ([tran]) => {
+    return await withF([this.db.transaction()], async ([tran]) => {
       let key: Buffer | undefined;
       key = await tran.get([...this.sessionsDbPath, 'key'], true);
       if (key != null) {
