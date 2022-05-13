@@ -104,10 +104,7 @@ class NodeGraph {
   public async withTransactionF<T>(
     f: (tran: DBTransaction) => Promise<T>,
   ): Promise<T> {
-    return withF(
-      [this.db.transaction()],
-      ([tran]) => f(tran),
-    );
+    return withF([this.db.transaction()], ([tran]) => f(tran));
   }
 
   /**
@@ -116,20 +113,19 @@ class NodeGraph {
    * @returns Node Address of the target node
    */
   @ready(new nodesErrors.ErrorNodeGraphNotRunning())
-  public async getNode(nodeId: NodeId, tran?: DBTransaction): Promise<NodeAddress | undefined> {
+  public async getNode(
+    nodeId: NodeId,
+    tran?: DBTransaction,
+  ): Promise<NodeAddress | undefined> {
     if (tran == null) {
-      return this.withTransactionF(async (tran) =>
-        this.getNode(nodeId, tran),
-      );
+      return this.withTransactionF(async (tran) => this.getNode(nodeId, tran));
     }
     const bucketIndex = this.getBucketIndex(nodeId);
     const bucketPath = [
       ...this.nodeGraphBucketsDbPath,
       bucketIndex,
     ] as unknown as KeyPath;
-    const bucket = await tran.get<NodeBucket>(
-      bucketPath,
-    );
+    const bucket = await tran.get<NodeBucket>(bucketPath);
     if (bucket != null && nodeId in bucket) {
       return bucket[nodeId].address;
     }
@@ -152,7 +148,10 @@ class NodeGraph {
    * @param bucketIndex
    */
   @ready(new nodesErrors.ErrorNodeGraphNotRunning())
-  public async getBucket(bucketIndex: number, tran?: DBTransaction): Promise<NodeBucket | undefined> {
+  public async getBucket(
+    bucketIndex: number,
+    tran?: DBTransaction,
+  ): Promise<NodeBucket | undefined> {
     if (tran == null) {
       return this.withTransactionF(async (tran) =>
         this.getBucket(bucketIndex, tran),
@@ -162,9 +161,7 @@ class NodeGraph {
       ...this.nodeGraphBucketsDbPath,
       lexi.pack(bucketIndex, 'hex'),
     ] as unknown as KeyPath;
-    const bucket = await tran.get<NodeBucket>(
-      bucketPath,
-    );
+    const bucket = await tran.get<NodeBucket>(bucketPath);
     // Cast the non-primitive types correctly (ensures type safety when using them)
     for (const nodeId in bucket) {
       bucket[nodeId].address.host = bucket[nodeId].address.host as
@@ -195,9 +192,7 @@ class NodeGraph {
       ...this.nodeGraphBucketsDbPath,
       bucketIndex,
     ] as unknown as KeyPath;
-    let bucket = await tran.get<NodeBucket>(
-      bucketPath,
-    );
+    let bucket = await tran.get<NodeBucket>(bucketPath);
     if (bucket == null) {
       bucket = {};
     }
@@ -245,9 +240,7 @@ class NodeGraph {
       ...this.nodeGraphBucketsDbPath,
       bucketIndex,
     ] as unknown as KeyPath;
-    const bucket = await tran.get<NodeBucket>(
-      bucketPath,
-    );
+    const bucket = await tran.get<NodeBucket>(bucketPath);
     if (bucket != null && nodeId in bucket) {
       bucket[nodeId].lastUpdated = new Date();
       if (nodeAddress != null) {
@@ -275,9 +268,7 @@ class NodeGraph {
       ...this.nodeGraphBucketsDbPath,
       bucketIndex,
     ] as unknown as KeyPath;
-    const bucket = await tran.get<NodeBucket>(
-      bucketPath
-    );
+    const bucket = await tran.get<NodeBucket>(bucketPath);
     if (bucket == null) {
       return;
     }
@@ -308,12 +299,10 @@ class NodeGraph {
   @ready(new nodesErrors.ErrorNodeGraphNotRunning())
   public async getAllBuckets(tran?: DBTransaction): Promise<Array<NodeBucket>> {
     if (tran == null) {
-      return this.withTransactionF(async (tran) =>
-        this.getAllBuckets(tran),
-      );
+      return this.withTransactionF(async (tran) => this.getAllBuckets(tran));
     }
     const buckets: Array<NodeBucket> = [];
-    for await (const [v] of tran.iterator({ key: false }, [
+    for await (const [, v] of tran.iterator({ keys: false }, [
       ...this.nodeGraphBucketsDbPath,
     ])) {
       const bucket = dbUtils.deserialize<NodeBucket>(v);
@@ -332,19 +321,17 @@ class NodeGraph {
   @ready(new nodesErrors.ErrorNodeGraphNotRunning())
   public async refreshBuckets(tran?: DBTransaction): Promise<void> {
     if (tran == null) {
-      return this.withTransactionF(async (tran) =>
-        this.refreshBuckets(tran),
-      );
+      return this.withTransactionF(async (tran) => this.refreshBuckets(tran));
     }
     // Get a local copy of all the buckets
-    const buckets = await this.getAllBuckets();
+    const buckets = await this.getAllBuckets(tran);
     // Wrap as a batch operation. We want to rollback if we encounter any
     // errors (such that we don't clear the DB without re-adding the nodes)
     // 1. Delete every bucket
     for await (const [k] of tran.iterator({ value: false }, [
       ...this.nodeGraphBucketsDbPath,
     ])) {
-      const hexBucketIndex = dbUtils.deserialize(k);
+      const hexBucketIndex = k.toString();
       const hexBucketPath = [
         ...this.nodeGraphBucketsDbPath,
         hexBucketIndex,
