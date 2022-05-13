@@ -78,10 +78,7 @@ class IdentitiesManager {
   public async withTransactionF<T>(
     f: (tran: DBTransaction) => Promise<T>,
   ): Promise<T> {
-    return withF(
-      [this.db.transaction()],
-      ([tran]) => f(tran),
-    );
+    return withF([this.db.transaction()], ([tran]) => f(tran));
   }
 
   @ready(new identitiesErrors.ErrorIdentitiesManagerNotRunning())
@@ -114,7 +111,10 @@ class IdentitiesManager {
   }
 
   @ready(new identitiesErrors.ErrorIdentitiesManagerNotRunning())
-  public async getTokens(providerId: ProviderId, tran?: DBTransaction): Promise<ProviderTokens> {
+  public async getTokens(
+    providerId: ProviderId,
+    tran?: DBTransaction,
+  ): Promise<ProviderTokens> {
     if (tran == null) {
       return this.withTransactionF(async (tran) =>
         this.getTokens(providerId, tran),
@@ -124,9 +124,7 @@ class IdentitiesManager {
       ...this.identitiesTokensDbPath,
       providerId,
     ] as unknown as KeyPath;
-    const providerTokens = await tran.get<ProviderTokens>(
-      providerIdPath,
-    );
+    const providerTokens = await tran.get<ProviderTokens>(providerIdPath);
     if (providerTokens == null) {
       return {};
     }
@@ -148,9 +146,7 @@ class IdentitiesManager {
       ...this.identitiesTokensDbPath,
       providerId,
     ] as unknown as KeyPath;
-    const providerTokens = await tran.get<ProviderTokens>(
-      providerIdPath,
-    );
+    const providerTokens = await tran.get<ProviderTokens>(providerIdPath);
     if (providerTokens == null) {
       return undefined;
     }
@@ -175,10 +171,7 @@ class IdentitiesManager {
       ...this.identitiesTokensDbPath,
       providerId,
     ] as unknown as KeyPath;
-    await tran.put(
-      providerIdPath,
-      providerTokens,
-    );
+    await tran.put(providerIdPath, providerTokens);
   }
 
   @ready(new identitiesErrors.ErrorIdentitiesManagerNotRunning())
@@ -205,10 +198,7 @@ class IdentitiesManager {
       await tran.del(providerIdPath);
       return;
     }
-    await tran.put(
-      providerIdPath,
-      providerTokens,
-    );
+    await tran.put(providerIdPath, providerTokens);
   }
 }
 
