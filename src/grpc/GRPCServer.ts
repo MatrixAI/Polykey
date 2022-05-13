@@ -74,8 +74,9 @@ class GRPCServer {
     }
     if (serverCredentials._isSecure()) {
       // @ts-ignore hack for private property
-      const http2Servers = server.http2ServerList as Array<Http2SecureServer>;
-      for (const http2Server of http2Servers) {
+      const http2Servers = server.http2ServerList;
+      for (const http2ServerObjects of http2Servers) {
+        const http2Server = http2ServerObjects.server as Http2SecureServer;
         http2Server.on('session', (session: Http2Session) => {
           const socket = session.socket as TLSSocket;
           const address = networkUtils.buildAddress(
@@ -199,7 +200,8 @@ class GRPCServer {
     this.logger.info(`Updating ${this.constructor.name} TLS Config`);
     // @ts-ignore hack for private property
     const http2Servers = this.server.http2ServerList;
-    for (const http2Server of http2Servers as Array<Http2SecureServer>) {
+    for (const http2ServerObjects of http2Servers) {
+      const http2Server = http2ServerObjects.server as Http2SecureServer;
       http2Server.setSecureContext({
         key: Buffer.from(tlsConfig.keyPrivatePem, 'ascii'),
         cert: Buffer.from(tlsConfig.certChainPem, 'ascii'),
