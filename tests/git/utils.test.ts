@@ -167,7 +167,9 @@ describe('Git utils', () => {
       expect(object).toContain(firstCommit.commit.author.name);
       expect(object).toContain(firstCommit.commit.author.timestamp.toString());
       expect(object).toContain(firstCommit.commit.committer.name);
-      expect(object).toContain(firstCommit.commit.committer.timestamp.toString());
+      expect(object).toContain(
+        firstCommit.commit.committer.timestamp.toString(),
+      );
     });
     test('wrapped', async () => {
       const ref = await gitUtils.readObject({
@@ -192,7 +194,9 @@ describe('Git utils', () => {
       expect(object).toContain(firstCommit.commit.author.name);
       expect(object).toContain(firstCommit.commit.author.timestamp.toString());
       expect(object).toContain(firstCommit.commit.committer.name);
-      expect(object).toContain(firstCommit.commit.committer.timestamp.toString());
+      expect(object).toContain(
+        firstCommit.commit.committer.timestamp.toString(),
+      );
     });
     test('deflated', async () => {
       const ref = await gitUtils.readObject({
@@ -236,7 +240,9 @@ describe('Git utils', () => {
       expect(object).toContain(firstCommit.commit.author.name);
       expect(object).toContain(firstCommit.commit.author.timestamp.toString());
       expect(object).toContain(firstCommit.commit.committer.name);
-      expect(object).toContain(firstCommit.commit.committer.timestamp.toString());
+      expect(object).toContain(
+        firstCommit.commit.committer.timestamp.toString(),
+      );
     });
   });
 });
