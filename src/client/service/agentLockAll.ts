@@ -26,8 +26,9 @@ function agentLockAll({
       const response = new utilsPB.EmptyMessage();
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
-      await withF([db.transaction()], async ([tran]) =>
-        await sessionManager.resetKey(tran),
+      await withF(
+        [db.transaction()],
+        async ([tran]) => await sessionManager.resetKey(tran),
       );
       callback(null, response);
       return;
