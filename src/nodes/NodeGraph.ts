@@ -313,7 +313,7 @@ class NodeGraph {
       );
     }
     const buckets: Array<NodeBucket> = [];
-    for await (const [v] of tran.iterator({ key: false }, [
+    for await (const [, v] of tran.iterator({ keys: false}, [
       ...this.nodeGraphBucketsDbPath,
     ])) {
       const bucket = dbUtils.deserialize<NodeBucket>(v);
@@ -337,14 +337,14 @@ class NodeGraph {
       );
     }
     // Get a local copy of all the buckets
-    const buckets = await this.getAllBuckets();
+    const buckets = await this.getAllBuckets(tran);
     // Wrap as a batch operation. We want to rollback if we encounter any
     // errors (such that we don't clear the DB without re-adding the nodes)
     // 1. Delete every bucket
     for await (const [k] of tran.iterator({ value: false }, [
       ...this.nodeGraphBucketsDbPath,
     ])) {
-      const hexBucketIndex = dbUtils.deserialize(k);
+      const hexBucketIndex = k.toString();
       const hexBucketPath = [
         ...this.nodeGraphBucketsDbPath,
         hexBucketIndex,
