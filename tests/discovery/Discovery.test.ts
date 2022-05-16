@@ -1,7 +1,6 @@
 import type { ClaimLinkIdentity } from '@/claims/types';
 import type { IdentityId, ProviderId } from '@/identities/types';
 import type { Host, Port } from '@/network/types';
-import type { Gestalt } from '@/gestalts/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -16,7 +15,6 @@ import { KeyManager } from '@/keys';
 import { ACL } from '@/acl';
 import { Sigchain } from '@/sigchain';
 import Proxy from '@/network/Proxy';
-import { poll } from '@/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as claimsUtils from '@/claims/utils';
 import * as discoveryErrors from '@/discovery/errors';
@@ -251,34 +249,15 @@ describe('Discovery', () => {
       logger,
     });
     await discovery.queueDiscoveryByNode(nodeA.keyManager.getNodeId());
-    const gestalt = await poll<Gestalt>(
-      async () => {
-        const gestalts = await poll<Array<Gestalt>>(
-          async () => {
-            return await gestaltGraph.getGestalts();
-          },
-          (_, result) => {
-            if (result.length === 1) return true;
-            return false;
-          },
-          100,
-        );
-        return gestalts[0];
-      },
-      (_, result) => {
-        if (result === undefined) return false;
-        if (Object.keys(result.matrix).length === 3) return true;
-        return false;
-      },
-      100,
-    );
-    const gestaltMatrix = gestalt.matrix;
-    const gestaltNodes = gestalt.nodes;
-    const gestaltIdentities = gestalt.identities;
+    await discovery.waitForDrained();
+    const gestalt = await gestaltGraph.getGestalts();
+    const gestaltMatrix = gestalt[0].matrix;
+    const gestaltNodes = gestalt[0].nodes;
+    const gestaltIdentities = gestalt[0].identities;
     expect(Object.keys(gestaltMatrix)).toHaveLength(3);
     expect(Object.keys(gestaltNodes)).toHaveLength(2);
     expect(Object.keys(gestaltIdentities)).toHaveLength(1);
-    const gestaltString = JSON.stringify(gestalt);
+    const gestaltString = JSON.stringify(gestalt[0]);
     expect(gestaltString).toContain(
       nodesUtils.encodeNodeId(nodeA.keyManager.getNodeId()),
     );
@@ -304,27 +283,8 @@ describe('Discovery', () => {
       logger,
     });
     await discovery.queueDiscoveryByIdentity(testToken.providerId, identityId);
-    const gestalt = await poll<Gestalt>(
-      async () => {
-        const gestalts = await poll<Array<Gestalt>>(
-          async () => {
-            return await gestaltGraph.getGestalts();
-          },
-          (_, result) => {
-            if (result.length === 1) return true;
-            return false;
-          },
-          100,
-        );
-        return gestalts[0];
-      },
-      (_, result) => {
-        if (result === undefined) return false;
-        if (Object.keys(result.matrix).length === 3) return true;
-        return false;
-      },
-      100,
-    );
+    await discovery.waitForDrained();
+    const gestalt = (await gestaltGraph.getGestalts())[0];
     const gestaltMatrix = gestalt.matrix;
     const gestaltNodes = gestalt.nodes;
     const gestaltIdentities = gestalt.identities;
@@ -357,27 +317,8 @@ describe('Discovery', () => {
       logger,
     });
     await discovery.queueDiscoveryByNode(nodeA.keyManager.getNodeId());
-    const gestalt1 = await poll<Gestalt>(
-      async () => {
-        const gestalts = await poll<Array<Gestalt>>(
-          async () => {
-            return await gestaltGraph.getGestalts();
-          },
-          (_, result) => {
-            if (result.length === 1) return true;
-            return false;
-          },
-          100,
-        );
-        return gestalts[0];
-      },
-      (_, result) => {
-        if (result === undefined) return false;
-        if (Object.keys(result.matrix).length === 3) return true;
-        return false;
-      },
-      100,
-    );
+    await discovery.waitForDrained();
+    const gestalt1 = (await gestaltGraph.getGestalts())[0];
     const gestaltMatrix1 = gestalt1.matrix;
     const gestaltNodes1 = gestalt1.nodes;
     const gestaltIdentities1 = gestalt1.identities;
@@ -410,27 +351,8 @@ describe('Discovery', () => {
     // Note that eventually we would like to add in a system of revisiting
     // already discovered vertices, however for now we must do this manually.
     await discovery.queueDiscoveryByNode(nodeA.keyManager.getNodeId());
-    const gestalt2 = await poll<Gestalt>(
-      async () => {
-        const gestalts = await poll<Array<Gestalt>>(
-          async () => {
-            return await gestaltGraph.getGestalts();
-          },
-          (_, result) => {
-            if (result.length === 1) return true;
-            return false;
-          },
-          100,
-        );
-        return gestalts[0];
-      },
-      (_, result) => {
-        if (result === undefined) return false;
-        if (Object.keys(result.matrix).length === 4) return true;
-        return false;
-      },
-      100,
-    );
+    await discovery.waitForDrained();
+    const gestalt2 = (await gestaltGraph.getGestalts())[0];
     const gestaltMatrix2 = gestalt2.matrix;
     const gestaltNodes2 = gestalt2.nodes;
     const gestaltIdentities2 = gestalt2.identities;
@@ -470,27 +392,8 @@ describe('Discovery', () => {
     await discovery.queueDiscoveryByNode(nodeA.keyManager.getNodeId());
     await discovery.stop();
     await discovery.start();
-    const gestalt = await poll<Gestalt>(
-      async () => {
-        const gestalts = await poll<Array<Gestalt>>(
-          async () => {
-            return await gestaltGraph.getGestalts();
-          },
-          (_, result) => {
-            if (result.length === 1) return true;
-            return false;
-          },
-          100,
-        );
-        return gestalts[0];
-      },
-      (_, result) => {
-        if (result === undefined) return false;
-        if (Object.keys(result.matrix).length === 3) return true;
-        return false;
-      },
-      100,
-    );
+    await discovery.waitForDrained();
+    const gestalt = (await gestaltGraph.getGestalts())[0];
     const gestaltMatrix = gestalt.matrix;
     const gestaltNodes = gestalt.nodes;
     const gestaltIdentities = gestalt.identities;
