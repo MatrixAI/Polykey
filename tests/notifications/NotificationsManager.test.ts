@@ -277,28 +277,26 @@ describe('NotificationsManager', () => {
         pull: null,
       } as VaultActions,
     };
-    await expect(async () =>
+
+    await testUtils.expectRemoteError(
       notificationsManager.sendNotification(
         receiver.keyManager.getNodeId(),
         generalNotification,
       ),
-    ).rejects.toThrow(
       notificationsErrors.ErrorNotificationsPermissionsNotFound,
     );
-    await expect(async () =>
+    await testUtils.expectRemoteError(
       notificationsManager.sendNotification(
         receiver.keyManager.getNodeId(),
         gestaltNotification,
       ),
-    ).rejects.toThrow(
       notificationsErrors.ErrorNotificationsPermissionsNotFound,
     );
-    await expect(async () =>
+    await testUtils.expectRemoteError(
       notificationsManager.sendNotification(
         receiver.keyManager.getNodeId(),
         vaultNotification,
       ),
-    ).rejects.toThrow(
       notificationsErrors.ErrorNotificationsPermissionsNotFound,
     );
     const receivedNotifications =
