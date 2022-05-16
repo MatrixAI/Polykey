@@ -421,8 +421,7 @@ class PolykeyAgent {
   public readonly grpcServerClient: GRPCServer;
   public readonly events: EventBus;
   public readonly fs: FileSystem;
-
-  protected logger: Logger;
+  public readonly logger: Logger;
 
   constructor({
     nodePath,
