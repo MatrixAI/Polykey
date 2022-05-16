@@ -13,6 +13,7 @@ import { IdInternal } from '@matrixai/id';
 import * as keysUtils from '@/keys/utils';
 // Import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import { sleep } from '@/utils';
+import * as errors from '@/errors';
 // Import config from '@/config';
 
 /**
@@ -184,4 +185,16 @@ function generateRandomNodeId(): NodeId {
   return IdInternal.fromString<NodeId>(random);
 }
 
-export { setupGlobalKeypair, generateRandomNodeId };
+const expectRemoteError = async <T>(
+  promise: Promise<T>,
+  error,
+): Promise<T | undefined> => {
+  await expect(promise).rejects.toThrow(errors.ErrorPolykeyRemote);
+  try {
+    return await promise;
+  } catch (e) {
+    expect(e.cause).toBeInstanceOf(error);
+  }
+};
+
+export { setupGlobalKeypair, generateRandomNodeId, expectRemoteError };
