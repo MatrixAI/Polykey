@@ -26,6 +26,8 @@ import {
 import { IdInternal } from '@matrixai/id';
 import { Lock } from '@matrixai/async-locks';
 import * as idUtils from '@matrixai/id/dist/utils';
+import { utils as DBUtils } from '@matrixai/db';
+import * as resources from '@matrixai/resources';
 import * as discoveryUtils from './utils';
 import * as discoveryErrors from './errors';
 import * as nodesErrors from '../nodes/errors';
@@ -92,6 +94,7 @@ class Discovery {
   protected visitedVertices = new Set<GestaltKey>();
   protected discoveryProcess: Promise<void>;
   protected queuePlug = promise<void>();
+  protected queueDrained = promise<void>();
   protected lock: Lock = new Lock();
 
   public constructor({
@@ -184,28 +187,32 @@ class Discovery {
    * Async function for processing the Discovery Queue
    */
   public async setupDiscoveryQueue(): Promise<void> {
+    this.logger.debug('Setting up DiscoveryQueue');
     while (true) {
       // Checking and waiting for items to process
       if (await this.queueIsEmpty()) {
         if (!(this[status] === 'stopping')) {
           this.queuePlug = promise();
+          this.queueDrained.resolveP();
         }
+        this.logger.debug('DiscoveryQueue is pausing');
         await this.queuePlug.p;
+        this.queueDrained = promise();
       }
       if (this[status] === 'stopping') {
+        this.logger.debug('DiscoveryQueue is ending');
         break;
       }
 
       // Processing queue
+      this.logger.debug('DiscoveryQueue is processing');
       for await (const [key, value] of this.db.iterator(
         {},
         this.discoveryQueueDbPath,
       )) {
         const vertexId = IdInternal.fromBuffer(key) as DiscoveryQueueId;
-        const vertex = await this.db.deserializeDecrypt<GestaltKey>(
-          value,
-          false,
-        );
+        const vertex = DBUtils.deserialize<GestaltKey>(value);
+        this.logger.debug(`Processing vertex: ${vertex}`);
         const vertexGId = gestaltsUtils.ungestaltKey(vertex);
         switch (vertexGId.type) {
           case 'node':
@@ -407,6 +414,13 @@ class Discovery {
   }
 
   /**
+   * Will resolve once the queue has drained
+   */
+  public async waitForDrained(): Promise<void> {
+    await this.queueDrained.p;
+  }
+
+  /**
    * Simple check for whether the Discovery Queue is empty. Uses a
    * transaction lock to ensure consistency.
    */
@@ -432,8 +446,9 @@ class Discovery {
   protected async pushKeyToDiscoveryQueue(
     gestaltKey: GestaltKey,
   ): Promise<void> {
-    await this.lock.withF(async () => {
-      await this.db.withTransactionF(async (tran) => {
+    await resources.withF(
+      [this.db.transaction(), this.lock.lock()],
+      async ([tran]) => {
         const valueIterator = tran.iterator({}, this.discoveryQueueDbPath);
         for await (const [, value] of valueIterator) {
           if (value.toString() === gestaltKey) {
@@ -445,8 +460,8 @@ class Discovery {
           [...this.discoveryQueueDbDomain, idUtils.toBuffer(discoveryQueueId)],
           gestaltKey,
         );
-      });
-    });
+      },
+    );
     this.queuePlug.resolveP();
   }
 
