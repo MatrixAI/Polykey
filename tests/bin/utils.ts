@@ -343,7 +343,7 @@ async function processExit(
 function expectProcessError(
   exitCode: number,
   stderr: string,
-  error: ErrorPolykey,
+  error: ErrorPolykey<unknown>,
 ) {
   expect(exitCode).toBe(error.exitCode);
   const stdErrLine = stderr.trim().split('\n').pop();

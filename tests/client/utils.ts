@@ -40,6 +40,8 @@ async function openTestClientServer({
     grpcServerClient: pkAgent.grpcServerClient,
     grpcServerAgent: pkAgent.grpcServerAgent,
     fs: pkAgent.fs,
+    db: pkAgent.db,
+    logger: pkAgent.logger,
   });
 
   const callCredentials = _secure
