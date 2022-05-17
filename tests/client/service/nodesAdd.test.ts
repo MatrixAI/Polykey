@@ -23,6 +23,7 @@ import * as clientUtils from '@/client/utils/utils';
 import * as keysUtils from '@/keys/utils';
 import * as validationErrors from '@/validation/errors';
 import * as testUtils from '../../utils';
+import { expectRemoteError } from '../../utils';
 
 describe('nodesAdd', () => {
   const logger = new Logger('nodesAdd test', LogLevel.WARN, [
@@ -175,29 +176,32 @@ describe('nodesAdd', () => {
     const request = new nodesPB.NodeAddress();
     request.setNodeId('vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0');
     request.setAddress(addressMessage);
-    await expect(
+    await expectRemoteError(
       grpcClient.nodesAdd(
         request,
         clientUtils.encodeAuthFromPassword(password),
       ),
-    ).rejects.toThrow(validationErrors.ErrorValidation);
+      validationErrors.ErrorValidation,
+    );
     // Invalid port
     addressMessage.setHost('127.0.0.1');
     addressMessage.setPort(111111);
-    await expect(
+    await expectRemoteError(
       grpcClient.nodesAdd(
         request,
         clientUtils.encodeAuthFromPassword(password),
       ),
-    ).rejects.toThrow(validationErrors.ErrorValidation);
+      validationErrors.ErrorValidation,
+    );
     // Invalid nodeid
     addressMessage.setPort(11111);
     request.setNodeId('nodeId');
-    await expect(
+    await expectRemoteError(
       grpcClient.nodesAdd(
         request,
         clientUtils.encodeAuthFromPassword(password),
       ),
-    ).rejects.toThrow(validationErrors.ErrorValidation);
+      validationErrors.ErrorValidation,
+    );
   });
 });
