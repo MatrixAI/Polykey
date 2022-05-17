@@ -444,7 +444,9 @@ class Proxy {
           }
           if (e instanceof networkErrors.ErrorConnectionStartTimeout) {
             if (!clientSocket.destroyed) {
-              await clientSocketEnd('HTTP/1.1 504 Gateway Timeout\r\n' + '\r\n');
+              await clientSocketEnd(
+                'HTTP/1.1 504 Gateway Timeout\r\n' + '\r\n',
+              );
               clientSocket.destroy(e);
             }
             return;
