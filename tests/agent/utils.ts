@@ -3,20 +3,21 @@ import type { Host, Port, ProxyConfig } from '@/network/types';
 import type { IAgentServiceServer } from '@/proto/js/polykey/v1/agent_service_grpc_pb';
 import type { KeyManager } from '@/keys';
 import type { VaultManager } from '@/vaults';
-import type { NodeGraph, NodeConnectionManager, NodeManager } from '@/nodes';
+import type { NodeConnectionManager, NodeGraph, NodeManager } from '@/nodes';
 import type { Sigchain } from '@/sigchain';
 import type { NotificationsManager } from '@/notifications';
 import type { ACL } from '@/acl';
 import type { GestaltGraph } from '@/gestalts';
 import type { NodeId } from 'nodes/types';
 import type Proxy from 'network/Proxy';
+import type { DB } from '@matrixai/db';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as grpc from '@grpc/grpc-js';
 import { promisify } from '@/utils';
 import {
+  AgentServiceService,
   createAgentService,
   GRPCClientAgent,
-  AgentServiceService,
 } from '@/agent';
 import * as testUtils from '../utils';
 
@@ -31,6 +32,7 @@ async function openTestAgentServer({
   acl,
   gestaltGraph,
   proxy,
+  db,
 }: {
   keyManager: KeyManager;
   vaultManager: VaultManager;
@@ -42,6 +44,7 @@ async function openTestAgentServer({
   acl: ACL;
   gestaltGraph: GestaltGraph;
   proxy: Proxy;
+  db: DB;
 }) {
   const agentService: IAgentServiceServer = createAgentService({
     keyManager,
@@ -54,6 +57,7 @@ async function openTestAgentServer({
     acl,
     gestaltGraph,
     proxy,
+    db,
   });
 
   const server = new grpc.Server();
@@ -80,7 +84,7 @@ async function openTestAgentClient(
   const logger = new Logger('AgentClientTest', LogLevel.WARN, [
     new StreamHandler(),
   ]);
-  const agentClient = await GRPCClientAgent.createGRPCClientAgent({
+  return await GRPCClientAgent.createGRPCClientAgent({
     nodeId: nodeId ?? testUtils.generateRandomNodeId(),
     host: '127.0.0.1' as Host,
     port: port as Port,
@@ -89,7 +93,6 @@ async function openTestAgentClient(
     proxyConfig,
     timeout: 30000,
   });
-  return agentClient;
 }
 
 async function closeTestAgentClient(client: GRPCClientAgent) {
