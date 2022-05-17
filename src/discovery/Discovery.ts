@@ -13,8 +13,8 @@ import type {
   IdentityClaimId,
   IdentityClaims,
 } from '../identities/types';
-import type { Sigchain } from '../sigchain';
-import type { KeyManager } from '../keys';
+import type Sigchain from '../sigchain/Sigchain';
+import type KeyManager from '../keys/KeyManager';
 import type { ClaimIdEncoded, Claim, ClaimLinkIdentity } from '../claims/types';
 import type { ChainData } from '../sigchain/types';
 import Logger from '@matrixai/logger';
@@ -83,11 +83,7 @@ class Discovery {
   protected gestaltGraph: GestaltGraph;
   protected identitiesManager: IdentitiesManager;
   protected nodeManager: NodeManager;
-  protected discoveryDbDomain: string = this.constructor.name;
-  protected discoveryQueueDbDomain: Array<string> = [
-    this.discoveryDbDomain,
-    'queue',
-  ];
+
   protected discoveryDbPath: LevelPath = [this.constructor.name];
   protected discoveryQueueDbPath: LevelPath = [this.constructor.name, 'queue'];
   protected discoveryQueueIdGenerator: DiscoveryQueueIdGenerator;
@@ -457,7 +453,7 @@ class Discovery {
         }
         const discoveryQueueId = this.discoveryQueueIdGenerator();
         await tran.put(
-          [...this.discoveryQueueDbDomain, idUtils.toBuffer(discoveryQueueId)],
+          [...this.discoveryQueueDbPath, idUtils.toBuffer(discoveryQueueId)],
           gestaltKey,
         );
       },
