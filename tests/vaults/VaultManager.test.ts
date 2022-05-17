@@ -30,6 +30,7 @@ import * as keysUtils from '@/keys/utils';
 import { sleep } from '@/utils';
 import VaultInternal from '@/vaults/VaultInternal';
 import * as testsUtils from '../utils';
+import { expectRemoteError } from '../utils';
 
 const mockedGenerateDeterministicKeyPair = jest
   .spyOn(keysUtils, 'generateDeterministicKeyPair')
@@ -736,12 +737,13 @@ describe('VaultManager', () => {
           'pull',
         );
 
-        await expect(() =>
+        await expectRemoteError(
           vaultManager.cloneVault(
             remoteKeynode1Id,
             'not-existing' as VaultName,
           ),
-        ).rejects.toThrow(vaultsErrors.ErrorVaultsVaultUndefined);
+          vaultsErrors.ErrorVaultsVaultUndefined,
+        );
       } finally {
         await vaultManager?.stop();
         await vaultManager?.destroy();
@@ -824,9 +826,10 @@ describe('VaultManager', () => {
       });
       try {
         // Should reject with no permissions set
-        await expect(() =>
+        await expectRemoteError(
           vaultManager.cloneVault(remoteKeynode1Id, remoteVaultId),
-        ).rejects.toThrow(vaultsErrors.ErrorVaultsPermissionDenied);
+          vaultsErrors.ErrorVaultsPermissionDenied,
+        );
         // No new vault created
         expect((await vaultManager.listVaults()).size).toBe(0);
       } finally {
@@ -1519,18 +1522,21 @@ describe('VaultManager', () => {
       // Scanning vaults
 
       // Should throw due to no permission
-      await expect(async () => {
+      const testFun = async () => {
         for await (const _ of vaultManager.scanVaults(targetNodeId)) {
           // Should throw
         }
-      }).rejects.toThrow(vaultsErrors.ErrorVaultsPermissionDenied);
+      };
+      await expectRemoteError(
+        testFun(),
+        vaultsErrors.ErrorVaultsPermissionDenied,
+      );
       // Should throw due to lack of scan permission
       await remoteAgent.gestaltGraph.setGestaltActionByNode(nodeId1, 'notify');
-      await expect(async () => {
-        for await (const _ of vaultManager.scanVaults(targetNodeId)) {
-          // Should throw
-        }
-      }).rejects.toThrow(vaultsErrors.ErrorVaultsPermissionDenied);
+      await expectRemoteError(
+        testFun(),
+        vaultsErrors.ErrorVaultsPermissionDenied,
+      );
 
       // Setting permissions
       await remoteAgent.gestaltGraph.setGestaltActionByNode(nodeId1, 'scan');
