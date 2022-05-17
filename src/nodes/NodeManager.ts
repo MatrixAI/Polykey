@@ -1,4 +1,4 @@
-import type { DB } from '@matrixai/db';
+import type { DB, DBTransaction } from '@matrixai/db';
 import type NodeConnectionManager from './NodeConnectionManager';
 import type NodeGraph from './NodeGraph';
 import type KeyManager from '../keys/KeyManager';
@@ -182,120 +182,125 @@ class NodeManager {
    * Call this function upon receiving a "claim node request" notification from
    * another node.
    */
-  public async claimNode(targetNodeId: NodeId): Promise<void> {
-    await this.sigchain.transaction(async (sigchain) => {
-      // 2. Create your intermediary claim
-      const singlySignedClaim = await sigchain.createIntermediaryClaim({
+  public async claimNode(
+    targetNodeId: NodeId,
+    tran?: DBTransaction,
+  ): Promise<void> {
+    if (tran == null) {
+      return this.db.withTransactionF(async (tran) => {
+        return this.claimNode(targetNodeId, tran);
+      });
+    }
+
+    // 2. Create your intermediary claim
+    const singlySignedClaim = await this.sigchain.createIntermediaryClaim(
+      {
         type: 'node',
         node1: nodesUtils.encodeNodeId(this.keyManager.getNodeId()),
         node2: nodesUtils.encodeNodeId(targetNodeId),
-      });
-      let doublySignedClaim: ClaimEncoded;
-      await this.nodeConnectionManager.withConnF(
-        targetNodeId,
-        async (connection) => {
-          const client = connection.getClient();
-          const genClaims = client.nodesCrossSignClaim();
-          try {
-            // 2. Set up the intermediary claim message (the singly signed claim) to send
-            const crossSignMessage = claimsUtils.createCrossSignMessage({
-              singlySignedClaim: singlySignedClaim,
-            });
-            await genClaims.write(crossSignMessage); // Get the generator here
-            // 3. We expect to receieve our singly signed claim we sent to now be a
-            // doubly signed claim (signed by the other node), as well as a singly
-            // signed claim to be signed by us
-            const readStatus = await genClaims.read();
-            // If nothing to read, end and destroy
-            if (readStatus.done) {
-              throw new claimsErrors.ErrorEmptyStream();
-            }
-            const receivedMessage = readStatus.value;
-            const intermediaryClaimMessage =
-              receivedMessage.getSinglySignedClaim();
-            const doublySignedClaimMessage =
-              receivedMessage.getDoublySignedClaim();
-            // Ensure all of our expected messages are defined
-            if (!intermediaryClaimMessage) {
-              throw new claimsErrors.ErrorUndefinedSinglySignedClaim();
-            }
-            const intermediaryClaimSignature =
-              intermediaryClaimMessage.getSignature();
-            if (!intermediaryClaimSignature) {
-              throw new claimsErrors.ErrorUndefinedSignature();
-            }
-            if (!doublySignedClaimMessage) {
-              throw new claimsErrors.ErrorUndefinedDoublySignedClaim();
-            }
-            // Reconstruct the expected objects from the messages
-            const constructedIntermediaryClaim =
-              claimsUtils.reconstructClaimIntermediary(
-                intermediaryClaimMessage,
-              );
-            const constructedDoublySignedClaim =
-              claimsUtils.reconstructClaimEncoded(doublySignedClaimMessage);
-            // Verify the singly signed claim with the sender's public key
-            const senderPublicKey =
-              connection.getExpectedPublicKey(targetNodeId);
-            if (!senderPublicKey) {
-              throw new nodesErrors.ErrorNodeConnectionPublicKeyNotFound();
-            }
-            const verifiedSingly =
-              await claimsUtils.verifyIntermediaryClaimSignature(
-                constructedIntermediaryClaim,
-                senderPublicKey,
-              );
-            if (!verifiedSingly) {
-              throw new claimsErrors.ErrorSinglySignedClaimVerificationFailed();
-            }
-            // Verify the doubly signed claim with both our public key, and the sender's
-            const verifiedDoubly =
-              (await claimsUtils.verifyClaimSignature(
-                constructedDoublySignedClaim,
-                this.keyManager.getRootKeyPairPem().publicKey,
-              )) &&
-              (await claimsUtils.verifyClaimSignature(
-                constructedDoublySignedClaim,
-                senderPublicKey,
-              ));
-            if (!verifiedDoubly) {
-              throw new claimsErrors.ErrorDoublySignedClaimVerificationFailed();
-            }
-            // 4. X <- responds with double signing the X signed claim <- Y
-            const doublySignedClaimResponse =
-              await claimsUtils.signIntermediaryClaim({
-                claim: constructedIntermediaryClaim,
-                privateKey: this.keyManager.getRootKeyPairPem().privateKey,
-                signeeNodeId: nodesUtils.encodeNodeId(
-                  this.keyManager.getNodeId(),
-                ),
-              });
-            // Should never be reached, but just for type safety
-            if (!doublySignedClaimResponse.payload) {
-              throw new claimsErrors.ErrorClaimsUndefinedClaimPayload();
-            }
-            const crossSignMessageResponse = claimsUtils.createCrossSignMessage(
-              {
-                doublySignedClaim: doublySignedClaimResponse,
-              },
-            );
-            await genClaims.write(crossSignMessageResponse);
-
-            // Check the stream is closed (should be closed by other side)
-            const finalResponse = await genClaims.read();
-            if (finalResponse.done != null) {
-              await genClaims.next(null);
-            }
-
-            doublySignedClaim = constructedDoublySignedClaim;
-          } catch (e) {
-            await genClaims.throw(e);
-            throw e;
+      },
+      tran,
+    );
+    let doublySignedClaim: ClaimEncoded;
+    await this.nodeConnectionManager.withConnF(
+      targetNodeId,
+      async (connection) => {
+        const client = connection.getClient();
+        const genClaims = client.nodesCrossSignClaim();
+        try {
+          // 2. Set up the intermediary claim message (the singly signed claim) to send
+          const crossSignMessage = claimsUtils.createCrossSignMessage({
+            singlySignedClaim: singlySignedClaim,
+          });
+          await genClaims.write(crossSignMessage); // Get the generator here
+          // 3. We expect to receive our singly signed claim we sent to now be a
+          // doubly signed claim (signed by the other node), as well as a singly
+          // signed claim to be signed by us
+          const readStatus = await genClaims.read();
+          // If nothing to read, end and destroy
+          if (readStatus.done) {
+            throw new claimsErrors.ErrorEmptyStream();
           }
-          await sigchain.addExistingClaim(doublySignedClaim);
-        },
-      );
-    });
+          const receivedMessage = readStatus.value;
+          const intermediaryClaimMessage =
+            receivedMessage.getSinglySignedClaim();
+          const doublySignedClaimMessage =
+            receivedMessage.getDoublySignedClaim();
+          // Ensure all of our expected messages are defined
+          if (!intermediaryClaimMessage) {
+            throw new claimsErrors.ErrorUndefinedSinglySignedClaim();
+          }
+          const intermediaryClaimSignature =
+            intermediaryClaimMessage.getSignature();
+          if (!intermediaryClaimSignature) {
+            throw new claimsErrors.ErrorUndefinedSignature();
+          }
+          if (!doublySignedClaimMessage) {
+            throw new claimsErrors.ErrorUndefinedDoublySignedClaim();
+          }
+          // Reconstruct the expected objects from the messages
+          const constructedIntermediaryClaim =
+            claimsUtils.reconstructClaimIntermediary(intermediaryClaimMessage);
+          const constructedDoublySignedClaim =
+            claimsUtils.reconstructClaimEncoded(doublySignedClaimMessage);
+          // Verify the singly signed claim with the sender's public key
+          const senderPublicKey = connection.getExpectedPublicKey(targetNodeId);
+          if (!senderPublicKey) {
+            throw new nodesErrors.ErrorNodeConnectionPublicKeyNotFound();
+          }
+          const verifiedSingly =
+            await claimsUtils.verifyIntermediaryClaimSignature(
+              constructedIntermediaryClaim,
+              senderPublicKey,
+            );
+          if (!verifiedSingly) {
+            throw new claimsErrors.ErrorSinglySignedClaimVerificationFailed();
+          }
+          // Verify the doubly signed claim with both our public key, and the sender's
+          const verifiedDoubly =
+            (await claimsUtils.verifyClaimSignature(
+              constructedDoublySignedClaim,
+              this.keyManager.getRootKeyPairPem().publicKey,
+            )) &&
+            (await claimsUtils.verifyClaimSignature(
+              constructedDoublySignedClaim,
+              senderPublicKey,
+            ));
+          if (!verifiedDoubly) {
+            throw new claimsErrors.ErrorDoublySignedClaimVerificationFailed();
+          }
+          // 4. X <- responds with double signing the X signed claim <- Y
+          const doublySignedClaimResponse =
+            await claimsUtils.signIntermediaryClaim({
+              claim: constructedIntermediaryClaim,
+              privateKey: this.keyManager.getRootKeyPairPem().privateKey,
+              signeeNodeId: nodesUtils.encodeNodeId(
+                this.keyManager.getNodeId(),
+              ),
+            });
+          // Should never be reached, but just for type safety
+          if (!doublySignedClaimResponse.payload) {
+            throw new claimsErrors.ErrorClaimsUndefinedClaimPayload();
+          }
+          const crossSignMessageResponse = claimsUtils.createCrossSignMessage({
+            doublySignedClaim: doublySignedClaimResponse,
+          });
+          await genClaims.write(crossSignMessageResponse);
+
+          // Check the stream is closed (should be closed by other side)
+          const finalResponse = await genClaims.read();
+          if (finalResponse.done != null) {
+            await genClaims.next(null);
+          }
+
+          doublySignedClaim = constructedDoublySignedClaim;
+        } catch (e) {
+          await genClaims.throw(e);
+          throw e;
+        }
+        await this.sigchain.addExistingClaim(doublySignedClaim, tran);
+      },
+    );
   }
 
   /**
@@ -306,6 +311,7 @@ class NodeManager {
   public async getNodeAddress(
     nodeId: NodeId,
   ): Promise<NodeAddress | undefined> {
+    // FIXME: use tran
     return await this.nodeGraph.getNode(nodeId);
   }
 
@@ -315,6 +321,7 @@ class NodeManager {
    * @returns true if the node exists in the table, false otherwise
    */
   public async knowsNode(targetNodeId: NodeId): Promise<boolean> {
+    // FIXME: use tran
     return await this.nodeGraph.knowsNode(targetNodeId);
   }
 
@@ -322,6 +329,7 @@ class NodeManager {
    * Gets the specified bucket from the NodeGraph
    */
   public async getBucket(bucketIndex: number): Promise<NodeBucket | undefined> {
+    // FIXME: use tran
     return await this.nodeGraph.getBucket(bucketIndex);
   }
 
@@ -332,6 +340,7 @@ class NodeManager {
     nodeId: NodeId,
     nodeAddress: NodeAddress,
   ): Promise<void> {
+    // FIXME: use tran
     return await this.nodeGraph.setNode(nodeId, nodeAddress);
   }
 
@@ -342,6 +351,7 @@ class NodeManager {
     nodeId: NodeId,
     nodeAddress?: NodeAddress,
   ): Promise<void> {
+    // FIXME: use tran
     return await this.nodeGraph.updateNode(nodeId, nodeAddress);
   }
 
@@ -349,6 +359,7 @@ class NodeManager {
    * Removes a node from the NodeGraph
    */
   public async unsetNode(nodeId: NodeId): Promise<void> {
+    // FIXME: use tran
     return await this.nodeGraph.unsetNode(nodeId);
   }
 
@@ -356,6 +367,7 @@ class NodeManager {
    * Gets all buckets from the NodeGraph
    */
   public async getAllBuckets(): Promise<Array<NodeBucket>> {
+    // FIXME: use tran
     return await this.nodeGraph.getAllBuckets();
   }
 
@@ -364,6 +376,7 @@ class NodeManager {
    * to the new node ID.
    */
   public async refreshBuckets(): Promise<void> {
+    // FIXME: use tran
     return await this.nodeGraph.refreshBuckets();
   }
 }
