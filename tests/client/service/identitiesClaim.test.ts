@@ -27,6 +27,7 @@ import * as nodesUtils from '@/nodes/utils';
 import * as validationErrors from '@/validation/errors';
 import * as testUtils from '../../utils';
 import TestProvider from '../../identities/TestProvider';
+import { expectRemoteError } from '../../utils';
 
 describe('identitiesClaim', () => {
   const logger = new Logger('identitiesClaim test', LogLevel.WARN, [
@@ -208,27 +209,30 @@ describe('identitiesClaim', () => {
     const request = new identitiesPB.Provider();
     request.setIdentityId('');
     request.setProviderId(testToken.providerId);
-    await expect(
+    await expectRemoteError(
       grpcClient.identitiesClaim(
         request,
         clientUtils.encodeAuthFromPassword(password),
       ),
-    ).rejects.toThrow(validationErrors.ErrorValidation);
+      validationErrors.ErrorValidation,
+    );
     request.setIdentityId(testToken.identityId);
     request.setProviderId('');
-    await expect(
+    await expectRemoteError(
       grpcClient.identitiesClaim(
         request,
         clientUtils.encodeAuthFromPassword(password),
       ),
-    ).rejects.toThrow(validationErrors.ErrorValidation);
+      validationErrors.ErrorValidation,
+    );
     request.setIdentityId('');
     request.setProviderId('');
-    await expect(
+    await expectRemoteError(
       grpcClient.identitiesClaim(
         request,
         clientUtils.encodeAuthFromPassword(password),
       ),
-    ).rejects.toThrow(validationErrors.ErrorValidation);
+      validationErrors.ErrorValidation,
+    );
   });
 });
