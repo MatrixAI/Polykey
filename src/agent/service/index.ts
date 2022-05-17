@@ -1,3 +1,4 @@
+import type { DB } from '@matrixai/db';
 import type KeyManager from '../../keys/KeyManager';
 import type VaultManager from '../../vaults/VaultManager';
 import type NodeGraph from '../../nodes/NodeGraph';
@@ -25,9 +26,11 @@ import * as agentUtils from '../utils';
 
 function createService({
   proxy,
+  db,
   logger = new Logger(createService.name),
   ...containerRest
 }: {
+  db: DB;
   keyManager: KeyManager;
   vaultManager: VaultManager;
   nodeConnectionManager: NodeConnectionManager;
@@ -43,6 +46,7 @@ function createService({
   const connectionInfoGet = agentUtils.connectionInfoGetter(proxy);
   const container = {
     ...containerRest,
+    db,
     logger,
     connectionInfoGet: connectionInfoGet,
   };
