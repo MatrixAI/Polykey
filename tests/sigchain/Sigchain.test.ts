@@ -105,13 +105,11 @@ describe('Sigchain', () => {
     await expect(async () => {
       await sigchain.start();
     }).rejects.toThrow(sigchainErrors.ErrorSigchainDestroyed);
-    await expect(async () => {
-      await sigchain.getSequenceNumber();
-    }).rejects.toThrow(sigchainErrors.ErrorSigchainNotRunning);
   });
   test('async start initialises the sequence number', async () => {
     const sigchain = await Sigchain.createSigchain({ keyManager, db, logger });
-    const sequenceNumber = await sigchain.getSequenceNumber();
+    // @ts-ignore - get protected method
+    const sequenceNumber = await sigchain.withTransactionF(async (tran) => sigchain.getSequenceNumber(tran));
     expect(sequenceNumber).toBe(0);
     await sigchain.stop();
   });
@@ -249,8 +247,10 @@ describe('Sigchain', () => {
     // Create a claim
     // Firstly, check that we can add an existing claim if it's the first claim
     // in the sigchain
-    const hPrev1 = await sigchain.getHashPrevious();
-    const seq1 = await sigchain.getSequenceNumber();
+    // @ts-ignore - get protected method
+    const hPrev1 = await sigchain.withTransactionF(async (tran) => sigchain.getHashPrevious(tran));
+    // @ts-ignore - get protected method
+    const seq1 = await sigchain.withTransactionF(async (tran) => sigchain.getSequenceNumber(tran));
     expect(hPrev1).toBeNull();
     expect(seq1).toBe(0);
     const claim1 = await claimsUtils.createClaim({
@@ -265,8 +265,10 @@ describe('Sigchain', () => {
       kid: nodeIdAEncoded,
     });
     await sigchain.addExistingClaim(claim1);
-    const hPrev2 = await sigchain.getHashPrevious();
-    const seq2 = await sigchain.getSequenceNumber();
+    // @ts-ignore - get protected method
+    const hPrev2 = await sigchain.withTransactionF(async (tran) => sigchain.getHashPrevious(tran));
+    // @ts-ignore - get protected method
+    const seq2 = await sigchain.withTransactionF(async (tran) => sigchain.getSequenceNumber(tran));
     expect(hPrev2).not.toBeNull();
     expect(seq2).toBe(1);
 
@@ -283,8 +285,10 @@ describe('Sigchain', () => {
       kid: nodeIdAEncoded,
     });
     await sigchain.addExistingClaim(claim2);
-    const hPrev3 = await sigchain.getHashPrevious();
-    const seq3 = await sigchain.getSequenceNumber();
+    // @ts-ignore - get protected method
+    const hPrev3 = await sigchain.withTransactionF(async (tran) => sigchain.getHashPrevious(tran));
+    // @ts-ignore - get protected method
+    const seq3 = await sigchain.withTransactionF(async (tran) => sigchain.getSequenceNumber(tran));
     expect(hPrev3).not.toBeNull();
     expect(seq3).toBe(2);
 

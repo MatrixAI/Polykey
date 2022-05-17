@@ -321,8 +321,10 @@ describe(`${NodeManager.name} test`, () => {
 
     // Make sure to remove any side-effects after each test
     afterEach(async () => {
-      await x.sigchain.clearDB();
-      await y.sigchain.clearDB();
+      await x.sigchain.stop();
+      await x.sigchain.start({ fresh: true });
+      await y.sigchain.stop();
+      await y.sigchain.start({ fresh: true });
     });
 
     test('can successfully cross sign a claim', async () => {
@@ -331,10 +333,6 @@ describe(`${NodeManager.name} test`, () => {
       // 3. X -> sends doubly signed claim (Y's intermediary) + its own intermediary claim -> Y
       // 4. X <- sends doubly signed claim (X's intermediary) <- Y
       await y.nodeManager.claimNode(xNodeId);
-
-      // Check both sigchain locks are released
-      expect(x.sigchain.locked).toBe(false);
-      expect(y.sigchain.locked).toBe(false);
 
       // Check X's sigchain state
       const xChain = await x.sigchain.getChainData();

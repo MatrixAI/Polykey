@@ -549,6 +549,7 @@ class PolykeyAgent {
       await this.status.start({ pid: process.pid });
       await this.schema.start({ fresh });
       const agentService = createAgentService({
+        db: this.db,
         keyManager: this.keyManager,
         vaultManager: this.vaultManager,
         nodeManager: this.nodeManager,
