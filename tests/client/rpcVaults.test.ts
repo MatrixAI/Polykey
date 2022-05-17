@@ -19,6 +19,7 @@ import * as vaultsUtils from '@/vaults/utils';
 import * as vaultOps from '@/vaults/VaultOps';
 import * as nodesUtils from '@/nodes/utils';
 import * as clientUtils from './utils';
+import { expectRemoteError } from '../utils';
 
 jest.mock('@/keys/utils', () => ({
   ...jest.requireActual('@/keys/utils'),
@@ -247,7 +248,8 @@ describe('Vaults client service', () => {
         vaultVersionMessage.setVault(vaultMessage);
         vaultVersionMessage.setVersionId('invalidOid');
         const version = vaultsVersion(vaultVersionMessage, callCredentials);
-        await expect(version).rejects.toThrow(
+        await expectRemoteError(
+          version,
           vaultErrors.ErrorVaultReferenceInvalid,
         );
 
@@ -255,7 +257,8 @@ describe('Vaults client service', () => {
           '7660aa9a2fee90e875c2d19e5deefe882ca1d4d9',
         );
         const version2 = vaultsVersion(vaultVersionMessage, callCredentials);
-        await expect(version2).rejects.toThrow(
+        await expectRemoteError(
+          version2,
           vaultErrors.ErrorVaultReferenceMissing,
         );
       });

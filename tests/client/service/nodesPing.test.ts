@@ -22,6 +22,7 @@ import * as clientUtils from '@/client/utils/utils';
 import * as keysUtils from '@/keys/utils';
 import * as validationErrors from '@/validation/errors';
 import * as testUtils from '../../utils';
+import { expectRemoteError } from '../../utils';
 
 describe('nodesPing', () => {
   const logger = new Logger('nodesPing test', LogLevel.WARN, [
@@ -174,11 +175,12 @@ describe('nodesPing', () => {
   test('cannot ping an invalid node', async () => {
     const request = new nodesPB.Node();
     request.setNodeId('nodeId');
-    await expect(
+    await expectRemoteError(
       grpcClient.nodesPing(
         request,
         clientUtils.encodeAuthFromPassword(password),
       ),
-    ).rejects.toThrow(validationErrors.ErrorValidation);
+      validationErrors.ErrorValidation,
+    );
   });
 });

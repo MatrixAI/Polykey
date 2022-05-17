@@ -111,7 +111,7 @@ describe('keysKeyPairReset', () => {
       certChainPem: await keyManager.getRootCertChainPem(),
     };
     const nodeIdStatus1 = (await status.readStatus())!.data.nodeId;
-    expect(mockedRefreshBuckets.mock.calls).toHaveLength(0);
+    expect(mockedRefreshBuckets).not.toHaveBeenCalled();
     expect(fwdTLSConfig1).toEqual(expectedTLSConfig1);
     expect(serverTLSConfig1).toEqual(expectedTLSConfig1);
     expect(nodeId1.equals(nodeIdStatus1)).toBe(true);
@@ -134,7 +134,7 @@ describe('keysKeyPairReset', () => {
       certChainPem: await keyManager.getRootCertChainPem(),
     };
     const nodeIdStatus2 = (await status.readStatus())!.data.nodeId;
-    expect(mockedRefreshBuckets.mock.calls).toHaveLength(1);
+    expect(mockedRefreshBuckets).toHaveBeenCalled();
     expect(fwdTLSConfig2).toEqual(expectedTLSConfig2);
     expect(serverTLSConfig2).toEqual(expectedTLSConfig2);
     expect(rootKeyPair2.privateKey).not.toBe(rootKeyPair1.privateKey);

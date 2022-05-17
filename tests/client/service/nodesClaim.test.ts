@@ -26,6 +26,7 @@ import * as clientUtils from '@/client/utils/utils';
 import * as keysUtils from '@/keys/utils';
 import * as validationErrors from '@/validation/errors';
 import * as testUtils from '../../utils';
+import { expectRemoteError } from '../../utils';
 
 describe('nodesClaim', () => {
   const logger = new Logger('nodesClaim test', LogLevel.WARN, [
@@ -229,11 +230,12 @@ describe('nodesClaim', () => {
   test('cannot claim an invalid node', async () => {
     const request = new nodesPB.Claim();
     request.setNodeId('nodeId');
-    await expect(
+    await expectRemoteError(
       grpcClient.nodesClaim(
         request,
         clientUtils.encodeAuthFromPassword(password),
       ),
-    ).rejects.toThrow(validationErrors.ErrorValidation);
+      validationErrors.ErrorValidation,
+    );
   });
 });
