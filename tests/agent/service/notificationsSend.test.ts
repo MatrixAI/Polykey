@@ -28,6 +28,7 @@ import * as keysUtils from '@/keys/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as notificationsUtils from '@/notifications/utils';
 import * as testUtils from '../../utils';
+import { expectRemoteError } from '../../utils';
 
 describe('notificationsSend', () => {
   const logger = new Logger('notificationsSend test', LogLevel.WARN, [
@@ -222,9 +223,10 @@ describe('notificationsSend', () => {
     };
     const request1 = new notificationsPB.AgentNotification();
     request1.setContent(notification1.toString());
-    await expect(async () =>
+    await expectRemoteError(
       grpcClient.notificationsSend(request1),
-    ).rejects.toThrow(notificationsErrors.ErrorNotificationsParse);
+      notificationsErrors.ErrorNotificationsParse,
+    );
     // Check notification was not received
     let receivedNotifications = await notificationsManager.readNotifications();
     expect(receivedNotifications).toHaveLength(0);
@@ -249,9 +251,10 @@ describe('notificationsSend', () => {
       .sign(privateKey);
     const request2 = new notificationsPB.AgentNotification();
     request2.setContent(signedNotification);
-    await expect(async () =>
+    await expectRemoteError(
       grpcClient.notificationsSend(request2),
-    ).rejects.toThrow(notificationsErrors.ErrorNotificationsValidationFailed);
+      notificationsErrors.ErrorNotificationsValidationFailed,
+    );
     // Check notification was not received
     receivedNotifications = await notificationsManager.readNotifications();
     expect(receivedNotifications).toHaveLength(0);
@@ -274,9 +277,8 @@ describe('notificationsSend', () => {
     );
     const request = new notificationsPB.AgentNotification();
     request.setContent(signedNotification);
-    await expect(async () =>
+    await expectRemoteError(
       grpcClient.notificationsSend(request),
-    ).rejects.toThrow(
       notificationsErrors.ErrorNotificationsPermissionsNotFound,
     );
     // Check notification was not received
