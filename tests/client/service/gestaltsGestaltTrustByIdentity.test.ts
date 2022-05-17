@@ -1,7 +1,6 @@
 import type { NodeIdEncoded } from '@/nodes/types';
 import type { ClaimLinkIdentity } from '@/claims/types';
 import type { ChainData } from '@/sigchain/types';
-import type { Gestalt } from '@/gestalts/types';
 import type { IdentityId } from '@/identities/types';
 import type { Host, Port } from '@/network/types';
 import fs from 'fs';
@@ -25,7 +24,6 @@ import GRPCServer from '@/grpc/GRPCServer';
 import GRPCClientClient from '@/client/GRPCClientClient';
 import gestaltsGestaltTrustByIdentity from '@/client/service/gestaltsGestaltTrustByIdentity';
 import { ClientServiceService } from '@/proto/js/polykey/v1/client_service_grpc_pb';
-import { poll } from '@/utils';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as identitiesPB from '@/proto/js/polykey/v1/identities/identities_pb';
 import * as claimsUtils from '@/claims/utils';
@@ -35,6 +33,7 @@ import * as clientUtils from '@/client/utils/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as testUtils from '../../utils';
 import TestProvider from '../../identities/TestProvider';
+import { expectRemoteError } from '../../utils';
 
 describe('gestaltsGestaltTrustByIdentity', () => {
   const logger = new Logger(
@@ -300,34 +299,15 @@ describe('gestaltsGestaltTrustByIdentity', () => {
     request.setIdentityId(connectedIdentity);
     // Should fail on first attempt - need to allow time for the identity to be
     // linked to a node via discovery
-    await expect(
+    await expectRemoteError(
       grpcClient.gestaltsGestaltTrustByIdentity(
         request,
         clientUtils.encodeAuthFromPassword(password),
       ),
-    ).rejects.toThrow(gestaltsErrors.ErrorGestaltsGraphIdentityIdMissing);
-    // Wait for both identity and node to be set in GG
-    await poll<Gestalt>(
-      async () => {
-        const gestalts = await poll<Array<Gestalt>>(
-          async () => {
-            return await gestaltGraph.getGestalts();
-          },
-          (_, result) => {
-            if (result.length === 1) return true;
-            return false;
-          },
-          100,
-        );
-        return gestalts[0];
-      },
-      (_, result) => {
-        if (result === undefined) return false;
-        if (Object.keys(result.matrix).length === 2) return true;
-        return false;
-      },
-      100,
+      gestaltsErrors.ErrorGestaltsGraphIdentityIdMissing,
     );
+    // Wait for both identity and node to be set in GG
+    await discovery.waitForDrained();
     const response = await grpcClient.gestaltsGestaltTrustByIdentity(
       request,
       clientUtils.encodeAuthFromPassword(password),
@@ -351,20 +331,22 @@ describe('gestaltsGestaltTrustByIdentity', () => {
     request.setProviderId(testProvider.id);
     request.setIdentityId('disconnected-user');
     // Should fail on first attempt - attempt to find a connected node
-    await expect(
+    await expectRemoteError(
       grpcClient.gestaltsGestaltTrustByIdentity(
         request,
         clientUtils.encodeAuthFromPassword(password),
       ),
-    ).rejects.toThrow(gestaltsErrors.ErrorGestaltsGraphIdentityIdMissing);
+      gestaltsErrors.ErrorGestaltsGraphIdentityIdMissing,
+    );
     // Wait and try again - should fail again because the identity has no
     // linked nodes we can trust
-    await expect(
+    await expectRemoteError(
       grpcClient.gestaltsGestaltTrustByIdentity(
         request,
         clientUtils.encodeAuthFromPassword(password),
       ),
-    ).rejects.toThrow(gestaltsErrors.ErrorGestaltsGraphIdentityIdMissing);
+      gestaltsErrors.ErrorGestaltsGraphIdentityIdMissing,
+    );
   });
   test('trust extends to entire gestalt', async () => {
     await gestaltGraph.linkNodeAndIdentity(
@@ -415,35 +397,16 @@ describe('gestaltsGestaltTrustByIdentity', () => {
     request.setIdentityId(connectedIdentity);
     // Should fail on first attempt - need to allow time for the identity to be
     // linked to a node via discovery
-    await expect(
+    await expectRemoteError(
       grpcClient.gestaltsGestaltTrustByIdentity(
         request,
         clientUtils.encodeAuthFromPassword(password),
       ),
-    ).rejects.toThrow(gestaltsErrors.ErrorGestaltsGraphIdentityIdMissing);
+      gestaltsErrors.ErrorGestaltsGraphIdentityIdMissing,
+    );
     // Wait and try again - should succeed second time
     // Wait for both identity and node to be set in GG
-    await poll<Gestalt>(
-      async () => {
-        const gestalts = await poll<Array<Gestalt>>(
-          async () => {
-            return await gestaltGraph.getGestalts();
-          },
-          (_, result) => {
-            if (result.length === 1) return true;
-            return false;
-          },
-          100,
-        );
-        return gestalts[0];
-      },
-      (_, result) => {
-        if (result === undefined) return false;
-        if (Object.keys(result.matrix).length === 2) return true;
-        return false;
-      },
-      100,
-    );
+    await discovery.waitForDrained();
     const response = await grpcClient.gestaltsGestaltTrustByIdentity(
       request,
       clientUtils.encodeAuthFromPassword(password),

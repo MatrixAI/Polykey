@@ -16,6 +16,7 @@ import * as clientUtils from '@/client/utils/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as identitiesErrors from '@/identities/errors';
 import TestProvider from '../../identities/TestProvider';
+import { expectRemoteError } from '../../utils';
 
 describe('identitiesInfoConnectedGet', () => {
   const logger = new Logger('identitiesInfoConnectedGet test', LogLevel.WARN, [
@@ -729,13 +730,14 @@ describe('identitiesInfoConnectedGet', () => {
     // This feature is not implemented yet - should throw error
     const request = new identitiesPB.ProviderSearch();
     request.setDisconnected(true);
-    await expect(
+    await expectRemoteError(
       grpcClient
         .identitiesInfoConnectedGet(
           request,
           clientUtils.encodeAuthFromPassword(password),
         )
         .next(),
-    ).rejects.toThrow(identitiesErrors.ErrorProviderUnimplemented);
+      identitiesErrors.ErrorProviderUnimplemented,
+    );
   });
 });
