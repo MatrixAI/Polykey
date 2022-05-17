@@ -267,6 +267,7 @@ describe(`${NodeConnection.name} test`, () => {
       });
     await serverGestaltGraph.setNode(node);
     const agentService = createAgentService({
+      db: serverDb,
       keyManager: serverKeyManager,
       vaultManager: serverVaultManager,
       nodeConnectionManager: dummyNodeConnectionManager,
