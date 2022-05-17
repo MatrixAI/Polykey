@@ -6,14 +6,12 @@ import net from 'net';
 import tls from 'tls';
 import UTP from 'utp-native';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import {
-  Proxy,
-  utils as networkUtils,
-  errors as networkErrors,
-} from '@/network';
-import * as keysUtils from '@/keys/utils';
 import { promisify, promise, timerStart, timerStop, poll } from '@/utils';
-import { utils as nodesUtils } from '@/nodes';
+import Proxy from '@/network/Proxy';
+import * as networkUtils from '@/network/utils';
+import * as networkErrors from '@/network/errors';
+import * as keysUtils from '@/keys/utils';
+import * as nodesUtils from '@/nodes/utils';
 import * as testUtils from '../utils';
 
 /**
@@ -110,7 +108,7 @@ function tcpServer(end: boolean = false) {
 describe(Proxy.name, () => {
   const localHost = '127.0.0.1' as Host;
   const port = 0 as Port;
-  const logger = new Logger(`${Proxy.name} test`, LogLevel.WARN, [
+  const logger = new Logger(`${Proxy.name} test`, LogLevel.DEBUG, [
     new StreamHandler(),
   ]);
   const nodeIdABC = testUtils.generateRandomNodeId();

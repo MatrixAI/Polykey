@@ -7,8 +7,9 @@ import type UTPConnection from 'utp-native/lib/connection';
 import type { ConnectionsReverse } from './ConnectionReverse';
 import http from 'http';
 import UTP from 'utp-native';
-import { Mutex } from 'async-mutex';
 import Logger from '@matrixai/logger';
+import { Lock } from '@matrixai/async-locks';
+import { withF } from '@matrixai/resources';
 import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
 import ConnectionReverse from './ConnectionReverse';
 import ConnectionForward from './ConnectionForward';
@@ -37,12 +38,12 @@ class Proxy {
   protected server: http.Server;
   protected utpSocket: UTP;
   protected tlsConfig: TLSConfig;
-  protected connectionLocksForward: Map<Address, Mutex> = new Map();
+  protected connectionLocksForward: Map<Address, Lock> = new Map();
   protected connectionsForward: ConnectionsForward = {
     proxy: new Map(),
     client: new Map(),
   };
-  protected connectionLocksReverse: Map<Address, Mutex> = new Map();
+  protected connectionLocksReverse: Map<Address, Lock> = new Map();
   protected connectionsReverse: ConnectionsReverse = {
     proxy: new Map(),
     reverse: new Map(),
@@ -316,24 +317,24 @@ class Proxy {
     const proxyAddress = networkUtils.buildAddress(proxyHost, proxyPort);
     let lock = this.connectionLocksForward.get(proxyAddress);
     if (lock == null) {
-      lock = new Mutex();
+      lock = new Lock();
       this.connectionLocksForward.set(proxyAddress, lock);
     }
-    const release = await lock.acquire();
-    try {
-      await this.establishConnectionForward(
-        nodeId,
-        proxyHost,
-        proxyPort,
-        timer_,
-      );
-    } finally {
-      if (timer === undefined) {
-        timerStop(timer_!);
+    await withF([lock.lock()], async () => {
+      try {
+        await this.establishConnectionForward(
+          nodeId,
+          proxyHost,
+          proxyPort,
+          timer_,
+        );
+      } finally {
+        if (timer === undefined) {
+          timerStop(timer_!);
+        }
+        this.connectionLocksForward.delete(proxyAddress);
       }
-      release();
-      this.connectionLocksForward.delete(proxyAddress);
-    }
+    });
   }
 
   @ready(new networkErrors.ErrorProxyNotRunning(), true)
@@ -344,20 +345,20 @@ class Proxy {
     const proxyAddress = networkUtils.buildAddress(proxyHost, proxyPort);
     let lock = this.connectionLocksForward.get(proxyAddress);
     if (lock == null) {
-      lock = new Mutex();
+      lock = new Lock();
       this.connectionLocksForward.set(proxyAddress, lock);
     }
-    const release = await lock.acquire();
-    try {
-      const conn = this.connectionsForward.proxy.get(proxyAddress);
-      if (conn == null) {
-        return;
+    await withF([lock.lock()], async () => {
+      try {
+        const conn = this.connectionsForward.proxy.get(proxyAddress);
+        if (conn == null) {
+          return;
+        }
+        await conn.stop();
+      } finally {
+        this.connectionLocksForward.delete(proxyAddress);
       }
-      await conn.stop();
-    } finally {
-      release();
-      this.connectionLocksForward.delete(proxyAddress);
-    }
+    });
   }
 
   /**
@@ -419,61 +420,69 @@ class Proxy {
     }
     let lock = this.connectionLocksForward.get(proxyAddress as Address);
     if (lock == null) {
-      lock = new Mutex();
+      lock = new Lock();
       this.connectionLocksForward.set(proxyAddress as Address, lock);
     }
-    const release = await lock.acquire();
-    try {
-      const timer = timerStart(this.connConnectTime);
+    await withF([lock.lock()], async () => {
       try {
-        await this.connectForward(
-          nodeId,
-          proxyHost,
-          proxyPort,
-          clientSocket,
-          timer,
-        );
-      } catch (e) {
-        if (e instanceof networkErrors.ErrorProxyConnectInvalidUrl) {
-          if (!clientSocket.destroyed) {
-            await clientSocketEnd('HTTP/1.1 400 Bad Request\r\n' + '\r\n');
-            clientSocket.destroy(e);
+        const timer = timerStart(this.connConnectTime);
+        try {
+          await this.connectForward(
+            nodeId,
+            proxyHost,
+            proxyPort,
+            clientSocket,
+            timer,
+          );
+        } catch (e) {
+          if (e instanceof networkErrors.ErrorProxyConnectInvalidUrl) {
+            if (!clientSocket.destroyed) {
+              await clientSocketEnd('HTTP/1.1 400 Bad Request\r\n' + '\r\n');
+              clientSocket.destroy(e);
+            }
+            return;
           }
-          return;
-        }
-        if (e instanceof networkErrors.ErrorConnectionStartTimeout) {
-          if (!clientSocket.destroyed) {
-            await clientSocketEnd('HTTP/1.1 504 Gateway Timeout\r\n' + '\r\n');
-            clientSocket.destroy(e);
+          if (e instanceof networkErrors.ErrorConnectionStartTimeout) {
+            if (!clientSocket.destroyed) {
+              await clientSocketEnd('HTTP/1.1 504 Gateway Timeout\r\n' + '\r\n');
+              clientSocket.destroy(e);
+            }
+            return;
           }
-          return;
-        }
-        if (e instanceof networkErrors.ErrorConnectionStart) {
-          if (!clientSocket.destroyed) {
-            await clientSocketEnd('HTTP/1.1 502 Bad Gateway\r\n' + '\r\n');
-            clientSocket.destroy(e);
+          if (e instanceof networkErrors.ErrorConnectionStart) {
+            if (!clientSocket.destroyed) {
+              await clientSocketEnd('HTTP/1.1 502 Bad Gateway\r\n' + '\r\n');
+              clientSocket.destroy(e);
+            }
+            return;
           }
-          return;
-        }
-        if (e instanceof networkErrors.ErrorCertChain) {
-          if (!clientSocket.destroyed) {
-            await clientSocketEnd(
-              'HTTP/1.1 526 Invalid SSL Certificate\r\n' + '\r\n',
-            );
-            clientSocket.destroy(e);
+          if (e instanceof networkErrors.ErrorCertChain) {
+            if (!clientSocket.destroyed) {
+              await clientSocketEnd(
+                'HTTP/1.1 526 Invalid SSL Certificate\r\n' + '\r\n',
+              );
+              clientSocket.destroy(e);
+            }
+            return;
           }
-          return;
-        }
-        if (e instanceof networkErrors.ErrorConnectionTimeout) {
-          if (!clientSocket.destroyed) {
-            await clientSocketEnd(
-              'HTTP/1.1 524 A Timeout Occurred\r\n' + '\r\n',
-            );
-            clientSocket.destroy(e);
+          if (e instanceof networkErrors.ErrorConnectionTimeout) {
+            if (!clientSocket.destroyed) {
+              await clientSocketEnd(
+                'HTTP/1.1 524 A Timeout Occurred\r\n' + '\r\n',
+              );
+              clientSocket.destroy(e);
+            }
+            return;
           }
-          return;
-        }
-        if (e instanceof networkErrors.ErrorConnection) {
+          if (e instanceof networkErrors.ErrorConnection) {
+            if (!clientSocket.destroyed) {
+              await clientSocketEnd(
+                'HTTP/1.1 500 Internal Server Error\r\n' + '\r\n',
+              );
+              clientSocket.destroy(e);
+            }
+            return;
+          }
           if (!clientSocket.destroyed) {
             await clientSocketEnd(
               'HTTP/1.1 500 Internal Server Error\r\n' + '\r\n',
@@ -481,27 +490,19 @@ class Proxy {
             clientSocket.destroy(e);
           }
           return;
+        } finally {
+          timerStop(timer);
         }
-        if (!clientSocket.destroyed) {
-          await clientSocketEnd(
-            'HTTP/1.1 500 Internal Server Error\r\n' + '\r\n',
-          );
-          clientSocket.destroy(e);
-        }
-        return;
+        // After composing, switch off this error handler
+        clientSocket.off('error', handleConnectError);
+        await clientSocketWrite(
+          'HTTP/1.1 200 Connection Established\r\n' + '\r\n',
+        );
+        this.logger.info(`Handled CONNECT to ${proxyAddress}`);
       } finally {
-        timerStop(timer);
+        this.connectionLocksForward.delete(proxyAddress as Address);
       }
-      // After composing, switch off this error handler
-      clientSocket.off('error', handleConnectError);
-      await clientSocketWrite(
-        'HTTP/1.1 200 Connection Established\r\n' + '\r\n',
-      );
-      this.logger.info(`Handled CONNECT to ${proxyAddress}`);
-    } finally {
-      release();
-      this.connectionLocksForward.delete(proxyAddress as Address);
-    }
+    });
   };
 
   protected async connectForward(
@@ -590,19 +591,19 @@ class Proxy {
     const proxyAddress = networkUtils.buildAddress(proxyHost, proxyPort);
     let lock = this.connectionLocksReverse.get(proxyAddress);
     if (lock == null) {
-      lock = new Mutex();
+      lock = new Lock();
       this.connectionLocksReverse.set(proxyAddress, lock);
     }
-    const release = await lock.acquire();
-    try {
-      await this.establishConnectionReverse(proxyHost, proxyPort, timer_);
-    } finally {
-      if (timer === undefined) {
-        timerStop(timer_!);
+    await withF([lock.lock()], async () => {
+      try {
+        await this.establishConnectionReverse(proxyHost, proxyPort, timer_);
+      } finally {
+        if (timer === undefined) {
+          timerStop(timer_!);
+        }
+        this.connectionLocksReverse.delete(proxyAddress);
       }
-      release();
-      this.connectionLocksReverse.delete(proxyAddress);
-    }
+    });
   }
 
   @ready(new networkErrors.ErrorProxyNotRunning(), true)
@@ -613,20 +614,20 @@ class Proxy {
     const proxyAddress = networkUtils.buildAddress(proxyHost, proxyPort);
     let lock = this.connectionLocksReverse.get(proxyAddress);
     if (lock == null) {
-      lock = new Mutex();
+      lock = new Lock();
       this.connectionLocksReverse.set(proxyAddress, lock);
     }
-    const release = await lock.acquire();
-    try {
-      const conn = this.connectionsReverse.proxy.get(proxyAddress);
-      if (conn == null) {
-        return;
+    await withF([lock.lock()], async () => {
+      try {
+        const conn = this.connectionsReverse.proxy.get(proxyAddress);
+        if (conn == null) {
+          return;
+        }
+        await conn.stop();
+      } finally {
+        this.connectionLocksReverse.delete(proxyAddress);
       }
-      await conn.stop();
-    } finally {
-      release();
-      this.connectionLocksReverse.delete(proxyAddress);
-    }
+    });
   }
 
   protected handleConnectionReverse = async (
@@ -638,38 +639,38 @@ class Proxy {
     );
     let lock = this.connectionLocksReverse.get(proxyAddress);
     if (lock == null) {
-      lock = new Mutex();
+      lock = new Lock();
       this.connectionLocksReverse.set(proxyAddress, lock);
     }
-    const release = await lock.acquire();
-    try {
-      this.logger.info(`Handling connection from ${proxyAddress}`);
-      const timer = timerStart(this.connConnectTime);
+    await withF([lock.lock()], async () => {
       try {
-        await this.connectReverse(
-          utpConn.remoteAddress,
-          utpConn.remotePort,
-          utpConn,
-          timer,
-        );
-      } catch (e) {
-        if (!(e instanceof networkErrors.ErrorNetwork)) {
-          throw e;
+        this.logger.info(`Handling connection from ${proxyAddress}`);
+        const timer = timerStart(this.connConnectTime);
+        try {
+          await this.connectReverse(
+            utpConn.remoteAddress,
+            utpConn.remotePort,
+            utpConn,
+            timer,
+          );
+        } catch (e) {
+          if (!(e instanceof networkErrors.ErrorNetwork)) {
+            throw e;
+          }
+          if (!utpConn.destroyed) {
+            utpConn.destroy();
+          }
+          this.logger.warn(
+            `Failed connection from ${proxyAddress} - ${e.toString()}`,
+          );
+        } finally {
+          timerStop(timer);
         }
-        if (!utpConn.destroyed) {
-          utpConn.destroy();
-        }
-        this.logger.warn(
-          `Failed connection from ${proxyAddress} - ${e.toString()}`,
-        );
+        this.logger.info(`Handled connection from ${proxyAddress}`);
       } finally {
-        timerStop(timer);
+        this.connectionLocksReverse.delete(proxyAddress);
       }
-      this.logger.info(`Handled connection from ${proxyAddress}`);
-    } finally {
-      release();
-      this.connectionLocksReverse.delete(proxyAddress);
-    }
+    });
   };
 
   protected async connectReverse(
