@@ -127,15 +127,12 @@ class Sigchain {
 
   @ready(new sigchainErrors.ErrorSigchainNotRunning())
   public async withTransactionF<T>(
-    ...params: [
-      ...keys: Array<KeyPath>,
-      f: (tran: DBTransaction) => Promise<T>,
-    ]
+    ...params: [...keys: Array<KeyPath>, f: (tran: DBTransaction) => Promise<T>]
   ): Promise<T> {
     const f = params.pop() as (tran: DBTransaction) => Promise<T>;
-    const lockRequests = (params as Array<KeyPath>).map<
-      [KeyPath, typeof Lock]
-    >((key) => [key, Lock]);
+    const lockRequests = (params as Array<KeyPath>).map<[KeyPath, typeof Lock]>(
+      (key) => [key, Lock],
+    );
     return withF(
       [this.db.transaction(), this.locks.lock(...lockRequests)],
       ([tran]) => f(tran),
@@ -184,17 +181,16 @@ class Sigchain {
     tran?: DBTransaction,
   ): Promise<[ClaimId, ClaimEncoded]> {
     const claimId = this.generateClaimId();
-    const claimIdPath = [
-      ...this.sigchainClaimsDbPath,
-      claimId.toBuffer(),
-    ];
+    const claimIdPath = [...this.sigchainClaimsDbPath, claimId.toBuffer()];
     const sequenceNumberPath = [
       ...this.sigchainMetadataDbPath,
       this.sequenceNumberKey,
     ];
     if (tran == null) {
-      return this.withTransactionF(claimIdPath, sequenceNumberPath, async (tran) =>
-        this.addClaim(claimData, tran),
+      return this.withTransactionF(
+        claimIdPath,
+        sequenceNumberPath,
+        async (tran) => this.addClaim(claimData, tran),
       );
     }
     const prevSequenceNumber = await this.getSequenceNumber(tran);
@@ -224,17 +220,16 @@ class Sigchain {
     tran?: DBTransaction,
   ): Promise<void> {
     const claimId = this.generateClaimId();
-    const claimIdPath = [
-      ...this.sigchainClaimsDbPath,
-      claimId.toBuffer(),
-    ];
+    const claimIdPath = [...this.sigchainClaimsDbPath, claimId.toBuffer()];
     const sequenceNumberPath = [
       ...this.sigchainMetadataDbPath,
       this.sequenceNumberKey,
     ];
     if (tran == null) {
-      return this.withTransactionF(claimIdPath, sequenceNumberPath, async (tran) =>
-        this.addExistingClaim(claim, tran),
+      return this.withTransactionF(
+        claimIdPath,
+        sequenceNumberPath,
+        async (tran) => this.addExistingClaim(claim, tran),
       );
     }
     const decodedClaim = claimsUtils.decodeClaim(claim);

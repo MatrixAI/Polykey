@@ -105,11 +105,14 @@ function nodesCrossSignClaim({
           signeeNodeId: nodesUtils.encodeNodeId(keyManager.getNodeId()),
         });
         // Then create your own intermediary node claim (from X -> Y)
-        const singlySignedClaim = await sigchain.createIntermediaryClaim({
-          type: 'node',
-          node1: nodesUtils.encodeNodeId(keyManager.getNodeId()),
-          node2: payloadData.node1,
-        }, tran);
+        const singlySignedClaim = await sigchain.createIntermediaryClaim(
+          {
+            type: 'node',
+            node1: nodesUtils.encodeNodeId(keyManager.getNodeId()),
+            node2: payloadData.node1,
+          },
+          tran,
+        );
         // Should never be reached, but just for type safety
         if (!doublySignedClaim.payload || !singlySignedClaim.payload) {
           throw new claimsErrors.ErrorClaimsUndefinedClaimPayload();
