@@ -22,7 +22,7 @@ describe('nodesCrossSignClaim', () => {
   const logger = new Logger('nodesCrossSignClaim test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
-  const password = 'helloworld';
+  const password = 'hello-world';
   let dataDir: string;
   let nodePath: string;
   let grpcServer: GRPCServer;
@@ -78,6 +78,7 @@ describe('nodesCrossSignClaim', () => {
         keyManager: pkAgent.keyManager,
         nodeManager: pkAgent.nodeManager,
         sigchain: pkAgent.sigchain,
+        db: pkAgent.db,
         logger,
       }),
     };
@@ -137,7 +138,6 @@ describe('nodesCrossSignClaim', () => {
     // 2. Singly signed intermediary claim
     const response = await genClaims.read();
     // Check X's sigchain is locked at start
-    expect(pkAgent.sigchain.locked).toBe(true);
     expect(response.done).toBe(false);
     expect(response.value).toBeInstanceOf(nodesPB.CrossSign);
     const receivedMessage = response.value as nodesPB.CrossSign;
@@ -176,14 +176,12 @@ describe('nodesCrossSignClaim', () => {
       doublySignedClaim: doublyResponse,
     });
     // Just before we complete the last step, check X's sigchain is still locked
-    expect(pkAgent.sigchain.locked).toBe(true);
     await genClaims.write(doublyMessage);
     // Expect the stream to be closed.
     const finalResponse = await genClaims.read();
     expect(finalResponse.done).toBe(true);
     expect(genClaims.stream.destroyed).toBe(true);
     // Check X's sigchain is released at end.
-    expect(pkAgent.sigchain.locked).toBe(false);
     // Check claim is in both node's sigchains
     // Rather, check it's in X's sigchain
     const chain = await pkAgent.sigchain.getChainData();
@@ -208,7 +206,6 @@ describe('nodesCrossSignClaim', () => {
     await expect(() => genClaims.read()).rejects.toThrow(ErrorPolykeyRemote);
     expect(genClaims.stream.destroyed).toBe(true);
     // Check sigchain's lock is released
-    expect(pkAgent.sigchain.locked).toBe(false);
     // Revert side effects
     await pkAgent.sigchain.stop();
     await pkAgent.sigchain.destroy();
@@ -228,7 +225,6 @@ describe('nodesCrossSignClaim', () => {
     await expect(() => genClaims.read()).rejects.toThrow(ErrorPolykeyRemote);
     expect(genClaims.stream.destroyed).toBe(true);
     // Check sigchain's lock is released
-    expect(pkAgent.sigchain.locked).toBe(false);
     // Revert side effects
     await pkAgent.sigchain.stop();
     await pkAgent.sigchain.destroy();
