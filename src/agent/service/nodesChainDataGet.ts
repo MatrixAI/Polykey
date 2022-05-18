@@ -1,9 +1,9 @@
 import type * as grpc from '@grpc/grpc-js';
-import type { Sigchain } from '../../sigchain';
+import type Sigchain from '../../sigchain/Sigchain';
 import type * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 import type { ClaimIdEncoded } from '../../claims/types';
 import type Logger from '@matrixai/logger';
-import { utils as grpcUtils } from '../../grpc';
+import * as grpcUtils from '../../grpc/utils';
 import * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
 
 /**

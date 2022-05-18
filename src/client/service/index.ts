@@ -1,6 +1,6 @@
 import type { DB } from '@matrixai/db';
 import type PolykeyAgent from '../../PolykeyAgent';
-import type { KeyManager } from '../../keys';
+import type KeyManager from '../../keys/KeyManager';
 import type { VaultManager } from '../../vaults';
 import type {
   NodeManager,
@@ -10,7 +10,7 @@ import type {
 import type { IdentitiesManager } from '../../identities';
 import type { GestaltGraph } from '../../gestalts';
 import type { SessionManager } from '../../sessions';
-import type { NotificationsManager } from '../../notifications';
+import type NotificationsManager from '../../notifications/NotificationsManager';
 import type { Discovery } from '../../discovery';
 import type { Sigchain } from '../../sigchain';
 import type { GRPCServer } from '../../grpc';

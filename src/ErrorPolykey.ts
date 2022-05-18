@@ -1,61 +1,42 @@
-import type { POJO } from './types';
+import type { Class } from '@matrixai/errors';
 import { AbstractError } from '@matrixai/errors';
 import sysexits from './utils/sysexits';
 
 class ErrorPolykey<T> extends AbstractError<T> {
   static description: string = 'Polykey error';
   exitCode: number = sysexits.GENERAL;
-  public toJSON(
-    _key: string = '',
-    options: {
-      description?: boolean;
-      message?: boolean;
-      exitCode?: boolean;
-      timestamp?: boolean;
-      data?: boolean;
-      cause?: boolean;
-      stack?: boolean;
-    } = {},
-  ): {
-    type: string;
-    data: {
-      description?: string;
-      message?: string;
-      exitCode?: number;
-      timestamp?: Date;
-      data?: POJO;
-      cause?: T;
-      stack?: string;
-    };
-  } {
-    options.description ??= true;
-    options.message ??= true;
-    options.exitCode ??= true;
-    options.timestamp ??= true;
-    options.data ??= true;
-    options.cause ??= true;
-    options.stack ??= true;
-    const data: POJO = {};
-    if (options.description) data.description = this.description;
-    if (options.message) data.message = this.message;
-    if (options.exitCode) data.exitCode = this.exitCode;
-    if (options.timestamp) data.timestamp = this.timestamp;
-    if (options.data) data.data = this.data;
-    if (options.cause) {
-      // Propagate the options down the exception chain
-      // but only if the cause is another AbstractError
-      if (this.cause instanceof ErrorPolykey) {
-        data.cause = this.cause.toJSON('cause', options);
-      } else {
-        // Use `replacer` to further encode this object
-        data.cause = this.cause;
-      }
+
+  public static fromJSON<T extends Class<any>>(
+    this: T,
+    json: any,
+  ): InstanceType<T> {
+    if (
+      typeof json !== 'object' ||
+      json.type !== this.name ||
+      typeof json.data !== 'object' ||
+      typeof json.data.message !== 'string' ||
+      isNaN(Date.parse(json.data.timestamp)) ||
+      typeof json.data.data !== 'object' ||
+      typeof json.data.exitCode !== 'string' ||
+      !('cause' in json.data) ||
+      ('stack' in json.data && typeof json.data.stack !== 'string')
+    ) {
+      throw new TypeError(`Cannot decode JSON to ${this.name}`);
     }
-    if (options.stack) data.stack = this.stack;
-    return {
-      type: this.name,
-      data,
-    };
+    const e = new this(json.data.message, {
+      timestamp: new Date(json.data.timestamp),
+      data: json.data.data,
+      cause: json.data.cause,
+    });
+    e.exitCode = json.data.exitCode;
+    e.stack = json.data.stack;
+    return e;
+  }
+
+  public toJSON(): any {
+    const json = super.toJSON();
+    json.data.exitCode = this.exitCode;
+    return json;
   }
 }
 

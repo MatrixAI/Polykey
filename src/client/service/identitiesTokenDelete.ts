@@ -1,11 +1,12 @@
 import type * as grpc from '@grpc/grpc-js';
 import type { Authenticate } from '../types';
-import type { IdentitiesManager } from '../../identities';
+import type IdentitiesManager from '../../identities/IdentitiesManager';
 import type { IdentityId, ProviderId } from '../../identities/types';
 import type * as identitiesPB from '../../proto/js/polykey/v1/identities/identities_pb';
 import type Logger from '@matrixai/logger';
-import { utils as grpcUtils } from '../../grpc';
-import { validateSync, utils as validationUtils } from '../../validation';
+import * as grpcUtils from '../../grpc/utils';
+import { validateSync } from '../../validation';
+import * as validationUtils from '../../validation/utils';
 import { matchSync } from '../../utils';
 import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 
