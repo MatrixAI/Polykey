@@ -1,11 +1,12 @@
 import type * as grpc from '@grpc/grpc-js';
 import type { Authenticate } from '../types';
-import type { NodeConnectionManager } from '../../nodes';
+import type NodeConnectionManager from '../../nodes/NodeConnectionManager';
 import type { NodeId } from '../../nodes/types';
 import type Logger from '@matrixai/logger';
-import { utils as nodesUtils } from '../../nodes';
-import { utils as grpcUtils } from '../../grpc';
-import { validateSync, utils as validationUtils } from '../../validation';
+import * as nodesUtils from '../../nodes/utils';
+import * as grpcUtils from '../../grpc/utils';
+import { validateSync } from '../../validation';
+import * as validationUtils from '../../validation/utils';
 import { matchSync } from '../../utils';
 import * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
 
