@@ -1,4 +1,5 @@
 import type * as grpc from '@grpc/grpc-js';
+import type { DB } from '@matrixai/db';
 import type Sigchain from '../../sigchain/Sigchain';
 import type * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 import type { ClaimIdEncoded } from '../../claims/types';
@@ -11,9 +12,11 @@ import * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
  */
 function nodesChainDataGet({
   sigchain,
+  db,
   logger,
 }: {
   sigchain: Sigchain;
+  db: DB;
   logger: Logger;
 }) {
   return async (
@@ -22,7 +25,9 @@ function nodesChainDataGet({
   ): Promise<void> => {
     try {
       const response = new nodesPB.ChainData();
-      const chainData = await sigchain.getChainData();
+      const chainData = await db.withTransactionF(async (tran) =>
+        sigchain.getChainData(tran),
+      );
       // Iterate through each claim in the chain, and serialize for transport
       let claimIdEncoded: ClaimIdEncoded;
       for (claimIdEncoded in chainData) {

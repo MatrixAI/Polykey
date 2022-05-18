@@ -139,6 +139,7 @@ describe('notificationsSend', () => {
       notificationsSend: notificationsSend({
         notificationsManager,
         logger,
+        db,
       }),
     };
     grpcServer = new GRPCServer({ logger });

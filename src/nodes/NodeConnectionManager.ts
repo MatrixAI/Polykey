@@ -11,6 +11,7 @@ import type {
   SeedNodes,
   NodeIdString,
 } from './types';
+import type { DBTransaction } from '@matrixai/db';
 import Logger from '@matrixai/logger';
 import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
 import { IdInternal } from '@matrixai/id';
@@ -448,6 +449,7 @@ class NodeConnectionManager {
    * @param targetNodeId the node ID to find other nodes closest to it
    * @param numClosest the number of closest nodes to return (by default, returns
    * according to the maximum number of nodes per bucket)
+   * @param tran
    * @returns a mapping containing exactly k nodeIds -> nodeAddresses (unless the
    * current node has less than k nodes in all of its buckets, in which case it
    * returns all nodes it has knowledge of)
@@ -456,9 +458,10 @@ class NodeConnectionManager {
   public async getClosestLocalNodes(
     targetNodeId: NodeId,
     numClosest: number = this.nodeGraph.maxNodesPerBucket,
+    tran?: DBTransaction,
   ): Promise<Array<NodeData>> {
     // Retrieve all nodes from buckets in database
-    const buckets = await this.nodeGraph.getAllBuckets();
+    const buckets = await this.nodeGraph.getAllBuckets(tran);
     // Iterate over all of the nodes in each bucket
     const distanceToNodes: Array<NodeData> = [];
     buckets.forEach(function (bucket) {
