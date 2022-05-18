@@ -2,6 +2,7 @@ import type { Class } from '@matrixai/errors';
 import type { ClientMetadata } from './types';
 import ErrorPolykey from './ErrorPolykey';
 import sysexits from './utils/sysexits';
+import * as nodesUtils from './nodes/utils';
 
 class ErrorPolykeyRemote<T> extends ErrorPolykey<T> {
   static description = 'Remote error from RPC call';
@@ -30,7 +31,11 @@ class ErrorPolykeyRemote<T> extends ErrorPolykey<T> {
     ) {
       throw new TypeError(`Cannot decode JSON to ${this.name}`);
     }
-    const e = new this(json.data.metadata, json.data.message, {
+    const parsedMetadata: ClientMetadata = {
+      ...json.data.metadata,
+      nodeId: nodesUtils.decodeNodeId(json.data.metadata.nodeId),
+    };
+    const e = new this(parsedMetadata, json.data.message, {
       timestamp: new Date(json.data.timestamp),
       data: json.data.data,
       cause: json.data.cause,
@@ -42,7 +47,10 @@ class ErrorPolykeyRemote<T> extends ErrorPolykey<T> {
 
   public toJSON(): any {
     const json = super.toJSON();
-    json.data.metadata = this.metadata;
+    json.data.metadata = {
+      ...this.metadata,
+      nodeId: nodesUtils.encodeNodeId(this.metadata.nodeId),
+    };
     return json;
   }
 }

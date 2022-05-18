@@ -118,6 +118,7 @@ describe('Vaults client service', () => {
     test('should get vaults', async () => {
       const listVaults = grpcUtils.promisifyReadableStreamCall<vaultsPB.List>(
         client,
+        nodeId,
         localHost,
         localPort,
         client.vaultsList,

@@ -157,6 +157,7 @@ describe(GRPCClientAgent.name, () => {
       gestaltGraph,
       proxy,
       db,
+      logger,
     });
     client = await testAgentUtils.openTestAgentClient(port);
     await proxy.start({
