@@ -597,28 +597,28 @@ function promisifyWritableStreamCall<TWrite, TReturn>(
  */
 function generatorDuplex<TRead, TWrite>(
   stream: ClientDuplexStream<TWrite, TRead>,
-  // nodeId: NodeId,
+  // NodeId: NodeId,
   // host: Host,
   // port: Port,
   sensitive: boolean,
 ): AsyncGeneratorDuplexStream<TRead, TWrite, ClientDuplexStream<TWrite, TRead>>;
 function generatorDuplex<TRead, TWrite>(
   stream: ServerDuplexStream<TRead, TWrite>,
-  // nodeId: NodeId,
+  // NodeId: NodeId,
   // host: Host,
   // port: Port,
   sensitive: boolean,
 ): AsyncGeneratorDuplexStream<TRead, TWrite, ServerDuplexStream<TRead, TWrite>>;
 function generatorDuplex<TRead, TWrite>(
   stream: ClientDuplexStream<TWrite, TRead> | ServerDuplexStream<TRead, TWrite>,
-  // nodeId: NodeId,
+  // NodeId: NodeId,
   // host: Host,
   // port: Port,
   sensitive: boolean = false,
 ) {
   throw Error('Not Implemented');
-  let gR: AsyncGeneratorReadableStream<any, any>;// = generatorReadable(stream as any, nodeId, host, port);
-  let gW: AsyncGeneratorReadableStream<any, any>;// = generatorWritable(stream as any, sensitive);
+  let gR: AsyncGeneratorReadableStream<any, any>; // = generatorReadable(stream as any, nodeId, host, port);
+  let gW: AsyncGeneratorReadableStream<any, any>; // = generatorWritable(stream as any, sensitive);
   const gf = async function* () {
     let vR: any, vW: any;
     while (true) {
@@ -686,7 +686,7 @@ function promisifyDuplexStreamCall<TRead, TWrite>(
     });
     const g = generatorDuplex<TRead, TWrite>(
       stream,
-      // nodeId,
+      // NodeId,
       // host,
       // port,
       false,

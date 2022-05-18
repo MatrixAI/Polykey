@@ -1,4 +1,5 @@
 import type * as grpc from '@grpc/grpc-js';
+import type { DB } from '@matrixai/db';
 import type NodeConnectionManager from '../../nodes/NodeConnectionManager';
 import type { NodeId } from '../../nodes/types';
 import type Logger from '@matrixai/logger';
@@ -15,9 +16,11 @@ import * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
  */
 function nodesClosestLocalNodesGet({
   nodeConnectionManager,
+  db,
   logger,
 }: {
   nodeConnectionManager: NodeConnectionManager;
+  db: DB;
   logger: Logger;
 }) {
   return async (
@@ -42,8 +45,13 @@ function nodesClosestLocalNodesGet({
         },
       );
       // Get all local nodes that are closest to the target node from the request
-      const closestNodes = await nodeConnectionManager.getClosestLocalNodes(
-        nodeId,
+      const closestNodes = await db.withTransactionF(
+        async (tran) =>
+          await nodeConnectionManager.getClosestLocalNodes(
+            nodeId,
+            undefined,
+            tran,
+          ),
       );
       for (const node of closestNodes) {
         const addressMessage = new nodesPB.Address();

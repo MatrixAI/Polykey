@@ -318,11 +318,14 @@ class NodeManager {
   /**
    * Determines whether a node ID -> node address mapping exists in the NodeGraph
    * @param targetNodeId the node ID of the node to find
+   * @param tran
    * @returns true if the node exists in the table, false otherwise
    */
-  public async knowsNode(targetNodeId: NodeId): Promise<boolean> {
-    // FIXME: use tran
-    return await this.nodeGraph.knowsNode(targetNodeId);
+  public async knowsNode(
+    targetNodeId: NodeId,
+    tran?: DBTransaction,
+  ): Promise<boolean> {
+    return await this.nodeGraph.knowsNode(targetNodeId, tran);
   }
 
   /**
