@@ -1,18 +1,16 @@
 import type { ChildProcess } from 'child_process';
 import type ErrorPolykey from '@/ErrorPolykey';
+import child_process from 'child_process';
 import os from 'os';
 import fs from 'fs';
 import path from 'path';
 import process from 'process';
-import child_process from 'child_process';
 import readline from 'readline';
 import * as mockProcess from 'jest-mock-process';
 import mockedEnv from 'mocked-env';
 import nexpect from 'nexpect';
 import Logger from '@matrixai/logger';
 import main from '@/bin/polykey';
-import * as binUtils from '@/bin/utils';
-import * as grpcUtils from '@/grpc/utils';
 
 /**
  * Runs pk command functionally
@@ -351,12 +349,14 @@ function expectProcessError(
 ) {
   expect(exitCode).toBe(errors[0].exitCode);
   const stdErrLine = stderr.trim().split('\n').pop();
-  const receivedError = JSON.parse(stdErrLine!, grpcUtils.reviver);
-  let [currentError] = binUtils.remoteErrorCause(receivedError);
+  let currentError = JSON.parse(stdErrLine!);
+  while (currentError.type === 'ErrorPolykeyRemote') {
+    currentError = currentError.data.cause;
+  }
   for (const error of errors) {
-    expect(currentError.name).toBe(error.name);
-    expect(currentError.message).toBe(error.message);
-    currentError = currentError.cause;
+    expect(currentError.type).toBe(error.name);
+    expect(currentError.data.message).toBe(error.message);
+    currentError = currentError.data.cause;
   }
 }
 

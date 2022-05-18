@@ -55,7 +55,7 @@ class CommandPing extends CommandPolykey {
             meta,
           );
         } catch (err) {
-          if (err instanceof nodesErrors.ErrorNodeGraphNodeIdNotFound) {
+          if (err.cause instanceof nodesErrors.ErrorNodeGraphNodeIdNotFound) {
             error = new binErrors.ErrorNodePingFailed(
               `Failed to resolve node ID ${nodesUtils.encodeNodeId(
                 nodeId,

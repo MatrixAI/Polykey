@@ -48,7 +48,7 @@ describe('lock', () => {
     expect(await session.readToken()).toBeUndefined();
     await session.stop();
   });
-  test('lock ensures reauthentication is required', async () => {
+  test('lock ensures re-authentication is required', async () => {
     const password = globalAgentPassword;
     mockedPrompts.mockClear();
     mockedPrompts.mockImplementation(async (_opts: any) => {

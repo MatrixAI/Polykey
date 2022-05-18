@@ -560,6 +560,7 @@ class PolykeyAgent {
         acl: this.acl,
         gestaltGraph: this.gestaltGraph,
         proxy: this.proxy,
+        logger: this.logger.getChild(createAgentService.name),
       });
       const clientService = createClientService({
         pkAgent: this,
@@ -580,6 +581,7 @@ class PolykeyAgent {
         grpcServerAgent: this.grpcServerAgent,
         proxy: this.proxy,
         fs: this.fs,
+        logger: this.logger.getChild(createClientService.name),
       });
       // Starting modules
       await this.keyManager.start({
