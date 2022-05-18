@@ -32,7 +32,6 @@ function nodesCrossSignClaim({
   return async (
     call: grpc.ServerDuplexStream<nodesPB.CrossSign, nodesPB.CrossSign>,
   ) => {
-    const nodeId = keyManager.getNodeId();
     const genClaims = grpcUtils.generatorDuplex(call, true);
     try {
       await withF([db.transaction()], async ([tran]) => {

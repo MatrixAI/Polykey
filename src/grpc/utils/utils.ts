@@ -28,8 +28,8 @@ import type {
   AsyncGeneratorDuplexStreamClient,
 } from '../types';
 import type { CertificatePemChain, PrivateKeyPem } from '../../keys/types';
-import type { Host, Port } from '@/network/types';
-import type { NodeId } from '@/nodes/types';
+import type { Host, Port } from '../../network/types';
+import type { NodeId } from '../../nodes/types';
 import { Buffer } from 'buffer';
 import { AbstractError } from '@matrixai/errors';
 import * as grpc from '@grpc/grpc-js';
@@ -37,7 +37,6 @@ import * as grpcErrors from '../errors';
 import * as errors from '../../errors';
 import * as nodesUtils from '../../nodes/utils';
 import { promisify, promise, never } from '../../utils/utils';
-import GRPCClient from '../GRPCClient';
 
 /**
  * GRPC insecure credentials for the client
@@ -190,7 +189,6 @@ function toError(e: ServiceError): errors.ErrorPolykey<any> {
   const nodeId = e.metadata.get('nodeId')[0].toString();
   const host = e.metadata.get('host')[0].toString();
   const port = parseInt(e.metadata.get('port')[0].toString());
-  console.log(nodeId, host, port);
   // Grpc.status is an enum
   // this will iterate the enum values then enum keys
   // they will all be of string type
