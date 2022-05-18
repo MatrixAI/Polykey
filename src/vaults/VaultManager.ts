@@ -864,9 +864,10 @@ class VaultManager {
     vaultPermissions: VaultAction[];
   }> {
     if (tran == null) {
-      const fml = (tran) => this.handleScanVaults(nodeId, tran);
+      // Lambda to maintain `this` context
+      const handleScanVaults = (tran) => this.handleScanVaults(nodeId, tran);
       return yield* this.db.withTransactionG(async function* (tran) {
-        return yield* fml(tran);
+        return yield* handleScanVaults(tran);
       });
     }
 

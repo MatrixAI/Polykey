@@ -1,4 +1,5 @@
 import type * as grpc from '@grpc/grpc-js';
+import type { DB } from '@matrixai/db';
 import type { VaultName } from '../../vaults/types';
 import type VaultManager from '../../vaults/VaultManager';
 import type { ConnectionInfoGet } from '../../agent/types';
@@ -16,11 +17,13 @@ import * as agentErrors from '../errors';
 function vaultsGitPackGet({
   vaultManager,
   acl,
+  db,
   logger,
   connectionInfoGet,
 }: {
   vaultManager: VaultManager;
   acl: ACL;
+  db: DB;
   logger: Logger;
   connectionInfoGet: ConnectionInfoGet;
 }) {
@@ -48,49 +51,55 @@ function vaultsGitPackGet({
       if (vaultNameOrId == null) {
         throw new grpcErrors.ErrorGRPC('vault-name not in metadata');
       }
-      let vaultId = await vaultManager.getVaultId(vaultNameOrId as VaultName);
-      vaultId = vaultId ?? vaultsUtils.decodeVaultId(vaultNameOrId);
-      if (vaultId == null) {
-        // Throwing permission error to hide information about vaults existence
-        throw new vaultsErrors.ErrorVaultsPermissionDenied(
-          `No permissions found for ${nodeIdEncoded}`,
+      await db.withTransactionF(async (tran) => {
+        let vaultId = await vaultManager.getVaultId(
+          vaultNameOrId as VaultName,
+          tran,
         );
-      }
-      // Checking permissions
-      const permissions = await acl.getNodePerm(nodeId);
-      const vaultPerms = permissions?.vaults[vaultId];
-      const actionType = validationUtils.parseVaultAction(
-        meta.get('vaultAction').pop(),
-      );
-      if (vaultPerms?.[actionType] !== null) {
-        throw new vaultsErrors.ErrorVaultsPermissionDenied(
-          `${nodeIdEncoded} does not have permission to ${actionType} from vault ${vaultsUtils.encodeVaultId(
-            vaultId,
-          )}`,
+        vaultId = vaultId ?? vaultsUtils.decodeVaultId(vaultNameOrId);
+        if (vaultId == null) {
+          // Throwing permission error to hide information about vaults existence
+          throw new vaultsErrors.ErrorVaultsPermissionDenied(
+            `No permissions found for ${nodeIdEncoded}`,
+          );
+        }
+        // Checking permissions
+        const permissions = await acl.getNodePerm(nodeId, tran);
+        const vaultPerms = permissions?.vaults[vaultId];
+        const actionType = validationUtils.parseVaultAction(
+          meta.get('vaultAction').pop(),
         );
-      }
-      const response = new vaultsPB.PackChunk();
-      const [sideBand, progressStream] = await vaultManager.handlePackRequest(
-        vaultId,
-        Buffer.from(body),
-      );
-      response.setChunk(Buffer.from('0008NAK\n'));
-      await genDuplex.write(response);
-      const responseBuffers: Uint8Array[] = [];
-      await new Promise<void>((resolve, reject) => {
-        sideBand.on('data', async (data: Uint8Array) => {
-          responseBuffers.push(data);
+        if (vaultPerms?.[actionType] !== null) {
+          throw new vaultsErrors.ErrorVaultsPermissionDenied(
+            `${nodeIdEncoded} does not have permission to ${actionType} from vault ${vaultsUtils.encodeVaultId(
+              vaultId,
+            )}`,
+          );
+        }
+        const response = new vaultsPB.PackChunk();
+        const [sideBand, progressStream] = await vaultManager.handlePackRequest(
+          vaultId,
+          Buffer.from(body),
+          tran,
+        );
+        response.setChunk(Buffer.from('0008NAK\n'));
+        await genDuplex.write(response);
+        const responseBuffers: Uint8Array[] = [];
+        await new Promise<void>((resolve, reject) => {
+          sideBand.on('data', async (data: Uint8Array) => {
+            responseBuffers.push(data);
+          });
+          sideBand.on('end', async () => {
+            response.setChunk(Buffer.concat(responseBuffers));
+            await genDuplex.write(response);
+            resolve();
+          });
+          sideBand.on('error', (err) => {
+            reject(err);
+          });
+          progressStream.write(Buffer.from('0014progress is at 50%\n'));
+          progressStream.end();
         });
-        sideBand.on('end', async () => {
-          response.setChunk(Buffer.concat(responseBuffers));
-          await genDuplex.write(response);
-          resolve();
-        });
-        sideBand.on('error', (err) => {
-          reject(err);
-        });
-        progressStream.write(Buffer.from('0014progress is at 50%\n'));
-        progressStream.end();
       });
       await genDuplex.next(null);
     } catch (e) {
