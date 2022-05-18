@@ -1,4 +1,5 @@
 import type * as grpc from '@grpc/grpc-js';
+import type { DB } from '@matrixai/db';
 import type NodeManager from '../../nodes/NodeManager';
 import type NodeConnectionManager from '../../nodes/NodeConnectionManager';
 import type KeyManager from '../../keys/KeyManager';
@@ -16,11 +17,13 @@ function nodesHolePunchMessageSend({
   keyManager,
   nodeManager,
   nodeConnectionManager,
+  db,
   logger,
 }: {
   keyManager: KeyManager;
   nodeManager: NodeManager;
   nodeConnectionManager: NodeConnectionManager;
+  db: DB;
   logger: Logger;
 }) {
   return async (
@@ -54,16 +57,18 @@ function nodesHolePunchMessageSend({
       // Firstly, check if this node is the desired node
       // If so, then we want to make this node start sending hole punching packets
       // back to the source node.
-      if (keyManager.getNodeId().equals(targetId)) {
-        const [host, port] = networkUtils.parseAddress(
-          call.request.getProxyAddress(),
-        );
-        await nodeConnectionManager.holePunchReverse(host, port);
-        // Otherwise, find if node in table
-        // If so, ask the nodeManager to relay to the node
-      } else if (await nodeManager.knowsNode(sourceId)) {
-        await nodeConnectionManager.relayHolePunchMessage(call.request);
-      }
+      await db.withTransactionF(async (tran) => {
+        if (keyManager.getNodeId().equals(targetId)) {
+          const [host, port] = networkUtils.parseAddress(
+            call.request.getProxyAddress(),
+          );
+          await nodeConnectionManager.holePunchReverse(host, port);
+          // Otherwise, find if node in table
+          // If so, ask the nodeManager to relay to the node
+        } else if (await nodeManager.knowsNode(sourceId, tran)) {
+          await nodeConnectionManager.relayHolePunchMessage(call.request);
+        }
+      });
       callback(null, response);
       return;
     } catch (e) {

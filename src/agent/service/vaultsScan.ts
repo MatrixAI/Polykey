@@ -1,4 +1,5 @@
 import type * as grpc from '@grpc/grpc-js';
+import type { DB } from '@matrixai/db';
 import type VaultManager from '../../vaults/VaultManager';
 import type * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 import type { ConnectionInfoGet } from '../../agent/types';
@@ -12,10 +13,12 @@ function vaultsScan({
   vaultManager,
   logger,
   connectionInfoGet,
+  db,
 }: {
   vaultManager: VaultManager;
   logger: Logger;
   connectionInfoGet: ConnectionInfoGet;
+  db: DB;
 }) {
   return async (
     call: grpc.ServerWritableStream<utilsPB.EmptyMessage, vaultsPB.List>,
@@ -31,17 +34,19 @@ function vaultsScan({
     }
     const nodeId = connectionInfo.remoteNodeId;
     try {
-      const listResponse = vaultManager.handleScanVaults(nodeId);
-      for await (const {
-        vaultId,
-        vaultName,
-        vaultPermissions,
-      } of listResponse) {
-        listMessage.setVaultId(vaultsUtils.encodeVaultId(vaultId));
-        listMessage.setVaultName(vaultName);
-        listMessage.setVaultPermissionsList(vaultPermissions);
-        await genWritable.next(listMessage);
-      }
+      await db.withTransactionF(async (tran) => {
+        const listResponse = vaultManager.handleScanVaults(nodeId, tran);
+        for await (const {
+          vaultId,
+          vaultName,
+          vaultPermissions,
+        } of listResponse) {
+          listMessage.setVaultId(vaultsUtils.encodeVaultId(vaultId));
+          listMessage.setVaultName(vaultName);
+          listMessage.setVaultPermissionsList(vaultPermissions);
+          await genWritable.next(listMessage);
+        }
+      });
       await genWritable.next(null);
     } catch (e) {
       await genWritable.throw(e);

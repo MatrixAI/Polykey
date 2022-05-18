@@ -7,7 +7,6 @@ import type Sigchain from '../../sigchain/Sigchain';
 import type KeyManager from '../../keys/KeyManager';
 import type * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
 import type Logger from '@matrixai/logger';
-import { withF } from '@matrixai/resources';
 import * as grpcUtils from '../../grpc/utils';
 import * as claimsUtils from '../../claims/utils';
 import * as claimsErrors from '../../claims/errors';
@@ -34,7 +33,7 @@ function nodesCrossSignClaim({
   ) => {
     const genClaims = grpcUtils.generatorDuplex(call, true);
     try {
-      await withF([db.transaction()], async ([tran]) => {
+      await db.withTransactionF(async (tran) => {
         const readStatus = await genClaims.read();
         // If nothing to read, end and destroy
         if (readStatus.done) {

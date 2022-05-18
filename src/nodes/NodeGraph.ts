@@ -110,6 +110,7 @@ class NodeGraph {
   /**
    * Retrieves the node Address
    * @param nodeId node ID of the target node
+   * @param tran
    * @returns Node Address of the target node
    */
   @ready(new nodesErrors.ErrorNodeGraphNotRunning())
@@ -136,16 +137,21 @@ class NodeGraph {
    * Determines whether a node ID -> node address mapping exists in this node's
    * node table.
    * @param targetNodeId the node ID of the node to find
+   * @param tran
    * @returns true if the node exists in the table, false otherwise
    */
   @ready(new nodesErrors.ErrorNodeGraphNotRunning())
-  public async knowsNode(targetNodeId: NodeId): Promise<boolean> {
-    return !!(await this.getNode(targetNodeId));
+  public async knowsNode(
+    targetNodeId: NodeId,
+    tran?: DBTransaction,
+  ): Promise<boolean> {
+    return !!(await this.getNode(targetNodeId, tran));
   }
 
   /**
    * Returns the specified bucket if it exists
    * @param bucketIndex
+   * @param tran
    */
   @ready(new nodesErrors.ErrorNodeGraphNotRunning())
   public async getBucket(
@@ -255,6 +261,7 @@ class NodeGraph {
   /**
    * Removes a node from the bucket database
    * @param nodeId
+   * @param tran
    */
   @ready(new nodesErrors.ErrorNodeGraphNotRunning())
   public async unsetNode(nodeId: NodeId, tran?: DBTransaction): Promise<void> {
