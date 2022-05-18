@@ -125,7 +125,7 @@ describe('claim', () => {
       },
       dataDir,
     );
-    expect(exitCode).toBe(1);
+    expect(exitCode).toBe(77);
   });
   test('should fail on invalid inputs', async () => {
     let exitCode;

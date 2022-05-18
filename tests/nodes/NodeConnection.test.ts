@@ -1,6 +1,7 @@
 import type { AddressInfo } from 'net';
 import type { ConnectionInfo, Host, Port, TLSConfig } from '@/network/types';
 import type { NodeId, NodeInfo } from '@/nodes/types';
+import type { Server } from '@grpc/grpc-js';
 import net from 'net';
 import os from 'os';
 import path from 'path';
@@ -18,9 +19,6 @@ import NodeManager from '@/nodes/NodeManager';
 import VaultManager from '@/vaults/VaultManager';
 import KeyManager from '@/keys/KeyManager';
 import * as keysUtils from '@/keys/utils';
-import GRPCServer from '@/grpc/GRPCServer';
-import { AgentServiceService } from '@/proto/js/polykey/v1/agent_service_grpc_pb';
-import createAgentService from '@/agent/service';
 import GRPCClientAgent from '@/agent/GRPCClientAgent';
 import ACL from '@/acl/ACL';
 import GestaltGraph from '@/gestalts/GestaltGraph';
@@ -37,11 +35,12 @@ import * as agentErrors from '@/agent/errors';
 import * as grpcUtils from '@/grpc/utils';
 import * as testUtils from '../utils';
 import * as grpcTestUtils from '../grpc/utils';
+import * as agentTestUtils from '../agent/utils';
 
 const destroyCallback = async () => {};
 
 // Dummy nodeConnectionManager
-// We only need the hole punch function and frankly its not used in testing here
+// We only need the hole punch function, and frankly it's not used in testing here
 // This is really dirty so don't do this outside of testing EVER
 const dummyNodeConnectionManager = {
   openConnection: async (_host, _port) => {
@@ -97,9 +96,10 @@ describe(`${NodeConnection.name} test`, () => {
   let sourceNodeId: NodeId;
   let clientKeyManager: KeyManager;
   const authToken = 'AUTH';
-  let clientproxy: Proxy;
+  let clientProxy: Proxy;
 
-  let agentServer: GRPCServer;
+  let agentServer: Server;
+  let serverPort: Port;
   let tlsConfig: TLSConfig;
 
   const localHost = '127.0.0.1' as Host;
@@ -266,7 +266,7 @@ describe(`${NodeConnection.name} test`, () => {
         logger: logger,
       });
     await serverGestaltGraph.setNode(node);
-    const agentService = createAgentService({
+    [agentServer, serverPort] = await agentTestUtils.openTestAgentServer({
       db: serverDb,
       keyManager: serverKeyManager,
       vaultManager: serverVaultManager,
@@ -278,17 +278,11 @@ describe(`${NodeConnection.name} test`, () => {
       acl: serverACL,
       gestaltGraph: serverGestaltGraph,
       proxy: serverProxy,
-    });
-    agentServer = new GRPCServer({
       logger: logger,
-    });
-    await agentServer.start({
-      services: [[AgentServiceService, agentService]],
-      host: localHost,
     });
     await serverProxy.start({
       serverHost: localHost,
-      serverPort: agentServer.getPort(),
+      serverPort: serverPort,
       proxyHost: localHost,
       tlsConfig: serverTLSConfig,
     });
@@ -312,18 +306,18 @@ describe(`${NodeConnection.name} test`, () => {
     };
 
     sourceNodeId = clientKeyManager.getNodeId();
-    clientproxy = new Proxy({
+    clientProxy = new Proxy({
       authToken: authToken,
       logger: logger,
     });
-    await clientproxy.start({
+    await clientProxy.start({
       forwardHost: localHost,
       tlsConfig: clientTLSConfig,
       proxyHost: localHost,
       serverHost: localHost,
       serverPort: 0 as Port,
     });
-    sourcePort = clientproxy.getProxyPort();
+    sourcePort = clientProxy.getProxyPort();
 
     // Other setup
     const globalKeyPair = await testUtils.setupGlobalKeypair();
@@ -340,7 +334,7 @@ describe(`${NodeConnection.name} test`, () => {
   }, global.polykeyStartupTimeout * 2);
 
   afterEach(async () => {
-    await clientproxy.stop();
+    await clientProxy.stop();
     await clientKeyManager.stop();
     await clientKeyManager.destroy();
     await fs.promises.rm(clientDataDir, {
@@ -361,7 +355,7 @@ describe(`${NodeConnection.name} test`, () => {
     await serverNodeConnectionManager.stop();
     await serverNotificationsManager.stop();
     await serverNotificationsManager.destroy();
-    await agentServer.stop();
+    await agentTestUtils.closeTestAgentServer(agentServer);
     await serverProxy.stop();
     await serverKeyManager.stop();
     await serverKeyManager.destroy();
@@ -379,7 +373,7 @@ describe(`${NodeConnection.name} test`, () => {
       targetNodeId: targetNodeId,
       targetHost: localHost,
       targetPort: targetPort,
-      proxy: clientproxy,
+      proxy: clientProxy,
       keyManager: clientKeyManager,
       nodeConnectionManager: dummyNodeConnectionManager,
       destroyCallback,
@@ -395,7 +389,7 @@ describe(`${NodeConnection.name} test`, () => {
     // Explicitly close the connection such that there's no interference in next test
     await serverProxy.closeConnectionReverse(
       localHost,
-      clientproxy.getProxyPort(),
+      clientProxy.getProxyPort(),
     );
   });
   test('connects to its target (via direct connection)', async () => {
@@ -403,7 +397,7 @@ describe(`${NodeConnection.name} test`, () => {
       targetNodeId: targetNodeId,
       targetHost: localHost,
       targetPort: targetPort,
-      proxy: clientproxy,
+      proxy: clientProxy,
       keyManager: clientKeyManager,
       nodeConnectionManager: dummyNodeConnectionManager,
       destroyCallback,
@@ -419,8 +413,7 @@ describe(`${NodeConnection.name} test`, () => {
       },
       (e) => {
         if (e instanceof networkErrors.ErrorConnectionNotComposed) return false;
-        if (e instanceof networkErrors.ErrorConnectionNotRunning) return false;
-        return true;
+        return !(e instanceof networkErrors.ErrorConnectionNotRunning);
       },
     );
     expect(connInfo).toBeDefined();
@@ -435,7 +428,7 @@ describe(`${NodeConnection.name} test`, () => {
     await conn.destroy();
   });
   test('connects to its target but proxies connect first', async () => {
-    await clientproxy.openConnectionForward(
+    await clientProxy.openConnectionForward(
       targetNodeId,
       localHost,
       targetPort,
@@ -444,7 +437,7 @@ describe(`${NodeConnection.name} test`, () => {
       targetNodeId: targetNodeId,
       targetHost: localHost,
       targetPort: targetPort,
-      proxy: clientproxy,
+      proxy: clientProxy,
       keyManager: clientKeyManager,
       nodeConnectionManager: dummyNodeConnectionManager,
       destroyCallback,
@@ -460,8 +453,7 @@ describe(`${NodeConnection.name} test`, () => {
       },
       (e) => {
         if (e instanceof networkErrors.ErrorConnectionNotComposed) return false;
-        if (e instanceof networkErrors.ErrorConnectionNotRunning) return false;
-        return true;
+        return !(e instanceof networkErrors.ErrorConnectionNotRunning);
       },
     );
     expect(connInfo).toBeDefined();
@@ -491,7 +483,7 @@ describe(`${NodeConnection.name} test`, () => {
       const killSelf = jest.fn();
       nodeConnection = await NodeConnection.createNodeConnection({
         connConnectTime: 500,
-        proxy: clientproxy,
+        proxy: clientProxy,
         keyManager: clientKeyManager,
         logger: logger,
         nodeConnectionManager: dummyNodeConnectionManager,
@@ -526,7 +518,7 @@ describe(`${NodeConnection.name} test`, () => {
         targetHost: '128.0.0.1' as Host,
         targetPort: 12345 as Port,
         connConnectTime: 300,
-        proxy: clientproxy,
+        proxy: clientProxy,
         keyManager: clientKeyManager,
         nodeConnectionManager: dummyNodeConnectionManager,
         destroyCallback,
@@ -542,7 +534,7 @@ describe(`${NodeConnection.name} test`, () => {
         targetNodeId: targetNodeId,
         targetHost: localHost,
         targetPort: targetPort,
-        proxy: clientproxy,
+        proxy: clientProxy,
         keyManager: clientKeyManager,
         nodeConnectionManager: dummyNodeConnectionManager,
         destroyCallback,
@@ -563,7 +555,7 @@ describe(`${NodeConnection.name} test`, () => {
         targetNodeId: targetNodeId,
         targetHost: localHost,
         targetPort: targetPort,
-        proxy: clientproxy,
+        proxy: clientProxy,
         keyManager: clientKeyManager,
         nodeConnectionManager: dummyNodeConnectionManager,
         destroyCallback,
@@ -601,7 +593,7 @@ describe(`${NodeConnection.name} test`, () => {
       const killSelf = jest.fn();
       const nodeConnectionP = NodeConnection.createNodeConnection({
         connConnectTime: 500,
-        proxy: clientproxy,
+        proxy: clientProxy,
         keyManager: clientKeyManager,
         logger: logger,
         nodeConnectionManager: dummyNodeConnectionManager,
@@ -644,7 +636,7 @@ describe(`${NodeConnection.name} test`, () => {
       const killSelf = jest.fn();
       const nodeConnectionP = NodeConnection.createNodeConnection({
         connConnectTime: 500,
-        proxy: clientproxy,
+        proxy: clientProxy,
         keyManager: clientKeyManager,
         logger: logger,
         nodeConnectionManager: dummyNodeConnectionManager,
@@ -682,7 +674,7 @@ describe(`${NodeConnection.name} test`, () => {
       const killSelf = jest.fn();
       nodeConnection = await NodeConnection.createNodeConnection({
         connConnectTime: 500,
-        proxy: clientproxy,
+        proxy: clientProxy,
         keyManager: clientKeyManager,
         logger: logger,
         nodeConnectionManager: dummyNodeConnectionManager,
@@ -744,7 +736,7 @@ describe(`${NodeConnection.name} test`, () => {
         const killSelfP = promise<null>();
         nodeConnection = await NodeConnection.createNodeConnection({
           connConnectTime: 2000,
-          proxy: clientproxy,
+          proxy: clientProxy,
           keyManager: clientKeyManager,
           logger: logger,
           nodeConnectionManager: dummyNodeConnectionManager,
@@ -813,7 +805,7 @@ describe(`${NodeConnection.name} test`, () => {
         const killSelfP = promise<null>();
         nodeConnection = await NodeConnection.createNodeConnection({
           connConnectTime: 2000,
-          proxy: clientproxy,
+          proxy: clientProxy,
           keyManager: clientKeyManager,
           logger: logger,
           nodeConnectionManager: dummyNodeConnectionManager,

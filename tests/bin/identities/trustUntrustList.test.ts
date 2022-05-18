@@ -1,14 +1,13 @@
 import type { Host, Port } from '@/network/types';
 import type { IdentityId, ProviderId } from '@/identities/types';
 import type { ClaimLinkIdentity } from '@/claims/types';
-import type { Gestalt } from '@/gestalts/types';
 import type { NodeId } from '@/nodes/types';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
-import { poll, sysexits } from '@/utils';
+import { sysexits } from '@/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as keysUtils from '@/keys/utils';
 import * as claimsUtils from '@/claims/utils';
@@ -156,27 +155,7 @@ describe('trust/untrust/list', () => {
     expect(exitCode).toBe(0);
     // Since discovery is a background process we need to wait for the
     // gestalt to be discovered
-    await poll<Gestalt>(
-      async () => {
-        const gestalts = await poll<Array<Gestalt>>(
-          async () => {
-            return await pkAgent.gestaltGraph.getGestalts();
-          },
-          (_, result) => {
-            if (result.length === 1) return true;
-            return false;
-          },
-          100,
-        );
-        return gestalts[0];
-      },
-      (_, result) => {
-        if (result === undefined) return false;
-        if (Object.keys(result.matrix).length === 2) return true;
-        return false;
-      },
-      100,
-    );
+    await pkAgent.discovery.waitForDrained();
     // Check that gestalt was discovered and permission was set
     ({ exitCode, stdout } = await testBinUtils.pkStdio(
       ['identities', 'list', '--format', 'json'],
@@ -290,30 +269,10 @@ describe('trust/untrust/list', () => {
       },
       dataDir,
     ));
-    expect(exitCode).toBe(1);
+    expect(exitCode).toBe(67);
     // Since discovery is a background process we need to wait for the
     // gestalt to be discovered
-    await poll<Gestalt>(
-      async () => {
-        const gestalts = await poll<Array<Gestalt>>(
-          async () => {
-            return await pkAgent.gestaltGraph.getGestalts();
-          },
-          (_, result) => {
-            if (result.length === 1) return true;
-            return false;
-          },
-          100,
-        );
-        return gestalts[0];
-      },
-      (_, result) => {
-        if (result === undefined) return false;
-        if (Object.keys(result.matrix).length === 2) return true;
-        return false;
-      },
-      100,
-    );
+    await pkAgent.discovery.waitForDrained();
     // This time the command should succeed
     ({ exitCode } = await testBinUtils.pkStdio(
       ['identities', 'trust', providerString],

@@ -122,9 +122,10 @@ async function retryAuthentication<T>(
       throw e;
     }
     // If it is exception is not missing or denied, then throw the exception
+    const cause = e.cause;
     if (
-      !(e instanceof clientErrors.ErrorClientAuthMissing) &&
-      !(e instanceof clientErrors.ErrorClientAuthDenied)
+      !(cause instanceof clientErrors.ErrorClientAuthMissing) &&
+      !(cause instanceof clientErrors.ErrorClientAuthDenied)
     ) {
       throw e;
     }
