@@ -71,7 +71,9 @@ class CommandFind extends CommandPolykey {
             result.port as Port,
           )}`;
         } catch (err) {
-          if (!(err instanceof nodesErrors.ErrorNodeGraphNodeIdNotFound)) {
+          if (
+            !(err.cause instanceof nodesErrors.ErrorNodeGraphNodeIdNotFound)
+          ) {
             throw err;
           }
           // Else failed to find the node.

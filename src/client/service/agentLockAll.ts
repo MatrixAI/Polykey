@@ -3,7 +3,6 @@ import type { DB } from '@matrixai/db';
 import type { Authenticate } from '../types';
 import type { SessionManager } from '../../sessions';
 import type Logger from '@matrixai/logger';
-import { withF } from '@matrixai/resources';
 import * as grpcUtils from '../../grpc/utils';
 import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 

@@ -11,6 +11,7 @@ import type { GestaltGraph } from '@/gestalts';
 import type { NodeId } from 'nodes/types';
 import type Proxy from 'network/Proxy';
 import type { DB } from '@matrixai/db';
+import type { Server } from '@grpc/grpc-js';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as grpc from '@grpc/grpc-js';
 import { promisify } from '@/utils';
@@ -33,6 +34,7 @@ async function openTestAgentServer({
   gestaltGraph,
   proxy,
   db,
+  logger,
 }: {
   keyManager: KeyManager;
   vaultManager: VaultManager;
@@ -45,7 +47,8 @@ async function openTestAgentServer({
   gestaltGraph: GestaltGraph;
   proxy: Proxy;
   db: DB;
-}) {
+  logger: Logger;
+}): Promise<[Server, Port]> {
   const agentService: IAgentServiceServer = createAgentService({
     keyManager,
     vaultManager,
@@ -58,6 +61,7 @@ async function openTestAgentServer({
     gestaltGraph,
     proxy,
     db,
+    logger,
   });
 
   const server = new grpc.Server();

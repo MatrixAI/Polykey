@@ -7,6 +7,7 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
 import * as nodesUtils from '@/nodes/utils';
 import * as keysUtils from '@/keys/utils';
+import { sysexits } from '@/errors';
 import * as testBinUtils from '../utils';
 import * as testNodesUtils from '../../nodes/utils';
 import * as testUtils from '../../utils';
@@ -175,7 +176,7 @@ describe('find', () => {
       },
       dataDir,
     );
-    expect(exitCode).toBe(1);
+    expect(exitCode).toBe(sysexits.GENERAL);
     expect(JSON.parse(stdout)).toEqual({
       success: false,
       message: `Failed to find node ${nodesUtils.encodeNodeId(unknownNodeId!)}`,
