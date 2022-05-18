@@ -89,6 +89,7 @@ describe('agentLockall', () => {
       nodeId: keyManager.getNodeId(),
       host: '127.0.0.1' as Host,
       port: grpcServer.getPort(),
+      timeout: 5000,
       logger,
     });
   });
