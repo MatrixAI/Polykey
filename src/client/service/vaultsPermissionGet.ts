@@ -1,7 +1,7 @@
+import type * as grpc from '@grpc/grpc-js';
 import type { Authenticate } from '../types';
 import type VaultManager from '../../vaults/VaultManager';
 import type { VaultName } from '../../vaults/types';
-import type * as grpc from '@grpc/grpc-js';
 import type { VaultActions } from '../../vaults/types';
 import type ACL from '../../acl/ACL';
 import type { NodeId, NodeIdEncoded } from 'nodes/types';

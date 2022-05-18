@@ -8,8 +8,8 @@ import type Session from '../../sessions/Session';
 import type SessionManager from '../../sessions/SessionManager';
 import type { SessionToken } from '../../sessions/types';
 import type { Authenticate } from '../types';
-import * as grpc from '@grpc/grpc-js';
 import * as base64 from 'multiformats/bases/base64';
+import * as grpc from '@grpc/grpc-js';
 import * as clientErrors from '../errors';
 
 /**
@@ -130,7 +130,7 @@ function decodeAuthToSession(
   if (auth == null || !auth.startsWith('Bearer ')) {
     return;
   }
-  return auth.substr(7) as SessionToken;
+  return auth.substring(7) as SessionToken;
 }
 
 export {

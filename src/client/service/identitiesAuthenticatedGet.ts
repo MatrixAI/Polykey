@@ -1,6 +1,6 @@
 import type * as grpc from '@grpc/grpc-js';
 import type { Authenticate } from '../types';
-import type { IdentitiesManager } from '../../identities';
+import type IdentitiesManager from '../../identities/IdentitiesManager';
 import type { ProviderId } from '../../identities/types';
 import type Logger from '@matrixai/logger';
 import { validateSync } from '../../validation';

@@ -268,6 +268,14 @@ abstract class GRPCClient<T extends Client = Client> {
   }
 
   /**
+   * Gets information about the client
+   * Useful for error reporting
+   */
+  public getClientInfo() {
+    return { nodeId: this.nodeId, host: this.host, port: this.port };
+  }
+
+  /**
    * Gets the leaf server certificate if the connection is encrypted
    * Don't use this when using network proxies
    */
