@@ -4,6 +4,7 @@ import type { VaultName } from '../../vaults/types';
 import type VaultManager from '../../vaults/VaultManager';
 import type { ConnectionInfoGet } from '../../agent/types';
 import type ACL from '../../acl/ACL';
+import type KeyManager from '../../keys/KeyManager';
 import type Logger from '@matrixai/logger';
 import * as nodesUtils from '../../nodes/utils';
 import * as grpcErrors from '../../grpc/errors';
@@ -18,19 +19,22 @@ function vaultsGitPackGet({
   vaultManager,
   acl,
   db,
+  keyManager,
   logger,
   connectionInfoGet,
 }: {
   vaultManager: VaultManager;
   acl: ACL;
   db: DB;
+  keyManager: KeyManager;
   logger: Logger;
   connectionInfoGet: ConnectionInfoGet;
 }) {
   return async (
     call: grpc.ServerDuplexStream<vaultsPB.PackChunk, vaultsPB.PackChunk>,
   ): Promise<void> => {
-    const genDuplex = grpcUtils.generatorDuplex(call, true);
+    const nodeId = keyManager.getNodeId();
+    const genDuplex = grpcUtils.generatorDuplex(call, { nodeId }, true);
     try {
       const clientBodyBuffers: Uint8Array[] = [];
       const clientRequest = (await genDuplex.read()).value;
