@@ -7,6 +7,7 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
 import * as nodesUtils from '@/nodes/utils';
 import * as keysUtils from '@/keys/utils';
+import { sysexits } from '@/errors';
 import * as testBinUtils from '../utils';
 import * as testNodesUtils from '../../nodes/utils';
 import * as testUtils from '../../utils';
@@ -119,7 +120,7 @@ describe('ping', () => {
       },
       dataDir,
     );
-    expect(exitCode).toBe(1); // Should fail with no response. for automation purposes.
+    expect(exitCode).toBe(sysexits.GENERAL); // Should fail with no response. for automation purposes.
     expect(stderr).toContain('No response received');
     expect(JSON.parse(stdout)).toEqual({
       success: false,

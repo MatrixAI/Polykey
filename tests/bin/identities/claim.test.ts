@@ -125,7 +125,7 @@ describe('claim', () => {
       },
       dataDir,
     );
-    expect(exitCode).toBe(77);
+    expect(exitCode).toBe(sysexits.NOPERM);
   });
   test('should fail on invalid inputs', async () => {
     let exitCode;

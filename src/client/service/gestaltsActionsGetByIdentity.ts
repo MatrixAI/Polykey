@@ -44,9 +44,9 @@ function gestaltsActionsGetByIdentity({
           identityId: call.request.getIdentityId(),
         },
       );
-      const result = await gestaltGraph.getGestaltActionsByIdentity(
-        providerId,
-        identityId,
+
+      const result = await db.withTransactionF(async (tran) =>
+        gestaltGraph.getGestaltActionsByIdentity(providerId, identityId, tran),
       );
       if (result == null) {
         // Node doesn't exist, so no permissions

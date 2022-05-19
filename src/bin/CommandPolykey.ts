@@ -4,7 +4,7 @@ import Logger, { StreamHandler } from '@matrixai/logger';
 import * as binUtils from './utils';
 import * as binOptions from './utils/options';
 import * as binErrors from './errors';
-import * as errors from '../../src/errors';
+import * as errors from '../errors';
 import grpcSetLogger from '../grpc/utils/setLogger';
 
 /**
@@ -74,8 +74,10 @@ class CommandPolykey extends commander.Command {
       try {
         await fn(...args);
       } catch (e) {
-        if (e instanceof errors.ErrorPolykeyRemote) throw e.cause;
-        throw e;
+        const [errorCause, remoteLevel] = binUtils.remoteErrorCause(e);
+        console.log(remoteLevel);
+        console.error(errorCause);
+        throw errorCause;
       }
     });
   }

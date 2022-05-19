@@ -78,6 +78,7 @@ describe('gestaltsActionsByIdentity', () => {
         authenticate,
         gestaltGraph,
         logger,
+        db,
       }),
       gestaltsActionsUnsetByIdentity: gestaltsActionsUnsetByIdentity({
         authenticate,

@@ -269,7 +269,7 @@ describe('trust/untrust/list', () => {
       },
       dataDir,
     ));
-    expect(exitCode).toBe(67);
+    expect(exitCode).toBe(sysexits.NOUSER);
     // Since discovery is a background process we need to wait for the
     // gestalt to be discovered
     await pkAgent.discovery.waitForDrained();
