@@ -79,9 +79,11 @@ class GRPCClientAgent extends GRPCClient<AgentServiceClient> {
   public echo(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.EchoMessage>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.echo,
     )(...args);
   }
@@ -95,9 +97,11 @@ class GRPCClientAgent extends GRPCClient<AgentServiceClient> {
   > {
     return grpcUtils.promisifyReadableStreamCall<vaultsPB.PackChunk>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.vaultsGitInfoGet,
     )(...args);
   }
@@ -112,9 +116,11 @@ class GRPCClientAgent extends GRPCClient<AgentServiceClient> {
   > {
     return grpcUtils.promisifyDuplexStreamCall(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.vaultsGitPackGet,
     )(...args);
   }
@@ -128,9 +134,11 @@ class GRPCClientAgent extends GRPCClient<AgentServiceClient> {
   > {
     return grpcUtils.promisifyReadableStreamCall<vaultsPB.List>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.vaultsScan,
     )(...args);
   }
@@ -139,9 +147,11 @@ class GRPCClientAgent extends GRPCClient<AgentServiceClient> {
   public nodesClosestLocalNodesGet(...args) {
     return grpcUtils.promisifyUnaryCall<nodesPB.NodeTable>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.nodesClosestLocalNodesGet,
     )(...args);
   }
@@ -150,9 +160,11 @@ class GRPCClientAgent extends GRPCClient<AgentServiceClient> {
   public nodesClaimsGet(...args) {
     return grpcUtils.promisifyUnaryCall<nodesPB.Claims>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.nodesClaimsGet,
     )(...args);
   }
@@ -161,9 +173,11 @@ class GRPCClientAgent extends GRPCClient<AgentServiceClient> {
   public nodesChainDataGet(...args) {
     return grpcUtils.promisifyUnaryCall<nodesPB.ChainData>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.nodesChainDataGet,
     )(...args);
   }
@@ -172,9 +186,11 @@ class GRPCClientAgent extends GRPCClient<AgentServiceClient> {
   public nodesHolePunchMessageSend(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.nodesHolePunchMessageSend,
     )(...args);
   }
@@ -183,9 +199,11 @@ class GRPCClientAgent extends GRPCClient<AgentServiceClient> {
   public notificationsSend(...args) {
     return grpcUtils.promisifyUnaryCall<notificationsPB.AgentNotification>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.notificationsSend,
     )(...args);
   }
@@ -203,9 +221,11 @@ class GRPCClientAgent extends GRPCClient<AgentServiceClient> {
       nodesPB.CrossSign
     >(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.nodesCrossSignClaim,
     )(...args);
   }
