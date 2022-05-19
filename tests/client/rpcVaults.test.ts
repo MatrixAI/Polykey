@@ -3,6 +3,7 @@ import type VaultManager from '@/vaults/VaultManager';
 import type { VaultId, VaultName } from '@/vaults/types';
 import type { ClientServiceClient } from '@/proto/js/polykey/v1/client_service_grpc_pb';
 import type { Stat } from 'encryptedfs';
+import type { Host, Port } from '@/network/types';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
@@ -39,6 +40,8 @@ describe('Vaults client service', () => {
     'Vault4' as VaultName,
   ];
   const secretList = ['Secret1', 'Secret2', 'Secret3', 'Secret4'];
+  const localHost = 'localhost' as Host;
+  const localPort = 55555 as Port;
 
   let client: ClientServiceClient;
   let server: grpc.Server;
@@ -115,6 +118,8 @@ describe('Vaults client service', () => {
     test('should get vaults', async () => {
       const listVaults = grpcUtils.promisifyReadableStreamCall<vaultsPB.List>(
         client,
+        localHost,
+        localPort,
         client.vaultsList,
       );
       for (const vaultName of vaultList) {

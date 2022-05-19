@@ -136,6 +136,7 @@ describe('notificationsClear', () => {
         authenticate,
         notificationsManager,
         logger,
+        db,
       }),
     };
     grpcServer = new GRPCServer({ logger });

@@ -93,6 +93,7 @@ describe('gestaltsGestaltList', () => {
         authenticate,
         gestaltGraph,
         logger,
+        db,
       }),
     };
     grpcServer = new GRPCServer({ logger });

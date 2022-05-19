@@ -6,6 +6,7 @@ import * as binProcessors from './processors';
 import * as binErrors from '../errors';
 import * as clientUtils from '../../client/utils';
 import * as clientErrors from '../../client/errors';
+import * as errors from '../../errors';
 
 /**
  * Convert verbosity to LogLevel
@@ -122,9 +123,10 @@ async function retryAuthentication<T>(
       throw e;
     }
     // If it is exception is not missing or denied, then throw the exception
+    const [cause] = remoteErrorCause(e);
     if (
-      !(e instanceof clientErrors.ErrorClientAuthMissing) &&
-      !(e instanceof clientErrors.ErrorClientAuthDenied)
+      !(cause instanceof clientErrors.ErrorClientAuthMissing) &&
+      !(cause instanceof clientErrors.ErrorClientAuthDenied)
     ) {
       throw e;
     }
@@ -141,14 +143,30 @@ async function retryAuthentication<T>(
     try {
       return await f(meta);
     } catch (e) {
+      const [cause] = remoteErrorCause(e);
       // The auth cannot be missing, so when it is denied do we retry
-      if (!(e instanceof clientErrors.ErrorClientAuthDenied)) {
+      if (!(cause instanceof clientErrors.ErrorClientAuthDenied)) {
         throw e;
       }
     }
   }
 }
 
-export { verboseToLogLevel, outputFormatter, retryAuthentication };
+function remoteErrorCause(e: any): [any, number] {
+  let errorCause = e;
+  let depth = 0;
+  while (e instanceof errors.ErrorPolykeyRemote) {
+    errorCause = e.cause;
+    depth++;
+  }
+  return [errorCause, depth];
+}
+
+export {
+  verboseToLogLevel,
+  outputFormatter,
+  retryAuthentication,
+  remoteErrorCause,
+};
 
 export type { OutputObject };

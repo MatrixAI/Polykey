@@ -1,3 +1,4 @@
+import type { DB } from '@matrixai/db';
 import type { Authenticate } from '../types';
 import type VaultManager from '../../vaults/VaultManager';
 import type * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
@@ -11,10 +12,12 @@ import * as vaultsUtils from '../../vaults/utils';
 function vaultsClone({
   authenticate,
   vaultManager,
+  db,
   logger,
 }: {
   authenticate: Authenticate;
   vaultManager: VaultManager;
+  db: DB;
   logger: Logger;
 }) {
   return async (
@@ -43,7 +46,9 @@ function vaultsClone({
       vaultId = vaultId ?? vaultNameOrId;
       // Node id
       const nodeId = validationUtils.parseNodeId(nodeMessage.getNodeId());
-      await vaultManager.cloneVault(nodeId, vaultId);
+      await db.withTransactionF(async (tran) =>
+        vaultManager.cloneVault(nodeId, vaultId, tran),
+      );
       response.setSuccess(true);
       callback(null, response);
       return;

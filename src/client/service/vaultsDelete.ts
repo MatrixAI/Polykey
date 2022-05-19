@@ -2,6 +2,7 @@ import type { Authenticate } from '../types';
 import type { VaultName } from '../../vaults/types';
 import type VaultManager from '../../vaults/VaultManager';
 import type * as grpc from '@grpc/grpc-js';
+import type { DB } from '@matrixai/db';
 import type * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
 import type Logger from '@matrixai/logger';
 import * as grpcUtils from '../../grpc/utils';
@@ -11,10 +12,12 @@ import * as validationUtils from '../../validation/utils';
 function vaultsDelete({
   authenticate,
   vaultManager,
+  db,
   logger,
 }: {
   authenticate: Authenticate;
   vaultManager: VaultManager;
+  db: DB;
   logger: Logger;
 }) {
   return async (
@@ -27,9 +30,14 @@ function vaultsDelete({
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
       const nameOrId = vaultMessage.getNameOrId();
-      let vaultId = await vaultManager.getVaultId(nameOrId as VaultName);
-      vaultId = vaultId ?? validationUtils.parseVaultId(nameOrId);
-      await vaultManager.destroyVault(vaultId);
+      await db.withTransactionF(async (tran) => {
+        let vaultId = await vaultManager.getVaultId(
+          nameOrId as VaultName,
+          tran,
+        );
+        vaultId = vaultId ?? validationUtils.parseVaultId(nameOrId);
+        await vaultManager.destroyVault(vaultId, tran);
+      });
       response.setSuccess(true);
       callback(null, response);
       return;

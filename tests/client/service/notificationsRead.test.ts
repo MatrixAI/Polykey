@@ -210,6 +210,7 @@ describe('notificationsRead', () => {
         authenticate,
         notificationsManager,
         logger,
+        db,
       }),
     };
     grpcServer = new GRPCServer({ logger });

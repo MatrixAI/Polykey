@@ -1,3 +1,4 @@
+import type { DB } from '@matrixai/db';
 import type { Authenticate } from '../types';
 import type { VaultName } from '../../vaults/types';
 import type VaultManager from '../../vaults/VaultManager';
@@ -12,10 +13,12 @@ import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 function vaultsSecretsMkdir({
   authenticate,
   vaultManager,
+  db,
   logger,
 }: {
   authenticate: Authenticate;
   vaultManager: VaultManager;
+  db: DB;
   logger: Logger;
 }) {
   return async (
@@ -33,12 +36,21 @@ function vaultsSecretsMkdir({
         return;
       }
       const nameOrId = vaultMessage.getNameOrId();
-      let vaultId = await vaultManager.getVaultId(nameOrId as VaultName);
-      vaultId = vaultId ?? validationUtils.parseVaultId(nameOrId);
-      await vaultManager.withVaults([vaultId], async (vault) => {
-        await vaultOps.mkdir(vault, vaultMkdirMessge.getDirName(), {
-          recursive: vaultMkdirMessge.getRecursive(),
-        });
+      await db.withTransactionF(async (tran) => {
+        let vaultId = await vaultManager.getVaultId(
+          nameOrId as VaultName,
+          tran,
+        );
+        vaultId = vaultId ?? validationUtils.parseVaultId(nameOrId);
+        await vaultManager.withVaults(
+          [vaultId],
+          async (vault) => {
+            await vaultOps.mkdir(vault, vaultMkdirMessge.getDirName(), {
+              recursive: vaultMkdirMessge.getRecursive(),
+            });
+          },
+          tran,
+        );
       });
       response.setSuccess(true);
       callback(null, response);

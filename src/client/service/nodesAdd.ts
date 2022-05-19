@@ -1,4 +1,5 @@
 import type * as grpc from '@grpc/grpc-js';
+import type { DB } from '@matrixai/db';
 import type { Authenticate } from '../types';
 import type NodeManager from '../../nodes/NodeManager';
 import type { NodeId, NodeAddress } from '../../nodes/types';
@@ -19,10 +20,12 @@ import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 function nodesAdd({
   authenticate,
   nodeManager,
+  db,
   logger,
 }: {
   authenticate: Authenticate;
   nodeManager: NodeManager;
+  db: DB;
   logger: Logger;
 }) {
   return async (
@@ -56,10 +59,16 @@ function nodesAdd({
           port: call.request.getAddress()?.getPort(),
         },
       );
-      await nodeManager.setNode(nodeId, {
-        host,
-        port,
-      } as NodeAddress);
+      await db.withTransactionF(async (tran) =>
+        nodeManager.setNode(
+          nodeId,
+          {
+            host,
+            port,
+          } as NodeAddress,
+          tran,
+        ),
+      );
       callback(null, response);
       return;
     } catch (e) {
