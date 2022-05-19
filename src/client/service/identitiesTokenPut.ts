@@ -1,4 +1,5 @@
 import type * as grpc from '@grpc/grpc-js';
+import type { DB } from '@matrixai/db';
 import type { Authenticate } from '../types';
 import type IdentitiesManager from '../../identities/IdentitiesManager';
 import type { IdentityId, ProviderId, TokenData } from '../../identities/types';
@@ -13,10 +14,12 @@ import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 function identitiesTokenPut({
   authenticate,
   identitiesManager,
+  db,
   logger,
 }: {
   authenticate: Authenticate;
   identitiesManager: IdentitiesManager;
+  db: DB;
   logger: Logger;
 }) {
   return async (
@@ -49,9 +52,16 @@ function identitiesTokenPut({
           identityId: call.request.getProvider()?.getIdentityId(),
         },
       );
-      await identitiesManager.putToken(providerId, identityId, {
-        accessToken: call.request.getToken(),
-      } as TokenData);
+      await db.withTransactionF(async (tran) =>
+        identitiesManager.putToken(
+          providerId,
+          identityId,
+          {
+            accessToken: call.request.getToken(),
+          } as TokenData,
+          tran,
+        ),
+      );
       callback(null, response);
       return;
     } catch (e) {

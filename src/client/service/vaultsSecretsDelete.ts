@@ -1,3 +1,4 @@
+import type { DB } from '@matrixai/db';
 import type { Authenticate } from '../types';
 import type { VaultName } from '../../vaults/types';
 import type VaultManager from '../../vaults/VaultManager';
@@ -12,10 +13,12 @@ import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 function vaultsSecretsDelete({
   authenticate,
   vaultManager,
+  db,
   logger,
 }: {
   authenticate: Authenticate;
   vaultManager: VaultManager;
+  db: DB;
   logger: Logger;
 }) {
   return async (
@@ -32,11 +35,20 @@ function vaultsSecretsDelete({
         return;
       }
       const nameOrId = vaultMessage.getNameOrId();
-      let vaultId = await vaultManager.getVaultId(nameOrId as VaultName);
-      vaultId = vaultId ?? validationUtils.parseVaultId(nameOrId);
-      const secretName = call.request.getSecretName();
-      await vaultManager.withVaults([vaultId], async (vault) => {
-        await vaultOps.deleteSecret(vault, secretName);
+      await db.withTransactionF(async (tran) => {
+        let vaultId = await vaultManager.getVaultId(
+          nameOrId as VaultName,
+          tran,
+        );
+        vaultId = vaultId ?? validationUtils.parseVaultId(nameOrId);
+        const secretName = call.request.getSecretName();
+        await vaultManager.withVaults(
+          [vaultId],
+          async (vault) => {
+            await vaultOps.deleteSecret(vault, secretName);
+          },
+          tran,
+        );
       });
       response.setSuccess(true);
       callback(null, response);

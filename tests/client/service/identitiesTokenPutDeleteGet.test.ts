@@ -57,16 +57,19 @@ describe('identitiesTokenPutDeleteGet', () => {
         authenticate,
         identitiesManager,
         logger,
+        db,
       }),
       identitiesTokenGet: identitiesTokenGet({
         authenticate,
         identitiesManager,
         logger,
+        db,
       }),
       identitiesTokenDelete: identitiesTokenDelete({
         authenticate,
         identitiesManager,
         logger,
+        db,
       }),
     };
     grpcServer = new GRPCServer({ logger });

@@ -1,4 +1,5 @@
 import type * as grpc from '@grpc/grpc-js';
+import type { DB } from '@matrixai/db';
 import type { Authenticate } from '../types';
 import type GestaltGraph from '../../gestalts/GestaltGraph';
 import type { GestaltAction } from '../../gestalts/types';
@@ -14,10 +15,12 @@ import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 function gestaltsActionsSetByNode({
   authenticate,
   gestaltGraph,
+  db,
   logger,
 }: {
   authenticate: Authenticate;
   gestaltGraph: GestaltGraph;
+  db: DB;
   logger: Logger;
 }) {
   return async (
@@ -42,7 +45,9 @@ function gestaltsActionsSetByNode({
             action: call.request.getAction(),
           },
         );
-      await gestaltGraph.setGestaltActionByNode(nodeId, action);
+      await db.withTransactionF(async (tran) =>
+        gestaltGraph.setGestaltActionByNode(nodeId, action, tran),
+      );
       callback(null, response);
       return;
     } catch (e) {

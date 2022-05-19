@@ -1,3 +1,4 @@
+import type { DB } from '@matrixai/db';
 import type { Authenticate } from '../types';
 import type VaultManager from '../../vaults/VaultManager';
 import type { VaultName } from '../../vaults/types';
@@ -12,10 +13,12 @@ import * as vaultsUtils from '../../vaults/utils';
 function vaultsPull({
   authenticate,
   vaultManager,
+  db,
   logger,
 }: {
   authenticate: Authenticate;
   vaultManager: VaultManager;
+  db: DB;
   logger: Logger;
 }) {
   return async (
@@ -33,28 +36,34 @@ function vaultsPull({
         return;
       }
       const nameOrId = vaultMessage.getNameOrId();
-      let vaultId = await vaultManager.getVaultId(nameOrId as VaultName);
-      vaultId = vaultId ?? validationUtils.parseVaultId(nameOrId);
-      let nodeId;
-      const nodeMessage = call.request.getNode();
-      if (nodeMessage == null) {
-        nodeId = null;
-      } else {
-        nodeId = validationUtils.parseNodeId(nodeMessage.getNodeId());
-      }
-      let pullVault;
-      const pullVaultMessage = call.request.getPullVault();
-      if (pullVaultMessage == null) {
-        pullVault = null;
-      } else {
-        pullVault = vaultsUtils.decodeVaultId(pullVaultMessage.getNameOrId());
-        pullVault = pullVault ?? pullVaultMessage.getNameOrId();
-        if (pullVault == null) pullVault = pullVaultMessage.getNameOrId();
-      }
-      await vaultManager.pullVault({
-        vaultId,
-        pullNodeId: nodeId,
-        pullVaultNameOrId: pullVault,
+      await db.withTransactionF(async (tran) => {
+        let vaultId = await vaultManager.getVaultId(
+          nameOrId as VaultName,
+          tran,
+        );
+        vaultId = vaultId ?? validationUtils.parseVaultId(nameOrId);
+        let nodeId;
+        const nodeMessage = call.request.getNode();
+        if (nodeMessage == null) {
+          nodeId = null;
+        } else {
+          nodeId = validationUtils.parseNodeId(nodeMessage.getNodeId());
+        }
+        let pullVault;
+        const pullVaultMessage = call.request.getPullVault();
+        if (pullVaultMessage == null) {
+          pullVault = null;
+        } else {
+          pullVault = vaultsUtils.decodeVaultId(pullVaultMessage.getNameOrId());
+          pullVault = pullVault ?? pullVaultMessage.getNameOrId();
+          if (pullVault == null) pullVault = pullVaultMessage.getNameOrId();
+        }
+        await vaultManager.pullVault({
+          vaultId,
+          pullNodeId: nodeId,
+          pullVaultNameOrId: pullVault,
+          tran,
+        });
       });
       response.setSuccess(true);
       callback(null, response);

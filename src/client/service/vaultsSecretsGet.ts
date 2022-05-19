@@ -1,3 +1,4 @@
+import type { DB } from '@matrixai/db';
 import type { Authenticate } from '../types';
 import type { VaultName } from '../../vaults/types';
 import type VaultManager from '../../vaults/VaultManager';
@@ -12,10 +13,12 @@ import * as secretsPB from '../../proto/js/polykey/v1/secrets/secrets_pb';
 function vaultsSecretsGet({
   authenticate,
   vaultManager,
+  db,
   logger,
 }: {
   authenticate: Authenticate;
   vaultManager: VaultManager;
+  db: DB;
   logger: Logger;
 }) {
   return async (
@@ -32,16 +35,22 @@ function vaultsSecretsGet({
         return;
       }
       const nameOrId = vaultMessage.getNameOrId();
-      let vaultId = await vaultManager.getVaultId(nameOrId as VaultName);
-      vaultId = vaultId ?? validationUtils.parseVaultId(nameOrId);
-      const secretName = call.request.getSecretName();
-      const secretContent = await vaultManager.withVaults(
-        [vaultId],
-        async (vault) => {
-          return await vaultOps.getSecret(vault, secretName);
-        },
-      );
-      response.setSecretContent(secretContent);
+      await db.withTransactionF(async (tran) => {
+        let vaultId = await vaultManager.getVaultId(
+          nameOrId as VaultName,
+          tran,
+        );
+        vaultId = vaultId ?? validationUtils.parseVaultId(nameOrId);
+        const secretName = call.request.getSecretName();
+        const secretContent = await vaultManager.withVaults(
+          [vaultId],
+          async (vault) => {
+            return await vaultOps.getSecret(vault, secretName);
+          },
+          tran,
+        );
+        response.setSecretContent(secretContent);
+      });
       callback(null, response);
       return;
     } catch (e) {

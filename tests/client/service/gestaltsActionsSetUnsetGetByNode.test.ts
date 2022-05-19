@@ -67,16 +67,19 @@ describe('gestaltsActionsByNode', () => {
         authenticate,
         gestaltGraph,
         logger,
+        db,
       }),
       gestaltsActionsGetByNode: gestaltsActionsGetByNode({
         authenticate,
         gestaltGraph,
         logger,
+        db,
       }),
       gestaltsActionsUnsetByNode: gestaltsActionsUnsetByNode({
         authenticate,
         gestaltGraph,
         logger,
+        db,
       }),
     };
     grpcServer = new GRPCServer({ logger });

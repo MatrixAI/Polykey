@@ -1,4 +1,5 @@
 import type * as grpc from '@grpc/grpc-js';
+import type { DB } from '@matrixai/db';
 import type { Authenticate } from '../types';
 import type GestaltGraph from '../../gestalts/GestaltGraph';
 import type { GestaltAction } from '../../gestalts/types';
@@ -14,10 +15,12 @@ import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 function gestaltsActionsSetByIdentity({
   authenticate,
   gestaltGraph,
+  db,
   logger,
 }: {
   authenticate: Authenticate;
   gestaltGraph: GestaltGraph;
+  db: DB;
   logger: Logger;
 }) {
   return async (
@@ -51,10 +54,13 @@ function gestaltsActionsSetByIdentity({
           identityId: call.request.getIdentity()?.getIdentityId(),
         },
       );
-      await gestaltGraph.setGestaltActionByIdentity(
-        providerId,
-        identityId,
-        action,
+      await db.withTransactionF(async (tran) =>
+        gestaltGraph.setGestaltActionByIdentity(
+          providerId,
+          identityId,
+          action,
+          tran,
+        ),
       );
       callback(null, response);
       return;

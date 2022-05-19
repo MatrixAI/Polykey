@@ -1,4 +1,5 @@
 import type * as grpc from '@grpc/grpc-js';
+import type { DB } from '@matrixai/db';
 import type { Authenticate } from '../types';
 import type NotificationsManager from '../../notifications/NotificationsManager';
 import type Logger from '@matrixai/logger';
@@ -8,10 +9,12 @@ import * as notificationsPB from '../../proto/js/polykey/v1/notifications/notifi
 function notificationsRead({
   authenticate,
   notificationsManager,
+  db,
   logger,
 }: {
   authenticate: Authenticate;
   notificationsManager: NotificationsManager;
+  db: DB;
   logger: Logger;
 }) {
   return async (
@@ -31,11 +34,14 @@ function notificationsRead({
       } else {
         number = parseInt(numberField);
       }
-      const notifications = await notificationsManager.readNotifications({
-        unread,
-        number,
-        order,
-      });
+      const notifications = await db.withTransactionF(async (tran) =>
+        notificationsManager.readNotifications({
+          unread,
+          number,
+          order,
+          tran,
+        }),
+      );
       const notifMessages: Array<notificationsPB.Notification> = [];
       for (const notif of notifications) {
         const notificationsMessage = new notificationsPB.Notification();

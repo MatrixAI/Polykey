@@ -1,3 +1,4 @@
+import type { DB } from '@matrixai/db';
 import type { Authenticate } from '../types';
 import type { VaultName } from '../../vaults/types';
 import type VaultManager from '../../vaults/VaultManager';
@@ -10,10 +11,12 @@ import * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
 function vaultsVersion({
   authenticate,
   vaultManager,
+  db,
   logger,
 }: {
   authenticate: Authenticate;
   vaultManager: VaultManager;
+  db: DB;
   logger: Logger;
 }) {
   return async (
@@ -33,23 +36,30 @@ function vaultsVersion({
         return;
       }
       const nameOrId = vaultMessage.getNameOrId();
-      let vaultId = await vaultManager.getVaultId(nameOrId as VaultName);
-      vaultId = vaultId ?? validationUtils.parseVaultId(nameOrId);
-      // Doing the deed
-      const versionId = vaultsVersionMessage.getVersionId();
-      const [latestOid, currentVersionId] = await vaultManager.withVaults(
-        [vaultId],
-        async (vault) => {
-          const latestOid = (await vault.log())[0].commitId;
-          await vault.version(versionId);
-          const currentVersionId = (await vault.log(versionId, 0))[0]?.commitId;
-          return [latestOid, currentVersionId];
-        },
-      );
-      // Checking if latest version ID
-      const isLatestVersion = latestOid === currentVersionId;
-      // Creating message
-      response.setIsLatestVersion(isLatestVersion);
+      await db.withTransactionF(async (tran) => {
+        let vaultId = await vaultManager.getVaultId(
+          nameOrId as VaultName,
+          tran,
+        );
+        vaultId = vaultId ?? validationUtils.parseVaultId(nameOrId);
+        // Doing the deed
+        const versionId = vaultsVersionMessage.getVersionId();
+        const [latestOid, currentVersionId] = await vaultManager.withVaults(
+          [vaultId],
+          async (vault) => {
+            const latestOid = (await vault.log())[0].commitId;
+            await vault.version(versionId);
+            const currentVersionId = (await vault.log(versionId, 0))[0]
+              ?.commitId;
+            return [latestOid, currentVersionId];
+          },
+          tran,
+        );
+        // Checking if latest version ID
+        const isLatestVersion = latestOid === currentVersionId;
+        // Creating message
+        response.setIsLatestVersion(isLatestVersion);
+      });
       // Sending message
       callback(null, response);
       return;

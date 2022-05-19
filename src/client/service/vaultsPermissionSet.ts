@@ -1,3 +1,4 @@
+import type { DB } from '@matrixai/db';
 import type { Authenticate } from '../types';
 import type { VaultName } from '../../vaults/types';
 import type VaultManager from '../../vaults/VaultManager';
@@ -20,6 +21,7 @@ function vaultsPermissionSet({
   gestaltGraph,
   acl,
   notificationsManager,
+  db,
   logger,
 }: {
   authenticate: Authenticate;
@@ -27,6 +29,7 @@ function vaultsPermissionSet({
   gestaltGraph: GestaltGraph;
   acl: ACL;
   notificationsManager: NotificationsManager;
+  db: DB;
   logger: Logger;
 }) {
   return async (
@@ -44,32 +47,37 @@ function vaultsPermissionSet({
         callback({ code: grpc.status.NOT_FOUND }, null);
         return;
       }
-      // Parsing VaultId
-      const nameOrId = vaultMessage.getNameOrId();
-      let vaultId = await vaultManager.getVaultId(nameOrId as VaultName);
-      vaultId = vaultId ?? validationUtils.parseVaultId(nameOrId);
-      // Parsing NodeId
-      const nodeId = validationUtils.parseNodeId(nodeMessage.getNodeId());
-      // Parsing actions
-      const actions = vaultsPermissionsMessage
-        .getVaultPermissionsList()
-        .map((vaultAction) => validationUtils.parseVaultAction(vaultAction));
-      // Checking if vault exists
-      const vaultMeta = await vaultManager.getVaultMeta(vaultId);
-      if (!vaultMeta) throw new vaultsErrors.ErrorVaultsVaultUndefined();
-      // Setting permissions
-      const actionsSet: VaultActions = {};
-      await gestaltGraph.setGestaltActionByNode(nodeId, 'scan');
-      for (const action of actions) {
-        await acl.setVaultAction(vaultId, nodeId, action);
-        actionsSet[action] = null;
-      }
-      // Sending notification
-      await notificationsManager.sendNotification(nodeId, {
-        type: 'VaultShare',
-        vaultId: vaultsUtils.encodeVaultId(vaultId),
-        vaultName: vaultMeta.vaultName,
-        actions: actionsSet,
+      await db.withTransactionF(async (tran) => {
+        // Parsing VaultId
+        const nameOrId = vaultMessage.getNameOrId();
+        let vaultId = await vaultManager.getVaultId(
+          nameOrId as VaultName,
+          tran,
+        );
+        vaultId = vaultId ?? validationUtils.parseVaultId(nameOrId);
+        // Parsing NodeId
+        const nodeId = validationUtils.parseNodeId(nodeMessage.getNodeId());
+        // Parsing actions
+        const actions = vaultsPermissionsMessage
+          .getVaultPermissionsList()
+          .map((vaultAction) => validationUtils.parseVaultAction(vaultAction));
+        // Checking if vault exists
+        const vaultMeta = await vaultManager.getVaultMeta(vaultId, tran);
+        if (!vaultMeta) throw new vaultsErrors.ErrorVaultsVaultUndefined();
+        // Setting permissions
+        const actionsSet: VaultActions = {};
+        await gestaltGraph.setGestaltActionByNode(nodeId, 'scan', tran);
+        for (const action of actions) {
+          await acl.setVaultAction(vaultId, nodeId, action, tran);
+          actionsSet[action] = null;
+        }
+        // Sending notification
+        await notificationsManager.sendNotification(nodeId, {
+          type: 'VaultShare',
+          vaultId: vaultsUtils.encodeVaultId(vaultId),
+          vaultName: vaultMeta.vaultName,
+          actions: actionsSet,
+        });
       });
       // Formatting response
       const response = new utilsPB.StatusMessage().setSuccess(true);
