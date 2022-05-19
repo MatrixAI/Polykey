@@ -1,4 +1,5 @@
 import type * as grpc from '@grpc/grpc-js';
+import type { DB } from '@matrixai/db';
 import type { Authenticate } from '../types';
 import type IdentitiesManager from '../../identities/IdentitiesManager';
 import type { IdentityId, ProviderId } from '../../identities/types';
@@ -13,10 +14,12 @@ import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 function identitiesTokenDelete({
   authenticate,
   identitiesManager,
+  db,
   logger,
 }: {
   authenticate: Authenticate;
   identitiesManager: IdentitiesManager;
+  db: DB;
   logger: Logger;
 }) {
   return async (
@@ -46,7 +49,9 @@ function identitiesTokenDelete({
           identityId: call.request.getIdentityId(),
         },
       );
-      await identitiesManager.delToken(providerId, identityId);
+      await db.withTransactionF(async (tran) =>
+        identitiesManager.delToken(providerId, identityId, tran),
+      );
       callback(null, response);
       return;
     } catch (e) {

@@ -153,15 +153,20 @@ async function retryAuthentication<T>(
 }
 
 function remoteErrorCause(e: any): [any, number] {
-  let errorCause = e
+  let errorCause = e;
   let depth = 0;
-  while(e instanceof errors.ErrorPolykeyRemote) {
+  while (e instanceof errors.ErrorPolykeyRemote) {
     errorCause = e.cause;
-    depth++
+    depth++;
   }
   return [errorCause, depth];
 }
 
-export { verboseToLogLevel, outputFormatter, retryAuthentication, remoteErrorCause };
+export {
+  verboseToLogLevel,
+  outputFormatter,
+  retryAuthentication,
+  remoteErrorCause,
+};
 
 export type { OutputObject };

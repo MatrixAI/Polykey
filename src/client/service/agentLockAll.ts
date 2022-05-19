@@ -1,5 +1,5 @@
-import type { DB } from '@matrixai/db';
 import type * as grpc from '@grpc/grpc-js';
+import type { DB } from '@matrixai/db';
 import type { Authenticate } from '../types';
 import type { SessionManager } from '../../sessions';
 import type Logger from '@matrixai/logger';
@@ -25,9 +25,8 @@ function agentLockAll({
       const response = new utilsPB.EmptyMessage();
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
-      await withF(
-        [db.transaction()],
-        async ([tran]) => await sessionManager.resetKey(tran),
+      await db.withTransactionF(
+        async (tran) => await sessionManager.resetKey(tran),
       );
       callback(null, response);
       return;

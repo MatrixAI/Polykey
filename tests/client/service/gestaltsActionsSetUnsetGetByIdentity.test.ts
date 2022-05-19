@@ -73,6 +73,7 @@ describe('gestaltsActionsByIdentity', () => {
         authenticate,
         gestaltGraph,
         logger,
+        db,
       }),
       gestaltsActionsGetByIdentity: gestaltsActionsGetByIdentity({
         authenticate,
@@ -84,6 +85,7 @@ describe('gestaltsActionsByIdentity', () => {
         authenticate,
         gestaltGraph,
         logger,
+        db,
       }),
     };
     grpcServer = new GRPCServer({ logger });

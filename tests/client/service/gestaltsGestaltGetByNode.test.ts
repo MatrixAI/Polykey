@@ -87,6 +87,7 @@ describe('gestaltsGestaltGetByNode', () => {
         authenticate,
         gestaltGraph,
         logger,
+        db,
       }),
     };
     grpcServer = new GRPCServer({ logger });

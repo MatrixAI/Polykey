@@ -227,6 +227,7 @@ describe('gestaltsGestaltTrustByIdentity', () => {
         gestaltGraph,
         discovery,
         logger,
+        db,
       }),
     };
     grpcServer = new GRPCServer({ logger });

@@ -1,4 +1,5 @@
 import type * as grpc from '@grpc/grpc-js';
+import type { DB } from '@matrixai/db';
 import type { Authenticate } from '../types';
 import type GestaltGraph from '../../gestalts/GestaltGraph';
 import type Discovery from '../../discovery/Discovery';
@@ -16,11 +17,13 @@ function gestaltsGestaltTrustByNode({
   authenticate,
   gestaltGraph,
   discovery,
+  db,
   logger,
 }: {
   authenticate: Authenticate;
   gestaltGraph: GestaltGraph;
   discovery: Discovery;
+  db: DB;
   logger: Logger;
 }) {
   return async (
@@ -46,17 +49,22 @@ function gestaltsGestaltTrustByNode({
           nodeId: call.request.getNodeId(),
         },
       );
-      // Set the node in the gestalt graph if not already
-      if ((await gestaltGraph.getGestaltByNode(nodeId)) == null) {
-        await gestaltGraph.setNode({
-          id: nodesUtils.encodeNodeId(nodeId),
-          chain: {},
-        });
-        // Queue the new node for discovery
-        await discovery.queueDiscoveryByNode(nodeId);
-      }
-      // Set notify permission
-      await gestaltGraph.setGestaltActionByNode(nodeId, 'notify');
+      await db.withTransactionF(async (tran) => {
+        // Set the node in the gestalt graph if not already
+        if ((await gestaltGraph.getGestaltByNode(nodeId, tran)) == null) {
+          await gestaltGraph.setNode(
+            {
+              id: nodesUtils.encodeNodeId(nodeId),
+              chain: {},
+            },
+            tran,
+          );
+          // Queue the new node for discovery
+          await discovery.queueDiscoveryByNode(nodeId);
+        }
+        // Set notify permission
+        await gestaltGraph.setGestaltActionByNode(nodeId, 'notify', tran);
+      });
       callback(null, response);
       return;
     } catch (e) {

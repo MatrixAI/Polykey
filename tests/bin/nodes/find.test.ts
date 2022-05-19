@@ -162,7 +162,7 @@ describe('find', () => {
     const unknownNodeId = nodesUtils.decodeNodeId(
       'vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg',
     );
-    const { exitCode, stdout, stderr } = await testBinUtils.pkStdio(
+    const { exitCode, stdout } = await testBinUtils.pkStdio(
       [
         'nodes',
         'find',

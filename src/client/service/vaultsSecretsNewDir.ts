@@ -1,3 +1,4 @@
+import type { DB } from '@matrixai/db';
 import type { Authenticate } from '../types';
 import type { VaultName } from '../../vaults/types';
 import type VaultManager from '../../vaults/VaultManager';
@@ -14,11 +15,13 @@ function vaultsSecretsNewDir({
   authenticate,
   vaultManager,
   fs,
+  db,
   logger,
 }: {
   authenticate: Authenticate;
   vaultManager: VaultManager;
   fs: FileSystem;
+  db: DB;
   logger: Logger;
 }) {
   return async (
@@ -35,11 +38,20 @@ function vaultsSecretsNewDir({
         return;
       }
       const nameOrId = vaultMessage.getNameOrId();
-      let vaultId = await vaultManager.getVaultId(nameOrId as VaultName);
-      vaultId = vaultId ?? validationUtils.parseVaultId(nameOrId);
-      const secretsPath = call.request.getSecretDirectory();
-      await vaultManager.withVaults([vaultId], async (vault) => {
-        await vaultOps.addSecretDirectory(vault, secretsPath, fs);
+      await db.withTransactionF(async (tran) => {
+        let vaultId = await vaultManager.getVaultId(
+          nameOrId as VaultName,
+          tran,
+        );
+        vaultId = vaultId ?? validationUtils.parseVaultId(nameOrId);
+        const secretsPath = call.request.getSecretDirectory();
+        await vaultManager.withVaults(
+          [vaultId],
+          async (vault) => {
+            await vaultOps.addSecretDirectory(vault, secretsPath, fs);
+          },
+          tran,
+        );
       });
       response.setSuccess(true);
       callback(null, response);

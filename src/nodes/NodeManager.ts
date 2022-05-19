@@ -306,13 +306,14 @@ class NodeManager {
   /**
    * Retrieves the node Address from the NodeGraph
    * @param nodeId node ID of the target node
+   * @param tran
    * @returns Node Address of the target node
    */
   public async getNodeAddress(
     nodeId: NodeId,
+    tran?: DBTransaction,
   ): Promise<NodeAddress | undefined> {
-    // FIXME: use tran
-    return await this.nodeGraph.getNode(nodeId);
+    return await this.nodeGraph.getNode(nodeId, tran);
   }
 
   /**
@@ -331,9 +332,11 @@ class NodeManager {
   /**
    * Gets the specified bucket from the NodeGraph
    */
-  public async getBucket(bucketIndex: number): Promise<NodeBucket | undefined> {
-    // FIXME: use tran
-    return await this.nodeGraph.getBucket(bucketIndex);
+  public async getBucket(
+    bucketIndex: number,
+    tran?: DBTransaction,
+  ): Promise<NodeBucket | undefined> {
+    return await this.nodeGraph.getBucket(bucketIndex, tran);
   }
 
   /**
@@ -342,9 +345,9 @@ class NodeManager {
   public async setNode(
     nodeId: NodeId,
     nodeAddress: NodeAddress,
+    tran?: DBTransaction,
   ): Promise<void> {
-    // FIXME: use tran
-    return await this.nodeGraph.setNode(nodeId, nodeAddress);
+    return await this.nodeGraph.setNode(nodeId, nodeAddress, tran);
   }
 
   /**
@@ -353,34 +356,31 @@ class NodeManager {
   public async updateNode(
     nodeId: NodeId,
     nodeAddress?: NodeAddress,
+    tran?: DBTransaction,
   ): Promise<void> {
-    // FIXME: use tran
-    return await this.nodeGraph.updateNode(nodeId, nodeAddress);
+    return await this.nodeGraph.updateNode(nodeId, nodeAddress, tran);
   }
 
   /**
    * Removes a node from the NodeGraph
    */
-  public async unsetNode(nodeId: NodeId): Promise<void> {
-    // FIXME: use tran
-    return await this.nodeGraph.unsetNode(nodeId);
+  public async unsetNode(nodeId: NodeId, tran?: DBTransaction): Promise<void> {
+    return await this.nodeGraph.unsetNode(nodeId, tran);
   }
 
   /**
    * Gets all buckets from the NodeGraph
    */
-  public async getAllBuckets(): Promise<Array<NodeBucket>> {
-    // FIXME: use tran
-    return await this.nodeGraph.getAllBuckets();
+  public async getAllBuckets(tran?: DBTransaction): Promise<Array<NodeBucket>> {
+    return await this.nodeGraph.getAllBuckets(tran);
   }
 
   /**
    * To be called on key renewal. Re-orders all nodes in all buckets with respect
    * to the new node ID.
    */
-  public async refreshBuckets(): Promise<void> {
-    // FIXME: use tran
-    return await this.nodeGraph.refreshBuckets();
+  public async refreshBuckets(tran?: DBTransaction): Promise<void> {
+    return await this.nodeGraph.refreshBuckets(tran);
   }
 }
 

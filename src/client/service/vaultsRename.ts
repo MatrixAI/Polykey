@@ -1,3 +1,4 @@
+import type { DB } from '@matrixai/db';
 import type { Authenticate } from '../types';
 import type { VaultName } from '../../vaults/types';
 import type VaultManager from '../../vaults/VaultManager';
@@ -11,10 +12,12 @@ import * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
 function vaultsRename({
   authenticate,
   vaultManager,
+  db,
   logger,
 }: {
   authenticate: Authenticate;
   vaultManager: VaultManager;
+  db: DB;
   logger: Logger;
 }) {
   return async (
@@ -31,11 +34,16 @@ function vaultsRename({
         return;
       }
       const nameOrId = vaultMessage.getNameOrId();
-      let vaultId = await vaultManager.getVaultId(nameOrId as VaultName);
-      vaultId = vaultId ?? validationUtils.parseVaultId(nameOrId);
-      const newName = call.request.getNewName() as VaultName;
-      await vaultManager.renameVault(vaultId, newName);
-      response.setNameOrId(vaultsUtils.encodeVaultId(vaultId));
+      await db.withTransactionF(async (tran) => {
+        let vaultId = await vaultManager.getVaultId(
+          nameOrId as VaultName,
+          tran,
+        );
+        vaultId = vaultId ?? validationUtils.parseVaultId(nameOrId);
+        const newName = call.request.getNewName() as VaultName;
+        await vaultManager.renameVault(vaultId, newName);
+        response.setNameOrId(vaultsUtils.encodeVaultId(vaultId));
+      });
       callback(null, response);
       return;
     } catch (e) {

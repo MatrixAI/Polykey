@@ -4,7 +4,6 @@ import Logger, { StreamHandler } from '@matrixai/logger';
 import * as binUtils from './utils';
 import * as binOptions from './utils/options';
 import * as binErrors from './errors';
-import * as errors from '../errors';
 import grpcSetLogger from '../grpc/utils/setLogger';
 
 /**
