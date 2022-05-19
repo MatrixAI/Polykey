@@ -1,4 +1,5 @@
 import type * as grpc from '@grpc/grpc-js';
+import type { DB } from '@matrixai/db';
 import type { Authenticate } from '../types';
 import type VaultManager from '../../vaults/VaultManager';
 import type { VaultName } from '../../vaults/types';
@@ -17,11 +18,13 @@ function vaultsPermissionGet({
   authenticate,
   vaultManager,
   acl,
+  db,
   logger,
 }: {
   authenticate: Authenticate;
   vaultManager: VaultManager;
   acl: ACL;
+  db: DB;
   logger: Logger;
 }) {
   return async (
@@ -34,11 +37,17 @@ function vaultsPermissionGet({
       call.sendMetadata(metadata);
       // Getting vaultId
       const nameOrId = vaultMessage.getNameOrId();
-      let vaultId = await vaultManager.getVaultId(nameOrId as VaultName);
-      vaultId = vaultId ?? validationUtils.parseVaultId(nameOrId);
-
-      // Getting permissions
-      const rawPermissions = await acl.getVaultPerm(vaultId);
+      const [rawPermissions, vaultId] = await db.withTransactionF(
+        async (tran) => {
+          let vaultId = await vaultManager.getVaultId(
+            nameOrId as VaultName,
+            tran,
+          );
+          vaultId = vaultId ?? validationUtils.parseVaultId(nameOrId);
+          // Getting permissions
+          return [await acl.getVaultPerm(vaultId, tran), vaultId];
+        },
+      );
       const permissionList: Record<NodeIdEncoded, VaultActions> = {};
       // Getting the relevant information
       for (const nodeId in rawPermissions) {

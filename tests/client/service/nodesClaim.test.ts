@@ -161,6 +161,7 @@ describe('nodesClaim', () => {
         nodeManager,
         notificationsManager,
         logger,
+        db,
       }),
     };
     grpcServer = new GRPCServer({ logger });

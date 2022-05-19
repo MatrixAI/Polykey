@@ -1,3 +1,4 @@
+import type { DB } from '@matrixai/db';
 import type { Authenticate } from '../types';
 import type { VaultName } from '../../vaults/types';
 import type VaultManager from '../../vaults/VaultManager';
@@ -11,10 +12,12 @@ import * as validationUtils from '../../validation/utils';
 function vaultsLog({
   authenticate,
   vaultManager,
+  db,
   logger,
 }: {
   authenticate: Authenticate;
   vaultManager: VaultManager;
+  db: DB;
   logger: Logger;
 }) {
   return async (
@@ -32,14 +35,23 @@ function vaultsLog({
         return;
       }
       const nameOrId = vaultMessage.getNameOrId();
-      let vaultId = await vaultManager.getVaultId(nameOrId as VaultName);
-      vaultId = vaultId ?? validationUtils.parseVaultId(nameOrId);
-      // Getting the log
-      const depth = vaultsLogMessage.getLogDepth();
-      let commitId: string | undefined = vaultsLogMessage.getCommitId();
-      commitId = commitId ? commitId : undefined;
-      const log = await vaultManager.withVaults([vaultId], async (vault) => {
-        return await vault.log(commitId, depth);
+      const log = await db.withTransactionF(async (tran) => {
+        let vaultId = await vaultManager.getVaultId(
+          nameOrId as VaultName,
+          tran,
+        );
+        vaultId = vaultId ?? validationUtils.parseVaultId(nameOrId);
+        // Getting the log
+        const depth = vaultsLogMessage.getLogDepth();
+        let commitId: string | undefined = vaultsLogMessage.getCommitId();
+        commitId = commitId ? commitId : undefined;
+        return await vaultManager.withVaults(
+          [vaultId],
+          async (vault) => {
+            return await vault.log(commitId, depth);
+          },
+          tran,
+        );
       });
       const vaultsLogEntryMessage = new vaultsPB.LogEntry();
       for (const entry of log) {

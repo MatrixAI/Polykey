@@ -1,4 +1,5 @@
 import type * as grpc from '@grpc/grpc-js';
+import type { DB } from '@matrixai/db';
 import type { Authenticate } from '../types';
 import type { NodeId } from '../../nodes/types';
 import type GestaltGraph from '../../gestalts/GestaltGraph';
@@ -13,10 +14,12 @@ import * as permissionsPB from '../../proto/js/polykey/v1/permissions/permission
 function gestaltsActionsGetByNode({
   authenticate,
   gestaltGraph,
+  db,
   logger,
 }: {
   authenticate: Authenticate;
   gestaltGraph: GestaltGraph;
+  db: DB;
   logger: Logger;
 }) {
   return async (
@@ -38,7 +41,9 @@ function gestaltsActionsGetByNode({
           nodeId: call.request.getNodeId(),
         },
       );
-      const result = await gestaltGraph.getGestaltActionsByNode(nodeId);
+      const result = await db.withTransactionF(async (tran) =>
+        gestaltGraph.getGestaltActionsByNode(nodeId, tran),
+      );
       if (result == null) {
         // Node doesn't exist, so no permissions
         response.setActionList([]);

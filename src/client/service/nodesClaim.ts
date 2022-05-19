@@ -1,4 +1,5 @@
 import type * as grpc from '@grpc/grpc-js';
+import type { DB } from '@matrixai/db';
 import type { Authenticate } from '../types';
 import type NodeManager from '../../nodes/NodeManager';
 import type { NodeId } from '../../nodes/types';
@@ -20,11 +21,13 @@ function nodesClaim({
   authenticate,
   nodeManager,
   notificationsManager,
+  db,
   logger,
 }: {
   authenticate: Authenticate;
   nodeManager: NodeManager;
   notificationsManager: NotificationsManager;
+  db: DB;
   logger: Logger;
 }) {
   return async (
@@ -50,21 +53,24 @@ function nodesClaim({
           nodeId: call.request.getNodeId(),
         },
       );
-      const gestaltInvite = await notificationsManager.findGestaltInvite(
-        nodeId,
-      );
-      // Check first whether there is an existing gestalt invite from the remote node
-      // or if we want to force an invitation rather than a claim
-      if (gestaltInvite === undefined || call.request.getForceInvite()) {
-        await notificationsManager.sendNotification(nodeId, {
-          type: 'GestaltInvite',
-        });
-        response.setSuccess(false);
-      } else {
-        // There is an existing invitation, and we want to claim the node
-        await nodeManager.claimNode(nodeId);
-        response.setSuccess(true);
-      }
+      await db.withTransactionF(async (tran) => {
+        const gestaltInvite = await notificationsManager.findGestaltInvite(
+          nodeId,
+          tran,
+        );
+        // Check first whether there is an existing gestalt invite from the remote node
+        // or if we want to force an invitation rather than a claim
+        if (gestaltInvite === undefined || call.request.getForceInvite()) {
+          await notificationsManager.sendNotification(nodeId, {
+            type: 'GestaltInvite',
+          });
+          response.setSuccess(false);
+        } else {
+          // There is an existing invitation, and we want to claim the node
+          await nodeManager.claimNode(nodeId, tran);
+          response.setSuccess(true);
+        }
+      });
       callback(null, response);
       return;
     } catch (e) {

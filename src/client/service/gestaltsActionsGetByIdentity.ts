@@ -1,5 +1,6 @@
 import type Logger from '@matrixai/logger';
 import type * as grpc from '@grpc/grpc-js';
+import type { DB } from '@matrixai/db';
 import type { Authenticate } from '../types';
 import type GestaltGraph from '../../gestalts/GestaltGraph';
 import type { IdentityId, ProviderId } from '../../identities/types';
@@ -14,10 +15,12 @@ import * as permissionsPB from '../../proto/js/polykey/v1/permissions/permission
 function gestaltsActionsGetByIdentity({
   authenticate,
   gestaltGraph,
+  db,
   logger,
 }: {
   authenticate: Authenticate;
   gestaltGraph: GestaltGraph;
+  db: DB;
   logger: Logger;
 }) {
   return async (

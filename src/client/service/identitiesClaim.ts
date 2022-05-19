@@ -1,4 +1,5 @@
 import type * as grpc from '@grpc/grpc-js';
+import type { DB } from '@matrixai/db';
 import type { Authenticate } from '../types';
 import type KeyManager from '../../keys/KeyManager';
 import type Sigchain from '../../sigchain/Sigchain';
@@ -22,12 +23,14 @@ function identitiesClaim({
   identitiesManager,
   sigchain,
   keyManager,
+  db,
   logger,
 }: {
   authenticate: Authenticate;
   identitiesManager: IdentitiesManager;
   sigchain: Sigchain;
   keyManager: KeyManager;
+  db: DB;
   logger: Logger;
 }) {
   return async (
@@ -67,12 +70,17 @@ function identitiesClaim({
         throw new identitiesErrors.ErrorProviderUnauthenticated();
       }
       // Create identity claim on our node
-      const [, claim] = await sigchain.addClaim({
-        type: 'identity',
-        node: nodesUtils.encodeNodeId(keyManager.getNodeId()),
-        provider: providerId,
-        identity: identityId,
-      });
+      const [, claim] = await db.withTransactionF(async (tran) =>
+        sigchain.addClaim(
+          {
+            type: 'identity',
+            node: nodesUtils.encodeNodeId(keyManager.getNodeId()),
+            provider: providerId,
+            identity: identityId,
+          },
+          tran,
+        ),
+      );
       // Publish claim on identity
       const claimDecoded = claimsUtils.decodeClaim(claim);
       const claimData = await provider.publishClaim(identityId, claimDecoded);
