@@ -17,8 +17,7 @@ class ErrorPolykey<T> extends AbstractError<T> {
       typeof json.data.message !== 'string' ||
       isNaN(Date.parse(json.data.timestamp)) ||
       typeof json.data.data !== 'object' ||
-      typeof json.data.exitCode !== 'string' ||
-      !('cause' in json.data) ||
+      typeof json.data.exitCode !== 'number' ||
       ('stack' in json.data && typeof json.data.stack !== 'string')
     ) {
       throw new TypeError(`Cannot decode JSON to ${this.name}`);
