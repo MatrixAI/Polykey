@@ -91,9 +91,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public agentStatus(...args) {
     return grpcUtils.promisifyUnaryCall<agentPB.InfoMessage>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.agentStatus,
     )(...args);
   }
@@ -102,9 +104,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public agentStop(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.agentStop,
     )(...args);
   }
@@ -113,9 +117,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public agentUnlock(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.agentUnlock,
     )(...args);
   }
@@ -124,9 +130,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public agentLockAll(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.agentLockAll,
     )(...args);
   }
@@ -140,9 +148,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   > {
     return grpcUtils.promisifyReadableStreamCall<vaultsPB.List>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.vaultsList,
     )(...args);
   }
@@ -151,9 +161,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public vaultsCreate(...args) {
     return grpcUtils.promisifyUnaryCall<vaultsPB.Vault>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.vaultsCreate,
     )(...args);
   }
@@ -162,9 +174,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public vaultsRename(...args) {
     return grpcUtils.promisifyUnaryCall<vaultsPB.Vault>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.vaultsRename,
     )(...args);
   }
@@ -173,9 +187,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public vaultsDelete(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.StatusMessage>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.vaultsDelete,
     )(...args);
   }
@@ -184,9 +200,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public vaultsClone(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.StatusMessage>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.vaultsClone,
     )(...args);
   }
@@ -195,9 +213,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public vaultsPull(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.StatusMessage>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.vaultsPull,
     )(...args);
   }
@@ -211,9 +231,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   > {
     return grpcUtils.promisifyReadableStreamCall<vaultsPB.List>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.vaultsScan,
     )(...args);
   }
@@ -222,9 +244,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public vaultsPermissionGet(...args) {
     return grpcUtils.promisifyReadableStreamCall<vaultsPB.Permissions>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.vaultsPermissionGet,
     )(...args);
   }
@@ -233,9 +257,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public vaultsPermissionSet(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.StatusMessage>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.vaultsPermissionSet,
     )(...args);
   }
@@ -244,9 +270,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public vaultsPermissionUnset(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.StatusMessage>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.vaultsPermissionUnset,
     )(...args);
   }
@@ -260,9 +288,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   > {
     return grpcUtils.promisifyReadableStreamCall<secretsPB.Secret>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.vaultsSecretsList,
     )(...args);
   }
@@ -271,9 +301,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public vaultsSecretsMkdir(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.vaultsSecretsMkdir,
     )(...args);
   }
@@ -282,9 +314,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public vaultsSecretsDelete(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.StatusMessage>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.vaultsSecretsDelete,
     )(...args);
   }
@@ -293,9 +327,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public vaultsSecretsEdit(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.StatusMessage>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.vaultsSecretsEdit,
     )(...args);
   }
@@ -304,9 +340,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public vaultsSecretsGet(...args) {
     return grpcUtils.promisifyUnaryCall<secretsPB.Secret>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.vaultsSecretsGet,
     )(...args);
   }
@@ -315,9 +353,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public vaultsSecretsStat(...args) {
     return grpcUtils.promisifyUnaryCall<secretsPB.Stat>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.vaultsSecretsStat,
     )(...args);
   }
@@ -326,9 +366,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public vaultsSecretsRename(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.StatusMessage>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.vaultsSecretsRename,
     )(...args);
   }
@@ -337,9 +379,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public vaultsSecretsNew(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.StatusMessage>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.vaultsSecretsNew,
     )(...args);
   }
@@ -348,9 +392,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public vaultsSecretsNewDir(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.StatusMessage>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.vaultsSecretsNewDir,
     )(...args);
   }
@@ -359,9 +405,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public vaultsVersion(...args) {
     return grpcUtils.promisifyUnaryCall<vaultsPB.VersionResult>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.vaultsVersion,
     )(...args);
   }
@@ -375,9 +423,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   > {
     return grpcUtils.promisifyReadableStreamCall<vaultsPB.LogEntry>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.vaultsLog,
     )(...args);
   }
@@ -386,9 +436,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public keysKeyPairRoot(...args) {
     return grpcUtils.promisifyUnaryCall<keysPB.KeyPair>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.keysKeyPairRoot,
     )(...args);
   }
@@ -397,9 +449,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public keysKeyPairReset(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.keysKeyPairReset,
     )(...args);
   }
@@ -408,9 +462,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public keysKeyPairRenew(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.keysKeyPairRenew,
     )(...args);
   }
@@ -419,9 +475,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public keysEncrypt(...args) {
     return grpcUtils.promisifyUnaryCall<keysPB.Crypto>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.keysEncrypt,
     )(...args);
   }
@@ -430,9 +488,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public keysDecrypt(...args) {
     return grpcUtils.promisifyUnaryCall<keysPB.Crypto>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.keysDecrypt,
     )(...args);
   }
@@ -441,9 +501,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public keysSign(...args) {
     return grpcUtils.promisifyUnaryCall<keysPB.Crypto>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.keysSign,
     )(...args);
   }
@@ -452,9 +514,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public keysVerify(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.StatusMessage>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.keysVerify,
     )(...args);
   }
@@ -463,9 +527,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public keysPasswordChange(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.keysPasswordChange,
     )(...args);
   }
@@ -474,9 +540,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public keysCertsGet(...args) {
     return grpcUtils.promisifyUnaryCall<keysPB.Certificate>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.keysCertsGet,
     )(...args);
   }
@@ -490,9 +558,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   > {
     return grpcUtils.promisifyReadableStreamCall<keysPB.Certificate>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.keysCertsChainGet,
     )(...args);
   }
@@ -506,9 +576,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   > {
     return grpcUtils.promisifyReadableStreamCall<gestaltsPB.Gestalt>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.gestaltsGestaltList,
     )(...args);
   }
@@ -517,9 +589,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public gestaltsGestaltGetByIdentity(...args) {
     return grpcUtils.promisifyUnaryCall<gestaltsPB.Graph>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.gestaltsGestaltGetByIdentity,
     )(...args);
   }
@@ -528,9 +602,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public gestaltsGestaltGetByNode(...args) {
     return grpcUtils.promisifyUnaryCall<gestaltsPB.Graph>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.gestaltsGestaltGetByNode,
     )(...args);
   }
@@ -539,9 +615,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public gestaltsDiscoveryByNode(...args) {
     return grpcUtils.promisifyUnaryCall<gestaltsPB.Gestalt>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.gestaltsDiscoveryByNode,
     )(...args);
   }
@@ -550,9 +628,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public gestaltsDiscoveryByIdentity(...args) {
     return grpcUtils.promisifyUnaryCall<gestaltsPB.Gestalt>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.gestaltsDiscoveryByIdentity,
     )(...args);
   }
@@ -561,9 +641,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public gestaltsActionsGetByNode(...args) {
     return grpcUtils.promisifyUnaryCall<permissionsPB.Actions>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.gestaltsActionsGetByNode,
     )(...args);
   }
@@ -572,9 +654,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public gestaltsActionsGetByIdentity(...args) {
     return grpcUtils.promisifyUnaryCall<permissionsPB.Actions>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.gestaltsActionsGetByIdentity,
     )(...args);
   }
@@ -583,9 +667,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public gestaltsActionsSetByNode(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.gestaltsActionsSetByNode,
     )(...args);
   }
@@ -594,9 +680,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public gestaltsActionsSetByIdentity(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.gestaltsActionsSetByIdentity,
     )(...args);
   }
@@ -605,9 +693,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public gestaltsActionsUnsetByNode(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.gestaltsActionsUnsetByNode,
     )(...args);
   }
@@ -616,9 +706,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public gestaltsActionsUnsetByIdentity(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.gestaltsActionsUnsetByIdentity,
     )(...args);
   }
@@ -627,9 +719,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public gestaltsGestaltTrustByNode(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.gestaltsGestaltTrustByNode,
     )(...args);
   }
@@ -638,9 +732,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public gestaltsGestaltTrustByIdentity(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.gestaltsGestaltTrustByIdentity,
     )(...args);
   }
@@ -649,9 +745,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public identitiesTokenPut(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.identitiesTokenPut,
     )(...args);
   }
@@ -660,9 +758,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public identitiesTokenGet(...args) {
     return grpcUtils.promisifyUnaryCall<identitiesPB.Token>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.identitiesTokenGet,
     )(...args);
   }
@@ -671,9 +771,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public identitiesTokenDelete(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.identitiesTokenDelete,
     )(...args);
   }
@@ -682,9 +784,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public identitiesProvidersList(...args) {
     return grpcUtils.promisifyUnaryCall<identitiesPB.Provider>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.identitiesProvidersList,
     )(...args);
   }
@@ -693,9 +797,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public nodesAdd(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.nodesAdd,
     )(...args);
   }
@@ -704,9 +810,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public nodesPing(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.StatusMessage>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.nodesPing,
     )(...args);
   }
@@ -715,9 +823,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public nodesClaim(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.StatusMessage>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.nodesClaim,
     )(...args);
   }
@@ -726,9 +836,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public nodesFind(...args) {
     return grpcUtils.promisifyUnaryCall<nodesPB.NodeAddress>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.nodesFind,
     )(...args);
   }
@@ -737,9 +849,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public identitiesAuthenticate(...args) {
     return grpcUtils.promisifyReadableStreamCall<identitiesPB.AuthenticationProcess>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.identitiesAuthenticate,
     )(...args);
   }
@@ -748,9 +862,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public identitiesInfoConnectedGet(...args) {
     return grpcUtils.promisifyReadableStreamCall<identitiesPB.Info>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.identitiesInfoConnectedGet,
     )(...args);
   }
@@ -759,9 +875,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public identitiesInfoGet(...args) {
     return grpcUtils.promisifyReadableStreamCall<identitiesPB.Info>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.identitiesInfoGet,
     )(...args);
   }
@@ -770,9 +888,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public identitiesClaim(...args) {
     return grpcUtils.promisifyUnaryCall<identitiesPB.Claim>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.identitiesClaim,
     )(...args);
   }
@@ -781,9 +901,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public identitiesAuthenticatedGet(...args) {
     return grpcUtils.promisifyReadableStreamCall<identitiesPB.Provider>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.identitiesAuthenticatedGet,
     )(...args);
   }
@@ -792,9 +914,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public notificationsSend(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.notificationsSend,
     )(...args);
   }
@@ -803,9 +927,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public notificationsRead(...args) {
     return grpcUtils.promisifyUnaryCall<notificationsPB.List>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.notificationsRead,
     )(...args);
   }
@@ -814,9 +940,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   public notificationsClear(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
       this.client,
-      this.nodeId,
-      this.host,
-      this.port,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+      },
       this.client.notificationsClear,
     )(...args);
   }
