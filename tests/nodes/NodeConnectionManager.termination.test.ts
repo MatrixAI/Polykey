@@ -377,6 +377,8 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
 
       // @ts-ignore: kidnapping connection map
       const connections = nodeConnectionManager.connections;
+      // @ts-ignore: kidnapping connection map
+      const connectionLocks = nodeConnectionManager.connectionLocks;
 
       // Connections should be empty
       expect(connections.size).toBe(0);
@@ -395,7 +397,7 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
       const connAndLock = connections.get(
         agentNodeId.toString() as NodeIdString,
       );
-      expect(connAndLock?.lock.isLocked()).toBe(false);
+      expect(connectionLocks.isLocked(agentNodeId.toString() as NodeIdString)).toBe(false);
       if (firstConnection != null) {
         expect(firstConnection[destroyed]).toBe(true);
       }
@@ -433,6 +435,8 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
 
       // @ts-ignore: kidnapping connection map
       const connections = nodeConnectionManager.connections;
+      // @ts-ignore: kidnapping connection map
+      const connectionLocks = nodeConnectionManager.connectionLocks;
 
       // Connections should be empty
       expect(connections.size).toBe(0);
@@ -464,11 +468,11 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
       await expect(withConnectionP).rejects.toThrow();
 
       // Connection should be removed
-      expect(connections.size).toBe(1);
+      expect(connections.size).toBe(0);
       const connAndLock = connections.get(
         agentNodeId.toString() as NodeIdString,
       );
-      expect(connAndLock?.lock.isLocked()).toBe(false);
+      expect(connectionLocks.isLocked(agentNodeId.toString() as NodeIdString)).toBe(false);
       if (firstConnection != null) {
         expect(firstConnection[destroyed]).toBe(true);
       }
@@ -511,6 +515,8 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
 
       // @ts-ignore: kidnapping connection map
       const connections = nodeConnectionManager.connections;
+      // @ts-ignore: kidnapping connection map
+      const connectionLocks = nodeConnectionManager.connectionLocks;
 
       // Connections should be empty
       expect(connections.size).toBe(0);
@@ -540,11 +546,11 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
       await expect(responseP).rejects.toThrow();
 
       // Connection should be removed
-      expect(connections.size).toBe(1);
+      expect(connections.size).toBe(0);
       const connAndLock = connections.get(
         agentNodeId.toString() as NodeIdString,
       );
-      expect(connAndLock?.lock.isLocked()).toBe(false);
+      expect(connectionLocks.isLocked(agentNodeId.toString() as NodeIdString)).toBe(false);
       if (firstConnection != null) {
         expect(firstConnection[destroyed]).toBe(true);
       }
@@ -582,6 +588,8 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
 
       // @ts-ignore: kidnapping connection map
       const connections = nodeConnectionManager.connections;
+      // @ts-ignore: kidnapping connection map
+      const connectionLocks = nodeConnectionManager.connectionLocks;
 
       // Connections should be empty
       expect(connections.size).toBe(0);
@@ -616,11 +624,11 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
       }).rejects.toThrow();
 
       // Connection should be removed
-      expect(connections.size).toBe(1);
+      expect(connections.size).toBe(0);
       const connAndLock = connections.get(
         agentNodeId.toString() as NodeIdString,
       );
-      expect(connAndLock?.lock.isLocked()).toBe(false);
+      expect(connectionLocks.isLocked(agentNodeId.toString() as NodeIdString)).toBe(false);
       if (firstConnection != null) {
         expect(firstConnection[destroyed]).toBe(true);
       }
@@ -658,6 +666,8 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
 
       // @ts-ignore: kidnapping connection map
       const connections = nodeConnectionManager.connections;
+      // @ts-ignore: kidnapping connection map
+      const connectionLocks = nodeConnectionManager.connectionLocks;
 
       // Connections should be empty
       expect(connections.size).toBe(0);
@@ -696,7 +706,7 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
       const connAndLock = connections.get(
         agentNodeId.toString() as NodeIdString,
       );
-      expect(connAndLock?.lock.isLocked()).toBe(false);
+      expect(connectionLocks.isLocked(agentNodeId.toString() as NodeIdString)).toBe(false);
       if (firstConnection != null) {
         expect(firstConnection[destroyed]).toBe(true);
       }
@@ -734,6 +744,8 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
 
       // @ts-ignore: kidnapping connection map
       const connections = nodeConnectionManager.connections;
+      // @ts-ignore: kidnapping connection map
+      const connectionLocks = nodeConnectionManager.connectionLocks;
 
       // Connections should be empty
       expect(connections.size).toBe(0);
@@ -766,7 +778,7 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
       const connAndLock = connections.get(
         agentNodeId.toString() as NodeIdString,
       );
-      expect(connAndLock?.lock.isLocked()).toBe(false);
+      expect(connectionLocks.isLocked(agentNodeId.toString() as NodeIdString)).toBe(false);
       if (firstConnection != null) {
         expect(firstConnection[destroyed]).toBe(true);
       }

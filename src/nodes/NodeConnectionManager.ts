@@ -1,23 +1,17 @@
 import type { ResourceAcquire } from '@matrixai/resources';
+import { withF } from '@matrixai/resources';
 import type KeyManager from '../keys/KeyManager';
 import type Proxy from '../network/Proxy';
 import type { Host, Hostname, Port } from '../network/types';
 import type { Timer } from '../types';
 import type NodeGraph from './NodeGraph';
-import type {
-  NodeId,
-  NodeAddress,
-  NodeData,
-  SeedNodes,
-  NodeIdString,
-} from './types';
+import type { NodeAddress, NodeData, NodeId, NodeIdString, SeedNodes } from './types';
 import type { DBTransaction } from '@matrixai/db';
 import Logger from '@matrixai/logger';
-import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
+import { ready, StartStop } from '@matrixai/async-init/dist/StartStop';
 import { IdInternal } from '@matrixai/id';
 import { status } from '@matrixai/async-init';
-import { withF } from '@matrixai/resources';
-import { RWLockWriter } from '@matrixai/async-locks';
+import { LockBox, RWLockWriter } from '@matrixai/async-locks';
 import NodeConnection from './NodeConnection';
 import * as nodesUtils from './utils';
 import * as nodesErrors from './errors';
@@ -27,18 +21,18 @@ import * as networkUtils from '../network/utils';
 import * as agentErrors from '../agent/errors';
 import * as grpcErrors from '../grpc/errors';
 import * as nodesPB from '../proto/js/polykey/v1/nodes/nodes_pb';
+import { never } from '../utils';
 
-type ConnectionAndLock = {
-  connection?: NodeConnection<GRPCClientAgent>;
-  timer?: NodeJS.Timer;
-  lock: RWLockWriter;
+type ConnectionAndTimer = {
+  connection: NodeConnection<GRPCClientAgent>;
+  timer: NodeJS.Timer;
 };
 
 interface NodeConnectionManager extends StartStop {}
 @StartStop()
 class NodeConnectionManager {
   /**
-   * Time used to estalish `NodeConnection`
+   * Time used to establish `NodeConnection`
    */
   public readonly connConnectTime: number;
 
@@ -48,7 +42,7 @@ class NodeConnectionManager {
   public readonly connTimeoutTime: number;
   /**
    * Alpha constant for kademlia
-   * The number of closest nodes to contact initially
+   * The number of the closest nodes to contact initially
    */
   public readonly initialClosestNodes: number;
 
@@ -67,7 +61,8 @@ class NodeConnectionManager {
    * A nodeIdString is used for the key here since
    * NodeIds can't be used to properly retrieve a value from the map.
    */
-  protected connections: Map<NodeIdString, ConnectionAndLock> = new Map();
+  protected connections: Map<NodeIdString, ConnectionAndTimer> = new Map();
+  protected connectionLocks: LockBox<RWLockWriter> = new LockBox();
 
   public constructor({
     keyManager,
@@ -119,7 +114,7 @@ class NodeConnectionManager {
   }
 
   /**
-   * For usage with withF, to acquire a connection in a
+   * For usage with withF, to acquire a connection
    * This unique acquire function structure of returning the ResourceAcquire
    * itself is such that we can pass targetNodeId as a parameter (as opposed to
    * an acquire function with no parameters).
@@ -131,11 +126,11 @@ class NodeConnectionManager {
     targetNodeId: NodeId,
   ): Promise<ResourceAcquire<NodeConnection<GRPCClientAgent>>> {
     return async () => {
-      const connAndLock = await this.getConnection(targetNodeId);
+      const { connection, timer } = await this.getConnection(targetNodeId);
       // Acquire the read lock and the release function
-      const [release] = await connAndLock.lock.read()();
+      const [release] = await this.connectionLocks.lock([targetNodeId.toString(), RWLockWriter, 'write'])();
       // Resetting TTL timer
-      connAndLock.timer?.refresh();
+      timer?.refresh();
       // Return tuple of [ResourceRelease, Resource]
       return [
         async (e) => {
@@ -149,7 +144,7 @@ class NodeConnectionManager {
             await this.destroyConnection(targetNodeId);
           }
         },
-        connAndLock.connection,
+        connection,
       ];
     };
   }
@@ -213,127 +208,76 @@ class NodeConnectionManager {
    * Create a connection to another node (without performing any function).
    * This is a NOOP if a connection already exists.
    * @param targetNodeId Id of node we are creating connection to
-   * @returns ConnectionAndLock that was create or exists in the connection map.
+   * @returns ConnectionAndLock that was created or exists in the connection map.
    */
   protected async getConnection(
     targetNodeId: NodeId,
-  ): Promise<ConnectionAndLock> {
+  ): Promise<ConnectionAndTimer> {
     this.logger.info(
       `Getting connection to ${nodesUtils.encodeNodeId(targetNodeId)}`,
     );
-    let connection: NodeConnection<GRPCClientAgent> | undefined;
-    let lock: RWLockWriter;
-    let connAndLock = this.connections.get(
-      targetNodeId.toString() as NodeIdString,
-    );
-    if (connAndLock != null) {
-      ({ connection, lock } = connAndLock);
-      // Connection already exists, so return
-      if (connection != null) return connAndLock;
-      // Acquire the write (creation) lock
-      return await lock.withWriteF(async () => {
-        // Once lock is released, check again if the conn now exists
-        connAndLock = this.connections.get(
-          targetNodeId.toString() as NodeIdString,
-        );
-        if (connAndLock != null && connAndLock.connection != null) {
-          this.logger.info(
-            `existing entry found for ${nodesUtils.encodeNodeId(targetNodeId)}`,
-          );
-          return connAndLock;
-        }
+    const targetNodeIdString = targetNodeId.toString() as NodeIdString;
+    return await this.connectionLocks.withF([targetNodeIdString, RWLockWriter, 'write'], async () => {
+      const connAndTimer = this.connections.get(targetNodeIdString);
+      if (connAndTimer != null) {
         this.logger.info(
-          `existing lock, creating connection to ${nodesUtils.encodeNodeId(
-            targetNodeId,
-          )}`,
+          `existing entry found for ${nodesUtils.encodeNodeId(targetNodeId)}`,
         );
-        // Creating the connection and set in map
-        return await this.establishNodeConnection(targetNodeId, lock);
-      });
-    } else {
-      lock = new RWLockWriter();
-      connAndLock = { lock };
-      this.connections.set(
-        targetNodeId.toString() as NodeIdString,
-        connAndLock,
+        return connAndTimer;
+      }
+      this.logger.info(
+        `no existing entry, creating connection to ${nodesUtils.encodeNodeId(
+          targetNodeId,
+        )}`,
       );
-      return await lock.withWriteF(async () => {
-        this.logger.info(
-          `no existing entry, creating connection to ${nodesUtils.encodeNodeId(
-            targetNodeId,
-          )}`,
-        );
-        // Creating the connection and set in map
-        return await this.establishNodeConnection(targetNodeId, lock);
+      // Creating the connection and set in map
+      const targetAddress = await this.findNode(targetNodeId);
+      // If the stored host is not a valid host (IP address),
+      // then we assume it to be a hostname
+      const targetHostname = !networkUtils.isHost(targetAddress.host)
+        ? (targetAddress.host as string as Hostname)
+        : undefined;
+      const targetHost = await networkUtils.resolveHost(targetAddress.host);
+      // Creating the destroyCallback
+      const destroyCallback = async () => {
+        // To avoid deadlock only in the case where this is called
+        // we want to check for destroying connection and read lock
+        const connAndTimer = this.connections.get(targetNodeIdString);
+        // If the connection is calling destroyCallback then it SHOULD
+        // exist in the connection map
+        if (connAndTimer == null) return;
+        // Already locked so already destroying
+        if (this.connectionLocks.isLocked(targetNodeIdString)) return;
+        // Connection is already destroying
+        if (connAndTimer?.connection?.[status] === 'destroying') return;
+        await this.destroyConnection(targetNodeId);
+      };
+      // Creating new connection
+      const newConnection = await NodeConnection.createNodeConnection({
+        targetNodeId: targetNodeId,
+        targetHost: targetHost,
+        targetHostname: targetHostname,
+        targetPort: targetAddress.port,
+        proxy: this.proxy,
+        keyManager: this.keyManager,
+        nodeConnectionManager: this,
+        destroyCallback,
+        connConnectTime: this.connConnectTime,
+        logger: this.logger.getChild(
+          `${NodeConnection.name} ${targetHost}:${targetAddress.port}`,
+        ),
+        clientFactory: async (args) =>
+          GRPCClientAgent.createGRPCClientAgent(args),
       });
-    }
-  }
+      // Creating TTL timeout
+      const timer = setTimeout(async () => {
+        await this.destroyConnection(targetNodeId);
+      }, this.connTimeoutTime);
 
-  /**
-   * Strictly a helper function for this.createConnection. Do not call this
-   * function anywhere else.
-   * To create a connection to a node, always use createConnection, or
-   * withConnection.
-   * This only adds the connection to the connection map if the connection was established.
-   * @param targetNodeId Id of node we are establishing connection to
-   * @param lock Lock associated with connection
-   * @returns ConnectionAndLock that was added to the connection map
-   */
-  protected async establishNodeConnection(
-    targetNodeId: NodeId,
-    lock: RWLockWriter,
-  ): Promise<ConnectionAndLock> {
-    const targetAddress = await this.findNode(targetNodeId);
-    // If the stored host is not a valid host (IP address), then we assume it to
-    // be a hostname
-    const targetHostname = !networkUtils.isHost(targetAddress.host)
-      ? (targetAddress.host as string as Hostname)
-      : undefined;
-    const targetHost = await networkUtils.resolveHost(targetAddress.host);
-    // Creating the destroyCallback
-    const destroyCallback = async () => {
-      // To avoid deadlock only in the case where this is called
-      // we want to check for destroying connection and read lock
-      const connAndLock = this.connections.get(
-        targetNodeId.toString() as NodeIdString,
-      );
-      // If the connection is calling destroyCallback then it SHOULD
-      // exist in the connection map
-      if (connAndLock == null) throw Error('temp eor, bad logic');
-      // Already locked so already destroying
-      if (connAndLock.lock.readerCount > 0) return;
-      const connectionStatus = connAndLock?.connection?.[status];
-      // Connection is already destroying
-      if (connectionStatus === 'destroying') return;
-      await this.destroyConnection(targetNodeId);
-    };
-    const connection = await NodeConnection.createNodeConnection({
-      targetNodeId: targetNodeId,
-      targetHost: targetHost,
-      targetHostname: targetHostname,
-      targetPort: targetAddress.port,
-      proxy: this.proxy,
-      keyManager: this.keyManager,
-      nodeConnectionManager: this,
-      destroyCallback,
-      connConnectTime: this.connConnectTime,
-      logger: this.logger.getChild(
-        `${NodeConnection.name} ${targetHost}:${targetAddress.port}`,
-      ),
-      clientFactory: async (args) =>
-        GRPCClientAgent.createGRPCClientAgent(args),
-    });
-    // Creating TTL timeout
-    const timer = setTimeout(async () => {
-      await this.destroyConnection(targetNodeId);
-    }, this.connTimeoutTime);
-    // Add it to the map of active connections
-    const connectionAndLock = { connection, lock, timer };
-    this.connections.set(
-      targetNodeId.toString() as NodeIdString,
-      connectionAndLock,
-    );
-    return connectionAndLock;
+      const newConnAndTimer: ConnectionAndTimer = {connection: newConnection, timer: timer};
+      this.connections.set(targetNodeIdString, newConnAndTimer);
+      return newConnAndTimer;
+    })
   }
 
   /**
@@ -341,22 +285,17 @@ class NodeConnectionManager {
    * @param targetNodeId Id of node we are destroying connection to
    */
   protected async destroyConnection(targetNodeId: NodeId): Promise<void> {
-    const connAndLock = this.connections.get(
-      targetNodeId.toString() as NodeIdString,
-    );
-    if (connAndLock == null) return;
-    const connection = connAndLock.connection;
-    if (connection == null) return;
-    const lock = connAndLock.lock;
-
-    // If the connection exists then we lock, destroy and remove it from the map
-    await lock.withWriteF(async () => {
-      // Destroying connection
-      await connection.destroy();
+    const targetNodeIdString = targetNodeId.toString() as NodeIdString;
+    return await this.connectionLocks.withF(
+      [targetNodeIdString, RWLockWriter, 'write'],
+      async () => {
+      const connAndTimer = this.connections.get(targetNodeIdString);
+      if (connAndTimer?.connection == null) return;
+      await connAndTimer.connection.destroy();
       // Destroying TTL timer
-      if (connAndLock.timer != null) clearTimeout(connAndLock.timer);
+      if (connAndTimer.timer != null) clearTimeout(connAndTimer.timer);
       // Updating the connection map
-      this.connections.set(targetNodeId.toString() as NodeIdString, { lock });
+      this.connections.delete(targetNodeIdString);
     });
   }
 
@@ -389,7 +328,7 @@ class NodeConnectionManager {
    * sends hole-punching packets back to the server's reverse proxy.
    * This is not needed to be called when doing hole punching since the
    * ForwardProxy automatically starts the process.
-   * @param nodeId Node Id of the node we are connecting to
+   * @param nodeId Node ID of the node we are connecting to
    * @param proxyHost Proxy host of the reverse proxy
    * @param proxyPort Proxy port of the reverse proxy
    * @param timer Connection timeout timer
@@ -429,14 +368,14 @@ class NodeConnectionManager {
 
   /**
    * Finds the set of nodes (of size k) known by the current node (i.e. in its
-   * buckets database) that have the smallest distance to the target node (i.e.
+   * bucket's database) that have the smallest distance to the target node (i.e.
    * are closest to the target node).
    * i.e. FIND_NODE RPC from Kademlia spec
    *
    * Used by the RPC service.
    *
    * @param targetNodeId the node ID to find other nodes closest to it
-   * @param numClosest the number of closest nodes to return (by default, returns
+   * @param numClosest the number of the closest nodes to return (by default, returns
    * according to the maximum number of nodes per bucket)
    * @param tran
    * @returns a mapping containing exactly k nodeIds -> nodeAddresses (unless the
@@ -451,7 +390,7 @@ class NodeConnectionManager {
   ): Promise<Array<NodeData>> {
     // Retrieve all nodes from buckets in database
     const buckets = await this.nodeGraph.getAllBuckets(tran);
-    // Iterate over all of the nodes in each bucket
+    // Iterate over all the nodes in each bucket
     const distanceToNodes: Array<NodeData> = [];
     buckets.forEach(function (bucket) {
       for (const nodeIdString of Object.keys(bucket)) {
@@ -505,7 +444,7 @@ class NodeConnectionManager {
     // in nodeConnections - what if there's been more than 1 invocation of
     // getClosestGlobalNodes()?
     const contacted: { [nodeId: string]: boolean } = {};
-    // Iterate until we've found found and contacted k nodes
+    // Iterate until we've found and contacted k nodes
     while (Object.keys(contacted).length <= this.nodeGraph.maxNodesPerBucket) {
       // While (!foundTarget) {
       // Remove the node from the front of the array
@@ -553,7 +492,7 @@ class NodeConnectionManager {
       }
       // To make the number of jumps relatively short, should connect to the nodes
       // closest to the target first, and ask if they know of any closer nodes
-      // Then we can simply unshift the first (closest) element from the shortlist
+      // than we can simply unshift the first (closest) element from the shortlist
       shortlist.sort(function (a: NodeData, b: NodeData) {
         if (a.distance > b.distance) {
           return 1;
@@ -607,7 +546,7 @@ class NodeConnectionManager {
   }
 
   /**
-   * Perform an initial database synchronisation: get the k closest nodes
+   * Perform an initial database synchronisation: get k of the closest nodes
    * from each seed node and add them to this database
    * For now, we also attempt to establish a connection to each of them.
    * If these nodes are offline, this will impose a performance penalty,
@@ -646,7 +585,7 @@ class NodeConnectionManager {
    * @param relayNodeId node ID of the relay node (i.e. the seed node)
    * @param sourceNodeId node ID of the current node (i.e. the sender)
    * @param targetNodeId node ID of the target node to hole punch
-   * @param proxyAddress stringified address of `proxyHost:proxyPort`
+   * @param proxyAddress string of address in the form `proxyHost:proxyPort`
    * @param signature signature to verify source node is sender (signature based
    * on proxyAddress as message)
    */
@@ -693,10 +632,9 @@ class NodeConnectionManager {
    */
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
   public getSeedNodes(): Array<NodeId> {
-    const nodeIds = Object.keys(this.seedNodes).map(
+    return Object.keys(this.seedNodes).map(
       (nodeIdEncoded) => nodesUtils.decodeNodeId(nodeIdEncoded)!,
     );
-    return nodeIds;
   }
 }
 
