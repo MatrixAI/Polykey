@@ -35,6 +35,7 @@ import * as grpc from '@grpc/grpc-js';
 import * as grpcErrors from '../errors';
 import * as errors from '../../errors';
 import * as networkUtils from '../../network/utils';
+import * as nodesUtils from '../../nodes/utils';
 import { promisify, promise, never } from '../../utils/utils';
 
 /**
@@ -375,6 +376,9 @@ function promisifyUnaryCall<T>(
     const { p: pMeta, resolveP: resolveMetaP } = promise<grpc.Metadata>();
     const callback = (error: ServiceError, ...values) => {
       if (error != null) {
+        if ('nodeId' in metadata) {
+          metadata.nodeId = nodesUtils.encodeNodeId(metadata.nodeId);
+        }
         error.metadata.set('metadata', JSON.stringify(metadata));
         rejectP(toError(error));
         return;
@@ -421,6 +425,9 @@ function generatorReadable<TRead>(
   }
   if (!('port' in metadata) && peerAddress != null) {
     metadata.port = networkUtils.parseAddress(peerAddress[0])[1];
+  }
+  if ('nodeId' in metadata) {
+    metadata.nodeId = nodesUtils.encodeNodeId(metadata.nodeId);
   }
   const gf = async function* () {
     try {
@@ -548,6 +555,9 @@ function promisifyWritableStreamCall<TWrite, TReturn>(
     };
     const callback = (error, ...values) => {
       if (error != null) {
+        if ('nodeId' in metadata) {
+          metadata.nodeId = nodesUtils.encodeNodeId(metadata.nodeId);
+        }
         error.metadata.set('metadata', JSON.stringify(metadata));
         return rejectP(toError(error));
       }
