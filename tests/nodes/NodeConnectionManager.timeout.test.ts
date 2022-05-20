@@ -192,13 +192,15 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
       await nodeConnectionManager.start();
       // @ts-ignore: kidnap connections
       const connections = nodeConnectionManager.connections;
+      // @ts-ignore: kidnap connections
+      const connectionLocks = nodeConnectionManager.connectionLocks;
       await nodeConnectionManager.withConnF(remoteNodeId1, nop);
       const connAndLock = connections.get(
         remoteNodeId1.toString() as NodeIdString,
       );
       // Check entry is in map and lock is released
       expect(connAndLock).toBeDefined();
-      expect(connAndLock?.lock.isLocked()).toBeFalsy();
+      expect(connectionLocks.isLocked(remoteNodeId1.toString())).toBeFalsy();
       expect(connAndLock?.timer).toBeDefined();
       expect(connAndLock?.connection).toBeDefined();
 
@@ -207,10 +209,8 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
       const finalConnAndLock = connections.get(
         remoteNodeId1.toString() as NodeIdString,
       );
-      expect(finalConnAndLock).toBeDefined();
-      expect(finalConnAndLock?.lock.isLocked()).toBeFalsy();
-      expect(finalConnAndLock?.timer).toBeUndefined();
-      expect(finalConnAndLock?.connection).toBeUndefined();
+      expect(finalConnAndLock).not.toBeDefined();
+      expect(connectionLocks.isLocked(remoteNodeId1.toString())).toBeFalsy();
     } finally {
       await nodeConnectionManager?.stop();
     }
@@ -229,13 +229,15 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
       await nodeConnectionManager.start();
       // @ts-ignore: kidnap connections
       const connections = nodeConnectionManager.connections;
+      // @ts-ignore: kidnap connections
+      const connectionLocks = nodeConnectionManager.connectionLocks;
       await nodeConnectionManager.withConnF(remoteNodeId1, nop);
       const connAndLock = connections.get(
         remoteNodeId1.toString() as NodeIdString,
       );
       // Check entry is in map and lock is released
       expect(connAndLock).toBeDefined();
-      expect(connAndLock?.lock.isLocked()).toBeFalsy();
+      expect(connectionLocks.isLocked(remoteNodeId1.toString())).toBeFalsy();
       expect(connAndLock?.timer).toBeDefined();
       expect(connAndLock?.connection).toBeDefined();
 
@@ -251,7 +253,7 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
         remoteNodeId1.toString() as NodeIdString,
       );
       expect(midConnAndLock).toBeDefined();
-      expect(midConnAndLock?.lock.isLocked()).toBeFalsy();
+      expect(connectionLocks.isLocked(remoteNodeId1.toString())).toBeFalsy();
       expect(midConnAndLock?.timer).toBeDefined();
       expect(midConnAndLock?.connection).toBeDefined();
 
@@ -260,10 +262,8 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
       const finalConnAndLock = connections.get(
         remoteNodeId1.toString() as NodeIdString,
       );
-      expect(finalConnAndLock).toBeDefined();
-      expect(finalConnAndLock?.lock.isLocked()).toBeFalsy();
-      expect(finalConnAndLock?.timer).toBeUndefined();
-      expect(finalConnAndLock?.connection).toBeUndefined();
+      expect(finalConnAndLock).not.toBeDefined();
+      expect(connectionLocks.isLocked(remoteNodeId1.toString())).toBeFalsy();
     } finally {
       await nodeConnectionManager?.stop();
     }
@@ -281,13 +281,15 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
       await nodeConnectionManager.start();
       // @ts-ignore: kidnap connections
       const connections = nodeConnectionManager.connections;
+      // @ts-ignore: kidnap connections
+      const connectionLocks = nodeConnectionManager.connectionLocks;
       await nodeConnectionManager.withConnF(remoteNodeId1, nop);
       const midConnAndLock = connections.get(
         remoteNodeId1.toString() as NodeIdString,
       );
       // Check entry is in map and lock is released
       expect(midConnAndLock).toBeDefined();
-      expect(midConnAndLock?.lock.isLocked()).toBeFalsy();
+      expect(connectionLocks.isLocked(remoteNodeId1.toString())).toBeFalsy();
       expect(midConnAndLock?.timer).toBeDefined();
 
       // Destroying the connection
@@ -296,10 +298,8 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
       const finalConnAndLock = connections.get(
         remoteNodeId1.toString() as NodeIdString,
       );
-      expect(finalConnAndLock).toBeDefined();
-      expect(finalConnAndLock?.lock.isLocked()).toBeFalsy();
-      expect(finalConnAndLock?.connection).toBeUndefined();
-      expect(finalConnAndLock?.timer).toBeUndefined();
+      expect(finalConnAndLock).not.toBeDefined();
+      expect(connectionLocks.isLocked(remoteNodeId1.toString())).toBeFalsy();
     } finally {
       await nodeConnectionManager?.stop();
     }
