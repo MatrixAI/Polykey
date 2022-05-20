@@ -138,8 +138,16 @@ class NodeConnectionManager {
       connAndLock.timer?.refresh();
       // Return tuple of [ResourceRelease, Resource]
       return [
-        async () => {
+        async (e) => {
           await release();
+          if (
+            e instanceof nodesErrors.ErrorNodeConnectionDestroyed ||
+            e instanceof grpcErrors.ErrorGRPC ||
+            e instanceof agentErrors.ErrorAgentClientDestroyed
+          ) {
+            // Error with connection, shutting connection down
+            await this.destroyConnection(targetNodeId);
+          }
         },
         connAndLock.connection,
       ];
@@ -159,29 +167,17 @@ class NodeConnectionManager {
     targetNodeId: NodeId,
     f: (conn: NodeConnection<GRPCClientAgent>) => Promise<T>,
   ): Promise<T> {
-    try {
-      return await withF(
-        [await this.acquireConnection(targetNodeId)],
-        async ([conn]) => {
-          this.logger.info(
-            `withConnF calling function with connection to ${nodesUtils.encodeNodeId(
-              targetNodeId,
-            )}`,
-          );
-          return await f(conn);
-        },
-      );
-    } catch (err) {
-      if (
-        err instanceof nodesErrors.ErrorNodeConnectionDestroyed ||
-        err instanceof grpcErrors.ErrorGRPC ||
-        err instanceof agentErrors.ErrorAgentClientDestroyed
-      ) {
-        // Error with connection, shutting connection down
-        await this.destroyConnection(targetNodeId);
-      }
-      throw err;
-    }
+    return await withF(
+      [await this.acquireConnection(targetNodeId)],
+      async ([conn]) => {
+        this.logger.info(
+          `withConnF calling function with connection to ${nodesUtils.encodeNodeId(
+            targetNodeId,
+          )}`,
+        );
+        return await f(conn);
+      },
+    );
   }
 
   /**
@@ -201,21 +197,14 @@ class NodeConnectionManager {
   ): AsyncGenerator<T, TReturn, TNext> {
     const acquire = await this.acquireConnection(targetNodeId);
     const [release, conn] = await acquire();
+    let caughtError;
     try {
       return yield* await g(conn!);
-    } catch (err) {
-      if (
-        err instanceof nodesErrors.ErrorNodeConnectionDestroyed ||
-        err instanceof grpcErrors.ErrorGRPC ||
-        err instanceof agentErrors.ErrorAgentClientDestroyed
-      ) {
-        // Error with connection, shutting connection down
-        await release();
-        await this.destroyConnection(targetNodeId);
-      }
-      throw err;
+    } catch (e) {
+      caughtError = e;
+      throw e;
     } finally {
-      await release();
+      await release(caughtError);
     }
     // Wait for any destruction to complete after locking is removed
   }
@@ -310,7 +299,7 @@ class NodeConnectionManager {
       );
       // If the connection is calling destroyCallback then it SHOULD
       // exist in the connection map
-      if (connAndLock == null) throw Error('temp error, bad logic');
+      if (connAndLock == null) throw Error('temp eor, bad logic');
       // Already locked so already destroying
       if (connAndLock.lock.readerCount > 0) return;
       const connectionStatus = connAndLock?.connection?.[status];
@@ -507,7 +496,7 @@ class NodeConnectionManager {
       this.initialClosestNodes,
     );
     // If we have no nodes at all in our database (even after synchronising),
-    // then we should throw an error. We aren't going to find any others
+    // then we should throw an eor. We aren't going to find any others
     if (shortlist.length === 0) {
       throw new nodesErrors.ErrorNodeGraphEmptyDatabase();
     }
