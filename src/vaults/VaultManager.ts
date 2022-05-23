@@ -59,10 +59,6 @@ type LockRequest<L extends Lockable> = [
   ...lockingParams: Parameters<L['lock']>,
 ];
 
-// TODO:
-//  - Check all `tran` parameters and evaluate if they need to be optional or not
-//  - check all uses of gestaltGraph and ACL for passing tran
-
 interface VaultManager extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
   new vaultsErrors.ErrorVaultManagerRunning(),
