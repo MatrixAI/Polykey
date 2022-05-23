@@ -61,6 +61,8 @@ class CommandPolykey extends commander.Command {
   public action(fn: (...args: any[]) => void | Promise<void>): this {
     return super.action(async (...args: any[]) => {
       const opts = this.opts();
+      // Set the format for error logging for the exit handlers
+      this.exitHandlers.errFormat = opts.format === 'json' ? 'json' : 'error';
       // Set the logger according to the verbosity
       this.logger.setLevel(binUtils.verboseToLogLevel(opts.verbose));
       // Set the global upstream GRPC logger
@@ -70,14 +72,7 @@ class CommandPolykey extends commander.Command {
       if (opts.nodePath == null) {
         throw new binErrors.ErrorCLINodePath();
       }
-      try {
-        await fn(...args);
-      } catch (e) {
-        const [errorCause, remoteLevel] = binUtils.remoteErrorCause(e);
-        console.log(remoteLevel);
-        console.error(errorCause);
-        throw errorCause;
-      }
+      await fn(...args);
     });
   }
 }

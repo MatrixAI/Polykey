@@ -6,7 +6,7 @@
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
-import { mocked } from 'ts-jest/utils';
+import { mocked } from 'jest-mock';
 import prompts from 'prompts';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { Session } from '@/sessions';
@@ -83,7 +83,7 @@ describe('sessions', () => {
     let exitCode, stderr;
     // Password and Token set
     ({ exitCode, stderr } = await testBinUtils.pkStdio(
-      ['agent', 'status'],
+      ['agent', 'status', '--format', 'json'],
       {
         PK_NODE_PATH: globalAgentDir,
         PK_PASSWORD: 'invalid',
@@ -91,14 +91,12 @@ describe('sessions', () => {
       },
       globalAgentDir,
     ));
-    testBinUtils.expectProcessError(
-      exitCode,
-      stderr,
+    testBinUtils.expectProcessError(exitCode, stderr, [
       new clientErrors.ErrorClientAuthDenied(),
-    );
+    ]);
     // Password set
     ({ exitCode, stderr } = await testBinUtils.pkStdio(
-      ['agent', 'status'],
+      ['agent', 'status', '--format', 'json'],
       {
         PK_NODE_PATH: globalAgentDir,
         PK_PASSWORD: 'invalid',
@@ -106,14 +104,12 @@ describe('sessions', () => {
       },
       globalAgentDir,
     ));
-    testBinUtils.expectProcessError(
-      exitCode,
-      stderr,
+    testBinUtils.expectProcessError(exitCode, stderr, [
       new clientErrors.ErrorClientAuthDenied(),
-    );
+    ]);
     // Token set
     ({ exitCode, stderr } = await testBinUtils.pkStdio(
-      ['agent', 'status'],
+      ['agent', 'status', '--format', 'json'],
       {
         PK_NODE_PATH: globalAgentDir,
         PK_PASSWORD: undefined,
@@ -121,11 +117,9 @@ describe('sessions', () => {
       },
       globalAgentDir,
     ));
-    testBinUtils.expectProcessError(
-      exitCode,
-      stderr,
+    testBinUtils.expectProcessError(exitCode, stderr, [
       new clientErrors.ErrorClientAuthDenied(),
-    );
+    ]);
   });
   test('prompt for password to authenticate attended commands', async () => {
     const password = globalAgentPassword;

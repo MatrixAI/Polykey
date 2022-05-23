@@ -2,11 +2,14 @@ import type { POJO } from '../../types';
 import process from 'process';
 import { LogLevel } from '@matrixai/logger';
 import * as grpc from '@grpc/grpc-js';
+import { AbstractError } from '@matrixai/errors';
 import * as binProcessors from './processors';
 import * as binErrors from '../errors';
 import * as clientUtils from '../../client/utils';
 import * as clientErrors from '../../client/errors';
 import * as errors from '../../errors';
+import * as nodesUtils from '../../nodes/utils';
+import * as utils from '../../utils';
 
 /**
  * Convert verbosity to LogLevel
@@ -40,9 +43,7 @@ type OutputObject =
     }
   | {
       type: 'error';
-      name: string;
-      description: string;
-      message?: string;
+      data: Error;
     };
 
 function outputFormatter(msg: OutputObject): string {
@@ -92,14 +93,72 @@ function outputFormatter(msg: OutputObject): string {
       output += `${key}\t${value}\n`;
     }
   } else if (msg.type === 'json') {
+    if (msg.data instanceof Error && !(msg.data instanceof AbstractError)) {
+      msg.data = {
+        type: msg.data.name,
+        data: { message: msg.data.message, stack: msg.data.stack },
+      };
+    }
     output = JSON.stringify(msg.data);
     output += '\n';
   } else if (msg.type === 'error') {
-    output += `${msg.name}: ${msg.description}`;
-    if (msg.message) {
-      output += ` - ${msg.message}`;
+    let currError = msg.data;
+    let indent = '  ';
+    while (currError != null) {
+      if (currError instanceof errors.ErrorPolykeyRemote) {
+        output += `${currError.name}: ${currError.description}`;
+        if (currError.message && currError.message !== '') {
+          output += ` - ${currError.message}`;
+        }
+        output += '\n';
+        output += `${indent}command\t${currError.metadata.command}\n`;
+        output += `${indent}nodeId\t${nodesUtils.encodeNodeId(
+          currError.metadata.nodeId,
+        )}\n`;
+        output += `${indent}host\t${currError.metadata.host}\n`;
+        output += `${indent}port\t${currError.metadata.port}\n`;
+        output += `${indent}timestamp\t${currError.timestamp}\n`;
+        output += `${indent}remote error: `;
+        currError = currError.cause;
+      } else if (currError instanceof errors.ErrorPolykey) {
+        output += `${currError.name}: ${currError.description}`;
+        if (currError.message && currError.message !== '') {
+          output += ` - ${currError.message}`;
+        }
+        output += '\n';
+        output += `${indent}exitCode\t${currError.exitCode}\n`;
+        output += `${indent}timestamp\t${currError.timestamp}\n`;
+        if (currError.data && !utils.isEmptyObject(currError.data)) {
+          output += `${indent}data\t${JSON.stringify(currError.data)}\n`;
+        }
+        if (currError.cause) {
+          output += `${indent}cause: `;
+          if (currError.cause instanceof errors.ErrorPolykey) {
+            currError = currError.cause;
+          } else if (currError.cause instanceof Error) {
+            output += `${currError.cause.name}`;
+            if (currError.cause.message && currError.cause.message !== '') {
+              output += `: ${currError.cause.message}`;
+            }
+            output += '\n';
+            break;
+          } else {
+            output += `${JSON.stringify(currError.cause)}\n`;
+            break;
+          }
+        } else {
+          break;
+        }
+      } else {
+        output += `${currError.name}`;
+        if (currError.message && currError.message !== '') {
+          output += `: ${currError.message}`;
+        }
+        output += '\n';
+        break;
+      }
+      indent = indent + '  ';
     }
-    output += '\n';
   }
   return output;
 }
@@ -155,8 +214,8 @@ async function retryAuthentication<T>(
 function remoteErrorCause(e: any): [any, number] {
   let errorCause = e;
   let depth = 0;
-  while (e instanceof errors.ErrorPolykeyRemote) {
-    errorCause = e.cause;
+  while (errorCause instanceof errors.ErrorPolykeyRemote) {
+    errorCause = errorCause.cause;
     depth++;
   }
   return [errorCause, depth];

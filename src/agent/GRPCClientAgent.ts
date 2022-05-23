@@ -83,6 +83,7 @@ class GRPCClientAgent extends GRPCClient<AgentServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.echo.name,
       },
       this.client.echo,
     )(...args);
@@ -101,6 +102,7 @@ class GRPCClientAgent extends GRPCClient<AgentServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.vaultsGitInfoGet.name,
       },
       this.client.vaultsGitInfoGet,
     )(...args);
@@ -120,6 +122,7 @@ class GRPCClientAgent extends GRPCClient<AgentServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.vaultsGitPackGet.name,
       },
       this.client.vaultsGitPackGet,
     )(...args);
@@ -138,6 +141,7 @@ class GRPCClientAgent extends GRPCClient<AgentServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.vaultsScan.name,
       },
       this.client.vaultsScan,
     )(...args);
@@ -151,6 +155,7 @@ class GRPCClientAgent extends GRPCClient<AgentServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.nodesClosestLocalNodesGet.name,
       },
       this.client.nodesClosestLocalNodesGet,
     )(...args);
@@ -164,6 +169,7 @@ class GRPCClientAgent extends GRPCClient<AgentServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.nodesClaimsGet.name,
       },
       this.client.nodesClaimsGet,
     )(...args);
@@ -177,6 +183,7 @@ class GRPCClientAgent extends GRPCClient<AgentServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.nodesChainDataGet.name,
       },
       this.client.nodesChainDataGet,
     )(...args);
@@ -190,6 +197,7 @@ class GRPCClientAgent extends GRPCClient<AgentServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.nodesHolePunchMessageSend.name,
       },
       this.client.nodesHolePunchMessageSend,
     )(...args);
@@ -203,6 +211,7 @@ class GRPCClientAgent extends GRPCClient<AgentServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.notificationsSend.name,
       },
       this.client.notificationsSend,
     )(...args);
@@ -225,6 +234,7 @@ class GRPCClientAgent extends GRPCClient<AgentServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.nodesCrossSignClaim.name,
       },
       this.client.nodesCrossSignClaim,
     )(...args);

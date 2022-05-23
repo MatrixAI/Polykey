@@ -1,5 +1,51 @@
+import type { Class } from '@matrixai/errors';
+import type { ClientMetadata } from './types';
 import ErrorPolykey from './ErrorPolykey';
 import sysexits from './utils/sysexits';
+
+class ErrorPolykeyRemote<T> extends ErrorPolykey<T> {
+  static description = 'Remote error from RPC call';
+  exitCode = sysexits.UNAVAILABLE;
+  metadata: ClientMetadata;
+
+  constructor(metadata: ClientMetadata, message?: string, options?) {
+    super(message, options);
+    this.metadata = metadata;
+  }
+
+  public static fromJSON<T extends Class<any>>(
+    this: T,
+    json: any,
+  ): InstanceType<T> {
+    if (
+      typeof json !== 'object' ||
+      json.type !== this.name ||
+      typeof json.data !== 'object' ||
+      typeof json.data.message !== 'string' ||
+      isNaN(Date.parse(json.data.timestamp)) ||
+      typeof json.data.metadata !== 'object' ||
+      typeof json.data.data !== 'object' ||
+      typeof json.data.exitCode !== 'number' ||
+      ('stack' in json.data && typeof json.data.stack !== 'string')
+    ) {
+      throw new TypeError(`Cannot decode JSON to ${this.name}`);
+    }
+    const e = new this(json.data.metadata, json.data.message, {
+      timestamp: new Date(json.data.timestamp),
+      data: json.data.data,
+      cause: json.data.cause,
+    });
+    e.exitCode = json.data.exitCode;
+    e.stack = json.data.stack;
+    return e;
+  }
+
+  public toJSON(): any {
+    const json = super.toJSON();
+    json.data.metadata = this.metadata;
+    return json;
+  }
+}
 
 class ErrorPolykeyUnimplemented<T> extends ErrorPolykey<T> {
   static description = 'This is an unimplemented functionality';
@@ -8,12 +54,7 @@ class ErrorPolykeyUnimplemented<T> extends ErrorPolykey<T> {
 
 class ErrorPolykeyUnknown<T> extends ErrorPolykey<T> {
   static description = 'Unable to deserialise to known error';
-  exitCode = sysexits.UNKNOWN;
-}
-
-class ErrorPolykeyRemote<T> extends ErrorPolykey<T> {
-  static description = 'Remote error from RPC call';
-  exitCode = sysexits.UNAVAILABLE;
+  exitCode = sysexits.PROTOCOL;
 }
 
 class ErrorPolykeyAgentRunning<T> extends ErrorPolykey<T> {

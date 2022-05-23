@@ -32,7 +32,11 @@ function nodesCrossSignClaim({
     call: grpc.ServerDuplexStream<nodesPB.CrossSign, nodesPB.CrossSign>,
   ) => {
     const nodeId = keyManager.getNodeId();
-    const genClaims = grpcUtils.generatorDuplex(call, { nodeId }, true);
+    const genClaims = grpcUtils.generatorDuplex(
+      call,
+      { nodeId, command: nodesCrossSignClaim.name },
+      true,
+    );
     try {
       await db.withTransactionF(async (tran) => {
         const readStatus = await genClaims.read();

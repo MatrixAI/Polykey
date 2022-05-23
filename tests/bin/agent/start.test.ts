@@ -218,6 +218,8 @@ describe('start', () => {
             '--workers',
             '0',
             '--verbose',
+            '--format',
+            'json',
           ],
           {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -239,6 +241,8 @@ describe('start', () => {
             '--workers',
             '0',
             '--verbose',
+            '--format',
+            'json',
           ],
           {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -274,21 +278,17 @@ describe('start', () => {
       const errorStatusLocked = new statusErrors.ErrorStatusLocked();
       // It's either the first or second process
       if (index === 0) {
-        testBinUtils.expectProcessError(
-          exitCode!,
-          stdErrLine1,
+        testBinUtils.expectProcessError(exitCode!, stdErrLine1, [
           errorStatusLocked,
-        );
+        ]);
         agentProcess2.kill('SIGQUIT');
         [exitCode, signal] = await testBinUtils.processExit(agentProcess2);
         expect(exitCode).toBe(null);
         expect(signal).toBe('SIGQUIT');
       } else if (index === 1) {
-        testBinUtils.expectProcessError(
-          exitCode!,
-          stdErrLine2,
+        testBinUtils.expectProcessError(exitCode!, stdErrLine2, [
           errorStatusLocked,
-        );
+        ]);
         agentProcess1.kill('SIGQUIT');
         [exitCode, signal] = await testBinUtils.processExit(agentProcess1);
         expect(exitCode).toBe(null);
@@ -316,6 +316,8 @@ describe('start', () => {
             '--workers',
             '0',
             '--verbose',
+            '--format',
+            'json',
           ],
           {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -325,7 +327,15 @@ describe('start', () => {
           logger.getChild('agentProcess'),
         ),
         testBinUtils.pkSpawn(
-          ['bootstrap', '--fresh', '--root-key-pair-bits', '1024', '--verbose'],
+          [
+            'bootstrap',
+            '--fresh',
+            '--root-key-pair-bits',
+            '1024',
+            '--verbose',
+            '--format',
+            'json',
+          ],
           {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
             PK_PASSWORD: password,
@@ -360,21 +370,17 @@ describe('start', () => {
       const errorStatusLocked = new statusErrors.ErrorStatusLocked();
       // It's either the first or second process
       if (index === 0) {
-        testBinUtils.expectProcessError(
-          exitCode!,
-          stdErrLine1,
+        testBinUtils.expectProcessError(exitCode!, stdErrLine1, [
           errorStatusLocked,
-        );
+        ]);
         bootstrapProcess.kill('SIGTERM');
         [exitCode, signal] = await testBinUtils.processExit(bootstrapProcess);
         expect(exitCode).toBe(null);
         expect(signal).toBe('SIGTERM');
       } else if (index === 1) {
-        testBinUtils.expectProcessError(
-          exitCode!,
-          stdErrLine2,
+        testBinUtils.expectProcessError(exitCode!, stdErrLine2, [
           errorStatusLocked,
-        );
+        ]);
         agentProcess.kill('SIGTERM');
         [exitCode, signal] = await testBinUtils.processExit(agentProcess);
         expect(exitCode).toBe(null);

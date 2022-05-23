@@ -55,6 +55,7 @@ async function main(argv = process.argv): Promise<number> {
     // Successful execution (even if the command was non-terminating)
     process.exitCode = 0;
   } catch (e) {
+    const errFormat = rootCommand.opts().format === 'json' ? 'json' : 'error';
     if (e instanceof commander.CommanderError) {
       // Commander writes help and error messages on stderr automatically
       if (
@@ -78,10 +79,8 @@ async function main(argv = process.argv): Promise<number> {
     } else if (e instanceof ErrorPolykey) {
       process.stderr.write(
         binUtils.outputFormatter({
-          type: 'error',
-          name: e.name,
-          description: e.description,
-          message: e.message,
+          type: errFormat,
+          data: e,
         }),
       );
       process.exitCode = e.exitCode;
@@ -89,9 +88,8 @@ async function main(argv = process.argv): Promise<number> {
       // Unknown error, this should not happen
       process.stderr.write(
         binUtils.outputFormatter({
-          type: 'error',
-          name: e.name,
-          description: e.message,
+          type: errFormat,
+          data: e,
         }),
       );
       process.exitCode = 255;
