@@ -79,7 +79,7 @@ describe('sessions', () => {
     expect(token1).not.toBe(token2);
     await session.stop();
   });
-  test('unattended commands with invalid authentication should fail', async () => {
+  test.skip('unattended commands with invalid authentication should fail', async () => {
     let exitCode, stderr;
     // Password and Token set
     ({ exitCode, stderr } = await testBinUtils.pkStdio(
@@ -121,7 +121,7 @@ describe('sessions', () => {
       new clientErrors.ErrorClientAuthDenied(),
     ]);
   });
-  test('prompt for password to authenticate attended commands', async () => {
+  test.skip('prompt for password to authenticate attended commands', async () => {
     const password = globalAgentPassword;
     await testBinUtils.pkStdio(
       ['agent', 'lock'],
@@ -146,7 +146,7 @@ describe('sessions', () => {
     expect(mockedPrompts.mock.calls.length).toBe(1);
     mockedPrompts.mockClear();
   });
-  test('re-prompts for password if unable to authenticate command', async () => {
+  test.skip('re-prompts for password if unable to authenticate command', async () => {
     await testBinUtils.pkStdio(
       ['agent', 'lock'],
       {

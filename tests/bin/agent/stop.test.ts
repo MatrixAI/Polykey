@@ -9,7 +9,7 @@ import * as binErrors from '@/bin/errors';
 import * as clientErrors from '@/client/errors';
 import * as testBinUtils from '../utils';
 
-describe('stop', () => {
+describe.skip('stop', () => {
   const logger = new Logger('stop test', LogLevel.WARN, [new StreamHandler()]);
   let dataDir: string;
   beforeEach(async () => {
