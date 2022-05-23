@@ -44,6 +44,8 @@ async function main(_argv = process.argv): Promise<number> {
     resolveMessageInP(data);
   });
   const messageIn = await messageInP;
+  const errFormat = messageIn.format === 'json' ? 'json' : 'error';
+  exitHandlers.errFormat = errFormat;
   logger.setLevel(messageIn.logLevel);
   // Set the global upstream GRPC logger
   grpcSetLogger(logger.getChild('grpc'));
@@ -71,10 +73,8 @@ async function main(_argv = process.argv): Promise<number> {
     if (e instanceof ErrorPolykey) {
       process.stderr.write(
         binUtils.outputFormatter({
-          type: 'error',
-          name: e.name,
-          description: e.description,
-          message: e.message,
+          type: errFormat,
+          data: e,
         }),
       );
       process.exitCode = e.exitCode;
@@ -82,9 +82,8 @@ async function main(_argv = process.argv): Promise<number> {
       // Unknown error, this should not happen
       process.stderr.write(
         binUtils.outputFormatter({
-          type: 'error',
-          name: e.name,
-          description: e.message,
+          type: errFormat,
+          data: e,
         }),
       );
       process.exitCode = 255;
@@ -107,9 +106,8 @@ async function main(_argv = process.argv): Promise<number> {
       // There's no point attempting to propagate the error to the parent
       process.stderr.write(
         binUtils.outputFormatter({
-          type: 'error',
-          name: e.name,
-          description: e.message,
+          type: errFormat,
+          data: e,
         }),
       );
       process.exitCode = 255;
@@ -137,9 +135,8 @@ async function main(_argv = process.argv): Promise<number> {
     // There's no point attempting to propagate the error to the parent
     process.stderr.write(
       binUtils.outputFormatter({
-        type: 'error',
-        name: e.name,
-        description: e.message,
+        type: errFormat,
+        data: e,
       }),
     );
     process.exitCode = 255;

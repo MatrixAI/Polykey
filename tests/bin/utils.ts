@@ -12,6 +12,7 @@ import nexpect from 'nexpect';
 import Logger from '@matrixai/logger';
 import main from '@/bin/polykey';
 import * as binUtils from '@/bin/utils';
+import * as grpcUtils from '@/grpc/utils';
 
 /**
  * Runs pk command functionally
@@ -339,23 +340,24 @@ async function processExit(
 
 /**
  * Checks exit code and stderr against ErrorPolykey
+ * Errors should contain all of the errors in the expected error chain
+ * starting with the outermost error (excluding ErrorPolykeyRemote)
+ * When using this function, the command must be run with --format=json
  */
 function expectProcessError(
   exitCode: number,
   stderr: string,
-  error: ErrorPolykey<unknown>,
+  errors: Array<ErrorPolykey<any>>,
 ) {
-  expect(exitCode).toBe(error.exitCode);
+  expect(exitCode).toBe(errors[0].exitCode);
   const stdErrLine = stderr.trim().split('\n').pop();
-  const errorOutput = binUtils
-    .outputFormatter({
-      type: 'error',
-      name: error.name,
-      description: error.description,
-      message: error.message,
-    })
-    .trim();
-  expect(stdErrLine).toBe(errorOutput);
+  const receivedError = JSON.parse(stdErrLine!, grpcUtils.reviver);
+  let [currentError] = binUtils.remoteErrorCause(receivedError);
+  for (const error of errors) {
+    expect(currentError.name).toBe(error.name);
+    expect(currentError.message).toBe(error.message);
+    currentError = currentError.cause;
+  }
 }
 
 export {

@@ -9,6 +9,7 @@ class ExitHandlers {
    */
   public handlers: Array<(signal?: NodeJS.Signals) => Promise<void>>;
   protected _exiting: boolean = false;
+  protected _errFormat: 'json' | 'error';
   /**
    * Handles synchronous and asynchronous exceptions
    * This prints out appropriate error message on STDERR
@@ -23,10 +24,8 @@ class ExitHandlers {
     if (e instanceof ErrorPolykey) {
       process.stderr.write(
         binUtils.outputFormatter({
-          type: 'error',
-          name: e.name,
-          description: e.description,
-          message: e.message,
+          type: this._errFormat,
+          data: e,
         }),
       );
       process.exitCode = e.exitCode;
@@ -34,9 +33,8 @@ class ExitHandlers {
       // Unknown error, this should not happen
       process.stderr.write(
         binUtils.outputFormatter({
-          type: 'error',
-          name: e.name,
-          description: e.message,
+          type: this._errFormat,
+          data: e,
         }),
       );
       process.exitCode = 255;
@@ -65,19 +63,16 @@ class ExitHandlers {
       if (e instanceof ErrorPolykey) {
         process.stderr.write(
           binUtils.outputFormatter({
-            type: 'error',
-            name: e.name,
-            description: e.description,
-            message: e.message,
+            type: this._errFormat,
+            data: e,
           }),
         );
       } else {
         // Unknown error, this should not happen
         process.stderr.write(
           binUtils.outputFormatter({
-            type: 'error',
-            name: e.name,
-            description: e.message,
+            type: this._errFormat,
+            data: e,
           }),
         );
       }
@@ -101,6 +96,10 @@ class ExitHandlers {
 
   get exiting(): boolean {
     return this._exiting;
+  }
+
+  set errFormat(errFormat: 'json' | 'error') {
+    this._errFormat = errFormat;
   }
 
   public install() {

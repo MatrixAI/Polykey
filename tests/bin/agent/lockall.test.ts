@@ -1,11 +1,11 @@
 import path from 'path';
 import fs from 'fs';
 import prompts from 'prompts';
-import { mocked } from 'ts-jest/utils';
+import { mocked } from 'jest-mock';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import Session from '@/sessions/Session';
 import config from '@/config';
-import * as clientErrors from '@/client/errors';
+import * as errors from '@/errors';
 import * as testBinUtils from '../utils';
 import * as testUtils from '../../utils';
 
@@ -113,17 +113,15 @@ describe('lockall', () => {
     );
     // Old token is invalid
     const { exitCode, stderr } = await testBinUtils.pkStdio(
-      ['agent', 'status'],
+      ['agent', 'status', '--format', 'json'],
       {
         PK_NODE_PATH: globalAgentDir,
         PK_TOKEN: token,
       },
       globalAgentDir,
     );
-    testBinUtils.expectProcessError(
-      exitCode,
-      stderr,
-      new clientErrors.ErrorClientAuthDenied(),
-    );
+    testBinUtils.expectProcessError(exitCode, stderr, [
+      new errors.ErrorClientAuthDenied(),
+    ]);
   });
 });
