@@ -1,5 +1,5 @@
 import prompts from 'prompts';
-import { mocked } from 'ts-jest/utils';
+import { mocked } from 'jest-mock';
 import mockedEnv from 'mocked-env';
 import { utils as clientUtils, errors as clientErrors } from '@/client';
 import * as binUtils from '@/bin/utils';

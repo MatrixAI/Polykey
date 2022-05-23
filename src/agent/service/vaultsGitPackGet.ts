@@ -34,7 +34,11 @@ function vaultsGitPackGet({
     call: grpc.ServerDuplexStream<vaultsPB.PackChunk, vaultsPB.PackChunk>,
   ): Promise<void> => {
     const nodeId = keyManager.getNodeId();
-    const genDuplex = grpcUtils.generatorDuplex(call, { nodeId }, true);
+    const genDuplex = grpcUtils.generatorDuplex(
+      call,
+      { nodeId, command: vaultsGitPackGet.name },
+      true,
+    );
     try {
       const clientBodyBuffers: Uint8Array[] = [];
       const clientRequest = (await genDuplex.read()).value;

@@ -1,4 +1,8 @@
-import * as binUtils from '@/bin/utils';
+import type { Host, Port } from '@/network/types';
+import * as binUtils from '@/bin/utils/utils';
+import * as nodesUtils from '@/nodes/utils';
+import * as errors from '@/errors';
+import * as testUtils from '../utils';
 
 describe('bin/utils', () => {
   test('list in human and json format', () => {
@@ -69,5 +73,113 @@ describe('bin/utils', () => {
         data: { key1: 'value1', key2: 'value2' },
       }),
     ).toBe('{"key1":"value1","key2":"value2"}\n');
+  });
+  test('errors in human and json format', () => {
+    const timestamp = new Date();
+    const data = { string: 'one', number: 1 };
+    const host = '127.0.0.1' as Host;
+    const port = 55555 as Port;
+    const nodeId = testUtils.generateRandomNodeId();
+    const standardError = new TypeError('some error');
+    const pkError = new errors.ErrorPolykey('some pk error', {
+      timestamp,
+      data,
+    });
+    const remoteError = new errors.ErrorPolykeyRemote<any>(
+      {
+        nodeId,
+        host,
+        port,
+        command: 'some command',
+      },
+      'some remote error',
+      { timestamp, cause: pkError },
+    );
+    const twoRemoteErrors = new errors.ErrorPolykeyRemote<any>(
+      {
+        nodeId,
+        host,
+        port,
+        command: 'command 2',
+      },
+      'remote error',
+      {
+        timestamp,
+        cause: new errors.ErrorPolykeyRemote(
+          {
+            nodeId,
+            host,
+            port,
+            command: 'command 1',
+          },
+          undefined,
+          {
+            timestamp,
+            cause: new errors.ErrorPolykey('pk error', {
+              timestamp,
+              cause: standardError,
+            }),
+          },
+        ),
+      },
+    );
+    // Error
+    expect(
+      binUtils.outputFormatter({ type: 'error', data: standardError }),
+    ).toBe(`${standardError.name}: ${standardError.message}\n`);
+    expect(binUtils.outputFormatter({ type: 'error', data: pkError })).toBe(
+      `${pkError.name}: ${pkError.description} - ${pkError.message}\n` +
+        `  exitCode\t${pkError.exitCode}\n` +
+        `  timestamp\t${timestamp.toString()}\n` +
+        `  data\t${JSON.stringify(data)}\n`,
+    );
+    expect(binUtils.outputFormatter({ type: 'error', data: remoteError })).toBe(
+      `${remoteError.name}: ${remoteError.description} - ${remoteError.message}\n` +
+        `  command\t${remoteError.metadata.command}\n` +
+        `  nodeId\t${nodesUtils.encodeNodeId(nodeId)}\n` +
+        `  host\t${host}\n` +
+        `  port\t${port}\n` +
+        `  timestamp\t${timestamp.toString()}\n` +
+        `  remote error: ${remoteError.cause.name}: ${remoteError.cause.description} - ${remoteError.cause.message}\n` +
+        `    exitCode\t${pkError.exitCode}\n` +
+        `    timestamp\t${timestamp.toString()}\n` +
+        `    data\t${JSON.stringify(data)}\n`,
+    );
+    expect(
+      binUtils.outputFormatter({ type: 'error', data: twoRemoteErrors }),
+    ).toBe(
+      `${twoRemoteErrors.name}: ${twoRemoteErrors.description} - ${twoRemoteErrors.message}\n` +
+        `  command\t${twoRemoteErrors.metadata.command}\n` +
+        `  nodeId\t${nodesUtils.encodeNodeId(nodeId)}\n` +
+        `  host\t${host}\n` +
+        `  port\t${port}\n` +
+        `  timestamp\t${timestamp.toString()}\n` +
+        `  remote error: ${twoRemoteErrors.cause.name}: ${twoRemoteErrors.cause.description}\n` +
+        `    command\t${twoRemoteErrors.cause.metadata.command}\n` +
+        `    nodeId\t${nodesUtils.encodeNodeId(nodeId)}\n` +
+        `    host\t${host}\n` +
+        `    port\t${port}\n` +
+        `    timestamp\t${timestamp.toString()}\n` +
+        `    remote error: ${twoRemoteErrors.cause.cause.name}: ${twoRemoteErrors.cause.cause.description} - ${twoRemoteErrors.cause.cause.message}\n` +
+        `      exitCode\t${pkError.exitCode}\n` +
+        `      timestamp\t${timestamp.toString()}\n` +
+        `      cause: ${standardError.name}: ${standardError.message}\n`,
+    );
+    expect(
+      binUtils.outputFormatter({ type: 'json', data: standardError }),
+    ).toBe(
+      `{"type":"${standardError.name}","data":{"message":"${
+        standardError.message
+      }","stack":"${standardError.stack?.replaceAll('\n', '\\n')}"}}\n`,
+    );
+    expect(binUtils.outputFormatter({ type: 'json', data: pkError })).toBe(
+      JSON.stringify(pkError.toJSON()) + '\n',
+    );
+    expect(binUtils.outputFormatter({ type: 'json', data: remoteError })).toBe(
+      JSON.stringify(remoteError.toJSON()) + '\n',
+    );
+    expect(
+      binUtils.outputFormatter({ type: 'json', data: twoRemoteErrors }),
+    ).toBe(JSON.stringify(twoRemoteErrors.toJSON()) + '\n');
   });
 });

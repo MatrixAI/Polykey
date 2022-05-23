@@ -1,7 +1,7 @@
 import path from 'path';
 import fs from 'fs';
 import prompts from 'prompts';
-import { mocked } from 'ts-jest/utils';
+import { mocked } from 'jest-mock';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import Session from '@/sessions/Session';
 import config from '@/config';

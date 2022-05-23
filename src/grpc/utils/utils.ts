@@ -28,14 +28,14 @@ import type {
   AsyncGeneratorDuplexStreamClient,
 } from '../types';
 import type { CertificatePemChain, PrivateKeyPem } from '../../keys/types';
-import type { POJO } from '../../types';
+import type { POJO, ClientMetadata } from '../../types';
+import type { NodeId } from '../../nodes/types';
 import { Buffer } from 'buffer';
 import { AbstractError } from '@matrixai/errors';
 import * as grpc from '@grpc/grpc-js';
 import * as grpcErrors from '../errors';
 import * as errors from '../../errors';
 import * as networkUtils from '../../network/utils';
-import * as nodesUtils from '../../nodes/utils';
 import { promisify, promise, never } from '../../utils/utils';
 
 /**
@@ -184,9 +184,11 @@ function fromError(
  * Deserialized GRPC errors into ErrorPolykey
  * Use this on the receiving side to receive exceptions
  */
-function toError(e: ServiceError): errors.ErrorPolykey<any> {
+function toError(
+  e: ServiceError,
+  metadata: ClientMetadata,
+): errors.ErrorPolykey<any> {
   const errorData = e.metadata.get('error')[0].toString();
-  const connInfo = e.metadata.get('metadata')[0].toString();
   // Grpc.status is an enum
   // this will iterate the enum values then enum keys
   // they will all be of string type
@@ -197,10 +199,17 @@ function toError(e: ServiceError): errors.ErrorPolykey<any> {
     if (isNaN(parseInt(key)) && e.code === grpc.status[key]) {
       if (key === 'UNKNOWN' && errorData != null) {
         const error: Error = JSON.parse(errorData, reviver);
-        return new errors.ErrorPolykeyRemote(error.message, {
-          data: JSON.parse(connInfo),
-          cause: error,
-        });
+        const remoteError = new errors.ErrorPolykeyRemote(
+          metadata,
+          error.message,
+          {
+            cause: error,
+          },
+        );
+        if (error instanceof errors.ErrorPolykey) {
+          remoteError.exitCode = error.exitCode;
+        }
+        return remoteError;
       } else {
         return new grpcErrors.ErrorGRPCClientCall(e.message, {
           data: {
@@ -344,14 +353,6 @@ function reviver(key: string, value: any): any {
       },
     });
     return error;
-  } else if (key === 'timestamp') {
-    // Encode timestamps
-    const timestampParsed = Date.parse(value);
-    if (!isNaN(timestampParsed)) {
-      return new Date(timestampParsed);
-    } else {
-      return undefined;
-    }
   } else {
     return value;
   }
@@ -364,7 +365,7 @@ function reviver(key: string, value: any): any {
  */
 function promisifyUnaryCall<T>(
   client: Client,
-  metadata: POJO,
+  metadata: ClientMetadata,
   f: (...args: any[]) => ClientUnaryCall,
 ): (...args: any[]) => PromiseUnaryCall<T> {
   return (...args) => {
@@ -376,11 +377,7 @@ function promisifyUnaryCall<T>(
     const { p: pMeta, resolveP: resolveMetaP } = promise<grpc.Metadata>();
     const callback = (error: ServiceError, ...values) => {
       if (error != null) {
-        if ('nodeId' in metadata) {
-          metadata.nodeId = nodesUtils.encodeNodeId(metadata.nodeId);
-        }
-        error.metadata.set('metadata', JSON.stringify(metadata));
-        rejectP(toError(error));
+        rejectP(toError(error, metadata));
         return;
       }
       resolveP(values.length === 1 ? values[0] : values);
@@ -405,15 +402,15 @@ function promisifyUnaryCall<T>(
  */
 function generatorReadable<TRead>(
   stream: ClientReadableStream<TRead>,
-  metadata: POJO,
+  metadata: { nodeId: NodeId; command: string } & POJO,
 ): AsyncGeneratorReadableStream<TRead, ClientReadableStream<TRead>>;
 function generatorReadable<TRead>(
   stream: ServerReadableStream<TRead, any>,
-  metadata: POJO,
+  metadata: { nodeId: NodeId; command: string } & POJO,
 ): AsyncGeneratorReadableStream<TRead, ServerReadableStream<TRead, any>>;
 function generatorReadable<TRead>(
   stream: ClientReadableStream<TRead> | ServerReadableStream<TRead, any>,
-  metadata: POJO,
+  metadata: { nodeId: NodeId; command: string } & POJO,
 ) {
   const peerAddress = stream
     .getPeer()
@@ -426,9 +423,12 @@ function generatorReadable<TRead>(
   if (!('port' in metadata) && peerAddress != null) {
     metadata.port = networkUtils.parseAddress(peerAddress[0])[1];
   }
-  if ('nodeId' in metadata) {
-    metadata.nodeId = nodesUtils.encodeNodeId(metadata.nodeId);
-  }
+  const clientMetadata: ClientMetadata = {
+    nodeId: metadata.nodeId,
+    host: metadata.host,
+    port: metadata.port,
+    command: metadata.command,
+  };
   const gf = async function* () {
     try {
       let vR = yield;
@@ -449,8 +449,7 @@ function generatorReadable<TRead>(
       }
     } catch (e) {
       stream.destroy();
-      e.metadata.set('metadata', JSON.stringify(metadata));
-      throw toError(e);
+      throw toError(e, clientMetadata);
     }
   };
   const g: any = gf();
@@ -467,7 +466,7 @@ function generatorReadable<TRead>(
  */
 function promisifyReadableStreamCall<TRead>(
   client: grpc.Client,
-  metadata: POJO,
+  metadata: ClientMetadata,
   f: (...args: any[]) => ClientReadableStream<TRead>,
 ): (
   ...args: any[]
@@ -539,7 +538,7 @@ function generatorWritable<TWrite>(
  */
 function promisifyWritableStreamCall<TWrite, TReturn>(
   client: grpc.Client,
-  metadata: POJO,
+  metadata: ClientMetadata,
   f: (...args: any[]) => ClientWritableStream<TWrite>,
 ): (
   ...args: any[]
@@ -555,11 +554,7 @@ function promisifyWritableStreamCall<TWrite, TReturn>(
     };
     const callback = (error, ...values) => {
       if (error != null) {
-        if ('nodeId' in metadata) {
-          metadata.nodeId = nodesUtils.encodeNodeId(metadata.nodeId);
-        }
-        error.metadata.set('metadata', JSON.stringify(metadata));
-        return rejectP(toError(error));
+        return rejectP(toError(error, metadata));
       }
       return resolveP(values.length === 1 ? values[0] : values);
     };
@@ -591,17 +586,17 @@ function promisifyWritableStreamCall<TWrite, TReturn>(
  */
 function generatorDuplex<TRead, TWrite>(
   stream: ClientDuplexStream<TWrite, TRead>,
-  metadata: POJO,
+  metadata: { nodeId: NodeId; command: string } & POJO,
   sensitive: boolean,
 ): AsyncGeneratorDuplexStream<TRead, TWrite, ClientDuplexStream<TWrite, TRead>>;
 function generatorDuplex<TRead, TWrite>(
   stream: ServerDuplexStream<TRead, TWrite>,
-  metadata: POJO,
+  metadata: { nodeId: NodeId; command: string } & POJO,
   sensitive: boolean,
 ): AsyncGeneratorDuplexStream<TRead, TWrite, ServerDuplexStream<TRead, TWrite>>;
 function generatorDuplex<TRead, TWrite>(
   stream: ClientDuplexStream<TWrite, TRead> | ServerDuplexStream<TRead, TWrite>,
-  metadata: POJO,
+  metadata: { nodeId: NodeId; command: string } & POJO,
   sensitive: boolean = false,
 ) {
   const gR = generatorReadable(stream as any, metadata);
@@ -654,7 +649,7 @@ function generatorDuplex<TRead, TWrite>(
  */
 function promisifyDuplexStreamCall<TRead, TWrite>(
   client: grpc.Client,
-  metadata: POJO,
+  metadata: ClientMetadata,
   f: (...args: any[]) => ClientDuplexStream<TWrite, TRead>,
 ): (
   ...args: any[]
@@ -699,4 +694,6 @@ export {
   promisifyDuplexStreamCall,
   toError,
   fromError,
+  replacer,
+  reviver,
 };
