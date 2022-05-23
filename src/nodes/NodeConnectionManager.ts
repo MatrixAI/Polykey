@@ -1,12 +1,18 @@
 import type { ResourceAcquire } from '@matrixai/resources';
-import { withF } from '@matrixai/resources';
 import type KeyManager from '../keys/KeyManager';
 import type Proxy from '../network/Proxy';
 import type { Host, Hostname, Port } from '../network/types';
 import type { Timer } from '../types';
 import type NodeGraph from './NodeGraph';
-import type { NodeAddress, NodeData, NodeId, NodeIdString, SeedNodes } from './types';
+import type {
+  NodeAddress,
+  NodeData,
+  NodeId,
+  NodeIdString,
+  SeedNodes,
+} from './types';
 import type { DBTransaction } from '@matrixai/db';
+import { withF } from '@matrixai/resources';
 import Logger from '@matrixai/logger';
 import { ready, StartStop } from '@matrixai/async-init/dist/StartStop';
 import { IdInternal } from '@matrixai/id';
@@ -21,7 +27,6 @@ import * as networkUtils from '../network/utils';
 import * as agentErrors from '../agent/errors';
 import * as grpcErrors from '../grpc/errors';
 import * as nodesPB from '../proto/js/polykey/v1/nodes/nodes_pb';
-import { never } from '../utils';
 
 type ConnectionAndTimer = {
   connection: NodeConnection<GRPCClientAgent>;
@@ -128,7 +133,11 @@ class NodeConnectionManager {
     return async () => {
       const { connection, timer } = await this.getConnection(targetNodeId);
       // Acquire the read lock and the release function
-      const [release] = await this.connectionLocks.lock([targetNodeId.toString(), RWLockWriter, 'write'])();
+      const [release] = await this.connectionLocks.lock([
+        targetNodeId.toString(),
+        RWLockWriter,
+        'write',
+      ])();
       // Resetting TTL timer
       timer?.refresh();
       // Return tuple of [ResourceRelease, Resource]
@@ -217,67 +226,73 @@ class NodeConnectionManager {
       `Getting connection to ${nodesUtils.encodeNodeId(targetNodeId)}`,
     );
     const targetNodeIdString = targetNodeId.toString() as NodeIdString;
-    return await this.connectionLocks.withF([targetNodeIdString, RWLockWriter, 'write'], async () => {
-      const connAndTimer = this.connections.get(targetNodeIdString);
-      if (connAndTimer != null) {
-        this.logger.info(
-          `existing entry found for ${nodesUtils.encodeNodeId(targetNodeId)}`,
-        );
-        return connAndTimer;
-      }
-      this.logger.info(
-        `no existing entry, creating connection to ${nodesUtils.encodeNodeId(
-          targetNodeId,
-        )}`,
-      );
-      // Creating the connection and set in map
-      const targetAddress = await this.findNode(targetNodeId);
-      // If the stored host is not a valid host (IP address),
-      // then we assume it to be a hostname
-      const targetHostname = !networkUtils.isHost(targetAddress.host)
-        ? (targetAddress.host as string as Hostname)
-        : undefined;
-      const targetHost = await networkUtils.resolveHost(targetAddress.host);
-      // Creating the destroyCallback
-      const destroyCallback = async () => {
-        // To avoid deadlock only in the case where this is called
-        // we want to check for destroying connection and read lock
+    return await this.connectionLocks.withF(
+      [targetNodeIdString, RWLockWriter, 'write'],
+      async () => {
         const connAndTimer = this.connections.get(targetNodeIdString);
-        // If the connection is calling destroyCallback then it SHOULD
-        // exist in the connection map
-        if (connAndTimer == null) return;
-        // Already locked so already destroying
-        if (this.connectionLocks.isLocked(targetNodeIdString)) return;
-        // Connection is already destroying
-        if (connAndTimer?.connection?.[status] === 'destroying') return;
-        await this.destroyConnection(targetNodeId);
-      };
-      // Creating new connection
-      const newConnection = await NodeConnection.createNodeConnection({
-        targetNodeId: targetNodeId,
-        targetHost: targetHost,
-        targetHostname: targetHostname,
-        targetPort: targetAddress.port,
-        proxy: this.proxy,
-        keyManager: this.keyManager,
-        nodeConnectionManager: this,
-        destroyCallback,
-        connConnectTime: this.connConnectTime,
-        logger: this.logger.getChild(
-          `${NodeConnection.name} ${targetHost}:${targetAddress.port}`,
-        ),
-        clientFactory: async (args) =>
-          GRPCClientAgent.createGRPCClientAgent(args),
-      });
-      // Creating TTL timeout
-      const timer = setTimeout(async () => {
-        await this.destroyConnection(targetNodeId);
-      }, this.connTimeoutTime);
+        if (connAndTimer != null) {
+          this.logger.info(
+            `existing entry found for ${nodesUtils.encodeNodeId(targetNodeId)}`,
+          );
+          return connAndTimer;
+        }
+        this.logger.info(
+          `no existing entry, creating connection to ${nodesUtils.encodeNodeId(
+            targetNodeId,
+          )}`,
+        );
+        // Creating the connection and set in map
+        const targetAddress = await this.findNode(targetNodeId);
+        // If the stored host is not a valid host (IP address),
+        // then we assume it to be a hostname
+        const targetHostname = !networkUtils.isHost(targetAddress.host)
+          ? (targetAddress.host as string as Hostname)
+          : undefined;
+        const targetHost = await networkUtils.resolveHost(targetAddress.host);
+        // Creating the destroyCallback
+        const destroyCallback = async () => {
+          // To avoid deadlock only in the case where this is called
+          // we want to check for destroying connection and read lock
+          const connAndTimer = this.connections.get(targetNodeIdString);
+          // If the connection is calling destroyCallback then it SHOULD
+          // exist in the connection map
+          if (connAndTimer == null) return;
+          // Already locked so already destroying
+          if (this.connectionLocks.isLocked(targetNodeIdString)) return;
+          // Connection is already destroying
+          if (connAndTimer?.connection?.[status] === 'destroying') return;
+          await this.destroyConnection(targetNodeId);
+        };
+        // Creating new connection
+        const newConnection = await NodeConnection.createNodeConnection({
+          targetNodeId: targetNodeId,
+          targetHost: targetHost,
+          targetHostname: targetHostname,
+          targetPort: targetAddress.port,
+          proxy: this.proxy,
+          keyManager: this.keyManager,
+          nodeConnectionManager: this,
+          destroyCallback,
+          connConnectTime: this.connConnectTime,
+          logger: this.logger.getChild(
+            `${NodeConnection.name} ${targetHost}:${targetAddress.port}`,
+          ),
+          clientFactory: async (args) =>
+            GRPCClientAgent.createGRPCClientAgent(args),
+        });
+        // Creating TTL timeout
+        const timer = setTimeout(async () => {
+          await this.destroyConnection(targetNodeId);
+        }, this.connTimeoutTime);
 
-      const newConnAndTimer: ConnectionAndTimer = {connection: newConnection, timer: timer};
-      this.connections.set(targetNodeIdString, newConnAndTimer);
-      return newConnAndTimer;
-    })
+        const newConnAndTimer: ConnectionAndTimer = {
+          connection: newConnection,
+          timer: timer,
+        };
+        this.connections.set(targetNodeIdString, newConnAndTimer);
+        return newConnAndTimer;
+      },
+    );
   }
 
   /**
@@ -289,14 +304,15 @@ class NodeConnectionManager {
     return await this.connectionLocks.withF(
       [targetNodeIdString, RWLockWriter, 'write'],
       async () => {
-      const connAndTimer = this.connections.get(targetNodeIdString);
-      if (connAndTimer?.connection == null) return;
-      await connAndTimer.connection.destroy();
-      // Destroying TTL timer
-      if (connAndTimer.timer != null) clearTimeout(connAndTimer.timer);
-      // Updating the connection map
-      this.connections.delete(targetNodeIdString);
-    });
+        const connAndTimer = this.connections.get(targetNodeIdString);
+        if (connAndTimer?.connection == null) return;
+        await connAndTimer.connection.destroy();
+        // Destroying TTL timer
+        if (connAndTimer.timer != null) clearTimeout(connAndTimer.timer);
+        // Updating the connection map
+        this.connections.delete(targetNodeIdString);
+      },
+    );
   }
 
   /**

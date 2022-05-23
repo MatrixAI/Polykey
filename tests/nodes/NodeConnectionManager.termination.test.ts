@@ -394,10 +394,9 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
       await polykeyAgent.stop();
       // Connection should be removed
       expect(connections.size).toBe(1);
-      const connAndLock = connections.get(
-        agentNodeId.toString() as NodeIdString,
-      );
-      expect(connectionLocks.isLocked(agentNodeId.toString() as NodeIdString)).toBe(false);
+      expect(
+        connectionLocks.isLocked(agentNodeId.toString() as NodeIdString),
+      ).toBe(false);
       if (firstConnection != null) {
         expect(firstConnection[destroyed]).toBe(true);
       }
@@ -469,10 +468,9 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
 
       // Connection should be removed
       expect(connections.size).toBe(0);
-      const connAndLock = connections.get(
-        agentNodeId.toString() as NodeIdString,
-      );
-      expect(connectionLocks.isLocked(agentNodeId.toString() as NodeIdString)).toBe(false);
+      expect(
+        connectionLocks.isLocked(agentNodeId.toString() as NodeIdString),
+      ).toBe(false);
       if (firstConnection != null) {
         expect(firstConnection[destroyed]).toBe(true);
       }
@@ -547,10 +545,9 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
 
       // Connection should be removed
       expect(connections.size).toBe(0);
-      const connAndLock = connections.get(
-        agentNodeId.toString() as NodeIdString,
-      );
-      expect(connectionLocks.isLocked(agentNodeId.toString() as NodeIdString)).toBe(false);
+      expect(
+        connectionLocks.isLocked(agentNodeId.toString() as NodeIdString),
+      ).toBe(false);
       if (firstConnection != null) {
         expect(firstConnection[destroyed]).toBe(true);
       }
@@ -625,10 +622,9 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
 
       // Connection should be removed
       expect(connections.size).toBe(0);
-      const connAndLock = connections.get(
-        agentNodeId.toString() as NodeIdString,
-      );
-      expect(connectionLocks.isLocked(agentNodeId.toString() as NodeIdString)).toBe(false);
+      expect(
+        connectionLocks.isLocked(agentNodeId.toString() as NodeIdString),
+      ).toBe(false);
       if (firstConnection != null) {
         expect(firstConnection[destroyed]).toBe(true);
       }
@@ -703,10 +699,9 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
 
       // Connection should be removed
       expect(connections.size).toBe(1);
-      const connAndLock = connections.get(
-        agentNodeId.toString() as NodeIdString,
-      );
-      expect(connectionLocks.isLocked(agentNodeId.toString() as NodeIdString)).toBe(false);
+      expect(
+        connectionLocks.isLocked(agentNodeId.toString() as NodeIdString),
+      ).toBe(false);
       if (firstConnection != null) {
         expect(firstConnection[destroyed]).toBe(true);
       }
@@ -775,10 +770,9 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
 
       // Connection should be removed
       expect(connections.size).toBe(1);
-      const connAndLock = connections.get(
-        agentNodeId.toString() as NodeIdString,
-      );
-      expect(connectionLocks.isLocked(agentNodeId.toString() as NodeIdString)).toBe(false);
+      expect(
+        connectionLocks.isLocked(agentNodeId.toString() as NodeIdString),
+      ).toBe(false);
       if (firstConnection != null) {
         expect(firstConnection[destroyed]).toBe(true);
       }

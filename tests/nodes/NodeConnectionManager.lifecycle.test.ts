@@ -80,7 +80,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
   let remoteNodeId1: NodeId;
   let remoteNodeIdString1: NodeIdString;
   let remoteNodeId2: NodeId;
-  let remoteNodeIdString2: NodeIdString;
 
   const mockedGenerateDeterministicKeyPair = jest.spyOn(
     keysUtils,
@@ -115,7 +114,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       logger: logger.getChild('remoteNode2'),
     });
     remoteNodeId2 = remoteNode2.keyManager.getNodeId();
-    remoteNodeIdString2 = remoteNodeId2.toString() as NodeIdString;
   });
 
   afterAll(async () => {
@@ -203,9 +201,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       const connections = nodeConnectionManager.connections;
       // @ts-ignore: kidnap connectionLocks
       const connectionLocks = nodeConnectionManager.connectionLocks;
-      const initialConnection = connections.get(
-        remoteNodeIdString1,
-      );
+      const initialConnection = connections.get(remoteNodeIdString1);
       expect(initialConnection).toBeUndefined();
       await nodeConnectionManager.withConnF(remoteNodeId1, nop);
       const finalConnection = connections.get(remoteNodeIdString1);
@@ -230,26 +226,18 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       const connections = nodeConnectionManager.connections;
       // @ts-ignore: kidnap connectionLocks
       const connectionLocks = nodeConnectionManager.connectionLocks;
-      const initialConnection = connections.get(
-        remoteNodeIdString1,
-      );
+      const initialConnection = connections.get(remoteNodeIdString1);
       expect(initialConnection).toBeUndefined();
       await withF(
         [await nodeConnectionManager.acquireConnection(remoteNodeId1)],
         async (conn) => {
           expect(conn).toBeDefined();
-          const intermediaryConnection = connections.get(
-            remoteNodeIdString1,
-          );
+          const intermediaryConnection = connections.get(remoteNodeIdString1);
           expect(intermediaryConnection).toBeDefined();
-          expect(
-            connectionLocks.isLocked(remoteNodeIdString1),
-          ).toBeTruthy();
+          expect(connectionLocks.isLocked(remoteNodeIdString1)).toBeTruthy();
         },
       );
-      const finalConnection = connections.get(
-        remoteNodeIdString1,
-      );
+      const finalConnection = connections.get(remoteNodeIdString1);
       expect(finalConnection).toBeDefined();
       // Neither write nor read lock should be locked now
       expect(connectionLocks.isLocked(remoteNodeIdString1)).toBeFalsy();
@@ -272,16 +260,12 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       const connections = nodeConnectionManager.connections;
       // @ts-ignore: kidnap connectionLocks
       const connectionLocks = nodeConnectionManager.connectionLocks;
-      const initialConnection = connections.get(
-        remoteNodeIdString1,
-      );
+      const initialConnection = connections.get(remoteNodeIdString1);
       expect(initialConnection).toBeUndefined();
       await nodeConnectionManager.withConnF(remoteNodeId1, async () => {
         expect(connectionLocks.isLocked(remoteNodeIdString1)).toBe(true);
       });
-      const finalConnection = connections.get(
-        remoteNodeIdString1,
-      );
+      const finalConnection = connections.get(remoteNodeIdString1);
       // Check entry is in map and lock is released
       expect(finalConnection).toBeDefined();
       expect(connectionLocks.isLocked(remoteNodeIdString1)).toBeFalsy();
@@ -305,9 +289,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       const connections = nodeConnectionManager.connections;
       // @ts-ignore: kidnap connectionLocks
       const connectionLocks = nodeConnectionManager.connectionLocks;
-      const initialConnection = connections.get(
-        remoteNodeIdString1,
-      );
+      const initialConnection = connections.get(remoteNodeIdString1);
       expect(initialConnection).toBeUndefined();
 
       const testGenerator = async function* () {
@@ -325,9 +307,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       );
 
       // Connection is not created yet, no locking applied
-      expect(
-        connections.get(remoteNodeIdString1),
-      ).not.toBeDefined();
+      expect(connections.get(remoteNodeIdString1)).not.toBeDefined();
 
       // Iterating over generator
       for await (const _ of gen) {
@@ -337,9 +317,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       // Unlocked after stream finished
       expect(connectionLocks.isLocked(remoteNodeIdString1)).toBe(false);
 
-      const finalConnection = connections.get(
-        remoteNodeIdString1,
-      );
+      const finalConnection = connections.get(remoteNodeIdString1);
       // Check entry is in map and lock is released
       expect(finalConnection).toBeDefined();
       expect(connectionLocks.isLocked(remoteNodeIdString1)).toBe(false);
@@ -378,7 +356,9 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       // There should still be an entry in the connection map, but it should
       // only contain a lock - no connection
       expect(connLock).not.toBeDefined();
-      expect(connectionLocks.isLocked(dummyNodeId.toString() as NodeIdString)).toBe(false);
+      expect(
+        connectionLocks.isLocked(dummyNodeId.toString() as NodeIdString),
+      ).toBe(false);
       expect(connLock?.connection).toBeUndefined();
 
       // Undo the initial dummy node add
@@ -400,9 +380,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       // @ts-ignore accessing protected NodeConnectionMap
       const connections = nodeConnectionManager.connections;
       expect(connections.size).toBe(0);
-      const initialConnection = connections.get(
-        remoteNodeIdString1,
-      );
+      const initialConnection = connections.get(remoteNodeIdString1);
       expect(initialConnection).toBeUndefined();
       await nodeConnectionManager.withConnF(remoteNodeId1, nop);
       // Check we only have this single connection
@@ -430,9 +408,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       // @ts-ignore: kidnap connectionLocks
       const connectionLocks = nodeConnectionManager.connectionLocks;
       expect(connections.size).toBe(0);
-      const initialConnection = connections.get(
-        remoteNodeIdString1,
-      );
+      const initialConnection = connections.get(remoteNodeIdString1);
       expect(initialConnection).toBeUndefined();
       // Concurrently create connection to same target
       await Promise.all([
@@ -441,9 +417,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       ]);
       // Check only 1 connection exists
       expect(connections.size).toBe(1);
-      const finalConnection = connections.get(
-        remoteNodeIdString1,
-      );
+      const finalConnection = connections.get(remoteNodeIdString1);
       // Check entry is in map and lock is released
       expect(finalConnection).toBeDefined();
       expect(connectionLocks.isLocked(remoteNodeIdString1)).toBeFalsy();
@@ -466,14 +440,10 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       const connections = nodeConnectionManager.connections;
       // @ts-ignore: kidnap connectionLocks
       const connectionLocks = nodeConnectionManager.connectionLocks;
-      const initialConnection = connections.get(
-        remoteNodeIdString1,
-      );
+      const initialConnection = connections.get(remoteNodeIdString1);
       expect(initialConnection).toBeUndefined();
       await nodeConnectionManager.withConnF(remoteNodeId1, nop);
-      const midConnAndLock = connections.get(
-        remoteNodeIdString1,
-      );
+      const midConnAndLock = connections.get(remoteNodeIdString1);
       // Check entry is in map and lock is released
       expect(midConnAndLock).toBeDefined();
       expect(connectionLocks.isLocked(remoteNodeIdString1)).toBeFalsy();
@@ -481,9 +451,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       // Destroying the connection
       // @ts-ignore: private method
       await nodeConnectionManager.destroyConnection(remoteNodeId1);
-      const finalConnAndLock = connections.get(
-        remoteNodeIdString1,
-      );
+      const finalConnAndLock = connections.get(remoteNodeIdString1);
       expect(finalConnAndLock).not.toBeDefined();
       expect(connectionLocks.isLocked(remoteNodeIdString1)).toBeFalsy();
       expect(finalConnAndLock?.connection).toBeUndefined();
