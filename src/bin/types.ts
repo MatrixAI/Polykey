@@ -17,6 +17,7 @@ type AgentStatusLiveData = Omit<StatusLive['data'], 'nodeId'> & {
  */
 type AgentChildProcessInput = {
   logLevel: LogLevel;
+  format: 'human' | 'json';
   workers?: number;
   agentConfig: {
     password: string;

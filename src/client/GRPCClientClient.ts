@@ -95,6 +95,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.agentStatus.name,
       },
       this.client.agentStatus,
     )(...args);
@@ -108,6 +109,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.agentStop.name,
       },
       this.client.agentStop,
     )(...args);
@@ -121,6 +123,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.agentUnlock.name,
       },
       this.client.agentUnlock,
     )(...args);
@@ -134,6 +137,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.agentLockAll.name,
       },
       this.client.agentLockAll,
     )(...args);
@@ -152,6 +156,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.vaultsList.name,
       },
       this.client.vaultsList,
     )(...args);
@@ -165,6 +170,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.vaultsCreate.name,
       },
       this.client.vaultsCreate,
     )(...args);
@@ -178,6 +184,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.vaultsRename.name,
       },
       this.client.vaultsRename,
     )(...args);
@@ -191,6 +198,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.vaultsDelete.name,
       },
       this.client.vaultsDelete,
     )(...args);
@@ -204,6 +212,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.vaultsClone.name,
       },
       this.client.vaultsClone,
     )(...args);
@@ -217,6 +226,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.vaultsPull.name,
       },
       this.client.vaultsPull,
     )(...args);
@@ -235,6 +245,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.vaultsScan.name,
       },
       this.client.vaultsScan,
     )(...args);
@@ -248,6 +259,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.vaultsPermissionGet.name,
       },
       this.client.vaultsPermissionGet,
     )(...args);
@@ -261,6 +273,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.vaultsPermissionSet.name,
       },
       this.client.vaultsPermissionSet,
     )(...args);
@@ -274,6 +287,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.vaultsPermissionUnset.name,
       },
       this.client.vaultsPermissionUnset,
     )(...args);
@@ -292,6 +306,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.vaultsSecretsList.name,
       },
       this.client.vaultsSecretsList,
     )(...args);
@@ -305,6 +320,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.vaultsSecretsMkdir.name,
       },
       this.client.vaultsSecretsMkdir,
     )(...args);
@@ -318,6 +334,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.vaultsSecretsDelete.name,
       },
       this.client.vaultsSecretsDelete,
     )(...args);
@@ -331,6 +348,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.vaultsSecretsEdit.name,
       },
       this.client.vaultsSecretsEdit,
     )(...args);
@@ -344,6 +362,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.vaultsSecretsGet.name,
       },
       this.client.vaultsSecretsGet,
     )(...args);
@@ -357,6 +376,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.vaultsSecretsStat.name,
       },
       this.client.vaultsSecretsStat,
     )(...args);
@@ -370,6 +390,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.vaultsSecretsRename.name,
       },
       this.client.vaultsSecretsRename,
     )(...args);
@@ -383,6 +404,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.vaultsSecretsNew.name,
       },
       this.client.vaultsSecretsNew,
     )(...args);
@@ -396,6 +418,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.vaultsSecretsNewDir.name,
       },
       this.client.vaultsSecretsNewDir,
     )(...args);
@@ -409,6 +432,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.vaultsVersion.name,
       },
       this.client.vaultsVersion,
     )(...args);
@@ -427,6 +451,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.vaultsLog.name,
       },
       this.client.vaultsLog,
     )(...args);
@@ -440,6 +465,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.keysKeyPairRoot.name,
       },
       this.client.keysKeyPairRoot,
     )(...args);
@@ -453,6 +479,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.keysKeyPairReset.name,
       },
       this.client.keysKeyPairReset,
     )(...args);
@@ -466,6 +493,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.keysKeyPairRenew.name,
       },
       this.client.keysKeyPairRenew,
     )(...args);
@@ -479,6 +507,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.keysEncrypt.name,
       },
       this.client.keysEncrypt,
     )(...args);
@@ -492,6 +521,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.keysDecrypt.name,
       },
       this.client.keysDecrypt,
     )(...args);
@@ -505,6 +535,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.keysSign.name,
       },
       this.client.keysSign,
     )(...args);
@@ -518,6 +549,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.keysVerify.name,
       },
       this.client.keysVerify,
     )(...args);
@@ -531,6 +563,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.keysPasswordChange.name,
       },
       this.client.keysPasswordChange,
     )(...args);
@@ -544,6 +577,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.keysCertsGet.name,
       },
       this.client.keysCertsGet,
     )(...args);
@@ -562,6 +596,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.keysCertsGet.name,
       },
       this.client.keysCertsChainGet,
     )(...args);
@@ -580,6 +615,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.gestaltsGestaltList.name,
       },
       this.client.gestaltsGestaltList,
     )(...args);
@@ -593,6 +629,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.gestaltsGestaltGetByIdentity.name,
       },
       this.client.gestaltsGestaltGetByIdentity,
     )(...args);
@@ -606,6 +643,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.gestaltsGestaltGetByNode.name,
       },
       this.client.gestaltsGestaltGetByNode,
     )(...args);
@@ -619,6 +657,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.gestaltsDiscoveryByNode.name,
       },
       this.client.gestaltsDiscoveryByNode,
     )(...args);
@@ -632,6 +671,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.gestaltsDiscoveryByIdentity.name,
       },
       this.client.gestaltsDiscoveryByIdentity,
     )(...args);
@@ -645,6 +685,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.gestaltsActionsGetByNode.name,
       },
       this.client.gestaltsActionsGetByNode,
     )(...args);
@@ -658,6 +699,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.gestaltsActionsGetByIdentity.name,
       },
       this.client.gestaltsActionsGetByIdentity,
     )(...args);
@@ -671,6 +713,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.gestaltsActionsSetByNode.name,
       },
       this.client.gestaltsActionsSetByNode,
     )(...args);
@@ -684,6 +727,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.gestaltsActionsSetByIdentity.name,
       },
       this.client.gestaltsActionsSetByIdentity,
     )(...args);
@@ -697,6 +741,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.gestaltsActionsUnsetByNode.name,
       },
       this.client.gestaltsActionsUnsetByNode,
     )(...args);
@@ -710,6 +755,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.gestaltsActionsUnsetByIdentity.name,
       },
       this.client.gestaltsActionsUnsetByIdentity,
     )(...args);
@@ -723,6 +769,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.gestaltsGestaltTrustByNode.name,
       },
       this.client.gestaltsGestaltTrustByNode,
     )(...args);
@@ -736,6 +783,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.gestaltsGestaltTrustByIdentity.name,
       },
       this.client.gestaltsGestaltTrustByIdentity,
     )(...args);
@@ -749,6 +797,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.identitiesTokenPut.name,
       },
       this.client.identitiesTokenPut,
     )(...args);
@@ -762,6 +811,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.identitiesTokenGet.name,
       },
       this.client.identitiesTokenGet,
     )(...args);
@@ -775,6 +825,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.identitiesTokenDelete.name,
       },
       this.client.identitiesTokenDelete,
     )(...args);
@@ -788,6 +839,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.identitiesProvidersList.name,
       },
       this.client.identitiesProvidersList,
     )(...args);
@@ -801,6 +853,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.nodesAdd.name,
       },
       this.client.nodesAdd,
     )(...args);
@@ -814,6 +867,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.nodesPing.name,
       },
       this.client.nodesPing,
     )(...args);
@@ -827,6 +881,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.nodesClaim.name,
       },
       this.client.nodesClaim,
     )(...args);
@@ -840,6 +895,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.nodesFind.name,
       },
       this.client.nodesFind,
     )(...args);
@@ -853,6 +909,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.identitiesAuthenticate.name,
       },
       this.client.identitiesAuthenticate,
     )(...args);
@@ -866,6 +923,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.identitiesInfoConnectedGet.name,
       },
       this.client.identitiesInfoConnectedGet,
     )(...args);
@@ -879,6 +937,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.identitiesInfoGet.name,
       },
       this.client.identitiesInfoGet,
     )(...args);
@@ -892,6 +951,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.identitiesClaim.name,
       },
       this.client.identitiesClaim,
     )(...args);
@@ -905,6 +965,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.identitiesAuthenticatedGet.name,
       },
       this.client.identitiesAuthenticatedGet,
     )(...args);
@@ -918,6 +979,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.notificationsSend.name,
       },
       this.client.notificationsSend,
     )(...args);
@@ -931,6 +993,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.notificationsRead.name,
       },
       this.client.notificationsRead,
     )(...args);
@@ -944,6 +1007,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
+        command: this.notificationsClear.name,
       },
       this.client.notificationsClear,
     )(...args);

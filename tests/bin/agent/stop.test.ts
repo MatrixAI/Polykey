@@ -197,17 +197,15 @@ describe('stop', () => {
       );
       await status.waitFor('STARTING');
       const { exitCode, stderr } = await testBinUtils.pkStdio(
-        ['agent', 'stop'],
+        ['agent', 'stop', '--format', 'json'],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
         },
         dataDir,
       );
-      testBinUtils.expectProcessError(
-        exitCode,
-        stderr,
+      testBinUtils.expectProcessError(exitCode, stderr, [
         new binErrors.ErrorCLIPolykeyAgentStatus('agent is starting'),
-      );
+      ]);
       await status.waitFor('LIVE');
       await testBinUtils.pkStdio(
         ['agent', 'stop'],
@@ -256,18 +254,16 @@ describe('stop', () => {
         logger,
       });
       const { exitCode, stderr } = await testBinUtils.pkStdio(
-        ['agent', 'stop'],
+        ['agent', 'stop', '--format', 'json'],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
           PK_PASSWORD: 'wrong password',
         },
         dataDir,
       );
-      testBinUtils.expectProcessError(
-        exitCode,
-        stderr,
+      testBinUtils.expectProcessError(exitCode, stderr, [
         new clientErrors.ErrorClientAuthDenied(),
-      );
+      ]);
       // Should still be LIVE
       await sleep(500);
       const statusInfo = await status.readStatus();
