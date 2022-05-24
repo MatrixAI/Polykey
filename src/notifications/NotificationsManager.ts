@@ -23,6 +23,7 @@ import * as notificationsUtils from './utils';
 import * as notificationsErrors from './errors';
 import * as notificationsPB from '../proto/js/polykey/v1/notifications/notifications_pb';
 import * as nodesUtils from '../nodes/utils';
+import { never } from '../utils/utils';
 
 const MESSAGE_COUNT_KEY = 'numMessages';
 
@@ -289,7 +290,8 @@ class NotificationsManager {
     const notifications: Array<Notification> = [];
     for (const id of notificationIds) {
       const notification = await this.readNotificationById(id, tran);
-      notifications.push(notification!);
+      if (notification == null) never();
+      notifications.push(notification);
     }
 
     return notifications;
