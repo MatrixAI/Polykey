@@ -188,7 +188,7 @@ function toError(
   e: ServiceError,
   metadata: ClientMetadata,
 ): errors.ErrorPolykey<any> {
-  const errorData = e.metadata.get('error')[0].toString();
+  const errorData = e.metadata.get('error')[0] as string;
   // Grpc.status is an enum
   // this will iterate the enum values then enum keys
   // they will all be of string type
