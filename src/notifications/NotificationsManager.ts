@@ -23,6 +23,7 @@ import * as notificationsUtils from './utils';
 import * as notificationsErrors from './errors';
 import * as notificationsPB from '../proto/js/polykey/v1/notifications/notifications_pb';
 import * as nodesUtils from '../nodes/utils';
+import { never } from '../utils/utils';
 
 const MESSAGE_COUNT_KEY = 'numMessages';
 
@@ -289,7 +290,8 @@ class NotificationsManager {
     const notifications: Array<Notification> = [];
     for (const id of notificationIds) {
       const notification = await this.readNotificationById(id, tran);
-      notifications.push(notification!);
+      if (notification == null) never();
+      notifications.push(notification);
     }
 
     return notifications;
@@ -367,6 +369,8 @@ class NotificationsManager {
     const messageIterator = tran.iterator({}, this.notificationsMessagesDbPath);
     for await (const [key, value] of messageIterator) {
       const notificationId = IdInternal.fromBuffer<NotificationId>(key);
+      // FIXME:, the ID here is wrong sometimes. check what it was inputted into the database as.
+      console.log(notificationId);
       const notification = JSON.parse(value.toString()) as Notification;
       if (type === 'all') {
         notificationIds.push(notificationId);
