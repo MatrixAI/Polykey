@@ -151,6 +151,9 @@ class ConnectionReverse extends Connection {
         errorP,
         ...(timer != null ? [timer.timerP] : []),
       ]);
+      if (timer?.timedOut) {
+        throw new networkErrors.ErrorConnectionStartTimeout();
+      }
     } catch (e) {
       // Clean up partial start
       // Socket isn't established yet, so it is destroyed
@@ -169,13 +172,6 @@ class ConnectionReverse extends Connection {
     }
     this.serverSocket.on('error', this.handleError);
     this.serverSocket.off('error', handleStartError);
-    if (timer?.timedOut) {
-      // Clean up partial start
-      // Socket isn't established yet, so it is destroyed
-      this.serverSocket.destroy();
-      this.utpSocket.off('message', this.handleMessage);
-      throw new networkErrors.ErrorConnectionStartTimeout();
-    }
     this.connections.proxy.set(this.address, this);
     this.connections.reverse.set(this.proxyAddress, this);
     this.startKeepAliveTimeout();
@@ -243,6 +239,9 @@ class ConnectionReverse extends Connection {
           errorP,
           ...(timer != null ? [timer.timerP] : []),
         ]);
+        if (timer?.timedOut) {
+          throw new networkErrors.ErrorConnectionComposeTimeout();
+        }
       } catch (e) {
         // Clean up partial compose
         if (!tlsSocket.destroyed) {
@@ -263,14 +262,6 @@ class ConnectionReverse extends Connection {
         await this.stop();
       });
       tlsSocket.off('error', handleComposeError);
-      if (timer?.timedOut) {
-        // Clean up partial compose
-        if (!tlsSocket.destroyed) {
-          tlsSocket.end();
-          tlsSocket.destroy();
-        }
-        throw new networkErrors.ErrorConnectionComposeTimeout();
-      }
       const clientCertChain = networkUtils.getCertificateChain(tlsSocket);
       try {
         networkUtils.verifyClientCertificateChain(clientCertChain);
