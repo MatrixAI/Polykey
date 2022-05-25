@@ -1,6 +1,6 @@
 import type { Host, Port } from '@/network/types';
-
-import { utils as networkUtils, errors as networkErrors } from '@/network';
+import * as networkUtils from '@/network/utils';
+import * as networkErrors from '@/network/errors';
 
 describe('utils', () => {
   test('building addresses', async () => {
