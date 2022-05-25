@@ -656,7 +656,6 @@ class Proxy {
             timer,
           );
         } catch (e) {
-          console.error(e);
           if (!(e instanceof networkErrors.ErrorNetwork)) {
             throw e;
           }
