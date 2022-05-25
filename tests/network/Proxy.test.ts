@@ -6,12 +6,12 @@ import http from 'http';
 import tls from 'tls';
 import UTP from 'utp-native';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { poll, promise, promisify, timerStart, timerStop } from '@/utils';
 import Proxy from '@/network/Proxy';
 import * as networkUtils from '@/network/utils';
 import * as networkErrors from '@/network/errors';
 import * as keysUtils from '@/keys/utils';
 import * as nodesUtils from '@/nodes/utils';
+import { promisify, promise, timerStart, timerStop, poll } from '@/utils';
 import * as testUtils from '../utils';
 
 /**
@@ -107,7 +107,7 @@ function tcpServer(end: boolean = false) {
 describe(Proxy.name, () => {
   const localHost = '127.0.0.1' as Host;
   const port = 0 as Port;
-  const logger = new Logger(`${Proxy.name} test`, LogLevel.DEBUG, [
+  const logger = new Logger(`${Proxy.name} test`, LogLevel.WARN, [
     new StreamHandler(),
   ]);
   const nodeIdABC = testUtils.generateRandomNodeId();
@@ -473,18 +473,18 @@ describe(Proxy.name, () => {
       ),
     ).rejects.toThrow(networkErrors.ErrorConnectionStart);
     await expect(remoteClosedP).resolves.toBeUndefined();
-    expect(utpConnError).not.toHaveBeenCalled();
+    expect(utpConnError).toHaveBeenCalledTimes(0);
     // The TLS socket throw an error because there's no suitable signature algorithm
-    expect(tlsSocketError).toHaveBeenCalled();
+    expect(tlsSocketError).toHaveBeenCalledTimes(1);
     // Expect(tlsSocketError.mock.calls[0][0]).toBeInstanceOf(Error);
     expect(tlsSocketError.mock.calls[0][0]).toHaveProperty(
       'code',
       'ERR_SSL_NO_SUITABLE_SIGNATURE_ALGORITHM',
     );
     // The TLS socket end event never was emitted
-    expect(tlsSocketEnd).not.toHaveBeenCalled();
+    expect(tlsSocketEnd).toHaveBeenCalledTimes(0);
     // The TLS socket close event is emitted with error
-    expect(tlsSocketClose).toHaveBeenCalled();
+    expect(tlsSocketClose).toHaveBeenCalledTimes(1);
     expect(tlsSocketClose).toHaveBeenCalledWith(true);
     utpSocket.off('message', handleMessage);
     utpSocket.close();
@@ -582,18 +582,18 @@ describe(Proxy.name, () => {
       ),
     ).rejects.toThrow('502');
     await expect(remoteClosedP).resolves.toBeUndefined();
-    expect(utpConnError).not.toHaveBeenCalled();
+    expect(utpConnError).toHaveBeenCalledTimes(0);
     // The TLS socket throw an error because there's no suitable signature algorithm
-    expect(tlsSocketError).toHaveBeenCalled();
+    expect(tlsSocketError).toHaveBeenCalledTimes(1);
     // Expect(tlsSocketError.mock.calls[0][0]).toBeInstanceOf(Error);
     expect(tlsSocketError.mock.calls[0][0]).toHaveProperty(
       'code',
       'ERR_SSL_NO_SUITABLE_SIGNATURE_ALGORITHM',
     );
     // The TLS socket end event never was emitted
-    expect(tlsSocketEnd).not.toHaveBeenCalled();
+    expect(tlsSocketEnd).toHaveBeenCalledTimes(0);
     // The TLS socket close event is emitted with error
-    expect(tlsSocketClose).toHaveBeenCalled();
+    expect(tlsSocketClose).toHaveBeenCalledTimes(1);
     expect(tlsSocketClose).toHaveBeenCalledWith(true);
     utpSocket.off('message', handleMessage);
     utpSocket.close();
@@ -702,13 +702,14 @@ describe(Proxy.name, () => {
     expect(secured).toBe(true);
     expect(proxy.getConnectionForwardCount()).toBe(0);
     await expect(remoteClosedP).resolves.toBeUndefined();
+    expect(utpConnError).toHaveBeenCalledTimes(0);
     // No TLS socket errors this time
     // The client side figured that the node id is incorrect
-    expect(tlsSocketError).not.toHaveBeenCalled();
+    expect(tlsSocketError).toHaveBeenCalledTimes(0);
     // This time the tls socket is ended from the client side
-    expect(tlsSocketEnd).toHaveBeenCalled();
+    expect(tlsSocketEnd).toHaveBeenCalledTimes(1);
     // The TLS socket close event is emitted without error
-    expect(tlsSocketClose).toHaveBeenCalled();
+    expect(tlsSocketClose).toHaveBeenCalledTimes(1);
     expect(tlsSocketClose).toHaveBeenCalledWith(false);
     utpSocket.off('message', handleMessage);
     utpSocket.close();
@@ -750,7 +751,6 @@ describe(Proxy.name, () => {
     let secured = false;
     const utpSocket = UTP.createServer(async (utpConn) => {
       utpConn.on('error', (e) => {
-        logger.debug(`utp connection error! ${e.message}`);
         utpConnError(e);
       });
       const tlsSocket = new tls.TLSSocket(utpConn, {
@@ -761,11 +761,9 @@ describe(Proxy.name, () => {
         rejectUnauthorized: false,
       });
       tlsSocket.on('secure', () => {
-        logger.debug('secure');
         secured = true;
       });
       tlsSocket.on('error', (e) => {
-        logger.debug(`tlsSocket error: ${e.message}`);
         tlsSocketError(e);
       });
       tlsSocket.on('end', () => {
@@ -781,11 +779,9 @@ describe(Proxy.name, () => {
         }
       });
       tlsSocket.on('close', (hadError) => {
-        logger.debug('close');
         tlsSocketClose(hadError);
         resolveRemoteClosedP();
       });
-      logger.debug('lol');
       await send(networkUtils.pingBuffer);
       const punchInterval = setInterval(async () => {
         await send(networkUtils.pingBuffer);
@@ -793,28 +789,24 @@ describe(Proxy.name, () => {
       await remoteReadyP;
       clearInterval(punchInterval);
     });
-    const send = async (data: Buffer) => {
-      logger.debug(`sending message: ${data}`);
-      const utpSocketSend = promisify(utpSocket.send).bind(utpSocket);
-      await utpSocketSend(data, 0, data.byteLength, proxyPort, proxyHost);
-    };
     const handleMessage = async (data: Buffer) => {
       const msg = networkUtils.unserializeNetworkMessage(data);
-      logger.debug(`received message: ${JSON.stringify(msg)}`);
       if (msg.type === 'ping') {
-        logger.debug('sending pong');
         await send(networkUtils.pongBuffer);
       } else if (msg.type === 'pong') {
         resolveRemoteReadyP();
       }
     };
     utpSocket.on('message', handleMessage);
+    const send = async (data: Buffer) => {
+      const utpSocketSend = promisify(utpSocket.send).bind(utpSocket);
+      await utpSocketSend(data, 0, data.byteLength, proxyPort, proxyHost);
+    };
     const utpSocketListen = promisify(utpSocket.listen).bind(utpSocket);
     await utpSocketListen(0, localHost);
     const utpSocketHost = utpSocket.address().address;
     const utpSocketPort = utpSocket.address().port;
     expect(proxy.getConnectionForwardCount()).toBe(0);
-    logger.debug('connecting');
     await expect(() =>
       httpConnect(
         proxy.getForwardHost(),
@@ -825,17 +817,16 @@ describe(Proxy.name, () => {
         )}`,
       ),
     ).rejects.toThrow('526');
-    logger.debug('connected');
     await expect(remoteReadyP).resolves.toBeUndefined();
     expect(secured).toBe(true);
     expect(proxy.getConnectionForwardCount()).toBe(0);
     await expect(remoteClosedP).resolves.toBeUndefined();
-    // Expect(utpConnError).not.toHaveBeenCalled();
+    expect(utpConnError).toHaveBeenCalledTimes(0);
     // No TLS socket errors this time
     // The client side figured that the node id is incorrect
-    expect(tlsSocketError).not.toHaveBeenCalled();
+    expect(tlsSocketError).toHaveBeenCalledTimes(0);
     // This time the tls socket is ended from the client side
-    expect(tlsSocketEnd).toHaveBeenCalled();
+    expect(tlsSocketEnd).toHaveBeenCalledTimes(1);
     // The TLS socket close event is emitted without error
     expect(tlsSocketClose).toHaveBeenCalledTimes(1);
     expect(tlsSocketClose).toHaveBeenCalledWith(false);
@@ -882,9 +873,7 @@ describe(Proxy.name, () => {
     const tlsSocketClose = jest.fn();
     // This UTP server will hold the connection
     const utpSocket = UTP.createServer(async (utpConn) => {
-      const utpLogger = logger.getChild('utpSocket');
       utpConn.on('error', (e) => {
-        utpLogger.debug(`error: ${e.message}`);
         utpConnError(e);
       });
       const tlsSocket = new tls.TLSSocket(utpConn, {
@@ -894,17 +883,14 @@ describe(Proxy.name, () => {
         requestCert: true,
         rejectUnauthorized: false,
       });
-      const tlsLogger = utpLogger.getChild('tlsSocket');
       tlsSocket.on('secure', () => {
-        tlsLogger.debug('secure');
         resolveRemoteSecureP();
       });
       tlsSocket.on('error', (e) => {
-        tlsLogger.debug(`error: ${e.message}`);
         tlsSocketError(e);
       });
       tlsSocket.on('end', () => {
-        tlsLogger.debug('Reverse: receives tlsSocket ending');
+        logger.debug('Reverse: receives tlsSocket ending');
         tlsSocketEnd();
         if (utpConn.destroyed) {
           logger.debug('Reverse: destroys tlsSocket');
@@ -917,14 +903,11 @@ describe(Proxy.name, () => {
         }
       });
       tlsSocket.on('close', (hadError) => {
-        tlsLogger.debug('close');
         tlsSocketClose(hadError);
         resolveRemoteClosedP();
       });
-      logger.debug('sending ping');
       await send(networkUtils.pingBuffer);
       const punchInterval = setInterval(async () => {
-        logger.debug('sending ping');
         await send(networkUtils.pingBuffer);
       }, 1000);
       await remoteReadyP;
@@ -933,26 +916,21 @@ describe(Proxy.name, () => {
     const handleMessage = async (data: Buffer) => {
       const msg = networkUtils.unserializeNetworkMessage(data);
       if (msg.type === 'ping') {
-        logger.debug('sending pong');
         await send(networkUtils.pongBuffer);
       } else if (msg.type === 'pong') {
-        logger.debug('received pong');
         resolveRemoteReadyP();
       }
     };
     utpSocket.on('message', handleMessage);
     const send = async (data: Buffer) => {
-      logger.debug('sending');
       const utpSocketSend = promisify(utpSocket.send).bind(utpSocket);
       await utpSocketSend(data, 0, data.byteLength, proxyPort, proxyHost);
     };
     const utpSocketListen = promisify(utpSocket.listen).bind(utpSocket);
-    logger.debug('listening');
     await utpSocketListen(0, localHost);
     const utpSocketHost = utpSocket.address().address;
     const utpSocketPort = utpSocket.address().port;
     expect(proxy.getConnectionForwardCount()).toBe(0);
-    logger.debug('opening forward connection');
     await proxy.openConnectionForward(
       serverNodeId,
       utpSocketHost as Host,
@@ -961,7 +939,6 @@ describe(Proxy.name, () => {
     await expect(remoteReadyP).resolves.toBeUndefined();
     await expect(remoteSecureP).resolves.toBeUndefined();
     // Opening a duplicate connection is noop
-    logger.debug('opening 2nd forward connection');
     await proxy.openConnectionForward(
       serverNodeId,
       utpSocketHost as Host,
@@ -974,10 +951,10 @@ describe(Proxy.name, () => {
     );
     expect(proxy.getConnectionForwardCount()).toBe(0);
     await expect(remoteClosedP).resolves.toBeUndefined();
-    // Expect(utpConnError).not.toHaveBeenCalled();
-    expect(tlsSocketError).not.toHaveBeenCalled();
-    expect(tlsSocketEnd).toHaveBeenCalled();
-    expect(tlsSocketClose).toHaveBeenCalled();
+    expect(utpConnError).toHaveBeenCalledTimes(0);
+    expect(tlsSocketError).toHaveBeenCalledTimes(0);
+    expect(tlsSocketEnd).toHaveBeenCalledTimes(1);
+    expect(tlsSocketClose).toHaveBeenCalledTimes(1);
     expect(tlsSocketClose).toHaveBeenCalledWith(false);
     utpSocket.off('message', handleMessage);
     utpSocket.close();
@@ -1121,12 +1098,12 @@ describe(Proxy.name, () => {
         100,
       ),
     ).resolves.toBe(0);
-    expect(utpConnError).not.toHaveBeenCalled();
-    expect(tlsSocketError).not.toHaveBeenCalled();
+    expect(utpConnError).toHaveBeenCalledTimes(0);
+    expect(tlsSocketError).toHaveBeenCalledTimes(0);
     // This time the reverse side initiates the end
     // Therefore, this handler is removed
-    expect(tlsSocketEnd).not.toHaveBeenCalled();
-    expect(tlsSocketClose).toHaveBeenCalled();
+    expect(tlsSocketEnd).toHaveBeenCalledTimes(0);
+    expect(tlsSocketClose).toHaveBeenCalledTimes(1);
     expect(tlsSocketClose).toHaveBeenCalledWith(false);
     utpSocket.off('message', handleMessage);
     utpSocket.close();
@@ -1269,13 +1246,13 @@ describe(Proxy.name, () => {
       utpSocketPort as Port,
     );
     expect(proxy.getConnectionForwardCount()).toBe(0);
-    expect(clientSocketEnd).toHaveBeenCalled();
+    expect(clientSocketEnd).toHaveBeenCalledTimes(1);
     await expect(localClosedP).resolves.toBeUndefined();
     await expect(remoteClosedP).resolves.toBeUndefined();
-    // Expect(utpConnError).not.toHaveBeenCalled();
-    expect(tlsSocketError).not.toHaveBeenCalled();
-    expect(tlsSocketEnd).toHaveBeenCalled();
-    expect(tlsSocketClose).toHaveBeenCalled();
+    expect(utpConnError).toHaveBeenCalledTimes(0);
+    expect(tlsSocketError).toHaveBeenCalledTimes(0);
+    expect(tlsSocketEnd).toHaveBeenCalledTimes(1);
+    expect(tlsSocketClose).toHaveBeenCalledTimes(1);
     expect(tlsSocketClose).toHaveBeenCalledWith(false);
     utpSocket.off('message', handleMessage);
     utpSocket.close();
@@ -1427,7 +1404,7 @@ describe(Proxy.name, () => {
     tlsSocket_!.destroy();
     logger.debug('Reverse: finishes tlsSocket ending');
     await expect(localClosedP).resolves.toBeUndefined();
-    expect(clientSocketEnd).toHaveBeenCalled();
+    expect(clientSocketEnd).toHaveBeenCalledTimes(1);
     await expect(remoteClosedP).resolves.toBeUndefined();
     // Connection count should reach 0 eventually
     await expect(
@@ -1441,12 +1418,12 @@ describe(Proxy.name, () => {
         100,
       ),
     ).resolves.toBe(0);
-    expect(utpConnError).not.toHaveBeenCalled();
-    expect(tlsSocketError).not.toHaveBeenCalled();
+    expect(utpConnError).toHaveBeenCalledTimes(0);
+    expect(tlsSocketError).toHaveBeenCalledTimes(0);
     // This time the reverse side initiates the end
     // Therefore, this handler is removed
-    expect(tlsSocketEnd).not.toHaveBeenCalled();
-    expect(tlsSocketClose).toHaveBeenCalled();
+    expect(tlsSocketEnd).toHaveBeenCalledTimes(0);
+    expect(tlsSocketClose).toHaveBeenCalledTimes(1);
     expect(tlsSocketClose).toHaveBeenCalledWith(false);
     utpSocket.off('message', handleMessage);
     utpSocket.close();
@@ -1601,10 +1578,10 @@ describe(Proxy.name, () => {
         100,
       ),
     ).resolves.toBe(0);
-    expect(utpConnError).not.toHaveBeenCalled();
-    expect(tlsSocketError).not.toHaveBeenCalled();
-    expect(tlsSocketEnd).toHaveBeenCalled();
-    expect(tlsSocketClose).toHaveBeenCalled();
+    expect(utpConnError).toHaveBeenCalledTimes(0);
+    expect(tlsSocketError).toHaveBeenCalledTimes(0);
+    expect(tlsSocketEnd).toHaveBeenCalledTimes(1);
+    expect(tlsSocketClose).toHaveBeenCalledTimes(1);
     expect(tlsSocketClose).toHaveBeenCalledWith(false);
     utpSocket.off('message', handleMessage);
     utpSocket.close();
@@ -1732,10 +1709,10 @@ describe(Proxy.name, () => {
     );
     await expect(localClosedP).resolves.toBeUndefined();
     await expect(remoteClosedP).resolves.toBeUndefined();
-    expect(utpConnError).not.toHaveBeenCalled();
-    expect(tlsSocketError).not.toHaveBeenCalled();
-    expect(tlsSocketEnd).toHaveBeenCalled();
-    expect(tlsSocketClose).toHaveBeenCalled();
+    expect(utpConnError).toHaveBeenCalledTimes(0);
+    expect(tlsSocketError).toHaveBeenCalledTimes(0);
+    expect(tlsSocketEnd).toHaveBeenCalledTimes(1);
+    expect(tlsSocketClose).toHaveBeenCalledTimes(1);
     expect(tlsSocketClose).toHaveBeenCalledWith(false);
     utpSocket.off('message', handleMessage);
     utpSocket.close();
@@ -1849,10 +1826,10 @@ describe(Proxy.name, () => {
     // When ErrorConnectionTimeout is triggered
     // This results in the destruction of the socket
     await expect(remoteClosedP).resolves.toBeUndefined();
-    expect(utpConnError).not.toHaveBeenCalled();
-    expect(tlsSocketError).not.toHaveBeenCalled();
-    expect(tlsSocketEnd).toHaveBeenCalled();
-    expect(tlsSocketClose).toHaveBeenCalled();
+    expect(utpConnError).toHaveBeenCalledTimes(0);
+    expect(tlsSocketError).toHaveBeenCalledTimes(0);
+    expect(tlsSocketEnd).toHaveBeenCalledTimes(1);
+    expect(tlsSocketClose).toHaveBeenCalledTimes(1);
     expect(tlsSocketClose).toHaveBeenCalledWith(false);
     utpSocket.off('message', handleMessage);
     utpSocket.close();
@@ -1990,10 +1967,10 @@ describe(Proxy.name, () => {
         100,
       ),
     ).resolves.toBe(0);
-    expect(utpConnError).not.toHaveBeenCalled();
-    expect(tlsSocketError).not.toHaveBeenCalled();
-    expect(tlsSocketEnd).toHaveBeenCalled();
-    expect(tlsSocketClose).toHaveBeenCalled();
+    expect(utpConnError).toHaveBeenCalledTimes(0);
+    expect(tlsSocketError).toHaveBeenCalledTimes(0);
+    expect(tlsSocketEnd).toHaveBeenCalledTimes(1);
+    expect(tlsSocketClose).toHaveBeenCalledTimes(1);
     expect(tlsSocketClose).toHaveBeenCalledWith(false);
     utpSocket.off('message', handleMessage);
     utpSocket.close();
@@ -2541,8 +2518,7 @@ describe(Proxy.name, () => {
     await proxy.start({
       serverHost: serverHost(),
       serverPort: serverPort(),
-      proxyHost: localHost,
-      forwardHost: localHost,
+
       tlsConfig: {
         keyPrivatePem: keyPairPem.privateKey,
         certChainPem: certPem,
@@ -2570,8 +2546,7 @@ describe(Proxy.name, () => {
     // This retries multiple times
     // This will eventually fail and trigger a ErrorConnectionComposeTimeout
     const utpConn = utpSocket.connect(proxyPort, proxyHost);
-    utpConn.setTimeout(2000);
-    utpConn.on('timeout', () => {
+    utpConn.setTimeout(2000, () => {
       utpConn.emit('error', new Error('TIMED OUT'));
     });
     const { p: utpConnClosedP, resolveP: resolveUtpConnClosedP } =
@@ -2579,7 +2554,6 @@ describe(Proxy.name, () => {
     const { p: utpConnErrorP, rejectP: rejectUtpConnErrorP } = promise<void>();
     utpConn.on('error', (e) => {
       rejectUtpConnErrorP(e);
-      utpConn.end();
       utpConn.destroy();
     });
     utpConn.on('close', () => {
