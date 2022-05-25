@@ -210,8 +210,7 @@ describe('allow/disallow/permissions', () => {
     // @ts-ignore - get protected property
     pkAgent.discovery.visitedVertices.clear();
   });
-  // FIXME: causing tests to hang
-  test.skip('allows/disallows/gets gestalt permissions by identity', async () => {
+  test('allows/disallows/gets gestalt permissions by identity', async () => {
     let exitCode, stdout;
     // Add the node to our node graph, otherwise we won't be able to contact it
     await testBinUtils.pkStdio(

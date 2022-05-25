@@ -11,8 +11,7 @@ import * as testUtils from '../../utils';
 jest.mock('prompts');
 const mockedPrompts = mocked(prompts);
 
-// FIXME: I think this is broken, it's stalling ALL testing?
-describe.skip('lock', () => {
+describe('lock', () => {
   const logger = new Logger('lock test', LogLevel.WARN, [new StreamHandler()]);
   let globalAgentDir;
   let globalAgentPassword;

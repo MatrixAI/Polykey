@@ -15,7 +15,7 @@ import * as testUtils from '../../utils';
 jest.mock('prompts');
 const mockedPrompts = mocked(prompts);
 
-describe.skip('lockall', () => {
+describe('lockall', () => {
   const logger = new Logger('lockall test', LogLevel.WARN, [
     new StreamHandler(),
   ]);

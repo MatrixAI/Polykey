@@ -116,7 +116,7 @@ describe('claim', () => {
     );
     mockedBrowser.mockRestore();
   });
-  test.skip('cannot claim unauthenticated identities', async () => {
+  test('cannot claim unauthenticated identities', async () => {
     const { exitCode } = await testBinUtils.pkStdio(
       ['identities', 'claim', testToken.providerId, testToken.identityId],
       {

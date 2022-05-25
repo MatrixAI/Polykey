@@ -18,7 +18,7 @@ describe('password', () => {
   afterAll(async () => {
     await globalAgentClose();
   });
-  test.skip('password changes the root password', async () => {
+  test('password changes the root password', async () => {
     const passPath = path.join(globalAgentDir, 'passwordChange');
     await fs.promises.writeFile(passPath, 'password-change');
     let { exitCode } = await testBinUtils.pkStdio(

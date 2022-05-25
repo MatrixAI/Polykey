@@ -153,7 +153,7 @@ describe('CLI vaults', () => {
       }
       expect(namesList).toContain('RenamedVault');
     });
-    test.skip('should fail to rename non-existent vault', async () => {
+    test('should fail to rename non-existent vault', async () => {
       command = [
         'vaults',
         'rename',
@@ -199,7 +199,7 @@ describe('CLI vaults', () => {
       expect(namesList).not.toContain(vaultName);
     });
   });
-  test.skip(
+  test(
     'should clone and pull a vault',
     async () => {
       const dataDir2 = await fs.promises.mkdtemp(
@@ -520,7 +520,7 @@ describe('CLI vaults', () => {
       expect(result2.stdout).toContain('pull');
     });
   });
-  describe.skip('commandVaultVersion', () => {
+  describe('commandVaultVersion', () => {
     test('should switch the version of a vault', async () => {
       const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
       const id = polykeyAgent.vaultManager.getVaultId(vaultName);
@@ -696,7 +696,7 @@ describe('CLI vaults', () => {
     test.todo('test formatting of the output');
   });
   describe('commandScanNode', () => {
-    test.skip(
+    test(
       'should return the vaults names and ids of the remote vault',
       async () => {
         let remoteOnline: PolykeyAgent | undefined;

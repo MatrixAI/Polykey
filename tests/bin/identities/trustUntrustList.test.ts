@@ -221,7 +221,7 @@ describe('trust/untrust/list', () => {
     // @ts-ignore - get protected property
     pkAgent.discovery.visitedVertices.clear();
   });
-  test.skip('trusts and untrusts a gestalt by identity, adds it to the gestalt graph, and lists the gestalt with notify permission', async () => {
+  test('trusts and untrusts a gestalt by identity, adds it to the gestalt graph, and lists the gestalt with notify permission', async () => {
     let exitCode, stdout;
     // Add the node to our node graph and authenticate an identity on the
     // provider
