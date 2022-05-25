@@ -1,5 +1,6 @@
 import type { Authenticate } from '@/client/types';
 import type { Host, Port } from '@/network/types';
+import type { ClientMetadata } from '@/types';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
@@ -160,6 +161,7 @@ describe('GRPCServer', () => {
     );
     const unary = grpcUtils.promisifyUnaryCall<utilsPB.EchoMessage>(
       client,
+      {} as ClientMetadata,
       client.unary,
     );
     const m = new utilsPB.EchoMessage();
@@ -213,6 +215,7 @@ describe('GRPCServer', () => {
     );
     const unary1 = grpcUtils.promisifyUnaryCall<utilsPB.EchoMessage>(
       client1,
+      {} as ClientMetadata,
       client1.unary,
     );
     const m1 = new utilsPB.EchoMessage();
@@ -250,6 +253,7 @@ describe('GRPCServer', () => {
     );
     const unary2 = grpcUtils.promisifyUnaryCall<utilsPB.EchoMessage>(
       client2,
+      {} as ClientMetadata,
       client2.unary,
     );
     const m3 = new utilsPB.EchoMessage();
@@ -303,6 +307,7 @@ describe('GRPCServer', () => {
     );
     const unary = grpcUtils.promisifyUnaryCall<utilsPB.EchoMessage>(
       client,
+      {} as ClientMetadata,
       client.unaryAuthenticated,
     );
     const m = new utilsPB.EchoMessage();
