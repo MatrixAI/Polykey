@@ -7,6 +7,7 @@
 import type { Authenticate } from '@/client/types';
 import type { SessionToken } from '@/sessions/types';
 import type { ITestServiceServer } from '@/proto/js/polykey/v1/test_service_grpc_pb';
+import type { ClientMetadata } from '@/types';
 import Logger from '@matrixai/logger';
 import * as grpc from '@grpc/grpc-js';
 import * as grpcUtils from '@/grpc/utils';
@@ -102,8 +103,10 @@ function createTestService({
         );
         call.sendMetadata(meta);
       }
-      const genReadable =
-        grpcUtils.generatorReadable<utilsPB.EchoMessage>(call);
+      const genReadable = grpcUtils.generatorReadable<utilsPB.EchoMessage>(
+        call,
+        {} as ClientMetadata,
+      );
       let data = '';
       try {
         for await (const m of genReadable) {
@@ -132,7 +135,11 @@ function createTestService({
         );
         call.sendMetadata(meta);
       }
-      const genDuplex = grpcUtils.generatorDuplex(call, false);
+      const genDuplex = grpcUtils.generatorDuplex(
+        call,
+        {} as ClientMetadata,
+        false,
+      );
       const readStatus = await genDuplex.read();
       // If nothing to read, end and destroy
       if (readStatus.done) {

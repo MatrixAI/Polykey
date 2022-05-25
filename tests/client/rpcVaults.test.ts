@@ -4,6 +4,7 @@ import type { VaultName } from '@/vaults/types';
 import type { ClientServiceClient } from '@/proto/js/polykey/v1/client_service_grpc_pb';
 import type { Stat } from 'encryptedfs';
 import type * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
+import type { ClientMetadata } from '@/types';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
@@ -111,6 +112,7 @@ describe('Vaults client service', () => {
     test('should make a directory in a vault', async () => {
       const mkdirVault = grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
         client,
+        {} as ClientMetadata,
         client.vaultsSecretsMkdir,
       );
 
@@ -133,6 +135,7 @@ describe('Vaults client service', () => {
       const listSecretsVault =
         grpcUtils.promisifyReadableStreamCall<secretsPB.Secret>(
           client,
+          {} as ClientMetadata,
           client.vaultsSecretsList,
         );
 
@@ -158,6 +161,7 @@ describe('Vaults client service', () => {
       const deleteSecretVault =
         grpcUtils.promisifyUnaryCall<utilsPB.StatusMessage>(
           client,
+          {} as ClientMetadata,
           client.vaultsSecretsDelete,
         );
 
@@ -187,6 +191,7 @@ describe('Vaults client service', () => {
       const editSecretVault =
         grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
           client,
+          {} as ClientMetadata,
           client.vaultsSecretsEdit,
         );
       const vaultId = await vaultManager.createVault(vaultList[0]);
@@ -214,6 +219,7 @@ describe('Vaults client service', () => {
     test('should get secrets in a vault', async () => {
       const getSecretVault = grpcUtils.promisifyUnaryCall<secretsPB.Secret>(
         client,
+        {} as ClientMetadata,
         client.vaultsSecretsGet,
       );
       const vaultId = await vaultManager.createVault(vaultList[0]);
@@ -235,6 +241,7 @@ describe('Vaults client service', () => {
       const renameSecretVault =
         grpcUtils.promisifyUnaryCall<utilsPB.StatusMessage>(
           client,
+          {} as ClientMetadata,
           client.vaultsSecretsRename,
         );
       const vaultId = await vaultManager.createVault(vaultList[0]);
@@ -265,6 +272,7 @@ describe('Vaults client service', () => {
       const newSecretVault =
         grpcUtils.promisifyUnaryCall<utilsPB.StatusMessage>(
           client,
+          {} as ClientMetadata,
           client.vaultsSecretsNew,
         );
 
@@ -288,6 +296,7 @@ describe('Vaults client service', () => {
       const newDirSecretVault =
         grpcUtils.promisifyUnaryCall<utilsPB.StatusMessage>(
           client,
+          {} as ClientMetadata,
           client.vaultsSecretsNewDir,
         );
 
@@ -315,6 +324,7 @@ describe('Vaults client service', () => {
     test('should stat a file', async () => {
       const getSecretStat = grpcUtils.promisifyUnaryCall<secretsPB.Stat>(
         client,
+        {} as ClientMetadata,
         client.vaultsSecretsStat,
       );
       const vaultId = await vaultManager.createVault(vaultList[0]);
