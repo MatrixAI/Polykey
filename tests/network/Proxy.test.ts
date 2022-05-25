@@ -1,12 +1,12 @@
-import type { Socket, AddressInfo } from 'net';
+import type { AddressInfo, Socket } from 'net';
 import type { KeyPairPem } from '@/keys/types';
 import type { Host, Port } from '@/network/types';
-import http from 'http';
 import net from 'net';
+import http from 'http';
 import tls from 'tls';
 import UTP from 'utp-native';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { promisify, promise, timerStart, timerStop, poll } from '@/utils';
+import { poll, promise, promisify, timerStart, timerStop } from '@/utils';
 import Proxy from '@/network/Proxy';
 import * as networkUtils from '@/network/utils';
 import * as networkErrors from '@/network/errors';
@@ -27,7 +27,7 @@ async function httpConnect(
   path: string,
 ): Promise<Socket> {
   const tokenEncoded = Buffer.from(token, 'utf-8').toString('base64');
-  const socket = await new Promise<Socket>((resolve, reject) => {
+  return await new Promise<Socket>((resolve, reject) => {
     const req = http.request({
       method: 'CONNECT',
       path: path,
@@ -49,7 +49,6 @@ async function httpConnect(
       reject(e);
     });
   });
-  return socket;
 }
 
 /**
