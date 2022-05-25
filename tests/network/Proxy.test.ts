@@ -6,12 +6,12 @@ import http from 'http';
 import tls from 'tls';
 import UTP from 'utp-native';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { poll, promise, promisify, timerStart, timerStop } from '@/utils';
 import Proxy from '@/network/Proxy';
 import * as networkUtils from '@/network/utils';
 import * as networkErrors from '@/network/errors';
 import * as keysUtils from '@/keys/utils';
 import * as nodesUtils from '@/nodes/utils';
+import { promisify, promise, timerStart, timerStop, poll } from '@/utils';
 import * as testUtils from '../utils';
 
 /**
@@ -107,7 +107,7 @@ function tcpServer(end: boolean = false) {
 describe(Proxy.name, () => {
   const localHost = '127.0.0.1' as Host;
   const port = 0 as Port;
-  const logger = new Logger(`${Proxy.name} test`, LogLevel.DEBUG, [
+  const logger = new Logger(`${Proxy.name} test`, LogLevel.WARN, [
     new StreamHandler(),
   ]);
   const nodeIdABC = testUtils.generateRandomNodeId();
@@ -249,7 +249,7 @@ describe(Proxy.name, () => {
     });
     // Cannot open connection to port 0
     await expect(() =>
-      proxy.openConnectionForward(nodeIdABC, '127.0.0.1' as Host, 0 as Port),
+      proxy.openConnectionForward(nodeIdABC, localHost, 0 as Port),
     ).rejects.toThrow(networkErrors.ErrorConnectionStart);
     await expect(() =>
       httpConnect(
@@ -282,35 +282,35 @@ describe(Proxy.name, () => {
       serverPort: port,
     });
     // This UTP server will just hang and not respond
-    let recievedCount = 0;
+    let receivedCount = 0;
     const utpSocketHang = UTP.createServer(() => {
-      recievedCount++;
+      receivedCount++;
     });
     const utpSocketHangListen = promisify(utpSocketHang.listen).bind(
       utpSocketHang,
     );
-    await utpSocketHangListen(0, '127.0.0.1');
+    await utpSocketHangListen(0, localHost);
     const utpSocketHangPort = utpSocketHang.address().port;
     await expect(() =>
       proxy.openConnectionForward(
         nodeIdABC,
-        '127.0.0.1' as Host,
+        localHost,
         utpSocketHangPort as Port,
       ),
     ).rejects.toThrow(networkErrors.ErrorConnectionStartTimeout);
-    expect(recievedCount).toBe(1);
+    expect(receivedCount).toBe(1);
     // Can override the timer
     const timer = timerStart(2000);
     await expect(() =>
       proxy.openConnectionForward(
         nodeIdABC,
-        '127.0.0.1' as Host,
+        localHost,
         utpSocketHangPort as Port,
         timer,
       ),
     ).rejects.toThrow(networkErrors.ErrorConnectionStartTimeout);
     timerStop(timer);
-    expect(recievedCount).toBe(2);
+    expect(receivedCount).toBe(2);
     await expect(() =>
       httpConnect(
         proxy.getForwardHost(),
@@ -321,7 +321,7 @@ describe(Proxy.name, () => {
         )}`,
       ),
     ).rejects.toThrow('504');
-    expect(recievedCount).toBe(3);
+    expect(receivedCount).toBe(3);
     utpSocketHang.close();
     utpSocketHang.unref();
     await proxy.stop();
@@ -341,34 +341,34 @@ describe(Proxy.name, () => {
     });
     // This UTP Server will immediately end and destroy
     // the connection upon receiving a connection
-    let recievedCount = 0;
+    let receivedCount = 0;
     const utpSocketEnd = UTP.createServer((utpConn) => {
-      recievedCount++;
+      receivedCount++;
       utpConn.end();
       utpConn.destroy();
     });
     const utpSocketEndListen = promisify(utpSocketEnd.listen).bind(
       utpSocketEnd,
     );
-    await utpSocketEndListen(0, '127.0.0.1');
+    await utpSocketEndListen(0, localHost);
     const utpSocketEndPort = utpSocketEnd.address().port;
     await expect(() =>
       proxy.openConnectionForward(
         nodeIdABC,
-        '127.0.0.1' as Host,
+        localHost,
         utpSocketEndPort as Port,
       ),
     ).rejects.toThrow(networkErrors.ErrorConnectionStart);
-    expect(recievedCount).toBe(1);
+    expect(receivedCount).toBe(1);
     // The actual error is UTP_ECONNRESET to be precise
     await expect(() =>
       proxy.openConnectionForward(
         nodeIdABC,
-        '127.0.0.1' as Host,
+        localHost,
         utpSocketEndPort as Port,
       ),
     ).rejects.toThrow(/UTP_ECONNRESET/);
-    expect(recievedCount).toBe(2);
+    expect(receivedCount).toBe(2);
     // 502 Bad Gateway on HTTP Connect
     await expect(() =>
       httpConnect(
@@ -380,7 +380,7 @@ describe(Proxy.name, () => {
         )}`,
       ),
     ).rejects.toThrow('502');
-    expect(recievedCount).toBe(3);
+    expect(receivedCount).toBe(3);
     utpSocketEnd.close();
     utpSocketEnd.unref();
     await proxy.stop();
@@ -460,7 +460,7 @@ describe(Proxy.name, () => {
       await utpSocketSend(data, 0, data.byteLength, proxyPort, proxyHost);
     };
     const utpSocketListen = promisify(utpSocket.listen).bind(utpSocket);
-    await utpSocketListen(0, '127.0.0.1');
+    await utpSocketListen(0, localHost);
     const utpSocketHost = utpSocket.address().address;
     const utpSocketPort = utpSocket.address().port;
     expect(proxy.getConnectionForwardCount()).toBe(0);
@@ -473,19 +473,19 @@ describe(Proxy.name, () => {
       ),
     ).rejects.toThrow(networkErrors.ErrorConnectionStart);
     await expect(remoteClosedP).resolves.toBeUndefined();
-    expect(utpConnError.mock.calls.length).toBe(0);
+    expect(utpConnError).toHaveBeenCalledTimes(0);
     // The TLS socket throw an error because there's no suitable signature algorithm
-    expect(tlsSocketError.mock.calls.length).toBe(1);
+    expect(tlsSocketError).toHaveBeenCalledTimes(1);
     // Expect(tlsSocketError.mock.calls[0][0]).toBeInstanceOf(Error);
     expect(tlsSocketError.mock.calls[0][0]).toHaveProperty(
       'code',
       'ERR_SSL_NO_SUITABLE_SIGNATURE_ALGORITHM',
     );
     // The TLS socket end event never was emitted
-    expect(tlsSocketEnd.mock.calls.length).toBe(0);
+    expect(tlsSocketEnd).toHaveBeenCalledTimes(0);
     // The TLS socket close event is emitted with error
-    expect(tlsSocketClose.mock.calls.length).toBe(1);
-    expect(tlsSocketClose.mock.calls[0][0]).toBe(true);
+    expect(tlsSocketClose).toHaveBeenCalledTimes(1);
+    expect(tlsSocketClose).toHaveBeenCalledWith(true);
     utpSocket.off('message', handleMessage);
     utpSocket.close();
     utpSocket.unref();
@@ -566,7 +566,7 @@ describe(Proxy.name, () => {
       await utpSocketSend(data, 0, data.byteLength, proxyPort, proxyHost);
     };
     const utpSocketListen = promisify(utpSocket.listen).bind(utpSocket);
-    await utpSocketListen(0, '127.0.0.1');
+    await utpSocketListen(0, localHost);
     const utpSocketHost = utpSocket.address().address;
     const utpSocketPort = utpSocket.address().port;
     expect(proxy.getConnectionForwardCount()).toBe(0);
@@ -582,19 +582,19 @@ describe(Proxy.name, () => {
       ),
     ).rejects.toThrow('502');
     await expect(remoteClosedP).resolves.toBeUndefined();
-    expect(utpConnError.mock.calls.length).toBe(0);
+    expect(utpConnError).toHaveBeenCalledTimes(0);
     // The TLS socket throw an error because there's no suitable signature algorithm
-    expect(tlsSocketError.mock.calls.length).toBe(1);
+    expect(tlsSocketError).toHaveBeenCalledTimes(1);
     // Expect(tlsSocketError.mock.calls[0][0]).toBeInstanceOf(Error);
     expect(tlsSocketError.mock.calls[0][0]).toHaveProperty(
       'code',
       'ERR_SSL_NO_SUITABLE_SIGNATURE_ALGORITHM',
     );
     // The TLS socket end event never was emitted
-    expect(tlsSocketEnd.mock.calls.length).toBe(0);
+    expect(tlsSocketEnd).toHaveBeenCalledTimes(0);
     // The TLS socket close event is emitted with error
-    expect(tlsSocketClose.mock.calls.length).toBe(1);
-    expect(tlsSocketClose.mock.calls[0][0]).toBe(true);
+    expect(tlsSocketClose).toHaveBeenCalledTimes(1);
+    expect(tlsSocketClose).toHaveBeenCalledWith(true);
     utpSocket.off('message', handleMessage);
     utpSocket.close();
     utpSocket.unref();
@@ -687,7 +687,7 @@ describe(Proxy.name, () => {
       await utpSocketSend(data, 0, data.byteLength, proxyPort, proxyHost);
     };
     const utpSocketListen = promisify(utpSocket.listen).bind(utpSocket);
-    await utpSocketListen(0, '127.0.0.1');
+    await utpSocketListen(0, localHost);
     const utpSocketHost = utpSocket.address().address;
     const utpSocketPort = utpSocket.address().port;
     expect(proxy.getConnectionForwardCount()).toBe(0);
@@ -702,15 +702,15 @@ describe(Proxy.name, () => {
     expect(secured).toBe(true);
     expect(proxy.getConnectionForwardCount()).toBe(0);
     await expect(remoteClosedP).resolves.toBeUndefined();
-    expect(utpConnError.mock.calls.length).toBe(0);
+    expect(utpConnError).toHaveBeenCalledTimes(0);
     // No TLS socket errors this time
-    // The client side figured that the node id is incorect
-    expect(tlsSocketError.mock.calls.length).toBe(0);
+    // The client side figured that the node id is incorrect
+    expect(tlsSocketError).toHaveBeenCalledTimes(0);
     // This time the tls socket is ended from the client side
-    expect(tlsSocketEnd.mock.calls.length).toBe(1);
+    expect(tlsSocketEnd).toHaveBeenCalledTimes(1);
     // The TLS socket close event is emitted without error
-    expect(tlsSocketClose.mock.calls.length).toBe(1);
-    expect(tlsSocketClose.mock.calls[0][0]).toBe(false);
+    expect(tlsSocketClose).toHaveBeenCalledTimes(1);
+    expect(tlsSocketClose).toHaveBeenCalledWith(false);
     utpSocket.off('message', handleMessage);
     utpSocket.close();
     utpSocket.unref();
@@ -803,7 +803,7 @@ describe(Proxy.name, () => {
       await utpSocketSend(data, 0, data.byteLength, proxyPort, proxyHost);
     };
     const utpSocketListen = promisify(utpSocket.listen).bind(utpSocket);
-    await utpSocketListen(0, '127.0.0.1');
+    await utpSocketListen(0, localHost);
     const utpSocketHost = utpSocket.address().address;
     const utpSocketPort = utpSocket.address().port;
     expect(proxy.getConnectionForwardCount()).toBe(0);
@@ -821,15 +821,15 @@ describe(Proxy.name, () => {
     expect(secured).toBe(true);
     expect(proxy.getConnectionForwardCount()).toBe(0);
     await expect(remoteClosedP).resolves.toBeUndefined();
-    expect(utpConnError.mock.calls.length).toBe(0);
+    expect(utpConnError).toHaveBeenCalledTimes(0);
     // No TLS socket errors this time
-    // The client side figured taht the node id is incorect
-    expect(tlsSocketError.mock.calls.length).toBe(0);
+    // The client side figured that the node id is incorrect
+    expect(tlsSocketError).toHaveBeenCalledTimes(0);
     // This time the tls socket is ended from the client side
-    expect(tlsSocketEnd.mock.calls.length).toBe(1);
+    expect(tlsSocketEnd).toHaveBeenCalledTimes(1);
     // The TLS socket close event is emitted without error
-    expect(tlsSocketClose.mock.calls.length).toBe(1);
-    expect(tlsSocketClose.mock.calls[0][0]).toBe(false);
+    expect(tlsSocketClose).toHaveBeenCalledTimes(1);
+    expect(tlsSocketClose).toHaveBeenCalledWith(false);
     utpSocket.off('message', handleMessage);
     utpSocket.close();
     utpSocket.unref();
@@ -927,7 +927,7 @@ describe(Proxy.name, () => {
       await utpSocketSend(data, 0, data.byteLength, proxyPort, proxyHost);
     };
     const utpSocketListen = promisify(utpSocket.listen).bind(utpSocket);
-    await utpSocketListen(0, '127.0.0.1');
+    await utpSocketListen(0, localHost);
     const utpSocketHost = utpSocket.address().address;
     const utpSocketPort = utpSocket.address().port;
     expect(proxy.getConnectionForwardCount()).toBe(0);
@@ -951,11 +951,11 @@ describe(Proxy.name, () => {
     );
     expect(proxy.getConnectionForwardCount()).toBe(0);
     await expect(remoteClosedP).resolves.toBeUndefined();
-    expect(utpConnError.mock.calls.length).toBe(0);
-    expect(tlsSocketError.mock.calls.length).toBe(0);
-    expect(tlsSocketEnd.mock.calls.length).toBe(1);
-    expect(tlsSocketClose.mock.calls.length).toBe(1);
-    expect(tlsSocketClose.mock.calls[0][0]).toBe(false);
+    expect(utpConnError).toHaveBeenCalledTimes(0);
+    expect(tlsSocketError).toHaveBeenCalledTimes(0);
+    expect(tlsSocketEnd).toHaveBeenCalledTimes(1);
+    expect(tlsSocketClose).toHaveBeenCalledTimes(1);
+    expect(tlsSocketClose).toHaveBeenCalledWith(false);
     utpSocket.off('message', handleMessage);
     utpSocket.close();
     utpSocket.unref();
@@ -1057,7 +1057,7 @@ describe(Proxy.name, () => {
       await utpSocketSend(data, 0, data.byteLength, proxyPort, proxyHost);
     };
     const utpSocketListen = promisify(utpSocket.listen).bind(utpSocket);
-    await utpSocketListen(0, '127.0.0.1');
+    await utpSocketListen(0, localHost);
     const utpSocketHost = utpSocket.address().address;
     const utpSocketPort = utpSocket.address().port;
     expect(proxy.getConnectionForwardCount()).toBe(0);
@@ -1082,7 +1082,7 @@ describe(Proxy.name, () => {
     tlsSocket_!.once('end', resolveEndP);
     tlsSocket_!.end();
     await endP;
-    // Force destroy the socket due to buggy tlsSocket and utpConn
+    // Force destroys the socket due to buggy tlsSocket and utpConn
     tlsSocket_!.destroy();
     logger.debug('Reverse: finishes tlsSocket ending');
     await expect(remoteClosedP).resolves.toBeUndefined();
@@ -1093,19 +1093,18 @@ describe(Proxy.name, () => {
           return proxy.getConnectionForwardCount();
         },
         (_, result) => {
-          if (result === 0) return true;
-          return false;
+          return result === 0;
         },
         100,
       ),
     ).resolves.toBe(0);
-    expect(utpConnError.mock.calls.length).toBe(0);
-    expect(tlsSocketError.mock.calls.length).toBe(0);
+    expect(utpConnError).toHaveBeenCalledTimes(0);
+    expect(tlsSocketError).toHaveBeenCalledTimes(0);
     // This time the reverse side initiates the end
     // Therefore, this handler is removed
-    expect(tlsSocketEnd.mock.calls.length).toBe(0);
-    expect(tlsSocketClose.mock.calls.length).toBe(1);
-    expect(tlsSocketClose.mock.calls[0][0]).toBe(false);
+    expect(tlsSocketEnd).toHaveBeenCalledTimes(0);
+    expect(tlsSocketClose).toHaveBeenCalledTimes(1);
+    expect(tlsSocketClose).toHaveBeenCalledWith(false);
     utpSocket.off('message', handleMessage);
     utpSocket.close();
     utpSocket.unref();
@@ -1204,7 +1203,7 @@ describe(Proxy.name, () => {
       await utpSocketSend(data, 0, data.byteLength, proxyPort, proxyHost);
     };
     const utpSocketListen = promisify(utpSocket.listen).bind(utpSocket);
-    await utpSocketListen(0, '127.0.0.1');
+    await utpSocketListen(0, localHost);
     const utpSocketHost = utpSocket.address().address;
     const utpSocketPort = utpSocket.address().port;
     expect(proxy.getConnectionForwardCount()).toBe(0);
@@ -1247,14 +1246,14 @@ describe(Proxy.name, () => {
       utpSocketPort as Port,
     );
     expect(proxy.getConnectionForwardCount()).toBe(0);
-    expect(clientSocketEnd.mock.calls.length).toBe(1);
+    expect(clientSocketEnd).toHaveBeenCalledTimes(1);
     await expect(localClosedP).resolves.toBeUndefined();
     await expect(remoteClosedP).resolves.toBeUndefined();
-    expect(utpConnError.mock.calls.length).toBe(0);
-    expect(tlsSocketError.mock.calls.length).toBe(0);
-    expect(tlsSocketEnd.mock.calls.length).toBe(1);
-    expect(tlsSocketClose.mock.calls.length).toBe(1);
-    expect(tlsSocketClose.mock.calls[0][0]).toBe(false);
+    expect(utpConnError).toHaveBeenCalledTimes(0);
+    expect(tlsSocketError).toHaveBeenCalledTimes(0);
+    expect(tlsSocketEnd).toHaveBeenCalledTimes(1);
+    expect(tlsSocketClose).toHaveBeenCalledTimes(1);
+    expect(tlsSocketClose).toHaveBeenCalledWith(false);
     utpSocket.off('message', handleMessage);
     utpSocket.close();
     utpSocket.unref();
@@ -1356,7 +1355,7 @@ describe(Proxy.name, () => {
       await utpSocketSend(data, 0, data.byteLength, proxyPort, proxyHost);
     };
     const utpSocketListen = promisify(utpSocket.listen).bind(utpSocket);
-    await utpSocketListen(0, '127.0.0.1');
+    await utpSocketListen(0, localHost);
     const utpSocketHost = utpSocket.address().address;
     const utpSocketPort = utpSocket.address().port;
     expect(proxy.getConnectionForwardCount()).toBe(0);
@@ -1401,11 +1400,11 @@ describe(Proxy.name, () => {
     tlsSocket_!.once('end', resolveEndP);
     tlsSocket_!.end();
     await endP;
-    // Force destroy the socket due to buggy tlsSocket and utpConn
+    // Force destroys the socket due to buggy tlsSocket and utpConn
     tlsSocket_!.destroy();
     logger.debug('Reverse: finishes tlsSocket ending');
     await expect(localClosedP).resolves.toBeUndefined();
-    expect(clientSocketEnd.mock.calls.length).toBe(1);
+    expect(clientSocketEnd).toHaveBeenCalledTimes(1);
     await expect(remoteClosedP).resolves.toBeUndefined();
     // Connection count should reach 0 eventually
     await expect(
@@ -1414,19 +1413,18 @@ describe(Proxy.name, () => {
           return proxy.getConnectionForwardCount();
         },
         (_, result) => {
-          if (result === 0) return true;
-          return false;
+          return result === 0;
         },
         100,
       ),
     ).resolves.toBe(0);
-    expect(utpConnError.mock.calls.length).toBe(0);
-    expect(tlsSocketError.mock.calls.length).toBe(0);
+    expect(utpConnError).toHaveBeenCalledTimes(0);
+    expect(tlsSocketError).toHaveBeenCalledTimes(0);
     // This time the reverse side initiates the end
     // Therefore, this handler is removed
-    expect(tlsSocketEnd.mock.calls.length).toBe(0);
-    expect(tlsSocketClose.mock.calls.length).toBe(1);
-    expect(tlsSocketClose.mock.calls[0][0]).toBe(false);
+    expect(tlsSocketEnd).toHaveBeenCalledTimes(0);
+    expect(tlsSocketClose).toHaveBeenCalledTimes(1);
+    expect(tlsSocketClose).toHaveBeenCalledWith(false);
     utpSocket.off('message', handleMessage);
     utpSocket.close();
     utpSocket.unref();
@@ -1525,7 +1523,7 @@ describe(Proxy.name, () => {
       await utpSocketSend(data, 0, data.byteLength, proxyPort, proxyHost);
     };
     const utpSocketListen = promisify(utpSocket.listen).bind(utpSocket);
-    await utpSocketListen(0, '127.0.0.1');
+    await utpSocketListen(0, localHost);
     const utpSocketHost = utpSocket.address().address;
     const utpSocketPort = utpSocket.address().port;
     expect(proxy.getConnectionForwardCount()).toBe(0);
@@ -1554,7 +1552,7 @@ describe(Proxy.name, () => {
     );
     expect(proxy.getConnectionForwardCount()).toBe(1);
     const { p: endP, resolveP: resolveEndP } = promise<void>();
-    // By default net sockets have `allowHalfOpen: false`
+    // By default, net sockets have `allowHalfOpen: false`
     // Here we override the behaviour by removing the end listener
     // And replacing it with our own, and remember to also force destroy
     clientSocket.removeAllListeners('end');
@@ -1575,17 +1573,16 @@ describe(Proxy.name, () => {
           return proxy.getConnectionForwardCount();
         },
         (_, result) => {
-          if (result === 0) return true;
-          return false;
+          return result === 0;
         },
         100,
       ),
     ).resolves.toBe(0);
-    expect(utpConnError.mock.calls.length).toBe(0);
-    expect(tlsSocketError.mock.calls.length).toBe(0);
-    expect(tlsSocketEnd.mock.calls.length).toBe(1);
-    expect(tlsSocketClose.mock.calls.length).toBe(1);
-    expect(tlsSocketClose.mock.calls[0][0]).toBe(false);
+    expect(utpConnError).toHaveBeenCalledTimes(0);
+    expect(tlsSocketError).toHaveBeenCalledTimes(0);
+    expect(tlsSocketEnd).toHaveBeenCalledTimes(1);
+    expect(tlsSocketClose).toHaveBeenCalledTimes(1);
+    expect(tlsSocketClose).toHaveBeenCalledWith(false);
     utpSocket.off('message', handleMessage);
     utpSocket.close();
     utpSocket.unref();
@@ -1681,7 +1678,7 @@ describe(Proxy.name, () => {
       await utpSocketSend(data, 0, data.byteLength, proxyPort, proxyHost);
     };
     const utpSocketListen = promisify(utpSocket.listen).bind(utpSocket);
-    await utpSocketListen(0, '127.0.0.1');
+    await utpSocketListen(0, localHost);
     const utpSocketHost = utpSocket.address().address;
     const utpSocketPort = utpSocket.address().port;
     await proxy.openConnectionForward(
@@ -1712,11 +1709,11 @@ describe(Proxy.name, () => {
     );
     await expect(localClosedP).resolves.toBeUndefined();
     await expect(remoteClosedP).resolves.toBeUndefined();
-    expect(utpConnError.mock.calls.length).toBe(0);
-    expect(tlsSocketError.mock.calls.length).toBe(0);
-    expect(tlsSocketEnd.mock.calls.length).toBe(1);
-    expect(tlsSocketClose.mock.calls.length).toBe(1);
-    expect(tlsSocketClose.mock.calls[0][0]).toBe(false);
+    expect(utpConnError).toHaveBeenCalledTimes(0);
+    expect(tlsSocketError).toHaveBeenCalledTimes(0);
+    expect(tlsSocketEnd).toHaveBeenCalledTimes(1);
+    expect(tlsSocketClose).toHaveBeenCalledTimes(1);
+    expect(tlsSocketClose).toHaveBeenCalledWith(false);
     utpSocket.off('message', handleMessage);
     utpSocket.close();
     utpSocket.unref();
@@ -1814,7 +1811,7 @@ describe(Proxy.name, () => {
       await utpSocketSend(data, 0, data.byteLength, proxyPort, proxyHost);
     };
     const utpSocketListen = promisify(utpSocket.listen).bind(utpSocket);
-    await utpSocketListen(0, '127.0.0.1');
+    await utpSocketListen(0, localHost);
     const utpSocketHost = utpSocket.address().address;
     const utpSocketPort = utpSocket.address().port;
     expect(proxy.getConnectionForwardCount()).toBe(0);
@@ -1829,11 +1826,11 @@ describe(Proxy.name, () => {
     // When ErrorConnectionTimeout is triggered
     // This results in the destruction of the socket
     await expect(remoteClosedP).resolves.toBeUndefined();
-    expect(utpConnError.mock.calls.length).toBe(0);
-    expect(tlsSocketError.mock.calls.length).toBe(0);
-    expect(tlsSocketEnd.mock.calls.length).toBe(1);
-    expect(tlsSocketClose.mock.calls.length).toBe(1);
-    expect(tlsSocketClose.mock.calls[0][0]).toBe(false);
+    expect(utpConnError).toHaveBeenCalledTimes(0);
+    expect(tlsSocketError).toHaveBeenCalledTimes(0);
+    expect(tlsSocketEnd).toHaveBeenCalledTimes(1);
+    expect(tlsSocketClose).toHaveBeenCalledTimes(1);
+    expect(tlsSocketClose).toHaveBeenCalledWith(false);
     utpSocket.off('message', handleMessage);
     utpSocket.close();
     utpSocket.unref();
@@ -1932,7 +1929,7 @@ describe(Proxy.name, () => {
       await utpSocketSend(data, 0, data.byteLength, proxyPort, proxyHost);
     };
     const utpSocketListen = promisify(utpSocket.listen).bind(utpSocket);
-    await utpSocketListen(0, '127.0.0.1');
+    await utpSocketListen(0, localHost);
     const utpSocketHost = utpSocket.address().address;
     const utpSocketPort = utpSocket.address().port;
     expect(proxy.getConnectionForwardCount()).toBe(0);
@@ -1965,17 +1962,16 @@ describe(Proxy.name, () => {
           return proxy.getConnectionForwardCount();
         },
         (_, result) => {
-          if (result === 0) return true;
-          return false;
+          return result === 0;
         },
         100,
       ),
     ).resolves.toBe(0);
-    expect(utpConnError.mock.calls.length).toBe(0);
-    expect(tlsSocketError.mock.calls.length).toBe(0);
-    expect(tlsSocketEnd.mock.calls.length).toBe(1);
-    expect(tlsSocketClose.mock.calls.length).toBe(1);
-    expect(tlsSocketClose.mock.calls[0][0]).toBe(false);
+    expect(utpConnError).toHaveBeenCalledTimes(0);
+    expect(tlsSocketError).toHaveBeenCalledTimes(0);
+    expect(tlsSocketEnd).toHaveBeenCalledTimes(1);
+    expect(tlsSocketClose).toHaveBeenCalledTimes(1);
+    expect(tlsSocketClose).toHaveBeenCalledWith(false);
     utpSocket.off('message', handleMessage);
     utpSocket.close();
     utpSocket.unref();
@@ -2057,7 +2053,7 @@ describe(Proxy.name, () => {
       await utpSocketSend(data, 0, data.byteLength, proxyPort, proxyHost);
     };
     const utpSocketListen = promisify(utpSocket.listen).bind(utpSocket);
-    await utpSocketListen(0, '127.0.0.1');
+    await utpSocketListen(0, localHost);
     const utpSocketHost = utpSocket.address().address;
     const utpSocketPort = utpSocket.address().port;
     expect(proxy.getConnectionForwardCount()).toBe(0);
@@ -2163,7 +2159,7 @@ describe(Proxy.name, () => {
       await utpSocketSend(data, 0, data.byteLength, proxyPort, proxyHost);
     };
     const utpSocketListen1 = promisify(utpSocket1.listen).bind(utpSocket1);
-    await utpSocketListen1(0, '127.0.0.1');
+    await utpSocketListen1(0, localHost);
     const utpSocketHost1 = utpSocket1.address().address;
     const utpSocketPort1 = utpSocket1.address().port;
     const utpSocket2 = UTP.createServer(async (utpConn) => {
@@ -2206,7 +2202,7 @@ describe(Proxy.name, () => {
       await utpSocketSend(data, 0, data.byteLength, proxyPort, proxyHost);
     };
     const utpSocketListen2 = promisify(utpSocket2.listen).bind(utpSocket2);
-    await utpSocketListen2(0, '127.0.0.1');
+    await utpSocketListen2(0, localHost);
     const utpSocketHost2 = utpSocket2.address().address;
     const utpSocketPort2 = utpSocket2.address().port;
     expect(proxy.getConnectionForwardCount()).toBe(0);
@@ -2242,7 +2238,6 @@ describe(Proxy.name, () => {
     utpSocket2.unref();
     await proxy.stop();
   });
-
   test('open connection to port 0 fails', async () => {
     const proxy = new Proxy({
       logger: logger.getChild('Proxy port 0'),
@@ -2267,7 +2262,7 @@ describe(Proxy.name, () => {
       },
     });
     await expect(
-      proxy.openConnectionReverse('127.0.0.1' as Host, 0 as Port),
+      proxy.openConnectionReverse(localHost, 0 as Port),
     ).rejects.toThrow(networkErrors.ErrorConnectionStart);
     await expect(serverConnP).resolves.toBeUndefined();
     await expect(serverConnClosedP).resolves.toBeUndefined();
@@ -2300,15 +2295,11 @@ describe(Proxy.name, () => {
     // This UTP client will just hang and not respond
     const utpSocket = UTP();
     const utpSocketBind = promisify(utpSocket.bind).bind(utpSocket);
-    await utpSocketBind(0, '127.0.0.1');
+    await utpSocketBind(0, localHost);
     const utpSocketPort = utpSocket.address().port;
     const timer = timerStart(3000);
     await expect(
-      proxy.openConnectionReverse(
-        '127.0.0.1' as Host,
-        utpSocketPort as Port,
-        timer,
-      ),
+      proxy.openConnectionReverse(localHost, utpSocketPort as Port, timer),
     ).rejects.toThrow(networkErrors.ErrorConnectionStartTimeout);
     timerStop(timer);
     await expect(serverConnP).resolves.toBeUndefined();
@@ -2356,17 +2347,11 @@ describe(Proxy.name, () => {
       await utpSocketSend(data, 0, data.byteLength, proxyPort, proxyHost);
     };
     const utpSocketBind = promisify(utpSocket.bind).bind(utpSocket);
-    await utpSocketBind(0, '127.0.0.1');
+    await utpSocketBind(0, localHost);
     const utpSocketPort = utpSocket.address().port;
-    await proxy.openConnectionReverse(
-      '127.0.0.1' as Host,
-      utpSocketPort as Port,
-    );
+    await proxy.openConnectionReverse(localHost, utpSocketPort as Port);
     expect(proxy.getConnectionReverseCount()).toBe(1);
-    await proxy.closeConnectionReverse(
-      '127.0.0.1' as Host,
-      utpSocketPort as Port,
-    );
+    await proxy.closeConnectionReverse(localHost, utpSocketPort as Port);
     await expect(serverConnP).resolves.toBeUndefined();
     await expect(serverConnClosedP).resolves.toBeUndefined();
     utpSocket.off('message', handleMessage);
@@ -2414,7 +2399,7 @@ describe(Proxy.name, () => {
       await utpSocketSend(data, 0, data.byteLength, proxyPort, proxyHost);
     };
     const utpSocketBind1 = promisify(utpSocket1.bind).bind(utpSocket1);
-    await utpSocketBind1(0, '127.0.0.1');
+    await utpSocketBind1(0, localHost);
     const utpSocketPort1 = utpSocket1.address().port;
     // Second client
     const utpSocket2 = UTP();
@@ -2430,25 +2415,13 @@ describe(Proxy.name, () => {
       await utpSocketSend(data, 0, data.byteLength, proxyPort, proxyHost);
     };
     const utpSocketBind2 = promisify(utpSocket2.bind).bind(utpSocket2);
-    await utpSocketBind2(0, '127.0.0.1');
+    await utpSocketBind2(0, localHost);
     const utpSocketPort2 = utpSocket2.address().port;
-    await proxy.openConnectionReverse(
-      '127.0.0.1' as Host,
-      utpSocketPort1 as Port,
-    );
-    await proxy.openConnectionReverse(
-      '127.0.0.1' as Host,
-      utpSocketPort2 as Port,
-    );
+    await proxy.openConnectionReverse(localHost, utpSocketPort1 as Port);
+    await proxy.openConnectionReverse(localHost, utpSocketPort2 as Port);
     expect(proxy.getConnectionReverseCount()).toBe(2);
-    await proxy.closeConnectionReverse(
-      '127.0.0.1' as Host,
-      utpSocketPort1 as Port,
-    );
-    await proxy.closeConnectionReverse(
-      '127.0.0.1' as Host,
-      utpSocketPort2 as Port,
-    );
+    await proxy.closeConnectionReverse(localHost, utpSocketPort1 as Port);
+    await proxy.closeConnectionReverse(localHost, utpSocketPort2 as Port);
     expect(proxy.getConnectionReverseCount()).toBe(0);
     await expect(serverConnP).resolves.toBeUndefined();
     await expect(serverConnClosedP).resolves.toBeUndefined();
@@ -2501,12 +2474,9 @@ describe(Proxy.name, () => {
       await utpSocketSend(data, 0, data.byteLength, proxyPort, proxyHost);
     };
     const utpSocketBind = promisify(utpSocket.bind).bind(utpSocket);
-    await utpSocketBind(0, '127.0.0.1');
+    await utpSocketBind(0, localHost);
     const utpSocketPort = utpSocket.address().port;
-    await proxy.openConnectionReverse(
-      '127.0.0.1' as Host,
-      utpSocketPort as Port,
-    );
+    await proxy.openConnectionReverse(localHost, utpSocketPort as Port);
     expect(proxy.getConnectionReverseCount()).toBe(1);
     await expect(serverConnP).resolves.toBeUndefined();
     // The server receives the end confirmation for graceful exit
@@ -2569,12 +2539,9 @@ describe(Proxy.name, () => {
       await utpSocketSend(data, 0, data.byteLength, proxyPort, proxyHost);
     };
     const utpSocketBind = promisify(utpSocket.bind).bind(utpSocket);
-    await utpSocketBind(0, '127.0.0.1');
+    await utpSocketBind(0, localHost);
     const utpSocketPort = utpSocket.address().port;
-    await proxy.openConnectionReverse(
-      '127.0.0.1' as Host,
-      utpSocketPort as Port,
-    );
+    await proxy.openConnectionReverse(localHost, utpSocketPort as Port);
     expect(proxy.getConnectionReverseCount()).toBe(1);
     // This retries multiple times
     // This will eventually fail and trigger a ErrorConnectionComposeTimeout
@@ -2605,8 +2572,7 @@ describe(Proxy.name, () => {
           return proxy.getConnectionReverseCount();
         },
         (_, result) => {
-          if (result === 0) return true;
-          return false;
+          return result === 0;
         },
         100,
       ),
@@ -2661,12 +2627,9 @@ describe(Proxy.name, () => {
       await utpSocketSend(data, 0, data.byteLength, externalPort, externalHost);
     };
     const utpSocketBind = promisify(utpSocket.bind).bind(utpSocket);
-    await utpSocketBind(0, '127.0.0.1');
+    await utpSocketBind(0, localHost);
     const utpSocketPort = utpSocket.address().port;
-    await proxy.openConnectionReverse(
-      '127.0.0.1' as Host,
-      utpSocketPort as Port,
-    );
+    await proxy.openConnectionReverse(localHost, utpSocketPort as Port);
     expect(proxy.getConnectionReverseCount()).toBe(1);
     const { p: tlsSocketClosedP, resolveP: resolveTlsSocketClosedP } =
       promise<void>();
@@ -2715,8 +2678,7 @@ describe(Proxy.name, () => {
           return proxy.getConnectionReverseCount();
         },
         (_, result) => {
-          if (result === 0) return true;
-          return false;
+          return result === 0;
         },
         100,
       ),
@@ -2746,7 +2708,7 @@ describe(Proxy.name, () => {
       serverHost,
       serverPort,
     } = tcpServer();
-    await serverListen(0, '127.0.0.1');
+    await serverListen(0, localHost);
     const proxy = new Proxy({
       logger: logger,
       authToken: '',
@@ -2780,12 +2742,9 @@ describe(Proxy.name, () => {
       const utpSocketSend = promisify(utpSocket.send).bind(utpSocket);
       await utpSocketSend(data, 0, data.byteLength, proxyPort, proxyHost);
     };
-    await utpSocketBind(0, '127.0.0.1');
+    await utpSocketBind(0, localHost);
     const utpSocketPort = utpSocket.address().port;
-    await proxy.openConnectionReverse(
-      '127.0.0.1' as Host,
-      utpSocketPort as Port,
-    );
+    await proxy.openConnectionReverse(localHost, utpSocketPort as Port);
     const utpConn = utpSocket.connect(proxyPort, proxyHost);
     const tlsSocket = tls.connect(
       {
@@ -2816,10 +2775,7 @@ describe(Proxy.name, () => {
     await clientReadyP;
     await clientSecureConnectP;
     await serverConnP;
-    await proxy.closeConnectionReverse(
-      '127.0.0.1' as Host,
-      utpSocketPort as Port,
-    );
+    await proxy.closeConnectionReverse(localHost, utpSocketPort as Port);
     expect(proxy.getConnectionReverseCount()).toBe(0);
     await clientCloseP;
     await serverConnEndP;
@@ -2850,7 +2806,7 @@ describe(Proxy.name, () => {
       serverHost,
       serverPort,
     } = tcpServer();
-    await serverListen(0, '127.0.0.1');
+    await serverListen(0, localHost);
     const proxy = new Proxy({
       logger: logger,
       authToken: '',
@@ -2884,12 +2840,9 @@ describe(Proxy.name, () => {
       const utpSocketSend = promisify(utpSocket.send).bind(utpSocket);
       await utpSocketSend(data, 0, data.byteLength, proxyPort, proxyHost);
     };
-    await utpSocketBind(0, '127.0.0.1');
+    await utpSocketBind(0, localHost);
     const utpSocketPort = utpSocket.address().port;
-    await proxy.openConnectionReverse(
-      '127.0.0.1' as Host,
-      utpSocketPort as Port,
-    );
+    await proxy.openConnectionReverse(localHost, utpSocketPort as Port);
     const utpConn = utpSocket.connect(proxyPort, proxyHost);
     const tlsSocket = tls.connect(
       {
