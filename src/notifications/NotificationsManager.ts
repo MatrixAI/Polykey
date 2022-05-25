@@ -369,8 +369,6 @@ class NotificationsManager {
     const messageIterator = tran.iterator({}, this.notificationsMessagesDbPath);
     for await (const [key, value] of messageIterator) {
       const notificationId = IdInternal.fromBuffer<NotificationId>(key);
-      // FIXME:, the ID here is wrong sometimes. check what it was inputted into the database as.
-      console.log(notificationId);
       const notification = JSON.parse(value.toString()) as Notification;
       if (type === 'all') {
         notificationIds.push(notificationId);

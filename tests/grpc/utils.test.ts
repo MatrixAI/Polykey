@@ -1,4 +1,5 @@
 import type { TestServiceClient } from '@/proto/js/polykey/v1/test_service_grpc_pb';
+import type { ClientMetadata } from '@/types';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as grpc from '@grpc/grpc-js';
 import { getLogger } from '@grpc/grpc-js/build/src/logging';
@@ -41,6 +42,7 @@ describe('GRPC utils', () => {
   test('promisified client unary call', async () => {
     const unary = grpcUtils.promisifyUnaryCall<utilsPB.EchoMessage>(
       client,
+      {} as ClientMetadata,
       client.unary,
     );
     const messageTo = new utilsPB.EchoMessage();
@@ -53,6 +55,7 @@ describe('GRPC utils', () => {
   test('promisified client unary call error', async () => {
     const unary = grpcUtils.promisifyUnaryCall<utilsPB.EchoMessage>(
       client,
+      {} as ClientMetadata,
       client.unary,
     );
     const messageTo = new utilsPB.EchoMessage();
@@ -74,6 +77,7 @@ describe('GRPC utils', () => {
     const serverStream =
       grpcUtils.promisifyReadableStreamCall<utilsPB.EchoMessage>(
         client,
+        {} as ClientMetadata,
         client.serverStream,
       );
     const challenge = '4444';
@@ -99,6 +103,7 @@ describe('GRPC utils', () => {
     const serverStream =
       grpcUtils.promisifyReadableStreamCall<utilsPB.EchoMessage>(
         client,
+        {} as ClientMetadata,
         client.serverStream,
       );
     const challenge = 'error';
@@ -123,6 +128,7 @@ describe('GRPC utils', () => {
     const serverStream =
       grpcUtils.promisifyReadableStreamCall<utilsPB.EchoMessage>(
         client,
+        {} as ClientMetadata,
         client.serverStream,
       );
     const challenge = '4444';
@@ -147,6 +153,7 @@ describe('GRPC utils', () => {
     const serverStream =
       grpcUtils.promisifyReadableStreamCall<utilsPB.EchoMessage>(
         client,
+        {} as ClientMetadata,
         client.serverStream,
       );
     const challenge = '4444';
@@ -174,7 +181,7 @@ describe('GRPC utils', () => {
     const clientStream = grpcUtils.promisifyWritableStreamCall<
       utilsPB.EchoMessage,
       utilsPB.EchoMessage
-    >(client, client.clientStream);
+    >(client, {} as ClientMetadata, client.clientStream);
     const [genStream, response] = clientStream();
     const m = new utilsPB.EchoMessage();
     m.setChallenge('d89f7u983e4d');
@@ -191,7 +198,7 @@ describe('GRPC utils', () => {
     const clientStream = grpcUtils.promisifyWritableStreamCall<
       utilsPB.EchoMessage,
       utilsPB.EchoMessage
-    >(client, client.clientStream);
+    >(client, {} as ClientMetadata, client.clientStream);
     const [genStream, response] = clientStream();
     const result1 = await genStream.next(null); // Closed stream
     expect(result1).toMatchObject({
@@ -212,7 +219,7 @@ describe('GRPC utils', () => {
     const duplexStream = grpcUtils.promisifyDuplexStreamCall<
       utilsPB.EchoMessage,
       utilsPB.EchoMessage
-    >(client, client.duplexStream);
+    >(client, {} as ClientMetadata, client.duplexStream);
     const genDuplex = duplexStream();
     const messageTo = new utilsPB.EchoMessage();
     messageTo.setChallenge('d89f7u983e4d');
@@ -230,7 +237,7 @@ describe('GRPC utils', () => {
     const duplexStream = grpcUtils.promisifyDuplexStreamCall<
       utilsPB.EchoMessage,
       utilsPB.EchoMessage
-    >(client, client.duplexStream);
+    >(client, {} as ClientMetadata, client.duplexStream);
     const genDuplex = duplexStream();
     await genDuplex.next(null);
     expect(genDuplex.stream.destroyed).toBe(true);
@@ -240,7 +247,7 @@ describe('GRPC utils', () => {
     const duplexStream = grpcUtils.promisifyDuplexStreamCall<
       utilsPB.EchoMessage,
       utilsPB.EchoMessage
-    >(client, client.duplexStream);
+    >(client, {} as ClientMetadata, client.duplexStream);
     const genDuplex = duplexStream();
     // When duplex streams are ended, reading will hang
     await genDuplex.write(null);
@@ -253,7 +260,7 @@ describe('GRPC utils', () => {
     const duplexStream = grpcUtils.promisifyDuplexStreamCall<
       utilsPB.EchoMessage,
       utilsPB.EchoMessage
-    >(client, client.duplexStream);
+    >(client, {} as ClientMetadata, client.duplexStream);
     const genDuplex = duplexStream();
     await genDuplex.read(null);
     const messageTo = new utilsPB.EchoMessage();
@@ -273,7 +280,7 @@ describe('GRPC utils', () => {
     const duplexStream = grpcUtils.promisifyDuplexStreamCall<
       utilsPB.EchoMessage,
       utilsPB.EchoMessage
-    >(client, client.duplexStream);
+    >(client, {} as ClientMetadata, client.duplexStream);
     const genDuplex = duplexStream();
     const messageTo = new utilsPB.EchoMessage();
     messageTo.setChallenge('error');
@@ -288,7 +295,7 @@ describe('GRPC utils', () => {
     const duplexStream = grpcUtils.promisifyDuplexStreamCall<
       utilsPB.EchoMessage,
       utilsPB.EchoMessage
-    >(client, client.duplexStream);
+    >(client, {} as ClientMetadata, client.duplexStream);
     const genDuplex = duplexStream();
     const messageTo = new utilsPB.EchoMessage();
     messageTo.setChallenge('error');
@@ -315,13 +322,16 @@ describe('GRPC utils', () => {
       type: 'ErrorPolykey',
       data: expect.any(Object),
     });
-    const deserialisedError = grpcUtils.toError({
-      name: '',
-      message: '',
-      code: 2,
-      details: '',
-      metadata: serialised,
-    });
+    const deserialisedError = grpcUtils.toError(
+      {
+        name: '',
+        message: '',
+        code: 2,
+        details: '',
+        metadata: serialised,
+      },
+      {} as ClientMetadata,
+    );
     expect(deserialisedError).toBeInstanceOf(errors.ErrorPolykeyRemote);
     expect(deserialisedError.message).toBe('test error');
     expect(deserialisedError.cause).toBeInstanceOf(errors.ErrorPolykey);
@@ -340,32 +350,38 @@ describe('GRPC utils', () => {
       type: 'TypeError',
       data: expect.any(Object),
     });
-    const deserialisedError = grpcUtils.toError({
-      name: '',
-      message: '',
-      code: 2,
-      details: '',
-      metadata: serialised,
-    });
+    const deserialisedError = grpcUtils.toError(
+      {
+        name: '',
+        message: '',
+        code: 2,
+        details: '',
+        metadata: serialised,
+      },
+      {} as ClientMetadata,
+    );
     expect(deserialisedError).toBeInstanceOf(errors.ErrorPolykeyRemote);
     expect(deserialisedError.message).toBe('test error');
     expect(deserialisedError.cause).toBeInstanceOf(TypeError);
     expect(deserialisedError.cause.message).toBe('test error');
     expect(deserialisedError.cause.stack).toBe(error.stack);
   });
-  test('serialising and deserialising non-errors', async () => {
+  test('serialising and de-serialising non-errors', async () => {
     const error = 'not an error' as unknown as Error;
     const serialised = grpcUtils.fromError(error).metadata!;
     const stringifiedError = serialised.get('error')[0] as string;
     const parsedError = JSON.parse(stringifiedError);
     expect(parsedError).toEqual('not an error');
-    const deserialisedError = grpcUtils.toError({
-      name: '',
-      message: '',
-      code: 2,
-      details: '',
-      metadata: serialised,
-    });
+    const deserialisedError = grpcUtils.toError(
+      {
+        name: '',
+        message: '',
+        code: 2,
+        details: '',
+        metadata: serialised,
+      },
+      {} as ClientMetadata,
+    );
     expect(deserialisedError).toBeInstanceOf(errors.ErrorPolykeyRemote);
     expect(deserialisedError.message).toBe('');
     expect(deserialisedError.cause).toBeInstanceOf(errors.ErrorPolykeyUnknown);
@@ -396,13 +412,16 @@ describe('GRPC utils', () => {
         data: error.data,
       },
     });
-    const deserialisedError = grpcUtils.toError({
-      name: '',
-      message: '',
-      code: 2,
-      details: '',
-      metadata: serialised,
-    });
+    const deserialisedError = grpcUtils.toError(
+      {
+        name: '',
+        message: '',
+        code: 2,
+        details: '',
+        metadata: serialised,
+      },
+      {} as ClientMetadata,
+    );
     expect(deserialisedError).toBeInstanceOf(errors.ErrorPolykeyRemote);
     expect(deserialisedError.message).toBe('test error');
     expect(deserialisedError.cause).toBeInstanceOf(errors.ErrorPolykey);

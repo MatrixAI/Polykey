@@ -5,6 +5,7 @@ import type { Host, Port, TLSConfig, ProxyConfig } from '@/network/types';
 import type * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import type { ClientReadableStream } from '@grpc/grpc-js/build/src/call';
 import type { AsyncGeneratorReadableStreamClient } from '@/grpc/types';
+import type { ClientMetadata } from '@/types';
 import Logger from '@matrixai/logger';
 import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
 import GRPCClient from '@/grpc/GRPCClient';
@@ -75,6 +76,7 @@ class GRPCClientTest extends GRPCClient<TestServiceClient> {
   public unary(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.EchoMessage>(
       this.client,
+      {} as ClientMetadata,
       this.client.unary,
     )(...args);
   }
@@ -83,6 +85,7 @@ class GRPCClientTest extends GRPCClient<TestServiceClient> {
   public serverStream(...args) {
     return grpcUtils.promisifyReadableStreamCall<utilsPB.EchoMessage>(
       this.client,
+      {} as ClientMetadata,
       this.client.serverStream,
     )(...args);
   }
@@ -94,6 +97,7 @@ class GRPCClientTest extends GRPCClient<TestServiceClient> {
       utilsPB.EchoMessage
     >(
       this.client,
+      {} as ClientMetadata,
       this.client.clientStream,
     )(...args);
   }
@@ -105,6 +109,7 @@ class GRPCClientTest extends GRPCClient<TestServiceClient> {
       utilsPB.EchoMessage
     >(
       this.client,
+      {} as ClientMetadata,
       this.client.duplexStream,
     )(...args);
   }
@@ -113,6 +118,7 @@ class GRPCClientTest extends GRPCClient<TestServiceClient> {
   public unaryAuthenticated(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.EchoMessage>(
       this.client,
+      {} as ClientMetadata,
       this.client.unaryAuthenticated,
     )(...args);
   }
@@ -126,6 +132,7 @@ class GRPCClientTest extends GRPCClient<TestServiceClient> {
   > {
     return grpcUtils.promisifyReadableStreamCall<utilsPB.EchoMessage>(
       this.client,
+      {} as ClientMetadata,
       this.client.serverStreamFail,
     )(...args);
   }
@@ -134,6 +141,7 @@ class GRPCClientTest extends GRPCClient<TestServiceClient> {
   public unaryFail(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.EchoMessage>(
       this.client,
+      {} as ClientMetadata,
       this.client.unaryFail,
     )(...args);
   }
