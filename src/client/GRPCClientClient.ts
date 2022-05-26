@@ -314,7 +314,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
 
   @ready(new clientErrors.ErrorClientClientDestroyed())
   public vaultsSecretsMkdir(...args) {
-    return grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
+    return grpcUtils.promisifyUnaryCall<utilsPB.StatusMessage>(
       this.client,
       {
         nodeId: this.nodeId,
