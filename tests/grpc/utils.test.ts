@@ -1,5 +1,5 @@
 import type { TestServiceClient } from '@/proto/js/polykey/v1/test_service_grpc_pb';
-import type { ClientMetadata } from '@/types';
+import type { Host, Port } from '@/network/types';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as grpc from '@grpc/grpc-js';
 import { getLogger } from '@grpc/grpc-js/build/src/logging';
@@ -8,12 +8,15 @@ import * as grpcErrors from '@/grpc/errors';
 import * as errors from '@/errors';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as utils from './utils';
+import * as testUtils from '../utils';
 
 describe('GRPC utils', () => {
   const logger = new Logger('GRPC utils Test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
   let client: TestServiceClient, server: grpc.Server, port: number;
+  const nodeId = testUtils.generateRandomNodeId();
+  const host = '127.0.0.1' as Host;
   beforeAll(async () => {
     // Mocked authenticate always passes authentication
     const authenticate = async (metaClient, metaServer = new grpc.Metadata()) =>
@@ -42,7 +45,12 @@ describe('GRPC utils', () => {
   test('promisified client unary call', async () => {
     const unary = grpcUtils.promisifyUnaryCall<utilsPB.EchoMessage>(
       client,
-      {} as ClientMetadata,
+      {
+        nodeId,
+        host,
+        port: port as Port,
+        command: 'unary',
+      },
       client.unary,
     );
     const messageTo = new utilsPB.EchoMessage();
@@ -55,7 +63,12 @@ describe('GRPC utils', () => {
   test('promisified client unary call error', async () => {
     const unary = grpcUtils.promisifyUnaryCall<utilsPB.EchoMessage>(
       client,
-      {} as ClientMetadata,
+      {
+        nodeId,
+        host,
+        port: port as Port,
+        command: 'unary',
+      },
       client.unary,
     );
     const messageTo = new utilsPB.EchoMessage();
@@ -67,6 +80,10 @@ describe('GRPC utils', () => {
     } catch (e) {
       // This information comes from the server
       expect(e.message).toBe('test error');
+      expect(e.metadata.nodeId).toBe(nodeId);
+      expect(e.metadata.host).toBe(host);
+      expect(e.metadata.port).toBe(port);
+      expect(e.metadata.command).toBe('unary');
       expect(e.cause).toBeInstanceOf(grpcErrors.ErrorGRPC);
       expect(e.cause.data).toMatchObject({
         grpc: true,
@@ -77,7 +94,12 @@ describe('GRPC utils', () => {
     const serverStream =
       grpcUtils.promisifyReadableStreamCall<utilsPB.EchoMessage>(
         client,
-        {} as ClientMetadata,
+        {
+          nodeId,
+          host,
+          port: port as Port,
+          command: 'serverStream',
+        },
         client.serverStream,
       );
     const challenge = '4444';
@@ -103,7 +125,12 @@ describe('GRPC utils', () => {
     const serverStream =
       grpcUtils.promisifyReadableStreamCall<utilsPB.EchoMessage>(
         client,
-        {} as ClientMetadata,
+        {
+          nodeId,
+          host,
+          port: port as Port,
+          command: 'serverStream',
+        },
         client.serverStream,
       );
     const challenge = 'error';
@@ -128,7 +155,12 @@ describe('GRPC utils', () => {
     const serverStream =
       grpcUtils.promisifyReadableStreamCall<utilsPB.EchoMessage>(
         client,
-        {} as ClientMetadata,
+        {
+          nodeId,
+          host,
+          port: port as Port,
+          command: 'serverStream',
+        },
         client.serverStream,
       );
     const challenge = '4444';
@@ -153,7 +185,12 @@ describe('GRPC utils', () => {
     const serverStream =
       grpcUtils.promisifyReadableStreamCall<utilsPB.EchoMessage>(
         client,
-        {} as ClientMetadata,
+        {
+          nodeId,
+          host,
+          port: port as Port,
+          command: 'serverStream',
+        },
         client.serverStream,
       );
     const challenge = '4444';
@@ -181,7 +218,16 @@ describe('GRPC utils', () => {
     const clientStream = grpcUtils.promisifyWritableStreamCall<
       utilsPB.EchoMessage,
       utilsPB.EchoMessage
-    >(client, {} as ClientMetadata, client.clientStream);
+    >(
+      client,
+      {
+        nodeId,
+        host,
+        port: port as Port,
+        command: 'clientStream',
+      },
+      client.clientStream,
+    );
     const [genStream, response] = clientStream();
     const m = new utilsPB.EchoMessage();
     m.setChallenge('d89f7u983e4d');
@@ -198,7 +244,16 @@ describe('GRPC utils', () => {
     const clientStream = grpcUtils.promisifyWritableStreamCall<
       utilsPB.EchoMessage,
       utilsPB.EchoMessage
-    >(client, {} as ClientMetadata, client.clientStream);
+    >(
+      client,
+      {
+        nodeId,
+        host,
+        port: port as Port,
+        command: 'clientStream',
+      },
+      client.clientStream,
+    );
     const [genStream, response] = clientStream();
     const result1 = await genStream.next(null); // Closed stream
     expect(result1).toMatchObject({
@@ -219,7 +274,16 @@ describe('GRPC utils', () => {
     const duplexStream = grpcUtils.promisifyDuplexStreamCall<
       utilsPB.EchoMessage,
       utilsPB.EchoMessage
-    >(client, {} as ClientMetadata, client.duplexStream);
+    >(
+      client,
+      {
+        nodeId,
+        host,
+        port: port as Port,
+        command: 'duplexStream',
+      },
+      client.duplexStream,
+    );
     const genDuplex = duplexStream();
     const messageTo = new utilsPB.EchoMessage();
     messageTo.setChallenge('d89f7u983e4d');
@@ -237,7 +301,16 @@ describe('GRPC utils', () => {
     const duplexStream = grpcUtils.promisifyDuplexStreamCall<
       utilsPB.EchoMessage,
       utilsPB.EchoMessage
-    >(client, {} as ClientMetadata, client.duplexStream);
+    >(
+      client,
+      {
+        nodeId,
+        host,
+        port: port as Port,
+        command: 'duplexStream',
+      },
+      client.duplexStream,
+    );
     const genDuplex = duplexStream();
     await genDuplex.next(null);
     expect(genDuplex.stream.destroyed).toBe(true);
@@ -247,7 +320,16 @@ describe('GRPC utils', () => {
     const duplexStream = grpcUtils.promisifyDuplexStreamCall<
       utilsPB.EchoMessage,
       utilsPB.EchoMessage
-    >(client, {} as ClientMetadata, client.duplexStream);
+    >(
+      client,
+      {
+        nodeId,
+        host,
+        port: port as Port,
+        command: 'duplexStream',
+      },
+      client.duplexStream,
+    );
     const genDuplex = duplexStream();
     // When duplex streams are ended, reading will hang
     await genDuplex.write(null);
@@ -260,7 +342,16 @@ describe('GRPC utils', () => {
     const duplexStream = grpcUtils.promisifyDuplexStreamCall<
       utilsPB.EchoMessage,
       utilsPB.EchoMessage
-    >(client, {} as ClientMetadata, client.duplexStream);
+    >(
+      client,
+      {
+        nodeId,
+        host,
+        port: port as Port,
+        command: 'duplexStream',
+      },
+      client.duplexStream,
+    );
     const genDuplex = duplexStream();
     await genDuplex.read(null);
     const messageTo = new utilsPB.EchoMessage();
@@ -280,7 +371,16 @@ describe('GRPC utils', () => {
     const duplexStream = grpcUtils.promisifyDuplexStreamCall<
       utilsPB.EchoMessage,
       utilsPB.EchoMessage
-    >(client, {} as ClientMetadata, client.duplexStream);
+    >(
+      client,
+      {
+        nodeId,
+        host,
+        port: port as Port,
+        command: 'duplexStream',
+      },
+      client.duplexStream,
+    );
     const genDuplex = duplexStream();
     const messageTo = new utilsPB.EchoMessage();
     messageTo.setChallenge('error');
@@ -295,7 +395,16 @@ describe('GRPC utils', () => {
     const duplexStream = grpcUtils.promisifyDuplexStreamCall<
       utilsPB.EchoMessage,
       utilsPB.EchoMessage
-    >(client, {} as ClientMetadata, client.duplexStream);
+    >(
+      client,
+      {
+        nodeId,
+        host,
+        port: port as Port,
+        command: 'duplexStream',
+      },
+      client.duplexStream,
+    );
     const genDuplex = duplexStream();
     const messageTo = new utilsPB.EchoMessage();
     messageTo.setChallenge('error');
@@ -330,10 +439,23 @@ describe('GRPC utils', () => {
         details: '',
         metadata: serialised,
       },
-      {} as ClientMetadata,
+      {
+        nodeId,
+        host,
+        port: port as Port,
+        command: 'testCall',
+      },
     );
     expect(deserialisedError).toBeInstanceOf(errors.ErrorPolykeyRemote);
     expect(deserialisedError.message).toBe('test error');
+    // @ts-ignore - already checked above that error is ErrorPolykeyRemote
+    expect(deserialisedError.metadata.nodeId).toBe(nodeId);
+    // @ts-ignore
+    expect(deserialisedError.metadata.host).toBe(host);
+    // @ts-ignore
+    expect(deserialisedError.metadata.port).toBe(port);
+    // @ts-ignore
+    expect(deserialisedError.metadata.command).toBe('testCall');
     expect(deserialisedError.cause).toBeInstanceOf(errors.ErrorPolykey);
     expect(deserialisedError.cause.message).toBe('test error');
     expect(deserialisedError.cause.exitCode).toBe(255);
@@ -358,10 +480,23 @@ describe('GRPC utils', () => {
         details: '',
         metadata: serialised,
       },
-      {} as ClientMetadata,
+      {
+        nodeId,
+        host,
+        port: port as Port,
+        command: 'testCall',
+      },
     );
     expect(deserialisedError).toBeInstanceOf(errors.ErrorPolykeyRemote);
     expect(deserialisedError.message).toBe('test error');
+    // @ts-ignore - already checked above that error is ErrorPolykeyRemote
+    expect(deserialisedError.metadata.nodeId).toBe(nodeId);
+    // @ts-ignore
+    expect(deserialisedError.metadata.host).toBe(host);
+    // @ts-ignore
+    expect(deserialisedError.metadata.port).toBe(port);
+    // @ts-ignore
+    expect(deserialisedError.metadata.command).toBe('testCall');
     expect(deserialisedError.cause).toBeInstanceOf(TypeError);
     expect(deserialisedError.cause.message).toBe('test error');
     expect(deserialisedError.cause.stack).toBe(error.stack);
@@ -380,13 +515,26 @@ describe('GRPC utils', () => {
         details: '',
         metadata: serialised,
       },
-      {} as ClientMetadata,
+      {
+        nodeId,
+        host,
+        port: port as Port,
+        command: 'testCall',
+      },
     );
     expect(deserialisedError).toBeInstanceOf(errors.ErrorPolykeyRemote);
-    expect(deserialisedError.message).toBe('');
+    // @ts-ignore - already checked above that error is ErrorPolykeyRemote
+    expect(deserialisedError.metadata.nodeId).toBe(nodeId);
+    // @ts-ignore
+    expect(deserialisedError.metadata.host).toBe(host);
+    // @ts-ignore
+    expect(deserialisedError.metadata.port).toBe(port);
+    // @ts-ignore
+    expect(deserialisedError.metadata.command).toBe('testCall');
     expect(deserialisedError.cause).toBeInstanceOf(errors.ErrorPolykeyUnknown);
-    expect(deserialisedError.cause.message).toBe('');
-    expect(deserialisedError.cause.data).toEqual('not an error');
+    // This is slightly brittle because it's based on what we choose to do
+    // with unknown data in our grpc reviver
+    expect(deserialisedError.cause.data.json).toEqual('not an error');
   });
   test('serialising and deserialising sensitive errors', async () => {
     const timestamp = new Date();
@@ -420,10 +568,23 @@ describe('GRPC utils', () => {
         details: '',
         metadata: serialised,
       },
-      {} as ClientMetadata,
+      {
+        nodeId,
+        host,
+        port: port as Port,
+        command: 'testCall',
+      },
     );
     expect(deserialisedError).toBeInstanceOf(errors.ErrorPolykeyRemote);
     expect(deserialisedError.message).toBe('test error');
+    // @ts-ignore - already checked above that error is ErrorPolykeyRemote
+    expect(deserialisedError.metadata.nodeId).toBe(nodeId);
+    // @ts-ignore
+    expect(deserialisedError.metadata.host).toBe(host);
+    // @ts-ignore
+    expect(deserialisedError.metadata.port).toBe(port);
+    // @ts-ignore
+    expect(deserialisedError.metadata.command).toBe('testCall');
     expect(deserialisedError.cause).toBeInstanceOf(errors.ErrorPolykey);
     expect(deserialisedError.cause.message).toBe('test error');
     expect(deserialisedError.cause.exitCode).toBe(255);
