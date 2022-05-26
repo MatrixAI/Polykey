@@ -15,7 +15,6 @@ import NodeGraph from '@/nodes/NodeGraph';
 import NodeManager from '@/nodes/NodeManager';
 import Sigchain from '@/sigchain/Sigchain';
 import Proxy from '@/network/Proxy';
-
 import GRPCServer from '@/grpc/GRPCServer';
 import GRPCClientClient from '@/client/GRPCClientClient';
 import nodesClaim from '@/client/service/nodesClaim';
@@ -26,7 +25,6 @@ import * as clientUtils from '@/client/utils/utils';
 import * as keysUtils from '@/keys/utils';
 import * as validationErrors from '@/validation/errors';
 import * as testUtils from '../../utils';
-import { expectRemoteError } from '../../utils';
 
 describe('nodesClaim', () => {
   const logger = new Logger('nodesClaim test', LogLevel.WARN, [
@@ -63,7 +61,7 @@ describe('nodesClaim', () => {
     mockedSendNotification = jest
       .spyOn(NotificationsManager.prototype, 'sendNotification')
       .mockResolvedValue(undefined);
-    mockedSendNotification = jest
+    mockedClaimNode = jest
       .spyOn(NodeManager.prototype, 'claimNode')
       .mockResolvedValue(undefined);
   });
@@ -83,7 +81,6 @@ describe('nodesClaim', () => {
   let acl: ACL;
   let sigchain: Sigchain;
   let proxy: Proxy;
-
   let db: DB;
   let keyManager: KeyManager;
   let grpcServer: GRPCServer;
@@ -231,7 +228,7 @@ describe('nodesClaim', () => {
   test('cannot claim an invalid node', async () => {
     const request = new nodesPB.Claim();
     request.setNodeId('nodeId');
-    await expectRemoteError(
+    await testUtils.expectRemoteError(
       grpcClient.nodesClaim(
         request,
         clientUtils.encodeAuthFromPassword(password),
