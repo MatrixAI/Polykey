@@ -635,8 +635,17 @@ describe(Proxy.name, () => {
     let secured = false;
     const utpSocket = UTP.createServer(async (utpConn) => {
       utpConn.on('error', (e) => {
+        logger.warn('utpConn threw: ' + e.message);
+        // UTP implementation is buggy,
+        // we sometimes expect to see write after end error
+        if (e.message === 'Cannot call write after a stream was destroyed') {
+          return;
+        }
         utpConnError(e);
       });
+      utpConn.on('end', async () => {
+        utpConn.destroy();
+      })
       const tlsSocket = new tls.TLSSocket(utpConn, {
         key: Buffer.from(serverKeyPairPem.privateKey, 'ascii'),
         cert: Buffer.from(serverCertPem, 'ascii'),
@@ -751,8 +760,17 @@ describe(Proxy.name, () => {
     let secured = false;
     const utpSocket = UTP.createServer(async (utpConn) => {
       utpConn.on('error', (e) => {
+        logger.warn('utpConn threw: ' + e.message);
+        // UTP implementation is buggy,
+        // we sometimes expect to see write after end error
+        if (e.message === 'Cannot call write after a stream was destroyed') {
+          return;
+        }
         utpConnError(e);
       });
+      utpConn.on('end', async () => {
+        utpConn.destroy();
+      })
       const tlsSocket = new tls.TLSSocket(utpConn, {
         key: Buffer.from(serverKeyPairPem.privateKey, 'ascii'),
         cert: Buffer.from(serverCertPem, 'ascii'),
@@ -874,8 +892,17 @@ describe(Proxy.name, () => {
     // This UTP server will hold the connection
     const utpSocket = UTP.createServer(async (utpConn) => {
       utpConn.on('error', (e) => {
+        logger.warn('utpConn threw: ' + e.message);
+        // UTP implementation is buggy,
+        // we sometimes expect to see write after end error
+        if (e.message === 'Cannot call write after a stream was destroyed') {
+          return;
+        }
         utpConnError(e);
       });
+      utpConn.on('end', async () => {
+        utpConn.destroy();
+      })
       const tlsSocket = new tls.TLSSocket(utpConn, {
         key: Buffer.from(serverKeyPairPem.privateKey, 'ascii'),
         cert: Buffer.from(serverCertPem, 'ascii'),
@@ -1150,8 +1177,17 @@ describe(Proxy.name, () => {
     // This UTP server will hold the connection
     const utpSocket = UTP.createServer(async (utpConn) => {
       utpConn.on('error', (e) => {
+        logger.warn('utpConn threw: ' + e.message);
+        // UTP implementation is buggy,
+        // we sometimes expect to see write after end error
+        if (e.message === 'Cannot call write after a stream was destroyed') {
+          return;
+        }
         utpConnError(e);
       });
+      utpConn.on('end', async () => {
+        utpConn.destroy();
+      })
       const tlsSocket = new tls.TLSSocket(utpConn, {
         key: Buffer.from(serverKeyPairPem.privateKey, 'ascii'),
         cert: Buffer.from(serverCertPem, 'ascii'),
