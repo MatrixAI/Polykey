@@ -7,7 +7,7 @@
 import type { Authenticate } from '@/client/types';
 import type { SessionToken } from '@/sessions/types';
 import type { ITestServiceServer } from '@/proto/js/polykey/v1/test_service_grpc_pb';
-import type { ClientMetadata } from '@/types';
+import type { Host, Port } from '@/network/types';
 import Logger from '@matrixai/logger';
 import * as grpc from '@grpc/grpc-js';
 import * as grpcUtils from '@/grpc/utils';
@@ -15,6 +15,7 @@ import * as grpcErrors from '@/grpc/errors';
 import * as clientUtils from '@/client/utils';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import { sleep } from '@/utils';
+import * as testUtils from '../../utils';
 
 function createTestService({
   authenticate,
@@ -23,6 +24,9 @@ function createTestService({
   authenticate: Authenticate;
   logger?: Logger;
 }) {
+  const nodeId = testUtils.generateRandomNodeId();
+  const host = '127.0.0.1' as Host;
+  const port = 0 as Port;
   const testService: ITestServiceServer = {
     unary: async (
       call: grpc.ServerUnaryCall<utilsPB.EchoMessage, utilsPB.EchoMessage>,
@@ -105,7 +109,12 @@ function createTestService({
       }
       const genReadable = grpcUtils.generatorReadable<utilsPB.EchoMessage>(
         call,
-        {} as ClientMetadata,
+        {
+          nodeId,
+          host,
+          port,
+          command: 'genReadable',
+        },
       );
       let data = '';
       try {
@@ -137,7 +146,12 @@ function createTestService({
       }
       const genDuplex = grpcUtils.generatorDuplex(
         call,
-        {} as ClientMetadata,
+        {
+          nodeId,
+          host,
+          port,
+          command: 'genDuplex',
+        },
         false,
       );
       const readStatus = await genDuplex.read();
