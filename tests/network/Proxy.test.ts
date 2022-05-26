@@ -11,7 +11,7 @@ import * as networkUtils from '@/network/utils';
 import * as networkErrors from '@/network/errors';
 import * as keysUtils from '@/keys/utils';
 import * as nodesUtils from '@/nodes/utils';
-import { promisify, promise, timerStart, timerStop, poll } from '@/utils';
+import { poll, promise, promisify, timerStart, timerStop } from '@/utils';
 import * as testUtils from '../utils';
 
 /**
@@ -141,6 +141,8 @@ describe(Proxy.name, () => {
         keyPrivatePem: keyPairPem.privateKey,
         certChainPem: certPem,
       },
+      proxyHost: localHost,
+      forwardHost: localHost,
       serverHost: localHost,
       serverPort: port,
     });
@@ -157,6 +159,8 @@ describe(Proxy.name, () => {
         keyPrivatePem: keyPairPem.privateKey,
         certChainPem: certPem,
       },
+      proxyHost: localHost,
+      forwardHost: localHost,
       serverHost: localHost,
       serverPort: port,
     });
@@ -170,6 +174,7 @@ describe(Proxy.name, () => {
     // Start it again
     await proxy.start({
       forwardHost: '::1' as Host,
+      proxyHost: localHost,
       serverHost: localHost,
       serverPort: port,
       tlsConfig: {
@@ -193,6 +198,7 @@ describe(Proxy.name, () => {
         keyPrivatePem: keyPairPem.privateKey,
         certChainPem: certPem,
       },
+      proxyHost: localHost,
       serverHost: localHost,
       serverPort: port,
     });
@@ -244,6 +250,8 @@ describe(Proxy.name, () => {
         keyPrivatePem: keyPairPem.privateKey,
         certChainPem: certPem,
       },
+      proxyHost: localHost,
+      forwardHost: localHost,
       serverHost: localHost,
       serverPort: port,
     });
@@ -278,6 +286,8 @@ describe(Proxy.name, () => {
         keyPrivatePem: keyPairPem.privateKey,
         certChainPem: certPem,
       },
+      proxyHost: localHost,
+      forwardHost: localHost,
       serverHost: localHost,
       serverPort: port,
     });
@@ -336,6 +346,8 @@ describe(Proxy.name, () => {
         keyPrivatePem: keyPairPem.privateKey,
         certChainPem: certPem,
       },
+      proxyHost: localHost,
+      forwardHost: localHost,
       serverHost: localHost,
       serverPort: port,
     });
@@ -395,6 +407,8 @@ describe(Proxy.name, () => {
         keyPrivatePem: keyPairPem.privateKey,
         certChainPem: certPem,
       },
+      proxyHost: localHost,
+      forwardHost: localHost,
       serverHost: localHost,
       serverPort: port,
     });
@@ -501,6 +515,8 @@ describe(Proxy.name, () => {
         keyPrivatePem: keyPairPem.privateKey,
         certChainPem: certPem,
       },
+      proxyHost: localHost,
+      forwardHost: localHost,
       serverHost: localHost,
       serverPort: port,
     });
@@ -619,6 +635,8 @@ describe(Proxy.name, () => {
         keyPrivatePem: keyPairPem.privateKey,
         certChainPem: certPem,
       },
+      proxyHost: localHost,
+      forwardHost: localHost,
       serverHost: localHost,
       serverPort: port,
     });
@@ -744,6 +762,8 @@ describe(Proxy.name, () => {
         keyPrivatePem: keyPairPem.privateKey,
         certChainPem: certPem,
       },
+      proxyHost: localHost,
+      forwardHost: localHost,
       serverHost: localHost,
       serverPort: port,
     });
@@ -875,6 +895,8 @@ describe(Proxy.name, () => {
         keyPrivatePem: keyPairPem.privateKey,
         certChainPem: certPem,
       },
+      proxyHost: localHost,
+      forwardHost: localHost,
       serverHost: localHost,
       serverPort: port,
     });
@@ -1011,6 +1033,8 @@ describe(Proxy.name, () => {
         keyPrivatePem: keyPairPem.privateKey,
         certChainPem: certPem,
       },
+      proxyHost: localHost,
+      forwardHost: localHost,
       serverHost: localHost,
       serverPort: port,
     });
@@ -1160,6 +1184,8 @@ describe(Proxy.name, () => {
         keyPrivatePem: keyPairPem.privateKey,
         certChainPem: certPem,
       },
+      proxyHost: localHost,
+      forwardHost: localHost,
       serverHost: localHost,
       serverPort: port,
     });
@@ -1318,6 +1344,8 @@ describe(Proxy.name, () => {
         keyPrivatePem: keyPairPem.privateKey,
         certChainPem: certPem,
       },
+      proxyHost: localHost,
+      forwardHost: localHost,
       serverHost: localHost,
       serverPort: port,
     });
@@ -1489,6 +1517,8 @@ describe(Proxy.name, () => {
         keyPrivatePem: keyPairPem.privateKey,
         certChainPem: certPem,
       },
+      proxyHost: localHost,
+      forwardHost: localHost,
       serverHost: localHost,
       serverPort: port,
     });
@@ -1645,6 +1675,8 @@ describe(Proxy.name, () => {
         keyPrivatePem: keyPairPem.privateKey,
         certChainPem: certPem,
       },
+      proxyHost: localHost,
+      forwardHost: localHost,
       serverHost: localHost,
       serverPort: port,
     });
@@ -1777,6 +1809,8 @@ describe(Proxy.name, () => {
         keyPrivatePem: keyPairPem.privateKey,
         certChainPem: certPem,
       },
+      proxyHost: localHost,
+      forwardHost: localHost,
       serverHost: localHost,
       serverPort: port,
     });
@@ -1895,6 +1929,8 @@ describe(Proxy.name, () => {
         keyPrivatePem: keyPairPem.privateKey,
         certChainPem: certPem,
       },
+      proxyHost: localHost,
+      forwardHost: localHost,
       serverHost: localHost,
       serverPort: port,
     });
@@ -2033,6 +2069,8 @@ describe(Proxy.name, () => {
         keyPrivatePem: keyPairPem.privateKey,
         certChainPem: certPem,
       },
+      proxyHost: localHost,
+      forwardHost: localHost,
       serverHost: localHost,
       serverPort: port,
     });
@@ -2140,6 +2178,8 @@ describe(Proxy.name, () => {
         keyPrivatePem: keyPairPem.privateKey,
         certChainPem: certPem,
       },
+      proxyHost: localHost,
+      forwardHost: localHost,
       serverHost: localHost,
       serverPort: port,
     });
@@ -2291,7 +2331,8 @@ describe(Proxy.name, () => {
     await proxy.start({
       serverHost: serverHost(),
       serverPort: serverPort(),
-
+      proxyHost: localHost,
+      forwardHost: localHost,
       tlsConfig: {
         keyPrivatePem: keyPairPem.privateKey,
         certChainPem: certPem,
@@ -2322,7 +2363,8 @@ describe(Proxy.name, () => {
     await proxy.start({
       serverHost: serverHost(),
       serverPort: serverPort(),
-
+      proxyHost: localHost,
+      forwardHost: localHost,
       tlsConfig: {
         keyPrivatePem: keyPairPem.privateKey,
         certChainPem: certPem,
@@ -2362,6 +2404,8 @@ describe(Proxy.name, () => {
     await proxy.start({
       serverHost: serverHost(),
       serverPort: serverPort(),
+      proxyHost: localHost,
+      forwardHost: localHost,
 
       tlsConfig: {
         keyPrivatePem: keyPairPem.privateKey,
@@ -2413,6 +2457,8 @@ describe(Proxy.name, () => {
     await proxy.start({
       serverHost: serverHost(),
       serverPort: serverPort(),
+      proxyHost: localHost,
+      forwardHost: localHost,
 
       tlsConfig: {
         keyPrivatePem: keyPairPem.privateKey,
@@ -2489,6 +2535,8 @@ describe(Proxy.name, () => {
     await proxy.start({
       serverHost: serverHost(),
       serverPort: serverPort(),
+      proxyHost: localHost,
+      forwardHost: localHost,
 
       tlsConfig: {
         keyPrivatePem: keyPairPem.privateKey,
@@ -2648,6 +2696,7 @@ describe(Proxy.name, () => {
         certChainPem: certPem,
       },
       proxyHost: localHost,
+      forwardHost: localHost,
     });
     const externalHost = proxy.getProxyHost();
     const externalPort = proxy.getProxyPort();
@@ -2754,6 +2803,7 @@ describe(Proxy.name, () => {
       serverHost: serverHost(),
       serverPort: serverPort(),
       proxyHost: localHost,
+      forwardHost: localHost,
       tlsConfig: {
         keyPrivatePem: keyPairPem.privateKey,
         certChainPem: certPem,
