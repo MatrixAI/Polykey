@@ -1252,120 +1252,124 @@ describe('VaultManager', () => {
         await vaultManager?.destroy();
       }
     });
-    test('pullVault respects locking', async () => {
-      // This should respect the VaultManager read lock
-      // and the VaultInternal write lock
-      const vaultManager = await VaultManager.createVaultManager({
-        vaultsPath,
-        keyManager: dummyKeyManager,
-        gestaltGraph: {} as GestaltGraph,
-        nodeConnectionManager,
-        acl: {} as ACL,
-        notificationsManager: {} as NotificationsManager,
-        db,
-        logger: logger.getChild(VaultManager.name),
-      });
-      const pullVaultMock = jest.spyOn(VaultInternal.prototype, 'pullVault');
-      const gitPullMock = jest.spyOn(git, 'pull');
-      try {
-        // Creating some state at the remote
-        await remoteKeynode1.vaultManager.withVaults(
-          [remoteVaultId],
-          async (vault) => {
-            await vault.writeF(async (efs) => {
-              await efs.writeFile('secret-1', 'secret1');
-              await efs.writeFile('secret-2', 'secret2');
-            });
-          },
-        );
-
-        // Setting permissions
-        await remoteKeynode1.gestaltGraph.setNode({
-          id: localNodeIdEncoded,
-          chain: {},
+    test(
+      'pullVault respects locking',
+      async () => {
+        // This should respect the VaultManager read lock
+        // and the VaultInternal write lock
+        const vaultManager = await VaultManager.createVaultManager({
+          vaultsPath,
+          keyManager: dummyKeyManager,
+          gestaltGraph: {} as GestaltGraph,
+          nodeConnectionManager,
+          acl: {} as ACL,
+          notificationsManager: {} as NotificationsManager,
+          db,
+          logger: logger.getChild(VaultManager.name),
         });
-        await remoteKeynode1.gestaltGraph.setGestaltActionByNode(
-          localNodeId,
-          'scan',
-        );
-        await remoteKeynode1.acl.setVaultAction(
-          remoteVaultId,
-          localNodeId,
-          'clone',
-        );
-        await remoteKeynode1.acl.setVaultAction(
-          remoteVaultId,
-          localNodeId,
-          'pull',
-        );
+        const pullVaultMock = jest.spyOn(VaultInternal.prototype, 'pullVault');
+        const gitPullMock = jest.spyOn(git, 'pull');
+        try {
+          // Creating some state at the remote
+          await remoteKeynode1.vaultManager.withVaults(
+            [remoteVaultId],
+            async (vault) => {
+              await vault.writeF(async (efs) => {
+                await efs.writeFile('secret-1', 'secret1');
+                await efs.writeFile('secret-2', 'secret2');
+              });
+            },
+          );
 
-        await vaultManager.cloneVault(remoteKeynode1Id, vaultName);
-        const vaultId = await vaultManager.getVaultId(vaultName);
-        if (vaultId === undefined) fail('VaultId is not found.');
+          // Setting permissions
+          await remoteKeynode1.gestaltGraph.setNode({
+            id: localNodeIdEncoded,
+            chain: {},
+          });
+          await remoteKeynode1.gestaltGraph.setGestaltActionByNode(
+            localNodeId,
+            'scan',
+          );
+          await remoteKeynode1.acl.setVaultAction(
+            remoteVaultId,
+            localNodeId,
+            'clone',
+          );
+          await remoteKeynode1.acl.setVaultAction(
+            remoteVaultId,
+            localNodeId,
+            'pull',
+          );
 
-        // Creating new history
-        await remoteKeynode1.vaultManager.withVaults(
-          [remoteVaultId],
-          async (vault) => {
-            await vault.writeF(async (efs) => {
-              await efs.writeFile('secret-2', 'secret2');
-            });
-          },
-        );
+          await vaultManager.cloneVault(remoteKeynode1Id, vaultName);
+          const vaultId = await vaultManager.getVaultId(vaultName);
+          if (vaultId === undefined) fail('VaultId is not found.');
 
-        // @ts-ignore: kidnap vaultManager map and grabbing lock
-        const vaultsMap = vaultManager.vaultMap;
-        const vault = vaultsMap.get(vaultId.toString() as VaultIdString);
-        // @ts-ignore: kidnap vaultManager lockBox
-        const vaultLocks = vaultManager.vaultLocks;
-        const [releaseWrite] = await vaultLocks.lock([
-          vaultId,
-          RWLockWriter,
-          'write',
-        ])();
+          // Creating new history
+          await remoteKeynode1.vaultManager.withVaults(
+            [remoteVaultId],
+            async (vault) => {
+              await vault.writeF(async (efs) => {
+                await efs.writeFile('secret-2', 'secret2');
+              });
+            },
+          );
 
-        // Pulling vault respects VaultManager write lock
-        const pullP = vaultManager.pullVault({
-          vaultId: vaultId,
-        });
-        await sleep(200);
-        expect(pullVaultMock).not.toHaveBeenCalled();
-        await releaseWrite();
-        await pullP;
-        expect(pullVaultMock).toHaveBeenCalled();
-        pullVaultMock.mockClear();
+          // @ts-ignore: kidnap vaultManager map and grabbing lock
+          const vaultsMap = vaultManager.vaultMap;
+          const vault = vaultsMap.get(vaultId.toString() as VaultIdString);
+          // @ts-ignore: kidnap vaultManager lockBox
+          const vaultLocks = vaultManager.vaultLocks;
+          const [releaseWrite] = await vaultLocks.lock([
+            vaultId,
+            RWLockWriter,
+            'write',
+          ])();
 
-        // Creating new history
-        await remoteKeynode1.vaultManager.withVaults(
-          [remoteVaultId],
-          async (vault) => {
-            await vault.writeF(async (efs) => {
-              await efs.writeFile('secret-3', 'secret3');
-            });
-          },
-        );
+          // Pulling vault respects VaultManager write lock
+          const pullP = vaultManager.pullVault({
+            vaultId: vaultId,
+          });
+          await sleep(200);
+          expect(pullVaultMock).not.toHaveBeenCalled();
+          await releaseWrite();
+          await pullP;
+          expect(pullVaultMock).toHaveBeenCalled();
+          pullVaultMock.mockClear();
 
-        // Respects VaultInternal write lock
-        // @ts-ignore: kidnap vault lock
-        const vaultLock = vault!.lock;
-        const [releaseVaultWrite] = await vaultLock.write()();
-        // Pulling vault respects VaultManager write lock
-        gitPullMock.mockClear();
-        const pullP2 = vaultManager.pullVault({
-          vaultId: vaultId,
-        });
-        await sleep(200);
-        expect(gitPullMock).not.toHaveBeenCalled();
-        await releaseVaultWrite();
-        await pullP2;
-        expect(gitPullMock).toHaveBeenCalled();
-      } finally {
-        pullVaultMock.mockRestore();
-        gitPullMock.mockRestore();
-        await vaultManager?.stop();
-        await vaultManager?.destroy();
-      }
-    });
+          // Creating new history
+          await remoteKeynode1.vaultManager.withVaults(
+            [remoteVaultId],
+            async (vault) => {
+              await vault.writeF(async (efs) => {
+                await efs.writeFile('secret-3', 'secret3');
+              });
+            },
+          );
+
+          // Respects VaultInternal write lock
+          // @ts-ignore: kidnap vault lock
+          const vaultLock = vault!.lock;
+          const [releaseVaultWrite] = await vaultLock.write()();
+          // Pulling vault respects VaultManager write lock
+          gitPullMock.mockClear();
+          const pullP2 = vaultManager.pullVault({
+            vaultId: vaultId,
+          });
+          await sleep(200);
+          expect(gitPullMock).not.toHaveBeenCalled();
+          await releaseVaultWrite();
+          await pullP2;
+          expect(gitPullMock).toHaveBeenCalled();
+        } finally {
+          pullVaultMock.mockRestore();
+          gitPullMock.mockRestore();
+          await vaultManager?.stop();
+          await vaultManager?.destroy();
+        }
+      },
+      global.failedConnectionTimeout,
+    );
   });
   test('handleScanVaults should list all vaults with permissions', async () => {
     // 1. we need to set up state

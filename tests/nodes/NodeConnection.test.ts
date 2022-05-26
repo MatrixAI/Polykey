@@ -60,7 +60,7 @@ const mockedGenerateDeterministicKeyPair = jest.spyOn(
   'generateDeterministicKeyPair',
 );
 
-describe(`${NodeConnection.name} test`, () => {
+describe('${NodeConnection.name} test', () => {
   const logger = new Logger(`${NodeConnection.name} test`, LogLevel.WARN, [
     new StreamHandler(),
   ]);
@@ -767,6 +767,7 @@ describe(`${NodeConnection.name} test`, () => {
         await nodeConnection?.destroy();
       }
     },
+    global.defaultTimeout * 2,
   );
   test.each(options)(
     "should call `killSelf and throw if the server %s's during testStreamFail",
@@ -839,5 +840,6 @@ describe(`${NodeConnection.name} test`, () => {
         await nodeConnection?.destroy();
       }
     },
+    global.defaultTimeout * 2,
   );
 });
