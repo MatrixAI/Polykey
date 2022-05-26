@@ -5,7 +5,6 @@ import type { Host, Port, TLSConfig, ProxyConfig } from '@/network/types';
 import type * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import type { ClientReadableStream } from '@grpc/grpc-js/build/src/call';
 import type { AsyncGeneratorReadableStreamClient } from '@/grpc/types';
-import type { ClientMetadata } from '@/types';
 import Logger from '@matrixai/logger';
 import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
 import GRPCClient from '@/grpc/GRPCClient';
@@ -76,7 +75,12 @@ class GRPCClientTest extends GRPCClient<TestServiceClient> {
   public unary(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.EchoMessage>(
       this.client,
-      {} as ClientMetadata,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+        command: this.unary.name,
+      },
       this.client.unary,
     )(...args);
   }
@@ -85,7 +89,12 @@ class GRPCClientTest extends GRPCClient<TestServiceClient> {
   public serverStream(...args) {
     return grpcUtils.promisifyReadableStreamCall<utilsPB.EchoMessage>(
       this.client,
-      {} as ClientMetadata,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+        command: this.serverStream.name,
+      },
       this.client.serverStream,
     )(...args);
   }
@@ -97,7 +106,12 @@ class GRPCClientTest extends GRPCClient<TestServiceClient> {
       utilsPB.EchoMessage
     >(
       this.client,
-      {} as ClientMetadata,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+        command: this.clientStream.name,
+      },
       this.client.clientStream,
     )(...args);
   }
@@ -109,7 +123,12 @@ class GRPCClientTest extends GRPCClient<TestServiceClient> {
       utilsPB.EchoMessage
     >(
       this.client,
-      {} as ClientMetadata,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+        command: this.duplexStream.name,
+      },
       this.client.duplexStream,
     )(...args);
   }
@@ -118,7 +137,12 @@ class GRPCClientTest extends GRPCClient<TestServiceClient> {
   public unaryAuthenticated(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.EchoMessage>(
       this.client,
-      {} as ClientMetadata,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+        command: this.unaryAuthenticated.name,
+      },
       this.client.unaryAuthenticated,
     )(...args);
   }
@@ -132,7 +156,12 @@ class GRPCClientTest extends GRPCClient<TestServiceClient> {
   > {
     return grpcUtils.promisifyReadableStreamCall<utilsPB.EchoMessage>(
       this.client,
-      {} as ClientMetadata,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+        command: this.serverStreamFail.name,
+      },
       this.client.serverStreamFail,
     )(...args);
   }
@@ -141,7 +170,12 @@ class GRPCClientTest extends GRPCClient<TestServiceClient> {
   public unaryFail(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.EchoMessage>(
       this.client,
-      {} as ClientMetadata,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+        command: this.unaryFail.name,
+      },
       this.client.unaryFail,
     )(...args);
   }

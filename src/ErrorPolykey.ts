@@ -16,6 +16,7 @@ class ErrorPolykey<T> extends AbstractError<T> {
       typeof json.data !== 'object' ||
       typeof json.data.message !== 'string' ||
       isNaN(Date.parse(json.data.timestamp)) ||
+      typeof json.data.description !== 'string' ||
       typeof json.data.data !== 'object' ||
       typeof json.data.exitCode !== 'number' ||
       ('stack' in json.data && typeof json.data.stack !== 'string')
@@ -34,6 +35,7 @@ class ErrorPolykey<T> extends AbstractError<T> {
 
   public toJSON(): any {
     const json = super.toJSON();
+    json.data.description = this.description;
     json.data.exitCode = this.exitCode;
     return json;
   }
