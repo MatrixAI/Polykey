@@ -22,7 +22,7 @@ function vaultsSecretsMkdir({
   logger: Logger;
 }) {
   return async (
-    call: grpc.ServerUnaryCall<vaultsPB.Mkdir, utilsPB.EmptyMessage>,
+    call: grpc.ServerUnaryCall<vaultsPB.Mkdir, utilsPB.StatusMessage>,
     callback: grpc.sendUnaryData<utilsPB.StatusMessage>,
   ): Promise<void> => {
     try {
