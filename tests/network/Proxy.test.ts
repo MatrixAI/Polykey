@@ -645,7 +645,7 @@ describe(Proxy.name, () => {
       });
       utpConn.on('end', async () => {
         utpConn.destroy();
-      })
+      });
       const tlsSocket = new tls.TLSSocket(utpConn, {
         key: Buffer.from(serverKeyPairPem.privateKey, 'ascii'),
         cert: Buffer.from(serverCertPem, 'ascii'),
@@ -770,7 +770,7 @@ describe(Proxy.name, () => {
       });
       utpConn.on('end', async () => {
         utpConn.destroy();
-      })
+      });
       const tlsSocket = new tls.TLSSocket(utpConn, {
         key: Buffer.from(serverKeyPairPem.privateKey, 'ascii'),
         cert: Buffer.from(serverCertPem, 'ascii'),
@@ -902,7 +902,7 @@ describe(Proxy.name, () => {
       });
       utpConn.on('end', async () => {
         utpConn.destroy();
-      })
+      });
       const tlsSocket = new tls.TLSSocket(utpConn, {
         key: Buffer.from(serverKeyPairPem.privateKey, 'ascii'),
         cert: Buffer.from(serverCertPem, 'ascii'),
@@ -1187,7 +1187,7 @@ describe(Proxy.name, () => {
       });
       utpConn.on('end', async () => {
         utpConn.destroy();
-      })
+      });
       const tlsSocket = new tls.TLSSocket(utpConn, {
         key: Buffer.from(serverKeyPairPem.privateKey, 'ascii'),
         cert: Buffer.from(serverCertPem, 'ascii'),
@@ -2554,7 +2554,8 @@ describe(Proxy.name, () => {
     await proxy.start({
       serverHost: serverHost(),
       serverPort: serverPort(),
-
+      forwardHost: localHost,
+      proxyHost: localHost,
       tlsConfig: {
         keyPrivatePem: keyPairPem.privateKey,
         certChainPem: certPem,
