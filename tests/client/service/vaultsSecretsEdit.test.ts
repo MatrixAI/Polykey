@@ -1,5 +1,4 @@
 import type { Host, Port } from '@/network/types';
-import type { VaultId } from '@/vaults/types';
 import type NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import type ACL from '@/acl/ACL';
 import type GestaltGraph from '@/gestalts/GestaltGraph';
@@ -14,15 +13,18 @@ import KeyManager from '@/keys/KeyManager';
 import VaultManager from '@/vaults/VaultManager';
 import GRPCServer from '@/grpc/GRPCServer';
 import GRPCClientClient from '@/client/GRPCClientClient';
-import vaultsLog from '@/client/service/vaultsLog';
+import vaultsSecretsEdit from '@/client/service/vaultsSecretsEdit';
 import { ClientServiceService } from '@/proto/js/polykey/v1/client_service_grpc_pb';
+import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as vaultsPB from '@/proto/js/polykey/v1/vaults/vaults_pb';
+import * as secretsPB from '@/proto/js/polykey/v1/secrets/secrets_pb';
 import * as clientUtils from '@/client/utils/utils';
+import * as vaultsUtils from '@/vaults/utils';
 import * as keysUtils from '@/keys/utils';
 import * as testUtils from '../../utils';
 
-describe('vaultsLog', () => {
-  const logger = new Logger('vaultsLog test', LogLevel.WARN, [
+describe('vaultsSecretsEdit', () => {
+  const logger = new Logger('vaultsSecretsEdit test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
   const password = 'helloworld';
@@ -43,14 +45,7 @@ describe('vaultsLog', () => {
     mockedGenerateKeyPair.mockRestore();
     mockedGenerateDeterministicKeyPair.mockRestore();
   });
-  const vaultName = 'test-vault';
-  const secret1 = { name: 'secret1', content: 'Secret-1-content' };
-  const secret2 = { name: 'secret2', content: 'Secret-2-content' };
   let dataDir: string;
-  let vaultId: VaultId;
-  let commit1Oid: string;
-  let commit2Oid: string;
-  let commit3Oid: string;
   let keyManager: KeyManager;
   let db: DB;
   let vaultManager: VaultManager;
@@ -82,23 +77,8 @@ describe('vaultsLog', () => {
       notificationsManager: {} as NotificationsManager,
       logger,
     });
-    vaultId = await vaultManager.createVault(vaultName);
-    await vaultManager.withVaults([vaultId], async (vault) => {
-      await vault.writeF(async (efs) => {
-        await efs.writeFile(secret1.name, secret1.content);
-      });
-      commit1Oid = (await vault.log(undefined, 0))[0].commitId;
-      await vault.writeF(async (efs) => {
-        await efs.writeFile(secret2.name, secret2.content);
-      });
-      commit2Oid = (await vault.log(undefined, 0))[0].commitId;
-      await vault.writeF(async (efs) => {
-        await efs.unlink(secret2.name);
-      });
-      commit3Oid = (await vault.log(undefined, 0))[0].commitId;
-    });
     const clientService = {
-      vaultsLog: vaultsLog({
+      vaultsSecretsEdit: vaultsSecretsEdit({
         authenticate,
         vaultManager,
         db,
@@ -117,7 +97,7 @@ describe('vaultsLog', () => {
       port: grpcServer.getPort(),
       logger,
     });
-  }, global.defaultTimeout * 2);
+  });
   afterEach(async () => {
     await grpcClient.destroy();
     await grpcServer.stop();
@@ -129,60 +109,33 @@ describe('vaultsLog', () => {
       recursive: true,
     });
   });
-  test('should get the full log', async () => {
-    const vaultsLogMessage = new vaultsPB.Log();
+  test('edits secrets', async () => {
+    const vaultName = 'test-vault';
+    const secretName = 'test-secret';
+    const vaultId = await vaultManager.createVault(vaultName);
+    await vaultManager.withVaults([vaultId], async (vault) => {
+      await vault.writeF(async (efs) => {
+        await efs.writeFile(secretName, secretName);
+      });
+    });
+    const secretMessage = new secretsPB.Secret();
     const vaultMessage = new vaultsPB.Vault();
-    vaultMessage.setNameOrId(vaultName);
-    vaultsLogMessage.setVault(vaultMessage);
-    const logStream = grpcClient.vaultsLog(
-      vaultsLogMessage,
+    vaultMessage.setNameOrId(vaultsUtils.encodeVaultId(vaultId));
+    secretMessage.setVault(vaultMessage);
+    secretMessage.setSecretName(secretName);
+    secretMessage.setSecretContent(Buffer.from('content-change'));
+    const response = await grpcClient.vaultsSecretsEdit(
+      secretMessage,
       clientUtils.encodeAuthFromPassword(password),
     );
-    const logMessages: vaultsPB.LogEntry[] = [];
-    for await (const log of logStream) {
-      expect(log).toBeInstanceOf(vaultsPB.LogEntry);
-      logMessages.push(log);
-    }
-    // Checking commits exist in order.
-    expect(logMessages[2].getOid()).toEqual(commit1Oid);
-    expect(logMessages[1].getOid()).toEqual(commit2Oid);
-    expect(logMessages[0].getOid()).toEqual(commit3Oid);
-  });
-  test('should get a part of the log', async () => {
-    const vaultsLogMessage = new vaultsPB.Log();
-    const vaultMessage = new vaultsPB.Vault();
-    vaultMessage.setNameOrId(vaultName);
-    vaultsLogMessage.setVault(vaultMessage);
-    vaultsLogMessage.setLogDepth(2);
-    const logStream = grpcClient.vaultsLog(
-      vaultsLogMessage,
-      clientUtils.encodeAuthFromPassword(password),
-    );
-    const logMessages: vaultsPB.LogEntry[] = [];
-    for await (const log of logStream) {
-      expect(log).toBeInstanceOf(vaultsPB.LogEntry);
-      logMessages.push(log);
-    }
-    // Checking commits exist in order.
-    expect(logMessages[1].getOid()).toEqual(commit2Oid);
-    expect(logMessages[0].getOid()).toEqual(commit3Oid);
-  });
-  test('should get a specific commit', async () => {
-    const vaultsLogMessage = new vaultsPB.Log();
-    const vaultMessage = new vaultsPB.Vault();
-    vaultMessage.setNameOrId(vaultName);
-    vaultsLogMessage.setVault(vaultMessage);
-    vaultsLogMessage.setCommitId(commit2Oid);
-    const logStream = grpcClient.vaultsLog(
-      vaultsLogMessage,
-      clientUtils.encodeAuthFromPassword(password),
-    );
-    const logMessages: vaultsPB.LogEntry[] = [];
-    for await (const log of logStream) {
-      expect(log).toBeInstanceOf(vaultsPB.LogEntry);
-      logMessages.push(log);
-    }
-    // Checking commits exist in order.
-    expect(logMessages[0].getOid()).toEqual(commit2Oid);
+    expect(response).toBeInstanceOf(utilsPB.StatusMessage);
+    expect(response.getSuccess()).toBeTruthy();
+    await vaultManager.withVaults([vaultId], async (vault) => {
+      await vault.readF(async (efs) => {
+        expect((await efs.readFile(secretName)).toString()).toStrictEqual(
+          'content-change',
+        );
+      });
+    });
   });
 });
