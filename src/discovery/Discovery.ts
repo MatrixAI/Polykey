@@ -26,7 +26,7 @@ import {
 import { IdInternal } from '@matrixai/id';
 import { Lock } from '@matrixai/async-locks';
 import * as idUtils from '@matrixai/id/dist/utils';
-import { utils as DBUtils } from '@matrixai/db';
+import { utils as dbUtils } from '@matrixai/db';
 import * as resources from '@matrixai/resources';
 import * as discoveryUtils from './utils';
 import * as discoveryErrors from './errors';
@@ -134,7 +134,8 @@ class Discovery {
       { limit: 1, reverse: true, values: false },
       this.discoveryQueueDbPath,
     );
-    for await (const [key] of keyIterator) {
+    for await (const [keyPath] of keyIterator) {
+      const key = keyPath[0] as Buffer;
       latestId = IdInternal.fromBuffer<DiscoveryQueueId>(key);
     }
     this.discoveryQueueIdGenerator =
@@ -202,12 +203,13 @@ class Discovery {
 
       // Processing queue
       this.logger.debug('DiscoveryQueue is processing');
-      for await (const [key, value] of this.db.iterator(
+      for await (const [keyPath, value] of this.db.iterator(
         {},
         this.discoveryQueueDbPath,
       )) {
-        const vertexId = IdInternal.fromBuffer(key) as DiscoveryQueueId;
-        const vertex = DBUtils.deserialize<GestaltKey>(value);
+        const key = keyPath[0] as Buffer;
+        const vertexId = IdInternal.fromBuffer<DiscoveryQueueId>(key);
+        const vertex = dbUtils.deserialize<GestaltKey>(value);
         this.logger.debug(`Processing vertex: ${vertex}`);
         const vertexGId = gestaltsUtils.ungestaltKey(vertex);
         switch (vertexGId.type) {
@@ -424,10 +426,11 @@ class Discovery {
     return await this.lock.withF(async () => {
       let nextDiscoveryQueueId: DiscoveryQueueId | undefined;
       const keyIterator = this.db.iterator(
-        { limit: 1 },
+        { limit: 1, values: false },
         this.discoveryQueueDbPath,
       );
-      for await (const [key] of keyIterator) {
+      for await (const [keyPath] of keyIterator) {
+        const key = keyPath[0] as Buffer;
         nextDiscoveryQueueId = IdInternal.fromBuffer<DiscoveryQueueId>(key);
       }
       return nextDiscoveryQueueId == null;

@@ -1,7 +1,8 @@
 import type { DB, DBTransaction, KeyPath, LevelPath } from '@matrixai/db';
-import type { NodeId, NodeAddress, NodeBucket } from './types';
+import type { NodeAddress, NodeBucket, NodeId } from './types';
 import type KeyManager from '../keys/KeyManager';
 import type { Host, Hostname, Port } from '../network/types';
+import { utils as dbUtils } from '@matrixai/db';
 import lexi from 'lexicographic-integer';
 import Logger from '@matrixai/logger';
 import {
@@ -9,7 +10,6 @@ import {
   ready,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import { IdInternal } from '@matrixai/id';
-import { utils as dbUtils } from '@matrixai/db';
 import { withF } from '@matrixai/resources';
 import * as nodesUtils from './utils';
 import * as nodesErrors from './errors';
@@ -335,14 +335,11 @@ class NodeGraph {
     // Wrap as a batch operation. We want to rollback if we encounter any
     // errors (such that we don't clear the DB without re-adding the nodes)
     // 1. Delete every bucket
-    for await (const [k] of tran.iterator({ value: false }, [
+    for await (const [keyPath] of tran.iterator({ values: false }, [
       ...this.nodeGraphBucketsDbPath,
     ])) {
-      const hexBucketIndex = k.toString();
-      const hexBucketPath = [
-        ...this.nodeGraphBucketsDbPath,
-        hexBucketIndex,
-      ] as unknown as KeyPath;
+      const key = keyPath[0].toString();
+      const hexBucketPath = [...this.nodeGraphBucketsDbPath, key];
       await tran.del(hexBucketPath);
     }
     const tempBuckets: Record<string, NodeBucket> = {};
