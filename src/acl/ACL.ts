@@ -135,11 +135,12 @@ class ACL {
       return this.withTransactionF(async (tran) => this.getNodePerms(tran));
     }
     const permIds: Record<PermissionIdString, Record<NodeId, Permission>> = {};
-    for await (const [k, v] of tran.iterator(undefined, [
+    for await (const [keyPath, value] of tran.iterator(undefined, [
       ...this.aclNodesDbPath,
     ])) {
-      const nodeId = IdInternal.fromBuffer<NodeId>(k);
-      const permId = IdInternal.fromBuffer<PermissionId>(v);
+      const key = keyPath[0] as Buffer;
+      const nodeId = IdInternal.fromBuffer<NodeId>(key);
+      const permId = IdInternal.fromBuffer<PermissionId>(value);
       let nodePerm: Record<NodeId, Permission>;
       if (permId in permIds) {
         nodePerm = permIds[permId];
@@ -175,11 +176,12 @@ class ACL {
       return this.withTransactionF(async (tran) => this.getVaultPerms(tran));
     }
     const vaultPerms: Record<VaultId, Record<NodeId, Permission>> = {};
-    for await (const [k, v] of tran.iterator(undefined, [
+    for await (const [keyPath, value] of tran.iterator(undefined, [
       ...this.aclVaultsDbPath,
     ])) {
-      const vaultId = IdInternal.fromBuffer<VaultId>(k);
-      const nodeIds = dbUtils.deserialize<Record<NodeId, null>>(v);
+      const key = keyPath[0] as Buffer;
+      const vaultId = IdInternal.fromBuffer<VaultId>(key);
+      const nodeIds = dbUtils.deserialize<Record<NodeId, null>>(value);
       const nodePerm: Record<NodeId, Permission> = {};
       const nodeIdsGc: Set<NodeId> = new Set();
       for (const nodeIdString in nodeIds) {
