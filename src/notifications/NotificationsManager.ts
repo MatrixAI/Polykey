@@ -140,10 +140,11 @@ class NotificationsManager {
         // Getting latest ID and creating ID generator
         let latestId: NotificationId | undefined;
         const keyIterator = tran.iterator(
-          { limit: 1, reverse: true },
+          { limit: 1, reverse: true, values: false },
           this.notificationsMessagesDbPath,
         );
-        for await (const [key] of keyIterator) {
+        for await (const [keyPath] of keyIterator) {
+          const key = keyPath[0] as Buffer;
           latestId = IdInternal.fromBuffer<NotificationId>(key);
         }
         this.notificationIdGenerator =
@@ -367,7 +368,8 @@ class NotificationsManager {
   ): Promise<Array<NotificationId>> {
     const notificationIds: Array<NotificationId> = [];
     const messageIterator = tran.iterator({}, this.notificationsMessagesDbPath);
-    for await (const [key, value] of messageIterator) {
+    for await (const [keyPath, value] of messageIterator) {
+      const key = keyPath[0] as Buffer;
       const notificationId = IdInternal.fromBuffer<NotificationId>(key);
       const notification = JSON.parse(value.toString()) as Notification;
       if (type === 'all') {

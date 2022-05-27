@@ -10,13 +10,13 @@ import type {
 } from '../claims/types';
 import type KeyManager from '../keys/KeyManager';
 import type { NodeIdEncoded } from '../nodes/types';
+import { utils as dbUtils } from '@matrixai/db';
 import Logger from '@matrixai/logger';
 import { IdInternal } from '@matrixai/id';
 import {
   CreateDestroyStartStop,
   ready,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
-import { utils as dbUtils } from '@matrixai/db';
 import { Lock, LockBox } from '@matrixai/async-locks';
 import { withF } from '@matrixai/resources';
 import * as sigchainErrors from './errors';
@@ -269,11 +269,10 @@ class Sigchain {
       seq: (await this.getSequenceNumber(tran)) + 1,
       data: claimData,
     });
-    const intermediaryClaim: ClaimIntermediary = {
+    return {
       payload: claim.payload,
       signature: claim.signatures[0],
     };
-    return intermediaryClaim;
   }
 
   /**
@@ -289,10 +288,11 @@ class Sigchain {
     }
     const chainData: ChainDataEncoded = {};
     const readIterator = tran.iterator({}, [...this.sigchainClaimsDbPath]);
-    for await (const [key, value] of readIterator) {
+    for await (const [keyPath, value] of readIterator) {
+      const key = keyPath[0] as Buffer;
       const claimId = IdInternal.fromBuffer<ClaimId>(key);
-      const claim = dbUtils.deserialize<ClaimEncoded>(value);
-      chainData[claimsUtils.encodeClaimId(claimId)] = claim;
+      chainData[claimsUtils.encodeClaimId(claimId)] =
+        dbUtils.deserialize<ClaimEncoded>(value);
     }
     return chainData;
   }
@@ -399,9 +399,12 @@ class Sigchain {
       return this.withTransactionF(async (tran) => this.getSeqMap(tran));
     }
     const map: Record<number, ClaimId> = {};
-    const claimStream = tran.iterator({}, [...this.sigchainClaimsDbPath]);
+    const claimStream = tran.iterator({ values: false }, [
+      ...this.sigchainClaimsDbPath,
+    ]);
     let seq = 1;
-    for await (const [key] of claimStream) {
+    for await (const [keyPath] of claimStream) {
+      const key = keyPath[0] as Buffer;
       map[seq] = IdInternal.fromBuffer<ClaimId>(key);
       seq++;
     }
@@ -412,11 +415,12 @@ class Sigchain {
     tran: DBTransaction,
   ): Promise<ClaimId | undefined> {
     let latestId: ClaimId | undefined;
-    const keyStream = tran.iterator({ limit: 1, reverse: true }, [
-      ...this.sigchainClaimsDbPath,
-    ]);
-    for await (const [key] of keyStream) {
-      latestId = IdInternal.fromBuffer<ClaimId>(key);
+    const keyStream = tran.iterator(
+      { limit: 1, reverse: true, values: false },
+      [...this.sigchainClaimsDbPath],
+    );
+    for await (const [keyPath] of keyStream) {
+      latestId = IdInternal.fromBuffer<ClaimId>(keyPath[0] as Buffer);
     }
     return latestId;
   }
