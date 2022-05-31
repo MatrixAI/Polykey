@@ -16,7 +16,6 @@ import {
   CreateDestroyStartStop,
   ready,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
-import { utils as dbUtils } from '@matrixai/db';
 import { withF } from '@matrixai/resources';
 import * as aclUtils from './utils';
 import * as aclErrors from './errors';
@@ -176,12 +175,12 @@ class ACL {
       return this.withTransactionF(async (tran) => this.getVaultPerms(tran));
     }
     const vaultPerms: Record<VaultId, Record<NodeId, Permission>> = {};
-    for await (const [keyPath, value] of tran.iterator(undefined, [
-      ...this.aclVaultsDbPath,
-    ])) {
+    for await (const [keyPath, nodeIds] of tran.iterator<Record<NodeId, null>>(
+      { valueAsBuffer: false },
+      [...this.aclVaultsDbPath],
+    )) {
       const key = keyPath[0] as Buffer;
       const vaultId = IdInternal.fromBuffer<VaultId>(key);
-      const nodeIds = dbUtils.deserialize<Record<NodeId, null>>(value);
       const nodePerm: Record<NodeId, Permission> = {};
       const nodeIdsGc: Set<NodeId> = new Set();
       for (const nodeIdString in nodeIds) {

@@ -17,7 +17,6 @@ import {
   CreateDestroyStartStop,
   ready,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
-import { utils as dbUtils } from '@matrixai/db';
 import { withF } from '@matrixai/resources';
 import * as gestaltsUtils from './utils';
 import * as gestaltsErrors from './errors';
@@ -104,11 +103,11 @@ class GestaltGraph {
       return this.withTransactionF(async (tran) => this.getGestalts(tran));
     }
     const unvisited: Map<GestaltKey, GestaltKeySet> = new Map();
-    for await (const [k, v] of tran.iterator(undefined, [
-      ...this.gestaltGraphMatrixDbPath,
-    ])) {
+    for await (const [k, gKs] of tran.iterator<GestaltKeySet>(
+      { valueAsBuffer: false },
+      [...this.gestaltGraphMatrixDbPath],
+    )) {
       const gK = k.toString() as GestaltKey;
-      const gKs = dbUtils.deserialize<GestaltKeySet>(v);
       unvisited.set(gK, gKs);
     }
     const gestalts: Array<Gestalt> = [];
