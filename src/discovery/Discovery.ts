@@ -26,7 +26,6 @@ import {
 import { IdInternal } from '@matrixai/id';
 import { Lock } from '@matrixai/async-locks';
 import * as idUtils from '@matrixai/id/dist/utils';
-import { utils as dbUtils } from '@matrixai/db';
 import * as resources from '@matrixai/resources';
 import * as discoveryUtils from './utils';
 import * as discoveryErrors from './errors';
@@ -203,13 +202,12 @@ class Discovery {
 
       // Processing queue
       this.logger.debug('DiscoveryQueue is processing');
-      for await (const [keyPath, value] of this.db.iterator(
-        {},
+      for await (const [keyPath, vertex] of this.db.iterator<GestaltKey>(
+        { valueAsBuffer: false },
         this.discoveryQueueDbPath,
       )) {
         const key = keyPath[0] as Buffer;
         const vertexId = IdInternal.fromBuffer<DiscoveryQueueId>(key);
-        const vertex = dbUtils.deserialize<GestaltKey>(value);
         this.logger.debug(`Processing vertex: ${vertex}`);
         const vertexGId = gestaltsUtils.ungestaltKey(vertex);
         switch (vertexGId.type) {
@@ -448,9 +446,12 @@ class Discovery {
     await resources.withF(
       [this.db.transaction(), this.lock.lock()],
       async ([tran]) => {
-        const valueIterator = tran.iterator({}, this.discoveryQueueDbPath);
+        const valueIterator = tran.iterator<GestaltKey>(
+          { valueAsBuffer: false },
+          this.discoveryQueueDbPath,
+        );
         for await (const [, value] of valueIterator) {
-          if (value.toString() === gestaltKey) {
+          if (value === gestaltKey) {
             return;
           }
         }

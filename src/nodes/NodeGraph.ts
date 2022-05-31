@@ -2,7 +2,6 @@ import type { DB, DBTransaction, KeyPath, LevelPath } from '@matrixai/db';
 import type { NodeAddress, NodeBucket, NodeId } from './types';
 import type KeyManager from '../keys/KeyManager';
 import type { Host, Hostname, Port } from '../network/types';
-import { utils as dbUtils } from '@matrixai/db';
 import lexi from 'lexicographic-integer';
 import Logger from '@matrixai/logger';
 import {
@@ -309,10 +308,10 @@ class NodeGraph {
       return this.withTransactionF(async (tran) => this.getAllBuckets(tran));
     }
     const buckets: Array<NodeBucket> = [];
-    for await (const [, v] of tran.iterator({ keys: false }, [
-      ...this.nodeGraphBucketsDbPath,
-    ])) {
-      const bucket = dbUtils.deserialize<NodeBucket>(v);
+    for await (const [, bucket] of tran.iterator<NodeBucket>(
+      { keys: false, valueAsBuffer: false },
+      [...this.nodeGraphBucketsDbPath],
+    )) {
       buckets.push(bucket);
     }
     return buckets;
