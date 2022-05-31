@@ -10,7 +10,6 @@ import type {
 } from '../claims/types';
 import type KeyManager from '../keys/KeyManager';
 import type { NodeIdEncoded } from '../nodes/types';
-import { utils as dbUtils } from '@matrixai/db';
 import Logger from '@matrixai/logger';
 import { IdInternal } from '@matrixai/id';
 import {
@@ -287,12 +286,13 @@ class Sigchain {
       return this.withTransactionF(async (tran) => this.getChainData(tran));
     }
     const chainData: ChainDataEncoded = {};
-    const readIterator = tran.iterator({}, [...this.sigchainClaimsDbPath]);
-    for await (const [keyPath, value] of readIterator) {
+    const readIterator = tran.iterator<ClaimEncoded>({ valueAsBuffer: false }, [
+      ...this.sigchainClaimsDbPath,
+    ]);
+    for await (const [keyPath, claimEncoded] of readIterator) {
       const key = keyPath[0] as Buffer;
       const claimId = IdInternal.fromBuffer<ClaimId>(key);
-      chainData[claimsUtils.encodeClaimId(claimId)] =
-        dbUtils.deserialize<ClaimEncoded>(value);
+      chainData[claimsUtils.encodeClaimId(claimId)] = claimEncoded;
     }
     return chainData;
   }
@@ -316,9 +316,10 @@ class Sigchain {
       );
     }
     const relevantClaims: Array<ClaimEncoded> = [];
-    const readIterator = tran.iterator({}, [...this.sigchainClaimsDbPath]);
-    for await (const [, value] of readIterator) {
-      const claim = dbUtils.deserialize<ClaimEncoded>(value);
+    const readIterator = tran.iterator<ClaimEncoded>({ valueAsBuffer: false }, [
+      ...this.sigchainClaimsDbPath,
+    ]);
+    for await (const [, claim] of readIterator) {
       const decodedClaim = claimsUtils.decodeClaim(claim);
       if (decodedClaim.payload.data.type === claimType) {
         relevantClaims.push(claim);

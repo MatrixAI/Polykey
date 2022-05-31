@@ -367,11 +367,13 @@ class NotificationsManager {
     tran: DBTransaction,
   ): Promise<Array<NotificationId>> {
     const notificationIds: Array<NotificationId> = [];
-    const messageIterator = tran.iterator({}, this.notificationsMessagesDbPath);
-    for await (const [keyPath, value] of messageIterator) {
+    const messageIterator = tran.iterator<Notification>(
+      { valueAsBuffer: false },
+      this.notificationsMessagesDbPath,
+    );
+    for await (const [keyPath, notification] of messageIterator) {
       const key = keyPath[0] as Buffer;
       const notificationId = IdInternal.fromBuffer<NotificationId>(key);
-      const notification = JSON.parse(value.toString()) as Notification;
       if (type === 'all') {
         notificationIds.push(notificationId);
       } else if (type === 'unread') {
@@ -388,11 +390,10 @@ class NotificationsManager {
     tran: DBTransaction,
   ): Promise<Array<Notification>> {
     const notifications: Array<Notification> = [];
-    for await (const [, value] of tran.iterator(
-      {},
+    for await (const [, notification] of tran.iterator<Notification>(
+      { valueAsBuffer: false },
       this.notificationsMessagesDbPath,
     )) {
-      const notification = JSON.parse(value.toString()) as Notification;
       if (type === 'all') {
         notifications.push(notification);
       } else if (type === 'unread') {
