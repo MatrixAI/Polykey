@@ -8,6 +8,7 @@ import { matchSync } from '../../utils';
 import * as grpcUtils from '../../grpc/utils';
 import * as validationUtils from '../../validation/utils';
 import * as identitiesPB from '../../proto/js/polykey/v1/identities/identities_pb';
+import * as clientUtils from '../utils';
 
 function identitiesAuthenticatedGet({
   authenticate,
@@ -63,7 +64,7 @@ function identitiesAuthenticatedGet({
       return;
     } catch (e) {
       await genWritable.throw(e);
-      logger.error(e);
+      !clientUtils.isClientError(e) && logger.error(e);
       return;
     }
   };

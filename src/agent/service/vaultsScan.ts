@@ -5,9 +5,11 @@ import type * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 import type { ConnectionInfoGet } from '../../agent/types';
 import type Logger from '@matrixai/logger';
 import * as agentErrors from '../../agent/errors';
+import * as vaultsErrors from '../../vaults/errors';
 import * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
 import * as vaultsUtils from '../../vaults/utils';
 import * as grpcUtils from '../../grpc/utils';
+import * as agentUtils from '../utils';
 
 function vaultsScan({
   vaultManager,
@@ -48,9 +50,14 @@ function vaultsScan({
         }
       });
       await genWritable.next(null);
+      return;
     } catch (e) {
       await genWritable.throw(e);
-      logger.error(e);
+      !agentUtils.isClientError(e, [
+        agentErrors.ErrorConnectionInfoMissing,
+        vaultsErrors.ErrorVaultsPermissionDenied,
+      ]) && logger.error(e);
+      return;
     }
   };
 }

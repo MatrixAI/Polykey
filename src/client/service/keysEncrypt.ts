@@ -4,6 +4,7 @@ import type KeyManager from '../../keys/KeyManager';
 import type Logger from '@matrixai/logger';
 import * as grpcUtils from '../../grpc/utils';
 import * as keysPB from '../../proto/js/polykey/v1/keys/keys_pb';
+import * as clientUtils from '../utils';
 
 function keysEncrypt({
   authenticate,
@@ -30,7 +31,7 @@ function keysEncrypt({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
-      logger.error(e);
+      !clientUtils.isClientError(e) && logger.error(e);
       return;
     }
   };

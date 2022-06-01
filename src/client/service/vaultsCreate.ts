@@ -7,7 +7,9 @@ import type * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 import type Logger from '@matrixai/logger';
 import * as grpcUtils from '../../grpc/utils';
 import * as vaultsUtils from '../../vaults/utils';
+import * as vaultsErrors from '../../vaults/errors';
 import * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
+import * as clientUtils from '../utils';
 
 function vaultsCreate({
   authenticate,
@@ -37,7 +39,8 @@ function vaultsCreate({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
-      logger.error(e);
+      !clientUtils.isClientError(e, [vaultsErrors.ErrorVaultsVaultDefined]) &&
+        logger.error(e);
       return;
     }
   };

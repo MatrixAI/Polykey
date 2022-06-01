@@ -5,6 +5,7 @@ import type * as keysPB from '../../proto/js/polykey/v1/keys/keys_pb';
 import type Logger from '@matrixai/logger';
 import * as grpcUtils from '../../grpc/utils';
 import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
+import * as clientUtils from '../utils';
 
 function keysVerify({
   authenticate,
@@ -32,7 +33,7 @@ function keysVerify({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
-      logger.error(e);
+      !clientUtils.isClientError(e) && logger.error(e);
       return;
     }
   };

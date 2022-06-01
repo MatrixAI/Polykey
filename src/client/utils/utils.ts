@@ -3,6 +3,7 @@ import type {
   Interceptor,
   InterceptorOptions,
 } from '@grpc/grpc-js/build/src/client-interceptors';
+import type { Class } from '@matrixai/errors';
 import type KeyManager from '../../keys/KeyManager';
 import type Session from '../../sessions/Session';
 import type SessionManager from '../../sessions/SessionManager';
@@ -10,7 +11,19 @@ import type { SessionToken } from '../../sessions/types';
 import type { Authenticate } from '../types';
 import * as base64 from 'multiformats/bases/base64';
 import * as grpc from '@grpc/grpc-js';
+import * as validationErrors from '../../validation/errors';
 import * as clientErrors from '../errors';
+
+/**
+ * Array of errors that are always considered to be "client errors"
+ * (4xx errors in HTTP) in the context of the client service
+ */
+const defaultClientErrors: Array<Class<Error>> = [
+  validationErrors.ErrorValidation,
+  clientErrors.ErrorClientAuthMissing,
+  clientErrors.ErrorClientAuthFormat,
+  clientErrors.ErrorClientAuthDenied,
+];
 
 /**
  * Session interceptor middleware for authenticatio
@@ -133,10 +146,34 @@ function decodeAuthToSession(
   return auth.substring(7) as SessionToken;
 }
 
+/**
+ * Checks whether an error is a "client error" (4xx errors in HTTP)
+ * Used by the service handlers since client errors should not be
+ * reported on the server side
+ * Additional errors that are considered to be client errors in the
+ * context of a given handler can be supplied in the `extraClientErrors`
+ * argument
+ */
+function isClientError(
+  e: Error,
+  extraClientErrors?: Array<Class<Error>>,
+): boolean {
+  for (const error of defaultClientErrors) {
+    if (e instanceof error) return true;
+  }
+  if (extraClientErrors) {
+    for (const error of extraClientErrors) {
+      if (e instanceof error) return true;
+    }
+  }
+  return false;
+}
+
 export {
   sessionInterceptor,
   authenticator,
   encodeAuthFromPassword,
   encodeAuthFromSession,
   decodeAuthToSession,
+  isClientError,
 };

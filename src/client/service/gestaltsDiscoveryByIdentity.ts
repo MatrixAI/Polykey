@@ -9,6 +9,7 @@ import { matchSync } from '../../utils';
 import * as grpcUtils from '../../grpc/utils';
 import * as validationUtils from '../../validation/utils';
 import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
+import * as clientUtils from '../utils';
 
 function gestaltsDiscoveryByIdentity({
   authenticate,
@@ -51,7 +52,7 @@ function gestaltsDiscoveryByIdentity({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
-      logger.error(e);
+      !clientUtils.isClientError(e) && logger.error(e);
       return;
     }
   };

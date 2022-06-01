@@ -7,8 +7,10 @@ import type Logger from '@matrixai/logger';
 import * as grpcUtils from '../../grpc/utils';
 import { validateSync } from '../../validation';
 import * as validationUtils from '../../validation/utils';
-import { matchSync } from '../../utils';
 import * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
+import * as nodesErrors from '../../nodes/errors';
+import { matchSync } from '../../utils';
+import * as clientUtils from '../utils';
 
 function vaultsScan({
   authenticate,
@@ -56,7 +58,9 @@ function vaultsScan({
       return;
     } catch (e) {
       await genWritable.throw(e);
-      logger.error(e);
+      !clientUtils.isClientError(e, [
+        nodesErrors.ErrorNodeGraphNodeIdNotFound,
+      ]) && logger.error(e);
       return;
     }
   };

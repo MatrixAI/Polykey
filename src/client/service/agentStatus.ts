@@ -9,6 +9,7 @@ import process from 'process';
 import * as grpcUtils from '../../grpc/utils';
 import * as nodesUtils from '../../nodes/utils';
 import * as agentPB from '../../proto/js/polykey/v1/agent/agent_pb';
+import * as clientUtils from '../utils';
 
 function agentStatus({
   authenticate,
@@ -49,7 +50,7 @@ function agentStatus({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
-      logger.error(e);
+      !clientUtils.isClientError(e) && logger.error(e);
       return;
     }
   };

@@ -6,6 +6,7 @@ import type { ClaimIdEncoded } from '../../claims/types';
 import type Logger from '@matrixai/logger';
 import * as grpcUtils from '../../grpc/utils';
 import * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
+import * as agentUtils from '../utils';
 
 /**
  * Retrieves the ChainDataEncoded of this node.
@@ -50,7 +51,7 @@ function nodesChainDataGet({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e, true));
-      logger.error(e);
+      !agentUtils.isClientError(e) && logger.error(e);
       return;
     }
   };

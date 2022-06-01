@@ -10,6 +10,7 @@ import { validateSync } from '../../validation';
 import * as validationUtils from '../../validation/utils';
 import { matchSync } from '../../utils';
 import * as gestaltsPB from '../../proto/js/polykey/v1/gestalts/gestalts_pb';
+import * as clientUtils from '../utils';
 
 function gestaltsGestaltGetByNode({
   authenticate,
@@ -55,7 +56,7 @@ function gestaltsGestaltGetByNode({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
-      logger.error(e);
+      !clientUtils.isClientError(e) && logger.error(e);
       return;
     }
   };

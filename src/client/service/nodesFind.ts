@@ -4,11 +4,13 @@ import type NodeConnectionManager from '../../nodes/NodeConnectionManager';
 import type { NodeId } from '../../nodes/types';
 import type Logger from '@matrixai/logger';
 import * as nodesUtils from '../../nodes/utils';
+import * as nodesErrors from '../../nodes/errors';
 import * as grpcUtils from '../../grpc/utils';
 import { validateSync } from '../../validation';
 import * as validationUtils from '../../validation/utils';
 import { matchSync } from '../../utils';
 import * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
+import * as clientUtils from '../utils';
 
 /**
  * Attempts to get the node address of a provided node ID (by contacting
@@ -57,7 +59,9 @@ function nodesFind({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
-      logger.error(e);
+      !clientUtils.isClientError(e, [
+        nodesErrors.ErrorNodeGraphNodeIdNotFound,
+      ]) && logger.error(e);
       return;
     }
   };

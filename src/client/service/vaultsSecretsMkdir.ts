@@ -1,14 +1,18 @@
 import type { DB } from '@matrixai/db';
 import type { Authenticate } from '../types';
-import type { VaultName } from '../../vaults/types';
+import type { VaultName, VaultId } from '../../vaults/types';
 import type VaultManager from '../../vaults/VaultManager';
 import type * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
 import type Logger from '@matrixai/logger';
-import * as grpc from '@grpc/grpc-js';
+import type * as grpc from '@grpc/grpc-js';
+import { validateSync } from '../../validation';
 import * as validationUtils from '../../validation/utils';
 import * as grpcUtils from '../../grpc/utils';
+import * as vaultsErrors from '../../vaults/errors';
 import * as vaultOps from '../../vaults/VaultOps';
 import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
+import { matchSync } from '../../utils';
+import * as clientUtils from '../utils';
 
 function vaultsSecretsMkdir({
   authenticate,
@@ -29,24 +33,34 @@ function vaultsSecretsMkdir({
       const response = new utilsPB.StatusMessage();
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
-      const vaultMkdirMessge = call.request;
-      const vaultMessage = vaultMkdirMessge.getVault();
-      if (vaultMessage == null) {
-        callback({ code: grpc.status.NOT_FOUND }, null);
-        return;
-      }
-      const nameOrId = vaultMessage.getNameOrId();
       await db.withTransactionF(async (tran) => {
-        let vaultId = await vaultManager.getVaultId(
-          nameOrId as VaultName,
+        const vaultIdFromName = await vaultManager.getVaultId(
+          call.request.getVault()?.getNameOrId() as VaultName,
           tran,
         );
-        vaultId = vaultId ?? validationUtils.parseVaultId(nameOrId);
+        const {
+          vaultId,
+        }: {
+          vaultId: VaultId;
+        } = validateSync(
+          (keyPath, value) => {
+            return matchSync(keyPath)(
+              [
+                ['vaultId'],
+                () => vaultIdFromName ?? validationUtils.parseVaultId(value),
+              ],
+              () => value,
+            );
+          },
+          {
+            vaultId: call.request.getVault()?.getNameOrId(),
+          },
+        );
         await vaultManager.withVaults(
           [vaultId],
           async (vault) => {
-            await vaultOps.mkdir(vault, vaultMkdirMessge.getDirName(), {
-              recursive: vaultMkdirMessge.getRecursive(),
+            await vaultOps.mkdir(vault, call.request.getDirName(), {
+              recursive: call.request.getRecursive(),
             });
           },
           tran,
@@ -57,7 +71,10 @@ function vaultsSecretsMkdir({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
-      logger.error(e);
+      !clientUtils.isClientError(e, [
+        vaultsErrors.ErrorVaultsVaultUndefined,
+        vaultsErrors.ErrorVaultsRecursive,
+      ]) && logger.error(e);
       return;
     }
   };

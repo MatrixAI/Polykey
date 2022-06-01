@@ -8,8 +8,10 @@ import * as grpcUtils from '../../grpc/utils';
 import * as notificationsUtils from '../../notifications/utils';
 import { validateSync } from '../../validation';
 import * as validationUtils from '../../validation/utils';
+import * as nodesErrors from '../../nodes/errors';
 import { matchSync } from '../../utils';
 import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
+import * as clientUtils from '../utils';
 
 function notificationsSend({
   authenticate,
@@ -54,7 +56,9 @@ function notificationsSend({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
-      logger.error(e);
+      !clientUtils.isClientError(e, [
+        nodesErrors.ErrorNodeGraphNodeIdNotFound,
+      ]) && logger.error(e);
       return;
     }
   };

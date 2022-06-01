@@ -8,9 +8,9 @@ import type * as identitiesPB from '../../proto/js/polykey/v1/identities/identit
 import { matchSync } from '../../utils/matchers';
 import { validateSync } from '../../validation';
 import * as validationUtils from '../../validation/utils';
-import * as validationErrors from '../../validation/errors';
 import * as grpcUtils from '../../grpc/utils';
 import * as permissionsPB from '../../proto/js/polykey/v1/permissions/permissions_pb';
+import * as clientUtils from '../utils';
 
 function gestaltsActionsGetByIdentity({
   authenticate,
@@ -63,9 +63,7 @@ function gestaltsActionsGetByIdentity({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
-      if (!(e instanceof validationErrors.ErrorValidation)) {
-        logger.error(e);
-      }
+      !clientUtils.isClientError(e) && logger.error(e);
       return;
     }
   };

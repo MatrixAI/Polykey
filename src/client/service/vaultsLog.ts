@@ -1,13 +1,17 @@
 import type { DB } from '@matrixai/db';
 import type { Authenticate } from '../types';
-import type { VaultName } from '../../vaults/types';
+import type { VaultName, VaultId } from '../../vaults/types';
 import type VaultManager from '../../vaults/VaultManager';
 import type Logger from '@matrixai/logger';
-import * as grpc from '@grpc/grpc-js';
+import type * as grpc from '@grpc/grpc-js';
 import { Timestamp } from 'google-protobuf/google/protobuf/timestamp_pb';
 import * as grpcUtils from '../../grpc/utils';
 import * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
+import { validateSync } from '../../validation';
 import * as validationUtils from '../../validation/utils';
+import * as vaultsErrors from '../../vaults/errors';
+import { matchSync } from '../../utils';
+import * as clientUtils from '../utils';
 
 function vaultsLog({
   authenticate,
@@ -27,23 +31,32 @@ function vaultsLog({
     try {
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
-      // Getting the vault
-      const vaultsLogMessage = call.request;
-      const vaultMessage = vaultsLogMessage.getVault();
-      if (vaultMessage == null) {
-        await genWritable.throw({ code: grpc.status.NOT_FOUND });
-        return;
-      }
-      const nameOrId = vaultMessage.getNameOrId();
       const log = await db.withTransactionF(async (tran) => {
-        let vaultId = await vaultManager.getVaultId(
-          nameOrId as VaultName,
+        const vaultIdFromName = await vaultManager.getVaultId(
+          call.request.getVault()?.getNameOrId() as VaultName,
           tran,
         );
-        vaultId = vaultId ?? validationUtils.parseVaultId(nameOrId);
+        const {
+          vaultId,
+        }: {
+          vaultId: VaultId;
+        } = validateSync(
+          (keyPath, value) => {
+            return matchSync(keyPath)(
+              [
+                ['vaultId'],
+                () => vaultIdFromName ?? validationUtils.parseVaultId(value),
+              ],
+              () => value,
+            );
+          },
+          {
+            vaultId: call.request.getVault()?.getNameOrId(),
+          },
+        );
         // Getting the log
-        const depth = vaultsLogMessage.getLogDepth();
-        let commitId: string | undefined = vaultsLogMessage.getCommitId();
+        const depth = call.request.getLogDepth();
+        let commitId: string | undefined = call.request.getCommitId();
         commitId = commitId ? commitId : undefined;
         return await vaultManager.withVaults(
           [vaultId],
@@ -67,7 +80,10 @@ function vaultsLog({
       return;
     } catch (e) {
       await genWritable.throw(e);
-      logger.error(e);
+      !clientUtils.isClientError(e, [
+        vaultsErrors.ErrorVaultsVaultUndefined,
+        vaultsErrors.ErrorVaultReferenceInvalid,
+      ]) && logger.error(e);
       return;
     }
   };

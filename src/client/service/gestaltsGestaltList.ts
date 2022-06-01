@@ -7,6 +7,7 @@ import type * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 import type Logger from '@matrixai/logger';
 import * as grpcUtils from '../../grpc/utils';
 import * as gestaltsPB from '../../proto/js/polykey/v1/gestalts/gestalts_pb';
+import * as clientUtils from '../utils';
 
 function gestaltsGestaltList({
   authenticate,
@@ -39,7 +40,7 @@ function gestaltsGestaltList({
       return;
     } catch (e) {
       await genWritable.throw(e);
-      logger.error(e);
+      !clientUtils.isClientError(e) && logger.error(e);
       return;
     }
   };

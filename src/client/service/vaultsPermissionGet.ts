@@ -2,8 +2,7 @@ import type * as grpc from '@grpc/grpc-js';
 import type { DB } from '@matrixai/db';
 import type { Authenticate } from '../types';
 import type VaultManager from '../../vaults/VaultManager';
-import type { VaultName } from '../../vaults/types';
-import type { VaultActions } from '../../vaults/types';
+import type { VaultName, VaultId, VaultActions } from '../../vaults/types';
 import type ACL from '../../acl/ACL';
 import type { NodeId, NodeIdEncoded } from 'nodes/types';
 import type Logger from '@matrixai/logger';
@@ -11,8 +10,11 @@ import { IdInternal } from '@matrixai/id';
 import * as grpcUtils from '../../grpc/utils';
 import * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
 import * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
+import { validateSync } from '../../validation';
 import * as validationUtils from '../../validation/utils';
 import * as nodesUtils from '../../nodes/utils';
+import { matchSync } from '../../utils';
+import * as clientUtils from '../utils';
 
 function vaultsPermissionGet({
   authenticate,
@@ -32,18 +34,33 @@ function vaultsPermissionGet({
   ): Promise<void> => {
     const genWritable = grpcUtils.generatorWritable(call, false);
     try {
-      const vaultMessage = call.request;
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
       // Getting vaultId
-      const nameOrId = vaultMessage.getNameOrId();
       const [rawPermissions, vaultId] = await db.withTransactionF(
         async (tran) => {
-          let vaultId = await vaultManager.getVaultId(
-            nameOrId as VaultName,
+          const vaultIdFromName = await vaultManager.getVaultId(
+            call.request.getNameOrId() as VaultName,
             tran,
           );
-          vaultId = vaultId ?? validationUtils.parseVaultId(nameOrId);
+          const {
+            vaultId,
+          }: {
+            vaultId: VaultId;
+          } = validateSync(
+            (keyPath, value) => {
+              return matchSync(keyPath)(
+                [
+                  ['vaultId'],
+                  () => vaultIdFromName ?? validationUtils.parseVaultId(value),
+                ],
+                () => value,
+              );
+            },
+            {
+              vaultId: call.request.getNameOrId(),
+            },
+          );
           // Getting permissions
           return [await acl.getVaultPerm(vaultId, tran), vaultId];
         },
@@ -53,11 +70,9 @@ function vaultsPermissionGet({
       for (const nodeId in rawPermissions) {
         permissionList[nodeId] = rawPermissions[nodeId].vaults[vaultId];
       }
-
       const vaultPermissionsMessage = new vaultsPB.Permissions();
-      vaultPermissionsMessage.setVault(vaultMessage);
+      vaultPermissionsMessage.setVault(call.request);
       const nodeMessage = new nodesPB.Node();
-
       // Constructing the message
       for (const nodeIdString in permissionList) {
         const nodeId = IdInternal.fromString<NodeId>(nodeIdString);
@@ -71,7 +86,7 @@ function vaultsPermissionGet({
       return;
     } catch (e) {
       await genWritable.throw(e);
-      logger.error(e);
+      !clientUtils.isClientError(e) && logger.error(e);
       return;
     }
   };

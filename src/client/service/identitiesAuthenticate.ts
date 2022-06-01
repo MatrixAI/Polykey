@@ -9,6 +9,7 @@ import { validateSync } from '../../validation';
 import * as validationUtils from '../../validation/utils';
 import { matchSync, never } from '../../utils';
 import * as identitiesPB from '../../proto/js/polykey/v1/identities/identities_pb';
+import * as clientUtils from '../utils';
 
 function identitiesAuthenticate({
   authenticate,
@@ -74,7 +75,8 @@ function identitiesAuthenticate({
       return;
     } catch (e) {
       await genWritable.throw(e);
-      logger.error(e);
+      !clientUtils.isClientError(e, [identitiesErrors.ErrorProviderMissing]) &&
+        logger.error(e);
       return;
     }
   };
