@@ -119,7 +119,7 @@ function outputFormatter(msg: OutputObject): string {
         output += `${indent}host\t${currError.metadata.host}\n`;
         output += `${indent}port\t${currError.metadata.port}\n`;
         output += `${indent}timestamp\t${currError.timestamp}\n`;
-        output += `${indent}remote error: `;
+        output += `${indent}cause: `;
         currError = currError.cause;
       } else if (currError instanceof ErrorPolykey) {
         output += `${currError.name}: ${currError.description}`;

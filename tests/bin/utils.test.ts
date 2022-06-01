@@ -124,7 +124,7 @@ describe('bin/utils', () => {
         ),
       },
     );
-    // Error
+    // Human
     expect(
       binUtils.outputFormatter({ type: 'error', data: standardError }),
     ).toBe(`${standardError.name}: ${standardError.message}\n`);
@@ -141,7 +141,7 @@ describe('bin/utils', () => {
         `  host\t${host}\n` +
         `  port\t${port}\n` +
         `  timestamp\t${timestamp.toString()}\n` +
-        `  remote error: ${remoteError.cause.name}: ${remoteError.cause.description} - ${remoteError.cause.message}\n` +
+        `  cause: ${remoteError.cause.name}: ${remoteError.cause.description} - ${remoteError.cause.message}\n` +
         `    exitCode\t${pkError.exitCode}\n` +
         `    timestamp\t${timestamp.toString()}\n` +
         `    data\t${JSON.stringify(data)}\n`,
@@ -155,17 +155,18 @@ describe('bin/utils', () => {
         `  host\t${host}\n` +
         `  port\t${port}\n` +
         `  timestamp\t${timestamp.toString()}\n` +
-        `  remote error: ${twoRemoteErrors.cause.name}: ${twoRemoteErrors.cause.description}\n` +
+        `  cause: ${twoRemoteErrors.cause.name}: ${twoRemoteErrors.cause.description}\n` +
         `    command\t${twoRemoteErrors.cause.metadata.command}\n` +
         `    nodeId\t${nodesUtils.encodeNodeId(nodeId)}\n` +
         `    host\t${host}\n` +
         `    port\t${port}\n` +
         `    timestamp\t${timestamp.toString()}\n` +
-        `    remote error: ${twoRemoteErrors.cause.cause.name}: ${twoRemoteErrors.cause.cause.description} - ${twoRemoteErrors.cause.cause.message}\n` +
+        `    cause: ${twoRemoteErrors.cause.cause.name}: ${twoRemoteErrors.cause.cause.description} - ${twoRemoteErrors.cause.cause.message}\n` +
         `      exitCode\t${pkError.exitCode}\n` +
         `      timestamp\t${timestamp.toString()}\n` +
         `      cause: ${standardError.name}: ${standardError.message}\n`,
     );
+    // JSON
     expect(
       binUtils.outputFormatter({ type: 'json', data: standardError }),
     ).toBe(
