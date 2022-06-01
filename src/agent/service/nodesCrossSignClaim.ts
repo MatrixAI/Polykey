@@ -14,6 +14,7 @@ import * as nodesUtils from '../../nodes/utils';
 import { validateSync } from '../../validation';
 import * as validationUtils from '../../validation/utils';
 import { matchSync } from '../../utils';
+import * as agentUtils from '../utils';
 
 function nodesCrossSignClaim({
   db,
@@ -172,7 +173,13 @@ function nodesCrossSignClaim({
       });
     } catch (e) {
       await genClaims.throw(e);
-      logger.error(e);
+      !agentUtils.isClientError(e, [
+        claimsErrors.ErrorEmptyStream,
+        claimsErrors.ErrorUndefinedSinglySignedClaim,
+        claimsErrors.ErrorUndefinedSignature,
+        claimsErrors.ErrorNodesClaimType,
+        claimsErrors.ErrorUndefinedDoublySignedClaim,
+      ]) && logger.error(e);
       return;
     }
   };

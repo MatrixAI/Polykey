@@ -1,19 +1,29 @@
 import type { DB } from '@matrixai/db';
 import type { Authenticate } from '../types';
-import type { VaultName } from '../../vaults/types';
+import type { NodeId } from '../../nodes/types';
+import type {
+  VaultName,
+  VaultId,
+  VaultAction,
+  VaultActions,
+} from '../../vaults/types';
 import type VaultManager from '../../vaults/VaultManager';
 import type GestaltGraph from '../../gestalts/GestaltGraph';
 import type ACL from '../../acl/ACL';
 import type NotificationsManager from '../../notifications/NotificationsManager';
-import type { VaultActions } from '../../vaults/types';
 import type * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
 import type Logger from '@matrixai/logger';
-import * as grpc from '@grpc/grpc-js';
+import type * as grpc from '@grpc/grpc-js';
 import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
+import { validateSync } from '../../validation';
 import * as validationUtils from '../../validation/utils';
 import * as grpcUtils from '../../grpc/utils';
+import * as aclErrors from '../../acl/errors';
+import * as nodesErrors from '../../nodes/errors';
 import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
+import { matchSync } from '../../utils';
+import * as clientUtils from '../utils';
 
 function vaultsPermissionSet({
   authenticate,
@@ -40,27 +50,37 @@ function vaultsPermissionSet({
       // Checking session token
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
-      const vaultsPermissionsMessage = call.request;
-      const vaultMessage = vaultsPermissionsMessage.getVault();
-      const nodeMessage = vaultsPermissionsMessage.getNode();
-      if (vaultMessage == null || nodeMessage == null) {
-        callback({ code: grpc.status.NOT_FOUND }, null);
-        return;
-      }
       await db.withTransactionF(async (tran) => {
-        // Parsing VaultId
-        const nameOrId = vaultMessage.getNameOrId();
-        let vaultId = await vaultManager.getVaultId(
-          nameOrId as VaultName,
+        const vaultIdFromName = await vaultManager.getVaultId(
+          call.request.getVault()?.getNameOrId() as VaultName,
           tran,
         );
-        vaultId = vaultId ?? validationUtils.parseVaultId(nameOrId);
-        // Parsing NodeId
-        const nodeId = validationUtils.parseNodeId(nodeMessage.getNodeId());
-        // Parsing actions
-        const actions = vaultsPermissionsMessage
-          .getVaultPermissionsList()
-          .map((vaultAction) => validationUtils.parseVaultAction(vaultAction));
+        const {
+          nodeId,
+          vaultId,
+          actions,
+        }: {
+          nodeId: NodeId;
+          vaultId: VaultId;
+          actions: Array<VaultAction>;
+        } = validateSync(
+          (keyPath, value) => {
+            return matchSync(keyPath)(
+              [['nodeId'], () => validationUtils.parseNodeId(value)],
+              [
+                ['vaultId'],
+                () => vaultIdFromName ?? validationUtils.parseVaultId(value),
+              ],
+              [['actions'], () => value.map(validationUtils.parseVaultAction)],
+              () => value,
+            );
+          },
+          {
+            nodeId: call.request.getNode()?.getNodeId(),
+            vaultId: call.request.getVault()?.getNameOrId(),
+            actions: call.request.getVaultPermissionsList(),
+          },
+        );
         // Checking if vault exists
         const vaultMeta = await vaultManager.getVaultMeta(vaultId, tran);
         if (!vaultMeta) throw new vaultsErrors.ErrorVaultsVaultUndefined();
@@ -85,7 +105,11 @@ function vaultsPermissionSet({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
-      logger.error(e);
+      !clientUtils.isClientError(e, [
+        vaultsErrors.ErrorVaultsVaultUndefined,
+        aclErrors.ErrorACLNodeIdMissing,
+        nodesErrors.ErrorNodeGraphNodeIdNotFound,
+      ]) && logger.error(e);
       return;
     }
   };

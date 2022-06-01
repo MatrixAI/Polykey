@@ -1,13 +1,20 @@
 import type { DB } from '@matrixai/db';
 import type { Authenticate } from '../types';
 import type VaultManager from '../../vaults/VaultManager';
+import type { VaultId } from '../../vaults/types';
+import type { NodeId } from '../../nodes/types';
 import type * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
 import type Logger from '@matrixai/logger';
-import * as grpc from '@grpc/grpc-js';
+import type * as grpc from '@grpc/grpc-js';
 import * as grpcUtils from '../../grpc/utils';
 import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
+import * as nodesErrors from '../../nodes/errors';
+import { validateSync } from '../../validation';
 import * as validationUtils from '../../validation/utils';
 import * as vaultsUtils from '../../vaults/utils';
+import * as vaultsErrors from '../../vaults/errors';
+import { matchSync } from '../../utils';
+import * as clientUtils from '../utils';
 
 function vaultsClone({
   authenticate,
@@ -28,24 +35,25 @@ function vaultsClone({
       const response = new utilsPB.StatusMessage();
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
-
-      const vaultMessage = call.request.getVault();
-      if (vaultMessage == null) {
-        callback({ code: grpc.status.NOT_FOUND }, null);
-        return;
-      }
-      const nodeMessage = call.request.getNode();
-      if (nodeMessage == null) {
-        callback({ code: grpc.status.NOT_FOUND }, null);
-        return;
-      }
-      // Vault id
-      let vaultId;
-      const vaultNameOrId = vaultMessage.getNameOrId();
-      vaultId = vaultsUtils.decodeVaultId(vaultNameOrId);
-      vaultId = vaultId ?? vaultNameOrId;
-      // Node id
-      const nodeId = validationUtils.parseNodeId(nodeMessage.getNodeId());
+      const {
+        nodeId,
+        vaultId,
+      }: {
+        nodeId: NodeId;
+        vaultId: VaultId;
+      } = validateSync(
+        (keyPath, value) => {
+          return matchSync(keyPath)(
+            [['nodeId'], () => validationUtils.parseNodeId(value)],
+            [['vaultId'], () => vaultsUtils.decodeVaultId(value) ?? value],
+            () => value,
+          );
+        },
+        {
+          nodeId: call.request.getNode()?.getNodeId(),
+          vaultId: call.request.getVault()?.getNameOrId(),
+        },
+      );
       await db.withTransactionF(async (tran) =>
         vaultManager.cloneVault(nodeId, vaultId, tran),
       );
@@ -54,7 +62,10 @@ function vaultsClone({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
-      logger.error(e);
+      !clientUtils.isClientError(e, [
+        nodesErrors.ErrorNodeGraphNodeIdNotFound,
+        vaultsErrors.ErrorVaultsNameConflict,
+      ]) && logger.error(e);
       return;
     }
   };

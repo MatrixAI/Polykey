@@ -12,6 +12,7 @@ import { validateSync } from '../../validation';
 import * as validationUtils from '../../validation/utils';
 import { matchSync } from '../../utils';
 import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
+import * as agentUtils from '../utils';
 
 function nodesHolePunchMessageSend({
   keyManager,
@@ -73,7 +74,7 @@ function nodesHolePunchMessageSend({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e, true));
-      logger.error(e);
+      !agentUtils.isClientError(e) && logger.error(e);
       return;
     }
   };

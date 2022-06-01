@@ -1,5 +1,5 @@
 import type { DB } from '@matrixai/db';
-import type { VaultName } from '../../vaults/types';
+import type { VaultName, VaultId, VaultAction } from '../../vaults/types';
 import type VaultManager from '../../vaults/VaultManager';
 import type ACL from '../../acl/ACL';
 import type { ConnectionInfoGet } from '../../agent/types';
@@ -9,9 +9,12 @@ import * as grpcUtils from '../../grpc/utils';
 import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
 import * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
+import { validateSync } from '../../validation';
 import * as validationUtils from '../../validation/utils';
 import * as nodesUtils from '../../nodes/utils';
+import { matchSync } from '../../utils';
 import * as agentErrors from '../errors';
+import * as agentUtils from '../utils';
 
 function vaultsGitInfoGet({
   vaultManager,
@@ -31,29 +34,37 @@ function vaultsGitInfoGet({
   ): Promise<void> => {
     const genWritable = grpcUtils.generatorWritable(call, true);
     try {
-      const request = call.request;
-      const vaultMessage = request.getVault();
-      if (vaultMessage == null) {
-        throw new vaultsErrors.ErrorVaultsVaultUndefined();
-      }
-      let vaultName;
-      const vaultNameOrId = vaultMessage.getNameOrId();
       await db.withTransactionF(async (tran) => {
-        let vaultId = await vaultManager.getVaultId(
-          vaultNameOrId as VaultName,
+        const vaultIdFromName = await vaultManager.getVaultId(
+          call.request.getVault()?.getNameOrId() as VaultName,
           tran,
         );
-        vaultName = vaultNameOrId;
-        if (vaultId == null) {
-          try {
-            vaultId = validationUtils.parseVaultId(vaultNameOrId);
-            vaultName = (await vaultManager.getVaultMeta(vaultId, tran))
-              ?.vaultName;
-          } catch (e) {
-            throw new vaultsErrors.ErrorVaultsVaultUndefined(e.message, {
-              cause: e,
-            });
-          }
+        const {
+          vaultId,
+          actionType,
+        }: {
+          vaultId: VaultId;
+          actionType: VaultAction;
+        } = validateSync(
+          (keyPath, value) => {
+            return matchSync(keyPath)(
+              [
+                ['vaultId'],
+                () => vaultIdFromName ?? validationUtils.parseVaultId(value),
+              ],
+              [['actionType'], () => validationUtils.parseVaultAction(value)],
+              () => value,
+            );
+          },
+          {
+            vaultId: call.request.getVault()?.getNameOrId(),
+            actionType: call.request.getAction(),
+          },
+        );
+        const vaultName = (await vaultManager.getVaultMeta(vaultId, tran))
+          ?.vaultName;
+        if (vaultName == null) {
+          throw new vaultsErrors.ErrorVaultsVaultUndefined();
         }
         // Getting the NodeId from the ReverseProxy connection info
         const connectionInfo = connectionInfoGet(call);
@@ -64,9 +75,6 @@ function vaultsGitInfoGet({
         }
         const nodeId = connectionInfo.remoteNodeId;
         const nodeIdEncoded = nodesUtils.encodeNodeId(nodeId);
-        const actionType = validationUtils.parseVaultAction(
-          request.getAction(),
-        );
         const permissions = await acl.getNodePerm(nodeId, tran);
         if (permissions == null) {
           throw new vaultsErrors.ErrorVaultsPermissionDenied(
@@ -97,9 +105,15 @@ function vaultsGitInfoGet({
         }
       });
       await genWritable.next(null);
+      return;
     } catch (e) {
       await genWritable.throw(e);
-      logger.error(e);
+      !agentUtils.isClientError(e, [
+        vaultsErrors.ErrorVaultsVaultUndefined,
+        agentErrors.ErrorConnectionInfoMissing,
+        vaultsErrors.ErrorVaultsPermissionDenied,
+      ]) && logger.error(e);
+      return;
     }
   };
 }

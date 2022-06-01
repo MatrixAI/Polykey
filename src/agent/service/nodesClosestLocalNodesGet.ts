@@ -9,6 +9,7 @@ import { validateSync } from '../../validation';
 import * as validationUtils from '../../validation/utils';
 import { matchSync } from '../../utils';
 import * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
+import * as agentUtils from '../utils';
 
 /**
  * Retrieves the local nodes (i.e. from the current node) that are closest
@@ -66,7 +67,7 @@ function nodesClosestLocalNodesGet({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e, true));
-      logger.error(e);
+      !agentUtils.isClientError(e) && logger.error(e);
       return;
     }
   };

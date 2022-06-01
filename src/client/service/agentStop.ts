@@ -5,6 +5,7 @@ import type Logger from '@matrixai/logger';
 import { status, running } from '@matrixai/async-init';
 import * as grpcUtils from '../../grpc/utils';
 import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
+import * as clientUtils from '../utils';
 
 function agentStop({
   authenticate,
@@ -32,7 +33,7 @@ function agentStop({
       callback(null, response);
     } catch (e) {
       callback(grpcUtils.fromError(e));
-      logger.error(e);
+      !clientUtils.isClientError(e) && logger.error(e);
       return;
     }
     // Stop is called after GRPC resources are cleared

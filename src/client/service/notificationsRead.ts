@@ -5,6 +5,7 @@ import type NotificationsManager from '../../notifications/NotificationsManager'
 import type Logger from '@matrixai/logger';
 import * as grpcUtils from '../../grpc/utils';
 import * as notificationsPB from '../../proto/js/polykey/v1/notifications/notifications_pb';
+import * as clientUtils from '../utils';
 
 function notificationsRead({
   authenticate,
@@ -74,7 +75,7 @@ function notificationsRead({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
-      logger.error(e);
+      !clientUtils.isClientError(e) && logger.error(e);
       return;
     }
   };

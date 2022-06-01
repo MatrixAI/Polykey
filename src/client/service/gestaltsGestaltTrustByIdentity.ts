@@ -9,8 +9,10 @@ import type Logger from '@matrixai/logger';
 import { validateSync } from '../../validation';
 import { matchSync } from '../../utils';
 import * as grpcUtils from '../../grpc/utils';
+import * as gestaltsErrors from '../../gestalts/errors';
 import * as validationUtils from '../../validation/utils';
 import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
+import * as clientUtils from '../utils';
 
 function gestaltsGestaltTrustByIdentity({
   authenticate,
@@ -82,7 +84,10 @@ function gestaltsGestaltTrustByIdentity({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
-      logger.error(e);
+      !clientUtils.isClientError(e, [
+        gestaltsErrors.ErrorGestaltsGraphIdentityIdMissing,
+        gestaltsErrors.ErrorGestaltsGraphNodeIdMissing,
+      ]) && logger.error(e);
       return;
     }
   };

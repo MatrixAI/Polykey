@@ -1,14 +1,18 @@
 import type { Authenticate } from '../types';
-import type { VaultName } from '../../vaults/types';
+import type { VaultName, VaultId } from '../../vaults/types';
 import type VaultManager from '../../vaults/VaultManager';
 import type * as grpc from '@grpc/grpc-js';
 import type { DB } from '@matrixai/db';
 import type * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
 import type Logger from '@matrixai/logger';
+import { validateSync } from '../../validation';
 import * as validationUtils from '../../validation/utils';
 import * as grpcUtils from '../../grpc/utils';
+import * as vaultsErrors from '../../vaults/errors';
 import * as vaultOps from '../../vaults/VaultOps';
 import * as secretsPB from '../../proto/js/polykey/v1/secrets/secrets_pb';
+import { matchSync } from '../../utils';
+import * as clientUtils from '../utils';
 
 function vaultsSecretsList({
   authenticate,
@@ -28,14 +32,29 @@ function vaultsSecretsList({
     try {
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
-      const vaultMessage = call.request;
-      const nameOrId = vaultMessage.getNameOrId();
       const secrets = await db.withTransactionF(async (tran) => {
-        let vaultId = await vaultManager.getVaultId(
-          nameOrId as VaultName,
+        const vaultIdFromName = await vaultManager.getVaultId(
+          call.request.getNameOrId() as VaultName,
           tran,
         );
-        vaultId = vaultId ?? validationUtils.parseVaultId(nameOrId);
+        const {
+          vaultId,
+        }: {
+          vaultId: VaultId;
+        } = validateSync(
+          (keyPath, value) => {
+            return matchSync(keyPath)(
+              [
+                ['vaultId'],
+                () => vaultIdFromName ?? validationUtils.parseVaultId(value),
+              ],
+              () => value,
+            );
+          },
+          {
+            vaultId: call.request.getNameOrId(),
+          },
+        );
         return await vaultManager.withVaults(
           [vaultId],
           async (vault) => {
@@ -54,7 +73,8 @@ function vaultsSecretsList({
       return;
     } catch (e) {
       await genWritable.throw(e);
-      logger.error(e);
+      !clientUtils.isClientError(e, [vaultsErrors.ErrorVaultsVaultUndefined]) &&
+        logger.error(e);
       return;
     }
   };

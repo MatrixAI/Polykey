@@ -13,6 +13,7 @@ import * as grpcUtils from '../../grpc/utils';
 import * as validationUtils from '../../validation/utils';
 import * as identitiesErrors from '../../identities/errors';
 import * as identitiesPB from '../../proto/js/polykey/v1/identities/identities_pb';
+import * as clientUtils from '../utils';
 
 function identitiesInfoConnectedGet({
   authenticate,
@@ -119,7 +120,11 @@ function identitiesInfoConnectedGet({
       return;
     } catch (e) {
       await genWritable.throw(e);
-      logger.error(e);
+      !clientUtils.isClientError(e, [
+        identitiesErrors.ErrorProviderMissing,
+        identitiesErrors.ErrorProviderUnauthenticated,
+        identitiesErrors.ErrorProviderUnimplemented,
+      ]) && logger.error(e);
       return;
     }
   };

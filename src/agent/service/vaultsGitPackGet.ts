@@ -1,19 +1,21 @@
 import type * as grpc from '@grpc/grpc-js';
 import type { DB } from '@matrixai/db';
-import type { VaultName } from '../../vaults/types';
+import type { VaultName, VaultId, VaultAction } from '../../vaults/types';
 import type VaultManager from '../../vaults/VaultManager';
 import type { ConnectionInfoGet } from '../../agent/types';
 import type ACL from '../../acl/ACL';
 import type KeyManager from '../../keys/KeyManager';
 import type Logger from '@matrixai/logger';
 import * as nodesUtils from '../../nodes/utils';
-import * as grpcErrors from '../../grpc/errors';
 import * as grpcUtils from '../../grpc/utils';
 import * as vaultsErrors from '../../vaults/errors';
 import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
+import { validateSync } from '../../validation';
 import * as validationUtils from '../../validation/utils';
+import { matchSync } from '../../utils';
 import * as agentErrors from '../errors';
+import * as agentUtils from '../utils';
 
 function vaultsGitPackGet({
   vaultManager,
@@ -54,29 +56,36 @@ function vaultsGitPackGet({
       }
       const nodeId = connectionInfo.remoteNodeId;
       const nodeIdEncoded = nodesUtils.encodeNodeId(nodeId);
-      // Getting vaultId
-      const vaultNameOrId = meta.get('vaultNameOrId').pop()!.toString();
-      if (vaultNameOrId == null) {
-        throw new grpcErrors.ErrorGRPC('vault-name not in metadata');
-      }
       await db.withTransactionF(async (tran) => {
-        let vaultId = await vaultManager.getVaultId(
-          vaultNameOrId as VaultName,
+        const vaultIdFromName = await vaultManager.getVaultId(
+          meta.get('vaultNameOrId').pop()!.toString() as VaultName,
           tran,
         );
-        vaultId = vaultId ?? vaultsUtils.decodeVaultId(vaultNameOrId);
-        if (vaultId == null) {
-          // Throwing permission error to hide information about vaults existence
-          throw new vaultsErrors.ErrorVaultsPermissionDenied(
-            `No permissions found for ${nodeIdEncoded}`,
-          );
-        }
+        const {
+          vaultId,
+          actionType,
+        }: {
+          vaultId: VaultId;
+          actionType: VaultAction;
+        } = validateSync(
+          (keyPath, value) => {
+            return matchSync(keyPath)(
+              [
+                ['vaultId'],
+                () => vaultIdFromName ?? validationUtils.parseVaultId(value),
+              ],
+              [['actionType'], () => validationUtils.parseVaultAction(value)],
+              () => value,
+            );
+          },
+          {
+            vaultId: meta.get('vaultNameOrId').pop(),
+            actionType: meta.get('vaultAction').pop(),
+          },
+        );
         // Checking permissions
         const permissions = await acl.getNodePerm(nodeId, tran);
         const vaultPerms = permissions?.vaults[vaultId];
-        const actionType = validationUtils.parseVaultAction(
-          meta.get('vaultAction').pop(),
-        );
         if (vaultPerms?.[actionType] !== null) {
           throw new vaultsErrors.ErrorVaultsPermissionDenied(
             `${nodeIdEncoded} does not have permission to ${actionType} from vault ${vaultsUtils.encodeVaultId(
@@ -110,9 +119,15 @@ function vaultsGitPackGet({
         });
       });
       await genDuplex.next(null);
+      return;
     } catch (e) {
       await genDuplex.throw(e);
-      logger.error(e);
+      !agentUtils.isClientError(e, [
+        agentErrors.ErrorConnectionInfoMissing,
+        vaultsErrors.ErrorVaultsPermissionDenied,
+        vaultsErrors.ErrorVaultsVaultUndefined,
+      ]) && logger.error(e);
+      return;
     }
   };
 }

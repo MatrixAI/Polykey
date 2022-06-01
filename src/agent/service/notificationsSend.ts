@@ -5,7 +5,9 @@ import type Logger from '@matrixai/logger';
 import type { DB } from '@matrixai/db';
 import * as grpcUtils from '../../grpc/utils';
 import * as notificationsUtils from '../../notifications/utils';
+import * as notificationsErrors from '../../notifications/errors';
 import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
+import * as agentUtils from '../utils';
 
 function notificationsSend({
   notificationsManager,
@@ -34,7 +36,12 @@ function notificationsSend({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e, true));
-      logger.error(e);
+      !agentUtils.isClientError(e, [
+        notificationsErrors.ErrorNotificationsInvalidType,
+        notificationsErrors.ErrorNotificationsValidationFailed,
+        notificationsErrors.ErrorNotificationsParse,
+        notificationsErrors.ErrorNotificationsPermissionsNotFound,
+      ]) && logger.error(e);
       return;
     }
   };

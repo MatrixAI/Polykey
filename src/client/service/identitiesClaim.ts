@@ -14,6 +14,7 @@ import { validateSync } from '../../validation';
 import * as validationUtils from '../../validation/utils';
 import { matchSync } from '../../utils';
 import * as identitiesPB from '../../proto/js/polykey/v1/identities/identities_pb';
+import * as clientUtils from '../utils';
 
 /**
  * Augments the keynode with a new identity.
@@ -92,7 +93,10 @@ function identitiesClaim({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
-      logger.error(e);
+      !clientUtils.isClientError(e, [
+        identitiesErrors.ErrorProviderMissing,
+        identitiesErrors.ErrorProviderUnauthenticated,
+      ]) && logger.error(e);
       return;
     }
   };

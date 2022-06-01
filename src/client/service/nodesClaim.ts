@@ -9,8 +9,10 @@ import type Logger from '@matrixai/logger';
 import * as grpcUtils from '../../grpc/utils';
 import { validateSync } from '../../validation';
 import * as validationUtils from '../../validation/utils';
+import * as nodesErrors from '../../nodes/errors';
 import { matchSync } from '../../utils';
 import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
+import * as clientUtils from '../utils';
 
 /**
  * Checks whether there is an existing Gestalt Invitation from the other node.
@@ -75,7 +77,9 @@ function nodesClaim({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
-      logger.error(e);
+      !clientUtils.isClientError(e, [
+        nodesErrors.ErrorNodeGraphNodeIdNotFound,
+      ]) && logger.error(e);
       return;
     }
   };
