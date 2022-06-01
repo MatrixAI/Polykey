@@ -75,7 +75,7 @@
   "dependencies": {
     "@grpc/grpc-js": "1.6.7",
     "@matrixai/async-init": "^1.7.3",
-    "@matrixai/async-locks": "^2.2.4",
+    "@matrixai/async-locks": "^2.2.5",
     "@matrixai/db": "^4.0.2",
     "@matrixai/errors": "^1.1.1",
     "@matrixai/id": "^3.3.3",

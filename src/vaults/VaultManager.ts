@@ -7,7 +7,7 @@ import type {
   VaultIdEncoded,
 } from './types';
 import type { Vault } from './Vault';
-import type { FileSystem, ToString } from '../types';
+import type { FileSystem } from '../types';
 import type { PolykeyWorkerManagerInterface } from '../workers/types';
 import type { NodeId } from '../nodes/types';
 import type KeyManager from '../keys/KeyManager';
@@ -17,7 +17,7 @@ import type NotificationsManager from '../notifications/NotificationsManager';
 import type ACL from '../acl/ACL';
 import type { RemoteInfo } from './VaultInternal';
 import type { VaultAction } from './types';
-import type { Lockable } from '@matrixai/async-locks';
+import type { LockRequest } from '@matrixai/async-locks';
 import path from 'path';
 import { PassThrough } from 'readable-stream';
 import { EncryptedFS, errors as encryptedFsErrors } from 'encryptedfs';
@@ -51,13 +51,6 @@ type VaultMetadata = {
   vaultName: VaultName;
   remoteInfo?: RemoteInfo;
 };
-
-// FIXME, this is a HACK since this type isn't exported
-type LockRequest<L extends Lockable> = [
-  key: ToString,
-  lockConstructor: new () => L,
-  ...lockingParams: Parameters<L['lock']>,
-];
 
 interface VaultManager extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
