@@ -28,7 +28,8 @@ import type {
   AsyncGeneratorDuplexStreamClient,
 } from '../types';
 import type { CertificatePemChain, PrivateKeyPem } from '../../keys/types';
-import type { POJO, ClientMetadata } from '../../types';
+import type { POJO } from '../../types';
+import type { ClientMetadata } from '../types';
 import type { NodeId } from '../../nodes/types';
 import { Buffer } from 'buffer';
 import { AbstractError } from '@matrixai/errors';
@@ -199,7 +200,7 @@ function toError(
     if (isNaN(parseInt(key)) && e.code === grpc.status[key]) {
       if (key === 'UNKNOWN' && errorData != null) {
         const error: Error = JSON.parse(errorData, reviver);
-        const remoteError = new errors.ErrorPolykeyRemote(
+        const remoteError = new grpcErrors.ErrorPolykeyRemote(
           metadata,
           error.message,
           {

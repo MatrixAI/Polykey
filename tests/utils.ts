@@ -12,8 +12,8 @@ import GRPCClientClient from '@/client/GRPCClientClient';
 import * as clientUtils from '@/client/utils';
 import * as keysUtils from '@/keys/utils';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
+import * as grpcErrors from '@/grpc/errors';
 import { sleep } from '@/utils';
-import * as errors from '@/errors';
 import config from '@/config';
 
 /**
@@ -189,7 +189,7 @@ const expectRemoteError = async <T>(
   promise: Promise<T>,
   error,
 ): Promise<T | undefined> => {
-  await expect(promise).rejects.toThrow(errors.ErrorPolykeyRemote);
+  await expect(promise).rejects.toThrow(grpcErrors.ErrorPolykeyRemote);
   try {
     return await promise;
   } catch (e) {

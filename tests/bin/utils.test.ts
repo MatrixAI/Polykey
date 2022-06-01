@@ -1,7 +1,8 @@
 import type { Host, Port } from '@/network/types';
+import ErrorPolykey from '@/ErrorPolykey';
 import * as binUtils from '@/bin/utils/utils';
 import * as nodesUtils from '@/nodes/utils';
-import * as errors from '@/errors';
+import * as grpcErrors from '@/grpc/errors';
 import * as testUtils from '../utils';
 
 describe('bin/utils', () => {
@@ -81,11 +82,11 @@ describe('bin/utils', () => {
     const port = 55555 as Port;
     const nodeId = testUtils.generateRandomNodeId();
     const standardError = new TypeError('some error');
-    const pkError = new errors.ErrorPolykey('some pk error', {
+    const pkError = new ErrorPolykey('some pk error', {
       timestamp,
       data,
     });
-    const remoteError = new errors.ErrorPolykeyRemote<any>(
+    const remoteError = new grpcErrors.ErrorPolykeyRemote<any>(
       {
         nodeId,
         host,
@@ -95,7 +96,7 @@ describe('bin/utils', () => {
       'some remote error',
       { timestamp, cause: pkError },
     );
-    const twoRemoteErrors = new errors.ErrorPolykeyRemote<any>(
+    const twoRemoteErrors = new grpcErrors.ErrorPolykeyRemote<any>(
       {
         nodeId,
         host,
@@ -105,7 +106,7 @@ describe('bin/utils', () => {
       'remote error',
       {
         timestamp,
-        cause: new errors.ErrorPolykeyRemote(
+        cause: new grpcErrors.ErrorPolykeyRemote(
           {
             nodeId,
             host,
@@ -115,7 +116,7 @@ describe('bin/utils', () => {
           undefined,
           {
             timestamp,
-            cause: new errors.ErrorPolykey('pk error', {
+            cause: new ErrorPolykey('pk error', {
               timestamp,
               cause: standardError,
             }),

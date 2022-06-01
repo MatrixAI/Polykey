@@ -4,10 +4,11 @@ import { LogLevel } from '@matrixai/logger';
 import * as grpc from '@grpc/grpc-js';
 import { AbstractError } from '@matrixai/errors';
 import * as binProcessors from './processors';
+import ErrorPolykey from '../../ErrorPolykey';
 import * as binErrors from '../errors';
 import * as clientUtils from '../../client/utils';
 import * as clientErrors from '../../client/errors';
-import * as errors from '../../errors';
+import * as grpcErrors from '../../grpc/errors';
 import * as nodesUtils from '../../nodes/utils';
 import * as utils from '../../utils';
 
@@ -105,7 +106,7 @@ function outputFormatter(msg: OutputObject): string {
     let currError = msg.data;
     let indent = '  ';
     while (currError != null) {
-      if (currError instanceof errors.ErrorPolykeyRemote) {
+      if (currError instanceof grpcErrors.ErrorPolykeyRemote) {
         output += `${currError.name}: ${currError.description}`;
         if (currError.message && currError.message !== '') {
           output += ` - ${currError.message}`;
@@ -120,7 +121,7 @@ function outputFormatter(msg: OutputObject): string {
         output += `${indent}timestamp\t${currError.timestamp}\n`;
         output += `${indent}remote error: `;
         currError = currError.cause;
-      } else if (currError instanceof errors.ErrorPolykey) {
+      } else if (currError instanceof ErrorPolykey) {
         output += `${currError.name}: ${currError.description}`;
         if (currError.message && currError.message !== '') {
           output += ` - ${currError.message}`;
@@ -133,7 +134,7 @@ function outputFormatter(msg: OutputObject): string {
         }
         if (currError.cause) {
           output += `${indent}cause: `;
-          if (currError.cause instanceof errors.ErrorPolykey) {
+          if (currError.cause instanceof ErrorPolykey) {
             currError = currError.cause;
           } else if (currError.cause instanceof Error) {
             output += `${currError.cause.name}`;
@@ -214,7 +215,7 @@ async function retryAuthentication<T>(
 function remoteErrorCause(e: any): [any, number] {
   let errorCause = e;
   let depth = 0;
-  while (errorCause instanceof errors.ErrorPolykeyRemote) {
+  while (errorCause instanceof grpcErrors.ErrorPolykeyRemote) {
     errorCause = errorCause.cause;
     depth++;
   }
