@@ -1,7 +1,5 @@
 // eslint-disable-next-line no-restricted-imports -- Interim types for FileSystem
 import type fs from 'fs';
-import type { Host, Port } from './network/types';
-import type { NodeId } from './nodes/types';
 
 /**
  * Plain data dictionary
@@ -79,13 +77,6 @@ interface FileSystem {
 
 type FileHandle = fs.promises.FileHandle;
 
-type ClientMetadata = {
-  nodeId: NodeId;
-  host: Host;
-  port: Port;
-  command: string;
-} & POJO;
-
 export type {
   POJO,
   Opaque,
@@ -98,5 +89,4 @@ export type {
   Timer,
   FileSystem,
   FileHandle,
-  ClientMetadata,
 };

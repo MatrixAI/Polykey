@@ -8,6 +8,9 @@ import type {
   UntypedServiceImplementation,
   Metadata,
 } from '@grpc/grpc-js';
+import type { NodeId } from '../nodes/types';
+import type { Host, Port } from '../network/types';
+import type { POJO } from '../types';
 
 type Services = Array<
   [
@@ -100,6 +103,13 @@ interface AsyncGeneratorDuplexStreamClient<
   meta: Promise<Metadata>;
 }
 
+type ClientMetadata = {
+  nodeId: NodeId;
+  host: Host;
+  port: Port;
+  command: string;
+} & POJO;
+
 export type {
   Services,
   PromiseUnaryCall,
@@ -109,4 +119,5 @@ export type {
   AsyncGeneratorWritableStreamClient,
   AsyncGeneratorDuplexStream,
   AsyncGeneratorDuplexStreamClient,
+  ClientMetadata,
 };
