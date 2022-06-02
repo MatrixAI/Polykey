@@ -185,7 +185,7 @@ describe('VaultManager', () => {
         await vaultManager?.destroy();
       }
     },
-    global.defaultTimeout * 2,
+    global.defaultTimeout * 4,
   );
   test('can rename a vault', async () => {
     const vaultManager = await VaultManager.createVaultManager({
@@ -278,49 +278,53 @@ describe('VaultManager', () => {
       await vaultManager?.destroy();
     }
   });
-  test('able to read and load existing metadata', async () => {
-    const vaultManager = await VaultManager.createVaultManager({
-      vaultsPath,
-      keyManager: dummyKeyManager,
-      gestaltGraph: {} as GestaltGraph,
-      nodeConnectionManager: {} as NodeConnectionManager,
-      acl: {} as ACL,
-      notificationsManager: {} as NotificationsManager,
-      db,
-      logger: logger.getChild(VaultManager.name),
-    });
-    try {
-      const vaultNames = [
-        'Vault1',
-        'Vault2',
-        'Vault3',
-        'Vault4',
-        'Vault5',
-        'Vault6',
-        'Vault7',
-        'Vault8',
-        'Vault9',
-        'Vault10',
-      ];
-      for (const vaultName of vaultNames) {
-        await vaultManager.createVault(vaultName as VaultName);
-      }
-      const vaults = await vaultManager.listVaults();
-      const vaultId = vaults.get('Vault1' as VaultName) as VaultId;
-      expect(vaultId).not.toBeUndefined();
-      await vaultManager.stop();
-      await vaultManager.start();
-      const restartedVaultNames: Array<string> = [];
-      const vaultList = await vaultManager.listVaults();
-      vaultList.forEach((_, vaultName) => {
-        restartedVaultNames.push(vaultName);
+  test(
+    'able to read and load existing metadata',
+    async () => {
+      const vaultManager = await VaultManager.createVaultManager({
+        vaultsPath,
+        keyManager: dummyKeyManager,
+        gestaltGraph: {} as GestaltGraph,
+        nodeConnectionManager: {} as NodeConnectionManager,
+        acl: {} as ACL,
+        notificationsManager: {} as NotificationsManager,
+        db,
+        logger: logger.getChild(VaultManager.name),
       });
-      expect(restartedVaultNames.sort()).toEqual(vaultNames.sort());
-    } finally {
-      await vaultManager?.stop();
-      await vaultManager?.destroy();
-    }
-  });
+      try {
+        const vaultNames = [
+          'Vault1',
+          'Vault2',
+          'Vault3',
+          'Vault4',
+          'Vault5',
+          'Vault6',
+          'Vault7',
+          'Vault8',
+          'Vault9',
+          'Vault10',
+        ];
+        for (const vaultName of vaultNames) {
+          await vaultManager.createVault(vaultName as VaultName);
+        }
+        const vaults = await vaultManager.listVaults();
+        const vaultId = vaults.get('Vault1' as VaultName) as VaultId;
+        expect(vaultId).not.toBeUndefined();
+        await vaultManager.stop();
+        await vaultManager.start();
+        const restartedVaultNames: Array<string> = [];
+        const vaultList = await vaultManager.listVaults();
+        vaultList.forEach((_, vaultName) => {
+          restartedVaultNames.push(vaultName);
+        });
+        expect(restartedVaultNames.sort()).toEqual(vaultNames.sort());
+      } finally {
+        await vaultManager?.stop();
+        await vaultManager?.destroy();
+      }
+    },
+    global.defaultTimeout * 2,
+  );
   test('cannot concurrently create vaults with the same name', async () => {
     const vaultManager = await VaultManager.createVaultManager({
       vaultsPath,
@@ -884,91 +888,95 @@ describe('VaultManager', () => {
         await vaultManager?.destroy();
       }
     });
-    test('can pull a cloned vault', async () => {
-      const vaultManager = await VaultManager.createVaultManager({
-        vaultsPath,
-        keyManager: dummyKeyManager,
-        gestaltGraph: {} as GestaltGraph,
-        nodeConnectionManager,
-        acl: {} as ACL,
-        notificationsManager: {} as NotificationsManager,
-        db,
-        logger: logger.getChild(VaultManager.name),
-      });
-      try {
-        // Creating some state at the remote
-        await remoteKeynode1.vaultManager.withVaults(
-          [remoteVaultId],
-          async (vault) => {
-            await vault.writeF(async (efs) => {
-              await efs.writeFile('secret-1', 'secret1');
-            });
-          },
-        );
-
-        // Setting permissions
-        await remoteKeynode1.gestaltGraph.setNode({
-          id: localNodeIdEncoded,
-          chain: {},
+    test(
+      'can pull a cloned vault',
+      async () => {
+        const vaultManager = await VaultManager.createVaultManager({
+          vaultsPath,
+          keyManager: dummyKeyManager,
+          gestaltGraph: {} as GestaltGraph,
+          nodeConnectionManager,
+          acl: {} as ACL,
+          notificationsManager: {} as NotificationsManager,
+          db,
+          logger: logger.getChild(VaultManager.name),
         });
-        await remoteKeynode1.gestaltGraph.setGestaltActionByNode(
-          localNodeId,
-          'scan',
-        );
-        await remoteKeynode1.acl.setVaultAction(
-          remoteVaultId,
-          localNodeId,
-          'clone',
-        );
-        await remoteKeynode1.acl.setVaultAction(
-          remoteVaultId,
-          localNodeId,
-          'pull',
-        );
+        try {
+          // Creating some state at the remote
+          await remoteKeynode1.vaultManager.withVaults(
+            [remoteVaultId],
+            async (vault) => {
+              await vault.writeF(async (efs) => {
+                await efs.writeFile('secret-1', 'secret1');
+              });
+            },
+          );
 
-        await vaultManager.cloneVault(remoteKeynode1Id, vaultName);
-        const vaultId = await vaultManager.getVaultId(vaultName);
-        if (vaultId === undefined) fail('VaultId is not found.');
-        await vaultManager.withVaults([vaultId], async (vaultClone) => {
-          return await vaultClone.readF(async (efs) => {
-            const file = await efs.readFile('secret-1', { encoding: 'utf8' });
-            const secretsList = await efs.readdir('.');
-            expect(file).toBe('secret1');
-            expect(secretsList).toContain('secret-1');
-            expect(secretsList).not.toContain('secret-2');
+          // Setting permissions
+          await remoteKeynode1.gestaltGraph.setNode({
+            id: localNodeIdEncoded,
+            chain: {},
           });
-        });
+          await remoteKeynode1.gestaltGraph.setGestaltActionByNode(
+            localNodeId,
+            'scan',
+          );
+          await remoteKeynode1.acl.setVaultAction(
+            remoteVaultId,
+            localNodeId,
+            'clone',
+          );
+          await remoteKeynode1.acl.setVaultAction(
+            remoteVaultId,
+            localNodeId,
+            'pull',
+          );
 
-        // Creating new history
-        await remoteKeynode1.vaultManager.withVaults(
-          [remoteVaultId],
-          async (vault) => {
-            await vault.writeF(async (efs) => {
-              await efs.writeFile('secret-2', 'secret2');
+          await vaultManager.cloneVault(remoteKeynode1Id, vaultName);
+          const vaultId = await vaultManager.getVaultId(vaultName);
+          if (vaultId === undefined) fail('VaultId is not found.');
+          await vaultManager.withVaults([vaultId], async (vaultClone) => {
+            return await vaultClone.readF(async (efs) => {
+              const file = await efs.readFile('secret-1', { encoding: 'utf8' });
+              const secretsList = await efs.readdir('.');
+              expect(file).toBe('secret1');
+              expect(secretsList).toContain('secret-1');
+              expect(secretsList).not.toContain('secret-2');
             });
-          },
-        );
-
-        // Pulling vault
-        await vaultManager.pullVault({
-          vaultId: vaultId,
-        });
-
-        // Should have new data
-        await vaultManager.withVaults([vaultId], async (vaultClone) => {
-          return await vaultClone.readF(async (efs) => {
-            const file = await efs.readFile('secret-1', { encoding: 'utf8' });
-            const secretsList = await efs.readdir('.');
-            expect(file).toBe('secret1');
-            expect(secretsList).toContain('secret-1');
-            expect(secretsList).toContain('secret-2');
           });
-        });
-      } finally {
-        await vaultManager?.stop();
-        await vaultManager?.destroy();
-      }
-    });
+
+          // Creating new history
+          await remoteKeynode1.vaultManager.withVaults(
+            [remoteVaultId],
+            async (vault) => {
+              await vault.writeF(async (efs) => {
+                await efs.writeFile('secret-2', 'secret2');
+              });
+            },
+          );
+
+          // Pulling vault
+          await vaultManager.pullVault({
+            vaultId: vaultId,
+          });
+
+          // Should have new data
+          await vaultManager.withVaults([vaultId], async (vaultClone) => {
+            return await vaultClone.readF(async (efs) => {
+              const file = await efs.readFile('secret-1', { encoding: 'utf8' });
+              const secretsList = await efs.readdir('.');
+              expect(file).toBe('secret1');
+              expect(secretsList).toContain('secret-1');
+              expect(secretsList).toContain('secret-2');
+            });
+          });
+        } finally {
+          await vaultManager?.stop();
+          await vaultManager?.destroy();
+        }
+      },
+      global.defaultTimeout * 2,
+    );
     test(
       'manage pulling from different remotes',
       async () => {
@@ -1105,78 +1113,82 @@ describe('VaultManager', () => {
       },
       global.failedConnectionTimeout,
     );
-    test('able to recover metadata after complex operations', async () => {
-      const vaultManager = await VaultManager.createVaultManager({
-        vaultsPath,
-        keyManager: dummyKeyManager,
-        gestaltGraph: {} as GestaltGraph,
-        nodeConnectionManager,
-        acl: {} as ACL,
-        notificationsManager: {} as NotificationsManager,
-        db,
-        logger: logger.getChild(VaultManager.name),
-      });
-      try {
-        const vaultNames = ['Vault1', 'Vault2', 'Vault3', 'Vault4', 'Vault5'];
-        const alteredVaultNames = [
-          'Vault1',
-          'Vault2',
-          'Vault3',
-          'Vault6',
-          'Vault10',
-        ];
-        for (const vaultName of vaultNames) {
-          await vaultManager.createVault(vaultName as VaultName);
-        }
-        const v5 = await vaultManager.getVaultId('Vault5' as VaultName);
-        expect(v5).not.toBeUndefined();
-        await vaultManager.destroyVault(v5!);
-        const v4 = await vaultManager.getVaultId('Vault4' as VaultName);
-        expect(v4).toBeTruthy();
-        await vaultManager.renameVault(v4!, 'Vault10' as VaultName);
-        const v6 = await vaultManager.createVault('Vault6' as VaultName);
-
-        await vaultManager.withVaults([v6], async (vault6) => {
-          await vault6.writeF(async (efs) => {
-            await efs.writeFile('reloaded', 'reload');
-          });
+    test(
+      'able to recover metadata after complex operations',
+      async () => {
+        const vaultManager = await VaultManager.createVaultManager({
+          vaultsPath,
+          keyManager: dummyKeyManager,
+          gestaltGraph: {} as GestaltGraph,
+          nodeConnectionManager,
+          acl: {} as ACL,
+          notificationsManager: {} as NotificationsManager,
+          db,
+          logger: logger.getChild(VaultManager.name),
         });
+        try {
+          const vaultNames = ['Vault1', 'Vault2', 'Vault3', 'Vault4', 'Vault5'];
+          const alteredVaultNames = [
+            'Vault1',
+            'Vault2',
+            'Vault3',
+            'Vault6',
+            'Vault10',
+          ];
+          for (const vaultName of vaultNames) {
+            await vaultManager.createVault(vaultName as VaultName);
+          }
+          const v5 = await vaultManager.getVaultId('Vault5' as VaultName);
+          expect(v5).not.toBeUndefined();
+          await vaultManager.destroyVault(v5!);
+          const v4 = await vaultManager.getVaultId('Vault4' as VaultName);
+          expect(v4).toBeTruthy();
+          await vaultManager.renameVault(v4!, 'Vault10' as VaultName);
+          const v6 = await vaultManager.createVault('Vault6' as VaultName);
 
-        const vn: Array<string> = [];
-        (await vaultManager.listVaults()).forEach((_, vaultName) =>
-          vn.push(vaultName),
-        );
-        expect(vn.sort()).toEqual(alteredVaultNames.sort());
-        await vaultManager.stop();
-        await vaultManager.start();
-        await vaultManager.createVault('Vault7' as VaultName);
-
-        const v10 = await vaultManager.getVaultId('Vault10' as VaultName);
-        expect(v10).not.toBeUndefined();
-        alteredVaultNames.push('Vault7');
-        expect((await vaultManager.listVaults()).size).toEqual(
-          alteredVaultNames.length,
-        );
-        const vnAltered: Array<string> = [];
-        (await vaultManager.listVaults()).forEach((_, vaultName) =>
-          vnAltered.push(vaultName),
-        );
-        expect(vnAltered.sort()).toEqual(alteredVaultNames.sort());
-        const file = await vaultManager.withVaults(
-          [v6],
-          async (reloadedVault) => {
-            return await reloadedVault.readF(async (efs) => {
-              return await efs.readFile('reloaded', { encoding: 'utf8' });
+          await vaultManager.withVaults([v6], async (vault6) => {
+            await vault6.writeF(async (efs) => {
+              await efs.writeFile('reloaded', 'reload');
             });
-          },
-        );
+          });
 
-        expect(file).toBe('reload');
-      } finally {
-        await vaultManager?.stop();
-        await vaultManager?.destroy();
-      }
-    });
+          const vn: Array<string> = [];
+          (await vaultManager.listVaults()).forEach((_, vaultName) =>
+            vn.push(vaultName),
+          );
+          expect(vn.sort()).toEqual(alteredVaultNames.sort());
+          await vaultManager.stop();
+          await vaultManager.start();
+          await vaultManager.createVault('Vault7' as VaultName);
+
+          const v10 = await vaultManager.getVaultId('Vault10' as VaultName);
+          expect(v10).not.toBeUndefined();
+          alteredVaultNames.push('Vault7');
+          expect((await vaultManager.listVaults()).size).toEqual(
+            alteredVaultNames.length,
+          );
+          const vnAltered: Array<string> = [];
+          (await vaultManager.listVaults()).forEach((_, vaultName) =>
+            vnAltered.push(vaultName),
+          );
+          expect(vnAltered.sort()).toEqual(alteredVaultNames.sort());
+          const file = await vaultManager.withVaults(
+            [v6],
+            async (reloadedVault) => {
+              return await reloadedVault.readF(async (efs) => {
+                return await efs.readFile('reloaded', { encoding: 'utf8' });
+              });
+            },
+          );
+
+          expect(file).toBe('reload');
+        } finally {
+          await vaultManager?.stop();
+          await vaultManager?.destroy();
+        }
+      },
+      global.defaultTimeout * 2,
+    );
     test('throw when trying to commit to a cloned vault', async () => {
       const vaultManager = await VaultManager.createVaultManager({
         vaultsPath,
@@ -1337,7 +1349,7 @@ describe('VaultManager', () => {
           });
           await sleep(200);
           expect(pullVaultMock).not.toHaveBeenCalled();
-          releaseWrite();
+          await releaseWrite();
           await pullP;
           expect(pullVaultMock).toHaveBeenCalled();
           pullVaultMock.mockClear();
@@ -1363,16 +1375,16 @@ describe('VaultManager', () => {
           });
           await sleep(200);
           expect(gitPullMock).not.toHaveBeenCalled();
-          releaseVaultWrite();
-        await pullP2;
-        expect(gitPullMock).toHaveBeenCalled();
-      } finally {
-        pullVaultMock.mockRestore();
-        gitPullMock.mockRestore();
-        await vaultManager?.stop();
-        await vaultManager?.destroy();
-      }
-    },
+          await releaseVaultWrite();
+          await pullP2;
+          expect(gitPullMock).toHaveBeenCalled();
+        } finally {
+          pullVaultMock.mockRestore();
+          gitPullMock.mockRestore();
+          await vaultManager?.stop();
+          await vaultManager?.destroy();
+        }
+      },
       global.failedConnectionTimeout,
     );
   });

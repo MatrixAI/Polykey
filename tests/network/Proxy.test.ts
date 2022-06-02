@@ -3034,10 +3034,7 @@ describe(Proxy.name, () => {
     };
     await utpSocketBind(0, localHost);
     const utpSocketPort = utpSocket.address().port;
-    await proxy.openConnectionReverse(
-      localHost,
-      utpSocketPort as Port,
-    );
+    await proxy.openConnectionReverse(localHost, utpSocketPort as Port);
     const utpConn = utpSocket.connect(proxyPort, proxyHost);
     const tlsSocket = tls.connect(
       {
@@ -3068,10 +3065,7 @@ describe(Proxy.name, () => {
     await clientReadyP;
     await clientSecureConnectP;
     await serverConnP;
-    await proxy.closeConnectionReverse(
-      localHost,
-      utpSocketPort as Port,
-    );
+    await proxy.closeConnectionReverse(localHost, utpSocketPort as Port);
     expect(proxy.getConnectionReverseCount()).toBe(0);
     await clientCloseP;
     await serverConnEndP;

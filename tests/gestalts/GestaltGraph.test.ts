@@ -1248,8 +1248,8 @@ describe('GestaltGraph', () => {
     // its just that node 1 is eliminated
     nodePerms = await acl.getNodePerms();
     expect(Object.keys(nodePerms)).toHaveLength(1);
-    expect(nodePerms[0]).not.toHaveProperty(nodeIdABC.toString());
-    expect(nodePerms[0]).toHaveProperty(nodeIdDEE.toString());
+    expect(nodePerms[0][nodeIdABC.toString()]).toBeUndefined();
+    expect(nodePerms[0][nodeIdDEE.toString()]).toBeDefined();
     await gestaltGraph.unsetNode(nodeIdDEE);
     nodePerms = await acl.getNodePerms();
     expect(Object.keys(nodePerms)).toHaveLength(0);

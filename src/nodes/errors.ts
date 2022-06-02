@@ -2,17 +2,17 @@ import { ErrorPolykey, sysexits } from '../errors';
 
 class ErrorNodes<T> extends ErrorPolykey<T> {}
 
-class ErrorNodeAborted extends ErrorNodes {
-  description = 'Operation was aborted';
+class ErrorNodeAborted<T> extends ErrorNodes<T> {
+  static description = 'Operation was aborted';
   exitCode = sysexits.USAGE;
 }
 
-class ErrorNodeManagerNotRunning extends ErrorNodes {
+class ErrorNodeManagerNotRunning<T> extends ErrorNodes<T> {
   static description = 'NodeManager is not running';
   exitCode = sysexits.USAGE;
 }
 
-class ErrorQueueNotRunning extends ErrorNodes {
+class ErrorQueueNotRunning<T> extends ErrorNodes<T> {
   static description = 'queue is not running';
   exitCode = sysexits.USAGE;
 }

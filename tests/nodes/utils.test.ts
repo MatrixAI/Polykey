@@ -94,7 +94,7 @@ describe('nodes/utils', () => {
     }
   });
   test('parse NodeGraph buckets db key', async () => {
-    const bucketsDb = await db.level('buckets');
+    const bucketsDbPath = ['buckets'];
     const data: Array<{
       bucketIndex: number;
       bucketKey: string;
@@ -111,16 +111,19 @@ describe('nodes/utils', () => {
         nodeId,
         key: Buffer.concat([Buffer.from(bucketKey), nodeId]),
       });
-      const bucketDomain = ['buckets', bucketKey];
-      await db.put(bucketDomain, nodesUtils.bucketDbKey(nodeId), null);
+      await db.put(
+        ['buckets', bucketKey, nodesUtils.bucketDbKey(nodeId)],
+        null,
+      );
     }
     // LevelDB will store keys in lexicographic order
     // Use the key property as a concatenated buffer of the bucket key and node ID
     data.sort((a, b) => Buffer.compare(a.key, b.key));
     let i = 0;
-    for await (const key of bucketsDb.createKeyStream()) {
+
+    for await (const [key] of db.iterator({}, bucketsDbPath)) {
       const { bucketIndex, bucketKey, nodeId } = nodesUtils.parseBucketsDbKey(
-        key as Buffer,
+        key as Array<Buffer>,
       );
       expect(bucketIndex).toBe(data[i].bucketIndex);
       expect(bucketKey).toBe(data[i].bucketKey);
@@ -129,7 +132,7 @@ describe('nodes/utils', () => {
     }
   });
   test('parse NodeGraph lastUpdated buckets db key', async () => {
-    const lastUpdatedDb = await db.level('lastUpdated');
+    const lastUpdatedDbPath = ['lastUpdated'];
     const data: Array<{
       bucketIndex: number;
       bucketKey: string;
@@ -142,28 +145,25 @@ describe('nodes/utils', () => {
       const bucketKey = lexi.pack(bucketIndex, 'hex');
       const lastUpdated = utils.getUnixtime();
       const nodeId = testNodesUtils.generateRandomNodeId();
-      const lastUpdatedKey = nodesUtils.lastUpdatedBucketDbKey(
-        lastUpdated,
-        nodeId,
-      );
+      const nodeIdKey = nodesUtils.bucketDbKey(nodeId);
+      const lastUpdatedKey = nodesUtils.lastUpdatedKey(lastUpdated);
       data.push({
         bucketIndex,
         bucketKey,
         lastUpdated,
         nodeId,
-        key: Buffer.concat([Buffer.from(bucketKey), lastUpdatedKey]),
+        key: Buffer.concat([Buffer.from(bucketKey), lastUpdatedKey, nodeIdKey]),
       });
-      const lastUpdatedDomain = ['lastUpdated', bucketKey];
-      await db.put(lastUpdatedDomain, lastUpdatedKey, null);
+      await db.put(['lastUpdated', bucketKey, lastUpdatedKey, nodeIdKey], null);
     }
     // LevelDB will store keys in lexicographic order
     // Use the key property as a concatenated buffer of
     // the bucket key and last updated and node ID
     data.sort((a, b) => Buffer.compare(a.key, b.key));
     let i = 0;
-    for await (const key of lastUpdatedDb.createKeyStream()) {
+    for await (const [key] of db.iterator({}, lastUpdatedDbPath)) {
       const { bucketIndex, bucketKey, lastUpdated, nodeId } =
-        nodesUtils.parseLastUpdatedBucketsDbKey(key as Buffer);
+        nodesUtils.parseLastUpdatedBucketsDbKey(key as Array<Buffer>);
       expect(bucketIndex).toBe(data[i].bucketIndex);
       expect(bucketKey).toBe(data[i].bucketKey);
       expect(lastUpdated).toBe(data[i].lastUpdated);

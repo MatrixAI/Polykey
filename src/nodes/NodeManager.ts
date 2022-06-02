@@ -116,10 +116,8 @@ class NodeManager {
     const targetHost = await networkUtils.resolveHost(targetAddress.host);
     return await this.nodeConnectionManager.pingNode(
       nodeId,
-      {
-        host: targetHost,
-        port: targetAddress.port,
-      },
+      targetHost,
+      targetAddress.port,
       timer,
     );
   }
@@ -383,7 +381,7 @@ class NodeManager {
    */
   public async getBucket(
     bucketIndex: number,
-    tran: DBTransaction,
+    tran?: DBTransaction,
   ): Promise<NodeBucket | undefined> {
     return await this.nodeGraph.getBucket(
       bucketIndex,
@@ -402,7 +400,7 @@ class NodeManager {
    * @param block - Flag for if the operation should block or utilize the async queue
    * @param force - Flag for if we want to add the node without authenticating or if the bucket is full.
    * This will drop the oldest node in favor of the new.
-   * @param timeout Connection timeout timeout
+   * @param timeout Connection timeout
    * @param tran
    */
   @ready(new nodesErrors.ErrorNodeManagerNotRunning())
@@ -412,8 +410,14 @@ class NodeManager {
     block: boolean = true,
     force: boolean = false,
     timeout?: number,
-    tran: DBTransaction,
+    tran?: DBTransaction,
   ): Promise<void> {
+    if (tran == null) {
+      return this.db.withTransactionF(async (tran) =>
+        this.setNode(nodeId, nodeAddress, block, force, timeout, tran),
+      );
+    }
+
     // When adding a node we need to handle 3 cases
     // 1. The node already exists. We need to update it's last updated field
     // 2. The node doesn't exist and bucket has room.
@@ -486,7 +490,7 @@ class NodeManager {
     nodeAddress: NodeAddress,
     timeout?: number,
   ) {
-    const oldestNodeIds = await this.nodeGraph.getOldestNode(bucketIndex, 3, tran);
+    const oldestNodeIds = await this.nodeGraph.getOldestNode(bucketIndex, 3);
     // We want to concurrently ping the nodes
     const pingPromises = oldestNodeIds.map((nodeId) => {
       const doPing = async (): Promise<{
@@ -540,8 +544,8 @@ class NodeManager {
    * To be called on key renewal. Re-orders all nodes in all buckets with respect
    * to the new node ID.
    */
-  public async resetBuckets(tran?: DBTransaction): Promise<void> {
-    return await this.nodeGraph.resetBuckets(this.keyManager.getNodeId(tran));
+  public async resetBuckets(): Promise<void> {
+    return await this.nodeGraph.resetBuckets(this.keyManager.getNodeId());
   }
 
   /**

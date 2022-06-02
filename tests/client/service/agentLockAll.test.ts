@@ -14,6 +14,7 @@ import { ClientServiceService } from '@/proto/js/polykey/v1/client_service_grpc_
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as keysUtils from '@/keys/utils';
 import * as clientUtils from '@/client/utils/utils';
+import { timerStart } from '@/utils/index';
 import * as testUtils from '../../utils';
 
 describe('agentLockall', () => {
@@ -89,7 +90,7 @@ describe('agentLockall', () => {
       nodeId: keyManager.getNodeId(),
       host: '127.0.0.1' as Host,
       port: grpcServer.getPort(),
-      timeout: 5000,
+      timer: timerStart(5000),
       logger,
     });
   });

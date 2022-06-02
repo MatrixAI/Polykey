@@ -63,7 +63,7 @@ const mockedGenerateDeterministicKeyPair = jest.spyOn(
   'generateDeterministicKeyPair',
 );
 
-describe('${NodeConnection.name} test', () => {
+describe(`${NodeConnection.name} test`, () => {
   const logger = new Logger(`${NodeConnection.name} test`, LogLevel.WARN, [
     new StreamHandler(),
   ]);

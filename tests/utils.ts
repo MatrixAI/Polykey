@@ -14,7 +14,6 @@ import * as keysUtils from '@/keys/utils';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as grpcErrors from '@/grpc/errors';
 import { sleep } from '@/utils';
-import * as errors from '@/errors';
 import config from '@/config';
 
 /**

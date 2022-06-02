@@ -55,6 +55,8 @@ describe('nodesChainDataGet', () => {
     const agentService = {
       nodesChainDataGet: nodesChainDataGet({
         sigchain: pkAgent.sigchain,
+        db: pkAgent.db,
+        logger,
       }),
     };
     grpcServer = new GRPCServer({ logger });
