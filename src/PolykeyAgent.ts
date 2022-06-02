@@ -690,6 +690,7 @@ class PolykeyAgent {
       this.logger.info(`Started ${this.constructor.name}`);
     } catch (e) {
       this.logger.warn(`Failed Starting ${this.constructor.name}`);
+      this.events.removeAllListeners();
       await this.status?.beginStop({ pid: process.pid });
       await this.sessionManager?.stop();
       await this.notificationsManager?.stop();
@@ -706,7 +707,6 @@ class PolykeyAgent {
       await this.keyManager?.stop();
       await this.schema?.stop();
       await this.status?.stop({});
-      this.events.removeAllListeners();
       throw e;
     }
   }
@@ -716,6 +716,7 @@ class PolykeyAgent {
    */
   public async stop() {
     this.logger.info(`Stopping ${this.constructor.name}`);
+    this.events.removeAllListeners();
     await this.status.beginStop({ pid: process.pid });
     await this.sessionManager.stop();
     await this.notificationsManager.stop();
@@ -736,7 +737,6 @@ class PolykeyAgent {
     await this.keyManager.stop();
     await this.schema.stop();
     await this.status.stop({});
-    this.events.removeAllListeners();
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 

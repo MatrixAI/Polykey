@@ -424,84 +424,88 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
       await queue?.stop();
     }
   });
-  test('should expand the network when nodes enter', async () => {
-    // Using a single seed node we need to check that each entering node adds itself to the seed node.
-    // Also need to check that the new nodes can be seen in the network.
-    let node1: PolykeyAgent | undefined;
-    let node2: PolykeyAgent | undefined;
-    const seedNodes: SeedNodes = {};
-    seedNodes[nodesUtils.encodeNodeId(remoteNodeId1)] = {
-      host: remoteNode1.proxy.getProxyHost(),
-      port: remoteNode1.proxy.getProxyPort(),
-    };
-    seedNodes[nodesUtils.encodeNodeId(remoteNodeId2)] = {
-      host: remoteNode2.proxy.getProxyHost(),
-      port: remoteNode2.proxy.getProxyPort(),
-    };
-    try {
-      logger.setLevel(LogLevel.WARN);
-      node1 = await PolykeyAgent.createPolykeyAgent({
-        nodePath: path.join(dataDir, 'node1'),
-        password: 'password',
-        networkConfig: {
-          proxyHost: localHost,
-          agentHost: localHost,
-          clientHost: localHost,
-          forwardHost: localHost,
-        },
-        seedNodes,
-        logger,
-      });
-      node2 = await PolykeyAgent.createPolykeyAgent({
-        nodePath: path.join(dataDir, 'node2'),
-        password: 'password',
-        networkConfig: {
-          proxyHost: localHost,
-          agentHost: localHost,
-          clientHost: localHost,
-          forwardHost: localHost,
-        },
-        seedNodes,
-        logger,
-      });
-
-      await node1.queue.drained();
-      await node1.nodeManager.refreshBucketQueueDrained();
-      await node2.queue.drained();
-      await node2.nodeManager.refreshBucketQueueDrained();
-
-      const getAllNodes = async (node: PolykeyAgent) => {
-        const nodes: Array<NodeIdEncoded> = [];
-        for await (const [nodeId] of node.nodeGraph.getNodes()) {
-          nodes.push(nodesUtils.encodeNodeId(nodeId));
-        }
-        return nodes;
+  test(
+    'should expand the network when nodes enter',
+    async () => {
+      // Using a single seed node we need to check that each entering node adds itself to the seed node.
+      // Also need to check that the new nodes can be seen in the network.
+      let node1: PolykeyAgent | undefined;
+      let node2: PolykeyAgent | undefined;
+      const seedNodes: SeedNodes = {};
+      seedNodes[nodesUtils.encodeNodeId(remoteNodeId1)] = {
+        host: remoteNode1.proxy.getProxyHost(),
+        port: remoteNode1.proxy.getProxyPort(),
       };
-      const rNode1Nodes = await getAllNodes(remoteNode1);
-      const rNode2Nodes = await getAllNodes(remoteNode2);
-      const node1Nodes = await getAllNodes(node1);
-      const node2Nodes = await getAllNodes(node2);
+      seedNodes[nodesUtils.encodeNodeId(remoteNodeId2)] = {
+        host: remoteNode2.proxy.getProxyHost(),
+        port: remoteNode2.proxy.getProxyPort(),
+      };
+      try {
+        logger.setLevel(LogLevel.WARN);
+        node1 = await PolykeyAgent.createPolykeyAgent({
+          nodePath: path.join(dataDir, 'node1'),
+          password: 'password',
+          networkConfig: {
+            proxyHost: localHost,
+            agentHost: localHost,
+            clientHost: localHost,
+            forwardHost: localHost,
+          },
+          seedNodes,
+          logger,
+        });
+        node2 = await PolykeyAgent.createPolykeyAgent({
+          nodePath: path.join(dataDir, 'node2'),
+          password: 'password',
+          networkConfig: {
+            proxyHost: localHost,
+            agentHost: localHost,
+            clientHost: localHost,
+            forwardHost: localHost,
+          },
+          seedNodes,
+          logger,
+        });
 
-      const nodeIdR1 = nodesUtils.encodeNodeId(remoteNodeId1);
-      const nodeIdR2 = nodesUtils.encodeNodeId(remoteNodeId2);
-      const nodeId1 = nodesUtils.encodeNodeId(node1.keyManager.getNodeId());
-      const nodeId2 = nodesUtils.encodeNodeId(node2.keyManager.getNodeId());
-      expect(rNode1Nodes).toContain(nodeId1);
-      expect(rNode1Nodes).toContain(nodeId2);
-      expect(rNode2Nodes).toContain(nodeId1);
-      expect(rNode2Nodes).toContain(nodeId2);
-      expect(node1Nodes).toContain(nodeIdR1);
-      expect(node1Nodes).toContain(nodeIdR2);
-      expect(node1Nodes).toContain(nodeId2);
-      expect(node2Nodes).toContain(nodeIdR1);
-      expect(node2Nodes).toContain(nodeIdR2);
-      expect(node2Nodes).toContain(nodeId1);
-    } finally {
-      logger.setLevel(LogLevel.WARN);
-      await node1?.stop();
-      await node1?.destroy();
-      await node2?.stop();
-      await node2?.destroy();
-    }
-  });
+        await node1.queue.drained();
+        await node1.nodeManager.refreshBucketQueueDrained();
+        await node2.queue.drained();
+        await node2.nodeManager.refreshBucketQueueDrained();
+
+        const getAllNodes = async (node: PolykeyAgent) => {
+          const nodes: Array<NodeIdEncoded> = [];
+          for await (const [nodeId] of node.nodeGraph.getNodes()) {
+            nodes.push(nodesUtils.encodeNodeId(nodeId));
+          }
+          return nodes;
+        };
+        const rNode1Nodes = await getAllNodes(remoteNode1);
+        const rNode2Nodes = await getAllNodes(remoteNode2);
+        const node1Nodes = await getAllNodes(node1);
+        const node2Nodes = await getAllNodes(node2);
+
+        const nodeIdR1 = nodesUtils.encodeNodeId(remoteNodeId1);
+        const nodeIdR2 = nodesUtils.encodeNodeId(remoteNodeId2);
+        const nodeId1 = nodesUtils.encodeNodeId(node1.keyManager.getNodeId());
+        const nodeId2 = nodesUtils.encodeNodeId(node2.keyManager.getNodeId());
+        expect(rNode1Nodes).toContain(nodeId1);
+        expect(rNode1Nodes).toContain(nodeId2);
+        expect(rNode2Nodes).toContain(nodeId1);
+        expect(rNode2Nodes).toContain(nodeId2);
+        expect(node1Nodes).toContain(nodeIdR1);
+        expect(node1Nodes).toContain(nodeIdR2);
+        expect(node1Nodes).toContain(nodeId2);
+        expect(node2Nodes).toContain(nodeIdR1);
+        expect(node2Nodes).toContain(nodeIdR2);
+        expect(node2Nodes).toContain(nodeId1);
+      } finally {
+        logger.setLevel(LogLevel.WARN);
+        await node1?.stop();
+        await node1?.destroy();
+        await node2?.stop();
+        await node2?.destroy();
+      }
+    },
+    global.defaultTimeout * 2,
+  );
 });

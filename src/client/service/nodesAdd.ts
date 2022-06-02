@@ -14,7 +14,7 @@ import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 import * as clientUtils from '../utils';
 
 /**
- * Adds a node ID -> node address mapping into the buckets database.
+ * Adds a node ID -> node address mapping into the buckets' database.
  * This is an unrestricted add: no validity checks are made for the correctness
  * of the passed ID or host/port.
  */
@@ -67,6 +67,8 @@ function nodesAdd({
             host,
             port,
           } as NodeAddress,
+          true,
+          true,
           undefined,
           tran,
         ),

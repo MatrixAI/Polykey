@@ -678,60 +678,64 @@ describe('VaultInternal', () => {
     expect(log).toHaveLength(2);
     expect(log[0].commitId).toStrictEqual(commit);
   });
-  test('garbage collection', async () => {
-    await vault.writeF(async (efs) => {
-      await efs.writeFile(secret1.name, secret1.content);
-    });
-    await vault.writeF(async (efs) => {
-      await efs.writeFile(secret2.name, secret2.content);
-    });
-    await vault.writeF(async (efs) => {
-      await efs.writeFile(secret3.name, secret3.content);
-    });
-    // @ts-ignore: kidnap efs
-    const vaultEfs = vault.efs;
-    // @ts-ignore: kidnap efs
-    const vaultEfsData = vault.efsVault;
-    const quickCommit = async (ref: string, secret: string) => {
-      await vaultEfsData.writeFile(secret, secret);
-      await git.add({
-        fs: vaultEfs,
-        dir: vault.vaultDataDir,
-        gitdir: vault.vaultGitDir,
-        filepath: secret,
+  test(
+    'garbage collection',
+    async () => {
+      await vault.writeF(async (efs) => {
+        await efs.writeFile(secret1.name, secret1.content);
       });
-      return await git.commit({
-        fs: vaultEfs,
-        dir: vault.vaultDataDir,
-        gitdir: vault.vaultGitDir,
-        author: {
-          name: 'test',
-          email: 'test',
-        },
-        message: 'test',
-        ref: ref,
+      await vault.writeF(async (efs) => {
+        await efs.writeFile(secret2.name, secret2.content);
       });
-    };
-    const log = await vault.log();
-    let num = 5;
-    const refs: string[] = [];
-    for (const logElement of log) {
-      refs.push(await quickCommit(logElement.commitId, `secret-${num++}`));
-    }
-    // @ts-ignore
-    await vault.garbageCollectGitObjects();
-
-    for (const ref of refs) {
-      await expect(
-        git.checkout({
+      await vault.writeF(async (efs) => {
+        await efs.writeFile(secret3.name, secret3.content);
+      });
+      // @ts-ignore: kidnap efs
+      const vaultEfs = vault.efs;
+      // @ts-ignore: kidnap efs
+      const vaultEfsData = vault.efsVault;
+      const quickCommit = async (ref: string, secret: string) => {
+        await vaultEfsData.writeFile(secret, secret);
+        await git.add({
           fs: vaultEfs,
           dir: vault.vaultDataDir,
           gitdir: vault.vaultGitDir,
-          ref,
-        }),
-      ).rejects.toThrow(git.Errors.CommitNotFetchedError);
-    }
-  });
+          filepath: secret,
+        });
+        return await git.commit({
+          fs: vaultEfs,
+          dir: vault.vaultDataDir,
+          gitdir: vault.vaultGitDir,
+          author: {
+            name: 'test',
+            email: 'test',
+          },
+          message: 'test',
+          ref: ref,
+        });
+      };
+      const log = await vault.log();
+      let num = 5;
+      const refs: string[] = [];
+      for (const logElement of log) {
+        refs.push(await quickCommit(logElement.commitId, `secret-${num++}`));
+      }
+      // @ts-ignore
+      await vault.garbageCollectGitObjects();
+
+      for (const ref of refs) {
+        await expect(
+          git.checkout({
+            fs: vaultEfs,
+            dir: vault.vaultDataDir,
+            gitdir: vault.vaultGitDir,
+            ref,
+          }),
+        ).rejects.toThrow(git.Errors.CommitNotFetchedError);
+      }
+    },
+    global.defaultTimeout * 2,
+  );
   // Locking tests
   const waitDelay = 200;
   test('writeF respects read and write locking', async () => {

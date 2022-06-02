@@ -321,7 +321,7 @@ class ACL {
       true,
     );
     if (permId == null) {
-      const permId = await this.generatePermId();
+      const permId = this.generatePermId();
       const permRef = {
         count: 1,
         object: {

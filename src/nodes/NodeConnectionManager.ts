@@ -11,13 +11,10 @@ import type {
   NodeId,
   NodeIdString,
   SeedNodes,
-  NodeEntry,
-  NodeBucket,
-  NodeIdString,
 } from './types';
-import { withF } from '@matrixai/resources';
 import type NodeManager from './NodeManager';
 import type { AbortSignal } from 'node-abort-controller';
+import { withF } from '@matrixai/resources';
 import Logger from '@matrixai/logger';
 import { ready, StartStop } from '@matrixai/async-init/dist/StartStop';
 import { IdInternal } from '@matrixai/id';
@@ -139,7 +136,6 @@ class NodeConnectionManager {
    * an acquire function with no parameters).
    * @param targetNodeId Id of target node to communicate with
    * @param timer Connection timeout timer
-   * @param address Optional address to connect to
    * @returns ResourceAcquire Resource API for use in with contexts
    */
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
@@ -148,7 +144,10 @@ class NodeConnectionManager {
     timer?: Timer,
   ): Promise<ResourceAcquire<NodeConnection<GRPCClientAgent>>> {
     return async () => {
-      const { connection, timer } = await this.getConnection(targetNodeId, timer);
+      const { connection, timer: timeToLiveTimer } = await this.getConnection(
+        targetNodeId,
+        timer,
+      );
       // Acquire the read lock and the release function
       const [release] = await this.connectionLocks.lock([
         targetNodeId.toString(),
@@ -156,7 +155,7 @@ class NodeConnectionManager {
         'write',
       ])();
       // Resetting TTL timer
-      timer?.refresh();
+      timeToLiveTimer?.refresh();
       // Return tuple of [ResourceRelease, Resource]
       return [
         async (e) => {
@@ -224,7 +223,7 @@ class NodeConnectionManager {
     const [release, conn] = await acquire();
     let caughtError;
     try {
-      return yield* await g(conn!);
+      return yield* g(conn!);
     } catch (e) {
       caughtError = e;
       throw e;
@@ -604,7 +603,7 @@ class NodeConnectionManager {
           );
         } else {
           try {
-            // FIXME: no tran neededawait this.nodeManager?.setNode(nodeId, nodeData.address);
+            await this.nodeManager?.setNode(nodeId, nodeData.address);
           } catch (e) {
             if (!(e instanceof nodesErrors.ErrorNodeGraphSameNodeId)) throw e;
           }

@@ -55,6 +55,8 @@ describe('nodesHolePunchMessage', () => {
         keyManager: pkAgent.keyManager,
         nodeConnectionManager: pkAgent.nodeConnectionManager,
         nodeManager: pkAgent.nodeManager,
+        db: pkAgent.db,
+        logger,
       }),
     };
     grpcServer = new GRPCServer({ logger });

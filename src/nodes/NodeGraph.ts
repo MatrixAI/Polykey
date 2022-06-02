@@ -198,7 +198,7 @@ class NodeGraph {
       },
       this.nodeGraphBucketsDbPath,
     )) {
-      const { nodeId } = nodesUtils.parseBucketsDbKey(key as unknown as Buffer);
+      const { nodeId } = nodesUtils.parseBucketsDbKey(key as Array<Buffer>);
       yield [nodeId, nodeData];
     }
   }
@@ -224,11 +224,9 @@ class NodeGraph {
 
     const [bucketIndex, bucketKey] = this.bucketIndex(nodeId);
     const lastUpdatedPath = [...this.nodeGraphLastUpdatedDbPath, bucketKey];
-    const bucketPath = [...this.nodeGraphBucketsDbPath, bucketKey];
-    const nodeData = await tran.get<NodeData>([
-      ...bucketPath,
-      nodesUtils.bucketDbKey(nodeId),
-    ]);
+    const nodeIdKey = nodesUtils.bucketDbKey(nodeId);
+    const bucketPath = [...this.nodeGraphBucketsDbPath, bucketKey, nodeIdKey];
+    const nodeData = await tran.get<NodeData>(bucketPath);
     if (nodeData != null) {
       this.logger.debug(
         `Updating node ${nodesUtils.encodeNodeId(
@@ -236,33 +234,27 @@ class NodeGraph {
         )} in bucket ${bucketIndex}`,
       );
       // If the node already exists we want to remove the old `lastUpdated`
-      const lastUpdatedKey = nodesUtils.lastUpdatedBucketDbKey(
-        nodeData.lastUpdated,
-        nodeId,
-      );
-      await tran.del([...lastUpdatedPath, lastUpdatedKey]);
+      const lastUpdatedKey = nodesUtils.lastUpdatedKey(nodeData.lastUpdated);
+      await tran.del([...lastUpdatedPath, lastUpdatedKey, nodeIdKey]);
     } else {
       this.logger.debug(
         `Adding node ${nodesUtils.encodeNodeId(
           nodeId,
         )} to bucket ${bucketIndex}`,
       );
-      // It didn't exist so we want to increment the bucket count
+      // It didn't exist, so we want to increment the bucket count
       const count = await this.getBucketMetaProp(bucketIndex, 'count', tran);
       await this.setBucketMetaProp(bucketIndex, 'count', count + 1, tran);
     }
     const lastUpdated = getUnixtime();
-    await tran.put([...bucketPath, nodesUtils.bucketDbKey(nodeId)], {
+    await tran.put(bucketPath, {
       address: nodeAddress,
       lastUpdated,
     });
-    const newLastUpdatedKey = nodesUtils.lastUpdatedBucketDbKey(
-      lastUpdated,
-      nodeId,
-    );
+    const newLastUpdatedKey = nodesUtils.lastUpdatedKey(lastUpdated);
     await tran.put(
-      [...lastUpdatedPath, newLastUpdatedKey],
-      nodesUtils.bucketDbKey(nodeId),
+      [...lastUpdatedPath, newLastUpdatedKey, nodeIdKey],
+      nodeIdKey,
       true,
     );
   }
@@ -281,8 +273,13 @@ class NodeGraph {
     const bucketKey = nodesUtils.bucketKey(bucketIndex);
     // Remove the oldest entry in the bucket
     const oldestNodeIds: Array<NodeId> = [];
-    for await (const [key] of tran.iterator({ limit }, [...this.nodeGraphLastUpdatedDbPath, bucketKey])) {
-      const { nodeId } = nodesUtils.parseLastUpdatedBucketDbKey(key as unknown as Buffer);
+    for await (const [key] of tran.iterator({ limit }, [
+      ...this.nodeGraphLastUpdatedDbPath,
+      bucketKey,
+    ])) {
+      const { nodeId } = nodesUtils.parseLastUpdatedBucketDbKey(
+        key as Array<Buffer>,
+      );
       oldestNodeIds.push(nodeId);
     }
     return oldestNodeIds;
@@ -299,10 +296,8 @@ class NodeGraph {
     const [bucketIndex, bucketKey] = this.bucketIndex(nodeId);
     const bucketPath = [...this.nodeGraphBucketsDbPath, bucketKey];
     const lastUpdatedPath = [...this.nodeGraphLastUpdatedDbPath, bucketKey];
-    const nodeData = await tran.get<NodeData>([
-      ...bucketPath,
-      nodesUtils.bucketDbKey(nodeId),
-    ]);
+    const nodeIdKey = nodesUtils.bucketDbKey(nodeId);
+    const nodeData = await tran.get<NodeData>([...bucketPath, nodeIdKey]);
     if (nodeData != null) {
       this.logger.debug(
         `Removing node ${nodesUtils.encodeNodeId(
@@ -311,12 +306,9 @@ class NodeGraph {
       );
       const count = await this.getBucketMetaProp(bucketIndex, 'count', tran);
       await this.setBucketMetaProp(bucketIndex, 'count', count - 1, tran);
-      await tran.del([...bucketPath, nodesUtils.bucketDbKey(nodeId)]);
-      const lastUpdatedKey = nodesUtils.lastUpdatedBucketDbKey(
-        nodeData.lastUpdated,
-        nodeId,
-      );
-      await tran.del([...lastUpdatedPath, lastUpdatedKey]);
+      await tran.del([...bucketPath, nodeIdKey]);
+      const lastUpdatedKey = nodesUtils.lastUpdatedKey(nodeData.lastUpdated);
+      await tran.del([...lastUpdatedPath, lastUpdatedKey, nodeIdKey]);
     }
   }
 
@@ -354,7 +346,7 @@ class NodeGraph {
         },
         [...this.nodeGraphBucketsDbPath, bucketKey],
       )) {
-        const nodeId = nodesUtils.parseBucketDbKey(key as unknown as Buffer);
+        const nodeId = nodesUtils.parseBucketDbKey(key[0] as Buffer);
         bucket.push([nodeId, nodeData]);
       }
       if (sort === 'distance') {
@@ -429,7 +421,7 @@ class NodeGraph {
         this.nodeGraphBucketsDbPath,
       )) {
         const { bucketIndex: bucketIndex_, nodeId } =
-          nodesUtils.parseBucketsDbKey(key as unknown as Buffer);
+          nodesUtils.parseBucketsDbKey(key as Array<Buffer>);
         if (bucketIndex == null) {
           // First entry of the first bucket
           bucketIndex = bucketIndex_;
@@ -475,8 +467,8 @@ class NodeGraph {
           this.nodeGraphLastUpdatedDbPath,
         )) {
           const { bucketIndex: bucketIndex_, nodeId } =
-            nodesUtils.parseLastUpdatedBucketsDbKey(key as unknown as Buffer);
-          bucketsDbIterator.seek(nodesUtils.bucketsDbKey(bucketIndex_, nodeId));
+            nodesUtils.parseLastUpdatedBucketsDbKey(key as Array<Buffer>);
+          bucketsDbIterator.seek([key[0], key[2]]);
           // @ts-ignore
           // eslint-disable-next-line
           const iteratorResult = await bucketsDbIterator.next();
@@ -518,8 +510,10 @@ class NodeGraph {
       );
     }
 
+    const logger = this.logger.getChild('resetBuckets');
     // Setup new space
     const spaceNew = this.space === '0' ? '1' : '0';
+    logger.debug('new space: ' + spaceNew);
     const nodeGraphMetaDbPathNew = [...this.nodeGraphDbPath, 'meta' + spaceNew];
     const nodeGraphBucketsDbPathNew = [
       ...this.nodeGraphDbPath,
@@ -540,10 +534,16 @@ class NodeGraph {
       this.nodeGraphBucketsDbPath,
     )) {
       // The key is a combined bucket key and node ID
-      const { nodeId } = nodesUtils.parseBucketsDbKey(key as unknown as Buffer);
+      const { bucketIndex: bucketIndexOld, nodeId } =
+        nodesUtils.parseBucketsDbKey(key as Array<Buffer>);
+      const nodeIdEncoded = nodesUtils.encodeNodeId(nodeId);
+      const nodeIdKey = nodesUtils.bucketDbKey(nodeId);
       // If the new own node ID is one of the existing node IDs, it is just dropped
       // We only map to the new bucket if it isn't one of the existing node IDs
       if (nodeId.equals(nodeIdOwn)) {
+        logger.debug(
+          `nodeId ${nodeIdEncoded} from bucket ${bucketIndexOld} was identical to new NodeId and was dropped.`,
+        );
         continue;
       }
       const bucketIndexNew = nodesUtils.bucketIndex(nodeIdOwn, nodeId);
@@ -555,7 +555,7 @@ class NodeGraph {
       if (countNew < this.nodeBucketLimit) {
         await tran.put([...metaPathNew, 'count'], countNew + 1);
       } else {
-        let oldestIndexKey: Buffer | undefined = undefined;
+        let oldestIndexKey: Array<Buffer> | undefined = undefined;
         let oldestNodeId: NodeId | undefined = undefined;
         for await (const [key] of tran.iterator(
           {
@@ -563,28 +563,29 @@ class NodeGraph {
           },
           indexPathNew,
         )) {
-          oldestIndexKey = key as unknown as Buffer;
+          oldestIndexKey = key as Array<Buffer>;
           ({ nodeId: oldestNodeId } = nodesUtils.parseLastUpdatedBucketDbKey(
-            key as unknown as Buffer,
+            key as Array<Buffer>,
           ));
         }
         await tran.del([
           ...bucketPathNew,
           nodesUtils.bucketDbKey(oldestNodeId!),
         ]);
-        await tran.del([...indexPathNew, oldestIndexKey!]);
+        await tran.del([...indexPathNew, ...oldestIndexKey!]);
       }
+      if (bucketIndexOld !== bucketIndexNew) {
+        logger.debug(
+          `nodeId ${nodeIdEncoded} moved ${bucketIndexOld}=>${bucketIndexNew}`,
+        );
+      } else {
+        logger.debug(`nodeId ${nodeIdEncoded} unchanged ${bucketIndexOld}`);
+      }
+      await tran.put([...bucketPathNew, nodeIdKey], nodeData);
+      const lastUpdatedKey = nodesUtils.lastUpdatedKey(nodeData.lastUpdated);
       await tran.put(
-        [...bucketPathNew, nodesUtils.bucketDbKey(nodeId)],
-        nodeData,
-      );
-      const lastUpdatedKey = nodesUtils.lastUpdatedBucketDbKey(
-        nodeData.lastUpdated,
-        nodeId,
-      );
-      await tran.put(
-        [...indexPathNew, lastUpdatedKey],
-        nodesUtils.bucketDbKey(nodeId),
+        [...indexPathNew, lastUpdatedKey, nodeIdKey],
+        nodeIdKey,
         true,
       );
     }
@@ -678,6 +679,8 @@ class NodeGraph {
    * current node has less than k nodes in all of its buckets, in which case it
    * returns all nodes it has knowledge of)
    */
+  // FIXME: this is still operating on assumptions from old code.
+  // I can't get the gt/lt to work on the iterator.
   @ready(new nodesErrors.ErrorNodeGraphNotRunning())
   public async getClosestNodes(
     nodeId: NodeId,
@@ -716,55 +719,44 @@ class NodeGraph {
     // We can just use `!(lexpack bucketId)` to start from
     // Less than `!(bucketId 101)!` gets us buckets 100 and lower
     // greater than `!(bucketId 99)!` gets up buckets 100 and greater
-    const prefix = Buffer.from([33]); // Code for `!` prefix
     if (nodeIds.length < limit) {
       // Just before target bucket
-      const bucketId = Buffer.from(nodesUtils.bucketKey(startingBucket));
-      const endKeyLower = Buffer.concat([prefix, bucketId, prefix]);
+      const bucketIdKey = Buffer.from(nodesUtils.bucketKey(startingBucket));
       const remainingLimit = limit - nodeIds.length;
       // Iterate over lower buckets
-      tran.iterator<NodeData>(
-        {
-          lt: endKeyLower,
-          limit: remainingLimit,
-          valueAsBuffer: false,
-        },
-        this.nodeGraphBucketsDbPath,
-      );
       for await (const [key, nodeData] of tran.iterator<NodeData>(
         {
-          lt: endKeyLower,
+          lt: [bucketIdKey, ''],
           limit: remainingLimit,
           valueAsBuffer: false,
         },
         this.nodeGraphBucketsDbPath,
       )) {
-        const info = nodesUtils.parseBucketsDbKey(key as unknown as Buffer);
+        const info = nodesUtils.parseBucketsDbKey(key as Array<Buffer>);
         nodeIds.push([info.nodeId, nodeData]);
       }
     }
     if (nodeIds.length < limit) {
       // Just after target bucket
       const bucketId = Buffer.from(nodesUtils.bucketKey(startingBucket + 1));
-      const startKeyUpper = Buffer.concat([prefix, bucketId, prefix]);
       const remainingLimit = limit - nodeIds.length;
       // Iterate over ids further away
       tran.iterator(
         {
-          gt: startKeyUpper,
+          gt: [bucketId, ''],
           limit: remainingLimit,
         },
         this.nodeGraphBucketsDbPath,
       );
       for await (const [key, nodeData] of tran.iterator<NodeData>(
         {
-          gt: startKeyUpper,
+          gt: [bucketId, ''],
           limit: remainingLimit,
           valueAsBuffer: false,
         },
         this.nodeGraphBucketsDbPath,
       )) {
-        const info = nodesUtils.parseBucketsDbKey(key as unknown as Buffer);
+        const info = nodesUtils.parseBucketsDbKey(key as Array<Buffer>);
         nodeIds.push([info.nodeId, nodeData]);
       }
     }

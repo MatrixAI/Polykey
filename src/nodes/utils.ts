@@ -6,7 +6,7 @@ import type {
 } from './types';
 import { IdInternal } from '@matrixai/id';
 import lexi from 'lexicographic-integer';
-import { bytes2BigInt, bufferSplit } from '../utils';
+import { bytes2BigInt } from '../utils';
 import * as keysUtils from '../keys/utils';
 
 // FIXME:
@@ -135,22 +135,21 @@ function lastUpdatedBucketDbKey(lastUpdated: number, nodeId: NodeId): Buffer {
   ]);
 }
 
+function lastUpdatedKey(lastUpdated: number): Buffer {
+  return Buffer.from(lexi.pack(lastUpdated, 'hex'));
+}
+
 /**
  * Parse the NodeGraph buckets sublevel key
  * The keys look like `!<lexi<NodeBucketIndex, 'hex')>!<NodeId>`
  * It is assumed that the `!` is the sublevel prefix.
  */
-function parseBucketsDbKey(keyBuffer: Buffer): {
+function parseBucketsDbKey(keyBufferArray: Array<Buffer>): {
   bucketIndex: NodeBucketIndex;
   bucketKey: string;
   nodeId: NodeId;
 } {
-  const [, bucketKeyBuffer, nodeIdBuffer] = bufferSplit(
-    keyBuffer,
-    prefixBuffer,
-    3,
-    true,
-  );
+  const [bucketKeyBuffer, nodeIdBuffer] = keyBufferArray;
   if (bucketKeyBuffer == null || nodeIdBuffer == null) {
     throw new TypeError('Buffer is not an NodeGraph buckets key');
   }
@@ -178,19 +177,14 @@ function parseBucketDbKey(keyBuffer: Buffer): NodeId {
  * The keys look like `!<lexi<NodeBucketIndex, 'hex')>!<lexi(lastUpdated, 'hex')>-<NodeIdString>`
  * It is assumed that the `!` is the sublevel prefix.
  */
-function parseLastUpdatedBucketsDbKey(keyBuffer: Buffer): {
+function parseLastUpdatedBucketsDbKey(keyBufferArray: Array<Buffer>): {
   bucketIndex: NodeBucketIndex;
   bucketKey: string;
   lastUpdated: number;
   nodeId: NodeId;
 } {
-  const [, bucketKeyBuffer, lastUpdatedBuffer] = bufferSplit(
-    keyBuffer,
-    prefixBuffer,
-    3,
-    true,
-  );
-  if (bucketKeyBuffer == null || lastUpdatedBuffer == null) {
+  const [bucketKeyBuffer, ...lastUpdatedBufferArray] = keyBufferArray;
+  if (bucketKeyBuffer == null || lastUpdatedBufferArray == null) {
     throw new TypeError('Buffer is not an NodeGraph index key');
   }
   const bucketKey = bucketKeyBuffer.toString();
@@ -198,8 +192,9 @@ function parseLastUpdatedBucketsDbKey(keyBuffer: Buffer): {
   if (bucketIndex == null) {
     throw new TypeError('Buffer is not an NodeGraph index key');
   }
-  const { lastUpdated, nodeId } =
-    parseLastUpdatedBucketDbKey(lastUpdatedBuffer);
+  const { lastUpdated, nodeId } = parseLastUpdatedBucketDbKey(
+    lastUpdatedBufferArray,
+  );
   return {
     bucketIndex,
     bucketKey,
@@ -213,16 +208,11 @@ function parseLastUpdatedBucketsDbKey(keyBuffer: Buffer): {
  * The keys look like `<lexi(lastUpdated, 'hex')>-<NodeIdString>`
  * It is assumed that the `!` is the sublevel prefix.
  */
-function parseLastUpdatedBucketDbKey(keyBuffer: Buffer): {
+function parseLastUpdatedBucketDbKey(keyBufferArray: Array<Buffer>): {
   lastUpdated: number;
   nodeId: NodeId;
 } {
-  const [lastUpdatedBuffer, nodeIdBuffer] = bufferSplit(
-    keyBuffer,
-    Buffer.from('-'),
-    2,
-    true,
-  );
+  const [lastUpdatedBuffer, nodeIdBuffer] = keyBufferArray;
   if (lastUpdatedBuffer == null || nodeIdBuffer == null) {
     throw new TypeError('Buffer is not an NodeGraph index bucket key');
   }
@@ -332,6 +322,7 @@ export {
   bucketDbKey,
   lastUpdatedBucketsDbKey,
   lastUpdatedBucketDbKey,
+  lastUpdatedKey,
   parseBucketsDbKey,
   parseBucketDbKey,
   parseLastUpdatedBucketsDbKey,

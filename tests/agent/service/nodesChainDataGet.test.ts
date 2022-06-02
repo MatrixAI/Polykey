@@ -55,6 +55,8 @@ describe('nodesClosestLocalNode', () => {
     const agentService = {
       nodesClosestLocalNodesGet: nodesClosestLocalNodesGet({
         nodeGraph: pkAgent.nodeGraph,
+        db: pkAgent.db,
+        logger,
       }),
     };
     grpcServer = new GRPCServer({ logger });
