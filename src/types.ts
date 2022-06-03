@@ -10,7 +10,8 @@ type POJO = { [key: string]: any };
  * Opaque types are wrappers of existing types
  * that require smart constructors
  */
-type Opaque<K, T> = T & { __TYPE__: K };
+type Opaque<K, T> = T & { readonly [brand]: K };
+declare const brand: unique symbol;
 
 /**
  * Non-empty array
