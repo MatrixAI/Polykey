@@ -1,4 +1,4 @@
-import type { FileSystem, Timer } from '../types';
+import type { FileSystem, Timer, Callback } from '../types';
 import os from 'os';
 import process from 'process';
 import path from 'path';
@@ -138,18 +138,34 @@ async function poll<T, E = any>(
 
 /**
  * Convert callback-style to promise-style
+ * If this is applied to overloaded function
+ * it will only choose one of the function signatures to use
  */
-function promisify<T>(f): (...args: any[]) => Promise<T> {
-  return function <T>(...args): Promise<T> {
+function promisify<
+  T extends Array<unknown>,
+  P extends Array<unknown>,
+  R extends T extends [] ? void : T extends [unknown] ? T[0] : T,
+>(
+  f: (...args: [...params: P, callback: Callback<T>]) => unknown,
+): (...params: P) => Promise<R> {
+  // Uses a regular function so that `this` can be bound
+  return function (...params: P): Promise<R> {
     return new Promise((resolve, reject) => {
       const callback = (error, ...values) => {
         if (error != null) {
           return reject(error);
         }
-        return resolve(values.length === 1 ? values[0] : values);
+        if (values.length === 0) {
+          (resolve as () => void)();
+        } else if (values.length === 1) {
+          resolve(values[0] as R);
+        } else {
+          resolve(values as R);
+        }
+        return;
       };
-      args.push(callback);
-      f.apply(this, args);
+      params.push(callback);
+      f.apply(this, params);
     });
   };
 }
