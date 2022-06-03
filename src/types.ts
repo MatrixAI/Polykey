@@ -14,6 +14,14 @@ type Opaque<K, T> = T & { readonly [brand]: K };
 declare const brand: unique symbol;
 
 /**
+ * Generic callback
+ */
+type Callback<P extends Array<any> = [], R = any, E extends Error = Error> = {
+  (e: E, ...params: Partial<P>): R;
+  (e?: null | undefined, ...params: P): R;
+};
+
+/**
  * Non-empty array
  */
 type NonEmptyArray<T> = [T, ...T[]];
@@ -81,6 +89,7 @@ type FileHandle = fs.promises.FileHandle;
 export type {
   POJO,
   Opaque,
+  Callback,
   NonEmptyArray,
   AbstractConstructorParameters,
   Initial,
