@@ -5,10 +5,9 @@ const process = require('process');
 const { pathsToModuleNameMapper } = require('ts-jest/utils');
 const { compilerOptions } = require('./tsconfig');
 
-const moduleNameMapper = pathsToModuleNameMapper(
-  compilerOptions.paths,
-  { prefix: "<rootDir>/src/" }
-);
+const moduleNameMapper = pathsToModuleNameMapper(compilerOptions.paths, {
+  prefix: '<rootDir>/src/',
+});
 
 // using panva/jose with jest requires subpath exports
 // https://github.com/panva/jose/discussions/105
@@ -40,33 +39,33 @@ process.env['GLOBAL_DATA_DIR'] = globals.dataDir;
 
 module.exports = {
   testEnvironment: "node",
-  cacheDirectory: '<rootDir>/tmp/jest',
   verbose: true,
-  roots: [
-    "<rootDir>/tests"
-  ],
-  testMatch: [
-    "**/?(*.)+(spec|test|unit.test).+(ts|tsx|js)"
-  ],
+  collectCoverage: false,
+  cacheDirectory: '<rootDir>/tmp/jest',
+  coverageDirectory: '<rootDir>/tmp/coverage',
+  roots: ['<rootDir>/tests'],
+  testMatch: ['**/?(*.)+(spec|test|unit.test).+(ts|tsx|js|jsx)'],
   transform: {
-    "^.+\\.tsx?$": "ts-jest",
-    "^.+\\.jsx?$": "babel-jest"
+    '^.+\\.tsx?$': 'ts-jest',
+    '^.+\\.jsx?$': 'babel-jest',
   },
+  reporters: [
+    'default',
+    ['jest-junit', { outputDirectory: '<rootDir>/tmp/junit' }],
+  ],
+  collectCoverageFrom: ['src/**/*.{ts,tsx,js,jsx}', '!src/**/*.d.ts'],
+  coverageReporters: ['text', 'cobertura'],
   globals,
   // Global setup script executed once before all test files
-  globalSetup: "<rootDir>/tests/globalSetup.ts",
+  globalSetup: '<rootDir>/tests/globalSetup.ts',
   // Global teardown script executed once after all test files
-  globalTeardown: "<rootDir>/tests/globalTeardown.ts",
+  globalTeardown: '<rootDir>/tests/globalTeardown.ts',
   // Setup files are executed before each test file
   // Can access globals
-  setupFiles: [
-    "<rootDir>/tests/setup.ts"
-  ],
+  setupFiles: ['<rootDir>/tests/setup.ts'],
   // Setup files after env are executed before each test file
   // after the jest test environment is installed
   // Can access globals
-  setupFilesAfterEnv: [
-    "<rootDir>/tests/setupAfterEnv.ts"
-  ],
-  moduleNameMapper: moduleNameMapper
+  setupFilesAfterEnv: ['<rootDir>/tests/setupAfterEnv.ts'],
+  moduleNameMapper: moduleNameMapper,
 };

@@ -1,6 +1,7 @@
 # Polykey
 
-[![pipeline status](https://gitlab.com/MatrixAI/open-source/js-polykey/badges/master/pipeline.svg)](https://gitlab.com/MatrixAI/open-source/js-polykey/commits/master)
+staging:[![pipeline status](https://gitlab.com/MatrixAI/open-source/js-polykey/badges/staging/pipeline.svg)](https://gitlab.com/MatrixAI/open-source/js-polykey/commits/staging)
+master:[![pipeline status](https://gitlab.com/MatrixAI/open-source/js-polykey/badges/master/pipeline.svg)](https://gitlab.com/MatrixAI/open-source/js-polykey/commits/master)
 
 This is the core library for running PolyKey. It provides a CLI `polykey` or `pk` for interacting with the PolyKey system.
 
