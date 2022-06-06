@@ -2,8 +2,13 @@
 /dist
 .env*
 !.env.example
+# nix
 /result*
 /builds
+# node-gyp
+/build
+# prebuildify
+/prebuilds
 
 # Logs
 logs

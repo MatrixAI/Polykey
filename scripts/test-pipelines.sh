@@ -5,7 +5,19 @@ shopt -s nullglob
 
 # Quote the heredoc to prevent shell expansion
 cat << "EOF"
+workflow:
+  rules:
+    # Disable merge request pipelines
+    - if: $CI_MERGE_REQUEST_ID
+      when: never
+    - when: always
+
+default:
+  interruptible: true
+
 variables:
+  GH_PROJECT_PATH: "MatrixAI/${CI_PROJECT_NAME}"
+  GH_PROJECT_URL: "https://${GITHUB_TOKEN}@github.com/${GH_PROJECT_PATH}.git"
   GIT_SUBMODULE_STRATEGY: "recursive"
   # Cache .npm
   NPM_CONFIG_CACHE: "./tmp/npm"
@@ -16,7 +28,7 @@ variables:
   TS_CACHED_TRANSPILE_CACHE: "${CI_PROJECT_DIR}/tmp/ts-node-cache"
   TS_CACHED_TRANSPILE_PORTABLE: "true"
 
-# Cached directories shared between jobs & pipelines per-branch
+# Cached directories shared between jobs & pipelines per-branch per-runner
 cache:
   key: $CI_COMMIT_REF_SLUG
   paths:
@@ -24,23 +36,11 @@ cache:
     - ./tmp/ts-node-cache/
     # `jest` cache is configured in jest.config.js
     - ./tmp/jest/
+
+image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
 EOF
 
 printf "\n"
-
-# # SPECIAL CASE
-# cat << EOF
-# test binagent:
-#   image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
-#   stage: test
-#   interruptible: true
-#   script:
-#     - >
-#         nix-shell -I nixpkgs=./pkgs.nix --packages nodejs --run '
-#         npm ci;
-#         npm test -- ./tests/bin/agent;
-#         '
-# EOF
 
 # Each test directory has its own job
 for test_dir in tests/**/*/; do
@@ -53,16 +53,20 @@ for test_dir in tests/**/*/; do
   # Remove `tests/` prefix
   test_dir="${test_dir#*/}"
   cat << EOF
-test $test_dir:
-  image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
+check:test $test_dir:
   stage: test
-  interruptible: true
+  needs: []
   script:
     - >
-        nix-shell -I nixpkgs=./pkgs.nix --packages nodejs --run '
-        npm ci;
-        npm test -- ${test_files[@]};
+        nix-shell --run '
+        npm run build --verbose;
+        npm test -- --ci ${test_files[@]};
         '
+  artifacts:
+    when: always
+    reports:
+      junit:
+        - ./tmp/junit/junit.xml
 EOF
   printf "\n"
 done
@@ -70,14 +74,18 @@ done
 # All top-level test files are accumulated into 1 job
 test_files=(tests/*.test.ts)
 cat << EOF
-test index:
-  image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
+check:test index:
   stage: test
-  interruptible: true
+  needs: []
   script:
     - >
-        nix-shell -I nixpkgs=./pkgs.nix --packages nodejs --run '
-        npm ci;
-        npm test -- ${test_files[@]};
+        nix-shell --run '
+        npm run build --verbose;
+        npm test -- --ci ${test_files[@]};
         '
+  artifacts:
+    when: always
+    reports:
+      junit:
+        - ./tmp/junit/junit.xml
 EOF

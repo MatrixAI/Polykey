@@ -5,17 +5,16 @@ const process = require('process');
 const { pathsToModuleNameMapper } = require('ts-jest');
 const { compilerOptions } = require('./tsconfig');
 
-const moduleNameMapper = pathsToModuleNameMapper(
-  compilerOptions.paths,
-  { prefix: "<rootDir>/src/" }
-);
+const moduleNameMapper = pathsToModuleNameMapper(compilerOptions.paths, {
+  prefix: '<rootDir>/src/',
+});
 
 // using panva/jose with jest requires subpath exports
 // https://github.com/panva/jose/discussions/105
 moduleNameMapper['^jose/(.*)$'] = "<rootDir>/node_modules/jose/dist/node/cjs/$1";
 
 // Global variables that are shared across the jest worker pool
-// These variables must be static and serialisable
+// These variables must be static and serializable
 const globals = {
   // Absolute directory to the project root
   projectDir: __dirname,
@@ -39,34 +38,34 @@ const globals = {
 process.env['GLOBAL_DATA_DIR'] = globals.dataDir;
 
 module.exports = {
-  testEnvironment: "node",
-  cacheDirectory: '<rootDir>/tmp/jest',
+  testEnvironment: 'node',
   verbose: true,
-  roots: [
-    "<rootDir>/tests"
-  ],
-  testMatch: [
-    "**/?(*.)+(spec|test|unit.test).+(ts|tsx|js)"
-  ],
+  collectCoverage: false,
+  cacheDirectory: '<rootDir>/tmp/jest',
+  coverageDirectory: '<rootDir>/tmp/coverage',
+  roots: ['<rootDir>/tests'],
+  testMatch: ['**/?(*.)+(spec|test|unit.test).+(ts|tsx|js|jsx)'],
   transform: {
-    "^.+\\.tsx?$": "ts-jest",
-    "^.+\\.jsx?$": "babel-jest"
+    '^.+\\.tsx?$': 'ts-jest',
+    '^.+\\.jsx?$': 'babel-jest',
   },
+  reporters: [
+    'default',
+    ['jest-junit', { outputDirectory: '<rootDir>/tmp/junit' }],
+  ],
+  collectCoverageFrom: ['src/**/*.{ts,tsx,js,jsx}', '!src/**/*.d.ts'],
+  coverageReporters: ['text', 'cobertura'],
   globals,
   // Global setup script executed once before all test files
-  globalSetup: "<rootDir>/tests/globalSetup.ts",
+  globalSetup: '<rootDir>/tests/globalSetup.ts',
   // Global teardown script executed once after all test files
-  globalTeardown: "<rootDir>/tests/globalTeardown.ts",
+  globalTeardown: '<rootDir>/tests/globalTeardown.ts',
   // Setup files are executed before each test file
   // Can access globals
-  setupFiles: [
-    "<rootDir>/tests/setup.ts"
-  ],
+  setupFiles: ['<rootDir>/tests/setup.ts'],
   // Setup files after env are executed before each test file
   // after the jest test environment is installed
   // Can access globals
-  setupFilesAfterEnv: [
-    "<rootDir>/tests/setupAfterEnv.ts"
-  ],
-  moduleNameMapper: moduleNameMapper
+  setupFilesAfterEnv: ['<rootDir>/tests/setupAfterEnv.ts'],
+  moduleNameMapper: moduleNameMapper,
 };

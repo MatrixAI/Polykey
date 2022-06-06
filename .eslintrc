@@ -26,7 +26,7 @@
     "no-useless-catch": 1,
     "no-prototype-builtins": 1,
     "no-constant-condition": 0,
-    "no-useless-escape" : 0,
+    "no-useless-escape": 0,
     "no-console": "error",
     "require-yield": 0,
     "eqeqeq": ["error", "smart"],
