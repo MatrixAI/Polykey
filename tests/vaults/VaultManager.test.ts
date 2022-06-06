@@ -23,6 +23,7 @@ import KeyManager from '@/keys/KeyManager';
 import PolykeyAgent from '@/PolykeyAgent';
 import VaultManager from '@/vaults/VaultManager';
 import * as vaultsErrors from '@/vaults/errors';
+import * as validationErrors from '@/validation/errors';
 import NodeGraph from '@/nodes/NodeGraph';
 import * as nodesUtils from '@/nodes/utils';
 import Proxy from '@/network/Proxy';
@@ -743,7 +744,7 @@ describe('VaultManager', () => {
             remoteKeynode1Id,
             'not-existing' as VaultName,
           ),
-          vaultsErrors.ErrorVaultsVaultUndefined,
+          validationErrors.ErrorValidation,
         );
       } finally {
         await vaultManager?.stop();

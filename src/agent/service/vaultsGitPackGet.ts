@@ -56,9 +56,10 @@ function vaultsGitPackGet({
       }
       const nodeId = connectionInfo.remoteNodeId;
       const nodeIdEncoded = nodesUtils.encodeNodeId(nodeId);
+      const nameOrId = meta.get('vaultNameOrId').pop()!.toString();
       await db.withTransactionF(async (tran) => {
         const vaultIdFromName = await vaultManager.getVaultId(
-          meta.get('vaultNameOrId').pop()!.toString() as VaultName,
+          nameOrId as VaultName,
           tran,
         );
         const {
@@ -79,8 +80,8 @@ function vaultsGitPackGet({
             );
           },
           {
-            vaultId: meta.get('vaultNameOrId').pop(),
-            actionType: meta.get('vaultAction').pop(),
+            vaultId: nameOrId,
+            actionType: meta.get('vaultAction').pop()!.toString(),
           },
         );
         // Checking permissions
