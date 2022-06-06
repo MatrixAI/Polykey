@@ -1,7 +1,7 @@
 import type { DB } from '@matrixai/db';
 import type { Authenticate } from '../types';
 import type VaultManager from '../../vaults/VaultManager';
-import type { VaultId } from '../../vaults/types';
+import type { VaultName, VaultId } from '../../vaults/types';
 import type { NodeId } from '../../nodes/types';
 import type * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
 import type Logger from '@matrixai/logger';
@@ -35,28 +35,30 @@ function vaultsClone({
       const response = new utilsPB.StatusMessage();
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
+      // Node id
       const {
         nodeId,
-        vaultId,
       }: {
         nodeId: NodeId;
-        vaultId: VaultId;
       } = validateSync(
         (keyPath, value) => {
           return matchSync(keyPath)(
             [['nodeId'], () => validationUtils.parseNodeId(value)],
-            [['vaultId'], () => vaultsUtils.decodeVaultId(value) ?? value],
             () => value,
           );
         },
         {
           nodeId: call.request.getNode()?.getNodeId(),
-          vaultId: call.request.getVault()?.getNameOrId(),
         },
       );
-      await db.withTransactionF(async (tran) =>
-        vaultManager.cloneVault(nodeId, vaultId, tran),
-      );
+      // Vault id
+      let vaultId;
+      const vaultNameOrId = call.request.getVault()?.getNameOrId();
+      vaultId = vaultsUtils.decodeVaultId(vaultNameOrId);
+      vaultId = vaultId ?? vaultNameOrId;
+      await db.withTransactionF(async (tran) => {
+        await vaultManager.cloneVault(nodeId, vaultId, tran);
+      });
       response.setSuccess(true);
       callback(null, response);
       return;

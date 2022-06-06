@@ -34,6 +34,15 @@ function vaultsPull({
       const response = new utilsPB.StatusMessage();
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
+      let pullVaultId;
+      const pullVaultMessage = call.request.getPullVault();
+      if (pullVaultMessage == null) {
+        pullVaultId = null;
+      } else {
+        pullVaultId = vaultsUtils.decodeVaultId(pullVaultMessage.getNameOrId());
+        pullVaultId = pullVaultId ?? pullVaultMessage.getNameOrId();
+        if (pullVaultId == null) pullVaultId = pullVaultMessage.getNameOrId();
+      }
       await db.withTransactionF(async (tran) => {
         const vaultIdFromName = await vaultManager.getVaultId(
           call.request.getVault()?.getNameOrId() as VaultName,
@@ -42,11 +51,9 @@ function vaultsPull({
         const {
           vaultId,
           nodeId,
-          pullVaultId,
         }: {
           vaultId: VaultId;
           nodeId: NodeId | undefined;
-          pullVaultId: VaultId | VaultName | undefined;
         } = validateSync(
           (keyPath, value) => {
             return matchSync(keyPath)(
@@ -58,17 +65,12 @@ function vaultsPull({
                 ['nodeId'],
                 () => (value ? validationUtils.parseNodeId(value) : undefined),
               ],
-              [
-                ['pullVaultId'],
-                () => vaultsUtils.decodeVaultId(value) ?? value,
-              ],
               () => value,
             );
           },
           {
             vaultId: call.request.getVault()?.getNameOrId(),
             nodeId: call.request.getNode()?.getNodeId(),
-            pullVaultId: call.request.getPullVault()?.getNameOrId(),
           },
         );
         await vaultManager.pullVault({
