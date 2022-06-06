@@ -1,15 +1,13 @@
 import type { DB } from '@matrixai/db';
 import type { Authenticate } from '../types';
-import type { VaultName, VaultId } from '../../vaults/types';
+import type { VaultName } from '../../vaults/types';
 import type VaultManager from '../../vaults/VaultManager';
 import type Logger from '@matrixai/logger';
 import type * as grpc from '@grpc/grpc-js';
-import { validateSync } from '../../validation';
-import * as validationUtils from '../../validation/utils';
+import * as vaultsUtils from '../../vaults/utils';
 import * as grpcUtils from '../../grpc/utils';
 import * as vaultsErrors from '../../vaults/errors';
 import * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
-import { matchSync } from '../../utils';
 import * as clientUtils from '../utils';
 
 function vaultsVersion({
@@ -37,24 +35,12 @@ function vaultsVersion({
           call.request.getVault()?.getNameOrId() as VaultName,
           tran,
         );
-        const {
-          vaultId,
-        }: {
-          vaultId: VaultId;
-        } = validateSync(
-          (keyPath, value) => {
-            return matchSync(keyPath)(
-              [
-                ['vaultId'],
-                () => vaultIdFromName ?? validationUtils.parseVaultId(value),
-              ],
-              () => value,
-            );
-          },
-          {
-            vaultId: call.request.getVault()?.getNameOrId(),
-          },
-        );
+        const vaultId =
+          vaultIdFromName ??
+          vaultsUtils.decodeVaultId(call.request.getVault()?.getNameOrId());
+        if (vaultId == null) {
+          throw new vaultsErrors.ErrorVaultsVaultUndefined();
+        }
         // Doing the deed
         const versionId = call.request.getVersionId();
         const [latestOid, currentVersionId] = await vaultManager.withVaults(
@@ -78,7 +64,7 @@ function vaultsVersion({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
-      !clientUtils.isClientError(e, [
+      !clientUtils.isClientClientError(e, [
         vaultsErrors.ErrorVaultsVaultUndefined,
         vaultsErrors.ErrorVaultReferenceInvalid,
         vaultsErrors.ErrorVaultReferenceMissing,

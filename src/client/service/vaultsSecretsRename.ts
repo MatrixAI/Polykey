@@ -1,17 +1,15 @@
 import type { DB } from '@matrixai/db';
 import type { Authenticate } from '../types';
-import type { VaultName, VaultId } from '../../vaults/types';
+import type { VaultName } from '../../vaults/types';
 import type VaultManager from '../../vaults/VaultManager';
 import type * as secretsPB from '../../proto/js/polykey/v1/secrets/secrets_pb';
 import type Logger from '@matrixai/logger';
 import type * as grpc from '@grpc/grpc-js';
-import { validateSync } from '../../validation';
-import * as validationUtils from '../../validation/utils';
-import * as grpcUtils from '../../grpc/utils';
+import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
+import * as grpcUtils from '../../grpc/utils';
 import * as vaultOps from '../../vaults/VaultOps';
 import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
-import { matchSync } from '../../utils';
 import * as clientUtils from '../utils';
 
 function vaultsSecretsRename({
@@ -38,24 +36,14 @@ function vaultsSecretsRename({
           call.request.getOldSecret()?.getVault()?.getNameOrId() as VaultName,
           tran,
         );
-        const {
-          vaultId,
-        }: {
-          vaultId: VaultId;
-        } = validateSync(
-          (keyPath, value) => {
-            return matchSync(keyPath)(
-              [
-                ['vaultId'],
-                () => vaultIdFromName ?? validationUtils.parseVaultId(value),
-              ],
-              () => value,
-            );
-          },
-          {
-            vaultId: call.request.getOldSecret()?.getVault()?.getNameOrId(),
-          },
-        );
+        const vaultId =
+          vaultIdFromName ??
+          vaultsUtils.decodeVaultId(
+            call.request.getOldSecret()?.getVault()?.getNameOrId(),
+          );
+        if (vaultId == null) {
+          throw new vaultsErrors.ErrorVaultsVaultUndefined();
+        }
         const oldSecret = call.request.getOldSecret()?.getSecretName();
         if (oldSecret == null) {
           throw new vaultsErrors.ErrorSecretsSecretUndefined();
@@ -74,7 +62,7 @@ function vaultsSecretsRename({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
-      !clientUtils.isClientError(e, [
+      !clientUtils.isClientClientError(e, [
         vaultsErrors.ErrorVaultsVaultUndefined,
         vaultsErrors.ErrorSecretsSecretUndefined,
       ]) && logger.error(e);

@@ -53,7 +53,7 @@ function vaultsScan({
       return;
     } catch (e) {
       await genWritable.throw(e);
-      !agentUtils.isClientError(e, [
+      !agentUtils.isAgentClientError(e, [
         agentErrors.ErrorConnectionInfoMissing,
         vaultsErrors.ErrorVaultsPermissionDenied,
       ]) && logger.error(e);

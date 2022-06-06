@@ -51,7 +51,7 @@ function nodesChainDataGet({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e, true));
-      !agentUtils.isClientError(e) && logger.error(e);
+      !agentUtils.isAgentClientError(e) && logger.error(e);
       return;
     }
   };

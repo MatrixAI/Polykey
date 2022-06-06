@@ -1,6 +1,6 @@
 import type * as grpc from '@grpc/grpc-js';
 import type { DB } from '@matrixai/db';
-import type { VaultName, VaultId, VaultAction } from '../../vaults/types';
+import type { VaultName, VaultAction } from '../../vaults/types';
 import type VaultManager from '../../vaults/VaultManager';
 import type { ConnectionInfoGet } from '../../agent/types';
 import type ACL from '../../acl/ACL';
@@ -62,25 +62,22 @@ function vaultsGitPackGet({
           nameOrId as VaultName,
           tran,
         );
+        const vaultId = vaultIdFromName ?? vaultsUtils.decodeVaultId(nameOrId);
+        if (vaultId == null) {
+          throw new vaultsErrors.ErrorVaultsVaultUndefined();
+        }
         const {
-          vaultId,
           actionType,
         }: {
-          vaultId: VaultId;
           actionType: VaultAction;
         } = validateSync(
           (keyPath, value) => {
             return matchSync(keyPath)(
-              [
-                ['vaultId'],
-                () => vaultIdFromName ?? validationUtils.parseVaultId(value),
-              ],
               [['actionType'], () => validationUtils.parseVaultAction(value)],
               () => value,
             );
           },
           {
-            vaultId: nameOrId,
             actionType: meta.get('vaultAction').pop()!.toString(),
           },
         );
@@ -123,7 +120,7 @@ function vaultsGitPackGet({
       return;
     } catch (e) {
       await genDuplex.throw(e);
-      !agentUtils.isClientError(e, [
+      !agentUtils.isAgentClientError(e, [
         agentErrors.ErrorConnectionInfoMissing,
         vaultsErrors.ErrorVaultsPermissionDenied,
         vaultsErrors.ErrorVaultsVaultUndefined,

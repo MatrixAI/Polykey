@@ -58,7 +58,7 @@ function vaultsScan({
       return;
     } catch (e) {
       await genWritable.throw(e);
-      !clientUtils.isClientError(e, [
+      !clientUtils.isClientClientError(e, [
         nodesErrors.ErrorNodeGraphNodeIdNotFound,
       ]) && logger.error(e);
       return;

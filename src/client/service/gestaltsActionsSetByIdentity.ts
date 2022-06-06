@@ -68,7 +68,7 @@ function gestaltsActionsSetByIdentity({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
-      !clientUtils.isClientError(e, [
+      !clientUtils.isClientClientError(e, [
         gestaltsErrors.ErrorGestaltsGraphIdentityIdMissing,
         gestaltsErrors.ErrorGestaltsGraphNodeIdMissing,
       ]) && logger.error(e);

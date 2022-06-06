@@ -173,7 +173,7 @@ function nodesCrossSignClaim({
       });
     } catch (e) {
       await genClaims.throw(e);
-      !agentUtils.isClientError(e, [
+      !agentUtils.isAgentClientError(e, [
         claimsErrors.ErrorEmptyStream,
         claimsErrors.ErrorUndefinedSinglySignedClaim,
         claimsErrors.ErrorUndefinedSignature,

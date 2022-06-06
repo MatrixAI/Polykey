@@ -56,7 +56,7 @@ function gestaltsGestaltGetByNode({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
-      !clientUtils.isClientError(e) && logger.error(e);
+      !clientUtils.isClientClientError(e) && logger.error(e);
       return;
     }
   };

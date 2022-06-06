@@ -6,6 +6,7 @@ import type * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
 import type Logger from '@matrixai/logger';
 import type * as grpc from '@grpc/grpc-js';
 import * as grpcUtils from '../../grpc/utils';
+import * as grpcErrors from '../../grpc/errors';
 import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 import * as nodesErrors from '../../nodes/errors';
 import { validateSync } from '../../validation';
@@ -63,9 +64,10 @@ function vaultsClone({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
-      !clientUtils.isClientError(e, [
+      !clientUtils.isClientClientError(e, [
         nodesErrors.ErrorNodeGraphNodeIdNotFound,
         vaultsErrors.ErrorVaultsNameConflict,
+        [grpcErrors.ErrorPolykeyRemote, vaultsErrors.ErrorVaultsVaultUndefined],
       ]) && logger.error(e);
       return;
     }

@@ -36,7 +36,7 @@ function notificationsSend({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e, true));
-      !agentUtils.isClientError(e, [
+      !agentUtils.isAgentClientError(e, [
         notificationsErrors.ErrorNotificationsInvalidType,
         notificationsErrors.ErrorNotificationsValidationFailed,
         notificationsErrors.ErrorNotificationsParse,

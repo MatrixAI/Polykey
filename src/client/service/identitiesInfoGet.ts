@@ -113,7 +113,7 @@ function identitiesInfoGet({
       return;
     } catch (e) {
       await genWritable.throw(e);
-      !clientUtils.isClientError(e, [
+      !clientUtils.isClientClientError(e, [
         identitiesErrors.ErrorProviderMissing,
         identitiesErrors.ErrorProviderUnauthenticated,
       ]) && logger.error(e);

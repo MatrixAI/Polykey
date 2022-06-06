@@ -1,13 +1,14 @@
 import type { DB } from '@matrixai/db';
 import type { Authenticate } from '../types';
 import type { NodeId } from '../../nodes/types';
-import type { VaultName, VaultId, VaultAction } from '../../vaults/types';
+import type { VaultName, VaultAction } from '../../vaults/types';
 import type VaultManager from '../../vaults/VaultManager';
 import type GestaltGraph from '../../gestalts/GestaltGraph';
 import type ACL from '../../acl/ACL';
 import type * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
 import type Logger from '@matrixai/logger';
 import type * as grpc from '@grpc/grpc-js';
+import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
 import { validateSync } from '../../validation';
 import * as validationUtils from '../../validation/utils';
@@ -45,29 +46,28 @@ function vaultsPermissionUnset({
           call.request.getVault()?.getNameOrId() as VaultName,
           tran,
         );
+        const vaultId =
+          vaultIdFromName ??
+          vaultsUtils.decodeVaultId(call.request.getVault()?.getNameOrId());
+        if (vaultId == null) {
+          throw new vaultsErrors.ErrorVaultsVaultUndefined();
+        }
         const {
           nodeId,
-          vaultId,
           actions,
         }: {
           nodeId: NodeId;
-          vaultId: VaultId;
           actions: Array<VaultAction>;
         } = validateSync(
           (keyPath, value) => {
             return matchSync(keyPath)(
               [['nodeId'], () => validationUtils.parseNodeId(value)],
-              [
-                ['vaultId'],
-                () => vaultIdFromName ?? validationUtils.parseVaultId(value),
-              ],
               [['actions'], () => value.map(validationUtils.parseVaultAction)],
               () => value,
             );
           },
           {
             nodeId: call.request.getNode()?.getNodeId(),
-            vaultId: call.request.getVault()?.getNameOrId(),
             actions: call.request.getVaultPermissionsList(),
           },
         );
@@ -99,7 +99,7 @@ function vaultsPermissionUnset({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
-      !clientUtils.isClientError(e, [
+      !clientUtils.isClientClientError(e, [
         vaultsErrors.ErrorVaultsVaultUndefined,
         gestaltsErrors.ErrorGestaltsGraphNodeIdMissing,
       ]) && logger.error(e);

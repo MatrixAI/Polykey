@@ -342,8 +342,8 @@ describe('CLI vaults', () => {
         targetNodeIdEncoded,
       ];
       result = await testBinUtils.pkStdio([...command], {}, dataDir);
-      expect(result.exitCode).toBe(sysexits.DATAERR);
-      expect(result.stderr).toContain('ErrorValidation');
+      expect(result.exitCode).toBe(sysexits.USAGE);
+      expect(result.stderr).toContain('ErrorVaultsVaultUndefined');
 
       command = [
         'vaults',
