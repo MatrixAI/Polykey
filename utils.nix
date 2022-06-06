@@ -2,7 +2,6 @@
 , linkFarm
 , nix-gitignore
 , nodejs
-, nodePackages
 , pkgs
 , lib
 , fetchurl
@@ -12,7 +11,7 @@
 rec {
   # this removes the org scoping
   basename = builtins.baseNameOf node2nixDev.packageName;
-  src = nix-gitignore.gitignoreSource [".git"] ./.;
+  src = nix-gitignore.gitignoreSource [".git" "/*.nix"] ./.;
   nodeVersion = builtins.elemAt (lib.versions.splitVersion nodejs.version) 0;
   # custom node2nix directly from GitHub
   node2nixSrc = fetchFromGitHub {
@@ -33,21 +32,30 @@ rec {
       --composition $out/default.nix \
       --nodejs-${nodeVersion}
   '';
-  # the shell attribute has the nodeDependencies, whereas the package does not
-  node2nixProd = (
-    (import (node2nixDrv false) { inherit pkgs nodejs; }).shell.override (attrs: {
-      buildInputs = attrs.buildInputs ++ [ nodePackages.node-gyp-build ];
-      dontNpmInstall = true;
-    })
-  ).nodeDependencies;
-  node2nixDev = (import (node2nixDrv true) { inherit pkgs nodejs; }).package.override (attrs: {
+  node2nixProd = (import (node2nixDrv false) { inherit pkgs nodejs; }).nodeDependencies.override (attrs: {
+    # Use filtered source
     src = src;
-    buildInputs = attrs.buildInputs ++ [ nodePackages.node-gyp-build ];
+    # Do not run build scripts during npm rebuild and npm install
+    npmFlags = "--ignore-scripts";
+    # Do not run npm install, dependencies are installed by nix
     dontNpmInstall = true;
+  });
+  node2nixDev = (import (node2nixDrv true) { inherit pkgs nodejs; }).package.override (attrs: {
+    # Use filtered source
+    src = src;
+    # Do not run build scripts during npm rebuild and npm install
+    # They will be executed in the postInstall hook
+    npmFlags = "--ignore-scripts";
+    # Show full compilation flags
+    NIX_DEBUG = 1;
+    # Don't set rpath for native addons
+    # Native addons do not require their own runtime search path
+    # because they dynamically loaded by the nodejs runtime
+    NIX_DONT_SET_RPATH = true;
+    NIX_NO_SELF_RPATH = true;
     postInstall = ''
-      # The dependencies were prepared in the installphase
-      # See `node2nix` generated `node-env.nix` for details
-      npm run build
+      # This will setup the typescript build
+      npm --nodedir=${nodejs} run build
     '';
   });
   pkgBuilds = {
@@ -63,6 +71,10 @@ rec {
       "macos-x64" = fetchurl {
         url = "https://github.com/vercel/pkg-fetch/releases/download/v3.3/node-v16.14.2-macos-x64";
         sha256 = "1hq7v40vzc2bfr29y71lm0snaxcc8rys5w0da7pi5nmx4pyybc2v";
+      };
+      "macos-arm64" = fetchurl {
+        url = "https://github.com/vercel/pkg-fetch/releases/download/v3.3/node-v16.14.2-macos-arm64";
+        sha256 = "05q350aw7fhirmlqg6ckyi5hg9pwcvs0w5r047r8mf3ivy1hxra4";
       };
     };
   };
@@ -85,10 +97,9 @@ rec {
             name = fetchedName pkgBuild.macos-x64.name;
             path = pkgBuild.macos-x64;
           }
+          {
+            name = fetchedName pkgBuild.macos-arm64.name;
+            path = pkgBuild.macos-arm64;
+          }
         ];
-  pkg = nodePackages.pkg.override {
-    postFixup = ''
-      patch -p0 < ${./nix/leveldown.patch}
-    '';
-  };
 }

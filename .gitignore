@@ -4,6 +4,8 @@
 !.env.example
 /result*
 /builds
+/build
+/prebuilds
 
 # Logs
 logs
