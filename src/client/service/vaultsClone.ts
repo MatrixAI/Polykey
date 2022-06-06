@@ -1,7 +1,6 @@
 import type { DB } from '@matrixai/db';
 import type { Authenticate } from '../types';
 import type VaultManager from '../../vaults/VaultManager';
-import type { VaultName, VaultId } from '../../vaults/types';
 import type { NodeId } from '../../nodes/types';
 import type * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
 import type Logger from '@matrixai/logger';
