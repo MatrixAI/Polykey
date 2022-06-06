@@ -75,8 +75,9 @@ function identitiesAuthenticate({
       return;
     } catch (e) {
       await genWritable.throw(e);
-      !clientUtils.isClientError(e, [identitiesErrors.ErrorProviderMissing]) &&
-        logger.error(e);
+      !clientUtils.isClientClientError(e, [
+        identitiesErrors.ErrorProviderMissing,
+      ]) && logger.error(e);
       return;
     }
   };

@@ -93,7 +93,7 @@ function identitiesClaim({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
-      !clientUtils.isClientError(e, [
+      !clientUtils.isClientClientError(e, [
         identitiesErrors.ErrorProviderMissing,
         identitiesErrors.ErrorProviderUnauthenticated,
       ]) && logger.error(e);

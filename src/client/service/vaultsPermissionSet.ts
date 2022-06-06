@@ -1,12 +1,7 @@
 import type { DB } from '@matrixai/db';
 import type { Authenticate } from '../types';
 import type { NodeId } from '../../nodes/types';
-import type {
-  VaultName,
-  VaultId,
-  VaultAction,
-  VaultActions,
-} from '../../vaults/types';
+import type { VaultName, VaultAction, VaultActions } from '../../vaults/types';
 import type VaultManager from '../../vaults/VaultManager';
 import type GestaltGraph from '../../gestalts/GestaltGraph';
 import type ACL from '../../acl/ACL';
@@ -55,29 +50,28 @@ function vaultsPermissionSet({
           call.request.getVault()?.getNameOrId() as VaultName,
           tran,
         );
+        const vaultId =
+          vaultIdFromName ??
+          vaultsUtils.decodeVaultId(call.request.getVault()?.getNameOrId());
+        if (vaultId == null) {
+          throw new vaultsErrors.ErrorVaultsVaultUndefined();
+        }
         const {
           nodeId,
-          vaultId,
           actions,
         }: {
           nodeId: NodeId;
-          vaultId: VaultId;
           actions: Array<VaultAction>;
         } = validateSync(
           (keyPath, value) => {
             return matchSync(keyPath)(
               [['nodeId'], () => validationUtils.parseNodeId(value)],
-              [
-                ['vaultId'],
-                () => vaultIdFromName ?? validationUtils.parseVaultId(value),
-              ],
               [['actions'], () => value.map(validationUtils.parseVaultAction)],
               () => value,
             );
           },
           {
             nodeId: call.request.getNode()?.getNodeId(),
-            vaultId: call.request.getVault()?.getNameOrId(),
             actions: call.request.getVaultPermissionsList(),
           },
         );
@@ -105,7 +99,7 @@ function vaultsPermissionSet({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
-      !clientUtils.isClientError(e, [
+      !clientUtils.isClientClientError(e, [
         vaultsErrors.ErrorVaultsVaultUndefined,
         aclErrors.ErrorACLNodeIdMissing,
         nodesErrors.ErrorNodeGraphNodeIdNotFound,

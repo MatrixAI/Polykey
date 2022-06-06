@@ -1,5 +1,5 @@
 import type { DB } from '@matrixai/db';
-import type { VaultName, VaultId, VaultAction } from '../../vaults/types';
+import type { VaultName, VaultAction } from '../../vaults/types';
 import type VaultManager from '../../vaults/VaultManager';
 import type ACL from '../../acl/ACL';
 import type { ConnectionInfoGet } from '../../agent/types';
@@ -39,25 +39,24 @@ function vaultsGitInfoGet({
           call.request.getVault()?.getNameOrId() as VaultName,
           tran,
         );
+        const vaultId =
+          vaultIdFromName ??
+          vaultsUtils.decodeVaultId(call.request.getVault()?.getNameOrId());
+        if (vaultId == null) {
+          throw new vaultsErrors.ErrorVaultsVaultUndefined();
+        }
         const {
-          vaultId,
           actionType,
         }: {
-          vaultId: VaultId;
           actionType: VaultAction;
         } = validateSync(
           (keyPath, value) => {
             return matchSync(keyPath)(
-              [
-                ['vaultId'],
-                () => vaultIdFromName ?? validationUtils.parseVaultId(value),
-              ],
               [['actionType'], () => validationUtils.parseVaultAction(value)],
               () => value,
             );
           },
           {
-            vaultId: call.request.getVault()?.getNameOrId(),
             actionType: call.request.getAction(),
           },
         );
@@ -108,7 +107,7 @@ function vaultsGitInfoGet({
       return;
     } catch (e) {
       await genWritable.throw(e);
-      !agentUtils.isClientError(e, [
+      !agentUtils.isAgentClientError(e, [
         vaultsErrors.ErrorVaultsVaultUndefined,
         agentErrors.ErrorConnectionInfoMissing,
         vaultsErrors.ErrorVaultsPermissionDenied,

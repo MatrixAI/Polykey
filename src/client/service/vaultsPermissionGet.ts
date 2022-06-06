@@ -2,7 +2,7 @@ import type * as grpc from '@grpc/grpc-js';
 import type { DB } from '@matrixai/db';
 import type { Authenticate } from '../types';
 import type VaultManager from '../../vaults/VaultManager';
-import type { VaultName, VaultId, VaultActions } from '../../vaults/types';
+import type { VaultName, VaultActions } from '../../vaults/types';
 import type ACL from '../../acl/ACL';
 import type { NodeId, NodeIdEncoded } from 'nodes/types';
 import type Logger from '@matrixai/logger';
@@ -10,10 +10,9 @@ import { IdInternal } from '@matrixai/id';
 import * as grpcUtils from '../../grpc/utils';
 import * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
 import * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
-import { validateSync } from '../../validation';
-import * as validationUtils from '../../validation/utils';
+import * as vaultsUtils from '../../vaults/utils';
+import * as vaultsErrors from '../../vaults/errors';
 import * as nodesUtils from '../../nodes/utils';
-import { matchSync } from '../../utils';
 import * as clientUtils from '../utils';
 
 function vaultsPermissionGet({
@@ -43,24 +42,12 @@ function vaultsPermissionGet({
             call.request.getNameOrId() as VaultName,
             tran,
           );
-          const {
-            vaultId,
-          }: {
-            vaultId: VaultId;
-          } = validateSync(
-            (keyPath, value) => {
-              return matchSync(keyPath)(
-                [
-                  ['vaultId'],
-                  () => vaultIdFromName ?? validationUtils.parseVaultId(value),
-                ],
-                () => value,
-              );
-            },
-            {
-              vaultId: call.request.getNameOrId(),
-            },
-          );
+          const vaultId =
+            vaultIdFromName ??
+            vaultsUtils.decodeVaultId(call.request.getNameOrId());
+          if (vaultId == null) {
+            throw new vaultsErrors.ErrorVaultsVaultUndefined();
+          }
           // Getting permissions
           return [await acl.getVaultPerm(vaultId, tran), vaultId];
         },
@@ -86,7 +73,9 @@ function vaultsPermissionGet({
       return;
     } catch (e) {
       await genWritable.throw(e);
-      !clientUtils.isClientError(e) && logger.error(e);
+      !clientUtils.isClientClientError(e, [
+        vaultsErrors.ErrorVaultsVaultUndefined,
+      ]) && logger.error(e);
       return;
     }
   };
