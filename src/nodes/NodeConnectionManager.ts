@@ -13,7 +13,6 @@ import type {
   SeedNodes,
 } from './types';
 import type NodeManager from './NodeManager';
-import type { AbortSignal } from 'node-abort-controller';
 import { withF } from '@matrixai/resources';
 import Logger from '@matrixai/logger';
 import { ready, StartStop } from '@matrixai/async-init/dist/StartStop';

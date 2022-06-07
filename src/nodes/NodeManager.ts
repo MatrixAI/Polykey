@@ -15,10 +15,8 @@ import type {
 import type { ClaimEncoded } from '../claims/types';
 import type { Timer } from '../types';
 import type { PromiseDeconstructed } from '../utils/utils';
-import type { AbortSignal } from 'node-abort-controller';
 import Logger from '@matrixai/logger';
 import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
-import { AbortController } from 'node-abort-controller';
 import * as nodesErrors from './errors';
 import * as nodesUtils from './utils';
 import * as networkUtils from '../network/utils';
@@ -394,7 +392,7 @@ class NodeManager {
   /**
    * Adds a node to the node graph. This assumes that you have already authenticated the node
    * Updates the node if the node already exists
-   * This operation is blocking by default - set `block` to false to make it non-blocking
+   * This operation is blocking by default - set `block` 2qto false to make it non-blocking
    * @param nodeId - Id of the node we wish to add
    * @param nodeAddress - Expected address of the node we want to add
    * @param block - Flag for if the operation should block or utilize the async queue
