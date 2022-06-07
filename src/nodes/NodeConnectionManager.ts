@@ -112,7 +112,7 @@ class NodeConnectionManager {
     this.nodeManager = nodeManager;
     for (const nodeIdEncoded in this.seedNodes) {
       const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded)!;
-      await this.nodeGraph.setNode(nodeId, this.seedNodes[nodeIdEncoded]); // FIXME: also fine implicit transactions
+      await this.nodeGraph.setNode(nodeId, this.seedNodes[nodeIdEncoded]);
     }
     this.logger.info(`Started ${this.constructor.name}`);
   }
@@ -264,7 +264,6 @@ class NodeConnectionManager {
           )}`,
         );
         // Creating the connection and set in map
-        // FIXME: this is fine, just use the implicit tran. fix this when adding optional transactions
         const targetAddress = await this.findNode(targetNodeId);
         if (targetAddress == null) {
           throw new nodesErrors.ErrorNodeGraphNodeIdNotFound();
@@ -411,7 +410,6 @@ class NodeConnectionManager {
     return address;
   }
 
-  // FIXME: getClosestNodes was moved to NodeGraph? that needs to be updated.
   /**
    * Attempts to locate a target node in the network (using Kademlia).
    * Adds all discovered, active nodes to the current node's database (up to k
@@ -438,7 +436,6 @@ class NodeConnectionManager {
     // Let foundTarget: boolean = false;
     let foundAddress: NodeAddress | undefined = undefined;
     // Get the closest alpha nodes to the target node (set as shortlist)
-    // FIXME: no tran
     const shortlist = await this.nodeGraph.getClosestNodes(
       targetNodeId,
       this.initialClosestNodes,
@@ -473,7 +470,6 @@ class NodeConnectionManager {
       try {
         // Add the node to the database so that we can find its address in
         // call to getConnectionToNode
-        // FIXME: no tran
         await this.nodeGraph.setNode(nextNodeId, nextNodeAddress.address);
         await this.getConnection(nextNodeId, timer);
       } catch (e) {
@@ -496,7 +492,6 @@ class NodeConnectionManager {
           continue;
         }
         if (nodeId.equals(targetNodeId)) {
-          // FIXME: no tran
           await this.nodeGraph.setNode(nodeId, nodeData.address);
           foundAddress = nodeData.address;
           // We have found the target node, so we can stop trying to look for it

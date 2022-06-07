@@ -14,7 +14,7 @@ import type {
 } from '../nodes/types';
 import type { ClaimEncoded } from '../claims/types';
 import type { Timer } from '../types';
-import type { PromiseType } from '../utils/utils';
+import type { PromiseDeconstructed } from '../utils/utils';
 import type { AbortSignal } from 'node-abort-controller';
 import Logger from '@matrixai/logger';
 import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
@@ -47,8 +47,8 @@ class NodeManager {
   protected refreshBucketQueue: Set<NodeBucketIndex> = new Set();
   protected refreshBucketQueueRunning: boolean = false;
   protected refreshBucketQueueRunner: Promise<void>;
-  protected refreshBucketQueuePlug_: PromiseType<void> = promise();
-  protected refreshBucketQueueDrained_: PromiseType<void> = promise();
+  protected refreshBucketQueuePlug_: PromiseDeconstructed<void> = promise();
+  protected refreshBucketQueueDrained_: PromiseDeconstructed<void> = promise();
   protected refreshBucketQueueAbortController: AbortController;
 
   constructor({

@@ -6,12 +6,11 @@ import type {
 } from './types';
 import { IdInternal } from '@matrixai/id';
 import lexi from 'lexicographic-integer';
+import { utils as dbUtils } from '@matrixai/db';
 import { bytes2BigInt } from '../utils';
 import * as keysUtils from '../keys/utils';
 
-// FIXME:
-const prefixBuffer = Buffer.from([33]);
-// Const prefixBuffer = Buffer.from(dbUtils.prefix);
+const sepBuffer = dbUtils.sep;
 
 /**
  * Encodes the NodeId as a `base32hex` string
@@ -94,9 +93,9 @@ function bucketKey(bucketIndex: NodeBucketIndex): string {
  */
 function bucketsDbKey(bucketIndex: NodeBucketIndex, nodeId: NodeId): Buffer {
   return Buffer.concat([
-    prefixBuffer,
+    sepBuffer,
     Buffer.from(bucketKey(bucketIndex)),
-    prefixBuffer,
+    sepBuffer,
     bucketDbKey(nodeId),
   ]);
 }
@@ -117,9 +116,9 @@ function lastUpdatedBucketsDbKey(
   nodeId: NodeId,
 ): Buffer {
   return Buffer.concat([
-    prefixBuffer,
+    sepBuffer,
     Buffer.from(bucketKey(bucketIndex)),
-    prefixBuffer,
+    sepBuffer,
     lastUpdatedBucketDbKey(lastUpdated, nodeId),
   ]);
 }
@@ -313,7 +312,7 @@ function generateRandomNodeIdForBucket(
 }
 
 export {
-  prefixBuffer,
+  sepBuffer,
   encodeNodeId,
   decodeNodeId,
   bucketIndex,

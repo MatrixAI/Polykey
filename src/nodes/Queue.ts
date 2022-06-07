@@ -1,4 +1,4 @@
-import type { PromiseType } from '../utils';
+import type { PromiseDeconstructed } from '../utils';
 import Logger from '@matrixai/logger';
 import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
 import * as nodesErrors from './errors';
@@ -11,8 +11,8 @@ class Queue {
   protected end: boolean = false;
   protected queue: Array<() => Promise<void>> = [];
   protected runner: Promise<void>;
-  protected plug_: PromiseType<void> = promise();
-  protected drained_: PromiseType<void> = promise();
+  protected plug_: PromiseDeconstructed<void> = promise();
+  protected drained_: PromiseDeconstructed<void> = promise();
 
   constructor({ logger }: { logger?: Logger }) {
     this.logger = logger ?? new Logger(this.constructor.name);
