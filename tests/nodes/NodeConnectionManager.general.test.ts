@@ -141,7 +141,10 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       password,
       nodePath: path.join(dataDir2, 'remoteNode1'),
       networkConfig: {
-        proxyHost: '127.0.0.1' as Host,
+        proxyHost: localHost,
+        agentHost: localHost,
+        clientHost: localHost,
+        forwardHost: localHost,
       },
       logger: logger.getChild('remoteNode1'),
     });
@@ -150,7 +153,10 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       password,
       nodePath: path.join(dataDir2, 'remoteNode2'),
       networkConfig: {
-        proxyHost: '127.0.0.1' as Host,
+        proxyHost: localHost,
+        agentHost: localHost,
+        clientHost: localHost,
+        forwardHost: localHost,
       },
       logger: logger.getChild('remoteNode2'),
     });
@@ -246,7 +252,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       // Case 1: node already exists in the local node graph (no contact required)
       const nodeId = nodeId1;
       const nodeAddress: NodeAddress = {
-        host: '127.0.0.1' as Host,
+        host: localHost,
         port: 11111 as Port,
       };
       await nodeGraph.setNode(nodeId, nodeAddress);
@@ -261,6 +267,11 @@ describe(`${NodeConnectionManager.name} general test`, () => {
   test(
     'finds node (contacts remote node)',
     async () => {
+      const mockedPingNode = jest.spyOn(
+        NodeConnectionManager.prototype,
+        'pingNode',
+      );
+      mockedPingNode.mockImplementation(async () => true);
       // NodeConnectionManager under test
       const nodeConnectionManager = new NodeConnectionManager({
         keyManager,
@@ -274,14 +285,17 @@ describe(`${NodeConnectionManager.name} general test`, () => {
         // Case 2: node can be found on the remote node
         const nodeId = nodeId1;
         const nodeAddress: NodeAddress = {
-          host: '127.0.0.1' as Host,
+          host: localHost,
           port: 11111 as Port,
         };
         const server = await PolykeyAgent.createPolykeyAgent({
           nodePath: path.join(dataDir, 'node2'),
           password,
           networkConfig: {
-            proxyHost: '127.0.0.1' as Host,
+            proxyHost: localHost,
+            agentHost: localHost,
+            clientHost: localHost,
+            forwardHost: localHost,
           },
           logger: nodeConnectionManagerLogger,
         });
@@ -296,6 +310,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
         await server.stop();
       } finally {
         await nodeConnectionManager.stop();
+        mockedPingNode.mockRestore();
       }
     },
     global.polykeyStartupTimeout,
@@ -319,7 +334,10 @@ describe(`${NodeConnectionManager.name} general test`, () => {
           nodePath: path.join(dataDir, 'node3'),
           password,
           networkConfig: {
-            proxyHost: '127.0.0.1' as Host,
+            proxyHost: localHost,
+            agentHost: localHost,
+            clientHost: localHost,
+            forwardHost: localHost,
           },
           logger: nodeConnectionManagerLogger,
         });
@@ -355,7 +373,10 @@ describe(`${NodeConnectionManager.name} general test`, () => {
         logger: logger.getChild('serverPKAgent'),
         nodePath: path.join(dataDir, 'serverPKAgent'),
         networkConfig: {
-          proxyHost: '127.0.0.1' as Host,
+          proxyHost: localHost,
+          agentHost: localHost,
+          clientHost: localHost,
+          forwardHost: localHost,
         },
       });
       nodeConnectionManager = new NodeConnectionManager({

@@ -18,6 +18,8 @@ class CommandAdd extends CommandPolykey {
     this.addOption(binOptions.nodeId);
     this.addOption(binOptions.clientHost);
     this.addOption(binOptions.clientPort);
+    this.addOption(binOptions.forceNodeAdd);
+    this.addOption(binOptions.noPing);
     this.action(async (nodeId: NodeId, host: Host, port: Port, options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
       const nodesUtils = await import('../../nodes/utils');
@@ -46,13 +48,15 @@ class CommandAdd extends CommandPolykey {
           port: clientOptions.clientPort,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-        const nodeAddressMessage = new nodesPB.NodeAddress();
-        nodeAddressMessage.setNodeId(nodesUtils.encodeNodeId(nodeId));
-        nodeAddressMessage.setAddress(
+        const nodeAddMessage = new nodesPB.NodeAdd();
+        nodeAddMessage.setNodeId(nodesUtils.encodeNodeId(nodeId));
+        nodeAddMessage.setAddress(
           new nodesPB.Address().setHost(host).setPort(port),
         );
+        nodeAddMessage.setForce(options.force);
+        nodeAddMessage.setPing(options.ping);
         await binUtils.retryAuthentication(
-          (auth) => pkClient.grpcClient.nodesAdd(nodeAddressMessage, auth),
+          (auth) => pkClient.grpcClient.nodesAdd(nodeAddMessage, auth),
           meta,
         );
       } finally {

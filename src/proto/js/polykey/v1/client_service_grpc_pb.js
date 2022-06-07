@@ -201,6 +201,17 @@ function deserialize_polykey_v1_nodes_Node(buffer_arg) {
   return polykey_v1_nodes_nodes_pb.Node.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_polykey_v1_nodes_NodeAdd(arg) {
+  if (!(arg instanceof polykey_v1_nodes_nodes_pb.NodeAdd)) {
+    throw new Error('Expected argument of type polykey.v1.nodes.NodeAdd');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_polykey_v1_nodes_NodeAdd(buffer_arg) {
+  return polykey_v1_nodes_nodes_pb.NodeAdd.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_polykey_v1_nodes_NodeAddress(arg) {
   if (!(arg instanceof polykey_v1_nodes_nodes_pb.NodeAddress)) {
     throw new Error('Expected argument of type polykey.v1.nodes.NodeAddress');
@@ -528,10 +539,10 @@ nodesAdd: {
     path: '/polykey.v1.ClientService/NodesAdd',
     requestStream: false,
     responseStream: false,
-    requestType: polykey_v1_nodes_nodes_pb.NodeAddress,
+    requestType: polykey_v1_nodes_nodes_pb.NodeAdd,
     responseType: polykey_v1_utils_utils_pb.EmptyMessage,
-    requestSerialize: serialize_polykey_v1_nodes_NodeAddress,
-    requestDeserialize: deserialize_polykey_v1_nodes_NodeAddress,
+    requestSerialize: serialize_polykey_v1_nodes_NodeAdd,
+    requestDeserialize: deserialize_polykey_v1_nodes_NodeAdd,
     responseSerialize: serialize_polykey_v1_utils_EmptyMessage,
     responseDeserialize: deserialize_polykey_v1_utils_EmptyMessage,
   },

@@ -111,7 +111,12 @@ class NodeConnectionManager {
     this.nodeManager = nodeManager;
     for (const nodeIdEncoded in this.seedNodes) {
       const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded)!;
-      await this.nodeGraph.setNode(nodeId, this.seedNodes[nodeIdEncoded]);
+      await this.nodeManager.setNode(
+        nodeId,
+        this.seedNodes[nodeIdEncoded],
+        true,
+        true,
+      );
     }
     this.logger.info(`Started ${this.constructor.name}`);
   }
@@ -431,10 +436,14 @@ class NodeConnectionManager {
     timer?: Timer,
     options: { signal?: AbortSignal } = {},
   ): Promise<NodeAddress | undefined> {
+    const localNodeId = this.keyManager.getNodeId();
     const { signal } = { ...options };
     // Let foundTarget: boolean = false;
     let foundAddress: NodeAddress | undefined = undefined;
     // Get the closest alpha nodes to the target node (set as shortlist)
+    // FIXME? this is an array. Shouldn't it be a set?
+    //  It's possible for this to grow faster than we can consume it,
+    //  doubly so if we allow duplicates
     const shortlist = await this.nodeGraph.getClosestNodes(
       targetNodeId,
       this.initialClosestNodes,
@@ -466,13 +475,15 @@ class NodeConnectionManager {
       }
       // Connect to the node (check if pre-existing connection exists, otherwise
       // create a new one)
-      try {
-        // Add the node to the database so that we can find its address in
-        // call to getConnectionToNode
-        await this.nodeGraph.setNode(nextNodeId, nextNodeAddress.address);
-        await this.getConnection(nextNodeId, timer);
-      } catch (e) {
-        // If we can't connect to the node, then skip it
+      if (
+        await this.pingNode(
+          nextNodeId,
+          nextNodeAddress.address.host,
+          nextNodeAddress.address.port,
+        )
+      ) {
+        await this.nodeManager!.setNode(nextNodeId, nextNodeAddress.address);
+      } else {
         continue;
       }
       contacted[nextNodeId] = true;
@@ -486,12 +497,19 @@ class NodeConnectionManager {
       // them to the shortlist
       for (const [nodeId, nodeData] of foundClosest) {
         if (signal?.aborted) throw new nodesErrors.ErrorNodeAborted();
-        // Ignore a`ny nodes that have been contacted
-        if (contacted[nodeId]) {
+        // Ignore any nodes that have been contacted or our own node
+        if (contacted[nodeId] || localNodeId.equals(nodeId)) {
           continue;
         }
-        if (nodeId.equals(targetNodeId)) {
-          await this.nodeGraph.setNode(nodeId, nodeData.address);
+        if (
+          nodeId.equals(targetNodeId) &&
+          (await this.pingNode(
+            nodeId,
+            nodeData.address.host,
+            nodeData.address.port,
+          ))
+        ) {
+          await this.nodeManager!.setNode(nodeId, nodeData.address);
           foundAddress = nodeData.address;
           // We have found the target node, so we can stop trying to look for it
           // in the shortlist
@@ -555,7 +573,9 @@ class NodeConnectionManager {
                   host: address.getHost() as Host | Hostname,
                   port: address.getPort() as Port,
                 },
-                lastUpdated: 0, // FIXME?
+                // Not really needed
+                // But if it's needed then we need to add the information to the proto definition
+                lastUpdated: 0,
               },
             ]);
           }
@@ -589,15 +609,20 @@ class NodeConnectionManager {
         this.keyManager.getNodeId(),
         timer,
       );
-      // FIXME: we need to ping a node before setting it
       for (const [nodeId, nodeData] of nodes) {
+        const pingAndAddNode = async () => {
+          const port = nodeData.address.port;
+          const host = await networkUtils.resolveHost(nodeData.address.host);
+          if (await this.pingNode(nodeId, host, port)) {
+            await this.nodeManager!.setNode(nodeId, nodeData.address, true);
+          }
+        };
+
         if (!block) {
-          this.queue.push(() =>
-            this.nodeManager!.setNode(nodeId, nodeData.address),
-          );
+          this.queue.push(pingAndAddNode);
         } else {
           try {
-            await this.nodeManager?.setNode(nodeId, nodeData.address);
+            await pingAndAddNode();
           } catch (e) {
             if (!(e instanceof nodesErrors.ErrorNodeGraphSameNodeId)) throw e;
           }
@@ -703,10 +728,11 @@ class NodeConnectionManager {
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
   public async pingNode(
     nodeId: NodeId,
-    host: Host,
+    host: Host | Hostname,
     port: Port,
     timer?: Timer,
   ): Promise<boolean> {
+    host = await networkUtils.resolveHost(host);
     // If we can create a connection then we have punched though the NAT,
     // authenticated and confirmed the nodeId matches
     const proxyAddress = networkUtils.buildAddress(

@@ -122,12 +122,12 @@ interface IClientServiceService_IAgentUnlock extends grpc.MethodDefinition<polyk
     responseSerialize: grpc.serialize<polykey_v1_utils_utils_pb.EmptyMessage>;
     responseDeserialize: grpc.deserialize<polykey_v1_utils_utils_pb.EmptyMessage>;
 }
-interface IClientServiceService_INodesAdd extends grpc.MethodDefinition<polykey_v1_nodes_nodes_pb.NodeAddress, polykey_v1_utils_utils_pb.EmptyMessage> {
+interface IClientServiceService_INodesAdd extends grpc.MethodDefinition<polykey_v1_nodes_nodes_pb.NodeAdd, polykey_v1_utils_utils_pb.EmptyMessage> {
     path: "/polykey.v1.ClientService/NodesAdd";
     requestStream: false;
     responseStream: false;
-    requestSerialize: grpc.serialize<polykey_v1_nodes_nodes_pb.NodeAddress>;
-    requestDeserialize: grpc.deserialize<polykey_v1_nodes_nodes_pb.NodeAddress>;
+    requestSerialize: grpc.serialize<polykey_v1_nodes_nodes_pb.NodeAdd>;
+    requestDeserialize: grpc.deserialize<polykey_v1_nodes_nodes_pb.NodeAdd>;
     responseSerialize: grpc.serialize<polykey_v1_utils_utils_pb.EmptyMessage>;
     responseDeserialize: grpc.deserialize<polykey_v1_utils_utils_pb.EmptyMessage>;
 }
@@ -679,7 +679,7 @@ export interface IClientServiceServer extends grpc.UntypedServiceImplementation 
     agentStatus: grpc.handleUnaryCall<polykey_v1_utils_utils_pb.EmptyMessage, polykey_v1_agent_agent_pb.InfoMessage>;
     agentStop: grpc.handleUnaryCall<polykey_v1_utils_utils_pb.EmptyMessage, polykey_v1_utils_utils_pb.EmptyMessage>;
     agentUnlock: grpc.handleUnaryCall<polykey_v1_utils_utils_pb.EmptyMessage, polykey_v1_utils_utils_pb.EmptyMessage>;
-    nodesAdd: grpc.handleUnaryCall<polykey_v1_nodes_nodes_pb.NodeAddress, polykey_v1_utils_utils_pb.EmptyMessage>;
+    nodesAdd: grpc.handleUnaryCall<polykey_v1_nodes_nodes_pb.NodeAdd, polykey_v1_utils_utils_pb.EmptyMessage>;
     nodesPing: grpc.handleUnaryCall<polykey_v1_nodes_nodes_pb.Node, polykey_v1_utils_utils_pb.StatusMessage>;
     nodesClaim: grpc.handleUnaryCall<polykey_v1_nodes_nodes_pb.Claim, polykey_v1_utils_utils_pb.StatusMessage>;
     nodesFind: grpc.handleUnaryCall<polykey_v1_nodes_nodes_pb.Node, polykey_v1_nodes_nodes_pb.NodeAddress>;
@@ -755,9 +755,9 @@ export interface IClientServiceClient {
     agentUnlock(request: polykey_v1_utils_utils_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     agentUnlock(request: polykey_v1_utils_utils_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     agentUnlock(request: polykey_v1_utils_utils_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
-    nodesAdd(request: polykey_v1_nodes_nodes_pb.NodeAddress, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
-    nodesAdd(request: polykey_v1_nodes_nodes_pb.NodeAddress, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
-    nodesAdd(request: polykey_v1_nodes_nodes_pb.NodeAddress, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    nodesAdd(request: polykey_v1_nodes_nodes_pb.NodeAdd, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    nodesAdd(request: polykey_v1_nodes_nodes_pb.NodeAdd, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    nodesAdd(request: polykey_v1_nodes_nodes_pb.NodeAdd, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     nodesPing(request: polykey_v1_nodes_nodes_pb.Node, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.StatusMessage) => void): grpc.ClientUnaryCall;
     nodesPing(request: polykey_v1_nodes_nodes_pb.Node, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.StatusMessage) => void): grpc.ClientUnaryCall;
     nodesPing(request: polykey_v1_nodes_nodes_pb.Node, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.StatusMessage) => void): grpc.ClientUnaryCall;
@@ -943,9 +943,9 @@ export class ClientServiceClient extends grpc.Client implements IClientServiceCl
     public agentUnlock(request: polykey_v1_utils_utils_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     public agentUnlock(request: polykey_v1_utils_utils_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     public agentUnlock(request: polykey_v1_utils_utils_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
-    public nodesAdd(request: polykey_v1_nodes_nodes_pb.NodeAddress, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
-    public nodesAdd(request: polykey_v1_nodes_nodes_pb.NodeAddress, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
-    public nodesAdd(request: polykey_v1_nodes_nodes_pb.NodeAddress, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public nodesAdd(request: polykey_v1_nodes_nodes_pb.NodeAdd, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public nodesAdd(request: polykey_v1_nodes_nodes_pb.NodeAdd, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public nodesAdd(request: polykey_v1_nodes_nodes_pb.NodeAdd, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     public nodesPing(request: polykey_v1_nodes_nodes_pb.Node, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.StatusMessage) => void): grpc.ClientUnaryCall;
     public nodesPing(request: polykey_v1_nodes_nodes_pb.Node, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.StatusMessage) => void): grpc.ClientUnaryCall;
     public nodesPing(request: polykey_v1_nodes_nodes_pb.Node, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.StatusMessage) => void): grpc.ClientUnaryCall;

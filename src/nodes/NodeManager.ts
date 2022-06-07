@@ -410,6 +410,12 @@ class NodeManager {
     timeout?: number,
     tran?: DBTransaction,
   ): Promise<void> {
+    // We don't want to add our own node
+    if (nodeId.equals(this.keyManager.getNodeId())) {
+      this.logger.debug('Is own NodeId, skipping');
+      return;
+    }
+
     if (tran == null) {
       return this.db.withTransactionF(async (tran) =>
         this.setNode(nodeId, nodeAddress, block, force, timeout, tran),

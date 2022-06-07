@@ -22,7 +22,7 @@ service ClientService {
   rpc AgentUnlock (polykey.v1.utils.EmptyMessage) returns (polykey.v1.utils.EmptyMessage);
 
   // Nodes
-  rpc NodesAdd(polykey.v1.nodes.NodeAddress) returns (polykey.v1.utils.EmptyMessage);
+  rpc NodesAdd(polykey.v1.nodes.NodeAdd) returns (polykey.v1.utils.EmptyMessage);
   rpc NodesPing(polykey.v1.nodes.Node) returns (polykey.v1.utils.StatusMessage);
   rpc NodesClaim(polykey.v1.nodes.Claim) returns (polykey.v1.utils.StatusMessage);
   rpc NodesFind(polykey.v1.nodes.Node) returns (polykey.v1.nodes.NodeAddress);
