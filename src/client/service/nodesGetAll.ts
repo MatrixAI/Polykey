@@ -1,8 +1,9 @@
 import type * as grpc from '@grpc/grpc-js';
 import type { Authenticate } from '../types';
-import type { KeyManager } from '../../keys';
+import type KeyManager from '../../keys/KeyManager';
 import type { NodeId } from '../../nodes/types';
 import type * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
+import type NodeGraph from '../../nodes/NodeGraph';
 import { IdInternal } from '@matrixai/id';
 import { utils as nodesUtils } from '../../nodes';
 import { utils as grpcUtils } from '../../grpc';
@@ -12,11 +13,11 @@ import * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
  * Retrieves all nodes from all buckets in the NodeGraph.
  */
 function nodesGetAll({
-  // NodeGraph,
+  nodeGraph,
   keyManager,
   authenticate,
 }: {
-  // NodeGraph: NodeGraph;
+  nodeGraph: NodeGraph;
   keyManager: KeyManager;
   authenticate: Authenticate;
 }) {
@@ -28,10 +29,8 @@ function nodesGetAll({
       const response = new nodesPB.NodeBuckets();
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
-      // FIXME:
-      // const buckets = await nodeGraph.getAllBuckets();
-      const buckets: any = [];
-      for (const b of buckets) {
+      const buckets = nodeGraph.getBuckets();
+      for await (const b of buckets) {
         let index;
         for (const id of Object.keys(b)) {
           const encodedId = nodesUtils.encodeNodeId(
@@ -48,7 +47,7 @@ function nodesGetAll({
             );
           }
           // Need to either add node to an existing bucket, or create a new
-          // bucket (if doesn't exist)
+          // bucket (if it doesn't exist)
           const bucket = response.getBucketsMap().get(index);
           if (bucket) {
             bucket.getNodeTableMap().set(encodedId, address);

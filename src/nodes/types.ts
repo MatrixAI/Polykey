@@ -33,8 +33,6 @@ type NodeBucketMeta = {
   count: number;
 };
 
-// Type NodeBucketMetaProps = NonFunctionProperties<NodeBucketMeta>;
-
 // Just make the bucket entries also
 // bucketIndex anot as a key
 // but as the domain
@@ -45,19 +43,7 @@ type NodeData = {
   lastUpdated: number;
 };
 
-// Type NodeBucketEntry = {
-//   address: NodeAddress;
-//   lastUpdated: Date;
-// };
-
 type SeedNodes = Record<NodeIdEncoded, NodeAddress>;
-
-// FIXME: should have a proper name
-type NodeEntry = {
-  id: NodeId;
-  address: NodeAddress;
-  distance: BigInt;
-};
 
 /**
  * A claim made on a node. That is, can be either:
@@ -106,9 +92,6 @@ export type {
   NodeBucketMeta,
   NodeBucket,
   NodeData,
-  NodeEntry,
-  // NodeBucketEntry,
-
   NodeGraphOp,
   NodeGraphSpace,
 };

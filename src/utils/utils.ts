@@ -170,7 +170,7 @@ function promisify<
   };
 }
 
-export type PromiseType<T> = {
+type PromiseDeconstructed<T> = {
   p: Promise<T>;
   resolveP: (value: T | PromiseLike<T>) => void;
   rejectP: (reason?: any) => void;
@@ -179,7 +179,7 @@ export type PromiseType<T> = {
 /**
  * Deconstructed promise
  */
-function promise<T = void>(): PromiseType<T> {
+function promise<T = void>(): PromiseDeconstructed<T> {
   let resolveP, rejectP;
   const p = new Promise<T>((resolve, reject) => {
     resolveP = resolve;
@@ -310,6 +310,7 @@ function debounce<P extends any[]>(
   };
 }
 
+export type { PromiseDeconstructed };
 export {
   getDefaultNodePath,
   never,

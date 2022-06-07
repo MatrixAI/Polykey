@@ -35,7 +35,7 @@ import * as validationUtils from '../validation/utils';
 import * as vaultsPB from '../proto/js/polykey/v1/vaults/vaults_pb';
 import { never } from '../utils/utils';
 
-export type RemoteInfo = {
+type RemoteInfo = {
   remoteNode: NodeIdEncoded;
   remoteVault: VaultIdEncoded;
 };
@@ -1098,3 +1098,4 @@ class VaultInternal {
 }
 
 export default VaultInternal;
+export type { RemoteInfo };

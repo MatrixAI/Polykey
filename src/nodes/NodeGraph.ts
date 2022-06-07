@@ -679,8 +679,6 @@ class NodeGraph {
    * current node has less than k nodes in all of its buckets, in which case it
    * returns all nodes it has knowledge of)
    */
-  // FIXME: this is still operating on assumptions from old code.
-  // I can't get the gt/lt to work on the iterator.
   @ready(new nodesErrors.ErrorNodeGraphNotRunning())
   public async getClosestNodes(
     nodeId: NodeId,
