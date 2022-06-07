@@ -158,31 +158,37 @@ describe('find', () => {
       port: remoteOfflinePort,
     });
   });
-  test('fails to find an unknown node', async () => {
-    const unknownNodeId = nodesUtils.decodeNodeId(
-      'vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg',
-    );
-    const { exitCode, stdout } = await testBinUtils.pkStdio(
-      [
-        'nodes',
-        'find',
-        nodesUtils.encodeNodeId(unknownNodeId!),
-        '--format',
-        'json',
-      ],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    );
-    expect(exitCode).toBe(sysexits.GENERAL);
-    expect(JSON.parse(stdout)).toEqual({
-      success: false,
-      message: `Failed to find node ${nodesUtils.encodeNodeId(unknownNodeId!)}`,
-      id: nodesUtils.encodeNodeId(unknownNodeId!),
-      host: '',
-      port: 0,
-    });
-  });
+  test(
+    'fails to find an unknown node',
+    async () => {
+      const unknownNodeId = nodesUtils.decodeNodeId(
+        'vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg',
+      );
+      const { exitCode, stdout } = await testBinUtils.pkStdio(
+        [
+          'nodes',
+          'find',
+          nodesUtils.encodeNodeId(unknownNodeId!),
+          '--format',
+          'json',
+        ],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      );
+      expect(exitCode).toBe(sysexits.GENERAL);
+      expect(JSON.parse(stdout)).toEqual({
+        success: false,
+        message: `Failed to find node ${nodesUtils.encodeNodeId(
+          unknownNodeId!,
+        )}`,
+        id: nodesUtils.encodeNodeId(unknownNodeId!),
+        host: '',
+        port: 0,
+      });
+    },
+    global.failedConnectionTimeout,
+  );
 });

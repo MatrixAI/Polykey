@@ -98,6 +98,38 @@ export namespace Claim {
     }
 }
 
+export class NodeAdd extends jspb.Message { 
+    getNodeId(): string;
+    setNodeId(value: string): NodeAdd;
+
+    hasAddress(): boolean;
+    clearAddress(): void;
+    getAddress(): Address | undefined;
+    setAddress(value?: Address): NodeAdd;
+    getForce(): boolean;
+    setForce(value: boolean): NodeAdd;
+    getPing(): boolean;
+    setPing(value: boolean): NodeAdd;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): NodeAdd.AsObject;
+    static toObject(includeInstance: boolean, msg: NodeAdd): NodeAdd.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: NodeAdd, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): NodeAdd;
+    static deserializeBinaryFromReader(message: NodeAdd, reader: jspb.BinaryReader): NodeAdd;
+}
+
+export namespace NodeAdd {
+    export type AsObject = {
+        nodeId: string,
+        address?: Address.AsObject,
+        force: boolean,
+        ping: boolean,
+    }
+}
+
 export class NodeBuckets extends jspb.Message { 
 
     getBucketsMap(): jspb.Map<number, NodeTable>;

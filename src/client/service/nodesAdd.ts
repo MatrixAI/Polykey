@@ -6,6 +6,7 @@ import type { NodeId, NodeAddress } from '../../nodes/types';
 import type { Host, Hostname, Port } from '../../network/types';
 import type * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
 import type Logger from '@matrixai/logger';
+import * as nodeErrors from '../../nodes/errors';
 import * as grpcUtils from '../../grpc/utils';
 import { validateSync } from '../../validation';
 import * as validationUtils from '../../validation/utils';
@@ -30,12 +31,13 @@ function nodesAdd({
   logger: Logger;
 }) {
   return async (
-    call: grpc.ServerUnaryCall<nodesPB.NodeAddress, utilsPB.EmptyMessage>,
+    call: grpc.ServerUnaryCall<nodesPB.NodeAdd, utilsPB.EmptyMessage>,
     callback: grpc.sendUnaryData<utilsPB.EmptyMessage>,
   ): Promise<void> => {
     try {
       const response = new utilsPB.EmptyMessage();
       const metadata = await authenticate(call.metadata);
+      const request = call.request;
       call.sendMetadata(metadata);
       const {
         nodeId,
@@ -55,11 +57,21 @@ function nodesAdd({
           );
         },
         {
-          nodeId: call.request.getNodeId(),
-          host: call.request.getAddress()?.getHost(),
-          port: call.request.getAddress()?.getPort(),
+          nodeId: request.getNodeId(),
+          host: request.getAddress()?.getHost(),
+          port: request.getAddress()?.getPort(),
         },
       );
+      // Pinging to authenticate the node
+      if (
+        request.getPing() &&
+        !(await nodeManager.pingNode(nodeId, { host, port }))
+      ) {
+        throw new nodeErrors.ErrorNodePingFailed(
+          'Failed to authenticate target node',
+        );
+      }
+
       await db.withTransactionF(async (tran) =>
         nodeManager.setNode(
           nodeId,
@@ -68,7 +80,7 @@ function nodesAdd({
             port,
           } as NodeAddress,
           true,
-          true,
+          request.getForce(),
           undefined,
           tran,
         ),

@@ -163,13 +163,15 @@ describe('nodesAdd', () => {
     const addressMessage = new nodesPB.Address();
     addressMessage.setHost('127.0.0.1');
     addressMessage.setPort(11111);
-    const request = new nodesPB.NodeAddress();
+    const request = new nodesPB.NodeAdd();
     request.setNodeId('vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0');
     request.setAddress(addressMessage);
     const response = await grpcClient.nodesAdd(
       request,
       clientUtils.encodeAuthFromPassword(password),
     );
+    request.setPing(false);
+    request.setForce(false);
     expect(response).toBeInstanceOf(utilsPB.EmptyMessage);
     const result = await nodeGraph.getNode(
       nodesUtils.decodeNodeId(
@@ -184,7 +186,9 @@ describe('nodesAdd', () => {
     const addressMessage = new nodesPB.Address();
     addressMessage.setHost('');
     addressMessage.setPort(11111);
-    const request = new nodesPB.NodeAddress();
+    const request = new nodesPB.NodeAdd();
+    request.setPing(false);
+    request.setForce(false);
     request.setNodeId('vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0');
     request.setAddress(addressMessage);
     await expectRemoteError(

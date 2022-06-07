@@ -25,6 +25,13 @@ message Claim {
   bool force_invite = 2;
 }
 
+message NodeAdd {
+  string node_id = 1;
+  Address address = 2;
+  bool force = 3;
+  bool ping = 4;
+}
+
 // Bucket index -> a node bucket (from NodeGraph)
 message NodeBuckets {
   map<int32, NodeTable> buckets = 1;

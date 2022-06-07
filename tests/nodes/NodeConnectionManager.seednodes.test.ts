@@ -193,6 +193,7 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
   // Seed nodes
   test('starting should add seed nodes to the node graph', async () => {
     let nodeConnectionManager: NodeConnectionManager | undefined;
+    let nodeManager: NodeManager | undefined;
     try {
       nodeConnectionManager = new NodeConnectionManager({
         keyManager,
@@ -204,7 +205,17 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
         seedNodes: dummySeedNodes,
         logger: logger,
       });
-      await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
+      nodeManager = new NodeManager({
+        db,
+        keyManager,
+        logger,
+        nodeConnectionManager,
+        nodeGraph,
+        queue: {} as Queue,
+        sigchain: {} as Sigchain,
+      });
+      await nodeManager.start();
+      await nodeConnectionManager.start({ nodeManager });
       const seedNodes = nodeConnectionManager.getSeedNodes();
       expect(seedNodes).toContainEqual(nodeId1);
       expect(seedNodes).toContainEqual(nodeId2);
@@ -216,6 +227,7 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
     } finally {
       // Clean up
       await nodeConnectionManager?.stop();
+      await nodeManager?.stop();
     }
   });
   test('should get seed nodes', async () => {
@@ -250,6 +262,11 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
       'refreshBucket',
     );
     mockedRefreshBucket.mockImplementation(async () => {});
+    const mockedPingNode = jest.spyOn(
+      NodeConnectionManager.prototype,
+      'pingNode',
+    );
+    mockedPingNode.mockImplementation(async () => true);
     try {
       const seedNodes: SeedNodes = {};
       seedNodes[nodesUtils.encodeNodeId(remoteNodeId1)] = {
@@ -295,6 +312,7 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
       expect(await nodeGraph.getNode(dummyNodeId)).toBeUndefined();
     } finally {
       mockedRefreshBucket.mockRestore();
+      mockedPingNode.mockRestore();
       await nodeManager?.stop();
       await nodeConnectionManager?.stop();
       await queue?.stop();
@@ -309,6 +327,11 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
       'refreshBucket',
     );
     mockedRefreshBucket.mockImplementation(async () => {});
+    const mockedPingNode = jest.spyOn(
+      NodeConnectionManager.prototype,
+      'pingNode',
+    );
+    mockedPingNode.mockImplementation(async () => true);
     try {
       const seedNodes: SeedNodes = {};
       seedNodes[nodesUtils.encodeNodeId(remoteNodeId1)] = {
@@ -353,6 +376,7 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
       expect(mockedRefreshBucket).toHaveBeenCalled();
     } finally {
       mockedRefreshBucket.mockRestore();
+      mockedPingNode.mockRestore();
       await nodeManager?.stop();
       await nodeConnectionManager?.stop();
       await queue?.stop();
@@ -367,6 +391,11 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
       'refreshBucket',
     );
     mockedRefreshBucket.mockImplementation(async () => {});
+    const mockedPingNode = jest.spyOn(
+      NodeConnectionManager.prototype,
+      'pingNode',
+    );
+    mockedPingNode.mockImplementation(async () => true);
     try {
       const seedNodes: SeedNodes = {};
       seedNodes[nodesUtils.encodeNodeId(remoteNodeId1)] = {
@@ -419,6 +448,7 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
       expect(await nodeGraph.getNode(nodeId2)).toBeDefined();
     } finally {
       mockedRefreshBucket.mockRestore();
+      mockedPingNode.mockRestore();
       await nodeConnectionManager?.stop();
       await nodeManager?.stop();
       await queue?.stop();
@@ -440,6 +470,11 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
         host: remoteNode2.proxy.getProxyHost(),
         port: remoteNode2.proxy.getProxyPort(),
       };
+      const mockedPingNode = jest.spyOn(
+        NodeConnectionManager.prototype,
+        'pingNode',
+      );
+      mockedPingNode.mockImplementation(async () => true);
       try {
         logger.setLevel(LogLevel.WARN);
         node1 = await PolykeyAgent.createPolykeyAgent({
@@ -499,6 +534,7 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
         expect(node2Nodes).toContain(nodeIdR2);
         expect(node2Nodes).toContain(nodeId1);
       } finally {
+        mockedPingNode.mockRestore();
         logger.setLevel(LogLevel.WARN);
         await node1?.stop();
         await node1?.destroy();

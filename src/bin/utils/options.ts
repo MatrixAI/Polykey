@@ -154,6 +154,15 @@ const pullVault = new commander.Option(
   'Name or Id of the vault to pull from',
 );
 
+const forceNodeAdd = new commander.Option(
+  '--force',
+  'Force adding node to nodeGraph',
+).default(false);
+
+const noPing = new commander.Option('--no-ping', 'Skip ping step').default(
+  true,
+);
+
 export {
   nodePath,
   format,
@@ -176,4 +185,6 @@ export {
   network,
   workers,
   pullVault,
+  forceNodeAdd,
+  noPing,
 };
