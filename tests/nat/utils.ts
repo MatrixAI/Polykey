@@ -43,26 +43,52 @@ const mappedPort = '55555';
  * Formats the command to enter a namespace to run a process inside it
  */
 const nsenter = (usrnsPid: number, netnsPid: number) => {
-  return `nsenter --target ${usrnsPid} --user --preserve-credentials `.concat(
-    `nsenter --target ${netnsPid} --net `,
-  );
+  return [
+    '--target',
+    usrnsPid.toString(),
+    '--user',
+    '--preserve-credentials',
+    'nsenter',
+    '--target',
+    netnsPid.toString(),
+    '--net',
+  ];
 };
 
 /**
  * Create a user namespace from which network namespaces can be created without
  * requiring sudo
  */
-function createUserNamespace(): ChildProcess {
-  return child_process.spawn('unshare', ['--user', '--map-root-user'], {
-    shell: true,
+function createUserNamespace(
+  logger: Logger = new Logger(createUserNamespace.name),
+): ChildProcess {
+  logger.info('unshare --user --map-root-user');
+  const subprocess = child_process.spawn(
+    'unshare',
+    ['--user', '--map-root-user'],
+    {
+      shell: true,
+    },
+  );
+  const rlErr = readline.createInterface(subprocess.stderr!);
+  rlErr.on('line', (l) => {
+    // The readline library will trim newlines
+    logger.info(l);
   });
+  return subprocess;
 }
 
 /**
  * Create a network namespace inside a user namespace
  */
-function createNetworkNamespace(usrnsPid: number): ChildProcess {
-  return child_process.spawn(
+function createNetworkNamespace(
+  usrnsPid: number,
+  logger: Logger = new Logger(createNetworkNamespace.name),
+): ChildProcess {
+  logger.info(
+    `nsenter --target ${usrnsPid.toString()} --user --preserve-credentials unshare --net`,
+  );
+  const subprocess = child_process.spawn(
     'nsenter',
     [
       '--target',
@@ -74,6 +100,12 @@ function createNetworkNamespace(usrnsPid: number): ChildProcess {
     ],
     { shell: true },
   );
+  const rlErr = readline.createInterface(subprocess.stderr!);
+  rlErr.on('line', (l) => {
+    // The readline library will trim newlines
+    logger.info(l);
+  });
+  return subprocess;
 }
 
 /**
@@ -83,109 +115,313 @@ function createNetworkNamespace(usrnsPid: number): ChildProcess {
  * between each pair of adjacent namespaces, and adds default routing to allow
  * cross-communication
  */
-function setupNetworkNamespaceInterfaces(
+async function setupNetworkNamespaceInterfaces(
   usrnsPid: number,
   agent1NetnsPid: number,
   router1NetnsPid: number,
   router2NetnsPid: number,
   agent2NetnsPid: number,
+  logger: Logger = new Logger(setupNetworkNamespaceInterfaces.name),
 ) {
-  // Bring up loopback
-  child_process.exec(nsenter(usrnsPid, agent1NetnsPid) + `ip link set lo up`);
-  child_process.exec(nsenter(usrnsPid, router1NetnsPid) + `ip link set lo up`);
-  child_process.exec(nsenter(usrnsPid, router2NetnsPid) + `ip link set lo up`);
-  child_process.exec(nsenter(usrnsPid, agent2NetnsPid) + `ip link set lo up`);
-  // Create veth pair to link the namespaces
-  child_process.exec(
-    nsenter(usrnsPid, agent1NetnsPid) +
-      `ip link add ${agent1Host} type veth peer name ${agent1RouterHostInt}`,
-  );
-  child_process.exec(
-    nsenter(usrnsPid, router1NetnsPid) +
-      `ip link add ${agent1RouterHostExt} type veth peer name ${agent2RouterHostExt}`,
-  );
-  child_process.exec(
-    nsenter(usrnsPid, router2NetnsPid) +
-      `ip link add ${agent2RouterHostInt} type veth peer name ${agent2Host}`,
-  );
-  // Link up the ends to the correct namespaces
-  child_process.exec(
-    nsenter(usrnsPid, agent1NetnsPid) +
-      `ip link set dev ${agent1RouterHostInt} netns ${router1NetnsPid}`,
-  );
-  child_process.exec(
-    nsenter(usrnsPid, router1NetnsPid) +
-      `ip link set dev ${agent2RouterHostExt} netns ${router2NetnsPid}`,
-  );
-  child_process.exec(
-    nsenter(usrnsPid, router2NetnsPid) +
-      `ip link set dev ${agent2Host} netns ${agent2NetnsPid}`,
-  );
-  // Bring up each end
-  child_process.exec(
-    nsenter(usrnsPid, agent1NetnsPid) + `ip link set ${agent1Host} up`,
-  );
-  child_process.exec(
-    nsenter(usrnsPid, router1NetnsPid) +
-      `ip link set ${agent1RouterHostInt} up`,
-  );
-  child_process.exec(
-    nsenter(usrnsPid, router1NetnsPid) +
-      `ip link set ${agent1RouterHostExt} up`,
-  );
-  child_process.exec(
-    nsenter(usrnsPid, router2NetnsPid) +
-      `ip link set ${agent2RouterHostExt} up`,
-  );
-  child_process.exec(
-    nsenter(usrnsPid, router2NetnsPid) +
-      `ip link set ${agent2RouterHostInt} up`,
-  );
-  child_process.exec(
-    nsenter(usrnsPid, agent2NetnsPid) + `ip link set ${agent2Host} up`,
-  );
-  // Assign ip addresses to each end
-  child_process.exec(
-    nsenter(usrnsPid, agent1NetnsPid) +
-      `ip addr add ${agent1HostIp}${subnetMask} dev ${agent1Host}`,
-  );
-  child_process.exec(
-    nsenter(usrnsPid, router1NetnsPid) +
-      `ip addr add ${agent1RouterHostIntIp}${subnetMask} dev ${agent1RouterHostInt}`,
-  );
-  child_process.exec(
-    nsenter(usrnsPid, router1NetnsPid) +
-      `ip addr add ${agent1RouterHostExtIp}${subnetMask} dev ${agent1RouterHostExt}`,
-  );
-  child_process.exec(
-    nsenter(usrnsPid, router2NetnsPid) +
-      `ip addr add ${agent2RouterHostExtIp}${subnetMask} dev ${agent2RouterHostExt}`,
-  );
-  child_process.exec(
-    nsenter(usrnsPid, router2NetnsPid) +
-      `ip addr add ${agent2RouterHostIntIp}${subnetMask} dev ${agent2RouterHostInt}`,
-  );
-  child_process.exec(
-    nsenter(usrnsPid, agent2NetnsPid) +
-      `ip addr add ${agent2HostIp}${subnetMask} dev ${agent2Host}`,
-  );
-  // Add default routing
-  child_process.exec(
-    nsenter(usrnsPid, agent1NetnsPid) +
-      `ip route add default via ${agent1RouterHostIntIp}`,
-  );
-  child_process.exec(
-    nsenter(usrnsPid, router1NetnsPid) +
-      `ip route add default via ${agent2RouterHostExtIp}`,
-  );
-  child_process.exec(
-    nsenter(usrnsPid, router2NetnsPid) +
-      `ip route add default via ${agent1RouterHostExtIp}`,
-  );
-  child_process.exec(
-    nsenter(usrnsPid, agent2NetnsPid) +
-      `ip route add default via ${agent2RouterHostIntIp}`,
-  );
+  let args: Array<string> = [];
+  try {
+    // Bring up loopback
+    args = [
+      ...nsenter(usrnsPid, agent1NetnsPid),
+      'ip',
+      'link',
+      'set',
+      'lo',
+      'up',
+    ];
+    logger.info(['nsenter', ...args].join(' '));
+    await testBinUtils.exec('nsenter', args);
+    args = [
+      ...nsenter(usrnsPid, router1NetnsPid),
+      'ip',
+      'link',
+      'set',
+      'lo',
+      'up',
+    ];
+    logger.info(['nsenter', ...args].join(' '));
+    await testBinUtils.exec('nsenter', args);
+    args = [
+      ...nsenter(usrnsPid, router2NetnsPid),
+      'ip',
+      'link',
+      'set',
+      'lo',
+      'up',
+    ];
+    logger.info(['nsenter', ...args].join(' '));
+    await testBinUtils.exec('nsenter', args);
+    args = [
+      ...nsenter(usrnsPid, agent2NetnsPid),
+      'ip',
+      'link',
+      'set',
+      'lo',
+      'up',
+    ];
+    logger.info(['nsenter', ...args].join(' '));
+    await testBinUtils.exec('nsenter', args);
+    // Create veth pair to link the namespaces
+    args = [
+      ...nsenter(usrnsPid, agent1NetnsPid),
+      'ip',
+      'link',
+      'add',
+      agent1Host,
+      'type',
+      'veth',
+      'peer',
+      'name',
+      agent1RouterHostInt,
+    ];
+    logger.info(['nsenter', ...args].join(' '));
+    await testBinUtils.exec('nsenter', args);
+    args = [
+      ...nsenter(usrnsPid, router1NetnsPid),
+      'ip',
+      'link',
+      'add',
+      agent1RouterHostExt,
+      'type',
+      'veth',
+      'peer',
+      'name',
+      agent2RouterHostExt,
+    ];
+    logger.info(['nsenter', ...args].join(' '));
+    await testBinUtils.exec('nsenter', args);
+    args = [
+      ...nsenter(usrnsPid, router2NetnsPid),
+      'ip',
+      'link',
+      'add',
+      agent2RouterHostInt,
+      'type',
+      'veth',
+      'peer',
+      'name',
+      agent2Host,
+    ];
+    logger.info(['nsenter', ...args].join(' '));
+    await testBinUtils.exec('nsenter', args);
+    // Link up the ends to the correct namespaces
+    args = [
+      ...nsenter(usrnsPid, agent1NetnsPid),
+      'ip',
+      'link',
+      'set',
+      'dev',
+      agent1RouterHostInt,
+      'netns',
+      router1NetnsPid.toString(),
+    ];
+    logger.info(['nsenter', ...args].join(' '));
+    await testBinUtils.exec('nsenter', args);
+    args = [
+      ...nsenter(usrnsPid, router1NetnsPid),
+      'ip',
+      'link',
+      'set',
+      'dev',
+      agent2RouterHostExt,
+      'netns',
+      router2NetnsPid.toString(),
+    ];
+    logger.info(['nsenter', ...args].join(' '));
+    await testBinUtils.exec('nsenter', args);
+    args = [
+      ...nsenter(usrnsPid, router2NetnsPid),
+      'ip',
+      'link',
+      'set',
+      'dev',
+      agent2Host,
+      'netns',
+      agent2NetnsPid.toString(),
+    ];
+    logger.info(['nsenter', ...args].join(' '));
+    await testBinUtils.exec('nsenter', args);
+    // Bring up each end
+    args = [
+      ...nsenter(usrnsPid, agent1NetnsPid),
+      'ip',
+      'link',
+      'set',
+      agent1Host,
+      'up',
+    ];
+    logger.info(['nsenter', ...args].join(' '));
+    await testBinUtils.exec('nsenter', args);
+    args = [
+      ...nsenter(usrnsPid, router1NetnsPid),
+      'ip',
+      'link',
+      'set',
+      agent1RouterHostInt,
+      'up',
+    ];
+    logger.info(['nsenter', ...args].join(' '));
+    await testBinUtils.exec('nsenter', args);
+    args = [
+      ...nsenter(usrnsPid, router1NetnsPid),
+      'ip',
+      'link',
+      'set',
+      agent1RouterHostExt,
+      'up',
+    ];
+    logger.info(['nsenter', ...args].join(' '));
+    await testBinUtils.exec('nsenter', args);
+    args = [
+      ...nsenter(usrnsPid, router2NetnsPid),
+      'ip',
+      'link',
+      'set',
+      agent2RouterHostExt,
+      'up',
+    ];
+    logger.info(['nsenter', ...args].join(' '));
+    await testBinUtils.exec('nsenter', args);
+    args = [
+      ...nsenter(usrnsPid, router2NetnsPid),
+      'ip',
+      'link',
+      'set',
+      agent2RouterHostInt,
+      'up',
+    ];
+    logger.info(['nsenter', ...args].join(' '));
+    await testBinUtils.exec('nsenter', args);
+    args = [
+      ...nsenter(usrnsPid, agent2NetnsPid),
+      'ip',
+      'link',
+      'set',
+      agent2Host,
+      'up',
+    ];
+    logger.info(['nsenter', ...args].join(' '));
+    await testBinUtils.exec('nsenter', args);
+    // Assign ip addresses to each end
+    args = [
+      ...nsenter(usrnsPid, agent1NetnsPid),
+      'ip',
+      'addr',
+      'add',
+      `${agent1HostIp}${subnetMask}`,
+      'dev',
+      agent1Host,
+    ];
+    logger.info(['nsenter', ...args].join(' '));
+    await testBinUtils.exec('nsenter', args);
+    args = [
+      ...nsenter(usrnsPid, router1NetnsPid),
+      'ip',
+      'addr',
+      'add',
+      `${agent1RouterHostIntIp}${subnetMask}`,
+      'dev',
+      agent1RouterHostInt,
+    ];
+    logger.info(['nsenter', ...args].join(' '));
+    await testBinUtils.exec('nsenter', args);
+    args = [
+      ...nsenter(usrnsPid, router1NetnsPid),
+      'ip',
+      'addr',
+      'add',
+      `${agent1RouterHostExtIp}${subnetMask}`,
+      'dev',
+      agent1RouterHostExt,
+    ];
+    logger.info(['nsenter', ...args].join(' '));
+    await testBinUtils.exec('nsenter', args);
+    args = [
+      ...nsenter(usrnsPid, router2NetnsPid),
+      'ip',
+      'addr',
+      'add',
+      `${agent2RouterHostExtIp}${subnetMask}`,
+      'dev',
+      agent2RouterHostExt,
+    ];
+    logger.info(['nsenter', ...args].join(' '));
+    await testBinUtils.exec('nsenter', args);
+    args = [
+      ...nsenter(usrnsPid, router2NetnsPid),
+      'ip',
+      'addr',
+      'add',
+      `${agent2RouterHostIntIp}${subnetMask}`,
+      'dev',
+      agent2RouterHostInt,
+    ];
+    logger.info(['nsenter', ...args].join(' '));
+    await testBinUtils.exec('nsenter', args);
+    args = [
+      ...nsenter(usrnsPid, agent2NetnsPid),
+      'ip',
+      'addr',
+      'add',
+      `${agent2HostIp}${subnetMask}`,
+      'dev',
+      agent2Host,
+    ];
+    logger.info(['nsenter', ...args].join(' '));
+    await testBinUtils.exec('nsenter', args);
+    // Add default routing
+    args = [
+      ...nsenter(usrnsPid, agent1NetnsPid),
+      'ip',
+      'route',
+      'add',
+      'default',
+      'via',
+      agent1RouterHostIntIp,
+    ];
+    logger.info(['nsenter', ...args].join(' '));
+    await testBinUtils.exec('nsenter', args);
+    args = [
+      ...nsenter(usrnsPid, router1NetnsPid),
+      'ip',
+      'route',
+      'add',
+      'default',
+      'via',
+      agent2RouterHostExtIp,
+    ];
+    logger.info(['nsenter', ...args].join(' '));
+    await testBinUtils.exec('nsenter', args);
+    args = [
+      ...nsenter(usrnsPid, router2NetnsPid),
+      'ip',
+      'route',
+      'add',
+      'default',
+      'via',
+      agent1RouterHostExtIp,
+    ];
+    logger.info(['nsenter', ...args].join(' '));
+    await testBinUtils.exec('nsenter', args);
+    args = [
+      ...nsenter(usrnsPid, agent2NetnsPid),
+      'ip',
+      'route',
+      'add',
+      'default',
+      'via',
+      agent2RouterHostIntIp,
+    ];
+    logger.info(['nsenter', ...args].join(' '));
+    await testBinUtils.exec('nsenter', args);
+  } catch (e) {
+    logger.error(e.message);
+  }
 }
 
 /**
@@ -195,79 +431,214 @@ function setupNetworkNamespaceInterfaces(
  * between each pair of adjacent namespaces, and adds default routing to allow
  * cross-communication
  */
-function setupSeedNamespaceInterfaces(
+async function setupSeedNamespaceInterfaces(
   usrnsPid: number,
   seedNetnsPid: number,
   router1NetnsPid: number,
   router2NetnsPid: number,
+  logger: Logger = new Logger(setupSeedNamespaceInterfaces.name),
 ) {
-  // Bring up loopback
-  child_process.exec(nsenter(usrnsPid, seedNetnsPid) + `ip link set lo up`);
-  // Create veth pairs to link the namespaces
-  child_process.exec(
-    nsenter(usrnsPid, router1NetnsPid) +
-      `ip link add ${router1SeedHost} type veth peer name ${seedRouter1Host}`,
-  );
-  child_process.exec(
-    nsenter(usrnsPid, router2NetnsPid) +
-      `ip link add ${router2SeedHost} type veth peer name ${seedRouter2Host}`,
-  );
-  // Move seed ends into seed network namespace
-  child_process.exec(
-    nsenter(usrnsPid, router1NetnsPid) +
-      `ip link set dev ${seedRouter1Host} netns ${seedNetnsPid}`,
-  );
-  child_process.exec(
-    nsenter(usrnsPid, router2NetnsPid) +
-      `ip link set dev ${seedRouter2Host} netns ${seedNetnsPid}`,
-  );
-  // Bring up each end
-  child_process.exec(
-    nsenter(usrnsPid, router1NetnsPid) + `ip link set ${router1SeedHost} up`,
-  );
-  child_process.exec(
-    nsenter(usrnsPid, seedNetnsPid) + `ip link set ${seedRouter1Host} up`,
-  );
-  child_process.exec(
-    nsenter(usrnsPid, seedNetnsPid) + `ip link set ${seedRouter2Host} up`,
-  );
-  child_process.exec(
-    nsenter(usrnsPid, router2NetnsPid) + `ip link set ${router2SeedHost} up`,
-  );
-  // Assign ip addresses to each end
-  child_process.exec(
-    nsenter(usrnsPid, router1NetnsPid) +
-      `ip addr add ${router1SeedHostIp}${subnetMask} dev ${router1SeedHost}`,
-  );
-  child_process.exec(
-    nsenter(usrnsPid, seedNetnsPid) +
-      `ip addr add ${seedHostIp}${subnetMask} dev ${seedRouter1Host}`,
-  );
-  child_process.exec(
-    nsenter(usrnsPid, seedNetnsPid) +
-      `ip addr add ${seedHostIp}${subnetMask} dev ${seedRouter2Host}`,
-  );
-  child_process.exec(
-    nsenter(usrnsPid, router2NetnsPid) +
-      `ip addr add ${router2SeedHostIp}${subnetMask} dev ${router2SeedHost}`,
-  );
-  child_process.exec(
-    nsenter(usrnsPid, router1NetnsPid) +
-      `ip route add ${seedHostIp} dev ${router1SeedHost}`,
-  );
-  child_process.exec(
-    nsenter(usrnsPid, router2NetnsPid) +
-      `ip route add ${seedHostIp} dev ${router2SeedHost}`,
-  );
-  // Add default routing
-  child_process.exec(
-    nsenter(usrnsPid, seedNetnsPid) +
-      `ip route add ${router1SeedHostIp} dev ${seedRouter1Host}`,
-  );
-  child_process.exec(
-    nsenter(usrnsPid, seedNetnsPid) +
-      `ip route add ${router2SeedHostIp} dev ${seedRouter2Host}`,
-  );
+  let args: Array<string> = [];
+  try {
+    // Bring up loopback
+    args = [
+      ...nsenter(usrnsPid, seedNetnsPid),
+      'ip',
+      'link',
+      'set',
+      'lo',
+      'up',
+    ];
+    logger.info(['nsenter', ...args].join(' '));
+    await testBinUtils.exec('nsenter', args);
+    // Create veth pairs to link the namespaces
+    args = [
+      ...nsenter(usrnsPid, router1NetnsPid),
+      'ip',
+      'link',
+      'add',
+      router1SeedHost,
+      'type',
+      'veth',
+      'peer',
+      'name',
+      seedRouter1Host,
+    ];
+    logger.info(['nsenter', ...args].join(' '));
+    await testBinUtils.exec('nsenter', args);
+    args = [
+      ...nsenter(usrnsPid, router2NetnsPid),
+      'ip',
+      'link',
+      'add',
+      router2SeedHost,
+      'type',
+      'veth',
+      'peer',
+      'name',
+      seedRouter2Host,
+    ];
+    logger.info(['nsenter', ...args].join(' '));
+    await testBinUtils.exec('nsenter', args);
+    // Move seed ends into seed network namespace
+    args = [
+      ...nsenter(usrnsPid, router1NetnsPid),
+      'ip',
+      'link',
+      'set',
+      'dev',
+      seedRouter1Host,
+      'netns',
+      seedNetnsPid.toString(),
+    ];
+    logger.info(['nsenter', ...args].join(' '));
+    await testBinUtils.exec('nsenter', args);
+    args = [
+      ...nsenter(usrnsPid, router2NetnsPid),
+      'ip',
+      'link',
+      'set',
+      'dev',
+      seedRouter2Host,
+      'netns',
+      seedNetnsPid.toString(),
+    ];
+    logger.info(['nsenter', ...args].join(' '));
+    await testBinUtils.exec('nsenter', args);
+    // Bring up each end
+    args = [
+      ...nsenter(usrnsPid, router1NetnsPid),
+      'ip',
+      'link',
+      'set',
+      router1SeedHost,
+      'up',
+    ];
+    logger.info(['nsenter', ...args].join(' '));
+    await testBinUtils.exec('nsenter', args);
+    args = [
+      ...nsenter(usrnsPid, seedNetnsPid),
+      'ip',
+      'link',
+      'set',
+      seedRouter1Host,
+      'up',
+    ];
+    logger.info(['nsenter', ...args].join(' '));
+    await testBinUtils.exec('nsenter', args);
+    args = [
+      ...nsenter(usrnsPid, seedNetnsPid),
+      'ip',
+      'link',
+      'set',
+      seedRouter2Host,
+      'up',
+    ];
+    logger.info(['nsenter', ...args].join(' '));
+    await testBinUtils.exec('nsenter', args);
+    args = [
+      ...nsenter(usrnsPid, router2NetnsPid),
+      'ip',
+      'link',
+      'set',
+      router2SeedHost,
+      'up',
+    ];
+    logger.info(['nsenter', ...args].join(' '));
+    await testBinUtils.exec('nsenter', args);
+    // Assign ip addresses to each end
+    args = [
+      ...nsenter(usrnsPid, router1NetnsPid),
+      'ip',
+      'addr',
+      'add',
+      `${router1SeedHostIp}${subnetMask}`,
+      'dev',
+      router1SeedHost,
+    ];
+    logger.info(['nsenter', ...args].join(' '));
+    await testBinUtils.exec('nsenter', args);
+    args = [
+      ...nsenter(usrnsPid, seedNetnsPid),
+      'ip',
+      'addr',
+      'add',
+      `${seedHostIp}${subnetMask}`,
+      'dev',
+      seedRouter1Host,
+    ];
+    logger.info(['nsenter', ...args].join(' '));
+    await testBinUtils.exec('nsenter', args);
+    args = [
+      ...nsenter(usrnsPid, seedNetnsPid),
+      'ip',
+      'addr',
+      'add',
+      `${seedHostIp}${subnetMask}`,
+      'dev',
+      seedRouter2Host,
+    ];
+    logger.info(['nsenter', ...args].join(' '));
+    await testBinUtils.exec('nsenter', args);
+    args = [
+      ...nsenter(usrnsPid, router2NetnsPid),
+      'ip',
+      'addr',
+      'add',
+      `${router2SeedHostIp}${subnetMask}`,
+      'dev',
+      router2SeedHost,
+    ];
+    logger.info(['nsenter', ...args].join(' '));
+    await testBinUtils.exec('nsenter', args);
+    // Add default routing
+    args = [
+      ...nsenter(usrnsPid, router1NetnsPid),
+      'ip',
+      'route',
+      'add',
+      seedHostIp,
+      'dev',
+      router1SeedHost,
+    ];
+    logger.info(['nsenter', ...args].join(' '));
+    await testBinUtils.exec('nsenter', args);
+    args = [
+      ...nsenter(usrnsPid, router2NetnsPid),
+      'ip',
+      'route',
+      'add',
+      seedHostIp,
+      'dev',
+      router2SeedHost,
+    ];
+    logger.info(['nsenter', ...args].join(' '));
+    await testBinUtils.exec('nsenter', args);
+    args = [
+      ...nsenter(usrnsPid, seedNetnsPid),
+      'ip',
+      'route',
+      'add',
+      router1SeedHostIp,
+      'dev',
+      seedRouter1Host,
+    ];
+    logger.info(['nsenter', ...args].join(' '));
+    await testBinUtils.exec('nsenter', args);
+    args = [
+      ...nsenter(usrnsPid, seedNetnsPid),
+      'ip',
+      'route',
+      'add',
+      router2SeedHostIp,
+      'dev',
+      seedRouter2Host,
+    ];
+    logger.info(['nsenter', ...args].join(' '));
+    await testBinUtils.exec('nsenter', args);
+  } catch (e) {
+    logger.error(e.message);
+  }
 }
 
 /**
@@ -313,14 +684,7 @@ async function pkExecNs(
     child_process.execFile(
       'nsenter',
       [
-        '--target',
-        usrnsPid.toString(),
-        '--user',
-        '--preserve-credentials',
-        'nsenter',
-        '--target',
-        netnsPid.toString(),
-        '--net',
+        ...nsenter(usrnsPid, netnsPid),
         'ts-node',
         '--project',
         tsConfigPath,
@@ -392,14 +756,7 @@ async function pkSpawnNs(
   const subprocess = child_process.spawn(
     'nsenter',
     [
-      '--target',
-      usrnsPid.toString(),
-      '--user',
-      '--preserve-credentials',
-      'nsenter',
-      '--target',
-      netnsPid.toString(),
-      '--net',
+      ...nsenter(usrnsPid, netnsPid),
       'ts-node',
       '--project',
       tsConfigPath,
@@ -430,159 +787,283 @@ async function pkSpawnNs(
 /**
  * Setup routing between an agent and router with no NAT rules
  */
-function setupDMZ(
+async function setupDMZ(
   usrnsPid: number,
   routerNsPid: number,
   agentIp: string,
   agentPort: string,
   routerExt: string,
   routerExtIp: string,
+  logger: Logger = new Logger(setupDMZ.name),
 ) {
-  const postroutingCommand = nsenter(usrnsPid, routerNsPid).concat(
-    'iptables --table nat ',
-    '--append POSTROUTING ',
-    '--protocol udp ',
-    `--source ${agentIp}${subnetMask} `,
-    `--out-interface ${routerExt} `,
-    '--jump SNAT ',
-    `--to-source ${routerExtIp}:${mappedPort}`,
-  );
-  const preroutingCommand = nsenter(usrnsPid, routerNsPid).concat(
-    'iptables --table nat ',
-    '--append PREROUTING ',
-    '--protocol udp ',
-    `--destination-port ${mappedPort} `,
-    `--in-interface ${routerExt} `,
-    '--jump DNAT ',
-    `--to-destination ${agentIp}:${agentPort}`,
-  );
-  child_process.exec(postroutingCommand);
-  child_process.exec(preroutingCommand);
+  const postroutingCommand = [
+    ...nsenter(usrnsPid, routerNsPid),
+    'iptables',
+    '--table',
+    'nat',
+    '--append',
+    'POSTROUTING',
+    '--protocol',
+    'udp',
+    '--source',
+    `${agentIp}${subnetMask}`,
+    '--out-interface',
+    routerExt,
+    '--jump',
+    'SNAT',
+    '--to-source',
+    `${routerExtIp}:${mappedPort}`,
+  ];
+  const preroutingCommand = [
+    ...nsenter(usrnsPid, routerNsPid),
+    'iptables',
+    '--table',
+    'nat',
+    '--append',
+    'PREROUTING',
+    '--protocol',
+    'udp',
+    '--destination-port',
+    mappedPort,
+    '--in-interface',
+    routerExt,
+    '--jump',
+    'DNAT',
+    '--to-destination',
+    `${agentIp}:${agentPort}`,
+  ];
+  try {
+    logger.info(['nsenter', ...postroutingCommand].join(' '));
+    await testBinUtils.exec('nsenter', postroutingCommand);
+    logger.info(['nsenter', ...preroutingCommand].join(' '));
+    await testBinUtils.exec('nsenter', preroutingCommand);
+  } catch (e) {
+    logger.error(e.message);
+  }
 }
 
 /**
  * Setup Port-Restricted Cone NAT for a namespace (on the router namespace)
  */
-function setupNATEndpointIndependentMapping(
+async function setupNATEndpointIndependentMapping(
   usrnsPid: number,
   routerNsPid: number,
   agentIp: string,
   routerExt: string,
   routerInt: string,
+  logger: Logger = new Logger(setupNATEndpointIndependentMapping.name),
 ) {
-  const natCommand = nsenter(usrnsPid, routerNsPid).concat(
-    'iptables --table nat ',
-    '--append POSTROUTING ',
-    '--protocol udp ',
-    `--source ${agentIp}${subnetMask} `,
-    `--out-interface ${routerExt} `,
-    '--jump MASQUERADE',
-  );
-  const acceptLocalCommand = nsenter(usrnsPid, routerNsPid).concat(
-    'iptables --table filter ',
-    '--append INPUT ',
-    `--in-interface ${routerInt} `,
-    '--jump ACCEPT',
-  );
-  const acceptEstablishedCommand = nsenter(usrnsPid, routerNsPid).concat(
-    'iptables --table filter ',
-    '--append INPUT ',
-    `--match conntrack `,
-    '--cstate RELATED,ESTABLISHED ',
-    '--jump ACCEPT',
-  );
-  const dropCommand = nsenter(usrnsPid, routerNsPid).concat(
-    'iptables --table filter ',
-    '--append INPUT ',
-    '--jump DROP',
-  );
-  child_process.exec(acceptLocalCommand);
-  child_process.exec(acceptEstablishedCommand);
-  child_process.exec(dropCommand);
-  child_process.exec(natCommand);
+  const natCommand = [
+    ...nsenter(usrnsPid, routerNsPid),
+    'iptables',
+    '--table',
+    'nat',
+    '--append',
+    'POSTROUTING',
+    '--protocol',
+    'udp',
+    '--source',
+    `${agentIp}${subnetMask}`,
+    '--out-interface',
+    routerExt,
+    '--jump',
+    'MASQUERADE',
+  ];
+  const acceptLocalCommand = [
+    ...nsenter(usrnsPid, routerNsPid),
+    'iptables',
+    '--table',
+    'filter',
+    '--append',
+    'INPUT',
+    '--in-interface',
+    routerInt,
+    '--jump',
+    'ACCEPT',
+  ];
+  const acceptEstablishedCommand = [
+    ...nsenter(usrnsPid, routerNsPid),
+    'iptables',
+    '--table',
+    'filter',
+    '--append',
+    'INPUT',
+    '--match',
+    'conntrack',
+    '--ctstate',
+    'RELATED,ESTABLISHED',
+    '--jump',
+    'ACCEPT',
+  ];
+  const dropCommand = [
+    ...nsenter(usrnsPid, routerNsPid),
+    'iptables',
+    '--table',
+    'filter',
+    '--append',
+    'INPUT',
+    '--jump',
+    'DROP',
+  ];
+  try {
+    logger.info(['nsenter', ...acceptLocalCommand].join(' '));
+    await testBinUtils.exec('nsenter', acceptLocalCommand);
+    logger.info(['nsenter', ...acceptEstablishedCommand].join(' '));
+    await testBinUtils.exec('nsenter', acceptEstablishedCommand);
+    logger.info(['nsenter', ...dropCommand].join(' '));
+    await testBinUtils.exec('nsenter', dropCommand);
+    logger.info(['nsenter', ...natCommand].join(' '));
+    await testBinUtils.exec('nsenter', natCommand);
+  } catch (e) {
+    logger.error(e.message);
+  }
 }
 
 /**
  * Setup Symmetric NAT for a namespace (on the router namespace)
  */
-function setupNATEndpointDependentMapping(
+async function setupNATEndpointDependentMapping(
   usrnsPid: number,
   routerNsPid: number,
   routerExt: string,
+  logger: Logger = new Logger(setupNATEndpointDependentMapping.name),
 ) {
-  const command = nsenter(usrnsPid, routerNsPid).concat(
-    'iptables --table nat ',
-    '--append POSTROUTING ',
-    '--protocol udp ',
-    `--out-interface ${routerExt} `,
-    '--jump MASQUERADE ',
+  const command = [
+    ...nsenter(usrnsPid, routerNsPid),
+    'iptables',
+    '--table',
+    'nat',
+    '--append',
+    'POSTROUTING',
+    '--protocol',
+    'udp',
+    '--out-interface',
+    routerExt,
+    '--jump',
+    'MASQUERADE',
     `--random`,
-  );
-  child_process.exec(command);
+  ];
+  try {
+    logger.info(['nsenter', ...command].join(' '));
+    await testBinUtils.exec('nsenter', command);
+  } catch (e) {
+    logger.error(e.message);
+  }
 }
 
 /**
  * Setup Port-Restricted Cone NAT for a namespace (on the router namespace)
  */
-function setupNATSimplifiedEDMAgent(
+async function setupNATSimplifiedEDMAgent(
   usrnsPid: number,
   routerNsPid: number,
   agentIp: string,
   routerExt: string,
   routerInt: string,
+  logger: Logger = new Logger(setupNATSimplifiedEDMAgent.name),
 ) {
-  const natCommand = nsenter(usrnsPid, routerNsPid).concat(
-    'iptables --table nat ',
-    '--append POSTROUTING ',
-    '--protocol udp ',
-    `--source ${agentIp}${subnetMask} `,
-    `--out-interface ${routerExt} `,
-    '--jump MASQUERADE ',
-    '--to-ports 44444',
-  );
-  const acceptLocalCommand = nsenter(usrnsPid, routerNsPid).concat(
-    'iptables --table filter ',
-    '--append INPUT ',
-    `--in-interface ${routerInt} `,
-    '--jump ACCEPT',
-  );
-  const acceptEstablishedCommand = nsenter(usrnsPid, routerNsPid).concat(
-    'iptables --table filter ',
-    '--append INPUT ',
-    `--match conntrack `,
-    '--cstate RELATED,ESTABLISHED ',
-    '--jump ACCEPT',
-  );
-  const dropCommand = nsenter(usrnsPid, routerNsPid).concat(
-    'iptables --table filter ',
-    '--append INPUT ',
-    '--jump DROP',
-  );
-  child_process.exec(acceptLocalCommand);
-  child_process.exec(acceptEstablishedCommand);
-  child_process.exec(dropCommand);
-  child_process.exec(natCommand);
+  const natCommand = [
+    ...nsenter(usrnsPid, routerNsPid),
+    'iptables',
+    '--table',
+    'nat',
+    '--append',
+    'POSTROUTING',
+    '--protocol',
+    'udp',
+    '--source',
+    `${agentIp}${subnetMask}`,
+    '--out-interface',
+    routerExt,
+    '--jump',
+    'MASQUERADE',
+    '--to-ports',
+    '44444',
+  ];
+  const acceptLocalCommand = [
+    ...nsenter(usrnsPid, routerNsPid),
+    'iptables',
+    '--table',
+    'filter',
+    '--append',
+    'INPUT',
+    '--in-interface',
+    routerInt,
+    '--jump',
+    'ACCEPT',
+  ];
+  const acceptEstablishedCommand = [
+    ...nsenter(usrnsPid, routerNsPid),
+    'iptables',
+    '--table',
+    'filter',
+    '--append',
+    'INPUT',
+    '--match',
+    'conntrack',
+    '--ctstate',
+    'RELATED,ESTABLISHED',
+    '--jump',
+    'ACCEPT',
+  ];
+  const dropCommand = [
+    ...nsenter(usrnsPid, routerNsPid),
+    'iptables',
+    '--table',
+    'filter',
+    '--append',
+    'INPUT',
+    '--jump',
+    'DROP',
+  ];
+  try {
+    logger.info(['nsenter', ...acceptLocalCommand].join(' '));
+    await testBinUtils.exec('nsenter', acceptLocalCommand);
+    logger.info(['nsenter', ...acceptEstablishedCommand].join(' '));
+    await testBinUtils.exec('nsenter', acceptEstablishedCommand);
+    logger.info(['nsenter', ...dropCommand].join(' '));
+    await testBinUtils.exec('nsenter', dropCommand);
+    logger.info(['nsenter', ...natCommand].join(' '));
+    await testBinUtils.exec('nsenter', natCommand);
+  } catch (e) {
+    logger.error(e.message);
+  }
 }
 
 /**
  * Setup Port-Restricted Cone NAT for a namespace (on the router namespace)
  */
-function setupNATSimplifiedEDMSeed(
+async function setupNATSimplifiedEDMSeed(
   usrnsPid: number,
   routerNsPid: number,
   agentIp: string,
   routerExt: string,
+  logger: Logger = new Logger(setupNATSimplifiedEDMSeed.name),
 ) {
-  const natCommand = nsenter(usrnsPid, routerNsPid).concat(
-    'iptables --table nat ',
-    '--append POSTROUTING ',
-    '--protocol udp ',
-    `--source ${agentIp}${subnetMask} `,
-    `--out-interface ${routerExt} `,
-    '--jump MASQUERADE ',
-    '--to-ports 55555',
-  );
-  child_process.exec(natCommand);
+  const natCommand = [
+    ...nsenter(usrnsPid, routerNsPid),
+    'iptables',
+    '--table',
+    'nat',
+    '--append',
+    'POSTROUTING',
+    '--protocol',
+    'udp',
+    '--source',
+    `${agentIp}${subnetMask}`,
+    '--out-interface',
+    routerExt,
+    '--jump',
+    'MASQUERADE',
+    '--to-ports',
+    '55555',
+  ];
+  try {
+    logger.info(['nsenter', ...natCommand].join(' '));
+    await testBinUtils.exec('nsenter', natCommand);
+  } catch (e) {
+    logger.error(e.message);
+  }
 }
 
 async function setupNATWithSeedNode(
@@ -598,159 +1079,177 @@ async function setupNATWithSeedNode(
   const password = 'password';
   // Create a user namespace containing five network namespaces
   // Two agents, two routers, one seed node
-  const usrns = createUserNamespace();
-  const seedNetns = createNetworkNamespace(usrns.pid!);
-  const agent1Netns = createNetworkNamespace(usrns.pid!);
-  const agent2Netns = createNetworkNamespace(usrns.pid!);
-  const router1Netns = createNetworkNamespace(usrns.pid!);
-  const router2Netns = createNetworkNamespace(usrns.pid!);
+  const usrns = createUserNamespace(logger);
+  const seedNetns = createNetworkNamespace(usrns.pid!, logger);
+  const agent1Netns = createNetworkNamespace(usrns.pid!, logger);
+  const agent2Netns = createNetworkNamespace(usrns.pid!, logger);
+  const router1Netns = createNetworkNamespace(usrns.pid!, logger);
+  const router2Netns = createNetworkNamespace(usrns.pid!, logger);
   // Apply appropriate NAT rules
   switch (agent1NAT) {
     case 'dmz': {
-      setupDMZ(
+      await setupDMZ(
         usrns.pid!,
         router1Netns.pid!,
         agent1HostIp,
         agent1Port,
         agent1RouterHostExt,
         agent1RouterHostExtIp,
+        logger,
       );
-      setupDMZ(
+      await setupDMZ(
         usrns.pid!,
         router1Netns.pid!,
         agent1HostIp,
         agent1Port,
         router1SeedHost,
         router1SeedHostIp,
+        logger,
       );
       break;
     }
     case 'eim': {
-      setupNATEndpointIndependentMapping(
+      await setupNATEndpointIndependentMapping(
         usrns.pid!,
         router1Netns.pid!,
         agent1HostIp,
         agent1RouterHostExt,
         agent1RouterHostInt,
+        logger,
       );
-      setupNATEndpointIndependentMapping(
+      await setupNATEndpointIndependentMapping(
         usrns.pid!,
         router1Netns.pid!,
         agent1HostIp,
         router1SeedHost,
         agent1RouterHostInt,
+        logger,
       );
       break;
     }
     case 'edm': {
-      setupNATEndpointDependentMapping(
+      await setupNATEndpointDependentMapping(
         usrns.pid!,
         router1Netns.pid!,
         agent1RouterHostExt,
+        logger,
       );
-      setupNATEndpointDependentMapping(
+      await setupNATEndpointDependentMapping(
         usrns.pid!,
         router1Netns.pid!,
         router1SeedHost,
+        logger,
       );
       break;
     }
     case 'edmSimple': {
-      setupNATSimplifiedEDMAgent(
+      await setupNATSimplifiedEDMAgent(
         usrns.pid!,
         router1Netns.pid!,
         agent1HostIp,
         agent1RouterHostExt,
         agent1RouterHostInt,
+        logger,
       );
-      setupNATSimplifiedEDMSeed(
+      await setupNATSimplifiedEDMSeed(
         usrns.pid!,
         router1Netns.pid!,
         agent1HostIp,
         router1SeedHost,
+        logger,
       );
       break;
     }
   }
   switch (agent2NAT) {
     case 'dmz': {
-      setupDMZ(
+      await setupDMZ(
         usrns.pid!,
         router2Netns.pid!,
         agent2HostIp,
         agent2Port,
         agent2RouterHostExt,
         agent2RouterHostExtIp,
+        logger,
       );
-      setupDMZ(
+      await setupDMZ(
         usrns.pid!,
         router2Netns.pid!,
         agent2HostIp,
         agent2Port,
         router2SeedHost,
         router2SeedHostIp,
+        logger,
       );
       break;
     }
     case 'eim': {
-      setupNATEndpointIndependentMapping(
+      await setupNATEndpointIndependentMapping(
         usrns.pid!,
         router2Netns.pid!,
         agent2HostIp,
         agent2RouterHostExt,
         agent2RouterHostInt,
+        logger,
       );
-      setupNATEndpointIndependentMapping(
+      await setupNATEndpointIndependentMapping(
         usrns.pid!,
         router2Netns.pid!,
         agent2HostIp,
         router2SeedHost,
         agent2RouterHostInt,
+        logger,
       );
       break;
     }
     case 'edm': {
-      setupNATEndpointDependentMapping(
+      await setupNATEndpointDependentMapping(
         usrns.pid!,
         router2Netns.pid!,
         agent2RouterHostExt,
+        logger,
       );
-      setupNATEndpointDependentMapping(
+      await setupNATEndpointDependentMapping(
         usrns.pid!,
         router2Netns.pid!,
         router2SeedHost,
+        logger,
       );
       break;
     }
     case 'edmSimple': {
-      setupNATSimplifiedEDMAgent(
+      await setupNATSimplifiedEDMAgent(
         usrns.pid!,
         router2Netns.pid!,
         agent2HostIp,
         agent2RouterHostExt,
         agent2RouterHostInt,
+        logger,
       );
-      setupNATSimplifiedEDMSeed(
+      await setupNATSimplifiedEDMSeed(
         usrns.pid!,
         router2Netns.pid!,
         agent2HostIp,
         router2SeedHost,
+        logger,
       );
       break;
     }
   }
-  setupNetworkNamespaceInterfaces(
+  await setupNetworkNamespaceInterfaces(
     usrns.pid!,
     agent1Netns.pid!,
     router1Netns.pid!,
     router2Netns.pid!,
     agent2Netns.pid!,
+    logger,
   );
-  setupSeedNamespaceInterfaces(
+  await setupSeedNamespaceInterfaces(
     usrns.pid!,
     seedNetns.pid!,
     router1Netns.pid!,
     router2Netns.pid!,
+    logger,
   );
   const seedNode = await pkSpawnNs(
     usrns.pid!,
@@ -939,100 +1438,109 @@ async function setupNAT(
   const password = 'password';
   // Create a user namespace containing four network namespaces
   // Two agents and two routers
-  const usrns = createUserNamespace();
-  const agent1Netns = createNetworkNamespace(usrns.pid!);
-  const agent2Netns = createNetworkNamespace(usrns.pid!);
-  const router1Netns = createNetworkNamespace(usrns.pid!);
-  const router2Netns = createNetworkNamespace(usrns.pid!);
+  const usrns = createUserNamespace(logger);
+  const agent1Netns = createNetworkNamespace(usrns.pid!, logger);
+  const agent2Netns = createNetworkNamespace(usrns.pid!, logger);
+  const router1Netns = createNetworkNamespace(usrns.pid!, logger);
+  const router2Netns = createNetworkNamespace(usrns.pid!, logger);
   // Apply appropriate NAT rules
   switch (agent1NAT) {
     case 'dmz': {
-      setupDMZ(
+      await setupDMZ(
         usrns.pid!,
         router1Netns.pid!,
         agent1HostIp,
         agent1Port,
         agent1RouterHostExt,
         agent1RouterHostExtIp,
+        logger,
       );
       break;
     }
     case 'eim': {
-      setupNATEndpointIndependentMapping(
+      await setupNATEndpointIndependentMapping(
         usrns.pid!,
         router1Netns.pid!,
         agent1HostIp,
         agent1RouterHostExt,
         agent1RouterHostInt,
+        logger,
       );
       break;
     }
     case 'edm': {
-      setupNATEndpointDependentMapping(
+      await setupNATEndpointDependentMapping(
         usrns.pid!,
         router1Netns.pid!,
         agent1RouterHostExt,
+        logger,
       );
       break;
     }
     case 'edmSimple': {
-      setupNATSimplifiedEDMAgent(
+      await setupNATSimplifiedEDMAgent(
         usrns.pid!,
         router1Netns.pid!,
         agent1HostIp,
         agent1RouterHostExt,
         agent1RouterHostInt,
+        logger,
       );
       break;
     }
   }
   switch (agent2NAT) {
     case 'dmz': {
-      setupDMZ(
+      await setupDMZ(
         usrns.pid!,
         router2Netns.pid!,
         agent2HostIp,
         agent2Port,
         agent2RouterHostExt,
         agent2RouterHostExtIp,
+        logger,
       );
       break;
     }
     case 'eim': {
-      setupNATEndpointIndependentMapping(
+      await setupNATEndpointIndependentMapping(
         usrns.pid!,
         router2Netns.pid!,
         agent2HostIp,
         agent2RouterHostExt,
         agent2RouterHostInt,
+        logger,
       );
       break;
     }
     case 'edm': {
-      setupNATEndpointDependentMapping(
+      await setupNATEndpointDependentMapping(
         usrns.pid!,
         router2Netns.pid!,
         agent2RouterHostExt,
+        logger,
       );
       break;
     }
     case 'edmSimple': {
-      setupNATSimplifiedEDMAgent(
+      await setupNATSimplifiedEDMAgent(
         usrns.pid!,
         router2Netns.pid!,
         agent2HostIp,
         agent2RouterHostExt,
         agent2RouterHostInt,
+        logger,
       );
       break;
     }
   }
-  setupNetworkNamespaceInterfaces(
+  await setupNetworkNamespaceInterfaces(
     usrns.pid!,
     agent1Netns.pid!,
     router1Netns.pid!,
     router2Netns.pid!,
     agent2Netns.pid!,
+    logger,
   );
   const agent1 = await pkSpawnNs(
     usrns.pid!,
