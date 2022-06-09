@@ -1,4 +1,5 @@
 import type { StateVersion } from '@/schema/types';
+import type { KeyManagerChangeData } from '@/keys/types';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
@@ -9,6 +10,7 @@ import { Status } from '@/status';
 import { Schema } from '@/schema';
 import * as errors from '@/errors';
 import config from '@/config';
+import { promise } from '@/utils/index';
 import * as testUtils from './utils';
 
 describe('PolykeyAgent', () => {
@@ -174,5 +176,77 @@ describe('PolykeyAgent', () => {
         logger,
       }),
     ).rejects.toThrow(errors.ErrorSchemaVersionTooOld);
+  });
+  test('renewRootKeyPair change event propagates', async () => {
+    const nodePath = `${dataDir}/polykey`;
+    let pkAgent: PolykeyAgent | undefined;
+    try {
+      pkAgent = await PolykeyAgent.createPolykeyAgent({
+        password,
+        nodePath,
+        logger,
+      });
+      const prom = promise<KeyManagerChangeData>();
+      pkAgent.events.on(
+        PolykeyAgent.eventSymbols.KeyManager,
+        async (data: KeyManagerChangeData) => {
+          prom.resolveP(data);
+        },
+      );
+      await pkAgent.keyManager.renewRootKeyPair(password);
+
+      await expect(prom.p).resolves.toBeDefined();
+    } finally {
+      await pkAgent?.stop();
+      await pkAgent?.destroy();
+    }
+  });
+  test('resetRootKeyPair change event propagates', async () => {
+    const nodePath = `${dataDir}/polykey`;
+    let pkAgent: PolykeyAgent | undefined;
+    try {
+      pkAgent = await PolykeyAgent.createPolykeyAgent({
+        password,
+        nodePath,
+        logger,
+      });
+      const prom = promise<KeyManagerChangeData>();
+      pkAgent.events.on(
+        PolykeyAgent.eventSymbols.KeyManager,
+        async (data: KeyManagerChangeData) => {
+          prom.resolveP(data);
+        },
+      );
+      await pkAgent.keyManager.resetRootKeyPair(password);
+
+      await expect(prom.p).resolves.toBeDefined();
+    } finally {
+      await pkAgent?.stop();
+      await pkAgent?.destroy();
+    }
+  });
+  test('resetRootCert change event propagates', async () => {
+    const nodePath = `${dataDir}/polykey`;
+    let pkAgent: PolykeyAgent | undefined;
+    try {
+      pkAgent = await PolykeyAgent.createPolykeyAgent({
+        password,
+        nodePath,
+        logger,
+      });
+      const prom = promise<KeyManagerChangeData>();
+      pkAgent.events.on(
+        PolykeyAgent.eventSymbols.KeyManager,
+        async (data: KeyManagerChangeData) => {
+          prom.resolveP(data);
+        },
+      );
+      await pkAgent.keyManager.resetRootCert();
+
+      await expect(prom.p).resolves.toBeDefined();
+    } finally {
+      await pkAgent?.stop();
+      await pkAgent?.destroy();
+    }
   });
 });
