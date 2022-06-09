@@ -1,4 +1,4 @@
-import type { DB, DBTransaction, LevelPath } from '@matrixai/db';
+import type { DB, DBTransaction, KeyPath, LevelPath } from '@matrixai/db';
 import type {
   NodeId,
   NodeAddress,
@@ -191,14 +191,14 @@ class NodeGraph {
       });
     }
 
-    for await (const [key, nodeData] of tran.iterator<NodeData>(
+    for await (const [keyPath, nodeData] of tran.iterator<NodeData>(
       {
         reverse: order !== 'asc',
         valueAsBuffer: false,
       },
       this.nodeGraphBucketsDbPath,
     )) {
-      const { nodeId } = nodesUtils.parseBucketsDbKey(key as Array<Buffer>);
+      const { nodeId } = nodesUtils.parseBucketsDbKey(keyPath);
       yield [nodeId, nodeData];
     }
   }
@@ -273,13 +273,11 @@ class NodeGraph {
     const bucketKey = nodesUtils.bucketKey(bucketIndex);
     // Remove the oldest entry in the bucket
     const oldestNodeIds: Array<NodeId> = [];
-    for await (const [key] of tran.iterator({ limit }, [
+    for await (const [keyPath] of tran.iterator({ limit }, [
       ...this.nodeGraphLastUpdatedDbPath,
       bucketKey,
     ])) {
-      const { nodeId } = nodesUtils.parseLastUpdatedBucketDbKey(
-        key as Array<Buffer>,
-      );
+      const { nodeId } = nodesUtils.parseLastUpdatedBucketDbKey(keyPath);
       oldestNodeIds.push(nodeId);
     }
     return oldestNodeIds;
@@ -421,7 +419,7 @@ class NodeGraph {
         this.nodeGraphBucketsDbPath,
       )) {
         const { bucketIndex: bucketIndex_, nodeId } =
-          nodesUtils.parseBucketsDbKey(key as Array<Buffer>);
+          nodesUtils.parseBucketsDbKey(key);
         if (bucketIndex == null) {
           // First entry of the first bucket
           bucketIndex = bucketIndex_;
@@ -467,7 +465,7 @@ class NodeGraph {
           this.nodeGraphLastUpdatedDbPath,
         )) {
           const { bucketIndex: bucketIndex_, nodeId } =
-            nodesUtils.parseLastUpdatedBucketsDbKey(key as Array<Buffer>);
+            nodesUtils.parseLastUpdatedBucketsDbKey(key);
           bucketsDbIterator.seek([key[0], key[2]]);
           // @ts-ignore
           // eslint-disable-next-line
@@ -535,7 +533,7 @@ class NodeGraph {
     )) {
       // The key is a combined bucket key and node ID
       const { bucketIndex: bucketIndexOld, nodeId } =
-        nodesUtils.parseBucketsDbKey(key as Array<Buffer>);
+        nodesUtils.parseBucketsDbKey(key);
       const nodeIdEncoded = nodesUtils.encodeNodeId(nodeId);
       const nodeIdKey = nodesUtils.bucketDbKey(nodeId);
       // If the new own node ID is one of the existing node IDs, it is just dropped
@@ -555,7 +553,7 @@ class NodeGraph {
       if (countNew < this.nodeBucketLimit) {
         await tran.put([...metaPathNew, 'count'], countNew + 1);
       } else {
-        let oldestIndexKey: Array<Buffer> | undefined = undefined;
+        let oldestIndexKey: KeyPath | undefined = undefined;
         let oldestNodeId: NodeId | undefined = undefined;
         for await (const [key] of tran.iterator(
           {
@@ -563,10 +561,9 @@ class NodeGraph {
           },
           indexPathNew,
         )) {
-          oldestIndexKey = key as Array<Buffer>;
-          ({ nodeId: oldestNodeId } = nodesUtils.parseLastUpdatedBucketDbKey(
-            key as Array<Buffer>,
-          ));
+          oldestIndexKey = key;
+          ({ nodeId: oldestNodeId } =
+            nodesUtils.parseLastUpdatedBucketDbKey(key));
         }
         await tran.del([
           ...bucketPathNew,
@@ -730,7 +727,7 @@ class NodeGraph {
         },
         this.nodeGraphBucketsDbPath,
       )) {
-        const info = nodesUtils.parseBucketsDbKey(key as Array<Buffer>);
+        const info = nodesUtils.parseBucketsDbKey(key);
         nodeIds.push([info.nodeId, nodeData]);
       }
     }
@@ -754,7 +751,7 @@ class NodeGraph {
         },
         this.nodeGraphBucketsDbPath,
       )) {
-        const info = nodesUtils.parseBucketsDbKey(key as Array<Buffer>);
+        const info = nodesUtils.parseBucketsDbKey(key);
         nodeIds.push([info.nodeId, nodeData]);
       }
     }
