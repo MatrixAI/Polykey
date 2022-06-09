@@ -174,6 +174,13 @@ describe(`${NodeConnection.name} test`, () => {
     };
   }
 
+  const newTlsConfig = async (keyManager: KeyManager): Promise<TLSConfig> => {
+    return {
+      keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
+      certChainPem: await keyManager.getRootCertChainPem(),
+    };
+  };
+
   beforeEach(async () => {
     // Server setup
     serverDataDir = await fs.promises.mkdtemp(
@@ -852,4 +859,359 @@ describe(`${NodeConnection.name} test`, () => {
     },
     global.defaultTimeout * 2,
   );
+
+  test('existing connection handles a resetRootKeyPair on sending side', async () => {
+    let conn: NodeConnection<GRPCClientAgent> | undefined;
+    try {
+      conn = await NodeConnection.createNodeConnection({
+        targetNodeId: targetNodeId,
+        targetHost: localHost,
+        targetPort: targetPort,
+        proxy: clientProxy,
+        keyManager: clientKeyManager,
+        nodeConnectionManager: dummyNodeConnectionManager,
+        destroyCallback,
+        logger: logger,
+        clientFactory: async (args) =>
+          GRPCClientAgent.createGRPCClientAgent(args),
+        timer: timerStart(2000),
+      });
+      const client = conn.getClient();
+      await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
+
+      // Simulate key change
+      await clientKeyManager.resetRootKeyPair(password);
+      clientProxy.setTLSConfig(await newTlsConfig(clientKeyManager));
+
+      // Try again
+      await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
+    } finally {
+      await conn?.destroy();
+    }
+  });
+  test('existing connection handles a renewRootKeyPair on sending side', async () => {
+    let conn: NodeConnection<GRPCClientAgent> | undefined;
+    try {
+      conn = await NodeConnection.createNodeConnection({
+        targetNodeId: targetNodeId,
+        targetHost: localHost,
+        targetPort: targetPort,
+        proxy: clientProxy,
+        keyManager: clientKeyManager,
+        nodeConnectionManager: dummyNodeConnectionManager,
+        destroyCallback,
+        logger: logger,
+        clientFactory: async (args) =>
+          GRPCClientAgent.createGRPCClientAgent(args),
+        timer: timerStart(2000),
+      });
+      const client = conn.getClient();
+      await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
+
+      // Simulate key change
+      await clientKeyManager.renewRootKeyPair(password);
+      clientProxy.setTLSConfig(await newTlsConfig(clientKeyManager));
+
+      // Try again
+      await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
+    } finally {
+      await conn?.destroy();
+    }
+  });
+  test('existing connection handles a resetRootCert on sending side', async () => {
+    let conn: NodeConnection<GRPCClientAgent> | undefined;
+    try {
+      conn = await NodeConnection.createNodeConnection({
+        targetNodeId: targetNodeId,
+        targetHost: localHost,
+        targetPort: targetPort,
+        proxy: clientProxy,
+        keyManager: clientKeyManager,
+        nodeConnectionManager: dummyNodeConnectionManager,
+        destroyCallback,
+        logger: logger,
+        clientFactory: async (args) =>
+          GRPCClientAgent.createGRPCClientAgent(args),
+        timer: timerStart(2000),
+      });
+      const client = conn.getClient();
+      await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
+
+      // Simulate key change
+      await clientKeyManager.resetRootCert();
+      clientProxy.setTLSConfig(await newTlsConfig(clientKeyManager));
+
+      // Try again
+      await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
+    } finally {
+      await conn?.destroy();
+    }
+  });
+  test('existing connection handles a resetRootKeyPair on receiving side', async () => {
+    let conn: NodeConnection<GRPCClientAgent> | undefined;
+    try {
+      conn = await NodeConnection.createNodeConnection({
+        targetNodeId: targetNodeId,
+        targetHost: localHost,
+        targetPort: targetPort,
+        proxy: clientProxy,
+        keyManager: clientKeyManager,
+        nodeConnectionManager: dummyNodeConnectionManager,
+        destroyCallback,
+        logger: logger,
+        clientFactory: async (args) =>
+          GRPCClientAgent.createGRPCClientAgent(args),
+        timer: timerStart(2000),
+      });
+      const client = conn.getClient();
+      await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
+
+      // Simulate key change
+      await serverKeyManager.resetRootKeyPair(password);
+      serverProxy.setTLSConfig(await newTlsConfig(serverKeyManager));
+
+      // Try again
+      await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
+    } finally {
+      await conn?.destroy();
+    }
+  });
+  test('existing connection handles a renewRootKeyPair on receiving side', async () => {
+    let conn: NodeConnection<GRPCClientAgent> | undefined;
+    try {
+      conn = await NodeConnection.createNodeConnection({
+        targetNodeId: targetNodeId,
+        targetHost: localHost,
+        targetPort: targetPort,
+        proxy: clientProxy,
+        keyManager: clientKeyManager,
+        nodeConnectionManager: dummyNodeConnectionManager,
+        destroyCallback,
+        logger: logger,
+        clientFactory: async (args) =>
+          GRPCClientAgent.createGRPCClientAgent(args),
+        timer: timerStart(2000),
+      });
+      const client = conn.getClient();
+      await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
+
+      // Simulate key change
+      await serverKeyManager.renewRootKeyPair(password);
+      serverProxy.setTLSConfig(await newTlsConfig(serverKeyManager));
+
+      // Try again
+      await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
+    } finally {
+      await conn?.destroy();
+    }
+  });
+  test('existing connection handles a resetRootCert on receiving side', async () => {
+    let conn: NodeConnection<GRPCClientAgent> | undefined;
+    try {
+      conn = await NodeConnection.createNodeConnection({
+        targetNodeId: targetNodeId,
+        targetHost: localHost,
+        targetPort: targetPort,
+        proxy: clientProxy,
+        keyManager: clientKeyManager,
+        nodeConnectionManager: dummyNodeConnectionManager,
+        destroyCallback,
+        logger: logger,
+        clientFactory: async (args) =>
+          GRPCClientAgent.createGRPCClientAgent(args),
+        timer: timerStart(2000),
+      });
+      const client = conn.getClient();
+      await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
+
+      // Simulate key change
+      await serverKeyManager.resetRootCert();
+      serverProxy.setTLSConfig(await newTlsConfig(serverKeyManager));
+
+      // Try again
+      await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
+    } finally {
+      await conn?.destroy();
+    }
+  });
+  test('new connection handles a resetRootKeyPair on sending side', async () => {
+    let conn: NodeConnection<GRPCClientAgent> | undefined;
+    try {
+      // Simulate key change
+      await clientKeyManager.resetRootKeyPair(password);
+      clientProxy.setTLSConfig(await newTlsConfig(clientKeyManager));
+
+      conn = await NodeConnection.createNodeConnection({
+        targetNodeId: targetNodeId,
+        targetHost: localHost,
+        targetPort: targetPort,
+        proxy: clientProxy,
+        keyManager: clientKeyManager,
+        nodeConnectionManager: dummyNodeConnectionManager,
+        destroyCallback,
+        logger: logger,
+        clientFactory: async (args) =>
+          GRPCClientAgent.createGRPCClientAgent(args),
+        timer: timerStart(2000),
+      });
+
+      const client = conn.getClient();
+      await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
+    } finally {
+      await conn?.destroy();
+    }
+  });
+  test('new connection handles a renewRootKeyPair on sending side', async () => {
+    let conn: NodeConnection<GRPCClientAgent> | undefined;
+    try {
+      // Simulate key change
+      await clientKeyManager.renewRootKeyPair(password);
+      clientProxy.setTLSConfig(await newTlsConfig(clientKeyManager));
+
+      conn = await NodeConnection.createNodeConnection({
+        targetNodeId: targetNodeId,
+        targetHost: localHost,
+        targetPort: targetPort,
+        proxy: clientProxy,
+        keyManager: clientKeyManager,
+        nodeConnectionManager: dummyNodeConnectionManager,
+        destroyCallback,
+        logger: logger,
+        clientFactory: async (args) =>
+          GRPCClientAgent.createGRPCClientAgent(args),
+        timer: timerStart(2000),
+      });
+
+      const client = conn.getClient();
+      await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
+    } finally {
+      await conn?.destroy();
+    }
+  });
+  test('new connection handles a resetRootCert on sending side', async () => {
+    let conn: NodeConnection<GRPCClientAgent> | undefined;
+    try {
+      // Simulate key change
+      await clientKeyManager.resetRootCert();
+      clientProxy.setTLSConfig(await newTlsConfig(clientKeyManager));
+
+      conn = await NodeConnection.createNodeConnection({
+        targetNodeId: targetNodeId,
+        targetHost: localHost,
+        targetPort: targetPort,
+        proxy: clientProxy,
+        keyManager: clientKeyManager,
+        nodeConnectionManager: dummyNodeConnectionManager,
+        destroyCallback,
+        logger: logger,
+        clientFactory: async (args) =>
+          GRPCClientAgent.createGRPCClientAgent(args),
+        timer: timerStart(2000),
+      });
+
+      const client = conn.getClient();
+      await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
+    } finally {
+      await conn?.destroy();
+    }
+  });
+  test('new connection handles a resetRootKeyPair on receiving side', async () => {
+    // Simulate key change
+    await serverKeyManager.resetRootKeyPair(password);
+    serverProxy.setTLSConfig(await newTlsConfig(serverKeyManager));
+
+    const connProm = NodeConnection.createNodeConnection({
+      targetNodeId: targetNodeId,
+      targetHost: localHost,
+      targetPort: targetPort,
+      proxy: clientProxy,
+      keyManager: clientKeyManager,
+      nodeConnectionManager: dummyNodeConnectionManager,
+      destroyCallback,
+      logger: logger,
+      clientFactory: async (args) =>
+        GRPCClientAgent.createGRPCClientAgent(args),
+      timer: timerStart(2000),
+    });
+
+    await expect(connProm).rejects.toThrow(
+      nodesErrors.ErrorNodeConnectionTimeout,
+    );
+
+    // Connect with the new NodeId
+    let conn: NodeConnection<GRPCClientAgent> | undefined;
+    try {
+      conn = await NodeConnection.createNodeConnection({
+        targetNodeId: serverKeyManager.getNodeId(),
+        targetHost: localHost,
+        targetPort: targetPort,
+        proxy: clientProxy,
+        keyManager: clientKeyManager,
+        nodeConnectionManager: dummyNodeConnectionManager,
+        destroyCallback,
+        logger: logger,
+        clientFactory: async (args) =>
+          GRPCClientAgent.createGRPCClientAgent(args),
+        timer: timerStart(2000),
+      });
+      const client = conn.getClient();
+      await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
+    } finally {
+      await conn?.destroy();
+    }
+  });
+  test('new connection handles a renewRootKeyPair on receiving side', async () => {
+    let conn: NodeConnection<GRPCClientAgent> | undefined;
+    try {
+      // Simulate key change
+      await serverKeyManager.renewRootKeyPair(password);
+      serverProxy.setTLSConfig(await newTlsConfig(serverKeyManager));
+
+      conn = await NodeConnection.createNodeConnection({
+        targetNodeId: targetNodeId,
+        targetHost: localHost,
+        targetPort: targetPort,
+        proxy: clientProxy,
+        keyManager: clientKeyManager,
+        nodeConnectionManager: dummyNodeConnectionManager,
+        destroyCallback,
+        logger: logger,
+        clientFactory: async (args) =>
+          GRPCClientAgent.createGRPCClientAgent(args),
+        timer: timerStart(2000),
+      });
+
+      const client = conn.getClient();
+      await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
+    } finally {
+      await conn?.destroy();
+    }
+  });
+  test('new connection handles a resetRootCert on receiving side', async () => {
+    let conn: NodeConnection<GRPCClientAgent> | undefined;
+    try {
+      // Simulate key change
+      await serverKeyManager.resetRootCert();
+      serverProxy.setTLSConfig(await newTlsConfig(serverKeyManager));
+
+      conn = await NodeConnection.createNodeConnection({
+        targetNodeId: targetNodeId,
+        targetHost: localHost,
+        targetPort: targetPort,
+        proxy: clientProxy,
+        keyManager: clientKeyManager,
+        nodeConnectionManager: dummyNodeConnectionManager,
+        destroyCallback,
+        logger: logger,
+        clientFactory: async (args) =>
+          GRPCClientAgent.createGRPCClientAgent(args),
+        timer: timerStart(2000),
+      });
+
+      const client = conn.getClient();
+      await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
+    } finally {
+      await conn?.destroy();
+    }
+  });
 });
