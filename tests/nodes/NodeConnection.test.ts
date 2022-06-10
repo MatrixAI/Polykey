@@ -1152,7 +1152,6 @@ describe(`${NodeConnection.name} test`, () => {
         logger: logger,
         clientFactory: async (args) =>
           GRPCClientAgent.createGRPCClientAgent(args),
-        timer: timerStart(2000),
       });
       const client = conn.getClient();
       await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
