@@ -183,7 +183,7 @@ describe('bootstrap', () => {
         expect(exitCode2).toBe(0);
       }
     },
-    global.defaultTimeout * 2,
+    global.defaultTimeout * 3,
   );
   test(
     'bootstrap when interrupted, requires fresh on next bootstrap',
@@ -256,6 +256,6 @@ describe('bootstrap', () => {
           recoveryCode.split(' ').length === 24,
       ).toBe(true);
     },
-    global.defaultTimeout * 2,
+    global.defaultTimeout * 3,
   );
 });

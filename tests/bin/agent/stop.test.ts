@@ -157,7 +157,7 @@ describe('stop', () => {
       expect(agentStop3.exitCode).toBe(0);
       expect(agentStop4.exitCode).toBe(0);
     },
-    global.defaultTimeout * 2,
+    global.defaultTimeout * 3,
   );
   test(
     'stopping starting agent results in error',
@@ -217,7 +217,7 @@ describe('stop', () => {
       );
       await status.waitFor('DEAD');
     },
-    global.defaultTimeout * 2,
+    global.defaultTimeout * 3,
   );
   test(
     'stopping while unauthenticated does not stop',
