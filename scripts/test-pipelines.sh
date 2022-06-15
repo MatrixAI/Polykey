@@ -60,7 +60,7 @@ check:test $test_dir:
     - >
         nix-shell --run '
         npm run build --verbose;
-        npm test -- --ci ${test_files[@]};
+        npm test -- --ci --runInBand ${test_files[@]};
         '
   artifacts:
     when: always
@@ -81,7 +81,7 @@ check:test index:
     - >
         nix-shell --run '
         npm run build --verbose;
-        npm test -- --ci ${test_files[@]};
+        npm test -- --ci --runInBand ${test_files[@]};
         '
   artifacts:
     when: always
