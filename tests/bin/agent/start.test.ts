@@ -711,7 +711,7 @@ describe('start', () => {
       agentProcess4.kill('SIGTERM');
       await testBinUtils.processExit(agentProcess4);
     },
-    global.defaultTimeout * 4,
+    global.defaultTimeout * 5,
   );
   test(
     'start with network configuration',
