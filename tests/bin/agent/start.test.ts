@@ -197,7 +197,7 @@ describe('start', () => {
       const statusInfo2 = await status.waitFor('DEAD');
       expect(statusInfo2.status).toBe('DEAD');
     },
-    global.defaultTimeout * 3,
+    global.defaultTimeout * 2,
   );
   test(
     'concurrent starts results in 1 success',
@@ -295,7 +295,7 @@ describe('start', () => {
         expect(signal).toBe('SIGQUIT');
       }
     },
-    global.defaultTimeout * 3,
+    global.defaultTimeout * 2,
   );
   test(
     'concurrent with bootstrap results in 1 success',
@@ -387,7 +387,7 @@ describe('start', () => {
         expect(signal).toBe('SIGTERM');
       }
     },
-    global.defaultTimeout * 3,
+    global.defaultTimeout * 2,
   );
   test(
     'start with existing state',
@@ -467,7 +467,7 @@ describe('start', () => {
       const statusInfo = (await status.readStatus())!;
       expect(statusInfo.status).toBe('DEAD');
     },
-    global.defaultTimeout * 3,
+    global.defaultTimeout * 2,
   );
   test(
     'start when interrupted, requires fresh on next start',
@@ -577,7 +577,7 @@ describe('start', () => {
       const statusInfo = (await status.readStatus())!;
       expect(statusInfo.status).toBe('DEAD');
     },
-    global.defaultTimeout * 3,
+    global.defaultTimeout * 2,
   );
   test(
     'start from recovery code',
@@ -711,7 +711,7 @@ describe('start', () => {
       agentProcess4.kill('SIGTERM');
       await testBinUtils.processExit(agentProcess4);
     },
-    global.defaultTimeout * 5,
+    global.defaultTimeout * 3,
   );
   test(
     'start with network configuration',
