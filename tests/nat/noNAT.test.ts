@@ -142,7 +142,7 @@ describeIf(
         await testNatUtils.pkExecNs(
           userPid!,
           agent1Pid!,
-          ['nodes', 'add', agent2NodeId, agent2Host, agent2ProxyPort],
+          ['nodes', 'add', agent2NodeId, agent2Host, agent2ProxyPort, '--no-ping'],
           {
             PK_NODE_PATH: agent1NodePath,
             PK_PASSWORD: password,
@@ -152,7 +152,7 @@ describeIf(
         await testNatUtils.pkExecNs(
           userPid!,
           agent2Pid!,
-          ['nodes', 'add', agent1NodeId, agent1Host, agent1ProxyPort],
+          ['nodes', 'add', agent1NodeId, agent1Host, agent1ProxyPort, '--no-ping'],
           {
             PK_NODE_PATH: agent2NodePath,
             PK_PASSWORD: password,

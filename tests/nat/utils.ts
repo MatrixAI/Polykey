@@ -1362,32 +1362,6 @@ async function setupNATWithSeedNode(
     rlOutNode2.once('close', reject);
   });
   const nodeId2 = JSON.parse(stdoutNode2).nodeId;
-  // Until nodes add the information of nodes that connect to them must
-  // do it manually
-  const agent1ProxyPort =
-    agent1NAT === 'dmz' || agent1NAT === 'edmSimple' ? mappedPort : agent1Port;
-  const agent2ProxyPort =
-    agent2NAT === 'dmz' || agent2NAT === 'edmSimple' ? mappedPort : agent2Port;
-  await pkExecNs(
-    usrns.pid!,
-    seedNode.pid!,
-    ['nodes', 'add', nodeId1, agent1RouterHostExtIp, agent1ProxyPort],
-    {
-      PK_NODE_PATH: path.join(dataDir, 'seed'),
-      PK_PASSWORD: password,
-    },
-    dataDir,
-  );
-  await pkExecNs(
-    usrns.pid!,
-    seedNode.pid!,
-    ['nodes', 'add', nodeId2, agent2RouterHostExtIp, agent2ProxyPort],
-    {
-      PK_NODE_PATH: path.join(dataDir, 'seed'),
-      PK_PASSWORD: password,
-    },
-    dataDir,
-  );
   return {
     userPid: usrns.pid,
     agent1Pid: agent1Netns.pid,
