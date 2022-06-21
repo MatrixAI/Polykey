@@ -1,25 +1,30 @@
 import type * as grpc from '@grpc/grpc-js';
+import type Logger from '@matrixai/logger';
 import type { Authenticate } from '../types';
 import type KeyManager from '../../keys/KeyManager';
 import type { NodeId } from '../../nodes/types';
 import type * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 import type NodeGraph from '../../nodes/NodeGraph';
 import { IdInternal } from '@matrixai/id';
-import { utils as nodesUtils } from '../../nodes';
-import { utils as grpcUtils } from '../../grpc';
 import * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
+import * as nodesUtils from '../../nodes/utils';
+import * as nodesErrors from '../../nodes/errors';
+import * as grpcUtils from '../../grpc/utils';
+import * as clientUtils from '../utils';
 
 /**
  * Retrieves all nodes from all buckets in the NodeGraph.
  */
 function nodesGetAll({
+  authenticate,
   nodeGraph,
   keyManager,
-  authenticate,
+  logger,
 }: {
+  authenticate: Authenticate;
   nodeGraph: NodeGraph;
   keyManager: KeyManager;
-  authenticate: Authenticate;
+  logger: Logger;
 }) {
   return async (
     call: grpc.ServerUnaryCall<utilsPB.EmptyMessage, nodesPB.NodeBuckets>,
@@ -62,6 +67,9 @@ function nodesGetAll({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
+      !clientUtils.isClientClientError(e, [
+        nodesErrors.ErrorNodeGraphNodeIdNotFound,
+      ]) && logger.error(`${nodesGetAll.name}:${e}`);
       return;
     }
   };

@@ -68,7 +68,7 @@ function vaultsClone({
         nodesErrors.ErrorNodeGraphNodeIdNotFound,
         vaultsErrors.ErrorVaultsNameConflict,
         [grpcErrors.ErrorPolykeyRemote, vaultsErrors.ErrorVaultsVaultUndefined],
-      ]) && logger.error(e);
+      ]) && logger.error(`${vaultsClone.name}:${e}`);
       return;
     }
   };

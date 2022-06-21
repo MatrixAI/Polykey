@@ -31,7 +31,7 @@ function keysKeyPairRenew({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
-      !clientUtils.isClientClientError(e) && logger.error(e);
+      !clientUtils.isClientClientError(e) && logger.error(`${keysKeyPairRenew.name}:${e}`);
       return;
     }
   };

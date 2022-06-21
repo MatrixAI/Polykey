@@ -31,7 +31,7 @@ function keysEncrypt({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
-      !clientUtils.isClientClientError(e) && logger.error(e);
+      !clientUtils.isClientClientError(e) && logger.error(`${keysEncrypt.name}:${e}`);
       return;
     }
   };

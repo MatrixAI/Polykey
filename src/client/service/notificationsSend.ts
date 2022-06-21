@@ -58,7 +58,7 @@ function notificationsSend({
       callback(grpcUtils.fromError(e));
       !clientUtils.isClientClientError(e, [
         nodesErrors.ErrorNodeGraphNodeIdNotFound,
-      ]) && logger.error(e);
+      ]) && logger.error(`${notificationsSend.name}:${e}`);
       return;
     }
   };

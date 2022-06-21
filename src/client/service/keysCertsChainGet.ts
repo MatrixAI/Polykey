@@ -34,7 +34,7 @@ function keysCertsChainGet({
       return;
     } catch (e) {
       await genWritable.throw(e);
-      !clientUtils.isClientClientError(e) && logger.error(e);
+      !clientUtils.isClientClientError(e) && logger.error(`${keysCertsChainGet.name}:${e}`);
       return;
     }
   };

@@ -61,7 +61,7 @@ function vaultsSecretsList({
       await genWritable.throw(e);
       !clientUtils.isClientClientError(e, [
         vaultsErrors.ErrorVaultsVaultUndefined,
-      ]) && logger.error(e);
+      ]) && logger.error(`${vaultsSecretsList.name}:${e}`);
       return;
     }
   };

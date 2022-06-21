@@ -64,7 +64,7 @@ function identitiesAuthenticatedGet({
       return;
     } catch (e) {
       await genWritable.throw(e);
-      !clientUtils.isClientClientError(e) && logger.error(e);
+      !clientUtils.isClientClientError(e) && logger.error(`${identitiesAuthenticatedGet.name}:${e}`);
       return;
     }
   };

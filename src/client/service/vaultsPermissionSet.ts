@@ -103,7 +103,7 @@ function vaultsPermissionSet({
         vaultsErrors.ErrorVaultsVaultUndefined,
         aclErrors.ErrorACLNodeIdMissing,
         nodesErrors.ErrorNodeGraphNodeIdNotFound,
-      ]) && logger.error(e);
+      ]) && logger.error(`${vaultsPermissionSet.name}:${e}`);
       return;
     }
   };

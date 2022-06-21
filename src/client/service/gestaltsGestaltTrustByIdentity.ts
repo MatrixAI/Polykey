@@ -87,7 +87,7 @@ function gestaltsGestaltTrustByIdentity({
       !clientUtils.isClientClientError(e, [
         gestaltsErrors.ErrorGestaltsGraphIdentityIdMissing,
         gestaltsErrors.ErrorGestaltsGraphNodeIdMissing,
-      ]) && logger.error(e);
+      ]) && logger.error(`${gestaltsGestaltTrustByIdentity.name}:${e}`);
       return;
     }
   };

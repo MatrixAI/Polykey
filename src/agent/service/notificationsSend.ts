@@ -41,7 +41,7 @@ function notificationsSend({
         notificationsErrors.ErrorNotificationsValidationFailed,
         notificationsErrors.ErrorNotificationsParse,
         notificationsErrors.ErrorNotificationsPermissionsNotFound,
-      ]) && logger.error(e);
+      ]) && logger.error(`${notificationsSend.name}:${e}`);
       return;
     }
   };

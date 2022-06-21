@@ -627,7 +627,7 @@ class PolykeyAgent {
         grpcServerAgent: this.grpcServerAgent,
         proxy: this.proxy,
         fs: this.fs,
-        logger: this.logger.getChild(createClientService.name),
+        logger: this.logger.getChild('GRPCClientClientService'),
       });
       // Starting modules
       await this.keyManager.start({

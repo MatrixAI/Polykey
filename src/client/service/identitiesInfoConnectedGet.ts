@@ -124,7 +124,7 @@ function identitiesInfoConnectedGet({
         identitiesErrors.ErrorProviderMissing,
         identitiesErrors.ErrorProviderUnauthenticated,
         identitiesErrors.ErrorProviderUnimplemented,
-      ]) && logger.error(e);
+      ]) && logger.error(`${identitiesInfoConnectedGet.name}:${e}`);
       return;
     }
   };

@@ -179,7 +179,7 @@ function nodesCrossSignClaim({
         claimsErrors.ErrorUndefinedSignature,
         claimsErrors.ErrorNodesClaimType,
         claimsErrors.ErrorUndefinedDoublySignedClaim,
-      ]) && logger.error(e);
+      ]) && logger.error(`${nodesCrossSignClaim.name}:${e}`);
       return;
     }
   };

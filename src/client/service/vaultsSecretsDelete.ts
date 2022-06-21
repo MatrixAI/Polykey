@@ -59,7 +59,7 @@ function vaultsSecretsDelete({
       !clientUtils.isClientClientError(e, [
         vaultsErrors.ErrorVaultsVaultUndefined,
         vaultsErrors.ErrorSecretsSecretUndefined,
-      ]) && logger.error(e);
+      ]) && logger.error(`${vaultsSecretsDelete.name}:${e}`);
       return;
     }
   };

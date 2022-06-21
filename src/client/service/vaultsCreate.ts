@@ -41,7 +41,7 @@ function vaultsCreate({
       callback(grpcUtils.fromError(e));
       !clientUtils.isClientClientError(e, [
         vaultsErrors.ErrorVaultsVaultDefined,
-      ]) && logger.error(e);
+      ]) && logger.error(`${vaultsCreate.name}:${e}`);
       return;
     }
   };

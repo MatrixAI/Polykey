@@ -56,7 +56,7 @@ function gestaltsActionsSetByNode({
       callback(grpcUtils.fromError(e));
       !clientUtils.isClientClientError(e, [
         gestaltsErrors.ErrorGestaltsGraphNodeIdMissing,
-      ]) && logger.error(e);
+      ]) && logger.error(`${gestaltsActionsSetByNode.name}:${e}`);
       return;
     }
   };

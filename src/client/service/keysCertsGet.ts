@@ -30,7 +30,7 @@ function keysCertsGet({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
-      !clientUtils.isClientClientError(e) && logger.error(e);
+      !clientUtils.isClientClientError(e) && logger.error(`${keysCertsGet.name}:${e}`);
       return;
     }
   };

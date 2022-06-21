@@ -111,7 +111,7 @@ function vaultsGitInfoGet({
         vaultsErrors.ErrorVaultsVaultUndefined,
         agentErrors.ErrorConnectionInfoMissing,
         vaultsErrors.ErrorVaultsPermissionDenied,
-      ]) && logger.error(e);
+      ]) && logger.error(`${vaultsGitInfoGet.name}:${e}`);
       return;
     }
   };

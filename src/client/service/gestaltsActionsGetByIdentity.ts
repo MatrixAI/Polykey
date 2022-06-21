@@ -63,7 +63,7 @@ function gestaltsActionsGetByIdentity({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
-      !clientUtils.isClientClientError(e) && logger.error(e);
+      !clientUtils.isClientClientError(e) && logger.error(`${gestaltsActionsGetByIdentity.name}:${e}`);
       return;
     }
   };

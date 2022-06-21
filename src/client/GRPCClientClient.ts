@@ -909,7 +909,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
-        command: this.identitiesAuthenticate.name,
+        command: this.nodesGetAll.name,
       },
       this.client.nodesGetAll,
     )(...args);

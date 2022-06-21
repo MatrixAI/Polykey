@@ -69,7 +69,7 @@ function vaultsLog({
       !clientUtils.isClientClientError(e, [
         vaultsErrors.ErrorVaultsVaultUndefined,
         vaultsErrors.ErrorVaultReferenceInvalid,
-      ]) && logger.error(e);
+      ]) && logger.error(`${vaultsLog.name}:${e}`);
       return;
     }
   };

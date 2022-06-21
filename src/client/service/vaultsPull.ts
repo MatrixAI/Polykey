@@ -90,7 +90,7 @@ function vaultsPull({
         vaultsErrors.ErrorVaultsVaultUndefined,
         nodesErrors.ErrorNodeGraphNodeIdNotFound,
         [grpcErrors.ErrorPolykeyRemote, vaultsErrors.ErrorVaultsVaultUndefined],
-      ]) && logger.error(e);
+      ]) && logger.error(`${vaultsPull.name}:${e}`);
       return;
     }
   };

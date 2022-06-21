@@ -124,7 +124,7 @@ function vaultsGitPackGet({
         agentErrors.ErrorConnectionInfoMissing,
         vaultsErrors.ErrorVaultsPermissionDenied,
         vaultsErrors.ErrorVaultsVaultUndefined,
-      ]) && logger.error(e);
+      ]) && logger.error(`${vaultsGitPackGet.name}:${e}`);
       return;
     }
   };
