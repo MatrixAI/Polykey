@@ -610,21 +610,23 @@ class NodeConnectionManager {
         timer,
       );
       for (const [nodeId, nodeData] of nodes) {
-        const pingAndAddNode = async () => {
-          const port = nodeData.address.port;
-          const host = await networkUtils.resolveHost(nodeData.address.host);
-          if (await this.pingNode(nodeId, host, port)) {
-            await this.nodeManager!.setNode(nodeId, nodeData.address, true);
-          }
-        };
+        if (!nodeId.equals(this.keyManager.getNodeId())) {
+          const pingAndAddNode = async () => {
+            const port = nodeData.address.port;
+            const host = await networkUtils.resolveHost(nodeData.address.host);
+            if (await this.pingNode(nodeId, host, port)) {
+              await this.nodeManager!.setNode(nodeId, nodeData.address, true);
+            }
+          };
 
-        if (!block) {
-          this.queue.push(pingAndAddNode);
-        } else {
-          try {
-            await pingAndAddNode();
-          } catch (e) {
-            if (!(e instanceof nodesErrors.ErrorNodeGraphSameNodeId)) throw e;
+          if (!block) {
+            this.queue.push(pingAndAddNode);
+          } else {
+            try {
+              await pingAndAddNode();
+            } catch (e) {
+              if (!(e instanceof nodesErrors.ErrorNodeGraphSameNodeId)) throw e;
+            }
           }
         }
       }
@@ -759,7 +761,7 @@ class NodeConnectionManager {
     );
 
     try {
-      await Promise.all([forwardPunchPromise, ...holePunchPromises]);
+      await Promise.any([forwardPunchPromise, ...holePunchPromises]);
     } catch (e) {
       return false;
     }
