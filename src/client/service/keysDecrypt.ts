@@ -31,7 +31,8 @@ function keysDecrypt({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
-      !clientUtils.isClientClientError(e) && logger.error(`${keysDecrypt.name}:${e}`);
+      !clientUtils.isClientClientError(e) &&
+        logger.error(`${keysDecrypt.name}:${e}`);
       return;
     }
   };

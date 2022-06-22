@@ -31,7 +31,8 @@ function keysKeyPairReset({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
-      !clientUtils.isClientClientError(e) && logger.error(`${keysKeyPairReset.name}:${e}`);
+      !clientUtils.isClientClientError(e) &&
+        logger.error(`${keysKeyPairReset.name}:${e}`);
       return;
     }
   };

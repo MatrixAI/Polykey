@@ -50,7 +50,8 @@ function agentStatus({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
-      !clientUtils.isClientClientError(e) && logger.error(`${agentStatus.name}:${e}`);
+      !clientUtils.isClientClientError(e) &&
+        logger.error(`${agentStatus.name}:${e}`);
       return;
     }
   };

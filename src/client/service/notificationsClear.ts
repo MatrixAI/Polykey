@@ -33,7 +33,8 @@ function notificationsClear({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
-      !clientUtils.isClientClientError(e) && logger.error(`${notificationsClear.name}:${e}`);
+      !clientUtils.isClientClientError(e) &&
+        logger.error(`${notificationsClear.name}:${e}`);
       return;
     }
   };

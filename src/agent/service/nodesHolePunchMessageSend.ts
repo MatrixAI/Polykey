@@ -74,7 +74,8 @@ function nodesHolePunchMessageSend({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e, true));
-      !agentUtils.isAgentClientError(e) && logger.error(`${nodesHolePunchMessageSend.name}:${e}`);
+      !agentUtils.isAgentClientError(e) &&
+        logger.error(`${nodesHolePunchMessageSend.name}:${e}`);
       return;
     }
   };

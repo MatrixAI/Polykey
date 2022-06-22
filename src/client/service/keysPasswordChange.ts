@@ -29,7 +29,8 @@ function keysPasswordChange({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
-      !clientUtils.isClientClientError(e) && logger.error(`${keysPasswordChange.name}:${e}`);
+      !clientUtils.isClientClientError(e) &&
+        logger.error(`${keysPasswordChange.name}:${e}`);
       return;
     }
   };

@@ -60,7 +60,8 @@ function gestaltsGestaltGetByIdentity({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
-      !clientUtils.isClientClientError(e) && logger.error(`${gestaltsGestaltGetByIdentity.name}:${e}`);
+      !clientUtils.isClientClientError(e) &&
+        logger.error(`${gestaltsGestaltGetByIdentity.name}:${e}`);
       return;
     }
   };

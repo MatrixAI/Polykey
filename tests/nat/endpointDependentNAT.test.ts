@@ -31,7 +31,7 @@ describeIf(
       });
     });
     test(
-      'Node1 behind EDM NAT connects to Node2',
+      'node1 behind EDM NAT connects to node2',
       async () => {
         const {
           userPid,
@@ -48,7 +48,14 @@ describeIf(
         await testNatUtils.pkExecNs(
           userPid!,
           agent1Pid!,
-          ['nodes', 'add', agent2NodeId, agent2Host, agent2ProxyPort, '--no-ping'],
+          [
+            'nodes',
+            'add',
+            agent2NodeId,
+            agent2Host,
+            agent2ProxyPort,
+            '--no-ping',
+          ],
           {
             PK_NODE_PATH: agent1NodePath,
             PK_PASSWORD: password,
@@ -75,7 +82,7 @@ describeIf(
       global.defaultTimeout * 2,
     );
     test(
-      'Node1 connects to Node2 behind EDM NAT',
+      'node1 connects to node2 behind EDM NAT',
       async () => {
         const {
           userPid,
@@ -95,7 +102,14 @@ describeIf(
         await testNatUtils.pkExecNs(
           userPid!,
           agent2Pid!,
-          ['nodes', 'add', agent1NodeId, agent1Host, agent1ProxyPort, '--no-ping'],
+          [
+            'nodes',
+            'add',
+            agent1NodeId,
+            agent1Host,
+            agent1ProxyPort,
+            '--no-ping',
+          ],
           {
             PK_NODE_PATH: agent2NodePath,
             PK_PASSWORD: password,
@@ -139,7 +153,7 @@ describeIf(
       global.defaultTimeout * 2,
     );
     test(
-      'Node1 behind EDM NAT cannot connect to Node2 behind EDM NAT',
+      'node1 behind EDM NAT cannot connect to node2 behind EDM NAT',
       async () => {
         const {
           userPid,
@@ -152,11 +166,7 @@ describeIf(
           agent1NodeId,
           agent2NodeId,
           tearDownNAT,
-        } = await testNatUtils.setupNATWithSeedNode(
-          'edm',
-          'edm',
-          logger,
-        );
+        } = await testNatUtils.setupNATWithSeedNode('edm', 'edm', logger);
         // Contact details are retrieved from the seed node, but cannot be used
         // since port mapping changes between targets in EDM mapping
         // Node 2 -> Node 1 ping should fail (Node 1 behind NAT)
@@ -197,7 +207,7 @@ describeIf(
       global.defaultTimeout * 2,
     );
     test(
-      'Node1 behind EDM NAT cannot connect to Node2 behind EIM NAT',
+      'node1 behind EDM NAT cannot connect to node2 behind EIM NAT',
       async () => {
         const {
           userPid,

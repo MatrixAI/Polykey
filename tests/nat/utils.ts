@@ -10,34 +10,117 @@ import * as testBinUtils from '../bin/utils';
 
 type NATType = 'eim' | 'edm' | 'dmz';
 
-// Constants for all util functions
-// Veth pairs (ends)
-const agent1Host = 'agent1';
-const agent2Host = 'agent2';
-const agent1RouterHostInt = 'router1-int';
-const agent1RouterHostExt = 'router1-ext';
-const agent2RouterHostInt = 'router2-int';
-const agent2RouterHostExt = 'router2-ext';
-const router1SeedHost = 'router1-seed';
-const router2SeedHost = 'router2-seed';
-const seedRouter1Host = 'seed-router1';
-const seedRouter2Host = 'seed-router2';
-// Subnets
-const agent1HostIp = '10.0.0.2';
-const agent2HostIp = '10.0.0.2';
-const agent1RouterHostIntIp = '10.0.0.1';
-const agent2RouterHostIntIp = '10.0.0.1';
-const agent1RouterHostExtIp = '192.168.0.1';
-const agent2RouterHostExtIp = '192.168.0.2';
-const router1SeedHostIp = '192.168.0.1';
-const seedHostIp = '192.168.0.3';
-const router2SeedHostIp = '192.168.0.2';
-// Subnet mask
-const subnetMask = '/24';
-// Ports
-const agent1Port = '55551';
-const agent2Port = '55552';
-const mappedPort = '55555';
+/**
+ * Veth end for Agent 1
+ * Connects to Router 1
+ */
+const AGENT1_VETH = 'agent1';
+/**
+ * Veth end for Agent 2
+ * Connects to Router 2
+ */
+const AGENT2_VETH = 'agent2';
+/**
+ * Internal veth end for Router 1
+ * Connects to Agent 1
+ */
+const ROUTER1_VETH_INT = 'router1-int';
+/**
+ * External veth end for Router 1
+ * Connects to Router 2
+ */
+const ROUTER1_VETH_EXT = 'router1-ext';
+/**
+ * Internal veth end for Router 2
+ * Connects to Agent 2
+ */
+const ROUTER2_VETH_INT = 'router2-int';
+/**
+ * External veth end for Router 2
+ * Connects to Router 1
+ */
+const ROUTER2_VETH_EXT = 'router2-ext';
+/**
+ * External veth end for Router 1
+ * Connects to a seed node
+ */
+const ROUTER1_VETH_SEED = 'router1-seed';
+/**
+ * External veth end for Router 2
+ * Connects to a seed node
+ */
+const ROUTER2_VETH_SEED = 'router2-seed';
+/**
+ * Veth end for a seed node
+ * Connects to Router 1
+ */
+const SEED_VETH_ROUTER1 = 'seed-router1';
+/**
+ * Veth end for a seed node
+ * Connects to Router 2
+ */
+const SEED_VETH_ROUTER2 = 'seed-router2';
+
+/**
+ * Subnet for Agent 1
+ */
+const AGENT1_HOST = '10.0.0.2';
+/**
+ * Subnet for Agent 2
+ */
+const AGENT2_HOST = '10.0.0.2';
+/**
+ * Subnet for internal communication from Router 1
+ * Forwards to Agent 1
+ */
+const ROUTER1_HOST_INT = '10.0.0.1';
+/**
+ * Subnet for internal communication from Router 2
+ * Forwards to Agent 2
+ */
+const ROUTER2_HOST_INT = '10.0.0.1';
+/**
+ * Subnet for external communication from Router 1
+ * Forwards to Router 2
+ */
+const ROUTER1_HOST_EXT = '192.168.0.1';
+/**
+ * Subnet for external communication from Router 2
+ * Forwards to Router 1
+ */
+const ROUTER2_HOST_EXT = '192.168.0.2';
+/**
+ * Subnet for external communication from Router 1
+ * Forwards to a seed node
+ */
+const ROUTER1_HOST_SEED = '192.168.0.1';
+/**
+ * Subnet for external communication from a seed node
+ */
+const SEED_HOST = '192.168.0.3';
+/**
+ * Subnet for external communication from Router 2
+ * Forwards to a seed node
+ */
+const ROUTER2_HOST_SEED = '192.168.0.2';
+
+/**
+ * Subnet mask
+ */
+const SUBNET_MASK = '/24';
+
+/**
+ * Port on Agent 1
+ */
+const AGENT1_PORT = '55551';
+/**
+ * Port on Agent 2
+ */
+const AGENT2_PORT = '55552';
+/**
+ * Mapped port for DMZ
+ */
+const DMZ_PORT = '55555';
 
 /**
  * Formats the command to enter a namespace to run a process inside it
@@ -172,12 +255,12 @@ async function setupNetworkNamespaceInterfaces(
       'ip',
       'link',
       'add',
-      agent1Host,
+      AGENT1_VETH,
       'type',
       'veth',
       'peer',
       'name',
-      agent1RouterHostInt,
+      ROUTER1_VETH_INT,
     ];
     logger.info(['nsenter', ...args].join(' '));
     await testBinUtils.exec('nsenter', args);
@@ -186,12 +269,12 @@ async function setupNetworkNamespaceInterfaces(
       'ip',
       'link',
       'add',
-      agent1RouterHostExt,
+      ROUTER1_VETH_EXT,
       'type',
       'veth',
       'peer',
       'name',
-      agent2RouterHostExt,
+      ROUTER2_VETH_EXT,
     ];
     logger.info(['nsenter', ...args].join(' '));
     await testBinUtils.exec('nsenter', args);
@@ -200,12 +283,12 @@ async function setupNetworkNamespaceInterfaces(
       'ip',
       'link',
       'add',
-      agent2RouterHostInt,
+      ROUTER2_VETH_INT,
       'type',
       'veth',
       'peer',
       'name',
-      agent2Host,
+      AGENT2_VETH,
     ];
     logger.info(['nsenter', ...args].join(' '));
     await testBinUtils.exec('nsenter', args);
@@ -216,7 +299,7 @@ async function setupNetworkNamespaceInterfaces(
       'link',
       'set',
       'dev',
-      agent1RouterHostInt,
+      ROUTER1_VETH_INT,
       'netns',
       router1NetnsPid.toString(),
     ];
@@ -228,7 +311,7 @@ async function setupNetworkNamespaceInterfaces(
       'link',
       'set',
       'dev',
-      agent2RouterHostExt,
+      ROUTER2_VETH_EXT,
       'netns',
       router2NetnsPid.toString(),
     ];
@@ -240,7 +323,7 @@ async function setupNetworkNamespaceInterfaces(
       'link',
       'set',
       'dev',
-      agent2Host,
+      AGENT2_VETH,
       'netns',
       agent2NetnsPid.toString(),
     ];
@@ -252,7 +335,7 @@ async function setupNetworkNamespaceInterfaces(
       'ip',
       'link',
       'set',
-      agent1Host,
+      AGENT1_VETH,
       'up',
     ];
     logger.info(['nsenter', ...args].join(' '));
@@ -262,7 +345,7 @@ async function setupNetworkNamespaceInterfaces(
       'ip',
       'link',
       'set',
-      agent1RouterHostInt,
+      ROUTER1_VETH_INT,
       'up',
     ];
     logger.info(['nsenter', ...args].join(' '));
@@ -272,7 +355,7 @@ async function setupNetworkNamespaceInterfaces(
       'ip',
       'link',
       'set',
-      agent1RouterHostExt,
+      ROUTER1_VETH_EXT,
       'up',
     ];
     logger.info(['nsenter', ...args].join(' '));
@@ -282,7 +365,7 @@ async function setupNetworkNamespaceInterfaces(
       'ip',
       'link',
       'set',
-      agent2RouterHostExt,
+      ROUTER2_VETH_EXT,
       'up',
     ];
     logger.info(['nsenter', ...args].join(' '));
@@ -292,7 +375,7 @@ async function setupNetworkNamespaceInterfaces(
       'ip',
       'link',
       'set',
-      agent2RouterHostInt,
+      ROUTER2_VETH_INT,
       'up',
     ];
     logger.info(['nsenter', ...args].join(' '));
@@ -302,7 +385,7 @@ async function setupNetworkNamespaceInterfaces(
       'ip',
       'link',
       'set',
-      agent2Host,
+      AGENT2_VETH,
       'up',
     ];
     logger.info(['nsenter', ...args].join(' '));
@@ -313,9 +396,9 @@ async function setupNetworkNamespaceInterfaces(
       'ip',
       'addr',
       'add',
-      `${agent1HostIp}${subnetMask}`,
+      `${AGENT1_HOST}${SUBNET_MASK}`,
       'dev',
-      agent1Host,
+      AGENT1_VETH,
     ];
     logger.info(['nsenter', ...args].join(' '));
     await testBinUtils.exec('nsenter', args);
@@ -324,9 +407,9 @@ async function setupNetworkNamespaceInterfaces(
       'ip',
       'addr',
       'add',
-      `${agent1RouterHostIntIp}${subnetMask}`,
+      `${ROUTER1_HOST_INT}${SUBNET_MASK}`,
       'dev',
-      agent1RouterHostInt,
+      ROUTER1_VETH_INT,
     ];
     logger.info(['nsenter', ...args].join(' '));
     await testBinUtils.exec('nsenter', args);
@@ -335,9 +418,9 @@ async function setupNetworkNamespaceInterfaces(
       'ip',
       'addr',
       'add',
-      `${agent1RouterHostExtIp}${subnetMask}`,
+      `${ROUTER1_HOST_EXT}${SUBNET_MASK}`,
       'dev',
-      agent1RouterHostExt,
+      ROUTER1_VETH_EXT,
     ];
     logger.info(['nsenter', ...args].join(' '));
     await testBinUtils.exec('nsenter', args);
@@ -346,9 +429,9 @@ async function setupNetworkNamespaceInterfaces(
       'ip',
       'addr',
       'add',
-      `${agent2RouterHostExtIp}${subnetMask}`,
+      `${ROUTER2_HOST_EXT}${SUBNET_MASK}`,
       'dev',
-      agent2RouterHostExt,
+      ROUTER2_VETH_EXT,
     ];
     logger.info(['nsenter', ...args].join(' '));
     await testBinUtils.exec('nsenter', args);
@@ -357,9 +440,9 @@ async function setupNetworkNamespaceInterfaces(
       'ip',
       'addr',
       'add',
-      `${agent2RouterHostIntIp}${subnetMask}`,
+      `${ROUTER2_HOST_INT}${SUBNET_MASK}`,
       'dev',
-      agent2RouterHostInt,
+      ROUTER2_VETH_INT,
     ];
     logger.info(['nsenter', ...args].join(' '));
     await testBinUtils.exec('nsenter', args);
@@ -368,9 +451,9 @@ async function setupNetworkNamespaceInterfaces(
       'ip',
       'addr',
       'add',
-      `${agent2HostIp}${subnetMask}`,
+      `${AGENT2_HOST}${SUBNET_MASK}`,
       'dev',
-      agent2Host,
+      AGENT2_VETH,
     ];
     logger.info(['nsenter', ...args].join(' '));
     await testBinUtils.exec('nsenter', args);
@@ -382,7 +465,7 @@ async function setupNetworkNamespaceInterfaces(
       'add',
       'default',
       'via',
-      agent1RouterHostIntIp,
+      ROUTER1_HOST_INT,
     ];
     logger.info(['nsenter', ...args].join(' '));
     await testBinUtils.exec('nsenter', args);
@@ -393,7 +476,7 @@ async function setupNetworkNamespaceInterfaces(
       'add',
       'default',
       'via',
-      agent2RouterHostExtIp,
+      ROUTER2_HOST_EXT,
     ];
     logger.info(['nsenter', ...args].join(' '));
     await testBinUtils.exec('nsenter', args);
@@ -404,7 +487,7 @@ async function setupNetworkNamespaceInterfaces(
       'add',
       'default',
       'via',
-      agent1RouterHostExtIp,
+      ROUTER1_HOST_EXT,
     ];
     logger.info(['nsenter', ...args].join(' '));
     await testBinUtils.exec('nsenter', args);
@@ -415,7 +498,7 @@ async function setupNetworkNamespaceInterfaces(
       'add',
       'default',
       'via',
-      agent2RouterHostIntIp,
+      ROUTER2_HOST_INT,
     ];
     logger.info(['nsenter', ...args].join(' '));
     await testBinUtils.exec('nsenter', args);
@@ -457,12 +540,12 @@ async function setupSeedNamespaceInterfaces(
       'ip',
       'link',
       'add',
-      router1SeedHost,
+      ROUTER1_VETH_SEED,
       'type',
       'veth',
       'peer',
       'name',
-      seedRouter1Host,
+      SEED_VETH_ROUTER1,
     ];
     logger.info(['nsenter', ...args].join(' '));
     await testBinUtils.exec('nsenter', args);
@@ -471,12 +554,12 @@ async function setupSeedNamespaceInterfaces(
       'ip',
       'link',
       'add',
-      router2SeedHost,
+      ROUTER2_VETH_SEED,
       'type',
       'veth',
       'peer',
       'name',
-      seedRouter2Host,
+      SEED_VETH_ROUTER2,
     ];
     logger.info(['nsenter', ...args].join(' '));
     await testBinUtils.exec('nsenter', args);
@@ -487,7 +570,7 @@ async function setupSeedNamespaceInterfaces(
       'link',
       'set',
       'dev',
-      seedRouter1Host,
+      SEED_VETH_ROUTER1,
       'netns',
       seedNetnsPid.toString(),
     ];
@@ -499,7 +582,7 @@ async function setupSeedNamespaceInterfaces(
       'link',
       'set',
       'dev',
-      seedRouter2Host,
+      SEED_VETH_ROUTER2,
       'netns',
       seedNetnsPid.toString(),
     ];
@@ -511,7 +594,7 @@ async function setupSeedNamespaceInterfaces(
       'ip',
       'link',
       'set',
-      router1SeedHost,
+      ROUTER1_VETH_SEED,
       'up',
     ];
     logger.info(['nsenter', ...args].join(' '));
@@ -521,7 +604,7 @@ async function setupSeedNamespaceInterfaces(
       'ip',
       'link',
       'set',
-      seedRouter1Host,
+      SEED_VETH_ROUTER1,
       'up',
     ];
     logger.info(['nsenter', ...args].join(' '));
@@ -531,7 +614,7 @@ async function setupSeedNamespaceInterfaces(
       'ip',
       'link',
       'set',
-      seedRouter2Host,
+      SEED_VETH_ROUTER2,
       'up',
     ];
     logger.info(['nsenter', ...args].join(' '));
@@ -541,7 +624,7 @@ async function setupSeedNamespaceInterfaces(
       'ip',
       'link',
       'set',
-      router2SeedHost,
+      ROUTER2_VETH_SEED,
       'up',
     ];
     logger.info(['nsenter', ...args].join(' '));
@@ -552,9 +635,9 @@ async function setupSeedNamespaceInterfaces(
       'ip',
       'addr',
       'add',
-      `${router1SeedHostIp}${subnetMask}`,
+      `${ROUTER1_HOST_SEED}${SUBNET_MASK}`,
       'dev',
-      router1SeedHost,
+      ROUTER1_VETH_SEED,
     ];
     logger.info(['nsenter', ...args].join(' '));
     await testBinUtils.exec('nsenter', args);
@@ -563,9 +646,9 @@ async function setupSeedNamespaceInterfaces(
       'ip',
       'addr',
       'add',
-      `${seedHostIp}${subnetMask}`,
+      `${SEED_HOST}${SUBNET_MASK}`,
       'dev',
-      seedRouter1Host,
+      SEED_VETH_ROUTER1,
     ];
     logger.info(['nsenter', ...args].join(' '));
     await testBinUtils.exec('nsenter', args);
@@ -574,9 +657,9 @@ async function setupSeedNamespaceInterfaces(
       'ip',
       'addr',
       'add',
-      `${seedHostIp}${subnetMask}`,
+      `${SEED_HOST}${SUBNET_MASK}`,
       'dev',
-      seedRouter2Host,
+      SEED_VETH_ROUTER2,
     ];
     logger.info(['nsenter', ...args].join(' '));
     await testBinUtils.exec('nsenter', args);
@@ -585,9 +668,9 @@ async function setupSeedNamespaceInterfaces(
       'ip',
       'addr',
       'add',
-      `${router2SeedHostIp}${subnetMask}`,
+      `${ROUTER2_HOST_SEED}${SUBNET_MASK}`,
       'dev',
-      router2SeedHost,
+      ROUTER2_VETH_SEED,
     ];
     logger.info(['nsenter', ...args].join(' '));
     await testBinUtils.exec('nsenter', args);
@@ -597,9 +680,9 @@ async function setupSeedNamespaceInterfaces(
       'ip',
       'route',
       'add',
-      seedHostIp,
+      SEED_HOST,
       'dev',
-      router1SeedHost,
+      ROUTER1_VETH_SEED,
     ];
     logger.info(['nsenter', ...args].join(' '));
     await testBinUtils.exec('nsenter', args);
@@ -608,9 +691,9 @@ async function setupSeedNamespaceInterfaces(
       'ip',
       'route',
       'add',
-      seedHostIp,
+      SEED_HOST,
       'dev',
-      router2SeedHost,
+      ROUTER2_VETH_SEED,
     ];
     logger.info(['nsenter', ...args].join(' '));
     await testBinUtils.exec('nsenter', args);
@@ -619,9 +702,9 @@ async function setupSeedNamespaceInterfaces(
       'ip',
       'route',
       'add',
-      router1SeedHostIp,
+      ROUTER1_HOST_SEED,
       'dev',
-      seedRouter1Host,
+      SEED_VETH_ROUTER1,
     ];
     logger.info(['nsenter', ...args].join(' '));
     await testBinUtils.exec('nsenter', args);
@@ -630,9 +713,9 @@ async function setupSeedNamespaceInterfaces(
       'ip',
       'route',
       'add',
-      router2SeedHostIp,
+      ROUTER2_HOST_SEED,
       'dev',
-      seedRouter2Host,
+      SEED_VETH_ROUTER2,
     ];
     logger.info(['nsenter', ...args].join(' '));
     await testBinUtils.exec('nsenter', args);
@@ -806,13 +889,13 @@ async function setupDMZ(
     '--protocol',
     'udp',
     '--source',
-    `${agentIp}${subnetMask}`,
+    `${agentIp}${SUBNET_MASK}`,
     '--out-interface',
     routerExt,
     '--jump',
     'SNAT',
     '--to-source',
-    `${routerExtIp}:${mappedPort}`,
+    `${routerExtIp}:${DMZ_PORT}`,
   ];
   const preroutingCommand = [
     ...nsenter(usrnsPid, routerNsPid),
@@ -824,7 +907,7 @@ async function setupDMZ(
     '--protocol',
     'udp',
     '--destination-port',
-    mappedPort,
+    DMZ_PORT,
     '--in-interface',
     routerExt,
     '--jump',
@@ -863,7 +946,7 @@ async function setupNATEndpointIndependentMapping(
     '--protocol',
     'udp',
     '--source',
-    `${agentIp}${subnetMask}`,
+    `${agentIp}${SUBNET_MASK}`,
     '--out-interface',
     routerExt,
     '--jump',
@@ -976,19 +1059,19 @@ async function setupNATWithSeedNode(
       await setupDMZ(
         usrns.pid!,
         router1Netns.pid!,
-        agent1HostIp,
-        agent1Port,
-        agent1RouterHostExt,
-        agent1RouterHostExtIp,
+        AGENT1_HOST,
+        AGENT1_PORT,
+        ROUTER1_VETH_EXT,
+        ROUTER1_HOST_EXT,
         logger,
       );
       await setupDMZ(
         usrns.pid!,
         router1Netns.pid!,
-        agent1HostIp,
-        agent1Port,
-        router1SeedHost,
-        router1SeedHostIp,
+        AGENT1_HOST,
+        AGENT1_PORT,
+        ROUTER1_VETH_SEED,
+        ROUTER1_HOST_SEED,
         logger,
       );
       break;
@@ -997,17 +1080,17 @@ async function setupNATWithSeedNode(
       await setupNATEndpointIndependentMapping(
         usrns.pid!,
         router1Netns.pid!,
-        agent1HostIp,
-        agent1RouterHostExt,
-        agent1RouterHostInt,
+        AGENT1_HOST,
+        ROUTER1_VETH_EXT,
+        ROUTER1_VETH_INT,
         logger,
       );
       await setupNATEndpointIndependentMapping(
         usrns.pid!,
         router1Netns.pid!,
-        agent1HostIp,
-        router1SeedHost,
-        agent1RouterHostInt,
+        AGENT1_HOST,
+        ROUTER1_VETH_SEED,
+        ROUTER1_VETH_INT,
         logger,
       );
       break;
@@ -1016,13 +1099,13 @@ async function setupNATWithSeedNode(
       await setupNATEndpointDependentMapping(
         usrns.pid!,
         router1Netns.pid!,
-        agent1RouterHostExt,
+        ROUTER1_VETH_EXT,
         logger,
       );
       await setupNATEndpointDependentMapping(
         usrns.pid!,
         router1Netns.pid!,
-        router1SeedHost,
+        ROUTER1_VETH_SEED,
         logger,
       );
       break;
@@ -1033,19 +1116,19 @@ async function setupNATWithSeedNode(
       await setupDMZ(
         usrns.pid!,
         router2Netns.pid!,
-        agent2HostIp,
-        agent2Port,
-        agent2RouterHostExt,
-        agent2RouterHostExtIp,
+        AGENT2_HOST,
+        AGENT2_PORT,
+        ROUTER2_VETH_EXT,
+        ROUTER2_HOST_EXT,
         logger,
       );
       await setupDMZ(
         usrns.pid!,
         router2Netns.pid!,
-        agent2HostIp,
-        agent2Port,
-        router2SeedHost,
-        router2SeedHostIp,
+        AGENT2_HOST,
+        AGENT2_PORT,
+        ROUTER2_VETH_SEED,
+        ROUTER2_HOST_SEED,
         logger,
       );
       break;
@@ -1054,17 +1137,17 @@ async function setupNATWithSeedNode(
       await setupNATEndpointIndependentMapping(
         usrns.pid!,
         router2Netns.pid!,
-        agent2HostIp,
-        agent2RouterHostExt,
-        agent2RouterHostInt,
+        AGENT2_HOST,
+        ROUTER2_VETH_EXT,
+        ROUTER2_VETH_INT,
         logger,
       );
       await setupNATEndpointIndependentMapping(
         usrns.pid!,
         router2Netns.pid!,
-        agent2HostIp,
-        router2SeedHost,
-        agent2RouterHostInt,
+        AGENT2_HOST,
+        ROUTER2_VETH_SEED,
+        ROUTER2_VETH_INT,
         logger,
       );
       break;
@@ -1073,13 +1156,13 @@ async function setupNATWithSeedNode(
       await setupNATEndpointDependentMapping(
         usrns.pid!,
         router2Netns.pid!,
-        agent2RouterHostExt,
+        ROUTER2_VETH_EXT,
         logger,
       );
       await setupNATEndpointDependentMapping(
         usrns.pid!,
         router2Netns.pid!,
-        router2SeedHost,
+        ROUTER2_VETH_SEED,
         logger,
       );
       break;
@@ -1148,15 +1231,15 @@ async function setupNATWithSeedNode(
       '--client-host',
       '127.0.0.1',
       '--proxy-host',
-      `${agent1HostIp}`,
+      `${AGENT1_HOST}`,
       '--proxy-port',
-      `${agent1Port}`,
+      `${AGENT1_PORT}`,
       '--workers',
       '0',
       '--connection-timeout',
       '1000',
       '--seed-nodes',
-      `${nodeIdSeed}@${seedHostIp}:${proxyPortSeed}`,
+      `${nodeIdSeed}@${SEED_HOST}:${proxyPortSeed}`,
       '--verbose',
       '--format',
       'json',
@@ -1186,15 +1269,15 @@ async function setupNATWithSeedNode(
       '--client-host',
       '127.0.0.1',
       '--proxy-host',
-      `${agent2HostIp}`,
+      `${AGENT2_HOST}`,
       '--proxy-port',
-      `${agent2Port}`,
+      `${AGENT2_PORT}`,
       '--workers',
       '0',
       '--connection-timeout',
       '1000',
       '--seed-nodes',
-      `${nodeIdSeed}@${seedHostIp}:${proxyPortSeed}`,
+      `${nodeIdSeed}@${SEED_HOST}:${proxyPortSeed}`,
       '--verbose',
       '--format',
       'json',
@@ -1272,10 +1355,10 @@ async function setupNAT(
       await setupDMZ(
         usrns.pid!,
         router1Netns.pid!,
-        agent1HostIp,
-        agent1Port,
-        agent1RouterHostExt,
-        agent1RouterHostExtIp,
+        AGENT1_HOST,
+        AGENT1_PORT,
+        ROUTER1_VETH_EXT,
+        ROUTER1_HOST_EXT,
         logger,
       );
       break;
@@ -1284,9 +1367,9 @@ async function setupNAT(
       await setupNATEndpointIndependentMapping(
         usrns.pid!,
         router1Netns.pid!,
-        agent1HostIp,
-        agent1RouterHostExt,
-        agent1RouterHostInt,
+        AGENT1_HOST,
+        ROUTER1_VETH_EXT,
+        ROUTER1_VETH_INT,
         logger,
       );
       break;
@@ -1295,7 +1378,7 @@ async function setupNAT(
       await setupNATEndpointDependentMapping(
         usrns.pid!,
         router1Netns.pid!,
-        agent1RouterHostExt,
+        ROUTER1_VETH_EXT,
         logger,
       );
       break;
@@ -1306,10 +1389,10 @@ async function setupNAT(
       await setupDMZ(
         usrns.pid!,
         router2Netns.pid!,
-        agent2HostIp,
-        agent2Port,
-        agent2RouterHostExt,
-        agent2RouterHostExtIp,
+        AGENT2_HOST,
+        AGENT2_PORT,
+        ROUTER2_VETH_EXT,
+        ROUTER2_HOST_EXT,
         logger,
       );
       break;
@@ -1318,9 +1401,9 @@ async function setupNAT(
       await setupNATEndpointIndependentMapping(
         usrns.pid!,
         router2Netns.pid!,
-        agent2HostIp,
-        agent2RouterHostExt,
-        agent2RouterHostInt,
+        AGENT2_HOST,
+        ROUTER2_VETH_EXT,
+        ROUTER2_VETH_INT,
         logger,
       );
       break;
@@ -1329,7 +1412,7 @@ async function setupNAT(
       await setupNATEndpointDependentMapping(
         usrns.pid!,
         router2Netns.pid!,
-        agent2RouterHostExt,
+        ROUTER2_VETH_EXT,
         logger,
       );
       break;
@@ -1356,9 +1439,9 @@ async function setupNAT(
       '--client-host',
       '127.0.0.1',
       '--proxy-host',
-      `${agent1HostIp}`,
+      `${AGENT1_HOST}`,
       '--proxy-port',
-      `${agent1Port}`,
+      `${AGENT1_PORT}`,
       '--connection-timeout',
       '1000',
       '--workers',
@@ -1392,9 +1475,9 @@ async function setupNAT(
       '--client-host',
       '127.0.0.1',
       '--proxy-host',
-      `${agent2HostIp}`,
+      `${AGENT2_HOST}`,
       '--proxy-port',
-      `${agent2Port}`,
+      `${AGENT2_PORT}`,
       '--connection-timeout',
       '1000',
       '--workers',
@@ -1424,17 +1507,11 @@ async function setupNAT(
     agent1NodePath: path.join(dataDir, 'agent1'),
     agent2NodePath: path.join(dataDir, 'agent2'),
     agent1NodeId: nodeId1,
-    agent1Host: agent1RouterHostExtIp,
-    agent1ProxyPort:
-      agent1NAT === 'dmz'
-        ? mappedPort
-        : agent1Port,
+    agent1Host: ROUTER1_HOST_EXT,
+    agent1ProxyPort: agent1NAT === 'dmz' ? DMZ_PORT : AGENT1_PORT,
     agent2NodeId: nodeId2,
-    agent2Host: agent2RouterHostExtIp,
-    agent2ProxyPort:
-      agent2NAT === 'dmz'
-        ? mappedPort
-        : agent2Port,
+    agent2Host: ROUTER2_HOST_EXT,
+    agent2ProxyPort: agent2NAT === 'dmz' ? DMZ_PORT : AGENT2_PORT,
     tearDownNAT: async () => {
       agent2.kill('SIGTERM');
       await testBinUtils.processExit(agent2);

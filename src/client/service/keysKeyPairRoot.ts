@@ -31,7 +31,8 @@ function keysKeyPairRoot({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
-      !clientUtils.isClientClientError(e) && logger.error(`${keysKeyPairRoot.name}:${e}`);
+      !clientUtils.isClientClientError(e) &&
+        logger.error(`${keysKeyPairRoot.name}:${e}`);
       return;
     }
   };

@@ -24,7 +24,8 @@ function agentUnlock({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
-      !clientUtils.isClientClientError(e) && logger.error(`${agentUnlock.name}:${e}`);
+      !clientUtils.isClientClientError(e) &&
+        logger.error(`${agentUnlock.name}:${e}`);
       return;
     }
   };
