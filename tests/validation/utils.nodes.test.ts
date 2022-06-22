@@ -35,6 +35,27 @@ describe('nodes validationUtils', () => {
     });
     expect(parsed[1]).toBeFalsy();
   });
+  test('parseSeedNodes - valid nodes optionally have pk://', () => {
+    const rawSeedNodes =
+      `pk://${nodeIdEncoded1}@${hostname}:${port1};` +
+      `pk://${nodeIdEncoded2}@${hostIPv4}:${port2};` +
+      `pk://${nodeIdEncoded3}@${hostIPv6}:${port3};`;
+    const parsed = validationUtils.parseSeedNodes(rawSeedNodes);
+    const seeds = parsed[0];
+    expect(seeds[nodeIdEncoded1]).toStrictEqual({
+      host: hostname,
+      port: port1,
+    });
+    expect(seeds[nodeIdEncoded2]).toStrictEqual({
+      host: hostIPv4,
+      port: port2,
+    });
+    expect(seeds[nodeIdEncoded3]).toStrictEqual({
+      host: hostIPv6.replace(/\[|\]/g, ''),
+      port: port3,
+    });
+    expect(parsed[1]).toBeFalsy();
+  });
   test('parseSeedNodes - invalid node ID', () => {
     const rawSeedNodes = `INVALIDNODEID@${hostname}:${port1}`;
     expect(() => validationUtils.parseSeedNodes(rawSeedNodes)).toThrow(
@@ -47,6 +68,36 @@ describe('nodes validationUtils', () => {
       validationErrors.ErrorParse,
     );
   });
-  test.todo('parseSeedNodes - invalid port');
-  test.todo('parseSeedNodes - invalid structure');
+  test('parseSeedNodes - invalid URL', () => {
+    expect(() =>
+      validationUtils.parseSeedNodes('thisisinvalid!@#$%^&*()'),
+    ).toThrow(validationErrors.ErrorParse);
+  });
+  test('parseSeedNodes - invalid port', async () => {
+    expect(() =>
+      validationUtils.parseSeedNodes(`${nodeIdEncoded1}@$invalidHost:-55555`),
+    ).toThrow(validationErrors.ErrorParse);
+    expect(() =>
+      validationUtils.parseSeedNodes(
+        `${nodeIdEncoded1}@$invalidHost:999999999`,
+      ),
+    ).toThrow(validationErrors.ErrorParse);
+  });
+  test('parseSeedNodes - invalid structure', async () => {
+    expect(() =>
+      validationUtils.parseSeedNodes(
+        `${nodeIdEncoded1}!#$%^&*()@$invalidHost:${port1}`,
+      ),
+    ).toThrow(validationErrors.ErrorParse);
+    expect(() =>
+      validationUtils.parseSeedNodes(
+        `pk:/${nodeIdEncoded1}@$invalidHost:${port1}`,
+      ),
+    ).toThrow(validationErrors.ErrorParse);
+    expect(() =>
+      validationUtils.parseSeedNodes(
+        `asdpk://${nodeIdEncoded1}@$invalidHost:${port1}`,
+      ),
+    ).toThrow(validationErrors.ErrorParse);
+  });
 });

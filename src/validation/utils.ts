@@ -228,14 +228,14 @@ function parseSeedNodes(data: any): [SeedNodes, boolean] {
     }
     let seedNodeUrl: URL;
     try {
-      seedNodeUrl = new URL(`pk://${seedNodeString}`);
+      const seedNodeStringProtocol = /^pk:\/\//.test(seedNodeString)
+        ? seedNodeString
+        : `pk://${seedNodeString}`;
+      seedNodeUrl = new URL(seedNodeStringProtocol);
     } catch (e) {
-      if (e instanceof TypeError) {
-        throw new validationErrors.ErrorParse(
-          'Seed nodes must be of format `nodeId@host:port;...`',
-        );
-      }
-      throw e;
+      throw new validationErrors.ErrorParse(
+        'Seed nodes must be of format `nodeId@host:port;...`',
+      );
     }
     const nodeIdEncoded = seedNodeUrl.username;
     // Remove square braces for IPv6
