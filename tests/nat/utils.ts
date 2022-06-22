@@ -8,7 +8,7 @@ import readline from 'readline';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as testBinUtils from '../bin/utils';
 
-type NATType = 'eim' | 'edm' | 'dmz' | 'edmSimple';
+type NATType = 'eim' | 'edm' | 'dmz';
 
 // Constants for all util functions
 // Veth pairs (ends)
@@ -951,121 +951,6 @@ async function setupNATEndpointDependentMapping(
   }
 }
 
-/**
- * Setup Port-Restricted Cone NAT for a namespace (on the router namespace)
- */
-async function setupNATSimplifiedEDMAgent(
-  usrnsPid: number,
-  routerNsPid: number,
-  agentIp: string,
-  routerExt: string,
-  routerInt: string,
-  logger: Logger = new Logger(setupNATSimplifiedEDMAgent.name),
-) {
-  const natCommand = [
-    ...nsenter(usrnsPid, routerNsPid),
-    'iptables',
-    '--table',
-    'nat',
-    '--append',
-    'POSTROUTING',
-    '--protocol',
-    'udp',
-    '--source',
-    `${agentIp}${subnetMask}`,
-    '--out-interface',
-    routerExt,
-    '--jump',
-    'MASQUERADE',
-    '--to-ports',
-    '44444',
-  ];
-  const acceptLocalCommand = [
-    ...nsenter(usrnsPid, routerNsPid),
-    'iptables',
-    '--table',
-    'filter',
-    '--append',
-    'INPUT',
-    '--in-interface',
-    routerInt,
-    '--jump',
-    'ACCEPT',
-  ];
-  const acceptEstablishedCommand = [
-    ...nsenter(usrnsPid, routerNsPid),
-    'iptables',
-    '--table',
-    'filter',
-    '--append',
-    'INPUT',
-    '--match',
-    'conntrack',
-    '--ctstate',
-    'RELATED,ESTABLISHED',
-    '--jump',
-    'ACCEPT',
-  ];
-  const dropCommand = [
-    ...nsenter(usrnsPid, routerNsPid),
-    'iptables',
-    '--table',
-    'filter',
-    '--append',
-    'INPUT',
-    '--jump',
-    'DROP',
-  ];
-  try {
-    logger.info(['nsenter', ...acceptLocalCommand].join(' '));
-    await testBinUtils.exec('nsenter', acceptLocalCommand);
-    logger.info(['nsenter', ...acceptEstablishedCommand].join(' '));
-    await testBinUtils.exec('nsenter', acceptEstablishedCommand);
-    logger.info(['nsenter', ...dropCommand].join(' '));
-    await testBinUtils.exec('nsenter', dropCommand);
-    logger.info(['nsenter', ...natCommand].join(' '));
-    await testBinUtils.exec('nsenter', natCommand);
-  } catch (e) {
-    logger.error(e.message);
-  }
-}
-
-/**
- * Setup Port-Restricted Cone NAT for a namespace (on the router namespace)
- */
-async function setupNATSimplifiedEDMSeed(
-  usrnsPid: number,
-  routerNsPid: number,
-  agentIp: string,
-  routerExt: string,
-  logger: Logger = new Logger(setupNATSimplifiedEDMSeed.name),
-) {
-  const natCommand = [
-    ...nsenter(usrnsPid, routerNsPid),
-    'iptables',
-    '--table',
-    'nat',
-    '--append',
-    'POSTROUTING',
-    '--protocol',
-    'udp',
-    '--source',
-    `${agentIp}${subnetMask}`,
-    '--out-interface',
-    routerExt,
-    '--jump',
-    'MASQUERADE',
-    '--to-ports',
-    '55555',
-  ];
-  try {
-    logger.info(['nsenter', ...natCommand].join(' '));
-    await testBinUtils.exec('nsenter', natCommand);
-  } catch (e) {
-    logger.error(e.message);
-  }
-}
-
 async function setupNATWithSeedNode(
   agent1NAT: NATType,
   agent2NAT: NATType,
@@ -1142,24 +1027,6 @@ async function setupNATWithSeedNode(
       );
       break;
     }
-    case 'edmSimple': {
-      await setupNATSimplifiedEDMAgent(
-        usrns.pid!,
-        router1Netns.pid!,
-        agent1HostIp,
-        agent1RouterHostExt,
-        agent1RouterHostInt,
-        logger,
-      );
-      await setupNATSimplifiedEDMSeed(
-        usrns.pid!,
-        router1Netns.pid!,
-        agent1HostIp,
-        router1SeedHost,
-        logger,
-      );
-      break;
-    }
   }
   switch (agent2NAT) {
     case 'dmz': {
@@ -1212,24 +1079,6 @@ async function setupNATWithSeedNode(
       await setupNATEndpointDependentMapping(
         usrns.pid!,
         router2Netns.pid!,
-        router2SeedHost,
-        logger,
-      );
-      break;
-    }
-    case 'edmSimple': {
-      await setupNATSimplifiedEDMAgent(
-        usrns.pid!,
-        router2Netns.pid!,
-        agent2HostIp,
-        agent2RouterHostExt,
-        agent2RouterHostInt,
-        logger,
-      );
-      await setupNATSimplifiedEDMSeed(
-        usrns.pid!,
-        router2Netns.pid!,
-        agent2HostIp,
         router2SeedHost,
         logger,
       );
@@ -1451,17 +1300,6 @@ async function setupNAT(
       );
       break;
     }
-    case 'edmSimple': {
-      await setupNATSimplifiedEDMAgent(
-        usrns.pid!,
-        router1Netns.pid!,
-        agent1HostIp,
-        agent1RouterHostExt,
-        agent1RouterHostInt,
-        logger,
-      );
-      break;
-    }
   }
   switch (agent2NAT) {
     case 'dmz': {
@@ -1492,17 +1330,6 @@ async function setupNAT(
         usrns.pid!,
         router2Netns.pid!,
         agent2RouterHostExt,
-        logger,
-      );
-      break;
-    }
-    case 'edmSimple': {
-      await setupNATSimplifiedEDMAgent(
-        usrns.pid!,
-        router2Netns.pid!,
-        agent2HostIp,
-        agent2RouterHostExt,
-        agent2RouterHostInt,
         logger,
       );
       break;
@@ -1601,16 +1428,12 @@ async function setupNAT(
     agent1ProxyPort:
       agent1NAT === 'dmz'
         ? mappedPort
-        : agent1NAT === 'edmSimple'
-        ? '44444'
         : agent1Port,
     agent2NodeId: nodeId2,
     agent2Host: agent2RouterHostExtIp,
     agent2ProxyPort:
       agent2NAT === 'dmz'
         ? mappedPort
-        : agent2NAT === 'edmSimple'
-        ? '44444'
         : agent2Port,
     tearDownNAT: async () => {
       agent2.kill('SIGTERM');

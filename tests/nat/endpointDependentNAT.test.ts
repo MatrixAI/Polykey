@@ -48,7 +48,7 @@ describeIf(
         await testNatUtils.pkExecNs(
           userPid!,
           agent1Pid!,
-          ['nodes', 'add', agent2NodeId, agent2Host, agent2ProxyPort],
+          ['nodes', 'add', agent2NodeId, agent2Host, agent2ProxyPort, '--no-ping'],
           {
             PK_NODE_PATH: agent1NodePath,
             PK_PASSWORD: password,
@@ -89,48 +89,20 @@ describeIf(
           agent1Host,
           agent1ProxyPort,
           agent2NodeId,
-          agent2Host,
-          agent2ProxyPort,
           tearDownNAT,
-        } = await testNatUtils.setupNAT('dmz', 'edmSimple', logger);
+        } = await testNatUtils.setupNAT('dmz', 'edm', logger);
+        // Agent 2 must ping Agent 1 first, since Agent 2 is behind a NAT
         await testNatUtils.pkExecNs(
           userPid!,
           agent2Pid!,
-          ['nodes', 'add', agent1NodeId, agent1Host, agent1ProxyPort],
+          ['nodes', 'add', agent1NodeId, agent1Host, agent1ProxyPort, '--no-ping'],
           {
             PK_NODE_PATH: agent2NodePath,
             PK_PASSWORD: password,
           },
           dataDir,
         );
-        await testNatUtils.pkExecNs(
-          userPid!,
-          agent1Pid!,
-          ['nodes', 'add', agent2NodeId, agent2Host, agent2ProxyPort],
-          {
-            PK_NODE_PATH: agent1NodePath,
-            PK_PASSWORD: password,
-          },
-          dataDir,
-        );
-        // If we try to ping Agent 2 it will fail
         let exitCode, stdout;
-        ({ exitCode, stdout } = await testNatUtils.pkExecNs(
-          userPid!,
-          agent1Pid!,
-          ['nodes', 'ping', agent2NodeId, '--format', 'json'],
-          {
-            PK_NODE_PATH: agent1NodePath,
-            PK_PASSWORD: password,
-          },
-          dataDir,
-        ));
-        expect(exitCode).toBe(1);
-        expect(JSON.parse(stdout)).toEqual({
-          success: false,
-          message: 'No response received',
-        });
-        // But Agent 2 can ping Agent 1 because Agent 1 is not behind a NAT
         ({ exitCode, stdout } = await testNatUtils.pkExecNs(
           userPid!,
           agent2Pid!,
@@ -181,8 +153,8 @@ describeIf(
           agent2NodeId,
           tearDownNAT,
         } = await testNatUtils.setupNATWithSeedNode(
-          'edmSimple',
-          'edmSimple',
+          'edm',
+          'edm',
           logger,
         );
         // Contact details are retrieved from the seed node, but cannot be used
@@ -202,9 +174,9 @@ describeIf(
         expect(exitCode).toBe(1);
         expect(JSON.parse(stdout)).toEqual({
           success: false,
-          message: 'No response received',
+          message: `Failed to resolve node ID ${agent1NodeId} to an address.`,
         });
-        // Node 1 -> Node 2 ping should also fail
+        // Node 1 -> Node 2 ping should also fail for the same reason
         ({ exitCode, stdout } = await testNatUtils.pkExecNs(
           userPid!,
           agent1Pid!,
@@ -218,7 +190,7 @@ describeIf(
         expect(exitCode).toBe(1);
         expect(JSON.parse(stdout)).toEqual({
           success: false,
-          message: 'No response received',
+          message: `Failed to resolve node ID ${agent2NodeId} to an address.`,
         });
         await tearDownNAT();
       },
@@ -238,13 +210,13 @@ describeIf(
           agent1NodeId,
           agent2NodeId,
           tearDownNAT,
-        } = await testNatUtils.setupNATWithSeedNode('edmSimple', 'eim', logger);
+        } = await testNatUtils.setupNATWithSeedNode('edm', 'eim', logger);
         // Since one of the nodes uses EDM NAT we cannot punch through
         let exitCode, stdout;
         ({ exitCode, stdout } = await testNatUtils.pkExecNs(
           userPid!,
           agent2Pid!,
-          ['nodes', 'ping', agent1NodeId, '--format', 'json', '-vv'],
+          ['nodes', 'ping', agent1NodeId, '--format', 'json'],
           {
             PK_NODE_PATH: agent2NodePath,
             PK_PASSWORD: password,
@@ -254,7 +226,7 @@ describeIf(
         expect(exitCode).toBe(1);
         expect(JSON.parse(stdout)).toEqual({
           success: false,
-          message: 'No response received',
+          message: `Failed to resolve node ID ${agent1NodeId} to an address.`,
         });
         ({ exitCode, stdout } = await testNatUtils.pkExecNs(
           userPid!,
@@ -269,7 +241,7 @@ describeIf(
         expect(exitCode).toBe(1);
         expect(JSON.parse(stdout)).toEqual({
           success: false,
-          message: 'No response received',
+          message: `Failed to resolve node ID ${agent2NodeId} to an address.`,
         });
         await tearDownNAT();
       },

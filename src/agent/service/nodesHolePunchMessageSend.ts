@@ -55,7 +55,6 @@ function nodesHolePunchMessageSend({
           sourceId: call.request.getSrcId(),
         },
       );
-      logger.info('IN AGENT CLIENT');
       // Firstly, check if this node is the desired node
       // If so, then we want to make this node start sending hole punching packets
       // back to the source node.
