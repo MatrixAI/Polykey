@@ -51,7 +51,8 @@
   "pkg": {
     "assets": [
       "node_modules/jose/**/*",
-      "dist/**/*.json"
+      "dist/**/*.json",
+      "node_modules/tslib/**/*.js"
     ],
     "scripts": [
       "dist/workers/polykeyWorker.js",
