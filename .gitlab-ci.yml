@@ -196,6 +196,7 @@ build:macos:
     HOMEBREW_NO_INSTALL_UPGRADE: "true"
     HOMEBREW_NO_INSTALL_CLEANUP: "true"
   before_script:
+    - eval "$(brew shellenv)"
     - brew install node@16
     - brew link --overwrite node@16
     - hash -r
