@@ -61,7 +61,7 @@ function vaultsSecretsNewDir({
       callback(grpcUtils.fromError(e));
       !clientUtils.isClientClientError(e, [
         vaultsErrors.ErrorVaultsVaultUndefined,
-      ]) && logger.error(e);
+      ]) && logger.error(`${vaultsSecretsNewDir.name}:${e}`);
       return;
     }
   };

@@ -48,7 +48,8 @@ function gestaltsDiscoveryByNode({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
-      !clientUtils.isClientClientError(e) && logger.error(e);
+      !clientUtils.isClientClientError(e) &&
+        logger.error(`${gestaltsDiscoveryByNode.name}:${e}`);
       return;
     }
   };

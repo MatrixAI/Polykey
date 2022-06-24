@@ -73,7 +73,7 @@ function gestaltsGestaltTrustByNode({
       callback(grpcUtils.fromError(e));
       !clientUtils.isClientClientError(e, [
         gestaltsErrors.ErrorGestaltsGraphNodeIdMissing,
-      ]) && logger.error(e);
+      ]) && logger.error(`${gestaltsGestaltTrustByNode.name}:${e}`);
       return;
     }
   };

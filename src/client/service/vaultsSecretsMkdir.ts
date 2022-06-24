@@ -60,7 +60,7 @@ function vaultsSecretsMkdir({
       !clientUtils.isClientClientError(e, [
         vaultsErrors.ErrorVaultsVaultUndefined,
         vaultsErrors.ErrorVaultsRecursive,
-      ]) && logger.error(e);
+      ]) && logger.error(`${vaultsSecretsMkdir.name}:${e}`);
       return;
     }
   };

@@ -68,7 +68,7 @@ function vaultsVersion({
         vaultsErrors.ErrorVaultsVaultUndefined,
         vaultsErrors.ErrorVaultReferenceInvalid,
         vaultsErrors.ErrorVaultReferenceMissing,
-      ]) && logger.error(e);
+      ]) && logger.error(`${vaultsVersion.name}:${e}`);
       return;
     }
   };

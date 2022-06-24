@@ -50,7 +50,7 @@ function vaultsDelete({
       callback(grpcUtils.fromError(e));
       !clientUtils.isClientClientError(e, [
         vaultsErrors.ErrorVaultsVaultUndefined,
-      ]) && logger.error(e);
+      ]) && logger.error(`${vaultsDelete.name}:${e}`);
       return;
     }
   };

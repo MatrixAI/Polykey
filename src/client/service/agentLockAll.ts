@@ -33,7 +33,8 @@ function agentLockAll({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
-      !clientUtils.isClientClientError(e) && logger.error(e);
+      !clientUtils.isClientClientError(e) &&
+        logger.error(`${agentLockAll.name}:${e}`);
       return;
     }
   };

@@ -116,7 +116,7 @@ function identitiesInfoGet({
       !clientUtils.isClientClientError(e, [
         identitiesErrors.ErrorProviderMissing,
         identitiesErrors.ErrorProviderUnauthenticated,
-      ]) && logger.error(e);
+      ]) && logger.error(`${identitiesInfoGet.name}:${e}`);
       return;
     }
   };

@@ -65,7 +65,7 @@ function vaultsSecretsRename({
       !clientUtils.isClientClientError(e, [
         vaultsErrors.ErrorVaultsVaultUndefined,
         vaultsErrors.ErrorSecretsSecretUndefined,
-      ]) && logger.error(e);
+      ]) && logger.error(`${vaultsSecretsRename.name}:${e}`);
       return;
     }
   };

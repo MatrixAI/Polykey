@@ -59,7 +59,7 @@ function vaultsSecretsGet({
       !clientUtils.isClientClientError(e, [
         vaultsErrors.ErrorVaultsVaultUndefined,
         vaultsErrors.ErrorSecretsSecretUndefined,
-      ]) && logger.error(e);
+      ]) && logger.error(`${vaultsSecretsGet.name}:${e}`);
       return;
     }
   };

@@ -102,7 +102,7 @@ function vaultsPermissionUnset({
       !clientUtils.isClientClientError(e, [
         vaultsErrors.ErrorVaultsVaultUndefined,
         gestaltsErrors.ErrorGestaltsGraphNodeIdMissing,
-      ]) && logger.error(e);
+      ]) && logger.error(`${vaultsPermissionUnset.name}:${e}`);
       return;
     }
   };

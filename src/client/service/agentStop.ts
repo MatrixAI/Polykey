@@ -33,7 +33,8 @@ function agentStop({
       callback(null, response);
     } catch (e) {
       callback(grpcUtils.fromError(e));
-      !clientUtils.isClientClientError(e) && logger.error(e);
+      !clientUtils.isClientClientError(e) &&
+        logger.error(`${agentStop.name}:${e}`);
       return;
     }
     // Stop is called after GRPC resources are cleared

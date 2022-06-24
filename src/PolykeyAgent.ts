@@ -606,7 +606,7 @@ class PolykeyAgent {
         acl: this.acl,
         gestaltGraph: this.gestaltGraph,
         proxy: this.proxy,
-        logger: this.logger.getChild(createAgentService.name),
+        logger: this.logger.getChild('GRPCClientAgentService'),
       });
       const clientService = createClientService({
         pkAgent: this,
@@ -627,7 +627,7 @@ class PolykeyAgent {
         grpcServerAgent: this.grpcServerAgent,
         proxy: this.proxy,
         fs: this.fs,
-        logger: this.logger.getChild(createClientService.name),
+        logger: this.logger.getChild('GRPCClientClientService'),
       });
       // Starting modules
       await this.keyManager.start({
@@ -696,6 +696,10 @@ class PolykeyAgent {
       await this.notificationsManager?.stop();
       await this.vaultManager?.stop();
       await this.discovery?.stop();
+      await this.queue?.stop();
+      await this.nodeGraph?.stop();
+      await this.nodeConnectionManager?.stop();
+      await this.nodeManager?.stop();
       await this.proxy?.stop();
       await this.grpcServerAgent?.stop();
       await this.grpcServerClient?.stop();

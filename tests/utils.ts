@@ -198,9 +198,27 @@ const expectRemoteError = async <T>(
   }
 };
 
+function describeIf(condition, name, f) {
+  if (condition) {
+    describe(name, f);
+  } else {
+    describe.skip(name, f);
+  }
+}
+
+function testIf(condition, name, f, timeout?) {
+  if (condition) {
+    test(name, f, timeout);
+  } else {
+    test.skip(name, f, timeout);
+  }
+}
+
 export {
   setupGlobalKeypair,
   generateRandomNodeId,
   expectRemoteError,
   setupGlobalAgent,
+  describeIf,
+  testIf,
 };

@@ -55,7 +55,7 @@ function nodesPing({
       callback(grpcUtils.fromError(e));
       !clientUtils.isClientClientError(e, [
         nodesErrors.ErrorNodeGraphNodeIdNotFound,
-      ]) && logger.error(e);
+      ]) && logger.error(`${nodesPing.name}:${e}`);
       return;
     }
   };

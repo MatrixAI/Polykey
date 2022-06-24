@@ -75,7 +75,7 @@ function vaultsPermissionGet({
       await genWritable.throw(e);
       !clientUtils.isClientClientError(e, [
         vaultsErrors.ErrorVaultsVaultUndefined,
-      ]) && logger.error(e);
+      ]) && logger.error(`${vaultsPermissionGet.name}:${e}`);
       return;
     }
   };

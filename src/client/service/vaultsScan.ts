@@ -60,7 +60,7 @@ function vaultsScan({
       await genWritable.throw(e);
       !clientUtils.isClientClientError(e, [
         nodesErrors.ErrorNodeGraphNodeIdNotFound,
-      ]) && logger.error(e);
+      ]) && logger.error(`${vaultsScan.name}:${e}`);
       return;
     }
   };

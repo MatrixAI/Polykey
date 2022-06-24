@@ -57,7 +57,8 @@ function identitiesTokenGet({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
-      !clientUtils.isClientClientError(e) && logger.error(e);
+      !clientUtils.isClientClientError(e) &&
+        logger.error(`${identitiesTokenGet.name}:${e}`);
       return;
     }
   };

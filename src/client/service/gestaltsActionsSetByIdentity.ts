@@ -71,7 +71,7 @@ function gestaltsActionsSetByIdentity({
       !clientUtils.isClientClientError(e, [
         gestaltsErrors.ErrorGestaltsGraphIdentityIdMissing,
         gestaltsErrors.ErrorGestaltsGraphNodeIdMissing,
-      ]) && logger.error(e);
+      ]) && logger.error(`${gestaltsActionsSetByIdentity.name}:${e}`);
       return;
     }
   };

@@ -79,7 +79,7 @@ function nodesClaim({
       callback(grpcUtils.fromError(e));
       !clientUtils.isClientClientError(e, [
         nodesErrors.ErrorNodeGraphNodeIdNotFound,
-      ]) && logger.error(e);
+      ]) && logger.error(`${nodesClaim.name}:${e}`);
       return;
     }
   };

@@ -58,7 +58,7 @@ function vaultsSecretsStat({
       !clientUtils.isClientClientError(e, [
         vaultsErrors.ErrorVaultsVaultUndefined,
         vaultsErrors.ErrorSecretsSecretUndefined,
-      ]) && logger.error(e);
+      ]) && logger.error(`${vaultsSecretsStat.name}:${e}`);
       return;
     }
   };

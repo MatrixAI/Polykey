@@ -63,7 +63,8 @@ function nodesClosestLocalNodesGet({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e, true));
-      !agentUtils.isAgentClientError(e) && logger.error(e);
+      !agentUtils.isAgentClientError(e) &&
+        logger.error(`${nodesClosestLocalNodesGet.name}:${e}`);
       return;
     }
   };

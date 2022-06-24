@@ -56,7 +56,7 @@ function vaultsScan({
       !agentUtils.isAgentClientError(e, [
         agentErrors.ErrorConnectionInfoMissing,
         vaultsErrors.ErrorVaultsPermissionDenied,
-      ]) && logger.error(e);
+      ]) && logger.error(`${vaultsScan.name}:${e}`);
       return;
     }
   };

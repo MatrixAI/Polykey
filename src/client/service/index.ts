@@ -91,7 +91,7 @@ function createService({
   keyManager,
   sessionManager,
   db,
-  logger = new Logger(createService.name),
+  logger = new Logger('GRPCClientClientService'),
   fs = require('fs'),
   ...containerRest
 }: {

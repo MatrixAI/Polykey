@@ -62,7 +62,7 @@ function nodesFind({
       callback(grpcUtils.fromError(e));
       !clientUtils.isClientClientError(e, [
         nodesErrors.ErrorNodeGraphNodeIdNotFound,
-      ]) && logger.error(e);
+      ]) && logger.error(`${nodesFind.name}:${e}`);
       return;
     }
   };

@@ -13,6 +13,35 @@ import Logger from '@matrixai/logger';
 import main from '@/bin/polykey';
 
 /**
+ * Wrapper for execFile to make it asynchronous and non-blocking
+ */
+async function exec(
+  command: string,
+  args: Array<string> = [],
+): Promise<{
+  stdout: string;
+  stderr: string;
+}> {
+  return new Promise((resolve, reject) => {
+    child_process.execFile(
+      command,
+      args,
+      { windowsHide: true },
+      (error, stdout, stderr) => {
+        if (error) {
+          reject(error);
+        } else {
+          return resolve({
+            stdout,
+            stderr,
+          });
+        }
+      },
+    );
+  });
+}
+
+/**
  * Runs pk command functionally
  */
 async function pk(args: Array<string>): Promise<any> {
@@ -361,6 +390,7 @@ function expectProcessError(
 }
 
 export {
+  exec,
   pk,
   pkStdio,
   pkExec,

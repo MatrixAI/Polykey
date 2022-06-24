@@ -61,7 +61,7 @@ function vaultsSecretsEdit({
         vaultsErrors.ErrorVaultsVaultUndefined,
         vaultsErrors.ErrorSecretsSecretUndefined,
         vaultsErrors.ErrorVaultRemoteDefined,
-      ]) && logger.error(e);
+      ]) && logger.error(`${vaultsSecretsEdit.name}:${e}`);
       return;
     }
   };

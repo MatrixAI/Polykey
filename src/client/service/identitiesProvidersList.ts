@@ -30,7 +30,8 @@ function identitiesProvidersList({
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
-      !clientUtils.isClientClientError(e) && logger.error(e);
+      !clientUtils.isClientClientError(e) &&
+        logger.error(`${identitiesProvidersList.name}:${e}`);
       return;
     }
   };

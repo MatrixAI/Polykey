@@ -40,7 +40,8 @@ function gestaltsGestaltList({
       return;
     } catch (e) {
       await genWritable.throw(e);
-      !clientUtils.isClientClientError(e) && logger.error(e);
+      !clientUtils.isClientClientError(e) &&
+        logger.error(`${gestaltsGestaltList.name}:${e}`);
       return;
     }
   };

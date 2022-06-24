@@ -96,7 +96,7 @@ function identitiesClaim({
       !clientUtils.isClientClientError(e, [
         identitiesErrors.ErrorProviderMissing,
         identitiesErrors.ErrorProviderUnauthenticated,
-      ]) && logger.error(e);
+      ]) && logger.error(`${identitiesClaim.name}:${e}`);
       return;
     }
   };

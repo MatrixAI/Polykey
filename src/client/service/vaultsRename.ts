@@ -51,7 +51,7 @@ function vaultsRename({
       !clientUtils.isClientClientError(e, [
         vaultsErrors.ErrorVaultsVaultUndefined,
         vaultsErrors.ErrorVaultsVaultDefined,
-      ]) && logger.error(e);
+      ]) && logger.error(`${vaultsRename.name}:${e}`);
       return;
     }
   };

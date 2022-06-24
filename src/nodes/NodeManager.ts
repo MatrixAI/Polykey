@@ -47,6 +47,7 @@ class NodeManager {
   protected refreshBucketQueueRunner: Promise<void>;
   protected refreshBucketQueuePlug_: PromiseDeconstructed<void> = promise();
   protected refreshBucketQueueDrained_: PromiseDeconstructed<void> = promise();
+  protected refreshBucketQueuePause_: PromiseDeconstructed<void> = promise();
   protected refreshBucketQueueAbortController: AbortController;
 
   constructor({
@@ -664,12 +665,25 @@ class NodeManager {
     await this.refreshBucketQueueDrained_.p;
   }
 
+  public refreshBucketQueuePause() {
+    this.logger.debug('Pausing refreshBucketQueue');
+    this.refreshBucketQueuePause_ = promise();
+  }
+
+  public refreshBucketQueueResume() {
+    this.logger.debug('Resuming refreshBucketQueue');
+    this.refreshBucketQueuePause_.resolveP();
+  }
+
   private async startRefreshBucketQueue(): Promise<void> {
     this.refreshBucketQueueRunning = true;
     this.refreshBucketQueuePlug();
+    this.refreshBucketQueueResume();
     let iterator: IterableIterator<NodeBucketIndex> | undefined;
     this.refreshBucketQueueAbortController = new AbortController();
     const pace = async () => {
+      // Wait if paused
+      await this.refreshBucketQueuePause_.p;
       // Wait for plug
       await this.refreshBucketQueuePlug_.p;
       if (iterator == null) {
@@ -709,14 +723,17 @@ class NodeManager {
     this.refreshBucketQueueAbortController.abort();
     this.refreshBucketQueueRunning = false;
     this.refreshBucketQueueUnplug();
+    this.refreshBucketQueueResume();
   }
 
   private refreshBucketQueuePlug() {
+    this.logger.debug('refresh bucket queue has plugged');
     this.refreshBucketQueuePlug_ = promise();
     this.refreshBucketQueueDrained_?.resolveP();
   }
 
   private refreshBucketQueueUnplug() {
+    this.logger.debug('refresh bucket queue has unplugged');
     this.refreshBucketQueueDrained_ = promise();
     this.refreshBucketQueuePlug_?.resolveP();
   }

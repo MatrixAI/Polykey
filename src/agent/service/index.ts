@@ -27,7 +27,7 @@ import * as agentUtils from '../utils';
 function createService({
   proxy,
   db,
-  logger = new Logger(createService.name),
+  logger = new Logger('GRPCClientAgentService'),
   ...containerRest
 }: {
   db: DB;

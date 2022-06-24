@@ -610,21 +610,23 @@ class NodeConnectionManager {
         timer,
       );
       for (const [nodeId, nodeData] of nodes) {
-        const pingAndAddNode = async () => {
-          const port = nodeData.address.port;
-          const host = await networkUtils.resolveHost(nodeData.address.host);
-          if (await this.pingNode(nodeId, host, port)) {
-            await this.nodeManager!.setNode(nodeId, nodeData.address, true);
-          }
-        };
+        if (!nodeId.equals(this.keyManager.getNodeId())) {
+          const pingAndAddNode = async () => {
+            const port = nodeData.address.port;
+            const host = await networkUtils.resolveHost(nodeData.address.host);
+            if (await this.pingNode(nodeId, host, port)) {
+              await this.nodeManager!.setNode(nodeId, nodeData.address, true);
+            }
+          };
 
-        if (!block) {
-          this.queue.push(pingAndAddNode);
-        } else {
-          try {
-            await pingAndAddNode();
-          } catch (e) {
-            if (!(e instanceof nodesErrors.ErrorNodeGraphSameNodeId)) throw e;
+          if (!block) {
+            this.queue.push(pingAndAddNode);
+          } else {
+            try {
+              await pingAndAddNode();
+            } catch (e) {
+              if (!(e instanceof nodesErrors.ErrorNodeGraphSameNodeId)) throw e;
+            }
           }
         }
       }
@@ -696,11 +698,23 @@ class NodeConnectionManager {
     message: nodesPB.Relay,
     timer?: Timer,
   ): Promise<void> {
+    // First check if we already have an existing ID -> address record
+    // If we're relaying then we trust our own node graph records over
+    // what was provided in the message
+    const sourceNode = validationUtils.parseNodeId(message.getSrcId());
+    const knownAddress = (await this.nodeGraph.getNode(sourceNode))?.address;
+    let proxyAddress = message.getProxyAddress();
+    if (knownAddress != null) {
+      proxyAddress = networkUtils.buildAddress(
+        knownAddress.host as Host,
+        knownAddress.port,
+      );
+    }
     await this.sendHolePunchMessage(
       validationUtils.parseNodeId(message.getTargetId()),
-      validationUtils.parseNodeId(message.getSrcId()),
+      sourceNode,
       validationUtils.parseNodeId(message.getTargetId()),
-      message.getProxyAddress(),
+      proxyAddress,
       Buffer.from(message.getSignature()),
       timer,
     );
@@ -742,6 +756,7 @@ class NodeConnectionManager {
     const signature = await this.keyManager.signWithRootKeyPair(
       Buffer.from(proxyAddress),
     );
+    // FIXME: this needs to handle aborting
     const holePunchPromises = Array.from(this.getSeedNodes(), (seedNodeId) => {
       return this.sendHolePunchMessage(
         seedNodeId,
@@ -759,7 +774,7 @@ class NodeConnectionManager {
     );
 
     try {
-      await Promise.all([forwardPunchPromise, ...holePunchPromises]);
+      await Promise.any([forwardPunchPromise, ...holePunchPromises]);
     } catch (e) {
       return false;
     }
