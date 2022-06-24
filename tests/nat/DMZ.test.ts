@@ -135,6 +135,15 @@ describeIf(
           agent2ProxyPort,
           tearDownNAT,
         } = await testNatUtils.setupNAT('dmz', 'dmz', logger);
+        //               Namespace1                                Namespace2
+        // ┌────────────────────────────────────┐    ┌────────────────────────────────────┐
+        // │                                    │    │                                    │
+        // │   ┌────────┐        ┌─────────┐    │    │    ┌─────────┐        ┌────────┐   │
+        // │   │ Agent1 ├────────┤ Router1 │    │    │    │ Router2 ├────────┤ Agent2 │   │
+        // │   └────────┘        └─────────┘    │    │    └─────────┘        └────────┘   │
+        // │ 10.0.0.2:55551   192.168.0.1:55555 │    │ 192.168.0.2:55555   10.0.0.2:55552 │
+        // │                                    │    │                                    │
+        // └────────────────────────────────────┘    └────────────────────────────────────┘
         // Since neither node is behind a NAT can directly add eachother's
         // details using pk nodes add
         await testNatUtils.pkExecNs(
@@ -221,6 +230,15 @@ describeIf(
           agent2NodeId,
           tearDownNAT,
         } = await testNatUtils.setupNATWithSeedNode('dmz', 'dmz', logger);
+        //               Namespace1                    Namespace3                    Namespace2
+        // ┌────────────────────────────────────┐ ┌──────────────────┐ ┌────────────────────────────────────┐
+        // │                                    │ │                  │ │                                    │
+        // │   ┌────────┐        ┌─────────┐    │ │   ┌──────────┐   │ │    ┌─────────┐        ┌────────┐   │
+        // │   │ Agent1 ├────────┤ Router1 │    │ │   │ SeedNode │   │ │    │ Router2 ├────────┤ Agent2 │   │
+        // │   └────────┘        └─────────┘    │ │   └──────────┘   │ │    └─────────┘        └────────┘   │
+        // │ 10.0.0.2:55551   192.168.0.1:55555 │ │ 192.168.0.3:PORT │ │ 192.168.0.2:55555   10.0.0.2:55552 │
+        // │                                    │ │                  │ │                                    │
+        // └────────────────────────────────────┘ └──────────────────┘ └────────────────────────────────────┘
         // Should be able to ping straight away using the details from the
         // seed node
         let exitCode, stdout;
