@@ -698,11 +698,20 @@ class NodeConnectionManager {
     message: nodesPB.Relay,
     timer?: Timer,
   ): Promise<void> {
+    // First check if we already have an existing ID -> address record
+    // If we're relaying then we trust our own node graph records over
+    // what was provided in the message
+    const sourceNode = validationUtils.parseNodeId(message.getSrcId());
+    const knownAddress = (await this.nodeGraph.getNode(sourceNode))?.address;
+    let proxyAddress = message.getProxyAddress();
+    if (knownAddress != null) {
+      proxyAddress = networkUtils.buildAddress(knownAddress.host as Host, knownAddress.port);
+    }
     await this.sendHolePunchMessage(
       validationUtils.parseNodeId(message.getTargetId()),
-      validationUtils.parseNodeId(message.getSrcId()),
+      sourceNode,
       validationUtils.parseNodeId(message.getTargetId()),
-      message.getProxyAddress(),
+      proxyAddress,
       Buffer.from(message.getSignature()),
       timer,
     );
