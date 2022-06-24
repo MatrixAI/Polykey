@@ -1086,4 +1086,63 @@ describe(`${NodeManager.name} test`, () => {
       await queue.stop();
     }
   });
+  test('should pause, resume and stop queue while paused', async () => {
+    const refreshBucketTimeout = 1000000;
+    const queue = new Queue({ logger });
+    const nodeManager = new NodeManager({
+      db,
+      sigchain: {} as Sigchain,
+      keyManager,
+      nodeGraph,
+      nodeConnectionManager: dummyNodeConnectionManager,
+      queue,
+      refreshBucketTimerDefault: refreshBucketTimeout,
+      logger,
+    });
+    const mockRefreshBucket = jest.spyOn(
+      NodeManager.prototype,
+      'refreshBucket',
+    );
+    try {
+      logger.setLevel(LogLevel.DEBUG);
+      await queue.start();
+      await nodeManager.start();
+      await nodeConnectionManager.start({ nodeManager });
+      mockRefreshBucket.mockImplementation(
+        async (bucket, options: { signal?: AbortSignal } = {}) => {
+          const { signal } = { ...options };
+          const prom = promise<void>();
+          const timer = setTimeout(prom.resolveP, 10);
+          signal?.addEventListener('abort', () => {
+            clearTimeout(timer);
+            prom.rejectP(new nodesErrors.ErrorNodeAborted());
+          });
+          await prom.p;
+        },
+      );
+      nodeManager.refreshBucketQueueAdd(1);
+      nodeManager.refreshBucketQueueAdd(2);
+      nodeManager.refreshBucketQueueAdd(3);
+      nodeManager.refreshBucketQueueAdd(4);
+      nodeManager.refreshBucketQueueAdd(5);
+
+      // Can pause and resume
+      nodeManager.refreshBucketQueuePause();
+      nodeManager.refreshBucketQueueAdd(6);
+      nodeManager.refreshBucketQueueAdd(7);
+      nodeManager.refreshBucketQueueResume();
+      await nodeManager.refreshBucketQueueDrained();
+
+      // Can pause and stop
+      nodeManager.refreshBucketQueuePause();
+      nodeManager.refreshBucketQueueAdd(8);
+      nodeManager.refreshBucketQueueAdd(9);
+      nodeManager.refreshBucketQueueAdd(10);
+      await nodeManager.stop();
+    } finally {
+      mockRefreshBucket.mockRestore();
+      await nodeManager.stop();
+      await queue.stop();
+    }
+  });
 });
