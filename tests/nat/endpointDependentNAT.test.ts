@@ -241,7 +241,7 @@ describeIf(
         ({ exitCode, stdout } = await testNatUtils.pkExecNs(
           userPid!,
           agent1Pid!,
-          ['nodes', 'ping', agent2NodeId, '--format', 'json', '-vv'],
+          ['nodes', 'ping', agent2NodeId, '--format', 'json'],
           {
             PK_NODE_PATH: agent1NodePath,
             PK_PASSWORD: password,

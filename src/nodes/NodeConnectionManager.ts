@@ -705,7 +705,10 @@ class NodeConnectionManager {
     const knownAddress = (await this.nodeGraph.getNode(sourceNode))?.address;
     let proxyAddress = message.getProxyAddress();
     if (knownAddress != null) {
-      proxyAddress = networkUtils.buildAddress(knownAddress.host as Host, knownAddress.port);
+      proxyAddress = networkUtils.buildAddress(
+        knownAddress.host as Host,
+        knownAddress.port,
+      );
     }
     await this.sendHolePunchMessage(
       validationUtils.parseNodeId(message.getTargetId()),
