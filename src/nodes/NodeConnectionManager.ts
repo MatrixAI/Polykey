@@ -756,6 +756,7 @@ class NodeConnectionManager {
     const signature = await this.keyManager.signWithRootKeyPair(
       Buffer.from(proxyAddress),
     );
+    // FIXME: this needs to handle aborting
     const holePunchPromises = Array.from(this.getSeedNodes(), (seedNodeId) => {
       return this.sendHolePunchMessage(
         seedNodeId,

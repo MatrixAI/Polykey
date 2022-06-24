@@ -217,7 +217,6 @@ class ConnectionReverse extends Connection {
       if (this._composed) {
         throw new networkErrors.ErrorConnectionComposed();
       }
-      this._composed = true;
       this.logger.info('Composing Connection Reverse');
       // Promise for secure establishment
       const { p: secureP, resolveP: resolveSecureP } = promise<void>();
@@ -306,6 +305,7 @@ class ConnectionReverse extends Connection {
       });
       this.clientCertChain = clientCertChain;
       this.logger.info('Composed Connection Reverse');
+      this._composed = true;
     } catch (e) {
       this._composed = false;
       throw e;

@@ -128,7 +128,7 @@ class NodeConnection<T extends GRPCClient> {
           },
           timer: timer,
         }),
-        holePunchPromises,
+        ...holePunchPromises,
       ]);
       // 5. When finished, you have a connection to other node
       // The GRPCClient is ready to be used for requests
