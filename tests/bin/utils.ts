@@ -243,26 +243,29 @@ async function pkSpawn(
   const polykeyPath = path.resolve(
     path.join(global.projectDir, 'src/bin/polykey.ts'),
   );
-  const subprocess = child_process.spawn(
-    'ts-node',
-    [
-      '--project',
-      tsConfigPath,
-      '--require',
-      tsConfigPathsRegisterPath,
-      '--compiler',
-      'typescript-cached-transpile',
-      '--transpile-only',
-      polykeyPath,
-      ...args,
-    ],
-    {
-      env,
-      cwd,
-      stdio: ['pipe', 'pipe', 'pipe'],
-      windowsHide: true,
-    },
-  );
+  const command =
+    global.testCmd != null
+      ? path.resolve(path.join(global.projectDir, global.testCmd))
+      : 'ts-node';
+  const tsNodeArgs =
+    global.testCmd != null
+      ? []
+      : [
+          '--project',
+          tsConfigPath,
+          '--require',
+          tsConfigPathsRegisterPath,
+          '--compiler',
+          'typescript-cached-transpile',
+          '--transpile-only',
+          polykeyPath,
+        ];
+  const subprocess = child_process.spawn(command, [...tsNodeArgs, ...args], {
+    env,
+    cwd,
+    stdio: ['pipe', 'pipe', 'pipe'],
+    windowsHide: true,
+  });
   const rlErr = readline.createInterface(subprocess.stderr!);
   rlErr.on('line', (l) => {
     // The readline library will trim newlines

@@ -214,6 +214,14 @@ function testIf(condition, name, f, timeout?) {
   }
 }
 
+function runTestIf(condition: boolean) {
+  return condition ? test : test.skip;
+}
+
+function runDescribeIf(condition: boolean) {
+  return condition ? describe : describe.skip;
+}
+
 export {
   setupGlobalKeypair,
   generateRandomNodeId,
@@ -221,4 +229,6 @@ export {
   setupGlobalAgent,
   describeIf,
   testIf,
+  runTestIf,
+  runDescribeIf,
 };
