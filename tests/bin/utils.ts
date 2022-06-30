@@ -11,6 +11,7 @@ import mockedEnv from 'mocked-env';
 import nexpect from 'nexpect';
 import Logger from '@matrixai/logger';
 import main from '@/bin/polykey';
+import { promise } from '@/utils';
 
 /**
  * Wrapper for execFile to make it asynchronous and non-blocking
@@ -72,69 +73,97 @@ async function pkStdio(
   // (if not defined in the env) to ensure no attempted connections. A regular
   // PolykeyAgent is expected to initially connect to the mainnet seed nodes
   env['PK_SEED_NODES'] = env['PK_SEED_NODES'] ?? '';
-  // Parse the arguments of process.stdout.write and process.stderr.write
-  const parseArgs = (args) => {
-    const data = args[0];
-    if (typeof data === 'string') {
-      return data;
-    } else {
-      let encoding: BufferEncoding = 'utf8';
-      if (typeof args[1] === 'string') {
-        encoding = args[1] as BufferEncoding;
+  if (global.testCmd != null) {
+    // If using the command override we need to spawn a process
+    env = {
+      ...process.env,
+      ...env,
+    };
+    const command = path.resolve(path.join(global.projectDir, global.testCmd));
+    const subprocess = child_process.spawn(command, [...args], {
+      env,
+      cwd,
+      stdio: ['pipe', 'pipe', 'pipe'],
+      windowsHide: true,
+    });
+    const exitCodeProm = promise<number | null>();
+    subprocess.on('exit', (code) => {
+      exitCodeProm.resolveP(code);
+    });
+    let stdout = '',
+      stderr = '';
+    subprocess.stdout.on('data', (data) => (stdout += data.toString()));
+    subprocess.stderr.on('data', (data) => (stderr += data.toString()));
+    return { exitCode: (await exitCodeProm.p) ?? -255, stdout, stderr };
+  } else {
+    // Parse the arguments of process.stdout.write and process.stderr.write
+    const parseArgs = (args) => {
+      const data = args[0];
+      if (typeof data === 'string') {
+        return data;
+      } else {
+        let encoding: BufferEncoding = 'utf8';
+        if (typeof args[1] === 'string') {
+          encoding = args[1] as BufferEncoding;
+        }
+        const buffer = Buffer.from(
+          data.buffer,
+          data.byteOffset,
+          data.byteLength,
+        );
+        return buffer.toString(encoding);
       }
-      const buffer = Buffer.from(data.buffer, data.byteOffset, data.byteLength);
-      return buffer.toString(encoding);
-    }
-  };
-  // Process events are not allowed when testing
-  const mockProcessOn = mockProcess.spyOnImplementing(
-    process,
-    'on',
-    () => process,
-  );
-  const mockProcessOnce = mockProcess.spyOnImplementing(
-    process,
-    'once',
-    () => process,
-  );
-  const mockProcessAddListener = mockProcess.spyOnImplementing(
-    process,
-    'addListener',
-    () => process,
-  );
-  const mockProcessOff = mockProcess.spyOnImplementing(
-    process,
-    'off',
-    () => process,
-  );
-  const mockProcessRemoveListener = mockProcess.spyOnImplementing(
-    process,
-    'removeListener',
-    () => process,
-  );
-  const mockCwd = mockProcess.spyOnImplementing(process, 'cwd', () => cwd!);
-  const envRestore = mockedEnv(env);
-  const mockedStdout = mockProcess.mockProcessStdout();
-  const mockedStderr = mockProcess.mockProcessStderr();
-  const exitCode = await pk(args);
-  // Calls is an array of parameter arrays
-  // Only the first parameter is the string written
-  const stdout = mockedStdout.mock.calls.map(parseArgs).join('');
-  const stderr = mockedStderr.mock.calls.map(parseArgs).join('');
-  mockedStderr.mockRestore();
-  mockedStdout.mockRestore();
-  envRestore();
-  mockCwd.mockRestore();
-  mockProcessRemoveListener.mockRestore();
-  mockProcessOff.mockRestore();
-  mockProcessAddListener.mockRestore();
-  mockProcessOnce.mockRestore();
-  mockProcessOn.mockRestore();
-  return {
-    exitCode,
-    stdout,
-    stderr,
-  };
+    };
+    // Process events are not allowed when testing
+    const mockProcessOn = mockProcess.spyOnImplementing(
+      process,
+      'on',
+      () => process,
+    );
+    const mockProcessOnce = mockProcess.spyOnImplementing(
+      process,
+      'once',
+      () => process,
+    );
+    const mockProcessAddListener = mockProcess.spyOnImplementing(
+      process,
+      'addListener',
+      () => process,
+    );
+    const mockProcessOff = mockProcess.spyOnImplementing(
+      process,
+      'off',
+      () => process,
+    );
+    const mockProcessRemoveListener = mockProcess.spyOnImplementing(
+      process,
+      'removeListener',
+      () => process,
+    );
+    const mockCwd = mockProcess.spyOnImplementing(process, 'cwd', () => cwd!);
+    const envRestore = mockedEnv(env);
+    const mockedStdout = mockProcess.mockProcessStdout();
+    const mockedStderr = mockProcess.mockProcessStderr();
+    const exitCode = await pk(args);
+    // Calls is an array of parameter arrays
+    // Only the first parameter is the string written
+    const stdout = mockedStdout.mock.calls.map(parseArgs).join('');
+    const stderr = mockedStderr.mock.calls.map(parseArgs).join('');
+    mockedStderr.mockRestore();
+    mockedStdout.mockRestore();
+    envRestore();
+    mockCwd.mockRestore();
+    mockProcessRemoveListener.mockRestore();
+    mockProcessOff.mockRestore();
+    mockProcessAddListener.mockRestore();
+    mockProcessOnce.mockRestore();
+    mockProcessOn.mockRestore();
+    return {
+      exitCode,
+      stdout,
+      stderr,
+    };
+  }
 }
 
 /**

@@ -39,6 +39,7 @@ describe('bootstrap', () => {
           '--verbose',
         ],
         {
+          PK_TEST_DATA_PATH: dataDir,
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
         },
         dataDir,
@@ -71,6 +72,7 @@ describe('bootstrap', () => {
           'json',
         ],
         {
+          PK_TEST_DATA_PATH: dataDir,
           PK_PASSWORD: password,
         },
         dataDir,
@@ -91,6 +93,7 @@ describe('bootstrap', () => {
           '--verbose',
         ],
         {
+          PK_TEST_DATA_PATH: dataDir,
           PK_PASSWORD: password,
         },
         dataDir,
@@ -119,6 +122,7 @@ describe('bootstrap', () => {
             'json',
           ],
           {
+            PK_TEST_DATA_PATH: dataDir,
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
             PK_PASSWORD: password,
           },
@@ -135,6 +139,7 @@ describe('bootstrap', () => {
             'json',
           ],
           {
+            PK_TEST_DATA_PATH: dataDir,
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
             PK_PASSWORD: password,
           },
@@ -192,6 +197,7 @@ describe('bootstrap', () => {
       const bootstrapProcess1 = await testBinUtils.pkSpawn(
         ['bootstrap', '--root-key-pair-bits', '1024', '--verbose'],
         {
+          PK_TEST_DATA_PATH: dataDir,
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
           PK_PASSWORD: password,
         },
@@ -212,11 +218,6 @@ describe('bootstrap', () => {
           }
         });
       });
-      const [exitCode, signal] = await testBinUtils.processExit(
-        bootstrapProcess1,
-      );
-      expect(exitCode).toBe(null);
-      expect(signal).toBe('SIGINT');
       // Attempting to bootstrap should fail with existing state
       const bootstrapProcess2 = await testBinUtils.pkStdio(
         [
@@ -228,6 +229,7 @@ describe('bootstrap', () => {
           'json',
         ],
         {
+          PK_TEST_DATA_PATH: dataDir,
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
           PK_PASSWORD: password,
         },
@@ -244,6 +246,7 @@ describe('bootstrap', () => {
       const bootstrapProcess3 = await testBinUtils.pkStdio(
         ['bootstrap', '--root-key-pair-bits', '1024', '--fresh', '--verbose'],
         {
+          PK_TEST_DATA_PATH: dataDir,
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
           PK_PASSWORD: password,
         },
