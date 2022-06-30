@@ -218,6 +218,9 @@ describe('bootstrap', () => {
           }
         });
       });
+      await new Promise((res) => {
+        bootstrapProcess1.once('exit', () => res(null))
+      })
       // Attempting to bootstrap should fail with existing state
       const bootstrapProcess2 = await testBinUtils.pkStdio(
         [
