@@ -53,7 +53,14 @@ module.exports = {
   },
   reporters: [
     'default',
-    ['jest-junit', { outputDirectory: '<rootDir>/tmp/junit' }],
+    ['jest-junit', {
+      outputDirectory: '<rootDir>/tmp/junit',
+      classNameTemplate: '{classname}',
+      ancestorSeparator: ' > ',
+      titleTemplate: '{title}',
+      addFileAttribute: 'true',
+      reportTestSuiteErrors: 'true',
+    }],
   ],
   collectCoverageFrom: ['src/**/*.{ts,tsx,js,jsx}', '!src/**/*.d.ts'],
   coverageReporters: ['text', 'cobertura'],
