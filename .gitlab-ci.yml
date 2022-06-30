@@ -63,60 +63,56 @@ check:lint:
     - if: $CI_COMMIT_BRANCH && $CI_COMMIT_BRANCH != 'master' && $CI_COMMIT_TITLE !~ /^[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
       when: manual
 
-check:nix-dry:
-  stage: check
-  needs: []
-  script:
-    - nix-build -v -v --dry-run ./release.nix
-  rules:
-    # Runs on feature and staging commits and ignores version commits
-    - if: $CI_COMMIT_BRANCH =~ /^(?:feature.*|staging)$/ && $CI_COMMIT_TITLE !~ /^[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
-    # Runs on tag pipeline where the tag is a prerelease or release version
-    - if: $CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
-    # Manually run on commits other than master and ignore version commits
-    - if: $CI_COMMIT_BRANCH && $CI_COMMIT_BRANCH != 'master' && $CI_COMMIT_TITLE !~ /^[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
-      when: manual
+# check:nix-dry:
+#   stage: check
+#   needs: []
+#   script:
+#     - nix-build -v -v --dry-run ./release.nix
+#   rules:
+#     # Runs on feature and staging commits and ignores version commits
+#     - if: $CI_COMMIT_BRANCH =~ /^(?:feature.*|staging)$/ && $CI_COMMIT_TITLE !~ /^[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
+#     # Runs on tag pipeline where the tag is a prerelease or release version
+#     - if: $CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
+#     # Manually run on commits other than master and ignore version commits
+#     - if: $CI_COMMIT_BRANCH && $CI_COMMIT_BRANCH != 'master' && $CI_COMMIT_TITLE !~ /^[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
+#       when: manual
 
 check:test-generate:
   stage: check
-  interruptible: true
+  needs: []
   script:
     - >
       nix-shell --run '
-      ./scripts/test-pipelines.sh > ./tmp/test-pipelines.yml
+      ./scripts/check:test-generate.sh > ./tmp/check:test.yml
       '
   artifacts:
     when: always
     paths:
-      - ./tmp/test-pipelines.yml
+      - ./tmp/check:test.yml
   rules:
-    # Runs on feature and staging commits and ignores version commits
-    - if: $CI_COMMIT_BRANCH =~ /^(?:feature.*|staging)$/ && $CI_COMMIT_TITLE !~ /^[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
-    # Runs on tag pipeline where the tag is a prerelease or release version
-    - if: $CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
-    # Manually run on commits other than master and ignore version commits
-    - if: $CI_COMMIT_BRANCH && $CI_COMMIT_BRANCH != 'master' && $CI_COMMIT_TITLE !~ /^[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
+    # Runs on staging commits and ignores version commits
+    - if: $CI_COMMIT_BRANCH =~ /^feature.*$/ && $CI_COMMIT_TITLE !~ /^[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
+    # Manually run on commits other than master and staging and ignore version commits
+    - if: $CI_COMMIT_BRANCH && $CI_COMMIT_BRANCH !~ /^(?:master|staging)$/ && $CI_COMMIT_TITLE !~ /^[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
       when: manual
 
-check:test:
-  stage: check
-  needs:
-    - check:test-generate
-  inherit:
-    variables: false
-  trigger:
-    include:
-      - artifact: tmp/test-pipelines.yml
-        job: check:test-generate
-    strategy: depend
-  rules:
-    # Runs on feature and staging commits and ignores version commits
-    - if: $CI_COMMIT_BRANCH =~ /^(?:feature.*|staging)$/ && $CI_COMMIT_TITLE !~ /^[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
-    # Runs on tag pipeline where the tag is a prerelease or release version
-    - if: $CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
-    # Manually run on commits other than master and ignore version commits
-    - if: $CI_COMMIT_BRANCH && $CI_COMMIT_BRANCH != 'master' && $CI_COMMIT_TITLE !~ /^[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
-      when: manual
+# check:test:
+#   stage: check
+#   needs:
+#     - check:test-generate
+#   inherit:
+#     variables: false
+#   trigger:
+#     include:
+#       - artifact: tmp/check:test.yml
+#         job: check:test-generate
+#     strategy: depend
+#   rules:
+#     # Runs on staging commits and ignores version commits
+#     - if: $CI_COMMIT_BRANCH =~ /^feature.*$/ && $CI_COMMIT_TITLE !~ /^[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
+#     # Manually run on commits other than master and staging and ignore version commits
+#     - if: $CI_COMMIT_BRANCH && $CI_COMMIT_BRANCH !~ /^(?:master|staging)$/ && $CI_COMMIT_TITLE !~ /^[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
+#       when: manual
 
 build:merge:
   stage: build
@@ -146,7 +142,44 @@ build:merge:
     # Runs on tag pipeline where the tag is a prerelease or release version
     - if: $CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
 
-build:linux:
+build:platforms-generate:
+  stage: build
+  needs: []
+  script:
+    - >
+        nix-shell --run '
+        ./scripts/build:platforms-generate.sh > ./tmp/build:platforms.yml
+        '
+  artifacts:
+    when: always
+    paths:
+      - ./tmp/build:platforms.yml
+  rules:
+    # Runs on staging commits and ignores version commits
+    - if: $CI_COMMIT_BRANCH =~ /^feature.*$/ && $CI_COMMIT_TITLE !~ /^[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
+    # Manually run on commits other than master and staging and ignore version commits
+    - if: $CI_COMMIT_BRANCH && $CI_COMMIT_BRANCH !~ /^(?:master|staging)$/ && $CI_COMMIT_TITLE !~ /^[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
+      when: manual
+
+build:platforms:
+  stage: build
+  needs:
+    - build:platforms-generate
+  inherit:
+    variables: false
+  trigger:
+    include:
+      - artifact: tmp/build:platforms.yml
+        job: build:platforms-generate
+    strategy: depend
+  rules:
+    # Runs on staging commits and ignores version commits
+    - if: $CI_COMMIT_BRANCH =~ /^feature.*$/ && $CI_COMMIT_TITLE !~ /^[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
+    # Manually run on commits other than master and staging and ignore version commits
+    - if: $CI_COMMIT_BRANCH && $CI_COMMIT_BRANCH !~ /^(?:master|staging)$/ && $CI_COMMIT_TITLE !~ /^[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
+      when: manual
+
+build:dist:
   stage: build
   needs: []
   script:
@@ -157,63 +190,7 @@ build:linux:
   artifacts:
     when: always
     paths:
-      # Only the build:linux preserves the dist
       - ./dist
-  rules:
-    # Runs on staging commits and ignores version commits
-    - if: $CI_COMMIT_BRANCH == 'staging' && $CI_COMMIT_TITLE !~ /^[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
-    # Runs on tag pipeline where the tag is a prerelease or release version
-    - if: $CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
-
-build:windows:
-  stage: build
-  needs: []
-  tags:
-    - windows
-  before_script:
-    - mkdir -Force "$CI_PROJECT_DIR/tmp"
-    - choco install nodejs --version=16.14.2 -y
-    - refreshenv
-  script:
-    - npm config set msvs_version 2019
-    - npm install --ignore-scripts
-    - $env:Path = "$(npm bin);" + $env:Path
-    - npm run build --verbose
-    # - npm test -- --ci
-  # artifacts:
-  #   when: always
-  #   reports:
-  #     junit:
-  #       - ./tmp/junit/junit.xml
-  rules:
-    # Runs on staging commits and ignores version commits
-    - if: $CI_COMMIT_BRANCH == 'staging' && $CI_COMMIT_TITLE !~ /^[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
-    # Runs on tag pipeline where the tag is a prerelease or release version
-    - if: $CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
-
-build:macos:
-  stage: build
-  needs: []
-  tags:
-    - shared-macos-amd64
-  image: macos-11-xcode-12
-  variables:
-    HOMEBREW_NO_INSTALL_UPGRADE: "true"
-    HOMEBREW_NO_INSTALL_CLEANUP: "true"
-  script:
-    - eval "$(brew shellenv)"
-    - brew install node@16
-    - brew link --overwrite node@16
-    - hash -r
-    - npm install --ignore-scripts
-    - export PATH="$(npm bin):$PATH"
-    - npm run build --verbose
-    # - npm test -- --ci
-  # artifacts:
-  #   when: always
-  #   reports:
-  #     junit:
-  #       - ./tmp/junit/junit.xml
   rules:
     # Runs on staging commits and ignores version commits
     - if: $CI_COMMIT_BRANCH == 'staging' && $CI_COMMIT_TITLE !~ /^[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
@@ -223,9 +200,8 @@ build:macos:
 build:prerelease:
   stage: build
   needs:
-    - build:linux
-    - build:windows
-    - build:macos
+    - build:dist
+    - build:platforms
   # Don't interrupt publishing job
   interruptible: false
   script:
@@ -247,9 +223,8 @@ build:prerelease:
 integration:builds:
   stage: integration
   needs:
-    - build:linux
-    - build:windows
-    - build:macos
+    - build:dist
+    - build:platforms
   script:
     - mkdir -p ./builds
     - >
@@ -499,11 +474,9 @@ integration:merge:
   stage: integration
   needs:
     - build:merge
-    - job: build:linux
+    - job: build:dist
       optional: true
-    - job: build:windows
-      optional: true
-    - job: build:macos
+    - job: build:platforms
       optional: true
     - job: integration:nix
       optional: true
@@ -629,9 +602,8 @@ release:deployment:tag:
 release:distribution:
   stage: release
   needs:
-    - build:linux
-    - build:windows
-    - build:macos
+    - build:dist
+    - build:platforms
     - integration:builds
     - integration:merge
     - release:deployment:tag

@@ -17,7 +17,7 @@ import * as testBinUtils from './utils';
 import * as testUtils from '../utils';
 
 jest.mock('prompts');
-const mockedPrompts = mocked(prompts);
+const mockedPrompts = mocked(prompts.prompt);
 
 describe('sessions', () => {
   const logger = new Logger('sessions test', LogLevel.WARN, [
