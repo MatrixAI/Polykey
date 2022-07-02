@@ -16,13 +16,19 @@ if [ -z "$image" ]; then
   exit 1
 fi
 
-container_tag="$(skopeo list-tags "docker-archive:$image" \
+container_tag="$(skopeo --tmpdir $TMPDIR list-tags "docker-archive:$image" \
   | jq -r '.Tags[0] | split(":")[1]')";
 
-skopeo --insecure-policy copy \
+skopeo \
+  --insecure-policy \
+  --tmpdir $TMPDIR \
+  copy \
   "docker-archive:$image" \
   "docker://$CONTAINER_REPOSITORY:$container_tag";
 
-skopeo --insecure-policy copy \
+skopeo \
+  --insecure-policy \
+  --tmpdir $TMPDIR \
+  copy \
   "docker://$CONTAINER_REPOSITORY:$container_tag" \
   "docker://$CONTAINER_REPOSITORY:latest";
