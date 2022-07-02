@@ -10,6 +10,9 @@ in
       utils.node2nix
       grpc-tools
       grpcurl
+      awscli
+      skopeo
+      jq
     ];
     PKG_CACHE_PATH = utils.pkgCachePath;
     PKG_IGNORE_TAG = 1;
