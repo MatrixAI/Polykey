@@ -12,6 +12,9 @@ variables:
   GH_PROJECT_PATH: "MatrixAI/${CI_PROJECT_NAME}"
   GH_PROJECT_URL: "https://${GITHUB_TOKEN}@github.com/${GH_PROJECT_PATH}.git"
   GIT_SUBMODULE_STRATEGY: recursive
+  # Container service
+  CONTAINER_REGISTRY: "015248367786.dkr.ecr.ap-southeast-2.amazonaws.com"
+  CONTAINER_REPOSITORY: "$CONTAINER_REGISTRY/polykey"
   # Cache .npm
   NPM_CONFIG_CACHE: "${CI_PROJECT_DIR}/tmp/npm"
   # Prefer offline node module installation
@@ -287,8 +290,19 @@ integration:deployment:
   interruptible: false
   # Requires mutual exclusion
   resource_group: integration:deployment
+  environment:
+    name: 'testnet'
+    deployment_tier: 'staging'
+    url: pk://testnet.polykey.io
   script:
     - echo 'Perform service deployment for integration testing'
+    - >
+        nix-shell --run '
+        image=(./builds/*-docker-*);
+        npm run deploy-image "${image[0]}";
+        '
+    - echo 'Updating ECS task definition'
+    - echo 'Updating ECS service'
   rules:
     # Runs on staging commits and ignores version commits
     - if: $CI_COMMIT_BRANCH == 'staging' && $CI_COMMIT_TITLE !~ /^[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
@@ -498,6 +512,10 @@ release:deployment:branch:
   interruptible: false
   # Requires mutual exclusion (also with release:deployment:tag)
   resource_group: release:deployment
+  environment:
+    name: 'mainnet'
+    deployment_tier: 'production'
+    url: pk://mainnet.polykey.io
   script:
     - echo 'Perform service deployment for production'
   rules:
@@ -514,6 +532,10 @@ release:deployment:tag:
   interruptible: false
   # Requires mutual exclusion (also with release:deployment:branch)
   resource_group: release:deployment
+  environment:
+    name: 'mainnet'
+    deployment_tier: 'production'
+    url: pk://mainnet.polykey.io
   script:
     - echo 'Perform service deployment for production'
   rules:
