@@ -68,11 +68,11 @@
     "test": "jest",
     "lint": "eslint '{src,tests}/**/*.{js,ts}'",
     "lintfix": "eslint '{src,tests}/**/*.{js,ts}' --fix",
+    "lint-shell": "find ./src ./tests ./scripts -type f -regextype posix-extended -regex '.*\\.(sh)' -exec shellcheck {} +",
     "docs": "shx rm -rf ./docs && typedoc --gitRevision master --tsconfig ./tsconfig.build.json --out ./docs src",
     "bench": "shx rm -rf ./benches/results && ts-node --require tsconfig-paths/register --compiler typescript-cached-transpile --transpile-only ./benches",
     "proto-generate": "scripts/proto-generate.sh",
     "pkg": "./scripts/pkg.js --no-dict=leveldown.js",
-    "deploy-image": "./scripts/deploy-image.sh",
     "polykey": "ts-node --require tsconfig-paths/register --compiler typescript-cached-transpile --transpile-only src/bin/polykey.ts"
   },
   "dependencies": {

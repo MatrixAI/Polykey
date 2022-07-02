@@ -8,9 +8,11 @@ in
     nativeBuildInputs = [
       nodejs
       utils.node2nix
+      shellcheck
       grpc-tools
       grpcurl
-      awscli
+      gitAndTools.gh
+      awscli2
       skopeo
       jq
     ];
