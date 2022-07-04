@@ -26,11 +26,11 @@ variables:
   TS_CACHED_TRANSPILE_PORTABLE: "true"
   # Homebrew cache only used by macos runner
   HOMEBREW_CACHE: "${CI_PROJECT_DIR}/tmp/Homebrew"
-  HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK: "true"
 
 # Cached directories shared between jobs & pipelines per-branch per-runner
 cache:
   key: $CI_COMMIT_REF_SLUG
+  when: 'always'
   paths:
     - ./tmp/npm/
     - ./tmp/ts-node-cache/
@@ -158,6 +158,8 @@ cat << "EOF"
   variables:
     HOMEBREW_NO_INSTALL_UPGRADE: "true"
     HOMEBREW_NO_INSTALL_CLEANUP: "true"
+    HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK: "true"
+    HOMEBREW_NO_AUTO_UPDATE: "true"
   before_script:
     - mkdir -p "$CI_PROJECT_DIR/tmp"
     - eval "$(brew shellenv)"
@@ -167,7 +169,7 @@ cat << "EOF"
   script:
     - npm install --ignore-scripts
     - export PATH="$(npm bin):$PATH"
-    - npm test -- --ci --shard=$CI_NODE_INDEX/$CI_NODE_TOTAL --runInBand
+    - npm test -- --ci --shard=$CI_NODE_INDEX/$CI_NODE_TOTAL --maxWorkers=50%
   artifacts:
     when: always
     reports:
