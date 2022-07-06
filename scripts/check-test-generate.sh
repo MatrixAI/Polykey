@@ -28,6 +28,7 @@ variables:
 # Cached directories shared between jobs & pipelines per-branch per-runner
 cache:
   key: $CI_COMMIT_REF_SLUG
+  when: 'always'
   paths:
     - ./tmp/npm/
     - ./tmp/ts-node-cache/
@@ -59,7 +60,7 @@ check:test $test_dir:
   script:
     - >
         nix-shell --run '
-        npm test -- --ci --coverage ${test_files[@]};
+        npm test -- --ci --coverage --runInBand ${test_files[@]};
         '
   artifacts:
     when: always
@@ -83,7 +84,7 @@ check:test index:
   script:
     - >
         nix-shell --run '
-        npm test -- --ci --coverage ${test_files[@]};
+        npm test -- --ci --coverage --runInBand ${test_files[@]};
         '
   artifacts:
     when: always
