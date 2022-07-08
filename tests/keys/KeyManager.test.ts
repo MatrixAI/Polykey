@@ -167,8 +167,8 @@ describe('KeyManager', () => {
       password,
       keysPath,
       logger,
+      workerManager,
     });
-    keyManager.setWorkerManager(workerManager);
     const keysPathContents = await fs.promises.readdir(keysPath);
     expect(keysPathContents).toContain('root.pub');
     expect(keysPathContents).toContain('root.key');

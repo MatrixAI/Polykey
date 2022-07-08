@@ -97,6 +97,7 @@ class PolykeyAgent {
     sessionManager,
     grpcServerClient,
     grpcServerAgent,
+    workerManager,
     fs = require('fs'),
     logger = new Logger(this.name),
     fresh = false,
@@ -143,6 +144,7 @@ class PolykeyAgent {
     sessionManager?: SessionManager;
     grpcServerClient?: GRPCServer;
     grpcServerAgent?: GRPCServer;
+    workerManager?: PolykeyWorkerManagerInterface;
     fs?: FileSystem;
     logger?: Logger;
     fresh?: boolean;
@@ -204,6 +206,7 @@ class PolykeyAgent {
           keysPath,
           password,
           fs,
+          workerManager,
           changeCallback: (data) =>
             events.emitAsync(PolykeyAgent.eventSymbols.KeyManager, data),
           logger: logger.getChild(KeyManager.name),
@@ -232,6 +235,7 @@ class PolykeyAgent {
           logger: logger.getChild(DB.name),
           fresh,
         }));
+      if (workerManager != null) db.setWorkerManager(workerManager);
       identitiesManager =
         identitiesManager ??
         (await IdentitiesManager.createIdentitiesManager({
@@ -348,6 +352,7 @@ class PolykeyAgent {
           logger: logger.getChild(VaultManager.name),
           fresh,
         }));
+      if (workerManager != null) vaultManager.setWorkerManager(workerManager);
       sessionManager =
         sessionManager ??
         (await SessionManager.createSessionManager({
