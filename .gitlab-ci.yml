@@ -34,14 +34,14 @@ cache:
     - ./tmp/jest/
 
 stages:
-#  - check       # Linting, unit tests
+  - check       # Linting, unit tests
   - build       # Cross-platform library compilation, unit tests
   - integration # Cross-platform application bundling, integration tests, and pre-release
-#  - release     # Cross-platform distribution and deployment
+  - release     # Cross-platform distribution and deployment
 
 image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
 
-check:lint:
+.check:lint:
   stage: check
   needs: []
   script:
@@ -58,7 +58,7 @@ check:lint:
     - if: $CI_COMMIT_BRANCH && $CI_COMMIT_BRANCH != 'master' && $CI_COMMIT_TITLE !~ /^[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
       when: manual
 
-check:nix-dry:
+.check:nix-dry:
   stage: check
   needs: []
   script:
@@ -72,7 +72,7 @@ check:nix-dry:
     - if: $CI_COMMIT_BRANCH && $CI_COMMIT_BRANCH != 'master' && $CI_COMMIT_TITLE !~ /^[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
       when: manual
 
-check:test-generate:
+.check:test-generate:
   stage: check
   interruptible: true
   script:
@@ -94,7 +94,7 @@ check:test-generate:
     - if: $CI_COMMIT_BRANCH && $CI_COMMIT_BRANCH != 'master' && $CI_COMMIT_TITLE !~ /^[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
       when: manual
 
-check:test:
+.check:test:
   stage: check
   needs:
     - check:test-generate
