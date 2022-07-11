@@ -9,11 +9,26 @@
 }:
 
 rec {
-  # this removes the org scoping
+  # This removes the org scoping
   basename = builtins.baseNameOf node2nixDev.packageName;
-  src = nix-gitignore.gitignoreSource [".git" "/*.nix"] ./.;
+  # Filter source to only what's necessary for building
+  src = nix-gitignore.gitignoreSource [
+    # The `.git` itself should be ignored
+    ".git"
+    # Hidden files
+    "/.*"
+    # Nix files
+    "/*.nix"
+    # Benchmarks
+    "/benches"
+    # Docs
+    "/docs"
+    # Tests
+    "/tests"
+    "/jest.config.js"
+  ] ./.;
   nodeVersion = builtins.elemAt (lib.versions.splitVersion nodejs.version) 0;
-  # custom node2nix directly from GitHub
+  # Custom node2nix directly from GitHub
   node2nixSrc = fetchFromGitHub {
     owner = "svanderburg";
     repo = "node2nix";

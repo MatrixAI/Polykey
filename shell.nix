@@ -8,8 +8,13 @@ in
     nativeBuildInputs = [
       nodejs
       utils.node2nix
+      shellcheck
       grpc-tools
       grpcurl
+      gitAndTools.gh
+      awscli2
+      skopeo
+      jq
     ];
     PKG_CACHE_PATH = utils.pkgCachePath;
     PKG_IGNORE_TAG = 1;
