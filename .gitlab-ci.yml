@@ -34,10 +34,10 @@ cache:
     - ./tmp/jest/
 
 stages:
-  - check       # Linting, unit tests
+#  - check       # Linting, unit tests
   - build       # Cross-platform library compilation, unit tests
   - integration # Cross-platform application bundling, integration tests, and pre-release
-  - release     # Cross-platform distribution and deployment
+#  - release     # Cross-platform distribution and deployment
 
 image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
 
@@ -157,7 +157,7 @@ build:linux:
       - ./dist
   rules:
     # Runs on staging commits and ignores version commits
-    - if: $CI_COMMIT_BRANCH == 'staging' && $CI_COMMIT_TITLE !~ /^[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
+    - if: $CI_COMMIT_BRANCH == 'feature-pkg_integration_tests'
     # Runs on tag pipeline where the tag is a prerelease or release version
     - if: $CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
 
@@ -182,7 +182,7 @@ build:windows:
   #       - ./tmp/junit/junit.xml
   rules:
     # Runs on staging commits and ignores version commits
-    - if: $CI_COMMIT_BRANCH == 'staging' && $CI_COMMIT_TITLE !~ /^[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
+    - if: $CI_COMMIT_BRANCH == 'feature-pkg_integration_tests'
     # Runs on tag pipeline where the tag is a prerelease or release version
     - if: $CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
 
@@ -212,7 +212,7 @@ build:macos:
   #       - ./tmp/junit/junit.xml
   rules:
     # Runs on staging commits and ignores version commits
-    - if: $CI_COMMIT_BRANCH == 'staging' && $CI_COMMIT_TITLE !~ /^[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
+    - if: $CI_COMMIT_BRANCH == 'feature-pkg_integration_tests'
     # Runs on tag pipeline where the tag is a prerelease or release version
     - if: $CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
 
@@ -275,7 +275,7 @@ integration:builds:
       - ./builds/
   rules:
     # Runs on staging commits and ignores version commits
-    - if: $CI_COMMIT_BRANCH == 'staging' && $CI_COMMIT_TITLE !~ /^[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
+    - if: $CI_COMMIT_BRANCH == 'feature-pkg_integration_tests'
     # Runs on tag pipeline where the tag is a prerelease or release version
     - if: $CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
 
@@ -336,7 +336,8 @@ integration:docker:
       exec npm run test -- tests/bin/agent/start.test.ts tests/bin/bootstrap.test.ts
   rules:
     # Runs on staging commits and ignores version commits
-    - if: $CI_COMMIT_BRANCH == 'staging' && $CI_COMMIT_TITLE !~ /^[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
+    - if: $CI_COMMIT_BRANCH == 'feature-pkg_integration_tests'
+#    - if: $CI_COMMIT_BRANCH == 'staging' && $CI_COMMIT_TITLE !~ /^[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
     # Runs on tag pipeline where the tag is a prerelease or release version
     - if: $CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
 
