@@ -73,97 +73,69 @@ async function pkStdio(
   // (if not defined in the env) to ensure no attempted connections. A regular
   // PolykeyAgent is expected to initially connect to the mainnet seed nodes
   env['PK_SEED_NODES'] = env['PK_SEED_NODES'] ?? '';
-  if (global.testCmd != null) {
-    // If using the command override we need to spawn a process
-    env = {
-      ...process.env,
-      ...env,
-    };
-    const command = path.resolve(path.join(global.projectDir, global.testCmd));
-    const subprocess = child_process.spawn(command, [...args], {
-      env,
-      cwd,
-      stdio: ['pipe', 'pipe', 'pipe'],
-      windowsHide: true,
-    });
-    const exitCodeProm = promise<number | null>();
-    subprocess.on('exit', (code) => {
-      exitCodeProm.resolveP(code);
-    });
-    let stdout = '',
-      stderr = '';
-    subprocess.stdout.on('data', (data) => (stdout += data.toString()));
-    subprocess.stderr.on('data', (data) => (stderr += data.toString()));
-    return { exitCode: (await exitCodeProm.p) ?? -255, stdout, stderr };
-  } else {
-    // Parse the arguments of process.stdout.write and process.stderr.write
-    const parseArgs = (args) => {
-      const data = args[0];
-      if (typeof data === 'string') {
-        return data;
-      } else {
-        let encoding: BufferEncoding = 'utf8';
-        if (typeof args[1] === 'string') {
-          encoding = args[1] as BufferEncoding;
-        }
-        const buffer = Buffer.from(
-          data.buffer,
-          data.byteOffset,
-          data.byteLength,
-        );
-        return buffer.toString(encoding);
+  // Parse the arguments of process.stdout.write and process.stderr.write
+  const parseArgs = (args) => {
+    const data = args[0];
+    if (typeof data === 'string') {
+      return data;
+    } else {
+      let encoding: BufferEncoding = 'utf8';
+      if (typeof args[1] === 'string') {
+        encoding = args[1] as BufferEncoding;
       }
-    };
-    // Process events are not allowed when testing
-    const mockProcessOn = mockProcess.spyOnImplementing(
-      process,
-      'on',
-      () => process,
-    );
-    const mockProcessOnce = mockProcess.spyOnImplementing(
-      process,
-      'once',
-      () => process,
-    );
-    const mockProcessAddListener = mockProcess.spyOnImplementing(
-      process,
-      'addListener',
-      () => process,
-    );
-    const mockProcessOff = mockProcess.spyOnImplementing(
-      process,
-      'off',
-      () => process,
-    );
-    const mockProcessRemoveListener = mockProcess.spyOnImplementing(
-      process,
-      'removeListener',
-      () => process,
-    );
-    const mockCwd = mockProcess.spyOnImplementing(process, 'cwd', () => cwd!);
-    const envRestore = mockedEnv(env);
-    const mockedStdout = mockProcess.mockProcessStdout();
-    const mockedStderr = mockProcess.mockProcessStderr();
-    const exitCode = await pk(args);
-    // Calls is an array of parameter arrays
-    // Only the first parameter is the string written
-    const stdout = mockedStdout.mock.calls.map(parseArgs).join('');
-    const stderr = mockedStderr.mock.calls.map(parseArgs).join('');
-    mockedStderr.mockRestore();
-    mockedStdout.mockRestore();
-    envRestore();
-    mockCwd.mockRestore();
-    mockProcessRemoveListener.mockRestore();
-    mockProcessOff.mockRestore();
-    mockProcessAddListener.mockRestore();
-    mockProcessOnce.mockRestore();
-    mockProcessOn.mockRestore();
-    return {
-      exitCode,
-      stdout,
-      stderr,
-    };
-  }
+      const buffer = Buffer.from(data.buffer, data.byteOffset, data.byteLength);
+      return buffer.toString(encoding);
+    }
+  };
+  // Process events are not allowed when testing
+  const mockProcessOn = mockProcess.spyOnImplementing(
+    process,
+    'on',
+    () => process,
+  );
+  const mockProcessOnce = mockProcess.spyOnImplementing(
+    process,
+    'once',
+    () => process,
+  );
+  const mockProcessAddListener = mockProcess.spyOnImplementing(
+    process,
+    'addListener',
+    () => process,
+  );
+  const mockProcessOff = mockProcess.spyOnImplementing(
+    process,
+    'off',
+    () => process,
+  );
+  const mockProcessRemoveListener = mockProcess.spyOnImplementing(
+    process,
+    'removeListener',
+    () => process,
+  );
+  const mockCwd = mockProcess.spyOnImplementing(process, 'cwd', () => cwd!);
+  const envRestore = mockedEnv(env);
+  const mockedStdout = mockProcess.mockProcessStdout();
+  const mockedStderr = mockProcess.mockProcessStderr();
+  const exitCode = await pk(args);
+  // Calls is an array of parameter arrays
+  // Only the first parameter is the string written
+  const stdout = mockedStdout.mock.calls.map(parseArgs).join('');
+  const stderr = mockedStderr.mock.calls.map(parseArgs).join('');
+  mockedStderr.mockRestore();
+  mockedStdout.mockRestore();
+  envRestore();
+  mockCwd.mockRestore();
+  mockProcessRemoveListener.mockRestore();
+  mockProcessOff.mockRestore();
+  mockProcessAddListener.mockRestore();
+  mockProcessOnce.mockRestore();
+  mockProcessOn.mockRestore();
+  return {
+    exitCode,
+    stdout,
+    stderr,
+  };
 }
 
 /**
@@ -263,6 +235,150 @@ async function pkSpawn(
   const tsNodeArgs =
     global.testCmd != null ? [] : ['--project', tsConfigPath, polykeyPath];
   const subprocess = child_process.spawn(command, [...tsNodeArgs, ...args], {
+    env,
+    cwd,
+    stdio: ['pipe', 'pipe', 'pipe'],
+    windowsHide: true,
+  });
+  const rlErr = readline.createInterface(subprocess.stderr!);
+  rlErr.on('line', (l) => {
+    // The readline library will trim newlines
+    logger.info(l);
+  });
+  return subprocess;
+}
+
+/**
+ * Mimics the behaviour of `pkStdio` while running the command as a separate process.
+ * Note that this is incompatible with jest mocking.
+ * @param cmd - path to the target command relative to the project directory.
+ * @param args - args to be passed to the command.
+ * @param env - environment variables to be passed to the command.
+ * @param cwd - the working directory the command will be executed in.
+ */
+async function pkStdioTarget(
+  cmd: string,
+  args: Array<string> = [],
+  env: Record<string, string | undefined> = {},
+  cwd?: string,
+): Promise<{
+  exitCode: number;
+  stdout: string;
+  stderr: string;
+}> {
+  cwd =
+    cwd ?? (await fs.promises.mkdtemp(path.join(os.tmpdir(), 'polykey-test-')));
+  // Recall that we attempt to connect to all specified seed nodes on agent start.
+  // Therefore, for testing purposes only, we default the seed nodes as empty
+  // (if not defined in the env) to ensure no attempted connections. A regular
+  // PolykeyAgent is expected to initially connect to the mainnet seed nodes
+  env['PK_SEED_NODES'] = env['PK_SEED_NODES'] ?? '';
+
+  // If using the command override we need to spawn a process
+  env = {
+    ...process.env,
+    ...env,
+  };
+  const command = path.resolve(path.join(global.projectDir, cmd));
+  const subprocess = child_process.spawn(command, [...args], {
+    env,
+    cwd,
+    stdio: ['pipe', 'pipe', 'pipe'],
+    windowsHide: true,
+  });
+  const exitCodeProm = promise<number | null>();
+  subprocess.on('exit', (code) => {
+    exitCodeProm.resolveP(code);
+  });
+  let stdout = '',
+    stderr = '';
+  subprocess.stdout.on('data', (data) => (stdout += data.toString()));
+  subprocess.stderr.on('data', (data) => (stderr += data.toString()));
+  return { exitCode: (await exitCodeProm.p) ?? -255, stdout, stderr };
+}
+
+/**
+ * Execs the target command spawning it as a seperate process
+ * @param cmd - path to the target command relative to the project directory.
+ * @param args - args to be passed to the command.
+ * @param env Augments env for command execution
+ * @param cwd Defaults to temporary directory
+ */
+async function pkExecTarget(
+  cmd: string,
+  args: Array<string> = [],
+  env: Record<string, string | undefined> = {},
+  cwd?: string,
+): Promise<{
+  exitCode: number;
+  stdout: string;
+  stderr: string;
+}> {
+  cwd =
+    cwd ?? (await fs.promises.mkdtemp(path.join(os.tmpdir(), 'polykey-test-')));
+  env = {
+    ...process.env,
+    ...env,
+  };
+  // Recall that we attempt to connect to all specified seed nodes on agent start.
+  // Therefore, for testing purposes only, we default the seed nodes as empty
+  // (if not defined in the env) to ensure no attempted connections. A regular
+  // PolykeyAgent is expected to initially connect to the mainnet seed nodes
+  env['PK_SEED_NODES'] = env['PK_SEED_NODES'] ?? '';
+  return new Promise((resolve, reject) => {
+    child_process.execFile(
+      cmd,
+      [...args],
+      {
+        env,
+        cwd,
+        windowsHide: true,
+      },
+      (error, stdout, stderr) => {
+        if (error != null && error.code === undefined) {
+          // This can only happen when the command is killed
+          return reject(error);
+        } else {
+          // Success and Unsuccessful exits are valid here
+          return resolve({
+            exitCode: error && error.code != null ? error.code : 0,
+            stdout,
+            stderr,
+          });
+        }
+      },
+    );
+  });
+}
+
+/**
+ * This will spawn a process that executes the target `cmd` provided.
+ * @param cmd - path to the target command relative to the project directory.
+ * @param args - args to be passed to the command.
+ * @param env - environment variables to be passed to the command.
+ * @param cwd - the working directory the command will be executed in.
+ * @param logger
+ */
+async function pkSpawnTarget(
+  cmd: string,
+  args: Array<string> = [],
+  env: Record<string, string | undefined> = {},
+  cwd?: string,
+  logger: Logger = new Logger(pkSpawn.name),
+): Promise<ChildProcess> {
+  cwd =
+    cwd ?? (await fs.promises.mkdtemp(path.join(os.tmpdir(), 'polykey-test-')));
+  env = {
+    ...process.env,
+    ...env,
+  };
+  // Recall that we attempt to connect to all specified seed nodes on agent start.
+  // Therefore, for testing purposes only, we default the seed nodes as empty
+  // (if not defined in the env) to ensure no attempted connections. A regular
+  // PolykeyAgent is expected to initially connect to the mainnet seed nodes
+  env['PK_SEED_NODES'] = env['PK_SEED_NODES'] ?? '';
+  const command = path.resolve(path.join(global.projectDir, cmd));
+  const subprocess = child_process.spawn(command, args, {
     env,
     cwd,
     stdio: ['pipe', 'pipe', 'pipe'],
@@ -387,6 +503,9 @@ export {
   pkStdio,
   pkExec,
   pkSpawn,
+  pkStdioTarget,
+  pkExecTarget,
+  pkSpawnTarget,
   pkExpect,
   processExit,
   expectProcessError,
