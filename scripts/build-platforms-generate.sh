@@ -125,9 +125,9 @@ cat << "EOF"
     - windows
   before_script:
     - mkdir -Force "$CI_PROJECT_DIR/tmp"
+  script:
     - .\scripts\choco-install.ps1
     - refreshenv
-  script:
     - npm config set msvs_version 2019
     - npm install --ignore-scripts
     - $env:Path = "$(npm bin);" + $env:Path
@@ -162,13 +162,11 @@ cat << "EOF"
     HOMEBREW_NO_INSTALL_CLEANUP: "true"
     HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK: "true"
     HOMEBREW_NO_AUTO_UPDATE: "true"
-  before_script:
-    - mkdir -p "$CI_PROJECT_DIR/tmp"
+  script:
     - eval "$(brew shellenv)"
     - brew install node@16
     - brew link --overwrite node@16
     - hash -r
-  script:
     - npm install --ignore-scripts
     - export PATH="$(npm bin):$PATH"
     - npm test -- --ci --coverage --shard=$CI_NODE_INDEX/$CI_NODE_TOTAL --maxWorkers=50%
