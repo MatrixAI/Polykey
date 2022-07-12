@@ -392,6 +392,30 @@ async function pkSpawnTarget(
   return subprocess;
 }
 
+function pkStdioSwitch(cmd: string | undefined) {
+  if (cmd != null) {
+    return (...args: Parameters<typeof pkStdio>) => pkStdioTarget(cmd, ...args);
+  } else {
+    return pkStdio;
+  }
+}
+
+function pkExecSwitch(cmd: string | undefined) {
+  if (cmd != null) {
+    return (...args: Parameters<typeof pkExec>) => pkExecTarget(cmd, ...args);
+  } else {
+    return pkExec;
+  }
+}
+
+function pkSpawnSwitch(cmd: string | undefined) {
+  if (cmd != null) {
+    return (...args: Parameters<typeof pkSpawn>) => pkSpawnTarget(cmd, ...args);
+  } else {
+    return pkSpawn;
+  }
+}
+
 /**
  * Runs pk command through subprocess expect wrapper
  * @throws assert.AssertionError when expectations fail
@@ -506,6 +530,9 @@ export {
   pkStdioTarget,
   pkExecTarget,
   pkSpawnTarget,
+  pkStdioSwitch,
+  pkExecSwitch,
+  pkSpawnSwitch,
   pkExpect,
   processExit,
   expectProcessError,
