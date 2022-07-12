@@ -30,6 +30,7 @@ variables:
 # Cached directories shared between jobs & pipelines per-branch per-runner
 cache:
   key: $CI_COMMIT_REF_SLUG
+  # Preserve cache even if job fails
   when: 'always'
   paths:
     - ./tmp/npm/

@@ -28,10 +28,15 @@ variables:
 # Cached directories shared between jobs & pipelines per-branch per-runner
 cache:
   key: $CI_COMMIT_REF_SLUG
+  # Preserve cache even if job fails
   when: 'always'
   paths:
     - ./tmp/npm/
     - ./tmp/ts-node-cache/
+    # Homebrew cache is only used by the macos runner
+    - ./tmp/Homebrew
+    # Chocolatey cache is only used by the windows runner
+    - ./tmp/chocolatey/
     # `jest` cache is configured in jest.config.js
     - ./tmp/jest/
 
