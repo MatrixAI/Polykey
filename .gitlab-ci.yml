@@ -363,10 +363,12 @@ integration:docker:
   script:
     - image="$(docker load --input ./builds/*docker* | cut -d' ' -f3)"
     - |
-      PK_TEST_DOCKER_IMAGE=$image \
-      PK_TEST_COMMAND=scripts/docker-run.sh \
-      PK_TEST_COMMAND_DOCKER=DOCKER \
-      exec npm run test -- tests/bin/agent/start.test.ts tests/bin/bootstrap.test.ts
+      nix-shell --run '
+        PK_TEST_DOCKER_IMAGE=$image \
+        PK_TEST_COMMAND=scripts/docker-run.sh \
+        PK_TEST_COMMAND_DOCKER=DOCKER \
+        exec npm run test -- tests/bin/agent/start.test.ts tests/bin/bootstrap.test.ts
+      '
   rules:
     # Runs on staging commits and ignores version commits
     - if: $CI_COMMIT_BRANCH == 'feature-pkg_integration_tests'
