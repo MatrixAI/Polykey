@@ -1,6 +1,3 @@
-$nodejs = "nodejs.install"
-$python = "python3"
-
 function Save-ChocoPackage {
   param (
       $PackageName
@@ -25,14 +22,16 @@ New-Item -Path "${PSScriptRoot}\..\tmp\chocolatey" -ItemType "directory" -ErrorA
 choco source add --name="cache" --source="${PSScriptRoot}\..\tmp\chocolatey" --priority=1
 
 # Install nodejs v16.14.2 (will use cache if exists)
-choco install "$nodejs" --version="16.14.2" --checksum="hello" -y
+$nodejs = "nodejs.install"
+choco install "$nodejs" --version="16.14.2" --require-checksums -y
 # Internalise nodejs to cache if doesn't exist
 if ( -not (Test-Path -Path "${PSScriptRoot}\..\tmp\chocolatey\$nodejs\$nodejs.16.14.2.nupkg" -PathType Leaf) ) {
   Save-ChocoPackage -PackageName $nodejs
 }
 
 # Install python v3.9.12 (will use cache if exists)
-choco install $python --version="3.9.12" --checksum="hello" -y
+$python = "python3"
+choco install $python --version="3.9.12" --require-checksums -y
 # Internalise python to cache if doesn't exist
 if ( -not (Test-Path -Path "${PSScriptRoot}\..\tmp\chocolatey\$python\$python.3.9.12.nupkg" -PathType Leaf) ) {
   Save-ChocoPackage -PackageName $python
