@@ -14,7 +14,7 @@ describe('bootstrap', () => {
   let dataDir: string;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
-      path.join(os.tmpdir(), 'polykey-test-'),
+      path.join(global.tmpDir, 'polykey-test-'),
     );
   });
   afterEach(async () => {
@@ -29,7 +29,7 @@ describe('bootstrap', () => {
       const password = 'password';
       const passwordPath = path.join(dataDir, 'password');
       await fs.promises.writeFile(passwordPath, password);
-      const { exitCode, stdout } = await testBinUtils.pkStdioSwitch(
+      const { exitCode, stdout, stderr } = await testBinUtils.pkStdioSwitch(
         global.testCmd,
       )(
         [
@@ -46,6 +46,7 @@ describe('bootstrap', () => {
         },
         dataDir,
       );
+      console.log(stderr);
       expect(exitCode).toBe(0);
       const recoveryCode = stdout.trim();
       expect(

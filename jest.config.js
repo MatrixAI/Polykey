@@ -32,6 +32,7 @@ const globals = {
   maxTimeout: Math.pow(2, 31) - 1,
   testCmd: process.env.PK_TEST_COMMAND,
   testPlatform: process.env.PK_TEST_COMMAND_DOCKER,
+  tmpDir: process.env.PK_TEST_TMP_DIR ?? os.tmpdir(),
 };
 
 // The `globalSetup` and `globalTeardown` cannot access the `globals`

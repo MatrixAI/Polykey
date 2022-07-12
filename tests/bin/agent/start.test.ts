@@ -19,7 +19,7 @@ describe('start', () => {
   let dataDir: string;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
-      path.join(os.tmpdir(), 'polykey-test-'),
+      path.join(global.tmpDir, 'polykey-test-'),
     );
   });
   afterEach(async () => {
@@ -83,10 +83,6 @@ describe('start', () => {
           statusLiveData.recoveryCode.split(' ').length === 24,
       ).toBe(true);
       agentProcess.kill('SIGTERM');
-      // Const [exitCode, signal] = await testBinUtils.processExit(agentProcess);
-      // expect(exitCode).toBe(null);
-      // expect(signal).toBe('SIGTERM');
-      // Check for graceful exit
       const status = new Status({
         statusPath: path.join(dataDir, 'polykey', config.defaults.statusBase),
         statusLockPath: path.join(
@@ -451,11 +447,6 @@ describe('start', () => {
       });
       await status.waitFor('LIVE');
       agentProcess2.kill('SIGHUP');
-      const [exitCode2, signal2] = await testBinUtils.processExit(
-        agentProcess2,
-      );
-      expect(exitCode2).toBe(null);
-      expect(signal2).toBe('SIGHUP');
       // Check for graceful exit
       const statusInfo = (await status.waitFor('DEAD'))!;
       expect(statusInfo.status).toBe('DEAD');
@@ -502,9 +493,6 @@ describe('start', () => {
           }
         });
       });
-      // Const [exitCode, signal] = await testBinUtils.processExit(agentProcess1);
-      // expect(exitCode).toBe(null);
-      // expect(signal).toBe('SIGINT');
       // Unlike bootstrapping, agent start can succeed under certain compatible partial state
       // However in some cases, state will conflict, and the start will fail with various errors
       // In such cases, the `--fresh` option must be used

@@ -240,11 +240,11 @@ async function pkSpawn(
     stdio: ['pipe', 'pipe', 'pipe'],
     windowsHide: true,
   });
+  // The readline library will trim newlines
+  const rlOut = readline.createInterface(subprocess.stdout!);
+  rlOut.on('line', (l) => logger.info(l));
   const rlErr = readline.createInterface(subprocess.stderr!);
-  rlErr.on('line', (l) => {
-    // The readline library will trim newlines
-    logger.info(l);
-  });
+  rlErr.on('line', (l) => logger.info(l));
   return subprocess;
 }
 
@@ -384,11 +384,11 @@ async function pkSpawnTarget(
     stdio: ['pipe', 'pipe', 'pipe'],
     windowsHide: true,
   });
+  // The readline library will trim newlines
+  const rlOut = readline.createInterface(subprocess.stdout!);
+  rlOut.on('line', (l) => logger.info(l));
   const rlErr = readline.createInterface(subprocess.stderr!);
-  rlErr.on('line', (l) => {
-    // The readline library will trim newlines
-    logger.info(l);
-  });
+  rlErr.on('line', (l) => logger.info(l));
   return subprocess;
 }
 

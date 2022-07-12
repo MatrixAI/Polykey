@@ -45,7 +45,7 @@ stages:
 
 image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
 
-.check:lint:
+check:lint:
   stage: check
   needs: []
   script:
@@ -63,7 +63,7 @@ image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
     - if: $CI_COMMIT_BRANCH && $CI_COMMIT_BRANCH != 'master' && $CI_COMMIT_TITLE !~ /^[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
       when: manual
 
-.check:nix-dry:
+check:nix-dry:
   stage: check
   needs: []
   script:
@@ -77,7 +77,7 @@ image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
     - if: $CI_COMMIT_BRANCH && $CI_COMMIT_BRANCH != 'master' && $CI_COMMIT_TITLE !~ /^[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
       when: manual
 
-.check:test-generate:
+check:test-generate:
   stage: check
   needs: []
   script:
@@ -96,7 +96,7 @@ image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
     - if: $CI_COMMIT_BRANCH && $CI_COMMIT_BRANCH !~ /^(?:master|staging)$/ && $CI_COMMIT_TITLE !~ /^[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
       when: manual
 
-.check:test:
+check:test:
   stage: check
   needs:
     - check:test-generate
@@ -158,7 +158,7 @@ build:dist:
       - ./dist
   rules:
     # Runs on staging commits and ignores version commits
-    - if: $CI_COMMIT_BRANCH == 'feature-pkg_integration_tests'
+    - if: $CI_COMMIT_BRANCH == 'staging' && $CI_COMMIT_TITLE !~ /^[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
     # Runs on tag pipeline where the tag is a prerelease or release version
     - if: $CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
 
@@ -176,7 +176,7 @@ build:platforms-generate:
       - ./tmp/build-platforms.yml
   rules:
     # Runs on staging commits and ignores version commits
-    - if: $CI_COMMIT_BRANCH == 'feature-pkg_integration_tests'
+    - if: $CI_COMMIT_BRANCH == 'staging' && $CI_COMMIT_TITLE !~ /^[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
     # Runs on tag pipeline where the tag is a prerelease or release version
     - if: $CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
 
@@ -195,7 +195,7 @@ build:platforms:
     PARENT_PIPELINE_ID: $CI_PIPELINE_ID
   rules:
     # Runs on staging commits and ignores version commits
-    - if: $CI_COMMIT_BRANCH == 'feature-pkg_integration_tests'
+    - if: $CI_COMMIT_BRANCH == 'staging' && $CI_COMMIT_TITLE !~ /^[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
     # Runs on tag pipeline where the tag is a prerelease or release version
     - if: $CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
 
@@ -255,7 +255,7 @@ integration:builds:
       - ./builds/
   rules:
     # Runs on staging commits and ignores version commits
-    - if: $CI_COMMIT_BRANCH == 'feature-pkg_integration_tests'
+    - if: $CI_COMMIT_BRANCH == 'staging' && $CI_COMMIT_TITLE !~ /^[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
     # Runs on tag pipeline where the tag is a prerelease or release version
     - if: $CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
 
@@ -333,29 +333,15 @@ check:docker-test:
   variables:
     DOCKER_TLS_CERTDIR: "/certs"
   script:
-    - docker info
-    - docker ps
-    - >
-      nix-shell --run '
-      node -v; npm -v;
+    - |
+      nix-shell --run $'
+        image="$(docker load --input ./builds/*docker* | cut -d\' \' -f3)"
+        PK_TEST_DOCKER_IMAGE=$image \
+        PK_TEST_COMMAND=scripts/docker-run.sh \
+        PK_TEST_COMMAND_DOCKER=DOCKER \
+        PK_TEST_TMP_DIR=/builds/$CI_PROJECT_PATH/tmp \
+        exec npm run test -- tests/bin/agent/start.test.ts tests/bin/bootstrap.test.ts
       '
-
-check:docker-test2:
-  stage: check
-  needs: []
-  services:
-    - docker:20.10.16-dind
-  variables:
-    DOCKER_TLS_CERTDIR: "/certs"
-  before_script:
-    - docker info
-    - docker ps
-  script:
-    - >
-      nix-shell --run '
-      node -v; npm -v;
-      '
-
 
 integration:docker:
   stage: integration
@@ -369,16 +355,19 @@ integration:docker:
     DOCKER_TLS_CERTDIR: "/certs"
   script:
     - docker info
-    - image="$(docker load --input ./builds/*docker* | cut -d' ' -f3)"
     - |
-      PK_TEST_DOCKER_IMAGE=$image \
-      PK_TEST_COMMAND=scripts/docker-run.sh \
-      PK_TEST_COMMAND_DOCKER=DOCKER \
-      exec npm run test -- tests/bin/agent/start.test.ts tests/bin/bootstrap.test.ts
+      nix-shell --run $'
+        image="$(docker load --input ./builds/*docker* | cut -d\' \' -f3)"
+        PK_TEST_DOCKER_IMAGE=$image \
+        PK_TEST_COMMAND=scripts/docker-run.sh \
+        PK_TEST_COMMAND_DOCKER=DOCKER \
+        PK_TEST_TMP_DIR=/builds/$CI_PROJECT_PATH/tmp \
+        exec npm run test -- tests/bin/agent/start.test.ts tests/bin/bootstrap.test.ts
+      '
   rules:
     # Runs on staging commits and ignores version commits
-    - if: $CI_COMMIT_BRANCH == 'feature-pkg_integration_tests'
-#    - if: $CI_COMMIT_BRANCH == 'staging' && $CI_COMMIT_TITLE !~ /^[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
+#    - if: $CI_COMMIT_BRANCH == 'feature-pkg_integration_tests'
+    - if: $CI_COMMIT_BRANCH == 'staging' && $CI_COMMIT_TITLE !~ /^[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
     # Runs on tag pipeline where the tag is a prerelease or release version
     - if: $CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
 
