@@ -36,6 +36,7 @@ class KeyManager {
     rootKeyPairBits = 4096,
     rootCertDuration = 31536000,
     dbKeyBits = 256,
+    workerManager,
     changeCallback = () => {},
     fs = require('fs'),
     logger = new Logger(this.name),
@@ -47,6 +48,7 @@ class KeyManager {
     rootKeyPairBits?: number;
     rootCertDuration?: number;
     dbKeyBits?: number;
+    workerManager?: PolykeyWorkerManagerInterface;
     changeCallback?: (data: KeyManagerChangeData) => any;
     fs?: FileSystem;
     logger?: Logger;
@@ -64,6 +66,7 @@ class KeyManager {
       fs,
       logger,
     });
+    if (workerManager != null) keyManager.setWorkerManager(workerManager);
     await keyManager.start({
       password,
       recoveryCode,

@@ -205,24 +205,24 @@ class CommandStart extends CommandPolykey {
         // eslint-disable-next-line prefer-const
         let pkAgent: PolykeyAgent;
         // eslint-disable-next-line prefer-const
-        let workerManager: PolykeyWorkerManagerInterface;
         this.exitHandlers.handlers.push(async () => {
           pkAgent?.unsetWorkerManager();
           await workerManager?.destroy();
           await pkAgent?.stop();
         });
+        const workerManager: PolykeyWorkerManagerInterface | undefined =
+          options.workers === 0
+            ? undefined
+            : await workersUtils.createWorkerManager({
+                cores: options.workers,
+                logger: this.logger.getChild(WorkerManager.name),
+              });
         pkAgent = await PolykeyAgent.createPolykeyAgent({
           fs: this.fs,
           logger: this.logger.getChild(PolykeyAgent.name),
+          workerManager,
           ...agentConfig,
         });
-        if (options.workers !== 0) {
-          workerManager = await workersUtils.createWorkerManager({
-            cores: options.workers,
-            logger: this.logger.getChild(WorkerManager.name),
-          });
-          pkAgent.setWorkerManager(workerManager);
-        }
         recoveryCodeOut = pkAgent.keyManager.getRecoveryCode();
         statusLiveData = {
           pid: process.pid,
