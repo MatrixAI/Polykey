@@ -72,7 +72,7 @@
     "docs": "shx rm -rf ./docs && typedoc --gitRevision master --tsconfig ./tsconfig.build.json --out ./docs src",
     "bench": "shx rm -rf ./benches/results && ts-node --require tsconfig-paths/register --compiler typescript-cached-transpile --transpile-only ./benches",
     "proto-generate": "scripts/proto-generate.sh",
-    "pkg": "./scripts/pkg.js --no-dict=leveldown.js",
+    "pkg": "node ./scripts/pkg.js --no-dict=leveldown.js",
     "polykey": "ts-node --require tsconfig-paths/register --compiler typescript-cached-transpile --transpile-only src/bin/polykey.ts"
   },
   "dependencies": {
