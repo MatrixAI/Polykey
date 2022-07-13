@@ -15,7 +15,7 @@ import * as testUtils from '../../utils';
 import { runTestIf, runDescribeIf } from '../../utils';
 
 describe('start', () => {
-  const logger = new Logger('start test', LogLevel.INFO, [new StreamHandler()]);
+  const logger = new Logger('start test', LogLevel.WARN, [new StreamHandler()]);
   let dataDir: string;
   beforeEach(async () => {
     // fixme: use a global for the tmp path override
