@@ -19,13 +19,10 @@ describe('start', () => {
   let dataDir: string;
   beforeEach(async () => {
     // fixme: use a global for the tmp path override
-    const tmpdir = global.testPlatform != null ? process.env.SHARED_PATH! : os.tmpdir();
-    console.log(tmpdir);
+    const tmpdir = global.testPlatform == 'DOCKER' ? process.env.SHARED_PATH! : os.tmpdir();
     dataDir = await fs.promises.mkdtemp(
       path.join(tmpdir, 'polykey-test-'),
     );
-    console.log(dataDir);
-
   });
   afterEach(async () => {
     await fs.promises.rm(dataDir, {
@@ -386,7 +383,7 @@ describe('start', () => {
     },
     global.defaultTimeout * 2,
   );
-  test.only(
+  test(
     'start with existing state',
     async () => {
       const password = 'abc123';
