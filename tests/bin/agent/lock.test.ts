@@ -7,8 +7,7 @@ import Session from '@/sessions/Session';
 import config from '@/config';
 import * as testBinUtils from '../utils';
 import * as testUtils from '../../utils';
-import { runTestIf } from '../../utils';
-import process from 'process';
+import { runTestIfPlatforms } from '../../utils';
 
 jest.mock('prompts');
 const mockedPrompts = mocked(prompts);
@@ -25,65 +24,69 @@ describe('lock', () => {
   afterAll(async () => {
     await globalAgentClose();
   });
-  runTestIf(process.platform === 'linux' || global.testPlatform === 'DOCKER')('lock deletes the session token', async () => {
-    await testBinUtils.pkStdioSwitch(global.testCmd)(
-      ['agent', 'unlock'],
-      {
-        PK_NODE_PATH: globalAgentDir,
-        PK_PASSWORD: globalAgentPassword,
-        PK_TEST_DATA_PATH: globalAgentDir,
-      },
-      globalAgentDir,
-    );
-    const { exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
-      ['agent', 'lock'],
-      {
-        PK_NODE_PATH: globalAgentDir,
-        PK_TEST_DATA_PATH: globalAgentDir,
-      },
-      globalAgentDir,
-    );
-    expect(exitCode).toBe(0);
-    const session = await Session.createSession({
-      sessionTokenPath: path.join(globalAgentDir, config.defaults.tokenBase),
-      fs,
-      logger,
-    });
-    expect(await session.readToken()).toBeUndefined();
-    await session.stop();
-  });
-  runTestIf(process.platform === 'linux' && global.testPlatform == null)('lock ensures re-authentication is required', async () => {
-    const password = globalAgentPassword;
-    mockedPrompts.mockClear();
-    mockedPrompts.mockImplementation(async (_opts: any) => {
-      return { password };
-    });
-    await testBinUtils.pkStdio(
-      ['agent', 'unlock'],
-      {
-        PK_NODE_PATH: globalAgentDir,
-        PK_PASSWORD: globalAgentPassword,
-      },
-      globalAgentDir,
-    );
-    // Session token is deleted
-    await testBinUtils.pkStdio(
-      ['agent', 'lock'],
-      {
-        PK_NODE_PATH: globalAgentDir,
-      },
-      globalAgentDir,
-    );
-    // Will prompt to reauthenticate
-    await testBinUtils.pkStdio(
-      ['agent', 'status'],
-      {
-        PK_NODE_PATH: globalAgentDir,
-      },
-      globalAgentDir,
-    );
-    // Prompted for password 1 time
-    expect(mockedPrompts.mock.calls.length).toBe(1);
-    mockedPrompts.mockClear();
-  });
+  runTestIfPlatforms('linux', 'docker')(
+    'lock deletes the session token',
+    async () => {
+      await testBinUtils.pkStdioSwitch(global.testCmd)(
+        ['agent', 'unlock'],
+        {
+          PK_NODE_PATH: globalAgentDir,
+          PK_PASSWORD: globalAgentPassword,
+        },
+        globalAgentDir,
+      );
+      const { exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+        ['agent', 'lock'],
+        {
+          PK_NODE_PATH: globalAgentDir,
+        },
+        globalAgentDir,
+      );
+      expect(exitCode).toBe(0);
+      const session = await Session.createSession({
+        sessionTokenPath: path.join(globalAgentDir, config.defaults.tokenBase),
+        fs,
+        logger,
+      });
+      expect(await session.readToken()).toBeUndefined();
+      await session.stop();
+    },
+  );
+  runTestIfPlatforms('linux')(
+    'lock ensures re-authentication is required',
+    async () => {
+      const password = globalAgentPassword;
+      mockedPrompts.mockClear();
+      mockedPrompts.mockImplementation(async (_opts: any) => {
+        return { password };
+      });
+      await testBinUtils.pkStdio(
+        ['agent', 'unlock'],
+        {
+          PK_NODE_PATH: globalAgentDir,
+          PK_PASSWORD: globalAgentPassword,
+        },
+        globalAgentDir,
+      );
+      // Session token is deleted
+      await testBinUtils.pkStdio(
+        ['agent', 'lock'],
+        {
+          PK_NODE_PATH: globalAgentDir,
+        },
+        globalAgentDir,
+      );
+      // Will prompt to reauthenticate
+      await testBinUtils.pkStdio(
+        ['agent', 'status'],
+        {
+          PK_NODE_PATH: globalAgentDir,
+        },
+        globalAgentDir,
+      );
+      // Prompted for password 1 time
+      expect(mockedPrompts.mock.calls.length).toBe(1);
+      mockedPrompts.mockClear();
+    },
+  );
 });
