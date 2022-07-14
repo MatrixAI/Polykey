@@ -1,9 +1,9 @@
 import type { RecoveryCode } from '@/keys/types';
 import type { StatusLive } from '@/status/types';
-import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import readline from 'readline';
+import process from 'process';
 import * as jestMockProps from 'jest-mock-props';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
@@ -28,7 +28,7 @@ describe('start', () => {
       recursive: true,
     });
   });
-  test(
+  runTestIf(process.platform === 'linux' || global.testPlatform === 'DOCKER')(
     'start in foreground',
     async () => {
       const password = 'abc123';
@@ -98,7 +98,7 @@ describe('start', () => {
     },
     global.defaultTimeout * 2,
   );
-  runTestIf(global.testPlatform == null)(
+  runTestIf(process.platform === 'linux' && global.testPlatform == null)(
     'start in background',
     async () => {
       const password = 'abc123';
@@ -199,7 +199,7 @@ describe('start', () => {
     },
     global.defaultTimeout * 2,
   );
-  test(
+  runTestIf(process.platform === 'linux' || global.testPlatform === 'DOCKER')(
     'concurrent starts results in 1 success',
     async () => {
       const password = 'abc123';
@@ -293,7 +293,7 @@ describe('start', () => {
     },
     global.defaultTimeout * 2,
   );
-  test(
+  runTestIf(process.platform === 'linux' || global.testPlatform === 'DOCKER')(
     'concurrent with bootstrap results in 1 success',
     async () => {
       const password = 'abc123';
@@ -381,7 +381,7 @@ describe('start', () => {
     },
     global.defaultTimeout * 2,
   );
-  test(
+  runTestIf(process.platform === 'linux' || global.testPlatform === 'DOCKER')(
     'start with existing state',
     async () => {
       const password = 'abc123';
@@ -453,7 +453,7 @@ describe('start', () => {
     },
     global.defaultTimeout * 2,
   );
-  test(
+  runTestIf(process.platform === 'linux' || global.testPlatform === 'DOCKER')(
     'start when interrupted, requires fresh on next start',
     async () => {
       const password = 'password';
@@ -562,7 +562,7 @@ describe('start', () => {
     },
     global.defaultTimeout * 2,
   );
-  test(
+  runTestIf(process.platform === 'linux' || global.testPlatform === 'DOCKER')(
     'start from recovery code',
     async () => {
       const password1 = 'abc123';
@@ -700,7 +700,7 @@ describe('start', () => {
     },
     global.defaultTimeout * 3,
   );
-  test(
+  runTestIf(process.platform === 'linux' || global.testPlatform === 'DOCKER')(
     'start with network configuration',
     async () => {
       const status = new Status({
@@ -754,172 +754,175 @@ describe('start', () => {
     },
     global.defaultTimeout * 2,
   );
-  runDescribeIf(global.testPlatform == null)('start with global agent', () => {
-    let globalAgentStatus: StatusLive;
-    let globalAgentClose;
-    let agentDataDir;
-    let agent: PolykeyAgent;
-    let seedNodeId1;
-    let seedNodeHost1;
-    let seedNodePort1;
-    let seedNodeId2;
-    let seedNodeHost2;
-    let seedNodePort2;
-    beforeAll(async () => {
-      ({ globalAgentStatus, globalAgentClose } =
-        await testUtils.setupGlobalAgent(logger));
-      // Additional seed node
-      agentDataDir = await fs.promises.mkdtemp(
-        path.join(os.tmpdir(), 'polykey-test-'),
-      );
-      agent = await PolykeyAgent.createPolykeyAgent({
-        password: 'password',
-        nodePath: path.join(agentDataDir, 'agent'),
-        keysConfig: {
-          rootKeyPairBits: 1024,
+  runDescribeIf(process.platform === 'linux' && global.testPlatform == null)(
+    'start with global agent',
+    () => {
+      let globalAgentStatus: StatusLive;
+      let globalAgentClose;
+      let agentDataDir;
+      let agent: PolykeyAgent;
+      let seedNodeId1;
+      let seedNodeHost1;
+      let seedNodePort1;
+      let seedNodeId2;
+      let seedNodeHost2;
+      let seedNodePort2;
+      beforeAll(async () => {
+        ({ globalAgentStatus, globalAgentClose } =
+          await testUtils.setupGlobalAgent(logger));
+        // Additional seed node
+        agentDataDir = await fs.promises.mkdtemp(
+          path.join(global.tmpDir, 'polykey-test-'),
+        );
+        agent = await PolykeyAgent.createPolykeyAgent({
+          password: 'password',
+          nodePath: path.join(agentDataDir, 'agent'),
+          keysConfig: {
+            rootKeyPairBits: 1024,
+          },
+          logger,
+        });
+        seedNodeId1 = globalAgentStatus.data.nodeId;
+        seedNodeHost1 = globalAgentStatus.data.proxyHost;
+        seedNodePort1 = globalAgentStatus.data.proxyPort;
+        seedNodeId2 = agent.keyManager.getNodeId();
+        seedNodeHost2 = agent.grpcServerAgent.getHost();
+        seedNodePort2 = agent.grpcServerAgent.getPort();
+      }, globalThis.maxTimeout);
+      afterAll(async () => {
+        await agent.stop();
+        await globalAgentClose();
+        await fs.promises.rm(agentDataDir, {
+          force: true,
+          recursive: true,
+        });
+      });
+      test(
+        'start with seed nodes option',
+        async () => {
+          const password = 'abc123';
+          const nodePath = path.join(dataDir, 'polykey');
+          const statusPath = path.join(nodePath, config.defaults.statusBase);
+          const statusLockPath = path.join(
+            nodePath,
+            config.defaults.statusLockBase,
+          );
+          const status = new Status({
+            statusPath,
+            statusLockPath,
+            fs,
+            logger,
+          });
+          const mockedConfigDefaultsNetwork = jestMockProps
+            .spyOnProp(config.defaults, 'network')
+            .mockValue({
+              mainnet: {
+                [seedNodeId2]: {
+                  host: seedNodeHost2,
+                  port: seedNodePort2,
+                },
+              },
+              testnet: {},
+            });
+          await testBinUtils.pkStdio(
+            [
+              'agent',
+              'start',
+              '--root-key-pair-bits',
+              '1024',
+              '--client-host',
+              '127.0.0.1',
+              '--proxy-host',
+              '127.0.0.1',
+              '--workers',
+              '0',
+              '--seed-nodes',
+              `${seedNodeId1}@${seedNodeHost1}:${seedNodePort1};<defaults>`,
+              '--network',
+              'mainnet',
+              '--verbose',
+            ],
+            {
+              PK_NODE_PATH: nodePath,
+              PK_PASSWORD: password,
+            },
+            dataDir,
+          );
+          await testBinUtils.pkStdio(
+            ['agent', 'stop'],
+            {
+              PK_NODE_PATH: nodePath,
+              PK_PASSWORD: password,
+            },
+            dataDir,
+          );
+          mockedConfigDefaultsNetwork.mockRestore();
+          await status.waitFor('DEAD');
         },
-        logger,
-      });
-      seedNodeId1 = globalAgentStatus.data.nodeId;
-      seedNodeHost1 = globalAgentStatus.data.proxyHost;
-      seedNodePort1 = globalAgentStatus.data.proxyPort;
-      seedNodeId2 = agent.keyManager.getNodeId();
-      seedNodeHost2 = agent.grpcServerAgent.getHost();
-      seedNodePort2 = agent.grpcServerAgent.getPort();
-    }, globalThis.maxTimeout);
-    afterAll(async () => {
-      await agent.stop();
-      await globalAgentClose();
-      await fs.promises.rm(agentDataDir, {
-        force: true,
-        recursive: true,
-      });
-    });
-    test(
-      'start with seed nodes option',
-      async () => {
-        const password = 'abc123';
-        const nodePath = path.join(dataDir, 'polykey');
-        const statusPath = path.join(nodePath, config.defaults.statusBase);
-        const statusLockPath = path.join(
-          nodePath,
-          config.defaults.statusLockBase,
-        );
-        const status = new Status({
-          statusPath,
-          statusLockPath,
-          fs,
-          logger,
-        });
-        const mockedConfigDefaultsNetwork = jestMockProps
-          .spyOnProp(config.defaults, 'network')
-          .mockValue({
-            mainnet: {
-              [seedNodeId2]: {
-                host: seedNodeHost2,
-                port: seedNodePort2,
-              },
-            },
-            testnet: {},
+        global.defaultTimeout * 2,
+      );
+      test(
+        'start with seed nodes environment variable',
+        async () => {
+          const password = 'abc123';
+          const nodePath = path.join(dataDir, 'polykey');
+          const statusPath = path.join(nodePath, config.defaults.statusBase);
+          const statusLockPath = path.join(
+            nodePath,
+            config.defaults.statusLockBase,
+          );
+          const status = new Status({
+            statusPath,
+            statusLockPath,
+            fs,
+            logger,
           });
-        await testBinUtils.pkStdio(
-          [
-            'agent',
-            'start',
-            '--root-key-pair-bits',
-            '1024',
-            '--client-host',
-            '127.0.0.1',
-            '--proxy-host',
-            '127.0.0.1',
-            '--workers',
-            '0',
-            '--seed-nodes',
-            `${seedNodeId1}@${seedNodeHost1}:${seedNodePort1};<defaults>`,
-            '--network',
-            'mainnet',
-            '--verbose',
-          ],
-          {
-            PK_NODE_PATH: nodePath,
-            PK_PASSWORD: password,
-          },
-          dataDir,
-        );
-        await testBinUtils.pkStdio(
-          ['agent', 'stop'],
-          {
-            PK_NODE_PATH: nodePath,
-            PK_PASSWORD: password,
-          },
-          dataDir,
-        );
-        mockedConfigDefaultsNetwork.mockRestore();
-        await status.waitFor('DEAD');
-      },
-      global.defaultTimeout * 2,
-    );
-    test(
-      'start with seed nodes environment variable',
-      async () => {
-        const password = 'abc123';
-        const nodePath = path.join(dataDir, 'polykey');
-        const statusPath = path.join(nodePath, config.defaults.statusBase);
-        const statusLockPath = path.join(
-          nodePath,
-          config.defaults.statusLockBase,
-        );
-        const status = new Status({
-          statusPath,
-          statusLockPath,
-          fs,
-          logger,
-        });
-        const mockedConfigDefaultsNetwork = jestMockProps
-          .spyOnProp(config.defaults, 'network')
-          .mockValue({
-            mainnet: {},
-            testnet: {
-              [seedNodeId2]: {
-                host: seedNodeHost2,
-                port: seedNodePort2,
+          const mockedConfigDefaultsNetwork = jestMockProps
+            .spyOnProp(config.defaults, 'network')
+            .mockValue({
+              mainnet: {},
+              testnet: {
+                [seedNodeId2]: {
+                  host: seedNodeHost2,
+                  port: seedNodePort2,
+                },
               },
+            });
+          await testBinUtils.pkStdio(
+            [
+              'agent',
+              'start',
+              '--root-key-pair-bits',
+              '1024',
+              '--client-host',
+              '127.0.0.1',
+              '--proxy-host',
+              '127.0.0.1',
+              '--workers',
+              '0',
+              '--verbose',
+            ],
+            {
+              PK_NODE_PATH: nodePath,
+              PK_PASSWORD: password,
+              PK_SEED_NODES: `<defaults>;${seedNodeId1}@${seedNodeHost1}:${seedNodePort1}`,
+              PK_NETWORK: 'testnet',
             },
-          });
-        await testBinUtils.pkStdio(
-          [
-            'agent',
-            'start',
-            '--root-key-pair-bits',
-            '1024',
-            '--client-host',
-            '127.0.0.1',
-            '--proxy-host',
-            '127.0.0.1',
-            '--workers',
-            '0',
-            '--verbose',
-          ],
-          {
-            PK_NODE_PATH: nodePath,
-            PK_PASSWORD: password,
-            PK_SEED_NODES: `<defaults>;${seedNodeId1}@${seedNodeHost1}:${seedNodePort1}`,
-            PK_NETWORK: 'testnet',
-          },
-          dataDir,
-        );
-        await testBinUtils.pkStdio(
-          ['agent', 'stop'],
-          {
-            PK_NODE_PATH: nodePath,
-            PK_PASSWORD: password,
-          },
-          dataDir,
-        );
-        mockedConfigDefaultsNetwork.mockRestore();
-        await status.waitFor('DEAD');
-      },
-      global.defaultTimeout * 2,
-    );
-  });
+            dataDir,
+          );
+          await testBinUtils.pkStdio(
+            ['agent', 'stop'],
+            {
+              PK_NODE_PATH: nodePath,
+              PK_PASSWORD: password,
+            },
+            dataDir,
+          );
+          mockedConfigDefaultsNetwork.mockRestore();
+          await status.waitFor('DEAD');
+        },
+        global.defaultTimeout * 2,
+      );
+    },
+  );
 });

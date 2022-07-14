@@ -1,11 +1,12 @@
-import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import readline from 'readline';
+import process from 'process';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { errors as statusErrors } from '@/status';
 import { errors as bootstrapErrors } from '@/bootstrap';
 import * as testBinUtils from './utils';
+import { runTestIf } from '../utils';
 
 describe('bootstrap', () => {
   const logger = new Logger('bootstrap test', LogLevel.WARN, [
@@ -23,13 +24,13 @@ describe('bootstrap', () => {
       recursive: true,
     });
   });
-  test(
+  runTestIf(process.platform === 'linux' || global.testPlatform === 'DOCKER')(
     'bootstraps node state',
     async () => {
       const password = 'password';
       const passwordPath = path.join(dataDir, 'password');
       await fs.promises.writeFile(passwordPath, password);
-      const { exitCode, stdout, stderr } = await testBinUtils.pkStdioSwitch(
+      const { exitCode, stdout } = await testBinUtils.pkStdioSwitch(
         global.testCmd,
       )(
         [
@@ -46,7 +47,6 @@ describe('bootstrap', () => {
         },
         dataDir,
       );
-      console.log(stderr);
       expect(exitCode).toBe(0);
       const recoveryCode = stdout.trim();
       expect(
@@ -56,7 +56,7 @@ describe('bootstrap', () => {
     },
     global.defaultTimeout * 2,
   );
-  test(
+  runTestIf(process.platform === 'linux' || global.testPlatform === 'DOCKER')(
     'bootstrapping occupied node state',
     async () => {
       const password = 'password';
@@ -114,7 +114,7 @@ describe('bootstrap', () => {
     },
     global.defaultTimeout * 2,
   );
-  test(
+  runTestIf(process.platform === 'linux' || global.testPlatform === 'DOCKER')(
     'concurrent bootstrapping results in 1 success',
     async () => {
       const password = 'password';
@@ -197,7 +197,7 @@ describe('bootstrap', () => {
     },
     global.defaultTimeout * 2,
   );
-  test(
+  runTestIf(process.platform === 'linux' || global.testPlatform === 'DOCKER')(
     'bootstrap when interrupted, requires fresh on next bootstrap',
     async () => {
       const password = 'password';
