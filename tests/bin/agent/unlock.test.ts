@@ -5,6 +5,7 @@ import Session from '@/sessions/Session';
 import config from '@/config';
 import * as testBinUtils from '../utils';
 import * as testUtils from '../../utils';
+import { runTestIfPlatforms } from '../../utils';
 
 describe('unlock', () => {
   const logger = new Logger('unlock test', LogLevel.WARN, [
@@ -20,7 +21,7 @@ describe('unlock', () => {
   afterAll(async () => {
     await globalAgentClose();
   });
-  test('unlock acquires session token', async () => {
+  runTestIfPlatforms('linux', 'docker')('unlock acquires session token', async () => {
     // Fresh session, to delete the token
     const session = await Session.createSession({
       sessionTokenPath: path.join(globalAgentDir, config.defaults.tokenBase),
@@ -29,7 +30,7 @@ describe('unlock', () => {
       fresh: true,
     });
     let exitCode, stdout;
-    ({ exitCode, stdout } = await testBinUtils.pkStdio(
+    ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
       ['agent', 'unlock'],
       {
         PK_NODE_PATH: globalAgentDir,
@@ -39,7 +40,7 @@ describe('unlock', () => {
     ));
     expect(exitCode).toBe(0);
     // Run command without password
-    ({ exitCode, stdout } = await testBinUtils.pkStdio(
+    ({ exitCode, stdout } = await testBinUtils.pkStdioSwitch(global.testCmd)(
       ['agent', 'status', '--format', 'json'],
       {
         PK_NODE_PATH: globalAgentDir,
@@ -49,7 +50,7 @@ describe('unlock', () => {
     expect(exitCode).toBe(0);
     expect(JSON.parse(stdout)).toMatchObject({ status: 'LIVE' });
     // Run command with PK_TOKEN
-    ({ exitCode, stdout } = await testBinUtils.pkStdio(
+    ({ exitCode, stdout } = await testBinUtils.pkStdioSwitch(global.testCmd)(
       ['agent', 'status', '--format', 'json'],
       {
         PK_NODE_PATH: globalAgentDir,
