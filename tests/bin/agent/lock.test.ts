@@ -7,6 +7,8 @@ import Session from '@/sessions/Session';
 import config from '@/config';
 import * as testBinUtils from '../utils';
 import * as testUtils from '../../utils';
+import { runTestIf } from '../../utils';
+import process from 'process';
 
 jest.mock('prompts');
 const mockedPrompts = mocked(prompts);
@@ -23,19 +25,21 @@ describe('lock', () => {
   afterAll(async () => {
     await globalAgentClose();
   });
-  test('lock deletes the session token', async () => {
-    await testBinUtils.pkStdio(
+  runTestIf(process.platform === 'linux' || global.testPlatform === 'DOCKER')('lock deletes the session token', async () => {
+    await testBinUtils.pkStdioSwitch(global.testCmd)(
       ['agent', 'unlock'],
       {
         PK_NODE_PATH: globalAgentDir,
         PK_PASSWORD: globalAgentPassword,
+        PK_TEST_DATA_PATH: globalAgentDir,
       },
       globalAgentDir,
     );
-    const { exitCode } = await testBinUtils.pkStdio(
+    const { exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
       ['agent', 'lock'],
       {
         PK_NODE_PATH: globalAgentDir,
+        PK_TEST_DATA_PATH: globalAgentDir,
       },
       globalAgentDir,
     );
@@ -48,7 +52,7 @@ describe('lock', () => {
     expect(await session.readToken()).toBeUndefined();
     await session.stop();
   });
-  test('lock ensures re-authentication is required', async () => {
+  runTestIf(process.platform === 'linux' && global.testPlatform == null)('lock ensures re-authentication is required', async () => {
     const password = globalAgentPassword;
     mockedPrompts.mockClear();
     mockedPrompts.mockImplementation(async (_opts: any) => {
