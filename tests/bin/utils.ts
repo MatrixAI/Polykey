@@ -266,8 +266,10 @@ async function pkStdioTarget(
   stdout: string;
   stderr: string;
 }> {
-  cwd =
-    cwd ?? (await fs.promises.mkdtemp(path.join(os.tmpdir(), 'polykey-test-')));
+  cwd = path.resolve(
+    cwd ??
+      (await fs.promises.mkdtemp(path.join(global.tmpDir, 'polykey-test-'))),
+  );
   // Recall that we attempt to connect to all specified seed nodes on agent start.
   // Therefore, for testing purposes only, we default the seed nodes as empty
   // (if not defined in the env) to ensure no attempted connections. A regular
@@ -276,6 +278,7 @@ async function pkStdioTarget(
 
   // If using the command override we need to spawn a process
   env = {
+    PK_TEST_DATA_PATH: cwd,
     ...process.env,
     ...env,
   };
@@ -314,9 +317,12 @@ async function pkExecTarget(
   stdout: string;
   stderr: string;
 }> {
-  cwd =
-    cwd ?? (await fs.promises.mkdtemp(path.join(os.tmpdir(), 'polykey-test-')));
+  cwd = path.resolve(
+    cwd ??
+      (await fs.promises.mkdtemp(path.join(global.tmpDir, 'polykey-test-'))),
+  );
   env = {
+    PK_TEST_DATA_PATH: cwd,
     ...process.env,
     ...env,
   };
@@ -325,9 +331,10 @@ async function pkExecTarget(
   // (if not defined in the env) to ensure no attempted connections. A regular
   // PolykeyAgent is expected to initially connect to the mainnet seed nodes
   env['PK_SEED_NODES'] = env['PK_SEED_NODES'] ?? '';
+  const command = path.resolve(path.join(global.projectDir, cmd));
   return new Promise((resolve, reject) => {
     child_process.execFile(
-      cmd,
+      command,
       [...args],
       {
         env,
@@ -366,9 +373,12 @@ async function pkSpawnTarget(
   cwd?: string,
   logger: Logger = new Logger(pkSpawn.name),
 ): Promise<ChildProcess> {
-  cwd =
-    cwd ?? (await fs.promises.mkdtemp(path.join(os.tmpdir(), 'polykey-test-')));
+  cwd = path.resolve(
+    cwd ??
+      (await fs.promises.mkdtemp(path.join(global.tmpDir, 'polykey-test-'))),
+  );
   env = {
+    PK_TEST_DATA_PATH: cwd,
     ...process.env,
     ...env,
   };

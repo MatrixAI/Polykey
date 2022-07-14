@@ -222,6 +222,14 @@ function runDescribeIf(condition: boolean) {
   return condition ? describe : describe.skip;
 }
 
+function runTestIfPlatforms(...platforms: Array<string>) {
+  return runTestIf(platforms.includes(testPlatform));
+}
+
+function runDescribeIfPlatforms(...platforms: Array<string>) {
+  return runDescribeIf(platforms.includes(testPlatform));
+}
+
 export {
   setupGlobalKeypair,
   generateRandomNodeId,
@@ -231,4 +239,6 @@ export {
   testIf,
   runTestIf,
   runDescribeIf,
+  runTestIfPlatforms,
+  runDescribeIfPlatforms,
 };

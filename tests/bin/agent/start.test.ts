@@ -1,9 +1,9 @@
 import type { RecoveryCode } from '@/keys/types';
 import type { StatusLive } from '@/status/types';
-import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import readline from 'readline';
+import process from 'process';
 import * as jestMockProps from 'jest-mock-props';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
@@ -12,7 +12,7 @@ import * as statusErrors from '@/status/errors';
 import config from '@/config';
 import * as testBinUtils from '../utils';
 import * as testUtils from '../../utils';
-import { runTestIf, runDescribeIf } from '../../utils';
+import { runDescribeIfPlatforms, runTestIfPlatforms } from '../../utils';
 
 describe('start', () => {
   const logger = new Logger('start test', LogLevel.WARN, [new StreamHandler()]);
@@ -28,7 +28,7 @@ describe('start', () => {
       recursive: true,
     });
   });
-  test(
+  runTestIfPlatforms('linux', 'docker')(
     'start in foreground',
     async () => {
       const password = 'abc123';
@@ -53,7 +53,6 @@ describe('start', () => {
           'json',
         ],
         {
-          PK_TEST_DATA_PATH: dataDir,
           PK_PASSWORD: password,
         },
         dataDir,
@@ -98,7 +97,7 @@ describe('start', () => {
     },
     global.defaultTimeout * 2,
   );
-  runTestIf(global.testPlatform == null)(
+  runTestIfPlatforms('linux')(
     'start in background',
     async () => {
       const password = 'abc123';
@@ -199,7 +198,7 @@ describe('start', () => {
     },
     global.defaultTimeout * 2,
   );
-  test(
+  runTestIfPlatforms('linux', 'docker')(
     'concurrent starts results in 1 success',
     async () => {
       const password = 'abc123';
@@ -222,7 +221,6 @@ describe('start', () => {
             'json',
           ],
           {
-            PK_TEST_DATA_PATH: dataDir,
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
             PK_PASSWORD: password,
           },
@@ -246,7 +244,6 @@ describe('start', () => {
             'json',
           ],
           {
-            PK_TEST_DATA_PATH: dataDir,
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
             PK_PASSWORD: password,
           },
@@ -293,7 +290,7 @@ describe('start', () => {
     },
     global.defaultTimeout * 2,
   );
-  test(
+  runTestIfPlatforms('linux', 'docker')(
     'concurrent with bootstrap results in 1 success',
     async () => {
       const password = 'abc123';
@@ -316,7 +313,6 @@ describe('start', () => {
             'json',
           ],
           {
-            PK_TEST_DATA_PATH: dataDir,
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
             PK_PASSWORD: password,
           },
@@ -334,7 +330,6 @@ describe('start', () => {
             'json',
           ],
           {
-            PK_TEST_DATA_PATH: dataDir,
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
             PK_PASSWORD: password,
           },
@@ -381,7 +376,7 @@ describe('start', () => {
     },
     global.defaultTimeout * 2,
   );
-  test(
+  runTestIfPlatforms('linux', 'docker')(
     'start with existing state',
     async () => {
       const password = 'abc123';
@@ -400,7 +395,6 @@ describe('start', () => {
           '--verbose',
         ],
         {
-          PK_TEST_DATA_PATH: dataDir,
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
           PK_PASSWORD: password,
         },
@@ -428,7 +422,6 @@ describe('start', () => {
           '--verbose',
         ],
         {
-          PK_TEST_DATA_PATH: dataDir,
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
           PK_PASSWORD: password,
         },
@@ -453,7 +446,7 @@ describe('start', () => {
     },
     global.defaultTimeout * 2,
   );
-  test(
+  runTestIfPlatforms('linux', 'docker')(
     'start when interrupted, requires fresh on next start',
     async () => {
       const password = 'password';
@@ -472,7 +465,6 @@ describe('start', () => {
           '--verbose',
         ],
         {
-          PK_TEST_DATA_PATH: dataDir,
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
           PK_PASSWORD: password,
         },
@@ -514,7 +506,6 @@ describe('start', () => {
           'json',
         ],
         {
-          PK_TEST_DATA_PATH: dataDir,
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
           PK_PASSWORD: password,
         },
@@ -562,7 +553,7 @@ describe('start', () => {
     },
     global.defaultTimeout * 2,
   );
-  test(
+  runTestIfPlatforms('linux', 'docker')(
     'start from recovery code',
     async () => {
       const password1 = 'abc123';
@@ -596,7 +587,6 @@ describe('start', () => {
           'json',
         ],
         {
-          PK_TEST_DATA_PATH: dataDir,
           PK_PASSWORD: password1,
         },
         dataDir,
@@ -632,7 +622,6 @@ describe('start', () => {
           '--verbose',
         ],
         {
-          PK_TEST_DATA_PATH: dataDir,
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
           PK_PASSWORD: password2,
         },
@@ -649,7 +638,6 @@ describe('start', () => {
       const agentProcess3 = await testBinUtils.pkSpawnSwitch(global.testCmd)(
         ['agent', 'start', '--workers', '0', '--verbose'],
         {
-          PK_TEST_DATA_PATH: dataDir,
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
           PK_PASSWORD: password2,
         },
@@ -683,7 +671,6 @@ describe('start', () => {
           '--verbose',
         ],
         {
-          PK_TEST_DATA_PATH: dataDir,
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
           PK_PASSWORD: password2,
           PK_RECOVERY_CODE: recoveryCode,
@@ -700,7 +687,7 @@ describe('start', () => {
     },
     global.defaultTimeout * 3,
   );
-  test(
+  runTestIfPlatforms('linux', 'docker')(
     'start with network configuration',
     async () => {
       const status = new Status({
@@ -738,7 +725,6 @@ describe('start', () => {
           '--verbose',
         ],
         {
-          PK_TEST_DATA_PATH: dataDir,
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
           PK_PASSWORD: password,
         },
@@ -754,7 +740,7 @@ describe('start', () => {
     },
     global.defaultTimeout * 2,
   );
-  runDescribeIf(global.testPlatform == null)('start with global agent', () => {
+  runDescribeIfPlatforms('linux')('start with global agent', () => {
     let globalAgentStatus: StatusLive;
     let globalAgentClose;
     let agentDataDir;
@@ -770,7 +756,7 @@ describe('start', () => {
         await testUtils.setupGlobalAgent(logger));
       // Additional seed node
       agentDataDir = await fs.promises.mkdtemp(
-        path.join(os.tmpdir(), 'polykey-test-'),
+        path.join(global.tmpDir, 'polykey-test-'),
       );
       agent = await PolykeyAgent.createPolykeyAgent({
         password: 'password',

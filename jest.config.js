@@ -31,7 +31,7 @@ const globals = {
   // Timeouts rely on setTimeout which takes 32 bit numbers
   maxTimeout: Math.pow(2, 31) - 1,
   testCmd: process.env.PK_TEST_COMMAND,
-  testPlatform: process.env.PK_TEST_COMMAND_DOCKER,
+  testPlatform: process.env.PK_TEST_PLATFORM ?? process.platform,
   tmpDir: process.env.PK_TEST_TMP_DIR ?? os.tmpdir(),
 };
 

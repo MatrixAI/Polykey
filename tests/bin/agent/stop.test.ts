@@ -1,4 +1,3 @@
-import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
@@ -8,13 +7,14 @@ import { sleep } from '@/utils';
 import * as binErrors from '@/bin/errors';
 import * as clientErrors from '@/client/errors';
 import * as testBinUtils from '../utils';
+import { runTestIfPlatforms } from '../../utils';
 
 describe('stop', () => {
   const logger = new Logger('stop test', LogLevel.WARN, [new StreamHandler()]);
   let dataDir: string;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
-      path.join(os.tmpdir(), 'polykey-test-'),
+      path.join(global.testDir, 'polykey-test-'),
     );
   });
   afterEach(async () => {
@@ -23,11 +23,11 @@ describe('stop', () => {
       recursive: true,
     });
   });
-  test(
+  runTestIfPlatforms('linux', 'docker')(
     'stop LIVE agent',
     async () => {
       const password = 'abc123';
-      const { exitCode } = await testBinUtils.pkStdio(
+      const agentProcess = await testBinUtils.pkSpawnSwitch(global.testCmd)(
         [
           'agent',
           'start',
@@ -46,8 +46,8 @@ describe('stop', () => {
           PK_PASSWORD: password,
         },
         dataDir,
+        logger,
       );
-      expect(exitCode).toBe(0);
       const status = new Status({
         statusPath: path.join(dataDir, 'polykey', config.defaults.statusBase),
         statusLockPath: path.join(
@@ -58,7 +58,8 @@ describe('stop', () => {
         fs,
         logger,
       });
-      await testBinUtils.pkStdio(
+      await status.waitFor('LIVE');
+      await testBinUtils.pkStdioSwitch(global.testCmd)(
         ['agent', 'stop'],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -67,10 +68,12 @@ describe('stop', () => {
         dataDir,
       );
       await status.waitFor('DEAD');
+      await sleep(5000);
+      agentProcess.kill();
     },
     global.defaultTimeout * 2,
   );
-  test(
+  runTestIfPlatforms('linux', 'docker')(
     'stopping is idempotent during concurrent calls and STOPPING or DEAD status',
     async () => {
       const password = 'abc123';
@@ -86,7 +89,7 @@ describe('stop', () => {
         fs,
         logger,
       });
-      const { exitCode } = await testBinUtils.pkStdio(
+      const agentProcess = await testBinUtils.pkSpawnSwitch(global.testCmd)(
         [
           'agent',
           'start',
@@ -105,19 +108,19 @@ describe('stop', () => {
           PK_PASSWORD: password,
         },
         dataDir,
+        logger,
       );
-      expect(exitCode).toBe(0);
       await status.waitFor('LIVE');
       // Simultaneous calls to stop must use pkExec
       const [agentStop1, agentStop2] = await Promise.all([
-        testBinUtils.pkExec(
+        testBinUtils.pkExecSwitch(global.testCmd)(
           ['agent', 'stop', '--password-file', passwordPath],
           {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
           },
           dataDir,
         ),
-        testBinUtils.pkExec(
+        testBinUtils.pkExecSwitch(global.testCmd)(
           ['agent', 'stop', '--password-file', passwordPath],
           {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -129,7 +132,7 @@ describe('stop', () => {
       // It's not reliable until file watching is implemented
       // So just 1 ms delay until sending another stop command
       await sleep(1);
-      const agentStop3 = await testBinUtils.pkStdio(
+      const agentStop3 = await testBinUtils.pkStdioSwitch(global.testCmd)(
         ['agent', 'stop', '--node-path', path.join(dataDir, 'polykey')],
         {
           PK_PASSWORD: password,
@@ -137,7 +140,7 @@ describe('stop', () => {
         dataDir,
       );
       await status.waitFor('DEAD');
-      const agentStop4 = await testBinUtils.pkStdio(
+      const agentStop4 = await testBinUtils.pkStdioSwitch(global.testCmd)(
         ['agent', 'stop', '--password-file', passwordPath],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -156,10 +159,11 @@ describe('stop', () => {
       }
       expect(agentStop3.exitCode).toBe(0);
       expect(agentStop4.exitCode).toBe(0);
+      agentProcess.kill();
     },
     global.defaultTimeout * 2,
   );
-  test(
+  runTestIfPlatforms('linux', 'docker')(
     'stopping starting agent results in error',
     async () => {
       const password = 'abc123';
@@ -173,7 +177,7 @@ describe('stop', () => {
         fs,
         logger,
       });
-      await testBinUtils.pkSpawn(
+      const agentProcess = await testBinUtils.pkSpawnSwitch(global.testCmd)(
         [
           'agent',
           'start',
@@ -196,7 +200,9 @@ describe('stop', () => {
         logger,
       );
       await status.waitFor('STARTING');
-      const { exitCode, stderr } = await testBinUtils.pkStdio(
+      const { exitCode, stderr } = await testBinUtils.pkStdioSwitch(
+        global.testCmd,
+      )(
         ['agent', 'stop', '--format', 'json'],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -207,7 +213,7 @@ describe('stop', () => {
         new binErrors.ErrorCLIPolykeyAgentStatus('agent is starting'),
       ]);
       await status.waitFor('LIVE');
-      await testBinUtils.pkStdio(
+      await testBinUtils.pkStdioSwitch(global.testCmd)(
         ['agent', 'stop'],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -216,14 +222,15 @@ describe('stop', () => {
         dataDir,
       );
       await status.waitFor('DEAD');
+      agentProcess.kill();
     },
     global.defaultTimeout * 2,
   );
-  test(
+  runTestIfPlatforms('linux', 'docker')(
     'stopping while unauthenticated does not stop',
     async () => {
       const password = 'abc123';
-      await testBinUtils.pkStdio(
+      const agentProcess = await testBinUtils.pkSpawnSwitch(global.testCmd)(
         [
           'agent',
           'start',
@@ -242,6 +249,7 @@ describe('stop', () => {
           PK_PASSWORD: password,
         },
         dataDir,
+        logger,
       );
       const status = new Status({
         statusPath: path.join(dataDir, 'polykey', config.defaults.statusBase),
@@ -253,7 +261,10 @@ describe('stop', () => {
         fs,
         logger,
       });
-      const { exitCode, stderr } = await testBinUtils.pkStdio(
+      await status.waitFor('LIVE');
+      const { exitCode, stderr } = await testBinUtils.pkStdioSwitch(
+        global.testCmd,
+      )(
         ['agent', 'stop', '--format', 'json'],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -265,11 +276,8 @@ describe('stop', () => {
         new clientErrors.ErrorClientAuthDenied(),
       ]);
       // Should still be LIVE
-      await sleep(500);
-      const statusInfo = await status.readStatus();
-      expect(statusInfo).toBeDefined();
-      expect(statusInfo?.status).toBe('LIVE');
-      await testBinUtils.pkStdio(
+      expect((await status.readStatus())?.status).toBe('LIVE');
+      await testBinUtils.pkStdioSwitch(global.testCmd)(
         ['agent', 'stop'],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -278,6 +286,7 @@ describe('stop', () => {
         dataDir,
       );
       await status.waitFor('DEAD');
+      agentProcess.kill();
     },
     global.defaultTimeout * 2,
   );

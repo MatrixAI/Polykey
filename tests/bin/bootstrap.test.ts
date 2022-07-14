@@ -1,4 +1,3 @@
-import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import readline from 'readline';
@@ -6,6 +5,7 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { errors as statusErrors } from '@/status';
 import { errors as bootstrapErrors } from '@/bootstrap';
 import * as testBinUtils from './utils';
+import { runTestIfPlatforms } from '../utils';
 
 describe('bootstrap', () => {
   const logger = new Logger('bootstrap test', LogLevel.WARN, [
@@ -23,13 +23,13 @@ describe('bootstrap', () => {
       recursive: true,
     });
   });
-  test(
+  runTestIfPlatforms('linux', 'docker')(
     'bootstraps node state',
     async () => {
       const password = 'password';
       const passwordPath = path.join(dataDir, 'password');
       await fs.promises.writeFile(passwordPath, password);
-      const { exitCode, stdout, stderr } = await testBinUtils.pkStdioSwitch(
+      const { exitCode, stdout } = await testBinUtils.pkStdioSwitch(
         global.testCmd,
       )(
         [
@@ -41,12 +41,10 @@ describe('bootstrap', () => {
           '--verbose',
         ],
         {
-          PK_TEST_DATA_PATH: dataDir,
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
         },
         dataDir,
       );
-      console.log(stderr);
       expect(exitCode).toBe(0);
       const recoveryCode = stdout.trim();
       expect(
@@ -56,7 +54,7 @@ describe('bootstrap', () => {
     },
     global.defaultTimeout * 2,
   );
-  test(
+  runTestIfPlatforms('linux', 'docker')(
     'bootstrapping occupied node state',
     async () => {
       const password = 'password';
@@ -77,7 +75,6 @@ describe('bootstrap', () => {
           'json',
         ],
         {
-          PK_TEST_DATA_PATH: dataDir,
           PK_PASSWORD: password,
         },
         dataDir,
@@ -100,7 +97,6 @@ describe('bootstrap', () => {
           '--verbose',
         ],
         {
-          PK_TEST_DATA_PATH: dataDir,
           PK_PASSWORD: password,
         },
         dataDir,
@@ -114,7 +110,7 @@ describe('bootstrap', () => {
     },
     global.defaultTimeout * 2,
   );
-  test(
+  runTestIfPlatforms('linux', 'docker')(
     'concurrent bootstrapping results in 1 success',
     async () => {
       const password = 'password';
@@ -129,7 +125,6 @@ describe('bootstrap', () => {
             'json',
           ],
           {
-            PK_TEST_DATA_PATH: dataDir,
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
             PK_PASSWORD: password,
           },
@@ -146,7 +141,6 @@ describe('bootstrap', () => {
             'json',
           ],
           {
-            PK_TEST_DATA_PATH: dataDir,
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
             PK_PASSWORD: password,
           },
@@ -197,7 +191,7 @@ describe('bootstrap', () => {
     },
     global.defaultTimeout * 2,
   );
-  test(
+  runTestIfPlatforms('linux', 'docker')(
     'bootstrap when interrupted, requires fresh on next bootstrap',
     async () => {
       const password = 'password';
@@ -206,7 +200,6 @@ describe('bootstrap', () => {
       )(
         ['bootstrap', '--root-key-pair-bits', '1024', '--verbose'],
         {
-          PK_TEST_DATA_PATH: dataDir,
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
           PK_PASSWORD: password,
         },
@@ -243,7 +236,6 @@ describe('bootstrap', () => {
           'json',
         ],
         {
-          PK_TEST_DATA_PATH: dataDir,
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
           PK_PASSWORD: password,
         },
@@ -262,7 +254,6 @@ describe('bootstrap', () => {
       )(
         ['bootstrap', '--root-key-pair-bits', '1024', '--fresh', '--verbose'],
         {
-          PK_TEST_DATA_PATH: dataDir,
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
           PK_PASSWORD: password,
         },

@@ -8,6 +8,7 @@ import config from '@/config';
 import * as errors from '@/errors';
 import * as testBinUtils from '../utils';
 import * as testUtils from '../../utils';
+import { runTestIfPlatforms } from '../../utils';
 
 /**
  * Mock prompts module which is used prompt for password
@@ -29,99 +30,110 @@ describe('lockall', () => {
   afterAll(async () => {
     await globalAgentClose();
   });
-  test('lockall deletes the session token', async () => {
-    await testBinUtils.pkStdio(
-      ['agent', 'unlock'],
-      {
-        PK_NODE_PATH: globalAgentDir,
-        PK_PASSWORD: globalAgentPassword,
-      },
-      globalAgentDir,
-    );
-    const { exitCode } = await testBinUtils.pkStdio(
-      ['agent', 'lockall'],
-      {
-        PK_NODE_PATH: globalAgentDir,
-      },
-      globalAgentDir,
-    );
-    expect(exitCode).toBe(0);
-    const session = await Session.createSession({
-      sessionTokenPath: path.join(globalAgentDir, config.defaults.tokenBase),
-      fs,
-      logger,
-    });
-    expect(await session.readToken()).toBeUndefined();
-    await session.stop();
-  });
-  test('lockall ensures reauthentication is required', async () => {
-    const password = globalAgentPassword;
-    await testBinUtils.pkStdio(
-      ['agent', 'unlock'],
-      {
-        PK_NODE_PATH: globalAgentDir,
-        PK_PASSWORD: globalAgentPassword,
-      },
-      globalAgentDir,
-    );
-    await testBinUtils.pkStdio(
-      ['agent', 'lockall'],
-      {
-        PK_NODE_PATH: globalAgentDir,
-      },
-      globalAgentDir,
-    );
-    // Token is deleted, reauthentication is required
-    mockedPrompts.mockClear();
-    mockedPrompts.mockImplementation(async (_opts: any) => {
-      return { password };
-    });
-    await testBinUtils.pkStdio(
-      ['agent', 'status'],
-      {
-        PK_NODE_PATH: globalAgentDir,
-      },
-      globalAgentDir,
-    );
-    // Prompted for password 1 time
-    expect(mockedPrompts.mock.calls.length).toBe(1);
-    mockedPrompts.mockClear();
-  });
-  test('lockall causes old session tokens to fail', async () => {
-    await testBinUtils.pkStdio(
-      ['agent', 'unlock'],
-      {
-        PK_NODE_PATH: globalAgentDir,
-        PK_PASSWORD: globalAgentPassword,
-      },
-      globalAgentDir,
-    );
-    const session = await Session.createSession({
-      sessionTokenPath: path.join(globalAgentDir, config.defaults.tokenBase),
-      fs,
-      logger,
-    });
-    const token = await session.readToken();
-    await session.stop();
-    await testBinUtils.pkStdio(
-      ['agent', 'lockall'],
-      {
-        PK_NODE_PATH: globalAgentDir,
-        PK_PASSWORD: globalAgentPassword,
-      },
-      globalAgentDir,
-    );
-    // Old token is invalid
-    const { exitCode, stderr } = await testBinUtils.pkStdio(
-      ['agent', 'status', '--format', 'json'],
-      {
-        PK_NODE_PATH: globalAgentDir,
-        PK_TOKEN: token,
-      },
-      globalAgentDir,
-    );
-    testBinUtils.expectProcessError(exitCode, stderr, [
-      new errors.ErrorClientAuthDenied(),
-    ]);
-  });
+  runTestIfPlatforms('linux', 'docker')(
+    'lockall deletes the session token',
+    async () => {
+      await testBinUtils.pkStdioSwitch(global.testCmd)(
+        ['agent', 'unlock'],
+        {
+          PK_NODE_PATH: globalAgentDir,
+          PK_PASSWORD: globalAgentPassword,
+        },
+        globalAgentDir,
+      );
+      const { exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+        ['agent', 'lockall'],
+        {
+          PK_NODE_PATH: globalAgentDir,
+        },
+        globalAgentDir,
+      );
+      expect(exitCode).toBe(0);
+      const session = await Session.createSession({
+        sessionTokenPath: path.join(globalAgentDir, config.defaults.tokenBase),
+        fs,
+        logger,
+      });
+      expect(await session.readToken()).toBeUndefined();
+      await session.stop();
+    },
+  );
+  runTestIfPlatforms('linux', 'docker')(
+    'lockall ensures reauthentication is required',
+    async () => {
+      const password = globalAgentPassword;
+      await testBinUtils.pkStdioSwitch(global.testCmd)(
+        ['agent', 'unlock'],
+        {
+          PK_NODE_PATH: globalAgentDir,
+          PK_PASSWORD: globalAgentPassword,
+        },
+        globalAgentDir,
+      );
+      await testBinUtils.pkStdioSwitch(global.testCmd)(
+        ['agent', 'lockall'],
+        {
+          PK_NODE_PATH: globalAgentDir,
+        },
+        globalAgentDir,
+      );
+      // Token is deleted, reauthentication is required
+      mockedPrompts.mockClear();
+      mockedPrompts.mockImplementation(async (_opts: any) => {
+        return { password };
+      });
+      await testBinUtils.pkStdio(
+        ['agent', 'status'],
+        {
+          PK_NODE_PATH: globalAgentDir,
+        },
+        globalAgentDir,
+      );
+      // Prompted for password 1 time
+      expect(mockedPrompts.mock.calls.length).toBe(1);
+      mockedPrompts.mockClear();
+    },
+  );
+  runTestIfPlatforms('linux', 'docker')(
+    'lockall causes old session tokens to fail',
+    async () => {
+      await testBinUtils.pkStdioSwitch(global.testCmd)(
+        ['agent', 'unlock'],
+        {
+          PK_NODE_PATH: globalAgentDir,
+          PK_PASSWORD: globalAgentPassword,
+        },
+        globalAgentDir,
+      );
+      const session = await Session.createSession({
+        sessionTokenPath: path.join(globalAgentDir, config.defaults.tokenBase),
+        fs,
+        logger,
+      });
+      const token = await session.readToken();
+      await session.stop();
+      await testBinUtils.pkStdioSwitch(global.testCmd)(
+        ['agent', 'lockall'],
+        {
+          PK_NODE_PATH: globalAgentDir,
+          PK_PASSWORD: globalAgentPassword,
+        },
+        globalAgentDir,
+      );
+      // Old token is invalid
+      const { exitCode, stderr } = await testBinUtils.pkStdioSwitch(
+        global.testCmd,
+      )(
+        ['agent', 'status', '--format', 'json'],
+        {
+          PK_NODE_PATH: globalAgentDir,
+          PK_TOKEN: token,
+        },
+        globalAgentDir,
+      );
+      testBinUtils.expectProcessError(exitCode, stderr, [
+        new errors.ErrorClientAuthDenied(),
+      ]);
+    },
+  );
 });
