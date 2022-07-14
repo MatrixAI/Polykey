@@ -8,15 +8,13 @@ import { errors as bootstrapErrors } from '@/bootstrap';
 import * as testBinUtils from './utils';
 
 describe('bootstrap', () => {
-  const logger = new Logger('bootstrap test', LogLevel.INFO, [
+  const logger = new Logger('bootstrap test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
   let dataDir: string;
   beforeEach(async () => {
-    // fixme: use a global for the tmp path override
-    const tmpdir = global.testPlatform == 'DOCKER' ? process.env.SHARED_PATH! : os.tmpdir();
     dataDir = await fs.promises.mkdtemp(
-      path.join(tmpdir, 'polykey-test-'),
+      path.join(global.tmpDir, 'polykey-test-'),
     );
   });
   afterEach(async () => {

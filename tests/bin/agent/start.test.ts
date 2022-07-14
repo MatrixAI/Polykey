@@ -18,10 +18,8 @@ describe('start', () => {
   const logger = new Logger('start test', LogLevel.WARN, [new StreamHandler()]);
   let dataDir: string;
   beforeEach(async () => {
-    // fixme: use a global for the tmp path override
-    const tmpdir = global.testPlatform == 'DOCKER' ? process.env.SHARED_PATH! : os.tmpdir();
     dataDir = await fs.promises.mkdtemp(
-      path.join(tmpdir, 'polykey-test-'),
+      path.join(global.tmpDir, 'polykey-test-'),
     );
   });
   afterEach(async () => {
