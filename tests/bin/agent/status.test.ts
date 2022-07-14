@@ -1,4 +1,3 @@
-import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
@@ -7,6 +6,7 @@ import * as nodesUtils from '@/nodes/utils';
 import config from '@/config';
 import * as testBinUtils from '../utils';
 import * as testUtils from '../../utils';
+import { runTestIfPlatforms } from '../../utils';
 
 describe('status', () => {
   const logger = new Logger('status test', LogLevel.WARN, [
@@ -15,7 +15,7 @@ describe('status', () => {
   let dataDir: string;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
-      path.join(os.tmpdir(), 'polykey-test-'),
+      path.join(global.tmpDir, 'polykey-test-'),
     );
   });
   afterEach(async () => {
@@ -24,7 +24,7 @@ describe('status', () => {
       recursive: true,
     });
   });
-  test(
+  runTestIfPlatforms('linux', 'docker')(
     'status on STARTING, STOPPING, DEAD agent',
     async () => {
       // This test must create its own agent process
@@ -39,7 +39,7 @@ describe('status', () => {
         fs,
         logger,
       });
-      const agentProcess = await testBinUtils.pkSpawn(
+      const agentProcess = await testBinUtils.pkSpawnSwitch(global.testCmd)(
         [
           'agent',
           'start',
@@ -62,7 +62,7 @@ describe('status', () => {
       );
       await status.waitFor('STARTING');
       let exitCode, stdout;
-      ({ exitCode, stdout } = await testBinUtils.pkStdio(
+      ({ exitCode, stdout } = await testBinUtils.pkSpawnSwitch(global.testCmd)(
         ['agent', 'status', '--format', 'json'],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -81,7 +81,7 @@ describe('status', () => {
       agentProcess.kill('SIGTERM');
       // Cannot wait for STOPPING because waitFor polling may miss the transition
       await status.waitFor('DEAD');
-      ({ exitCode, stdout } = await testBinUtils.pkStdio(
+      ({ exitCode, stdout } = await testBinUtils.pkStdioSwitch(global.testCmd)(
         ['agent', 'status', '--format', 'json'],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -96,7 +96,7 @@ describe('status', () => {
         status: expect.stringMatching(/STOPPING|DEAD/),
       });
       await agentProcessExit;
-      ({ exitCode, stdout } = await testBinUtils.pkStdio(
+      ({ exitCode, stdout } = await testBinUtils.pkStdioSwitch(global.testCmd)(
         ['agent', 'status', '--format', 'json'],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -111,8 +111,8 @@ describe('status', () => {
     },
     global.defaultTimeout * 2,
   );
-  test('status on missing agent', async () => {
-    const { exitCode, stdout } = await testBinUtils.pkStdio(
+  runTestIfPlatforms('linux', 'docker')('status on missing agent', async () => {
+    const { exitCode, stdout } = await testBinUtils.pkStdioSwitch(global.testCmd)(
       ['agent', 'status', '--format', 'json'],
       {
         PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -134,7 +134,7 @@ describe('status', () => {
     afterAll(async () => {
       await globalAgentClose();
     });
-    test('status on LIVE agent', async () => {
+    runTestIfPlatforms('linux', 'docker')('status on LIVE agent', async () => {
       const status = new Status({
         statusPath: path.join(globalAgentDir, config.defaults.statusBase),
         statusLockPath: path.join(
@@ -145,7 +145,7 @@ describe('status', () => {
         logger,
       });
       const statusInfo = (await status.readStatus())!;
-      const { exitCode, stdout } = await testBinUtils.pkStdio(
+      const { exitCode, stdout } = await testBinUtils.pkStdioSwitch(global.testCmd)(
         ['agent', 'status', '--format', 'json', '--verbose'],
         {
           PK_NODE_PATH: globalAgentDir,
@@ -170,7 +170,7 @@ describe('status', () => {
         rootCertPem: expect.any(String),
       });
     });
-    test('status on remote LIVE agent', async () => {
+    runTestIfPlatforms('linux', 'docker')('status on remote LIVE agent', async () => {
       const passwordPath = path.join(dataDir, 'password');
       await fs.promises.writeFile(passwordPath, globalAgentPassword);
       const status = new Status({
@@ -184,7 +184,7 @@ describe('status', () => {
       });
       const statusInfo = (await status.readStatus())!;
       // This still needs a `nodePath` because of session token path
-      const { exitCode, stdout } = await testBinUtils.pkStdio([
+      const { exitCode, stdout } = await testBinUtils.pkStdioSwitch(global.testCmd)([
         'agent',
         'status',
         '--node-path',
