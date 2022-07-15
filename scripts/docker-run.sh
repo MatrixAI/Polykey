@@ -8,5 +8,7 @@ exec docker run -i \
     --mount type=bind,src="$PK_TEST_DATA_PATH",dst="$PK_TEST_DATA_PATH" \
     --env PK_PASSWORD \
     --env PK_NODE_PATH \
-    --env PK_RECOVERY_CODE "$PK_TEST_DOCKER_IMAGE" \
+    --env PK_RECOVERY_CODE \
+    --env PK_TOKEN \
+    "$PK_TEST_DOCKER_IMAGE" \
     polykey "$@"
