@@ -11,6 +11,7 @@ class CommandBootstrap extends CommandPolykey {
     this.addOption(binOptions.recoveryCodeFile);
     this.addOption(binOptions.rootKeyPairBits);
     this.addOption(binOptions.fresh);
+    this.addOption(binOptions.rootKeyFile);
     this.action(async (options) => {
       const bootstrapUtils = await import('../../bootstrap/utils');
       const password = await binProcessors.processNewPassword(
@@ -21,19 +22,23 @@ class CommandBootstrap extends CommandPolykey {
         options.recoveryCodeFile,
         this.fs,
       );
+      const privateKeyPem = await binProcessors.processRootKey(
+        options.rootKeyFile,
+      );
       const recoveryCodeOut = await bootstrapUtils.bootstrapState({
         password,
         nodePath: options.nodePath,
         keysConfig: {
           rootKeyPairBits: options.rootKeyPairBits,
           recoveryCode: recoveryCodeIn,
+          privateKeyPemOverride: privateKeyPem,
         },
         fresh: options.fresh,
         fs: this.fs,
         logger: this.logger,
       });
       this.logger.info(`Bootstrapped ${options.nodePath}`);
-      process.stdout.write(recoveryCodeOut + '\n');
+      if (recoveryCodeOut != null) process.stdout.write(recoveryCodeOut + '\n');
     });
   }
 }

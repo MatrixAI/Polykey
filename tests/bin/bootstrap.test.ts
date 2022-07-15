@@ -6,6 +6,7 @@ import { errors as statusErrors } from '@/status';
 import { errors as bootstrapErrors } from '@/bootstrap';
 import * as testBinUtils from './utils';
 import { runTestIfPlatforms } from '../utils';
+import * as keysUtils from '../../src/keys/utils';
 
 describe('bootstrap', () => {
   const logger = new Logger('bootstrap test', LogLevel.WARN, [
@@ -51,6 +52,49 @@ describe('bootstrap', () => {
         recoveryCode.split(' ').length === 12 ||
           recoveryCode.split(' ').length === 24,
       ).toBe(true);
+    },
+    global.defaultTimeout * 2,
+  );
+  runTestIfPlatforms('linux', 'docker').only(
+    'bootstraps node state from provided private key',
+    async () => {
+      const password = 'password';
+      const passwordPath = path.join(dataDir, 'password');
+      await fs.promises.writeFile(passwordPath, password);
+      const keyPair = await keysUtils.generateKeyPair(4096);
+      const privateKeyPem = keysUtils.privateKeyToPem(keyPair.privateKey);
+      const privateKeyPath = path.join(dataDir, 'private.pem');
+      await fs.promises.writeFile(privateKeyPath, privateKeyPem, {
+        encoding: 'utf-8',
+      });
+      const { exitCode: exitCode1 } = await testBinUtils.pkStdioSwitch(
+        global.testCmd,
+      )(
+        [
+          'bootstrap',
+          '--password-file',
+          passwordPath,
+          '--verbose',
+          '--root-key-file',
+          privateKeyPath,
+        ],
+        {
+          PK_NODE_PATH: path.join(dataDir, 'polykey'),
+        },
+        dataDir,
+      );
+      expect(exitCode1).toBe(0);
+      const { exitCode: exitCode2 } = await testBinUtils.pkStdioSwitch(
+        global.testCmd,
+      )(
+        ['bootstrap', '--password-file', passwordPath, '--verbose'],
+        {
+          PK_NODE_PATH: path.join(dataDir, 'polykey2'),
+          PK_ROOT_KEY: privateKeyPem,
+        },
+        dataDir,
+      );
+      expect(exitCode2).toBe(0);
     },
     global.defaultTimeout * 2,
   );
