@@ -1,5 +1,5 @@
 import type { FileSystem } from '../types';
-import type { RecoveryCode } from '../keys/types';
+import type { RecoveryCode, PrivateKeyPem } from '../keys/types';
 import path from 'path';
 import Logger from '@matrixai/logger';
 import { DB } from '@matrixai/db';
@@ -40,11 +40,12 @@ async function bootstrapState({
     rootCertDuration?: number;
     dbKeyBits?: number;
     recoveryCode?: RecoveryCode;
+    privateKeyPemOverride?: PrivateKeyPem;
   };
   fresh?: boolean;
   fs?: FileSystem;
   logger?: Logger;
-}): Promise<RecoveryCode> {
+}): Promise<RecoveryCode | undefined> {
   const umask = 0o077;
   logger.info(`Setting umask to ${umask.toString(8).padStart(3, '0')}`);
   process.umask(umask);

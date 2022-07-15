@@ -12,12 +12,14 @@ import type { GestaltAction, GestaltId } from '../gestalts/types';
 import type { VaultAction, VaultId } from '../vaults/types';
 import type { Host, Hostname, Port } from '../network/types';
 import type { ClaimId } from '../claims/types';
+import type { PrivateKey } from '../keys/types';
 import * as validationErrors from './errors';
 import * as nodesUtils from '../nodes/utils';
 import * as gestaltsUtils from '../gestalts/utils';
 import * as vaultsUtils from '../vaults/utils';
 import * as networkUtils from '../network/utils';
 import * as claimsUtils from '../claims/utils';
+import * as keysUtils from '../keys/utils';
 import config from '../config';
 
 function parseInteger(data: any): number {
@@ -259,6 +261,21 @@ function parseSeedNodes(data: any): [SeedNodes, boolean] {
   return [seedNodes, defaults];
 }
 
+function parsePrivateKeyPem(data: any): PrivateKey {
+  if (typeof data !== 'string') {
+    throw new validationErrors.ErrorParse('Private key Pem must be a string');
+  }
+  let privateKey: PrivateKey;
+  try {
+    privateKey = keysUtils.privateKeyFromPem(data);
+  } catch (e) {
+    throw new validationErrors.ErrorParse(
+      'Must provide a valid private key Pem',
+    );
+  }
+  return privateKey;
+}
+
 export {
   parseInteger,
   parseNumber,
@@ -276,4 +293,5 @@ export {
   parsePort,
   parseNetwork,
   parseSeedNodes,
+  parsePrivateKeyPem,
 };

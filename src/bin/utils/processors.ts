@@ -1,5 +1,5 @@
 import type { FileSystem } from '../../types';
-import type { RecoveryCode } from '../../keys/types';
+import type { RecoveryCode, PrivateKeyPem } from '../../keys/types';
 import type { NodeId } from '../../nodes/types';
 import type { Host, Port } from '../../network/types';
 import type {
@@ -403,6 +403,29 @@ async function processAuthentication(
   return meta;
 }
 
+async function processPrivateKeyFile(
+  privateKeyFile: string,
+  fs: FileSystem = require('fs'),
+): Promise<PrivateKeyPem> {
+  let privateKeyPem: string;
+  try {
+    privateKeyPem = (
+      await fs.promises.readFile(privateKeyFile, 'utf-8')
+    ).trim();
+  } catch (e) {
+    throw new binErrors.ErrorCLIPrivateKeyFileRead(e.message, {
+      data: {
+        errno: e.errno,
+        syscall: e.syscall,
+        code: e.code,
+        path: e.path,
+      },
+      cause: e,
+    });
+  }
+  return privateKeyPem;
+}
+
 export {
   promptPassword,
   promptNewPassword,
@@ -412,4 +435,5 @@ export {
   processClientOptions,
   processClientStatus,
   processAuthentication,
+  processPrivateKeyFile,
 };

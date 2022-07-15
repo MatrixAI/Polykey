@@ -37,6 +37,7 @@ class CommandStart extends CommandPolykey {
     this.addOption(binOptions.backgroundOutFile);
     this.addOption(binOptions.backgroundErrFile);
     this.addOption(binOptions.fresh);
+    this.addOption(binOptions.privateKeyFile);
     this.action(async (options) => {
       options.clientHost =
         options.clientHost ?? config.defaults.networkConfig.clientHost;
@@ -88,12 +89,17 @@ class CommandStart extends CommandPolykey {
       const [seedNodes, defaults] = options.seedNodes;
       let seedNodes_ = seedNodes;
       if (defaults) seedNodes_ = { ...options.network, ...seedNodes };
+      const privateKeyPem =
+        options.privateKeyFile != null
+          ? await binProcessors.processPrivateKeyFile(options.privateKeyFile)
+          : undefined;
       const agentConfig = {
         password,
         nodePath: options.nodePath,
         keysConfig: {
           rootKeyPairBits: options.rootKeyPairBits,
           recoveryCode: recoveryCodeIn,
+          privateKeyPemOverride: privateKeyPem,
         },
         proxyConfig: {
           connConnectTime: options.connectionTimeout,

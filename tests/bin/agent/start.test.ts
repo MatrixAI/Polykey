@@ -10,6 +10,7 @@ import PolykeyAgent from '@/PolykeyAgent';
 import Status from '@/status/Status';
 import * as statusErrors from '@/status/errors';
 import config from '@/config';
+import * as keysUtils from '@/keys/utils';
 import * as testBinUtils from '../utils';
 import * as testUtils from '../../utils';
 import { runDescribeIfPlatforms, runTestIfPlatforms } from '../../utils';
@@ -735,6 +736,53 @@ describe('start', () => {
       expect(statusInfo.data.clientHost).toBe(clientHost);
       expect(statusInfo.data.clientPort).toBe(clientPort);
       agentProcess.kill('SIGTERM');
+      // Check for graceful exit
+      await status.waitFor('DEAD');
+    },
+    global.defaultTimeout * 2,
+  );
+  runTestIfPlatforms('linux', 'docker')(
+    'start with --private-key override',
+    async () => {
+      const status = new Status({
+        statusPath: path.join(dataDir, 'polykey', config.defaults.statusBase),
+        statusLockPath: path.join(
+          dataDir,
+          'polykey',
+          config.defaults.statusLockBase,
+        ),
+        fs,
+        logger,
+      });
+      const password = 'abc123';
+      // Make sure these ports are not occupied
+      const rootKeys = await keysUtils.generateKeyPair(4096);
+      const privateKeyPem = keysUtils.privateKeyToPem(rootKeys.privateKey);
+      const nodeId = keysUtils.publicKeyToNodeId(rootKeys.publicKey);
+      const privateKeyPath = path.join(dataDir, 'private.pem');
+      await fs.promises.writeFile(privateKeyPath, privateKeyPem, {
+        encoding: 'utf-8',
+      });
+      const agentProcess = await testBinUtils.pkSpawnSwitch(global.testCmd)(
+        [
+          'agent',
+          'start',
+          '--workers',
+          '0',
+          '--verbose',
+          '--private-key-file',
+          privateKeyPath,
+        ],
+        {
+          PK_NODE_PATH: path.join(dataDir, 'polykey'),
+          PK_PASSWORD: password,
+        },
+        dataDir,
+        logger,
+      );
+      const statusInfo = await status.waitFor('LIVE');
+      expect(nodeId.equals(statusInfo.data.nodeId)).toBe(true);
+      agentProcess.kill('SIGINT');
       // Check for graceful exit
       await status.waitFor('DEAD');
     },

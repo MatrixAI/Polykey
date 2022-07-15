@@ -29,6 +29,11 @@ class ErrorCLIRecoveryCodeFileRead<T> extends ErrorCLI<T> {
   exitCode = sysexits.NOINPUT;
 }
 
+class ErrorCLIPrivateKeyFileRead<T> extends ErrorCLI<T> {
+  static description = 'Failed to read private key Pem file';
+  exitCode = sysexits.NOINPUT;
+}
+
 class ErrorCLIFileRead<T> extends ErrorCLI<T> {
   static description = 'Failed to read file';
   exitCode = sysexits.NOINPUT;
@@ -61,6 +66,7 @@ export {
   ErrorCLIPasswordMissing,
   ErrorCLIPasswordFileRead,
   ErrorCLIRecoveryCodeFileRead,
+  ErrorCLIPrivateKeyFileRead,
   ErrorCLIFileRead,
   ErrorCLIPolykeyAgentStatus,
   ErrorCLIPolykeyAgentProcess,

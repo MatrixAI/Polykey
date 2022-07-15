@@ -6,7 +6,7 @@ import type {
   CertificatePemChain,
   RecoveryCode,
   KeyManagerChangeData,
-  PrivateKey,
+  PrivateKeyPem,
 } from './types';
 import type { FileSystem } from '../types';
 import type { NodeId } from '../nodes/types';
@@ -41,7 +41,7 @@ class KeyManager {
     fs = require('fs'),
     logger = new Logger(this.name),
     recoveryCode,
-    privateKeyOverride,
+    privateKeyPemOverride,
     fresh = false,
   }: {
     keysPath: string;
@@ -53,7 +53,7 @@ class KeyManager {
     fs?: FileSystem;
     logger?: Logger;
     recoveryCode?: RecoveryCode;
-    privateKeyOverride?: PrivateKey;
+    privateKeyPemOverride?: PrivateKeyPem;
     fresh?: boolean;
   }): Promise<KeyManager> {
     logger.info(`Creating ${this.name}`);
@@ -70,7 +70,7 @@ class KeyManager {
     await keyManager.start({
       password,
       recoveryCode,
-      privateKeyOverride,
+      privateKeyPemOverride,
       fresh,
     });
     logger.info(`Created ${this.name}`);
@@ -138,12 +138,12 @@ class KeyManager {
   public async start({
     password,
     recoveryCode,
-    privateKeyOverride,
+    privateKeyPemOverride,
     fresh = false,
   }: {
     password: string;
     recoveryCode?: RecoveryCode;
-    privateKeyOverride?: PrivateKey;
+    privateKeyPemOverride?: PrivateKeyPem;
     fresh?: boolean;
   }): Promise<void> {
     this.logger.info(`Starting ${this.constructor.name}`);
@@ -166,7 +166,7 @@ class KeyManager {
       password,
       this.rootKeyPairBits,
       recoveryCode,
-      privateKeyOverride,
+      privateKeyPemOverride,
     );
     const rootCert = await this.setupRootCert(
       rootKeyPair,
@@ -597,18 +597,18 @@ class KeyManager {
 
   /**
    * Generates and writes the encrypted keypair to a the root key file.
-   * If privateKeyOverride is provided then key generation is skipped in favor of the provided key.
-   * If state already exists the privateKeyOverride is ignored.
+   * If privateKeyPemOverride is provided then key generation is skipped in favor of the provided key.
+   * If state already exists the privateKeyPemOverride is ignored.
    * @param password
    * @param bits - Bit-width of the generated key.
    * @param recoveryCode - Code to generate the key from.
-   * @param privateKeyOverride - Override generation with a provided private key.
+   * @param privateKeyPemOverride - Override generation with a provided private key.
    */
   protected async setupRootKeyPair(
     password: string,
     bits: number = 4096,
     recoveryCode: RecoveryCode | undefined,
-    privateKeyOverride: PrivateKey | undefined,
+    privateKeyPemOverride: PrivateKeyPem | undefined,
   ): Promise<[KeyPair, RecoveryCode | undefined]> {
     let rootKeyPair: KeyPair;
     let recoveryCodeNew: RecoveryCode | undefined;
@@ -627,10 +627,11 @@ class KeyManager {
       }
       return [rootKeyPair, undefined];
     } else {
-      if (privateKeyOverride != null) {
+      if (privateKeyPemOverride != null) {
         this.logger.info('Using provided root key pair');
-        const publicKey = keysUtils.publicKeyFromPrivateKey(privateKeyOverride);
-        rootKeyPair = { privateKey: privateKeyOverride, publicKey };
+        const privateKey = keysUtils.privateKeyFromPem(privateKeyPemOverride);
+        const publicKey = keysUtils.publicKeyFromPrivateKey(privateKey);
+        rootKeyPair = { privateKey, publicKey };
         await this.writeRootKeyPair(rootKeyPair, password);
         return [rootKeyPair, undefined];
       }
