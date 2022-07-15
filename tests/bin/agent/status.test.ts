@@ -62,7 +62,7 @@ describe('status', () => {
       );
       await status.waitFor('STARTING');
       let exitCode, stdout;
-      ({ exitCode, stdout } = await testBinUtils.pkSpawnSwitch(global.testCmd)(
+      ({ exitCode, stdout } = await testBinUtils.pkStdioSwitch(global.testCmd)(
         ['agent', 'status', '--format', 'json'],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -74,7 +74,7 @@ describe('status', () => {
       // If the command was slow, it may have become LIVE already
       expect(JSON.parse(stdout)).toMatchObject({
         status: expect.stringMatching(/STARTING|LIVE/),
-        pid: agentProcess.pid,
+        pid: expect.any(Number),
       });
       await status.waitFor('LIVE');
       const agentProcessExit = testBinUtils.processExit(agentProcess);
@@ -112,12 +112,11 @@ describe('status', () => {
     global.defaultTimeout * 2,
   );
   runTestIfPlatforms('linux', 'docker')('status on missing agent', async () => {
-    const { exitCode, stdout } = await testBinUtils.pkStdioSwitch(global.testCmd)(
-      ['agent', 'status', '--format', 'json'],
-      {
-        PK_NODE_PATH: path.join(dataDir, 'polykey'),
-      },
-    );
+    const { exitCode, stdout } = await testBinUtils.pkStdioSwitch(
+      global.testCmd,
+    )(['agent', 'status', '--format', 'json'], {
+      PK_NODE_PATH: path.join(dataDir, 'polykey'),
+    });
     expect(exitCode).toBe(0);
     expect(JSON.parse(stdout)).toMatchObject({
       status: 'DEAD',
@@ -145,7 +144,9 @@ describe('status', () => {
         logger,
       });
       const statusInfo = (await status.readStatus())!;
-      const { exitCode, stdout } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+      const { exitCode, stdout } = await testBinUtils.pkStdioSwitch(
+        global.testCmd,
+      )(
         ['agent', 'status', '--format', 'json', '--verbose'],
         {
           PK_NODE_PATH: globalAgentDir,
@@ -170,53 +171,62 @@ describe('status', () => {
         rootCertPem: expect.any(String),
       });
     });
-    runTestIfPlatforms('linux', 'docker')('status on remote LIVE agent', async () => {
-      const passwordPath = path.join(dataDir, 'password');
-      await fs.promises.writeFile(passwordPath, globalAgentPassword);
-      const status = new Status({
-        statusPath: path.join(globalAgentDir, config.defaults.statusBase),
-        statusLockPath: path.join(
-          globalAgentDir,
-          config.defaults.statusLockBase,
-        ),
-        fs,
-        logger,
-      });
-      const statusInfo = (await status.readStatus())!;
-      // This still needs a `nodePath` because of session token path
-      const { exitCode, stdout } = await testBinUtils.pkStdioSwitch(global.testCmd)([
-        'agent',
-        'status',
-        '--node-path',
-        dataDir,
-        '--password-file',
-        passwordPath,
-        '--node-id',
-        nodesUtils.encodeNodeId(statusInfo.data.nodeId),
-        '--client-host',
-        statusInfo.data.clientHost,
-        '--client-port',
-        statusInfo.data.clientPort.toString(),
-        '--format',
-        'json',
-        '--verbose',
-      ]);
-      expect(exitCode).toBe(0);
-      expect(JSON.parse(stdout)).toMatchObject({
-        status: 'LIVE',
-        pid: expect.any(Number),
-        nodeId: nodesUtils.encodeNodeId(statusInfo.data.nodeId),
-        clientHost: statusInfo.data.clientHost,
-        clientPort: statusInfo.data.clientPort,
-        proxyHost: statusInfo.data.proxyHost,
-        proxyPort: statusInfo.data.proxyPort,
-        agentHost: expect.any(String),
-        agentPort: expect.any(Number),
-        forwardHost: expect.any(String),
-        forwardPort: expect.any(Number),
-        rootPublicKeyPem: expect.any(String),
-        rootCertPem: expect.any(String),
-      });
-    });
+    runTestIfPlatforms('linux', 'docker')(
+      'status on remote LIVE agent',
+      async () => {
+        const passwordPath = path.join(dataDir, 'password');
+        await fs.promises.writeFile(passwordPath, globalAgentPassword);
+        const status = new Status({
+          statusPath: path.join(globalAgentDir, config.defaults.statusBase),
+          statusLockPath: path.join(
+            globalAgentDir,
+            config.defaults.statusLockBase,
+          ),
+          fs,
+          logger,
+        });
+        const statusInfo = (await status.readStatus())!;
+        // This still needs a `nodePath` because of session token path
+        const { exitCode, stdout } = await testBinUtils.pkStdioSwitch(
+          global.testCmd,
+        )(
+          [
+            'agent',
+            'status',
+            '--node-path',
+            dataDir,
+            '--password-file',
+            passwordPath,
+            '--node-id',
+            nodesUtils.encodeNodeId(statusInfo.data.nodeId),
+            '--client-host',
+            statusInfo.data.clientHost,
+            '--client-port',
+            statusInfo.data.clientPort.toString(),
+            '--format',
+            'json',
+            '--verbose',
+          ],
+          {},
+          dataDir,
+        );
+        expect(exitCode).toBe(0);
+        expect(JSON.parse(stdout)).toMatchObject({
+          status: 'LIVE',
+          pid: expect.any(Number),
+          nodeId: nodesUtils.encodeNodeId(statusInfo.data.nodeId),
+          clientHost: statusInfo.data.clientHost,
+          clientPort: statusInfo.data.clientPort,
+          proxyHost: statusInfo.data.proxyHost,
+          proxyPort: statusInfo.data.proxyPort,
+          agentHost: expect.any(String),
+          agentPort: expect.any(Number),
+          forwardHost: expect.any(String),
+          forwardPort: expect.any(Number),
+          rootPublicKeyPem: expect.any(String),
+          rootCertPem: expect.any(String),
+        });
+      },
+    );
   });
 });
