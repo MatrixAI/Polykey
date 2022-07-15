@@ -355,9 +355,10 @@ async function pkExecTarget(
   // (if not defined in the env) to ensure no attempted connections. A regular
   // PolykeyAgent is expected to initially connect to the mainnet seed nodes
   env['PK_SEED_NODES'] = env['PK_SEED_NODES'] ?? '';
+  const command = path.resolve(path.join(global.projectDir, cmd));
   return new Promise((resolve, reject) => {
     child_process.execFile(
-      cmd,
+      command,
       [...args],
       {
         env,

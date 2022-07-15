@@ -27,7 +27,7 @@ describe('stop', () => {
     'stop LIVE agent',
     async () => {
       const password = 'abc123';
-      const { exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+      const agentProcess = await testBinUtils.pkSpawnSwitch(global.testCmd)(
         [
           'agent',
           'start',
@@ -46,8 +46,8 @@ describe('stop', () => {
           PK_PASSWORD: password,
         },
         dataDir,
+        logger,
       );
-      expect(exitCode).toBe(0);
       const status = new Status({
         statusPath: path.join(dataDir, 'polykey', config.defaults.statusBase),
         statusLockPath: path.join(
@@ -58,6 +58,7 @@ describe('stop', () => {
         fs,
         logger,
       });
+      await status.waitFor('LIVE');
       await testBinUtils.pkStdioSwitch(global.testCmd)(
         ['agent', 'stop'],
         {
@@ -67,6 +68,8 @@ describe('stop', () => {
         dataDir,
       );
       await status.waitFor('DEAD');
+      await sleep(5000);
+      agentProcess.kill();
     },
     global.defaultTimeout * 2,
   );
@@ -86,7 +89,7 @@ describe('stop', () => {
         fs,
         logger,
       });
-      const { exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+      const agentProcess = await testBinUtils.pkSpawnSwitch(global.testCmd)(
         [
           'agent',
           'start',
@@ -105,8 +108,8 @@ describe('stop', () => {
           PK_PASSWORD: password,
         },
         dataDir,
+        logger,
       );
-      expect(exitCode).toBe(0);
       await status.waitFor('LIVE');
       // Simultaneous calls to stop must use pkExec
       const [agentStop1, agentStop2] = await Promise.all([
@@ -156,6 +159,7 @@ describe('stop', () => {
       }
       expect(agentStop3.exitCode).toBe(0);
       expect(agentStop4.exitCode).toBe(0);
+      agentProcess.kill();
     },
     global.defaultTimeout * 2,
   );
@@ -173,7 +177,7 @@ describe('stop', () => {
         fs,
         logger,
       });
-      await testBinUtils.pkSpawnSwitch(global.testCmd)(
+      const agentProcess = await testBinUtils.pkSpawnSwitch(global.testCmd)(
         [
           'agent',
           'start',
@@ -196,7 +200,9 @@ describe('stop', () => {
         logger,
       );
       await status.waitFor('STARTING');
-      const { exitCode, stderr } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+      const { exitCode, stderr } = await testBinUtils.pkStdioSwitch(
+        global.testCmd,
+      )(
         ['agent', 'stop', '--format', 'json'],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -216,6 +222,7 @@ describe('stop', () => {
         dataDir,
       );
       await status.waitFor('DEAD');
+      agentProcess.kill();
     },
     global.defaultTimeout * 2,
   );
@@ -223,7 +230,7 @@ describe('stop', () => {
     'stopping while unauthenticated does not stop',
     async () => {
       const password = 'abc123';
-      await testBinUtils.pkStdioSwitch(global.testCmd)(
+      const agentProcess = await testBinUtils.pkSpawnSwitch(global.testCmd)(
         [
           'agent',
           'start',
@@ -242,6 +249,7 @@ describe('stop', () => {
           PK_PASSWORD: password,
         },
         dataDir,
+        logger,
       );
       const status = new Status({
         statusPath: path.join(dataDir, 'polykey', config.defaults.statusBase),
@@ -253,7 +261,10 @@ describe('stop', () => {
         fs,
         logger,
       });
-      const { exitCode, stderr } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+      await status.waitFor('LIVE');
+      const { exitCode, stderr } = await testBinUtils.pkStdioSwitch(
+        global.testCmd,
+      )(
         ['agent', 'stop', '--format', 'json'],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -265,10 +276,7 @@ describe('stop', () => {
         new clientErrors.ErrorClientAuthDenied(),
       ]);
       // Should still be LIVE
-      await sleep(500);
-      const statusInfo = await status.readStatus();
-      expect(statusInfo).toBeDefined();
-      expect(statusInfo?.status).toBe('LIVE');
+      expect((await status.readStatus())?.status).toBe('LIVE');
       await testBinUtils.pkStdioSwitch(global.testCmd)(
         ['agent', 'stop'],
         {
@@ -278,6 +286,7 @@ describe('stop', () => {
         dataDir,
       );
       await status.waitFor('DEAD');
+      agentProcess.kill();
     },
     global.defaultTimeout * 2,
   );
