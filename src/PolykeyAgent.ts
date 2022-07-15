@@ -2,7 +2,7 @@ import type { FileSystem } from './types';
 import type { PolykeyWorkerManagerInterface } from './workers/types';
 import type { ConnectionData, Host, Port } from './network/types';
 import type { SeedNodes } from './nodes/types';
-import type { KeyManagerChangeData } from './keys/types';
+import type { KeyManagerChangeData, PrivateKey } from './keys/types';
 import path from 'path';
 import process from 'process';
 import Logger from '@matrixai/logger';
@@ -108,6 +108,7 @@ class PolykeyAgent {
       rootCertDuration?: number;
       dbKeyBits?: number;
       recoveryCode?: string;
+      privateKeyOverride?: PrivateKey;
     };
     proxyConfig?: {
       authToken?: string;
