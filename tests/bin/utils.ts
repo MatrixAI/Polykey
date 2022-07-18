@@ -574,17 +574,18 @@ function expectProcessError(
 /**
  *
  * @param cmd - Optional target command to run, usually `global.testCmd`
- * @param agentDir - Directory to run the agent in, must exist
  * @param privateKeyPem - Optional root key override to skip key generation
  * @param logger
  */
 async function setupTestAgent(
   cmd: string | undefined,
-  agentDir: string,
   privateKeyPem: PrivateKeyPem,
   logger: Logger,
-): Promise<{ agentStatus: StatusLive; agentStop: () => void }> {
-  const password = 'password';
+) {
+  const agentDir = await fs.promises.mkdtemp(
+    path.join(global.tmpDir, 'polykey-test-'),
+  );
+  const agentPassword = 'password';
   const agentProcess = await pkSpawnSwitch(cmd)(
     [
       'agent',
@@ -602,7 +603,7 @@ async function setupTestAgent(
       '--verbose',
     ],
     {
-      PK_PASSWORD: password,
+      PK_PASSWORD: agentPassword,
       PK_ROOT_KEY: privateKeyPem,
     },
     agentDir,
@@ -618,9 +619,18 @@ async function setupTestAgent(
     data: { ...data, nodeId: validationUtils.parseNodeId(data.nodeId) },
   };
   try {
-    return { agentStatus, agentStop: () => agentProcess.kill('SIGINT') };
+    return {
+      agentStatus,
+      agentClose: async () => {
+        agentProcess.kill();
+        await fs.promises.rm(agentDir, { recursive: true, force: true });
+      },
+      agentDir,
+      agentPassword,
+    };
   } catch (e) {
-    agentProcess.kill('SIGINT');
+    agentProcess.kill();
+    await fs.promises.rm(agentDir, { recursive: true, force: true });
     throw e;
   }
 }

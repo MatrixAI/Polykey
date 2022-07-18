@@ -832,9 +832,9 @@ describe('start', () => {
   runDescribeIfPlatforms('linux').only('start with global agent', () => {
     let agentDataDir;
     let agent1Status: StatusLive;
-    let agent1Stop: () => void;
+    let agent1Close: () => Promise<void>;
     let agent2Status: StatusLive;
-    let agent2Stop: () => void;
+    let agent2Close: () => Promise<void>;
     let seedNodeId1: NodeId;
     let seedNodeHost1: Host;
     let seedNodePort1: Port;
@@ -846,21 +846,15 @@ describe('start', () => {
       agentDataDir = await fs.promises.mkdtemp(
         path.join(global.tmpDir, 'polykey-test-'),
       );
-      const agent1Path = path.join(agentDataDir, 'agent1');
-      await fs.promises.mkdir(agent1Path);
-      ({ agentStatus: agent1Status, agentStop: agent1Stop } =
+      ({ agentStatus: agent1Status, agentClose: agent1Close } =
         await testBinUtils.setupTestAgent(
           undefined,
-          agent1Path,
           globalRootKeyPems[0],
           logger,
         ));
-      const agent2Path = path.join(agentDataDir, 'agent2');
-      await fs.promises.mkdir(agent2Path);
-      ({ agentStatus: agent2Status, agentStop: agent2Stop } =
+      ({ agentStatus: agent2Status, agentClose: agent2Close } =
         await testBinUtils.setupTestAgent(
           undefined,
-          agent2Path,
           globalRootKeyPems[1],
           logger,
         ));
@@ -870,10 +864,10 @@ describe('start', () => {
       seedNodeId2 = agent2Status.data.nodeId;
       seedNodeHost2 = agent2Status.data.proxyHost;
       seedNodePort2 = agent2Status.data.proxyPort;
-    }, globalThis.maxTimeout);
+    });
     afterEach(async () => {
-      agent1Stop();
-      agent2Stop();
+      await agent1Close();
+      await agent2Close();
       await fs.promises.rm(agentDataDir, {
         force: true,
         recursive: true,
