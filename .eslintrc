@@ -97,7 +97,6 @@
     "@typescript-eslint/no-non-null-assertion": 0,
     "@typescript-eslint/no-this-alias": 0,
     "@typescript-eslint/no-var-requires": 0,
-    "@typescript-eslint/ban-ts-comment": 0,
     "@typescript-eslint/no-empty-function": 0,
     "@typescript-eslint/no-empty-interface": 0,
     "@typescript-eslint/consistent-type-imports": ["error"],
@@ -144,12 +143,22 @@
         "trailingUnderscore": "allowSingleOrDouble"
       },
       {
+        "selector": "enumMember",
+        "format": ["PascalCase", "UPPER_CASE"]
+      },
+      {
         "selector": "objectLiteralProperty",
         "format": null
       },
       {
         "selector": "typeProperty",
         "format": null
+      }
+    ],
+    "@typescript-eslint/ban-ts-comment": [
+      "error",
+      {
+        "ts-ignore": "allow-with-description"
       }
     ]
   }
