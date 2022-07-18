@@ -69,8 +69,10 @@ rec {
     NIX_DONT_SET_RPATH = true;
     NIX_NO_SELF_RPATH = true;
     postInstall = ''
+      # Path to headers used by node-gyp for native addons
+      export npm_config_nodedir="${nodejs}"
       # This will setup the typescript build
-      npm --nodedir=${nodejs} run build
+      npm run build
     '';
   });
   pkgBuilds = {
