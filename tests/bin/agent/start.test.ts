@@ -1,19 +1,20 @@
 import type { RecoveryCode } from '@/keys/types';
 import type { StatusLive } from '@/status/types';
+import type { NodeId } from '@/nodes/types';
+import type { Host, Port } from '@/network/types';
 import path from 'path';
 import fs from 'fs';
 import readline from 'readline';
 import process from 'process';
 import * as jestMockProps from 'jest-mock-props';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import PolykeyAgent from '@/PolykeyAgent';
 import Status from '@/status/Status';
 import * as statusErrors from '@/status/errors';
 import config from '@/config';
 import * as keysUtils from '@/keys/utils';
 import * as testBinUtils from '../utils';
-import * as testUtils from '../../utils';
 import { runDescribeIfPlatforms, runTestIfPlatforms } from '../../utils';
+import { globalRootKeyPems } from '../../globalRootKeyPems';
 
 describe('start', () => {
   const logger = new Logger('start test', LogLevel.WARN, [new StreamHandler()]);
@@ -755,10 +756,12 @@ describe('start', () => {
         logger,
       });
       const password = 'abc123';
-      // Make sure these ports are not occupied
-      const rootKeys = await keysUtils.generateKeyPair(4096);
-      const privateKeyPem = keysUtils.privateKeyToPem(rootKeys.privateKey);
-      const nodeId = keysUtils.publicKeyToNodeId(rootKeys.publicKey);
+      const privateKeyPem = globalRootKeyPems[0];
+      const nodeId = keysUtils.publicKeyToNodeId(
+        keysUtils.publicKeyFromPrivateKey(
+          keysUtils.privateKeyFromPem(privateKeyPem),
+        ),
+      );
       const agentProcess = await testBinUtils.pkSpawnSwitch(global.testCmd)(
         ['agent', 'start', '--workers', '0', '--verbose'],
         {
@@ -791,10 +794,12 @@ describe('start', () => {
         logger,
       });
       const password = 'abc123';
-      // Make sure these ports are not occupied
-      const rootKeys = await keysUtils.generateKeyPair(4096);
-      const privateKeyPem = keysUtils.privateKeyToPem(rootKeys.privateKey);
-      const nodeId = keysUtils.publicKeyToNodeId(rootKeys.publicKey);
+      const privateKeyPem = globalRootKeyPems[0];
+      const nodeId = keysUtils.publicKeyToNodeId(
+        keysUtils.publicKeyFromPrivateKey(
+          keysUtils.privateKeyFromPem(privateKeyPem),
+        ),
+      );
       const privateKeyPath = path.join(dataDir, 'private.pem');
       await fs.promises.writeFile(privateKeyPath, privateKeyPem, {
         encoding: 'utf-8',
@@ -824,42 +829,51 @@ describe('start', () => {
     },
     global.defaultTimeout * 2,
   );
-  runDescribeIfPlatforms('linux')('start with global agent', () => {
-    let globalAgentStatus: StatusLive;
-    let globalAgentClose;
+  runDescribeIfPlatforms('linux').only('start with global agent', () => {
     let agentDataDir;
-    let agent: PolykeyAgent;
-    let seedNodeId1;
-    let seedNodeHost1;
-    let seedNodePort1;
-    let seedNodeId2;
-    let seedNodeHost2;
-    let seedNodePort2;
-    beforeAll(async () => {
-      ({ globalAgentStatus, globalAgentClose } =
-        await testUtils.setupGlobalAgent(logger));
+    let agent1Status: StatusLive;
+    let agent1Stop: () => void;
+    let agent2Status: StatusLive;
+    let agent2Stop: () => void;
+    let seedNodeId1: NodeId;
+    let seedNodeHost1: Host;
+    let seedNodePort1: Port;
+    let seedNodeId2: NodeId;
+    let seedNodeHost2: Host;
+    let seedNodePort2: Port;
+    beforeEach(async () => {
       // Additional seed node
       agentDataDir = await fs.promises.mkdtemp(
         path.join(global.tmpDir, 'polykey-test-'),
       );
-      agent = await PolykeyAgent.createPolykeyAgent({
-        password: 'password',
-        nodePath: path.join(agentDataDir, 'agent'),
-        keysConfig: {
-          rootKeyPairBits: 1024,
-        },
-        logger,
-      });
-      seedNodeId1 = globalAgentStatus.data.nodeId;
-      seedNodeHost1 = globalAgentStatus.data.proxyHost;
-      seedNodePort1 = globalAgentStatus.data.proxyPort;
-      seedNodeId2 = agent.keyManager.getNodeId();
-      seedNodeHost2 = agent.grpcServerAgent.getHost();
-      seedNodePort2 = agent.grpcServerAgent.getPort();
+      const agent1Path = path.join(agentDataDir, 'agent1');
+      await fs.promises.mkdir(agent1Path);
+      ({ agentStatus: agent1Status, agentStop: agent1Stop } =
+        await testBinUtils.setupTestAgent(
+          undefined,
+          agent1Path,
+          globalRootKeyPems[0],
+          logger,
+        ));
+      const agent2Path = path.join(agentDataDir, 'agent2');
+      await fs.promises.mkdir(agent2Path);
+      ({ agentStatus: agent2Status, agentStop: agent2Stop } =
+        await testBinUtils.setupTestAgent(
+          undefined,
+          agent2Path,
+          globalRootKeyPems[1],
+          logger,
+        ));
+      seedNodeId1 = agent1Status.data.nodeId;
+      seedNodeHost1 = agent1Status.data.proxyHost;
+      seedNodePort1 = agent1Status.data.proxyPort;
+      seedNodeId2 = agent2Status.data.nodeId;
+      seedNodeHost2 = agent2Status.data.proxyHost;
+      seedNodePort2 = agent2Status.data.proxyPort;
     }, globalThis.maxTimeout);
-    afterAll(async () => {
-      await agent.stop();
-      await globalAgentClose();
+    afterEach(async () => {
+      agent1Stop();
+      agent2Stop();
       await fs.promises.rm(agentDataDir, {
         force: true,
         recursive: true,
