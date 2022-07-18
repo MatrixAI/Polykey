@@ -11,10 +11,9 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
 import { sysexits } from '@/utils';
 import * as identitiesUtils from '@/identities/utils';
-import * as keysUtils from '@/keys/utils';
 import * as testBinUtils from '../utils';
-import * as testUtils from '../../utils';
 import TestProvider from '../../identities/TestProvider';
+import { globalRootKeyPems } from '../../globalRootKeyPems';
 
 describe('claim', () => {
   const logger = new Logger('claim test', LogLevel.WARN, [new StreamHandler()]);
@@ -27,16 +26,7 @@ describe('claim', () => {
   let nodePath: string;
   let pkAgent: PolykeyAgent;
   let testProvider: TestProvider;
-  let mockedGenerateKeyPair: jest.SpyInstance;
-  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
-  beforeAll(async () => {
-    const globalKeyPair = await testUtils.setupGlobalKeypair();
-    mockedGenerateKeyPair = jest
-      .spyOn(keysUtils, 'generateKeyPair')
-      .mockResolvedValue(globalKeyPair);
-    mockedGenerateDeterministicKeyPair = jest
-      .spyOn(keysUtils, 'generateDeterministicKeyPair')
-      .mockResolvedValue(globalKeyPair);
+  beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -51,19 +41,20 @@ describe('claim', () => {
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },
+      keysConfig: {
+        privateKeyPemOverride: globalRootKeyPems[0],
+      },
       logger,
     });
     testProvider = new TestProvider();
     pkAgent.identitiesManager.registerProvider(testProvider);
   });
-  afterAll(async () => {
+  afterEach(async () => {
     await pkAgent.stop();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
     });
-    mockedGenerateKeyPair.mockRestore();
-    mockedGenerateDeterministicKeyPair.mockRestore();
   });
   test('claims an identity', async () => {
     // Need an authenticated identity
@@ -109,11 +100,6 @@ describe('claim', () => {
     expect(claim).toBeDefined();
     expect(claim!.id).toBe('0');
     expect(claim!.payload.data.type).toBe('identity');
-    // Revert side effects
-    await pkAgent.identitiesManager.delToken(
-      testToken.providerId,
-      testToken.identityId,
-    );
     mockedBrowser.mockRestore();
   });
   test('cannot claim unauthenticated identities', async () => {

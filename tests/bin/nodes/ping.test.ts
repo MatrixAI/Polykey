@@ -6,17 +6,14 @@ import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
 import * as nodesUtils from '@/nodes/utils';
-import * as keysUtils from '@/keys/utils';
 import { sysexits } from '@/errors';
 import * as testBinUtils from '../utils';
 import * as testNodesUtils from '../../nodes/utils';
-import * as testUtils from '../../utils';
+import { globalRootKeyPems } from '../../globalRootKeyPems';
 
 describe('ping', () => {
   const logger = new Logger('ping test', LogLevel.WARN, [new StreamHandler()]);
   const password = 'helloworld';
-  let mockedGenerateKeyPair: jest.SpyInstance;
-  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
   let dataDir: string;
   let nodePath: string;
   let polykeyAgent: PolykeyAgent;
@@ -24,14 +21,7 @@ describe('ping', () => {
   let remoteOffline: PolykeyAgent;
   let remoteOnlineNodeId: NodeId;
   let remoteOfflineNodeId: NodeId;
-  beforeAll(async () => {
-    const globalKeyPair = await testUtils.setupGlobalKeypair();
-    mockedGenerateKeyPair = jest
-      .spyOn(keysUtils, 'generateKeyPair')
-      .mockResolvedValueOnce(globalKeyPair);
-    mockedGenerateDeterministicKeyPair = jest
-      .spyOn(keysUtils, 'generateDeterministicKeyPair')
-      .mockResolvedValueOnce(globalKeyPair);
+  beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -52,6 +42,9 @@ describe('ping', () => {
         connConnectTime: 2000,
         connTimeoutTime: 1000,
       },
+      keysConfig: {
+        privateKeyPemOverride: globalRootKeyPems[0],
+      },
       seedNodes: {}, // Explicitly no seed nodes on startup
       logger,
     });
@@ -66,7 +59,7 @@ describe('ping', () => {
         clientHost: '127.0.0.1' as Host,
       },
       keysConfig: {
-        rootKeyPairBits: 1024,
+        privateKeyPemOverride: globalRootKeyPems[1],
       },
       logger,
     });
@@ -83,15 +76,15 @@ describe('ping', () => {
         clientHost: '127.0.0.1' as Host,
       },
       keysConfig: {
-        rootKeyPairBits: 1024,
+        privateKeyPemOverride: globalRootKeyPems[2],
       },
       logger,
     });
     remoteOfflineNodeId = remoteOffline.keyManager.getNodeId();
     await testNodesUtils.nodesConnect(polykeyAgent, remoteOffline);
     await remoteOffline.stop();
-  }, global.defaultTimeout * 3);
-  afterAll(async () => {
+  });
+  afterEach(async () => {
     await polykeyAgent.stop();
     await polykeyAgent.destroy();
     await remoteOnline.stop();
@@ -102,8 +95,6 @@ describe('ping', () => {
       force: true,
       recursive: true,
     });
-    mockedGenerateKeyPair.mockRestore();
-    mockedGenerateDeterministicKeyPair.mockRestore();
   });
   test('fails when pinging an offline node', async () => {
     const { exitCode, stdout, stderr } = await testBinUtils.pkStdio(

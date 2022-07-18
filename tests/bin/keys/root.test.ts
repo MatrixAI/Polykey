@@ -1,27 +1,31 @@
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as testBinUtils from '../utils';
-import * as testUtils from '../../utils';
+import { globalRootKeyPems } from '../../globalRootKeyPems';
 
 describe('root', () => {
   const logger = new Logger('root test', LogLevel.WARN, [new StreamHandler()]);
-  let globalAgentDir;
-  let globalAgentPassword;
-  let globalAgentClose;
-  beforeAll(async () => {
-    ({ globalAgentDir, globalAgentPassword, globalAgentClose } =
-      await testUtils.setupGlobalAgent(logger));
-  }, globalThis.maxTimeout);
-  afterAll(async () => {
-    await globalAgentClose();
+  let agentDir;
+  let agentPassword;
+  let agentClose;
+  beforeEach(async () => {
+    ({ agentDir, agentPassword, agentClose } =
+      await testBinUtils.setupTestAgent(
+        global.testCmd,
+        globalRootKeyPems[0],
+        logger,
+      ));
+  });
+  afterEach(async () => {
+    await agentClose();
   });
   test('root gets the public key', async () => {
     const { exitCode, stdout } = await testBinUtils.pkStdio(
       ['keys', 'root', '--format', 'json'],
       {
-        PK_NODE_PATH: globalAgentDir,
-        PK_PASSWORD: globalAgentPassword,
+        PK_NODE_PATH: agentDir,
+        PK_PASSWORD: agentPassword,
       },
-      globalAgentDir,
+      agentDir,
     );
     expect(exitCode).toBe(0);
     expect(JSON.parse(stdout)).toEqual({
@@ -32,10 +36,10 @@ describe('root', () => {
     const { exitCode, stdout } = await testBinUtils.pkStdio(
       ['keys', 'root', '--private-key', '--format', 'json'],
       {
-        PK_NODE_PATH: globalAgentDir,
-        PK_PASSWORD: globalAgentPassword,
+        PK_NODE_PATH: agentDir,
+        PK_PASSWORD: agentPassword,
       },
-      globalAgentDir,
+      agentDir,
     );
     expect(exitCode).toBe(0);
     expect(JSON.parse(stdout)).toEqual({

@@ -12,11 +12,10 @@ import { poll, sysexits } from '@/utils';
 import * as identitiesUtils from '@/identities/utils';
 import * as claimsUtils from '@/claims/utils';
 import * as nodesUtils from '@/nodes/utils';
-import * as keysUtils from '@/keys/utils';
 import * as testBinUtils from '../utils';
-import * as testUtils from '../../utils';
 import * as testNodesUtils from '../../nodes/utils';
 import TestProvider from '../../identities/TestProvider';
+import { globalRootKeyPems } from '../../globalRootKeyPems';
 
 describe('discover/get', () => {
   const logger = new Logger('discover/get test', LogLevel.WARN, [
@@ -39,9 +38,7 @@ describe('discover/get', () => {
   let nodeBId: NodeId;
   let nodeAHost: Host;
   let nodeAPort: Port;
-  let mockedGenerateKeyPair: jest.SpyInstance;
-  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
-  beforeAll(async () => {
+  beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -57,7 +54,7 @@ describe('discover/get', () => {
         clientHost: '127.0.0.1' as Host,
       },
       keysConfig: {
-        rootKeyPairBits: 2048,
+        privateKeyPemOverride: globalRootKeyPems[0],
       },
       logger,
     });
@@ -74,19 +71,12 @@ describe('discover/get', () => {
         clientHost: '127.0.0.1' as Host,
       },
       keysConfig: {
-        rootKeyPairBits: 2048,
+        privateKeyPemOverride: globalRootKeyPems[1],
       },
       logger,
     });
     nodeBId = nodeB.keyManager.getNodeId();
     await testNodesUtils.nodesConnect(nodeA, nodeB);
-    const globalKeyPair = await testUtils.setupGlobalKeypair();
-    mockedGenerateKeyPair = jest
-      .spyOn(keysUtils, 'generateKeyPair')
-      .mockResolvedValueOnce(globalKeyPair);
-    mockedGenerateDeterministicKeyPair = jest
-      .spyOn(keysUtils, 'generateDeterministicKeyPair')
-      .mockResolvedValueOnce(globalKeyPair);
     nodePath = path.join(dataDir, 'polykey');
     // Cannot use global shared agent since we need to register a provider
     pkAgent = await PolykeyAgent.createPolykeyAgent({
@@ -97,6 +87,9 @@ describe('discover/get', () => {
         forwardHost: '127.0.0.1' as Host,
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
+      },
+      keysConfig: {
+        privateKeyPemOverride: globalRootKeyPems[2],
       },
       logger,
     });
@@ -118,8 +111,8 @@ describe('discover/get', () => {
     const [, claimEncoded] = await nodeA.sigchain.addClaim(identityClaim);
     const claim = claimsUtils.decodeClaim(claimEncoded);
     await testProvider.publishClaim(identityId, claim);
-  }, global.maxTimeout);
-  afterAll(async () => {
+  });
+  afterEach(async () => {
     await pkAgent.stop();
     await nodeB.stop();
     await nodeA.stop();
@@ -127,8 +120,6 @@ describe('discover/get', () => {
       force: true,
       recursive: true,
     });
-    mockedGenerateKeyPair.mockRestore();
-    mockedGenerateDeterministicKeyPair.mockRestore();
   });
   test('discovers and gets gestalt by node', async () => {
     // Need an authenticated identity

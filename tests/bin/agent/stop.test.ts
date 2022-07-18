@@ -8,6 +8,7 @@ import * as binErrors from '@/bin/errors';
 import * as clientErrors from '@/client/errors';
 import * as testBinUtils from '../utils';
 import { runTestIfPlatforms } from '../../utils';
+import { globalRootKeyPems } from '../../globalRootKeyPems';
 
 describe('stop', () => {
   const logger = new Logger('stop test', LogLevel.WARN, [new StreamHandler()]);
@@ -31,9 +32,6 @@ describe('stop', () => {
         [
           'agent',
           'start',
-          // 1024 is the smallest size and is faster to start
-          '--root-key-pair-bits',
-          '1024',
           '--client-host',
           '127.0.0.1',
           '--proxy-host',
@@ -44,6 +42,7 @@ describe('stop', () => {
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
           PK_PASSWORD: password,
+          PK_ROOT_KEY: globalRootKeyPems[0],
         },
         dataDir,
         logger,
@@ -93,9 +92,6 @@ describe('stop', () => {
         [
           'agent',
           'start',
-          // 1024 is the smallest size and is faster to start
-          '--root-key-pair-bits',
-          '1024',
           '--client-host',
           '127.0.0.1',
           '--proxy-host',
@@ -106,6 +102,7 @@ describe('stop', () => {
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
           PK_PASSWORD: password,
+          PK_ROOT_KEY: globalRootKeyPems[0],
         },
         dataDir,
         logger,
@@ -181,9 +178,6 @@ describe('stop', () => {
         [
           'agent',
           'start',
-          // 1024 is the smallest size and is faster to start
-          '--root-key-pair-bits',
-          '1024',
           '--client-host',
           '127.0.0.1',
           '--proxy-host',
@@ -195,6 +189,7 @@ describe('stop', () => {
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
           PK_PASSWORD: password,
+          PK_ROOT_KEY: globalRootKeyPems[0],
         },
         dataDir,
         logger,
@@ -234,9 +229,6 @@ describe('stop', () => {
         [
           'agent',
           'start',
-          // 1024 is the smallest size and is faster to start
-          '--root-key-pair-bits',
-          '1024',
           '--client-host',
           '127.0.0.1',
           '--proxy-host',
@@ -247,6 +239,7 @@ describe('stop', () => {
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
           PK_PASSWORD: password,
+          PK_ROOT_KEY: globalRootKeyPems[0],
         },
         dataDir,
         logger,

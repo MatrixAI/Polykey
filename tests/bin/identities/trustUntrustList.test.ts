@@ -9,12 +9,11 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
 import { sysexits } from '@/utils';
 import * as nodesUtils from '@/nodes/utils';
-import * as keysUtils from '@/keys/utils';
 import * as claimsUtils from '@/claims/utils';
 import * as identitiesUtils from '@/identities/utils';
 import * as testBinUtils from '../utils';
-import * as testUtils from '../../utils';
 import TestProvider from '../../identities/TestProvider';
+import { globalRootKeyPems } from '../../globalRootKeyPems';
 
 describe('trust/untrust/list', () => {
   const logger = new Logger('trust/untrust/list test', LogLevel.WARN, [
@@ -35,20 +34,7 @@ describe('trust/untrust/list', () => {
   let nodeId: NodeId;
   let nodeHost: Host;
   let nodePort: Port;
-  let mockedGenerateKeyPair: jest.SpyInstance;
-  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
-  beforeAll(async () => {
-    const globalKeyPair = await testUtils.setupGlobalKeypair();
-    const nodeKeyPair = await keysUtils.generateKeyPair(2048);
-    mockedGenerateKeyPair = jest
-      .spyOn(keysUtils, 'generateKeyPair')
-      .mockResolvedValueOnce(globalKeyPair)
-      .mockResolvedValue(nodeKeyPair);
-    mockedGenerateDeterministicKeyPair = jest
-      .spyOn(keysUtils, 'generateDeterministicKeyPair')
-      .mockResolvedValueOnce(globalKeyPair)
-      .mockResolvedValue(nodeKeyPair);
-    // Cannot use global shared agent since we need to register a provider
+  beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -61,6 +47,9 @@ describe('trust/untrust/list', () => {
         forwardHost: '127.0.0.1' as Host,
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
+      },
+      keysConfig: {
+        privateKeyPemOverride: globalRootKeyPems[0],
       },
       logger,
     });
@@ -75,6 +64,9 @@ describe('trust/untrust/list', () => {
         forwardHost: '127.0.0.1' as Host,
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
+      },
+      keysConfig: {
+        privateKeyPemOverride: globalRootKeyPems[1],
       },
       logger,
     });
@@ -95,16 +87,14 @@ describe('trust/untrust/list', () => {
     const [, claimEncoded] = await node.sigchain.addClaim(identityClaim);
     const claim = claimsUtils.decodeClaim(claimEncoded);
     await provider.publishClaim(identity, claim);
-  }, globalThis.maxTimeout);
-  afterAll(async () => {
+  });
+  afterEach(async () => {
     await node.stop();
     await pkAgent.stop();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
     });
-    mockedGenerateKeyPair.mockRestore();
-    mockedGenerateDeterministicKeyPair.mockRestore();
   });
   test(
     'trusts and untrusts a gestalt by node, adds it to the gestalt graph, and lists the gestalt with notify permission',

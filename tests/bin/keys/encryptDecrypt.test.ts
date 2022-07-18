@@ -2,35 +2,39 @@ import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as testBinUtils from '../utils';
-import * as testUtils from '../../utils';
+import { globalRootKeyPems } from '../../globalRootKeyPems';
 
 describe('encrypt-decrypt', () => {
   const logger = new Logger('encrypt-decrypt test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
-  let globalAgentDir;
-  let globalAgentPassword;
-  let globalAgentClose;
-  beforeAll(async () => {
-    ({ globalAgentDir, globalAgentPassword, globalAgentClose } =
-      await testUtils.setupGlobalAgent(logger));
-  }, globalThis.maxTimeout);
-  afterAll(async () => {
-    await globalAgentClose();
+  let agentDir;
+  let agentPassword;
+  let agentClose;
+  beforeEach(async () => {
+    ({ agentDir, agentPassword, agentClose } =
+      await testBinUtils.setupTestAgent(
+        global.testCmd,
+        globalRootKeyPems[0],
+        logger,
+      ));
+  });
+  afterEach(async () => {
+    await agentClose();
   });
   test('encrypts and decrypts data', async () => {
     let exitCode, stdout;
-    const dataPath = path.join(globalAgentDir, 'data');
+    const dataPath = path.join(agentDir, 'data');
     await fs.promises.writeFile(dataPath, 'abc', {
       encoding: 'binary',
     });
     ({ exitCode, stdout } = await testBinUtils.pkStdio(
       ['keys', 'encrypt', dataPath, '--format', 'json'],
       {
-        PK_NODE_PATH: globalAgentDir,
-        PK_PASSWORD: globalAgentPassword,
+        PK_NODE_PATH: agentDir,
+        PK_PASSWORD: agentPassword,
       },
-      globalAgentDir,
+      agentDir,
     ));
     expect(exitCode).toBe(0);
     expect(JSON.parse(stdout)).toEqual({
@@ -43,10 +47,10 @@ describe('encrypt-decrypt', () => {
     ({ exitCode, stdout } = await testBinUtils.pkStdio(
       ['keys', 'decrypt', dataPath, '--format', 'json'],
       {
-        PK_NODE_PATH: globalAgentDir,
-        PK_PASSWORD: globalAgentPassword,
+        PK_NODE_PATH: agentDir,
+        PK_PASSWORD: agentPassword,
       },
-      globalAgentDir,
+      agentDir,
     ));
     expect(exitCode).toBe(0);
     expect(JSON.parse(stdout)).toEqual({

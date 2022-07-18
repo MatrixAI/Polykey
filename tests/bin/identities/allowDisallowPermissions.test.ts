@@ -10,15 +10,14 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
 import { poll, sysexits } from '@/utils';
 import * as nodesUtils from '@/nodes/utils';
-import * as keysUtils from '@/keys/utils';
 import * as claimsUtils from '@/claims/utils';
 import * as identitiesUtils from '@/identities/utils';
 import * as testBinUtils from '../utils';
-import * as testUtils from '../../utils';
 import TestProvider from '../../identities/TestProvider';
+import { globalRootKeyPems } from '../../globalRootKeyPems';
 
 describe('allow/disallow/permissions', () => {
-  const logger = new Logger('allow/disallow/permissions test', LogLevel.WARN, [
+  const logger = new Logger('allow/disallow/permissions test', LogLevel.DEBUG, [
     new StreamHandler(),
   ]);
   const password = 'password';
@@ -36,20 +35,7 @@ describe('allow/disallow/permissions', () => {
   let nodeId: NodeId;
   let nodeHost: Host;
   let nodePort: Port;
-  let mockedGenerateKeyPair: jest.SpyInstance;
-  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
-  beforeAll(async () => {
-    const globalKeyPair = await testUtils.setupGlobalKeypair();
-    const nodeKeyPair = await keysUtils.generateKeyPair(2048);
-    mockedGenerateKeyPair = jest
-      .spyOn(keysUtils, 'generateKeyPair')
-      .mockResolvedValueOnce(globalKeyPair)
-      .mockResolvedValue(nodeKeyPair);
-    mockedGenerateDeterministicKeyPair = jest
-      .spyOn(keysUtils, 'generateDeterministicKeyPair')
-      .mockResolvedValueOnce(globalKeyPair)
-      .mockResolvedValue(nodeKeyPair);
-    // Cannot use global shared agent since we need to register a provider
+  beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -62,6 +48,9 @@ describe('allow/disallow/permissions', () => {
         forwardHost: '127.0.0.1' as Host,
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
+      },
+      keysConfig: {
+        privateKeyPemOverride: globalRootKeyPems[0],
       },
       logger,
     });
@@ -76,6 +65,9 @@ describe('allow/disallow/permissions', () => {
         forwardHost: '127.0.0.1' as Host,
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
+      },
+      keysConfig: {
+        privateKeyPemOverride: globalRootKeyPems[1],
       },
       logger,
     });
@@ -96,18 +88,17 @@ describe('allow/disallow/permissions', () => {
     const [, claimEncoded] = await node.sigchain.addClaim(identityClaim);
     const claim = claimsUtils.decodeClaim(claimEncoded);
     await provider.publishClaim(identity, claim);
-  }, globalThis.maxTimeout);
-  afterAll(async () => {
+  });
+  afterEach(async () => {
     await node.stop();
     await pkAgent.stop();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
     });
-    mockedGenerateKeyPair.mockRestore();
-    mockedGenerateDeterministicKeyPair.mockRestore();
   });
   test('allows/disallows/gets gestalt permissions by node', async () => {
+    Error.stackTraceLimit = 100;
     let exitCode, stdout;
     // Add the node to our node graph, otherwise we won't be able to contact it
     await testBinUtils.pkStdio(
@@ -203,12 +194,6 @@ describe('allow/disallow/permissions', () => {
     expect(JSON.parse(stdout)).toEqual({
       permissions: [],
     });
-    // Revert side-effects
-    await pkAgent.gestaltGraph.unsetNode(nodeId);
-    await pkAgent.gestaltGraph.unsetIdentity(provider.id, identity);
-    await pkAgent.nodeGraph.unsetNode(nodeId);
-    // @ts-ignore - get protected property
-    pkAgent.discovery.visitedVertices.clear();
   });
   test('allows/disallows/gets gestalt permissions by identity', async () => {
     let exitCode, stdout;
@@ -345,16 +330,6 @@ describe('allow/disallow/permissions', () => {
     expect(JSON.parse(stdout)).toEqual({
       permissions: [],
     });
-    // Revert side effects
-    await pkAgent.gestaltGraph.unsetNode(nodeId);
-    await pkAgent.gestaltGraph.unsetIdentity(provider.id, identity);
-    await pkAgent.nodeGraph.unsetNode(nodeId);
-    await pkAgent.identitiesManager.delToken(
-      testToken.providerId,
-      testToken.identityId,
-    );
-    // @ts-ignore - get protected property
-    pkAgent.discovery.visitedVertices.clear();
   });
   test('should fail on invalid inputs', async () => {
     let exitCode;

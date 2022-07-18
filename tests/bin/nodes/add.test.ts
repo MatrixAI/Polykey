@@ -8,11 +8,10 @@ import { IdInternal } from '@matrixai/id';
 import { sysexits } from '@/utils';
 import PolykeyAgent from '@/PolykeyAgent';
 import * as nodesUtils from '@/nodes/utils';
-import * as keysUtils from '@/keys/utils';
 import NodeManager from '@/nodes/NodeManager';
 import * as testBinUtils from '../utils';
-import * as testUtils from '../../utils';
 import * as testNodesUtils from '../../nodes/utils';
+import { globalRootKeyPems } from '../../globalRootKeyPems';
 
 describe('add', () => {
   const logger = new Logger('add test', LogLevel.WARN, [new StreamHandler()]);
@@ -25,17 +24,8 @@ describe('add', () => {
   let dataDir: string;
   let nodePath: string;
   let pkAgent: PolykeyAgent;
-  let mockedGenerateKeyPair: jest.SpyInstance;
-  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
   let mockedPingNode: jest.SpyInstance;
-  beforeAll(async () => {
-    const globalKeyPair = await testUtils.setupGlobalKeypair();
-    mockedGenerateKeyPair = jest
-      .spyOn(keysUtils, 'generateKeyPair')
-      .mockResolvedValue(globalKeyPair);
-    mockedGenerateDeterministicKeyPair = jest
-      .spyOn(keysUtils, 'generateDeterministicKeyPair')
-      .mockResolvedValue(globalKeyPair);
+  beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -51,24 +41,23 @@ describe('add', () => {
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },
+      keysConfig: {
+        privateKeyPemOverride: globalRootKeyPems[0],
+      },
       logger,
     });
+    await pkAgent.nodeGraph.stop();
+    await pkAgent.nodeGraph.start({ fresh: true });
+    mockedPingNode.mockImplementation(() => true);
   });
-  afterAll(async () => {
+  afterEach(async () => {
     await pkAgent.stop();
     await pkAgent.destroy();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
     });
-    mockedGenerateKeyPair.mockRestore();
-    mockedGenerateDeterministicKeyPair.mockRestore();
     mockedPingNode.mockRestore();
-  });
-  beforeEach(async () => {
-    await pkAgent.nodeGraph.stop();
-    await pkAgent.nodeGraph.start({ fresh: true });
-    mockedPingNode.mockImplementation(() => true);
   });
   test('adds a node', async () => {
     const { exitCode } = await testBinUtils.pkStdio(

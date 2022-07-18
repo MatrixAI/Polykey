@@ -14,7 +14,7 @@ import { sleep } from '@/utils';
 import config from '@/config';
 import * as clientErrors from '@/client/errors';
 import * as testBinUtils from './utils';
-import * as testUtils from '../utils';
+import { globalRootKeyPems } from '../globalRootKeyPems';
 
 jest.mock('prompts');
 const mockedPrompts = mocked(prompts.prompt);
@@ -23,31 +23,32 @@ describe('sessions', () => {
   const logger = new Logger('sessions test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
-  let globalAgentDir;
-  let globalAgentPassword;
-  let globalAgentClose;
-  beforeAll(async () => {
-    ({ globalAgentDir, globalAgentPassword, globalAgentClose } =
-      await testUtils.setupGlobalAgent(logger));
-  }, globalThis.maxTimeout);
-  afterAll(async () => {
-    await globalAgentClose();
-  });
+  let agentDir;
+  let agentPassword;
+  let agentClose;
   let dataDir: string;
   beforeEach(async () => {
+    ({ agentDir, agentPassword, agentClose } =
+      await testBinUtils.setupTestAgent(
+        global.testCmd,
+        globalRootKeyPems[0],
+        logger,
+      ));
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
   });
   afterEach(async () => {
+    await sleep(1000);
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
     });
+    await agentClose();
   });
   test('serial commands refresh the session token', async () => {
     const session = await Session.createSession({
-      sessionTokenPath: path.join(globalAgentDir, config.defaults.tokenBase),
+      sessionTokenPath: path.join(agentDir, config.defaults.tokenBase),
       fs,
       logger,
     });
@@ -55,10 +56,10 @@ describe('sessions', () => {
     ({ exitCode } = await testBinUtils.pkStdio(
       ['agent', 'status'],
       {
-        PK_NODE_PATH: globalAgentDir,
-        PK_PASSWORD: globalAgentPassword,
+        PK_NODE_PATH: agentDir,
+        PK_PASSWORD: agentPassword,
       },
-      globalAgentDir,
+      agentDir,
     ));
     expect(exitCode).toBe(0);
     const token1 = await session.readToken();
@@ -69,10 +70,10 @@ describe('sessions', () => {
     ({ exitCode } = await testBinUtils.pkStdio(
       ['agent', 'status'],
       {
-        PK_NODE_PATH: globalAgentDir,
-        PK_PASSWORD: globalAgentPassword,
+        PK_NODE_PATH: agentDir,
+        PK_PASSWORD: agentPassword,
       },
-      globalAgentDir,
+      agentDir,
     ));
     expect(exitCode).toBe(0);
     const token2 = await session.readToken();
@@ -85,11 +86,11 @@ describe('sessions', () => {
     ({ exitCode, stderr } = await testBinUtils.pkStdio(
       ['agent', 'status', '--format', 'json'],
       {
-        PK_NODE_PATH: globalAgentDir,
+        PK_NODE_PATH: agentDir,
         PK_PASSWORD: 'invalid',
         PK_TOKEN: 'token',
       },
-      globalAgentDir,
+      agentDir,
     ));
     testBinUtils.expectProcessError(exitCode, stderr, [
       new clientErrors.ErrorClientAuthDenied(),
@@ -98,11 +99,11 @@ describe('sessions', () => {
     ({ exitCode, stderr } = await testBinUtils.pkStdio(
       ['agent', 'status', '--format', 'json'],
       {
-        PK_NODE_PATH: globalAgentDir,
+        PK_NODE_PATH: agentDir,
         PK_PASSWORD: 'invalid',
         PK_TOKEN: undefined,
       },
-      globalAgentDir,
+      agentDir,
     ));
     testBinUtils.expectProcessError(exitCode, stderr, [
       new clientErrors.ErrorClientAuthDenied(),
@@ -111,24 +112,24 @@ describe('sessions', () => {
     ({ exitCode, stderr } = await testBinUtils.pkStdio(
       ['agent', 'status', '--format', 'json'],
       {
-        PK_NODE_PATH: globalAgentDir,
+        PK_NODE_PATH: agentDir,
         PK_PASSWORD: undefined,
         PK_TOKEN: 'token',
       },
-      globalAgentDir,
+      agentDir,
     ));
     testBinUtils.expectProcessError(exitCode, stderr, [
       new clientErrors.ErrorClientAuthDenied(),
     ]);
   });
   test('prompt for password to authenticate attended commands', async () => {
-    const password = globalAgentPassword;
+    const password = agentPassword;
     await testBinUtils.pkStdio(
       ['agent', 'lock'],
       {
-        PK_NODE_PATH: globalAgentDir,
+        PK_NODE_PATH: agentDir,
       },
-      globalAgentDir,
+      agentDir,
     );
     mockedPrompts.mockClear();
     mockedPrompts.mockImplementation(async (_opts: any) => {
@@ -137,9 +138,9 @@ describe('sessions', () => {
     const { exitCode } = await testBinUtils.pkStdio(
       ['agent', 'status'],
       {
-        PK_NODE_PATH: globalAgentDir,
+        PK_NODE_PATH: agentDir,
       },
-      globalAgentDir,
+      agentDir,
     );
     expect(exitCode).toBe(0);
     // Prompted for password 1 time
@@ -150,11 +151,11 @@ describe('sessions', () => {
     await testBinUtils.pkStdio(
       ['agent', 'lock'],
       {
-        PK_NODE_PATH: globalAgentDir,
+        PK_NODE_PATH: agentDir,
       },
-      globalAgentDir,
+      agentDir,
     );
-    const validPassword = globalAgentPassword;
+    const validPassword = agentPassword;
     const invalidPassword = 'invalid';
     mockedPrompts.mockClear();
     mockedPrompts
@@ -163,9 +164,9 @@ describe('sessions', () => {
     const { exitCode } = await testBinUtils.pkStdio(
       ['agent', 'status'],
       {
-        PK_NODE_PATH: globalAgentDir,
+        PK_NODE_PATH: agentDir,
       },
-      globalAgentDir,
+      agentDir,
     );
     expect(exitCode).toBe(0);
     // Prompted for password 2 times

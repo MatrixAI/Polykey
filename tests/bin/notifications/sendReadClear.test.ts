@@ -7,9 +7,8 @@ import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
 import * as nodesUtils from '@/nodes/utils';
-import * as keysUtils from '@/keys/utils';
 import * as testBinUtils from '../utils';
-import * as testUtils from '../../utils';
+import { globalRootKeyPems } from '../../globalRootKeyPems';
 
 describe('send/read/claim', () => {
   const logger = new Logger('send/read/clear test', LogLevel.WARN, [
@@ -27,19 +26,7 @@ describe('send/read/claim', () => {
   let receiverId: NodeId;
   let receiverHost: Host;
   let receiverPort: Port;
-  let mockedGenerateKeyPair: jest.SpyInstance;
-  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
-  beforeAll(async () => {
-    const globalKeyPair = await testUtils.setupGlobalKeypair();
-    const otherKeyPair = await keysUtils.generateKeyPair(1024);
-    mockedGenerateKeyPair = jest
-      .spyOn(keysUtils, 'generateKeyPair')
-      .mockResolvedValueOnce(globalKeyPair)
-      .mockResolvedValue(otherKeyPair);
-    mockedGenerateDeterministicKeyPair = jest
-      .spyOn(keysUtils, 'generateDeterministicKeyPair')
-      .mockResolvedValueOnce(globalKeyPair)
-      .mockResolvedValue(otherKeyPair);
+  beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -56,6 +43,9 @@ describe('send/read/claim', () => {
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },
+      keysConfig: {
+        privateKeyPemOverride: globalRootKeyPems[0],
+      },
       logger,
     });
     senderId = sender.keyManager.getNodeId();
@@ -70,21 +60,22 @@ describe('send/read/claim', () => {
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },
+      keysConfig: {
+        privateKeyPemOverride: globalRootKeyPems[1],
+      },
       logger,
     });
     receiverId = receiver.keyManager.getNodeId();
     receiverHost = receiver.proxy.getProxyHost();
     receiverPort = receiver.proxy.getProxyPort();
   });
-  afterAll(async () => {
+  afterEach(async () => {
     await receiver.stop();
     await sender.stop();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
     });
-    mockedGenerateKeyPair.mockRestore();
-    mockedGenerateDeterministicKeyPair.mockRestore();
   });
   test('sends, receives, and clears notifications', async () => {
     let exitCode, stdout;

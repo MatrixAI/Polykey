@@ -12,12 +12,7 @@ import sysexits from '@/utils/sysexits';
 import NotificationsManager from '@/notifications/NotificationsManager';
 import * as testBinUtils from '../utils';
 import * as testNodesUtils from '../../nodes/utils';
-
-jest.mock('@/keys/utils', () => ({
-  ...jest.requireActual('@/keys/utils'),
-  generateDeterministicKeyPair:
-    jest.requireActual('@/keys/utils').generateKeyPair,
-}));
+import { globalRootKeyPems } from '../../globalRootKeyPems';
 
 /**
  * This test file has been optimised to use only one instance of PolykeyAgent where possible.
@@ -68,7 +63,7 @@ describe('CLI vaults', () => {
     return `vault-${vaultNumber}` as VaultName;
   }
 
-  beforeAll(async () => {
+  beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -78,6 +73,9 @@ describe('CLI vaults', () => {
       password,
       nodePath: dataDir,
       logger: logger,
+      keysConfig: {
+        privateKeyPemOverride: globalRootKeyPems[0],
+      },
     });
     await polykeyAgent.gestaltGraph.setNode(node1);
     await polykeyAgent.gestaltGraph.setNode(node2);
@@ -91,18 +89,16 @@ describe('CLI vaults', () => {
       {},
       dataDir,
     );
-  }, global.polykeyStartupTimeout);
-  afterAll(async () => {
+    vaultName = genVaultName();
+    command = [];
+  });
+  afterEach(async () => {
     await polykeyAgent.stop();
     await polykeyAgent.destroy();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
     });
-  });
-  beforeEach(async () => {
-    vaultName = genVaultName();
-    command = [];
   });
 
   describe('commandListVaults', () => {
@@ -210,6 +206,9 @@ describe('CLI vaults', () => {
         nodePath: dataDir2,
         networkConfig: {
           proxyHost: '127.0.0.1' as Host,
+        },
+        keysConfig: {
+          privateKeyPemOverride: globalRootKeyPems[1],
         },
         logger: logger,
       });
@@ -707,6 +706,9 @@ describe('CLI vaults', () => {
             nodePath: path.join(dataDir, 'remoteOnline'),
             networkConfig: {
               proxyHost: '127.0.0.1' as Host,
+            },
+            keysConfig: {
+              privateKeyPemOverride: globalRootKeyPems[2],
             },
           });
           const remoteOnlineNodeId = remoteOnline.keyManager.getNodeId();

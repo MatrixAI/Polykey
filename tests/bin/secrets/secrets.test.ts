@@ -5,8 +5,8 @@ import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
 import { vaultOps } from '@/vaults';
-import * as keysUtils from '@/keys/utils';
 import * as testBinUtils from '../utils';
+import { globalRootKeyPems } from '../../globalRootKeyPems';
 
 describe('CLI secrets', () => {
   const password = 'password';
@@ -16,15 +16,7 @@ describe('CLI secrets', () => {
   let passwordFile: string;
   let command: Array<string>;
 
-  const mockedGenerateDeterministicKeyPair = jest.spyOn(
-    keysUtils,
-    'generateDeterministicKeyPair',
-  );
-
-  beforeAll(async () => {
-    mockedGenerateDeterministicKeyPair.mockImplementation((bits, _) => {
-      return keysUtils.generateKeyPair(bits);
-    });
+  beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -34,6 +26,9 @@ describe('CLI secrets', () => {
       password,
       nodePath: dataDir,
       logger: logger,
+      keysConfig: {
+        privateKeyPemOverride: globalRootKeyPems[0],
+      },
     });
     // Authorize session
     await testBinUtils.pkStdio(
@@ -41,8 +36,8 @@ describe('CLI secrets', () => {
       {},
       dataDir,
     );
-  }, global.polykeyStartupTimeout);
-  afterAll(async () => {
+  });
+  afterEach(async () => {
     await polykeyAgent.stop();
     await polykeyAgent.destroy();
     await fs.promises.rm(dataDir, {

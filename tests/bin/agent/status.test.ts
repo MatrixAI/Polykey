@@ -5,8 +5,8 @@ import Status from '@/status/Status';
 import * as nodesUtils from '@/nodes/utils';
 import config from '@/config';
 import * as testBinUtils from '../utils';
-import * as testUtils from '../../utils';
 import { runTestIfPlatforms } from '../../utils';
+import { globalRootKeyPems } from '../../globalRootKeyPems';
 
 describe('status', () => {
   const logger = new Logger('status test', LogLevel.WARN, [
@@ -43,8 +43,6 @@ describe('status', () => {
         [
           'agent',
           'start',
-          '--root-key-pair-bits',
-          '1024',
           '--client-host',
           '127.0.0.1',
           '--proxy-host',
@@ -56,6 +54,7 @@ describe('status', () => {
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
           PK_PASSWORD: password,
+          PK_ROOT_KEY: globalRootKeyPems[0],
         },
         dataDir,
         logger,
@@ -123,23 +122,24 @@ describe('status', () => {
     });
   });
   describe('status with global agent', () => {
-    let globalAgentDir;
-    let globalAgentPassword;
-    let globalAgentClose;
-    beforeAll(async () => {
-      ({ globalAgentDir, globalAgentPassword, globalAgentClose } =
-        await testUtils.setupGlobalAgent(logger));
-    }, globalThis.maxTimeout);
-    afterAll(async () => {
-      await globalAgentClose();
+    let agentDir;
+    let agentPassword;
+    let agentClose;
+    beforeEach(async () => {
+      ({ agentDir, agentPassword, agentClose } =
+        await testBinUtils.setupTestAgent(
+          global.testCmd,
+          globalRootKeyPems[1],
+          logger,
+        ));
+    });
+    afterEach(async () => {
+      await agentClose();
     });
     runTestIfPlatforms('linux', 'docker')('status on LIVE agent', async () => {
       const status = new Status({
-        statusPath: path.join(globalAgentDir, config.defaults.statusBase),
-        statusLockPath: path.join(
-          globalAgentDir,
-          config.defaults.statusLockBase,
-        ),
+        statusPath: path.join(agentDir, config.defaults.statusBase),
+        statusLockPath: path.join(agentDir, config.defaults.statusLockBase),
         fs,
         logger,
       });
@@ -149,10 +149,10 @@ describe('status', () => {
       )(
         ['agent', 'status', '--format', 'json', '--verbose'],
         {
-          PK_NODE_PATH: globalAgentDir,
-          PK_PASSWORD: globalAgentPassword,
+          PK_NODE_PATH: agentDir,
+          PK_PASSWORD: agentPassword,
         },
-        globalAgentDir,
+        agentDir,
       );
       expect(exitCode).toBe(0);
       expect(JSON.parse(stdout)).toMatchObject({
@@ -175,13 +175,10 @@ describe('status', () => {
       'status on remote LIVE agent',
       async () => {
         const passwordPath = path.join(dataDir, 'password');
-        await fs.promises.writeFile(passwordPath, globalAgentPassword);
+        await fs.promises.writeFile(passwordPath, agentPassword);
         const status = new Status({
-          statusPath: path.join(globalAgentDir, config.defaults.statusBase),
-          statusLockPath: path.join(
-            globalAgentDir,
-            config.defaults.statusLockBase,
-          ),
+          statusPath: path.join(agentDir, config.defaults.statusBase),
+          statusLockPath: path.join(agentDir, config.defaults.statusLockBase),
           fs,
           logger,
         });
