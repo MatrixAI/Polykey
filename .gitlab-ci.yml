@@ -100,13 +100,15 @@ check:test:
   stage: check
   needs:
     - check:test-generate
-  inherit:
-    variables: false
   trigger:
     include:
       - artifact: tmp/check-test.yml
         job: check:test-generate
     strategy: depend
+  inherit:
+    variables: false
+  variables:
+    PARENT_PIPELINE_ID: $CI_PIPELINE_ID
   rules:
     # Runs on feature commits and ignores version commits
     - if: $CI_COMMIT_BRANCH =~ /^feature.*$/ && $CI_COMMIT_TITLE !~ /^[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
@@ -182,13 +184,15 @@ build:platforms:
   stage: build
   needs:
     - build:platforms-generate
-  inherit:
-    variables: false
   trigger:
     include:
       - artifact: tmp/build-platforms.yml
         job: build:platforms-generate
     strategy: depend
+  inherit:
+    variables: false
+  variables:
+    PARENT_PIPELINE_ID: $CI_PIPELINE_ID
   rules:
     # Runs on staging commits and ignores version commits
     - if: $CI_COMMIT_BRANCH == 'staging' && $CI_COMMIT_TITLE !~ /^[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
