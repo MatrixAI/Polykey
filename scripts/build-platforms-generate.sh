@@ -158,15 +158,9 @@ cat << "EOF"
   tags:
     - shared-macos-amd64
   image: macos-11-xcode-12
-  variables:
-    HOMEBREW_NO_INSTALL_UPGRADE: "true"
-    HOMEBREW_NO_INSTALL_CLEANUP: "true"
-    HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK: "true"
-    HOMEBREW_NO_AUTO_UPDATE: "true"
   script:
     - eval "$(brew shellenv)"
-    - brew install node@16
-    - brew link --overwrite node@16
+    - ./scripts/brew-install.sh
     - hash -r
     - npm install --ignore-scripts
     - export PATH="$(npm bin):$PATH"
