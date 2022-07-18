@@ -1,21 +1,18 @@
 #!/usr/bin/env bash
 
+set -o errexit   # abort on nonzero exitstatus
+set -o nounset   # abort on unbound variable
+set -o pipefail  # don't hide errors within pipes
+
 shopt -s globstar
 shopt -s nullglob
 
 # Quote the heredoc to prevent shell expansion
 cat << "EOF"
-default:
-  interruptible: true
-  before_script:
-    # Replace this in windows runners that use powershell
-    # with `mkdir -Force "$CI_PROJECT_DIR/tmp"`
-    - mkdir -p "$CI_PROJECT_DIR/tmp"
-
 variables:
+  GIT_SUBMODULE_STRATEGY: "recursive"
   GH_PROJECT_PATH: "MatrixAI/${CI_PROJECT_NAME}"
   GH_PROJECT_URL: "https://${GITHUB_TOKEN}@github.com/${GH_PROJECT_PATH}.git"
-  GIT_SUBMODULE_STRATEGY: "recursive"
   # Cache .npm
   NPM_CONFIG_CACHE: "./tmp/npm"
   # Prefer offline node module installation
@@ -24,6 +21,13 @@ variables:
   # It must use an absolute path, otherwise ts-node calls will CWD
   TS_CACHED_TRANSPILE_CACHE: "${CI_PROJECT_DIR}/tmp/ts-node-cache"
   TS_CACHED_TRANSPILE_PORTABLE: "true"
+
+default:
+  interruptible: true
+  before_script:
+    # Replace this in windows runners that use powershell
+    # with `mkdir -Force "$CI_PROJECT_DIR/tmp"`
+    - mkdir -p "$CI_PROJECT_DIR/tmp"
 
 # Cached directories shared between jobs & pipelines per-branch per-runner
 cache:
