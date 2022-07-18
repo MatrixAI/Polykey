@@ -25,6 +25,7 @@
   "include": [
     "./src/**/*",
     "./src/**/*.json",
-    "./tests/**/*"
+    "./tests/**/*",
+    "./scripts/**/*"
   ]
 }
