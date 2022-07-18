@@ -90,7 +90,7 @@ check:test-generate:
     paths:
       - ./tmp/check-test.yml
   rules:
-    # Runs on staging commits and ignores version commits
+    # Runs on feature commits and ignores version commits
     - if: $CI_COMMIT_BRANCH =~ /^feature.*$/ && $CI_COMMIT_TITLE !~ /^[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
     # Manually run on commits other than master and staging and ignore version commits
     - if: $CI_COMMIT_BRANCH && $CI_COMMIT_BRANCH !~ /^(?:master|staging)$/ && $CI_COMMIT_TITLE !~ /^[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
@@ -108,7 +108,7 @@ check:test:
         job: check:test-generate
     strategy: depend
   rules:
-    # Runs on staging commits and ignores version commits
+    # Runs on feature commits and ignores version commits
     - if: $CI_COMMIT_BRANCH =~ /^feature.*$/ && $CI_COMMIT_TITLE !~ /^[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
     # Manually run on commits other than master and staging and ignore version commits
     - if: $CI_COMMIT_BRANCH && $CI_COMMIT_BRANCH !~ /^(?:master|staging)$/ && $CI_COMMIT_TITLE !~ /^[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
