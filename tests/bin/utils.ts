@@ -1,5 +1,7 @@
 import type { ChildProcess } from 'child_process';
 import type ErrorPolykey from '@/ErrorPolykey';
+import type { PrivateKeyPem } from '@/keys/types';
+import type { StatusLive } from '@/status/types';
 import child_process from 'child_process';
 import os from 'os';
 import fs from 'fs';
@@ -12,6 +14,7 @@ import nexpect from 'nexpect';
 import Logger from '@matrixai/logger';
 import main from '@/bin/polykey';
 import { promise } from '@/utils';
+import * as validationUtils from '@/validation/utils';
 
 /**
  * Wrapper for execFile to make it asynchronous and non-blocking
@@ -531,6 +534,60 @@ function expectProcessError(
   }
 }
 
+/**
+ *
+ * @param cmd - Optional target command to run, usually `global.testCmd`
+ * @param agentDir - Directory to run the agent in, must exist
+ * @param privateKeyPem - Optional root key override to skip key generation
+ * @param logger
+ */
+async function setupTestAgent(
+  cmd: string | undefined,
+  agentDir: string,
+  privateKeyPem: PrivateKeyPem,
+  logger: Logger,
+): Promise<{ agentStatus: StatusLive; agentStop: () => void }> {
+  const password = 'password';
+  const agentProcess = await pkSpawnSwitch(cmd)(
+    [
+      'agent',
+      'start',
+      '--node-path',
+      agentDir,
+      '--client-host',
+      '127.0.0.1',
+      '--proxy-host',
+      '127.0.0.1',
+      '--workers',
+      '0',
+      '--format',
+      'json',
+      '--verbose',
+    ],
+    {
+      PK_PASSWORD: password,
+      PK_ROOT_KEY: privateKeyPem,
+    },
+    agentDir,
+    logger,
+  );
+  const startedProm = promise<any>();
+  agentProcess.on('error', (d) => startedProm.rejectP(d));
+  const rlOut = readline.createInterface(agentProcess.stdout!);
+  rlOut.on('line', (l) => startedProm.resolveP(JSON.parse(l.toString())));
+  const data = await startedProm.p;
+  const agentStatus: StatusLive = {
+    status: 'LIVE',
+    data: { ...data, nodeId: validationUtils.parseNodeId(data.nodeId) },
+  };
+  try {
+    return { agentStatus, agentStop: () => agentProcess.kill('SIGINT') };
+  } catch (e) {
+    agentProcess.kill('SIGINT');
+    throw e;
+  }
+}
+
 export {
   exec,
   pk,
@@ -546,4 +603,5 @@ export {
   pkExpect,
   processExit,
   expectProcessError,
+  setupTestAgent,
 };
