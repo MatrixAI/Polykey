@@ -73,7 +73,7 @@ build:linux $test_dir:
   script:
     - >
         nix-shell --run '
-        npm test -- --ci --coverage --runInBand ${test_files[@]};
+        npm test -- --ci --coverage ${test_files[@]};
         '
   artifacts:
     when: always
@@ -97,7 +97,7 @@ build:linux index:
   script:
     - >
         nix-shell --run '
-        npm test -- --ci --coverage --runInBand ${test_files[@]};
+        npm test -- --ci --coverage ${test_files[@]};
         '
   artifacts:
     when: always
