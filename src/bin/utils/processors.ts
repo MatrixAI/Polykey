@@ -403,27 +403,27 @@ async function processAuthentication(
   return meta;
 }
 
-async function processPrivateKeyFile(
-  privateKeyFile: string,
+async function processRootKey(
+  privateKeyFile: string | undefined,
   fs: FileSystem = require('fs'),
-): Promise<PrivateKeyPem> {
-  let privateKeyPem: string;
-  try {
-    privateKeyPem = (
-      await fs.promises.readFile(privateKeyFile, 'utf-8')
-    ).trim();
-  } catch (e) {
-    throw new binErrors.ErrorCLIPrivateKeyFileRead(e.message, {
-      data: {
-        errno: e.errno,
-        syscall: e.syscall,
-        code: e.code,
-        path: e.path,
-      },
-      cause: e,
-    });
+): Promise<PrivateKeyPem | undefined> {
+  if (privateKeyFile != null) {
+    try {
+      return (await fs.promises.readFile(privateKeyFile, 'utf-8')).trim();
+    } catch (e) {
+      throw new binErrors.ErrorCLIPrivateKeyFileRead(e.message, {
+        data: {
+          errno: e.errno,
+          syscall: e.syscall,
+          code: e.code,
+          path: e.path,
+        },
+        cause: e,
+      });
+    }
+  } else if (typeof process.env['PK_ROOT_KEY'] === 'string') {
+    return process.env['PK_ROOT_KEY'];
   }
-  return privateKeyPem;
 }
 
 export {
@@ -435,5 +435,5 @@ export {
   processClientOptions,
   processClientStatus,
   processAuthentication,
-  processPrivateKeyFile,
+  processRootKey,
 };

@@ -55,7 +55,7 @@ describe('bootstrap', () => {
     },
     global.defaultTimeout * 2,
   );
-  runTestIfPlatforms('linux', 'docker')(
+  runTestIfPlatforms('linux', 'docker').only(
     'bootstraps node state from provided private key',
     async () => {
       const password = 'password';
@@ -67,13 +67,15 @@ describe('bootstrap', () => {
       await fs.promises.writeFile(privateKeyPath, privateKeyPem, {
         encoding: 'utf-8',
       });
-      const { exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+      const { exitCode: exitCode1 } = await testBinUtils.pkStdioSwitch(
+        global.testCmd,
+      )(
         [
           'bootstrap',
           '--password-file',
           passwordPath,
           '--verbose',
-          '--private-key-file',
+          '--root-key-file',
           privateKeyPath,
         ],
         {
@@ -81,7 +83,18 @@ describe('bootstrap', () => {
         },
         dataDir,
       );
-      expect(exitCode).toBe(0);
+      expect(exitCode1).toBe(0);
+      const { exitCode: exitCode2 } = await testBinUtils.pkStdioSwitch(
+        global.testCmd,
+      )(
+        ['bootstrap', '--password-file', passwordPath, '--verbose'],
+        {
+          PK_NODE_PATH: path.join(dataDir, 'polykey2'),
+          PK_ROOT_KEY: privateKeyPem,
+        },
+        dataDir,
+      );
+      expect(exitCode2).toBe(0);
     },
     global.defaultTimeout * 2,
   );
