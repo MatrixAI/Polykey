@@ -64,16 +64,16 @@
     "build": "shx rm -rf ./dist && tsc -p ./tsconfig.build.json",
     "postbuild": "shx cp -fR src/proto dist && shx cp -f src/notifications/*.json dist/notifications/ && shx cp -f src/claims/*.json dist/claims/ && shx cp -f src/status/*.json dist/status/",
     "postversion": "npm install --package-lock-only --ignore-scripts --silent",
-    "ts-node": "ts-node --require tsconfig-paths/register",
+    "ts-node": "ts-node",
     "test": "jest",
     "lint": "eslint '{src,tests,scripts}/**/*.{js,ts}'",
     "lintfix": "eslint '{src,tests,scripts}/**/*.{js,ts}' --fix",
     "lint-shell": "find ./src ./tests ./scripts -type f -regextype posix-extended -regex '.*\\.(sh)' -exec shellcheck {} +",
     "docs": "shx rm -rf ./docs && typedoc --gitRevision master --tsconfig ./tsconfig.build.json --out ./docs src",
-    "bench": "shx rm -rf ./benches/results && ts-node --require tsconfig-paths/register --compiler typescript-cached-transpile --transpile-only ./benches",
+    "bench": "shx rm -rf ./benches/results && ts-node ./benches",
     "proto-generate": "scripts/proto-generate.sh",
     "pkg": "node ./scripts/pkg.js --no-dict=leveldown.js",
-    "polykey": "ts-node --require tsconfig-paths/register --compiler typescript-cached-transpile --transpile-only src/bin/polykey.ts"
+    "polykey": "ts-node src/bin/polykey.ts"
   },
   "dependencies": {
     "@grpc/grpc-js": "1.6.7",
@@ -111,6 +111,7 @@
     "uuid": "^8.3.0"
   },
   "devDependencies": {
+    "@swc/core": "^1.2.215",
     "@babel/preset-env": "^7.13.10",
     "@types/cross-spawn": "^6.0.2",
     "@types/google-protobuf": "^3.7.4",
@@ -142,10 +143,9 @@
     "shelljs": "^0.8.5",
     "shx": "^0.3.4",
     "ts-jest": "^28.0.5",
-    "ts-node": "10.7.0",
+    "ts-node": "^10.9.1",
     "tsconfig-paths": "^3.9.0",
     "typedoc": "^0.22.15",
-    "typescript": "^4.5.2",
-    "typescript-cached-transpile": "0.0.6"
+    "typescript": "^4.5.2"
   }
 }
