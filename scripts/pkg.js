@@ -4,8 +4,7 @@ const os = require('os');
 const fs = require('fs');
 const path = require('path');
 const process = require('process');
-const crypto = require('crypto');
-const child_process = require('child_process');
+const childProcess = require('child_process');
 const packageJSON = require('../package.json');
 
 /**
@@ -13,9 +12,9 @@ const packageJSON = require('../package.json');
  * Maps os.platform() to pkg platform
  */
 const platforms = {
-  'linux': 'linux',
-  'win32': 'win',
-  'darwin': 'macos',
+  linux: 'linux',
+  win32: 'win',
+  darwin: 'macos',
 };
 
 /**
@@ -23,16 +22,9 @@ const platforms = {
  * Maps os.arch() to pkg arch
  */
 const archs = {
-  'x64': 'x64',
-  'arm64': 'arm64',
+  x64: 'x64',
+  arm64: 'arm64',
 };
-
-function randomString(l) {
-  return crypto
-    .randomBytes(l)
-    .toString('base64')
-    .replace(/\//, '_');
-}
 
 async function find(dirPath, pattern) {
   const found = [];
@@ -41,7 +33,7 @@ async function find(dirPath, pattern) {
     entries = await fs.promises.readdir(dirPath);
   } catch (e) {
     if (e.code === 'ENOENT') {
-      return found ;
+      return found;
     }
     throw e;
   }
@@ -55,8 +47,9 @@ async function find(dirPath, pattern) {
     }
   }
   return found;
-};
+}
 
+/* eslint-disable no-console */
 async function main(argv = process.argv) {
   argv = argv.slice(2);
   let outPath;
@@ -68,15 +61,15 @@ async function main(argv = process.argv) {
   while (argv.length > 0) {
     const option = argv.shift();
     let match;
-    if (match = option.match(/--output(?:=(.+)|$)/)) {
+    if ((match = option.match(/--output(?:=(.+)|$)/))) {
       outPath = match[1] ?? argv.shift();
-    } else if (match = option.match(/--bin(?:=(.+)|$)/)) {
+    } else if ((match = option.match(/--bin(?:=(.+)|$)/))) {
       binTarget = match[1] ?? argv.shift();
-    } else if (match = option.match(/--node-version(?:=(.+)|$)/)) {
+    } else if ((match = option.match(/--node-version(?:=(.+)|$)/))) {
       nodeVersion = match[1] ?? argv.shift();
-    } else if (match = option.match(/--platform(?:=(.+)|$)/)) {
+    } else if ((match = option.match(/--platform(?:=(.+)|$)/))) {
       platform = match[1] ?? argv.shift();
-    } else if (match = option.match(/--arch(?:=(.+)|$)/)) {
+    } else if ((match = option.match(/--arch(?:=(.+)|$)/))) {
       arch = match[1] ?? argv.shift();
     } else {
       restArgs.push(option);
@@ -112,13 +105,13 @@ async function main(argv = process.argv) {
   const nodeGypBuild = require('node-gyp-build');
   const pkgConfig = packageJSON.pkg ?? {};
   pkgConfig.assets = pkgConfig.assets ?? {};
-  const npmLsOut = child_process.execFileSync(
+  const npmLsOut = childProcess.execFileSync(
     'npm',
     ['ls', '--all', '--prod', '--parseable'],
     {
       windowsHide: true,
-      encoding: 'utf-8'
-    }
+      encoding: 'utf-8',
+    },
   );
   const nodePackages = npmLsOut.trim().split('\n');
   const projectRoot = path.join(__dirname, '..');
@@ -153,22 +146,19 @@ async function main(argv = process.argv) {
     '--no-bytecode',
     '--no-native-build',
     '--public',
-    '--public-packages=\'*\'',
+    "--public-packages='*'",
     `--output=${outPath}`,
-    ...restArgs
+    ...restArgs,
   ];
-  console.error('Running pkg:')
+  console.error('Running pkg:');
   console.error(['pkg', ...pkgArgs].join(' '));
-  child_process.execFileSync(
-    'pkg',
-    pkgArgs,
-    {
-      stdio: ['inherit', 'inherit', 'inherit'],
-      windowsHide: true,
-      encoding: 'utf-8'
-    }
-  );
+  childProcess.execFileSync('pkg', pkgArgs, {
+    stdio: ['inherit', 'inherit', 'inherit'],
+    windowsHide: true,
+    encoding: 'utf-8',
+  });
   await fs.promises.rm(pkgConfigPath);
 }
+/* eslint-enable no-console */
 
 void main();
