@@ -102,6 +102,8 @@ async function main(argv = process.argv) {
   // Monkey patch the os.platform and os.arch for node-gyp-build
   os.platform = () => platform;
   os.arch = () => arch;
+  // Ensure that `node-gyp-build` only finds prebuilds
+  process.env.PREBUILDS_ONLY = '1';
   const nodeGypBuild = require('node-gyp-build');
   const pkgConfig = packageJSON.pkg ?? {};
   pkgConfig.assets = pkgConfig.assets ?? {};
