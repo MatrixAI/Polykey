@@ -1,17 +1,21 @@
 #!/usr/bin/env bash
 
+set -o errexit   # abort on nonzero exitstatus
+set -o nounset   # abort on unbound variable
+set -o pipefail  # don't hide errors within pipes
+
 shopt -s globstar
 shopt -s nullglob
 
+# Using shards to optimise tests
+# In the future we can incorporate test durations rather than using
+# a static value for the parallel keyword
+
+# Number of parallel shards to split the test suite into
+CI_PARALLEL=2
+
 # Quote the heredoc to prevent shell expansion
 cat << "EOF"
-default:
-  interruptible: true
-  before_script:
-    # Replace this in windows runners that use powershell
-    # with `mkdir -Force "$CI_PROJECT_DIR/tmp"`
-    - mkdir -p "$CI_PROJECT_DIR/tmp"
-
 variables:
   GH_PROJECT_PATH: "MatrixAI/${CI_PROJECT_NAME}"
   GH_PROJECT_URL: "https://${GITHUB_TOKEN}@github.com/${GH_PROJECT_PATH}.git"
@@ -26,6 +30,13 @@ variables:
   TS_CACHED_TRANSPILE_PORTABLE: "true"
   # Homebrew cache only used by macos runner
   HOMEBREW_CACHE: "${CI_PROJECT_DIR}/tmp/Homebrew"
+
+default:
+  interruptible: true
+  before_script:
+    # Replace this in windows runners that use powershell
+    # with `mkdir -Force "$CI_PROJECT_DIR/tmp"`
+    - mkdir -p "$CI_PROJECT_DIR/tmp"
 
 # Cached directories shared between jobs & pipelines per-branch per-runner
 cache:
@@ -102,18 +113,7 @@ build:linux index:
         coverage_format: cobertura
         path: ./tmp/coverage/cobertura-coverage.xml
   coverage: '/All files[^|]*\|[^|]*\s+([\d\.]+)/'
-EOF
 
-printf "\n"
-
-# Using shards to optimise tests
-# In the future we can incorporate test durations rather than using
-# a static value for the parallel keyword
-
-# Number of parallel shards to split the test suite into
-CI_PARALLEL=2
-
-cat << "EOF"
 build:windows:
   stage: build
   needs: []
@@ -129,10 +129,9 @@ cat << "EOF"
   script:
     - .\scripts\choco-install.ps1
     - refreshenv
-    - npm config set msvs_version 2019
     - npm install --ignore-scripts
     - $env:Path = "$(npm bin);" + $env:Path
-    - npm test -- --ci --coverage --shard=$CI_NODE_INDEX/$CI_NODE_TOTAL --maxWorkers=50%
+    - npm test -- --ci --coverage --shard="$CI_NODE_INDEX/$CI_NODE_TOTAL" --maxWorkers=50%
   artifacts:
     when: always
     reports:
@@ -142,11 +141,7 @@ cat << "EOF"
         coverage_format: cobertura
         path: ./tmp/coverage/cobertura-coverage.xml
   coverage: '/All files[^|]*\|[^|]*\s+([\d\.]+)/'
-EOF
 
-printf "\n"
-
-cat << "EOF"
 build:macos:
   stage: build
   needs: []
@@ -164,7 +159,7 @@ cat << "EOF"
     - hash -r
     - npm install --ignore-scripts
     - export PATH="$(npm bin):$PATH"
-    - npm test -- --ci --coverage --shard=$CI_NODE_INDEX/$CI_NODE_TOTAL --maxWorkers=50%
+    - npm test -- --ci --coverage --shard="$CI_NODE_INDEX/$CI_NODE_TOTAL" --maxWorkers=50%
   artifacts:
     when: always
     reports:
@@ -175,5 +170,3 @@ cat << "EOF"
         path: ./tmp/coverage/cobertura-coverage.xml
   coverage: '/All files[^|]*\|[^|]*\s+([\d\.]+)/'
 EOF
-
-printf "\n"
