@@ -51,8 +51,8 @@ describe('bootstrap/utils', () => {
     });
     expect(typeof recoveryCode).toBe('string');
     expect(
-      recoveryCode.split(' ').length === 12 ||
-        recoveryCode.split(' ').length === 24,
+      recoveryCode!.split(' ').length === 12 ||
+        recoveryCode!.split(' ').length === 24,
     ).toBe(true);
     const nodePathContents = await fs.promises.readdir(nodePath);
     expect(nodePathContents.length > 0).toBe(true);
@@ -77,8 +77,8 @@ describe('bootstrap/utils', () => {
     });
     expect(typeof recoveryCode).toBe('string');
     expect(
-      recoveryCode.split(' ').length === 12 ||
-        recoveryCode.split(' ').length === 24,
+      recoveryCode!.split(' ').length === 12 ||
+        recoveryCode!.split(' ').length === 24,
     ).toBe(true);
     const nodePathContents = await fs.promises.readdir(nodePath);
     expect(nodePathContents.length > 0).toBe(true);

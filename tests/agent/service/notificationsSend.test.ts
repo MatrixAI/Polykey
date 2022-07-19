@@ -25,11 +25,10 @@ import { AgentServiceService } from '@/proto/js/polykey/v1/agent_service_grpc_pb
 import * as notificationsErrors from '@/notifications/errors';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as notificationsPB from '@/proto/js/polykey/v1/notifications/notifications_pb';
-import * as keysUtils from '@/keys/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as notificationsUtils from '@/notifications/utils';
-import * as testUtils from '../../utils';
 import { expectRemoteError } from '../../utils';
+import { globalRootKeyPems } from '../../globalRootKeyPems';
 
 describe('notificationsSend', () => {
   const logger = new Logger('notificationsSend test', LogLevel.WARN, [
@@ -53,16 +52,7 @@ describe('notificationsSend', () => {
   let keyManager: KeyManager;
   let grpcServer: GRPCServer;
   let grpcClient: GRPCClientAgent;
-  let mockedGenerateKeyPair: jest.SpyInstance;
-  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
-  beforeAll(async () => {
-    const globalKeyPair = await testUtils.setupGlobalKeypair();
-    mockedGenerateKeyPair = jest
-      .spyOn(keysUtils, 'generateKeyPair')
-      .mockResolvedValueOnce(globalKeyPair);
-    mockedGenerateDeterministicKeyPair = jest
-      .spyOn(keysUtils, 'generateDeterministicKeyPair')
-      .mockResolvedValueOnce(globalKeyPair);
+  beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -72,12 +62,14 @@ describe('notificationsSend', () => {
       password,
       keysPath: senderKeysPath,
       logger,
+      privateKeyPemOverride: globalRootKeyPems[0],
     });
     keyManager = await KeyManager.createKeyManager({
       password,
       keysPath,
       rootKeyPairBits: 1024,
       logger,
+      privateKeyPemOverride: globalRootKeyPems[1],
     });
     senderId = senderKeyManager.getNodeId();
     const dbPath = path.join(dataDir, 'db');
@@ -164,7 +156,7 @@ describe('notificationsSend', () => {
       logger,
     });
   }, global.defaultTimeout);
-  afterAll(async () => {
+  afterEach(async () => {
     await grpcClient.destroy();
     await grpcServer.stop();
     await notificationsManager.stop();
@@ -182,8 +174,6 @@ describe('notificationsSend', () => {
       force: true,
       recursive: true,
     });
-    mockedGenerateKeyPair.mockRestore();
-    mockedGenerateDeterministicKeyPair.mockRestore();
   });
   test('successfully sends a notification', async () => {
     // Set notify permission for sender on receiver
