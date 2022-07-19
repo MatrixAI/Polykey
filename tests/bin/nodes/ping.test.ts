@@ -10,6 +10,7 @@ import { sysexits } from '@/errors';
 import * as testBinUtils from '../utils';
 import * as testNodesUtils from '../../nodes/utils';
 import { globalRootKeyPems } from '../../globalRootKeyPems';
+import { runTestIfPlatforms } from '../../utils';
 
 describe('ping', () => {
   const logger = new Logger('ping test', LogLevel.WARN, [new StreamHandler()]);
@@ -96,73 +97,88 @@ describe('ping', () => {
       recursive: true,
     });
   });
-  test('fails when pinging an offline node', async () => {
-    const { exitCode, stdout, stderr } = await testBinUtils.pkStdio(
-      [
-        'nodes',
-        'ping',
-        nodesUtils.encodeNodeId(remoteOfflineNodeId),
-        '--format',
-        'json',
-      ],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    );
-    expect(exitCode).toBe(sysexits.GENERAL); // Should fail with no response. for automation purposes.
-    expect(stderr).toContain('No response received');
-    expect(JSON.parse(stdout)).toEqual({
-      success: false,
-      message: 'No response received',
-    });
-  });
-  test('fails if node cannot be found', async () => {
-    const fakeNodeId = nodesUtils.decodeNodeId(
-      'vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0',
-    );
-    const { exitCode, stdout } = await testBinUtils.pkStdio(
-      [
-        'nodes',
-        'ping',
-        nodesUtils.encodeNodeId(fakeNodeId!),
-        '--format',
-        'json',
-      ],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    );
-    expect(exitCode).not.toBe(0); // Should fail if node doesn't exist.
-    expect(JSON.parse(stdout)).toEqual({
-      success: false,
-      message: `Failed to resolve node ID ${nodesUtils.encodeNodeId(
-        fakeNodeId!,
-      )} to an address.`,
-    });
-  });
-  test('succeed when pinging a live node', async () => {
-    const { exitCode, stdout } = await testBinUtils.pkStdio(
-      [
-        'nodes',
-        'ping',
-        nodesUtils.encodeNodeId(remoteOnlineNodeId),
-        '--format',
-        'json',
-      ],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    );
-    expect(exitCode).toBe(0);
-    expect(JSON.parse(stdout)).toEqual({
-      success: true,
-      message: 'Node is Active.',
-    });
-  });
+  runTestIfPlatforms('linux', 'docker')(
+    'fails when pinging an offline node',
+    async () => {
+      const { exitCode, stdout, stderr } = await testBinUtils.pkStdioSwitch(
+        global.testCmd,
+      )(
+        [
+          'nodes',
+          'ping',
+          nodesUtils.encodeNodeId(remoteOfflineNodeId),
+          '--format',
+          'json',
+        ],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      );
+      expect(exitCode).toBe(sysexits.GENERAL); // Should fail with no response. for automation purposes.
+      expect(stderr).toContain('No response received');
+      expect(JSON.parse(stdout)).toEqual({
+        success: false,
+        message: 'No response received',
+      });
+    },
+  );
+  runTestIfPlatforms('linux', 'docker')(
+    'fails if node cannot be found',
+    async () => {
+      const fakeNodeId = nodesUtils.decodeNodeId(
+        'vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0',
+      );
+      const { exitCode, stdout } = await testBinUtils.pkStdioSwitch(
+        global.testCmd,
+      )(
+        [
+          'nodes',
+          'ping',
+          nodesUtils.encodeNodeId(fakeNodeId!),
+          '--format',
+          'json',
+        ],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      );
+      expect(exitCode).not.toBe(0); // Should fail if node doesn't exist.
+      expect(JSON.parse(stdout)).toEqual({
+        success: false,
+        message: `Failed to resolve node ID ${nodesUtils.encodeNodeId(
+          fakeNodeId!,
+        )} to an address.`,
+      });
+    },
+  );
+  runTestIfPlatforms('linux', 'docker')(
+    'succeed when pinging a live node',
+    async () => {
+      const { exitCode, stdout } = await testBinUtils.pkStdioSwitch(
+        global.testCmd,
+      )(
+        [
+          'nodes',
+          'ping',
+          nodesUtils.encodeNodeId(remoteOnlineNodeId),
+          '--format',
+          'json',
+        ],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      );
+      expect(exitCode).toBe(0);
+      expect(JSON.parse(stdout)).toEqual({
+        success: true,
+        message: 'Node is Active.',
+      });
+    },
+  );
 });

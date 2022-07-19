@@ -10,6 +10,7 @@ import { sysexits } from '@/errors';
 import * as testBinUtils from '../utils';
 import * as testNodesUtils from '../../nodes/utils';
 import { globalRootKeyPems } from '../../globalRootKeyPems';
+import { runTestIfPlatforms } from '../../utils';
 
 describe('find', () => {
   const logger = new Logger('find test', LogLevel.WARN, [new StreamHandler()]);
@@ -101,8 +102,10 @@ describe('find', () => {
       recursive: true,
     });
   });
-  test('finds an online node', async () => {
-    const { exitCode, stdout } = await testBinUtils.pkStdio(
+  runTestIfPlatforms('linux', 'docker')('finds an online node', async () => {
+    const { exitCode, stdout } = await testBinUtils.pkStdioSwitch(
+      global.testCmd,
+    )(
       [
         'nodes',
         'find',
@@ -125,8 +128,10 @@ describe('find', () => {
       port: remoteOnlinePort,
     });
   });
-  test('finds an offline node', async () => {
-    const { exitCode, stdout } = await testBinUtils.pkStdio(
+  runTestIfPlatforms('linux', 'docker')('finds an offline node', async () => {
+    const { exitCode, stdout } = await testBinUtils.pkStdioSwitch(
+      global.testCmd,
+    )(
       [
         'nodes',
         'find',
@@ -149,13 +154,15 @@ describe('find', () => {
       port: remoteOfflinePort,
     });
   });
-  test(
+  runTestIfPlatforms('linux', 'docker')(
     'fails to find an unknown node',
     async () => {
       const unknownNodeId = nodesUtils.decodeNodeId(
         'vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg',
       );
-      const { exitCode, stdout } = await testBinUtils.pkStdio(
+      const { exitCode, stdout } = await testBinUtils.pkStdioSwitch(
+        global.testCmd,
+      )(
         [
           'nodes',
           'find',

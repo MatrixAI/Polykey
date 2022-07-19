@@ -10,6 +10,7 @@ import * as identitiesUtils from '@/identities/utils';
 import * as testBinUtils from '../utils';
 import TestProvider from '../../identities/TestProvider';
 import { globalRootKeyPems } from '../../globalRootKeyPems';
+import { runTestIfPlatforms } from '../../utils';
 
 describe('authenticate/authenticated', () => {
   const logger = new Logger('authenticate/authenticated test', LogLevel.WARN, [
@@ -54,97 +55,103 @@ describe('authenticate/authenticated', () => {
       recursive: true,
     });
   });
-  test('authenticates identity with a provider and gets authenticated identity', async () => {
-    let exitCode, stdout;
-    const mockedBrowser = jest
-      .spyOn(identitiesUtils, 'browser')
-      .mockImplementation(() => {});
-    // Authenticate an identity
-    ({ exitCode, stdout } = await testBinUtils.pkStdio(
-      [
-        'identities',
-        'authenticate',
-        testToken.providerId,
-        testToken.identityId,
-      ],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    ));
-    expect(exitCode).toBe(0);
-    expect(stdout).toContain('randomtestcode');
-    // Check that the identity was authenticated
-    ({ exitCode, stdout } = await testBinUtils.pkStdio(
-      ['identities', 'authenticated', '--format', 'json'],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    ));
-    expect(exitCode).toBe(0);
-    expect(JSON.parse(stdout)).toEqual({
-      providerId: testToken.providerId,
-      identityId: testToken.identityId,
-    });
-    // Check using providerId flag
-    ({ exitCode, stdout } = await testBinUtils.pkStdio(
-      [
-        'identities',
-        'authenticated',
-        '--provider-id',
-        testToken.providerId,
-        '--format',
-        'json',
-      ],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    ));
-    expect(exitCode).toBe(0);
-    expect(JSON.parse(stdout)).toEqual({
-      providerId: testToken.providerId,
-      identityId: testToken.identityId,
-    });
-    mockedBrowser.mockRestore();
-  });
-  test('should fail on invalid inputs', async () => {
-    let exitCode;
-    // Authenticate
-    // Invalid provider
-    ({ exitCode } = await testBinUtils.pkStdio(
-      ['identities', 'authenticate', '', testToken.identityId],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    ));
-    expect(exitCode).toBe(sysexits.USAGE);
-    // Invalid identity
-    ({ exitCode } = await testBinUtils.pkStdio(
-      ['identities', 'authenticate', testToken.providerId, ''],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    ));
-    expect(exitCode).toBe(sysexits.USAGE);
-    // Authenticated
-    // Invalid provider
-    ({ exitCode } = await testBinUtils.pkStdio(
-      ['identities', 'authenticate', '--provider-id', ''],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    ));
-    expect(exitCode).toBe(sysexits.USAGE);
-  });
+  runTestIfPlatforms('linux', 'docker')(
+    'authenticates identity with a provider and gets authenticated identity',
+    async () => {
+      let exitCode, stdout;
+      const mockedBrowser = jest
+        .spyOn(identitiesUtils, 'browser')
+        .mockImplementation(() => {});
+      // Authenticate an identity
+      ({ exitCode, stdout } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+        [
+          'identities',
+          'authenticate',
+          testToken.providerId,
+          testToken.identityId,
+        ],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      ));
+      expect(exitCode).toBe(0);
+      expect(stdout).toContain('randomtestcode');
+      // Check that the identity was authenticated
+      ({ exitCode, stdout } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+        ['identities', 'authenticated', '--format', 'json'],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      ));
+      expect(exitCode).toBe(0);
+      expect(JSON.parse(stdout)).toEqual({
+        providerId: testToken.providerId,
+        identityId: testToken.identityId,
+      });
+      // Check using providerId flag
+      ({ exitCode, stdout } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+        [
+          'identities',
+          'authenticated',
+          '--provider-id',
+          testToken.providerId,
+          '--format',
+          'json',
+        ],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      ));
+      expect(exitCode).toBe(0);
+      expect(JSON.parse(stdout)).toEqual({
+        providerId: testToken.providerId,
+        identityId: testToken.identityId,
+      });
+      mockedBrowser.mockRestore();
+    },
+  );
+  runTestIfPlatforms('linux', 'docker')(
+    'should fail on invalid inputs',
+    async () => {
+      let exitCode;
+      // Authenticate
+      // Invalid provider
+      ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+        ['identities', 'authenticate', '', testToken.identityId],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      ));
+      expect(exitCode).toBe(sysexits.USAGE);
+      // Invalid identity
+      ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+        ['identities', 'authenticate', testToken.providerId, ''],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      ));
+      expect(exitCode).toBe(sysexits.USAGE);
+      // Authenticated
+      // Invalid provider
+      ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+        ['identities', 'authenticate', '--provider-id', ''],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      ));
+      expect(exitCode).toBe(sysexits.USAGE);
+    },
+  );
 });

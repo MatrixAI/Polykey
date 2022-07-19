@@ -16,6 +16,7 @@ import * as testBinUtils from '../utils';
 import * as testNodesUtils from '../../nodes/utils';
 import TestProvider from '../../identities/TestProvider';
 import { globalRootKeyPems } from '../../globalRootKeyPems';
+import { runTestIfPlatforms } from '../../utils';
 
 describe('discover/get', () => {
   const logger = new Logger('discover/get test', LogLevel.WARN, [
@@ -121,212 +122,221 @@ describe('discover/get', () => {
       recursive: true,
     });
   });
-  test('discovers and gets gestalt by node', async () => {
-    // Need an authenticated identity
-    const mockedBrowser = jest
-      .spyOn(identitiesUtils, 'browser')
-      .mockImplementation(() => {});
-    await testBinUtils.pkStdio(
-      [
-        'identities',
-        'authenticate',
+  runTestIfPlatforms('linux', 'docker')(
+    'discovers and gets gestalt by node',
+    async () => {
+      // Need an authenticated identity
+      const mockedBrowser = jest
+        .spyOn(identitiesUtils, 'browser')
+        .mockImplementation(() => {});
+      await testBinUtils.pkStdioSwitch(global.testCmd)(
+        [
+          'identities',
+          'authenticate',
+          testToken.providerId,
+          testToken.identityId,
+        ],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      );
+      // Add one of the nodes to our gestalt graph so that we'll be able to
+      // contact the gestalt during discovery
+      await testBinUtils.pkStdioSwitch(global.testCmd)(
+        [
+          'nodes',
+          'add',
+          nodesUtils.encodeNodeId(nodeAId),
+          nodeAHost,
+          `${nodeAPort}`,
+        ],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      );
+      // Discover gestalt by node
+      const discoverResponse = await testBinUtils.pkStdioSwitch(global.testCmd)(
+        ['identities', 'discover', nodesUtils.encodeNodeId(nodeAId)],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      );
+      expect(discoverResponse.exitCode).toBe(0);
+      // Since discovery is a background process we need to wait for the
+      // gestalt to be discovered
+      await poll<Gestalt>(
+        async () => {
+          const gestalts = await poll<Array<Gestalt>>(
+            async () => {
+              return await pkAgent.gestaltGraph.getGestalts();
+            },
+            (_, result) => {
+              if (result.length === 1) return true;
+              return false;
+            },
+            100,
+          );
+          return gestalts[0];
+        },
+        (_, result) => {
+          if (result === undefined) return false;
+          if (Object.keys(result.matrix).length === 3) return true;
+          return false;
+        },
+        100,
+      );
+      // Now we can get the gestalt
+      const getResponse = await testBinUtils.pkStdioSwitch(global.testCmd)(
+        ['identities', 'get', nodesUtils.encodeNodeId(nodeAId)],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      );
+      expect(getResponse.exitCode).toBe(0);
+      expect(getResponse.stdout).toContain(nodesUtils.encodeNodeId(nodeAId));
+      expect(getResponse.stdout).toContain(nodesUtils.encodeNodeId(nodeBId));
+      expect(getResponse.stdout).toContain(providerString);
+      // Revert side effects
+      await pkAgent.gestaltGraph.unsetNode(nodeAId);
+      await pkAgent.gestaltGraph.unsetNode(nodeBId);
+      await pkAgent.gestaltGraph.unsetIdentity(testProvider.id, identityId);
+      await pkAgent.nodeGraph.unsetNode(nodeAId);
+      await pkAgent.identitiesManager.delToken(
         testToken.providerId,
         testToken.identityId,
-      ],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    );
-    // Add one of the nodes to our gestalt graph so that we'll be able to
-    // contact the gestalt during discovery
-    await testBinUtils.pkStdio(
-      [
-        'nodes',
-        'add',
-        nodesUtils.encodeNodeId(nodeAId),
-        nodeAHost,
-        `${nodeAPort}`,
-      ],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    );
-    // Discover gestalt by node
-    const discoverResponse = await testBinUtils.pkStdio(
-      ['identities', 'discover', nodesUtils.encodeNodeId(nodeAId)],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    );
-    expect(discoverResponse.exitCode).toBe(0);
-    // Since discovery is a background process we need to wait for the
-    // gestalt to be discovered
-    await poll<Gestalt>(
-      async () => {
-        const gestalts = await poll<Array<Gestalt>>(
-          async () => {
-            return await pkAgent.gestaltGraph.getGestalts();
-          },
-          (_, result) => {
-            if (result.length === 1) return true;
-            return false;
-          },
-          100,
-        );
-        return gestalts[0];
-      },
-      (_, result) => {
-        if (result === undefined) return false;
-        if (Object.keys(result.matrix).length === 3) return true;
-        return false;
-      },
-      100,
-    );
-    // Now we can get the gestalt
-    const getResponse = await testBinUtils.pkStdio(
-      ['identities', 'get', nodesUtils.encodeNodeId(nodeAId)],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    );
-    expect(getResponse.exitCode).toBe(0);
-    expect(getResponse.stdout).toContain(nodesUtils.encodeNodeId(nodeAId));
-    expect(getResponse.stdout).toContain(nodesUtils.encodeNodeId(nodeBId));
-    expect(getResponse.stdout).toContain(providerString);
-    // Revert side effects
-    await pkAgent.gestaltGraph.unsetNode(nodeAId);
-    await pkAgent.gestaltGraph.unsetNode(nodeBId);
-    await pkAgent.gestaltGraph.unsetIdentity(testProvider.id, identityId);
-    await pkAgent.nodeGraph.unsetNode(nodeAId);
-    await pkAgent.identitiesManager.delToken(
-      testToken.providerId,
-      testToken.identityId,
-    );
-    mockedBrowser.mockRestore();
-    // @ts-ignore - get protected property
-    pkAgent.discovery.visitedVertices.clear();
-  });
-  test('discovers and gets gestalt by identity', async () => {
-    // Need an authenticated identity
-    const mockedBrowser = jest
-      .spyOn(identitiesUtils, 'browser')
-      .mockImplementation(() => {});
-    await testBinUtils.pkStdio(
-      [
-        'identities',
-        'authenticate',
+      );
+      mockedBrowser.mockRestore();
+      // @ts-ignore - get protected property
+      pkAgent.discovery.visitedVertices.clear();
+    },
+  );
+  runTestIfPlatforms('linux', 'docker')(
+    'discovers and gets gestalt by identity',
+    async () => {
+      // Need an authenticated identity
+      const mockedBrowser = jest
+        .spyOn(identitiesUtils, 'browser')
+        .mockImplementation(() => {});
+      await testBinUtils.pkStdioSwitch(global.testCmd)(
+        [
+          'identities',
+          'authenticate',
+          testToken.providerId,
+          testToken.identityId,
+        ],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      );
+      // Add one of the nodes to our gestalt graph so that we'll be able to
+      // contact the gestalt during discovery
+      await testBinUtils.pkStdioSwitch(global.testCmd)(
+        [
+          'nodes',
+          'add',
+          nodesUtils.encodeNodeId(nodeAId),
+          nodeAHost,
+          `${nodeAPort}`,
+        ],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      );
+      // Discover gestalt by node
+      const discoverResponse = await testBinUtils.pkStdioSwitch(global.testCmd)(
+        ['identities', 'discover', providerString],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      );
+      expect(discoverResponse.exitCode).toBe(0);
+      // Since discovery is a background process we need to wait for the
+      // gestalt to be discovered
+      await poll<Gestalt>(
+        async () => {
+          const gestalts = await poll<Array<Gestalt>>(
+            async () => {
+              return await pkAgent.gestaltGraph.getGestalts();
+            },
+            (_, result) => {
+              if (result.length === 1) return true;
+              return false;
+            },
+            100,
+          );
+          return gestalts[0];
+        },
+        (_, result) => {
+          if (result === undefined) return false;
+          if (Object.keys(result.matrix).length === 3) return true;
+          return false;
+        },
+        100,
+      );
+      // Now we can get the gestalt
+      const getResponse = await testBinUtils.pkStdioSwitch(global.testCmd)(
+        ['identities', 'get', providerString],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      );
+      expect(getResponse.exitCode).toBe(0);
+      expect(getResponse.stdout).toContain(nodesUtils.encodeNodeId(nodeAId));
+      expect(getResponse.stdout).toContain(nodesUtils.encodeNodeId(nodeBId));
+      expect(getResponse.stdout).toContain(providerString);
+      // Revert side effects
+      await pkAgent.gestaltGraph.unsetNode(nodeAId);
+      await pkAgent.gestaltGraph.unsetNode(nodeBId);
+      await pkAgent.gestaltGraph.unsetIdentity(testProvider.id, identityId);
+      await pkAgent.nodeGraph.unsetNode(nodeAId);
+      await pkAgent.identitiesManager.delToken(
         testToken.providerId,
         testToken.identityId,
-      ],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    );
-    // Add one of the nodes to our gestalt graph so that we'll be able to
-    // contact the gestalt during discovery
-    await testBinUtils.pkStdio(
-      [
-        'nodes',
-        'add',
-        nodesUtils.encodeNodeId(nodeAId),
-        nodeAHost,
-        `${nodeAPort}`,
-      ],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    );
-    // Discover gestalt by node
-    const discoverResponse = await testBinUtils.pkStdio(
-      ['identities', 'discover', providerString],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    );
-    expect(discoverResponse.exitCode).toBe(0);
-    // Since discovery is a background process we need to wait for the
-    // gestalt to be discovered
-    await poll<Gestalt>(
-      async () => {
-        const gestalts = await poll<Array<Gestalt>>(
-          async () => {
-            return await pkAgent.gestaltGraph.getGestalts();
-          },
-          (_, result) => {
-            if (result.length === 1) return true;
-            return false;
-          },
-          100,
-        );
-        return gestalts[0];
-      },
-      (_, result) => {
-        if (result === undefined) return false;
-        if (Object.keys(result.matrix).length === 3) return true;
-        return false;
-      },
-      100,
-    );
-    // Now we can get the gestalt
-    const getResponse = await testBinUtils.pkStdio(
-      ['identities', 'get', providerString],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    );
-    expect(getResponse.exitCode).toBe(0);
-    expect(getResponse.stdout).toContain(nodesUtils.encodeNodeId(nodeAId));
-    expect(getResponse.stdout).toContain(nodesUtils.encodeNodeId(nodeBId));
-    expect(getResponse.stdout).toContain(providerString);
-    // Revert side effects
-    await pkAgent.gestaltGraph.unsetNode(nodeAId);
-    await pkAgent.gestaltGraph.unsetNode(nodeBId);
-    await pkAgent.gestaltGraph.unsetIdentity(testProvider.id, identityId);
-    await pkAgent.nodeGraph.unsetNode(nodeAId);
-    await pkAgent.identitiesManager.delToken(
-      testToken.providerId,
-      testToken.identityId,
-    );
-    mockedBrowser.mockRestore();
-    // @ts-ignore - get protected property
-    pkAgent.discovery.visitedVertices.clear();
-  });
-  test('should fail on invalid inputs', async () => {
-    let exitCode;
-    // Discover
-    ({ exitCode } = await testBinUtils.pkStdio(
-      ['identities', 'discover', 'invalid'],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    ));
-    expect(exitCode).toBe(sysexits.USAGE);
-    // Get
-    ({ exitCode } = await testBinUtils.pkStdio(
-      ['identities', 'get', 'invalid'],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    ));
-  });
+      );
+      mockedBrowser.mockRestore();
+      // @ts-ignore - get protected property
+      pkAgent.discovery.visitedVertices.clear();
+    },
+  );
+  runTestIfPlatforms('linux', 'docker')(
+    'should fail on invalid inputs',
+    async () => {
+      let exitCode;
+      // Discover
+      ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+        ['identities', 'discover', 'invalid'],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      ));
+      expect(exitCode).toBe(sysexits.USAGE);
+      // Get
+      ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+        ['identities', 'get', 'invalid'],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      ));
+    },
+  );
 });

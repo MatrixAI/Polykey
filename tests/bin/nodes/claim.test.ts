@@ -9,6 +9,7 @@ import * as nodesUtils from '@/nodes/utils';
 import * as testBinUtils from '../utils';
 import * as testNodesUtils from '../../nodes/utils';
 import { globalRootKeyPems } from '../../globalRootKeyPems';
+import { runTestIfPlatforms } from '../../utils';
 
 describe('claim', () => {
   const logger = new Logger('claim test', LogLevel.WARN, [new StreamHandler()]);
@@ -83,8 +84,10 @@ describe('claim', () => {
       recursive: true,
     });
   });
-  test('sends a gestalt invite', async () => {
-    const { exitCode, stdout } = await testBinUtils.pkStdio(
+  runTestIfPlatforms('linux', 'docker')('sends a gestalt invite', async () => {
+    const { exitCode, stdout } = await testBinUtils.pkStdioSwitch(
+      global.testCmd,
+    )(
       ['nodes', 'claim', remoteIdEncoded],
       {
         PK_NODE_PATH: nodePath,
@@ -96,27 +99,34 @@ describe('claim', () => {
     expect(stdout).toContain('Gestalt Invite');
     expect(stdout).toContain(remoteIdEncoded);
   });
-  test('sends a gestalt invite (force invite)', async () => {
+  runTestIfPlatforms('linux', 'docker')(
+    'sends a gestalt invite (force invite)',
+    async () => {
+      await remoteNode.notificationsManager.sendNotification(localId, {
+        type: 'GestaltInvite',
+      });
+      const { exitCode, stdout } = await testBinUtils.pkStdioSwitch(
+        global.testCmd,
+      )(
+        ['nodes', 'claim', remoteIdEncoded, '--force-invite'],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      );
+      expect(exitCode).toBe(0);
+      expect(stdout).toContain('Gestalt Invite');
+      expect(stdout).toContain(nodesUtils.encodeNodeId(remoteId));
+    },
+  );
+  runTestIfPlatforms('linux', 'docker')('claims a node', async () => {
     await remoteNode.notificationsManager.sendNotification(localId, {
       type: 'GestaltInvite',
     });
-    const { exitCode, stdout } = await testBinUtils.pkStdio(
-      ['nodes', 'claim', remoteIdEncoded, '--force-invite'],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    );
-    expect(exitCode).toBe(0);
-    expect(stdout).toContain('Gestalt Invite');
-    expect(stdout).toContain(nodesUtils.encodeNodeId(remoteId));
-  });
-  test('claims a node', async () => {
-    await remoteNode.notificationsManager.sendNotification(localId, {
-      type: 'GestaltInvite',
-    });
-    const { exitCode, stdout } = await testBinUtils.pkStdio(
+    const { exitCode, stdout } = await testBinUtils.pkStdioSwitch(
+      global.testCmd,
+    )(
       ['nodes', 'claim', remoteIdEncoded],
       {
         PK_NODE_PATH: nodePath,
