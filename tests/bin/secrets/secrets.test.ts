@@ -7,6 +7,7 @@ import PolykeyAgent from '@/PolykeyAgent';
 import { vaultOps } from '@/vaults';
 import * as testBinUtils from '../utils';
 import { globalRootKeyPems } from '../../globalRootKeyPems';
+import { runTestIfPlatforms } from '../../utils';
 
 describe('CLI secrets', () => {
   const password = 'password';
@@ -31,7 +32,7 @@ describe('CLI secrets', () => {
       },
     });
     // Authorize session
-    await testBinUtils.pkStdio(
+    await testBinUtils.pkStdioSwitch(global.testCmd)(
       ['agent', 'unlock', '-np', dataDir, '--password-file', passwordFile],
       {},
       dataDir,
@@ -47,7 +48,7 @@ describe('CLI secrets', () => {
   });
 
   describe('commandCreateSecret', () => {
-    test(
+    runTestIfPlatforms('linux', 'docker')(
       'should create secrets',
       async () => {
         const vaultName = 'Vault1' as VaultName;
@@ -64,7 +65,11 @@ describe('CLI secrets', () => {
           `${vaultName}:MySecret`,
         ];
 
-        const result = await testBinUtils.pkStdio([...command], {}, dataDir);
+        const result = await testBinUtils.pkStdioSwitch(global.testCmd)(
+          [...command],
+          {},
+          dataDir,
+        );
         expect(result.exitCode).toBe(0);
 
         await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
@@ -79,7 +84,7 @@ describe('CLI secrets', () => {
     );
   });
   describe('commandDeleteSecret', () => {
-    test('should delete secrets', async () => {
+    runTestIfPlatforms('linux', 'docker')('should delete secrets', async () => {
       const vaultName = 'Vault2' as VaultName;
       const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
 
@@ -91,7 +96,11 @@ describe('CLI secrets', () => {
 
       command = ['secrets', 'delete', '-np', dataDir, `${vaultName}:MySecret`];
 
-      const result = await testBinUtils.pkStdio([...command], {}, dataDir);
+      const result = await testBinUtils.pkStdioSwitch(global.testCmd)(
+        [...command],
+        {},
+        dataDir,
+      );
       expect(result.exitCode).toBe(0);
 
       await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
@@ -101,22 +110,29 @@ describe('CLI secrets', () => {
     });
   });
   describe('commandGetSecret', () => {
-    test('should retrieve secrets', async () => {
-      const vaultName = 'Vault3' as VaultName;
-      const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
+    runTestIfPlatforms('linux', 'docker')(
+      'should retrieve secrets',
+      async () => {
+        const vaultName = 'Vault3' as VaultName;
+        const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
 
-      await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
-        await vaultOps.addSecret(vault, 'MySecret', 'this is the secret');
-      });
+        await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
+          await vaultOps.addSecret(vault, 'MySecret', 'this is the secret');
+        });
 
-      command = ['secrets', 'get', '-np', dataDir, `${vaultName}:MySecret`];
+        command = ['secrets', 'get', '-np', dataDir, `${vaultName}:MySecret`];
 
-      const result = await testBinUtils.pkStdio([...command], {}, dataDir);
-      expect(result.exitCode).toBe(0);
-    });
+        const result = await testBinUtils.pkStdioSwitch(global.testCmd)(
+          [...command],
+          {},
+          dataDir,
+        );
+        expect(result.exitCode).toBe(0);
+      },
+    );
   });
   describe('commandListSecrets', () => {
-    test('should list secrets', async () => {
+    runTestIfPlatforms('linux', 'docker')('should list secrets', async () => {
       const vaultName = 'Vault4' as VaultName;
       const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
 
@@ -128,48 +144,59 @@ describe('CLI secrets', () => {
 
       command = ['secrets', 'list', '-np', dataDir, vaultName];
 
-      const result = await testBinUtils.pkStdio([...command], {}, dataDir);
+      const result = await testBinUtils.pkStdioSwitch(global.testCmd)(
+        [...command],
+        {},
+        dataDir,
+      );
       expect(result.exitCode).toBe(0);
     });
   });
   describe('commandNewDir', () => {
-    test('should make a directory', async () => {
-      const vaultName = 'Vault5' as VaultName;
-      const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
+    runTestIfPlatforms('linux', 'docker')(
+      'should make a directory',
+      async () => {
+        const vaultName = 'Vault5' as VaultName;
+        const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
 
-      command = [
-        'secrets',
-        'mkdir',
-        '-np',
-        dataDir,
-        `${vaultName}:dir1/dir2`,
-        '-r',
-      ];
+        command = [
+          'secrets',
+          'mkdir',
+          '-np',
+          dataDir,
+          `${vaultName}:dir1/dir2`,
+          '-r',
+        ];
 
-      const result = await testBinUtils.pkStdio([...command], {}, dataDir);
-      expect(result.exitCode).toBe(0);
-
-      await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
-        await vaultOps.addSecret(
-          vault,
-          'dir1/MySecret1',
-          'this is the secret 1',
+        const result = await testBinUtils.pkStdioSwitch(global.testCmd)(
+          [...command],
+          {},
+          dataDir,
         );
-        await vaultOps.addSecret(
-          vault,
-          'dir1/dir2/MySecret2',
-          'this is the secret 2',
-        );
+        expect(result.exitCode).toBe(0);
 
-        const list = await vaultOps.listSecrets(vault);
-        expect(list.sort()).toStrictEqual(
-          ['dir1/MySecret1', 'dir1/dir2/MySecret2'].sort(),
-        );
-      });
-    });
+        await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
+          await vaultOps.addSecret(
+            vault,
+            'dir1/MySecret1',
+            'this is the secret 1',
+          );
+          await vaultOps.addSecret(
+            vault,
+            'dir1/dir2/MySecret2',
+            'this is the secret 2',
+          );
+
+          const list = await vaultOps.listSecrets(vault);
+          expect(list.sort()).toStrictEqual(
+            ['dir1/MySecret1', 'dir1/dir2/MySecret2'].sort(),
+          );
+        });
+      },
+    );
   });
   describe('commandRenameSecret', () => {
-    test('should rename secrets', async () => {
+    runTestIfPlatforms('linux', 'docker')('should rename secrets', async () => {
       const vaultName = 'Vault6' as VaultName;
       const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
 
@@ -186,7 +213,11 @@ describe('CLI secrets', () => {
         'MyRenamedSecret',
       ];
 
-      const result = await testBinUtils.pkStdio([...command], {}, dataDir);
+      const result = await testBinUtils.pkStdioSwitch(global.testCmd)(
+        [...command],
+        {},
+        dataDir,
+      );
       expect(result.exitCode).toBe(0);
 
       await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
@@ -196,7 +227,7 @@ describe('CLI secrets', () => {
     });
   });
   describe('commandUpdateSecret', () => {
-    test('should update secrets', async () => {
+    runTestIfPlatforms('linux', 'docker')('should update secrets', async () => {
       const vaultName = 'Vault7' as VaultName;
       const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
 
@@ -219,7 +250,11 @@ describe('CLI secrets', () => {
         `${vaultName}:MySecret`,
       ];
 
-      const result2 = await testBinUtils.pkStdio([...command], {}, dataDir);
+      const result2 = await testBinUtils.pkStdioSwitch(global.testCmd)(
+        [...command],
+        {},
+        dataDir,
+      );
       expect(result2.exitCode).toBe(0);
 
       await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
@@ -232,62 +267,76 @@ describe('CLI secrets', () => {
     });
   });
   describe('commandNewDirSecret', () => {
-    test('should add a directory of secrets', async () => {
-      const vaultName = 'Vault8' as VaultName;
-      const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
+    runTestIfPlatforms('linux', 'docker')(
+      'should add a directory of secrets',
+      async () => {
+        const vaultName = 'Vault8' as VaultName;
+        const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
 
-      const secretDir = path.join(dataDir, 'secrets');
-      await fs.promises.mkdir(secretDir);
-      await fs.promises.writeFile(
-        path.join(secretDir, 'secret-1'),
-        'this is the secret 1',
-      );
-      await fs.promises.writeFile(
-        path.join(secretDir, 'secret-2'),
-        'this is the secret 2',
-      );
-      await fs.promises.writeFile(
-        path.join(secretDir, 'secret-3'),
-        'this is the secret 3',
-      );
+        const secretDir = path.join(dataDir, 'secrets');
+        await fs.promises.mkdir(secretDir);
+        await fs.promises.writeFile(
+          path.join(secretDir, 'secret-1'),
+          'this is the secret 1',
+        );
+        await fs.promises.writeFile(
+          path.join(secretDir, 'secret-2'),
+          'this is the secret 2',
+        );
+        await fs.promises.writeFile(
+          path.join(secretDir, 'secret-3'),
+          'this is the secret 3',
+        );
 
-      await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
-        const list = await vaultOps.listSecrets(vault);
-        expect(list.sort()).toStrictEqual([]);
-      });
+        await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
+          const list = await vaultOps.listSecrets(vault);
+          expect(list.sort()).toStrictEqual([]);
+        });
 
-      command = ['secrets', 'dir', '-np', dataDir, secretDir, vaultName];
+        command = ['secrets', 'dir', '-np', dataDir, secretDir, vaultName];
 
-      const result2 = await testBinUtils.pkStdio([...command], {}, dataDir);
-      expect(result2.exitCode).toBe(0);
+        const result2 = await testBinUtils.pkStdioSwitch(global.testCmd)(
+          [...command],
+          {},
+          dataDir,
+        );
+        expect(result2.exitCode).toBe(0);
 
-      await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
-        const list = await vaultOps.listSecrets(vault);
-        expect(list.sort()).toStrictEqual([
-          'secrets/secret-1',
-          'secrets/secret-2',
-          'secrets/secret-3',
-        ]);
-      });
-    });
+        await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
+          const list = await vaultOps.listSecrets(vault);
+          expect(list.sort()).toStrictEqual([
+            'secrets/secret-1',
+            'secrets/secret-2',
+            'secrets/secret-3',
+          ]);
+        });
+      },
+    );
   });
   describe('commandStat', () => {
-    test('should retrieve secrets', async () => {
-      const vaultName = 'Vault9';
-      const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
+    runTestIfPlatforms('linux', 'docker')(
+      'should retrieve secrets',
+      async () => {
+        const vaultName = 'Vault9';
+        const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
 
-      await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
-        await vaultOps.addSecret(vault, 'MySecret', 'this is the secret');
-      });
+        await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
+          await vaultOps.addSecret(vault, 'MySecret', 'this is the secret');
+        });
 
-      command = ['secrets', 'stat', '-np', dataDir, `${vaultName}:MySecret`];
+        command = ['secrets', 'stat', '-np', dataDir, `${vaultName}:MySecret`];
 
-      const result = await testBinUtils.pkStdio([...command], {}, dataDir);
-      expect(result.exitCode).toBe(0);
-      expect(result.stdout).toContain('nlink: 1');
-      expect(result.stdout).toContain('blocks: 1');
-      expect(result.stdout).toContain('blksize: 4096');
-      expect(result.stdout).toContain('size: 18');
-    });
+        const result = await testBinUtils.pkStdioSwitch(global.testCmd)(
+          [...command],
+          {},
+          dataDir,
+        );
+        expect(result.exitCode).toBe(0);
+        expect(result.stdout).toContain('nlink: 1');
+        expect(result.stdout).toContain('blocks: 1');
+        expect(result.stdout).toContain('blksize: 4096');
+        expect(result.stdout).toContain('size: 18');
+      },
+    );
   });
 });

@@ -15,6 +15,7 @@ import * as identitiesUtils from '@/identities/utils';
 import * as testBinUtils from '../utils';
 import TestProvider from '../../identities/TestProvider';
 import { globalRootKeyPems } from '../../globalRootKeyPems';
+import { runTestIfPlatforms } from '../../utils';
 
 describe('allow/disallow/permissions', () => {
   const logger = new Logger('allow/disallow/permissions test', LogLevel.WARN, [
@@ -97,293 +98,302 @@ describe('allow/disallow/permissions', () => {
       recursive: true,
     });
   });
-  test('allows/disallows/gets gestalt permissions by node', async () => {
-    let exitCode, stdout;
-    // Add the node to our node graph, otherwise we won't be able to contact it
-    await testBinUtils.pkStdio(
-      [
-        'nodes',
-        'add',
-        nodesUtils.encodeNodeId(nodeId),
-        nodeHost,
-        `${nodePort}`,
-      ],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    );
-    // Must first trust node before we can set permissions
-    // This is because trusting the node sets it in our gestalt graph, which
-    // we need in order to set permissions
-    await testBinUtils.pkStdio(
-      ['identities', 'trust', nodesUtils.encodeNodeId(nodeId)],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    );
-    // We should now have the 'notify' permission, so we'll set the 'scan'
-    // permission as well
-    ({ exitCode } = await testBinUtils.pkStdio(
-      ['identities', 'allow', nodesUtils.encodeNodeId(nodeId), 'scan'],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    ));
-    expect(exitCode).toBe(0);
-    // Check that both permissions are set
-    ({ exitCode, stdout } = await testBinUtils.pkStdio(
-      [
-        'identities',
-        'permissions',
-        nodesUtils.encodeNodeId(nodeId),
-        '--format',
-        'json',
-      ],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    ));
-    expect(exitCode).toBe(0);
-    expect(JSON.parse(stdout)).toEqual({
-      permissions: ['notify', 'scan'],
-    });
-    // Disallow both permissions
-    ({ exitCode } = await testBinUtils.pkStdio(
-      ['identities', 'disallow', nodesUtils.encodeNodeId(nodeId), 'notify'],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    ));
-    expect(exitCode).toBe(0);
-    ({ exitCode } = await testBinUtils.pkStdio(
-      ['identities', 'disallow', nodesUtils.encodeNodeId(nodeId), 'scan'],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    ));
-    expect(exitCode).toBe(0);
-    // Check that both permissions were unset
-    ({ exitCode, stdout } = await testBinUtils.pkStdio(
-      [
-        'identities',
-        'permissions',
-        nodesUtils.encodeNodeId(nodeId),
-        '--format',
-        'json',
-      ],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    ));
-    expect(exitCode).toBe(0);
-    expect(JSON.parse(stdout)).toEqual({
-      permissions: [],
-    });
-  });
-  test('allows/disallows/gets gestalt permissions by identity', async () => {
-    let exitCode, stdout;
-    // Add the node to our node graph, otherwise we won't be able to contact it
-    await testBinUtils.pkStdio(
-      [
-        'nodes',
-        'add',
-        nodesUtils.encodeNodeId(nodeId),
-        nodeHost,
-        `${nodePort}`,
-      ],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    );
-    // Authenticate our own identity in order to query the provider
-    const mockedBrowser = jest
-      .spyOn(identitiesUtils, 'browser')
-      .mockImplementation(() => {});
-    await testBinUtils.pkStdio(
-      [
-        'identities',
-        'authenticate',
-        testToken.providerId,
-        testToken.identityId,
-      ],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    );
-    mockedBrowser.mockRestore();
-    // Must first trust identity before we can set permissions
-    // This is because trusting the identity sets it in our gestalt graph,
-    // which we need in order to set permissions
-    // This command should fail first time since the identity won't be linked
-    // to any nodes. It will trigger this process via discovery and we must
-    // wait and then retry
-    await testBinUtils.pkStdio(
-      ['identities', 'trust', providerString],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    );
-    await poll<Gestalt>(
-      async () => {
-        const gestalts = await poll<Array<Gestalt>>(
-          async () => {
-            return await pkAgent.gestaltGraph.getGestalts();
-          },
-          (_, result) => {
-            if (result.length === 1) return true;
-            return false;
-          },
-          100,
-        );
-        return gestalts[0];
-      },
-      (_, result) => {
-        if (result === undefined) return false;
-        if (Object.keys(result.matrix).length === 2) return true;
-        return false;
-      },
-      100,
-    );
-    ({ exitCode } = await testBinUtils.pkStdio(
-      ['identities', 'trust', providerString],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    ));
-    expect(exitCode).toBe(0);
-    // We should now have the 'notify' permission, so we'll set the 'scan'
-    // permission as well
-    ({ exitCode } = await testBinUtils.pkStdio(
-      ['identities', 'allow', providerString, 'scan'],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    ));
-    expect(exitCode).toBe(0);
-    // Check that both permissions are set
-    ({ exitCode, stdout } = await testBinUtils.pkStdio(
-      ['identities', 'permissions', providerString, '--format', 'json'],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    ));
-    expect(exitCode).toBe(0);
-    expect(JSON.parse(stdout)).toEqual({
-      permissions: ['notify', 'scan'],
-    });
-    // Disallow both permissions
-    ({ exitCode } = await testBinUtils.pkStdio(
-      ['identities', 'disallow', providerString, 'notify'],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    ));
-    expect(exitCode).toBe(0);
-    ({ exitCode } = await testBinUtils.pkStdio(
-      ['identities', 'disallow', providerString, 'scan'],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    ));
-    expect(exitCode).toBe(0);
-    // Check that both permissions were unset
-    ({ exitCode, stdout } = await testBinUtils.pkStdio(
-      ['identities', 'permissions', providerString, '--format', 'json'],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    ));
-    expect(exitCode).toBe(0);
-    expect(JSON.parse(stdout)).toEqual({
-      permissions: [],
-    });
-  });
-  test('should fail on invalid inputs', async () => {
-    let exitCode;
-    // Allow
-    // Invalid gestalt id
-    ({ exitCode } = await testBinUtils.pkStdio(
-      ['identities', 'allow', 'invalid', 'notify'],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    ));
-    expect(exitCode).toBe(sysexits.USAGE);
-    // Invalid permission
-    ({ exitCode } = await testBinUtils.pkStdio(
-      ['identities', 'allow', nodesUtils.encodeNodeId(nodeId), 'invalid'],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    ));
-    expect(exitCode).toBe(sysexits.USAGE);
-    // Permissions
-    // Invalid gestalt id
-    ({ exitCode } = await testBinUtils.pkStdio(
-      ['identities', 'permissions', 'invalid'],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    ));
-    expect(exitCode).toBe(sysexits.USAGE);
-    // Disallow
-    // Invalid gestalt id
-    ({ exitCode } = await testBinUtils.pkStdio(
-      ['identities', 'disallow', 'invalid', 'notify'],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    ));
-    expect(exitCode).toBe(sysexits.USAGE);
-    // Invalid permission
-    ({ exitCode } = await testBinUtils.pkStdio(
-      ['identities', 'disallow', nodesUtils.encodeNodeId(nodeId), 'invalid'],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    ));
-    expect(exitCode).toBe(sysexits.USAGE);
-  });
+  runTestIfPlatforms('linux', 'docker')(
+    'allows/disallows/gets gestalt permissions by node',
+    async () => {
+      let exitCode, stdout;
+      // Add the node to our node graph, otherwise we won't be able to contact it
+      await testBinUtils.pkStdioSwitch(global.testCmd)(
+        [
+          'nodes',
+          'add',
+          nodesUtils.encodeNodeId(nodeId),
+          nodeHost,
+          `${nodePort}`,
+        ],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      );
+      // Must first trust node before we can set permissions
+      // This is because trusting the node sets it in our gestalt graph, which
+      // we need in order to set permissions
+      await testBinUtils.pkStdioSwitch(global.testCmd)(
+        ['identities', 'trust', nodesUtils.encodeNodeId(nodeId)],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      );
+      // We should now have the 'notify' permission, so we'll set the 'scan'
+      // permission as well
+      ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+        ['identities', 'allow', nodesUtils.encodeNodeId(nodeId), 'scan'],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      ));
+      expect(exitCode).toBe(0);
+      // Check that both permissions are set
+      ({ exitCode, stdout } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+        [
+          'identities',
+          'permissions',
+          nodesUtils.encodeNodeId(nodeId),
+          '--format',
+          'json',
+        ],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      ));
+      expect(exitCode).toBe(0);
+      expect(JSON.parse(stdout)).toEqual({
+        permissions: ['notify', 'scan'],
+      });
+      // Disallow both permissions
+      ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+        ['identities', 'disallow', nodesUtils.encodeNodeId(nodeId), 'notify'],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      ));
+      expect(exitCode).toBe(0);
+      ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+        ['identities', 'disallow', nodesUtils.encodeNodeId(nodeId), 'scan'],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      ));
+      expect(exitCode).toBe(0);
+      // Check that both permissions were unset
+      ({ exitCode, stdout } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+        [
+          'identities',
+          'permissions',
+          nodesUtils.encodeNodeId(nodeId),
+          '--format',
+          'json',
+        ],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      ));
+      expect(exitCode).toBe(0);
+      expect(JSON.parse(stdout)).toEqual({
+        permissions: [],
+      });
+    },
+  );
+  runTestIfPlatforms('linux', 'docker')(
+    'allows/disallows/gets gestalt permissions by identity',
+    async () => {
+      let exitCode, stdout;
+      // Add the node to our node graph, otherwise we won't be able to contact it
+      await testBinUtils.pkStdioSwitch(global.testCmd)(
+        [
+          'nodes',
+          'add',
+          nodesUtils.encodeNodeId(nodeId),
+          nodeHost,
+          `${nodePort}`,
+        ],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      );
+      // Authenticate our own identity in order to query the provider
+      const mockedBrowser = jest
+        .spyOn(identitiesUtils, 'browser')
+        .mockImplementation(() => {});
+      await testBinUtils.pkStdioSwitch(global.testCmd)(
+        [
+          'identities',
+          'authenticate',
+          testToken.providerId,
+          testToken.identityId,
+        ],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      );
+      mockedBrowser.mockRestore();
+      // Must first trust identity before we can set permissions
+      // This is because trusting the identity sets it in our gestalt graph,
+      // which we need in order to set permissions
+      // This command should fail first time since the identity won't be linked
+      // to any nodes. It will trigger this process via discovery and we must
+      // wait and then retry
+      await testBinUtils.pkStdioSwitch(global.testCmd)(
+        ['identities', 'trust', providerString],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      );
+      await poll<Gestalt>(
+        async () => {
+          const gestalts = await poll<Array<Gestalt>>(
+            async () => {
+              return await pkAgent.gestaltGraph.getGestalts();
+            },
+            (_, result) => {
+              if (result.length === 1) return true;
+              return false;
+            },
+            100,
+          );
+          return gestalts[0];
+        },
+        (_, result) => {
+          if (result === undefined) return false;
+          if (Object.keys(result.matrix).length === 2) return true;
+          return false;
+        },
+        100,
+      );
+      ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+        ['identities', 'trust', providerString],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      ));
+      expect(exitCode).toBe(0);
+      // We should now have the 'notify' permission, so we'll set the 'scan'
+      // permission as well
+      ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+        ['identities', 'allow', providerString, 'scan'],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      ));
+      expect(exitCode).toBe(0);
+      // Check that both permissions are set
+      ({ exitCode, stdout } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+        ['identities', 'permissions', providerString, '--format', 'json'],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      ));
+      expect(exitCode).toBe(0);
+      expect(JSON.parse(stdout)).toEqual({
+        permissions: ['notify', 'scan'],
+      });
+      // Disallow both permissions
+      ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+        ['identities', 'disallow', providerString, 'notify'],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      ));
+      expect(exitCode).toBe(0);
+      ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+        ['identities', 'disallow', providerString, 'scan'],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      ));
+      expect(exitCode).toBe(0);
+      // Check that both permissions were unset
+      ({ exitCode, stdout } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+        ['identities', 'permissions', providerString, '--format', 'json'],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      ));
+      expect(exitCode).toBe(0);
+      expect(JSON.parse(stdout)).toEqual({
+        permissions: [],
+      });
+    },
+  );
+  runTestIfPlatforms('linux', 'docker')(
+    'should fail on invalid inputs',
+    async () => {
+      let exitCode;
+      // Allow
+      // Invalid gestalt id
+      ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+        ['identities', 'allow', 'invalid', 'notify'],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      ));
+      expect(exitCode).toBe(sysexits.USAGE);
+      // Invalid permission
+      ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+        ['identities', 'allow', nodesUtils.encodeNodeId(nodeId), 'invalid'],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      ));
+      expect(exitCode).toBe(sysexits.USAGE);
+      // Permissions
+      // Invalid gestalt id
+      ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+        ['identities', 'permissions', 'invalid'],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      ));
+      expect(exitCode).toBe(sysexits.USAGE);
+      // Disallow
+      // Invalid gestalt id
+      ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+        ['identities', 'disallow', 'invalid', 'notify'],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      ));
+      expect(exitCode).toBe(sysexits.USAGE);
+      // Invalid permission
+      ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+        ['identities', 'disallow', nodesUtils.encodeNodeId(nodeId), 'invalid'],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      ));
+      expect(exitCode).toBe(sysexits.USAGE);
+    },
+  );
 });

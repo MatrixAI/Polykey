@@ -14,6 +14,7 @@ import * as identitiesUtils from '@/identities/utils';
 import * as testBinUtils from '../utils';
 import TestProvider from '../../identities/TestProvider';
 import { globalRootKeyPems } from '../../globalRootKeyPems';
+import { runTestIfPlatforms } from '../../utils';
 
 describe('claim', () => {
   const logger = new Logger('claim test', LogLevel.WARN, [new StreamHandler()]);
@@ -56,12 +57,12 @@ describe('claim', () => {
       recursive: true,
     });
   });
-  test('claims an identity', async () => {
+  runTestIfPlatforms('linux', 'docker')('claims an identity', async () => {
     // Need an authenticated identity
     const mockedBrowser = jest
       .spyOn(identitiesUtils, 'browser')
       .mockImplementation(() => {});
-    await testBinUtils.pkStdio(
+    await testBinUtils.pkStdioSwitch(global.testCmd)(
       [
         'identities',
         'authenticate',
@@ -75,7 +76,9 @@ describe('claim', () => {
       dataDir,
     );
     // Claim identity
-    const { exitCode, stdout } = await testBinUtils.pkStdio(
+    const { exitCode, stdout } = await testBinUtils.pkStdioSwitch(
+      global.testCmd,
+    )(
       [
         'identities',
         'claim',
@@ -102,38 +105,44 @@ describe('claim', () => {
     expect(claim!.payload.data.type).toBe('identity');
     mockedBrowser.mockRestore();
   });
-  test('cannot claim unauthenticated identities', async () => {
-    const { exitCode } = await testBinUtils.pkStdio(
-      ['identities', 'claim', testToken.providerId, testToken.identityId],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    );
-    expect(exitCode).toBe(sysexits.NOPERM);
-  });
-  test('should fail on invalid inputs', async () => {
-    let exitCode;
-    // Invalid provider
-    ({ exitCode } = await testBinUtils.pkStdio(
-      ['identities', 'claim', '', testToken.identityId],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    ));
-    expect(exitCode).toBe(sysexits.USAGE);
-    // Invalid identity
-    ({ exitCode } = await testBinUtils.pkStdio(
-      ['identities', 'claim', testToken.providerId, ''],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    ));
-    expect(exitCode).toBe(sysexits.USAGE);
-  });
+  runTestIfPlatforms('linux', 'docker')(
+    'cannot claim unauthenticated identities',
+    async () => {
+      const { exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+        ['identities', 'claim', testToken.providerId, testToken.identityId],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      );
+      expect(exitCode).toBe(sysexits.NOPERM);
+    },
+  );
+  runTestIfPlatforms('linux', 'docker')(
+    'should fail on invalid inputs',
+    async () => {
+      let exitCode;
+      // Invalid provider
+      ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+        ['identities', 'claim', '', testToken.identityId],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      ));
+      expect(exitCode).toBe(sysexits.USAGE);
+      // Invalid identity
+      ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+        ['identities', 'claim', testToken.providerId, ''],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      ));
+      expect(exitCode).toBe(sysexits.USAGE);
+    },
+  );
 });

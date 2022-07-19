@@ -7,6 +7,7 @@ import PolykeyAgent from '@/PolykeyAgent';
 import * as keysUtils from '@/keys/utils';
 import * as testUtils from '../../utils';
 import * as testBinUtils from '../utils';
+import { runTestIfPlatforms } from '../../utils';
 
 describe('reset', () => {
   const logger = new Logger('reset test', LogLevel.WARN, [new StreamHandler()]);
@@ -52,9 +53,9 @@ describe('reset', () => {
     mockedGenerateKeyPair.mockRestore();
     mockedGenerateDeterministicKeyPair.mockRestore();
   });
-  test('resets the keypair', async () => {
+  runTestIfPlatforms('linux', 'docker')('resets the keypair', async () => {
     // Get previous keypair and nodeId
-    let { exitCode, stdout } = await testBinUtils.pkStdio(
+    let { exitCode, stdout } = await testBinUtils.pkStdioSwitch(global.testCmd)(
       ['keys', 'root', '--private-key', '--format', 'json'],
       {
         PK_NODE_PATH: nodePath,
@@ -65,7 +66,7 @@ describe('reset', () => {
     expect(exitCode).toBe(0);
     const prevPublicKey = JSON.parse(stdout).publicKey;
     const prevPrivateKey = JSON.parse(stdout).privateKey;
-    ({ exitCode, stdout } = await testBinUtils.pkStdio(
+    ({ exitCode, stdout } = await testBinUtils.pkStdioSwitch(global.testCmd)(
       ['agent', 'status', '--format', 'json'],
       {
         PK_NODE_PATH: nodePath,
@@ -78,7 +79,7 @@ describe('reset', () => {
     // Reset keypair
     const passPath = path.join(dataDir, 'reset-password');
     await fs.promises.writeFile(passPath, 'password-new');
-    ({ exitCode } = await testBinUtils.pkStdio(
+    ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
       ['keys', 'reset', '--password-new-file', passPath],
       {
         PK_NODE_PATH: nodePath,
@@ -88,7 +89,7 @@ describe('reset', () => {
     ));
     expect(exitCode).toBe(0);
     // Get new keypair and nodeId and compare against old
-    ({ exitCode, stdout } = await testBinUtils.pkStdio(
+    ({ exitCode, stdout } = await testBinUtils.pkStdioSwitch(global.testCmd)(
       ['keys', 'root', '--private-key', '--format', 'json'],
       {
         PK_NODE_PATH: nodePath,
@@ -99,7 +100,7 @@ describe('reset', () => {
     expect(exitCode).toBe(0);
     const newPublicKey = JSON.parse(stdout).publicKey;
     const newPrivateKey = JSON.parse(stdout).privateKey;
-    ({ exitCode, stdout } = await testBinUtils.pkStdio(
+    ({ exitCode, stdout } = await testBinUtils.pkStdioSwitch(global.testCmd)(
       ['agent', 'status', '--format', 'json'],
       {
         PK_NODE_PATH: nodePath,
@@ -114,7 +115,7 @@ describe('reset', () => {
     expect(newNodeId).not.toBe(prevNodeId);
     // Revert side effects
     await fs.promises.writeFile(passPath, password);
-    ({ exitCode } = await testBinUtils.pkStdio(
+    ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
       ['keys', 'password', '--password-new-file', passPath],
       {
         PK_NODE_PATH: nodePath,
