@@ -223,11 +223,11 @@ function runDescribeIf(condition: boolean) {
 }
 
 function runTestIfPlatforms(...platforms: Array<string>) {
-  return runTestIf(platforms.includes(testPlatform));
+  return runTestIf(platforms.includes(global.testPlatform));
 }
 
 function runDescribeIfPlatforms(...platforms: Array<string>) {
-  return runDescribeIf(platforms.includes(testPlatform));
+  return runDescribeIf(platforms.includes(global.testPlatform));
 }
 
 export {

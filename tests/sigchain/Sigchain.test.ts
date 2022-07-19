@@ -12,8 +12,8 @@ import * as claimsUtils from '@/claims/utils';
 import * as sigchainErrors from '@/sigchain/errors';
 import * as nodesUtils from '@/nodes/utils';
 import * as keysUtils from '@/keys/utils';
-import * as testUtils from '../utils';
 import * as testNodesUtils from '../nodes/utils';
+import { globalRootKeyPems } from '../globalRootKeyPems';
 
 describe('Sigchain', () => {
   const logger = new Logger('Sigchain Test', LogLevel.WARN, [
@@ -42,21 +42,6 @@ describe('Sigchain', () => {
     testNodesUtils.generateRandomNodeId(),
   );
 
-  let mockedGenerateKeyPair: jest.SpyInstance;
-  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
-  beforeAll(async () => {
-    const globalKeyPair = await testUtils.setupGlobalKeypair();
-    mockedGenerateKeyPair = jest
-      .spyOn(keysUtils, 'generateKeyPair')
-      .mockResolvedValue(globalKeyPair);
-    mockedGenerateDeterministicKeyPair = jest
-      .spyOn(keysUtils, 'generateDeterministicKeyPair')
-      .mockResolvedValue(globalKeyPair);
-  });
-  afterAll(async () => {
-    mockedGenerateKeyPair.mockRestore();
-    mockedGenerateDeterministicKeyPair.mockRestore();
-  });
   let dataDir: string;
   let keyManager: KeyManager;
   let db: DB;
@@ -69,6 +54,7 @@ describe('Sigchain', () => {
       password,
       keysPath,
       logger,
+      privateKeyPemOverride: globalRootKeyPems[0],
     });
     const dbPath = `${dataDir}/db`;
     db = await DB.createDB({

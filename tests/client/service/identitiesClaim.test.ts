@@ -23,13 +23,12 @@ import identitiesClaim from '@/client/service/identitiesClaim';
 import { ClientServiceService } from '@/proto/js/polykey/v1/client_service_grpc_pb';
 import * as identitiesPB from '@/proto/js/polykey/v1/identities/identities_pb';
 import * as clientUtils from '@/client/utils/utils';
-import * as keysUtils from '@/keys/utils';
 import * as claimsUtils from '@/claims/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as validationErrors from '@/validation/errors';
-import * as testUtils from '../../utils';
 import TestProvider from '../../identities/TestProvider';
 import { expectRemoteError } from '../../utils';
+import { globalRootKeyPems } from '../../globalRootKeyPems';
 
 describe('identitiesClaim', () => {
   const logger = new Logger('identitiesClaim test', LogLevel.WARN, [
@@ -54,32 +53,22 @@ describe('identitiesClaim', () => {
   const claimId = claimsUtils.createClaimIdGenerator(
     nodesUtils.decodeNodeId(claimData.node)!,
   )();
-  let mockedGenerateKeyPair: jest.SpyInstance;
-  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
   let mockedAddClaim: jest.SpyInstance;
   const dummyNodeManager = { setNode: jest.fn() } as unknown as NodeManager;
   beforeAll(async () => {
-    const globalKeyPair = await testUtils.setupGlobalKeypair();
+    const privateKey = globalRootKeyPems[0];
     const claim = await claimsUtils.createClaim({
-      privateKey: keysUtils.keyPairToPem(globalKeyPair).privateKey,
+      privateKey: privateKey,
       hPrev: null,
       seq: 0,
       data: claimData,
       kid: claimData.node,
     });
-    mockedGenerateKeyPair = jest
-      .spyOn(keysUtils, 'generateKeyPair')
-      .mockResolvedValue(globalKeyPair);
-    mockedGenerateDeterministicKeyPair = jest
-      .spyOn(keysUtils, 'generateDeterministicKeyPair')
-      .mockResolvedValue(globalKeyPair);
     mockedAddClaim = jest
       .spyOn(Sigchain.prototype, 'addClaim')
       .mockResolvedValue([claimId, claim]);
   });
   afterAll(async () => {
-    mockedGenerateKeyPair.mockRestore();
-    mockedGenerateDeterministicKeyPair.mockRestore();
     mockedAddClaim.mockRestore();
   });
   const authToken = 'abc123';
@@ -105,6 +94,7 @@ describe('identitiesClaim', () => {
       password,
       keysPath,
       logger,
+      privateKeyPemOverride: globalRootKeyPems[0],
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({

@@ -23,6 +23,7 @@ import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as nodesErrors from '@/nodes/errors';
 import * as nodesTestUtils from './utils';
 import { generateNodeIdForBucket } from './utils';
+import { globalRootKeyPems } from '../globalRootKeyPems';
 
 describe(`${NodeManager.name} test`, () => {
   const password = 'password';
@@ -47,10 +48,6 @@ describe(`${NodeManager.name} test`, () => {
   const port = 55556 as Port;
   const serverPort = 0 as Port;
   const externalPort = 0 as Port;
-  const mockedGenerateDeterministicKeyPair = jest.spyOn(
-    keysUtils,
-    'generateDeterministicKeyPair',
-  );
   const mockedPingNode = jest.fn(); // Jest.spyOn(NodeManager.prototype, 'pingNode');
   const dummyNodeConnectionManager = {
     pingNode: mockedPingNode,
@@ -59,9 +56,6 @@ describe(`${NodeManager.name} test`, () => {
   beforeEach(async () => {
     mockedPingNode.mockClear();
     mockedPingNode.mockImplementation(async (_) => true);
-    mockedGenerateDeterministicKeyPair.mockImplementation((bits, _) => {
-      return keysUtils.generateKeyPair(bits);
-    });
 
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
@@ -71,6 +65,7 @@ describe(`${NodeManager.name} test`, () => {
       password,
       keysPath,
       logger,
+      privateKeyPemOverride: globalRootKeyPems[0],
     });
 
     const cert = keyManager.getRootCert();
@@ -153,7 +148,7 @@ describe(`${NodeManager.name} test`, () => {
           password: 'password',
           nodePath: path.join(dataDir, 'server'),
           keysConfig: {
-            rootKeyPairBits: 2048,
+            privateKeyPemOverride: globalRootKeyPems[1],
           },
           networkConfig: {
             proxyHost: '127.0.0.1' as Host,
@@ -229,7 +224,7 @@ describe(`${NodeManager.name} test`, () => {
         password: 'password',
         nodePath: path.join(dataDir, 'server'),
         keysConfig: {
-          rootKeyPairBits: 2048,
+          privateKeyPemOverride: globalRootKeyPems[2],
         },
         networkConfig: {
           proxyHost: '127.0.0.1' as Host,
@@ -295,7 +290,7 @@ describe(`${NodeManager.name} test`, () => {
         password: 'password',
         nodePath: xDataDir,
         keysConfig: {
-          rootKeyPairBits: 2048,
+          privateKeyPemOverride: globalRootKeyPems[3],
         },
         networkConfig: {
           proxyHost: '127.0.0.1' as Host,
@@ -317,7 +312,7 @@ describe(`${NodeManager.name} test`, () => {
         password: 'password',
         nodePath: yDataDir,
         keysConfig: {
-          rootKeyPairBits: 2048,
+          privateKeyPemOverride: globalRootKeyPems[4],
         },
         networkConfig: {
           proxyHost: '127.0.0.1' as Host,
@@ -711,7 +706,7 @@ describe(`${NodeManager.name} test`, () => {
         password: 'password',
         nodePath: path.join(dataDir, 'server'),
         keysConfig: {
-          rootKeyPairBits: 2048,
+          privateKeyPemOverride: globalRootKeyPems[5],
         },
         networkConfig: {
           proxyHost: localhost,

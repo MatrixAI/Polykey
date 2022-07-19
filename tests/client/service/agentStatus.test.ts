@@ -12,9 +12,8 @@ import agentStatus from '@/client/service/agentStatus';
 import { ClientServiceService } from '@/proto/js/polykey/v1/client_service_grpc_pb';
 import * as agentPB from '@/proto/js/polykey/v1/agent/agent_pb';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
-import * as keysUtils from '@/keys/utils';
 import * as clientUtils from '@/client/utils/utils';
-import * as testUtils from '../../utils';
+import { globalRootKeyPems } from '../../globalRootKeyPems';
 
 describe('agentStatus', () => {
   const logger = new Logger('agentStatus test', LogLevel.WARN, [
@@ -23,21 +22,6 @@ describe('agentStatus', () => {
   const password = 'helloworld';
   const authenticate = async (metaClient, metaServer = new Metadata()) =>
     metaServer;
-  let mockedGenerateKeyPair: jest.SpyInstance;
-  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
-  beforeAll(async () => {
-    const globalKeyPair = await testUtils.setupGlobalKeypair();
-    mockedGenerateKeyPair = jest
-      .spyOn(keysUtils, 'generateKeyPair')
-      .mockResolvedValue(globalKeyPair);
-    mockedGenerateDeterministicKeyPair = jest
-      .spyOn(keysUtils, 'generateDeterministicKeyPair')
-      .mockResolvedValue(globalKeyPair);
-  });
-  afterAll(async () => {
-    mockedGenerateKeyPair.mockRestore();
-    mockedGenerateDeterministicKeyPair.mockRestore();
-  });
   const authToken = 'abc123';
   let dataDir: string;
   let keyManager: KeyManager;
@@ -55,6 +39,7 @@ describe('agentStatus', () => {
       password,
       keysPath,
       logger,
+      privateKeyPemOverride: globalRootKeyPems[0],
     });
     grpcServerClient = new GRPCServer({ logger });
     await grpcServerClient.start({

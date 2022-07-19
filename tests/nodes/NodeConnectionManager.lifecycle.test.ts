@@ -20,6 +20,7 @@ import * as nodesErrors from '@/nodes/errors';
 import * as keysUtils from '@/keys/utils';
 import * as grpcUtils from '@/grpc/utils';
 import { timerStart } from '@/utils';
+import { globalRootKeyPems } from '../globalRootKeyPems';
 
 describe(`${NodeConnectionManager.name} lifecycle test`, () => {
   const logger = new Logger(
@@ -85,17 +86,9 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
   let remoteNodeIdString1: NodeIdString;
   let remoteNodeId2: NodeId;
 
-  const mockedGenerateDeterministicKeyPair = jest.spyOn(
-    keysUtils,
-    'generateDeterministicKeyPair',
-  );
   const dummyNodeManager = { setNode: jest.fn() } as unknown as NodeManager;
 
   beforeAll(async () => {
-    mockedGenerateDeterministicKeyPair.mockImplementation((bits, _) => {
-      return keysUtils.generateKeyPair(bits);
-    });
-
     dataDir2 = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -106,6 +99,9 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       networkConfig: {
         proxyHost: serverHost,
       },
+      keysConfig: {
+        privateKeyPemOverride: globalRootKeyPems[0],
+      },
       logger: logger.getChild('remoteNode1'),
     });
     remoteNodeId1 = remoteNode1.keyManager.getNodeId();
@@ -115,6 +111,9 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       nodePath: path.join(dataDir2, 'remoteNode2'),
       networkConfig: {
         proxyHost: serverHost,
+      },
+      keysConfig: {
+        privateKeyPemOverride: globalRootKeyPems[1],
       },
       logger: logger.getChild('remoteNode2'),
     });
@@ -138,6 +137,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       password,
       keysPath,
       logger: logger.getChild('keyManager'),
+      privateKeyPemOverride: globalRootKeyPems[2],
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({

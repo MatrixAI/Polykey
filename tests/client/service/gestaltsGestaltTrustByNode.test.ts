@@ -34,8 +34,8 @@ import * as claimsUtils from '@/claims/utils';
 import * as keysUtils from '@/keys/utils';
 import * as clientUtils from '@/client/utils/utils';
 import * as nodesUtils from '@/nodes/utils';
-import * as testUtils from '../../utils';
 import TestProvider from '../../identities/TestProvider';
+import { globalRootKeyPems } from '../../globalRootKeyPems';
 
 describe('gestaltsGestaltTrustByNode', () => {
   const logger = new Logger('gestaltsGestaltTrustByNode test', LogLevel.WARN, [
@@ -52,22 +52,7 @@ describe('gestaltsGestaltTrustByNode', () => {
   let nodeId: NodeIdEncoded;
   const nodeChainData: ChainData = {};
   let mockedRequestChainData: jest.SpyInstance;
-  let mockedGenerateKeyPair: jest.SpyInstance;
-  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
   beforeAll(async () => {
-    const globalKeyPair = await testUtils.setupGlobalKeypair();
-    const nodeKeyPair = await keysUtils.generateKeyPair(2048);
-    mockedRequestChainData = jest
-      .spyOn(NodeManager.prototype, 'requestChainData')
-      .mockResolvedValue(nodeChainData);
-    mockedGenerateKeyPair = jest
-      .spyOn(keysUtils, 'generateKeyPair')
-      .mockResolvedValueOnce(nodeKeyPair)
-      .mockResolvedValue(globalKeyPair);
-    mockedGenerateDeterministicKeyPair = jest
-      .spyOn(keysUtils, 'generateDeterministicKeyPair')
-      .mockResolvedValueOnce(nodeKeyPair)
-      .mockResolvedValue(globalKeyPair);
     nodeDataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'trusted-node-'),
     );
@@ -80,6 +65,9 @@ describe('gestaltsGestaltTrustByNode', () => {
         forwardHost: '127.0.0.1' as Host,
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
+      },
+      keysConfig: {
+        privateKeyPemOverride: globalRootKeyPems[0],
       },
       logger,
     });
@@ -106,8 +94,6 @@ describe('gestaltsGestaltTrustByNode', () => {
       force: true,
       recursive: true,
     });
-    mockedGenerateKeyPair.mockRestore();
-    mockedGenerateDeterministicKeyPair.mockRestore();
     mockedRequestChainData.mockRestore();
   });
   const authToken = 'abc123';
@@ -136,6 +122,7 @@ describe('gestaltsGestaltTrustByNode', () => {
       password,
       keysPath,
       logger,
+      privateKeyPemOverride: globalRootKeyPems[1],
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({

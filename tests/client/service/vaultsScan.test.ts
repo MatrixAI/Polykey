@@ -15,7 +15,6 @@ import GRPCServer from '@/grpc/GRPCServer';
 import GRPCClientClient from '@/client/GRPCClientClient';
 import vaultsScan from '@/client/service/vaultsScan';
 import { ClientServiceService } from '@/proto/js/polykey/v1/client_service_grpc_pb';
-import * as keysUtils from '@/keys/utils';
 import * as testUtils from '../../utils';
 
 describe('vaultsScan', () => {
@@ -24,21 +23,6 @@ describe('vaultsScan', () => {
   ]);
   const authenticate = async (metaClient, metaServer = new Metadata()) =>
     metaServer;
-  let mockedGenerateKeyPair: jest.SpyInstance;
-  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
-  beforeAll(async () => {
-    const globalKeyPair = await testUtils.setupGlobalKeypair();
-    mockedGenerateKeyPair = jest
-      .spyOn(keysUtils, 'generateKeyPair')
-      .mockResolvedValue(globalKeyPair);
-    mockedGenerateDeterministicKeyPair = jest
-      .spyOn(keysUtils, 'generateDeterministicKeyPair')
-      .mockResolvedValue(globalKeyPair);
-  });
-  afterAll(async () => {
-    mockedGenerateKeyPair.mockRestore();
-    mockedGenerateDeterministicKeyPair.mockRestore();
-  });
   let dataDir: string;
   let vaultManager: VaultManager;
   let grpcServer: GRPCServer;

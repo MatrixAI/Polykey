@@ -21,11 +21,10 @@ import notificationsSend from '@/client/service/notificationsSend';
 import { ClientServiceService } from '@/proto/js/polykey/v1/client_service_grpc_pb';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as notificationsPB from '@/proto/js/polykey/v1/notifications/notifications_pb';
-import * as keysUtils from '@/keys/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as notificationsUtils from '@/notifications/utils';
 import * as clientUtils from '@/client/utils';
-import * as testUtils from '../../utils';
+import { globalRootKeyPems } from '../../globalRootKeyPems';
 
 describe('notificationsSend', () => {
   const logger = new Logger('notificationsSend test', LogLevel.WARN, [
@@ -34,18 +33,9 @@ describe('notificationsSend', () => {
   const password = 'helloworld';
   const authenticate = async (metaClient, metaServer = new Metadata()) =>
     metaServer;
-  let mockedGenerateKeyPair: jest.SpyInstance;
-  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
   let mockedSignNotification: jest.SpyInstance;
   let mockedSendNotification: jest.SpyInstance;
   beforeAll(async () => {
-    const globalKeyPair = await testUtils.setupGlobalKeypair();
-    mockedGenerateKeyPair = jest
-      .spyOn(keysUtils, 'generateKeyPair')
-      .mockResolvedValue(globalKeyPair);
-    mockedGenerateDeterministicKeyPair = jest
-      .spyOn(keysUtils, 'generateDeterministicKeyPair')
-      .mockResolvedValue(globalKeyPair);
     mockedSignNotification = jest
       .spyOn(notificationsUtils, 'signNotification')
       .mockImplementation(async () => {
@@ -56,8 +46,6 @@ describe('notificationsSend', () => {
       .mockImplementation();
   });
   afterAll(async () => {
-    mockedGenerateKeyPair.mockRestore();
-    mockedGenerateDeterministicKeyPair.mockRestore();
     mockedSignNotification.mockRestore();
     mockedSendNotification.mockRestore();
   });
@@ -84,6 +72,7 @@ describe('notificationsSend', () => {
       password,
       keysPath,
       logger,
+      privateKeyPemOverride: globalRootKeyPems[0],
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({

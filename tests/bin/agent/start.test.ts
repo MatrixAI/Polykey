@@ -829,7 +829,7 @@ describe('start', () => {
     },
     global.defaultTimeout * 2,
   );
-  runDescribeIfPlatforms('linux').only('start with global agent', () => {
+  runDescribeIfPlatforms('linux')('start with global agent', () => {
     let agentDataDir;
     let agent1Status: StatusLive;
     let agent1Close: () => Promise<void>;

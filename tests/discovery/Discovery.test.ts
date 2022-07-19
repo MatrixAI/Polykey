@@ -23,8 +23,8 @@ import * as claimsUtils from '@/claims/utils';
 import * as discoveryErrors from '@/discovery/errors';
 import * as keysUtils from '@/keys/utils';
 import * as testNodesUtils from '../nodes/utils';
-import * as testUtils from '../utils';
 import TestProvider from '../identities/TestProvider';
+import { globalRootKeyPems } from '../globalRootKeyPems';
 
 describe('Discovery', () => {
   const password = 'password';
@@ -39,8 +39,6 @@ describe('Discovery', () => {
       accessToken: 'abc123',
     },
   };
-  let mockedGenerateKeyPair: jest.SpyInstance;
-  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
   /**
    * Shared GestaltGraph, IdentitiesManager, NodeManager for all tests
    */
@@ -60,14 +58,7 @@ describe('Discovery', () => {
   let nodeA: PolykeyAgent;
   let nodeB: PolykeyAgent;
   let identityId: IdentityId;
-  beforeAll(async () => {
-    const globalKeyPair = await testUtils.setupGlobalKeypair();
-    mockedGenerateKeyPair = jest
-      .spyOn(keysUtils, 'generateKeyPair')
-      .mockResolvedValueOnce(globalKeyPair);
-    mockedGenerateDeterministicKeyPair = jest
-      .spyOn(keysUtils, 'generateDeterministicKeyPair')
-      .mockResolvedValueOnce(globalKeyPair);
+  beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -75,6 +66,7 @@ describe('Discovery', () => {
     keyManager = await KeyManager.createKeyManager({
       password,
       keysPath,
+      privateKeyPemOverride: globalRootKeyPems[0],
       logger: logger.getChild('KeyManager'),
     });
     const dbPath = path.join(dataDir, 'db');
@@ -167,7 +159,7 @@ describe('Discovery', () => {
         clientHost: '127.0.0.1' as Host,
       },
       keysConfig: {
-        rootKeyPairBits: 2048,
+        privateKeyPemOverride: globalRootKeyPems[1],
       },
       logger: logger.getChild('nodeA'),
     });
@@ -181,7 +173,7 @@ describe('Discovery', () => {
         clientHost: '127.0.0.1' as Host,
       },
       keysConfig: {
-        rootKeyPairBits: 2048,
+        privateKeyPemOverride: globalRootKeyPems[2],
       },
       logger: logger.getChild('nodeB'),
     });
@@ -206,8 +198,8 @@ describe('Discovery', () => {
     const [, claimEncoded] = await nodeB.sigchain.addClaim(identityClaim);
     const claim = claimsUtils.decodeClaim(claimEncoded);
     await testProvider.publishClaim(identityId, claim);
-  }, global.maxTimeout);
-  afterAll(async () => {
+  });
+  afterEach(async () => {
     await nodeA.stop();
     await nodeB.stop();
     await nodeConnectionManager.stop();
@@ -225,8 +217,6 @@ describe('Discovery', () => {
       force: true,
       recursive: true,
     });
-    mockedGenerateKeyPair.mockRestore();
-    mockedGenerateDeterministicKeyPair.mockRestore();
   });
   test('discovery readiness', async () => {
     const discovery = await Discovery.createDiscovery({

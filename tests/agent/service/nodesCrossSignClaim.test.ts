@@ -11,12 +11,11 @@ import GRPCClientAgent from '@/agent/GRPCClientAgent';
 import nodesCrossSignClaim from '@/agent/service/nodesCrossSignClaim';
 import { AgentServiceService } from '@/proto/js/polykey/v1/agent_service_grpc_pb';
 import * as nodesPB from '@/proto/js/polykey/v1/nodes/nodes_pb';
-import * as keysUtils from '@/keys/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as claimsUtils from '@/claims/utils';
 import * as grpcErrors from '@/grpc/errors';
 import * as testNodesUtils from '../../nodes/utils';
-import * as testUtils from '../../utils';
+import { globalRootKeyPems } from '../../globalRootKeyPems';
 
 describe('nodesCrossSignClaim', () => {
   const logger = new Logger('nodesCrossSignClaim test', LogLevel.WARN, [
@@ -31,16 +30,7 @@ describe('nodesCrossSignClaim', () => {
   let remoteNode: PolykeyAgent;
   let localId: NodeId;
   let remoteId: NodeId;
-  let mockedGenerateKeyPair: jest.SpyInstance;
-  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
-  beforeAll(async () => {
-    const globalKeyPair = await testUtils.setupGlobalKeypair();
-    mockedGenerateKeyPair = jest
-      .spyOn(keysUtils, 'generateKeyPair')
-      .mockResolvedValueOnce(globalKeyPair);
-    mockedGenerateDeterministicKeyPair = jest
-      .spyOn(keysUtils, 'generateDeterministicKeyPair')
-      .mockResolvedValueOnce(globalKeyPair);
+  beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -49,7 +39,7 @@ describe('nodesCrossSignClaim', () => {
       password,
       nodePath,
       keysConfig: {
-        rootKeyPairBits: 2048,
+        privateKeyPemOverride: globalRootKeyPems[0],
       },
       seedNodes: {}, // Explicitly no seed nodes on startup
       networkConfig: {
@@ -95,7 +85,7 @@ describe('nodesCrossSignClaim', () => {
       logger,
     });
   }, global.defaultTimeout);
-  afterAll(async () => {
+  afterEach(async () => {
     await grpcClient.destroy();
     await grpcServer.stop();
     await pkAgent.stop();
@@ -107,8 +97,6 @@ describe('nodesCrossSignClaim', () => {
       force: true,
       recursive: true,
     });
-    mockedGenerateKeyPair.mockRestore();
-    mockedGenerateDeterministicKeyPair.mockRestore();
   });
   test('successfully cross signs a claim', async () => {
     const genClaims = grpcClient.nodesCrossSignClaim();

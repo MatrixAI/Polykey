@@ -5,13 +5,13 @@ import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
-import { utils as keysUtils } from '@/keys';
 import { Status } from '@/status';
 import { Schema } from '@/schema';
 import * as errors from '@/errors';
+import * as keysUtils from '@/keys/utils';
 import config from '@/config';
 import { promise } from '@/utils/index';
-import * as testUtils from './utils';
+import { globalRootKeyPems } from './globalRootKeyPems';
 
 describe('PolykeyAgent', () => {
   const password = 'password';
@@ -21,16 +21,15 @@ describe('PolykeyAgent', () => {
   let mockedGenerateKeyPair: jest.SpyInstance;
   let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
   beforeAll(async () => {
-    const globalKeyPair = await testUtils.setupGlobalKeypair();
+    const privateKey = keysUtils.privateKeyFromPem(globalRootKeyPems[1]);
+    const publicKey = keysUtils.publicKeyFromPrivateKey(privateKey);
+    const keyPair = { privateKey, publicKey };
     mockedGenerateKeyPair = jest
       .spyOn(keysUtils, 'generateKeyPair')
-      .mockResolvedValue(globalKeyPair);
+      .mockResolvedValue(keyPair);
     mockedGenerateDeterministicKeyPair = jest
       .spyOn(keysUtils, 'generateDeterministicKeyPair')
-      .mockResolvedValue(globalKeyPair);
-    dataDir = await fs.promises.mkdtemp(
-      path.join(os.tmpdir(), 'polykey-test-'),
-    );
+      .mockResolvedValue(keyPair);
   });
   afterAll(async () => {
     mockedGenerateKeyPair.mockRestore();
@@ -54,6 +53,9 @@ describe('PolykeyAgent', () => {
       password,
       nodePath,
       logger,
+      keysConfig: {
+        privateKeyPemOverride: globalRootKeyPems[0],
+      },
     });
     await expect(pkAgent.destroy()).rejects.toThrow(
       errors.ErrorPolykeyAgentRunning,
@@ -72,6 +74,9 @@ describe('PolykeyAgent', () => {
       password,
       nodePath,
       logger,
+      keysConfig: {
+        privateKeyPemOverride: globalRootKeyPems[0],
+      },
     });
     let nodePathContents = await fs.promises.readdir(nodePath);
     expect(nodePathContents).toContain(config.defaults.statusBase);
@@ -106,6 +111,9 @@ describe('PolykeyAgent', () => {
       password,
       nodePath,
       logger,
+      keysConfig: {
+        privateKeyPemOverride: globalRootKeyPems[0],
+      },
     });
     const status = new Status({
       statusPath,
@@ -136,6 +144,9 @@ describe('PolykeyAgent', () => {
       password,
       nodePath,
       logger,
+      keysConfig: {
+        privateKeyPemOverride: globalRootKeyPems[0],
+      },
     });
     expect(await schema.readVersion()).toBe(config.stateVersion);
     await pkAgent.stop();
@@ -158,6 +169,9 @@ describe('PolykeyAgent', () => {
         password,
         nodePath,
         logger,
+        keysConfig: {
+          privateKeyPemOverride: globalRootKeyPems[0],
+        },
       }),
     ).rejects.toThrow(errors.ErrorSchemaVersionTooNew);
     // The 0 version will always be too old
@@ -174,6 +188,9 @@ describe('PolykeyAgent', () => {
         password,
         nodePath,
         logger,
+        keysConfig: {
+          privateKeyPemOverride: globalRootKeyPems[0],
+        },
       }),
     ).rejects.toThrow(errors.ErrorSchemaVersionTooOld);
   });
@@ -185,6 +202,9 @@ describe('PolykeyAgent', () => {
         password,
         nodePath,
         logger,
+        keysConfig: {
+          privateKeyPemOverride: globalRootKeyPems[0],
+        },
       });
       const prom = promise<KeyManagerChangeData>();
       pkAgent.events.on(
@@ -209,6 +229,9 @@ describe('PolykeyAgent', () => {
         password,
         nodePath,
         logger,
+        keysConfig: {
+          privateKeyPemOverride: globalRootKeyPems[0],
+        },
       });
       const prom = promise<KeyManagerChangeData>();
       pkAgent.events.on(
@@ -233,6 +256,9 @@ describe('PolykeyAgent', () => {
         password,
         nodePath,
         logger,
+        keysConfig: {
+          privateKeyPemOverride: globalRootKeyPems[0],
+        },
       });
       const prom = promise<KeyManagerChangeData>();
       pkAgent.events.on(

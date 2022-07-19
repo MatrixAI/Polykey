@@ -23,9 +23,9 @@ import { ClientServiceService } from '@/proto/js/polykey/v1/client_service_grpc_
 import * as nodesPB from '@/proto/js/polykey/v1/nodes/nodes_pb';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as clientUtils from '@/client/utils/utils';
-import * as keysUtils from '@/keys/utils';
 import * as validationErrors from '@/validation/errors';
 import * as testUtils from '../../utils';
+import { globalRootKeyPems } from '../../globalRootKeyPems';
 
 describe('nodesClaim', () => {
   const logger = new Logger('nodesClaim test', LogLevel.WARN, [
@@ -42,19 +42,10 @@ describe('nodesClaim', () => {
       'vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg' as NodeIdEncoded,
     isRead: false,
   };
-  let mockedGenerateKeyPair: jest.SpyInstance;
-  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
   let mockedFindGestaltInvite: jest.SpyInstance;
   let mockedSendNotification: jest.SpyInstance;
   let mockedClaimNode: jest.SpyInstance;
   beforeAll(async () => {
-    const globalKeyPair = await testUtils.setupGlobalKeypair();
-    mockedGenerateKeyPair = jest
-      .spyOn(keysUtils, 'generateKeyPair')
-      .mockResolvedValue(globalKeyPair);
-    mockedGenerateDeterministicKeyPair = jest
-      .spyOn(keysUtils, 'generateDeterministicKeyPair')
-      .mockResolvedValue(globalKeyPair);
     mockedFindGestaltInvite = jest
       .spyOn(NotificationsManager.prototype, 'findGestaltInvite')
       .mockResolvedValueOnce(undefined)
@@ -67,8 +58,6 @@ describe('nodesClaim', () => {
       .mockResolvedValue(undefined);
   });
   afterAll(async () => {
-    mockedGenerateKeyPair.mockRestore();
-    mockedGenerateDeterministicKeyPair.mockRestore();
     mockedFindGestaltInvite.mockRestore();
     mockedSendNotification.mockRestore();
     mockedClaimNode.mockRestore();
@@ -96,6 +85,7 @@ describe('nodesClaim', () => {
       password,
       keysPath,
       logger,
+      privateKeyPemOverride: globalRootKeyPems[0],
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({

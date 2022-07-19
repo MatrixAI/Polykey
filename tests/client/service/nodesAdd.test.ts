@@ -21,10 +21,9 @@ import * as nodesPB from '@/proto/js/polykey/v1/nodes/nodes_pb';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as nodesUtils from '@/nodes/utils';
 import * as clientUtils from '@/client/utils/utils';
-import * as keysUtils from '@/keys/utils';
 import * as validationErrors from '@/validation/errors';
-import * as testUtils from '../../utils';
 import { expectRemoteError } from '../../utils';
+import { globalRootKeyPems } from '../../globalRootKeyPems';
 
 describe('nodesAdd', () => {
   const logger = new Logger('nodesAdd test', LogLevel.WARN, [
@@ -33,21 +32,6 @@ describe('nodesAdd', () => {
   const password = 'helloworld';
   const authenticate = async (metaClient, metaServer = new Metadata()) =>
     metaServer;
-  let mockedGenerateKeyPair: jest.SpyInstance;
-  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
-  beforeAll(async () => {
-    const globalKeyPair = await testUtils.setupGlobalKeypair();
-    mockedGenerateKeyPair = jest
-      .spyOn(keysUtils, 'generateKeyPair')
-      .mockResolvedValue(globalKeyPair);
-    mockedGenerateDeterministicKeyPair = jest
-      .spyOn(keysUtils, 'generateDeterministicKeyPair')
-      .mockResolvedValue(globalKeyPair);
-  });
-  afterAll(async () => {
-    mockedGenerateKeyPair.mockRestore();
-    mockedGenerateDeterministicKeyPair.mockRestore();
-  });
   const authToken = 'abc123';
   let dataDir: string;
   let nodeGraph: NodeGraph;
@@ -70,6 +54,7 @@ describe('nodesAdd', () => {
       password,
       keysPath,
       logger,
+      privateKeyPemOverride: globalRootKeyPems[0],
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({

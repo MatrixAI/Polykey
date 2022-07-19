@@ -17,12 +17,6 @@ import * as keysUtils from '@/keys/utils';
 import * as vaultsUtils from '@/vaults/utils';
 import * as nodeTestUtils from '../nodes/utils';
 
-jest.mock('@/keys/utils', () => ({
-  ...jest.requireActual('@/keys/utils'),
-  generateDeterministicKeyPair:
-    jest.requireActual('@/keys/utils').generateKeyPair,
-}));
-
 describe('VaultInternal', () => {
   const logger = new Logger('Vault', LogLevel.WARN, [new StreamHandler()]);
 
@@ -247,32 +241,36 @@ describe('VaultInternal', () => {
     });
     expect(files).toEqual(['test1', 'test2', 'test3']);
   });
-  test('adjusts HEAD after vault mutation, discarding forward and preserving backwards history', async () => {
-    const initCommit = (await vault.log(undefined, 1))[0].commitId;
-    await vault.writeF(async (efs) => {
-      await efs.writeFile('test1', 'testdata1');
-    });
-    const secondCommit = (await vault.log(undefined, 1))[0].commitId;
-    await vault.writeF(async (efs) => {
-      await efs.writeFile('test2', 'testdata2');
-    });
-    await vault.writeF(async (efs) => {
-      await efs.writeFile('test3', 'testdata3');
-    });
-    await vault.version(secondCommit);
-    await vault.writeF(async (efs) => {
-      await efs.writeFile('test4', 'testdata4');
-    });
-    let files = await vault.readF(async (efs) => {
-      return await efs.readdir('.');
-    });
-    expect(files).toEqual(['test1', 'test4']);
-    await vault.version(initCommit);
-    files = await vault.readF(async (efs) => {
-      return await efs.readdir('.');
-    });
-    expect(files).toEqual([]);
-  });
+  test(
+    'adjusts HEAD after vault mutation, discarding forward and preserving backwards history',
+    async () => {
+      const initCommit = (await vault.log(undefined, 1))[0].commitId;
+      await vault.writeF(async (efs) => {
+        await efs.writeFile('test1', 'testdata1');
+      });
+      const secondCommit = (await vault.log(undefined, 1))[0].commitId;
+      await vault.writeF(async (efs) => {
+        await efs.writeFile('test2', 'testdata2');
+      });
+      await vault.writeF(async (efs) => {
+        await efs.writeFile('test3', 'testdata3');
+      });
+      await vault.version(secondCommit);
+      await vault.writeF(async (efs) => {
+        await efs.writeFile('test4', 'testdata4');
+      });
+      let files = await vault.readF(async (efs) => {
+        return await efs.readdir('.');
+      });
+      expect(files).toEqual(['test1', 'test4']);
+      await vault.version(initCommit);
+      files = await vault.readF(async (efs) => {
+        return await efs.readdir('.');
+      });
+      expect(files).toEqual([]);
+    },
+    global.defaultTimeout * 2,
+  );
   test('write operation allowed', async () => {
     await vault.writeF(async (efs) => {
       await efs.writeFile('secret-1', 'secret-content');
