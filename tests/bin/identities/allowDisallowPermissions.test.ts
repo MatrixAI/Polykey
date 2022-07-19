@@ -17,7 +17,7 @@ import TestProvider from '../../identities/TestProvider';
 import { globalRootKeyPems } from '../../globalRootKeyPems';
 
 describe('allow/disallow/permissions', () => {
-  const logger = new Logger('allow/disallow/permissions test', LogLevel.DEBUG, [
+  const logger = new Logger('allow/disallow/permissions test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
   const password = 'password';
@@ -98,7 +98,6 @@ describe('allow/disallow/permissions', () => {
     });
   });
   test('allows/disallows/gets gestalt permissions by node', async () => {
-    Error.stackTraceLimit = 100;
     let exitCode, stdout;
     // Add the node to our node graph, otherwise we won't be able to contact it
     await testBinUtils.pkStdio(

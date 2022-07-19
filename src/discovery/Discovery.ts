@@ -30,6 +30,7 @@ import * as resources from '@matrixai/resources';
 import * as discoveryUtils from './utils';
 import * as discoveryErrors from './errors';
 import * as nodesErrors from '../nodes/errors';
+import * as networkErrors from '../network/errors';
 import * as gestaltsUtils from '../gestalts/utils';
 import * as claimsUtils from '../claims/utils';
 import * as nodesUtils from '../nodes/utils';
@@ -371,7 +372,8 @@ class Discovery {
                 } catch (e) {
                   if (
                     e instanceof nodesErrors.ErrorNodeConnectionDestroyed ||
-                    e instanceof nodesErrors.ErrorNodeConnectionTimeout
+                    e instanceof nodesErrors.ErrorNodeConnectionTimeout ||
+                    e instanceof networkErrors.ErrorConnectionNotRunning
                   ) {
                     if (!this.visitedVertices.has(linkedVertexGK)) {
                       await this.pushKeyToDiscoveryQueue(linkedVertexGK);
