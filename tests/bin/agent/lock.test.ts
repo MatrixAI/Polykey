@@ -56,7 +56,7 @@ describe('lock', () => {
       await session.stop();
     },
   );
-  runTestIfPlatforms('linux')(
+  runTestIfPlatforms('linux', 'docker')(
     'lock ensures re-authentication is required',
     async () => {
       const password = agentPassword;

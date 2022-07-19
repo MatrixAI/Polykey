@@ -6,17 +6,14 @@ import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
 import * as nodesUtils from '@/nodes/utils';
-import * as keysUtils from '@/keys/utils';
 import { sysexits } from '@/errors';
 import * as testBinUtils from '../utils';
 import * as testNodesUtils from '../../nodes/utils';
-import * as testUtils from '../../utils';
+import { globalRootKeyPems } from '../../globalRootKeyPems';
 
 describe('find', () => {
   const logger = new Logger('find test', LogLevel.WARN, [new StreamHandler()]);
   const password = 'helloworld';
-  let mockedGenerateKeyPair: jest.SpyInstance;
-  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
   let dataDir: string;
   let nodePath: string;
   let polykeyAgent: PolykeyAgent;
@@ -28,14 +25,7 @@ describe('find', () => {
   let remoteOnlinePort: Port;
   let remoteOfflineHost: Host;
   let remoteOfflinePort: Port;
-  beforeAll(async () => {
-    const globalKeyPair = await testUtils.setupGlobalKeypair();
-    mockedGenerateKeyPair = jest
-      .spyOn(keysUtils, 'generateKeyPair')
-      .mockResolvedValueOnce(globalKeyPair);
-    mockedGenerateDeterministicKeyPair = jest
-      .spyOn(keysUtils, 'generateDeterministicKeyPair')
-      .mockResolvedValueOnce(globalKeyPair);
+  beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -53,6 +43,9 @@ describe('find', () => {
         connConnectTime: 2000,
         connTimeoutTime: 2000,
       },
+      keysConfig: {
+        privateKeyPemOverride: globalRootKeyPems[0],
+      },
       seedNodes: {}, // Explicitly no seed nodes on startup
       logger,
     });
@@ -67,7 +60,7 @@ describe('find', () => {
         clientHost: '127.0.0.1' as Host,
       },
       keysConfig: {
-        rootKeyPairBits: 1024,
+        privateKeyPemOverride: globalRootKeyPems[1],
       },
       logger,
     });
@@ -86,7 +79,7 @@ describe('find', () => {
         clientHost: '127.0.0.1' as Host,
       },
       keysConfig: {
-        rootKeyPairBits: 1024,
+        privateKeyPemOverride: globalRootKeyPems[2],
       },
       logger,
     });
@@ -95,8 +88,8 @@ describe('find', () => {
     remoteOfflinePort = remoteOffline.proxy.getProxyPort();
     await testNodesUtils.nodesConnect(polykeyAgent, remoteOffline);
     await remoteOffline.stop();
-  }, global.defaultTimeout * 3);
-  afterAll(async () => {
+  });
+  afterEach(async () => {
     await polykeyAgent.stop();
     await polykeyAgent.destroy();
     await remoteOnline.stop();
@@ -107,8 +100,6 @@ describe('find', () => {
       force: true,
       recursive: true,
     });
-    mockedGenerateKeyPair.mockRestore();
-    mockedGenerateDeterministicKeyPair.mockRestore();
   });
   test('finds an online node', async () => {
     const { exitCode, stdout } = await testBinUtils.pkStdio(

@@ -7,8 +7,8 @@ import Session from '@/sessions/Session';
 import config from '@/config';
 import * as errors from '@/errors';
 import * as testBinUtils from '../utils';
-import * as testUtils from '../../utils';
 import { runTestIfPlatforms } from '../../utils';
+import { globalRootKeyPems } from '../../globalRootKeyPems';
 
 /**
  * Mock prompts module which is used prompt for password
@@ -20,15 +20,19 @@ describe('lockall', () => {
   const logger = new Logger('lockall test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
-  let globalAgentDir;
-  let globalAgentPassword;
-  let globalAgentClose;
-  beforeAll(async () => {
-    ({ globalAgentDir, globalAgentPassword, globalAgentClose } =
-      await testUtils.setupGlobalAgent(logger));
-  }, globalThis.maxTimeout);
-  afterAll(async () => {
-    await globalAgentClose();
+  let agentDir;
+  let agentPassword;
+  let agentClose;
+  beforeEach(async () => {
+    ({ agentDir, agentPassword, agentClose } =
+      await testBinUtils.setupTestAgent(
+        global.testCmd,
+        globalRootKeyPems[0],
+        logger,
+      ));
+  });
+  afterEach(async () => {
+    await agentClose();
   });
   runTestIfPlatforms('linux', 'docker')(
     'lockall deletes the session token',
@@ -36,21 +40,21 @@ describe('lockall', () => {
       await testBinUtils.pkStdioSwitch(global.testCmd)(
         ['agent', 'unlock'],
         {
-          PK_NODE_PATH: globalAgentDir,
-          PK_PASSWORD: globalAgentPassword,
+          PK_NODE_PATH: agentDir,
+          PK_PASSWORD: agentPassword,
         },
-        globalAgentDir,
+        agentDir,
       );
       const { exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
         ['agent', 'lockall'],
         {
-          PK_NODE_PATH: globalAgentDir,
+          PK_NODE_PATH: agentDir,
         },
-        globalAgentDir,
+        agentDir,
       );
       expect(exitCode).toBe(0);
       const session = await Session.createSession({
-        sessionTokenPath: path.join(globalAgentDir, config.defaults.tokenBase),
+        sessionTokenPath: path.join(agentDir, config.defaults.tokenBase),
         fs,
         logger,
       });
@@ -61,21 +65,21 @@ describe('lockall', () => {
   runTestIfPlatforms('linux', 'docker')(
     'lockall ensures reauthentication is required',
     async () => {
-      const password = globalAgentPassword;
+      const password = agentPassword;
       await testBinUtils.pkStdioSwitch(global.testCmd)(
         ['agent', 'unlock'],
         {
-          PK_NODE_PATH: globalAgentDir,
-          PK_PASSWORD: globalAgentPassword,
+          PK_NODE_PATH: agentDir,
+          PK_PASSWORD: agentPassword,
         },
-        globalAgentDir,
+        agentDir,
       );
       await testBinUtils.pkStdioSwitch(global.testCmd)(
         ['agent', 'lockall'],
         {
-          PK_NODE_PATH: globalAgentDir,
+          PK_NODE_PATH: agentDir,
         },
-        globalAgentDir,
+        agentDir,
       );
       // Token is deleted, reauthentication is required
       mockedPrompts.mockClear();
@@ -85,9 +89,9 @@ describe('lockall', () => {
       await testBinUtils.pkStdio(
         ['agent', 'status'],
         {
-          PK_NODE_PATH: globalAgentDir,
+          PK_NODE_PATH: agentDir,
         },
-        globalAgentDir,
+        agentDir,
       );
       // Prompted for password 1 time
       expect(mockedPrompts.mock.calls.length).toBe(1);
@@ -100,13 +104,13 @@ describe('lockall', () => {
       await testBinUtils.pkStdioSwitch(global.testCmd)(
         ['agent', 'unlock'],
         {
-          PK_NODE_PATH: globalAgentDir,
-          PK_PASSWORD: globalAgentPassword,
+          PK_NODE_PATH: agentDir,
+          PK_PASSWORD: agentPassword,
         },
-        globalAgentDir,
+        agentDir,
       );
       const session = await Session.createSession({
-        sessionTokenPath: path.join(globalAgentDir, config.defaults.tokenBase),
+        sessionTokenPath: path.join(agentDir, config.defaults.tokenBase),
         fs,
         logger,
       });
@@ -115,10 +119,10 @@ describe('lockall', () => {
       await testBinUtils.pkStdioSwitch(global.testCmd)(
         ['agent', 'lockall'],
         {
-          PK_NODE_PATH: globalAgentDir,
-          PK_PASSWORD: globalAgentPassword,
+          PK_NODE_PATH: agentDir,
+          PK_PASSWORD: agentPassword,
         },
-        globalAgentDir,
+        agentDir,
       );
       // Old token is invalid
       const { exitCode, stderr } = await testBinUtils.pkStdioSwitch(
@@ -126,10 +130,10 @@ describe('lockall', () => {
       )(
         ['agent', 'status', '--format', 'json'],
         {
-          PK_NODE_PATH: globalAgentDir,
+          PK_NODE_PATH: agentDir,
           PK_TOKEN: token,
         },
-        globalAgentDir,
+        agentDir,
       );
       testBinUtils.expectProcessError(exitCode, stderr, [
         new errors.ErrorClientAuthDenied(),

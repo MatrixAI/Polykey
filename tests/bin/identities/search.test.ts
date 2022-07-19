@@ -7,10 +7,9 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
 import { sysexits } from '@/utils';
 import * as identitiesUtils from '@/identities/utils';
-import * as keysUtils from '@/keys/utils';
 import * as testBinUtils from '../utils';
-import * as testUtils from '../../utils';
 import TestProvider from '../../identities/TestProvider';
+import { globalRootKeyPems } from '../../globalRootKeyPems';
 
 describe('search', () => {
   const logger = new Logger('search test', LogLevel.WARN, [
@@ -109,16 +108,7 @@ describe('search', () => {
   let dataDir: string;
   let nodePath: string;
   let pkAgent: PolykeyAgent;
-  let mockedGenerateKeyPair: jest.SpyInstance;
-  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
-  beforeAll(async () => {
-    const globalKeyPair = await testUtils.setupGlobalKeypair();
-    mockedGenerateKeyPair = jest
-      .spyOn(keysUtils, 'generateKeyPair')
-      .mockResolvedValue(globalKeyPair);
-    mockedGenerateDeterministicKeyPair = jest
-      .spyOn(keysUtils, 'generateDeterministicKeyPair')
-      .mockResolvedValue(globalKeyPair);
+  beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -133,20 +123,21 @@ describe('search', () => {
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },
+      keysConfig: {
+        privateKeyPemOverride: globalRootKeyPems[0],
+      },
       logger,
     });
     pkAgent.identitiesManager.registerProvider(provider1);
     pkAgent.identitiesManager.registerProvider(provider2);
     pkAgent.identitiesManager.registerProvider(provider3);
   });
-  afterAll(async () => {
+  afterEach(async () => {
     await pkAgent.stop();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
     });
-    mockedGenerateKeyPair.mockRestore();
-    mockedGenerateDeterministicKeyPair.mockRestore();
   });
   test('finds connected identities', async () => {
     let exitCode, stdout;
@@ -320,10 +311,6 @@ describe('search', () => {
     expect(exitCode).toBe(0);
     searchResults = stdout.split('\n').slice(undefined, -1).map(JSON.parse);
     expect(searchResults).toHaveLength(2);
-    // Revert side effects
-    await pkAgent.identitiesManager.delToken(provider1.id, identityId);
-    await pkAgent.identitiesManager.delToken(provider2.id, identityId);
-    await pkAgent.identitiesManager.delToken(provider3.id, identityId);
     mockedBrowser.mockRestore();
   });
   test('should fail on invalid inputs', async () => {

@@ -623,14 +623,22 @@ async function setupTestAgent(
       agentStatus,
       agentClose: async () => {
         agentProcess.kill();
-        await fs.promises.rm(agentDir, { recursive: true, force: true });
+        await fs.promises.rm(agentDir, {
+          recursive: true,
+          force: true,
+          maxRetries: 10,
+        });
       },
       agentDir,
       agentPassword,
     };
   } catch (e) {
     agentProcess.kill();
-    await fs.promises.rm(agentDir, { recursive: true, force: true });
+    await fs.promises.rm(agentDir, {
+      recursive: true,
+      force: true,
+      maxRetries: 10,
+    });
     throw e;
   }
 }
