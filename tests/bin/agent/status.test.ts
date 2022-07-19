@@ -132,7 +132,7 @@ describe('status', () => {
           globalRootKeyPems[1],
           logger,
         ));
-    }, globalThis.maxTimeout);
+    });
     afterEach(async () => {
       await agentClose();
     });

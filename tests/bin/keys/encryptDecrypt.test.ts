@@ -19,7 +19,7 @@ describe('encrypt-decrypt', () => {
         globalRootKeyPems[0],
         logger,
       ));
-  }, globalThis.maxTimeout);
+  });
   afterEach(async () => {
     await agentClose();
   });

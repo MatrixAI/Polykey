@@ -79,7 +79,7 @@ describe('CLI vaults', () => {
     );
     vaultName = genVaultName();
     command = [];
-  }, global.polykeyStartupTimeout);
+  });
   afterEach(async () => {
     await polykeyAgent.stop();
     await polykeyAgent.destroy();

@@ -112,7 +112,7 @@ describe('discover/get', () => {
     const [, claimEncoded] = await nodeA.sigchain.addClaim(identityClaim);
     const claim = claimsUtils.decodeClaim(claimEncoded);
     await testProvider.publishClaim(identityId, claim);
-  }, global.maxTimeout);
+  });
   afterEach(async () => {
     await pkAgent.stop();
     await nodeB.stop();

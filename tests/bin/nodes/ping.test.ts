@@ -84,7 +84,7 @@ describe('ping', () => {
     remoteOfflineNodeId = remoteOffline.keyManager.getNodeId();
     await testNodesUtils.nodesConnect(polykeyAgent, remoteOffline);
     await remoteOffline.stop();
-  }, global.defaultTimeout * 3);
+  });
   afterEach(async () => {
     await polykeyAgent.stop();
     await polykeyAgent.destroy();

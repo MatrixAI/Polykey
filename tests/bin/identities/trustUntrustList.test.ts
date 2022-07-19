@@ -88,7 +88,7 @@ describe('trust/untrust/list', () => {
     const [, claimEncoded] = await node.sigchain.addClaim(identityClaim);
     const claim = claimsUtils.decodeClaim(claimEncoded);
     await provider.publishClaim(identity, claim);
-  }, globalThis.maxTimeout);
+  });
   afterEach(async () => {
     await node.stop();
     await pkAgent.stop();
