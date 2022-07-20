@@ -53,7 +53,8 @@ describe('renew', () => {
     mockedGenerateKeyPair.mockRestore();
     mockedGenerateDeterministicKeyPair.mockRestore();
   });
-  runTestIfPlatforms('linux', 'docker')('renews the keypair', async () => {
+  runTestIfPlatforms('linux')('renews the keypair', async () => {
+    // Can't test with target executable due to mocking
     // Get previous keypair and nodeId
     let { exitCode, stdout } = await testBinUtils.pkStdioSwitch(global.testCmd)(
       ['keys', 'root', '--private-key', '--format', 'json'],

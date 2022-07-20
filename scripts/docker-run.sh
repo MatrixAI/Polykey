@@ -10,5 +10,6 @@ exec docker run -i \
     --env PK_NODE_PATH \
     --env PK_RECOVERY_CODE \
     --env PK_TOKEN \
+    --env PK_ROOT_KEY \
     "$PK_TEST_DOCKER_IMAGE" \
     polykey "$@"

@@ -55,9 +55,10 @@ describe('authenticate/authenticated', () => {
       recursive: true,
     });
   });
-  runTestIfPlatforms('linux', 'docker')(
+  runTestIfPlatforms('linux')(
     'authenticates identity with a provider and gets authenticated identity',
     async () => {
+      // Can't test with target command due to mocking
       let exitCode, stdout;
       const mockedBrowser = jest
         .spyOn(identitiesUtils, 'browser')

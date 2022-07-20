@@ -97,9 +97,11 @@ describe('CLI vaults', () => {
         await polykeyAgent.vaultManager.createVault('Vault1' as VaultName);
         await polykeyAgent.vaultManager.createVault('Vault2' as VaultName);
 
-        const result = await testBinUtils.pkStdioSwitch(global.testCmd)([
-          ...command,
-        ]);
+        const result = await testBinUtils.pkStdioSwitch(global.testCmd)(
+          [...command],
+          {},
+          dataDir,
+        );
         expect(result.exitCode).toBe(0);
       },
     );
