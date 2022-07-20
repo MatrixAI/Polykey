@@ -89,7 +89,7 @@ describe('send/read/claim', () => {
           PK_NODE_PATH: senderAgentDir,
           PK_PASSWORD: senderAgentPassword,
         },
-        dataDir,
+        senderAgentDir,
       ));
       expect(exitCode).toBe(0);
       // Add sender to receiver's node graph so it can be trusted
@@ -105,7 +105,7 @@ describe('send/read/claim', () => {
           PK_NODE_PATH: receiverAgentDir,
           PK_PASSWORD: receiverAgentPassword,
         },
-        dataDir,
+        receiverAgentDir,
       ));
       expect(exitCode).toBe(0);
       // Trust sender so notification can be received
@@ -115,7 +115,7 @@ describe('send/read/claim', () => {
           PK_NODE_PATH: receiverAgentDir,
           PK_PASSWORD: receiverAgentPassword,
         },
-        dataDir,
+        receiverAgentDir,
       ));
       expect(exitCode).toBe(0);
       // Send some notifications
@@ -130,7 +130,7 @@ describe('send/read/claim', () => {
           PK_NODE_PATH: senderAgentDir,
           PK_PASSWORD: senderAgentPassword,
         },
-        dataDir,
+        senderAgentDir,
       ));
       expect(exitCode).toBe(0);
       ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
@@ -144,7 +144,7 @@ describe('send/read/claim', () => {
           PK_NODE_PATH: senderAgentDir,
           PK_PASSWORD: senderAgentPassword,
         },
-        dataDir,
+        senderAgentDir,
       ));
       expect(exitCode).toBe(0);
       ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
@@ -158,7 +158,7 @@ describe('send/read/claim', () => {
           PK_NODE_PATH: senderAgentDir,
           PK_PASSWORD: senderAgentPassword,
         },
-        dataDir,
+        senderAgentDir,
       ));
       expect(exitCode).toBe(0);
       // Read notifications
@@ -168,7 +168,7 @@ describe('send/read/claim', () => {
           PK_NODE_PATH: receiverAgentDir,
           PK_PASSWORD: receiverAgentPassword,
         },
-        dataDir,
+        receiverAgentDir,
       ));
       expect(exitCode).toBe(0);
       readNotifications = stdout
@@ -207,7 +207,7 @@ describe('send/read/claim', () => {
           PK_NODE_PATH: receiverAgentDir,
           PK_PASSWORD: receiverAgentPassword,
         },
-        dataDir,
+        receiverAgentDir,
       ));
       expect(exitCode).toBe(0);
       readNotifications = stdout
@@ -222,7 +222,7 @@ describe('send/read/claim', () => {
           PK_NODE_PATH: receiverAgentDir,
           PK_PASSWORD: receiverAgentPassword,
         },
-        dataDir,
+        receiverAgentDir,
       ));
       expect(exitCode).toBe(0);
       readNotifications = stdout
@@ -261,7 +261,7 @@ describe('send/read/claim', () => {
           PK_NODE_PATH: receiverAgentDir,
           PK_PASSWORD: receiverAgentPassword,
         },
-        dataDir,
+        receiverAgentDir,
       ));
       expect(exitCode).toBe(0);
       readNotifications = stdout
@@ -284,7 +284,7 @@ describe('send/read/claim', () => {
           PK_NODE_PATH: receiverAgentDir,
           PK_PASSWORD: receiverAgentPassword,
         },
-        dataDir,
+        receiverAgentDir,
       ));
       // Check there are no more notifications
       ({ exitCode, stdout } = await testBinUtils.pkStdioSwitch(global.testCmd)(
@@ -293,7 +293,7 @@ describe('send/read/claim', () => {
           PK_NODE_PATH: receiverAgentDir,
           PK_PASSWORD: receiverAgentPassword,
         },
-        dataDir,
+        receiverAgentDir,
       ));
       expect(exitCode).toBe(0);
       readNotifications = stdout
@@ -302,5 +302,6 @@ describe('send/read/claim', () => {
         .map(JSON.parse);
       expect(readNotifications).toHaveLength(0);
     },
+    global.defaultTimeout * 2,
   );
 });

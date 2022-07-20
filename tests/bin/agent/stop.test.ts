@@ -160,9 +160,11 @@ describe('stop', () => {
     },
     global.defaultTimeout * 2,
   );
-  runTestIfPlatforms('linux', 'docker')(
+  runTestIfPlatforms('linux')(
     'stopping starting agent results in error',
     async () => {
+      // This relies on fast execution of `agent stop` while agent is starting,
+      //  docker may not run this fast enough
       const password = 'abc123';
       const status = new Status({
         statusPath: path.join(dataDir, 'polykey', config.defaults.statusBase),

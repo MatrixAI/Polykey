@@ -132,25 +132,29 @@ describe('CLI secrets', () => {
     );
   });
   describe('commandListSecrets', () => {
-    runTestIfPlatforms('linux', 'docker')('should list secrets', async () => {
-      const vaultName = 'Vault4' as VaultName;
-      const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
+    runTestIfPlatforms('linux', 'docker')(
+      'should list secrets',
+      async () => {
+        const vaultName = 'Vault4' as VaultName;
+        const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
 
-      await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
-        await vaultOps.addSecret(vault, 'MySecret1', 'this is the secret 1');
-        await vaultOps.addSecret(vault, 'MySecret2', 'this is the secret 2');
-        await vaultOps.addSecret(vault, 'MySecret3', 'this is the secret 3');
-      });
+        await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
+          await vaultOps.addSecret(vault, 'MySecret1', 'this is the secret 1');
+          await vaultOps.addSecret(vault, 'MySecret2', 'this is the secret 2');
+          await vaultOps.addSecret(vault, 'MySecret3', 'this is the secret 3');
+        });
 
-      command = ['secrets', 'list', '-np', dataDir, vaultName];
+        command = ['secrets', 'list', '-np', dataDir, vaultName];
 
-      const result = await testBinUtils.pkStdioSwitch(global.testCmd)(
-        [...command],
-        {},
-        dataDir,
-      );
-      expect(result.exitCode).toBe(0);
-    });
+        const result = await testBinUtils.pkStdioSwitch(global.testCmd)(
+          [...command],
+          {},
+          dataDir,
+        );
+        expect(result.exitCode).toBe(0);
+      },
+      global.defaultTimeout * 2,
+    );
   });
   describe('commandNewDir', () => {
     runTestIfPlatforms('linux', 'docker')(

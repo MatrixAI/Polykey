@@ -198,9 +198,10 @@ describe('allow/disallow/permissions', () => {
       });
     },
   );
-  runTestIfPlatforms('linux', 'docker')(
+  runTestIfPlatforms('linux')(
     'allows/disallows/gets gestalt permissions by identity',
     async () => {
+      // Can't test with target executable due to mocking
       let exitCode, stdout;
       // Add the node to our node graph, otherwise we won't be able to contact it
       await testBinUtils.pkStdioSwitch(global.testCmd)(
