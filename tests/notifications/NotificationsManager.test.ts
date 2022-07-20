@@ -24,6 +24,7 @@ import * as vaultsUtils from '@/vaults/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as keysUtils from '@/keys/utils';
 import * as testUtils from '../utils';
+import { globalRootKeyPems } from '../globalRootKeyPems';
 
 describe('NotificationsManager', () => {
   const password = 'password';
@@ -42,8 +43,6 @@ describe('NotificationsManager', () => {
       0, 0, 0, 0, 0, 0, 5,
     ]),
   );
-  let mockedGenerateKeyPair: jest.SpyInstance;
-  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
   /**
    * Shared ACL, DB, NodeManager, KeyManager for all tests
    */
@@ -59,14 +58,7 @@ describe('NotificationsManager', () => {
   let proxy: Proxy;
 
   let receiver: PolykeyAgent;
-  beforeAll(async () => {
-    const globalKeyPair = await testUtils.setupGlobalKeypair();
-    mockedGenerateKeyPair = jest
-      .spyOn(keysUtils, 'generateKeyPair')
-      .mockResolvedValueOnce(globalKeyPair);
-    mockedGenerateDeterministicKeyPair = jest
-      .spyOn(keysUtils, 'generateDeterministicKeyPair')
-      .mockResolvedValueOnce(globalKeyPair);
+  beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -75,6 +67,7 @@ describe('NotificationsManager', () => {
       password,
       keysPath,
       logger,
+      privateKeyPemOverride: globalRootKeyPems[0],
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
@@ -139,7 +132,7 @@ describe('NotificationsManager', () => {
       password: password,
       nodePath: path.join(dataDir, 'receiver'),
       keysConfig: {
-        rootKeyPairBits: 1024,
+        privateKeyPemOverride: globalRootKeyPems[1],
       },
       networkConfig: {
         proxyHost: '127.0.0.1' as Host,
@@ -151,7 +144,7 @@ describe('NotificationsManager', () => {
       port: receiver.proxy.getProxyPort(),
     });
   }, global.defaultTimeout);
-  afterAll(async () => {
+  afterEach(async () => {
     await receiver.stop();
     await queue.stop();
     await nodeConnectionManager.stop();
@@ -166,8 +159,6 @@ describe('NotificationsManager', () => {
       force: true,
       recursive: true,
     });
-    mockedGenerateKeyPair.mockRestore();
-    mockedGenerateDeterministicKeyPair.mockRestore();
   });
   test('notifications manager readiness', async () => {
     const notificationsManager =

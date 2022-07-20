@@ -18,6 +18,7 @@ import * as nodesUtils from '@/nodes/utils';
 import * as keysUtils from '@/keys/utils';
 import * as grpcUtils from '@/grpc/utils';
 import { sleep } from '@/utils';
+import { globalRootKeyPems } from '../globalRootKeyPems';
 
 describe(`${NodeConnectionManager.name} timeout test`, () => {
   const logger = new Logger(
@@ -76,17 +77,9 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
   let remoteNodeId1: NodeId;
   let remoteNodeId2: NodeId;
 
-  const mockedGenerateDeterministicKeyPair = jest.spyOn(
-    keysUtils,
-    'generateDeterministicKeyPair',
-  );
   const dummyNodeManager = { setNode: jest.fn() } as unknown as NodeManager;
 
   beforeAll(async () => {
-    mockedGenerateDeterministicKeyPair.mockImplementation((bits, _) => {
-      return keysUtils.generateKeyPair(bits);
-    });
-
     dataDir2 = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -98,6 +91,9 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
       networkConfig: {
         proxyHost: '127.0.0.1' as Host,
       },
+      keysConfig: {
+        privateKeyPemOverride: globalRootKeyPems[0],
+      },
     });
     remoteNodeId1 = remoteNode1.keyManager.getNodeId();
     remoteNode2 = await PolykeyAgent.createPolykeyAgent({
@@ -106,6 +102,9 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
       logger: logger.getChild('remoteNode2'),
       networkConfig: {
         proxyHost: '127.0.0.1' as Host,
+      },
+      keysConfig: {
+        privateKeyPemOverride: globalRootKeyPems[1],
       },
     });
     remoteNodeId2 = remoteNode2.keyManager.getNodeId();
@@ -128,6 +127,7 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
       password,
       keysPath,
       logger: logger.getChild('keyManager'),
+      privateKeyPemOverride: globalRootKeyPems[2],
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({

@@ -26,6 +26,7 @@ import * as agentErrors from '@/agent/errors';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import { promise, promisify } from '@/utils';
 import * as testUtils from '../utils';
+import { globalRootKeyPems } from '../globalRootKeyPems';
 
 describe(`${NodeConnectionManager.name} termination test`, () => {
   const logger = new Logger(
@@ -83,17 +84,9 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
 
   let tlsConfig2: TLSConfig;
 
-  const mockedGenerateDeterministicKeyPair = jest.spyOn(
-    keysUtils,
-    'generateDeterministicKeyPair',
-  );
   const dummyNodeManager = { setNode: jest.fn() } as unknown as NodeManager;
 
   beforeEach(async () => {
-    mockedGenerateDeterministicKeyPair.mockImplementation((bits, _) => {
-      return keysUtils.generateKeyPair(bits);
-    });
-
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -102,6 +95,7 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
     keyManager = await KeyManager.createKeyManager({
       password,
       keysPath,
+      privateKeyPemOverride: globalRootKeyPems[0],
       logger: logger.getChild('keyManager'),
     });
     const dbPath = path.join(dataDir, 'db');
@@ -364,6 +358,9 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
         networkConfig: {
           proxyHost: '127.0.0.1' as Host,
         },
+        keysConfig: {
+          privateKeyPemOverride: globalRootKeyPems[1],
+        },
         logger: logger,
       });
 
@@ -421,6 +418,9 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
         nodePath: nodePath,
         networkConfig: {
           proxyHost: '127.0.0.1' as Host,
+        },
+        keysConfig: {
+          privateKeyPemOverride: globalRootKeyPems[2],
         },
         logger: logger,
       });
@@ -502,6 +502,9 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
         networkConfig: {
           proxyHost: '127.0.0.1' as Host,
         },
+        keysConfig: {
+          privateKeyPemOverride: globalRootKeyPems[3],
+        },
         logger: logger,
       });
 
@@ -574,6 +577,9 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
         nodePath: nodePath,
         networkConfig: {
           proxyHost: '127.0.0.1' as Host,
+        },
+        keysConfig: {
+          privateKeyPemOverride: globalRootKeyPems[4],
         },
         logger: logger,
       });
@@ -653,6 +659,9 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
         networkConfig: {
           proxyHost: '127.0.0.1' as Host,
         },
+        keysConfig: {
+          privateKeyPemOverride: globalRootKeyPems[5],
+        },
         logger: logger,
       });
 
@@ -730,6 +739,9 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
         nodePath: nodePath,
         networkConfig: {
           proxyHost: '127.0.0.1' as Host,
+        },
+        keysConfig: {
+          privateKeyPemOverride: globalRootKeyPems[6],
         },
         logger: logger,
       });

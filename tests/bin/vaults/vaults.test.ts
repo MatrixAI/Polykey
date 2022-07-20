@@ -824,7 +824,7 @@ describe('CLI vaults', () => {
         expect(result.stdout).not.toContain(writeF3Oid);
       },
     );
-    runTestIfPlatforms('linux', 'docker').todo('test formatting of the output');
+    test.todo('test formatting of the output');
   });
   describe('commandScanNode', () => {
     runTestIfPlatforms('linux', 'docker')(

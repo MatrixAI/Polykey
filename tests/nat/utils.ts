@@ -7,6 +7,7 @@ import child_process from 'child_process';
 import readline from 'readline';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as testBinUtils from '../bin/utils';
+import { globalRootKeyPems } from '../globalRootKeyPems';
 
 type NATType = 'eim' | 'edm' | 'dmz';
 
@@ -1191,8 +1192,6 @@ async function setupNATWithSeedNode(
       'start',
       '--node-path',
       path.join(dataDir, 'seed'),
-      '--root-key-pair-bits',
-      '1024',
       '--client-host',
       '127.0.0.1',
       '--proxy-host',
@@ -1207,6 +1206,7 @@ async function setupNATWithSeedNode(
     ],
     {
       PK_PASSWORD: password,
+      PK_ROOT_KEY: globalRootKeyPems[0],
     },
     dataDir,
     logger.getChild('seed'),
@@ -1226,8 +1226,6 @@ async function setupNATWithSeedNode(
       'start',
       '--node-path',
       path.join(dataDir, 'agent1'),
-      '--root-key-pair-bits',
-      '1024',
       '--client-host',
       '127.0.0.1',
       '--proxy-host',
@@ -1246,6 +1244,7 @@ async function setupNATWithSeedNode(
     ],
     {
       PK_PASSWORD: password,
+      PK_ROOT_KEY: globalRootKeyPems[1],
     },
     dataDir,
     logger.getChild('agent1'),
@@ -1264,8 +1263,6 @@ async function setupNATWithSeedNode(
       'start',
       '--node-path',
       path.join(dataDir, 'agent2'),
-      '--root-key-pair-bits',
-      '1024',
       '--client-host',
       '127.0.0.1',
       '--proxy-host',
@@ -1284,6 +1281,7 @@ async function setupNATWithSeedNode(
     ],
     {
       PK_PASSWORD: password,
+      PK_ROOT_KEY: globalRootKeyPems[2],
     },
     dataDir,
     logger.getChild('agent2'),
@@ -1434,8 +1432,6 @@ async function setupNAT(
       'start',
       '--node-path',
       path.join(dataDir, 'agent1'),
-      '--root-key-pair-bits',
-      '1024',
       '--client-host',
       '127.0.0.1',
       '--proxy-host',
@@ -1452,6 +1448,7 @@ async function setupNAT(
     ],
     {
       PK_PASSWORD: password,
+      PK_ROOT_KEY: globalRootKeyPems[3],
     },
     dataDir,
     logger.getChild('agent1'),
@@ -1470,8 +1467,6 @@ async function setupNAT(
       'start',
       '--node-path',
       path.join(dataDir, 'agent2'),
-      '--root-key-pair-bits',
-      '1024',
       '--client-host',
       '127.0.0.1',
       '--proxy-host',
@@ -1488,6 +1483,7 @@ async function setupNAT(
     ],
     {
       PK_PASSWORD: password,
+      PK_ROOT_KEY: globalRootKeyPems[4],
     },
     dataDir,
     logger.getChild('agent2'),

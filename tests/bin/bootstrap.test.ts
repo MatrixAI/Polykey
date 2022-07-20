@@ -55,7 +55,7 @@ describe('bootstrap', () => {
     },
     global.defaultTimeout * 2,
   );
-  runTestIfPlatforms('linux', 'docker').only(
+  runTestIfPlatforms('linux', 'docker')(
     'bootstraps node state from provided private key',
     async () => {
       const password = 'password';

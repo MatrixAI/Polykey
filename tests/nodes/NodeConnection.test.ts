@@ -36,9 +36,9 @@ import * as grpcUtils from '@/grpc/utils';
 import { timerStart } from '@/utils';
 import Queue from '@/nodes/Queue';
 import * as testNodesUtils from './utils';
-import * as testUtils from '../utils';
 import * as grpcTestUtils from '../grpc/utils';
 import * as agentTestUtils from '../agent/utils';
+import { globalRootKeyPems } from '../globalRootKeyPems';
 
 const destroyCallback = async () => {};
 
@@ -195,6 +195,7 @@ describe(`${NodeConnection.name} test`, () => {
       keysPath: serverKeysPath,
       fs: fs,
       logger: logger,
+      privateKeyPemOverride: globalRootKeyPems[1],
     });
 
     serverTLSConfig = {
@@ -313,6 +314,7 @@ describe(`${NodeConnection.name} test`, () => {
       password,
       keysPath: clientKeysPath,
       logger,
+      privateKeyPemOverride: globalRootKeyPems[2],
     });
 
     const clientTLSConfig = {
@@ -335,15 +337,16 @@ describe(`${NodeConnection.name} test`, () => {
     sourcePort = clientProxy.getProxyPort();
 
     // Other setup
-    const globalKeyPair = await testUtils.setupGlobalKeypair();
+    const privateKey = keysUtils.privateKeyFromPem(globalRootKeyPems[0]);
+    const publicKey = keysUtils.publicKeyFromPrivateKey(privateKey);
     const cert = keysUtils.generateCertificate(
-      globalKeyPair.publicKey,
-      globalKeyPair.privateKey,
-      globalKeyPair.privateKey,
+      publicKey,
+      privateKey,
+      privateKey,
       86400,
     );
     tlsConfig = {
-      keyPrivatePem: keysUtils.keyPairToPem(globalKeyPair).privateKey,
+      keyPrivatePem: globalRootKeyPems[0],
       certChainPem: keysUtils.certToPem(cert),
     };
   }, global.polykeyStartupTimeout * 2);
@@ -494,6 +497,9 @@ describe(`${NodeConnection.name} test`, () => {
         logger: logger,
         networkConfig: {
           proxyHost: localHost,
+        },
+        keysConfig: {
+          privateKeyPemOverride: globalRootKeyPems[3],
         },
       });
       // Have a nodeConnection try to connect to it
@@ -685,6 +691,9 @@ describe(`${NodeConnection.name} test`, () => {
         logger: logger,
         networkConfig: {
           proxyHost: localHost,
+        },
+        keysConfig: {
+          privateKeyPemOverride: globalRootKeyPems[3],
         },
       });
       // Have a nodeConnection try to connect to it

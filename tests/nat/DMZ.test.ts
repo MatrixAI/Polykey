@@ -10,6 +10,7 @@ import config from '@/config';
 import * as testNatUtils from './utils';
 import { describeIf } from '../utils';
 import * as testBinUtils from '../bin/utils';
+import { globalRootKeyPems } from '../globalRootKeyPems';
 
 describeIf(
   process.platform === 'linux' &&
@@ -46,8 +47,6 @@ describeIf(
             'start',
             '--node-path',
             path.join(dataDir, 'polykey'),
-            '--root-key-pair-bits',
-            '1024',
             '--client-host',
             '127.0.0.1',
             '--proxy-host',
@@ -60,6 +59,7 @@ describeIf(
           ],
           {
             PK_PASSWORD: password,
+            PK_ROOT_KEY: globalRootKeyPems[0],
           },
           dataDir,
           logger.getChild('agentProcess'),
@@ -81,12 +81,7 @@ describeIf(
           forwardPort: expect.any(Number),
           proxyHost: expect.any(String),
           proxyPort: expect.any(Number),
-          recoveryCode: expect.any(String),
         });
-        expect(
-          statusLiveData.recoveryCode.split(' ').length === 12 ||
-            statusLiveData.recoveryCode.split(' ').length === 24,
-        ).toBe(true);
         agentProcess.kill('SIGTERM');
         let exitCode, signal;
         [exitCode, signal] = await testBinUtils.processExit(agentProcess);
