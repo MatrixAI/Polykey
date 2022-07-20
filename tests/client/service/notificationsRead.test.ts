@@ -21,11 +21,10 @@ import GRPCClientClient from '@/client/GRPCClientClient';
 import notificationsRead from '@/client/service/notificationsRead';
 import { ClientServiceService } from '@/proto/js/polykey/v1/client_service_grpc_pb';
 import * as notificationsPB from '@/proto/js/polykey/v1/notifications/notifications_pb';
-import * as keysUtils from '@/keys/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as clientUtils from '@/client/utils';
-import * as testUtils from '../../utils';
 import * as testNodesUtils from '../../nodes/utils';
+import { globalRootKeyPems } from '../../globalRootKeyPems';
 
 describe('notificationsRead', () => {
   const logger = new Logger('notificationsRead test', LogLevel.WARN, [
@@ -36,17 +35,8 @@ describe('notificationsRead', () => {
   const password = 'helloworld';
   const authenticate = async (metaClient, metaServer = new Metadata()) =>
     metaServer;
-  let mockedGenerateKeyPair: jest.SpyInstance;
-  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
   let mockedReadNotifications: jest.SpyInstance;
   beforeAll(async () => {
-    const globalKeyPair = await testUtils.setupGlobalKeypair();
-    mockedGenerateKeyPair = jest
-      .spyOn(keysUtils, 'generateKeyPair')
-      .mockResolvedValue(globalKeyPair);
-    mockedGenerateDeterministicKeyPair = jest
-      .spyOn(keysUtils, 'generateDeterministicKeyPair')
-      .mockResolvedValue(globalKeyPair);
     mockedReadNotifications = jest
       .spyOn(NotificationsManager.prototype, 'readNotifications')
       .mockResolvedValueOnce([
@@ -122,8 +112,6 @@ describe('notificationsRead', () => {
       .mockResolvedValueOnce([]);
   });
   afterAll(async () => {
-    mockedGenerateKeyPair.mockRestore();
-    mockedGenerateDeterministicKeyPair.mockRestore();
     mockedReadNotifications.mockRestore();
   });
   const authToken = 'abc123';
@@ -150,6 +138,7 @@ describe('notificationsRead', () => {
       password,
       keysPath,
       logger,
+      privateKeyPemOverride: globalRootKeyPems[0],
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({

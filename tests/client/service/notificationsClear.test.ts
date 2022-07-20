@@ -20,9 +20,8 @@ import GRPCClientClient from '@/client/GRPCClientClient';
 import notificationsClear from '@/client/service/notificationsClear';
 import { ClientServiceService } from '@/proto/js/polykey/v1/client_service_grpc_pb';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
-import * as keysUtils from '@/keys/utils';
 import * as clientUtils from '@/client/utils/utils';
-import * as testUtils from '../../utils';
+import { globalRootKeyPems } from '../../globalRootKeyPems';
 
 describe('notificationsClear', () => {
   const logger = new Logger('notificationsClear test', LogLevel.WARN, [
@@ -31,24 +30,13 @@ describe('notificationsClear', () => {
   const password = 'helloworld';
   const authenticate = async (metaClient, metaServer = new Metadata()) =>
     metaServer;
-  let mockedGenerateKeyPair: jest.SpyInstance;
-  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
   let mockedClearNotifications: jest.SpyInstance;
   beforeAll(async () => {
-    const globalKeyPair = await testUtils.setupGlobalKeypair();
-    mockedGenerateKeyPair = jest
-      .spyOn(keysUtils, 'generateKeyPair')
-      .mockResolvedValue(globalKeyPair);
-    mockedGenerateDeterministicKeyPair = jest
-      .spyOn(keysUtils, 'generateDeterministicKeyPair')
-      .mockResolvedValue(globalKeyPair);
     mockedClearNotifications = jest
       .spyOn(NotificationsManager.prototype, 'clearNotifications')
       .mockResolvedValue();
   });
   afterAll(async () => {
-    mockedGenerateKeyPair.mockRestore();
-    mockedGenerateDeterministicKeyPair.mockRestore();
     mockedClearNotifications.mockRestore();
   });
   const authToken = 'abc123';
@@ -75,6 +63,7 @@ describe('notificationsClear', () => {
       password,
       keysPath,
       logger,
+      privateKeyPemOverride: globalRootKeyPems[0],
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({

@@ -22,9 +22,9 @@ import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as nodesPB from '@/proto/js/polykey/v1/nodes/nodes_pb';
 import * as vaultsPB from '@/proto/js/polykey/v1/vaults/vaults_pb';
 import * as clientUtils from '@/client/utils/utils';
-import * as keysUtils from '@/keys/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as testUtils from '../../utils';
+import { globalRootKeyPems } from '../../globalRootKeyPems';
 
 describe('vaultsPermissionSetUnsetGet', () => {
   const logger = new Logger('vaultsPermissionSetUnsetGet test', LogLevel.WARN, [
@@ -33,24 +33,13 @@ describe('vaultsPermissionSetUnsetGet', () => {
   const password = 'helloworld';
   const authenticate = async (metaClient, metaServer = new Metadata()) =>
     metaServer;
-  let mockedGenerateKeyPair: jest.SpyInstance;
-  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
   let mockedSendNotification: jest.SpyInstance;
   beforeAll(async () => {
-    const globalKeyPair = await testUtils.setupGlobalKeypair();
-    mockedGenerateKeyPair = jest
-      .spyOn(keysUtils, 'generateKeyPair')
-      .mockResolvedValue(globalKeyPair);
-    mockedGenerateDeterministicKeyPair = jest
-      .spyOn(keysUtils, 'generateDeterministicKeyPair')
-      .mockResolvedValue(globalKeyPair);
     mockedSendNotification = jest
       .spyOn(NotificationsManager.prototype, 'sendNotification')
       .mockImplementation();
   });
   afterAll(async () => {
-    mockedGenerateKeyPair.mockRestore();
-    mockedGenerateDeterministicKeyPair.mockRestore();
     mockedSendNotification.mockRestore();
   });
   const nodeId = testUtils.generateRandomNodeId();
@@ -72,6 +61,7 @@ describe('vaultsPermissionSetUnsetGet', () => {
       password,
       keysPath,
       logger,
+      privateKeyPemOverride: globalRootKeyPems[0],
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
