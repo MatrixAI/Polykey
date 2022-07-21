@@ -3,7 +3,6 @@
  * This is just for testing the CLI Authentication Retry Loop
  * @module
  */
-import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import { mocked } from 'jest-mock';
@@ -36,7 +35,7 @@ describe('sessions', () => {
         logger,
       ));
     dataDir = await fs.promises.mkdtemp(
-      path.join(os.tmpdir(), 'polykey-test-'),
+      path.join(global.tmpDir, 'polykey-test-'),
     );
   });
   afterEach(async () => {

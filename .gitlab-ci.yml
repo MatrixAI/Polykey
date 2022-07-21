@@ -332,15 +332,17 @@ check:docker-test:
     - docker:20.10.16-dind
   variables:
     DOCKER_TLS_CERTDIR: "/certs"
+    FF_NETWORK_PER_BUILD: "true"
   script:
     - |
       nix-shell --run $'
         image="$(docker load --input ./builds/*docker* | cut -d\' \' -f3)"
+        echo $image
         PK_TEST_DOCKER_IMAGE=$image \
         PK_TEST_COMMAND=scripts/docker-run.sh \
-        PK_TEST_COMMAND_DOCKER=DOCKER \
+        PK_TEST_PLATFORM=docker \
         PK_TEST_TMP_DIR=/builds/$CI_PROJECT_PATH/tmp \
-        exec npm run test -- tests/bin/agent/start.test.ts tests/bin/bootstrap.test.ts
+        exec npm run test -- tests/bin
       '
 
 integration:docker:
@@ -360,9 +362,9 @@ integration:docker:
         image="$(docker load --input ./builds/*docker* | cut -d\' \' -f3)"
         PK_TEST_DOCKER_IMAGE=$image \
         PK_TEST_COMMAND=scripts/docker-run.sh \
-        PK_TEST_COMMAND_DOCKER=DOCKER \
+        PK_TEST_PLATFORM=docker \
         PK_TEST_TMP_DIR=/builds/$CI_PROJECT_PATH/tmp \
-        exec npm run test -- tests/bin/agent/start.test.ts tests/bin/bootstrap.test.ts
+        exec npm run test -- tests/bin
       '
   rules:
     # Runs on staging commits and ignores version commits

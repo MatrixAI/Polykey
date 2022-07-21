@@ -2,7 +2,6 @@ import type { NodeId } from '@/nodes/types';
 import type { Host, Port } from '@/network/types';
 import type { Notification } from '@/notifications/types';
 import type { StatusLive } from '@/status/types';
-import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
@@ -32,7 +31,7 @@ describe('send/read/claim', () => {
   let receiverAgentPassword: string;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
-      path.join(os.tmpdir(), 'polykey-test-'),
+      path.join(global.tmpDir, 'polykey-test-'),
     );
     // Cannot use the shared global agent since we can't 'un-add' a node
     // which we need in order to trust it and send notifications to it

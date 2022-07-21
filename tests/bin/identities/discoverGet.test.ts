@@ -3,7 +3,6 @@ import type { ClaimLinkIdentity } from '@/claims/types';
 import type { Gestalt } from '@/gestalts/types';
 import type { Host, Port } from '@/network/types';
 import type { NodeId } from '@/nodes/types';
-import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
@@ -41,7 +40,7 @@ describe('discover/get', () => {
   let nodeAPort: Port;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
-      path.join(os.tmpdir(), 'polykey-test-'),
+      path.join(global.tmpDir, 'polykey-test-'),
     );
     // Setup the remote gestalt state here
     // Setting up remote nodes

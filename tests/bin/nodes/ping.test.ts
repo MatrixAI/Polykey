@@ -1,6 +1,5 @@
 import type { NodeId } from '@/nodes/types';
 import type { Host } from '@/network/types';
-import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
@@ -24,7 +23,7 @@ describe('ping', () => {
   let remoteOfflineNodeId: NodeId;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
-      path.join(os.tmpdir(), 'polykey-test-'),
+      path.join(global.tmpDir, 'polykey-test-'),
     );
     nodePath = path.join(dataDir, 'keynode');
     polykeyAgent = await PolykeyAgent.createPolykeyAgent({

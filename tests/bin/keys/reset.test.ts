@@ -1,5 +1,4 @@
 import type { Host } from '@/network/types';
-import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
@@ -29,7 +28,7 @@ describe('reset', () => {
       .mockResolvedValueOnce(globalKeyPair)
       .mockResolvedValue(newKeyPair);
     dataDir = await fs.promises.mkdtemp(
-      path.join(os.tmpdir(), 'polykey-test-'),
+      path.join(global.tmpDir, 'polykey-test-'),
     );
     nodePath = path.join(dataDir, 'polykey');
     pkAgent = await PolykeyAgent.createPolykeyAgent({

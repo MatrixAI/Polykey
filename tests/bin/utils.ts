@@ -3,7 +3,6 @@ import type ErrorPolykey from '@/ErrorPolykey';
 import type { PrivateKeyPem } from '@/keys/types';
 import type { StatusLive } from '@/status/types';
 import child_process from 'child_process';
-import os from 'os';
 import fs from 'fs';
 import path from 'path';
 import process from 'process';
@@ -70,7 +69,8 @@ async function pkStdio(
   stderr: string;
 }> {
   cwd =
-    cwd ?? (await fs.promises.mkdtemp(path.join(os.tmpdir(), 'polykey-test-')));
+    cwd ??
+    (await fs.promises.mkdtemp(path.join(global.tmpDir, 'polykey-test-')));
   // Recall that we attempt to connect to all specified seed nodes on agent start.
   // Therefore, for testing purposes only, we default the seed nodes as empty
   // (if not defined in the env) to ensure no attempted connections. A regular
@@ -159,7 +159,8 @@ async function pkExec(
   stderr: string;
 }> {
   cwd =
-    cwd ?? (await fs.promises.mkdtemp(path.join(os.tmpdir(), 'polykey-test-')));
+    cwd ??
+    (await fs.promises.mkdtemp(path.join(global.tmpDir, 'polykey-test-')));
   env = {
     ...process.env,
     ...env,
@@ -215,7 +216,8 @@ async function pkSpawn(
   logger: Logger = new Logger(pkSpawn.name),
 ): Promise<ChildProcess> {
   cwd =
-    cwd ?? (await fs.promises.mkdtemp(path.join(os.tmpdir(), 'polykey-test-')));
+    cwd ??
+    (await fs.promises.mkdtemp(path.join(global.tmpDir, 'polykey-test-')));
   env = {
     ...process.env,
     ...env,
@@ -296,10 +298,20 @@ async function pkStdioTarget(
   subprocess.on('exit', (code) => {
     exitCodeProm.resolveP(code);
   });
+  subprocess.on('error', e => {
+    console.error(e)
+    exitCodeProm.rejectP(e);
+  });
   let stdout = '',
     stderr = '';
-  subprocess.stdout.on('data', (data) => (stdout += data.toString()));
-  subprocess.stderr.on('data', (data) => (stderr += data.toString()));
+  subprocess.stdout.on('data', (data) => {
+    console.log(data.toString());
+    stdout += data.toString();
+  });
+  subprocess.stderr.on('data', (data) => {
+    console.log(data.toString());
+    stderr += data.toString();
+  });
   return { exitCode: (await exitCodeProm.p) ?? -255, stdout, stderr };
 }
 
@@ -397,6 +409,9 @@ async function pkSpawnTarget(
     stdio: ['pipe', 'pipe', 'pipe'],
     windowsHide: true,
   });
+  subprocess.on('error', e => {
+    console.error(e);
+  })
   // The readline library will trim newlines
   const rlOut = readline.createInterface(subprocess.stdout!);
   rlOut.on('line', (l) => logger.info(l));
@@ -449,7 +464,8 @@ async function pkExpect({
   stdouterr: string;
 }> {
   cwd =
-    cwd ?? (await fs.promises.mkdtemp(path.join(os.tmpdir(), 'polykey-test-')));
+    cwd ??
+    (await fs.promises.mkdtemp(path.join(global.tmpDir, 'polykey-test-')));
   env = {
     ...process.env,
     ...env,

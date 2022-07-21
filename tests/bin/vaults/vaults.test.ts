@@ -1,7 +1,6 @@
 import type { NodeIdEncoded, NodeAddress, NodeInfo } from '@/nodes/types';
 import type { VaultId, VaultName } from '@/vaults/types';
 import type { Host } from '@/network/types';
-import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
@@ -53,7 +52,7 @@ describe('CLI vaults', () => {
 
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
-      path.join(os.tmpdir(), 'polykey-test-'),
+      path.join(global.tmpDir, 'polykey-test-'),
     );
     passwordFile = path.join(dataDir, 'passwordFile');
     await fs.promises.writeFile(passwordFile, 'password');
@@ -213,7 +212,7 @@ describe('CLI vaults', () => {
     'should clone and pull a vault',
     async () => {
       const dataDir2 = await fs.promises.mkdtemp(
-        path.join(os.tmpdir(), 'polykey-test-'),
+        path.join(global.tmpDir, 'polykey-test-'),
       );
       const targetPolykeyAgent = await PolykeyAgent.createPolykeyAgent({
         password,

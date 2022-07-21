@@ -2,7 +2,6 @@ import type { Host, Port } from '@/network/types';
 import type { IdentityId, ProviderId } from '@/identities/types';
 import type { ClaimLinkIdentity } from '@/claims/types';
 import type { NodeId } from '@/nodes/types';
-import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
@@ -37,7 +36,7 @@ describe('trust/untrust/list', () => {
   let nodePort: Port;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
-      path.join(os.tmpdir(), 'polykey-test-'),
+      path.join(global.tmpDir, 'polykey-test-'),
     );
     nodePath = path.join(dataDir, 'polykey');
     pkAgent = await PolykeyAgent.createPolykeyAgent({

@@ -53,6 +53,9 @@ describe('gestaltsGestaltTrustByNode', () => {
   const nodeChainData: ChainData = {};
   let mockedRequestChainData: jest.SpyInstance;
   beforeAll(async () => {
+    mockedRequestChainData = jest
+      .spyOn(NodeManager.prototype, 'requestChainData')
+      .mockResolvedValue(nodeChainData);
     nodeDataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'trusted-node-'),
     );

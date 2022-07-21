@@ -1,5 +1,4 @@
 import type { VaultName } from '@/vaults/types';
-import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
@@ -19,7 +18,7 @@ describe('CLI secrets', () => {
 
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
-      path.join(os.tmpdir(), 'polykey-test-'),
+      path.join(global.tmpDir, 'polykey-test-'),
     );
     passwordFile = path.join(dataDir, 'passwordFile');
     await fs.promises.writeFile(passwordFile, 'password');

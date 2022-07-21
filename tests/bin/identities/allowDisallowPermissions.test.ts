@@ -3,12 +3,11 @@ import type { IdentityId, ProviderId } from '@/identities/types';
 import type { ClaimLinkIdentity } from '@/claims/types';
 import type { Gestalt } from '@/gestalts/types';
 import type { NodeId } from '@/nodes/types';
-import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
-import { poll, sysexits } from '@/utils';
+import { poll, sleep, sysexits } from '@/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as claimsUtils from '@/claims/utils';
 import * as identitiesUtils from '@/identities/utils';
@@ -38,7 +37,7 @@ describe('allow/disallow/permissions', () => {
   let nodePort: Port;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
-      path.join(os.tmpdir(), 'polykey-test-'),
+      path.join(global.tmpDir, 'polykey-test-'),
     );
     nodePath = path.join(dataDir, 'polykey');
     pkAgent = await PolykeyAgent.createPolykeyAgent({
@@ -91,6 +90,7 @@ describe('allow/disallow/permissions', () => {
     await provider.publishClaim(identity, claim);
   });
   afterEach(async () => {
+    console.log('ending!');
     await node.stop();
     await pkAgent.stop();
     await fs.promises.rm(dataDir, {
@@ -98,12 +98,15 @@ describe('allow/disallow/permissions', () => {
       recursive: true,
     });
   });
-  runTestIfPlatforms('linux', 'docker')(
+  runTestIfPlatforms('linux', 'docker').only(
     'allows/disallows/gets gestalt permissions by node',
     async () => {
-      let exitCode, stdout;
+      console.time('test')
+      console.timeLog('test', 'STARTING');
+      let exitCode, stdout, stderr;
       // Add the node to our node graph, otherwise we won't be able to contact it
-      await testBinUtils.pkStdioSwitch(global.testCmd)(
+      logger.setLevel(LogLevel.INFO);
+      const result1 = await testBinUtils.pkStdioSwitch(global.testCmd)(
         [
           'nodes',
           'add',
@@ -117,10 +120,11 @@ describe('allow/disallow/permissions', () => {
         },
         dataDir,
       );
+       console.timeLog('test', result1);
       // Must first trust node before we can set permissions
       // This is because trusting the node sets it in our gestalt graph, which
       // we need in order to set permissions
-      await testBinUtils.pkStdioSwitch(global.testCmd)(
+      const result2 = await testBinUtils.pkStdioSwitch(global.testCmd)(
         ['identities', 'trust', nodesUtils.encodeNodeId(nodeId)],
         {
           PK_NODE_PATH: nodePath,
@@ -128,9 +132,10 @@ describe('allow/disallow/permissions', () => {
         },
         dataDir,
       );
+      console.timeLog('test', result2);
       // We should now have the 'notify' permission, so we'll set the 'scan'
       // permission as well
-      ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+      ({ exitCode, stdout, stderr } = await testBinUtils.pkStdioSwitch(global.testCmd)(
         ['identities', 'allow', nodesUtils.encodeNodeId(nodeId), 'scan'],
         {
           PK_NODE_PATH: nodePath,
@@ -138,6 +143,7 @@ describe('allow/disallow/permissions', () => {
         },
         dataDir,
       ));
+      console.timeLog('test', stdout, stderr)
       expect(exitCode).toBe(0);
       // Check that both permissions are set
       ({ exitCode, stdout } = await testBinUtils.pkStdioSwitch(global.testCmd)(
@@ -154,6 +160,7 @@ describe('allow/disallow/permissions', () => {
         },
         dataDir,
       ));
+      console.timeEnd('test');
       expect(exitCode).toBe(0);
       expect(JSON.parse(stdout)).toEqual({
         permissions: ['notify', 'scan'],
@@ -196,7 +203,7 @@ describe('allow/disallow/permissions', () => {
       expect(JSON.parse(stdout)).toEqual({
         permissions: [],
       });
-    },
+    }, 100000
   );
   runTestIfPlatforms('linux')(
     'allows/disallows/gets gestalt permissions by identity',
