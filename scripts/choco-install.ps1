@@ -1,3 +1,5 @@
+$ErrorActionPreference = "Stop"
+
 function Save-ChocoPackage {
   param (
       $PackageName
@@ -21,10 +23,10 @@ if ( $null -eq $env:ChocolateyInstall ) {
 New-Item -Path "${PSScriptRoot}\..\tmp\chocolatey" -ItemType "directory" -ErrorAction:SilentlyContinue
 choco source add --name="cache" --source="${PSScriptRoot}\..\tmp\chocolatey" --priority=1
 
-# Install nodejs v16.15.1 (will use cache if exists)
+# Install nodejs v16.14.2 (will use cache if exists)
 $nodejs = "nodejs.install"
-choco install "$nodejs" --version="16.15.1" --require-checksums -y
+choco install "$nodejs" --version="16.14.2" --require-checksums -y
 # Internalise nodejs to cache if doesn't exist
-if ( -not (Test-Path -Path "${PSScriptRoot}\..\tmp\chocolatey\$nodejs\$nodejs.16.15.1.nupkg" -PathType Leaf) ) {
+if ( -not (Test-Path -Path "${PSScriptRoot}\..\tmp\chocolatey\$nodejs\$nodejs.16.14.2.nupkg" -PathType Leaf) ) {
   Save-ChocoPackage -PackageName $nodejs
 }

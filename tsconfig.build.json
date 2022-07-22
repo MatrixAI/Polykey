@@ -7,6 +7,7 @@
   },
   "exclude": [
     "./tests/**/*",
-    "./scripts/**/*"
+    "./scripts/**/*",
+    "./benches/**/*"
   ]
 }

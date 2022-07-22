@@ -26,7 +26,8 @@
     "./src/**/*",
     "./src/**/*.json",
     "./tests/**/*",
-    "./scripts/**/*"
+    "./scripts/**/*",
+    "./benches/**/*"
   ],
   "ts-node": {
     "require": ["tsconfig-paths/register"],
