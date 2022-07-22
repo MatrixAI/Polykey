@@ -1,6 +1,6 @@
 import type { FileSystem } from '../types';
 import commander from 'commander';
-import Logger, { StreamHandler } from '@matrixai/logger';
+import Logger, { StreamHandler, formatting } from '@matrixai/logger';
 import * as binUtils from './utils';
 import * as binOptions from './utils/options';
 import * as binErrors from './errors';
@@ -65,6 +65,12 @@ class CommandPolykey extends commander.Command {
       this.exitHandlers.errFormat = opts.format === 'json' ? 'json' : 'error';
       // Set the logger according to the verbosity
       this.logger.setLevel(binUtils.verboseToLogLevel(opts.verbose));
+      // Set the logger formatter according to the format
+      if (opts.format === 'json') {
+        this.logger.handlers.forEach((handler) =>
+          handler.setFormatter(formatting.jsonFormatter),
+        );
+      }
       // Set the global upstream GRPC logger
       grpcSetLogger(this.logger.getChild('grpc'));
       // If the node path is undefined

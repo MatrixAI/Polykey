@@ -19,7 +19,7 @@ import process from 'process';
 import 'threads';
 process.removeAllListeners('SIGINT');
 process.removeAllListeners('SIGTERM');
-import Logger, { StreamHandler } from '@matrixai/logger';
+import Logger, { StreamHandler, formatting } from '@matrixai/logger';
 import * as binUtils from './utils';
 import PolykeyAgent from '../PolykeyAgent';
 import * as nodesUtils from '../nodes/utils';
@@ -46,7 +46,14 @@ async function main(_argv = process.argv): Promise<number> {
   const messageIn = await messageInP;
   const errFormat = messageIn.format === 'json' ? 'json' : 'error';
   exitHandlers.errFormat = errFormat;
+  // Set the logger according to the verbosity
   logger.setLevel(messageIn.logLevel);
+  // Set the logger formatter according to the format
+  if (messageIn.format === 'json') {
+    logger.handlers.forEach((handler) =>
+      handler.setFormatter(formatting.jsonFormatter),
+    );
+  }
   // Set the global upstream GRPC logger
   grpcSetLogger(logger.getChild('grpc'));
   let pkAgent: PolykeyAgent;
