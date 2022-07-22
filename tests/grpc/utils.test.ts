@@ -450,11 +450,11 @@ describe('GRPC utils', () => {
     expect(deserialisedError.message).toBe('test error');
     // @ts-ignore - already checked above that error is ErrorPolykeyRemote
     expect(deserialisedError.metadata.nodeId).toBe(nodeId);
-    // @ts-ignore
+    // @ts-ignore - already checked above that error is ErrorPolykeyRemote
     expect(deserialisedError.metadata.host).toBe(host);
-    // @ts-ignore
+    // @ts-ignore - already checked above that error is ErrorPolykeyRemote
     expect(deserialisedError.metadata.port).toBe(port);
-    // @ts-ignore
+    // @ts-ignore - already checked above that error is ErrorPolykeyRemote
     expect(deserialisedError.metadata.command).toBe('testCall');
     expect(deserialisedError.cause).toBeInstanceOf(errors.ErrorPolykey);
     expect(deserialisedError.cause.message).toBe('test error');
@@ -491,11 +491,11 @@ describe('GRPC utils', () => {
     expect(deserialisedError.message).toBe('test error');
     // @ts-ignore - already checked above that error is ErrorPolykeyRemote
     expect(deserialisedError.metadata.nodeId).toBe(nodeId);
-    // @ts-ignore
+    // @ts-ignore - already checked above that error is ErrorPolykeyRemote
     expect(deserialisedError.metadata.host).toBe(host);
-    // @ts-ignore
+    // @ts-ignore - already checked above that error is ErrorPolykeyRemote
     expect(deserialisedError.metadata.port).toBe(port);
-    // @ts-ignore
+    // @ts-ignore - already checked above that error is ErrorPolykeyRemote
     expect(deserialisedError.metadata.command).toBe('testCall');
     expect(deserialisedError.cause).toBeInstanceOf(TypeError);
     expect(deserialisedError.cause.message).toBe('test error');
@@ -525,11 +525,11 @@ describe('GRPC utils', () => {
     expect(deserialisedError).toBeInstanceOf(grpcErrors.ErrorPolykeyRemote);
     // @ts-ignore - already checked above that error is ErrorPolykeyRemote
     expect(deserialisedError.metadata.nodeId).toBe(nodeId);
-    // @ts-ignore
+    // @ts-ignore - already checked above that error is ErrorPolykeyRemote
     expect(deserialisedError.metadata.host).toBe(host);
-    // @ts-ignore
+    // @ts-ignore - already checked above that error is ErrorPolykeyRemote
     expect(deserialisedError.metadata.port).toBe(port);
-    // @ts-ignore
+    // @ts-ignore - already checked above that error is ErrorPolykeyRemote
     expect(deserialisedError.metadata.command).toBe('testCall');
     expect(deserialisedError.cause).toBeInstanceOf(errors.ErrorPolykeyUnknown);
     // This is slightly brittle because it's based on what we choose to do
@@ -579,11 +579,11 @@ describe('GRPC utils', () => {
     expect(deserialisedError.message).toBe('test error');
     // @ts-ignore - already checked above that error is ErrorPolykeyRemote
     expect(deserialisedError.metadata.nodeId).toBe(nodeId);
-    // @ts-ignore
+    // @ts-ignore - already checked above that error is ErrorPolykeyRemote
     expect(deserialisedError.metadata.host).toBe(host);
-    // @ts-ignore
+    // @ts-ignore - already checked above that error is ErrorPolykeyRemote
     expect(deserialisedError.metadata.port).toBe(port);
-    // @ts-ignore
+    // @ts-ignore - already checked above that error is ErrorPolykeyRemote
     expect(deserialisedError.metadata.command).toBe('testCall');
     expect(deserialisedError.cause).toBeInstanceOf(errors.ErrorPolykey);
     expect(deserialisedError.cause.message).toBe('test error');
