@@ -368,15 +368,13 @@ class NodeGraph {
         )) {
           const nodeId = IdInternal.fromBuffer<NodeId>(nodeIdBuffer);
           bucketDbIterator.seek(nodeIdBuffer);
-          // @ts-ignore
-          // eslint-disable-next-line
+          // @ts-ignore eslint-disable-next-line
           const iteratorResult = await bucketDbIterator.next();
           if (iteratorResult == null) never();
           const [, nodeData] = iteratorResult;
           bucket.push([nodeId, nodeData]);
         }
       } finally {
-        // @ts-ignore
         await bucketDbIterator.end();
       }
     }
@@ -467,8 +465,7 @@ class NodeGraph {
           const { bucketIndex: bucketIndex_, nodeId } =
             nodesUtils.parseLastUpdatedBucketsDbKey(key);
           bucketsDbIterator.seek([key[0], key[2]]);
-          // @ts-ignore
-          // eslint-disable-next-line
+          // @ts-ignore eslint-disable-next-line
           const iteratorResult = await bucketsDbIterator.next();
           if (iteratorResult == null) never();
           const [, nodeData] = iteratorResult;
@@ -491,7 +488,6 @@ class NodeGraph {
           yield [bucketIndex, bucket];
         }
       } finally {
-        // @ts-ignore
         await bucketsDbIterator.end();
       }
     }
