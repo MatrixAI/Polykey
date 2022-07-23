@@ -3,9 +3,32 @@
 staging:[![pipeline status](https://gitlab.com/MatrixAI/open-source/js-polykey/badges/staging/pipeline.svg)](https://gitlab.com/MatrixAI/open-source/js-polykey/commits/staging)
 master:[![pipeline status](https://gitlab.com/MatrixAI/open-source/js-polykey/badges/master/pipeline.svg)](https://gitlab.com/MatrixAI/open-source/js-polykey/commits/master)
 
+Secrets management for today's decentralized world of people, services and devices.
+
+Use Polykey to share secrets (passwords, keys, tokens and certificates) with people, between teams, and across machine infrastructure
+
+Polykey is an open-source peer to peer decentralized application for secrets management. It is intended to be used by both humans and machines. It synthesizes a unified workflow between interactive password management and infrastructure key management.
+
+You have complete end-to-end control and privacy over your secrets, with no third-party data collection.
+
+Polykey runs on distributed keynodes referred to as "nodes". Any computing system can run multiple keynodes. Each node manages one or more vaults which are encrypted filesystems with automatic version history. Vaults are shared between the nodes.
+
 This is the core library for running PolyKey. It provides a CLI `polykey` or `pk` for interacting with the PolyKey system.
 
 For tutorials, how-to guides, reference and theory, see the [wiki](https://github.com/MatrixAI/Polykey/wiki).
+
+* [Polykey](https://github.com/MatrixAI/Polykey) - Polykey core library
+* ~[Polykey-CLI](https://github.com/MatrixAI/Polykey-CLI) - CLI of Polykey~ - TBD
+* [Polykey-Desktop](https://github.com/MatrixAI/Polykey-Desktop) - Polykey Desktop (Windows, Mac, Linux) application
+* [Polykey-Mobile](https://github.com/MatrixAI/Polykey-Mobile) - Polykey Mobile (iOS & Android) Application
+
+Have a bug or a feature-request? Please submit it the issues of the relevant subproject above.
+
+Have a question? Join our discussion board: https://github.com/MatrixAI/Polykey/discussions
+
+Want to learn the theory of secret management? Or how to start using Polykey? Check out our wiki: https://github.com/MatrixAI/Polykey/wiki
+
+See our website https://polykey.io for more details!
 
 ## Installation
 
