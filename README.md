@@ -1,7 +1,7 @@
 # Polykey
 
-staging:[![pipeline status](https://gitlab.com/MatrixAI/open-source/js-polykey/badges/staging/pipeline.svg)](https://gitlab.com/MatrixAI/open-source/js-polykey/commits/staging)
-master:[![pipeline status](https://gitlab.com/MatrixAI/open-source/js-polykey/badges/master/pipeline.svg)](https://gitlab.com/MatrixAI/open-source/js-polykey/commits/master)
+staging:[![pipeline status](https://gitlab.com/MatrixAI/open-source/Polykey/badges/staging/pipeline.svg)](https://gitlab.com/MatrixAI/open-source/Polykey/commits/staging)
+master:[![pipeline status](https://gitlab.com/MatrixAI/open-source/Polykey/badges/master/pipeline.svg)](https://gitlab.com/MatrixAI/open-source/Polykey/commits/master)
 
 Secrets management for today's decentralized world of people, services and devices.
 

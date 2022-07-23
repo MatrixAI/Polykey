@@ -1,5 +1,5 @@
 {
-  "name": "@matrixai/polykey",
+  "name": "polykey",
   "version": "1.0.0",
   "homepage": "https://polykey.io",
   "author": "Matrix AI",
@@ -40,7 +40,7 @@
   "license": "GPL-3.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/MatrixAI/js-polykey.git"
+    "url": "https://github.com/MatrixAI/Polykey.git"
   },
   "bin": {
     "polykey": "dist/bin/polykey.js",
