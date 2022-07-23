@@ -7,7 +7,6 @@ in
   mkShell {
     nativeBuildInputs = [
       nodejs
-      utils.node2nix
       shellcheck
       grpc-tools
       grpcurl
@@ -19,7 +18,7 @@ in
     PKG_CACHE_PATH = utils.pkgCachePath;
     PKG_IGNORE_TAG = 1;
     shellHook = ''
-      echo 'Entering js-polykey'
+      echo "Entering $(npm pkg get name)"
       set -o allexport
       . ./.env
       set +o allexport
@@ -29,9 +28,6 @@ in
 
       # Built executables and NPM executables
       export PATH="$(pwd)/dist/bin:$(npm bin):$PATH"
-
-      # Enables npm link to work
-      export npm_config_prefix=~/.npm
 
       npm install --ignore-scripts
 

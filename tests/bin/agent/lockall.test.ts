@@ -13,7 +13,7 @@ import * as testUtils from '../../utils';
  * Mock prompts module which is used prompt for password
  */
 jest.mock('prompts');
-const mockedPrompts = mocked(prompts);
+const mockedPrompts = mocked(prompts.prompt);
 
 describe('lockall', () => {
   const logger = new Logger('lockall test', LogLevel.WARN, [

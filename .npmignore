@@ -5,8 +5,8 @@
 /tsconfig.build.json
 /babel.config.js
 /jest.config.js
-/src
 /scripts
+/src
 /tests
 /tmp
 /docs

@@ -449,9 +449,10 @@ class NodeConnectionManager {
       this.initialClosestNodes,
     );
     // If we have no nodes at all in our database (even after synchronising),
-    // then we should throw an eor. We aren't going to find any others
+    // then we should return nothing. We aren't going to find any others
     if (shortlist.length === 0) {
-      throw new nodesErrors.ErrorNodeGraphEmptyDatabase();
+      this.logger.warn('Node graph was empty, No nodes to query');
+      return;
     }
     // Need to keep track of the nodes that have been contacted
     // Not sufficient to simply check if there's already a pre-existing connection

@@ -5,7 +5,7 @@ import { utils as clientUtils, errors as clientErrors } from '@/client';
 import * as binUtils from '@/bin/utils';
 
 jest.mock('prompts');
-const mockedPrompts = mocked(prompts);
+const mockedPrompts = mocked(prompts.prompt);
 
 describe('bin/utils retryAuthentication', () => {
   test('no retry on success', async () => {

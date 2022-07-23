@@ -1,5 +1,5 @@
 {
-  "name": "@matrixai/polykey",
+  "name": "polykey",
   "version": "1.0.0",
   "homepage": "https://polykey.io",
   "author": "Matrix AI",
@@ -40,7 +40,7 @@
   "license": "GPL-3.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/MatrixAI/js-polykey.git"
+    "url": "https://github.com/MatrixAI/Polykey.git"
   },
   "bin": {
     "polykey": "dist/bin/polykey.js",
@@ -64,16 +64,16 @@
     "build": "shx rm -rf ./dist && tsc -p ./tsconfig.build.json",
     "postbuild": "shx cp -fR src/proto dist && shx cp -f src/notifications/*.json dist/notifications/ && shx cp -f src/claims/*.json dist/claims/ && shx cp -f src/status/*.json dist/status/",
     "postversion": "npm install --package-lock-only --ignore-scripts --silent",
-    "ts-node": "ts-node --require tsconfig-paths/register",
+    "ts-node": "ts-node",
     "test": "jest",
-    "lint": "eslint '{src,tests}/**/*.{js,ts}'",
-    "lintfix": "eslint '{src,tests}/**/*.{js,ts}' --fix",
+    "lint": "eslint '{src,tests,scripts}/**/*.{js,ts}'",
+    "lintfix": "eslint '{src,tests,scripts}/**/*.{js,ts}' --fix",
     "lint-shell": "find ./src ./tests ./scripts -type f -regextype posix-extended -regex '.*\\.(sh)' -exec shellcheck {} +",
     "docs": "shx rm -rf ./docs && typedoc --gitRevision master --tsconfig ./tsconfig.build.json --out ./docs src",
-    "bench": "shx rm -rf ./benches/results && ts-node --require tsconfig-paths/register --compiler typescript-cached-transpile --transpile-only ./benches",
+    "bench": "shx rm -rf ./benches/results && ts-node ./benches",
     "proto-generate": "scripts/proto-generate.sh",
-    "pkg": "./scripts/pkg.js --no-dict=leveldown.js",
-    "polykey": "ts-node --require tsconfig-paths/register --compiler typescript-cached-transpile --transpile-only src/bin/polykey.ts"
+    "pkg": "node ./scripts/pkg.js --no-dict=leveldown.js",
+    "polykey": "ts-node src/bin/polykey.ts"
   },
   "dependencies": {
     "@grpc/grpc-js": "1.6.7",
@@ -98,7 +98,6 @@
     "google-protobuf": "^3.14.0",
     "ip-num": "^1.3.3-0",
     "isomorphic-git": "^1.8.1",
-    "jest-junit": "^13.2.0",
     "jose": "^4.3.6",
     "lexicographic-integer": "^1.1.0",
     "multiformats": "^9.4.8",
@@ -112,10 +111,11 @@
     "uuid": "^8.3.0"
   },
   "devDependencies": {
+    "@swc/core": "^1.2.215",
     "@babel/preset-env": "^7.13.10",
     "@types/cross-spawn": "^6.0.2",
     "@types/google-protobuf": "^3.7.4",
-    "@types/jest": "^27.0.2",
+    "@types/jest": "^28.1.3",
     "@types/nexpect": "^0.4.31",
     "@types/node": "^16.11.7",
     "@types/node-forge": "^0.10.4",
@@ -125,27 +125,27 @@
     "@types/uuid": "^8.3.0",
     "@typescript-eslint/eslint-plugin": "^5.23.0",
     "@typescript-eslint/parser": "^5.23.0",
-    "babel-jest": "^27.0.0",
+    "babel-jest": "^28.1.2",
     "eslint": "^8.15.0",
     "eslint-config-prettier": "^8.5.0",
     "eslint-plugin-import": "^2.26.0",
     "eslint-plugin-prettier": "^4.0.0",
     "grpc_tools_node_protoc_ts": "^5.1.3",
-    "jest": "^27.2.5",
+    "jest": "^28.1.1",
+    "jest-junit": "^14.0.0",
     "jest-mock-process": "^1.4.1",
     "jest-mock-props": "^1.9.0",
     "mocked-env": "^1.3.5",
     "nexpect": "^0.6.0",
     "node-gyp-build": "^4.4.0",
-    "pkg": "5.6.0",
+    "pkg": "5.7.0",
     "prettier": "^2.6.2",
     "shelljs": "^0.8.5",
     "shx": "^0.3.4",
-    "ts-jest": "^27.0.5",
-    "ts-node": "10.7.0",
+    "ts-jest": "^28.0.5",
+    "ts-node": "^10.9.1",
     "tsconfig-paths": "^3.9.0",
     "typedoc": "^0.22.15",
-    "typescript": "^4.5.2",
-    "typescript-cached-transpile": "0.0.6"
+    "typescript": "^4.5.2"
   }
 }

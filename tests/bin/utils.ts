@@ -197,9 +197,6 @@ async function pkExec(
   const tsConfigPath = path.resolve(
     path.join(global.projectDir, 'tsconfig.json'),
   );
-  const tsConfigPathsRegisterPath = path.resolve(
-    path.join(global.projectDir, 'node_modules/tsconfig-paths/register'),
-  );
   const polykeyPath = path.resolve(
     path.join(global.projectDir, 'src/bin/polykey.ts'),
   );
@@ -209,11 +206,6 @@ async function pkExec(
       [
         '--project',
         tsConfigPath,
-        '--require',
-        tsConfigPathsRegisterPath,
-        '--compiler',
-        'typescript-cached-transpile',
-        '--transpile-only',
         polykeyPath,
         ...args,
       ],
@@ -266,9 +258,6 @@ async function pkSpawn(
   const tsConfigPath = path.resolve(
     path.join(global.projectDir, 'tsconfig.json'),
   );
-  const tsConfigPathsRegisterPath = path.resolve(
-    path.join(global.projectDir, 'node_modules/tsconfig-paths/register'),
-  );
   const polykeyPath = path.resolve(
     path.join(global.projectDir, 'src/bin/polykey.ts'),
   );
@@ -282,11 +271,6 @@ async function pkSpawn(
       : [
           '--project',
           tsConfigPath,
-          '--require',
-          tsConfigPathsRegisterPath,
-          '--compiler',
-          'typescript-cached-transpile',
-          '--transpile-only',
           polykeyPath,
         ];
   const subprocess = child_process.spawn(command, [...tsNodeArgs, ...args], {
@@ -336,9 +320,6 @@ async function pkExpect({
   const tsConfigPath = path.resolve(
     path.join(global.projectDir, 'tsconfig.json'),
   );
-  const tsConfigPathsRegisterPath = path.resolve(
-    path.join(global.projectDir, 'node_modules/tsconfig-paths/register'),
-  );
   const polykeyPath = path.resolve(
     path.join(global.projectDir, 'src/bin/polykey.ts'),
   );
@@ -348,11 +329,6 @@ async function pkExpect({
     [
       '--project',
       tsConfigPath,
-      '--require',
-      tsConfigPathsRegisterPath,
-      '--compiler',
-      'typescript-cached-transpile',
-      '--transpile-only',
       polykeyPath,
       ...args,
     ],

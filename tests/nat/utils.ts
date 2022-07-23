@@ -757,9 +757,6 @@ async function pkExecNs(
   const tsConfigPath = path.resolve(
     path.join(global.projectDir, 'tsconfig.json'),
   );
-  const tsConfigPathsRegisterPath = path.resolve(
-    path.join(global.projectDir, 'node_modules/tsconfig-paths/register'),
-  );
   const polykeyPath = path.resolve(
     path.join(global.projectDir, 'src/bin/polykey.ts'),
   );
@@ -771,11 +768,6 @@ async function pkExecNs(
         'ts-node',
         '--project',
         tsConfigPath,
-        '--require',
-        tsConfigPathsRegisterPath,
-        '--compiler',
-        'typescript-cached-transpile',
-        '--transpile-only',
         polykeyPath,
         ...args,
       ],
@@ -830,9 +822,6 @@ async function pkSpawnNs(
   const tsConfigPath = path.resolve(
     path.join(global.projectDir, 'tsconfig.json'),
   );
-  const tsConfigPathsRegisterPath = path.resolve(
-    path.join(global.projectDir, 'node_modules/tsconfig-paths/register'),
-  );
   const polykeyPath = path.resolve(
     path.join(global.projectDir, 'src/bin/polykey.ts'),
   );
@@ -843,11 +832,6 @@ async function pkSpawnNs(
       'ts-node',
       '--project',
       tsConfigPath,
-      '--require',
-      tsConfigPathsRegisterPath,
-      '--compiler',
-      'typescript-cached-transpile',
-      '--transpile-only',
       polykeyPath,
       ...args,
     ],

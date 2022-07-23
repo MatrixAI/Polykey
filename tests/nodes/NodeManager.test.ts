@@ -1104,7 +1104,7 @@ describe(`${NodeManager.name} test`, () => {
       'refreshBucket',
     );
     try {
-      logger.setLevel(LogLevel.DEBUG);
+      logger.setLevel(LogLevel.WARN);
       await queue.start();
       await nodeManager.start();
       await nodeConnectionManager.start({ nodeManager });
@@ -1143,6 +1143,24 @@ describe(`${NodeManager.name} test`, () => {
       mockRefreshBucket.mockRestore();
       await nodeManager.stop();
       await queue.stop();
+    }
+  });
+  test('refreshBucket should not throw errors when network is empty', async () => {
+    const nodeManager = new NodeManager({
+      db,
+      sigchain: {} as Sigchain,
+      keyManager,
+      nodeGraph,
+      nodeConnectionManager,
+      queue,
+      refreshBucketTimerDefault: 10000000,
+      logger,
+    });
+    await nodeConnectionManager.start({ nodeManager });
+    try {
+      await expect(nodeManager.refreshBucket(100)).resolves.not.toThrow();
+    } finally {
+      await nodeManager.stop();
     }
   });
 });

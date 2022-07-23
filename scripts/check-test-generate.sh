@@ -1,41 +1,46 @@
 #!/usr/bin/env bash
 
+set -o errexit   # abort on nonzero exitstatus
+set -o nounset   # abort on unbound variable
+set -o pipefail  # don't hide errors within pipes
+
 shopt -s globstar
 shopt -s nullglob
 
 # Quote the heredoc to prevent shell expansion
 cat << "EOF"
-workflow:
-  rules:
-    # Disable merge request pipelines
-    - if: $CI_MERGE_REQUEST_ID
-      when: never
-    - when: always
-
-default:
-  interruptible: true
-
 variables:
+  GIT_SUBMODULE_STRATEGY: "recursive"
   GH_PROJECT_PATH: "MatrixAI/${CI_PROJECT_NAME}"
   GH_PROJECT_URL: "https://${GITHUB_TOKEN}@github.com/${GH_PROJECT_PATH}.git"
-  GIT_SUBMODULE_STRATEGY: "recursive"
   # Cache .npm
   NPM_CONFIG_CACHE: "./tmp/npm"
   # Prefer offline node module installation
   NPM_CONFIG_PREFER_OFFLINE: "true"
-  # `ts-node` has its own cache
-  # It must use an absolute path, otherwise ts-node calls will CWD
-  TS_CACHED_TRANSPILE_CACHE: "${CI_PROJECT_DIR}/tmp/ts-node-cache"
-  TS_CACHED_TRANSPILE_PORTABLE: "true"
+
+default:
+  interruptible: true
+  before_script:
+    # Replace this in windows runners that use powershell
+    # with `mkdir -Force "$CI_PROJECT_DIR/tmp"`
+    - mkdir -p "$CI_PROJECT_DIR/tmp"
 
 # Cached directories shared between jobs & pipelines per-branch per-runner
 cache:
   key: $CI_COMMIT_REF_SLUG
+  # Preserve cache even if job fails
+  when: 'always'
   paths:
     - ./tmp/npm/
-    - ./tmp/ts-node-cache/
+    # Homebrew cache is only used by the macos runner
+    - ./tmp/Homebrew
+    # Chocolatey cache is only used by the windows runner
+    - ./tmp/chocolatey/
     # `jest` cache is configured in jest.config.js
     - ./tmp/jest/
+
+stages:
+  - check       # Linting, unit tests
 
 image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
 EOF
@@ -54,19 +59,22 @@ for test_dir in tests/**/*/; do
   test_dir="${test_dir#*/}"
   cat << EOF
 check:test $test_dir:
-  stage: test
+  stage: check
   needs: []
   script:
     - >
         nix-shell --run '
-        npm run build --verbose;
-        npm test -- --ci --runInBand ${test_files[@]};
+        npm test -- --ci --coverage ${test_files[@]};
         '
   artifacts:
     when: always
     reports:
       junit:
         - ./tmp/junit/junit.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: ./tmp/coverage/cobertura-coverage.xml
+  coverage: '/All files[^|]*\|[^|]*\s+([\d\.]+)/'
 EOF
   printf "\n"
 done
@@ -75,17 +83,20 @@ done
 test_files=(tests/*.test.ts)
 cat << EOF
 check:test index:
-  stage: test
+  stage: check
   needs: []
   script:
     - >
         nix-shell --run '
-        npm run build --verbose;
-        npm test -- --ci --runInBand ${test_files[@]};
+        npm test -- --ci --coverage ${test_files[@]};
         '
   artifacts:
     when: always
     reports:
       junit:
         - ./tmp/junit/junit.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: ./tmp/coverage/cobertura-coverage.xml
+  coverage: '/All files[^|]*\|[^|]*\s+([\d\.]+)/'
 EOF
