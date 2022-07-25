@@ -96,7 +96,7 @@ describe('trust/untrust/list', () => {
       recursive: true,
     });
   });
-  runTestIfPlatforms('linux', 'docker')(
+  runTestIfPlatforms('linux')(
     'trusts and untrusts a gestalt by node, adds it to the gestalt graph, and lists the gestalt with notify permission',
     async () => {
       let exitCode, stdout;
@@ -215,7 +215,7 @@ describe('trust/untrust/list', () => {
     },
     global.defaultTimeout * 2,
   );
-  runTestIfPlatforms('linux', 'docker')(
+  runTestIfPlatforms('linux')(
     'trusts and untrusts a gestalt by identity, adds it to the gestalt graph, and lists the gestalt with notify permission',
     async () => {
       let exitCode, stdout;
@@ -346,30 +346,27 @@ describe('trust/untrust/list', () => {
     },
     global.defaultTimeout * 2,
   );
-  runTestIfPlatforms('linux', 'docker')(
-    'should fail on invalid inputs',
-    async () => {
-      let exitCode;
-      // Trust
-      ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
-        ['identities', 'trust', 'invalid'],
-        {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
-        },
-        dataDir,
-      ));
-      expect(exitCode).toBe(sysexits.USAGE);
-      // Untrust
-      ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
-        ['identities', 'untrust', 'invalid'],
-        {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
-        },
-        dataDir,
-      ));
-      expect(exitCode).toBe(sysexits.USAGE);
-    },
-  );
+  runTestIfPlatforms('linux')('should fail on invalid inputs', async () => {
+    let exitCode;
+    // Trust
+    ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+      ['identities', 'trust', 'invalid'],
+      {
+        PK_NODE_PATH: nodePath,
+        PK_PASSWORD: password,
+      },
+      dataDir,
+    ));
+    expect(exitCode).toBe(sysexits.USAGE);
+    // Untrust
+    ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+      ['identities', 'untrust', 'invalid'],
+      {
+        PK_NODE_PATH: nodePath,
+        PK_PASSWORD: password,
+      },
+      dataDir,
+    ));
+    expect(exitCode).toBe(sysexits.USAGE);
+  });
 });

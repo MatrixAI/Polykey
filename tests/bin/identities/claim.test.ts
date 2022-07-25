@@ -56,7 +56,7 @@ describe('claim', () => {
       recursive: true,
     });
   });
-  runTestIfPlatforms('linux', 'docker')('claims an identity', async () => {
+  runTestIfPlatforms('linux')('claims an identity', async () => {
     // Need an authenticated identity
     const mockedBrowser = jest
       .spyOn(identitiesUtils, 'browser')
@@ -104,7 +104,7 @@ describe('claim', () => {
     expect(claim!.payload.data.type).toBe('identity');
     mockedBrowser.mockRestore();
   });
-  runTestIfPlatforms('linux', 'docker')(
+  runTestIfPlatforms('linux')(
     'cannot claim unauthenticated identities',
     async () => {
       const { exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
@@ -118,30 +118,27 @@ describe('claim', () => {
       expect(exitCode).toBe(sysexits.NOPERM);
     },
   );
-  runTestIfPlatforms('linux', 'docker')(
-    'should fail on invalid inputs',
-    async () => {
-      let exitCode;
-      // Invalid provider
-      ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
-        ['identities', 'claim', '', testToken.identityId],
-        {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
-        },
-        dataDir,
-      ));
-      expect(exitCode).toBe(sysexits.USAGE);
-      // Invalid identity
-      ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
-        ['identities', 'claim', testToken.providerId, ''],
-        {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
-        },
-        dataDir,
-      ));
-      expect(exitCode).toBe(sysexits.USAGE);
-    },
-  );
+  runTestIfPlatforms('linux')('should fail on invalid inputs', async () => {
+    let exitCode;
+    // Invalid provider
+    ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+      ['identities', 'claim', '', testToken.identityId],
+      {
+        PK_NODE_PATH: nodePath,
+        PK_PASSWORD: password,
+      },
+      dataDir,
+    ));
+    expect(exitCode).toBe(sysexits.USAGE);
+    // Invalid identity
+    ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+      ['identities', 'claim', testToken.providerId, ''],
+      {
+        PK_NODE_PATH: nodePath,
+        PK_PASSWORD: password,
+      },
+      dataDir,
+    ));
+    expect(exitCode).toBe(sysexits.USAGE);
+  });
 });

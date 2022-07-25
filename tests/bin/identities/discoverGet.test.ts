@@ -121,7 +121,7 @@ describe('discover/get', () => {
       recursive: true,
     });
   });
-  runTestIfPlatforms('linux', 'docker')(
+  runTestIfPlatforms('linux')(
     'discovers and gets gestalt by node',
     async () => {
       // Need an authenticated identity
@@ -217,7 +217,7 @@ describe('discover/get', () => {
       pkAgent.discovery.visitedVertices.clear();
     },
   );
-  runTestIfPlatforms('linux', 'docker')(
+  runTestIfPlatforms('linux')(
     'discovers and gets gestalt by identity',
     async () => {
       // Need an authenticated identity
@@ -313,29 +313,26 @@ describe('discover/get', () => {
       pkAgent.discovery.visitedVertices.clear();
     },
   );
-  runTestIfPlatforms('linux', 'docker')(
-    'should fail on invalid inputs',
-    async () => {
-      let exitCode;
-      // Discover
-      ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
-        ['identities', 'discover', 'invalid'],
-        {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
-        },
-        dataDir,
-      ));
-      expect(exitCode).toBe(sysexits.USAGE);
-      // Get
-      ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
-        ['identities', 'get', 'invalid'],
-        {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
-        },
-        dataDir,
-      ));
-    },
-  );
+  runTestIfPlatforms('linux')('should fail on invalid inputs', async () => {
+    let exitCode;
+    // Discover
+    ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+      ['identities', 'discover', 'invalid'],
+      {
+        PK_NODE_PATH: nodePath,
+        PK_PASSWORD: password,
+      },
+      dataDir,
+    ));
+    expect(exitCode).toBe(sysexits.USAGE);
+    // Get
+    ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+      ['identities', 'get', 'invalid'],
+      {
+        PK_NODE_PATH: nodePath,
+        PK_PASSWORD: password,
+      },
+      dataDir,
+    ));
+  });
 });

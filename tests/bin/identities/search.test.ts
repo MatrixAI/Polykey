@@ -314,40 +314,37 @@ describe('search', () => {
     expect(searchResults).toHaveLength(2);
     mockedBrowser.mockRestore();
   });
-  runTestIfPlatforms('linux', 'docker')(
-    'should fail on invalid inputs',
-    async () => {
-      let exitCode;
-      // Invalid identity id
-      ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
-        ['identities', 'search', '--identity-id', ''],
-        {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
-        },
-        dataDir,
-      ));
-      expect(exitCode).toBe(sysexits.USAGE);
-      // Invalid auth identity id
-      ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
-        ['identities', 'search', '--auth-identity-id', ''],
-        {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
-        },
-        dataDir,
-      ));
-      expect(exitCode).toBe(sysexits.USAGE);
-      // Invalid value for limit
-      ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
-        ['identities', 'search', '--limit', 'NaN'],
-        {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
-        },
-        dataDir,
-      ));
-      expect(exitCode).toBe(sysexits.USAGE);
-    },
-  );
+  runTestIfPlatforms('linux')('should fail on invalid inputs', async () => {
+    let exitCode;
+    // Invalid identity id
+    ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+      ['identities', 'search', '--identity-id', ''],
+      {
+        PK_NODE_PATH: nodePath,
+        PK_PASSWORD: password,
+      },
+      dataDir,
+    ));
+    expect(exitCode).toBe(sysexits.USAGE);
+    // Invalid auth identity id
+    ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+      ['identities', 'search', '--auth-identity-id', ''],
+      {
+        PK_NODE_PATH: nodePath,
+        PK_PASSWORD: password,
+      },
+      dataDir,
+    ));
+    expect(exitCode).toBe(sysexits.USAGE);
+    // Invalid value for limit
+    ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+      ['identities', 'search', '--limit', 'NaN'],
+      {
+        PK_NODE_PATH: nodePath,
+        PK_PASSWORD: password,
+      },
+      dataDir,
+    ));
+    expect(exitCode).toBe(sysexits.USAGE);
+  });
 });

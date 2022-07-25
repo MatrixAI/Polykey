@@ -101,7 +101,7 @@ describe('find', () => {
       recursive: true,
     });
   });
-  runTestIfPlatforms('linux', 'docker')('finds an online node', async () => {
+  runTestIfPlatforms('linux')('finds an online node', async () => {
     const { exitCode, stdout } = await testBinUtils.pkStdioSwitch(
       global.testCmd,
     )(
@@ -127,7 +127,7 @@ describe('find', () => {
       port: remoteOnlinePort,
     });
   });
-  runTestIfPlatforms('linux', 'docker')('finds an offline node', async () => {
+  runTestIfPlatforms('linux')('finds an offline node', async () => {
     const { exitCode, stdout } = await testBinUtils.pkStdioSwitch(
       global.testCmd,
     )(
@@ -153,7 +153,7 @@ describe('find', () => {
       port: remoteOfflinePort,
     });
   });
-  runTestIfPlatforms('linux', 'docker')(
+  runTestIfPlatforms('linux')(
     'fails to find an unknown node',
     async () => {
       const unknownNodeId = nodesUtils.decodeNodeId(

@@ -83,7 +83,7 @@ describe('claim', () => {
       recursive: true,
     });
   });
-  runTestIfPlatforms('linux', 'docker')('sends a gestalt invite', async () => {
+  runTestIfPlatforms('linux')('sends a gestalt invite', async () => {
     const { exitCode, stdout } = await testBinUtils.pkStdioSwitch(
       global.testCmd,
     )(
@@ -98,7 +98,7 @@ describe('claim', () => {
     expect(stdout).toContain('Gestalt Invite');
     expect(stdout).toContain(remoteIdEncoded);
   });
-  runTestIfPlatforms('linux', 'docker')(
+  runTestIfPlatforms('linux')(
     'sends a gestalt invite (force invite)',
     async () => {
       await remoteNode.notificationsManager.sendNotification(localId, {
@@ -119,7 +119,7 @@ describe('claim', () => {
       expect(stdout).toContain(nodesUtils.encodeNodeId(remoteId));
     },
   );
-  runTestIfPlatforms('linux', 'docker')('claims a node', async () => {
+  runTestIfPlatforms('linux')('claims a node', async () => {
     await remoteNode.notificationsManager.sendNotification(localId, {
       type: 'GestaltInvite',
     });

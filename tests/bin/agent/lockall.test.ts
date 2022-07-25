@@ -62,7 +62,7 @@ describe('lockall', () => {
       await session.stop();
     },
   );
-  runTestIfPlatforms('linux', 'docker')(
+  runTestIfPlatforms('linux')(
     'lockall ensures reauthentication is required',
     async () => {
       const password = agentPassword;

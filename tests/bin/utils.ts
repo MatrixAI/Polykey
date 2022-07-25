@@ -298,18 +298,15 @@ async function pkStdioTarget(
   subprocess.on('exit', (code) => {
     exitCodeProm.resolveP(code);
   });
-  subprocess.on('error', e => {
-    console.error(e)
+  subprocess.on('error', (e) => {
     exitCodeProm.rejectP(e);
   });
   let stdout = '',
     stderr = '';
   subprocess.stdout.on('data', (data) => {
-    console.log(data.toString());
     stdout += data.toString();
   });
   subprocess.stderr.on('data', (data) => {
-    console.log(data.toString());
     stderr += data.toString();
   });
   return { exitCode: (await exitCodeProm.p) ?? -255, stdout, stderr };
@@ -409,9 +406,6 @@ async function pkSpawnTarget(
     stdio: ['pipe', 'pipe', 'pipe'],
     windowsHide: true,
   });
-  subprocess.on('error', e => {
-    console.error(e);
-  })
   // The readline library will trim newlines
   const rlOut = readline.createInterface(subprocess.stdout!);
   rlOut.on('line', (l) => logger.info(l));

@@ -116,42 +116,39 @@ describe('authenticate/authenticated', () => {
       mockedBrowser.mockRestore();
     },
   );
-  runTestIfPlatforms('linux', 'docker')(
-    'should fail on invalid inputs',
-    async () => {
-      let exitCode;
-      // Authenticate
-      // Invalid provider
-      ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
-        ['identities', 'authenticate', '', testToken.identityId],
-        {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
-        },
-        dataDir,
-      ));
-      expect(exitCode).toBe(sysexits.USAGE);
-      // Invalid identity
-      ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
-        ['identities', 'authenticate', testToken.providerId, ''],
-        {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
-        },
-        dataDir,
-      ));
-      expect(exitCode).toBe(sysexits.USAGE);
-      // Authenticated
-      // Invalid provider
-      ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
-        ['identities', 'authenticate', '--provider-id', ''],
-        {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
-        },
-        dataDir,
-      ));
-      expect(exitCode).toBe(sysexits.USAGE);
-    },
-  );
+  runTestIfPlatforms('linux')('should fail on invalid inputs', async () => {
+    let exitCode;
+    // Authenticate
+    // Invalid provider
+    ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+      ['identities', 'authenticate', '', testToken.identityId],
+      {
+        PK_NODE_PATH: nodePath,
+        PK_PASSWORD: password,
+      },
+      dataDir,
+    ));
+    expect(exitCode).toBe(sysexits.USAGE);
+    // Invalid identity
+    ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+      ['identities', 'authenticate', testToken.providerId, ''],
+      {
+        PK_NODE_PATH: nodePath,
+        PK_PASSWORD: password,
+      },
+      dataDir,
+    ));
+    expect(exitCode).toBe(sysexits.USAGE);
+    // Authenticated
+    // Invalid provider
+    ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+      ['identities', 'authenticate', '--provider-id', ''],
+      {
+        PK_NODE_PATH: nodePath,
+        PK_PASSWORD: password,
+      },
+      dataDir,
+    ));
+    expect(exitCode).toBe(sysexits.USAGE);
+  });
 });
