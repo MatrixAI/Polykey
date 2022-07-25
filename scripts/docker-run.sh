@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
-exec docker run -i \
+exec docker run \
+    --interactive \
+    --rm \
     --network host \
     --pid host \
     --userns host \
