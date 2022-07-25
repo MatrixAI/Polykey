@@ -99,9 +99,7 @@ async function main(argv = process.argv): Promise<number> {
 }
 
 if (require.main === module) {
-  (async () => {
-    await main();
-  })();
+  void main();
 }
 
 export default main;
