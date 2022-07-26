@@ -7,7 +7,7 @@ import child_process from 'child_process';
 import readline from 'readline';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as testBinUtils from '../bin/utils';
-import { globalRootKeyPems } from '../globalRootKeyPems';
+import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 
 type NATType = 'eim' | 'edm' | 'dmz';
 

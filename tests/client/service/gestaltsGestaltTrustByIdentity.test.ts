@@ -34,7 +34,7 @@ import * as clientUtils from '@/client/utils/utils';
 import * as nodesUtils from '@/nodes/utils';
 import TestProvider from '../../identities/TestProvider';
 import { expectRemoteError } from '../../utils';
-import { globalRootKeyPems } from '../../globalRootKeyPems';
+import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('gestaltsGestaltTrustByIdentity', () => {
   const logger = new Logger(

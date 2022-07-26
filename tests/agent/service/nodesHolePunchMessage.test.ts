@@ -11,7 +11,7 @@ import * as nodesPB from '@/proto/js/polykey/v1/nodes/nodes_pb';
 import * as nodesUtils from '@/nodes/utils';
 import nodesHolePunchMessageSend from '@/agent/service/nodesHolePunchMessageSend';
 import * as networkUtils from '@/network/utils';
-import { globalRootKeyPems } from '../../globalRootKeyPems';
+import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('nodesHolePunchMessage', () => {
   const logger = new Logger('nodesHolePunchMessage test', LogLevel.WARN, [

@@ -19,7 +19,7 @@ import * as nodesUtils from '@/nodes/utils';
 import * as nodesErrors from '@/nodes/errors';
 import * as utils from '@/utils';
 import * as testNodesUtils from './utils';
-import { globalRootKeyPems } from '../globalRootKeyPems';
+import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 
 describe(`${NodeGraph.name} test`, () => {
   const password = 'password';

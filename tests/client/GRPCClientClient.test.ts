@@ -12,7 +12,7 @@ import * as clientErrors from '@/client/errors';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import { timerStart } from '@/utils';
 import * as testClientUtils from './utils';
-import { globalRootKeyPems } from '../globalRootKeyPems';
+import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 
 describe(GRPCClientClient.name, () => {
   const password = 'password';

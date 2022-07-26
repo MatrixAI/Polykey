@@ -24,7 +24,7 @@ import * as agentErrors from '@/agent/errors';
 import * as keysUtils from '@/keys/utils';
 import { timerStart } from '@/utils';
 import * as testAgentUtils from './utils';
-import { globalRootKeyPems } from '../globalRootKeyPems';
+import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 
 describe(GRPCClientAgent.name, () => {
   const host = '127.0.0.1' as Host;

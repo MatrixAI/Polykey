@@ -24,7 +24,7 @@ import * as notificationsPB from '@/proto/js/polykey/v1/notifications/notificati
 import * as nodesUtils from '@/nodes/utils';
 import * as clientUtils from '@/client/utils';
 import * as testNodesUtils from '../../nodes/utils';
-import { globalRootKeyPems } from '../../globalRootKeyPems';
+import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('notificationsRead', () => {
   const logger = new Logger('notificationsRead test', LogLevel.WARN, [

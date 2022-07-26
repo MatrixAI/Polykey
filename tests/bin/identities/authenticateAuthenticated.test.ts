@@ -8,7 +8,7 @@ import { sysexits } from '@/utils';
 import * as identitiesUtils from '@/identities/utils';
 import * as testBinUtils from '../utils';
 import TestProvider from '../../identities/TestProvider';
-import { globalRootKeyPems } from '../../globalRootKeyPems';
+import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 import { runTestIfPlatforms } from '../../utils';
 
 describe('authenticate/authenticated', () => {

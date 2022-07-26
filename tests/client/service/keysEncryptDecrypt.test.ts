@@ -12,7 +12,7 @@ import keysDecrypt from '@/client/service/keysDecrypt';
 import { ClientServiceService } from '@/proto/js/polykey/v1/client_service_grpc_pb';
 import * as keysPB from '@/proto/js/polykey/v1/keys/keys_pb';
 import * as clientUtils from '@/client/utils/utils';
-import { globalRootKeyPems } from '../../globalRootKeyPems';
+import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('keysEncryptDecrypt', () => {
   const logger = new Logger('keysEncryptDecrypt test', LogLevel.WARN, [

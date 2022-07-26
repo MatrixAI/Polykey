@@ -8,7 +8,7 @@ import * as keysUtils from '@/keys/utils';
 import SessionManager from '@/sessions/SessionManager';
 import * as sessionsErrors from '@/sessions/errors';
 import { sleep } from '@/utils';
-import { globalRootKeyPems } from '../globalRootKeyPems';
+import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 
 describe('SessionManager', () => {
   const password = 'password';

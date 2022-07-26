@@ -12,7 +12,7 @@ import { ClientServiceService } from '@/proto/js/polykey/v1/client_service_grpc_
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as sessionsPB from '@/proto/js/polykey/v1/sessions/sessions_pb';
 import * as clientUtils from '@/client/utils/utils';
-import { globalRootKeyPems } from '../../globalRootKeyPems';
+import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('keysPasswordChange', () => {
   const logger = new Logger('keysPasswordChange test', LogLevel.WARN, [

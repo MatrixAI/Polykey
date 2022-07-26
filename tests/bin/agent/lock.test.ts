@@ -7,7 +7,7 @@ import Session from '@/sessions/Session';
 import config from '@/config';
 import * as testBinUtils from '../utils';
 import { runTestIfPlatforms } from '../../utils';
-import { globalRootKeyPems } from '../../globalRootKeyPems';
+import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 jest.mock('prompts');
 const mockedPrompts = mocked(prompts.prompt);

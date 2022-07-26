@@ -11,7 +11,7 @@ import * as claimsErrors from '@/claims/errors';
 import { utils as keysUtils } from '@/keys';
 import { utils as nodesUtils } from '@/nodes';
 import * as testNodesUtils from '../nodes/utils';
-import { globalRootKeyPems } from '../globalRootKeyPems';
+import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 
 describe('claims/utils', () => {
   // Node Ids

@@ -6,7 +6,7 @@ import * as nodesUtils from '@/nodes/utils';
 import config from '@/config';
 import * as testBinUtils from '../utils';
 import { runTestIfPlatforms } from '../../utils';
-import { globalRootKeyPems } from '../../globalRootKeyPems';
+import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('status', () => {
   const logger = new Logger('status test', LogLevel.WARN, [

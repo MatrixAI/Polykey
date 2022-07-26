@@ -23,7 +23,7 @@ import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as nodesErrors from '@/nodes/errors';
 import * as nodesTestUtils from './utils';
 import { generateNodeIdForBucket } from './utils';
-import { globalRootKeyPems } from '../globalRootKeyPems';
+import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 
 describe(`${NodeManager.name} test`, () => {
   const password = 'password';

@@ -8,7 +8,7 @@ import config from '@/config';
 import * as errors from '@/errors';
 import * as testBinUtils from '../utils';
 import { runTestIfPlatforms } from '../../utils';
-import { globalRootKeyPems } from '../../globalRootKeyPems';
+import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 /**
  * Mock prompts module which is used prompt for password

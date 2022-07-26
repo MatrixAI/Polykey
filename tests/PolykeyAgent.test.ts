@@ -11,7 +11,7 @@ import * as errors from '@/errors';
 import * as keysUtils from '@/keys/utils';
 import config from '@/config';
 import { promise } from '@/utils/index';
-import { globalRootKeyPems } from './globalRootKeyPems';
+import { globalRootKeyPems } from './fixtures/globalRootKeyPems';
 
 describe('PolykeyAgent', () => {
   const password = 'password';

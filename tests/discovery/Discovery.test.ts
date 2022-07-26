@@ -24,7 +24,7 @@ import * as discoveryErrors from '@/discovery/errors';
 import * as keysUtils from '@/keys/utils';
 import * as testNodesUtils from '../nodes/utils';
 import TestProvider from '../identities/TestProvider';
-import { globalRootKeyPems } from '../globalRootKeyPems';
+import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 
 describe('Discovery', () => {
   const password = 'password';

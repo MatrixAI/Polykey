@@ -11,7 +11,7 @@ import sysexits from '@/utils/sysexits';
 import NotificationsManager from '@/notifications/NotificationsManager';
 import * as testBinUtils from '../utils';
 import * as testNodesUtils from '../../nodes/utils';
-import { globalRootKeyPems } from '../../globalRootKeyPems';
+import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 import { runTestIfPlatforms } from '../../utils';
 
 describe('CLI vaults', () => {

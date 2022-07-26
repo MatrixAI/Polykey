@@ -13,7 +13,7 @@ import * as sigchainErrors from '@/sigchain/errors';
 import * as nodesUtils from '@/nodes/utils';
 import * as keysUtils from '@/keys/utils';
 import * as testNodesUtils from '../nodes/utils';
-import { globalRootKeyPems } from '../globalRootKeyPems';
+import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 
 describe('Sigchain', () => {
   const logger = new Logger('Sigchain Test', LogLevel.WARN, [

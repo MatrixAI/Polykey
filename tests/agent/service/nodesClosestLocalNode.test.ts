@@ -13,7 +13,7 @@ import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as nodesUtils from '@/nodes/utils';
 import nodesChainDataGet from '@/agent/service/nodesChainDataGet';
 import * as testNodesUtils from '../../nodes/utils';
-import { globalRootKeyPems } from '../../globalRootKeyPems';
+import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('nodesChainDataGet', () => {
   const logger = new Logger('nodesChainDataGet test', LogLevel.WARN, [

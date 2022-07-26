@@ -13,7 +13,7 @@ import { sleep } from '@/utils';
 import config from '@/config';
 import * as clientErrors from '@/client/errors';
 import * as testBinUtils from './utils';
-import { globalRootKeyPems } from '../globalRootKeyPems';
+import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 import { runTestIfPlatforms } from '../utils';
 
 jest.mock('prompts');

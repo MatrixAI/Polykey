@@ -35,7 +35,7 @@ import * as keysUtils from '@/keys/utils';
 import * as clientUtils from '@/client/utils/utils';
 import * as nodesUtils from '@/nodes/utils';
 import TestProvider from '../../identities/TestProvider';
-import { globalRootKeyPems } from '../../globalRootKeyPems';
+import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('gestaltsGestaltTrustByNode', () => {
   const logger = new Logger('gestaltsGestaltTrustByNode test', LogLevel.WARN, [

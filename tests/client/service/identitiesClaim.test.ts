@@ -28,7 +28,7 @@ import * as nodesUtils from '@/nodes/utils';
 import * as validationErrors from '@/validation/errors';
 import TestProvider from '../../identities/TestProvider';
 import { expectRemoteError } from '../../utils';
-import { globalRootKeyPems } from '../../globalRootKeyPems';
+import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('identitiesClaim', () => {
   const logger = new Logger('identitiesClaim test', LogLevel.WARN, [

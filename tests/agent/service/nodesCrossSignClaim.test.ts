@@ -15,7 +15,7 @@ import * as nodesUtils from '@/nodes/utils';
 import * as claimsUtils from '@/claims/utils';
 import * as grpcErrors from '@/grpc/errors';
 import * as testNodesUtils from '../../nodes/utils';
-import { globalRootKeyPems } from '../../globalRootKeyPems';
+import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('nodesCrossSignClaim', () => {
   const logger = new Logger('nodesCrossSignClaim test', LogLevel.WARN, [

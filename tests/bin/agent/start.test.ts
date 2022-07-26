@@ -14,7 +14,7 @@ import config from '@/config';
 import * as keysUtils from '@/keys/utils';
 import * as testBinUtils from '../utils';
 import { runDescribeIfPlatforms, runTestIfPlatforms } from '../../utils';
-import { globalRootKeyPems } from '../../globalRootKeyPems';
+import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('start', () => {
   const logger = new Logger('start test', LogLevel.WARN, [new StreamHandler()]);

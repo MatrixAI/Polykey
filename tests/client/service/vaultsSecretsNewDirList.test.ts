@@ -22,7 +22,7 @@ import * as secretsPB from '@/proto/js/polykey/v1/secrets/secrets_pb';
 import * as clientUtils from '@/client/utils/utils';
 import * as vaultsUtils from '@/vaults/utils';
 import * as testUtils from '../../utils';
-import { globalRootKeyPems } from '../../globalRootKeyPems';
+import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('vaultsSecretsNewDirList', () => {
   const logger = new Logger('vaultsSecretsNewDirList test', LogLevel.WARN, [

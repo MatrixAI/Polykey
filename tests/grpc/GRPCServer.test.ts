@@ -14,7 +14,7 @@ import * as grpcUtils from '@/grpc/utils';
 import * as keysUtils from '@/keys/utils';
 import * as clientUtils from '@/client/utils';
 import * as testGrpcUtils from './utils';
-import { globalRootKeyPems } from '../globalRootKeyPems';
+import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 
 describe('GRPCServer', () => {
   const logger = new Logger('GRPCServer Test', LogLevel.WARN, [

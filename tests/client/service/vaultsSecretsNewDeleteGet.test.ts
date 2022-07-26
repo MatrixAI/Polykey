@@ -24,7 +24,7 @@ import * as clientUtils from '@/client/utils/utils';
 import * as vaultsUtils from '@/vaults/utils';
 import * as vaultsErrors from '@/vaults/errors';
 import * as testUtils from '../../utils';
-import { globalRootKeyPems } from '../../globalRootKeyPems';
+import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('vaultsSecretsNewDeleteGet', () => {
   const logger = new Logger('vaultsSecretsNewDeleteGet test', LogLevel.WARN, [

@@ -38,7 +38,7 @@ import Queue from '@/nodes/Queue';
 import * as testNodesUtils from './utils';
 import * as grpcTestUtils from '../grpc/utils';
 import * as agentTestUtils from '../agent/utils';
-import { globalRootKeyPems } from '../globalRootKeyPems';
+import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 
 const destroyCallback = async () => {};
 

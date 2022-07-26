@@ -8,7 +8,7 @@ import * as binErrors from '@/bin/errors';
 import * as clientErrors from '@/client/errors';
 import * as testBinUtils from '../utils';
 import { runTestIfPlatforms } from '../../utils';
-import { globalRootKeyPems } from '../../globalRootKeyPems';
+import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('stop', () => {
   const logger = new Logger('stop test', LogLevel.WARN, [new StreamHandler()]);

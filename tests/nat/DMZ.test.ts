@@ -10,7 +10,7 @@ import config from '@/config';
 import * as testNatUtils from './utils';
 import { describeIf } from '../utils';
 import * as testBinUtils from '../bin/utils';
-import { globalRootKeyPems } from '../globalRootKeyPems';
+import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 
 describeIf(
   process.platform === 'linux' &&

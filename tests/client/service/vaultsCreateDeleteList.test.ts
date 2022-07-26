@@ -21,7 +21,7 @@ import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as vaultsPB from '@/proto/js/polykey/v1/vaults/vaults_pb';
 import * as clientUtils from '@/client/utils/utils';
 import * as testUtils from '../../utils';
-import { globalRootKeyPems } from '../../globalRootKeyPems';
+import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('vaultsCreateDeleteList', () => {
   const logger = new Logger('vaultsCreateDeleteList test', LogLevel.WARN, [

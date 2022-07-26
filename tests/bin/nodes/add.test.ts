@@ -10,7 +10,7 @@ import * as nodesUtils from '@/nodes/utils';
 import NodeManager from '@/nodes/NodeManager';
 import * as testBinUtils from '../utils';
 import * as testNodesUtils from '../../nodes/utils';
-import { globalRootKeyPems } from '../../globalRootKeyPems';
+import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 import { runTestIfPlatforms } from '../../utils';
 
 describe('add', () => {

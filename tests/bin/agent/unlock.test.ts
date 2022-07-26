@@ -5,7 +5,7 @@ import Session from '@/sessions/Session';
 import config from '@/config';
 import * as testBinUtils from '../utils';
 import { runTestIfPlatforms } from '../../utils';
-import { globalRootKeyPems } from '../../globalRootKeyPems';
+import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('unlock', () => {
   const logger = new Logger('unlock test', LogLevel.WARN, [

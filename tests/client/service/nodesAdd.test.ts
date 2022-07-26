@@ -23,7 +23,7 @@ import * as nodesUtils from '@/nodes/utils';
 import * as clientUtils from '@/client/utils/utils';
 import * as validationErrors from '@/validation/errors';
 import { expectRemoteError } from '../../utils';
-import { globalRootKeyPems } from '../../globalRootKeyPems';
+import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('nodesAdd', () => {
   const logger = new Logger('nodesAdd test', LogLevel.WARN, [

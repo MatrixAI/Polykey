@@ -15,7 +15,7 @@ import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as keysUtils from '@/keys/utils';
 import * as clientUtils from '@/client/utils/utils';
 import { timerStart } from '@/utils/index';
-import { globalRootKeyPems } from '../../globalRootKeyPems';
+import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('agentLockall', () => {
   const logger = new Logger('agentLockall test', LogLevel.WARN, [

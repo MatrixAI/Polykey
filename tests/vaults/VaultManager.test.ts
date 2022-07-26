@@ -33,7 +33,7 @@ import { sleep } from '@/utils';
 import VaultInternal from '@/vaults/VaultInternal';
 import * as nodeTestUtils from '../nodes/utils';
 import { expectRemoteError } from '../utils';
-import { globalRootKeyPems } from '../globalRootKeyPems';
+import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 
 describe('VaultManager', () => {
   const localHost = '127.0.0.1' as Host;

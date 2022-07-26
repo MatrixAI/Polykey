@@ -6,7 +6,7 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { PolykeyClient, PolykeyAgent } from '@';
 import { Session } from '@/sessions';
 import config from '@/config';
-import { globalRootKeyPems } from './globalRootKeyPems';
+import { globalRootKeyPems } from './fixtures/globalRootKeyPems';
 
 describe('PolykeyClient', () => {
   const password = 'password';

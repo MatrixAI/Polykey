@@ -26,7 +26,7 @@ import * as agentErrors from '@/agent/errors';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import { promise, promisify } from '@/utils';
 import * as testUtils from '../utils';
-import { globalRootKeyPems } from '../globalRootKeyPems';
+import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 
 describe(`${NodeConnectionManager.name} termination test`, () => {
   const logger = new Logger(

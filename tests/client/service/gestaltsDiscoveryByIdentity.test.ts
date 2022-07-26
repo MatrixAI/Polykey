@@ -25,7 +25,7 @@ import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as identitiesPB from '@/proto/js/polykey/v1/identities/identities_pb';
 import * as clientUtils from '@/client/utils/utils';
 import * as keysUtils from '@/keys/utils';
-import { globalRootKeyPems } from '../../globalRootKeyPems';
+import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('gestaltsDiscoveryByIdentity', () => {
   const logger = new Logger('gestaltsDiscoveryByIdentity test', LogLevel.WARN, [
