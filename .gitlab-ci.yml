@@ -341,9 +341,9 @@ integration:docker:
       nix-shell --run $'
         image="$(docker load --input ./builds/*docker* | cut -d\' \' -f3)"
         PK_TEST_DOCKER_IMAGE=$image \
-        PK_TEST_COMMAND=scripts/docker-run.sh \
+        PK_TEST_COMMAND=docker \
         PK_TEST_PLATFORM=docker \
-        PK_TEST_TMP_DIR=/builds/$CI_PROJECT_PATH/tmp \
+        PK_TEST_DATA_DIR=/builds/$CI_PROJECT_PATH/tmp \
         exec npm run test -- tests/bin
       '
   rules:

@@ -15,6 +15,40 @@ import main from '@/bin/polykey';
 import { promise } from '@/utils';
 import * as validationUtils from '@/validation/utils';
 
+const generateDockerArgs = (mountPath: string) => [
+  'run',
+  '--interactive',
+  '--rm',
+  '--network',
+  'host',
+  '--pid',
+  'host',
+  '--userns',
+  'host',
+  `--user`,
+  `${process.getuid()}`,
+  '--mount',
+  `type=bind,src=${mountPath},dst=${mountPath}`,
+  '--env',
+  'PK_PASSWORD',
+  '--env',
+  'PK_NODE_PATH',
+  '--env',
+  'PK_RECOVERY_CODE',
+  '--env',
+  'PK_TOKEN',
+  '--env',
+  'PK_ROOT_KEY',
+  '--env',
+  'PK_NODE_ID',
+  '--env',
+  'PK_CLIENT_HOST',
+  '--env',
+  'PK_CLIENT_PORT',
+  `${process.env.PK_TEST_DOCKER_IMAGE}`,
+  'polykey',
+];
+
 /**
  * Wrapper for execFile to make it asynchronous and non-blocking
  */
@@ -262,7 +296,6 @@ async function pkSpawn(
 /**
  * Mimics the behaviour of `pkStdio` while running the command as a separate process.
  * Note that this is incompatible with jest mocking.
- * @param cmd - path to the target command relative to the project directory.
  * @param args - args to be passed to the command.
  * @param env - environment variables to be passed to the command.
  * @param cwd - the working directory the command will be executed in.
@@ -288,12 +321,15 @@ async function pkStdioTarget(
 
   // If using the command override we need to spawn a process
   env = {
-    PK_TEST_DATA_PATH: cwd,
     ...process.env,
     ...env,
   };
-  const command = path.resolve(path.join(global.projectDir, global.testCmd!));
-  const subprocess = child_process.spawn(command, [...args], {
+  const command =
+    global.testCmd === 'docker'
+      ? 'docker'
+      : path.resolve(path.join(global.projectDir, global.testCmd!));
+  const dockerArgs = global.testCmd === 'docker' ? generateDockerArgs(cwd) : [];
+  const subprocess = child_process.spawn(command, [...dockerArgs, ...args], {
     env,
     cwd,
     stdio: ['pipe', 'pipe', 'pipe'],
@@ -319,7 +355,6 @@ async function pkStdioTarget(
 
 /**
  * Execs the target command spawning it as a seperate process
- * @param cmd - path to the target command relative to the project directory.
  * @param args - args to be passed to the command.
  * @param env Augments env for command execution
  * @param cwd Defaults to temporary directory
@@ -338,7 +373,6 @@ async function pkExecTarget(
       (await fs.promises.mkdtemp(path.join(global.tmpDir, 'polykey-test-'))),
   );
   env = {
-    PK_TEST_DATA_PATH: cwd,
     ...process.env,
     ...env,
   };
@@ -347,11 +381,15 @@ async function pkExecTarget(
   // (if not defined in the env) to ensure no attempted connections. A regular
   // PolykeyAgent is expected to initially connect to the mainnet seed nodes
   env['PK_SEED_NODES'] = env['PK_SEED_NODES'] ?? '';
-  const command = path.resolve(path.join(global.projectDir, global.testCmd!));
+  const command =
+    global.testCmd === 'docker'
+      ? 'docker'
+      : path.resolve(path.join(global.projectDir, global.testCmd!));
+  const dockerArgs = global.testCmd === 'docker' ? generateDockerArgs(cwd) : [];
   return new Promise((resolve, reject) => {
     child_process.execFile(
       command,
-      [...args],
+      [...dockerArgs, ...args],
       {
         env,
         cwd,
@@ -392,7 +430,6 @@ async function pkSpawnTarget(
       (await fs.promises.mkdtemp(path.join(global.tmpDir, 'polykey-test-'))),
   );
   env = {
-    PK_TEST_DATA_PATH: cwd,
     ...process.env,
     ...env,
   };
@@ -401,8 +438,12 @@ async function pkSpawnTarget(
   // (if not defined in the env) to ensure no attempted connections. A regular
   // PolykeyAgent is expected to initially connect to the mainnet seed nodes
   env['PK_SEED_NODES'] = env['PK_SEED_NODES'] ?? '';
-  const command = path.resolve(path.join(global.projectDir, global.testCmd!));
-  const subprocess = child_process.spawn(command, args, {
+  const command =
+    global.testCmd === 'docker'
+      ? 'docker'
+      : path.resolve(path.join(global.projectDir, global.testCmd!));
+  const dockerArgs = global.testCmd === 'docker' ? generateDockerArgs(cwd) : [];
+  const subprocess = child_process.spawn(command, [...dockerArgs, ...args], {
     env,
     cwd,
     stdio: ['pipe', 'pipe', 'pipe'],
