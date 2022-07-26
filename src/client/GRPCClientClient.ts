@@ -69,7 +69,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         interceptors,
         logger,
       });
-    return new GRPCClientClient({
+    return new this({
       client,
       nodeId,
       host,

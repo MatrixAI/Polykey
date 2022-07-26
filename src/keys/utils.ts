@@ -384,7 +384,7 @@ function certVerified(cert1: Certificate, cert2: Certificate): boolean {
 
 function certVerifiedNode(cert: Certificate): boolean {
   const certNodeSignatureExt = cert.getExtension({
-    // @ts-ignore
+    // @ts-ignore: ignoring type mismatch
     id: config.oids.extensions.nodeSignature,
   }) as any;
   if (certNodeSignatureExt == null) {
@@ -403,7 +403,7 @@ function certVerifiedNode(cert: Certificate): boolean {
   let verified;
   try {
     cert.setExtensions(extensionsFiltered);
-    // @ts-ignore
+    // @ts-ignore: accessing private property
     const certTBS = pki.getTBSCertificate(cert);
     const certTBSDer = asn1.toDer(certTBS);
     certDigest.update(certTBSDer.getBytes());

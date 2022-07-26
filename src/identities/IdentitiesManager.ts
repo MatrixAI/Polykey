@@ -30,7 +30,7 @@ class IdentitiesManager {
     fresh?: boolean;
   }): Promise<IdentitiesManager> {
     logger.info(`Creating ${this.name}`);
-    const identitiesManager = new IdentitiesManager({ db, logger });
+    const identitiesManager = new this({ db, logger });
     await identitiesManager.start({ fresh });
     logger.info(`Created ${this.name}`);
     return identitiesManager;

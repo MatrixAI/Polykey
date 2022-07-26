@@ -85,7 +85,7 @@ class VaultInternal {
 
     const vaultIdEncoded = vaultsUtils.encodeVaultId(vaultId);
     logger.info(`Creating ${this.name} - ${vaultIdEncoded}`);
-    const vault = new VaultInternal({
+    const vault = new this({
       vaultId,
       db,
       vaultsDbPath,

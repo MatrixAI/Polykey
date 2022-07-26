@@ -85,7 +85,7 @@ class VaultManager {
   }) {
     logger.info(`Creating ${this.name}`);
     logger.info(`Setting vaults path to ${vaultsPath}`);
-    const vaultManager = new VaultManager({
+    const vaultManager = new this({
       vaultsPath,
       db,
       acl,

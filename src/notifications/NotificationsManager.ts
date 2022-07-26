@@ -56,7 +56,7 @@ class NotificationsManager {
     fresh?: boolean;
   }): Promise<NotificationsManager> {
     logger.info(`Creating ${this.name}`);
-    const notificationsManager = new NotificationsManager({
+    const notificationsManager = new this({
       acl,
       db,
       keyManager,

@@ -57,7 +57,7 @@ class GRPCClientAgent extends GRPCClient<AgentServiceClient> {
         timer,
         logger,
       });
-    const grpcClientAgent = new GRPCClientAgent({
+    const grpcClientAgent = new this({
       client,
       nodeId,
       host,
