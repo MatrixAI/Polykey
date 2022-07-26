@@ -69,7 +69,7 @@ class PolykeyClient {
         timer,
         logger: logger.getChild(GRPCClientClient.name),
       }));
-    const pkClient = new PolykeyClient({
+    const pkClient = new this({
       nodePath,
       grpcClient,
       session,

@@ -125,10 +125,10 @@ function getClientSession(
   if (channel.getConnectivityState(false) !== grpc.connectivityState.READY) {
     throw grpcErrors.ErrorGRPCClientChannelNotReady;
   }
-  // @ts-ignore
+  // @ts-ignore: accessing private property
   const channelTarget = channel.target;
   const subchannelTarget = { host, port };
-  // @ts-ignore
+  // @ts-ignore: accessing private property
   const subchannelPool = channel.subchannelPool;
   // This must acquire the first channel in the subchannel pool
   // Only the first channel is in ready state and therefore has the session property
@@ -155,7 +155,7 @@ function getClientSession(
  * It will contain `stream` property, which will contain the `session` property
  */
 function getServerSession(call: ServerSurfaceCall): Http2Session {
-  // @ts-ignore
+  // @ts-ignore: accessing private property
   return call.stream.session;
 }
 

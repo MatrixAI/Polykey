@@ -383,7 +383,7 @@ class PolykeyAgent {
       await status?.stop({});
       throw e;
     }
-    const pkAgent = new PolykeyAgent({
+    const pkAgent = new this({
       nodePath,
       status,
       schema,

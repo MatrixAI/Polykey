@@ -28,7 +28,7 @@ class Session {
   }): Promise<Session> {
     logger.info(`Creating ${this.name}`);
     logger.info(`Setting session token path to ${sessionTokenPath}`);
-    const session = new Session({
+    const session = new this({
       sessionTokenPath,
       fs,
       logger,

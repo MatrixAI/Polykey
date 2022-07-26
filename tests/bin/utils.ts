@@ -203,12 +203,7 @@ async function pkExec(
   return new Promise((resolve, reject) => {
     child_process.execFile(
       'ts-node',
-      [
-        '--project',
-        tsConfigPath,
-        polykeyPath,
-        ...args,
-      ],
+      ['--project', tsConfigPath, polykeyPath, ...args],
       {
         env,
         cwd,
@@ -266,13 +261,7 @@ async function pkSpawn(
       ? path.resolve(path.join(global.projectDir, global.testCmd))
       : 'ts-node';
   const tsNodeArgs =
-    global.testCmd != null
-      ? []
-      : [
-          '--project',
-          tsConfigPath,
-          polykeyPath,
-        ];
+    global.testCmd != null ? [] : ['--project', tsConfigPath, polykeyPath];
   const subprocess = child_process.spawn(command, [...tsNodeArgs, ...args], {
     env,
     cwd,
@@ -326,12 +315,7 @@ async function pkExpect({
   // Expect chain runs against stdout and stderr
   let expectChain = nexpect.spawn(
     'ts-node',
-    [
-      '--project',
-      tsConfigPath,
-      polykeyPath,
-      ...args,
-    ],
+    ['--project', tsConfigPath, polykeyPath, ...args],
     {
       env,
       cwd,

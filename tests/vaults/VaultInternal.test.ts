@@ -720,7 +720,7 @@ describe('VaultInternal', () => {
       for (const logElement of log) {
         refs.push(await quickCommit(logElement.commitId, `secret-${num++}`));
       }
-      // @ts-ignore
+      // @ts-ignore: private method
       await vault.garbageCollectGitObjects();
 
       for (const ref of refs) {

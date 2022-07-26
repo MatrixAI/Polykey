@@ -83,7 +83,7 @@ class NodeConnection<T extends GRPCClient> {
     // 3. Relay the proxy port to the broker/s (such that they can inform the other node)
     // 4. Start sending hole-punching packets to other node (done in openConnection())
     // Done in parallel
-    const nodeConnection = new NodeConnection<T>({
+    const nodeConnection = new this<T>({
       host: targetHost,
       port: targetPort,
       hostname: targetHostname,

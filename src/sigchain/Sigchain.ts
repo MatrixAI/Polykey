@@ -59,7 +59,7 @@ class Sigchain {
     fresh?: boolean;
   }): Promise<Sigchain> {
     logger.info(`Creating ${this.name}`);
-    const sigchain = new Sigchain({ db, keyManager, logger });
+    const sigchain = new this({ db, keyManager, logger });
     await sigchain.start({ fresh });
     logger.info(`Created ${this.name}`);
     return sigchain;

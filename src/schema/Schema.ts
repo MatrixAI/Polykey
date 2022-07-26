@@ -28,7 +28,7 @@ class Schema {
     fresh?: boolean;
   }): Promise<Schema> {
     logger.info(`Creating ${this.name}`);
-    const schema = new Schema({
+    const schema = new this({
       statePath,
       stateVersion,
       fs,

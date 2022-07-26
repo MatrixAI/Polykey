@@ -55,7 +55,7 @@ class KeyManager {
   }): Promise<KeyManager> {
     logger.info(`Creating ${this.name}`);
     logger.info(`Setting keys path to ${keysPath}`);
-    const keyManager = new KeyManager({
+    const keyManager = new this({
       keysPath,
       rootCertDuration,
       rootKeyPairBits,

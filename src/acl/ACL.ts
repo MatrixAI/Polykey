@@ -36,7 +36,7 @@ class ACL {
     fresh?: boolean;
   }): Promise<ACL> {
     logger.info(`Creating ${this.name}`);
-    const acl = new ACL({ db, logger });
+    const acl = new this({ db, logger });
     await acl.start({ fresh });
     logger.info(`Created ${this.name}`);
     return acl;

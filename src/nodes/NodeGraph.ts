@@ -43,7 +43,7 @@ class NodeGraph {
     fresh?: boolean;
   }): Promise<NodeGraph> {
     logger.info(`Creating ${this.name}`);
-    const nodeGraph = new NodeGraph({
+    const nodeGraph = new this({
       db,
       keyManager,
       nodeIdBits,
@@ -368,7 +368,6 @@ class NodeGraph {
         )) {
           const nodeId = IdInternal.fromBuffer<NodeId>(nodeIdBuffer);
           bucketDbIterator.seek(nodeIdBuffer);
-          // @ts-ignore
           // eslint-disable-next-line
           const iteratorResult = await bucketDbIterator.next();
           if (iteratorResult == null) never();
@@ -376,7 +375,6 @@ class NodeGraph {
           bucket.push([nodeId, nodeData]);
         }
       } finally {
-        // @ts-ignore
         await bucketDbIterator.end();
       }
     }
@@ -467,7 +465,6 @@ class NodeGraph {
           const { bucketIndex: bucketIndex_, nodeId } =
             nodesUtils.parseLastUpdatedBucketsDbKey(key);
           bucketsDbIterator.seek([key[0], key[2]]);
-          // @ts-ignore
           // eslint-disable-next-line
           const iteratorResult = await bucketsDbIterator.next();
           if (iteratorResult == null) never();
@@ -491,7 +488,6 @@ class NodeGraph {
           yield [bucketIndex, bucket];
         }
       } finally {
-        // @ts-ignore
         await bucketsDbIterator.end();
       }
     }

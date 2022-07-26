@@ -61,7 +61,7 @@ class Discovery {
     fresh?: boolean;
   }): Promise<Discovery> {
     logger.info(`Creating ${this.name}`);
-    const discovery = new Discovery({
+    const discovery = new this({
       db,
       keyManager,
       gestaltGraph,

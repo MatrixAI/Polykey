@@ -34,7 +34,7 @@ class SessionManager {
     fresh?: boolean;
   }): Promise<SessionManager> {
     logger.info(`Creating ${this.name}`);
-    const sessionManager = new SessionManager({
+    const sessionManager = new this({
       db,
       keyManager,
       expiry,

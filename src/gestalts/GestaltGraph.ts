@@ -42,7 +42,7 @@ class GestaltGraph {
     fresh?: boolean;
   }): Promise<GestaltGraph> {
     logger.info(`Creating ${this.name}`);
-    const gestaltGraph = new GestaltGraph({ acl, db, logger });
+    const gestaltGraph = new this({ acl, db, logger });
     await gestaltGraph.start({ fresh });
     logger.info(`Created ${this.name}`);
     return gestaltGraph;
