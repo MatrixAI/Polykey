@@ -36,7 +36,7 @@ describe('start', () => {
       const password = 'abc123';
       const polykeyPath = path.join(dataDir, 'polykey');
       await fs.promises.mkdir(polykeyPath);
-      const agentProcess = await testBinUtils.pkSpawnSwitch(global.testCmd)(
+      const agentProcess = await testBinUtils.pkSpawn(
         [
           'agent',
           'start',
@@ -206,7 +206,7 @@ describe('start', () => {
       const password = 'abc123';
       // One of these processes is blocked
       const [agentProcess1, agentProcess2] = await Promise.all([
-        testBinUtils.pkSpawnSwitch(global.testCmd)(
+        testBinUtils.pkSpawn(
           [
             'agent',
             'start',
@@ -229,7 +229,7 @@ describe('start', () => {
           dataDir,
           logger.getChild('agentProcess1'),
         ),
-        testBinUtils.pkSpawnSwitch(global.testCmd)(
+        testBinUtils.pkSpawn(
           [
             'agent',
             'start',
@@ -298,7 +298,7 @@ describe('start', () => {
       const password = 'abc123';
       // One of these processes is blocked
       const [agentProcess, bootstrapProcess] = await Promise.all([
-        testBinUtils.pkSpawnSwitch(global.testCmd)(
+        testBinUtils.pkSpawn(
           [
             'agent',
             'start',
@@ -321,7 +321,7 @@ describe('start', () => {
           dataDir,
           logger.getChild('agentProcess'),
         ),
-        testBinUtils.pkSpawnSwitch(global.testCmd)(
+        testBinUtils.pkSpawn(
           [
             'bootstrap',
             '--fresh',
@@ -382,7 +382,7 @@ describe('start', () => {
     'start with existing state',
     async () => {
       const password = 'abc123';
-      const agentProcess1 = await testBinUtils.pkSpawnSwitch(global.testCmd)(
+      const agentProcess1 = await testBinUtils.pkSpawn(
         [
           'agent',
           'start',
@@ -409,7 +409,7 @@ describe('start', () => {
         rlOut.once('close', reject);
       });
       agentProcess1.kill('SIGHUP');
-      const agentProcess2 = await testBinUtils.pkSpawnSwitch(global.testCmd)(
+      const agentProcess2 = await testBinUtils.pkSpawn(
         [
           'agent',
           'start',
@@ -452,7 +452,7 @@ describe('start', () => {
     'start when interrupted, requires fresh on next start',
     async () => {
       const password = 'password';
-      const agentProcess1 = await testBinUtils.pkSpawnSwitch(global.testCmd)(
+      const agentProcess1 = await testBinUtils.pkSpawn(
         [
           'agent',
           'start',
@@ -490,7 +490,7 @@ describe('start', () => {
       // Unlike bootstrapping, agent start can succeed under certain compatible partial state
       // However in some cases, state will conflict, and the start will fail with various errors
       // In such cases, the `--fresh` option must be used
-      const agentProcess2 = await testBinUtils.pkSpawnSwitch(global.testCmd)(
+      const agentProcess2 = await testBinUtils.pkSpawn(
         [
           'agent',
           'start',
@@ -570,7 +570,7 @@ describe('start', () => {
         fs,
         logger,
       });
-      const agentProcess1 = await testBinUtils.pkSpawnSwitch(global.testCmd)(
+      const agentProcess1 = await testBinUtils.pkSpawn(
         [
           'agent',
           'start',
@@ -607,7 +607,7 @@ describe('start', () => {
       const recoveryCodePath = path.join(dataDir, 'recovery-code');
       await fs.promises.writeFile(recoveryCodePath, recoveryCode + '\n');
       // When recovering, having the wrong bit size is not a problem
-      const agentProcess2 = await testBinUtils.pkSpawnSwitch(global.testCmd)(
+      const agentProcess2 = await testBinUtils.pkSpawn(
         [
           'agent',
           'start',
@@ -637,7 +637,7 @@ describe('start', () => {
       agentProcess2.kill('SIGTERM');
       await testBinUtils.processExit(agentProcess2);
       // Check that the password has changed
-      const agentProcess3 = await testBinUtils.pkSpawnSwitch(global.testCmd)(
+      const agentProcess3 = await testBinUtils.pkSpawn(
         ['agent', 'start', '--workers', '0', '--verbose'],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -658,7 +658,7 @@ describe('start', () => {
         force: true,
         recursive: true,
       });
-      const agentProcess4 = await testBinUtils.pkSpawnSwitch(global.testCmd)(
+      const agentProcess4 = await testBinUtils.pkSpawn(
         [
           'agent',
           'start',
@@ -708,7 +708,7 @@ describe('start', () => {
       const clientPort = 55555;
       const proxyHost = '127.0.0.3';
       const proxyPort = 55556;
-      const agentProcess = await testBinUtils.pkSpawnSwitch(global.testCmd)(
+      const agentProcess = await testBinUtils.pkSpawn(
         [
           'agent',
           'start',
@@ -762,7 +762,7 @@ describe('start', () => {
           keysUtils.privateKeyFromPem(privateKeyPem),
         ),
       );
-      const agentProcess = await testBinUtils.pkSpawnSwitch(global.testCmd)(
+      const agentProcess = await testBinUtils.pkSpawn(
         ['agent', 'start', '--workers', '0', '--verbose'],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -804,7 +804,7 @@ describe('start', () => {
       await fs.promises.writeFile(privateKeyPath, privateKeyPem, {
         encoding: 'utf-8',
       });
-      const agentProcess = await testBinUtils.pkSpawnSwitch(global.testCmd)(
+      const agentProcess = await testBinUtils.pkSpawn(
         [
           'agent',
           'start',
@@ -847,17 +847,9 @@ describe('start', () => {
         path.join(global.tmpDir, 'polykey-test-'),
       );
       ({ agentStatus: agent1Status, agentClose: agent1Close } =
-        await testBinUtils.setupTestAgent(
-          undefined,
-          globalRootKeyPems[0],
-          logger,
-        ));
+        await testBinUtils.setupTestAgent(globalRootKeyPems[0], logger));
       ({ agentStatus: agent2Status, agentClose: agent2Close } =
-        await testBinUtils.setupTestAgent(
-          undefined,
-          globalRootKeyPems[1],
-          logger,
-        ));
+        await testBinUtils.setupTestAgent(globalRootKeyPems[1], logger));
       seedNodeId1 = agent1Status.data.nodeId;
       seedNodeHost1 = agent1Status.data.proxyHost;
       seedNodePort1 = agent1Status.data.proxyPort;

@@ -10,11 +10,7 @@ describe('root', () => {
   let agentClose;
   beforeEach(async () => {
     ({ agentDir, agentPassword, agentClose } =
-      await testBinUtils.setupTestAgent(
-        global.testCmd,
-        globalRootKeyPems[0],
-        logger,
-      ));
+      await testBinUtils.setupTestAgent(globalRootKeyPems[0], logger));
   });
   afterEach(async () => {
     await agentClose();
@@ -22,9 +18,7 @@ describe('root', () => {
   runTestIfPlatforms('linux', 'docker')(
     'root gets the public key',
     async () => {
-      const { exitCode, stdout } = await testBinUtils.pkStdioSwitch(
-        global.testCmd,
-      )(
+      const { exitCode, stdout } = await testBinUtils.pkStdio(
         ['keys', 'root', '--format', 'json'],
         {
           PK_NODE_PATH: agentDir,
@@ -41,9 +35,7 @@ describe('root', () => {
   runTestIfPlatforms('linux', 'docker')(
     'root gets public and private keys',
     async () => {
-      const { exitCode, stdout } = await testBinUtils.pkStdioSwitch(
-        global.testCmd,
-      )(
+      const { exitCode, stdout } = await testBinUtils.pkStdio(
         ['keys', 'root', '--private-key', '--format', 'json'],
         {
           PK_NODE_PATH: agentDir,

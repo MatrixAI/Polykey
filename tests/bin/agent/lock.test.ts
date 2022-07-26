@@ -19,11 +19,7 @@ describe('lock', () => {
   let agentClose: () => Promise<void>;
   beforeEach(async () => {
     ({ agentDir, agentPassword, agentClose } =
-      await testBinUtils.setupTestAgent(
-        global.testCmd,
-        globalRootKeyPems[0],
-        logger,
-      ));
+      await testBinUtils.setupTestAgent(globalRootKeyPems[0], logger));
   });
   afterEach(async () => {
     await agentClose();
@@ -31,7 +27,7 @@ describe('lock', () => {
   runTestIfPlatforms('linux', 'docker')(
     'lock deletes the session token',
     async () => {
-      await testBinUtils.pkStdioSwitch(global.testCmd)(
+      await testBinUtils.pkStdio(
         ['agent', 'unlock'],
         {
           PK_NODE_PATH: agentDir,
@@ -39,7 +35,7 @@ describe('lock', () => {
         },
         agentDir,
       );
-      const { exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+      const { exitCode } = await testBinUtils.pkStdio(
         ['agent', 'lock'],
         {
           PK_NODE_PATH: agentDir,

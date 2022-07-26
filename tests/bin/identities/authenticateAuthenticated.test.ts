@@ -63,7 +63,7 @@ describe('authenticate/authenticated', () => {
         .spyOn(identitiesUtils, 'browser')
         .mockImplementation(() => {});
       // Authenticate an identity
-      ({ exitCode, stdout } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+      ({ exitCode, stdout } = await testBinUtils.pkStdio(
         [
           'identities',
           'authenticate',
@@ -79,7 +79,7 @@ describe('authenticate/authenticated', () => {
       expect(exitCode).toBe(0);
       expect(stdout).toContain('randomtestcode');
       // Check that the identity was authenticated
-      ({ exitCode, stdout } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+      ({ exitCode, stdout } = await testBinUtils.pkStdio(
         ['identities', 'authenticated', '--format', 'json'],
         {
           PK_NODE_PATH: nodePath,
@@ -93,7 +93,7 @@ describe('authenticate/authenticated', () => {
         identityId: testToken.identityId,
       });
       // Check using providerId flag
-      ({ exitCode, stdout } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+      ({ exitCode, stdout } = await testBinUtils.pkStdio(
         [
           'identities',
           'authenticated',
@@ -120,7 +120,7 @@ describe('authenticate/authenticated', () => {
     let exitCode;
     // Authenticate
     // Invalid provider
-    ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+    ({ exitCode } = await testBinUtils.pkStdio(
       ['identities', 'authenticate', '', testToken.identityId],
       {
         PK_NODE_PATH: nodePath,
@@ -130,7 +130,7 @@ describe('authenticate/authenticated', () => {
     ));
     expect(exitCode).toBe(sysexits.USAGE);
     // Invalid identity
-    ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+    ({ exitCode } = await testBinUtils.pkStdio(
       ['identities', 'authenticate', testToken.providerId, ''],
       {
         PK_NODE_PATH: nodePath,
@@ -141,7 +141,7 @@ describe('authenticate/authenticated', () => {
     expect(exitCode).toBe(sysexits.USAGE);
     // Authenticated
     // Invalid provider
-    ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+    ({ exitCode } = await testBinUtils.pkStdio(
       ['identities', 'authenticate', '--provider-id', ''],
       {
         PK_NODE_PATH: nodePath,

@@ -68,6 +68,8 @@ async function pkStdio(
   stdout: string;
   stderr: string;
 }> {
+  if (global.testCmd != null) return pkStdioTarget(args, env, cwd);
+
   cwd =
     cwd ??
     (await fs.promises.mkdtemp(path.join(global.tmpDir, 'polykey-test-')));
@@ -158,6 +160,8 @@ async function pkExec(
   stdout: string;
   stderr: string;
 }> {
+  if (global.testCmd != null) return pkExecTarget(args, env, cwd);
+
   cwd =
     cwd ??
     (await fs.promises.mkdtemp(path.join(global.tmpDir, 'polykey-test-')));
@@ -215,6 +219,8 @@ async function pkSpawn(
   cwd?: string,
   logger: Logger = new Logger(pkSpawn.name),
 ): Promise<ChildProcess> {
+  if (global.testCmd != null) return pkSpawnTarget(args, env, cwd, logger);
+
   cwd =
     cwd ??
     (await fs.promises.mkdtemp(path.join(global.tmpDir, 'polykey-test-')));
@@ -262,7 +268,6 @@ async function pkSpawn(
  * @param cwd - the working directory the command will be executed in.
  */
 async function pkStdioTarget(
-  cmd: string,
   args: Array<string> = [],
   env: Record<string, string | undefined> = {},
   cwd?: string,
@@ -287,7 +292,7 @@ async function pkStdioTarget(
     ...process.env,
     ...env,
   };
-  const command = path.resolve(path.join(global.projectDir, cmd));
+  const command = path.resolve(path.join(global.projectDir, global.testCmd!));
   const subprocess = child_process.spawn(command, [...args], {
     env,
     cwd,
@@ -320,7 +325,6 @@ async function pkStdioTarget(
  * @param cwd Defaults to temporary directory
  */
 async function pkExecTarget(
-  cmd: string,
   args: Array<string> = [],
   env: Record<string, string | undefined> = {},
   cwd?: string,
@@ -343,7 +347,7 @@ async function pkExecTarget(
   // (if not defined in the env) to ensure no attempted connections. A regular
   // PolykeyAgent is expected to initially connect to the mainnet seed nodes
   env['PK_SEED_NODES'] = env['PK_SEED_NODES'] ?? '';
-  const command = path.resolve(path.join(global.projectDir, cmd));
+  const command = path.resolve(path.join(global.projectDir, global.testCmd!));
   return new Promise((resolve, reject) => {
     child_process.execFile(
       command,
@@ -372,14 +376,12 @@ async function pkExecTarget(
 
 /**
  * This will spawn a process that executes the target `cmd` provided.
- * @param cmd - path to the target command relative to the project directory.
  * @param args - args to be passed to the command.
  * @param env - environment variables to be passed to the command.
  * @param cwd - the working directory the command will be executed in.
  * @param logger
  */
 async function pkSpawnTarget(
-  cmd: string,
   args: Array<string> = [],
   env: Record<string, string | undefined> = {},
   cwd?: string,
@@ -399,7 +401,7 @@ async function pkSpawnTarget(
   // (if not defined in the env) to ensure no attempted connections. A regular
   // PolykeyAgent is expected to initially connect to the mainnet seed nodes
   env['PK_SEED_NODES'] = env['PK_SEED_NODES'] ?? '';
-  const command = path.resolve(path.join(global.projectDir, cmd));
+  const command = path.resolve(path.join(global.projectDir, global.testCmd!));
   const subprocess = child_process.spawn(command, args, {
     env,
     cwd,
@@ -412,30 +414,6 @@ async function pkSpawnTarget(
   const rlErr = readline.createInterface(subprocess.stderr!);
   rlErr.on('line', (l) => logger.info(l));
   return subprocess;
-}
-
-function pkStdioSwitch(cmd: string | undefined) {
-  if (cmd != null) {
-    return (...args: Parameters<typeof pkStdio>) => pkStdioTarget(cmd, ...args);
-  } else {
-    return pkStdio;
-  }
-}
-
-function pkExecSwitch(cmd: string | undefined) {
-  if (cmd != null) {
-    return (...args: Parameters<typeof pkExec>) => pkExecTarget(cmd, ...args);
-  } else {
-    return pkExec;
-  }
-}
-
-function pkSpawnSwitch(cmd: string | undefined) {
-  if (cmd != null) {
-    return (...args: Parameters<typeof pkSpawn>) => pkSpawnTarget(cmd, ...args);
-  } else {
-    return pkSpawn;
-  }
 }
 
 /**
@@ -546,20 +524,15 @@ function expectProcessError(
 
 /**
  *
- * @param cmd - Optional target command to run, usually `global.testCmd`
  * @param privateKeyPem - Optional root key override to skip key generation
  * @param logger
  */
-async function setupTestAgent(
-  cmd: string | undefined,
-  privateKeyPem: PrivateKeyPem,
-  logger: Logger,
-) {
+async function setupTestAgent(privateKeyPem: PrivateKeyPem, logger: Logger) {
   const agentDir = await fs.promises.mkdtemp(
     path.join(global.tmpDir, 'polykey-test-'),
   );
   const agentPassword = 'password';
-  const agentProcess = await pkSpawnSwitch(cmd)(
+  const agentProcess = await pkSpawn(
     [
       'agent',
       'start',
@@ -625,9 +598,6 @@ export {
   pkStdioTarget,
   pkExecTarget,
   pkSpawnTarget,
-  pkStdioSwitch,
-  pkExecSwitch,
-  pkSpawnSwitch,
   pkExpect,
   processExit,
   expectProcessError,

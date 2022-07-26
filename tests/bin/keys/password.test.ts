@@ -14,11 +14,7 @@ describe('password', () => {
   let agentClose;
   beforeEach(async () => {
     ({ agentDir, agentPassword, agentClose } =
-      await testBinUtils.setupTestAgent(
-        global.testCmd,
-        globalRootKeyPems[0],
-        logger,
-      ));
+      await testBinUtils.setupTestAgent(globalRootKeyPems[0], logger));
   });
   afterEach(async () => {
     await agentClose();
@@ -28,7 +24,7 @@ describe('password', () => {
     async () => {
       const passPath = path.join(agentDir, 'passwordChange');
       await fs.promises.writeFile(passPath, 'password-change');
-      let { exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+      let { exitCode } = await testBinUtils.pkStdio(
         ['keys', 'password', '--password-new-file', passPath],
         {
           PK_NODE_PATH: agentDir,
@@ -38,7 +34,7 @@ describe('password', () => {
       );
       expect(exitCode).toBe(0);
       // Old password should no longer work
-      ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+      ({ exitCode } = await testBinUtils.pkStdio(
         ['keys', 'root'],
         {
           PK_NODE_PATH: agentDir,
@@ -49,7 +45,7 @@ describe('password', () => {
       expect(exitCode).not.toBe(0);
       // Revert side effects using new password
       await fs.promises.writeFile(passPath, agentPassword);
-      ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+      ({ exitCode } = await testBinUtils.pkStdio(
         ['keys', 'password', '--password-new-file', passPath],
         {
           PK_NODE_PATH: agentDir,

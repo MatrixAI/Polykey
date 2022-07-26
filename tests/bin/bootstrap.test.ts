@@ -30,9 +30,7 @@ describe('bootstrap', () => {
       const password = 'password';
       const passwordPath = path.join(dataDir, 'password');
       await fs.promises.writeFile(passwordPath, password);
-      const { exitCode, stdout } = await testBinUtils.pkStdioSwitch(
-        global.testCmd,
-      )(
+      const { exitCode, stdout } = await testBinUtils.pkStdio(
         [
           'bootstrap',
           '--password-file',
@@ -67,9 +65,7 @@ describe('bootstrap', () => {
       await fs.promises.writeFile(privateKeyPath, privateKeyPem, {
         encoding: 'utf-8',
       });
-      const { exitCode: exitCode1 } = await testBinUtils.pkStdioSwitch(
-        global.testCmd,
-      )(
+      const { exitCode: exitCode1 } = await testBinUtils.pkStdio(
         [
           'bootstrap',
           '--password-file',
@@ -84,9 +80,7 @@ describe('bootstrap', () => {
         dataDir,
       );
       expect(exitCode1).toBe(0);
-      const { exitCode: exitCode2 } = await testBinUtils.pkStdioSwitch(
-        global.testCmd,
-      )(
+      const { exitCode: exitCode2 } = await testBinUtils.pkStdio(
         ['bootstrap', '--password-file', passwordPath, '--verbose'],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey2'),
@@ -105,9 +99,7 @@ describe('bootstrap', () => {
       await fs.promises.mkdir(path.join(dataDir, 'polykey'));
       await fs.promises.writeFile(path.join(dataDir, 'polykey', 'test'), '');
       let exitCode, stdout, stderr;
-      ({ exitCode, stdout, stderr } = await testBinUtils.pkStdioSwitch(
-        global.testCmd,
-      )(
+      ({ exitCode, stdout, stderr } = await testBinUtils.pkStdio(
         [
           'bootstrap',
           '--node-path',
@@ -128,9 +120,7 @@ describe('bootstrap', () => {
       testBinUtils.expectProcessError(exitCode, stderr, [
         errorBootstrapExistingState,
       ]);
-      ({ exitCode, stdout, stderr } = await testBinUtils.pkStdioSwitch(
-        global.testCmd,
-      )(
+      ({ exitCode, stdout, stderr } = await testBinUtils.pkStdio(
         [
           'bootstrap',
           '--node-path',
@@ -159,7 +149,7 @@ describe('bootstrap', () => {
     async () => {
       const password = 'password';
       const [bootstrapProcess1, bootstrapProcess2] = await Promise.all([
-        testBinUtils.pkSpawnSwitch(global.testCmd)(
+        testBinUtils.pkSpawn(
           [
             'bootstrap',
             '--root-key-pair-bits',
@@ -175,7 +165,7 @@ describe('bootstrap', () => {
           dataDir,
           logger.getChild('bootstrapProcess1'),
         ),
-        testBinUtils.pkSpawnSwitch(global.testCmd)(
+        testBinUtils.pkSpawn(
           [
             'bootstrap',
             '--root-key-pair-bits',
@@ -239,9 +229,7 @@ describe('bootstrap', () => {
     'bootstrap when interrupted, requires fresh on next bootstrap',
     async () => {
       const password = 'password';
-      const bootstrapProcess1 = await testBinUtils.pkSpawnSwitch(
-        global.testCmd,
-      )(
+      const bootstrapProcess1 = await testBinUtils.pkSpawn(
         ['bootstrap', '--root-key-pair-bits', '1024', '--verbose'],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -268,9 +256,7 @@ describe('bootstrap', () => {
         bootstrapProcess1.once('exit', () => res(null));
       });
       // Attempting to bootstrap should fail with existing state
-      const bootstrapProcess2 = await testBinUtils.pkStdioSwitch(
-        global.testCmd,
-      )(
+      const bootstrapProcess2 = await testBinUtils.pkStdio(
         [
           'bootstrap',
           '--root-key-pair-bits',
@@ -293,9 +279,7 @@ describe('bootstrap', () => {
         [errorBootstrapExistingState],
       );
       // Attempting to bootstrap with --fresh should succeed
-      const bootstrapProcess3 = await testBinUtils.pkStdioSwitch(
-        global.testCmd,
-      )(
+      const bootstrapProcess3 = await testBinUtils.pkStdio(
         ['bootstrap', '--root-key-pair-bits', '1024', '--fresh', '--verbose'],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),

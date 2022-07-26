@@ -25,11 +25,7 @@ describe('lockall', () => {
   let agentClose;
   beforeEach(async () => {
     ({ agentDir, agentPassword, agentClose } =
-      await testBinUtils.setupTestAgent(
-        global.testCmd,
-        globalRootKeyPems[0],
-        logger,
-      ));
+      await testBinUtils.setupTestAgent(globalRootKeyPems[0], logger));
   });
   afterEach(async () => {
     await agentClose();
@@ -37,7 +33,7 @@ describe('lockall', () => {
   runTestIfPlatforms('linux', 'docker')(
     'lockall deletes the session token',
     async () => {
-      await testBinUtils.pkStdioSwitch(global.testCmd)(
+      await testBinUtils.pkStdio(
         ['agent', 'unlock'],
         {
           PK_NODE_PATH: agentDir,
@@ -45,7 +41,7 @@ describe('lockall', () => {
         },
         agentDir,
       );
-      const { exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+      const { exitCode } = await testBinUtils.pkStdio(
         ['agent', 'lockall'],
         {
           PK_NODE_PATH: agentDir,
@@ -66,7 +62,7 @@ describe('lockall', () => {
     'lockall ensures reauthentication is required',
     async () => {
       const password = agentPassword;
-      await testBinUtils.pkStdioSwitch(global.testCmd)(
+      await testBinUtils.pkStdio(
         ['agent', 'unlock'],
         {
           PK_NODE_PATH: agentDir,
@@ -74,7 +70,7 @@ describe('lockall', () => {
         },
         agentDir,
       );
-      await testBinUtils.pkStdioSwitch(global.testCmd)(
+      await testBinUtils.pkStdio(
         ['agent', 'lockall'],
         {
           PK_NODE_PATH: agentDir,
@@ -101,7 +97,7 @@ describe('lockall', () => {
   runTestIfPlatforms('linux', 'docker')(
     'lockall causes old session tokens to fail',
     async () => {
-      await testBinUtils.pkStdioSwitch(global.testCmd)(
+      await testBinUtils.pkStdio(
         ['agent', 'unlock'],
         {
           PK_NODE_PATH: agentDir,
@@ -116,7 +112,7 @@ describe('lockall', () => {
       });
       const token = await session.readToken();
       await session.stop();
-      await testBinUtils.pkStdioSwitch(global.testCmd)(
+      await testBinUtils.pkStdio(
         ['agent', 'lockall'],
         {
           PK_NODE_PATH: agentDir,
@@ -125,9 +121,7 @@ describe('lockall', () => {
         agentDir,
       );
       // Old token is invalid
-      const { exitCode, stderr } = await testBinUtils.pkStdioSwitch(
-        global.testCmd,
-      )(
+      const { exitCode, stderr } = await testBinUtils.pkStdio(
         ['agent', 'status', '--format', 'json'],
         {
           PK_NODE_PATH: agentDir,

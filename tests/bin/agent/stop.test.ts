@@ -28,7 +28,7 @@ describe('stop', () => {
     'stop LIVE agent',
     async () => {
       const password = 'abc123';
-      const agentProcess = await testBinUtils.pkSpawnSwitch(global.testCmd)(
+      const agentProcess = await testBinUtils.pkSpawn(
         [
           'agent',
           'start',
@@ -58,7 +58,7 @@ describe('stop', () => {
         logger,
       });
       await status.waitFor('LIVE');
-      await testBinUtils.pkStdioSwitch(global.testCmd)(
+      await testBinUtils.pkStdio(
         ['agent', 'stop'],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -88,7 +88,7 @@ describe('stop', () => {
         fs,
         logger,
       });
-      const agentProcess = await testBinUtils.pkSpawnSwitch(global.testCmd)(
+      const agentProcess = await testBinUtils.pkSpawn(
         [
           'agent',
           'start',
@@ -110,14 +110,14 @@ describe('stop', () => {
       await status.waitFor('LIVE');
       // Simultaneous calls to stop must use pkExec
       const [agentStop1, agentStop2] = await Promise.all([
-        testBinUtils.pkExecSwitch(global.testCmd)(
+        testBinUtils.pkExec(
           ['agent', 'stop', '--password-file', passwordPath],
           {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
           },
           dataDir,
         ),
-        testBinUtils.pkExecSwitch(global.testCmd)(
+        testBinUtils.pkExec(
           ['agent', 'stop', '--password-file', passwordPath],
           {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -129,7 +129,7 @@ describe('stop', () => {
       // It's not reliable until file watching is implemented
       // So just 1 ms delay until sending another stop command
       await sleep(1);
-      const agentStop3 = await testBinUtils.pkStdioSwitch(global.testCmd)(
+      const agentStop3 = await testBinUtils.pkStdio(
         ['agent', 'stop', '--node-path', path.join(dataDir, 'polykey')],
         {
           PK_PASSWORD: password,
@@ -137,7 +137,7 @@ describe('stop', () => {
         dataDir,
       );
       await status.waitFor('DEAD');
-      const agentStop4 = await testBinUtils.pkStdioSwitch(global.testCmd)(
+      const agentStop4 = await testBinUtils.pkStdio(
         ['agent', 'stop', '--password-file', passwordPath],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -176,7 +176,7 @@ describe('stop', () => {
         fs,
         logger,
       });
-      const agentProcess = await testBinUtils.pkSpawnSwitch(global.testCmd)(
+      const agentProcess = await testBinUtils.pkSpawn(
         [
           'agent',
           'start',
@@ -197,9 +197,7 @@ describe('stop', () => {
         logger,
       );
       await status.waitFor('STARTING');
-      const { exitCode, stderr } = await testBinUtils.pkStdioSwitch(
-        global.testCmd,
-      )(
+      const { exitCode, stderr } = await testBinUtils.pkStdio(
         ['agent', 'stop', '--format', 'json'],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -210,7 +208,7 @@ describe('stop', () => {
         new binErrors.ErrorCLIPolykeyAgentStatus('agent is starting'),
       ]);
       await status.waitFor('LIVE');
-      await testBinUtils.pkStdioSwitch(global.testCmd)(
+      await testBinUtils.pkStdio(
         ['agent', 'stop'],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -227,7 +225,7 @@ describe('stop', () => {
     'stopping while unauthenticated does not stop',
     async () => {
       const password = 'abc123';
-      const agentProcess = await testBinUtils.pkSpawnSwitch(global.testCmd)(
+      const agentProcess = await testBinUtils.pkSpawn(
         [
           'agent',
           'start',
@@ -257,9 +255,7 @@ describe('stop', () => {
         logger,
       });
       await status.waitFor('LIVE');
-      const { exitCode, stderr } = await testBinUtils.pkStdioSwitch(
-        global.testCmd,
-      )(
+      const { exitCode, stderr } = await testBinUtils.pkStdio(
         ['agent', 'stop', '--format', 'json'],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -272,7 +268,7 @@ describe('stop', () => {
       ]);
       // Should still be LIVE
       expect((await status.readStatus())?.status).toBe('LIVE');
-      await testBinUtils.pkStdioSwitch(global.testCmd)(
+      await testBinUtils.pkStdio(
         ['agent', 'stop'],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),

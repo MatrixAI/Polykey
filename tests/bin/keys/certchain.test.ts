@@ -12,11 +12,7 @@ describe('certchain', () => {
   let agentClose;
   beforeEach(async () => {
     ({ agentDir, agentPassword, agentClose } =
-      await testBinUtils.setupTestAgent(
-        global.testCmd,
-        globalRootKeyPems[0],
-        logger,
-      ));
+      await testBinUtils.setupTestAgent(globalRootKeyPems[0], logger));
   });
   afterEach(async () => {
     await agentClose();
@@ -24,9 +20,7 @@ describe('certchain', () => {
   runTestIfPlatforms('linux', 'docker')(
     'certchain gets the certificate chain',
     async () => {
-      let { exitCode, stdout } = await testBinUtils.pkStdioSwitch(
-        global.testCmd,
-      )(
+      let { exitCode, stdout } = await testBinUtils.pkStdio(
         ['keys', 'certchain', '--format', 'json'],
         {
           PK_NODE_PATH: agentDir,
@@ -39,7 +33,7 @@ describe('certchain', () => {
         certchain: expect.any(Array),
       });
       const certChainCommand = JSON.parse(stdout).certchain.join('\n');
-      ({ exitCode, stdout } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+      ({ exitCode, stdout } = await testBinUtils.pkStdio(
         ['agent', 'status', '--format', 'json'],
         {
           PK_NODE_PATH: agentDir,

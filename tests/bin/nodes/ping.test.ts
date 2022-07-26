@@ -99,9 +99,7 @@ describe('ping', () => {
   runTestIfPlatforms('linux')(
     'fails when pinging an offline node',
     async () => {
-      const { exitCode, stdout, stderr } = await testBinUtils.pkStdioSwitch(
-        global.testCmd,
-      )(
+      const { exitCode, stdout, stderr } = await testBinUtils.pkStdio(
         [
           'nodes',
           'ping',
@@ -127,9 +125,7 @@ describe('ping', () => {
     const fakeNodeId = nodesUtils.decodeNodeId(
       'vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0',
     );
-    const { exitCode, stdout } = await testBinUtils.pkStdioSwitch(
-      global.testCmd,
-    )(
+    const { exitCode, stdout } = await testBinUtils.pkStdio(
       [
         'nodes',
         'ping',
@@ -152,9 +148,7 @@ describe('ping', () => {
     });
   });
   runTestIfPlatforms('linux')('succeed when pinging a live node', async () => {
-    const { exitCode, stdout } = await testBinUtils.pkStdioSwitch(
-      global.testCmd,
-    )(
+    const { exitCode, stdout } = await testBinUtils.pkStdio(
       [
         'nodes',
         'ping',

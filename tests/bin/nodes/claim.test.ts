@@ -84,9 +84,7 @@ describe('claim', () => {
     });
   });
   runTestIfPlatforms('linux')('sends a gestalt invite', async () => {
-    const { exitCode, stdout } = await testBinUtils.pkStdioSwitch(
-      global.testCmd,
-    )(
+    const { exitCode, stdout } = await testBinUtils.pkStdio(
       ['nodes', 'claim', remoteIdEncoded],
       {
         PK_NODE_PATH: nodePath,
@@ -104,9 +102,7 @@ describe('claim', () => {
       await remoteNode.notificationsManager.sendNotification(localId, {
         type: 'GestaltInvite',
       });
-      const { exitCode, stdout } = await testBinUtils.pkStdioSwitch(
-        global.testCmd,
-      )(
+      const { exitCode, stdout } = await testBinUtils.pkStdio(
         ['nodes', 'claim', remoteIdEncoded, '--force-invite'],
         {
           PK_NODE_PATH: nodePath,
@@ -123,9 +119,7 @@ describe('claim', () => {
     await remoteNode.notificationsManager.sendNotification(localId, {
       type: 'GestaltInvite',
     });
-    const { exitCode, stdout } = await testBinUtils.pkStdioSwitch(
-      global.testCmd,
-    )(
+    const { exitCode, stdout } = await testBinUtils.pkStdio(
       ['nodes', 'claim', remoteIdEncoded],
       {
         PK_NODE_PATH: nodePath,

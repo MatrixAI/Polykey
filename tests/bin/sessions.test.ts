@@ -29,11 +29,7 @@ describe('sessions', () => {
   let dataDir: string;
   beforeEach(async () => {
     ({ agentDir, agentPassword, agentClose } =
-      await testBinUtils.setupTestAgent(
-        global.testCmd,
-        globalRootKeyPems[0],
-        logger,
-      ));
+      await testBinUtils.setupTestAgent(globalRootKeyPems[0], logger));
     dataDir = await fs.promises.mkdtemp(
       path.join(global.tmpDir, 'polykey-test-'),
     );

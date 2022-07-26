@@ -16,11 +16,7 @@ describe('unlock', () => {
   let agentClose;
   beforeEach(async () => {
     ({ agentDir, agentPassword, agentClose } =
-      await testBinUtils.setupTestAgent(
-        global.testCmd,
-        globalRootKeyPems[0],
-        logger,
-      ));
+      await testBinUtils.setupTestAgent(globalRootKeyPems[0], logger));
   });
   afterEach(async () => {
     await agentClose();
@@ -36,7 +32,7 @@ describe('unlock', () => {
         fresh: true,
       });
       let exitCode, stdout;
-      ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+      ({ exitCode } = await testBinUtils.pkStdio(
         ['agent', 'unlock'],
         {
           PK_NODE_PATH: agentDir,
@@ -46,7 +42,7 @@ describe('unlock', () => {
       ));
       expect(exitCode).toBe(0);
       // Run command without password
-      ({ exitCode, stdout } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+      ({ exitCode, stdout } = await testBinUtils.pkStdio(
         ['agent', 'status', '--format', 'json'],
         {
           PK_NODE_PATH: agentDir,
@@ -56,7 +52,7 @@ describe('unlock', () => {
       expect(exitCode).toBe(0);
       expect(JSON.parse(stdout)).toMatchObject({ status: 'LIVE' });
       // Run command with PK_TOKEN
-      ({ exitCode, stdout } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+      ({ exitCode, stdout } = await testBinUtils.pkStdio(
         ['agent', 'status', '--format', 'json'],
         {
           PK_NODE_PATH: agentDir,

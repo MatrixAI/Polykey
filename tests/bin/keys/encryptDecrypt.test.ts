@@ -14,11 +14,7 @@ describe('encrypt-decrypt', () => {
   let agentClose;
   beforeEach(async () => {
     ({ agentDir, agentPassword, agentClose } =
-      await testBinUtils.setupTestAgent(
-        global.testCmd,
-        globalRootKeyPems[0],
-        logger,
-      ));
+      await testBinUtils.setupTestAgent(globalRootKeyPems[0], logger));
   });
   afterEach(async () => {
     await agentClose();
@@ -31,7 +27,7 @@ describe('encrypt-decrypt', () => {
       await fs.promises.writeFile(dataPath, 'abc', {
         encoding: 'binary',
       });
-      ({ exitCode, stdout } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+      ({ exitCode, stdout } = await testBinUtils.pkStdio(
         ['keys', 'encrypt', dataPath, '--format', 'json'],
         {
           PK_NODE_PATH: agentDir,
@@ -47,7 +43,7 @@ describe('encrypt-decrypt', () => {
       await fs.promises.writeFile(dataPath, encrypted, {
         encoding: 'binary',
       });
-      ({ exitCode, stdout } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+      ({ exitCode, stdout } = await testBinUtils.pkStdio(
         ['keys', 'decrypt', dataPath, '--format', 'json'],
         {
           PK_NODE_PATH: agentDir,

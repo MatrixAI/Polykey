@@ -39,7 +39,7 @@ describe('status', () => {
         fs,
         logger,
       });
-      const agentProcess = await testBinUtils.pkSpawnSwitch(global.testCmd)(
+      const agentProcess = await testBinUtils.pkSpawn(
         [
           'agent',
           'start',
@@ -61,7 +61,7 @@ describe('status', () => {
       );
       await status.waitFor('STARTING');
       let exitCode, stdout;
-      ({ exitCode, stdout } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+      ({ exitCode, stdout } = await testBinUtils.pkStdio(
         ['agent', 'status', '--format', 'json'],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -80,7 +80,7 @@ describe('status', () => {
       agentProcess.kill('SIGTERM');
       // Cannot wait for STOPPING because waitFor polling may miss the transition
       await status.waitFor('DEAD');
-      ({ exitCode, stdout } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+      ({ exitCode, stdout } = await testBinUtils.pkStdio(
         ['agent', 'status', '--format', 'json'],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -95,7 +95,7 @@ describe('status', () => {
         status: expect.stringMatching(/STOPPING|DEAD/),
       });
       await agentProcessExit;
-      ({ exitCode, stdout } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+      ({ exitCode, stdout } = await testBinUtils.pkStdio(
         ['agent', 'status', '--format', 'json'],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -111,11 +111,12 @@ describe('status', () => {
     global.defaultTimeout * 2,
   );
   runTestIfPlatforms('linux', 'docker')('status on missing agent', async () => {
-    const { exitCode, stdout } = await testBinUtils.pkStdioSwitch(
-      global.testCmd,
-    )(['agent', 'status', '--format', 'json'], {
-      PK_NODE_PATH: path.join(dataDir, 'polykey'),
-    });
+    const { exitCode, stdout } = await testBinUtils.pkStdio(
+      ['agent', 'status', '--format', 'json'],
+      {
+        PK_NODE_PATH: path.join(dataDir, 'polykey'),
+      },
+    );
     expect(exitCode).toBe(0);
     expect(JSON.parse(stdout)).toMatchObject({
       status: 'DEAD',
@@ -127,11 +128,7 @@ describe('status', () => {
     let agentClose;
     beforeEach(async () => {
       ({ agentDir, agentPassword, agentClose } =
-        await testBinUtils.setupTestAgent(
-          global.testCmd,
-          globalRootKeyPems[1],
-          logger,
-        ));
+        await testBinUtils.setupTestAgent(globalRootKeyPems[1], logger));
     });
     afterEach(async () => {
       await agentClose();
@@ -144,9 +141,7 @@ describe('status', () => {
         logger,
       });
       const statusInfo = (await status.readStatus())!;
-      const { exitCode, stdout } = await testBinUtils.pkStdioSwitch(
-        global.testCmd,
-      )(
+      const { exitCode, stdout } = await testBinUtils.pkStdio(
         ['agent', 'status', '--format', 'json', '--verbose'],
         {
           PK_NODE_PATH: agentDir,
@@ -184,9 +179,7 @@ describe('status', () => {
         });
         const statusInfo = (await status.readStatus())!;
         // This still needs a `nodePath` because of session token path
-        const { exitCode, stdout } = await testBinUtils.pkStdioSwitch(
-          global.testCmd,
-        )(
+        const { exitCode, stdout } = await testBinUtils.pkStdio(
           [
             'agent',
             'status',

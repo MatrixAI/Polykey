@@ -102,7 +102,7 @@ describe('allow/disallow/permissions', () => {
     async () => {
       let exitCode, stdout;
       // Add the node to our node graph, otherwise we won't be able to contact it
-      await testBinUtils.pkStdioSwitch(global.testCmd)(
+      await testBinUtils.pkStdio(
         [
           'nodes',
           'add',
@@ -119,7 +119,7 @@ describe('allow/disallow/permissions', () => {
       // Must first trust node before we can set permissions
       // This is because trusting the node sets it in our gestalt graph, which
       // we need in order to set permissions
-      await testBinUtils.pkStdioSwitch(global.testCmd)(
+      await testBinUtils.pkStdio(
         ['identities', 'trust', nodesUtils.encodeNodeId(nodeId)],
         {
           PK_NODE_PATH: nodePath,
@@ -129,7 +129,7 @@ describe('allow/disallow/permissions', () => {
       );
       // We should now have the 'notify' permission, so we'll set the 'scan'
       // permission as well
-      ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+      ({ exitCode } = await testBinUtils.pkStdio(
         ['identities', 'allow', nodesUtils.encodeNodeId(nodeId), 'scan'],
         {
           PK_NODE_PATH: nodePath,
@@ -139,7 +139,7 @@ describe('allow/disallow/permissions', () => {
       ));
       expect(exitCode).toBe(0);
       // Check that both permissions are set
-      ({ exitCode, stdout } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+      ({ exitCode, stdout } = await testBinUtils.pkStdio(
         [
           'identities',
           'permissions',
@@ -158,7 +158,7 @@ describe('allow/disallow/permissions', () => {
         permissions: ['notify', 'scan'],
       });
       // Disallow both permissions
-      ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+      ({ exitCode } = await testBinUtils.pkStdio(
         ['identities', 'disallow', nodesUtils.encodeNodeId(nodeId), 'notify'],
         {
           PK_NODE_PATH: nodePath,
@@ -167,7 +167,7 @@ describe('allow/disallow/permissions', () => {
         dataDir,
       ));
       expect(exitCode).toBe(0);
-      ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+      ({ exitCode } = await testBinUtils.pkStdio(
         ['identities', 'disallow', nodesUtils.encodeNodeId(nodeId), 'scan'],
         {
           PK_NODE_PATH: nodePath,
@@ -177,7 +177,7 @@ describe('allow/disallow/permissions', () => {
       ));
       expect(exitCode).toBe(0);
       // Check that both permissions were unset
-      ({ exitCode, stdout } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+      ({ exitCode, stdout } = await testBinUtils.pkStdio(
         [
           'identities',
           'permissions',
@@ -203,7 +203,7 @@ describe('allow/disallow/permissions', () => {
       // Can't test with target executable due to mocking
       let exitCode, stdout;
       // Add the node to our node graph, otherwise we won't be able to contact it
-      await testBinUtils.pkStdioSwitch(global.testCmd)(
+      await testBinUtils.pkStdio(
         [
           'nodes',
           'add',
@@ -221,7 +221,7 @@ describe('allow/disallow/permissions', () => {
       const mockedBrowser = jest
         .spyOn(identitiesUtils, 'browser')
         .mockImplementation(() => {});
-      await testBinUtils.pkStdioSwitch(global.testCmd)(
+      await testBinUtils.pkStdio(
         [
           'identities',
           'authenticate',
@@ -241,7 +241,7 @@ describe('allow/disallow/permissions', () => {
       // This command should fail first time since the identity won't be linked
       // to any nodes. It will trigger this process via discovery and we must
       // wait and then retry
-      await testBinUtils.pkStdioSwitch(global.testCmd)(
+      await testBinUtils.pkStdio(
         ['identities', 'trust', providerString],
         {
           PK_NODE_PATH: nodePath,
@@ -270,7 +270,7 @@ describe('allow/disallow/permissions', () => {
         },
         100,
       );
-      ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+      ({ exitCode } = await testBinUtils.pkStdio(
         ['identities', 'trust', providerString],
         {
           PK_NODE_PATH: nodePath,
@@ -281,7 +281,7 @@ describe('allow/disallow/permissions', () => {
       expect(exitCode).toBe(0);
       // We should now have the 'notify' permission, so we'll set the 'scan'
       // permission as well
-      ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+      ({ exitCode } = await testBinUtils.pkStdio(
         ['identities', 'allow', providerString, 'scan'],
         {
           PK_NODE_PATH: nodePath,
@@ -291,7 +291,7 @@ describe('allow/disallow/permissions', () => {
       ));
       expect(exitCode).toBe(0);
       // Check that both permissions are set
-      ({ exitCode, stdout } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+      ({ exitCode, stdout } = await testBinUtils.pkStdio(
         ['identities', 'permissions', providerString, '--format', 'json'],
         {
           PK_NODE_PATH: nodePath,
@@ -304,7 +304,7 @@ describe('allow/disallow/permissions', () => {
         permissions: ['notify', 'scan'],
       });
       // Disallow both permissions
-      ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+      ({ exitCode } = await testBinUtils.pkStdio(
         ['identities', 'disallow', providerString, 'notify'],
         {
           PK_NODE_PATH: nodePath,
@@ -313,7 +313,7 @@ describe('allow/disallow/permissions', () => {
         dataDir,
       ));
       expect(exitCode).toBe(0);
-      ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+      ({ exitCode } = await testBinUtils.pkStdio(
         ['identities', 'disallow', providerString, 'scan'],
         {
           PK_NODE_PATH: nodePath,
@@ -323,7 +323,7 @@ describe('allow/disallow/permissions', () => {
       ));
       expect(exitCode).toBe(0);
       // Check that both permissions were unset
-      ({ exitCode, stdout } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+      ({ exitCode, stdout } = await testBinUtils.pkStdio(
         ['identities', 'permissions', providerString, '--format', 'json'],
         {
           PK_NODE_PATH: nodePath,
@@ -343,7 +343,7 @@ describe('allow/disallow/permissions', () => {
       let exitCode;
       // Allow
       // Invalid gestalt id
-      ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+      ({ exitCode } = await testBinUtils.pkStdio(
         ['identities', 'allow', 'invalid', 'notify'],
         {
           PK_NODE_PATH: nodePath,
@@ -353,7 +353,7 @@ describe('allow/disallow/permissions', () => {
       ));
       expect(exitCode).toBe(sysexits.USAGE);
       // Invalid permission
-      ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+      ({ exitCode } = await testBinUtils.pkStdio(
         ['identities', 'allow', nodesUtils.encodeNodeId(nodeId), 'invalid'],
         {
           PK_NODE_PATH: nodePath,
@@ -364,7 +364,7 @@ describe('allow/disallow/permissions', () => {
       expect(exitCode).toBe(sysexits.USAGE);
       // Permissions
       // Invalid gestalt id
-      ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+      ({ exitCode } = await testBinUtils.pkStdio(
         ['identities', 'permissions', 'invalid'],
         {
           PK_NODE_PATH: nodePath,
@@ -375,7 +375,7 @@ describe('allow/disallow/permissions', () => {
       expect(exitCode).toBe(sysexits.USAGE);
       // Disallow
       // Invalid gestalt id
-      ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+      ({ exitCode } = await testBinUtils.pkStdio(
         ['identities', 'disallow', 'invalid', 'notify'],
         {
           PK_NODE_PATH: nodePath,
@@ -385,7 +385,7 @@ describe('allow/disallow/permissions', () => {
       ));
       expect(exitCode).toBe(sysexits.USAGE);
       // Invalid permission
-      ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+      ({ exitCode } = await testBinUtils.pkStdio(
         ['identities', 'disallow', nodesUtils.encodeNodeId(nodeId), 'invalid'],
         {
           PK_NODE_PATH: nodePath,

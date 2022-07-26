@@ -60,7 +60,7 @@ describe('add', () => {
     mockedPingNode.mockRestore();
   });
   runTestIfPlatforms('linux')('adds a node', async () => {
-    const { exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+    const { exitCode } = await testBinUtils.pkStdio(
       [
         'nodes',
         'add',
@@ -76,7 +76,7 @@ describe('add', () => {
     );
     expect(exitCode).toBe(0);
     // Checking if node was added.
-    const { stdout } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+    const { stdout } = await testBinUtils.pkStdio(
       ['nodes', 'find', nodesUtils.encodeNodeId(validNodeId)],
       {
         PK_NODE_PATH: nodePath,
@@ -90,7 +90,7 @@ describe('add', () => {
   runTestIfPlatforms('linux')(
     'fails to add a node (invalid node ID)',
     async () => {
-      const { exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+      const { exitCode } = await testBinUtils.pkStdio(
         [
           'nodes',
           'add',
@@ -110,7 +110,7 @@ describe('add', () => {
   runTestIfPlatforms('linux')(
     'fails to add a node (invalid IP address)',
     async () => {
-      const { exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+      const { exitCode } = await testBinUtils.pkStdio(
         [
           'nodes',
           'add',
@@ -128,7 +128,7 @@ describe('add', () => {
     },
   );
   runTestIfPlatforms('linux')('adds a node with --force flag', async () => {
-    const { exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+    const { exitCode } = await testBinUtils.pkStdio(
       [
         'nodes',
         'add',
@@ -150,7 +150,7 @@ describe('add', () => {
   });
   runTestIfPlatforms('linux')('fails to add node when ping fails', async () => {
     mockedPingNode.mockImplementation(() => false);
-    const { exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+    const { exitCode } = await testBinUtils.pkStdio(
       [
         'nodes',
         'add',
@@ -168,7 +168,7 @@ describe('add', () => {
   });
   runTestIfPlatforms('linux')('adds a node with --no-ping flag', async () => {
     mockedPingNode.mockImplementation(() => false);
-    const { exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+    const { exitCode } = await testBinUtils.pkStdio(
       [
         'nodes',
         'add',

@@ -55,7 +55,7 @@ describe('renew', () => {
   runTestIfPlatforms('linux')('renews the keypair', async () => {
     // Can't test with target executable due to mocking
     // Get previous keypair and nodeId
-    let { exitCode, stdout } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+    let { exitCode, stdout } = await testBinUtils.pkStdio(
       ['keys', 'root', '--private-key', '--format', 'json'],
       {
         PK_NODE_PATH: nodePath,
@@ -66,7 +66,7 @@ describe('renew', () => {
     expect(exitCode).toBe(0);
     const prevPublicKey = JSON.parse(stdout).publicKey;
     const prevPrivateKey = JSON.parse(stdout).privateKey;
-    ({ exitCode, stdout } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+    ({ exitCode, stdout } = await testBinUtils.pkStdio(
       ['agent', 'status', '--format', 'json'],
       {
         PK_NODE_PATH: nodePath,
@@ -79,7 +79,7 @@ describe('renew', () => {
     // Renew keypair
     const passPath = path.join(dataDir, 'renew-password');
     await fs.promises.writeFile(passPath, 'password-new');
-    ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+    ({ exitCode } = await testBinUtils.pkStdio(
       ['keys', 'renew', '--password-new-file', passPath],
       {
         PK_NODE_PATH: nodePath,
@@ -89,7 +89,7 @@ describe('renew', () => {
     ));
     expect(exitCode).toBe(0);
     // Get new keypair and nodeId and compare against old
-    ({ exitCode, stdout } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+    ({ exitCode, stdout } = await testBinUtils.pkStdio(
       ['keys', 'root', '--private-key', '--format', 'json'],
       {
         PK_NODE_PATH: nodePath,
@@ -100,7 +100,7 @@ describe('renew', () => {
     expect(exitCode).toBe(0);
     const newPublicKey = JSON.parse(stdout).publicKey;
     const newPrivateKey = JSON.parse(stdout).privateKey;
-    ({ exitCode, stdout } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+    ({ exitCode, stdout } = await testBinUtils.pkStdio(
       ['agent', 'status', '--format', 'json'],
       {
         PK_NODE_PATH: nodePath,
@@ -115,7 +115,7 @@ describe('renew', () => {
     expect(newNodeId).not.toBe(prevNodeId);
     // Revert side effects
     await fs.promises.writeFile(passPath, password);
-    ({ exitCode } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+    ({ exitCode } = await testBinUtils.pkStdio(
       ['keys', 'password', '--password-new-file', passPath],
       {
         PK_NODE_PATH: nodePath,

@@ -14,11 +14,7 @@ describe('sign-verify', () => {
   let agentClose;
   beforeEach(async () => {
     ({ agentDir, agentPassword, agentClose } =
-      await testBinUtils.setupTestAgent(
-        global.testCmd,
-        globalRootKeyPems[0],
-        logger,
-      ));
+      await testBinUtils.setupTestAgent(globalRootKeyPems[0], logger));
   });
   afterEach(async () => {
     await agentClose();
@@ -31,7 +27,7 @@ describe('sign-verify', () => {
       await fs.promises.writeFile(dataPath, 'sign-me', {
         encoding: 'binary',
       });
-      ({ exitCode, stdout } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+      ({ exitCode, stdout } = await testBinUtils.pkStdio(
         ['keys', 'sign', dataPath, '--format', 'json'],
         {
           PK_NODE_PATH: agentDir,
@@ -48,7 +44,7 @@ describe('sign-verify', () => {
       await fs.promises.writeFile(signaturePath, signed, {
         encoding: 'binary',
       });
-      ({ exitCode, stdout } = await testBinUtils.pkStdioSwitch(global.testCmd)(
+      ({ exitCode, stdout } = await testBinUtils.pkStdio(
         ['keys', 'verify', dataPath, signaturePath, '--format', 'json'],
         {
           PK_NODE_PATH: agentDir,

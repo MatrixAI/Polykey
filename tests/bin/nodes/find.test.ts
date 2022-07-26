@@ -102,9 +102,7 @@ describe('find', () => {
     });
   });
   runTestIfPlatforms('linux')('finds an online node', async () => {
-    const { exitCode, stdout } = await testBinUtils.pkStdioSwitch(
-      global.testCmd,
-    )(
+    const { exitCode, stdout } = await testBinUtils.pkStdio(
       [
         'nodes',
         'find',
@@ -128,9 +126,7 @@ describe('find', () => {
     });
   });
   runTestIfPlatforms('linux')('finds an offline node', async () => {
-    const { exitCode, stdout } = await testBinUtils.pkStdioSwitch(
-      global.testCmd,
-    )(
+    const { exitCode, stdout } = await testBinUtils.pkStdio(
       [
         'nodes',
         'find',
@@ -159,9 +155,7 @@ describe('find', () => {
       const unknownNodeId = nodesUtils.decodeNodeId(
         'vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg',
       );
-      const { exitCode, stdout } = await testBinUtils.pkStdioSwitch(
-        global.testCmd,
-      )(
+      const { exitCode, stdout } = await testBinUtils.pkStdio(
         [
           'nodes',
           'find',
