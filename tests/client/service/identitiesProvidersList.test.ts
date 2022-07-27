@@ -50,6 +50,7 @@ describe('identitiesProvidersList', () => {
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
       dbPath,
+      // @ts-ignore - version of js-logger is incompatible (remove when EFS logger updates to 3.*)
       logger,
     });
     identitiesManager = await IdentitiesManager.createIdentitiesManager({

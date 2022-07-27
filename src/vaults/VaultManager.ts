@@ -181,6 +181,7 @@ class VaultManager {
           efs = await EncryptedFS.createEncryptedFS({
             dbPath: this.efsPath,
             dbKey: vaultKey,
+            // @ts-ignore - version of js-logger is incompatible (remove when EFS logger updates to 3.*)
             logger: this.logger.getChild('EncryptedFileSystem'),
           });
         } catch (e) {

@@ -33,6 +33,7 @@ describe('Vaults utils', () => {
     const efs = await EncryptedFS.createEncryptedFS({
       dbKey: key,
       dbPath: dataDir,
+      // @ts-ignore - version of js-logger is incompatible (remove when DB updates to 5.*)
       logger,
     });
     await efs.promises.mkdir(path.join('dir', 'dir2', 'dir3'), {
