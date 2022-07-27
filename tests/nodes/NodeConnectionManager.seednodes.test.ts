@@ -18,6 +18,7 @@ import * as nodesUtils from '@/nodes/utils';
 import * as keysUtils from '@/keys/utils';
 import * as grpcUtils from '@/grpc/utils';
 import Queue from '@/nodes/Queue';
+import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 
 describe(`${NodeConnectionManager.name} seed nodes test`, () => {
   const logger = new Logger(
@@ -76,20 +77,12 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
   let remoteNodeId1: NodeId;
   let remoteNodeId2: NodeId;
 
-  const mockedGenerateDeterministicKeyPair = jest.spyOn(
-    keysUtils,
-    'generateDeterministicKeyPair',
-  );
   const dummyNodeManager = {
     setNode: jest.fn(),
     refreshBucketQueueAdd: jest.fn(),
   } as unknown as NodeManager;
 
   beforeAll(async () => {
-    mockedGenerateDeterministicKeyPair.mockImplementation((bits, _) => {
-      return keysUtils.generateKeyPair(bits);
-    });
-
     dataDir2 = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -100,6 +93,9 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
       networkConfig: {
         proxyHost: '127.0.0.1' as Host,
       },
+      keysConfig: {
+        privateKeyPemOverride: globalRootKeyPems[0],
+      },
       logger: logger.getChild('remoteNode1'),
     });
     remoteNodeId1 = remoteNode1.keyManager.getNodeId();
@@ -108,6 +104,9 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
       nodePath: path.join(dataDir2, 'remoteNode2'),
       networkConfig: {
         proxyHost: '127.0.0.1' as Host,
+      },
+      keysConfig: {
+        privateKeyPemOverride: globalRootKeyPems[1],
       },
       logger: logger.getChild('remoteNode2'),
     });
@@ -137,6 +136,7 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
     keyManager = await KeyManager.createKeyManager({
       password,
       keysPath,
+      privateKeyPemOverride: globalRootKeyPems[2],
       logger: logger.getChild('keyManager'),
     });
     const dbPath = path.join(dataDir, 'db');
@@ -486,6 +486,9 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
             clientHost: localHost,
             forwardHost: localHost,
           },
+          keysConfig: {
+            privateKeyPemOverride: globalRootKeyPems[3],
+          },
           seedNodes,
           logger,
         });
@@ -497,6 +500,9 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
             agentHost: localHost,
             clientHost: localHost,
             forwardHost: localHost,
+          },
+          keysConfig: {
+            privateKeyPemOverride: globalRootKeyPems[4],
           },
           seedNodes,
           logger,

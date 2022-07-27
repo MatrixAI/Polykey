@@ -2,11 +2,11 @@ import type { AddressInfo } from 'net';
 import type { ConnectionInfo, Host, Port, TLSConfig } from '@/network/types';
 import type { NodeId, NodeInfo } from '@/nodes/types';
 import type { Server } from '@grpc/grpc-js';
+import type * as child_process from 'child_process';
 import net from 'net';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
-import * as child_process from 'child_process';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { destroyed } from '@matrixai/async-init';
@@ -36,9 +36,10 @@ import * as grpcUtils from '@/grpc/utils';
 import { timerStart } from '@/utils';
 import Queue from '@/nodes/Queue';
 import * as testNodesUtils from './utils';
-import * as testUtils from '../utils';
 import * as grpcTestUtils from '../grpc/utils';
 import * as agentTestUtils from '../agent/utils';
+import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
+import { spawnFile } from '../utils/exec';
 
 const destroyCallback = async () => {};
 
@@ -195,6 +196,7 @@ describe(`${NodeConnection.name} test`, () => {
       keysPath: serverKeysPath,
       fs: fs,
       logger: logger,
+      privateKeyPemOverride: globalRootKeyPems[1],
     });
 
     serverTLSConfig = {
@@ -313,6 +315,7 @@ describe(`${NodeConnection.name} test`, () => {
       password,
       keysPath: clientKeysPath,
       logger,
+      privateKeyPemOverride: globalRootKeyPems[2],
     });
 
     const clientTLSConfig = {
@@ -335,15 +338,16 @@ describe(`${NodeConnection.name} test`, () => {
     sourcePort = clientProxy.getProxyPort();
 
     // Other setup
-    const globalKeyPair = await testUtils.setupGlobalKeypair();
+    const privateKey = keysUtils.privateKeyFromPem(globalRootKeyPems[0]);
+    const publicKey = keysUtils.publicKeyFromPrivateKey(privateKey);
     const cert = keysUtils.generateCertificate(
-      globalKeyPair.publicKey,
-      globalKeyPair.privateKey,
-      globalKeyPair.privateKey,
+      publicKey,
+      privateKey,
+      privateKey,
       86400,
     );
     tlsConfig = {
-      keyPrivatePem: keysUtils.keyPairToPem(globalKeyPair).privateKey,
+      keyPrivatePem: globalRootKeyPems[0],
       certChainPem: keysUtils.certToPem(cert),
     };
   }, global.polykeyStartupTimeout * 2);
@@ -494,6 +498,9 @@ describe(`${NodeConnection.name} test`, () => {
         logger: logger,
         networkConfig: {
           proxyHost: localHost,
+        },
+        keysConfig: {
+          privateKeyPemOverride: globalRootKeyPems[3],
         },
       });
       // Have a nodeConnection try to connect to it
@@ -686,6 +693,9 @@ describe(`${NodeConnection.name} test`, () => {
         networkConfig: {
           proxyHost: localHost,
         },
+        keysConfig: {
+          privateKeyPemOverride: globalRootKeyPems[3],
+        },
       });
       // Have a nodeConnection try to connect to it
       const killSelf = jest.fn();
@@ -725,11 +735,7 @@ describe(`${NodeConnection.name} test`, () => {
       let testProxy: Proxy | undefined;
       let testProcess: child_process.ChildProcessWithoutNullStreams | undefined;
       try {
-        const testProcess = child_process.spawn('ts-node', [
-          '--require',
-          'tsconfig-paths/register',
-          'tests/grpc/utils/testServer.ts',
-        ]);
+        const testProcess = spawnFile('tests/grpc/utils/testServer.ts');
         const waitP = promise<string>();
         testProcess.stdout.on('data', (data) => {
           waitP.resolveP(data);
@@ -795,11 +801,7 @@ describe(`${NodeConnection.name} test`, () => {
       let testProxy: Proxy | undefined;
       let testProcess: child_process.ChildProcessWithoutNullStreams | undefined;
       try {
-        const testProcess = child_process.spawn('ts-node', [
-          '--require',
-          'tsconfig-paths/register',
-          'tests/grpc/utils/testServer.ts',
-        ]);
+        const testProcess = spawnFile('tests/grpc/utils/testServer.ts');
         const waitP = promise<string>();
         testProcess.stdout.on('data', (data) => {
           waitP.resolveP(data);

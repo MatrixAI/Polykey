@@ -161,6 +161,29 @@ describe('KeyManager', () => {
     },
     global.defaultTimeout * 2,
   );
+  test('override key generation with privateKeyOverride', async () => {
+    const keysPath = `${dataDir}/keys`;
+    const keyPair = await keysUtils.generateKeyPair(4096);
+    const privateKeyPem = keysUtils.privateKeyToPem(keyPair.privateKey);
+    const mockedGenerateKeyPair = jest.spyOn(
+      keysUtils,
+      'generateDeterministicKeyPair',
+    );
+    const keyManager = await KeyManager.createKeyManager({
+      keysPath,
+      password,
+      privateKeyPemOverride: privateKeyPem,
+      logger,
+    });
+    expect(mockedGenerateKeyPair).not.toHaveBeenCalled();
+    const keysPathContents = await fs.promises.readdir(keysPath);
+    expect(keysPathContents).toContain('root.pub');
+    expect(keysPathContents).toContain('root.key');
+    expect(
+      keysUtils.publicKeyToPem(keyManager.getRootKeyPair().publicKey),
+    ).toEqual(keysUtils.publicKeyToPem(keyPair.publicKey));
+    await keyManager.stop();
+  });
   test('uses WorkerManager for generating root key pair', async () => {
     const keysPath = `${dataDir}/keys`;
     const keyManager = await KeyManager.createKeyManager({

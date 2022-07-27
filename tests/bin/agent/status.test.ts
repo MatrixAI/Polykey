@@ -1,12 +1,12 @@
-import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import Status from '@/status/Status';
 import * as nodesUtils from '@/nodes/utils';
 import config from '@/config';
-import * as testBinUtils from '../utils';
-import * as testUtils from '../../utils';
+import * as execUtils from '../../utils/exec';
+import { runTestIfPlatforms } from '../../utils';
+import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('status', () => {
   const logger = new Logger('status test', LogLevel.WARN, [
@@ -15,7 +15,7 @@ describe('status', () => {
   let dataDir: string;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
-      path.join(os.tmpdir(), 'polykey-test-'),
+      path.join(global.tmpDir, 'polykey-test-'),
     );
   });
   afterEach(async () => {
@@ -24,7 +24,7 @@ describe('status', () => {
       recursive: true,
     });
   });
-  test(
+  runTestIfPlatforms('docker')(
     'status on STARTING, STOPPING, DEAD agent',
     async () => {
       // This test must create its own agent process
@@ -39,12 +39,10 @@ describe('status', () => {
         fs,
         logger,
       });
-      const agentProcess = await testBinUtils.pkSpawn(
+      const agentProcess = await execUtils.pkSpawn(
         [
           'agent',
           'start',
-          '--root-key-pair-bits',
-          '1024',
           '--client-host',
           '127.0.0.1',
           '--proxy-host',
@@ -56,13 +54,14 @@ describe('status', () => {
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
           PK_PASSWORD: password,
+          PK_ROOT_KEY: globalRootKeyPems[0],
         },
         dataDir,
         logger,
       );
       await status.waitFor('STARTING');
       let exitCode, stdout;
-      ({ exitCode, stdout } = await testBinUtils.pkStdio(
+      ({ exitCode, stdout } = await execUtils.pkStdio(
         ['agent', 'status', '--format', 'json'],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -74,14 +73,14 @@ describe('status', () => {
       // If the command was slow, it may have become LIVE already
       expect(JSON.parse(stdout)).toMatchObject({
         status: expect.stringMatching(/STARTING|LIVE/),
-        pid: agentProcess.pid,
+        pid: expect.any(Number),
       });
       await status.waitFor('LIVE');
-      const agentProcessExit = testBinUtils.processExit(agentProcess);
+      const agentProcessExit = execUtils.processExit(agentProcess);
       agentProcess.kill('SIGTERM');
       // Cannot wait for STOPPING because waitFor polling may miss the transition
       await status.waitFor('DEAD');
-      ({ exitCode, stdout } = await testBinUtils.pkStdio(
+      ({ exitCode, stdout } = await execUtils.pkStdio(
         ['agent', 'status', '--format', 'json'],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -96,7 +95,7 @@ describe('status', () => {
         status: expect.stringMatching(/STOPPING|DEAD/),
       });
       await agentProcessExit;
-      ({ exitCode, stdout } = await testBinUtils.pkStdio(
+      ({ exitCode, stdout } = await execUtils.pkStdio(
         ['agent', 'status', '--format', 'json'],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -111,8 +110,8 @@ describe('status', () => {
     },
     global.defaultTimeout * 2,
   );
-  test('status on missing agent', async () => {
-    const { exitCode, stdout } = await testBinUtils.pkStdio(
+  runTestIfPlatforms('docker')('status on missing agent', async () => {
+    const { exitCode, stdout } = await execUtils.pkStdio(
       ['agent', 'status', '--format', 'json'],
       {
         PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -124,34 +123,33 @@ describe('status', () => {
     });
   });
   describe('status with global agent', () => {
-    let globalAgentDir;
-    let globalAgentPassword;
-    let globalAgentClose;
-    beforeAll(async () => {
-      ({ globalAgentDir, globalAgentPassword, globalAgentClose } =
-        await testUtils.setupGlobalAgent(logger));
-    }, globalThis.maxTimeout);
-    afterAll(async () => {
-      await globalAgentClose();
+    let agentDir;
+    let agentPassword;
+    let agentClose;
+    beforeEach(async () => {
+      ({ agentDir, agentPassword, agentClose } = await execUtils.setupTestAgent(
+        globalRootKeyPems[1],
+        logger,
+      ));
     });
-    test('status on LIVE agent', async () => {
+    afterEach(async () => {
+      await agentClose();
+    });
+    runTestIfPlatforms('docker')('status on LIVE agent', async () => {
       const status = new Status({
-        statusPath: path.join(globalAgentDir, config.defaults.statusBase),
-        statusLockPath: path.join(
-          globalAgentDir,
-          config.defaults.statusLockBase,
-        ),
+        statusPath: path.join(agentDir, config.defaults.statusBase),
+        statusLockPath: path.join(agentDir, config.defaults.statusLockBase),
         fs,
         logger,
       });
       const statusInfo = (await status.readStatus())!;
-      const { exitCode, stdout } = await testBinUtils.pkStdio(
+      const { exitCode, stdout } = await execUtils.pkStdio(
         ['agent', 'status', '--format', 'json', '--verbose'],
         {
-          PK_NODE_PATH: globalAgentDir,
-          PK_PASSWORD: globalAgentPassword,
+          PK_NODE_PATH: agentDir,
+          PK_PASSWORD: agentPassword,
         },
-        globalAgentDir,
+        agentDir,
       );
       expect(exitCode).toBe(0);
       expect(JSON.parse(stdout)).toMatchObject({
@@ -170,37 +168,38 @@ describe('status', () => {
         rootCertPem: expect.any(String),
       });
     });
-    test('status on remote LIVE agent', async () => {
+    runTestIfPlatforms('docker')('status on remote LIVE agent', async () => {
       const passwordPath = path.join(dataDir, 'password');
-      await fs.promises.writeFile(passwordPath, globalAgentPassword);
+      await fs.promises.writeFile(passwordPath, agentPassword);
       const status = new Status({
-        statusPath: path.join(globalAgentDir, config.defaults.statusBase),
-        statusLockPath: path.join(
-          globalAgentDir,
-          config.defaults.statusLockBase,
-        ),
+        statusPath: path.join(agentDir, config.defaults.statusBase),
+        statusLockPath: path.join(agentDir, config.defaults.statusLockBase),
         fs,
         logger,
       });
       const statusInfo = (await status.readStatus())!;
       // This still needs a `nodePath` because of session token path
-      const { exitCode, stdout } = await testBinUtils.pkStdio([
-        'agent',
-        'status',
-        '--node-path',
+      const { exitCode, stdout } = await execUtils.pkStdio(
+        [
+          'agent',
+          'status',
+          '--node-path',
+          dataDir,
+          '--password-file',
+          passwordPath,
+          '--node-id',
+          nodesUtils.encodeNodeId(statusInfo.data.nodeId),
+          '--client-host',
+          statusInfo.data.clientHost,
+          '--client-port',
+          statusInfo.data.clientPort.toString(),
+          '--format',
+          'json',
+          '--verbose',
+        ],
+        {},
         dataDir,
-        '--password-file',
-        passwordPath,
-        '--node-id',
-        nodesUtils.encodeNodeId(statusInfo.data.nodeId),
-        '--client-host',
-        statusInfo.data.clientHost,
-        '--client-port',
-        statusInfo.data.clientPort.toString(),
-        '--format',
-        'json',
-        '--verbose',
-      ]);
+      );
       expect(exitCode).toBe(0);
       expect(JSON.parse(stdout)).toMatchObject({
         status: 'LIVE',

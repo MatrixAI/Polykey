@@ -1,21 +1,18 @@
 import type { NodeId, NodeIdEncoded } from '@/nodes/types';
 import type { Host } from '@/network/types';
-import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
 import * as nodesUtils from '@/nodes/utils';
-import * as keysUtils from '@/keys/utils';
-import * as testBinUtils from '../utils';
+import * as execUtils from '../../utils/exec';
 import * as testNodesUtils from '../../nodes/utils';
-import * as testUtils from '../../utils';
+import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
+import { runTestIfPlatforms } from '../../utils';
 
 describe('claim', () => {
   const logger = new Logger('claim test', LogLevel.WARN, [new StreamHandler()]);
   const password = 'helloworld';
-  let mockedGenerateKeyPair: jest.SpyInstance;
-  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
   let dataDir: string;
   let nodePath: string;
   let pkAgent: PolykeyAgent;
@@ -23,16 +20,9 @@ describe('claim', () => {
   let localId: NodeId;
   let remoteId: NodeId;
   let remoteIdEncoded: NodeIdEncoded;
-  beforeAll(async () => {
-    const globalKeyPair = await testUtils.setupGlobalKeypair();
-    mockedGenerateKeyPair = jest
-      .spyOn(keysUtils, 'generateKeyPair')
-      .mockResolvedValueOnce(globalKeyPair);
-    mockedGenerateDeterministicKeyPair = jest
-      .spyOn(keysUtils, 'generateDeterministicKeyPair')
-      .mockResolvedValueOnce(globalKeyPair);
+  beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
-      path.join(os.tmpdir(), 'polykey-test-'),
+      path.join(global.tmpDir, 'polykey-test-'),
     );
     nodePath = path.join(dataDir, 'keynode');
     pkAgent = await PolykeyAgent.createPolykeyAgent({
@@ -45,7 +35,7 @@ describe('claim', () => {
         clientHost: '127.0.0.1' as Host,
       },
       keysConfig: {
-        rootKeyPairBits: 2048,
+        privateKeyPemOverride: globalRootKeyPems[0],
       },
       seedNodes: {}, // Explicitly no seed nodes on startup
       logger,
@@ -62,7 +52,7 @@ describe('claim', () => {
         clientHost: '127.0.0.1' as Host,
       },
       keysConfig: {
-        rootKeyPairBits: 2048,
+        privateKeyPemOverride: globalRootKeyPems[1],
       },
       seedNodes: {}, // Explicitly no seed nodes on startup
       logger,
@@ -82,8 +72,8 @@ describe('claim', () => {
       },
       vaults: {},
     });
-  }, global.defaultTimeout * 2);
-  afterAll(async () => {
+  });
+  afterEach(async () => {
     await pkAgent.stop();
     await pkAgent.destroy();
     await remoteNode.stop();
@@ -92,11 +82,9 @@ describe('claim', () => {
       force: true,
       recursive: true,
     });
-    mockedGenerateKeyPair.mockRestore();
-    mockedGenerateDeterministicKeyPair.mockRestore();
   });
-  test('sends a gestalt invite', async () => {
-    const { exitCode, stdout } = await testBinUtils.pkStdio(
+  runTestIfPlatforms()('sends a gestalt invite', async () => {
+    const { exitCode, stdout } = await execUtils.pkStdio(
       ['nodes', 'claim', remoteIdEncoded],
       {
         PK_NODE_PATH: nodePath,
@@ -107,14 +95,12 @@ describe('claim', () => {
     expect(exitCode).toBe(0);
     expect(stdout).toContain('Gestalt Invite');
     expect(stdout).toContain(remoteIdEncoded);
-    // Clear side-effects
-    await remoteNode.notificationsManager.clearNotifications();
   });
-  test('sends a gestalt invite (force invite)', async () => {
+  runTestIfPlatforms()('sends a gestalt invite (force invite)', async () => {
     await remoteNode.notificationsManager.sendNotification(localId, {
       type: 'GestaltInvite',
     });
-    const { exitCode, stdout } = await testBinUtils.pkStdio(
+    const { exitCode, stdout } = await execUtils.pkStdio(
       ['nodes', 'claim', remoteIdEncoded, '--force-invite'],
       {
         PK_NODE_PATH: nodePath,
@@ -125,15 +111,12 @@ describe('claim', () => {
     expect(exitCode).toBe(0);
     expect(stdout).toContain('Gestalt Invite');
     expect(stdout).toContain(nodesUtils.encodeNodeId(remoteId));
-    // Clear side effects
-    await pkAgent.notificationsManager.clearNotifications();
-    await remoteNode.notificationsManager.clearNotifications();
   });
-  test('claims a node', async () => {
+  runTestIfPlatforms()('claims a node', async () => {
     await remoteNode.notificationsManager.sendNotification(localId, {
       type: 'GestaltInvite',
     });
-    const { exitCode, stdout } = await testBinUtils.pkStdio(
+    const { exitCode, stdout } = await execUtils.pkStdio(
       ['nodes', 'claim', remoteIdEncoded],
       {
         PK_NODE_PATH: nodePath,
@@ -144,9 +127,5 @@ describe('claim', () => {
     expect(exitCode).toBe(0);
     expect(stdout).toContain('cryptolink claim');
     expect(stdout).toContain(remoteIdEncoded);
-    // Clear side effects
-    await pkAgent.notificationsManager.clearNotifications();
-    await pkAgent.sigchain.stop();
-    await pkAgent.sigchain.start({ fresh: true });
   });
 });

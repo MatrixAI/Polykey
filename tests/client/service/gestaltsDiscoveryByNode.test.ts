@@ -26,8 +26,8 @@ import * as nodesPB from '@/proto/js/polykey/v1/nodes/nodes_pb';
 import * as clientUtils from '@/client/utils/utils';
 import * as keysUtils from '@/keys/utils';
 import * as nodesUtils from '@/nodes/utils';
-import * as testUtils from '../../utils';
 import * as testNodesUtils from '../../nodes/utils';
+import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('gestaltsDiscoveryByNode', () => {
   const logger = new Logger('gestaltsDiscoveryByNode test', LogLevel.WARN, [
@@ -40,21 +40,6 @@ describe('gestaltsDiscoveryByNode', () => {
     id: nodesUtils.encodeNodeId(testNodesUtils.generateRandomNodeId()),
     chain: {},
   };
-  let mockedGenerateKeyPair: jest.SpyInstance;
-  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
-  beforeAll(async () => {
-    const globalKeyPair = await testUtils.setupGlobalKeypair();
-    mockedGenerateKeyPair = jest
-      .spyOn(keysUtils, 'generateKeyPair')
-      .mockResolvedValue(globalKeyPair);
-    mockedGenerateDeterministicKeyPair = jest
-      .spyOn(keysUtils, 'generateDeterministicKeyPair')
-      .mockResolvedValue(globalKeyPair);
-  });
-  afterAll(async () => {
-    mockedGenerateKeyPair.mockRestore();
-    mockedGenerateDeterministicKeyPair.mockRestore();
-  });
   const authToken = 'abc123';
   let dataDir: string;
   let discovery: Discovery;
@@ -80,6 +65,7 @@ describe('gestaltsDiscoveryByNode', () => {
       password,
       keysPath,
       logger,
+      privateKeyPemOverride: globalRootKeyPems[0],
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({

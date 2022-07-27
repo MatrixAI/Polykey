@@ -29,17 +29,11 @@ import NodeGraph from '@/nodes/NodeGraph';
 import * as nodesUtils from '@/nodes/utils';
 import Proxy from '@/network/Proxy';
 import * as vaultsUtils from '@/vaults/utils';
-import * as keysUtils from '@/keys/utils';
 import { sleep } from '@/utils';
 import VaultInternal from '@/vaults/VaultInternal';
 import * as nodeTestUtils from '../nodes/utils';
 import { expectRemoteError } from '../utils';
-
-const mockedGenerateDeterministicKeyPair = jest
-  .spyOn(keysUtils, 'generateDeterministicKeyPair')
-  .mockImplementation((bits, _) => {
-    return keysUtils.generateKeyPair(bits);
-  });
+import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 
 describe('VaultManager', () => {
   const localHost = '127.0.0.1' as Host;
@@ -73,9 +67,6 @@ describe('VaultManager', () => {
   } as KeyManager;
 
   beforeEach(async () => {
-    mockedGenerateDeterministicKeyPair.mockImplementation((bits, _) => {
-      return keysUtils.generateKeyPair(bits);
-    });
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -501,6 +492,9 @@ describe('VaultManager', () => {
         networkConfig: {
           proxyHost: localHost,
         },
+        keysConfig: {
+          privateKeyPemOverride: globalRootKeyPems[0],
+        },
       });
       remoteKeynode1Id = remoteKeynode1.keyManager.getNodeId();
       remoteKeynode1IdEncoded = nodesUtils.encodeNodeId(remoteKeynode1Id);
@@ -510,6 +504,9 @@ describe('VaultManager', () => {
         nodePath: path.join(allDataDir, 'remoteKeynode2'),
         networkConfig: {
           proxyHost: localHost,
+        },
+        keysConfig: {
+          privateKeyPemOverride: globalRootKeyPems[1],
         },
       });
       remoteKeynode2Id = remoteKeynode2.keyManager.getNodeId();
@@ -566,6 +563,7 @@ describe('VaultManager', () => {
         keysPath: path.join(allDataDir, 'allKeyManager'),
         password: 'password',
         logger,
+        privateKeyPemOverride: globalRootKeyPems[2],
       });
       localNodeId = keyManager.getNodeId();
       localNodeIdEncoded = nodesUtils.encodeNodeId(localNodeId);
@@ -1473,6 +1471,9 @@ describe('VaultManager', () => {
       networkConfig: {
         proxyHost: localHost,
       },
+      keysConfig: {
+        privateKeyPemOverride: globalRootKeyPems[3],
+      },
       logger,
     });
     const acl = await ACL.createACL({
@@ -1496,6 +1497,7 @@ describe('VaultManager', () => {
     const keyManager = await KeyManager.createKeyManager({
       keysPath: path.join(dataDir, 'keys'),
       password: 'password',
+      privateKeyPemOverride: globalRootKeyPems[4],
       logger,
     });
     await proxy.start({

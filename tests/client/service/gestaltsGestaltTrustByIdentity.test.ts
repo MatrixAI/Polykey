@@ -32,9 +32,9 @@ import * as gestaltsErrors from '@/gestalts/errors';
 import * as keysUtils from '@/keys/utils';
 import * as clientUtils from '@/client/utils/utils';
 import * as nodesUtils from '@/nodes/utils';
-import * as testUtils from '../../utils';
 import TestProvider from '../../identities/TestProvider';
 import { expectRemoteError } from '../../utils';
+import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('gestaltsGestaltTrustByIdentity', () => {
   const logger = new Logger(
@@ -53,22 +53,26 @@ describe('gestaltsGestaltTrustByIdentity', () => {
   let nodeId: NodeIdEncoded;
   const nodeChainData: ChainData = {};
   let mockedRequestChainData: jest.SpyInstance;
-  let mockedGenerateKeyPair: jest.SpyInstance;
-  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
-  beforeAll(async () => {
-    const globalKeyPair = await testUtils.setupGlobalKeypair();
-    const nodeKeyPair = await keysUtils.generateKeyPair(2048);
+  const authToken = 'abc123';
+  let dataDir: string;
+  let discovery: Discovery;
+  let gestaltGraph: GestaltGraph;
+  let identitiesManager: IdentitiesManager;
+  let queue: Queue;
+  let nodeManager: NodeManager;
+  let nodeConnectionManager: NodeConnectionManager;
+  let nodeGraph: NodeGraph;
+  let sigchain: Sigchain;
+  let proxy: Proxy;
+  let acl: ACL;
+  let db: DB;
+  let keyManager: KeyManager;
+  let grpcServer: GRPCServer;
+  let grpcClient: GRPCClientClient;
+  beforeEach(async () => {
     mockedRequestChainData = jest
       .spyOn(NodeManager.prototype, 'requestChainData')
       .mockResolvedValue(nodeChainData);
-    mockedGenerateKeyPair = jest
-      .spyOn(keysUtils, 'generateKeyPair')
-      .mockResolvedValueOnce(nodeKeyPair)
-      .mockResolvedValue(globalKeyPair);
-    mockedGenerateDeterministicKeyPair = jest
-      .spyOn(keysUtils, 'generateDeterministicKeyPair')
-      .mockResolvedValueOnce(nodeKeyPair)
-      .mockResolvedValue(globalKeyPair);
     nodeDataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'trusted-node-'),
     );
@@ -81,6 +85,9 @@ describe('gestaltsGestaltTrustByIdentity', () => {
         forwardHost: '127.0.0.1' as Host,
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
+      },
+      keysConfig: {
+        privateKeyPemOverride: globalRootKeyPems[0],
       },
       logger,
     });
@@ -100,35 +107,7 @@ describe('gestaltsGestaltTrustByIdentity', () => {
     const claim = claimsUtils.decodeClaim(claimEncoded);
     nodeChainData[claimId] = claim;
     await testProvider.publishClaim(connectedIdentity, claim);
-  }, global.maxTimeout);
-  afterAll(async () => {
-    await node.stop();
-    await fs.promises.rm(nodeDataDir, {
-      force: true,
-      recursive: true,
-    });
-    mockedGenerateKeyPair.mockRestore();
-    mockedGenerateDeterministicKeyPair.mockRestore();
-    mockedRequestChainData.mockRestore();
-  });
-  const authToken = 'abc123';
-  let dataDir: string;
-  let discovery: Discovery;
-  let gestaltGraph: GestaltGraph;
-  let identitiesManager: IdentitiesManager;
-  let queue: Queue;
-  let nodeManager: NodeManager;
-  let nodeConnectionManager: NodeConnectionManager;
-  let nodeGraph: NodeGraph;
-  let sigchain: Sigchain;
-  let proxy: Proxy;
 
-  let acl: ACL;
-  let db: DB;
-  let keyManager: KeyManager;
-  let grpcServer: GRPCServer;
-  let grpcClient: GRPCClientClient;
-  beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -137,6 +116,7 @@ describe('gestaltsGestaltTrustByIdentity', () => {
       password,
       keysPath,
       logger,
+      privateKeyPemOverride: globalRootKeyPems[1],
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
@@ -271,6 +251,13 @@ describe('gestaltsGestaltTrustByIdentity', () => {
       force: true,
       recursive: true,
     });
+
+    await node.stop();
+    await fs.promises.rm(nodeDataDir, {
+      force: true,
+      recursive: true,
+    });
+    mockedRequestChainData.mockRestore();
   });
   test('trusts an identity (already set in gestalt graph)', async () => {
     testProvider.users['disconnected-user'] = {};

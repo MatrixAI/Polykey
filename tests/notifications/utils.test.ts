@@ -8,6 +8,7 @@ import * as notificationsErrors from '@/notifications/errors';
 import * as vaultsUtils from '@/vaults/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as testNodesUtils from '../nodes/utils';
+import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 
 describe('Notifications utils', () => {
   const nodeId = testNodesUtils.generateRandomNodeId();
@@ -69,8 +70,9 @@ describe('Notifications utils', () => {
       isRead: false,
     };
 
-    const keyPair = await keysUtils.generateKeyPair(4096);
-    const keyPairPem = keysUtils.keyPairToPem(keyPair);
+    const privateKey = keysUtils.privateKeyFromPem(globalRootKeyPems[0]);
+    const publicKey = keysUtils.publicKeyFromPrivateKey(privateKey);
+    const keyPairPem = keysUtils.keyPairToPem({ privateKey, publicKey });
     const jwkPublicKey = await exportJWK(createPublicKey(keyPairPem.publicKey));
 
     const signedGeneralNotification = await notificationsUtils.signNotification(
@@ -150,8 +152,9 @@ describe('Notifications utils', () => {
       isRead: false,
     };
 
-    const keyPair = await keysUtils.generateKeyPair(4096);
-    const keyPairPem = keysUtils.keyPairToPem(keyPair);
+    const privateKey = keysUtils.privateKeyFromPem(globalRootKeyPems[1]);
+    const publicKey = keysUtils.publicKeyFromPrivateKey(privateKey);
+    const keyPairPem = keysUtils.keyPairToPem({ privateKey, publicKey });
 
     const signedGeneralNotification = await notificationsUtils.signNotification(
       generalNotification,

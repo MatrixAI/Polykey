@@ -1,46 +1,52 @@
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import * as testBinUtils from '../utils';
-import * as testUtils from '../../utils';
+import * as execUtils from '../../utils/exec';
+import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
+import { runTestIfPlatforms } from '../../utils';
 
 describe('root', () => {
   const logger = new Logger('root test', LogLevel.WARN, [new StreamHandler()]);
-  let globalAgentDir;
-  let globalAgentPassword;
-  let globalAgentClose;
-  beforeAll(async () => {
-    ({ globalAgentDir, globalAgentPassword, globalAgentClose } =
-      await testUtils.setupGlobalAgent(logger));
-  }, globalThis.maxTimeout);
-  afterAll(async () => {
-    await globalAgentClose();
+  let agentDir;
+  let agentPassword;
+  let agentClose;
+  beforeEach(async () => {
+    ({ agentDir, agentPassword, agentClose } = await execUtils.setupTestAgent(
+      globalRootKeyPems[0],
+      logger,
+    ));
   });
-  test('root gets the public key', async () => {
-    const { exitCode, stdout } = await testBinUtils.pkStdio(
+  afterEach(async () => {
+    await agentClose();
+  });
+  runTestIfPlatforms('docker')('root gets the public key', async () => {
+    const { exitCode, stdout } = await execUtils.pkStdio(
       ['keys', 'root', '--format', 'json'],
       {
-        PK_NODE_PATH: globalAgentDir,
-        PK_PASSWORD: globalAgentPassword,
+        PK_NODE_PATH: agentDir,
+        PK_PASSWORD: agentPassword,
       },
-      globalAgentDir,
+      agentDir,
     );
     expect(exitCode).toBe(0);
     expect(JSON.parse(stdout)).toEqual({
       publicKey: expect.any(String),
     });
   });
-  test('root gets public and private keys', async () => {
-    const { exitCode, stdout } = await testBinUtils.pkStdio(
-      ['keys', 'root', '--private-key', '--format', 'json'],
-      {
-        PK_NODE_PATH: globalAgentDir,
-        PK_PASSWORD: globalAgentPassword,
-      },
-      globalAgentDir,
-    );
-    expect(exitCode).toBe(0);
-    expect(JSON.parse(stdout)).toEqual({
-      publicKey: expect.any(String),
-      privateKey: expect.any(String),
-    });
-  });
+  runTestIfPlatforms('docker')(
+    'root gets public and private keys',
+    async () => {
+      const { exitCode, stdout } = await execUtils.pkStdio(
+        ['keys', 'root', '--private-key', '--format', 'json'],
+        {
+          PK_NODE_PATH: agentDir,
+          PK_PASSWORD: agentPassword,
+        },
+        agentDir,
+      );
+      expect(exitCode).toBe(0);
+      expect(JSON.parse(stdout)).toEqual({
+        publicKey: expect.any(String),
+        privateKey: expect.any(String),
+      });
+    },
+  );
 });

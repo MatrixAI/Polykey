@@ -13,7 +13,6 @@ import VaultInternal from '@/vaults/VaultInternal';
 import * as vaultOps from '@/vaults/VaultOps';
 import * as vaultsUtils from '@/vaults/utils';
 import * as keysUtils from '@/keys/utils';
-import * as testUtils from '../utils';
 import * as testNodesUtils from '../nodes/utils';
 
 describe('VaultOps', () => {
@@ -32,18 +31,7 @@ describe('VaultOps', () => {
     },
   } as KeyManager;
 
-  let mockedGenerateKeyPair: jest.SpyInstance;
-  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
-
   beforeEach(async () => {
-    const globalKeyPair = await testUtils.setupGlobalKeypair();
-    mockedGenerateKeyPair = jest
-      .spyOn(keysUtils, 'generateKeyPair')
-      .mockResolvedValue(globalKeyPair);
-    mockedGenerateDeterministicKeyPair = jest
-      .spyOn(keysUtils, 'generateDeterministicKeyPair')
-      .mockResolvedValue(globalKeyPair);
-
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -83,8 +71,6 @@ describe('VaultOps', () => {
     await vaultInternal.destroy();
     await db.stop();
     await db.destroy();
-    mockedGenerateKeyPair.mockRestore();
-    mockedGenerateDeterministicKeyPair.mockRestore();
     await baseEfs.stop();
     await baseEfs.destroy();
     await fs.promises.rm(dataDir, {

@@ -20,10 +20,9 @@ import { ClientServiceService } from '@/proto/js/polykey/v1/client_service_grpc_
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as nodesPB from '@/proto/js/polykey/v1/nodes/nodes_pb';
 import * as clientUtils from '@/client/utils/utils';
-import * as keysUtils from '@/keys/utils';
 import * as validationErrors from '@/validation/errors';
-import * as testUtils from '../../utils';
 import { expectRemoteError } from '../../utils';
+import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('nodesPing', () => {
   const logger = new Logger('nodesPing test', LogLevel.WARN, [
@@ -32,25 +31,14 @@ describe('nodesPing', () => {
   const password = 'helloworld';
   const authenticate = async (metaClient, metaServer = new Metadata()) =>
     metaServer;
-  let mockedGenerateKeyPair: jest.SpyInstance;
-  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
   let mockedPingNode: jest.SpyInstance;
   beforeAll(async () => {
-    const globalKeyPair = await testUtils.setupGlobalKeypair();
-    mockedGenerateKeyPair = jest
-      .spyOn(keysUtils, 'generateKeyPair')
-      .mockResolvedValue(globalKeyPair);
-    mockedGenerateDeterministicKeyPair = jest
-      .spyOn(keysUtils, 'generateDeterministicKeyPair')
-      .mockResolvedValue(globalKeyPair);
     mockedPingNode = jest
       .spyOn(NodeManager.prototype, 'pingNode')
       .mockResolvedValueOnce(false)
       .mockResolvedValue(true);
   });
   afterAll(async () => {
-    mockedGenerateKeyPair.mockRestore();
-    mockedGenerateDeterministicKeyPair.mockRestore();
     mockedPingNode.mockRestore();
   });
   const authToken = 'abc123';
@@ -75,6 +63,7 @@ describe('nodesPing', () => {
       password,
       keysPath,
       logger,
+      privateKeyPemOverride: globalRootKeyPems[0],
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({

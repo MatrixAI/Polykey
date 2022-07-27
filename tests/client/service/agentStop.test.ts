@@ -13,9 +13,8 @@ import agentStop from '@/client/service/agentStop';
 import config from '@/config';
 import { ClientServiceService } from '@/proto/js/polykey/v1/client_service_grpc_pb';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
-import * as keysUtils from '@/keys/utils';
 import * as clientUtils from '@/client/utils/utils';
-import * as testUtils from '../../utils';
+import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('agentStop', () => {
   const logger = new Logger('agentStop test', LogLevel.WARN, [
@@ -24,21 +23,6 @@ describe('agentStop', () => {
   const password = 'helloworld';
   const authenticate = async (metaClient, metaServer = new Metadata()) =>
     metaServer;
-  let mockedGenerateKeyPair: jest.SpyInstance;
-  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
-  beforeAll(async () => {
-    const globalKeyPair = await testUtils.setupGlobalKeypair();
-    mockedGenerateKeyPair = jest
-      .spyOn(keysUtils, 'generateKeyPair')
-      .mockResolvedValue(globalKeyPair);
-    mockedGenerateDeterministicKeyPair = jest
-      .spyOn(keysUtils, 'generateDeterministicKeyPair')
-      .mockResolvedValue(globalKeyPair);
-  });
-  afterAll(async () => {
-    mockedGenerateKeyPair.mockRestore();
-    mockedGenerateDeterministicKeyPair.mockRestore();
-  });
   let dataDir: string;
   let nodePath: string;
   let pkAgent: PolykeyAgent;
@@ -54,6 +38,9 @@ describe('agentStop', () => {
       password,
       nodePath,
       logger,
+      keysConfig: {
+        privateKeyPemOverride: globalRootKeyPems[0],
+      },
     });
     const clientService = {
       agentStop: agentStop({

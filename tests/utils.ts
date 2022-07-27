@@ -198,22 +198,6 @@ const expectRemoteError = async <T>(
   }
 };
 
-function describeIf(condition, name, f) {
-  if (condition) {
-    describe(name, f);
-  } else {
-    describe.skip(name, f);
-  }
-}
-
-function testIf(condition, name, f, timeout?) {
-  if (condition) {
-    test(name, f, timeout);
-  } else {
-    test.skip(name, f, timeout);
-  }
-}
-
 function runTestIf(condition: boolean) {
   return condition ? test : test.skip;
 }
@@ -222,13 +206,35 @@ function runDescribeIf(condition: boolean) {
   return condition ? describe : describe.skip;
 }
 
+/**
+ * This will run the test if global.testPlatform is included in platforms.
+ * This will default to running if global.testPlatform is undefined.
+ * @param platforms - list of platforms to run test on
+ */
+function runTestIfPlatforms(...platforms: Array<string>) {
+  return runTestIf(
+    platforms.includes(global.testPlatform) || global.testPlatform == null,
+  );
+}
+
+/**
+ * This will run the test if global.testPlatform is included in platforms.
+ * This will default to running if global.testPlatform is undefined.
+ * @param platforms - list of platforms to run test on
+ */
+function runDescribeIfPlatforms(...platforms: Array<string>) {
+  return runDescribeIf(
+    platforms.includes(global.testPlatform) || global.testPlatform == null,
+  );
+}
+
 export {
   setupGlobalKeypair,
   generateRandomNodeId,
   expectRemoteError,
   setupGlobalAgent,
-  describeIf,
-  testIf,
   runTestIf,
   runDescribeIf,
+  runTestIfPlatforms,
+  runDescribeIfPlatforms,
 };

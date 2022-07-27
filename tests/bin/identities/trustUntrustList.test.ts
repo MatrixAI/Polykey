@@ -2,19 +2,18 @@ import type { Host, Port } from '@/network/types';
 import type { IdentityId, ProviderId } from '@/identities/types';
 import type { ClaimLinkIdentity } from '@/claims/types';
 import type { NodeId } from '@/nodes/types';
-import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
 import { sysexits } from '@/utils';
 import * as nodesUtils from '@/nodes/utils';
-import * as keysUtils from '@/keys/utils';
 import * as claimsUtils from '@/claims/utils';
 import * as identitiesUtils from '@/identities/utils';
-import * as testBinUtils from '../utils';
-import * as testUtils from '../../utils';
+import * as execUtils from '../../utils/exec';
 import TestProvider from '../../identities/TestProvider';
+import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
+import { runTestIfPlatforms } from '../../utils';
 
 describe('trust/untrust/list', () => {
   const logger = new Logger('trust/untrust/list test', LogLevel.WARN, [
@@ -35,22 +34,9 @@ describe('trust/untrust/list', () => {
   let nodeId: NodeId;
   let nodeHost: Host;
   let nodePort: Port;
-  let mockedGenerateKeyPair: jest.SpyInstance;
-  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
-  beforeAll(async () => {
-    const globalKeyPair = await testUtils.setupGlobalKeypair();
-    const nodeKeyPair = await keysUtils.generateKeyPair(2048);
-    mockedGenerateKeyPair = jest
-      .spyOn(keysUtils, 'generateKeyPair')
-      .mockResolvedValueOnce(globalKeyPair)
-      .mockResolvedValue(nodeKeyPair);
-    mockedGenerateDeterministicKeyPair = jest
-      .spyOn(keysUtils, 'generateDeterministicKeyPair')
-      .mockResolvedValueOnce(globalKeyPair)
-      .mockResolvedValue(nodeKeyPair);
-    // Cannot use global shared agent since we need to register a provider
+  beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
-      path.join(os.tmpdir(), 'polykey-test-'),
+      path.join(global.tmpDir, 'polykey-test-'),
     );
     nodePath = path.join(dataDir, 'polykey');
     pkAgent = await PolykeyAgent.createPolykeyAgent({
@@ -61,6 +47,9 @@ describe('trust/untrust/list', () => {
         forwardHost: '127.0.0.1' as Host,
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
+      },
+      keysConfig: {
+        privateKeyPemOverride: globalRootKeyPems[0],
       },
       logger,
     });
@@ -75,6 +64,9 @@ describe('trust/untrust/list', () => {
         forwardHost: '127.0.0.1' as Host,
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
+      },
+      keysConfig: {
+        privateKeyPemOverride: globalRootKeyPems[1],
       },
       logger,
     });
@@ -95,25 +87,23 @@ describe('trust/untrust/list', () => {
     const [, claimEncoded] = await node.sigchain.addClaim(identityClaim);
     const claim = claimsUtils.decodeClaim(claimEncoded);
     await provider.publishClaim(identity, claim);
-  }, globalThis.maxTimeout);
-  afterAll(async () => {
+  });
+  afterEach(async () => {
     await node.stop();
     await pkAgent.stop();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
     });
-    mockedGenerateKeyPair.mockRestore();
-    mockedGenerateDeterministicKeyPair.mockRestore();
   });
-  test(
+  runTestIfPlatforms()(
     'trusts and untrusts a gestalt by node, adds it to the gestalt graph, and lists the gestalt with notify permission',
     async () => {
       let exitCode, stdout;
       // Add the node to our node graph and authenticate an identity on the
       // provider
       // This allows us to contact the members of the gestalt we want to trust
-      await testBinUtils.pkStdio(
+      await execUtils.pkStdio(
         [
           'nodes',
           'add',
@@ -130,7 +120,7 @@ describe('trust/untrust/list', () => {
       const mockedBrowser = jest
         .spyOn(identitiesUtils, 'browser')
         .mockImplementation(() => {});
-      await testBinUtils.pkStdio(
+      await execUtils.pkStdio(
         [
           'identities',
           'authenticate',
@@ -146,7 +136,7 @@ describe('trust/untrust/list', () => {
       mockedBrowser.mockRestore();
       // Trust node - this should trigger discovery on the gestalt the node
       // belongs to and add it to our gestalt graph
-      ({ exitCode } = await testBinUtils.pkStdio(
+      ({ exitCode } = await execUtils.pkStdio(
         ['identities', 'trust', nodesUtils.encodeNodeId(nodeId)],
         {
           PK_NODE_PATH: nodePath,
@@ -159,7 +149,7 @@ describe('trust/untrust/list', () => {
       // gestalt to be discovered
       await pkAgent.discovery.waitForDrained();
       // Check that gestalt was discovered and permission was set
-      ({ exitCode, stdout } = await testBinUtils.pkStdio(
+      ({ exitCode, stdout } = await execUtils.pkStdio(
         ['identities', 'list', '--format', 'json'],
         {
           PK_NODE_PATH: nodePath,
@@ -182,7 +172,7 @@ describe('trust/untrust/list', () => {
       // Untrust the gestalt by node
       // This should remove the permission, but not the gestalt (from the gestalt
       // graph)
-      ({ exitCode } = await testBinUtils.pkStdio(
+      ({ exitCode } = await execUtils.pkStdio(
         ['identities', 'untrust', nodesUtils.encodeNodeId(nodeId)],
         {
           PK_NODE_PATH: nodePath,
@@ -192,7 +182,7 @@ describe('trust/untrust/list', () => {
       ));
       expect(exitCode).toBe(0);
       // Check that gestalt still exists but has no permissions
-      ({ exitCode, stdout } = await testBinUtils.pkStdio(
+      ({ exitCode, stdout } = await execUtils.pkStdio(
         ['identities', 'list', '--format', 'json'],
         {
           PK_NODE_PATH: nodePath,
@@ -225,14 +215,14 @@ describe('trust/untrust/list', () => {
     },
     global.defaultTimeout * 2,
   );
-  test(
+  runTestIfPlatforms()(
     'trusts and untrusts a gestalt by identity, adds it to the gestalt graph, and lists the gestalt with notify permission',
     async () => {
       let exitCode, stdout;
       // Add the node to our node graph and authenticate an identity on the
       // provider
       // This allows us to contact the members of the gestalt we want to trust
-      await testBinUtils.pkStdio(
+      await execUtils.pkStdio(
         [
           'nodes',
           'add',
@@ -249,7 +239,7 @@ describe('trust/untrust/list', () => {
       const mockedBrowser = jest
         .spyOn(identitiesUtils, 'browser')
         .mockImplementation(() => {});
-      await testBinUtils.pkStdio(
+      await execUtils.pkStdio(
         [
           'identities',
           'authenticate',
@@ -267,7 +257,7 @@ describe('trust/untrust/list', () => {
       // belongs to and add it to our gestalt graph
       // This command should fail first time as we need to allow time for the
       // identity to be linked to a node in the node graph
-      ({ exitCode } = await testBinUtils.pkStdio(
+      ({ exitCode } = await execUtils.pkStdio(
         ['identities', 'trust', providerString],
         {
           PK_NODE_PATH: nodePath,
@@ -280,7 +270,7 @@ describe('trust/untrust/list', () => {
       // gestalt to be discovered
       await pkAgent.discovery.waitForDrained();
       // This time the command should succeed
-      ({ exitCode } = await testBinUtils.pkStdio(
+      ({ exitCode } = await execUtils.pkStdio(
         ['identities', 'trust', providerString],
         {
           PK_NODE_PATH: nodePath,
@@ -290,7 +280,7 @@ describe('trust/untrust/list', () => {
       ));
       expect(exitCode).toBe(0);
       // Check that gestalt was discovered and permission was set
-      ({ exitCode, stdout } = await testBinUtils.pkStdio(
+      ({ exitCode, stdout } = await execUtils.pkStdio(
         ['identities', 'list', '--format', 'json'],
         {
           PK_NODE_PATH: nodePath,
@@ -313,7 +303,7 @@ describe('trust/untrust/list', () => {
       // Untrust the gestalt by node
       // This should remove the permission, but not the gestalt (from the gestalt
       // graph)
-      ({ exitCode } = await testBinUtils.pkStdio(
+      ({ exitCode } = await execUtils.pkStdio(
         ['identities', 'untrust', providerString],
         {
           PK_NODE_PATH: nodePath,
@@ -323,7 +313,7 @@ describe('trust/untrust/list', () => {
       ));
       expect(exitCode).toBe(0);
       // Check that gestalt still exists but has no permissions
-      ({ exitCode, stdout } = await testBinUtils.pkStdio(
+      ({ exitCode, stdout } = await execUtils.pkStdio(
         ['identities', 'list', '--format', 'json'],
         {
           PK_NODE_PATH: nodePath,
@@ -356,10 +346,10 @@ describe('trust/untrust/list', () => {
     },
     global.defaultTimeout * 2,
   );
-  test('should fail on invalid inputs', async () => {
+  runTestIfPlatforms()('should fail on invalid inputs', async () => {
     let exitCode;
     // Trust
-    ({ exitCode } = await testBinUtils.pkStdio(
+    ({ exitCode } = await execUtils.pkStdio(
       ['identities', 'trust', 'invalid'],
       {
         PK_NODE_PATH: nodePath,
@@ -369,7 +359,7 @@ describe('trust/untrust/list', () => {
     ));
     expect(exitCode).toBe(sysexits.USAGE);
     // Untrust
-    ({ exitCode } = await testBinUtils.pkStdio(
+    ({ exitCode } = await execUtils.pkStdio(
       ['identities', 'untrust', 'invalid'],
       {
         PK_NODE_PATH: nodePath,

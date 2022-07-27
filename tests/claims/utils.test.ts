@@ -10,8 +10,8 @@ import * as claimsUtils from '@/claims/utils';
 import * as claimsErrors from '@/claims/errors';
 import { utils as keysUtils } from '@/keys';
 import { utils as nodesUtils } from '@/nodes';
-import * as testUtils from '../utils';
 import * as testNodesUtils from '../nodes/utils';
+import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 
 describe('claims/utils', () => {
   // Node Ids
@@ -23,10 +23,12 @@ describe('claims/utils', () => {
   let publicKey: PublicKeyPem;
   let privateKey: PrivateKeyPem;
   beforeAll(async () => {
-    const globalKeyPair = await testUtils.setupGlobalKeypair();
-    const globalKeyPairPem = keysUtils.keyPairToPem(globalKeyPair);
-    publicKey = globalKeyPairPem.publicKey;
-    privateKey = globalKeyPairPem.privateKey;
+    privateKey = globalRootKeyPems[0];
+    publicKey = keysUtils.publicKeyToPem(
+      keysUtils.publicKeyFromPrivateKey(
+        keysUtils.privateKeyFromPem(privateKey),
+      ),
+    );
   });
   test('creates a claim (both node and identity)', async () => {
     const nodeClaim = await claimsUtils.createClaim({

@@ -21,6 +21,7 @@ import * as grpcUtils from '@/grpc/utils';
 import * as nodesPB from '@/proto/js/polykey/v1/nodes/nodes_pb';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as testNodesUtils from './utils';
+import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 
 describe(`${NodeConnectionManager.name} general test`, () => {
   const logger = new Logger(
@@ -122,17 +123,9 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     return IdInternal.create<NodeId>(idArray);
   };
 
-  const mockedGenerateDeterministicKeyPair = jest.spyOn(
-    keysUtils,
-    'generateDeterministicKeyPair',
-  );
   const dummyNodeManager = { setNode: jest.fn() } as unknown as NodeManager;
 
   beforeAll(async () => {
-    mockedGenerateDeterministicKeyPair.mockImplementation((bits, _) => {
-      return keysUtils.generateKeyPair(bits);
-    });
-
     dataDir2 = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -146,6 +139,9 @@ describe(`${NodeConnectionManager.name} general test`, () => {
         clientHost: localHost,
         forwardHost: localHost,
       },
+      keysConfig: {
+        privateKeyPemOverride: globalRootKeyPems[0],
+      },
       logger: logger.getChild('remoteNode1'),
     });
     remoteNodeId1 = remoteNode1.keyManager.getNodeId();
@@ -157,6 +153,9 @@ describe(`${NodeConnectionManager.name} general test`, () => {
         agentHost: localHost,
         clientHost: localHost,
         forwardHost: localHost,
+      },
+      keysConfig: {
+        privateKeyPemOverride: globalRootKeyPems[1],
       },
       logger: logger.getChild('remoteNode2'),
     });
@@ -179,6 +178,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     keyManager = await KeyManager.createKeyManager({
       password,
       keysPath,
+      privateKeyPemOverride: globalRootKeyPems[2],
       logger: logger.getChild('keyManager'),
     });
     const dbPath = path.join(dataDir, 'db');
@@ -297,6 +297,9 @@ describe(`${NodeConnectionManager.name} general test`, () => {
             clientHost: localHost,
             forwardHost: localHost,
           },
+          keysConfig: {
+            privateKeyPemOverride: globalRootKeyPems[3],
+          },
           logger: nodeConnectionManagerLogger,
         });
         await nodeGraph.setNode(server.keyManager.getNodeId(), {
@@ -339,6 +342,9 @@ describe(`${NodeConnectionManager.name} general test`, () => {
             clientHost: localHost,
             forwardHost: localHost,
           },
+          keysConfig: {
+            privateKeyPemOverride: globalRootKeyPems[4],
+          },
           logger: nodeConnectionManagerLogger,
         });
         await nodeGraph.setNode(server.keyManager.getNodeId(), {
@@ -377,6 +383,9 @@ describe(`${NodeConnectionManager.name} general test`, () => {
           agentHost: localHost,
           clientHost: localHost,
           forwardHost: localHost,
+        },
+        keysConfig: {
+          privateKeyPemOverride: globalRootKeyPems[5],
         },
       });
       nodeConnectionManager = new NodeConnectionManager({

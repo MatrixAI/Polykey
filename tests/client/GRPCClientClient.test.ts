@@ -8,20 +8,17 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import GRPCClientClient from '@/client/GRPCClientClient';
 import PolykeyAgent from '@/PolykeyAgent';
 import Session from '@/sessions/Session';
-import * as keysUtils from '@/keys/utils';
 import * as clientErrors from '@/client/errors';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import { timerStart } from '@/utils';
 import * as testClientUtils from './utils';
-import * as testUtils from '../utils';
+import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 
 describe(GRPCClientClient.name, () => {
   const password = 'password';
   const logger = new Logger(`${GRPCClientClient.name} test`, LogLevel.WARN, [
     new StreamHandler(),
   ]);
-  let mockedGenerateKeyPair: jest.SpyInstance;
-  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
   let client: GRPCClientClient;
   let server: grpc.Server;
   let port: number;
@@ -31,13 +28,6 @@ describe(GRPCClientClient.name, () => {
   let nodeId: NodeId;
   let session: Session;
   beforeAll(async () => {
-    const globalKeyPair = await testUtils.setupGlobalKeypair();
-    mockedGenerateKeyPair = jest
-      .spyOn(keysUtils, 'generateKeyPair')
-      .mockResolvedValue(globalKeyPair);
-    mockedGenerateDeterministicKeyPair = jest
-      .spyOn(keysUtils, 'generateDeterministicKeyPair')
-      .mockResolvedValue(globalKeyPair);
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -46,6 +36,9 @@ describe(GRPCClientClient.name, () => {
       password,
       nodePath,
       logger: logger,
+      keysConfig: {
+        privateKeyPemOverride: globalRootKeyPems[0],
+      },
     });
     nodeId = pkAgent.keyManager.getNodeId();
     [server, port] = await testClientUtils.openTestClientServer({
@@ -67,8 +60,6 @@ describe(GRPCClientClient.name, () => {
       force: true,
       recursive: true,
     });
-    mockedGenerateKeyPair.mockRestore();
-    mockedGenerateDeterministicKeyPair.mockRestore();
   });
   test('cannot be called when destroyed', async () => {
     client = await GRPCClientClient.createGRPCClientClient({

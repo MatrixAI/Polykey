@@ -20,8 +20,8 @@ import * as vaultsPB from '@/proto/js/polykey/v1/vaults/vaults_pb';
 import * as secretsPB from '@/proto/js/polykey/v1/secrets/secrets_pb';
 import * as clientUtils from '@/client/utils/utils';
 import * as vaultsUtils from '@/vaults/utils';
-import * as keysUtils from '@/keys/utils';
 import * as testUtils from '../../utils';
+import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('vaultsSecretsStat', () => {
   const logger = new Logger('vaultsSecretsStat test', LogLevel.WARN, [
@@ -30,21 +30,6 @@ describe('vaultsSecretsStat', () => {
   const password = 'helloworld';
   const authenticate = async (metaClient, metaServer = new Metadata()) =>
     metaServer;
-  let mockedGenerateKeyPair: jest.SpyInstance;
-  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
-  beforeAll(async () => {
-    const globalKeyPair = await testUtils.setupGlobalKeypair();
-    mockedGenerateKeyPair = jest
-      .spyOn(keysUtils, 'generateKeyPair')
-      .mockResolvedValue(globalKeyPair);
-    mockedGenerateDeterministicKeyPair = jest
-      .spyOn(keysUtils, 'generateDeterministicKeyPair')
-      .mockResolvedValue(globalKeyPair);
-  });
-  afterAll(async () => {
-    mockedGenerateKeyPair.mockRestore();
-    mockedGenerateDeterministicKeyPair.mockRestore();
-  });
   let dataDir: string;
   let keyManager: KeyManager;
   let db: DB;
@@ -60,6 +45,7 @@ describe('vaultsSecretsStat', () => {
       password,
       keysPath,
       logger,
+      privateKeyPemOverride: globalRootKeyPems[0],
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({

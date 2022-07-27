@@ -13,8 +13,7 @@ import { ClientServiceService } from '@/proto/js/polykey/v1/client_service_grpc_
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as keysPB from '@/proto/js/polykey/v1/keys/keys_pb';
 import * as clientUtils from '@/client/utils/utils';
-import * as keysUtils from '@/keys/utils';
-import * as testUtils from '../../utils';
+import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('keysSignVerify', () => {
   const logger = new Logger('keysSignVerify test', LogLevel.WARN, [
@@ -23,21 +22,6 @@ describe('keysSignVerify', () => {
   const password = 'helloworld';
   const authenticate = async (metaClient, metaServer = new Metadata()) =>
     metaServer;
-  let mockedGenerateKeyPair: jest.SpyInstance;
-  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
-  beforeAll(async () => {
-    const globalKeyPair = await testUtils.setupGlobalKeypair();
-    mockedGenerateKeyPair = jest
-      .spyOn(keysUtils, 'generateKeyPair')
-      .mockResolvedValue(globalKeyPair);
-    mockedGenerateDeterministicKeyPair = jest
-      .spyOn(keysUtils, 'generateDeterministicKeyPair')
-      .mockResolvedValue(globalKeyPair);
-  });
-  afterAll(async () => {
-    mockedGenerateKeyPair.mockRestore();
-    mockedGenerateDeterministicKeyPair.mockRestore();
-  });
   let dataDir: string;
   let keyManager: KeyManager;
   let grpcServer: GRPCServer;
@@ -51,6 +35,7 @@ describe('keysSignVerify', () => {
       password,
       keysPath,
       logger,
+      privateKeyPemOverride: globalRootKeyPems[0],
     });
     const clientService = {
       keysSign: keysSign({

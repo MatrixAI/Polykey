@@ -24,6 +24,7 @@ import * as agentErrors from '@/agent/errors';
 import * as keysUtils from '@/keys/utils';
 import { timerStart } from '@/utils';
 import * as testAgentUtils from './utils';
+import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 
 describe(GRPCClientAgent.name, () => {
   const host = '127.0.0.1' as Host;
@@ -31,15 +32,6 @@ describe(GRPCClientAgent.name, () => {
   const logger = new Logger(`${GRPCClientAgent.name} test`, LogLevel.WARN, [
     new StreamHandler(),
   ]);
-  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
-  beforeAll(async () => {
-    mockedGenerateDeterministicKeyPair = jest
-      .spyOn(keysUtils, 'generateDeterministicKeyPair')
-      .mockImplementation((bits, _) => keysUtils.generateKeyPair(bits));
-  });
-  afterAll(async () => {
-    mockedGenerateDeterministicKeyPair.mockRestore();
-  });
   let client: GRPCClientAgent;
   let server: grpc.Server;
   let port: Port;
@@ -72,6 +64,7 @@ describe(GRPCClientAgent.name, () => {
       keysPath,
       fs: fs,
       logger: logger,
+      privateKeyPemOverride: globalRootKeyPems[0],
     });
     const tlsConfig: TLSConfig = {
       keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
@@ -246,6 +239,7 @@ describe(GRPCClientAgent.name, () => {
         keysPath: path.join(dataDir, 'clientKeys1'),
         password: 'password',
         logger,
+        privateKeyPemOverride: globalRootKeyPems[1],
       });
       nodeId1 = clientKeyManager1.getNodeId();
       await clientProxy1.start({
@@ -279,6 +273,7 @@ describe(GRPCClientAgent.name, () => {
         keysPath: path.join(dataDir, 'clientKeys2'),
         password: 'password',
         logger,
+        privateKeyPemOverride: globalRootKeyPems[2],
       });
       nodeId2 = clientKeyManager2.getNodeId();
       await clientProxy2.start({

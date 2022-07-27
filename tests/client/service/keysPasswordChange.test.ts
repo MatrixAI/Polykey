@@ -12,8 +12,7 @@ import { ClientServiceService } from '@/proto/js/polykey/v1/client_service_grpc_
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as sessionsPB from '@/proto/js/polykey/v1/sessions/sessions_pb';
 import * as clientUtils from '@/client/utils/utils';
-import * as keysUtils from '@/keys/utils';
-import * as testUtils from '../../utils';
+import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('keysPasswordChange', () => {
   const logger = new Logger('keysPasswordChange test', LogLevel.WARN, [
@@ -23,26 +22,15 @@ describe('keysPasswordChange', () => {
   const authenticate = async (metaClient, metaServer = new Metadata()) =>
     metaServer;
   let mockedChangePassword: jest.SpyInstance;
-  let mockedGenerateKeyPair: jest.SpyInstance;
-  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
   beforeAll(async () => {
-    const globalKeyPair = await testUtils.setupGlobalKeypair();
     mockedChangePassword = jest
       .spyOn(KeyManager.prototype, 'changePassword')
       .mockImplementation(async () => {
         password = 'newpassword';
       });
-    mockedGenerateKeyPair = jest
-      .spyOn(keysUtils, 'generateKeyPair')
-      .mockResolvedValue(globalKeyPair);
-    mockedGenerateDeterministicKeyPair = jest
-      .spyOn(keysUtils, 'generateDeterministicKeyPair')
-      .mockResolvedValue(globalKeyPair);
   });
   afterAll(async () => {
     mockedChangePassword.mockRestore();
-    mockedGenerateKeyPair.mockRestore();
-    mockedGenerateDeterministicKeyPair.mockRestore();
   });
   let dataDir: string;
   let keyManager: KeyManager;
@@ -57,6 +45,7 @@ describe('keysPasswordChange', () => {
       password,
       keysPath,
       logger,
+      privateKeyPemOverride: globalRootKeyPems[0],
     });
     const clientService = {
       keysPasswordChange: keysPasswordChange({

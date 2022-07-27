@@ -8,11 +8,10 @@ import GRPCServer from '@/grpc/GRPCServer';
 import GRPCClientAgent from '@/agent/GRPCClientAgent';
 import { AgentServiceService } from '@/proto/js/polykey/v1/agent_service_grpc_pb';
 import * as nodesPB from '@/proto/js/polykey/v1/nodes/nodes_pb';
-import * as keysUtils from '@/keys/utils';
 import * as nodesUtils from '@/nodes/utils';
 import nodesHolePunchMessageSend from '@/agent/service/nodesHolePunchMessageSend';
 import * as networkUtils from '@/network/utils';
-import * as testUtils from '../../utils';
+import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('nodesHolePunchMessage', () => {
   const logger = new Logger('nodesHolePunchMessage test', LogLevel.WARN, [
@@ -24,16 +23,7 @@ describe('nodesHolePunchMessage', () => {
   let grpcServer: GRPCServer;
   let grpcClient: GRPCClientAgent;
   let pkAgent: PolykeyAgent;
-  let mockedGenerateKeyPair: jest.SpyInstance;
-  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
-  beforeAll(async () => {
-    const globalKeyPair = await testUtils.setupGlobalKeypair();
-    mockedGenerateKeyPair = jest
-      .spyOn(keysUtils, 'generateKeyPair')
-      .mockResolvedValueOnce(globalKeyPair);
-    mockedGenerateDeterministicKeyPair = jest
-      .spyOn(keysUtils, 'generateDeterministicKeyPair')
-      .mockResolvedValueOnce(globalKeyPair);
+  beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -42,7 +32,7 @@ describe('nodesHolePunchMessage', () => {
       password,
       nodePath,
       keysConfig: {
-        rootKeyPairBits: 2048,
+        privateKeyPemOverride: globalRootKeyPems[0],
       },
       seedNodes: {}, // Explicitly no seed nodes on startup
       networkConfig: {
@@ -72,7 +62,7 @@ describe('nodesHolePunchMessage', () => {
       logger,
     });
   }, global.defaultTimeout);
-  afterAll(async () => {
+  afterEach(async () => {
     await grpcClient.destroy();
     await grpcServer.stop();
     await pkAgent.stop();
@@ -81,8 +71,6 @@ describe('nodesHolePunchMessage', () => {
       force: true,
       recursive: true,
     });
-    mockedGenerateKeyPair.mockRestore();
-    mockedGenerateDeterministicKeyPair.mockRestore();
   });
   test('should get the chain data', async () => {
     const nodeId = nodesUtils.encodeNodeId(pkAgent.keyManager.getNodeId());

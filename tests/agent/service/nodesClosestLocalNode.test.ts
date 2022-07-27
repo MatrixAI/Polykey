@@ -10,11 +10,10 @@ import GRPCServer from '@/grpc/GRPCServer';
 import GRPCClientAgent from '@/agent/GRPCClientAgent';
 import { AgentServiceService } from '@/proto/js/polykey/v1/agent_service_grpc_pb';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
-import * as keysUtils from '@/keys/utils';
 import * as nodesUtils from '@/nodes/utils';
 import nodesChainDataGet from '@/agent/service/nodesChainDataGet';
-import * as testUtils from '../../utils';
 import * as testNodesUtils from '../../nodes/utils';
+import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('nodesChainDataGet', () => {
   const logger = new Logger('nodesChainDataGet test', LogLevel.WARN, [
@@ -26,16 +25,7 @@ describe('nodesChainDataGet', () => {
   let grpcServer: GRPCServer;
   let grpcClient: GRPCClientAgent;
   let pkAgent: PolykeyAgent;
-  let mockedGenerateKeyPair: jest.SpyInstance;
-  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
-  beforeAll(async () => {
-    const globalKeyPair = await testUtils.setupGlobalKeypair();
-    mockedGenerateKeyPair = jest
-      .spyOn(keysUtils, 'generateKeyPair')
-      .mockResolvedValueOnce(globalKeyPair);
-    mockedGenerateDeterministicKeyPair = jest
-      .spyOn(keysUtils, 'generateDeterministicKeyPair')
-      .mockResolvedValueOnce(globalKeyPair);
+  beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -44,7 +34,7 @@ describe('nodesChainDataGet', () => {
       password,
       nodePath,
       keysConfig: {
-        rootKeyPairBits: 2048,
+        privateKeyPemOverride: globalRootKeyPems[0],
       },
       seedNodes: {}, // Explicitly no seed nodes on startup
       networkConfig: {
@@ -72,7 +62,7 @@ describe('nodesChainDataGet', () => {
       logger,
     });
   }, global.defaultTimeout);
-  afterAll(async () => {
+  afterEach(async () => {
     await grpcClient.destroy();
     await grpcServer.stop();
     await pkAgent.stop();
@@ -81,8 +71,6 @@ describe('nodesChainDataGet', () => {
       force: true,
       recursive: true,
     });
-    mockedGenerateKeyPair.mockRestore();
-    mockedGenerateDeterministicKeyPair.mockRestore();
   });
   test('should get closest nodes', async () => {
     const srcNodeIdEncoded = nodesUtils.encodeNodeId(

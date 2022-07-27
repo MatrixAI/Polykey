@@ -330,15 +330,20 @@ integration:docker:
     - integration:builds
     - job: integration:deployment
       optional: true
-  image: docker:20.10.11
   services:
-    - docker:20.10.11-dind
+    - docker:20.10.16-dind
   variables:
     DOCKER_TLS_CERTDIR: "/certs"
+    FF_NETWORK_PER_BUILD: "true"
   script:
     - docker info
-    - image="$(docker load --input ./builds/*docker* | cut -d' ' -f3)"
-    - docker run "$image"
+    - >
+      nix-shell --run $'
+        PK_TEST_COMMAND="docker run \${DOCKER_OPTIONS} $(docker load --input ./builds/*docker* | cut -d\' \' -f3) polykey" \
+        PK_TEST_PLATFORM=docker \
+        PK_TEST_TMPDIR=/builds/$CI_PROJECT_PATH/tmp \
+        exec npm run test -- tests/bin
+      '
   rules:
     # Runs on staging commits and ignores version commits
     - if: $CI_COMMIT_BRANCH == 'staging' && $CI_COMMIT_TITLE !~ /^[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/

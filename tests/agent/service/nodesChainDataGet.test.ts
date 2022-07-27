@@ -9,11 +9,10 @@ import GRPCServer from '@/grpc/GRPCServer';
 import GRPCClientAgent from '@/agent/GRPCClientAgent';
 import { AgentServiceService } from '@/proto/js/polykey/v1/agent_service_grpc_pb';
 import * as nodesPB from '@/proto/js/polykey/v1/nodes/nodes_pb';
-import * as keysUtils from '@/keys/utils';
 import * as nodesUtils from '@/nodes/utils';
 import nodesClosestLocalNodesGet from '@/agent/service/nodesClosestLocalNodesGet';
 import * as testNodesUtils from '../../nodes/utils';
-import * as testUtils from '../../utils';
+import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('nodesClosestLocalNode', () => {
   const logger = new Logger('nodesClosestLocalNode test', LogLevel.WARN, [
@@ -25,16 +24,7 @@ describe('nodesClosestLocalNode', () => {
   let grpcServer: GRPCServer;
   let grpcClient: GRPCClientAgent;
   let pkAgent: PolykeyAgent;
-  let mockedGenerateKeyPair: jest.SpyInstance;
-  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
-  beforeAll(async () => {
-    const globalKeyPair = await testUtils.setupGlobalKeypair();
-    mockedGenerateKeyPair = jest
-      .spyOn(keysUtils, 'generateKeyPair')
-      .mockResolvedValueOnce(globalKeyPair);
-    mockedGenerateDeterministicKeyPair = jest
-      .spyOn(keysUtils, 'generateDeterministicKeyPair')
-      .mockResolvedValueOnce(globalKeyPair);
+  beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -43,7 +33,7 @@ describe('nodesClosestLocalNode', () => {
       password,
       nodePath,
       keysConfig: {
-        rootKeyPairBits: 2048,
+        privateKeyPemOverride: globalRootKeyPems[0],
       },
       seedNodes: {}, // Explicitly no seed nodes on startup
       networkConfig: {
@@ -72,7 +62,7 @@ describe('nodesClosestLocalNode', () => {
       logger,
     });
   }, global.defaultTimeout);
-  afterAll(async () => {
+  afterEach(async () => {
     await grpcClient.destroy();
     await grpcServer.stop();
     await pkAgent.stop();
@@ -81,8 +71,6 @@ describe('nodesClosestLocalNode', () => {
       force: true,
       recursive: true,
     });
-    mockedGenerateKeyPair.mockRestore();
-    mockedGenerateDeterministicKeyPair.mockRestore();
   });
   test('should get closest local nodes', async () => {
     // Adding 10 nodes

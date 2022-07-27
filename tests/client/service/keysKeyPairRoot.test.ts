@@ -13,7 +13,7 @@ import * as keysPB from '@/proto/js/polykey/v1/keys/keys_pb';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as clientUtils from '@/client/utils/utils';
 import * as keysUtils from '@/keys/utils';
-import * as testUtils from '../../utils';
+import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('keysKeyPairRoot', () => {
   const logger = new Logger('keysKeyPairRoot test', LogLevel.WARN, [
@@ -22,22 +22,6 @@ describe('keysKeyPairRoot', () => {
   const password = 'helloworld';
   const authenticate = async (metaClient, metaServer = new Metadata()) =>
     metaServer;
-  let globalKeyPair;
-  let mockedGenerateKeyPair: jest.SpyInstance;
-  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
-  beforeAll(async () => {
-    globalKeyPair = await testUtils.setupGlobalKeypair();
-    mockedGenerateKeyPair = jest
-      .spyOn(keysUtils, 'generateKeyPair')
-      .mockResolvedValue(globalKeyPair);
-    mockedGenerateDeterministicKeyPair = jest
-      .spyOn(keysUtils, 'generateDeterministicKeyPair')
-      .mockResolvedValue(globalKeyPair);
-  });
-  afterAll(async () => {
-    mockedGenerateKeyPair.mockRestore();
-    mockedGenerateDeterministicKeyPair.mockRestore();
-  });
   let dataDir: string;
   let keyManager: KeyManager;
   let grpcServer: GRPCServer;
@@ -51,6 +35,7 @@ describe('keysKeyPairRoot', () => {
       password,
       keysPath,
       logger,
+      privateKeyPemOverride: globalRootKeyPems[0],
     });
     const clientService = {
       keysKeyPairRoot: keysKeyPairRoot({
@@ -88,8 +73,12 @@ describe('keysKeyPairRoot', () => {
       clientUtils.encodeAuthFromPassword(password),
     );
     expect(response).toBeInstanceOf(keysPB.KeyPair);
-    const keyPairPem = keysUtils.keyPairToPem(globalKeyPair);
-    expect(response.getPublic()).toBe(keyPairPem.publicKey);
-    expect(response.getPrivate()).toBe(keyPairPem.privateKey);
+    const publicKey = keysUtils.publicKeyToPem(
+      keysUtils.publicKeyFromPrivateKey(
+        keysUtils.privateKeyFromPem(globalRootKeyPems[0]),
+      ),
+    );
+    expect(response.getPublic()).toBe(publicKey);
+    expect(response.getPrivate()).toBe(globalRootKeyPems[0]);
   });
 });

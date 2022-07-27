@@ -3,7 +3,6 @@ import type { ClaimLinkIdentity } from '@/claims/types';
 import type { Gestalt } from '@/gestalts/types';
 import type { Host, Port } from '@/network/types';
 import type { NodeId } from '@/nodes/types';
-import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
@@ -12,11 +11,11 @@ import { poll, sysexits } from '@/utils';
 import * as identitiesUtils from '@/identities/utils';
 import * as claimsUtils from '@/claims/utils';
 import * as nodesUtils from '@/nodes/utils';
-import * as keysUtils from '@/keys/utils';
-import * as testBinUtils from '../utils';
-import * as testUtils from '../../utils';
+import * as execUtils from '../../utils/exec';
 import * as testNodesUtils from '../../nodes/utils';
 import TestProvider from '../../identities/TestProvider';
+import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
+import { runTestIfPlatforms } from '../../utils';
 
 describe('discover/get', () => {
   const logger = new Logger('discover/get test', LogLevel.WARN, [
@@ -39,11 +38,9 @@ describe('discover/get', () => {
   let nodeBId: NodeId;
   let nodeAHost: Host;
   let nodeAPort: Port;
-  let mockedGenerateKeyPair: jest.SpyInstance;
-  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
-  beforeAll(async () => {
+  beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
-      path.join(os.tmpdir(), 'polykey-test-'),
+      path.join(global.tmpDir, 'polykey-test-'),
     );
     // Setup the remote gestalt state here
     // Setting up remote nodes
@@ -57,7 +54,7 @@ describe('discover/get', () => {
         clientHost: '127.0.0.1' as Host,
       },
       keysConfig: {
-        rootKeyPairBits: 2048,
+        privateKeyPemOverride: globalRootKeyPems[0],
       },
       logger,
     });
@@ -74,19 +71,12 @@ describe('discover/get', () => {
         clientHost: '127.0.0.1' as Host,
       },
       keysConfig: {
-        rootKeyPairBits: 2048,
+        privateKeyPemOverride: globalRootKeyPems[1],
       },
       logger,
     });
     nodeBId = nodeB.keyManager.getNodeId();
     await testNodesUtils.nodesConnect(nodeA, nodeB);
-    const globalKeyPair = await testUtils.setupGlobalKeypair();
-    mockedGenerateKeyPair = jest
-      .spyOn(keysUtils, 'generateKeyPair')
-      .mockResolvedValueOnce(globalKeyPair);
-    mockedGenerateDeterministicKeyPair = jest
-      .spyOn(keysUtils, 'generateDeterministicKeyPair')
-      .mockResolvedValueOnce(globalKeyPair);
     nodePath = path.join(dataDir, 'polykey');
     // Cannot use global shared agent since we need to register a provider
     pkAgent = await PolykeyAgent.createPolykeyAgent({
@@ -97,6 +87,9 @@ describe('discover/get', () => {
         forwardHost: '127.0.0.1' as Host,
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
+      },
+      keysConfig: {
+        privateKeyPemOverride: globalRootKeyPems[2],
       },
       logger,
     });
@@ -118,8 +111,8 @@ describe('discover/get', () => {
     const [, claimEncoded] = await nodeA.sigchain.addClaim(identityClaim);
     const claim = claimsUtils.decodeClaim(claimEncoded);
     await testProvider.publishClaim(identityId, claim);
-  }, global.maxTimeout);
-  afterAll(async () => {
+  });
+  afterEach(async () => {
     await pkAgent.stop();
     await nodeB.stop();
     await nodeA.stop();
@@ -127,15 +120,13 @@ describe('discover/get', () => {
       force: true,
       recursive: true,
     });
-    mockedGenerateKeyPair.mockRestore();
-    mockedGenerateDeterministicKeyPair.mockRestore();
   });
-  test('discovers and gets gestalt by node', async () => {
+  runTestIfPlatforms()('discovers and gets gestalt by node', async () => {
     // Need an authenticated identity
     const mockedBrowser = jest
       .spyOn(identitiesUtils, 'browser')
       .mockImplementation(() => {});
-    await testBinUtils.pkStdio(
+    await execUtils.pkStdio(
       [
         'identities',
         'authenticate',
@@ -150,7 +141,7 @@ describe('discover/get', () => {
     );
     // Add one of the nodes to our gestalt graph so that we'll be able to
     // contact the gestalt during discovery
-    await testBinUtils.pkStdio(
+    await execUtils.pkStdio(
       [
         'nodes',
         'add',
@@ -165,7 +156,7 @@ describe('discover/get', () => {
       dataDir,
     );
     // Discover gestalt by node
-    const discoverResponse = await testBinUtils.pkStdio(
+    const discoverResponse = await execUtils.pkStdio(
       ['identities', 'discover', nodesUtils.encodeNodeId(nodeAId)],
       {
         PK_NODE_PATH: nodePath,
@@ -198,7 +189,7 @@ describe('discover/get', () => {
       100,
     );
     // Now we can get the gestalt
-    const getResponse = await testBinUtils.pkStdio(
+    const getResponse = await execUtils.pkStdio(
       ['identities', 'get', nodesUtils.encodeNodeId(nodeAId)],
       {
         PK_NODE_PATH: nodePath,
@@ -223,12 +214,12 @@ describe('discover/get', () => {
     // @ts-ignore - get protected property
     pkAgent.discovery.visitedVertices.clear();
   });
-  test('discovers and gets gestalt by identity', async () => {
+  runTestIfPlatforms()('discovers and gets gestalt by identity', async () => {
     // Need an authenticated identity
     const mockedBrowser = jest
       .spyOn(identitiesUtils, 'browser')
       .mockImplementation(() => {});
-    await testBinUtils.pkStdio(
+    await execUtils.pkStdio(
       [
         'identities',
         'authenticate',
@@ -243,7 +234,7 @@ describe('discover/get', () => {
     );
     // Add one of the nodes to our gestalt graph so that we'll be able to
     // contact the gestalt during discovery
-    await testBinUtils.pkStdio(
+    await execUtils.pkStdio(
       [
         'nodes',
         'add',
@@ -258,7 +249,7 @@ describe('discover/get', () => {
       dataDir,
     );
     // Discover gestalt by node
-    const discoverResponse = await testBinUtils.pkStdio(
+    const discoverResponse = await execUtils.pkStdio(
       ['identities', 'discover', providerString],
       {
         PK_NODE_PATH: nodePath,
@@ -291,7 +282,7 @@ describe('discover/get', () => {
       100,
     );
     // Now we can get the gestalt
-    const getResponse = await testBinUtils.pkStdio(
+    const getResponse = await execUtils.pkStdio(
       ['identities', 'get', providerString],
       {
         PK_NODE_PATH: nodePath,
@@ -316,10 +307,10 @@ describe('discover/get', () => {
     // @ts-ignore - get protected property
     pkAgent.discovery.visitedVertices.clear();
   });
-  test('should fail on invalid inputs', async () => {
+  runTestIfPlatforms()('should fail on invalid inputs', async () => {
     let exitCode;
     // Discover
-    ({ exitCode } = await testBinUtils.pkStdio(
+    ({ exitCode } = await execUtils.pkStdio(
       ['identities', 'discover', 'invalid'],
       {
         PK_NODE_PATH: nodePath,
@@ -329,7 +320,7 @@ describe('discover/get', () => {
     ));
     expect(exitCode).toBe(sysexits.USAGE);
     // Get
-    ({ exitCode } = await testBinUtils.pkStdio(
+    ({ exitCode } = await execUtils.pkStdio(
       ['identities', 'get', 'invalid'],
       {
         PK_NODE_PATH: nodePath,

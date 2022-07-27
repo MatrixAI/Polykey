@@ -12,8 +12,7 @@ import { ClientServiceService } from '@/proto/js/polykey/v1/client_service_grpc_
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as keysPB from '@/proto/js/polykey/v1/keys/keys_pb';
 import * as clientUtils from '@/client/utils/utils';
-import * as keysUtils from '@/keys/utils';
-import * as testUtils from '../../utils';
+import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('keysCertsChainGet', () => {
   const logger = new Logger('keysCertsChainGet test', LogLevel.WARN, [
@@ -24,24 +23,13 @@ describe('keysCertsChainGet', () => {
     metaServer;
   const certs = ['cert1', 'cert2', 'cert3'];
   let mockedGetRootCertChainPems: jest.SpyInstance;
-  let mockedGenerateKeyPair: jest.SpyInstance;
-  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
   beforeAll(async () => {
-    const globalKeyPair = await testUtils.setupGlobalKeypair();
     mockedGetRootCertChainPems = jest
       .spyOn(KeyManager.prototype, 'getRootCertChainPems')
       .mockResolvedValue(certs);
-    mockedGenerateKeyPair = jest
-      .spyOn(keysUtils, 'generateKeyPair')
-      .mockResolvedValue(globalKeyPair);
-    mockedGenerateDeterministicKeyPair = jest
-      .spyOn(keysUtils, 'generateDeterministicKeyPair')
-      .mockResolvedValue(globalKeyPair);
   });
   afterAll(async () => {
     mockedGetRootCertChainPems.mockRestore();
-    mockedGenerateKeyPair.mockRestore();
-    mockedGenerateDeterministicKeyPair.mockRestore();
   });
   let dataDir: string;
   let keyManager: KeyManager;
@@ -56,6 +44,7 @@ describe('keysCertsChainGet', () => {
       password,
       keysPath,
       logger,
+      privateKeyPemOverride: globalRootKeyPems[0],
     });
     const clientService = {
       keysCertsChainGet: keysCertsChainGet({

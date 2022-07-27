@@ -14,28 +14,19 @@ import * as grpcUtils from '@/grpc/utils';
 import * as keysUtils from '@/keys/utils';
 import * as clientUtils from '@/client/utils';
 import * as testGrpcUtils from './utils';
-import * as testUtils from '../utils';
+import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 
 describe('GRPCServer', () => {
   const logger = new Logger('GRPCServer Test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
   const password = 'password';
-  let mockedGenerateKeyPair: jest.SpyInstance;
-  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
   let dataDir: string;
   let keyManager: KeyManager;
   let db: DB;
   let sessionManager: SessionManager;
   let authenticate: Authenticate;
-  beforeAll(async () => {
-    const globalKeyPair = await testUtils.setupGlobalKeypair();
-    mockedGenerateKeyPair = jest
-      .spyOn(keysUtils, 'generateKeyPair')
-      .mockResolvedValue(globalKeyPair);
-    mockedGenerateDeterministicKeyPair = jest
-      .spyOn(keysUtils, 'generateDeterministicKeyPair')
-      .mockResolvedValue(globalKeyPair);
+  beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -44,6 +35,7 @@ describe('GRPCServer', () => {
       password,
       keysPath,
       logger,
+      privateKeyPemOverride: globalRootKeyPems[0],
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
@@ -65,7 +57,7 @@ describe('GRPCServer', () => {
     });
     authenticate = clientUtils.authenticator(sessionManager, keyManager);
   });
-  afterAll(async () => {
+  afterEach(async () => {
     await sessionManager.stop();
     await db.stop();
     await keyManager.stop();
@@ -73,8 +65,6 @@ describe('GRPCServer', () => {
       force: true,
       recursive: true,
     });
-    mockedGenerateKeyPair.mockRestore();
-    mockedGenerateDeterministicKeyPair.mockRestore();
   });
   test('GRPCServer readiness', async () => {
     const server = new GRPCServer({

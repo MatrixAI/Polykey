@@ -8,29 +8,20 @@ import * as keysUtils from '@/keys/utils';
 import SessionManager from '@/sessions/SessionManager';
 import * as sessionsErrors from '@/sessions/errors';
 import { sleep } from '@/utils';
-import * as testUtils from '../utils';
+import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 
 describe('SessionManager', () => {
   const password = 'password';
   const logger = new Logger(`${SessionManager.name} Test`, LogLevel.WARN, [
     new StreamHandler(),
   ]);
-  let mockedGenerateKeyPair: jest.SpyInstance;
-  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
   /**
    * Shared db, keyManager for all tests
    */
   let dataDir: string;
   let db: DB;
   let keyManager: KeyManager;
-  beforeAll(async () => {
-    const globalKeyPair = await testUtils.setupGlobalKeypair();
-    mockedGenerateKeyPair = jest
-      .spyOn(keysUtils, 'generateKeyPair')
-      .mockResolvedValue(globalKeyPair);
-    mockedGenerateDeterministicKeyPair = jest
-      .spyOn(keysUtils, 'generateDeterministicKeyPair')
-      .mockResolvedValue(globalKeyPair);
+  beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -39,6 +30,7 @@ describe('SessionManager', () => {
       password,
       keysPath,
       logger,
+      privateKeyPemOverride: globalRootKeyPems[0],
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
@@ -53,15 +45,13 @@ describe('SessionManager', () => {
       },
     });
   });
-  afterAll(async () => {
+  afterEach(async () => {
     await db.stop();
     await keyManager.stop();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
     });
-    mockedGenerateKeyPair.mockRestore();
-    mockedGenerateDeterministicKeyPair.mockRestore();
   });
   test('session manager readiness', async () => {
     const sessionManager = await SessionManager.createSessionManager({

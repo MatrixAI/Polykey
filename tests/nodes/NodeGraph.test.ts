@@ -19,28 +19,19 @@ import * as nodesUtils from '@/nodes/utils';
 import * as nodesErrors from '@/nodes/errors';
 import * as utils from '@/utils';
 import * as testNodesUtils from './utils';
-import * as testUtils from '../utils';
+import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 
 describe(`${NodeGraph.name} test`, () => {
   const password = 'password';
   const logger = new Logger(`${NodeGraph.name} test`, LogLevel.WARN, [
     new StreamHandler(),
   ]);
-  let mockedGenerateKeyPair: jest.SpyInstance;
-  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
   let dataDir: string;
   let keyManager: KeyManager;
   let dbKey: Buffer;
   let dbPath: string;
   let db: DB;
   beforeAll(async () => {
-    const globalKeyPair = await testUtils.setupGlobalKeypair();
-    mockedGenerateKeyPair = jest
-      .spyOn(keysUtils, 'generateKeyPair')
-      .mockResolvedValue(globalKeyPair);
-    mockedGenerateDeterministicKeyPair = jest
-      .spyOn(keysUtils, 'generateDeterministicKeyPair')
-      .mockResolvedValue(globalKeyPair);
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -49,6 +40,7 @@ describe(`${NodeGraph.name} test`, () => {
       password,
       keysPath,
       logger,
+      privateKeyPemOverride: globalRootKeyPems[0],
     });
     dbKey = await keysUtils.generateKey();
     dbPath = `${dataDir}/db`;
@@ -59,8 +51,6 @@ describe(`${NodeGraph.name} test`, () => {
       force: true,
       recursive: true,
     });
-    mockedGenerateKeyPair.mockRestore();
-    mockedGenerateDeterministicKeyPair.mockRestore();
   });
   beforeEach(async () => {
     db = await DB.createDB({

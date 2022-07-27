@@ -163,6 +163,11 @@ const noPing = new commander.Option('--no-ping', 'Skip ping step').default(
   true,
 );
 
+const rootKeyFile = new commander.Option(
+  '--root-key-file <rootKeyFile>',
+  'Override key generation with a private key Pem from a file.',
+);
+
 export {
   nodePath,
   format,
@@ -187,4 +192,5 @@ export {
   pullVault,
   forceNodeAdd,
   noPing,
+  rootKeyFile,
 };

@@ -18,8 +18,8 @@ import vaultsLog from '@/client/service/vaultsLog';
 import { ClientServiceService } from '@/proto/js/polykey/v1/client_service_grpc_pb';
 import * as vaultsPB from '@/proto/js/polykey/v1/vaults/vaults_pb';
 import * as clientUtils from '@/client/utils/utils';
-import * as keysUtils from '@/keys/utils';
 import * as testUtils from '../../utils';
+import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('vaultsLog', () => {
   const logger = new Logger('vaultsLog test', LogLevel.WARN, [
@@ -28,21 +28,6 @@ describe('vaultsLog', () => {
   const password = 'helloworld';
   const authenticate = async (metaClient, metaServer = new Metadata()) =>
     metaServer;
-  let mockedGenerateKeyPair: jest.SpyInstance;
-  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
-  beforeAll(async () => {
-    const globalKeyPair = await testUtils.setupGlobalKeypair();
-    mockedGenerateKeyPair = jest
-      .spyOn(keysUtils, 'generateKeyPair')
-      .mockResolvedValue(globalKeyPair);
-    mockedGenerateDeterministicKeyPair = jest
-      .spyOn(keysUtils, 'generateDeterministicKeyPair')
-      .mockResolvedValue(globalKeyPair);
-  });
-  afterAll(async () => {
-    mockedGenerateKeyPair.mockRestore();
-    mockedGenerateDeterministicKeyPair.mockRestore();
-  });
   const vaultName = 'test-vault';
   const secret1 = { name: 'secret1', content: 'Secret-1-content' };
   const secret2 = { name: 'secret2', content: 'Secret-2-content' };
@@ -65,6 +50,7 @@ describe('vaultsLog', () => {
       password,
       keysPath,
       logger,
+      privateKeyPemOverride: globalRootKeyPems[0],
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
