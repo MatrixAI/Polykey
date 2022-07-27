@@ -382,29 +382,26 @@ async function pkExecTarget(
   const command = global.testCmd!;
   const escapedArgs = args.map((x) => x.replace(/(["\s'$`\\])/g, '\\$1'));
   return new Promise((resolve, reject) => {
-    child_process.execFile(
-      command,
-      escapedArgs,
-      {
-        env,
-        cwd,
-        windowsHide: true,
-        shell: true,
-      },
-      (error, stdout, stderr) => {
-        if (error != null && error.code === undefined) {
-          // This can only happen when the command is killed
-          return reject(error);
-        } else {
-          // Success and Unsuccessful exits are valid here
-          return resolve({
-            exitCode: error && error.code != null ? error.code : 0,
-            stdout,
-            stderr,
-          });
-        }
-      },
-    );
+    let stdout = '',
+      stderr = '';
+    const subprocess = child_process.spawn(command, escapedArgs, {
+      env,
+      cwd,
+      windowsHide: true,
+      shell: true,
+    });
+    subprocess.stdout.on('data', (data) => {
+      stdout += data.toString();
+    });
+    subprocess.stderr.on('data', (data) => {
+      stderr += data.toString();
+    });
+    subprocess.on('exit', (code) => {
+      resolve({ exitCode: code ?? -255, stdout, stderr });
+    });
+    subprocess.on('error', (e) => {
+      reject(e);
+    });
   });
 }
 
