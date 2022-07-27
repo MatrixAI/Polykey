@@ -12,7 +12,7 @@ import { Session } from '@/sessions';
 import { sleep } from '@/utils';
 import config from '@/config';
 import * as clientErrors from '@/client/errors';
-import * as testBinUtils from './utils';
+import * as execUtils from '../utils/exec';
 import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 import { runTestIfPlatforms } from '../utils';
 
@@ -28,8 +28,10 @@ describe('sessions', () => {
   let agentClose;
   let dataDir: string;
   beforeEach(async () => {
-    ({ agentDir, agentPassword, agentClose } =
-      await testBinUtils.setupTestAgent(globalRootKeyPems[0], logger));
+    ({ agentDir, agentPassword, agentClose } = await execUtils.setupTestAgent(
+      globalRootKeyPems[0],
+      logger,
+    ));
     dataDir = await fs.promises.mkdtemp(
       path.join(global.tmpDir, 'polykey-test-'),
     );
@@ -51,7 +53,7 @@ describe('sessions', () => {
         logger,
       });
       let exitCode;
-      ({ exitCode } = await testBinUtils.pkStdio(
+      ({ exitCode } = await execUtils.pkStdio(
         ['agent', 'status'],
         {
           PK_NODE_PATH: agentDir,
@@ -65,7 +67,7 @@ describe('sessions', () => {
       // Wait at least 1 second
       // To ensure that the next token has a new expiry
       await sleep(1100);
-      ({ exitCode } = await testBinUtils.pkStdio(
+      ({ exitCode } = await execUtils.pkStdio(
         ['agent', 'status'],
         {
           PK_NODE_PATH: agentDir,
@@ -84,7 +86,7 @@ describe('sessions', () => {
     async () => {
       let exitCode, stderr;
       // Password and Token set
-      ({ exitCode, stderr } = await testBinUtils.pkStdio(
+      ({ exitCode, stderr } = await execUtils.pkStdio(
         ['agent', 'status', '--format', 'json'],
         {
           PK_NODE_PATH: agentDir,
@@ -93,11 +95,11 @@ describe('sessions', () => {
         },
         agentDir,
       ));
-      testBinUtils.expectProcessError(exitCode, stderr, [
+      execUtils.expectProcessError(exitCode, stderr, [
         new clientErrors.ErrorClientAuthDenied(),
       ]);
       // Password set
-      ({ exitCode, stderr } = await testBinUtils.pkStdio(
+      ({ exitCode, stderr } = await execUtils.pkStdio(
         ['agent', 'status', '--format', 'json'],
         {
           PK_NODE_PATH: agentDir,
@@ -106,11 +108,11 @@ describe('sessions', () => {
         },
         agentDir,
       ));
-      testBinUtils.expectProcessError(exitCode, stderr, [
+      execUtils.expectProcessError(exitCode, stderr, [
         new clientErrors.ErrorClientAuthDenied(),
       ]);
       // Token set
-      ({ exitCode, stderr } = await testBinUtils.pkStdio(
+      ({ exitCode, stderr } = await execUtils.pkStdio(
         ['agent', 'status', '--format', 'json'],
         {
           PK_NODE_PATH: agentDir,
@@ -119,7 +121,7 @@ describe('sessions', () => {
         },
         agentDir,
       ));
-      testBinUtils.expectProcessError(exitCode, stderr, [
+      execUtils.expectProcessError(exitCode, stderr, [
         new clientErrors.ErrorClientAuthDenied(),
       ]);
     },
@@ -128,7 +130,7 @@ describe('sessions', () => {
     'prompt for password to authenticate attended commands',
     async () => {
       const password = agentPassword;
-      await testBinUtils.pkStdio(
+      await execUtils.pkStdio(
         ['agent', 'lock'],
         {
           PK_NODE_PATH: agentDir,
@@ -139,7 +141,7 @@ describe('sessions', () => {
       mockedPrompts.mockImplementation(async (_opts: any) => {
         return { password };
       });
-      const { exitCode } = await testBinUtils.pkStdio(
+      const { exitCode } = await execUtils.pkStdio(
         ['agent', 'status'],
         {
           PK_NODE_PATH: agentDir,
@@ -155,7 +157,7 @@ describe('sessions', () => {
   runTestIfPlatforms()(
     're-prompts for password if unable to authenticate command',
     async () => {
-      await testBinUtils.pkStdio(
+      await execUtils.pkStdio(
         ['agent', 'lock'],
         {
           PK_NODE_PATH: agentDir,
@@ -168,7 +170,7 @@ describe('sessions', () => {
       mockedPrompts
         .mockResolvedValueOnce({ password: invalidPassword })
         .mockResolvedValue({ password: validPassword });
-      const { exitCode } = await testBinUtils.pkStdio(
+      const { exitCode } = await execUtils.pkStdio(
         ['agent', 'status'],
         {
           PK_NODE_PATH: agentDir,

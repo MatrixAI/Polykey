@@ -1,7 +1,7 @@
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import * as testBinUtils from '../utils';
+import * as execUtils from '../../utils/exec';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 import { runTestIfPlatforms } from '../../utils';
 
@@ -13,8 +13,10 @@ describe('password', () => {
   let agentPassword;
   let agentClose;
   beforeEach(async () => {
-    ({ agentDir, agentPassword, agentClose } =
-      await testBinUtils.setupTestAgent(globalRootKeyPems[0], logger));
+    ({ agentDir, agentPassword, agentClose } = await execUtils.setupTestAgent(
+      globalRootKeyPems[0],
+      logger,
+    ));
   });
   afterEach(async () => {
     await agentClose();
@@ -24,7 +26,7 @@ describe('password', () => {
     async () => {
       const passPath = path.join(agentDir, 'passwordChange');
       await fs.promises.writeFile(passPath, 'password-change');
-      let { exitCode } = await testBinUtils.pkStdio(
+      let { exitCode } = await execUtils.pkStdio(
         ['keys', 'password', '--password-new-file', passPath],
         {
           PK_NODE_PATH: agentDir,
@@ -34,7 +36,7 @@ describe('password', () => {
       );
       expect(exitCode).toBe(0);
       // Old password should no longer work
-      ({ exitCode } = await testBinUtils.pkStdio(
+      ({ exitCode } = await execUtils.pkStdio(
         ['keys', 'root'],
         {
           PK_NODE_PATH: agentDir,
@@ -45,7 +47,7 @@ describe('password', () => {
       expect(exitCode).not.toBe(0);
       // Revert side effects using new password
       await fs.promises.writeFile(passPath, agentPassword);
-      ({ exitCode } = await testBinUtils.pkStdio(
+      ({ exitCode } = await execUtils.pkStdio(
         ['keys', 'password', '--password-new-file', passPath],
         {
           PK_NODE_PATH: agentDir,

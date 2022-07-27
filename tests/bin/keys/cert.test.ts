@@ -1,5 +1,5 @@
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import * as testBinUtils from '../utils';
+import * as execUtils from '../../utils/exec';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 import { runTestIfPlatforms } from '../../utils';
 
@@ -9,14 +9,16 @@ describe('cert', () => {
   let agentPassword;
   let agentClose;
   beforeEach(async () => {
-    ({ agentDir, agentPassword, agentClose } =
-      await testBinUtils.setupTestAgent(globalRootKeyPems[0], logger));
+    ({ agentDir, agentPassword, agentClose } = await execUtils.setupTestAgent(
+      globalRootKeyPems[0],
+      logger,
+    ));
   });
   afterEach(async () => {
     await agentClose();
   });
   runTestIfPlatforms('docker')('cert gets the certificate', async () => {
-    let { exitCode, stdout } = await testBinUtils.pkStdio(
+    let { exitCode, stdout } = await execUtils.pkStdio(
       ['keys', 'cert', '--format', 'json'],
       {
         PK_NODE_PATH: agentDir,
@@ -29,7 +31,7 @@ describe('cert', () => {
       cert: expect.any(String),
     });
     const certCommand = JSON.parse(stdout).cert;
-    ({ exitCode, stdout } = await testBinUtils.pkStdio(
+    ({ exitCode, stdout } = await execUtils.pkStdio(
       ['agent', 'status', '--format', 'json'],
       {
         PK_NODE_PATH: agentDir,

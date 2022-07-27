@@ -9,7 +9,7 @@ import Status from '@/status/Status';
 import config from '@/config';
 import * as testNatUtils from './utils';
 import { runDescribeIf } from '../utils';
-import * as testBinUtils from '../bin/utils';
+import * as execUtils from '../utils/exec';
 import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 
 runDescribeIf(
@@ -83,7 +83,7 @@ runDescribeIf(
       });
       agentProcess.kill('SIGTERM');
       let exitCode, signal;
-      [exitCode, signal] = await testBinUtils.processExit(agentProcess);
+      [exitCode, signal] = await execUtils.processExit(agentProcess);
       expect(exitCode).toBe(null);
       expect(signal).toBe('SIGTERM');
       // Check for graceful exit
@@ -100,11 +100,11 @@ runDescribeIf(
       const statusInfo = (await status.readStatus())!;
       expect(statusInfo.status).toBe('DEAD');
       netns.kill('SIGTERM');
-      [exitCode, signal] = await testBinUtils.processExit(netns);
+      [exitCode, signal] = await execUtils.processExit(netns);
       expect(exitCode).toBe(null);
       expect(signal).toBe('SIGTERM');
       usrns.kill('SIGTERM');
-      [exitCode, signal] = await testBinUtils.processExit(usrns);
+      [exitCode, signal] = await execUtils.processExit(usrns);
       expect(exitCode).toBe(null);
       expect(signal).toBe('SIGTERM');
     },

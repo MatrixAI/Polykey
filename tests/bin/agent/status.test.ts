@@ -4,7 +4,7 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import Status from '@/status/Status';
 import * as nodesUtils from '@/nodes/utils';
 import config from '@/config';
-import * as testBinUtils from '../utils';
+import * as execUtils from '../../utils/exec';
 import { runTestIfPlatforms } from '../../utils';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
@@ -39,7 +39,7 @@ describe('status', () => {
         fs,
         logger,
       });
-      const agentProcess = await testBinUtils.pkSpawn(
+      const agentProcess = await execUtils.pkSpawn(
         [
           'agent',
           'start',
@@ -61,7 +61,7 @@ describe('status', () => {
       );
       await status.waitFor('STARTING');
       let exitCode, stdout;
-      ({ exitCode, stdout } = await testBinUtils.pkStdio(
+      ({ exitCode, stdout } = await execUtils.pkStdio(
         ['agent', 'status', '--format', 'json'],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -76,11 +76,11 @@ describe('status', () => {
         pid: expect.any(Number),
       });
       await status.waitFor('LIVE');
-      const agentProcessExit = testBinUtils.processExit(agentProcess);
+      const agentProcessExit = execUtils.processExit(agentProcess);
       agentProcess.kill('SIGTERM');
       // Cannot wait for STOPPING because waitFor polling may miss the transition
       await status.waitFor('DEAD');
-      ({ exitCode, stdout } = await testBinUtils.pkStdio(
+      ({ exitCode, stdout } = await execUtils.pkStdio(
         ['agent', 'status', '--format', 'json'],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -95,7 +95,7 @@ describe('status', () => {
         status: expect.stringMatching(/STOPPING|DEAD/),
       });
       await agentProcessExit;
-      ({ exitCode, stdout } = await testBinUtils.pkStdio(
+      ({ exitCode, stdout } = await execUtils.pkStdio(
         ['agent', 'status', '--format', 'json'],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -111,7 +111,7 @@ describe('status', () => {
     global.defaultTimeout * 2,
   );
   runTestIfPlatforms('docker')('status on missing agent', async () => {
-    const { exitCode, stdout } = await testBinUtils.pkStdio(
+    const { exitCode, stdout } = await execUtils.pkStdio(
       ['agent', 'status', '--format', 'json'],
       {
         PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -127,8 +127,10 @@ describe('status', () => {
     let agentPassword;
     let agentClose;
     beforeEach(async () => {
-      ({ agentDir, agentPassword, agentClose } =
-        await testBinUtils.setupTestAgent(globalRootKeyPems[1], logger));
+      ({ agentDir, agentPassword, agentClose } = await execUtils.setupTestAgent(
+        globalRootKeyPems[1],
+        logger,
+      ));
     });
     afterEach(async () => {
       await agentClose();
@@ -141,7 +143,7 @@ describe('status', () => {
         logger,
       });
       const statusInfo = (await status.readStatus())!;
-      const { exitCode, stdout } = await testBinUtils.pkStdio(
+      const { exitCode, stdout } = await execUtils.pkStdio(
         ['agent', 'status', '--format', 'json', '--verbose'],
         {
           PK_NODE_PATH: agentDir,
@@ -177,7 +179,7 @@ describe('status', () => {
       });
       const statusInfo = (await status.readStatus())!;
       // This still needs a `nodePath` because of session token path
-      const { exitCode, stdout } = await testBinUtils.pkStdio(
+      const { exitCode, stdout } = await execUtils.pkStdio(
         [
           'agent',
           'status',

@@ -11,7 +11,7 @@ import { poll, sysexits } from '@/utils';
 import * as identitiesUtils from '@/identities/utils';
 import * as claimsUtils from '@/claims/utils';
 import * as nodesUtils from '@/nodes/utils';
-import * as testBinUtils from '../utils';
+import * as execUtils from '../../utils/exec';
 import * as testNodesUtils from '../../nodes/utils';
 import TestProvider from '../../identities/TestProvider';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
@@ -126,7 +126,7 @@ describe('discover/get', () => {
     const mockedBrowser = jest
       .spyOn(identitiesUtils, 'browser')
       .mockImplementation(() => {});
-    await testBinUtils.pkStdio(
+    await execUtils.pkStdio(
       [
         'identities',
         'authenticate',
@@ -141,7 +141,7 @@ describe('discover/get', () => {
     );
     // Add one of the nodes to our gestalt graph so that we'll be able to
     // contact the gestalt during discovery
-    await testBinUtils.pkStdio(
+    await execUtils.pkStdio(
       [
         'nodes',
         'add',
@@ -156,7 +156,7 @@ describe('discover/get', () => {
       dataDir,
     );
     // Discover gestalt by node
-    const discoverResponse = await testBinUtils.pkStdio(
+    const discoverResponse = await execUtils.pkStdio(
       ['identities', 'discover', nodesUtils.encodeNodeId(nodeAId)],
       {
         PK_NODE_PATH: nodePath,
@@ -189,7 +189,7 @@ describe('discover/get', () => {
       100,
     );
     // Now we can get the gestalt
-    const getResponse = await testBinUtils.pkStdio(
+    const getResponse = await execUtils.pkStdio(
       ['identities', 'get', nodesUtils.encodeNodeId(nodeAId)],
       {
         PK_NODE_PATH: nodePath,
@@ -219,7 +219,7 @@ describe('discover/get', () => {
     const mockedBrowser = jest
       .spyOn(identitiesUtils, 'browser')
       .mockImplementation(() => {});
-    await testBinUtils.pkStdio(
+    await execUtils.pkStdio(
       [
         'identities',
         'authenticate',
@@ -234,7 +234,7 @@ describe('discover/get', () => {
     );
     // Add one of the nodes to our gestalt graph so that we'll be able to
     // contact the gestalt during discovery
-    await testBinUtils.pkStdio(
+    await execUtils.pkStdio(
       [
         'nodes',
         'add',
@@ -249,7 +249,7 @@ describe('discover/get', () => {
       dataDir,
     );
     // Discover gestalt by node
-    const discoverResponse = await testBinUtils.pkStdio(
+    const discoverResponse = await execUtils.pkStdio(
       ['identities', 'discover', providerString],
       {
         PK_NODE_PATH: nodePath,
@@ -282,7 +282,7 @@ describe('discover/get', () => {
       100,
     );
     // Now we can get the gestalt
-    const getResponse = await testBinUtils.pkStdio(
+    const getResponse = await execUtils.pkStdio(
       ['identities', 'get', providerString],
       {
         PK_NODE_PATH: nodePath,
@@ -310,7 +310,7 @@ describe('discover/get', () => {
   runTestIfPlatforms()('should fail on invalid inputs', async () => {
     let exitCode;
     // Discover
-    ({ exitCode } = await testBinUtils.pkStdio(
+    ({ exitCode } = await execUtils.pkStdio(
       ['identities', 'discover', 'invalid'],
       {
         PK_NODE_PATH: nodePath,
@@ -320,7 +320,7 @@ describe('discover/get', () => {
     ));
     expect(exitCode).toBe(sysexits.USAGE);
     // Get
-    ({ exitCode } = await testBinUtils.pkStdio(
+    ({ exitCode } = await execUtils.pkStdio(
       ['identities', 'get', 'invalid'],
       {
         PK_NODE_PATH: nodePath,

@@ -5,7 +5,7 @@ import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
 import * as nodesUtils from '@/nodes/utils';
-import * as testBinUtils from '../utils';
+import * as execUtils from '../../utils/exec';
 import * as testNodesUtils from '../../nodes/utils';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 import { runTestIfPlatforms } from '../../utils';
@@ -84,7 +84,7 @@ describe('claim', () => {
     });
   });
   runTestIfPlatforms()('sends a gestalt invite', async () => {
-    const { exitCode, stdout } = await testBinUtils.pkStdio(
+    const { exitCode, stdout } = await execUtils.pkStdio(
       ['nodes', 'claim', remoteIdEncoded],
       {
         PK_NODE_PATH: nodePath,
@@ -100,7 +100,7 @@ describe('claim', () => {
     await remoteNode.notificationsManager.sendNotification(localId, {
       type: 'GestaltInvite',
     });
-    const { exitCode, stdout } = await testBinUtils.pkStdio(
+    const { exitCode, stdout } = await execUtils.pkStdio(
       ['nodes', 'claim', remoteIdEncoded, '--force-invite'],
       {
         PK_NODE_PATH: nodePath,
@@ -116,7 +116,7 @@ describe('claim', () => {
     await remoteNode.notificationsManager.sendNotification(localId, {
       type: 'GestaltInvite',
     });
-    const { exitCode, stdout } = await testBinUtils.pkStdio(
+    const { exitCode, stdout } = await execUtils.pkStdio(
       ['nodes', 'claim', remoteIdEncoded],
       {
         PK_NODE_PATH: nodePath,

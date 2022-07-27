@@ -8,7 +8,7 @@ import { sysexits } from '@/utils';
 import PolykeyAgent from '@/PolykeyAgent';
 import * as nodesUtils from '@/nodes/utils';
 import NodeManager from '@/nodes/NodeManager';
-import * as testBinUtils from '../utils';
+import * as execUtils from '../../utils/exec';
 import * as testNodesUtils from '../../nodes/utils';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 import { runTestIfPlatforms } from '../../utils';
@@ -60,7 +60,7 @@ describe('add', () => {
     mockedPingNode.mockRestore();
   });
   runTestIfPlatforms()('adds a node', async () => {
-    const { exitCode } = await testBinUtils.pkStdio(
+    const { exitCode } = await execUtils.pkStdio(
       [
         'nodes',
         'add',
@@ -76,7 +76,7 @@ describe('add', () => {
     );
     expect(exitCode).toBe(0);
     // Checking if node was added.
-    const { stdout } = await testBinUtils.pkStdio(
+    const { stdout } = await execUtils.pkStdio(
       ['nodes', 'find', nodesUtils.encodeNodeId(validNodeId)],
       {
         PK_NODE_PATH: nodePath,
@@ -88,7 +88,7 @@ describe('add', () => {
     expect(stdout).toContain(`${port}`);
   });
   runTestIfPlatforms()('fails to add a node (invalid node ID)', async () => {
-    const { exitCode } = await testBinUtils.pkStdio(
+    const { exitCode } = await execUtils.pkStdio(
       [
         'nodes',
         'add',
@@ -105,7 +105,7 @@ describe('add', () => {
     expect(exitCode).toBe(sysexits.USAGE);
   });
   runTestIfPlatforms()('fails to add a node (invalid IP address)', async () => {
-    const { exitCode } = await testBinUtils.pkStdio(
+    const { exitCode } = await execUtils.pkStdio(
       [
         'nodes',
         'add',
@@ -122,7 +122,7 @@ describe('add', () => {
     expect(exitCode).toBe(sysexits.USAGE);
   });
   runTestIfPlatforms()('adds a node with --force flag', async () => {
-    const { exitCode } = await testBinUtils.pkStdio(
+    const { exitCode } = await execUtils.pkStdio(
       [
         'nodes',
         'add',
@@ -144,7 +144,7 @@ describe('add', () => {
   });
   runTestIfPlatforms()('fails to add node when ping fails', async () => {
     mockedPingNode.mockImplementation(() => false);
-    const { exitCode } = await testBinUtils.pkStdio(
+    const { exitCode } = await execUtils.pkStdio(
       [
         'nodes',
         'add',
@@ -162,7 +162,7 @@ describe('add', () => {
   });
   runTestIfPlatforms()('adds a node with --no-ping flag', async () => {
     mockedPingNode.mockImplementation(() => false);
-    const { exitCode } = await testBinUtils.pkStdio(
+    const { exitCode } = await execUtils.pkStdio(
       [
         'nodes',
         'add',

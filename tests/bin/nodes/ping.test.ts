@@ -6,7 +6,7 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
 import * as nodesUtils from '@/nodes/utils';
 import { sysexits } from '@/errors';
-import * as testBinUtils from '../utils';
+import * as execUtils from '../../utils/exec';
 import * as testNodesUtils from '../../nodes/utils';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 import { runTestIfPlatforms } from '../../utils';
@@ -97,7 +97,7 @@ describe('ping', () => {
     });
   });
   runTestIfPlatforms()('fails when pinging an offline node', async () => {
-    const { exitCode, stdout, stderr } = await testBinUtils.pkStdio(
+    const { exitCode, stdout, stderr } = await execUtils.pkStdio(
       [
         'nodes',
         'ping',
@@ -122,7 +122,7 @@ describe('ping', () => {
     const fakeNodeId = nodesUtils.decodeNodeId(
       'vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0',
     );
-    const { exitCode, stdout } = await testBinUtils.pkStdio(
+    const { exitCode, stdout } = await execUtils.pkStdio(
       [
         'nodes',
         'ping',
@@ -145,7 +145,7 @@ describe('ping', () => {
     });
   });
   runTestIfPlatforms()('succeed when pinging a live node', async () => {
-    const { exitCode, stdout } = await testBinUtils.pkStdio(
+    const { exitCode, stdout } = await execUtils.pkStdio(
       [
         'nodes',
         'ping',

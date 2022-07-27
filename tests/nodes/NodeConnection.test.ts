@@ -2,11 +2,11 @@ import type { AddressInfo } from 'net';
 import type { ConnectionInfo, Host, Port, TLSConfig } from '@/network/types';
 import type { NodeId, NodeInfo } from '@/nodes/types';
 import type { Server } from '@grpc/grpc-js';
+import type * as child_process from 'child_process';
 import net from 'net';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
-import * as child_process from 'child_process';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { destroyed } from '@matrixai/async-init';
@@ -39,6 +39,7 @@ import * as testNodesUtils from './utils';
 import * as grpcTestUtils from '../grpc/utils';
 import * as agentTestUtils from '../agent/utils';
 import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
+import { spawnFile } from '../utils/exec';
 
 const destroyCallback = async () => {};
 
@@ -734,11 +735,7 @@ describe(`${NodeConnection.name} test`, () => {
       let testProxy: Proxy | undefined;
       let testProcess: child_process.ChildProcessWithoutNullStreams | undefined;
       try {
-        const testProcess = child_process.spawn('ts-node', [
-          '--require',
-          'tsconfig-paths/register',
-          'tests/grpc/utils/testServer.ts',
-        ]);
+        const testProcess = spawnFile('tests/grpc/utils/testServer.ts');
         const waitP = promise<string>();
         testProcess.stdout.on('data', (data) => {
           waitP.resolveP(data);
@@ -804,11 +801,7 @@ describe(`${NodeConnection.name} test`, () => {
       let testProxy: Proxy | undefined;
       let testProcess: child_process.ChildProcessWithoutNullStreams | undefined;
       try {
-        const testProcess = child_process.spawn('ts-node', [
-          '--require',
-          'tsconfig-paths/register',
-          'tests/grpc/utils/testServer.ts',
-        ]);
+        const testProcess = spawnFile('tests/grpc/utils/testServer.ts');
         const waitP = promise<string>();
         testProcess.stdout.on('data', (data) => {
           waitP.resolveP(data);

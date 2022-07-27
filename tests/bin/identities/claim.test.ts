@@ -10,7 +10,7 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
 import { sysexits } from '@/utils';
 import * as identitiesUtils from '@/identities/utils';
-import * as testBinUtils from '../utils';
+import * as execUtils from '../../utils/exec';
 import TestProvider from '../../identities/TestProvider';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 import { runTestIfPlatforms } from '../../utils';
@@ -61,7 +61,7 @@ describe('claim', () => {
     const mockedBrowser = jest
       .spyOn(identitiesUtils, 'browser')
       .mockImplementation(() => {});
-    await testBinUtils.pkStdio(
+    await execUtils.pkStdio(
       [
         'identities',
         'authenticate',
@@ -75,7 +75,7 @@ describe('claim', () => {
       dataDir,
     );
     // Claim identity
-    const { exitCode, stdout } = await testBinUtils.pkStdio(
+    const { exitCode, stdout } = await execUtils.pkStdio(
       [
         'identities',
         'claim',
@@ -103,7 +103,7 @@ describe('claim', () => {
     mockedBrowser.mockRestore();
   });
   runTestIfPlatforms()('cannot claim unauthenticated identities', async () => {
-    const { exitCode } = await testBinUtils.pkStdio(
+    const { exitCode } = await execUtils.pkStdio(
       ['identities', 'claim', testToken.providerId, testToken.identityId],
       {
         PK_NODE_PATH: nodePath,
@@ -116,7 +116,7 @@ describe('claim', () => {
   runTestIfPlatforms()('should fail on invalid inputs', async () => {
     let exitCode;
     // Invalid provider
-    ({ exitCode } = await testBinUtils.pkStdio(
+    ({ exitCode } = await execUtils.pkStdio(
       ['identities', 'claim', '', testToken.identityId],
       {
         PK_NODE_PATH: nodePath,
@@ -126,7 +126,7 @@ describe('claim', () => {
     ));
     expect(exitCode).toBe(sysexits.USAGE);
     // Invalid identity
-    ({ exitCode } = await testBinUtils.pkStdio(
+    ({ exitCode } = await execUtils.pkStdio(
       ['identities', 'claim', testToken.providerId, ''],
       {
         PK_NODE_PATH: nodePath,

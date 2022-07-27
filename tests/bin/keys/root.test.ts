@@ -1,5 +1,5 @@
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import * as testBinUtils from '../utils';
+import * as execUtils from '../../utils/exec';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 import { runTestIfPlatforms } from '../../utils';
 
@@ -9,14 +9,16 @@ describe('root', () => {
   let agentPassword;
   let agentClose;
   beforeEach(async () => {
-    ({ agentDir, agentPassword, agentClose } =
-      await testBinUtils.setupTestAgent(globalRootKeyPems[0], logger));
+    ({ agentDir, agentPassword, agentClose } = await execUtils.setupTestAgent(
+      globalRootKeyPems[0],
+      logger,
+    ));
   });
   afterEach(async () => {
     await agentClose();
   });
   runTestIfPlatforms('docker')('root gets the public key', async () => {
-    const { exitCode, stdout } = await testBinUtils.pkStdio(
+    const { exitCode, stdout } = await execUtils.pkStdio(
       ['keys', 'root', '--format', 'json'],
       {
         PK_NODE_PATH: agentDir,
@@ -32,7 +34,7 @@ describe('root', () => {
   runTestIfPlatforms('docker')(
     'root gets public and private keys',
     async () => {
-      const { exitCode, stdout } = await testBinUtils.pkStdio(
+      const { exitCode, stdout } = await execUtils.pkStdio(
         ['keys', 'root', '--private-key', '--format', 'json'],
         {
           PK_NODE_PATH: agentDir,

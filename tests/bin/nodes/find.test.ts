@@ -6,7 +6,7 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
 import * as nodesUtils from '@/nodes/utils';
 import { sysexits } from '@/errors';
-import * as testBinUtils from '../utils';
+import * as execUtils from '../../utils/exec';
 import * as testNodesUtils from '../../nodes/utils';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 import { runTestIfPlatforms } from '../../utils';
@@ -102,7 +102,7 @@ describe('find', () => {
     });
   });
   runTestIfPlatforms()('finds an online node', async () => {
-    const { exitCode, stdout } = await testBinUtils.pkStdio(
+    const { exitCode, stdout } = await execUtils.pkStdio(
       [
         'nodes',
         'find',
@@ -126,7 +126,7 @@ describe('find', () => {
     });
   });
   runTestIfPlatforms()('finds an offline node', async () => {
-    const { exitCode, stdout } = await testBinUtils.pkStdio(
+    const { exitCode, stdout } = await execUtils.pkStdio(
       [
         'nodes',
         'find',
@@ -155,7 +155,7 @@ describe('find', () => {
       const unknownNodeId = nodesUtils.decodeNodeId(
         'vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg',
       );
-      const { exitCode, stdout } = await testBinUtils.pkStdio(
+      const { exitCode, stdout } = await execUtils.pkStdio(
         [
           'nodes',
           'find',

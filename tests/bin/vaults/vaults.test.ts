@@ -9,7 +9,7 @@ import * as nodesUtils from '@/nodes/utils';
 import * as vaultsUtils from '@/vaults/utils';
 import sysexits from '@/utils/sysexits';
 import NotificationsManager from '@/notifications/NotificationsManager';
-import * as testBinUtils from '../utils';
+import * as execUtils from '../../utils/exec';
 import * as testNodesUtils from '../../nodes/utils';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 import { runTestIfPlatforms } from '../../utils';
@@ -71,7 +71,7 @@ describe('CLI vaults', () => {
     vaultNumber = 0;
 
     // Authorize session
-    await testBinUtils.pkStdio(
+    await execUtils.pkStdio(
       ['agent', 'unlock', '-np', dataDir, '--password-file', passwordFile],
       {},
       dataDir,
@@ -94,16 +94,16 @@ describe('CLI vaults', () => {
       await polykeyAgent.vaultManager.createVault('Vault1' as VaultName);
       await polykeyAgent.vaultManager.createVault('Vault2' as VaultName);
 
-      const result = await testBinUtils.pkStdio([...command], {}, dataDir);
+      const result = await execUtils.pkStdio([...command], {}, dataDir);
       expect(result.exitCode).toBe(0);
     });
   });
   describe('commandCreateVaults', () => {
     runTestIfPlatforms()('should create vaults', async () => {
       command = ['vaults', 'create', '-np', dataDir, 'MyTestVault'];
-      const result = await testBinUtils.pkStdio([...command], {}, dataDir);
+      const result = await execUtils.pkStdio([...command], {}, dataDir);
       expect(result.exitCode).toBe(0);
-      const result2 = await testBinUtils.pkStdio(
+      const result2 = await execUtils.pkStdio(
         ['vaults', 'touch', '-np', dataDir, 'MyTestVault2'],
         {},
         dataDir,
@@ -126,7 +126,7 @@ describe('CLI vaults', () => {
       const id = polykeyAgent.vaultManager.getVaultId(vaultName);
       expect(id).toBeTruthy();
 
-      const result = await testBinUtils.pkStdio([...command], {}, dataDir);
+      const result = await execUtils.pkStdio([...command], {}, dataDir);
       expect(result.exitCode).toBe(0);
 
       const list = (await polykeyAgent.vaultManager.listVaults()).keys();
@@ -151,7 +151,7 @@ describe('CLI vaults', () => {
         const id = polykeyAgent.vaultManager.getVaultId(vaultName);
         expect(id).toBeTruthy();
 
-        const result = await testBinUtils.pkStdio([...command], {}, dataDir);
+        const result = await execUtils.pkStdio([...command], {}, dataDir);
         // Exit code of the exception
         expect(result.exitCode).toBe(sysexits.USAGE);
 
@@ -174,7 +174,7 @@ describe('CLI vaults', () => {
       id = polykeyAgent.vaultManager.getVaultId(vaultName);
       expect(id).toBeTruthy();
 
-      const result2 = await testBinUtils.pkStdio([...command], {}, dataDir);
+      const result2 = await execUtils.pkStdio([...command], {}, dataDir);
       expect(result2.exitCode).toBe(0);
 
       const list = (await polykeyAgent.vaultManager.listVaults()).keys();
@@ -255,7 +255,7 @@ describe('CLI vaults', () => {
         targetNodeIdEncoded,
       ];
 
-      let result = await testBinUtils.pkStdio([...command], {}, dataDir);
+      let result = await execUtils.pkStdio([...command], {}, dataDir);
       expect(result.exitCode).toBe(0);
 
       const clonedVaultId = await polykeyAgent.vaultManager.getVaultId(
@@ -281,7 +281,7 @@ describe('CLI vaults', () => {
         vaultName,
         nodesUtils.encodeNodeId(targetNodeId),
       ];
-      result = await testBinUtils.pkStdio([...command], {}, dataDir);
+      result = await execUtils.pkStdio([...command], {}, dataDir);
       expect(result.exitCode).toBe(0);
 
       const secondClonedVaultId = (await polykeyAgent.vaultManager.getVaultId(
@@ -307,7 +307,7 @@ describe('CLI vaults', () => {
       );
 
       command = ['vaults', 'pull', '-np', dataDir, vaultName];
-      result = await testBinUtils.pkStdio([...command], {}, dataDir);
+      result = await execUtils.pkStdio([...command], {}, dataDir);
       expect(result.exitCode).toBe(0);
 
       await polykeyAgent.vaultManager.withVaults(
@@ -330,7 +330,7 @@ describe('CLI vaults', () => {
         vaultsUtils.encodeVaultId(secondClonedVaultId),
         targetNodeIdEncoded,
       ];
-      result = await testBinUtils.pkStdio([...command], {}, dataDir);
+      result = await execUtils.pkStdio([...command], {}, dataDir);
       expect(result.exitCode).toBe(sysexits.USAGE);
       expect(result.stderr).toContain('ErrorVaultsVaultUndefined');
 
@@ -344,7 +344,7 @@ describe('CLI vaults', () => {
         vaultsUtils.encodeVaultId(secondClonedVaultId),
         'InvalidNodeId',
       ];
-      result = await testBinUtils.pkStdio([...command], {}, dataDir);
+      result = await execUtils.pkStdio([...command], {}, dataDir);
       expect(result.exitCode).toBe(sysexits.USAGE);
 
       await targetPolykeyAgent.stop();
@@ -385,7 +385,7 @@ describe('CLI vaults', () => {
           vaultIdEncoded,
           targetNodeIdEncoded,
         ];
-        const result = await testBinUtils.pkStdio([...command], {}, dataDir);
+        const result = await execUtils.pkStdio([...command], {}, dataDir);
         expect(result.exitCode).toBe(0);
 
         // Check permission
@@ -432,7 +432,7 @@ describe('CLI vaults', () => {
         vaultIdEncoded1,
         targetNodeIdEncoded,
       ];
-      const result = await testBinUtils.pkStdio([...command], {}, dataDir);
+      const result = await execUtils.pkStdio([...command], {}, dataDir);
       expect(result.exitCode).toBe(0);
 
       // Check permission
@@ -454,7 +454,7 @@ describe('CLI vaults', () => {
         vaultIdEncoded2,
         targetNodeIdEncoded,
       ];
-      const result2 = await testBinUtils.pkStdio([...command], {}, dataDir);
+      const result2 = await execUtils.pkStdio([...command], {}, dataDir);
       expect(result2.exitCode).toBe(0);
 
       // Check permission
@@ -495,14 +495,14 @@ describe('CLI vaults', () => {
       await polykeyAgent.acl.setVaultAction(vaultId2, targetNodeId, 'pull');
 
       command = ['vaults', 'permissions', '-np', dataDir, vaultIdEncoded1];
-      const result = await testBinUtils.pkStdio([...command], {}, dataDir);
+      const result = await execUtils.pkStdio([...command], {}, dataDir);
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain(targetNodeIdEncoded);
       expect(result.stdout).toContain('clone');
       expect(result.stdout).toContain('pull');
 
       command = ['vaults', 'permissions', '-np', dataDir, vaultIdEncoded2];
-      const result2 = await testBinUtils.pkStdio([...command], {}, dataDir);
+      const result2 = await execUtils.pkStdio([...command], {}, dataDir);
       expect(result2.exitCode).toBe(0);
       expect(result2.stdout).toContain(targetNodeIdEncoded);
       expect(result2.stdout).not.toContain('clone');
@@ -535,7 +535,7 @@ describe('CLI vaults', () => {
 
       const command = ['vaults', 'version', '-np', dataDir, vaultName, ver1Oid];
 
-      const result = await testBinUtils.pkStdio([...command], {}, dataDir);
+      const result = await execUtils.pkStdio([...command], {}, dataDir);
       expect(result.exitCode).toBe(0);
 
       await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
@@ -579,7 +579,7 @@ describe('CLI vaults', () => {
           ver1Oid,
         ];
 
-        const result = await testBinUtils.pkStdio([...command], {}, dataDir);
+        const result = await execUtils.pkStdio([...command], {}, dataDir);
         expect(result.exitCode).toBe(0);
 
         const command2 = [
@@ -591,7 +591,7 @@ describe('CLI vaults', () => {
           'last',
         ];
 
-        const result2 = await testBinUtils.pkStdio([...command2], {}, dataDir);
+        const result2 = await execUtils.pkStdio([...command2], {}, dataDir);
         expect(result2.exitCode).toBe(0);
       },
     );
@@ -609,7 +609,7 @@ describe('CLI vaults', () => {
         'NOT_A_VALID_CHECKOUT_ID',
       ];
 
-      const result = await testBinUtils.pkStdio([...command], {}, dataDir);
+      const result = await execUtils.pkStdio([...command], {}, dataDir);
       expect(result.exitCode).toBe(sysexits.USAGE);
 
       expect(result.stderr).toContain('ErrorVaultReferenceInvalid');
@@ -626,7 +626,7 @@ describe('CLI vaults', () => {
           'NOT_A_VALID_CHECKOUT_ID',
         ];
 
-        const result = await testBinUtils.pkStdio([...command], {}, dataDir);
+        const result = await execUtils.pkStdio([...command], {}, dataDir);
         expect(result.exitCode).toBe(sysexits.USAGE);
         expect(result.stderr).toContain('ErrorVaultsVaultUndefined');
       },
@@ -668,7 +668,7 @@ describe('CLI vaults', () => {
     runTestIfPlatforms()('Should get all writeFs', async () => {
       const command = ['vaults', 'log', '-np', dataDir, vaultName];
 
-      const result = await testBinUtils.pkStdio([...command], {}, dataDir);
+      const result = await execUtils.pkStdio([...command], {}, dataDir);
       expect(result.exitCode).toEqual(0);
       expect(result.stdout).toContain(writeF1Oid);
       expect(result.stdout).toContain(writeF2Oid);
@@ -677,7 +677,7 @@ describe('CLI vaults', () => {
     runTestIfPlatforms()('should get a part of the log', async () => {
       const command = ['vaults', 'log', '-np', dataDir, '-d', '2', vaultName];
 
-      const result = await testBinUtils.pkStdio([...command], {}, dataDir);
+      const result = await execUtils.pkStdio([...command], {}, dataDir);
       expect(result.exitCode).toEqual(0);
       expect(result.stdout).not.toContain(writeF1Oid);
       expect(result.stdout).toContain(writeF2Oid);
@@ -696,7 +696,7 @@ describe('CLI vaults', () => {
         writeF2Oid,
       ];
 
-      const result = await testBinUtils.pkStdio([...command], {}, dataDir);
+      const result = await execUtils.pkStdio([...command], {}, dataDir);
       expect(result.exitCode).toEqual(0);
       expect(result.stdout).not.toContain(writeF1Oid);
       expect(result.stdout).toContain(writeF2Oid);
@@ -741,7 +741,7 @@ describe('CLI vaults', () => {
             '-np',
             dataDir,
           ];
-          const result1 = await testBinUtils.pkStdio(
+          const result1 = await execUtils.pkStdio(
             commands1,
             { PK_PASSWORD: 'password' },
             dataDir,
@@ -763,7 +763,7 @@ describe('CLI vaults', () => {
             '-np',
             dataDir,
           ];
-          const result2 = await testBinUtils.pkStdio(
+          const result2 = await execUtils.pkStdio(
             commands2,
             { PK_PASSWORD: 'password' },
             dataDir,
@@ -798,7 +798,7 @@ describe('CLI vaults', () => {
             '-np',
             dataDir,
           ];
-          const result3 = await testBinUtils.pkStdio(
+          const result3 = await execUtils.pkStdio(
             commands3,
             { PK_PASSWORD: 'password' },
             dataDir,

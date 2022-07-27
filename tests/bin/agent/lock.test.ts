@@ -5,7 +5,7 @@ import { mocked } from 'jest-mock';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import Session from '@/sessions/Session';
 import config from '@/config';
-import * as testBinUtils from '../utils';
+import * as execUtils from '../../utils/exec';
 import { runTestIfPlatforms } from '../../utils';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
@@ -18,14 +18,16 @@ describe('lock', () => {
   let agentPassword: string;
   let agentClose: () => Promise<void>;
   beforeEach(async () => {
-    ({ agentDir, agentPassword, agentClose } =
-      await testBinUtils.setupTestAgent(globalRootKeyPems[0], logger));
+    ({ agentDir, agentPassword, agentClose } = await execUtils.setupTestAgent(
+      globalRootKeyPems[0],
+      logger,
+    ));
   });
   afterEach(async () => {
     await agentClose();
   });
   runTestIfPlatforms('docker')('lock deletes the session token', async () => {
-    await testBinUtils.pkStdio(
+    await execUtils.pkStdio(
       ['agent', 'unlock'],
       {
         PK_NODE_PATH: agentDir,
@@ -33,7 +35,7 @@ describe('lock', () => {
       },
       agentDir,
     );
-    const { exitCode } = await testBinUtils.pkStdio(
+    const { exitCode } = await execUtils.pkStdio(
       ['agent', 'lock'],
       {
         PK_NODE_PATH: agentDir,
@@ -57,7 +59,7 @@ describe('lock', () => {
       mockedPrompts.mockImplementation(async (_opts: any) => {
         return { password };
       });
-      await testBinUtils.pkStdio(
+      await execUtils.pkStdio(
         ['agent', 'unlock'],
         {
           PK_NODE_PATH: agentDir,
@@ -66,7 +68,7 @@ describe('lock', () => {
         agentDir,
       );
       // Session token is deleted
-      await testBinUtils.pkStdio(
+      await execUtils.pkStdio(
         ['agent', 'lock'],
         {
           PK_NODE_PATH: agentDir,
@@ -74,7 +76,7 @@ describe('lock', () => {
         agentDir,
       );
       // Will prompt to reauthenticate
-      await testBinUtils.pkStdio(
+      await execUtils.pkStdio(
         ['agent', 'status'],
         {
           PK_NODE_PATH: agentDir,

@@ -3,7 +3,7 @@ import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import Session from '@/sessions/Session';
 import config from '@/config';
-import * as testBinUtils from '../utils';
+import * as execUtils from '../../utils/exec';
 import { runTestIfPlatforms } from '../../utils';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
@@ -15,8 +15,10 @@ describe('unlock', () => {
   let agentPassword;
   let agentClose;
   beforeEach(async () => {
-    ({ agentDir, agentPassword, agentClose } =
-      await testBinUtils.setupTestAgent(globalRootKeyPems[0], logger));
+    ({ agentDir, agentPassword, agentClose } = await execUtils.setupTestAgent(
+      globalRootKeyPems[0],
+      logger,
+    ));
   });
   afterEach(async () => {
     await agentClose();
@@ -30,7 +32,7 @@ describe('unlock', () => {
       fresh: true,
     });
     let exitCode, stdout;
-    ({ exitCode } = await testBinUtils.pkStdio(
+    ({ exitCode } = await execUtils.pkStdio(
       ['agent', 'unlock'],
       {
         PK_NODE_PATH: agentDir,
@@ -40,7 +42,7 @@ describe('unlock', () => {
     ));
     expect(exitCode).toBe(0);
     // Run command without password
-    ({ exitCode, stdout } = await testBinUtils.pkStdio(
+    ({ exitCode, stdout } = await execUtils.pkStdio(
       ['agent', 'status', '--format', 'json'],
       {
         PK_NODE_PATH: agentDir,
@@ -50,7 +52,7 @@ describe('unlock', () => {
     expect(exitCode).toBe(0);
     expect(JSON.parse(stdout)).toMatchObject({ status: 'LIVE' });
     // Run command with PK_TOKEN
-    ({ exitCode, stdout } = await testBinUtils.pkStdio(
+    ({ exitCode, stdout } = await execUtils.pkStdio(
       ['agent', 'status', '--format', 'json'],
       {
         PK_NODE_PATH: agentDir,

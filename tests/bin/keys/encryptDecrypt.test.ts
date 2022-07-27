@@ -1,7 +1,7 @@
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import * as testBinUtils from '../utils';
+import * as execUtils from '../../utils/exec';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 import { runTestIfPlatforms } from '../../utils';
 
@@ -13,8 +13,10 @@ describe('encrypt-decrypt', () => {
   let agentPassword;
   let agentClose;
   beforeEach(async () => {
-    ({ agentDir, agentPassword, agentClose } =
-      await testBinUtils.setupTestAgent(globalRootKeyPems[0], logger));
+    ({ agentDir, agentPassword, agentClose } = await execUtils.setupTestAgent(
+      globalRootKeyPems[0],
+      logger,
+    ));
   });
   afterEach(async () => {
     await agentClose();
@@ -25,7 +27,7 @@ describe('encrypt-decrypt', () => {
     await fs.promises.writeFile(dataPath, 'abc', {
       encoding: 'binary',
     });
-    ({ exitCode, stdout } = await testBinUtils.pkStdio(
+    ({ exitCode, stdout } = await execUtils.pkStdio(
       ['keys', 'encrypt', dataPath, '--format', 'json'],
       {
         PK_NODE_PATH: agentDir,
@@ -41,7 +43,7 @@ describe('encrypt-decrypt', () => {
     await fs.promises.writeFile(dataPath, encrypted, {
       encoding: 'binary',
     });
-    ({ exitCode, stdout } = await testBinUtils.pkStdio(
+    ({ exitCode, stdout } = await execUtils.pkStdio(
       ['keys', 'decrypt', dataPath, '--format', 'json'],
       {
         PK_NODE_PATH: agentDir,

@@ -6,7 +6,7 @@ import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as nodesUtils from '@/nodes/utils';
-import * as testBinUtils from '../utils';
+import * as execUtils from '../../utils/exec';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 import { runTestIfPlatforms } from '../../utils';
 
@@ -40,7 +40,7 @@ describe('send/read/claim', () => {
       agentClose: senderAgentClose,
       agentDir: senderAgentDir,
       agentPassword: senderAgentPassword,
-    } = await testBinUtils.setupTestAgent(globalRootKeyPems[0], logger));
+    } = await execUtils.setupTestAgent(globalRootKeyPems[0], logger));
     senderId = senderAgentStatus.data.nodeId;
     senderHost = senderAgentStatus.data.proxyHost;
     senderPort = senderAgentStatus.data.proxyPort;
@@ -49,7 +49,7 @@ describe('send/read/claim', () => {
       agentClose: receiverAgentClose,
       agentDir: receiverAgentDir,
       agentPassword: receiverAgentPassword,
-    } = await testBinUtils.setupTestAgent(globalRootKeyPems[1], logger));
+    } = await execUtils.setupTestAgent(globalRootKeyPems[1], logger));
     receiverId = receiverAgentStatus.data.nodeId;
     receiverHost = receiverAgentStatus.data.proxyHost;
     receiverPort = receiverAgentStatus.data.proxyPort;
@@ -68,7 +68,7 @@ describe('send/read/claim', () => {
       let exitCode, stdout;
       let readNotifications: Array<Notification>;
       // Add receiver to sender's node graph so it can be contacted
-      ({ exitCode } = await testBinUtils.pkStdio(
+      ({ exitCode } = await execUtils.pkStdio(
         [
           'nodes',
           'add',
@@ -84,7 +84,7 @@ describe('send/read/claim', () => {
       ));
       expect(exitCode).toBe(0);
       // Add sender to receiver's node graph so it can be trusted
-      ({ exitCode } = await testBinUtils.pkStdio(
+      ({ exitCode } = await execUtils.pkStdio(
         [
           'nodes',
           'add',
@@ -100,7 +100,7 @@ describe('send/read/claim', () => {
       ));
       expect(exitCode).toBe(0);
       // Trust sender so notification can be received
-      ({ exitCode } = await testBinUtils.pkStdio(
+      ({ exitCode } = await execUtils.pkStdio(
         ['identities', 'trust', nodesUtils.encodeNodeId(senderId)],
         {
           PK_NODE_PATH: receiverAgentDir,
@@ -110,7 +110,7 @@ describe('send/read/claim', () => {
       ));
       expect(exitCode).toBe(0);
       // Send some notifications
-      ({ exitCode } = await testBinUtils.pkStdio(
+      ({ exitCode } = await execUtils.pkStdio(
         [
           'notifications',
           'send',
@@ -124,7 +124,7 @@ describe('send/read/claim', () => {
         senderAgentDir,
       ));
       expect(exitCode).toBe(0);
-      ({ exitCode } = await testBinUtils.pkStdio(
+      ({ exitCode } = await execUtils.pkStdio(
         [
           'notifications',
           'send',
@@ -138,7 +138,7 @@ describe('send/read/claim', () => {
         senderAgentDir,
       ));
       expect(exitCode).toBe(0);
-      ({ exitCode } = await testBinUtils.pkStdio(
+      ({ exitCode } = await execUtils.pkStdio(
         [
           'notifications',
           'send',
@@ -153,7 +153,7 @@ describe('send/read/claim', () => {
       ));
       expect(exitCode).toBe(0);
       // Read notifications
-      ({ exitCode, stdout } = await testBinUtils.pkStdio(
+      ({ exitCode, stdout } = await execUtils.pkStdio(
         ['notifications', 'read', '--format', 'json'],
         {
           PK_NODE_PATH: receiverAgentDir,
@@ -192,7 +192,7 @@ describe('send/read/claim', () => {
         isRead: true,
       });
       // Read only unread (none)
-      ({ exitCode, stdout } = await testBinUtils.pkStdio(
+      ({ exitCode, stdout } = await execUtils.pkStdio(
         ['notifications', 'read', '--unread', '--format', 'json'],
         {
           PK_NODE_PATH: receiverAgentDir,
@@ -207,7 +207,7 @@ describe('send/read/claim', () => {
         .map(JSON.parse);
       expect(readNotifications).toHaveLength(0);
       // Read notifications on reverse order
-      ({ exitCode, stdout } = await testBinUtils.pkStdio(
+      ({ exitCode, stdout } = await execUtils.pkStdio(
         ['notifications', 'read', '--order=oldest', '--format', 'json'],
         {
           PK_NODE_PATH: receiverAgentDir,
@@ -246,7 +246,7 @@ describe('send/read/claim', () => {
         isRead: true,
       });
       // Read only one notification
-      ({ exitCode, stdout } = await testBinUtils.pkStdio(
+      ({ exitCode, stdout } = await execUtils.pkStdio(
         ['notifications', 'read', '--number=1', '--format', 'json'],
         {
           PK_NODE_PATH: receiverAgentDir,
@@ -269,7 +269,7 @@ describe('send/read/claim', () => {
         isRead: true,
       });
       // Clear notifications
-      ({ exitCode } = await testBinUtils.pkStdio(
+      ({ exitCode } = await execUtils.pkStdio(
         ['notifications', 'clear'],
         {
           PK_NODE_PATH: receiverAgentDir,
@@ -278,7 +278,7 @@ describe('send/read/claim', () => {
         receiverAgentDir,
       ));
       // Check there are no more notifications
-      ({ exitCode, stdout } = await testBinUtils.pkStdio(
+      ({ exitCode, stdout } = await execUtils.pkStdio(
         ['notifications', 'read', '--format', 'json'],
         {
           PK_NODE_PATH: receiverAgentDir,

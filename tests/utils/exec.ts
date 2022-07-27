@@ -7,6 +7,7 @@ import fs from 'fs';
 import path from 'path';
 import process from 'process';
 import readline from 'readline';
+import os from 'os';
 import * as mockProcess from 'jest-mock-process';
 import mockedEnv from 'mocked-env';
 import nexpect from 'nexpect';
@@ -621,6 +622,157 @@ async function setupTestAgent(privateKeyPem: PrivateKeyPem, logger: Logger) {
   }
 }
 
+function spawnFile(path: string) {
+  return child_process.spawn('ts-node', [
+    '--require',
+    'tsconfig-paths/register',
+    path,
+  ]);
+}
+
+/**
+ * Formats the command to enter a namespace to run a process inside it
+ */
+const nsenter = (usrnsPid: number, netnsPid: number) => {
+  return [
+    '--target',
+    usrnsPid.toString(),
+    '--user',
+    '--preserve-credentials',
+    'nsenter',
+    '--target',
+    netnsPid.toString(),
+    '--net',
+  ];
+};
+
+/**
+ * Runs pk command through subprocess inside a network namespace
+ * This is used when a subprocess functionality needs to be used
+ * This is intended for terminating subprocesses
+ * Both stdout and stderr are the entire output including newlines
+ * @param env Augments env for command execution
+ * @param cwd Defaults to temporary directory
+ */
+async function pkExecNs(
+  usrnsPid: number,
+  netnsPid: number,
+  args: Array<string> = [],
+  env: Record<string, string | undefined> = {},
+  cwd?: string,
+): Promise<{
+  exitCode: number;
+  stdout: string;
+  stderr: string;
+}> {
+  cwd =
+    cwd ?? (await fs.promises.mkdtemp(path.join(os.tmpdir(), 'polykey-test-')));
+  env = {
+    ...process.env,
+    ...env,
+  };
+  // Recall that we attempt to connect to all specified seed nodes on agent start.
+  // Therefore, for testing purposes only, we default the seed nodes as empty
+  // (if not defined in the env) to ensure no attempted connections. A regular
+  // PolykeyAgent is expected to initially connect to the mainnet seed nodes
+  env['PK_SEED_NODES'] = env['PK_SEED_NODES'] ?? '';
+  const tsConfigPath = path.resolve(
+    path.join(global.projectDir, 'tsconfig.json'),
+  );
+  const polykeyPath = path.resolve(
+    path.join(global.projectDir, 'src/bin/polykey.ts'),
+  );
+  return new Promise((resolve, reject) => {
+    child_process.execFile(
+      'nsenter',
+      [
+        ...nsenter(usrnsPid, netnsPid),
+        'ts-node',
+        '--project',
+        tsConfigPath,
+        polykeyPath,
+        ...args,
+      ],
+      {
+        env,
+        cwd,
+        windowsHide: true,
+      },
+      (error, stdout, stderr) => {
+        if (error != null && error.code === undefined) {
+          // This can only happen when the command is killed
+          return reject(error);
+        } else {
+          // Success and Unsuccessful exits are valid here
+          return resolve({
+            exitCode: error && error.code != null ? error.code : 0,
+            stdout,
+            stderr,
+          });
+        }
+      },
+    );
+  });
+}
+
+/**
+ * Launch pk command through subprocess inside a network namespace
+ * This is used when a subprocess functionality needs to be used
+ * This is intended for non-terminating subprocesses
+ * @param env Augments env for command execution
+ * @param cwd Defaults to temporary directory
+ */
+async function pkSpawnNs(
+  usrnsPid: number,
+  netnsPid: number,
+  args: Array<string> = [],
+  env: Record<string, string | undefined> = {},
+  cwd?: string,
+  logger: Logger = new Logger(pkSpawnNs.name),
+): Promise<ChildProcess> {
+  cwd =
+    cwd ?? (await fs.promises.mkdtemp(path.join(os.tmpdir(), 'polykey-test-')));
+  env = {
+    ...process.env,
+    ...env,
+  };
+  // Recall that we attempt to connect to all specified seed nodes on agent start.
+  // Therefore, for testing purposes only, we default the seed nodes as empty
+  // (if not defined in the env) to ensure no attempted connections. A regular
+  // PolykeyAgent is expected to initially connect to the mainnet seed nodes
+  env['PK_SEED_NODES'] = env['PK_SEED_NODES'] ?? '';
+  const tsConfigPath = path.resolve(
+    path.join(global.projectDir, 'tsconfig.json'),
+  );
+  const polykeyPath = path.resolve(
+    path.join(global.projectDir, 'src/bin/polykey.ts'),
+  );
+  const subprocess = child_process.spawn(
+    'nsenter',
+    [
+      ...nsenter(usrnsPid, netnsPid),
+      'ts-node',
+      '--project',
+      tsConfigPath,
+      polykeyPath,
+      ...args,
+    ],
+    {
+      env,
+      cwd,
+      stdio: ['pipe', 'pipe', 'pipe'],
+      windowsHide: true,
+      shell: true,
+    },
+  );
+  const rlErr = readline.createInterface(subprocess.stderr!);
+  rlErr.on('line', (l) => {
+    // The readline library will trim newlines
+    logger.info(l);
+  });
+  return subprocess;
+}
+
 export {
   exec,
   pk,
@@ -634,4 +786,8 @@ export {
   processExit,
   expectProcessError,
   setupTestAgent,
+  spawnFile,
+  nsenter,
+  pkExecNs,
+  pkSpawnNs,
 };

@@ -6,7 +6,7 @@ import config from '@/config';
 import { sleep } from '@/utils';
 import * as binErrors from '@/bin/errors';
 import * as clientErrors from '@/client/errors';
-import * as testBinUtils from '../utils';
+import * as execUtils from '../../utils/exec';
 import { runTestIfPlatforms } from '../../utils';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
@@ -28,7 +28,7 @@ describe('stop', () => {
     'stop LIVE agent',
     async () => {
       const password = 'abc123';
-      const agentProcess = await testBinUtils.pkSpawn(
+      const agentProcess = await execUtils.pkSpawn(
         [
           'agent',
           'start',
@@ -58,7 +58,7 @@ describe('stop', () => {
         logger,
       });
       await status.waitFor('LIVE');
-      await testBinUtils.pkStdio(
+      await execUtils.pkStdio(
         ['agent', 'stop'],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -88,7 +88,7 @@ describe('stop', () => {
         fs,
         logger,
       });
-      const agentProcess = await testBinUtils.pkSpawn(
+      const agentProcess = await execUtils.pkSpawn(
         [
           'agent',
           'start',
@@ -110,14 +110,14 @@ describe('stop', () => {
       await status.waitFor('LIVE');
       // Simultaneous calls to stop must use pkExec
       const [agentStop1, agentStop2] = await Promise.all([
-        testBinUtils.pkExec(
+        execUtils.pkExec(
           ['agent', 'stop', '--password-file', passwordPath],
           {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
           },
           dataDir,
         ),
-        testBinUtils.pkExec(
+        execUtils.pkExec(
           ['agent', 'stop', '--password-file', passwordPath],
           {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -129,7 +129,7 @@ describe('stop', () => {
       // It's not reliable until file watching is implemented
       // So just 1 ms delay until sending another stop command
       await sleep(1);
-      const agentStop3 = await testBinUtils.pkStdio(
+      const agentStop3 = await execUtils.pkStdio(
         ['agent', 'stop', '--node-path', path.join(dataDir, 'polykey')],
         {
           PK_PASSWORD: password,
@@ -137,7 +137,7 @@ describe('stop', () => {
         dataDir,
       );
       await status.waitFor('DEAD');
-      const agentStop4 = await testBinUtils.pkStdio(
+      const agentStop4 = await execUtils.pkStdio(
         ['agent', 'stop', '--password-file', passwordPath],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -176,7 +176,7 @@ describe('stop', () => {
         fs,
         logger,
       });
-      const agentProcess = await testBinUtils.pkSpawn(
+      const agentProcess = await execUtils.pkSpawn(
         [
           'agent',
           'start',
@@ -197,18 +197,18 @@ describe('stop', () => {
         logger,
       );
       await status.waitFor('STARTING');
-      const { exitCode, stderr } = await testBinUtils.pkStdio(
+      const { exitCode, stderr } = await execUtils.pkStdio(
         ['agent', 'stop', '--format', 'json'],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
         },
         dataDir,
       );
-      testBinUtils.expectProcessError(exitCode, stderr, [
+      execUtils.expectProcessError(exitCode, stderr, [
         new binErrors.ErrorCLIPolykeyAgentStatus('agent is starting'),
       ]);
       await status.waitFor('LIVE');
-      await testBinUtils.pkStdio(
+      await execUtils.pkStdio(
         ['agent', 'stop'],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -225,7 +225,7 @@ describe('stop', () => {
     'stopping while unauthenticated does not stop',
     async () => {
       const password = 'abc123';
-      const agentProcess = await testBinUtils.pkSpawn(
+      const agentProcess = await execUtils.pkSpawn(
         [
           'agent',
           'start',
@@ -255,7 +255,7 @@ describe('stop', () => {
         logger,
       });
       await status.waitFor('LIVE');
-      const { exitCode, stderr } = await testBinUtils.pkStdio(
+      const { exitCode, stderr } = await execUtils.pkStdio(
         ['agent', 'stop', '--format', 'json'],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -263,12 +263,12 @@ describe('stop', () => {
         },
         dataDir,
       );
-      testBinUtils.expectProcessError(exitCode, stderr, [
+      execUtils.expectProcessError(exitCode, stderr, [
         new clientErrors.ErrorClientAuthDenied(),
       ]);
       // Should still be LIVE
       expect((await status.readStatus())?.status).toBe('LIVE');
-      await testBinUtils.pkStdio(
+      await execUtils.pkStdio(
         ['agent', 'stop'],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),

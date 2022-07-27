@@ -6,7 +6,7 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import Session from '@/sessions/Session';
 import config from '@/config';
 import * as errors from '@/errors';
-import * as testBinUtils from '../utils';
+import * as execUtils from '../../utils/exec';
 import { runTestIfPlatforms } from '../../utils';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
@@ -24,8 +24,10 @@ describe('lockall', () => {
   let agentPassword;
   let agentClose;
   beforeEach(async () => {
-    ({ agentDir, agentPassword, agentClose } =
-      await testBinUtils.setupTestAgent(globalRootKeyPems[0], logger));
+    ({ agentDir, agentPassword, agentClose } = await execUtils.setupTestAgent(
+      globalRootKeyPems[0],
+      logger,
+    ));
   });
   afterEach(async () => {
     await agentClose();
@@ -33,7 +35,7 @@ describe('lockall', () => {
   runTestIfPlatforms('docker')(
     'lockall deletes the session token',
     async () => {
-      await testBinUtils.pkStdio(
+      await execUtils.pkStdio(
         ['agent', 'unlock'],
         {
           PK_NODE_PATH: agentDir,
@@ -41,7 +43,7 @@ describe('lockall', () => {
         },
         agentDir,
       );
-      const { exitCode } = await testBinUtils.pkStdio(
+      const { exitCode } = await execUtils.pkStdio(
         ['agent', 'lockall'],
         {
           PK_NODE_PATH: agentDir,
@@ -62,7 +64,7 @@ describe('lockall', () => {
     'lockall ensures reauthentication is required',
     async () => {
       const password = agentPassword;
-      await testBinUtils.pkStdio(
+      await execUtils.pkStdio(
         ['agent', 'unlock'],
         {
           PK_NODE_PATH: agentDir,
@@ -70,7 +72,7 @@ describe('lockall', () => {
         },
         agentDir,
       );
-      await testBinUtils.pkStdio(
+      await execUtils.pkStdio(
         ['agent', 'lockall'],
         {
           PK_NODE_PATH: agentDir,
@@ -82,7 +84,7 @@ describe('lockall', () => {
       mockedPrompts.mockImplementation(async (_opts: any) => {
         return { password };
       });
-      await testBinUtils.pkStdio(
+      await execUtils.pkStdio(
         ['agent', 'status'],
         {
           PK_NODE_PATH: agentDir,
@@ -97,7 +99,7 @@ describe('lockall', () => {
   runTestIfPlatforms('docker')(
     'lockall causes old session tokens to fail',
     async () => {
-      await testBinUtils.pkStdio(
+      await execUtils.pkStdio(
         ['agent', 'unlock'],
         {
           PK_NODE_PATH: agentDir,
@@ -112,7 +114,7 @@ describe('lockall', () => {
       });
       const token = await session.readToken();
       await session.stop();
-      await testBinUtils.pkStdio(
+      await execUtils.pkStdio(
         ['agent', 'lockall'],
         {
           PK_NODE_PATH: agentDir,
@@ -121,7 +123,7 @@ describe('lockall', () => {
         agentDir,
       );
       // Old token is invalid
-      const { exitCode, stderr } = await testBinUtils.pkStdio(
+      const { exitCode, stderr } = await execUtils.pkStdio(
         ['agent', 'status', '--format', 'json'],
         {
           PK_NODE_PATH: agentDir,
@@ -129,7 +131,7 @@ describe('lockall', () => {
         },
         agentDir,
       );
-      testBinUtils.expectProcessError(exitCode, stderr, [
+      execUtils.expectProcessError(exitCode, stderr, [
         new errors.ErrorClientAuthDenied(),
       ]);
     },
