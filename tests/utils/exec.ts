@@ -324,7 +324,8 @@ async function pkStdioTarget(
     DOCKER_OPTIONS: generateDockerArgs(cwd).join(' '),
   };
   const command = global.testCmd!;
-  const subprocess = child_process.spawn(command, args, {
+  const escapedArgs = args.map((x) => x.replace(/(["\s'$`\\])/g, '\\$1'));
+  const subprocess = child_process.spawn(command, escapedArgs, {
     env,
     cwd,
     stdio: ['pipe', 'pipe', 'pipe'],
@@ -379,10 +380,11 @@ async function pkExecTarget(
   // PolykeyAgent is expected to initially connect to the mainnet seed nodes
   env['PK_SEED_NODES'] = env['PK_SEED_NODES'] ?? '';
   const command = global.testCmd!;
+  const escapedArgs = args.map((x) => x.replace(/(["\s'$`\\])/g, '\\$1'));
   return new Promise((resolve, reject) => {
     child_process.execFile(
       command,
-      args,
+      escapedArgs,
       {
         env,
         cwd,
@@ -434,7 +436,8 @@ async function pkSpawnTarget(
   // PolykeyAgent is expected to initially connect to the mainnet seed nodes
   env['PK_SEED_NODES'] = env['PK_SEED_NODES'] ?? '';
   const command = global.testCmd!;
-  const subprocess = child_process.spawn(command, args, {
+  const escapedArgs = args.map((x) => x.replace(/(["\s'$`\\])/g, '\\$1'));
+  const subprocess = child_process.spawn(command, escapedArgs, {
     env,
     cwd,
     stdio: ['pipe', 'pipe', 'pipe'],
