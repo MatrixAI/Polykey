@@ -101,7 +101,7 @@ describe('find', () => {
       recursive: true,
     });
   });
-  runTestIfPlatforms('linux')('finds an online node', async () => {
+  runTestIfPlatforms()('finds an online node', async () => {
     const { exitCode, stdout } = await testBinUtils.pkStdio(
       [
         'nodes',
@@ -125,7 +125,7 @@ describe('find', () => {
       port: remoteOnlinePort,
     });
   });
-  runTestIfPlatforms('linux')('finds an offline node', async () => {
+  runTestIfPlatforms()('finds an offline node', async () => {
     const { exitCode, stdout } = await testBinUtils.pkStdio(
       [
         'nodes',
@@ -149,7 +149,7 @@ describe('find', () => {
       port: remoteOfflinePort,
     });
   });
-  runTestIfPlatforms('linux')(
+  runTestIfPlatforms()(
     'fails to find an unknown node',
     async () => {
       const unknownNodeId = nodesUtils.decodeNodeId(

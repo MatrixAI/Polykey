@@ -19,7 +19,7 @@ describe('password', () => {
   afterEach(async () => {
     await agentClose();
   });
-  runTestIfPlatforms('linux', 'docker')(
+  runTestIfPlatforms('docker')(
     'password changes the root password',
     async () => {
       const passPath = path.join(agentDir, 'passwordChange');

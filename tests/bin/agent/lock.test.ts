@@ -24,35 +24,32 @@ describe('lock', () => {
   afterEach(async () => {
     await agentClose();
   });
-  runTestIfPlatforms('linux', 'docker')(
-    'lock deletes the session token',
-    async () => {
-      await testBinUtils.pkStdio(
-        ['agent', 'unlock'],
-        {
-          PK_NODE_PATH: agentDir,
-          PK_PASSWORD: agentPassword,
-        },
-        agentDir,
-      );
-      const { exitCode } = await testBinUtils.pkStdio(
-        ['agent', 'lock'],
-        {
-          PK_NODE_PATH: agentDir,
-        },
-        agentDir,
-      );
-      expect(exitCode).toBe(0);
-      const session = await Session.createSession({
-        sessionTokenPath: path.join(agentDir, config.defaults.tokenBase),
-        fs,
-        logger,
-      });
-      expect(await session.readToken()).toBeUndefined();
-      await session.stop();
-    },
-  );
-  runTestIfPlatforms('linux')(
+  runTestIfPlatforms('docker')('lock deletes the session token', async () => {
+    await testBinUtils.pkStdio(
+      ['agent', 'unlock'],
+      {
+        PK_NODE_PATH: agentDir,
+        PK_PASSWORD: agentPassword,
+      },
+      agentDir,
+    );
+    const { exitCode } = await testBinUtils.pkStdio(
+      ['agent', 'lock'],
+      {
+        PK_NODE_PATH: agentDir,
+      },
+      agentDir,
+    );
+    expect(exitCode).toBe(0);
+    const session = await Session.createSession({
+      sessionTokenPath: path.join(agentDir, config.defaults.tokenBase),
+      fs,
+      logger,
+    });
+    expect(await session.readToken()).toBeUndefined();
+    await session.stop();
+  });
+  runTestIfPlatforms()(
     'lock ensures re-authentication is required',
     async () => {
       const password = agentPassword;

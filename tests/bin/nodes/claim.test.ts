@@ -83,7 +83,7 @@ describe('claim', () => {
       recursive: true,
     });
   });
-  runTestIfPlatforms('linux')('sends a gestalt invite', async () => {
+  runTestIfPlatforms()('sends a gestalt invite', async () => {
     const { exitCode, stdout } = await testBinUtils.pkStdio(
       ['nodes', 'claim', remoteIdEncoded],
       {
@@ -96,26 +96,23 @@ describe('claim', () => {
     expect(stdout).toContain('Gestalt Invite');
     expect(stdout).toContain(remoteIdEncoded);
   });
-  runTestIfPlatforms('linux')(
-    'sends a gestalt invite (force invite)',
-    async () => {
-      await remoteNode.notificationsManager.sendNotification(localId, {
-        type: 'GestaltInvite',
-      });
-      const { exitCode, stdout } = await testBinUtils.pkStdio(
-        ['nodes', 'claim', remoteIdEncoded, '--force-invite'],
-        {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
-        },
-        dataDir,
-      );
-      expect(exitCode).toBe(0);
-      expect(stdout).toContain('Gestalt Invite');
-      expect(stdout).toContain(nodesUtils.encodeNodeId(remoteId));
-    },
-  );
-  runTestIfPlatforms('linux')('claims a node', async () => {
+  runTestIfPlatforms()('sends a gestalt invite (force invite)', async () => {
+    await remoteNode.notificationsManager.sendNotification(localId, {
+      type: 'GestaltInvite',
+    });
+    const { exitCode, stdout } = await testBinUtils.pkStdio(
+      ['nodes', 'claim', remoteIdEncoded, '--force-invite'],
+      {
+        PK_NODE_PATH: nodePath,
+        PK_PASSWORD: password,
+      },
+      dataDir,
+    );
+    expect(exitCode).toBe(0);
+    expect(stdout).toContain('Gestalt Invite');
+    expect(stdout).toContain(nodesUtils.encodeNodeId(remoteId));
+  });
+  runTestIfPlatforms()('claims a node', async () => {
     await remoteNode.notificationsManager.sendNotification(localId, {
       type: 'GestaltInvite',
     });

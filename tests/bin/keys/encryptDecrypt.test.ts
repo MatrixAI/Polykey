@@ -19,42 +19,39 @@ describe('encrypt-decrypt', () => {
   afterEach(async () => {
     await agentClose();
   });
-  runTestIfPlatforms('linux', 'docker')(
-    'encrypts and decrypts data',
-    async () => {
-      let exitCode, stdout;
-      const dataPath = path.join(agentDir, 'data');
-      await fs.promises.writeFile(dataPath, 'abc', {
-        encoding: 'binary',
-      });
-      ({ exitCode, stdout } = await testBinUtils.pkStdio(
-        ['keys', 'encrypt', dataPath, '--format', 'json'],
-        {
-          PK_NODE_PATH: agentDir,
-          PK_PASSWORD: agentPassword,
-        },
-        agentDir,
-      ));
-      expect(exitCode).toBe(0);
-      expect(JSON.parse(stdout)).toEqual({
-        encryptedData: expect.any(String),
-      });
-      const encrypted = JSON.parse(stdout).encryptedData;
-      await fs.promises.writeFile(dataPath, encrypted, {
-        encoding: 'binary',
-      });
-      ({ exitCode, stdout } = await testBinUtils.pkStdio(
-        ['keys', 'decrypt', dataPath, '--format', 'json'],
-        {
-          PK_NODE_PATH: agentDir,
-          PK_PASSWORD: agentPassword,
-        },
-        agentDir,
-      ));
-      expect(exitCode).toBe(0);
-      expect(JSON.parse(stdout)).toEqual({
-        decryptedData: 'abc',
-      });
-    },
-  );
+  runTestIfPlatforms('docker')('encrypts and decrypts data', async () => {
+    let exitCode, stdout;
+    const dataPath = path.join(agentDir, 'data');
+    await fs.promises.writeFile(dataPath, 'abc', {
+      encoding: 'binary',
+    });
+    ({ exitCode, stdout } = await testBinUtils.pkStdio(
+      ['keys', 'encrypt', dataPath, '--format', 'json'],
+      {
+        PK_NODE_PATH: agentDir,
+        PK_PASSWORD: agentPassword,
+      },
+      agentDir,
+    ));
+    expect(exitCode).toBe(0);
+    expect(JSON.parse(stdout)).toEqual({
+      encryptedData: expect.any(String),
+    });
+    const encrypted = JSON.parse(stdout).encryptedData;
+    await fs.promises.writeFile(dataPath, encrypted, {
+      encoding: 'binary',
+    });
+    ({ exitCode, stdout } = await testBinUtils.pkStdio(
+      ['keys', 'decrypt', dataPath, '--format', 'json'],
+      {
+        PK_NODE_PATH: agentDir,
+        PK_PASSWORD: agentPassword,
+      },
+      agentDir,
+    ));
+    expect(exitCode).toBe(0);
+    expect(JSON.parse(stdout)).toEqual({
+      decryptedData: 'abc',
+    });
+  });
 });

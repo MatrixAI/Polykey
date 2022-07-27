@@ -15,6 +15,7 @@ moduleNameMapper['^jose/(.*)$'] = "<rootDir>/node_modules/jose/dist/node/cjs/$1"
 
 // Global variables that are shared across the jest worker pool
 // These variables must be static and serializable
+if ((process.env.PK_TEST_PLATFORM != null) !== (process.env.PK_TEST_COMMAND != null)) throw Error('Both PK_TEST_PLATFORM and PK_TEST_COMMAND must be set together.')
 const globals = {
   // Absolute directory to the project root
   projectDir: __dirname,
@@ -31,7 +32,7 @@ const globals = {
   // Timeouts rely on setTimeout which takes 32 bit numbers
   maxTimeout: Math.pow(2, 31) - 1,
   testCmd: process.env.PK_TEST_COMMAND,
-  testPlatform: process.env.PK_TEST_PLATFORM ?? process.platform,
+  testPlatform: process.env.PK_TEST_PLATFORM,
   tmpDir: process.env.PK_TEST_TMPDIR ?? os.tmpdir(),
 };
 

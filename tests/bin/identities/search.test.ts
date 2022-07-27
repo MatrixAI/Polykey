@@ -139,7 +139,7 @@ describe('search', () => {
       recursive: true,
     });
   });
-  runTestIfPlatforms('linux')('finds connected identities', async () => {
+  runTestIfPlatforms()('finds connected identities', async () => {
     // Can't test with target executable due to mocking
     let exitCode, stdout;
     let searchResults: Array<IdentityData>;
@@ -314,7 +314,7 @@ describe('search', () => {
     expect(searchResults).toHaveLength(2);
     mockedBrowser.mockRestore();
   });
-  runTestIfPlatforms('linux')('should fail on invalid inputs', async () => {
+  runTestIfPlatforms()('should fail on invalid inputs', async () => {
     let exitCode;
     // Invalid identity id
     ({ exitCode } = await testBinUtils.pkStdio(

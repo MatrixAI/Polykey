@@ -97,7 +97,7 @@ describe('allow/disallow/permissions', () => {
       recursive: true,
     });
   });
-  runTestIfPlatforms('linux')(
+  runTestIfPlatforms()(
     'allows/disallows/gets gestalt permissions by node',
     async () => {
       let exitCode, stdout;
@@ -197,7 +197,7 @@ describe('allow/disallow/permissions', () => {
       });
     },
   );
-  runTestIfPlatforms('linux')(
+  runTestIfPlatforms()(
     'allows/disallows/gets gestalt permissions by identity',
     async () => {
       // Can't test with target executable due to mocking
@@ -337,63 +337,60 @@ describe('allow/disallow/permissions', () => {
       });
     },
   );
-  runTestIfPlatforms('linux', 'docker')(
-    'should fail on invalid inputs',
-    async () => {
-      let exitCode;
-      // Allow
-      // Invalid gestalt id
-      ({ exitCode } = await testBinUtils.pkStdio(
-        ['identities', 'allow', 'invalid', 'notify'],
-        {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
-        },
-        dataDir,
-      ));
-      expect(exitCode).toBe(sysexits.USAGE);
-      // Invalid permission
-      ({ exitCode } = await testBinUtils.pkStdio(
-        ['identities', 'allow', nodesUtils.encodeNodeId(nodeId), 'invalid'],
-        {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
-        },
-        dataDir,
-      ));
-      expect(exitCode).toBe(sysexits.USAGE);
-      // Permissions
-      // Invalid gestalt id
-      ({ exitCode } = await testBinUtils.pkStdio(
-        ['identities', 'permissions', 'invalid'],
-        {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
-        },
-        dataDir,
-      ));
-      expect(exitCode).toBe(sysexits.USAGE);
-      // Disallow
-      // Invalid gestalt id
-      ({ exitCode } = await testBinUtils.pkStdio(
-        ['identities', 'disallow', 'invalid', 'notify'],
-        {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
-        },
-        dataDir,
-      ));
-      expect(exitCode).toBe(sysexits.USAGE);
-      // Invalid permission
-      ({ exitCode } = await testBinUtils.pkStdio(
-        ['identities', 'disallow', nodesUtils.encodeNodeId(nodeId), 'invalid'],
-        {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
-        },
-        dataDir,
-      ));
-      expect(exitCode).toBe(sysexits.USAGE);
-    },
-  );
+  runTestIfPlatforms('docker')('should fail on invalid inputs', async () => {
+    let exitCode;
+    // Allow
+    // Invalid gestalt id
+    ({ exitCode } = await testBinUtils.pkStdio(
+      ['identities', 'allow', 'invalid', 'notify'],
+      {
+        PK_NODE_PATH: nodePath,
+        PK_PASSWORD: password,
+      },
+      dataDir,
+    ));
+    expect(exitCode).toBe(sysexits.USAGE);
+    // Invalid permission
+    ({ exitCode } = await testBinUtils.pkStdio(
+      ['identities', 'allow', nodesUtils.encodeNodeId(nodeId), 'invalid'],
+      {
+        PK_NODE_PATH: nodePath,
+        PK_PASSWORD: password,
+      },
+      dataDir,
+    ));
+    expect(exitCode).toBe(sysexits.USAGE);
+    // Permissions
+    // Invalid gestalt id
+    ({ exitCode } = await testBinUtils.pkStdio(
+      ['identities', 'permissions', 'invalid'],
+      {
+        PK_NODE_PATH: nodePath,
+        PK_PASSWORD: password,
+      },
+      dataDir,
+    ));
+    expect(exitCode).toBe(sysexits.USAGE);
+    // Disallow
+    // Invalid gestalt id
+    ({ exitCode } = await testBinUtils.pkStdio(
+      ['identities', 'disallow', 'invalid', 'notify'],
+      {
+        PK_NODE_PATH: nodePath,
+        PK_PASSWORD: password,
+      },
+      dataDir,
+    ));
+    expect(exitCode).toBe(sysexits.USAGE);
+    // Invalid permission
+    ({ exitCode } = await testBinUtils.pkStdio(
+      ['identities', 'disallow', nodesUtils.encodeNodeId(nodeId), 'invalid'],
+      {
+        PK_NODE_PATH: nodePath,
+        PK_PASSWORD: password,
+      },
+      dataDir,
+    ));
+    expect(exitCode).toBe(sysexits.USAGE);
+  });
 });

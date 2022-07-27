@@ -96,7 +96,7 @@ describe('trust/untrust/list', () => {
       recursive: true,
     });
   });
-  runTestIfPlatforms('linux')(
+  runTestIfPlatforms()(
     'trusts and untrusts a gestalt by node, adds it to the gestalt graph, and lists the gestalt with notify permission',
     async () => {
       let exitCode, stdout;
@@ -215,7 +215,7 @@ describe('trust/untrust/list', () => {
     },
     global.defaultTimeout * 2,
   );
-  runTestIfPlatforms('linux')(
+  runTestIfPlatforms()(
     'trusts and untrusts a gestalt by identity, adds it to the gestalt graph, and lists the gestalt with notify permission',
     async () => {
       let exitCode, stdout;
@@ -346,7 +346,7 @@ describe('trust/untrust/list', () => {
     },
     global.defaultTimeout * 2,
   );
-  runTestIfPlatforms('linux')('should fail on invalid inputs', async () => {
+  runTestIfPlatforms()('should fail on invalid inputs', async () => {
     let exitCode;
     // Trust
     ({ exitCode } = await testBinUtils.pkStdio(

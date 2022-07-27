@@ -56,7 +56,7 @@ describe('claim', () => {
       recursive: true,
     });
   });
-  runTestIfPlatforms('linux')('claims an identity', async () => {
+  runTestIfPlatforms()('claims an identity', async () => {
     // Need an authenticated identity
     const mockedBrowser = jest
       .spyOn(identitiesUtils, 'browser')
@@ -102,21 +102,18 @@ describe('claim', () => {
     expect(claim!.payload.data.type).toBe('identity');
     mockedBrowser.mockRestore();
   });
-  runTestIfPlatforms('linux')(
-    'cannot claim unauthenticated identities',
-    async () => {
-      const { exitCode } = await testBinUtils.pkStdio(
-        ['identities', 'claim', testToken.providerId, testToken.identityId],
-        {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
-        },
-        dataDir,
-      );
-      expect(exitCode).toBe(sysexits.NOPERM);
-    },
-  );
-  runTestIfPlatforms('linux')('should fail on invalid inputs', async () => {
+  runTestIfPlatforms()('cannot claim unauthenticated identities', async () => {
+    const { exitCode } = await testBinUtils.pkStdio(
+      ['identities', 'claim', testToken.providerId, testToken.identityId],
+      {
+        PK_NODE_PATH: nodePath,
+        PK_PASSWORD: password,
+      },
+      dataDir,
+    );
+    expect(exitCode).toBe(sysexits.NOPERM);
+  });
+  runTestIfPlatforms()('should fail on invalid inputs', async () => {
     let exitCode;
     // Invalid provider
     ({ exitCode } = await testBinUtils.pkStdio(

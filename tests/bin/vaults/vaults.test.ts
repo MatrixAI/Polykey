@@ -89,7 +89,7 @@ describe('CLI vaults', () => {
   });
 
   describe('commandListVaults', () => {
-    runTestIfPlatforms('linux')('should list all vaults', async () => {
+    runTestIfPlatforms()('should list all vaults', async () => {
       command = ['vaults', 'list', '-np', dataDir];
       await polykeyAgent.vaultManager.createVault('Vault1' as VaultName);
       await polykeyAgent.vaultManager.createVault('Vault2' as VaultName);
@@ -99,7 +99,7 @@ describe('CLI vaults', () => {
     });
   });
   describe('commandCreateVaults', () => {
-    runTestIfPlatforms('linux')('should create vaults', async () => {
+    runTestIfPlatforms()('should create vaults', async () => {
       command = ['vaults', 'create', '-np', dataDir, 'MyTestVault'];
       const result = await testBinUtils.pkStdio([...command], {}, dataDir);
       expect(result.exitCode).toBe(0);
@@ -120,7 +120,7 @@ describe('CLI vaults', () => {
     });
   });
   describe('commandRenameVault', () => {
-    runTestIfPlatforms('linux')('should rename vault', async () => {
+    runTestIfPlatforms()('should rename vault', async () => {
       command = ['vaults', 'rename', vaultName, 'RenamedVault', '-np', dataDir];
       await polykeyAgent.vaultManager.createVault(vaultName);
       const id = polykeyAgent.vaultManager.getVaultId(vaultName);
@@ -136,7 +136,7 @@ describe('CLI vaults', () => {
       }
       expect(namesList).toContain('RenamedVault');
     });
-    runTestIfPlatforms('linux')(
+    runTestIfPlatforms()(
       'should fail to rename non-existent vault',
       async () => {
         command = [
@@ -165,7 +165,7 @@ describe('CLI vaults', () => {
     );
   });
   describe('commandDeleteVault', () => {
-    runTestIfPlatforms('linux')('should delete vault', async () => {
+    runTestIfPlatforms()('should delete vault', async () => {
       command = ['vaults', 'delete', '-np', dataDir, vaultName];
       await polykeyAgent.vaultManager.createVault(vaultName);
       let id = polykeyAgent.vaultManager.getVaultId(vaultName);
@@ -185,7 +185,7 @@ describe('CLI vaults', () => {
       expect(namesList).not.toContain(vaultName);
     });
   });
-  runTestIfPlatforms('linux')(
+  runTestIfPlatforms()(
     'should clone and pull a vault',
     async () => {
       const dataDir2 = await fs.promises.mkdtemp(
@@ -357,7 +357,7 @@ describe('CLI vaults', () => {
     global.defaultTimeout * 3,
   );
   describe('commandShare', () => {
-    runTestIfPlatforms('linux')('Should share a vault', async () => {
+    runTestIfPlatforms()('Should share a vault', async () => {
       const mockedSendNotification = jest.spyOn(
         NotificationsManager.prototype,
         'sendNotification',
@@ -400,7 +400,7 @@ describe('CLI vaults', () => {
     });
   });
   describe('commandUnshare', () => {
-    runTestIfPlatforms('linux')('Should unshare a vault', async () => {
+    runTestIfPlatforms()('Should unshare a vault', async () => {
       const vaultId1 = await polykeyAgent.vaultManager.createVault(vaultName);
       const vaultId2 = await polykeyAgent.vaultManager.createVault(
         vaultName + '1',
@@ -471,7 +471,7 @@ describe('CLI vaults', () => {
     });
   });
   describe('commandPermissions', () => {
-    runTestIfPlatforms('linux')('Should get a vaults permissions', async () => {
+    runTestIfPlatforms()('Should get a vaults permissions', async () => {
       const vaultId1 = await polykeyAgent.vaultManager.createVault(vaultName);
       const vaultId2 = await polykeyAgent.vaultManager.createVault(
         vaultName + '1',
@@ -510,52 +510,42 @@ describe('CLI vaults', () => {
     });
   });
   describe('commandVaultVersion', () => {
-    runTestIfPlatforms('linux')(
-      'should switch the version of a vault',
-      async () => {
-        const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
-        const id = polykeyAgent.vaultManager.getVaultId(vaultName);
-        expect(id).toBeTruthy();
+    runTestIfPlatforms()('should switch the version of a vault', async () => {
+      const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
+      const id = polykeyAgent.vaultManager.getVaultId(vaultName);
+      expect(id).toBeTruthy();
 
-        const secret1 = { name: 'Secret-1', content: 'Secret-1-content' };
-        const secret2 = { name: 'Secret-1', content: 'Secret-2-content' };
+      const secret1 = { name: 'Secret-1', content: 'Secret-1-content' };
+      const secret2 = { name: 'Secret-1', content: 'Secret-2-content' };
 
-        const ver1Oid = await polykeyAgent.vaultManager.withVaults(
-          [vaultId],
-          async (vault) => {
-            await vault.writeF(async (efs) => {
-              await efs.writeFile(secret1.name, secret1.content);
-            });
-            const ver1Oid = (await vault.log(undefined, 1))[0].commitId;
-
-            await vault.writeF(async (efs) => {
-              await efs.writeFile(secret2.name, secret2.content);
-            });
-            return ver1Oid;
-          },
-        );
-
-        const command = [
-          'vaults',
-          'version',
-          '-np',
-          dataDir,
-          vaultName,
-          ver1Oid,
-        ];
-
-        const result = await testBinUtils.pkStdio([...command], {}, dataDir);
-        expect(result.exitCode).toBe(0);
-
-        await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
-          const fileContents = await vault.readF(async (efs) => {
-            return (await efs.readFile(secret1.name)).toString();
+      const ver1Oid = await polykeyAgent.vaultManager.withVaults(
+        [vaultId],
+        async (vault) => {
+          await vault.writeF(async (efs) => {
+            await efs.writeFile(secret1.name, secret1.content);
           });
-          expect(fileContents).toStrictEqual(secret1.content);
+          const ver1Oid = (await vault.log(undefined, 1))[0].commitId;
+
+          await vault.writeF(async (efs) => {
+            await efs.writeFile(secret2.name, secret2.content);
+          });
+          return ver1Oid;
+        },
+      );
+
+      const command = ['vaults', 'version', '-np', dataDir, vaultName, ver1Oid];
+
+      const result = await testBinUtils.pkStdio([...command], {}, dataDir);
+      expect(result.exitCode).toBe(0);
+
+      await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
+        const fileContents = await vault.readF(async (efs) => {
+          return (await efs.readFile(secret1.name)).toString();
         });
-      },
-    );
-    runTestIfPlatforms('linux')(
+        expect(fileContents).toStrictEqual(secret1.content);
+      });
+    });
+    runTestIfPlatforms()(
       'should switch the version of a vault to the latest version',
       async () => {
         const vaultId = await polykeyAgent.vaultManager.createVault(vaultName);
@@ -605,29 +595,26 @@ describe('CLI vaults', () => {
         expect(result2.exitCode).toBe(0);
       },
     );
-    runTestIfPlatforms('linux')(
-      'should handle invalid version IDs',
-      async () => {
-        await polykeyAgent.vaultManager.createVault(vaultName);
-        const id = polykeyAgent.vaultManager.getVaultId(vaultName);
-        expect(id).toBeTruthy();
+    runTestIfPlatforms()('should handle invalid version IDs', async () => {
+      await polykeyAgent.vaultManager.createVault(vaultName);
+      const id = polykeyAgent.vaultManager.getVaultId(vaultName);
+      expect(id).toBeTruthy();
 
-        const command = [
-          'vaults',
-          'version',
-          '-np',
-          dataDir,
-          vaultName,
-          'NOT_A_VALID_CHECKOUT_ID',
-        ];
+      const command = [
+        'vaults',
+        'version',
+        '-np',
+        dataDir,
+        vaultName,
+        'NOT_A_VALID_CHECKOUT_ID',
+      ];
 
-        const result = await testBinUtils.pkStdio([...command], {}, dataDir);
-        expect(result.exitCode).toBe(sysexits.USAGE);
+      const result = await testBinUtils.pkStdio([...command], {}, dataDir);
+      expect(result.exitCode).toBe(sysexits.USAGE);
 
-        expect(result.stderr).toContain('ErrorVaultReferenceInvalid');
-      },
-    );
-    runTestIfPlatforms('linux')(
+      expect(result.stderr).toContain('ErrorVaultReferenceInvalid');
+    });
+    runTestIfPlatforms()(
       'should throw an error if the vault is not found',
       async () => {
         const command = [
@@ -678,7 +665,7 @@ describe('CLI vaults', () => {
       await polykeyAgent.vaultManager.destroyVault(vaultId);
     });
 
-    runTestIfPlatforms('linux')('Should get all writeFs', async () => {
+    runTestIfPlatforms()('Should get all writeFs', async () => {
       const command = ['vaults', 'log', '-np', dataDir, vaultName];
 
       const result = await testBinUtils.pkStdio([...command], {}, dataDir);
@@ -687,7 +674,7 @@ describe('CLI vaults', () => {
       expect(result.stdout).toContain(writeF2Oid);
       expect(result.stdout).toContain(writeF3Oid);
     });
-    runTestIfPlatforms('linux')('should get a part of the log', async () => {
+    runTestIfPlatforms()('should get a part of the log', async () => {
       const command = ['vaults', 'log', '-np', dataDir, '-d', '2', vaultName];
 
       const result = await testBinUtils.pkStdio([...command], {}, dataDir);
@@ -696,7 +683,7 @@ describe('CLI vaults', () => {
       expect(result.stdout).toContain(writeF2Oid);
       expect(result.stdout).toContain(writeF3Oid);
     });
-    runTestIfPlatforms('linux')('should get a specific writeF', async () => {
+    runTestIfPlatforms()('should get a specific writeF', async () => {
       const command = [
         'vaults',
         'log',
@@ -718,7 +705,7 @@ describe('CLI vaults', () => {
     test.todo('test formatting of the output');
   });
   describe('commandScanNode', () => {
-    runTestIfPlatforms('linux')(
+    runTestIfPlatforms()(
       'should return the vaults names and ids of the remote vault',
       async () => {
         let remoteOnline: PolykeyAgent | undefined;

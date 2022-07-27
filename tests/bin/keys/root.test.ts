@@ -15,24 +15,21 @@ describe('root', () => {
   afterEach(async () => {
     await agentClose();
   });
-  runTestIfPlatforms('linux', 'docker')(
-    'root gets the public key',
-    async () => {
-      const { exitCode, stdout } = await testBinUtils.pkStdio(
-        ['keys', 'root', '--format', 'json'],
-        {
-          PK_NODE_PATH: agentDir,
-          PK_PASSWORD: agentPassword,
-        },
-        agentDir,
-      );
-      expect(exitCode).toBe(0);
-      expect(JSON.parse(stdout)).toEqual({
-        publicKey: expect.any(String),
-      });
-    },
-  );
-  runTestIfPlatforms('linux', 'docker')(
+  runTestIfPlatforms('docker')('root gets the public key', async () => {
+    const { exitCode, stdout } = await testBinUtils.pkStdio(
+      ['keys', 'root', '--format', 'json'],
+      {
+        PK_NODE_PATH: agentDir,
+        PK_PASSWORD: agentPassword,
+      },
+      agentDir,
+    );
+    expect(exitCode).toBe(0);
+    expect(JSON.parse(stdout)).toEqual({
+      publicKey: expect.any(String),
+    });
+  });
+  runTestIfPlatforms('docker')(
     'root gets public and private keys',
     async () => {
       const { exitCode, stdout } = await testBinUtils.pkStdio(

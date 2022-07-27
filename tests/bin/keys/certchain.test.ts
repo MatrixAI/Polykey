@@ -17,7 +17,7 @@ describe('certchain', () => {
   afterEach(async () => {
     await agentClose();
   });
-  runTestIfPlatforms('linux', 'docker')(
+  runTestIfPlatforms('docker')(
     'certchain gets the certificate chain',
     async () => {
       let { exitCode, stdout } = await testBinUtils.pkStdio(

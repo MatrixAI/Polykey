@@ -42,7 +42,7 @@ describe('sessions', () => {
     });
     await agentClose();
   });
-  runTestIfPlatforms('linux')(
+  runTestIfPlatforms()(
     'serial commands refresh the session token',
     async () => {
       const session = await Session.createSession({
@@ -79,7 +79,7 @@ describe('sessions', () => {
       await session.stop();
     },
   );
-  runTestIfPlatforms('linux')(
+  runTestIfPlatforms()(
     'unattended commands with invalid authentication should fail',
     async () => {
       let exitCode, stderr;
@@ -124,7 +124,7 @@ describe('sessions', () => {
       ]);
     },
   );
-  runTestIfPlatforms('linux')(
+  runTestIfPlatforms()(
     'prompt for password to authenticate attended commands',
     async () => {
       const password = agentPassword;
@@ -152,7 +152,7 @@ describe('sessions', () => {
       mockedPrompts.mockClear();
     },
   );
-  runTestIfPlatforms('linux')(
+  runTestIfPlatforms()(
     're-prompts for password if unable to authenticate command',
     async () => {
       await testBinUtils.pkStdio(

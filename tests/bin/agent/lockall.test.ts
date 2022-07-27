@@ -30,7 +30,7 @@ describe('lockall', () => {
   afterEach(async () => {
     await agentClose();
   });
-  runTestIfPlatforms('linux', 'docker')(
+  runTestIfPlatforms('docker')(
     'lockall deletes the session token',
     async () => {
       await testBinUtils.pkStdio(
@@ -58,7 +58,7 @@ describe('lockall', () => {
       await session.stop();
     },
   );
-  runTestIfPlatforms('linux')(
+  runTestIfPlatforms()(
     'lockall ensures reauthentication is required',
     async () => {
       const password = agentPassword;
@@ -94,7 +94,7 @@ describe('lockall', () => {
       mockedPrompts.mockClear();
     },
   );
-  runTestIfPlatforms('linux', 'docker')(
+  runTestIfPlatforms('docker')(
     'lockall causes old session tokens to fail',
     async () => {
       await testBinUtils.pkStdio(

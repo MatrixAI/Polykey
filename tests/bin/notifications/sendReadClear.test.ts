@@ -62,7 +62,7 @@ describe('send/read/claim', () => {
       recursive: true,
     });
   });
-  runTestIfPlatforms('linux', 'docker')(
+  runTestIfPlatforms('docker')(
     'sends, receives, and clears notifications',
     async () => {
       let exitCode, stdout;

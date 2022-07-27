@@ -30,7 +30,7 @@ describe('start', () => {
       recursive: true,
     });
   });
-  runTestIfPlatforms('linux', 'docker')(
+  runTestIfPlatforms('docker')(
     'start in foreground',
     async () => {
       const password = 'abc123';
@@ -99,7 +99,7 @@ describe('start', () => {
     },
     global.defaultTimeout * 2,
   );
-  runTestIfPlatforms('linux')(
+  runTestIfPlatforms()(
     'start in background',
     async () => {
       const password = 'abc123';
@@ -200,7 +200,7 @@ describe('start', () => {
     },
     global.defaultTimeout * 2,
   );
-  runTestIfPlatforms('linux', 'docker')(
+  runTestIfPlatforms('docker')(
     'concurrent starts results in 1 success',
     async () => {
       const password = 'abc123';
@@ -292,7 +292,7 @@ describe('start', () => {
     },
     global.defaultTimeout * 2,
   );
-  runTestIfPlatforms('linux', 'docker')(
+  runTestIfPlatforms('docker')(
     'concurrent with bootstrap results in 1 success',
     async () => {
       const password = 'abc123';
@@ -378,7 +378,7 @@ describe('start', () => {
     },
     global.defaultTimeout * 2,
   );
-  runTestIfPlatforms('linux', 'docker')(
+  runTestIfPlatforms('docker')(
     'start with existing state',
     async () => {
       const password = 'abc123';
@@ -448,7 +448,7 @@ describe('start', () => {
     },
     global.defaultTimeout * 2,
   );
-  runTestIfPlatforms('linux', 'docker')(
+  runTestIfPlatforms('docker')(
     'start when interrupted, requires fresh on next start',
     async () => {
       const password = 'password';
@@ -555,7 +555,7 @@ describe('start', () => {
     },
     global.defaultTimeout * 2,
   );
-  runTestIfPlatforms('linux', 'docker')(
+  runTestIfPlatforms('docker')(
     'start from recovery code',
     async () => {
       const password1 = 'abc123';
@@ -689,7 +689,7 @@ describe('start', () => {
     },
     global.defaultTimeout * 3,
   );
-  runTestIfPlatforms('linux', 'docker')(
+  runTestIfPlatforms('docker')(
     'start with network configuration',
     async () => {
       const status = new Status({
@@ -742,7 +742,7 @@ describe('start', () => {
     },
     global.defaultTimeout * 2,
   );
-  runTestIfPlatforms('linux', 'docker')(
+  runTestIfPlatforms('docker')(
     'start with PK_ROOT_KEY env override',
     async () => {
       const status = new Status({
@@ -780,7 +780,7 @@ describe('start', () => {
     },
     global.defaultTimeout * 2,
   );
-  runTestIfPlatforms('linux', 'docker')(
+  runTestIfPlatforms('docker')(
     'start with --root-key-file override',
     async () => {
       const status = new Status({
@@ -829,7 +829,7 @@ describe('start', () => {
     },
     global.defaultTimeout * 2,
   );
-  runDescribeIfPlatforms('linux')('start with global agent', () => {
+  runDescribeIfPlatforms()('start with global agent', () => {
     let agentDataDir;
     let agent1Status: StatusLive;
     let agent1Close: () => Promise<void>;

@@ -24,7 +24,7 @@ describe('status', () => {
       recursive: true,
     });
   });
-  runTestIfPlatforms('linux', 'docker')(
+  runTestIfPlatforms('docker')(
     'status on STARTING, STOPPING, DEAD agent',
     async () => {
       // This test must create its own agent process
@@ -110,7 +110,7 @@ describe('status', () => {
     },
     global.defaultTimeout * 2,
   );
-  runTestIfPlatforms('linux', 'docker')('status on missing agent', async () => {
+  runTestIfPlatforms('docker')('status on missing agent', async () => {
     const { exitCode, stdout } = await testBinUtils.pkStdio(
       ['agent', 'status', '--format', 'json'],
       {
@@ -133,7 +133,7 @@ describe('status', () => {
     afterEach(async () => {
       await agentClose();
     });
-    runTestIfPlatforms('linux', 'docker')('status on LIVE agent', async () => {
+    runTestIfPlatforms('docker')('status on LIVE agent', async () => {
       const status = new Status({
         statusPath: path.join(agentDir, config.defaults.statusBase),
         statusLockPath: path.join(agentDir, config.defaults.statusLockBase),
@@ -166,57 +166,54 @@ describe('status', () => {
         rootCertPem: expect.any(String),
       });
     });
-    runTestIfPlatforms('linux', 'docker')(
-      'status on remote LIVE agent',
-      async () => {
-        const passwordPath = path.join(dataDir, 'password');
-        await fs.promises.writeFile(passwordPath, agentPassword);
-        const status = new Status({
-          statusPath: path.join(agentDir, config.defaults.statusBase),
-          statusLockPath: path.join(agentDir, config.defaults.statusLockBase),
-          fs,
-          logger,
-        });
-        const statusInfo = (await status.readStatus())!;
-        // This still needs a `nodePath` because of session token path
-        const { exitCode, stdout } = await testBinUtils.pkStdio(
-          [
-            'agent',
-            'status',
-            '--node-path',
-            dataDir,
-            '--password-file',
-            passwordPath,
-            '--node-id',
-            nodesUtils.encodeNodeId(statusInfo.data.nodeId),
-            '--client-host',
-            statusInfo.data.clientHost,
-            '--client-port',
-            statusInfo.data.clientPort.toString(),
-            '--format',
-            'json',
-            '--verbose',
-          ],
-          {},
+    runTestIfPlatforms('docker')('status on remote LIVE agent', async () => {
+      const passwordPath = path.join(dataDir, 'password');
+      await fs.promises.writeFile(passwordPath, agentPassword);
+      const status = new Status({
+        statusPath: path.join(agentDir, config.defaults.statusBase),
+        statusLockPath: path.join(agentDir, config.defaults.statusLockBase),
+        fs,
+        logger,
+      });
+      const statusInfo = (await status.readStatus())!;
+      // This still needs a `nodePath` because of session token path
+      const { exitCode, stdout } = await testBinUtils.pkStdio(
+        [
+          'agent',
+          'status',
+          '--node-path',
           dataDir,
-        );
-        expect(exitCode).toBe(0);
-        expect(JSON.parse(stdout)).toMatchObject({
-          status: 'LIVE',
-          pid: expect.any(Number),
-          nodeId: nodesUtils.encodeNodeId(statusInfo.data.nodeId),
-          clientHost: statusInfo.data.clientHost,
-          clientPort: statusInfo.data.clientPort,
-          proxyHost: statusInfo.data.proxyHost,
-          proxyPort: statusInfo.data.proxyPort,
-          agentHost: expect.any(String),
-          agentPort: expect.any(Number),
-          forwardHost: expect.any(String),
-          forwardPort: expect.any(Number),
-          rootPublicKeyPem: expect.any(String),
-          rootCertPem: expect.any(String),
-        });
-      },
-    );
+          '--password-file',
+          passwordPath,
+          '--node-id',
+          nodesUtils.encodeNodeId(statusInfo.data.nodeId),
+          '--client-host',
+          statusInfo.data.clientHost,
+          '--client-port',
+          statusInfo.data.clientPort.toString(),
+          '--format',
+          'json',
+          '--verbose',
+        ],
+        {},
+        dataDir,
+      );
+      expect(exitCode).toBe(0);
+      expect(JSON.parse(stdout)).toMatchObject({
+        status: 'LIVE',
+        pid: expect.any(Number),
+        nodeId: nodesUtils.encodeNodeId(statusInfo.data.nodeId),
+        clientHost: statusInfo.data.clientHost,
+        clientPort: statusInfo.data.clientPort,
+        proxyHost: statusInfo.data.proxyHost,
+        proxyPort: statusInfo.data.proxyPort,
+        agentHost: expect.any(String),
+        agentPort: expect.any(Number),
+        forwardHost: expect.any(String),
+        forwardPort: expect.any(Number),
+        rootPublicKeyPem: expect.any(String),
+        rootCertPem: expect.any(String),
+      });
+    });
   });
 });

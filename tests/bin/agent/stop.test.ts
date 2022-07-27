@@ -24,7 +24,7 @@ describe('stop', () => {
       recursive: true,
     });
   });
-  runTestIfPlatforms('linux', 'docker')(
+  runTestIfPlatforms('docker')(
     'stop LIVE agent',
     async () => {
       const password = 'abc123';
@@ -72,7 +72,7 @@ describe('stop', () => {
     },
     global.defaultTimeout * 2,
   );
-  runTestIfPlatforms('linux', 'docker')(
+  runTestIfPlatforms('docker')(
     'stopping is idempotent during concurrent calls and STOPPING or DEAD status',
     async () => {
       const password = 'abc123';
@@ -160,7 +160,7 @@ describe('stop', () => {
     },
     global.defaultTimeout * 2,
   );
-  runTestIfPlatforms('linux')(
+  runTestIfPlatforms()(
     'stopping starting agent results in error',
     async () => {
       // This relies on fast execution of `agent stop` while agent is starting,
@@ -221,7 +221,7 @@ describe('stop', () => {
     },
     global.defaultTimeout * 2,
   );
-  runTestIfPlatforms('linux', 'docker')(
+  runTestIfPlatforms('docker')(
     'stopping while unauthenticated does not stop',
     async () => {
       const password = 'abc123';

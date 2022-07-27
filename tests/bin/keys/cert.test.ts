@@ -15,33 +15,30 @@ describe('cert', () => {
   afterEach(async () => {
     await agentClose();
   });
-  runTestIfPlatforms('linux', 'docker')(
-    'cert gets the certificate',
-    async () => {
-      let { exitCode, stdout } = await testBinUtils.pkStdio(
-        ['keys', 'cert', '--format', 'json'],
-        {
-          PK_NODE_PATH: agentDir,
-          PK_PASSWORD: agentPassword,
-        },
-        agentDir,
-      );
-      expect(exitCode).toBe(0);
-      expect(JSON.parse(stdout)).toEqual({
-        cert: expect.any(String),
-      });
-      const certCommand = JSON.parse(stdout).cert;
-      ({ exitCode, stdout } = await testBinUtils.pkStdio(
-        ['agent', 'status', '--format', 'json'],
-        {
-          PK_NODE_PATH: agentDir,
-          PK_PASSWORD: agentPassword,
-        },
-        agentDir,
-      ));
-      expect(exitCode).toBe(0);
-      const certStatus = JSON.parse(stdout).rootCertPem;
-      expect(certCommand).toBe(certStatus);
-    },
-  );
+  runTestIfPlatforms('docker')('cert gets the certificate', async () => {
+    let { exitCode, stdout } = await testBinUtils.pkStdio(
+      ['keys', 'cert', '--format', 'json'],
+      {
+        PK_NODE_PATH: agentDir,
+        PK_PASSWORD: agentPassword,
+      },
+      agentDir,
+    );
+    expect(exitCode).toBe(0);
+    expect(JSON.parse(stdout)).toEqual({
+      cert: expect.any(String),
+    });
+    const certCommand = JSON.parse(stdout).cert;
+    ({ exitCode, stdout } = await testBinUtils.pkStdio(
+      ['agent', 'status', '--format', 'json'],
+      {
+        PK_NODE_PATH: agentDir,
+        PK_PASSWORD: agentPassword,
+      },
+      agentDir,
+    ));
+    expect(exitCode).toBe(0);
+    const certStatus = JSON.parse(stdout).rootCertPem;
+    expect(certCommand).toBe(certStatus);
+  });
 });

@@ -54,7 +54,7 @@ describe('authenticate/authenticated', () => {
       recursive: true,
     });
   });
-  runTestIfPlatforms('linux')(
+  runTestIfPlatforms()(
     'authenticates identity with a provider and gets authenticated identity',
     async () => {
       // Can't test with target command due to mocking
@@ -116,7 +116,7 @@ describe('authenticate/authenticated', () => {
       mockedBrowser.mockRestore();
     },
   );
-  runTestIfPlatforms('linux')('should fail on invalid inputs', async () => {
+  runTestIfPlatforms()('should fail on invalid inputs', async () => {
     let exitCode;
     // Authenticate
     // Invalid provider
