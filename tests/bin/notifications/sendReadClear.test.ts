@@ -115,7 +115,7 @@ describe('send/read/claim', () => {
           'notifications',
           'send',
           nodesUtils.encodeNodeId(receiverId),
-          'test message 1',
+          'test_message_1',
         ],
         {
           PK_NODE_PATH: senderAgentDir,
@@ -129,7 +129,7 @@ describe('send/read/claim', () => {
           'notifications',
           'send',
           nodesUtils.encodeNodeId(receiverId),
-          'test message 2',
+          'test_message_2',
         ],
         {
           PK_NODE_PATH: senderAgentDir,
@@ -143,7 +143,7 @@ describe('send/read/claim', () => {
           'notifications',
           'send',
           nodesUtils.encodeNodeId(receiverId),
-          'test message 3',
+          'test_message_3',
         ],
         {
           PK_NODE_PATH: senderAgentDir,
@@ -170,7 +170,7 @@ describe('send/read/claim', () => {
       expect(readNotifications[0]).toMatchObject({
         data: {
           type: 'General',
-          message: 'test message 3',
+          message: 'test_message_3',
         },
         senderId: nodesUtils.encodeNodeId(senderId),
         isRead: true,
@@ -178,7 +178,7 @@ describe('send/read/claim', () => {
       expect(readNotifications[1]).toMatchObject({
         data: {
           type: 'General',
-          message: 'test message 2',
+          message: 'test_message_2',
         },
         senderId: nodesUtils.encodeNodeId(senderId),
         isRead: true,
@@ -186,7 +186,7 @@ describe('send/read/claim', () => {
       expect(readNotifications[2]).toMatchObject({
         data: {
           type: 'General',
-          message: 'test message 1',
+          message: 'test_message_1',
         },
         senderId: nodesUtils.encodeNodeId(senderId),
         isRead: true,
@@ -224,7 +224,7 @@ describe('send/read/claim', () => {
       expect(readNotifications[0]).toMatchObject({
         data: {
           type: 'General',
-          message: 'test message 1',
+          message: 'test_message_1',
         },
         senderId: nodesUtils.encodeNodeId(senderId),
         isRead: true,
@@ -232,7 +232,7 @@ describe('send/read/claim', () => {
       expect(readNotifications[1]).toMatchObject({
         data: {
           type: 'General',
-          message: 'test message 2',
+          message: 'test_message_2',
         },
         senderId: nodesUtils.encodeNodeId(senderId),
         isRead: true,
@@ -240,7 +240,7 @@ describe('send/read/claim', () => {
       expect(readNotifications[2]).toMatchObject({
         data: {
           type: 'General',
-          message: 'test message 3',
+          message: 'test_message_3',
         },
         senderId: nodesUtils.encodeNodeId(senderId),
         isRead: true,
@@ -263,7 +263,7 @@ describe('send/read/claim', () => {
       expect(readNotifications[0]).toMatchObject({
         data: {
           type: 'General',
-          message: 'test message 3',
+          message: 'test_message_3',
         },
         senderId: nodesUtils.encodeNodeId(senderId),
         isRead: true,

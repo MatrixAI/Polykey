@@ -16,7 +16,6 @@ import { promise } from '@/utils';
 import * as validationUtils from '@/validation/utils';
 
 const generateDockerArgs = (mountPath: string) => [
-  'run',
   '--interactive',
   '--rm',
   '--network',
@@ -45,8 +44,6 @@ const generateDockerArgs = (mountPath: string) => [
   'PK_CLIENT_HOST',
   '--env',
   'PK_CLIENT_PORT',
-  `${process.env.PK_TEST_DOCKER_IMAGE}`,
-  'polykey',
 ];
 
 /**
@@ -323,17 +320,15 @@ async function pkStdioTarget(
   env = {
     ...process.env,
     ...env,
+    DOCKER_OPTIONS: generateDockerArgs(cwd).join(' '),
   };
-  const command =
-    global.testCmd === 'docker'
-      ? 'docker'
-      : path.resolve(path.join(global.projectDir, global.testCmd!));
-  const dockerArgs = global.testCmd === 'docker' ? generateDockerArgs(cwd) : [];
-  const subprocess = child_process.spawn(command, [...dockerArgs, ...args], {
+  const command = global.testCmd!;
+  const subprocess = child_process.spawn(command, args, {
     env,
     cwd,
     stdio: ['pipe', 'pipe', 'pipe'],
     windowsHide: true,
+    shell: true,
   });
   const exitCodeProm = promise<number | null>();
   subprocess.on('exit', (code) => {
@@ -375,25 +370,23 @@ async function pkExecTarget(
   env = {
     ...process.env,
     ...env,
+    DOCKER_OPTIONS: generateDockerArgs(cwd).join(' '),
   };
   // Recall that we attempt to connect to all specified seed nodes on agent start.
   // Therefore, for testing purposes only, we default the seed nodes as empty
   // (if not defined in the env) to ensure no attempted connections. A regular
   // PolykeyAgent is expected to initially connect to the mainnet seed nodes
   env['PK_SEED_NODES'] = env['PK_SEED_NODES'] ?? '';
-  const command =
-    global.testCmd === 'docker'
-      ? 'docker'
-      : path.resolve(path.join(global.projectDir, global.testCmd!));
-  const dockerArgs = global.testCmd === 'docker' ? generateDockerArgs(cwd) : [];
+  const command = global.testCmd!;
   return new Promise((resolve, reject) => {
     child_process.execFile(
       command,
-      [...dockerArgs, ...args],
+      args,
       {
         env,
         cwd,
         windowsHide: true,
+        shell: true,
       },
       (error, stdout, stderr) => {
         if (error != null && error.code === undefined) {
@@ -432,22 +425,20 @@ async function pkSpawnTarget(
   env = {
     ...process.env,
     ...env,
+    DOCKER_OPTIONS: generateDockerArgs(cwd).join(' '),
   };
   // Recall that we attempt to connect to all specified seed nodes on agent start.
   // Therefore, for testing purposes only, we default the seed nodes as empty
   // (if not defined in the env) to ensure no attempted connections. A regular
   // PolykeyAgent is expected to initially connect to the mainnet seed nodes
   env['PK_SEED_NODES'] = env['PK_SEED_NODES'] ?? '';
-  const command =
-    global.testCmd === 'docker'
-      ? 'docker'
-      : path.resolve(path.join(global.projectDir, global.testCmd!));
-  const dockerArgs = global.testCmd === 'docker' ? generateDockerArgs(cwd) : [];
-  const subprocess = child_process.spawn(command, [...dockerArgs, ...args], {
+  const command = global.testCmd!;
+  const subprocess = child_process.spawn(command, args, {
     env,
     cwd,
     stdio: ['pipe', 'pipe', 'pipe'],
     windowsHide: true,
+    shell: true,
   });
   // The readline library will trim newlines
   const rlOut = readline.createInterface(subprocess.stdout!);
