@@ -40,6 +40,7 @@ describe('VaultOps', () => {
     baseEfs = await EncryptedFS.createEncryptedFS({
       dbKey,
       dbPath,
+      // @ts-ignore - version of js-logger is incompatible (remove when DB updates to 5.*)
       logger,
     });
     await baseEfs.start();
@@ -51,7 +52,11 @@ describe('VaultOps', () => {
         recursive: true,
       },
     );
-    db = await DB.createDB({ dbPath: path.join(dataDir, 'db'), logger });
+    db = await DB.createDB({
+      dbPath: path.join(dataDir, 'db'),
+      // @ts-ignore - version of js-logger is incompatible (remove when DB updates to 5.*)
+      logger,
+    });
     vaultsDbPath = ['vaults'];
     vaultInternal = await VaultInternal.createVaultInternal({
       keyManager: dummyKeyManager,

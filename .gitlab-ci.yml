@@ -10,9 +10,9 @@ variables:
   GH_PROJECT_PATH: "MatrixAI/${CI_PROJECT_NAME}"
   GH_PROJECT_URL: "https://${GITHUB_TOKEN}@github.com/${GH_PROJECT_PATH}.git"
   # Cache .npm
-  NPM_CONFIG_CACHE: "${CI_PROJECT_DIR}/tmp/npm"
+  npm_config_cache: "${CI_PROJECT_DIR}/tmp/npm"
   # Prefer offline node module installation
-  NPM_CONFIG_PREFER_OFFLINE: "true"
+  npm_config_prefer_offline: "true"
   # Homebrew cache only used by macos runner
   HOMEBREW_CACHE: "${CI_PROJECT_DIR}/tmp/Homebrew"
 
@@ -50,7 +50,7 @@ check:lint:
   needs: []
   script:
     - >
-      nix-shell --run '
+      nix-shell --arg ci true --run $'
       npm run lint;
       npm run lint-shell;
       '
@@ -82,8 +82,8 @@ check:test-generate:
   needs: []
   script:
     - >
-      nix-shell --run '
-      ./scripts/check-test-generate.sh > ./tmp/check-test.yml
+      nix-shell --arg ci true --run $'
+      ./scripts/check-test-generate.sh > ./tmp/check-test.yml;
       '
   artifacts:
     when: always
@@ -124,7 +124,7 @@ build:merge:
     # Required for `gh pr create`
     - git remote add upstream "$GH_PROJECT_URL"
     - >
-      nix-shell --run '
+      nix-shell --arg ci true --run $'
       gh pr create \
         --head staging \
         --base master \
@@ -149,7 +149,7 @@ build:dist:
   needs: []
   script:
     - >
-      nix-shell --run '
+      nix-shell --arg ci true --run $'
       npm run build --verbose;
       '
   artifacts:
@@ -167,8 +167,8 @@ build:platforms-generate:
   needs: []
   script:
     - >
-        nix-shell --run '
-        ./scripts/build-platforms-generate.sh > ./tmp/build-platforms.yml
+        nix-shell --arg ci true --run $'
+        ./scripts/build-platforms-generate.sh > ./tmp/build-platforms.yml;
         '
   artifacts:
     when: always
@@ -210,7 +210,7 @@ build:prerelease:
     - echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > ./.npmrc
     - echo 'Publishing library prerelease'
     - >
-      nix-shell --run '
+      nix-shell --arg ci true --run $'
       npm publish --tag prerelease --access public;
       '
   after_script:
@@ -425,10 +425,7 @@ integration:prerelease:
   script:
     - echo 'Publishing application prerelease'
     - >
-      nix-shell --run $'
-      set -o errexit;
-      set -o nounset;
-      set -o pipefail;
+      nix-shell --arg ci true --run $'
       if gh release view "$CI_COMMIT_TAG" --repo "$GH_PROJECT_PATH" >/dev/null; then \
         gh release \
           upload "$CI_COMMIT_TAG" \
@@ -456,10 +453,7 @@ integration:prerelease:
       '
     - echo 'Prereleasing container image'
     - >
-      nix-shell --run $'
-      set -o errexit;
-      set -o nounset;
-      set -o pipefail;
+      nix-shell --arg ci true --run $'
       skopeo login \
         --username "$CI_REGISTRY_USER" \
         --password "$CI_REGISTRY_PASSWORD" \
@@ -481,8 +475,6 @@ integration:merge:
   stage: integration
   needs:
     - build:merge
-    - job: build:dist
-      optional: true
     - job: build:platforms
       optional: true
     - job: integration:nix
@@ -505,7 +497,7 @@ integration:merge:
     GIT_DEPTH: 0
   script:
     - >
-      nix-shell --run '
+      nix-shell --arg ci true --run $'
       printf "Pipeline Succeeded on ${CI_PIPELINE_ID} for ${CI_COMMIT_SHA}\n\n${CI_PIPELINE_URL}" \
       | gh pr comment staging \
         --body-file - \
@@ -624,12 +616,12 @@ release:distribution:
     - echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > ./.npmrc
     - echo 'Publishing library'
     - >
-      nix-shell --run $'
+      nix-shell --arg ci true --run $'
       npm publish --access public;
       '
     - echo 'Releasing application builds'
     - >
-      nix-shell --run $'
+      nix-shell --arg ci true --run $'
       gh release \
         create "$CI_COMMIT_TAG" \
         builds/*.closure.gz \
@@ -644,7 +636,7 @@ release:distribution:
       '
     - echo 'Releasing container image'
     - >
-      nix-shell --run $'
+      nix-shell --arg ci true --run $'
       skopeo login \
         --username "$CI_REGISTRY_USER" \
         --password "$CI_REGISTRY_PASSWORD" \

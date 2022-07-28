@@ -73,6 +73,7 @@ describe('VaultManager', () => {
     vaultsPath = path.join(dataDir, 'VAULTS');
     db = await DB.createDB({
       dbPath: path.join(dataDir, 'DB'),
+      // @ts-ignore - version of js-logger is incompatible (remove when DB updates to 5.*)
       logger: logger.getChild(DB.name),
     });
   });

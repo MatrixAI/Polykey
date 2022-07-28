@@ -56,6 +56,7 @@ describe('VaultInternal', () => {
     efs = await EncryptedFS.createEncryptedFS({
       dbPath: efsDbPath,
       dbKey,
+      // @ts-ignore - version of js-logger is incompatible (remove when EFS logger updates to 3.*)
       logger,
     });
     await efs.start();
@@ -70,6 +71,7 @@ describe('VaultInternal', () => {
       },
       dbPath: path.join(dataDir, 'db'),
       fs: fs,
+      // @ts-ignore - version of js-logger is incompatible (remove when EFS logger updates to 3.*)
       logger: logger,
     });
     vaultsDbPath = ['vaults'];

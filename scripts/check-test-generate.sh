@@ -63,7 +63,7 @@ check:test $test_dir:
   needs: []
   script:
     - >
-        nix-shell --run '
+        nix-shell --arg ci true --run $'
         npm test -- --ci --coverage ${test_files[@]};
         '
   artifacts:
@@ -87,7 +87,7 @@ check:test index:
   needs: []
   script:
     - >
-        nix-shell --run '
+        nix-shell --arg ci true --run $'
         npm test -- --ci --coverage ${test_files[@]};
         '
   artifacts:

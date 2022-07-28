@@ -17,7 +17,7 @@ import type NotificationsManager from '../notifications/NotificationsManager';
 import type ACL from '../acl/ACL';
 import type { RemoteInfo } from './VaultInternal';
 import type { VaultAction } from './types';
-import type { LockRequest } from '@matrixai/async-locks';
+import type { MultiLockRequest } from '@matrixai/async-locks';
 import path from 'path';
 import { PassThrough } from 'readable-stream';
 import { EncryptedFS, errors as encryptedFsErrors } from 'encryptedfs';
@@ -181,6 +181,7 @@ class VaultManager {
           efs = await EncryptedFS.createEncryptedFS({
             dbPath: this.efsPath,
             dbKey: vaultKey,
+            // @ts-ignore - version of js-logger is incompatible (remove when EFS logger updates to 3.*)
             logger: this.logger.getChild('EncryptedFileSystem'),
           });
         } catch (e) {
@@ -961,7 +962,7 @@ class VaultManager {
     }
 
     // Obtaining locks
-    const vaultLocks: Array<LockRequest<RWLockWriter>> = vaultIds.map(
+    const vaultLocks: Array<MultiLockRequest<RWLockWriter>> = vaultIds.map(
       (vaultId) => {
         return [vaultId.toString(), RWLockWriter, 'read'];
       },

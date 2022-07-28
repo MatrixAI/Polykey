@@ -1,13 +1,14 @@
+import path from 'path';
 import b from 'benny';
-import packageJson from '../package.json';
+import { suiteCommon } from './utils';
 
 async function main () {
   let map = new Map();
   let obj = {};
-  let arr = [];
+  let arr: any = [];
   let set = new Set();
   const summary = await b.suite(
-    'gitgc',
+    path.basename(__filename, path.extname(__filename)),
     b.add('map', async () => {
       map = new Map();
       return async () => {
@@ -78,19 +79,7 @@ async function main () {
         }
       };
     }),
-    b.cycle(),
-    b.complete(),
-    b.save({
-      file: 'gitgc',
-      folder: 'benches/results',
-      version: packageJson.version,
-      details: true,
-    }),
-    b.save({
-      file: 'gitgc',
-      folder: 'benches/results',
-      format: 'chart.html',
-    }),
+    ...suiteCommon,
   );
   return summary;
 }
