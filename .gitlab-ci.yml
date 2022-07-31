@@ -332,14 +332,14 @@ integration:docker:
   variables:
     DOCKER_TLS_CERTDIR: "/certs"
     FF_NETWORK_PER_BUILD: "true"
+    PK_TEST_PLATFORM: "docker"
+    PK_TEST_TMPDIR: "${CI_PROJECT_DIR}/tmp/test"
   script:
     - docker info
     - >
-      nix-shell --run $'
-        PK_TEST_COMMAND="docker run \${DOCKER_OPTIONS} $(docker load --input ./builds/*docker* | cut -d\' \' -f3) polykey" \
-        PK_TEST_PLATFORM=docker \
-        PK_TEST_TMPDIR=/builds/$CI_PROJECT_PATH/tmp \
-        exec npm run test -- tests/bin
+      nix-shell --arg ci true --run $'
+      image_and_tag="$(docker load --input ./builds/*docker* | cut -d\' \' -f3)";
+      PK_TEST_COMMAND="docker run \$DOCKER_OPTIONS $image_and_tag /bin/polykey" npm run test -- tests/bin;
       '
   rules:
     # Runs on staging commits and ignores version commits
