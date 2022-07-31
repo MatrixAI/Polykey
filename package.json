@@ -92,7 +92,7 @@
     "commander": "^8.3.0",
     "cross-fetch": "^3.0.6",
     "cross-spawn": "^7.0.3",
-    "encryptedfs": "^3.5.3",
+    "encryptedfs": "^3.5.5",
     "fast-fuzzy": "^1.10.8",
     "fd-lock": "^1.2.0",
     "google-protobuf": "^3.14.0",
