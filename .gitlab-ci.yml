@@ -278,10 +278,7 @@ integration:deployment:
   script:
     - echo 'Deploying container image to ECR'
     - >
-      nix-shell --run $'
-      set -o errexit;
-      set -o nounset;
-      set -o pipefail;
+      nix-shell --arg ci true --run $'
       aws ecr get-login-password \
         | skopeo login \
         --username AWS \
@@ -537,10 +534,7 @@ release:deployment:branch:
   script:
     - echo 'Deploying container image to ECR'
     - >
-      nix-shell --run $'
-      set -o errexit;
-      set -o nounset;
-      set -o pipefail;
+      nix-shell --arg ci true --run $'
       aws ecr get-login-password \
         | skopeo login \
         --username AWS \
@@ -578,10 +572,7 @@ release:deployment:tag:
   script:
     - echo 'Deploying container image to ECR'
     - >
-      nix-shell --run $'
-      set -o errexit;
-      set -o nounset;
-      set -o pipefail;
+      nix-shell --arg ci true --run $'
       aws ecr get-login-password \
         | skopeo login \
         --username AWS \
