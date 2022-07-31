@@ -109,7 +109,7 @@ build:linux index:
         path: ./tmp/coverage/cobertura-coverage.xml
   coverage: '/All files[^|]*\|[^|]*\s+([\d\.]+)/'
 
-build:windows:
+.build:windows:
   stage: build
   needs: []
 EOF
@@ -137,7 +137,7 @@ cat << "EOF"
         path: ./tmp/coverage/cobertura-coverage.xml
   coverage: '/All files[^|]*\|[^|]*\s+([\d\.]+)/'
 
-build:macos:
+.build:macos:
   stage: build
   needs: []
 EOF
