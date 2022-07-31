@@ -21,9 +21,9 @@ variables:
   GH_PROJECT_URL: "https://${GITHUB_TOKEN}@github.com/${GH_PROJECT_PATH}.git"
   GIT_SUBMODULE_STRATEGY: "recursive"
   # Cache .npm
-  NPM_CONFIG_CACHE: "./tmp/npm"
+  npm_config_cache: "${CI_PROJECT_DIR}/tmp/npm"
   # Prefer offline node module installation
-  NPM_CONFIG_PREFER_OFFLINE: "true"
+  npm_config_prefer_offline: "true"
   # Homebrew cache only used by macos runner
   HOMEBREW_CACHE: "${CI_PROJECT_DIR}/tmp/Homebrew"
 

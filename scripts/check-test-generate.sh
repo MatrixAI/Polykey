@@ -14,9 +14,9 @@ variables:
   GH_PROJECT_PATH: "MatrixAI/${CI_PROJECT_NAME}"
   GH_PROJECT_URL: "https://${GITHUB_TOKEN}@github.com/${GH_PROJECT_PATH}.git"
   # Cache .npm
-  NPM_CONFIG_CACHE: "./tmp/npm"
+  npm_config_cache: "${CI_PROJECT_DIR}/tmp/npm"
   # Prefer offline node module installation
-  NPM_CONFIG_PREFER_OFFLINE: "true"
+  npm_config_prefer_offline: "true"
 
 default:
   interruptible: true
