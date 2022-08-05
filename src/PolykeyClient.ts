@@ -1,7 +1,6 @@
 import type { FileSystem, Timer } from './types';
 import type { NodeId } from './nodes/types';
 import type { Host, Port } from './network/types';
-
 import path from 'path';
 import Logger from '@matrixai/logger';
 import { CreateDestroyStartStop } from '@matrixai/async-init/dist/CreateDestroyStartStop';

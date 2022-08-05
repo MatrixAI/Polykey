@@ -3,7 +3,6 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { EncryptedFS } from 'encryptedfs';
-
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { IdRandom } from '@matrixai/id';
 import * as vaultsUtils from '@/vaults/utils';

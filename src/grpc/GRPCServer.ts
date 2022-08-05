@@ -4,7 +4,6 @@ import type { ServerCredentials } from '@grpc/grpc-js';
 import type { Services } from './types';
 import type { Certificate } from '../keys/types';
 import type { Host, Port, TLSConfig } from '../network/types';
-
 import http2 from 'http2';
 import Logger from '@matrixai/logger';
 import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';

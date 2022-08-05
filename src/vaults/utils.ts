@@ -6,7 +6,6 @@ import type {
   CommitId,
 } from './types';
 import type { NodeId } from '../nodes/types';
-
 import type { EncryptedFS } from 'encryptedfs';
 import path from 'path';
 import { IdInternal, IdRandom } from '@matrixai/id';

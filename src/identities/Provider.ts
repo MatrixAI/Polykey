@@ -8,7 +8,6 @@ import type {
 } from './types';
 import type { Claim } from '../claims/types';
 import type { IdentityClaim, IdentityClaimId } from '../identities/types';
-
 import * as identitiesErrors from './errors';
 import { schema } from '../claims';
 import { utils as validationUtils, validateSync } from '../validation';

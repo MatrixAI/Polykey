@@ -3,7 +3,6 @@ import type PolykeyClient from '../../PolykeyClient';
 import * as binProcessors from '../utils/processors';
 import * as parsers from '../utils/parsers';
 import * as binUtils from '../utils';
-
 import CommandPolykey from '../CommandPolykey';
 import * as binOptions from '../utils/options';
 

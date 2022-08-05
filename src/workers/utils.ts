@@ -1,6 +1,5 @@
 import type { PolykeyWorkerModule } from './polykeyWorkerModule';
 import type { PolykeyWorkerManagerInterface } from './types';
-
 import type Logger from '@matrixai/logger';
 import { WorkerManager } from '@matrixai/workers';
 import { spawn, Worker } from 'threads';

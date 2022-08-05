@@ -1,6 +1,5 @@
 import type { TransferDescriptor } from 'threads';
 import type { PublicKeyAsn1, PrivateKeyAsn1, KeyPairAsn1 } from '../keys/types';
-
 import { Transfer } from 'threads/worker';
 import { utils as keysUtils } from '../keys';
 

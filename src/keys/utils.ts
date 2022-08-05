@@ -13,7 +13,6 @@ import type {
   PublicKeyPem,
   RecoveryCode,
 } from './types';
-
 import type { NodeId } from '../nodes/types';
 import { Buffer } from 'buffer';
 import {

@@ -1,6 +1,5 @@
 import type { JWTPayload } from 'jose';
 import type { SessionToken } from './types';
-
 import { SignJWT, jwtVerify, errors as joseErrors } from 'jose';
 
 /**

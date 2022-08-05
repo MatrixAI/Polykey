@@ -1,5 +1,4 @@
 import type { ReadCommitResult } from 'isomorphic-git';
-
 import type { PackIndex } from '@/git/types';
 import fs from 'fs';
 import os from 'os';

@@ -18,7 +18,6 @@ import NodeGraph from '@/nodes/NodeGraph';
 import NodeManager from '@/nodes/NodeManager';
 import NotificationsManager from '@/notifications/NotificationsManager';
 import Proxy from '@/network/Proxy';
-
 import * as notificationsErrors from '@/notifications/errors';
 import * as vaultsUtils from '@/vaults/utils';
 import * as nodesUtils from '@/nodes/utils';

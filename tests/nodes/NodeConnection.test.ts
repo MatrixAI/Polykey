@@ -10,7 +10,6 @@ import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { destroyed } from '@matrixai/async-init';
-
 import Proxy from '@/network/Proxy';
 import NodeConnection from '@/nodes/NodeConnection';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';

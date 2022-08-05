@@ -1,8 +1,6 @@
 import type { Notification, GestaltInvite, VaultShare, General } from './types';
-
 import type { JSONSchemaType, ValidateFunction } from 'ajv';
 import Ajv from 'ajv';
-
 import NotificationSchema from './Notification.json';
 import GestaltInviteSchema from './GestaltInvite.json';
 import VaultShareSchema from './VaultShare.json';

@@ -1,8 +1,6 @@
 import type { Claim, ClaimValidation } from './types';
-
 import type { JSONSchemaType, ValidateFunction } from 'ajv';
 import Ajv from 'ajv';
-
 import ClaimIdentitySchema from './ClaimIdentity.json';
 import ClaimNodeSinglySignedSchema from './ClaimNodeSinglySigned.json';
 import ClaimNodeDoublySignedSchema from './ClaimNodeDoublySigned.json';

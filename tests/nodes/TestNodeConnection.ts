@@ -1,6 +1,5 @@
 import type { PublicKeyPem } from '@/keys/types';
 import type { AbstractConstructorParameters } from '@/types';
-
 import type { Host, Port } from '@/network/types';
 import type Proxy from '@/network/Proxy';
 import type GRPCClientAgent from '@/agent/GRPCClientAgent';

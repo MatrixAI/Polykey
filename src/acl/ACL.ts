@@ -9,7 +9,6 @@ import type { NodeId } from '../nodes/types';
 import type { GestaltAction } from '../gestalts/types';
 import type { VaultAction, VaultId } from '../vaults/types';
 import type { Ref } from '../types';
-
 import Logger from '@matrixai/logger';
 import { IdInternal } from '@matrixai/id';
 import {

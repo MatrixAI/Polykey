@@ -15,7 +15,6 @@ import NodeGraph from '@/nodes/NodeGraph';
 import NodeManager from '@/nodes/NodeManager';
 import Sigchain from '@/sigchain/Sigchain';
 import Proxy from '@/network/Proxy';
-
 import GRPCClientAgent from '@/agent/GRPCClientAgent';
 import VaultManager from '@/vaults/VaultManager';
 import NotificationsManager from '@/notifications/NotificationsManager';

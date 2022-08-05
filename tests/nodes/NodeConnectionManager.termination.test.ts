@@ -16,7 +16,6 @@ import KeyManager from '@/keys/KeyManager';
 import NodeGraph from '@/nodes/NodeGraph';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import Proxy from '@/network/Proxy';
-
 import * as nodesUtils from '@/nodes/utils';
 import * as nodesErrors from '@/nodes/errors';
 import * as keysUtils from '@/keys/utils';

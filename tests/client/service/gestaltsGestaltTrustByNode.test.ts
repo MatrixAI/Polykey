@@ -20,7 +20,6 @@ import NodeGraph from '@/nodes/NodeGraph';
 import NodeManager from '@/nodes/NodeManager';
 import Sigchain from '@/sigchain/Sigchain';
 import Proxy from '@/network/Proxy';
-
 import GestaltGraph from '@/gestalts/GestaltGraph';
 import ACL from '@/acl/ACL';
 import GRPCServer from '@/grpc/GRPCServer';

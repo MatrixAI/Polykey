@@ -1,5 +1,4 @@
 import type { Notification } from '../../notifications/types';
-
 import type PolykeyClient from '../../PolykeyClient';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';

@@ -80,7 +80,8 @@
         ],
         "pathGroupsExcludedImportTypes": [
           "type"
-        ]
+        ],
+        "newlines-between": "never"
       }
     ],
     "@typescript-eslint/no-namespace": 0,

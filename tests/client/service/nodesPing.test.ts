@@ -12,7 +12,6 @@ import NodeGraph from '@/nodes/NodeGraph';
 import NodeManager from '@/nodes/NodeManager';
 import Sigchain from '@/sigchain/Sigchain';
 import Proxy from '@/network/Proxy';
-
 import GRPCServer from '@/grpc/GRPCServer';
 import GRPCClientClient from '@/client/GRPCClientClient';
 import nodesPing from '@/client/service/nodesPing';

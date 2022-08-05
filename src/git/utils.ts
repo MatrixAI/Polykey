@@ -15,7 +15,6 @@ import type {
   TreeEntry,
   TreeObject,
 } from 'isomorphic-git';
-
 import type { EncryptedFS } from 'encryptedfs';
 import path from 'path';
 import pako from 'pako';

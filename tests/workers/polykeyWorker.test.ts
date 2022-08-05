@@ -1,6 +1,5 @@
 import type { PolykeyWorkerManagerInterface } from '@/workers/types';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-
 import { createWorkerManager } from '@/workers/utils';
 
 describe('Polykey worker', () => {
