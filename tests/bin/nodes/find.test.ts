@@ -6,7 +6,6 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
 import * as nodesUtils from '@/nodes/utils';
 import { sysexits } from '@/errors';
-import * as execUtils from '../../utils/exec';
 import * as testNodesUtils from '../../nodes/utils';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 import * as testUtils from '../../utils';
@@ -104,7 +103,7 @@ describe('find', () => {
   testUtils.testIf(testUtils.isTestPlatformEmpty)(
     'finds an online node',
     async () => {
-      const { exitCode, stdout } = await execUtils.pkStdio(
+      const { exitCode, stdout } = await testUtils.pkStdio(
         [
           'nodes',
           'find',
@@ -113,10 +112,12 @@ describe('find', () => {
           'json',
         ],
         {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: nodePath,
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
       );
       expect(exitCode).toBe(0);
       expect(JSON.parse(stdout)).toEqual({
@@ -131,7 +132,7 @@ describe('find', () => {
   testUtils.testIf(testUtils.isTestPlatformEmpty)(
     'finds an offline node',
     async () => {
-      const { exitCode, stdout } = await execUtils.pkStdio(
+      const { exitCode, stdout } = await testUtils.pkStdio(
         [
           'nodes',
           'find',
@@ -140,10 +141,12 @@ describe('find', () => {
           'json',
         ],
         {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: nodePath,
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
       );
       expect(exitCode).toBe(0);
       expect(JSON.parse(stdout)).toEqual({
@@ -161,7 +164,7 @@ describe('find', () => {
       const unknownNodeId = nodesUtils.decodeNodeId(
         'vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg',
       );
-      const { exitCode, stdout } = await execUtils.pkStdio(
+      const { exitCode, stdout } = await testUtils.pkStdio(
         [
           'nodes',
           'find',
@@ -170,10 +173,12 @@ describe('find', () => {
           'json',
         ],
         {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: nodePath,
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
       );
       expect(exitCode).toBe(sysexits.GENERAL);
       expect(JSON.parse(stdout)).toEqual({

@@ -3,7 +3,6 @@ import path from 'path';
 import os from 'os';
 import readline from 'readline';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import * as execUtils from '../utils/exec';
 import * as testUtils from '../utils';
 
 describe('polykey', () => {
@@ -12,7 +11,7 @@ describe('polykey', () => {
       testUtils.isTestPlatformLinux ||
       testUtils.isTestPlatformDocker,
   )('default help display', async () => {
-    const result = await execUtils.pkStdio([]);
+    const result = await testUtils.pkExec([]);
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toBe('');
     expect(result.stderr.length > 0).toBe(true);
@@ -29,7 +28,7 @@ describe('polykey', () => {
     const password = 'abc123';
     const polykeyPath = path.join(dataDir, 'polykey');
     await fs.promises.mkdir(polykeyPath);
-    const agentProcess = await execUtils.pkSpawn(
+    const agentProcess = await testUtils.pkSpawn(
       [
         'agent',
         'start',
@@ -48,10 +47,12 @@ describe('polykey', () => {
         'json',
       ],
       {
-        PK_TEST_DATA_PATH: dataDir,
-        PK_PASSWORD: password,
+        env: {
+          PK_TEST_DATA_PATH: dataDir,
+          PK_PASSWORD: password,
+        },
+        cwd: dataDir,
       },
-      dataDir,
       logger,
     );
     const rlErr = readline.createInterface(agentProcess.stderr!);

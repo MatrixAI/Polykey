@@ -21,7 +21,7 @@ import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as nodesUtils from '@/nodes/utils';
 import * as clientUtils from '@/client/utils/utils';
 import * as validationErrors from '@/validation/errors';
-import { expectRemoteError } from '../../utils';
+import * as testUtils from '../../utils';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('nodesAdd', () => {
@@ -176,7 +176,7 @@ describe('nodesAdd', () => {
     request.setForce(false);
     request.setNodeId('vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0');
     request.setAddress(addressMessage);
-    await expectRemoteError(
+    await testUtils.expectRemoteError(
       grpcClient.nodesAdd(
         request,
         clientUtils.encodeAuthFromPassword(password),
@@ -186,7 +186,7 @@ describe('nodesAdd', () => {
     // Invalid port
     addressMessage.setHost('127.0.0.1');
     addressMessage.setPort(111111);
-    await expectRemoteError(
+    await testUtils.expectRemoteError(
       grpcClient.nodesAdd(
         request,
         clientUtils.encodeAuthFromPassword(password),
@@ -196,7 +196,7 @@ describe('nodesAdd', () => {
     // Invalid nodeid
     addressMessage.setPort(11111);
     request.setNodeId('nodeId');
-    await expectRemoteError(
+    await testUtils.expectRemoteError(
       grpcClient.nodesAdd(
         request,
         clientUtils.encodeAuthFromPassword(password),

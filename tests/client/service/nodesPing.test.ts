@@ -20,7 +20,7 @@ import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as nodesPB from '@/proto/js/polykey/v1/nodes/nodes_pb';
 import * as clientUtils from '@/client/utils/utils';
 import * as validationErrors from '@/validation/errors';
-import { expectRemoteError } from '../../utils';
+import * as testUtils from '../../utils';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('nodesPing', () => {
@@ -173,7 +173,7 @@ describe('nodesPing', () => {
   test('cannot ping an invalid node', async () => {
     const request = new nodesPB.Node();
     request.setNodeId('nodeId');
-    await expectRemoteError(
+    await testUtils.expectRemoteError(
       grpcClient.nodesPing(
         request,
         clientUtils.encodeAuthFromPassword(password),

@@ -1,20 +1,30 @@
 import type { ChildProcess } from 'child_process';
 import type ErrorPolykey from '@/ErrorPolykey';
-import type { PrivateKeyPem } from '@/keys/types';
-import type { StatusLive } from '@/status/types';
-import child_process from 'child_process';
+import childProcess from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import process from 'process';
 import readline from 'readline';
-import os from 'os';
 import * as mockProcess from 'jest-mock-process';
 import mockedEnv from 'mocked-env';
 import nexpect from 'nexpect';
 import Logger from '@matrixai/logger';
 import main from '@/bin/polykey';
-import { promise } from '@/utils';
-import * as validationUtils from '@/validation/utils';
+
+type ExecOpts = {
+  env: Record<string, string | undefined>;
+  command?: string | undefined;
+  cwd?: string;
+  shell?: boolean;
+};
+
+const tsConfigPath = path.resolve(
+  path.join(globalThis.projectDir ?? '', 'tsconfig.json'),
+);
+
+const polykeyPath = path.resolve(
+  path.join(globalThis.projectDir ?? '', 'src/bin/polykey.ts'),
+);
 
 const generateDockerArgs = (mountPath: string) => [
   '--interactive',
@@ -48,31 +58,76 @@ const generateDockerArgs = (mountPath: string) => [
 ];
 
 /**
- * Wrapper for execFile to make it asynchronous and non-blocking
+ * Execute generic (non-Polykey) shell commands
  */
 async function exec(
   command: string,
   args: Array<string> = [],
+  opts: ExecOpts = { env: {} },
 ): Promise<{
+  exitCode: number;
   stdout: string;
   stderr: string;
 }> {
+  const env = {
+    ...process.env,
+    ...opts.env,
+  };
   return new Promise((resolve, reject) => {
-    child_process.execFile(
-      command,
-      args,
-      { windowsHide: true },
-      (error, stdout, stderr) => {
-        if (error) {
-          reject(error);
-        } else {
-          return resolve({
-            stdout,
-            stderr,
-          });
-        }
-      },
-    );
+    let stdout = '',
+      stderr = '';
+    const subprocess = childProcess.spawn(command, args, {
+      env,
+      windowsHide: true,
+      shell: opts.shell ? opts.shell : false,
+    });
+    subprocess.stdout.on('data', (data) => {
+      stdout += data.toString();
+    });
+    subprocess.stderr.on('data', (data) => {
+      stderr += data.toString();
+    });
+    subprocess.on('exit', (code) => {
+      resolve({ exitCode: code ?? -255, stdout, stderr });
+    });
+    subprocess.on('error', (e) => {
+      reject(e);
+    });
+  });
+}
+
+/**
+ * Spawn generic (non-Polykey) shell processes
+ */
+async function spawn(
+  command: string,
+  args: Array<string> = [],
+  opts: ExecOpts = { env: {} },
+  logger: Logger = new Logger(spawn.name),
+): Promise<ChildProcess> {
+  const env = {
+    ...process.env,
+    ...opts.env,
+  };
+  const subprocess = childProcess.spawn(command, args, {
+    env,
+    stdio: ['pipe', 'pipe', 'pipe'],
+    windowsHide: true,
+    shell: opts.shell ? opts.shell : false,
+  });
+  // The readline library will trim newlines
+  const rlOut = readline.createInterface(subprocess.stdout!);
+  rlOut.on('line', (l) => logger.info(l));
+  const rlErr = readline.createInterface(subprocess.stderr!);
+  rlErr.on('line', (l) => logger.info(l));
+  return new Promise<ChildProcess>((resolve, reject) => {
+    subprocess.on('error', (e) => {
+      reject(e);
+    });
+    subprocess.on('spawn', () => {
+      subprocess.removeAllListeners('error');
+      resolve(subprocess);
+    });
   });
 }
 
@@ -88,28 +143,23 @@ async function pk(args: Array<string>): Promise<any> {
  * Both stdout and stderr are the entire output including newlines
  * This can only be used serially, because the mocks it relies on are global singletons
  * If it is used concurrently, the mocking side-effects can conflict
- * @param env Augments env for command execution
- * @param cwd Defaults to temporary directory
  */
 async function pkStdio(
   args: Array<string> = [],
-  env: Record<string, string | undefined> = {},
-  cwd?: string,
+  opts: ExecOpts = { env: {} },
 ): Promise<{
   exitCode: number;
   stdout: string;
   stderr: string;
 }> {
-  if (globalThis.testCmd != null) return pkStdioTarget(args, env, cwd);
-
-  cwd =
-    cwd ??
+  const cwd =
+    opts.cwd ??
     (await fs.promises.mkdtemp(path.join(globalThis.tmpDir, 'polykey-test-')));
   // Recall that we attempt to connect to all specified seed nodes on agent start.
   // Therefore, for testing purposes only, we default the seed nodes as empty
   // (if not defined in the env) to ensure no attempted connections. A regular
   // PolykeyAgent is expected to initially connect to the mainnet seed nodes
-  env['PK_SEED_NODES'] = env['PK_SEED_NODES'] ?? '';
+  opts.env['PK_SEED_NODES'] = opts.env['PK_SEED_NODES'] ?? '';
   // Parse the arguments of process.stdout.write and process.stderr.write
   const parseArgs = (args) => {
     const data = args[0];
@@ -151,7 +201,7 @@ async function pkStdio(
     () => process,
   );
   const mockCwd = mockProcess.spyOnImplementing(process, 'cwd', () => cwd!);
-  const envRestore = mockedEnv(env);
+  const envRestore = mockedEnv(opts.env);
   const mockedStdout = mockProcess.mockProcessStdout();
   const mockedStderr = mockProcess.mockProcessStderr();
   const exitCode = await pk(args);
@@ -180,219 +230,134 @@ async function pkStdio(
  * This is used when a subprocess functionality needs to be used
  * This is intended for terminating subprocesses
  * Both stdout and stderr are the entire output including newlines
- * @param env Augments env for command execution
- * @param cwd Defaults to temporary directory
+ * By default `globalThis.testCommand` should be `undefined` because `PK_TEST_COMMAND` will not be set
+ * This is strictly checking for existence, `PK_TEST_COMMAND=''` is legitimate but undefined behaviour
  */
 async function pkExec(
   args: Array<string> = [],
-  env: Record<string, string | undefined> = {},
-  cwd?: string,
+  opts: ExecOpts = { env: {}, command: globalThis.testCmd },
 ): Promise<{
   exitCode: number;
   stdout: string;
   stderr: string;
 }> {
-  if (globalThis.testCmd != null) return pkExecTarget(args, env, cwd);
-
-  cwd =
-    cwd ??
-    (await fs.promises.mkdtemp(path.join(globalThis.tmpDir, 'polykey-test-')));
-  env = {
-    ...process.env,
-    ...env,
-  };
-  // Recall that we attempt to connect to all specified seed nodes on agent start.
-  // Therefore, for testing purposes only, we default the seed nodes as empty
-  // (if not defined in the env) to ensure no attempted connections. A regular
-  // PolykeyAgent is expected to initially connect to the mainnet seed nodes
-  env['PK_SEED_NODES'] = env['PK_SEED_NODES'] ?? '';
-  const tsConfigPath = path.resolve(
-    path.join(globalThis.projectDir, 'tsconfig.json'),
-  );
-  const polykeyPath = path.resolve(
-    path.join(globalThis.projectDir, 'src/bin/polykey.ts'),
-  );
-  return new Promise((resolve, reject) => {
-    child_process.execFile(
-      'ts-node',
-      ['--project', tsConfigPath, polykeyPath, ...args],
-      {
-        env,
-        cwd,
-        windowsHide: true,
-      },
-      (error, stdout, stderr) => {
-        if (error != null && error.code === undefined) {
-          // This can only happen when the command is killed
-          return reject(error);
-        } else {
-          // Success and Unsuccessful exits are valid here
-          return resolve({
-            exitCode: error && error.code != null ? error.code : 0,
-            stdout,
-            stderr,
-          });
-        }
-      },
-    );
-  });
+  if (opts.command == null) {
+    return pkExecWithoutShell(args, opts);
+  } else {
+    return pkExecWithShell(args, opts);
+  }
 }
 
 /**
  * Launch pk command through subprocess
  * This is used when a subprocess functionality needs to be used
  * This is intended for non-terminating subprocesses
- * @param env Augments env for command execution
- * @param cwd Defaults to temporary directory
+ * By default `globalThis.testCommand` should be `undefined` because `PK_TEST_COMMAND` will not be set
+ * This is strictly checking for existence, `PK_TEST_COMMAND=''` is legitimate but undefined behaviour
  */
 async function pkSpawn(
   args: Array<string> = [],
-  env: Record<string, string | undefined> = {},
-  cwd?: string,
+  opts: ExecOpts = { env: {}, command: globalThis.testCmd },
   logger: Logger = new Logger(pkSpawn.name),
 ): Promise<ChildProcess> {
-  if (globalThis.testCmd != null) return pkSpawnTarget(args, env, cwd, logger);
+  if (opts.command == null) {
+    return pkSpawnWithoutShell(args, opts, logger);
+  } else {
+    return pkSpawnWithShell(args, opts, logger);
+  }
+}
 
-  cwd =
-    cwd ??
+/**
+ * Runs pk command through subprocess
+ * This is the default
+ */
+async function pkExecWithoutShell(
+  args: Array<string> = [],
+  opts: ExecOpts = { env: {} },
+): Promise<{
+  exitCode: number;
+  stdout: string;
+  stderr: string;
+}> {
+  const cwd =
+    opts.cwd ??
     (await fs.promises.mkdtemp(path.join(globalThis.tmpDir, 'polykey-test-')));
-  env = {
+  const env = {
     ...process.env,
-    ...env,
+    ...opts.env,
   };
   // Recall that we attempt to connect to all specified seed nodes on agent start.
   // Therefore, for testing purposes only, we default the seed nodes as empty
   // (if not defined in the env) to ensure no attempted connections. A regular
   // PolykeyAgent is expected to initially connect to the mainnet seed nodes
   env['PK_SEED_NODES'] = env['PK_SEED_NODES'] ?? '';
-  const tsConfigPath = path.resolve(
-    path.join(globalThis.projectDir, 'tsconfig.json'),
-  );
-  const polykeyPath = path.resolve(
-    path.join(globalThis.projectDir, 'src/bin/polykey.ts'),
-  );
-  const command =
-    globalThis.testCmd != null
-      ? path.resolve(path.join(globalThis.projectDir, globalThis.testCmd))
-      : 'ts-node';
-  const tsNodeArgs =
-    globalThis.testCmd != null ? [] : ['--project', tsConfigPath, polykeyPath];
-  const subprocess = child_process.spawn(command, [...tsNodeArgs, ...args], {
-    env,
-    cwd,
-    stdio: ['pipe', 'pipe', 'pipe'],
-    windowsHide: true,
-  });
-  // The readline library will trim newlines
-  const rlOut = readline.createInterface(subprocess.stdout!);
-  rlOut.on('line', (l) => logger.info(l));
-  const rlErr = readline.createInterface(subprocess.stderr!);
-  rlErr.on('line', (l) => logger.info(l));
-  return subprocess;
-}
-
-/**
- * Mimics the behaviour of `pkStdio` while running the command as a separate process.
- * Note that this is incompatible with jest mocking.
- * @param args - args to be passed to the command.
- * @param env - environment variables to be passed to the command.
- * @param cwd - the working directory the command will be executed in.
- */
-async function pkStdioTarget(
-  args: Array<string> = [],
-  env: Record<string, string | undefined> = {},
-  cwd?: string,
-): Promise<{
-  exitCode: number;
-  stdout: string;
-  stderr: string;
-}> {
-  cwd = path.resolve(
-    cwd ??
-      (await fs.promises.mkdtemp(
-        path.join(globalThis.tmpDir, 'polykey-test-'),
-      )),
-  );
-  // Recall that we attempt to connect to all specified seed nodes on agent start.
-  // Therefore, for testing purposes only, we default the seed nodes as empty
-  // (if not defined in the env) to ensure no attempted connections. A regular
-  // PolykeyAgent is expected to initially connect to the mainnet seed nodes
-  env['PK_SEED_NODES'] = env['PK_SEED_NODES'] ?? '';
-
-  // If using the command override we need to spawn a process
-  env = {
-    ...process.env,
-    ...env,
-    DOCKER_OPTIONS: generateDockerArgs(cwd).join(' '),
-  };
-  const command = globalThis.testCmd!;
-  const escapedArgs = args.map((x) => x.replace(/(["\s'$`\\])/g, '\\$1'));
-  const subprocess = child_process.spawn(command, escapedArgs, {
-    env,
-    cwd,
-    stdio: ['pipe', 'pipe', 'pipe'],
-    windowsHide: true,
-    shell: true,
-  });
-  const exitCodeProm = promise<number | null>();
-  subprocess.on('exit', (code) => {
-    exitCodeProm.resolveP(code);
-  });
-  subprocess.on('error', (e) => {
-    exitCodeProm.rejectP(e);
-  });
-  let stdout = '',
-    stderr = '';
-  subprocess.stdout.on('data', (data) => {
-    stdout += data.toString();
-  });
-  subprocess.stderr.on('data', (data) => {
-    stderr += data.toString();
-  });
-  return { exitCode: (await exitCodeProm.p) ?? -255, stdout, stderr };
-}
-
-/**
- * Execs the target command spawning it as a seperate process
- * @param args - args to be passed to the command.
- * @param env Augments env for command execution
- * @param cwd Defaults to temporary directory
- */
-async function pkExecTarget(
-  args: Array<string> = [],
-  env: Record<string, string | undefined> = {},
-  cwd?: string,
-): Promise<{
-  exitCode: number;
-  stdout: string;
-  stderr: string;
-}> {
-  cwd = path.resolve(
-    cwd ??
-      (await fs.promises.mkdtemp(
-        path.join(globalThis.tmpDir, 'polykey-test-'),
-      )),
-  );
-  env = {
-    ...process.env,
-    ...env,
-    DOCKER_OPTIONS: generateDockerArgs(cwd).join(' '),
-  };
-  // Recall that we attempt to connect to all specified seed nodes on agent start.
-  // Therefore, for testing purposes only, we default the seed nodes as empty
-  // (if not defined in the env) to ensure no attempted connections. A regular
-  // PolykeyAgent is expected to initially connect to the mainnet seed nodes
-  env['PK_SEED_NODES'] = env['PK_SEED_NODES'] ?? '';
-  const command = globalThis.testCmd!;
-  const escapedArgs = args.map((x) => x.replace(/(["\s'$`\\])/g, '\\$1'));
   return new Promise((resolve, reject) => {
     let stdout = '',
       stderr = '';
-    const subprocess = child_process.spawn(command, escapedArgs, {
+    const subprocess = childProcess.spawn(
+      'ts-node',
+      ['--project', tsConfigPath, polykeyPath, ...args],
+      {
+        env,
+        cwd,
+        windowsHide: true,
+        shell: opts.shell ? opts.shell : false,
+      },
+    );
+    subprocess.stdout.on('data', (data) => {
+      stdout += data.toString();
+    });
+    subprocess.stderr.on('data', (data) => {
+      stderr += data.toString();
+    });
+    subprocess.on('exit', (code) => {
+      resolve({ exitCode: code ?? -255, stdout, stderr });
+    });
+    subprocess.on('error', (e) => {
+      reject(e);
+    });
+  });
+}
+
+/**
+ * Runs pk command through subprocess
+ * This is the parameter > environment override
+ */
+async function pkExecWithShell(
+  args: Array<string> = [],
+  opts: ExecOpts = { env: {}, command: globalThis.testCmd },
+): Promise<{
+  exitCode: number;
+  stdout: string;
+  stderr: string;
+}> {
+  const cwd = path.resolve(
+    opts.cwd ??
+      (await fs.promises.mkdtemp(
+        path.join(globalThis.tmpDir, 'polykey-test-'),
+      )),
+  );
+  const env = {
+    ...process.env,
+    ...opts.env,
+  };
+  if (globalThis.testPlatform === 'docker') {
+    env.DOCKER_OPTIONS = generateDockerArgs(cwd).join(' ');
+  }
+  // Recall that we attempt to connect to all specified seed nodes on agent start.
+  // Therefore, for testing purposes only, we default the seed nodes as empty
+  // (if not defined in the env) to ensure no attempted connections. A regular
+  // PolykeyAgent is expected to initially connect to the mainnet seed nodes
+  env['PK_SEED_NODES'] = env['PK_SEED_NODES'] ?? '';
+  args = args.map(escapeShellArgs);
+  return new Promise((resolve, reject) => {
+    let stdout = '',
+      stderr = '';
+    const subprocess = childProcess.spawn(opts.command!, args, {
       env,
       cwd,
       windowsHide: true,
-      shell: true,
+      shell: opts.shell ? opts.shell : true,
     });
     subprocess.stdout.on('data', (data) => {
       stdout += data.toString();
@@ -410,53 +375,109 @@ async function pkExecTarget(
 }
 
 /**
- * This will spawn a process that executes the target `cmd` provided.
- * @param args - args to be passed to the command.
- * @param env - environment variables to be passed to the command.
- * @param cwd - the working directory the command will be executed in.
- * @param logger
+ * Launch pk command through subprocess
+ * This is the default
  */
-async function pkSpawnTarget(
+async function pkSpawnWithoutShell(
   args: Array<string> = [],
-  env: Record<string, string | undefined> = {},
-  cwd?: string,
-  logger: Logger = new Logger(pkSpawn.name),
+  opts: ExecOpts = { env: {} },
+  logger: Logger = new Logger(pkSpawnWithoutShell.name),
 ): Promise<ChildProcess> {
-  cwd = path.resolve(
-    cwd ??
-      (await fs.promises.mkdtemp(
-        path.join(globalThis.tmpDir, 'polykey-test-'),
-      )),
-  );
-  env = {
+  const cwd =
+    opts.cwd ??
+    (await fs.promises.mkdtemp(path.join(globalThis.tmpDir, 'polykey-test-')));
+  const env = {
     ...process.env,
-    ...env,
-    DOCKER_OPTIONS: generateDockerArgs(cwd).join(' '),
+    ...opts.env,
   };
   // Recall that we attempt to connect to all specified seed nodes on agent start.
   // Therefore, for testing purposes only, we default the seed nodes as empty
   // (if not defined in the env) to ensure no attempted connections. A regular
   // PolykeyAgent is expected to initially connect to the mainnet seed nodes
   env['PK_SEED_NODES'] = env['PK_SEED_NODES'] ?? '';
-  const command = globalThis.testCmd!;
-  const escapedArgs = args.map((x) => x.replace(/(["\s'$`\\])/g, '\\$1'));
-  const subprocess = child_process.spawn(command, escapedArgs, {
+  const subprocess = childProcess.spawn(
+    'ts-node',
+    ['--project', tsConfigPath, polykeyPath, ...args],
+    {
+      env,
+      cwd,
+      stdio: ['pipe', 'pipe', 'pipe'],
+      windowsHide: true,
+      shell: opts.shell ? opts.shell : false,
+    },
+  );
+  // The readline library will trim newlines
+  const rlOut = readline.createInterface(subprocess.stdout!);
+  rlOut.on('line', (l) => logger.info(l));
+  const rlErr = readline.createInterface(subprocess.stderr!);
+  rlErr.on('line', (l) => logger.info(l));
+  return new Promise<ChildProcess>((resolve, reject) => {
+    subprocess.on('error', (e) => {
+      reject(e);
+    });
+    subprocess.on('spawn', () => {
+      subprocess.removeAllListeners('error');
+      resolve(subprocess);
+    });
+  });
+}
+
+/**
+ * Launch pk command through subprocess
+ * This is the parameter > environment override
+ */
+async function pkSpawnWithShell(
+  args: Array<string> = [],
+  opts: ExecOpts = { env: {}, command: globalThis.testCmd },
+  logger: Logger = new Logger(pkSpawnWithShell.name),
+): Promise<ChildProcess> {
+  const cwd = path.resolve(
+    opts.cwd ??
+      (await fs.promises.mkdtemp(
+        path.join(globalThis.tmpDir, 'polykey-test-'),
+      )),
+  );
+  const env = {
+    ...process.env,
+    ...opts.env,
+  };
+  if (globalThis.testPlatform === 'docker') {
+    env.DOCKER_OPTIONS = generateDockerArgs(cwd).join(' ');
+  }
+  // Recall that we attempt to connect to all specified seed nodes on agent start.
+  // Therefore, for testing purposes only, we default the seed nodes as empty
+  // (if not defined in the env) to ensure no attempted connections. A regular
+  // PolykeyAgent is expected to initially connect to the mainnet seed nodes
+  env['PK_SEED_NODES'] = env['PK_SEED_NODES'] ?? '';
+  args = args.map(escapeShellArgs);
+  const subprocess = childProcess.spawn(opts.command!, args, {
     env,
     cwd,
     stdio: ['pipe', 'pipe', 'pipe'],
     windowsHide: true,
-    shell: true,
+    shell: opts.shell ? opts.shell : true,
   });
   // The readline library will trim newlines
   const rlOut = readline.createInterface(subprocess.stdout!);
   rlOut.on('line', (l) => logger.info(l));
   const rlErr = readline.createInterface(subprocess.stderr!);
   rlErr.on('line', (l) => logger.info(l));
-  return subprocess;
+  return new Promise<ChildProcess>((resolve, reject) => {
+    subprocess.on('error', (e) => {
+      reject(e);
+    });
+    subprocess.on('spawn', () => {
+      subprocess.removeAllListeners('error');
+      resolve(subprocess);
+    });
+  });
 }
 
 /**
  * Runs pk command through subprocess expect wrapper
+ * Note this will eventually be refactored to follow the same pattern as
+ * `pkExec` and `pkSpawn` using a workaround to inject the `shell` option
+ * into `nexpect.spawn`
  * @throws assert.AssertionError when expectations fail
  * @throws Error for other reasons
  */
@@ -486,12 +507,6 @@ async function pkExpect({
   // (if not defined in the env) to ensure no attempted connections. A regular
   // PolykeyAgent is expected to initially connect to the mainnet seed nodes
   env['PK_SEED_NODES'] = env['PK_SEED_NODES'] ?? '';
-  const tsConfigPath = path.resolve(
-    path.join(globalThis.projectDir, 'tsconfig.json'),
-  );
-  const polykeyPath = path.resolve(
-    path.join(globalThis.projectDir, 'src/bin/polykey.ts'),
-  );
   // Expect chain runs against stdout and stderr
   let expectChain = nexpect.spawn(
     'ts-node',
@@ -561,239 +576,25 @@ function expectProcessError(
   }
 }
 
-/**
- *
- * @param privateKeyPem - Optional root key override to skip key generation
- * @param logger
- */
-async function setupTestAgent(privateKeyPem: PrivateKeyPem, logger: Logger) {
-  const agentDir = await fs.promises.mkdtemp(
-    path.join(globalThis.tmpDir, 'polykey-test-'),
-  );
-  const agentPassword = 'password';
-  const agentProcess = await pkSpawn(
-    [
-      'agent',
-      'start',
-      '--node-path',
-      agentDir,
-      '--client-host',
-      '127.0.0.1',
-      '--proxy-host',
-      '127.0.0.1',
-      '--workers',
-      '0',
-      '--format',
-      'json',
-      '--verbose',
-    ],
-    {
-      PK_PASSWORD: agentPassword,
-      PK_ROOT_KEY: privateKeyPem,
-    },
-    agentDir,
-    logger,
-  );
-  const startedProm = promise<any>();
-  agentProcess.on('error', (d) => startedProm.rejectP(d));
-  const rlOut = readline.createInterface(agentProcess.stdout!);
-  rlOut.on('line', (l) => startedProm.resolveP(JSON.parse(l.toString())));
-  const data = await startedProm.p;
-  const agentStatus: StatusLive = {
-    status: 'LIVE',
-    data: { ...data, nodeId: validationUtils.parseNodeId(data.nodeId) },
-  };
-  try {
-    return {
-      agentStatus,
-      agentClose: async () => {
-        agentProcess.kill();
-        await fs.promises.rm(agentDir, {
-          recursive: true,
-          force: true,
-          maxRetries: 10,
-        });
-      },
-      agentDir,
-      agentPassword,
-    };
-  } catch (e) {
-    agentProcess.kill();
-    await fs.promises.rm(agentDir, {
-      recursive: true,
-      force: true,
-      maxRetries: 10,
-    });
-    throw e;
-  }
-}
-
-function spawnFile(path: string) {
-  return child_process.spawn('ts-node', [
-    '--require',
-    'tsconfig-paths/register',
-    path,
-  ]);
-}
-
-/**
- * Formats the command to enter a namespace to run a process inside it
- */
-const nsenter = (usrnsPid: number, netnsPid: number) => {
-  return [
-    '--target',
-    usrnsPid.toString(),
-    '--user',
-    '--preserve-credentials',
-    'nsenter',
-    '--target',
-    netnsPid.toString(),
-    '--net',
-  ];
-};
-
-/**
- * Runs pk command through subprocess inside a network namespace
- * This is used when a subprocess functionality needs to be used
- * This is intended for terminating subprocesses
- * Both stdout and stderr are the entire output including newlines
- * @param env Augments env for command execution
- * @param cwd Defaults to temporary directory
- */
-async function pkExecNs(
-  usrnsPid: number,
-  netnsPid: number,
-  args: Array<string> = [],
-  env: Record<string, string | undefined> = {},
-  cwd?: string,
-): Promise<{
-  exitCode: number;
-  stdout: string;
-  stderr: string;
-}> {
-  cwd =
-    cwd ?? (await fs.promises.mkdtemp(path.join(os.tmpdir(), 'polykey-test-')));
-  env = {
-    ...process.env,
-    ...env,
-  };
-  // Recall that we attempt to connect to all specified seed nodes on agent start.
-  // Therefore, for testing purposes only, we default the seed nodes as empty
-  // (if not defined in the env) to ensure no attempted connections. A regular
-  // PolykeyAgent is expected to initially connect to the mainnet seed nodes
-  env['PK_SEED_NODES'] = env['PK_SEED_NODES'] ?? '';
-  const tsConfigPath = path.resolve(
-    path.join(globalThis.projectDir, 'tsconfig.json'),
-  );
-  const polykeyPath = path.resolve(
-    path.join(globalThis.projectDir, 'src/bin/polykey.ts'),
-  );
-  return new Promise((resolve, reject) => {
-    child_process.execFile(
-      'nsenter',
-      [
-        ...nsenter(usrnsPid, netnsPid),
-        'ts-node',
-        '--project',
-        tsConfigPath,
-        polykeyPath,
-        ...args,
-      ],
-      {
-        env,
-        cwd,
-        windowsHide: true,
-      },
-      (error, stdout, stderr) => {
-        if (error != null && error.code === undefined) {
-          // This can only happen when the command is killed
-          return reject(error);
-        } else {
-          // Success and Unsuccessful exits are valid here
-          return resolve({
-            exitCode: error && error.code != null ? error.code : 0,
-            stdout,
-            stderr,
-          });
-        }
-      },
-    );
-  });
-}
-
-/**
- * Launch pk command through subprocess inside a network namespace
- * This is used when a subprocess functionality needs to be used
- * This is intended for non-terminating subprocesses
- * @param env Augments env for command execution
- * @param cwd Defaults to temporary directory
- */
-async function pkSpawnNs(
-  usrnsPid: number,
-  netnsPid: number,
-  args: Array<string> = [],
-  env: Record<string, string | undefined> = {},
-  cwd?: string,
-  logger: Logger = new Logger(pkSpawnNs.name),
-): Promise<ChildProcess> {
-  cwd =
-    cwd ?? (await fs.promises.mkdtemp(path.join(os.tmpdir(), 'polykey-test-')));
-  env = {
-    ...process.env,
-    ...env,
-  };
-  // Recall that we attempt to connect to all specified seed nodes on agent start.
-  // Therefore, for testing purposes only, we default the seed nodes as empty
-  // (if not defined in the env) to ensure no attempted connections. A regular
-  // PolykeyAgent is expected to initially connect to the mainnet seed nodes
-  env['PK_SEED_NODES'] = env['PK_SEED_NODES'] ?? '';
-  const tsConfigPath = path.resolve(
-    path.join(globalThis.projectDir, 'tsconfig.json'),
-  );
-  const polykeyPath = path.resolve(
-    path.join(globalThis.projectDir, 'src/bin/polykey.ts'),
-  );
-  const subprocess = child_process.spawn(
-    'nsenter',
-    [
-      ...nsenter(usrnsPid, netnsPid),
-      'ts-node',
-      '--project',
-      tsConfigPath,
-      polykeyPath,
-      ...args,
-    ],
-    {
-      env,
-      cwd,
-      stdio: ['pipe', 'pipe', 'pipe'],
-      windowsHide: true,
-      shell: true,
-    },
-  );
-  const rlErr = readline.createInterface(subprocess.stderr!);
-  rlErr.on('line', (l) => {
-    // The readline library will trim newlines
-    logger.info(l);
-  });
-  return subprocess;
+function escapeShellArgs(arg: string): string {
+  return arg.replace(/(["\s'$`\\])/g, '\\$1');
 }
 
 export {
+  tsConfigPath,
+  polykeyPath,
   exec,
+  spawn,
   pk,
   pkStdio,
   pkExec,
+  pkExecWithShell,
+  pkExecWithoutShell,
   pkSpawn,
-  pkStdioTarget,
-  pkExecTarget,
-  pkSpawnTarget,
+  pkSpawnWithShell,
+  pkSpawnWithoutShell,
   pkExpect,
   processExit,
   expectProcessError,
-  setupTestAgent,
-  spawnFile,
-  nsenter,
-  pkExecNs,
-  pkSpawnNs,
+  escapeShellArgs,
 };

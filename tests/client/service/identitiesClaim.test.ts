@@ -26,7 +26,7 @@ import * as claimsUtils from '@/claims/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as validationErrors from '@/validation/errors';
 import TestProvider from '../../identities/TestProvider';
-import { expectRemoteError } from '../../utils';
+import * as testUtils from '../../utils';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('identitiesClaim', () => {
@@ -210,7 +210,7 @@ describe('identitiesClaim', () => {
     const request = new identitiesPB.Provider();
     request.setIdentityId('');
     request.setProviderId(testToken.providerId);
-    await expectRemoteError(
+    await testUtils.expectRemoteError(
       grpcClient.identitiesClaim(
         request,
         clientUtils.encodeAuthFromPassword(password),
@@ -219,7 +219,7 @@ describe('identitiesClaim', () => {
     );
     request.setIdentityId(testToken.identityId);
     request.setProviderId('');
-    await expectRemoteError(
+    await testUtils.expectRemoteError(
       grpcClient.identitiesClaim(
         request,
         clientUtils.encodeAuthFromPassword(password),
@@ -228,7 +228,7 @@ describe('identitiesClaim', () => {
     );
     request.setIdentityId('');
     request.setProviderId('');
-    await expectRemoteError(
+    await testUtils.expectRemoteError(
       grpcClient.identitiesClaim(
         request,
         clientUtils.encodeAuthFromPassword(password),

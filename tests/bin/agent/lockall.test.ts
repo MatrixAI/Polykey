@@ -6,7 +6,6 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import Session from '@/sessions/Session';
 import config from '@/config';
 import * as errors from '@/errors';
-import * as execUtils from '../../utils/exec';
 import * as testUtils from '../../utils';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
@@ -24,7 +23,7 @@ describe('lockall', () => {
   let agentPassword;
   let agentClose;
   beforeEach(async () => {
-    ({ agentDir, agentPassword, agentClose } = await execUtils.setupTestAgent(
+    ({ agentDir, agentPassword, agentClose } = await testUtils.setupTestAgent(
       globalRootKeyPems[0],
       logger,
     ));
@@ -35,21 +34,17 @@ describe('lockall', () => {
   testUtils.testIf(
     testUtils.isTestPlatformEmpty || testUtils.isTestPlatformDocker,
   )('lockall deletes the session token', async () => {
-    await execUtils.pkStdio(
-      ['agent', 'unlock'],
-      {
+    await testUtils.pkExec(['agent', 'unlock'], {
+      env: {
         PK_NODE_PATH: agentDir,
         PK_PASSWORD: agentPassword,
       },
-      agentDir,
-    );
-    const { exitCode } = await execUtils.pkStdio(
-      ['agent', 'lockall'],
-      {
-        PK_NODE_PATH: agentDir,
-      },
-      agentDir,
-    );
+      cwd: agentDir,
+    });
+    const { exitCode } = await testUtils.pkExec(['agent', 'lockall'], {
+      env: { PK_NODE_PATH: agentDir },
+      cwd: agentDir,
+    });
     expect(exitCode).toBe(0);
     const session = await Session.createSession({
       sessionTokenPath: path.join(agentDir, config.defaults.tokenBase),
@@ -63,33 +58,26 @@ describe('lockall', () => {
     'lockall ensures reauthentication is required',
     async () => {
       const password = agentPassword;
-      await execUtils.pkStdio(
-        ['agent', 'unlock'],
-        {
+      await testUtils.pkStdio(['agent', 'unlock'], {
+        env: {
           PK_NODE_PATH: agentDir,
           PK_PASSWORD: agentPassword,
         },
-        agentDir,
-      );
-      await execUtils.pkStdio(
-        ['agent', 'lockall'],
-        {
-          PK_NODE_PATH: agentDir,
-        },
-        agentDir,
-      );
+        cwd: agentDir,
+      });
+      await testUtils.pkStdio(['agent', 'lockall'], {
+        env: { PK_NODE_PATH: agentDir },
+        cwd: agentDir,
+      });
       // Token is deleted, reauthentication is required
       mockedPrompts.mockClear();
       mockedPrompts.mockImplementation(async (_opts: any) => {
         return { password };
       });
-      await execUtils.pkStdio(
-        ['agent', 'status'],
-        {
-          PK_NODE_PATH: agentDir,
-        },
-        agentDir,
-      );
+      await testUtils.pkStdio(['agent', 'status'], {
+        env: { PK_NODE_PATH: agentDir },
+        cwd: agentDir,
+      });
       // Prompted for password 1 time
       expect(mockedPrompts.mock.calls.length).toBe(1);
       mockedPrompts.mockClear();
@@ -98,14 +86,13 @@ describe('lockall', () => {
   testUtils.testIf(
     testUtils.isTestPlatformEmpty || testUtils.isTestPlatformDocker,
   )('lockall causes old session tokens to fail', async () => {
-    await execUtils.pkStdio(
-      ['agent', 'unlock'],
-      {
+    await testUtils.pkExec(['agent', 'unlock'], {
+      env: {
         PK_NODE_PATH: agentDir,
         PK_PASSWORD: agentPassword,
       },
-      agentDir,
-    );
+      cwd: agentDir,
+    });
     const session = await Session.createSession({
       sessionTokenPath: path.join(agentDir, config.defaults.tokenBase),
       fs,
@@ -113,24 +100,25 @@ describe('lockall', () => {
     });
     const token = await session.readToken();
     await session.stop();
-    await execUtils.pkStdio(
-      ['agent', 'lockall'],
-      {
+    await testUtils.pkExec(['agent', 'lockall'], {
+      env: {
         PK_NODE_PATH: agentDir,
         PK_PASSWORD: agentPassword,
       },
-      agentDir,
-    );
+      cwd: agentDir,
+    });
     // Old token is invalid
-    const { exitCode, stderr } = await execUtils.pkStdio(
+    const { exitCode, stderr } = await testUtils.pkExec(
       ['agent', 'status', '--format', 'json'],
       {
-        PK_NODE_PATH: agentDir,
-        PK_TOKEN: token,
+        env: {
+          PK_NODE_PATH: agentDir,
+          PK_TOKEN: token,
+        },
+        cwd: agentDir,
       },
-      agentDir,
     );
-    execUtils.expectProcessError(exitCode, stderr, [
+    testUtils.expectProcessError(exitCode, stderr, [
       new errors.ErrorClientAuthDenied(),
     ]);
   });

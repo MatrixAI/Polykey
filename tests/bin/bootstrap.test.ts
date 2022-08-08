@@ -4,9 +4,8 @@ import readline from 'readline';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { errors as statusErrors } from '@/status';
 import { errors as bootstrapErrors } from '@/bootstrap';
-import * as execUtils from '../utils/exec';
-import * as testUtils from '../utils';
 import * as keysUtils from '../../src/keys/utils';
+import * as testUtils from '../utils';
 
 describe('bootstrap', () => {
   const logger = new Logger('bootstrap test', LogLevel.WARN, [
@@ -32,7 +31,7 @@ describe('bootstrap', () => {
       const password = 'password';
       const passwordPath = path.join(dataDir, 'password');
       await fs.promises.writeFile(passwordPath, password);
-      const { exitCode, stdout } = await execUtils.pkStdio(
+      const { exitCode, stdout } = await testUtils.pkExec(
         [
           'bootstrap',
           '--password-file',
@@ -42,9 +41,11 @@ describe('bootstrap', () => {
           '--verbose',
         ],
         {
-          PK_NODE_PATH: path.join(dataDir, 'polykey'),
+          env: {
+            PK_NODE_PATH: path.join(dataDir, 'polykey'),
+          },
+          cwd: dataDir,
         },
-        dataDir,
       );
       expect(exitCode).toBe(0);
       const recoveryCode = stdout.trim();
@@ -69,7 +70,7 @@ describe('bootstrap', () => {
       await fs.promises.writeFile(privateKeyPath, privateKeyPem, {
         encoding: 'utf-8',
       });
-      const { exitCode: exitCode1 } = await execUtils.pkStdio(
+      const { exitCode: exitCode1 } = await testUtils.pkExec(
         [
           'bootstrap',
           '--password-file',
@@ -79,18 +80,22 @@ describe('bootstrap', () => {
           privateKeyPath,
         ],
         {
-          PK_NODE_PATH: path.join(dataDir, 'polykey'),
+          env: {
+            PK_NODE_PATH: path.join(dataDir, 'polykey'),
+          },
+          cwd: dataDir,
         },
-        dataDir,
       );
       expect(exitCode1).toBe(0);
-      const { exitCode: exitCode2 } = await execUtils.pkStdio(
+      const { exitCode: exitCode2 } = await testUtils.pkExec(
         ['bootstrap', '--password-file', passwordPath, '--verbose'],
         {
-          PK_NODE_PATH: path.join(dataDir, 'polykey2'),
-          PK_ROOT_KEY: privateKeyPem,
+          env: {
+            PK_NODE_PATH: path.join(dataDir, 'polykey2'),
+            PK_ROOT_KEY: privateKeyPem,
+          },
+          cwd: dataDir,
         },
-        dataDir,
       );
       expect(exitCode2).toBe(0);
     },
@@ -105,7 +110,7 @@ describe('bootstrap', () => {
       await fs.promises.mkdir(path.join(dataDir, 'polykey'));
       await fs.promises.writeFile(path.join(dataDir, 'polykey', 'test'), '');
       let exitCode, stdout, stderr;
-      ({ exitCode, stdout, stderr } = await execUtils.pkStdio(
+      ({ exitCode, stdout, stderr } = await testUtils.pkExec(
         [
           'bootstrap',
           '--node-path',
@@ -117,16 +122,18 @@ describe('bootstrap', () => {
           'json',
         ],
         {
-          PK_PASSWORD: password,
+          env: {
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
       ));
       const errorBootstrapExistingState =
         new bootstrapErrors.ErrorBootstrapExistingState();
-      execUtils.expectProcessError(exitCode, stderr, [
+      testUtils.expectProcessError(exitCode, stderr, [
         errorBootstrapExistingState,
       ]);
-      ({ exitCode, stdout, stderr } = await execUtils.pkStdio(
+      ({ exitCode, stdout, stderr } = await testUtils.pkExec(
         [
           'bootstrap',
           '--node-path',
@@ -137,9 +144,11 @@ describe('bootstrap', () => {
           '--verbose',
         ],
         {
-          PK_PASSWORD: password,
+          env: {
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
       ));
       expect(exitCode).toBe(0);
       const recoveryCode = stdout.trim();
@@ -157,7 +166,7 @@ describe('bootstrap', () => {
     async () => {
       const password = 'password';
       const [bootstrapProcess1, bootstrapProcess2] = await Promise.all([
-        execUtils.pkSpawn(
+        testUtils.pkSpawn(
           [
             'bootstrap',
             '--root-key-pair-bits',
@@ -167,13 +176,15 @@ describe('bootstrap', () => {
             'json',
           ],
           {
-            PK_NODE_PATH: path.join(dataDir, 'polykey'),
-            PK_PASSWORD: password,
+            env: {
+              PK_NODE_PATH: path.join(dataDir, 'polykey'),
+              PK_PASSWORD: password,
+            },
+            cwd: dataDir,
           },
-          dataDir,
           logger.getChild('bootstrapProcess1'),
         ),
-        execUtils.pkSpawn(
+        testUtils.pkSpawn(
           [
             'bootstrap',
             '--root-key-pair-bits',
@@ -183,10 +194,12 @@ describe('bootstrap', () => {
             'json',
           ],
           {
-            PK_NODE_PATH: path.join(dataDir, 'polykey'),
-            PK_PASSWORD: password,
+            env: {
+              PK_NODE_PATH: path.join(dataDir, 'polykey'),
+              PK_PASSWORD: password,
+            },
+            cwd: dataDir,
           },
-          dataDir,
           logger.getChild('bootstrapProcess2'),
         ),
       ]);
@@ -217,17 +230,17 @@ describe('bootstrap', () => {
       // It's either the first or second process
       if (index === 0) {
         expect(stdErrLine1).toBeDefined();
-        execUtils.expectProcessError(exitCode!, stdErrLine1, [
+        testUtils.expectProcessError(exitCode!, stdErrLine1, [
           errorStatusLocked,
         ]);
-        const [exitCode2] = await execUtils.processExit(bootstrapProcess2);
+        const [exitCode2] = await testUtils.processExit(bootstrapProcess2);
         expect(exitCode2).toBe(0);
       } else if (index === 1) {
         expect(stdErrLine2).toBeDefined();
-        execUtils.expectProcessError(exitCode!, stdErrLine2, [
+        testUtils.expectProcessError(exitCode!, stdErrLine2, [
           errorStatusLocked,
         ]);
-        const [exitCode2] = await execUtils.processExit(bootstrapProcess1);
+        const [exitCode2] = await testUtils.processExit(bootstrapProcess1);
         expect(exitCode2).toBe(0);
       }
     },
@@ -239,13 +252,15 @@ describe('bootstrap', () => {
     'bootstrap when interrupted, requires fresh on next bootstrap',
     async () => {
       const password = 'password';
-      const bootstrapProcess1 = await execUtils.pkSpawn(
+      const bootstrapProcess1 = await testUtils.pkSpawn(
         ['bootstrap', '--root-key-pair-bits', '1024', '--verbose'],
         {
-          PK_NODE_PATH: path.join(dataDir, 'polykey'),
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: path.join(dataDir, 'polykey'),
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
         logger.getChild('bootstrapProcess1'),
       );
       const rlErr = readline.createInterface(bootstrapProcess1.stderr!);
@@ -266,7 +281,7 @@ describe('bootstrap', () => {
         bootstrapProcess1.once('exit', () => res(null));
       });
       // Attempting to bootstrap should fail with existing state
-      const bootstrapProcess2 = await execUtils.pkStdio(
+      const bootstrapProcess2 = await testUtils.pkExec(
         [
           'bootstrap',
           '--root-key-pair-bits',
@@ -276,26 +291,30 @@ describe('bootstrap', () => {
           'json',
         ],
         {
-          PK_NODE_PATH: path.join(dataDir, 'polykey'),
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: path.join(dataDir, 'polykey'),
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
       );
       const errorBootstrapExistingState =
         new bootstrapErrors.ErrorBootstrapExistingState();
-      execUtils.expectProcessError(
+      testUtils.expectProcessError(
         bootstrapProcess2.exitCode,
         bootstrapProcess2.stderr,
         [errorBootstrapExistingState],
       );
       // Attempting to bootstrap with --fresh should succeed
-      const bootstrapProcess3 = await execUtils.pkStdio(
+      const bootstrapProcess3 = await testUtils.pkExec(
         ['bootstrap', '--root-key-pair-bits', '1024', '--fresh', '--verbose'],
         {
-          PK_NODE_PATH: path.join(dataDir, 'polykey'),
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: path.join(dataDir, 'polykey'),
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
       );
       expect(bootstrapProcess3.exitCode).toBe(0);
       const recoveryCode = bootstrapProcess3.stdout.trim();

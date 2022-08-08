@@ -1,7 +1,6 @@
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import * as execUtils from '../../utils/exec';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 import * as testUtils from '../../utils';
 
@@ -13,7 +12,7 @@ describe('password', () => {
   let agentPassword;
   let agentClose;
   beforeEach(async () => {
-    ({ agentDir, agentPassword, agentClose } = await execUtils.setupTestAgent(
+    ({ agentDir, agentPassword, agentClose } = await testUtils.setupTestAgent(
       globalRootKeyPems[0],
       logger,
     ));
@@ -26,34 +25,37 @@ describe('password', () => {
   )('password changes the root password', async () => {
     const passPath = path.join(agentDir, 'passwordChange');
     await fs.promises.writeFile(passPath, 'password-change');
-    let { exitCode } = await execUtils.pkStdio(
+    let { exitCode } = await testUtils.pkExec(
       ['keys', 'password', '--password-new-file', passPath],
       {
-        PK_NODE_PATH: agentDir,
-        PK_PASSWORD: agentPassword,
+        env: {
+          PK_NODE_PATH: agentDir,
+          PK_PASSWORD: agentPassword,
+        },
+        cwd: agentDir,
       },
-      agentDir,
     );
     expect(exitCode).toBe(0);
     // Old password should no longer work
-    ({ exitCode } = await execUtils.pkStdio(
-      ['keys', 'root'],
-      {
+    ({ exitCode } = await testUtils.pkExec(['keys', 'root'], {
+      env: {
         PK_NODE_PATH: agentDir,
         PK_PASSWORD: agentPassword,
       },
-      agentDir,
-    ));
+      cwd: agentDir,
+    }));
     expect(exitCode).not.toBe(0);
     // Revert side effects using new password
     await fs.promises.writeFile(passPath, agentPassword);
-    ({ exitCode } = await execUtils.pkStdio(
+    ({ exitCode } = await testUtils.pkExec(
       ['keys', 'password', '--password-new-file', passPath],
       {
-        PK_NODE_PATH: agentDir,
-        PK_PASSWORD: 'password-change',
+        env: {
+          PK_NODE_PATH: agentDir,
+          PK_PASSWORD: 'password-change',
+        },
+        cwd: agentDir,
       },
-      agentDir,
     ));
   });
 });

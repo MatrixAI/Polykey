@@ -5,7 +5,6 @@ import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
 import * as nodesUtils from '@/nodes/utils';
-import * as execUtils from '../../utils/exec';
 import * as testNodesUtils from '../../nodes/utils';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 import * as testUtils from '../../utils';
@@ -86,13 +85,15 @@ describe('claim', () => {
   testUtils.testIf(testUtils.isTestPlatformEmpty)(
     'sends a gestalt invite',
     async () => {
-      const { exitCode, stdout } = await execUtils.pkStdio(
+      const { exitCode, stdout } = await testUtils.pkStdio(
         ['nodes', 'claim', remoteIdEncoded],
         {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: nodePath,
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
       );
       expect(exitCode).toBe(0);
       expect(stdout).toContain('Gestalt Invite');
@@ -105,13 +106,15 @@ describe('claim', () => {
       await remoteNode.notificationsManager.sendNotification(localId, {
         type: 'GestaltInvite',
       });
-      const { exitCode, stdout } = await execUtils.pkStdio(
+      const { exitCode, stdout } = await testUtils.pkStdio(
         ['nodes', 'claim', remoteIdEncoded, '--force-invite'],
         {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: nodePath,
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
       );
       expect(exitCode).toBe(0);
       expect(stdout).toContain('Gestalt Invite');
@@ -122,13 +125,15 @@ describe('claim', () => {
     await remoteNode.notificationsManager.sendNotification(localId, {
       type: 'GestaltInvite',
     });
-    const { exitCode, stdout } = await execUtils.pkStdio(
+    const { exitCode, stdout } = await testUtils.pkStdio(
       ['nodes', 'claim', remoteIdEncoded],
       {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
+        env: {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        cwd: dataDir,
       },
-      dataDir,
     );
     expect(exitCode).toBe(0);
     expect(stdout).toContain('cryptolink claim');

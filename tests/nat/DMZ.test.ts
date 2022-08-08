@@ -14,7 +14,6 @@ import {
   hasNsenter,
   hasUnshare,
 } from '../utils/platform';
-import * as execUtils from '../utils/exec';
 import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 
 const supportsNatTesting =
@@ -38,11 +37,12 @@ describe('DMZ', () => {
     'can create an agent in a namespace',
     async () => {
       const password = 'abc123';
-      const usrns = testNatUtils.createUserNamespace(logger);
-      const netns = testNatUtils.createNetworkNamespace(usrns.pid!, logger);
-      const agentProcess = await testNatUtils.pkSpawnNs(
+      const usrns = await testNatUtils.createUserNamespace(logger);
+      const netns = await testNatUtils.createNetworkNamespace(
         usrns.pid!,
-        netns.pid!,
+        logger,
+      );
+      const agentProcess = await testUtils.pkSpawn(
         [
           'agent',
           'start',
@@ -59,10 +59,17 @@ describe('DMZ', () => {
           'json',
         ],
         {
-          PK_PASSWORD: password,
-          PK_ROOT_KEY: globalRootKeyPems[0],
+          env: {
+            PK_PASSWORD: password,
+            PK_ROOT_KEY: globalRootKeyPems[0],
+          },
+          command: `nsenter ${testNatUtils
+            .nsenter(usrns.pid!, netns.pid!)
+            .join(' ')} ts-node --project ${testUtils.tsConfigPath} ${
+            testUtils.polykeyPath
+          }`,
+          cwd: dataDir,
         },
-        dataDir,
         logger.getChild('agentProcess'),
       );
       const rlOut = readline.createInterface(agentProcess.stdout!);
@@ -85,7 +92,7 @@ describe('DMZ', () => {
       });
       agentProcess.kill('SIGTERM');
       let exitCode, signal;
-      [exitCode, signal] = await execUtils.processExit(agentProcess);
+      [exitCode, signal] = await testUtils.processExit(agentProcess);
       expect(exitCode).toBe(null);
       expect(signal).toBe('SIGTERM');
       // Check for graceful exit
@@ -102,11 +109,11 @@ describe('DMZ', () => {
       const statusInfo = (await status.readStatus())!;
       expect(statusInfo.status).toBe('DEAD');
       netns.kill('SIGTERM');
-      [exitCode, signal] = await execUtils.processExit(netns);
+      [exitCode, signal] = await testUtils.processExit(netns);
       expect(exitCode).toBe(null);
       expect(signal).toBe('SIGTERM');
       usrns.kill('SIGTERM');
-      [exitCode, signal] = await execUtils.processExit(usrns);
+      [exitCode, signal] = await testUtils.processExit(usrns);
       expect(exitCode).toBe(null);
       expect(signal).toBe('SIGTERM');
     },
@@ -142,9 +149,7 @@ describe('DMZ', () => {
       // └────────────────────────────────────┘    └────────────────────────────────────┘
       // Since neither node is behind a NAT can directly add eachother's
       // details using pk nodes add
-      await testNatUtils.pkExecNs(
-        userPid!,
-        agent1Pid!,
+      await testUtils.pkExec(
         [
           'nodes',
           'add',
@@ -154,14 +159,19 @@ describe('DMZ', () => {
           '--no-ping',
         ],
         {
-          PK_NODE_PATH: agent1NodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: agent1NodePath,
+            PK_PASSWORD: password,
+          },
+          command: `nsenter ${testNatUtils
+            .nsenter(userPid!, agent1Pid!)
+            .join(' ')} ts-node --project ${testUtils.tsConfigPath} ${
+            testUtils.polykeyPath
+          }`,
+          cwd: dataDir,
         },
-        dataDir,
       );
-      await testNatUtils.pkExecNs(
-        userPid!,
-        agent2Pid!,
+      await testUtils.pkExec(
         [
           'nodes',
           'add',
@@ -171,36 +181,53 @@ describe('DMZ', () => {
           '--no-ping',
         ],
         {
-          PK_NODE_PATH: agent2NodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: agent2NodePath,
+            PK_PASSWORD: password,
+          },
+          command: `nsenter ${testNatUtils
+            .nsenter(userPid!, agent2Pid!)
+            .join(' ')} ts-node --project ${testUtils.tsConfigPath} ${
+            testUtils.polykeyPath
+          }`,
+          cwd: dataDir,
         },
-        dataDir,
       );
       let exitCode, stdout;
-      ({ exitCode, stdout } = await testNatUtils.pkExecNs(
-        userPid!,
-        agent1Pid!,
+      ({ exitCode, stdout } = await testUtils.pkExec(
         ['nodes', 'ping', agent2NodeId, '--format', 'json'],
         {
-          PK_NODE_PATH: agent1NodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: agent1NodePath,
+            PK_PASSWORD: password,
+          },
+          command: `nsenter ${testNatUtils
+            .nsenter(userPid!, agent1Pid!)
+            .join(' ')} ts-node --project ${testUtils.tsConfigPath} ${
+            testUtils.polykeyPath
+          }`,
+          cwd: dataDir,
         },
-        dataDir,
       ));
       expect(exitCode).toBe(0);
       expect(JSON.parse(stdout)).toEqual({
         success: true,
         message: 'Node is Active.',
       });
-      ({ exitCode, stdout } = await testNatUtils.pkExecNs(
-        userPid!,
-        agent2Pid!,
+      ({ exitCode, stdout } = await testUtils.pkExec(
         ['nodes', 'ping', agent1NodeId, '--format', 'json'],
         {
-          PK_NODE_PATH: agent2NodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: agent2NodePath,
+            PK_PASSWORD: password,
+          },
+          command: `nsenter ${testNatUtils
+            .nsenter(userPid!, agent2Pid!)
+            .join(' ')} ts-node --project ${testUtils.tsConfigPath} ${
+            testUtils.polykeyPath
+          }`,
+          cwd: dataDir,
         },
-        dataDir,
       ));
       expect(exitCode).toBe(0);
       expect(JSON.parse(stdout)).toEqual({
@@ -238,30 +265,40 @@ describe('DMZ', () => {
       // Should be able to ping straight away using the details from the
       // seed node
       let exitCode, stdout;
-      ({ exitCode, stdout } = await testNatUtils.pkExecNs(
-        userPid!,
-        agent1Pid!,
+      ({ exitCode, stdout } = await testUtils.pkExec(
         ['nodes', 'ping', agent2NodeId, '--format', 'json'],
         {
-          PK_NODE_PATH: agent1NodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: agent1NodePath,
+            PK_PASSWORD: password,
+          },
+          command: `nsenter ${testNatUtils
+            .nsenter(userPid!, agent1Pid!)
+            .join(' ')} ts-node --project ${testUtils.tsConfigPath} ${
+            testUtils.polykeyPath
+          }`,
+          cwd: dataDir,
         },
-        dataDir,
       ));
       expect(exitCode).toBe(0);
       expect(JSON.parse(stdout)).toEqual({
         success: true,
         message: 'Node is Active.',
       });
-      ({ exitCode, stdout } = await testNatUtils.pkExecNs(
-        userPid!,
-        agent2Pid!,
+      ({ exitCode, stdout } = await testUtils.pkExec(
         ['nodes', 'ping', agent1NodeId, '--format', 'json'],
         {
-          PK_NODE_PATH: agent2NodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: agent2NodePath,
+            PK_PASSWORD: password,
+          },
+          command: `nsenter ${testNatUtils
+            .nsenter(userPid!, agent2Pid!)
+            .join(' ')} ts-node --project ${testUtils.tsConfigPath} ${
+            testUtils.polykeyPath
+          }`,
+          cwd: dataDir,
         },
-        dataDir,
       ));
       expect(exitCode).toBe(0);
       expect(JSON.parse(stdout)).toEqual({

@@ -2,12 +2,10 @@ import type { ChildProcess } from 'child_process';
 import os from 'os';
 import fs from 'fs';
 import path from 'path';
-import child_process from 'child_process';
 import readline from 'readline';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import * as execUtils from '../utils/exec';
+import * as testUtils from '../utils';
 import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
-import { nsenter, pkExecNs, pkSpawnNs } from '../utils/exec';
 
 type NATType = 'eim' | 'edm' | 'dmz';
 
@@ -124,39 +122,49 @@ const AGENT2_PORT = '55552';
 const DMZ_PORT = '55555';
 
 /**
+ * Formats the command to enter a namespace to run a process inside it
+ */
+const nsenter = (usrnsPid: number, netnsPid: number) => {
+  return [
+    '--target',
+    usrnsPid.toString(),
+    '--user',
+    '--preserve-credentials',
+    'nsenter',
+    '--target',
+    netnsPid.toString(),
+    '--net',
+  ];
+};
+
+/**
  * Create a user namespace from which network namespaces can be created without
  * requiring sudo
  */
-function createUserNamespace(
+async function createUserNamespace(
   logger: Logger = new Logger(createUserNamespace.name),
-): ChildProcess {
+): Promise<ChildProcess> {
   logger.info('unshare --user --map-root-user');
-  const subprocess = child_process.spawn(
+  const subprocess = await testUtils.spawn(
     'unshare',
     ['--user', '--map-root-user'],
-    {
-      shell: true,
-    },
+    { env: {} },
+    logger,
   );
-  const rlErr = readline.createInterface(subprocess.stderr!);
-  rlErr.on('line', (l) => {
-    // The readline library will trim newlines
-    logger.info(l);
-  });
   return subprocess;
 }
 
 /**
  * Create a network namespace inside a user namespace
  */
-function createNetworkNamespace(
+async function createNetworkNamespace(
   usrnsPid: number,
   logger: Logger = new Logger(createNetworkNamespace.name),
-): ChildProcess {
+): Promise<ChildProcess> {
   logger.info(
     `nsenter --target ${usrnsPid.toString()} --user --preserve-credentials unshare --net`,
   );
-  const subprocess = child_process.spawn(
+  const subprocess = await testUtils.spawn(
     'nsenter',
     [
       '--target',
@@ -166,13 +174,9 @@ function createNetworkNamespace(
       'unshare',
       '--net',
     ],
-    { shell: true },
+    { env: {} },
+    logger,
   );
-  const rlErr = readline.createInterface(subprocess.stderr!);
-  rlErr.on('line', (l) => {
-    // The readline library will trim newlines
-    logger.info(l);
-  });
   return subprocess;
 }
 
@@ -203,7 +207,7 @@ async function setupNetworkNamespaceInterfaces(
       'up',
     ];
     logger.info(['nsenter', ...args].join(' '));
-    await execUtils.exec('nsenter', args);
+    await testUtils.exec('nsenter', args);
     args = [
       ...nsenter(usrnsPid, router1NetnsPid),
       'ip',
@@ -213,7 +217,7 @@ async function setupNetworkNamespaceInterfaces(
       'up',
     ];
     logger.info(['nsenter', ...args].join(' '));
-    await execUtils.exec('nsenter', args);
+    await testUtils.exec('nsenter', args);
     args = [
       ...nsenter(usrnsPid, router2NetnsPid),
       'ip',
@@ -223,7 +227,7 @@ async function setupNetworkNamespaceInterfaces(
       'up',
     ];
     logger.info(['nsenter', ...args].join(' '));
-    await execUtils.exec('nsenter', args);
+    await testUtils.exec('nsenter', args);
     args = [
       ...nsenter(usrnsPid, agent2NetnsPid),
       'ip',
@@ -233,7 +237,7 @@ async function setupNetworkNamespaceInterfaces(
       'up',
     ];
     logger.info(['nsenter', ...args].join(' '));
-    await execUtils.exec('nsenter', args);
+    await testUtils.exec('nsenter', args);
     // Create veth pair to link the namespaces
     args = [
       ...nsenter(usrnsPid, agent1NetnsPid),
@@ -248,7 +252,7 @@ async function setupNetworkNamespaceInterfaces(
       ROUTER1_VETH_INT,
     ];
     logger.info(['nsenter', ...args].join(' '));
-    await execUtils.exec('nsenter', args);
+    await testUtils.exec('nsenter', args);
     args = [
       ...nsenter(usrnsPid, router1NetnsPid),
       'ip',
@@ -262,7 +266,7 @@ async function setupNetworkNamespaceInterfaces(
       ROUTER2_VETH_EXT,
     ];
     logger.info(['nsenter', ...args].join(' '));
-    await execUtils.exec('nsenter', args);
+    await testUtils.exec('nsenter', args);
     args = [
       ...nsenter(usrnsPid, router2NetnsPid),
       'ip',
@@ -276,7 +280,7 @@ async function setupNetworkNamespaceInterfaces(
       AGENT2_VETH,
     ];
     logger.info(['nsenter', ...args].join(' '));
-    await execUtils.exec('nsenter', args);
+    await testUtils.exec('nsenter', args);
     // Link up the ends to the correct namespaces
     args = [
       ...nsenter(usrnsPid, agent1NetnsPid),
@@ -289,7 +293,7 @@ async function setupNetworkNamespaceInterfaces(
       router1NetnsPid.toString(),
     ];
     logger.info(['nsenter', ...args].join(' '));
-    await execUtils.exec('nsenter', args);
+    await testUtils.exec('nsenter', args);
     args = [
       ...nsenter(usrnsPid, router1NetnsPid),
       'ip',
@@ -301,7 +305,7 @@ async function setupNetworkNamespaceInterfaces(
       router2NetnsPid.toString(),
     ];
     logger.info(['nsenter', ...args].join(' '));
-    await execUtils.exec('nsenter', args);
+    await testUtils.exec('nsenter', args);
     args = [
       ...nsenter(usrnsPid, router2NetnsPid),
       'ip',
@@ -313,7 +317,7 @@ async function setupNetworkNamespaceInterfaces(
       agent2NetnsPid.toString(),
     ];
     logger.info(['nsenter', ...args].join(' '));
-    await execUtils.exec('nsenter', args);
+    await testUtils.exec('nsenter', args);
     // Bring up each end
     args = [
       ...nsenter(usrnsPid, agent1NetnsPid),
@@ -324,7 +328,7 @@ async function setupNetworkNamespaceInterfaces(
       'up',
     ];
     logger.info(['nsenter', ...args].join(' '));
-    await execUtils.exec('nsenter', args);
+    await testUtils.exec('nsenter', args);
     args = [
       ...nsenter(usrnsPid, router1NetnsPid),
       'ip',
@@ -334,7 +338,7 @@ async function setupNetworkNamespaceInterfaces(
       'up',
     ];
     logger.info(['nsenter', ...args].join(' '));
-    await execUtils.exec('nsenter', args);
+    await testUtils.exec('nsenter', args);
     args = [
       ...nsenter(usrnsPid, router1NetnsPid),
       'ip',
@@ -344,7 +348,7 @@ async function setupNetworkNamespaceInterfaces(
       'up',
     ];
     logger.info(['nsenter', ...args].join(' '));
-    await execUtils.exec('nsenter', args);
+    await testUtils.exec('nsenter', args);
     args = [
       ...nsenter(usrnsPid, router2NetnsPid),
       'ip',
@@ -354,7 +358,7 @@ async function setupNetworkNamespaceInterfaces(
       'up',
     ];
     logger.info(['nsenter', ...args].join(' '));
-    await execUtils.exec('nsenter', args);
+    await testUtils.exec('nsenter', args);
     args = [
       ...nsenter(usrnsPid, router2NetnsPid),
       'ip',
@@ -364,7 +368,7 @@ async function setupNetworkNamespaceInterfaces(
       'up',
     ];
     logger.info(['nsenter', ...args].join(' '));
-    await execUtils.exec('nsenter', args);
+    await testUtils.exec('nsenter', args);
     args = [
       ...nsenter(usrnsPid, agent2NetnsPid),
       'ip',
@@ -374,7 +378,7 @@ async function setupNetworkNamespaceInterfaces(
       'up',
     ];
     logger.info(['nsenter', ...args].join(' '));
-    await execUtils.exec('nsenter', args);
+    await testUtils.exec('nsenter', args);
     // Assign ip addresses to each end
     args = [
       ...nsenter(usrnsPid, agent1NetnsPid),
@@ -386,7 +390,7 @@ async function setupNetworkNamespaceInterfaces(
       AGENT1_VETH,
     ];
     logger.info(['nsenter', ...args].join(' '));
-    await execUtils.exec('nsenter', args);
+    await testUtils.exec('nsenter', args);
     args = [
       ...nsenter(usrnsPid, router1NetnsPid),
       'ip',
@@ -397,7 +401,7 @@ async function setupNetworkNamespaceInterfaces(
       ROUTER1_VETH_INT,
     ];
     logger.info(['nsenter', ...args].join(' '));
-    await execUtils.exec('nsenter', args);
+    await testUtils.exec('nsenter', args);
     args = [
       ...nsenter(usrnsPid, router1NetnsPid),
       'ip',
@@ -408,7 +412,7 @@ async function setupNetworkNamespaceInterfaces(
       ROUTER1_VETH_EXT,
     ];
     logger.info(['nsenter', ...args].join(' '));
-    await execUtils.exec('nsenter', args);
+    await testUtils.exec('nsenter', args);
     args = [
       ...nsenter(usrnsPid, router2NetnsPid),
       'ip',
@@ -419,7 +423,7 @@ async function setupNetworkNamespaceInterfaces(
       ROUTER2_VETH_EXT,
     ];
     logger.info(['nsenter', ...args].join(' '));
-    await execUtils.exec('nsenter', args);
+    await testUtils.exec('nsenter', args);
     args = [
       ...nsenter(usrnsPid, router2NetnsPid),
       'ip',
@@ -430,7 +434,7 @@ async function setupNetworkNamespaceInterfaces(
       ROUTER2_VETH_INT,
     ];
     logger.info(['nsenter', ...args].join(' '));
-    await execUtils.exec('nsenter', args);
+    await testUtils.exec('nsenter', args);
     args = [
       ...nsenter(usrnsPid, agent2NetnsPid),
       'ip',
@@ -441,7 +445,7 @@ async function setupNetworkNamespaceInterfaces(
       AGENT2_VETH,
     ];
     logger.info(['nsenter', ...args].join(' '));
-    await execUtils.exec('nsenter', args);
+    await testUtils.exec('nsenter', args);
     // Add default routing
     args = [
       ...nsenter(usrnsPid, agent1NetnsPid),
@@ -453,7 +457,7 @@ async function setupNetworkNamespaceInterfaces(
       ROUTER1_HOST_INT,
     ];
     logger.info(['nsenter', ...args].join(' '));
-    await execUtils.exec('nsenter', args);
+    await testUtils.exec('nsenter', args);
     args = [
       ...nsenter(usrnsPid, router1NetnsPid),
       'ip',
@@ -464,7 +468,7 @@ async function setupNetworkNamespaceInterfaces(
       ROUTER2_HOST_EXT,
     ];
     logger.info(['nsenter', ...args].join(' '));
-    await execUtils.exec('nsenter', args);
+    await testUtils.exec('nsenter', args);
     args = [
       ...nsenter(usrnsPid, router2NetnsPid),
       'ip',
@@ -475,7 +479,7 @@ async function setupNetworkNamespaceInterfaces(
       ROUTER1_HOST_EXT,
     ];
     logger.info(['nsenter', ...args].join(' '));
-    await execUtils.exec('nsenter', args);
+    await testUtils.exec('nsenter', args);
     args = [
       ...nsenter(usrnsPid, agent2NetnsPid),
       'ip',
@@ -486,7 +490,7 @@ async function setupNetworkNamespaceInterfaces(
       ROUTER2_HOST_INT,
     ];
     logger.info(['nsenter', ...args].join(' '));
-    await execUtils.exec('nsenter', args);
+    await testUtils.exec('nsenter', args);
   } catch (e) {
     logger.error(e.message);
   }
@@ -518,7 +522,7 @@ async function setupSeedNamespaceInterfaces(
       'up',
     ];
     logger.info(['nsenter', ...args].join(' '));
-    await execUtils.exec('nsenter', args);
+    await testUtils.exec('nsenter', args);
     // Create veth pairs to link the namespaces
     args = [
       ...nsenter(usrnsPid, router1NetnsPid),
@@ -533,7 +537,7 @@ async function setupSeedNamespaceInterfaces(
       SEED_VETH_ROUTER1,
     ];
     logger.info(['nsenter', ...args].join(' '));
-    await execUtils.exec('nsenter', args);
+    await testUtils.exec('nsenter', args);
     args = [
       ...nsenter(usrnsPid, router2NetnsPid),
       'ip',
@@ -547,7 +551,7 @@ async function setupSeedNamespaceInterfaces(
       SEED_VETH_ROUTER2,
     ];
     logger.info(['nsenter', ...args].join(' '));
-    await execUtils.exec('nsenter', args);
+    await testUtils.exec('nsenter', args);
     // Move seed ends into seed network namespace
     args = [
       ...nsenter(usrnsPid, router1NetnsPid),
@@ -560,7 +564,7 @@ async function setupSeedNamespaceInterfaces(
       seedNetnsPid.toString(),
     ];
     logger.info(['nsenter', ...args].join(' '));
-    await execUtils.exec('nsenter', args);
+    await testUtils.exec('nsenter', args);
     args = [
       ...nsenter(usrnsPid, router2NetnsPid),
       'ip',
@@ -572,7 +576,7 @@ async function setupSeedNamespaceInterfaces(
       seedNetnsPid.toString(),
     ];
     logger.info(['nsenter', ...args].join(' '));
-    await execUtils.exec('nsenter', args);
+    await testUtils.exec('nsenter', args);
     // Bring up each end
     args = [
       ...nsenter(usrnsPid, router1NetnsPid),
@@ -583,7 +587,7 @@ async function setupSeedNamespaceInterfaces(
       'up',
     ];
     logger.info(['nsenter', ...args].join(' '));
-    await execUtils.exec('nsenter', args);
+    await testUtils.exec('nsenter', args);
     args = [
       ...nsenter(usrnsPid, seedNetnsPid),
       'ip',
@@ -593,7 +597,7 @@ async function setupSeedNamespaceInterfaces(
       'up',
     ];
     logger.info(['nsenter', ...args].join(' '));
-    await execUtils.exec('nsenter', args);
+    await testUtils.exec('nsenter', args);
     args = [
       ...nsenter(usrnsPid, seedNetnsPid),
       'ip',
@@ -603,7 +607,7 @@ async function setupSeedNamespaceInterfaces(
       'up',
     ];
     logger.info(['nsenter', ...args].join(' '));
-    await execUtils.exec('nsenter', args);
+    await testUtils.exec('nsenter', args);
     args = [
       ...nsenter(usrnsPid, router2NetnsPid),
       'ip',
@@ -613,7 +617,7 @@ async function setupSeedNamespaceInterfaces(
       'up',
     ];
     logger.info(['nsenter', ...args].join(' '));
-    await execUtils.exec('nsenter', args);
+    await testUtils.exec('nsenter', args);
     // Assign ip addresses to each end
     args = [
       ...nsenter(usrnsPid, router1NetnsPid),
@@ -625,7 +629,7 @@ async function setupSeedNamespaceInterfaces(
       ROUTER1_VETH_SEED,
     ];
     logger.info(['nsenter', ...args].join(' '));
-    await execUtils.exec('nsenter', args);
+    await testUtils.exec('nsenter', args);
     args = [
       ...nsenter(usrnsPid, seedNetnsPid),
       'ip',
@@ -636,7 +640,7 @@ async function setupSeedNamespaceInterfaces(
       SEED_VETH_ROUTER1,
     ];
     logger.info(['nsenter', ...args].join(' '));
-    await execUtils.exec('nsenter', args);
+    await testUtils.exec('nsenter', args);
     args = [
       ...nsenter(usrnsPid, seedNetnsPid),
       'ip',
@@ -647,7 +651,7 @@ async function setupSeedNamespaceInterfaces(
       SEED_VETH_ROUTER2,
     ];
     logger.info(['nsenter', ...args].join(' '));
-    await execUtils.exec('nsenter', args);
+    await testUtils.exec('nsenter', args);
     args = [
       ...nsenter(usrnsPid, router2NetnsPid),
       'ip',
@@ -658,7 +662,7 @@ async function setupSeedNamespaceInterfaces(
       ROUTER2_VETH_SEED,
     ];
     logger.info(['nsenter', ...args].join(' '));
-    await execUtils.exec('nsenter', args);
+    await testUtils.exec('nsenter', args);
     // Add default routing
     args = [
       ...nsenter(usrnsPid, router1NetnsPid),
@@ -670,7 +674,7 @@ async function setupSeedNamespaceInterfaces(
       ROUTER1_VETH_SEED,
     ];
     logger.info(['nsenter', ...args].join(' '));
-    await execUtils.exec('nsenter', args);
+    await testUtils.exec('nsenter', args);
     args = [
       ...nsenter(usrnsPid, router2NetnsPid),
       'ip',
@@ -681,7 +685,7 @@ async function setupSeedNamespaceInterfaces(
       ROUTER2_VETH_SEED,
     ];
     logger.info(['nsenter', ...args].join(' '));
-    await execUtils.exec('nsenter', args);
+    await testUtils.exec('nsenter', args);
     args = [
       ...nsenter(usrnsPid, seedNetnsPid),
       'ip',
@@ -692,7 +696,7 @@ async function setupSeedNamespaceInterfaces(
       SEED_VETH_ROUTER1,
     ];
     logger.info(['nsenter', ...args].join(' '));
-    await execUtils.exec('nsenter', args);
+    await testUtils.exec('nsenter', args);
     args = [
       ...nsenter(usrnsPid, seedNetnsPid),
       'ip',
@@ -703,7 +707,7 @@ async function setupSeedNamespaceInterfaces(
       SEED_VETH_ROUTER2,
     ];
     logger.info(['nsenter', ...args].join(' '));
-    await execUtils.exec('nsenter', args);
+    await testUtils.exec('nsenter', args);
   } catch (e) {
     logger.error(e.message);
   }
@@ -759,9 +763,9 @@ async function setupDMZ(
   ];
   try {
     logger.info(['nsenter', ...postroutingCommand].join(' '));
-    await execUtils.exec('nsenter', postroutingCommand);
+    await testUtils.exec('nsenter', postroutingCommand);
     logger.info(['nsenter', ...preroutingCommand].join(' '));
-    await execUtils.exec('nsenter', preroutingCommand);
+    await testUtils.exec('nsenter', preroutingCommand);
   } catch (e) {
     logger.error(e.message);
   }
@@ -832,13 +836,13 @@ async function setupNATEndpointIndependentMapping(
   ];
   try {
     logger.info(['nsenter', ...acceptLocalCommand].join(' '));
-    await execUtils.exec('nsenter', acceptLocalCommand);
+    await testUtils.exec('nsenter', acceptLocalCommand);
     logger.info(['nsenter', ...acceptEstablishedCommand].join(' '));
-    await execUtils.exec('nsenter', acceptEstablishedCommand);
+    await testUtils.exec('nsenter', acceptEstablishedCommand);
     logger.info(['nsenter', ...dropCommand].join(' '));
-    await execUtils.exec('nsenter', dropCommand);
+    await testUtils.exec('nsenter', dropCommand);
     logger.info(['nsenter', ...natCommand].join(' '));
-    await execUtils.exec('nsenter', natCommand);
+    await testUtils.exec('nsenter', natCommand);
   } catch (e) {
     logger.error(e.message);
   }
@@ -870,7 +874,7 @@ async function setupNATEndpointDependentMapping(
   ];
   try {
     logger.info(['nsenter', ...command].join(' '));
-    await execUtils.exec('nsenter', command);
+    await testUtils.exec('nsenter', command);
   } catch (e) {
     logger.error(e.message);
   }
@@ -889,12 +893,12 @@ async function setupNATWithSeedNode(
   const password = 'password';
   // Create a user namespace containing five network namespaces
   // Two agents, two routers, one seed node
-  const usrns = createUserNamespace(logger);
-  const seedNetns = createNetworkNamespace(usrns.pid!, logger);
-  const agent1Netns = createNetworkNamespace(usrns.pid!, logger);
-  const agent2Netns = createNetworkNamespace(usrns.pid!, logger);
-  const router1Netns = createNetworkNamespace(usrns.pid!, logger);
-  const router2Netns = createNetworkNamespace(usrns.pid!, logger);
+  const usrns = await createUserNamespace(logger);
+  const seedNetns = await createNetworkNamespace(usrns.pid!, logger);
+  const agent1Netns = await createNetworkNamespace(usrns.pid!, logger);
+  const agent2Netns = await createNetworkNamespace(usrns.pid!, logger);
+  const router1Netns = await createNetworkNamespace(usrns.pid!, logger);
+  const router2Netns = await createNetworkNamespace(usrns.pid!, logger);
   // Apply appropriate NAT rules
   switch (agent1NAT) {
     case 'dmz': {
@@ -1025,9 +1029,7 @@ async function setupNATWithSeedNode(
     router2Netns.pid!,
     logger,
   );
-  const seedNode = await pkSpawnNs(
-    usrns.pid!,
-    seedNetns.pid!,
+  const seedNode = await testUtils.pkSpawn(
     [
       'agent',
       'start',
@@ -1046,10 +1048,15 @@ async function setupNATWithSeedNode(
       'json',
     ],
     {
-      PK_PASSWORD: password,
-      PK_ROOT_KEY: globalRootKeyPems[0],
+      env: {
+        PK_PASSWORD: password,
+        PK_ROOT_KEY: globalRootKeyPems[0],
+      },
+      command: `nsenter ${nsenter(usrns.pid!, seedNetns.pid!).join(
+        ' ',
+      )} ts-node --project ${testUtils.tsConfigPath} ${testUtils.polykeyPath}`,
+      cwd: dataDir,
     },
-    dataDir,
     logger.getChild('seed'),
   );
   const rlOutSeed = readline.createInterface(seedNode.stdout!);
@@ -1059,9 +1066,7 @@ async function setupNATWithSeedNode(
   });
   const nodeIdSeed = JSON.parse(stdoutSeed).nodeId;
   const proxyPortSeed = JSON.parse(stdoutSeed).proxyPort;
-  const agent1 = await pkSpawnNs(
-    usrns.pid!,
-    agent1Netns.pid!,
+  const agent1 = await testUtils.pkSpawn(
     [
       'agent',
       'start',
@@ -1084,10 +1089,15 @@ async function setupNATWithSeedNode(
       'json',
     ],
     {
-      PK_PASSWORD: password,
-      PK_ROOT_KEY: globalRootKeyPems[1],
+      env: {
+        PK_PASSWORD: password,
+        PK_ROOT_KEY: globalRootKeyPems[1],
+      },
+      command: `nsenter ${nsenter(usrns.pid!, agent1Netns.pid!).join(
+        ' ',
+      )} ts-node --project ${testUtils.tsConfigPath} ${testUtils.polykeyPath}`,
+      cwd: dataDir,
     },
-    dataDir,
     logger.getChild('agent1'),
   );
   const rlOutNode1 = readline.createInterface(agent1.stdout!);
@@ -1096,9 +1106,7 @@ async function setupNATWithSeedNode(
     rlOutNode1.once('close', reject);
   });
   const nodeId1 = JSON.parse(stdoutNode1).nodeId;
-  const agent2 = await pkSpawnNs(
-    usrns.pid!,
-    agent2Netns.pid!,
+  const agent2 = await testUtils.pkSpawn(
     [
       'agent',
       'start',
@@ -1121,10 +1129,15 @@ async function setupNATWithSeedNode(
       'json',
     ],
     {
-      PK_PASSWORD: password,
-      PK_ROOT_KEY: globalRootKeyPems[2],
+      env: {
+        PK_PASSWORD: password,
+        PK_ROOT_KEY: globalRootKeyPems[2],
+      },
+      command: `nsenter ${nsenter(usrns.pid!, agent2Netns.pid!).join(
+        ' ',
+      )} ts-node --project ${testUtils.tsConfigPath} ${testUtils.polykeyPath}`,
+      cwd: dataDir,
     },
-    dataDir,
     logger.getChild('agent2'),
   );
   const rlOutNode2 = readline.createInterface(agent2.stdout!);
@@ -1145,23 +1158,23 @@ async function setupNATWithSeedNode(
     agent2NodeId: nodeId2,
     tearDownNAT: async () => {
       agent2.kill('SIGTERM');
-      await execUtils.processExit(agent2);
+      await testUtils.processExit(agent2);
       agent1.kill('SIGTERM');
-      await execUtils.processExit(agent1);
+      await testUtils.processExit(agent1);
       seedNode.kill('SIGTERM');
-      await execUtils.processExit(seedNode);
+      await testUtils.processExit(seedNode);
       router2Netns.kill('SIGTERM');
-      await execUtils.processExit(router2Netns);
+      await testUtils.processExit(router2Netns);
       router1Netns.kill('SIGTERM');
-      await execUtils.processExit(router1Netns);
+      await testUtils.processExit(router1Netns);
       agent2Netns.kill('SIGTERM');
-      await execUtils.processExit(agent2Netns);
+      await testUtils.processExit(agent2Netns);
       agent1Netns.kill('SIGTERM');
-      await execUtils.processExit(agent1Netns);
+      await testUtils.processExit(agent1Netns);
       seedNetns.kill('SIGTERM');
-      await execUtils.processExit(seedNetns);
+      await testUtils.processExit(seedNetns);
       usrns.kill('SIGTERM');
-      await execUtils.processExit(usrns);
+      await testUtils.processExit(usrns);
       await fs.promises.rm(dataDir, {
         force: true,
         recursive: true,
@@ -1183,11 +1196,11 @@ async function setupNAT(
   const password = 'password';
   // Create a user namespace containing four network namespaces
   // Two agents and two routers
-  const usrns = createUserNamespace(logger);
-  const agent1Netns = createNetworkNamespace(usrns.pid!, logger);
-  const agent2Netns = createNetworkNamespace(usrns.pid!, logger);
-  const router1Netns = createNetworkNamespace(usrns.pid!, logger);
-  const router2Netns = createNetworkNamespace(usrns.pid!, logger);
+  const usrns = await createUserNamespace(logger);
+  const agent1Netns = await createNetworkNamespace(usrns.pid!, logger);
+  const agent2Netns = await createNetworkNamespace(usrns.pid!, logger);
+  const router1Netns = await createNetworkNamespace(usrns.pid!, logger);
+  const router2Netns = await createNetworkNamespace(usrns.pid!, logger);
   // Apply appropriate NAT rules
   switch (agent1NAT) {
     case 'dmz': {
@@ -1265,9 +1278,7 @@ async function setupNAT(
     agent2Netns.pid!,
     logger,
   );
-  const agent1 = await pkSpawnNs(
-    usrns.pid!,
-    agent1Netns.pid!,
+  const agent1 = await testUtils.pkSpawn(
     [
       'agent',
       'start',
@@ -1288,10 +1299,15 @@ async function setupNAT(
       'json',
     ],
     {
-      PK_PASSWORD: password,
-      PK_ROOT_KEY: globalRootKeyPems[3],
+      env: {
+        PK_PASSWORD: password,
+        PK_ROOT_KEY: globalRootKeyPems[3],
+      },
+      command: `nsenter ${nsenter(usrns.pid!, agent1Netns.pid!).join(
+        ' ',
+      )} ts-node --project ${testUtils.tsConfigPath} ${testUtils.polykeyPath}`,
+      cwd: dataDir,
     },
-    dataDir,
     logger.getChild('agent1'),
   );
   const rlOutNode1 = readline.createInterface(agent1.stdout!);
@@ -1300,9 +1316,7 @@ async function setupNAT(
     rlOutNode1.once('close', reject);
   });
   const nodeId1 = JSON.parse(stdoutNode1).nodeId;
-  const agent2 = await pkSpawnNs(
-    usrns.pid!,
-    agent2Netns.pid!,
+  const agent2 = await testUtils.pkSpawn(
     [
       'agent',
       'start',
@@ -1323,10 +1337,15 @@ async function setupNAT(
       'json',
     ],
     {
-      PK_PASSWORD: password,
-      PK_ROOT_KEY: globalRootKeyPems[4],
+      env: {
+        PK_PASSWORD: password,
+        PK_ROOT_KEY: globalRootKeyPems[4],
+      },
+      command: `nsenter ${nsenter(usrns.pid!, agent2Netns.pid!).join(
+        ' ',
+      )} ts-node --project ${testUtils.tsConfigPath} ${testUtils.polykeyPath}`,
+      cwd: dataDir,
     },
-    dataDir,
     logger.getChild('agent2'),
   );
   const rlOutNode2 = readline.createInterface(agent2.stdout!);
@@ -1351,19 +1370,19 @@ async function setupNAT(
     agent2ProxyPort: agent2NAT === 'dmz' ? DMZ_PORT : AGENT2_PORT,
     tearDownNAT: async () => {
       agent2.kill('SIGTERM');
-      await execUtils.processExit(agent2);
+      await testUtils.processExit(agent2);
       agent1.kill('SIGTERM');
-      await execUtils.processExit(agent1);
+      await testUtils.processExit(agent1);
       router2Netns.kill('SIGTERM');
-      await execUtils.processExit(router2Netns);
+      await testUtils.processExit(router2Netns);
       router1Netns.kill('SIGTERM');
-      await execUtils.processExit(router1Netns);
+      await testUtils.processExit(router1Netns);
       agent2Netns.kill('SIGTERM');
-      await execUtils.processExit(agent2Netns);
+      await testUtils.processExit(agent2Netns);
       agent1Netns.kill('SIGTERM');
-      await execUtils.processExit(agent1Netns);
+      await testUtils.processExit(agent1Netns);
       usrns.kill('SIGTERM');
-      await execUtils.processExit(usrns);
+      await testUtils.processExit(usrns);
       await fs.promises.rm(dataDir, {
         force: true,
         recursive: true,
@@ -1373,11 +1392,10 @@ async function setupNAT(
 }
 
 export {
+  nsenter,
+  setupNAT,
+  setupNATWithSeedNode,
   createUserNamespace,
   createNetworkNamespace,
   setupNetworkNamespaceInterfaces,
-  pkExecNs,
-  pkSpawnNs,
-  setupNAT,
-  setupNATWithSeedNode,
 };

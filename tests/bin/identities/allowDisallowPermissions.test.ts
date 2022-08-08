@@ -11,10 +11,9 @@ import { poll, sysexits } from '@/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as claimsUtils from '@/claims/utils';
 import * as identitiesUtils from '@/identities/utils';
-import * as execUtils from '../../utils/exec';
+import * as testUtils from '../../utils';
 import TestProvider from '../../identities/TestProvider';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
-import * as testUtils from '../../utils';
 
 describe('allow/disallow/permissions', () => {
   const logger = new Logger('allow/disallow/permissions test', LogLevel.WARN, [
@@ -102,7 +101,7 @@ describe('allow/disallow/permissions', () => {
     async () => {
       let exitCode, stdout;
       // Add the node to our node graph, otherwise we won't be able to contact it
-      await execUtils.pkStdio(
+      await testUtils.pkStdio(
         [
           'nodes',
           'add',
@@ -111,35 +110,41 @@ describe('allow/disallow/permissions', () => {
           `${nodePort}`,
         ],
         {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: nodePath,
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
       );
       // Must first trust node before we can set permissions
       // This is because trusting the node sets it in our gestalt graph, which
       // we need in order to set permissions
-      await execUtils.pkStdio(
+      await testUtils.pkStdio(
         ['identities', 'trust', nodesUtils.encodeNodeId(nodeId)],
         {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: nodePath,
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
       );
       // We should now have the 'notify' permission, so we'll set the 'scan'
       // permission as well
-      ({ exitCode } = await execUtils.pkStdio(
+      ({ exitCode } = await testUtils.pkStdio(
         ['identities', 'allow', nodesUtils.encodeNodeId(nodeId), 'scan'],
         {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: nodePath,
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
       ));
       expect(exitCode).toBe(0);
       // Check that both permissions are set
-      ({ exitCode, stdout } = await execUtils.pkStdio(
+      ({ exitCode, stdout } = await testUtils.pkStdio(
         [
           'identities',
           'permissions',
@@ -148,36 +153,42 @@ describe('allow/disallow/permissions', () => {
           'json',
         ],
         {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: nodePath,
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
       ));
       expect(exitCode).toBe(0);
       expect(JSON.parse(stdout)).toEqual({
         permissions: ['notify', 'scan'],
       });
       // Disallow both permissions
-      ({ exitCode } = await execUtils.pkStdio(
+      ({ exitCode } = await testUtils.pkStdio(
         ['identities', 'disallow', nodesUtils.encodeNodeId(nodeId), 'notify'],
         {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: nodePath,
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
       ));
       expect(exitCode).toBe(0);
-      ({ exitCode } = await execUtils.pkStdio(
+      ({ exitCode } = await testUtils.pkStdio(
         ['identities', 'disallow', nodesUtils.encodeNodeId(nodeId), 'scan'],
         {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: nodePath,
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
       ));
       expect(exitCode).toBe(0);
       // Check that both permissions were unset
-      ({ exitCode, stdout } = await execUtils.pkStdio(
+      ({ exitCode, stdout } = await testUtils.pkStdio(
         [
           'identities',
           'permissions',
@@ -186,10 +197,12 @@ describe('allow/disallow/permissions', () => {
           'json',
         ],
         {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: nodePath,
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
       ));
       expect(exitCode).toBe(0);
       expect(JSON.parse(stdout)).toEqual({
@@ -203,7 +216,7 @@ describe('allow/disallow/permissions', () => {
       // Can't test with target executable due to mocking
       let exitCode, stdout;
       // Add the node to our node graph, otherwise we won't be able to contact it
-      await execUtils.pkStdio(
+      await testUtils.pkStdio(
         [
           'nodes',
           'add',
@@ -212,16 +225,18 @@ describe('allow/disallow/permissions', () => {
           `${nodePort}`,
         ],
         {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: nodePath,
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
       );
       // Authenticate our own identity in order to query the provider
       const mockedBrowser = jest
         .spyOn(identitiesUtils, 'browser')
         .mockImplementation(() => {});
-      await execUtils.pkStdio(
+      await testUtils.pkStdio(
         [
           'identities',
           'authenticate',
@@ -229,10 +244,12 @@ describe('allow/disallow/permissions', () => {
           testToken.identityId,
         ],
         {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: nodePath,
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
       );
       mockedBrowser.mockRestore();
       // Must first trust identity before we can set permissions
@@ -241,14 +258,13 @@ describe('allow/disallow/permissions', () => {
       // This command should fail first time since the identity won't be linked
       // to any nodes. It will trigger this process via discovery and we must
       // wait and then retry
-      await execUtils.pkStdio(
-        ['identities', 'trust', providerString],
-        {
+      await testUtils.pkStdio(['identities', 'trust', providerString], {
+        env: {
           PK_NODE_PATH: nodePath,
           PK_PASSWORD: password,
         },
-        dataDir,
-      );
+        cwd: dataDir,
+      });
       await poll<Gestalt>(
         async () => {
           const gestalts = await poll<Array<Gestalt>>(
@@ -270,66 +286,78 @@ describe('allow/disallow/permissions', () => {
         },
         100,
       );
-      ({ exitCode } = await execUtils.pkStdio(
+      ({ exitCode } = await testUtils.pkStdio(
         ['identities', 'trust', providerString],
         {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: nodePath,
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
       ));
       expect(exitCode).toBe(0);
       // We should now have the 'notify' permission, so we'll set the 'scan'
       // permission as well
-      ({ exitCode } = await execUtils.pkStdio(
+      ({ exitCode } = await testUtils.pkStdio(
         ['identities', 'allow', providerString, 'scan'],
         {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: nodePath,
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
       ));
       expect(exitCode).toBe(0);
       // Check that both permissions are set
-      ({ exitCode, stdout } = await execUtils.pkStdio(
+      ({ exitCode, stdout } = await testUtils.pkStdio(
         ['identities', 'permissions', providerString, '--format', 'json'],
         {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: nodePath,
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
       ));
       expect(exitCode).toBe(0);
       expect(JSON.parse(stdout)).toEqual({
         permissions: ['notify', 'scan'],
       });
       // Disallow both permissions
-      ({ exitCode } = await execUtils.pkStdio(
+      ({ exitCode } = await testUtils.pkStdio(
         ['identities', 'disallow', providerString, 'notify'],
         {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: nodePath,
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
       ));
       expect(exitCode).toBe(0);
-      ({ exitCode } = await execUtils.pkStdio(
+      ({ exitCode } = await testUtils.pkStdio(
         ['identities', 'disallow', providerString, 'scan'],
         {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: nodePath,
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
       ));
       expect(exitCode).toBe(0);
       // Check that both permissions were unset
-      ({ exitCode, stdout } = await execUtils.pkStdio(
+      ({ exitCode, stdout } = await testUtils.pkStdio(
         ['identities', 'permissions', providerString, '--format', 'json'],
         {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: nodePath,
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
       ));
       expect(exitCode).toBe(0);
       expect(JSON.parse(stdout)).toEqual({
@@ -343,55 +371,65 @@ describe('allow/disallow/permissions', () => {
     let exitCode;
     // Allow
     // Invalid gestalt id
-    ({ exitCode } = await execUtils.pkStdio(
+    ({ exitCode } = await testUtils.pkExec(
       ['identities', 'allow', 'invalid', 'notify'],
       {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
+        env: {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        cwd: dataDir,
       },
-      dataDir,
     ));
     expect(exitCode).toBe(sysexits.USAGE);
     // Invalid permission
-    ({ exitCode } = await execUtils.pkStdio(
+    ({ exitCode } = await testUtils.pkExec(
       ['identities', 'allow', nodesUtils.encodeNodeId(nodeId), 'invalid'],
       {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
+        env: {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        cwd: dataDir,
       },
-      dataDir,
     ));
     expect(exitCode).toBe(sysexits.USAGE);
     // Permissions
     // Invalid gestalt id
-    ({ exitCode } = await execUtils.pkStdio(
+    ({ exitCode } = await testUtils.pkExec(
       ['identities', 'permissions', 'invalid'],
       {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
+        env: {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        cwd: dataDir,
       },
-      dataDir,
     ));
     expect(exitCode).toBe(sysexits.USAGE);
     // Disallow
     // Invalid gestalt id
-    ({ exitCode } = await execUtils.pkStdio(
+    ({ exitCode } = await testUtils.pkExec(
       ['identities', 'disallow', 'invalid', 'notify'],
       {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
+        env: {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        cwd: dataDir,
       },
-      dataDir,
     ));
     expect(exitCode).toBe(sysexits.USAGE);
     // Invalid permission
-    ({ exitCode } = await execUtils.pkStdio(
+    ({ exitCode } = await testUtils.pkExec(
       ['identities', 'disallow', nodesUtils.encodeNodeId(nodeId), 'invalid'],
       {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
+        env: {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        cwd: dataDir,
       },
-      dataDir,
     ));
     expect(exitCode).toBe(sysexits.USAGE);
   });

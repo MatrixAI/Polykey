@@ -26,7 +26,7 @@ import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as notificationsPB from '@/proto/js/polykey/v1/notifications/notifications_pb';
 import * as nodesUtils from '@/nodes/utils';
 import * as notificationsUtils from '@/notifications/utils';
-import { expectRemoteError } from '../../utils';
+import * as testUtils from '../../utils';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('notificationsSend', () => {
@@ -225,7 +225,7 @@ describe('notificationsSend', () => {
     };
     const request1 = new notificationsPB.AgentNotification();
     request1.setContent(notification1.toString());
-    await expectRemoteError(
+    await testUtils.expectRemoteError(
       grpcClient.notificationsSend(request1),
       notificationsErrors.ErrorNotificationsParse,
     );
@@ -253,7 +253,7 @@ describe('notificationsSend', () => {
       .sign(privateKey);
     const request2 = new notificationsPB.AgentNotification();
     request2.setContent(signedNotification);
-    await expectRemoteError(
+    await testUtils.expectRemoteError(
       grpcClient.notificationsSend(request2),
       notificationsErrors.ErrorNotificationsValidationFailed,
     );
@@ -279,7 +279,7 @@ describe('notificationsSend', () => {
     );
     const request = new notificationsPB.AgentNotification();
     request.setContent(signedNotification);
-    await expectRemoteError(
+    await testUtils.expectRemoteError(
       grpcClient.notificationsSend(request),
       notificationsErrors.ErrorNotificationsPermissionsNotFound,
     );

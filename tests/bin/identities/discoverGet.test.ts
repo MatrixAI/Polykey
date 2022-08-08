@@ -11,7 +11,6 @@ import { poll, sysexits } from '@/utils';
 import * as identitiesUtils from '@/identities/utils';
 import * as claimsUtils from '@/claims/utils';
 import * as nodesUtils from '@/nodes/utils';
-import * as execUtils from '../../utils/exec';
 import * as testNodesUtils from '../../nodes/utils';
 import TestProvider from '../../identities/TestProvider';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
@@ -128,7 +127,7 @@ describe('discover/get', () => {
       const mockedBrowser = jest
         .spyOn(identitiesUtils, 'browser')
         .mockImplementation(() => {});
-      await execUtils.pkStdio(
+      await testUtils.pkStdio(
         [
           'identities',
           'authenticate',
@@ -136,14 +135,16 @@ describe('discover/get', () => {
           testToken.identityId,
         ],
         {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: nodePath,
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
       );
       // Add one of the nodes to our gestalt graph so that we'll be able to
       // contact the gestalt during discovery
-      await execUtils.pkStdio(
+      await testUtils.pkStdio(
         [
           'nodes',
           'add',
@@ -152,19 +153,23 @@ describe('discover/get', () => {
           `${nodeAPort}`,
         ],
         {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: nodePath,
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
       );
       // Discover gestalt by node
-      const discoverResponse = await execUtils.pkStdio(
+      const discoverResponse = await testUtils.pkStdio(
         ['identities', 'discover', nodesUtils.encodeNodeId(nodeAId)],
         {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: nodePath,
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
       );
       expect(discoverResponse.exitCode).toBe(0);
       // Since discovery is a background process we need to wait for the
@@ -191,13 +196,15 @@ describe('discover/get', () => {
         100,
       );
       // Now we can get the gestalt
-      const getResponse = await execUtils.pkStdio(
+      const getResponse = await testUtils.pkStdio(
         ['identities', 'get', nodesUtils.encodeNodeId(nodeAId)],
         {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: nodePath,
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
       );
       expect(getResponse.exitCode).toBe(0);
       expect(getResponse.stdout).toContain(nodesUtils.encodeNodeId(nodeAId));
@@ -224,7 +231,7 @@ describe('discover/get', () => {
       const mockedBrowser = jest
         .spyOn(identitiesUtils, 'browser')
         .mockImplementation(() => {});
-      await execUtils.pkStdio(
+      await testUtils.pkStdio(
         [
           'identities',
           'authenticate',
@@ -232,14 +239,16 @@ describe('discover/get', () => {
           testToken.identityId,
         ],
         {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: nodePath,
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
       );
       // Add one of the nodes to our gestalt graph so that we'll be able to
       // contact the gestalt during discovery
-      await execUtils.pkStdio(
+      await testUtils.pkStdio(
         [
           'nodes',
           'add',
@@ -248,19 +257,23 @@ describe('discover/get', () => {
           `${nodeAPort}`,
         ],
         {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: nodePath,
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
       );
       // Discover gestalt by node
-      const discoverResponse = await execUtils.pkStdio(
+      const discoverResponse = await testUtils.pkStdio(
         ['identities', 'discover', providerString],
         {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: nodePath,
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
       );
       expect(discoverResponse.exitCode).toBe(0);
       // Since discovery is a background process we need to wait for the
@@ -287,13 +300,15 @@ describe('discover/get', () => {
         100,
       );
       // Now we can get the gestalt
-      const getResponse = await execUtils.pkStdio(
+      const getResponse = await testUtils.pkStdio(
         ['identities', 'get', providerString],
         {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: nodePath,
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
       );
       expect(getResponse.exitCode).toBe(0);
       expect(getResponse.stdout).toContain(nodesUtils.encodeNodeId(nodeAId));
@@ -318,23 +333,27 @@ describe('discover/get', () => {
     async () => {
       let exitCode;
       // Discover
-      ({ exitCode } = await execUtils.pkStdio(
+      ({ exitCode } = await testUtils.pkStdio(
         ['identities', 'discover', 'invalid'],
         {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: nodePath,
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
       ));
       expect(exitCode).toBe(sysexits.USAGE);
       // Get
-      ({ exitCode } = await execUtils.pkStdio(
+      ({ exitCode } = await testUtils.pkStdio(
         ['identities', 'get', 'invalid'],
         {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: nodePath,
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
       ));
     },
   );

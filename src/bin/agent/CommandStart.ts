@@ -8,7 +8,7 @@ import type PolykeyAgent from '../../PolykeyAgent';
 import type { RecoveryCode } from '../../keys/types';
 import type { PolykeyWorkerManagerInterface } from '../../workers/types';
 import path from 'path';
-import child_process from 'child_process';
+import childProcess from 'child_process';
 import process from 'process';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
@@ -130,7 +130,7 @@ class CommandStart extends CommandPolykey {
           );
           stdio[2] = agentErrFile.fd;
         }
-        const agentProcess = child_process.fork(
+        const agentProcess = childProcess.fork(
           path.join(__dirname, '../polykey-agent'),
           [],
           {

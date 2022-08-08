@@ -43,9 +43,7 @@ describe('endpoint dependent NAT traversal', () => {
         tearDownNAT,
       } = await testNatUtils.setupNAT('edm', 'dmz', logger);
       // Since node2 is not behind a NAT can directly add its details
-      await testNatUtils.pkExecNs(
-        userPid!,
-        agent1Pid!,
+      await testUtils.pkExec(
         [
           'nodes',
           'add',
@@ -55,20 +53,32 @@ describe('endpoint dependent NAT traversal', () => {
           '--no-ping',
         ],
         {
-          PK_NODE_PATH: agent1NodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: agent1NodePath,
+            PK_PASSWORD: password,
+          },
+          command: `nsenter ${testNatUtils
+            .nsenter(userPid!, agent1Pid!)
+            .join(' ')} ts-node --project ${testUtils.tsConfigPath} ${
+            testUtils.polykeyPath
+          }`,
+          cwd: dataDir,
         },
-        dataDir,
       );
-      const { exitCode, stdout } = await testNatUtils.pkExecNs(
-        userPid!,
-        agent1Pid!,
+      const { exitCode, stdout } = await testUtils.pkExec(
         ['nodes', 'ping', agent2NodeId, '--format', 'json'],
         {
-          PK_NODE_PATH: agent1NodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: agent1NodePath,
+            PK_PASSWORD: password,
+          },
+          command: `nsenter ${testNatUtils
+            .nsenter(userPid!, agent1Pid!)
+            .join(' ')} ts-node --project ${testUtils.tsConfigPath} ${
+            testUtils.polykeyPath
+          }`,
+          cwd: dataDir,
         },
-        dataDir,
       );
       expect(exitCode).toBe(0);
       expect(JSON.parse(stdout)).toEqual({
@@ -97,9 +107,7 @@ describe('endpoint dependent NAT traversal', () => {
         tearDownNAT,
       } = await testNatUtils.setupNAT('dmz', 'edm', logger);
       // Agent 2 must ping Agent 1 first, since Agent 2 is behind a NAT
-      await testNatUtils.pkExecNs(
-        userPid!,
-        agent2Pid!,
+      await testUtils.pkExec(
         [
           'nodes',
           'add',
@@ -109,21 +117,33 @@ describe('endpoint dependent NAT traversal', () => {
           '--no-ping',
         ],
         {
-          PK_NODE_PATH: agent2NodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: agent2NodePath,
+            PK_PASSWORD: password,
+          },
+          command: `nsenter ${testNatUtils
+            .nsenter(userPid!, agent2Pid!)
+            .join(' ')} ts-node --project ${testUtils.tsConfigPath} ${
+            testUtils.polykeyPath
+          }`,
+          cwd: dataDir,
         },
-        dataDir,
       );
       let exitCode, stdout;
-      ({ exitCode, stdout } = await testNatUtils.pkExecNs(
-        userPid!,
-        agent2Pid!,
+      ({ exitCode, stdout } = await testUtils.pkExec(
         ['nodes', 'ping', agent1NodeId, '--format', 'json'],
         {
-          PK_NODE_PATH: agent2NodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: agent2NodePath,
+            PK_PASSWORD: password,
+          },
+          command: `nsenter ${testNatUtils
+            .nsenter(userPid!, agent2Pid!)
+            .join(' ')} ts-node --project ${testUtils.tsConfigPath} ${
+            testUtils.polykeyPath
+          }`,
+          cwd: dataDir,
         },
-        dataDir,
       ));
       expect(exitCode).toBe(0);
       expect(JSON.parse(stdout)).toEqual({
@@ -131,15 +151,20 @@ describe('endpoint dependent NAT traversal', () => {
         message: 'Node is Active.',
       });
       // Can now ping Agent 2 (it will be expecting a response)
-      ({ exitCode, stdout } = await testNatUtils.pkExecNs(
-        userPid!,
-        agent1Pid!,
+      ({ exitCode, stdout } = await testUtils.pkExec(
         ['nodes', 'ping', agent2NodeId, '--format', 'json'],
         {
-          PK_NODE_PATH: agent1NodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: agent1NodePath,
+            PK_PASSWORD: password,
+          },
+          command: `nsenter ${testNatUtils
+            .nsenter(userPid!, agent1Pid!)
+            .join(' ')} ts-node --project ${testUtils.tsConfigPath} ${
+            testUtils.polykeyPath
+          }`,
+          cwd: dataDir,
         },
-        dataDir,
       ));
       expect(exitCode).toBe(0);
       expect(JSON.parse(stdout)).toEqual({
@@ -169,15 +194,20 @@ describe('endpoint dependent NAT traversal', () => {
       // since port mapping changes between targets in EDM mapping
       // Node 2 -> Node 1 ping should fail (Node 1 behind NAT)
       let exitCode, stdout;
-      ({ exitCode, stdout } = await testNatUtils.pkExecNs(
-        userPid!,
-        agent2Pid!,
+      ({ exitCode, stdout } = await testUtils.pkExec(
         ['nodes', 'ping', agent1NodeId, '--format', 'json'],
         {
-          PK_NODE_PATH: agent2NodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: agent2NodePath,
+            PK_PASSWORD: password,
+          },
+          command: `nsenter ${testNatUtils
+            .nsenter(userPid!, agent2Pid!)
+            .join(' ')} ts-node --project ${testUtils.tsConfigPath} ${
+            testUtils.polykeyPath
+          }`,
+          cwd: dataDir,
         },
-        dataDir,
       ));
       expect(exitCode).toBe(1);
       expect(JSON.parse(stdout)).toEqual({
@@ -185,15 +215,20 @@ describe('endpoint dependent NAT traversal', () => {
         message: `Failed to resolve node ID ${agent1NodeId} to an address.`,
       });
       // Node 1 -> Node 2 ping should also fail for the same reason
-      ({ exitCode, stdout } = await testNatUtils.pkExecNs(
-        userPid!,
-        agent1Pid!,
+      ({ exitCode, stdout } = await testUtils.pkExec(
         ['nodes', 'ping', agent2NodeId, '--format', 'json'],
         {
-          PK_NODE_PATH: agent1NodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: agent1NodePath,
+            PK_PASSWORD: password,
+          },
+          command: `nsenter ${testNatUtils
+            .nsenter(userPid!, agent1Pid!)
+            .join(' ')} ts-node --project ${testUtils.tsConfigPath} ${
+            testUtils.polykeyPath
+          }`,
+          cwd: dataDir,
         },
-        dataDir,
       ));
       expect(exitCode).toBe(1);
       expect(JSON.parse(stdout)).toEqual({
@@ -221,30 +256,40 @@ describe('endpoint dependent NAT traversal', () => {
       } = await testNatUtils.setupNATWithSeedNode('edm', 'eim', logger);
       // Since one of the nodes uses EDM NAT we cannot punch through
       let exitCode, stdout;
-      ({ exitCode, stdout } = await testNatUtils.pkExecNs(
-        userPid!,
-        agent2Pid!,
+      ({ exitCode, stdout } = await testUtils.pkExec(
         ['nodes', 'ping', agent1NodeId, '--format', 'json'],
         {
-          PK_NODE_PATH: agent2NodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: agent2NodePath,
+            PK_PASSWORD: password,
+          },
+          command: `nsenter ${testNatUtils
+            .nsenter(userPid!, agent2Pid!)
+            .join(' ')} ts-node --project ${testUtils.tsConfigPath} ${
+            testUtils.polykeyPath
+          }`,
+          cwd: dataDir,
         },
-        dataDir,
       ));
       expect(exitCode).toBe(1);
       expect(JSON.parse(stdout)).toEqual({
         success: false,
         message: `Failed to resolve node ID ${agent1NodeId} to an address.`,
       });
-      ({ exitCode, stdout } = await testNatUtils.pkExecNs(
-        userPid!,
-        agent1Pid!,
+      ({ exitCode, stdout } = await testUtils.pkExec(
         ['nodes', 'ping', agent2NodeId, '--format', 'json'],
         {
-          PK_NODE_PATH: agent1NodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: agent1NodePath,
+            PK_PASSWORD: password,
+          },
+          command: `nsenter ${testNatUtils
+            .nsenter(userPid!, agent1Pid!)
+            .join(' ')} ts-node --project ${testUtils.tsConfigPath} ${
+            testUtils.polykeyPath
+          }`,
+          cwd: dataDir,
         },
-        dataDir,
       ));
       expect(exitCode).toBe(1);
       expect(JSON.parse(stdout)).toEqual({

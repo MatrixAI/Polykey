@@ -2,7 +2,7 @@ import type { AddressInfo } from 'net';
 import type { ConnectionInfo, Host, Port, TLSConfig } from '@/network/types';
 import type { NodeId, NodeInfo } from '@/nodes/types';
 import type { Server } from '@grpc/grpc-js';
-import type * as child_process from 'child_process';
+import type { ChildProcessWithoutNullStreams } from 'child_process';
 import net from 'net';
 import os from 'os';
 import path from 'path';
@@ -38,7 +38,7 @@ import * as testNodesUtils from './utils';
 import * as grpcTestUtils from '../grpc/utils';
 import * as agentTestUtils from '../agent/utils';
 import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
-import { spawnFile } from '../utils/exec';
+import * as testUtils from '../utils';
 
 const destroyCallback = async () => {};
 
@@ -733,14 +733,25 @@ describe(`${NodeConnection.name} test`, () => {
         | NodeConnection<grpcTestUtils.GRPCClientTest>
         | undefined;
       let testProxy: Proxy | undefined;
-      let testProcess: child_process.ChildProcessWithoutNullStreams | undefined;
+      let testProcess: ChildProcessWithoutNullStreams | undefined;
       try {
-        const testProcess = spawnFile('tests/grpc/utils/testServer.ts');
+        const testProcess = await testUtils.spawn(
+          'ts-node',
+          [
+            '--project',
+            testUtils.tsConfigPath,
+            `${globalThis.testDir}/grpc/utils/testServer.ts`,
+          ],
+          undefined,
+          logger,
+        );
         const waitP = promise<string>();
-        testProcess.stdout.on('data', (data) => {
+        testProcess.stdout!.on('data', (data) => {
           waitP.resolveP(data);
         });
-        // TestProcess.stderr.on('data', data => console.log(data.toString()));
+        testProcess.stderr!.on('data', (data) =>
+          waitP.rejectP(data.toString()),
+        );
 
         // Lets make a reverse proxy
         testProxy = new Proxy({
@@ -799,14 +810,25 @@ describe(`${NodeConnection.name} test`, () => {
         | NodeConnection<grpcTestUtils.GRPCClientTest>
         | undefined;
       let testProxy: Proxy | undefined;
-      let testProcess: child_process.ChildProcessWithoutNullStreams | undefined;
+      let testProcess: ChildProcessWithoutNullStreams | undefined;
       try {
-        const testProcess = spawnFile('tests/grpc/utils/testServer.ts');
+        const testProcess = await testUtils.spawn(
+          'ts-node',
+          [
+            '--project',
+            testUtils.tsConfigPath,
+            `${globalThis.testDir}/grpc/utils/testServer.ts`,
+          ],
+          undefined,
+          logger,
+        );
         const waitP = promise<string>();
-        testProcess.stdout.on('data', (data) => {
+        testProcess.stdout!.on('data', (data) => {
           waitP.resolveP(data);
         });
-        // TestProcess.stderr.on('data', data => console.log(data.toString()));
+        testProcess.stderr!.on('data', (data) =>
+          waitP.rejectP(data.toString()),
+        );
 
         // Lets make a reverse proxy
         testProxy = new Proxy({

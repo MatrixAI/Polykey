@@ -6,7 +6,6 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
 import * as nodesUtils from '@/nodes/utils';
 import { sysexits } from '@/errors';
-import * as execUtils from '../../utils/exec';
 import * as testNodesUtils from '../../nodes/utils';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 import * as testUtils from '../../utils';
@@ -99,7 +98,7 @@ describe('ping', () => {
   testUtils.testIf(testUtils.isTestPlatformEmpty)(
     'fails when pinging an offline node',
     async () => {
-      const { exitCode, stdout, stderr } = await execUtils.pkStdio(
+      const { exitCode, stdout, stderr } = await testUtils.pkStdio(
         [
           'nodes',
           'ping',
@@ -108,10 +107,12 @@ describe('ping', () => {
           'json',
         ],
         {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: nodePath,
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
       );
       expect(exitCode).toBe(sysexits.GENERAL); // Should fail with no response. for automation purposes.
       expect(stderr).toContain('No response received');
@@ -127,7 +128,7 @@ describe('ping', () => {
       const fakeNodeId = nodesUtils.decodeNodeId(
         'vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0',
       );
-      const { exitCode, stdout } = await execUtils.pkStdio(
+      const { exitCode, stdout } = await testUtils.pkStdio(
         [
           'nodes',
           'ping',
@@ -136,10 +137,12 @@ describe('ping', () => {
           'json',
         ],
         {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: nodePath,
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
       );
       expect(exitCode).not.toBe(0); // Should fail if node doesn't exist.
       expect(JSON.parse(stdout)).toEqual({
@@ -153,7 +156,7 @@ describe('ping', () => {
   testUtils.testIf(testUtils.isTestPlatformEmpty)(
     'succeed when pinging a live node',
     async () => {
-      const { exitCode, stdout } = await execUtils.pkStdio(
+      const { exitCode, stdout } = await testUtils.pkStdio(
         [
           'nodes',
           'ping',
@@ -162,10 +165,12 @@ describe('ping', () => {
           'json',
         ],
         {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: nodePath,
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
       );
       expect(exitCode).toBe(0);
       expect(JSON.parse(stdout)).toEqual({

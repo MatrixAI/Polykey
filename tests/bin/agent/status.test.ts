@@ -4,7 +4,6 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import Status from '@/status/Status';
 import * as nodesUtils from '@/nodes/utils';
 import config from '@/config';
-import * as execUtils from '../../utils/exec';
 import * as testUtils from '../../utils';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
@@ -41,7 +40,7 @@ describe('status', () => {
         fs,
         logger,
       });
-      const agentProcess = await execUtils.pkSpawn(
+      const agentProcess = await testUtils.pkSpawn(
         [
           'agent',
           'start',
@@ -54,22 +53,26 @@ describe('status', () => {
           '--verbose',
         ],
         {
-          PK_NODE_PATH: path.join(dataDir, 'polykey'),
-          PK_PASSWORD: password,
-          PK_ROOT_KEY: globalRootKeyPems[0],
+          env: {
+            PK_NODE_PATH: path.join(dataDir, 'polykey'),
+            PK_PASSWORD: password,
+            PK_ROOT_KEY: globalRootKeyPems[0],
+          },
+          cwd: dataDir,
         },
-        dataDir,
         logger,
       );
       await status.waitFor('STARTING');
       let exitCode, stdout;
-      ({ exitCode, stdout } = await execUtils.pkStdio(
+      ({ exitCode, stdout } = await testUtils.pkExec(
         ['agent', 'status', '--format', 'json'],
         {
-          PK_NODE_PATH: path.join(dataDir, 'polykey'),
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: path.join(dataDir, 'polykey'),
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
       ));
       expect(exitCode).toBe(0);
       // If the command was slow, it may have become LIVE already
@@ -78,17 +81,19 @@ describe('status', () => {
         pid: expect.any(Number),
       });
       await status.waitFor('LIVE');
-      const agentProcessExit = execUtils.processExit(agentProcess);
+      const agentProcessExit = testUtils.processExit(agentProcess);
       agentProcess.kill('SIGTERM');
       // Cannot wait for STOPPING because waitFor polling may miss the transition
       await status.waitFor('DEAD');
-      ({ exitCode, stdout } = await execUtils.pkStdio(
+      ({ exitCode, stdout } = await testUtils.pkExec(
         ['agent', 'status', '--format', 'json'],
         {
-          PK_NODE_PATH: path.join(dataDir, 'polykey'),
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: path.join(dataDir, 'polykey'),
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
       ));
       expect(exitCode).toBe(0);
       // If the command was slow, it may have become DEAD already
@@ -97,13 +102,15 @@ describe('status', () => {
         status: expect.stringMatching(/STOPPING|DEAD/),
       });
       await agentProcessExit;
-      ({ exitCode, stdout } = await execUtils.pkStdio(
+      ({ exitCode, stdout } = await testUtils.pkExec(
         ['agent', 'status', '--format', 'json'],
         {
-          PK_NODE_PATH: path.join(dataDir, 'polykey'),
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: path.join(dataDir, 'polykey'),
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
       ));
       expect(exitCode).toBe(0);
       expect(JSON.parse(stdout)).toMatchObject({
@@ -115,10 +122,10 @@ describe('status', () => {
   testUtils.testIf(
     testUtils.isTestPlatformEmpty || testUtils.isTestPlatformDocker,
   )('status on missing agent', async () => {
-    const { exitCode, stdout } = await execUtils.pkStdio(
+    const { exitCode, stdout } = await testUtils.pkExec(
       ['agent', 'status', '--format', 'json'],
       {
-        PK_NODE_PATH: path.join(dataDir, 'polykey'),
+        env: { PK_NODE_PATH: path.join(dataDir, 'polykey') },
       },
     );
     expect(exitCode).toBe(0);
@@ -131,7 +138,7 @@ describe('status', () => {
     let agentPassword;
     let agentClose;
     beforeEach(async () => {
-      ({ agentDir, agentPassword, agentClose } = await execUtils.setupTestAgent(
+      ({ agentDir, agentPassword, agentClose } = await testUtils.setupTestAgent(
         globalRootKeyPems[1],
         logger,
       ));
@@ -149,13 +156,15 @@ describe('status', () => {
         logger,
       });
       const statusInfo = (await status.readStatus())!;
-      const { exitCode, stdout } = await execUtils.pkStdio(
+      const { exitCode, stdout } = await testUtils.pkExec(
         ['agent', 'status', '--format', 'json', '--verbose'],
         {
-          PK_NODE_PATH: agentDir,
-          PK_PASSWORD: agentPassword,
+          env: {
+            PK_NODE_PATH: agentDir,
+            PK_PASSWORD: agentPassword,
+          },
+          cwd: agentDir,
         },
-        agentDir,
       );
       expect(exitCode).toBe(0);
       expect(JSON.parse(stdout)).toMatchObject({
@@ -187,7 +196,7 @@ describe('status', () => {
       });
       const statusInfo = (await status.readStatus())!;
       // This still needs a `nodePath` because of session token path
-      const { exitCode, stdout } = await execUtils.pkStdio(
+      const { exitCode, stdout } = await testUtils.pkExec(
         [
           'agent',
           'status',
@@ -205,8 +214,10 @@ describe('status', () => {
           'json',
           '--verbose',
         ],
-        {},
-        dataDir,
+        {
+          env: {},
+          cwd: dataDir,
+        },
       );
       expect(exitCode).toBe(0);
       expect(JSON.parse(stdout)).toMatchObject({

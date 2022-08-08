@@ -12,7 +12,6 @@ import { Session } from '@/sessions';
 import { sleep } from '@/utils';
 import config from '@/config';
 import * as clientErrors from '@/client/errors';
-import * as execUtils from '../utils/exec';
 import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 import * as testUtils from '../utils';
 
@@ -28,7 +27,7 @@ describe('sessions', () => {
   let agentClose;
   let dataDir: string;
   beforeEach(async () => {
-    ({ agentDir, agentPassword, agentClose } = await execUtils.setupTestAgent(
+    ({ agentDir, agentPassword, agentClose } = await testUtils.setupTestAgent(
       globalRootKeyPems[0],
       logger,
     ));
@@ -53,28 +52,26 @@ describe('sessions', () => {
         logger,
       });
       let exitCode;
-      ({ exitCode } = await execUtils.pkStdio(
-        ['agent', 'status'],
-        {
+      ({ exitCode } = await testUtils.pkStdio(['agent', 'status'], {
+        env: {
           PK_NODE_PATH: agentDir,
           PK_PASSWORD: agentPassword,
         },
-        agentDir,
-      ));
+        cwd: agentDir,
+      }));
       expect(exitCode).toBe(0);
       const token1 = await session.readToken();
       // Tokens are not nonces
       // Wait at least 1 second
       // To ensure that the next token has a new expiry
       await sleep(1100);
-      ({ exitCode } = await execUtils.pkStdio(
-        ['agent', 'status'],
-        {
+      ({ exitCode } = await testUtils.pkStdio(['agent', 'status'], {
+        env: {
           PK_NODE_PATH: agentDir,
           PK_PASSWORD: agentPassword,
         },
-        agentDir,
-      ));
+        cwd: agentDir,
+      }));
       expect(exitCode).toBe(0);
       const token2 = await session.readToken();
       expect(token1).not.toBe(token2);
@@ -86,42 +83,48 @@ describe('sessions', () => {
     async () => {
       let exitCode, stderr;
       // Password and Token set
-      ({ exitCode, stderr } = await execUtils.pkStdio(
+      ({ exitCode, stderr } = await testUtils.pkStdio(
         ['agent', 'status', '--format', 'json'],
         {
-          PK_NODE_PATH: agentDir,
-          PK_PASSWORD: 'invalid',
-          PK_TOKEN: 'token',
+          env: {
+            PK_NODE_PATH: agentDir,
+            PK_PASSWORD: 'invalid',
+            PK_TOKEN: 'token',
+          },
+          cwd: agentDir,
         },
-        agentDir,
       ));
-      execUtils.expectProcessError(exitCode, stderr, [
+      testUtils.expectProcessError(exitCode, stderr, [
         new clientErrors.ErrorClientAuthDenied(),
       ]);
       // Password set
-      ({ exitCode, stderr } = await execUtils.pkStdio(
+      ({ exitCode, stderr } = await testUtils.pkStdio(
         ['agent', 'status', '--format', 'json'],
         {
-          PK_NODE_PATH: agentDir,
-          PK_PASSWORD: 'invalid',
-          PK_TOKEN: undefined,
+          env: {
+            PK_NODE_PATH: agentDir,
+            PK_PASSWORD: 'invalid',
+            PK_TOKEN: undefined,
+          },
+          cwd: agentDir,
         },
-        agentDir,
       ));
-      execUtils.expectProcessError(exitCode, stderr, [
+      testUtils.expectProcessError(exitCode, stderr, [
         new clientErrors.ErrorClientAuthDenied(),
       ]);
       // Token set
-      ({ exitCode, stderr } = await execUtils.pkStdio(
+      ({ exitCode, stderr } = await testUtils.pkStdio(
         ['agent', 'status', '--format', 'json'],
         {
-          PK_NODE_PATH: agentDir,
-          PK_PASSWORD: undefined,
-          PK_TOKEN: 'token',
+          env: {
+            PK_NODE_PATH: agentDir,
+            PK_PASSWORD: undefined,
+            PK_TOKEN: 'token',
+          },
+          cwd: agentDir,
         },
-        agentDir,
       ));
-      execUtils.expectProcessError(exitCode, stderr, [
+      testUtils.expectProcessError(exitCode, stderr, [
         new clientErrors.ErrorClientAuthDenied(),
       ]);
     },
@@ -130,24 +133,18 @@ describe('sessions', () => {
     'prompt for password to authenticate attended commands',
     async () => {
       const password = agentPassword;
-      await execUtils.pkStdio(
-        ['agent', 'lock'],
-        {
-          PK_NODE_PATH: agentDir,
-        },
-        agentDir,
-      );
+      await testUtils.pkStdio(['agent', 'lock'], {
+        env: { PK_NODE_PATH: agentDir },
+        cwd: agentDir,
+      });
       mockedPrompts.mockClear();
       mockedPrompts.mockImplementation(async (_opts: any) => {
         return { password };
       });
-      const { exitCode } = await execUtils.pkStdio(
-        ['agent', 'status'],
-        {
-          PK_NODE_PATH: agentDir,
-        },
-        agentDir,
-      );
+      const { exitCode } = await testUtils.pkStdio(['agent', 'status'], {
+        env: { PK_NODE_PATH: agentDir },
+        cwd: agentDir,
+      });
       expect(exitCode).toBe(0);
       // Prompted for password 1 time
       expect(mockedPrompts.mock.calls.length).toBe(1);
@@ -157,26 +154,20 @@ describe('sessions', () => {
   testUtils.testIf(testUtils.isTestPlatformEmpty)(
     're-prompts for password if unable to authenticate command',
     async () => {
-      await execUtils.pkStdio(
-        ['agent', 'lock'],
-        {
-          PK_NODE_PATH: agentDir,
-        },
-        agentDir,
-      );
+      await testUtils.pkStdio(['agent', 'lock'], {
+        env: { PK_NODE_PATH: agentDir },
+        cwd: agentDir,
+      });
       const validPassword = agentPassword;
       const invalidPassword = 'invalid';
       mockedPrompts.mockClear();
       mockedPrompts
         .mockResolvedValueOnce({ password: invalidPassword })
         .mockResolvedValue({ password: validPassword });
-      const { exitCode } = await execUtils.pkStdio(
-        ['agent', 'status'],
-        {
-          PK_NODE_PATH: agentDir,
-        },
-        agentDir,
-      );
+      const { exitCode } = await testUtils.pkStdio(['agent', 'status'], {
+        env: { PK_NODE_PATH: agentDir },
+        cwd: agentDir,
+      });
       expect(exitCode).toBe(0);
       // Prompted for password 2 times
       expect(mockedPrompts.mock.calls.length).toBe(2);
