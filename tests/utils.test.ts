@@ -2,6 +2,7 @@ import os from 'os';
 import path from 'path';
 import process from 'process';
 import * as utils from '@/utils';
+import PromiseCancellable from '@/utils/PromiseCancellable';
 
 describe('utils', () => {
   test('getting default node path', () => {

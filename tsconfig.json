@@ -9,12 +9,13 @@
     "strictNullChecks": true,
     "noImplicitAny": false,
     "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,
     "moduleResolution": "node",
     "module": "CommonJS",
-    "target": "ES2021",
+    "target": "ES2022",
     "baseUrl": "./src",
     "paths": {
       "@": ["index"],
@@ -27,7 +28,8 @@
     "./src/**/*.json",
     "./tests/**/*",
     "./scripts/**/*",
-    "./benches/**/*"
+    "./benches/**/*",
+    "./*"
   ],
   "ts-node": {
     "require": ["tsconfig-paths/register"],

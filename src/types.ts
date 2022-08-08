@@ -46,6 +46,11 @@ interface ToString {
 }
 
 /**
+ * Recursive readonly
+ */
+type DeepReadonly<T> = { readonly [K in keyof T]: DeepReadonly<T[K]> };
+
+/**
  * Wrap a type to be reference counted
  * Useful for when we need to garbage collect data
  */
@@ -122,6 +127,7 @@ export type {
   Initial,
   InitialParameters,
   ToString,
+  DeepReadonly,
   Ref,
   Timer,
   PromiseDeconstructed,

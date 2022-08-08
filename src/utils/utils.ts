@@ -309,6 +309,10 @@ function debounce<P extends any[]>(
   };
 }
 
+const AsyncFunction = (async () => {}).constructor;
+const GeneratorFunction = function* () {}.constructor;
+const AsyncGeneratorFunction = async function* () {}.constructor;
+
 export {
   getDefaultNodePath,
   never,
@@ -331,4 +335,7 @@ export {
   asyncIterableArray,
   bufferSplit,
   debounce,
+  AsyncFunction,
+  GeneratorFunction,
+  AsyncGeneratorFunction,
 };
