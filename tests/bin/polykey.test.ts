@@ -4,66 +4,77 @@ import os from 'os';
 import readline from 'readline';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as execUtils from '../utils/exec';
-import { runTestIfPlatforms } from '../utils';
+import { testIf } from '../utils';
+import {
+  isTestPlatformEmpty,
+  isTestPlatformDocker,
+  isTestPlatformLinux,
+} from '../utils/platform';
 
 describe('polykey', () => {
-  runTestIfPlatforms('linux', 'docker')('default help display', async () => {
-    const result = await execUtils.pkStdio([]);
-    expect(result.exitCode).toBe(0);
-    expect(result.stdout).toBe('');
-    expect(result.stderr.length > 0).toBe(true);
-  });
-  runTestIfPlatforms('docker')('format option affects STDERR', async () => {
-    const logger = new Logger('format test', LogLevel.WARN, [
-      new StreamHandler(),
-    ]);
-    const dataDir = await fs.promises.mkdtemp(
-      path.join(os.tmpdir(), 'polykey-test-'),
-    );
-    const password = 'abc123';
-    const polykeyPath = path.join(dataDir, 'polykey');
-    await fs.promises.mkdir(polykeyPath);
-    const agentProcess = await execUtils.pkSpawn(
-      [
-        'agent',
-        'start',
-        '--node-path',
-        path.join(dataDir, 'polykey'),
-        '--root-key-pair-bits',
-        '1024',
-        '--client-host',
-        '127.0.0.1',
-        '--proxy-host',
-        '127.0.0.1',
-        '--workers',
-        '0',
-        '--verbose',
-        '--format',
-        'json',
-      ],
-      {
-        PK_TEST_DATA_PATH: dataDir,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-      logger,
-    );
-    const rlErr = readline.createInterface(agentProcess.stderr!);
-    // Just check the first log
-    const stderrStart = await new Promise<string>((resolve, reject) => {
-      rlErr.once('line', resolve);
-      rlErr.once('close', reject);
-    });
-    const stderrParsed = JSON.parse(stderrStart);
-    expect(stderrParsed).toMatchObject({
-      level: expect.stringMatching(/INFO|WARN|ERROR|DEBUG/),
-      key: expect.any(String),
-      msg: expect.any(String),
-    });
-    agentProcess.kill('SIGTERM');
-    await fs.promises.rm(dataDir, {
-      force: true,
-      recursive: true,
-    });
-  });
+  testIf(isTestPlatformEmpty || isTestPlatformLinux || isTestPlatformDocker)(
+    'default help display',
+    async () => {
+      const result = await execUtils.pkStdio([]);
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toBe('');
+      expect(result.stderr.length > 0).toBe(true);
+    },
+  );
+  testIf(isTestPlatformEmpty || isTestPlatformDocker)(
+    'format option affects STDERR',
+    async () => {
+      const logger = new Logger('format test', LogLevel.WARN, [
+        new StreamHandler(),
+      ]);
+      const dataDir = await fs.promises.mkdtemp(
+        path.join(os.tmpdir(), 'polykey-test-'),
+      );
+      const password = 'abc123';
+      const polykeyPath = path.join(dataDir, 'polykey');
+      await fs.promises.mkdir(polykeyPath);
+      const agentProcess = await execUtils.pkSpawn(
+        [
+          'agent',
+          'start',
+          '--node-path',
+          path.join(dataDir, 'polykey'),
+          '--root-key-pair-bits',
+          '1024',
+          '--client-host',
+          '127.0.0.1',
+          '--proxy-host',
+          '127.0.0.1',
+          '--workers',
+          '0',
+          '--verbose',
+          '--format',
+          'json',
+        ],
+        {
+          PK_TEST_DATA_PATH: dataDir,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+        logger,
+      );
+      const rlErr = readline.createInterface(agentProcess.stderr!);
+      // Just check the first log
+      const stderrStart = await new Promise<string>((resolve, reject) => {
+        rlErr.once('line', resolve);
+        rlErr.once('close', reject);
+      });
+      const stderrParsed = JSON.parse(stderrStart);
+      expect(stderrParsed).toMatchObject({
+        level: expect.stringMatching(/INFO|WARN|ERROR|DEBUG/),
+        key: expect.any(String),
+        msg: expect.any(String),
+      });
+      agentProcess.kill('SIGTERM');
+      await fs.promises.rm(dataDir, {
+        force: true,
+        recursive: true,
+      });
+    },
+  );
 });

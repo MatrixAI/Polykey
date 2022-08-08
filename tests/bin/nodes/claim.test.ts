@@ -8,7 +8,8 @@ import * as nodesUtils from '@/nodes/utils';
 import * as execUtils from '../../utils/exec';
 import * as testNodesUtils from '../../nodes/utils';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
-import { runTestIfPlatforms } from '../../utils';
+import { testIf } from '../../utils';
+import { isTestPlatformEmpty } from '../../utils/platform';
 
 describe('claim', () => {
   const logger = new Logger('claim test', LogLevel.WARN, [new StreamHandler()]);
@@ -83,7 +84,7 @@ describe('claim', () => {
       recursive: true,
     });
   });
-  runTestIfPlatforms()('sends a gestalt invite', async () => {
+  testIf(isTestPlatformEmpty)('sends a gestalt invite', async () => {
     const { exitCode, stdout } = await execUtils.pkStdio(
       ['nodes', 'claim', remoteIdEncoded],
       {
@@ -96,23 +97,26 @@ describe('claim', () => {
     expect(stdout).toContain('Gestalt Invite');
     expect(stdout).toContain(remoteIdEncoded);
   });
-  runTestIfPlatforms()('sends a gestalt invite (force invite)', async () => {
-    await remoteNode.notificationsManager.sendNotification(localId, {
-      type: 'GestaltInvite',
-    });
-    const { exitCode, stdout } = await execUtils.pkStdio(
-      ['nodes', 'claim', remoteIdEncoded, '--force-invite'],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    );
-    expect(exitCode).toBe(0);
-    expect(stdout).toContain('Gestalt Invite');
-    expect(stdout).toContain(nodesUtils.encodeNodeId(remoteId));
-  });
-  runTestIfPlatforms()('claims a node', async () => {
+  testIf(isTestPlatformEmpty)(
+    'sends a gestalt invite (force invite)',
+    async () => {
+      await remoteNode.notificationsManager.sendNotification(localId, {
+        type: 'GestaltInvite',
+      });
+      const { exitCode, stdout } = await execUtils.pkStdio(
+        ['nodes', 'claim', remoteIdEncoded, '--force-invite'],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      );
+      expect(exitCode).toBe(0);
+      expect(stdout).toContain('Gestalt Invite');
+      expect(stdout).toContain(nodesUtils.encodeNodeId(remoteId));
+    },
+  );
+  testIf(isTestPlatformEmpty)('claims a node', async () => {
     await remoteNode.notificationsManager.sendNotification(localId, {
       type: 'GestaltInvite',
     });

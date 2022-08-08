@@ -4,10 +4,11 @@ import * as binUtils from '@/bin/utils/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as grpcErrors from '@/grpc/errors';
 import * as testUtils from '../utils';
-import { runTestIfPlatforms } from '../utils';
+import { testIf } from '../utils';
+import { isTestPlatformEmpty } from '../utils/platform';
 
 describe('bin/utils', () => {
-  runTestIfPlatforms()('list in human and json format', () => {
+  testIf(isTestPlatformEmpty)('list in human and json format', () => {
     // List
     expect(
       binUtils.outputFormatter({
@@ -23,7 +24,7 @@ describe('bin/utils', () => {
       }),
     ).toBe('["Testing","the","list","output"]\n');
   });
-  runTestIfPlatforms()('table in human and in json format', () => {
+  testIf(isTestPlatformEmpty)('table in human and in json format', () => {
     // Table
     expect(
       binUtils.outputFormatter({
@@ -48,7 +49,7 @@ describe('bin/utils', () => {
       '[{"key1":"value1","key2":"value2"},{"key1":"data1","key2":"data2"}]\n',
     );
   });
-  runTestIfPlatforms()('dict in human and in json format', () => {
+  testIf(isTestPlatformEmpty)('dict in human and in json format', () => {
     // Dict
     expect(
       binUtils.outputFormatter({
@@ -76,7 +77,7 @@ describe('bin/utils', () => {
       }),
     ).toBe('{"key1":"value1","key2":"value2"}\n');
   });
-  runTestIfPlatforms()('errors in human and json format', () => {
+  testIf(isTestPlatformEmpty)('errors in human and json format', () => {
     const timestamp = new Date();
     const data = { string: 'one', number: 1 };
     const host = '127.0.0.1' as Host;

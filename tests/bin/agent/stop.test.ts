@@ -7,8 +7,12 @@ import { sleep } from '@/utils';
 import * as binErrors from '@/bin/errors';
 import * as clientErrors from '@/client/errors';
 import * as execUtils from '../../utils/exec';
-import { runTestIfPlatforms } from '../../utils';
+import { testIf } from '../../utils';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
+import {
+  isTestPlatformEmpty,
+  isTestPlatformDocker,
+} from '../../utils/platform';
 
 describe('stop', () => {
   const logger = new Logger('stop test', LogLevel.WARN, [new StreamHandler()]);
@@ -24,7 +28,7 @@ describe('stop', () => {
       recursive: true,
     });
   });
-  runTestIfPlatforms('docker')(
+  testIf(isTestPlatformEmpty || isTestPlatformDocker)(
     'stop LIVE agent',
     async () => {
       const password = 'abc123';
@@ -72,7 +76,7 @@ describe('stop', () => {
     },
     global.defaultTimeout * 2,
   );
-  runTestIfPlatforms('docker')(
+  testIf(isTestPlatformEmpty || isTestPlatformDocker)(
     'stopping is idempotent during concurrent calls and STOPPING or DEAD status',
     async () => {
       const password = 'abc123';
@@ -160,7 +164,7 @@ describe('stop', () => {
     },
     global.defaultTimeout * 2,
   );
-  runTestIfPlatforms()(
+  testIf(isTestPlatformEmpty)(
     'stopping starting agent results in error',
     async () => {
       // This relies on fast execution of `agent stop` while agent is starting,
@@ -221,7 +225,7 @@ describe('stop', () => {
     },
     global.defaultTimeout * 2,
   );
-  runTestIfPlatforms('docker')(
+  testIf(isTestPlatformEmpty || isTestPlatformDocker)(
     'stopping while unauthenticated does not stop',
     async () => {
       const password = 'abc123';

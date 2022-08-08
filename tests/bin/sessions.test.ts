@@ -14,7 +14,8 @@ import config from '@/config';
 import * as clientErrors from '@/client/errors';
 import * as execUtils from '../utils/exec';
 import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
-import { runTestIfPlatforms } from '../utils';
+import { testIf } from '../utils';
+import { isTestPlatformEmpty } from '../utils/platform';
 
 jest.mock('prompts');
 const mockedPrompts = mocked(prompts.prompt);
@@ -44,7 +45,7 @@ describe('sessions', () => {
     });
     await agentClose();
   });
-  runTestIfPlatforms()(
+  testIf(isTestPlatformEmpty)(
     'serial commands refresh the session token',
     async () => {
       const session = await Session.createSession({
@@ -81,7 +82,7 @@ describe('sessions', () => {
       await session.stop();
     },
   );
-  runTestIfPlatforms()(
+  testIf(isTestPlatformEmpty)(
     'unattended commands with invalid authentication should fail',
     async () => {
       let exitCode, stderr;
@@ -126,7 +127,7 @@ describe('sessions', () => {
       ]);
     },
   );
-  runTestIfPlatforms()(
+  testIf(isTestPlatformEmpty)(
     'prompt for password to authenticate attended commands',
     async () => {
       const password = agentPassword;
@@ -154,7 +155,7 @@ describe('sessions', () => {
       mockedPrompts.mockClear();
     },
   );
-  runTestIfPlatforms()(
+  testIf(isTestPlatformEmpty)(
     're-prompts for password if unable to authenticate command',
     async () => {
       await execUtils.pkStdio(

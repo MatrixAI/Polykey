@@ -6,7 +6,8 @@ import PolykeyAgent from '@/PolykeyAgent';
 import * as keysUtils from '@/keys/utils';
 import * as testUtils from '../../utils';
 import * as execUtils from '../../utils/exec';
-import { runTestIfPlatforms } from '../../utils';
+import { testIf } from '../../utils';
+import { isTestPlatformEmpty } from '../../utils/platform';
 
 describe('renew', () => {
   const logger = new Logger('renew test', LogLevel.WARN, [new StreamHandler()]);
@@ -52,7 +53,7 @@ describe('renew', () => {
     mockedGenerateKeyPair.mockRestore();
     mockedGenerateDeterministicKeyPair.mockRestore();
   });
-  runTestIfPlatforms()('renews the keypair', async () => {
+  testIf(isTestPlatformEmpty)('renews the keypair', async () => {
     // Can't test with target executable due to mocking
     // Get previous keypair and nodeId
     let { exitCode, stdout } = await execUtils.pkStdio(

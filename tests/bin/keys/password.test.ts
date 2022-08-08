@@ -3,7 +3,11 @@ import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as execUtils from '../../utils/exec';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
-import { runTestIfPlatforms } from '../../utils';
+import { testIf } from '../../utils';
+import {
+  isTestPlatformEmpty,
+  isTestPlatformDocker,
+} from '../../utils/platform';
 
 describe('password', () => {
   const logger = new Logger('password test', LogLevel.WARN, [
@@ -21,7 +25,7 @@ describe('password', () => {
   afterEach(async () => {
     await agentClose();
   });
-  runTestIfPlatforms('docker')(
+  testIf(isTestPlatformEmpty || isTestPlatformDocker)(
     'password changes the root password',
     async () => {
       const passPath = path.join(agentDir, 'passwordChange');

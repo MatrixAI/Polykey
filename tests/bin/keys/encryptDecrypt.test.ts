@@ -3,7 +3,8 @@ import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as execUtils from '../../utils/exec';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
-import { runTestIfPlatforms } from '../../utils';
+import { testIf } from '../../utils';
+import { isTestPlatformDocker } from '../../utils/platform';
 
 describe('encrypt-decrypt', () => {
   const logger = new Logger('encrypt-decrypt test', LogLevel.WARN, [
@@ -21,7 +22,7 @@ describe('encrypt-decrypt', () => {
   afterEach(async () => {
     await agentClose();
   });
-  runTestIfPlatforms('docker')('encrypts and decrypts data', async () => {
+  testIf(isTestPlatformDocker)('encrypts and decrypts data', async () => {
     let exitCode, stdout;
     const dataPath = path.join(agentDir, 'data');
     await fs.promises.writeFile(dataPath, 'abc', {

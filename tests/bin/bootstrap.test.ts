@@ -5,7 +5,8 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { errors as statusErrors } from '@/status';
 import { errors as bootstrapErrors } from '@/bootstrap';
 import * as execUtils from '../utils/exec';
-import { runTestIfPlatforms } from '../utils';
+import { testIf } from '../utils';
+import { isTestPlatformDocker, isTestPlatformEmpty } from '../utils/platform';
 import * as keysUtils from '../../src/keys/utils';
 
 describe('bootstrap', () => {
@@ -24,7 +25,7 @@ describe('bootstrap', () => {
       recursive: true,
     });
   });
-  runTestIfPlatforms('docker')(
+  testIf(isTestPlatformEmpty || isTestPlatformDocker)(
     'bootstraps node state',
     async () => {
       const password = 'password';
@@ -53,7 +54,7 @@ describe('bootstrap', () => {
     },
     global.defaultTimeout * 2,
   );
-  runTestIfPlatforms('docker')(
+  testIf(isTestPlatformEmpty || isTestPlatformDocker)(
     'bootstraps node state from provided private key',
     async () => {
       const password = 'password';
@@ -92,7 +93,7 @@ describe('bootstrap', () => {
     },
     global.defaultTimeout * 2,
   );
-  runTestIfPlatforms('docker')(
+  testIf(isTestPlatformEmpty || isTestPlatformDocker)(
     'bootstrapping occupied node state',
     async () => {
       const password = 'password';
@@ -144,7 +145,7 @@ describe('bootstrap', () => {
     },
     global.defaultTimeout * 2,
   );
-  runTestIfPlatforms('docker')(
+  testIf(isTestPlatformEmpty || isTestPlatformDocker)(
     'concurrent bootstrapping results in 1 success',
     async () => {
       const password = 'password';
@@ -225,7 +226,7 @@ describe('bootstrap', () => {
     },
     global.defaultTimeout * 2,
   );
-  runTestIfPlatforms('docker')(
+  testIf(isTestPlatformEmpty || isTestPlatformDocker)(
     'bootstrap when interrupted, requires fresh on next bootstrap',
     async () => {
       const password = 'password';

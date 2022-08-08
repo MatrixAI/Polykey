@@ -9,7 +9,8 @@ import { sysexits } from '@/errors';
 import * as execUtils from '../../utils/exec';
 import * as testNodesUtils from '../../nodes/utils';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
-import { runTestIfPlatforms } from '../../utils';
+import { testIf } from '../../utils';
+import { isTestPlatformEmpty } from '../../utils/platform';
 
 describe('find', () => {
   const logger = new Logger('find test', LogLevel.WARN, [new StreamHandler()]);
@@ -101,7 +102,7 @@ describe('find', () => {
       recursive: true,
     });
   });
-  runTestIfPlatforms()('finds an online node', async () => {
+  testIf(isTestPlatformEmpty)('finds an online node', async () => {
     const { exitCode, stdout } = await execUtils.pkStdio(
       [
         'nodes',
@@ -125,7 +126,7 @@ describe('find', () => {
       port: remoteOnlinePort,
     });
   });
-  runTestIfPlatforms()('finds an offline node', async () => {
+  testIf(isTestPlatformEmpty)('finds an offline node', async () => {
     const { exitCode, stdout } = await execUtils.pkStdio(
       [
         'nodes',
@@ -149,7 +150,7 @@ describe('find', () => {
       port: remoteOfflinePort,
     });
   });
-  runTestIfPlatforms()(
+  testIf(isTestPlatformEmpty)(
     'fails to find an unknown node',
     async () => {
       const unknownNodeId = nodesUtils.decodeNodeId(

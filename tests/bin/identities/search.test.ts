@@ -9,7 +9,8 @@ import * as identitiesUtils from '@/identities/utils';
 import * as execUtils from '../../utils/exec';
 import TestProvider from '../../identities/TestProvider';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
-import { runTestIfPlatforms } from '../../utils';
+import { testIf } from '../../utils';
+import { isTestPlatformEmpty } from '../../utils/platform';
 
 describe('search', () => {
   const logger = new Logger('search test', LogLevel.WARN, [
@@ -139,7 +140,7 @@ describe('search', () => {
       recursive: true,
     });
   });
-  runTestIfPlatforms()('finds connected identities', async () => {
+  testIf(isTestPlatformEmpty)('finds connected identities', async () => {
     // Can't test with target executable due to mocking
     let exitCode, stdout;
     let searchResults: Array<IdentityData>;
@@ -314,7 +315,7 @@ describe('search', () => {
     expect(searchResults).toHaveLength(2);
     mockedBrowser.mockRestore();
   });
-  runTestIfPlatforms()('should fail on invalid inputs', async () => {
+  testIf(isTestPlatformEmpty)('should fail on invalid inputs', async () => {
     let exitCode;
     // Invalid identity id
     ({ exitCode } = await execUtils.pkStdio(

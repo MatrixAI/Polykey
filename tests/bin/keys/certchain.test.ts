@@ -1,7 +1,11 @@
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as execUtils from '../../utils/exec';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
-import { runTestIfPlatforms } from '../../utils';
+import { testIf } from '../../utils';
+import {
+  isTestPlatformDocker,
+  isTestPlatformEmpty,
+} from '../../utils/platform';
 
 describe('certchain', () => {
   const logger = new Logger('certchain test', LogLevel.WARN, [
@@ -19,7 +23,7 @@ describe('certchain', () => {
   afterEach(async () => {
     await agentClose();
   });
-  runTestIfPlatforms('docker')(
+  testIf(isTestPlatformEmpty || isTestPlatformDocker)(
     'certchain gets the certificate chain',
     async () => {
       let { exitCode, stdout } = await execUtils.pkStdio(

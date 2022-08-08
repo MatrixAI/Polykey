@@ -7,8 +7,12 @@ import Session from '@/sessions/Session';
 import config from '@/config';
 import * as errors from '@/errors';
 import * as execUtils from '../../utils/exec';
-import { runTestIfPlatforms } from '../../utils';
+import { testIf } from '../../utils';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
+import {
+  isTestPlatformEmpty,
+  isTestPlatformDocker,
+} from '../../utils/platform';
 
 /**
  * Mock prompts module which is used prompt for password
@@ -32,7 +36,7 @@ describe('lockall', () => {
   afterEach(async () => {
     await agentClose();
   });
-  runTestIfPlatforms('docker')(
+  testIf(isTestPlatformEmpty || isTestPlatformDocker)(
     'lockall deletes the session token',
     async () => {
       await execUtils.pkStdio(
@@ -60,7 +64,7 @@ describe('lockall', () => {
       await session.stop();
     },
   );
-  runTestIfPlatforms()(
+  testIf(isTestPlatformEmpty)(
     'lockall ensures reauthentication is required',
     async () => {
       const password = agentPassword;
@@ -96,7 +100,7 @@ describe('lockall', () => {
       mockedPrompts.mockClear();
     },
   );
-  runTestIfPlatforms('docker')(
+  testIf(isTestPlatformEmpty || isTestPlatformDocker)(
     'lockall causes old session tokens to fail',
     async () => {
       await execUtils.pkStdio(

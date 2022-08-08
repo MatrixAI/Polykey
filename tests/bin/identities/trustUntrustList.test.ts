@@ -13,7 +13,8 @@ import * as identitiesUtils from '@/identities/utils';
 import * as execUtils from '../../utils/exec';
 import TestProvider from '../../identities/TestProvider';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
-import { runTestIfPlatforms } from '../../utils';
+import { testIf } from '../../utils';
+import { isTestPlatformEmpty } from '../../utils/platform';
 
 describe('trust/untrust/list', () => {
   const logger = new Logger('trust/untrust/list test', LogLevel.WARN, [
@@ -96,7 +97,7 @@ describe('trust/untrust/list', () => {
       recursive: true,
     });
   });
-  runTestIfPlatforms()(
+  testIf(isTestPlatformEmpty)(
     'trusts and untrusts a gestalt by node, adds it to the gestalt graph, and lists the gestalt with notify permission',
     async () => {
       let exitCode, stdout;
@@ -215,7 +216,7 @@ describe('trust/untrust/list', () => {
     },
     global.defaultTimeout * 2,
   );
-  runTestIfPlatforms()(
+  testIf(isTestPlatformEmpty)(
     'trusts and untrusts a gestalt by identity, adds it to the gestalt graph, and lists the gestalt with notify permission',
     async () => {
       let exitCode, stdout;
@@ -346,7 +347,7 @@ describe('trust/untrust/list', () => {
     },
     global.defaultTimeout * 2,
   );
-  runTestIfPlatforms()('should fail on invalid inputs', async () => {
+  testIf(isTestPlatformEmpty)('should fail on invalid inputs', async () => {
     let exitCode;
     // Trust
     ({ exitCode } = await execUtils.pkStdio(

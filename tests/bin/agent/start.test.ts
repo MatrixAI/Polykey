@@ -13,8 +13,12 @@ import * as statusErrors from '@/status/errors';
 import config from '@/config';
 import * as keysUtils from '@/keys/utils';
 import * as execUtils from '../../utils/exec';
-import { runDescribeIfPlatforms, runTestIfPlatforms } from '../../utils';
+import { describeIf, testIf } from '../../utils';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
+import {
+  isTestPlatformEmpty,
+  isTestPlatformDocker,
+} from '../../utils/platform';
 
 describe('start', () => {
   const logger = new Logger('start test', LogLevel.WARN, [new StreamHandler()]);
@@ -30,7 +34,7 @@ describe('start', () => {
       recursive: true,
     });
   });
-  runTestIfPlatforms('docker')(
+  testIf(isTestPlatformEmpty || isTestPlatformDocker)(
     'start in foreground',
     async () => {
       const password = 'abc123';
@@ -99,7 +103,7 @@ describe('start', () => {
     },
     global.defaultTimeout * 2,
   );
-  runTestIfPlatforms()(
+  testIf(isTestPlatformEmpty)(
     'start in background',
     async () => {
       const password = 'abc123';
@@ -200,7 +204,7 @@ describe('start', () => {
     },
     global.defaultTimeout * 2,
   );
-  runTestIfPlatforms('docker')(
+  testIf(isTestPlatformEmpty || isTestPlatformDocker)(
     'concurrent starts results in 1 success',
     async () => {
       const password = 'abc123';
@@ -292,7 +296,7 @@ describe('start', () => {
     },
     global.defaultTimeout * 2,
   );
-  runTestIfPlatforms('docker')(
+  testIf(isTestPlatformEmpty || isTestPlatformDocker)(
     'concurrent with bootstrap results in 1 success',
     async () => {
       const password = 'abc123';
@@ -378,7 +382,7 @@ describe('start', () => {
     },
     global.defaultTimeout * 2,
   );
-  runTestIfPlatforms('docker')(
+  testIf(isTestPlatformEmpty || isTestPlatformDocker)(
     'start with existing state',
     async () => {
       const password = 'abc123';
@@ -448,7 +452,7 @@ describe('start', () => {
     },
     global.defaultTimeout * 2,
   );
-  runTestIfPlatforms('docker')(
+  testIf(isTestPlatformEmpty || isTestPlatformDocker)(
     'start when interrupted, requires fresh on next start',
     async () => {
       const password = 'password';
@@ -555,7 +559,7 @@ describe('start', () => {
     },
     global.defaultTimeout * 2,
   );
-  runTestIfPlatforms('docker')(
+  testIf(isTestPlatformEmpty || isTestPlatformDocker)(
     'start from recovery code',
     async () => {
       const password1 = 'abc123';
@@ -689,7 +693,7 @@ describe('start', () => {
     },
     global.defaultTimeout * 3,
   );
-  runTestIfPlatforms('docker')(
+  testIf(isTestPlatformEmpty || isTestPlatformDocker)(
     'start with network configuration',
     async () => {
       const status = new Status({
@@ -742,7 +746,7 @@ describe('start', () => {
     },
     global.defaultTimeout * 2,
   );
-  runTestIfPlatforms('docker')(
+  testIf(isTestPlatformEmpty || isTestPlatformDocker)(
     'start with PK_ROOT_KEY env override',
     async () => {
       const status = new Status({
@@ -780,7 +784,7 @@ describe('start', () => {
     },
     global.defaultTimeout * 2,
   );
-  runTestIfPlatforms('docker')(
+  testIf(isTestPlatformEmpty || isTestPlatformDocker)(
     'start with --root-key-file override',
     async () => {
       const status = new Status({
@@ -829,7 +833,7 @@ describe('start', () => {
     },
     global.defaultTimeout * 2,
   );
-  runDescribeIfPlatforms()('start with global agent', () => {
+  describeIf(isTestPlatformEmpty)('start with global agent', () => {
     let agentDataDir;
     let agent1Status: StatusLive;
     let agent1Close: () => Promise<void>;

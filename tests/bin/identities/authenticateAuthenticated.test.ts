@@ -9,7 +9,8 @@ import * as identitiesUtils from '@/identities/utils';
 import * as execUtils from '../../utils/exec';
 import TestProvider from '../../identities/TestProvider';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
-import { runTestIfPlatforms } from '../../utils';
+import { testIf } from '../../utils';
+import { isTestPlatformEmpty } from '../../utils/platform';
 
 describe('authenticate/authenticated', () => {
   const logger = new Logger('authenticate/authenticated test', LogLevel.WARN, [
@@ -54,7 +55,7 @@ describe('authenticate/authenticated', () => {
       recursive: true,
     });
   });
-  runTestIfPlatforms()(
+  testIf(isTestPlatformEmpty)(
     'authenticates identity with a provider and gets authenticated identity',
     async () => {
       // Can't test with target command due to mocking
@@ -116,7 +117,7 @@ describe('authenticate/authenticated', () => {
       mockedBrowser.mockRestore();
     },
   );
-  runTestIfPlatforms()('should fail on invalid inputs', async () => {
+  testIf(isTestPlatformEmpty)('should fail on invalid inputs', async () => {
     let exitCode;
     // Authenticate
     // Invalid provider

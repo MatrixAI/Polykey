@@ -9,7 +9,8 @@ import { sysexits } from '@/errors';
 import * as execUtils from '../../utils/exec';
 import * as testNodesUtils from '../../nodes/utils';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
-import { runTestIfPlatforms } from '../../utils';
+import { testIf } from '../../utils';
+import { isTestPlatformEmpty } from '../../utils/platform';
 
 describe('ping', () => {
   const logger = new Logger('ping test', LogLevel.WARN, [new StreamHandler()]);
@@ -96,29 +97,32 @@ describe('ping', () => {
       recursive: true,
     });
   });
-  runTestIfPlatforms()('fails when pinging an offline node', async () => {
-    const { exitCode, stdout, stderr } = await execUtils.pkStdio(
-      [
-        'nodes',
-        'ping',
-        nodesUtils.encodeNodeId(remoteOfflineNodeId),
-        '--format',
-        'json',
-      ],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    );
-    expect(exitCode).toBe(sysexits.GENERAL); // Should fail with no response. for automation purposes.
-    expect(stderr).toContain('No response received');
-    expect(JSON.parse(stdout)).toEqual({
-      success: false,
-      message: 'No response received',
-    });
-  });
-  runTestIfPlatforms()('fails if node cannot be found', async () => {
+  testIf(isTestPlatformEmpty)(
+    'fails when pinging an offline node',
+    async () => {
+      const { exitCode, stdout, stderr } = await execUtils.pkStdio(
+        [
+          'nodes',
+          'ping',
+          nodesUtils.encodeNodeId(remoteOfflineNodeId),
+          '--format',
+          'json',
+        ],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      );
+      expect(exitCode).toBe(sysexits.GENERAL); // Should fail with no response. for automation purposes.
+      expect(stderr).toContain('No response received');
+      expect(JSON.parse(stdout)).toEqual({
+        success: false,
+        message: 'No response received',
+      });
+    },
+  );
+  testIf(isTestPlatformEmpty)('fails if node cannot be found', async () => {
     const fakeNodeId = nodesUtils.decodeNodeId(
       'vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0',
     );
@@ -144,7 +148,7 @@ describe('ping', () => {
       )} to an address.`,
     });
   });
-  runTestIfPlatforms()('succeed when pinging a live node', async () => {
+  testIf(isTestPlatformEmpty)('succeed when pinging a live node', async () => {
     const { exitCode, stdout } = await execUtils.pkStdio(
       [
         'nodes',

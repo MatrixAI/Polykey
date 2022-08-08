@@ -13,7 +13,8 @@ import * as identitiesUtils from '@/identities/utils';
 import * as execUtils from '../../utils/exec';
 import TestProvider from '../../identities/TestProvider';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
-import { runTestIfPlatforms } from '../../utils';
+import { testIf } from '../../utils';
+import { isTestPlatformEmpty } from '../../utils/platform';
 
 describe('claim', () => {
   const logger = new Logger('claim test', LogLevel.WARN, [new StreamHandler()]);
@@ -56,7 +57,7 @@ describe('claim', () => {
       recursive: true,
     });
   });
-  runTestIfPlatforms()('claims an identity', async () => {
+  testIf(isTestPlatformEmpty)('claims an identity', async () => {
     // Need an authenticated identity
     const mockedBrowser = jest
       .spyOn(identitiesUtils, 'browser')
@@ -102,18 +103,21 @@ describe('claim', () => {
     expect(claim!.payload.data.type).toBe('identity');
     mockedBrowser.mockRestore();
   });
-  runTestIfPlatforms()('cannot claim unauthenticated identities', async () => {
-    const { exitCode } = await execUtils.pkStdio(
-      ['identities', 'claim', testToken.providerId, testToken.identityId],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    );
-    expect(exitCode).toBe(sysexits.NOPERM);
-  });
-  runTestIfPlatforms()('should fail on invalid inputs', async () => {
+  testIf(isTestPlatformEmpty)(
+    'cannot claim unauthenticated identities',
+    async () => {
+      const { exitCode } = await execUtils.pkStdio(
+        ['identities', 'claim', testToken.providerId, testToken.identityId],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      );
+      expect(exitCode).toBe(sysexits.NOPERM);
+    },
+  );
+  testIf(isTestPlatformEmpty)('should fail on invalid inputs', async () => {
     let exitCode;
     // Invalid provider
     ({ exitCode } = await execUtils.pkStdio(
