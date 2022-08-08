@@ -34,7 +34,7 @@ describe('sessions', () => {
       logger,
     ));
     dataDir = await fs.promises.mkdtemp(
-      path.join(global.tmpDir, 'polykey-test-'),
+      path.join(globalThis.tmpDir, 'polykey-test-'),
     );
   });
   afterEach(async () => {

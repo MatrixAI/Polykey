@@ -23,7 +23,7 @@ describe('claim', () => {
   let remoteIdEncoded: NodeIdEncoded;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
-      path.join(global.tmpDir, 'polykey-test-'),
+      path.join(globalThis.tmpDir, 'polykey-test-'),
     );
     nodePath = path.join(dataDir, 'keynode');
     pkAgent = await PolykeyAgent.createPolykeyAgent({

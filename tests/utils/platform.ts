@@ -4,11 +4,11 @@ import shell from 'shelljs';
  * The `isTestPlatformX` constants are temporary until #435 is resolved
  */
 
-const isTestPlatformLinux = global.testPlatform === 'linux';
-const isTestPlatformMacOs = global.testPlatform === 'macos';
-const isTestPlatformWindows = global.testPlatform === 'windows';
-const isTestPlatformDocker = global.testPlatform === 'docker';
-const isTestPlatformEmpty = global.testPlatform == null;
+const isTestPlatformLinux = globalThis.testPlatform === 'linux';
+const isTestPlatformMacOs = globalThis.testPlatform === 'macos';
+const isTestPlatformWindows = globalThis.testPlatform === 'windows';
+const isTestPlatformDocker = globalThis.testPlatform === 'docker';
+const isTestPlatformEmpty = globalThis.testPlatform == null;
 
 const isPlatformLinux = process.platform === 'linux';
 const isPlatformWin32 = process.platform === 'win32';

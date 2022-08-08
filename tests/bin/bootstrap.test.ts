@@ -16,7 +16,7 @@ describe('bootstrap', () => {
   let dataDir: string;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
-      path.join(global.tmpDir, 'polykey-test-'),
+      path.join(globalThis.tmpDir, 'polykey-test-'),
     );
   });
   afterEach(async () => {
@@ -52,7 +52,7 @@ describe('bootstrap', () => {
           recoveryCode.split(' ').length === 24,
       ).toBe(true);
     },
-    global.defaultTimeout * 2,
+    globalThis.defaultTimeout * 2,
   );
   testIf(isTestPlatformEmpty || isTestPlatformDocker)(
     'bootstraps node state from provided private key',
@@ -91,7 +91,7 @@ describe('bootstrap', () => {
       );
       expect(exitCode2).toBe(0);
     },
-    global.defaultTimeout * 2,
+    globalThis.defaultTimeout * 2,
   );
   testIf(isTestPlatformEmpty || isTestPlatformDocker)(
     'bootstrapping occupied node state',
@@ -143,7 +143,7 @@ describe('bootstrap', () => {
           recoveryCode.split(' ').length === 24,
       ).toBe(true);
     },
-    global.defaultTimeout * 2,
+    globalThis.defaultTimeout * 2,
   );
   testIf(isTestPlatformEmpty || isTestPlatformDocker)(
     'concurrent bootstrapping results in 1 success',
@@ -224,7 +224,7 @@ describe('bootstrap', () => {
         expect(exitCode2).toBe(0);
       }
     },
-    global.defaultTimeout * 2,
+    globalThis.defaultTimeout * 2,
   );
   testIf(isTestPlatformEmpty || isTestPlatformDocker)(
     'bootstrap when interrupted, requires fresh on next bootstrap',
@@ -295,6 +295,6 @@ describe('bootstrap', () => {
           recoveryCode.split(' ').length === 24,
       ).toBe(true);
     },
-    global.defaultTimeout * 2,
+    globalThis.defaultTimeout * 2,
   );
 });

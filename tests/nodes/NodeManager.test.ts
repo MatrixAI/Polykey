@@ -215,7 +215,7 @@ describe(`${NodeManager.name} test`, () => {
         await server?.destroy();
       }
     },
-    global.failedConnectionTimeout * 2,
+    globalThis.failedConnectionTimeout * 2,
   ); // Ping needs to timeout (takes 20 seconds + setup + pulldown)
   test('getPublicKey', async () => {
     let server: PolykeyAgent | undefined;
@@ -329,7 +329,7 @@ describe(`${NodeManager.name} test`, () => {
 
       await x.nodeGraph.setNode(yNodeId, yNodeAddress);
       await y.nodeGraph.setNode(xNodeId, xNodeAddress);
-    }, global.polykeyStartupTimeout * 2);
+    }, globalThis.polykeyStartupTimeout * 2);
     afterAll(async () => {
       await y.stop();
       await x.stop();

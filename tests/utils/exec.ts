@@ -100,11 +100,11 @@ async function pkStdio(
   stdout: string;
   stderr: string;
 }> {
-  if (global.testCmd != null) return pkStdioTarget(args, env, cwd);
+  if (globalThis.testCmd != null) return pkStdioTarget(args, env, cwd);
 
   cwd =
     cwd ??
-    (await fs.promises.mkdtemp(path.join(global.tmpDir, 'polykey-test-')));
+    (await fs.promises.mkdtemp(path.join(globalThis.tmpDir, 'polykey-test-')));
   // Recall that we attempt to connect to all specified seed nodes on agent start.
   // Therefore, for testing purposes only, we default the seed nodes as empty
   // (if not defined in the env) to ensure no attempted connections. A regular
@@ -192,11 +192,11 @@ async function pkExec(
   stdout: string;
   stderr: string;
 }> {
-  if (global.testCmd != null) return pkExecTarget(args, env, cwd);
+  if (globalThis.testCmd != null) return pkExecTarget(args, env, cwd);
 
   cwd =
     cwd ??
-    (await fs.promises.mkdtemp(path.join(global.tmpDir, 'polykey-test-')));
+    (await fs.promises.mkdtemp(path.join(globalThis.tmpDir, 'polykey-test-')));
   env = {
     ...process.env,
     ...env,
@@ -207,10 +207,10 @@ async function pkExec(
   // PolykeyAgent is expected to initially connect to the mainnet seed nodes
   env['PK_SEED_NODES'] = env['PK_SEED_NODES'] ?? '';
   const tsConfigPath = path.resolve(
-    path.join(global.projectDir, 'tsconfig.json'),
+    path.join(globalThis.projectDir, 'tsconfig.json'),
   );
   const polykeyPath = path.resolve(
-    path.join(global.projectDir, 'src/bin/polykey.ts'),
+    path.join(globalThis.projectDir, 'src/bin/polykey.ts'),
   );
   return new Promise((resolve, reject) => {
     child_process.execFile(
@@ -251,11 +251,11 @@ async function pkSpawn(
   cwd?: string,
   logger: Logger = new Logger(pkSpawn.name),
 ): Promise<ChildProcess> {
-  if (global.testCmd != null) return pkSpawnTarget(args, env, cwd, logger);
+  if (globalThis.testCmd != null) return pkSpawnTarget(args, env, cwd, logger);
 
   cwd =
     cwd ??
-    (await fs.promises.mkdtemp(path.join(global.tmpDir, 'polykey-test-')));
+    (await fs.promises.mkdtemp(path.join(globalThis.tmpDir, 'polykey-test-')));
   env = {
     ...process.env,
     ...env,
@@ -266,17 +266,17 @@ async function pkSpawn(
   // PolykeyAgent is expected to initially connect to the mainnet seed nodes
   env['PK_SEED_NODES'] = env['PK_SEED_NODES'] ?? '';
   const tsConfigPath = path.resolve(
-    path.join(global.projectDir, 'tsconfig.json'),
+    path.join(globalThis.projectDir, 'tsconfig.json'),
   );
   const polykeyPath = path.resolve(
-    path.join(global.projectDir, 'src/bin/polykey.ts'),
+    path.join(globalThis.projectDir, 'src/bin/polykey.ts'),
   );
   const command =
-    global.testCmd != null
-      ? path.resolve(path.join(global.projectDir, global.testCmd))
+    globalThis.testCmd != null
+      ? path.resolve(path.join(globalThis.projectDir, globalThis.testCmd))
       : 'ts-node';
   const tsNodeArgs =
-    global.testCmd != null ? [] : ['--project', tsConfigPath, polykeyPath];
+    globalThis.testCmd != null ? [] : ['--project', tsConfigPath, polykeyPath];
   const subprocess = child_process.spawn(command, [...tsNodeArgs, ...args], {
     env,
     cwd,
@@ -309,7 +309,9 @@ async function pkStdioTarget(
 }> {
   cwd = path.resolve(
     cwd ??
-      (await fs.promises.mkdtemp(path.join(global.tmpDir, 'polykey-test-'))),
+      (await fs.promises.mkdtemp(
+        path.join(globalThis.tmpDir, 'polykey-test-'),
+      )),
   );
   // Recall that we attempt to connect to all specified seed nodes on agent start.
   // Therefore, for testing purposes only, we default the seed nodes as empty
@@ -323,7 +325,7 @@ async function pkStdioTarget(
     ...env,
     DOCKER_OPTIONS: generateDockerArgs(cwd).join(' '),
   };
-  const command = global.testCmd!;
+  const command = globalThis.testCmd!;
   const escapedArgs = args.map((x) => x.replace(/(["\s'$`\\])/g, '\\$1'));
   const subprocess = child_process.spawn(command, escapedArgs, {
     env,
@@ -367,7 +369,9 @@ async function pkExecTarget(
 }> {
   cwd = path.resolve(
     cwd ??
-      (await fs.promises.mkdtemp(path.join(global.tmpDir, 'polykey-test-'))),
+      (await fs.promises.mkdtemp(
+        path.join(globalThis.tmpDir, 'polykey-test-'),
+      )),
   );
   env = {
     ...process.env,
@@ -379,7 +383,7 @@ async function pkExecTarget(
   // (if not defined in the env) to ensure no attempted connections. A regular
   // PolykeyAgent is expected to initially connect to the mainnet seed nodes
   env['PK_SEED_NODES'] = env['PK_SEED_NODES'] ?? '';
-  const command = global.testCmd!;
+  const command = globalThis.testCmd!;
   const escapedArgs = args.map((x) => x.replace(/(["\s'$`\\])/g, '\\$1'));
   return new Promise((resolve, reject) => {
     let stdout = '',
@@ -420,7 +424,9 @@ async function pkSpawnTarget(
 ): Promise<ChildProcess> {
   cwd = path.resolve(
     cwd ??
-      (await fs.promises.mkdtemp(path.join(global.tmpDir, 'polykey-test-'))),
+      (await fs.promises.mkdtemp(
+        path.join(globalThis.tmpDir, 'polykey-test-'),
+      )),
   );
   env = {
     ...process.env,
@@ -432,7 +438,7 @@ async function pkSpawnTarget(
   // (if not defined in the env) to ensure no attempted connections. A regular
   // PolykeyAgent is expected to initially connect to the mainnet seed nodes
   env['PK_SEED_NODES'] = env['PK_SEED_NODES'] ?? '';
-  const command = global.testCmd!;
+  const command = globalThis.testCmd!;
   const escapedArgs = args.map((x) => x.replace(/(["\s'$`\\])/g, '\\$1'));
   const subprocess = child_process.spawn(command, escapedArgs, {
     env,
@@ -470,7 +476,7 @@ async function pkExpect({
 }> {
   cwd =
     cwd ??
-    (await fs.promises.mkdtemp(path.join(global.tmpDir, 'polykey-test-')));
+    (await fs.promises.mkdtemp(path.join(globalThis.tmpDir, 'polykey-test-')));
   env = {
     ...process.env,
     ...env,
@@ -481,10 +487,10 @@ async function pkExpect({
   // PolykeyAgent is expected to initially connect to the mainnet seed nodes
   env['PK_SEED_NODES'] = env['PK_SEED_NODES'] ?? '';
   const tsConfigPath = path.resolve(
-    path.join(global.projectDir, 'tsconfig.json'),
+    path.join(globalThis.projectDir, 'tsconfig.json'),
   );
   const polykeyPath = path.resolve(
-    path.join(global.projectDir, 'src/bin/polykey.ts'),
+    path.join(globalThis.projectDir, 'src/bin/polykey.ts'),
   );
   // Expect chain runs against stdout and stderr
   let expectChain = nexpect.spawn(
@@ -562,7 +568,7 @@ function expectProcessError(
  */
 async function setupTestAgent(privateKeyPem: PrivateKeyPem, logger: Logger) {
   const agentDir = await fs.promises.mkdtemp(
-    path.join(global.tmpDir, 'polykey-test-'),
+    path.join(globalThis.tmpDir, 'polykey-test-'),
   );
   const agentPassword = 'password';
   const agentProcess = await pkSpawn(
@@ -677,10 +683,10 @@ async function pkExecNs(
   // PolykeyAgent is expected to initially connect to the mainnet seed nodes
   env['PK_SEED_NODES'] = env['PK_SEED_NODES'] ?? '';
   const tsConfigPath = path.resolve(
-    path.join(global.projectDir, 'tsconfig.json'),
+    path.join(globalThis.projectDir, 'tsconfig.json'),
   );
   const polykeyPath = path.resolve(
-    path.join(global.projectDir, 'src/bin/polykey.ts'),
+    path.join(globalThis.projectDir, 'src/bin/polykey.ts'),
   );
   return new Promise((resolve, reject) => {
     child_process.execFile(
@@ -742,10 +748,10 @@ async function pkSpawnNs(
   // PolykeyAgent is expected to initially connect to the mainnet seed nodes
   env['PK_SEED_NODES'] = env['PK_SEED_NODES'] ?? '';
   const tsConfigPath = path.resolve(
-    path.join(global.projectDir, 'tsconfig.json'),
+    path.join(globalThis.projectDir, 'tsconfig.json'),
   );
   const polykeyPath = path.resolve(
-    path.join(global.projectDir, 'src/bin/polykey.ts'),
+    path.join(globalThis.projectDir, 'src/bin/polykey.ts'),
   );
   const subprocess = child_process.spawn(
     'nsenter',

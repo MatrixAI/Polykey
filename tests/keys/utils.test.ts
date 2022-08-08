@@ -95,6 +95,6 @@ describe('utils', () => {
       const nodeId2 = keysUtils.publicKeyToNodeId(keyPair2.publicKey);
       expect(nodeId1).toStrictEqual(nodeId2);
     },
-    global.defaultTimeout * 2,
+    globalThis.defaultTimeout * 2,
   );
 });

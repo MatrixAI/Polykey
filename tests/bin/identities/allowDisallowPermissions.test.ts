@@ -41,7 +41,7 @@ describe('allow/disallow/permissions', () => {
   let nodePort: Port;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
-      path.join(global.tmpDir, 'polykey-test-'),
+      path.join(globalThis.tmpDir, 'polykey-test-'),
     );
     nodePath = path.join(dataDir, 'polykey');
     pkAgent = await PolykeyAgent.createPolykeyAgent({

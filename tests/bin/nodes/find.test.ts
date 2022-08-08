@@ -28,7 +28,7 @@ describe('find', () => {
   let remoteOfflinePort: Port;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
-      path.join(global.tmpDir, 'polykey-test-'),
+      path.join(globalThis.tmpDir, 'polykey-test-'),
     );
     nodePath = path.join(dataDir, 'keynode');
     polykeyAgent = await PolykeyAgent.createPolykeyAgent({
@@ -181,6 +181,6 @@ describe('find', () => {
         port: 0,
       });
     },
-    global.failedConnectionTimeout,
+    globalThis.failedConnectionTimeout,
   );
 });

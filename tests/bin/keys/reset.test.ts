@@ -29,7 +29,7 @@ describe('reset', () => {
       .mockResolvedValueOnce(globalKeyPair)
       .mockResolvedValue(newKeyPair);
     dataDir = await fs.promises.mkdtemp(
-      path.join(global.tmpDir, 'polykey-test-'),
+      path.join(globalThis.tmpDir, 'polykey-test-'),
     );
     nodePath = path.join(dataDir, 'polykey');
     pkAgent = await PolykeyAgent.createPolykeyAgent({
@@ -43,7 +43,7 @@ describe('reset', () => {
       },
       logger,
     });
-  }, global.defaultTimeout * 2);
+  }, globalThis.defaultTimeout * 2);
   afterAll(async () => {
     await pkAgent.stop();
     await fs.promises.rm(dataDir, {

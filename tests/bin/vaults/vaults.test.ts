@@ -53,7 +53,7 @@ describe('CLI vaults', () => {
 
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
-      path.join(global.tmpDir, 'polykey-test-'),
+      path.join(globalThis.tmpDir, 'polykey-test-'),
     );
     passwordFile = path.join(dataDir, 'passwordFile');
     await fs.promises.writeFile(passwordFile, 'password');
@@ -190,7 +190,7 @@ describe('CLI vaults', () => {
     'should clone and pull a vault',
     async () => {
       const dataDir2 = await fs.promises.mkdtemp(
-        path.join(global.tmpDir, 'polykey-test-'),
+        path.join(globalThis.tmpDir, 'polykey-test-'),
       );
       const targetPolykeyAgent = await PolykeyAgent.createPolykeyAgent({
         password,
@@ -355,7 +355,7 @@ describe('CLI vaults', () => {
         recursive: true,
       });
     },
-    global.defaultTimeout * 3,
+    globalThis.defaultTimeout * 3,
   );
   describe('commandShare', () => {
     testIf(isTestPlatformEmpty)('Should share a vault', async () => {
@@ -832,7 +832,7 @@ describe('CLI vaults', () => {
           await remoteOnline?.destroy();
         }
       },
-      global.defaultTimeout * 2,
+      globalThis.defaultTimeout * 2,
     );
   });
 });

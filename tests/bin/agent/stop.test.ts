@@ -19,7 +19,7 @@ describe('stop', () => {
   let dataDir: string;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
-      path.join(global.testDir, 'polykey-test-'),
+      path.join(globalThis.testDir, 'polykey-test-'),
     );
   });
   afterEach(async () => {
@@ -74,7 +74,7 @@ describe('stop', () => {
       await sleep(5000);
       agentProcess.kill();
     },
-    global.defaultTimeout * 2,
+    globalThis.defaultTimeout * 2,
   );
   testIf(isTestPlatformEmpty || isTestPlatformDocker)(
     'stopping is idempotent during concurrent calls and STOPPING or DEAD status',
@@ -162,7 +162,7 @@ describe('stop', () => {
       expect(agentStop4.exitCode).toBe(0);
       agentProcess.kill();
     },
-    global.defaultTimeout * 2,
+    globalThis.defaultTimeout * 2,
   );
   testIf(isTestPlatformEmpty)(
     'stopping starting agent results in error',
@@ -223,7 +223,7 @@ describe('stop', () => {
       await status.waitFor('DEAD');
       agentProcess.kill();
     },
-    global.defaultTimeout * 2,
+    globalThis.defaultTimeout * 2,
   );
   testIf(isTestPlatformEmpty || isTestPlatformDocker)(
     'stopping while unauthenticated does not stop',
@@ -283,6 +283,6 @@ describe('stop', () => {
       await status.waitFor('DEAD');
       agentProcess.kill();
     },
-    global.defaultTimeout * 2,
+    globalThis.defaultTimeout * 2,
   );
 });

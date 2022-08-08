@@ -27,7 +27,7 @@ describe('authenticate/authenticated', () => {
   let testProvider: TestProvider;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
-      path.join(global.tmpDir, 'polykey-test-'),
+      path.join(globalThis.tmpDir, 'polykey-test-'),
     );
     nodePath = path.join(dataDir, 'polykey');
     // Cannot use global shared agent since we need to register a provider

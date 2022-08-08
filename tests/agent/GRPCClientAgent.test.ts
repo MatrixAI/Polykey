@@ -168,7 +168,7 @@ describe(GRPCClientAgent.name, () => {
       serverHost: host,
       serverPort: port,
     });
-  }, global.defaultTimeout);
+  }, globalThis.defaultTimeout);
   afterEach(async () => {
     await testAgentUtils.closeTestAgentClient(client);
     await testAgentUtils.closeTestAgentServer(server);

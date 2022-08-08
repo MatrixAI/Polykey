@@ -143,7 +143,7 @@ describe('NotificationsManager', () => {
       host: receiver.proxy.getProxyHost(),
       port: receiver.proxy.getProxyPort(),
     });
-  }, global.defaultTimeout);
+  }, globalThis.defaultTimeout);
   afterEach(async () => {
     await receiver.stop();
     await queue.stop();

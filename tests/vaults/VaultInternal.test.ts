@@ -271,7 +271,7 @@ describe('VaultInternal', () => {
       });
       expect(files).toEqual([]);
     },
-    global.defaultTimeout * 2,
+    globalThis.defaultTimeout * 2,
   );
   test('write operation allowed', async () => {
     await vault.writeF(async (efs) => {
@@ -535,7 +535,7 @@ describe('VaultInternal', () => {
         return vault.version(fourthCommit);
       }).rejects.toThrow();
     },
-    global.defaultTimeout,
+    globalThis.defaultTimeout,
   );
   test('can recover from dirty state', async () => {
     await vault.writeF(async (efs) => {
@@ -734,7 +734,7 @@ describe('VaultInternal', () => {
         ).rejects.toThrow(git.Errors.CommitNotFetchedError);
       }
     },
-    global.defaultTimeout * 2,
+    globalThis.defaultTimeout * 2,
   );
   // Locking tests
   const waitDelay = 200;

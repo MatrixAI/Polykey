@@ -41,7 +41,7 @@ describe('discover/get', () => {
   let nodeAPort: Port;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
-      path.join(global.tmpDir, 'polykey-test-'),
+      path.join(globalThis.tmpDir, 'polykey-test-'),
     );
     // Setup the remote gestalt state here
     // Setting up remote nodes

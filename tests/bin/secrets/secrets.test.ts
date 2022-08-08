@@ -19,7 +19,7 @@ describe('CLI secrets', () => {
 
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
-      path.join(global.tmpDir, 'polykey-test-'),
+      path.join(globalThis.tmpDir, 'polykey-test-'),
     );
     passwordFile = path.join(dataDir, 'passwordFile');
     await fs.promises.writeFile(passwordFile, 'password');
@@ -76,7 +76,7 @@ describe('CLI secrets', () => {
           ).toStrictEqual('this is a secret');
         });
       },
-      global.defaultTimeout * 2,
+      globalThis.defaultTimeout * 2,
     );
   });
   describe('commandDeleteSecret', () => {
@@ -134,7 +134,7 @@ describe('CLI secrets', () => {
         const result = await execUtils.pkStdio([...command], {}, dataDir);
         expect(result.exitCode).toBe(0);
       },
-      global.defaultTimeout * 2,
+      globalThis.defaultTimeout * 2,
     );
   });
   describe('commandNewDir', () => {

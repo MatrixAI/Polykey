@@ -19,7 +19,7 @@ describe('status', () => {
   let dataDir: string;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
-      path.join(global.tmpDir, 'polykey-test-'),
+      path.join(globalThis.tmpDir, 'polykey-test-'),
     );
   });
   afterEach(async () => {
@@ -112,7 +112,7 @@ describe('status', () => {
         status: 'DEAD',
       });
     },
-    global.defaultTimeout * 2,
+    globalThis.defaultTimeout * 2,
   );
   testIf(isTestPlatformEmpty || isTestPlatformDocker)(
     'status on missing agent',

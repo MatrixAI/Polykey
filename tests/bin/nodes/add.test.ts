@@ -28,7 +28,7 @@ describe('add', () => {
   let mockedPingNode: jest.SpyInstance;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
-      path.join(global.tmpDir, 'polykey-test-'),
+      path.join(globalThis.tmpDir, 'polykey-test-'),
     );
     nodePath = path.join(dataDir, 'polykey');
     mockedPingNode = jest.spyOn(NodeManager.prototype, 'pingNode');

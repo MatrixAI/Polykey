@@ -80,7 +80,7 @@ describe('endpoint independent NAT traversal', () => {
       });
       await tearDownNAT();
     },
-    global.defaultTimeout * 2,
+    globalThis.defaultTimeout * 2,
   );
   testIf(supportsNatTesting)(
     'node1 connects to node2 behind EIM NAT',
@@ -186,7 +186,7 @@ describe('endpoint independent NAT traversal', () => {
       });
       await tearDownNAT();
     },
-    global.defaultTimeout * 2,
+    globalThis.defaultTimeout * 2,
   );
   testIf(supportsNatTesting)(
     'node1 behind EIM NAT connects to node2 behind EIM NAT',
@@ -292,7 +292,7 @@ describe('endpoint independent NAT traversal', () => {
       });
       await tearDownNAT();
     },
-    global.defaultTimeout * 2,
+    globalThis.defaultTimeout * 2,
   );
   testIf(supportsNatTesting)(
     'node1 behind EIM NAT connects to node2 behind EIM NAT via seed node',
@@ -344,7 +344,7 @@ describe('endpoint independent NAT traversal', () => {
       });
       await tearDownNAT();
     },
-    global.defaultTimeout * 2,
+    globalThis.defaultTimeout * 2,
   );
   testIf(supportsNatTesting)(
     'node1 behind EIM NAT cannot connect to node2 behind EDM NAT',
@@ -395,6 +395,6 @@ describe('endpoint independent NAT traversal', () => {
       });
       await tearDownNAT();
     },
-    global.defaultTimeout * 2,
+    globalThis.defaultTimeout * 2,
   );
 });

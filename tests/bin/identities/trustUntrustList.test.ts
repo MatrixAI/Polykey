@@ -37,7 +37,7 @@ describe('trust/untrust/list', () => {
   let nodePort: Port;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
-      path.join(global.tmpDir, 'polykey-test-'),
+      path.join(globalThis.tmpDir, 'polykey-test-'),
     );
     nodePath = path.join(dataDir, 'polykey');
     pkAgent = await PolykeyAgent.createPolykeyAgent({
@@ -214,7 +214,7 @@ describe('trust/untrust/list', () => {
       // @ts-ignore - get protected property
       pkAgent.discovery.visitedVertices.clear();
     },
-    global.defaultTimeout * 2,
+    globalThis.defaultTimeout * 2,
   );
   testIf(isTestPlatformEmpty)(
     'trusts and untrusts a gestalt by identity, adds it to the gestalt graph, and lists the gestalt with notify permission',
@@ -345,7 +345,7 @@ describe('trust/untrust/list', () => {
       // @ts-ignore - get protected property
       pkAgent.discovery.visitedVertices.clear();
     },
-    global.defaultTimeout * 2,
+    globalThis.defaultTimeout * 2,
   );
   testIf(isTestPlatformEmpty)('should fail on invalid inputs', async () => {
     let exitCode;

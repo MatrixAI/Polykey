@@ -25,7 +25,7 @@ describe('start', () => {
   let dataDir: string;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
-      path.join(global.tmpDir, 'polykey-test-'),
+      path.join(globalThis.tmpDir, 'polykey-test-'),
     );
   });
   afterEach(async () => {
@@ -101,7 +101,7 @@ describe('start', () => {
       const statusInfo = (await status.waitFor('DEAD'))!;
       expect(statusInfo.status).toBe('DEAD');
     },
-    global.defaultTimeout * 2,
+    globalThis.defaultTimeout * 2,
   );
   testIf(isTestPlatformEmpty)(
     'start in background',
@@ -202,7 +202,7 @@ describe('start', () => {
       const statusInfo2 = await status.waitFor('DEAD');
       expect(statusInfo2.status).toBe('DEAD');
     },
-    global.defaultTimeout * 2,
+    globalThis.defaultTimeout * 2,
   );
   testIf(isTestPlatformEmpty || isTestPlatformDocker)(
     'concurrent starts results in 1 success',
@@ -294,7 +294,7 @@ describe('start', () => {
         agentProcess1.kill('SIGQUIT');
       }
     },
-    global.defaultTimeout * 2,
+    globalThis.defaultTimeout * 2,
   );
   testIf(isTestPlatformEmpty || isTestPlatformDocker)(
     'concurrent with bootstrap results in 1 success',
@@ -380,7 +380,7 @@ describe('start', () => {
         agentProcess.kill('SIGTERM');
       }
     },
-    global.defaultTimeout * 2,
+    globalThis.defaultTimeout * 2,
   );
   testIf(isTestPlatformEmpty || isTestPlatformDocker)(
     'start with existing state',
@@ -450,7 +450,7 @@ describe('start', () => {
       const statusInfo = (await status.waitFor('DEAD'))!;
       expect(statusInfo.status).toBe('DEAD');
     },
-    global.defaultTimeout * 2,
+    globalThis.defaultTimeout * 2,
   );
   testIf(isTestPlatformEmpty || isTestPlatformDocker)(
     'start when interrupted, requires fresh on next start',
@@ -557,7 +557,7 @@ describe('start', () => {
       const statusInfo = (await status.readStatus())!;
       expect(statusInfo.status).toBe('DEAD');
     },
-    global.defaultTimeout * 2,
+    globalThis.defaultTimeout * 2,
   );
   testIf(isTestPlatformEmpty || isTestPlatformDocker)(
     'start from recovery code',
@@ -691,7 +691,7 @@ describe('start', () => {
       agentProcess4.kill('SIGTERM');
       await execUtils.processExit(agentProcess4);
     },
-    global.defaultTimeout * 3,
+    globalThis.defaultTimeout * 3,
   );
   testIf(isTestPlatformEmpty || isTestPlatformDocker)(
     'start with network configuration',
@@ -744,7 +744,7 @@ describe('start', () => {
       // Check for graceful exit
       await status.waitFor('DEAD');
     },
-    global.defaultTimeout * 2,
+    globalThis.defaultTimeout * 2,
   );
   testIf(isTestPlatformEmpty || isTestPlatformDocker)(
     'start with PK_ROOT_KEY env override',
@@ -782,7 +782,7 @@ describe('start', () => {
       // Check for graceful exit
       await status.waitFor('DEAD');
     },
-    global.defaultTimeout * 2,
+    globalThis.defaultTimeout * 2,
   );
   testIf(isTestPlatformEmpty || isTestPlatformDocker)(
     'start with --root-key-file override',
@@ -831,7 +831,7 @@ describe('start', () => {
       // Check for graceful exit
       await status.waitFor('DEAD');
     },
-    global.defaultTimeout * 2,
+    globalThis.defaultTimeout * 2,
   );
   describeIf(isTestPlatformEmpty)('start with global agent', () => {
     let agentDataDir;
@@ -848,7 +848,7 @@ describe('start', () => {
     beforeEach(async () => {
       // Additional seed node
       agentDataDir = await fs.promises.mkdtemp(
-        path.join(global.tmpDir, 'polykey-test-'),
+        path.join(globalThis.tmpDir, 'polykey-test-'),
       );
       ({ agentStatus: agent1Status, agentClose: agent1Close } =
         await execUtils.setupTestAgent(globalRootKeyPems[0], logger));
@@ -931,7 +931,7 @@ describe('start', () => {
         mockedConfigDefaultsNetwork.mockRestore();
         await status.waitFor('DEAD');
       },
-      global.defaultTimeout * 2,
+      globalThis.defaultTimeout * 2,
     );
     test(
       'start with seed nodes environment variable',
@@ -993,7 +993,7 @@ describe('start', () => {
         mockedConfigDefaultsNetwork.mockRestore();
         await status.waitFor('DEAD');
       },
-      global.defaultTimeout * 2,
+      globalThis.defaultTimeout * 2,
     );
   });
 });
