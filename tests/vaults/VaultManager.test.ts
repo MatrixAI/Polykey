@@ -177,7 +177,7 @@ describe('VaultManager', () => {
         await vaultManager?.destroy();
       }
     },
-    global.defaultTimeout * 4,
+    globalThis.defaultTimeout * 4,
   );
   test('can rename a vault', async () => {
     const vaultManager = await VaultManager.createVaultManager({
@@ -315,7 +315,7 @@ describe('VaultManager', () => {
         await vaultManager?.destroy();
       }
     },
-    global.defaultTimeout * 2,
+    globalThis.defaultTimeout * 2,
   );
   test('cannot concurrently create vaults with the same name', async () => {
     const vaultManager = await VaultManager.createVaultManager({
@@ -974,7 +974,7 @@ describe('VaultManager', () => {
           await vaultManager?.destroy();
         }
       },
-      global.defaultTimeout * 2,
+      globalThis.defaultTimeout * 2,
     );
     test(
       'manage pulling from different remotes',
@@ -1110,7 +1110,7 @@ describe('VaultManager', () => {
           await vaultManager?.destroy();
         }
       },
-      global.failedConnectionTimeout,
+      globalThis.failedConnectionTimeout,
     );
     test(
       'able to recover metadata after complex operations',
@@ -1186,7 +1186,7 @@ describe('VaultManager', () => {
           await vaultManager?.destroy();
         }
       },
-      global.defaultTimeout * 2,
+      globalThis.defaultTimeout * 2,
     );
     test('throw when trying to commit to a cloned vault', async () => {
       const vaultManager = await VaultManager.createVaultManager({
@@ -1384,7 +1384,7 @@ describe('VaultManager', () => {
           await vaultManager?.destroy();
         }
       },
-      global.failedConnectionTimeout,
+      globalThis.failedConnectionTimeout,
     );
   });
   test('handleScanVaults should list all vaults with permissions', async () => {

@@ -316,7 +316,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
         mockedPingNode.mockRestore();
       }
     },
-    global.polykeyStartupTimeout,
+    globalThis.polykeyStartupTimeout,
   );
   test(
     'cannot find node (contacts remote node)',
@@ -368,7 +368,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
         await nodeConnectionManager.stop();
       }
     },
-    global.failedConnectionTimeout * 2,
+    globalThis.failedConnectionTimeout * 2,
   );
   test('receives 20 closest local nodes from connected target', async () => {
     let serverPKAgent: PolykeyAgent | undefined;

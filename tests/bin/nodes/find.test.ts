@@ -9,7 +9,7 @@ import { sysexits } from '@/errors';
 import * as execUtils from '../../utils/exec';
 import * as testNodesUtils from '../../nodes/utils';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
-import { runTestIfPlatforms } from '../../utils';
+import * as testUtils from '../../utils';
 
 describe('find', () => {
   const logger = new Logger('find test', LogLevel.WARN, [new StreamHandler()]);
@@ -27,7 +27,7 @@ describe('find', () => {
   let remoteOfflinePort: Port;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
-      path.join(global.tmpDir, 'polykey-test-'),
+      path.join(globalThis.tmpDir, 'polykey-test-'),
     );
     nodePath = path.join(dataDir, 'keynode');
     polykeyAgent = await PolykeyAgent.createPolykeyAgent({
@@ -101,55 +101,61 @@ describe('find', () => {
       recursive: true,
     });
   });
-  runTestIfPlatforms()('finds an online node', async () => {
-    const { exitCode, stdout } = await execUtils.pkStdio(
-      [
-        'nodes',
-        'find',
-        nodesUtils.encodeNodeId(remoteOnlineNodeId),
-        '--format',
-        'json',
-      ],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    );
-    expect(exitCode).toBe(0);
-    expect(JSON.parse(stdout)).toEqual({
-      success: true,
-      message: `Found node at ${remoteOnlineHost}:${remoteOnlinePort}`,
-      id: nodesUtils.encodeNodeId(remoteOnlineNodeId),
-      host: remoteOnlineHost,
-      port: remoteOnlinePort,
-    });
-  });
-  runTestIfPlatforms()('finds an offline node', async () => {
-    const { exitCode, stdout } = await execUtils.pkStdio(
-      [
-        'nodes',
-        'find',
-        nodesUtils.encodeNodeId(remoteOfflineNodeId),
-        '--format',
-        'json',
-      ],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    );
-    expect(exitCode).toBe(0);
-    expect(JSON.parse(stdout)).toEqual({
-      success: true,
-      message: `Found node at ${remoteOfflineHost}:${remoteOfflinePort}`,
-      id: nodesUtils.encodeNodeId(remoteOfflineNodeId),
-      host: remoteOfflineHost,
-      port: remoteOfflinePort,
-    });
-  });
-  runTestIfPlatforms()(
+  testUtils.testIf(testUtils.isTestPlatformEmpty)(
+    'finds an online node',
+    async () => {
+      const { exitCode, stdout } = await execUtils.pkStdio(
+        [
+          'nodes',
+          'find',
+          nodesUtils.encodeNodeId(remoteOnlineNodeId),
+          '--format',
+          'json',
+        ],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      );
+      expect(exitCode).toBe(0);
+      expect(JSON.parse(stdout)).toEqual({
+        success: true,
+        message: `Found node at ${remoteOnlineHost}:${remoteOnlinePort}`,
+        id: nodesUtils.encodeNodeId(remoteOnlineNodeId),
+        host: remoteOnlineHost,
+        port: remoteOnlinePort,
+      });
+    },
+  );
+  testUtils.testIf(testUtils.isTestPlatformEmpty)(
+    'finds an offline node',
+    async () => {
+      const { exitCode, stdout } = await execUtils.pkStdio(
+        [
+          'nodes',
+          'find',
+          nodesUtils.encodeNodeId(remoteOfflineNodeId),
+          '--format',
+          'json',
+        ],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      );
+      expect(exitCode).toBe(0);
+      expect(JSON.parse(stdout)).toEqual({
+        success: true,
+        message: `Found node at ${remoteOfflineHost}:${remoteOfflinePort}`,
+        id: nodesUtils.encodeNodeId(remoteOfflineNodeId),
+        host: remoteOfflineHost,
+        port: remoteOfflinePort,
+      });
+    },
+  );
+  testUtils.testIf(testUtils.isTestPlatformEmpty)(
     'fails to find an unknown node',
     async () => {
       const unknownNodeId = nodesUtils.decodeNodeId(
@@ -180,6 +186,6 @@ describe('find', () => {
         port: 0,
       });
     },
-    global.failedConnectionTimeout,
+    globalThis.failedConnectionTimeout,
   );
 });

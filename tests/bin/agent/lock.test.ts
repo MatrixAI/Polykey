@@ -6,7 +6,7 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import Session from '@/sessions/Session';
 import config from '@/config';
 import * as execUtils from '../../utils/exec';
-import { runTestIfPlatforms } from '../../utils';
+import * as testUtils from '../../utils';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 jest.mock('prompts');
@@ -26,7 +26,9 @@ describe('lock', () => {
   afterEach(async () => {
     await agentClose();
   });
-  runTestIfPlatforms('docker')('lock deletes the session token', async () => {
+  testUtils.testIf(
+    testUtils.isTestPlatformEmpty || testUtils.isTestPlatformDocker,
+  )('lock deletes the session token', async () => {
     await execUtils.pkStdio(
       ['agent', 'unlock'],
       {
@@ -51,7 +53,7 @@ describe('lock', () => {
     expect(await session.readToken()).toBeUndefined();
     await session.stop();
   });
-  runTestIfPlatforms()(
+  testUtils.testIf(testUtils.isTestPlatformEmpty)(
     'lock ensures re-authentication is required',
     async () => {
       const password = agentPassword;

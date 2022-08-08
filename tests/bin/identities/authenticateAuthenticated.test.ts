@@ -9,7 +9,7 @@ import * as identitiesUtils from '@/identities/utils';
 import * as execUtils from '../../utils/exec';
 import TestProvider from '../../identities/TestProvider';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
-import { runTestIfPlatforms } from '../../utils';
+import * as testUtils from '../../utils';
 
 describe('authenticate/authenticated', () => {
   const logger = new Logger('authenticate/authenticated test', LogLevel.WARN, [
@@ -26,7 +26,7 @@ describe('authenticate/authenticated', () => {
   let testProvider: TestProvider;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
-      path.join(global.tmpDir, 'polykey-test-'),
+      path.join(globalThis.tmpDir, 'polykey-test-'),
     );
     nodePath = path.join(dataDir, 'polykey');
     // Cannot use global shared agent since we need to register a provider
@@ -54,7 +54,7 @@ describe('authenticate/authenticated', () => {
       recursive: true,
     });
   });
-  runTestIfPlatforms()(
+  testUtils.testIf(testUtils.isTestPlatformEmpty)(
     'authenticates identity with a provider and gets authenticated identity',
     async () => {
       // Can't test with target command due to mocking
@@ -116,39 +116,42 @@ describe('authenticate/authenticated', () => {
       mockedBrowser.mockRestore();
     },
   );
-  runTestIfPlatforms()('should fail on invalid inputs', async () => {
-    let exitCode;
-    // Authenticate
-    // Invalid provider
-    ({ exitCode } = await execUtils.pkStdio(
-      ['identities', 'authenticate', '', testToken.identityId],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    ));
-    expect(exitCode).toBe(sysexits.USAGE);
-    // Invalid identity
-    ({ exitCode } = await execUtils.pkStdio(
-      ['identities', 'authenticate', testToken.providerId, ''],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    ));
-    expect(exitCode).toBe(sysexits.USAGE);
-    // Authenticated
-    // Invalid provider
-    ({ exitCode } = await execUtils.pkStdio(
-      ['identities', 'authenticate', '--provider-id', ''],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    ));
-    expect(exitCode).toBe(sysexits.USAGE);
-  });
+  testUtils.testIf(testUtils.isTestPlatformEmpty)(
+    'should fail on invalid inputs',
+    async () => {
+      let exitCode;
+      // Authenticate
+      // Invalid provider
+      ({ exitCode } = await execUtils.pkStdio(
+        ['identities', 'authenticate', '', testToken.identityId],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      ));
+      expect(exitCode).toBe(sysexits.USAGE);
+      // Invalid identity
+      ({ exitCode } = await execUtils.pkStdio(
+        ['identities', 'authenticate', testToken.providerId, ''],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      ));
+      expect(exitCode).toBe(sysexits.USAGE);
+      // Authenticated
+      // Invalid provider
+      ({ exitCode } = await execUtils.pkStdio(
+        ['identities', 'authenticate', '--provider-id', ''],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      ));
+      expect(exitCode).toBe(sysexits.USAGE);
+    },
+  );
 });

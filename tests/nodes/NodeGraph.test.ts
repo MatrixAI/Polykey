@@ -14,7 +14,6 @@ import { IdInternal } from '@matrixai/id';
 import NodeGraph from '@/nodes/NodeGraph';
 import KeyManager from '@/keys/KeyManager';
 import * as keysUtils from '@/keys/utils';
-
 import * as nodesUtils from '@/nodes/utils';
 import * as nodesErrors from '@/nodes/errors';
 import * as utils from '@/utils';

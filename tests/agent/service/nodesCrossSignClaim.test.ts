@@ -84,7 +84,7 @@ describe('nodesCrossSignClaim', () => {
       port: grpcServer.getPort(),
       logger,
     });
-  }, global.defaultTimeout);
+  }, globalThis.defaultTimeout);
   afterEach(async () => {
     await grpcClient.destroy();
     await grpcServer.stop();

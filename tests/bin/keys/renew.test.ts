@@ -6,7 +6,6 @@ import PolykeyAgent from '@/PolykeyAgent';
 import * as keysUtils from '@/keys/utils';
 import * as testUtils from '../../utils';
 import * as execUtils from '../../utils/exec';
-import { runTestIfPlatforms } from '../../utils';
 
 describe('renew', () => {
   const logger = new Logger('renew test', LogLevel.WARN, [new StreamHandler()]);
@@ -28,7 +27,7 @@ describe('renew', () => {
       .mockResolvedValueOnce(globalKeyPair)
       .mockResolvedValue(newKeyPair);
     dataDir = await fs.promises.mkdtemp(
-      path.join(global.tmpDir, 'polykey-test-'),
+      path.join(globalThis.tmpDir, 'polykey-test-'),
     );
     nodePath = path.join(dataDir, 'polykey');
     pkAgent = await PolykeyAgent.createPolykeyAgent({
@@ -42,7 +41,7 @@ describe('renew', () => {
       },
       logger,
     });
-  }, global.defaultTimeout * 2);
+  }, globalThis.defaultTimeout * 2);
   afterAll(async () => {
     await pkAgent.stop();
     await fs.promises.rm(dataDir, {
@@ -52,77 +51,80 @@ describe('renew', () => {
     mockedGenerateKeyPair.mockRestore();
     mockedGenerateDeterministicKeyPair.mockRestore();
   });
-  runTestIfPlatforms()('renews the keypair', async () => {
-    // Can't test with target executable due to mocking
-    // Get previous keypair and nodeId
-    let { exitCode, stdout } = await execUtils.pkStdio(
-      ['keys', 'root', '--private-key', '--format', 'json'],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    );
-    expect(exitCode).toBe(0);
-    const prevPublicKey = JSON.parse(stdout).publicKey;
-    const prevPrivateKey = JSON.parse(stdout).privateKey;
-    ({ exitCode, stdout } = await execUtils.pkStdio(
-      ['agent', 'status', '--format', 'json'],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    ));
-    expect(exitCode).toBe(0);
-    const prevNodeId = JSON.parse(stdout).nodeId;
-    // Renew keypair
-    const passPath = path.join(dataDir, 'renew-password');
-    await fs.promises.writeFile(passPath, 'password-new');
-    ({ exitCode } = await execUtils.pkStdio(
-      ['keys', 'renew', '--password-new-file', passPath],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    ));
-    expect(exitCode).toBe(0);
-    // Get new keypair and nodeId and compare against old
-    ({ exitCode, stdout } = await execUtils.pkStdio(
-      ['keys', 'root', '--private-key', '--format', 'json'],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: 'password-new',
-      },
-      dataDir,
-    ));
-    expect(exitCode).toBe(0);
-    const newPublicKey = JSON.parse(stdout).publicKey;
-    const newPrivateKey = JSON.parse(stdout).privateKey;
-    ({ exitCode, stdout } = await execUtils.pkStdio(
-      ['agent', 'status', '--format', 'json'],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: 'password-new',
-      },
-      dataDir,
-    ));
-    expect(exitCode).toBe(0);
-    const newNodeId = JSON.parse(stdout).nodeId;
-    expect(newPublicKey).not.toBe(prevPublicKey);
-    expect(newPrivateKey).not.toBe(prevPrivateKey);
-    expect(newNodeId).not.toBe(prevNodeId);
-    // Revert side effects
-    await fs.promises.writeFile(passPath, password);
-    ({ exitCode } = await execUtils.pkStdio(
-      ['keys', 'password', '--password-new-file', passPath],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: 'password-new',
-      },
-      dataDir,
-    ));
-    expect(exitCode).toBe(0);
-  });
+  testUtils.testIf(testUtils.isTestPlatformEmpty)(
+    'renews the keypair',
+    async () => {
+      // Can't test with target executable due to mocking
+      // Get previous keypair and nodeId
+      let { exitCode, stdout } = await execUtils.pkStdio(
+        ['keys', 'root', '--private-key', '--format', 'json'],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      );
+      expect(exitCode).toBe(0);
+      const prevPublicKey = JSON.parse(stdout).publicKey;
+      const prevPrivateKey = JSON.parse(stdout).privateKey;
+      ({ exitCode, stdout } = await execUtils.pkStdio(
+        ['agent', 'status', '--format', 'json'],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      ));
+      expect(exitCode).toBe(0);
+      const prevNodeId = JSON.parse(stdout).nodeId;
+      // Renew keypair
+      const passPath = path.join(dataDir, 'renew-password');
+      await fs.promises.writeFile(passPath, 'password-new');
+      ({ exitCode } = await execUtils.pkStdio(
+        ['keys', 'renew', '--password-new-file', passPath],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      ));
+      expect(exitCode).toBe(0);
+      // Get new keypair and nodeId and compare against old
+      ({ exitCode, stdout } = await execUtils.pkStdio(
+        ['keys', 'root', '--private-key', '--format', 'json'],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: 'password-new',
+        },
+        dataDir,
+      ));
+      expect(exitCode).toBe(0);
+      const newPublicKey = JSON.parse(stdout).publicKey;
+      const newPrivateKey = JSON.parse(stdout).privateKey;
+      ({ exitCode, stdout } = await execUtils.pkStdio(
+        ['agent', 'status', '--format', 'json'],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: 'password-new',
+        },
+        dataDir,
+      ));
+      expect(exitCode).toBe(0);
+      const newNodeId = JSON.parse(stdout).nodeId;
+      expect(newPublicKey).not.toBe(prevPublicKey);
+      expect(newPrivateKey).not.toBe(prevPrivateKey);
+      expect(newNodeId).not.toBe(prevNodeId);
+      // Revert side effects
+      await fs.promises.writeFile(passPath, password);
+      ({ exitCode } = await execUtils.pkStdio(
+        ['keys', 'password', '--password-new-file', passPath],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: 'password-new',
+        },
+        dataDir,
+      ));
+      expect(exitCode).toBe(0);
+    },
+  );
 });

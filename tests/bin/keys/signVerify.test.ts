@@ -3,7 +3,7 @@ import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as execUtils from '../../utils/exec';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
-import { runTestIfPlatforms } from '../../utils';
+import * as testUtils from '../../utils';
 
 describe('sign-verify', () => {
   const logger = new Logger('sign-verify test', LogLevel.WARN, [
@@ -21,7 +21,9 @@ describe('sign-verify', () => {
   afterEach(async () => {
     await agentClose();
   });
-  runTestIfPlatforms('docker')('signs and verifies a file', async () => {
+  testUtils.testIf(
+    testUtils.isTestPlatformEmpty || testUtils.isTestPlatformDocker,
+  )('signs and verifies a file', async () => {
     let exitCode, stdout;
     const dataPath = path.join(agentDir, 'data');
     await fs.promises.writeFile(dataPath, 'sign-me', {

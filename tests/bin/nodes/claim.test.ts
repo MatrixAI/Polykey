@@ -8,7 +8,7 @@ import * as nodesUtils from '@/nodes/utils';
 import * as execUtils from '../../utils/exec';
 import * as testNodesUtils from '../../nodes/utils';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
-import { runTestIfPlatforms } from '../../utils';
+import * as testUtils from '../../utils';
 
 describe('claim', () => {
   const logger = new Logger('claim test', LogLevel.WARN, [new StreamHandler()]);
@@ -22,7 +22,7 @@ describe('claim', () => {
   let remoteIdEncoded: NodeIdEncoded;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
-      path.join(global.tmpDir, 'polykey-test-'),
+      path.join(globalThis.tmpDir, 'polykey-test-'),
     );
     nodePath = path.join(dataDir, 'keynode');
     pkAgent = await PolykeyAgent.createPolykeyAgent({
@@ -83,36 +83,42 @@ describe('claim', () => {
       recursive: true,
     });
   });
-  runTestIfPlatforms()('sends a gestalt invite', async () => {
-    const { exitCode, stdout } = await execUtils.pkStdio(
-      ['nodes', 'claim', remoteIdEncoded],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    );
-    expect(exitCode).toBe(0);
-    expect(stdout).toContain('Gestalt Invite');
-    expect(stdout).toContain(remoteIdEncoded);
-  });
-  runTestIfPlatforms()('sends a gestalt invite (force invite)', async () => {
-    await remoteNode.notificationsManager.sendNotification(localId, {
-      type: 'GestaltInvite',
-    });
-    const { exitCode, stdout } = await execUtils.pkStdio(
-      ['nodes', 'claim', remoteIdEncoded, '--force-invite'],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    );
-    expect(exitCode).toBe(0);
-    expect(stdout).toContain('Gestalt Invite');
-    expect(stdout).toContain(nodesUtils.encodeNodeId(remoteId));
-  });
-  runTestIfPlatforms()('claims a node', async () => {
+  testUtils.testIf(testUtils.isTestPlatformEmpty)(
+    'sends a gestalt invite',
+    async () => {
+      const { exitCode, stdout } = await execUtils.pkStdio(
+        ['nodes', 'claim', remoteIdEncoded],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      );
+      expect(exitCode).toBe(0);
+      expect(stdout).toContain('Gestalt Invite');
+      expect(stdout).toContain(remoteIdEncoded);
+    },
+  );
+  testUtils.testIf(testUtils.isTestPlatformEmpty)(
+    'sends a gestalt invite (force invite)',
+    async () => {
+      await remoteNode.notificationsManager.sendNotification(localId, {
+        type: 'GestaltInvite',
+      });
+      const { exitCode, stdout } = await execUtils.pkStdio(
+        ['nodes', 'claim', remoteIdEncoded, '--force-invite'],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      );
+      expect(exitCode).toBe(0);
+      expect(stdout).toContain('Gestalt Invite');
+      expect(stdout).toContain(nodesUtils.encodeNodeId(remoteId));
+    },
+  );
+  testUtils.testIf(testUtils.isTestPlatformEmpty)('claims a node', async () => {
     await remoteNode.notificationsManager.sendNotification(localId, {
       type: 'GestaltInvite',
     });

@@ -14,7 +14,7 @@ import * as identitiesUtils from '@/identities/utils';
 import * as execUtils from '../../utils/exec';
 import TestProvider from '../../identities/TestProvider';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
-import { runTestIfPlatforms } from '../../utils';
+import * as testUtils from '../../utils';
 
 describe('allow/disallow/permissions', () => {
   const logger = new Logger('allow/disallow/permissions test', LogLevel.WARN, [
@@ -37,7 +37,7 @@ describe('allow/disallow/permissions', () => {
   let nodePort: Port;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
-      path.join(global.tmpDir, 'polykey-test-'),
+      path.join(globalThis.tmpDir, 'polykey-test-'),
     );
     nodePath = path.join(dataDir, 'polykey');
     pkAgent = await PolykeyAgent.createPolykeyAgent({
@@ -97,7 +97,7 @@ describe('allow/disallow/permissions', () => {
       recursive: true,
     });
   });
-  runTestIfPlatforms()(
+  testUtils.testIf(testUtils.isTestPlatformEmpty)(
     'allows/disallows/gets gestalt permissions by node',
     async () => {
       let exitCode, stdout;
@@ -197,7 +197,7 @@ describe('allow/disallow/permissions', () => {
       });
     },
   );
-  runTestIfPlatforms()(
+  testUtils.testIf(testUtils.isTestPlatformEmpty)(
     'allows/disallows/gets gestalt permissions by identity',
     async () => {
       // Can't test with target executable due to mocking
@@ -337,7 +337,9 @@ describe('allow/disallow/permissions', () => {
       });
     },
   );
-  runTestIfPlatforms('docker')('should fail on invalid inputs', async () => {
+  testUtils.testIf(
+    testUtils.isTestPlatformEmpty || testUtils.isTestPlatformDocker,
+  )('should fail on invalid inputs', async () => {
     let exitCode;
     // Allow
     // Invalid gestalt id

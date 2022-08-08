@@ -350,7 +350,7 @@ describe(`${NodeConnection.name} test`, () => {
       keyPrivatePem: globalRootKeyPems[0],
       certChainPem: keysUtils.certToPem(cert),
     };
-  }, global.polykeyStartupTimeout * 2);
+  }, globalThis.polykeyStartupTimeout * 2);
 
   afterEach(async () => {
     await clientProxy.stop();
@@ -790,7 +790,7 @@ describe(`${NodeConnection.name} test`, () => {
         await nodeConnection?.destroy();
       }
     },
-    global.defaultTimeout * 2,
+    globalThis.defaultTimeout * 2,
   );
   test.each(options)(
     "should call `killSelf and throw if the server %s's during testStreamFail",
@@ -859,7 +859,7 @@ describe(`${NodeConnection.name} test`, () => {
         await nodeConnection?.destroy();
       }
     },
-    global.defaultTimeout * 2,
+    globalThis.defaultTimeout * 2,
   );
 
   test('existing connection handles a resetRootKeyPair on sending side', async () => {

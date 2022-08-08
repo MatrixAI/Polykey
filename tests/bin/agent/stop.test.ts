@@ -7,7 +7,7 @@ import { sleep } from '@/utils';
 import * as binErrors from '@/bin/errors';
 import * as clientErrors from '@/client/errors';
 import * as execUtils from '../../utils/exec';
-import { runTestIfPlatforms } from '../../utils';
+import * as testUtils from '../../utils';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('stop', () => {
@@ -15,7 +15,7 @@ describe('stop', () => {
   let dataDir: string;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
-      path.join(global.testDir, 'polykey-test-'),
+      path.join(globalThis.testDir, 'polykey-test-'),
     );
   });
   afterEach(async () => {
@@ -24,7 +24,9 @@ describe('stop', () => {
       recursive: true,
     });
   });
-  runTestIfPlatforms('docker')(
+  testUtils.testIf(
+    testUtils.isTestPlatformEmpty || testUtils.isTestPlatformDocker,
+  )(
     'stop LIVE agent',
     async () => {
       const password = 'abc123';
@@ -70,9 +72,11 @@ describe('stop', () => {
       await sleep(5000);
       agentProcess.kill();
     },
-    global.defaultTimeout * 2,
+    globalThis.defaultTimeout * 2,
   );
-  runTestIfPlatforms('docker')(
+  testUtils.testIf(
+    testUtils.isTestPlatformEmpty || testUtils.isTestPlatformDocker,
+  )(
     'stopping is idempotent during concurrent calls and STOPPING or DEAD status',
     async () => {
       const password = 'abc123';
@@ -158,9 +162,9 @@ describe('stop', () => {
       expect(agentStop4.exitCode).toBe(0);
       agentProcess.kill();
     },
-    global.defaultTimeout * 2,
+    globalThis.defaultTimeout * 2,
   );
-  runTestIfPlatforms()(
+  testUtils.testIf(testUtils.isTestPlatformEmpty)(
     'stopping starting agent results in error',
     async () => {
       // This relies on fast execution of `agent stop` while agent is starting,
@@ -219,9 +223,11 @@ describe('stop', () => {
       await status.waitFor('DEAD');
       agentProcess.kill();
     },
-    global.defaultTimeout * 2,
+    globalThis.defaultTimeout * 2,
   );
-  runTestIfPlatforms('docker')(
+  testUtils.testIf(
+    testUtils.isTestPlatformEmpty || testUtils.isTestPlatformDocker,
+  )(
     'stopping while unauthenticated does not stop',
     async () => {
       const password = 'abc123';
@@ -279,6 +285,6 @@ describe('stop', () => {
       await status.waitFor('DEAD');
       agentProcess.kill();
     },
-    global.defaultTimeout * 2,
+    globalThis.defaultTimeout * 2,
   );
 });

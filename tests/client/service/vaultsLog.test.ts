@@ -104,7 +104,7 @@ describe('vaultsLog', () => {
       port: grpcServer.getPort(),
       logger,
     });
-  }, global.defaultTimeout * 2);
+  }, globalThis.defaultTimeout * 2);
   afterEach(async () => {
     await grpcClient.destroy();
     await grpcServer.stop();

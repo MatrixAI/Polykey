@@ -127,7 +127,7 @@ describe('KeyManager', () => {
       expect(keyManager.getNodeId()).toStrictEqual(nodeId);
       await keyManager.stop();
     },
-    global.defaultTimeout * 2,
+    globalThis.defaultTimeout * 2,
   );
   test(
     'create deterministic keypair with recovery code',
@@ -159,7 +159,7 @@ describe('KeyManager', () => {
       await keyManager2.stop();
       expect(nodeId1).toStrictEqual(nodeId2);
     },
-    global.defaultTimeout * 2,
+    globalThis.defaultTimeout * 2,
   );
   test('override key generation with privateKeyOverride', async () => {
     const keysPath = `${dataDir}/keys`;

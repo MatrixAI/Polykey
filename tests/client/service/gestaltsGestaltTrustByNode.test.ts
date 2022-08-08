@@ -89,7 +89,7 @@ describe('gestaltsGestaltTrustByNode', () => {
     const claim = claimsUtils.decodeClaim(claimEncoded);
     nodeChainData[claimId] = claim;
     await testProvider.publishClaim(connectedIdentity, claim);
-  }, global.maxTimeout);
+  }, globalThis.maxTimeout);
   afterAll(async () => {
     await node.stop();
     await fs.promises.rm(nodeDataDir, {

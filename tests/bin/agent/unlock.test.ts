@@ -4,7 +4,7 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import Session from '@/sessions/Session';
 import config from '@/config';
 import * as execUtils from '../../utils/exec';
-import { runTestIfPlatforms } from '../../utils';
+import * as testUtils from '../../utils';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('unlock', () => {
@@ -23,7 +23,9 @@ describe('unlock', () => {
   afterEach(async () => {
     await agentClose();
   });
-  runTestIfPlatforms('docker')('unlock acquires session token', async () => {
+  testUtils.testIf(
+    testUtils.isTestPlatformEmpty || testUtils.isTestPlatformDocker,
+  )('unlock acquires session token', async () => {
     // Fresh session, to delete the token
     const session = await Session.createSession({
       sessionTokenPath: path.join(agentDir, config.defaults.tokenBase),

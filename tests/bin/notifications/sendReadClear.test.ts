@@ -8,7 +8,7 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as nodesUtils from '@/nodes/utils';
 import * as execUtils from '../../utils/exec';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
-import { runTestIfPlatforms } from '../../utils';
+import * as testUtils from '../../utils';
 
 describe('send/read/claim', () => {
   const logger = new Logger('send/read/clear test', LogLevel.WARN, [
@@ -31,7 +31,7 @@ describe('send/read/claim', () => {
   let receiverAgentPassword: string;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
-      path.join(global.tmpDir, 'polykey-test-'),
+      path.join(globalThis.tmpDir, 'polykey-test-'),
     );
     // Cannot use the shared global agent since we can't 'un-add' a node
     // which we need in order to trust it and send notifications to it
@@ -62,7 +62,9 @@ describe('send/read/claim', () => {
       recursive: true,
     });
   });
-  runTestIfPlatforms('docker')(
+  testUtils.testIf(
+    testUtils.isTestPlatformEmpty || testUtils.isTestPlatformDocker,
+  )(
     'sends, receives, and clears notifications',
     async () => {
       let exitCode, stdout;
@@ -293,6 +295,6 @@ describe('send/read/claim', () => {
         .map(JSON.parse);
       expect(readNotifications).toHaveLength(0);
     },
-    global.defaultTimeout * 2,
+    globalThis.defaultTimeout * 2,
   );
 });

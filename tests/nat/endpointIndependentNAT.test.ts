@@ -1,19 +1,18 @@
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
-import process from 'process';
-import shell from 'shelljs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as testNatUtils from './utils';
-import { runDescribeIf } from '../utils';
+import * as testUtils from '../utils';
 
-runDescribeIf(
-  process.platform === 'linux' &&
-    shell.which('ip') &&
-    shell.which('iptables') &&
-    shell.which('nsenter') &&
-    shell.which('unshare'),
-)('endpoint independent NAT traversal', () => {
+const supportsNatTesting =
+  testUtils.isPlatformLinux &&
+  testUtils.hasIp &&
+  testUtils.hasIptables &&
+  testUtils.hasNsenter &&
+  testUtils.hasUnshare;
+
+describe('endpoint independent NAT traversal', () => {
   const logger = new Logger('EIM NAT test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
@@ -29,7 +28,7 @@ runDescribeIf(
       recursive: true,
     });
   });
-  test(
+  testUtils.testIf(supportsNatTesting)(
     'node1 behind EIM NAT connects to node2',
     async () => {
       const {
@@ -78,9 +77,9 @@ runDescribeIf(
       });
       await tearDownNAT();
     },
-    global.defaultTimeout * 2,
+    globalThis.defaultTimeout * 2,
   );
-  test(
+  testUtils.testIf(supportsNatTesting)(
     'node1 connects to node2 behind EIM NAT',
     async () => {
       const {
@@ -184,9 +183,9 @@ runDescribeIf(
       });
       await tearDownNAT();
     },
-    global.defaultTimeout * 2,
+    globalThis.defaultTimeout * 2,
   );
-  test(
+  testUtils.testIf(supportsNatTesting)(
     'node1 behind EIM NAT connects to node2 behind EIM NAT',
     async () => {
       const {
@@ -290,9 +289,9 @@ runDescribeIf(
       });
       await tearDownNAT();
     },
-    global.defaultTimeout * 2,
+    globalThis.defaultTimeout * 2,
   );
-  test(
+  testUtils.testIf(supportsNatTesting)(
     'node1 behind EIM NAT connects to node2 behind EIM NAT via seed node',
     async () => {
       const {
@@ -342,9 +341,9 @@ runDescribeIf(
       });
       await tearDownNAT();
     },
-    global.defaultTimeout * 2,
+    globalThis.defaultTimeout * 2,
   );
-  test(
+  testUtils.testIf(supportsNatTesting)(
     'node1 behind EIM NAT cannot connect to node2 behind EDM NAT',
     async () => {
       const {
@@ -393,6 +392,6 @@ runDescribeIf(
       });
       await tearDownNAT();
     },
-    global.defaultTimeout * 2,
+    globalThis.defaultTimeout * 2,
   );
 });

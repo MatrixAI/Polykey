@@ -5,7 +5,7 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { errors as statusErrors } from '@/status';
 import { errors as bootstrapErrors } from '@/bootstrap';
 import * as execUtils from '../utils/exec';
-import { runTestIfPlatforms } from '../utils';
+import * as testUtils from '../utils';
 import * as keysUtils from '../../src/keys/utils';
 
 describe('bootstrap', () => {
@@ -15,7 +15,7 @@ describe('bootstrap', () => {
   let dataDir: string;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
-      path.join(global.tmpDir, 'polykey-test-'),
+      path.join(globalThis.tmpDir, 'polykey-test-'),
     );
   });
   afterEach(async () => {
@@ -24,7 +24,9 @@ describe('bootstrap', () => {
       recursive: true,
     });
   });
-  runTestIfPlatforms('docker')(
+  testUtils.testIf(
+    testUtils.isTestPlatformEmpty || testUtils.isTestPlatformDocker,
+  )(
     'bootstraps node state',
     async () => {
       const password = 'password';
@@ -51,9 +53,11 @@ describe('bootstrap', () => {
           recoveryCode.split(' ').length === 24,
       ).toBe(true);
     },
-    global.defaultTimeout * 2,
+    globalThis.defaultTimeout * 2,
   );
-  runTestIfPlatforms('docker')(
+  testUtils.testIf(
+    testUtils.isTestPlatformEmpty || testUtils.isTestPlatformDocker,
+  )(
     'bootstraps node state from provided private key',
     async () => {
       const password = 'password';
@@ -90,9 +94,11 @@ describe('bootstrap', () => {
       );
       expect(exitCode2).toBe(0);
     },
-    global.defaultTimeout * 2,
+    globalThis.defaultTimeout * 2,
   );
-  runTestIfPlatforms('docker')(
+  testUtils.testIf(
+    testUtils.isTestPlatformEmpty || testUtils.isTestPlatformDocker,
+  )(
     'bootstrapping occupied node state',
     async () => {
       const password = 'password';
@@ -142,9 +148,11 @@ describe('bootstrap', () => {
           recoveryCode.split(' ').length === 24,
       ).toBe(true);
     },
-    global.defaultTimeout * 2,
+    globalThis.defaultTimeout * 2,
   );
-  runTestIfPlatforms('docker')(
+  testUtils.testIf(
+    testUtils.isTestPlatformEmpty || testUtils.isTestPlatformDocker,
+  )(
     'concurrent bootstrapping results in 1 success',
     async () => {
       const password = 'password';
@@ -223,9 +231,11 @@ describe('bootstrap', () => {
         expect(exitCode2).toBe(0);
       }
     },
-    global.defaultTimeout * 2,
+    globalThis.defaultTimeout * 2,
   );
-  runTestIfPlatforms('docker')(
+  testUtils.testIf(
+    testUtils.isTestPlatformEmpty || testUtils.isTestPlatformDocker,
+  )(
     'bootstrap when interrupted, requires fresh on next bootstrap',
     async () => {
       const password = 'password';
@@ -294,6 +304,6 @@ describe('bootstrap', () => {
           recoveryCode.split(' ').length === 24,
       ).toBe(true);
     },
-    global.defaultTimeout * 2,
+    globalThis.defaultTimeout * 2,
   );
 });

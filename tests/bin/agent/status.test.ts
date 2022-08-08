@@ -5,7 +5,7 @@ import Status from '@/status/Status';
 import * as nodesUtils from '@/nodes/utils';
 import config from '@/config';
 import * as execUtils from '../../utils/exec';
-import { runTestIfPlatforms } from '../../utils';
+import * as testUtils from '../../utils';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('status', () => {
@@ -15,7 +15,7 @@ describe('status', () => {
   let dataDir: string;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
-      path.join(global.tmpDir, 'polykey-test-'),
+      path.join(globalThis.tmpDir, 'polykey-test-'),
     );
   });
   afterEach(async () => {
@@ -24,7 +24,9 @@ describe('status', () => {
       recursive: true,
     });
   });
-  runTestIfPlatforms('docker')(
+  testUtils.testIf(
+    testUtils.isTestPlatformEmpty || testUtils.isTestPlatformDocker,
+  )(
     'status on STARTING, STOPPING, DEAD agent',
     async () => {
       // This test must create its own agent process
@@ -108,9 +110,11 @@ describe('status', () => {
         status: 'DEAD',
       });
     },
-    global.defaultTimeout * 2,
+    globalThis.defaultTimeout * 2,
   );
-  runTestIfPlatforms('docker')('status on missing agent', async () => {
+  testUtils.testIf(
+    testUtils.isTestPlatformEmpty || testUtils.isTestPlatformDocker,
+  )('status on missing agent', async () => {
     const { exitCode, stdout } = await execUtils.pkStdio(
       ['agent', 'status', '--format', 'json'],
       {
@@ -135,7 +139,9 @@ describe('status', () => {
     afterEach(async () => {
       await agentClose();
     });
-    runTestIfPlatforms('docker')('status on LIVE agent', async () => {
+    testUtils.testIf(
+      testUtils.isTestPlatformEmpty || testUtils.isTestPlatformDocker,
+    )('status on LIVE agent', async () => {
       const status = new Status({
         statusPath: path.join(agentDir, config.defaults.statusBase),
         statusLockPath: path.join(agentDir, config.defaults.statusLockBase),
@@ -168,7 +174,9 @@ describe('status', () => {
         rootCertPem: expect.any(String),
       });
     });
-    runTestIfPlatforms('docker')('status on remote LIVE agent', async () => {
+    testUtils.testIf(
+      testUtils.isTestPlatformEmpty || testUtils.isTestPlatformDocker,
+    )('status on remote LIVE agent', async () => {
       const passwordPath = path.join(dataDir, 'password');
       await fs.promises.writeFile(passwordPath, agentPassword);
       const status = new Status({

@@ -28,6 +28,13 @@
     "no-constant-condition": 0,
     "no-useless-escape": 0,
     "no-console": "error",
+    "no-restricted-globals": [
+      "error",
+      {
+        "name": "global",
+        "message": "Use `globalThis` instead"
+      }
+    ],
     "require-yield": 0,
     "eqeqeq": ["error", "smart"],
     "spaced-comment": [

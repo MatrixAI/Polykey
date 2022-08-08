@@ -13,7 +13,7 @@ import * as identitiesUtils from '@/identities/utils';
 import * as execUtils from '../../utils/exec';
 import TestProvider from '../../identities/TestProvider';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
-import { runTestIfPlatforms } from '../../utils';
+import * as testUtils from '../../utils';
 
 describe('trust/untrust/list', () => {
   const logger = new Logger('trust/untrust/list test', LogLevel.WARN, [
@@ -36,7 +36,7 @@ describe('trust/untrust/list', () => {
   let nodePort: Port;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
-      path.join(global.tmpDir, 'polykey-test-'),
+      path.join(globalThis.tmpDir, 'polykey-test-'),
     );
     nodePath = path.join(dataDir, 'polykey');
     pkAgent = await PolykeyAgent.createPolykeyAgent({
@@ -96,7 +96,7 @@ describe('trust/untrust/list', () => {
       recursive: true,
     });
   });
-  runTestIfPlatforms()(
+  testUtils.testIf(testUtils.isTestPlatformEmpty)(
     'trusts and untrusts a gestalt by node, adds it to the gestalt graph, and lists the gestalt with notify permission',
     async () => {
       let exitCode, stdout;
@@ -213,9 +213,9 @@ describe('trust/untrust/list', () => {
       // @ts-ignore - get protected property
       pkAgent.discovery.visitedVertices.clear();
     },
-    global.defaultTimeout * 2,
+    globalThis.defaultTimeout * 2,
   );
-  runTestIfPlatforms()(
+  testUtils.testIf(testUtils.isTestPlatformEmpty)(
     'trusts and untrusts a gestalt by identity, adds it to the gestalt graph, and lists the gestalt with notify permission',
     async () => {
       let exitCode, stdout;
@@ -344,29 +344,32 @@ describe('trust/untrust/list', () => {
       // @ts-ignore - get protected property
       pkAgent.discovery.visitedVertices.clear();
     },
-    global.defaultTimeout * 2,
+    globalThis.defaultTimeout * 2,
   );
-  runTestIfPlatforms()('should fail on invalid inputs', async () => {
-    let exitCode;
-    // Trust
-    ({ exitCode } = await execUtils.pkStdio(
-      ['identities', 'trust', 'invalid'],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    ));
-    expect(exitCode).toBe(sysexits.USAGE);
-    // Untrust
-    ({ exitCode } = await execUtils.pkStdio(
-      ['identities', 'untrust', 'invalid'],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    ));
-    expect(exitCode).toBe(sysexits.USAGE);
-  });
+  testUtils.testIf(testUtils.isTestPlatformEmpty)(
+    'should fail on invalid inputs',
+    async () => {
+      let exitCode;
+      // Trust
+      ({ exitCode } = await execUtils.pkStdio(
+        ['identities', 'trust', 'invalid'],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      ));
+      expect(exitCode).toBe(sysexits.USAGE);
+      // Untrust
+      ({ exitCode } = await execUtils.pkStdio(
+        ['identities', 'untrust', 'invalid'],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      ));
+      expect(exitCode).toBe(sysexits.USAGE);
+    },
+  );
 });

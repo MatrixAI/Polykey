@@ -9,7 +9,7 @@ import { sysexits } from '@/errors';
 import * as execUtils from '../../utils/exec';
 import * as testNodesUtils from '../../nodes/utils';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
-import { runTestIfPlatforms } from '../../utils';
+import * as testUtils from '../../utils';
 
 describe('ping', () => {
   const logger = new Logger('ping test', LogLevel.WARN, [new StreamHandler()]);
@@ -23,7 +23,7 @@ describe('ping', () => {
   let remoteOfflineNodeId: NodeId;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
-      path.join(global.tmpDir, 'polykey-test-'),
+      path.join(globalThis.tmpDir, 'polykey-test-'),
     );
     nodePath = path.join(dataDir, 'keynode');
     polykeyAgent = await PolykeyAgent.createPolykeyAgent({
@@ -96,73 +96,82 @@ describe('ping', () => {
       recursive: true,
     });
   });
-  runTestIfPlatforms()('fails when pinging an offline node', async () => {
-    const { exitCode, stdout, stderr } = await execUtils.pkStdio(
-      [
-        'nodes',
-        'ping',
-        nodesUtils.encodeNodeId(remoteOfflineNodeId),
-        '--format',
-        'json',
-      ],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    );
-    expect(exitCode).toBe(sysexits.GENERAL); // Should fail with no response. for automation purposes.
-    expect(stderr).toContain('No response received');
-    expect(JSON.parse(stdout)).toEqual({
-      success: false,
-      message: 'No response received',
-    });
-  });
-  runTestIfPlatforms()('fails if node cannot be found', async () => {
-    const fakeNodeId = nodesUtils.decodeNodeId(
-      'vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0',
-    );
-    const { exitCode, stdout } = await execUtils.pkStdio(
-      [
-        'nodes',
-        'ping',
-        nodesUtils.encodeNodeId(fakeNodeId!),
-        '--format',
-        'json',
-      ],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    );
-    expect(exitCode).not.toBe(0); // Should fail if node doesn't exist.
-    expect(JSON.parse(stdout)).toEqual({
-      success: false,
-      message: `Failed to resolve node ID ${nodesUtils.encodeNodeId(
-        fakeNodeId!,
-      )} to an address.`,
-    });
-  });
-  runTestIfPlatforms()('succeed when pinging a live node', async () => {
-    const { exitCode, stdout } = await execUtils.pkStdio(
-      [
-        'nodes',
-        'ping',
-        nodesUtils.encodeNodeId(remoteOnlineNodeId),
-        '--format',
-        'json',
-      ],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    );
-    expect(exitCode).toBe(0);
-    expect(JSON.parse(stdout)).toEqual({
-      success: true,
-      message: 'Node is Active.',
-    });
-  });
+  testUtils.testIf(testUtils.isTestPlatformEmpty)(
+    'fails when pinging an offline node',
+    async () => {
+      const { exitCode, stdout, stderr } = await execUtils.pkStdio(
+        [
+          'nodes',
+          'ping',
+          nodesUtils.encodeNodeId(remoteOfflineNodeId),
+          '--format',
+          'json',
+        ],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      );
+      expect(exitCode).toBe(sysexits.GENERAL); // Should fail with no response. for automation purposes.
+      expect(stderr).toContain('No response received');
+      expect(JSON.parse(stdout)).toEqual({
+        success: false,
+        message: 'No response received',
+      });
+    },
+  );
+  testUtils.testIf(testUtils.isTestPlatformEmpty)(
+    'fails if node cannot be found',
+    async () => {
+      const fakeNodeId = nodesUtils.decodeNodeId(
+        'vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0',
+      );
+      const { exitCode, stdout } = await execUtils.pkStdio(
+        [
+          'nodes',
+          'ping',
+          nodesUtils.encodeNodeId(fakeNodeId!),
+          '--format',
+          'json',
+        ],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      );
+      expect(exitCode).not.toBe(0); // Should fail if node doesn't exist.
+      expect(JSON.parse(stdout)).toEqual({
+        success: false,
+        message: `Failed to resolve node ID ${nodesUtils.encodeNodeId(
+          fakeNodeId!,
+        )} to an address.`,
+      });
+    },
+  );
+  testUtils.testIf(testUtils.isTestPlatformEmpty)(
+    'succeed when pinging a live node',
+    async () => {
+      const { exitCode, stdout } = await execUtils.pkStdio(
+        [
+          'nodes',
+          'ping',
+          nodesUtils.encodeNodeId(remoteOnlineNodeId),
+          '--format',
+          'json',
+        ],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      );
+      expect(exitCode).toBe(0);
+      expect(JSON.parse(stdout)).toEqual({
+        success: true,
+        message: 'Node is Active.',
+      });
+    },
+  );
 });

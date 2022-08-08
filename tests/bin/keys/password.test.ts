@@ -3,7 +3,7 @@ import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as execUtils from '../../utils/exec';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
-import { runTestIfPlatforms } from '../../utils';
+import * as testUtils from '../../utils';
 
 describe('password', () => {
   const logger = new Logger('password test', LogLevel.WARN, [
@@ -21,40 +21,39 @@ describe('password', () => {
   afterEach(async () => {
     await agentClose();
   });
-  runTestIfPlatforms('docker')(
-    'password changes the root password',
-    async () => {
-      const passPath = path.join(agentDir, 'passwordChange');
-      await fs.promises.writeFile(passPath, 'password-change');
-      let { exitCode } = await execUtils.pkStdio(
-        ['keys', 'password', '--password-new-file', passPath],
-        {
-          PK_NODE_PATH: agentDir,
-          PK_PASSWORD: agentPassword,
-        },
-        agentDir,
-      );
-      expect(exitCode).toBe(0);
-      // Old password should no longer work
-      ({ exitCode } = await execUtils.pkStdio(
-        ['keys', 'root'],
-        {
-          PK_NODE_PATH: agentDir,
-          PK_PASSWORD: agentPassword,
-        },
-        agentDir,
-      ));
-      expect(exitCode).not.toBe(0);
-      // Revert side effects using new password
-      await fs.promises.writeFile(passPath, agentPassword);
-      ({ exitCode } = await execUtils.pkStdio(
-        ['keys', 'password', '--password-new-file', passPath],
-        {
-          PK_NODE_PATH: agentDir,
-          PK_PASSWORD: 'password-change',
-        },
-        agentDir,
-      ));
-    },
-  );
+  testUtils.testIf(
+    testUtils.isTestPlatformEmpty || testUtils.isTestPlatformDocker,
+  )('password changes the root password', async () => {
+    const passPath = path.join(agentDir, 'passwordChange');
+    await fs.promises.writeFile(passPath, 'password-change');
+    let { exitCode } = await execUtils.pkStdio(
+      ['keys', 'password', '--password-new-file', passPath],
+      {
+        PK_NODE_PATH: agentDir,
+        PK_PASSWORD: agentPassword,
+      },
+      agentDir,
+    );
+    expect(exitCode).toBe(0);
+    // Old password should no longer work
+    ({ exitCode } = await execUtils.pkStdio(
+      ['keys', 'root'],
+      {
+        PK_NODE_PATH: agentDir,
+        PK_PASSWORD: agentPassword,
+      },
+      agentDir,
+    ));
+    expect(exitCode).not.toBe(0);
+    // Revert side effects using new password
+    await fs.promises.writeFile(passPath, agentPassword);
+    ({ exitCode } = await execUtils.pkStdio(
+      ['keys', 'password', '--password-new-file', passPath],
+      {
+        PK_NODE_PATH: agentDir,
+        PK_PASSWORD: 'password-change',
+      },
+      agentDir,
+    ));
+  });
 });

@@ -548,6 +548,6 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
         await node2?.destroy();
       }
     },
-    global.defaultTimeout * 2,
+    globalThis.defaultTimeout * 2,
   );
 });

@@ -2,23 +2,25 @@ import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import readline from 'readline';
-import process from 'process';
-import shell from 'shelljs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import Status from '@/status/Status';
 import config from '@/config';
 import * as testNatUtils from './utils';
-import { runDescribeIf } from '../utils';
+import * as testUtils from '../utils';
+import {
+  isPlatformLinux,
+  hasIp,
+  hasIptables,
+  hasNsenter,
+  hasUnshare,
+} from '../utils/platform';
 import * as execUtils from '../utils/exec';
 import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 
-runDescribeIf(
-  process.platform === 'linux' &&
-    shell.which('ip') &&
-    shell.which('iptables') &&
-    shell.which('nsenter') &&
-    shell.which('unshare'),
-)('DMZ', () => {
+const supportsNatTesting =
+  isPlatformLinux && hasIp && hasIptables && hasNsenter && hasUnshare;
+
+describe('DMZ', () => {
   const logger = new Logger('DMZ test', LogLevel.WARN, [new StreamHandler()]);
   let dataDir: string;
   beforeEach(async () => {
@@ -32,7 +34,7 @@ runDescribeIf(
       recursive: true,
     });
   });
-  test(
+  testUtils.testIf(supportsNatTesting)(
     'can create an agent in a namespace',
     async () => {
       const password = 'abc123';
@@ -108,9 +110,9 @@ runDescribeIf(
       expect(exitCode).toBe(null);
       expect(signal).toBe('SIGTERM');
     },
-    global.defaultTimeout * 2,
+    globalThis.defaultTimeout * 2,
   );
-  test(
+  testUtils.testIf(supportsNatTesting)(
     'agents in different namespaces can ping each other',
     async () => {
       const {
@@ -207,9 +209,9 @@ runDescribeIf(
       });
       await tearDownNAT();
     },
-    global.defaultTimeout * 2,
+    globalThis.defaultTimeout * 2,
   );
-  test(
+  testUtils.testIf(supportsNatTesting)(
     'agents in different namespaces can ping each other via seed node',
     async () => {
       const {
@@ -268,6 +270,6 @@ runDescribeIf(
       });
       await tearDownNAT();
     },
-    global.defaultTimeout * 2,
+    globalThis.defaultTimeout * 2,
   );
 });
