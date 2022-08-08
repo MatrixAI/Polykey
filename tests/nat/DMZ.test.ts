@@ -8,11 +8,11 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import Status from '@/status/Status';
 import config from '@/config';
 import * as testNatUtils from './utils';
-import { runDescribeIf } from '../utils';
+import { describeIf } from '../utils';
 import * as execUtils from '../utils/exec';
 import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 
-runDescribeIf(
+describeIf(
   process.platform === 'linux' &&
     shell.which('ip') &&
     shell.which('iptables') &&

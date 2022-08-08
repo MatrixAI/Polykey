@@ -5,9 +5,9 @@ import process from 'process';
 import shell from 'shelljs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as testNatUtils from './utils';
-import { runDescribeIf } from '../utils';
+import { describeIf } from '../utils';
 
-runDescribeIf(
+describeIf(
   process.platform === 'linux' &&
     shell.which('ip') &&
     shell.which('iptables') &&
