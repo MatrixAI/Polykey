@@ -4,12 +4,8 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import Session from '@/sessions/Session';
 import config from '@/config';
 import * as execUtils from '../../utils/exec';
-import { testIf } from '../../utils';
+import * as testUtils from '../../utils';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
-import {
-  isTestPlatformEmpty,
-  isTestPlatformDocker,
-} from '../../utils/platform';
 
 describe('unlock', () => {
   const logger = new Logger('unlock test', LogLevel.WARN, [
@@ -27,48 +23,47 @@ describe('unlock', () => {
   afterEach(async () => {
     await agentClose();
   });
-  testIf(isTestPlatformEmpty || isTestPlatformDocker)(
-    'unlock acquires session token',
-    async () => {
-      // Fresh session, to delete the token
-      const session = await Session.createSession({
-        sessionTokenPath: path.join(agentDir, config.defaults.tokenBase),
-        fs,
-        logger,
-        fresh: true,
-      });
-      let exitCode, stdout;
-      ({ exitCode } = await execUtils.pkStdio(
-        ['agent', 'unlock'],
-        {
-          PK_NODE_PATH: agentDir,
-          PK_PASSWORD: agentPassword,
-        },
-        agentDir,
-      ));
-      expect(exitCode).toBe(0);
-      // Run command without password
-      ({ exitCode, stdout } = await execUtils.pkStdio(
-        ['agent', 'status', '--format', 'json'],
-        {
-          PK_NODE_PATH: agentDir,
-        },
-        agentDir,
-      ));
-      expect(exitCode).toBe(0);
-      expect(JSON.parse(stdout)).toMatchObject({ status: 'LIVE' });
-      // Run command with PK_TOKEN
-      ({ exitCode, stdout } = await execUtils.pkStdio(
-        ['agent', 'status', '--format', 'json'],
-        {
-          PK_NODE_PATH: agentDir,
-          PK_TOKEN: await session.readToken(),
-        },
-        agentDir,
-      ));
-      expect(exitCode).toBe(0);
-      expect(JSON.parse(stdout)).toMatchObject({ status: 'LIVE' });
-      await session.stop();
-    },
-  );
+  testUtils.testIf(
+    testUtils.isTestPlatformEmpty || testUtils.isTestPlatformDocker,
+  )('unlock acquires session token', async () => {
+    // Fresh session, to delete the token
+    const session = await Session.createSession({
+      sessionTokenPath: path.join(agentDir, config.defaults.tokenBase),
+      fs,
+      logger,
+      fresh: true,
+    });
+    let exitCode, stdout;
+    ({ exitCode } = await execUtils.pkStdio(
+      ['agent', 'unlock'],
+      {
+        PK_NODE_PATH: agentDir,
+        PK_PASSWORD: agentPassword,
+      },
+      agentDir,
+    ));
+    expect(exitCode).toBe(0);
+    // Run command without password
+    ({ exitCode, stdout } = await execUtils.pkStdio(
+      ['agent', 'status', '--format', 'json'],
+      {
+        PK_NODE_PATH: agentDir,
+      },
+      agentDir,
+    ));
+    expect(exitCode).toBe(0);
+    expect(JSON.parse(stdout)).toMatchObject({ status: 'LIVE' });
+    // Run command with PK_TOKEN
+    ({ exitCode, stdout } = await execUtils.pkStdio(
+      ['agent', 'status', '--format', 'json'],
+      {
+        PK_NODE_PATH: agentDir,
+        PK_TOKEN: await session.readToken(),
+      },
+      agentDir,
+    ));
+    expect(exitCode).toBe(0);
+    expect(JSON.parse(stdout)).toMatchObject({ status: 'LIVE' });
+    await session.stop();
+  });
 });

@@ -1,11 +1,7 @@
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as execUtils from '../../utils/exec';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
-import { testIf } from '../../utils';
-import {
-  isTestPlatformDocker,
-  isTestPlatformEmpty,
-} from '../../utils/platform';
+import * as testUtils from '../../utils';
 
 describe('certchain', () => {
   const logger = new Logger('certchain test', LogLevel.WARN, [
@@ -23,33 +19,32 @@ describe('certchain', () => {
   afterEach(async () => {
     await agentClose();
   });
-  testIf(isTestPlatformEmpty || isTestPlatformDocker)(
-    'certchain gets the certificate chain',
-    async () => {
-      let { exitCode, stdout } = await execUtils.pkStdio(
-        ['keys', 'certchain', '--format', 'json'],
-        {
-          PK_NODE_PATH: agentDir,
-          PK_PASSWORD: agentPassword,
-        },
-        agentDir,
-      );
-      expect(exitCode).toBe(0);
-      expect(JSON.parse(stdout)).toEqual({
-        certchain: expect.any(Array),
-      });
-      const certChainCommand = JSON.parse(stdout).certchain.join('\n');
-      ({ exitCode, stdout } = await execUtils.pkStdio(
-        ['agent', 'status', '--format', 'json'],
-        {
-          PK_NODE_PATH: agentDir,
-          PK_PASSWORD: agentPassword,
-        },
-        agentDir,
-      ));
-      expect(exitCode).toBe(0);
-      const certChainStatus = JSON.parse(stdout).rootCertChainPem;
-      expect(certChainCommand.rootPublicKeyPem).toBe(certChainStatus);
-    },
-  );
+  testUtils.testIf(
+    testUtils.isTestPlatformEmpty || testUtils.isTestPlatformDocker,
+  )('certchain gets the certificate chain', async () => {
+    let { exitCode, stdout } = await execUtils.pkStdio(
+      ['keys', 'certchain', '--format', 'json'],
+      {
+        PK_NODE_PATH: agentDir,
+        PK_PASSWORD: agentPassword,
+      },
+      agentDir,
+    );
+    expect(exitCode).toBe(0);
+    expect(JSON.parse(stdout)).toEqual({
+      certchain: expect.any(Array),
+    });
+    const certChainCommand = JSON.parse(stdout).certchain.join('\n');
+    ({ exitCode, stdout } = await execUtils.pkStdio(
+      ['agent', 'status', '--format', 'json'],
+      {
+        PK_NODE_PATH: agentDir,
+        PK_PASSWORD: agentPassword,
+      },
+      agentDir,
+    ));
+    expect(exitCode).toBe(0);
+    const certChainStatus = JSON.parse(stdout).rootCertChainPem;
+    expect(certChainCommand.rootPublicKeyPem).toBe(certChainStatus);
+  });
 });

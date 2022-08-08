@@ -14,8 +14,7 @@ import config from '@/config';
 import * as clientErrors from '@/client/errors';
 import * as execUtils from '../utils/exec';
 import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
-import { testIf } from '../utils';
-import { isTestPlatformEmpty } from '../utils/platform';
+import * as testUtils from '../utils';
 
 jest.mock('prompts');
 const mockedPrompts = mocked(prompts.prompt);
@@ -45,7 +44,7 @@ describe('sessions', () => {
     });
     await agentClose();
   });
-  testIf(isTestPlatformEmpty)(
+  testUtils.testIf(testUtils.isTestPlatformEmpty)(
     'serial commands refresh the session token',
     async () => {
       const session = await Session.createSession({
@@ -82,7 +81,7 @@ describe('sessions', () => {
       await session.stop();
     },
   );
-  testIf(isTestPlatformEmpty)(
+  testUtils.testIf(testUtils.isTestPlatformEmpty)(
     'unattended commands with invalid authentication should fail',
     async () => {
       let exitCode, stderr;
@@ -127,7 +126,7 @@ describe('sessions', () => {
       ]);
     },
   );
-  testIf(isTestPlatformEmpty)(
+  testUtils.testIf(testUtils.isTestPlatformEmpty)(
     'prompt for password to authenticate attended commands',
     async () => {
       const password = agentPassword;
@@ -155,7 +154,7 @@ describe('sessions', () => {
       mockedPrompts.mockClear();
     },
   );
-  testIf(isTestPlatformEmpty)(
+  testUtils.testIf(testUtils.isTestPlatformEmpty)(
     're-prompts for password if unable to authenticate command',
     async () => {
       await execUtils.pkStdio(

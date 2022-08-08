@@ -3,17 +3,14 @@ import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as testNatUtils from './utils';
-import { testIf } from '../utils';
-import {
-  isPlatformLinux,
-  hasIp,
-  hasIptables,
-  hasNsenter,
-  hasUnshare,
-} from '../utils/platform';
+import * as testUtils from '../utils';
 
 const supportsNatTesting =
-  isPlatformLinux && hasIp && hasIptables && hasNsenter && hasUnshare;
+  testUtils.isPlatformLinux &&
+  testUtils.hasIp &&
+  testUtils.hasIptables &&
+  testUtils.hasNsenter &&
+  testUtils.hasUnshare;
 
 describe('endpoint independent NAT traversal', () => {
   const logger = new Logger('EIM NAT test', LogLevel.WARN, [
@@ -31,7 +28,7 @@ describe('endpoint independent NAT traversal', () => {
       recursive: true,
     });
   });
-  testIf(supportsNatTesting)(
+  testUtils.testIf(supportsNatTesting)(
     'node1 behind EIM NAT connects to node2',
     async () => {
       const {
@@ -82,7 +79,7 @@ describe('endpoint independent NAT traversal', () => {
     },
     globalThis.defaultTimeout * 2,
   );
-  testIf(supportsNatTesting)(
+  testUtils.testIf(supportsNatTesting)(
     'node1 connects to node2 behind EIM NAT',
     async () => {
       const {
@@ -188,7 +185,7 @@ describe('endpoint independent NAT traversal', () => {
     },
     globalThis.defaultTimeout * 2,
   );
-  testIf(supportsNatTesting)(
+  testUtils.testIf(supportsNatTesting)(
     'node1 behind EIM NAT connects to node2 behind EIM NAT',
     async () => {
       const {
@@ -294,7 +291,7 @@ describe('endpoint independent NAT traversal', () => {
     },
     globalThis.defaultTimeout * 2,
   );
-  testIf(supportsNatTesting)(
+  testUtils.testIf(supportsNatTesting)(
     'node1 behind EIM NAT connects to node2 behind EIM NAT via seed node',
     async () => {
       const {
@@ -346,7 +343,7 @@ describe('endpoint independent NAT traversal', () => {
     },
     globalThis.defaultTimeout * 2,
   );
-  testIf(supportsNatTesting)(
+  testUtils.testIf(supportsNatTesting)(
     'node1 behind EIM NAT cannot connect to node2 behind EDM NAT',
     async () => {
       const {

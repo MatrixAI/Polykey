@@ -3,17 +3,14 @@ import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as testNatUtils from './utils';
-import { testIf } from '../utils';
-import {
-  isPlatformLinux,
-  hasIp,
-  hasIptables,
-  hasNsenter,
-  hasUnshare,
-} from '../utils/platform';
+import * as testUtils from '../utils';
 
 const supportsNatTesting =
-  isPlatformLinux && hasIp && hasIptables && hasNsenter && hasUnshare;
+  testUtils.isPlatformLinux &&
+  testUtils.hasIp &&
+  testUtils.hasIptables &&
+  testUtils.hasNsenter &&
+  testUtils.hasUnshare;
 
 describe('endpoint dependent NAT traversal', () => {
   const logger = new Logger('EDM NAT test', LogLevel.WARN, [
@@ -31,7 +28,7 @@ describe('endpoint dependent NAT traversal', () => {
       recursive: true,
     });
   });
-  testIf(supportsNatTesting)(
+  testUtils.testIf(supportsNatTesting)(
     'node1 behind EDM NAT connects to node2',
     async () => {
       const {
@@ -82,7 +79,7 @@ describe('endpoint dependent NAT traversal', () => {
     },
     globalThis.defaultTimeout * 2,
   );
-  testIf(supportsNatTesting)(
+  testUtils.testIf(supportsNatTesting)(
     'node1 connects to node2 behind EDM NAT',
     async () => {
       const {
@@ -153,7 +150,7 @@ describe('endpoint dependent NAT traversal', () => {
     },
     globalThis.defaultTimeout * 2,
   );
-  testIf(supportsNatTesting)(
+  testUtils.testIf(supportsNatTesting)(
     'node1 behind EDM NAT cannot connect to node2 behind EDM NAT',
     async () => {
       const {
@@ -207,7 +204,7 @@ describe('endpoint dependent NAT traversal', () => {
     },
     globalThis.defaultTimeout * 2,
   );
-  testIf(supportsNatTesting)(
+  testUtils.testIf(supportsNatTesting)(
     'node1 behind EDM NAT cannot connect to node2 behind EIM NAT',
     async () => {
       const {

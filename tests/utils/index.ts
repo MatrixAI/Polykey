@@ -1,3 +1,3 @@
 export * from './utils';
-export * as exec from './exec';
-export * as platform from './platform';
+export * from './exec';
+export * from './platform';

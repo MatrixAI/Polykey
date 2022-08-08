@@ -7,12 +7,8 @@ import Session from '@/sessions/Session';
 import config from '@/config';
 import * as errors from '@/errors';
 import * as execUtils from '../../utils/exec';
-import { testIf } from '../../utils';
+import * as testUtils from '../../utils';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
-import {
-  isTestPlatformEmpty,
-  isTestPlatformDocker,
-} from '../../utils/platform';
 
 /**
  * Mock prompts module which is used prompt for password
@@ -36,35 +32,34 @@ describe('lockall', () => {
   afterEach(async () => {
     await agentClose();
   });
-  testIf(isTestPlatformEmpty || isTestPlatformDocker)(
-    'lockall deletes the session token',
-    async () => {
-      await execUtils.pkStdio(
-        ['agent', 'unlock'],
-        {
-          PK_NODE_PATH: agentDir,
-          PK_PASSWORD: agentPassword,
-        },
-        agentDir,
-      );
-      const { exitCode } = await execUtils.pkStdio(
-        ['agent', 'lockall'],
-        {
-          PK_NODE_PATH: agentDir,
-        },
-        agentDir,
-      );
-      expect(exitCode).toBe(0);
-      const session = await Session.createSession({
-        sessionTokenPath: path.join(agentDir, config.defaults.tokenBase),
-        fs,
-        logger,
-      });
-      expect(await session.readToken()).toBeUndefined();
-      await session.stop();
-    },
-  );
-  testIf(isTestPlatformEmpty)(
+  testUtils.testIf(
+    testUtils.isTestPlatformEmpty || testUtils.isTestPlatformDocker,
+  )('lockall deletes the session token', async () => {
+    await execUtils.pkStdio(
+      ['agent', 'unlock'],
+      {
+        PK_NODE_PATH: agentDir,
+        PK_PASSWORD: agentPassword,
+      },
+      agentDir,
+    );
+    const { exitCode } = await execUtils.pkStdio(
+      ['agent', 'lockall'],
+      {
+        PK_NODE_PATH: agentDir,
+      },
+      agentDir,
+    );
+    expect(exitCode).toBe(0);
+    const session = await Session.createSession({
+      sessionTokenPath: path.join(agentDir, config.defaults.tokenBase),
+      fs,
+      logger,
+    });
+    expect(await session.readToken()).toBeUndefined();
+    await session.stop();
+  });
+  testUtils.testIf(testUtils.isTestPlatformEmpty)(
     'lockall ensures reauthentication is required',
     async () => {
       const password = agentPassword;
@@ -100,44 +95,43 @@ describe('lockall', () => {
       mockedPrompts.mockClear();
     },
   );
-  testIf(isTestPlatformEmpty || isTestPlatformDocker)(
-    'lockall causes old session tokens to fail',
-    async () => {
-      await execUtils.pkStdio(
-        ['agent', 'unlock'],
-        {
-          PK_NODE_PATH: agentDir,
-          PK_PASSWORD: agentPassword,
-        },
-        agentDir,
-      );
-      const session = await Session.createSession({
-        sessionTokenPath: path.join(agentDir, config.defaults.tokenBase),
-        fs,
-        logger,
-      });
-      const token = await session.readToken();
-      await session.stop();
-      await execUtils.pkStdio(
-        ['agent', 'lockall'],
-        {
-          PK_NODE_PATH: agentDir,
-          PK_PASSWORD: agentPassword,
-        },
-        agentDir,
-      );
-      // Old token is invalid
-      const { exitCode, stderr } = await execUtils.pkStdio(
-        ['agent', 'status', '--format', 'json'],
-        {
-          PK_NODE_PATH: agentDir,
-          PK_TOKEN: token,
-        },
-        agentDir,
-      );
-      execUtils.expectProcessError(exitCode, stderr, [
-        new errors.ErrorClientAuthDenied(),
-      ]);
-    },
-  );
+  testUtils.testIf(
+    testUtils.isTestPlatformEmpty || testUtils.isTestPlatformDocker,
+  )('lockall causes old session tokens to fail', async () => {
+    await execUtils.pkStdio(
+      ['agent', 'unlock'],
+      {
+        PK_NODE_PATH: agentDir,
+        PK_PASSWORD: agentPassword,
+      },
+      agentDir,
+    );
+    const session = await Session.createSession({
+      sessionTokenPath: path.join(agentDir, config.defaults.tokenBase),
+      fs,
+      logger,
+    });
+    const token = await session.readToken();
+    await session.stop();
+    await execUtils.pkStdio(
+      ['agent', 'lockall'],
+      {
+        PK_NODE_PATH: agentDir,
+        PK_PASSWORD: agentPassword,
+      },
+      agentDir,
+    );
+    // Old token is invalid
+    const { exitCode, stderr } = await execUtils.pkStdio(
+      ['agent', 'status', '--format', 'json'],
+      {
+        PK_NODE_PATH: agentDir,
+        PK_TOKEN: token,
+      },
+      agentDir,
+    );
+    execUtils.expectProcessError(exitCode, stderr, [
+      new errors.ErrorClientAuthDenied(),
+    ]);
+  });
 });

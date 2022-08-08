@@ -8,11 +8,7 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as nodesUtils from '@/nodes/utils';
 import * as execUtils from '../../utils/exec';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
-import { testIf } from '../../utils';
-import {
-  isTestPlatformEmpty,
-  isTestPlatformDocker,
-} from '../../utils/platform';
+import * as testUtils from '../../utils';
 
 describe('send/read/claim', () => {
   const logger = new Logger('send/read/clear test', LogLevel.WARN, [
@@ -66,7 +62,9 @@ describe('send/read/claim', () => {
       recursive: true,
     });
   });
-  testIf(isTestPlatformEmpty || isTestPlatformDocker)(
+  testUtils.testIf(
+    testUtils.isTestPlatformEmpty || testUtils.isTestPlatformDocker,
+  )(
     'sends, receives, and clears notifications',
     async () => {
       let exitCode, stdout;

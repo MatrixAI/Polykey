@@ -7,12 +7,8 @@ import { sleep } from '@/utils';
 import * as binErrors from '@/bin/errors';
 import * as clientErrors from '@/client/errors';
 import * as execUtils from '../../utils/exec';
-import { testIf } from '../../utils';
+import * as testUtils from '../../utils';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
-import {
-  isTestPlatformEmpty,
-  isTestPlatformDocker,
-} from '../../utils/platform';
 
 describe('stop', () => {
   const logger = new Logger('stop test', LogLevel.WARN, [new StreamHandler()]);
@@ -28,7 +24,9 @@ describe('stop', () => {
       recursive: true,
     });
   });
-  testIf(isTestPlatformEmpty || isTestPlatformDocker)(
+  testUtils.testIf(
+    testUtils.isTestPlatformEmpty || testUtils.isTestPlatformDocker,
+  )(
     'stop LIVE agent',
     async () => {
       const password = 'abc123';
@@ -76,7 +74,9 @@ describe('stop', () => {
     },
     globalThis.defaultTimeout * 2,
   );
-  testIf(isTestPlatformEmpty || isTestPlatformDocker)(
+  testUtils.testIf(
+    testUtils.isTestPlatformEmpty || testUtils.isTestPlatformDocker,
+  )(
     'stopping is idempotent during concurrent calls and STOPPING or DEAD status',
     async () => {
       const password = 'abc123';
@@ -164,7 +164,7 @@ describe('stop', () => {
     },
     globalThis.defaultTimeout * 2,
   );
-  testIf(isTestPlatformEmpty)(
+  testUtils.testIf(testUtils.isTestPlatformEmpty)(
     'stopping starting agent results in error',
     async () => {
       // This relies on fast execution of `agent stop` while agent is starting,
@@ -225,7 +225,9 @@ describe('stop', () => {
     },
     globalThis.defaultTimeout * 2,
   );
-  testIf(isTestPlatformEmpty || isTestPlatformDocker)(
+  testUtils.testIf(
+    testUtils.isTestPlatformEmpty || testUtils.isTestPlatformDocker,
+  )(
     'stopping while unauthenticated does not stop',
     async () => {
       const password = 'abc123';

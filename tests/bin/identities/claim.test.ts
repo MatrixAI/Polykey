@@ -13,8 +13,7 @@ import * as identitiesUtils from '@/identities/utils';
 import * as execUtils from '../../utils/exec';
 import TestProvider from '../../identities/TestProvider';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
-import { testIf } from '../../utils';
-import { isTestPlatformEmpty } from '../../utils/platform';
+import * as testUtils from '../../utils';
 
 describe('claim', () => {
   const logger = new Logger('claim test', LogLevel.WARN, [new StreamHandler()]);
@@ -57,53 +56,56 @@ describe('claim', () => {
       recursive: true,
     });
   });
-  testIf(isTestPlatformEmpty)('claims an identity', async () => {
-    // Need an authenticated identity
-    const mockedBrowser = jest
-      .spyOn(identitiesUtils, 'browser')
-      .mockImplementation(() => {});
-    await execUtils.pkStdio(
-      [
-        'identities',
-        'authenticate',
-        testToken.providerId,
+  testUtils.testIf(testUtils.isTestPlatformEmpty)(
+    'claims an identity',
+    async () => {
+      // Need an authenticated identity
+      const mockedBrowser = jest
+        .spyOn(identitiesUtils, 'browser')
+        .mockImplementation(() => {});
+      await execUtils.pkStdio(
+        [
+          'identities',
+          'authenticate',
+          testToken.providerId,
+          testToken.identityId,
+        ],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      );
+      // Claim identity
+      const { exitCode, stdout } = await execUtils.pkStdio(
+        [
+          'identities',
+          'claim',
+          testToken.providerId,
+          testToken.identityId,
+          '--format',
+          'json',
+        ],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      );
+      expect(exitCode).toBe(0);
+      expect(JSON.parse(stdout)).toEqual(['Claim Id: 0', 'Url: test.com']);
+      // Check for claim on the provider
+      const claim = await testProvider.getClaim(
         testToken.identityId,
-      ],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    );
-    // Claim identity
-    const { exitCode, stdout } = await execUtils.pkStdio(
-      [
-        'identities',
-        'claim',
-        testToken.providerId,
-        testToken.identityId,
-        '--format',
-        'json',
-      ],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    );
-    expect(exitCode).toBe(0);
-    expect(JSON.parse(stdout)).toEqual(['Claim Id: 0', 'Url: test.com']);
-    // Check for claim on the provider
-    const claim = await testProvider.getClaim(
-      testToken.identityId,
-      '0' as IdentityClaimId,
-    );
-    expect(claim).toBeDefined();
-    expect(claim!.id).toBe('0');
-    expect(claim!.payload.data.type).toBe('identity');
-    mockedBrowser.mockRestore();
-  });
-  testIf(isTestPlatformEmpty)(
+        '0' as IdentityClaimId,
+      );
+      expect(claim).toBeDefined();
+      expect(claim!.id).toBe('0');
+      expect(claim!.payload.data.type).toBe('identity');
+      mockedBrowser.mockRestore();
+    },
+  );
+  testUtils.testIf(testUtils.isTestPlatformEmpty)(
     'cannot claim unauthenticated identities',
     async () => {
       const { exitCode } = await execUtils.pkStdio(
@@ -117,27 +119,30 @@ describe('claim', () => {
       expect(exitCode).toBe(sysexits.NOPERM);
     },
   );
-  testIf(isTestPlatformEmpty)('should fail on invalid inputs', async () => {
-    let exitCode;
-    // Invalid provider
-    ({ exitCode } = await execUtils.pkStdio(
-      ['identities', 'claim', '', testToken.identityId],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    ));
-    expect(exitCode).toBe(sysexits.USAGE);
-    // Invalid identity
-    ({ exitCode } = await execUtils.pkStdio(
-      ['identities', 'claim', testToken.providerId, ''],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    ));
-    expect(exitCode).toBe(sysexits.USAGE);
-  });
+  testUtils.testIf(testUtils.isTestPlatformEmpty)(
+    'should fail on invalid inputs',
+    async () => {
+      let exitCode;
+      // Invalid provider
+      ({ exitCode } = await execUtils.pkStdio(
+        ['identities', 'claim', '', testToken.identityId],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      ));
+      expect(exitCode).toBe(sysexits.USAGE);
+      // Invalid identity
+      ({ exitCode } = await execUtils.pkStdio(
+        ['identities', 'claim', testToken.providerId, ''],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      ));
+      expect(exitCode).toBe(sysexits.USAGE);
+    },
+  );
 });

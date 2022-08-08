@@ -5,8 +5,7 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { errors as statusErrors } from '@/status';
 import { errors as bootstrapErrors } from '@/bootstrap';
 import * as execUtils from '../utils/exec';
-import { testIf } from '../utils';
-import { isTestPlatformDocker, isTestPlatformEmpty } from '../utils/platform';
+import * as testUtils from '../utils';
 import * as keysUtils from '../../src/keys/utils';
 
 describe('bootstrap', () => {
@@ -25,7 +24,9 @@ describe('bootstrap', () => {
       recursive: true,
     });
   });
-  testIf(isTestPlatformEmpty || isTestPlatformDocker)(
+  testUtils.testIf(
+    testUtils.isTestPlatformEmpty || testUtils.isTestPlatformDocker,
+  )(
     'bootstraps node state',
     async () => {
       const password = 'password';
@@ -54,7 +55,9 @@ describe('bootstrap', () => {
     },
     globalThis.defaultTimeout * 2,
   );
-  testIf(isTestPlatformEmpty || isTestPlatformDocker)(
+  testUtils.testIf(
+    testUtils.isTestPlatformEmpty || testUtils.isTestPlatformDocker,
+  )(
     'bootstraps node state from provided private key',
     async () => {
       const password = 'password';
@@ -93,7 +96,9 @@ describe('bootstrap', () => {
     },
     globalThis.defaultTimeout * 2,
   );
-  testIf(isTestPlatformEmpty || isTestPlatformDocker)(
+  testUtils.testIf(
+    testUtils.isTestPlatformEmpty || testUtils.isTestPlatformDocker,
+  )(
     'bootstrapping occupied node state',
     async () => {
       const password = 'password';
@@ -145,7 +150,9 @@ describe('bootstrap', () => {
     },
     globalThis.defaultTimeout * 2,
   );
-  testIf(isTestPlatformEmpty || isTestPlatformDocker)(
+  testUtils.testIf(
+    testUtils.isTestPlatformEmpty || testUtils.isTestPlatformDocker,
+  )(
     'concurrent bootstrapping results in 1 success',
     async () => {
       const password = 'password';
@@ -226,7 +233,9 @@ describe('bootstrap', () => {
     },
     globalThis.defaultTimeout * 2,
   );
-  testIf(isTestPlatformEmpty || isTestPlatformDocker)(
+  testUtils.testIf(
+    testUtils.isTestPlatformEmpty || testUtils.isTestPlatformDocker,
+  )(
     'bootstrap when interrupted, requires fresh on next bootstrap',
     async () => {
       const password = 'password';

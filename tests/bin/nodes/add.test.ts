@@ -11,8 +11,7 @@ import NodeManager from '@/nodes/NodeManager';
 import * as execUtils from '../../utils/exec';
 import * as testNodesUtils from '../../nodes/utils';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
-import { testIf } from '../../utils';
-import { isTestPlatformEmpty } from '../../utils/platform';
+import * as testUtils from '../../utils';
 
 describe('add', () => {
   const logger = new Logger('add test', LogLevel.WARN, [new StreamHandler()]);
@@ -60,7 +59,7 @@ describe('add', () => {
     });
     mockedPingNode.mockRestore();
   });
-  testIf(isTestPlatformEmpty)('adds a node', async () => {
+  testUtils.testIf(testUtils.isTestPlatformEmpty)('adds a node', async () => {
     const { exitCode } = await execUtils.pkStdio(
       [
         'nodes',
@@ -88,7 +87,7 @@ describe('add', () => {
     expect(stdout).toContain(validHost);
     expect(stdout).toContain(`${port}`);
   });
-  testIf(isTestPlatformEmpty)(
+  testUtils.testIf(testUtils.isTestPlatformEmpty)(
     'fails to add a node (invalid node ID)',
     async () => {
       const { exitCode } = await execUtils.pkStdio(
@@ -108,7 +107,7 @@ describe('add', () => {
       expect(exitCode).toBe(sysexits.USAGE);
     },
   );
-  testIf(isTestPlatformEmpty)(
+  testUtils.testIf(testUtils.isTestPlatformEmpty)(
     'fails to add a node (invalid IP address)',
     async () => {
       const { exitCode } = await execUtils.pkStdio(
@@ -128,65 +127,74 @@ describe('add', () => {
       expect(exitCode).toBe(sysexits.USAGE);
     },
   );
-  testIf(isTestPlatformEmpty)('adds a node with --force flag', async () => {
-    const { exitCode } = await execUtils.pkStdio(
-      [
-        'nodes',
-        'add',
-        '--force',
-        nodesUtils.encodeNodeId(validNodeId),
-        validHost,
-        `${port}`,
-      ],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    );
-    expect(exitCode).toBe(0);
-    // Checking if node was added.
-    const node = await pkAgent.nodeGraph.getNode(validNodeId);
-    expect(node?.address).toEqual({ host: validHost, port: port });
-  });
-  testIf(isTestPlatformEmpty)('fails to add node when ping fails', async () => {
-    mockedPingNode.mockImplementation(() => false);
-    const { exitCode } = await execUtils.pkStdio(
-      [
-        'nodes',
-        'add',
-        nodesUtils.encodeNodeId(validNodeId),
-        validHost,
-        `${port}`,
-      ],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    );
-    expect(exitCode).toBe(sysexits.NOHOST);
-  });
-  testIf(isTestPlatformEmpty)('adds a node with --no-ping flag', async () => {
-    mockedPingNode.mockImplementation(() => false);
-    const { exitCode } = await execUtils.pkStdio(
-      [
-        'nodes',
-        'add',
-        '--no-ping',
-        nodesUtils.encodeNodeId(validNodeId),
-        validHost,
-        `${port}`,
-      ],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    );
-    expect(exitCode).toBe(0);
-    // Checking if node was added.
-    const node = await pkAgent.nodeGraph.getNode(validNodeId);
-    expect(node?.address).toEqual({ host: validHost, port: port });
-  });
+  testUtils.testIf(testUtils.isTestPlatformEmpty)(
+    'adds a node with --force flag',
+    async () => {
+      const { exitCode } = await execUtils.pkStdio(
+        [
+          'nodes',
+          'add',
+          '--force',
+          nodesUtils.encodeNodeId(validNodeId),
+          validHost,
+          `${port}`,
+        ],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      );
+      expect(exitCode).toBe(0);
+      // Checking if node was added.
+      const node = await pkAgent.nodeGraph.getNode(validNodeId);
+      expect(node?.address).toEqual({ host: validHost, port: port });
+    },
+  );
+  testUtils.testIf(testUtils.isTestPlatformEmpty)(
+    'fails to add node when ping fails',
+    async () => {
+      mockedPingNode.mockImplementation(() => false);
+      const { exitCode } = await execUtils.pkStdio(
+        [
+          'nodes',
+          'add',
+          nodesUtils.encodeNodeId(validNodeId),
+          validHost,
+          `${port}`,
+        ],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      );
+      expect(exitCode).toBe(sysexits.NOHOST);
+    },
+  );
+  testUtils.testIf(testUtils.isTestPlatformEmpty)(
+    'adds a node with --no-ping flag',
+    async () => {
+      mockedPingNode.mockImplementation(() => false);
+      const { exitCode } = await execUtils.pkStdio(
+        [
+          'nodes',
+          'add',
+          '--no-ping',
+          nodesUtils.encodeNodeId(validNodeId),
+          validHost,
+          `${port}`,
+        ],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      );
+      expect(exitCode).toBe(0);
+      // Checking if node was added.
+      const node = await pkAgent.nodeGraph.getNode(validNodeId);
+      expect(node?.address).toEqual({ host: validHost, port: port });
+    },
+  );
 });

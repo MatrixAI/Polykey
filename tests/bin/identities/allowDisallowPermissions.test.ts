@@ -14,11 +14,7 @@ import * as identitiesUtils from '@/identities/utils';
 import * as execUtils from '../../utils/exec';
 import TestProvider from '../../identities/TestProvider';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
-import { testIf } from '../../utils';
-import {
-  isTestPlatformDocker,
-  isTestPlatformEmpty,
-} from '../../utils/platform';
+import * as testUtils from '../../utils';
 
 describe('allow/disallow/permissions', () => {
   const logger = new Logger('allow/disallow/permissions test', LogLevel.WARN, [
@@ -101,7 +97,7 @@ describe('allow/disallow/permissions', () => {
       recursive: true,
     });
   });
-  testIf(isTestPlatformEmpty)(
+  testUtils.testIf(testUtils.isTestPlatformEmpty)(
     'allows/disallows/gets gestalt permissions by node',
     async () => {
       let exitCode, stdout;
@@ -201,7 +197,7 @@ describe('allow/disallow/permissions', () => {
       });
     },
   );
-  testIf(isTestPlatformEmpty)(
+  testUtils.testIf(testUtils.isTestPlatformEmpty)(
     'allows/disallows/gets gestalt permissions by identity',
     async () => {
       // Can't test with target executable due to mocking
@@ -341,63 +337,62 @@ describe('allow/disallow/permissions', () => {
       });
     },
   );
-  testIf(isTestPlatformEmpty || isTestPlatformDocker)(
-    'should fail on invalid inputs',
-    async () => {
-      let exitCode;
-      // Allow
-      // Invalid gestalt id
-      ({ exitCode } = await execUtils.pkStdio(
-        ['identities', 'allow', 'invalid', 'notify'],
-        {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
-        },
-        dataDir,
-      ));
-      expect(exitCode).toBe(sysexits.USAGE);
-      // Invalid permission
-      ({ exitCode } = await execUtils.pkStdio(
-        ['identities', 'allow', nodesUtils.encodeNodeId(nodeId), 'invalid'],
-        {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
-        },
-        dataDir,
-      ));
-      expect(exitCode).toBe(sysexits.USAGE);
-      // Permissions
-      // Invalid gestalt id
-      ({ exitCode } = await execUtils.pkStdio(
-        ['identities', 'permissions', 'invalid'],
-        {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
-        },
-        dataDir,
-      ));
-      expect(exitCode).toBe(sysexits.USAGE);
-      // Disallow
-      // Invalid gestalt id
-      ({ exitCode } = await execUtils.pkStdio(
-        ['identities', 'disallow', 'invalid', 'notify'],
-        {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
-        },
-        dataDir,
-      ));
-      expect(exitCode).toBe(sysexits.USAGE);
-      // Invalid permission
-      ({ exitCode } = await execUtils.pkStdio(
-        ['identities', 'disallow', nodesUtils.encodeNodeId(nodeId), 'invalid'],
-        {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
-        },
-        dataDir,
-      ));
-      expect(exitCode).toBe(sysexits.USAGE);
-    },
-  );
+  testUtils.testIf(
+    testUtils.isTestPlatformEmpty || testUtils.isTestPlatformDocker,
+  )('should fail on invalid inputs', async () => {
+    let exitCode;
+    // Allow
+    // Invalid gestalt id
+    ({ exitCode } = await execUtils.pkStdio(
+      ['identities', 'allow', 'invalid', 'notify'],
+      {
+        PK_NODE_PATH: nodePath,
+        PK_PASSWORD: password,
+      },
+      dataDir,
+    ));
+    expect(exitCode).toBe(sysexits.USAGE);
+    // Invalid permission
+    ({ exitCode } = await execUtils.pkStdio(
+      ['identities', 'allow', nodesUtils.encodeNodeId(nodeId), 'invalid'],
+      {
+        PK_NODE_PATH: nodePath,
+        PK_PASSWORD: password,
+      },
+      dataDir,
+    ));
+    expect(exitCode).toBe(sysexits.USAGE);
+    // Permissions
+    // Invalid gestalt id
+    ({ exitCode } = await execUtils.pkStdio(
+      ['identities', 'permissions', 'invalid'],
+      {
+        PK_NODE_PATH: nodePath,
+        PK_PASSWORD: password,
+      },
+      dataDir,
+    ));
+    expect(exitCode).toBe(sysexits.USAGE);
+    // Disallow
+    // Invalid gestalt id
+    ({ exitCode } = await execUtils.pkStdio(
+      ['identities', 'disallow', 'invalid', 'notify'],
+      {
+        PK_NODE_PATH: nodePath,
+        PK_PASSWORD: password,
+      },
+      dataDir,
+    ));
+    expect(exitCode).toBe(sysexits.USAGE);
+    // Invalid permission
+    ({ exitCode } = await execUtils.pkStdio(
+      ['identities', 'disallow', nodesUtils.encodeNodeId(nodeId), 'invalid'],
+      {
+        PK_NODE_PATH: nodePath,
+        PK_PASSWORD: password,
+      },
+      dataDir,
+    ));
+    expect(exitCode).toBe(sysexits.USAGE);
+  });
 });

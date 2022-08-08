@@ -3,28 +3,33 @@ import { mocked } from 'jest-mock';
 import mockedEnv from 'mocked-env';
 import { utils as clientUtils, errors as clientErrors } from '@/client';
 import * as binUtils from '@/bin/utils';
-import { testIf } from '../utils';
-import { isTestPlatformEmpty } from '../utils/platform';
+import * as testUtils from '../utils';
 
 jest.mock('prompts');
 const mockedPrompts = mocked(prompts.prompt);
 
 describe('bin/utils retryAuthentication', () => {
-  testIf(isTestPlatformEmpty)('no retry on success', async () => {
-    const mockCallSuccess = jest.fn().mockResolvedValue('hello world');
-    const result = await binUtils.retryAuthentication(mockCallSuccess);
-    expect(mockCallSuccess.mock.calls.length).toBe(1);
-    expect(result).toBe('hello world');
-  });
-  testIf(isTestPlatformEmpty)('no retry on generic error', async () => {
-    const error = new Error('oh no');
-    const mockCallFail = jest.fn().mockRejectedValue(error);
-    await expect(binUtils.retryAuthentication(mockCallFail)).rejects.toThrow(
-      /oh no/,
-    );
-    expect(mockCallFail.mock.calls.length).toBe(1);
-  });
-  testIf(isTestPlatformEmpty)(
+  testUtils.testIf(testUtils.isTestPlatformEmpty)(
+    'no retry on success',
+    async () => {
+      const mockCallSuccess = jest.fn().mockResolvedValue('hello world');
+      const result = await binUtils.retryAuthentication(mockCallSuccess);
+      expect(mockCallSuccess.mock.calls.length).toBe(1);
+      expect(result).toBe('hello world');
+    },
+  );
+  testUtils.testIf(testUtils.isTestPlatformEmpty)(
+    'no retry on generic error',
+    async () => {
+      const error = new Error('oh no');
+      const mockCallFail = jest.fn().mockRejectedValue(error);
+      await expect(binUtils.retryAuthentication(mockCallFail)).rejects.toThrow(
+        /oh no/,
+      );
+      expect(mockCallFail.mock.calls.length).toBe(1);
+    },
+  );
+  testUtils.testIf(testUtils.isTestPlatformEmpty)(
     'no retry on unattended call with PK_TOKEN and PK_PASSWORD',
     async () => {
       const mockCallFail = jest
@@ -41,7 +46,7 @@ describe('bin/utils retryAuthentication', () => {
       expect(mockCallFail.mock.calls.length).toBe(1);
     },
   );
-  testIf(isTestPlatformEmpty)(
+  testUtils.testIf(testUtils.isTestPlatformEmpty)(
     'no retry on unattended call with PK_TOKEN',
     async () => {
       const mockCallFail = jest
@@ -58,7 +63,7 @@ describe('bin/utils retryAuthentication', () => {
       expect(mockCallFail.mock.calls.length).toBe(1);
     },
   );
-  testIf(isTestPlatformEmpty)(
+  testUtils.testIf(testUtils.isTestPlatformEmpty)(
     'no retry on unattended call with PK_PASSWORD',
     async () => {
       const mockCallFail = jest
@@ -75,7 +80,7 @@ describe('bin/utils retryAuthentication', () => {
       expect(mockCallFail.mock.calls.length).toBe(1);
     },
   );
-  testIf(isTestPlatformEmpty)(
+  testUtils.testIf(testUtils.isTestPlatformEmpty)(
     'retry once on clientErrors.ErrorClientAuthMissing',
     async () => {
       const password = 'the password';
@@ -111,7 +116,7 @@ describe('bin/utils retryAuthentication', () => {
       mockedPrompts.mockClear();
     },
   );
-  testIf(isTestPlatformEmpty)(
+  testUtils.testIf(testUtils.isTestPlatformEmpty)(
     'retry 2 times on clientErrors.ErrorClientAuthDenied',
     async () => {
       const password1 = 'first password';
@@ -149,7 +154,7 @@ describe('bin/utils retryAuthentication', () => {
       mockedPrompts.mockClear();
     },
   );
-  testIf(isTestPlatformEmpty)(
+  testUtils.testIf(testUtils.isTestPlatformEmpty)(
     'retry 2+ times on clientErrors.ErrorClientAuthDenied until generic error',
     async () => {
       const password1 = 'first password';

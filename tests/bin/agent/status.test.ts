@@ -5,12 +5,8 @@ import Status from '@/status/Status';
 import * as nodesUtils from '@/nodes/utils';
 import config from '@/config';
 import * as execUtils from '../../utils/exec';
-import { testIf } from '../../utils';
+import * as testUtils from '../../utils';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
-import {
-  isTestPlatformEmpty,
-  isTestPlatformDocker,
-} from '../../utils/platform';
 
 describe('status', () => {
   const logger = new Logger('status test', LogLevel.WARN, [
@@ -28,7 +24,9 @@ describe('status', () => {
       recursive: true,
     });
   });
-  testIf(isTestPlatformEmpty || isTestPlatformDocker)(
+  testUtils.testIf(
+    testUtils.isTestPlatformEmpty || testUtils.isTestPlatformDocker,
+  )(
     'status on STARTING, STOPPING, DEAD agent',
     async () => {
       // This test must create its own agent process
@@ -114,21 +112,20 @@ describe('status', () => {
     },
     globalThis.defaultTimeout * 2,
   );
-  testIf(isTestPlatformEmpty || isTestPlatformDocker)(
-    'status on missing agent',
-    async () => {
-      const { exitCode, stdout } = await execUtils.pkStdio(
-        ['agent', 'status', '--format', 'json'],
-        {
-          PK_NODE_PATH: path.join(dataDir, 'polykey'),
-        },
-      );
-      expect(exitCode).toBe(0);
-      expect(JSON.parse(stdout)).toMatchObject({
-        status: 'DEAD',
-      });
-    },
-  );
+  testUtils.testIf(
+    testUtils.isTestPlatformEmpty || testUtils.isTestPlatformDocker,
+  )('status on missing agent', async () => {
+    const { exitCode, stdout } = await execUtils.pkStdio(
+      ['agent', 'status', '--format', 'json'],
+      {
+        PK_NODE_PATH: path.join(dataDir, 'polykey'),
+      },
+    );
+    expect(exitCode).toBe(0);
+    expect(JSON.parse(stdout)).toMatchObject({
+      status: 'DEAD',
+    });
+  });
   describe('status with global agent', () => {
     let agentDir;
     let agentPassword;
@@ -142,93 +139,91 @@ describe('status', () => {
     afterEach(async () => {
       await agentClose();
     });
-    testIf(isTestPlatformEmpty || isTestPlatformDocker)(
-      'status on LIVE agent',
-      async () => {
-        const status = new Status({
-          statusPath: path.join(agentDir, config.defaults.statusBase),
-          statusLockPath: path.join(agentDir, config.defaults.statusLockBase),
-          fs,
-          logger,
-        });
-        const statusInfo = (await status.readStatus())!;
-        const { exitCode, stdout } = await execUtils.pkStdio(
-          ['agent', 'status', '--format', 'json', '--verbose'],
-          {
-            PK_NODE_PATH: agentDir,
-            PK_PASSWORD: agentPassword,
-          },
-          agentDir,
-        );
-        expect(exitCode).toBe(0);
-        expect(JSON.parse(stdout)).toMatchObject({
-          status: 'LIVE',
-          pid: expect.any(Number),
-          nodeId: nodesUtils.encodeNodeId(statusInfo.data.nodeId),
-          clientHost: statusInfo.data.clientHost,
-          clientPort: statusInfo.data.clientPort,
-          proxyHost: statusInfo.data.proxyHost,
-          proxyPort: statusInfo.data.proxyPort,
-          agentHost: expect.any(String),
-          agentPort: expect.any(Number),
-          forwardHost: expect.any(String),
-          forwardPort: expect.any(Number),
-          rootPublicKeyPem: expect.any(String),
-          rootCertPem: expect.any(String),
-        });
-      },
-    );
-    testIf(isTestPlatformEmpty || isTestPlatformDocker)(
-      'status on remote LIVE agent',
-      async () => {
-        const passwordPath = path.join(dataDir, 'password');
-        await fs.promises.writeFile(passwordPath, agentPassword);
-        const status = new Status({
-          statusPath: path.join(agentDir, config.defaults.statusBase),
-          statusLockPath: path.join(agentDir, config.defaults.statusLockBase),
-          fs,
-          logger,
-        });
-        const statusInfo = (await status.readStatus())!;
-        // This still needs a `nodePath` because of session token path
-        const { exitCode, stdout } = await execUtils.pkStdio(
-          [
-            'agent',
-            'status',
-            '--node-path',
-            dataDir,
-            '--password-file',
-            passwordPath,
-            '--node-id',
-            nodesUtils.encodeNodeId(statusInfo.data.nodeId),
-            '--client-host',
-            statusInfo.data.clientHost,
-            '--client-port',
-            statusInfo.data.clientPort.toString(),
-            '--format',
-            'json',
-            '--verbose',
-          ],
-          {},
+    testUtils.testIf(
+      testUtils.isTestPlatformEmpty || testUtils.isTestPlatformDocker,
+    )('status on LIVE agent', async () => {
+      const status = new Status({
+        statusPath: path.join(agentDir, config.defaults.statusBase),
+        statusLockPath: path.join(agentDir, config.defaults.statusLockBase),
+        fs,
+        logger,
+      });
+      const statusInfo = (await status.readStatus())!;
+      const { exitCode, stdout } = await execUtils.pkStdio(
+        ['agent', 'status', '--format', 'json', '--verbose'],
+        {
+          PK_NODE_PATH: agentDir,
+          PK_PASSWORD: agentPassword,
+        },
+        agentDir,
+      );
+      expect(exitCode).toBe(0);
+      expect(JSON.parse(stdout)).toMatchObject({
+        status: 'LIVE',
+        pid: expect.any(Number),
+        nodeId: nodesUtils.encodeNodeId(statusInfo.data.nodeId),
+        clientHost: statusInfo.data.clientHost,
+        clientPort: statusInfo.data.clientPort,
+        proxyHost: statusInfo.data.proxyHost,
+        proxyPort: statusInfo.data.proxyPort,
+        agentHost: expect.any(String),
+        agentPort: expect.any(Number),
+        forwardHost: expect.any(String),
+        forwardPort: expect.any(Number),
+        rootPublicKeyPem: expect.any(String),
+        rootCertPem: expect.any(String),
+      });
+    });
+    testUtils.testIf(
+      testUtils.isTestPlatformEmpty || testUtils.isTestPlatformDocker,
+    )('status on remote LIVE agent', async () => {
+      const passwordPath = path.join(dataDir, 'password');
+      await fs.promises.writeFile(passwordPath, agentPassword);
+      const status = new Status({
+        statusPath: path.join(agentDir, config.defaults.statusBase),
+        statusLockPath: path.join(agentDir, config.defaults.statusLockBase),
+        fs,
+        logger,
+      });
+      const statusInfo = (await status.readStatus())!;
+      // This still needs a `nodePath` because of session token path
+      const { exitCode, stdout } = await execUtils.pkStdio(
+        [
+          'agent',
+          'status',
+          '--node-path',
           dataDir,
-        );
-        expect(exitCode).toBe(0);
-        expect(JSON.parse(stdout)).toMatchObject({
-          status: 'LIVE',
-          pid: expect.any(Number),
-          nodeId: nodesUtils.encodeNodeId(statusInfo.data.nodeId),
-          clientHost: statusInfo.data.clientHost,
-          clientPort: statusInfo.data.clientPort,
-          proxyHost: statusInfo.data.proxyHost,
-          proxyPort: statusInfo.data.proxyPort,
-          agentHost: expect.any(String),
-          agentPort: expect.any(Number),
-          forwardHost: expect.any(String),
-          forwardPort: expect.any(Number),
-          rootPublicKeyPem: expect.any(String),
-          rootCertPem: expect.any(String),
-        });
-      },
-    );
+          '--password-file',
+          passwordPath,
+          '--node-id',
+          nodesUtils.encodeNodeId(statusInfo.data.nodeId),
+          '--client-host',
+          statusInfo.data.clientHost,
+          '--client-port',
+          statusInfo.data.clientPort.toString(),
+          '--format',
+          'json',
+          '--verbose',
+        ],
+        {},
+        dataDir,
+      );
+      expect(exitCode).toBe(0);
+      expect(JSON.parse(stdout)).toMatchObject({
+        status: 'LIVE',
+        pid: expect.any(Number),
+        nodeId: nodesUtils.encodeNodeId(statusInfo.data.nodeId),
+        clientHost: statusInfo.data.clientHost,
+        clientPort: statusInfo.data.clientPort,
+        proxyHost: statusInfo.data.proxyHost,
+        proxyPort: statusInfo.data.proxyPort,
+        agentHost: expect.any(String),
+        agentPort: expect.any(Number),
+        forwardHost: expect.any(String),
+        forwardPort: expect.any(Number),
+        rootPublicKeyPem: expect.any(String),
+        rootCertPem: expect.any(String),
+      });
+    });
   });
 });

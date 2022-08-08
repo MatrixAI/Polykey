@@ -6,12 +6,8 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import Session from '@/sessions/Session';
 import config from '@/config';
 import * as execUtils from '../../utils/exec';
-import { testIf } from '../../utils';
+import * as testUtils from '../../utils';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
-import {
-  isTestPlatformEmpty,
-  isTestPlatformDocker,
-} from '../../utils/platform';
 
 jest.mock('prompts');
 const mockedPrompts = mocked(prompts.prompt);
@@ -30,35 +26,34 @@ describe('lock', () => {
   afterEach(async () => {
     await agentClose();
   });
-  testIf(isTestPlatformEmpty || isTestPlatformDocker)(
-    'lock deletes the session token',
-    async () => {
-      await execUtils.pkStdio(
-        ['agent', 'unlock'],
-        {
-          PK_NODE_PATH: agentDir,
-          PK_PASSWORD: agentPassword,
-        },
-        agentDir,
-      );
-      const { exitCode } = await execUtils.pkStdio(
-        ['agent', 'lock'],
-        {
-          PK_NODE_PATH: agentDir,
-        },
-        agentDir,
-      );
-      expect(exitCode).toBe(0);
-      const session = await Session.createSession({
-        sessionTokenPath: path.join(agentDir, config.defaults.tokenBase),
-        fs,
-        logger,
-      });
-      expect(await session.readToken()).toBeUndefined();
-      await session.stop();
-    },
-  );
-  testIf(isTestPlatformEmpty)(
+  testUtils.testIf(
+    testUtils.isTestPlatformEmpty || testUtils.isTestPlatformDocker,
+  )('lock deletes the session token', async () => {
+    await execUtils.pkStdio(
+      ['agent', 'unlock'],
+      {
+        PK_NODE_PATH: agentDir,
+        PK_PASSWORD: agentPassword,
+      },
+      agentDir,
+    );
+    const { exitCode } = await execUtils.pkStdio(
+      ['agent', 'lock'],
+      {
+        PK_NODE_PATH: agentDir,
+      },
+      agentDir,
+    );
+    expect(exitCode).toBe(0);
+    const session = await Session.createSession({
+      sessionTokenPath: path.join(agentDir, config.defaults.tokenBase),
+      fs,
+      logger,
+    });
+    expect(await session.readToken()).toBeUndefined();
+    await session.stop();
+  });
+  testUtils.testIf(testUtils.isTestPlatformEmpty)(
     'lock ensures re-authentication is required',
     async () => {
       const password = agentPassword;

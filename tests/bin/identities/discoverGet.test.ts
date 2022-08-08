@@ -15,8 +15,7 @@ import * as execUtils from '../../utils/exec';
 import * as testNodesUtils from '../../nodes/utils';
 import TestProvider from '../../identities/TestProvider';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
-import { testIf } from '../../utils';
-import { isTestPlatformEmpty } from '../../utils/platform';
+import * as testUtils from '../../utils';
 
 describe('discover/get', () => {
   const logger = new Logger('discover/get test', LogLevel.WARN, [
@@ -122,7 +121,7 @@ describe('discover/get', () => {
       recursive: true,
     });
   });
-  testIf(isTestPlatformEmpty)(
+  testUtils.testIf(testUtils.isTestPlatformEmpty)(
     'discovers and gets gestalt by node',
     async () => {
       // Need an authenticated identity
@@ -218,7 +217,7 @@ describe('discover/get', () => {
       pkAgent.discovery.visitedVertices.clear();
     },
   );
-  testIf(isTestPlatformEmpty)(
+  testUtils.testIf(testUtils.isTestPlatformEmpty)(
     'discovers and gets gestalt by identity',
     async () => {
       // Need an authenticated identity
@@ -314,26 +313,29 @@ describe('discover/get', () => {
       pkAgent.discovery.visitedVertices.clear();
     },
   );
-  testIf(isTestPlatformEmpty)('should fail on invalid inputs', async () => {
-    let exitCode;
-    // Discover
-    ({ exitCode } = await execUtils.pkStdio(
-      ['identities', 'discover', 'invalid'],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    ));
-    expect(exitCode).toBe(sysexits.USAGE);
-    // Get
-    ({ exitCode } = await execUtils.pkStdio(
-      ['identities', 'get', 'invalid'],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    ));
-  });
+  testUtils.testIf(testUtils.isTestPlatformEmpty)(
+    'should fail on invalid inputs',
+    async () => {
+      let exitCode;
+      // Discover
+      ({ exitCode } = await execUtils.pkStdio(
+        ['identities', 'discover', 'invalid'],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      ));
+      expect(exitCode).toBe(sysexits.USAGE);
+      // Get
+      ({ exitCode } = await execUtils.pkStdio(
+        ['identities', 'get', 'invalid'],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      ));
+    },
+  );
 });

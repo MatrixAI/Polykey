@@ -6,7 +6,7 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import Status from '@/status/Status';
 import config from '@/config';
 import * as testNatUtils from './utils';
-import { testIf } from '../utils';
+import * as testUtils from '../utils';
 import {
   isPlatformLinux,
   hasIp,
@@ -34,7 +34,7 @@ describe('DMZ', () => {
       recursive: true,
     });
   });
-  testIf(supportsNatTesting)(
+  testUtils.testIf(supportsNatTesting)(
     'can create an agent in a namespace',
     async () => {
       const password = 'abc123';
@@ -112,7 +112,7 @@ describe('DMZ', () => {
     },
     globalThis.defaultTimeout * 2,
   );
-  testIf(supportsNatTesting)(
+  testUtils.testIf(supportsNatTesting)(
     'agents in different namespaces can ping each other',
     async () => {
       const {
@@ -211,7 +211,7 @@ describe('DMZ', () => {
     },
     globalThis.defaultTimeout * 2,
   );
-  testIf(supportsNatTesting)(
+  testUtils.testIf(supportsNatTesting)(
     'agents in different namespaces can ping each other via seed node',
     async () => {
       const {

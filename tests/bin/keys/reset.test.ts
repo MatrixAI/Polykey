@@ -6,8 +6,6 @@ import PolykeyAgent from '@/PolykeyAgent';
 import * as keysUtils from '@/keys/utils';
 import * as testUtils from '../../utils';
 import * as execUtils from '../../utils/exec';
-import { testIf } from '../../utils';
-import { isTestPlatformEmpty } from '../../utils/platform';
 
 describe('reset', () => {
   const logger = new Logger('reset test', LogLevel.WARN, [new StreamHandler()]);
@@ -53,77 +51,80 @@ describe('reset', () => {
     mockedGenerateKeyPair.mockRestore();
     mockedGenerateDeterministicKeyPair.mockRestore();
   });
-  testIf(isTestPlatformEmpty)('resets the keypair', async () => {
-    // Can't test with target executable due to mocking
-    // Get previous keypair and nodeId
-    let { exitCode, stdout } = await execUtils.pkStdio(
-      ['keys', 'root', '--private-key', '--format', 'json'],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    );
-    expect(exitCode).toBe(0);
-    const prevPublicKey = JSON.parse(stdout).publicKey;
-    const prevPrivateKey = JSON.parse(stdout).privateKey;
-    ({ exitCode, stdout } = await execUtils.pkStdio(
-      ['agent', 'status', '--format', 'json'],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    ));
-    expect(exitCode).toBe(0);
-    const prevNodeId = JSON.parse(stdout).nodeId;
-    // Reset keypair
-    const passPath = path.join(dataDir, 'reset-password');
-    await fs.promises.writeFile(passPath, 'password-new');
-    ({ exitCode } = await execUtils.pkStdio(
-      ['keys', 'reset', '--password-new-file', passPath],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
-      },
-      dataDir,
-    ));
-    expect(exitCode).toBe(0);
-    // Get new keypair and nodeId and compare against old
-    ({ exitCode, stdout } = await execUtils.pkStdio(
-      ['keys', 'root', '--private-key', '--format', 'json'],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: 'password-new',
-      },
-      dataDir,
-    ));
-    expect(exitCode).toBe(0);
-    const newPublicKey = JSON.parse(stdout).publicKey;
-    const newPrivateKey = JSON.parse(stdout).privateKey;
-    ({ exitCode, stdout } = await execUtils.pkStdio(
-      ['agent', 'status', '--format', 'json'],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: 'password-new',
-      },
-      dataDir,
-    ));
-    expect(exitCode).toBe(0);
-    const newNodeId = JSON.parse(stdout).nodeId;
-    expect(newPublicKey).not.toBe(prevPublicKey);
-    expect(newPrivateKey).not.toBe(prevPrivateKey);
-    expect(newNodeId).not.toBe(prevNodeId);
-    // Revert side effects
-    await fs.promises.writeFile(passPath, password);
-    ({ exitCode } = await execUtils.pkStdio(
-      ['keys', 'password', '--password-new-file', passPath],
-      {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: 'password-new',
-      },
-      dataDir,
-    ));
-    expect(exitCode).toBe(0);
-  });
+  testUtils.testIf(testUtils.isTestPlatformEmpty)(
+    'resets the keypair',
+    async () => {
+      // Can't test with target executable due to mocking
+      // Get previous keypair and nodeId
+      let { exitCode, stdout } = await execUtils.pkStdio(
+        ['keys', 'root', '--private-key', '--format', 'json'],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      );
+      expect(exitCode).toBe(0);
+      const prevPublicKey = JSON.parse(stdout).publicKey;
+      const prevPrivateKey = JSON.parse(stdout).privateKey;
+      ({ exitCode, stdout } = await execUtils.pkStdio(
+        ['agent', 'status', '--format', 'json'],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      ));
+      expect(exitCode).toBe(0);
+      const prevNodeId = JSON.parse(stdout).nodeId;
+      // Reset keypair
+      const passPath = path.join(dataDir, 'reset-password');
+      await fs.promises.writeFile(passPath, 'password-new');
+      ({ exitCode } = await execUtils.pkStdio(
+        ['keys', 'reset', '--password-new-file', passPath],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      ));
+      expect(exitCode).toBe(0);
+      // Get new keypair and nodeId and compare against old
+      ({ exitCode, stdout } = await execUtils.pkStdio(
+        ['keys', 'root', '--private-key', '--format', 'json'],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: 'password-new',
+        },
+        dataDir,
+      ));
+      expect(exitCode).toBe(0);
+      const newPublicKey = JSON.parse(stdout).publicKey;
+      const newPrivateKey = JSON.parse(stdout).privateKey;
+      ({ exitCode, stdout } = await execUtils.pkStdio(
+        ['agent', 'status', '--format', 'json'],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: 'password-new',
+        },
+        dataDir,
+      ));
+      expect(exitCode).toBe(0);
+      const newNodeId = JSON.parse(stdout).nodeId;
+      expect(newPublicKey).not.toBe(prevPublicKey);
+      expect(newPrivateKey).not.toBe(prevPrivateKey);
+      expect(newNodeId).not.toBe(prevNodeId);
+      // Revert side effects
+      await fs.promises.writeFile(passPath, password);
+      ({ exitCode } = await execUtils.pkStdio(
+        ['keys', 'password', '--password-new-file', passPath],
+        {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: 'password-new',
+        },
+        dataDir,
+      ));
+      expect(exitCode).toBe(0);
+    },
+  );
 });
