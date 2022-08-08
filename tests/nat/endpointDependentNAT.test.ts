@@ -1,19 +1,21 @@
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
-import process from 'process';
-import shell from 'shelljs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as testNatUtils from './utils';
-import { describeIf } from '../utils';
+import { testIf } from '../utils';
+import {
+  isPlatformLinux,
+  hasIp,
+  hasIptables,
+  hasNsenter,
+  hasUnshare,
+} from '../utils/platform';
 
-describeIf(
-  process.platform === 'linux' &&
-    shell.which('ip') &&
-    shell.which('iptables') &&
-    shell.which('nsenter') &&
-    shell.which('unshare'),
-)('endpoint dependent NAT traversal', () => {
+const supportsNatTesting =
+  isPlatformLinux && hasIp && hasIptables && hasNsenter && hasUnshare;
+
+describe('endpoint dependent NAT traversal', () => {
   const logger = new Logger('EDM NAT test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
@@ -29,7 +31,7 @@ describeIf(
       recursive: true,
     });
   });
-  test(
+  testIf(supportsNatTesting)(
     'node1 behind EDM NAT connects to node2',
     async () => {
       const {
@@ -80,7 +82,7 @@ describeIf(
     },
     global.defaultTimeout * 2,
   );
-  test(
+  testIf(supportsNatTesting)(
     'node1 connects to node2 behind EDM NAT',
     async () => {
       const {
@@ -151,7 +153,7 @@ describeIf(
     },
     global.defaultTimeout * 2,
   );
-  test(
+  testIf(supportsNatTesting)(
     'node1 behind EDM NAT cannot connect to node2 behind EDM NAT',
     async () => {
       const {
@@ -205,7 +207,7 @@ describeIf(
     },
     global.defaultTimeout * 2,
   );
-  test(
+  testIf(supportsNatTesting)(
     'node1 behind EDM NAT cannot connect to node2 behind EIM NAT',
     async () => {
       const {
