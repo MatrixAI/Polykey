@@ -1,4 +1,7 @@
 /* eslint-disable no-var */
+
+/// <reference types="jest-extended" />
+
 /**
  * Follows the globals in jest.config.ts
  * @module

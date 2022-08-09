@@ -77,6 +77,9 @@ module.exports = {
   // Setup files after env are executed before each test file
   // after the jest test environment is installed
   // Can access globals
-  setupFilesAfterEnv: ['<rootDir>/tests/setupAfterEnv.ts'],
+  setupFilesAfterEnv: [
+    'jest-extended/all',
+    '<rootDir>/tests/setupAfterEnv.ts'
+  ],
   moduleNameMapper: moduleNameMapper,
 };
