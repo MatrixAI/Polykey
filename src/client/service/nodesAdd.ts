@@ -72,7 +72,7 @@ function nodesAdd({
         );
       }
 
-      await db.withTransactionF(async (tran) =>
+      await db.withTransactionF((tran) =>
         nodeManager.setNode(
           nodeId,
           {

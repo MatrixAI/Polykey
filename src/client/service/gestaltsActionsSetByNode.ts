@@ -47,7 +47,7 @@ function gestaltsActionsSetByNode({
             action: call.request.getAction(),
           },
         );
-      await db.withTransactionF(async (tran) =>
+      await db.withTransactionF((tran) =>
         gestaltGraph.setGestaltActionByNode(nodeId, action, tran),
       );
       callback(null, response);

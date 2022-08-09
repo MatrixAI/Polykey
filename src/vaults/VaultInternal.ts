@@ -68,7 +68,7 @@ class VaultInternal {
     tran?: DBTransaction;
   }): Promise<VaultInternal> {
     if (tran == null) {
-      return await db.withTransactionF(async (tran) =>
+      return await db.withTransactionF((tran) =>
         this.createVaultInternal({
           vaultId,
           vaultName,
@@ -122,7 +122,7 @@ class VaultInternal {
     tran?: DBTransaction;
   }): Promise<VaultInternal> {
     if (tran == null) {
-      return await db.withTransactionF(async (tran) =>
+      return await db.withTransactionF((tran) =>
         this.cloneVaultInternal({
           targetNodeId,
           targetVaultNameOrId,
@@ -266,7 +266,7 @@ class VaultInternal {
     tran?: DBTransaction;
   } = {}): Promise<void> {
     if (tran == null) {
-      return await this.db.withTransactionF(async (tran) =>
+      return await this.db.withTransactionF((tran) =>
         this.start_(fresh, tran, vaultName),
       );
     }
@@ -328,9 +328,7 @@ class VaultInternal {
 
   public async destroy(tran?: DBTransaction): Promise<void> {
     if (tran == null) {
-      return await this.db.withTransactionF(async (tran) =>
-        this.destroy_(tran),
-      );
+      return await this.db.withTransactionF((tran) => this.destroy_(tran));
     }
     return await this.destroy_(tran);
   }
@@ -444,23 +442,27 @@ class VaultInternal {
     tran?: DBTransaction,
   ): Promise<void> {
     if (tran == null) {
-      return this.db.withTransactionF(async (tran) => this.writeF(f, tran));
+      return this.db.withTransactionF((tran) => this.writeF(f, tran));
     }
 
-    // This should really be an internal property
-    // get whether this is remote, and the remote address
-    // if it is, we consider this repo an "attached repo"
-    // this vault is a "mirrored" vault
-    if (
-      (await tran.get([
-        ...this.vaultMetadataDbPath,
-        VaultInternal.remoteKey,
-      ])) != null
-    ) {
-      // Mirrored vaults are immutable
-      throw new vaultsErrors.ErrorVaultRemoteDefined();
-    }
     return withF([this.lock.write()], async () => {
+      await tran.lock(
+        [...this.vaultMetadataDbPath, VaultInternal.dirtyKey].toString(),
+      );
+
+      // This should really be an internal property
+      // get whether this is remote, and the remote address
+      // if it is, we consider this repo an "attached repo"
+      // this vault is a "mirrored" vault
+      if (
+        (await tran.get([
+          ...this.vaultMetadataDbPath,
+          VaultInternal.remoteKey,
+        ])) != null
+      ) {
+        // Mirrored vaults are immutable
+        throw new vaultsErrors.ErrorVaultRemoteDefined();
+      }
       await tran.put(
         [...this.vaultMetadataDbPath, VaultInternal.dirtyKey],
         true,
@@ -502,6 +504,9 @@ class VaultInternal {
         // Mirrored vaults are immutable
         throw new vaultsErrors.ErrorVaultRemoteDefined();
       }
+      await tran.lock(
+        [...vaultMetadataDbPath, VaultInternal.dirtyKey].toString(),
+      );
       await tran.put([...vaultMetadataDbPath, VaultInternal.dirtyKey], true);
 
       let result;
@@ -537,7 +542,7 @@ class VaultInternal {
     tran?: DBTransaction;
   }): Promise<void> {
     if (tran == null) {
-      return this.db.withTransactionF(async (tran) =>
+      return this.db.withTransactionF((tran) =>
         this.pullVault({
           nodeConnectionManager,
           pullNodeId,

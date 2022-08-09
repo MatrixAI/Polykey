@@ -46,7 +46,7 @@ function gestaltsGestaltGetByNode({
           nodeId: call.request.getNodeId(),
         },
       );
-      const gestalt = await db.withTransactionF(async (tran) =>
+      const gestalt = await db.withTransactionF((tran) =>
         gestaltGraph.getGestaltByNode(nodeId, tran),
       );
       if (gestalt != null) {

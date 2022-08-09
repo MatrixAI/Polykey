@@ -96,7 +96,7 @@ describe('Sigchain', () => {
   });
   test('async start initialises the sequence number', async () => {
     const sigchain = await Sigchain.createSigchain({ keyManager, db, logger });
-    const sequenceNumber = await sigchain.withTransactionF(async (tran) =>
+    const sequenceNumber = await db.withTransactionF(async (tran) =>
       // @ts-ignore - get protected method
       sigchain.getSequenceNumber(tran),
     );
@@ -237,11 +237,11 @@ describe('Sigchain', () => {
     // Create a claim
     // Firstly, check that we can add an existing claim if it's the first claim
     // in the sigchain
-    const hPrev1 = await sigchain.withTransactionF(async (tran) =>
+    const hPrev1 = await db.withTransactionF(async (tran) =>
       // @ts-ignore - get protected method
       sigchain.getHashPrevious(tran),
     );
-    const seq1 = await sigchain.withTransactionF(async (tran) =>
+    const seq1 = await db.withTransactionF(async (tran) =>
       // @ts-ignore - get protected method
       sigchain.getSequenceNumber(tran),
     );
@@ -259,11 +259,11 @@ describe('Sigchain', () => {
       kid: nodeIdAEncoded,
     });
     await sigchain.addExistingClaim(claim1);
-    const hPrev2 = await sigchain.withTransactionF(async (tran) =>
+    const hPrev2 = await db.withTransactionF(async (tran) =>
       // @ts-ignore - get protected method
       sigchain.getHashPrevious(tran),
     );
-    const seq2 = await sigchain.withTransactionF(async (tran) =>
+    const seq2 = await db.withTransactionF(async (tran) =>
       // @ts-ignore - get protected method
       sigchain.getSequenceNumber(tran),
     );
@@ -283,11 +283,11 @@ describe('Sigchain', () => {
       kid: nodeIdAEncoded,
     });
     await sigchain.addExistingClaim(claim2);
-    const hPrev3 = await sigchain.withTransactionF(async (tran) =>
+    const hPrev3 = await db.withTransactionF(async (tran) =>
       // @ts-ignore - get protected method
       sigchain.getHashPrevious(tran),
     );
-    const seq3 = await sigchain.withTransactionF(async (tran) =>
+    const seq3 = await db.withTransactionF(async (tran) =>
       // @ts-ignore - get protected method
       sigchain.getSequenceNumber(tran),
     );

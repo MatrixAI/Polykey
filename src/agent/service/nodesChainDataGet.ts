@@ -26,7 +26,7 @@ function nodesChainDataGet({
   ): Promise<void> => {
     try {
       const response = new nodesPB.ChainData();
-      const chainData = await db.withTransactionF(async (tran) =>
+      const chainData = await db.withTransactionF((tran) =>
         sigchain.getChainData(tran),
       );
       // Iterate through each claim in the chain, and serialize for transport

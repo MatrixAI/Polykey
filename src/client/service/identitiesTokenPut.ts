@@ -53,7 +53,7 @@ function identitiesTokenPut({
           identityId: call.request.getProvider()?.getIdentityId(),
         },
       );
-      await db.withTransactionF(async (tran) =>
+      await db.withTransactionF((tran) =>
         identitiesManager.putToken(
           providerId,
           identityId,

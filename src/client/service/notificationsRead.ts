@@ -35,7 +35,7 @@ function notificationsRead({
       } else {
         number = parseInt(numberField);
       }
-      const notifications = await db.withTransactionF(async (tran) =>
+      const notifications = await db.withTransactionF((tran) =>
         notificationsManager.readNotifications({
           unread,
           number,

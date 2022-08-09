@@ -317,7 +317,7 @@ describe('VaultManager', () => {
     },
     globalThis.defaultTimeout * 2,
   );
-  test('cannot concurrently create vaults with the same name', async () => {
+  test('Concurrently creating vault with same name only creates 1 vault', async () => {
     const vaultManager = await VaultManager.createVaultManager({
       vaultsPath,
       keyManager: dummyKeyManager,
@@ -329,13 +329,15 @@ describe('VaultManager', () => {
       logger: logger.getChild(VaultManager.name),
     });
     try {
-      const vaults = Promise.all([
-        vaultManager.createVault(vaultName),
-        vaultManager.createVault(vaultName),
-      ]);
-      await expect(() => vaults).rejects.toThrow(
-        vaultsErrors.ErrorVaultsVaultDefined,
-      );
+      await expect(
+        Promise.all([
+          vaultManager.createVault(vaultName),
+          vaultManager.createVault(vaultName),
+        ]),
+      ).rejects.toThrow(vaultsErrors.ErrorVaultsVaultDefined);
+      // @ts-ignore: kidnapping the map
+      const vaultMap = vaultManager.vaultMap;
+      expect(vaultMap.size).toBe(1);
     } finally {
       await vaultManager?.stop();
       await vaultManager?.destroy();
@@ -1752,33 +1754,6 @@ describe('VaultManager', () => {
     });
     try {
       await vaultManager.createVault(vaultName);
-      // @ts-ignore: kidnapping the map
-      const vaultMap = vaultManager.vaultMap;
-      expect(vaultMap.size).toBe(1);
-    } finally {
-      await vaultManager?.stop();
-      await vaultManager?.destroy();
-    }
-  });
-  test('Concurrently creating vault with same name only creates 1 vault', async () => {
-    const vaultManager = await VaultManager.createVaultManager({
-      vaultsPath,
-      keyManager: dummyKeyManager,
-      gestaltGraph: {} as GestaltGraph,
-      nodeConnectionManager: {} as NodeConnectionManager,
-      acl: {} as ACL,
-      notificationsManager: {} as NotificationsManager,
-      db,
-      logger: logger.getChild(VaultManager.name),
-    });
-
-    try {
-      await expect(
-        Promise.all([
-          vaultManager.createVault(vaultName),
-          vaultManager.createVault(vaultName),
-        ]),
-      ).rejects.toThrow(vaultsErrors.ErrorVaultsVaultDefined);
       // @ts-ignore: kidnapping the map
       const vaultMap = vaultManager.vaultMap;
       expect(vaultMap.size).toBe(1);

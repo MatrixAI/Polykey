@@ -407,7 +407,7 @@ describe(ACL.name, () => {
   test('transactional operations', async () => {
     const acl = await ACL.createACL({ db, logger });
     const p1 = acl.getNodePerms();
-    const p2 = acl.withTransactionF(async (tran) => {
+    const p2 = db.withTransactionF(async (tran) => {
       await acl.setNodesPerm(
         [nodeIdG1First, nodeIdG1Second] as Array<NodeId>,
         {

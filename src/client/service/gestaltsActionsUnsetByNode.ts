@@ -47,7 +47,7 @@ function gestaltsActionsUnsetByNode({
             action: call.request.getAction(),
           },
         );
-      await db.withTransactionF(async (tran) =>
+      await db.withTransactionF((tran) =>
         gestaltGraph.unsetGestaltActionByNode(nodeId, action, tran),
       );
       callback(null, response);

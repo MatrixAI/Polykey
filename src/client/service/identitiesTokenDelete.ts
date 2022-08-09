@@ -50,7 +50,7 @@ function identitiesTokenDelete({
           identityId: call.request.getIdentityId(),
         },
       );
-      await db.withTransactionF(async (tran) =>
+      await db.withTransactionF((tran) =>
         identitiesManager.delToken(providerId, identityId, tran),
       );
       callback(null, response);

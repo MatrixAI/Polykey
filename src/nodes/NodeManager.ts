@@ -233,7 +233,7 @@ class NodeManager {
     tran?: DBTransaction,
   ): Promise<void> {
     if (tran == null) {
-      return this.db.withTransactionF(async (tran) => {
+      return this.db.withTransactionF((tran) => {
         return this.claimNode(targetNodeId, tran);
       });
     }
@@ -418,7 +418,7 @@ class NodeManager {
     }
 
     if (tran == null) {
-      return this.db.withTransactionF(async (tran) =>
+      return this.db.withTransactionF((tran) =>
         this.setNode(nodeId, nodeAddress, block, force, timeout, tran),
       );
     }

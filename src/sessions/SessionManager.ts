@@ -99,16 +99,9 @@ class SessionManager {
   }
 
   @ready(new sessionsErrors.ErrorSessionManagerNotRunning())
-  public async withTransactionF<T>(
-    f: (tran: DBTransaction) => Promise<T>,
-  ): Promise<T> {
-    return withF([this.db.transaction()], ([tran]) => f(tran));
-  }
-
-  @ready(new sessionsErrors.ErrorSessionManagerNotRunning())
   public async resetKey(tran?: DBTransaction): Promise<void> {
     if (tran == null) {
-      return this.withTransactionF(async (tran) => this.resetKey(tran));
+      return this.db.withTransactionF((tran) => this.resetKey(tran));
     }
     const key = await this.generateKey(this.keyBits);
     await tran.put([...this.sessionsDbPath, 'key'], key, true);
@@ -125,9 +118,7 @@ class SessionManager {
     tran?: DBTransaction,
   ): Promise<SessionToken> {
     if (tran == null) {
-      return this.withTransactionF(async (tran) =>
-        this.createToken(expiry, tran),
-      );
+      return this.db.withTransactionF((tran) => this.createToken(expiry, tran));
     }
     const payload = {
       iss: nodesUtils.encodeNodeId(this.keyManager.getNodeId()),
@@ -144,9 +135,7 @@ class SessionManager {
     tran?: DBTransaction,
   ): Promise<boolean> {
     if (tran == null) {
-      return this.withTransactionF(async (tran) =>
-        this.verifyToken(token, tran),
-      );
+      return this.db.withTransactionF((tran) => this.verifyToken(token, tran));
     }
     const key = await tran.get([...this.sessionsDbPath, 'key'], true);
     const result = await sessionsUtils.verifySessionToken(token, key!);

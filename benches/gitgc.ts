@@ -18,7 +18,7 @@ async function main() {
         for (let i = 0; i < 1000; i++) {
           map.delete(i);
         }
-        for (const i of map) {
+        for (const _i of map) {
           // NOOP
         }
       };
@@ -32,7 +32,7 @@ async function main() {
         for (let i = 0; i < 1000; i++) {
           delete obj[i];
         }
-        for (const i in obj) {
+        for (const _i in obj) {
           // NOOP
         }
       };
@@ -74,7 +74,7 @@ async function main() {
         for (let i = 0; i < 1000; i++) {
           set.delete(i);
         }
-        for (const i of set) {
+        for (const _i of set) {
           // NOOP
         }
       };

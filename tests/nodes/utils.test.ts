@@ -122,7 +122,7 @@ describe('nodes/utils', () => {
     data.sort((a, b) => Buffer.compare(a.key, b.key));
     let i = 0;
 
-    for await (const [key] of db.iterator({}, bucketsDbPath)) {
+    for await (const [key] of db.iterator(bucketsDbPath)) {
       const { bucketIndex, bucketKey, nodeId } = nodesUtils.parseBucketsDbKey(
         key as Array<Buffer>,
       );
@@ -162,7 +162,7 @@ describe('nodes/utils', () => {
     // the bucket key and last updated and node ID
     data.sort((a, b) => Buffer.compare(a.key, b.key));
     let i = 0;
-    for await (const [key] of db.iterator({}, lastUpdatedDbPath)) {
+    for await (const [key] of db.iterator(lastUpdatedDbPath)) {
       const { bucketIndex, bucketKey, lastUpdated, nodeId } =
         nodesUtils.parseLastUpdatedBucketsDbKey(key as Array<Buffer>);
       expect(bucketIndex).toBe(data[i].bucketIndex);

@@ -42,7 +42,7 @@ function gestaltsActionsGetByNode({
           nodeId: call.request.getNodeId(),
         },
       );
-      const result = await db.withTransactionF(async (tran) =>
+      const result = await db.withTransactionF((tran) =>
         gestaltGraph.getGestaltActionsByNode(nodeId, tran),
       );
       if (result == null) {
