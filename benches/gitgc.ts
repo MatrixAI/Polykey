@@ -2,7 +2,7 @@ import path from 'path';
 import b from 'benny';
 import { suiteCommon } from './utils';
 
-async function main () {
+async function main() {
   let map = new Map();
   let obj = {};
   let arr: any = [];
@@ -21,7 +21,7 @@ async function main () {
         for (const i of map) {
           // NOOP
         }
-      }
+      };
     }),
     b.add('obj', async () => {
       obj = {};
@@ -38,20 +38,20 @@ async function main () {
       };
     }),
     b.add('arr', async () => {
-      // you first have to count the number of objects
+      // You first have to count the number of objects
       arr = [];
       return async () => {
-        // you have to iterate for each object
+        // You have to iterate for each object
         // then for each value in length
         for (let i = 0; i < 1000; i++) {
           if (i === arr.length) {
-            // double the vector
+            // Double the vector
             arr.length = arr.length * 2 || 2;
           }
           arr[i] = { id: i, mark: false };
-          // arr.push({ id: i, mark: false});
+          // Arr.push({ id: i, mark: false});
         }
-        // this has to iterate the length of the array
+        // This has to iterate the length of the array
         // but stop as soon as it reaches the end
         // it gets complicate, but for 5x improvement
         // it could be interesting
