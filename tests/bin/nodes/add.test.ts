@@ -8,7 +8,6 @@ import { sysexits } from '@/utils';
 import PolykeyAgent from '@/PolykeyAgent';
 import * as nodesUtils from '@/nodes/utils';
 import NodeManager from '@/nodes/NodeManager';
-import * as execUtils from '../../utils/exec';
 import * as testNodesUtils from '../../nodes/utils';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 import * as testUtils from '../../utils';
@@ -60,7 +59,7 @@ describe('add', () => {
     mockedPingNode.mockRestore();
   });
   testUtils.testIf(testUtils.isTestPlatformEmpty)('adds a node', async () => {
-    const { exitCode } = await execUtils.pkStdio(
+    const { exitCode } = await testUtils.pkStdio(
       [
         'nodes',
         'add',
@@ -69,20 +68,24 @@ describe('add', () => {
         `${port}`,
       ],
       {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
+        env: {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        cwd: dataDir,
       },
-      dataDir,
     );
     expect(exitCode).toBe(0);
     // Checking if node was added.
-    const { stdout } = await execUtils.pkStdio(
+    const { stdout } = await testUtils.pkStdio(
       ['nodes', 'find', nodesUtils.encodeNodeId(validNodeId)],
       {
-        PK_NODE_PATH: nodePath,
-        PK_PASSWORD: password,
+        env: {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
+        },
+        cwd: dataDir,
       },
-      dataDir,
     );
     expect(stdout).toContain(validHost);
     expect(stdout).toContain(`${port}`);
@@ -90,7 +93,7 @@ describe('add', () => {
   testUtils.testIf(testUtils.isTestPlatformEmpty)(
     'fails to add a node (invalid node ID)',
     async () => {
-      const { exitCode } = await execUtils.pkStdio(
+      const { exitCode } = await testUtils.pkStdio(
         [
           'nodes',
           'add',
@@ -99,10 +102,12 @@ describe('add', () => {
           `${port}`,
         ],
         {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: nodePath,
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
       );
       expect(exitCode).toBe(sysexits.USAGE);
     },
@@ -110,7 +115,7 @@ describe('add', () => {
   testUtils.testIf(testUtils.isTestPlatformEmpty)(
     'fails to add a node (invalid IP address)',
     async () => {
-      const { exitCode } = await execUtils.pkStdio(
+      const { exitCode } = await testUtils.pkStdio(
         [
           'nodes',
           'add',
@@ -119,10 +124,12 @@ describe('add', () => {
           `${port}`,
         ],
         {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: nodePath,
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
       );
       expect(exitCode).toBe(sysexits.USAGE);
     },
@@ -130,7 +137,7 @@ describe('add', () => {
   testUtils.testIf(testUtils.isTestPlatformEmpty)(
     'adds a node with --force flag',
     async () => {
-      const { exitCode } = await execUtils.pkStdio(
+      const { exitCode } = await testUtils.pkStdio(
         [
           'nodes',
           'add',
@@ -140,10 +147,12 @@ describe('add', () => {
           `${port}`,
         ],
         {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: nodePath,
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
       );
       expect(exitCode).toBe(0);
       // Checking if node was added.
@@ -155,7 +164,7 @@ describe('add', () => {
     'fails to add node when ping fails',
     async () => {
       mockedPingNode.mockImplementation(() => false);
-      const { exitCode } = await execUtils.pkStdio(
+      const { exitCode } = await testUtils.pkStdio(
         [
           'nodes',
           'add',
@@ -164,10 +173,12 @@ describe('add', () => {
           `${port}`,
         ],
         {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: nodePath,
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
       );
       expect(exitCode).toBe(sysexits.NOHOST);
     },
@@ -176,7 +187,7 @@ describe('add', () => {
     'adds a node with --no-ping flag',
     async () => {
       mockedPingNode.mockImplementation(() => false);
-      const { exitCode } = await execUtils.pkStdio(
+      const { exitCode } = await testUtils.pkStdio(
         [
           'nodes',
           'add',
@@ -186,10 +197,12 @@ describe('add', () => {
           `${port}`,
         ],
         {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: nodePath,
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
       );
       expect(exitCode).toBe(0);
       // Checking if node was added.

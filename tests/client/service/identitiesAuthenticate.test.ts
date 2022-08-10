@@ -16,7 +16,7 @@ import * as validationErrors from '@/validation/errors';
 import * as clientUtils from '@/client/utils/utils';
 import * as nodesUtils from '@/nodes/utils';
 import TestProvider from '../../identities/TestProvider';
-import { expectRemoteError } from '../../utils';
+import * as testUtils from '../../utils';
 
 describe('identitiesAuthenticate', () => {
   const logger = new Logger('identitiesAuthenticate test', LogLevel.WARN, [
@@ -127,7 +127,7 @@ describe('identitiesAuthenticate', () => {
   test('cannot authenticate invalid provider', async () => {
     const request = new identitiesPB.Provider();
     request.setProviderId('');
-    await expectRemoteError(
+    await testUtils.expectRemoteError(
       grpcClient
         .identitiesAuthenticate(
           request,

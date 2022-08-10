@@ -3,7 +3,6 @@ import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import Session from '@/sessions/Session';
 import config from '@/config';
-import * as execUtils from '../../utils/exec';
 import * as testUtils from '../../utils';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
@@ -15,7 +14,7 @@ describe('unlock', () => {
   let agentPassword;
   let agentClose;
   beforeEach(async () => {
-    ({ agentDir, agentPassword, agentClose } = await execUtils.setupTestAgent(
+    ({ agentDir, agentPassword, agentClose } = await testUtils.setupTestAgent(
       globalRootKeyPems[0],
       logger,
     ));
@@ -34,33 +33,36 @@ describe('unlock', () => {
       fresh: true,
     });
     let exitCode, stdout;
-    ({ exitCode } = await execUtils.pkStdio(
-      ['agent', 'unlock'],
-      {
+    ({ exitCode } = await testUtils.pkExec(['agent', 'unlock'], {
+      env: {
         PK_NODE_PATH: agentDir,
         PK_PASSWORD: agentPassword,
       },
-      agentDir,
-    ));
+      cwd: agentDir,
+    }));
     expect(exitCode).toBe(0);
     // Run command without password
-    ({ exitCode, stdout } = await execUtils.pkStdio(
+    ({ exitCode, stdout } = await testUtils.pkExec(
       ['agent', 'status', '--format', 'json'],
       {
-        PK_NODE_PATH: agentDir,
+        env: {
+          PK_NODE_PATH: agentDir,
+        },
+        cwd: agentDir,
       },
-      agentDir,
     ));
     expect(exitCode).toBe(0);
     expect(JSON.parse(stdout)).toMatchObject({ status: 'LIVE' });
     // Run command with PK_TOKEN
-    ({ exitCode, stdout } = await execUtils.pkStdio(
+    ({ exitCode, stdout } = await testUtils.pkExec(
       ['agent', 'status', '--format', 'json'],
       {
-        PK_NODE_PATH: agentDir,
-        PK_TOKEN: await session.readToken(),
+        env: {
+          PK_NODE_PATH: agentDir,
+          PK_TOKEN: await session.readToken(),
+        },
+        cwd: agentDir,
       },
-      agentDir,
     ));
     expect(exitCode).toBe(0);
     expect(JSON.parse(stdout)).toMatchObject({ status: 'LIVE' });

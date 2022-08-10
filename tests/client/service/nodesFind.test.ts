@@ -19,7 +19,7 @@ import { ClientServiceService } from '@/proto/js/polykey/v1/client_service_grpc_
 import * as nodesPB from '@/proto/js/polykey/v1/nodes/nodes_pb';
 import * as clientUtils from '@/client/utils/utils';
 import * as validationErrors from '@/validation/errors';
-import { expectRemoteError } from '../../utils';
+import * as testUtils from '../../utils';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('nodesFind', () => {
@@ -158,7 +158,7 @@ describe('nodesFind', () => {
   test('cannot find an invalid node', async () => {
     const request = new nodesPB.Node();
     request.setNodeId('nodeId');
-    await expectRemoteError(
+    await testUtils.expectRemoteError(
       grpcClient.nodesFind(
         request,
         clientUtils.encodeAuthFromPassword(password),

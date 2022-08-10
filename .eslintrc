@@ -33,6 +33,10 @@
       {
         "name": "global",
         "message": "Use `globalThis` instead"
+      },
+      {
+        "name": "window",
+        "message": "Use `globalThis` instead"
       }
     ],
     "require-yield": 0,

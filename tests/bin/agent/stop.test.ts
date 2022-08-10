@@ -6,7 +6,6 @@ import config from '@/config';
 import { sleep } from '@/utils';
 import * as binErrors from '@/bin/errors';
 import * as clientErrors from '@/client/errors';
-import * as execUtils from '../../utils/exec';
 import * as testUtils from '../../utils';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
@@ -30,7 +29,7 @@ describe('stop', () => {
     'stop LIVE agent',
     async () => {
       const password = 'abc123';
-      const agentProcess = await execUtils.pkSpawn(
+      const agentProcess = await testUtils.pkSpawn(
         [
           'agent',
           'start',
@@ -42,11 +41,13 @@ describe('stop', () => {
           '0',
         ],
         {
-          PK_NODE_PATH: path.join(dataDir, 'polykey'),
-          PK_PASSWORD: password,
-          PK_ROOT_KEY: globalRootKeyPems[0],
+          env: {
+            PK_NODE_PATH: path.join(dataDir, 'polykey'),
+            PK_PASSWORD: password,
+            PK_ROOT_KEY: globalRootKeyPems[0],
+          },
+          cwd: dataDir,
         },
-        dataDir,
         logger,
       );
       const status = new Status({
@@ -60,14 +61,13 @@ describe('stop', () => {
         logger,
       });
       await status.waitFor('LIVE');
-      await execUtils.pkStdio(
-        ['agent', 'stop'],
-        {
+      await testUtils.pkExec(['agent', 'stop'], {
+        env: {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
           PK_PASSWORD: password,
         },
-        dataDir,
-      );
+        cwd: dataDir,
+      });
       await status.waitFor('DEAD');
       await sleep(5000);
       agentProcess.kill();
@@ -92,7 +92,7 @@ describe('stop', () => {
         fs,
         logger,
       });
-      const agentProcess = await execUtils.pkSpawn(
+      const agentProcess = await testUtils.pkSpawn(
         [
           'agent',
           'start',
@@ -104,49 +104,53 @@ describe('stop', () => {
           '0',
         ],
         {
-          PK_NODE_PATH: path.join(dataDir, 'polykey'),
-          PK_PASSWORD: password,
-          PK_ROOT_KEY: globalRootKeyPems[0],
+          env: {
+            PK_NODE_PATH: path.join(dataDir, 'polykey'),
+            PK_PASSWORD: password,
+            PK_ROOT_KEY: globalRootKeyPems[0],
+          },
+          cwd: dataDir,
         },
-        dataDir,
         logger,
       );
       await status.waitFor('LIVE');
       // Simultaneous calls to stop must use pkExec
       const [agentStop1, agentStop2] = await Promise.all([
-        execUtils.pkExec(
-          ['agent', 'stop', '--password-file', passwordPath],
-          {
+        testUtils.pkExec(['agent', 'stop', '--password-file', passwordPath], {
+          env: {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
           },
-          dataDir,
-        ),
-        execUtils.pkExec(
-          ['agent', 'stop', '--password-file', passwordPath],
-          {
+          cwd: dataDir,
+        }),
+        testUtils.pkExec(['agent', 'stop', '--password-file', passwordPath], {
+          env: {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
           },
-          dataDir,
-        ),
+          cwd: dataDir,
+        }),
       ]);
       // Cannot await for STOPPING
       // It's not reliable until file watching is implemented
       // So just 1 ms delay until sending another stop command
       await sleep(1);
-      const agentStop3 = await execUtils.pkStdio(
+      const agentStop3 = await testUtils.pkExec(
         ['agent', 'stop', '--node-path', path.join(dataDir, 'polykey')],
         {
-          PK_PASSWORD: password,
+          env: {
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
       );
       await status.waitFor('DEAD');
-      const agentStop4 = await execUtils.pkStdio(
+      const agentStop4 = await testUtils.pkExec(
         ['agent', 'stop', '--password-file', passwordPath],
         {
-          PK_NODE_PATH: path.join(dataDir, 'polykey'),
+          env: {
+            PK_NODE_PATH: path.join(dataDir, 'polykey'),
+          },
+          cwd: dataDir,
         },
-        dataDir,
       );
       // If the GRPC server gets closed after the GRPC connection is established
       // then it's possible that one of these exit codes is 1
@@ -180,7 +184,7 @@ describe('stop', () => {
         fs,
         logger,
       });
-      const agentProcess = await execUtils.pkSpawn(
+      const agentProcess = await testUtils.pkSpawn(
         [
           'agent',
           'start',
@@ -193,33 +197,36 @@ describe('stop', () => {
           '--verbose',
         ],
         {
-          PK_NODE_PATH: path.join(dataDir, 'polykey'),
-          PK_PASSWORD: password,
-          PK_ROOT_KEY: globalRootKeyPems[0],
+          env: {
+            PK_NODE_PATH: path.join(dataDir, 'polykey'),
+            PK_PASSWORD: password,
+            PK_ROOT_KEY: globalRootKeyPems[0],
+          },
+          cwd: dataDir,
         },
-        dataDir,
         logger,
       );
       await status.waitFor('STARTING');
-      const { exitCode, stderr } = await execUtils.pkStdio(
+      const { exitCode, stderr } = await testUtils.pkStdio(
         ['agent', 'stop', '--format', 'json'],
         {
-          PK_NODE_PATH: path.join(dataDir, 'polykey'),
+          env: {
+            PK_NODE_PATH: path.join(dataDir, 'polykey'),
+          },
+          cwd: dataDir,
         },
-        dataDir,
       );
-      execUtils.expectProcessError(exitCode, stderr, [
+      testUtils.expectProcessError(exitCode, stderr, [
         new binErrors.ErrorCLIPolykeyAgentStatus('agent is starting'),
       ]);
       await status.waitFor('LIVE');
-      await execUtils.pkStdio(
-        ['agent', 'stop'],
-        {
+      await testUtils.pkStdio(['agent', 'stop'], {
+        env: {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
           PK_PASSWORD: password,
         },
-        dataDir,
-      );
+        cwd: dataDir,
+      });
       await status.waitFor('DEAD');
       agentProcess.kill();
     },
@@ -231,7 +238,7 @@ describe('stop', () => {
     'stopping while unauthenticated does not stop',
     async () => {
       const password = 'abc123';
-      const agentProcess = await execUtils.pkSpawn(
+      const agentProcess = await testUtils.pkSpawn(
         [
           'agent',
           'start',
@@ -243,11 +250,13 @@ describe('stop', () => {
           '0',
         ],
         {
-          PK_NODE_PATH: path.join(dataDir, 'polykey'),
-          PK_PASSWORD: password,
-          PK_ROOT_KEY: globalRootKeyPems[0],
+          env: {
+            PK_NODE_PATH: path.join(dataDir, 'polykey'),
+            PK_PASSWORD: password,
+            PK_ROOT_KEY: globalRootKeyPems[0],
+          },
+          cwd: dataDir,
         },
-        dataDir,
         logger,
       );
       const status = new Status({
@@ -261,27 +270,28 @@ describe('stop', () => {
         logger,
       });
       await status.waitFor('LIVE');
-      const { exitCode, stderr } = await execUtils.pkStdio(
+      const { exitCode, stderr } = await testUtils.pkExec(
         ['agent', 'stop', '--format', 'json'],
         {
-          PK_NODE_PATH: path.join(dataDir, 'polykey'),
-          PK_PASSWORD: 'wrong password',
+          env: {
+            PK_NODE_PATH: path.join(dataDir, 'polykey'),
+            PK_PASSWORD: 'wrong password',
+          },
+          cwd: dataDir,
         },
-        dataDir,
       );
-      execUtils.expectProcessError(exitCode, stderr, [
+      testUtils.expectProcessError(exitCode, stderr, [
         new clientErrors.ErrorClientAuthDenied(),
       ]);
       // Should still be LIVE
       expect((await status.readStatus())?.status).toBe('LIVE');
-      await execUtils.pkStdio(
-        ['agent', 'stop'],
-        {
+      await testUtils.pkExec(['agent', 'stop'], {
+        env: {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
           PK_PASSWORD: password,
         },
-        dataDir,
-      );
+        cwd: dataDir,
+      });
       await status.waitFor('DEAD');
       agentProcess.kill();
     },

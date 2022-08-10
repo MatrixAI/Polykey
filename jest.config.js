@@ -64,7 +64,7 @@ module.exports = {
       reportTestSuiteErrors: 'true',
     }],
   ],
-  collectCoverageFrom: ['src/**/*.{ts,tsx,js,jsx}', '!src/**/*.d.ts'],
+  collectCoverageFrom: ['src/**/*.{ts,tsx,js,jsx}', '!src/**/*.d.ts', '!src/proto/*'],
   coverageReporters: ['text', 'cobertura'],
   globals,
   // Global setup script executed once before all test files

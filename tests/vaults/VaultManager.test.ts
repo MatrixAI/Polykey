@@ -32,7 +32,7 @@ import * as vaultsUtils from '@/vaults/utils';
 import { sleep } from '@/utils';
 import VaultInternal from '@/vaults/VaultInternal';
 import * as nodeTestUtils from '../nodes/utils';
-import { expectRemoteError } from '../utils';
+import * as testUtils from '../utils';
 import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 
 describe('VaultManager', () => {
@@ -746,7 +746,7 @@ describe('VaultManager', () => {
           'pull',
         );
 
-        await expectRemoteError(
+        await testUtils.expectRemoteError(
           vaultManager.cloneVault(
             remoteKeynode1Id,
             'not-existing' as VaultName,
@@ -835,7 +835,7 @@ describe('VaultManager', () => {
       });
       try {
         // Should reject with no permissions set
-        await expectRemoteError(
+        await testUtils.expectRemoteError(
           vaultManager.cloneVault(remoteKeynode1Id, remoteVaultId),
           vaultsErrors.ErrorVaultsPermissionDenied,
         );
@@ -878,7 +878,7 @@ describe('VaultManager', () => {
           remoteVaultId,
         );
 
-        await expectRemoteError(
+        await testUtils.expectRemoteError(
           vaultManager.pullVault({ vaultId: clonedVaultId }),
           vaultsErrors.ErrorVaultsPermissionDenied,
         );
@@ -1564,13 +1564,13 @@ describe('VaultManager', () => {
           // Should throw
         }
       };
-      await expectRemoteError(
+      await testUtils.expectRemoteError(
         testFun(),
         vaultsErrors.ErrorVaultsPermissionDenied,
       );
       // Should throw due to lack of scan permission
       await remoteAgent.gestaltGraph.setGestaltActionByNode(nodeId1, 'notify');
-      await expectRemoteError(
+      await testUtils.expectRemoteError(
         testFun(),
         vaultsErrors.ErrorVaultsPermissionDenied,
       );

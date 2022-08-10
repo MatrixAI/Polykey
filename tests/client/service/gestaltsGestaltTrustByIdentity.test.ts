@@ -32,8 +32,8 @@ import * as gestaltsErrors from '@/gestalts/errors';
 import * as keysUtils from '@/keys/utils';
 import * as clientUtils from '@/client/utils/utils';
 import * as nodesUtils from '@/nodes/utils';
+import * as testUtils from '../../utils';
 import TestProvider from '../../identities/TestProvider';
-import { expectRemoteError } from '../../utils';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('gestaltsGestaltTrustByIdentity', () => {
@@ -299,7 +299,7 @@ describe('gestaltsGestaltTrustByIdentity', () => {
     request.setIdentityId(connectedIdentity);
     // Should fail on first attempt - need to allow time for the identity to be
     // linked to a node via discovery
-    await expectRemoteError(
+    await testUtils.expectRemoteError(
       grpcClient.gestaltsGestaltTrustByIdentity(
         request,
         clientUtils.encodeAuthFromPassword(password),
@@ -331,7 +331,7 @@ describe('gestaltsGestaltTrustByIdentity', () => {
     request.setProviderId(testProvider.id);
     request.setIdentityId('disconnected-user');
     // Should fail on first attempt - attempt to find a connected node
-    await expectRemoteError(
+    await testUtils.expectRemoteError(
       grpcClient.gestaltsGestaltTrustByIdentity(
         request,
         clientUtils.encodeAuthFromPassword(password),
@@ -340,7 +340,7 @@ describe('gestaltsGestaltTrustByIdentity', () => {
     );
     // Wait and try again - should fail again because the identity has no
     // linked nodes we can trust
-    await expectRemoteError(
+    await testUtils.expectRemoteError(
       grpcClient.gestaltsGestaltTrustByIdentity(
         request,
         clientUtils.encodeAuthFromPassword(password),
@@ -397,7 +397,7 @@ describe('gestaltsGestaltTrustByIdentity', () => {
     request.setIdentityId(connectedIdentity);
     // Should fail on first attempt - need to allow time for the identity to be
     // linked to a node via discovery
-    await expectRemoteError(
+    await testUtils.expectRemoteError(
       grpcClient.gestaltsGestaltTrustByIdentity(
         request,
         clientUtils.encodeAuthFromPassword(password),

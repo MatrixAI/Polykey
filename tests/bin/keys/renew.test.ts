@@ -5,7 +5,6 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
 import * as keysUtils from '@/keys/utils';
 import * as testUtils from '../../utils';
-import * as execUtils from '../../utils/exec';
 
 describe('renew', () => {
   const logger = new Logger('renew test', LogLevel.WARN, [new StreamHandler()]);
@@ -56,58 +55,68 @@ describe('renew', () => {
     async () => {
       // Can't test with target executable due to mocking
       // Get previous keypair and nodeId
-      let { exitCode, stdout } = await execUtils.pkStdio(
+      let { exitCode, stdout } = await testUtils.pkStdio(
         ['keys', 'root', '--private-key', '--format', 'json'],
         {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: nodePath,
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
       );
       expect(exitCode).toBe(0);
       const prevPublicKey = JSON.parse(stdout).publicKey;
       const prevPrivateKey = JSON.parse(stdout).privateKey;
-      ({ exitCode, stdout } = await execUtils.pkStdio(
+      ({ exitCode, stdout } = await testUtils.pkStdio(
         ['agent', 'status', '--format', 'json'],
         {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: nodePath,
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
       ));
       expect(exitCode).toBe(0);
       const prevNodeId = JSON.parse(stdout).nodeId;
       // Renew keypair
       const passPath = path.join(dataDir, 'renew-password');
       await fs.promises.writeFile(passPath, 'password-new');
-      ({ exitCode } = await execUtils.pkStdio(
+      ({ exitCode } = await testUtils.pkStdio(
         ['keys', 'renew', '--password-new-file', passPath],
         {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: nodePath,
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
       ));
       expect(exitCode).toBe(0);
       // Get new keypair and nodeId and compare against old
-      ({ exitCode, stdout } = await execUtils.pkStdio(
+      ({ exitCode, stdout } = await testUtils.pkStdio(
         ['keys', 'root', '--private-key', '--format', 'json'],
         {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: 'password-new',
+          env: {
+            PK_NODE_PATH: nodePath,
+            PK_PASSWORD: 'password-new',
+          },
+          cwd: dataDir,
         },
-        dataDir,
       ));
       expect(exitCode).toBe(0);
       const newPublicKey = JSON.parse(stdout).publicKey;
       const newPrivateKey = JSON.parse(stdout).privateKey;
-      ({ exitCode, stdout } = await execUtils.pkStdio(
+      ({ exitCode, stdout } = await testUtils.pkStdio(
         ['agent', 'status', '--format', 'json'],
         {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: 'password-new',
+          env: {
+            PK_NODE_PATH: nodePath,
+            PK_PASSWORD: 'password-new',
+          },
+          cwd: dataDir,
         },
-        dataDir,
       ));
       expect(exitCode).toBe(0);
       const newNodeId = JSON.parse(stdout).nodeId;
@@ -116,13 +125,15 @@ describe('renew', () => {
       expect(newNodeId).not.toBe(prevNodeId);
       // Revert side effects
       await fs.promises.writeFile(passPath, password);
-      ({ exitCode } = await execUtils.pkStdio(
+      ({ exitCode } = await testUtils.pkStdio(
         ['keys', 'password', '--password-new-file', passPath],
         {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: 'password-new',
+          env: {
+            PK_NODE_PATH: nodePath,
+            PK_PASSWORD: 'password-new',
+          },
+          cwd: dataDir,
         },
-        dataDir,
       ));
       expect(exitCode).toBe(0);
     },

@@ -12,7 +12,6 @@ import Status from '@/status/Status';
 import * as statusErrors from '@/status/errors';
 import config from '@/config';
 import * as keysUtils from '@/keys/utils';
-import * as execUtils from '../../utils/exec';
 import * as testUtils from '../../utils';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
@@ -38,7 +37,7 @@ describe('start', () => {
       const password = 'abc123';
       const polykeyPath = path.join(dataDir, 'polykey');
       await fs.promises.mkdir(polykeyPath);
-      const agentProcess = await execUtils.pkSpawn(
+      const agentProcess = await testUtils.pkSpawn(
         [
           'agent',
           'start',
@@ -57,9 +56,11 @@ describe('start', () => {
           'json',
         ],
         {
-          PK_PASSWORD: password,
+          env: {
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
         logger,
       );
       const rlOut = readline.createInterface(agentProcess.stdout!);
@@ -107,7 +108,7 @@ describe('start', () => {
       const password = 'abc123';
       const passwordPath = path.join(dataDir, 'password');
       await fs.promises.writeFile(passwordPath, password);
-      const agentProcess = await execUtils.pkSpawn(
+      const agentProcess = await testUtils.pkSpawn(
         [
           'agent',
           'start',
@@ -131,9 +132,11 @@ describe('start', () => {
           'json',
         ],
         {
-          PK_NODE_PATH: path.join(dataDir, 'polykey'),
+          env: {
+            PK_NODE_PATH: path.join(dataDir, 'polykey'),
+          },
+          cwd: dataDir,
         },
-        dataDir,
         logger,
       );
       const agentProcessExit = new Promise<void>((resolve, reject) => {
@@ -210,7 +213,7 @@ describe('start', () => {
       const password = 'abc123';
       // One of these processes is blocked
       const [agentProcess1, agentProcess2] = await Promise.all([
-        execUtils.pkSpawn(
+        testUtils.pkSpawn(
           [
             'agent',
             'start',
@@ -227,13 +230,15 @@ describe('start', () => {
             'json',
           ],
           {
-            PK_NODE_PATH: path.join(dataDir, 'polykey'),
-            PK_PASSWORD: password,
+            env: {
+              PK_NODE_PATH: path.join(dataDir, 'polykey'),
+              PK_PASSWORD: password,
+            },
+            cwd: dataDir,
           },
-          dataDir,
           logger.getChild('agentProcess1'),
         ),
-        execUtils.pkSpawn(
+        testUtils.pkSpawn(
           [
             'agent',
             'start',
@@ -250,10 +255,12 @@ describe('start', () => {
             'json',
           ],
           {
-            PK_NODE_PATH: path.join(dataDir, 'polykey'),
-            PK_PASSWORD: password,
+            env: {
+              PK_NODE_PATH: path.join(dataDir, 'polykey'),
+              PK_PASSWORD: password,
+            },
+            cwd: dataDir,
           },
-          dataDir,
           logger.getChild('agentProcess2'),
         ),
       ]);
@@ -283,12 +290,12 @@ describe('start', () => {
       const errorStatusLocked = new statusErrors.ErrorStatusLocked();
       // It's either the first or second process
       if (index === 0) {
-        execUtils.expectProcessError(exitCode!, stdErrLine1, [
+        testUtils.expectProcessError(exitCode!, stdErrLine1, [
           errorStatusLocked,
         ]);
         agentProcess2.kill('SIGQUIT');
       } else if (index === 1) {
-        execUtils.expectProcessError(exitCode!, stdErrLine2, [
+        testUtils.expectProcessError(exitCode!, stdErrLine2, [
           errorStatusLocked,
         ]);
         agentProcess1.kill('SIGQUIT');
@@ -304,7 +311,7 @@ describe('start', () => {
       const password = 'abc123';
       // One of these processes is blocked
       const [agentProcess, bootstrapProcess] = await Promise.all([
-        execUtils.pkSpawn(
+        testUtils.pkSpawn(
           [
             'agent',
             'start',
@@ -321,13 +328,15 @@ describe('start', () => {
             'json',
           ],
           {
-            PK_NODE_PATH: path.join(dataDir, 'polykey'),
-            PK_PASSWORD: password,
+            env: {
+              PK_NODE_PATH: path.join(dataDir, 'polykey'),
+              PK_PASSWORD: password,
+            },
+            cwd: dataDir,
           },
-          dataDir,
           logger.getChild('agentProcess'),
         ),
-        execUtils.pkSpawn(
+        testUtils.pkSpawn(
           [
             'bootstrap',
             '--fresh',
@@ -338,10 +347,12 @@ describe('start', () => {
             'json',
           ],
           {
-            PK_NODE_PATH: path.join(dataDir, 'polykey'),
-            PK_PASSWORD: password,
+            env: {
+              PK_NODE_PATH: path.join(dataDir, 'polykey'),
+              PK_PASSWORD: password,
+            },
+            cwd: dataDir,
           },
-          dataDir,
           logger.getChild('bootstrapProcess'),
         ),
       ]);
@@ -371,12 +382,12 @@ describe('start', () => {
       const errorStatusLocked = new statusErrors.ErrorStatusLocked();
       // It's either the first or second process
       if (index === 0) {
-        execUtils.expectProcessError(exitCode!, stdErrLine1, [
+        testUtils.expectProcessError(exitCode!, stdErrLine1, [
           errorStatusLocked,
         ]);
         bootstrapProcess.kill('SIGTERM');
       } else if (index === 1) {
-        execUtils.expectProcessError(exitCode!, stdErrLine2, [
+        testUtils.expectProcessError(exitCode!, stdErrLine2, [
           errorStatusLocked,
         ]);
         agentProcess.kill('SIGTERM');
@@ -390,7 +401,7 @@ describe('start', () => {
     'start with existing state',
     async () => {
       const password = 'abc123';
-      const agentProcess1 = await execUtils.pkSpawn(
+      const agentProcess1 = await testUtils.pkSpawn(
         [
           'agent',
           'start',
@@ -405,10 +416,12 @@ describe('start', () => {
           '--verbose',
         ],
         {
-          PK_NODE_PATH: path.join(dataDir, 'polykey'),
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: path.join(dataDir, 'polykey'),
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
         logger,
       );
       const rlOut = readline.createInterface(agentProcess1.stdout!);
@@ -417,7 +430,7 @@ describe('start', () => {
         rlOut.once('close', reject);
       });
       agentProcess1.kill('SIGHUP');
-      const agentProcess2 = await execUtils.pkSpawn(
+      const agentProcess2 = await testUtils.pkSpawn(
         [
           'agent',
           'start',
@@ -432,10 +445,12 @@ describe('start', () => {
           '--verbose',
         ],
         {
-          PK_NODE_PATH: path.join(dataDir, 'polykey'),
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: path.join(dataDir, 'polykey'),
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
         logger,
       );
       const status = new Status({
@@ -462,7 +477,7 @@ describe('start', () => {
     'start when interrupted, requires fresh on next start',
     async () => {
       const password = 'password';
-      const agentProcess1 = await execUtils.pkSpawn(
+      const agentProcess1 = await testUtils.pkSpawn(
         [
           'agent',
           'start',
@@ -477,10 +492,12 @@ describe('start', () => {
           '--verbose',
         ],
         {
-          PK_NODE_PATH: path.join(dataDir, 'polykey'),
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: path.join(dataDir, 'polykey'),
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
         logger.getChild('agentProcess1'),
       );
       const rlErr = readline.createInterface(agentProcess1.stderr!);
@@ -500,7 +517,7 @@ describe('start', () => {
       // Unlike bootstrapping, agent start can succeed under certain compatible partial state
       // However in some cases, state will conflict, and the start will fail with various errors
       // In such cases, the `--fresh` option must be used
-      const agentProcess2 = await execUtils.pkSpawn(
+      const agentProcess2 = await testUtils.pkSpawn(
         [
           'agent',
           'start',
@@ -518,10 +535,12 @@ describe('start', () => {
           'json',
         ],
         {
-          PK_NODE_PATH: path.join(dataDir, 'polykey'),
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: path.join(dataDir, 'polykey'),
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
         logger.getChild('agentProcess2'),
       );
       const rlOut = readline.createInterface(agentProcess2.stdout!);
@@ -548,7 +567,7 @@ describe('start', () => {
           statusLiveData.recoveryCode.split(' ').length === 24,
       ).toBe(true);
       agentProcess2.kill('SIGQUIT');
-      await execUtils.processExit(agentProcess2);
+      await testUtils.processExit(agentProcess2);
       // Check for graceful exit
       const status = new Status({
         statusPath: path.join(dataDir, 'polykey', config.defaults.statusBase),
@@ -582,7 +601,7 @@ describe('start', () => {
         fs,
         logger,
       });
-      const agentProcess1 = await execUtils.pkSpawn(
+      const agentProcess1 = await testUtils.pkSpawn(
         [
           'agent',
           'start',
@@ -601,9 +620,11 @@ describe('start', () => {
           'json',
         ],
         {
-          PK_PASSWORD: password1,
+          env: {
+            PK_PASSWORD: password1,
+          },
+          cwd: dataDir,
         },
-        dataDir,
         logger.getChild('agentProcess1'),
       );
       const rlOut = readline.createInterface(agentProcess1.stdout!);
@@ -615,11 +636,11 @@ describe('start', () => {
       const recoveryCode = statusLiveData.recoveryCode;
       const statusInfo1 = (await status.readStatus())!;
       agentProcess1.kill('SIGTERM');
-      await execUtils.processExit(agentProcess1);
+      await testUtils.processExit(agentProcess1);
       const recoveryCodePath = path.join(dataDir, 'recovery-code');
       await fs.promises.writeFile(recoveryCodePath, recoveryCode + '\n');
       // When recovering, having the wrong bit size is not a problem
-      const agentProcess2 = await execUtils.pkSpawn(
+      const agentProcess2 = await testUtils.pkSpawn(
         [
           'agent',
           'start',
@@ -636,10 +657,12 @@ describe('start', () => {
           '--verbose',
         ],
         {
-          PK_NODE_PATH: path.join(dataDir, 'polykey'),
-          PK_PASSWORD: password2,
+          env: {
+            PK_NODE_PATH: path.join(dataDir, 'polykey'),
+            PK_PASSWORD: password2,
+          },
+          cwd: dataDir,
         },
-        dataDir,
         logger.getChild('agentProcess2'),
       );
       const statusInfo2 = await status.waitFor('LIVE');
@@ -647,15 +670,17 @@ describe('start', () => {
       // Node Id hasn't changed
       expect(statusInfo1.data.nodeId).toStrictEqual(statusInfo2.data.nodeId);
       agentProcess2.kill('SIGTERM');
-      await execUtils.processExit(agentProcess2);
+      await testUtils.processExit(agentProcess2);
       // Check that the password has changed
-      const agentProcess3 = await execUtils.pkSpawn(
+      const agentProcess3 = await testUtils.pkSpawn(
         ['agent', 'start', '--workers', '0', '--verbose'],
         {
-          PK_NODE_PATH: path.join(dataDir, 'polykey'),
-          PK_PASSWORD: password2,
+          env: {
+            PK_NODE_PATH: path.join(dataDir, 'polykey'),
+            PK_PASSWORD: password2,
+          },
+          cwd: dataDir,
         },
-        dataDir,
         logger.getChild('agentProcess3'),
       );
       const statusInfo3 = await status.waitFor('LIVE');
@@ -663,14 +688,14 @@ describe('start', () => {
       // Node ID hasn't changed
       expect(statusInfo1.data.nodeId).toStrictEqual(statusInfo3.data.nodeId);
       agentProcess3.kill('SIGTERM');
-      await execUtils.processExit(agentProcess3);
+      await testUtils.processExit(agentProcess3);
       // Checks deterministic generation using the same recovery code
       // First by deleting the polykey state
       await fs.promises.rm(path.join(dataDir, 'polykey'), {
         force: true,
         recursive: true,
       });
-      const agentProcess4 = await execUtils.pkSpawn(
+      const agentProcess4 = await testUtils.pkSpawn(
         [
           'agent',
           'start',
@@ -685,11 +710,13 @@ describe('start', () => {
           '--verbose',
         ],
         {
-          PK_NODE_PATH: path.join(dataDir, 'polykey'),
-          PK_PASSWORD: password2,
-          PK_RECOVERY_CODE: recoveryCode,
+          env: {
+            PK_NODE_PATH: path.join(dataDir, 'polykey'),
+            PK_PASSWORD: password2,
+            PK_RECOVERY_CODE: recoveryCode,
+          },
+          cwd: dataDir,
         },
-        dataDir,
         logger.getChild('agentProcess4'),
       );
       const statusInfo4 = await status.waitFor('LIVE');
@@ -697,7 +724,7 @@ describe('start', () => {
       // Same Node ID as before
       expect(statusInfo1.data.nodeId).toStrictEqual(statusInfo4.data.nodeId);
       agentProcess4.kill('SIGTERM');
-      await execUtils.processExit(agentProcess4);
+      await testUtils.processExit(agentProcess4);
     },
     globalThis.defaultTimeout * 3,
   );
@@ -722,7 +749,7 @@ describe('start', () => {
       const clientPort = 55555;
       const proxyHost = '127.0.0.3';
       const proxyPort = 55556;
-      const agentProcess = await execUtils.pkSpawn(
+      const agentProcess = await testUtils.pkSpawn(
         [
           'agent',
           'start',
@@ -741,10 +768,12 @@ describe('start', () => {
           '--verbose',
         ],
         {
-          PK_NODE_PATH: path.join(dataDir, 'polykey'),
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: path.join(dataDir, 'polykey'),
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
         logger.getChild('agentProcess'),
       );
       const statusInfo = await status.waitFor('LIVE');
@@ -778,14 +807,16 @@ describe('start', () => {
           keysUtils.privateKeyFromPem(privateKeyPem),
         ),
       );
-      const agentProcess = await execUtils.pkSpawn(
+      const agentProcess = await testUtils.pkSpawn(
         ['agent', 'start', '--workers', '0', '--verbose'],
         {
-          PK_NODE_PATH: path.join(dataDir, 'polykey'),
-          PK_PASSWORD: password,
-          PK_ROOT_KEY: privateKeyPem,
+          env: {
+            PK_NODE_PATH: path.join(dataDir, 'polykey'),
+            PK_PASSWORD: password,
+            PK_ROOT_KEY: privateKeyPem,
+          },
+          cwd: dataDir,
         },
-        dataDir,
         logger,
       );
       const statusInfo = await status.waitFor('LIVE');
@@ -822,7 +853,7 @@ describe('start', () => {
       await fs.promises.writeFile(privateKeyPath, privateKeyPem, {
         encoding: 'utf-8',
       });
-      const agentProcess = await execUtils.pkSpawn(
+      const agentProcess = await testUtils.pkSpawn(
         [
           'agent',
           'start',
@@ -833,10 +864,12 @@ describe('start', () => {
           privateKeyPath,
         ],
         {
-          PK_NODE_PATH: path.join(dataDir, 'polykey'),
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: path.join(dataDir, 'polykey'),
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
         logger,
       );
       const statusInfo = await status.waitFor('LIVE');
@@ -867,9 +900,9 @@ describe('start', () => {
           path.join(globalThis.tmpDir, 'polykey-test-'),
         );
         ({ agentStatus: agent1Status, agentClose: agent1Close } =
-          await execUtils.setupTestAgent(globalRootKeyPems[0], logger));
+          await testUtils.setupTestAgent(globalRootKeyPems[0], logger));
         ({ agentStatus: agent2Status, agentClose: agent2Close } =
-          await execUtils.setupTestAgent(globalRootKeyPems[1], logger));
+          await testUtils.setupTestAgent(globalRootKeyPems[1], logger));
         seedNodeId1 = agent1Status.data.nodeId;
         seedNodeHost1 = agent1Status.data.proxyHost;
         seedNodePort1 = agent1Status.data.proxyPort;
@@ -912,7 +945,7 @@ describe('start', () => {
               },
               testnet: {},
             });
-          await execUtils.pkStdio(
+          await testUtils.pkStdio(
             [
               'agent',
               'start',
@@ -931,19 +964,20 @@ describe('start', () => {
               '--verbose',
             ],
             {
+              env: {
+                PK_NODE_PATH: nodePath,
+                PK_PASSWORD: password,
+              },
+              cwd: dataDir,
+            },
+          );
+          await testUtils.pkStdio(['agent', 'stop'], {
+            env: {
               PK_NODE_PATH: nodePath,
               PK_PASSWORD: password,
             },
-            dataDir,
-          );
-          await execUtils.pkStdio(
-            ['agent', 'stop'],
-            {
-              PK_NODE_PATH: nodePath,
-              PK_PASSWORD: password,
-            },
-            dataDir,
-          );
+            cwd: dataDir,
+          });
           mockedConfigDefaultsNetwork.mockRestore();
           await status.waitFor('DEAD');
         },
@@ -976,7 +1010,7 @@ describe('start', () => {
                 },
               },
             });
-          await execUtils.pkStdio(
+          await testUtils.pkStdio(
             [
               'agent',
               'start',
@@ -991,21 +1025,22 @@ describe('start', () => {
               '--verbose',
             ],
             {
+              env: {
+                PK_NODE_PATH: nodePath,
+                PK_PASSWORD: password,
+                PK_SEED_NODES: `<defaults>;${seedNodeId1}@${seedNodeHost1}:${seedNodePort1}`,
+                PK_NETWORK: 'testnet',
+              },
+              cwd: dataDir,
+            },
+          );
+          await testUtils.pkStdio(['agent', 'stop'], {
+            env: {
               PK_NODE_PATH: nodePath,
               PK_PASSWORD: password,
-              PK_SEED_NODES: `<defaults>;${seedNodeId1}@${seedNodeHost1}:${seedNodePort1}`,
-              PK_NETWORK: 'testnet',
             },
-            dataDir,
-          );
-          await execUtils.pkStdio(
-            ['agent', 'stop'],
-            {
-              PK_NODE_PATH: nodePath,
-              PK_PASSWORD: password,
-            },
-            dataDir,
-          );
+            cwd: dataDir,
+          });
           mockedConfigDefaultsNetwork.mockRestore();
           await status.waitFor('DEAD');
         },

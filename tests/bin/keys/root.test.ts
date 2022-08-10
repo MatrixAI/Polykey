@@ -1,5 +1,4 @@
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import * as execUtils from '../../utils/exec';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 import * as testUtils from '../../utils';
 
@@ -9,7 +8,7 @@ describe('root', () => {
   let agentPassword;
   let agentClose;
   beforeEach(async () => {
-    ({ agentDir, agentPassword, agentClose } = await execUtils.setupTestAgent(
+    ({ agentDir, agentPassword, agentClose } = await testUtils.setupTestAgent(
       globalRootKeyPems[0],
       logger,
     ));
@@ -20,13 +19,15 @@ describe('root', () => {
   testUtils.testIf(
     testUtils.isTestPlatformEmpty || testUtils.isTestPlatformDocker,
   )('root gets the public key', async () => {
-    const { exitCode, stdout } = await execUtils.pkStdio(
+    const { exitCode, stdout } = await testUtils.pkExec(
       ['keys', 'root', '--format', 'json'],
       {
-        PK_NODE_PATH: agentDir,
-        PK_PASSWORD: agentPassword,
+        env: {
+          PK_NODE_PATH: agentDir,
+          PK_PASSWORD: agentPassword,
+        },
+        cwd: agentDir,
       },
-      agentDir,
     );
     expect(exitCode).toBe(0);
     expect(JSON.parse(stdout)).toEqual({
@@ -36,13 +37,15 @@ describe('root', () => {
   testUtils.testIf(
     testUtils.isTestPlatformEmpty || testUtils.isTestPlatformDocker,
   )('root gets public and private keys', async () => {
-    const { exitCode, stdout } = await execUtils.pkStdio(
+    const { exitCode, stdout } = await testUtils.pkExec(
       ['keys', 'root', '--private-key', '--format', 'json'],
       {
-        PK_NODE_PATH: agentDir,
-        PK_PASSWORD: agentPassword,
+        env: {
+          PK_NODE_PATH: agentDir,
+          PK_PASSWORD: agentPassword,
+        },
+        cwd: agentDir,
       },
-      agentDir,
     );
     expect(exitCode).toBe(0);
     expect(JSON.parse(stdout)).toEqual({

@@ -19,7 +19,7 @@ import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import { timerStart } from '@/utils';
 import * as utils from './utils';
 import * as testNodesUtils from '../nodes/utils';
-import { expectRemoteError } from '../utils';
+import * as testUtils from '../utils';
 
 describe('GRPCClient', () => {
   const logger = new Logger('GRPCClient Test', LogLevel.WARN, [
@@ -176,7 +176,7 @@ describe('GRPCClient', () => {
     const m2 = new utilsPB.EchoMessage();
     m2.setChallenge('error');
     pCall = client.unary(m2);
-    await expectRemoteError(pCall, grpcErrors.ErrorGRPC);
+    await testUtils.expectRemoteError(pCall, grpcErrors.ErrorGRPC);
     meta = await pCall.meta;
     // Expect reflected reflected session token
     expect(clientUtils.decodeAuthToSession(meta)).toBe(

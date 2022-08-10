@@ -1,7 +1,6 @@
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import * as execUtils from '../../utils/exec';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 import * as testUtils from '../../utils';
 
@@ -13,7 +12,7 @@ describe('sign-verify', () => {
   let agentPassword;
   let agentClose;
   beforeEach(async () => {
-    ({ agentDir, agentPassword, agentClose } = await execUtils.setupTestAgent(
+    ({ agentDir, agentPassword, agentClose } = await testUtils.setupTestAgent(
       globalRootKeyPems[0],
       logger,
     ));
@@ -29,13 +28,15 @@ describe('sign-verify', () => {
     await fs.promises.writeFile(dataPath, 'sign-me', {
       encoding: 'binary',
     });
-    ({ exitCode, stdout } = await execUtils.pkStdio(
+    ({ exitCode, stdout } = await testUtils.pkExec(
       ['keys', 'sign', dataPath, '--format', 'json'],
       {
-        PK_NODE_PATH: agentDir,
-        PK_PASSWORD: agentPassword,
+        env: {
+          PK_NODE_PATH: agentDir,
+          PK_PASSWORD: agentPassword,
+        },
+        cwd: agentDir,
       },
-      agentDir,
     ));
     expect(exitCode).toBe(0);
     expect(JSON.parse(stdout)).toEqual({
@@ -46,13 +47,15 @@ describe('sign-verify', () => {
     await fs.promises.writeFile(signaturePath, signed, {
       encoding: 'binary',
     });
-    ({ exitCode, stdout } = await execUtils.pkStdio(
+    ({ exitCode, stdout } = await testUtils.pkExec(
       ['keys', 'verify', dataPath, signaturePath, '--format', 'json'],
       {
-        PK_NODE_PATH: agentDir,
-        PK_PASSWORD: agentPassword,
+        env: {
+          PK_NODE_PATH: agentDir,
+          PK_PASSWORD: agentPassword,
+        },
+        cwd: agentDir,
       },
-      agentDir,
     ));
     expect(exitCode).toBe(0);
     expect(JSON.parse(stdout)).toEqual({

@@ -1,5 +1,4 @@
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import * as execUtils from '../../utils/exec';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 import * as testUtils from '../../utils';
 
@@ -11,7 +10,7 @@ describe('certchain', () => {
   let agentPassword;
   let agentClose;
   beforeEach(async () => {
-    ({ agentDir, agentPassword, agentClose } = await execUtils.setupTestAgent(
+    ({ agentDir, agentPassword, agentClose } = await testUtils.setupTestAgent(
       globalRootKeyPems[0],
       logger,
     ));
@@ -22,26 +21,30 @@ describe('certchain', () => {
   testUtils.testIf(
     testUtils.isTestPlatformEmpty || testUtils.isTestPlatformDocker,
   )('certchain gets the certificate chain', async () => {
-    let { exitCode, stdout } = await execUtils.pkStdio(
+    let { exitCode, stdout } = await testUtils.pkExec(
       ['keys', 'certchain', '--format', 'json'],
       {
-        PK_NODE_PATH: agentDir,
-        PK_PASSWORD: agentPassword,
+        env: {
+          PK_NODE_PATH: agentDir,
+          PK_PASSWORD: agentPassword,
+        },
+        cwd: agentDir,
       },
-      agentDir,
     );
     expect(exitCode).toBe(0);
     expect(JSON.parse(stdout)).toEqual({
       certchain: expect.any(Array),
     });
     const certChainCommand = JSON.parse(stdout).certchain.join('\n');
-    ({ exitCode, stdout } = await execUtils.pkStdio(
+    ({ exitCode, stdout } = await testUtils.pkExec(
       ['agent', 'status', '--format', 'json'],
       {
-        PK_NODE_PATH: agentDir,
-        PK_PASSWORD: agentPassword,
+        env: {
+          PK_NODE_PATH: agentDir,
+          PK_PASSWORD: agentPassword,
+        },
+        cwd: agentDir,
       },
-      agentDir,
     ));
     expect(exitCode).toBe(0);
     const certChainStatus = JSON.parse(stdout).rootCertChainPem;

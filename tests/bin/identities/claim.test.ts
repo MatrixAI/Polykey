@@ -10,7 +10,6 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
 import { sysexits } from '@/utils';
 import * as identitiesUtils from '@/identities/utils';
-import * as execUtils from '../../utils/exec';
 import TestProvider from '../../identities/TestProvider';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 import * as testUtils from '../../utils';
@@ -63,7 +62,7 @@ describe('claim', () => {
       const mockedBrowser = jest
         .spyOn(identitiesUtils, 'browser')
         .mockImplementation(() => {});
-      await execUtils.pkStdio(
+      await testUtils.pkStdio(
         [
           'identities',
           'authenticate',
@@ -71,13 +70,15 @@ describe('claim', () => {
           testToken.identityId,
         ],
         {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: nodePath,
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
       );
       // Claim identity
-      const { exitCode, stdout } = await execUtils.pkStdio(
+      const { exitCode, stdout } = await testUtils.pkStdio(
         [
           'identities',
           'claim',
@@ -87,10 +88,12 @@ describe('claim', () => {
           'json',
         ],
         {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: nodePath,
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
       );
       expect(exitCode).toBe(0);
       expect(JSON.parse(stdout)).toEqual(['Claim Id: 0', 'Url: test.com']);
@@ -108,13 +111,15 @@ describe('claim', () => {
   testUtils.testIf(testUtils.isTestPlatformEmpty)(
     'cannot claim unauthenticated identities',
     async () => {
-      const { exitCode } = await execUtils.pkStdio(
+      const { exitCode } = await testUtils.pkStdio(
         ['identities', 'claim', testToken.providerId, testToken.identityId],
         {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: nodePath,
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
       );
       expect(exitCode).toBe(sysexits.NOPERM);
     },
@@ -124,23 +129,27 @@ describe('claim', () => {
     async () => {
       let exitCode;
       // Invalid provider
-      ({ exitCode } = await execUtils.pkStdio(
+      ({ exitCode } = await testUtils.pkStdio(
         ['identities', 'claim', '', testToken.identityId],
         {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: nodePath,
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
       ));
       expect(exitCode).toBe(sysexits.USAGE);
       // Invalid identity
-      ({ exitCode } = await execUtils.pkStdio(
+      ({ exitCode } = await testUtils.pkStdio(
         ['identities', 'claim', testToken.providerId, ''],
         {
-          PK_NODE_PATH: nodePath,
-          PK_PASSWORD: password,
+          env: {
+            PK_NODE_PATH: nodePath,
+            PK_PASSWORD: password,
+          },
+          cwd: dataDir,
         },
-        dataDir,
       ));
       expect(exitCode).toBe(sysexits.USAGE);
     },

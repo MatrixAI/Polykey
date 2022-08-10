@@ -6,7 +6,6 @@ import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as nodesUtils from '@/nodes/utils';
-import * as execUtils from '../../utils/exec';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 import * as testUtils from '../../utils';
 
@@ -40,7 +39,7 @@ describe('send/read/claim', () => {
       agentClose: senderAgentClose,
       agentDir: senderAgentDir,
       agentPassword: senderAgentPassword,
-    } = await execUtils.setupTestAgent(globalRootKeyPems[0], logger));
+    } = await testUtils.setupTestAgent(globalRootKeyPems[0], logger));
     senderId = senderAgentStatus.data.nodeId;
     senderHost = senderAgentStatus.data.proxyHost;
     senderPort = senderAgentStatus.data.proxyPort;
@@ -49,7 +48,7 @@ describe('send/read/claim', () => {
       agentClose: receiverAgentClose,
       agentDir: receiverAgentDir,
       agentPassword: receiverAgentPassword,
-    } = await execUtils.setupTestAgent(globalRootKeyPems[1], logger));
+    } = await testUtils.setupTestAgent(globalRootKeyPems[1], logger));
     receiverId = receiverAgentStatus.data.nodeId;
     receiverHost = receiverAgentStatus.data.proxyHost;
     receiverPort = receiverAgentStatus.data.proxyPort;
@@ -70,7 +69,7 @@ describe('send/read/claim', () => {
       let exitCode, stdout;
       let readNotifications: Array<Notification>;
       // Add receiver to sender's node graph so it can be contacted
-      ({ exitCode } = await execUtils.pkStdio(
+      ({ exitCode } = await testUtils.pkExec(
         [
           'nodes',
           'add',
@@ -79,14 +78,16 @@ describe('send/read/claim', () => {
           receiverPort.toString(),
         ],
         {
-          PK_NODE_PATH: senderAgentDir,
-          PK_PASSWORD: senderAgentPassword,
+          env: {
+            PK_NODE_PATH: senderAgentDir,
+            PK_PASSWORD: senderAgentPassword,
+          },
+          cwd: senderAgentDir,
         },
-        senderAgentDir,
       ));
       expect(exitCode).toBe(0);
       // Add sender to receiver's node graph so it can be trusted
-      ({ exitCode } = await execUtils.pkStdio(
+      ({ exitCode } = await testUtils.pkExec(
         [
           'nodes',
           'add',
@@ -95,24 +96,28 @@ describe('send/read/claim', () => {
           senderPort.toString(),
         ],
         {
-          PK_NODE_PATH: receiverAgentDir,
-          PK_PASSWORD: receiverAgentPassword,
+          env: {
+            PK_NODE_PATH: receiverAgentDir,
+            PK_PASSWORD: receiverAgentPassword,
+          },
+          cwd: receiverAgentDir,
         },
-        receiverAgentDir,
       ));
       expect(exitCode).toBe(0);
       // Trust sender so notification can be received
-      ({ exitCode } = await execUtils.pkStdio(
+      ({ exitCode } = await testUtils.pkExec(
         ['identities', 'trust', nodesUtils.encodeNodeId(senderId)],
         {
-          PK_NODE_PATH: receiverAgentDir,
-          PK_PASSWORD: receiverAgentPassword,
+          env: {
+            PK_NODE_PATH: receiverAgentDir,
+            PK_PASSWORD: receiverAgentPassword,
+          },
+          cwd: receiverAgentDir,
         },
-        receiverAgentDir,
       ));
       expect(exitCode).toBe(0);
       // Send some notifications
-      ({ exitCode } = await execUtils.pkStdio(
+      ({ exitCode } = await testUtils.pkExec(
         [
           'notifications',
           'send',
@@ -120,13 +125,15 @@ describe('send/read/claim', () => {
           'test message 1',
         ],
         {
-          PK_NODE_PATH: senderAgentDir,
-          PK_PASSWORD: senderAgentPassword,
+          env: {
+            PK_NODE_PATH: senderAgentDir,
+            PK_PASSWORD: senderAgentPassword,
+          },
+          cwd: senderAgentDir,
         },
-        senderAgentDir,
       ));
       expect(exitCode).toBe(0);
-      ({ exitCode } = await execUtils.pkStdio(
+      ({ exitCode } = await testUtils.pkExec(
         [
           'notifications',
           'send',
@@ -134,13 +141,15 @@ describe('send/read/claim', () => {
           'test message 2',
         ],
         {
-          PK_NODE_PATH: senderAgentDir,
-          PK_PASSWORD: senderAgentPassword,
+          env: {
+            PK_NODE_PATH: senderAgentDir,
+            PK_PASSWORD: senderAgentPassword,
+          },
+          cwd: senderAgentDir,
         },
-        senderAgentDir,
       ));
       expect(exitCode).toBe(0);
-      ({ exitCode } = await execUtils.pkStdio(
+      ({ exitCode } = await testUtils.pkExec(
         [
           'notifications',
           'send',
@@ -148,20 +157,24 @@ describe('send/read/claim', () => {
           'test message 3',
         ],
         {
-          PK_NODE_PATH: senderAgentDir,
-          PK_PASSWORD: senderAgentPassword,
+          env: {
+            PK_NODE_PATH: senderAgentDir,
+            PK_PASSWORD: senderAgentPassword,
+          },
+          cwd: senderAgentDir,
         },
-        senderAgentDir,
       ));
       expect(exitCode).toBe(0);
       // Read notifications
-      ({ exitCode, stdout } = await execUtils.pkStdio(
+      ({ exitCode, stdout } = await testUtils.pkExec(
         ['notifications', 'read', '--format', 'json'],
         {
-          PK_NODE_PATH: receiverAgentDir,
-          PK_PASSWORD: receiverAgentPassword,
+          env: {
+            PK_NODE_PATH: receiverAgentDir,
+            PK_PASSWORD: receiverAgentPassword,
+          },
+          cwd: receiverAgentDir,
         },
-        receiverAgentDir,
       ));
       expect(exitCode).toBe(0);
       readNotifications = stdout
@@ -194,13 +207,15 @@ describe('send/read/claim', () => {
         isRead: true,
       });
       // Read only unread (none)
-      ({ exitCode, stdout } = await execUtils.pkStdio(
+      ({ exitCode, stdout } = await testUtils.pkExec(
         ['notifications', 'read', '--unread', '--format', 'json'],
         {
-          PK_NODE_PATH: receiverAgentDir,
-          PK_PASSWORD: receiverAgentPassword,
+          env: {
+            PK_NODE_PATH: receiverAgentDir,
+            PK_PASSWORD: receiverAgentPassword,
+          },
+          cwd: receiverAgentDir,
         },
-        receiverAgentDir,
       ));
       expect(exitCode).toBe(0);
       readNotifications = stdout
@@ -209,13 +224,15 @@ describe('send/read/claim', () => {
         .map(JSON.parse);
       expect(readNotifications).toHaveLength(0);
       // Read notifications on reverse order
-      ({ exitCode, stdout } = await execUtils.pkStdio(
+      ({ exitCode, stdout } = await testUtils.pkExec(
         ['notifications', 'read', '--order=oldest', '--format', 'json'],
         {
-          PK_NODE_PATH: receiverAgentDir,
-          PK_PASSWORD: receiverAgentPassword,
+          env: {
+            PK_NODE_PATH: receiverAgentDir,
+            PK_PASSWORD: receiverAgentPassword,
+          },
+          cwd: receiverAgentDir,
         },
-        receiverAgentDir,
       ));
       expect(exitCode).toBe(0);
       readNotifications = stdout
@@ -248,13 +265,15 @@ describe('send/read/claim', () => {
         isRead: true,
       });
       // Read only one notification
-      ({ exitCode, stdout } = await execUtils.pkStdio(
+      ({ exitCode, stdout } = await testUtils.pkExec(
         ['notifications', 'read', '--number=1', '--format', 'json'],
         {
-          PK_NODE_PATH: receiverAgentDir,
-          PK_PASSWORD: receiverAgentPassword,
+          env: {
+            PK_NODE_PATH: receiverAgentDir,
+            PK_PASSWORD: receiverAgentPassword,
+          },
+          cwd: receiverAgentDir,
         },
-        receiverAgentDir,
       ));
       expect(exitCode).toBe(0);
       readNotifications = stdout
@@ -271,22 +290,23 @@ describe('send/read/claim', () => {
         isRead: true,
       });
       // Clear notifications
-      ({ exitCode } = await execUtils.pkStdio(
-        ['notifications', 'clear'],
-        {
+      ({ exitCode } = await testUtils.pkExec(['notifications', 'clear'], {
+        env: {
           PK_NODE_PATH: receiverAgentDir,
           PK_PASSWORD: receiverAgentPassword,
         },
-        receiverAgentDir,
-      ));
+        cwd: receiverAgentDir,
+      }));
       // Check there are no more notifications
-      ({ exitCode, stdout } = await execUtils.pkStdio(
+      ({ exitCode, stdout } = await testUtils.pkExec(
         ['notifications', 'read', '--format', 'json'],
         {
-          PK_NODE_PATH: receiverAgentDir,
-          PK_PASSWORD: receiverAgentPassword,
+          env: {
+            PK_NODE_PATH: receiverAgentDir,
+            PK_PASSWORD: receiverAgentPassword,
+          },
+          cwd: receiverAgentDir,
         },
-        receiverAgentDir,
       ));
       expect(exitCode).toBe(0);
       readNotifications = stdout

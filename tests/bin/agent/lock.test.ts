@@ -5,7 +5,6 @@ import { mocked } from 'jest-mock';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import Session from '@/sessions/Session';
 import config from '@/config';
-import * as execUtils from '../../utils/exec';
 import * as testUtils from '../../utils';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
@@ -18,7 +17,7 @@ describe('lock', () => {
   let agentPassword: string;
   let agentClose: () => Promise<void>;
   beforeEach(async () => {
-    ({ agentDir, agentPassword, agentClose } = await execUtils.setupTestAgent(
+    ({ agentDir, agentPassword, agentClose } = await testUtils.setupTestAgent(
       globalRootKeyPems[0],
       logger,
     ));
@@ -29,21 +28,19 @@ describe('lock', () => {
   testUtils.testIf(
     testUtils.isTestPlatformEmpty || testUtils.isTestPlatformDocker,
   )('lock deletes the session token', async () => {
-    await execUtils.pkStdio(
-      ['agent', 'unlock'],
-      {
+    await testUtils.pkExec(['agent', 'unlock'], {
+      env: {
         PK_NODE_PATH: agentDir,
         PK_PASSWORD: agentPassword,
       },
-      agentDir,
-    );
-    const { exitCode } = await execUtils.pkStdio(
-      ['agent', 'lock'],
-      {
+      cwd: agentDir,
+    });
+    const { exitCode } = await testUtils.pkExec(['agent', 'lock'], {
+      env: {
         PK_NODE_PATH: agentDir,
       },
-      agentDir,
-    );
+      cwd: agentDir,
+    });
     expect(exitCode).toBe(0);
     const session = await Session.createSession({
       sessionTokenPath: path.join(agentDir, config.defaults.tokenBase),
@@ -61,30 +58,23 @@ describe('lock', () => {
       mockedPrompts.mockImplementation(async (_opts: any) => {
         return { password };
       });
-      await execUtils.pkStdio(
-        ['agent', 'unlock'],
-        {
+      await testUtils.pkStdio(['agent', 'unlock'], {
+        env: {
           PK_NODE_PATH: agentDir,
           PK_PASSWORD: agentPassword,
         },
-        agentDir,
-      );
+        cwd: agentDir,
+      });
       // Session token is deleted
-      await execUtils.pkStdio(
-        ['agent', 'lock'],
-        {
-          PK_NODE_PATH: agentDir,
-        },
-        agentDir,
-      );
+      await testUtils.pkStdio(['agent', 'lock'], {
+        env: { PK_NODE_PATH: agentDir },
+        cwd: agentDir,
+      });
       // Will prompt to reauthenticate
-      await execUtils.pkStdio(
-        ['agent', 'status'],
-        {
-          PK_NODE_PATH: agentDir,
-        },
-        agentDir,
-      );
+      await testUtils.pkStdio(['agent', 'status'], {
+        env: { PK_NODE_PATH: agentDir },
+        cwd: agentDir,
+      });
       // Prompted for password 1 time
       expect(mockedPrompts.mock.calls.length).toBe(1);
       mockedPrompts.mockClear();

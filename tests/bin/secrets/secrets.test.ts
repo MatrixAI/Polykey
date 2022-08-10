@@ -4,7 +4,6 @@ import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
 import { vaultOps } from '@/vaults';
-import * as execUtils from '../../utils/exec';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 import * as testUtils from '../../utils';
 
@@ -31,10 +30,12 @@ describe('CLI secrets', () => {
       },
     });
     // Authorize session
-    await execUtils.pkStdio(
+    await testUtils.pkStdio(
       ['agent', 'unlock', '-np', dataDir, '--password-file', passwordFile],
-      {},
-      dataDir,
+      {
+        env: {},
+        cwd: dataDir,
+      },
     );
   });
   afterEach(async () => {
@@ -64,7 +65,10 @@ describe('CLI secrets', () => {
           `${vaultName}:MySecret`,
         ];
 
-        const result = await execUtils.pkStdio([...command], {}, dataDir);
+        const result = await testUtils.pkStdio([...command], {
+          env: {},
+          cwd: dataDir,
+        });
         expect(result.exitCode).toBe(0);
 
         await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
@@ -99,7 +103,10 @@ describe('CLI secrets', () => {
           `${vaultName}:MySecret`,
         ];
 
-        const result = await execUtils.pkStdio([...command], {}, dataDir);
+        const result = await testUtils.pkStdio([...command], {
+          env: {},
+          cwd: dataDir,
+        });
         expect(result.exitCode).toBe(0);
 
         await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
@@ -122,7 +129,10 @@ describe('CLI secrets', () => {
 
         command = ['secrets', 'get', '-np', dataDir, `${vaultName}:MySecret`];
 
-        const result = await execUtils.pkStdio([...command], {}, dataDir);
+        const result = await testUtils.pkStdio([...command], {
+          env: {},
+          cwd: dataDir,
+        });
         expect(result.exitCode).toBe(0);
       },
     );
@@ -142,7 +152,10 @@ describe('CLI secrets', () => {
 
         command = ['secrets', 'list', '-np', dataDir, vaultName];
 
-        const result = await execUtils.pkStdio([...command], {}, dataDir);
+        const result = await testUtils.pkStdio([...command], {
+          env: {},
+          cwd: dataDir,
+        });
         expect(result.exitCode).toBe(0);
       },
       globalThis.defaultTimeout * 2,
@@ -164,7 +177,10 @@ describe('CLI secrets', () => {
           '-r',
         ];
 
-        const result = await execUtils.pkStdio([...command], {}, dataDir);
+        const result = await testUtils.pkStdio([...command], {
+          env: {},
+          cwd: dataDir,
+        });
         expect(result.exitCode).toBe(0);
 
         await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
@@ -207,7 +223,10 @@ describe('CLI secrets', () => {
           'MyRenamedSecret',
         ];
 
-        const result = await execUtils.pkStdio([...command], {}, dataDir);
+        const result = await testUtils.pkStdio([...command], {
+          env: {},
+          cwd: dataDir,
+        });
         expect(result.exitCode).toBe(0);
 
         await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
@@ -243,7 +262,10 @@ describe('CLI secrets', () => {
           `${vaultName}:MySecret`,
         ];
 
-        const result2 = await execUtils.pkStdio([...command], {}, dataDir);
+        const result2 = await testUtils.pkStdio([...command], {
+          env: {},
+          cwd: dataDir,
+        });
         expect(result2.exitCode).toBe(0);
 
         await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
@@ -285,7 +307,10 @@ describe('CLI secrets', () => {
 
         command = ['secrets', 'dir', '-np', dataDir, secretDir, vaultName];
 
-        const result2 = await execUtils.pkStdio([...command], {}, dataDir);
+        const result2 = await testUtils.pkStdio([...command], {
+          env: {},
+          cwd: dataDir,
+        });
         expect(result2.exitCode).toBe(0);
 
         await polykeyAgent.vaultManager.withVaults([vaultId], async (vault) => {
@@ -312,7 +337,10 @@ describe('CLI secrets', () => {
 
         command = ['secrets', 'stat', '-np', dataDir, `${vaultName}:MySecret`];
 
-        const result = await execUtils.pkStdio([...command], {}, dataDir);
+        const result = await testUtils.pkStdio([...command], {
+          env: {},
+          cwd: dataDir,
+        });
         expect(result.exitCode).toBe(0);
         expect(result.stdout).toContain('nlink: 1');
         expect(result.stdout).toContain('blocks: 1');

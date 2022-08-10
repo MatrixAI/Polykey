@@ -1,11 +1,17 @@
 import type { NodeId } from '@/nodes/types';
+import type { PrivateKeyPem } from '@/keys/types';
+import type { StatusLive } from '@/status/types';
+import type Logger from '@matrixai/logger';
 import path from 'path';
 import fs from 'fs';
+import readline from 'readline';
 import lock from 'fd-lock';
 import { IdInternal } from '@matrixai/id';
 import * as keysUtils from '@/keys/utils';
 import * as grpcErrors from '@/grpc/errors';
-import { sleep } from '@/utils';
+import * as validationUtils from '@/validation/utils';
+import { sleep, promise } from '@/utils';
+import * as execUtils from './exec';
 
 /**
  * Setup the global keypair
@@ -62,6 +68,70 @@ async function setupGlobalKeypair() {
   }
 }
 
+async function setupTestAgent(privateKeyPem: PrivateKeyPem, logger: Logger) {
+  const agentDir = await fs.promises.mkdtemp(
+    path.join(globalThis.tmpDir, 'polykey-test-'),
+  );
+  const agentPassword = 'password';
+  const agentProcess = await execUtils.pkSpawn(
+    [
+      'agent',
+      'start',
+      '--node-path',
+      agentDir,
+      '--client-host',
+      '127.0.0.1',
+      '--proxy-host',
+      '127.0.0.1',
+      '--workers',
+      '0',
+      '--format',
+      'json',
+      '--verbose',
+    ],
+    {
+      env: {
+        PK_PASSWORD: agentPassword,
+        PK_ROOT_KEY: privateKeyPem,
+      },
+      cwd: agentDir,
+    },
+    logger,
+  );
+  const startedProm = promise<any>();
+  agentProcess.on('error', (d) => startedProm.rejectP(d));
+  const rlOut = readline.createInterface(agentProcess.stdout!);
+  rlOut.on('line', (l) => startedProm.resolveP(JSON.parse(l.toString())));
+  const data = await startedProm.p;
+  const agentStatus: StatusLive = {
+    status: 'LIVE',
+    data: { ...data, nodeId: validationUtils.parseNodeId(data.nodeId) },
+  };
+  try {
+    return {
+      agentStatus,
+      agentClose: async () => {
+        agentProcess.kill();
+        await fs.promises.rm(agentDir, {
+          recursive: true,
+          force: true,
+          maxRetries: 10,
+        });
+      },
+      agentDir,
+      agentPassword,
+    };
+  } catch (e) {
+    agentProcess.kill();
+    await fs.promises.rm(agentDir, {
+      recursive: true,
+      force: true,
+      maxRetries: 10,
+    });
+    throw e;
+  }
+}
+
 function generateRandomNodeId(): NodeId {
   const random = keysUtils.getRandomBytesSync(16).toString('hex');
   return IdInternal.fromString<NodeId>(random);
@@ -89,6 +159,7 @@ function describeIf(condition: boolean) {
 
 export {
   setupGlobalKeypair,
+  setupTestAgent,
   generateRandomNodeId,
   expectRemoteError,
   testIf,
