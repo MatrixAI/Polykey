@@ -339,7 +339,7 @@ integration:docker:
     - >
       nix-shell --arg ci true --run $'
       image_and_tag="$(docker load --input ./builds/*docker* | cut -d\' \' -f3)";
-      PK_TEST_COMMAND="docker run \$DOCKER_OPTIONS $image_and_tag /bin/polykey" npm run test -- tests/bin;
+      PK_TEST_COMMAND="docker run \$DOCKER_OPTIONS $image_and_tag" npm run test -- tests/bin;
       '
   rules:
     # Runs on staging commits and ignores version commits
