@@ -156,9 +156,7 @@ class NodeGraph {
     nodeId: NodeId,
     tran?: DBTransaction,
   ): Promise<NodeData | undefined> {
-    if (tran == null) {
-      return this.db.withTransactionF((tran) => this.getNode(nodeId, tran));
-    }
+    const tranOrDb = tran ?? this.db;
 
     const [bucketIndex] = this.bucketIndex(nodeId);
     const bucketDomain = [
@@ -166,7 +164,7 @@ class NodeGraph {
       nodesUtils.bucketKey(bucketIndex),
       nodesUtils.bucketDbKey(nodeId),
     ];
-    return await tran.get<NodeData>(bucketDomain);
+    return await tranOrDb.get<NodeData>(bucketDomain);
   }
 
   /**
@@ -371,7 +369,7 @@ class NodeGraph {
           bucket.push([nodeId, nodeData]);
         }
       } finally {
-        await bucketDbIterator.destroy(); // FIXME: should this be `.destroy` now?
+        await bucketDbIterator.destroy();
       }
     }
     return bucket;
