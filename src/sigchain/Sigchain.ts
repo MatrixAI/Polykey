@@ -173,8 +173,14 @@ class Sigchain {
       return this.db.withTransactionF((tran) => this.addClaim(claimData, tran));
     }
 
-    await tran.lock(claimIdPath.toString(), sequenceNumberPath.toString());
-    const prevSequenceNumber = await this.getSequenceNumber(tran);
+    await tran.lock(sequenceNumberPath.toString());
+    const prevSequenceNumber = await tran.getForUpdate<number>([
+      ...this.sigchainMetadataDbPath,
+      this.sequenceNumberKey,
+    ]);
+    if (prevSequenceNumber === undefined) {
+      throw new sigchainErrors.ErrorSigchainSequenceNumUndefined();
+    }
     const newSequenceNumber = prevSequenceNumber + 1;
     const claim = await this.createClaim({
       hPrev: await this.getHashPrevious(tran),
@@ -212,9 +218,15 @@ class Sigchain {
       );
     }
 
-    await tran.lock(claimIdPath.toString(), sequenceNumberPath.toString());
+    await tran.lock(sequenceNumberPath.toString());
     const decodedClaim = claimsUtils.decodeClaim(claim);
-    const prevSequenceNumber = await this.getSequenceNumber(tran);
+    const prevSequenceNumber = await tran.getForUpdate<number>([
+      ...this.sigchainMetadataDbPath,
+      this.sequenceNumberKey,
+    ]);
+    if (prevSequenceNumber === undefined) {
+      throw new sigchainErrors.ErrorSigchainSequenceNumUndefined();
+    }
     const expectedSequenceNumber = prevSequenceNumber + 1;
     // Ensure the sequence number and hash are correct before appending
     if (decodedClaim.payload.seq !== expectedSequenceNumber) {
@@ -236,17 +248,11 @@ class Sigchain {
     claimData: ClaimData,
     tran?: DBTransaction,
   ): Promise<ClaimIntermediary> {
-    const sequenceNumberPath = [
-      ...this.sigchainMetadataDbPath,
-      this.sequenceNumberKey,
-    ];
     if (tran == null) {
       return this.db.withTransactionF((tran) =>
         this.createIntermediaryClaim(claimData, tran),
       );
     }
-
-    await tran.lock(sequenceNumberPath.toString());
     const claim = await this.createClaim({
       hPrev: await this.getHashPrevious(tran),
       seq: (await this.getSequenceNumber(tran)) + 1,
