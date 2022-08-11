@@ -12,20 +12,20 @@ function getDefaultNodePath(): string | undefined {
     const homeDir = os.homedir();
     const dataDir = process.env.XDG_DATA_HOME;
     if (dataDir != null) {
-      p = `${dataDir}/${prefix}`;
+      p = path.join(dataDir, prefix);
     } else {
-      p = `${homeDir}/.local/share/${prefix}`;
+      p = path.join(homeDir, '.local', 'share', prefix);
     }
   } else if (platform === 'darwin') {
     const homeDir = os.homedir();
-    p = `${homeDir}/Library/Application Support/${prefix}`;
+    p = path.join(homeDir, 'Library', 'Application Support', prefix);
   } else if (platform === 'win32') {
     const homeDir = os.homedir();
     const appDataDir = process.env.LOCALAPPDATA;
     if (appDataDir != null) {
-      p = `${appDataDir}/${prefix}`;
+      p = path.join(appDataDir, prefix);
     } else {
-      p = `${homeDir}/AppData/Local/${prefix}`;
+      p = path.join(homeDir, 'AppData', 'Local', prefix);
     }
   } else {
     return;
