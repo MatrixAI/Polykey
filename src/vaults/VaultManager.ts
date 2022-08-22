@@ -365,6 +365,7 @@ class VaultManager {
     }
 
     await this.vaultLocks.withF([vaultId, RWLockWriter, 'write'], async () => {
+      await tran.lock(vaultId);
       // Ensure protection from write skew
       await tran.getForUpdate([
         ...this.vaultsDbPath,
@@ -374,7 +375,6 @@ class VaultManager {
       const vaultMeta = await this.getVaultMeta(vaultId, tran);
       if (vaultMeta == null) return;
       const vaultName = vaultMeta.vaultName;
-      await tran.lock([...this.vaultsNamesDbPath, vaultName].toString());
       this.logger.info(
         `Destroying Vault ${vaultsUtils.encodeVaultId(vaultId)}`,
       );
@@ -408,6 +408,7 @@ class VaultManager {
     }
     const vaultIdString = vaultId.toString() as VaultIdString;
     await this.vaultLocks.withF([vaultId, RWLockWriter, 'write'], async () => {
+      await tran.lock(vaultId);
       const vault = await this.getVault(vaultId, tran);
       await vault.stop();
       this.vaultMap.delete(vaultIdString);
@@ -452,7 +453,10 @@ class VaultManager {
     }
 
     await this.vaultLocks.withF([vaultId, RWLockWriter, 'write'], async () => {
-      await tran.lock([...this.vaultsNamesDbPath, newVaultName].toString());
+      await tran.lock(
+        [...this.vaultsNamesDbPath, newVaultName].toString(),
+        vaultId,
+      );
       this.logger.info(`Renaming Vault ${vaultsUtils.encodeVaultId(vaultId)}`);
       // Checking if new name exists
       if (await this.getVaultId(newVaultName, tran)) {
@@ -470,7 +474,6 @@ class VaultManager {
         throw new vaultsErrors.ErrorVaultsVaultUndefined();
       }
       const oldVaultName = vaultMetadata.vaultName;
-      await tran.lock([...this.vaultsNamesDbPath, oldVaultName].toString());
       // Updating metadata with new name;
       const vaultDbPath = [
         ...this.vaultsDbPath,
@@ -711,6 +714,7 @@ class VaultManager {
 
     if ((await this.getVaultName(vaultId, tran)) == null) return;
     await this.vaultLocks.withF([vaultId, RWLockWriter, 'write'], async () => {
+      await tran.lock(vaultId);
       const vault = await this.getVault(vaultId, tran);
       await vault.pullVault({
         nodeConnectionManager: this.nodeConnectionManager,
