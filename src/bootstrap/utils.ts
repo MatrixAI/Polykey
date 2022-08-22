@@ -100,7 +100,6 @@ async function bootstrapState({
     const db = await DB.createDB({
       dbPath,
       fs,
-      // @ts-ignore - version of js-logger is incompatible (remove when DB updates to 5.*)
       logger: logger.getChild(DB.name),
       crypto: {
         key: keyManager.dbKey,

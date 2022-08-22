@@ -183,7 +183,6 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
       dbPath,
-      // @ts-ignore - version of js-logger is incompatible (remove when DB updates to 5.*)
       logger: nodeConnectionManagerLogger,
       crypto: {
         key: keyManager.dbKey,
