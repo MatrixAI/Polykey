@@ -365,6 +365,12 @@ class VaultManager {
     }
 
     await this.vaultLocks.withF([vaultId, RWLockWriter, 'write'], async () => {
+      // Ensure protection from write skew
+      await tran.getForUpdate([
+        ...this.vaultsDbPath,
+        vaultsUtils.encodeVaultId(vaultId),
+        VaultInternal.nameKey,
+      ]);
       const vaultMeta = await this.getVaultMeta(vaultId, tran);
       if (vaultMeta == null) return;
       const vaultName = vaultMeta.vaultName;
@@ -452,6 +458,12 @@ class VaultManager {
       if (await this.getVaultId(newVaultName, tran)) {
         throw new vaultsErrors.ErrorVaultsVaultDefined();
       }
+      // Ensure protection from write skew
+      await tran.getForUpdate([
+        ...this.vaultsDbPath,
+        vaultsUtils.encodeVaultId(vaultId),
+        VaultInternal.nameKey,
+      ]);
       // Checking if vault exists
       const vaultMetadata = await this.getVaultMeta(vaultId, tran);
       if (vaultMetadata == null) {

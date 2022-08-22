@@ -210,7 +210,7 @@ class NotificationsManager {
     // Only keep the message if the sending node has the correct permissions
     if (Object.keys(nodePerms.gestalt).includes('notify')) {
       // If the number stored in notificationsDb >= 10000
-      let numMessages = await tran.getForUpdate<number>(
+      let numMessages = await tran.get<number>(
         this.notificationsMessageCounterDbPath,
       );
       if (numMessages === undefined) {
@@ -316,7 +316,7 @@ class NotificationsManager {
 
     await tran.lock(this.notificationsMessageCounterDbPath.toString());
     const notificationIds = await this.getNotificationIds('all', tran);
-    const numMessages = await tran.getForUpdate<number>(
+    const numMessages = await tran.get<number>(
       this.notificationsMessageCounterDbPath,
     );
     if (numMessages !== undefined) {
@@ -403,7 +403,7 @@ class NotificationsManager {
     tran: DBTransaction,
   ): Promise<void> {
     await tran.lock(this.notificationsMessageCounterDbPath.toString());
-    const numMessages = await tran.getForUpdate<number>(
+    const numMessages = await tran.get<number>(
       this.notificationsMessageCounterDbPath,
     );
     if (numMessages === undefined) {
