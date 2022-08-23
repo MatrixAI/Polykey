@@ -1,15 +1,10 @@
-import type { DB, DBTransaction, KeyPath, LevelPath } from '@matrixai/db';
-import type {
-  NotificationId,
-  Notification,
-  NotificationData,
-  NotificationIdGenerator,
-} from './types';
+import type { DB, KeyPath, LevelPath } from '@matrixai/db';
+import type { NotificationId, NotificationIdGenerator } from './types';
 import type ACL from '../acl/ACL';
 import type KeyManager from '../keys/KeyManager';
 import type NodeManager from '../nodes/NodeManager';
 import type NodeConnectionManager from '../nodes/NodeConnectionManager';
-import type { NodeId } from '../nodes/types';
+import { DBTransaction } from '@matrixai/db';
 import Logger from '@matrixai/logger';
 import { IdInternal } from '@matrixai/id';
 import {
@@ -17,8 +12,10 @@ import {
   ready,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import { utils as idUtils } from '@matrixai/id';
+import { Notification, NotificationData } from './types';
 import * as notificationsUtils from './utils';
 import * as notificationsErrors from './errors';
+import { NodeId } from '../nodes/types';
 import * as notificationsPB from '../proto/js/polykey/v1/notifications/notifications_pb';
 import * as nodesUtils from '../nodes/utils';
 import { never } from '../utils/utils';

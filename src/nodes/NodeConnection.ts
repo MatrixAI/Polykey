@@ -1,4 +1,3 @@
-import type { NodeId } from './types';
 import type { Host, Hostname, Port } from '../network/types';
 import type KeyManager from '../keys/KeyManager';
 import type { Certificate, PublicKey, PublicKeyPem } from '../keys/types';
@@ -9,6 +8,7 @@ import type { Timer } from '../types';
 import Logger from '@matrixai/logger';
 import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
 import * as asyncInit from '@matrixai/async-init';
+import { NodeId } from './types';
 import * as nodesErrors from './errors';
 import * as keysUtils from '../keys/utils';
 import * as grpcErrors from '../grpc/errors';

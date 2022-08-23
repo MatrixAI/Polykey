@@ -13,8 +13,4 @@ type ContextTransactional = {
   tran: DBTransaction;
 };
 
-export type {
-  ContextCancellable,
-  ContextTimed,
-  ContextTransactional
-};
+export type { ContextCancellable, ContextTimed, ContextTransactional };

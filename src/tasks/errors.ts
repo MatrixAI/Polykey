@@ -57,7 +57,8 @@ class ErrorTaskCancelled<T> extends ErrorTask<T> {
 }
 
 class ErrorTaskMissing<T> extends ErrorTask<T> {
-  static description = 'Task does not (or never) existed anymore, it may have been fulfilled or cancelled';
+  static description =
+    'Task does not (or never) existed anymore, it may have been fulfilled or cancelled';
   exitCode = sysexits.USAGE;
 }
 

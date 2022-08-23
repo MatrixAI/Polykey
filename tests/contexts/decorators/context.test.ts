@@ -4,8 +4,8 @@ import * as contextsUtils from '@/contexts/utils';
 describe('contexts/utils', () => {
   test('context parameter decorator', () => {
     class C {
-      f(@context _a: any) { }
-      g(_a: any, @context _b: any) { }
+      f(@context _a: any) {}
+      g(_a: any, @context _b: any) {}
       h(_a: any, _b: any, @context ..._rest: Array<any>) {}
     }
     expect(contextsUtils.contexts.get(C.prototype.f)).toBe(0);
@@ -19,7 +19,7 @@ describe('contexts/utils', () => {
   test('context parameter decorator can only be used once', () => {
     expect(() => {
       class C {
-        f(@context _a: any, @context _b: any) { }
+        f(@context _a: any, @context _b: any) {}
       }
       new C();
     }).toThrow(TypeError);

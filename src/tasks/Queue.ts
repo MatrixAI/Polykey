@@ -38,7 +38,7 @@ class Queue {
   protected logger: Logger;
   protected db: DB;
   protected queueDbPath: LevelPath = [this.constructor.name];
-  // when the queue to execute the tasks
+  // When the queue to execute the tasks
   // the task id is generated outside
   // you don't get a task id here
   // you just "push" tasks there to be executed
@@ -54,11 +54,11 @@ class Queue {
   public constructor({
     db,
     concurrencyLimit,
-    logger
+    logger,
   }: {
     db: DB;
-    concurrencyLimit: number,
-    logger: Logger
+    concurrencyLimit: number;
+    logger: Logger;
   }) {
     this.logger = logger;
     this.concurrencyLimit = concurrencyLimit;
@@ -88,7 +88,7 @@ class Queue {
     this.logger.info(`Destroyed ${this.constructor.name}`);
   }
 
-  // promises are "connected" to events
+  // Promises are "connected" to events
 
   // when tasks are "dispatched" to the queue
   // they are actually put into a persistent system
@@ -115,14 +115,13 @@ class Queue {
   // do we persist it here?
 
   public async pushTask(taskF: TaskFunction, priority: TaskPriority) {
-    // this needs to proceed to push it into an in-memory queue
+    // This needs to proceed to push it into an in-memory queue
     // and maintain a concurrency limit?
     // my issue is that whatever does the persistence
     // will need to execute it with the parmaeters and the task handler
     // so by the time it is in memory as a `taskF`
     // then no persistence makes sense anymore
   }
-
 
   /**
    * IF a handler does not exist
@@ -159,13 +158,11 @@ class Queue {
   //     taskListeners.splice(index, 1);
   //   }
   // }
-
 }
 
 export default Queue;
 
-
-// epic queue
+// Epic queue
 // need to do a couple things:
 // 1. integrate fast-check
 // 2. integrate span checks

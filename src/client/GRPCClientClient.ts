@@ -1,6 +1,5 @@
 import type { Interceptor } from '@grpc/grpc-js';
 import type { ClientReadableStream } from '@grpc/grpc-js/build/src/call';
-import type { AsyncGeneratorReadableStreamClient } from '../grpc/types';
 import type { Session } from '../sessions';
 import type { NodeId } from '../nodes/types';
 import type { Host, Port, ProxyConfig, TLSConfig } from '../network/types';
@@ -19,6 +18,7 @@ import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
 import Logger from '@matrixai/logger';
 import * as clientErrors from './errors';
 import * as clientUtils from './utils';
+import { AsyncGeneratorReadableStreamClient } from '../grpc/types';
 import { ClientServiceClient } from '../proto/js/polykey/v1/client_service_grpc_pb';
 import { GRPCClient } from '../grpc';
 import * as grpcUtils from '../grpc/utils';

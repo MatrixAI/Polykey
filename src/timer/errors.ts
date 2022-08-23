@@ -7,7 +7,4 @@ class ErrorTimerCancelled<T> extends ErrorTimer<T> {
   exitCode = sysexits.USAGE;
 }
 
-export {
-  ErrorTimer,
-  ErrorTimerCancelled,
-};
+export { ErrorTimer, ErrorTimerCancelled };

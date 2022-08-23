@@ -42,7 +42,7 @@ describe(Timer.name, () => {
       })(),
       (async () => {
         t2.cancel();
-      })()
+      })(),
     ]);
     expect(results[0]).toBeInstanceOf(timerErrors.ErrorTimerCancelled);
     expect(t2.status).toBe('rejected');
@@ -84,10 +84,10 @@ describe(Timer.name, () => {
   });
   test('timer does not keep event loop alive', async () => {
     const f = async (timer: Timer | number = globalThis.maxTimeout) => {
-      timer = (timer instanceof Timer) ? timer : new Timer({ delay: timer });
+      timer = timer instanceof Timer ? timer : new Timer({ delay: timer });
     };
     const g = async (timer: Timer | number = Infinity) => {
-      timer = (timer instanceof Timer) ? timer : new Timer({ delay: timer });
+      timer = timer instanceof Timer ? timer : new Timer({ delay: timer });
     };
     await f();
     await f();

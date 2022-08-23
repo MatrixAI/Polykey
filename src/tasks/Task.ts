@@ -1,5 +1,14 @@
-import type Queue from "./Scheduler";
-import type { TaskId, TaskData, TaskHandlerId, TaskTimestamp, TaskDelay, TaskPriority, TaskHandler, TaskParameters } from "./types";
+import type Queue from './Scheduler';
+import type {
+  TaskId,
+  TaskData,
+  TaskHandlerId,
+  TaskTimestamp,
+  TaskDelay,
+  TaskPriority,
+  TaskHandler,
+  TaskParameters,
+} from './types';
 import type { DeepReadonly } from '../types';
 
 class TaskPromise<T> extends Promise<T> {
@@ -81,8 +90,14 @@ class Task<T> {
    * This is called when `await` is used
    */
   public async then<TResult1 = T, TResult2 = never>(
-    onFulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null,
-    onRejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null
+    onFulfilled?:
+      | ((value: T) => TResult1 | PromiseLike<TResult1>)
+      | undefined
+      | null,
+    onRejected?:
+      | ((reason: any) => TResult2 | PromiseLike<TResult2>)
+      | undefined
+      | null,
   ): Promise<TResult1 | TResult2> {
     if (this.lazy) {
       // setup the event handlers
@@ -95,12 +110,10 @@ class Task<T> {
     // do we use the same db
     // or ask the Task to have the same capability?
 
-
-
     return undefined as any;
   }
 
-  // public then<TResult1, TResult2 = never>(
+  // Public then<TResult1, TResult2 = never>(
   //   onFulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null,
   //   onRejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null,
   // ): Promise<TResult1, | TResult2> {
@@ -112,10 +125,10 @@ class Task<T> {
 
   // }
 
-//     then<TResult1 = T, TResult2 = never>(
-//  onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null,
-//  onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null):
-// Promise<TResult1 | TResult2>;
+  //     then<TResult1 = T, TResult2 = never>(
+  //  onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null,
+  //  onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null):
+  // Promise<TResult1 | TResult2>;
 
   // public catch () {
 
@@ -124,17 +137,16 @@ class Task<T> {
   // public finally () {
 
   // }
-
 }
 
-// const t = new Task();
+// Const t = new Task();
 
 const p = new Promise<void>((resolve, reject) => {
   resolve();
 });
 
-p.then
-// p.catch
+p.then;
+// P.catch
 // p.finally
 // /**
 //  * Represents the completion of an asynchronous operation
@@ -154,6 +166,5 @@ p.then
 //      */
 //     catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): Promise<T | TResult>;
 // }
-
 
 export default Task;

@@ -1,12 +1,13 @@
-import type { DB, DBTransaction, LevelPath } from '@matrixai/db';
-import type { SessionToken } from './types';
+import type { DB, LevelPath } from '@matrixai/db';
 import type KeyManager from '../keys/KeyManager';
+import { DBTransaction } from '@matrixai/db';
 import Logger from '@matrixai/logger';
 import {
   CreateDestroyStartStop,
   ready,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import { withF } from '@matrixai/resources';
+import { SessionToken } from './types';
 import * as sessionsUtils from './utils';
 import * as sessionsErrors from './errors';
 import * as keysUtils from '../keys/utils';

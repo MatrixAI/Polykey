@@ -1,18 +1,15 @@
-import type { DB, DBTransaction, LevelPath, KeyPath } from '@matrixai/db';
+import type { DB, LevelPath, KeyPath } from '@matrixai/db';
 import type {
-  TaskId,
-  TaskHandlerId,
   TaskHandler,
   TaskData,
   TaskInfo,
   TaskIdString,
-  TaskParameters,
-  TaskDelay,
-  TaskTimestamp
+  TaskTimestamp,
 } from './types';
 import type KeyManager from '../keys/KeyManager';
 import type { PolykeyWorkerManagerInterface } from '../workers/types';
 import type { POJO, Callback, PromiseDeconstructed } from '../types';
+import { DBTransaction } from '@matrixai/db';
 import Logger from '@matrixai/logger';
 import { IdInternal } from '@matrixai/id';
 import { extractTs } from '@matrixai/id/dist/IdSortable';
@@ -21,6 +18,7 @@ import {
   ready,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import lexi from 'lexicographic-integer';
+import { TaskId, TaskHandlerId, TaskParameters, TaskDelay } from './types';
 import Queue from './Queue';
 import * as tasksUtils from './utils';
 import * as tasksErrors from './errors';
@@ -56,11 +54,13 @@ class Scheduler {
     fresh?: boolean;
   }): Promise<Scheduler> {
     logger.info(`Creating ${this.name}`);
-    queue = queue ?? await Queue.createQueue({
-      db,
-      logger: logger.getChild(Queue.name),
-      fresh
-    });
+    queue =
+      queue ??
+      (await Queue.createQueue({
+        db,
+        logger: logger.getChild(Queue.name),
+        fresh,
+      }));
     const scheduler = new this({ db, keyManager, queue, logger });
     await scheduler.start({ handlers, delay, fresh });
     logger.info(`Created ${this.name}`);
@@ -84,13 +84,19 @@ class Scheduler {
   /**
    * Last Task Id
    */
-  protected schedulerLastTaskIdPath: KeyPath = [...this.schedulerDbPath, 'lastTaskId'];
+  protected schedulerLastTaskIdPath: KeyPath = [
+    ...this.schedulerDbPath,
+    'lastTaskId',
+  ];
 
   /**
    * Tasks collection
    * `tasks/{TaskId} -> {json(Task)}`
    */
-  protected schedulerTasksDbPath: LevelPath = [...this.schedulerDbPath, 'tasks'];
+  protected schedulerTasksDbPath: LevelPath = [
+    ...this.schedulerDbPath,
+    'tasks',
+  ];
 
   /**
    * Tasks scheduled by time
@@ -102,24 +108,30 @@ class Scheduler {
    * Tasks queued for execution
    * `pending/{lexi(TaskPriority)}/{lexi(TaskTimestamp + TaskDelay)} -> {raw(TaskId)}`
    */
-  protected schedulerPendingDbPath: LevelPath = [...this.schedulerDbPath, 'pending'];
+  protected schedulerPendingDbPath: LevelPath = [
+    ...this.schedulerDbPath,
+    'pending',
+  ];
 
   /**
    * Task handlers
    * `handlers/{TaskHandlerId}/{TaskId} -> {raw(TaskId)}`
    */
-  protected schedulerHandlersDbPath: LevelPath = [...this.schedulerDbPath, 'handlers'];
+  protected schedulerHandlersDbPath: LevelPath = [
+    ...this.schedulerDbPath,
+    'handlers',
+  ];
 
   public constructor({
     db,
     keyManager,
     queue,
-    logger
+    logger,
   }: {
     db: DB;
     keyManager: KeyManager;
     queue: Queue;
-    logger: Logger
+    logger: Logger;
   }) {
     this.logger = logger;
     this.db = db;
@@ -143,11 +155,14 @@ class Scheduler {
     this.logger.info(`Starting ${this.constructor.name}`);
     if (fresh) {
       this.handlers.clear();
-      // this.promises.clear();
+      // This.promises.clear();
       await this.db.clear(this.schedulerDbPath);
     }
     for (const taskHandlerId in handlers) {
-      this.handlers.set(taskHandlerId as TaskHandlerId, handlers[taskHandlerId]);
+      this.handlers.set(
+        taskHandlerId as TaskHandlerId,
+        handlers[taskHandlerId],
+      );
     }
     const lastTaskId = await this.getLastTaskId();
     this.generateTaskId = tasksUtils.createTaskIdGenerator(
@@ -200,25 +215,20 @@ class Scheduler {
 
     // We actually need to find ht elast task
 
-    await this.db.withTransactionF(
-      async (tran) => {
-        // we use the transaction here
-        // and we use it run our tasks
-        // every "execution" involves running it here
-        return;
-      }
-    );
+    await this.db.withTransactionF(async (tran) => {
+      // We use the transaction here
+      // and we use it run our tasks
+      // every "execution" involves running it here
+      return;
+    });
 
-    // when we "pop" a task
+    // When we "pop" a task
     // it is actually to peek at the latest task
     // then to set a timeout
     // the process is that we find tasks that are worth executing right now
     // then we dispatch to execution
 
-
-    this.processingTimer = setTimeout(() => {
-
-    }, 1000);
+    this.processingTimer = setTimeout(() => {}, 1000);
   }
 
   @ready(new tasksErrors.ErrorSchedulerNotRunning())
@@ -257,11 +267,12 @@ class Scheduler {
   @ready(new tasksErrors.ErrorSchedulerNotRunning())
   public async getTaskData(
     taskId: TaskId,
-    tran?: DBTransaction
+    tran?: DBTransaction,
   ): Promise<TaskData | undefined> {
-    return await (tran ?? this.db).get<TaskData>(
-      [...this.schedulerTasksDbPath, taskId.toBuffer()]
-    );
+    return await (tran ?? this.db).get<TaskData>([
+      ...this.schedulerTasksDbPath,
+      taskId.toBuffer(),
+    ]);
   }
 
   /**
@@ -271,22 +282,19 @@ class Scheduler {
   @ready(new tasksErrors.ErrorSchedulerNotRunning())
   public async *getTaskDatas(
     order: 'asc' | 'desc' = 'asc',
-    tran?: DBTransaction
+    tran?: DBTransaction,
   ): AsyncGenerator<[TaskId, TaskData]> {
     if (tran == null) {
-      return yield* this.db.withTransactionG(
-        (tran) => this.getTaskDatas(...arguments, tran)
+      return yield* this.db.withTransactionG((tran) =>
+        this.getTaskDatas(...arguments, tran),
       );
     }
     for await (const [keyPath, taskData] of tran.iterator<TaskData>(
       this.schedulerTasksDbPath,
-      { valueAsBuffer: false, reverse: order !== 'asc' }
+      { valueAsBuffer: false, reverse: order !== 'asc' },
     )) {
       const taskId = IdInternal.fromBuffer<TaskId>(keyPath[0] as Buffer);
-      yield [
-        taskId,
-        taskData
-      ];
+      yield [taskId, taskData];
     }
   }
 
@@ -331,7 +339,6 @@ class Scheduler {
   //   this.registerListener(id, listener);
   //   return taskP;
   // }
-
 
   // protected async getTaskP(taskId: TaskId, lazy: boolean, tran: DBTransaction) {
   //   // does that mean we don't extend the promise?
@@ -412,12 +419,11 @@ class Scheduler {
     delay: TaskDelay = 0,
     priority: number = 0,
     lazy: boolean = false,
-    tran?: DBTransaction
+    tran?: DBTransaction,
   ): Promise<Task<any>> {
-
     if (tran == null) {
-      return this.db.withTransactionF(
-        (tran) => this.scheduleTask(handlerId, parameters, delay, priority, lazy, tran)
+      return this.db.withTransactionF((tran) =>
+        this.scheduleTask(handlerId, parameters, delay, priority, lazy, tran),
       );
     }
     const taskId = this.generateTaskId();
@@ -444,16 +450,14 @@ class Scheduler {
     await tran.put(
       [...this.schedulerTimeDbPath, taskScheduledLexi],
       taskId.toBuffer(),
-      true
+      true,
     );
 
-    // do we do this?
+    // Do we do this?
     // new Task()
 
-
-
     if (!lazy) {
-      // task().then(onFullfill, onReject).finally(onFinally)
+      // Task().then(onFullfill, onReject).finally(onFinally)
       // const { p: taskP, resolveP: resolveTaskP, rejectP: rejectTaskP } = utils.promise<any>();
       // this.promises.set(
       //   taskId.toString() as TaskIdString,
@@ -474,23 +478,20 @@ class Scheduler {
       // this.registerListener(taskId, taskListener);
     }
 
-
     const task = {
       id: taskId,
       ...taskData,
       then: async (onFulfilled, onRejected) => {
-
-        // if this taskP already exists
+        // If this taskP already exists
         // then there's no need to set it up?
         const taskP = this.promises.get(taskId.toString() as TaskIdString);
-        // this is going to be bound to somnething?
+        // This is going to be bound to somnething?
         // we need to create a promise for it?
         // but this means you start doing this by default
-
-      }
+      },
     };
 
-    // return [
+    // Return [
     //   {
     //     id: taskId,
     //     ...taskData,
@@ -507,7 +508,7 @@ class Scheduler {
     // if set, it will reset
 
     if (this.processingTimer != null) {
-      // proceed to update the processing timer
+      // Proceed to update the processing timer
       // startProcessing will peek at the next task
       // and start timing out there
       // if the timeout isn't given
@@ -526,10 +527,9 @@ class Scheduler {
 
       await this.startProcessing();
     }
-
   }
 
-  // we have to start the loop
+  // We have to start the loop
   // the `setTimeout` is what actually starts the execution
   // Pop up the next highest priority
 
@@ -544,8 +544,8 @@ class Scheduler {
 
   public async popTask(tran?: DBTransaction) {
     if (tran == null) {
-      return this.db.withTransactionF(
-        (tran) => this.popTask.apply(this, [...arguments, tran])
+      return this.db.withTransactionF((tran) =>
+        this.popTask.apply(this, [...arguments, tran]),
       );
     }
     let taskId: TaskId | undefined;
@@ -554,23 +554,29 @@ class Scheduler {
       this.schedulerTimeDbPath,
       {
         limit: 1,
-        keys: false
-      }
+        keys: false,
+      },
     )) {
       taskId = IdInternal.fromBuffer<TaskId>(taskIdBuffer);
-      taskData = await tran.get<TaskData>(
-        [...this.schedulerTasksDbPath, taskIdBuffer]
-      );
+      taskData = await tran.get<TaskData>([
+        ...this.schedulerTasksDbPath,
+        taskIdBuffer,
+      ]);
     }
     return {
       id: taskId,
-      ...taskData
+      ...taskData,
     };
   }
 
   @ready(new tasksErrors.ErrorSchedulerNotRunning(), false, ['starting'])
-  public async getLastTaskId(tran?: DBTransaction): Promise<TaskId | undefined> {
-    const lastTaskIdBuffer = await (tran ?? this.db).get(this.schedulerLastTaskIdPath, true);
+  public async getLastTaskId(
+    tran?: DBTransaction,
+  ): Promise<TaskId | undefined> {
+    const lastTaskIdBuffer = await (tran ?? this.db).get(
+      this.schedulerLastTaskIdPath,
+      true,
+    );
     if (lastTaskIdBuffer == null) return;
     return IdInternal.fromBuffer<TaskId>(lastTaskIdBuffer);
   }

@@ -1,24 +1,25 @@
-import type { DB, DBTransaction, KeyPath, LevelPath } from '@matrixai/db';
+import type { DB, KeyPath, LevelPath } from '@matrixai/db';
 import type {
   Gestalt,
-  GestaltAction,
   GestaltActions,
   GestaltIdentityKey,
   GestaltKey,
   GestaltKeySet,
   GestaltNodeKey,
 } from './types';
-import type { NodeId, NodeInfo } from '../nodes/types';
-import type { IdentityId, IdentityInfo, ProviderId } from '../identities/types';
 import type { Permission } from '../acl/types';
 import type ACL from '../acl/ACL';
+import { DBTransaction } from '@matrixai/db';
 import Logger from '@matrixai/logger';
 import {
   CreateDestroyStartStop,
   ready,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
+import { GestaltAction } from './types';
 import * as gestaltsUtils from './utils';
 import * as gestaltsErrors from './errors';
+import { IdentityId, IdentityInfo, ProviderId } from '../identities/types';
+import { NodeId, NodeInfo } from '../nodes/types';
 import * as aclUtils from '../acl/utils';
 import * as utils from '../utils';
 import * as nodesUtils from '../nodes/utils';

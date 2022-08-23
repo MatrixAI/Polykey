@@ -43,11 +43,9 @@ type TaskInfo = TaskData & {
 
 type TaskHandlerId = Opaque<'TaskHandlerId', string>;
 
-type TaskHandler<
-  P extends Array<any> = [],
-  R = any
-> = (...params: P) => Promise<R>;
-
+type TaskHandler<P extends Array<any> = [], R = any> = (
+  ...params: P
+) => Promise<R>;
 
 /**
  * Task function is the result of a lambda abstraction of applying
@@ -56,8 +54,7 @@ type TaskHandler<
  */
 type TaskFunction<T> = () => Promise<T>;
 
-
-// type TaskListener = Callback<[taskResult: any], void>;
+// Type TaskListener = Callback<[taskResult: any], void>;
 // Make Task something that can be awaited on
 // but when you "make" a promise or reference it
 // you're for a promise
@@ -100,5 +97,5 @@ export type {
   // TaskListener
   TaskParameters,
   TaskTimestamp,
-  TaskDelay
+  TaskDelay,
 };

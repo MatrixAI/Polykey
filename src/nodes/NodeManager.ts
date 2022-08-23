@@ -1,4 +1,4 @@
-import type { DB, DBTransaction } from '@matrixai/db';
+import type { DB } from '@matrixai/db';
 import type NodeConnectionManager from './NodeConnectionManager';
 import type NodeGraph from './NodeGraph';
 import type Queue from './Queue';
@@ -6,19 +6,16 @@ import type KeyManager from '../keys/KeyManager';
 import type { PublicKeyPem } from '../keys/types';
 import type Sigchain from '../sigchain/Sigchain';
 import type { ChainData, ChainDataEncoded } from '../sigchain/types';
-import type {
-  NodeId,
-  NodeAddress,
-  NodeBucket,
-  NodeBucketIndex,
-} from '../nodes/types';
+import type { NodeBucket, NodeBucketIndex } from '../nodes/types';
 import type { ClaimEncoded } from '../claims/types';
 import type { Timer } from '../types';
 import type { PromiseDeconstructed } from '../types';
+import { DBTransaction } from '@matrixai/db';
 import Logger from '@matrixai/logger';
 import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
 import * as nodesErrors from './errors';
 import * as nodesUtils from './utils';
+import { NodeId, NodeAddress } from '../nodes/types';
 import * as networkUtils from '../network/utils';
 import * as validationUtils from '../validation/utils';
 import * as utilsPB from '../proto/js/polykey/v1/utils/utils_pb';

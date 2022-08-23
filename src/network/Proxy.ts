@@ -1,15 +1,10 @@
 import type { AddressInfo, Socket } from 'net';
 import type {
-  Host,
-  Port,
   Address,
   ConnectionInfo,
-  TLSConfig,
   ConnectionEstablishedCallback,
 } from './types';
 import type { ConnectionsForward } from './ConnectionForward';
-import type { NodeId } from '../nodes/types';
-import type { Timer } from '../types';
 import type UTPConnection from 'utp-native/lib/connection';
 import type { ConnectionsReverse } from './ConnectionReverse';
 import http from 'http';
@@ -18,10 +13,13 @@ import Logger from '@matrixai/logger';
 import { Lock } from '@matrixai/async-locks';
 import { withF } from '@matrixai/resources';
 import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
+import { Host, Port, TLSConfig } from './types';
 import ConnectionReverse from './ConnectionReverse';
 import ConnectionForward from './ConnectionForward';
 import * as networkUtils from './utils';
 import * as networkErrors from './errors';
+import { Timer } from '../types';
+import { NodeId } from '../nodes/types';
 import * as nodesUtils from '../nodes/utils';
 import { promisify, timerStart, timerStop } from '../utils';
 

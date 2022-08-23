@@ -23,8 +23,8 @@ function createTaskIdGenerator(nodeId: NodeId, lastTaskId?: TaskId) {
 function toPriority(n: number): TaskPriority {
   n = Math.min(n, 127);
   n = Math.max(n, -128);
-  n *= -1
-  n -= 1
+  n *= -1;
+  n -= 1;
   n += 128;
   return n as TaskPriority;
 }
@@ -40,8 +40,4 @@ function fromPriority(p: TaskPriority): number {
   return n;
 }
 
-export {
-  createTaskIdGenerator,
-  toPriority,
-  fromPriority
-};
+export { createTaskIdGenerator, toPriority, fromPriority };

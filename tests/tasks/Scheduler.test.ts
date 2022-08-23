@@ -64,8 +64,6 @@ describe(Scheduler.name, () => {
 
     console.log(result);
 
-
-
     await queue.stop();
     await queue.destroy();
   });

@@ -1,20 +1,19 @@
-import type { DB, DBTransaction, KeyPath, LevelPath } from '@matrixai/db';
+import type { DB, KeyPath, LevelPath } from '@matrixai/db';
 import type {
-  NodeId,
-  NodeAddress,
   NodeBucket,
   NodeData,
   NodeBucketMeta,
-  NodeBucketIndex,
   NodeGraphSpace,
 } from './types';
 import type KeyManager from '../keys/KeyManager';
+import { DBTransaction } from '@matrixai/db';
 import Logger from '@matrixai/logger';
 import {
   CreateDestroyStartStop,
   ready,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import { IdInternal } from '@matrixai/id';
+import { NodeId, NodeAddress, NodeBucketIndex } from './types';
 import * as nodesUtils from './utils';
 import * as nodesErrors from './errors';
 import { getUnixtime, never } from '../utils';

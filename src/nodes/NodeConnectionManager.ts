@@ -1,17 +1,10 @@
 import type { ResourceAcquire } from '@matrixai/resources';
 import type KeyManager from '../keys/KeyManager';
 import type Proxy from '../network/Proxy';
-import type { Host, Hostname, Port } from '../network/types';
-import type { Timer } from '../types';
+import type { Hostname } from '../network/types';
 import type NodeGraph from './NodeGraph';
 import type Queue from './Queue';
-import type {
-  NodeAddress,
-  NodeData,
-  NodeId,
-  NodeIdString,
-  SeedNodes,
-} from './types';
+import type { NodeAddress, NodeData, NodeIdString, SeedNodes } from './types';
 import type NodeManager from './NodeManager';
 import { withF } from '@matrixai/resources';
 import Logger from '@matrixai/logger';
@@ -19,9 +12,12 @@ import { ready, StartStop } from '@matrixai/async-init/dist/StartStop';
 import { IdInternal } from '@matrixai/id';
 import { status } from '@matrixai/async-init';
 import { LockBox, RWLockWriter } from '@matrixai/async-locks';
+import { NodeId } from './types';
 import NodeConnection from './NodeConnection';
 import * as nodesUtils from './utils';
 import * as nodesErrors from './errors';
+import { Timer } from '../types';
+import { Host, Port } from '../network/types';
 import GRPCClientAgent from '../agent/GRPCClientAgent';
 import * as validationUtils from '../validation/utils';
 import * as networkUtils from '../network/utils';

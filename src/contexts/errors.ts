@@ -7,7 +7,4 @@ class ErrorContextsTimerExpired<T> extends ErrorContexts<T> {
   exitCode = sysexits.UNAVAILABLE;
 }
 
-export {
-  ErrorContexts,
-  ErrorContextsTimerExpired
-};
+export { ErrorContexts, ErrorContextsTimerExpired };

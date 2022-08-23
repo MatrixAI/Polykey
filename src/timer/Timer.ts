@@ -16,7 +16,7 @@ class Timer<T = void> implements Promise<T> {
     handler?: () => T;
     delay?: number;
   } = {}): Timer<T> {
-    return new this({handler, delay});
+    return new this({ handler, delay });
   }
 
   /**
@@ -97,18 +97,12 @@ class Timer<T = void> implements Promise<T> {
         // Do not keep the event loop alive
         this.timeoutRef.unref();
       }
-      this.timestamp = new Date(
-        performance.timeOrigin + performance.now()
-      );
-      this.scheduled = new Date(
-        this.timestamp.getTime() + delay
-      );
+      this.timestamp = new Date(performance.timeOrigin + performance.now());
+      this.scheduled = new Date(this.timestamp.getTime() + delay);
     } else {
       // There is no `setTimeout` nor `setInterval`
       // so the event loop will not be kept alive
-      this.timestamp = new Date(
-        performance.timeOrigin + performance.now()
-      );
+      this.timestamp = new Date(performance.timeOrigin + performance.now());
     }
   }
 
@@ -123,7 +117,7 @@ class Timer<T = void> implements Promise<T> {
   public async destroy(type: 'resolve' | 'reject' = 'resolve'): Promise<void> {
     clearTimeout(this.timeoutRef);
     delete this.timeoutRef;
-    if (type ==='resolve') {
+    if (type === 'resolve') {
       this._status = 'resolved';
       if (this.handler != null) {
         this.resolveP(this.handler());
@@ -145,9 +139,9 @@ class Timer<T = void> implements Promise<T> {
     if (this._status !== null) return 0;
     if (this.scheduled == null) return Infinity;
     return Math.max(
-      Math.trunc(this.scheduled.getTime() - (
-        performance.timeOrigin + performance.now()
-      )),
+      Math.trunc(
+        this.scheduled.getTime() - (performance.timeOrigin + performance.now()),
+      ),
       0,
     );
   }
@@ -169,14 +163,23 @@ class Timer<T = void> implements Promise<T> {
   }
 
   public then<TResult1 = T, TResult2 = never>(
-    onFulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null,
-    onRejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null
+    onFulfilled?:
+      | ((value: T) => TResult1 | PromiseLike<TResult1>)
+      | undefined
+      | null,
+    onRejected?:
+      | ((reason: any) => TResult2 | PromiseLike<TResult2>)
+      | undefined
+      | null,
   ): Promise<TResult1 | TResult2> {
     return this.p.then(onFulfilled, onRejected);
   }
 
   public catch<TResult = never>(
-    onRejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null
+    onRejected?:
+      | ((reason: any) => TResult | PromiseLike<TResult>)
+      | undefined
+      | null,
   ): Promise<T | TResult> {
     return this.p.catch(onRejected);
   }

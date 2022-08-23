@@ -5,11 +5,11 @@ import * as contextsUtils from '../utils';
  * It is only allowed to be used once
  */
 function context(target: Object, key: string | symbol, index: number) {
-  const targetName = (target['name'] ?? target.constructor.name);
+  const targetName = target['name'] ?? target.constructor.name;
   const method = target[key];
   if (contextsUtils.contexts.has(method)) {
     throw new TypeError(
-      `\`${targetName}.${key.toString()}\` redeclares \`@context\` decorator`
+      `\`${targetName}.${key.toString()}\` redeclares \`@context\` decorator`,
     );
   }
   contextsUtils.contexts.set(method, index);

@@ -1,6 +1,6 @@
 import type { DB, LevelPath } from '@matrixai/db';
 import type { DiscoveryQueueId, DiscoveryQueueIdGenerator } from './types';
-import type { NodeId, NodeInfo } from '../nodes/types';
+import type { NodeInfo } from '../nodes/types';
 import type NodeManager from '../nodes/NodeManager';
 import type GestaltGraph from '../gestalts/GestaltGraph';
 import type { GestaltKey } from '../gestalts/types';
@@ -8,8 +8,6 @@ import type Provider from '../identities/Provider';
 import type IdentitiesManager from '../identities/IdentitiesManager';
 import type {
   IdentityInfo,
-  ProviderId,
-  IdentityId,
   IdentityClaimId,
   IdentityClaims,
 } from '../identities/types';
@@ -27,6 +25,8 @@ import { IdInternal } from '@matrixai/id';
 import * as idUtils from '@matrixai/id/dist/utils';
 import * as discoveryUtils from './utils';
 import * as discoveryErrors from './errors';
+import { ProviderId, IdentityId } from '../identities/types';
+import { NodeId } from '../nodes/types';
 import * as nodesErrors from '../nodes/errors';
 import * as networkErrors from '../network/errors';
 import * as gestaltsUtils from '../gestalts/utils';

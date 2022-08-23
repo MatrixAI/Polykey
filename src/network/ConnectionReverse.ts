@@ -1,16 +1,18 @@
 import type { Socket, AddressInfo } from 'net';
 import type { TLSSocket } from 'tls';
-import type UTPConnection from 'utp-native/lib/connection';
-import type { Host, Port, Address, NetworkMessage } from './types';
+import type { Address, NetworkMessage } from './types';
 import type { NodeId } from '../nodes/types';
 import type { Certificate } from '../keys/types';
-import type { AbstractConstructorParameters, Timer } from '../types';
+import type { AbstractConstructorParameters } from '../types';
 import net from 'net';
 import tls from 'tls';
+import UTPConnection from 'utp-native/lib/connection';
 import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
+import { Host, Port } from './types';
 import Connection from './Connection';
 import * as networkUtils from './utils';
 import * as networkErrors from './errors';
+import { Timer } from '../types';
 import * as keysUtils from '../keys/utils';
 import { promise, timerStart, timerStop } from '../utils';
 
