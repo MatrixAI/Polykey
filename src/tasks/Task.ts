@@ -2,7 +2,26 @@ import type Queue from "./Scheduler";
 import type { TaskId, TaskData, TaskHandlerId, TaskTimestamp, TaskDelay, TaskPriority, TaskHandler, TaskParameters } from "./types";
 import type { DeepReadonly } from '../types';
 
-class Task<T> extends Promise<T> {
+class TaskPromise<T> extends Promise<T> {
+
+  public constructor(executor, queue, lazy) {
+    super(executor);
+    this.lazy = lazy;
+    this.queue = queue;
+  }
+
+  public then() {
+    if (this.lazy) {
+      this.queue.f();
+      // attach event handlers
+    } else {
+
+    }
+  }
+
+}
+
+class Task<T> {
   public readonly id: TaskId;
   public readonly handlerId: TaskHandlerId;
   public readonly parameters: DeepReadonly<TaskParameters>;
@@ -13,6 +32,8 @@ class Task<T> extends Promise<T> {
   protected queue: Queue;
   protected resolveP: (value: T | PromiseLike<T>) => void;
   protected rejectP: (reason?: any) => void;
+
+  protected taskPromise;
 
   constructor(
     queue: Queue,
@@ -63,6 +84,10 @@ class Task<T> extends Promise<T> {
     onFulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null,
     onRejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null
   ): Promise<TResult1 | TResult2> {
+    if (this.lazy) {
+      // setup the event handlers
+      // but also return a rejection IF the task no longer exists (the rejection would be ErrorTasksTaskMissing)
+    }
 
     // this is the promise now
     // we can say that we only do what is needed

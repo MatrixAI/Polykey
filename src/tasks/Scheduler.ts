@@ -100,7 +100,7 @@ class Scheduler {
 
   /**
    * Tasks queued for execution
-   * `pending/{lexi(TaskPriority)}/{lexi(TaskTimestamp)} -> {raw(TaskId)}`
+   * `pending/{lexi(TaskPriority)}/{lexi(TaskTimestamp + TaskDelay)} -> {raw(TaskId)}`
    */
   protected schedulerPendingDbPath: LevelPath = [...this.schedulerDbPath, 'pending'];
 
@@ -365,6 +365,46 @@ class Scheduler {
   //   return taskP;
   // }
 
+  /*
+  const task = await scheduleTask(...);
+  await task; // <- any
+
+  const task = scheduleTask(...);
+  await task; // <- Promise
+
+
+  const task = scheduleTask(...);
+  await task; // <- Task (you are actually waiting for both scheduling + task execution)
+
+  const task = scheduleTask(..., lazy=true);
+  await task; // <- Task you are only awaiting the scheduling
+  await task.task;
+
+  const task = scheduleTask(delay=10hrs, lazy=True);
+
+  waited 68 hrs
+
+  await task; <- there's no information about the task - ErrorTasksTaskMissing
+
+
+  const task = scheduleTask(delay=10hrs, lazy=True);
+
+  waited 5 hrs
+
+  await task; - it can register an event handler for this task
+
+  for loop:
+    scheduleTask(delay=10hrs);
+
+
+  const task = await scheduler.scheduleTask(lazy=false);
+  await task.promise;
+
+  const task = await scheduler.getTask(lazy=false); // this is natu
+  await task.promise;
+
+  */
+
   @ready(new tasksErrors.ErrorSchedulerNotRunning())
   public async scheduleTask(
     handlerId: TaskHandlerId,
@@ -373,7 +413,8 @@ class Scheduler {
     priority: number = 0,
     lazy: boolean = false,
     tran?: DBTransaction
-  ): Promise<any> {
+  ): Promise<Task<any>> {
+
     if (tran == null) {
       return this.db.withTransactionF(
         (tran) => this.scheduleTask(handlerId, parameters, delay, priority, lazy, tran)
