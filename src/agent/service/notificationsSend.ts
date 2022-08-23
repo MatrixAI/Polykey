@@ -28,9 +28,9 @@ function notificationsSend({
     try {
       const jwt = call.request.getContent();
       const notification = await notificationsUtils.verifyAndDecodeNotif(jwt);
-      await db.withTransactionF(async (tran) => {
-        await notificationsManager.receiveNotification(notification, tran);
-      });
+      await db.withTransactionF((tran) =>
+        notificationsManager.receiveNotification(notification, tran),
+      );
       const response = new utilsPB.EmptyMessage();
       callback(null, response);
       return;

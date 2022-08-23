@@ -49,7 +49,7 @@ function identitiesTokenGet({
           identityId: call.request.getIdentityId(),
         },
       );
-      const tokens = await db.withTransactionF(async (tran) =>
+      const tokens = await db.withTransactionF((tran) =>
         identitiesManager.getToken(providerId, identityId, tran),
       );
       response.setToken(JSON.stringify(tokens));

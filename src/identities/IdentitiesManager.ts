@@ -11,7 +11,6 @@ import {
   CreateDestroyStartStop,
   ready,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
-import { withF } from '@matrixai/resources';
 import * as identitiesErrors from './errors';
 
 interface IdentitiesManager extends CreateDestroyStartStop {}
@@ -75,13 +74,6 @@ class IdentitiesManager {
   }
 
   @ready(new identitiesErrors.ErrorIdentitiesManagerNotRunning())
-  public async withTransactionF<T>(
-    f: (tran: DBTransaction) => Promise<T>,
-  ): Promise<T> {
-    return withF([this.db.transaction()], ([tran]) => f(tran));
-  }
-
-  @ready(new identitiesErrors.ErrorIdentitiesManagerNotRunning())
   public getProviders(): Record<ProviderId, Provider> {
     return Object.fromEntries(this.providers);
   }
@@ -116,7 +108,7 @@ class IdentitiesManager {
     tran?: DBTransaction,
   ): Promise<ProviderTokens> {
     if (tran == null) {
-      return this.withTransactionF(async (tran) =>
+      return this.db.withTransactionF((tran) =>
         this.getTokens(providerId, tran),
       );
     }
@@ -138,7 +130,7 @@ class IdentitiesManager {
     tran?: DBTransaction,
   ): Promise<TokenData | undefined> {
     if (tran == null) {
-      return this.withTransactionF(async (tran) =>
+      return this.db.withTransactionF((tran) =>
         this.getToken(providerId, identityId, tran),
       );
     }
@@ -161,7 +153,7 @@ class IdentitiesManager {
     tran?: DBTransaction,
   ): Promise<void> {
     if (tran == null) {
-      return this.withTransactionF(async (tran) =>
+      return this.db.withTransactionF((tran) =>
         this.putToken(providerId, identityId, tokenData, tran),
       );
     }
@@ -181,7 +173,7 @@ class IdentitiesManager {
     tran?: DBTransaction,
   ): Promise<void> {
     if (tran == null) {
-      return this.withTransactionF(async (tran) =>
+      return this.db.withTransactionF((tran) =>
         this.delToken(providerId, identityId, tran),
       );
     }

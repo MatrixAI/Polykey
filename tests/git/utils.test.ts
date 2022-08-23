@@ -30,7 +30,6 @@ describe('Git utils', () => {
     efs = await EncryptedFS.createEncryptedFS({
       dbKey,
       dbPath: dataDir,
-      // @ts-ignore - version of js-logger is incompatible (remove when EFS logger updates to 3.*)
       logger,
     });
     await efs.start();

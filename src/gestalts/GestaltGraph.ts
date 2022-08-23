@@ -17,7 +17,6 @@ import {
   CreateDestroyStartStop,
   ready,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
-import { withF } from '@matrixai/resources';
 import * as gestaltsUtils from './utils';
 import * as gestaltsErrors from './errors';
 import * as aclUtils from '../acl/utils';
@@ -91,21 +90,14 @@ class GestaltGraph {
   }
 
   @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
-  public async withTransactionF<T>(
-    f: (tran: DBTransaction) => Promise<T>,
-  ): Promise<T> {
-    return withF([this.db.transaction()], ([tran]) => f(tran));
-  }
-
-  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
   public async getGestalts(tran?: DBTransaction): Promise<Array<Gestalt>> {
     if (tran == null) {
-      return this.withTransactionF(async (tran) => this.getGestalts(tran));
+      return this.db.withTransactionF((tran) => this.getGestalts(tran));
     }
     const unvisited: Map<GestaltKey, GestaltKeySet> = new Map();
     for await (const [k, gKs] of tran.iterator<GestaltKeySet>(
-      { valueAsBuffer: false },
       [...this.gestaltGraphMatrixDbPath],
+      { valueAsBuffer: false },
     )) {
       const gK = k.toString() as GestaltKey;
       unvisited.set(gK, gKs);
@@ -164,7 +156,7 @@ class GestaltGraph {
     tran?: DBTransaction,
   ): Promise<Gestalt | undefined> {
     if (tran == null) {
-      return this.withTransactionF(async (tran) =>
+      return this.db.withTransactionF((tran) =>
         this.getGestaltByNode(nodeId, tran),
       );
     }
@@ -179,7 +171,7 @@ class GestaltGraph {
     tran?: DBTransaction,
   ): Promise<Gestalt | undefined> {
     if (tran == null) {
-      return this.withTransactionF(async (tran) =>
+      return this.db.withTransactionF((tran) =>
         this.getGestaltByIdentity(providerId, identityId, tran),
       );
     }
@@ -193,7 +185,7 @@ class GestaltGraph {
     tran?: DBTransaction,
   ): Promise<void> {
     if (tran == null) {
-      return this.withTransactionF(async (tran) =>
+      return this.db.withTransactionF((tran) =>
         this.setIdentity(identityInfo, tran),
       );
     }
@@ -222,7 +214,7 @@ class GestaltGraph {
     tran?: DBTransaction,
   ) {
     if (tran == null) {
-      return this.withTransactionF(async (tran) =>
+      return this.db.withTransactionF((tran) =>
         this.unsetIdentity(providerId, identityId, tran),
       );
     }
@@ -267,9 +259,7 @@ class GestaltGraph {
     tran?: DBTransaction,
   ): Promise<void> {
     if (tran == null) {
-      return this.withTransactionF(async (tran) =>
-        this.setNode(nodeInfo, tran),
-      );
+      return this.db.withTransactionF((tran) => this.setNode(nodeInfo, tran));
     }
     const nodeKey = gestaltsUtils.keyFromNode(
       nodesUtils.decodeNodeId(nodeInfo.id)!,
@@ -307,9 +297,7 @@ class GestaltGraph {
   @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
   public async unsetNode(nodeId: NodeId, tran?: DBTransaction): Promise<void> {
     if (tran == null) {
-      return this.withTransactionF(async (tran) =>
-        this.unsetNode(nodeId, tran),
-      );
+      return this.db.withTransactionF((tran) => this.unsetNode(nodeId, tran));
     }
     const nodeKey = gestaltsUtils.keyFromNode(nodeId);
     const nodeKeyPath = [
@@ -356,7 +344,7 @@ class GestaltGraph {
     tran?: DBTransaction,
   ): Promise<void> {
     if (tran == null) {
-      return this.withTransactionF(async (tran) =>
+      return this.db.withTransactionF((tran) =>
         this.linkNodeAndIdentity(nodeInfo, identityInfo, tran),
       );
     }
@@ -502,7 +490,7 @@ class GestaltGraph {
     tran?: DBTransaction,
   ): Promise<void> {
     if (tran == null) {
-      return this.withTransactionF(async (tran) =>
+      return this.db.withTransactionF((tran) =>
         this.linkNodeAndNode(nodeInfo1, nodeInfo2, tran),
       );
     }
@@ -621,7 +609,7 @@ class GestaltGraph {
     tran?: DBTransaction,
   ): Promise<void> {
     if (tran == null) {
-      return this.withTransactionF(async (tran) =>
+      return this.db.withTransactionF((tran) =>
         this.unlinkNodeAndIdentity(nodeId, providerId, identityId, tran),
       );
     }
@@ -676,7 +664,7 @@ class GestaltGraph {
     tran?: DBTransaction,
   ): Promise<void> {
     if (tran == null) {
-      return this.withTransactionF(async (tran) =>
+      return this.db.withTransactionF((tran) =>
         this.unlinkNodeAndNode(nodeId1, nodeId2, tran),
       );
     }
@@ -729,7 +717,7 @@ class GestaltGraph {
     tran?: DBTransaction,
   ): Promise<GestaltActions | undefined> {
     if (tran == null) {
-      return this.withTransactionF(async (tran) =>
+      return this.db.withTransactionF((tran) =>
         this.getGestaltActionsByNode(nodeId, tran),
       );
     }
@@ -755,7 +743,7 @@ class GestaltGraph {
     tran?: DBTransaction,
   ): Promise<GestaltActions | undefined> {
     if (tran == null) {
-      return this.withTransactionF(async (tran) =>
+      return this.db.withTransactionF((tran) =>
         this.getGestaltActionsByIdentity(providerId, identityId, tran),
       );
     }
@@ -796,7 +784,7 @@ class GestaltGraph {
     tran?: DBTransaction,
   ): Promise<void> {
     if (tran == null) {
-      return this.withTransactionF(async (tran) =>
+      return this.db.withTransactionF((tran) =>
         this.setGestaltActionByNode(nodeId, action, tran),
       );
     }
@@ -819,7 +807,7 @@ class GestaltGraph {
     tran?: DBTransaction,
   ): Promise<void> {
     if (tran == null) {
-      return this.withTransactionF(async (tran) =>
+      return this.db.withTransactionF((tran) =>
         this.setGestaltActionByIdentity(providerId, identityId, action, tran),
       );
     }
@@ -855,7 +843,7 @@ class GestaltGraph {
     tran?: DBTransaction,
   ): Promise<void> {
     if (tran == null) {
-      return this.withTransactionF(async (tran) =>
+      return this.db.withTransactionF((tran) =>
         this.unsetGestaltActionByNode(nodeId, action, tran),
       );
     }
@@ -878,7 +866,7 @@ class GestaltGraph {
     tran?: DBTransaction,
   ): Promise<void> {
     if (tran == null) {
-      return this.withTransactionF(async (tran) =>
+      return this.db.withTransactionF((tran) =>
         this.unsetGestaltActionByIdentity(providerId, identityId, action, tran),
       );
     }

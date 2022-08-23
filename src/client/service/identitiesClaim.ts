@@ -71,7 +71,7 @@ function identitiesClaim({
         throw new identitiesErrors.ErrorProviderUnauthenticated();
       }
       // Create identity claim on our node
-      const [, claim] = await db.withTransactionF(async (tran) =>
+      const [, claim] = await db.withTransactionF((tran) =>
         sigchain.addClaim(
           {
             type: 'identity',

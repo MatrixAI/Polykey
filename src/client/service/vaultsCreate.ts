@@ -31,7 +31,7 @@ function vaultsCreate({
     try {
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
-      vaultId = await db.withTransactionF(async (tran) =>
+      vaultId = await db.withTransactionF((tran) =>
         vaultManager.createVault(call.request.getNameOrId() as VaultName, tran),
       );
       response.setNameOrId(vaultsUtils.encodeVaultId(vaultId));

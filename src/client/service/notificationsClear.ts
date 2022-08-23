@@ -26,7 +26,7 @@ function notificationsClear({
       const response = new utilsPB.EmptyMessage();
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
-      await db.withTransactionF(async (tran) =>
+      await db.withTransactionF((tran) =>
         notificationsManager.clearNotifications(tran),
       );
       callback(null, response);

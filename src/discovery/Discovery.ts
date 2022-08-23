@@ -24,9 +24,7 @@ import {
   status,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import { IdInternal } from '@matrixai/id';
-import { Lock } from '@matrixai/async-locks';
 import * as idUtils from '@matrixai/id/dist/utils';
-import * as resources from '@matrixai/resources';
 import * as discoveryUtils from './utils';
 import * as discoveryErrors from './errors';
 import * as nodesErrors from '../nodes/errors';
@@ -91,7 +89,6 @@ class Discovery {
   protected discoveryProcess: Promise<void>;
   protected queuePlug = promise<void>();
   protected queueDrained = promise<void>();
-  protected lock: Lock = new Lock();
 
   public constructor({
     keyManager,
@@ -130,10 +127,11 @@ class Discovery {
     }
     // Getting latest ID and creating ID generator
     let latestId: DiscoveryQueueId | undefined;
-    const keyIterator = this.db.iterator(
-      { limit: 1, reverse: true, values: false },
-      this.discoveryQueueDbPath,
-    );
+    const keyIterator = this.db.iterator(this.discoveryQueueDbPath, {
+      limit: 1,
+      reverse: true,
+      values: false,
+    });
     for await (const [keyPath] of keyIterator) {
       const key = keyPath[0] as Buffer;
       latestId = IdInternal.fromBuffer<DiscoveryQueueId>(key);
@@ -204,8 +202,8 @@ class Discovery {
       // Processing queue
       this.logger.debug('DiscoveryQueue is processing');
       for await (const [keyPath, vertex] of this.db.iterator<GestaltKey>(
-        { valueAsBuffer: false },
         this.discoveryQueueDbPath,
+        { valueAsBuffer: false },
       )) {
         const key = keyPath[0] as Buffer;
         const vertexId = IdInternal.fromBuffer<DiscoveryQueueId>(key);
@@ -419,22 +417,19 @@ class Discovery {
   }
 
   /**
-   * Simple check for whether the Discovery Queue is empty. Uses a
-   * transaction lock to ensure consistency.
+   * Simple check for whether the Discovery Queue is empty.
    */
   protected async queueIsEmpty(): Promise<boolean> {
-    return await this.lock.withF(async () => {
-      let nextDiscoveryQueueId: DiscoveryQueueId | undefined;
-      const keyIterator = this.db.iterator(
-        { limit: 1, values: false },
-        this.discoveryQueueDbPath,
-      );
-      for await (const [keyPath] of keyIterator) {
-        const key = keyPath[0] as Buffer;
-        nextDiscoveryQueueId = IdInternal.fromBuffer<DiscoveryQueueId>(key);
-      }
-      return nextDiscoveryQueueId == null;
+    let nextDiscoveryQueueId: DiscoveryQueueId | undefined;
+    const keyIterator = this.db.iterator(this.discoveryQueueDbPath, {
+      limit: 1,
+      values: false,
     });
+    for await (const [keyPath] of keyIterator) {
+      const key = keyPath[0] as Buffer;
+      nextDiscoveryQueueId = IdInternal.fromBuffer<DiscoveryQueueId>(key);
+    }
+    return nextDiscoveryQueueId == null;
   }
 
   /**
@@ -445,25 +440,22 @@ class Discovery {
   protected async pushKeyToDiscoveryQueue(
     gestaltKey: GestaltKey,
   ): Promise<void> {
-    await resources.withF(
-      [this.db.transaction(), this.lock.lock()],
-      async ([tran]) => {
-        const valueIterator = tran.iterator<GestaltKey>(
-          { valueAsBuffer: false },
-          this.discoveryQueueDbPath,
-        );
-        for await (const [, value] of valueIterator) {
-          if (value === gestaltKey) {
-            return;
-          }
+    await this.db.withTransactionF(async (tran) => {
+      const valueIterator = tran.iterator<GestaltKey>(
+        this.discoveryQueueDbPath,
+        { valueAsBuffer: false },
+      );
+      for await (const [, value] of valueIterator) {
+        if (value === gestaltKey) {
+          return;
         }
-        const discoveryQueueId = this.discoveryQueueIdGenerator();
-        await tran.put(
-          [...this.discoveryQueueDbPath, idUtils.toBuffer(discoveryQueueId)],
-          gestaltKey,
-        );
-      },
-    );
+      }
+      const discoveryQueueId = this.discoveryQueueIdGenerator();
+      await tran.put(
+        [...this.discoveryQueueDbPath, idUtils.toBuffer(discoveryQueueId)],
+        gestaltKey,
+      );
+    });
     this.queuePlug.resolveP();
   }
 
@@ -475,12 +467,7 @@ class Discovery {
   protected async removeKeyFromDiscoveryQueue(
     keyId: DiscoveryQueueId,
   ): Promise<void> {
-    await this.lock.withF(async () => {
-      await this.db.del([
-        ...this.discoveryQueueDbPath,
-        idUtils.toBuffer(keyId),
-      ]);
-    });
+    await this.db.del([...this.discoveryQueueDbPath, idUtils.toBuffer(keyId)]);
   }
 
   /**

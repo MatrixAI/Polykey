@@ -14,7 +14,7 @@ import type {
 } from '../nodes/types';
 import type { ClaimEncoded } from '../claims/types';
 import type { Timer } from '../types';
-import type { PromiseDeconstructed } from '../utils/utils';
+import type { PromiseDeconstructed } from '../types';
 import Logger from '@matrixai/logger';
 import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
 import * as nodesErrors from './errors';
@@ -233,7 +233,7 @@ class NodeManager {
     tran?: DBTransaction,
   ): Promise<void> {
     if (tran == null) {
-      return this.db.withTransactionF(async (tran) => {
+      return this.db.withTransactionF((tran) => {
         return this.claimNode(targetNodeId, tran);
       });
     }
@@ -418,7 +418,7 @@ class NodeManager {
     }
 
     if (tran == null) {
-      return this.db.withTransactionF(async (tran) =>
+      return this.db.withTransactionF((tran) =>
         this.setNode(nodeId, nodeAddress, block, force, timeout, tran),
       );
     }

@@ -48,7 +48,7 @@ function gestaltsActionsGetByIdentity({
         },
       );
 
-      const result = await db.withTransactionF(async (tran) =>
+      const result = await db.withTransactionF((tran) =>
         gestaltGraph.getGestaltActionsByIdentity(providerId, identityId, tran),
       );
       if (result == null) {

@@ -28,7 +28,7 @@ function gestaltsGestaltList({
     try {
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
-      const certs: Array<Gestalt> = await db.withTransactionF(async (tran) =>
+      const certs: Array<Gestalt> = await db.withTransactionF((tran) =>
         gestaltGraph.getGestalts(tran),
       );
       for (const cert of certs) {

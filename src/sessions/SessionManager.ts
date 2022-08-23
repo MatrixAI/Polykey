@@ -99,19 +99,10 @@ class SessionManager {
   }
 
   @ready(new sessionsErrors.ErrorSessionManagerNotRunning())
-  public async withTransactionF<T>(
-    f: (tran: DBTransaction) => Promise<T>,
-  ): Promise<T> {
-    return withF([this.db.transaction()], ([tran]) => f(tran));
-  }
-
-  @ready(new sessionsErrors.ErrorSessionManagerNotRunning())
   public async resetKey(tran?: DBTransaction): Promise<void> {
-    if (tran == null) {
-      return this.withTransactionF(async (tran) => this.resetKey(tran));
-    }
+    const tranOrDb = tran ?? this.db;
     const key = await this.generateKey(this.keyBits);
-    await tran.put([...this.sessionsDbPath, 'key'], key, true);
+    await tranOrDb.put([...this.sessionsDbPath, 'key'], key, true);
   }
 
   /**
@@ -124,18 +115,13 @@ class SessionManager {
     expiry: number | undefined = this.expiry,
     tran?: DBTransaction,
   ): Promise<SessionToken> {
-    if (tran == null) {
-      return this.withTransactionF(async (tran) =>
-        this.createToken(expiry, tran),
-      );
-    }
+    const tranOrDb = tran ?? this.db;
     const payload = {
       iss: nodesUtils.encodeNodeId(this.keyManager.getNodeId()),
       sub: nodesUtils.encodeNodeId(this.keyManager.getNodeId()),
     };
-    const key = await tran.get([...this.sessionsDbPath, 'key'], true);
-    const token = await sessionsUtils.createSessionToken(payload, key!, expiry);
-    return token;
+    const key = await tranOrDb.get([...this.sessionsDbPath, 'key'], true);
+    return await sessionsUtils.createSessionToken(payload, key!, expiry);
   }
 
   @ready(new sessionsErrors.ErrorSessionManagerNotRunning())
@@ -143,12 +129,8 @@ class SessionManager {
     token: SessionToken,
     tran?: DBTransaction,
   ): Promise<boolean> {
-    if (tran == null) {
-      return this.withTransactionF(async (tran) =>
-        this.verifyToken(token, tran),
-      );
-    }
-    const key = await tran.get([...this.sessionsDbPath, 'key'], true);
+    const tranOrDb = tran ?? this.db;
+    const key = await tranOrDb.get([...this.sessionsDbPath, 'key'], true);
     const result = await sessionsUtils.verifySessionToken(token, key!);
     return result !== undefined;
   }

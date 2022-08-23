@@ -206,7 +206,6 @@ describe(`${NodeConnection.name} test`, () => {
     serverDb = await DB.createDB({
       dbPath: serverDbPath,
       fs: fs,
-      // @ts-ignore - version of js-logger is incompatible (remove when DB updates to 5.*)
       logger: logger,
       crypto: {
         key: serverKeyManager.dbKey,

@@ -50,7 +50,7 @@ function gestaltsGestaltGetByIdentity({
           identityId: call.request.getIdentityId(),
         },
       );
-      const gestalt = await db.withTransactionF(async (tran) =>
+      const gestalt = await db.withTransactionF((tran) =>
         gestaltGraph.getGestaltByIdentity(providerId, identityId, tran),
       );
       if (gestalt != null) {

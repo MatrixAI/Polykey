@@ -15,7 +15,6 @@ import {
   CreateDestroyStartStop,
   ready,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
-import { withF } from '@matrixai/resources';
 import * as aclUtils from './utils';
 import * as aclErrors from './errors';
 
@@ -92,20 +91,13 @@ class ACL {
   }
 
   @ready(new aclErrors.ErrorACLNotRunning())
-  public async withTransactionF<T>(
-    f: (tran: DBTransaction) => Promise<T>,
-  ): Promise<T> {
-    return withF([this.db.transaction()], ([tran]) => f(tran));
-  }
-
-  @ready(new aclErrors.ErrorACLNotRunning())
   public async sameNodePerm(
     nodeId1: NodeId,
     nodeId2: NodeId,
     tran?: DBTransaction,
   ): Promise<boolean> {
     if (tran == null) {
-      return this.withTransactionF(async (tran) =>
+      return this.db.withTransactionF((tran) =>
         this.sameNodePerm(nodeId1, nodeId2, tran),
       );
     }
@@ -130,10 +122,10 @@ class ACL {
     tran?: DBTransaction,
   ): Promise<Array<Record<NodeId, Permission>>> {
     if (tran == null) {
-      return this.withTransactionF(async (tran) => this.getNodePerms(tran));
+      return this.db.withTransactionF((tran) => this.getNodePerms(tran));
     }
     const permIds: Record<PermissionIdString, Record<NodeId, Permission>> = {};
-    for await (const [keyPath, value] of tran.iterator(undefined, [
+    for await (const [keyPath, value] of tran.iterator([
       ...this.aclNodesDbPath,
     ])) {
       const key = keyPath[0] as Buffer;
@@ -171,12 +163,12 @@ class ACL {
     tran?: DBTransaction,
   ): Promise<Record<VaultId, Record<NodeId, Permission>>> {
     if (tran == null) {
-      return this.withTransactionF(async (tran) => this.getVaultPerms(tran));
+      return this.db.withTransactionF((tran) => this.getVaultPerms(tran));
     }
     const vaultPerms: Record<VaultId, Record<NodeId, Permission>> = {};
     for await (const [keyPath, nodeIds] of tran.iterator<Record<NodeId, null>>(
-      { valueAsBuffer: false },
       [...this.aclVaultsDbPath],
+      { valueAsBuffer: false },
     )) {
       const key = keyPath[0] as Buffer;
       const vaultId = IdInternal.fromBuffer<VaultId>(key);
@@ -226,9 +218,7 @@ class ACL {
     tran?: DBTransaction,
   ): Promise<Permission | undefined> {
     if (tran == null) {
-      return this.withTransactionF(async (tran) =>
-        this.getNodePerm(nodeId, tran),
-      );
+      return this.db.withTransactionF((tran) => this.getNodePerm(nodeId, tran));
     }
     const permId = await tran.get(
       [...this.aclNodesDbPath, nodeId.toBuffer()],
@@ -255,7 +245,7 @@ class ACL {
     tran?: DBTransaction,
   ): Promise<Record<NodeId, Permission>> {
     if (tran == null) {
-      return this.withTransactionF(async (tran) =>
+      return this.db.withTransactionF((tran) =>
         this.getVaultPerm(vaultId, tran),
       );
     }
@@ -311,7 +301,7 @@ class ACL {
     tran?: DBTransaction,
   ): Promise<void> {
     if (tran == null) {
-      return this.withTransactionF(async (tran) =>
+      return this.db.withTransactionF((tran) =>
         this.setNodeAction(nodeId, action, tran),
       );
     }
@@ -357,7 +347,7 @@ class ACL {
     tran?: DBTransaction,
   ): Promise<void> {
     if (tran == null) {
-      return this.withTransactionF(async (tran) =>
+      return this.db.withTransactionF((tran) =>
         this.unsetNodeAction(nodeId, action, tran),
       );
     }
@@ -384,7 +374,7 @@ class ACL {
     tran?: DBTransaction,
   ): Promise<void> {
     if (tran == null) {
-      return this.withTransactionF(async (tran) =>
+      return this.db.withTransactionF((tran) =>
         this.setVaultAction(vaultId, nodeId, action, tran),
       );
     }
@@ -428,7 +418,7 @@ class ACL {
     tran?: DBTransaction,
   ): Promise<void> {
     if (tran == null) {
-      return this.withTransactionF(async (tran) =>
+      return this.db.withTransactionF((tran) =>
         this.unsetVaultAction(vaultId, nodeId, action, tran),
       );
     }
@@ -470,7 +460,7 @@ class ACL {
     tran?: DBTransaction,
   ): Promise<void> {
     if (tran == null) {
-      return this.withTransactionF(async (tran) =>
+      return this.db.withTransactionF((tran) =>
         this.setNodesPerm(nodeIds, perm, tran),
       );
     }
@@ -525,7 +515,7 @@ class ACL {
     tran?: DBTransaction,
   ): Promise<void> {
     if (tran == null) {
-      return this.withTransactionF(async (tran) =>
+      return this.db.withTransactionF((tran) =>
         this.setNodePerm(nodeId, perm, tran),
       );
     }
@@ -566,7 +556,7 @@ class ACL {
     tran?: DBTransaction,
   ): Promise<void> {
     if (tran == null) {
-      return this.withTransactionF(async (tran) =>
+      return this.db.withTransactionF((tran) =>
         this.unsetNodePerm(nodeId, tran),
       );
     }
@@ -598,7 +588,7 @@ class ACL {
     tran?: DBTransaction,
   ): Promise<void> {
     if (tran == null) {
-      return this.withTransactionF(async (tran) =>
+      return this.db.withTransactionF((tran) =>
         this.unsetVaultPerms(vaultId, tran),
       );
     }
@@ -638,7 +628,7 @@ class ACL {
     tran?: DBTransaction,
   ): Promise<void> {
     if (tran == null) {
-      return this.withTransactionF(async (tran) =>
+      return this.db.withTransactionF((tran) =>
         this.joinNodePerm(nodeId, nodeIdsJoin, perm, tran),
       );
     }
@@ -694,7 +684,7 @@ class ACL {
     tran?: DBTransaction,
   ): Promise<void> {
     if (tran == null) {
-      return this.withTransactionF(async (tran) =>
+      return this.db.withTransactionF((tran) =>
         this.joinVaultPerms(vaultId, vaultIdsJoin, tran),
       );
     }

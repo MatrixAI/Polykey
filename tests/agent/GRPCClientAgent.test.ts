@@ -76,7 +76,6 @@ describe(GRPCClientAgent.name, () => {
     db = await DB.createDB({
       dbPath: dbPath,
       fs: fs,
-      // @ts-ignore - version of js-logger is incompatible (remove when EFS logger updates to 3.*)
       logger: logger,
       crypto: {
         key: keyManager.dbKey,

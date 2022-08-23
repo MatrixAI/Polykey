@@ -12,13 +12,11 @@ import type NodeConnectionManager from '../nodes/NodeConnectionManager';
 import type { NodeId } from '../nodes/types';
 import Logger from '@matrixai/logger';
 import { IdInternal } from '@matrixai/id';
-import { Lock, LockBox } from '@matrixai/async-locks';
 import {
   CreateDestroyStartStop,
   ready,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import { utils as idUtils } from '@matrixai/id';
-import { withF } from '@matrixai/resources';
 import * as notificationsUtils from './utils';
 import * as notificationsErrors from './errors';
 import * as notificationsPB from '../proto/js/polykey/v1/notifications/notifications_pb';
@@ -78,7 +76,6 @@ class NotificationsManager {
   protected nodeManager: NodeManager;
   protected nodeConnectionManager: NodeConnectionManager;
   protected messageCap: number;
-  protected locks: LockBox<Lock> = new LockBox();
 
   /**
    * Top level stores MESSAGE_COUNT_KEY -> number (of messages)
@@ -90,6 +87,10 @@ class NotificationsManager {
   protected notificationsMessagesDbPath: LevelPath = [
     this.constructor.name,
     'messages',
+  ];
+  protected notificationsMessageCounterDbPath: KeyPath = [
+    ...this.notificationsDbPath,
+    MESSAGE_COUNT_KEY,
   ];
 
   protected notificationIdGenerator: NotificationIdGenerator;
@@ -123,35 +124,27 @@ class NotificationsManager {
   public async start({
     fresh = false,
   }: { fresh?: boolean } = {}): Promise<void> {
-    await withF(
-      [
-        this.db.transaction(),
-        this.locks.lock([
-          [...this.notificationsDbPath, MESSAGE_COUNT_KEY],
-          Lock,
-        ]),
-      ],
-      async ([tran]) => {
-        this.logger.info(`Starting ${this.constructor.name}`);
-        if (fresh) {
-          await tran.clear(this.notificationsDbPath);
-        }
+    await this.db.withTransactionF(async (tran) => {
+      this.logger.info(`Starting ${this.constructor.name}`);
+      if (fresh) {
+        await tran.clear(this.notificationsDbPath);
+      }
 
-        // Getting latest ID and creating ID generator
-        let latestId: NotificationId | undefined;
-        const keyIterator = tran.iterator(
-          { limit: 1, reverse: true, values: false },
-          this.notificationsMessagesDbPath,
-        );
-        for await (const [keyPath] of keyIterator) {
-          const key = keyPath[0] as Buffer;
-          latestId = IdInternal.fromBuffer<NotificationId>(key);
-        }
-        this.notificationIdGenerator =
-          notificationsUtils.createNotificationIdGenerator(latestId);
-        this.logger.info(`Started ${this.constructor.name}`);
-      },
-    );
+      // Getting latest ID and creating ID generator
+      let latestId: NotificationId | undefined;
+      const keyIterator = tran.iterator(this.notificationsMessagesDbPath, {
+        limit: 1,
+        reverse: true,
+        values: false,
+      });
+      for await (const [keyPath] of keyIterator) {
+        const key = keyPath[0] as Buffer;
+        latestId = IdInternal.fromBuffer<NotificationId>(key);
+      }
+      this.notificationIdGenerator =
+        notificationsUtils.createNotificationIdGenerator(latestId);
+      this.logger.info(`Started ${this.constructor.name}`);
+    });
   }
 
   public async stop() {
@@ -161,24 +154,10 @@ class NotificationsManager {
 
   public async destroy() {
     this.logger.info(`Destroying ${this.constructor.name}`);
-    await this.db.withTransactionF(async (tran) => {
-      await tran.clear(this.notificationsDbPath);
-    });
+    await this.db.withTransactionF((tran) =>
+      tran.clear(this.notificationsDbPath),
+    );
     this.logger.info(`Destroyed ${this.constructor.name}`);
-  }
-
-  @ready(new notificationsErrors.ErrorNotificationsNotRunning())
-  public async withTransactionF<T>(
-    ...params: [...keys: Array<KeyPath>, f: (tran: DBTransaction) => Promise<T>]
-  ): Promise<T> {
-    const f = params.pop() as (tran: DBTransaction) => Promise<T>;
-    const lockRequests = (params as Array<KeyPath>).map<[KeyPath, typeof Lock]>(
-      (key) => [key, Lock],
-    );
-    return withF(
-      [this.db.transaction(), this.locks.lock(...lockRequests)],
-      ([tran]) => f(tran),
-    );
   }
 
   /**
@@ -215,12 +194,13 @@ class NotificationsManager {
     notification: Notification,
     tran?: DBTransaction,
   ): Promise<void> {
-    const messageCountPath = [...this.notificationsDbPath, MESSAGE_COUNT_KEY];
     if (tran == null) {
-      return this.withTransactionF(messageCountPath, async (tran) =>
+      return this.db.withTransactionF(async (tran) =>
         this.receiveNotification(notification, tran),
       );
     }
+
+    await tran.lock(this.notificationsMessageCounterDbPath.join(''));
     const nodePerms = await this.acl.getNodePerm(
       nodesUtils.decodeNodeId(notification.senderId)!,
     );
@@ -230,10 +210,12 @@ class NotificationsManager {
     // Only keep the message if the sending node has the correct permissions
     if (Object.keys(nodePerms.gestalt).includes('notify')) {
       // If the number stored in notificationsDb >= 10000
-      let numMessages = await tran.get<number>(messageCountPath);
+      let numMessages = await tran.get<number>(
+        this.notificationsMessageCounterDbPath,
+      );
       if (numMessages === undefined) {
         numMessages = 0;
-        await tran.put(messageCountPath, 0);
+        await tran.put(this.notificationsMessageCounterDbPath, 0);
       }
       if (numMessages >= this.messageCap) {
         // Remove the oldest notification from notificationsMessagesDb
@@ -248,7 +230,7 @@ class NotificationsManager {
       );
       // Number of messages += 1
       const newNumMessages = numMessages + 1;
-      await tran.put(messageCountPath, newNumMessages);
+      await tran.put(this.notificationsMessageCounterDbPath, newNumMessages);
     }
   }
 
@@ -268,7 +250,7 @@ class NotificationsManager {
     tran?: DBTransaction;
   } = {}): Promise<Array<Notification>> {
     if (tran == null) {
-      return this.withTransactionF(async (tran) =>
+      return this.db.withTransactionF((tran) =>
         this.readNotifications({ unread, number, order, tran }),
       );
     }
@@ -308,7 +290,7 @@ class NotificationsManager {
     tran?: DBTransaction,
   ): Promise<Notification | undefined> {
     if (tran == null) {
-      return this.withTransactionF(async (tran) =>
+      return this.db.withTransactionF((tran) =>
         this.findGestaltInvite(fromNode, tran),
       );
     }
@@ -328,14 +310,15 @@ class NotificationsManager {
    */
   @ready(new notificationsErrors.ErrorNotificationsNotRunning())
   public async clearNotifications(tran?: DBTransaction): Promise<void> {
-    const messageCountPath = [...this.notificationsDbPath, MESSAGE_COUNT_KEY];
     if (tran == null) {
-      return this.withTransactionF(messageCountPath, async (tran) =>
-        this.clearNotifications(tran),
-      );
+      return this.db.withTransactionF((tran) => this.clearNotifications(tran));
     }
+
+    await tran.lock(this.notificationsMessageCounterDbPath.join(''));
     const notificationIds = await this.getNotificationIds('all', tran);
-    const numMessages = await tran.get<number>(messageCountPath);
+    const numMessages = await tran.get<number>(
+      this.notificationsMessageCounterDbPath,
+    );
     if (numMessages !== undefined) {
       for (const id of notificationIds) {
         await this.removeNotification(id, tran);
@@ -368,8 +351,8 @@ class NotificationsManager {
   ): Promise<Array<NotificationId>> {
     const notificationIds: Array<NotificationId> = [];
     const messageIterator = tran.iterator<Notification>(
-      { valueAsBuffer: false },
       this.notificationsMessagesDbPath,
+      { valueAsBuffer: false },
     );
     for await (const [keyPath, notification] of messageIterator) {
       const key = keyPath[0] as Buffer;
@@ -391,8 +374,8 @@ class NotificationsManager {
   ): Promise<Array<Notification>> {
     const notifications: Array<Notification> = [];
     for await (const [, notification] of tran.iterator<Notification>(
-      { valueAsBuffer: false },
       this.notificationsMessagesDbPath,
+      { valueAsBuffer: false },
     )) {
       if (type === 'all') {
         notifications.push(notification);
@@ -419,10 +402,10 @@ class NotificationsManager {
     messageId: NotificationId,
     tran: DBTransaction,
   ): Promise<void> {
-    const numMessages = await tran.get<number>([
-      ...this.notificationsDbPath,
-      MESSAGE_COUNT_KEY,
-    ]);
+    await tran.lock(this.notificationsMessageCounterDbPath.join(''));
+    const numMessages = await tran.get<number>(
+      this.notificationsMessageCounterDbPath,
+    );
     if (numMessages === undefined) {
       throw new notificationsErrors.ErrorNotificationsDb();
     }
@@ -431,10 +414,7 @@ class NotificationsManager {
       ...this.notificationsMessagesDbPath,
       idUtils.toBuffer(messageId),
     ]);
-    await tran.put(
-      [...this.notificationsDbPath, MESSAGE_COUNT_KEY],
-      numMessages - 1,
-    );
+    await tran.put(this.notificationsMessageCounterDbPath, numMessages - 1);
   }
 }
 

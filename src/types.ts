@@ -64,6 +64,15 @@ type Timer = {
 };
 
 /**
+ * Deconstructed promise
+ */
+type PromiseDeconstructed<T> = {
+  p: Promise<T>;
+  resolveP: (value: T | PromiseLike<T>) => void;
+  rejectP: (reason?: any) => void;
+};
+
+/**
  * Minimal filesystem type
  * Based on the required operations from fs/promises
  * Implement this with platform-specific filesystem
@@ -115,6 +124,7 @@ export type {
   ToString,
   Ref,
   Timer,
+  PromiseDeconstructed,
   FileSystem,
   FileHandle,
   FunctionProperties,

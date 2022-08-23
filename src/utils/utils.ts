@@ -1,4 +1,9 @@
-import type { FileSystem, Timer, Callback } from '../types';
+import type {
+  FileSystem,
+  Timer,
+  PromiseDeconstructed,
+  Callback,
+} from '../types';
 import os from 'os';
 import process from 'process';
 import path from 'path';
@@ -170,12 +175,6 @@ function promisify<
   };
 }
 
-type PromiseDeconstructed<T> = {
-  p: Promise<T>;
-  resolveP: (value: T | PromiseLike<T>) => void;
-  rejectP: (reason?: any) => void;
-};
-
 /**
  * Deconstructed promise
  */
@@ -310,7 +309,6 @@ function debounce<P extends any[]>(
   };
 }
 
-export type { PromiseDeconstructed };
 export {
   getDefaultNodePath,
   never,

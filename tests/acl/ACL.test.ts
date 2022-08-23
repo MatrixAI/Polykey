@@ -42,7 +42,6 @@ describe(ACL.name, () => {
     const dbPath = `${dataDir}/db`;
     db = await DB.createDB({
       dbPath,
-      // @ts-ignore - version of js-logger is incompatible (remove when EFS logger updates to 3.*)
       logger,
       crypto: {
         key: dbKey,
@@ -407,7 +406,7 @@ describe(ACL.name, () => {
   test('transactional operations', async () => {
     const acl = await ACL.createACL({ db, logger });
     const p1 = acl.getNodePerms();
-    const p2 = acl.withTransactionF(async (tran) => {
+    const p2 = db.withTransactionF(async (tran) => {
       await acl.setNodesPerm(
         [nodeIdG1First, nodeIdG1Second] as Array<NodeId>,
         {

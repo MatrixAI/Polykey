@@ -27,7 +27,7 @@ function vaultsList({
     try {
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
-      const vaults = await db.withTransactionF(async (tran) =>
+      const vaults = await db.withTransactionF((tran) =>
         vaultManager.listVaults(tran),
       );
       for await (const [vaultName, vaultId] of vaults) {

@@ -116,7 +116,6 @@ class VaultManager {
   protected notificationsManager: NotificationsManager;
   protected vaultsDbPath: LevelPath = [this.constructor.name];
   protected vaultsNamesDbPath: LevelPath = [this.constructor.name, 'names'];
-  protected vaultsNamesLock: RWLockWriter = new RWLockWriter();
   // VaultId -> VaultMetadata
   protected vaultMap: VaultMap = new Map();
   protected vaultLocks: LockBox<RWLockWriter> = new LockBox();
@@ -181,7 +180,6 @@ class VaultManager {
           efs = await EncryptedFS.createEncryptedFS({
             dbPath: this.efsPath,
             dbKey: vaultKey,
-            // @ts-ignore - version of js-logger is incompatible (remove when EFS logger updates to 3.*)
             logger: this.logger.getChild('EncryptedFileSystem'),
           });
         } catch (e) {
@@ -268,48 +266,47 @@ class VaultManager {
     tran?: DBTransaction,
   ): Promise<VaultId> {
     if (tran == null) {
-      return this.db.withTransactionF(async (tran) =>
+      return this.db.withTransactionF((tran) =>
         this.createVault(vaultName, tran),
       );
     }
     // Adding vault to name map
     const vaultId = await this.generateVaultId();
-    return await this.vaultsNamesLock.withWriteF(async () => {
-      const vaultIdBuffer = await tran.get(
-        [...this.vaultsNamesDbPath, vaultName],
-        true,
-      );
-      // Check if the vault name already exists;
-      if (vaultIdBuffer != null) {
-        throw new vaultsErrors.ErrorVaultsVaultDefined();
-      }
-      await tran.put(
-        [...this.vaultsNamesDbPath, vaultName],
-        vaultId.toBuffer(),
-        true,
-      );
-      const vaultIdString = vaultId.toString() as VaultIdString;
-      return await this.vaultLocks.withF(
-        [vaultId, RWLockWriter, 'write'],
-        async () => {
-          // Creating vault
-          const vault = await VaultInternal.createVaultInternal({
-            vaultId,
-            vaultName,
-            keyManager: this.keyManager,
-            efs: this.efs,
-            logger: this.logger.getChild(VaultInternal.name),
-            db: this.db,
-            vaultsDbPath: this.vaultsDbPath,
-            fresh: true,
-            tran,
-          });
-          // Adding vault to object map
-          this.vaultMap.set(vaultIdString, vault);
-          return vault.vaultId;
-        },
-      );
-    });
+    await tran.lock([...this.vaultsNamesDbPath, vaultName].join(''));
+    const vaultIdBuffer = await tran.get(
+      [...this.vaultsNamesDbPath, vaultName],
+      true,
+    );
+    // Check if the vault name already exists;
+    if (vaultIdBuffer != null) {
+      throw new vaultsErrors.ErrorVaultsVaultDefined();
+    }
+    await tran.put(
+      [...this.vaultsNamesDbPath, vaultName],
+      vaultId.toBuffer(),
+      true,
+    );
+    const vaultIdString = vaultId.toString() as VaultIdString;
+    return await this.vaultLocks.withF(
+      [vaultId, RWLockWriter, 'write'],
+      async () => {
+        // Creating vault
+        const vault = await VaultInternal.createVaultInternal({
+          vaultId,
+          vaultName,
+          keyManager: this.keyManager,
+          efs: this.efs,
+          logger: this.logger.getChild(VaultInternal.name),
+          db: this.db,
+          vaultsDbPath: this.vaultsDbPath,
+          fresh: true,
+          tran,
+        });
+        // Adding vault to object map
+        this.vaultMap.set(vaultIdString, vault);
+        return vault.vaultId;
+      },
+    );
   }
 
   /**
@@ -322,7 +319,7 @@ class VaultManager {
     tran?: DBTransaction,
   ): Promise<VaultMetadata | undefined> {
     if (tran == null) {
-      return this.db.withTransactionF(async (tran) =>
+      return this.db.withTransactionF((tran) =>
         this.getVaultMeta(vaultId, tran),
       );
     }
@@ -362,17 +359,26 @@ class VaultManager {
     tran?: DBTransaction,
   ): Promise<void> {
     if (tran == null) {
-      return this.db.withTransactionF(async (tran) =>
+      return this.db.withTransactionF((tran) =>
         this.destroyVault(vaultId, tran),
       );
     }
 
-    const vaultMeta = await this.getVaultMeta(vaultId, tran);
-    if (vaultMeta == null) return;
-    const vaultName = vaultMeta.vaultName;
-    this.logger.info(`Destroying Vault ${vaultsUtils.encodeVaultId(vaultId)}`);
-    const vaultIdString = vaultId.toString() as VaultIdString;
     await this.vaultLocks.withF([vaultId, RWLockWriter, 'write'], async () => {
+      await tran.lock([...this.vaultsDbPath, vaultId].join(''));
+      // Ensure protection from write skew
+      await tran.getForUpdate([
+        ...this.vaultsDbPath,
+        vaultsUtils.encodeVaultId(vaultId),
+        VaultInternal.nameKey,
+      ]);
+      const vaultMeta = await this.getVaultMeta(vaultId, tran);
+      if (vaultMeta == null) return;
+      const vaultName = vaultMeta.vaultName;
+      this.logger.info(
+        `Destroying Vault ${vaultsUtils.encodeVaultId(vaultId)}`,
+      );
+      const vaultIdString = vaultId.toString() as VaultIdString;
       const vault = await this.getVault(vaultId, tran);
       // Destroying vault state and metadata
       await vault.stop();
@@ -380,9 +386,7 @@ class VaultManager {
       // Removing from map
       this.vaultMap.delete(vaultIdString);
       // Removing name->id mapping
-      await this.vaultsNamesLock.withWriteF(async () => {
-        await tran.del([...this.vaultsNamesDbPath, vaultName]);
-      });
+      await tran.del([...this.vaultsNamesDbPath, vaultName]);
     });
     this.logger.info(`Destroyed Vault ${vaultsUtils.encodeVaultId(vaultId)}`);
   }
@@ -396,9 +400,7 @@ class VaultManager {
     tran?: DBTransaction,
   ): Promise<void> {
     if (tran == null) {
-      return this.db.withTransactionF(async (tran) =>
-        this.closeVault(vaultId, tran),
-      );
+      return this.db.withTransactionF((tran) => this.closeVault(vaultId, tran));
     }
 
     if ((await this.getVaultName(vaultId, tran)) == null) {
@@ -406,6 +408,7 @@ class VaultManager {
     }
     const vaultIdString = vaultId.toString() as VaultIdString;
     await this.vaultLocks.withF([vaultId, RWLockWriter, 'write'], async () => {
+      await tran.lock([...this.vaultsDbPath, vaultId].join(''));
       const vault = await this.getVault(vaultId, tran);
       await vault.stop();
       this.vaultMap.delete(vaultIdString);
@@ -419,13 +422,12 @@ class VaultManager {
   @ready(new vaultsErrors.ErrorVaultManagerNotRunning())
   public async listVaults(tran?: DBTransaction): Promise<VaultList> {
     if (tran == null) {
-      return this.db.withTransactionF(async (tran) => this.listVaults(tran));
+      return this.db.withTransactionF((tran) => this.listVaults(tran));
     }
 
     const vaults: VaultList = new Map();
     // Stream of vaultName VaultId key value pairs
     for await (const [vaultNameBuffer, vaultIdBuffer] of tran.iterator(
-      undefined,
       this.vaultsNamesDbPath,
     )) {
       const vaultName = vaultNameBuffer.toString() as VaultName;
@@ -445,17 +447,27 @@ class VaultManager {
     tran?: DBTransaction,
   ): Promise<void> {
     if (tran == null) {
-      return this.db.withTransactionF(async (tran) =>
+      return this.db.withTransactionF((tran) =>
         this.renameVault(vaultId, newVaultName, tran),
       );
     }
 
     await this.vaultLocks.withF([vaultId, RWLockWriter, 'write'], async () => {
+      await tran.lock(
+        [...this.vaultsNamesDbPath, newVaultName].join(''),
+        [...this.vaultsDbPath, vaultId].join(''),
+      );
       this.logger.info(`Renaming Vault ${vaultsUtils.encodeVaultId(vaultId)}`);
       // Checking if new name exists
       if (await this.getVaultId(newVaultName, tran)) {
         throw new vaultsErrors.ErrorVaultsVaultDefined();
       }
+      // Ensure protection from write skew
+      await tran.getForUpdate([
+        ...this.vaultsDbPath,
+        vaultsUtils.encodeVaultId(vaultId),
+        VaultInternal.nameKey,
+      ]);
       // Checking if vault exists
       const vaultMetadata = await this.getVaultMeta(vaultId, tran);
       if (vaultMetadata == null) {
@@ -469,14 +481,12 @@ class VaultManager {
       ];
       await tran.put([...vaultDbPath, VaultInternal.nameKey], newVaultName);
       // Updating name->id map
-      await this.vaultsNamesLock.withWriteF(async () => {
-        await tran.del([...this.vaultsNamesDbPath, oldVaultName]);
-        await tran.put(
-          [...this.vaultsNamesDbPath, newVaultName],
-          vaultId.toBuffer(),
-          true,
-        );
-      });
+      await tran.del([...this.vaultsNamesDbPath, oldVaultName]);
+      await tran.put(
+        [...this.vaultsNamesDbPath, newVaultName],
+        vaultId.toBuffer(),
+        true,
+      );
     });
   }
 
@@ -489,19 +499,18 @@ class VaultManager {
     tran?: DBTransaction,
   ): Promise<VaultId | undefined> {
     if (tran == null) {
-      return this.db.withTransactionF(async (tran) =>
+      return this.db.withTransactionF((tran) =>
         this.getVaultId(vaultName, tran),
       );
     }
 
-    return await this.vaultsNamesLock.withWriteF(async () => {
-      const vaultIdBuffer = await tran.get(
-        [...this.vaultsNamesDbPath, vaultName],
-        true,
-      );
-      if (vaultIdBuffer == null) return;
-      return IdInternal.fromBuffer<VaultId>(vaultIdBuffer);
-    });
+    await tran.lock([...this.vaultsNamesDbPath, vaultName].join(''));
+    const vaultIdBuffer = await tran.get(
+      [...this.vaultsNamesDbPath, vaultName],
+      true,
+    );
+    if (vaultIdBuffer == null) return;
+    return IdInternal.fromBuffer<VaultId>(vaultIdBuffer);
   }
 
   /**
@@ -513,7 +522,7 @@ class VaultManager {
     tran?: DBTransaction,
   ): Promise<VaultName | undefined> {
     if (tran == null) {
-      return this.db.withTransactionF(async (tran) =>
+      return this.db.withTransactionF((tran) =>
         this.getVaultName(vaultId, tran),
       );
     }
@@ -530,7 +539,7 @@ class VaultManager {
     tran?: DBTransaction,
   ): Promise<Record<NodeId, VaultActions>> {
     if (tran == null) {
-      return this.db.withTransactionF(async (tran) =>
+      return this.db.withTransactionF((tran) =>
         this.getVaultPermission(vaultId, tran),
       );
     }
@@ -555,7 +564,7 @@ class VaultManager {
     tran?: DBTransaction,
   ): Promise<void> {
     if (tran == null) {
-      return this.db.withTransactionF(async (tran) =>
+      return this.db.withTransactionF((tran) =>
         this.shareVault(vaultId, nodeId, tran),
       );
     }
@@ -589,7 +598,7 @@ class VaultManager {
     tran?: DBTransaction,
   ): Promise<void> {
     if (tran == null) {
-      return this.db.withTransactionF(async (tran) =>
+      return this.db.withTransactionF((tran) =>
         this.unshareVault(vaultId, nodeId, tran),
       );
     }
@@ -612,7 +621,7 @@ class VaultManager {
     tran?: DBTransaction,
   ): Promise<VaultId> {
     if (tran == null) {
-      return this.db.withTransactionF(async (tran) =>
+      return this.db.withTransactionF((tran) =>
         this.cloneVault(nodeId, vaultNameOrId, tran),
       );
     }
@@ -698,13 +707,14 @@ class VaultManager {
     tran?: DBTransaction;
   }): Promise<void> {
     if (tran == null) {
-      return this.db.withTransactionF(async (tran) =>
+      return this.db.withTransactionF((tran) =>
         this.pullVault({ vaultId, pullNodeId, pullVaultNameOrId, tran }),
       );
     }
 
     if ((await this.getVaultName(vaultId, tran)) == null) return;
     await this.vaultLocks.withF([vaultId, RWLockWriter, 'write'], async () => {
+      await tran.lock([...this.vaultsDbPath, vaultId].join(''));
       const vault = await this.getVault(vaultId, tran);
       await vault.pullVault({
         nodeConnectionManager: this.nodeConnectionManager,
@@ -768,7 +778,7 @@ class VaultManager {
     tran?: DBTransaction,
   ): Promise<[PassThrough, PassThrough]> {
     if (tran == null) {
-      return this.db.withTransactionF(async (tran) =>
+      return this.db.withTransactionF((tran) =>
         this.handlePackRequest(vaultId, body, tran),
       );
     }
@@ -914,9 +924,7 @@ class VaultManager {
     tran: DBTransaction,
   ): Promise<VaultInternal> {
     if (tran == null) {
-      return this.db.withTransactionF(async (tran) =>
-        this.getVault(vaultId, tran),
-      );
+      return this.db.withTransactionF((tran) => this.getVault(vaultId, tran));
     }
 
     const vaultIdString = vaultId.toString() as VaultIdString;
@@ -956,7 +964,7 @@ class VaultManager {
     tran?: DBTransaction,
   ): Promise<T> {
     if (tran == null) {
-      return this.db.withTransactionF(async (tran) =>
+      return this.db.withTransactionF((tran) =>
         this.withVaults(vaultIds, f, tran),
       );
     }
