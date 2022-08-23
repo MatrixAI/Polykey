@@ -200,7 +200,7 @@ class NotificationsManager {
       );
     }
 
-    await tran.lock(this.notificationsMessageCounterDbPath.toString());
+    await tran.lock(this.notificationsMessageCounterDbPath.join(''));
     const nodePerms = await this.acl.getNodePerm(
       nodesUtils.decodeNodeId(notification.senderId)!,
     );
@@ -314,7 +314,7 @@ class NotificationsManager {
       return this.db.withTransactionF((tran) => this.clearNotifications(tran));
     }
 
-    await tran.lock(this.notificationsMessageCounterDbPath.toString());
+    await tran.lock(this.notificationsMessageCounterDbPath.join(''));
     const notificationIds = await this.getNotificationIds('all', tran);
     const numMessages = await tran.get<number>(
       this.notificationsMessageCounterDbPath,
@@ -402,7 +402,7 @@ class NotificationsManager {
     messageId: NotificationId,
     tran: DBTransaction,
   ): Promise<void> {
-    await tran.lock(this.notificationsMessageCounterDbPath.toString());
+    await tran.lock(this.notificationsMessageCounterDbPath.join(''));
     const numMessages = await tran.get<number>(
       this.notificationsMessageCounterDbPath,
     );

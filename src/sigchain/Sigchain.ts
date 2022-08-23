@@ -173,7 +173,7 @@ class Sigchain {
       return this.db.withTransactionF((tran) => this.addClaim(claimData, tran));
     }
 
-    await tran.lock(sequenceNumberPath.toString());
+    await tran.lock(sequenceNumberPath.join(''));
     const prevSequenceNumber = await tran.getForUpdate<number>([
       ...this.sigchainMetadataDbPath,
       this.sequenceNumberKey,
@@ -218,7 +218,7 @@ class Sigchain {
       );
     }
 
-    await tran.lock(sequenceNumberPath.toString());
+    await tran.lock(sequenceNumberPath.join(''));
     const decodedClaim = claimsUtils.decodeClaim(claim);
     const prevSequenceNumber = await tran.getForUpdate<number>([
       ...this.sigchainMetadataDbPath,

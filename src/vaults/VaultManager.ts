@@ -272,7 +272,7 @@ class VaultManager {
     }
     // Adding vault to name map
     const vaultId = await this.generateVaultId();
-    await tran.lock([...this.vaultsNamesDbPath, vaultName].toString());
+    await tran.lock([...this.vaultsNamesDbPath, vaultName].join(''));
     const vaultIdBuffer = await tran.get(
       [...this.vaultsNamesDbPath, vaultName],
       true,
@@ -365,7 +365,7 @@ class VaultManager {
     }
 
     await this.vaultLocks.withF([vaultId, RWLockWriter, 'write'], async () => {
-      await tran.lock(vaultId);
+      await tran.lock([...this.vaultsDbPath, vaultId].join(''));
       // Ensure protection from write skew
       await tran.getForUpdate([
         ...this.vaultsDbPath,
@@ -408,7 +408,7 @@ class VaultManager {
     }
     const vaultIdString = vaultId.toString() as VaultIdString;
     await this.vaultLocks.withF([vaultId, RWLockWriter, 'write'], async () => {
-      await tran.lock(vaultId);
+      await tran.lock([...this.vaultsDbPath, vaultId].join(''));
       const vault = await this.getVault(vaultId, tran);
       await vault.stop();
       this.vaultMap.delete(vaultIdString);
@@ -454,8 +454,8 @@ class VaultManager {
 
     await this.vaultLocks.withF([vaultId, RWLockWriter, 'write'], async () => {
       await tran.lock(
-        [...this.vaultsNamesDbPath, newVaultName].toString(),
-        vaultId,
+        [...this.vaultsNamesDbPath, newVaultName].join(''),
+        [...this.vaultsDbPath, vaultId].join(''),
       );
       this.logger.info(`Renaming Vault ${vaultsUtils.encodeVaultId(vaultId)}`);
       // Checking if new name exists
@@ -504,7 +504,7 @@ class VaultManager {
       );
     }
 
-    await tran.lock([...this.vaultsNamesDbPath, vaultName].toString());
+    await tran.lock([...this.vaultsNamesDbPath, vaultName].join(''));
     const vaultIdBuffer = await tran.get(
       [...this.vaultsNamesDbPath, vaultName],
       true,
@@ -714,7 +714,7 @@ class VaultManager {
 
     if ((await this.getVaultName(vaultId, tran)) == null) return;
     await this.vaultLocks.withF([vaultId, RWLockWriter, 'write'], async () => {
-      await tran.lock(vaultId);
+      await tran.lock([...this.vaultsDbPath, vaultId].join(''));
       const vault = await this.getVault(vaultId, tran);
       await vault.pullVault({
         nodeConnectionManager: this.nodeConnectionManager,

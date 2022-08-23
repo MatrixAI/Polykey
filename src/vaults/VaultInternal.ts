@@ -447,7 +447,7 @@ class VaultInternal {
 
     return withF([this.lock.write()], async () => {
       await tran.lock(
-        [...this.vaultMetadataDbPath, VaultInternal.dirtyKey].toString(),
+        [...this.vaultMetadataDbPath, VaultInternal.dirtyKey].join(''),
       );
 
       // This should really be an internal property
@@ -505,7 +505,7 @@ class VaultInternal {
         throw new vaultsErrors.ErrorVaultRemoteDefined();
       }
       await tran.lock(
-        [...vaultMetadataDbPath, VaultInternal.dirtyKey].toString(),
+        [...vaultMetadataDbPath, VaultInternal.dirtyKey].join(''),
       );
       await tran.put([...vaultMetadataDbPath, VaultInternal.dirtyKey], true);
 
