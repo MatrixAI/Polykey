@@ -1,5 +1,5 @@
 import type { DB, DBTransaction, LevelPath } from '@matrixai/db';
-import type { TaskId, TaskIdString, TaskPriority, TaskFunction } from './types';
+import type { TaskId, TaskIdString, TaskPriority } from './types';
 import type { PromiseDeconstructed } from '../types';
 import Logger from '@matrixai/logger';
 import {
@@ -114,14 +114,14 @@ class Queue {
   // if we are "persisting" it
   // do we persist it here?
 
-  public async pushTask(taskF: TaskFunction, priority: TaskPriority) {
-    // This needs to proceed to push it into an in-memory queue
-    // and maintain a concurrency limit?
-    // my issue is that whatever does the persistence
-    // will need to execute it with the parmaeters and the task handler
-    // so by the time it is in memory as a `taskF`
-    // then no persistence makes sense anymore
-  }
+  // public async pushTask(taskF: TaskFunction, priority: TaskPriority) {
+  //   // This needs to proceed to push it into an in-memory queue
+  //   // and maintain a concurrency limit?
+  //   // my issue is that whatever does the persistence
+  //   // will need to execute it with the parmaeters and the task handler
+  //   // so by the time it is in memory as a `taskF`
+  //   // then no persistence makes sense anymore
+  // }
 
   /**
    * IF a handler does not exist

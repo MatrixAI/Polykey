@@ -1,17 +1,18 @@
+import type { TaskHandlerId } from '../../src/tasks/types';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
+import { sleep } from '@matrixai/async-locks/dist/utils';
 import KeyManager from '@/keys/KeyManager';
-import Queue from '@/tasks/Queue';
 import Scheduler from '@/tasks/Scheduler';
 import * as keysUtils from '@/keys/utils';
 import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 
 describe(Scheduler.name, () => {
   const password = 'password';
-  const logger = new Logger(`${Scheduler.name} test`, LogLevel.WARN, [
+  const logger = new Logger(`${Scheduler.name} test`, LogLevel.INFO, [
     new StreamHandler(),
   ]);
   let keyManager: KeyManager;
@@ -50,21 +51,26 @@ describe(Scheduler.name, () => {
     await db.destroy();
   });
   test('do it', async () => {
-    const queue = await Scheduler.createScheduler({
+    const scheduler = await Scheduler.createScheduler({
       db,
       keyManager,
       logger,
     });
+    const taskHandler = 'asd' as TaskHandlerId;
 
-    await queue.registerHandler('somename', async () => {
-      console.log('hi');
-    });
+    await scheduler.start();
+    await scheduler.scheduleTask(taskHandler, [1], 1000);
+    await scheduler.scheduleTask(taskHandler, [2], 100);
+    await scheduler.scheduleTask(taskHandler, [3], 2000);
+    await scheduler.scheduleTask(taskHandler, [7], 3000);
+    await scheduler.scheduleTask(taskHandler, [4], 10);
+    await scheduler.scheduleTask(taskHandler, [5], 10);
+    await scheduler.scheduleTask(taskHandler, [6], 10);
+    await sleep(500);
+    await scheduler.stop();
 
-    const result = await queue.pushTask('somename', [], 1000);
-
-    console.log(result);
-
-    await queue.stop();
-    await queue.destroy();
+    await scheduler.start();
+    await sleep(3000);
+    await scheduler.stop();
   });
 });

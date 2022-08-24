@@ -11,24 +11,24 @@ import type {
 } from './types';
 import type { DeepReadonly } from '../types';
 
-class TaskPromise<T> extends Promise<T> {
-
-  public constructor(executor, queue, lazy) {
-    super(executor);
-    this.lazy = lazy;
-    this.queue = queue;
-  }
-
-  public then() {
-    if (this.lazy) {
-      this.queue.f();
-      // attach event handlers
-    } else {
-
-    }
-  }
-
-}
+// Class TaskPromise<T> extends Promise<T> {
+//
+//   public constructor(executor, queue, lazy) {
+//     super(executor);
+//     this.lazy = lazy;
+//     this.queue = queue;
+//   }
+//
+//   public then() {
+//     if (this.lazy) {
+//       this.queue.f();
+//       // attach event handlers
+//     } else {
+//
+//     }
+//   }
+//
+// }
 
 class Task<T> {
   public readonly id: TaskId;
@@ -39,10 +39,7 @@ class Task<T> {
   public readonly priority: TaskPriority;
 
   protected queue: Queue;
-  protected resolveP: (value: T | PromiseLike<T>) => void;
-  protected rejectP: (reason?: any) => void;
-
-  protected taskPromise;
+  protected taskPromise: Promise<T> | undefined;
 
   constructor(
     queue: Queue,
@@ -52,15 +49,8 @@ class Task<T> {
     timestamp: TaskTimestamp,
     delay: TaskDelay,
     priority: TaskPriority,
+    taskPromise: Promise<T>,
   ) {
-    let resolveP, rejectP;
-    super((resolve, reject) => {
-      resolveP = resolve;
-      rejectP = reject;
-    });
-    this.resolveP = resolveP;
-    this.rejectP = rejectP;
-
     // I'm not sure about the queue
     // but if this is the reference here
     // then we need to add the event handler into the queue to wait for this
@@ -72,6 +62,7 @@ class Task<T> {
     this.timestamp = timestamp;
     this.delay = delay;
     this.priority = priority;
+    this.taskPromise = taskPromise;
   }
 
   public toJSON(): TaskData & { id: TaskId } {
@@ -86,57 +77,13 @@ class Task<T> {
     };
   }
 
-  /**
-   * This is called when `await` is used
-   */
-  public async then<TResult1 = T, TResult2 = never>(
-    onFulfilled?:
-      | ((value: T) => TResult1 | PromiseLike<TResult1>)
-      | undefined
-      | null,
-    onRejected?:
-      | ((reason: any) => TResult2 | PromiseLike<TResult2>)
-      | undefined
-      | null,
-  ): Promise<TResult1 | TResult2> {
-    if (this.lazy) {
-      // setup the event handlers
-      // but also return a rejection IF the task no longer exists (the rejection would be ErrorTasksTaskMissing)
-    }
-
-    // this is the promise now
-    // we can say that we only do what is needed
-    // we can make this `then` asynchronous
-    // do we use the same db
-    // or ask the Task to have the same capability?
-
-    return undefined as any;
+  get promise() {
+    if (this.taskPromise != null) return this.taskPromise;
+    // Otherwise, we need to create a new one
+    return new Promise((_, reject) => {
+      reject(Error('not implemented'));
+    });
   }
-
-  // Public then<TResult1, TResult2 = never>(
-  //   onFulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null,
-  //   onRejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null,
-  // ): Promise<TResult1, | TResult2> {
-
-  //   // these callbacks
-  //   // how are they supposed to be used?
-  //   // this is a promise
-  //   return undefined as any;
-
-  // }
-
-  //     then<TResult1 = T, TResult2 = never>(
-  //  onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null,
-  //  onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null):
-  // Promise<TResult1 | TResult2>;
-
-  // public catch () {
-
-  // }
-
-  // public finally () {
-
-  // }
 }
 
 // Const t = new Task();
