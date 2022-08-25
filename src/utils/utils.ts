@@ -9,6 +9,10 @@ import process from 'process';
 import path from 'path';
 import * as utilsErrors from './errors';
 
+const AsyncFunction = (async () => {}).constructor;
+const GeneratorFunction = function* () {}.constructor;
+const AsyncGeneratorFunction = async function* () {}.constructor;
+
 function getDefaultNodePath(): string | undefined {
   const prefix = 'polykey';
   const platform = os.platform();
@@ -309,11 +313,31 @@ function debounce<P extends any[]>(
   };
 }
 
-const AsyncFunction = (async () => {}).constructor;
-const GeneratorFunction = function* () {}.constructor;
-const AsyncGeneratorFunction = async function* () {}.constructor;
+function isPromise(v: any): v is Promise<unknown> {
+  return v instanceof Promise || (
+    v != null
+    && typeof v.then === 'function'
+    && typeof v.catch === 'function'
+    && typeof v.finally === 'function'
+  );
+}
+
+function isPromiseLike(v: any): v is PromiseLike<unknown> {
+  return v != null && typeof v.then === 'function';
+}
+
+function isIterable(v: any): v is Iterable<unknown> {
+  return v != null && typeof v[Symbol.iterator] === 'function';
+}
+
+function isAsyncIterable(v: any): v is AsyncIterable<unknown> {
+  return v != null && typeof v[Symbol.asyncIterator] === 'function';
+}
 
 export {
+  AsyncFunction,
+  GeneratorFunction,
+  AsyncGeneratorFunction,
   getDefaultNodePath,
   never,
   mkdirExists,
@@ -335,7 +359,8 @@ export {
   asyncIterableArray,
   bufferSplit,
   debounce,
-  AsyncFunction,
-  GeneratorFunction,
-  AsyncGeneratorFunction,
+  isPromise,
+  isPromiseLike,
+  isIterable,
+  isAsyncIterable,
 };
