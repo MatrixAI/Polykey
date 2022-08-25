@@ -14,6 +14,7 @@ import KeyManager from '@/keys/KeyManager';
 import Scheduler from '@/tasks/Scheduler';
 import * as keysUtils from '@/keys/utils';
 import * as tasksUtils from '@/tasks/utils';
+import Concurrency from '@/tasks/Concurrency';
 import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 
 describe(Scheduler.name, () => {
@@ -79,8 +80,10 @@ describe(Scheduler.name, () => {
     await sleep(500);
     await scheduler.stop();
 
+    logger.info('intermission!!!!');
+
     await scheduler.start();
-    await sleep(3000);
+    await sleep(10000);
     await scheduler.stop();
     console.log(things);
   });
@@ -96,4 +99,27 @@ describe(Scheduler.name, () => {
     console.log(extractTs(b), extractRand(b), extractSeq(b));
     console.log(extractTs(c), extractRand(c), extractSeq(c));
   });
+});
+
+test('enforcing a concurrency limit', async () => {
+  const logger = new Logger(`${Scheduler.name} test`, LogLevel.INFO, [
+    new StreamHandler(),
+  ]);
+
+  const concurrent = new Concurrency(5);
+  const makeProm = async (time: number) => {
+    logger.info('starting');
+    await sleep(time);
+    logger.info('done');
+  };
+
+  for (let i = 0; i < 10; i++) {
+    await concurrent.withConcurrency(async () => makeProm(1000));
+  }
+
+  await concurrent.awaitEmpty();
+  for (let i = 0; i < 10; i++) {
+    await concurrent.withConcurrency(async () => makeProm(1000));
+  }
+  await concurrent.awaitEmpty();
 });
