@@ -36,7 +36,7 @@ class Timer<T = void> implements Promise<T> {
   /**
    * Handler to be executed
    */
-  protected handler?: (signal: AbortSignal) => PromiseLike<T>;
+  protected handler?: (signal: AbortSignal) => T | PromiseLike<T>;
 
   /**
    * Deconstructed promise
@@ -81,7 +81,7 @@ class Timer<T = void> implements Promise<T> {
     lazy = false,
     controller = new AbortController(),
   }: {
-    handler?: (signal: AbortSignal) => PromiseLike<T>;
+    handler?: (signal: AbortSignal) => T | PromiseLike<T>;
     delay?: number;
     lazy?: boolean;
     controller?: PromiseCancellableController;
