@@ -12,14 +12,12 @@ class Concurrency {
     this.count = 0;
   }
 
-  get activeCount() {
-    return this.count;
-  }
-
   /**
    * This will run the function if the limit has not been reached, otherwise it will wait
    */
-  public async withConcurrency(f: () => Promise<void>): Promise<void> {
+  public async withConcurrency<T>(
+    f: () => Promise<T>,
+  ): Promise<{ promise: Promise<T> }> {
     // Waiting for free slot
     await this.plug?.p;
 
@@ -27,9 +25,11 @@ class Concurrency {
     this.increment();
 
     // Running function
-    f()
-      .finally(() => this.decrement())
-      .catch();
+    return {
+      promise: f()
+        .finally(() => this.decrement())
+        .catch(),
+    };
   }
 
   /**

@@ -4,11 +4,10 @@ import type {
   TaskHandler,
   TaskPriority,
   TaskTimestamp,
+  TaskIdString,
 } from './types';
 import type KeyManager from '../keys/KeyManager';
 import type { PromiseDeconstructed } from '../types';
-import type Task from './Task';
-import type Queue from './Queue';
 import { DBTransaction } from '@matrixai/db';
 import Logger, { LogLevel } from '@matrixai/logger';
 import { IdInternal } from '@matrixai/id';
@@ -18,11 +17,12 @@ import {
   ready,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import lexi from 'lexicographic-integer';
+import Task from './Task';
 import { TaskDelay, TaskHandlerId, TaskId, TaskParameters } from './types';
 import * as tasksUtils from './utils';
 import * as tasksErrors from './errors';
 import Concurrency from './Concurrency';
-import { promise, sleep } from '../utils';
+import { promise } from '../utils';
 
 interface Scheduler extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
@@ -70,10 +70,11 @@ class Scheduler {
   protected logger: Logger;
   protected db: DB;
   protected keyManager: KeyManager;
-  protected queue: Queue;
+  // Protected queue: Queue;
   protected handlers: Map<TaskHandlerId, TaskHandler> = new Map();
+  protected promises: Map<TaskIdString, Promise<any>> = new Map();
   protected generateTaskId: () => TaskId;
-  protected concurrey: Concurrency;
+  protected concurrency: Concurrency;
 
   // TODO: swap this out for the timer system later
 
@@ -151,7 +152,7 @@ class Scheduler {
     this.logger = logger;
     this.db = db;
     this.keyManager = keyManager;
-    this.concurrey = new Concurrency(concurrencyLimit);
+    this.concurrency = new Concurrency(concurrencyLimit);
     // This.queue = queue;
   }
 
@@ -385,10 +386,10 @@ class Scheduler {
         try {
           await this.handleTask(nextTask.taskId);
         } catch (e) {
-          console.error(e);
+          // FIXME: ignore for now
         }
       }
-      await this.concurrey.awaitEmpty();
+      await this.concurrency.awaitEmpty();
       this.logger.info('dispatching ending');
     })();
   }
@@ -406,12 +407,19 @@ class Scheduler {
       const handler = this.getHandler(taskData.handlerId);
       if (handler == null) throw Error('TEMP handler not found');
 
-      await this.concurrey.withConcurrency(async () => {
-        await handler(...taskData.parameters);
-      });
+      const { promise: prom } = await this.concurrency.withConcurrency(
+        async () => {
+          return await handler(...taskData.parameters);
+        },
+      );
 
-      // When done we need to remove the task
-      await tran.del([...this.schedulerTasksDbPath, taskId.toBuffer()]);
+      // Add the promise to the map and hook any lifecycle stuff
+      const taskIdString = taskId.toMultibase('hex') as TaskIdString;
+      this.promises.set(taskIdString, prom);
+      prom.finally(async () => {
+        this.promises.delete(taskIdString);
+        await tran.del([...this.schedulerTasksDbPath, taskId.toBuffer()]);
+      });
     });
   }
 
@@ -525,40 +533,22 @@ class Scheduler {
   //   return taskP;
   // }
 
-  // protected async getTaskP(taskId: TaskId, lazy: boolean, tran: DBTransaction) {
-  //   // does that mean we don't extend the promise?
-  //   // we just make it look like it
-  //   // i guess it works too
-  //   // if not lazy, then we do it immediately
-  //   // we would assert that we already have this
-  //   // so if it is not lazy
-  //   // it is not necessary to do this?
-  //
-  //   if (!lazy) {
-  //     const taskData = await tran.get<TaskData>([...this.queueTasksDbPath, taskId.toBuffer()]);
-  //     if (taskData == null) {
-  //       return;
-  //     }
-  //
-  //   }
-  //
-  //   const { p: taskP, resolveP, rejectP } = utils.promise<any>();
-  //   const listener = (taskError, taskResult) => {
-  //     if (taskError != null) {
-  //       rejectP(taskError);
-  //     } else {
-  //       resolveP(taskResult);
-  //     }
-  //     this.deregisterListener(id, listener);
-  //   };
-  //   this.registerListener(id, listener);
-  //
-  //   // can we say that taskP
-  //   return taskP;
-  // }
+  @ready(new tasksErrors.ErrorSchedulerNotRunning())
+  public getTaskP(taskId: TaskId) {
+    // This will only get an active promise
+    // if a promise is still scheduled then so far as we can tell it doesn't exist
+    // We may have to make an event system that emits when a task is made active
+    // Then we can wait for that even and then retrieve it from the active tasks
+    // I think we should be able to hook a cancel on this as well
+    const taskIdString = taskId.toMultibase('base32hex') as TaskIdString;
+    const taskP = this.promises.get(taskIdString);
+    if (taskP == null) throw Error('TEMP task not running');
+
+    return taskP;
+  }
 
   /*
-  const task = await scheduleTask(...);
+  Const task = await scheduleTask(...);
   await task; // <- any
 
   const task = scheduleTask(...);
@@ -699,6 +689,16 @@ class Scheduler {
         )} was scheduled for ${startTime}`,
       );
     });
+
+    return new Task(
+      this,
+      taskId,
+      handlerId,
+      parameters,
+      taskTimestamp,
+      delay,
+      taskPriority,
+    );
   }
 
   @ready(new tasksErrors.ErrorSchedulerNotRunning(), false, ['starting'])

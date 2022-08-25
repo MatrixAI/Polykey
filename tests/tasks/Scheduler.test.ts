@@ -5,11 +5,6 @@ import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { sleep } from '@matrixai/async-locks/dist/utils';
-import {
-  extractRand,
-  extractSeq,
-  extractTs,
-} from '@matrixai/id/dist/IdSortable';
 import KeyManager from '@/keys/KeyManager';
 import Scheduler from '@/tasks/Scheduler';
 import * as keysUtils from '@/keys/utils';
@@ -67,7 +62,6 @@ describe(Scheduler.name, () => {
     const things: Array<number> = [];
     const handler = async (num: number) => things.push(num);
     scheduler.registerHandler(taskHandler, handler);
-    console.log('asd');
 
     await scheduler.start();
     await scheduler.scheduleTask(taskHandler, [1], 1000);
@@ -85,20 +79,20 @@ describe(Scheduler.name, () => {
     await scheduler.start();
     await sleep(10000);
     await scheduler.stop();
-    console.log(things);
+    expect(things).toHaveLength(7);
   });
-  test('checking time uniqueness', async () => {
-    const generateTaskId = tasksUtils.createTaskIdGenerator(
-      keyManager.getNodeId(),
-    );
-    const a = generateTaskId();
-    const b = generateTaskId();
-    await sleep(10);
-    const c = generateTaskId();
-    console.log(extractTs(a), extractRand(a), extractSeq(a));
-    console.log(extractTs(b), extractRand(b), extractSeq(b));
-    console.log(extractTs(c), extractRand(c), extractSeq(c));
-  });
+  // Test('checking time uniqueness', async () => {
+  //   const generateTaskId = tasksUtils.createTaskIdGenerator(
+  //     keyManager.getNodeId(),
+  //   );
+  //   const a = generateTaskId();
+  //   const b = generateTaskId();
+  //   await sleep(10);
+  //   const c = generateTaskId();
+  //   console.log(extractTs(a), extractRand(a), extractSeq(a));
+  //   console.log(extractTs(b), extractRand(b), extractSeq(b));
+  //   console.log(extractTs(c), extractRand(c), extractSeq(c));
+  // });
 });
 
 test('enforcing a concurrency limit', async () => {

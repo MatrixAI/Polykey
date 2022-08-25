@@ -10,25 +10,7 @@ import type {
   TaskParameters,
 } from './types';
 import type { DeepReadonly } from '../types';
-
-// Class TaskPromise<T> extends Promise<T> {
-//
-//   public constructor(executor, queue, lazy) {
-//     super(executor);
-//     this.lazy = lazy;
-//     this.queue = queue;
-//   }
-//
-//   public then() {
-//     if (this.lazy) {
-//       this.queue.f();
-//       // attach event handlers
-//     } else {
-//
-//     }
-//   }
-//
-// }
+import type Scheduler from './Scheduler';
 
 class Task<T> {
   public readonly id: TaskId;
@@ -38,23 +20,24 @@ class Task<T> {
   public readonly delay: TaskDelay;
   public readonly priority: TaskPriority;
 
-  protected queue: Queue;
-  protected taskPromise: Promise<T> | undefined;
+  // Protected queue: Queue;
+  // protected taskPromise: Promise<T> | undefined;
+  protected scheduler: Scheduler;
 
   constructor(
-    queue: Queue,
+    scheduler: Scheduler,
     id: TaskId,
     handlerId: TaskHandlerId,
     parameters: TaskParameters,
     timestamp: TaskTimestamp,
     delay: TaskDelay,
     priority: TaskPriority,
-    taskPromise: Promise<T>,
+    // TaskPromise: Promise<T>,
   ) {
     // I'm not sure about the queue
     // but if this is the reference here
     // then we need to add the event handler into the queue to wait for this
-    this.queue = queue;
+    // this.queue = queue;
 
     this.id = id;
     this.handlerId = handlerId;
@@ -62,7 +45,8 @@ class Task<T> {
     this.timestamp = timestamp;
     this.delay = delay;
     this.priority = priority;
-    this.taskPromise = taskPromise;
+    this.scheduler = scheduler;
+    // This.taskPromise = taskPromise;
   }
 
   public toJSON(): TaskData & { id: TaskId } {
@@ -78,11 +62,7 @@ class Task<T> {
   }
 
   get promise() {
-    if (this.taskPromise != null) return this.taskPromise;
-    // Otherwise, we need to create a new one
-    return new Promise((_, reject) => {
-      reject(Error('not implemented'));
-    });
+    return this.scheduler.getTaskP(this.id);
   }
 }
 
