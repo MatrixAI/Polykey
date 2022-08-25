@@ -43,9 +43,11 @@ type TaskInfo = TaskData & {
 
 type TaskHandlerId = Opaque<'TaskHandlerId', string>;
 
-type TaskHandler<P extends Array<any> = [], R = any> = (
-  ...params: P
-) => Promise<R>;
+// Type TaskHandler<P extends Array<any> = [], R = any> = (
+//   ...params: P
+// ) => Promise<R>;
+
+type TaskHandler = (...params: Array<any>) => Promise<any>;
 
 /**
  * Task function is the result of a lambda abstraction of applying

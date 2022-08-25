@@ -1,17 +1,15 @@
-import type { DB, LevelPath, KeyPath } from '@matrixai/db';
+import type { DB, KeyPath, LevelPath } from '@matrixai/db';
 import type {
-  TaskHandler,
   TaskData,
-  TaskInfo,
-  TaskIdString,
+  TaskHandler,
+  TaskPriority,
   TaskTimestamp,
 } from './types';
 import type KeyManager from '../keys/KeyManager';
-import type { PolykeyWorkerManagerInterface } from '../workers/types';
-import type { POJO, Callback, PromiseDeconstructed } from '../types';
+import type { PromiseDeconstructed } from '../types';
 import type Task from './Task';
 import { DBTransaction } from '@matrixai/db';
-import Logger from '@matrixai/logger';
+import Logger, { LogLevel } from '@matrixai/logger';
 import { IdInternal } from '@matrixai/id';
 import { extractTs } from '@matrixai/id/dist/IdSortable';
 import {
@@ -19,11 +17,10 @@ import {
   ready,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import lexi from 'lexicographic-integer';
-import { TaskId, TaskHandlerId, TaskParameters, TaskDelay } from './types';
+import { TaskDelay, TaskHandlerId, TaskId, TaskParameters } from './types';
 import Queue from './Queue';
 import * as tasksUtils from './utils';
 import * as tasksErrors from './errors';
-import * as utils from '../utils';
 import { promise } from '../utils';
 
 interface Scheduler extends CreateDestroyStartStop {}
@@ -82,7 +79,7 @@ class Scheduler {
   protected processingTimerTimestamp: number = Number.POSITIVE_INFINITY;
   protected pendingProcessing: Promise<void> | null = null;
   protected processingPlug: PromiseDeconstructed<void> = promise();
-  protected ending: boolean = false;
+  protected processingEnding: boolean = false;
 
   protected schedulerDbPath: LevelPath = [this.constructor.name];
 
@@ -109,23 +106,32 @@ class Scheduler {
    */
   protected schedulerTimeDbPath: LevelPath = [...this.schedulerDbPath, 'time'];
 
-  /**
-   * Tasks queued for execution
-   * `pending/{lexi(TaskPriority)}/{lexi(TaskTimestamp + TaskDelay)} -> {raw(TaskId)}`
-   */
-  protected schedulerPendingDbPath: LevelPath = [
-    ...this.schedulerDbPath,
-    'pending',
-  ];
+  // /**
+  //  * Tasks queued for execution
+  //  * `pending/{lexi(TaskPriority)}/{lexi(TaskTimestamp + TaskDelay)} -> {raw(TaskId)}`
+  //  */
+  // protected schedulerPendingDbPath: LevelPath = [
+  //   ...this.schedulerDbPath,
+  //   'pending',
+  // ];
 
+  // /**
+  //  * Task handlers
+  //  * `handlers/{TaskHandlerId}/{TaskId} -> {raw(TaskId)}`
+  //  */
+  // protected schedulerHandlersDbPath: LevelPath = [
+  //   ...this.schedulerDbPath,
+  //   'handlers',
+  // ];
+
+  // these variables are part of the priority queue system
   /**
-   * Task handlers
-   * `handlers/{TaskHandlerId}/{TaskId} -> {raw(TaskId)}`
+   * Pending tasks to be executed
    */
-  protected schedulerHandlersDbPath: LevelPath = [
-    ...this.schedulerDbPath,
-    'handlers',
-  ];
+  protected activeTasks: Array<{ taskId: TaskId; priority: TaskPriority }> = [];
+  protected activeDispatchTaskLoop: Promise<void> | null = null;
+  protected dispatchPlug: PromiseDeconstructed<void>;
+  protected dispatchEnding: boolean;
 
   public constructor({
     db,
@@ -157,6 +163,8 @@ class Scheduler {
     delay?: boolean;
     fresh?: boolean;
   } = {}): Promise<void> {
+    this.logger.setLevel(LogLevel.INFO);
+    this.logger.setLevel(LogLevel.INFO);
     this.logger.info(`Starting ${this.constructor.name}`);
     if (fresh) {
       this.handlers.clear();
@@ -174,13 +182,13 @@ class Scheduler {
       this.keyManager.getNodeId(),
       lastTaskId,
     );
-    // Resetting processing variables
-    this.ending = false;
-    this.processingPlug = promise();
-    this.processingTimerTimestamp = Number.POSITIVE_INFINITY;
+    // Setting up processing
     this.pendingProcessing = this.processPendingTasks();
     // Don't start processing if we still want to register handlers
-    if (!delay) await this.startProcessing_();
+    if (!delay) {
+      await this.startProcessing();
+      await this.startDispatching();
+    }
     this.logger.info(`Started ${this.constructor.name}`);
   }
 
@@ -191,7 +199,7 @@ class Scheduler {
    */
   public async stop(): Promise<void> {
     this.logger.info(`Stopping ${this.constructor.name}`);
-    await this.stopProcessing_();
+    await Promise.allSettled([this.stopProcessing(), this.stopDispatching()]);
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
@@ -217,23 +225,19 @@ class Scheduler {
     const delay = Math.max(startTime - Date.now(), 0);
     clearTimeout(this.processingTimer);
     this.processingTimer = setTimeout(() => {
-      this.logger.info('consuming pending tasks');
+      // This.logger.info('consuming pending tasks');
       this.processingPlug.resolveP();
       this.processingTimerTimestamp = Number.POSITIVE_INFINITY;
     }, delay);
     this.processingTimerTimestamp = startTime;
-    this.logger.info(`Timer was updated to ${delay} to end at ${startTime}`);
+    // This.logger.info(`Timer was updated to ${delay} to end at ${startTime}`);
   }
 
   /**
    * Starts the processing of the work
    */
-  @ready(new tasksErrors.ErrorSchedulerNotRunning())
-  public async startProcessing(): Promise<void> {
-    await this.startProcessing_();
-  }
-
-  private async startProcessing_(): Promise<void> {
+  @ready(new tasksErrors.ErrorSchedulerNotRunning(), false, ['starting'])
+  private async startProcessing(): Promise<void> {
     // If already started, do nothing
     if (this.pendingProcessing == null) {
       this.pendingProcessing = this.processPendingTasks();
@@ -253,19 +257,15 @@ class Scheduler {
     if (time != null) {
       this.updateTimer(time);
     } else {
-      this.logger.info(`No pending tasks exist, timer was not started`);
+      // This.logger.info(`No pending tasks exist, timer was not started`);
     }
   }
 
-  @ready(new tasksErrors.ErrorSchedulerNotRunning())
-  public async stopProcessing(): Promise<void> {
-    await this.stopProcessing_();
-  }
-
-  private async stopProcessing_(): Promise<void> {
+  @ready(new tasksErrors.ErrorSchedulerNotRunning(), false, ['stopping'])
+  private async stopProcessing(): Promise<void> {
     clearTimeout(this.processingTimer);
     delete this.processingTimer;
-    this.ending = true;
+    this.processingEnding = true;
     this.processingPlug.resolveP();
     await this.pendingProcessing;
     this.pendingProcessing = null;
@@ -273,10 +273,13 @@ class Scheduler {
 
   private async processPendingTasks(): Promise<void> {
     // This will pop tasks from the queue and put the where they need to go
-    this.logger.info('processing set up');
+    // this.logger.info('processing set up');
+    this.processingEnding = false;
+    this.processingPlug = promise();
+    this.processingTimerTimestamp = Number.POSITIVE_INFINITY;
     while (true) {
       await this.processingPlug.p;
-      if (this.ending) break;
+      if (this.processingEnding) break;
       await this.db.withTransactionF(async (tran) => {
         // Read the pending task
         let taskIdBuffer: Buffer | undefined;
@@ -290,34 +293,113 @@ class Scheduler {
           taskIdBuffer = taskIdBuffer_;
           keyPath = keyPath_;
         }
+        // If pending tasks are empty we wait
         if (taskIdBuffer == null || keyPath == null) {
-          this.logger.info('waiting for new tasks');
+          // This.logger.info('waiting for new tasks');
           this.processingPlug = promise();
           return;
         }
         const time = lexi.unpack(Array.from(keyPath[0] as Buffer));
-        // If the time is for later, then update the timer and re plug
+        // If task is still waiting it start time then we wait
         if (time > Date.now()) {
-          this.logger.info('waiting for tasks pending tasks');
+          // This.logger.info('waiting for tasks pending tasks');
           this.updateTimer(time);
           this.processingPlug = promise();
           return;
         }
+
         // Process the task now and remove it from the scheduler
-        this.logger.info('processing task');
-        const taskData = await tran.get<TaskData>([
-          ...this.schedulerTasksDbPath,
-          taskIdBuffer,
-        ]);
-        await tran.del([...this.schedulerTimeDbPath, ...keyPath]);
-        await tran.del([...this.schedulerTasksDbPath, taskIdBuffer]);
-        const taskId = IdInternal.fromBuffer<TaskId>(taskIdBuffer);
-        this.logger.info(
-          `${taskId.toMultibase('base32hex')}, ${taskData?.parameters[0]}`,
-        );
+        // this.logger.info('processing task');
+        await this.processTask(tran, taskIdBuffer, keyPath, time);
       });
     }
-    this.logger.info('ending processing');
+    // This.logger.info('processing ending');
+  }
+
+  private async processTask(
+    tran: DBTransaction,
+    taskIdBuffer: Buffer,
+    keyPath: KeyPath,
+    time: number,
+  ) {
+    const taskData = await tran.get<TaskData>([
+      ...this.schedulerTasksDbPath,
+      taskIdBuffer,
+    ]);
+    await tran.del([...this.schedulerTimeDbPath, ...keyPath]);
+    // Await tran.del([...this.schedulerTasksDbPath, taskIdBuffer]);
+    const taskId = IdInternal.fromBuffer<TaskId>(taskIdBuffer);
+
+    // We want to move it to the pending list
+    // console.log(taskId.toMultibase('base32hex'), taskData);
+    if (taskData == null) throw Error('TEMP ERROR');
+
+    this.dispatchTask(taskId, taskData.priority);
+  }
+
+  private dispatchTask(taskId: TaskId, priority: TaskPriority) {
+    this.logger.info('addingTask');
+    this.activeTasks.push({ taskId, priority });
+    this.dispatchPlug.resolveP();
+  }
+
+  private async startDispatching() {
+    if (this.activeDispatchTaskLoop == null) {
+      this.activeDispatchTaskLoop = this.dispatchTasksLoop();
+    }
+    this.dispatchPlug.resolveP();
+  }
+
+  private async stopDispatching() {
+    this.dispatchEnding = true;
+    this.dispatchPlug.resolveP();
+    await this.activeDispatchTaskLoop;
+    this.activeDispatchTaskLoop = null;
+  }
+
+  private dispatchTasksLoop() {
+    this.logger.info('dispatching set up');
+    this.dispatchPlug = promise();
+    this.dispatchEnding = false;
+    const pace = async () => {
+      await this.dispatchPlug.p;
+      return !this.dispatchEnding;
+    };
+    return (async () => {
+      while (await pace()) {
+        // Pop task and dispatch
+        this.logger.info('getting task');
+        const nextTask = this.activeTasks.pop();
+        if (nextTask == null) {
+          this.logger.info('no task found, waiting');
+          this.dispatchPlug = promise();
+          continue;
+        }
+        this.logger.info('dispatching task');
+        await this.handleTask(nextTask.taskId);
+      }
+      this.logger.info('dispatching ending');
+    })();
+  }
+
+  private async handleTask(taskId) {
+    // Get the task information and use the relevant handler handler
+    // throw and error if the task does not exist
+    // throw an error if the handler does not exist.
+
+    await this.db.withTransactionF(async (tran) => {
+      // Getting task information
+      const taskData = await this.getTaskData(taskId, tran);
+      if (taskData == null) throw Error('TEMP task not found');
+      // Getting handler
+      const handler = this.getHandler(taskData.handlerId);
+      if (handler == null) throw Error('TEMP handler not found');
+
+      await handler(...taskData.parameters);
+
+      // When done we need to remove the task
+      await tran.del([...this.schedulerTasksDbPath, taskId.toBuffer()]);
+    });
   }
 
   public getHandler(handlerId: TaskHandlerId): TaskHandler | undefined {
@@ -597,52 +679,6 @@ class Scheduler {
         )} was scheduled for ${startTime}`,
       );
     });
-  }
-
-  // We have to start the loop
-  // the `setTimeout` is what actually starts the execution
-  // Pop up the next highest priority
-
-  // when pushing a task
-  // it is "scheduled"
-  // but that is not what happens here
-
-  // instead scheduling is triggered in 2 ways
-  // one by starting the system
-  // and another when a task is entered into the system
-  // in both cases, a trigger takes place
-
-  public async popTask(
-    tran?: DBTransaction,
-  ): Promise<{ id: TaskId; taskData: TaskData } | undefined> {
-    if (tran == null) {
-      return this.db.withTransactionF((tran) =>
-        this.popTask.apply(this, [...arguments, tran]),
-      );
-    }
-    let taskId: TaskId | undefined;
-    let taskData: TaskData | undefined;
-    let keyPath: KeyPath | undefined;
-    for await (const [keyPath_, taskIdBuffer] of tran.iterator(
-      this.schedulerTimeDbPath,
-      {
-        limit: 1,
-      },
-    )) {
-      taskId = IdInternal.fromBuffer<TaskId>(taskIdBuffer);
-      taskData = await tran.get<TaskData>([
-        ...this.schedulerTasksDbPath,
-        taskIdBuffer,
-      ]);
-      keyPath = keyPath_;
-    }
-    if (keyPath != null) await tran.del(keyPath);
-    else return;
-
-    return {
-      id: taskId!,
-      taskData: taskData!,
-    };
   }
 
   @ready(new tasksErrors.ErrorSchedulerNotRunning(), false, ['starting'])
