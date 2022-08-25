@@ -6,7 +6,7 @@ import { performance } from 'perf_hooks';
  * Unlike `setTimeout` or `setInterval`,
  * this will not keep the NodeJS event loop alive
  */
-class Timer<T = void> implements Promise<T> {
+class Timer<T = void> implements Pick<PromiseCancellable<T>, keyof PromiseCancellable<T>> {
   /**
    * Delay in milliseconds
    * This may be `Infinity`
