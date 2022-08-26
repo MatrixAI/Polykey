@@ -74,18 +74,43 @@ class Timer<T = void> implements Pick<PromiseCancellable<T>, keyof PromiseCancel
    * the timer, even if the handler has already started executing
    * If `lazy` is true, this will make the timer wait for the handler
    * to finish executing
+   * Note that passing a custom controller does not stop the default behaviour
    */
-  constructor({
-    handler,
-    delay = 0,
-    lazy = false,
-    controller = new AbortController(),
-  }: {
-    handler?: (signal: AbortSignal) => T | PromiseLike<T>;
-    delay?: number;
-    lazy?: boolean;
-    controller?: PromiseCancellableController;
-  } = {}) {
+  constructor(
+    handler?: (signal: AbortSignal) => T | PromiseLike<T>,
+    delay?: number,
+    lazy?: boolean,
+    controller?: PromiseCancellableController
+  );
+  constructor(
+    opts?: {
+      handler?: (signal: AbortSignal) => T | PromiseLike<T>;
+      delay?: number;
+      lazy?: boolean;
+      controller?: PromiseCancellableController;
+    }
+  );
+  constructor(
+    handlerOrOpts?: ((signal: AbortSignal) => T | PromiseLike<T>) |
+      {
+        handler?: (signal: AbortSignal) => T | PromiseLike<T>;
+        delay?: number;
+        lazy?: boolean;
+        controller?: PromiseCancellableController;
+      },
+    delay: number = 0,
+    lazy: boolean = false,
+    controller?: PromiseCancellableController
+  ) {
+    let handler: ((signal: AbortSignal) => T | PromiseLike<T>) | undefined;
+    if (typeof handlerOrOpts === 'function') {
+      handler = handlerOrOpts;
+    } else if (typeof handlerOrOpts === 'object' && handlerOrOpts !== null) {
+      handler = handlerOrOpts.handler;
+      delay = handlerOrOpts.delay ?? delay;
+      lazy = handlerOrOpts.lazy ?? lazy;
+      controller = handlerOrOpts.controller ?? controller;
+    }
     // Clip to delay >= 0
     delay = Math.max(delay, 0);
     // Coerce NaN to minimal delay of 0
@@ -96,9 +121,16 @@ class Timer<T = void> implements Pick<PromiseCancellable<T>, keyof PromiseCancel
     let abortController: AbortController;
     if (typeof controller === 'function') {
       abortController = new AbortController();
-      controller(this.abortController.signal);
-    } else {
+      controller(abortController.signal);
+    } else if (controller != null) {
       abortController = controller;
+    } else {
+      abortController = new AbortController();
+      abortController.signal.addEventListener(
+        'abort',
+        () => void this.reject(abortController.signal.reason),
+        { once: true }
+      );
     }
     this.p = new PromiseCancellable<T>(
       (resolve, reject) => {
@@ -106,11 +138,6 @@ class Timer<T = void> implements Pick<PromiseCancellable<T>, keyof PromiseCancel
         this.rejectP = reject.bind(this.p);
       },
       abortController
-    );
-    abortController.signal.addEventListener(
-      'abort',
-      () => void this.reject(abortController.signal.reason),
-      { once: true }
     );
     this.abortController = abortController;
     // If the delay is Infinity, there is no `setTimeout`
@@ -142,7 +169,7 @@ class Timer<T = void> implements Pick<PromiseCancellable<T>, keyof PromiseCancel
   /**
    * Gets the remaining time in milliseconds
    * This will return `Infinity` if `delay` is `Infinity`
-   * This will return `0` if status is `resolved` or `rejected`
+   * This will return `0` if status is `settling` or `settled`
    */
   public getTimeout(): number {
     if (this._status !== null) return 0;
@@ -158,6 +185,7 @@ class Timer<T = void> implements Pick<PromiseCancellable<T>, keyof PromiseCancel
   /**
    * To remaining time as a string
    * This may return `'Infinity'` if `this.delay` is `Infinity`
+   * This will return `'0'` if status is `settling` or `settled`
    */
   public toString(): string {
     return this.getTimeout().toString();
@@ -166,6 +194,7 @@ class Timer<T = void> implements Pick<PromiseCancellable<T>, keyof PromiseCancel
   /**
    * To remaining time as a number
    * This may return `Infinity` if `this.delay` is `Infinity`
+   * This will return `0` if status is `settling` or `settled`
    */
   public valueOf(): number {
     return this.getTimeout();
