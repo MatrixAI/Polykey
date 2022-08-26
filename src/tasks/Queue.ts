@@ -1,13 +1,20 @@
-import type { DB, DBTransaction, LevelPath } from '@matrixai/db';
-import type { TaskId, TaskIdString, TaskPriority } from './types';
+import type { DB, LevelPath } from '@matrixai/db';
+import type { TaskIdString, TaskPriority } from './types';
 import type { PromiseDeconstructed } from '../types';
+import { DBTransaction } from '@matrixai/db';
 import Logger from '@matrixai/logger';
 import {
   CreateDestroyStartStop,
   ready,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
-import * as tasksUtils from './utils';
+import { IdInternal } from '@matrixai/id';
+import { RWLockReader } from '@matrixai/async-locks';
 import * as tasksErrors from './errors';
+import { TaskId, TaskTimestamp } from './types';
+import * as tasksUtils from './utils';
+import { promise } from '../utils';
+
+type TaskHandler = (taskId: TaskId) => Promise<any>;
 
 interface Queue extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
@@ -17,33 +24,47 @@ interface Queue extends CreateDestroyStartStop {}
 class Queue {
   public static async createQueue({
     db,
+    taskHandler,
+    delay = false,
     concurrencyLimit = Number.POSITIVE_INFINITY,
     logger = new Logger(this.name),
     fresh = false,
   }: {
     db: DB;
+    taskHandler: TaskHandler;
+    delay?: boolean;
     concurrencyLimit?: number;
     logger?: Logger;
     fresh?: boolean;
   }) {
     logger.info(`Creating ${this.name}`);
-    const queue = new this({ db, concurrencyLimit, logger });
-    await queue.start({ fresh });
+    const queue = new this({ db, concurrencyLimit, taskHandler, logger });
+    await queue.start({ delay, fresh });
     logger.info(`Created ${this.name}`);
     return queue;
   }
 
+  // Concurrency variables
   public concurrencyLimit: number;
+  private concurrencyCount: number = 0;
+  private concurrencyPlug: PromiseDeconstructed<void> | null = null;
+  private concurrencyActivePromise: PromiseDeconstructed<void> | null = null;
 
   protected logger: Logger;
   protected db: DB;
   protected queueDbPath: LevelPath = [this.constructor.name];
+  protected queueDbTimestampPath: LevelPath = [
+    ...this.queueDbPath,
+    'timestamp',
+  ];
+  protected queueDbMetadataPath: LevelPath = [...this.queueDbPath, 'metadata'];
+  protected queueDbActivePath: LevelPath = [...this.queueDbPath, 'active'];
   // When the queue to execute the tasks
   // the task id is generated outside
   // you don't get a task id here
   // you just "push" tasks there to be executed
   // this is the "shared" set of promises to be maintained
-  protected promises: Map<TaskIdString, PromiseDeconstructed<any>> = new Map();
+  protected promises: Map<TaskIdString, Promise<any>> = new Map();
   // /**
   //  * Listeners for task execution
   //  * When a task is executed, these listeners are synchronously executed
@@ -51,34 +72,52 @@ class Queue {
   //  */
   // protected listeners: Map<TaskIdString, Array<TaskListener>> = new Map();
 
+  // variables to consuming tasks
+  protected activeTaskLoop: Promise<void> | null = null;
+  protected taskLoopPlug: PromiseDeconstructed<void> | null = null;
+  protected taskLoopEnding: boolean;
+  protected cleanUpLock: RWLockReader = new RWLockReader();
+
+  /**
+   * Handler for tasks
+   */
+  protected taskHandler: TaskHandler;
+
   public constructor({
     db,
     concurrencyLimit,
+    taskHandler,
     logger,
   }: {
     db: DB;
     concurrencyLimit: number;
+    taskHandler: TaskHandler;
     logger: Logger;
   }) {
     this.logger = logger;
     this.concurrencyLimit = concurrencyLimit;
     this.db = db;
+    this.taskHandler = taskHandler;
   }
 
   public async start({
+    delay = false,
     fresh = false,
   }: {
+    delay?: boolean;
     fresh?: boolean;
   } = {}): Promise<void> {
     this.logger.info(`Starting ${this.constructor.name}`);
     if (fresh) {
       await this.db.clear(this.queueDbPath);
     }
+    if (!delay) await this.startTasks();
     this.logger.info(`Started ${this.constructor.name}`);
   }
 
   public async stop(): Promise<void> {
     this.logger.info(`Stopping ${this.constructor.name}`);
+    await this.stopTasks();
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
@@ -89,23 +128,23 @@ class Queue {
   }
 
   // Promises are "connected" to events
-
+  //
   // when tasks are "dispatched" to the queue
   // they are actually put into a persistent system
   // then we proceed to execution
-
+  //
   // a task here is a function
   // this is already managed by the Scheduler
   // along with the actual function itself?
   // we also have a priority
-
+  //
   // t is a task
   // but it's actually just a function
   // and in this case
   // note that we are "passing" in the parameters at this point
   // but it is any function
   // () => taskHandler(parameters)
-
+  //
   // it returns a "task"
   // that should be used like a "lazy" promise
   // the actual task function depends on the situation
@@ -114,14 +153,218 @@ class Queue {
   // if we are "persisting" it
   // do we persist it here?
 
-  // public async pushTask(taskF: TaskFunction, priority: TaskPriority) {
-  //   // This needs to proceed to push it into an in-memory queue
-  //   // and maintain a concurrency limit?
-  //   // my issue is that whatever does the persistence
-  //   // will need to execute it with the parmaeters and the task handler
-  //   // so by the time it is in memory as a `taskF`
-  //   // then no persistence makes sense anymore
-  // }
+  /**
+   * Pushes tasks into the persistent database
+   */
+  @ready(new tasksErrors.ErrorQueueNotRunning())
+  public async pushTask(
+    taskId: TaskId,
+    timestamp: TaskTimestamp,
+    tran?: DBTransaction,
+  ) {
+    if (tran == null) {
+      return this.db.withTransactionF((tran) =>
+        this.pushTask(taskId, timestamp, tran),
+      );
+    }
+
+    this.logger.info('adding task');
+    const timestampBuffer = tasksUtils.makeTaskTimestampKey(timestamp, taskId);
+    await tran.put(
+      [...this.queueDbTimestampPath, timestampBuffer],
+      taskId.toBuffer(),
+      true,
+    );
+    await tran.put(
+      [...this.queueDbMetadataPath, taskId.toBuffer()],
+      timestampBuffer,
+      true,
+    );
+    tran.queueSuccess(() => this.taskLoopPlug?.resolveP());
+  }
+
+  /**
+   * Removes a task from the persistent database
+   */
+  // @ready(new tasksErrors.ErrorQueueNotRunning(), false, ['stopping', 'starting'])
+  public async removeTask(taskId: TaskId, tran?: DBTransaction) {
+    if (tran == null) {
+      return this.db.withTransactionF((tran) => this.removeTask(taskId, tran));
+    }
+
+    this.logger.info('removing task');
+    const timestampBuffer = await tran.get(
+      [...this.queueDbMetadataPath, taskId.toBuffer()],
+      true,
+    );
+    // Noop
+    if (timestampBuffer == null) return;
+    // Removing records
+    await tran.del([...this.queueDbTimestampPath, timestampBuffer]);
+    await tran.del([...this.queueDbMetadataPath, taskId.toBuffer()]);
+    await tran.del([...this.queueDbActivePath, taskId.toBuffer()]);
+  }
+
+  /**
+   * This will get the next task based on priority
+   */
+  private async getNextTask(tran?: DBTransaction): Promise<TaskId | undefined> {
+    if (tran == null) {
+      return this.db.withTransactionF((tran) => this.getNextTask(tran));
+    }
+
+    // Read out the database until we read a task not already executing
+    let taskId: TaskId | undefined;
+    for await (const [, taskIdBuffer] of tran.iterator(
+      this.queueDbTimestampPath,
+    )) {
+      taskId = IdInternal.fromBuffer<TaskId>(taskIdBuffer);
+      const exists = await tran.get(
+        [...this.queueDbActivePath, taskId.toBuffer()],
+        true,
+      );
+      // Looking for an inactive task
+      if (exists == null) break;
+      taskId = undefined;
+    }
+    if (taskId == null) return;
+    await tran.put(
+      [...this.queueDbActivePath, taskId.toBuffer()],
+      Buffer.alloc(0, 0),
+      true,
+    );
+    return taskId;
+  }
+
+  @ready(new tasksErrors.ErrorQueueNotRunning(), false, ['starting'])
+  public async startTasks() {
+    // Nop if running
+    if (this.activeTaskLoop != null) return;
+
+    this.activeTaskLoop = this.initTaskLoop();
+    // Unplug if tasks exist to be consumed
+    let task;
+    for await (const [, task_] of this.db.iterator(this.queueDbTimestampPath, {
+      limit: 1,
+    })) {
+      task = task_;
+    }
+    if (task != null) {
+      this.taskLoopPlug?.resolveP();
+      this.taskLoopPlug = null;
+    }
+  }
+
+  @ready(new tasksErrors.ErrorQueueNotRunning(), false, ['stopping'])
+  public async stopTasks() {
+    this.taskLoopEnding = true;
+    this.taskLoopPlug?.resolveP();
+    this.taskLoopPlug = null;
+    this.concurrencyPlug?.resolveP();
+    this.concurrencyPlug = null;
+    await this.activeTaskLoop;
+    this.activeTaskLoop = null;
+    await this.cleanUpLock.waitForUnlock();
+  }
+
+  private initTaskLoop() {
+    this.logger.info('initializing task loop');
+    this.taskLoopEnding = false;
+    this.taskLoopPlug = promise();
+    const pace = async () => {
+      await this.taskLoopPlug?.p;
+      await this.concurrencyPlug?.p;
+      return !this.taskLoopEnding;
+    };
+    return (async () => {
+      while (await pace()) {
+        // Check for task
+        const nextTaskId = await this.getNextTask();
+        if (nextTaskId == null) {
+          this.logger.info('no task found, waiting');
+          this.taskLoopPlug = promise();
+          continue;
+        }
+
+        // Do the task with concurrency here.
+        // We need to call whatever dispatches tasks here
+        //  and hook lifecycle to the promise.
+        // call scheduler. handleTask?
+        const taskIdString = nextTaskId.toMultibase(
+          'base32hex',
+        ) as TaskIdString;
+        this.concurrencyIncrement();
+        const prom = this.taskHandler(nextTaskId);
+        // Hook lifecycle
+        this.promises.set(taskIdString, prom);
+        this.logger.info(`started task ${taskIdString}`);
+
+        const [cleanupRelease] = await this.cleanUpLock.read()();
+        const onFinally = async () => {
+          this.promises.delete(taskIdString);
+          this.concurrencyDecrement();
+          await cleanupRelease();
+        };
+
+        void prom.then(
+          async () => {
+            await this.removeTask(nextTaskId);
+            // TODO: emit an event for completed task
+            await onFinally();
+          },
+          async () => {
+            // FIXME: should only remove failed tasks but not cancelled
+            await this.removeTask(nextTaskId);
+            // TODO: emit an event for a failed or cancelled task
+            await onFinally();
+          },
+        );
+      }
+      await this.concurrencyActivePromise;
+      this.logger.info('dispatching ending');
+    })();
+  }
+
+  // Concurrency limiting methods
+  /**
+   * Awaits an open slot in the concurrency.
+   * Must be paired with `concurrencyDecrement` when operation is done.
+   */
+
+  /**
+   * Increment and concurrencyPlug if full
+   */
+  private concurrencyIncrement() {
+    if (this.concurrencyCount < this.concurrencyLimit) {
+      this.concurrencyCount += 1;
+      this.concurrencyActivePromise = promise();
+      if (this.concurrencyCount >= this.concurrencyLimit) {
+        this.concurrencyPlug = promise();
+      }
+    }
+  }
+
+  /**
+   * Decrement and unplugs, resolves concurrencyActivePromise if empty
+   */
+  private concurrencyDecrement() {
+    this.concurrencyCount -= 1;
+    if (this.concurrencyCount < this.concurrencyLimit) {
+      this.concurrencyPlug?.resolveP();
+      this.concurrencyPlug = null;
+    }
+    if (this.concurrencyCount === 0) {
+      this.concurrencyActivePromise?.resolveP();
+      this.concurrencyActivePromise = null;
+    }
+  }
+
+  /**
+   * Will resolve when the concurrency counter reaches 0
+   */
+  public async allConcurrentSettled() {
+    await this.concurrencyActivePromise?.p;
+  }
 
   /**
    * IF a handler does not exist

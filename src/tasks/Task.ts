@@ -67,12 +67,12 @@ class Task<T> {
 }
 
 // Const t = new Task();
-
-const p = new Promise<void>((resolve, reject) => {
-  resolve();
-});
-
-p.then;
+//
+// const p = new Promise<void>((resolve, reject) => {
+//   resolve();
+// });
+//
+// p.then;
 // P.catch
 // p.finally
 // /**

@@ -21,7 +21,6 @@ import Task from './Task';
 import { TaskDelay, TaskHandlerId, TaskId, TaskParameters } from './types';
 import * as tasksUtils from './utils';
 import * as tasksErrors from './errors';
-import Concurrency from './Concurrency';
 import { promise } from '../utils';
 
 interface Scheduler extends CreateDestroyStartStop {}
@@ -74,7 +73,6 @@ class Scheduler {
   protected handlers: Map<TaskHandlerId, TaskHandler> = new Map();
   protected promises: Map<TaskIdString, Promise<any>> = new Map();
   protected generateTaskId: () => TaskId;
-  protected concurrency: Concurrency;
 
   // TODO: swap this out for the timer system later
 
@@ -152,7 +150,6 @@ class Scheduler {
     this.logger = logger;
     this.db = db;
     this.keyManager = keyManager;
-    this.concurrency = new Concurrency(concurrencyLimit);
     // This.queue = queue;
   }
 
@@ -389,7 +386,7 @@ class Scheduler {
           // FIXME: ignore for now
         }
       }
-      await this.concurrency.awaitEmpty();
+      // Await this.concurrency.allConcurrentSettled();
       this.logger.info('dispatching ending');
     })();
   }
@@ -407,11 +404,12 @@ class Scheduler {
       const handler = this.getHandler(taskData.handlerId);
       if (handler == null) throw Error('TEMP handler not found');
 
-      const { promise: prom } = await this.concurrency.withConcurrency(
-        async () => {
-          return await handler(...taskData.parameters);
-        },
-      );
+      // Const { promise: prom } = await this.concurrency.withConcurrency(
+      //   async () => {
+      //     return await handler(...taskData.parameters);
+      //   },
+      // );
+      const prom = new Promise(() => {});
 
       // Add the promise to the map and hook any lifecycle stuff
       const taskIdString = taskId.toMultibase('hex') as TaskIdString;

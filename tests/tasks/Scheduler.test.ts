@@ -7,9 +7,9 @@ import { DB } from '@matrixai/db';
 import { sleep } from '@matrixai/async-locks/dist/utils';
 import KeyManager from '@/keys/KeyManager';
 import Scheduler from '@/tasks/Scheduler';
+import Queue from '@/tasks/Queue';
 import * as keysUtils from '@/keys/utils';
 import * as tasksUtils from '@/tasks/utils';
-import Concurrency from '@/tasks/Concurrency';
 import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 
 describe(Scheduler.name, () => {
@@ -52,7 +52,7 @@ describe(Scheduler.name, () => {
     await db.stop();
     await db.destroy();
   });
-  test('do it', async () => {
+  test('can add tasks with scheduled delay', async () => {
     const scheduler = await Scheduler.createScheduler({
       db,
       keyManager,
@@ -81,6 +81,30 @@ describe(Scheduler.name, () => {
     await scheduler.stop();
     expect(things).toHaveLength(7);
   });
+  test('scheduled tasks persist', async () => {
+    const scheduler = await Scheduler.createScheduler({
+      db,
+      keyManager,
+      logger,
+    });
+    const taskHandler = 'asd' as TaskHandlerId;
+    const things: Array<number> = [];
+    const handler = jest.fn();
+    scheduler.registerHandler(taskHandler, handler);
+
+    await scheduler.start();
+    await scheduler.scheduleTask(taskHandler, [1], 1000);
+    await sleep(500);
+    await scheduler.stop();
+
+    logger.info('intermission!!!!');
+
+    await scheduler.start();
+    await sleep(10000);
+    await scheduler.stop();
+    expect(things).toHaveLength(7);
+  });
+  test.todo('Scheculed tasks get moved to queue after delay');
   // Test('checking time uniqueness', async () => {
   //   const generateTaskId = tasksUtils.createTaskIdGenerator(
   //     keyManager.getNodeId(),
@@ -93,27 +117,4 @@ describe(Scheduler.name, () => {
   //   console.log(extractTs(b), extractRand(b), extractSeq(b));
   //   console.log(extractTs(c), extractRand(c), extractSeq(c));
   // });
-});
-
-test('enforcing a concurrency limit', async () => {
-  const logger = new Logger(`${Scheduler.name} test`, LogLevel.INFO, [
-    new StreamHandler(),
-  ]);
-
-  const concurrent = new Concurrency(5);
-  const makeProm = async (time: number) => {
-    logger.info('starting');
-    await sleep(time);
-    logger.info('done');
-  };
-
-  for (let i = 0; i < 10; i++) {
-    await concurrent.withConcurrency(async () => makeProm(1000));
-  }
-
-  await concurrent.awaitEmpty();
-  for (let i = 0; i < 10; i++) {
-    await concurrent.withConcurrency(async () => makeProm(1000));
-  }
-  await concurrent.awaitEmpty();
 });

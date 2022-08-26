@@ -1,6 +1,7 @@
 import type { TaskId, TaskPriority } from './types';
 import type { NodeId } from '../nodes/types';
 import { IdSortable } from '@matrixai/id';
+import lexi from 'lexicographic-integer';
 
 /**
  * Generates TaskId
@@ -40,4 +41,14 @@ function fromPriority(p: TaskPriority): number {
   return n;
 }
 
-export { createTaskIdGenerator, toPriority, fromPriority };
+function makeTaskTimestampKey(time: number, taskId: TaskId): Buffer {
+  const timestampBuffer = Buffer.from(lexi.pack(time));
+  return Buffer.concat([timestampBuffer, taskId.toBuffer()]);
+}
+
+export {
+  createTaskIdGenerator,
+  toPriority,
+  fromPriority,
+  makeTaskTimestampKey,
+};
