@@ -81,8 +81,8 @@ function pathIncludes(p1: string, p2: string): boolean {
   );
 }
 
-async function sleep(ms: number) {
-  return await new Promise((r) => setTimeout(r, ms));
+async function sleep(ms: number): Promise<void> {
+  return await new Promise<void>((r) => setTimeout(r, ms));
 }
 
 function isEmptyObject(o) {
