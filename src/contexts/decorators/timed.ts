@@ -118,16 +118,11 @@ function timed(
   delay: number = Infinity,
   errorTimeout: new () => Error = contextsErrors.ErrorContextsTimerExpired,
 ) {
-  return <
-    T extends ((...params: Array<any>) =>
-      Promise<any> |
-      Generator<any, any, any> |
-      AsyncGenerator<any, any, any>)
-  >(
+  return (
     target: any,
     key: string | symbol,
-    descriptor: TypedPropertyDescriptor<T>,
-  ): TypedPropertyDescriptor<T> => {
+    descriptor: TypedPropertyDescriptor<(...params: Array<unknown>) => Promise<unknown> | Generator | AsyncGenerator>,
+  ): TypedPropertyDescriptor<(...params: Array<unknown>) => Promise<unknown> | Generator | AsyncGenerator> => {
     // Target is instance prototype for instance methods
     // or the class prototype for static methods
     const targetName = target['name'] ?? target.constructor.name;
