@@ -28,6 +28,8 @@ import * as tasksUtils from './utils';
 import * as tasksErrors from './errors';
 import Queue from './Queue';
 import { promise } from '../utils';
+import { EventEmitter } from 'events';
+
 
 interface Scheduler extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
@@ -79,8 +81,11 @@ class Scheduler {
   protected keyManager: KeyManager;
   protected queue: Queue;
   protected handlers: Map<TaskHandlerId, TaskHandler> = new Map();
+  // TODO: remove this?
   protected promises: Map<TaskIdString, Promise<any>> = new Map();
+  protected taskPromises: Map<TaskIdString, Promise<any>> = new Map();
   protected generateTaskId: () => TaskId;
+  protected taskEvents: EventEmitter = new EventEmitter()
 
   // TODO: swap this out for the timer system later
 
@@ -256,7 +261,7 @@ class Scheduler {
    * Starts the processing of the work
    */
   @ready(new tasksErrors.ErrorSchedulerNotRunning(), false, ['starting'])
-  private async startProcessing(): Promise<void> {
+  public async startProcessing(): Promise<void> {
     // Starting queue
     await this.queue.startTasks();
     // If already started, do nothing
@@ -286,7 +291,7 @@ class Scheduler {
   }
 
   @ready(new tasksErrors.ErrorSchedulerNotRunning(), false, ['stopping'])
-  private async stopProcessing(): Promise<void> {
+  public async stopProcessing(): Promise<void> {
     const stopQueueP = this.queue.stopTasks();
     clearTimeout(this.processingTimer);
     delete this.processingTimer;
@@ -373,7 +378,7 @@ class Scheduler {
     // throw and error if the task does not exist
     // throw an error if the handler does not exist.
 
-    await this.db.withTransactionF(async (tran) => {
+    return await this.db.withTransactionF(async (tran) => {
       // Getting task information
       const taskData = await this.getTaskData_(taskId, tran);
       if (taskData == null) throw Error('TEMP task not found');
@@ -386,7 +391,16 @@ class Scheduler {
       // Add the promise to the map and hook any lifecycle stuff
       const taskIdString = taskId.toMultibase('base32hex') as TaskIdString;
       this.promises.set(taskIdString, prom);
-      return prom.finally(async () => {
+      return prom.then(
+        (value) => {
+          this.taskEvents.emit(taskIdString, value);
+          return value;
+        },
+        (reason) => {
+          this.taskEvents.emit(taskIdString, reason);
+          throw reason;
+        }
+      ).finally(async () => {
         this.promises.delete(taskIdString);
         const taskTimestampKeybuffer = tasksUtils.makeTaskTimestampKey(
           taskData.timestamp + taskData.delay,
@@ -397,7 +411,7 @@ class Scheduler {
           await tran.del([...this.schedulerTasksDbPath, taskId.toBuffer()]);
           if (taskData.taskGroup != null) {
             await tran.del([
-              ...this.schedulerTasksDbPath,
+              ...this.schedulerGroupsDbPath,
               ...taskData.taskGroup,
               taskTimestampKeybuffer,
             ]);
@@ -517,18 +531,34 @@ class Scheduler {
   //   return taskP;
   // }
 
+  // FIXME: this needs to be synchronious and can't throw directly
+  //  The promise itself needs to throw
   @ready(new tasksErrors.ErrorSchedulerNotRunning())
-  public getTaskP(taskId: TaskId) {
-    // This will only get an active promise
-    // if a promise is still scheduled then so far as we can tell it doesn't exist
-    // We may have to make an event system that emits when a task is made active
-    // Then we can wait for that even and then retrieve it from the active tasks
-    // I think we should be able to hook a cancel on this as well
+  public async getTaskP(taskId: TaskId): Promise<{taskP: Promise<any>}> {
     const taskIdString = taskId.toMultibase('base32hex') as TaskIdString;
-    const taskP = this.promises.get(taskIdString);
-    if (taskP == null) throw Error('TEMP task not running');
+    // This will return a task promise if it already exists
+    const existingTaskPromise = this.taskPromises.get(taskIdString);
+    console.log('existingTaskPromise', existingTaskPromise);
+    if (existingTaskPromise != null) return existingTaskPromise;
 
-    return taskP;
+    // If not task promise exists then with will check if the task exists
+    const taskData = await this.db.get<TaskData>([...this.schedulerTasksDbPath, taskId.toBuffer() ])
+    console.log('taskData', taskData);
+    if (taskData == null) throw Error('TEMP task not found');
+
+    // If the task exist then it will create the task promise and return that
+    const newTaskPromise = new Promise( (resolve, reject) => {
+      this.taskEvents.once(taskIdString, (...results) => {
+        console.log(results);
+        if (results[0] instanceof Error) reject(results[0]);
+        else resolve(results);
+      })
+    }).finally(() => {
+      this.taskPromises.delete(taskIdString)
+    })
+    this.taskPromises.set(taskIdString, newTaskPromise);
+    console.log('newTaskPromise', newTaskPromise);
+    return { taskP: newTaskPromise };
   }
 
   /*
