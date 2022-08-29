@@ -7,7 +7,6 @@ import {
   AsyncGeneratorFunction,
 } from '../../utils';
 
-
 // @timed(100, TimeoutError)
 // do we "construct" the exception
 // or should we pass in the Error()
@@ -36,11 +35,13 @@ import {
 function checkContext(
   context: any,
   targetName: string,
-  key: string | symbol
-): asserts context is {
-  timer: Timer | undefined;
-  signal: AbortSignal | undefined
-} | undefined {
+  key: string | symbol,
+): asserts context is
+  | {
+      timer: Timer | undefined;
+      signal: AbortSignal | undefined;
+    }
+  | undefined {
   if (
     context !== undefined &&
     (typeof context !== 'object' || context === null)
@@ -64,18 +65,21 @@ function checkContext(
   }
 }
 
-
 /**
  * Timed method decorator
  */
 function timed(
   delay: number = Infinity,
-  errorTimeout: new () => Error = contextsErrors.ErrorContextsTimerExpired
+  errorTimeout: new () => Error = contextsErrors.ErrorContextsTimerExpired,
 ) {
-  return <T extends (...params: Array<any>) => Promise<unknown> | Generator | AsyncGenerator>(
+  return <
+    T extends (
+      ...params: Array<any>
+    ) => Promise<unknown> | Generator | AsyncGenerator,
+  >(
     target: any,
     key: string | symbol,
-    descriptor: TypedPropertyDescriptor<T>
+    descriptor: TypedPropertyDescriptor<T>,
   ): TypedPropertyDescriptor<T> => {
     // Target is instance prototype for instance methods
     // or the class prototype for static methods
@@ -93,8 +97,7 @@ function timed(
       );
     }
 
-
-    // const checkContext = (context: any): asserts context is { timer: Timer | undefined; signal: AbortSignal | undefined } | undefined => {
+    // Const checkContext = (context: any): asserts context is { timer: Timer | undefined; signal: AbortSignal | undefined } | undefined => {
     // };
 
     const wrap = (that: any, params: Array<any>) => {
@@ -116,7 +119,7 @@ function timed(
         params[contextIndex].timer = timer;
         const result = f.apply(that, params);
 
-        // ok an error timeout
+        // Ok an error timeout
         // it sent in
         // it may then abort in a number of ways
         // who knows
@@ -127,7 +130,7 @@ function timed(
         // if you are "cancelling" the timeout
         // i don't think this was the same
 
-        class ErrorX extends Error { }
+        class ErrorX extends Error {}
 
         timer.catch((e) => {
           // Ignore cancellation

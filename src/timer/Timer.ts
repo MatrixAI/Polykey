@@ -1,12 +1,14 @@
 import type { PromiseCancellableController } from '@matrixai/async-cancellable';
-import { PromiseCancellable } from '@matrixai/async-cancellable';
 import { performance } from 'perf_hooks';
+import { PromiseCancellable } from '@matrixai/async-cancellable';
 
 /**
  * Unlike `setTimeout` or `setInterval`,
  * this will not keep the NodeJS event loop alive
  */
-class Timer<T = void> implements Pick<PromiseCancellable<T>, keyof PromiseCancellable<T>> {
+class Timer<T = void>
+  implements Pick<PromiseCancellable<T>, keyof PromiseCancellable<T>>
+{
   /**
    * Delay in milliseconds
    * This may be `Infinity`
@@ -80,27 +82,26 @@ class Timer<T = void> implements Pick<PromiseCancellable<T>, keyof PromiseCancel
     handler?: (signal: AbortSignal) => T | PromiseLike<T>,
     delay?: number,
     lazy?: boolean,
-    controller?: PromiseCancellableController
+    controller?: PromiseCancellableController,
   );
+  constructor(opts?: {
+    handler?: (signal: AbortSignal) => T | PromiseLike<T>;
+    delay?: number;
+    lazy?: boolean;
+    controller?: PromiseCancellableController;
+  });
   constructor(
-    opts?: {
-      handler?: (signal: AbortSignal) => T | PromiseLike<T>;
-      delay?: number;
-      lazy?: boolean;
-      controller?: PromiseCancellableController;
-    }
-  );
-  constructor(
-    handlerOrOpts?: ((signal: AbortSignal) => T | PromiseLike<T>) |
-      {
-        handler?: (signal: AbortSignal) => T | PromiseLike<T>;
-        delay?: number;
-        lazy?: boolean;
-        controller?: PromiseCancellableController;
-      },
+    handlerOrOpts?:
+      | ((signal: AbortSignal) => T | PromiseLike<T>)
+      | {
+          handler?: (signal: AbortSignal) => T | PromiseLike<T>;
+          delay?: number;
+          lazy?: boolean;
+          controller?: PromiseCancellableController;
+        },
     delay: number = 0,
     lazy: boolean = false,
-    controller?: PromiseCancellableController
+    controller?: PromiseCancellableController,
   ) {
     let handler: ((signal: AbortSignal) => T | PromiseLike<T>) | undefined;
     if (typeof handlerOrOpts === 'function') {
@@ -129,16 +130,13 @@ class Timer<T = void> implements Pick<PromiseCancellable<T>, keyof PromiseCancel
       abortController.signal.addEventListener(
         'abort',
         () => void this.reject(abortController.signal.reason),
-        { once: true }
+        { once: true },
       );
     }
-    this.p = new PromiseCancellable<T>(
-      (resolve, reject) => {
-        this.resolveP = resolve.bind(this.p);
-        this.rejectP = reject.bind(this.p);
-      },
-      abortController
-    );
+    this.p = new PromiseCancellable<T>((resolve, reject) => {
+      this.resolveP = resolve.bind(this.p);
+      this.rejectP = reject.bind(this.p);
+    }, abortController);
     this.abortController = abortController;
     // If the delay is Infinity, there is no `setTimeout`
     // therefore this promise will never resolve
@@ -213,7 +211,7 @@ class Timer<T = void> implements Pick<PromiseCancellable<T>, keyof PromiseCancel
       | ((reason: any, signal: AbortSignal) => TResult2 | PromiseLike<TResult2>)
       | undefined
       | null,
-    controller?: PromiseCancellableController
+    controller?: PromiseCancellableController,
   ): PromiseCancellable<TResult1 | TResult2> {
     return this.p.then(onFulfilled, onRejected, controller);
   }
@@ -223,7 +221,7 @@ class Timer<T = void> implements Pick<PromiseCancellable<T>, keyof PromiseCancel
       | ((reason: any, signal: AbortSignal) => TResult | PromiseLike<TResult>)
       | undefined
       | null,
-    controller?: PromiseCancellableController
+    controller?: PromiseCancellableController,
   ): PromiseCancellable<T | TResult> {
     return this.p.catch(onRejected, controller);
   }
@@ -253,7 +251,10 @@ class Timer<T = void> implements Pick<PromiseCancellable<T>, keyof PromiseCancel
   }
 
   protected async reject(reason?: any): Promise<void> {
-    if ((this._status === 'settling' && this.lazy) || this._status === 'settled') {
+    if (
+      (this._status === 'settling' && this.lazy) ||
+      this._status === 'settled'
+    ) {
       return;
     }
     this._status = 'settling';

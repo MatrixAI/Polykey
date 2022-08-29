@@ -1,4 +1,3 @@
-import type Queue from './Scheduler';
 import type {
   TaskId,
   TaskData,

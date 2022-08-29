@@ -60,10 +60,14 @@ describe(Timer.name, () => {
           return;
         }
         const timeout = setTimeout(() => resolve('handler result'), 100);
-        signal.addEventListener('abort', () => {
-          clearTimeout(timeout);
-          reject('handler abort during');
-        }, { once: true });
+        signal.addEventListener(
+          'abort',
+          () => {
+            clearTimeout(timeout);
+            reject('handler abort during');
+          },
+          { once: true },
+        );
       });
       return p;
     });
@@ -93,10 +97,14 @@ describe(Timer.name, () => {
           return;
         }
         const timeout = setTimeout(() => resolve('handler result'), 100);
-        signal.addEventListener('abort', () => {
-          clearTimeout(timeout);
-          reject('handler abort during');
-        }, { once: true });
+        signal.addEventListener(
+          'abort',
+          () => {
+            clearTimeout(timeout);
+            reject('handler abort during');
+          },
+          { once: true },
+        );
       });
       return p;
     });
@@ -163,9 +171,14 @@ describe(Timer.name, () => {
   });
   test('custom signal handler ignores default rejection', async () => {
     const onabort = jest.fn();
-    const t = new Timer(() => 1, 50, false, (signal) => {
-      signal.onabort = onabort;
-    });
+    const t = new Timer(
+      () => 1,
+      50,
+      false,
+      (signal) => {
+        signal.onabort = onabort;
+      },
+    );
     t.cancel('abort');
     await expect(t).resolves.toBe(1);
     expect(onabort).toBeCalled();
