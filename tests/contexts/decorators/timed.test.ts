@@ -238,6 +238,7 @@ describe('context/decorators/timed', () => {
       await expect(c.f()).rejects.toBeInstanceOf(
         contextsErrors.ErrorContextsTimedExpiry,
       );
+      expect(timeout).toBeUndefined();
     });
     test('promise function expiry and early rejection', async () => {
       let timeout: ReturnType<typeof setTimeout> | undefined;
@@ -273,4 +274,7 @@ describe('context/decorators/timed', () => {
   });
   test.todo('timed decorator requires context decorator');
   test.todo('timed decorator fails on invalid context');
+  test.todo('context timer propagation');
+  test.todo('context signal propagation');
+  test.todo('context timer & signal propagation');
 });

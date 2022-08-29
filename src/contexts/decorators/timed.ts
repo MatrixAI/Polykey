@@ -161,8 +161,7 @@ function timed(
           params,
         );
         try {
-          const result = await f.apply(this, params);
-          return result;
+          return await f.apply(this, params);
         } finally {
           teardownContext();
         }
