@@ -76,6 +76,7 @@ class Queue {
   protected activeTaskLoop: Promise<void> | null = null;
   protected taskLoopPlug: PromiseDeconstructed<void> | null = null;
   protected taskLoopEnding: boolean;
+  // FIXME: might not be needed
   protected cleanUpLock: RWLockReader = new RWLockReader();
 
   /**

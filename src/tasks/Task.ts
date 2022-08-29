@@ -7,6 +7,7 @@ import type {
   TaskPriority,
   TaskHandler,
   TaskParameters,
+  TaskGroup,
 } from './types';
 import type { DeepReadonly } from '../types';
 import type Scheduler from './Scheduler';
@@ -17,6 +18,7 @@ class Task<T> {
   public readonly parameters: DeepReadonly<TaskParameters>;
   public readonly timestamp: TaskTimestamp;
   public readonly delay: TaskDelay;
+  public readonly taskGroup: TaskGroup | undefined;
   public readonly priority: TaskPriority;
 
   // Protected queue: Queue;
@@ -30,6 +32,7 @@ class Task<T> {
     parameters: TaskParameters,
     timestamp: TaskTimestamp,
     delay: TaskDelay,
+    taskGroup: TaskGroup | undefined,
     priority: TaskPriority,
     // TaskPromise: Promise<T>,
   ) {
@@ -43,6 +46,7 @@ class Task<T> {
     this.parameters = parameters;
     this.timestamp = timestamp;
     this.delay = delay;
+    this.taskGroup = taskGroup;
     this.priority = priority;
     this.scheduler = scheduler;
     // This.taskPromise = taskPromise;
@@ -56,6 +60,7 @@ class Task<T> {
       parameters: JSON.parse(JSON.stringify(this.parameters)),
       timestamp: this.timestamp,
       delay: this.delay,
+      taskGroup: this.taskGroup,
       priority: this.priority,
     };
   }

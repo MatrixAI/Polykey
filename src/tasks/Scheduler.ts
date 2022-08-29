@@ -17,7 +17,13 @@ import {
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import lexi from 'lexicographic-integer';
 import Task from './Task';
-import { TaskDelay, TaskHandlerId, TaskId, TaskParameters } from './types';
+import {
+  TaskDelay,
+  TaskHandlerId,
+  TaskId,
+  TaskParameters,
+  TaskGroup,
+} from './types';
 import * as tasksUtils from './utils';
 import * as tasksErrors from './errors';
 import Queue from './Queue';
@@ -108,6 +114,15 @@ class Scheduler {
    * `time/{lexi(TaskTimestamp + TaskDelay)} -> {raw(TaskId)}`
    */
   protected schedulerTimeDbPath: LevelPath = [...this.schedulerDbPath, 'time'];
+
+  /**
+   * Tasks by groups
+   * `groups/...taskGroup: Array<string> -> {raw(TaskId)}`
+   */
+  protected schedulerGroupsDbPath: LevelPath = [
+    ...this.schedulerDbPath,
+    'groups',
+  ];
 
   // /**
   //  * Tasks queued for execution
@@ -353,7 +368,7 @@ class Scheduler {
     await this.queue.pushTask(taskId, taskTimestampKeyBuffer, tran);
   }
 
-  private async handleTask(taskId) {
+  private async handleTask(taskId: TaskId) {
     // Get the task information and use the relevant handler
     // throw and error if the task does not exist
     // throw an error if the handler does not exist.
@@ -369,12 +384,25 @@ class Scheduler {
       const prom = handler(...taskData.parameters);
 
       // Add the promise to the map and hook any lifecycle stuff
-      const taskIdString = taskId.toMultibase('hex') as TaskIdString;
+      const taskIdString = taskId.toMultibase('base32hex') as TaskIdString;
       this.promises.set(taskIdString, prom);
-      prom.finally(async () => {
+      return prom.finally(async () => {
         this.promises.delete(taskIdString);
-        // Using DB here, clean up is separate transaction
-        await this.db.del([...this.schedulerTasksDbPath, taskId.toBuffer()]);
+        const taskTimestampKeybuffer = tasksUtils.makeTaskTimestampKey(
+          taskData.timestamp + taskData.delay,
+          taskId,
+        );
+        // Cleaning up is a separate transaction
+        await this.db.withTransactionF(async (tran) => {
+          await tran.del([...this.schedulerTasksDbPath, taskId.toBuffer()]);
+          if (taskData.taskGroup != null) {
+            await tran.del([
+              ...this.schedulerTasksDbPath,
+              ...taskData.taskGroup,
+              taskTimestampKeybuffer,
+            ]);
+          }
+        });
       });
     });
   }
@@ -549,12 +577,21 @@ class Scheduler {
     parameters: TaskParameters = [],
     delay: TaskDelay = 0,
     priority: number = 0,
+    taskGroup?: TaskGroup,
     lazy: boolean = false,
     tran?: DBTransaction,
   ): Promise<Task<any> | undefined> {
     if (tran == null) {
       return this.db.withTransactionF((tran) =>
-        this.scheduleTask(handlerId, parameters, delay, priority, lazy, tran),
+        this.scheduleTask(
+          handlerId,
+          parameters,
+          delay,
+          priority,
+          taskGroup,
+          lazy,
+          tran,
+        ),
       );
     }
 
@@ -567,11 +604,12 @@ class Scheduler {
     // with subsecond fractionals, multiply it by 1000 gives us milliseconds
     const taskTimestamp = Math.trunc(extractTs(taskId) * 1000) as TaskTimestamp;
     const taskPriority = tasksUtils.toPriority(priority);
-    const taskData = {
+    const taskData: TaskData = {
       handlerId,
       parameters,
       timestamp: taskTimestamp,
       delay,
+      taskGroup,
       priority: taskPriority,
     };
 
@@ -583,16 +621,24 @@ class Scheduler {
     // Save the last task ID
     await tran.put(this.schedulerLastTaskIdPath, taskIdBuffer, true);
     // Save the scheduled time
-    const taskScheduledLexi = tasksUtils.makeTaskTimestampKey(
+    const taskTimestampKeyBuffer = tasksUtils.makeTaskTimestampKey(
       startTime,
       taskId,
     );
-    tasksUtils.splitTaskTimestampKey(taskScheduledLexi);
     await tran.put(
-      [...this.schedulerTimeDbPath, taskScheduledLexi],
+      [...this.schedulerTimeDbPath, taskTimestampKeyBuffer],
       taskId.toBuffer(),
       true,
     );
+
+    // Adding to group
+    if (taskGroup != null) {
+      await tran.put(
+        [...this.schedulerGroupsDbPath, ...taskGroup, taskTimestampKeyBuffer],
+        taskIdBuffer,
+        true,
+      );
+    }
 
     if (!lazy) {
       // Task().then(onFullfill, onReject).finally(onFinally)
@@ -657,6 +703,7 @@ class Scheduler {
       parameters,
       taskTimestamp,
       delay,
+      taskGroup,
       taskPriority,
     );
   }
@@ -671,6 +718,30 @@ class Scheduler {
     );
     if (lastTaskIdBuffer == null) return;
     return IdInternal.fromBuffer<TaskId>(lastTaskIdBuffer);
+  }
+
+  @ready(new tasksErrors.ErrorSchedulerNotRunning())
+  public async allTasksSettled() {
+    return await this.queue.allConcurrentSettled();
+  }
+
+  @ready(new tasksErrors.ErrorSchedulerNotRunning())
+  public async *getGroupTasks(
+    taskGroup: TaskGroup,
+    tran?: DBTransaction,
+  ): AsyncGenerator<TaskId> {
+    if (tran == null) {
+      return yield* this.db.withTransactionG((tran) =>
+        this.getGroupTasks(taskGroup, tran),
+      );
+    }
+
+    for await (const [, taskIdBuffer] of tran.iterator([
+      ...this.schedulerGroupsDbPath,
+      ...taskGroup,
+    ])) {
+      yield IdInternal.fromBuffer<TaskId>(taskIdBuffer);
+    }
   }
 }
 

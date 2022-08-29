@@ -24,6 +24,11 @@ type TaskParameters = Array<any>;
 type TaskPriority = Opaque<'TaskPriority', number>;
 
 /**
+ * Task group, array of strings
+ */
+type TaskGroup = Array<string>;
+
+/**
  * Task data to be persisted
  */
 type TaskData = {
@@ -31,6 +36,7 @@ type TaskData = {
   parameters: TaskParameters;
   timestamp: TaskTimestamp;
   delay: TaskDelay;
+  taskGroup: TaskGroup | undefined;
   priority: TaskPriority;
 };
 
@@ -91,6 +97,7 @@ export type {
   TaskIdString,
   TaskIdEncoded,
   // Task,
+  TaskGroup,
   TaskData,
   TaskInfo,
   TaskHandlerId,
