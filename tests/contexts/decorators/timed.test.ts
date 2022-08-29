@@ -130,6 +130,47 @@ describe('context/decorators/timed', () => {
     expect(x[s]).toBeInstanceOf(Function);
     expect(x[s].name).toBe('[sym]');
   });
+  test('timed decorator requires context decorator', async () => {
+    expect(() => {
+      class C {
+        @timed(50)
+        async f(
+          ctx?: { timer: Timer; signal: AbortSignal },
+        ): Promise<string> {
+          return 'hello world';
+        }
+      }
+      return C;
+    }).toThrow(TypeError);
+  });
+  test('timed decorator fails on invalid context', async () => {
+    await expect(async () => {
+      class C {
+        @timed(50)
+        async f(
+          @context ctx?: { timer: Timer; signal: AbortSignal },
+        ): Promise<string> {
+          return 'hello world';
+        }
+      }
+      const c = new C();
+      // @ts-ignore
+      await c.f({ timer: 1 });
+    }).rejects.toThrow(TypeError);
+    await expect(async () => {
+      class C {
+        @timed(50)
+        async f(
+          @context ctx?: { timer: Timer; signal: AbortSignal },
+        ): Promise<string> {
+          return 'hello world';
+        }
+      }
+      const c = new C();
+      // @ts-ignore
+      await c.f({ signal: 'lol' });
+    }).rejects.toThrow(TypeError);
+  });
   describe('timed decorator expiry', () => {
     // Timed decorator does not automatically reject the promise
     // it only signals that it is aborted
@@ -272,8 +313,6 @@ describe('context/decorators/timed', () => {
       expect(timeout).toBeUndefined();
     });
   });
-  test.todo('timed decorator requires context decorator');
-  test.todo('timed decorator fails on invalid context');
   test.todo('context timer propagation');
   test.todo('context signal propagation');
   test.todo('context timer & signal propagation');

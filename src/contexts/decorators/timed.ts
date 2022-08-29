@@ -155,7 +155,7 @@ function timed(
         const teardownContext = setupContext(
           delay,
           errorTimeout,
-          target,
+          targetName,
           key,
           contextIndex,
           params,
@@ -171,7 +171,7 @@ function timed(
         const teardownContext = setupContext(
           delay,
           errorTimeout,
-          target,
+          targetName,
           key,
           contextIndex,
           params,
@@ -187,7 +187,7 @@ function timed(
         const teardownContext = setupContext(
           delay,
           errorTimeout,
-          target,
+          targetName,
           key,
           contextIndex,
           params,
@@ -203,7 +203,7 @@ function timed(
         const teardownContext = setupContext(
           delay,
           errorTimeout,
-          target,
+          targetName,
           key,
           contextIndex,
           params,
