@@ -1,14 +1,18 @@
 import context from '@/contexts/decorators/context';
 import timed from '@/contexts/decorators/timed';
+import * as contextsErrors from '@/contexts/errors';
 import Timer from '@/timer/Timer';
 import {
+  sleep,
   AsyncFunction,
   GeneratorFunction,
   AsyncGeneratorFunction,
 } from '@/utils';
 
 describe('context/decorators/timed', () => {
-  test('timed decorator', async () => {
+  test('timed decorator syntax for functions returning promises, async functions, generators, and async generators', async () => {
+    // Decorators cannot change type signatures
+    // use overloading to change required context parameter to optional context parameter
     const s = Symbol('sym');
     class X {
       a(
@@ -126,4 +130,129 @@ describe('context/decorators/timed', () => {
     expect(x[s]).toBeInstanceOf(Function);
     expect(x[s].name).toBe('[sym]');
   });
+  describe('timed decorator expiry', () => {
+    // Timed decorator does not automatically reject the promise
+    // it only signals that it is aborted
+    // it is up to the function to decide how to reject
+    test('async function expiry', async () => {
+      class C {
+        /**
+         * Async function
+         */
+        @timed(50)
+        async f(@context ctx?: { timer: Timer, signal: AbortSignal }): Promise<string> {
+          expect(ctx!.signal.aborted).toBe(false);
+          await sleep(15);
+          expect(ctx!.signal.aborted).toBe(false);
+          await sleep(40);
+          expect(ctx!.signal.aborted).toBe(true);
+          expect(ctx!.signal.reason).toBeInstanceOf(contextsErrors.ErrorContextsTimerExpired);
+          return 'hello world';
+        }
+      }
+      const c = new C;
+      await expect(c.f()).resolves.toBe('hello world');
+    });
+    test('async function expiry with custom error', async () => {
+      class ErrorCustom extends Error {}
+      class C {
+        /**
+         * Async function
+         */
+        @timed(50, ErrorCustom)
+        async f(@context ctx?: { timer: Timer, signal: AbortSignal }): Promise<string> {
+          expect(ctx!.signal.aborted).toBe(false);
+          await sleep(15);
+          expect(ctx!.signal.aborted).toBe(false);
+          await sleep(40);
+          expect(ctx!.signal.aborted).toBe(true);
+          expect(ctx!.signal.reason).toBeInstanceOf(ErrorCustom);
+          throw ctx!.signal.reason;
+        }
+      }
+      const c = new C;
+      await expect(c.f()).rejects.toBeInstanceOf(ErrorCustom);
+    });
+    test('promise function expiry', async () => {
+      class C {
+        /**
+         * Regular function returning promise
+         */
+        @timed(50)
+        f(@context ctx?: { timer: Timer; signal: AbortSignal }): Promise<string> {
+          expect(ctx!.signal.aborted).toBe(false);
+          return sleep(15)
+            .then(() => {
+              expect(ctx!.signal.aborted).toBe(false);
+            })
+            .then(() => sleep(40))
+            .then(() => {
+              expect(ctx!.signal.aborted).toBe(true);
+              expect(ctx!.signal.reason).toBeInstanceOf(contextsErrors.ErrorContextsTimerExpired);
+            })
+            .then(() => {
+              return 'hello world';
+            });
+        }
+      }
+      const c = new C;
+      await expect(c.f()).resolves.toBe('hello world');
+    });
+    test('promise function expiry and late rejection', async () => {
+      let timeout: ReturnType<typeof setTimeout> | undefined;
+      class C {
+        /**
+         * Regular function that actually rejects
+         * when the signal is aborted
+         */
+        @timed(50)
+        f(@context ctx?: { timer: Timer; signal: AbortSignal }): Promise<string> {
+          return new Promise((resolve, reject) => {
+            if (ctx!.signal.aborted) {
+              reject(ctx!.signal.reason);
+            }
+            timeout = setTimeout(() => {
+              resolve('hello world');
+            }, 50000);
+            ctx!.signal.onabort = () => {
+              clearTimeout(timeout);
+              timeout = undefined;
+              reject(ctx!.signal.reason);
+            };
+          });
+        }
+      }
+      const c = new C();
+      await expect(c.f()).rejects.toBeInstanceOf(contextsErrors.ErrorContextsTimerExpired);
+    });
+    test('promise function expiry and early rejection', async () => {
+      let timeout: ReturnType<typeof setTimeout> | undefined;
+      class C {
+        /**
+         * Regular function that actually rejects immediately
+         */
+        @timed(0)
+        f(@context ctx?: { timer: Timer; signal: AbortSignal }): Promise<string> {
+          return new Promise((resolve, reject) => {
+            if (ctx!.signal.aborted) {
+              reject(ctx!.signal.reason);
+            }
+            timeout = setTimeout(() => {
+              resolve('hello world');
+            }, 50000);
+            ctx!.signal.onabort = () => {
+              clearTimeout(timeout);
+              timeout = undefined;
+              reject(ctx!.signal.reason);
+            };
+          });
+        }
+      }
+      const c = new C();
+      await expect(c.f()).rejects.toBeInstanceOf(contextsErrors.ErrorContextsTimerExpired);
+      expect(timeout).toBeUndefined();
+    });
+  });
+  test.todo('timed decorator requires context decorator');
+  test.todo('timed decorator fails on invalid context');
 });
