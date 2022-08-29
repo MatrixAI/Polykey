@@ -149,7 +149,7 @@ describe('context/decorators/timed', () => {
           await sleep(40);
           expect(ctx!.signal.aborted).toBe(true);
           expect(ctx!.signal.reason).toBeInstanceOf(
-            contextsErrors.ErrorContextsTimerExpired,
+            contextsErrors.ErrorContextsTimedExpiry,
           );
           return 'hello world';
         }
@@ -197,7 +197,7 @@ describe('context/decorators/timed', () => {
             .then(() => {
               expect(ctx!.signal.aborted).toBe(true);
               expect(ctx!.signal.reason).toBeInstanceOf(
-                contextsErrors.ErrorContextsTimerExpired,
+                contextsErrors.ErrorContextsTimedExpiry,
               );
             })
             .then(() => {
@@ -236,7 +236,7 @@ describe('context/decorators/timed', () => {
       }
       const c = new C();
       await expect(c.f()).rejects.toBeInstanceOf(
-        contextsErrors.ErrorContextsTimerExpired,
+        contextsErrors.ErrorContextsTimedExpiry,
       );
     });
     test('promise function expiry and early rejection', async () => {
@@ -266,7 +266,7 @@ describe('context/decorators/timed', () => {
       }
       const c = new C();
       await expect(c.f()).rejects.toBeInstanceOf(
-        contextsErrors.ErrorContextsTimerExpired,
+        contextsErrors.ErrorContextsTimedExpiry,
       );
       expect(timeout).toBeUndefined();
     });

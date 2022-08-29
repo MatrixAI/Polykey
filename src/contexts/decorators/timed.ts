@@ -128,7 +128,7 @@ function setupContext(
  */
 function timed(
   delay: number = Infinity,
-  errorTimeout: new () => Error = contextsErrors.ErrorContextsTimerExpired,
+  errorTimeout: new () => Error = contextsErrors.ErrorContextsTimedExpiry,
 ): TimedDecorator {
   return (
     target: any,
