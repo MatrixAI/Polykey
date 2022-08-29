@@ -11,19 +11,20 @@ describe('context/decorators/timed', () => {
   test('timed decorator', async () => {
     const s = Symbol('sym');
     class X {
-      // a(
-      //   ctx?: { signal?: AbortSignal; timer?: Timer },
-      //   check?: (t: Timer) => any,
-      // ): void;
-      // @timed(1000)
-      // a(
-      //   @context ctx: { signal: AbortSignal; timer: Timer },
-      //   check?: (t: Timer) => any,
-      // ): void {
-      //   expect(ctx.signal).toBeInstanceOf(AbortSignal);
-      //   expect(ctx.timer).toBeInstanceOf(Timer);
-      //   if (check != null) check(ctx.timer);
-      // }
+      a(
+        ctx?: { signal?: AbortSignal; timer?: Timer },
+        check?: (t: Timer) => any,
+      ): Promise<void>;
+      @timed(1000)
+      a(
+        @context ctx: { signal: AbortSignal; timer: Timer },
+        check?: (t: Timer) => any,
+      ): Promise<void> {
+        expect(ctx.signal).toBeInstanceOf(AbortSignal);
+        expect(ctx.timer).toBeInstanceOf(Timer);
+        if (check != null) check(ctx.timer);
+        return new Promise((resolve) => void resolve());
+      }
 
       b(
         ctx?: { signal?: AbortSignal; timer?: Timer },
@@ -67,28 +68,29 @@ describe('context/decorators/timed', () => {
         if (check != null) check(ctx.timer);
       }
 
-      // [s](
-      //   ctx?: { signal?: AbortSignal; timer?: Timer },
-      //   check?: (t: Timer) => any,
-      // ): void;
-      // @timed()
-      // [s](
-      //   @context ctx: { signal: AbortSignal; timer: Timer },
-      //   check?: (t: Timer) => any,
-      // ): void {
-      //   expect(ctx.signal).toBeInstanceOf(AbortSignal);
-      //   expect(ctx.timer).toBeInstanceOf(Timer);
-      //   if (check != null) check(ctx.timer);
-      // }
+      [s](
+        ctx?: { signal?: AbortSignal; timer?: Timer },
+        check?: (t: Timer) => any,
+      ): Promise<void>;
+      @timed()
+      [s](
+        @context ctx: { signal: AbortSignal; timer: Timer },
+        check?: (t: Timer) => any,
+      ): Promise<void> {
+        expect(ctx.signal).toBeInstanceOf(AbortSignal);
+        expect(ctx.timer).toBeInstanceOf(Timer);
+        if (check != null) check(ctx.timer);
+        return new Promise((resolve) => void resolve());
+      }
     }
     const x = new X();
-    // x.a();
-    // x.a({});
-    // x.a({ timer: new Timer({ delay: 100 }) }, (t) => {
-    //   expect(t.delay).toBe(100);
-    // });
-    // expect(x.a).toBeInstanceOf(Function);
-    // expect(x.a.name).toBe('a');
+    await x.a();
+    await x.a({});
+    await x.a({ timer: new Timer({ delay: 100 }) }, (t) => {
+      expect(t.delay).toBe(100);
+    });
+    expect(x.a).toBeInstanceOf(Function);
+    expect(x.a.name).toBe('a');
     await x.b();
     await x.b({});
     await x.b({ timer: new Timer({ delay: 50 }) }, (t) => {
@@ -116,12 +118,12 @@ describe('context/decorators/timed', () => {
     }
     expect(x.d).toBeInstanceOf(AsyncGeneratorFunction);
     expect(x.d.name).toBe('d');
-    // x[s]();
-    // x[s]({});
-    // x[s]({ timer: new Timer({ delay: 250 }) }, (t) => {
-    //   expect(t.delay).toBe(250);
-    // });
-    // expect(x[s]).toBeInstanceOf(Function);
-    // expect(x[s].name).toBe('[sym]');
+    await x[s]();
+    await x[s]({});
+    await x[s]({ timer: new Timer({ delay: 250 }) }, (t) => {
+      expect(t.delay).toBe(250);
+    });
+    expect(x[s]).toBeInstanceOf(Function);
+    expect(x[s].name).toBe('[sym]');
   });
 });
