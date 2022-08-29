@@ -12,17 +12,17 @@ type TimedDecorator = {
   <T extends (...params: Array<any>) => Promise<any>>(
     target: any,
     key: string | symbol,
-    descriptor: TypedPropertyDescriptor<T>
+    descriptor: TypedPropertyDescriptor<T>,
   ): TypedPropertyDescriptor<T>;
   <T extends (...params: Array<any>) => Generator<any, any, any>>(
     target: any,
     key: string | symbol,
-    descriptor: TypedPropertyDescriptor<T>
+    descriptor: TypedPropertyDescriptor<T>,
   ): TypedPropertyDescriptor<T>;
   <T extends (...params: Array<any>) => AsyncGenerator<any, any, any>>(
     target: any,
     key: string | symbol,
-    descriptor: TypedPropertyDescriptor<T>
+    descriptor: TypedPropertyDescriptor<T>,
   ): TypedPropertyDescriptor<T>;
 };
 
@@ -42,7 +42,7 @@ function setupContext(
 ): () => void {
   let context: Partial<ContextTimed> = params[contextIndex];
   if (context === undefined) {
-    context = {}
+    context = {};
     params[contextIndex] = context;
   }
   // Runtime type check on the context parameter
@@ -56,16 +56,16 @@ function setupContext(
       `\`${targetName}.${key.toString()}\` decorated \`@context\` parameter's \`timer\` property is not an instance of \`Timer\``,
     );
   }
-  if (context.signal !== undefined && !(context.signal instanceof AbortSignal)) {
+  if (
+    context.signal !== undefined &&
+    !(context.signal instanceof AbortSignal)
+  ) {
     throw new TypeError(
       `\`${targetName}.${key.toString()}\` decorated \`@context\` parameter's \`signal\` property is not an instance of \`AbortSignal\``,
     );
   }
   // Mutating the `context` parameter
-  if (
-    context.timer === undefined &&
-    context.signal === undefined
-  ) {
+  if (context.timer === undefined && context.signal === undefined) {
     const abortController = new AbortController();
     const timer = new Timer(
       () => void abortController.abort(new errorTimeout()),
@@ -88,7 +88,8 @@ function setupContext(
       delay,
     );
     // Chain the upstream abort signal to this context
-    const signalHandler = () => void abortController.abort(context.signal!.reason);
+    const signalHandler = () =>
+      void abortController.abort(context.signal!.reason);
     context.signal.addEventListener('abort', signalHandler);
     // Overwrite the signal property with this context's `AbortController.signal`
     context.signal = abortController.signal;
@@ -99,25 +100,18 @@ function setupContext(
       void timer.catch(() => {});
       timer.cancel();
     };
-  } else if (
-    context.timer instanceof Timer &&
-    context.signal === undefined
-  ) {
+  } else if (context.timer instanceof Timer && context.signal === undefined) {
     const abortController = new AbortController();
     let finished = false;
     // If the timer resolves, then abort the target function
-    context.timer.then(
-      (r: any, s: AbortSignal) => {
-        // If the timer is aborted after it resolves
-        // then don't bother aborting the target function
-        if (!finished || !s.aborted) {
-          abortController.abort(
-            new errorTimeout(),
-          );
-        }
-        return r;
+    context.timer.then((r: any, s: AbortSignal) => {
+      // If the timer is aborted after it resolves
+      // then don't bother aborting the target function
+      if (!finished || !s.aborted) {
+        abortController.abort(new errorTimeout());
       }
-    );
+      return r;
+    });
     context.signal = abortController.signal;
     return () => {
       finished = true;
@@ -139,7 +133,7 @@ function timed(
   return (
     target: any,
     key: string | symbol,
-    descriptor: TypedPropertyDescriptor<Function>
+    descriptor: TypedPropertyDescriptor<Function>,
   ) => {
     // Target is instance prototype for instance methods
     // or the class prototype for static methods
