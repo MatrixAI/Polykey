@@ -2,7 +2,6 @@ import type { DB, KeyPath, LevelPath } from '@matrixai/db';
 import type {
   TaskData,
   TaskHandler,
-  TaskPriority,
   TaskTimestamp,
   TaskIdString,
 } from './types';
@@ -21,6 +20,7 @@ import Task from './Task';
 import { TaskDelay, TaskHandlerId, TaskId, TaskParameters } from './types';
 import * as tasksUtils from './utils';
 import * as tasksErrors from './errors';
+import Queue from './Queue';
 import { promise } from '../utils';
 
 interface Scheduler extends CreateDestroyStartStop {}
@@ -39,6 +39,7 @@ class Scheduler {
     db,
     keyManager,
     // Queue,
+    concurrencyLimit = Number.POSITIVE_INFINITY,
     logger = new Logger(this.name),
     handlers = {},
     delay = false,
@@ -47,6 +48,7 @@ class Scheduler {
     db: DB;
     keyManager: KeyManager;
     // Queue?: Queue;
+    concurrencyLimit: number;
     logger?: Logger;
     handlers?: Record<TaskHandlerId, TaskHandler>;
     delay?: boolean;
@@ -60,7 +62,7 @@ class Scheduler {
     //     logger: logger.getChild(Queue.name),
     //     fresh,
     //   }));
-    const scheduler = new this({ db, keyManager, logger, concurrencyLimit: 2 });
+    const scheduler = new this({ db, keyManager, logger, concurrencyLimit });
     await scheduler.start({ handlers, delay, fresh });
     logger.info(`Created ${this.name}`);
     return scheduler;
@@ -69,7 +71,7 @@ class Scheduler {
   protected logger: Logger;
   protected db: DB;
   protected keyManager: KeyManager;
-  // Protected queue: Queue;
+  protected queue: Queue;
   protected handlers: Map<TaskHandlerId, TaskHandler> = new Map();
   protected promises: Map<TaskIdString, Promise<any>> = new Map();
   protected generateTaskId: () => TaskId;
@@ -125,15 +127,6 @@ class Scheduler {
   //   'handlers',
   // ];
 
-  // these variables are part of the priority queue system
-  /**
-   * Pending tasks to be executed
-   */
-  protected activeTasks: Array<{ taskId: TaskId; priority: TaskPriority }> = [];
-  protected activeDispatchTaskLoop: Promise<void> | null = null;
-  protected dispatchPlug: PromiseDeconstructed<void>;
-  protected dispatchEnding: boolean;
-
   public constructor({
     db,
     keyManager,
@@ -150,7 +143,11 @@ class Scheduler {
     this.logger = logger;
     this.db = db;
     this.keyManager = keyManager;
-    // This.queue = queue;
+    this.queue = new Queue({
+      db,
+      concurrencyLimit,
+      logger,
+    });
   }
 
   public get isProcessing(): boolean {
@@ -185,12 +182,16 @@ class Scheduler {
       this.keyManager.getNodeId(),
       lastTaskId,
     );
+    // Starting queue
+    await this.queue.start({
+      fresh,
+      taskHandler: (taskId) => this.handleTask(taskId),
+    });
     // Setting up processing
     this.pendingProcessing = this.processTaskLoop();
     // Don't start processing if we still want to register handlers
     if (!delay) {
       await this.startProcessing();
-      await this.startDispatching();
     }
     this.logger.info(`Started ${this.constructor.name}`);
   }
@@ -202,7 +203,7 @@ class Scheduler {
    */
   public async stop(): Promise<void> {
     this.logger.info(`Stopping ${this.constructor.name}`);
-    await Promise.allSettled([this.stopProcessing(), this.stopDispatching()]);
+    await this.stopProcessing();
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
@@ -241,6 +242,8 @@ class Scheduler {
    */
   @ready(new tasksErrors.ErrorSchedulerNotRunning(), false, ['starting'])
   private async startProcessing(): Promise<void> {
+    // Starting queue
+    await this.queue.startTasks();
     // If already started, do nothing
     if (this.pendingProcessing == null) {
       this.pendingProcessing = this.processTaskLoop();
@@ -252,7 +255,10 @@ class Scheduler {
       for await (const [keyPath_] of tran.iterator(this.schedulerTimeDbPath, {
         limit: 1,
       })) {
-        time = lexi.unpack(Array.from(keyPath_[0] as Buffer));
+        const [taskTimestampKeyBuffer] = tasksUtils.splitTaskTimestampKey(
+          keyPath_[0] as Buffer,
+        );
+        time = lexi.unpack(Array.from(taskTimestampKeyBuffer));
       }
       // If a task exists we set start the timer for when it's due
       return time;
@@ -266,12 +272,14 @@ class Scheduler {
 
   @ready(new tasksErrors.ErrorSchedulerNotRunning(), false, ['stopping'])
   private async stopProcessing(): Promise<void> {
+    const stopQueueP = this.queue.stopTasks();
     clearTimeout(this.processingTimer);
     delete this.processingTimer;
     this.processingEnding = true;
     this.processingPlug.resolveP();
     await this.pendingProcessing;
     this.pendingProcessing = null;
+    await stopQueueP;
   }
 
   private processTaskLoop(): Promise<void> {
@@ -303,7 +311,11 @@ class Scheduler {
             this.processingPlug = promise();
             return;
           }
-          const time = lexi.unpack(Array.from(keyPath[0] as Buffer));
+          const taskTimestampKeyBuffer = keyPath[0] as Buffer;
+          const [timestampBuffer] = tasksUtils.splitTaskTimestampKey(
+            taskTimestampKeyBuffer,
+          );
+          const time = lexi.unpack(Array.from(timestampBuffer));
           // If task is still waiting it start time then we wait
           if (time > Date.now()) {
             // This.logger.info('waiting for tasks pending tasks');
@@ -314,7 +326,7 @@ class Scheduler {
 
           // Process the task now and remove it from the scheduler
           // this.logger.info('processing task');
-          await this.processTask(tran, taskIdBuffer, keyPath);
+          await this.processTask(tran, taskIdBuffer, taskTimestampKeyBuffer);
         });
       }
       // This.logger.info('processing ending');
@@ -324,13 +336,13 @@ class Scheduler {
   private async processTask(
     tran: DBTransaction,
     taskIdBuffer: Buffer,
-    keyPath: KeyPath,
+    taskTimestampKeyBuffer: Buffer,
   ) {
     const taskData = await tran.get<TaskData>([
       ...this.schedulerTasksDbPath,
       taskIdBuffer,
     ]);
-    await tran.del([...this.schedulerTimeDbPath, ...keyPath]);
+    await tran.del([...this.schedulerTimeDbPath, taskTimestampKeyBuffer]);
     // Await tran.del([...this.schedulerTasksDbPath, taskIdBuffer]);
     const taskId = IdInternal.fromBuffer<TaskId>(taskIdBuffer);
 
@@ -338,57 +350,7 @@ class Scheduler {
     // console.log(taskId.toMultibase('base32hex'), taskData);
     if (taskData == null) throw Error('TEMP ERROR');
 
-    this.dispatchTask(taskId, taskData.priority);
-  }
-
-  private dispatchTask(taskId: TaskId, priority: TaskPriority) {
-    this.logger.info('addingTask');
-    this.activeTasks.push({ taskId, priority });
-    this.dispatchPlug.resolveP();
-  }
-
-  private async startDispatching() {
-    if (this.activeDispatchTaskLoop == null) {
-      this.activeDispatchTaskLoop = this.dispatchTasksLoop();
-    }
-    this.dispatchPlug.resolveP();
-  }
-
-  private async stopDispatching() {
-    this.dispatchEnding = true;
-    this.dispatchPlug.resolveP();
-    await this.activeDispatchTaskLoop;
-    this.activeDispatchTaskLoop = null;
-  }
-
-  private dispatchTasksLoop() {
-    this.logger.info('dispatching set up');
-    this.dispatchPlug = promise();
-    this.dispatchEnding = false;
-    const pace = async () => {
-      await this.dispatchPlug.p;
-      return !this.dispatchEnding;
-    };
-    return (async () => {
-      while (await pace()) {
-        // Pop task and dispatch
-        this.logger.info('getting task');
-        const nextTask = this.activeTasks.pop();
-        if (nextTask == null) {
-          this.logger.info('no task found, waiting');
-          this.dispatchPlug = promise();
-          continue;
-        }
-        this.logger.info('dispatching task');
-        try {
-          await this.handleTask(nextTask.taskId);
-        } catch (e) {
-          // FIXME: ignore for now
-        }
-      }
-      // Await this.concurrency.allConcurrentSettled();
-      this.logger.info('dispatching ending');
-    })();
+    await this.queue.pushTask(taskId, taskTimestampKeyBuffer, tran);
   }
 
   private async handleTask(taskId) {
@@ -404,19 +366,15 @@ class Scheduler {
       const handler = this.getHandler(taskData.handlerId);
       if (handler == null) throw Error('TEMP handler not found');
 
-      // Const { promise: prom } = await this.concurrency.withConcurrency(
-      //   async () => {
-      //     return await handler(...taskData.parameters);
-      //   },
-      // );
-      const prom = new Promise(() => {});
+      const prom = handler(...taskData.parameters);
 
       // Add the promise to the map and hook any lifecycle stuff
       const taskIdString = taskId.toMultibase('hex') as TaskIdString;
       this.promises.set(taskIdString, prom);
       prom.finally(async () => {
         this.promises.delete(taskIdString);
-        await tran.del([...this.schedulerTasksDbPath, taskId.toBuffer()]);
+        // Using DB here, clean up is separate transaction
+        await this.db.del([...this.schedulerTasksDbPath, taskId.toBuffer()]);
       });
     });
   }
@@ -618,14 +576,18 @@ class Scheduler {
     };
 
     const taskIdBuffer = taskId.toBuffer();
-    const startTime = Date.now() + delay;
+    const startTime = taskTimestamp + delay;
 
     // Save the task
     await tran.put([...this.schedulerTasksDbPath, taskIdBuffer], taskData);
     // Save the last task ID
     await tran.put(this.schedulerLastTaskIdPath, taskIdBuffer, true);
     // Save the scheduled time
-    const taskScheduledLexi = Buffer.from(lexi.pack(startTime));
+    const taskScheduledLexi = tasksUtils.makeTaskTimestampKey(
+      startTime,
+      taskId,
+    );
+    tasksUtils.splitTaskTimestampKey(taskScheduledLexi);
     await tran.put(
       [...this.schedulerTimeDbPath, taskScheduledLexi],
       taskId.toBuffer(),

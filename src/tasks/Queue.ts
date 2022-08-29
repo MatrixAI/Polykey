@@ -25,21 +25,21 @@ class Queue {
   public static async createQueue({
     db,
     taskHandler,
-    delay = false,
+    // Delay = false,
     concurrencyLimit = Number.POSITIVE_INFINITY,
     logger = new Logger(this.name),
     fresh = false,
   }: {
     db: DB;
     taskHandler: TaskHandler;
-    delay?: boolean;
+    // Delay?: boolean;
     concurrencyLimit?: number;
     logger?: Logger;
     fresh?: boolean;
   }) {
     logger.info(`Creating ${this.name}`);
-    const queue = new this({ db, concurrencyLimit, taskHandler, logger });
-    await queue.start({ delay, fresh });
+    const queue = new this({ db, concurrencyLimit, logger });
+    await queue.start({ taskHandler, fresh });
     logger.info(`Created ${this.name}`);
     return queue;
   }
@@ -86,32 +86,32 @@ class Queue {
   public constructor({
     db,
     concurrencyLimit,
-    taskHandler,
     logger,
   }: {
     db: DB;
     concurrencyLimit: number;
-    taskHandler: TaskHandler;
     logger: Logger;
   }) {
     this.logger = logger;
     this.concurrencyLimit = concurrencyLimit;
     this.db = db;
-    this.taskHandler = taskHandler;
   }
 
   public async start({
-    delay = false,
+    taskHandler,
+    // Delay = false,
     fresh = false,
   }: {
-    delay?: boolean;
+    taskHandler: TaskHandler;
+    // Delay?: boolean;
     fresh?: boolean;
-  } = {}): Promise<void> {
+  }): Promise<void> {
     this.logger.info(`Starting ${this.constructor.name}`);
     if (fresh) {
       await this.db.clear(this.queueDbPath);
     }
-    if (!delay) await this.startTasks();
+    this.taskHandler = taskHandler;
+    // If (!delay) await this.startTasks();
     this.logger.info(`Started ${this.constructor.name}`);
   }
 
@@ -159,25 +159,24 @@ class Queue {
   @ready(new tasksErrors.ErrorQueueNotRunning())
   public async pushTask(
     taskId: TaskId,
-    timestamp: TaskTimestamp,
+    taskTimestampKey: Buffer,
     tran?: DBTransaction,
-  ) {
+  ): Promise<void> {
     if (tran == null) {
       return this.db.withTransactionF((tran) =>
-        this.pushTask(taskId, timestamp, tran),
+        this.pushTask(taskId, taskTimestampKey, tran),
       );
     }
 
     this.logger.info('adding task');
-    const timestampBuffer = tasksUtils.makeTaskTimestampKey(timestamp, taskId);
     await tran.put(
-      [...this.queueDbTimestampPath, timestampBuffer],
+      [...this.queueDbTimestampPath, taskTimestampKey],
       taskId.toBuffer(),
       true,
     );
     await tran.put(
       [...this.queueDbMetadataPath, taskId.toBuffer()],
-      timestampBuffer,
+      taskTimestampKey,
       true,
     );
     tran.queueSuccess(() => this.taskLoopPlug?.resolveP());
@@ -320,7 +319,7 @@ class Queue {
           },
         );
       }
-      await this.concurrencyActivePromise;
+      await this.concurrencyActivePromise?.p;
       this.logger.info('dispatching ending');
     })();
   }

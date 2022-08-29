@@ -46,9 +46,21 @@ function makeTaskTimestampKey(time: number, taskId: TaskId): Buffer {
   return Buffer.concat([timestampBuffer, taskId.toBuffer()]);
 }
 
+/**
+ * Returns [taskTimestampBuffer, taskIdBuffer]
+ */
+function splitTaskTimestampKey(timestampBuffer: Buffer) {
+  // Last 16 bytes are TaskId
+  const splitPoint = timestampBuffer.length - 16;
+  const timeBuffer = timestampBuffer.slice(0, splitPoint);
+  const idBuffer = timestampBuffer.slice(splitPoint);
+  return [timeBuffer, idBuffer];
+}
+
 export {
   createTaskIdGenerator,
   toPriority,
   fromPriority,
   makeTaskTimestampKey,
+  splitTaskTimestampKey,
 };

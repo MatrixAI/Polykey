@@ -7,9 +7,7 @@ import { DB } from '@matrixai/db';
 import { sleep } from '@matrixai/async-locks/dist/utils';
 import KeyManager from '@/keys/KeyManager';
 import Scheduler from '@/tasks/Scheduler';
-import Queue from '@/tasks/Queue';
 import * as keysUtils from '@/keys/utils';
-import * as tasksUtils from '@/tasks/utils';
 import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 
 describe(Scheduler.name, () => {
@@ -57,10 +55,11 @@ describe(Scheduler.name, () => {
       db,
       keyManager,
       logger,
+      concurrencyLimit: 2,
     });
     const taskHandler = 'asd' as TaskHandlerId;
-    const things: Array<number> = [];
-    const handler = async (num: number) => things.push(num);
+    const things: Array<any> = [];
+    const handler = async (thing: any) => things.push(thing);
     scheduler.registerHandler(taskHandler, handler);
 
     await scheduler.start();
@@ -77,8 +76,9 @@ describe(Scheduler.name, () => {
     logger.info('intermission!!!!');
 
     await scheduler.start();
-    await sleep(10000);
+    await sleep(4000);
     await scheduler.stop();
+    // Console.log(things);
     expect(things).toHaveLength(7);
   });
   test('scheduled tasks persist', async () => {
@@ -86,6 +86,7 @@ describe(Scheduler.name, () => {
       db,
       keyManager,
       logger,
+      concurrencyLimit: 2,
     });
     const taskHandler = 'asd' as TaskHandlerId;
     const things: Array<number> = [];

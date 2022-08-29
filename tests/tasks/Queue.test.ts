@@ -1,4 +1,5 @@
 import type { NodeId } from '../../src/nodes/types';
+import type { TaskId } from '../../src/tasks/types';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
@@ -7,35 +8,33 @@ import { DB } from '@matrixai/db';
 import { sleep } from '@matrixai/async-locks/dist/utils';
 import { IdInternal } from '@matrixai/id';
 import { promise } from 'encryptedfs/dist/utils';
-import KeyManager from '@/keys/KeyManager';
 import Scheduler from '@/tasks/Scheduler';
 import Queue from '@/tasks/Queue';
 import * as keysUtils from '@/keys/utils';
 import * as tasksUtils from '@/tasks/utils';
-import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 
 describe(Queue.name, () => {
-  const password = 'password';
   const logger = new Logger(`${Scheduler.name} test`, LogLevel.INFO, [
     new StreamHandler(),
   ]);
-  let keyManager: KeyManager;
   let dbKey: Buffer;
   let dbPath: string;
   let db: DB;
   let generateTaskId;
 
+  const pushTask = (queue: Queue, timestamp: number, taskId?: TaskId) => {
+    const taskIdGenerated = taskId ?? generateTaskId();
+    const timestampBuffer = tasksUtils.makeTaskTimestampKey(
+      timestamp,
+      taskIdGenerated,
+    );
+    return queue.pushTask(taskIdGenerated, timestampBuffer);
+  };
+
   beforeAll(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
-    const keysPath = `${dataDir}/keys`;
-    keyManager = await KeyManager.createKeyManager({
-      password,
-      keysPath,
-      logger,
-      privateKeyPemOverride: globalRootKeyPems[0],
-    });
     dbKey = await keysUtils.generateKey();
     dbPath = `${dataDir}/db`;
     generateTaskId = tasksUtils.createTaskIdGenerator(
@@ -67,7 +66,8 @@ describe(Queue.name, () => {
       concurrencyLimit: 2,
       logger,
     });
-    await queue.start();
+    await queue.stop();
+    await queue.start({ taskHandler: async () => {} });
     await queue.stop();
   });
   test('can consume tasks', async () => {
@@ -79,8 +79,9 @@ describe(Queue.name, () => {
       concurrencyLimit: 2,
       logger,
     });
-    await queue.pushTask(generateTaskId(), 0);
-    await queue.pushTask(generateTaskId(), 1);
+    await queue.startTasks();
+    await pushTask(queue, 0);
+    await pushTask(queue, 1);
     await queue.allConcurrentSettled();
     await queue.stop();
     expect(handler).toHaveBeenCalled();
@@ -92,13 +93,13 @@ describe(Queue.name, () => {
       db,
       taskHandler: async () => {},
       concurrencyLimit: 2,
-      delay: true,
       logger,
     });
 
-    await queue.pushTask(generateTaskId(), 0);
-    await queue.pushTask(generateTaskId(), 1);
-    await queue.pushTask(generateTaskId(), 2);
+    await queue.startTasks();
+    await pushTask(queue, 0);
+    await pushTask(queue, 1);
+    await pushTask(queue, 2);
     await queue.stop();
 
     queue = await Queue.createQueue({
@@ -107,6 +108,7 @@ describe(Queue.name, () => {
       concurrencyLimit: 2,
       logger,
     });
+    await queue.startTasks();
     // Time for tasks to start processing
     await sleep(10);
     await queue.allConcurrentSettled();
@@ -126,10 +128,11 @@ describe(Queue.name, () => {
       logger,
     });
 
-    await queue.pushTask(generateTaskId(), 0);
-    await queue.pushTask(generateTaskId(), 1);
-    await queue.pushTask(generateTaskId(), 2);
-    await queue.pushTask(generateTaskId(), 3);
+    await queue.startTasks();
+    await pushTask(queue, 0);
+    await pushTask(queue, 1);
+    await pushTask(queue, 2);
+    await pushTask(queue, 3);
     await sleep(200);
     expect(handler).toHaveBeenCalledTimes(2);
     prom.resolveP();
@@ -147,10 +150,11 @@ describe(Queue.name, () => {
       logger,
     });
 
-    await queue.pushTask(generateTaskId(), 0);
-    await queue.pushTask(generateTaskId(), 1);
-    await queue.pushTask(generateTaskId(), 2);
-    await queue.pushTask(generateTaskId(), 3);
+    await queue.startTasks();
+    await pushTask(queue, 0);
+    await pushTask(queue, 1);
+    await pushTask(queue, 2);
+    await pushTask(queue, 3);
     await sleep(100);
     await queue.stop();
     expect(handler).toHaveBeenCalledTimes(4);
@@ -169,10 +173,9 @@ describe(Queue.name, () => {
       logger,
     });
 
-    await queue.start({ delay: true });
-    await queue.pushTask(generateTaskId(), 0);
-    await queue.pushTask(generateTaskId(), 1);
-    await queue.pushTask(generateTaskId(), 2);
+    await pushTask(queue, 0);
+    await pushTask(queue, 1);
+    await pushTask(queue, 2);
 
     await queue.startTasks();
     await sleep(100);
