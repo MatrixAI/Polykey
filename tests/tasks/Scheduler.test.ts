@@ -9,6 +9,7 @@ import KeyManager from '@/keys/KeyManager';
 import Scheduler from '@/tasks/Scheduler';
 import * as keysUtils from '@/keys/utils';
 import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
+import EventEmitter from 'events';
 
 describe(Scheduler.name, () => {
   const password = 'password';
@@ -159,16 +160,90 @@ describe(Scheduler.name, () => {
 
     await scheduler.stop();
   });
-  // Test('checking time uniqueness', async () => {
-  //   const generateTaskId = tasksUtils.createTaskIdGenerator(
-  //     keyManager.getNodeId(),
-  //   );
-  //   const a = generateTaskId();
-  //   const b = generateTaskId();
-  //   await sleep(10);
-  //   const c = generateTaskId();
-  //   console.log(extractTs(a), extractRand(a), extractSeq(a));
-  //   console.log(extractTs(b), extractRand(b), extractSeq(b));
-  //   console.log(extractTs(c), extractRand(c), extractSeq(c));
-  // });
+  test.todo('tasks timestamps are unique on taskId');
+  test.todo('can remove scheduled tasks');
+  test.todo('can not remove active tasks');
+  test('completed tasks emit events', async () => {
+    const scheduler = await Scheduler.createScheduler({
+      db,
+      keyManager,
+      logger,
+      delay: true,
+      concurrencyLimit: 2,
+    });
+    const taskHandler = 'asd' as TaskHandlerId;
+    const handler = jest.fn();
+    handler.mockImplementation(async (num) => {
+      if (num % 3 === 0) throw Error('three');
+      return num
+    });
+    scheduler.registerHandler(taskHandler, handler);
+
+    const tasks: Array<TaskId> = [];
+    const events: Array<any> = [];
+    const pushTask = async (param) => {
+      const task = await scheduler.scheduleTask(taskHandler, param, 0)
+      const taskId = task!.id;
+      tasks.push(taskId);
+      // @ts-ignore: private property
+      scheduler.taskEvents.once(taskId.toMultibase('base32hex'), (...values) => events.push(values));
+    };
+
+    await pushTask([1])
+    await pushTask([2])
+    await pushTask([3])
+    await pushTask([4])
+
+    for (const taskId of tasks) {
+      // @ts-ignore: private method
+      await scheduler.handleTask(taskId).catch(() => {});
+    }
+    console.log(events);
+    expect(events).toHaveLength(4);
+
+    await scheduler.stop();
+  });
+  test('can await a task promise', async () => {
+    const scheduler = await Scheduler.createScheduler({
+      db,
+      keyManager,
+      logger,
+      delay: true,
+      concurrencyLimit: 2,
+    });
+    const taskHandler = 'asd' as TaskHandlerId;
+    const handler = jest.fn();
+    handler.mockImplementation(async (fail) => {
+      if (fail) throw Error('three');
+      return fail;
+    });
+    scheduler.registerHandler(taskHandler, handler);
+
+    const taskSucceed = await scheduler.scheduleTask(taskHandler, [false], 0);
+    const taskFail = await scheduler.scheduleTask(taskHandler, [true], 0);
+
+    // If we get a 2nd task promise, it should be the same promise
+    const prom1 = scheduler.getTaskP(taskSucceed!.id);
+    const prom2 = scheduler.getTaskP(taskSucceed!.id);
+    expect(prom1).toBe(prom2);
+    expect(prom1).toBe(taskSucceed!.promise);
+
+    // promises should succeed and fail respectively
+    const taskSucceedP = taskSucceed!.promise;
+    const taskFailP = taskFail!.promise;
+    await scheduler.startProcessing();
+
+    await expect(taskSucceedP).resolves.toBe(true);
+    await expect(taskFailP).rejects.toBe(false);
+
+    await scheduler.stop();
+  });
 });
+
+test('events', async () => {
+  const taskEvents = new EventEmitter();
+  taskEvents.on('lol', (...args) => console.log(...args));
+  taskEvents.emit('lol', 1)
+  taskEvents.emit('lol', 2)
+  taskEvents.emit('lol', 3,4)
+})
