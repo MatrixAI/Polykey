@@ -8,6 +8,24 @@ import {
   AsyncGeneratorFunction,
 } from '../../utils';
 
+type TimedDecorator = {
+  <T extends (...params: Array<any>) => Promise<any>>(
+    target: any,
+    key: string | symbol,
+    descriptor: TypedPropertyDescriptor<T>
+  ): TypedPropertyDescriptor<T>;
+  <T extends (...params: Array<any>) => Generator<any, any, any>>(
+    target: any,
+    key: string | symbol,
+    descriptor: TypedPropertyDescriptor<T>
+  ): TypedPropertyDescriptor<T>;
+  <T extends (...params: Array<any>) => AsyncGenerator<any, any, any>>(
+    target: any,
+    key: string | symbol,
+    descriptor: TypedPropertyDescriptor<T>
+  ): TypedPropertyDescriptor<T>;
+};
+
 /**
  * This sets up the context
  * This will mutate the `params` parameter
@@ -117,12 +135,12 @@ function setupContext(
 function timed(
   delay: number = Infinity,
   errorTimeout: new () => Error = contextsErrors.ErrorContextsTimerExpired,
-) {
+): TimedDecorator {
   return (
     target: any,
     key: string | symbol,
-    descriptor: TypedPropertyDescriptor<(...params: Array<unknown>) => Promise<unknown> | Generator | AsyncGenerator>,
-  ): TypedPropertyDescriptor<(...params: Array<unknown>) => Promise<unknown> | Generator | AsyncGenerator> => {
+    descriptor: TypedPropertyDescriptor<Function>
+  ) => {
     // Target is instance prototype for instance methods
     // or the class prototype for static methods
     const targetName = target['name'] ?? target.constructor.name;
@@ -211,3 +229,5 @@ function timed(
 }
 
 export default timed;
+
+export type { TimedDecorator };
