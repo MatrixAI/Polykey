@@ -87,11 +87,11 @@ class Scheduler {
 
   // TODO: swap this out for the timer system later
 
-  protected processingTimer?: ReturnType<typeof setTimeout>;
-  protected processingTimerTimestamp: number = Number.POSITIVE_INFINITY;
-  protected pendingProcessing: Promise<void> | null = null;
-  protected processingPlug: Plug = new Plug();
-  protected processingEnding: boolean = false;
+  protected dispatchTimer?: ReturnType<typeof setTimeout>;
+  protected dispatchTimerTimestamp: number = Number.POSITIVE_INFINITY;
+  protected pendingDispatch: Promise<void> | null = null;
+  protected dispatchPlug: Plug = new Plug();
+  protected dispatchEnding: boolean = false;
 
   protected schedulerDbPath: LevelPath = [this.constructor.name];
 
@@ -168,8 +168,8 @@ class Scheduler {
     });
   }
 
-  public get isProcessing(): boolean {
-    return this.processingTimer != null;
+  public get isDispatching(): boolean {
+    return this.dispatchTimer != null;
   }
 
   public async start({
@@ -205,11 +205,11 @@ class Scheduler {
       fresh,
       taskHandler: (taskId) => this.handleTask(taskId),
     });
-    // Setting up processing
-    this.pendingProcessing = this.processTaskLoop();
-    // Don't start processing if we still want to register handlers
+    // Setting up dispatching
+    this.pendingDispatch = this.dispatchTaskLoop();
+    // Don't start dispatching if we still want to register handlers
     if (!delay) {
-      await this.startProcessing();
+      await this.startDispatching();
     }
     this.logger.info(`Started ${this.constructor.name}`);
   }
@@ -221,7 +221,7 @@ class Scheduler {
    */
   public async stop(): Promise<void> {
     this.logger.info(`Stopping ${this.constructor.name}`);
-    await this.stopProcessing();
+    await this.stopDispatching();
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
@@ -243,28 +243,28 @@ class Scheduler {
   }
 
   protected updateTimer(startTime: number) {
-    if (startTime >= this.processingTimerTimestamp) return;
+    if (startTime >= this.dispatchTimerTimestamp) return;
     const delay = Math.max(startTime - Date.now(), 0);
-    clearTimeout(this.processingTimer);
-    this.processingTimer = setTimeout(async () => {
+    clearTimeout(this.dispatchTimer);
+    this.dispatchTimer = setTimeout(async () => {
       // This.logger.info('consuming pending tasks');
-      await this.processingPlug.unplug();
-      this.processingTimerTimestamp = Number.POSITIVE_INFINITY;
+      await this.dispatchPlug.unplug();
+      this.dispatchTimerTimestamp = Number.POSITIVE_INFINITY;
     }, delay);
-    this.processingTimerTimestamp = startTime;
+    this.dispatchTimerTimestamp = startTime;
     // This.logger.info(`Timer was updated to ${delay} to end at ${startTime}`);
   }
 
   /**
-   * Starts the processing of the work
+   * Starts the dispatching of tasks
    */
   @ready(new tasksErrors.ErrorSchedulerNotRunning(), false, ['starting'])
-  public async startProcessing(): Promise<void> {
+  public async startDispatching(): Promise<void> {
     // Starting queue
     await this.queue.startTasks();
     // If already started, do nothing
-    if (this.pendingProcessing == null) {
-      this.pendingProcessing = this.processTaskLoop();
+    if (this.pendingDispatch == null) {
+      this.pendingDispatch = this.dispatchTaskLoop();
     }
 
     // We actually need to find the last task
@@ -289,27 +289,27 @@ class Scheduler {
   }
 
   @ready(new tasksErrors.ErrorSchedulerNotRunning(), false, ['stopping'])
-  public async stopProcessing(): Promise<void> {
+  public async stopDispatching(): Promise<void> {
     const stopQueueP = this.queue.stopTasks();
-    clearTimeout(this.processingTimer);
-    delete this.processingTimer;
-    this.processingEnding = true;
-    await this.processingPlug.unplug();
-    await this.pendingProcessing;
-    this.pendingProcessing = null;
+    clearTimeout(this.dispatchTimer);
+    delete this.dispatchTimer;
+    this.dispatchEnding = true;
+    await this.dispatchPlug.unplug();
+    await this.pendingDispatch;
+    this.pendingDispatch = null;
     await stopQueueP;
   }
 
-  protected async processTaskLoop(): Promise<void> {
+  protected async dispatchTaskLoop(): Promise<void> {
     // This will pop tasks from the queue and put the where they need to go
-    this.logger.info('processing set up');
-    this.processingEnding = false;
-    await this.processingPlug.plug();
-    this.processingTimerTimestamp = Number.POSITIVE_INFINITY;
+    this.logger.info('dispatching set up');
+    this.dispatchEnding = false;
+    await this.dispatchPlug.plug();
+    this.dispatchTimerTimestamp = Number.POSITIVE_INFINITY;
     while (true) {
-      if (this.processingEnding) break;
-      await this.processingPlug.waitForUnplug();
-      if (this.processingEnding) break;
+      if (this.dispatchEnding) break;
+      await this.dispatchPlug.waitForUnplug();
+      if (this.dispatchEnding) break;
       await this.db.withTransactionF(async (tran) => {
         // Read the pending task
         let taskIdBuffer: Buffer | undefined;
@@ -327,7 +327,7 @@ class Scheduler {
         // If pending tasks are empty we wait
         if (taskIdBuffer == null || keyPath == null) {
           // This.logger.info('waiting for new tasks');
-          await this.processingPlug.plug();
+          await this.dispatchPlug.plug();
           return;
         }
         const taskTimestampKeyBuffer = keyPath[0] as Buffer;
@@ -341,16 +341,16 @@ class Scheduler {
         if (time > Date.now()) {
           // This.logger.info('waiting for tasks pending tasks');
           this.updateTimer(time);
-          await this.processingPlug.plug();
+          await this.dispatchPlug.plug();
           return;
         }
 
         // Process the task now and remove it from the scheduler
-        // this.logger.info('processing task');
+        // this.logger.info('dispatching task');
         await this.processTask(tran, taskIdBuffer, taskTimestampKeyBuffer);
       });
     }
-    this.logger.info('processing ending');
+    this.logger.info('dispatching ending');
   }
 
   protected async processTask(

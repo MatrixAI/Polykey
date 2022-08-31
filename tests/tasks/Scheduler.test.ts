@@ -234,7 +234,7 @@ describe(Scheduler.name, () => {
 
     // Promise should succeed with result
     const taskSucceedP = taskSucceed!.promise;
-    await scheduler.startProcessing();
+    await scheduler.startDispatching();
     await expect(taskSucceedP).resolves.toBe(true);
 
     await scheduler.stop();
@@ -259,7 +259,7 @@ describe(Scheduler.name, () => {
 
     // Promise should fail
     const taskFailP = taskFail!.promise;
-    await scheduler.startProcessing();
+    await scheduler.startDispatching();
     await expect(taskFailP).rejects.toBeInstanceOf(Error);
 
     await scheduler.stop();
@@ -331,7 +331,7 @@ describe(Scheduler.name, () => {
     });
     scheduler.registerHandler(taskHandler, handler);
 
-    await scheduler.startProcessing();
+    await scheduler.startDispatching();
     const taskSucceed = await scheduler.scheduleTask(
       taskHandler,
       [true],
@@ -363,7 +363,7 @@ describe(Scheduler.name, () => {
     });
     scheduler.registerHandler(taskHandler, handler);
 
-    await scheduler.startProcessing();
+    await scheduler.startDispatching();
     const taskSucceed = await scheduler.scheduleTask(
       taskHandler,
       [true],
