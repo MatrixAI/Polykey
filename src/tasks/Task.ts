@@ -5,7 +5,6 @@ import type {
   TaskTimestamp,
   TaskDelay,
   TaskPriority,
-  TaskHandler,
   TaskParameters,
   TaskGroup,
 } from './types';
@@ -22,7 +21,7 @@ class Task<T> {
   public readonly priority: TaskPriority;
 
   // Protected queue: Queue;
-  // protected taskPromise: Promise<T> | undefined;
+  protected taskPromise: Promise<T> | null;
   protected scheduler: Scheduler;
 
   constructor(
@@ -34,7 +33,7 @@ class Task<T> {
     delay: TaskDelay,
     taskGroup: TaskGroup | undefined,
     priority: TaskPriority,
-    // TaskPromise: Promise<T>,
+    taskPromise: Promise<T> | null,
   ) {
     // I'm not sure about the queue
     // but if this is the reference here
@@ -49,7 +48,7 @@ class Task<T> {
     this.taskGroup = taskGroup;
     this.priority = priority;
     this.scheduler = scheduler;
-    // This.taskPromise = taskPromise;
+    this.taskPromise = taskPromise;
   }
 
   public toJSON(): TaskData & { id: TaskId } {
@@ -66,7 +65,9 @@ class Task<T> {
   }
 
   get promise() {
-    return this.scheduler.getTaskP(this.id);
+    if (this.taskPromise != null) return this.taskPromise;
+    this.taskPromise = this.scheduler.getTaskP(this.id);
+    return this.taskPromise;
   }
 }
 

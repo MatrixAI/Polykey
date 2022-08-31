@@ -2,7 +2,6 @@ import type { TaskHandlerId, TaskId, TaskGroup } from '../../src/tasks/types';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
-import EventEmitter from 'events';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { sleep } from '@matrixai/async-locks/dist/utils';
@@ -183,12 +182,19 @@ describe(Scheduler.name, () => {
     const tasks: Array<TaskId> = [];
     const events: Array<any> = [];
     const pushTask = async (param) => {
-      const task = await scheduler.scheduleTask(taskHandler, param, 0);
+      const task = await scheduler.scheduleTask(
+        taskHandler,
+        param,
+        0,
+        undefined,
+        undefined,
+        true,
+      );
       const taskId = task!.id;
       tasks.push(taskId);
       // @ts-ignore: private property
-      scheduler.taskEvents.once(taskId.toMultibase('base32hex'), (...values) =>
-        events.push(values),
+      scheduler.taskEvents.once(taskId.toMultibase('base32hex'), (value) =>
+        events.push(value),
       );
     };
 
@@ -199,14 +205,16 @@ describe(Scheduler.name, () => {
 
     for (const taskId of tasks) {
       // @ts-ignore: private method
-      await scheduler.handleTask(taskId).catch(() => {});
+      await scheduler.handleTask(taskId).then(
+        () => {},
+        () => {},
+      );
     }
-    console.log(events);
     expect(events).toHaveLength(4);
 
     await scheduler.stop();
   });
-  test('can await a task promise', async () => {
+  test('can await a task promise resolve', async () => {
     const scheduler = await Scheduler.createScheduler({
       db,
       keyManager,
@@ -223,7 +231,56 @@ describe(Scheduler.name, () => {
     scheduler.registerHandler(taskHandler, handler);
 
     const taskSucceed = await scheduler.scheduleTask(taskHandler, [true], 0);
+
+    // Promise should succeed with result
+    const taskSucceedP = taskSucceed!.promise;
+    await scheduler.startProcessing();
+    await expect(taskSucceedP).resolves.toBe(true);
+
+    await scheduler.stop();
+  });
+  test('can await a task promise reject', async () => {
+    const scheduler = await Scheduler.createScheduler({
+      db,
+      keyManager,
+      logger,
+      delay: true,
+      concurrencyLimit: 2,
+    });
+    const taskHandler = 'asd' as TaskHandlerId;
+    const handler = jest.fn();
+    handler.mockImplementation(async (fail) => {
+      if (!fail) throw Error('three');
+      return fail;
+    });
+    scheduler.registerHandler(taskHandler, handler);
+
     const taskFail = await scheduler.scheduleTask(taskHandler, [false], 0);
+
+    // Promise should fail
+    const taskFailP = taskFail!.promise;
+    await scheduler.startProcessing();
+    await expect(taskFailP).rejects.toBeInstanceOf(Error);
+
+    await scheduler.stop();
+  });
+  test('getting multiple promises for a task should be the same promise', async () => {
+    const scheduler = await Scheduler.createScheduler({
+      db,
+      keyManager,
+      logger,
+      delay: true,
+      concurrencyLimit: 2,
+    });
+    const taskHandler = 'asd' as TaskHandlerId;
+    const handler = jest.fn();
+    handler.mockImplementation(async (fail) => {
+      if (!fail) throw Error('three');
+      return fail;
+    });
+    scheduler.registerHandler(taskHandler, handler);
+
+    const taskSucceed = await scheduler.scheduleTask(taskHandler, [true], 0);
 
     // If we get a 2nd task promise, it should be the same promise
     const prom1 = scheduler.getTaskP(taskSucceed!.id);
@@ -231,21 +288,94 @@ describe(Scheduler.name, () => {
     expect(prom1).toBe(prom2);
     expect(prom1).toBe(taskSucceed!.promise);
 
-    // Promises should succeed and fail respectively
-    const taskSucceedP = taskSucceed!.promise;
-    const taskFailP = taskFail!.promise;
-    await scheduler.startProcessing();
+    await scheduler.stop();
+  });
+  test('task promise for invalid task should throw', async () => {
+    const scheduler = await Scheduler.createScheduler({
+      db,
+      keyManager,
+      logger,
+      delay: true,
+      concurrencyLimit: 2,
+    });
+    const taskHandler = 'asd' as TaskHandlerId;
+    const handler = jest.fn();
+    handler.mockImplementation(async (fail) => {
+      if (!fail) throw Error('three');
+      return fail;
+    });
+    scheduler.registerHandler(taskHandler, handler);
 
-    await expect(taskSucceedP).resolves.toBe(true);
-    await expect(taskFailP).rejects.toBeInstanceOf(Error);
-
-    // Task promise will throw an error if task not found
+    // Getting task promise should not throw
     const invalidTask = scheduler.getTaskP(
       IdInternal.fromBuffer<TaskId>(Buffer.alloc(16, 0)),
     );
+    // Task promise will throw an error if task not found
     await expect(invalidTask).rejects.toThrow();
-    // Finished tasks should be invalid as well
+
+    await scheduler.stop();
+  });
+  test('lazy task promise for completed task should throw', async () => {
+    const scheduler = await Scheduler.createScheduler({
+      db,
+      keyManager,
+      logger,
+      delay: true,
+      concurrencyLimit: 2,
+    });
+    const taskHandler = 'asd' as TaskHandlerId;
+    const handler = jest.fn();
+    handler.mockImplementation(async (fail) => {
+      if (!fail) throw Error('three');
+      return fail;
+    });
+    scheduler.registerHandler(taskHandler, handler);
+
+    await scheduler.startProcessing();
+    const taskSucceed = await scheduler.scheduleTask(
+      taskHandler,
+      [true],
+      0,
+      undefined,
+      undefined,
+      true,
+    );
+    await sleep(100);
+
+    // Finished tasks should throw
     await expect(taskSucceed?.promise).rejects.toThrow();
+
+    await scheduler.stop();
+  });
+  test('eager task promise for completed task should resolve', async () => {
+    const scheduler = await Scheduler.createScheduler({
+      db,
+      keyManager,
+      logger,
+      delay: true,
+      concurrencyLimit: 2,
+    });
+    const taskHandler = 'asd' as TaskHandlerId;
+    const handler = jest.fn();
+    handler.mockImplementation(async (fail) => {
+      if (!fail) throw Error('three');
+      return fail;
+    });
+    scheduler.registerHandler(taskHandler, handler);
+
+    await scheduler.startProcessing();
+    const taskSucceed = await scheduler.scheduleTask(
+      taskHandler,
+      [true],
+      0,
+      undefined,
+      undefined,
+      false,
+    );
+    await sleep(100);
+
+    // Finished tasks should be invalid as well
+    await expect(taskSucceed?.promise).resolves.toBe(true);
 
     await scheduler.stop();
   });

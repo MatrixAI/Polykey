@@ -315,6 +315,7 @@ class Scheduler {
           // Read the pending task
           let taskIdBuffer: Buffer | undefined;
           let keyPath: KeyPath | undefined;
+          // FIXME: get a range of tasks to do.
           for await (const [keyPath_, taskIdBuffer_] of tran.iterator(
             this.schedulerTimeDbPath,
             {
@@ -336,6 +337,8 @@ class Scheduler {
           );
           const time = lexi.unpack(Array.from(timestampBuffer));
           // If task is still waiting it start time then we wait
+          // FIXME: This check is not needed if we get a range of tasks
+          // FIXME: Don't use `Date.now()`, should be using performance timer taskID uses
           if (time > Date.now()) {
             // This.logger.info('waiting for tasks pending tasks');
             this.updateTimer(time);
@@ -533,7 +536,7 @@ class Scheduler {
   // }
 
   @ready(new tasksErrors.ErrorSchedulerNotRunning())
-  public getTaskP(taskId: TaskId): Promise<any> {
+  public getTaskP(taskId: TaskId, tran?: DBTransaction): Promise<any> {
     const taskIdString = taskId.toMultibase('base32hex') as TaskIdString;
     // This will return a task promise if it already exists
     const existingTaskPromise = this.taskPromises.get(taskIdString);
@@ -547,7 +550,7 @@ class Scheduler {
       };
       this.taskEvents.once(taskIdString, resultListener);
       // If not task promise exists then with will check if the task exists
-      void this.db
+      void (tran ?? this.db)
         .get<TaskData>([...this.schedulerTasksDbPath, taskId.toBuffer()])
         .then((taskData) => {
           if (taskData == null) {
@@ -670,27 +673,9 @@ class Scheduler {
         true,
       );
     }
-
+    let taskPromise: Promise<any> | null = null;
     if (!lazy) {
-      // Task().then(onFullfill, onReject).finally(onFinally)
-      // const { p: taskP, resolveP: resolveTaskP, rejectP: rejectTaskP } = utils.promise<any>();
-      // this.promises.set(
-      //   taskId.toString() as TaskIdString,
-      //   {
-      //     taskP,
-      //     resolveTaskP,
-      //     rejectTaskP
-      //   }
-      // );
-      // const taskListener = (taskError, taskResult) => {
-      //   if (taskError != null) {
-      //     resolveTaskP(taskError);
-      //   } else {
-      //     rejectTaskP(taskResult);
-      //   }
-      //   this.deregisterListener(taskId, taskListener);
-      // };
-      // this.registerListener(taskId, taskListener);
+      taskPromise = this.getTaskP(taskId, tran);
     }
 
     // TODO: trigger the processing of the task?
@@ -718,6 +703,7 @@ class Scheduler {
     // but we don't know how much time
     // or when this is scheduled to run?
 
+    // Only update timer if transaction succeeds
     tran.queueSuccess(() => {
       this.updateTimer(startTime);
       this.logger.info(
@@ -736,6 +722,7 @@ class Scheduler {
       delay,
       taskGroup,
       taskPriority,
+      taskPromise,
     );
   }
 
