@@ -531,34 +531,33 @@ class Scheduler {
   //   return taskP;
   // }
 
-  // FIXME: this needs to be synchronious and can't throw directly
-  //  The promise itself needs to throw
   @ready(new tasksErrors.ErrorSchedulerNotRunning())
-  public async getTaskP(taskId: TaskId): Promise<{taskP: Promise<any>}> {
+  public getTaskP(taskId: TaskId): Promise<any> {
     const taskIdString = taskId.toMultibase('base32hex') as TaskIdString;
     // This will return a task promise if it already exists
     const existingTaskPromise = this.taskPromises.get(taskIdString);
-    console.log('existingTaskPromise', existingTaskPromise);
     if (existingTaskPromise != null) return existingTaskPromise;
-
-    // If not task promise exists then with will check if the task exists
-    const taskData = await this.db.get<TaskData>([...this.schedulerTasksDbPath, taskId.toBuffer() ])
-    console.log('taskData', taskData);
-    if (taskData == null) throw Error('TEMP task not found');
 
     // If the task exist then it will create the task promise and return that
     const newTaskPromise = new Promise( (resolve, reject) => {
-      this.taskEvents.once(taskIdString, (...results) => {
-        console.log(results);
-        if (results[0] instanceof Error) reject(results[0]);
-        else resolve(results);
-      })
+      const resultListener = (result) => {
+        if (result instanceof Error) reject(result);
+        else resolve(result);
+      }
+      this.taskEvents.once(taskIdString, resultListener)
+      // If not task promise exists then with will check if the task exists
+      this.db.get<TaskData>([...this.schedulerTasksDbPath, taskId.toBuffer() ])
+        .then(taskData => {
+          if (taskData == null) {
+            this.taskEvents.removeListener(taskIdString, resultListener);
+            reject(Error('TEMP task not found'));
+          }
+        })
     }).finally(() => {
       this.taskPromises.delete(taskIdString)
     })
     this.taskPromises.set(taskIdString, newTaskPromise);
-    console.log('newTaskPromise', newTaskPromise);
-    return { taskP: newTaskPromise };
+    return newTaskPromise;
   }
 
   /*

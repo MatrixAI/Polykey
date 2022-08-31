@@ -10,6 +10,7 @@ import Scheduler from '@/tasks/Scheduler';
 import * as keysUtils from '@/keys/utils';
 import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 import EventEmitter from 'events';
+import { IdInternal } from '@matrixai/id';
 
 describe(Scheduler.name, () => {
   const password = 'password';
@@ -214,13 +215,13 @@ describe(Scheduler.name, () => {
     const taskHandler = 'asd' as TaskHandlerId;
     const handler = jest.fn();
     handler.mockImplementation(async (fail) => {
-      if (fail) throw Error('three');
+      if (!fail) throw Error('three');
       return fail;
     });
     scheduler.registerHandler(taskHandler, handler);
 
-    const taskSucceed = await scheduler.scheduleTask(taskHandler, [false], 0);
-    const taskFail = await scheduler.scheduleTask(taskHandler, [true], 0);
+    const taskSucceed = await scheduler.scheduleTask(taskHandler, [true], 0);
+    const taskFail = await scheduler.scheduleTask(taskHandler, [false], 0);
 
     // If we get a 2nd task promise, it should be the same promise
     const prom1 = scheduler.getTaskP(taskSucceed!.id);
@@ -234,7 +235,14 @@ describe(Scheduler.name, () => {
     await scheduler.startProcessing();
 
     await expect(taskSucceedP).resolves.toBe(true);
-    await expect(taskFailP).rejects.toBe(false);
+    await expect(taskFailP).rejects.toBeInstanceOf(Error);
+
+    // Task promise will throw an error if task not found
+    const invalidTask = scheduler.getTaskP(IdInternal.fromBuffer<TaskId>(Buffer.alloc(16, 0)));
+    await expect(invalidTask).rejects.toThrow();
+    // Finished tasks should be invalid as well
+    await expect(taskSucceed?.promise).rejects.toThrow();
+
 
     await scheduler.stop();
   });

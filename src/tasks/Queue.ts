@@ -170,6 +170,7 @@ class Queue {
     }
 
     this.logger.info('adding task');
+    await tran.lock([[...this.queueDbTimestampPath, 'loopSerialisation'].join(''), 'read'])
     await tran.put(
       [...this.queueDbTimestampPath, taskTimestampKey],
       taskId.toBuffer(),
@@ -193,6 +194,7 @@ class Queue {
     }
 
     this.logger.info('removing task');
+    await tran.lock([[...this.queueDbTimestampPath, 'loopSerialisation'].join(''), 'read'])
     const timestampBuffer = await tran.get(
       [...this.queueDbMetadataPath, taskId.toBuffer()],
       true,
@@ -213,6 +215,7 @@ class Queue {
       return this.db.withTransactionF((tran) => this.getNextTask(tran));
     }
 
+    await tran.lock([[...this.queueDbTimestampPath, 'loopSerialisation'].join(''), 'write']);
     // Read out the database until we read a task not already executing
     let taskId: TaskId | undefined;
     for await (const [, taskIdBuffer] of tran.iterator(
@@ -272,6 +275,7 @@ class Queue {
     this.taskLoopEnding = false;
     this.taskLoopPlug = promise();
     const pace = async () => {
+      if (this.taskLoopEnding) return false;
       await this.taskLoopPlug?.p;
       await this.concurrencyPlug?.p;
       return !this.taskLoopEnding;
