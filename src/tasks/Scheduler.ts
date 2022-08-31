@@ -7,6 +7,7 @@ import type {
 } from './types';
 import type KeyManager from '../keys/KeyManager';
 import type { PromiseDeconstructed } from '../types';
+import { EventEmitter } from 'events';
 import { DBTransaction } from '@matrixai/db';
 import Logger, { LogLevel } from '@matrixai/logger';
 import { IdInternal } from '@matrixai/id';
@@ -28,8 +29,6 @@ import * as tasksUtils from './utils';
 import * as tasksErrors from './errors';
 import Queue from './Queue';
 import { promise } from '../utils';
-import { EventEmitter } from 'events';
-
 
 interface Scheduler extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
@@ -85,7 +84,7 @@ class Scheduler {
   protected promises: Map<TaskIdString, Promise<any>> = new Map();
   protected taskPromises: Map<TaskIdString, Promise<any>> = new Map();
   protected generateTaskId: () => TaskId;
-  protected taskEvents: EventEmitter = new EventEmitter()
+  protected taskEvents: EventEmitter = new EventEmitter();
 
   // TODO: swap this out for the timer system later
 
@@ -391,33 +390,35 @@ class Scheduler {
       // Add the promise to the map and hook any lifecycle stuff
       const taskIdString = taskId.toMultibase('base32hex') as TaskIdString;
       this.promises.set(taskIdString, prom);
-      return prom.then(
-        (value) => {
-          this.taskEvents.emit(taskIdString, value);
-          return value;
-        },
-        (reason) => {
-          this.taskEvents.emit(taskIdString, reason);
-          throw reason;
-        }
-      ).finally(async () => {
-        this.promises.delete(taskIdString);
-        const taskTimestampKeybuffer = tasksUtils.makeTaskTimestampKey(
-          taskData.timestamp + taskData.delay,
-          taskId,
-        );
-        // Cleaning up is a separate transaction
-        await this.db.withTransactionF(async (tran) => {
-          await tran.del([...this.schedulerTasksDbPath, taskId.toBuffer()]);
-          if (taskData.taskGroup != null) {
-            await tran.del([
-              ...this.schedulerGroupsDbPath,
-              ...taskData.taskGroup,
-              taskTimestampKeybuffer,
-            ]);
-          }
+      return prom
+        .then(
+          (value) => {
+            this.taskEvents.emit(taskIdString, value);
+            return value;
+          },
+          (reason) => {
+            this.taskEvents.emit(taskIdString, reason);
+            throw reason;
+          },
+        )
+        .finally(async () => {
+          this.promises.delete(taskIdString);
+          const taskTimestampKeybuffer = tasksUtils.makeTaskTimestampKey(
+            taskData.timestamp + taskData.delay,
+            taskId,
+          );
+          // Cleaning up is a separate transaction
+          await this.db.withTransactionF(async (tran) => {
+            await tran.del([...this.schedulerTasksDbPath, taskId.toBuffer()]);
+            if (taskData.taskGroup != null) {
+              await tran.del([
+                ...this.schedulerGroupsDbPath,
+                ...taskData.taskGroup,
+                taskTimestampKeybuffer,
+              ]);
+            }
+          });
         });
-      });
     });
   }
 
@@ -539,23 +540,24 @@ class Scheduler {
     if (existingTaskPromise != null) return existingTaskPromise;
 
     // If the task exist then it will create the task promise and return that
-    const newTaskPromise = new Promise( (resolve, reject) => {
+    const newTaskPromise = new Promise((resolve, reject) => {
       const resultListener = (result) => {
         if (result instanceof Error) reject(result);
         else resolve(result);
-      }
-      this.taskEvents.once(taskIdString, resultListener)
+      };
+      this.taskEvents.once(taskIdString, resultListener);
       // If not task promise exists then with will check if the task exists
-      this.db.get<TaskData>([...this.schedulerTasksDbPath, taskId.toBuffer() ])
-        .then(taskData => {
+      void this.db
+        .get<TaskData>([...this.schedulerTasksDbPath, taskId.toBuffer()])
+        .then((taskData) => {
           if (taskData == null) {
             this.taskEvents.removeListener(taskIdString, resultListener);
             reject(Error('TEMP task not found'));
           }
-        })
+        });
     }).finally(() => {
-      this.taskPromises.delete(taskIdString)
-    })
+      this.taskPromises.delete(taskIdString);
+    });
     this.taskPromises.set(taskIdString, newTaskPromise);
     return newTaskPromise;
   }

@@ -1,5 +1,5 @@
 import type { DB, LevelPath } from '@matrixai/db';
-import type { TaskIdString, TaskPriority } from './types';
+import type { TaskIdString } from './types';
 import type { PromiseDeconstructed } from '../types';
 import { DBTransaction } from '@matrixai/db';
 import Logger from '@matrixai/logger';
@@ -10,8 +10,7 @@ import {
 import { IdInternal } from '@matrixai/id';
 import { RWLockReader } from '@matrixai/async-locks';
 import * as tasksErrors from './errors';
-import { TaskId, TaskTimestamp } from './types';
-import * as tasksUtils from './utils';
+import { TaskId } from './types';
 import { promise } from '../utils';
 
 type TaskHandler = (taskId: TaskId) => Promise<any>;
@@ -170,7 +169,10 @@ class Queue {
     }
 
     this.logger.info('adding task');
-    await tran.lock([[...this.queueDbTimestampPath, 'loopSerialisation'].join(''), 'read'])
+    await tran.lock([
+      [...this.queueDbTimestampPath, 'loopSerialisation'].join(''),
+      'read',
+    ]);
     await tran.put(
       [...this.queueDbTimestampPath, taskTimestampKey],
       taskId.toBuffer(),
@@ -194,7 +196,10 @@ class Queue {
     }
 
     this.logger.info('removing task');
-    await tran.lock([[...this.queueDbTimestampPath, 'loopSerialisation'].join(''), 'read'])
+    await tran.lock([
+      [...this.queueDbTimestampPath, 'loopSerialisation'].join(''),
+      'read',
+    ]);
     const timestampBuffer = await tran.get(
       [...this.queueDbMetadataPath, taskId.toBuffer()],
       true,
@@ -215,7 +220,10 @@ class Queue {
       return this.db.withTransactionF((tran) => this.getNextTask(tran));
     }
 
-    await tran.lock([[...this.queueDbTimestampPath, 'loopSerialisation'].join(''), 'write']);
+    await tran.lock([
+      [...this.queueDbTimestampPath, 'loopSerialisation'].join(''),
+      'write',
+    ]);
     // Read out the database until we read a task not already executing
     let taskId: TaskId | undefined;
     for await (const [, taskIdBuffer] of tran.iterator(

@@ -2,15 +2,15 @@ import type { TaskHandlerId, TaskId, TaskGroup } from '../../src/tasks/types';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
+import EventEmitter from 'events';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { sleep } from '@matrixai/async-locks/dist/utils';
+import { IdInternal } from '@matrixai/id';
 import KeyManager from '@/keys/KeyManager';
 import Scheduler from '@/tasks/Scheduler';
 import * as keysUtils from '@/keys/utils';
 import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
-import EventEmitter from 'events';
-import { IdInternal } from '@matrixai/id';
 
 describe(Scheduler.name, () => {
   const password = 'password';
@@ -176,24 +176,26 @@ describe(Scheduler.name, () => {
     const handler = jest.fn();
     handler.mockImplementation(async (num) => {
       if (num % 3 === 0) throw Error('three');
-      return num
+      return num;
     });
     scheduler.registerHandler(taskHandler, handler);
 
     const tasks: Array<TaskId> = [];
     const events: Array<any> = [];
     const pushTask = async (param) => {
-      const task = await scheduler.scheduleTask(taskHandler, param, 0)
+      const task = await scheduler.scheduleTask(taskHandler, param, 0);
       const taskId = task!.id;
       tasks.push(taskId);
       // @ts-ignore: private property
-      scheduler.taskEvents.once(taskId.toMultibase('base32hex'), (...values) => events.push(values));
+      scheduler.taskEvents.once(taskId.toMultibase('base32hex'), (...values) =>
+        events.push(values),
+      );
     };
 
-    await pushTask([1])
-    await pushTask([2])
-    await pushTask([3])
-    await pushTask([4])
+    await pushTask([1]);
+    await pushTask([2]);
+    await pushTask([3]);
+    await pushTask([4]);
 
     for (const taskId of tasks) {
       // @ts-ignore: private method
@@ -229,7 +231,7 @@ describe(Scheduler.name, () => {
     expect(prom1).toBe(prom2);
     expect(prom1).toBe(taskSucceed!.promise);
 
-    // promises should succeed and fail respectively
+    // Promises should succeed and fail respectively
     const taskSucceedP = taskSucceed!.promise;
     const taskFailP = taskFail!.promise;
     await scheduler.startProcessing();
@@ -238,20 +240,13 @@ describe(Scheduler.name, () => {
     await expect(taskFailP).rejects.toBeInstanceOf(Error);
 
     // Task promise will throw an error if task not found
-    const invalidTask = scheduler.getTaskP(IdInternal.fromBuffer<TaskId>(Buffer.alloc(16, 0)));
+    const invalidTask = scheduler.getTaskP(
+      IdInternal.fromBuffer<TaskId>(Buffer.alloc(16, 0)),
+    );
     await expect(invalidTask).rejects.toThrow();
     // Finished tasks should be invalid as well
     await expect(taskSucceed?.promise).rejects.toThrow();
 
-
     await scheduler.stop();
   });
 });
-
-test('events', async () => {
-  const taskEvents = new EventEmitter();
-  taskEvents.on('lol', (...args) => console.log(...args));
-  taskEvents.emit('lol', 1)
-  taskEvents.emit('lol', 2)
-  taskEvents.emit('lol', 3,4)
-})
