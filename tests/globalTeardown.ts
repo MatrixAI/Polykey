@@ -10,7 +10,7 @@ async function teardown() {
   console.log('GLOBAL TEARDOWN');
   const globalDataDir = process.env['GLOBAL_DATA_DIR']!;
   console.log(`Destroying Global Data Dir: ${globalDataDir}`);
-  await fs.promises.rm(globalDataDir, { recursive: true });
+  await fs.promises.rm(globalDataDir, { recursive: true, force: true });
 }
 
 export default teardown;
