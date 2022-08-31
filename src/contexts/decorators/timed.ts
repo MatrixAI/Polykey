@@ -2,11 +2,7 @@ import type { ContextTimed } from '../types';
 import * as contextsUtils from '../utils';
 import * as contextsErrors from '../errors';
 import Timer from '../../timer/Timer';
-import {
-  AsyncFunction,
-  GeneratorFunction,
-  AsyncGeneratorFunction,
-} from '../../utils';
+import * as utils from '../../utils';
 
 type TimedDecorator = {
   <T extends (...params: Array<any>) => Promise<any>>(
@@ -20,6 +16,11 @@ type TimedDecorator = {
     descriptor: TypedPropertyDescriptor<T>,
   ): TypedPropertyDescriptor<T>;
   <T extends (...params: Array<any>) => AsyncGenerator<any, any, any>>(
+    target: any,
+    key: string | symbol,
+    descriptor: TypedPropertyDescriptor<T>,
+  ): TypedPropertyDescriptor<T>;
+  <T extends (...params: Array<any>) => any>(
     target: any,
     key: string | symbol,
     descriptor: TypedPropertyDescriptor<T>,
@@ -155,7 +156,7 @@ function timed(
         `\`${targetName}.${key.toString()}\` does not have a \`@context\` parameter decorator`,
       );
     }
-    if (f instanceof AsyncFunction) {
+    if (f instanceof utils.AsyncFunction) {
       descriptor['value'] = async function (...params) {
         const teardownContext = setupContext(
           delay,
@@ -171,7 +172,7 @@ function timed(
           teardownContext();
         }
       };
-    } else if (f instanceof GeneratorFunction) {
+    } else if (f instanceof utils.GeneratorFunction) {
       descriptor['value'] = function* (...params) {
         const teardownContext = setupContext(
           delay,
@@ -187,7 +188,7 @@ function timed(
           teardownContext();
         }
       };
-    } else if (f instanceof AsyncGeneratorFunction) {
+    } else if (f instanceof utils.AsyncGeneratorFunction) {
       descriptor['value'] = async function* (...params) {
         const teardownContext = setupContext(
           delay,
@@ -213,9 +214,31 @@ function timed(
           contextIndex,
           params,
         );
-        return f.apply(this, params).finally(() => {
+        const result = f.apply(this, params);
+        if (utils.isPromise(result)) {
+          return result.finally(() => {
+            teardownContext();
+          });
+        } else if (utils.isIterable(result)) {
+          return (function *() {
+            try {
+              return yield* result;
+            } finally {
+              teardownContext();
+            }
+          })();
+        } else if (utils.isAsyncIterable(result)) {
+          return (async function *() {
+            try {
+              return yield* result;
+            } finally {
+              teardownContext();
+            }
+          })();
+        } else {
           teardownContext();
-        });
+          return result;
+        }
       };
     }
     // Preserve the name

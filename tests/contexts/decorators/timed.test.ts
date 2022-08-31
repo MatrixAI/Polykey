@@ -11,17 +11,60 @@ import {
 } from '@/utils';
 
 describe('context/decorators/timed', () => {
-  test('timed decorator syntax for functions returning promises, async functions, generators, and async generators', async () => {
+  describe('timed decorator runtime validation', () => {
+    test('timed decorator requires context decorator', async () => {
+      expect(() => {
+        class C {
+          @timed(50)
+          async f(
+            ctx?: { timer: Timer; signal: AbortSignal },
+          ): Promise<string> {
+            return 'hello world';
+          }
+        }
+        return C;
+      }).toThrow(TypeError);
+    });
+    test('timed decorator fails on invalid context', async () => {
+      await expect(async () => {
+        class C {
+          @timed(50)
+          async f(
+            @context ctx?: { timer: Timer; signal: AbortSignal },
+          ): Promise<string> {
+            return 'hello world';
+          }
+        }
+        const c = new C();
+        // @ts-ignore
+        await c.f({ timer: 1 });
+      }).rejects.toThrow(TypeError);
+      await expect(async () => {
+        class C {
+          @timed(50)
+          async f(
+            @context ctx?: { timer: Timer; signal: AbortSignal },
+          ): Promise<string> {
+            return 'hello world';
+          }
+        }
+        const c = new C();
+        // @ts-ignore
+        await c.f({ signal: 'lol' });
+      }).rejects.toThrow(TypeError);
+    });
+  });
+  describe('timed decorator syntax', () => {
     // Decorators cannot change type signatures
     // use overloading to change required context parameter to optional context parameter
-    const s = Symbol('sym');
+    const symbolFunction = Symbol('sym');
     class X {
-      a(
+      functionPromise(
         ctx?: { signal?: AbortSignal; timer?: Timer },
         check?: (t: Timer) => any,
       ): Promise<void>;
       @timed(1000)
-      a(
+      functionPromise(
         @context ctx: { signal: AbortSignal; timer: Timer },
         check?: (t: Timer) => any,
       ): Promise<void> {
@@ -31,12 +74,12 @@ describe('context/decorators/timed', () => {
         return new Promise((resolve) => void resolve());
       }
 
-      b(
+      asyncFunction(
         ctx?: { signal?: AbortSignal; timer?: Timer },
         check?: (t: Timer) => any,
       ): Promise<void>;
       @timed(Infinity)
-      async b(
+      async asyncFunction(
         @context ctx: { signal: AbortSignal; timer: Timer },
         check?: (t: Timer) => any,
       ): Promise<void> {
@@ -45,12 +88,12 @@ describe('context/decorators/timed', () => {
         if (check != null) check(ctx.timer);
       }
 
-      c(
+      generator(
         ctx?: { signal?: AbortSignal; timer?: Timer },
         check?: (t: Timer) => any,
       ): Generator<void>;
       @timed(0)
-      *c(
+      *generator(
         @context ctx: { signal: AbortSignal; timer: Timer },
         check?: (t: Timer) => any,
       ): Generator<void> {
@@ -59,12 +102,24 @@ describe('context/decorators/timed', () => {
         if (check != null) check(ctx.timer);
       }
 
-      d(
+      functionGenerator(
+        ctx?: Partial<ContextTimed>,
+        check?: (t: Timer) => any,
+      ): Generator<void>;
+      @timed(0)
+      functionGenerator(
+        @context ctx: ContextTimed,
+        check?: (t: Timer) => any
+      ): Generator<void> {
+        return this.generator(ctx, check);
+      }
+
+      asyncGenerator(
         ctx?: { signal?: AbortSignal; timer?: Timer },
         check?: (t: Timer) => any,
       ): AsyncGenerator<void>;
       @timed(NaN)
-      async *d(
+      async *asyncGenerator(
         @context ctx: { signal: AbortSignal; timer: Timer },
         check?: (t: Timer) => any,
       ): AsyncGenerator<void> {
@@ -73,12 +128,24 @@ describe('context/decorators/timed', () => {
         if (check != null) check(ctx.timer);
       }
 
-      [s](
+      functionAsyncGenerator(
+        ctx?: Partial<ContextTimed>,
+        check?: (t: Timer) => any,
+      ): AsyncGenerator<void>;
+      @timed(NaN)
+      functionAsyncGenerator(
+        @context ctx: ContextTimed,
+        check?: (t: Timer) => any,
+      ): AsyncGenerator<void> {
+        return this.asyncGenerator(ctx, check);
+      }
+
+      [symbolFunction](
         ctx?: { signal?: AbortSignal; timer?: Timer },
         check?: (t: Timer) => any,
       ): Promise<void>;
       @timed()
-      [s](
+      [symbolFunction](
         @context ctx: { signal: AbortSignal; timer: Timer },
         check?: (t: Timer) => any,
       ): Promise<void> {
@@ -89,88 +156,81 @@ describe('context/decorators/timed', () => {
       }
     }
     const x = new X();
-    await x.a();
-    await x.a({});
-    await x.a({ timer: new Timer({ delay: 100 }) }, (t) => {
-      expect(t.delay).toBe(100);
+    test('functionPromise', async () => {
+      await x.functionPromise();
+      await x.functionPromise({});
+      await x.functionPromise({ timer: new Timer({ delay: 100 }) }, (t) => {
+        expect(t.delay).toBe(100);
+      });
+      expect(x.functionPromise).toBeInstanceOf(Function);
+      expect(x.functionPromise.name).toBe('functionPromise');
     });
-    expect(x.a).toBeInstanceOf(Function);
-    expect(x.a.name).toBe('a');
-    await x.b();
-    await x.b({});
-    await x.b({ timer: new Timer({ delay: 50 }) }, (t) => {
-      expect(t.delay).toBe(50);
+    test('asyncFunction', async () => {
+      await x.asyncFunction();
+      await x.asyncFunction({});
+      await x.asyncFunction({ timer: new Timer({ delay: 50 }) }, (t) => {
+        expect(t.delay).toBe(50);
+      });
+      expect(x.asyncFunction).toBeInstanceOf(AsyncFunction);
+      expect(x.asyncFunction.name).toBe('asyncFunction');
     });
-    expect(x.b).toBeInstanceOf(AsyncFunction);
-    expect(x.b.name).toBe('b');
-    for (const _ of x.c()) {
-    }
-    for (const _ of x.c({})) {
-    }
-    for (const _ of x.c({ timer: new Timer({ delay: 150 }) }, (t) => {
-      expect(t.delay).toBe(150);
-    })) {
-    }
-    expect(x.c).toBeInstanceOf(GeneratorFunction);
-    expect(x.c.name).toBe('c');
-    for await (const _ of x.d()) {
-    }
-    for await (const _ of x.d({})) {
-    }
-    for await (const _ of x.d({ timer: new Timer({ delay: 200 }) }, (t) => {
-      expect(t.delay).toBe(200);
-    })) {
-    }
-    expect(x.d).toBeInstanceOf(AsyncGeneratorFunction);
-    expect(x.d.name).toBe('d');
-    await x[s]();
-    await x[s]({});
-    await x[s]({ timer: new Timer({ delay: 250 }) }, (t) => {
-      expect(t.delay).toBe(250);
+    test('generator', () => {
+      for (const _ of x.generator()) {
+      }
+      for (const _ of x.generator({})) {
+      }
+      for (const _ of x.generator({ timer: new Timer({ delay: 150 }) }, (t) => {
+        expect(t.delay).toBe(150);
+      })) {
+      }
+      expect(x.generator).toBeInstanceOf(GeneratorFunction);
+      expect(x.generator.name).toBe('generator');
     });
-    expect(x[s]).toBeInstanceOf(Function);
-    expect(x[s].name).toBe('[sym]');
-  });
-  test('timed decorator requires context decorator', async () => {
-    expect(() => {
-      class C {
-        @timed(50)
-        async f(
-          ctx?: { timer: Timer; signal: AbortSignal },
-        ): Promise<string> {
-          return 'hello world';
-        }
+    test('functionGenerator', () => {
+      for (const _ of x.functionGenerator()) {
       }
-      return C;
-    }).toThrow(TypeError);
-  });
-  test('timed decorator fails on invalid context', async () => {
-    await expect(async () => {
-      class C {
-        @timed(50)
-        async f(
-          @context ctx?: { timer: Timer; signal: AbortSignal },
-        ): Promise<string> {
-          return 'hello world';
-        }
+      for (const _ of x.functionGenerator({})) {
       }
-      const c = new C();
-      // @ts-ignore
-      await c.f({ timer: 1 });
-    }).rejects.toThrow(TypeError);
-    await expect(async () => {
-      class C {
-        @timed(50)
-        async f(
-          @context ctx?: { timer: Timer; signal: AbortSignal },
-        ): Promise<string> {
-          return 'hello world';
-        }
+      for (const _ of x.functionGenerator({ timer: new Timer({ delay: 150 }) }, (t) => {
+        expect(t.delay).toBe(150);
+      })) {
       }
-      const c = new C();
-      // @ts-ignore
-      await c.f({ signal: 'lol' });
-    }).rejects.toThrow(TypeError);
+      expect(x.functionGenerator).toBeInstanceOf(Function);
+      expect(x.functionGenerator.name).toBe('functionGenerator');
+    });
+    test('asyncGenerator', async () => {
+      for await (const _ of x.asyncGenerator()) {
+      }
+      for await (const _ of x.asyncGenerator({})) {
+      }
+      for await (const _ of x.asyncGenerator({ timer: new Timer({ delay: 200 }) }, (t) => {
+        expect(t.delay).toBe(200);
+      })) {
+      }
+      expect(x.asyncGenerator).toBeInstanceOf(AsyncGeneratorFunction);
+      expect(x.asyncGenerator.name).toBe('asyncGenerator');
+    });
+    test('functionAsyncGenerator', async () => {
+      for await (const _ of x.functionAsyncGenerator()) {
+      }
+      for await (const _ of x.functionAsyncGenerator({})) {
+      }
+      for await (const _ of x.functionAsyncGenerator({ timer: new Timer({ delay: 200 }) }, (t) => {
+        expect(t.delay).toBe(200);
+      })) {
+      }
+      expect(x.functionAsyncGenerator).toBeInstanceOf(Function);
+      expect(x.functionAsyncGenerator.name).toBe('functionAsyncGenerator');
+    });
+    test('symbolFunction', async () => {
+      await x[symbolFunction]();
+      await x[symbolFunction]({});
+      await x[symbolFunction]({ timer: new Timer({ delay: 250 }) }, (t) => {
+        expect(t.delay).toBe(250);
+      });
+      expect(x[symbolFunction]).toBeInstanceOf(Function);
+      expect(x[symbolFunction].name).toBe('[sym]');
+    });
   });
   describe('timed decorator expiry', () => {
     // Timed decorator does not automatically reject the promise
@@ -313,8 +373,52 @@ describe('context/decorators/timed', () => {
       );
       expect(timeout).toBeUndefined();
     });
+    test('async generator expiry', async () => {
+      class C {
+        f(ctx?: Partial<ContextTimed>): AsyncGenerator<string>;
+        @timed(50)
+        async *f(@context ctx: ContextTimed): AsyncGenerator<string> {
+          while (true) {
+            if (ctx.signal.aborted) {
+              throw ctx.signal.reason;
+            }
+            yield 'hello world';
+          }
+        }
+      }
+      const c = new C();
+      const g = c.f();
+      await expect(g.next()).resolves.toEqual({ value: 'hello world', done: false });
+      await expect(g.next()).resolves.toEqual({ value: 'hello world', done: false });
+      await sleep(50);
+      await expect(g.next()).rejects.toThrow(
+        contextsErrors.ErrorContextsTimedExpiry
+      );
+    });
+    test('generator expiry', async () => {
+      class C {
+        f(ctx?: Partial<ContextTimed>): Generator<string>;
+        @timed(50)
+        *f(@context ctx: ContextTimed): Generator<string> {
+          while (true) {
+            if (ctx.signal.aborted) {
+              throw ctx.signal.reason;
+            }
+            yield 'hello world';
+          }
+        }
+      }
+      const c = new C();
+      const g = c.f();
+      expect(g.next()).toEqual({ value: 'hello world', done: false });
+      expect(g.next()).toEqual({ value: 'hello world', done: false });
+      await sleep(50);
+      expect(() => g.next()).toThrow(
+        contextsErrors.ErrorContextsTimedExpiry
+      );
+    });
   });
-  describe('context timer propagation', () => {
+  describe('timed decorator propagation', () => {
     test('propagate timer and signal', async () => {
       let timer: Timer;
       let signal: AbortSignal;
@@ -447,10 +551,4 @@ describe('context/decorators/timed', () => {
       await expect(c.f()).resolves.toBe('g');
     });
   });
-  test('context timer propagation', async () => {
-
-
-  });
-  test.todo('context signal propagation');
-  test.todo('context timer & signal propagation');
 });
