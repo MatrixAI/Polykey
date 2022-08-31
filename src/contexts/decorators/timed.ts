@@ -104,14 +104,19 @@ function setupContext(
     const abortController = new AbortController();
     let finished = false;
     // If the timer resolves, then abort the target function
-    context.timer.then((r: any, s: AbortSignal) => {
-      // If the timer is aborted after it resolves
-      // then don't bother aborting the target function
-      if (!finished || !s.aborted) {
-        abortController.abort(new errorTimeout());
+    void context.timer.then(
+      (r: any, s: AbortSignal) => {
+        // If the timer is aborted after it resolves
+        // then don't bother aborting the target function
+        if (!finished || !s.aborted) {
+          abortController.abort(new errorTimeout());
+        }
+        return r;
+      },
+      () => {
+        // Ignore any upstream cancellation
       }
-      return r;
-    });
+    );
     context.signal = abortController.signal;
     return () => {
       finished = true;

@@ -1,3 +1,4 @@
+import type { ContextTimed } from '@/contexts/types';
 import context from '@/contexts/decorators/context';
 import timed from '@/contexts/decorators/timed';
 import * as contextsErrors from '@/contexts/errors';
@@ -313,7 +314,143 @@ describe('context/decorators/timed', () => {
       expect(timeout).toBeUndefined();
     });
   });
-  test.todo('context timer propagation');
+  describe('context timer propagation', () => {
+    test('propagate timer and signal', async () => {
+      let timer: Timer;
+      let signal: AbortSignal;
+      class C {
+        f(ctx?: Partial<ContextTimed>): Promise<string>;
+        @timed(50)
+        async f(@context ctx: ContextTimed): Promise<string> {
+          expect(ctx.timer).toBeInstanceOf(Timer);
+          expect(ctx.signal).toBeInstanceOf(AbortSignal);
+          timer = ctx.timer;
+          signal = ctx.signal;
+          expect(timer.getTimeout()).toBeGreaterThan(0);
+          expect(signal.aborted).toBe(false);
+          return await this.g(ctx);
+        }
+
+        g(ctx?: Partial<ContextTimed>): Promise<string>;
+        @timed(25)
+        async g(@context ctx: ContextTimed): Promise<string> {
+          expect(ctx.timer).toBeInstanceOf(Timer);
+          expect(ctx.signal).toBeInstanceOf(AbortSignal);
+          // Timer and signal will be propagated
+          expect(timer).toBe(ctx.timer);
+          expect(signal).toBe(ctx.signal);
+          expect(ctx.timer.getTimeout()).toBeGreaterThan(0);
+          expect(ctx.timer.delay).toBe(50);
+          expect(ctx.signal.aborted).toBe(false);
+          return 'g';
+        }
+      }
+      const c = new C();
+      await expect(c.f()).resolves.toBe('g');
+    });
+    test('propagate timer only', async () => {
+      let timer: Timer;
+      let signal: AbortSignal;
+      class C {
+        f(ctx?: Partial<ContextTimed>): Promise<string>;
+        @timed(50)
+        async f(@context ctx: ContextTimed): Promise<string> {
+          expect(ctx.timer).toBeInstanceOf(Timer);
+          expect(ctx.signal).toBeInstanceOf(AbortSignal);
+          timer = ctx.timer;
+          signal = ctx.signal;
+          expect(timer.getTimeout()).toBeGreaterThan(0);
+          expect(signal.aborted).toBe(false);
+          return await this.g({ timer: ctx.timer });
+        }
+
+        g(ctx?: Partial<ContextTimed>): Promise<string>;
+        @timed(25)
+        async g(@context ctx: ContextTimed): Promise<string> {
+          expect(ctx.timer).toBeInstanceOf(Timer);
+          expect(ctx.signal).toBeInstanceOf(AbortSignal);
+          expect(timer).toBe(ctx.timer);
+          expect(signal).not.toBe(ctx.signal);
+          expect(ctx.timer.getTimeout()).toBeGreaterThan(0);
+          expect(ctx.timer.delay).toBe(50);
+          expect(ctx.signal.aborted).toBe(false);
+          return 'g';
+        }
+      }
+      const c = new C();
+      await expect(c.f()).resolves.toBe('g');
+    });
+    test('propagate signal only', async () => {
+      let timer: Timer;
+      let signal: AbortSignal;
+      class C {
+        f(ctx?: Partial<ContextTimed>): Promise<string>;
+        @timed(50)
+        async f(@context ctx: ContextTimed): Promise<string> {
+          expect(ctx.timer).toBeInstanceOf(Timer);
+          expect(ctx.signal).toBeInstanceOf(AbortSignal);
+          timer = ctx.timer;
+          signal = ctx.signal;
+          expect(timer.getTimeout()).toBeGreaterThan(0);
+          expect(signal.aborted).toBe(false);
+          return await this.g({ signal: ctx.signal });
+        }
+
+        g(ctx?: Partial<ContextTimed>): Promise<string>;
+        @timed(25)
+        async g(@context ctx: ContextTimed): Promise<string> {
+          expect(ctx.timer).toBeInstanceOf(Timer);
+          expect(ctx.signal).toBeInstanceOf(AbortSignal);
+          // Even though signal is propagated
+          // because the timer isn't, the signal here is chained
+          expect(timer).not.toBe(ctx.timer);
+          expect(signal).not.toBe(ctx.signal);
+          expect(ctx.timer.getTimeout()).toBeGreaterThan(0);
+          expect(ctx.timer.delay).toBe(25);
+          expect(ctx.signal.aborted).toBe(false);
+          return 'g';
+        }
+      }
+      const c = new C();
+      await expect(c.f()).resolves.toBe('g');
+    });
+    test('propagate nothing', async () => {
+      let timer: Timer;
+      let signal: AbortSignal;
+      class C {
+        f(ctx?: Partial<ContextTimed>): Promise<string>;
+        @timed(50)
+        async f(@context ctx: ContextTimed): Promise<string> {
+          expect(ctx.timer).toBeInstanceOf(Timer);
+          expect(ctx.signal).toBeInstanceOf(AbortSignal);
+          timer = ctx.timer;
+          signal = ctx.signal;
+          expect(timer.getTimeout()).toBeGreaterThan(0);
+          expect(signal.aborted).toBe(false);
+          return await this.g();
+        }
+
+        g(ctx?: Partial<ContextTimed>): Promise<string>;
+        @timed(25)
+        async g(@context ctx: ContextTimed): Promise<string> {
+          expect(ctx.timer).toBeInstanceOf(Timer);
+          expect(ctx.signal).toBeInstanceOf(AbortSignal);
+          expect(timer).not.toBe(ctx.timer);
+          expect(signal).not.toBe(ctx.signal);
+          expect(ctx.timer.getTimeout()).toBeGreaterThan(0);
+          expect(ctx.timer.delay).toBe(25);
+          expect(ctx.signal.aborted).toBe(false);
+          return 'g';
+        }
+      }
+      const c = new C();
+      await expect(c.f()).resolves.toBe('g');
+    });
+  });
+  test('context timer propagation', async () => {
+
+
+  });
   test.todo('context signal propagation');
   test.todo('context timer & signal propagation');
 });
