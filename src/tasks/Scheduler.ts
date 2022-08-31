@@ -6,7 +6,6 @@ import type {
   TaskIdString,
 } from './types';
 import type KeyManager from '../keys/KeyManager';
-import type { PromiseDeconstructed } from '../types';
 import { EventEmitter } from 'events';
 import { DBTransaction } from '@matrixai/db';
 import Logger, { LogLevel } from '@matrixai/logger';
@@ -28,7 +27,7 @@ import {
 import * as tasksUtils from './utils';
 import * as tasksErrors from './errors';
 import Queue from './Queue';
-import { promise } from '../utils';
+import { Plug } from '../utils/index';
 
 interface Scheduler extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
@@ -91,7 +90,7 @@ class Scheduler {
   protected processingTimer?: ReturnType<typeof setTimeout>;
   protected processingTimerTimestamp: number = Number.POSITIVE_INFINITY;
   protected pendingProcessing: Promise<void> | null = null;
-  protected processingPlug: PromiseDeconstructed<void> = promise();
+  protected processingPlug: Plug = new Plug();
   protected processingEnding: boolean = false;
 
   protected schedulerDbPath: LevelPath = [this.constructor.name];
@@ -247,9 +246,9 @@ class Scheduler {
     if (startTime >= this.processingTimerTimestamp) return;
     const delay = Math.max(startTime - Date.now(), 0);
     clearTimeout(this.processingTimer);
-    this.processingTimer = setTimeout(() => {
+    this.processingTimer = setTimeout(async () => {
       // This.logger.info('consuming pending tasks');
-      this.processingPlug.resolveP();
+      await this.processingPlug.unplug();
       this.processingTimerTimestamp = Number.POSITIVE_INFINITY;
     }, delay);
     this.processingTimerTimestamp = startTime;
@@ -295,7 +294,7 @@ class Scheduler {
     clearTimeout(this.processingTimer);
     delete this.processingTimer;
     this.processingEnding = true;
-    this.processingPlug.resolveP();
+    await this.processingPlug.unplug();
     await this.pendingProcessing;
     this.pendingProcessing = null;
     await stopQueueP;
@@ -305,10 +304,11 @@ class Scheduler {
     // This will pop tasks from the queue and put the where they need to go
     this.logger.info('processing set up');
     this.processingEnding = false;
-    this.processingPlug = promise();
+    await this.processingPlug.plug();
     this.processingTimerTimestamp = Number.POSITIVE_INFINITY;
     while (true) {
-      await this.processingPlug.p;
+      if (this.processingEnding) break;
+      await this.processingPlug.waitForUnplug();
       if (this.processingEnding) break;
       await this.db.withTransactionF(async (tran) => {
         // Read the pending task
@@ -327,7 +327,7 @@ class Scheduler {
         // If pending tasks are empty we wait
         if (taskIdBuffer == null || keyPath == null) {
           // This.logger.info('waiting for new tasks');
-          this.processingPlug = promise();
+          await this.processingPlug.plug();
           return;
         }
         const taskTimestampKeyBuffer = keyPath[0] as Buffer;
@@ -341,7 +341,7 @@ class Scheduler {
         if (time > Date.now()) {
           // This.logger.info('waiting for tasks pending tasks');
           this.updateTimer(time);
-          this.processingPlug = promise();
+          await this.processingPlug.plug();
           return;
         }
 

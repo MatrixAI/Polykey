@@ -101,7 +101,7 @@ describe(Scheduler.name, () => {
     logger.info('intermission!!!!');
 
     await scheduler.start();
-    await sleep(10000);
+    await sleep(4000);
     await scheduler.stop();
     expect(handler).toHaveBeenCalledTimes(7);
   });

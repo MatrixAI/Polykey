@@ -1,4 +1,5 @@
 export { default as sysexits } from './sysexits';
+export { default as Plug } from './Plug';
 export * from './utils';
 export * from './matchers';
 export * from './binary';

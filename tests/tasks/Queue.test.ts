@@ -96,7 +96,6 @@ describe(Queue.name, () => {
       logger,
     });
 
-    await queue.startTasks();
     await pushTask(queue, 0);
     await pushTask(queue, 1);
     await pushTask(queue, 2);

@@ -1,6 +1,5 @@
 import type { DB, LevelPath } from '@matrixai/db';
 import type { TaskIdString } from './types';
-import type { PromiseDeconstructed } from '../types';
 import { DBTransaction } from '@matrixai/db';
 import Logger from '@matrixai/logger';
 import {
@@ -11,7 +10,7 @@ import { IdInternal } from '@matrixai/id';
 import { RWLockReader } from '@matrixai/async-locks';
 import * as tasksErrors from './errors';
 import { TaskId } from './types';
-import { promise } from '../utils';
+import { Plug } from '../utils/index';
 
 type TaskHandler = (taskId: TaskId) => Promise<any>;
 
@@ -46,8 +45,8 @@ class Queue {
   // Concurrency variables
   public concurrencyLimit: number;
   protected concurrencyCount: number = 0;
-  protected concurrencyPlug: PromiseDeconstructed<void> | null = null;
-  protected concurrencyActivePromise: PromiseDeconstructed<void> | null = null;
+  protected concurrencyPlug: Plug = new Plug();
+  protected activeTasksPlug: Plug = new Plug();
 
   protected logger: Logger;
   protected db: DB;
@@ -73,7 +72,7 @@ class Queue {
 
   // variables to consuming tasks
   protected activeTaskLoop: Promise<void> | null = null;
-  protected taskLoopPlug: PromiseDeconstructed<void> | null = null;
+  protected taskLoopPlug: Plug = new Plug();
   protected taskLoopEnding: boolean;
   // FIXME: might not be needed
   protected cleanUpLock: RWLockReader = new RWLockReader();
@@ -183,7 +182,7 @@ class Queue {
       taskTimestampKey,
       true,
     );
-    tran.queueSuccess(() => this.taskLoopPlug?.resolveP());
+    tran.queueSuccess(async () => await this.taskLoopPlug.unplug());
   }
 
   /**
@@ -263,18 +262,15 @@ class Queue {
       task = task_;
     }
     if (task != null) {
-      this.taskLoopPlug?.resolveP();
-      this.taskLoopPlug = null;
+      await this.taskLoopPlug.unplug();
     }
   }
 
   @ready(new tasksErrors.ErrorQueueNotRunning(), false, ['stopping'])
   public async stopTasks() {
     this.taskLoopEnding = true;
-    this.taskLoopPlug?.resolveP();
-    this.taskLoopPlug = null;
-    this.concurrencyPlug?.resolveP();
-    this.concurrencyPlug = null;
+    await this.taskLoopPlug.unplug();
+    await this.concurrencyPlug.unplug();
     await this.activeTaskLoop;
     this.activeTaskLoop = null;
     await this.cleanUpLock.waitForUnlock();
@@ -283,11 +279,11 @@ class Queue {
   protected async initTaskLoop() {
     this.logger.info('initializing task loop');
     this.taskLoopEnding = false;
-    this.taskLoopPlug = promise();
+    await this.taskLoopPlug.plug();
     const pace = async () => {
       if (this.taskLoopEnding) return false;
-      await this.taskLoopPlug?.p;
-      await this.concurrencyPlug?.p;
+      await this.taskLoopPlug.waitForUnplug();
+      await this.concurrencyPlug.waitForUnplug();
       return !this.taskLoopEnding;
     };
     while (await pace()) {
@@ -295,7 +291,7 @@ class Queue {
       const nextTaskId = await this.getNextTask();
       if (nextTaskId == null) {
         this.logger.info('no task found, waiting');
-        this.taskLoopPlug = promise();
+        await this.taskLoopPlug.plug();
         continue;
       }
 
@@ -304,7 +300,7 @@ class Queue {
       //  and hook lifecycle to the promise.
       // call scheduler. handleTask?
       const taskIdString = nextTaskId.toMultibase('base32hex') as TaskIdString;
-      this.concurrencyIncrement();
+      await this.concurrencyIncrement();
       const prom = this.taskHandler(nextTaskId);
       // Hook lifecycle
       this.promises.set(taskIdString, prom);
@@ -313,7 +309,7 @@ class Queue {
       const [cleanupRelease] = await this.cleanUpLock.read()();
       const onFinally = async () => {
         this.promises.delete(taskIdString);
-        this.concurrencyDecrement();
+        await this.concurrencyDecrement();
         await cleanupRelease();
       };
 
@@ -331,7 +327,7 @@ class Queue {
         },
       );
     }
-    await this.concurrencyActivePromise?.p;
+    await this.activeTasksPlug.waitForUnplug();
     this.logger.info('dispatching ending');
   }
 
@@ -344,12 +340,12 @@ class Queue {
   /**
    * Increment and concurrencyPlug if full
    */
-  protected concurrencyIncrement() {
+  protected async concurrencyIncrement() {
     if (this.concurrencyCount < this.concurrencyLimit) {
       this.concurrencyCount += 1;
-      this.concurrencyActivePromise = promise();
+      await this.activeTasksPlug.plug();
       if (this.concurrencyCount >= this.concurrencyLimit) {
-        this.concurrencyPlug = promise();
+        await this.concurrencyPlug.plug();
       }
     }
   }
@@ -357,15 +353,13 @@ class Queue {
   /**
    * Decrement and unplugs, resolves concurrencyActivePromise if empty
    */
-  protected concurrencyDecrement() {
+  protected async concurrencyDecrement() {
     this.concurrencyCount -= 1;
     if (this.concurrencyCount < this.concurrencyLimit) {
-      this.concurrencyPlug?.resolveP();
-      this.concurrencyPlug = null;
+      await this.concurrencyPlug.unplug();
     }
     if (this.concurrencyCount === 0) {
-      this.concurrencyActivePromise?.resolveP();
-      this.concurrencyActivePromise = null;
+      await this.activeTasksPlug.unplug();
     }
   }
 
@@ -373,7 +367,7 @@ class Queue {
    * Will resolve when the concurrency counter reaches 0
    */
   public async allConcurrentSettled() {
-    await this.concurrencyActivePromise?.p;
+    await this.activeTasksPlug.waitForUnplug();
   }
 
   /**
