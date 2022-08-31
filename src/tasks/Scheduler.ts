@@ -243,7 +243,7 @@ class Scheduler {
     this.logger.info(`Destroyed ${this.constructor.name}`);
   }
 
-  private updateTimer(startTime: number) {
+  protected updateTimer(startTime: number) {
     if (startTime >= this.processingTimerTimestamp) return;
     const delay = Math.max(startTime - Date.now(), 0);
     clearTimeout(this.processingTimer);
@@ -301,61 +301,59 @@ class Scheduler {
     await stopQueueP;
   }
 
-  private processTaskLoop(): Promise<void> {
+  protected async processTaskLoop(): Promise<void> {
     // This will pop tasks from the queue and put the where they need to go
-    // this.logger.info('processing set up');
+    this.logger.info('processing set up');
     this.processingEnding = false;
     this.processingPlug = promise();
     this.processingTimerTimestamp = Number.POSITIVE_INFINITY;
-    return (async () => {
-      while (true) {
-        await this.processingPlug.p;
-        if (this.processingEnding) break;
-        await this.db.withTransactionF(async (tran) => {
-          // Read the pending task
-          let taskIdBuffer: Buffer | undefined;
-          let keyPath: KeyPath | undefined;
-          // FIXME: get a range of tasks to do.
-          for await (const [keyPath_, taskIdBuffer_] of tran.iterator(
-            this.schedulerTimeDbPath,
-            {
-              limit: 1,
-            },
-          )) {
-            taskIdBuffer = taskIdBuffer_;
-            keyPath = keyPath_;
-          }
-          // If pending tasks are empty we wait
-          if (taskIdBuffer == null || keyPath == null) {
-            // This.logger.info('waiting for new tasks');
-            this.processingPlug = promise();
-            return;
-          }
-          const taskTimestampKeyBuffer = keyPath[0] as Buffer;
-          const [timestampBuffer] = tasksUtils.splitTaskTimestampKey(
-            taskTimestampKeyBuffer,
-          );
-          const time = lexi.unpack(Array.from(timestampBuffer));
-          // If task is still waiting it start time then we wait
-          // FIXME: This check is not needed if we get a range of tasks
-          // FIXME: Don't use `Date.now()`, should be using performance timer taskID uses
-          if (time > Date.now()) {
-            // This.logger.info('waiting for tasks pending tasks');
-            this.updateTimer(time);
-            this.processingPlug = promise();
-            return;
-          }
+    while (true) {
+      await this.processingPlug.p;
+      if (this.processingEnding) break;
+      await this.db.withTransactionF(async (tran) => {
+        // Read the pending task
+        let taskIdBuffer: Buffer | undefined;
+        let keyPath: KeyPath | undefined;
+        // FIXME: get a range of tasks to do.
+        for await (const [keyPath_, taskIdBuffer_] of tran.iterator(
+          this.schedulerTimeDbPath,
+          {
+            limit: 1,
+          },
+        )) {
+          taskIdBuffer = taskIdBuffer_;
+          keyPath = keyPath_;
+        }
+        // If pending tasks are empty we wait
+        if (taskIdBuffer == null || keyPath == null) {
+          // This.logger.info('waiting for new tasks');
+          this.processingPlug = promise();
+          return;
+        }
+        const taskTimestampKeyBuffer = keyPath[0] as Buffer;
+        const [timestampBuffer] = tasksUtils.splitTaskTimestampKey(
+          taskTimestampKeyBuffer,
+        );
+        const time = lexi.unpack(Array.from(timestampBuffer));
+        // If task is still waiting it start time then we wait
+        // FIXME: This check is not needed if we get a range of tasks
+        // FIXME: Don't use `Date.now()`, should be using performance timer taskID uses
+        if (time > Date.now()) {
+          // This.logger.info('waiting for tasks pending tasks');
+          this.updateTimer(time);
+          this.processingPlug = promise();
+          return;
+        }
 
-          // Process the task now and remove it from the scheduler
-          // this.logger.info('processing task');
-          await this.processTask(tran, taskIdBuffer, taskTimestampKeyBuffer);
-        });
-      }
-      // This.logger.info('processing ending');
-    })();
+        // Process the task now and remove it from the scheduler
+        // this.logger.info('processing task');
+        await this.processTask(tran, taskIdBuffer, taskTimestampKeyBuffer);
+      });
+    }
+    this.logger.info('processing ending');
   }
 
-  private async processTask(
+  protected async processTask(
     tran: DBTransaction,
     taskIdBuffer: Buffer,
     taskTimestampKeyBuffer: Buffer,
@@ -375,7 +373,7 @@ class Scheduler {
     await this.queue.pushTask(taskId, taskTimestampKeyBuffer, tran);
   }
 
-  private async handleTask(taskId: TaskId) {
+  protected async handleTask(taskId: TaskId) {
     // Get the task information and use the relevant handler
     // throw and error if the task does not exist
     // throw an error if the handler does not exist.
@@ -460,7 +458,7 @@ class Scheduler {
     return await this.getTaskData_(taskId, tran);
   }
 
-  private async getTaskData_(
+  protected async getTaskData_(
     taskId: TaskId,
     tran?: DBTransaction,
   ): Promise<TaskData | undefined> {

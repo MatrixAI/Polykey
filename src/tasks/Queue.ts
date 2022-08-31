@@ -45,9 +45,9 @@ class Queue {
 
   // Concurrency variables
   public concurrencyLimit: number;
-  private concurrencyCount: number = 0;
-  private concurrencyPlug: PromiseDeconstructed<void> | null = null;
-  private concurrencyActivePromise: PromiseDeconstructed<void> | null = null;
+  protected concurrencyCount: number = 0;
+  protected concurrencyPlug: PromiseDeconstructed<void> | null = null;
+  protected concurrencyActivePromise: PromiseDeconstructed<void> | null = null;
 
   protected logger: Logger;
   protected db: DB;
@@ -215,7 +215,9 @@ class Queue {
   /**
    * This will get the next task based on priority
    */
-  private async getNextTask(tran?: DBTransaction): Promise<TaskId | undefined> {
+  protected async getNextTask(
+    tran?: DBTransaction,
+  ): Promise<TaskId | undefined> {
     if (tran == null) {
       return this.db.withTransactionF((tran) => this.getNextTask(tran));
     }
@@ -278,7 +280,7 @@ class Queue {
     await this.cleanUpLock.waitForUnlock();
   }
 
-  private initTaskLoop() {
+  protected async initTaskLoop() {
     this.logger.info('initializing task loop');
     this.taskLoopEnding = false;
     this.taskLoopPlug = promise();
@@ -288,53 +290,49 @@ class Queue {
       await this.concurrencyPlug?.p;
       return !this.taskLoopEnding;
     };
-    return (async () => {
-      while (await pace()) {
-        // Check for task
-        const nextTaskId = await this.getNextTask();
-        if (nextTaskId == null) {
-          this.logger.info('no task found, waiting');
-          this.taskLoopPlug = promise();
-          continue;
-        }
-
-        // Do the task with concurrency here.
-        // We need to call whatever dispatches tasks here
-        //  and hook lifecycle to the promise.
-        // call scheduler. handleTask?
-        const taskIdString = nextTaskId.toMultibase(
-          'base32hex',
-        ) as TaskIdString;
-        this.concurrencyIncrement();
-        const prom = this.taskHandler(nextTaskId);
-        // Hook lifecycle
-        this.promises.set(taskIdString, prom);
-        this.logger.info(`started task ${taskIdString}`);
-
-        const [cleanupRelease] = await this.cleanUpLock.read()();
-        const onFinally = async () => {
-          this.promises.delete(taskIdString);
-          this.concurrencyDecrement();
-          await cleanupRelease();
-        };
-
-        void prom.then(
-          async () => {
-            await this.removeTask(nextTaskId);
-            // TODO: emit an event for completed task
-            await onFinally();
-          },
-          async () => {
-            // FIXME: should only remove failed tasks but not cancelled
-            await this.removeTask(nextTaskId);
-            // TODO: emit an event for a failed or cancelled task
-            await onFinally();
-          },
-        );
+    while (await pace()) {
+      // Check for task
+      const nextTaskId = await this.getNextTask();
+      if (nextTaskId == null) {
+        this.logger.info('no task found, waiting');
+        this.taskLoopPlug = promise();
+        continue;
       }
-      await this.concurrencyActivePromise?.p;
-      this.logger.info('dispatching ending');
-    })();
+
+      // Do the task with concurrency here.
+      // We need to call whatever dispatches tasks here
+      //  and hook lifecycle to the promise.
+      // call scheduler. handleTask?
+      const taskIdString = nextTaskId.toMultibase('base32hex') as TaskIdString;
+      this.concurrencyIncrement();
+      const prom = this.taskHandler(nextTaskId);
+      // Hook lifecycle
+      this.promises.set(taskIdString, prom);
+      this.logger.info(`started task ${taskIdString}`);
+
+      const [cleanupRelease] = await this.cleanUpLock.read()();
+      const onFinally = async () => {
+        this.promises.delete(taskIdString);
+        this.concurrencyDecrement();
+        await cleanupRelease();
+      };
+
+      void prom.then(
+        async () => {
+          await this.removeTask(nextTaskId);
+          // TODO: emit an event for completed task
+          await onFinally();
+        },
+        async () => {
+          // FIXME: should only remove failed tasks but not cancelled
+          await this.removeTask(nextTaskId);
+          // TODO: emit an event for a failed or cancelled task
+          await onFinally();
+        },
+      );
+    }
+    await this.concurrencyActivePromise?.p;
+    this.logger.info('dispatching ending');
   }
 
   // Concurrency limiting methods
@@ -346,7 +344,7 @@ class Queue {
   /**
    * Increment and concurrencyPlug if full
    */
-  private concurrencyIncrement() {
+  protected concurrencyIncrement() {
     if (this.concurrencyCount < this.concurrencyLimit) {
       this.concurrencyCount += 1;
       this.concurrencyActivePromise = promise();
@@ -359,7 +357,7 @@ class Queue {
   /**
    * Decrement and unplugs, resolves concurrencyActivePromise if empty
    */
-  private concurrencyDecrement() {
+  protected concurrencyDecrement() {
     this.concurrencyCount -= 1;
     if (this.concurrencyCount < this.concurrencyLimit) {
       this.concurrencyPlug?.resolveP();
