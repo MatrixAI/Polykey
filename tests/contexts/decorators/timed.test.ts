@@ -1,4 +1,5 @@
 import type { ContextTimed } from '@/contexts/types';
+import { PromiseCancellable } from '@matrixai/async-cancellable';
 import context from '@/contexts/decorators/context';
 import timed from '@/contexts/decorators/timed';
 import * as contextsErrors from '@/contexts/errors';
@@ -578,6 +579,57 @@ describe('context/decorators/timed', () => {
       }
       const c = new C();
       await expect(c.f()).resolves.toBe('g');
+    });
+    test('propagated expiry', async () => {
+      class C {
+        f(ctx?: Partial<ContextTimed>): Promise<string>;
+        @timed(25)
+        async f(@context ctx: ContextTimed): Promise<string> {
+          // The `g` will use up all the remaining time
+          const counter = await this.g(ctx.timer.getTimeout());
+          expect(counter).toBeGreaterThan(0);
+          // The `h` will reject eventually
+          // it may reject immediately
+          // it may reject after some time
+          await this.h(ctx);
+          return 'hello world';
+        }
+
+        async g(timeout: number): Promise<number> {
+          const start = performance.now();
+          let counter = 0;
+          while (true) {
+            if (performance.now() - start > timeout) {
+              break;
+            }
+            await sleep(1);
+            counter++;
+          }
+          return counter;
+        }
+
+        h(ctx?: Partial<ContextTimed>): Promise<string>;
+        @timed(25)
+        async h(@context ctx: ContextTimed): Promise<string> {
+          return new Promise((resolve, reject) => {
+            if (ctx.signal.aborted) {
+              reject(ctx.signal.reason);
+              return;
+            }
+            const timeout = setTimeout(() => {
+              resolve('hello world');
+            }, 25);
+            ctx.signal.addEventListener('abort', () => {
+              clearTimeout(timeout);
+              reject(ctx.signal.reason);
+            });
+          });
+        }
+      }
+      const c = new C();
+      await expect(c.f()).rejects.toThrow(
+        contextsErrors.ErrorContextsTimedExpiry
+      );
     });
   });
   describe('timed decorator explicit timer cancellation or signal abortion', () => {
