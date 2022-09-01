@@ -75,12 +75,12 @@ describe('context/decorators/timed', () => {
       }
 
       functionPromise(
-        ctx?: { signal?: AbortSignal; timer?: Timer },
+        ctx?: Partial<ContextTimed>,
         check?: (t: Timer) => any,
       ): Promise<void>;
       @timed(1000)
       functionPromise(
-        @context ctx: { signal: AbortSignal; timer: Timer },
+        @context ctx: ContextTimed,
         check?: (t: Timer) => any,
       ): Promise<void> {
         expect(ctx.signal).toBeInstanceOf(AbortSignal);
@@ -90,12 +90,12 @@ describe('context/decorators/timed', () => {
       }
 
       asyncFunction(
-        ctx?: { signal?: AbortSignal; timer?: Timer },
+        ctx?: Partial<ContextTimed>,
         check?: (t: Timer) => any,
       ): Promise<void>;
       @timed(Infinity)
       async asyncFunction(
-        @context ctx: { signal: AbortSignal; timer: Timer },
+        @context ctx: ContextTimed,
         check?: (t: Timer) => any,
       ): Promise<void> {
         expect(ctx.signal).toBeInstanceOf(AbortSignal);
@@ -104,12 +104,12 @@ describe('context/decorators/timed', () => {
       }
 
       generator(
-        ctx?: { signal?: AbortSignal; timer?: Timer },
+        ctx?: Partial<ContextTimed>,
         check?: (t: Timer) => any,
       ): Generator<void>;
       @timed(0)
       *generator(
-        @context ctx: { signal: AbortSignal; timer: Timer },
+        @context ctx: ContextTimed,
         check?: (t: Timer) => any,
       ): Generator<void> {
         expect(ctx.signal).toBeInstanceOf(AbortSignal);
@@ -130,12 +130,12 @@ describe('context/decorators/timed', () => {
       }
 
       asyncGenerator(
-        ctx?: { signal?: AbortSignal; timer?: Timer },
+        ctx?: Partial<ContextTimed>,
         check?: (t: Timer) => any,
       ): AsyncGenerator<void>;
       @timed(NaN)
       async *asyncGenerator(
-        @context ctx: { signal: AbortSignal; timer: Timer },
+        @context ctx: ContextTimed,
         check?: (t: Timer) => any,
       ): AsyncGenerator<void> {
         expect(ctx.signal).toBeInstanceOf(AbortSignal);
@@ -156,12 +156,12 @@ describe('context/decorators/timed', () => {
       }
 
       [symbolFunction](
-        ctx?: { signal?: AbortSignal; timer?: Timer },
+        ctx?: Partial<ContextTimed>,
         check?: (t: Timer) => any,
       ): Promise<void>;
       @timed()
       [symbolFunction](
-        @context ctx: { signal: AbortSignal; timer: Timer },
+        @context ctx: ContextTimed,
         check?: (t: Timer) => any,
       ): Promise<void> {
         expect(ctx.signal).toBeInstanceOf(AbortSignal);
@@ -265,16 +265,17 @@ describe('context/decorators/timed', () => {
         /**
          * Async function
          */
+        f(ctx?: Partial<ContextTimed>): Promise<string>;
         @timed(50)
         async f(
-          @context ctx?: { timer: Timer; signal: AbortSignal },
+          @context ctx: ContextTimed,
         ): Promise<string> {
-          expect(ctx!.signal.aborted).toBe(false);
+          expect(ctx.signal.aborted).toBe(false);
           await sleep(15);
-          expect(ctx!.signal.aborted).toBe(false);
+          expect(ctx.signal.aborted).toBe(false);
           await sleep(40);
-          expect(ctx!.signal.aborted).toBe(true);
-          expect(ctx!.signal.reason).toBeInstanceOf(
+          expect(ctx.signal.aborted).toBe(true);
+          expect(ctx.signal.reason).toBeInstanceOf(
             contextsErrors.ErrorContextsTimedExpiry,
           );
           return 'hello world';
@@ -289,17 +290,18 @@ describe('context/decorators/timed', () => {
         /**
          * Async function
          */
+        f(ctx?: Partial<ContextTimed>): Promise<string>;
         @timed(50, ErrorCustom)
         async f(
-          @context ctx?: { timer: Timer; signal: AbortSignal },
+          @context ctx: ContextTimed,
         ): Promise<string> {
-          expect(ctx!.signal.aborted).toBe(false);
+          expect(ctx.signal.aborted).toBe(false);
           await sleep(15);
-          expect(ctx!.signal.aborted).toBe(false);
+          expect(ctx.signal.aborted).toBe(false);
           await sleep(40);
-          expect(ctx!.signal.aborted).toBe(true);
-          expect(ctx!.signal.reason).toBeInstanceOf(ErrorCustom);
-          throw ctx!.signal.reason;
+          expect(ctx.signal.aborted).toBe(true);
+          expect(ctx.signal.reason).toBeInstanceOf(ErrorCustom);
+          throw ctx.signal.reason;
         }
       }
       const c = new C();
@@ -310,19 +312,20 @@ describe('context/decorators/timed', () => {
         /**
          * Regular function returning promise
          */
+        f(ctx?: Partial<ContextTimed>): Promise<string>;
         @timed(50)
         f(
-          @context ctx?: { timer: Timer; signal: AbortSignal },
+          @context ctx: ContextTimed,
         ): Promise<string> {
-          expect(ctx!.signal.aborted).toBe(false);
+          expect(ctx.signal.aborted).toBe(false);
           return sleep(15)
             .then(() => {
-              expect(ctx!.signal.aborted).toBe(false);
+              expect(ctx.signal.aborted).toBe(false);
             })
             .then(() => sleep(40))
             .then(() => {
-              expect(ctx!.signal.aborted).toBe(true);
-              expect(ctx!.signal.reason).toBeInstanceOf(
+              expect(ctx.signal.aborted).toBe(true);
+              expect(ctx.signal.reason).toBeInstanceOf(
                 contextsErrors.ErrorContextsTimedExpiry,
               );
             })
@@ -341,21 +344,22 @@ describe('context/decorators/timed', () => {
          * Regular function that actually rejects
          * when the signal is aborted
          */
+        f(ctx?: Partial<ContextTimed>): Promise<string>;
         @timed(50)
         f(
-          @context ctx?: { timer: Timer; signal: AbortSignal },
+          @context ctx: ContextTimed,
         ): Promise<string> {
           return new Promise((resolve, reject) => {
-            if (ctx!.signal.aborted) {
-              reject(ctx!.signal.reason);
+            if (ctx.signal.aborted) {
+              reject(ctx.signal.reason);
             }
             timeout = setTimeout(() => {
               resolve('hello world');
             }, 50000);
-            ctx!.signal.onabort = () => {
+            ctx.signal.onabort = () => {
               clearTimeout(timeout);
               timeout = undefined;
-              reject(ctx!.signal.reason);
+              reject(ctx.signal.reason);
             };
           });
         }
@@ -372,21 +376,22 @@ describe('context/decorators/timed', () => {
         /**
          * Regular function that actually rejects immediately
          */
+        f(ctx?: Partial<ContextTimed>): Promise<string>;
         @timed(0)
         f(
-          @context ctx?: { timer: Timer; signal: AbortSignal },
+          @context ctx: ContextTimed,
         ): Promise<string> {
           return new Promise((resolve, reject) => {
-            if (ctx!.signal.aborted) {
-              reject(ctx!.signal.reason);
+            if (ctx.signal.aborted) {
+              reject(ctx.signal.reason);
             }
             timeout = setTimeout(() => {
               resolve('hello world');
             }, 50000);
-            ctx!.signal.onabort = () => {
+            ctx.signal.onabort = () => {
               clearTimeout(timeout);
               timeout = undefined;
-              reject(ctx!.signal.reason);
+              reject(ctx.signal.reason);
             };
           });
         }
