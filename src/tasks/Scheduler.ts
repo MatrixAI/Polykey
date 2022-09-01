@@ -429,8 +429,8 @@ class Scheduler {
     tran.queueSuccess(() => {
       this.updateTimer(startTime);
       this.logger.info(
-        `Task ${task.id.toMultibase(
-          'base32hex',
+        `Task ${tasksUtils.encodeTaskId(
+          task.id,
         )} was scheduled for ${startTime}`,
       );
     });

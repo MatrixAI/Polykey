@@ -1,11 +1,11 @@
 import type { DB, LevelPath, KeyPath } from '@matrixai/db';
 import type {
-  TaskIdString,
   TaskData,
   TaskHandlerId,
   TaskHandler,
   TaskTimestamp,
   TaskParameters,
+  TaskIdEncoded,
 } from './types';
 import type KeyManager from '../keys/KeyManager';
 import EventEmitter from 'events';
@@ -101,12 +101,6 @@ class Queue {
     'lastTaskId',
   ];
 
-  // When the queue to execute the tasks
-  // the task id is generated outside
-  // you don't get a task id here
-  // you just "push" tasks there to be executed
-  // this is the "shared" set of promises to be maintained
-  protected promises: Map<TaskIdString, Promise<any>> = new Map();
   // /**
   //  * Listeners for task execution
   //  * When a task is executed, these listeners are synchronously executed
@@ -122,7 +116,7 @@ class Queue {
   protected cleanUpLock: RWLockReader = new RWLockReader();
 
   protected handlers: Map<TaskHandlerId, TaskHandler> = new Map();
-  protected taskPromises: Map<TaskIdString, Promise<any>> = new Map();
+  protected taskPromises: Map<TaskIdEncoded, Promise<any>> = new Map();
   protected taskEvents: EventEmitter = new EventEmitter();
   protected keyManager: KeyManager;
   protected generateTaskId: () => TaskId;
@@ -362,16 +356,13 @@ class Queue {
       // We need to call whatever dispatches tasks here
       //  and hook lifecycle to the promise.
       // call scheduler. handleTask?
-      const taskIdString = nextTaskId.toMultibase('base32hex') as TaskIdString;
+      const taskIdEncoded = tasksUtils.encodeTaskId(nextTaskId);
       await this.concurrencyIncrement();
       const prom = this.handleTask(nextTaskId);
-      // Hook lifecycle
-      this.promises.set(taskIdString, prom);
-      this.logger.info(`started task ${taskIdString}`);
+      this.logger.info(`started task ${taskIdEncoded}`);
 
       const [cleanupRelease] = await this.cleanUpLock.read()();
       const onFinally = async () => {
-        this.promises.delete(taskIdString);
         await this.concurrencyDecrement();
         await cleanupRelease();
       };
@@ -488,12 +479,9 @@ class Queue {
       const prom = handler(...taskData.parameters);
 
       // Add the promise to the map and hook any lifecycle stuff
-      const taskIdString = taskId.toMultibase('base32hex') as TaskIdString;
-      this.promises.set(taskIdString, prom);
+      const taskIdEncoded = tasksUtils.encodeTaskId(taskId);
       return prom
         .finally(async () => {
-          this.promises.delete(taskIdString);
-
           // Cleaning up is a separate transaction
           await this.db.withTransactionF(async (tran) => {
             const taskTimestampKeybuffer = await tran.get(
@@ -513,11 +501,11 @@ class Queue {
         })
         .then(
           (value) => {
-            this.taskEvents.emit(taskIdString, value);
+            this.taskEvents.emit(taskIdEncoded, value);
             return value;
           },
           (reason) => {
-            this.taskEvents.emit(taskIdString, reason);
+            this.taskEvents.emit(taskIdEncoded, reason);
             throw reason;
           },
         );
@@ -550,9 +538,9 @@ class Queue {
 
   @ready(new tasksErrors.ErrorSchedulerNotRunning())
   public getTaskP(taskId: TaskId, tran?: DBTransaction): Promise<any> {
-    const taskIdString = taskId.toMultibase('base32hex') as TaskIdString;
+    const taskIdEncoded = tasksUtils.encodeTaskId(taskId);
     // This will return a task promise if it already exists
-    const existingTaskPromise = this.taskPromises.get(taskIdString);
+    const existingTaskPromise = this.taskPromises.get(taskIdEncoded);
     if (existingTaskPromise != null) return existingTaskPromise;
 
     // If the task exist then it will create the task promise and return that
@@ -561,23 +549,23 @@ class Queue {
         if (result instanceof Error) reject(result);
         else resolve(result);
       };
-      this.taskEvents.once(taskIdString, resultListener);
+      this.taskEvents.once(taskIdEncoded, resultListener);
       // If not task promise exists then with will check if the task exists
       void (tran ?? this.db)
         .get([...this.queueTasksDbPath, taskId.toBuffer()], true)
         .then(
           (taskData) => {
             if (taskData == null) {
-              this.taskEvents.removeListener(taskIdString, resultListener);
+              this.taskEvents.removeListener(taskIdEncoded, resultListener);
               reject(Error('TEMP task not found'));
             }
           },
           (reason) => reject(reason),
         );
     }).finally(() => {
-      this.taskPromises.delete(taskIdString);
+      this.taskPromises.delete(taskIdEncoded);
     });
-    this.taskPromises.set(taskIdString, newTaskPromise);
+    this.taskPromises.set(taskIdEncoded, newTaskPromise);
     return newTaskPromise;
   }
 

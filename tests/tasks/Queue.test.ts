@@ -1,4 +1,3 @@
-import type { NodeId } from '../../src/nodes/types';
 import type { TaskHandlerId, TaskId } from '../../src/tasks/types';
 import type { TaskGroup } from '../../src/tasks/types';
 import os from 'os';
@@ -187,7 +186,7 @@ describe(Queue.name, () => {
     const handler = jest.fn();
     handler.mockImplementation(async (nextTaskId) => {
       // Await sleep(1000);
-      logger.info(`task complete ${nextTaskId.toMultibase('base32hex')}`);
+      logger.info(`task complete ${tasksUtils.encodeTaskId(nextTaskId)}`);
     });
     const queue = await Queue.createQueue({
       db,
@@ -394,7 +393,7 @@ describe(Queue.name, () => {
     const handler = jest.fn();
     handler.mockImplementation(async (nextTaskId) => {
       // Await sleep(1000);
-      logger.info(`task complete ${nextTaskId.toMultibase('base32hex')}`);
+      logger.info(`task complete ${tasksUtils.encodeTaskId(nextTaskId)}`);
     });
     const queue = await Queue.createQueue({
       db,

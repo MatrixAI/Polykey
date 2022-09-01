@@ -1,6 +1,6 @@
-import type { TaskId, TaskPriority } from './types';
+import type { TaskId, TaskIdEncoded, TaskPriority } from './types';
 import type { NodeId } from '../nodes/types';
-import { IdSortable } from '@matrixai/id';
+import { IdInternal, IdSortable } from '@matrixai/id';
 import lexi from 'lexicographic-integer';
 
 /**
@@ -61,6 +61,31 @@ function getPerformanceTime(): number {
   return performance.timeOrigin + performance.now();
 }
 
+/**
+ * Encodes the TaskId as a `base32hex` string
+ */
+function encodeTaskId(taskId: TaskId): TaskIdEncoded {
+  return taskId.toMultibase('base32hex') as TaskIdEncoded;
+}
+
+/**
+ * Decodes an encoded TaskId string into a TaskId
+ */
+function decodeTaskId(taskIdEncoded: any): TaskId | undefined {
+  if (typeof taskIdEncoded !== 'string') {
+    return;
+  }
+  const taskId = IdInternal.fromMultibase<TaskId>(taskIdEncoded);
+  if (taskId == null) {
+    return;
+  }
+  // All TaskIds are 16 bytes long
+  if (taskId.length !== 16) {
+    return;
+  }
+  return taskId;
+}
+
 export {
   createTaskIdGenerator,
   toPriority,
@@ -68,4 +93,6 @@ export {
   makeTaskTimestampKey,
   splitTaskTimestampKey,
   getPerformanceTime,
+  encodeTaskId,
+  decodeTaskId,
 };
