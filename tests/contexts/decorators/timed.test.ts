@@ -59,6 +59,21 @@ describe('context/decorators/timed', () => {
     // use overloading to change required context parameter to optional context parameter
     const symbolFunction = Symbol('sym');
     class X {
+      functionValue(
+        ctx?: Partial<ContextTimed>,
+        check?: (t: Timer) => any,
+      ): void;
+      @timed(1000)
+      functionValue(
+        @context ctx: ContextTimed,
+        check?: (t: Timer) => any,
+      ): void {
+        expect(ctx.signal).toBeInstanceOf(AbortSignal);
+        expect(ctx.timer).toBeInstanceOf(Timer);
+        if (check != null) check(ctx.timer);
+        return;
+      }
+
       functionPromise(
         ctx?: { signal?: AbortSignal; timer?: Timer },
         check?: (t: Timer) => any,
@@ -156,6 +171,15 @@ describe('context/decorators/timed', () => {
       }
     }
     const x = new X();
+    test('functionValue', () => {
+      x.functionValue();
+      x.functionValue({});
+      x.functionValue({ timer: new Timer({ delay: 100 }) }, (t) => {
+        expect(t.delay).toBe(100);
+      });
+      expect(x.functionValue).toBeInstanceOf(Function);
+      expect(x.functionValue.name).toBe('functionValue');
+    });
     test('functionPromise', async () => {
       await x.functionPromise();
       await x.functionPromise({});

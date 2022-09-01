@@ -4,29 +4,6 @@ import * as contextsErrors from '../errors';
 import Timer from '../../timer/Timer';
 import * as utils from '../../utils';
 
-type TimedDecorator = {
-  <T extends (...params: Array<any>) => Promise<any>>(
-    target: any,
-    key: string | symbol,
-    descriptor: TypedPropertyDescriptor<T>,
-  ): TypedPropertyDescriptor<T>;
-  <T extends (...params: Array<any>) => Generator<any, any, any>>(
-    target: any,
-    key: string | symbol,
-    descriptor: TypedPropertyDescriptor<T>,
-  ): TypedPropertyDescriptor<T>;
-  <T extends (...params: Array<any>) => AsyncGenerator<any, any, any>>(
-    target: any,
-    key: string | symbol,
-    descriptor: TypedPropertyDescriptor<T>,
-  ): TypedPropertyDescriptor<T>;
-  <T extends (...params: Array<any>) => any>(
-    target: any,
-    key: string | symbol,
-    descriptor: TypedPropertyDescriptor<T>,
-  ): TypedPropertyDescriptor<T>;
-};
-
 /**
  * This sets up the context
  * This will mutate the `params` parameter
@@ -135,11 +112,11 @@ function setupContext(
 function timed(
   delay: number = Infinity,
   errorTimeout: new () => Error = contextsErrors.ErrorContextsTimedExpiry,
-): TimedDecorator {
+) {
   return (
     target: any,
     key: string | symbol,
-    descriptor: TypedPropertyDescriptor<Function>,
+    descriptor: TypedPropertyDescriptor<(...params: Array<any>) => any>,
   ) => {
     // Target is instance prototype for instance methods
     // or the class prototype for static methods
@@ -215,10 +192,17 @@ function timed(
           params,
         );
         const result = f.apply(this, params);
-        if (utils.isPromise(result)) {
-          return result.finally(() => {
-            teardownContext();
-          });
+        if (utils.isPromiseLike(result)) {
+          return result.then(
+            (r) => {
+              teardownContext();
+              return r;
+            },
+            (e) => {
+              teardownContext();
+              throw e;
+            }
+          );
         } else if (utils.isIterable(result)) {
           return (function *() {
             try {
@@ -250,5 +234,3 @@ function timed(
 }
 
 export default timed;
-
-export type { TimedDecorator };
