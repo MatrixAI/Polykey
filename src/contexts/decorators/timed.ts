@@ -65,9 +65,15 @@ function setupContext(
       () => void abortController.abort(new errorTimeout()),
       delay,
     );
+    if (context.signal.aborted) {
+      abortController.abort(context.signal.reason);
+    }
     // Chain the upstream abort signal to this context
-    const signalHandler = () =>
-      void abortController.abort(context.signal!.reason);
+    // Use function declaration to use `this` instead of using
+    // the `context.signal` which is the upstream abort signal
+    function signalHandler(this: AbortSignal) {
+      abortController.abort(this.reason);
+    }
     context.signal.addEventListener('abort', signalHandler);
     // Overwrite the signal property with this context's `AbortController.signal`
     context.signal = abortController.signal;
@@ -77,6 +83,7 @@ function setupContext(
       // Ignore the cancellation
       void timer.catch(() => {});
       timer.cancel();
+      console.log('CANCELLED TIMER');
     };
   } else if (context.timer instanceof Timer && context.signal === undefined) {
     const abortController = new AbortController();
@@ -86,7 +93,7 @@ function setupContext(
       (r: any, s: AbortSignal) => {
         // If the timer is aborted after it resolves
         // then don't bother aborting the target function
-        if (!finished || !s.aborted) {
+        if (!finished && !s.aborted) {
           abortController.abort(new errorTimeout());
         }
         return r;
