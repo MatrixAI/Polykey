@@ -65,10 +65,10 @@ function setupContext(
       () => void abortController.abort(new errorTimeout()),
       delay,
     );
+    // Chain the upstream abort signal to this context
     if (context.signal.aborted) {
       abortController.abort(context.signal.reason);
     }
-    // Chain the upstream abort signal to this context
     // Use function declaration to use `this` instead of using
     // the `context.signal` which is the upstream abort signal
     function signalHandler(this: AbortSignal) {
@@ -83,7 +83,6 @@ function setupContext(
       // Ignore the cancellation
       void timer.catch(() => {});
       timer.cancel();
-      console.log('CANCELLED TIMER');
     };
   } else if (context.timer instanceof Timer && context.signal === undefined) {
     const abortController = new AbortController();
