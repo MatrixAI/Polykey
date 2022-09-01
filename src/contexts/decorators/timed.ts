@@ -5,19 +5,6 @@ import Timer from '../../timer/Timer';
 import * as utils from '../../utils';
 
 /**
- * Encapsulated unique timer cancellation symbol
- * This symbol is shared across the decorated functions
- * When the signal is already aborted or aborts, the timer
- * is immediately cancelled with this symbol as the reason
- * Whenever a timer is cancelled with this reason, it is
- * considered a legitimate reason, and the reason should be ignored
- *
- * Note that if the timer is already cancelled or gets cancelled,
- * this does not affect the signal in anyway
- */
-const timerCancellation = Symbol('timer cancellation');
-
-/**
  * This sets up the context
  * This will mutate the `params` parameter
  * It returns a teardown function to be called
@@ -62,14 +49,10 @@ function setupContext(
       () => void abortController.abort(new errorTimeout()),
       delay,
     );
-    // Ignore explicit cancellation
-    void timer.catch((r) => {
-      if (r !== timerCancellation) throw r;
-    });
     context.signal = abortController.signal;
     context.timer = timer;
     return () => {
-      timer.cancel(timerCancellation);
+      timer.cancel();
     };
   } else if (
     context.timer === undefined &&
@@ -80,18 +63,14 @@ function setupContext(
       () => void abortController.abort(new errorTimeout()),
       delay,
     );
-    // Ignore explicit cancellation
-    void timer.catch((r) => {
-      if (r !== timerCancellation) throw r;
-    });
     const signalUpstream = context.signal;
     const signalHandler = () => {
-      timer.cancel(timerCancellation);
+      timer.cancel();
       abortController.abort(signalUpstream.reason);
     };
     // If already aborted, abort target and cancel the timer
     if (signalUpstream.aborted) {
-      timer.cancel(timerCancellation);
+      timer.cancel();
       abortController.abort(signalUpstream.reason);
     } else {
       signalUpstream.addEventListener('abort', signalHandler);
@@ -101,7 +80,7 @@ function setupContext(
     context.timer = timer;
     return () => {
       signalUpstream.removeEventListener('abort', signalHandler);
-      timer.cancel(timerCancellation);
+      timer.cancel();
     };
   } else if (context.timer instanceof Timer && context.signal === undefined) {
     const abortController = new AbortController();
@@ -127,20 +106,11 @@ function setupContext(
   } else {
     // In this case, `context.timer` and `context.signal` are both instances of
     // `Timer` and `AbortSignal` respectively
-    // Ignore explicit cancellation
-    void context.timer!.catch((r) => {
-      process.stderr.write('IS THIS HERE\n');
-      // the PROBLEM is this
-      // simply cancelling the timer results in an unhandled exception
-      // we should make it SIMILAR to PromiseCancellable
-
-      if (r !== timerCancellation) throw r;
-    });
     const signalHandler = () => {
-      context.timer!.cancel(timerCancellation);
+      context.timer!.cancel();
     };
     if (context.signal!.aborted) {
-      context.timer!.cancel(timerCancellation);
+      context.timer!.cancel();
     } else {
       context.signal!.addEventListener('abort', signalHandler);
     }
