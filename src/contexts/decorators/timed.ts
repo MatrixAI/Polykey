@@ -46,10 +46,7 @@ function setupContext(
   if (context.timer === undefined && context.signal === undefined) {
     const abortController = new AbortController();
     const e = new errorTimeoutConstructor();
-    const timer = new Timer(
-      () => void abortController.abort(e),
-      delay,
-    );
+    const timer = new Timer(() => void abortController.abort(e), delay);
     context.signal = abortController.signal;
     context.timer = timer;
     return () => {
@@ -61,10 +58,7 @@ function setupContext(
   ) {
     const abortController = new AbortController();
     const e = new errorTimeoutConstructor();
-    const timer = new Timer(
-      () => void abortController.abort(e),
-      delay,
-    );
+    const timer = new Timer(() => void abortController.abort(e), delay);
     const signalUpstream = context.signal;
     const signalHandler = () => {
       timer.cancel();
@@ -100,7 +94,7 @@ function setupContext(
       },
       () => {
         // Ignore any upstream cancellation
-      }
+      },
     );
     context.signal = abortController.signal;
     return () => {
@@ -218,10 +212,10 @@ function timed(
             (e) => {
               teardownContext();
               throw e;
-            }
+            },
           );
         } else if (utils.isIterable(result)) {
-          return (function *() {
+          return (function* () {
             try {
               return yield* result;
             } finally {
@@ -229,7 +223,7 @@ function timed(
             }
           })();
         } else if (utils.isAsyncIterable(result)) {
-          return (async function *() {
+          return (async function* () {
             try {
               return yield* result;
             } finally {
