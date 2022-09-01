@@ -205,10 +205,9 @@ class Scheduler {
       fresh,
       taskHandler: (taskId) => this.handleTask(taskId),
     });
-    // Setting up dispatching
-    this.pendingDispatch = this.dispatchTaskLoop();
     // Don't start dispatching if we still want to register handlers
     if (!delay) {
+      console.log(!delay);
       await this.startDispatching();
     }
     this.logger.info(`Started ${this.constructor.name}`);
@@ -252,7 +251,7 @@ class Scheduler {
       this.dispatchTimerTimestamp = Number.POSITIVE_INFINITY;
     }, delay);
     this.dispatchTimerTimestamp = startTime;
-    // This.logger.info(`Timer was updated to ${delay} to end at ${startTime}`);
+    this.logger.info(`Timer was updated to ${delay} to end at ${startTime}`);
   }
 
   /**
@@ -265,26 +264,6 @@ class Scheduler {
     // If already started, do nothing
     if (this.pendingDispatch == null) {
       this.pendingDispatch = this.dispatchTaskLoop();
-    }
-
-    // We actually need to find the last task
-    const time = await this.db.withTransactionF(async (tran) => {
-      let time: number | undefined;
-      for await (const [keyPath_] of tran.iterator(this.schedulerTimeDbPath, {
-        limit: 1,
-      })) {
-        const [taskTimestampKeyBuffer] = tasksUtils.splitTaskTimestampKey(
-          keyPath_[0] as Buffer,
-        );
-        time = lexi.unpack(Array.from(taskTimestampKeyBuffer));
-      }
-      // If a task exists we set start the timer for when it's due
-      return time;
-    });
-    if (time != null) {
-      this.updateTimer(time);
-    } else {
-      // This.logger.info(`No pending tasks exist, timer was not started`);
     }
   }
 
@@ -304,50 +283,43 @@ class Scheduler {
     // This will pop tasks from the queue and put the where they need to go
     this.logger.info('dispatching set up');
     this.dispatchEnding = false;
-    await this.dispatchPlug.plug();
     this.dispatchTimerTimestamp = Number.POSITIVE_INFINITY;
     while (true) {
       if (this.dispatchEnding) break;
+      // Setting up and waiting for plug
+      this.logger.info('dispatch waiting');
+      await this.dispatchPlug.plug();
+      // Get the next time to delay for
+      await this.db.withTransactionF(async (tran) => {
+        for await (const [keyPath] of tran.iterator(this.schedulerTimeDbPath, {
+          limit: 1,
+        })) {
+          const [taskTimestampKeyBuffer] = tasksUtils.splitTaskTimestampKey(
+            keyPath[0] as Buffer,
+          );
+          const time = lexi.unpack(Array.from(taskTimestampKeyBuffer));
+          this.updateTimer(time);
+        }
+      });
       await this.dispatchPlug.waitForUnplug();
       if (this.dispatchEnding) break;
+      this.logger.info('dispatch continuing');
+      const time = Date.now();
+      // Peek ahead by 100 ms
+      const targetTimestamp = Buffer.from(lexi.pack(time + 100));
       await this.db.withTransactionF(async (tran) => {
-        // Read the pending task
-        let taskIdBuffer: Buffer | undefined;
-        let keyPath: KeyPath | undefined;
-        // FIXME: get a range of tasks to do.
-        for await (const [keyPath_, taskIdBuffer_] of tran.iterator(
+        for await (const [keyPath, taskIdBuffer] of tran.iterator(
           this.schedulerTimeDbPath,
           {
-            limit: 1,
+            lte: targetTimestamp,
           },
         )) {
-          taskIdBuffer = taskIdBuffer_;
-          keyPath = keyPath_;
+          this.logger.info('dispatch reading');
+          const taskTimestampKeyBuffer = keyPath[0] as Buffer;
+          // Process the task now and remove it from the scheduler
+          // this.logger.info('dispatching task');
+          await this.processTask(tran, taskIdBuffer, taskTimestampKeyBuffer);
         }
-        // If pending tasks are empty we wait
-        if (taskIdBuffer == null || keyPath == null) {
-          // This.logger.info('waiting for new tasks');
-          await this.dispatchPlug.plug();
-          return;
-        }
-        const taskTimestampKeyBuffer = keyPath[0] as Buffer;
-        const [timestampBuffer] = tasksUtils.splitTaskTimestampKey(
-          taskTimestampKeyBuffer,
-        );
-        const time = lexi.unpack(Array.from(timestampBuffer));
-        // If task is still waiting it start time then we wait
-        // FIXME: This check is not needed if we get a range of tasks
-        // FIXME: Don't use `Date.now()`, should be using performance timer taskID uses
-        if (time > Date.now()) {
-          // This.logger.info('waiting for tasks pending tasks');
-          this.updateTimer(time);
-          await this.dispatchPlug.plug();
-          return;
-        }
-
-        // Process the task now and remove it from the scheduler
-        // this.logger.info('dispatching task');
-        await this.processTask(tran, taskIdBuffer, taskTimestampKeyBuffer);
       });
     }
     this.logger.info('dispatching ending');
@@ -367,7 +339,6 @@ class Scheduler {
     const taskId = IdInternal.fromBuffer<TaskId>(taskIdBuffer);
 
     // We want to move it to the pending list
-    // console.log(taskId.toMultibase('base32hex'), taskData);
     if (taskData == null) throw Error('TEMP ERROR');
 
     await this.queue.pushTask(taskId, taskTimestampKeyBuffer, tran);

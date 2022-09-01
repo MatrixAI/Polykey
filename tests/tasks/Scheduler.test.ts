@@ -63,7 +63,6 @@ describe(Scheduler.name, () => {
     handler.mockImplementation(async () => sleep(100));
     scheduler.registerHandler(taskHandler, handler);
 
-    await scheduler.start();
     await scheduler.scheduleTask(taskHandler, [1], 1000);
     await scheduler.scheduleTask(taskHandler, [2], 100);
     await scheduler.scheduleTask(taskHandler, [3], 2000);
@@ -378,5 +377,27 @@ describe(Scheduler.name, () => {
     await expect(taskSucceed?.promise).resolves.toBe(true);
 
     await scheduler.stop();
+  });
+  test('tasks are read off in batches', async () => {
+    const scheduler = await Scheduler.createScheduler({
+      db,
+      keyManager,
+      logger,
+      delay: true,
+      concurrencyLimit: 2,
+    });
+    const taskHandler = 'asd' as TaskHandlerId;
+    const handler = jest.fn();
+    handler.mockImplementation(async () => sleep(100));
+    scheduler.registerHandler(taskHandler, handler);
+
+    await scheduler.scheduleTask(taskHandler, [1], 0);
+    await scheduler.scheduleTask(taskHandler, [2], 0);
+    await scheduler.scheduleTask(taskHandler, [3], 0);
+    await sleep(500);
+    await scheduler.startDispatching();
+    await sleep(500);
+    await scheduler.stop();
+    expect(handler).toHaveBeenCalledTimes(3);
   });
 });

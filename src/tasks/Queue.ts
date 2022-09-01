@@ -273,6 +273,7 @@ class Queue {
     await this.concurrencyPlug.unplug();
     await this.activeTaskLoop;
     this.activeTaskLoop = null;
+    // FIXME: likely not needed, remove
     await this.cleanUpLock.waitForUnlock();
   }
 
