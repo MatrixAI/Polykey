@@ -580,10 +580,10 @@ describe('context/decorators/timed', () => {
       await expect(c.f()).resolves.toBe('g');
     });
   });
-  describe.only('timed decorator explicit timer cancellation or signal abortion', () => {
+  describe('timed decorator explicit timer cancellation or signal abortion', () => {
     // If the timer is cancelled
     // there will be no timeout error
-    let ctx_: ContextTimed;
+    let ctx_: ContextTimed | undefined;
     class C {
       f(ctx?: Partial<ContextTimed>): Promise<string>;
       @timed(50)
@@ -605,19 +605,22 @@ describe('context/decorators/timed', () => {
       }
     }
     const c = new C();
+    beforeEach(() => {
+      ctx_ = undefined;
+    });
     test('explicit timer cancellation - begin', async () => {
       const timer = new Timer({ delay: 100 });
       timer.cancel('reason');
       const p = c.f({ timer });
       await expect(p).resolves.toBe('hello world');
-      expect(ctx_.signal.aborted).toBe(false);
+      expect(ctx_!.signal.aborted).toBe(false);
     });
     test('explicit timer cancellation - during', async () => {
       const timer = new Timer({ delay: 100 });
       const p = c.f({ timer });
       timer.cancel('reason');
       await expect(p).resolves.toBe('hello world');
-      expect(ctx_.signal.aborted).toBe(false);
+      expect(ctx_!.signal.aborted).toBe(false);
     });
     test('explicit timer cancellation - during after sleep', async () => {
       const timer = new Timer({ delay: 20 });
@@ -625,21 +628,44 @@ describe('context/decorators/timed', () => {
       await sleep(1);
       timer.cancel('reason');
       await expect(p).resolves.toBe('hello world');
-      expect(ctx_.signal.aborted).toBe(false);
+      expect(ctx_!.signal.aborted).toBe(false);
     });
-    test.only('explicit signal cancellation - begin', async () => {
+    test('explicit signal abortion - begin', async () => {
       const abortController = new AbortController();
       abortController.abort('reason');
       const p = c.f({ signal: abortController.signal });
+      expect(ctx_!.timer.status).toBe('settled');
       await expect(p).rejects.toBe('reason begin');
-      expect(ctx_.timer.status).toBe('settled');
     });
-    test('explicit signal cancellation - during', async () => {
+    test('explicit signal abortion - during', async () => {
       const abortController = new AbortController();
       const p = c.f({ signal: abortController.signal });
       abortController.abort('reason');
+      // Timer is also cancelled immediately
+      expect(ctx_!.timer.status).toBe('settled');
       await expect(p).rejects.toBe('reason during');
-      expect(ctx_.timer.status).toBe('settled');
     });
+    test('explicit timer cancellation and signal abortion', async () => {
+      const timer = new Timer({ delay: 100 });
+      timer.cancel('timer reason');
+      const abortController = new AbortController();
+      abortController.abort('abort reason');
+      const p = c.f({ timer, signal: abortController.signal });
+      expect(ctx_!.timer.status).toBe('settled');
+      expect(ctx_!.signal.aborted).toBe(true);
+      await expect(p).rejects.toBe('abort reason begin');
+      process.stderr.write('HERE...\n');
+    });
+    test.only('', async () => {
+      const timer = new Timer({ delay: 100 });
+      timer.cancel();
+    })
+  });
+  describe('timed decorator nested consumption', () => {
+
+
+  });
+  test('timed decorator error stack trace', () => {
+
   });
 });
