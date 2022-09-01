@@ -130,7 +130,6 @@ class Timer<T = void>
       abortController.signal.addEventListener(
         'abort',
         () => void this.reject(abortController.signal.reason),
-        { once: true },
       );
     }
     this.p = new PromiseCancellable<T>((resolve, reject) => {
@@ -198,7 +197,13 @@ class Timer<T = void>
     return this.getTimeout();
   }
 
+  /**
+   * Cancels the timer
+   * Unlike `PromiseCancellable`, canceling the timer will not result
+   * in an unhandled promise rejection, all promise rejections are ignored
+   */
   public cancel(reason?: any): void {
+    void this.p.catch(() => {});
     this.p.cancel(reason);
   }
 
@@ -252,7 +257,7 @@ class Timer<T = void>
 
   protected async reject(reason?: any): Promise<void> {
     if (
-      (this._status === 'settling' && this.lazy) ||
+      (this.lazy && (this._status == null || this._status === 'settling')) ||
       this._status === 'settled'
     ) {
       return;
