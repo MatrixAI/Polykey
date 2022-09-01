@@ -1,4 +1,4 @@
-import { ContextTimed } from '@/contexts/types';
+import type { ContextTimed } from '@/contexts/types';
 import context from '@/contexts/decorators/context';
 import timed from '@/contexts/decorators/timed';
 import * as contextsErrors from '@/contexts/errors';
