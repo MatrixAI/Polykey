@@ -12,7 +12,7 @@ import * as utils from '../../utils';
  */
 function setupContext(
   delay: number,
-  errorTimeout: new () => Error,
+  errorTimeoutConstructor: new () => Error,
   targetName: string,
   key: string | symbol,
   contextIndex: number,
@@ -45,8 +45,9 @@ function setupContext(
   // Mutating the `context` parameter
   if (context.timer === undefined && context.signal === undefined) {
     const abortController = new AbortController();
+    const e = new errorTimeoutConstructor();
     const timer = new Timer(
-      () => void abortController.abort(new errorTimeout()),
+      () => void abortController.abort(e),
       delay,
     );
     context.signal = abortController.signal;
@@ -59,8 +60,9 @@ function setupContext(
     context.signal instanceof AbortSignal
   ) {
     const abortController = new AbortController();
+    const e = new errorTimeoutConstructor();
     const timer = new Timer(
-      () => void abortController.abort(new errorTimeout()),
+      () => void abortController.abort(e),
       delay,
     );
     const signalUpstream = context.signal;
@@ -84,6 +86,7 @@ function setupContext(
     };
   } else if (context.timer instanceof Timer && context.signal === undefined) {
     const abortController = new AbortController();
+    const e = new errorTimeoutConstructor();
     let finished = false;
     // If the timer resolves, then abort the target function
     void context.timer.then(
@@ -91,7 +94,7 @@ function setupContext(
         // If the timer is aborted after it resolves
         // then don't bother aborting the target function
         if (!finished && !s.aborted) {
-          abortController.abort(new errorTimeout());
+          abortController.abort(e);
         }
         return r;
       },
@@ -125,7 +128,7 @@ function setupContext(
  */
 function timed(
   delay: number = Infinity,
-  errorTimeout: new () => Error = contextsErrors.ErrorContextsTimedExpiry,
+  errorTimeoutConstructor: new () => Error = contextsErrors.ErrorContextsTimedExpiry,
 ) {
   return (
     target: any,
@@ -151,7 +154,7 @@ function timed(
       descriptor['value'] = async function (...params) {
         const teardownContext = setupContext(
           delay,
-          errorTimeout,
+          errorTimeoutConstructor,
           targetName,
           key,
           contextIndex,
@@ -167,7 +170,7 @@ function timed(
       descriptor['value'] = function* (...params) {
         const teardownContext = setupContext(
           delay,
-          errorTimeout,
+          errorTimeoutConstructor,
           targetName,
           key,
           contextIndex,
@@ -183,7 +186,7 @@ function timed(
       descriptor['value'] = async function* (...params) {
         const teardownContext = setupContext(
           delay,
-          errorTimeout,
+          errorTimeoutConstructor,
           targetName,
           key,
           contextIndex,
@@ -199,7 +202,7 @@ function timed(
       descriptor['value'] = function (...params) {
         const teardownContext = setupContext(
           delay,
-          errorTimeout,
+          errorTimeoutConstructor,
           targetName,
           key,
           contextIndex,
