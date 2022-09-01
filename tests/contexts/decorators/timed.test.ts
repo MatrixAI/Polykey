@@ -1,4 +1,4 @@
-import type { ContextTimed } from '@/contexts/types';
+import { ContextTimed } from '@/contexts/types';
 import context from '@/contexts/decorators/context';
 import timed from '@/contexts/decorators/timed';
 import * as contextsErrors from '@/contexts/errors';
@@ -16,10 +16,7 @@ describe('context/decorators/timed', () => {
       expect(() => {
         class C {
           @timed(50)
-          async f(_ctx?: {
-            timer: Timer;
-            signal: AbortSignal;
-          }): Promise<string> {
+          async f(_ctx: ContextTimed): Promise<string> {
             return 'hello world';
           }
         }
@@ -30,9 +27,7 @@ describe('context/decorators/timed', () => {
       await expect(async () => {
         class C {
           @timed(50)
-          async f(
-            @context _ctx?: { timer: Timer; signal: AbortSignal },
-          ): Promise<string> {
+          async f(@context _ctx: ContextTimed): Promise<string> {
             return 'hello world';
           }
         }
@@ -43,9 +38,7 @@ describe('context/decorators/timed', () => {
       await expect(async () => {
         class C {
           @timed(50)
-          async f(
-            @context _ctx?: { timer: Timer; signal: AbortSignal },
-          ): Promise<string> {
+          async f(@context _ctx: ContextTimed): Promise<string> {
             return 'hello world';
           }
         }
