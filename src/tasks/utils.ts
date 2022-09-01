@@ -57,10 +57,15 @@ function splitTaskTimestampKey(timestampBuffer: Buffer) {
   return [timeBuffer, idBuffer];
 }
 
+function getPerformanceTime(): number {
+  return performance.timeOrigin + performance.now();
+}
+
 export {
   createTaskIdGenerator,
   toPriority,
   fromPriority,
   makeTaskTimestampKey,
   splitTaskTimestampKey,
+  getPerformanceTime,
 };

@@ -243,7 +243,7 @@ class Scheduler {
 
   protected updateTimer(startTime: number) {
     if (startTime >= this.dispatchTimerTimestamp) return;
-    const delay = Math.max(startTime - Date.now(), 0);
+    const delay = Math.max(startTime - tasksUtils.getPerformanceTime(), 0);
     clearTimeout(this.dispatchTimer);
     this.dispatchTimer = setTimeout(async () => {
       // This.logger.info('consuming pending tasks');
@@ -304,7 +304,7 @@ class Scheduler {
       await this.dispatchPlug.waitForUnplug();
       if (this.dispatchEnding) break;
       this.logger.info('dispatch continuing');
-      const time = Date.now();
+      const time = tasksUtils.getPerformanceTime();
       // Peek ahead by 100 ms
       const targetTimestamp = Buffer.from(lexi.pack(time + 100));
       await this.db.withTransactionF(async (tran) => {
@@ -314,34 +314,24 @@ class Scheduler {
             lte: targetTimestamp,
           },
         )) {
-          this.logger.info('dispatch reading');
           const taskTimestampKeyBuffer = keyPath[0] as Buffer;
           // Process the task now and remove it from the scheduler
-          // this.logger.info('dispatching task');
-          await this.processTask(tran, taskIdBuffer, taskTimestampKeyBuffer);
+          this.logger.info('dispatching task');
+          const taskData = await tran.get<TaskData>([
+            ...this.schedulerTasksDbPath,
+            taskIdBuffer,
+          ]);
+          await tran.del([...this.schedulerTimeDbPath, taskTimestampKeyBuffer]);
+          const taskId = IdInternal.fromBuffer<TaskId>(taskIdBuffer);
+
+          // We want to move it to the pending list
+          if (taskData == null) throw Error('TEMP ERROR');
+
+          await this.queue.pushTask(taskId, taskTimestampKeyBuffer, tran);
         }
       });
     }
     this.logger.info('dispatching ending');
-  }
-
-  protected async processTask(
-    tran: DBTransaction,
-    taskIdBuffer: Buffer,
-    taskTimestampKeyBuffer: Buffer,
-  ) {
-    const taskData = await tran.get<TaskData>([
-      ...this.schedulerTasksDbPath,
-      taskIdBuffer,
-    ]);
-    await tran.del([...this.schedulerTimeDbPath, taskTimestampKeyBuffer]);
-    // Await tran.del([...this.schedulerTasksDbPath, taskIdBuffer]);
-    const taskId = IdInternal.fromBuffer<TaskId>(taskIdBuffer);
-
-    // We want to move it to the pending list
-    if (taskData == null) throw Error('TEMP ERROR');
-
-    await this.queue.pushTask(taskId, taskTimestampKeyBuffer, tran);
   }
 
   protected async handleTask(taskId: TaskId) {
