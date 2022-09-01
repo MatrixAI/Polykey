@@ -9,28 +9,27 @@ import type {
   TaskGroup,
 } from './types';
 import type { DeepReadonly } from '../types';
-import type Scheduler from './Scheduler';
+import type Queue from './Queue';
 
 class Task<T> {
   public readonly id: TaskId;
   public readonly handlerId: TaskHandlerId;
   public readonly parameters: DeepReadonly<TaskParameters>;
   public readonly timestamp: TaskTimestamp;
-  public readonly delay: TaskDelay;
+  // Public readonly delay: TaskDelay;
   public readonly taskGroup: TaskGroup | undefined;
   public readonly priority: TaskPriority;
 
-  // Protected queue: Queue;
   protected taskPromise: Promise<T> | null;
-  protected scheduler: Scheduler;
+  protected queue: Queue;
 
   constructor(
-    scheduler: Scheduler,
+    queue: Queue,
     id: TaskId,
     handlerId: TaskHandlerId,
     parameters: TaskParameters,
     timestamp: TaskTimestamp,
-    delay: TaskDelay,
+    // Delay: TaskDelay,
     taskGroup: TaskGroup | undefined,
     priority: TaskPriority,
     taskPromise: Promise<T> | null,
@@ -44,10 +43,10 @@ class Task<T> {
     this.handlerId = handlerId;
     this.parameters = parameters;
     this.timestamp = timestamp;
-    this.delay = delay;
+    // This.delay = delay;
     this.taskGroup = taskGroup;
     this.priority = priority;
-    this.scheduler = scheduler;
+    this.queue = queue;
     this.taskPromise = taskPromise;
   }
 
@@ -58,7 +57,7 @@ class Task<T> {
       // TODO: change this to `structuredClone` when available
       parameters: JSON.parse(JSON.stringify(this.parameters)),
       timestamp: this.timestamp,
-      delay: this.delay,
+      // Delay: this.delay,
       taskGroup: this.taskGroup,
       priority: this.priority,
     };
@@ -66,7 +65,7 @@ class Task<T> {
 
   get promise() {
     if (this.taskPromise != null) return this.taskPromise;
-    this.taskPromise = this.scheduler.getTaskP(this.id);
+    this.taskPromise = this.queue.getTaskP(this.id);
     return this.taskPromise;
   }
 }

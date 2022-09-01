@@ -1,22 +1,16 @@
-import type { DB, KeyPath, LevelPath } from '@matrixai/db';
-import type {
-  TaskData,
-  TaskHandler,
-  TaskTimestamp,
-  TaskIdString,
-} from './types';
+import type { DB, LevelPath } from '@matrixai/db';
+import type { TaskData, TaskIdString } from './types';
 import type KeyManager from '../keys/KeyManager';
-import { EventEmitter } from 'events';
+import type Task from './Task';
+import type Queue from './Queue';
 import { DBTransaction } from '@matrixai/db';
 import Logger, { LogLevel } from '@matrixai/logger';
 import { IdInternal } from '@matrixai/id';
-import { extractTs } from '@matrixai/id/dist/IdSortable';
 import {
   CreateDestroyStartStop,
   ready,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import lexi from 'lexicographic-integer';
-import Task from './Task';
 import {
   TaskDelay,
   TaskHandlerId,
@@ -26,7 +20,6 @@ import {
 } from './types';
 import * as tasksUtils from './utils';
 import * as tasksErrors from './errors';
-import Queue from './Queue';
 import { Plug } from '../utils/index';
 
 interface Scheduler extends CreateDestroyStartStop {}
@@ -43,33 +36,20 @@ class Scheduler {
    */
   public static async createScheduler({
     db,
-    keyManager,
-    // Queue,
-    concurrencyLimit = Number.POSITIVE_INFINITY,
+    queue,
     logger = new Logger(this.name),
-    handlers = {},
     delay = false,
     fresh = false,
   }: {
     db: DB;
-    keyManager: KeyManager;
-    // Queue?: Queue;
-    concurrencyLimit: number;
+    queue: Queue;
     logger?: Logger;
-    handlers?: Record<TaskHandlerId, TaskHandler>;
     delay?: boolean;
     fresh?: boolean;
   }): Promise<Scheduler> {
     logger.info(`Creating ${this.name}`);
-    // Queue =
-    //   queue ??
-    //   (await Queue.createQueue({
-    //     db,
-    //     logger: logger.getChild(Queue.name),
-    //     fresh,
-    //   }));
-    const scheduler = new this({ db, keyManager, logger, concurrencyLimit });
-    await scheduler.start({ handlers, delay, fresh });
+    const scheduler = new this({ db, queue, logger });
+    await scheduler.start({ delay, fresh });
     logger.info(`Created ${this.name}`);
     return scheduler;
   }
@@ -78,12 +58,8 @@ class Scheduler {
   protected db: DB;
   protected keyManager: KeyManager;
   protected queue: Queue;
-  protected handlers: Map<TaskHandlerId, TaskHandler> = new Map();
   // TODO: remove this?
   protected promises: Map<TaskIdString, Promise<any>> = new Map();
-  protected taskPromises: Map<TaskIdString, Promise<any>> = new Map();
-  protected generateTaskId: () => TaskId;
-  protected taskEvents: EventEmitter = new EventEmitter();
 
   // TODO: swap this out for the timer system later
 
@@ -96,36 +72,10 @@ class Scheduler {
   protected schedulerDbPath: LevelPath = [this.constructor.name];
 
   /**
-   * Last Task Id
-   */
-  protected schedulerLastTaskIdPath: KeyPath = [
-    ...this.schedulerDbPath,
-    'lastTaskId',
-  ];
-
-  /**
-   * Tasks collection
-   * `tasks/{TaskId} -> {json(Task)}`
-   */
-  protected schedulerTasksDbPath: LevelPath = [
-    ...this.schedulerDbPath,
-    'tasks',
-  ];
-
-  /**
    * Tasks scheduled by time
    * `time/{lexi(TaskTimestamp + TaskDelay)} -> {raw(TaskId)}`
    */
   protected schedulerTimeDbPath: LevelPath = [...this.schedulerDbPath, 'time'];
-
-  /**
-   * Tasks by groups
-   * `groups/...taskGroup: Array<string> -> {raw(TaskId)}`
-   */
-  protected schedulerGroupsDbPath: LevelPath = [
-    ...this.schedulerDbPath,
-    'groups',
-  ];
 
   // /**
   //  * Tasks queued for execution
@@ -147,25 +97,16 @@ class Scheduler {
 
   public constructor({
     db,
-    keyManager,
-    concurrencyLimit,
-    // Queue,
+    queue,
     logger,
   }: {
     db: DB;
-    keyManager: KeyManager;
-    concurrencyLimit: number;
-    // Queue: Queue;
+    queue: Queue;
     logger: Logger;
   }) {
     this.logger = logger;
     this.db = db;
-    this.keyManager = keyManager;
-    this.queue = new Queue({
-      db,
-      concurrencyLimit,
-      logger,
-    });
+    this.queue = queue;
   }
 
   public get isDispatching(): boolean {
@@ -173,11 +114,9 @@ class Scheduler {
   }
 
   public async start({
-    handlers = {},
     delay = false,
     fresh = false,
   }: {
-    handlers?: Record<TaskHandlerId, TaskHandler>;
     delay?: boolean;
     fresh?: boolean;
   } = {}): Promise<void> {
@@ -185,29 +124,10 @@ class Scheduler {
     this.logger.setLevel(LogLevel.INFO);
     this.logger.info(`Starting ${this.constructor.name}`);
     if (fresh) {
-      this.handlers.clear();
-      // This.promises.clear();
       await this.db.clear(this.schedulerDbPath);
     }
-    for (const taskHandlerId in handlers) {
-      this.handlers.set(
-        taskHandlerId as TaskHandlerId,
-        handlers[taskHandlerId],
-      );
-    }
-    const lastTaskId = await this.getLastTaskId();
-    this.generateTaskId = tasksUtils.createTaskIdGenerator(
-      this.keyManager.getNodeId(),
-      lastTaskId,
-    );
-    // Starting queue
-    await this.queue.start({
-      fresh,
-      taskHandler: (taskId) => this.handleTask(taskId),
-    });
     // Don't start dispatching if we still want to register handlers
     if (!delay) {
-      console.log(!delay);
       await this.startDispatching();
     }
     this.logger.info(`Started ${this.constructor.name}`);
@@ -232,11 +152,6 @@ class Scheduler {
    */
   public async destroy() {
     this.logger.info(`Destroying ${this.constructor.name}`);
-    this.handlers.clear();
-
-    // TODO: cancel the task promises so that any function awaiting may receive a cancellation
-    // this.promises.clear();
-
     await this.db.clear(this.schedulerDbPath);
     this.logger.info(`Destroyed ${this.constructor.name}`);
   }
@@ -317,95 +232,13 @@ class Scheduler {
           const taskTimestampKeyBuffer = keyPath[0] as Buffer;
           // Process the task now and remove it from the scheduler
           this.logger.info('dispatching task');
-          const taskData = await tran.get<TaskData>([
-            ...this.schedulerTasksDbPath,
-            taskIdBuffer,
-          ]);
           await tran.del([...this.schedulerTimeDbPath, taskTimestampKeyBuffer]);
           const taskId = IdInternal.fromBuffer<TaskId>(taskIdBuffer);
-
-          // We want to move it to the pending list
-          if (taskData == null) throw Error('TEMP ERROR');
-
           await this.queue.pushTask(taskId, taskTimestampKeyBuffer, tran);
         }
       });
     }
     this.logger.info('dispatching ending');
-  }
-
-  protected async handleTask(taskId: TaskId) {
-    // Get the task information and use the relevant handler
-    // throw and error if the task does not exist
-    // throw an error if the handler does not exist.
-
-    return await this.db.withTransactionF(async (tran) => {
-      // Getting task information
-      const taskData = await this.getTaskData_(taskId, tran);
-      if (taskData == null) throw Error('TEMP task not found');
-      // Getting handler
-      const handler = this.getHandler(taskData.handlerId);
-      if (handler == null) throw Error('TEMP handler not found');
-
-      const prom = handler(...taskData.parameters);
-
-      // Add the promise to the map and hook any lifecycle stuff
-      const taskIdString = taskId.toMultibase('base32hex') as TaskIdString;
-      this.promises.set(taskIdString, prom);
-      return prom
-        .then(
-          (value) => {
-            this.taskEvents.emit(taskIdString, value);
-            return value;
-          },
-          (reason) => {
-            this.taskEvents.emit(taskIdString, reason);
-            throw reason;
-          },
-        )
-        .finally(async () => {
-          this.promises.delete(taskIdString);
-          const taskTimestampKeybuffer = tasksUtils.makeTaskTimestampKey(
-            taskData.timestamp + taskData.delay,
-            taskId,
-          );
-          // Cleaning up is a separate transaction
-          await this.db.withTransactionF(async (tran) => {
-            await tran.del([...this.schedulerTasksDbPath, taskId.toBuffer()]);
-            if (taskData.taskGroup != null) {
-              await tran.del([
-                ...this.schedulerGroupsDbPath,
-                ...taskData.taskGroup,
-                taskTimestampKeybuffer,
-              ]);
-            }
-          });
-        });
-    });
-  }
-
-  public getHandler(handlerId: TaskHandlerId): TaskHandler | undefined {
-    return this.handlers.get(handlerId);
-  }
-
-  public getHandlers(): Record<TaskHandlerId, TaskHandler> {
-    return Object.fromEntries(this.handlers);
-  }
-
-  /**
-   * Registers a handler for tasks with the same `TaskHandlerId`
-   * If tasks are dispatched without their respective handler,
-   * the scheduler will throw `tasksErrors.ErrorSchedulerHandlerMissing`
-   */
-  public registerHandler(handlerId: TaskHandlerId, handler: TaskHandler) {
-    this.handlers.set(handlerId, handler);
-  }
-
-  /**
-   * Deregisters a handler
-   */
-  public deregisterHandler(handlerId: TaskHandlerId) {
-    this.handlers.delete(handlerId);
   }
 
   /**
@@ -424,7 +257,7 @@ class Scheduler {
     tran?: DBTransaction,
   ): Promise<TaskData | undefined> {
     return await (tran ?? this.db).get<TaskData>([
-      ...this.schedulerTasksDbPath,
+      ...this.queue.queueTasksDbPath,
       taskId.toBuffer(),
     ]);
   }
@@ -444,7 +277,7 @@ class Scheduler {
       );
     }
     for await (const [keyPath, taskData] of tran.iterator<TaskData>(
-      this.schedulerTasksDbPath,
+      this.queue.queueTasksDbPath,
       { valueAsBuffer: false, reverse: order !== 'asc' },
     )) {
       const taskId = IdInternal.fromBuffer<TaskId>(keyPath[0] as Buffer);
@@ -493,36 +326,6 @@ class Scheduler {
   //   this.registerListener(id, listener);
   //   return taskP;
   // }
-
-  @ready(new tasksErrors.ErrorSchedulerNotRunning())
-  public getTaskP(taskId: TaskId, tran?: DBTransaction): Promise<any> {
-    const taskIdString = taskId.toMultibase('base32hex') as TaskIdString;
-    // This will return a task promise if it already exists
-    const existingTaskPromise = this.taskPromises.get(taskIdString);
-    if (existingTaskPromise != null) return existingTaskPromise;
-
-    // If the task exist then it will create the task promise and return that
-    const newTaskPromise = new Promise((resolve, reject) => {
-      const resultListener = (result) => {
-        if (result instanceof Error) reject(result);
-        else resolve(result);
-      };
-      this.taskEvents.once(taskIdString, resultListener);
-      // If not task promise exists then with will check if the task exists
-      void (tran ?? this.db)
-        .get<TaskData>([...this.schedulerTasksDbPath, taskId.toBuffer()])
-        .then((taskData) => {
-          if (taskData == null) {
-            this.taskEvents.removeListener(taskIdString, resultListener);
-            reject(Error('TEMP task not found'));
-          }
-        });
-    }).finally(() => {
-      this.taskPromises.delete(taskIdString);
-    });
-    this.taskPromises.set(taskIdString, newTaskPromise);
-    return newTaskPromise;
-  }
 
   /*
   Const task = await scheduleTask(...);
@@ -592,133 +395,47 @@ class Scheduler {
     //  1. create save the new task within the DB
     //  2. if timer exist and new delay is longer then just return the task
     //  3. else cancel the timer and create a new one with the delay
-    const taskId = this.generateTaskId();
-    // Timestamp extracted from `IdSortable` is a floating point in seconds
-    // with subsecond fractionals, multiply it by 1000 gives us milliseconds
-    const taskTimestamp = Math.trunc(extractTs(taskId) * 1000) as TaskTimestamp;
-    const taskPriority = tasksUtils.toPriority(priority);
-    const taskData: TaskData = {
+
+    const task = await this.queue.createTask(
       handlerId,
       parameters,
-      timestamp: taskTimestamp,
-      delay,
+      priority,
       taskGroup,
-      priority: taskPriority,
-    };
-
-    const taskIdBuffer = taskId.toBuffer();
-    const startTime = taskTimestamp + delay;
-
-    // Save the task
-    await tran.put([...this.schedulerTasksDbPath, taskIdBuffer], taskData);
-    // Save the last task ID
-    await tran.put(this.schedulerLastTaskIdPath, taskIdBuffer, true);
-    // Save the scheduled time
+      lazy,
+      tran,
+    );
+    const taskIdBuffer = task.id.toBuffer();
+    const startTime = task.timestamp + delay;
     const taskTimestampKeyBuffer = tasksUtils.makeTaskTimestampKey(
       startTime,
-      taskId,
+      task.id,
+    );
+    await tran.put(
+      [...this.queue.queueStartTimeDbPath, taskIdBuffer],
+      startTime,
+    );
+    await tran.put(
+      [...this.queue.queueStartTimeDbPath, taskIdBuffer],
+      taskTimestampKeyBuffer,
+      true,
     );
     await tran.put(
       [...this.schedulerTimeDbPath, taskTimestampKeyBuffer],
-      taskId.toBuffer(),
+      taskIdBuffer,
       true,
     );
-
-    // Adding to group
-    if (taskGroup != null) {
-      await tran.put(
-        [...this.schedulerGroupsDbPath, ...taskGroup, taskTimestampKeyBuffer],
-        taskIdBuffer,
-        true,
-      );
-    }
-    let taskPromise: Promise<any> | null = null;
-    if (!lazy) {
-      taskPromise = this.getTaskP(taskId, tran);
-    }
-
-    // TODO: trigger the processing of the task?
-    // TODO: reset the timeout in case the timeouts have been exhausted
-    // if the timeouts haven't been started or stopped
-    // scheduling a task can be halted
-    // you should "set the next setTimeout"
-    // depending if the setTimeout is already set
-    // if set, it will reset
-    //
-    // Proceed to update the processing timer
-    // startProcessing will peek at the next task
-    // and start timing out there
-    // if the timeout isn't given
-    // it will instead be given  and do it there
-    // it depends on the timer
-    // seems like if the timer exists
-    //
-    // we can "reset" t othe current time
-    // reschedules it
-    // but that's not what we want to do
-    // we want to clear that timeout
-    // and schedule a new TIMER
-    // if this overrides that timer
-    // but we don't know how much time
-    // or when this is scheduled to run?
 
     // Only update timer if transaction succeeds
     tran.queueSuccess(() => {
       this.updateTimer(startTime);
       this.logger.info(
-        `Task ${taskId.toMultibase(
+        `Task ${task.id.toMultibase(
           'base32hex',
         )} was scheduled for ${startTime}`,
       );
     });
 
-    return new Task(
-      this,
-      taskId,
-      handlerId,
-      parameters,
-      taskTimestamp,
-      delay,
-      taskGroup,
-      taskPriority,
-      taskPromise,
-    );
-  }
-
-  @ready(new tasksErrors.ErrorSchedulerNotRunning(), false, ['starting'])
-  public async getLastTaskId(
-    tran?: DBTransaction,
-  ): Promise<TaskId | undefined> {
-    const lastTaskIdBuffer = await (tran ?? this.db).get(
-      this.schedulerLastTaskIdPath,
-      true,
-    );
-    if (lastTaskIdBuffer == null) return;
-    return IdInternal.fromBuffer<TaskId>(lastTaskIdBuffer);
-  }
-
-  @ready(new tasksErrors.ErrorSchedulerNotRunning())
-  public async allTasksSettled() {
-    return await this.queue.allConcurrentSettled();
-  }
-
-  @ready(new tasksErrors.ErrorSchedulerNotRunning())
-  public async *getGroupTasks(
-    taskGroup: TaskGroup,
-    tran?: DBTransaction,
-  ): AsyncGenerator<TaskId> {
-    if (tran == null) {
-      return yield* this.db.withTransactionG((tran) =>
-        this.getGroupTasks(taskGroup, tran),
-      );
-    }
-
-    for await (const [, taskIdBuffer] of tran.iterator([
-      ...this.schedulerGroupsDbPath,
-      ...taskGroup,
-    ])) {
-      yield IdInternal.fromBuffer<TaskId>(taskIdBuffer);
-    }
+    return task;
   }
 }
 

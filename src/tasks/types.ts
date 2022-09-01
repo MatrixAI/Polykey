@@ -35,7 +35,7 @@ type TaskData = {
   handlerId: TaskHandlerId;
   parameters: TaskParameters;
   timestamp: TaskTimestamp;
-  delay: TaskDelay;
+  // Delay: TaskDelay;
   taskGroup: TaskGroup | undefined;
   priority: TaskPriority;
 };
