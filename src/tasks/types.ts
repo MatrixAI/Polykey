@@ -41,6 +41,12 @@ type TaskData = {
   priority: TaskPriority;
 };
 
+type Task = TaskData & {
+  id: TaskId;
+  startTime: TaskTimestamp | undefined;
+  promise: () => Promise<any> | undefined;
+};
+
 /**
  * Task information that is returned to the user
  */
@@ -97,7 +103,7 @@ export type {
   TaskId,
   TaskIdString,
   TaskIdEncoded,
-  // Task,
+  Task,
   TaskPath,
   TaskData,
   TaskInfo,

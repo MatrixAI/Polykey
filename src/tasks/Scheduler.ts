@@ -1,10 +1,10 @@
 import type { DB, LevelPath } from '@matrixai/db';
 import type { TaskIdString } from './types';
 import type KeyManager from '../keys/KeyManager';
-import type Task from './Task';
 import type Queue from './Queue';
 import type { DBTransaction } from '@matrixai/db';
 import type {
+  Task,
   TaskDelay,
   TaskHandlerId,
   TaskId,
@@ -20,7 +20,6 @@ import {
 import lexi from 'lexicographic-integer';
 import * as tasksUtils from './utils';
 import * as tasksErrors from './errors';
-import { TaskData } from './types';
 import { Plug } from '../utils/index';
 
 interface Scheduler extends CreateDestroyStartStop {}
@@ -333,7 +332,7 @@ class Scheduler {
     path?: TaskPath,
     lazy: boolean = false,
     tran?: DBTransaction,
-  ): Promise<Task<any> | undefined> {
+  ): Promise<Task> {
     if (tran == null) {
       return this.db.withTransactionF((tran) =>
         this.scheduleTask(
@@ -400,7 +399,7 @@ class Scheduler {
     taskId: TaskId,
     lazy: boolean = false,
     tran?: DBTransaction,
-  ): Promise<Task<any>> {
+  ): Promise<Task> {
     if (tran == null) {
       return this.db.withTransactionF((tran) =>
         this.getTask(taskId, lazy, tran),
@@ -420,7 +419,7 @@ class Scheduler {
     order: 'asc' | 'desc' = 'asc',
     lazy: boolean = false,
     tran?: DBTransaction,
-  ): AsyncGenerator<Task<any>> {
+  ): AsyncGenerator<Task> {
     if (tran == null) {
       return yield* this.db.withTransactionG((tran) =>
         this.getTasks(order, lazy, tran),
@@ -435,7 +434,7 @@ class Scheduler {
     path: TaskPath,
     lazy: boolean = false,
     tran?: DBTransaction,
-  ): AsyncGenerator<Task<any>> {
+  ): AsyncGenerator<Task> {
     if (tran == null) {
       return yield* this.db.withTransactionG((tran) =>
         this.getTasksByPath(path, lazy, tran),

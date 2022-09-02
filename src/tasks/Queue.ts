@@ -1,15 +1,17 @@
 import type { DB, LevelPath, KeyPath } from '@matrixai/db';
 import type {
+  Task,
   TaskData,
   TaskHandlerId,
   TaskHandler,
   TaskTimestamp,
   TaskParameters,
   TaskIdEncoded,
+  TaskId,
+  TaskPath,
 } from './types';
 import type KeyManager from '../keys/KeyManager';
 import type { DBTransaction } from '@matrixai/db';
-import type { TaskId, TaskPath } from './types';
 import Logger from '@matrixai/logger';
 import {
   CreateDestroyStartStop,
@@ -20,7 +22,6 @@ import { RWLockReader } from '@matrixai/async-locks';
 import { extractTs } from '@matrixai/id/dist/IdSortable';
 import * as tasksErrors from './errors';
 import * as tasksUtils from './utils';
-import Task from './Task';
 import { Plug } from '../utils/index';
 
 class TaskEvent<T = any> extends Event {
@@ -588,34 +589,38 @@ class Queue {
     taskId: TaskId,
     lazy: boolean = false,
     tran?: DBTransaction,
-  ): Promise<Task<any>> {
+  ): Promise<Task> {
     if (tran == null) {
       return this.db.withTransactionF((tran) =>
         this.getTask(taskId, lazy, tran),
       );
     }
-
     const taskData = await tran.get<TaskData>([
       ...this.queueTasksDbPath,
       taskId.toBuffer(),
     ]);
     if (taskData == null) throw Error('TMP task not found');
-
-    let taskPromise: Promise<any> | null = null;
-    if (!lazy) {
-      taskPromise = this.getTaskP(taskId, tran);
+    const taskStartTime = await tran.get<TaskTimestamp>([
+      ...this.queueStartTimeDbPath,
+      taskId.toBuffer(),
+    ]);
+    let promise: () => Promise<any>;
+    if (lazy) {
+      promise = () => this.getTaskP(taskId);
+    } else {
+      const prom = this.getTaskP(taskId, tran);
+      promise = () => prom;
     }
-    return new Task(
-      this,
-      taskId,
-      taskData.handlerId,
-      taskData.parameters,
-      taskData.timestamp,
-      // Delay,
-      taskData.path,
-      taskData.priority,
-      taskPromise,
-    );
+    return {
+      id: taskId,
+      handlerId: taskData.handlerId,
+      parameters: taskData.parameters,
+      timestamp: taskData.timestamp,
+      startTime: taskStartTime,
+      path: taskData.path,
+      priority: taskData.priority,
+      promise,
+    };
   }
 
   /**
@@ -627,33 +632,39 @@ class Queue {
     order: 'asc' | 'desc' = 'asc',
     lazy: boolean = false,
     tran?: DBTransaction,
-  ): AsyncGenerator<Task<any>> {
+  ): AsyncGenerator<Task> {
     if (tran == null) {
       return yield* this.db.withTransactionG((tran) =>
         this.getTasks(order, lazy, tran),
       );
     }
 
-    for await (const [keyPath, taskData] of tran.iterator<TaskData>(
+    for await (const [taskIdPath, taskData] of tran.iterator<TaskData>(
       this.queueTasksDbPath,
       { valueAsBuffer: false, reverse: order !== 'asc' },
     )) {
-      const taskId = IdInternal.fromBuffer<TaskId>(keyPath[0] as Buffer);
-      let taskPromise: Promise<any> | null = null;
-      if (!lazy) {
-        taskPromise = this.getTaskP(taskId, tran);
+      const taskId = IdInternal.fromBuffer<TaskId>(taskIdPath[0] as Buffer);
+      const taskStartTime = await tran.get<TaskTimestamp>([
+        ...this.queueStartTimeDbPath,
+        ...taskIdPath,
+      ]);
+      let promise: () => Promise<any>;
+      if (lazy) {
+        promise = () => this.getTaskP(taskId);
+      } else {
+        const prom = this.getTaskP(taskId, tran);
+        promise = () => prom;
       }
-      yield new Task(
-        this,
-        taskId,
-        taskData.handlerId,
-        taskData.parameters,
-        taskData.timestamp,
-        // Delay,
-        taskData.path,
-        taskData.priority,
-        taskPromise,
-      );
+      yield {
+        id: taskId,
+        handlerId: taskData.handlerId,
+        parameters: taskData.parameters,
+        timestamp: taskData.timestamp,
+        startTime: taskStartTime,
+        path: taskData.path,
+        priority: taskData.priority,
+        promise,
+      };
     }
   }
 
@@ -662,7 +673,7 @@ class Queue {
     path: TaskPath,
     lazy: boolean = false,
     tran?: DBTransaction,
-  ): AsyncGenerator<Task<any>> {
+  ): AsyncGenerator<Task> {
     if (tran == null) {
       return yield* this.db.withTransactionG((tran) =>
         this.getTasksByPath(path, lazy, tran),
@@ -697,7 +708,7 @@ class Queue {
     path?: TaskPath,
     lazy: boolean = false,
     tran?: DBTransaction,
-  ): Promise<Task<any>> {
+  ): Promise<Task> {
     if (tran == null) {
       return this.db.withTransactionF((tran) =>
         this.createTask(handlerId, parameters, priority, path, lazy, tran),
@@ -734,21 +745,23 @@ class Queue {
         true,
       );
     }
-    let taskPromise: Promise<any> | null = null;
-    if (!lazy) {
-      taskPromise = this.getTaskP(taskId, tran);
+    let promise: () => Promise<any>;
+    if (lazy) {
+      promise = () => this.getTaskP(taskId);
+    } else {
+      const prom = this.getTaskP(taskId, tran);
+      promise = () => prom;
     }
-    return new Task(
-      this,
-      taskId,
+    return {
+      id: taskId,
       handlerId,
       parameters,
-      taskTimestamp,
-      // Delay,
       path,
-      taskPriority,
-      taskPromise,
-    );
+      priority: taskPriority,
+      timestamp: taskTimestamp,
+      startTime: undefined,
+      promise,
+    };
   }
 }
 
