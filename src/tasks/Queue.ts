@@ -9,7 +9,7 @@ import type {
 } from './types';
 import type KeyManager from '../keys/KeyManager';
 import type { DBTransaction } from '@matrixai/db';
-import type { TaskId, TaskGroup } from './types';
+import type { TaskId, TaskPath } from './types';
 import Logger from '@matrixai/logger';
 import {
   CreateDestroyStartStop,
@@ -93,13 +93,10 @@ class Queue {
    */
   protected queueDbActivePath: LevelPath = [...this.queueDbPath, 'active'];
   /**
-   * Tasks by groups
-   * `groups/...taskGroup: Array<string> -> {raw(TaskId)}`
+   * Tasks by Path
+   * `groups/...taskPath: LevelPath -> {raw(TaskId)}`
    */
-  public readonly queueGroupsDbPath: LevelPath = [
-    ...this.queueDbPath,
-    'groups',
-  ];
+  public readonly queuePathDbPath: LevelPath = [...this.queueDbPath, 'groups'];
   /**
    * Last Task Id
    */
@@ -497,10 +494,10 @@ class Queue {
             );
             await tran.del([...this.queueTasksDbPath, taskId.toBuffer()]);
             await tran.del([...this.queueStartTimeDbPath, taskId.toBuffer()]);
-            if (taskData.taskGroup != null) {
+            if (taskData.path != null) {
               await tran.del([
-                ...this.queueGroupsDbPath,
-                ...taskData.taskGroup,
+                ...this.queuePathDbPath,
+                ...taskData.path,
                 taskTimestampKeybuffer!,
               ]);
             }
@@ -615,7 +612,7 @@ class Queue {
       taskData.parameters,
       taskData.timestamp,
       // Delay,
-      taskData.taskGroup,
+      taskData.path,
       taskData.priority,
       taskPromise,
     );
@@ -653,7 +650,7 @@ class Queue {
         taskData.parameters,
         taskData.timestamp,
         // Delay,
-        taskData.taskGroup,
+        taskData.path,
         taskData.priority,
         taskPromise,
       );
@@ -661,20 +658,20 @@ class Queue {
   }
 
   @ready(new tasksErrors.ErrorSchedulerNotRunning())
-  public async *getGroupTasks(
-    taskGroup: TaskGroup,
+  public async *getTasksByPath(
+    path: TaskPath,
     lazy: boolean = false,
     tran?: DBTransaction,
   ): AsyncGenerator<Task<any>> {
     if (tran == null) {
       return yield* this.db.withTransactionG((tran) =>
-        this.getGroupTasks(taskGroup, lazy, tran),
+        this.getTasksByPath(path, lazy, tran),
       );
     }
 
     for await (const [, taskIdBuffer] of tran.iterator([
-      ...this.queueGroupsDbPath,
-      ...taskGroup,
+      ...this.queuePathDbPath,
+      ...path,
     ])) {
       const taskId = IdInternal.fromBuffer<TaskId>(taskIdBuffer);
       yield this.getTask(taskId, lazy, tran);
@@ -697,13 +694,13 @@ class Queue {
     handlerId: TaskHandlerId,
     parameters: TaskParameters = [],
     priority: number = 0,
-    taskGroup?: TaskGroup,
+    path?: TaskPath,
     lazy: boolean = false,
     tran?: DBTransaction,
   ): Promise<Task<any>> {
     if (tran == null) {
       return this.db.withTransactionF((tran) =>
-        this.createTask(handlerId, parameters, priority, taskGroup, lazy, tran),
+        this.createTask(handlerId, parameters, priority, path, lazy, tran),
       );
     }
 
@@ -720,7 +717,7 @@ class Queue {
       handlerId,
       parameters,
       timestamp: taskTimestamp,
-      taskGroup,
+      path: path,
       priority: taskPriority,
     };
     const taskIdBuffer = taskId.toBuffer();
@@ -730,9 +727,9 @@ class Queue {
     await tran.put(this.queueLastTaskIdPath, taskIdBuffer, true);
 
     // Adding to group
-    if (taskGroup != null) {
+    if (path != null) {
       await tran.put(
-        [...this.queueGroupsDbPath, ...taskGroup, taskIdBuffer],
+        [...this.queuePathDbPath, ...path, taskIdBuffer],
         taskIdBuffer,
         true,
       );
@@ -748,7 +745,7 @@ class Queue {
       parameters,
       taskTimestamp,
       // Delay,
-      taskGroup,
+      path,
       taskPriority,
       taskPromise,
     );
