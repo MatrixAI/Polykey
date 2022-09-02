@@ -78,6 +78,7 @@ class Tasks {
   // you are pausing the loop a bit
 
   protected schedulingLock: Lock = new Lock();
+  protected schedulingLockReleaser;
 
 
   /**
@@ -114,6 +115,7 @@ class Tasks {
 
   protected schedulingLoop: Promise<void> | null = null;
   protected queuingLoop: Promise<void> | null = null;
+  protected schedulingTimer: Timer | null = null;
 
   public constructor({
     db,
@@ -243,12 +245,16 @@ class Tasks {
         ),
       );
     }
+
+    delay = Math.max(delay, 0);
+
     const taskId = this.generateTaskId();
     // Timestamp extracted from `IdSortable` is a floating point in seconds
     // with subsecond fractionals, multiply it by 1000 gives us milliseconds
     const taskTimestamp = Math.trunc(extractTs(taskId) * 1000) as TaskTimestamp;
     const taskPriority = tasksUtils.toPriority(priority);
     const taskIdBuffer = taskId.toBuffer();
+    const taskScheduleTime = taskTimestamp + delay;
     const taskData = {
       handlerId,
       parameters,
@@ -258,8 +264,23 @@ class Tasks {
       deadline,
       path,
     };
+    // Saving the task
     await tran.put([...this.tasksTaskDbPath, taskIdBuffer], taskData);
+
+    // Saving last task ID
     await tran.put(this.tasksLastTaskIdPath, taskIdBuffer, true);
+
+    await tran.put(
+      [
+        ...this.tasksScheduledDbPath,
+        Buffer.from(lexi.pack(taskScheduleTime)),
+        taskIdBuffer
+      ],
+      taskIdBuffer,
+      true
+    );
+
+    // Saving path index
     await tran.put(
       [...this.tasksPathDbPath, ...path, taskIdBuffer],
       taskIdBuffer,
@@ -330,83 +351,63 @@ class Tasks {
   // so `undefined` here means that it was never set
   // or `null` here means that it is explicitly something?
 
+  /**
+   * Transition tasks from `scheduled` to `queued`
+   */
   protected async startScheduling() {
-    // need to start the scheduling loop here
-    // to do this, we can use a while loop with a Timer
-    // we need a timer either way
-    // a while loop that you are "assigning"
-    // but you have to do
-
-    new Timer(() => {
-      // the loop is "unplugged"
-
-    });
-
-
-    /**
-     * Transition tasks from `scheduled` to `queued`
-     */
+    if (this.schedulingLoop != null) {
+      return;
+    }
+    console.log('CREATING scheduling loop');
     this.schedulingLoop = (async () => {
       while (true) {
-        await this.schedulingLock.waitForUnlock();
+        console.log('ITERATION');
 
-        // the idea is to acquire the first one
-        // why not have the timer set up already?
-        // this gives us a wall clock time
-        // that we want to be using
-        // the timeOrigin is going to be specific
-        // the when the process starts
-        // the perofrmance now will contineu
+        // Wait for the lock to be released
+        await this.schedulingLock.waitForUnlock();
+        // Plug the lock immediately
+        [this.schedulingLockReleaser] = await this.schedulingLock.lock()();
 
         // Peek ahead by 100 ms
-        const scheduledTime = performance.timeOrigin + performance.now() + 100;
-        const scheduledTimestamp = Buffer.from(lexi.pack(scheduledTime));
+        const now = performance.timeOrigin + performance.now() + 100;
+        const nowBuffer = Buffer.from(lexi.pack(now));
 
+        // See if this requires the key combination
 
         await this.db.withTransactionF(async (tran) => {
           for await (const [kP, taskIdBuffer] of tran.iterator(
             this.tasksScheduledDbPath,
-            { lte: [scheduledTimestamp] }
+            { lte: [nowBuffer] }
           )) {
+            console.log('ENTRY');
 
-            // a new transaction is needed here
-            // and this has to "dispatch it"
-
-            const taskId = IdInternal.fromBuffer<TaskId>(taskIdBuffer);
+            // const taskId = IdInternal.fromBuffer<TaskId>(taskIdBuffer);
             await this.db.withTransactionF(async (tran) => {
-
-              await tran.del([...this.tasksScheduledDbPath, ...kP]);
               await tran.put([...this.tasksQueuedDbPath, ...kP], taskIdBuffer);
-
-              // When this commits
-              // we need to "unplug" the loop there
-              // but I don't think this is needed
-
-              // here we have to "push" and dispathc the task
-              // into the queue
-              // dispatching into the queue is different slightly
-              // move it into the queue?
-
+              await tran.del([...this.tasksScheduledDbPath, ...kP]);
+              console.log('DISPATCHING TASK');
             });
-
-            // actually this is the scheduled thing
-            // i should get teh task Id
-            // kP
-            // valueAsBuffer is true already
-
-
           }
-
-          // this is then done as part of the next one?
+          let scheduleTime: number | undefined;
           for await (const [kP] of tran.iterator(
             this.tasksScheduledDbPath,
-            {
-              limit: 1,
-            }
+            { limit: 1 }
           )) {
-
-
+            console.log('NEXT ENTRY');
+            scheduleTime = lexi.unpack(kP[0]);
           }
+          if (scheduleTime != null) {
+            const now = performance.timeOrigin + performance.now();
+            const delay = Math.max(scheduleTime - now, 0);
+            console.log('SETTING NEXT TIMER');
+            this.schedulingTimer = new Timer(
+              () => {
+                this.schedulingLockReleaser();
+              },
+              delay
+            );
+          }
+          console.log('FINISH THE TRANSACTION');
         });
 
         // the loop must be "set"
@@ -415,7 +416,6 @@ class Tasks {
 
       }
     })();
-
 
   }
 
@@ -433,7 +433,9 @@ class Tasks {
   }
 
   protected async stopScheduling () {
-
+    // HOW to stop the scheduling loop?
+    // make it a promise cancellable and BREAK out of the loop
+    // it's not an async function then
   }
 
   protected async stopQueueing() {
