@@ -113,6 +113,7 @@ describe(Queue.name, () => {
     let queue = await Queue.createQueue({
       db,
       keyManager,
+      delay: true,
       concurrencyLimit: 2,
       logger,
     });
@@ -129,9 +130,8 @@ describe(Queue.name, () => {
       concurrencyLimit: 2,
       logger,
     });
-    await queue.startTasks();
     // Time for tasks to start processing
-    await sleep(10);
+    await sleep(100);
     await queue.allActiveTasksSettled();
     await queue.stop();
     expect(handler).toHaveBeenCalled();

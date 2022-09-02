@@ -8,8 +8,9 @@ import type {
   TaskIdEncoded,
 } from './types';
 import type KeyManager from '../keys/KeyManager';
+import type { DBTransaction } from '@matrixai/db';
+import type { TaskId, TaskGroup } from './types';
 import EventEmitter from 'events';
-import { DBTransaction } from '@matrixai/db';
 import Logger from '@matrixai/logger';
 import {
   CreateDestroyStartStop,
@@ -19,7 +20,6 @@ import { IdInternal } from '@matrixai/id';
 import { RWLockReader } from '@matrixai/async-locks';
 import { extractTs } from '@matrixai/id/dist/IdSortable';
 import * as tasksErrors from './errors';
-import { TaskId, TaskGroup } from './types';
 import * as tasksUtils from './utils';
 import Task from './Task';
 import { Plug } from '../utils/index';

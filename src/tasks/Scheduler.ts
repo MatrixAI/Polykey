@@ -3,7 +3,14 @@ import type { TaskData, TaskIdString } from './types';
 import type KeyManager from '../keys/KeyManager';
 import type Task from './Task';
 import type Queue from './Queue';
-import { DBTransaction } from '@matrixai/db';
+import type { DBTransaction } from '@matrixai/db';
+import type {
+  TaskDelay,
+  TaskHandlerId,
+  TaskId,
+  TaskParameters,
+  TaskGroup,
+} from './types';
 import Logger, { LogLevel } from '@matrixai/logger';
 import { IdInternal } from '@matrixai/id';
 import {
@@ -11,13 +18,6 @@ import {
   ready,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import lexi from 'lexicographic-integer';
-import {
-  TaskDelay,
-  TaskHandlerId,
-  TaskId,
-  TaskParameters,
-  TaskGroup,
-} from './types';
 import * as tasksUtils from './utils';
 import * as tasksErrors from './errors';
 import { Plug } from '../utils/index';
@@ -230,7 +230,7 @@ class Scheduler {
           },
         )) {
           const taskTimestampKeyBuffer = keyPath[0] as Buffer;
-          // Process the task now and remove it from the scheduler
+          // Dispatch the task now and remove it from the scheduler
           this.logger.info('dispatching task');
           await tran.del([...this.schedulerTimeDbPath, taskTimestampKeyBuffer]);
           const taskId = IdInternal.fromBuffer<TaskId>(taskIdBuffer);
