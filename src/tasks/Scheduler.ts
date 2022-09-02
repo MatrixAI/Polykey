@@ -9,7 +9,7 @@ import type {
   TaskHandlerId,
   TaskId,
   TaskParameters,
-  TaskGroup,
+  TaskPath,
 } from './types';
 import Logger, { LogLevel } from '@matrixai/logger';
 import { IdInternal } from '@matrixai/id';
@@ -330,7 +330,7 @@ class Scheduler {
     parameters: TaskParameters = [],
     delay: TaskDelay = 0,
     priority: number = 0,
-    taskGroup?: TaskGroup,
+    path?: TaskPath,
     lazy: boolean = false,
     tran?: DBTransaction,
   ): Promise<Task<any> | undefined> {
@@ -341,7 +341,7 @@ class Scheduler {
           parameters,
           delay,
           priority,
-          taskGroup,
+          path,
           lazy,
           tran,
         ),
@@ -357,7 +357,7 @@ class Scheduler {
       handlerId,
       parameters,
       priority,
-      taskGroup,
+      path,
       lazy,
       tran,
     );
@@ -431,18 +431,18 @@ class Scheduler {
   }
 
   @ready(new tasksErrors.ErrorSchedulerNotRunning())
-  public async *getGroupTasks(
+  public async *getTasksByPath(
     path: TaskPath,
     lazy: boolean = false,
     tran?: DBTransaction,
   ): AsyncGenerator<Task<any>> {
     if (tran == null) {
       return yield* this.db.withTransactionG((tran) =>
-        this.getGroupTasks(path, lazy, tran),
+        this.getTasksByPath(path, lazy, tran),
       );
     }
 
-    return yield* this.queue.getGroupTasks(path, lazy, tran);
+    return yield* this.queue.getTasksByPath(path, lazy, tran);
   }
 }
 

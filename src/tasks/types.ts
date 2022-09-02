@@ -1,5 +1,6 @@
 import type { Id } from '@matrixai/id';
 import type { POJO, Opaque, Callback } from '../types';
+import type { LevelPath } from '@matrixai/db';
 
 type TaskId = Opaque<'TaskId', Id>;
 type TaskIdString = Opaque<'TaskIdString', string>;
@@ -24,9 +25,9 @@ type TaskParameters = Array<any>;
 type TaskPriority = Opaque<'TaskPriority', number>;
 
 /**
- * Task group, array of strings
+ * Task Path, a LevelPath
  */
-type TaskGroup = Array<string>;
+type TaskPath = LevelPath;
 
 /**
  * Task data to be persisted
@@ -36,7 +37,7 @@ type TaskData = {
   parameters: TaskParameters;
   timestamp: TaskTimestamp;
   // Delay: TaskDelay;
-  taskGroup: TaskGroup | undefined;
+  path: TaskPath | undefined;
   priority: TaskPriority;
 };
 
@@ -97,7 +98,7 @@ export type {
   TaskIdString,
   TaskIdEncoded,
   // Task,
-  TaskGroup,
+  TaskPath,
   TaskData,
   TaskInfo,
   TaskHandlerId,

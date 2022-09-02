@@ -6,7 +6,7 @@ import type {
   TaskDelay,
   TaskPriority,
   TaskParameters,
-  TaskGroup,
+  TaskPath,
 } from './types';
 import type { DeepReadonly } from '../types';
 import type Queue from './Queue';
@@ -17,7 +17,7 @@ class Task<T> {
   public readonly parameters: DeepReadonly<TaskParameters>;
   public readonly timestamp: TaskTimestamp;
   // Public readonly delay: TaskDelay;
-  public readonly taskGroup: TaskGroup | undefined;
+  public readonly path: TaskPath | undefined;
   public readonly priority: TaskPriority;
 
   protected taskPromise: Promise<T> | null;
@@ -30,7 +30,7 @@ class Task<T> {
     parameters: TaskParameters,
     timestamp: TaskTimestamp,
     // Delay: TaskDelay,
-    taskGroup: TaskGroup | undefined,
+    path: TaskPath | undefined,
     priority: TaskPriority,
     taskPromise: Promise<T> | null,
   ) {
@@ -44,7 +44,7 @@ class Task<T> {
     this.parameters = parameters;
     this.timestamp = timestamp;
     // This.delay = delay;
-    this.taskGroup = taskGroup;
+    this.path = path;
     this.priority = priority;
     this.queue = queue;
     this.taskPromise = taskPromise;
@@ -58,7 +58,7 @@ class Task<T> {
       parameters: JSON.parse(JSON.stringify(this.parameters)),
       timestamp: this.timestamp,
       // Delay: this.delay,
-      taskGroup: this.taskGroup,
+      path: this.path,
       priority: this.priority,
     };
   }
