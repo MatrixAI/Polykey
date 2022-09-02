@@ -86,6 +86,14 @@ function decodeTaskId(taskIdEncoded: any): TaskId | undefined {
   return taskId;
 }
 
+class TaskEvent<T = any> extends Event {
+  detail?: any;
+  constructor(type: string, options?: CustomEventInit<T>) {
+    super(type, options);
+    this.detail = options?.detail;
+  }
+}
+
 export {
   createTaskIdGenerator,
   toPriority,
@@ -95,4 +103,5 @@ export {
   getPerformanceTime,
   encodeTaskId,
   decodeTaskId,
+  TaskEvent,
 };

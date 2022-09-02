@@ -16,7 +16,19 @@ type TaskTimestamp = number;
  */
 type TaskDelay = number;
 
+/**
+ * Deadline in milliseconds
+ */
+type TaskDeadline = number;
+
+
 type TaskParameters = Array<any>;
+
+type TaskStatus = 'scheduled'
+                | 'queued'
+                | 'active'
+                | 'completed'
+                | 'failed';
 
 /**
  * Task priority is an `uint8` [0 to 255]
@@ -114,4 +126,6 @@ export type {
   TaskParameters,
   TaskTimestamp,
   TaskDelay,
+  TaskStatus,
+  TaskDeadline,
 };
