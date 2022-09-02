@@ -4,15 +4,15 @@ import type { Address, NetworkMessage } from './types';
 import type { NodeId } from '../nodes/types';
 import type { Certificate } from '../keys/types';
 import type { AbstractConstructorParameters } from '../types';
+import type UTPConnection from 'utp-native/lib/connection';
+import type { Host, Port } from './types';
+import type { Timer } from '../types';
 import net from 'net';
 import tls from 'tls';
-import UTPConnection from 'utp-native/lib/connection';
 import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
-import { Host, Port } from './types';
 import Connection from './Connection';
 import * as networkUtils from './utils';
 import * as networkErrors from './errors';
-import { Timer } from '../types';
 import * as keysUtils from '../keys/utils';
 import { promise, timerStart, timerStop } from '../utils';
 

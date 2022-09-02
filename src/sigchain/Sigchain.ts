@@ -3,7 +3,13 @@ import type { ChainDataEncoded } from './types';
 import type { ClaimIdGenerator, ClaimIntermediary } from '../claims/types';
 import type KeyManager from '../keys/KeyManager';
 import type { NodeIdEncoded } from '../nodes/types';
-import { DBTransaction } from '@matrixai/db';
+import type { DBTransaction } from '@matrixai/db';
+import type {
+  ClaimData,
+  ClaimEncoded,
+  ClaimId,
+  ClaimType,
+} from '../claims/types';
 import Logger from '@matrixai/logger';
 import { IdInternal } from '@matrixai/id';
 import {
@@ -12,7 +18,6 @@ import {
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import { withF } from '@matrixai/resources';
 import * as sigchainErrors from './errors';
-import { ClaimData, ClaimEncoded, ClaimId, ClaimType } from '../claims/types';
 import * as claimsUtils from '../claims/utils';
 
 interface Sigchain extends CreateDestroyStartStop {}

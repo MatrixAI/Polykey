@@ -6,6 +6,8 @@ import type {
 } from './types';
 import type { FileSystem } from '../types';
 import type { PolykeyWorkerManagerInterface } from '../workers/types';
+import type { KeyPair, Certificate, KeyPairPem, CertificatePem } from './types';
+import type { NodeId } from '../nodes/types';
 import path from 'path';
 import { Buffer } from 'buffer';
 import Logger from '@matrixai/logger';
@@ -13,10 +15,8 @@ import {
   CreateDestroyStartStop,
   ready,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
-import { KeyPair, Certificate, KeyPairPem, CertificatePem } from './types';
 import * as keysUtils from './utils';
 import * as keysErrors from './errors';
-import { NodeId } from '../nodes/types';
 import * as utils from '../utils';
 
 /**

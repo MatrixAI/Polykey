@@ -15,6 +15,8 @@ import type Sigchain from '../sigchain/Sigchain';
 import type KeyManager from '../keys/KeyManager';
 import type { ClaimIdEncoded, Claim, ClaimLinkIdentity } from '../claims/types';
 import type { ChainData } from '../sigchain/types';
+import type { ProviderId, IdentityId } from '../identities/types';
+import type { NodeId } from '../nodes/types';
 import Logger from '@matrixai/logger';
 import {
   CreateDestroyStartStop,
@@ -25,8 +27,6 @@ import { IdInternal } from '@matrixai/id';
 import * as idUtils from '@matrixai/id/dist/utils';
 import * as discoveryUtils from './utils';
 import * as discoveryErrors from './errors';
-import { ProviderId, IdentityId } from '../identities/types';
-import { NodeId } from '../nodes/types';
 import * as nodesErrors from '../nodes/errors';
 import * as networkErrors from '../network/errors';
 import * as gestaltsUtils from '../gestalts/utils';

@@ -1,13 +1,13 @@
 import type { ProviderTokens } from './types';
 import type { DB, KeyPath, LevelPath } from '@matrixai/db';
-import { DBTransaction } from '@matrixai/db';
+import type { DBTransaction } from '@matrixai/db';
+import type Provider from './Provider';
+import type { ProviderId, IdentityId, TokenData } from './types';
 import Logger from '@matrixai/logger';
 import {
   CreateDestroyStartStop,
   ready,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
-import Provider from './Provider';
-import { ProviderId, IdentityId, TokenData } from './types';
 import * as identitiesErrors from './errors';
 
 interface IdentitiesManager extends CreateDestroyStartStop {}

@@ -1,19 +1,19 @@
 import type { DB, LevelPath } from '@matrixai/db';
 import type { PermissionId, PermissionIdString, VaultActions } from './types';
 import type { Ref } from '../types';
-import { DBTransaction } from '@matrixai/db';
+import type { DBTransaction } from '@matrixai/db';
+import type { Permission } from './types';
+import type { VaultAction, VaultId } from '../vaults/types';
+import type { GestaltAction } from '../gestalts/types';
+import type { NodeId } from '../nodes/types';
 import Logger from '@matrixai/logger';
 import { IdInternal } from '@matrixai/id';
 import {
   CreateDestroyStartStop,
   ready,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
-import { Permission } from './types';
 import * as aclUtils from './utils';
 import * as aclErrors from './errors';
-import { VaultAction, VaultId } from '../vaults/types';
-import { GestaltAction } from '../gestalts/types';
-import { NodeId } from '../nodes/types';
 
 interface ACL extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(

@@ -7,13 +7,13 @@ import type * as vaultsPB from '../proto/js/polykey/v1/vaults/vaults_pb';
 import type * as nodesPB from '../proto/js/polykey/v1/nodes/nodes_pb';
 import type * as notificationsPB from '../proto/js/polykey/v1/notifications/notifications_pb';
 import type { Timer } from '../types';
-import Logger from '@matrixai/logger';
-import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
-import * as agentErrors from './errors';
-import {
+import type {
   AsyncGeneratorReadableStreamClient,
   AsyncGeneratorDuplexStreamClient,
 } from '../grpc/types';
+import Logger from '@matrixai/logger';
+import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
+import * as agentErrors from './errors';
 import * as grpcUtils from '../grpc/utils';
 import GRPCClient from '../grpc/GRPCClient';
 import { AgentServiceClient } from '../proto/js/polykey/v1/agent_service_grpc_pb';
