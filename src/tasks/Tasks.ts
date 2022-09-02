@@ -378,6 +378,10 @@ class Tasks {
               await tran.del([...this.tasksScheduledDbPath, ...kP]);
               await tran.put([...this.tasksQueuedDbPath, ...kP], taskIdBuffer);
 
+              // When this commits
+              // we need to "unplug" the loop there
+              // but I don't think this is needed
+
               // here we have to "push" and dispathc the task
               // into the queue
               // dispatching into the queue is different slightly
@@ -420,6 +424,12 @@ class Tasks {
     /**
      * Transition tasks from `queued` to `scheduled`
      */
+
+    this.queuingLoop = (async () => {
+
+
+    })();
+
   }
 
   protected async stopScheduling () {
