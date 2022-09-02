@@ -24,6 +24,14 @@ import * as tasksUtils from './utils';
 import Task from './Task';
 import { Plug } from '../utils/index';
 
+class TaskEvent<T = any> extends Event {
+  detail?: any;
+  constructor(type: string, options?: CustomEventInit<T>) {
+    super(type, options);
+    this.detail = options?.detail;
+  }
+}
+
 interface Queue extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
   new tasksErrors.ErrorQueueRunning(),
@@ -117,7 +125,7 @@ class Queue {
 
   protected handlers: Map<TaskHandlerId, TaskHandler> = new Map();
   protected taskPromises: Map<TaskIdEncoded, Promise<any>> = new Map();
-  protected taskEvents: EventEmitter = new EventEmitter();
+  protected taskEvents: EventTarget = new EventTarget();
   protected keyManager: KeyManager;
   protected generateTaskId: () => TaskId;
 
@@ -500,12 +508,12 @@ class Queue {
           });
         })
         .then(
-          (value) => {
-            this.taskEvents.emit(taskIdEncoded, value);
-            return value;
+          (result) => {
+            this.taskEvents.dispatchEvent(new TaskEvent(taskIdEncoded, {detail: [undefined, result]}));
+            return result;
           },
           (reason) => {
-            this.taskEvents.emit(taskIdEncoded, reason);
+            this.taskEvents.dispatchEvent(new TaskEvent(taskIdEncoded, {detail: [reason]}));
             throw reason;
           },
         );
@@ -545,18 +553,19 @@ class Queue {
 
     // If the task exist then it will create the task promise and return that
     const newTaskPromise = new Promise((resolve, reject) => {
-      const resultListener = (result) => {
-        if (result instanceof Error) reject(result);
+      const resultListener = (event: TaskEvent) => {
+        const [e, result] = event.detail;
+        if (e != null) reject(e);
         else resolve(result);
       };
-      this.taskEvents.once(taskIdEncoded, resultListener);
+      this.taskEvents.addEventListener(taskIdEncoded, resultListener, {once: true});
       // If not task promise exists then with will check if the task exists
       void (tran ?? this.db)
         .get([...this.queueTasksDbPath, taskId.toBuffer()], true)
         .then(
           (taskData) => {
             if (taskData == null) {
-              this.taskEvents.removeListener(taskIdEncoded, resultListener);
+              this.taskEvents.removeEventListener(taskIdEncoded, resultListener);
               reject(Error('TEMP task not found'));
             }
           },
