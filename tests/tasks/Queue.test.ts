@@ -1,5 +1,6 @@
 import type { TaskHandlerId, TaskId } from '../../src/tasks/types';
 import type { TaskGroup } from '../../src/tasks/types';
+import type Task from '@/tasks/Task';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
@@ -213,7 +214,7 @@ describe(Queue.name, () => {
     await queue.createTask(handlerId, [8], undefined, ['group2', 'six'], true);
 
     const listTasks = async (taskGroup: TaskGroup) => {
-      const tasks: Array<TaskId> = [];
+      const tasks: Array<Task<any>> = [];
       for await (const task of queue.getGroupTasks(taskGroup)) {
         tasks.push(task);
       }

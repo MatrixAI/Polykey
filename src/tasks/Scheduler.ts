@@ -1,5 +1,5 @@
 import type { DB, LevelPath } from '@matrixai/db';
-import type { TaskData, TaskIdString } from './types';
+import type { TaskIdString } from './types';
 import type KeyManager from '../keys/KeyManager';
 import type Task from './Task';
 import type Queue from './Queue';
@@ -20,6 +20,7 @@ import {
 import lexi from 'lexicographic-integer';
 import * as tasksUtils from './utils';
 import * as tasksErrors from './errors';
+import { TaskData } from './types';
 import { Plug } from '../utils/index';
 
 interface Scheduler extends CreateDestroyStartStop {}
@@ -241,50 +242,6 @@ class Scheduler {
     this.logger.info('dispatching ending');
   }
 
-  /**
-   * Gets a scheduled task data
-   */
-  @ready(new tasksErrors.ErrorSchedulerNotRunning())
-  public async getTaskData(
-    taskId: TaskId,
-    tran?: DBTransaction,
-  ): Promise<TaskData | undefined> {
-    return await this.getTaskData_(taskId, tran);
-  }
-
-  protected async getTaskData_(
-    taskId: TaskId,
-    tran?: DBTransaction,
-  ): Promise<TaskData | undefined> {
-    return await (tran ?? this.db).get<TaskData>([
-      ...this.queue.queueTasksDbPath,
-      taskId.toBuffer(),
-    ]);
-  }
-
-  /**
-   * Gets all scheduled task datas
-   * Tasks are sorted by the `TaskId`
-   */
-  @ready(new tasksErrors.ErrorSchedulerNotRunning())
-  public async *getTaskDatas(
-    order: 'asc' | 'desc' = 'asc',
-    tran?: DBTransaction,
-  ): AsyncGenerator<[TaskId, TaskData]> {
-    if (tran == null) {
-      return yield* this.db.withTransactionG((tran) =>
-        this.getTaskDatas(...arguments, tran),
-      );
-    }
-    for await (const [keyPath, taskData] of tran.iterator<TaskData>(
-      this.queue.queueTasksDbPath,
-      { valueAsBuffer: false, reverse: order !== 'asc' },
-    )) {
-      const taskId = IdInternal.fromBuffer<TaskId>(keyPath[0] as Buffer);
-      yield [taskId, taskData];
-    }
-  }
-
   // /**
   //  * Gets a task abstraction
   //  */
@@ -436,6 +393,56 @@ class Scheduler {
     });
 
     return task;
+  }
+
+  @ready(new tasksErrors.ErrorSchedulerNotRunning())
+  public async getTask(
+    taskId: TaskId,
+    lazy: boolean = false,
+    tran?: DBTransaction,
+  ): Promise<Task<any>> {
+    if (tran == null) {
+      return this.db.withTransactionF((tran) =>
+        this.getTask(taskId, lazy, tran),
+      );
+    }
+
+    // Wrapping `queue.getTask`, may want to filter for only scheduled tasks
+    return this.queue.getTask(taskId, lazy, tran);
+  }
+
+  /**
+   * Gets all scheduled tasks.
+   * Tasks are sorted by the `TaskId`
+   */
+  @ready(new tasksErrors.ErrorSchedulerNotRunning())
+  public async *getTasks(
+    order: 'asc' | 'desc' = 'asc',
+    lazy: boolean = false,
+    tran?: DBTransaction,
+  ): AsyncGenerator<Task<any>> {
+    if (tran == null) {
+      return yield* this.db.withTransactionG((tran) =>
+        this.getTasks(order, lazy, tran),
+      );
+    }
+
+    return yield* this.queue.getTasks(order, lazy, tran);
+  }
+
+  @ready(new tasksErrors.ErrorSchedulerNotRunning())
+  public async *getGroupTasks(
+    path: TaskPath,
+    lazy: boolean = false,
+    tran?: DBTransaction,
+  ): AsyncGenerator<Task<any>> {
+    if (tran == null) {
+      return yield* this.db.withTransactionG((tran) =>
+        this.getGroupTasks(path, lazy, tran),
+      );
+    }
+
+    return yield* this.queue.getGroupTasks(path, lazy, tran);
   }
 }
 
