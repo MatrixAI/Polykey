@@ -1,3 +1,4 @@
+import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import type { Id } from '@matrixai/id';
 import type { POJO, Opaque, Callback } from '../types';
 import type { LevelPath } from '@matrixai/db';
@@ -48,15 +49,15 @@ type TaskData = {
   handlerId: TaskHandlerId;
   parameters: TaskParameters;
   timestamp: TaskTimestamp;
-  // Delay: TaskDelay;
-  path: TaskPath | undefined;
+  delay: TaskDelay;
   priority: TaskPriority;
+  deadline: TaskDeadline;
+  path: TaskPath;
 };
 
 type Task = TaskData & {
   id: TaskId;
-  startTime: TaskTimestamp | undefined;
-  promise: () => Promise<any> | undefined;
+  promise: PromiseCancellable<any>;
 };
 
 /**

@@ -9,6 +9,7 @@ import type {
   TaskTimestamp,
   TaskParameters,
   TaskIdEncoded,
+  TaskPriority,
   TaskId,
   TaskPath,
 } from './types';
@@ -17,8 +18,11 @@ import {
   CreateDestroyStartStop,
   ready
 } from "@matrixai/async-init/dist/CreateDestroyStartStop";
-import { IdInternal } from '@matrixai/id';
 import Logger from '@matrixai/logger';
+import { IdInternal } from '@matrixai/id';
+import { Lock } from '@matrixai/async-locks';
+import { PromiseCancellable } from '@matrixai/async-cancellable';
+import { extractTs } from '@matrixai/id/dist/IdSortable';
 import lexi from 'lexicographic-integer';
 import Timer from '../timer/Timer';
 import * as tasksErrors from './errors';
@@ -70,19 +74,43 @@ class Tasks {
   protected generateTaskId: () => TaskId;
   protected tasksDbPath: LevelPath = [this.constructor.name];
 
+
+  // you are pausing the loop a bit
+
+  protected schedulingLock: Lock = new Lock();
+
+
   /**
    * Maintain last Task Id to preserve monotonicity across procee restarts
-   * `tasks/lastTaskId -> {raw(TaskId)}`
+   * `Tasks/lastTaskId -> {raw(TaskId)}`
    */
   protected tasksLastTaskIdPath: KeyPath = [...this.tasksDbPath, 'lastTaskId'];
 
   /**
-   * Tasks indexed by scheduled time
-   * This combines it with a `TaskId` to avoid conflicts
-   * `tasks/scheduled/{lexi(TaskTimestamp + TaskDelay)}/{raw(TaskId)} -> {raw(TaskId)}`
+   * Tasks collection
+   * `Tasks/tasks/{TaskId} -> {json(TaskData)}`
+   */
+  protected tasksTaskDbPath: LevelPath = [...this.tasksDbPath, 'task'];
+
+  /**
+   * Tasks indexed path
+   * `Tasks/path/{...TaskPath}/{TaskId} -> {raw(TaskId)}`
+   */
+  protected tasksPathDbPath: LevelPath = [...this.tasksDbPath, 'path'];
+
+  /**
+   * Scheduled Tasks
+   * This is indexed by `TaskId` at the end to avoid conflicts
+   * `Tasks/scheduled/{lexi(TaskTimestamp + TaskDelay)}/{TaskId} -> {raw(TaskId)}`
    */
   protected tasksScheduledDbPath: LevelPath = [...this.tasksDbPath, 'scheduled'];
 
+  /**
+   * Queued Tasks
+   * This is indexed by `TaskId` at the end to avoid conflicts
+   * `Tasks/queued/{TaskPriority}/{lexi(TaskTimestamp + TaskDelay)}/{TaskId} -> {raw(TaskId})}`
+   */
+  protected tasksQueuedDbPath: LevelPath = [...this.tasksDbPath, 'queued'];
 
   protected schedulingLoop: Promise<void> | null = null;
   protected queuingLoop: Promise<void> | null = null;
@@ -155,6 +183,29 @@ class Tasks {
     this.logger.info(`Destroyed ${this.constructor.name}`);
   }
 
+  public getHandler(handlerId: TaskHandlerId): TaskHandler | undefined {
+    return this.handlers.get(handlerId);
+  }
+
+  public getHandlers(): Record<TaskHandlerId, TaskHandler> {
+    return Object.fromEntries(this.handlers);
+  }
+
+  /**
+   * Registers a handler for tasks with the same `TaskHandlerId`
+   */
+  public registerHandler(handlerId: TaskHandlerId, handler: TaskHandler) {
+    this.handlers.set(handlerId, handler);
+  }
+
+  /**
+   * Deregisters a handler
+   */
+  public deregisterHandler(handlerId: TaskHandlerId) {
+    this.handlers.delete(handlerId);
+  }
+
+
   @ready(new tasksErrors.ErrorSchedulerNotRunning())
   public async scheduleTask(
     {
@@ -175,7 +226,7 @@ class Tasks {
       lazy?: boolean
     },
     tran?: DBTransaction,
-  ): Promise<TaskData> {
+  ): Promise<Task> {
     if (tran == null) {
       return this.db.withTransactionF((tran) =>
         this.scheduleTask(
@@ -192,16 +243,87 @@ class Tasks {
         ),
       );
     }
+    const taskId = this.generateTaskId();
+    // Timestamp extracted from `IdSortable` is a floating point in seconds
+    // with subsecond fractionals, multiply it by 1000 gives us milliseconds
+    const taskTimestamp = Math.trunc(extractTs(taskId) * 1000) as TaskTimestamp;
+    const taskPriority = tasksUtils.toPriority(priority);
+    const taskIdBuffer = taskId.toBuffer();
+    const taskData = {
+      handlerId,
+      parameters,
+      timestamp: taskTimestamp,
+      priority: taskPriority,
+      delay,
+      deadline,
+      path,
+    };
+    await tran.put([...this.tasksTaskDbPath, taskIdBuffer], taskData);
+    await tran.put(this.tasksLastTaskIdPath, taskIdBuffer, true);
+    await tran.put(
+      [...this.tasksPathDbPath, ...path, taskIdBuffer],
+      taskIdBuffer,
+      true,
+    );
+
+    if (!lazy) {
+
+    } else {
+
+    }
+
+    // If the delay is 0, we can schedule the task immediately
+    if (delay > 0) {
+
+    } else {
+      // go straight to queueing the task
+    }
+
+
+    return {
+      id: taskId,
+      promise: new PromiseCancellable<void>((resolve, reject) => { resolve()}),
+      ...taskData
+    };
+  }
 
 
 
+  public async getTask(
+    taskId: TaskId,
+    lazy: boolean = false,
+    tran?: DBTransaction,
+  ): Promise<Task | undefined> {
+    if (tran == null) {
+      return this.db.withTransactionF((tran) =>
+        this.getTask(taskId, lazy, tran),
+      );
+    }
+    const taskData = await tran.get<TaskData>([
+      ...this.tasksTaskDbPath,
+      taskId.toBuffer(),
+    ]);
+    if (taskData == null) {
+      return undefined;
+    }
+
+
+    return {
+      id: taskId,
+      promise: new PromiseCancellable<void>((resolve, reject) => { resolve()}),
+      ...taskData,
+    };
+  }
+
+  public async *getTaskDatas(
+    path: TaskPath = [],
+    order: 'asc' | 'desc' = 'asc',
+    lazy: boolean = false,
+    tran?: DBTransaction,
+  ): AsyncGenerator<TaskData> {
 
   }
 
-  public async getTaskData(): Promise<TaskData> {
-
-
-  }
 
   // this is not a loop that is not set and shit
   // it's always set...
@@ -215,9 +337,18 @@ class Tasks {
     // a while loop that you are "assigning"
     // but you have to do
 
+    new Timer(() => {
+      // the loop is "unplugged"
 
+    });
+
+
+    /**
+     * Transition tasks from `scheduled` to `queued`
+     */
     this.schedulingLoop = (async () => {
       while (true) {
+        await this.schedulingLock.waitForUnlock();
 
         // the idea is to acquire the first one
         // why not have the timer set up already?
@@ -233,10 +364,31 @@ class Tasks {
 
 
         await this.db.withTransactionF(async (tran) => {
-          for await (const [kP] of tran.iterator(
+          for await (const [kP, taskIdBuffer] of tran.iterator(
             this.tasksScheduledDbPath,
             { lte: [scheduledTimestamp] }
           )) {
+
+            // a new transaction is needed here
+            // and this has to "dispatch it"
+
+            const taskId = IdInternal.fromBuffer<TaskId>(taskIdBuffer);
+            await this.db.withTransactionF(async (tran) => {
+
+              await tran.del([...this.tasksScheduledDbPath, ...kP]);
+              await tran.put([...this.tasksQueuedDbPath, ...kP], taskIdBuffer);
+
+              // here we have to "push" and dispathc the task
+              // into the queue
+              // dispatching into the queue is different slightly
+              // move it into the queue?
+
+            });
+
+            // actually this is the scheduled thing
+            // i should get teh task Id
+            // kP
+            // valueAsBuffer is true already
 
 
           }
@@ -265,6 +417,9 @@ class Tasks {
 
   protected async startQueueing() {
 
+    /**
+     * Transition tasks from `queued` to `scheduled`
+     */
   }
 
   protected async stopScheduling () {
@@ -272,6 +427,16 @@ class Tasks {
   }
 
   protected async stopQueueing() {
+
+  }
+
+  // queueing a task does nto involve this
+  protected async queueTask() {
+
+    // if htis cna be done
+    // scheduleTask is the entrypoint
+    // this would be a protected function
+    // you just set the delay to some poitn in theime
 
   }
 
