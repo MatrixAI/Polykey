@@ -10,7 +10,6 @@ import type {
 import type KeyManager from '../keys/KeyManager';
 import type { DBTransaction } from '@matrixai/db';
 import type { TaskId, TaskGroup } from './types';
-import EventEmitter from 'events';
 import Logger from '@matrixai/logger';
 import {
   CreateDestroyStartStop,
@@ -509,11 +508,15 @@ class Queue {
         })
         .then(
           (result) => {
-            this.taskEvents.dispatchEvent(new TaskEvent(taskIdEncoded, {detail: [undefined, result]}));
+            this.taskEvents.dispatchEvent(
+              new TaskEvent(taskIdEncoded, { detail: [undefined, result] }),
+            );
             return result;
           },
           (reason) => {
-            this.taskEvents.dispatchEvent(new TaskEvent(taskIdEncoded, {detail: [reason]}));
+            this.taskEvents.dispatchEvent(
+              new TaskEvent(taskIdEncoded, { detail: [reason] }),
+            );
             throw reason;
           },
         );
@@ -558,14 +561,19 @@ class Queue {
         if (e != null) reject(e);
         else resolve(result);
       };
-      this.taskEvents.addEventListener(taskIdEncoded, resultListener, {once: true});
+      this.taskEvents.addEventListener(taskIdEncoded, resultListener, {
+        once: true,
+      });
       // If not task promise exists then with will check if the task exists
       void (tran ?? this.db)
         .get([...this.queueTasksDbPath, taskId.toBuffer()], true)
         .then(
           (taskData) => {
             if (taskData == null) {
-              this.taskEvents.removeEventListener(taskIdEncoded, resultListener);
+              this.taskEvents.removeEventListener(
+                taskIdEncoded,
+                resultListener,
+              );
               reject(Error('TEMP task not found'));
             }
           },
@@ -579,13 +587,88 @@ class Queue {
   }
 
   @ready(new tasksErrors.ErrorSchedulerNotRunning())
-  public async *getGroupTasks(
-    taskGroup: TaskGroup,
+  public async getTask(
+    taskId: TaskId,
+    lazy: boolean = false,
     tran?: DBTransaction,
-  ): AsyncGenerator<TaskId> {
+  ): Promise<Task<any>> {
+    if (tran == null) {
+      return this.db.withTransactionF((tran) =>
+        this.getTask(taskId, lazy, tran),
+      );
+    }
+
+    const taskData = await tran.get<TaskData>([
+      ...this.queueTasksDbPath,
+      taskId.toBuffer(),
+    ]);
+    if (taskData == null) throw Error('TMP task not found');
+
+    let taskPromise: Promise<any> | null = null;
+    if (!lazy) {
+      taskPromise = this.getTaskP(taskId, tran);
+    }
+    return new Task(
+      this,
+      taskId,
+      taskData.handlerId,
+      taskData.parameters,
+      taskData.timestamp,
+      // Delay,
+      taskData.taskGroup,
+      taskData.priority,
+      taskPromise,
+    );
+  }
+
+  /**
+   * Gets all scheduled tasks.
+   * Tasks are sorted by the `TaskId`
+   */
+  @ready(new tasksErrors.ErrorSchedulerNotRunning())
+  public async *getTasks(
+    order: 'asc' | 'desc' = 'asc',
+    lazy: boolean = false,
+    tran?: DBTransaction,
+  ): AsyncGenerator<Task<any>> {
     if (tran == null) {
       return yield* this.db.withTransactionG((tran) =>
-        this.getGroupTasks(taskGroup, tran),
+        this.getTasks(order, lazy, tran),
+      );
+    }
+
+    for await (const [keyPath, taskData] of tran.iterator<TaskData>(
+      this.queueTasksDbPath,
+      { valueAsBuffer: false, reverse: order !== 'asc' },
+    )) {
+      const taskId = IdInternal.fromBuffer<TaskId>(keyPath[0] as Buffer);
+      let taskPromise: Promise<any> | null = null;
+      if (!lazy) {
+        taskPromise = this.getTaskP(taskId, tran);
+      }
+      yield new Task(
+        this,
+        taskId,
+        taskData.handlerId,
+        taskData.parameters,
+        taskData.timestamp,
+        // Delay,
+        taskData.taskGroup,
+        taskData.priority,
+        taskPromise,
+      );
+    }
+  }
+
+  @ready(new tasksErrors.ErrorSchedulerNotRunning())
+  public async *getGroupTasks(
+    taskGroup: TaskGroup,
+    lazy: boolean = false,
+    tran?: DBTransaction,
+  ): AsyncGenerator<Task<any>> {
+    if (tran == null) {
+      return yield* this.db.withTransactionG((tran) =>
+        this.getGroupTasks(taskGroup, lazy, tran),
       );
     }
 
@@ -593,7 +676,8 @@ class Queue {
       ...this.queueGroupsDbPath,
       ...taskGroup,
     ])) {
-      yield IdInternal.fromBuffer<TaskId>(taskIdBuffer);
+      const taskId = IdInternal.fromBuffer<TaskId>(taskIdBuffer);
+      yield this.getTask(taskId, lazy, tran);
     }
   }
 
