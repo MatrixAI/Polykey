@@ -1,6 +1,5 @@
 import type { TaskHandlerId, TaskId } from '../../src/tasks/types';
-import type { TaskPath } from '../../src/tasks/types';
-import type Task from '@/tasks/Task';
+import type { TaskPath, Task } from '../../src/tasks/types';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
@@ -214,7 +213,7 @@ describe(Queue.name, () => {
     await queue.createTask(handlerId, [8], undefined, ['group2', 'six'], true);
 
     const listTasks = async (taskGroup: TaskPath) => {
-      const tasks: Array<Task<any>> = [];
+      const tasks: Array<Task> = [];
       for await (const task of queue.getTasksByPath(taskGroup)) {
         tasks.push(task);
       }
@@ -270,7 +269,7 @@ describe(Queue.name, () => {
     const taskSucceed = await pushTask(queue, handlerId, [true], false);
 
     // Promise should succeed with result
-    const taskSucceedP = taskSucceed!.promise;
+    const taskSucceedP = taskSucceed!.promise();
     await expect(taskSucceedP).resolves.toBe(true);
 
     await queue.stop();
@@ -291,7 +290,7 @@ describe(Queue.name, () => {
 
     const taskFail = await pushTask(queue, handlerId, [false], false);
     // Promise should fail
-    const taskFailP = taskFail!.promise;
+    const taskFailP = taskFail!.promise();
     await expect(taskFailP).rejects.toBeInstanceOf(Error);
 
     await queue.stop();
@@ -316,7 +315,7 @@ describe(Queue.name, () => {
     const prom1 = queue.getTaskP(taskSucceed.id);
     const prom2 = queue.getTaskP(taskSucceed.id);
     expect(prom1).toBe(prom2);
-    expect(prom1).toBe(taskSucceed!.promise);
+    expect(prom1).toBe(taskSucceed!.promise());
 
     await queue.stop();
   });
@@ -364,7 +363,7 @@ describe(Queue.name, () => {
     await queue.startTasks();
     await prom;
     // Finished tasks should throw
-    await expect(taskSucceed?.promise).rejects.toThrow();
+    await expect(taskSucceed?.promise()).rejects.toThrow();
 
     await queue.stop();
   });
@@ -385,7 +384,7 @@ describe(Queue.name, () => {
 
     await queue.startTasks();
     const taskSucceed = await pushTask(queue, handlerId, [true], false);
-    await expect(taskSucceed?.promise).resolves.toBe(true);
+    await expect(taskSucceed?.promise()).resolves.toBe(true);
 
     await queue.stop();
   });

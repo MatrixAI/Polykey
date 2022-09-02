@@ -3,7 +3,6 @@ import type {
   TaskData,
   TaskHandlerId,
   TaskTimestamp,
-  TaskDelay,
   TaskPriority,
   TaskParameters,
   TaskPath,
@@ -11,6 +10,7 @@ import type {
 import type { DeepReadonly } from '../types';
 import type Queue from './Queue';
 
+// FIXME: this file isn't needed anymore?
 class Task<T> {
   public readonly id: TaskId;
   public readonly handlerId: TaskHandlerId;
