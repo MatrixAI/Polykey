@@ -34,7 +34,7 @@ type TaskDeadline = Opaque<'TaskDeadline', number>;
 /**
  * Task Path, a LevelPath
  */
-type TaskPath = LevelPath;
+type TaskPath = Array<string>;
 
 /**
  * Task state machine diagram
