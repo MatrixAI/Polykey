@@ -7,6 +7,7 @@ import type {
 import os from 'os';
 import process from 'process';
 import path from 'path';
+import lexi from 'lexicographic-integer';
 import * as utilsErrors from './errors';
 
 const AsyncFunction = (async () => {}).constructor;
@@ -335,6 +336,20 @@ function isAsyncIterable(v: any): v is AsyncIterable<unknown> {
   return v != null && typeof v[Symbol.asyncIterator] === 'function';
 }
 
+/**
+ * Encodes whole numbers (inc of 0) to lexicographic buffers
+ */
+function lexiPackBuffer(n: number): Buffer {
+  return Buffer.from(lexi.pack(n));
+}
+
+/**
+ * Decodes lexicographic buffers to whole numbers (inc of 0)
+ */
+function lexiUnpackBuffer(b: Buffer): number {
+  return lexi.unpack([...b]);
+}
+
 export {
   AsyncFunction,
   GeneratorFunction,
@@ -364,4 +379,6 @@ export {
   isPromiseLike,
   isIterable,
   isAsyncIterable,
+  lexiPackBuffer,
+  lexiUnpackBuffer,
 };

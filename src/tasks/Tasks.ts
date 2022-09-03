@@ -28,6 +28,8 @@ import lexi from 'lexicographic-integer';
 import Timer from '../timer/Timer';
 import * as tasksErrors from './errors';
 import * as tasksUtils from './utils';
+import * as utils from '../utils';
+import * as debug from '../utils/debug';
 
 @CreateDestroyStartStop(
   new tasksErrors.ErrorQueueRunning(),
@@ -108,7 +110,7 @@ class Tasks {
   /**
    * Queued Tasks
    * This is indexed by `TaskId` at the end to avoid conflicts
-   * `Tasks/queued/{TaskPriority}/{lexi(TaskTimestamp + TaskDelay)}/{TaskId} -> {raw(TaskId})}`
+   * `Tasks/queued/{lexi(TaskPriority)}/{lexi(TaskTimestamp + TaskDelay)}/{TaskId} -> {raw(TaskId})}`
    */
   protected tasksQueuedDbPath: LevelPath = [...this.tasksDbPath, 'queued'];
 
@@ -129,7 +131,21 @@ class Tasks {
    * Lock controls whether to run an iteration of the scheduling loop
    */
   protected schedulingLock: Lock = new Lock();
-  protected schedulingLockReleaser: ResourceRelease;
+
+  /**
+   * Releases the lock
+   * In the beginning the scheduling lock is not locked,
+   * therefore this is initialised to be an async noop
+   */
+  protected schedulingLockReleaser: ResourceRelease = async () => {};
+
+  // If the releaser is set
+  // it's possible that the releaser function
+  // is still pointing to the old lock
+  // we want to wipe that, or at least
+  // ensure that it cannot be used
+  // need to see if this is a problem
+
 
   protected queuingLoop: Promise<void> | null = null;
 
@@ -160,7 +176,6 @@ class Tasks {
     fresh?: boolean;
   } = {}): Promise<void> {
     this.logger.info(`Starting ${this.constructor.name}`);
-    this.logger.info(`Starting ${this.constructor.name}`);
     if (fresh) {
       this.handlers.clear();
       await this.db.clear(this.tasksDbPath);
@@ -176,21 +191,17 @@ class Tasks {
         handlers[taskHandlerId],
       );
     }
+    // Even if it is not lazy
+    // it just means we are not starting yet
     if (!lazy) {
-      await Promise.all([
-        this.startScheduling(),
-        this.startQueueing(),
-      ]);
+      await this.startProcessing();
     }
     this.logger.info(`Started ${this.constructor.name}`);
   }
 
   public async stop() {
     this.logger.info(`Stopping ${this.constructor.name}`);
-    await Promise.all([
-      this.stopQueueing(),
-      this.stopScheduling(),
-    ]);
+    await this.stopProcessing();
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
@@ -201,6 +212,31 @@ class Tasks {
     this.logger.info(`Destroyed ${this.constructor.name}`);
   }
 
+  /**
+   * Start scheduling and queuing loop
+   * This call is idempotent
+   * Use this when `Tasks` is started in lazy mode
+   */
+  @ready(new tasksErrors.ErrorSchedulerNotRunning(), false, ['starting'])
+  public async startProcessing(): Promise<void> {
+    await Promise.all([
+      this.startScheduling(),
+      this.startQueueing(),
+    ]);
+  }
+
+  /**
+   * Stop the scheduling and queuing loop
+   * This call is idempotent
+   */
+  @ready(new tasksErrors.ErrorSchedulerNotRunning(), false, ['stopping'])
+  public async stopProcessing(): Promise<void> {
+    await Promise.all([
+      this.stopQueueing(),
+      this.stopScheduling(),
+    ]);
+  }
+
   public getHandler(handlerId: TaskHandlerId): TaskHandler | undefined {
     return this.handlers.get(handlerId);
   }
@@ -208,6 +244,7 @@ class Tasks {
   public getHandlers(): Record<TaskHandlerId, TaskHandler> {
     return Object.fromEntries(this.handlers);
   }
+
 
   /**
    * Registers a handler for tasks with the same `TaskHandlerId`
@@ -271,6 +308,16 @@ class Tasks {
     const taskPriority = tasksUtils.toPriority(priority);
     const taskIdBuffer = taskId.toBuffer();
     const taskScheduleTime = taskTimestamp + delay;
+
+    // Change to this? Easier than holding a delay?
+
+    // task.createTime
+    // task.scheduledTime
+
+    console.log('TASK CREATION TIME', new Date(taskTimestamp));
+    console.log('TASK SCHEDULE TIME', new Date(taskScheduleTime));
+
+
     const taskData = {
       handlerId,
       parameters,
@@ -289,8 +336,8 @@ class Tasks {
     await tran.put(
       [
         ...this.tasksScheduledDbPath,
-        Buffer.from(lexi.pack(taskScheduleTime)),
-        taskIdBuffer
+        utils.lexiPackBuffer(taskScheduleTime),
+        taskIdBuffer, // attempt to not put the task id...
       ],
       taskIdBuffer,
       true
@@ -304,18 +351,24 @@ class Tasks {
     );
 
     if (!lazy) {
-
     } else {
-
     }
 
     // If the delay is 0, we can schedule the task immediately
     if (delay > 0) {
-
     } else {
       // go straight to queueing the task
     }
 
+    // If the `schedulingTimer` is null, it means `Tasks` was started in lazy mode
+    // the user must call `Tasks.startProcessing()`
+    if (
+      this.schedulingTimer != null &&
+      (taskScheduleTime < this.schedulingTimer.scheduled!.getTime())
+    ) {
+      if (this.schedulingTimer != null) this.schedulingTimer.cancel();
+      this.schedulingLockReleaser();
+    }
 
     return {
       id: taskId,
@@ -375,63 +428,78 @@ class Tasks {
       return;
     }
     const abortController = new AbortController();
+
+    console.log('STARTING LOOP');
+
     const schedulingLoop = (async () => {
       while (!abortController.signal.aborted) {
+
         // Blocks the scheduling loop until lock is released
         // this ensures that each iteration of the loop is only
         // run when it is required
         await this.schedulingLock.waitForUnlock();
+
+        console.count('Scheduling Loop Iteration');
+
         // Lock up the scheduling lock
         // only the `schedulingTimer` or the `scheduleTask` method can unlock
         [this.schedulingLockReleaser] = await this.schedulingLock.lock()();
+
         // Peek ahead by 100 ms
         // this is because the subsequent operations of this iteration may take up to 100ms
         // and we might as well prefetch some tasks to be executed
-        const now = performance.timeOrigin + performance.now() + 100;
-        const nowBuffer = Buffer.from(lexi.pack(now));
-
-        console.log(now);
-        console.log(nowBuffer);
+        const now = Math.trunc(performance.timeOrigin + performance.now()) + 100;
 
         await this.db.withTransactionF(async (tran) => {
-
-          for await (const [kP, taskIdBuffer] of tran.iterator(
-            this.tasksScheduledDbPath,
-            { lte: [nowBuffer] }
-          )) {
-            // Break out of the dispatch loop if aborted
-            if(abortController.signal.aborted) break;
-            // const taskId = IdInternal.fromBuffer<TaskId>(taskIdBuffer);
-            await this.db.withTransactionF(async (tran) => {
-              await tran.put([...this.tasksQueuedDbPath, ...kP], taskIdBuffer);
-              await tran.del([...this.tasksScheduledDbPath, ...kP]);
-              console.log('DISPATCHING TASK');
-
-              // we assume here you want to start the queuing loop
-              // and this basically triggers it
-              // it doesn't run it
-              // it just says that the queuing loop should be started
-              // it is probably already started to be honest
-              // but the queuing needs to start on each call
-
-            });
-          }
-
-          let scheduleTime: number | undefined;
+          // Queue up all the tasks that are scheduled to be executed before `now`
           for await (const [kP] of tran.iterator(
             this.tasksScheduledDbPath,
-            { limit: 1 }
+            {
+              // Upper bound of `{lexi(TaskTimestamp + TaskDelay)}/{TaskId}`
+              // notice the usage of `''` as the upper bound of `TaskId`
+              lte: [ utils.lexiPackBuffer(now), '' ],
+              values: false
+            }
           )) {
             // Break out of the dispatch loop if aborted
-            // this will cause the `scheduleTime` not be set
-            // and we will proceed to just stop
             if(abortController.signal.aborted) break;
-            scheduleTime = lexi.unpack(kP[0]);
+            const taskIdBuffer = kP[1] as Buffer;
+            const taskData = (await tran.get<TaskData>([
+              ...this.tasksTaskDbPath,
+              taskIdBuffer
+            ]))!;
+            // Put task into the queue index
+            await tran.put(
+              [
+                ...this.tasksQueuedDbPath,
+                utils.lexiPackBuffer(taskData.priority),
+                ...kP
+              ],
+              taskIdBuffer,
+              true
+            );
+            // Remove task from the scheduled index
+            await tran.del([...this.tasksScheduledDbPath, ...kP]);
           }
-          if (scheduleTime != null) {
-            const now = performance.timeOrigin + performance.now();
-            const delay = Math.max(scheduleTime - now, 0);
-            console.log('SETTING NEXT TIMER');
+
+          // Get the next task to be scheduled and set the timer accordingly
+          let nextScheduleTime: number | undefined;
+          for await (const [kP] of tran.iterator(
+            this.tasksScheduledDbPath,
+            { limit: 1, values: false }
+          )) {
+            nextScheduleTime = utils.lexiUnpackBuffer(kP[0] as Buffer);
+          }
+
+          if(abortController.signal.aborted) return;
+
+          // If there is no task, no timer will be set
+          if (nextScheduleTime != null) {
+            this.logger.debug(
+              `Scheduling loop next step at ${new Date(nextScheduleTime).toISOString()}`
+            );
+            const now = Math.trunc(performance.timeOrigin + performance.now());
+            const delay = Math.max(nextScheduleTime - now, 0);
             this.schedulingTimer = new Timer(
               () => {
                 this.schedulingLockReleaser();
@@ -440,8 +508,15 @@ class Tasks {
             );
           }
         });
+
+        console.log('DUMP AFTER ONE STEP of SCHEDULING LOOP'),
+        console.dir(
+          debug.inspectBufferStructure(await this.db.dump([], true))
+        );
+
       }
     })();
+
     this.schedulingLoop = PromiseCancellable.from(
       schedulingLoop,
       abortController

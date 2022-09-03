@@ -4,6 +4,7 @@ import Logger, { LogLevel } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import KeyManager from './src/keys/KeyManager';
 import Tasks from './src/tasks/Tasks';
+import { sleep } from '@/utils';
 
 // This function decodes a nested array of Buffer
 // and converts to them  utf8 strings
@@ -29,7 +30,8 @@ function isPrintable (str: string): boolean {
 
 async function main () {
 
-  const logger = new Logger('root', LogLevel.WARN);
+  const logger = new Logger('root', LogLevel.DEBUG);
+  logger.setFilter(/tasks/);
 
   const keyManager = await KeyManager.createKeyManager({
     keysPath: './tmp/keys',
@@ -44,21 +46,14 @@ async function main () {
     logger,
   });
 
+  // Lazy startup
   const tasks = await Tasks.createTasks({
     db,
     keyManager,
     fresh: true,
-    logger,
+    lazy: true,
+    logger: logger.getChild('tasks'),
   });
-
-  // it actually has to take a context signal in
-  // (a: number, b: string)
-  // scheduleTask({ params: [1, 'abc' ]})
-  // because...
-
-  // why not the event system?
-  // you listen for event, then type it?
-  // it's kind of dynamic
 
   const test = 'test' as TaskHandlerId;
 
@@ -72,14 +67,44 @@ async function main () {
   await tasks.scheduleTask({
     handlerId: test,
     parameters: ['abc'],
-    delay: 1000,
+    delay: 500,
     priority: 0,
     deadline: 10000,
   });
 
-  // await db.put('test', 'test');
-  console.log(decodeBufferArray(await db.dump([], true)));
+  await tasks.scheduleTask({
+    handlerId: test,
+    parameters: ['abc'],
+    delay: 500,
+    priority: 0,
+    deadline: 10000,
+  });
 
+  await tasks.scheduleTask({
+    handlerId: test,
+    parameters: ['abc'],
+    delay: 4000,
+    priority: 0,
+    deadline: 10000,
+  });
+
+  await tasks.scheduleTask({
+    handlerId: test,
+    parameters: ['abc'],
+    delay: 5000,
+    priority: 0,
+    deadline: 10000,
+  });
+
+  console.log('DUMP AFTER SCHEDULING TASK', decodeBufferArray(await db.dump([], true)));
+
+  await sleep(1000);
+
+  // This starts the processing now
+  await tasks.startProcessing();
+
+  await sleep(5000);
+  // console.log(decodeBufferArray(await db.dump([], true)));
 
   await tasks.stop();
 
