@@ -487,11 +487,11 @@ class Tasks {
 
           // If there is no task, no timer will be set
           if (nextScheduleTime != null) {
-            this.logger.debug(
-              `Setting scheduling loop iteration for ${new Date(nextScheduleTime).toISOString()}`
-            );
             const now = Math.trunc(performance.timeOrigin + performance.now());
             const delay = Math.max(nextScheduleTime - now, 0);
+            this.logger.debug(
+              `Setting scheduling loop iteration for ${new Date(nextScheduleTime).toISOString()} (delay: ${delay} ms)`
+            );
             this.schedulingTimer = new Timer(
               () => {
                 this.schedulingLockReleaser();
@@ -522,15 +522,11 @@ class Tasks {
   }
 
   protected async stopScheduling (): Promise<void> {
-    // HOW to stop the scheduling loop?
-    // make it a promise cancellable and BREAK out of the loop
-    // it's not an async function then
-    // the loop may not be running
-    // but the timer may retrigger it
-
+    this.logger.info('Stopping Scheduling Loop');
     this.schedulingTimer?.cancel();
     this.schedulingLoop?.cancel();
     await this.schedulingLoop;
+    this.logger.info('Stopped Scheduling Loop');
   }
 
   protected async stopQueueing() {
