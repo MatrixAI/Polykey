@@ -5,7 +5,7 @@ import Tasks from './src/tasks/Tasks';
 
 async function main () {
 
-  const logger = new Logger('root', LogLevel.INFO);
+  const logger = new Logger('root', LogLevel.WARN);
 
   const keyManager = await KeyManager.createKeyManager({
     keysPath: './tmp/keys',
@@ -23,7 +23,8 @@ async function main () {
   const tasks = await Tasks.createTasks({
     db,
     keyManager,
-    fresh: true
+    fresh: true,
+    logger,
   });
 
   await tasks.stop();

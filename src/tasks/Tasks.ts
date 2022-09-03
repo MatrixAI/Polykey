@@ -1,4 +1,5 @@
 import type { DB, DBTransaction, LevelPath, KeyPath } from '@matrixai/db';
+import type { ResourceRelease } from '@matrixai/resources';
 import type {
   Task,
   TaskDeadline,
@@ -77,8 +78,6 @@ class Tasks {
 
   // you are pausing the loop a bit
 
-  protected schedulingLock: Lock = new Lock();
-  protected schedulingLockReleaser;
 
 
   /**
@@ -113,9 +112,26 @@ class Tasks {
    */
   protected tasksQueuedDbPath: LevelPath = [...this.tasksDbPath, 'queued'];
 
-  protected schedulingLoop: Promise<void> | null = null;
-  protected queuingLoop: Promise<void> | null = null;
+  /**
+   * Asynchronous scheduling loop
+   * This transitions tasks from `scheduled` to `queued`
+   * This is blocked by the `schedulingLock`
+   */
+  protected schedulingLoop: PromiseCancellable<void> | null = null;
+
+  /**
+   * Timer used to unblock the scheduling loop
+   * This releases the `schedulingLock` if it is locked
+   */
   protected schedulingTimer: Timer | null = null;
+
+  /**
+   * Lock controls whether to run an iteration of the scheduling loop
+   */
+  protected schedulingLock: Lock = new Lock();
+  protected schedulingLockReleaser: ResourceRelease;
+
+  protected queuingLoop: Promise<void> | null = null;
 
   public constructor({
     db,
@@ -358,42 +374,58 @@ class Tasks {
     if (this.schedulingLoop != null) {
       return;
     }
-    console.log('CREATING scheduling loop');
-    this.schedulingLoop = (async () => {
-      while (true) {
-        console.log('ITERATION');
-
-        // Wait for the lock to be released
+    const abortController = new AbortController();
+    const schedulingLoop = (async () => {
+      while (!abortController.signal.aborted) {
+        // Blocks the scheduling loop until lock is released
+        // this ensures that each iteration of the loop is only
+        // run when it is required
         await this.schedulingLock.waitForUnlock();
-        // Plug the lock immediately
+        // Lock up the scheduling lock
+        // only the `schedulingTimer` or the `scheduleTask` method can unlock
         [this.schedulingLockReleaser] = await this.schedulingLock.lock()();
-
         // Peek ahead by 100 ms
+        // this is because the subsequent operations of this iteration may take up to 100ms
+        // and we might as well prefetch some tasks to be executed
         const now = performance.timeOrigin + performance.now() + 100;
         const nowBuffer = Buffer.from(lexi.pack(now));
 
-        // See if this requires the key combination
+        console.log(now);
+        console.log(nowBuffer);
 
         await this.db.withTransactionF(async (tran) => {
+
           for await (const [kP, taskIdBuffer] of tran.iterator(
             this.tasksScheduledDbPath,
             { lte: [nowBuffer] }
           )) {
-            console.log('ENTRY');
-
+            // Break out of the dispatch loop if aborted
+            if(abortController.signal.aborted) break;
             // const taskId = IdInternal.fromBuffer<TaskId>(taskIdBuffer);
             await this.db.withTransactionF(async (tran) => {
               await tran.put([...this.tasksQueuedDbPath, ...kP], taskIdBuffer);
               await tran.del([...this.tasksScheduledDbPath, ...kP]);
               console.log('DISPATCHING TASK');
+
+              // we assume here you want to start the queuing loop
+              // and this basically triggers it
+              // it doesn't run it
+              // it just says that the queuing loop should be started
+              // it is probably already started to be honest
+              // but the queuing needs to start on each call
+
             });
           }
+
           let scheduleTime: number | undefined;
           for await (const [kP] of tran.iterator(
             this.tasksScheduledDbPath,
             { limit: 1 }
           )) {
-            console.log('NEXT ENTRY');
+            // Break out of the dispatch loop if aborted
+            // this will cause the `scheduleTime` not be set
+            // and we will proceed to just stop
+            if(abortController.signal.aborted) break;
             scheduleTime = lexi.unpack(kP[0]);
           }
           if (scheduleTime != null) {
@@ -407,35 +439,33 @@ class Tasks {
               delay
             );
           }
-          console.log('FINISH THE TRANSACTION');
         });
-
-        // the loop must be "set"
-        // and started
-        // iterate over the db to do this
-
       }
     })();
-
+    this.schedulingLoop = PromiseCancellable.from(
+      schedulingLoop,
+      abortController
+    );
   }
 
   protected async startQueueing() {
-
     /**
      * Transition tasks from `queued` to `scheduled`
      */
-
     this.queuingLoop = (async () => {
-
-
     })();
-
   }
 
-  protected async stopScheduling () {
+  protected async stopScheduling (): Promise<void> {
     // HOW to stop the scheduling loop?
     // make it a promise cancellable and BREAK out of the loop
     // it's not an async function then
+    // the loop may not be running
+    // but the timer may retrigger it
+
+    this.schedulingTimer?.cancel();
+    this.schedulingLoop?.cancel();
+    await this.schedulingLoop;
   }
 
   protected async stopQueueing() {
