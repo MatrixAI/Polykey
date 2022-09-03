@@ -1,7 +1,8 @@
-import type { PromiseCancellable } from '@matrixai/async-cancellable';
-import type { Id } from '@matrixai/id';
-import type { POJO, Opaque, Callback } from '../types';
 import type { LevelPath } from '@matrixai/db';
+import type { Id } from '@matrixai/id';
+import type { PromiseCancellable } from '@matrixai/async-cancellable';
+import type { POJO, Opaque, Callback } from '../types';
+import type { ContextTimed } from '../contexts/types';
 
 type TaskId = Opaque<'TaskId', Id>;
 type TaskIdString = Opaque<'TaskIdString', string>;
@@ -73,7 +74,12 @@ type TaskHandlerId = Opaque<'TaskHandlerId', string>;
 //   ...params: P
 // ) => Promise<R>;
 
-type TaskHandler = (...params: Array<any>) => Promise<any>;
+type TaskHandler = (
+  ...params: [
+    ...TaskParameters,
+    ContextTimed
+  ]
+) => Promise<any>;
 
 /**
  * Task function is the result of a lambda abstraction of applying
