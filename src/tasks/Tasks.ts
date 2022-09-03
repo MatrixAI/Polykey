@@ -118,6 +118,7 @@ class Tasks {
    * Asynchronous scheduling loop
    * This transitions tasks from `scheduled` to `queued`
    * This is blocked by the `schedulingLock`
+   * The `null` indicates that the scheduling loop isn't running
    */
   protected schedulingLoop: PromiseCancellable<void> | null = null;
 
@@ -298,77 +299,103 @@ class Tasks {
         ),
       );
     }
-
-    delay = Math.max(delay, 0);
-
+    const taskDelay = Math.max(delay, 0);
     const taskId = this.generateTaskId();
     // Timestamp extracted from `IdSortable` is a floating point in seconds
     // with subsecond fractionals, multiply it by 1000 gives us milliseconds
     const taskTimestamp = Math.trunc(extractTs(taskId) * 1000) as TaskTimestamp;
     const taskPriority = tasksUtils.toPriority(priority);
     const taskIdBuffer = taskId.toBuffer();
-    const taskScheduleTime = taskTimestamp + delay;
-
-    // Change to this? Easier than holding a delay?
-
-    // task.createTime
-    // task.scheduledTime
-
-    console.log('TASK CREATION TIME', new Date(taskTimestamp));
-    console.log('TASK SCHEDULE TIME', new Date(taskScheduleTime));
-
-
+    const taskScheduleTime = taskTimestamp + taskDelay;
     const taskData = {
       handlerId,
       parameters,
       timestamp: taskTimestamp,
       priority: taskPriority,
-      delay,
+      delay: taskDelay,
       deadline,
       path,
     };
     // Saving the task
     await tran.put([...this.tasksTaskDbPath, taskIdBuffer], taskData);
-
     // Saving last task ID
     await tran.put(this.tasksLastTaskIdPath, taskIdBuffer, true);
-
+    // Putting task into scheduled index
     await tran.put(
       [
         ...this.tasksScheduledDbPath,
         utils.lexiPackBuffer(taskScheduleTime),
-        taskIdBuffer, // attempt to not put the task id...
+        taskIdBuffer,
       ],
       taskIdBuffer,
       true
     );
-
-    // Saving path index
+    // Putting the task into the path index
     await tran.put(
       [...this.tasksPathDbPath, ...path, taskIdBuffer],
       taskIdBuffer,
       true,
     );
+    // Transaction success triggers timer interception
+    tran.queueSuccess(() => {
 
-    if (!lazy) {
-    } else {
-    }
+      // If the delay is 0, we can schedule the task immediately
+      if (delay > 0) {
+        // schedule the task
+      } else {
+        // optimisation here to just go straight to the queued
+        // or allow it to be handled asynchronously
+      }
 
-    // If the delay is 0, we can schedule the task immediately
-    if (delay > 0) {
-    } else {
-      // go straight to queueing the task
-    }
+      // Is this done early enough?
+      // Or does the queue do this, when going from queued to active
+      // Well the issue is that this has to setup the handlers
+      // because this is the only entrypoint to scheduling tasks
+      // Deal with lazy event handler setup
+      if (!lazy) {
+      } else {
+      }
 
-    // If the `schedulingTimer` is null, it means `Tasks` was started in lazy mode
-    // the user must call `Tasks.startProcessing()`
-    if (
-      this.schedulingTimer != null &&
-      (taskScheduleTime < this.schedulingTimer.scheduled!.getTime())
-    ) {
-      if (this.schedulingTimer != null) this.schedulingTimer.cancel();
-      this.schedulingLockReleaser();
-    }
+      // If the scheduling loop is not set
+      // then the `Tasks` system was created in lazy mode
+      // or the scheduling loop was explicitly stopped
+      // in either case, we do not intercept the `this.schedulingTimer`
+      if (this.schedulingLoop != null) {
+
+        // so now the scheduling loop is set
+        // but the timer may yet be set
+        // this is because it's the first time it is executed
+
+        // OR the timer does exist
+        // but the timer is still the old timer
+        // and the new timer hasn't been set
+
+        // EITHER way, it's possible there's no timer
+        // if there is no timer
+        // we need to schedule the task
+        // because then NOTHING is going to unblock
+        // but we are going to do it according to the right location
+
+
+        // If the `schedulingTimer` is null, it means `Tasks` was started in lazy mode
+        // the user must call `Tasks.startProcessing()`
+
+        // If the timer is not set
+
+        if (
+          this.schedulingTimer != null &&
+          (taskScheduleTime < this.schedulingTimer.scheduled!.getTime())
+        ) {
+          if (this.schedulingTimer != null) this.schedulingTimer.cancel();
+          this.schedulingLockReleaser();
+        }
+
+
+      }
+    });
+
+
+
 
     return {
       id: taskId,
@@ -376,7 +403,6 @@ class Tasks {
       ...taskData
     };
   }
-
 
 
   public async getTask(
@@ -414,11 +440,6 @@ class Tasks {
 
   }
 
-
-  // this is not a loop that is not set and shit
-  // it's always set...
-  // so `undefined` here means that it was never set
-  // or `null` here means that it is explicitly something?
 
   /**
    * Transition tasks from `scheduled` to `queued`
@@ -492,6 +513,10 @@ class Tasks {
             this.logger.debug(
               `Setting scheduling loop iteration for ${new Date(nextScheduleTime).toISOString()} (delay: ${delay} ms)`
             );
+
+            // THE TIMER may already be set
+            // should this intercept a timer?
+
             this.schedulingTimer = new Timer(
               () => {
                 this.schedulingLockReleaser();
@@ -522,10 +547,16 @@ class Tasks {
   }
 
   protected async stopScheduling (): Promise<void> {
+    if (this.schedulingLoop == null) return;
     this.logger.info('Stopping Scheduling Loop');
+    // Cancel the timer if it exists
     this.schedulingTimer?.cancel();
-    this.schedulingLoop?.cancel();
+    // Cancel the scheduling loop
+    this.schedulingLoop.cancel();
+    // Wait for the cancellation signal to resolve the promise
     await this.schedulingLoop;
+    // Indicates that the loop is no longer running
+    this.schedulingLoop = null;
     this.logger.info('Stopped Scheduling Loop');
   }
 
