@@ -356,12 +356,22 @@ class Tasks {
       } else {
       }
 
-      // If the scheduling loop is not set
-      // then the `Tasks` system was created in lazy mode
-      // or the scheduling loop was explicitly stopped
-      // in either case, we do not intercept the `this.schedulingTimer`
+      // If the scheduling loop is not set then the `Tasks` system was created
+      // in lazy mode or the scheduling loop was explicitly stopped in either
+      // case, we do not attempt to intercept the scheduling timer
       if (this.schedulingLoop != null) {
+        this.setSchedulingTimer(taskScheduleTime);
+      }
+    });
+    return {
+      id: taskId,
+      promise: new PromiseCancellable<void>((resolve, reject) => { resolve()}),
+      ...taskData
+    };
+  }
 
+
+  protected setSchedulingTimer(startTime: number) {
         // so now the scheduling loop is set
         // but the timer may yet be set
         // this is because it's the first time it is executed
@@ -382,26 +392,44 @@ class Tasks {
 
         // If the timer is not set
 
-        if (
-          this.schedulingTimer != null &&
-          (taskScheduleTime < this.schedulingTimer.scheduled!.getTime())
-        ) {
-          if (this.schedulingTimer != null) this.schedulingTimer.cancel();
-          this.schedulingLockReleaser();
-        }
+        // if (
+        //   this.schedulingTimer != null &&
+        //   (taskScheduleTime < this.schedulingTimer.scheduled!.getTime())
+        // ) {
+        //   if (this.schedulingTimer != null) this.schedulingTimer.cancel();
+        //   this.schedulingLockReleaser();
+        // }
 
+        // So the idea is that the timer is only set if it is that
+        // it is defaulted to `Infinity`
+        // I see so at the beginning ti cannot be greater than
+        // Well in our case, the timer may not exist anyway
+        // it may eventually exist
+        // but there needs to be a conflict resolution here
+        // since the timer is being intercepted from both places
 
-      }
-    });
+            // const now = Math.trunc(performance.timeOrigin + performance.now());
+            // const delay = Math.max(nextScheduleTime - now, 0);
+            // this.logger.debug(
+            //   `Setting scheduling loop iteration for ${new Date(nextScheduleTime).toISOString()} (delay: ${delay} ms)`
+            // );
+            // this.schedulingTimer = new Timer(
+            //   () => {
+            //     this.schedulingLockReleaser();
+            //   },
+            //   delay
+            // );
 
-
-
-
-    return {
-      id: taskId,
-      promise: new PromiseCancellable<void>((resolve, reject) => { resolve()}),
-      ...taskData
-    };
+    if (startTime >= this.dispatchTimerTimestamp) return;
+    const delay = Math.max(startTime - tasksUtils.getPerformanceTime(), 0);
+    clearTimeout(this.dispatchTimer);
+    this.dispatchTimer = setTimeout(async () => {
+      // This.logger.info('consuming pending tasks');
+      await this.dispatchPlug.unplug();
+      this.dispatchTimerTimestamp = Number.POSITIVE_INFINITY;
+    }, delay);
+    this.dispatchTimerTimestamp = startTime;
+    this.logger.info(`Timer was updated to ${delay} to end at ${startTime}`);
   }
 
 
@@ -454,15 +482,12 @@ class Tasks {
         // this ensures that each iteration of the loop is only
         // run when it is required
         await this.schedulingLock.waitForUnlock();
-        this.logger.debug(`Running scheduling loop iteration`);
-        // Lock up the scheduling lock
-        // only the `schedulingTimer` or the `scheduleTask` method can unlock
+        this.logger.debug(`Begin scheduling loop iteration`);
         [this.schedulingLockReleaser] = await this.schedulingLock.lock()();
         // Peek ahead by 100 ms
         // this is because the subsequent operations of this iteration may take up to 100ms
         // and we might as well prefetch some tasks to be executed
         const now = Math.trunc(performance.timeOrigin + performance.now()) + 100;
-
         await this.db.withTransactionF(async (tran) => {
           // Queue up all the tasks that are scheduled to be executed before `now`
           for await (const [kP] of tran.iterator(
@@ -474,7 +499,6 @@ class Tasks {
               values: false
             }
           )) {
-            // Break out of the dispatch loop if aborted
             if(abortController.signal.aborted) break;
             const taskIdBuffer = kP[1] as Buffer;
             const taskData = (await tran.get<TaskData>([
@@ -494,7 +518,6 @@ class Tasks {
             // Remove task from the scheduled index
             await tran.del([...this.tasksScheduledDbPath, ...kP]);
           }
-
           // Get the next task to be scheduled and set the timer accordingly
           let nextScheduleTime: number | undefined;
           for await (const [kP] of tran.iterator(
@@ -503,29 +526,13 @@ class Tasks {
           )) {
             nextScheduleTime = utils.lexiUnpackBuffer(kP[0] as Buffer);
           }
-
           if(abortController.signal.aborted) return;
-
-          // If there is no task, no timer will be set
-          if (nextScheduleTime != null) {
-            const now = Math.trunc(performance.timeOrigin + performance.now());
-            const delay = Math.max(nextScheduleTime - now, 0);
-            this.logger.debug(
-              `Setting scheduling loop iteration for ${new Date(nextScheduleTime).toISOString()} (delay: ${delay} ms)`
-            );
-
-            // THE TIMER may already be set
-            // should this intercept a timer?
-
-            this.schedulingTimer = new Timer(
-              () => {
-                this.schedulingLockReleaser();
-              },
-              delay
-            );
+          if (nextScheduleTime == null) {
+            this.logger.debug('Scheduling loop iteration found no more scheduled tasks');
           } else {
-            this.logger.debug('Not setting scheduling loop iteration, no more scheduled tasks');
+            this.setSchedulingTimer(nextScheduleTime);
           }
+          this.logger.debug('Finish scheduling loop iteration');
         });
       }
     })();
