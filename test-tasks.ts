@@ -96,7 +96,7 @@ async function main () {
     deadline: 10000,
   });
 
-  console.log('DUMP AFTER SCHEDULING TASK', decodeBufferArray(await db.dump([], true)));
+  // console.log('DUMP AFTER SCHEDULING TASK', decodeBufferArray(await db.dump([], true)));
 
   await sleep(1000);
 
@@ -104,6 +104,7 @@ async function main () {
   await tasks.startProcessing();
 
   await sleep(5000);
+
   // console.log(decodeBufferArray(await db.dump([], true)));
 
   await tasks.stop();

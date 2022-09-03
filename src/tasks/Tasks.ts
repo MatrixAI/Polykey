@@ -424,27 +424,19 @@ class Tasks {
    * Transition tasks from `scheduled` to `queued`
    */
   protected async startScheduling() {
-    if (this.schedulingLoop != null) {
-      return;
-    }
+    if (this.schedulingLoop != null) return;
+    this.logger.info('Starting Scheduling Loop');
     const abortController = new AbortController();
-
-    console.log('STARTING LOOP');
-
     const schedulingLoop = (async () => {
       while (!abortController.signal.aborted) {
-
         // Blocks the scheduling loop until lock is released
         // this ensures that each iteration of the loop is only
         // run when it is required
         await this.schedulingLock.waitForUnlock();
-
-        console.count('Scheduling Loop Iteration');
-
+        this.logger.debug(`Running scheduling loop iteration`);
         // Lock up the scheduling lock
         // only the `schedulingTimer` or the `scheduleTask` method can unlock
         [this.schedulingLockReleaser] = await this.schedulingLock.lock()();
-
         // Peek ahead by 100 ms
         // this is because the subsequent operations of this iteration may take up to 100ms
         // and we might as well prefetch some tasks to be executed
@@ -496,7 +488,7 @@ class Tasks {
           // If there is no task, no timer will be set
           if (nextScheduleTime != null) {
             this.logger.debug(
-              `Scheduling loop next step at ${new Date(nextScheduleTime).toISOString()}`
+              `Setting scheduling loop iteration for ${new Date(nextScheduleTime).toISOString()}`
             );
             const now = Math.trunc(performance.timeOrigin + performance.now());
             const delay = Math.max(nextScheduleTime - now, 0);
@@ -506,29 +498,27 @@ class Tasks {
               },
               delay
             );
+          } else {
+            this.logger.debug('Not setting scheduling loop iteration, no more scheduled tasks');
           }
         });
-
-        console.log('DUMP AFTER ONE STEP of SCHEDULING LOOP'),
-        console.dir(
-          debug.inspectBufferStructure(await this.db.dump([], true))
-        );
-
       }
     })();
-
     this.schedulingLoop = PromiseCancellable.from(
       schedulingLoop,
       abortController
     );
+    this.logger.info('Started Scheduling Loop');
   }
 
   protected async startQueueing() {
+    this.logger.info('Starting Queueing Loop');
     /**
      * Transition tasks from `queued` to `scheduled`
      */
     this.queuingLoop = (async () => {
     })();
+    this.logger.info('Started Queueing Loop');
   }
 
   protected async stopScheduling (): Promise<void> {
