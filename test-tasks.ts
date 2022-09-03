@@ -30,6 +30,9 @@ function isPrintable (str: string): boolean {
 
 async function main () {
 
+  // Keeps the process alive
+  process.stdin.resume();
+
   const logger = new Logger('root', LogLevel.DEBUG);
   logger.setFilter(/tasks/);
 
@@ -98,17 +101,29 @@ async function main () {
 
   // console.log('DUMP AFTER SCHEDULING TASK', decodeBufferArray(await db.dump([], true)));
 
-  await sleep(1000);
+  // await sleep(1000);
 
   // This starts the processing now
-  await tasks.startProcessing();
+  // await tasks.startProcessing();
 
-  await sleep(5000);
+  // await sleep(6000);
+
+  // Suppose you have ran out of tasks to run
+  // now you want to "schedule tasks" again
 
   // console.log(decodeBufferArray(await db.dump([], true)));
 
-  await tasks.stop();
+  await tasks.scheduleTask({
+    handlerId: test,
+    parameters: ['abc'],
+    delay: 2000,
+    priority: 0,
+    deadline: 10000,
+  });
 
+  // await sleep(6000);
+
+  await tasks.stop();
   await db.stop();
   await keyManager.stop();
 }
