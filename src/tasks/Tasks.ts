@@ -125,6 +125,7 @@ class Tasks {
   /**
    * Timer used to unblock the scheduling loop
    * This releases the `schedulingLock` if it is locked
+   * The `null` indicates there is no timer running
    */
   protected schedulingTimer: Timer | null = null;
 
@@ -135,10 +136,8 @@ class Tasks {
 
   /**
    * Releases the lock
-   * In the beginning the scheduling lock is not locked,
-   * therefore this is initialised to be an async noop
    */
-  protected schedulingLockReleaser: ResourceRelease = async () => {};
+  protected schedulingLockReleaser?: ResourceRelease;
 
   // If the releaser is set
   // it's possible that the releaser function
@@ -262,6 +261,11 @@ class Tasks {
   }
 
 
+  /**
+   * Schedules a task
+   * If `this.schedulingLoop` isn't running, then this will not
+   * attempt to reset the `this.schedulingTimer`
+   */
   @ready(new tasksErrors.ErrorSchedulerNotRunning())
   public async scheduleTask(
     {
@@ -275,9 +279,9 @@ class Tasks {
     }: {
       handlerId: TaskHandlerId,
       parameters?: TaskParameters,
-      delay?: TaskDelay,
+      delay?: number,
       priority?: number,
-      deadline?: TaskDeadline,
+      deadline?: number,
       path?: TaskPath,
       lazy?: boolean
     },
@@ -299,7 +303,8 @@ class Tasks {
         ),
       );
     }
-    const taskDelay = Math.max(delay, 0);
+    const taskDelay = Math.max(delay, 0) as TaskDelay;
+    const taskDeadline = Math.max(deadline, 0) as TaskDeadline;
     const taskId = this.generateTaskId();
     // Timestamp extracted from `IdSortable` is a floating point in seconds
     // with subsecond fractionals, multiply it by 1000 gives us milliseconds
@@ -307,13 +312,13 @@ class Tasks {
     const taskPriority = tasksUtils.toPriority(priority);
     const taskIdBuffer = taskId.toBuffer();
     const taskScheduleTime = taskTimestamp + taskDelay;
-    const taskData = {
+    const taskData: TaskData = {
       handlerId,
       parameters,
       timestamp: taskTimestamp,
       priority: taskPriority,
       delay: taskDelay,
-      deadline,
+      deadline: taskDeadline,
       path,
     };
     // Saving the task
@@ -363,15 +368,28 @@ class Tasks {
         this.setSchedulingTimer(taskScheduleTime);
       }
     });
+
     return {
       id: taskId,
+      status: 'scheduled',
       promise: new PromiseCancellable<void>((resolve, reject) => { resolve()}),
-      ...taskData
+      handlerId,
+      parameters,
+      priority: tasksUtils.fromPriority(taskPriority),
+      delay: taskDelay,
+      deadline: taskDeadline,
+      path,
+      created: new Date(taskTimestamp),
+      scheduled: new Date(taskScheduleTime),
     };
   }
 
-
-  protected setSchedulingTimer(startTime: number) {
+  /**
+   * The scheduling timer is a singleton that can be set by both
+   * `this.schedulingLoop` and `this.scheduleTask`
+   * This ensures that the timer is set to the earliest scheduled task
+   */
+  protected setSchedulingTimer(scheduleTime: number) {
         // so now the scheduling loop is set
         // but the timer may yet be set
         // this is because it's the first time it is executed
@@ -408,8 +426,6 @@ class Tasks {
         // but there needs to be a conflict resolution here
         // since the timer is being intercepted from both places
 
-            // const now = Math.trunc(performance.timeOrigin + performance.now());
-            // const delay = Math.max(nextScheduleTime - now, 0);
             // this.logger.debug(
             //   `Setting scheduling loop iteration for ${new Date(nextScheduleTime).toISOString()} (delay: ${delay} ms)`
             // );
@@ -420,44 +436,58 @@ class Tasks {
             //   delay
             // );
 
-    if (startTime >= this.dispatchTimerTimestamp) return;
-    const delay = Math.max(startTime - tasksUtils.getPerformanceTime(), 0);
-    clearTimeout(this.dispatchTimer);
-    this.dispatchTimer = setTimeout(async () => {
-      // This.logger.info('consuming pending tasks');
-      await this.dispatchPlug.unplug();
-      this.dispatchTimerTimestamp = Number.POSITIVE_INFINITY;
-    }, delay);
-    this.dispatchTimerTimestamp = startTime;
-    this.logger.info(`Timer was updated to ${delay} to end at ${startTime}`);
+    // if (startTime >= this.dispatchTimerTimestamp) return;
+    // const delay = Math.max(startTime - tasksUtils.getPerformanceTime(), 0);
+    // clearTimeout(this.dispatchTimer);
+    // this.dispatchTimer = setTimeout(async () => {
+    //   // This.logger.info('consuming pending tasks');
+    //   await this.dispatchPlug.unplug();
+    //   this.dispatchTimerTimestamp = Number.POSITIVE_INFINITY;
+    // }, delay);
+    // this.dispatchTimerTimestamp = startTime;
+    // this.logger.info(`Timer was updated to ${delay} to end at ${startTime}`);
+
+    const now = Math.trunc(performance.timeOrigin + performance.now());
+    const delay = Math.max(scheduleTime - now, 0);
+
+    this.schedulingTimer = new Timer(
+      () => {
+        this.schedulingTimer = null;
+        // On the first iteration of the scheduling loop
+        // the lock may not be acquired yet, and therefore releaser is not set
+        if (this.schedulingLockReleaser != null) {
+          this.schedulingLockReleaser();
+        }
+      },
+      delay
+    );
+
   }
 
 
-  public async getTask(
-    taskId: TaskId,
-    lazy: boolean = false,
-    tran?: DBTransaction,
-  ): Promise<Task | undefined> {
-    if (tran == null) {
-      return this.db.withTransactionF((tran) =>
-        this.getTask(taskId, lazy, tran),
-      );
-    }
-    const taskData = await tran.get<TaskData>([
-      ...this.tasksTaskDbPath,
-      taskId.toBuffer(),
-    ]);
-    if (taskData == null) {
-      return undefined;
-    }
-
-
-    return {
-      id: taskId,
-      promise: new PromiseCancellable<void>((resolve, reject) => { resolve()}),
-      ...taskData,
-    };
-  }
+  // public async getTask(
+  //   taskId: TaskId,
+  //   lazy: boolean = false,
+  //   tran?: DBTransaction,
+  // ): Promise<Task | undefined> {
+  //   if (tran == null) {
+  //     return this.db.withTransactionF((tran) =>
+  //       this.getTask(taskId, lazy, tran),
+  //     );
+  //   }
+  //   const taskData = await tran.get<TaskData>([
+  //     ...this.tasksTaskDbPath,
+  //     taskId.toBuffer(),
+  //   ]);
+  //   if (taskData == null) {
+  //     return undefined;
+  //   }
+  //   return {
+  //     id: taskId,
+  //     promise: new PromiseCancellable<void>((resolve, reject) => { resolve()}),
+  //     ...taskData,
+  //   };
+  // }
 
   public async *getTaskDatas(
     path: TaskPath = [],

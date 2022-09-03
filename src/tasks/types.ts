@@ -13,24 +13,13 @@ type TaskIdEncoded = Opaque<'TaskIdEncoded', string>;
  */
 type TaskTimestamp = number;
 
-/**
- * Timestamp is millisecond number >= 0
- */
-type TaskDelay = number;
-
-/**
- * Deadline in milliseconds
- */
-type TaskDeadline = number;
-
 
 type TaskParameters = Array<any>;
 
-type TaskStatus = 'scheduled'
-                | 'queued'
-                | 'active'
-                | 'completed'
-                | 'failed';
+/**
+ * Timestamp is millisecond number >= 0
+ */
+type TaskDelay = Opaque<'TaskDelay', number>;
 
 /**
  * Task priority is an `uint8` [0 to 255]
@@ -39,9 +28,43 @@ type TaskStatus = 'scheduled'
 type TaskPriority = Opaque<'TaskPriority', number>;
 
 /**
+ * Deadline in milliseconds
+ */
+type TaskDeadline = Opaque<'TaskDeadline', number>;
+
+/**
  * Task Path, a LevelPath
  */
 type TaskPath = LevelPath;
+
+/**
+ * Task state machine diagram
+ *        ┌───────────┐
+ *        │           │
+ * ───────► Scheduled ├────────┐
+ *        │           │        │
+ *        └─────┬─────┘        │
+ *        ┌─────▼─────┐        │
+ *        │           │        │
+ * ───────►  Queued   ├────────┤
+ *        │           │        │
+ *        └─────┬─────┘        │
+ *        ┌─────▼─────┐        │
+ *        │           │        │
+ *        │  Active   ├────────┤
+ *        │           │        │
+ *        └─────┬─────┘        │
+ *        ┌─────▼─────┐  ┌─────▼─────┐
+ *        │┼─────────┼│  │┼─────────┼│
+ *        ││Completed││  ││ Failed  ││
+ *        │┼─────────┼│  │┼─────────┼│
+ *        └───────────┘  └───────────┘
+ */
+type TaskStatus = 'scheduled'
+                | 'queued'
+                | 'active'
+                | 'completed'
+                | 'failed';
 
 /**
  * Task data to be persisted
@@ -56,29 +79,27 @@ type TaskData = {
   path: TaskPath;
 };
 
-type Task = TaskData & {
-  id: TaskId;
-  promise: PromiseCancellable<any>;
-};
-
 /**
- * Task information that is returned to the user
+ * Task POJO returned to the user
  */
-type TaskInfo = TaskData & {
+type Task = {
   id: TaskId;
+  status: TaskStatus;
+  promise: PromiseCancellable<any>;
+  handlerId: TaskHandlerId;
+  parameters: TaskParameters;
+  delay: number;
+  priority: number;
+  deadline: number;
+  path: TaskPath;
+  created: Date;
+  scheduled: Date;
 };
 
 type TaskHandlerId = Opaque<'TaskHandlerId', string>;
 
-// Type TaskHandler<P extends Array<any> = [], R = any> = (
-//   ...params: P
-// ) => Promise<R>;
-
 type TaskHandler = (
-  ...params: [
-    ...TaskParameters,
-    ContextTimed
-  ]
+  ...params: [ ...TaskParameters, ContextTimed ]
 ) => Promise<any>;
 
 /**
@@ -88,36 +109,6 @@ type TaskHandler = (
  */
 type TaskFunction<T> = () => Promise<T>;
 
-// Type TaskListener = Callback<[taskResult: any], void>;
-// Make Task something that can be awaited on
-// but when you "make" a promise or reference it
-// you're for a promise
-// that will resolve an event occurs
-// or reject when an event occurs
-// and the result of the execution
-// now the exeuction of the event itself is is going to return ap romise
-// something must be lisetning to it
-// If you have a Record
-// it has to be TaskIdString
-// you can store things in it
-// type X = Record<Id, string>;
-// Task is the lowest level
-// TaskData is low level
-// TaskInfo is high level
-// TaskId
-// Task <- lazy promise
-// TaskData <- low level data of a task (does not include id)
-// TaskInfo <- high level (includes id)
-// This is a lazy promise
-// it's a promise of something that may not yet immediately executed
-// type TaskPromise<T> = Promise<T>;
-// Consider these variants... (should standardise what these are to be used)
-// Task
-// Tasks (usually a record, sometimes an array)
-// TaskData - lower level data of a task
-// TaskInfo - higher level information that is inclusive of data
-// type TaskData = Record<TaskIdEncoded, Task>;
-
 export type {
   TaskId,
   TaskIdString,
@@ -125,7 +116,6 @@ export type {
   Task,
   TaskPath,
   TaskData,
-  TaskInfo,
   TaskHandlerId,
   TaskHandler,
   TaskPriority,
