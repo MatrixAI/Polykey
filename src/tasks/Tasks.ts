@@ -303,14 +303,14 @@ class Tasks {
         ),
       );
     }
-    const taskDelay = Math.max(delay, 0) as TaskDelay;
-    const taskDeadline = Math.max(deadline, 0) as TaskDeadline;
     const taskId = this.generateTaskId();
+    const taskIdBuffer = taskId.toBuffer();
     // Timestamp extracted from `IdSortable` is a floating point in seconds
     // with subsecond fractionals, multiply it by 1000 gives us milliseconds
     const taskTimestamp = Math.trunc(extractTs(taskId) * 1000) as TaskTimestamp;
     const taskPriority = tasksUtils.toPriority(priority);
-    const taskIdBuffer = taskId.toBuffer();
+    const taskDelay = Math.max(delay, 0) as TaskDelay;
+    const taskDeadline = Math.max(deadline, 0) as TaskDeadline;
     const taskScheduleTime = taskTimestamp + taskDelay;
     const taskData: TaskData = {
       handlerId,
@@ -390,78 +390,27 @@ class Tasks {
    * This ensures that the timer is set to the earliest scheduled task
    */
   protected setSchedulingTimer(scheduleTime: number) {
-        // so now the scheduling loop is set
-        // but the timer may yet be set
-        // this is because it's the first time it is executed
-
-        // OR the timer does exist
-        // but the timer is still the old timer
-        // and the new timer hasn't been set
-
-        // EITHER way, it's possible there's no timer
-        // if there is no timer
-        // we need to schedule the task
-        // because then NOTHING is going to unblock
-        // but we are going to do it according to the right location
-
-
-        // If the `schedulingTimer` is null, it means `Tasks` was started in lazy mode
-        // the user must call `Tasks.startProcessing()`
-
-        // If the timer is not set
-
-        // if (
-        //   this.schedulingTimer != null &&
-        //   (taskScheduleTime < this.schedulingTimer.scheduled!.getTime())
-        // ) {
-        //   if (this.schedulingTimer != null) this.schedulingTimer.cancel();
-        //   this.schedulingLockReleaser();
-        // }
-
-        // So the idea is that the timer is only set if it is that
-        // it is defaulted to `Infinity`
-        // I see so at the beginning ti cannot be greater than
-        // Well in our case, the timer may not exist anyway
-        // it may eventually exist
-        // but there needs to be a conflict resolution here
-        // since the timer is being intercepted from both places
-
-            // this.logger.debug(
-            //   `Setting scheduling loop iteration for ${new Date(nextScheduleTime).toISOString()} (delay: ${delay} ms)`
-            // );
-            // this.schedulingTimer = new Timer(
-            //   () => {
-            //     this.schedulingLockReleaser();
-            //   },
-            //   delay
-            // );
-
-    // if (startTime >= this.dispatchTimerTimestamp) return;
-    // const delay = Math.max(startTime - tasksUtils.getPerformanceTime(), 0);
-    // clearTimeout(this.dispatchTimer);
-    // this.dispatchTimer = setTimeout(async () => {
-    //   // This.logger.info('consuming pending tasks');
-    //   await this.dispatchPlug.unplug();
-    //   this.dispatchTimerTimestamp = Number.POSITIVE_INFINITY;
-    // }, delay);
-    // this.dispatchTimerTimestamp = startTime;
-    // this.logger.info(`Timer was updated to ${delay} to end at ${startTime}`);
-
+    if (this.schedulingTimer != null) {
+      if (scheduleTime >= this.schedulingTimer.scheduled!.getTime()) return;
+      this.schedulingTimer.cancel();
+    }
     const now = Math.trunc(performance.timeOrigin + performance.now());
     const delay = Math.max(scheduleTime - now, 0);
-
+    this.logger.debug(
+      `Setting scheduling loop iteration for ${new Date(scheduleTime).toISOString()} (delay: ${delay} ms)`
+    );
     this.schedulingTimer = new Timer(
       () => {
         this.schedulingTimer = null;
         // On the first iteration of the scheduling loop
         // the lock may not be acquired yet, and therefore releaser is not set
+        // in which case don't do anything, and the lock remains unlocked
         if (this.schedulingLockReleaser != null) {
           this.schedulingLockReleaser();
         }
       },
       delay
     );
-
   }
 
 

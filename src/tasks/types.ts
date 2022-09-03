@@ -11,8 +11,7 @@ type TaskIdEncoded = Opaque<'TaskIdEncoded', string>;
 /**
  * Timestamp unix time in milliseconds
  */
-type TaskTimestamp = number;
-
+type TaskTimestamp = Opaque<'TaskTimestamp', number>;
 
 type TaskParameters = Array<any>;
 
