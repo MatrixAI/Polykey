@@ -196,6 +196,22 @@ function promise<T = void>(): PromiseDeconstructed<T> {
   };
 }
 
+/**
+ * Promise constructed from signal
+ * This rejects when the signal is aborted
+ */
+function signalPromise(signal: AbortSignal): Promise<void> {
+  return new Promise<void>((_, reject) => {
+    if (signal.aborted) {
+      reject(signal.reason);
+      return;
+    }
+    signal.addEventListener('abort', () => {
+      reject(signal.reason);
+    });
+  });
+}
+
 function timerStart(timeout: number): Timer {
   const timer = {} as Timer;
   timer.timedOut = false;
@@ -366,6 +382,7 @@ export {
   poll,
   promisify,
   promise,
+  signalPromise,
   timerStart,
   timerStop,
   arraySet,

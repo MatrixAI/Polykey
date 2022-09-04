@@ -31,6 +31,9 @@ import * as tasksUtils from './utils';
 import * as utils from '../utils';
 import * as debug from '../utils/debug';
 
+const abortSchedulingLoopReason = Symbol('abort scheduling loop reason');
+const abortQueuingLoopReason = Symbol('abort queuing loop reason');
+
 @CreateDestroyStartStop(
   new tasksErrors.ErrorQueueRunning(),
   new tasksErrors.ErrorQueueDestroyed(),
@@ -139,6 +142,14 @@ class Tasks {
   protected schedulingLockReleaser?: ResourceRelease;
 
   /**
+   * Asynchronous queuing loop
+   * This transitions tasks from `queued` to `active`
+   * This is blocked by the `queuingLock`
+   * The `null` indicates that the queuing loop isn't running
+   */
+  protected queuingLoop: PromiseCancellable<void> | null = null;
+
+  /**
    * Lock controls whether to run an iteration of the queuing loop
    */
   protected queuingLock: Lock = new Lock();
@@ -147,7 +158,6 @@ class Tasks {
    * Releases the queuing lock
    */
   protected queuingLockReleaser?: ResourceRelease;
-
 
   // If the releaser is set
   // it's possible that the releaser function
@@ -162,13 +172,6 @@ class Tasks {
   protected taskEvents: EventTarget = new EventTarget();
 
 
-  /**
-   * Asynchronous queuing loop
-   * This transitions tasks from `queued` to `active`
-   * This is blocked by the `queuingLock`
-   * The `null` indicates that the queuing loop isn't running
-   */
-  protected queuingLoop: PromiseCancellable<void> | null = null;
 
   public constructor({
     db,
@@ -448,12 +451,7 @@ class Tasks {
     if (this.schedulingLoop != null) return;
     this.logger.info('Starting Scheduling Loop');
     const abortController = new AbortController();
-    const abortReason = Symbol('abort');
-    const abortP = new Promise<void>((_, reject) => {
-      abortController.signal.addEventListener('abort', () => {
-        reject(abortReason);
-      });
-    });
+    const abortP = utils.signalPromise(abortController.signal);
     const schedulingLoop = (async () => {
       while (!abortController.signal.aborted) {
         // Blocks the scheduling loop until lock is released
@@ -462,7 +460,7 @@ class Tasks {
         try {
           await Promise.race([this.schedulingLock.waitForUnlock(), abortP]);
         } catch (e) {
-          if (e === abortReason) {
+          if (e === abortSchedulingLoopReason) {
             break;
           } else {
             throw e;
@@ -587,11 +585,22 @@ class Tasks {
   protected async startQueueing() {
     if (this.queuingLoop != null) return;
     this.logger.info('Starting Queueing Loop');
-
     const abortController = new AbortController();
+    const abortP = utils.signalPromise(abortController.signal);
     const queuingLoop = (async () => {
       while (!abortController.signal.aborted) {
-        await this.queuingLock.waitForUnlock();
+        // Blocks the queuing loop until lock is released
+        // this ensures that each iteration of the loop is only
+        // run when it is required
+        try {
+          await Promise.race([this.queuingLock.waitForUnlock(), abortP]);
+        } catch (e) {
+          if (e === abortQueuingLoopReason) {
+            break;
+          } else {
+            throw e;
+          }
+        }
         this.logger.debug(`Begin queuing loop iteration`);
         [this.queuingLockReleaser] = await this.queuingLock.lock()();
 
@@ -667,13 +676,8 @@ class Tasks {
     this.logger.info('Stopping Scheduling Loop');
     // Cancel the timer if it exists
     this.schedulingTimer?.cancel();
-
-    // if you're going to cancel
-    // you need to cancel waiting for hte lock to be unlocked
-
-
     // Cancel the scheduling loop
-    this.schedulingLoop.cancel();
+    this.schedulingLoop.cancel(abortSchedulingLoopReason);
     // Wait for the cancellation signal to resolve the promise
     await this.schedulingLoop;
     // Indicates that the loop is no longer running
@@ -685,7 +689,7 @@ class Tasks {
     if (this.queuingLoop == null) return;
     this.logger.info('Stopping Queuing Loop');
     // Cancel the scheduling loop
-    this.queuingLoop.cancel();
+    this.queuingLoop.cancel(abortQueuingLoopReason);
     await this.queuingLoop;
     this.queuingLoop = null;
     this.logger.info('Stopped Queuing Loop');
