@@ -118,7 +118,7 @@ async function main () {
   //   deadline: 10000,
   // });
 
-  await sleep(6000);
+  await sleep(10000);
 
   // process.on('SIGINT', async () => {
   //   console.log('SIGINT');

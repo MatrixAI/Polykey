@@ -390,6 +390,8 @@ class Tasks {
       );
     }
     const taskId = this.generateTaskId();
+    this.logger.debug(`Scheduling task ${taskId.toMultibase('base32hex')} with handler ${handlerId}`);
+
     const taskIdBuffer = taskId.toBuffer();
     // Timestamp extracted from `IdSortable` is a floating point in seconds
     // with subsecond fractionals, multiply it by 1000 gives us milliseconds
@@ -462,6 +464,7 @@ class Tasks {
         this.triggerScheduling(taskScheduleTime);
       }
     });
+    this.logger.debug(`Scheduled task ${taskId.toMultibase('base32hex')} with handler ${handlerId}`);
     return {
       id: taskId,
       status: 'scheduled',
@@ -830,22 +833,22 @@ class Tasks {
       ));
     }
     this.logger.debug(`Garbage Collecting Task ${taskId.toMultibase('base32hex')}`);
-    const taskData = await tran.get<TaskData>([...this.tasksTaskDbPath, taskId.toBuffer()]);
-    if (taskData == null) return;
-    await tran.del([...this.tasksActiveDbPath, taskId.toBuffer()]);
-    await tran.del([
-      ...this.tasksQueuedDbPath,
-      utils.lexiPackBuffer(taskData.priority),
-      utils.lexiPackBuffer(taskData.timestamp + taskData.delay),
-      taskId.toBuffer()
-    ]);
-    await tran.del([
-      ...this.tasksScheduledDbPath,
-      utils.lexiPackBuffer(taskData.timestamp + taskData.delay),
-      taskId.toBuffer()
-    ]);
-    await tran.del([...this.tasksPathDbPath, ...taskData.path, taskId.toBuffer()]);
-    await tran.del([...this.tasksTaskDbPath, taskId.toBuffer()]);
+    // const taskData = await tran.get<TaskData>([...this.tasksTaskDbPath, taskId.toBuffer()]);
+    // if (taskData == null) return;
+    // await tran.del([...this.tasksActiveDbPath, taskId.toBuffer()]);
+    // await tran.del([
+    //   ...this.tasksQueuedDbPath,
+    //   utils.lexiPackBuffer(taskData.priority),
+    //   utils.lexiPackBuffer(taskData.timestamp + taskData.delay),
+    //   taskId.toBuffer()
+    // ]);
+    // await tran.del([
+    //   ...this.tasksScheduledDbPath,
+    //   utils.lexiPackBuffer(taskData.timestamp + taskData.delay),
+    //   taskId.toBuffer()
+    // ]);
+    // await tran.del([...this.tasksPathDbPath, ...taskData.path, taskId.toBuffer()]);
+    // await tran.del([...this.tasksTaskDbPath, taskId.toBuffer()]);
     this.logger.debug(`Garbage Collected Task ${taskId.toMultibase('base32hex')}`);
   }
 
@@ -857,15 +860,15 @@ class Tasks {
   protected async gcTasks(
     tran?: DBTransaction,
   ) {
-    if (tran == null) {
-      return this.db.withTransactionF((tran) => this.gcTasks(tran));
-    }
-    for await (const [kP] of tran.iterator(this.tasksActiveDbPath)) {
-      const taskId = IdInternal.fromBuffer<TaskId>(kP[0] as Buffer);
-      if (!this.activePromises.has(taskId.toString() as TaskIdString)) {
-        await this.gcTask(taskId, tran);
-      }
-    }
+    // if (tran == null) {
+    //   return this.db.withTransactionF((tran) => this.gcTasks(tran));
+    // }
+    // for await (const [kP] of tran.iterator(this.tasksActiveDbPath)) {
+    //   const taskId = IdInternal.fromBuffer<TaskId>(kP[0] as Buffer);
+    //   if (!this.activePromises.has(taskId.toString() as TaskIdString)) {
+    //     await this.gcTask(taskId, tran);
+    //   }
+    // }
   }
 
 
