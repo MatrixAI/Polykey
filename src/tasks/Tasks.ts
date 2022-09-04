@@ -43,7 +43,6 @@ const abortQueuingLoopReason = Symbol('abort queuing loop reason');
 class Tasks {
   public static async createTasks({
     db,
-    keyManager,
     handlers = {},
     lazy = false,
     activeLimit = Infinity,
@@ -51,7 +50,6 @@ class Tasks {
     fresh = false,
   }: {
     db: DB;
-    keyManager: KeyManager;
     handlers?: Record<TaskHandlerId, TaskHandler>;
     lazy?: boolean;
     activeLimit?: number;
@@ -61,7 +59,6 @@ class Tasks {
     logger.info(`Creating ${this.name}`);
     const tasks = new this({
       db,
-      keyManager,
       activeLimit,
       logger
     });
@@ -76,7 +73,6 @@ class Tasks {
 
   protected logger: Logger;
   protected db: DB;
-  protected keyManager: KeyManager;
   protected activeLimit: number;
   protected tasksDbPath: LevelPath = [this.constructor.name];
 
@@ -187,12 +183,10 @@ class Tasks {
 
   public constructor({
     db,
-    keyManager,
     activeLimit,
     logger,
   }: {
     db: DB;
-    keyManager: KeyManager;
     activeLimit: number;
     logger: Logger;
   }) {
@@ -201,7 +195,6 @@ class Tasks {
     this.queueLogger = logger.getChild('queue');
     this.db = db;
     this.activeLimit = activeLimit;
-    this.keyManager = keyManager;
   }
 
   public async start({
@@ -219,10 +212,7 @@ class Tasks {
       await this.db.clear(this.tasksDbPath);
     }
     const lastTaskId = await this.getLastTaskId();
-    this.generateTaskId = tasksUtils.createTaskIdGenerator(
-      this.keyManager.getNodeId(),
-      lastTaskId,
-    );
+    this.generateTaskId = tasksUtils.createTaskIdGenerator(lastTaskId);
     for (const taskHandlerId in handlers) {
       this.handlers.set(
         taskHandlerId as TaskHandlerId,

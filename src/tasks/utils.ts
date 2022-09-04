@@ -9,10 +9,9 @@ import lexi from 'lexicographic-integer';
  * They are strictly monotonic and unique with respect to the `nodeId`
  * When the `NodeId` changes, make sure to regenerate this generator
  */
-function createTaskIdGenerator(nodeId: NodeId, lastTaskId?: TaskId) {
+function createTaskIdGenerator(lastTaskId?: TaskId) {
   const generator = new IdSortable<TaskId>({
     lastId: lastTaskId,
-    nodeId,
   });
   return () => generator.get();
 }

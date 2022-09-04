@@ -36,12 +36,12 @@ async function main () {
   const logger = new Logger('root', LogLevel.DEBUG);
   logger.setFilter(/tasks/);
 
-  const keyManager = await KeyManager.createKeyManager({
-    keysPath: './tmp/keys',
-    password: 'password',
-    rootKeyPairBits: 1024,
-    logger,
-  });
+  // const keyManager = await KeyManager.createKeyManager({
+  //   keysPath: './tmp/keys',
+  //   password: 'password',
+  //   rootKeyPairBits: 1024,
+  //   logger,
+  // });
 
   const db = await DB.createDB({
     dbPath: './tmp/db',
@@ -52,7 +52,6 @@ async function main () {
   // Lazy startup
   const tasks = await Tasks.createTasks({
     db,
-    keyManager,
     fresh: true,
     lazy: true,
     logger: logger.getChild('tasks'),
@@ -63,13 +62,13 @@ async function main () {
   tasks.registerHandler(
     test,
     async (x: string, ctx: ContextTimed) => {
-      console.log('TEST HANDLER EXECUTED');
+      console.log(`TEST HANDLER EXECUTED ${x}`);
     }
   );
 
   await tasks.scheduleTask({
     handlerId: test,
-    parameters: ['abc'],
+    parameters: ['T1'],
     delay: 500,
     priority: 0,
     deadline: 10000,
@@ -77,7 +76,7 @@ async function main () {
 
   await tasks.scheduleTask({
     handlerId: test,
-    parameters: ['abc'],
+    parameters: ['T2'],
     delay: 500,
     priority: 0,
     deadline: 10000,
@@ -85,7 +84,7 @@ async function main () {
 
   await tasks.scheduleTask({
     handlerId: test,
-    parameters: ['abc'],
+    parameters: ['T3'],
     delay: 4000,
     priority: 0,
     deadline: 10000,
@@ -93,7 +92,7 @@ async function main () {
 
   await tasks.scheduleTask({
     handlerId: test,
-    parameters: ['abc'],
+    parameters: ['T4'],
     delay: 5000,
     priority: 0,
     deadline: 10000,
@@ -124,7 +123,7 @@ async function main () {
   //   console.log('SIGINT');
     await tasks.stop();
     await db.stop();
-    await keyManager.stop();
+    // await keyManager.stop();
     // console.log('DONE');
   // });
 
