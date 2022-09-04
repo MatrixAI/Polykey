@@ -199,7 +199,7 @@ class Tasks {
     lazy?: boolean;
     fresh?: boolean;
   } = {}): Promise<void> {
-    this.logger.info(`Starting ${this.constructor.name}`);
+    this.logger.info(`Starting ${this.constructor.name} ${(lazy) ? 'in Lazy Mode' : 'in Eager Mode'}`);
     if (fresh) {
       this.handlers.clear();
       await this.db.clear(this.tasksDbPath);
@@ -215,11 +215,7 @@ class Tasks {
         handlers[taskHandlerId],
       );
     }
-    // Even if it is not lazy
-    // it just means we are not starting yet
-    if (!lazy) {
-      await this.startProcessing();
-    }
+    await this.startProcessing();
     this.logger.info(`Started ${this.constructor.name}`);
   }
 
