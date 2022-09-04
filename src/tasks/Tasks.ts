@@ -118,6 +118,9 @@ class Tasks {
    */
   protected tasksActiveDbPath: LevelPath = [...this.tasksDbPath, 'active'];
 
+  protected schedulerLogger: Logger;
+  protected queueLogger: Logger;
+
   /**
    * Asynchronous scheduling loop
    * This transitions tasks from `scheduled` to `queued`
@@ -194,6 +197,8 @@ class Tasks {
     logger: Logger;
   }) {
     this.logger = logger;
+    this.schedulerLogger = logger.getChild('scheduler');
+    this.queueLogger = logger.getChild('queue');
     this.db = db;
     this.activeLimit = activeLimit;
     this.keyManager = keyManager;
@@ -489,7 +494,7 @@ class Tasks {
    */
   protected async startScheduling() {
     if (this.schedulingLoop != null) return;
-    this.logger.info('Starting Scheduling Loop');
+    this.schedulerLogger.info('Starting Scheduling Loop');
     const abortController = new AbortController();
     const abortP = utils.signalPromise(abortController.signal);
     const schedulingLoop = (async () => {
@@ -506,7 +511,9 @@ class Tasks {
             throw e;
           }
         }
-        this.logger.debug(`Begin scheduling loop iteration`);
+
+        this.schedulerLogger.debug(`Begin scheduling loop iteration`);
+
         [this.schedulingLockReleaser] = await this.schedulingLock.lock()();
         // Peek ahead by 100 ms
         // this is because the subsequent operations of this iteration may take up to 100ms
@@ -571,7 +578,7 @@ class Tasks {
           } else {
             this.triggerScheduling(nextScheduleTime);
           }
-          this.logger.debug('Finish scheduling loop iteration');
+          this.schedulerLogger.debug('Finish scheduling loop iteration');
         });
       }
     })();
@@ -579,12 +586,12 @@ class Tasks {
       schedulingLoop,
       abortController
     );
-    this.logger.info('Started Scheduling Loop');
+    this.schedulerLogger.info('Started Scheduling Loop');
   }
 
   protected async startQueueing() {
     if (this.queuingLoop != null) return;
-    this.logger.info('Starting Queueing Loop');
+    this.queueLogger.info('Starting Queueing Loop');
     const abortController = new AbortController();
     const abortP = utils.signalPromise(abortController.signal);
     const queuingLoop = (async () => {
@@ -598,7 +605,7 @@ class Tasks {
             throw e;
           }
         }
-        this.logger.debug(`Begin queuing loop iteration`);
+        this.queueLogger.debug(`Begin queuing loop iteration`);
         [this.queuingLockReleaser] = await this.queuingLock.lock()();
         await this.db.withTransactionF(async (tran) => {
           for await (const [kP, taskIdBuffer] of tran.iterator(
@@ -611,10 +618,11 @@ class Tasks {
             await tran.del([...this.tasksQueuedDbPath, ...kP]);
             const taskId = IdInternal.fromBuffer<TaskId>(taskIdBuffer);
             const taskData = (await tran.get<TaskData>([...this.tasksTaskDbPath, taskIdBuffer]))!;
+            this.queueLogger.debug(`Queueing loop iteration starting Task ${taskId.toMultibase('base32hex')}`);
             await this.startTask(taskId, taskData);
           }
         });
-        this.logger.debug(`Finish queuing loop iteration`);
+        this.queueLogger.debug(`Finish queuing loop iteration`);
       }
     })();
     // Cancellation is always a resolution
@@ -624,7 +632,7 @@ class Tasks {
       queuingLoop,
       abortController
     );
-    this.logger.info('Started Queueing Loop');
+    this.queueLogger.info('Started Queueing Loop');
   }
 
   protected async stopScheduling (): Promise<void> {
@@ -669,7 +677,7 @@ class Tasks {
     // the lock may not be acquired yet, and therefore releaser is not set
     // in which case don't do anything, and the lock remains unlocked
     if (delay === 0) {
-      this.logger.debug(
+      this.schedulerLogger.debug(
         `Setting scheduling loop iteration immediately (delay: ${delay} ms)`
       );
       this.schedulingTimer = null;
@@ -677,7 +685,7 @@ class Tasks {
         this.schedulingLockReleaser();
       }
     } else {
-      this.logger.debug(
+      this.schedulerLogger.debug(
         `Setting scheduling loop iteration for ${new Date(scheduleTime).toISOString()} (delay: ${delay} ms)`
       );
       this.schedulingTimer = new Timer(
@@ -716,6 +724,7 @@ class Tasks {
     taskPriority: TaskPriority,
   ): Promise<void> {
     await this.db.withTransactionF(async (tran) => {
+      this.schedulerLogger.debug(`Queuing Task ${taskId.toMultibase('base32hex')}`);
       // Put task into the queue index
       await tran.put(
         [
@@ -728,6 +737,7 @@ class Tasks {
         true
       );
       tran.queueSuccess(() => {
+        this.schedulerLogger.debug(`Queued Task ${taskId.toMultibase('base32hex')}`);
         this.triggerQueuing();
       });
     });
@@ -741,11 +751,10 @@ class Tasks {
     if (tran == null) {
       return this.db.withTransactionF((tran) => this.startTask(taskId, taskData, tran));
     }
-    this.logger.debug(`Starting Task ${taskId.toMultibase('base32hex')}`);
     const taskIdString = taskId.toString() as TaskIdString;
     const taskHandler = this.getHandler(taskData.handlerId);
     if (taskHandler == null) {
-      this.logger.debug(`Failed Task ${taskId.toMultibase('base32hex')} - No Handler Registered`);
+      this.queueLogger.debug(`Failed Task ${taskId.toMultibase('base32hex')} - No Handler Registered`);
       this.taskEvents.dispatchEvent(
         new TaskEvent(
           taskIdString,
@@ -783,7 +792,7 @@ class Tasks {
           signal: abortController.signal
         }
       ).then((result: any) => {
-        this.logger.debug(`Succeeded Task ${taskId.toMultibase('base32hex')}`);
+        this.queueLogger.debug(`Succeeded Task ${taskId.toMultibase('base32hex')}`);
         // If no event listeners, then only side effects are recorded
         this.taskEvents.dispatchEvent(
           new TaskEvent(
@@ -797,7 +806,7 @@ class Tasks {
           )
         );
       }, (reason: any) => {
-        this.logger.debug(`Failed Task ${taskId.toMultibase('base32hex')} - Reason: ${reason}`);
+        this.queueLogger.debug(`Failed Task ${taskId.toMultibase('base32hex')} - Reason: ${reason}`);
         this.taskEvents.dispatchEvent(
           new TaskEvent(
             taskIdString,
@@ -815,6 +824,7 @@ class Tasks {
         this.triggerQueuing();
       });
       this.activePromises.set(taskIdString, taskP);
+      this.queueLogger.debug(`Started Task ${taskId.toMultibase('base32hex')}`);
     });
   }
 
@@ -833,9 +843,20 @@ class Tasks {
       ));
     }
     this.logger.debug(`Garbage Collecting Task ${taskId.toMultibase('base32hex')}`);
-    // const taskData = await tran.get<TaskData>([...this.tasksTaskDbPath, taskId.toBuffer()]);
-    // if (taskData == null) return;
-    // await tran.del([...this.tasksActiveDbPath, taskId.toBuffer()]);
+    const taskData = await tran.get<TaskData>([...this.tasksTaskDbPath, taskId.toBuffer()]);
+    if (taskData == null) return;
+    await tran.del([...this.tasksActiveDbPath, taskId.toBuffer()]);
+
+    // If we delete here
+    // it would end up conflicting with the loop that is attempting to delete
+    // when it finishes the queueing loop
+    // this results in a conflict
+    // However such a conflcit should be "ignored"
+    // but there's no real way of saying this
+    // at any case, this should do the "bare" minimum
+    // which is cleaning up the task path, task level and the active level
+    // it is expected that scheduled and queued level would be cleaned up
+
     // await tran.del([
     //   ...this.tasksQueuedDbPath,
     //   utils.lexiPackBuffer(taskData.priority),
@@ -847,8 +868,9 @@ class Tasks {
     //   utils.lexiPackBuffer(taskData.timestamp + taskData.delay),
     //   taskId.toBuffer()
     // ]);
-    // await tran.del([...this.tasksPathDbPath, ...taskData.path, taskId.toBuffer()]);
-    // await tran.del([...this.tasksTaskDbPath, taskId.toBuffer()]);
+
+    await tran.del([...this.tasksPathDbPath, ...taskData.path, taskId.toBuffer()]);
+    await tran.del([...this.tasksTaskDbPath, taskId.toBuffer()]);
     this.logger.debug(`Garbage Collected Task ${taskId.toMultibase('base32hex')}`);
   }
 
