@@ -73,14 +73,7 @@ class Tasks {
   protected db: DB;
   protected keyManager: KeyManager;
   protected activeLimit: number;
-  protected handlers: Map<TaskHandlerId, TaskHandler> = new Map();
-  protected generateTaskId: () => TaskId;
   protected tasksDbPath: LevelPath = [this.constructor.name];
-
-
-  // you are pausing the loop a bit
-
-
 
   /**
    * Maintain last Task Id to preserve monotonicity across procee restarts
@@ -115,6 +108,12 @@ class Tasks {
   protected tasksQueuedDbPath: LevelPath = [...this.tasksDbPath, 'queued'];
 
   /**
+   * Tracks actively running tasks
+   * `Tasks/active/{TaskId} -> {raw(TaskId})}`
+   */
+  protected tasksDbActivePath: LevelPath = [...this.tasksDbPath, 'active'];
+
+  /**
    * Asynchronous scheduling loop
    * This transitions tasks from `scheduled` to `queued`
    * This is blocked by the `schedulingLock`
@@ -135,9 +134,20 @@ class Tasks {
   protected schedulingLock: Lock = new Lock();
 
   /**
-   * Releases the lock
+   * Releases the scheduling lock
    */
   protected schedulingLockReleaser?: ResourceRelease;
+
+  /**
+   * Lock controls whether to run an iteration of the queuing loop
+   */
+  protected queuingLock: Lock = new Lock();
+
+  /**
+   * Releases the queuing lock
+   */
+  protected queuingLockReleaser?: ResourceRelease;
+
 
   // If the releaser is set
   // it's possible that the releaser function
@@ -146,8 +156,19 @@ class Tasks {
   // ensure that it cannot be used
   // need to see if this is a problem
 
+  protected generateTaskId: () => TaskId;
+  protected handlers: Map<TaskHandlerId, TaskHandler> = new Map();
+  protected taskPromises: Map<TaskIdEncoded, Promise<any>> = new Map();
+  protected taskEvents: EventTarget = new EventTarget();
 
-  protected queuingLoop: Promise<void> | null = null;
+
+  /**
+   * Asynchronous queuing loop
+   * This transitions tasks from `queued` to `active`
+   * This is blocked by the `queuingLock`
+   * The `null` indicates that the queuing loop isn't running
+   */
+  protected queuingLoop: PromiseCancellable<void> | null = null;
 
   public constructor({
     db,
@@ -365,7 +386,7 @@ class Tasks {
       // in lazy mode or the scheduling loop was explicitly stopped in either
       // case, we do not attempt to intercept the scheduling timer
       if (this.schedulingLoop != null) {
-        this.setSchedulingTimer(taskScheduleTime);
+        this.triggerScheduling(taskScheduleTime);
       }
     });
 
@@ -384,34 +405,6 @@ class Tasks {
     };
   }
 
-  /**
-   * The scheduling timer is a singleton that can be set by both
-   * `this.schedulingLoop` and `this.scheduleTask`
-   * This ensures that the timer is set to the earliest scheduled task
-   */
-  protected setSchedulingTimer(scheduleTime: number) {
-    if (this.schedulingTimer != null) {
-      if (scheduleTime >= this.schedulingTimer.scheduled!.getTime()) return;
-      this.schedulingTimer.cancel();
-    }
-    const now = Math.trunc(performance.timeOrigin + performance.now());
-    const delay = Math.max(scheduleTime - now, 0);
-    this.logger.debug(
-      `Setting scheduling loop iteration for ${new Date(scheduleTime).toISOString()} (delay: ${delay} ms)`
-    );
-    this.schedulingTimer = new Timer(
-      () => {
-        this.schedulingTimer = null;
-        // On the first iteration of the scheduling loop
-        // the lock may not be acquired yet, and therefore releaser is not set
-        // in which case don't do anything, and the lock remains unlocked
-        if (this.schedulingLockReleaser != null) {
-          this.schedulingLockReleaser();
-        }
-      },
-      delay
-    );
-  }
 
 
   // public async getTask(
@@ -455,12 +448,26 @@ class Tasks {
     if (this.schedulingLoop != null) return;
     this.logger.info('Starting Scheduling Loop');
     const abortController = new AbortController();
+    const abortReason = Symbol('abort');
+    const abortP = new Promise<void>((_, reject) => {
+      abortController.signal.addEventListener('abort', () => {
+        reject(abortReason);
+      });
+    });
     const schedulingLoop = (async () => {
       while (!abortController.signal.aborted) {
         // Blocks the scheduling loop until lock is released
         // this ensures that each iteration of the loop is only
         // run when it is required
-        await this.schedulingLock.waitForUnlock();
+        try {
+          await Promise.race([this.schedulingLock.waitForUnlock(), abortP]);
+        } catch (e) {
+          if (e === abortReason) {
+            break;
+          } else {
+            throw e;
+          }
+        }
         this.logger.debug(`Begin scheduling loop iteration`);
         [this.schedulingLockReleaser] = await this.schedulingLock.lock()();
         // Peek ahead by 100 ms
@@ -479,11 +486,15 @@ class Tasks {
             }
           )) {
             if(abortController.signal.aborted) break;
+            // const taskScheduleTime = utils.lexiUnpackBuffer(kP[0] as Buffer);
             const taskIdBuffer = kP[1] as Buffer;
+            // const taskId = IdInternal.fromBuffer<TaskId>(taskIdBuffer);
             const taskData = (await tran.get<TaskData>([
               ...this.tasksTaskDbPath,
               taskIdBuffer
             ]))!;
+            // Remove task from the scheduled index
+            await tran.del([...this.tasksScheduledDbPath, ...kP]);
             // Put task into the queue index
             await tran.put(
               [
@@ -494,9 +505,19 @@ class Tasks {
               taskIdBuffer,
               true
             );
-            // Remove task from the scheduled index
-            await tran.del([...this.tasksScheduledDbPath, ...kP]);
+            // await this.queueTask(
+            //   taskId,
+            //   taskScheduleTime,
+            //   taskData.priority
+            // );
           }
+
+          // When the transaction commits
+          // trigger the queue
+          tran.queueSuccess(() => {
+            this.triggerQueuing();
+          });
+
           // Get the next task to be scheduled and set the timer accordingly
           let nextScheduleTime: number | undefined;
           for await (const [kP] of tran.iterator(
@@ -509,7 +530,7 @@ class Tasks {
           if (nextScheduleTime == null) {
             this.logger.debug('Scheduling loop iteration found no more scheduled tasks');
           } else {
-            this.setSchedulingTimer(nextScheduleTime);
+            this.triggerScheduling(nextScheduleTime);
           }
           this.logger.debug('Finish scheduling loop iteration');
         });
@@ -522,21 +543,135 @@ class Tasks {
     this.logger.info('Started Scheduling Loop');
   }
 
+  /**
+   * Triggers the scheduler on a delayed basis
+   * If the delay is 0, the scheduler is triggered immediately
+   * The scheduling timer is a singleton that can be set by both
+   * `this.schedulingLoop` and `this.scheduleTask`
+   * This ensures that the timer is set to the earliest scheduled task
+   */
+  protected triggerScheduling(scheduleTime: number) {
+    if (this.schedulingTimer != null) {
+      if (scheduleTime >= this.schedulingTimer.scheduled!.getTime()) return;
+      this.schedulingTimer.cancel();
+    }
+    const now = Math.trunc(performance.timeOrigin + performance.now());
+    const delay = Math.max(scheduleTime - now, 0);
+    // On the first iteration of the scheduling loop
+    // the lock may not be acquired yet, and therefore releaser is not set
+    // in which case don't do anything, and the lock remains unlocked
+    if (delay === 0) {
+      this.logger.debug(
+        `Setting scheduling loop iteration immediately (delay: ${delay} ms)`
+      );
+      this.schedulingTimer = null;
+      if (this.schedulingLockReleaser != null) {
+        this.schedulingLockReleaser();
+      }
+    } else {
+      this.logger.debug(
+        `Setting scheduling loop iteration for ${new Date(scheduleTime).toISOString()} (delay: ${delay} ms)`
+      );
+      this.schedulingTimer = new Timer(
+        () => {
+          this.schedulingTimer = null;
+          if (this.schedulingLockReleaser != null) {
+            this.schedulingLockReleaser();
+          }
+        },
+        delay
+      );
+    }
+  }
+
   protected async startQueueing() {
+    if (this.queuingLoop != null) return;
     this.logger.info('Starting Queueing Loop');
-    /**
-     * Transition tasks from `queued` to `scheduled`
-     */
-    this.queuingLoop = (async () => {
+
+    const abortController = new AbortController();
+    const queuingLoop = (async () => {
+      while (!abortController.signal.aborted) {
+        await this.queuingLock.waitForUnlock();
+        this.logger.debug(`Begin queuing loop iteration`);
+        [this.queuingLockReleaser] = await this.queuingLock.lock()();
+
+        await this.db.withTransactionF(async (tran) => {
+          for await (const [kP, taskIdBuffer] of tran.iterator(
+            this.tasksQueuedDbPath,
+          )) {
+
+            if (this.taskPromises.size >= this.activeLimit) break;
+
+            const taskId = IdInternal.fromBuffer<TaskId>(taskIdBuffer);
+            // Remove task from the queued index
+            await tran.del([...this.tasksQueuedDbPath, ...kP]);
+            // Put task into active index
+            await tran.put([...this.tasksDbActivePath, taskIdBuffer], taskIdBuffer, true);
+
+            // how do i know i've hit the limit
+            // if you need to "batch" up these movements in a transaction
+            // then you need to consider that this limit thing can only be done
+            // if we know that there is slots available?
+
+
+          }
+        });
+
+      }
+
+
+        // This needs to be "serialised"
+        // so that it doesn't run concurrently
+        await this.db.withTransactionF(async (tran) => {
+          // Serialise the next queued task selection
+          // await tran.lock([...this.tasksQueuedDbPath, 'runTask'].join(''));
+          let taskIds = [];
+          tran.queueSuccess(() => {
+          });
+        });
+
+
     })();
+
+    // Cancellation is always a resolution
+    // the promise must resolve, by waiting for resolution
+    // it's graceful termination of the loop
+    this.queuingLoop = PromiseCancellable.from(
+      queuingLoop,
+      abortController
+    );
     this.logger.info('Started Queueing Loop');
   }
+
+  /**
+   * Same idea as triggerScheduling
+   * But this time unlocking the queue to proceed
+   * If already unlocked, subsequent unlocking is idempotent
+   * The unlocking of the scheduling is delayed
+   * Whereas this unlocking is not
+   * Remember the queuing just keeps running until finished
+   */
+  protected triggerQueuing() {
+    if (this.taskPromises.size >= this.activeLimit) return;
+    // On the first iteration of the queuing loop
+    // the lock may not be acquired yet, and therefore releaser is not set
+    // in which case don't do anything, and the lock remains unlocked
+    if (this.queuingLockReleaser != null) {
+      this.queuingLockReleaser();
+    }
+  }
+
 
   protected async stopScheduling (): Promise<void> {
     if (this.schedulingLoop == null) return;
     this.logger.info('Stopping Scheduling Loop');
     // Cancel the timer if it exists
     this.schedulingTimer?.cancel();
+
+    // if you're going to cancel
+    // you need to cancel waiting for hte lock to be unlocked
+
+
     // Cancel the scheduling loop
     this.schedulingLoop.cancel();
     // Wait for the cancellation signal to resolve the promise
@@ -547,17 +682,13 @@ class Tasks {
   }
 
   protected async stopQueueing() {
-
-  }
-
-  // queueing a task does nto involve this
-  protected async queueTask() {
-
-    // if htis cna be done
-    // scheduleTask is the entrypoint
-    // this would be a protected function
-    // you just set the delay to some poitn in theime
-
+    if (this.queuingLoop == null) return;
+    this.logger.info('Stopping Queuing Loop');
+    // Cancel the scheduling loop
+    this.queuingLoop.cancel();
+    await this.queuingLoop;
+    this.queuingLoop = null;
+    this.logger.info('Stopped Queuing Loop');
   }
 
   @ready(new tasksErrors.ErrorSchedulerNotRunning(), false, ['starting'])
@@ -571,6 +702,41 @@ class Tasks {
     if (lastTaskIdBuffer == null) return;
     return IdInternal.fromBuffer<TaskId>(lastTaskIdBuffer);
   }
+
+  // /**
+  //  * Queuing the task transitions from scheduled to queued
+  //  * This happens in a separate transaction to allow for lower latency
+  //  * This transaction will be committed before a scheduling iteration transaction
+  //  * commits
+  //  */
+  // protected async queueTask(
+  //   taskId: TaskId,
+  //   taskScheduleTime: number,
+  //   taskPriority: TaskPriority,
+  // ): Promise<void> {
+  //   await this.db.withTransactionF(async (tran) => {
+  //     await tran.put(
+  //       [
+  //         ...this.tasksQueuedDbPath,
+  //         utils.lexiPackBuffer(taskPriority),
+  //         utils.lexiPackBuffer(taskScheduleTime),
+  //         taskId.toBuffer(),
+  //       ],
+  //       taskId.toBuffer(),
+  //       true
+  //     );
+  //     tran.queueSuccess(() => {
+  //       // And it's not actually trying to run the task
+  //       // it's not even really doing that
+  //       // we are just putting it into the queued state first
+  //       // the "runTask" can check the concurrenct limit
+  //       // by checking the map length
+  //       // This is deliberately "asynchronous"
+  //       this.runTask();
+  //     });
+  //   });
+  // }
+
 }
 
 export default Tasks;
