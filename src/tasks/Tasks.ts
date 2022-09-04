@@ -836,33 +836,13 @@ class Tasks {
     const taskData = await tran.get<TaskData>([...this.tasksTaskDbPath, taskId.toBuffer()]);
     if (taskData == null) return;
     await tran.del([...this.tasksActiveDbPath, taskId.toBuffer()]);
-
-    // If we delete here
-    // it would end up conflicting with the loop that is attempting to delete
-    // when it finishes the queueing loop
-    // this results in a conflict
-    // However such a conflcit should be "ignored"
-    // but there's no real way of saying this
-    // at any case, this should do the "bare" minimum
-    // which is cleaning up the task path, task level and the active level
-    // it is expected that scheduled and queued level would be cleaned up
-
-    // await tran.del([
-    //   ...this.tasksQueuedDbPath,
-    //   utils.lexiPackBuffer(taskData.priority),
-    //   utils.lexiPackBuffer(taskData.timestamp + taskData.delay),
-    //   taskId.toBuffer()
-    // ]);
-    // await tran.del([
-    //   ...this.tasksScheduledDbPath,
-    //   utils.lexiPackBuffer(taskData.timestamp + taskData.delay),
-    //   taskId.toBuffer()
-    // ]);
-
     await tran.del([...this.tasksPathDbPath, ...taskData.path, taskId.toBuffer()]);
     await tran.del([...this.tasksTaskDbPath, taskId.toBuffer()]);
     this.logger.debug(`Garbage Collected Task ${taskId.toMultibase('base32hex')}`);
   }
+
+  // I believe GC here is a mistake
+  // we should be retrying active tasks by moving them back into the GC
 
   /**
    * Garbage collect settled tasks
