@@ -31,7 +31,7 @@ function isPrintable (str: string): boolean {
 async function main () {
 
   // Keeps the process alive
-  process.stdin.resume();
+  // process.stdin.resume();
 
   const logger = new Logger('root', LogLevel.DEBUG);
   logger.setFilter(/tasks/);
@@ -63,7 +63,7 @@ async function main () {
   tasks.registerHandler(
     test,
     async (x: string, ctx: ContextTimed) => {
-      console.log('HANDLER executed');
+      console.log('TEST HANDLER EXECUTED');
     }
   );
 
@@ -104,28 +104,30 @@ async function main () {
   // await sleep(1000);
 
   // This starts the processing now
-  // await tasks.startProcessing();
+  await tasks.startProcessing();
 
   // await sleep(6000);
-
-  // Suppose you have ran out of tasks to run
-  // now you want to "schedule tasks" again
 
   // console.log(decodeBufferArray(await db.dump([], true)));
 
-  await tasks.scheduleTask({
-    handlerId: test,
-    parameters: ['abc'],
-    delay: 2000,
-    priority: 0,
-    deadline: 10000,
-  });
+  // await tasks.scheduleTask({
+  //   handlerId: test,
+  //   parameters: ['abc'],
+  //   delay: 2000,
+  //   priority: 0,
+  //   deadline: 10000,
+  // });
 
-  // await sleep(6000);
+  await sleep(6000);
 
-  await tasks.stop();
-  await db.stop();
-  await keyManager.stop();
+  // process.on('SIGINT', async () => {
+  //   console.log('SIGINT');
+    await tasks.stop();
+    await db.stop();
+    await keyManager.stop();
+    // console.log('DONE');
+  // });
+
 }
 
 void main();
