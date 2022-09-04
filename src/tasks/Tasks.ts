@@ -10,6 +10,7 @@ import type {
   TaskTimestamp,
   TaskParameters,
   TaskIdEncoded,
+  TaskIdString,
   TaskPriority,
   TaskId,
   TaskPath,
@@ -26,6 +27,7 @@ import { PromiseCancellable } from '@matrixai/async-cancellable';
 import { extractTs } from '@matrixai/id/dist/IdSortable';
 import lexi from 'lexicographic-integer';
 import Timer from '../timer/Timer';
+import TaskEvent from './TaskEvent';
 import * as tasksErrors from './errors';
 import * as tasksUtils from './utils';
 import * as utils from '../utils';
@@ -114,7 +116,7 @@ class Tasks {
    * Tracks actively running tasks
    * `Tasks/active/{TaskId} -> {raw(TaskId})}`
    */
-  protected tasksDbActivePath: LevelPath = [...this.tasksDbPath, 'active'];
+  protected tasksActiveDbPath: LevelPath = [...this.tasksDbPath, 'active'];
 
   /**
    * Asynchronous scheduling loop
@@ -168,7 +170,7 @@ class Tasks {
 
   protected generateTaskId: () => TaskId;
   protected handlers: Map<TaskHandlerId, TaskHandler> = new Map();
-  protected taskPromises: Map<TaskIdEncoded, Promise<any>> = new Map();
+  protected taskPromises: Map<TaskIdString, Promise<any>> = new Map();
   protected taskEvents: EventTarget = new EventTarget();
 
 
@@ -215,13 +217,17 @@ class Tasks {
         handlers[taskHandlerId],
       );
     }
-    await this.startProcessing();
+    await this.gcTasks();
+    if (!lazy) {
+      await this.startProcessing();
+    }
     this.logger.info(`Started ${this.constructor.name}`);
   }
 
   public async stop() {
     this.logger.info(`Stopping ${this.constructor.name}`);
     await this.stopProcessing();
+    await this.gcTasks();
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
@@ -599,12 +605,10 @@ class Tasks {
         }
         this.logger.debug(`Begin queuing loop iteration`);
         [this.queuingLockReleaser] = await this.queuingLock.lock()();
-
         await this.db.withTransactionF(async (tran) => {
           for await (const [kP, taskIdBuffer] of tran.iterator(
             this.tasksQueuedDbPath,
           )) {
-
             if (this.taskPromises.size >= this.activeLimit) break;
 
             const taskId = IdInternal.fromBuffer<TaskId>(taskIdBuffer);
@@ -618,7 +622,74 @@ class Tasks {
             // then you need to consider that this limit thing can only be done
             // if we know that there is slots available?
 
+            const taskData = (await tran.get<TaskData>([...this.tasksTaskDbPath, taskIdBuffer]))!;
 
+            const taskHandler = this.getHandler(taskData.handlerId);
+            if (taskHandler != null) {
+              // We are going to need to handle the task specially
+              // we need to manage a new timer
+              // we know it doens't exist
+              // so we are going to need to create it
+
+              // It's going to return a `PromiseCancellable`
+              // But we are going to wrap it
+
+              const taskIdString = taskId.toString() as TaskIdString;
+              const taskP = taskHandler(
+                ...taskData.parameters,
+                {
+                  timer: new Timer,
+                  signal: new AbortSignal
+                }
+              ).then((result: any) => {
+                this.taskEvents.dispatchEvent(
+                  new TaskEvent(
+                    taskIdString,
+                    {
+                      detail: {
+                        status: 'success',
+                        result
+                      }
+                    }
+                  )
+                );
+              }, (reason: any) => {
+                this.taskEvents.dispatchEvent(
+                  new TaskEvent(
+                    taskIdString,
+                    {
+                      detail: {
+                        status: 'failure',
+                        reason
+                      }
+                    }
+                  )
+                );
+              }).finally(() => {
+                // Remove the promise from the active task promises
+                this.taskPromises.delete(taskIdString);
+
+                // Now if we want to do this as part of a transaction
+                // we need to consider the removal as well
+                // the other ones would have already removed
+                // the only needed to do here is to "cleanup the task"
+                // garbageCollect the task
+                // if the task is completed
+                // then we should remove it from the database
+                // if the database fails to remove it
+                // if this were to occur the task in-memory would be dropped
+                // but let's say there's a transaction failure
+                // that means the in-memory thing is already removed
+                // and then we have something that is just not referenced anymore
+                // how do we do this?
+                // I think gcTasks instead has "iterate" over tasks
+                // that is no longer in the thing
+                // and use that instead
+
+
+              });
+              this.taskPromises.set(taskIdString, taskP);
+            }
           }
         });
 
@@ -701,6 +772,57 @@ class Tasks {
     );
     if (lastTaskIdBuffer == null) return;
     return IdInternal.fromBuffer<TaskId>(lastTaskIdBuffer);
+  }
+
+  /**
+   * This is used to garbage collect tasks that have settled
+   * Explicit removal of tasks can only be done through task cancellation
+   */
+  protected async gcTask(
+    taskId: TaskId,
+    tran?: DBTransaction,
+  ) {
+    if (tran == null) {
+      return this.db.withTransactionF((tran) => this.gcTask(
+        taskId,
+        tran
+      ));
+    }
+    const taskData = await tran.get<TaskData>([...this.tasksTaskDbPath, taskId.toBuffer()]);
+    if (taskData == null) return;
+    await tran.del([...this.tasksActiveDbPath, taskId.toBuffer()]);
+    await tran.del([
+      ...this.tasksQueuedDbPath,
+      utils.lexiPackBuffer(taskData.priority),
+      utils.lexiPackBuffer(taskData.timestamp + taskData.delay),
+      taskId.toBuffer()
+    ]);
+    await tran.del([
+      ...this.tasksScheduledDbPath,
+      utils.lexiPackBuffer(taskData.timestamp + taskData.delay),
+      taskId.toBuffer()
+    ]);
+    await tran.del([...this.tasksPathDbPath, ...taskData.path, taskId.toBuffer()]);
+    await tran.del([...this.tasksTaskDbPath, taskId.toBuffer()]);
+  }
+
+  /**
+   * Garbage collect settled tasks
+   * Tasks normally garbage collect themselves when they are settled
+   * However if the garbage collection fails, this can catch any dangling task data
+   */
+  protected async gcTasks(
+    tran?: DBTransaction,
+  ) {
+    if (tran == null) {
+      return this.db.withTransactionF((tran) => this.gcTasks(tran));
+    }
+    for await (const [kP] of tran.iterator(this.tasksActiveDbPath)) {
+      const taskId = IdInternal.fromBuffer<TaskId>(kP[0] as Buffer);
+      if (!this.taskPromises.has(taskId.toString() as TaskIdString)) {
+        await this.gcTask(taskId, tran);
+      }
+    }
   }
 
   // /**

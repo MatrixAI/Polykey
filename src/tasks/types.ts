@@ -55,15 +55,15 @@ type TaskPath = Array<string>;
  *        └─────┬─────┘        │
  *        ┌─────▼─────┐  ┌─────▼─────┐
  *        │┼─────────┼│  │┼─────────┼│
- *        ││Completed││  ││ Failed  ││
+ *        ││ Success ││  ││ Failure ││
  *        │┼─────────┼│  │┼─────────┼│
  *        └───────────┘  └───────────┘
  */
 type TaskStatus = 'scheduled'
                 | 'queued'
                 | 'active'
-                | 'completed'
-                | 'failed';
+                | 'success'
+                | 'failure';
 
 /**
  * Task data to be persisted
