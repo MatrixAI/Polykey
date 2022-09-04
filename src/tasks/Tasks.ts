@@ -170,10 +170,24 @@ class Tasks {
 
   protected generateTaskId: () => TaskId;
   protected handlers: Map<TaskHandlerId, TaskHandler> = new Map();
-  protected taskPromises: Map<TaskIdString, Promise<any>> = new Map();
   protected taskEvents: EventTarget = new EventTarget();
 
+  // we cannot do this.., this would not be a memory leak
+  // because it is only deleted when settled
+  // but one may await on a promise that never settles
+  // maybe but think about it for a moment
+  // this just means that we are task.promise
+  // and awaiting on it, it ends up being the same promise property
+  // ok... so we are waiting on a promise that WILL settle
+  // or WILL never settle?
+  // it would be rejected immediately if the task no longer existed
+  // it it does exist, it will be resolved
+  // AND if it is cancelled, then it will be settled
+  // so it is guarnateed to settle
+  // tasks can only be cancelled, not removed
+  protected taskPromises: Map<TaskIdString, Promise<any>> = new Map();
 
+  protected activePromises: Map<TaskIdString, Promise<any>> = new Map();
 
   public constructor({
     db,
@@ -384,8 +398,38 @@ class Tasks {
       // because this is the only entrypoint to scheduling tasks
       // Deal with lazy event handler setup
       if (!lazy) {
+        const taskIdString = taskId.toString() as TaskIdString;
+
+        const taskPromise = new PromiseCancellable((resolve, reject, signal) =>{
+
+          this.taskEvents.addEventListener(
+            taskIdString,
+            (taskEvent: TaskEvent) => {
+              // there's a promise here that we want to create
+              if (taskEvent.detail.status === 'success') {
+                resolve(taskEvent.detail.result);
+              } else {
+                reject(taskEvent.detail.reason);
+              }
+            },
+            { once: true }
+          );
+
+        }).finally(() => {
+
+          this.taskPromises.delete(taskIdString);
+        });
+
+
+        // we have "chain" our signal
+        // so if it is failed
+        // the resulting promise must chain the prvious one
+
+
       } else {
       }
+
+
 
       // If the scheduling loop is not set then the `Tasks` system was created
       // in lazy mode or the scheduling loop was explicitly stopped in either
@@ -393,6 +437,7 @@ class Tasks {
       if (this.schedulingLoop != null) {
         this.triggerScheduling(taskScheduleTime);
       }
+
     });
 
     return {
@@ -609,13 +654,13 @@ class Tasks {
           for await (const [kP, taskIdBuffer] of tran.iterator(
             this.tasksQueuedDbPath,
           )) {
-            if (this.taskPromises.size >= this.activeLimit) break;
+            if (this.activePromises.size >= this.activeLimit) break;
 
             const taskId = IdInternal.fromBuffer<TaskId>(taskIdBuffer);
             // Remove task from the queued index
             await tran.del([...this.tasksQueuedDbPath, ...kP]);
             // Put task into active index
-            await tran.put([...this.tasksDbActivePath, taskIdBuffer], taskIdBuffer, true);
+            await tran.put([...this.tasksActiveDbPath, taskIdBuffer], taskIdBuffer, true);
 
             // how do i know i've hit the limit
             // if you need to "batch" up these movements in a transaction
@@ -642,6 +687,7 @@ class Tasks {
                   signal: new AbortSignal
                 }
               ).then((result: any) => {
+                // If no event listeners, then only side effects are recorded
                 this.taskEvents.dispatchEvent(
                   new TaskEvent(
                     taskIdString,
@@ -667,28 +713,10 @@ class Tasks {
                 );
               }).finally(() => {
                 // Remove the promise from the active task promises
-                this.taskPromises.delete(taskIdString);
-
-                // Now if we want to do this as part of a transaction
-                // we need to consider the removal as well
-                // the other ones would have already removed
-                // the only needed to do here is to "cleanup the task"
-                // garbageCollect the task
-                // if the task is completed
-                // then we should remove it from the database
-                // if the database fails to remove it
-                // if this were to occur the task in-memory would be dropped
-                // but let's say there's a transaction failure
-                // that means the in-memory thing is already removed
-                // and then we have something that is just not referenced anymore
-                // how do we do this?
-                // I think gcTasks instead has "iterate" over tasks
-                // that is no longer in the thing
-                // and use that instead
-
-
+                this.activePromises.delete(taskIdString);
+                this.gcTask(taskId);
               });
-              this.taskPromises.set(taskIdString, taskP);
+              this.activePromises.set(taskIdString, taskP);
             }
           }
         });
@@ -819,7 +847,7 @@ class Tasks {
     }
     for await (const [kP] of tran.iterator(this.tasksActiveDbPath)) {
       const taskId = IdInternal.fromBuffer<TaskId>(kP[0] as Buffer);
-      if (!this.taskPromises.has(taskId.toString() as TaskIdString)) {
+      if (!this.activePromises.has(taskId.toString() as TaskIdString)) {
         await this.gcTask(taskId, tran);
       }
     }
