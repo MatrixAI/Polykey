@@ -231,7 +231,15 @@ class Tasks {
         handlers[taskHandlerId],
       );
     }
+
+    // We don't actually want to do this
+    // any active tasks, may be that they never finished
+    // so we should "restart" them again
+    // execute active tasks basically
+    // so active first, queued second
+    // so we don't GC active tasks for whatever reason
     await this.gcTasks();
+
     if (!lazy) {
       await this.startProcessing();
     }
@@ -241,6 +249,8 @@ class Tasks {
   public async stop() {
     this.logger.info(`Stopping ${this.constructor.name}`);
     await this.stopProcessing();
+
+    // This may not be necessary
     await this.gcTasks();
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
@@ -636,9 +646,6 @@ class Tasks {
     const abortP = utils.signalPromise(abortController.signal);
     const queuingLoop = (async () => {
       while (!abortController.signal.aborted) {
-        // Blocks the queuing loop until lock is released
-        // this ensures that each iteration of the loop is only
-        // run when it is required
         try {
           await Promise.race([this.queuingLock.waitForUnlock(), abortP]);
         } catch (e) {
@@ -654,87 +661,96 @@ class Tasks {
           for await (const [kP, taskIdBuffer] of tran.iterator(
             this.tasksQueuedDbPath,
           )) {
+            if(abortController.signal.aborted) break;
             if (this.activePromises.size >= this.activeLimit) break;
-
             const taskId = IdInternal.fromBuffer<TaskId>(taskIdBuffer);
-            // Remove task from the queued index
-            await tran.del([...this.tasksQueuedDbPath, ...kP]);
-            // Put task into active index
-            await tran.put([...this.tasksActiveDbPath, taskIdBuffer], taskIdBuffer, true);
-
-            // how do i know i've hit the limit
-            // if you need to "batch" up these movements in a transaction
-            // then you need to consider that this limit thing can only be done
-            // if we know that there is slots available?
-
+            const taskIdString = taskId.toString() as TaskIdString;
             const taskData = (await tran.get<TaskData>([...this.tasksTaskDbPath, taskIdBuffer]))!;
-
             const taskHandler = this.getHandler(taskData.handlerId);
-            if (taskHandler != null) {
-              // We are going to need to handle the task specially
-              // we need to manage a new timer
-              // we know it doens't exist
-              // so we are going to need to create it
-
-              // It's going to return a `PromiseCancellable`
-              // But we are going to wrap it
-
-              const taskIdString = taskId.toString() as TaskIdString;
-              const taskP = taskHandler(
-                ...taskData.parameters,
-                {
-                  timer: new Timer,
-                  signal: new AbortSignal
-                }
-              ).then((result: any) => {
-                // If no event listeners, then only side effects are recorded
-                this.taskEvents.dispatchEvent(
-                  new TaskEvent(
-                    taskIdString,
-                    {
-                      detail: {
-                        status: 'success',
-                        result
-                      }
+            // If the task handler does not exist
+            // then this task cannot be executed
+            // dispatch a failure task event
+            // and proceed to GC this task
+            if (taskHandler == null) {
+              this.taskEvents.dispatchEvent(
+                new TaskEvent(
+                  taskIdString,
+                  {
+                    detail: {
+                      status: 'failure',
+                      reason: new tasksErrors.ErrorSchedulerHandlerMissing()
                     }
-                  )
-                );
-              }, (reason: any) => {
-                this.taskEvents.dispatchEvent(
-                  new TaskEvent(
-                    taskIdString,
-                    {
-                      detail: {
-                        status: 'failure',
-                        reason
-                      }
-                    }
-                  )
-                );
-              }).finally(() => {
-                // Remove the promise from the active task promises
-                this.activePromises.delete(taskIdString);
-                this.gcTask(taskId);
-              });
-              this.activePromises.set(taskIdString, taskP);
+                  }
+                )
+              );
+              // This could work with independent transactions
+              await this.gcTask(taskId, tran);
+              continue;
             }
+
+            // Immediately push it to the active index
+            // why do we need the active index?
+            // it allow us to "retry" tasks that are still active
+            // if they didn't get GCed, they should be redone
+            // In that case, it could be done when the transaction finishes
+            // unelss the loop is already in a transaction
+
+            await this.db.withTransactionF(async (tran) => {
+              await tran.del([...this.tasksQueuedDbPath, ...kP]);
+              await tran.put(
+                [
+                  ...this.tasksActiveDbPath,
+                  taskIdBuffer
+                ],
+                taskIdBuffer,
+                true
+              );
+              tran.queueSuccess(() => {
+
+                const taskP = taskHandler(
+                  ...taskData.parameters,
+                  {
+                    timer: new Timer,
+                    signal: new AbortSignal
+                  }
+                ).then((result: any) => {
+                  // If no event listeners, then only side effects are recorded
+                  this.taskEvents.dispatchEvent(
+                    new TaskEvent(
+                      taskIdString,
+                      {
+                        detail: {
+                          status: 'success',
+                          result
+                        }
+                      }
+                    )
+                  );
+                }, (reason: any) => {
+                  this.taskEvents.dispatchEvent(
+                    new TaskEvent(
+                      taskIdString,
+                      {
+                        detail: {
+                          status: 'failure',
+                          reason
+                        }
+                      }
+                    )
+                  );
+                }).finally(() => {
+                  // Remove the promise from the active task promises
+                  this.activePromises.delete(taskIdString);
+                  this.gcTask(taskId);
+                });
+                this.activePromises.set(taskIdString, taskP);
+
+
+              });
+            });
           }
         });
-
       }
-
-
-        // This needs to be "serialised"
-        // so that it doesn't run concurrently
-        await this.db.withTransactionF(async (tran) => {
-          // Serialise the next queued task selection
-          // await tran.lock([...this.tasksQueuedDbPath, 'runTask'].join(''));
-          let taskIds = [];
-          tran.queueSuccess(() => {
-          });
-        });
-
-
     })();
 
     // Cancellation is always a resolution
