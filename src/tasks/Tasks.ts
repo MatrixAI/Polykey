@@ -18,18 +18,18 @@ import type {
 import type KeyManager from '../keys/KeyManager';
 import {
   CreateDestroyStartStop,
-  ready
-} from "@matrixai/async-init/dist/CreateDestroyStartStop";
+  ready,
+} from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import Logger from '@matrixai/logger';
 import { IdInternal } from '@matrixai/id';
 import { Lock } from '@matrixai/async-locks';
 import { PromiseCancellable } from '@matrixai/async-cancellable';
 import { extractTs } from '@matrixai/id/dist/IdSortable';
 import lexi from 'lexicographic-integer';
-import Timer from '../timer/Timer';
 import TaskEvent from './TaskEvent';
 import * as tasksErrors from './errors';
 import * as tasksUtils from './utils';
+import Timer from '../timer/Timer';
 import * as utils from '../utils';
 import * as debug from '../utils/debug';
 
@@ -60,14 +60,14 @@ class Tasks {
     const tasks = new this({
       db,
       activeLimit,
-      logger
+      logger,
     });
     // Cleaning up any inconsistent state
     await tasks.cleanupState();
     await tasks.start({
       handlers,
       lazy,
-      fresh
+      fresh,
     });
     logger.info(`Created ${this.name}`);
     return tasks;
@@ -76,6 +76,7 @@ class Tasks {
   protected logger: Logger;
   protected db: DB;
   protected activeLimit: number;
+  protected batchLimit: number;
   protected tasksDbPath: LevelPath = [this.constructor.name];
 
   /**
@@ -101,7 +102,10 @@ class Tasks {
    * This is indexed by `TaskId` at the end to avoid conflicts
    * `Tasks/scheduled/{lexi(TaskTimestamp + TaskDelay)}/{TaskId} -> {raw(TaskId)}`
    */
-  protected tasksScheduledDbPath: LevelPath = [...this.tasksDbPath, 'scheduled'];
+  protected tasksScheduledDbPath: LevelPath = [
+    ...this.tasksDbPath,
+    'scheduled',
+  ];
 
   /**
    * Queued Tasks
@@ -202,17 +206,24 @@ class Tasks {
   public async start({
     handlers = {},
     lazy = false,
+    batchLimit = Number.POSITIVE_INFINITY,
     fresh = false,
   }: {
     handlers?: Record<TaskHandlerId, TaskHandler>;
     lazy?: boolean;
+    batchLimit?: number;
     fresh?: boolean;
   } = {}): Promise<void> {
-    this.logger.info(`Starting ${this.constructor.name} ${(lazy) ? 'in Lazy Mode' : 'in Eager Mode'}`);
+    this.logger.info(
+      `Starting ${this.constructor.name} ${
+        lazy ? 'in Lazy Mode' : 'in Eager Mode'
+      }`,
+    );
     if (fresh) {
       this.handlers.clear();
       await this.db.clear(this.tasksDbPath);
     }
+    this.batchLimit = Math.max(batchLimit, 1);
     const lastTaskId = await this.getLastTaskId();
     this.generateTaskId = tasksUtils.createTaskIdGenerator(lastTaskId);
     for (const taskHandlerId in handlers) {
@@ -260,10 +271,7 @@ class Tasks {
    */
   @ready(new tasksErrors.ErrorSchedulerNotRunning(), false, ['starting'])
   public async startProcessing(): Promise<void> {
-    await Promise.all([
-      this.startScheduling(),
-      this.startQueueing(),
-    ]);
+    await Promise.all([this.startScheduling(), this.startQueueing()]);
   }
 
   /**
@@ -272,10 +280,7 @@ class Tasks {
    */
   @ready(new tasksErrors.ErrorSchedulerNotRunning(), false, ['stopping'])
   public async stopProcessing(): Promise<void> {
-    await Promise.all([
-      this.stopQueueing(),
-      this.stopScheduling(),
-    ]);
+    await Promise.all([this.stopQueueing(), this.stopScheduling()]);
   }
 
   public getHandler(handlerId: TaskHandlerId): TaskHandler | undefined {
@@ -312,7 +317,7 @@ class Tasks {
     return IdInternal.fromBuffer<TaskId>(lastTaskIdBuffer);
   }
 
-  // public async getTask(
+  // Public async getTask(
   //   taskId: TaskId,
   //   lazy: boolean = false,
   //   tran?: DBTransaction,
@@ -341,8 +346,7 @@ class Tasks {
     order: 'asc' | 'desc' = 'asc',
     lazy: boolean = false,
     tran?: DBTransaction,
-  ): AsyncGenerator<TaskData> {
-  }
+  ): AsyncGenerator<TaskData> {}
 
   /**
    * Schedules a task
@@ -360,13 +364,13 @@ class Tasks {
       path = [],
       lazy = false,
     }: {
-      handlerId: TaskHandlerId,
-      parameters?: TaskParameters,
-      delay?: number,
-      priority?: number,
-      deadline?: number,
-      path?: TaskPath,
-      lazy?: boolean
+      handlerId: TaskHandlerId;
+      parameters?: TaskParameters;
+      delay?: number;
+      priority?: number;
+      deadline?: number;
+      path?: TaskPath;
+      lazy?: boolean;
     },
     tran?: DBTransaction,
   ): Promise<Task> {
@@ -387,7 +391,11 @@ class Tasks {
       );
     }
     const taskId = this.generateTaskId();
-    this.logger.debug(`Scheduling task ${taskId.toMultibase('base32hex')} with handler ${handlerId}`);
+    this.logger.debug(
+      `Scheduling task ${taskId.toMultibase(
+        'base32hex',
+      )} with handler ${handlerId}`,
+    );
 
     const taskIdBuffer = taskId.toBuffer();
     // Timestamp extracted from `IdSortable` is a floating point in seconds
@@ -418,7 +426,7 @@ class Tasks {
         taskIdBuffer,
       ],
       taskIdBuffer,
-      true
+      true,
     );
     // Putting the task into the path index
     await tran.put(
@@ -434,7 +442,7 @@ class Tasks {
       // because this is the only entrypoint to scheduling tasks
       // Deal with lazy event handler setup
       if (!lazy) {
-        // const taskIdString = taskId.toString() as TaskIdString;
+        // Const taskIdString = taskId.toString() as TaskIdString;
         // const taskPromise = new PromiseCancellable((resolve, reject, signal) =>{
         //   this.taskEvents.addEventListener(
         //     taskIdString,
@@ -461,11 +469,17 @@ class Tasks {
         this.triggerScheduling(taskScheduleTime);
       }
     });
-    this.logger.debug(`Scheduled task ${taskId.toMultibase('base32hex')} with handler ${handlerId}`);
+    this.logger.debug(
+      `Scheduled task ${taskId.toMultibase(
+        'base32hex',
+      )} with handler ${handlerId}`,
+    );
     return {
       id: taskId,
       status: 'scheduled',
-      promise: new PromiseCancellable<void>((resolve, reject) => { resolve()}),
+      promise: new PromiseCancellable<void>((resolve, reject) => {
+        resolve();
+      }),
       handlerId,
       parameters,
       priority: tasksUtils.fromPriority(taskPriority),
@@ -476,10 +490,6 @@ class Tasks {
       scheduled: new Date(taskScheduleTime),
     };
   }
-
-
-
-
 
   /**
    * Transition tasks from `scheduled` to `queued`
@@ -510,45 +520,47 @@ class Tasks {
         // Peek ahead by 100 ms
         // this is because the subsequent operations of this iteration may take up to 100ms
         // and we might as well prefetch some tasks to be executed
-        const now = Math.trunc(performance.timeOrigin + performance.now()) + 100;
+        const now =
+          Math.trunc(performance.timeOrigin + performance.now()) + 100;
         await this.db.withTransactionF(async (tran) => {
           // Queue up all the tasks that are scheduled to be executed before `now`
-          for await (const [kP] of tran.iterator(
-            this.tasksScheduledDbPath,
-            {
+          // Due to possible batching we need to process multiple batches
+          let queuedTasks: number;
+          do {
+            if (abortController.signal.aborted) break;
+            queuedTasks = 0;
+            for await (const [kP] of tran.iterator(this.tasksScheduledDbPath, {
               // Upper bound of `{lexi(TaskTimestamp + TaskDelay)}/{TaskId}`
               // notice the usage of `''` as the upper bound of `TaskId`
-              lte: [ utils.lexiPackBuffer(now), '' ],
-              values: false
-            }
-          )) {
-            if(abortController.signal.aborted) break;
-            const taskScheduleTime = utils.lexiUnpackBuffer(kP[0] as Buffer);
-            const taskIdBuffer = kP[1] as Buffer;
-            const taskId = IdInternal.fromBuffer<TaskId>(taskIdBuffer);
-            const taskData = (await tran.get<TaskData>([
-              ...this.tasksTaskDbPath,
-              taskIdBuffer
-            ]))!;
-            // Remove task from the scheduled index
-            await tran.del([...this.tasksScheduledDbPath, ...kP]);
+              lte: [utils.lexiPackBuffer(now), ''],
+              values: false,
+              limit: this.batchLimit,
+            })) {
+              if (abortController.signal.aborted) break;
+              const taskScheduleTime = utils.lexiUnpackBuffer(kP[0] as Buffer);
+              const taskIdBuffer = kP[1] as Buffer;
+              const taskId = IdInternal.fromBuffer<TaskId>(taskIdBuffer);
+              const taskData = (await tran.get<TaskData>([
+                ...this.tasksTaskDbPath,
+                taskIdBuffer,
+              ]))!;
+              // Remove task from the scheduled index
+              await tran.del([...this.tasksScheduledDbPath, ...kP]);
 
-            // Put task into the queue index
-            // await tran.put(
-            //   [
-            //     ...this.tasksQueuedDbPath,
-            //     utils.lexiPackBuffer(taskData.priority),
-            //     ...kP
-            //   ],
-            //   taskIdBuffer,
-            //   true
-            // );
-            await this.queueTask(
-              taskId,
-              taskScheduleTime,
-              taskData.priority
-            );
-          }
+              // Put task into the queue index
+              // await tran.put(
+              //   [
+              //     ...this.tasksQueuedDbPath,
+              //     utils.lexiPackBuffer(taskData.priority),
+              //     ...kP
+              //   ],
+              //   taskIdBuffer,
+              //   true
+              // );
+              await this.queueTask(taskId, taskScheduleTime, taskData.priority);
+              queuedTasks += 1;
+            }
+          } while (queuedTasks >= this.batchLimit);
 
           // When the transaction commits
           // trigger the queue
@@ -558,15 +570,17 @@ class Tasks {
 
           // Get the next task to be scheduled and set the timer accordingly
           let nextScheduleTime: number | undefined;
-          for await (const [kP] of tran.iterator(
-            this.tasksScheduledDbPath,
-            { limit: 1, values: false }
-          )) {
+          for await (const [kP] of tran.iterator(this.tasksScheduledDbPath, {
+            limit: 1,
+            values: false,
+          })) {
             nextScheduleTime = utils.lexiUnpackBuffer(kP[0] as Buffer);
           }
-          if(abortController.signal.aborted) return;
+          if (abortController.signal.aborted) return;
           if (nextScheduleTime == null) {
-            this.logger.debug('Scheduling loop iteration found no more scheduled tasks');
+            this.logger.debug(
+              'Scheduling loop iteration found no more scheduled tasks',
+            );
           } else {
             this.triggerScheduling(nextScheduleTime);
           }
@@ -576,7 +590,7 @@ class Tasks {
     })();
     this.schedulingLoop = PromiseCancellable.from(
       schedulingLoop,
-      abortController
+      abortController,
     );
     this.schedulerLogger.info('Started Scheduling Loop');
   }
@@ -599,35 +613,48 @@ class Tasks {
         }
         this.queueLogger.debug(`Begin queuing loop iteration`);
         [this.queuingLockReleaser] = await this.queuingLock.lock()();
-        await this.db.withTransactionF(async (tran) => {
-          for await (const [kP, taskIdBuffer] of tran.iterator(
-            this.tasksQueuedDbPath,
-          )) {
-            if(abortController.signal.aborted) break;
-            // Remember the activePromises isn't being incremented
-            if (this.activePromises.size >= this.activeLimit) break;
-            // Remove task from the queued index
-            await tran.del([...this.tasksQueuedDbPath, ...kP]);
-            const taskId = IdInternal.fromBuffer<TaskId>(taskIdBuffer);
-            const taskData = (await tran.get<TaskData>([...this.tasksTaskDbPath, taskIdBuffer]))!;
-            this.queueLogger.debug(`Queueing loop iteration starting Task ${taskId.toMultibase('base32hex')}`);
-            await this.startTask(taskId, taskData);
-          }
-        });
+        // Due to possible batching we need to process multiple batches
+        let startedTasks: number;
+        do {
+          if (abortController.signal.aborted) break;
+          startedTasks = 0;
+          await this.db.withTransactionF(async (tran) => {
+            for await (const [kP, taskIdBuffer] of tran.iterator(
+              this.tasksQueuedDbPath,
+              { limit: this.batchLimit },
+            )) {
+              if (abortController.signal.aborted) break;
+              // Remember the activePromises isn't being incremented
+              if (this.activePromises.size >= this.activeLimit) break;
+              // Remove task from the queued index
+              await tran.del([...this.tasksQueuedDbPath, ...kP]);
+              const taskId = IdInternal.fromBuffer<TaskId>(taskIdBuffer);
+              const taskData = (await tran.get<TaskData>([
+                ...this.tasksTaskDbPath,
+                taskIdBuffer,
+              ]))!;
+              this.queueLogger.debug(
+                `Queueing loop iteration starting Task ${taskId.toMultibase(
+                  'base32hex',
+                )}`,
+              );
+              await this.startTask(taskId, taskData);
+              startedTasks += 1;
+            }
+          });
+          // If we processed up to the batch limit then there are more tasks
+        } while (startedTasks >= this.batchLimit);
         this.queueLogger.debug(`Finish queuing loop iteration`);
       }
     })();
     // Cancellation is always a resolution
     // the promise must resolve, by waiting for resolution
     // it's graceful termination of the loop
-    this.queuingLoop = PromiseCancellable.from(
-      queuingLoop,
-      abortController
-    );
+    this.queuingLoop = PromiseCancellable.from(queuingLoop, abortController);
     this.queueLogger.info('Started Queueing Loop');
   }
 
-  protected async stopScheduling (): Promise<void> {
+  protected async stopScheduling(): Promise<void> {
     if (this.schedulingLoop == null) return;
     this.logger.info('Stopping Scheduling Loop');
     // Cancel the timer if it exists
@@ -670,7 +697,7 @@ class Tasks {
     // in which case don't do anything, and the lock remains unlocked
     if (delay === 0) {
       this.schedulerLogger.debug(
-        `Setting scheduling loop iteration immediately (delay: ${delay} ms)`
+        `Setting scheduling loop iteration immediately (delay: ${delay} ms)`,
       );
       this.schedulingTimer = null;
       if (this.schedulingLockReleaser != null) {
@@ -678,17 +705,16 @@ class Tasks {
       }
     } else {
       this.schedulerLogger.debug(
-        `Setting scheduling loop iteration for ${new Date(scheduleTime).toISOString()} (delay: ${delay} ms)`
+        `Setting scheduling loop iteration for ${new Date(
+          scheduleTime,
+        ).toISOString()} (delay: ${delay} ms)`,
       );
-      this.schedulingTimer = new Timer(
-        () => {
-          this.schedulingTimer = null;
-          if (this.schedulingLockReleaser != null) {
-            this.schedulingLockReleaser();
-          }
-        },
-        delay
-      );
+      this.schedulingTimer = new Timer(() => {
+        this.schedulingTimer = null;
+        if (this.schedulingLockReleaser != null) {
+          this.schedulingLockReleaser();
+        }
+      }, delay);
     }
   }
 
@@ -716,7 +742,9 @@ class Tasks {
     taskPriority: TaskPriority,
   ): Promise<void> {
     await this.db.withTransactionF(async (tran) => {
-      this.schedulerLogger.debug(`Queuing Task ${taskId.toMultibase('base32hex')}`);
+      this.schedulerLogger.debug(
+        `Queuing Task ${taskId.toMultibase('base32hex')}`,
+      );
       // Put task into the queue index
       await tran.put(
         [
@@ -726,10 +754,12 @@ class Tasks {
           taskId.toBuffer(),
         ],
         taskId.toBuffer(),
-        true
+        true,
       );
       tran.queueSuccess(() => {
-        this.schedulerLogger.debug(`Queued Task ${taskId.toMultibase('base32hex')}`);
+        this.schedulerLogger.debug(
+          `Queued Task ${taskId.toMultibase('base32hex')}`,
+        );
         this.triggerQueuing();
       });
     });
@@ -741,22 +771,25 @@ class Tasks {
     tran?: DBTransaction,
   ): Promise<void> {
     if (tran == null) {
-      return this.db.withTransactionF((tran) => this.startTask(taskId, taskData, tran));
+      return this.db.withTransactionF((tran) =>
+        this.startTask(taskId, taskData, tran),
+      );
     }
     const taskIdString = taskId.toString() as TaskIdString;
     const taskHandler = this.getHandler(taskData.handlerId);
     if (taskHandler == null) {
-      this.queueLogger.debug(`Failed Task ${taskId.toMultibase('base32hex')} - No Handler Registered`);
+      this.queueLogger.debug(
+        `Failed Task ${taskId.toMultibase(
+          'base32hex',
+        )} - No Handler Registered`,
+      );
       this.taskEvents.dispatchEvent(
-        new TaskEvent(
-          taskIdString,
-          {
-            detail: {
-              status: 'failure',
-              reason: new tasksErrors.ErrorSchedulerHandlerMissing()
-            }
-          }
-        )
+        new TaskEvent(taskIdString, {
+          detail: {
+            status: 'failure',
+            reason: new tasksErrors.ErrorSchedulerHandlerMissing(),
+          },
+        }),
       );
       await this.gcTask(taskId, tran);
       return;
@@ -764,57 +797,55 @@ class Tasks {
     // Put task into the active index
     // this index will be used to retry tasks if they don't finish
     await tran.put(
-      [
-        ...this.tasksActiveDbPath,
-        taskId.toBuffer()
-      ],
+      [...this.tasksActiveDbPath, taskId.toBuffer()],
       taskId.toBuffer(),
-      true
+      true,
     );
     tran.queueSuccess(() => {
-
       // Dummy values for now
-      const timer = new Timer;
+      const timer = new Timer();
       const abortController = new AbortController();
 
-      const taskP = taskHandler(
-        ...taskData.parameters,
-        {
-          timer: timer,
-          signal: abortController.signal
-        }
-      ).then((result: any) => {
-        this.queueLogger.debug(`Succeeded Task ${taskId.toMultibase('base32hex')}`);
-        // If no event listeners, then only side effects are recorded
-        this.taskEvents.dispatchEvent(
-          new TaskEvent(
-            taskIdString,
-            {
-              detail: {
-                status: 'success',
-                result
-              }
-            }
-          )
-        );
-      }, (reason: any) => {
-        this.queueLogger.debug(`Failed Task ${taskId.toMultibase('base32hex')} - Reason: ${reason}`);
-        this.taskEvents.dispatchEvent(
-          new TaskEvent(
-            taskIdString,
-            {
-              detail: {
-                status: 'failure',
-                reason
-              }
-            }
-          )
-        );
-      }).finally(() => {
-        this.activePromises.delete(taskIdString);
-        this.gcTask(taskId);
-        this.triggerQueuing();
-      });
+      const taskP = taskHandler(...taskData.parameters, {
+        timer: timer,
+        signal: abortController.signal,
+      })
+        .then(
+          (result: any) => {
+            this.queueLogger.debug(
+              `Succeeded Task ${taskId.toMultibase('base32hex')}`,
+            );
+            // If no event listeners, then only side effects are recorded
+            this.taskEvents.dispatchEvent(
+              new TaskEvent(taskIdString, {
+                detail: {
+                  status: 'success',
+                  result,
+                },
+              }),
+            );
+          },
+          (reason: any) => {
+            this.queueLogger.debug(
+              `Failed Task ${taskId.toMultibase(
+                'base32hex',
+              )} - Reason: ${reason}`,
+            );
+            this.taskEvents.dispatchEvent(
+              new TaskEvent(taskIdString, {
+                detail: {
+                  status: 'failure',
+                  reason,
+                },
+              }),
+            );
+          },
+        )
+        .finally(() => {
+          this.activePromises.delete(taskIdString);
+          this.gcTask(taskId);
+          this.triggerQueuing();
+        });
       this.activePromises.set(taskIdString, taskP);
       this.queueLogger.debug(`Started Task ${taskId.toMultibase('base32hex')}`);
     });
@@ -824,23 +855,28 @@ class Tasks {
    * This is used to garbage collect tasks that have settled
    * Explicit removal of tasks can only be done through task cancellation
    */
-  protected async gcTask(
-    taskId: TaskId,
-    tran?: DBTransaction,
-  ) {
+  protected async gcTask(taskId: TaskId, tran?: DBTransaction) {
     if (tran == null) {
-      return this.db.withTransactionF((tran) => this.gcTask(
-        taskId,
-        tran
-      ));
+      return this.db.withTransactionF((tran) => this.gcTask(taskId, tran));
     }
-    this.logger.debug(`Garbage Collecting Task ${taskId.toMultibase('base32hex')}`);
-    const taskData = await tran.get<TaskData>([...this.tasksTaskDbPath, taskId.toBuffer()]);
+    this.logger.debug(
+      `Garbage Collecting Task ${taskId.toMultibase('base32hex')}`,
+    );
+    const taskData = await tran.get<TaskData>([
+      ...this.tasksTaskDbPath,
+      taskId.toBuffer(),
+    ]);
     if (taskData == null) return;
     await tran.del([...this.tasksActiveDbPath, taskId.toBuffer()]);
-    await tran.del([...this.tasksPathDbPath, ...taskData.path, taskId.toBuffer()]);
+    await tran.del([
+      ...this.tasksPathDbPath,
+      ...taskData.path,
+      taskId.toBuffer(),
+    ]);
     await tran.del([...this.tasksTaskDbPath, taskId.toBuffer()]);
-    this.logger.debug(`Garbage Collected Task ${tasksUtils.encodeTaskId(taskId)}`);
+    this.logger.debug(
+      `Garbage Collected Task ${tasksUtils.encodeTaskId(taskId)}`,
+    );
   }
 
   // I believe GC here is a mistake
@@ -851,10 +887,8 @@ class Tasks {
    * Tasks normally garbage collect themselves when they are settled
    * However if the garbage collection fails, this can catch any dangling task data
    */
-  protected async gcTasks(
-    tran?: DBTransaction,
-  ) {
-    // if (tran == null) {
+  protected async gcTasks(tran?: DBTransaction) {
+    // If (tran == null) {
     //   return this.db.withTransactionF((tran) => this.gcTasks(tran));
     // }
     // for await (const [kP] of tran.iterator(this.tasksActiveDbPath)) {
@@ -874,10 +908,15 @@ class Tasks {
     //  queued index
     for await (const [kP] of tran.iterator(this.tasksActiveDbPath)) {
       const taskIdBuffer = kP[0] as Buffer;
-      const taskData = (await tran.get<TaskData>([...this.tasksTaskDbPath, taskIdBuffer]))!;
-      // reconstructing start time key
-      const taskScheduleTimeBuffer = utils.lexiPackBuffer(taskData.timestamp + taskData.delay);
-      // adding it back to the queue index
+      const taskData = (await tran.get<TaskData>([
+        ...this.tasksTaskDbPath,
+        taskIdBuffer,
+      ]))!;
+      // Reconstructing start time key
+      const taskScheduleTimeBuffer = utils.lexiPackBuffer(
+        taskData.timestamp + taskData.delay,
+      );
+      // Adding it back to the queue index
       await tran.put(
         [
           ...this.tasksQueuedDbPath,
@@ -886,33 +925,33 @@ class Tasks {
           taskIdBuffer,
         ],
         taskIdBuffer,
-        true
+        true,
       );
-      // removing it from active index
-      await tran.del([...this.tasksActiveDbPath, ...kP])
+      // Removing it from active index
+      await tran.del([...this.tasksActiveDbPath, ...kP]);
     }
 
     // 2. Check for any tasks in the scheduled index that are in the
     //  queued index and remove them
-    for await (const [kP, taskIdBuffer] of tran.iterator(this.tasksScheduledDbPath)) {
+    for await (const [kP, taskIdBuffer] of tran.iterator(
+      this.tasksScheduledDbPath,
+    )) {
       const taskScheduleTimeBuffer = kP[0] as Buffer;
       // Check if it's inside the tasksQueuedDbPath index
-      const taskData = (await tran.get<TaskData>([...this.tasksTaskDbPath, taskIdBuffer]))!;
-      const checkTask = await tran.get(
-        [
-          ...this.tasksQueuedDbPath,
-          utils.lexiPackBuffer(taskData.priority),
-          taskScheduleTimeBuffer,
-        ])
-      if (checkTask != null){
-        // remove
-        await tran.del(
-          [
-            ...this.tasksScheduledDbPath,
-            ...kP,
-          ])
+      const taskData = (await tran.get<TaskData>([
+        ...this.tasksTaskDbPath,
+        taskIdBuffer,
+      ]))!;
+      const checkTask = await tran.get([
+        ...this.tasksQueuedDbPath,
+        utils.lexiPackBuffer(taskData.priority),
+        taskScheduleTimeBuffer,
+      ]);
+      if (checkTask != null) {
+        // Remove
+        await tran.del([...this.tasksScheduledDbPath, ...kP]);
       } else {
-        // break from the loop, there shouldn't be more
+        // Break from the loop, there shouldn't be more
         break;
       }
     }
