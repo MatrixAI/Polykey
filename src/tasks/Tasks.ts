@@ -46,7 +46,7 @@ class Tasks {
     handlers = {},
     lazy = false,
     activeLimit = Infinity,
-    batchLimit = Infinity,
+    batchLimit,
     logger = new Logger(this.name),
     fresh = false,
   }: {
@@ -79,7 +79,7 @@ class Tasks {
   protected logger: Logger;
   protected db: DB;
   protected activeLimit: number;
-  protected batchLimit: number;
+  protected batchLimit: number | undefined;
   protected tasksDbPath: LevelPath = [this.constructor.name];
 
   /**
@@ -209,7 +209,7 @@ class Tasks {
   public async start({
     handlers = {},
     lazy = false,
-    batchLimit = Infinity,
+    batchLimit,
     fresh = false,
   }: {
     handlers?: Record<TaskHandlerId, TaskHandler>;
@@ -226,7 +226,7 @@ class Tasks {
       this.handlers.clear();
       await this.db.clear(this.tasksDbPath);
     }
-    this.batchLimit = Math.max(batchLimit, 1);
+    this.batchLimit =  batchLimit != null ? Math.max(batchLimit, 1) : undefined;
     const lastTaskId = await this.getLastTaskId();
     this.generateTaskId = tasksUtils.createTaskIdGenerator(lastTaskId);
     for (const taskHandlerId in handlers) {
@@ -595,9 +595,12 @@ class Tasks {
               await this.queueTask(taskId, taskScheduleTime, taskData.priority);
               queuedTasks += 1;
             }
-          } while (queuedTasks >= this.batchLimit);
+            this.logger.debug(`Batched ${queuedTasks} to Queued`);
+          } while (queuedTasks >= (this.batchLimit ?? Infinity));
+        });
 
-          // When the transaction commits
+        await this.db.withTransactionF(async (tran) => {
+        // When the transaction commits
           // trigger the queue
           // tran.queueSuccess(() => {
           //   this.triggerQueuing();
@@ -678,7 +681,8 @@ class Tasks {
             }
           });
           // If we processed up to the batch limit then there are more tasks
-        } while (startedTasks >= this.batchLimit);
+          this.logger.debug(`Batched ${startedTasks} to Active`);
+        } while (startedTasks >= (this.batchLimit ?? Infinity));
         this.queueLogger.debug(`Finish queuing loop iteration`);
       }
     })();
