@@ -62,6 +62,8 @@ class Tasks {
       activeLimit,
       logger
     });
+    // Cleaning up any inconsistent state
+    await tasks.cleanupState();
     await tasks.start({
       handlers,
       lazy,
@@ -77,7 +79,7 @@ class Tasks {
   protected tasksDbPath: LevelPath = [this.constructor.name];
 
   /**
-   * Maintain last Task Id to preserve monotonicity across procee restarts
+   * Maintain last Task ID to preserve monotonicity across process restarts
    * `Tasks/lastTaskId -> {raw(TaskId)}`
    */
   protected tasksLastTaskIdPath: KeyPath = [...this.tasksDbPath, 'lastTaskId'];
@@ -173,9 +175,9 @@ class Tasks {
 
   // WILL never settle?
   // it would be rejected immediately if the task no longer existed
-  // it it does exist, it will be resolved
+  // if it does exist, it will be resolved
   // AND if it is cancelled, then it will be settled
-  // so it is guarnateed to settle
+  // so it is guaranteed to settle
   // tasks can only be cancelled, not removed
   protected taskPromises: Map<TaskIdString, Promise<any>> = new Map();
 
@@ -838,7 +840,7 @@ class Tasks {
     await tran.del([...this.tasksActiveDbPath, taskId.toBuffer()]);
     await tran.del([...this.tasksPathDbPath, ...taskData.path, taskId.toBuffer()]);
     await tran.del([...this.tasksTaskDbPath, taskId.toBuffer()]);
-    this.logger.debug(`Garbage Collected Task ${taskId.toMultibase('base32hex')}`);
+    this.logger.debug(`Garbage Collected Task ${tasksUtils.encodeTaskId(taskId)}`);
   }
 
   // I believe GC here is a mistake
@@ -863,7 +865,58 @@ class Tasks {
     // }
   }
 
+  protected async cleanupState(tran?: DBTransaction) {
+    if (tran == null) {
+      return this.db.withTransactionF((tran) => this.cleanupState(tran));
+    }
 
+    // 1. Take any tasks still in the active index and put them in the
+    //  queued index
+    for await (const [kP] of tran.iterator(this.tasksActiveDbPath)) {
+      const taskIdBuffer = kP[0] as Buffer;
+      const taskData = (await tran.get<TaskData>([...this.tasksTaskDbPath, taskIdBuffer]))!;
+      // reconstructing start time key
+      const taskScheduleTimeBuffer = utils.lexiPackBuffer(taskData.timestamp + taskData.delay);
+      // adding it back to the queue index
+      await tran.put(
+        [
+          ...this.tasksQueuedDbPath,
+          utils.lexiPackBuffer(taskData.priority),
+          taskScheduleTimeBuffer,
+          taskIdBuffer,
+        ],
+        taskIdBuffer,
+        true
+      );
+      // removing it from active index
+      await tran.del([...this.tasksActiveDbPath, ...kP])
+    }
+
+    // 2. Check for any tasks in the scheduled index that are in the
+    //  queued index and remove them
+    for await (const [kP, taskIdBuffer] of tran.iterator(this.tasksScheduledDbPath)) {
+      const taskScheduleTimeBuffer = kP[0] as Buffer;
+      // Check if it's inside the tasksQueuedDbPath index
+      const taskData = (await tran.get<TaskData>([...this.tasksTaskDbPath, taskIdBuffer]))!;
+      const checkTask = await tran.get(
+        [
+          ...this.tasksQueuedDbPath,
+          utils.lexiPackBuffer(taskData.priority),
+          taskScheduleTimeBuffer,
+        ])
+      if (checkTask != null){
+        // remove
+        await tran.del(
+          [
+            ...this.tasksScheduledDbPath,
+            ...kP,
+          ])
+      } else {
+        // break from the loop, there shouldn't be more
+        break;
+      }
+    }
+  }
 }
 
 export default Tasks;
