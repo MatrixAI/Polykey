@@ -890,6 +890,7 @@ class Tasks {
       return this.db.withTransactionF((tran) => this.cleanupState(tran));
     }
 
+    this.logger.info('Cleaning up any inconsistent state');
     // 1. Take any tasks still in the active index and put them in the
     //  queued index
     for await (const [kP] of tran.iterator(this.tasksActiveDbPath)) {
@@ -915,6 +916,8 @@ class Tasks {
       );
       // Removing it from active index
       await tran.del([...this.tasksActiveDbPath, ...kP]);
+      const taskId = IdInternal.fromBuffer<TaskId>(taskIdBuffer);
+      this.logger.warn(`task ${taskId.toMultibase('base32hex')} was moved from Active to Queued tasks`)
     }
 
     // 2. Check for any tasks in the scheduled index that are in the
@@ -936,11 +939,14 @@ class Tasks {
       if (checkTask != null) {
         // Remove
         await tran.del([...this.tasksScheduledDbPath, ...kP]);
+        const taskId = IdInternal.fromBuffer<TaskId>(taskIdBuffer);
+        this.logger.warn(`Duplicate task ${taskId.toMultibase} was removed from scheduled tasks`)
       } else {
         // Break from the loop, there shouldn't be more
         break;
       }
     }
+    this.logger.info('Finished cleaning up any inconsistent state');
   }
 }
 
