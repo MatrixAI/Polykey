@@ -46,6 +46,7 @@ class Tasks {
     handlers = {},
     lazy = false,
     activeLimit = Infinity,
+    batchLimit = Infinity,
     logger = new Logger(this.name),
     fresh = false,
   }: {
@@ -53,6 +54,7 @@ class Tasks {
     handlers?: Record<TaskHandlerId, TaskHandler>;
     lazy?: boolean;
     activeLimit?: number;
+    batchLimit?: number;
     logger?: Logger;
     fresh?: boolean;
   }) {
@@ -67,6 +69,7 @@ class Tasks {
     await tasks.start({
       handlers,
       lazy,
+      batchLimit,
       fresh,
     });
     logger.info(`Created ${this.name}`);
@@ -206,7 +209,7 @@ class Tasks {
   public async start({
     handlers = {},
     lazy = false,
-    batchLimit = Number.POSITIVE_INFINITY,
+    batchLimit = Infinity,
     fresh = false,
   }: {
     handlers?: Record<TaskHandlerId, TaskHandler>;
@@ -881,23 +884,6 @@ class Tasks {
 
   // I believe GC here is a mistake
   // we should be retrying active tasks by moving them back into the GC
-
-  /**
-   * Garbage collect settled tasks
-   * Tasks normally garbage collect themselves when they are settled
-   * However if the garbage collection fails, this can catch any dangling task data
-   */
-  protected async gcTasks(tran?: DBTransaction) {
-    // If (tran == null) {
-    //   return this.db.withTransactionF((tran) => this.gcTasks(tran));
-    // }
-    // for await (const [kP] of tran.iterator(this.tasksActiveDbPath)) {
-    //   const taskId = IdInternal.fromBuffer<TaskId>(kP[0] as Buffer);
-    //   if (!this.activePromises.has(taskId.toString() as TaskIdString)) {
-    //     await this.gcTask(taskId, tran);
-    //   }
-    // }
-  }
 
   protected async cleanupState(tran?: DBTransaction) {
     if (tran == null) {
