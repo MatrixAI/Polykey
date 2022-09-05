@@ -186,7 +186,7 @@ class Tasks {
   // AND if it is cancelled, then it will be settled
   // so it is guaranteed to settle
   // tasks can only be cancelled, not removed
-  protected taskPromises: Map<TaskIdString, Promise<any>> = new Map();
+  protected taskPromises: Map<TaskIdString, PromiseCancellable<any>> = new Map();
 
   protected activePromises: Map<TaskIdString, Promise<any>> = new Map();
 
@@ -439,32 +439,6 @@ class Tasks {
     );
     // Transaction success triggers timer interception
     tran.queueSuccess(() => {
-      // Is this done early enough?
-      // Or does the queue do this, when going from queued to active
-      // Well the issue is that this has to setup the handlers
-      // because this is the only entrypoint to scheduling tasks
-      // Deal with lazy event handler setup
-      if (!lazy) {
-        // Const taskIdString = taskId.toString() as TaskIdString;
-        // const taskPromise = new PromiseCancellable((resolve, reject, signal) =>{
-        //   this.taskEvents.addEventListener(
-        //     taskIdString,
-        //     (taskEvent: TaskEvent) => {
-        //       // there's a promise here that we want to create
-        //       if (taskEvent.detail.status === 'success') {
-        //         resolve(taskEvent.detail.result);
-        //       } else {
-        //         reject(taskEvent.detail.reason);
-        //       }
-        //     },
-        //     { once: true }
-        //   );
-        // }).finally(() => {
-        //   this.taskPromises.delete(taskIdString);
-        // });
-      } else {
-      }
-
       // If the scheduling loop is not set then the `Tasks` system was created
       // in lazy mode or the scheduling loop was explicitly stopped in either
       // case, we do not attempt to intercept the scheduling timer
@@ -472,6 +446,18 @@ class Tasks {
         this.triggerScheduling(taskScheduleTime);
       }
     });
+    let promise: () => Promise<any>;
+    if (lazy) {
+      // create promise when called
+      promise = () => this.getTaskPromise(taskId);
+    } else {
+      // pre-creating the promise and returning that when called
+      const newPromise = this.getTaskPromise(taskId, tran);
+      tran.queueFailure((e) => {
+        newPromise.cancel(e);
+      })
+      promise = () => newPromise;
+    }
     this.logger.debug(
       `Scheduled task ${taskId.toMultibase(
         'base32hex',
@@ -480,9 +466,7 @@ class Tasks {
     return {
       id: taskId,
       status: 'scheduled',
-      promise: new PromiseCancellable<void>((resolve, reject) => {
-        resolve();
-      }),
+      promise,
       handlerId,
       parameters,
       priority: tasksUtils.fromPriority(taskPriority),
@@ -492,6 +476,54 @@ class Tasks {
       created: new Date(taskTimestamp),
       scheduled: new Date(taskScheduleTime),
     };
+  }
+
+  @ready(new tasksErrors.ErrorSchedulerNotRunning())
+  public getTaskPromise(taskId: TaskId, tran?: DBTransaction): PromiseCancellable<any> {
+    const taskIdString = taskId.toString() as TaskIdString;
+    // This will return a task promise if it already exists
+    const existingTaskPromise = this.taskPromises.get(taskIdString);
+    if (existingTaskPromise != null) return existingTaskPromise;
+
+    // If the task exist then it will create the task promise and return that
+    const newTaskPromise = new PromiseCancellable((resolve, reject, signal) => {
+      const abortListener = async () => {
+        // TODO: this needs to call a cancel method called
+        // this.cancelTask(taskId)
+
+        // FIXME: this reject is temporary
+        reject(new Error('TMP fast rejection for edge case, remove me when task cancellation is implemented'))
+      }
+      signal.addEventListener('abort', abortListener);
+      const resultListener = (event: TaskEvent) => {
+        signal.removeEventListener('abort', abortListener);
+        if (event.detail.status === 'failure') reject(event.detail.reason);
+        else resolve(event.detail.result);
+      };
+      this.taskEvents.addEventListener(taskIdString, resultListener, {
+        once: true,
+      });
+      // If not task promise exists then with will check if the task exists
+      void (tran ?? this.db)
+        .get([...this.tasksTaskDbPath, taskId.toBuffer()], true)
+        .then(
+          (taskData) => {
+            if (taskData == null) {
+              this.taskEvents.removeEventListener(
+                taskIdString,
+                resultListener,
+              );
+              signal.removeEventListener('abort', abortListener);
+              reject(new tasksErrors.ErrorTaskMissing(`task ${taskId.toMultibase('base32hex')} was not found`));
+            }
+          },
+          (reason) => reject(reason),
+        );
+    }).finally(() => {
+      this.taskPromises.delete(taskIdString);
+    });
+    this.taskPromises.set(taskIdString, newTaskPromise);
+    return newTaskPromise;
   }
 
   /**

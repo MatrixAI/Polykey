@@ -84,7 +84,7 @@ type TaskData = {
 type Task = {
   id: TaskId;
   status: TaskStatus;
-  promise: PromiseCancellable<any>;
+  promise: () => Promise<any>;
   handlerId: TaskHandlerId;
   parameters: TaskParameters;
   delay: number;
