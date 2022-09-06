@@ -71,7 +71,6 @@ class Tasks {
     return tasks;
   }
 
-
   protected logger: Logger;
   protected db: DB;
   protected activeLimit: number;
@@ -92,14 +91,14 @@ class Tasks {
 
   /**
    * Tasks indexed path
-   * `Tasks/path/{...TaskPath}/{TaskId} -> {raw(TaskId)}`
+   * `Tasks/path/{...TaskPath}/{TaskId} -> null`
    */
   protected tasksPathDbPath: LevelPath = [...this.tasksDbPath, 'path'];
 
   /**
    * Scheduled Tasks
    * This is indexed by `TaskId` at the end to avoid conflicts
-   * `Tasks/scheduled/{lexi(TaskTimestamp + TaskDelay)}/{TaskId} -> {raw(TaskId)}`
+   * `Tasks/scheduled/{lexi(TaskTimestamp + TaskDelay)}/{TaskId} -> null`
    */
   protected tasksScheduledDbPath: LevelPath = [
     ...this.tasksDbPath,
@@ -109,13 +108,13 @@ class Tasks {
   /**
    * Queued Tasks
    * This is indexed by `TaskId` at the end to avoid conflicts
-   * `Tasks/queued/{lexi(TaskPriority)}/{lexi(TaskTimestamp + TaskDelay)}/{TaskId} -> {raw(TaskId})}`
+   * `Tasks/queued/{lexi(TaskPriority)}/{lexi(TaskTimestamp + TaskDelay)}/{TaskId} -> null`
    */
   protected tasksQueuedDbPath: LevelPath = [...this.tasksDbPath, 'queued'];
 
   /**
    * Tracks actively running tasks
-   * `Tasks/active/{TaskId} -> {raw(TaskId})}`
+   * `Tasks/active/{TaskId} -> null`
    */
   protected tasksActiveDbPath: LevelPath = [...this.tasksDbPath, 'active'];
 
@@ -168,7 +167,6 @@ class Tasks {
   protected generateTaskId: () => TaskId;
   protected handlers: Map<TaskHandlerId, TaskHandler> = new Map();
   protected taskEvents: EventTarget = new EventTarget();
-
   protected taskPromises: Map<TaskIdEncoded, PromiseCancellable<any>> = new Map();
   protected activePromises: Map<TaskIdEncoded, Promise<any>> = new Map();
 
@@ -316,14 +314,11 @@ class Tasks {
     }
     const taskData = await tran.get<TaskData>([...this.tasksTaskDbPath, taskIdBuffer]);
     if (taskData == null) {
-      return undefined;
+      return;
     }
     let taskStatus: TaskStatus;
     if (
-      (await tran.get(
-        [...this.tasksActiveDbPath, taskId.toBuffer()],
-        true
-      )) != null
+      (await tran.get([...this.tasksActiveDbPath, taskId.toBuffer()])) !== undefined
     ) {
       taskStatus = 'active';
     } else if (
@@ -333,9 +328,8 @@ class Tasks {
           utils.lexiPackBuffer(taskData.priority),
           utils.lexiPackBuffer(taskData.timestamp + taskData.delay),
           taskIdBuffer
-        ],
-        true
-      )) != null
+        ]
+      )) !== undefined
     ) {
       taskStatus = 'queued';
     } else if (
@@ -344,9 +338,8 @@ class Tasks {
           ...this.tasksScheduledDbPath,
           utils.lexiPackBuffer(taskData.timestamp + taskData.delay),
           taskIdBuffer
-        ],
-        true
-      )) != null
+        ]
+      )) !== undefined
     ) {
       taskStatus = 'scheduled';
     }
@@ -376,10 +369,11 @@ class Tasks {
         this.getTasks(order, lazy, path, tran),
       );
     }
-    for await (const [, taskIdBuffer] of tran.iterator(
+    for await (const [kP] of tran.iterator(
       [...this.tasksPathDbPath, ...path],
-      { keys: false, reverse: order !== 'asc' }
+      { values: false, reverse: order !== 'asc' }
     )) {
+      const taskIdBuffer = kP[kP.length - 1] as Buffer;
       const taskId = IdInternal.fromBuffer<TaskId>(taskIdBuffer);
       const task = (await this.getTask(taskId, lazy, tran))!;
       yield task;
@@ -461,15 +455,10 @@ class Tasks {
         utils.lexiPackBuffer(taskScheduleTime),
         taskIdBuffer,
       ],
-      taskIdBuffer,
-      true,
+      null
     );
     // Putting the task into the path index
-    await tran.put(
-      [...this.tasksPathDbPath, ...path, taskIdBuffer],
-      taskIdBuffer,
-      true,
-    );
+    await tran.put([...this.tasksPathDbPath, ...path, taskIdBuffer], null);
     // Transaction success triggers timer interception
     tran.queueSuccess(() => {
       // If the scheduling loop is not set then the `Tasks` system was created
@@ -789,8 +778,7 @@ class Tasks {
           utils.lexiPackBuffer(taskScheduleTime),
           taskIdBuffer,
         ],
-        taskIdBuffer,
-        true,
+        null
       );
       tran.queueSuccess(() => {
         this.triggerQueuing();
@@ -840,8 +828,7 @@ class Tasks {
       // this index will be used to retry tasks if they don't finish
       await tran.put(
         [...this.tasksActiveDbPath, taskId.toBuffer()],
-        taskId.toBuffer(),
-        true,
+        null
       );
       tran.queueSuccess(() => {
         // Dummy values for now
@@ -966,8 +953,7 @@ class Tasks {
             utils.lexiPackBuffer(taskData.timestamp + taskData.delay),
             taskIdBuffer,
           ],
-          taskIdBuffer,
-          true,
+          null
         );
         // Removing task from active index
         await tran.del([...this.tasksActiveDbPath, ...kP]);
