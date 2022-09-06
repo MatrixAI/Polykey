@@ -766,7 +766,7 @@ class Tasks {
    * Remember the queuing just keeps running until finished
    */
   protected triggerQueuing() {
-    if (this.taskPromises.size >= this.activeLimit) return;
+    if (this.activePromises.size >= this.activeLimit) return;
     // On the first iteration of the queuing loop
     // the lock may not be acquired yet, and therefore releaser is not set
     // in which case don't do anything, and the lock remains unlocked
