@@ -98,6 +98,10 @@ async function main () {
     deadline: 10000,
   });
 
+  for await (const task of tasks.getTasks()) {
+    console.log(task);
+  }
+
   // console.log('DUMP AFTER SCHEDULING TASK', decodeBufferArray(await db.dump([], true)));
 
   // await sleep(1000);
@@ -120,6 +124,10 @@ async function main () {
   await sleep(10000);
 
   // console.log(decodeBufferArray(await db.dump([], true)));
+
+  for await (const task of tasks.getTasks()) {
+    console.log(task);
+  }
 
   // process.on('SIGINT', async () => {
   //   console.log('SIGINT');

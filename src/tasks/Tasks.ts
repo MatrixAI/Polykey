@@ -322,6 +322,7 @@ class Tasks {
     if (
       (await tran.get(
         [...this.tasksActiveDbPath, taskId.toBuffer()],
+        true
       )) != null
     ) {
       taskStatus = 'active';
@@ -332,7 +333,8 @@ class Tasks {
           utils.lexiPackBuffer(taskData.priority),
           utils.lexiPackBuffer(taskData.timestamp + taskData.delay),
           taskIdBuffer
-        ]
+        ],
+        true
       )) != null
     ) {
       taskStatus = 'queued';
@@ -342,7 +344,8 @@ class Tasks {
           ...this.tasksScheduledDbPath,
           utils.lexiPackBuffer(taskData.timestamp + taskData.delay),
           taskIdBuffer
-        ]
+        ],
+        true
       )) != null
     ) {
       taskStatus = 'scheduled';
@@ -365,7 +368,7 @@ class Tasks {
   public async *getTasks(
     order: 'asc' | 'desc' = 'asc',
     lazy: boolean = false,
-    path?: TaskPath,
+    path: TaskPath = [],
     tran?: DBTransaction,
   ): AsyncGenerator<Task> {
     if (tran == null) {
@@ -373,27 +376,13 @@ class Tasks {
         this.getTasks(order, lazy, path, tran),
       );
     }
-    if (path == null) {
-      for await (const [kP] of tran.iterator(
-        [...this.tasksTaskDbPath],
-        {
-          values: false,
-          reverse: order !== 'asc'
-        })
-      ) {
-        const taskId = IdInternal.fromBuffer<TaskId>(kP[0] as Buffer);
-        const task = (await this.getTask(taskId, lazy, tran))!;
-        yield task;
-      }
-    } else {
-      for await (const [kP, taskIdBuffer] of tran.iterator(
-        [...this.tasksPathDbPath, ...path],
-        { reverse: order !== 'asc' }
-      )) {
-        const taskId = IdInternal.fromBuffer<TaskId>(taskIdBuffer);
-        const task = (await this.getTask(taskId, lazy, tran))!;
-        yield task;
-      }
+    for await (const [, taskIdBuffer] of tran.iterator(
+      [...this.tasksPathDbPath, ...path],
+      { keys: false, reverse: order !== 'asc' }
+    )) {
+      const taskId = IdInternal.fromBuffer<TaskId>(taskIdBuffer);
+      const task = (await this.getTask(taskId, lazy, tran))!;
+      yield task;
     }
   }
 
@@ -539,9 +528,6 @@ class Tasks {
       const taskListener = (event: TaskEvent) => {
         signal.removeEventListener('abort', signalHandler);
         if (event.detail.status === 'success') {
-
-          console.log('TASK SUCCEEDED!!');
-
           resolve(event.detail.result);
         } else {
           reject(event.detail.reason);
@@ -765,9 +751,6 @@ class Tasks {
    * Remember the queuing just keeps running until finished
    */
   protected triggerQueuing() {
-
-    console.log('TRIGGER QUEUING IS CALLED');
-
     if (this.activePromises.size >= this.activeLimit) return;
     // On the first iteration of the queuing loop
     // the lock may not be acquired yet, and therefore releaser is not set
