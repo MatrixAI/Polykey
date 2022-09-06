@@ -817,7 +817,7 @@ class Tasks {
     const taskIdString = taskId.toString() as TaskIdString;
     const taskHandler = this.getHandler(taskData.handlerId);
     if (taskHandler == null) {
-      this.queueLogger.debug(
+      this.queueLogger.error(
         `Failed Task ${taskId.toMultibase(
           'base32hex',
         )} - No Handler Registered`,
@@ -865,7 +865,7 @@ class Tasks {
             );
           },
           (reason: any) => {
-            this.queueLogger.debug(
+            this.queueLogger.warn(
               `Failed Task ${taskId.toMultibase(
                 'base32hex',
               )} - Reason: ${reason}`,
