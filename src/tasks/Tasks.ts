@@ -165,13 +165,6 @@ class Tasks {
    */
   protected queuingLockReleaser?: ResourceRelease;
 
-  // If the releaser is set
-  // it's possible that the releaser function
-  // is still pointing to the old lock
-  // we want to wipe that, or at least
-  // ensure that it cannot be used
-  // need to see if this is a problem
-
   protected generateTaskId: () => TaskId;
   protected handlers: Map<TaskHandlerId, TaskHandler> = new Map();
   protected taskEvents: EventTarget = new EventTarget();
@@ -369,12 +362,40 @@ class Tasks {
     };
   }
 
-  public async *getTaskDatas(
-    path: TaskPath = [],
+  public async *getTasks(
     order: 'asc' | 'desc' = 'asc',
     lazy: boolean = false,
+    path?: TaskPath,
     tran?: DBTransaction,
-  ): AsyncGenerator<TaskData> {}
+  ): AsyncGenerator<Task> {
+    if (tran == null) {
+      return yield* this.db.withTransactionG((tran) =>
+        this.getTasks(order, lazy, path, tran),
+      );
+    }
+    if (path == null) {
+      for await (const [kP] of tran.iterator(
+        [...this.tasksTaskDbPath],
+        {
+          values: false,
+          reverse: order !== 'asc'
+        })
+      ) {
+        const taskId = IdInternal.fromBuffer<TaskId>(kP[0] as Buffer);
+        const task = (await this.getTask(taskId, lazy, tran))!;
+        yield task;
+      }
+    } else {
+      for await (const [kP, taskIdBuffer] of tran.iterator(
+        [...this.tasksPathDbPath, ...path],
+        { reverse: order !== 'asc' }
+      )) {
+        const taskId = IdInternal.fromBuffer<TaskId>(taskIdBuffer);
+        const task = (await this.getTask(taskId, lazy, tran))!;
+        yield task;
+      }
+    }
+  }
 
   /**
    * Schedules a task
