@@ -380,7 +380,7 @@ class Tasks {
     taskId: TaskId,
     taskDataPatch: Partial<TaskData>,
     tran?: DBTransaction,
-  ) {
+  ): Promise<void> {
     if (tran == null) {
       return this.db.withTransactionF((tran) =>
         this.updateTask(taskId, taskDataNew, tran),
