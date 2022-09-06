@@ -99,13 +99,6 @@ type TaskHandler = (
   ...params: [ ...TaskParameters, ContextTimed ]
 ) => Promise<any>;
 
-/**
- * Task function is the result of a lambda abstraction of applying
- * `TaskHandler` to its respective parameters
- * This is what gets executed
- */
-type TaskFunction<T> = () => Promise<T>;
-
 export type {
   TaskId,
   TaskIdString,
@@ -116,7 +109,6 @@ export type {
   TaskHandlerId,
   TaskHandler,
   TaskPriority,
-  // TaskListener
   TaskParameters,
   TaskTimestamp,
   TaskDelay,

@@ -40,26 +40,6 @@ function fromPriority(p: TaskPriority): number {
   return n;
 }
 
-function makeTaskTimestampKey(time: number, taskId: TaskId): Buffer {
-  const timestampBuffer = Buffer.from(lexi.pack(time));
-  return Buffer.concat([timestampBuffer, taskId.toBuffer()]);
-}
-
-/**
- * Returns [taskTimestampBuffer, taskIdBuffer]
- */
-function splitTaskTimestampKey(timestampBuffer: Buffer) {
-  // Last 16 bytes are TaskId
-  const splitPoint = timestampBuffer.length - 16;
-  const timeBuffer = timestampBuffer.slice(0, splitPoint);
-  const idBuffer = timestampBuffer.slice(splitPoint);
-  return [timeBuffer, idBuffer];
-}
-
-function getPerformanceTime(): number {
-  return performance.timeOrigin + performance.now();
-}
-
 /**
  * Encodes the TaskId as a `base32hex` string
  */
@@ -85,22 +65,10 @@ function decodeTaskId(taskIdEncoded: any): TaskId | undefined {
   return taskId;
 }
 
-class TaskEvent<T = any> extends Event {
-  detail?: any;
-  constructor(type: string, options?: CustomEventInit<T>) {
-    super(type, options);
-    this.detail = options?.detail;
-  }
-}
-
 export {
   createTaskIdGenerator,
   toPriority,
   fromPriority,
-  makeTaskTimestampKey,
-  splitTaskTimestampKey,
-  getPerformanceTime,
   encodeTaskId,
   decodeTaskId,
-  TaskEvent,
 };
