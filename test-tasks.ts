@@ -52,7 +52,7 @@ async function main () {
   // Lazy startup
   const tasks = await Tasks.createTasks({
     db,
-    fresh: true,
+    fresh: false,
     lazy: true,
     logger: logger.getChild('tasks'),
   });
@@ -118,6 +118,8 @@ async function main () {
   // });
 
   await sleep(10000);
+
+  // console.log(decodeBufferArray(await db.dump([], true)));
 
   // process.on('SIGINT', async () => {
   //   console.log('SIGINT');

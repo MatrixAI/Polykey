@@ -2,47 +2,34 @@ import { ErrorPolykey, sysexits } from '../errors';
 
 class ErrorTasks<T> extends ErrorPolykey<T> {}
 
-class ErrorScheduler<T> extends ErrorTasks<T> {}
-
-class ErrorSchedulerRunning<T> extends ErrorScheduler<T> {
-  static description = 'Scheduler is running';
+class ErrorTasksRunning<T> extends ErrorTasks<T> {
+  static description = 'Tasks is running';
   exitCode = sysexits.USAGE;
 }
 
-class ErrorSchedulerNotRunning<T> extends ErrorScheduler<T> {
-  static description = 'Scheduler is not running';
+class ErrorTasksNotRunning<T> extends ErrorTasks<T> {
+  static description = 'Tasks is not running';
   exitCode = sysexits.USAGE;
 }
 
-class ErrorSchedulerDestroyed<T> extends ErrorScheduler<T> {
-  static description = 'Scheduler is destroyed';
-  exitCode = sysexits.USAGE;
-}
-
-class ErrorSchedulerHandlerMissing<T> extends ErrorScheduler<T> {
-  static description = 'Scheduler task handler is not registered';
-  exitCode = sysexits.USAGE;
-}
-
-class ErrorQueue<T> extends ErrorTasks<T> {}
-
-class ErrorQueueRunning<T> extends ErrorQueue<T> {
-  static description = 'Queue is running';
-  exitCode = sysexits.USAGE;
-}
-
-class ErrorQueueNotRunning<T> extends ErrorQueue<T> {
-  static description = 'Queue is not running';
-  exitCode = sysexits.USAGE;
-}
-
-class ErrorQueueDestroyed<T> extends ErrorQueue<T> {
-  static description = 'Queue is destroyed';
+class ErrorTasksDestroyed<T> extends ErrorTasks<T> {
+  static description = 'Tasks is destroyed';
   exitCode = sysexits.USAGE;
 }
 
 class ErrorTask<T> extends ErrorTasks<T> {
   static description = 'Task error';
+  exitCode = sysexits.USAGE;
+}
+
+class ErrorTaskMissing<T> extends ErrorTask<T> {
+  static description =
+    'Task does not (or never) existed anymore, it may have been fulfilled or cancelled';
+  exitCode = sysexits.USAGE;
+}
+
+class ErrorTaskHandlerMissing<T> extends ErrorTask<T> {
+  static description = 'Task handler is not registered';
   exitCode = sysexits.USAGE;
 }
 
@@ -56,25 +43,20 @@ class ErrorTaskCancelled<T> extends ErrorTask<T> {
   exitCode = sysexits.USAGE;
 }
 
-class ErrorTaskMissing<T> extends ErrorTask<T> {
-  static description =
-    'Task does not (or never) existed anymore, it may have been fulfilled or cancelled';
+class ErrorTaskTimedOut<T> extends ErrorTask<T> {
+  static description = 'Task exhausted deadline';
   exitCode = sysexits.USAGE;
 }
 
 export {
   ErrorTasks,
-  ErrorScheduler,
-  ErrorSchedulerRunning,
-  ErrorSchedulerNotRunning,
-  ErrorSchedulerDestroyed,
-  ErrorSchedulerHandlerMissing,
-  ErrorQueue,
-  ErrorQueueRunning,
-  ErrorQueueNotRunning,
-  ErrorQueueDestroyed,
+  ErrorTasksRunning,
+  ErrorTasksNotRunning,
+  ErrorTasksDestroyed,
   ErrorTask,
+  ErrorTaskMissing,
+  ErrorTaskHandlerMissing,
   ErrorTaskRejected,
   ErrorTaskCancelled,
-  ErrorTaskMissing,
+  ErrorTaskTimedOut,
 };
