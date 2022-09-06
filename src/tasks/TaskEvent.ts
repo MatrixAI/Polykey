@@ -1,4 +1,4 @@
-import type { TaskIdString } from './types';
+import type { TaskIdEncoded } from './types';
 
 class TaskEvent<T = any> extends Event {
   public detail: {
@@ -10,7 +10,7 @@ class TaskEvent<T = any> extends Event {
   };
 
   constructor(
-    type: TaskIdString,
+    type: TaskIdEncoded,
     options: EventInit & {
       detail: {
         status: 'success'
