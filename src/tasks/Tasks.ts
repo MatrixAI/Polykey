@@ -394,10 +394,9 @@ class Tasks {
       );
     }
     const taskId = this.generateTaskId();
+    const taskIdEncoded = tasksUtils.encodeTaskId(taskId);
     this.logger.debug(
-      `Scheduling task ${taskId.toMultibase(
-        'base32hex',
-      )} with handler ${handlerId}`,
+      `Scheduling Task ${taskIdEncoded} with handler ${handlerId}`,
     );
 
     const taskIdBuffer = taskId.toBuffer();
@@ -459,9 +458,7 @@ class Tasks {
       promise = () => newPromise;
     }
     this.logger.debug(
-      `Scheduled task ${taskId.toMultibase(
-        'base32hex',
-      )} with handler ${handlerId}`,
+      `Scheduled Task ${taskIdEncoded} with handler ${handlerId}`,
     );
     return {
       id: taskId,
@@ -667,14 +664,13 @@ class Tasks {
               // Remove task from the queued index
               await tran.del([...this.tasksQueuedDbPath, ...kP]);
               const taskId = IdInternal.fromBuffer<TaskId>(taskIdBuffer);
+              const taskIdEncoded = tasksUtils.encodeTaskId(taskId);
               const taskData = (await tran.get<TaskData>([
                 ...this.tasksTaskDbPath,
                 taskIdBuffer,
               ]))!;
               this.queueLogger.debug(
-                `Queueing loop iteration starting Task ${taskId.toMultibase(
-                  'base32hex',
-                )}`,
+                `Queueing loop iteration starting Task ${taskIdEncoded}`,
               );
               await this.startTask(taskId, taskData);
               startedTasks += 1;
@@ -781,8 +777,9 @@ class Tasks {
     taskPriority: TaskPriority,
   ): Promise<void> {
     await this.db.withTransactionF(async (tran) => {
+      const taskIdEncoded = tasksUtils.encodeTaskId(taskId);
       this.schedulerLogger.debug(
-        `Queuing Task ${taskId.toMultibase('base32hex')}`,
+        `Queuing Task ${taskIdEncoded}`,
       );
       // Put task into the queue index
       await tran.put(
@@ -797,7 +794,7 @@ class Tasks {
       );
       tran.queueSuccess(() => {
         this.schedulerLogger.debug(
-          `Queued Task ${taskId.toMultibase('base32hex')}`,
+          `Queued Task ${taskIdEncoded}`,
         );
         this.triggerQueuing();
       });
@@ -814,13 +811,12 @@ class Tasks {
         this.startTask(taskId, taskData, tran),
       );
     }
+    const taskIdEncoded = tasksUtils.encodeTaskId(taskId);
     const taskIdString = taskId.toString() as TaskIdString;
     const taskHandler = this.getHandler(taskData.handlerId);
     if (taskHandler == null) {
       this.queueLogger.error(
-        `Failed Task ${taskId.toMultibase(
-          'base32hex',
-        )} - No Handler Registered`,
+        `Failed Task ${taskIdEncoded} - No Handler Registered`,
       );
       this.taskEvents.dispatchEvent(
         new TaskEvent(taskIdString, {
@@ -844,7 +840,6 @@ class Tasks {
       // Dummy values for now
       const timer = new Timer();
       const abortController = new AbortController();
-
       const taskP = taskHandler(...taskData.parameters, {
         timer: timer,
         signal: abortController.signal,
@@ -852,7 +847,7 @@ class Tasks {
         .then(
           (result: any) => {
             this.queueLogger.debug(
-              `Succeeded Task ${taskId.toMultibase('base32hex')}`,
+              `Succeeded Task ${taskIdEncoded}`,
             );
             // If no event listeners, then only side effects are recorded
             this.taskEvents.dispatchEvent(
@@ -866,9 +861,7 @@ class Tasks {
           },
           (reason: any) => {
             this.queueLogger.warn(
-              `Failed Task ${taskId.toMultibase(
-                'base32hex',
-              )} - Reason: ${reason}`,
+              `Failed Task ${taskIdEncoded} - Reason: ${reason}`,
             );
             this.taskEvents.dispatchEvent(
               new TaskEvent(taskIdString, {
@@ -886,7 +879,7 @@ class Tasks {
           this.triggerQueuing();
         });
       this.activePromises.set(taskIdString, taskP);
-      this.queueLogger.debug(`Started Task ${taskId.toMultibase('base32hex')}`);
+      this.queueLogger.debug(`Started Task ${taskIdEncoded}`);
     });
   }
 
@@ -898,9 +891,8 @@ class Tasks {
     if (tran == null) {
       return this.db.withTransactionF((tran) => this.gcTask(taskId, tran));
     }
-    this.logger.debug(
-      `Garbage Collecting Task ${taskId.toMultibase('base32hex')}`,
-    );
+    const taskIdEncoded = tasksUtils.encodeTaskId(taskId);
+    this.logger.debug(`Garbage Collecting Task ${taskIdEncoded}`);
     const taskData = await tran.get<TaskData>([
       ...this.tasksTaskDbPath,
       taskId.toBuffer(),
@@ -913,13 +905,8 @@ class Tasks {
       taskId.toBuffer(),
     ]);
     await tran.del([...this.tasksTaskDbPath, taskId.toBuffer()]);
-    this.logger.debug(
-      `Garbage Collected Task ${tasksUtils.encodeTaskId(taskId)}`,
-    );
+    this.logger.debug(`Garbage Collected Task ${taskIdEncoded}`);
   }
-
-  // I believe GC here is a mistake
-  // we should be retrying active tasks by moving them back into the GC
 
   protected async cleanupState(tran?: DBTransaction) {
     if (tran == null) {
