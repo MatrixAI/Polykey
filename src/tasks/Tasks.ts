@@ -12,6 +12,7 @@ import type {
   TaskIdEncoded,
   TaskIdString,
   TaskPriority,
+  TaskStatus,
   TaskId,
   TaskPath,
 } from './types';
@@ -298,29 +299,75 @@ class Tasks {
     return IdInternal.fromBuffer<TaskId>(lastTaskIdBuffer);
   }
 
-  // Public async getTask(
-  //   taskId: TaskId,
-  //   lazy: boolean = false,
-  //   tran?: DBTransaction,
-  // ): Promise<Task | undefined> {
-  //   if (tran == null) {
-  //     return this.db.withTransactionF((tran) =>
-  //       this.getTask(taskId, lazy, tran),
-  //     );
-  //   }
-  //   const taskData = await tran.get<TaskData>([
-  //     ...this.tasksTaskDbPath,
-  //     taskId.toBuffer(),
-  //   ]);
-  //   if (taskData == null) {
-  //     return undefined;
-  //   }
-  //   return {
-  //     id: taskId,
-  //     promise: new PromiseCancellable<void>((resolve, reject) => { resolve()}),
-  //     ...taskData,
-  //   };
-  // }
+  public async getTask(
+    taskId: TaskId,
+    lazy: boolean = false,
+    tran?: DBTransaction,
+  ): Promise<Task | undefined> {
+    if (tran == null) {
+      return this.db.withTransactionF((tran) =>
+        this.getTask(taskId, lazy, tran),
+      );
+    }
+    const taskIdBuffer = taskId.toBuffer();
+    // The task promise must be set up before we check for the presence `TaskData`
+    let promise: () => PromiseCancellable<any>;
+    if (lazy) {
+      promise = () => this.getTaskPromise(taskId);
+    } else {
+      const taskPromise = this.getTaskPromise(taskId, tran);
+      tran.queueFailure((e) => {
+        taskPromise.cancel(e);
+      });
+      promise = () => taskPromise;
+    }
+    const taskData = await tran.get<TaskData>([...this.tasksTaskDbPath, taskIdBuffer]);
+    if (taskData == null) {
+      return undefined;
+    }
+    let taskStatus: TaskStatus;
+    if (
+      (await tran.get(
+        [...this.tasksActiveDbPath, taskId.toBuffer()],
+      )) != null
+    ) {
+      taskStatus = 'active';
+    } else if (
+      (await tran.get(
+        [
+          ...this.tasksQueuedDbPath,
+          utils.lexiPackBuffer(taskData.priority),
+          utils.lexiPackBuffer(taskData.timestamp + taskData.delay),
+          taskIdBuffer
+        ]
+      )) != null
+    ) {
+      taskStatus = 'queued';
+    } else if (
+      (await tran.get(
+        [
+          ...this.tasksScheduledDbPath,
+          utils.lexiPackBuffer(taskData.timestamp + taskData.delay),
+          taskIdBuffer
+        ]
+      )) != null
+    ) {
+      taskStatus = 'scheduled';
+    }
+    return {
+      id: taskId,
+      status: taskStatus!,
+      promise,
+      handlerId: taskData.handlerId,
+      parameters: taskData.parameters,
+      delay: taskData.delay,
+      priority: taskData.priority,
+      deadline: taskData.deadline,
+      path: taskData.path,
+      created: new Date(taskData.timestamp),
+      scheduled: new Date(taskData.timestamp + taskData.delay),
+    };
+  }
 
   public async *getTaskDatas(
     path: TaskPath = [],
@@ -471,6 +518,9 @@ class Tasks {
       const taskListener = (event: TaskEvent) => {
         signal.removeEventListener('abort', signalHandler);
         if (event.detail.status === 'success') {
+
+          console.log('TASK SUCCEEDED!!');
+
           resolve(event.detail.result);
         } else {
           reject(event.detail.reason);
@@ -790,17 +840,32 @@ class Tasks {
         true,
       );
       tran.queueSuccess(() => {
-
         // Dummy values for now
         const timer = new Timer();
         const abortController = new AbortController();
-
-        const taskP = taskHandler(...taskData.parameters, {
-          timer: timer,
-          signal: abortController.signal,
-        })
-          .then(
-            (result: any) => {
+        const taskP = (async () => {
+          try {
+            let succeeded;
+            let result;
+            let reason;
+            try {
+              succeeded = true;
+              result = await taskHandler(...taskData.parameters, { timer, signal: abortController.signal});
+            } catch (e) {
+              succeeded = false;
+              reason = e;
+            }
+            // GC the task before dispatching events
+            try {
+              await this.gcTask(taskId);
+            } catch (e) {
+              // If the `gcTask` failed, there's nothing we can do here
+              // except to report the error
+              this.queueLogger.error(
+                `Failed Garbage Collecting Task ${taskIdEncoded} - ${String(e)}`
+              );
+            }
+            if (succeeded) {
               this.queueLogger.debug(
                 `Succeeded Task ${taskIdEncoded}`,
               );
@@ -813,8 +878,7 @@ class Tasks {
                   },
                 }),
               );
-            },
-            (reason: any) => {
+            } else {
               this.queueLogger.warn(
                 `Failed Task ${taskIdEncoded} - Reason: ${reason}`,
               );
@@ -826,13 +890,12 @@ class Tasks {
                   },
                 }),
               );
-            },
-          )
-          .finally(() => {
+            }
+          } finally {
             this.activePromises.delete(taskIdEncoded);
-            this.gcTask(taskId);
             this.triggerQueuing();
-          });
+          }
+        })();
         this.activePromises.set(taskIdEncoded, taskP);
         this.queueLogger.debug(`Started Task ${taskIdEncoded}`);
       });
@@ -843,12 +906,12 @@ class Tasks {
    * This is used to garbage collect tasks that have settled
    * Explicit removal of tasks can only be done through task cancellation
    */
-  protected async gcTask(taskId: TaskId, tran?: DBTransaction) {
+  protected async gcTask(taskId: TaskId, tran?: DBTransaction): Promise<void> {
     if (tran == null) {
       return this.db.withTransactionF((tran) => this.gcTask(taskId, tran));
     }
     const taskIdEncoded = tasksUtils.encodeTaskId(taskId);
-    this.logger.debug(`Garbage Collecting Task ${taskIdEncoded}`);
+    this.queueLogger.debug(`Garbage Collecting Task ${taskIdEncoded}`);
     const taskData = (await tran.get<TaskData>([
       ...this.tasksTaskDbPath,
       taskId.toBuffer(),
@@ -860,7 +923,7 @@ class Tasks {
       taskId.toBuffer(),
     ]);
     await tran.del([...this.tasksTaskDbPath, taskId.toBuffer()]);
-    this.logger.debug(`Garbage Collected Task ${taskIdEncoded}`);
+    this.queueLogger.debug(`Garbage Collected Task ${taskIdEncoded}`);
   }
 
   /**

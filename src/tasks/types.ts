@@ -61,9 +61,7 @@ type TaskPath = Array<string>;
  */
 type TaskStatus = 'scheduled'
                 | 'queued'
-                | 'active'
-                | 'success'
-                | 'failure';
+                | 'active';
 
 /**
  * Task data to be persisted
