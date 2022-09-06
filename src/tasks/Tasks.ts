@@ -223,10 +223,6 @@ class Tasks {
   public async stop() {
     this.logger.info(`Stopping ${this.constructor.name}`);
     await this.stopProcessing();
-
-    // This may not be necessary
-    // await this.gcTasks();
-
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
@@ -377,6 +373,50 @@ class Tasks {
       const taskId = IdInternal.fromBuffer<TaskId>(taskIdBuffer);
       const task = (await this.getTask(taskId, lazy, tran))!;
       yield task;
+    }
+  }
+
+  public async updateTask(
+    taskId: TaskId,
+    taskDataPatch: Partial<TaskData>,
+    tran?: DBTransaction,
+  ) {
+    if (tran == null) {
+      return this.db.withTransactionF((tran) =>
+        this.updateTask(taskId, taskDataNew, tran),
+      );
+    }
+    // Mutually exclude `this.queueTask` and `this.gcTask`
+    await tran.lock([...this.tasksScheduledDbPath, taskId.toString()].join(''));
+    const taskIdBuffer = taskId.toBuffer();
+    const taskData = await tran.get<TaskData>([...this.tasksTaskDbPath, taskIdBuffer]);
+    if (taskData == null) {
+      throw new tasksErrors.ErrorTaskMissing();
+    }
+    if (
+      (await tran.get([
+        ...this.tasksScheduledDbPath,
+        utils.lexiPackBuffer(taskData.timestamp + taskData.delay),
+        taskIdBuffer
+      ])) === undefined
+    ) {
+      // Cannot update the task if the task is already running
+      throw new tasksErrors.ErrorTaskRunning();
+    }
+    const taskDataNew = {
+      ...taskData,
+      ...taskDataPatch
+    };
+    // Save updated task
+    await tran.put([...this.tasksTaskDbPath, taskIdBuffer], taskDataNew);
+    if (taskDataPatch['path'] != null) {
+      await tran.del(
+        [...this.tasksPathDbPath, ...taskData.path, taskIdBuffer],
+      );
+      await tran.put(
+        [...this.tasksPathDbPath, ...taskDataPatch.path, taskIdBuffer],
+        true
+      );
     }
   }
 
@@ -759,6 +799,8 @@ class Tasks {
     const taskIdEncoded = tasksUtils.encodeTaskId(taskId);
     this.schedulerLogger.debug(`Queuing Task ${taskIdEncoded}`);
     await this.db.withTransactionF(async (tran) => {
+      // Mutually exclude `this.updateTask` and `this.gcTask`
+      await tran.lock([...this.tasksScheduledDbPath, taskId.toString()].join(''));
       const taskIdBuffer = taskId.toBuffer();
       const taskData = (await tran.get<TaskData>([
         ...this.tasksTaskDbPath,
@@ -901,6 +943,8 @@ class Tasks {
     if (tran == null) {
       return this.db.withTransactionF((tran) => this.gcTask(taskId, tran));
     }
+    // Mutually exclude `this.updateTask` and `this.queueTask`
+    await tran.lock([...this.tasksScheduledDbPath, taskId.toString()].join(''));
     const taskIdEncoded = tasksUtils.encodeTaskId(taskId);
     this.queueLogger.debug(`Garbage Collecting Task ${taskIdEncoded}`);
     const taskData = (await tran.get<TaskData>([

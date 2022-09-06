@@ -28,6 +28,11 @@ class ErrorTaskMissing<T> extends ErrorTask<T> {
   exitCode = sysexits.USAGE;
 }
 
+class ErrorTaskRunning<T> extends ErrorTask<T> {
+  static description = 'Task is running';
+  exitCode = sysexits.USAGE;
+}
+
 class ErrorTaskHandlerMissing<T> extends ErrorTask<T> {
   static description = 'Task handler is not registered';
   exitCode = sysexits.USAGE;
@@ -55,6 +60,7 @@ export {
   ErrorTasksDestroyed,
   ErrorTask,
   ErrorTaskMissing,
+  ErrorTaskRunning,
   ErrorTaskHandlerMissing,
   ErrorTaskRejected,
   ErrorTaskCancelled,
