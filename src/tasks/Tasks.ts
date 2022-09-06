@@ -554,13 +554,13 @@ class Tasks {
         // and we might as well prefetch some tasks to be executed
         const now =
           Math.trunc(performance.timeOrigin + performance.now()) + 100;
-        await this.db.withTransactionF(async (tran) => {
-          // Queue up all the tasks that are scheduled to be executed before `now`
-          // Due to possible batching we need to process multiple batches
-          let queuedTasks: number;
-          do {
-            if (abortController.signal.aborted) break;
-            queuedTasks = 0;
+        // Queue up all the tasks that are scheduled to be executed before `now`
+        // Due to possible batching we need to process multiple batches
+        let queuedTasks: number;
+        do {
+          if (abortController.signal.aborted) break;
+          queuedTasks = 0;
+          await this.db.withTransactionF(async (tran) => {
             for await (const [kP] of tran.iterator(this.tasksScheduledDbPath, {
               // Upper bound of `{lexi(TaskTimestamp + TaskDelay)}/{TaskId}`
               // notice the usage of `''` as the upper bound of `TaskId`
@@ -592,9 +592,9 @@ class Tasks {
               await this.queueTask(taskId, taskScheduleTime, taskData.priority);
               queuedTasks += 1;
             }
-            this.logger.debug(`Batched ${queuedTasks} to Queued`);
-          } while (queuedTasks >= (this.batchLimit ?? Infinity));
-        });
+          });
+          this.logger.debug(`Batched ${queuedTasks} to Queued`);
+        } while (queuedTasks >= (this.batchLimit ?? Infinity));
 
         await this.db.withTransactionF(async (tran) => {
         // When the transaction commits
