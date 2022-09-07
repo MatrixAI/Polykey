@@ -893,11 +893,11 @@ class Tasks {
             let result;
             let reason;
             try {
-              succeeded = true;
               result = await taskHandler(...taskData.parameters, { timer, signal: abortController.signal});
+              succeeded = true;
             } catch (e) {
-              succeeded = false;
               reason = e;
+              succeeded = false;
             }
             // GC the task before dispatching events
             try {
