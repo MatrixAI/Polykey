@@ -229,6 +229,10 @@ class Tasks {
     this.logger.info(`Destroyed ${this.constructor.name}`);
   }
 
+  get activeTasks(): number {
+    return this.activePromises.size;
+  }
+
   /**
    * Start scheduling and queuing loop
    * This call is idempotent
@@ -493,6 +497,7 @@ class Tasks {
         ),
       );
     }
+    await tran.lock(this.tasksLastTaskIdPath.join(''));
     const taskId = this.generateTaskId();
     const taskIdEncoded = tasksUtils.encodeTaskId(taskId);
     this.logger.debug(
