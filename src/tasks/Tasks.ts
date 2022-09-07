@@ -357,7 +357,7 @@ class Tasks {
   public async *getTasks(
     order: 'asc' | 'desc' = 'asc',
     lazy: boolean = false,
-    path: TaskPath = [],
+    path?: TaskPath,
     tran?: DBTransaction,
   ): AsyncGenerator<Task> {
     if (tran == null) {
@@ -365,14 +365,25 @@ class Tasks {
         this.getTasks(order, lazy, path, tran),
       );
     }
-    for await (const [kP] of tran.iterator(
-      [...this.tasksPathDbPath, ...path],
-      { values: false, reverse: order !== 'asc' }
-    )) {
-      const taskIdBuffer = kP[kP.length - 1] as Buffer;
-      const taskId = IdInternal.fromBuffer<TaskId>(taskIdBuffer);
-      const task = (await this.getTask(taskId, lazy, tran))!;
-      yield task;
+    if (path == null) {
+      for await (const [[taskIdBuffer]] of tran.iterator(
+        [...this.tasksTaskDbPath],
+        { values: false, reverse: order !== 'asc' }
+      )) {
+        const taskId = IdInternal.fromBuffer<TaskId>(taskIdBuffer as Buffer);
+        const task = (await this.getTask(taskId, lazy, tran))!;
+        yield task;
+      }
+    } else {
+      for await (const [kP] of tran.iterator(
+        [...this.tasksPathDbPath, ...path],
+        { values: false, reverse: order !== 'asc' }
+      )) {
+        const taskIdBuffer = kP[kP.length - 1] as Buffer;
+        const taskId = IdInternal.fromBuffer<TaskId>(taskIdBuffer);
+        const task = (await this.getTask(taskId, lazy, tran))!;
+        yield task;
+      }
     }
   }
 
