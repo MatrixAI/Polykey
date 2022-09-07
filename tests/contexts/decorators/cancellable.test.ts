@@ -356,5 +356,40 @@ describe('context/decorators/cancellable', () => {
       pC.cancel('cancel reason');
       await expect(pC).rejects.toBe('cancel reason');
     });
+    test('signal event listeners are removed', async () => {
+      class C {
+        f(ctx?: Partial<ContextCancellable>): PromiseCancellable<string>;
+        @cancellable()
+        async f(@context ctx: ContextCancellable): Promise<string> {
+          return 'hello world';
+        }
+      }
+      const abortController = new AbortController();
+      let listenerCount = 0;
+      const signal = new Proxy(abortController.signal, {
+        get(target, prop, receiver) {
+          if (prop === 'addEventListener') {
+            return function addEventListener(...args) {
+              listenerCount++;
+              return target[prop].apply(this, args);
+            };
+          } else if (prop === 'removeEventListener') {
+            return function addEventListener(...args) {
+              listenerCount--;
+              return target[prop].apply(this, args);
+            };
+          } else {
+            return Reflect.get(target, prop, receiver);
+          }
+        },
+      });
+      const c = new C();
+      await c.f({ signal });
+      await c.f({ signal });
+      const pC = c.f({ signal });
+      pC.cancel();
+      await expect(pC).rejects.toBe(undefined);
+      expect(listenerCount).toBe(0);
+    });
   });
 });
