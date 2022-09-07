@@ -1,7 +1,5 @@
 import type { TaskId, TaskIdEncoded, TaskPriority, TaskDelay } from './types';
-import type { NodeId } from '../nodes/types';
 import { IdInternal, IdSortable } from '@matrixai/id';
-import lexi from 'lexicographic-integer';
 
 /**
  * Generates TaskId
@@ -21,7 +19,7 @@ function createTaskIdGenerator(lastTaskId?: TaskId) {
  * Clips number to between -128 to 127 inclusive
  */
 function toPriority(n: number): TaskPriority {
-  if(isNaN(n)) n = 0;
+  if (isNaN(n)) n = 0;
   n = Math.min(n, 127);
   n = Math.max(n, -128);
   n *= -1;
@@ -42,7 +40,7 @@ function fromPriority(p: TaskPriority): number {
 }
 
 // Max possible delay for `setTimeout()`
-const maxTimeout = 2**31-1;
+const maxTimeout = 2 ** 31 - 1;
 /**
  * This clamps the delay to 0 inclusive and Infinity exclusive
  */

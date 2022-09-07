@@ -3,7 +3,11 @@ import { PromiseCancellable } from '@matrixai/async-cancellable';
 import * as contextsUtils from '../utils';
 
 function cancellable(lazy: boolean = false) {
-  return <T extends TypedPropertyDescriptor<(...params: Array<any>) => PromiseLike<any>>>(
+  return <
+    T extends TypedPropertyDescriptor<
+      (...params: Array<any>) => PromiseLike<any>
+    >,
+  >(
     target: any,
     key: string | symbol,
     descriptor: T,
@@ -74,26 +78,20 @@ function cancellable(lazy: boolean = false) {
         // The `abortController` must be shared in the `finally` clause
         // to link up final promise's cancellation with the target
         // function's signal
-        return new PromiseCancellable(
-          (resolve, reject, signal) => {
-            if (!lazy) {
-              if (signal.aborted) {
+        return new PromiseCancellable((resolve, reject, signal) => {
+          if (!lazy) {
+            if (signal.aborted) {
+              reject(signal.reason);
+            } else {
+              signal.addEventListener('abort', () => {
                 reject(signal.reason);
-              } else {
-                signal.addEventListener('abort', () => {
-                  reject(signal.reason);
-                });
-              }
+              });
             }
-            void result.then(resolve, reject);
-          },
-          abortController
-        ).finally(
-          () => {
-            signalUpstream.removeEventListener('abort', signalHandler);
-          },
-          abortController
-        );
+          }
+          void result.then(resolve, reject);
+        }, abortController).finally(() => {
+          signalUpstream.removeEventListener('abort', signalHandler);
+        }, abortController);
       }
     };
     // Preserve the name

@@ -9,13 +9,10 @@ import type {
   TaskTimestamp,
   TaskParameters,
   TaskIdEncoded,
-  TaskIdString,
-  TaskPriority,
   TaskStatus,
   TaskId,
   TaskPath,
 } from './types';
-import type KeyManager from '../keys/KeyManager';
 import {
   CreateDestroyStartStop,
   ready,
@@ -30,7 +27,6 @@ import * as tasksErrors from './errors';
 import * as tasksUtils from './utils';
 import Timer from '../timer/Timer';
 import * as utils from '../utils';
-import * as debug from '../utils/debug';
 
 const abortSchedulingLoopReason = Symbol('abort scheduling loop reason');
 const abortQueuingLoopReason = Symbol('abort queuing loop reason');
@@ -166,7 +162,8 @@ class Tasks {
   protected generateTaskId: () => TaskId;
   protected handlers: Map<TaskHandlerId, TaskHandler> = new Map();
   protected taskEvents: EventTarget = new EventTarget();
-  protected taskPromises: Map<TaskIdEncoded, PromiseCancellable<any>> = new Map();
+  protected taskPromises: Map<TaskIdEncoded, PromiseCancellable<any>> =
+    new Map();
   protected activePromises: Map<TaskIdEncoded, Promise<any>> = new Map();
 
   public constructor({
@@ -307,34 +304,34 @@ class Tasks {
       });
       promise = () => taskPromise;
     }
-    const taskData = await tran.get<TaskData>([...this.tasksTaskDbPath, taskIdBuffer]);
+    const taskData = await tran.get<TaskData>([
+      ...this.tasksTaskDbPath,
+      taskIdBuffer,
+    ]);
     if (taskData == null) {
       return;
     }
     let taskStatus: TaskStatus;
     if (
-      (await tran.get([...this.tasksActiveDbPath, taskId.toBuffer()])) !== undefined
+      (await tran.get([...this.tasksActiveDbPath, taskId.toBuffer()])) !==
+      undefined
     ) {
       taskStatus = 'active';
     } else if (
-      (await tran.get(
-        [
-          ...this.tasksQueuedDbPath,
-          utils.lexiPackBuffer(taskData.priority),
-          utils.lexiPackBuffer(taskData.timestamp + taskData.delay),
-          taskIdBuffer
-        ]
-      )) !== undefined
+      (await tran.get([
+        ...this.tasksQueuedDbPath,
+        utils.lexiPackBuffer(taskData.priority),
+        utils.lexiPackBuffer(taskData.timestamp + taskData.delay),
+        taskIdBuffer,
+      ])) !== undefined
     ) {
       taskStatus = 'queued';
     } else if (
-      (await tran.get(
-        [
-          ...this.tasksScheduledDbPath,
-          utils.lexiPackBuffer(taskData.timestamp + taskData.delay),
-          taskIdBuffer
-        ]
-      )) !== undefined
+      (await tran.get([
+        ...this.tasksScheduledDbPath,
+        utils.lexiPackBuffer(taskData.timestamp + taskData.delay),
+        taskIdBuffer,
+      ])) !== undefined
     ) {
       taskStatus = 'scheduled';
     }
@@ -367,7 +364,7 @@ class Tasks {
     if (path == null) {
       for await (const [[taskIdBuffer]] of tran.iterator(
         [...this.tasksTaskDbPath],
-        { values: false, reverse: order !== 'asc' }
+        { values: false, reverse: order !== 'asc' },
       )) {
         const taskId = IdInternal.fromBuffer<TaskId>(taskIdBuffer as Buffer);
         const task = (await this.getTask(taskId, lazy, tran))!;
@@ -376,7 +373,7 @@ class Tasks {
     } else {
       for await (const [kP] of tran.iterator(
         [...this.tasksPathDbPath, ...path],
-        { values: false, reverse: order !== 'asc' }
+        { values: false, reverse: order !== 'asc' },
       )) {
         const taskIdBuffer = kP[kP.length - 1] as Buffer;
         const taskId = IdInternal.fromBuffer<TaskId>(taskIdBuffer);
@@ -403,13 +400,20 @@ class Tasks {
         this.updateTask(taskId, taskDataNew, tran),
       );
     }
-    // validating inputs
-    if(taskDataPatch.delay != null) taskDataPatch.delay = tasksUtils.toDelay(taskDataPatch.delay);
-    if(taskDataPatch.priority != null) taskDataPatch.priority = tasksUtils.toPriority(taskDataPatch.priority);
+    // Validating inputs
+    if (taskDataPatch.delay != null) {
+      taskDataPatch.delay = tasksUtils.toDelay(taskDataPatch.delay);
+    }
+    if (taskDataPatch.priority != null) {
+      taskDataPatch.priority = tasksUtils.toPriority(taskDataPatch.priority);
+    }
     // Mutually exclude `this.queueTask` and `this.gcTask`
     await tran.lock([...this.tasksScheduledDbPath, taskId.toString()].join(''));
     const taskIdBuffer = taskId.toBuffer();
-    const taskData = await tran.get<TaskData>([...this.tasksTaskDbPath, taskIdBuffer]);
+    const taskData = await tran.get<TaskData>([
+      ...this.tasksTaskDbPath,
+      taskIdBuffer,
+    ]);
     if (taskData == null) {
       throw new tasksErrors.ErrorTaskMissing();
     }
@@ -417,7 +421,7 @@ class Tasks {
       (await tran.get([
         ...this.tasksScheduledDbPath,
         utils.lexiPackBuffer(taskData.timestamp + taskData.delay),
-        taskIdBuffer
+        taskIdBuffer,
       ])) === undefined
     ) {
       // Cannot update the task if the task is already running
@@ -425,27 +429,25 @@ class Tasks {
     }
     const taskDataNew = {
       ...taskData,
-      ...taskDataPatch
+      ...taskDataPatch,
     };
     // Save updated task
     await tran.put([...this.tasksTaskDbPath, taskIdBuffer], taskDataNew);
     if (taskDataPatch['path'] != null) {
-      await tran.del(
-        [...this.tasksPathDbPath, ...taskData.path, taskIdBuffer],
-      );
+      await tran.del([...this.tasksPathDbPath, ...taskData.path, taskIdBuffer]);
       await tran.put(
         [...this.tasksPathDbPath, ...taskDataPatch.path, taskIdBuffer],
-        true
+        true,
       );
     }
     // Update the timer if delay was updated.
-    if (taskDataPatch.delay != null){
+    if (taskDataPatch.delay != null) {
       const taskScheduleTime = taskData.timestamp + taskDataPatch.delay;
       tran.queueSuccess(async () => {
         if (this.schedulingLoop != null) {
           this.triggerScheduling(taskScheduleTime);
         }
-      })
+      });
     }
   }
 
@@ -501,7 +503,7 @@ class Tasks {
     // with subsecond fractionals, multiply it by 1000 gives us milliseconds
     const taskTimestamp = Math.trunc(extractTs(taskId) * 1000) as TaskTimestamp;
     const taskPriority = tasksUtils.toPriority(priority);
-    const taskDelay = tasksUtils.toDelay(delay)
+    const taskDelay = tasksUtils.toDelay(delay);
     const taskDeadline = Math.max(deadline, 0) as TaskDeadline;
     const taskScheduleTime = taskTimestamp + taskDelay;
     const taskData: TaskData = {
@@ -524,7 +526,7 @@ class Tasks {
         utils.lexiPackBuffer(taskScheduleTime),
         taskIdBuffer,
       ],
-      null
+      null,
     );
     // Putting the task into the path index
     await tran.put([...this.tasksPathDbPath, ...path, taskIdBuffer], null);
@@ -567,7 +569,7 @@ class Tasks {
 
   protected getTaskPromise(
     taskId: TaskId,
-    tran?: DBTransaction
+    tran?: DBTransaction,
   ): PromiseCancellable<any> {
     const taskIdEncoded = tasksUtils.encodeTaskId(taskId);
     let taskPromise = this.taskPromises.get(taskIdEncoded);
@@ -581,7 +583,11 @@ class Tasks {
         // then remove it from the queue, if it exists
         // then remove it from the scheduled index, if it exists
         // and then GC it from all other indexes
-        reject(new tasksErrors.ErrorTaskCancelled(undefined, { cause: signal.reason }));
+        reject(
+          new tasksErrors.ErrorTaskCancelled(undefined, {
+            cause: signal.reason,
+          }),
+        );
       };
       const taskListener = (event: TaskEvent) => {
         signal.removeEventListener('abort', signalHandler);
@@ -593,16 +599,15 @@ class Tasks {
       };
       // Event listeners are registered synchronously
       signal.addEventListener('abort', signalHandler);
-      this.taskEvents.addEventListener(
-        taskIdEncoded,
-        taskListener,
-        { once: true }
-      );
+      this.taskEvents.addEventListener(taskIdEncoded, taskListener, {
+        once: true,
+      });
       // The task may not actually exist anymore
       // in which case, the task listener will never settle
       // Here we concurrently check if the task exists
       // if it doesn't, remove all listeners and reject early
-      void (tran ?? this.db).get<TaskData>([...this.tasksTaskDbPath, taskId.toBuffer()])
+      void (tran ?? this.db)
+        .get<TaskData>([...this.tasksTaskDbPath, taskId.toBuffer()])
         .then(
           (taskData: TaskData | undefined) => {
             if (taskData == null) {
@@ -614,7 +619,7 @@ class Tasks {
           },
           (reason) => {
             reject(reason);
-          }
+          },
         );
     }).finally(() => {
       this.taskPromises.delete(taskIdEncoded);
@@ -651,7 +656,8 @@ class Tasks {
         // Peek ahead by 100 ms
         // this is because the subsequent operations of this iteration may take up to 100ms
         // and we might as well prefetch some tasks to be executed
-        const now = Math.trunc(performance.timeOrigin + performance.now()) + 100;
+        const now =
+          Math.trunc(performance.timeOrigin + performance.now()) + 100;
 
         await this.db.withTransactionF(async (tran) => {
           // Queue up all the tasks that are scheduled to be executed before `now`
@@ -716,10 +722,9 @@ class Tasks {
         this.queueLogger.debug(`Begin queuing loop iteration`);
         [this.queuingLockReleaser] = await this.queuingLock.lock()();
         await this.db.withTransactionF(async (tran) => {
-          for await (const [kP] of tran.iterator(
-            this.tasksQueuedDbPath,
-            { values: false },
-          )) {
+          for await (const [kP] of tran.iterator(this.tasksQueuedDbPath, {
+            values: false,
+          })) {
             if (abortController.signal.aborted) break;
             if (this.activePromises.size >= this.activeLimit) break;
             const taskId = IdInternal.fromBuffer<TaskId>(kP[2] as Buffer);
@@ -783,7 +788,7 @@ class Tasks {
       );
       this.schedulingTimer = null;
       if (this.schedulingLockReleaser != null) {
-        this.schedulingLockReleaser();
+        void this.schedulingLockReleaser();
       }
     } else {
       this.schedulerLogger.debug(
@@ -794,7 +799,7 @@ class Tasks {
       this.schedulingTimer = new Timer(() => {
         this.schedulingTimer = null;
         if (this.schedulingLockReleaser != null) {
-          this.schedulingLockReleaser();
+          void this.schedulingLockReleaser();
         }
       }, delay);
     }
@@ -814,7 +819,7 @@ class Tasks {
     // the lock may not be acquired yet, and therefore releaser is not set
     // in which case don't do anything, and the lock remains unlocked
     if (this.queuingLockReleaser != null) {
-      this.queuingLockReleaser();
+      void this.queuingLockReleaser();
     }
   }
 
@@ -829,7 +834,9 @@ class Tasks {
     this.schedulerLogger.debug(`Queuing Task ${taskIdEncoded}`);
     await this.db.withTransactionF(async (tran) => {
       // Mutually exclude `this.updateTask` and `this.gcTask`
-      await tran.lock([...this.tasksScheduledDbPath, taskId.toString()].join(''));
+      await tran.lock(
+        [...this.tasksScheduledDbPath, taskId.toString()].join(''),
+      );
       const taskIdBuffer = taskId.toBuffer();
       const taskData = (await tran.get<TaskData>([
         ...this.tasksTaskDbPath,
@@ -839,7 +846,7 @@ class Tasks {
       await tran.del([
         ...this.tasksScheduledDbPath,
         utils.lexiPackBuffer(taskScheduleTime),
-        taskIdBuffer
+        taskIdBuffer,
       ]);
       // Put task into the queue index
       await tran.put(
@@ -849,7 +856,7 @@ class Tasks {
           utils.lexiPackBuffer(taskScheduleTime),
           taskIdBuffer,
         ],
-        null
+        null,
       );
       tran.queueSuccess(() => {
         this.triggerQueuing();
@@ -861,9 +868,7 @@ class Tasks {
   /**
    * Transition from queued to active
    */
-  protected async startTask(
-    taskId: TaskId,
-  ): Promise<void> {
+  protected async startTask(taskId: TaskId): Promise<void> {
     await this.db.withTransactionF(async (tran) => {
       const taskIdBuffer = taskId.toBuffer();
       const taskIdEncoded = tasksUtils.encodeTaskId(taskId);
@@ -893,14 +898,11 @@ class Tasks {
         ...this.tasksQueuedDbPath,
         utils.lexiPackBuffer(taskData.priority),
         utils.lexiPackBuffer(taskData.timestamp + taskData.delay),
-        taskIdBuffer
+        taskIdBuffer,
       ]);
       // Put task into the active index
       // this index will be used to retry tasks if they don't finish
-      await tran.put(
-        [...this.tasksActiveDbPath, taskId.toBuffer()],
-        null
-      );
+      await tran.put([...this.tasksActiveDbPath, taskId.toBuffer()], null);
       tran.queueSuccess(() => {
         // Dummy values for now
         const timer = new Timer();
@@ -911,7 +913,10 @@ class Tasks {
             let result;
             let reason;
             try {
-              result = await taskHandler(...taskData.parameters, { timer, signal: abortController.signal});
+              result = await taskHandler(...taskData.parameters, {
+                timer,
+                signal: abortController.signal,
+              });
               succeeded = true;
             } catch (e) {
               reason = e;
@@ -924,13 +929,13 @@ class Tasks {
               // If the `gcTask` failed, there's nothing we can do here
               // except to report the error
               this.queueLogger.error(
-                `Failed Garbage Collecting Task ${taskIdEncoded} - ${String(e)}`
+                `Failed Garbage Collecting Task ${taskIdEncoded} - ${String(
+                  e,
+                )}`,
               );
             }
             if (succeeded) {
-              this.queueLogger.debug(
-                `Succeeded Task ${taskIdEncoded}`,
-              );
+              this.queueLogger.debug(`Succeeded Task ${taskIdEncoded}`);
               // If no event listeners, then only side effects are recorded
               this.taskEvents.dispatchEvent(
                 new TaskEvent(taskIdEncoded, {
@@ -1007,10 +1012,9 @@ class Tasks {
       this.logger.info('Begin Tasks Repair');
       // Move tasks from active to queued
       // these tasks will be retried
-      for await (const [kP] of tran.iterator(
-        this.tasksActiveDbPath,
-        { values: false }
-      )) {
+      for await (const [kP] of tran.iterator(this.tasksActiveDbPath, {
+        values: false,
+      })) {
         const taskIdBuffer = kP[0] as Buffer;
         const taskId = IdInternal.fromBuffer<TaskId>(taskIdBuffer);
         const taskIdEncoded = tasksUtils.encodeTaskId(taskId);
@@ -1026,7 +1030,7 @@ class Tasks {
             utils.lexiPackBuffer(taskData.timestamp + taskData.delay),
             taskIdBuffer,
           ],
-          null
+          null,
         );
         // Removing task from active index
         await tran.del([...this.tasksActiveDbPath, ...kP]);

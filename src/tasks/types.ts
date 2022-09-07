@@ -1,7 +1,5 @@
-import type { LevelPath } from '@matrixai/db';
 import type { Id } from '@matrixai/id';
-import type { PromiseCancellable } from '@matrixai/async-cancellable';
-import type { POJO, Opaque, Callback } from '../types';
+import type { Opaque } from '../types';
 import type { ContextTimed } from '../contexts/types';
 
 type TaskId = Opaque<'TaskId', Id>;
@@ -54,9 +52,7 @@ type TaskPath = Array<string>;
  *        │           │
  *        └───────────┘
  */
-type TaskStatus = 'scheduled'
-                | 'queued'
-                | 'active';
+type TaskStatus = 'scheduled' | 'queued' | 'active';
 
 /**
  * Task data to be persisted
@@ -91,7 +87,7 @@ type Task = {
 type TaskHandlerId = Opaque<'TaskHandlerId', string>;
 
 type TaskHandler = (
-  ...params: [ ...TaskParameters, ContextTimed ]
+  ...params: [...TaskParameters, ContextTimed]
 ) => Promise<any>;
 
 export type {

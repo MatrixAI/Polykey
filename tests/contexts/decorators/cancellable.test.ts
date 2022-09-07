@@ -1,5 +1,5 @@
 import type { ContextCancellable } from '@/contexts/types';
-import { PromiseCancellable } from '@matrixai/async-cancellable';
+import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import context from '@/contexts/decorators/context';
 import cancellable from '@/contexts/decorators/cancellable';
 import { AsyncFunction } from '@/utils';
@@ -40,9 +40,7 @@ describe('context/decorators/cancellable', () => {
         ctx?: Partial<ContextCancellable>,
       ): PromiseCancellable<void>;
       @cancellable()
-      functionPromise(
-        @context ctx: ContextCancellable,
-      ): Promise<void> {
+      functionPromise(@context ctx: ContextCancellable): Promise<void> {
         expect(ctx.signal).toBeInstanceOf(AbortSignal);
         return new Promise((resolve) => void resolve());
       }
@@ -51,9 +49,7 @@ describe('context/decorators/cancellable', () => {
         ctx?: Partial<ContextCancellable>,
       ): PromiseCancellable<void>;
       @cancellable(true)
-      async asyncFunction(
-        @context ctx: ContextCancellable,
-      ): Promise<void> {
+      async asyncFunction(@context ctx: ContextCancellable): Promise<void> {
         expect(ctx.signal).toBeInstanceOf(AbortSignal);
       }
 
@@ -61,9 +57,7 @@ describe('context/decorators/cancellable', () => {
         ctx?: Partial<ContextCancellable>,
       ): PromiseCancellable<void>;
       @cancellable(false)
-      [symbolFunction](
-        @context ctx: ContextCancellable,
-      ): Promise<void> {
+      [symbolFunction](@context ctx: ContextCancellable): Promise<void> {
         expect(ctx.signal).toBeInstanceOf(AbortSignal);
         return new Promise((resolve) => void resolve());
       }
@@ -72,14 +66,14 @@ describe('context/decorators/cancellable', () => {
     test('functionPromise', async () => {
       await x.functionPromise();
       await x.functionPromise({});
-      await x.functionPromise({ signal: (new AbortController()).signal });
+      await x.functionPromise({ signal: new AbortController().signal });
       expect(x.functionPromise).toBeInstanceOf(Function);
       expect(x.functionPromise.name).toBe('functionPromise');
     });
     test('asyncFunction', async () => {
       await x.asyncFunction();
       await x.asyncFunction({});
-      await x.asyncFunction({ signal: (new AbortController()).signal });
+      await x.asyncFunction({ signal: new AbortController().signal });
       expect(x.asyncFunction).toBeInstanceOf(Function);
       expect(x.asyncFunction).not.toBeInstanceOf(AsyncFunction);
       expect(x.asyncFunction.name).toBe('asyncFunction');
@@ -87,7 +81,7 @@ describe('context/decorators/cancellable', () => {
     test('symbolFunction', async () => {
       await x[symbolFunction]();
       await x[symbolFunction]({});
-      await x[symbolFunction]({ signal: (new AbortController()).signal });
+      await x[symbolFunction]({ signal: new AbortController().signal });
       expect(x[symbolFunction]).toBeInstanceOf(Function);
       expect(x[symbolFunction].name).toBe('[sym]');
     });

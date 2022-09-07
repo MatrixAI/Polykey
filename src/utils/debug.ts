@@ -26,7 +26,4 @@ function inspectBufferStructure(obj: any): any {
   }
 }
 
-export {
-  isPrintableASCII,
-  inspectBufferStructure,
-};
+export { isPrintableASCII, inspectBufferStructure };
