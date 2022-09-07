@@ -168,7 +168,45 @@ describe('context/decorators/cancellable', () => {
       pC.cancel('cancel reason');
       await expect(pC).rejects.toBe('cancel reason');
     });
-    test('promise cancellable function', async () => {
+    test('promise cancellable function - eager rejection', async () => {
+      class C {
+        f(ctx?: Partial<ContextCancellable>): PromiseCancellable<string>;
+        @cancellable()
+        f(@context ctx: ContextCancellable): PromiseCancellable<string> {
+          const pC = new PromiseCancellable<string>((resolve, reject, signal) => {
+            if (signal.aborted) {
+              reject('eager 2:' + signal.reason);
+            } else {
+              signal.onabort = () => {
+                reject('lazy 2:' + signal.reason);
+              };
+            }
+            sleep(10).then(() => {
+              resolve('hello world');
+            });
+          });
+          if (ctx.signal.aborted) {
+            pC.cancel('eager 1:' + ctx.signal.reason);
+          } else {
+            ctx.signal.onabort = () => {
+              pC.cancel('lazy 1:' + ctx.signal.reason);
+            }
+          }
+          return pC;
+        }
+      }
+      const c = new C();
+      // Signal is aborted afterwards
+      const pC1 = c.f();
+      pC1.cancel('cancel reason');
+      await expect(pC1).rejects.toBe('cancel reason');
+      // Signal is already aborted
+      const abortController = new AbortController();
+      abortController.abort('cancel reason');
+      const pC2 = c.f({ signal: abortController.signal });
+      await expect(pC2).rejects.toBe('cancel reason');
+    });
+    test('promise cancellable function - lazy rejection', async () => {
       class C {
         f(ctx?: Partial<ContextCancellable>): PromiseCancellable<string>;
         @cancellable(true)
@@ -206,14 +244,9 @@ describe('context/decorators/cancellable', () => {
       const pC2 = c.f({ signal: abortController.signal });
       await expect(pC2).rejects.toBe('lazy 2:eager 1:cancel reason');
     });
-
-
-    // test('cancelling an existing PromiseCancellable', async () => {
-
-    // });
   });
   describe('cancellable decorator propagation', () => {
-    test('nested cancellable', async () => {
+    test('nested cancellable - lazy then lazy', async () => {
       class C {
         f(ctx?: Partial<ContextCancellable>): PromiseCancellable<string>;
         @cancellable(true)
@@ -222,7 +255,28 @@ describe('context/decorators/cancellable', () => {
           expect(ctx.signal.aborted).toBe(false);
           while (true) {
             if (ctx.signal.aborted) {
-              throw ctx.signal.reason;
+              throw 'throw:' + ctx.signal.reason;
+            }
+            await sleep(1);
+          }
+        }
+      }
+      const c = new C();
+      const pC = c.f();
+      await sleep(1);
+      pC.cancel('cancel reason');
+      await expect(pC).rejects.toBe('throw:cancel reason');
+    });
+    test('nested cancellable - lazy then eager', async () => {
+      class C {
+        f(ctx?: Partial<ContextCancellable>): PromiseCancellable<string>;
+        @cancellable(true)
+        @cancellable(false)
+        async f(@context ctx: ContextCancellable): Promise<string> {
+          expect(ctx.signal.aborted).toBe(false);
+          while (true) {
+            if (ctx.signal.aborted) {
+              throw 'throw:' + ctx.signal.reason;
             }
             await sleep(1);
           }
@@ -234,7 +288,26 @@ describe('context/decorators/cancellable', () => {
       pC.cancel('cancel reason');
       await expect(pC).rejects.toBe('cancel reason');
     });
-
-
+    test('nested cancellable - eager then lazy', async () => {
+      class C {
+        f(ctx?: Partial<ContextCancellable>): PromiseCancellable<string>;
+        @cancellable(false)
+        @cancellable(true)
+        async f(@context ctx: ContextCancellable): Promise<string> {
+          expect(ctx.signal.aborted).toBe(false);
+          while (true) {
+            if (ctx.signal.aborted) {
+              throw 'throw:' + ctx.signal.reason;
+            }
+            await sleep(1);
+          }
+        }
+      }
+      const c = new C();
+      const pC = c.f();
+      await sleep(1);
+      pC.cancel('cancel reason');
+      await expect(pC).rejects.toBe('cancel reason');
+    });
   });
 });
