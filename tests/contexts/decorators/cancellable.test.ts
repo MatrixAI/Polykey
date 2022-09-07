@@ -1,4 +1,4 @@
-import type { ContextCancellable, ContextTransactional } from '@/contexts/types';
+import type { ContextCancellable } from '@/contexts/types';
 import { PromiseCancellable } from '@matrixai/async-cancellable';
 import context from '@/contexts/decorators/context';
 import cancellable from '@/contexts/decorators/cancellable';
