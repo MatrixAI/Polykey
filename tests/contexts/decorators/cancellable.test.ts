@@ -246,6 +246,53 @@ describe('context/decorators/cancellable', () => {
     });
   });
   describe('cancellable decorator propagation', () => {
+    test('propagate signal', async () => {
+      let signal: AbortSignal;
+      class C {
+        f(ctx?: Partial<ContextCancellable>): PromiseCancellable<string>;
+        @cancellable(true)
+        async f(@context ctx: ContextCancellable): Promise<string> {
+          expect(ctx.signal).toBeInstanceOf(AbortSignal);
+          signal = ctx.signal;
+          return await this.g(ctx);
+        }
+
+        g(ctx?: Partial<ContextCancellable>): PromiseCancellable<string>;
+        @cancellable(true)
+        g(@context ctx: ContextCancellable): Promise<string> {
+          expect(ctx.signal).toBeInstanceOf(AbortSignal);
+          // The signal is actually not the same
+          // it is chained instead
+          expect(signal).not.toBe(ctx.signal);
+          return new Promise((resolve, reject) => {
+            if (ctx.signal.aborted) {
+              reject('early:' + ctx.signal.reason);
+            } else {
+              const timeout = setTimeout(() => {
+                resolve('g');
+              }, 10);
+              ctx.signal.addEventListener('abort', () => {
+                clearTimeout(timeout);
+                reject('during:' + ctx.signal.reason);
+              });
+            }
+          });
+        }
+      }
+      const c = new C();
+      const pC1 = c.f();
+      await expect(pC1).resolves.toBe('g');
+      expect(signal!.aborted).toBe(false);
+      const pC2 = c.f();
+      pC2.cancel('cancel reason');
+      await expect(pC2).rejects.toBe('during:cancel reason');
+      expect(signal!.aborted).toBe(true);
+      const abortController = new AbortController();
+      abortController.abort('cancel reason');
+      const pC3 = c.f({ signal: abortController.signal });
+      await expect(pC3).rejects.toBe('early:cancel reason');
+      expect(signal!.aborted).toBe(true);
+    });
     test('nested cancellable - lazy then lazy', async () => {
       class C {
         f(ctx?: Partial<ContextCancellable>): PromiseCancellable<string>;
