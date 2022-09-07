@@ -3,7 +3,6 @@ import type { ResourceRelease } from '@matrixai/resources';
 import type {
   Task,
   TaskDeadline,
-  TaskDelay,
   TaskData,
   TaskHandlerId,
   TaskHandler,
@@ -389,7 +388,14 @@ class Tasks {
 
   public async updateTask(
     taskId: TaskId,
-    taskDataPatch: Partial<TaskData>,
+    taskDataPatch: Partial<{
+      handlerId: TaskHandlerId;
+      parameters: TaskParameters;
+      delay: number;
+      priority: number;
+      deadline: number;
+      path: TaskPath;
+    }>,
     tran?: DBTransaction,
   ): Promise<void> {
     if (tran == null) {
@@ -397,6 +403,9 @@ class Tasks {
         this.updateTask(taskId, taskDataNew, tran),
       );
     }
+    // validating inputs
+    if(taskDataPatch.delay != null) taskDataPatch.delay = tasksUtils.toDelay(taskDataPatch.delay);
+    if(taskDataPatch.priority != null) taskDataPatch.priority = tasksUtils.toPriority(taskDataPatch.priority);
     // Mutually exclude `this.queueTask` and `this.gcTask`
     await tran.lock([...this.tasksScheduledDbPath, taskId.toString()].join(''));
     const taskIdBuffer = taskId.toBuffer();
@@ -428,6 +437,15 @@ class Tasks {
         [...this.tasksPathDbPath, ...taskDataPatch.path, taskIdBuffer],
         true
       );
+    }
+    // Update the timer if delay was updated.
+    if (taskDataPatch.delay != null){
+      const taskScheduleTime = taskData.timestamp + taskDataPatch.delay;
+      tran.queueSuccess(async () => {
+        if (this.schedulingLoop != null) {
+          this.triggerScheduling(taskScheduleTime);
+        }
+      })
     }
   }
 
@@ -483,7 +501,7 @@ class Tasks {
     // with subsecond fractionals, multiply it by 1000 gives us milliseconds
     const taskTimestamp = Math.trunc(extractTs(taskId) * 1000) as TaskTimestamp;
     const taskPriority = tasksUtils.toPriority(priority);
-    const taskDelay = Math.max(delay, 0) as TaskDelay;
+    const taskDelay = tasksUtils.toDelay(delay)
     const taskDeadline = Math.max(deadline, 0) as TaskDeadline;
     const taskScheduleTime = taskTimestamp + taskDelay;
     const taskData: TaskData = {
