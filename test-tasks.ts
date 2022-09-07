@@ -6,28 +6,6 @@ import KeyManager from './src/keys/KeyManager';
 import Tasks from './src/tasks/Tasks';
 import { sleep } from '@/utils';
 
-// This function decodes a nested array of Buffer
-// and converts to them  utf8 strings
-function decodeBufferArray (arr: any): any {
-  if (arr instanceof Buffer) {
-    const str = arr.toString('utf8');
-    if (isPrintable(str)) {
-      return str;
-    } else {
-      return '0x' + arr.toString('hex');
-    }
-    // return arr.toString('utf8');
-  } else if (Array.isArray(arr)) {
-    return arr.map(decodeBufferArray);
-  } else {
-    return arr;
-  }
-}
-
-function isPrintable (str: string): boolean {
-  return /^[\x20-\x7E]*$/.test(str);
-}
-
 async function main () {
 
   // Keeps the process alive
