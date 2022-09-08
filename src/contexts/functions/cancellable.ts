@@ -12,7 +12,7 @@ function cancellable<P extends Array<any>, R>(
     if (ctx.signal === undefined) {
       const abortController = new AbortController();
       ctx.signal = abortController.signal;
-      const result = f.call(this, ctx, ...args);
+      const result = f(ctx as ContextCancellable, ...args);
       return new PromiseCancellable<R>((resolve, reject, signal) => {
         if (!lazy) {
           signal.addEventListener('abort', () => {
@@ -36,7 +36,7 @@ function cancellable<P extends Array<any>, R>(
       }
       // Overwrite the signal property with this context's `AbortController.signal`
       ctx.signal = abortController.signal;
-      const result = f.call(this, ctx, ...args);
+      const result = f(ctx as ContextCancellable, ...args);
       // The `abortController` must be shared in the `finally` clause
       // to link up final promise's cancellation with the target
       // function's signal
