@@ -1,18 +1,31 @@
 import type { ContextCancellable } from "../types";
 import { PromiseCancellable } from '@matrixai/async-cancellable';
 
-function cancellable<P extends Array<any>, R>(
-  f: ((...params: [ContextCancellable, ...P]) => PromiseLike<R>),
+type ContextRemaining<C> = Omit<C, keyof ContextCancellable>;
+
+type ContextAndParameters<C, P extends Array<any>> =
+  keyof ContextRemaining<C> extends never
+  ? [Partial<ContextCancellable>?, ...P]
+  : [Partial<ContextCancellable> & ContextRemaining<C>, ...P];
+
+function cancellable<
+  C extends ContextCancellable,
+  P extends Array<any>,
+  R
+>(
+  f: ((ctx: C, ...params: P) => PromiseLike<R>),
   lazy: boolean = false,
-): (...params: [Partial<ContextCancellable>?, ...P]) => PromiseCancellable<R> {
-  return (ctx?: Partial<ContextCancellable>, ...args: P) => {
+): (...params: ContextAndParameters<C, P>) => PromiseCancellable<R> {
+  return (...params) => {
+    let ctx = params[0];
+    const args = params.slice(1) as P;
     if (ctx == null) {
       ctx = {};
     }
     if (ctx.signal === undefined) {
       const abortController = new AbortController();
       ctx.signal = abortController.signal;
-      const result = f(ctx as ContextCancellable, ...args);
+      const result = f(ctx as C, ...args);
       return new PromiseCancellable<R>((resolve, reject, signal) => {
         if (!lazy) {
           signal.addEventListener('abort', () => {
@@ -36,7 +49,7 @@ function cancellable<P extends Array<any>, R>(
       }
       // Overwrite the signal property with this context's `AbortController.signal`
       ctx.signal = abortController.signal;
-      const result = f(ctx as ContextCancellable, ...args);
+      const result = f(ctx as C, ...args);
       // The `abortController` must be shared in the `finally` clause
       // to link up final promise's cancellation with the target
       // function's signal
