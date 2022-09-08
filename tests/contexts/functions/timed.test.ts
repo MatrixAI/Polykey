@@ -1,5 +1,6 @@
 import type { ContextTimed } from '@/contexts/types';
 import timed from '@/contexts/functions/timed';
+import * as contextsErrors from '@/contexts/errors';
 import Timer from '@/timer/Timer';
 import {
   AsyncFunction,
@@ -148,9 +149,393 @@ describe('context/functions/timed', () => {
     });
   });
   describe('timed expiry', () => {
+    // Timed decorator does not automatically reject the promise
+    // it only signals that it is aborted
+    // it is up to the function to decide how to reject
+    test('async function expiry', async () => {
+      const f = async (ctx: ContextTimed): Promise<string> => {
+        expect(ctx.signal.aborted).toBe(false);
+        await sleep(15);
+        expect(ctx.signal.aborted).toBe(false);
+        await sleep(40);
+        expect(ctx.signal.aborted).toBe(true);
+        expect(ctx.signal.reason).toBeInstanceOf(
+          contextsErrors.ErrorContextsTimedExpiry,
+        );
+        return 'hello world';
+      }
+      const fTimed = timed(f, 50);
+      await expect(fTimed()).resolves.toBe('hello world');
+    });
+    test('async function expiry with custom error', async () => {
+      class ErrorCustom extends Error {}
+      /**
+       * Async function
+       */
+      const f = async (ctx: ContextTimed): Promise<string> => {
+        expect(ctx.signal.aborted).toBe(false);
+        await sleep(15);
+        expect(ctx.signal.aborted).toBe(false);
+        await sleep(40);
+        expect(ctx.signal.aborted).toBe(true);
+        expect(ctx.signal.reason).toBeInstanceOf(ErrorCustom);
+        throw ctx.signal.reason;
+      };
+      const fTimed = timed(f, 50, ErrorCustom);
+      await expect(fTimed()).rejects.toBeInstanceOf(ErrorCustom);
+    });
+    test('promise function expiry', async () => {
+      /**
+       * Regular function returning promise
+       */
+      const f = (ctx: ContextTimed): Promise<string> => {
+        expect(ctx.signal.aborted).toBe(false);
+        return sleep(15)
+          .then(() => {
+            expect(ctx.signal.aborted).toBe(false);
+          })
+          .then(() => sleep(40))
+          .then(() => {
+            expect(ctx.signal.aborted).toBe(true);
+            expect(ctx.signal.reason).toBeInstanceOf(
+              contextsErrors.ErrorContextsTimedExpiry,
+            );
+          })
+          .then(() => {
+            return 'hello world';
+          });
+      };
+      const fTimed = timed(f, 50);
+      // const c = new C();
+      await expect(fTimed()).resolves.toBe('hello world');
+    });
+    test('promise function expiry and late rejection', async () => {
+      let timeout: ReturnType<typeof setTimeout> | undefined;
+      /**
+       * Regular function that actually rejects
+       * when the signal is aborted
+       */
+      const f = (ctx: ContextTimed): Promise<string> => {
+        return new Promise((resolve, reject) => {
+          if (ctx.signal.aborted) {
+            reject(ctx.signal.reason);
+          }
+          timeout = setTimeout(() => {
+            resolve('hello world');
+          }, 50000);
+          ctx.signal.onabort = () => {
+            clearTimeout(timeout);
+            timeout = undefined;
+            reject(ctx.signal.reason);
+          };
+        });
+      };
+      const fTimed = timed(f, 50);
+      await expect(fTimed()).rejects.toBeInstanceOf(
+        contextsErrors.ErrorContextsTimedExpiry,
+      );
+      expect(timeout).toBeUndefined();
+    });
+    test('promise function expiry and early rejection', async () => {
+      let timeout: ReturnType<typeof setTimeout> | undefined;
+      /**
+       * Regular function that actually rejects immediately
+       */
+      const f = (ctx: ContextTimed): Promise<string> => {
+        return new Promise((resolve, reject) => {
+          if (ctx.signal.aborted) {
+            reject(ctx.signal.reason);
+          }
+          timeout = setTimeout(() => {
+            resolve('hello world');
+          }, 50000);
+          ctx.signal.onabort = () => {
+            clearTimeout(timeout);
+            timeout = undefined;
+            reject(ctx.signal.reason);
+          };
+        });
+      };
+      const fTimed = timed(f, 0);
+      await expect(fTimed()).rejects.toBeInstanceOf(
+        contextsErrors.ErrorContextsTimedExpiry,
+      );
+      expect(timeout).toBeUndefined();
+    });
+    test('async generator expiry', async () => {
+      const f = async function *(ctx: ContextTimed): AsyncGenerator<string> {
+        while (true) {
+          if (ctx.signal.aborted) {
+            throw ctx.signal.reason;
+          }
+          yield 'hello world';
+        }
+      };
+      const fTimed = timed(f, 50);
+      const g = fTimed();
+      await expect(g.next()).resolves.toEqual({
+        value: 'hello world',
+        done: false,
+      });
+      await expect(g.next()).resolves.toEqual({
+        value: 'hello world',
+        done: false,
+      });
+      await sleep(50);
+      await expect(g.next()).rejects.toThrow(
+        contextsErrors.ErrorContextsTimedExpiry,
+      );
+    });
+    test('generator expiry', async () => {
+      const f = function* (ctx: ContextTimed): Generator<string> {
+        while (true) {
+          if (ctx.signal.aborted) {
+            throw ctx.signal.reason;
+          }
+          yield 'hello world';
+        }
+      };
+      const fTimed = timed(f, 50);
+      const g = fTimed();
+      expect(g.next()).toEqual({ value: 'hello world', done: false });
+      expect(g.next()).toEqual({ value: 'hello world', done: false });
+      await sleep(50);
+      expect(() => g.next()).toThrow(contextsErrors.ErrorContextsTimedExpiry);
+    });
   });
   describe('timed propagation', () => {
+    test('propagate timer and signal', async () => {
+      let timer: Timer;
+      let signal: AbortSignal;
+      const g = async (ctx: ContextTimed): Promise<string> => {
+        expect(ctx.timer).toBeInstanceOf(Timer);
+        expect(ctx.signal).toBeInstanceOf(AbortSignal);
+        // Timer and signal will be propagated
+        expect(timer).toBe(ctx.timer);
+        expect(signal).toBe(ctx.signal);
+        expect(ctx.timer.getTimeout()).toBeGreaterThan(0);
+        expect(ctx.timer.delay).toBe(50);
+        expect(ctx.signal.aborted).toBe(false);
+        return 'g';
+      };
+      const gTimed = timed(g, 25);
+      const f = async (ctx: ContextTimed): Promise<string> => {
+        expect(ctx.timer).toBeInstanceOf(Timer);
+        expect(ctx.signal).toBeInstanceOf(AbortSignal);
+        timer = ctx.timer;
+        signal = ctx.signal;
+        expect(timer.getTimeout()).toBeGreaterThan(0);
+        expect(signal.aborted).toBe(false);
+        return await gTimed(ctx);
+      };
+      const fTimed = timed(f, 50);
+      await expect(fTimed()).resolves.toBe('g');
+    });
+    test('propagate timer only', async () => {
+      let timer: Timer;
+      let signal: AbortSignal;
+      const g = async (ctx: ContextTimed): Promise<string> => {
+        expect(ctx.timer).toBeInstanceOf(Timer);
+        expect(ctx.signal).toBeInstanceOf(AbortSignal);
+        expect(timer).toBe(ctx.timer);
+        expect(signal).not.toBe(ctx.signal);
+        expect(ctx.timer.getTimeout()).toBeGreaterThan(0);
+        expect(ctx.timer.delay).toBe(50);
+        expect(ctx.signal.aborted).toBe(false);
+        return 'g';
+      }
+      const gTimed = timed(g, 25);
+      const f = async (ctx: ContextTimed): Promise<string> => {
+        expect(ctx.timer).toBeInstanceOf(Timer);
+        expect(ctx.signal).toBeInstanceOf(AbortSignal);
+        timer = ctx.timer;
+        signal = ctx.signal;
+        expect(timer.getTimeout()).toBeGreaterThan(0);
+        expect(signal.aborted).toBe(false);
+        return await gTimed({ timer: ctx.timer });
+      };
+      const fTimed = timed(f, 50);
+      await expect(fTimed()).resolves.toBe('g');
+    });
+    test('propagate signal only', async () => {
+      let timer: Timer;
+      let signal: AbortSignal;
+      const g = async (ctx: ContextTimed): Promise<string> => {
+        expect(ctx.timer).toBeInstanceOf(Timer);
+        expect(ctx.signal).toBeInstanceOf(AbortSignal);
+        // Even though signal is propagated
+        // because the timer isn't, the signal here is chained
+        expect(timer).not.toBe(ctx.timer);
+        expect(signal).not.toBe(ctx.signal);
+        expect(ctx.timer.getTimeout()).toBeGreaterThan(0);
+        expect(ctx.timer.delay).toBe(25);
+        expect(ctx.signal.aborted).toBe(false);
+        return 'g';
+      }
+      const gTimed = timed(g, 25);
+      const f = async (ctx: ContextTimed): Promise<string> => {
+        expect(ctx.timer).toBeInstanceOf(Timer);
+        expect(ctx.signal).toBeInstanceOf(AbortSignal);
+        timer = ctx.timer;
+        signal = ctx.signal;
+        expect(timer.getTimeout()).toBeGreaterThan(0);
+        expect(signal.aborted).toBe(false);
+        return await gTimed({ signal: ctx.signal });
+      };
+      const fTimed = timed(f, 50);
+      await expect(fTimed()).resolves.toBe('g');
+    });
+    test('propagate nothing', async () => {
+      let timer: Timer;
+      let signal: AbortSignal;
+      const g = async (ctx: ContextTimed): Promise<string> => {
+        expect(ctx.timer).toBeInstanceOf(Timer);
+        expect(ctx.signal).toBeInstanceOf(AbortSignal);
+        expect(timer).not.toBe(ctx.timer);
+        expect(signal).not.toBe(ctx.signal);
+        expect(ctx.timer.getTimeout()).toBeGreaterThan(0);
+        expect(ctx.timer.delay).toBe(25);
+        expect(ctx.signal.aborted).toBe(false);
+        return 'g';
+      }
+      const gTimed = timed(g, 25);
+      const f = async (ctx: ContextTimed): Promise<string> => {
+        expect(ctx.timer).toBeInstanceOf(Timer);
+        expect(ctx.signal).toBeInstanceOf(AbortSignal);
+        timer = ctx.timer;
+        signal = ctx.signal;
+        expect(timer.getTimeout()).toBeGreaterThan(0);
+        expect(signal.aborted).toBe(false);
+        return await gTimed();
+      };
+      const fTimed = timed(f, 50);
+      await expect(fTimed()).resolves.toBe('g');
+    });
+    test('propagated expiry', async () => {
+      const g = async (timeout: number): Promise<number> => {
+        const start = performance.now();
+        let counter = 0;
+        while (true) {
+          if (performance.now() - start > timeout) {
+            break;
+          }
+          await sleep(1);
+          counter++;
+        }
+        return counter;
+      };
+      const h = async (ctx: ContextTimed): Promise<string> => {
+        return new Promise((resolve, reject) => {
+          if (ctx.signal.aborted) {
+            reject(ctx.signal.reason);
+            return;
+          }
+          const timeout = setTimeout(() => {
+            resolve('hello world');
+          }, 25);
+          ctx.signal.addEventListener('abort', () => {
+            clearTimeout(timeout);
+            reject(ctx.signal.reason);
+          });
+        });
+      };
+      const hTimed = timed(h, 25);
+      const f = async (ctx: ContextTimed): Promise<string> => {
+        // The `g` will use up all the remaining time
+        const counter = await g(ctx.timer.getTimeout());
+        expect(counter).toBeGreaterThan(0);
+        // The `h` will reject eventually
+        // it may reject immediately
+        // it may reject after some time
+        await hTimed(ctx);
+        return 'hello world';
+      }
+      const fTimed = timed(f, 25);
+      await expect(fTimed()).rejects.toThrow(
+        contextsErrors.ErrorContextsTimedExpiry,
+      );
+    });
   });
   describe('timed explicit timer cancellation or signal abortion', () => {
+    // If the timer is cancelled
+    // there will be no timeout error
+    let ctx_: ContextTimed | undefined;
+    const f = (ctx: ContextTimed): Promise<string> => {
+      ctx_ = ctx;
+      return new Promise((resolve, reject) => {
+        if (ctx.signal.aborted) {
+          reject(ctx.signal.reason + ' begin');
+          return;
+        }
+        const timeout = setTimeout(() => {
+          resolve('hello world');
+        }, 25);
+        ctx.signal.addEventListener('abort', () => {
+          clearTimeout(timeout);
+          reject(ctx.signal.reason + ' during');
+        });
+      });
+    };
+    const fTimed = timed(f, 50);
+    beforeEach(() => {
+      ctx_ = undefined;
+    });
+    test('explicit timer cancellation - begin', async () => {
+      const timer = new Timer({ delay: 100 });
+      timer.cancel('reason');
+      const p = fTimed({ timer });
+      await expect(p).resolves.toBe('hello world');
+      expect(ctx_!.signal.aborted).toBe(false);
+    });
+    test('explicit timer cancellation - during', async () => {
+      const timer = new Timer({ delay: 100 });
+      const p = fTimed({ timer });
+      timer.cancel('reason');
+      await expect(p).resolves.toBe('hello world');
+      expect(ctx_!.signal.aborted).toBe(false);
+    });
+    test('explicit timer cancellation - during after sleep', async () => {
+      const timer = new Timer({ delay: 20 });
+      const p = fTimed({ timer });
+      await sleep(1);
+      timer.cancel('reason');
+      await expect(p).resolves.toBe('hello world');
+      expect(ctx_!.signal.aborted).toBe(false);
+    });
+    test('explicit signal abortion - begin', async () => {
+      const abortController = new AbortController();
+      abortController.abort('reason');
+      const p = fTimed({ signal: abortController.signal });
+      expect(ctx_!.timer.status).toBe('settled');
+      await expect(p).rejects.toBe('reason begin');
+    });
+    test('explicit signal abortion - during', async () => {
+      const abortController = new AbortController();
+      const p = fTimed({ signal: abortController.signal });
+      abortController.abort('reason');
+      // Timer is also cancelled immediately
+      expect(ctx_!.timer.status).toBe('settled');
+      await expect(p).rejects.toBe('reason during');
+    });
+    test('explicit signal signal abortion with passed in timer - during', async () => {
+      const timer = new Timer({ delay: 100 });
+      const abortController = new AbortController();
+      const p = fTimed({ timer, signal: abortController.signal });
+      abortController.abort('abort reason');
+      expect(ctx_!.timer.status).toBe('settled');
+      expect(timer.status).toBe('settled');
+      expect(ctx_!.signal.aborted).toBe(true);
+      await expect(p).rejects.toBe('abort reason during');
+    });
+    test('explicit timer cancellation and signal abortion - begin', async () => {
+      const timer = new Timer({ delay: 100 });
+      timer.cancel('timer reason');
+      const abortController = new AbortController();
+      abortController.abort('abort reason');
+      const p = fTimed({ timer, signal: abortController.signal });
+      expect(ctx_!.timer.status).toBe('settled');
+      expect(ctx_!.signal.aborted).toBe(true);
+      await expect(p).rejects.toBe('abort reason begin');
+    });
   });
 });
