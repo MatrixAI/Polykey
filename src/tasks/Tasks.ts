@@ -641,6 +641,8 @@ class Tasks {
     this.schedulerLogger.info('Starting Scheduling Loop');
     const abortController = new AbortController();
     const abortP = utils.signalPromise(abortController.signal);
+    // First iteration must run
+    if (this.schedulingLockReleaser != null) await this.schedulingLockReleaser();
     const schedulingLoop = (async () => {
       while (!abortController.signal.aborted) {
         // Blocks the scheduling loop until lock is released
@@ -713,6 +715,8 @@ class Tasks {
     this.queueLogger.info('Starting Queueing Loop');
     const abortController = new AbortController();
     const abortP = utils.signalPromise(abortController.signal);
+    // First iteration must run
+    if (this.queuingLockReleaser != null) await this.queuingLockReleaser();
     const queuingLoop = (async () => {
       while (!abortController.signal.aborted) {
         try {
@@ -751,6 +755,7 @@ class Tasks {
     this.logger.info('Stopping Scheduling Loop');
     // Cancel the timer if it exists
     this.schedulingTimer?.cancel();
+    this.schedulingTimer = null;
     // Cancel the scheduling loop
     this.schedulingLoop.cancel(abortSchedulingLoopReason);
     // Wait for the cancellation signal to resolve the promise
@@ -781,6 +786,7 @@ class Tasks {
     if (this.schedulingTimer != null) {
       if (scheduleTime >= this.schedulingTimer.scheduled!.getTime()) return;
       this.schedulingTimer.cancel();
+      this.schedulingTimer = null;
     }
     const now = Math.trunc(performance.timeOrigin + performance.now());
     const delay = Math.max(scheduleTime - now, 0);
