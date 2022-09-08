@@ -83,79 +83,89 @@ function setupContext(
   }
 }
 
+type ContextRemaining<C> = Omit<C, keyof ContextTimed>;
+
+type ContextAndParameters<C, P extends Array<any>> =
+  keyof ContextRemaining<C> extends never
+  ? [Partial<ContextTimed>?, ...P]
+  : [Partial<ContextTimed> & ContextRemaining<C>, ...P];
+
 /**
  * Timed HOF
  * This overloaded signature is external signature
  */
-function timed<P extends Array<any>, R>(
-  f: ((...params: [ContextTimed, ...P]) => R),
+function timed<
+  C extends ContextTimed,
+  P extends Array<any>,
+  R
+>(
+  f: (ctx: C, ...params: P) => R,
   delay?: number,
   errorTimeoutConstructor?: new () => Error,
-): (...params: [Partial<ContextTimed>?, ...P]) => R;
-function timed<P extends Array<any>>(
-  f: ((...params: [ContextTimed, ...P]) => any),
+): ( ...params: ContextAndParameters<C, P>) => R;
+function timed<
+  C extends ContextTimed,
+  P extends Array<any>
+>(
+  f: (ctx: C, ...params: P) => any,
   delay: number = Infinity,
   errorTimeoutConstructor: new () => Error = contextsErrors.ErrorContextsTimedExpiry,
-): ((...params: [Partial<ContextTimed>?, ...P]) => any) {
+): ( ...params: ContextAndParameters<C, P>) => any {
   if (f instanceof utils.AsyncFunction) {
-    return async (ctx?: Partial<ContextTimed>, ...args: P) => {
-      if (ctx == null) {
-        ctx = {};
-      }
+    return async (...params) => {
+      const ctx = params[0] ?? {};
+      const args = params.slice(1) as P;
       const teardownContext = setupContext(
         delay,
         errorTimeoutConstructor,
         ctx,
       );
       try {
-        return await f(ctx as ContextTimed, ...args);
+        return await f(ctx as C, ...args);
       } finally {
         teardownContext();
       }
     };
   } else if (f instanceof utils.GeneratorFunction) {
-    return function* (ctx?: Partial<ContextTimed>, ...args: P) {
-      if (ctx == null) {
-        ctx = {};
-      }
+    return function* (...params) {
+      const ctx = params[0] ?? {};
+      const args = params.slice(1) as P;
       const teardownContext = setupContext(
         delay,
         errorTimeoutConstructor,
         ctx,
       );
       try {
-        return yield* f(ctx as ContextTimed, ...args);
+        return yield* f(ctx as C, ...args);
       } finally {
         teardownContext();
       }
     };
   } else if (f instanceof utils.AsyncGeneratorFunction) {
-    return async function* (ctx?: Partial<ContextTimed>, ...args: P) {
-      if (ctx == null) {
-        ctx = {};
-      }
+    return async function* (...params) {
+      const ctx = params[0] ?? {};
+      const args = params.slice(1) as P;
       const teardownContext = setupContext(
         delay,
         errorTimeoutConstructor,
         ctx,
       );
       try {
-        return yield* f(ctx as ContextTimed, ...args);
+        return yield* f(ctx as C, ...args);
       } finally {
         teardownContext();
       }
     };
   } else {
-    return (ctx?: Partial<ContextTimed>, ...args: P) => {
-      if (ctx == null) {
-        ctx = {};
-      }
+    return (...params) => {
+      const ctx = params[0] ?? {};
+      const args = params.slice(1) as P;
       const teardownContext = setupContext(
         delay,
         errorTimeoutConstructor,
         ctx,
       );
-      const result = f(ctx as ContextTimed, ...args);
+      const result = f(ctx as C, ...args);
       if (utils.isPromiseLike(result)) {
         return result.then(
           (r) => {

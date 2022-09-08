@@ -13,15 +13,12 @@ function cancellable<
   P extends Array<any>,
   R
 >(
-  f: ((ctx: C, ...params: P) => PromiseLike<R>),
+  f: (ctx: C, ...params: P) => PromiseLike<R>,
   lazy: boolean = false,
 ): (...params: ContextAndParameters<C, P>) => PromiseCancellable<R> {
   return (...params) => {
-    let ctx = params[0];
+    const ctx = params[0] ?? {};
     const args = params.slice(1) as P;
-    if (ctx == null) {
-      ctx = {};
-    }
     if (ctx.signal === undefined) {
       const abortController = new AbortController();
       ctx.signal = abortController.signal;
