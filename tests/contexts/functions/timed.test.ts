@@ -1,7 +1,12 @@
 import type { ContextTimed } from '@/contexts/types';
 import timed from '@/contexts/functions/timed';
 import Timer from '@/timer/Timer';
-import { AsyncFunction, GeneratorFunction, AsyncGeneratorFunction, sleep } from '@/utils';
+import {
+  AsyncFunction,
+  GeneratorFunction,
+  AsyncGeneratorFunction,
+  sleep
+} from '@/utils';
 
 describe('context/functions/timed', () => {
   describe('timed syntax', () => {
@@ -141,5 +146,11 @@ describe('context/functions/timed', () => {
       }
       expect(gTimed).not.toBeInstanceOf(AsyncGeneratorFunction);
     });
+  });
+  describe('timed expiry', () => {
+  });
+  describe('timed propagation', () => {
+  });
+  describe('timed explicit timer cancellation or signal abortion', () => {
   });
 });
