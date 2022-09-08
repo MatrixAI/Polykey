@@ -91,7 +91,7 @@ describe('context/decorators/cancellable', () => {
     });
   });
   describe('cancellable decorator cancellation', () => {
-    test('async function cancel and eager rejection', async () => {
+    test('async function cancel - eager', async () => {
       class C {
         f(ctx?: Partial<ContextCancellable>): PromiseCancellable<string>;
         @cancellable()
@@ -110,7 +110,7 @@ describe('context/decorators/cancellable', () => {
       pC.cancel();
       await expect(pC).rejects.toBeUndefined();
     });
-    test('async function cancel and lazy rejection', async () => {
+    test('async function cancel - lazy', async () => {
       class C {
         f(ctx?: Partial<ContextCancellable>): PromiseCancellable<string>;
         @cancellable(true)
