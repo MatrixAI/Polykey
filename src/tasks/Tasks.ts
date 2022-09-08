@@ -572,7 +572,8 @@ class Tasks {
     };
   }
 
-  protected getTaskPromise(
+  @ready(new tasksErrors.ErrorTasksNotRunning())
+  public getTaskPromise(
     taskId: TaskId,
     tran?: DBTransaction,
   ): PromiseCancellable<any> {
