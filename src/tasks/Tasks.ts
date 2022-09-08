@@ -26,6 +26,8 @@ import TaskEvent from './TaskEvent';
 import * as tasksErrors from './errors';
 import * as tasksUtils from './utils';
 import Timer from '../timer/Timer';
+import cancellable from '../contexts/functions/cancellable';
+import timed from '../contexts/functions/timed';
 import * as utils from '../utils';
 
 const abortSchedulingLoopReason = Symbol('abort scheduling loop reason');
@@ -162,9 +164,8 @@ class Tasks {
   protected generateTaskId: () => TaskId;
   protected handlers: Map<TaskHandlerId, TaskHandler> = new Map();
   protected taskEvents: EventTarget = new EventTarget();
-  protected taskPromises: Map<TaskIdEncoded, PromiseCancellable<any>> =
-    new Map();
-  protected activePromises: Map<TaskIdEncoded, Promise<any>> = new Map();
+  protected taskPromises: Map<TaskIdEncoded, PromiseCancellable<any>> = new Map();
+  protected activePromises: Map<TaskIdEncoded, PromiseCancellable<any>> = new Map();
 
   public constructor({
     db,
@@ -180,6 +181,10 @@ class Tasks {
     this.queueLogger = logger.getChild('queue');
     this.db = db;
     this.activeLimit = activeLimit;
+  }
+
+  public get activeCount(): number {
+    return this.activePromises.size;
   }
 
   public async start({
@@ -227,10 +232,6 @@ class Tasks {
     this.handlers.clear();
     await this.db.clear(this.tasksDbPath);
     this.logger.info(`Destroyed ${this.constructor.name}`);
-  }
-
-  get activeTasks(): number {
-    return this.activePromises.size;
   }
 
   /**
@@ -925,10 +926,13 @@ class Tasks {
             let result;
             let reason;
             try {
-              result = await taskHandler(...taskData.parameters, {
-                timer,
-                signal: abortController.signal,
-              });
+              result = await taskHandler(
+                {
+                  timer,
+                  signal: abortController.signal,
+                },
+                ...taskData.parameters,
+              );
               succeeded = true;
             } catch (e) {
               reason = e;
@@ -975,6 +979,8 @@ class Tasks {
             this.triggerQueuing();
           }
         })();
+
+
         this.activePromises.set(taskIdEncoded, taskP);
         this.queueLogger.debug(`Started Task ${taskIdEncoded}`);
       });
