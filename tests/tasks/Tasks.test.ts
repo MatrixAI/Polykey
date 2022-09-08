@@ -5,7 +5,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import * as fc from 'fast-check';
-import { Task, TaskHandlerId } from '../../src/tasks/types';
+import { Task, TaskHandlerId, TaskPath } from '../../src/tasks/types';
 import { promise, sleep } from '@/utils';
 import { Lock } from '@matrixai/async-locks';
 import timer from '@/timer/Timer';
@@ -486,10 +486,66 @@ describe(Tasks.name, () => {
       logger,
     });
 
-    throw Error('IMP')
+    await tasks.scheduleTask({handlerId, parameters: [1], path: ['one'], lazy: true})
+    await tasks.scheduleTask({handlerId, parameters: [2], path: ['two'], lazy: true})
+    await tasks.scheduleTask({handlerId, parameters: [3], path: ['two'], lazy: true})
+    await tasks.scheduleTask({handlerId, parameters: [4], path: ['group1', 'three'], lazy: true})
+    await tasks.scheduleTask({handlerId, parameters: [5], path: ['group1', 'four'], lazy: true})
+    await tasks.scheduleTask({handlerId, parameters: [6], path: ['group1', 'four'], lazy: true})
+    await tasks.scheduleTask({handlerId, parameters: [7], path: ['group2', 'five'], lazy: true})
+    await tasks.scheduleTask({handlerId, parameters: [8], path: ['group2', 'six'], lazy: true})
+
+    const listTasks = async (taskGroup: TaskPath) => {
+      const tasksList: Array<Task> = [];
+      for await (const task of tasks.getTasks(undefined, true, taskGroup)) {
+        tasksList.push(task);
+      }
+      return tasksList;
+    };
+
+    expect(await listTasks(['one'])).toHaveLength(1);
+    expect(await listTasks(['two'])).toHaveLength(2);
+    expect(await listTasks(['group1'])).toHaveLength(3);
+    expect(await listTasks(['group1', 'four'])).toHaveLength(2);
+    expect(await listTasks(['group2'])).toHaveLength(2);
+    expect(await listTasks([])).toHaveLength(8)
+
   });
-  test.todo('getTask')
-  test.todo('getTasks')
+  test('getTask', async () => {
+    const tasks = await Tasks.createTasks({
+      db,
+      lazy: true,
+      logger,
+    });
+
+    const task1 = await tasks.scheduleTask({handlerId, parameters: [1], lazy: true})
+    const task2 = await tasks.scheduleTask({handlerId, parameters: [2], lazy: true})
+
+    const gotTask1 = await tasks.getTask(task1.id, true);
+    expect(task1.toString()).toEqual(gotTask1?.toString());
+    const gotTask2 = await tasks.getTask(task2.id, true);
+    expect(task2.toString()).toEqual(gotTask2?.toString());
+
+  })
+  test('getTasks', async () => {
+    const tasks = await Tasks.createTasks({
+      db,
+      lazy: true,
+      logger,
+    });
+
+    await tasks.scheduleTask({handlerId, parameters: [1], lazy: true})
+    await tasks.scheduleTask({handlerId, parameters: [2], lazy: true})
+    await tasks.scheduleTask({handlerId, parameters: [3], lazy: true})
+    await tasks.scheduleTask({handlerId, parameters: [4], lazy: true})
+
+    const taskList: Array<Task> = [];
+    for await (const task of tasks.getTasks()){
+      taskList.push(task);
+    }
+
+    expect(taskList.length).toBe(4);
+  })
   test.todo('updating tasks while scheduled');
   test.todo('updating tasks while queued or active should fail');
   test.todo('updating tasks delay should update schedule timer');
