@@ -445,12 +445,8 @@ class TaskManager {
     }).finally(() => {
       this.taskPromises.delete(taskIdEncoded);
     });
-    // If you cancel the task promise
-    // you must await the task promise to prevent unhandled promise rejections
-    // this is the same behaviour as regular promises
-    // If you don't care, use `task.cancel(reason)` instead
     taskPromiseCancellable = PromiseCancellable.from(taskPromise, abortController);
-    // Empty handler to ignore unhandled rejections
+    // Empty catch handler to ignore unhandled rejections
     taskPromiseCancellable.catch(() => {});
     this.taskPromises.set(taskIdEncoded, taskPromiseCancellable);
     return taskPromiseCancellable;
