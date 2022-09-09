@@ -114,6 +114,11 @@ class Timer<T = void>
     }
     // Clip to delay >= 0
     delay = Math.max(delay, 0);
+    if (isFinite(delay)) {
+      // Clip to delay <= 2147483647 (maximum timeout)
+      // but only if delay is finite
+      delay = Math.min(delay, 2**31 - 1);
+    }
     // Coerce NaN to minimal delay of 0
     if (isNaN(delay)) delay = 0;
     this.handler = handler;
