@@ -432,12 +432,12 @@ class TaskManager {
   @ready(new tasksErrors.ErrorTasksNotRunning())
   public async updateTask(
     taskId: TaskId,
-    taskDataPatch: Partial<{
+    taskPatch: Partial<{
       handlerId: TaskHandlerId;
       parameters: TaskParameters;
       delay: number;
-      priority: number;
       deadline: number;
+      priority: number;
       path: TaskPath;
     }>,
     tran?: DBTransaction,
@@ -447,9 +447,13 @@ class TaskManager {
         this.updateTask(taskId, taskDataNew, tran),
       );
     }
-    // Validating inputs
+    // Copy the patch POJO to avoid parameter mutation
+    const taskDataPatch = { ...taskPatch };
     if (taskDataPatch.delay != null) {
       taskDataPatch.delay = tasksUtils.toDelay(taskDataPatch.delay);
+    }
+    if (taskDataPatch.deadline != null) {
+      taskDataPatch.deadline = tasksUtils.toDeadline(taskDataPatch.deadline);
     }
     if (taskDataPatch.priority != null) {
       taskDataPatch.priority = tasksUtils.toPriority(taskDataPatch.priority);
@@ -480,16 +484,17 @@ class TaskManager {
     };
     // Save updated task
     await tran.put([...this.tasksTaskDbPath, taskIdBuffer], taskDataNew);
-    if (taskDataPatch['path'] != null) {
+    // Update the path index
+    if (taskDataPatch.path != null) {
       await tran.del([...this.tasksPathDbPath, ...taskData.path, taskIdBuffer]);
       await tran.put(
         [...this.tasksPathDbPath, ...taskDataPatch.path, taskIdBuffer],
         true,
       );
     }
-    // Update the timer if delay was updated.
+    // Trigger scheduling if delay is updated
     if (taskDataPatch.delay != null) {
-      const taskScheduleTime = taskData.timestamp + taskDataPatch.delay;
+      const taskScheduleTime = taskDataNew.timestamp + taskDataPatch.delay;
       tran.queueSuccess(async () => {
         if (this.schedulingLoop != null) {
           this.triggerScheduling(taskScheduleTime);
