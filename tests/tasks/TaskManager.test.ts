@@ -288,7 +288,7 @@ describe(TaskManager.name, () => {
     const [lockReleaser] = await pendingLock.lock()();
     const resolvedTasks = new Map<number, number>();
     const totalTasks = 50;
-    handler.mockImplementation(async (number: number) => {
+    handler.mockImplementation(async (_, number: number) => {
       resolvedTasks.set(number, (resolvedTasks.get(number) ?? 0) + 1);
       if (resolvedTasks.size >= totalTasks) await lockReleaser();
     });
@@ -416,7 +416,7 @@ describe(TaskManager.name, () => {
   });
   test('tasks fail with unregistered handler', async () => {
     const handler = jest.fn();
-    handler.mockImplementation(async (fail) => {
+    handler.mockImplementation(async (_, fail) => {
       if (!fail) throw Error('three');
       return fail;
     });
@@ -450,7 +450,7 @@ describe(TaskManager.name, () => {
   });
   test('eager taskPromise resolves when awaited after task completion', async () => {
     const handler = jest.fn();
-    handler.mockImplementation(async (fail) => {
+    handler.mockImplementation(async (_, fail) => {
       if (!fail) throw Error('three');
       return fail;
     });
@@ -693,7 +693,19 @@ describe(TaskManager.name, () => {
   test('stopping should gracefully end active tasks', async () => {
     const handler = jest.fn();
     const pauseProm = promise();
-    handler.mockImplementation(async () => {await pauseProm.p});
+    handler.mockImplementation(async (ctx: ContextTimed) => {
+      const abortProm = new Promise(
+        (resolve, reject) =>
+          ctx.signal.addEventListener(
+            'abort',
+            () => reject(ctx.signal.reason)
+          )
+      );
+      await Promise.race([
+        pauseProm.p,
+        abortProm,
+      ])
+    });
     const taskManager = await TaskManager.createTaskManager({
       db,
       handlers: { [handlerId]: handler },
@@ -713,11 +725,13 @@ describe(TaskManager.name, () => {
     });
     await taskManager.startProcessing();
     await sleep(100);
+    await taskManager.stopTasks();
     await taskManager.stop();
 
     // taskManager should still exist.
-    expect(await taskManager.getTask(task1.id)).toBeUndefined();
-    expect(await taskManager.getTask(task2.id)).toBeUndefined();
+    await taskManager.start({lazy: true});
+    expect(await taskManager.getTask(task1.id)).toBeDefined();
+    expect(await taskManager.getTask(task2.id)).toBeDefined();
     await task1;
     await task2;
 
@@ -840,7 +854,7 @@ describe(TaskManager.name, () => {
   });
   test('updating tasks while queued or active should fail', async () => {
     const handler = jest.fn();
-    handler.mockImplementation(async (value) => value);
+    handler.mockImplementation(async (_, value) => value);
     const taskManager = await TaskManager.createTaskManager({
       db,
       handlers: { [handlerId]: handler },
@@ -879,8 +893,8 @@ describe(TaskManager.name, () => {
     const handlerId2 = 'handler2' as TaskHandlerId;
     const handler1 = jest.fn();
     const handler2 = jest.fn();
-    handler1.mockImplementation(async (value) => value);
-    handler2.mockImplementation(async (value) => value);
+    handler1.mockImplementation(async (_, value) => value);
+    handler2.mockImplementation(async (_, value) => value);
 
     const taskManager = await TaskManager.createTaskManager({
       db,
@@ -958,29 +972,29 @@ describe(TaskManager.name, () => {
     // normal delays
     await taskManager.scheduleTask({
       handlerId,
-      delay: 200,
+      delay: 500,
       lazy: true,
     });
     await taskManager.scheduleTask({
       handlerId,
-      delay: 400,
+      delay: 1000,
       lazy: true,
     });
     await taskManager.scheduleTask({
       handlerId,
-      delay: 600,
+      delay: 1500,
       lazy: true,
     });
 
     expect(handler).toHaveBeenCalledTimes(0);
     await taskManager.startProcessing();
-    await sleep(100);
+    await sleep(250);
     expect(handler).toHaveBeenCalledTimes(1);
-    await sleep(300);
+    await sleep(500);
     expect(handler).toHaveBeenCalledTimes(2);
-    await sleep(200);
+    await sleep(500);
     expect(handler).toHaveBeenCalledTimes(3);
-    await sleep(200);
+    await sleep(500);
     expect(handler).toHaveBeenCalledTimes(4);
 
     await taskManager.stop();
@@ -990,7 +1004,7 @@ describe(TaskManager.name, () => {
     const pendingProm = promise();
     let totalTasks = 31;
     const completedTaskOrder: Array<number> = []
-    handler.mockImplementation(async (priority) => {
+    handler.mockImplementation(async (_, priority) => {
       completedTaskOrder.push(priority);
       if (completedTaskOrder.length >= totalTasks) pendingProm.resolveP();
 
@@ -1027,7 +1041,19 @@ describe(TaskManager.name, () => {
   test('task exceeding deadline should abort and clean up', async () => {
     const handler = jest.fn();
     const pauseProm = promise();
-    handler.mockImplementation(async () => {await pauseProm.p});
+    handler.mockImplementation(async (ctx: ContextTimed) => {
+      const abortProm = new Promise(
+        (resolve, reject) =>
+          ctx.signal.addEventListener(
+            'abort',
+            () => reject(ctx.signal.reason)
+          )
+      );
+      await Promise.race([
+        pauseProm.p,
+        abortProm,
+      ])
+    });
     const taskManager = await TaskManager.createTaskManager({
       db,
       handlers: { [handlerId]: handler },
@@ -1046,7 +1072,7 @@ describe(TaskManager.name, () => {
     // cancellation should reject promise
     const taskPromise = task.promise();
     //FIXME: check for deadline timeout error
-    await expect(taskPromise).rejects.toThrow();
+    await expect(taskPromise).rejects.toThrow(tasksErrors.ErrorTaskTimeOut);
 
     // task should be cleaned up
     const oldTask = await taskManager.getTask(task.id);
