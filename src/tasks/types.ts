@@ -7,7 +7,7 @@ type TaskHandlerId = Opaque<'TaskHandlerId', string>;
 
 type TaskHandler = (
   ctx: ContextTimed,
-  taskData: TaskData,
+  taskInfo: TaskInfo,
   ...params: TaskParameters
 ) => PromiseLike<any>;
 
@@ -31,6 +31,11 @@ type Task = {
   created: Date;
   scheduled: Date;
 };
+
+/**
+ * Task data decoded for the task handler
+ */
+type TaskInfo = Omit<Task, 'status' | 'promise' | 'cancel'>;
 
 /**
  * Task data that will be encoded into JSON for persistence
@@ -104,6 +109,7 @@ export type {
   TaskId,
   TaskIdEncoded,
   Task,
+  TaskInfo,
   TaskData,
   TaskStatus,
   TaskParameters,

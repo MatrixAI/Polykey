@@ -6,6 +6,7 @@ import type {
   TaskId,
   TaskIdEncoded,
   Task,
+  TaskInfo,
   TaskData,
   TaskStatus,
   TaskParameters,
@@ -946,8 +947,23 @@ class TaskManager {
             let succeeded: boolean;
             let result: any;
             let reason: any;
+            const taskInfo: TaskInfo = {
+              id: taskId,
+              handlerId: taskData.handlerId,
+              parameters: taskData.parameters,
+              delay: tasksUtils.fromDelay(taskData.delay),
+              priority: tasksUtils.fromPriority(taskData.priority),
+              deadline: tasksUtils.fromDeadline(taskData.deadline),
+              path: taskData.path,
+              created: new Date(taskData.timestamp),
+              scheduled: new Date(taskData.timestamp + taskData.delay),
+            };
             try {
-              result = await taskHandler(ctx, taskData, ...taskData.parameters);
+              result = await taskHandler(
+                ctx,
+                taskInfo,
+                ...taskData.parameters
+              );
               succeeded = true;
             } catch (e) {
               reason = e;
