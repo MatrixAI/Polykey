@@ -11,6 +11,7 @@ import * as utils from '@/utils/index';
 import { Lock } from '@matrixai/async-locks';
 import { Timer } from '@/timer/index';
 import * as tasksErrors from '@/tasks/errors';
+import { ContextTimed } from '../../dist/contexts/types';
 
 // TODO: move to testing utils
 const scheduleCall = <T>(
@@ -42,7 +43,6 @@ describe(TaskManager.name, () => {
   });
   afterEach(async () => {
     logger.info('CLEANING UP');
-    jest.useRealTimers();
     await db.stop();
     await fs.promises.rm(dataDir, {recursive: true, force: true});
     logger.info('CLEANED UP');
@@ -336,6 +336,8 @@ describe(TaskManager.name, () => {
 
     // Promise should succeed with result
     const taskSucceedP = taskSucceed!.promise();
+    console.log(taskSucceedP);
+    console.log(await taskSucceedP);
     await expect(taskSucceedP).resolves.toBe(true);
 
     await taskManager.stop();
@@ -526,66 +528,87 @@ describe(TaskManager.name, () => {
     await taskManager.stop();
   });
   test('can cancel scheduled task, clean up and reject taskPromise', async () => {
-    const handler = jest.fn();
-    handler.mockImplementation(async () => {});
     const taskManager = await TaskManager.createTaskManager({
       db,
-      handlers: { [handlerId]: handler },
       lazy: true,
       logger,
     });
 
-    const task = await taskManager.scheduleTask({
+    const task1 = await taskManager.scheduleTask({
       handlerId,
       parameters: [],
       lazy: false,
     });
+    const task2 = await taskManager.scheduleTask({
+      handlerId,
+      parameters: [],
+      lazy: true,
+    });
 
     // cancellation should reject promise
-    const taskPromise = task.promise();
+    const taskPromise = task1.promise();
     taskPromise.cancel('cancelled')
     await expect(taskPromise).rejects.toThrow('cancelled');
+    // should cancel without awaiting anything
+    task2.cancel('cancelled');
+    await sleep(200);
 
     // task should be cleaned up
-    const oldTask = await taskManager.getTask(task.id);
-    expect(oldTask).toBeUndefined();
+    expect(await taskManager.getTask(task1.id)).toBeUndefined();
+    expect(await taskManager.getTask(task2.id)).toBeUndefined();
 
     await taskManager.stop();
   });
   test('can cancel queued task, clean up and reject taskPromise', async () => {
-    const handler = jest.fn();
-    handler.mockImplementation(async () => {});
     const taskManager = await TaskManager.createTaskManager({
       db,
-      handlers: { [handlerId]: handler },
       lazy: true,
       logger,
     });
 
-    const task = await taskManager.scheduleTask({
+    const task1 = await taskManager.scheduleTask({
       handlerId,
       parameters: [],
       lazy: false,
+    });
+    const task2 = await taskManager.scheduleTask({
+      handlerId,
+      parameters: [],
+      lazy: true,
     });
     // @ts-ignore: private method
     await taskManager.startScheduling();
     await sleep(100);
 
     // cancellation should reject promise
-    const taskPromise = task.promise();
+    const taskPromise = task1.promise();
     taskPromise.cancel('cancelled')
     await expect(taskPromise).rejects.toThrow('cancelled');
+    task2.cancel('cancelled');
+    await sleep(200);
 
     // task should be cleaned up
-    const oldTask = await taskManager.getTask(task.id);
-    expect(oldTask).toBeUndefined();
+    expect(await taskManager.getTask(task1.id)).toBeUndefined();
+    expect(await taskManager.getTask(task2.id)).toBeUndefined();
 
     await taskManager.stop();
   });
   test('can cancel active task, clean up and reject taskPromise', async () => {
     const handler = jest.fn();
     const pauseProm = promise();
-    handler.mockImplementation(async () => {await pauseProm.p});
+    handler.mockImplementation(async (ctx: ContextTimed) => {
+      const abortProm = new Promise(
+        (resolve, reject) =>
+          ctx.signal.addEventListener(
+            'abort',
+            () => reject(ctx.signal.reason)
+          )
+      );
+      await Promise.race([
+        pauseProm.p,
+        abortProm,
+      ])
+    });
     const taskManager = await TaskManager.createTaskManager({
       db,
       handlers: { [handlerId]: handler },
@@ -593,25 +616,33 @@ describe(TaskManager.name, () => {
       logger,
     });
 
-    const task = await taskManager.scheduleTask({
+    const task1 = await taskManager.scheduleTask({
       handlerId,
       parameters: [],
       lazy: false,
+    });
+    const task2 = await taskManager.scheduleTask({
+      handlerId,
+      parameters: [],
+      lazy: true,
     });
     await taskManager.startProcessing();
     await sleep(100);
 
     // cancellation should reject promise
-    const taskPromise = task.promise();
+    const taskPromise = task1.promise();
     taskPromise.cancel('cancelled')
-    await expect(taskPromise).rejects.toThrow('cancelled');
+    // await taskPromise.catch(reason => console.error(reason));
+    await expect(taskPromise).rejects.toBe('cancelled');
+    task2.cancel('cancelled');
+    await sleep(200);
 
     // task should be cleaned up
-    const oldTask = await taskManager.getTask(task.id);
-    expect(oldTask).toBeUndefined();
+    expect(await taskManager.getTask(task1.id, true)).toBeUndefined();
+    expect(await taskManager.getTask(task2.id, true)).toBeUndefined();
     pauseProm.resolveP();
 
-    await taskManager.stop();
+    await taskManager.stop() ;
   });
   test('incomplete active tasks cleaned up during startup', async () => {
     const handler = jest.fn();
