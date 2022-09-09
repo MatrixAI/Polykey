@@ -1,16 +1,15 @@
 import type { DB, DBTransaction, LevelPath, KeyPath } from '@matrixai/db';
 import type { ResourceRelease } from '@matrixai/resources';
 import type {
-  Task,
-  TaskDeadline,
-  TaskData,
   TaskHandlerId,
   TaskHandler,
-  TaskTimestamp,
-  TaskParameters,
-  TaskIdEncoded,
-  TaskStatus,
   TaskId,
+  TaskIdEncoded,
+  Task,
+  TaskData,
+  TaskStatus,
+  TaskParameters,
+  TaskTimestamp,
   TaskPath,
 } from './types';
 import {
@@ -132,6 +131,8 @@ class TaskManager {
   protected schedulingLock: Lock = new Lock();
   /**
    * Releases the scheduling lock
+   * On the first iteration of the scheduling loop
+   * the lock may not be acquired yet, and therefore releaser is not set
    */
   protected schedulingLockReleaser?: ResourceRelease;
   /**
@@ -146,6 +147,8 @@ class TaskManager {
   protected queuingLock: Lock = new Lock();
   /**
    * Releases the queuing lock
+   * On the first iteration of the queuing loop
+   * the lock may not be acquired yet, and therefore releaser is not set
    */
   protected queuingLockReleaser?: ResourceRelease;
 
@@ -379,19 +382,17 @@ class TaskManager {
     const taskIdEncoded = tasksUtils.encodeTaskId(taskId);
     // If the task promise is already running, return the existing promise
     // this is because the task promise has a singleton cleanup operation attached
-    let taskPromise = this.taskPromises.get(taskIdEncoded);
-    if (taskPromise != null) return taskPromise;
+    let taskPromiseCancellable = this.taskPromises.get(taskIdEncoded);
+    if (taskPromiseCancellable != null) return taskPromiseCancellable;
     const abortController = new AbortController();
-    const p = new Promise((resolve, reject) => {
-      const signalHandler = () => {
-        this.cancelTask(
-          taskId,
-          // new tasksErrors.ErrorTaskCancelled(undefined, {
-          //   cause: abortController.signal.reason,
-          // }),
-          abortController.signal.reason
-        );
-      };
+    const taskPromise = new Promise((resolve, reject) => {
+      // Signals cancellation to the active promise
+      // the active promise is lazy so the task promise is also lazy
+      // this means cancellation does not result in eager rejection
+      const signalHandler = () => this.cancelTask(
+        taskId,
+        abortController.signal.reason
+      );
       const taskListener = (event: TaskEvent) => {
         abortController.signal.removeEventListener(
           'abort',
@@ -406,6 +407,7 @@ class TaskManager {
         }
       };
       // Event listeners are registered synchronously
+      // this ensures that dispatched `TaskEvent` will be received
       abortController.signal.addEventListener('abort', signalHandler);
       this.taskEvents.addEventListener(taskIdEncoded, taskListener, {
         once: true,
@@ -419,6 +421,7 @@ class TaskManager {
         .then(
           (taskData: TaskData | undefined) => {
             if (taskData == null) {
+              // Rollback the event listeners
               this.taskEvents.removeEventListener(taskIdEncoded, taskListener);
               abortController.signal.removeEventListener('abort', signalHandler);
               reject(new tasksErrors.ErrorTaskMissing(taskIdEncoded));
@@ -431,93 +434,13 @@ class TaskManager {
     }).finally(() => {
       this.taskPromises.delete(taskIdEncoded);
     });
-    taskPromise = PromiseCancellable.from(p, abortController);
-    this.taskPromises.set(taskIdEncoded, taskPromise);
-    return taskPromise;
-  }
-
-  @ready(new tasksErrors.ErrorTasksNotRunning())
-  public async updateTask(
-    taskId: TaskId,
-    taskPatch: Partial<{
-      handlerId: TaskHandlerId;
-      parameters: TaskParameters;
-      delay: number;
-      deadline: number;
-      priority: number;
-      path: TaskPath;
-    }>,
-    tran?: DBTransaction,
-  ): Promise<void> {
-    if (tran == null) {
-      return this.db.withTransactionF((tran) =>
-        this.updateTask(taskId, taskPatch, tran),
-      );
-    }
-    // Copy the patch POJO to avoid parameter mutation
-    const taskDataPatch = { ...taskPatch };
-    if (taskDataPatch.delay != null) {
-      taskDataPatch.delay = tasksUtils.toDelay(taskDataPatch.delay);
-    }
-    if (taskDataPatch.deadline != null) {
-      taskDataPatch.deadline = tasksUtils.toDeadline(taskDataPatch.deadline);
-    }
-    if (taskDataPatch.priority != null) {
-      taskDataPatch.priority = tasksUtils.toPriority(taskDataPatch.priority);
-    }
-    // Mutually exclude `this.queueTask` and `this.gcTask`
-    await tran.lock([...this.tasksScheduledDbPath, taskId.toString()].join(''));
-    const taskIdBuffer = taskId.toBuffer();
-    const taskData = await tran.get<TaskData>([
-      ...this.tasksTaskDbPath,
-      taskIdBuffer,
-    ]);
-    if (taskData == null) {
-      throw new tasksErrors.ErrorTaskMissing();
-    }
-    if (
-      (await tran.get([
-        ...this.tasksScheduledDbPath,
-        utils.lexiPackBuffer(taskData.timestamp + taskData.delay),
-        taskIdBuffer,
-      ])) === undefined
-    ) {
-      // Cannot update the task if the task is already running
-      throw new tasksErrors.ErrorTaskRunning();
-    }
-    const taskDataNew = {
-      ...taskData,
-      ...taskDataPatch,
-    };
-    // Save updated task
-    await tran.put([...this.tasksTaskDbPath, taskIdBuffer], taskDataNew);
-    // Update the path index
-    if (taskDataPatch.path != null) {
-      await tran.del([...this.tasksPathDbPath, ...taskData.path, taskIdBuffer]);
-      await tran.put(
-        [...this.tasksPathDbPath, ...taskDataPatch.path, taskIdBuffer],
-        true,
-      );
-    }
-    // Update the schedule time and trigger scheduling if delay is updated
-    if (taskDataPatch.delay != null) {
-      const taskScheduleTime = taskData.timestamp + taskData.delay;
-      const taskScheduleTimeNew = taskData.timestamp + taskDataPatch.delay;
-      await tran.del([...this.tasksScheduledDbPath, utils.lexiPackBuffer(taskScheduleTime), taskIdBuffer])
-      await tran.put(
-        [
-          ...this.tasksScheduledDbPath,
-          utils.lexiPackBuffer(taskScheduleTimeNew),
-          taskIdBuffer,
-        ],
-        null,
-      );
-      tran.queueSuccess(async () => {
-        if (this.schedulingLoop != null) {
-          this.triggerScheduling(taskScheduleTimeNew);
-        }
-      });
-    }
+    // If you cancel the task promise
+    // you must await the task promise to prevent unhandled promise rejections
+    // this is the same behaviour as regular promises
+    // If you don't care, use `task.cancel(reason)` instead
+    taskPromiseCancellable = PromiseCancellable.from(taskPromise, abortController);
+    this.taskPromises.set(taskIdEncoded, taskPromiseCancellable);
+    return taskPromiseCancellable;
   }
 
   /**
@@ -562,7 +485,7 @@ class TaskManager {
         ),
       );
     }
-    await tran.lock(this.tasksLastTaskIdPath.join(''));
+    await this.lockLastTaskId(tran);
     const taskId = this.generateTaskId();
     const taskIdEncoded = tasksUtils.encodeTaskId(taskId);
     this.logger.debug(
@@ -619,9 +542,7 @@ class TaskManager {
       });
       promise = () => taskPromise;
     }
-    const cancel = (reason: any) => {
-      this.cancelTask(taskId, reason);
-    };
+    const cancel = (reason: any) => this.cancelTask(taskId, reason);
     this.logger.debug(
       `Scheduled Task ${taskIdEncoded} with handler \`${handlerId}\``,
     );
@@ -639,6 +560,89 @@ class TaskManager {
       created: new Date(taskTimestamp),
       scheduled: new Date(taskScheduleTime),
     };
+  }
+
+  @ready(new tasksErrors.ErrorTasksNotRunning())
+  public async updateTask(
+    taskId: TaskId,
+    taskPatch: Partial<{
+      handlerId: TaskHandlerId;
+      parameters: TaskParameters;
+      delay: number;
+      deadline: number;
+      priority: number;
+      path: TaskPath;
+    }>,
+    tran?: DBTransaction,
+  ): Promise<void> {
+    if (tran == null) {
+      return this.db.withTransactionF((tran) =>
+        this.updateTask(taskId, taskPatch, tran),
+      );
+    }
+    // Copy the patch POJO to avoid parameter mutation
+    const taskDataPatch = { ...taskPatch };
+    if (taskDataPatch.delay != null) {
+      taskDataPatch.delay = tasksUtils.toDelay(taskDataPatch.delay);
+    }
+    if (taskDataPatch.deadline != null) {
+      taskDataPatch.deadline = tasksUtils.toDeadline(taskDataPatch.deadline);
+    }
+    if (taskDataPatch.priority != null) {
+      taskDataPatch.priority = tasksUtils.toPriority(taskDataPatch.priority);
+    }
+    await this.lockTask(tran, taskId);
+    const taskIdBuffer = taskId.toBuffer();
+    const taskData = await tran.get<TaskData>([
+      ...this.tasksTaskDbPath,
+      taskIdBuffer,
+    ]);
+    if (taskData == null) {
+      throw new tasksErrors.ErrorTaskMissing();
+    }
+    if (
+      (await tran.get([
+        ...this.tasksScheduledDbPath,
+        utils.lexiPackBuffer(taskData.timestamp + taskData.delay),
+        taskIdBuffer,
+      ])) === undefined
+    ) {
+      // Cannot update the task if the task is already running
+      throw new tasksErrors.ErrorTaskRunning();
+    }
+    const taskDataNew = {
+      ...taskData,
+      ...taskDataPatch,
+    };
+    // Save updated task
+    await tran.put([...this.tasksTaskDbPath, taskIdBuffer], taskDataNew);
+    // Update the path index
+    if (taskDataPatch.path != null) {
+      await tran.del([...this.tasksPathDbPath, ...taskData.path, taskIdBuffer]);
+      await tran.put(
+        [...this.tasksPathDbPath, ...taskDataPatch.path, taskIdBuffer],
+        true,
+      );
+    }
+    // Update the schedule time and trigger scheduling if delay is updated
+    if (taskDataPatch.delay != null) {
+      const taskScheduleTime = taskData.timestamp + taskData.delay;
+      const taskScheduleTimeNew = taskData.timestamp + taskDataPatch.delay;
+      await tran.del([...this.tasksScheduledDbPath, utils.lexiPackBuffer(taskScheduleTime), taskIdBuffer])
+      await tran.put(
+        [
+          ...this.tasksScheduledDbPath,
+          utils.lexiPackBuffer(taskScheduleTimeNew),
+          taskIdBuffer,
+        ],
+        null,
+      );
+      tran.queueSuccess(async () => {
+        if (this.schedulingLoop != null) {
+          this.triggerScheduling(taskScheduleTimeNew);
+        }
+      });
+    }
   }
 
   /**
@@ -718,6 +722,22 @@ class TaskManager {
     this.schedulerLogger.info('Started Scheduling Loop');
   }
 
+  protected async stopScheduling(): Promise<void> {
+    if (this.schedulingLoop == null) return;
+    this.logger.info('Stopping Scheduling Loop');
+    // Cancel the timer if it exists
+    this.schedulingTimer?.cancel();
+    this.schedulingTimer = null;
+    // Cancel the scheduling loop
+    this.schedulingLoop.cancel(abortSchedulingLoopReason);
+    // Wait for the cancellation signal to resolve the promise
+    await this.schedulingLoop;
+    // Indicates that the loop is no longer running
+    this.schedulingLoop = null;
+    this.logger.info('Stopped Scheduling Loop');
+  }
+
+
   protected async startQueueing() {
     if (this.queuingLoop != null) return;
     this.queueLogger.info('Starting Queueing Loop');
@@ -758,25 +778,9 @@ class TaskManager {
     this.queueLogger.info('Started Queueing Loop');
   }
 
-  protected async stopScheduling(): Promise<void> {
-    if (this.schedulingLoop == null) return;
-    this.logger.info('Stopping Scheduling Loop');
-    // Cancel the timer if it exists
-    this.schedulingTimer?.cancel();
-    this.schedulingTimer = null;
-    // Cancel the scheduling loop
-    this.schedulingLoop.cancel(abortSchedulingLoopReason);
-    // Wait for the cancellation signal to resolve the promise
-    await this.schedulingLoop;
-    // Indicates that the loop is no longer running
-    this.schedulingLoop = null;
-    this.logger.info('Stopped Scheduling Loop');
-  }
-
   protected async stopQueueing() {
     if (this.queuingLoop == null) return;
     this.logger.info('Stopping Queuing Loop');
-    // Cancel the scheduling loop
     this.queuingLoop.cancel(abortQueuingLoopReason);
     await this.queuingLoop;
     this.queuingLoop = null;
@@ -798,9 +802,6 @@ class TaskManager {
     }
     const now = Math.trunc(performance.timeOrigin + performance.now());
     const delay = Math.max(scheduleTime - now, 0);
-    // On the first iteration of the scheduling loop
-    // the lock may not be acquired yet, and therefore releaser is not set
-    // in which case don't do anything, and the lock remains unlocked
     if (delay === 0) {
       this.schedulerLogger.debug(
         `Setting scheduling loop iteration immediately (delay: ${delay} ms)`,
@@ -834,9 +835,6 @@ class TaskManager {
    */
   protected triggerQueuing() {
     if (this.activePromises.size >= this.activeLimit) return;
-    // On the first iteration of the queuing loop
-    // the lock may not be acquired yet, and therefore releaser is not set
-    // in which case don't do anything, and the lock remains unlocked
     if (this.queuingLockReleaser != null) {
       void this.queuingLockReleaser();
     }
@@ -853,9 +851,7 @@ class TaskManager {
     this.schedulerLogger.debug(`Queuing Task ${taskIdEncoded}`);
     await this.db.withTransactionF(async (tran) => {
       // Mutually exclude `this.updateTask` and `this.gcTask`
-      await tran.lock(
-        [...this.tasksScheduledDbPath, taskId.toString()].join(''),
-      );
+      await this.lockTask(tran, taskId);
       const taskIdBuffer = taskId.toBuffer();
       const taskData = (await tran.get<TaskData>([
         ...this.tasksTaskDbPath,
@@ -892,10 +888,7 @@ class TaskManager {
     const taskIdEncoded = tasksUtils.encodeTaskId(taskId);
     this.queueLogger.debug(`Starting Task ${taskIdEncoded}`);
     await this.db.withTransactionF(async (tran) => {
-
-      // GENERAL LOCKING OF THE TASK, maybe only for safety
-      await tran.lock([...this.tasksScheduledDbPath, taskId.toString()].join(''));
-
+      await this.lockTask(tran, taskId);
       const taskData = (await tran.get<TaskData>([
         ...this.tasksTaskDbPath,
         taskIdBuffer,
@@ -1014,8 +1007,7 @@ class TaskManager {
     if (tran == null) {
       return this.db.withTransactionF((tran) => this.gcTask(taskId, tran));
     }
-    // Mutually exclude `this.updateTask` and `this.queueTask`
-    await tran.lock([...this.tasksScheduledDbPath, taskId.toString()].join(''));
+    await this.lockTask(tran, taskId);
     const taskData = await tran.get<TaskData>([
       ...this.tasksTaskDbPath,
       taskId.toBuffer(),
@@ -1046,7 +1038,6 @@ class TaskManager {
     this.queueLogger.debug(`Garbage Collected Task ${taskIdEncoded}`);
   }
 
-
   protected async cancelTask(
     taskId: TaskId,
     cancelReason: any,
@@ -1057,23 +1048,39 @@ class TaskManager {
     }
     const activePromise = this.activePromises.get(tasksUtils.encodeTaskId(taskId));
     if (activePromise != null) {
+      // If the active promise exists, then we only signal for cancellation
+      // the active promise will clean itself up when it settles
       activePromise.cancel(cancelReason);
     } else {
+      // Otherwise we must delete everything
       await this.gcTask(taskId, tran);
     }
   }
 
   /**
-   * If the process was killed ungracefully
-   * then we may need to repair any dangling tasks
-   * Dangling tasks can exist in active, queued or scheduled indexes
-   * This is due to our optimistic mapping algorithm during the scheduling
-   * and queuing loop. It maps the scheduled to queued, and queued to active
-   * before the tasks are deleted from the prior index
-   * Tasks that are left in the active index will be moved to the queued index,
-   * these will be retried first
-   * Tasks that are left in the scheduled index that are in the queued index are
-   * removed
+   * Mutually exclude last task ID mutation
+   * Prevents "counter racing" for the last task ID
+   */
+  protected async lockLastTaskId(tran: DBTransaction): Promise<void> {
+    return tran.lock(this.tasksLastTaskIdPath.join(''));
+  }
+
+  /**
+   * Mutual exclusion for task mutation
+   * Used to lock:
+   * - `this.updateTask`
+   * - `this.queueTask`
+   * - `this.startTask`
+   * - `this.cancelTask`
+   * - `this.gcTask`
+   */
+  protected async lockTask(tran: DBTransaction, taskId: TaskId): Promise<void> {
+    return tran.lock([...this.tasksDbPath, taskId.toString()].join(''));
+  }
+
+  /**
+   * If the process was killed ungracefully then we may need to
+   * repair active dangling tasks by moving them back to the queued index
    */
   protected async repairDanglingTasks() {
     await this.db.withTransactionF(async (tran) => {

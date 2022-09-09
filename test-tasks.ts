@@ -41,7 +41,6 @@ async function main () {
     test,
     async (ctx: ContextTimed, x: string) => {
       console.log(`TEST HANDLER EXECUTED ${x}`);
-      console.log(ctx);
     }
   );
 
