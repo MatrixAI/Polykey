@@ -2,17 +2,17 @@ import { ErrorPolykey, sysexits } from '../errors';
 
 class ErrorTasks<T> extends ErrorPolykey<T> {}
 
-class ErrorTasksRunning<T> extends ErrorTasks<T> {
+class ErrorTaskManagerRunning<T> extends ErrorTasks<T> {
   static description = 'Tasks is running';
   exitCode = sysexits.USAGE;
 }
 
-class ErrorTasksNotRunning<T> extends ErrorTasks<T> {
+class ErrorTaskManagerNotRunning<T> extends ErrorTasks<T> {
   static description = 'Tasks is not running';
   exitCode = sysexits.USAGE;
 }
 
-class ErrorTasksDestroyed<T> extends ErrorTasks<T> {
+class ErrorTaskManagerDestroyed<T> extends ErrorTasks<T> {
   static description = 'Tasks is destroyed';
   exitCode = sysexits.USAGE;
 }
@@ -56,9 +56,9 @@ class ErrorTaskStop<T> extends ErrorTask<T> {
 
 export {
   ErrorTasks,
-  ErrorTasksRunning,
-  ErrorTasksNotRunning,
-  ErrorTasksDestroyed,
+  ErrorTaskManagerRunning,
+  ErrorTaskManagerNotRunning,
+  ErrorTaskManagerDestroyed,
   ErrorTask,
   ErrorTaskMissing,
   ErrorTaskHandlerMissing,

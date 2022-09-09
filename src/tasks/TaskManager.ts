@@ -31,8 +31,8 @@ const abortSchedulingLoopReason = Symbol('abort scheduling loop reason');
 const abortQueuingLoopReason = Symbol('abort queuing loop reason');
 
 @CreateDestroyStartStop(
-  new tasksErrors.ErrorTasksRunning(),
-  new tasksErrors.ErrorTasksDestroyed(),
+  new tasksErrors.ErrorTaskManagerRunning(),
+  new tasksErrors.ErrorTaskManagerDestroyed(),
 )
 class TaskManager {
   public static async createTaskManager({
@@ -225,7 +225,7 @@ class TaskManager {
    * This call is idempotent
    * Use this when `Tasks` is started in lazy mode
    */
-  @ready(new tasksErrors.ErrorTasksNotRunning(), false, ['starting'])
+  @ready(new tasksErrors.ErrorTaskManagerNotRunning(), false, ['starting'])
   public async startProcessing(): Promise<void> {
     await Promise.all([this.startScheduling(), this.startQueueing()]);
   }
@@ -234,7 +234,7 @@ class TaskManager {
    * Stop the scheduling and queuing loop
    * This call is idempotent
    */
-  @ready(new tasksErrors.ErrorTasksNotRunning(), false, ['stopping'])
+  @ready(new tasksErrors.ErrorTaskManagerNotRunning(), false, ['stopping'])
   public async stopProcessing(): Promise<void> {
     await Promise.all([this.stopQueueing(), this.stopScheduling()]);
   }
@@ -243,7 +243,7 @@ class TaskManager {
    * Stop the active tasks
    * This call is idempotent
    */
-  @ready(new tasksErrors.ErrorTasksNotRunning(), false, ['stopping'])
+  @ready(new tasksErrors.ErrorTaskManagerNotRunning(), false, ['stopping'])
   public async stopTasks(): Promise<void> {
     for (const [, activePromise] of this.activePromises) {
       activePromise.cancel(new tasksErrors.ErrorTaskStop());
@@ -267,7 +267,7 @@ class TaskManager {
     this.handlers.delete(handlerId);
   }
 
-  @ready(new tasksErrors.ErrorTasksNotRunning(), false, ['starting'])
+  @ready(new tasksErrors.ErrorTaskManagerNotRunning(), false, ['starting'])
   public async getLastTaskId(
     tran?: DBTransaction,
   ): Promise<TaskId | undefined> {
@@ -279,7 +279,7 @@ class TaskManager {
     return IdInternal.fromBuffer<TaskId>(lastTaskIdBuffer);
   }
 
-  @ready(new tasksErrors.ErrorTasksNotRunning())
+  @ready(new tasksErrors.ErrorTaskManagerNotRunning())
   public async getTask(
     taskId: TaskId,
     lazy: boolean = false,
@@ -351,7 +351,7 @@ class TaskManager {
     };
   }
 
-  @ready(new tasksErrors.ErrorTasksNotRunning())
+  @ready(new tasksErrors.ErrorTaskManagerNotRunning())
   public async *getTasks(
     order: 'asc' | 'desc' = 'asc',
     lazy: boolean = false,
@@ -385,7 +385,7 @@ class TaskManager {
     }
   }
 
-  @ready(new tasksErrors.ErrorTasksNotRunning())
+  @ready(new tasksErrors.ErrorTaskManagerNotRunning())
   public getTaskPromise(
     taskId: TaskId,
     tran?: DBTransaction,
@@ -459,7 +459,7 @@ class TaskManager {
    * If `this.schedulingLoop` isn't running, then this will not
    * attempt to reset the `this.schedulingTimer`
    */
-  @ready(new tasksErrors.ErrorTasksNotRunning())
+  @ready(new tasksErrors.ErrorTaskManagerNotRunning())
   public async scheduleTask(
     {
       handlerId,
@@ -573,7 +573,7 @@ class TaskManager {
     };
   }
 
-  @ready(new tasksErrors.ErrorTasksNotRunning())
+  @ready(new tasksErrors.ErrorTaskManagerNotRunning())
   public async updateTask(
     taskId: TaskId,
     taskPatch: Partial<{
