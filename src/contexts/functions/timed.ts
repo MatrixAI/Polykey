@@ -109,7 +109,7 @@ function timed<
 >(
   f: (ctx: C, ...params: P) => any,
   delay: number = Infinity,
-  errorTimeoutConstructor: new () => Error = contextsErrors.ErrorContextsTimedExpiry,
+  errorTimeoutConstructor: new () => Error = contextsErrors.ErrorContextsTimedTimeOut,
 ): ( ...params: ContextAndParameters<C, P>) => any {
   if (f instanceof utils.AsyncFunction) {
     return async (...params) => {

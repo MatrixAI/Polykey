@@ -10,7 +10,7 @@
 function timedCancellable(
   lazy: boolean = false,
   delay: number = Infinity,
-  errorTimeoutConstructor: new () => Error = contextsErrors.ErrorContextsTimedExpiry,
+  errorTimeoutConstructor: new () => Error = contextsErrors.ErrorContextsTimedTimeOut,
 ) {
 
 }

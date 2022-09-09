@@ -122,7 +122,7 @@ function setupContext(
  */
 function timed(
   delay: number = Infinity,
-  errorTimeoutConstructor: new () => Error = contextsErrors.ErrorContextsTimedExpiry,
+  errorTimeoutConstructor: new () => Error = contextsErrors.ErrorContextsTimedTimeOut,
 ) {
   return (
     target: any,
