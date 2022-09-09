@@ -947,7 +947,7 @@ class TaskManager {
             let result: any;
             let reason: any;
             try {
-              result = await taskHandler(ctx, ...taskData.parameters);
+              result = await taskHandler(ctx, taskData, ...taskData.parameters);
               succeeded = true;
             } catch (e) {
               reason = e;

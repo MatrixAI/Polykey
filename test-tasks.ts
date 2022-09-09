@@ -39,7 +39,7 @@ async function main () {
 
   tasks.registerHandler(
     test,
-    async (ctx: ContextTimed, x: string) => {
+    async (ctx: ContextTimed, taskData, x: string) => {
       console.log(`TEST HANDLER EXECUTED ${x}`);
     }
   );

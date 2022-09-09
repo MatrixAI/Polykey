@@ -7,6 +7,7 @@ type TaskHandlerId = Opaque<'TaskHandlerId', string>;
 
 type TaskHandler = (
   ctx: ContextTimed,
+  taskData: TaskData,
   ...params: TaskParameters
 ) => PromiseLike<any>;
 
