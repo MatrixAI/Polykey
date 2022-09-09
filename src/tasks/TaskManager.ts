@@ -291,7 +291,13 @@ class TaskManager {
       );
     }
     const taskIdBuffer = taskId.toBuffer();
-    // The task promise must be set up before we check for the presence `TaskData`
+    const taskData = await tran.get<TaskData>([
+      ...this.tasksTaskDbPath,
+      taskIdBuffer,
+    ]);
+    if (taskData == null) {
+      return;
+    }
     let promise: () => PromiseCancellable<any>;
     if (lazy) {
       promise = () => this.getTaskPromise(taskId);
@@ -303,13 +309,6 @@ class TaskManager {
       promise = () => taskPromise;
     }
     const cancel = (reason: any) => this.cancelTask(taskId, reason);
-    const taskData = await tran.get<TaskData>([
-      ...this.tasksTaskDbPath,
-      taskIdBuffer,
-    ]);
-    if (taskData == null) {
-      return;
-    }
     const taskScheduleTime = taskData.timestamp + taskData.delay;
     let taskStatus: TaskStatus;
     if (
@@ -450,6 +449,8 @@ class TaskManager {
     // this is the same behaviour as regular promises
     // If you don't care, use `task.cancel(reason)` instead
     taskPromiseCancellable = PromiseCancellable.from(taskPromise, abortController);
+    // Empty handler to ignore unhandled rejections
+    taskPromiseCancellable.catch(() => {});
     this.taskPromises.set(taskIdEncoded, taskPromiseCancellable);
     return taskPromiseCancellable;
   }
@@ -1064,6 +1065,15 @@ class TaskManager {
     } else {
       // Otherwise we must delete everything
       await this.gcTask(taskId, tran);
+      const taskIdEncoded = tasksUtils.encodeTaskId(taskId);
+      this.taskEvents.dispatchEvent(
+        new TaskEvent(taskIdEncoded, {
+          detail: {
+            status: 'failure',
+            reason: cancelReason,
+          },
+        }),
+      );
     }
   }
 

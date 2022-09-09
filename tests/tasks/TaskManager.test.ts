@@ -318,7 +318,7 @@ describe(TaskManager.name, () => {
   // TODO: use fastCheck
   test('awaited taskPromises resolve', async () => {
     const handler = jest.fn();
-    handler.mockImplementation(async (fail) => {
+    handler.mockImplementation(async (_, fail) => {
       if (!fail) throw Error('three');
       return fail;
     });
@@ -336,8 +336,6 @@ describe(TaskManager.name, () => {
 
     // Promise should succeed with result
     const taskSucceedP = taskSucceed!.promise();
-    console.log(taskSucceedP);
-    console.log(await taskSucceedP);
     await expect(taskSucceedP).resolves.toBe(true);
 
     await taskManager.stop();
@@ -345,7 +343,7 @@ describe(TaskManager.name, () => {
   // TODO: use fastCheck
   test('awaited taskPromises reject', async () => {
     const handler = jest.fn();
-    handler.mockImplementation(async (fail) => {
+    handler.mockImplementation(async (_, fail) => {
       if (!fail) throw Error('three');
       return fail;
     });
@@ -370,7 +368,7 @@ describe(TaskManager.name, () => {
   // TODO: use fastCheck
   test('awaited taskPromises resolve or reject', async () => {
     const handler = jest.fn();
-    handler.mockImplementation(async (fail) => {
+    handler.mockImplementation(async (_, fail) => {
       if (!fail) throw Error('three');
       return fail;
     });
@@ -393,10 +391,8 @@ describe(TaskManager.name, () => {
     })
 
     // Promise should succeed with result
-    const taskSucceedP = taskSuccess.promise();
-    await expect(taskSucceedP).resolves.toBe(true);
-    const taskFailP = taskFail.promise();
-    await expect(taskFailP).rejects.toThrow();
+    await expect(taskSuccess.promise()).resolves.toBe(true);
+    await expect(taskFail.promise()).rejects.toThrow(Error);
 
     await taskManager.stop();
   });
@@ -548,7 +544,7 @@ describe(TaskManager.name, () => {
     // cancellation should reject promise
     const taskPromise = task1.promise();
     taskPromise.cancel('cancelled')
-    await expect(taskPromise).rejects.toThrow('cancelled');
+    await expect(taskPromise).rejects.toBe('cancelled');
     // should cancel without awaiting anything
     task2.cancel('cancelled');
     await sleep(200);
@@ -583,7 +579,7 @@ describe(TaskManager.name, () => {
     // cancellation should reject promise
     const taskPromise = task1.promise();
     taskPromise.cancel('cancelled')
-    await expect(taskPromise).rejects.toThrow('cancelled');
+    await expect(taskPromise).rejects.toBe('cancelled');
     task2.cancel('cancelled');
     await sleep(200);
 
