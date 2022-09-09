@@ -112,10 +112,18 @@ class Timer<T = void>
       lazy = handlerOrOpts.lazy ?? lazy;
       controller = handlerOrOpts.controller ?? controller;
     }
-    // Clip to delay >= 0
-    delay = Math.max(delay, 0);
     // Coerce NaN to minimal delay of 0
-    if (isNaN(delay)) delay = 0;
+    if (isNaN(delay)) {
+      delay = 0;
+    } else {
+      // Clip to delay >= 0
+      delay = Math.max(delay, 0);
+      if (isFinite(delay)) {
+        // Clip to delay <= 2147483647 (maximum timeout)
+        // but only if delay is finite
+        delay = Math.min(delay, 2**31 - 1);
+      }
+    }
     this.handler = handler;
     this.delay = delay;
     this.lazy = lazy;
