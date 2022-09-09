@@ -263,6 +263,7 @@ class TaskManager {
     return IdInternal.fromBuffer<TaskId>(lastTaskIdBuffer);
   }
 
+  @ready(new tasksErrors.ErrorTasksNotRunning())
   public async getTask(
     taskId: TaskId,
     lazy: boolean = false,
@@ -331,6 +332,7 @@ class TaskManager {
     };
   }
 
+  @ready(new tasksErrors.ErrorTasksNotRunning())
   public async *getTasks(
     order: 'asc' | 'desc' = 'asc',
     lazy: boolean = false,
@@ -364,6 +366,69 @@ class TaskManager {
     }
   }
 
+  @ready(new tasksErrors.ErrorTasksNotRunning())
+  public getTaskPromise(
+    taskId: TaskId,
+    tran?: DBTransaction,
+  ): PromiseCancellable<any> {
+    const taskIdEncoded = tasksUtils.encodeTaskId(taskId);
+    let taskPromise = this.taskPromises.get(taskIdEncoded);
+    if (taskPromise != null) return taskPromise;
+    taskPromise = new PromiseCancellable((resolve, reject, signal) => {
+      const signalHandler = () => {
+        // FIXME: Early rejection - this should be replaced with graceful rejection
+        // signal to the cancellation... then wait for the rejection
+        // await this.cancelTask(taskId)
+        // This call must cancel active promise if any
+        // then remove it from the queue, if it exists
+        // then remove it from the scheduled index, if it exists
+        // and then GC it from all other indexes
+        reject(
+          new tasksErrors.ErrorTaskCancelled(undefined, {
+            cause: signal.reason,
+          }),
+        );
+      };
+      const taskListener = (event: TaskEvent) => {
+        signal.removeEventListener('abort', signalHandler);
+        if (event.detail.status === 'success') {
+          resolve(event.detail.result);
+        } else {
+          reject(event.detail.reason);
+        }
+      };
+      // Event listeners are registered synchronously
+      signal.addEventListener('abort', signalHandler);
+      this.taskEvents.addEventListener(taskIdEncoded, taskListener, {
+        once: true,
+      });
+      // The task may not actually exist anymore
+      // in which case, the task listener will never settle
+      // Here we concurrently check if the task exists
+      // if it doesn't, remove all listeners and reject early
+      void (tran ?? this.db)
+        .get<TaskData>([...this.tasksTaskDbPath, taskId.toBuffer()])
+        .then(
+          (taskData: TaskData | undefined) => {
+            if (taskData == null) {
+              this.taskEvents.removeEventListener(taskIdEncoded, taskListener);
+              signal.removeEventListener('abort', signalHandler);
+              reject(new tasksErrors.ErrorTaskMissing(taskIdEncoded));
+              return;
+            }
+          },
+          (reason) => {
+            reject(reason);
+          },
+        );
+    }).finally(() => {
+      this.taskPromises.delete(taskIdEncoded);
+    });
+    this.taskPromises.set(taskIdEncoded, taskPromise);
+    return taskPromise;
+  }
+
+  @ready(new tasksErrors.ErrorTasksNotRunning())
   public async updateTask(
     taskId: TaskId,
     taskDataPatch: Partial<{
@@ -547,68 +612,6 @@ class TaskManager {
       created: new Date(taskTimestamp),
       scheduled: new Date(taskScheduleTime),
     };
-  }
-
-  @ready(new tasksErrors.ErrorTasksNotRunning())
-  public getTaskPromise(
-    taskId: TaskId,
-    tran?: DBTransaction,
-  ): PromiseCancellable<any> {
-    const taskIdEncoded = tasksUtils.encodeTaskId(taskId);
-    let taskPromise = this.taskPromises.get(taskIdEncoded);
-    if (taskPromise != null) return taskPromise;
-    taskPromise = new PromiseCancellable((resolve, reject, signal) => {
-      const signalHandler = () => {
-        // FIXME: Early rejection - this should be replaced with graceful rejection
-        // signal to the cancellation... then wait for the rejection
-        // await this.cancelTask(taskId)
-        // This call must cancel active promise if any
-        // then remove it from the queue, if it exists
-        // then remove it from the scheduled index, if it exists
-        // and then GC it from all other indexes
-        reject(
-          new tasksErrors.ErrorTaskCancelled(undefined, {
-            cause: signal.reason,
-          }),
-        );
-      };
-      const taskListener = (event: TaskEvent) => {
-        signal.removeEventListener('abort', signalHandler);
-        if (event.detail.status === 'success') {
-          resolve(event.detail.result);
-        } else {
-          reject(event.detail.reason);
-        }
-      };
-      // Event listeners are registered synchronously
-      signal.addEventListener('abort', signalHandler);
-      this.taskEvents.addEventListener(taskIdEncoded, taskListener, {
-        once: true,
-      });
-      // The task may not actually exist anymore
-      // in which case, the task listener will never settle
-      // Here we concurrently check if the task exists
-      // if it doesn't, remove all listeners and reject early
-      void (tran ?? this.db)
-        .get<TaskData>([...this.tasksTaskDbPath, taskId.toBuffer()])
-        .then(
-          (taskData: TaskData | undefined) => {
-            if (taskData == null) {
-              this.taskEvents.removeEventListener(taskIdEncoded, taskListener);
-              signal.removeEventListener('abort', signalHandler);
-              reject(new tasksErrors.ErrorTaskMissing(taskIdEncoded));
-              return;
-            }
-          },
-          (reason) => {
-            reject(reason);
-          },
-        );
-    }).finally(() => {
-      this.taskPromises.delete(taskIdEncoded);
-    });
-    this.taskPromises.set(taskIdEncoded, taskPromise);
-    return taskPromise;
   }
 
   /**
