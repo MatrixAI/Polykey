@@ -10,6 +10,7 @@ import { promise, sleep } from '@/utils';
 import { Lock } from '@matrixai/async-locks';
 import timer from '@/timer/Timer';
 import { Timer } from '@/timer/index';
+import * as tasksErrors from '@/tasks/errors';
 
 // TODO: move to testing utils
 const scheduleCall = <T>(
@@ -132,7 +133,7 @@ describe(Tasks.name, () => {
     expect(handler).toHaveBeenCalledTimes(3);
   });
   // FIXME: needs more experimenting to get this to work.
-  test('tasks persist between Tasks stop and starts TIMER FAKING', async () => {
+  test.skip('tasks persist between Tasks stop and starts TIMER FAKING', async () => {
     const tasks = await Tasks.createTasks({
       db,
       lazy: true,
@@ -360,7 +361,7 @@ describe(Tasks.name, () => {
 
     // Promise should throw
     const taskFailP = taskFail.promise();
-    await expect(taskFailP).rejects.toThrow();
+    await expect(taskFailP).rejects.toThrow(Error);
 
     await tasks.stop();
   });
@@ -397,8 +398,58 @@ describe(Tasks.name, () => {
 
     await tasks.stop();
   });
-  test.todo('tasks fail with no handler');
-  test.todo('tasks fail with unregistered handler');
+  test('tasks fail with no handler', async () => {
+    const tasks = await Tasks.createTasks({
+      db,
+      logger,
+    });
+
+    const taskFail = await tasks.scheduleTask({
+      handlerId,
+      parameters: [],
+      lazy: false,
+    })
+
+    // Promise should throw
+    const taskFailP = taskFail.promise();
+    await expect(taskFailP).rejects.toThrow(tasksErrors.ErrorTaskHandlerMissing);
+
+    await tasks.stop();
+  });
+  test('tasks fail with unregistered handler', async () => {
+    const handler = jest.fn();
+    handler.mockImplementation(async (fail) => {
+      if (!fail) throw Error('three');
+      return fail;
+    });
+    const tasks = await Tasks.createTasks({
+      db,
+      handlers: { [handlerId]: handler },
+      logger,
+    });
+
+    const taskSucceed = await tasks.scheduleTask({
+      handlerId,
+      parameters: [false],
+      lazy: false,
+    })
+
+    // Promise should succeed
+    const taskSucceedP = taskSucceed.promise();
+    await expect(taskSucceedP).rejects.not.toThrow(tasksErrors.ErrorTaskHandlerMissing);
+
+    // Deregister
+    tasks.deregisterHandler(handlerId);
+    const taskFail = await tasks.scheduleTask({
+      handlerId,
+      parameters: [false],
+      lazy: false,
+    })
+    const taskFailP = taskFail.promise();
+    await expect(taskFailP).rejects.toThrow(tasksErrors.ErrorTaskHandlerMissing);
+
+    await tasks.stop();
+  });
   test('eager taskPromise resolves when awaited after task completion', async () => {
     const handler = jest.fn();
     handler.mockImplementation(async (fail) => {
@@ -474,11 +525,128 @@ describe(Tasks.name, () => {
     expect(tasks.getTaskPromise(task2.id)).toBe(tasks.getTaskPromise(task2.id));
     await tasks.stop();
   });
-  test.todo('can cancel scheduled task, clean up and reject taskPromise');
-  test.todo('can cancel queued task, clean up and reject taskPromise');
-  test.todo('can cancel active task, clean up and reject taskPromise');
+  test('can cancel scheduled task, clean up and reject taskPromise', async () => {
+    const handler = jest.fn();
+    handler.mockImplementation(async () => {});
+    const tasks = await Tasks.createTasks({
+      db,
+      handlers: { [handlerId]: handler },
+      lazy: true,
+      logger,
+    });
+
+    const task = await tasks.scheduleTask({
+      handlerId,
+      parameters: [],
+      lazy: false,
+    });
+
+    // cancellation should reject promise
+    const taskPromise = task.promise();
+    taskPromise.cancel('cancelled')
+    await expect(taskPromise).rejects.toThrow('cancelled');
+
+    // task should be cleaned up
+    const oldTask = await tasks.getTask(task.id);
+    expect(oldTask).toBeUndefined();
+
+    await tasks.stop();
+  });
+  test('can cancel queued task, clean up and reject taskPromise', async () => {
+    const handler = jest.fn();
+    handler.mockImplementation(async () => {});
+    const tasks = await Tasks.createTasks({
+      db,
+      handlers: { [handlerId]: handler },
+      lazy: true,
+      logger,
+    });
+
+    const task = await tasks.scheduleTask({
+      handlerId,
+      parameters: [],
+      lazy: false,
+    });
+    // @ts-ignore: private method
+    await tasks.startScheduling();
+    await sleep(100);
+
+    // cancellation should reject promise
+    const taskPromise = task.promise();
+    taskPromise.cancel('cancelled')
+    await expect(taskPromise).rejects.toThrow('cancelled');
+
+    // task should be cleaned up
+    const oldTask = await tasks.getTask(task.id);
+    expect(oldTask).toBeUndefined();
+
+    await tasks.stop();
+  });
+  test('can cancel active task, clean up and reject taskPromise', async () => {
+    const handler = jest.fn();
+    const pauseProm = promise();
+    handler.mockImplementation(async () => {await pauseProm.p});
+    const tasks = await Tasks.createTasks({
+      db,
+      handlers: { [handlerId]: handler },
+      lazy: true,
+      logger,
+    });
+
+    const task = await tasks.scheduleTask({
+      handlerId,
+      parameters: [],
+      lazy: false,
+    });
+    await tasks.startProcessing();
+    await sleep(100);
+
+    // cancellation should reject promise
+    const taskPromise = task.promise();
+    taskPromise.cancel('cancelled')
+    await expect(taskPromise).rejects.toThrow('cancelled');
+
+    // task should be cleaned up
+    const oldTask = await tasks.getTask(task.id);
+    expect(oldTask).toBeUndefined();
+    pauseProm.resolveP();
+
+    await tasks.stop();
+  });
   test.todo('incomplete active tasks cleaned up during startup');
-  test.todo('stopping should gracefully end active tasks');
+  test('stopping should gracefully end active tasks', async () => {
+    const handler = jest.fn();
+    const pauseProm = promise();
+    handler.mockImplementation(async () => {await pauseProm.p});
+    const tasks = await Tasks.createTasks({
+      db,
+      handlers: { [handlerId]: handler },
+      lazy: true,
+      logger,
+    });
+
+    const task1 = await tasks.scheduleTask({
+      handlerId,
+      parameters: [],
+      lazy: false,
+    });
+    const task2 = await tasks.scheduleTask({
+      handlerId,
+      parameters: [],
+      lazy: false,
+    });
+    await tasks.startProcessing();
+    await sleep(100);
+    await tasks.stop();
+
+    // tasks should still exist.
+    expect(await tasks.getTask(task1.id)).toBeUndefined();
+    expect(await tasks.getTask(task2.id)).toBeUndefined();
+    await task1;
+    await task2;
+
+    await tasks.stop();
+  });
   test('tests for taskPath', async () => {
     const tasks = await Tasks.createTasks({
       db,

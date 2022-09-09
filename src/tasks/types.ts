@@ -1,6 +1,7 @@
 import type { Id } from '@matrixai/id';
 import type { Opaque } from '../types';
 import type { ContextTimed } from '../contexts/types';
+import { PromiseCancellable } from '@matrixai/async-cancellable';
 
 type TaskId = Opaque<'TaskId', Id>;
 type TaskIdString = Opaque<'TaskIdString', string>;
@@ -73,7 +74,7 @@ type TaskData = {
 type Task = {
   id: TaskId;
   status: TaskStatus;
-  promise: () => Promise<any>;
+  promise: () => PromiseCancellable<any>;
   handlerId: TaskHandlerId;
   parameters: TaskParameters;
   delay: number;
