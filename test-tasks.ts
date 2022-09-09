@@ -1,10 +1,10 @@
-import type { ContextTimed } from '@/contexts/types';
-import { TaskHandlerId } from '@/tasks/types';
+import type { ContextTimed } from './src/contexts/types';
+import { TaskHandlerId } from './src/tasks/types';
 import Logger, { LogLevel } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import KeyManager from './src/keys/KeyManager';
 import TaskManager from './src/tasks/TaskManager';
-import { sleep } from '@/utils';
+import { sleep } from './src/utils';
 
 async function main () {
 
@@ -39,8 +39,9 @@ async function main () {
 
   tasks.registerHandler(
     test,
-    async (x: string, ctx: ContextTimed) => {
+    async (ctx: ContextTimed, x: string) => {
       console.log(`TEST HANDLER EXECUTED ${x}`);
+      console.log(ctx);
     }
   );
 
@@ -103,9 +104,9 @@ async function main () {
 
   // console.log(decodeBufferArray(await db.dump([], true)));
 
-  for await (const task of tasks.getTasks()) {
-    console.log(task);
-  }
+  // for await (const task of tasks.getTasks()) {
+  //   console.log(task);
+  // }
 
   // process.on('SIGINT', async () => {
   //   console.log('SIGINT');

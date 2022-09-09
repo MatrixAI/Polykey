@@ -20,6 +20,7 @@ type Task = {
   id: TaskId;
   status: TaskStatus;
   promise: () => PromiseCancellable<any>;
+  cancel: (reason: any) => void;
   handlerId: TaskHandlerId;
   parameters: TaskParameters;
   delay: number;

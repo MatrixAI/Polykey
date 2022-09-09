@@ -38,15 +38,15 @@ class ErrorTaskHandlerMissing<T> extends ErrorTask<T> {
   exitCode = sysexits.USAGE;
 }
 
-class ErrorTaskRejected<T> extends ErrorTask<T> {
-  static description = 'Task handler threw an exception';
-  exitCode = sysexits.USAGE;
-}
+// class ErrorTaskRejected<T> extends ErrorTask<T> {
+//   static description = 'Task handler threw an exception';
+//   exitCode = sysexits.USAGE;
+// }
 
-class ErrorTaskCancelled<T> extends ErrorTask<T> {
-  static description = 'Task has been cancelled';
-  exitCode = sysexits.USAGE;
-}
+// class ErrorTaskCancelled<T> extends ErrorTask<T> {
+//   static description = 'Task has been cancelled';
+//   exitCode = sysexits.USAGE;
+// }
 
 class ErrorTaskTimedOut<T> extends ErrorTask<T> {
   static description = 'Task exhausted deadline';
@@ -62,7 +62,7 @@ export {
   ErrorTaskMissing,
   ErrorTaskRunning,
   ErrorTaskHandlerMissing,
-  ErrorTaskRejected,
-  ErrorTaskCancelled,
+  // ErrorTaskRejected,
+  // ErrorTaskCancelled,
   ErrorTaskTimedOut,
 };
