@@ -214,7 +214,7 @@ function timed(
               throw e;
             },
           );
-        } else if (utils.isIterable(result)) {
+        } else if (utils.isGenerator(result)) {
           return (function* () {
             try {
               return yield* result;
@@ -222,7 +222,7 @@ function timed(
               teardownContext();
             }
           })();
-        } else if (utils.isAsyncIterable(result)) {
+        } else if (utils.isAsyncGenerator(result)) {
           return (async function* () {
             try {
               return yield* result;

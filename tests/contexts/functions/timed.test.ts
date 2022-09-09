@@ -29,6 +29,24 @@ describe('context/functions/timed', () => {
       })).toBe('hello world');
       expect(fTimed).toBeInstanceOf(Function);
     });
+    test('function value array', () => {
+      const f = function (
+        ctx: ContextTimed,
+        check?: (t: Timer) => any,
+      ): Array<number> {
+        expect(ctx.timer).toBeInstanceOf(Timer);
+        expect(ctx.signal).toBeInstanceOf(AbortSignal);
+        if (check != null) check(ctx.timer);
+        return [1,2,3,4];
+      };
+      const fTimed = timed(f);
+      expect(fTimed(undefined)).toStrictEqual([1,2,3,4]);
+      expect(fTimed({})).toStrictEqual([1,2,3,4]);
+      expect(fTimed({ timer: new Timer({ delay: 50 }) }, (t) => {
+        expect(t.delay).toBe(50);
+      })).toStrictEqual([1,2,3,4]);
+      expect(fTimed).toBeInstanceOf(Function);
+    });
     test('function promise', async () => {
       const f = function (
         ctx: ContextTimed,
