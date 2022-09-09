@@ -1,39 +1,47 @@
 import type { Id } from '@matrixai/id';
+import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import type { Opaque } from '../types';
 import type { ContextTimed } from '../contexts/types';
-import { PromiseCancellable } from '@matrixai/async-cancellable';
+
+type TaskHandlerId = Opaque<'TaskHandlerId', string>;
+
+type TaskHandler = (
+  ctx: ContextTimed,
+  ...params: TaskParameters
+) => PromiseLike<any>;
 
 type TaskId = Opaque<'TaskId', Id>;
-type TaskIdString = Opaque<'TaskIdString', string>;
 type TaskIdEncoded = Opaque<'TaskIdEncoded', string>;
 
 /**
- * Timestamp unix time in milliseconds
+ * Task POJO returned to the user
  */
-type TaskTimestamp = Opaque<'TaskTimestamp', number>;
-
-type TaskParameters = Array<any>;
-
-/**
- * Timestamp is millisecond number >= 0
- */
-type TaskDelay = Opaque<'TaskDelay', number>;
-
-/**
- * Task priority is an `uint8` [0 to 255]
- * Where `0` is the highest priority and `255` is the lowest priority
- */
-type TaskPriority = Opaque<'TaskPriority', number>;
-
-/**
- * Deadline in milliseconds
- */
-type TaskDeadline = Opaque<'TaskDeadline', number>;
+type Task = {
+  id: TaskId;
+  status: TaskStatus;
+  promise: () => PromiseCancellable<any>;
+  handlerId: TaskHandlerId;
+  parameters: TaskParameters;
+  delay: number;
+  priority: number;
+  deadline: number;
+  path: TaskPath;
+  created: Date;
+  scheduled: Date;
+};
 
 /**
- * Task Path, a LevelPath
+ * Task data that will be encoded into JSON for persistence
  */
-type TaskPath = Array<string>;
+type TaskData = {
+  handlerId: TaskHandlerId;
+  parameters: TaskParameters;
+  timestamp: TaskTimestamp;
+  delay: TaskDelay;
+  deadline: TaskDeadline;
+  priority: TaskPriority;
+  path: TaskPath;
+};
 
 /**
  * Task state machine diagram
@@ -56,55 +64,50 @@ type TaskPath = Array<string>;
 type TaskStatus = 'scheduled' | 'queued' | 'active';
 
 /**
- * Task data to be persisted
+ * Task parameters
  */
-type TaskData = {
-  handlerId: TaskHandlerId;
-  parameters: TaskParameters;
-  timestamp: TaskTimestamp;
-  delay: TaskDelay;
-  priority: TaskPriority;
-  deadline: TaskDeadline;
-  path: TaskPath;
-};
+type TaskParameters = Array<any>;
 
 /**
- * Task POJO returned to the user
+ * Timestamp unix time in milliseconds
  */
-type Task = {
-  id: TaskId;
-  status: TaskStatus;
-  promise: () => PromiseCancellable<any>;
-  handlerId: TaskHandlerId;
-  parameters: TaskParameters;
-  delay: number;
-  priority: number;
-  deadline: number;
-  path: TaskPath;
-  created: Date;
-  scheduled: Date;
-};
+type TaskTimestamp = Opaque<'TaskTimestamp', number>;
 
-type TaskHandlerId = Opaque<'TaskHandlerId', string>;
+/**
+ * Timestamp milliseconds is a number between 0 and maximum timeout
+ * It is not allowed for there to be an infinite delay
+ */
+type TaskDelay = Opaque<'TaskDelay', number>;
 
-type TaskHandler = (
-  ctx: ContextTimed,
-  ...params: TaskParameters
-) => PromiseLike<any>;
+/**
+ * Deadline milliseconds is a number between 0 and maximum timeout
+ * or it can be `null` to indicate `Infinity`
+ */
+type TaskDeadline = Opaque<'TaskDeadline', number | null>;
+
+/**
+ * Task priority is an `uint8` [0 to 255]
+ * Where `0` is the highest priority and `255` is the lowest priority
+ */
+type TaskPriority = Opaque<'TaskPriority', number>;
+
+/**
+ * Task Path, a LevelPath
+ */
+type TaskPath = Array<string>;
 
 export type {
-  TaskId,
-  TaskIdString,
-  TaskIdEncoded,
-  Task,
-  TaskPath,
-  TaskData,
   TaskHandlerId,
   TaskHandler,
-  TaskPriority,
+  TaskId,
+  TaskIdEncoded,
+  Task,
+  TaskData,
+  TaskStatus,
   TaskParameters,
   TaskTimestamp,
   TaskDelay,
-  TaskStatus,
   TaskDeadline,
+  TaskPriority,
+  TaskPath,
 };

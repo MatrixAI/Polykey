@@ -293,6 +293,7 @@ class TaskManager {
     if (taskData == null) {
       return;
     }
+    const taskScheduleTime = taskData.timestamp + taskData.delay;
     let taskStatus: TaskStatus;
     if (
       (await tran.get([...this.tasksActiveDbPath, taskId.toBuffer()])) !==
@@ -303,7 +304,7 @@ class TaskManager {
       (await tran.get([
         ...this.tasksQueuedDbPath,
         utils.lexiPackBuffer(taskData.priority),
-        utils.lexiPackBuffer(taskData.timestamp + taskData.delay),
+        utils.lexiPackBuffer(taskScheduleTime),
         taskIdBuffer,
       ])) !== undefined
     ) {
@@ -311,7 +312,7 @@ class TaskManager {
     } else if (
       (await tran.get([
         ...this.tasksScheduledDbPath,
-        utils.lexiPackBuffer(taskData.timestamp + taskData.delay),
+        utils.lexiPackBuffer(taskScheduleTime),
         taskIdBuffer,
       ])) !== undefined
     ) {
@@ -323,12 +324,12 @@ class TaskManager {
       promise,
       handlerId: taskData.handlerId,
       parameters: taskData.parameters,
-      delay: taskData.delay,
+      delay: tasksUtils.fromDelay(taskData.delay),
+      deadline: tasksUtils.fromDeadline(taskData.deadline),
       priority: tasksUtils.fromPriority(taskData.priority),
-      deadline: taskData.deadline ?? Infinity,
       path: taskData.path,
       created: new Date(taskData.timestamp),
-      scheduled: new Date(taskData.timestamp + taskData.delay),
+      scheduled: new Date(taskScheduleTime),
     };
   }
 
@@ -508,16 +509,16 @@ class TaskManager {
       handlerId,
       parameters = [],
       delay = 0,
-      priority = 0,
       deadline = Infinity,
+      priority = 0,
       path = [],
       lazy = false,
     }: {
       handlerId: TaskHandlerId;
       parameters?: TaskParameters;
       delay?: number;
-      priority?: number;
       deadline?: number;
+      priority?: number;
       path?: TaskPath;
       lazy?: boolean;
     },
@@ -551,7 +552,7 @@ class TaskManager {
     const taskTimestamp = Math.trunc(extractTs(taskId) * 1000) as TaskTimestamp;
     const taskPriority = tasksUtils.toPriority(priority);
     const taskDelay = tasksUtils.toDelay(delay);
-    const taskDeadline = Math.max(deadline, 0) as TaskDeadline;
+    const taskDeadline = tasksUtils.toDeadline(deadline);
     const taskScheduleTime = taskTimestamp + taskDelay;
     const taskData: TaskData = {
       handlerId,
@@ -605,9 +606,9 @@ class TaskManager {
       promise,
       handlerId,
       parameters,
+      delay: tasksUtils.fromDelay(taskDelay),
+      deadline: tasksUtils.fromDeadline(taskDeadline),
       priority: tasksUtils.fromPriority(taskPriority),
-      delay: taskDelay,
-      deadline: taskDeadline,
       path,
       created: new Date(taskTimestamp),
       scheduled: new Date(taskScheduleTime),
@@ -900,7 +901,7 @@ class TaskManager {
         const timeoutError = new tasksErrors.ErrorTaskTimedOut();
         const timer = new Timer<void>(
           () => void abortController.abort(timeoutError),
-          taskData.deadline
+          tasksUtils.fromDeadline(taskData.deadline)
         );
         const ctx = {
           timer,
