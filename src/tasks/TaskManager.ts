@@ -907,7 +907,7 @@ class TaskManager {
           timer,
           signal: abortController.signal,
         };
-        const taskPromise = (async () => {
+        const activePromise = (async () => {
           try {
             let succeeded: boolean;
             let result: any;
@@ -966,11 +966,11 @@ class TaskManager {
           }
         })();
         // This will be a lazy `PromiseCancellable`
-        const taskPromiseCancellable = PromiseCancellable.from(
-          taskPromise,
+        const activePromiseCancellable = PromiseCancellable.from(
+          activePromise,
           abortController
         );
-        this.activePromises.set(taskIdEncoded, taskPromiseCancellable);
+        this.activePromises.set(taskIdEncoded, activePromiseCancellable);
         this.queueLogger.debug(`Started Task ${taskIdEncoded}`);
       });
     });
