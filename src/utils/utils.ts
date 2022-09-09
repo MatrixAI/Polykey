@@ -345,19 +345,28 @@ function isPromiseLike(v: any): v is PromiseLike<unknown> {
 }
 
 /**
- * Is iterable object
+ * Is generator object
  * Use this to check for generators
  */
-function isIterable(v: any): v is Iterable<unknown> {
-  return v != null && typeof v === 'object' && typeof v[Symbol.iterator] === 'function';
+function isGenerator(v: any): v is Generator<unknown> {
+  return v != null &&
+         typeof v[Symbol.iterator] === 'function' &&
+         typeof v.next === 'function' &&
+         typeof v.return === 'function' &&
+         typeof v.throw === 'function';
 }
 
 /**
- * Is async iterable object
+ * Is async generator object
  * Use this to check for async generators
  */
-function isAsyncIterable(v: any): v is AsyncIterable<unknown> {
-  return v != null && typeof v === 'object' && typeof v[Symbol.asyncIterator] === 'function';
+function isAsyncGenerator(v: any): v is AsyncGenerator<unknown> {
+  return v != null &&
+         typeof v === 'object' &&
+         typeof v[Symbol.asyncIterator] === 'function' &&
+         typeof v.next === 'function' &&
+         typeof v.return === 'function' &&
+         typeof v.throw === 'function';
 }
 
 /**
@@ -402,8 +411,8 @@ export {
   debounce,
   isPromise,
   isPromiseLike,
-  isIterable,
-  isAsyncIterable,
+  isGenerator,
+  isAsyncGenerator,
   lexiPackBuffer,
   lexiUnpackBuffer,
 };
