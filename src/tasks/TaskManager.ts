@@ -423,6 +423,14 @@ class TaskManager {
       this.taskEvents.addEventListener(taskIdEncoded, taskListener, {
         once: true,
       });
+
+      // You always want this to have done before hand
+      // BEFORE the events are dispatched
+      // because by the time the gcTask is done
+      // the task data no longer exists
+      // so this should not be done
+      console.log('I HAVE REGISTERED ALL THE EVENT LISTENERS', taskIdEncoded);
+
       // The task may not actually exist anymore
       // in which case, the task listener will never settle
       // Here we concurrently check if the task exists
@@ -978,6 +986,9 @@ class TaskManager {
                 )}`,
               );
             }
+
+            console.log('GOING TO DISPATCH THE EVENTS', taskIdEncoded);
+
             if (succeeded) {
               this.queueLogger.debug(`Succeeded Task ${taskIdEncoded}`);
               // If no event listeners, then only side effects are recorded
