@@ -1,4 +1,4 @@
-import Tasks from '@/tasks/Tasks';
+import TaskManager from '@/tasks/TaskManager';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import fs from 'fs';
@@ -19,8 +19,8 @@ const scheduleCall = <T>(
   label: string = 'scheduled call',
 ) => s.schedule(Promise.resolve(label)).then(() => f());
 
-describe(Tasks.name, () => {
-  const logger = new Logger(`${Tasks.name} test`, LogLevel.DEBUG, [
+describe(TaskManager.name, () => {
+  const logger = new Logger(`${TaskManager.name} test`, LogLevel.DEBUG, [
     new StreamHandler(),
   ]);
   const handlerId = 'testId' as TaskHandlerId;
@@ -50,18 +50,18 @@ describe(Tasks.name, () => {
 
 
   test('can start and stop', async () => {
-    const tasks = await Tasks.createTasks({
+    const taskManager = await TaskManager.createTaskManager({
       db,
       lazy: false,
       logger
     });
-    await tasks.stop();
-    await tasks.start();
-    await tasks.stop();
+    await taskManager.stop();
+    await taskManager.start();
+    await taskManager.stop();
   });
   // TODO: use timer mocking to speed up testing
   test('tasks persist between Tasks object creation', async () => {
-    let tasks = await Tasks.createTasks({
+    let taskManager = await TaskManager.createTaskManager({
       db,
       lazy: true,
       logger,
@@ -69,39 +69,39 @@ describe(Tasks.name, () => {
     const handlerId = 'asd' as TaskHandlerId;
     const handler = jest.fn();
     handler.mockImplementation(async () => {});
-    tasks.registerHandler(handlerId, handler);
+    taskManager.registerHandler(handlerId, handler);
 
-    await tasks.startProcessing();
-    await tasks.scheduleTask({ handlerId , parameters: [1], delay: 1000, lazy: true });
-    await tasks.scheduleTask({ handlerId , parameters: [2], delay: 100, lazy: true });
-    await tasks.scheduleTask({ handlerId , parameters: [3], delay: 2000, lazy: true });
-    await tasks.scheduleTask({ handlerId , parameters: [4], delay: 10, lazy: true });
-    await tasks.scheduleTask({ handlerId , parameters: [5], delay: 10, lazy: true });
-    await tasks.scheduleTask({ handlerId , parameters: [6], delay: 10, lazy: true });
-    await tasks.scheduleTask({ handlerId , parameters: [7], delay: 3000, lazy: true });
+    await taskManager.startProcessing();
+    await taskManager.scheduleTask({ handlerId , parameters: [1], delay: 1000, lazy: true });
+    await taskManager.scheduleTask({ handlerId , parameters: [2], delay: 100, lazy: true });
+    await taskManager.scheduleTask({ handlerId , parameters: [3], delay: 2000, lazy: true });
+    await taskManager.scheduleTask({ handlerId , parameters: [4], delay: 10, lazy: true });
+    await taskManager.scheduleTask({ handlerId , parameters: [5], delay: 10, lazy: true });
+    await taskManager.scheduleTask({ handlerId , parameters: [6], delay: 10, lazy: true });
+    await taskManager.scheduleTask({ handlerId , parameters: [7], delay: 3000, lazy: true });
 
     await sleep(500);
     logger.info('STOPPING');
-    await tasks.stop();
+    await taskManager.stop();
     expect(handler).toHaveBeenCalledTimes(4);
 
     logger.info('CREATING');
     handler.mockClear();
-    tasks = await Tasks.createTasks({
+    taskManager = await TaskManager.createTaskManager({
       db,
       lazy: true,
       logger,
     });
-    tasks.registerHandler(handlerId, handler);
-    await tasks.startProcessing();
+    taskManager.registerHandler(handlerId, handler);
+    await taskManager.startProcessing();
     await sleep(4000);
     logger.info('STOPPING AGAIN');
-    await tasks.stop();
+    await taskManager.stop();
     expect(handler).toHaveBeenCalledTimes(3);
   });
   // TODO: use timer mocking to speed up testing
   test('tasks persist between Tasks stop and starts', async () => {
-    const tasks = await Tasks.createTasks({
+    const taskManager = await TaskManager.createTaskManager({
       db,
       lazy: true,
       logger,
@@ -109,32 +109,32 @@ describe(Tasks.name, () => {
     const handlerId = 'asd' as TaskHandlerId;
     const handler = jest.fn();
     handler.mockImplementation(async () => {});
-    tasks.registerHandler(handlerId, handler);
+    taskManager.registerHandler(handlerId, handler);
 
-    await tasks.startProcessing();
-    await tasks.scheduleTask({ handlerId , parameters: [1], delay: 1000, lazy: true });
-    await tasks.scheduleTask({ handlerId , parameters: [2], delay: 100, lazy: true });
-    await tasks.scheduleTask({ handlerId , parameters: [3], delay: 2000, lazy: true });
-    await tasks.scheduleTask({ handlerId , parameters: [4], delay: 10, lazy: true });
-    await tasks.scheduleTask({ handlerId , parameters: [5], delay: 10, lazy: true });
-    await tasks.scheduleTask({ handlerId , parameters: [6], delay: 10, lazy: true });
-    await tasks.scheduleTask({ handlerId , parameters: [7], delay: 3000, lazy: true });
+    await taskManager.startProcessing();
+    await taskManager.scheduleTask({ handlerId , parameters: [1], delay: 1000, lazy: true });
+    await taskManager.scheduleTask({ handlerId , parameters: [2], delay: 100, lazy: true });
+    await taskManager.scheduleTask({ handlerId , parameters: [3], delay: 2000, lazy: true });
+    await taskManager.scheduleTask({ handlerId , parameters: [4], delay: 10, lazy: true });
+    await taskManager.scheduleTask({ handlerId , parameters: [5], delay: 10, lazy: true });
+    await taskManager.scheduleTask({ handlerId , parameters: [6], delay: 10, lazy: true });
+    await taskManager.scheduleTask({ handlerId , parameters: [7], delay: 3000, lazy: true });
 
     await sleep(500);
     logger.info('STOPPING');
-    await tasks.stop();
+    await taskManager.stop();
     expect(handler).toHaveBeenCalledTimes(4);
     handler.mockClear();
     logger.info('STARTING');
-    await tasks.start();
+    await taskManager.start();
     await sleep(4000);
     logger.info('STOPPING AGAIN');
-    await tasks.stop();
+    await taskManager.stop();
     expect(handler).toHaveBeenCalledTimes(3);
   });
   // FIXME: needs more experimenting to get this to work.
   test.skip('tasks persist between Tasks stop and starts TIMER FAKING', async () => {
-    const tasks = await Tasks.createTasks({
+    const taskManager = await TaskManager.createTaskManager({
       db,
       lazy: true,
       logger,
@@ -142,33 +142,33 @@ describe(Tasks.name, () => {
     const handlerId = 'asd' as TaskHandlerId;
     const handler = jest.fn();
     handler.mockImplementation(async () => {});
-    tasks.registerHandler(handlerId, handler);
+    taskManager.registerHandler(handlerId, handler);
     console.log('a');
-    await tasks.scheduleTask({ handlerId , parameters: [1], delay: 1000 });
-    const t1 = await tasks.scheduleTask({ handlerId , parameters: [1], delay: 100, lazy: false });
-    await tasks.scheduleTask({ handlerId , parameters: [1], delay: 2000 });
-    await tasks.scheduleTask({ handlerId , parameters: [1], delay: 10 });
-    await tasks.scheduleTask({ handlerId , parameters: [1], delay: 10 });
-    await tasks.scheduleTask({ handlerId , parameters: [1], delay: 10 });
-    await tasks.scheduleTask({ handlerId , parameters: [1], delay: 3000 });
+    await taskManager.scheduleTask({ handlerId , parameters: [1], delay: 1000 });
+    const t1 = await taskManager.scheduleTask({ handlerId , parameters: [1], delay: 100, lazy: false });
+    await taskManager.scheduleTask({ handlerId , parameters: [1], delay: 2000 });
+    await taskManager.scheduleTask({ handlerId , parameters: [1], delay: 10 });
+    await taskManager.scheduleTask({ handlerId , parameters: [1], delay: 10 });
+    await taskManager.scheduleTask({ handlerId , parameters: [1], delay: 10 });
+    await taskManager.scheduleTask({ handlerId , parameters: [1], delay: 3000 });
 
     // setting up actions
     jest.useFakeTimers()
     setTimeout(async () => {
       console.log('starting processing');
-      await tasks.startProcessing();
+      await taskManager.startProcessing();
     }, 0);
     setTimeout(async () => {
       console.log('stop');
-      await tasks.stop();
+      await taskManager.stop();
     }, 500);
     setTimeout(async () => {
       console.log('start');
-      await tasks.start();
+      await taskManager.start();
     }, 1000);
 
     // Running tests here...
-    // after 600 ms we should stop and 4 tasks should've run
+    // after 600 ms we should stop and 4 taskManager should've run
     console.log('b');
     jest.advanceTimersByTime(400);
     jest.runAllTimers();
@@ -191,7 +191,7 @@ describe(Tasks.name, () => {
     console.log('b');
     jest.useRealTimers();
     console.log('b');
-    await tasks.stop();
+    await taskManager.stop();
     console.log('b');
   });
   // TODO: Use fastCheck here
@@ -201,11 +201,11 @@ describe(Tasks.name, () => {
       delay: fc.integer({min: 0, max : 1000}),
       // priority: fc.integer({min: -200, max: 200}),
     })
-    const tasksArb = fc.array(taskArb, {minLength: 10, maxLength: 50})
+    const taskManagerArb = fc.array(taskArb, {minLength: 10, maxLength: 50})
     await fc.assert(
-      fc.asyncProperty(fc.scheduler(), fc.scheduler(), tasksArb, async (sCall, sHandle, tasksDatas) => {
+      fc.asyncProperty(fc.scheduler(), fc.scheduler(), taskManagerArb, async (sCall, sHandle, taskManagerDatas) => {
         console.log('a');
-        const tasks = await Tasks.createTasks({
+        const taskManager = await TaskManager.createTaskManager({
           activeLimit: 0,
           db,
           fresh: true,
@@ -218,35 +218,35 @@ describe(Tasks.name, () => {
         const handler = jest.fn();
         handler.mockImplementation(async () => {
           // Schedule to resolve randomly
-          logger.info(`ACTIVE TASKS: ${tasks.activeTasks}`)
+          logger.info(`ACTIVE TASKS: ${taskManager.activeTasks}`)
           await sHandle.schedule(Promise.resolve());
           handledTaskCount += 1;
         })
-        tasks.registerHandler(handlerId, handler);
+        taskManager.registerHandler(handlerId, handler);
         console.log('a');
-        await tasks.startProcessing();
+        await taskManager.startProcessing();
         console.log('a');
 
-        // Scheduling tasks to be scheduled
+        // Scheduling taskManager to be scheduled
         const calls: Array<Promise<void>> = [];
         const pendingTasks: Array<Task> = [];
         console.log('a');
-        for (const tasksData of tasksDatas) {
+        for (const taskManagerData of taskManagerDatas) {
           calls.push(scheduleCall(sCall, async () => {
-              const task = await tasks.scheduleTask({
-                delay: tasksData.delay,
+              const task = await taskManager.scheduleTask({
+                delay: taskManagerData.delay,
                 handlerId,
                 lazy: false,
               })
               pendingTasks.push(task);
             }
-          , `delay: ${tasksData.delay}`));
+          , `delay: ${taskManagerData.delay}`));
         }
 
-        while (handledTaskCount < tasksDatas.length){
+        while (handledTaskCount < taskManagerDatas.length){
           await sleep(10);
           logger.info(`handledTaskCount: ${handledTaskCount}`);
-          // Advance time and check expectations until all tasks are complete
+          // Advance time and check expectations until all taskManager are complete
           // mockedTimers.advanceTimersToNextTimer();
           console.log(sHandle.count(), sCall.count());
           while(sHandle.count() > 0) {
@@ -275,7 +275,7 @@ describe(Tasks.name, () => {
             throw reason;
           },
         )
-        await tasks.stop();
+        await taskManager.stop();
         console.log('done');
       }),
       { interruptAfterTimeLimit: globalThis.defaultTimeout - 2000, numRuns: 1 },
@@ -292,7 +292,7 @@ describe(Tasks.name, () => {
       resolvedTasks.set(number, (resolvedTasks.get(number) ?? 0) + 1);
       if (resolvedTasks.size >= totalTasks) await lockReleaser();
     });
-    const tasks = await Tasks.createTasks({
+    const taskManager = await TaskManager.createTaskManager({
       db,
       handlers: { [handlerId]: handler },
       logger,
@@ -300,7 +300,7 @@ describe(Tasks.name, () => {
 
     await db.withTransactionF(async tran => {
       for (let i = 0; i < totalTasks; i++) {
-        await tasks.scheduleTask({
+        await taskManager.scheduleTask({
           handlerId,
           parameters: [i],
           lazy: true,
@@ -312,7 +312,7 @@ describe(Tasks.name, () => {
     // Each task called exactly once
     resolvedTasks.forEach((value) => expect(value).toEqual(1));
 
-    await tasks.stop();
+    await taskManager.stop();
     expect(handler).toHaveBeenCalledTimes(totalTasks);
   });
   // TODO: use fastCheck
@@ -322,13 +322,13 @@ describe(Tasks.name, () => {
       if (!fail) throw Error('three');
       return fail;
     });
-    const tasks = await Tasks.createTasks({
+    const taskManager = await TaskManager.createTaskManager({
       db,
       handlers: { [handlerId]: handler },
       logger,
     });
 
-    const taskSucceed = await tasks.scheduleTask({
+    const taskSucceed = await taskManager.scheduleTask({
       handlerId,
       parameters: [true],
       lazy: false,
@@ -338,7 +338,7 @@ describe(Tasks.name, () => {
     const taskSucceedP = taskSucceed!.promise();
     await expect(taskSucceedP).resolves.toBe(true);
 
-    await tasks.stop();
+    await taskManager.stop();
   });
   // TODO: use fastCheck
   test('awaited taskPromises reject', async () => {
@@ -347,13 +347,13 @@ describe(Tasks.name, () => {
       if (!fail) throw Error('three');
       return fail;
     });
-    const tasks = await Tasks.createTasks({
+    const taskManager = await TaskManager.createTaskManager({
       db,
       handlers: { [handlerId]: handler },
       logger,
     });
 
-    const taskFail = await tasks.scheduleTask({
+    const taskFail = await taskManager.scheduleTask({
       handlerId,
       parameters: [false],
       lazy: false,
@@ -363,7 +363,7 @@ describe(Tasks.name, () => {
     const taskFailP = taskFail.promise();
     await expect(taskFailP).rejects.toThrow(Error);
 
-    await tasks.stop();
+    await taskManager.stop();
   });
   // TODO: use fastCheck
   test('awaited taskPromises resolve or reject', async () => {
@@ -372,19 +372,19 @@ describe(Tasks.name, () => {
       if (!fail) throw Error('three');
       return fail;
     });
-    const tasks = await Tasks.createTasks({
+    const taskManager = await TaskManager.createTaskManager({
       db,
       handlers: { [handlerId]: handler },
       logger,
     });
 
-    const taskFail = await tasks.scheduleTask({
+    const taskFail = await taskManager.scheduleTask({
       handlerId,
       parameters: [false],
       lazy: false,
     })
 
-    const taskSuccess = await tasks.scheduleTask({
+    const taskSuccess = await taskManager.scheduleTask({
       handlerId,
       parameters: [true],
       lazy: false,
@@ -396,15 +396,15 @@ describe(Tasks.name, () => {
     const taskFailP = taskFail.promise();
     await expect(taskFailP).rejects.toThrow();
 
-    await tasks.stop();
+    await taskManager.stop();
   });
   test('tasks fail with no handler', async () => {
-    const tasks = await Tasks.createTasks({
+    const taskManager = await TaskManager.createTaskManager({
       db,
       logger,
     });
 
-    const taskFail = await tasks.scheduleTask({
+    const taskFail = await taskManager.scheduleTask({
       handlerId,
       parameters: [],
       lazy: false,
@@ -414,7 +414,7 @@ describe(Tasks.name, () => {
     const taskFailP = taskFail.promise();
     await expect(taskFailP).rejects.toThrow(tasksErrors.ErrorTaskHandlerMissing);
 
-    await tasks.stop();
+    await taskManager.stop();
   });
   test('tasks fail with unregistered handler', async () => {
     const handler = jest.fn();
@@ -422,13 +422,13 @@ describe(Tasks.name, () => {
       if (!fail) throw Error('three');
       return fail;
     });
-    const tasks = await Tasks.createTasks({
+    const taskManager = await TaskManager.createTaskManager({
       db,
       handlers: { [handlerId]: handler },
       logger,
     });
 
-    const taskSucceed = await tasks.scheduleTask({
+    const taskSucceed = await taskManager.scheduleTask({
       handlerId,
       parameters: [false],
       lazy: false,
@@ -439,8 +439,8 @@ describe(Tasks.name, () => {
     await expect(taskSucceedP).rejects.not.toThrow(tasksErrors.ErrorTaskHandlerMissing);
 
     // Deregister
-    tasks.deregisterHandler(handlerId);
-    const taskFail = await tasks.scheduleTask({
+    taskManager.deregisterHandler(handlerId);
+    const taskFail = await taskManager.scheduleTask({
       handlerId,
       parameters: [false],
       lazy: false,
@@ -448,7 +448,7 @@ describe(Tasks.name, () => {
     const taskFailP = taskFail.promise();
     await expect(taskFailP).rejects.toThrow(tasksErrors.ErrorTaskHandlerMissing);
 
-    await tasks.stop();
+    await taskManager.stop();
   });
   test('eager taskPromise resolves when awaited after task completion', async () => {
     const handler = jest.fn();
@@ -456,86 +456,86 @@ describe(Tasks.name, () => {
       if (!fail) throw Error('three');
       return fail;
     });
-    const tasks = await Tasks.createTasks({
+    const taskManager = await TaskManager.createTaskManager({
       db,
       handlers: { [handlerId]: handler },
       lazy: true,
       logger,
     });
 
-    const taskSucceed1 = await tasks.scheduleTask({
+    const taskSucceed1 = await taskManager.scheduleTask({
       handlerId,
       parameters: [true],
       lazy: false
     });
-    await tasks.startProcessing();
+    await taskManager.startProcessing();
     await expect(taskSucceed1.promise()).resolves.toBe(true);
-    const taskSucceed2 = await tasks.scheduleTask({
+    const taskSucceed2 = await taskManager.scheduleTask({
       handlerId,
       parameters: [true],
       lazy: false
     });
     await expect(taskSucceed2.promise()).resolves.toBe(true);
-    await tasks.stop();
+    await taskManager.stop();
   });
   test('lazy taskPromise rejects when awaited after task completion', async () => {
     const handler = jest.fn();
     handler.mockImplementation(async () => {
     });
-    const tasks = await Tasks.createTasks({
+    const taskManager = await TaskManager.createTaskManager({
       db,
       handlers: { [handlerId]: handler },
       lazy: true,
       logger,
     });
 
-    const taskSucceed = await tasks.scheduleTask({
+    const taskSucceed = await taskManager.scheduleTask({
       handlerId,
       parameters: [],
       lazy: true
     });
-    const taskProm = tasks.getTaskPromise(taskSucceed.id);
-    await tasks.startProcessing();
+    const taskProm = taskManager.getTaskPromise(taskSucceed.id);
+    await taskManager.startProcessing();
     await taskProm;
     await expect(taskSucceed.promise()).rejects.toThrow();
-    await tasks.stop();
+    await taskManager.stop();
   });
   test('Task Promises should be singletons', async () => {
-    const tasks = await Tasks.createTasks({
+    const taskManager = await TaskManager.createTaskManager({
       db,
       lazy: true,
       logger,
     });
 
-    const task1 = await tasks.scheduleTask({
+    const task1 = await taskManager.scheduleTask({
       handlerId,
       parameters: [],
       lazy: false
     });
-    const task2 = await tasks.scheduleTask({
+    const task2 = await taskManager.scheduleTask({
       handlerId,
       parameters: [],
       lazy: true
     });
     expect(task1.promise()).toBe(task1.promise());
-    expect(task1.promise()).toBe(tasks.getTaskPromise(task1.id));
-    expect(tasks.getTaskPromise(task1.id)).toBe(tasks.getTaskPromise(task1.id));
+    expect(task1.promise()).toBe(taskManager.getTaskPromise(task1.id));
+    expect(taskManager.getTaskPromise(task1.id)).toBe(taskManager.getTaskPromise(task1.id));
     expect(task2.promise()).toBe(task2.promise());
-    expect(task2.promise()).toBe(tasks.getTaskPromise(task2.id));
-    expect(tasks.getTaskPromise(task2.id)).toBe(tasks.getTaskPromise(task2.id));
-    await tasks.stop();
+    expect(task2.promise()).toBe(taskManager.getTaskPromise(task2.id));
+    expect(taskManager.getTaskPromise(task2.id)).toBe(taskManager.getTaskPromise(task2.id));
+    await taskManager.stop();
   });
   test('can cancel scheduled task, clean up and reject taskPromise', async () => {
     const handler = jest.fn();
     handler.mockImplementation(async () => {});
-    const tasks = await Tasks.createTasks({
+    const taskManager = await TaskManager.createTaskManager({
       db,
       handlers: { [handlerId]: handler },
       lazy: true,
       logger,
     });
 
-    const task = await tasks.scheduleTask({
+    const task = await taskManager.scheduleTask({
       handlerId,
       parameters: [],
       lazy: false,
@@ -547,28 +547,28 @@ describe(Tasks.name, () => {
     await expect(taskPromise).rejects.toThrow('cancelled');
 
     // task should be cleaned up
-    const oldTask = await tasks.getTask(task.id);
+    const oldTask = await taskManager.getTask(task.id);
     expect(oldTask).toBeUndefined();
 
-    await tasks.stop();
+    await taskManager.stop();
   });
   test('can cancel queued task, clean up and reject taskPromise', async () => {
     const handler = jest.fn();
     handler.mockImplementation(async () => {});
-    const tasks = await Tasks.createTasks({
+    const taskManager = await TaskManager.createTaskManager({
       db,
       handlers: { [handlerId]: handler },
       lazy: true,
       logger,
     });
 
-    const task = await tasks.scheduleTask({
+    const task = await taskManager.scheduleTask({
       handlerId,
       parameters: [],
       lazy: false,
     });
     // @ts-ignore: private method
-    await tasks.startScheduling();
+    await taskManager.startScheduling();
     await sleep(100);
 
     // cancellation should reject promise
@@ -577,28 +577,28 @@ describe(Tasks.name, () => {
     await expect(taskPromise).rejects.toThrow('cancelled');
 
     // task should be cleaned up
-    const oldTask = await tasks.getTask(task.id);
+    const oldTask = await taskManager.getTask(task.id);
     expect(oldTask).toBeUndefined();
 
-    await tasks.stop();
+    await taskManager.stop();
   });
   test('can cancel active task, clean up and reject taskPromise', async () => {
     const handler = jest.fn();
     const pauseProm = promise();
     handler.mockImplementation(async () => {await pauseProm.p});
-    const tasks = await Tasks.createTasks({
+    const taskManager = await TaskManager.createTaskManager({
       db,
       handlers: { [handlerId]: handler },
       lazy: true,
       logger,
     });
 
-    const task = await tasks.scheduleTask({
+    const task = await taskManager.scheduleTask({
       handlerId,
       parameters: [],
       lazy: false,
     });
-    await tasks.startProcessing();
+    await taskManager.startProcessing();
     await sleep(100);
 
     // cancellation should reject promise
@@ -607,68 +607,68 @@ describe(Tasks.name, () => {
     await expect(taskPromise).rejects.toThrow('cancelled');
 
     // task should be cleaned up
-    const oldTask = await tasks.getTask(task.id);
+    const oldTask = await taskManager.getTask(task.id);
     expect(oldTask).toBeUndefined();
     pauseProm.resolveP();
 
-    await tasks.stop();
+    await taskManager.stop();
   });
   test.todo('incomplete active tasks cleaned up during startup');
   test('stopping should gracefully end active tasks', async () => {
     const handler = jest.fn();
     const pauseProm = promise();
     handler.mockImplementation(async () => {await pauseProm.p});
-    const tasks = await Tasks.createTasks({
+    const taskManager = await TaskManager.createTaskManager({
       db,
       handlers: { [handlerId]: handler },
       lazy: true,
       logger,
     });
 
-    const task1 = await tasks.scheduleTask({
+    const task1 = await taskManager.scheduleTask({
       handlerId,
       parameters: [],
       lazy: false,
     });
-    const task2 = await tasks.scheduleTask({
+    const task2 = await taskManager.scheduleTask({
       handlerId,
       parameters: [],
       lazy: false,
     });
-    await tasks.startProcessing();
+    await taskManager.startProcessing();
     await sleep(100);
-    await tasks.stop();
+    await taskManager.stop();
 
-    // tasks should still exist.
-    expect(await tasks.getTask(task1.id)).toBeUndefined();
-    expect(await tasks.getTask(task2.id)).toBeUndefined();
+    // taskManager should still exist.
+    expect(await taskManager.getTask(task1.id)).toBeUndefined();
+    expect(await taskManager.getTask(task2.id)).toBeUndefined();
     await task1;
     await task2;
 
-    await tasks.stop();
+    await taskManager.stop();
   });
   test('tests for taskPath', async () => {
-    const tasks = await Tasks.createTasks({
+    const taskManager = await TaskManager.createTaskManager({
       db,
       lazy: true,
       logger,
     });
 
-    await tasks.scheduleTask({handlerId, parameters: [1], path: ['one'], lazy: true})
-    await tasks.scheduleTask({handlerId, parameters: [2], path: ['two'], lazy: true})
-    await tasks.scheduleTask({handlerId, parameters: [3], path: ['two'], lazy: true})
-    await tasks.scheduleTask({handlerId, parameters: [4], path: ['group1', 'three'], lazy: true})
-    await tasks.scheduleTask({handlerId, parameters: [5], path: ['group1', 'four'], lazy: true})
-    await tasks.scheduleTask({handlerId, parameters: [6], path: ['group1', 'four'], lazy: true})
-    await tasks.scheduleTask({handlerId, parameters: [7], path: ['group2', 'five'], lazy: true})
-    await tasks.scheduleTask({handlerId, parameters: [8], path: ['group2', 'six'], lazy: true})
+    await taskManager.scheduleTask({handlerId, parameters: [1], path: ['one'], lazy: true})
+    await taskManager.scheduleTask({handlerId, parameters: [2], path: ['two'], lazy: true})
+    await taskManager.scheduleTask({handlerId, parameters: [3], path: ['two'], lazy: true})
+    await taskManager.scheduleTask({handlerId, parameters: [4], path: ['group1', 'three'], lazy: true})
+    await taskManager.scheduleTask({handlerId, parameters: [5], path: ['group1', 'four'], lazy: true})
+    await taskManager.scheduleTask({handlerId, parameters: [6], path: ['group1', 'four'], lazy: true})
+    await taskManager.scheduleTask({handlerId, parameters: [7], path: ['group2', 'five'], lazy: true})
+    await taskManager.scheduleTask({handlerId, parameters: [8], path: ['group2', 'six'], lazy: true})
 
     const listTasks = async (taskGroup: TaskPath) => {
-      const tasksList: Array<Task> = [];
-      for await (const task of tasks.getTasks(undefined, true, taskGroup)) {
-        tasksList.push(task);
+      const taskManagerList: Array<Task> = [];
+      for await (const task of taskManager.getTasks(undefined, true, taskGroup)) {
+        taskManagerList.push(task);
       }
-      return tasksList;
+      return taskManagerList;
     };
 
     expect(await listTasks(['one'])).toHaveLength(1);
@@ -680,35 +680,35 @@ describe(Tasks.name, () => {
 
   });
   test('getTask', async () => {
-    const tasks = await Tasks.createTasks({
+    const taskManager = await TaskManager.createTaskManager({
       db,
       lazy: true,
       logger,
     });
 
-    const task1 = await tasks.scheduleTask({handlerId, parameters: [1], lazy: true})
-    const task2 = await tasks.scheduleTask({handlerId, parameters: [2], lazy: true})
+    const task1 = await taskManager.scheduleTask({handlerId, parameters: [1], lazy: true})
+    const task2 = await taskManager.scheduleTask({handlerId, parameters: [2], lazy: true})
 
-    const gotTask1 = await tasks.getTask(task1.id, true);
+    const gotTask1 = await taskManager.getTask(task1.id, true);
     expect(task1.toString()).toEqual(gotTask1?.toString());
-    const gotTask2 = await tasks.getTask(task2.id, true);
+    const gotTask2 = await taskManager.getTask(task2.id, true);
     expect(task2.toString()).toEqual(gotTask2?.toString());
 
   })
   test('getTasks', async () => {
-    const tasks = await Tasks.createTasks({
+    const taskManager = await TaskManager.createTaskManager({
       db,
       lazy: true,
       logger,
     });
 
-    await tasks.scheduleTask({handlerId, parameters: [1], lazy: true})
-    await tasks.scheduleTask({handlerId, parameters: [2], lazy: true})
-    await tasks.scheduleTask({handlerId, parameters: [3], lazy: true})
-    await tasks.scheduleTask({handlerId, parameters: [4], lazy: true})
+    await taskManager.scheduleTask({handlerId, parameters: [1], lazy: true})
+    await taskManager.scheduleTask({handlerId, parameters: [2], lazy: true})
+    await taskManager.scheduleTask({handlerId, parameters: [3], lazy: true})
+    await taskManager.scheduleTask({handlerId, parameters: [4], lazy: true})
 
     const taskList: Array<Task> = [];
-    for await (const task of tasks.getTasks()){
+    for await (const task of taskManager.getTasks()){
       taskList.push(task);
     }
 
@@ -745,7 +745,7 @@ test('arb', async () => {
   })
 
   const scheduleCommandArb = taskArb.map((taskSpec) => async (context) => {
-    await context.tasks.scheduleTask({
+    await context.taskManager.scheduleTask({
       ...taskSpec,
       lazy: false,
     })
@@ -763,7 +763,7 @@ test('arb', async () => {
   ), {maxLength: 10, minLength: 10});
 
   await fc.assert( fc.asyncProperty(commandsArb , async (commands) => {
-    const context = {tasks: {}}
+    const context = {taskManager: {}}
     for (const command of commands) {
       await command(context);
     }

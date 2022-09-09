@@ -3,7 +3,7 @@ import { TaskHandlerId } from '@/tasks/types';
 import Logger, { LogLevel } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import KeyManager from './src/keys/KeyManager';
-import Tasks from './src/tasks/Tasks';
+import TaskManager from './src/tasks/TaskManager';
 import { sleep } from '@/utils';
 
 async function main () {
@@ -28,7 +28,7 @@ async function main () {
   });
 
   // Lazy startup
-  const tasks = await Tasks.createTasks({
+  const tasks = await TaskManager.createTaskManager({
     db,
     fresh: false,
     lazy: true,

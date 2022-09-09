@@ -35,8 +35,8 @@ const abortQueuingLoopReason = Symbol('abort queuing loop reason');
   new tasksErrors.ErrorTasksRunning(),
   new tasksErrors.ErrorTasksDestroyed(),
 )
-class Tasks {
-  public static async createTasks({
+class TaskManager {
+  public static async createTaskManager({
     db,
     handlers = {},
     lazy = false,
@@ -1053,4 +1053,4 @@ class Tasks {
   }
 }
 
-export default Tasks;
+export default TaskManager;
