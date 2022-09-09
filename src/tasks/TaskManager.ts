@@ -384,9 +384,6 @@ class TaskManager {
     const abortController = new AbortController();
     const p = new Promise((resolve, reject) => {
       const signalHandler = () => {
-        // so if we are cancelling the task
-        // we would indicate that we have cancelled the task
-        // but to do this
         this.cancelTask(
           taskId,
           // new tasksErrors.ErrorTaskCancelled(undefined, {
@@ -1056,26 +1053,11 @@ class TaskManager {
     tran?: DBTransaction
   ): Promise<void> {
     if (tran == null) {
-      return this.db.withTransactionF((tran) => this.cancelTask(taskId, tran));
+      return this.db.withTransactionF((tran) => this.cancelTask(taskId, cancelReason, tran));
     }
-    // Mutually exclude `this.updateTask`, `this.queueTask`, `this.gcTask`
-    await tran.lock([...this.tasksScheduledDbPath, taskId.toString()].join(''));
-    const taskIdBuffer = taskId.toBuffer();
-    const taskData = await tran.get<TaskData>([
-      ...this.tasksTaskDbPath,
-      taskIdBuffer,
-    ]);
-    if (taskData == null) return;
-    if (
-      (await tran.get([
-        ...this.tasksActiveDbPath,
-        taskIdBuffer
-      ])) !== undefined
-    ) {
-      const activePromise = this.activePromises.get(tasksUtils.encodeTaskId(taskId));
-      if (activePromise != null) {
-        activePromise.cancel(cancelReason);
-      }
+    const activePromise = this.activePromises.get(tasksUtils.encodeTaskId(taskId));
+    if (activePromise != null) {
+      activePromise.cancel(cancelReason);
     } else {
       await this.gcTask(taskId, tran);
     }
