@@ -88,8 +88,9 @@ type Task = {
 type TaskHandlerId = Opaque<'TaskHandlerId', string>;
 
 type TaskHandler = (
-  ...params: [...TaskParameters, ContextTimed]
-) => Promise<any>;
+  ctx: ContextTimed,
+  ...params: TaskParameters
+) => PromiseLike<any>;
 
 export type {
   TaskId,

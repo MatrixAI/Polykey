@@ -67,29 +67,23 @@ class TaskManager {
   }
 
   protected logger: Logger;
+  protected schedulerLogger: Logger;
+  protected queueLogger: Logger;
   protected db: DB;
+  protected handlers: Map<TaskHandlerId, TaskHandler> = new Map();
   protected activeLimit: number;
-
+  protected generateTaskId: () => TaskId;
+  protected taskPromises: Map<TaskIdEncoded, PromiseCancellable<any>> =
+    new Map();
+  protected activePromises: Map<TaskIdEncoded, PromiseCancellable<any>> =
+    new Map();
+  protected taskEvents: EventTarget = new EventTarget();
   protected tasksDbPath: LevelPath = [this.constructor.name];
-
-  /**
-   * Maintain last Task ID to preserve monotonicity across process restarts
-   * `Tasks/lastTaskId -> {raw(TaskId)}`
-   */
-  protected tasksLastTaskIdPath: KeyPath = [...this.tasksDbPath, 'lastTaskId'];
-
   /**
    * Tasks collection
    * `Tasks/tasks/{TaskId} -> {json(TaskData)}`
    */
   protected tasksTaskDbPath: LevelPath = [...this.tasksDbPath, 'task'];
-
-  /**
-   * Tasks indexed path
-   * `Tasks/path/{...TaskPath}/{TaskId} -> null`
-   */
-  protected tasksPathDbPath: LevelPath = [...this.tasksDbPath, 'path'];
-
   /**
    * Scheduled Tasks
    * This is indexed by `TaskId` at the end to avoid conflicts
@@ -99,72 +93,65 @@ class TaskManager {
     ...this.tasksDbPath,
     'scheduled',
   ];
-
   /**
    * Queued Tasks
    * This is indexed by `TaskId` at the end to avoid conflicts
    * `Tasks/queued/{lexi(TaskPriority)}/{lexi(TaskTimestamp + TaskDelay)}/{TaskId} -> null`
    */
   protected tasksQueuedDbPath: LevelPath = [...this.tasksDbPath, 'queued'];
-
   /**
    * Tracks actively running tasks
    * `Tasks/active/{TaskId} -> null`
    */
   protected tasksActiveDbPath: LevelPath = [...this.tasksDbPath, 'active'];
-
-  protected schedulerLogger: Logger;
-  protected queueLogger: Logger;
-
+  /**
+   * Tasks indexed path
+   * `Tasks/path/{...TaskPath}/{TaskId} -> null`
+   */
+  protected tasksPathDbPath: LevelPath = [...this.tasksDbPath, 'path'];
+  /**
+   * Maintain last Task ID to preserve monotonicity across process restarts
+   * `Tasks/lastTaskId -> {raw(TaskId)}`
+   */
+  protected tasksLastTaskIdPath: KeyPath = [...this.tasksDbPath, 'lastTaskId'];
   /**
    * Asynchronous scheduling loop
-   * This transitions tasks from `scheduled` to `queued`
    * This is blocked by the `schedulingLock`
    * The `null` indicates that the scheduling loop isn't running
    */
   protected schedulingLoop: PromiseCancellable<void> | null = null;
-
   /**
    * Timer used to unblock the scheduling loop
    * This releases the `schedulingLock` if it is locked
    * The `null` indicates there is no timer running
    */
   protected schedulingTimer: Timer | null = null;
-
   /**
    * Lock controls whether to run an iteration of the scheduling loop
    */
   protected schedulingLock: Lock = new Lock();
-
   /**
    * Releases the scheduling lock
    */
   protected schedulingLockReleaser?: ResourceRelease;
-
   /**
    * Asynchronous queuing loop
-   * This transitions tasks from `queued` to `active`
    * This is blocked by the `queuingLock`
    * The `null` indicates that the queuing loop isn't running
    */
   protected queuingLoop: PromiseCancellable<void> | null = null;
-
   /**
    * Lock controls whether to run an iteration of the queuing loop
    */
   protected queuingLock: Lock = new Lock();
-
   /**
    * Releases the queuing lock
    */
   protected queuingLockReleaser?: ResourceRelease;
 
-  protected generateTaskId: () => TaskId;
-  protected handlers: Map<TaskHandlerId, TaskHandler> = new Map();
-  protected taskEvents: EventTarget = new EventTarget();
-  protected taskPromises: Map<TaskIdEncoded, PromiseCancellable<any>> =
-    new Map();
-  protected activePromises: Map<TaskIdEncoded, Promise<any>> = new Map();
+  public get activeCount(): number {
+    return this.activePromises.size;
+  }
 
   public constructor({
     db,
@@ -229,10 +216,6 @@ class TaskManager {
     this.logger.info(`Destroyed ${this.constructor.name}`);
   }
 
-  get activeTasks(): number {
-    return this.activePromises.size;
-  }
-
   /**
    * Start scheduling and queuing loop
    * This call is idempotent
@@ -260,16 +243,10 @@ class TaskManager {
     return Object.fromEntries(this.handlers);
   }
 
-  /**
-   * Registers a handler for tasks with the same `TaskHandlerId`
-   */
   public registerHandler(handlerId: TaskHandlerId, handler: TaskHandler) {
     this.handlers.set(handlerId, handler);
   }
 
-  /**
-   * Deregisters a handler
-   */
   public deregisterHandler(handlerId: TaskHandlerId) {
     this.handlers.delete(handlerId);
   }
@@ -916,19 +893,23 @@ class TaskManager {
       // this index will be used to retry tasks if they don't finish
       await tran.put([...this.tasksActiveDbPath, taskId.toBuffer()], null);
       tran.queueSuccess(() => {
-        // Dummy values for now
-        const timer = new Timer();
         const abortController = new AbortController();
-        const taskP = (async () => {
+        const timeoutError = new tasksErrors.ErrorTaskTimedOut();
+        const timer = new Timer<void>(
+          () => void abortController.abort(timeoutError),
+          taskData.deadline
+        );
+        const ctx = {
+          timer,
+          signal: abortController.signal,
+        };
+        const taskPromise = (async () => {
           try {
-            let succeeded;
-            let result;
-            let reason;
+            let succeeded: boolean;
+            let result: any;
+            let reason: any;
             try {
-              result = await taskHandler(...taskData.parameters, {
-                timer,
-                signal: abortController.signal,
-              });
+              result = await taskHandler(ctx, ...taskData.parameters);
               succeeded = true;
             } catch (e) {
               reason = e;
@@ -940,6 +921,7 @@ class TaskManager {
             } catch (e) {
               // If the `gcTask` failed, there's nothing we can do here
               // except to report the error
+              // this should not happen
               this.queueLogger.error(
                 `Failed Garbage Collecting Task ${taskIdEncoded} - ${String(
                   e,
@@ -971,11 +953,20 @@ class TaskManager {
               );
             }
           } finally {
+            // Task has finished, cancel the timer
+            timer.cancel();
+            // Remove from active promises
             this.activePromises.delete(taskIdEncoded);
+            // Slot has opened up, trigger queueing
             this.triggerQueuing();
           }
         })();
-        this.activePromises.set(taskIdEncoded, taskP);
+        // This will be a lazy `PromiseCancellable`
+        const taskPromiseCancellable = PromiseCancellable.from(
+          taskPromise,
+          abortController
+        );
+        this.activePromises.set(taskIdEncoded, taskPromiseCancellable);
         this.queueLogger.debug(`Started Task ${taskIdEncoded}`);
       });
     });
