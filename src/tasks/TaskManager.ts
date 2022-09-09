@@ -444,7 +444,7 @@ class TaskManager {
   ): Promise<void> {
     if (tran == null) {
       return this.db.withTransactionF((tran) =>
-        this.updateTask(taskId, taskDataNew, tran),
+        this.updateTask(taskId, taskDataPatch, tran),
       );
     }
     // Copy the patch POJO to avoid parameter mutation
@@ -494,10 +494,22 @@ class TaskManager {
     }
     // Trigger scheduling if delay is updated
     if (taskDataPatch.delay != null) {
-      const taskScheduleTime = taskData.timestamp + taskDataPatch.delay;
+      // Update scheduled time
+      const oldTaskScheduleTime = taskData.timestamp + taskData.delay;
+      const newTaskScheduleTime = taskData.timestamp + taskDataPatch.delay;
+      await tran.del([...this.tasksScheduledDbPath, utils.lexiPackBuffer(oldTaskScheduleTime), taskIdBuffer])
+      await tran.put(
+        [
+          ...this.tasksScheduledDbPath,
+          utils.lexiPackBuffer(newTaskScheduleTime),
+          taskIdBuffer,
+        ],
+        null,
+      );
+      // Updating timer after transaction completes
       tran.queueSuccess(async () => {
         if (this.schedulingLoop != null) {
-          this.triggerScheduling(taskScheduleTime);
+          this.triggerScheduling(newTaskScheduleTime);
         }
       });
     }

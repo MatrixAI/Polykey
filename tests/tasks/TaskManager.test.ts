@@ -6,9 +6,9 @@ import path from 'path';
 import os from 'os';
 import * as fc from 'fast-check';
 import { Task, TaskHandlerId, TaskPath } from '../../src/tasks/types';
-import { promise, sleep } from '@/utils';
+import { promise, sleep, never } from '@/utils';
+import * as utils from '@/utils/index';
 import { Lock } from '@matrixai/async-locks';
-import timer from '@/timer/Timer';
 import { Timer } from '@/timer/index';
 import * as tasksErrors from '@/tasks/errors';
 
@@ -194,7 +194,7 @@ describe(TaskManager.name, () => {
     await taskManager.stop();
     console.log('b');
   });
-  // TODO: Use fastCheck here
+  // TODO: Use fastCheck here, this needs to be re-written
   test('activeLimit is enforced', async () => {
     // const mockedTimers = jest.useFakeTimers();
     const taskArb = fc.record({
@@ -218,7 +218,7 @@ describe(TaskManager.name, () => {
         const handler = jest.fn();
         handler.mockImplementation(async () => {
           // Schedule to resolve randomly
-          logger.info(`ACTIVE TASKS: ${taskManager.activeTasks}`)
+          logger.info(`ACTIVE TASKS: ${taskManager.activeCount}`)
           await sHandle.schedule(Promise.resolve());
           handledTaskCount += 1;
         })
@@ -613,7 +613,56 @@ describe(TaskManager.name, () => {
 
     await taskManager.stop();
   });
-  test.todo('incomplete active tasks cleaned up during startup');
+  test('incomplete active tasks cleaned up during startup', async () => {
+    const handler = jest.fn();
+    handler.mockImplementation(async () => {});
+    const taskManager = await TaskManager.createTaskManager({
+      db,
+      handlers: { [handlerId]: handler },
+      lazy: true,
+      logger,
+    });
+
+    // seeding data
+    const task = await taskManager.scheduleTask({
+      handlerId,
+      parameters: [],
+      deadline: 100,
+      lazy: false,
+    });
+
+    // Moving task to active in database
+    const taskScheduleTime = task.scheduled.getTime()
+    // @ts-ignore: private property
+    const tasksScheduledDbPath = taskManager.tasksScheduledDbPath;
+    // @ts-ignore: private property
+    const tasksActiveDbPath = taskManager.tasksActiveDbPath
+    const taskIdBuffer = task.id.toBuffer();
+    await db.withTransactionF(async (tran) => {
+      await tran.del([
+        ...tasksScheduledDbPath,
+        utils.lexiPackBuffer(taskScheduleTime),
+        taskIdBuffer,
+      ]);
+      await tran.put([...tasksActiveDbPath, taskIdBuffer], null);
+    });
+
+    // task should be active
+    const newTask1 = await taskManager.getTask(task.id);
+    expect(newTask1!.status).toBe('active');
+
+    // restart to clean up
+    await taskManager.stop();
+    await taskManager.start({lazy: true});
+
+    // task should be back to queued
+    const newTask2 = await taskManager.getTask(task.id, false);
+    expect(newTask2!.status).toBe('queued');
+    await taskManager.startProcessing();
+    await newTask2!.promise();
+
+    await taskManager.stop();
+  });
   test('stopping should gracefully end active tasks', async () => {
     const handler = jest.fn();
     const pauseProm = promise();
@@ -714,15 +763,275 @@ describe(TaskManager.name, () => {
 
     expect(taskList.length).toBe(4);
   })
-  test.todo('updating tasks while scheduled');
-  test.todo('updating tasks while queued or active should fail');
-  test.todo('updating tasks delay should update schedule timer');
-  test.todo('task should run after scheduled delay');
-  test.todo('queued tasks should be started in priority order');
-  test.todo('task exceeding deadline should abort and clean up');
+  test('updating tasks while scheduled', async () => {
+    const handlerId1 = 'handler1' as TaskHandlerId;
+    const handlerId2 = 'handler2' as TaskHandlerId;
+    const handler1 = jest.fn();
+    const handler2 = jest.fn();
+    const taskManager = await TaskManager.createTaskManager({
+      db,
+      handlers: { [handlerId1]: handler1, [handlerId2]: handler2 },
+      lazy: true,
+      logger,
+    });
+
+    const task1 = await taskManager.scheduleTask({
+      handlerId: handlerId1,
+      delay: 100000,
+      parameters: [],
+      lazy: false,
+    });
+    await taskManager.updateTask(task1.id, {
+      handlerId: handlerId2,
+      delay: 0,
+      parameters: [1],
+      priority: 100,
+      deadline: 100,
+      path: ['newPath'],
+    })
+
+    // Task should be updated
+    const oldTask = await taskManager.getTask(task1.id);
+    if (oldTask == null) never();
+    expect(oldTask.id.equals(task1.id)).toBeTrue();
+    expect(oldTask.handlerId).toEqual(handlerId2);
+    expect(oldTask.delay).toBe(0);
+    expect(oldTask.parameters).toEqual([1]);
+    expect(oldTask.priority).toEqual(100);
+    expect(oldTask.deadline).toEqual(100);
+    expect(oldTask.path).toEqual(['newPath']);
+
+    // path should've been updated
+    let task_: Task | undefined;
+    for await (const task of taskManager.getTasks(undefined, true, ['newPath'])){
+      task_ = task;
+      expect(task.id.equals(task1.id)).toBeTrue();
+    }
+    expect(task_).toBeDefined();
+
+    await taskManager.stop();
+  });
+  test('updating tasks while queued or active should fail', async () => {
+    const handler = jest.fn();
+    handler.mockImplementation(async (value) => value);
+    const taskManager = await TaskManager.createTaskManager({
+      db,
+      handlers: { [handlerId]: handler },
+      lazy: true,
+      logger,
+    });
+    // @ts-ignore: private method, only schedule tasks
+    await taskManager.startScheduling();
+
+    logger.info('Scheduling task');
+    const task1 = await taskManager.scheduleTask({
+      handlerId,
+      delay: 0,
+      parameters: [],
+      lazy: false,
+    });
+
+    await sleep(100);
+
+    logger.info('Updating task');
+    await expect(taskManager.updateTask(task1.id, {
+      delay: 1000,
+      parameters: [1],
+    })).rejects.toThrow(tasksErrors.ErrorTaskRunning);
+
+    // Task has not been updated
+    const oldTask = await taskManager.getTask(task1.id);
+    if (oldTask == null) never();
+    expect(oldTask.delay).toBe(0);
+    expect(oldTask.parameters).toEqual([]);
+
+    await taskManager.stop();
+  });
+  test('updating tasks delay should update schedule timer', async () => {
+    const handlerId1 = 'handler1' as TaskHandlerId;
+    const handlerId2 = 'handler2' as TaskHandlerId;
+    const handler1 = jest.fn();
+    const handler2 = jest.fn();
+    handler1.mockImplementation(async (value) => value);
+    handler2.mockImplementation(async (value) => value);
+
+    const taskManager = await TaskManager.createTaskManager({
+      db,
+      handlers: { [handlerId1]: handler1, [handlerId2]: handler2 },
+      lazy: true,
+      logger,
+    });
+
+    const task1 = await taskManager.scheduleTask({
+      handlerId: handlerId1,
+      delay: 100000,
+      parameters: [],
+      lazy: false,
+    });
+    const task2 = await taskManager.scheduleTask({
+      handlerId: handlerId1,
+      delay: 100000,
+      parameters: [],
+      lazy: false,
+    });
+
+    await taskManager.updateTask(task1.id, {
+      delay: 0,
+      parameters: [1],
+    })
+
+    // Task should be updated
+    const newTask = await taskManager.getTask(task1.id);
+    if (newTask == null) never();
+    expect(newTask.delay).toBe(0);
+    expect(newTask.parameters).toEqual([1]);
+
+    // task should resolve with new parameter
+    await taskManager.startProcessing();
+    await expect(task1.promise()).resolves.toBe(1);
+
+    await sleep(100);
+    expect(handler1).toHaveBeenCalledTimes(1);
+
+    // updating task should update existing timer
+    await taskManager.updateTask(task2.id, {
+      delay: 0,
+      parameters: [1],
+      handlerId: handlerId2,
+    })
+    await expect(task2.promise()).resolves.toBe(1);
+    expect(handler1).toHaveBeenCalledTimes(1);
+    expect(handler2).toHaveBeenCalledTimes(1);
+
+    await taskManager.stop();
+  });
+  test('task should run after scheduled delay', async () => {
+    const handler = jest.fn();
+    const taskManager = await TaskManager.createTaskManager({
+      db,
+      handlers: { [handlerId]: handler },
+      lazy: true,
+      logger,
+    });
+
+    // edge case delays
+    // same as 0 delay
+    await taskManager.scheduleTask({
+      handlerId,
+      delay: NaN,
+      lazy: true,
+    });
+    // same as max delay
+    await taskManager.scheduleTask({
+      handlerId,
+      delay: Infinity,
+      lazy: true,
+    });
+
+    // normal delays
+    await taskManager.scheduleTask({
+      handlerId,
+      delay: 200,
+      lazy: true,
+    });
+    await taskManager.scheduleTask({
+      handlerId,
+      delay: 400,
+      lazy: true,
+    });
+    await taskManager.scheduleTask({
+      handlerId,
+      delay: 600,
+      lazy: true,
+    });
+
+    expect(handler).toHaveBeenCalledTimes(0);
+    await taskManager.startProcessing();
+    await sleep(100);
+    expect(handler).toHaveBeenCalledTimes(1);
+    await sleep(300);
+    expect(handler).toHaveBeenCalledTimes(2);
+    await sleep(200);
+    expect(handler).toHaveBeenCalledTimes(3);
+    await sleep(200);
+    expect(handler).toHaveBeenCalledTimes(4);
+
+    await taskManager.stop();
+  });
+  test('queued tasks should be started in priority order', async () => {
+    const handler = jest.fn();
+    const pendingProm = promise();
+    let totalTasks = 31;
+    const completedTaskOrder: Array<number> = []
+    handler.mockImplementation(async (priority) => {
+      completedTaskOrder.push(priority);
+      if (completedTaskOrder.length >= totalTasks) pendingProm.resolveP();
+
+    });
+    const taskManager = await TaskManager.createTaskManager({
+      db,
+      handlers: { [handlerId]: handler },
+      lazy: true,
+      logger,
+    });
+    const expectedTaskOrder: Array<number> = [];
+    for (let i = 0; i < totalTasks; i+=1) {
+      const priority = 150 - (i * 10)
+      expectedTaskOrder.push(priority);
+      await taskManager.scheduleTask({
+        handlerId,
+        parameters: [priority],
+        priority,
+        lazy: true,
+      });
+    }
+
+    // @ts-ignore: start scheduling first
+    await taskManager.startScheduling();
+    await sleep(500);
+    // @ts-ignore: Then queueing
+    await taskManager.startQueueing();
+    // wait for all tasks to complete
+    await pendingProm.p;
+    expect(completedTaskOrder).toEqual(expectedTaskOrder);
+
+    await taskManager.stop();
+  });
+  test('task exceeding deadline should abort and clean up', async () => {
+    const handler = jest.fn();
+    const pauseProm = promise();
+    handler.mockImplementation(async () => {await pauseProm.p});
+    const taskManager = await TaskManager.createTaskManager({
+      db,
+      handlers: { [handlerId]: handler },
+      lazy: true,
+      logger,
+    });
+
+    const task = await taskManager.scheduleTask({
+      handlerId,
+      parameters: [],
+      deadline: 100,
+      lazy: false,
+    });
+    await taskManager.startProcessing();
+
+    // cancellation should reject promise
+    const taskPromise = task.promise();
+    //FIXME: check for deadline timeout error
+    await expect(taskPromise).rejects.toThrow();
+
+    // task should be cleaned up
+    const oldTask = await taskManager.getTask(task.id);
+    expect(oldTask).toBeUndefined();
+    pauseProm.resolveP();
+
+    await taskManager.stop();
+  });
   test.todo('scheduled task times should not conflict');
   // TODO: this should move the clock backwards with mocking
   test.todo('taskIds are monotonic');
+  // TODO: needs fast check
   test.todo('general concurrent API usage to test robustness');
 });
 
