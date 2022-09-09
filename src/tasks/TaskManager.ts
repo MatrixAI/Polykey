@@ -209,6 +209,7 @@ class TaskManager {
   public async stop() {
     this.logger.info(`Stopping ${this.constructor.name}`);
     await this.stopProcessing();
+    await this.stopTasks();
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
@@ -236,6 +237,18 @@ class TaskManager {
   @ready(new tasksErrors.ErrorTasksNotRunning(), false, ['stopping'])
   public async stopProcessing(): Promise<void> {
     await Promise.all([this.stopQueueing(), this.stopScheduling()]);
+  }
+
+  /**
+   * Stop the active tasks
+   * This call is idempotent
+   */
+  @ready(new tasksErrors.ErrorTasksNotRunning(), false, ['stopping'])
+  public async stopTasks(): Promise<void> {
+    for (const [, activePromise] of this.activePromises) {
+      activePromise.cancel(new tasksErrors.ErrorTaskStop());
+    }
+    await Promise.allSettled(this.activePromises.values());
   }
 
   public getHandler(handlerId: TaskHandlerId): TaskHandler | undefined {
@@ -289,9 +302,7 @@ class TaskManager {
       });
       promise = () => taskPromise;
     }
-    const cancel = (reason: any) => {
-      this.cancelTask(taskId, reason);
-    };
+    const cancel = (reason: any) => this.cancelTask(taskId, reason);
     const taskData = await tran.get<TaskData>([
       ...this.tasksTaskDbPath,
       taskIdBuffer,
@@ -737,7 +748,6 @@ class TaskManager {
     this.logger.info('Stopped Scheduling Loop');
   }
 
-
   protected async startQueueing() {
     if (this.queuingLoop != null) return;
     this.queueLogger.info('Starting Queueing Loop');
@@ -921,7 +931,7 @@ class TaskManager {
       await tran.put([...this.tasksActiveDbPath, taskId.toBuffer()], null);
       tran.queueSuccess(() => {
         const abortController = new AbortController();
-        const timeoutError = new tasksErrors.ErrorTaskTimedOut();
+        const timeoutError = new tasksErrors.ErrorTaskTimeOut();
         const timer = new Timer<void>(
           () => void abortController.abort(timeoutError),
           tasksUtils.fromDeadline(taskData.deadline)
