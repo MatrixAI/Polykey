@@ -22,11 +22,11 @@ describe('context/functions/timed', () => {
         return 'hello world';
       };
       const fTimed = timed(f);
-      fTimed(undefined);
-      fTimed({});
-      fTimed({ timer: new Timer({ delay: 50 }) }, (t) => {
+      expect(fTimed(undefined)).toBe('hello world');
+      expect(fTimed({})).toBe('hello world');
+      expect(fTimed({ timer: new Timer({ delay: 50 }) }, (t) => {
         expect(t.delay).toBe(50);
-      });
+      })).toBe('hello world');
       expect(fTimed).toBeInstanceOf(Function);
     });
     test('function promise', async () => {
@@ -40,11 +40,11 @@ describe('context/functions/timed', () => {
         return new Promise((resolve) => void resolve());
       };
       const fTimed = timed(f);
-      await fTimed(undefined);
-      await fTimed({});
-      await fTimed({ timer: new Timer({ delay: 50 }) }, (t) => {
+      expect(await fTimed(undefined)).toBeUndefined();
+      expect(await fTimed({})).toBeUndefined();
+      expect(await fTimed({ timer: new Timer({ delay: 50 }) }, (t) => {
         expect(t.delay).toBe(50);
-      });
+      })).toBeUndefined();
       expect(fTimed).toBeInstanceOf(Function);
     });
     test('async function', async () => {

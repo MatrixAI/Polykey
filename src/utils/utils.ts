@@ -344,12 +344,20 @@ function isPromiseLike(v: any): v is PromiseLike<unknown> {
   return v != null && typeof v.then === 'function';
 }
 
+/**
+ * Is iterable object
+ * Use this to check for generators
+ */
 function isIterable(v: any): v is Iterable<unknown> {
-  return v != null && typeof v[Symbol.iterator] === 'function';
+  return v != null && typeof v === 'object' && typeof v[Symbol.iterator] === 'function';
 }
 
+/**
+ * Is async iterable object
+ * Use this to check for async generators
+ */
 function isAsyncIterable(v: any): v is AsyncIterable<unknown> {
-  return v != null && typeof v[Symbol.asyncIterator] === 'function';
+  return v != null && typeof v === 'object' && typeof v[Symbol.asyncIterator] === 'function';
 }
 
 /**

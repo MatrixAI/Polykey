@@ -56,16 +56,16 @@ describe('context/decorators/timed', () => {
       functionValue(
         ctx?: Partial<ContextTimed>,
         check?: (t: Timer) => any,
-      ): void;
+      ): string;
       @timed(1000)
       functionValue(
         @context ctx: ContextTimed,
         check?: (t: Timer) => any,
-      ): void {
+      ): string {
         expect(ctx.signal).toBeInstanceOf(AbortSignal);
         expect(ctx.timer).toBeInstanceOf(Timer);
         if (check != null) check(ctx.timer);
-        return;
+        return 'hello world';
       }
 
       functionPromise(
@@ -166,11 +166,11 @@ describe('context/decorators/timed', () => {
     }
     const x = new X();
     test('functionValue', () => {
-      x.functionValue();
-      x.functionValue({});
-      x.functionValue({ timer: new Timer({ delay: 100 }) }, (t) => {
+      expect(x.functionValue()).toBe('hello world');
+      expect(x.functionValue({})).toBe('hello world');
+      expect(x.functionValue({ timer: new Timer({ delay: 100 }) }, (t) => {
         expect(t.delay).toBe(100);
-      });
+      })).toBe('hello world');
       expect(x.functionValue).toBeInstanceOf(Function);
       expect(x.functionValue.name).toBe('functionValue');
     });
