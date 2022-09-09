@@ -494,7 +494,7 @@ class TaskManager {
     }
     // Trigger scheduling if delay is updated
     if (taskDataPatch.delay != null) {
-      const taskScheduleTime = taskDataNew.timestamp + taskDataPatch.delay;
+      const taskScheduleTime = taskData.timestamp + taskDataPatch.delay;
       tran.queueSuccess(async () => {
         if (this.schedulingLoop != null) {
           this.triggerScheduling(taskScheduleTime);
