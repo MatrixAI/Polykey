@@ -60,22 +60,6 @@ describe(Timer.name, () => {
     t1.cancel(new Error('Oh No'));
     await expect(t1).rejects.toThrow('Oh No');
   });
-  test('timer does not keep event loop alive', async () => {
-    const f = async (timer: Timer | number = globalThis.maxTimeout) => {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      timer = timer instanceof Timer ? timer : new Timer({ delay: timer });
-    };
-    const g = async (timer: Timer | number = Infinity) => {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      timer = timer instanceof Timer ? timer : new Timer({ delay: timer });
-    };
-    await f();
-    await f();
-    await f();
-    await g();
-    await g();
-    await g();
-  });
   test('custom signal handler ignores default rejection', async () => {
     const onabort = jest.fn();
     const t = new Timer(
