@@ -289,7 +289,7 @@ describe('context/decorators/timed', () => {
           await sleep(40);
           expect(ctx.signal.aborted).toBe(true);
           expect(ctx.signal.reason).toBeInstanceOf(
-            contextsErrors.ErrorContextsTimedExpiry,
+            contextsErrors.ErrorContextsTimedTimeOut,
           );
           return 'hello world';
         }
@@ -335,7 +335,7 @@ describe('context/decorators/timed', () => {
             .then(() => {
               expect(ctx.signal.aborted).toBe(true);
               expect(ctx.signal.reason).toBeInstanceOf(
-                contextsErrors.ErrorContextsTimedExpiry,
+                contextsErrors.ErrorContextsTimedTimeOut,
               );
             })
             .then(() => {
@@ -373,7 +373,7 @@ describe('context/decorators/timed', () => {
       }
       const c = new C();
       await expect(c.f()).rejects.toBeInstanceOf(
-        contextsErrors.ErrorContextsTimedExpiry,
+        contextsErrors.ErrorContextsTimedTimeOut,
       );
       expect(timeout).toBeUndefined();
     });
@@ -403,7 +403,7 @@ describe('context/decorators/timed', () => {
       }
       const c = new C();
       await expect(c.f()).rejects.toBeInstanceOf(
-        contextsErrors.ErrorContextsTimedExpiry,
+        contextsErrors.ErrorContextsTimedTimeOut,
       );
       expect(timeout).toBeUndefined();
     });
@@ -432,7 +432,7 @@ describe('context/decorators/timed', () => {
       });
       await sleep(50);
       await expect(g.next()).rejects.toThrow(
-        contextsErrors.ErrorContextsTimedExpiry,
+        contextsErrors.ErrorContextsTimedTimeOut,
       );
     });
     test('generator expiry', async () => {
@@ -453,7 +453,7 @@ describe('context/decorators/timed', () => {
       expect(g.next()).toEqual({ value: 'hello world', done: false });
       expect(g.next()).toEqual({ value: 'hello world', done: false });
       await sleep(50);
-      expect(() => g.next()).toThrow(contextsErrors.ErrorContextsTimedExpiry);
+      expect(() => g.next()).toThrow(contextsErrors.ErrorContextsTimedTimeOut);
     });
   });
   describe('timed decorator propagation', () => {
@@ -636,7 +636,7 @@ describe('context/decorators/timed', () => {
       }
       const c = new C();
       await expect(c.f()).rejects.toThrow(
-        contextsErrors.ErrorContextsTimedExpiry,
+        contextsErrors.ErrorContextsTimedTimeOut,
       );
     });
   });
