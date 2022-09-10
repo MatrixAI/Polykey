@@ -674,59 +674,67 @@ class TaskManager {
     // First iteration must run
     if (this.schedulingLockReleaser != null) await this.schedulingLockReleaser();
     const schedulingLoop = (async () => {
-      while (!abortController.signal.aborted) {
-        // Blocks the scheduling loop until lock is released
-        // this ensures that each iteration of the loop is only
-        // run when it is required
-        try {
-          await Promise.race([this.schedulingLock.waitForUnlock(), abortP]);
-        } catch (e) {
-          if (e === abortSchedulingLoopReason) {
-            break;
-          } else {
-            throw e;
+      try {
+        while (!abortController.signal.aborted) {
+          // Blocks the scheduling loop until lock is released
+          // this ensures that each iteration of the loop is only
+          // run when it is required
+          try {
+            await Promise.race([this.schedulingLock.waitForUnlock(), abortP]);
+          } catch (e) {
+            if (e === abortSchedulingLoopReason) {
+              break;
+            } else {
+              throw e;
+            }
           }
-        }
-        this.schedulerLogger.debug(`Begin scheduling loop iteration`);
-        [this.schedulingLockReleaser] = await this.schedulingLock.lock()();
-        // Peek ahead by 100 ms in-order to prefetch some tasks
-        const now =
-          Math.trunc(performance.timeOrigin + performance.now()) + 100;
-        await this.db.withTransactionF(async (tran) => {
-          // Queue up all the tasks that are scheduled to be executed before `now`
-          for await (const [kP] of tran.iterator(this.tasksScheduledDbPath, {
-            // Upper bound of `{lexi(TaskTimestamp + TaskDelay)}/{TaskId}`
-            // notice the usage of `''` as the upper bound of `TaskId`
-            lte: [utils.lexiPackBuffer(now), ''],
-            values: false,
-          })) {
+          this.schedulerLogger.debug(`Begin scheduling loop iteration`);
+          [this.schedulingLockReleaser] = await this.schedulingLock.lock()();
+          // Peek ahead by 100 ms in-order to prefetch some tasks
+          const now =
+            Math.trunc(performance.timeOrigin + performance.now()) + 100;
+          await this.db.withTransactionF(async (tran) => {
+            // Queue up all the tasks that are scheduled to be executed before `now`
+            for await (const [kP] of tran.iterator(this.tasksScheduledDbPath, {
+              // Upper bound of `{lexi(TaskTimestamp + TaskDelay)}/{TaskId}`
+              // notice the usage of `''` as the upper bound of `TaskId`
+              lte: [utils.lexiPackBuffer(now), ''],
+              values: false,
+            })) {
+              if (abortController.signal.aborted) return;
+              const taskIdBuffer = kP[1] as Buffer;
+              const taskId = IdInternal.fromBuffer<TaskId>(taskIdBuffer);
+              // If the task gets cancelled here, then queuing must be a noop
+              await this.queueTask(taskId);
+            }
+          });
+          if (abortController.signal.aborted) break;
+          await this.db.withTransactionF(async (tran) => {
+            // Get the next task to be scheduled and set the timer accordingly
+            let nextScheduleTime: number | undefined;
+            for await (const [kP] of tran.iterator(this.tasksScheduledDbPath, {
+              limit: 1,
+              values: false,
+            })) {
+              nextScheduleTime = utils.lexiUnpackBuffer(kP[0] as Buffer);
+            }
             if (abortController.signal.aborted) return;
-            const taskIdBuffer = kP[1] as Buffer;
-            const taskId = IdInternal.fromBuffer<TaskId>(taskIdBuffer);
-            // If the task gets cancelled here, then queuing must be a noop
-            await this.queueTask(taskId);
-          }
-        });
-        if (abortController.signal.aborted) break;
-        await this.db.withTransactionF(async (tran) => {
-          // Get the next task to be scheduled and set the timer accordingly
-          let nextScheduleTime: number | undefined;
-          for await (const [kP] of tran.iterator(this.tasksScheduledDbPath, {
-            limit: 1,
-            values: false,
-          })) {
-            nextScheduleTime = utils.lexiUnpackBuffer(kP[0] as Buffer);
-          }
-          if (abortController.signal.aborted) return;
-          if (nextScheduleTime == null) {
-            this.logger.debug(
-              'Scheduling loop iteration found no more scheduled tasks',
-            );
-          } else {
-            this.triggerScheduling(nextScheduleTime);
-          }
-          this.schedulerLogger.debug('Finish scheduling loop iteration');
-        });
+            if (nextScheduleTime == null) {
+              this.logger.debug(
+                'Scheduling loop iteration found no more scheduled tasks',
+              );
+            } else {
+              this.triggerScheduling(nextScheduleTime);
+            }
+            this.schedulerLogger.debug('Finish scheduling loop iteration');
+          });
+        }
+      } catch (e) {
+        this.schedulerLogger.error(`Failed scheduling loop ${String(e)}`);
+        throw new tasksErrors.ErrorTaskManagerScheduler(
+          undefined,
+          { cause: e }
+        );
       }
     })();
     this.schedulingLoop = PromiseCancellable.from(
@@ -759,29 +767,37 @@ class TaskManager {
     // First iteration must run
     if (this.queuingLockReleaser != null) await this.queuingLockReleaser();
     const queuingLoop = (async () => {
-      while (!abortController.signal.aborted) {
-        try {
-          await Promise.race([this.queuingLock.waitForUnlock(), abortP]);
-        } catch (e) {
-          if (e === abortQueuingLoopReason) {
-            break;
-          } else {
-            throw e;
+      try {
+        while (!abortController.signal.aborted) {
+          try {
+            await Promise.race([this.queuingLock.waitForUnlock(), abortP]);
+          } catch (e) {
+            if (e === abortQueuingLoopReason) {
+              break;
+            } else {
+              throw e;
+            }
           }
+          this.queueLogger.debug(`Begin queuing loop iteration`);
+          [this.queuingLockReleaser] = await this.queuingLock.lock()();
+          await this.db.withTransactionF(async (tran) => {
+            for await (const [kP] of tran.iterator(this.tasksQueuedDbPath, {
+              values: false,
+            })) {
+              if (abortController.signal.aborted) break;
+              if (this.activePromises.size >= this.activeLimit) break;
+              const taskId = IdInternal.fromBuffer<TaskId>(kP[2] as Buffer);
+              await this.startTask(taskId);
+            }
+          });
+          this.queueLogger.debug(`Finish queuing loop iteration`);
         }
-        this.queueLogger.debug(`Begin queuing loop iteration`);
-        [this.queuingLockReleaser] = await this.queuingLock.lock()();
-        await this.db.withTransactionF(async (tran) => {
-          for await (const [kP] of tran.iterator(this.tasksQueuedDbPath, {
-            values: false,
-          })) {
-            if (abortController.signal.aborted) break;
-            if (this.activePromises.size >= this.activeLimit) break;
-            const taskId = IdInternal.fromBuffer<TaskId>(kP[2] as Buffer);
-            await this.startTask(taskId);
-          }
-        });
-        this.queueLogger.debug(`Finish queuing loop iteration`);
+      } catch (e) {
+        this.queueLogger.error(`Failed queuing loop ${String(e)}`);
+        throw new tasksErrors.ErrorTaskManagerQueue(
+          undefined,
+          { cause: e }
+        );
       }
     })();
     // Cancellation is always a resolution
@@ -860,12 +876,12 @@ class TaskManager {
   protected async queueTask(
     taskId: TaskId,
   ): Promise<void> {
+    const taskIdBuffer = taskId.toBuffer();
     const taskIdEncoded = tasksUtils.encodeTaskId(taskId);
     this.schedulerLogger.debug(`Queuing Task ${taskIdEncoded}`);
     await this.db.withTransactionF(async (tran) => {
       // Mutually exclude `this.updateTask` and `this.gcTask`
       await this.lockTask(tran, taskId);
-      const taskIdBuffer = taskId.toBuffer();
       const taskData = await tran.get<TaskData>([
         ...this.tasksTaskDbPath,
         taskIdBuffer,
@@ -925,14 +941,16 @@ class TaskManager {
           `Failed Task ${taskIdEncoded} - No Handler Registered`,
         );
         await this.gcTask(taskId, tran);
-        this.taskEvents.dispatchEvent(
-          new TaskEvent(taskIdEncoded, {
-            detail: {
-              status: 'failure',
-              reason: new tasksErrors.ErrorTaskHandlerMissing(),
-            },
-          }),
-        );
+        tran.queueSuccess(() => {
+          this.taskEvents.dispatchEvent(
+            new TaskEvent(taskIdEncoded, {
+              detail: {
+                status: 'failure',
+                reason: new tasksErrors.ErrorTaskHandlerMissing(),
+              },
+            }),
+          );
+        });
         return;
       }
       // Remove task from the queued index
@@ -990,19 +1008,11 @@ class TaskManager {
               try {
                 await this.requeueTask(taskId);
               } catch (e) {
-                // This should not happen
-                taskLogger.error(`Failed Requeuing - ${String(e)}`);
-                // Dispatch a failure event with the requeuing task error
-                this.taskEvents.dispatchEvent(
-                  new TaskEvent(taskIdEncoded, {
-                    detail: {
-                      status: 'failure',
-                      reason: new tasksErrors.ErrorTaskRequeue(
-                        taskIdEncoded,
-                        { cause: e }
-                      ),
-                    },
-                  }),
+                this.logger.error(`Failed Requeuing Task ${taskIdEncoded}`);
+                // This is an unrecoverable error
+                throw new tasksErrors.ErrorTaskRequeue(
+                  taskIdEncoded,
+                  { cause: e}
                 );
               }
             } else {
@@ -1014,27 +1024,12 @@ class TaskManager {
               // GC the task before dispatching events
               try {
                 await this.gcTask(taskId);
-              } catch (e) {
-                // This should not happen
-                taskLogger.error(`Failed Garbage Collecting - ${String(e)}`);
-                const gcError = new tasksErrors.ErrorTaskGarbageCollection(
+              } catch(e) {
+                this.logger.error(`Failed Garbage Collecting Task ${taskIdEncoded}`);
+                // This is an unrecoverable error
+                throw new tasksErrors.ErrorTaskGarbageCollection(
                   taskIdEncoded,
-                  { cause: e }
-                );
-                let error;
-                if (!succeeded) {
-                  error = new AggregateError([taskReason, gcError]);
-                } else {
-                  error = gcError;
-                }
-                // Dispatch a failure event with the garbage collection error
-                this.taskEvents.dispatchEvent(
-                  new TaskEvent(taskIdEncoded, {
-                    detail: {
-                      status: 'failure',
-                      reason: error
-                    },
-                  }),
+                  { cause: e}
                 );
               }
               if (succeeded) {
@@ -1085,14 +1080,14 @@ class TaskManager {
     if (tran == null) {
       return this.db.withTransactionF((tran) => this.gcTask(taskId, tran));
     }
+    const taskIdEncoded = tasksUtils.encodeTaskId(taskId);
+    const taskIdBuffer = taskId.toBuffer();
     await this.lockTask(tran, taskId);
     const taskData = await tran.get<TaskData>([
       ...this.tasksTaskDbPath,
       taskId.toBuffer(),
     ]);
     if (taskData == null) return;
-    const taskIdEncoded = tasksUtils.encodeTaskId(taskId);
-    const taskIdBuffer = taskId.toBuffer();
     this.logger.debug(`Garbage Collecting Task ${taskIdEncoded}`);
     const taskScheduleTime = taskData.timestamp + taskData.delay;
     await tran.del([
@@ -1147,10 +1142,10 @@ class TaskManager {
     this.logger.debug(`Requeued Task ${taskIdEncoded}`);
   }
 
-  protected cancelTask(
+  protected async cancelTask(
     taskId: TaskId,
     cancelReason: any,
-  ): void {
+  ): Promise<void> {
     const taskIdEncoded = tasksUtils.encodeTaskId(taskId);
     this.logger.debug(`Cancelling Task ${taskIdEncoded}`);
     const activePromise = this.activePromises.get(taskIdEncoded);
@@ -1159,38 +1154,27 @@ class TaskManager {
       // the active promise will clean itself up when it settles
       activePromise.cancel(cancelReason);
     } else {
-      // Otherwise we must delete everything
-      this.gcTask(taskId).then(
-        () => {
-          this.taskEvents.dispatchEvent(
-            new TaskEvent(taskIdEncoded, {
-              detail: {
-                status: 'failure',
-                reason: cancelReason,
-              },
-            }),
-          );
-        },
-        (e) => {
-          // This should not happen
-          this.logger.error(
-            `Failed Garbage Collecting Task ${taskIdEncoded} - ${String(
-              e,
-            )}`,
-          );
-          const error = new tasksErrors.ErrorTaskGarbageCollection(
-            taskIdEncoded,
-            { cause: e }
-          );
-          this.taskEvents.dispatchEvent(
-            new TaskEvent(taskIdEncoded, {
-              detail: {
-                status: 'failure',
-                reason: error,
-              },
-            }),
-          );
-        }
+      try {
+        await this.gcTask(taskId);
+      } catch(e) {
+        this.logger.error(
+          `Failed Garbage Collecting Task ${taskIdEncoded} - ${String(
+            e,
+          )}`,
+        );
+        // This is an unrecoverable error
+        throw new tasksErrors.ErrorTaskGarbageCollection(
+          taskIdEncoded,
+          { cause: e }
+        );
+      }
+      this.taskEvents.dispatchEvent(
+        new TaskEvent(taskIdEncoded, {
+          detail: {
+            status: 'failure',
+            reason: cancelReason,
+          },
+        }),
       );
     }
     this.logger.debug(`Cancelled Task ${taskIdEncoded}`);

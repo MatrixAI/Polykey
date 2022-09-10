@@ -3,18 +3,34 @@ import { ErrorPolykey, sysexits } from '../errors';
 class ErrorTasks<T> extends ErrorPolykey<T> {}
 
 class ErrorTaskManagerRunning<T> extends ErrorTasks<T> {
-  static description = 'Tasks is running';
+  static description = 'TaskManager is running';
   exitCode = sysexits.USAGE;
 }
 
 class ErrorTaskManagerNotRunning<T> extends ErrorTasks<T> {
-  static description = 'Tasks is not running';
+  static description = 'TaskManager is not running';
   exitCode = sysexits.USAGE;
 }
 
 class ErrorTaskManagerDestroyed<T> extends ErrorTasks<T> {
-  static description = 'Tasks is destroyed';
+  static description = 'TaskManager is destroyed';
   exitCode = sysexits.USAGE;
+}
+
+/**
+ * This is an unrecoverable error
+ */
+class ErrorTaskManagerScheduler<T> extends ErrorTasks<T> {
+  static description = 'TaskManager scheduling loop encountered an unrecoverable error';
+  exitCode = sysexits.SOFTWARE;
+}
+
+/**
+ * This is an unrecoverable error
+ */
+class ErrorTaskManagerQueue<T> extends ErrorTasks<T> {
+  static description = 'TaskManager queuing loop encountered an unrecoverable error';
+  exitCode = sysexits.SOFTWARE;
 }
 
 class ErrorTask<T> extends ErrorTasks<T> {
@@ -81,11 +97,14 @@ class ErrorTaskGarbageCollection<T> extends ErrorTask<T> {
   exitCode = sysexits.SOFTWARE;
 }
 
+
 export {
   ErrorTasks,
   ErrorTaskManagerRunning,
   ErrorTaskManagerNotRunning,
   ErrorTaskManagerDestroyed,
+  ErrorTaskManagerScheduler,
+  ErrorTaskManagerQueue,
   ErrorTask,
   ErrorTaskMissing,
   ErrorTaskHandlerMissing,
