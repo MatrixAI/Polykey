@@ -423,14 +423,6 @@ class TaskManager {
       this.taskEvents.addEventListener(taskIdEncoded, taskListener, {
         once: true,
       });
-
-      // You always want this to have done before hand
-      // BEFORE the events are dispatched
-      // because by the time the gcTask is done
-      // the task data no longer exists
-      // so this should not be done
-      console.log('I HAVE REGISTERED ALL THE EVENT LISTENERS', taskIdEncoded);
-
       // The task may not actually exist anymore
       // in which case, the task listener will never settle
       // Here we concurrently check if the task exists
@@ -942,6 +934,14 @@ class TaskManager {
         );
         await this.gcTask(taskId, tran);
         tran.queueSuccess(() => {
+
+          // THIS only runs after the transaction is committed
+          // IS IT POSSIBLE
+          // that I HAVE REGISTERED EVENT HANDLERS is at there
+          // cause if so, it would then be able to
+          // to get an event listener registered
+          // only afterwards
+
           this.taskEvents.dispatchEvent(
             new TaskEvent(taskIdEncoded, {
               detail: {
