@@ -957,6 +957,7 @@ class TaskManager {
           signal: abortController.signal,
         };
         const activePromise = (async () => {
+          const taskLogger = this.logger.getChild(`Task ${taskIdEncoded}`);
           try {
             let succeeded: boolean;
             let taskResult: any;
@@ -990,11 +991,7 @@ class TaskManager {
                 await this.requeueTask(taskId);
               } catch (e) {
                 // This should not happen
-                this.queueLogger.error(
-                  `Failed Requeuing Task ${taskIdEncoded} - ${String(
-                    e,
-                  )}`,
-                );
+                taskLogger.error(`Failed Requeuing - ${String(e)}`);
                 // Dispatch a failure event with the requeuing task error
                 this.taskEvents.dispatchEvent(
                   new TaskEvent(taskIdEncoded, {
@@ -1010,22 +1007,16 @@ class TaskManager {
               }
             } else {
               if (succeeded) {
-                this.queueLogger.debug(`Succeeded Task ${taskIdEncoded}`);
+                taskLogger.debug('Succeeded');
               } else {
-                this.queueLogger.warn(
-                  `Failed Task ${taskIdEncoded} - Reason: ${taskReason}`,
-                );
+                taskLogger.warn(`Failed - Reason: ${String(taskReason)}`);
               }
               // GC the task before dispatching events
               try {
                 await this.gcTask(taskId);
               } catch (e) {
                 // This should not happen
-                this.queueLogger.error(
-                  `Failed Garbage Collecting Task ${taskIdEncoded} - ${String(
-                    e,
-                  )}`,
-                );
+                taskLogger.error(`Failed Garbage Collecting - ${String(e)}`);
                 const gcError = new tasksErrors.ErrorTaskGarbageCollection(
                   taskIdEncoded,
                   { cause: e }
@@ -1102,7 +1093,7 @@ class TaskManager {
     if (taskData == null) return;
     const taskIdEncoded = tasksUtils.encodeTaskId(taskId);
     const taskIdBuffer = taskId.toBuffer();
-    this.queueLogger.debug(`Garbage Collecting Task ${taskIdEncoded}`);
+    this.logger.debug(`Garbage Collecting Task ${taskIdEncoded}`);
     const taskScheduleTime = taskData.timestamp + taskData.delay;
     await tran.del([
       ...this.tasksPathDbPath,
@@ -1122,7 +1113,7 @@ class TaskManager {
       taskIdBuffer
     ]);
     await tran.del([...this.tasksTaskDbPath, taskId.toBuffer()]);
-    this.queueLogger.debug(`Garbage Collected Task ${taskIdEncoded}`);
+    this.logger.debug(`Garbage Collected Task ${taskIdEncoded}`);
   }
 
   protected async requeueTask(
@@ -1134,7 +1125,7 @@ class TaskManager {
     }
     const taskIdBuffer = taskId.toBuffer();
     const taskIdEncoded = tasksUtils.encodeTaskId(taskId);
-    this.queueLogger.debug(`Requeuing Task ${taskIdEncoded}`);
+    this.logger.debug(`Requeuing Task ${taskIdEncoded}`);
     await this.lockTask(tran, taskId);
     const taskData = await tran.get<TaskData>([
       ...this.tasksTaskDbPath,
@@ -1153,7 +1144,7 @@ class TaskManager {
       utils.lexiPackBuffer(taskData.timestamp + taskData.delay),
       taskIdBuffer,
     ], null);
-    this.queueLogger.debug(`Requeued Task ${taskIdEncoded}`);
+    this.logger.debug(`Requeued Task ${taskIdEncoded}`);
   }
 
   protected cancelTask(
@@ -1161,7 +1152,7 @@ class TaskManager {
     cancelReason: any,
   ): void {
     const taskIdEncoded = tasksUtils.encodeTaskId(taskId);
-    this.queueLogger.debug(`Cancelling Task ${taskIdEncoded}`);
+    this.logger.debug(`Cancelling Task ${taskIdEncoded}`);
     const activePromise = this.activePromises.get(taskIdEncoded);
     if (activePromise != null) {
       // If the active promise exists, then we only signal for cancellation
@@ -1182,7 +1173,7 @@ class TaskManager {
         },
         (e) => {
           // This should not happen
-          this.queueLogger.error(
+          this.logger.error(
             `Failed Garbage Collecting Task ${taskIdEncoded} - ${String(
               e,
             )}`,
@@ -1202,7 +1193,7 @@ class TaskManager {
         }
       );
     }
-    this.queueLogger.debug(`Cancelled Task ${taskIdEncoded}`);
+    this.logger.debug(`Cancelled Task ${taskIdEncoded}`);
   }
 
   /**
@@ -1220,6 +1211,7 @@ class TaskManager {
    * - `this.queueTask`
    * - `this.startTask`
    * - `this.gcTask`
+   * - `this.requeueTask`
    */
   protected async lockTask(tran: DBTransaction, taskId: TaskId): Promise<void> {
     return tran.lock([...this.tasksDbPath, taskId.toString()].join(''));
