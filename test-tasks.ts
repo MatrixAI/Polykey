@@ -1,6 +1,6 @@
 import type { ContextTimed } from './src/contexts/types';
 import { TaskHandlerId } from './src/tasks/types';
-import Logger, { LogLevel } from '@matrixai/logger';
+import Logger, { LogLevel, StreamHandler, formatting } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import KeyManager from './src/keys/KeyManager';
 import TaskManager from './src/tasks/TaskManager';
@@ -11,8 +11,13 @@ async function main () {
   // Keeps the process alive
   // process.stdin.resume();
 
-  const logger = new Logger('root', LogLevel.WARN);
-  logger.setFilter(/tasks/);
+
+  const logger = new Logger('root', LogLevel.DEBUG, [
+    new StreamHandler(
+      formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}:${formatting.data}`
+    )
+  ]);
+  logger.setFilter(/TaskManager/);
 
   // const keyManager = await KeyManager.createKeyManager({
   //   keysPath: './tmp/keys',
@@ -32,7 +37,7 @@ async function main () {
     db,
     fresh: false,
     lazy: true,
-    logger: logger.getChild('tasks'),
+    logger: logger.getChild('TaskManager'),
   });
 
   const test = 'test' as TaskHandlerId;
@@ -104,10 +109,10 @@ async function main () {
   //   deadline: 10000,
   // });
 
-  await tasks.getTaskPromise(t1.id);
-  await tasks.getTaskPromise(t2.id);
-  await tasks.getTaskPromise(t3.id);
-  await tasks.getTaskPromise(t4.id);
+  // await tasks.getTaskPromise(t1.id);
+  // await tasks.getTaskPromise(t2.id);
+  // await tasks.getTaskPromise(t3.id);
+  // await tasks.getTaskPromise(t4.id);
 
   // for (let i = 0; i < 100; i++) {
   //   await sleep(20);

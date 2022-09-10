@@ -957,7 +957,7 @@ class TaskManager {
           signal: abortController.signal,
         };
         const activePromise = (async () => {
-          const taskLogger = this.logger.getChild(`Task ${taskIdEncoded}`);
+          const taskLogger = this.logger.getChild(`task ${taskIdEncoded}`);
           try {
             let succeeded: boolean;
             let taskResult: any;
