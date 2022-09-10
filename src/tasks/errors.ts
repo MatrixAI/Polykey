@@ -25,12 +25,12 @@ class ErrorTask<T> extends ErrorTasks<T> {
 class ErrorTaskMissing<T> extends ErrorTask<T> {
   static description =
     'Task does not (or never) existed anymore, it may have been fulfilled or cancelled';
-  exitCode = sysexits.USAGE;
+  exitCode = sysexits.UNAVAILABLE;
 }
 
 class ErrorTaskHandlerMissing<T> extends ErrorTask<T> {
   static description = 'Task handler is not registered';
-  exitCode = sysexits.USAGE;
+  exitCode = sysexits.UNAVAILABLE;
 }
 
 class ErrorTaskRunning<T> extends ErrorTask<T> {
@@ -39,19 +39,46 @@ class ErrorTaskRunning<T> extends ErrorTask<T> {
 }
 
 /**
- * This is used as a signal reason
+ * This is used as a signal reason when the `TaskDeadline` is reached
  */
 class ErrorTaskTimeOut<T> extends ErrorTask<T> {
   static description = 'Task exhausted deadline';
-  exitCode = sysexits.USAGE;
+  exitCode = sysexits.UNAVAILABLE;
 }
 
 /**
- * This is used as a signal reason
+ * This is used as a signal reason when calling `TaskManager.stopTasks()`
+ * If the task should be retried, then the task handler should throw `ErrorTaskRetry`
  */
 class ErrorTaskStop<T> extends ErrorTask<T> {
   static description = 'TaskManager is stopping, task is being cancelled';
-  exitCode = sysexits.USAGE;
+  exitCode = sysexits.OK;
+}
+
+/**
+ * If this is thrown by the task, the task will be requeued so it can be
+ * retried, if the task rejects or resolves in any other way, the task
+ * will be considered to have completed
+ */
+class ErrorTaskRetry<T> extends ErrorTask<T> {
+  static description = 'Task should be retried';
+  exitCode = sysexits.TEMPFAIL;
+}
+
+/**
+ * This error indicates a bug
+ */
+class ErrorTaskRequeue<T> extends ErrorTask<T> {
+  static description = 'Task could not be requeued';
+  exitCode = sysexits.SOFTWARE;
+}
+
+/**
+ * This error indicates a bug
+ */
+class ErrorTaskGarbageCollection<T> extends ErrorTask<T> {
+  static description = 'Task could not be garbage collected';
+  exitCode = sysexits.SOFTWARE;
 }
 
 export {
@@ -65,4 +92,7 @@ export {
   ErrorTaskRunning,
   ErrorTaskTimeOut,
   ErrorTaskStop,
+  ErrorTaskRetry,
+  ErrorTaskRequeue,
+  ErrorTaskGarbageCollection,
 };

@@ -610,12 +610,13 @@ class TaskManager {
     }
     await this.lockTask(tran, taskId);
     const taskIdBuffer = taskId.toBuffer();
+    const taskIdEncoded = tasksUtils.encodeTaskId(taskId);
     const taskData = await tran.get<TaskData>([
       ...this.tasksTaskDbPath,
       taskIdBuffer,
     ]);
     if (taskData == null) {
-      throw new tasksErrors.ErrorTaskMissing();
+      throw new tasksErrors.ErrorTaskMissing(taskIdEncoded);
     }
     if (
       (await tran.get([
@@ -625,7 +626,7 @@ class TaskManager {
       ])) === undefined
     ) {
       // Cannot update the task if the task is already running
-      throw new tasksErrors.ErrorTaskRunning();
+      throw new tasksErrors.ErrorTaskRunning(taskIdEncoded);
     }
     const taskDataNew = {
       ...taskData,
@@ -688,13 +689,9 @@ class TaskManager {
         }
         this.schedulerLogger.debug(`Begin scheduling loop iteration`);
         [this.schedulingLockReleaser] = await this.schedulingLock.lock()();
-
-        // Peek ahead by 100 ms
-        // this is because the subsequent operations of this iteration may take up to 100ms
-        // and we might as well prefetch some tasks to be executed
+        // Peek ahead by 100 ms in-order to prefetch some tasks
         const now =
           Math.trunc(performance.timeOrigin + performance.now()) + 100;
-
         await this.db.withTransactionF(async (tran) => {
           // Queue up all the tasks that are scheduled to be executed before `now`
           for await (const [kP] of tran.iterator(this.tasksScheduledDbPath, {
@@ -704,10 +701,10 @@ class TaskManager {
             values: false,
           })) {
             if (abortController.signal.aborted) return;
-            const taskScheduleTime = utils.lexiUnpackBuffer(kP[0] as Buffer);
             const taskIdBuffer = kP[1] as Buffer;
             const taskId = IdInternal.fromBuffer<TaskId>(taskIdBuffer);
-            await this.queueTask(taskId, taskScheduleTime);
+            // If the task gets cancelled here, then queuing must be a noop
+            await this.queueTask(taskId);
           }
         });
         if (abortController.signal.aborted) break;
@@ -858,10 +855,10 @@ class TaskManager {
 
   /**
    * Transition from scheduled to queued
+   * If the task is cancelled, then this does nothing
    */
   protected async queueTask(
     taskId: TaskId,
-    taskScheduleTime: number,
   ): Promise<void> {
     const taskIdEncoded = tasksUtils.encodeTaskId(taskId);
     this.schedulerLogger.debug(`Queuing Task ${taskIdEncoded}`);
@@ -869,14 +866,20 @@ class TaskManager {
       // Mutually exclude `this.updateTask` and `this.gcTask`
       await this.lockTask(tran, taskId);
       const taskIdBuffer = taskId.toBuffer();
-      const taskData = (await tran.get<TaskData>([
+      const taskData = await tran.get<TaskData>([
         ...this.tasksTaskDbPath,
         taskIdBuffer,
-      ]))!;
+      ]);
+      // If the task was garbage collected, due to potentially cancellation
+      // then we can skip the task, as it no longer exists
+      if (taskData == null) {
+        this.schedulerLogger.debug(`Skipped Task ${taskIdEncoded} - it is cancelled`);
+        return;
+      }
       // Remove task from the scheduled index
       await tran.del([
         ...this.tasksScheduledDbPath,
-        utils.lexiPackBuffer(taskScheduleTime),
+        utils.lexiPackBuffer(taskData.timestamp + taskData.delay),
         taskIdBuffer,
       ]);
       // Put task into the queue index
@@ -884,7 +887,7 @@ class TaskManager {
         [
           ...this.tasksQueuedDbPath,
           utils.lexiPackBuffer(taskData.priority),
-          utils.lexiPackBuffer(taskScheduleTime),
+          utils.lexiPackBuffer(taskData.timestamp + taskData.delay),
           taskIdBuffer,
         ],
         null,
@@ -898,6 +901,7 @@ class TaskManager {
 
   /**
    * Transition from queued to active
+   * If the task is cancelled, then this does nothing
    */
   protected async startTask(taskId: TaskId): Promise<void> {
     const taskIdBuffer = taskId.toBuffer();
@@ -905,15 +909,22 @@ class TaskManager {
     this.queueLogger.debug(`Starting Task ${taskIdEncoded}`);
     await this.db.withTransactionF(async (tran) => {
       await this.lockTask(tran, taskId);
-      const taskData = (await tran.get<TaskData>([
+      const taskData = await tran.get<TaskData>([
         ...this.tasksTaskDbPath,
         taskIdBuffer,
-      ]))!;
+      ]);
+      // If the task was garbage collected, due to potentially cancellation
+      // then we can skip the task, as it no longer exists
+      if (taskData == null) {
+        this.queueLogger.debug(`Skipped Task ${taskIdEncoded} - it is cancelled`);
+        return;
+      }
       const taskHandler = this.getHandler(taskData.handlerId);
       if (taskHandler == null) {
         this.queueLogger.error(
           `Failed Task ${taskIdEncoded} - No Handler Registered`,
         );
+        await this.gcTask(taskId, tran);
         this.taskEvents.dispatchEvent(
           new TaskEvent(taskIdEncoded, {
             detail: {
@@ -922,7 +933,6 @@ class TaskManager {
             },
           }),
         );
-        await this.gcTask(taskId, tran);
         return;
       }
       // Remove task from the queued index
@@ -934,7 +944,7 @@ class TaskManager {
       ]);
       // Put task into the active index
       // this index will be used to retry tasks if they don't finish
-      await tran.put([...this.tasksActiveDbPath, taskId.toBuffer()], null);
+      await tran.put([...this.tasksActiveDbPath, taskIdBuffer], null);
       tran.queueSuccess(() => {
         const abortController = new AbortController();
         const timeoutError = new tasksErrors.ErrorTaskTimeOut();
@@ -949,8 +959,8 @@ class TaskManager {
         const activePromise = (async () => {
           try {
             let succeeded: boolean;
-            let result: any;
-            let reason: any;
+            let taskResult: any;
+            let taskReason: any;
             const taskInfo: TaskInfo = {
               id: taskId,
               handlerId: taskData.handlerId,
@@ -963,55 +973,98 @@ class TaskManager {
               scheduled: new Date(taskData.timestamp + taskData.delay),
             };
             try {
-              result = await taskHandler(
+              taskResult = await taskHandler(
                 ctx,
                 taskInfo,
                 ...taskData.parameters
               );
               succeeded = true;
             } catch (e) {
-              reason = e;
+              taskReason = e;
               succeeded = false;
             }
-            // GC the task before dispatching events
-            try {
-              await this.gcTask(taskId);
-            } catch (e) {
-              // If the `gcTask` failed, there's nothing we can do here
-              // except to report the error
-              // this should not happen
-              this.queueLogger.error(
-                `Failed Garbage Collecting Task ${taskIdEncoded} - ${String(
-                  e,
-                )}`,
-              );
-            }
-
-            console.log('GOING TO DISPATCH THE EVENTS', taskIdEncoded);
-
-            if (succeeded) {
-              this.queueLogger.debug(`Succeeded Task ${taskIdEncoded}`);
-              // If no event listeners, then only side effects are recorded
-              this.taskEvents.dispatchEvent(
-                new TaskEvent(taskIdEncoded, {
-                  detail: {
-                    status: 'success',
-                    result,
-                  },
-                }),
-              );
+            // If the reason is `tasksErrors.ErrorTaskRetry`
+            // the task is not finished, and should be requeued
+            if (taskReason instanceof tasksErrors.ErrorTaskRetry) {
+              try {
+                await this.requeueTask(taskId);
+              } catch (e) {
+                // This should not happen
+                this.queueLogger.error(
+                  `Failed Requeuing Task ${taskIdEncoded} - ${String(
+                    e,
+                  )}`,
+                );
+                // Dispatch a failure event with the requeuing task error
+                this.taskEvents.dispatchEvent(
+                  new TaskEvent(taskIdEncoded, {
+                    detail: {
+                      status: 'failure',
+                      reason: new tasksErrors.ErrorTaskRequeue(
+                        taskIdEncoded,
+                        { cause: e }
+                      ),
+                    },
+                  }),
+                );
+              }
             } else {
-              this.queueLogger.warn(
-                `Failed Task ${taskIdEncoded} - Reason: ${reason}`,
-              );
-              this.taskEvents.dispatchEvent(
-                new TaskEvent(taskIdEncoded, {
-                  detail: {
-                    status: 'failure',
-                    reason,
-                  },
-                }),
-              );
+              if (succeeded) {
+                this.queueLogger.debug(`Succeeded Task ${taskIdEncoded}`);
+              } else {
+                this.queueLogger.warn(
+                  `Failed Task ${taskIdEncoded} - Reason: ${taskReason}`,
+                );
+              }
+              // GC the task before dispatching events
+              try {
+                await this.gcTask(taskId);
+              } catch (e) {
+                // This should not happen
+                this.queueLogger.error(
+                  `Failed Garbage Collecting Task ${taskIdEncoded} - ${String(
+                    e,
+                  )}`,
+                );
+                const gcError = new tasksErrors.ErrorTaskGarbageCollection(
+                  taskIdEncoded,
+                  { cause: e }
+                );
+                let error;
+                if (!succeeded) {
+                  error = new AggregateError([taskReason, gcError]);
+                } else {
+                  error = gcError;
+                }
+                // Dispatch a failure event with the garbage collection error
+                this.taskEvents.dispatchEvent(
+                  new TaskEvent(taskIdEncoded, {
+                    detail: {
+                      status: 'failure',
+                      reason: error
+                    },
+                  }),
+                );
+              }
+              if (succeeded) {
+                this.taskEvents.dispatchEvent(
+                  new TaskEvent(taskIdEncoded, {
+                    detail: {
+                      status: 'success',
+                      result: taskResult,
+                    },
+                  }),
+                );
+              } else {
+                this.taskEvents.dispatchEvent(
+                  new TaskEvent(taskIdEncoded, {
+                    detail: {
+                      status: 'failure',
+                      reason: taskReason,
+                    },
+                  }),
+                );
+              }
             }
           } finally {
             // Task has finished, cancel the timer
@@ -1072,32 +1125,84 @@ class TaskManager {
     this.queueLogger.debug(`Garbage Collected Task ${taskIdEncoded}`);
   }
 
-  protected async cancelTask(
+  protected async requeueTask(
     taskId: TaskId,
-    cancelReason: any,
     tran?: DBTransaction
   ): Promise<void> {
     if (tran == null) {
-      return this.db.withTransactionF((tran) => this.cancelTask(taskId, cancelReason, tran));
+      return this.db.withTransactionF((tran) => this.requeueTask(taskId, tran));
     }
-    const activePromise = this.activePromises.get(tasksUtils.encodeTaskId(taskId));
+    const taskIdBuffer = taskId.toBuffer();
+    const taskIdEncoded = tasksUtils.encodeTaskId(taskId);
+    this.queueLogger.debug(`Requeuing Task ${taskIdEncoded}`);
+    await this.lockTask(tran, taskId);
+    const taskData = await tran.get<TaskData>([
+      ...this.tasksTaskDbPath,
+      taskIdBuffer,
+    ]);
+    if (taskData == null) {
+      throw new tasksErrors.ErrorTaskMissing(taskIdEncoded);
+    };
+    // Put task into the active index
+    // this index will be used to retry tasks if they don't finish
+    await tran.del([...this.tasksActiveDbPath, taskIdBuffer]);
+    // Put task back into the queued index
+    await tran.put([
+      ...this.tasksQueuedDbPath,
+      utils.lexiPackBuffer(taskData.priority),
+      utils.lexiPackBuffer(taskData.timestamp + taskData.delay),
+      taskIdBuffer,
+    ], null);
+    this.queueLogger.debug(`Requeued Task ${taskIdEncoded}`);
+  }
+
+  protected cancelTask(
+    taskId: TaskId,
+    cancelReason: any,
+  ): void {
+    const taskIdEncoded = tasksUtils.encodeTaskId(taskId);
+    this.queueLogger.debug(`Cancelling Task ${taskIdEncoded}`);
+    const activePromise = this.activePromises.get(taskIdEncoded);
     if (activePromise != null) {
       // If the active promise exists, then we only signal for cancellation
       // the active promise will clean itself up when it settles
       activePromise.cancel(cancelReason);
     } else {
       // Otherwise we must delete everything
-      await this.gcTask(taskId, tran);
-      const taskIdEncoded = tasksUtils.encodeTaskId(taskId);
-      this.taskEvents.dispatchEvent(
-        new TaskEvent(taskIdEncoded, {
-          detail: {
-            status: 'failure',
-            reason: cancelReason,
-          },
-        }),
+      this.gcTask(taskId).then(
+        () => {
+          this.taskEvents.dispatchEvent(
+            new TaskEvent(taskIdEncoded, {
+              detail: {
+                status: 'failure',
+                reason: cancelReason,
+              },
+            }),
+          );
+        },
+        (e) => {
+          // This should not happen
+          this.queueLogger.error(
+            `Failed Garbage Collecting Task ${taskIdEncoded} - ${String(
+              e,
+            )}`,
+          );
+          const error = new tasksErrors.ErrorTaskGarbageCollection(
+            taskIdEncoded,
+            { cause: e }
+          );
+          this.taskEvents.dispatchEvent(
+            new TaskEvent(taskIdEncoded, {
+              detail: {
+                status: 'failure',
+                reason: error,
+              },
+            }),
+          );
+        }
       );
     }
+    this.queueLogger.debug(`Cancelled Task ${taskIdEncoded}`);
   }
 
   /**
@@ -1114,7 +1219,6 @@ class TaskManager {
    * - `this.updateTask`
    * - `this.queueTask`
    * - `this.startTask`
-   * - `this.cancelTask`
    * - `this.gcTask`
    */
   protected async lockTask(tran: DBTransaction, taskId: TaskId): Promise<void> {
@@ -1136,23 +1240,30 @@ class TaskManager {
         const taskIdBuffer = kP[0] as Buffer;
         const taskId = IdInternal.fromBuffer<TaskId>(taskIdBuffer);
         const taskIdEncoded = tasksUtils.encodeTaskId(taskId);
-        const taskData = (await tran.get<TaskData>([
+        const taskData = await tran.get<TaskData>([
           ...this.tasksTaskDbPath,
           taskIdBuffer,
-        ]))!;
-        // Put task back into the queue index
-        await tran.put(
-          [
-            ...this.tasksQueuedDbPath,
-            utils.lexiPackBuffer(taskData.priority),
-            utils.lexiPackBuffer(taskData.timestamp + taskData.delay),
-            taskIdBuffer,
-          ],
-          null,
-        );
-        // Removing task from active index
-        await tran.del([...this.tasksActiveDbPath, ...kP]);
-        this.logger.warn(`Moving Task ${taskIdEncoded} from Active to Queued`);
+        ]);
+        if (taskData == null) {
+          // Removing dangling task from active index
+          // this should not happen
+          await tran.del([...this.tasksActiveDbPath, ...kP]);
+          this.logger.warn(`Removing Dangling Active Task ${taskIdEncoded}`);
+        } else {
+          // Put task back into the queue index
+          await tran.put(
+            [
+              ...this.tasksQueuedDbPath,
+              utils.lexiPackBuffer(taskData.priority),
+              utils.lexiPackBuffer(taskData.timestamp + taskData.delay),
+              taskIdBuffer,
+            ],
+            null,
+          );
+          // Removing task from active index
+          await tran.del([...this.tasksActiveDbPath, ...kP]);
+          this.logger.warn(`Moving Task ${taskIdEncoded} from Active to Queued`);
+        }
       }
       this.logger.info('Finish Tasks Repair');
     });
