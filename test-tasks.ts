@@ -14,7 +14,7 @@ async function main () {
 
   const logger = new Logger('root', LogLevel.DEBUG, [
     new StreamHandler(
-      formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}:${formatting.data}`
+      formatting.format`${formatting.date}:${formatting.level}:${formatting.keys}:${formatting.msg}:${formatting.data}`
     )
   ]);
   logger.setFilter(/TaskManager/);
