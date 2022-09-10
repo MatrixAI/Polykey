@@ -1,8 +1,15 @@
-import type { DB, LevelPath } from '@matrixai/db';
-import type { VaultActions, VaultIdString, VaultIdEncoded } from './types';
+import type { DB, DBTransaction, LevelPath } from '@matrixai/db';
+import type {
+  VaultId,
+  VaultName,
+  VaultActions,
+  VaultIdString,
+  VaultIdEncoded,
+} from './types';
 import type { Vault } from './Vault';
 import type { FileSystem } from '../types';
 import type { PolykeyWorkerManagerInterface } from '../workers/types';
+import type { NodeId } from '../nodes/types';
 import type KeyManager from '../keys/KeyManager';
 import type NodeConnectionManager from '../nodes/NodeConnectionManager';
 import type GestaltGraph from '../gestalts/GestaltGraph';
@@ -11,9 +18,6 @@ import type ACL from '../acl/ACL';
 import type { RemoteInfo } from './VaultInternal';
 import type { VaultAction } from './types';
 import type { MultiLockRequest } from '@matrixai/async-locks';
-import type { DBTransaction } from '@matrixai/db';
-import type { VaultId, VaultName } from './types';
-import type { NodeId } from '../nodes/types';
 import path from 'path';
 import { PassThrough } from 'readable-stream';
 import { EncryptedFS, errors as encryptedFsErrors } from 'encryptedfs';

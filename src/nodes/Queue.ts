@@ -1,6 +1,7 @@
 import type { PromiseDeconstructed } from '../types';
+import { StartStop } from '@matrixai/async-init/dist/StartStop';
 import Logger from '@matrixai/logger';
-import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
+import { ready } from '@matrixai/async-init/dist/StartStop';
 import * as nodesErrors from './errors';
 import { promise } from '../utils';
 

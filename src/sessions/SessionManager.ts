@@ -1,7 +1,6 @@
-import type { DB, LevelPath } from '@matrixai/db';
-import type KeyManager from '../keys/KeyManager';
-import type { DBTransaction } from '@matrixai/db';
+import type { DB, DBTransaction, LevelPath } from '@matrixai/db';
 import type { SessionToken } from './types';
+import type KeyManager from '../keys/KeyManager';
 import Logger from '@matrixai/logger';
 import {
   CreateDestroyStartStop,

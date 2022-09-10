@@ -1,15 +1,17 @@
 import type { AddressInfo, Socket } from 'net';
 import type {
+  Host,
+  Port,
   Address,
   ConnectionInfo,
+  TLSConfig,
   ConnectionEstablishedCallback,
 } from './types';
 import type { ConnectionsForward } from './ConnectionForward';
+import type { NodeId } from '../nodes/types';
+import type { Timer } from '../types';
 import type UTPConnection from 'utp-native/lib/connection';
 import type { ConnectionsReverse } from './ConnectionReverse';
-import type { Host, Port, TLSConfig } from './types';
-import type { Timer } from '../types';
-import type { NodeId } from '../nodes/types';
 import http from 'http';
 import UTP from 'utp-native';
 import Logger from '@matrixai/logger';

@@ -173,24 +173,26 @@ describe('context/decorators/cancellable', () => {
         f(ctx?: Partial<ContextCancellable>): PromiseCancellable<string>;
         @cancellable()
         f(@context ctx: ContextCancellable): PromiseCancellable<string> {
-          const pC = new PromiseCancellable<string>((resolve, reject, signal) => {
-            if (signal.aborted) {
-              reject('eager 2:' + signal.reason);
-            } else {
-              signal.onabort = () => {
-                reject('lazy 2:' + signal.reason);
-              };
-            }
-            sleep(10).then(() => {
-              resolve('hello world');
-            });
-          });
+          const pC = new PromiseCancellable<string>(
+            (resolve, reject, signal) => {
+              if (signal.aborted) {
+                reject('eager 2:' + signal.reason);
+              } else {
+                signal.onabort = () => {
+                  reject('lazy 2:' + signal.reason);
+                };
+              }
+              void sleep(10).then(() => {
+                resolve('hello world');
+              });
+            },
+          );
           if (ctx.signal.aborted) {
             pC.cancel('eager 1:' + ctx.signal.reason);
           } else {
             ctx.signal.onabort = () => {
               pC.cancel('lazy 1:' + ctx.signal.reason);
-            }
+            };
           }
           return pC;
         }
@@ -211,24 +213,26 @@ describe('context/decorators/cancellable', () => {
         f(ctx?: Partial<ContextCancellable>): PromiseCancellable<string>;
         @cancellable(true)
         f(@context ctx: ContextCancellable): PromiseCancellable<string> {
-          const pC = new PromiseCancellable<string>((resolve, reject, signal) => {
-            if (signal.aborted) {
-              reject('eager 2:' + signal.reason);
-            } else {
-              signal.onabort = () => {
-                reject('lazy 2:' + signal.reason);
-              };
-            }
-            sleep(10).then(() => {
-              resolve('hello world');
-            });
-          });
+          const pC = new PromiseCancellable<string>(
+            (resolve, reject, signal) => {
+              if (signal.aborted) {
+                reject('eager 2:' + signal.reason);
+              } else {
+                signal.onabort = () => {
+                  reject('lazy 2:' + signal.reason);
+                };
+              }
+              void sleep(10).then(() => {
+                resolve('hello world');
+              });
+            },
+          );
           if (ctx.signal.aborted) {
             pC.cancel('eager 1:' + ctx.signal.reason);
           } else {
             ctx.signal.onabort = () => {
               pC.cancel('lazy 1:' + ctx.signal.reason);
-            }
+            };
           }
           return pC;
         }
@@ -360,7 +364,7 @@ describe('context/decorators/cancellable', () => {
       class C {
         f(ctx?: Partial<ContextCancellable>): PromiseCancellable<string>;
         @cancellable()
-        async f(@context ctx: ContextCancellable): Promise<string> {
+        async f(@context _ctx: ContextCancellable): Promise<string> {
           return 'hello world';
         }
       }

@@ -1,8 +1,7 @@
 import type { TLSSocket } from 'tls';
-import type { Http2SecureServer } from 'http2';
+import type { Http2SecureServer, Http2Session } from 'http2';
 import type { ServerCredentials } from '@grpc/grpc-js';
 import type { Services } from './types';
-import type { Http2Session } from 'http2';
 import type { Certificate } from '../keys/types';
 import type { Host, Port, TLSConfig } from '../network/types';
 import http2 from 'http2';

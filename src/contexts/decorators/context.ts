@@ -4,7 +4,7 @@ import * as contextsUtils from '../utils';
  * Context parameter decorator
  * It is only allowed to be used once
  */
-function context(target: Object, key: string | symbol, index: number) {
+function context(target: any, key: string | symbol, index: number) {
   const targetName = target['name'] ?? target.constructor.name;
   const method = target[key];
   if (contextsUtils.contexts.has(method)) {

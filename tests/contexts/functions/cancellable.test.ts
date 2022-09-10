@@ -41,7 +41,7 @@ describe('context/functions/cancellable', () => {
       await expect(pC).rejects.toBeUndefined();
     });
     test('async function cancel - lazy', async () => {
-      const f = async(ctx: ContextCancellable): Promise<string> => {
+      const f = async (ctx: ContextCancellable): Promise<string> => {
         expect(ctx.signal.aborted).toBe(false);
         while (true) {
           if (ctx.signal.aborted) break;
@@ -96,7 +96,7 @@ describe('context/functions/cancellable', () => {
               reject('lazy 2:' + signal.reason);
             };
           }
-          sleep(10).then(() => {
+          void sleep(10).then(() => {
             resolve('hello world');
           });
         });
@@ -105,7 +105,7 @@ describe('context/functions/cancellable', () => {
         } else {
           ctx.signal.onabort = () => {
             pC.cancel('lazy 1:' + ctx.signal.reason);
-          }
+          };
         }
         return pC;
       };
@@ -130,7 +130,7 @@ describe('context/functions/cancellable', () => {
               reject('lazy 2:' + signal.reason);
             };
           }
-          sleep(10).then(() => {
+          void sleep(10).then(() => {
             resolve('hello world');
           });
         });
@@ -139,7 +139,7 @@ describe('context/functions/cancellable', () => {
         } else {
           ctx.signal.onabort = () => {
             pC.cancel('lazy 1:' + ctx.signal.reason);
-          }
+          };
         }
         return pC;
       };
@@ -198,7 +198,7 @@ describe('context/functions/cancellable', () => {
       expect(signal!.aborted).toBe(true);
     });
     test('nested cancellable - lazy then lazy', async () => {
-      const f = async(ctx: ContextCancellable): Promise<string> => {
+      const f = async (ctx: ContextCancellable): Promise<string> => {
         expect(ctx.signal.aborted).toBe(false);
         while (true) {
           if (ctx.signal.aborted) {
@@ -214,7 +214,7 @@ describe('context/functions/cancellable', () => {
       await expect(pC).rejects.toBe('throw:cancel reason');
     });
     test('nested cancellable - lazy then eager', async () => {
-      const f = async(ctx: ContextCancellable): Promise<string> => {
+      const f = async (ctx: ContextCancellable): Promise<string> => {
         expect(ctx.signal.aborted).toBe(false);
         while (true) {
           if (ctx.signal.aborted) {
@@ -230,7 +230,7 @@ describe('context/functions/cancellable', () => {
       await expect(pC).rejects.toBe('cancel reason');
     });
     test('nested cancellable - eager then lazy', async () => {
-      const f = async(ctx: ContextCancellable): Promise<string> => {
+      const f = async (ctx: ContextCancellable): Promise<string> => {
         expect(ctx.signal.aborted).toBe(false);
         while (true) {
           if (ctx.signal.aborted) {
@@ -246,7 +246,7 @@ describe('context/functions/cancellable', () => {
       await expect(pC).rejects.toBe('cancel reason');
     });
     test('signal event listeners are removed', async () => {
-      const f = async (ctx: ContextCancellable): Promise<string> => {
+      const f = async (_ctx: ContextCancellable): Promise<string> => {
         return 'hello world';
       };
       const abortController = new AbortController();

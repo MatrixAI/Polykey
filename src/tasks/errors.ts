@@ -21,7 +21,8 @@ class ErrorTaskManagerDestroyed<T> extends ErrorTasks<T> {
  * This is an unrecoverable error
  */
 class ErrorTaskManagerScheduler<T> extends ErrorTasks<T> {
-  static description = 'TaskManager scheduling loop encountered an unrecoverable error';
+  static description =
+    'TaskManager scheduling loop encountered an unrecoverable error';
   exitCode = sysexits.SOFTWARE;
 }
 
@@ -29,7 +30,8 @@ class ErrorTaskManagerScheduler<T> extends ErrorTasks<T> {
  * This is an unrecoverable error
  */
 class ErrorTaskManagerQueue<T> extends ErrorTasks<T> {
-  static description = 'TaskManager queuing loop encountered an unrecoverable error';
+  static description =
+    'TaskManager queuing loop encountered an unrecoverable error';
   exitCode = sysexits.SOFTWARE;
 }
 
@@ -96,7 +98,6 @@ class ErrorTaskGarbageCollection<T> extends ErrorTask<T> {
   static description = 'Task could not be garbage collected';
   exitCode = sysexits.SOFTWARE;
 }
-
 
 export {
   ErrorTasks,

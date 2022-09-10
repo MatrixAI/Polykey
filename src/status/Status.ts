@@ -6,9 +6,10 @@ import type {
   StatusDead,
 } from './types';
 import type { FileSystem, FileHandle } from '../types';
+import { StartStop } from '@matrixai/async-init/dist/StartStop';
 import Logger from '@matrixai/logger';
 import lock from 'fd-lock';
-import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
+import { ready } from '@matrixai/async-init/dist/StartStop';
 import * as statusErrors from './errors';
 import * as statusUtils from './utils';
 import { sleep, poll } from '../utils';

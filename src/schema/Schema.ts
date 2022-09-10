@@ -1,8 +1,8 @@
 import type { StateVersion } from './types';
 import type { FileSystem } from '../types';
 import path from 'path';
-import Logger from '@matrixai/logger';
 import { CreateDestroyStartStop } from '@matrixai/async-init/dist/CreateDestroyStartStop';
+import Logger from '@matrixai/logger';
 import { RWLockWriter } from '@matrixai/async-locks';
 import * as schemaErrors from './errors';
 import * as utils from '../utils';

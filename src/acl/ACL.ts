@@ -1,11 +1,14 @@
-import type { DB, LevelPath } from '@matrixai/db';
-import type { PermissionId, PermissionIdString, VaultActions } from './types';
-import type { Ref } from '../types';
-import type { DBTransaction } from '@matrixai/db';
-import type { Permission } from './types';
-import type { VaultAction, VaultId } from '../vaults/types';
-import type { GestaltAction } from '../gestalts/types';
+import type { DB, DBTransaction, LevelPath } from '@matrixai/db';
+import type {
+  PermissionId,
+  PermissionIdString,
+  Permission,
+  VaultActions,
+} from './types';
 import type { NodeId } from '../nodes/types';
+import type { GestaltAction } from '../gestalts/types';
+import type { VaultAction, VaultId } from '../vaults/types';
+import type { Ref } from '../types';
 import Logger from '@matrixai/logger';
 import { IdInternal } from '@matrixai/id';
 import {

@@ -1,13 +1,14 @@
-import type { DB, KeyPath, LevelPath } from '@matrixai/db';
+import type { DB, DBTransaction, KeyPath, LevelPath } from '@matrixai/db';
 import type {
+  NodeId,
+  NodeAddress,
   NodeBucket,
   NodeData,
   NodeBucketMeta,
+  NodeBucketIndex,
   NodeGraphSpace,
 } from './types';
 import type KeyManager from '../keys/KeyManager';
-import type { DBTransaction } from '@matrixai/db';
-import type { NodeId, NodeAddress, NodeBucketIndex } from './types';
 import Logger from '@matrixai/logger';
 import {
   CreateDestroyStartStop,

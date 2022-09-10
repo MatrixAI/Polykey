@@ -1,11 +1,14 @@
-import type { DB, KeyPath, LevelPath } from '@matrixai/db';
-import type { NotificationId, NotificationIdGenerator } from './types';
+import type { DB, DBTransaction, KeyPath, LevelPath } from '@matrixai/db';
+import type {
+  NotificationId,
+  Notification,
+  NotificationData,
+  NotificationIdGenerator,
+} from './types';
 import type ACL from '../acl/ACL';
 import type KeyManager from '../keys/KeyManager';
 import type NodeManager from '../nodes/NodeManager';
 import type NodeConnectionManager from '../nodes/NodeConnectionManager';
-import type { DBTransaction } from '@matrixai/db';
-import type { Notification, NotificationData } from './types';
 import type { NodeId } from '../nodes/types';
 import Logger from '@matrixai/logger';
 import { IdInternal } from '@matrixai/id';

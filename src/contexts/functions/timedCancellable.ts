@@ -1,5 +1,3 @@
-function timedCancellable() {
-
-}
+function timedCancellable() {}
 
 export default timedCancellable;

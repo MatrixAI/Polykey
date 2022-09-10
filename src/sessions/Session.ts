@@ -1,7 +1,7 @@
 import type { SessionToken } from './types';
 import type { FileSystem } from '../types';
-import Logger from '@matrixai/logger';
 import { CreateDestroyStartStop } from '@matrixai/async-init/dist/CreateDestroyStartStop';
+import Logger from '@matrixai/logger';
 import lock from 'fd-lock';
 import * as sessionErrors from './errors';
 import * as utils from '../utils';

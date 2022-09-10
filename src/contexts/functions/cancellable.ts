@@ -1,18 +1,16 @@
-import type { ContextCancellable } from "../types";
+import type { ContextCancellable } from '../types';
 import { PromiseCancellable } from '@matrixai/async-cancellable';
 
 type ContextRemaining<C> = Omit<C, keyof ContextCancellable>;
 
-type ContextAndParameters<C, P extends Array<any>> =
-  keyof ContextRemaining<C> extends never
+type ContextAndParameters<
+  C,
+  P extends Array<any>,
+> = keyof ContextRemaining<C> extends never
   ? [Partial<ContextCancellable>?, ...P]
   : [Partial<ContextCancellable> & ContextRemaining<C>, ...P];
 
-function cancellable<
-  C extends ContextCancellable,
-  P extends Array<any>,
-  R
->(
+function cancellable<C extends ContextCancellable, P extends Array<any>, R>(
   f: (ctx: C, ...params: P) => PromiseLike<R>,
   lazy: boolean = false,
 ): (...params: ContextAndParameters<C, P>) => PromiseCancellable<R> {

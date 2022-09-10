@@ -1,6 +1,6 @@
 import type { ReadCommitResult } from 'isomorphic-git';
 import type { EncryptedFS } from 'encryptedfs';
-import type { DB, LevelPath } from '@matrixai/db';
+import type { DB, DBTransaction, LevelPath } from '@matrixai/db';
 import type {
   CommitId,
   CommitLog,
@@ -17,7 +17,6 @@ import type { NodeId, NodeIdEncoded } from '../nodes/types';
 import type NodeConnectionManager from '../nodes/NodeConnectionManager';
 import type GRPCClientAgent from '../agent/GRPCClientAgent';
 import type { POJO } from '../types';
-import type { DBTransaction } from '@matrixai/db';
 import path from 'path';
 import git from 'isomorphic-git';
 import * as grpc from '@grpc/grpc-js';

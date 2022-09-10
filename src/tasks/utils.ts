@@ -1,6 +1,11 @@
-import type { TaskId, TaskIdEncoded, TaskPriority, TaskDelay, TaskDeadline } from './types';
+import type {
+  TaskId,
+  TaskIdEncoded,
+  TaskPriority,
+  TaskDelay,
+  TaskDeadline,
+} from './types';
 import { IdInternal, IdSortable } from '@matrixai/id';
-import * as utils from '../utils';
 
 /**
  * Generates TaskId
@@ -48,7 +53,7 @@ function toDelay(delay: number): TaskDelay {
     delay = 0;
   } else {
     delay = Math.max(delay, 0);
-    delay = Math.min(delay, 2**31 - 1);
+    delay = Math.min(delay, 2 ** 31 - 1);
   }
   return delay as TaskDelay;
 }

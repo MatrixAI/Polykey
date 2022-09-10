@@ -1,15 +1,15 @@
-import type { DB, LevelPath } from '@matrixai/db';
+import type { DB, DBTransaction, LevelPath } from '@matrixai/db';
 import type { ChainDataEncoded } from './types';
-import type { ClaimIdGenerator, ClaimIntermediary } from '../claims/types';
-import type KeyManager from '../keys/KeyManager';
-import type { NodeIdEncoded } from '../nodes/types';
-import type { DBTransaction } from '@matrixai/db';
 import type {
   ClaimData,
   ClaimEncoded,
   ClaimId,
+  ClaimIdGenerator,
+  ClaimIntermediary,
   ClaimType,
 } from '../claims/types';
+import type KeyManager from '../keys/KeyManager';
+import type { NodeIdEncoded } from '../nodes/types';
 import Logger from '@matrixai/logger';
 import { IdInternal } from '@matrixai/id';
 import {

@@ -1,11 +1,10 @@
-import type { AddressInfo } from 'net';
+import type { Socket, AddressInfo } from 'net';
 import type { TLSSocket } from 'tls';
 import type UTPConnection from 'utp-native/lib/connection';
 import type { Certificate } from '../keys/types';
 import type { Address, Host, NetworkMessage, Port } from './types';
 import type { NodeId } from '../nodes/types';
 import type { AbstractConstructorParameters, Timer } from '../types';
-import type { Socket } from 'net';
 import tls from 'tls';
 import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
 import Connection from './Connection';

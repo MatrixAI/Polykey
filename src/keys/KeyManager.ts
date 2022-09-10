@@ -1,13 +1,16 @@
 import type {
+  KeyPair,
+  Certificate,
+  KeyPairPem,
+  CertificatePem,
   CertificatePemChain,
   RecoveryCode,
   KeyManagerChangeData,
   PrivateKeyPem,
 } from './types';
 import type { FileSystem } from '../types';
-import type { PolykeyWorkerManagerInterface } from '../workers/types';
-import type { KeyPair, Certificate, KeyPairPem, CertificatePem } from './types';
 import type { NodeId } from '../nodes/types';
+import type { PolykeyWorkerManagerInterface } from '../workers/types';
 import path from 'path';
 import { Buffer } from 'buffer';
 import Logger from '@matrixai/logger';

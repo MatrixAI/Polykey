@@ -349,11 +349,13 @@ function isPromiseLike(v: any): v is PromiseLike<unknown> {
  * Use this to check for generators
  */
 function isGenerator(v: any): v is Generator<unknown> {
-  return v != null &&
-         typeof v[Symbol.iterator] === 'function' &&
-         typeof v.next === 'function' &&
-         typeof v.return === 'function' &&
-         typeof v.throw === 'function';
+  return (
+    v != null &&
+    typeof v[Symbol.iterator] === 'function' &&
+    typeof v.next === 'function' &&
+    typeof v.return === 'function' &&
+    typeof v.throw === 'function'
+  );
 }
 
 /**
@@ -361,12 +363,14 @@ function isGenerator(v: any): v is Generator<unknown> {
  * Use this to check for async generators
  */
 function isAsyncGenerator(v: any): v is AsyncGenerator<unknown> {
-  return v != null &&
-         typeof v === 'object' &&
-         typeof v[Symbol.asyncIterator] === 'function' &&
-         typeof v.next === 'function' &&
-         typeof v.return === 'function' &&
-         typeof v.throw === 'function';
+  return (
+    v != null &&
+    typeof v === 'object' &&
+    typeof v[Symbol.asyncIterator] === 'function' &&
+    typeof v.next === 'function' &&
+    typeof v.return === 'function' &&
+    typeof v.throw === 'function'
+  );
 }
 
 /**

@@ -1,8 +1,11 @@
-import type { ProviderTokens } from './types';
-import type { DB, KeyPath, LevelPath } from '@matrixai/db';
-import type { DBTransaction } from '@matrixai/db';
+import type {
+  ProviderId,
+  IdentityId,
+  ProviderTokens,
+  TokenData,
+} from './types';
+import type { DB, DBTransaction, KeyPath, LevelPath } from '@matrixai/db';
 import type Provider from './Provider';
-import type { ProviderId, IdentityId, TokenData } from './types';
 import Logger from '@matrixai/logger';
 import {
   CreateDestroyStartStop,

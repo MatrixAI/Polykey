@@ -6,7 +6,7 @@ import {
   AsyncFunction,
   GeneratorFunction,
   AsyncGeneratorFunction,
-  sleep
+  sleep,
 } from '@/utils';
 
 describe('context/functions/timed', () => {
@@ -24,9 +24,11 @@ describe('context/functions/timed', () => {
       const fTimed = timed(f);
       expect(fTimed(undefined)).toBe('hello world');
       expect(fTimed({})).toBe('hello world');
-      expect(fTimed({ timer: new Timer({ delay: 50 }) }, (t) => {
-        expect(t.delay).toBe(50);
-      })).toBe('hello world');
+      expect(
+        fTimed({ timer: new Timer({ delay: 50 }) }, (t) => {
+          expect(t.delay).toBe(50);
+        }),
+      ).toBe('hello world');
       expect(fTimed).toBeInstanceOf(Function);
     });
     test('function value array', () => {
@@ -37,14 +39,16 @@ describe('context/functions/timed', () => {
         expect(ctx.timer).toBeInstanceOf(Timer);
         expect(ctx.signal).toBeInstanceOf(AbortSignal);
         if (check != null) check(ctx.timer);
-        return [1,2,3,4];
+        return [1, 2, 3, 4];
       };
       const fTimed = timed(f);
-      expect(fTimed(undefined)).toStrictEqual([1,2,3,4]);
-      expect(fTimed({})).toStrictEqual([1,2,3,4]);
-      expect(fTimed({ timer: new Timer({ delay: 50 }) }, (t) => {
-        expect(t.delay).toBe(50);
-      })).toStrictEqual([1,2,3,4]);
+      expect(fTimed(undefined)).toStrictEqual([1, 2, 3, 4]);
+      expect(fTimed({})).toStrictEqual([1, 2, 3, 4]);
+      expect(
+        fTimed({ timer: new Timer({ delay: 50 }) }, (t) => {
+          expect(t.delay).toBe(50);
+        }),
+      ).toStrictEqual([1, 2, 3, 4]);
       expect(fTimed).toBeInstanceOf(Function);
     });
     test('function promise', async () => {
@@ -60,9 +64,11 @@ describe('context/functions/timed', () => {
       const fTimed = timed(f);
       expect(await fTimed(undefined)).toBeUndefined();
       expect(await fTimed({})).toBeUndefined();
-      expect(await fTimed({ timer: new Timer({ delay: 50 }) }, (t) => {
-        expect(t.delay).toBe(50);
-      })).toBeUndefined();
+      expect(
+        await fTimed({ timer: new Timer({ delay: 50 }) }, (t) => {
+          expect(t.delay).toBe(50);
+        }),
+      ).toBeUndefined();
       expect(fTimed).toBeInstanceOf(Function);
     });
     test('async function', async () => {
@@ -181,7 +187,7 @@ describe('context/functions/timed', () => {
           contextsErrors.ErrorContextsTimedTimeOut,
         );
         return 'hello world';
-      }
+      };
       const fTimed = timed(f, 50);
       await expect(fTimed()).resolves.toBe('hello world');
     });
@@ -224,7 +230,7 @@ describe('context/functions/timed', () => {
           });
       };
       const fTimed = timed(f, 50);
-      // const c = new C();
+      // Const c = new C();
       await expect(fTimed()).resolves.toBe('hello world');
     });
     test('promise function expiry and late rejection', async () => {
@@ -281,7 +287,7 @@ describe('context/functions/timed', () => {
       expect(timeout).toBeUndefined();
     });
     test('async generator expiry', async () => {
-      const f = async function *(ctx: ContextTimed): AsyncGenerator<string> {
+      const f = async function* (ctx: ContextTimed): AsyncGenerator<string> {
         while (true) {
           if (ctx.signal.aborted) {
             throw ctx.signal.reason;
@@ -361,7 +367,7 @@ describe('context/functions/timed', () => {
         expect(ctx.timer.delay).toBe(50);
         expect(ctx.signal.aborted).toBe(false);
         return 'g';
-      }
+      };
       const gTimed = timed(g, 25);
       const f = async (ctx: ContextTimed): Promise<string> => {
         expect(ctx.timer).toBeInstanceOf(Timer);
@@ -389,7 +395,7 @@ describe('context/functions/timed', () => {
         expect(ctx.timer.delay).toBe(25);
         expect(ctx.signal.aborted).toBe(false);
         return 'g';
-      }
+      };
       const gTimed = timed(g, 25);
       const f = async (ctx: ContextTimed): Promise<string> => {
         expect(ctx.timer).toBeInstanceOf(Timer);
@@ -415,7 +421,7 @@ describe('context/functions/timed', () => {
         expect(ctx.timer.delay).toBe(25);
         expect(ctx.signal.aborted).toBe(false);
         return 'g';
-      }
+      };
       const gTimed = timed(g, 25);
       const f = async (ctx: ContextTimed): Promise<string> => {
         expect(ctx.timer).toBeInstanceOf(Timer);
@@ -467,7 +473,7 @@ describe('context/functions/timed', () => {
         // it may reject after some time
         await hTimed(ctx);
         return 'hello world';
-      }
+      };
       const fTimed = timed(f, 25);
       await expect(fTimed()).rejects.toThrow(
         contextsErrors.ErrorContextsTimedTimeOut,

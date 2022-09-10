@@ -1,5 +1,9 @@
 import type { ClientDuplexStream } from '@grpc/grpc-js';
 import type { ClientReadableStream } from '@grpc/grpc-js/build/src/call';
+import type {
+  AsyncGeneratorReadableStreamClient,
+  AsyncGeneratorDuplexStreamClient,
+} from '../grpc/types';
 import type { NodeId } from '../nodes/types';
 import type { Host, Port, ProxyConfig, TLSConfig } from '../network/types';
 import type * as utilsPB from '../proto/js/polykey/v1/utils/utils_pb';
@@ -7,10 +11,6 @@ import type * as vaultsPB from '../proto/js/polykey/v1/vaults/vaults_pb';
 import type * as nodesPB from '../proto/js/polykey/v1/nodes/nodes_pb';
 import type * as notificationsPB from '../proto/js/polykey/v1/notifications/notifications_pb';
 import type { Timer } from '../types';
-import type {
-  AsyncGeneratorReadableStreamClient,
-  AsyncGeneratorDuplexStreamClient,
-} from '../grpc/types';
 import Logger from '@matrixai/logger';
 import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
 import * as agentErrors from './errors';

@@ -13,12 +13,12 @@ import type {
   TaskTimestamp,
   TaskPath,
 } from './types';
+import Logger from '@matrixai/logger';
+import { IdInternal } from '@matrixai/id';
 import {
   CreateDestroyStartStop,
   ready,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
-import Logger from '@matrixai/logger';
-import { IdInternal } from '@matrixai/id';
 import { Lock } from '@matrixai/async-locks';
 import { PromiseCancellable } from '@matrixai/async-cancellable';
 import { extractTs } from '@matrixai/id/dist/IdSortable';
@@ -400,21 +400,14 @@ class TaskManager {
       // Signals cancellation to the active promise
       // the active promise is lazy so the task promise is also lazy
       // this means cancellation does not result in eager rejection
-      const signalHandler = () => this.cancelTask(
-        taskId,
-        abortController.signal.reason
-      );
+      const signalHandler = () =>
+        this.cancelTask(taskId, abortController.signal.reason);
       const taskListener = (event: TaskEvent) => {
-        abortController.signal.removeEventListener(
-          'abort',
-          signalHandler
-        );
+        abortController.signal.removeEventListener('abort', signalHandler);
         if (event.detail.status === 'success') {
           resolve(event.detail.result);
         } else {
-          reject(
-            event.detail.reason
-          );
+          reject(event.detail.reason);
         }
       };
       // Event listeners are registered synchronously
@@ -434,7 +427,10 @@ class TaskManager {
             if (taskData == null) {
               // Rollback the event listeners
               this.taskEvents.removeEventListener(taskIdEncoded, taskListener);
-              abortController.signal.removeEventListener('abort', signalHandler);
+              abortController.signal.removeEventListener(
+                'abort',
+                signalHandler,
+              );
               reject(new tasksErrors.ErrorTaskMissing(taskIdEncoded));
             }
           },
@@ -445,7 +441,10 @@ class TaskManager {
     }).finally(() => {
       this.taskPromises.delete(taskIdEncoded);
     });
-    taskPromiseCancellable = PromiseCancellable.from(taskPromise, abortController);
+    taskPromiseCancellable = PromiseCancellable.from(
+      taskPromise,
+      abortController,
+    );
     // Empty catch handler to ignore unhandled rejections
     taskPromiseCancellable.catch(() => {});
     this.taskPromises.set(taskIdEncoded, taskPromiseCancellable);
@@ -638,7 +637,11 @@ class TaskManager {
     if (taskDataPatch.delay != null) {
       const taskScheduleTime = taskData.timestamp + taskData.delay;
       const taskScheduleTimeNew = taskData.timestamp + taskDataPatch.delay;
-      await tran.del([...this.tasksScheduledDbPath, utils.lexiPackBuffer(taskScheduleTime), taskIdBuffer])
+      await tran.del([
+        ...this.tasksScheduledDbPath,
+        utils.lexiPackBuffer(taskScheduleTime),
+        taskIdBuffer,
+      ]);
       await tran.put(
         [
           ...this.tasksScheduledDbPath,
@@ -664,7 +667,9 @@ class TaskManager {
     const abortController = new AbortController();
     const abortP = utils.signalPromise(abortController.signal);
     // First iteration must run
-    if (this.schedulingLockReleaser != null) await this.schedulingLockReleaser();
+    if (this.schedulingLockReleaser != null) {
+      await this.schedulingLockReleaser();
+    }
     const schedulingLoop = (async () => {
       try {
         while (!abortController.signal.aborted) {
@@ -723,10 +728,9 @@ class TaskManager {
         }
       } catch (e) {
         this.schedulerLogger.error(`Failed scheduling loop ${String(e)}`);
-        throw new tasksErrors.ErrorTaskManagerScheduler(
-          undefined,
-          { cause: e }
-        );
+        throw new tasksErrors.ErrorTaskManagerScheduler(undefined, {
+          cause: e,
+        });
       }
     })();
     this.schedulingLoop = PromiseCancellable.from(
@@ -786,10 +790,7 @@ class TaskManager {
         }
       } catch (e) {
         this.queueLogger.error(`Failed queuing loop ${String(e)}`);
-        throw new tasksErrors.ErrorTaskManagerQueue(
-          undefined,
-          { cause: e }
-        );
+        throw new tasksErrors.ErrorTaskManagerQueue(undefined, { cause: e });
       }
     })();
     // Cancellation is always a resolution
@@ -865,9 +866,7 @@ class TaskManager {
    * Transition from scheduled to queued
    * If the task is cancelled, then this does nothing
    */
-  protected async queueTask(
-    taskId: TaskId,
-  ): Promise<void> {
+  protected async queueTask(taskId: TaskId): Promise<void> {
     const taskIdBuffer = taskId.toBuffer();
     const taskIdEncoded = tasksUtils.encodeTaskId(taskId);
     this.schedulerLogger.debug(`Queuing Task ${taskIdEncoded}`);
@@ -881,7 +880,9 @@ class TaskManager {
       // If the task was garbage collected, due to potentially cancellation
       // then we can skip the task, as it no longer exists
       if (taskData == null) {
-        this.schedulerLogger.debug(`Skipped Task ${taskIdEncoded} - it is cancelled`);
+        this.schedulerLogger.debug(
+          `Skipped Task ${taskIdEncoded} - it is cancelled`,
+        );
         return;
       }
       // Remove task from the scheduled index
@@ -924,7 +925,9 @@ class TaskManager {
       // If the task was garbage collected, due to potentially cancellation
       // then we can skip the task, as it no longer exists
       if (taskData == null) {
-        this.queueLogger.debug(`Skipped Task ${taskIdEncoded} - it is cancelled`);
+        this.queueLogger.debug(
+          `Skipped Task ${taskIdEncoded} - it is cancelled`,
+        );
         return;
       }
       const taskHandler = this.getHandler(taskData.handlerId);
@@ -934,7 +937,6 @@ class TaskManager {
         );
         await this.gcTask(taskId, tran);
         tran.queueSuccess(() => {
-
           // THIS only runs after the transaction is committed
           // IS IT POSSIBLE
           // that I HAVE REGISTERED EVENT HANDLERS is at there
@@ -968,7 +970,7 @@ class TaskManager {
         const timeoutError = new tasksErrors.ErrorTaskTimeOut();
         const timer = new Timer<void>(
           () => void abortController.abort(timeoutError),
-          tasksUtils.fromDeadline(taskData.deadline)
+          tasksUtils.fromDeadline(taskData.deadline),
         );
         const ctx = {
           timer,
@@ -995,7 +997,7 @@ class TaskManager {
               taskResult = await taskHandler(
                 ctx,
                 taskInfo,
-                ...taskData.parameters
+                ...taskData.parameters,
               );
               succeeded = true;
             } catch (e) {
@@ -1010,10 +1012,9 @@ class TaskManager {
               } catch (e) {
                 this.logger.error(`Failed Requeuing Task ${taskIdEncoded}`);
                 // This is an unrecoverable error
-                throw new tasksErrors.ErrorTaskRequeue(
-                  taskIdEncoded,
-                  { cause: e}
-                );
+                throw new tasksErrors.ErrorTaskRequeue(taskIdEncoded, {
+                  cause: e,
+                });
               }
             } else {
               if (succeeded) {
@@ -1024,12 +1025,14 @@ class TaskManager {
               // GC the task before dispatching events
               try {
                 await this.gcTask(taskId);
-              } catch(e) {
-                this.logger.error(`Failed Garbage Collecting Task ${taskIdEncoded}`);
+              } catch (e) {
+                this.logger.error(
+                  `Failed Garbage Collecting Task ${taskIdEncoded}`,
+                );
                 // This is an unrecoverable error
                 throw new tasksErrors.ErrorTaskGarbageCollection(
                   taskIdEncoded,
-                  { cause: e}
+                  { cause: e },
                 );
               }
               if (succeeded) {
@@ -1064,7 +1067,7 @@ class TaskManager {
         // This will be a lazy `PromiseCancellable`
         const activePromiseCancellable = PromiseCancellable.from(
           activePromise,
-          abortController
+          abortController,
         );
         this.activePromises.set(taskIdEncoded, activePromiseCancellable);
         this.queueLogger.debug(`Started Task ${taskIdEncoded}`);
@@ -1100,12 +1103,12 @@ class TaskManager {
       ...this.tasksQueuedDbPath,
       utils.lexiPackBuffer(taskData.priority),
       utils.lexiPackBuffer(taskScheduleTime),
-      taskIdBuffer
+      taskIdBuffer,
     ]);
     await tran.del([
       ...this.tasksScheduledDbPath,
       utils.lexiPackBuffer(taskScheduleTime),
-      taskIdBuffer
+      taskIdBuffer,
     ]);
     await tran.del([...this.tasksTaskDbPath, taskId.toBuffer()]);
     this.logger.debug(`Garbage Collected Task ${taskIdEncoded}`);
@@ -1113,7 +1116,7 @@ class TaskManager {
 
   protected async requeueTask(
     taskId: TaskId,
-    tran?: DBTransaction
+    tran?: DBTransaction,
   ): Promise<void> {
     if (tran == null) {
       return this.db.withTransactionF((tran) => this.requeueTask(taskId, tran));
@@ -1128,24 +1131,24 @@ class TaskManager {
     ]);
     if (taskData == null) {
       throw new tasksErrors.ErrorTaskMissing(taskIdEncoded);
-    };
+    }
     // Put task into the active index
     // this index will be used to retry tasks if they don't finish
     await tran.del([...this.tasksActiveDbPath, taskIdBuffer]);
     // Put task back into the queued index
-    await tran.put([
-      ...this.tasksQueuedDbPath,
-      utils.lexiPackBuffer(taskData.priority),
-      utils.lexiPackBuffer(taskData.timestamp + taskData.delay),
-      taskIdBuffer,
-    ], null);
+    await tran.put(
+      [
+        ...this.tasksQueuedDbPath,
+        utils.lexiPackBuffer(taskData.priority),
+        utils.lexiPackBuffer(taskData.timestamp + taskData.delay),
+        taskIdBuffer,
+      ],
+      null,
+    );
     this.logger.debug(`Requeued Task ${taskIdEncoded}`);
   }
 
-  protected async cancelTask(
-    taskId: TaskId,
-    cancelReason: any,
-  ): Promise<void> {
+  protected async cancelTask(taskId: TaskId, cancelReason: any): Promise<void> {
     const taskIdEncoded = tasksUtils.encodeTaskId(taskId);
     this.logger.debug(`Cancelling Task ${taskIdEncoded}`);
     const activePromise = this.activePromises.get(taskIdEncoded);
@@ -1156,17 +1159,14 @@ class TaskManager {
     } else {
       try {
         await this.gcTask(taskId);
-      } catch(e) {
+      } catch (e) {
         this.logger.error(
-          `Failed Garbage Collecting Task ${taskIdEncoded} - ${String(
-            e,
-          )}`,
+          `Failed Garbage Collecting Task ${taskIdEncoded} - ${String(e)}`,
         );
         // This is an unrecoverable error
-        throw new tasksErrors.ErrorTaskGarbageCollection(
-          taskIdEncoded,
-          { cause: e }
-        );
+        throw new tasksErrors.ErrorTaskGarbageCollection(taskIdEncoded, {
+          cause: e,
+        });
       }
       this.taskEvents.dispatchEvent(
         new TaskEvent(taskIdEncoded, {
@@ -1238,7 +1238,9 @@ class TaskManager {
           );
           // Removing task from active index
           await tran.del([...this.tasksActiveDbPath, ...kP]);
-          this.logger.warn(`Moving Task ${taskIdEncoded} from Active to Queued`);
+          this.logger.warn(
+            `Moving Task ${taskIdEncoded} from Active to Queued`,
+          );
         }
       }
       this.logger.info('Finish Tasks Repair');

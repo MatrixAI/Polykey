@@ -18,10 +18,7 @@ function setupContext(
     return () => {
       timer.cancel();
     };
-  } else if (
-    ctx.timer === undefined &&
-    ctx.signal instanceof AbortSignal
-  ) {
+  } else if (ctx.timer === undefined && ctx.signal instanceof AbortSignal) {
     const abortController = new AbortController();
     const e = new errorTimeoutConstructor();
     const timer = new Timer(() => void abortController.abort(e), delay);
@@ -85,8 +82,10 @@ function setupContext(
 
 type ContextRemaining<C> = Omit<C, keyof ContextTimed>;
 
-type ContextAndParameters<C, P extends Array<any>> =
-  keyof ContextRemaining<C> extends never
+type ContextAndParameters<
+  C,
+  P extends Array<any>,
+> = keyof ContextRemaining<C> extends never
   ? [Partial<ContextTimed>?, ...P]
   : [Partial<ContextTimed> & ContextRemaining<C>, ...P];
 
@@ -94,32 +93,21 @@ type ContextAndParameters<C, P extends Array<any>> =
  * Timed HOF
  * This overloaded signature is external signature
  */
-function timed<
-  C extends ContextTimed,
-  P extends Array<any>,
-  R
->(
+function timed<C extends ContextTimed, P extends Array<any>, R>(
   f: (ctx: C, ...params: P) => R,
   delay?: number,
   errorTimeoutConstructor?: new () => Error,
-): ( ...params: ContextAndParameters<C, P>) => R;
-function timed<
-  C extends ContextTimed,
-  P extends Array<any>
->(
+): (...params: ContextAndParameters<C, P>) => R;
+function timed<C extends ContextTimed, P extends Array<any>>(
   f: (ctx: C, ...params: P) => any,
   delay: number = Infinity,
   errorTimeoutConstructor: new () => Error = contextsErrors.ErrorContextsTimedTimeOut,
-): ( ...params: ContextAndParameters<C, P>) => any {
+): (...params: ContextAndParameters<C, P>) => any {
   if (f instanceof utils.AsyncFunction) {
     return async (...params) => {
       const ctx = params[0] ?? {};
       const args = params.slice(1) as P;
-      const teardownContext = setupContext(
-        delay,
-        errorTimeoutConstructor,
-        ctx,
-      );
+      const teardownContext = setupContext(delay, errorTimeoutConstructor, ctx);
       try {
         return await f(ctx as C, ...args);
       } finally {
@@ -130,11 +118,7 @@ function timed<
     return function* (...params) {
       const ctx = params[0] ?? {};
       const args = params.slice(1) as P;
-      const teardownContext = setupContext(
-        delay,
-        errorTimeoutConstructor,
-        ctx,
-      );
+      const teardownContext = setupContext(delay, errorTimeoutConstructor, ctx);
       try {
         return yield* f(ctx as C, ...args);
       } finally {
@@ -145,11 +129,7 @@ function timed<
     return async function* (...params) {
       const ctx = params[0] ?? {};
       const args = params.slice(1) as P;
-      const teardownContext = setupContext(
-        delay,
-        errorTimeoutConstructor,
-        ctx,
-      );
+      const teardownContext = setupContext(delay, errorTimeoutConstructor, ctx);
       try {
         return yield* f(ctx as C, ...args);
       } finally {
@@ -160,11 +140,7 @@ function timed<
     return (...params) => {
       const ctx = params[0] ?? {};
       const args = params.slice(1) as P;
-      const teardownContext = setupContext(
-        delay,
-        errorTimeoutConstructor,
-        ctx,
-      );
+      const teardownContext = setupContext(delay, errorTimeoutConstructor, ctx);
       const result = f(ctx as C, ...args);
       if (utils.isPromiseLike(result)) {
         return result.then(
