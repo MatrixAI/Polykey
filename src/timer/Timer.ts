@@ -121,7 +121,7 @@ class Timer<T = void>
       if (isFinite(delay)) {
         // Clip to delay <= 2147483647 (maximum timeout)
         // but only if delay is finite
-        delay = Math.min(delay, 2**31 - 1);
+        delay = Math.min(delay, 2 ** 31 - 1);
       }
     }
     this.handler = handler;
@@ -154,7 +154,7 @@ class Timer<T = void>
     } else {
       // Infinite interval, make sure you are cancelling the `Timer`
       // otherwise you will keep the process alive
-      this.timeoutRef = setInterval(() => {}, 2**31 - 1);
+      this.timeoutRef = setInterval(() => {}, 2 ** 31 - 1);
       this.timestamp = new Date(performance.timeOrigin + performance.now());
     }
   }

@@ -1,5 +1,4 @@
-
-// equivalent to timed(cancellable())
+// Equivalent to timed(cancellable())
 // timeout is always lazy
 // it's only if you call cancel
 // PLUS this only works with PromiseLike
@@ -11,8 +10,6 @@ function timedCancellable(
   lazy: boolean = false,
   delay: number = Infinity,
   errorTimeoutConstructor: new () => Error = contextsErrors.ErrorContextsTimedTimeOut,
-) {
-
-}
+) {}
 
 export default timedCancellable;
