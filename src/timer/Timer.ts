@@ -145,20 +145,16 @@ class Timer<T = void>
       this.rejectP = reject.bind(this.p);
     }, abortController);
     this.abortController = abortController;
-    // If the delay is Infinity, there is no `setTimeout`
-    // therefore this promise will never resolve
+    // If the delay is Infinity, this promise will never resolve
     // it may still reject however
     if (isFinite(delay)) {
       this.timeoutRef = setTimeout(() => void this.fulfill(), delay);
-      if (typeof this.timeoutRef.unref === 'function') {
-        // Do not keep the event loop alive
-        this.timeoutRef.unref();
-      }
       this.timestamp = new Date(performance.timeOrigin + performance.now());
       this.scheduled = new Date(this.timestamp.getTime() + delay);
     } else {
-      // There is no `setTimeout` nor `setInterval`
-      // so the event loop will not be kept alive
+      // Infinite interval, make sure you are cancelling the `Timer`
+      // otherwise you will keep the process alive
+      this.timeoutRef = setInterval(() => {}, 2**31 - 1);
       this.timestamp = new Date(performance.timeOrigin + performance.now());
     }
   }
