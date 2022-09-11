@@ -116,4 +116,5 @@ describe(Scheduler.name, () => {
   test.todo('tasks timestamps are unique on taskId');
   test.todo('can remove scheduled tasks');
   test.todo('can not remove active tasks');
+  test.todo('Should clean up any inconsistent state during creation');
 });

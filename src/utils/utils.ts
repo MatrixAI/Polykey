@@ -7,6 +7,7 @@ import type {
 import os from 'os';
 import process from 'process';
 import path from 'path';
+import lexi from 'lexicographic-integer';
 import * as utilsErrors from './errors';
 
 const AsyncFunction = (async () => {}).constructor;
@@ -195,6 +196,22 @@ function promise<T = void>(): PromiseDeconstructed<T> {
   };
 }
 
+/**
+ * Promise constructed from signal
+ * This rejects when the signal is aborted
+ */
+function signalPromise(signal: AbortSignal): Promise<void> {
+  return new Promise<void>((_, reject) => {
+    if (signal.aborted) {
+      reject(signal.reason);
+      return;
+    }
+    signal.addEventListener('abort', () => {
+      reject(signal.reason);
+    });
+  });
+}
+
 function timerStart(timeout: number): Timer {
   const timer = {} as Timer;
   timer.timedOut = false;
@@ -355,6 +372,19 @@ function isAsyncGenerator(v: any): v is AsyncGenerator<unknown> {
     typeof v.throw === 'function'
   );
 }
+
+/**
+ * Encodes whole numbers (inc of 0) to lexicographic buffers
+ */
+function lexiPackBuffer(n: number): Buffer {
+  return Buffer.from(lexi.pack(n));
+}
+
+/**
+ * Decodes lexicographic buffers to whole numbers (inc of 0)
+ */
+function lexiUnpackBuffer(b: Buffer): number {
+  return lexi.unpack([...b]);
 }
 
 export {
@@ -373,6 +403,7 @@ export {
   poll,
   promisify,
   promise,
+  signalPromise,
   timerStart,
   timerStop,
   arraySet,
@@ -386,4 +417,6 @@ export {
   isPromiseLike,
   isGenerator,
   isAsyncGenerator,
+  lexiPackBuffer,
+  lexiUnpackBuffer,
 };
