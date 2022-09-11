@@ -115,7 +115,7 @@
     "@typescript-eslint/consistent-type-imports": ["error"],
     "@typescript-eslint/consistent-type-exports": ["error"],
     "no-throw-literal": "off",
-    "@typescript-eslint/no-throw-literal": ["error"],
+    "@typescript-eslint/no-throw-literal": "off",
     "@typescript-eslint/no-floating-promises": ["error", {
       "ignoreVoid": true,
       "ignoreIIFE": true
