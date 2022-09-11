@@ -314,11 +314,12 @@ function debounce<P extends any[]>(
 }
 
 function isPromise(v: any): v is Promise<unknown> {
-  return v instanceof Promise || (
-    v != null
-    && typeof v.then === 'function'
-    && typeof v.catch === 'function'
-    && typeof v.finally === 'function'
+  return (
+    v instanceof Promise ||
+    (v != null &&
+      typeof v.then === 'function' &&
+      typeof v.catch === 'function' &&
+      typeof v.finally === 'function')
   );
 }
 
