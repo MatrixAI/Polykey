@@ -1,7 +1,7 @@
 import type { ContextTimed } from '../types';
+import { Timer } from '@matrixai/timer';
 import * as contextsUtils from '../utils';
 import * as contextsErrors from '../errors';
-import Timer from '../../timer/Timer';
 import * as utils from '../../utils';
 
 /**

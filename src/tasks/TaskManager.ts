@@ -22,10 +22,10 @@ import {
 import { Lock } from '@matrixai/async-locks';
 import { PromiseCancellable } from '@matrixai/async-cancellable';
 import { extractTs } from '@matrixai/id/dist/IdSortable';
+import { Timer } from '@matrixai/timer';
 import TaskEvent from './TaskEvent';
 import * as tasksErrors from './errors';
 import * as tasksUtils from './utils';
-import Timer from '../timer/Timer';
 import * as utils from '../utils';
 
 const abortSchedulingLoopReason = Symbol('abort scheduling loop reason');

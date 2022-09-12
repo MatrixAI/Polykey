@@ -1,7 +1,7 @@
 import type { ContextTimed } from '@/contexts/types';
+import { Timer } from '@matrixai/timer';
 import timed from '@/contexts/functions/timed';
 import * as contextsErrors from '@/contexts/errors';
-import Timer from '@/timer/Timer';
 import {
   AsyncFunction,
   GeneratorFunction,

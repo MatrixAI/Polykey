@@ -1,4 +1,4 @@
-import type Timer from '../timer/Timer';
+import type { Timer } from '@matrixai/timer';
 
 type ContextCancellable = {
   signal: AbortSignal;
