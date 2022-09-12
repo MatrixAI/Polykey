@@ -1,21 +1,17 @@
 import type { ContextTimed } from '@/contexts/types';
 import { Timer } from '@matrixai/timer';
+import { PromiseCancellable } from '@matrixai/async-cancellable';
 import context from '@/contexts/decorators/context';
-import timed from '@/contexts/decorators/timed';
+import timedCancellable from '@/contexts/decorators/timedCancellable';
 import * as contextsErrors from '@/contexts/errors';
-import {
-  AsyncFunction,
-  GeneratorFunction,
-  AsyncGeneratorFunction,
-  sleep,
-} from '@/utils';
+import { AsyncFunction, sleep, promise } from '@/utils';
 
-describe('context/decorators/timed', () => {
-  describe('timed decorator runtime validation', () => {
-    test('timed decorator requires context decorator', async () => {
+describe('context/decorators/timedCancellable', () => {
+  describe('timedCancellable decorator runtime validation', () => {
+    test('timedCancellable decorator requires context decorator', async () => {
       expect(() => {
         class C {
-          @timed(50)
+          @timedCancellable()
           async f(_ctx: ContextTimed): Promise<string> {
             return 'hello world';
           }
@@ -23,21 +19,10 @@ describe('context/decorators/timed', () => {
         return C;
       }).toThrow(TypeError);
     });
-    test('timed decorator fails on invalid context', async () => {
+    test('cancellable decorator fails on invalid context', async () => {
       await expect(async () => {
         class C {
-          @timed(50)
-          async f(@context _ctx: ContextTimed): Promise<string> {
-            return 'hello world';
-          }
-        }
-        const c = new C();
-        // @ts-ignore invalid context timer
-        await c.f({ timer: 1 });
-      }).rejects.toThrow(TypeError);
-      await expect(async () => {
-        class C {
-          @timed(50)
+          @timedCancellable()
           async f(@context _ctx: ContextTimed): Promise<string> {
             return 'hello world';
           }
@@ -48,46 +33,16 @@ describe('context/decorators/timed', () => {
       }).rejects.toThrow(TypeError);
     });
   });
-  describe('timed decorator syntax', () => {
+  describe('timedCancellable decorator syntax', () => {
     // Decorators cannot change type signatures
     // use overloading to change required context parameter to optional context parameter
     const symbolFunction = Symbol('sym');
     class X {
-      functionValue(
-        ctx?: Partial<ContextTimed>,
-        check?: (t: Timer) => any,
-      ): string;
-      @timed(1000)
-      functionValue(
-        @context ctx: ContextTimed,
-        check?: (t: Timer) => any,
-      ): string {
-        expect(ctx.signal).toBeInstanceOf(AbortSignal);
-        expect(ctx.timer).toBeInstanceOf(Timer);
-        if (check != null) check(ctx.timer);
-        return 'hello world';
-      }
-
-      functionValueArray(
-        ctx?: Partial<ContextTimed>,
-        check?: (t: Timer) => any,
-      ): Array<number>;
-      @timed(1000)
-      functionValueArray(
-        @context ctx: ContextTimed,
-        check?: (t: Timer) => any,
-      ): Array<number> {
-        expect(ctx.signal).toBeInstanceOf(AbortSignal);
-        expect(ctx.timer).toBeInstanceOf(Timer);
-        if (check != null) check(ctx.timer);
-        return [1, 2, 3, 4];
-      }
-
       functionPromise(
         ctx?: Partial<ContextTimed>,
         check?: (t: Timer) => any,
-      ): Promise<void>;
-      @timed(1000)
+      ): PromiseCancellable<void>;
+      @timedCancellable(false, 1000)
       functionPromise(
         @context ctx: ContextTimed,
         check?: (t: Timer) => any,
@@ -101,8 +56,8 @@ describe('context/decorators/timed', () => {
       asyncFunction(
         ctx?: Partial<ContextTimed>,
         check?: (t: Timer) => any,
-      ): Promise<void>;
-      @timed(Infinity)
+      ): PromiseCancellable<void>;
+      @timedCancellable(true, Infinity)
       async asyncFunction(
         @context ctx: ContextTimed,
         check?: (t: Timer) => any,
@@ -112,63 +67,11 @@ describe('context/decorators/timed', () => {
         if (check != null) check(ctx.timer);
       }
 
-      generator(
-        ctx?: Partial<ContextTimed>,
-        check?: (t: Timer) => any,
-      ): Generator<void>;
-      @timed(0)
-      *generator(
-        @context ctx: ContextTimed,
-        check?: (t: Timer) => any,
-      ): Generator<void> {
-        expect(ctx.signal).toBeInstanceOf(AbortSignal);
-        expect(ctx.timer).toBeInstanceOf(Timer);
-        if (check != null) check(ctx.timer);
-      }
-
-      functionGenerator(
-        ctx?: Partial<ContextTimed>,
-        check?: (t: Timer) => any,
-      ): Generator<void>;
-      @timed(0)
-      functionGenerator(
-        @context ctx: ContextTimed,
-        check?: (t: Timer) => any,
-      ): Generator<void> {
-        return this.generator(ctx, check);
-      }
-
-      asyncGenerator(
-        ctx?: Partial<ContextTimed>,
-        check?: (t: Timer) => any,
-      ): AsyncGenerator<void>;
-      @timed(NaN)
-      async *asyncGenerator(
-        @context ctx: ContextTimed,
-        check?: (t: Timer) => any,
-      ): AsyncGenerator<void> {
-        expect(ctx.signal).toBeInstanceOf(AbortSignal);
-        expect(ctx.timer).toBeInstanceOf(Timer);
-        if (check != null) check(ctx.timer);
-      }
-
-      functionAsyncGenerator(
-        ctx?: Partial<ContextTimed>,
-        check?: (t: Timer) => any,
-      ): AsyncGenerator<void>;
-      @timed(NaN)
-      functionAsyncGenerator(
-        @context ctx: ContextTimed,
-        check?: (t: Timer) => any,
-      ): AsyncGenerator<void> {
-        return this.asyncGenerator(ctx, check);
-      }
-
       [symbolFunction](
         ctx?: Partial<ContextTimed>,
         check?: (t: Timer) => any,
-      ): Promise<void>;
-      @timed()
+      ): PromiseCancellable<void>;
+      @timedCancellable()
       [symbolFunction](
         @context ctx: ContextTimed,
         check?: (t: Timer) => any,
@@ -180,30 +83,10 @@ describe('context/decorators/timed', () => {
       }
     }
     const x = new X();
-    test('functionValue', () => {
-      expect(x.functionValue()).toBe('hello world');
-      expect(x.functionValue({})).toBe('hello world');
-      expect(
-        x.functionValue({ timer: new Timer({ delay: 100 }) }, (t) => {
-          expect(t.delay).toBe(100);
-        }),
-      ).toBe('hello world');
-      expect(x.functionValue).toBeInstanceOf(Function);
-      expect(x.functionValue.name).toBe('functionValue');
-    });
-    test('functionValueArray', () => {
-      expect(x.functionValueArray()).toStrictEqual([1, 2, 3, 4]);
-      expect(x.functionValueArray({})).toStrictEqual([1, 2, 3, 4]);
-      expect(
-        x.functionValueArray({ timer: new Timer({ delay: 100 }) }, (t) => {
-          expect(t.delay).toBe(100);
-        }),
-      ).toStrictEqual([1, 2, 3, 4]);
-      expect(x.functionValueArray).toBeInstanceOf(Function);
-      expect(x.functionValueArray.name).toBe('functionValueArray');
-    });
     test('functionPromise', async () => {
-      await x.functionPromise();
+      const pC = x.functionPromise();
+      expect(pC).toBeInstanceOf(PromiseCancellable);
+      await pC;
       await x.functionPromise({});
       await x.functionPromise({ timer: new Timer({ delay: 100 }) }, (t) => {
         expect(t.delay).toBe(100);
@@ -212,85 +95,22 @@ describe('context/decorators/timed', () => {
       expect(x.functionPromise.name).toBe('functionPromise');
     });
     test('asyncFunction', async () => {
-      await x.asyncFunction();
+      const pC = x.asyncFunction();
+      expect(pC).toBeInstanceOf(PromiseCancellable);
+      await pC;
       await x.asyncFunction({});
       await x.asyncFunction({ timer: new Timer({ delay: 50 }) }, (t) => {
         expect(t.delay).toBe(50);
       });
-      expect(x.asyncFunction).toBeInstanceOf(AsyncFunction);
+      expect(x.functionPromise).toBeInstanceOf(Function);
+      // Returning `PromiseCancellable` means it cannot be an async function
+      expect(x.asyncFunction).not.toBeInstanceOf(AsyncFunction);
       expect(x.asyncFunction.name).toBe('asyncFunction');
     });
-    test('generator', () => {
-      for (const _ of x.generator()) {
-        // NOOP
-      }
-      for (const _ of x.generator({})) {
-        // NOOP
-      }
-      for (const _ of x.generator({ timer: new Timer({ delay: 150 }) }, (t) => {
-        expect(t.delay).toBe(150);
-      })) {
-        // NOOP
-      }
-      expect(x.generator).toBeInstanceOf(GeneratorFunction);
-      expect(x.generator.name).toBe('generator');
-    });
-    test('functionGenerator', () => {
-      for (const _ of x.functionGenerator()) {
-        // NOOP
-      }
-      for (const _ of x.functionGenerator({})) {
-        // NOOP
-      }
-      for (const _ of x.functionGenerator(
-        { timer: new Timer({ delay: 150 }) },
-        (t) => {
-          expect(t.delay).toBe(150);
-        },
-      )) {
-        // NOOP
-      }
-      expect(x.functionGenerator).toBeInstanceOf(Function);
-      expect(x.functionGenerator.name).toBe('functionGenerator');
-    });
-    test('asyncGenerator', async () => {
-      for await (const _ of x.asyncGenerator()) {
-        // NOOP
-      }
-      for await (const _ of x.asyncGenerator({})) {
-        // NOOP
-      }
-      for await (const _ of x.asyncGenerator(
-        { timer: new Timer({ delay: 200 }) },
-        (t) => {
-          expect(t.delay).toBe(200);
-        },
-      )) {
-        // NOOP
-      }
-      expect(x.asyncGenerator).toBeInstanceOf(AsyncGeneratorFunction);
-      expect(x.asyncGenerator.name).toBe('asyncGenerator');
-    });
-    test('functionAsyncGenerator', async () => {
-      for await (const _ of x.functionAsyncGenerator()) {
-        // NOOP
-      }
-      for await (const _ of x.functionAsyncGenerator({})) {
-        // NOOP
-      }
-      for await (const _ of x.functionAsyncGenerator(
-        { timer: new Timer({ delay: 200 }) },
-        (t) => {
-          expect(t.delay).toBe(200);
-        },
-      )) {
-        // NOOP
-      }
-      expect(x.functionAsyncGenerator).toBeInstanceOf(Function);
-      expect(x.functionAsyncGenerator.name).toBe('functionAsyncGenerator');
-    });
     test('symbolFunction', async () => {
-      await x[symbolFunction]();
+      const pC = x[symbolFunction]();
+      expect(pC).toBeInstanceOf(PromiseCancellable);
+      await pC;
       await x[symbolFunction]({});
       await x[symbolFunction]({ timer: new Timer({ delay: 250 }) }, (t) => {
         expect(t.delay).toBe(250);
@@ -299,17 +119,42 @@ describe('context/decorators/timed', () => {
       expect(x[symbolFunction].name).toBe('[sym]');
     });
   });
-  describe('timed decorator expiry', () => {
-    // Timed decorator does not automatically reject the promise
-    // it only signals that it is aborted
-    // it is up to the function to decide how to reject
-    test('async function expiry', async () => {
+  describe('timedCancellable decorator expiry', () => {
+    test('async function expiry - eager', async () => {
+      const { p: finishedP, resolveP: resolveFinishedP } = promise();
       class C {
         /**
          * Async function
          */
-        f(ctx?: Partial<ContextTimed>): Promise<string>;
-        @timed(50)
+        f(ctx?: Partial<ContextTimed>): PromiseCancellable<string>;
+        @timedCancellable(false, 50)
+        async f(@context ctx: ContextTimed): Promise<string> {
+          expect(ctx.signal.aborted).toBe(false);
+          await sleep(15);
+          expect(ctx.signal.aborted).toBe(false);
+          await sleep(40);
+          expect(ctx.signal.aborted).toBe(true);
+          expect(ctx.signal.reason).toBeInstanceOf(
+            contextsErrors.ErrorContextsTimedTimeOut,
+          );
+          resolveFinishedP();
+          return 'hello world';
+        }
+      }
+      const c = new C();
+      await expect(c.f()).rejects.toThrow(
+        contextsErrors.ErrorContextsTimedTimeOut,
+      );
+      // Eager rejection allows the promise finish its side effects
+      await expect(finishedP).resolves.toBeUndefined();
+    });
+    test('async function expiry - lazy', async () => {
+      class C {
+        /**
+         * Async function
+         */
+        f(ctx?: Partial<ContextTimed>): PromiseCancellable<string>;
+        @timedCancellable(true, 50)
         async f(@context ctx: ContextTimed): Promise<string> {
           expect(ctx.signal.aborted).toBe(false);
           await sleep(15);
@@ -325,14 +170,14 @@ describe('context/decorators/timed', () => {
       const c = new C();
       await expect(c.f()).resolves.toBe('hello world');
     });
-    test('async function expiry with custom error', async () => {
+    test('async function expiry with custom error - eager', async () => {
       class ErrorCustom extends Error {}
       class C {
         /**
          * Async function
          */
-        f(ctx?: Partial<ContextTimed>): Promise<string>;
-        @timed(50, ErrorCustom)
+        f(ctx?: Partial<ContextTimed>): PromiseCancellable<string>;
+        @timedCancellable(false, 50, ErrorCustom)
         async f(@context ctx: ContextTimed): Promise<string> {
           expect(ctx.signal.aborted).toBe(false);
           await sleep(15);
@@ -346,13 +191,34 @@ describe('context/decorators/timed', () => {
       const c = new C();
       await expect(c.f()).rejects.toBeInstanceOf(ErrorCustom);
     });
-    test('promise function expiry', async () => {
+    test('async function expiry with custom error - lazy', async () => {
+      class ErrorCustom extends Error {}
+      class C {
+        /**
+         * Async function
+         */
+        f(ctx?: Partial<ContextTimed>): PromiseCancellable<string>;
+        @timedCancellable(true, 50, ErrorCustom)
+        async f(@context ctx: ContextTimed): Promise<string> {
+          expect(ctx.signal.aborted).toBe(false);
+          await sleep(15);
+          expect(ctx.signal.aborted).toBe(false);
+          await sleep(40);
+          expect(ctx.signal.aborted).toBe(true);
+          expect(ctx.signal.reason).toBeInstanceOf(ErrorCustom);
+          throw ctx.signal.reason;
+        }
+      }
+      const c = new C();
+      await expect(c.f()).rejects.toBeInstanceOf(ErrorCustom);
+    });
+    test('promise function expiry - lazy', async () => {
       class C {
         /**
          * Regular function returning promise
          */
-        f(ctx?: Partial<ContextTimed>): Promise<string>;
-        @timed(50)
+        f(ctx?: Partial<ContextTimed>): PromiseCancellable<string>;
+        @timedCancellable(true, 50)
         f(@context ctx: ContextTimed): Promise<string> {
           expect(ctx.signal.aborted).toBe(false);
           return sleep(15)
@@ -374,7 +240,7 @@ describe('context/decorators/timed', () => {
       const c = new C();
       await expect(c.f()).resolves.toBe('hello world');
     });
-    test('promise function expiry and late rejection', async () => {
+    test('promise function expiry and late rejection - lazy', async () => {
       let timeout: ReturnType<typeof setTimeout> | undefined;
       class C {
         /**
@@ -382,7 +248,7 @@ describe('context/decorators/timed', () => {
          * when the signal is aborted
          */
         f(ctx?: Partial<ContextTimed>): Promise<string>;
-        @timed(50)
+        @timedCancellable(true, 50)
         f(@context ctx: ContextTimed): Promise<string> {
           return new Promise((resolve, reject) => {
             if (ctx.signal.aborted) {
@@ -405,14 +271,14 @@ describe('context/decorators/timed', () => {
       );
       expect(timeout).toBeUndefined();
     });
-    test('promise function expiry and early rejection', async () => {
+    test('promise function expiry and early rejection - lazy', async () => {
       let timeout: ReturnType<typeof setTimeout> | undefined;
       class C {
         /**
          * Regular function that actually rejects immediately
          */
         f(ctx?: Partial<ContextTimed>): Promise<string>;
-        @timed(0)
+        @timedCancellable(true, 0)
         f(@context ctx: ContextTimed): Promise<string> {
           return new Promise((resolve, reject) => {
             if (ctx.signal.aborted) {
@@ -435,62 +301,173 @@ describe('context/decorators/timed', () => {
       );
       expect(timeout).toBeUndefined();
     });
-    test('async generator expiry', async () => {
+  });
+  describe('timedCancellable decorator cancellation', () => {
+    test('async function cancel - eager', async () => {
       class C {
-        f(ctx?: Partial<ContextTimed>): AsyncGenerator<string>;
-        @timed(50)
-        async *f(@context ctx: ContextTimed): AsyncGenerator<string> {
+        f(ctx?: Partial<ContextTimed>): PromiseCancellable<string>;
+        @timedCancellable()
+        async f(@context ctx: ContextTimed): Promise<string> {
+          expect(ctx.signal.aborted).toBe(false);
           while (true) {
-            if (ctx.signal.aborted) {
-              throw ctx.signal.reason;
-            }
-            yield 'hello world';
+            if (ctx.signal.aborted) break;
+            await sleep(1);
           }
+          return 'hello world';
         }
       }
       const c = new C();
-      const g = c.f();
-      await expect(g.next()).resolves.toEqual({
-        value: 'hello world',
-        done: false,
-      });
-      await expect(g.next()).resolves.toEqual({
-        value: 'hello world',
-        done: false,
-      });
-      await sleep(50);
-      await expect(g.next()).rejects.toThrow(
-        contextsErrors.ErrorContextsTimedTimeOut,
-      );
+      const pC = c.f();
+      await sleep(1);
+      pC.cancel();
+      await expect(pC).rejects.toBeUndefined();
     });
-    test('generator expiry', async () => {
+    test('async function cancel - lazy', async () => {
       class C {
-        f(ctx?: Partial<ContextTimed>): Generator<string>;
-        @timed(50)
-        *f(@context ctx: ContextTimed): Generator<string> {
+        f(ctx?: Partial<ContextTimed>): PromiseCancellable<string>;
+        @timedCancellable(true)
+        async f(@context ctx: ContextTimed): Promise<string> {
+          expect(ctx.signal.aborted).toBe(false);
+          while (true) {
+            if (ctx.signal.aborted) break;
+            await sleep(1);
+          }
+          return 'hello world';
+        }
+      }
+      const c = new C();
+      const pC = c.f();
+      await sleep(1);
+      pC.cancel();
+      await expect(pC).resolves.toBe('hello world');
+    });
+    test('async function cancel with custom error and eager rejection', async () => {
+      class C {
+        f(ctx?: Partial<ContextTimed>): PromiseCancellable<string>;
+        @timedCancellable()
+        async f(@context ctx: ContextTimed): Promise<string> {
+          expect(ctx.signal.aborted).toBe(false);
+          while (true) {
+            if (ctx.signal.aborted) break;
+            await sleep(1);
+          }
+          return 'hello world';
+        }
+      }
+      const c = new C();
+      const pC = c.f();
+      await sleep(1);
+      pC.cancel('cancel reason');
+      await expect(pC).rejects.toBe('cancel reason');
+    });
+    test('async function cancel with custom error and lazy rejection', async () => {
+      class C {
+        f(ctx?: Partial<ContextTimed>): PromiseCancellable<string>;
+        @timedCancellable(true)
+        async f(@context ctx: ContextTimed): Promise<string> {
+          expect(ctx.signal.aborted).toBe(false);
           while (true) {
             if (ctx.signal.aborted) {
               throw ctx.signal.reason;
             }
-            yield 'hello world';
+            await sleep(1);
           }
         }
       }
       const c = new C();
-      const g = c.f();
-      expect(g.next()).toEqual({ value: 'hello world', done: false });
-      expect(g.next()).toEqual({ value: 'hello world', done: false });
-      await sleep(50);
-      expect(() => g.next()).toThrow(contextsErrors.ErrorContextsTimedTimeOut);
+      const pC = c.f();
+      await sleep(1);
+      pC.cancel('cancel reason');
+      await expect(pC).rejects.toBe('cancel reason');
+    });
+    test('promise timedCancellable function - eager rejection', async () => {
+      class C {
+        f(ctx?: Partial<ContextTimed>): PromiseCancellable<string>;
+        @timedCancellable()
+        f(@context ctx: ContextTimed): PromiseCancellable<string> {
+          const pC = new PromiseCancellable<string>(
+            (resolve, reject, signal) => {
+              if (signal.aborted) {
+                reject('eager 2:' + signal.reason);
+              } else {
+                signal.onabort = () => {
+                  reject('lazy 2:' + signal.reason);
+                };
+              }
+              void sleep(10).then(() => {
+                resolve('hello world');
+              });
+            },
+          );
+          if (ctx.signal.aborted) {
+            pC.cancel('eager 1:' + ctx.signal.reason);
+          } else {
+            ctx.signal.onabort = () => {
+              pC.cancel('lazy 1:' + ctx.signal.reason);
+            };
+          }
+          return pC;
+        }
+      }
+      const c = new C();
+      // Signal is aborted afterwards
+      const pC1 = c.f();
+      pC1.cancel('cancel reason');
+      await expect(pC1).rejects.toBe('cancel reason');
+      // Signal is already aborted
+      const abortController = new AbortController();
+      abortController.abort('cancel reason');
+      const pC2 = c.f({ signal: abortController.signal });
+      await expect(pC2).rejects.toBe('cancel reason');
+    });
+    test('promise timedCancellable function - lazy rejection', async () => {
+      class C {
+        f(ctx?: Partial<ContextTimed>): PromiseCancellable<string>;
+        @timedCancellable(true)
+        f(@context ctx: ContextTimed): PromiseCancellable<string> {
+          const pC = new PromiseCancellable<string>(
+            (resolve, reject, signal) => {
+              if (signal.aborted) {
+                reject('eager 2:' + signal.reason);
+              } else {
+                signal.onabort = () => {
+                  reject('lazy 2:' + signal.reason);
+                };
+              }
+              void sleep(10).then(() => {
+                resolve('hello world');
+              });
+            },
+          );
+          if (ctx.signal.aborted) {
+            pC.cancel('eager 1:' + ctx.signal.reason);
+          } else {
+            ctx.signal.onabort = () => {
+              pC.cancel('lazy 1:' + ctx.signal.reason);
+            };
+          }
+          return pC;
+        }
+      }
+      const c = new C();
+      // Signal is aborted afterwards
+      const pC1 = c.f();
+      pC1.cancel('cancel reason');
+      await expect(pC1).rejects.toBe('lazy 2:lazy 1:cancel reason');
+      // Signal is already aborted
+      const abortController = new AbortController();
+      abortController.abort('cancel reason');
+      const pC2 = c.f({ signal: abortController.signal });
+      await expect(pC2).rejects.toBe('lazy 2:eager 1:cancel reason');
     });
   });
-  describe('timed decorator propagation', () => {
+  describe('timedCancellable decorator propagation', () => {
     test('propagate timer and signal', async () => {
       let timer: Timer;
       let signal: AbortSignal;
       class C {
-        f(ctx?: Partial<ContextTimed>): Promise<string>;
-        @timed(50)
+        f(ctx?: Partial<ContextTimed>): PromiseCancellable<string>;
+        @timedCancellable(true, 50)
         async f(@context ctx: ContextTimed): Promise<string> {
           expect(ctx.timer).toBeInstanceOf(Timer);
           expect(ctx.signal).toBeInstanceOf(AbortSignal);
@@ -501,14 +478,15 @@ describe('context/decorators/timed', () => {
           return await this.g(ctx);
         }
 
-        g(ctx?: Partial<ContextTimed>): Promise<string>;
-        @timed(25)
+        g(ctx?: Partial<ContextTimed>): PromiseCancellable<string>;
+        @timedCancellable(true, 25)
         async g(@context ctx: ContextTimed): Promise<string> {
           expect(ctx.timer).toBeInstanceOf(Timer);
           expect(ctx.signal).toBeInstanceOf(AbortSignal);
-          // Timer and signal will be propagated
+          // Timer will be propagated
           expect(timer).toBe(ctx.timer);
-          expect(signal).toBe(ctx.signal);
+          // Signal will be chained
+          expect(signal).not.toBe(ctx.signal);
           expect(ctx.timer.getTimeout()).toBeGreaterThan(0);
           expect(ctx.timer.delay).toBe(50);
           expect(ctx.signal.aborted).toBe(false);
@@ -522,8 +500,8 @@ describe('context/decorators/timed', () => {
       let timer: Timer;
       let signal: AbortSignal;
       class C {
-        f(ctx?: Partial<ContextTimed>): Promise<string>;
-        @timed(50)
+        f(ctx?: Partial<ContextTimed>): PromiseCancellable<string>;
+        @timedCancellable(true, 50)
         async f(@context ctx: ContextTimed): Promise<string> {
           expect(ctx.timer).toBeInstanceOf(Timer);
           expect(ctx.signal).toBeInstanceOf(AbortSignal);
@@ -534,8 +512,8 @@ describe('context/decorators/timed', () => {
           return await this.g({ timer: ctx.timer });
         }
 
-        g(ctx?: Partial<ContextTimed>): Promise<string>;
-        @timed(25)
+        g(ctx?: Partial<ContextTimed>): PromiseCancellable<string>;
+        @timedCancellable(true, 25)
         async g(@context ctx: ContextTimed): Promise<string> {
           expect(ctx.timer).toBeInstanceOf(Timer);
           expect(ctx.signal).toBeInstanceOf(AbortSignal);
@@ -554,42 +532,71 @@ describe('context/decorators/timed', () => {
       let timer: Timer;
       let signal: AbortSignal;
       class C {
-        f(ctx?: Partial<ContextTimed>): Promise<string>;
-        @timed(50)
+        f(ctx?: Partial<ContextTimed>): PromiseCancellable<string>;
+        @timedCancellable(true, 50)
         async f(@context ctx: ContextTimed): Promise<string> {
           expect(ctx.timer).toBeInstanceOf(Timer);
           expect(ctx.signal).toBeInstanceOf(AbortSignal);
           timer = ctx.timer;
           signal = ctx.signal;
-          expect(timer.getTimeout()).toBeGreaterThan(0);
-          expect(signal.aborted).toBe(false);
+          if (!signal.aborted) {
+            expect(timer.getTimeout()).toBeGreaterThan(0);
+          } else {
+            expect(timer.getTimeout()).toBe(0);
+          }
           return await this.g({ signal: ctx.signal });
         }
 
-        g(ctx?: Partial<ContextTimed>): Promise<string>;
-        @timed(25)
-        async g(@context ctx: ContextTimed): Promise<string> {
+        g(ctx?: Partial<ContextTimed>): PromiseCancellable<string>;
+        @timedCancellable(true, 25)
+        g(@context ctx: ContextTimed): Promise<string> {
           expect(ctx.timer).toBeInstanceOf(Timer);
           expect(ctx.signal).toBeInstanceOf(AbortSignal);
           // Even though signal is propagated
           // because the timer isn't, the signal here is chained
           expect(timer).not.toBe(ctx.timer);
           expect(signal).not.toBe(ctx.signal);
-          expect(ctx.timer.getTimeout()).toBeGreaterThan(0);
-          expect(ctx.timer.delay).toBe(25);
-          expect(ctx.signal.aborted).toBe(false);
-          return 'g';
+          if (!signal.aborted) {
+            expect(timer.getTimeout()).toBeGreaterThan(0);
+            expect(ctx.timer.delay).toBe(25);
+          } else {
+            expect(timer.getTimeout()).toBe(0);
+          }
+          return new Promise((resolve, reject) => {
+            if (ctx.signal.aborted) {
+              reject('early:' + ctx.signal.reason);
+            } else {
+              const timeout = setTimeout(() => {
+                resolve('g');
+              }, 10);
+              ctx.signal.addEventListener('abort', () => {
+                clearTimeout(timeout);
+                reject('during:' + ctx.signal.reason);
+              });
+            }
+          });
         }
       }
       const c = new C();
-      await expect(c.f()).resolves.toBe('g');
+      const pC1 = c.f();
+      await expect(pC1).resolves.toBe('g');
+      expect(signal!.aborted).toBe(false);
+      const pC2 = c.f();
+      pC2.cancel('cancel reason');
+      await expect(pC2).rejects.toBe('during:cancel reason');
+      expect(signal!.aborted).toBe(true);
+      const abortController = new AbortController();
+      abortController.abort('cancel reason');
+      const pC3 = c.f({ signal: abortController.signal });
+      await expect(pC3).rejects.toBe('early:cancel reason');
+      expect(signal!.aborted).toBe(true);
     });
     test('propagate nothing', async () => {
       let timer: Timer;
       let signal: AbortSignal;
       class C {
         f(ctx?: Partial<ContextTimed>): Promise<string>;
-        @timed(50)
+        @timedCancellable(true, 50)
         async f(@context ctx: ContextTimed): Promise<string> {
           expect(ctx.timer).toBeInstanceOf(Timer);
           expect(ctx.signal).toBeInstanceOf(AbortSignal);
@@ -601,7 +608,7 @@ describe('context/decorators/timed', () => {
         }
 
         g(ctx?: Partial<ContextTimed>): Promise<string>;
-        @timed(25)
+        @timedCancellable(true, 25)
         async g(@context ctx: ContextTimed): Promise<string> {
           expect(ctx.timer).toBeInstanceOf(Timer);
           expect(ctx.signal).toBeInstanceOf(AbortSignal);
@@ -618,8 +625,8 @@ describe('context/decorators/timed', () => {
     });
     test('propagated expiry', async () => {
       class C {
-        f(ctx?: Partial<ContextTimed>): Promise<string>;
-        @timed(25)
+        f(ctx?: Partial<ContextTimed>): PromiseCancellable<string>;
+        @timedCancellable(true, 25)
         async f(@context ctx: ContextTimed): Promise<string> {
           // The `g` will use up all the remaining time
           const counter = await this.g(ctx.timer.getTimeout());
@@ -644,8 +651,8 @@ describe('context/decorators/timed', () => {
           return counter;
         }
 
-        h(ctx?: Partial<ContextTimed>): Promise<string>;
-        @timed(25)
+        h(ctx?: Partial<ContextTimed>): PromiseCancellable<string>;
+        @timedCancellable(true, 25)
         async h(@context ctx: ContextTimed): Promise<string> {
           return new Promise((resolve, reject) => {
             if (ctx.signal.aborted) {
@@ -667,14 +674,112 @@ describe('context/decorators/timed', () => {
         contextsErrors.ErrorContextsTimedTimeOut,
       );
     });
+    test('nested cancellable - lazy then lazy', async () => {
+      class C {
+        f(ctx?: Partial<ContextTimed>): PromiseCancellable<string>;
+        @timedCancellable(true)
+        @timedCancellable(true)
+        async f(@context ctx: ContextTimed): Promise<string> {
+          expect(ctx.signal.aborted).toBe(false);
+          while (true) {
+            if (ctx.signal.aborted) {
+              throw 'throw:' + ctx.signal.reason;
+            }
+            await sleep(1);
+          }
+        }
+      }
+      const c = new C();
+      const pC = c.f();
+      await sleep(1);
+      pC.cancel('cancel reason');
+      await expect(pC).rejects.toBe('throw:cancel reason');
+    });
+    test('nested cancellable - lazy then eager', async () => {
+      class C {
+        f(ctx?: Partial<ContextTimed>): PromiseCancellable<string>;
+        @timedCancellable(true)
+        @timedCancellable(false)
+        async f(@context ctx: ContextTimed): Promise<string> {
+          expect(ctx.signal.aborted).toBe(false);
+          while (true) {
+            if (ctx.signal.aborted) {
+              throw 'throw:' + ctx.signal.reason;
+            }
+            await sleep(1);
+          }
+        }
+      }
+      const c = new C();
+      const pC = c.f();
+      await sleep(1);
+      pC.cancel('cancel reason');
+      await expect(pC).rejects.toBe('cancel reason');
+    });
+    test('nested cancellable - eager then lazy', async () => {
+      class C {
+        f(ctx?: Partial<ContextTimed>): PromiseCancellable<string>;
+        @timedCancellable(false)
+        @timedCancellable(true)
+        async f(@context ctx: ContextTimed): Promise<string> {
+          expect(ctx.signal.aborted).toBe(false);
+          while (true) {
+            if (ctx.signal.aborted) {
+              throw 'throw:' + ctx.signal.reason;
+            }
+            await sleep(1);
+          }
+        }
+      }
+      const c = new C();
+      const pC = c.f();
+      await sleep(1);
+      pC.cancel('cancel reason');
+      await expect(pC).rejects.toBe('cancel reason');
+    });
+    test('signal event listeners are removed', async () => {
+      class C {
+        f(ctx?: Partial<ContextTimed>): PromiseCancellable<string>;
+        @timedCancellable()
+        async f(@context _ctx: ContextTimed): Promise<string> {
+          return 'hello world';
+        }
+      }
+      const abortController = new AbortController();
+      let listenerCount = 0;
+      const signal = new Proxy(abortController.signal, {
+        get(target, prop, receiver) {
+          if (prop === 'addEventListener') {
+            return function addEventListener(...args) {
+              listenerCount++;
+              return target[prop].apply(this, args);
+            };
+          } else if (prop === 'removeEventListener') {
+            return function addEventListener(...args) {
+              listenerCount--;
+              return target[prop].apply(this, args);
+            };
+          } else {
+            return Reflect.get(target, prop, receiver);
+          }
+        },
+      });
+      const c = new C();
+      await c.f({ signal });
+      await c.f({ signal });
+      const pC = c.f({ signal });
+      pC.cancel();
+      await expect(pC).rejects.toBe(undefined);
+      expect(listenerCount).toBe(0);
+    });
   });
-  describe('timed decorator explicit timer cancellation or signal abortion', () => {
+  describe('timedCancellable decorator explicit timer cancellation or signal abortion', () => {
     // If the timer is cancelled
     // there will be no timeout error
     let ctx_: ContextTimed | undefined;
     class C {
       f(ctx?: Partial<ContextTimed>): Promise<string>;
-      @timed(50)
+      @timedCancellable(true, 50)
       f(@context ctx: ContextTimed): Promise<string> {
         ctx_ = ctx;
         return new Promise((resolve, reject) => {

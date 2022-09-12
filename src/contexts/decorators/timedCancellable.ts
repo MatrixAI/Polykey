@@ -1,15 +1,55 @@
-// Equivalent to timed(cancellable())
-// timeout is always lazy
-// it's only if you call cancel
-// PLUS this only works with PromiseLike
-// the timed just wraps that together
-// and the result is a bit more efficient
-// to avoid having to chain the signals up too much
+import type { ContextTimed } from '../types';
+import { setupTimedCancellable } from '../functions/timedCancellable';
+import * as contextsUtils from '../utils';
+import * as contextsErrors from '../errors';
 
 function timedCancellable(
   lazy: boolean = false,
   delay: number = Infinity,
   errorTimeoutConstructor: new () => Error = contextsErrors.ErrorContextsTimedTimeOut,
-) {}
+) {
+  return <
+    T extends TypedPropertyDescriptor<
+      (...params: Array<any>) => PromiseLike<any>
+    >,
+  >(
+    target: any,
+    key: string | symbol,
+    descriptor: T,
+  ) => {
+    // Target is instance prototype for instance methods
+    // or the class prototype for static methods
+    const targetName: string = target['name'] ?? target.constructor.name;
+    const f = descriptor['value'];
+    if (typeof f !== 'function') {
+      throw new TypeError(
+        `\`${targetName}.${key.toString()}\` is not a function`,
+      );
+    }
+    const contextIndex = contextsUtils.getContextIndex(target, key, targetName);
+    descriptor['value'] = function (...args) {
+      let ctx: Partial<ContextTimed> = args[contextIndex];
+      if (ctx === undefined) {
+        ctx = {};
+        args[contextIndex] = ctx;
+      }
+      // Runtime type check on the context parameter
+      contextsUtils.checkContextTimed(ctx, key, targetName);
+      return setupTimedCancellable(
+        (_, ...args) => f.apply(this, args),
+        lazy,
+        delay,
+        errorTimeoutConstructor,
+        ctx,
+        args,
+      );
+    };
+    // Preserve the name
+    Object.defineProperty(descriptor['value'], 'name', {
+      value: typeof key === 'symbol' ? `[${key.description}]` : key,
+    });
+    return descriptor;
+  };
+}
 
 export default timedCancellable;

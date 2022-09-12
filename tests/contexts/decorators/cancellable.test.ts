@@ -75,6 +75,7 @@ describe('context/decorators/cancellable', () => {
     test('asyncFunction', async () => {
       const pC = x.asyncFunction();
       expect(pC).toBeInstanceOf(PromiseCancellable);
+      await pC;
       await x.asyncFunction({});
       await x.asyncFunction({ signal: new AbortController().signal });
       expect(x.asyncFunction).toBeInstanceOf(Function);
@@ -84,6 +85,7 @@ describe('context/decorators/cancellable', () => {
     test('symbolFunction', async () => {
       const pC = x[symbolFunction]();
       expect(pC).toBeInstanceOf(PromiseCancellable);
+      await pC;
       await x[symbolFunction]({});
       await x[symbolFunction]({ signal: new AbortController().signal });
       expect(x[symbolFunction]).toBeInstanceOf(Function);

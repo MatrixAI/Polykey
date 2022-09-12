@@ -1,5 +1,5 @@
 import type { ContextCancellable } from '../types';
-import { PromiseCancellable } from '@matrixai/async-cancellable';
+import { setupCancellable } from '../functions/cancellable';
 import * as contextsUtils from '../utils';
 
 function cancellable(lazy: boolean = false) {
@@ -20,79 +20,21 @@ function cancellable(lazy: boolean = false) {
         `\`${targetName}.${key.toString()}\` is not a function`,
       );
     }
-    const contextIndex = contextsUtils.contexts.get(target[key]);
-    if (contextIndex == null) {
-      throw new TypeError(
-        `\`${targetName}.${key.toString()}\` does not have a \`@context\` parameter decorator`,
-      );
-    }
-    descriptor['value'] = function (...params) {
-      let context: Partial<ContextCancellable> = params[contextIndex];
-      if (context === undefined) {
-        context = {};
-        params[contextIndex] = context;
+    const contextIndex = contextsUtils.getContextIndex(target, key, targetName);
+    descriptor['value'] = function (...args) {
+      let ctx: Partial<ContextCancellable> = args[contextIndex];
+      if (ctx === undefined) {
+        ctx = {};
+        args[contextIndex] = ctx;
       }
       // Runtime type check on the context parameter
-      if (typeof context !== 'object' || context === null) {
-        throw new TypeError(
-          `\`${targetName}.${key.toString()}\` decorated \`@context\` parameter is not a context object`,
-        );
-      }
-      if (
-        context.signal !== undefined &&
-        !(context.signal instanceof AbortSignal)
-      ) {
-        throw new TypeError(
-          `\`${targetName}.${key.toString()}\` decorated \`@context\` parameter's \`signal\` property is not an instance of \`AbortSignal\``,
-        );
-      }
-      // Mutating the `context` parameter
-      if (context.signal === undefined) {
-        const abortController = new AbortController();
-        context.signal = abortController.signal;
-        const result = f.apply(this, params);
-        return new PromiseCancellable((resolve, reject, signal) => {
-          if (!lazy) {
-            signal.addEventListener('abort', () => {
-              reject(signal.reason);
-            });
-          }
-          void result.then(resolve, reject);
-        }, abortController);
-      } else {
-        // In this case, `context.signal` is set
-        // and we chain the upsteam signal to the downstream signal
-        const abortController = new AbortController();
-        const signalUpstream = context.signal;
-        const signalHandler = () => {
-          abortController.abort(signalUpstream.reason);
-        };
-        if (signalUpstream.aborted) {
-          abortController.abort(signalUpstream.reason);
-        } else {
-          signalUpstream.addEventListener('abort', signalHandler);
-        }
-        // Overwrite the signal property with this context's `AbortController.signal`
-        context.signal = abortController.signal;
-        const result = f.apply(this, params);
-        // The `abortController` must be shared in the `finally` clause
-        // to link up final promise's cancellation with the target
-        // function's signal
-        return new PromiseCancellable((resolve, reject, signal) => {
-          if (!lazy) {
-            if (signal.aborted) {
-              reject(signal.reason);
-            } else {
-              signal.addEventListener('abort', () => {
-                reject(signal.reason);
-              });
-            }
-          }
-          void result.then(resolve, reject);
-        }, abortController).finally(() => {
-          signalUpstream.removeEventListener('abort', signalHandler);
-        }, abortController);
-      }
+      contextsUtils.checkContextCancellable(ctx, key, targetName);
+      return setupCancellable(
+        (_, ...args) => f.apply(this, args),
+        lazy,
+        ctx,
+        args,
+      );
     };
     // Preserve the name
     Object.defineProperty(descriptor['value'], 'name', {

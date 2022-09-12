@@ -3,7 +3,16 @@ import { Timer } from '@matrixai/timer';
 import * as contextsErrors from '../errors';
 import * as utils from '../../utils';
 
-function setupContext(
+type ContextRemaining<C> = Omit<C, keyof ContextTimed>;
+
+type ContextAndParameters<
+  C,
+  P extends Array<any>,
+> = keyof ContextRemaining<C> extends never
+  ? [Partial<ContextTimed>?, ...P]
+  : [Partial<ContextTimed> & ContextRemaining<C>, ...P];
+
+function setupTimedContext(
   delay: number,
   errorTimeoutConstructor: new () => Error,
   ctx: Partial<ContextTimed>,
@@ -100,15 +109,6 @@ function setupContext(
   }
 }
 
-type ContextRemaining<C> = Omit<C, keyof ContextTimed>;
-
-type ContextAndParameters<
-  C,
-  P extends Array<any>,
-> = keyof ContextRemaining<C> extends never
-  ? [Partial<ContextTimed>?, ...P]
-  : [Partial<ContextTimed> & ContextRemaining<C>, ...P];
-
 /**
  * Timed HOF
  * This overloaded signature is external signature
@@ -127,7 +127,11 @@ function timed<C extends ContextTimed, P extends Array<any>>(
     return async (...params) => {
       const ctx = params[0] ?? {};
       const args = params.slice(1) as P;
-      const teardownContext = setupContext(delay, errorTimeoutConstructor, ctx);
+      const teardownContext = setupTimedContext(
+        delay,
+        errorTimeoutConstructor,
+        ctx,
+      );
       try {
         return await f(ctx as C, ...args);
       } finally {
@@ -138,7 +142,11 @@ function timed<C extends ContextTimed, P extends Array<any>>(
     return function* (...params) {
       const ctx = params[0] ?? {};
       const args = params.slice(1) as P;
-      const teardownContext = setupContext(delay, errorTimeoutConstructor, ctx);
+      const teardownContext = setupTimedContext(
+        delay,
+        errorTimeoutConstructor,
+        ctx,
+      );
       try {
         return yield* f(ctx as C, ...args);
       } finally {
@@ -149,7 +157,11 @@ function timed<C extends ContextTimed, P extends Array<any>>(
     return async function* (...params) {
       const ctx = params[0] ?? {};
       const args = params.slice(1) as P;
-      const teardownContext = setupContext(delay, errorTimeoutConstructor, ctx);
+      const teardownContext = setupTimedContext(
+        delay,
+        errorTimeoutConstructor,
+        ctx,
+      );
       try {
         return yield* f(ctx as C, ...args);
       } finally {
@@ -160,7 +172,11 @@ function timed<C extends ContextTimed, P extends Array<any>>(
     return (...params) => {
       const ctx = params[0] ?? {};
       const args = params.slice(1) as P;
-      const teardownContext = setupContext(delay, errorTimeoutConstructor, ctx);
+      const teardownContext = setupTimedContext(
+        delay,
+        errorTimeoutConstructor,
+        ctx,
+      );
       const result = f(ctx as C, ...args);
       if (utils.isPromiseLike(result)) {
         return result.then(
@@ -198,3 +214,5 @@ function timed<C extends ContextTimed, P extends Array<any>>(
 }
 
 export default timed;
+
+export { setupTimedContext };

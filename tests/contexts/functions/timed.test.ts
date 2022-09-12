@@ -547,9 +547,9 @@ describe('context/functions/timed', () => {
       const abortController = new AbortController();
       const timer = new Timer({
         handler: () => {
-          abortController.abort(new contextsErrors.ErrorContextsTimedTimeOut);
+          abortController.abort(new contextsErrors.ErrorContextsTimedTimeOut());
         },
-        delay: 100
+        delay: 100,
       });
       abortController.signal.addEventListener('abort', () => {
         timer.cancel();
