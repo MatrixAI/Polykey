@@ -170,7 +170,7 @@ class TaskManager {
     this.schedulerLogger = logger.getChild('scheduler');
     this.queueLogger = logger.getChild('queue');
     this.db = db;
-    this.activeLimit = activeLimit;
+    this.activeLimit = Math.max(1, activeLimit);
   }
 
   public async start({
