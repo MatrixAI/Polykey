@@ -2,6 +2,7 @@ import type { NodeId } from '@/nodes/types';
 import type { PrivateKeyPem } from '@/keys/types';
 import type { StatusLive } from '@/status/types';
 import type Logger from '@matrixai/logger';
+import type * as fc from 'fast-check';
 import path from 'path';
 import fs from 'fs';
 import readline from 'readline';
@@ -157,6 +158,15 @@ function describeIf(condition: boolean) {
   return condition ? describe : describe.skip;
 }
 
+/**
+ * Used with fast-check to schedule calling of a function
+ */
+const scheduleCall = <T>(
+  s: fc.Scheduler,
+  f: () => Promise<T>,
+  label: string = 'scheduled call',
+) => s.schedule(Promise.resolve(label)).then(() => f());
+
 export {
   setupGlobalKeypair,
   setupTestAgent,
@@ -164,4 +174,5 @@ export {
   expectRemoteError,
   testIf,
   describeIf,
+  scheduleCall,
 };

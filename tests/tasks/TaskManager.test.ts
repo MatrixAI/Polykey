@@ -13,13 +13,6 @@ import { promise, sleep, never } from '@/utils';
 import TaskManager from '@/tasks/TaskManager';
 import * as tasksErrors from '@/tasks/errors';
 
-// TODO: move to testing utils
-const scheduleCall = <T>(
-  s: fc.Scheduler,
-  f: () => Promise<T>,
-  label: string = 'scheduled call',
-) => s.schedule(Promise.resolve(label)).then(() => f());
-
 describe(TaskManager.name, () => {
   const logger = new Logger(`${TaskManager.name} test`, LogLevel.DEBUG, [
     new StreamHandler(),
@@ -211,7 +204,7 @@ describe(TaskManager.name, () => {
     const handler = jest.fn();
     handler.mockImplementation(async () => {});
     taskManager.registerHandler(handlerId, handler);
-    console.log('a');
+    // Console.log('a');
     await taskManager.scheduleTask({ handlerId, parameters: [1], delay: 1000 });
     const t1 = await taskManager.scheduleTask({
       handlerId,
@@ -228,44 +221,34 @@ describe(TaskManager.name, () => {
     // Setting up actions
     jest.useFakeTimers();
     setTimeout(async () => {
-      console.log('starting processing');
+      // Console.log('starting processing');
       await taskManager.startProcessing();
     }, 0);
     setTimeout(async () => {
-      console.log('stop');
+      // Console.log('stop');
       await taskManager.stop();
     }, 500);
     setTimeout(async () => {
-      console.log('start');
+      // Console.log('start');
       await taskManager.start();
     }, 1000);
 
     // Running tests here...
     // after 600 ms we should stop and 4 taskManager should've run
-    console.log('b');
     jest.advanceTimersByTime(400);
     jest.runAllTimers();
-    console.log('b');
     jest.advanceTimersByTime(200);
-    console.log('b');
-    console.log(jest.getTimerCount());
+    // Console.log(jest.getTimerCount());
     jest.runAllTimers();
-    console.log(jest.getTimerCount());
+    // Console.log(jest.getTimerCount());
     await t1.promise();
-    console.log('b');
     expect(handler).toHaveBeenCalledTimes(4);
     // After another 5000ms the rest should've been called
-    console.log('b');
     handler.mockClear();
-    console.log('b');
     jest.advanceTimersByTime(5000);
-    console.log('b');
     // Expect(handler).toHaveBeenCalledTimes(3);
-    console.log('b');
     jest.useRealTimers();
-    console.log('b');
     await taskManager.stop();
-    console.log('b');
   });
   // TODO: Use fastCheck here, this needs to be re-written
   test('activeLimit is enforced', async () => {
@@ -317,7 +300,7 @@ describe(TaskManager.name, () => {
         handler.mockImplementation(async () => {
           await sleep(200);
         });
-        await taskManager.registerHandler(handlerId, handler);
+        taskManager.registerHandler(handlerId, handler);
         await taskManager.startProcessing();
         const context = { taskManager };
 
@@ -796,8 +779,8 @@ describe(TaskManager.name, () => {
     await taskManager.start({ lazy: true });
     expect(await taskManager.getTask(task1.id)).toBeDefined();
     expect(await taskManager.getTask(task2.id)).toBeDefined();
-    await task1;
-    await task2;
+    await task1.promise();
+    await task2.promise();
 
     await taskManager.stop();
   });
@@ -1196,45 +1179,4 @@ describe(TaskManager.name, () => {
   test.todo('taskIds are monotonic');
   // TODO: needs fast check
   test.todo('general concurrent API usage to test robustness');
-});
-
-test('arb', async () => {
-  const taskArb = fc.record({
-    handlerId: fc.constant('handlerId' as TaskHandlerId),
-    delay: fc.integer({ min: 10, max: 1000 }),
-    parameters: fc.constant([]),
-    priority: fc.integer({ min: -200, max: 200 }),
-  });
-
-  const scheduleCommandArb = taskArb.map((taskSpec) => async (context) => {
-    await context.taskManager.scheduleTask({
-      ...taskSpec,
-      lazy: false,
-    });
-  });
-
-  const sleepCommandArb = fc
-    .integer({ min: 10, max: 1000 })
-    .map((value) => async (_context) => {
-      // console.log('sleeping', value);
-      await sleep(value);
-    });
-
-  const commandsArb = fc.array(
-    fc.oneof(
-      { arbitrary: scheduleCommandArb, weight: 1 },
-      { arbitrary: sleepCommandArb, weight: 1 },
-    ),
-    { maxLength: 10, minLength: 10 },
-  );
-
-  await fc.assert(
-    fc.asyncProperty(commandsArb, async (commands) => {
-      const context = { taskManager: {} };
-      for (const command of commands) {
-        await command(context);
-      }
-    }),
-    { numRuns: 2 },
-  );
 });
