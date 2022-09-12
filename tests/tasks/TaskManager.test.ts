@@ -14,7 +14,7 @@ import TaskManager from '@/tasks/TaskManager';
 import * as tasksErrors from '@/tasks/errors';
 
 describe(TaskManager.name, () => {
-  const logger = new Logger(`${TaskManager.name} test`, LogLevel.DEBUG, [
+  const logger = new Logger(`${TaskManager.name} test`, LogLevel.WARN, [
     new StreamHandler(),
   ]);
   const handlerId = 'testId' as TaskHandlerId;
@@ -250,7 +250,6 @@ describe(TaskManager.name, () => {
     jest.useRealTimers();
     await taskManager.stop();
   });
-  // TODO: Use fastCheck here, this needs to be re-written
   test('activeLimit is enforced', async () => {
     const activeLimit = 5;
 
@@ -749,7 +748,13 @@ describe(TaskManager.name, () => {
     const pauseProm = promise();
     handler.mockImplementation(async (ctx: ContextTimed) => {
       const abortProm = new Promise((resolve, reject) =>
-        ctx.signal.addEventListener('abort', () => reject(ctx.signal.reason)),
+        ctx.signal.addEventListener('abort', () =>
+          reject(
+            new tasksErrors.ErrorTaskRetry(undefined, {
+              cause: ctx.signal.reason,
+            }),
+          ),
+        ),
       );
       await Promise.race([pauseProm.p, abortProm]);
     });
@@ -763,24 +768,21 @@ describe(TaskManager.name, () => {
     const task1 = await taskManager.scheduleTask({
       handlerId,
       parameters: [],
-      lazy: false,
+      lazy: true,
     });
     const task2 = await taskManager.scheduleTask({
       handlerId,
       parameters: [],
-      lazy: false,
+      lazy: true,
     });
     await taskManager.startProcessing();
     await sleep(100);
-    await taskManager.stopTasks();
     await taskManager.stop();
 
     // TaskManager should still exist.
     await taskManager.start({ lazy: true });
     expect(await taskManager.getTask(task1.id)).toBeDefined();
     expect(await taskManager.getTask(task2.id)).toBeDefined();
-    await task1.promise();
-    await task2.promise();
 
     await taskManager.stop();
   });
@@ -790,7 +792,13 @@ describe(TaskManager.name, () => {
     const handler1 = jest.fn();
     handler1.mockImplementation(async (ctx: ContextTimed) => {
       const abortProm = new Promise((resolve, reject) =>
-        ctx.signal.addEventListener('abort', () => reject(ctx.signal.reason)),
+        ctx.signal.addEventListener('abort', () =>
+          reject(
+            new tasksErrors.ErrorTaskRetry(undefined, {
+              cause: ctx.signal.reason,
+            }),
+          ),
+        ),
       );
       await Promise.race([pauseProm.p, abortProm]);
     });
@@ -798,9 +806,7 @@ describe(TaskManager.name, () => {
     const handler2 = jest.fn();
     handler2.mockImplementation(async (ctx: ContextTimed) => {
       const abortProm = new Promise((resolve, reject) =>
-        ctx.signal.addEventListener('abort', () =>
-          reject(Error('different error')),
-        ),
+        ctx.signal.addEventListener('abort', () => reject(ctx.signal.reason)),
       );
       await Promise.race([pauseProm.p, abortProm]);
     });
@@ -814,16 +820,15 @@ describe(TaskManager.name, () => {
     const task1 = await taskManager.scheduleTask({
       handlerId: handlerId1,
       parameters: [],
-      lazy: false,
+      lazy: true,
     });
     const task2 = await taskManager.scheduleTask({
       handlerId: handlerId2,
       parameters: [],
-      lazy: false,
+      lazy: true,
     });
     await taskManager.startProcessing();
     await sleep(100);
-    await taskManager.stopTasks();
     await taskManager.stop();
 
     // Tasks were run
@@ -831,10 +836,6 @@ describe(TaskManager.name, () => {
     expect(handler2).toHaveBeenCalled();
     handler1.mockClear();
     handler2.mockClear();
-
-    // Tasks should complete
-    await expect(task1.promise()).rejects.toThrow();
-    await expect(task2.promise()).rejects.toThrow();
 
     await taskManager.start({ lazy: true });
     const task1New = await taskManager.getTask(task1.id, false);
@@ -844,6 +845,7 @@ describe(TaskManager.name, () => {
     expect(task1New).toBeDefined();
     // Task2 should've been removed
     expect(task2New).toBeUndefined();
+    pauseProm.resolveP();
     await expect(task1New?.promise()).resolves.toBeUndefined();
 
     // Tasks were run
