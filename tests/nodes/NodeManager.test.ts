@@ -7,7 +7,7 @@ import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import UTP from 'utp-native';
-import Queue from '@/nodes/Queue';
+import TaskManager from '@/tasks/TaskManager';
 import PolykeyAgent from '@/PolykeyAgent';
 import KeyManager from '@/keys/KeyManager';
 import * as keysUtils from '@/keys/utils';
@@ -17,13 +17,15 @@ import NodeManager from '@/nodes/NodeManager';
 import Proxy from '@/network/Proxy';
 import Sigchain from '@/sigchain/Sigchain';
 import * as claimsUtils from '@/claims/utils';
-import { promise, promisify, sleep } from '@/utils';
+import { never, promise, promisify, sleep } from '@/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as nodesErrors from '@/nodes/errors';
 import * as nodesTestUtils from './utils';
 import { generateNodeIdForBucket } from './utils';
 import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
+import { before } from 'cheerio/lib/api/manipulation';
+import { Task } from '@/tasks/types';
 
 describe(`${NodeManager.name} test`, () => {
   const password = 'password';
@@ -32,7 +34,7 @@ describe(`${NodeManager.name} test`, () => {
   ]);
   let dataDir: string;
   let nodeGraph: NodeGraph;
-  let queue: Queue;
+  let taskManager: TaskManager;
   let nodeConnectionManager: NodeConnectionManager;
   let proxy: Proxy;
   let keyManager: KeyManager;
@@ -108,11 +110,16 @@ describe(`${NodeManager.name} test`, () => {
       keyManager,
       logger,
     });
-    queue = new Queue({ logger });
+    taskManager = await TaskManager.createTaskManager({
+      activeLimit: 0,
+      db,
+      lazy: true,
+      logger,
+    });
     nodeConnectionManager = new NodeConnectionManager({
       keyManager,
       nodeGraph,
-      queue,
+      taskManager,
       proxy,
       logger,
     });
@@ -121,7 +128,7 @@ describe(`${NodeManager.name} test`, () => {
     mockedPingNode.mockClear();
     mockedPingNode.mockImplementation(async (_) => true);
     await nodeConnectionManager.stop();
-    await queue.stop();
+    await taskManager.stop();
     await nodeGraph.stop();
     await nodeGraph.destroy();
     await sigchain.stop();
@@ -168,11 +175,12 @@ describe(`${NodeManager.name} test`, () => {
           keyManager,
           nodeGraph,
           nodeConnectionManager,
-          queue,
+          taskManager,
           logger,
         });
         await nodeManager.start();
         await nodeConnectionManager.start({ nodeManager });
+        await taskManager.startProcessing();
 
         // Set server node offline
         await server.stop();
@@ -244,11 +252,12 @@ describe(`${NodeManager.name} test`, () => {
         keyManager,
         nodeGraph,
         nodeConnectionManager,
-        queue,
+        taskManager,
         logger,
       });
       await nodeManager.start();
       await nodeConnectionManager.start({ nodeManager });
+      await taskManager.startProcessing();
 
       // We want to get the public key of the server
       const key = await nodeManager.getPublicKey(serverNodeId);
@@ -435,11 +444,12 @@ describe(`${NodeManager.name} test`, () => {
           keyManager,
           nodeGraph,
           nodeConnectionManager,
-          queue,
+          taskManager,
           logger,
         });
         await nodeManager.start();
         await nodeConnectionManager.start({ nodeManager });
+        await taskManager.startProcessing();
 
         await nodeGraph.setNode(xNodeId, xNodeAddress);
 
@@ -455,20 +465,19 @@ describe(`${NodeManager.name} test`, () => {
     });
   });
   test('should add a node when bucket has room', async () => {
-    const queue = new Queue({ logger });
     const nodeManager = new NodeManager({
       db,
       sigchain: {} as Sigchain,
       keyManager,
       nodeGraph,
       nodeConnectionManager: {} as NodeConnectionManager,
-      queue,
+      taskManager,
       logger,
     });
     try {
-      await queue.start();
       await nodeManager.start();
       await nodeConnectionManager.start({ nodeManager });
+      await taskManager.startProcessing();
       const localNodeId = keyManager.getNodeId();
       const bucketIndex = 100;
       const nodeId = nodesTestUtils.generateNodeIdForBucket(
@@ -482,24 +491,22 @@ describe(`${NodeManager.name} test`, () => {
       expect(bucket).toHaveLength(1);
     } finally {
       await nodeManager.stop();
-      await queue.stop();
     }
   });
   test('should update a node if node exists', async () => {
-    const queue = new Queue({ logger });
     const nodeManager = new NodeManager({
       db,
       sigchain: {} as Sigchain,
       keyManager,
       nodeGraph,
       nodeConnectionManager: {} as NodeConnectionManager,
-      queue,
+      taskManager,
       logger,
     });
     try {
-      await queue.start();
       await nodeManager.start();
       await nodeConnectionManager.start({ nodeManager });
+      await taskManager.startProcessing();
       const localNodeId = keyManager.getNodeId();
       const bucketIndex = 100;
       const nodeId = nodesTestUtils.generateNodeIdForBucket(
@@ -525,24 +532,22 @@ describe(`${NodeManager.name} test`, () => {
       expect(newNodeData.lastUpdated).not.toEqual(nodeData.lastUpdated);
     } finally {
       await nodeManager.stop();
-      await queue.stop();
     }
   });
   test('should not add node if bucket is full and old node is alive', async () => {
-    const queue = new Queue({ logger });
     const nodeManager = new NodeManager({
       db,
       sigchain: {} as Sigchain,
       keyManager,
       nodeGraph,
       nodeConnectionManager: {} as NodeConnectionManager,
-      queue,
+      taskManager,
       logger,
     });
     try {
-      await queue.start();
       await nodeManager.start();
       await nodeConnectionManager.start({ nodeManager });
+      await taskManager.startProcessing();
       const localNodeId = keyManager.getNodeId();
       const bucketIndex = 100;
       // Creating 20 nodes in bucket
@@ -579,24 +584,22 @@ describe(`${NodeManager.name} test`, () => {
       nodeManagerPingMock.mockRestore();
     } finally {
       await nodeManager.stop();
-      await queue.stop();
     }
   });
   test('should add node if bucket is full, old node is alive and force is set', async () => {
-    const queue = new Queue({ logger });
     const nodeManager = new NodeManager({
       db,
       sigchain: {} as Sigchain,
       keyManager,
       nodeGraph,
       nodeConnectionManager: {} as NodeConnectionManager,
-      queue,
+      taskManager,
       logger,
     });
     try {
-      await queue.start();
       await nodeManager.start();
       await nodeConnectionManager.start({ nodeManager });
+      await taskManager.startProcessing();
       const localNodeId = keyManager.getNodeId();
       const bucketIndex = 100;
       // Creating 20 nodes in bucket
@@ -635,24 +638,22 @@ describe(`${NodeManager.name} test`, () => {
       nodeManagerPingMock.mockRestore();
     } finally {
       await nodeManager.stop();
-      await queue.stop();
     }
   });
   test('should add node if bucket is full and old node is dead', async () => {
-    const queue = new Queue({ logger });
     const nodeManager = new NodeManager({
       db,
       sigchain: {} as Sigchain,
       keyManager,
       nodeGraph,
       nodeConnectionManager: {} as NodeConnectionManager,
-      queue,
+      taskManager,
       logger,
     });
     try {
-      await queue.start();
       await nodeManager.start();
       await nodeConnectionManager.start({ nodeManager });
+      await taskManager.startProcessing();
       const localNodeId = keyManager.getNodeId();
       const bucketIndex = 100;
       // Creating 20 nodes in bucket
@@ -683,25 +684,23 @@ describe(`${NodeManager.name} test`, () => {
       nodeManagerPingMock.mockRestore();
     } finally {
       await nodeManager.stop();
-      await queue.stop();
     }
   });
   test('should add node when an incoming connection is established', async () => {
     let server: PolykeyAgent | undefined;
-    const queue = new Queue({ logger });
     const nodeManager = new NodeManager({
       db,
       sigchain: {} as Sigchain,
       keyManager,
       nodeGraph,
       nodeConnectionManager: {} as NodeConnectionManager,
-      queue,
+      taskManager,
       logger,
     });
     try {
-      await queue.start();
       await nodeManager.start();
       await nodeConnectionManager.start({ nodeManager });
+      await taskManager.startProcessing();
       server = await PolykeyAgent.createPolykeyAgent({
         password: 'password',
         nodePath: path.join(dataDir, 'server'),
@@ -742,25 +741,23 @@ describe(`${NodeManager.name} test`, () => {
       await server?.stop();
       await server?.destroy();
       await nodeManager.stop();
-      await queue.stop();
     }
   });
   test('should not add nodes to full bucket if pings succeeds', async () => {
     mockedPingNode.mockImplementation(async (_) => true);
-    const queue = new Queue({ logger });
     const nodeManager = new NodeManager({
       db,
       sigchain: {} as Sigchain,
       keyManager,
       nodeGraph,
       nodeConnectionManager: dummyNodeConnectionManager,
-      queue,
+      taskManager,
       logger,
     });
     try {
-      await queue.start();
       await nodeManager.start();
       await nodeConnectionManager.start({ nodeManager });
+      await taskManager.startProcessing();
       const nodeId = keyManager.getNodeId();
       const address = { host: localhost, port };
       // Let's fill a bucket
@@ -784,25 +781,23 @@ describe(`${NodeManager.name} test`, () => {
       );
     } finally {
       await nodeManager.stop();
-      await queue.stop();
     }
   });
   test('should add nodes to full bucket if pings fail', async () => {
     mockedPingNode.mockImplementation(async (_) => true);
-    const queue = new Queue({ logger });
     const nodeManager = new NodeManager({
       db,
       sigchain: {} as Sigchain,
       keyManager,
       nodeGraph,
       nodeConnectionManager: dummyNodeConnectionManager,
-      queue,
+      taskManager,
       logger,
     });
-    await queue.start();
     await nodeManager.start();
     try {
       await nodeConnectionManager.start({ nodeManager });
+      await taskManager.startProcessing();
       const nodeId = keyManager.getNodeId();
       const address = { host: localhost, port };
       // Let's fill a bucket
@@ -825,14 +820,12 @@ describe(`${NodeManager.name} test`, () => {
       await nodeManager.setNode(newNode1, address);
       await nodeManager.setNode(newNode2, address);
       await nodeManager.setNode(newNode3, address);
-      await queue.drained();
       const list = await listBucket(100);
       expect(list).toContain(nodesUtils.encodeNodeId(newNode1));
       expect(list).toContain(nodesUtils.encodeNodeId(newNode2));
       expect(list).toContain(nodesUtils.encodeNodeId(newNode3));
     } finally {
       await nodeManager.stop();
-      await queue.stop();
     }
   });
   test('should not block when bucket is full', async () => {
@@ -842,20 +835,19 @@ describe(`${NodeManager.name} test`, () => {
       logger,
     });
     mockedPingNode.mockImplementation(async (_) => true);
-    const queue = new Queue({ logger });
     const nodeManager = new NodeManager({
       db,
       sigchain: {} as Sigchain,
       keyManager,
       nodeGraph: tempNodeGraph,
       nodeConnectionManager: dummyNodeConnectionManager,
-      queue,
+      taskManager,
       logger,
     });
-    await queue.start();
     await nodeManager.start();
     try {
       await nodeConnectionManager.start({ nodeManager });
+      await taskManager.startProcessing();
       const nodeId = keyManager.getNodeId();
       const address = { host: localhost, port };
       // Let's fill a bucket
@@ -876,30 +868,27 @@ describe(`${NodeManager.name} test`, () => {
         nodeManager.setNode(newNode4, address, false),
       ).resolves.toBeUndefined();
       delayPing.resolveP();
-      await queue.drained();
     } finally {
       await nodeManager.stop();
-      await queue.stop();
       await tempNodeGraph.stop();
       await tempNodeGraph.destroy();
     }
   });
   test('should block when blocking is set to true', async () => {
     mockedPingNode.mockImplementation(async (_) => true);
-    const queue = new Queue({ logger });
     const nodeManager = new NodeManager({
       db,
       sigchain: {} as Sigchain,
       keyManager,
       nodeGraph,
       nodeConnectionManager: dummyNodeConnectionManager,
-      queue,
+      taskManager,
       logger,
     });
-    await queue.start();
     await nodeManager.start();
     try {
       await nodeConnectionManager.start({ nodeManager });
+      await taskManager.startProcessing();
       const nodeId = keyManager.getNodeId();
       const address = { host: localhost, port };
       // Let's fill a bucket
@@ -918,20 +907,18 @@ describe(`${NodeManager.name} test`, () => {
       expect(mockedPingNode).toBeCalled();
     } finally {
       await nodeManager.stop();
-      await queue.stop();
     }
   });
   test('should update deadline when updating a bucket', async () => {
     const refreshBucketTimeout = 100000;
-    const queue = new Queue({ logger });
     const nodeManager = new NodeManager({
       db,
       sigchain: {} as Sigchain,
       keyManager,
       nodeGraph,
       nodeConnectionManager: dummyNodeConnectionManager,
-      queue,
-      refreshBucketTimerDefault: refreshBucketTimeout,
+      taskManager,
+      refreshBucketDelay: refreshBucketTimeout,
       logger,
     });
     const mockRefreshBucket = jest.spyOn(
@@ -940,204 +927,32 @@ describe(`${NodeManager.name} test`, () => {
     );
     try {
       mockRefreshBucket.mockImplementation(async () => {});
-      await queue.start();
+      await taskManager.startProcessing();
       await nodeManager.start();
       await nodeConnectionManager.start({ nodeManager });
-      // @ts-ignore: kidnap map
-      const deadlineMap = nodeManager.refreshBucketDeadlineMap;
       // Getting starting value
-      const bucket = 0;
-      const startingDeadline = deadlineMap.get(bucket);
+      const bucketIndex = 100;
+      let refreshBucketTask: Task | undefined;
+      for await (const task of taskManager.getTasks('asc', true, ['refreshBucket', `${bucketIndex}`])){
+        refreshBucketTask = task;
+      }
+      if (refreshBucketTask == null) never();
       const nodeId = nodesTestUtils.generateNodeIdForBucket(
         keyManager.getNodeId(),
-        bucket,
+        bucketIndex,
       );
-      await sleep(1000);
+      await sleep(100);
       await nodeManager.setNode(nodeId, {} as NodeAddress);
       // Deadline should be updated
-      const newDeadline = deadlineMap.get(bucket);
-      expect(newDeadline).not.toEqual(startingDeadline);
+      let refreshBucketTaskUpdated: Task | undefined;
+      for await (const task of taskManager.getTasks('asc', true, ['refreshBucket', `${bucketIndex}`])){
+        refreshBucketTaskUpdated = task;
+      }
+      if (refreshBucketTaskUpdated == null) never();
+      expect(refreshBucketTaskUpdated.delay).not.toEqual(refreshBucketTask.delay);
     } finally {
       mockRefreshBucket.mockRestore();
       await nodeManager.stop();
-      await queue.stop();
-    }
-  });
-  test('should add buckets to the queue when exceeding deadline', async () => {
-    const refreshBucketTimeout = 100;
-    const queue = new Queue({ logger });
-    const nodeManager = new NodeManager({
-      db,
-      sigchain: {} as Sigchain,
-      keyManager,
-      nodeGraph,
-      nodeConnectionManager: dummyNodeConnectionManager,
-      queue,
-      refreshBucketTimerDefault: refreshBucketTimeout,
-      logger,
-    });
-    const mockRefreshBucket = jest.spyOn(
-      NodeManager.prototype,
-      'refreshBucket',
-    );
-    const mockRefreshBucketQueueAdd = jest.spyOn(
-      NodeManager.prototype,
-      'refreshBucketQueueAdd',
-    );
-    try {
-      mockRefreshBucket.mockImplementation(async () => {});
-      await queue.start();
-      await nodeManager.start();
-      await nodeConnectionManager.start({ nodeManager });
-      // Getting starting value
-      expect(mockRefreshBucketQueueAdd).toHaveBeenCalledTimes(0);
-      await sleep(200);
-      expect(mockRefreshBucketQueueAdd).toHaveBeenCalledTimes(256);
-    } finally {
-      mockRefreshBucketQueueAdd.mockRestore();
-      mockRefreshBucket.mockRestore();
-      await nodeManager.stop();
-      await queue.stop();
-    }
-  });
-  test('should digest queue to refresh buckets', async () => {
-    const refreshBucketTimeout = 1000000;
-    const queue = new Queue({ logger });
-    const nodeManager = new NodeManager({
-      db,
-      sigchain: {} as Sigchain,
-      keyManager,
-      nodeGraph,
-      nodeConnectionManager: dummyNodeConnectionManager,
-      queue,
-      refreshBucketTimerDefault: refreshBucketTimeout,
-      logger,
-    });
-    const mockRefreshBucket = jest.spyOn(
-      NodeManager.prototype,
-      'refreshBucket',
-    );
-    try {
-      await queue.start();
-      await nodeManager.start();
-      await nodeConnectionManager.start({ nodeManager });
-      mockRefreshBucket.mockImplementation(async () => {});
-      nodeManager.refreshBucketQueueAdd(1);
-      nodeManager.refreshBucketQueueAdd(2);
-      nodeManager.refreshBucketQueueAdd(3);
-      nodeManager.refreshBucketQueueAdd(4);
-      nodeManager.refreshBucketQueueAdd(5);
-      await nodeManager.refreshBucketQueueDrained();
-      expect(mockRefreshBucket).toHaveBeenCalledTimes(5);
-
-      // Add buckets to queue
-      // check if refresh buckets was called
-    } finally {
-      mockRefreshBucket.mockRestore();
-      await nodeManager.stop();
-      await queue.stop();
-    }
-  });
-  test('should abort refreshBucket queue when stopping', async () => {
-    const refreshBucketTimeout = 1000000;
-    const queue = new Queue({ logger });
-    const nodeManager = new NodeManager({
-      db,
-      sigchain: {} as Sigchain,
-      keyManager,
-      nodeGraph,
-      nodeConnectionManager: dummyNodeConnectionManager,
-      queue,
-      refreshBucketTimerDefault: refreshBucketTimeout,
-      logger,
-    });
-    const mockRefreshBucket = jest.spyOn(
-      NodeManager.prototype,
-      'refreshBucket',
-    );
-    try {
-      await queue.start();
-      await nodeManager.start();
-      await nodeConnectionManager.start({ nodeManager });
-      mockRefreshBucket.mockImplementation(
-        async (bucket, options: { signal?: AbortSignal } = {}) => {
-          const { signal } = { ...options };
-          const prom = promise<void>();
-          signal?.addEventListener('abort', () =>
-            prom.rejectP(new nodesErrors.ErrorNodeAborted()),
-          );
-          await prom.p;
-        },
-      );
-      nodeManager.refreshBucketQueueAdd(1);
-      nodeManager.refreshBucketQueueAdd(2);
-      nodeManager.refreshBucketQueueAdd(3);
-      nodeManager.refreshBucketQueueAdd(4);
-      nodeManager.refreshBucketQueueAdd(5);
-      await nodeManager.stop();
-    } finally {
-      mockRefreshBucket.mockRestore();
-      await nodeManager.stop();
-      await queue.stop();
-    }
-  });
-  test('should pause, resume and stop queue while paused', async () => {
-    const refreshBucketTimeout = 1000000;
-    const queue = new Queue({ logger });
-    const nodeManager = new NodeManager({
-      db,
-      sigchain: {} as Sigchain,
-      keyManager,
-      nodeGraph,
-      nodeConnectionManager: dummyNodeConnectionManager,
-      queue,
-      refreshBucketTimerDefault: refreshBucketTimeout,
-      logger,
-    });
-    const mockRefreshBucket = jest.spyOn(
-      NodeManager.prototype,
-      'refreshBucket',
-    );
-    try {
-      logger.setLevel(LogLevel.WARN);
-      await queue.start();
-      await nodeManager.start();
-      await nodeConnectionManager.start({ nodeManager });
-      mockRefreshBucket.mockImplementation(
-        async (bucket, options: { signal?: AbortSignal } = {}) => {
-          const { signal } = { ...options };
-          const prom = promise<void>();
-          const timer = setTimeout(prom.resolveP, 10);
-          signal?.addEventListener('abort', () => {
-            clearTimeout(timer);
-            prom.rejectP(new nodesErrors.ErrorNodeAborted());
-          });
-          await prom.p;
-        },
-      );
-      nodeManager.refreshBucketQueueAdd(1);
-      nodeManager.refreshBucketQueueAdd(2);
-      nodeManager.refreshBucketQueueAdd(3);
-      nodeManager.refreshBucketQueueAdd(4);
-      nodeManager.refreshBucketQueueAdd(5);
-
-      // Can pause and resume
-      nodeManager.refreshBucketQueuePause();
-      nodeManager.refreshBucketQueueAdd(6);
-      nodeManager.refreshBucketQueueAdd(7);
-      nodeManager.refreshBucketQueueResume();
-      await nodeManager.refreshBucketQueueDrained();
-
-      // Can pause and stop
-      nodeManager.refreshBucketQueuePause();
-      nodeManager.refreshBucketQueueAdd(8);
-      nodeManager.refreshBucketQueueAdd(9);
-      nodeManager.refreshBucketQueueAdd(10);
-      await nodeManager.stop();
-    } finally {
-      mockRefreshBucket.mockRestore();
-      await nodeManager.stop();
-      await queue.stop();
     }
   });
   test('refreshBucket should not throw errors when network is empty', async () => {
@@ -1147,11 +962,12 @@ describe(`${NodeManager.name} test`, () => {
       keyManager,
       nodeGraph,
       nodeConnectionManager,
-      queue,
-      refreshBucketTimerDefault: 10000000,
+      taskManager,
+      refreshBucketDelay: 10000000,
       logger,
     });
     await nodeConnectionManager.start({ nodeManager });
+    await taskManager.startProcessing();
     try {
       await expect(nodeManager.refreshBucket(100)).resolves.not.toThrow();
     } finally {
