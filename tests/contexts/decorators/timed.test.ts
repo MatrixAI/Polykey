@@ -734,8 +734,18 @@ describe('context/decorators/timed', () => {
       await expect(p).rejects.toBe('reason during');
     });
     test('explicit signal signal abortion with passed in timer - during', async () => {
-      const timer = new Timer({ delay: 100 });
+      // By passing in the timer and signal explicitly
+      // it is expected that the timer and signal handling is already setup
       const abortController = new AbortController();
+      const timer = new Timer({
+        handler: () => {
+          abortController.abort(new contextsErrors.ErrorContextsTimedTimeOut);
+        },
+        delay: 100
+      });
+      abortController.signal.addEventListener('abort', () => {
+        timer.cancel();
+      });
       const p = c.f({ timer, signal: abortController.signal });
       abortController.abort('abort reason');
       expect(ctx_!.timer.status).toBe('settled');
