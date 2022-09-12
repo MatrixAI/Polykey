@@ -784,6 +784,74 @@ describe(TaskManager.name, () => {
 
     await taskManager.stop();
   });
+  test('stopped tasks should run again if allowed', async () => {
+    const pauseProm = promise();
+    const handlerId1 = 'handler1' as TaskHandlerId;
+    const handler1 = jest.fn();
+    handler1.mockImplementation(async (ctx: ContextTimed) => {
+      const abortProm = new Promise((resolve, reject) =>
+        ctx.signal.addEventListener('abort', () => reject(ctx.signal.reason)),
+      );
+      await Promise.race([pauseProm.p, abortProm]);
+    });
+    const handlerId2 = 'handler2' as TaskHandlerId;
+    const handler2 = jest.fn();
+    handler2.mockImplementation(async (ctx: ContextTimed) => {
+      const abortProm = new Promise((resolve, reject) =>
+        ctx.signal.addEventListener('abort', () =>
+          reject(Error('different error')),
+        ),
+      );
+      await Promise.race([pauseProm.p, abortProm]);
+    });
+    const taskManager = await TaskManager.createTaskManager({
+      db,
+      handlers: { [handlerId1]: handler1, [handlerId2]: handler2 },
+      lazy: true,
+      logger,
+    });
+
+    const task1 = await taskManager.scheduleTask({
+      handlerId: handlerId1,
+      parameters: [],
+      lazy: false,
+    });
+    const task2 = await taskManager.scheduleTask({
+      handlerId: handlerId2,
+      parameters: [],
+      lazy: false,
+    });
+    await taskManager.startProcessing();
+    await sleep(100);
+    await taskManager.stopTasks();
+    await taskManager.stop();
+
+    // Tasks were run
+    expect(handler1).toHaveBeenCalled();
+    expect(handler2).toHaveBeenCalled();
+    handler1.mockClear();
+    handler2.mockClear();
+
+    // Tasks should complete
+    await expect(task1.promise()).rejects.toThrow();
+    await expect(task2.promise()).rejects.toThrow();
+
+    await taskManager.start({ lazy: true });
+    const task1New = await taskManager.getTask(task1.id, false);
+    const task2New = await taskManager.getTask(task2.id, false);
+    await taskManager.startProcessing();
+    // Task1 should still exist
+    expect(task1New).toBeDefined();
+    // Task2 should've been removed
+    expect(task2New).toBeUndefined();
+    await expect(task1New?.promise()).resolves.toBeUndefined();
+
+    // Tasks were run
+    expect(handler1).toHaveBeenCalled();
+    expect(handler2).not.toHaveBeenCalled();
+
+    await taskManager.stop();
+  });
   test('tests for taskPath', async () => {
     const taskManager = await TaskManager.createTaskManager({
       db,
