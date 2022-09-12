@@ -1,7 +1,7 @@
 import type { NodeId, NodeIdString, SeedNodes } from '@/nodes/types';
 import type { Host, Port } from '@/network/types';
 import type NodeManager from 'nodes/NodeManager';
-import type Queue from '@/nodes/Queue';
+import type TaskManager from '@/tasks/TaskManager';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -77,6 +77,10 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
   let remoteNodeId2: NodeId;
 
   const dummyNodeManager = { setNode: jest.fn() } as unknown as NodeManager;
+  const dummyTaskManager: TaskManager = {
+    registerHandler: jest.fn(),
+    deregisterHandler: jest.fn(),
+  } as unknown as TaskManager;
 
   beforeAll(async () => {
     dataDir2 = await fs.promises.mkdtemp(
@@ -188,7 +192,7 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
         keyManager,
         nodeGraph,
         proxy,
-        queue: {} as Queue,
+        taskManager: dummyTaskManager,
         connTimeoutTime: 500,
         logger: nodeConnectionManagerLogger,
       });
@@ -226,7 +230,7 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
         keyManager,
         nodeGraph,
         proxy,
-        queue: {} as Queue,
+        taskManager: dummyTaskManager,
         connTimeoutTime: 1000,
         logger: nodeConnectionManagerLogger,
       });
@@ -280,7 +284,7 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
         keyManager,
         nodeGraph,
         proxy,
-        queue: {} as Queue,
+        taskManager: dummyTaskManager,
         logger: nodeConnectionManagerLogger,
       });
       await nodeConnectionManager.start({ nodeManager: dummyNodeManager });

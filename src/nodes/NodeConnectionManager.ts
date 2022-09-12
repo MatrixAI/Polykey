@@ -4,7 +4,7 @@ import type Proxy from '../network/Proxy';
 import type { Host, Hostname, Port } from '../network/types';
 import type { Timer } from '../types';
 import type NodeGraph from './NodeGraph';
-import type Queue from './Queue';
+import type TaskManager from '../tasks/TaskManager';
 import type {
   NodeAddress,
   NodeData,
@@ -13,6 +13,7 @@ import type {
   SeedNodes,
 } from './types';
 import type NodeManager from './NodeManager';
+import type { TaskHandler, TaskHandlerId } from 'tasks/types';
 import { withF } from '@matrixai/resources';
 import Logger from '@matrixai/logger';
 import { ready, StartStop } from '@matrixai/async-init/dist/StartStop';
@@ -57,7 +58,7 @@ class NodeConnectionManager {
   protected nodeGraph: NodeGraph;
   protected keyManager: KeyManager;
   protected proxy: Proxy;
-  protected queue: Queue;
+  protected taskManager: TaskManager;
   // NodeManager has to be passed in during start to allow co-dependency
   protected nodeManager: NodeManager | undefined;
   protected seedNodes: SeedNodes;
@@ -74,11 +75,28 @@ class NodeConnectionManager {
   protected connections: Map<NodeIdString, ConnectionAndTimer> = new Map();
   protected connectionLocks: LockBox<RWLockWriter> = new LockBox();
 
+  protected pingAndSetNodeHandlerId: TaskHandlerId =
+    'NodeConnectionManager.pingAndSetNodeHandler' as TaskHandlerId;
+  // TODO: make cancelable
+  protected pingAndSetNodeHandler: TaskHandler = async (
+    context,
+    taskInfo,
+    nodeIdEncoded: string,
+    host: Host,
+    port: Port,
+  ) => {
+    const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded)!;
+    const host_ = await networkUtils.resolveHost(host);
+    if (await this.pingNode(nodeId, host_, port)) {
+      await this.nodeManager!.setNode(nodeId, { host: host_, port }, true);
+    }
+  };
+
   public constructor({
     keyManager,
     nodeGraph,
     proxy,
-    queue,
+    taskManager,
     seedNodes = {},
     initialClosestNodes = 3,
     connConnectTime = 20000,
@@ -88,7 +106,7 @@ class NodeConnectionManager {
     nodeGraph: NodeGraph;
     keyManager: KeyManager;
     proxy: Proxy;
-    queue: Queue;
+    taskManager: TaskManager;
     seedNodes?: SeedNodes;
     initialClosestNodes?: number;
     connConnectTime?: number;
@@ -99,7 +117,7 @@ class NodeConnectionManager {
     this.keyManager = keyManager;
     this.nodeGraph = nodeGraph;
     this.proxy = proxy;
-    this.queue = queue;
+    this.taskManager = taskManager;
     this.seedNodes = seedNodes;
     this.initialClosestNodes = initialClosestNodes;
     this.connConnectTime = connConnectTime;
@@ -109,6 +127,12 @@ class NodeConnectionManager {
   public async start({ nodeManager }: { nodeManager: NodeManager }) {
     this.logger.info(`Starting ${this.constructor.name}`);
     this.nodeManager = nodeManager;
+    // Setting handlers
+    this.taskManager.registerHandler(
+      this.pingAndSetNodeHandlerId,
+      this.pingAndSetNodeHandler,
+    );
+    // Adding seed nodes
     for (const nodeIdEncoded in this.seedNodes) {
       const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded)!;
       await this.nodeManager.setNode(
@@ -130,6 +154,8 @@ class NodeConnectionManager {
       // It exists so we want to destroy it
       await this.destroyConnection(IdInternal.fromString<NodeId>(nodeId));
     }
+    // Removing handlers
+    this.taskManager.deregisterHandler(this.pingAndSetNodeHandlerId);
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
@@ -605,26 +631,29 @@ class NodeConnectionManager {
         if (e instanceof nodesErrors.ErrorNodeConnectionTimeout) continue;
         throw e;
       }
-      const nodes = await this.getRemoteNodeClosestNodes(
+      const closestNodes = await this.getRemoteNodeClosestNodes(
         seedNodeId,
         this.keyManager.getNodeId(),
         timer,
       );
-      for (const [nodeId, nodeData] of nodes) {
+      for (const [nodeId, nodeData] of closestNodes) {
         if (!nodeId.equals(this.keyManager.getNodeId())) {
-          const pingAndAddNode = async () => {
-            const port = nodeData.address.port;
-            const host = await networkUtils.resolveHost(nodeData.address.host);
-            if (await this.pingNode(nodeId, host, port)) {
-              await this.nodeManager!.setNode(nodeId, nodeData.address, true);
-            }
-          };
-
-          if (!block) {
-            this.queue.push(pingAndAddNode);
-          } else {
+          const pingAndSetTask = await this.taskManager.scheduleTask({
+            delay: 0,
+            handlerId: this.pingAndSetNodeHandlerId,
+            lazy: !block,
+            parameters: [
+              nodesUtils.encodeNodeId(nodeId),
+              nodeData.address.host,
+              nodeData.address.port,
+            ],
+            path: ['pingAndSetNode'],
+            // Need to be somewhat active so high priority
+            priority: 100,
+          });
+          if (block) {
             try {
-              await pingAndAddNode();
+              await pingAndSetTask.promise();
             } catch (e) {
               if (!(e instanceof nodesErrors.ErrorNodeGraphSameNodeId)) throw e;
             }
@@ -632,19 +661,24 @@ class NodeConnectionManager {
         }
       }
       // Refreshing every bucket above the closest node
-      const refreshBuckets = async () => {
-        const [closestNode] = (
-          await this.nodeGraph.getClosestNodes(this.keyManager.getNodeId(), 1)
-        ).pop()!;
+      let closestNodeInfo = closestNodes.pop()!;
+      if (this.keyManager.getNodeId().equals(closestNodeInfo[0])) {
+        // Skip our nodeId if it exists
+        closestNodeInfo = closestNodes.pop()!;
+      }
+      let index = 0;
+      if (closestNodeInfo != null) {
+        const [closestNode] = closestNodeInfo;
         const [bucketIndex] = this.nodeGraph.bucketIndex(closestNode);
-        for (let i = bucketIndex; i < this.nodeGraph.nodeIdBits; i++) {
-          this.nodeManager?.refreshBucketQueueAdd(i);
-        }
-      };
-      if (!block) {
-        this.queue.push(refreshBuckets);
-      } else {
-        await refreshBuckets();
+        index = bucketIndex;
+      }
+      for (let i = index; i < this.nodeGraph.nodeIdBits; i++) {
+        const task = await this.nodeManager!.updateRefreshBucketDelay(
+          i,
+          0,
+          !block,
+        );
+        if (block) await task.promise();
       }
     }
   }

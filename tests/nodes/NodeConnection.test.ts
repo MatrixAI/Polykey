@@ -10,6 +10,7 @@ import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { destroyed } from '@matrixai/async-init';
+import TaskManager from '@/tasks/TaskManager';
 import Proxy from '@/network/Proxy';
 import NodeConnection from '@/nodes/NodeConnection';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
@@ -33,7 +34,6 @@ import * as nodesUtils from '@/nodes/utils';
 import * as agentErrors from '@/agent/errors';
 import * as grpcUtils from '@/grpc/utils';
 import { timerStart } from '@/utils';
-import Queue from '@/nodes/Queue';
 import * as testNodesUtils from './utils';
 import * as grpcTestUtils from '../grpc/utils';
 import * as agentTestUtils from '../agent/utils';
@@ -85,7 +85,6 @@ describe(`${NodeConnection.name} test`, () => {
   let serverKeyManager: KeyManager;
   let serverVaultManager: VaultManager;
   let serverNodeGraph: NodeGraph;
-  let serverQueue: Queue;
   let serverNodeConnectionManager: NodeConnectionManager;
   let serverNodeManager: NodeManager;
   let serverSigchain: Sigchain;
@@ -111,6 +110,7 @@ describe(`${NodeConnection.name} test`, () => {
   let sourcePort: Port;
 
   let serverTLSConfig: TLSConfig;
+  let serverTaskManager: TaskManager;
 
   /**
    * Mock TCP server
@@ -240,13 +240,16 @@ describe(`${NodeConnection.name} test`, () => {
       keyManager: serverKeyManager,
       logger,
     });
-
-    serverQueue = new Queue({ logger });
+    serverTaskManager = await TaskManager.createTaskManager({
+      db: serverDb,
+      lazy: true,
+      logger,
+    });
     serverNodeConnectionManager = new NodeConnectionManager({
       keyManager: serverKeyManager,
       nodeGraph: serverNodeGraph,
       proxy: serverProxy,
-      queue: serverQueue,
+      taskManager: serverTaskManager,
       logger,
     });
     serverNodeManager = new NodeManager({
@@ -255,10 +258,9 @@ describe(`${NodeConnection.name} test`, () => {
       keyManager: serverKeyManager,
       nodeGraph: serverNodeGraph,
       nodeConnectionManager: serverNodeConnectionManager,
-      queue: serverQueue,
+      taskManager: serverTaskManager,
       logger: logger,
     });
-    await serverQueue.start();
     await serverNodeManager.start();
     await serverNodeConnectionManager.start({ nodeManager: serverNodeManager });
     serverVaultManager = await VaultManager.createVaultManager({
@@ -372,7 +374,6 @@ describe(`${NodeConnection.name} test`, () => {
     await serverNodeGraph.destroy();
     await serverNodeConnectionManager.stop();
     await serverNodeManager.stop();
-    await serverQueue.stop();
     await serverNotificationsManager.stop();
     await serverNotificationsManager.destroy();
     await agentTestUtils.closeTestAgentServer(agentServer);

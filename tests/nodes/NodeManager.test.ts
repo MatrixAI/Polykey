@@ -1,6 +1,7 @@
 import type { CertificatePem, KeyPairPem, PublicKeyPem } from '@/keys/types';
 import type { Host, Port } from '@/network/types';
 import type { NodeId, NodeAddress } from '@/nodes/types';
+import type { Task } from '@/tasks/types';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
@@ -20,12 +21,9 @@ import * as claimsUtils from '@/claims/utils';
 import { never, promise, promisify, sleep } from '@/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
-import * as nodesErrors from '@/nodes/errors';
 import * as nodesTestUtils from './utils';
 import { generateNodeIdForBucket } from './utils';
 import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
-import { before } from 'cheerio/lib/api/manipulation';
-import { Task } from '@/tasks/types';
 
 describe(`${NodeManager.name} test`, () => {
   const password = 'password';
@@ -933,7 +931,10 @@ describe(`${NodeManager.name} test`, () => {
       // Getting starting value
       const bucketIndex = 100;
       let refreshBucketTask: Task | undefined;
-      for await (const task of taskManager.getTasks('asc', true, ['refreshBucket', `${bucketIndex}`])){
+      for await (const task of taskManager.getTasks('asc', true, [
+        'refreshBucket',
+        `${bucketIndex}`,
+      ])) {
         refreshBucketTask = task;
       }
       if (refreshBucketTask == null) never();
@@ -945,11 +946,16 @@ describe(`${NodeManager.name} test`, () => {
       await nodeManager.setNode(nodeId, {} as NodeAddress);
       // Deadline should be updated
       let refreshBucketTaskUpdated: Task | undefined;
-      for await (const task of taskManager.getTasks('asc', true, ['refreshBucket', `${bucketIndex}`])){
+      for await (const task of taskManager.getTasks('asc', true, [
+        'refreshBucket',
+        `${bucketIndex}`,
+      ])) {
         refreshBucketTaskUpdated = task;
       }
       if (refreshBucketTaskUpdated == null) never();
-      expect(refreshBucketTaskUpdated.delay).not.toEqual(refreshBucketTask.delay);
+      expect(refreshBucketTaskUpdated.delay).not.toEqual(
+        refreshBucketTask.delay,
+      );
     } finally {
       mockRefreshBucket.mockRestore();
       await nodeManager.stop();

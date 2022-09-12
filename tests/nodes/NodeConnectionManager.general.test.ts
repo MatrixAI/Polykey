@@ -1,13 +1,13 @@
 import type { NodeAddress, NodeBucket, NodeId, SeedNodes } from '@/nodes/types';
 import type { Host, Port } from '@/network/types';
 import type NodeManager from '@/nodes/NodeManager';
+import type TaskManager from '@/tasks/TaskManager';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { DB } from '@matrixai/db';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { IdInternal } from '@matrixai/id';
-import Queue from '@/nodes/Queue';
 import PolykeyAgent from '@/PolykeyAgent';
 import KeyManager from '@/keys/KeyManager';
 import NodeGraph from '@/nodes/NodeGraph';
@@ -76,7 +76,6 @@ describe(`${NodeConnectionManager.name} general test`, () => {
   let db: DB;
   let proxy: Proxy;
   let nodeGraph: NodeGraph;
-  let queue: Queue;
 
   let remoteNode1: PolykeyAgent;
   let remoteNode2: PolykeyAgent;
@@ -123,6 +122,10 @@ describe(`${NodeConnectionManager.name} general test`, () => {
   };
 
   const dummyNodeManager = { setNode: jest.fn() } as unknown as NodeManager;
+  const dummyTaskManager: TaskManager = {
+    registerHandler: jest.fn(),
+    deregisterHandler: jest.fn(),
+  } as unknown as TaskManager;
 
   beforeAll(async () => {
     dataDir2 = await fs.promises.mkdtemp(
@@ -197,10 +200,6 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       keyManager,
       logger: logger.getChild('NodeGraph'),
     });
-    queue = new Queue({
-      logger: logger.getChild('queue'),
-    });
-    await queue.start();
     const tlsConfig = {
       keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
       certChainPem: keysUtils.certToPem(keyManager.getRootCert()),
@@ -226,7 +225,6 @@ describe(`${NodeConnectionManager.name} general test`, () => {
   });
 
   afterEach(async () => {
-    await queue.stop();
     await nodeGraph.stop();
     await nodeGraph.destroy();
     await db.stop();
@@ -243,7 +241,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       keyManager,
       nodeGraph,
       proxy,
-      queue,
+      taskManager: dummyTaskManager,
       logger: nodeConnectionManagerLogger,
     });
     await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
@@ -276,7 +274,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
         keyManager,
         nodeGraph,
         proxy,
-        queue,
+        taskManager: dummyTaskManager,
         logger: nodeConnectionManagerLogger,
       });
       await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
@@ -325,7 +323,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
         keyManager,
         nodeGraph,
         proxy,
-        queue,
+        taskManager: dummyTaskManager,
         logger: nodeConnectionManagerLogger,
       });
       await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
@@ -391,7 +389,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
         keyManager,
         nodeGraph,
         proxy,
-        queue,
+        taskManager: dummyTaskManager,
         logger: logger.getChild('NodeConnectionManager'),
       });
 
@@ -463,7 +461,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
         keyManager,
         nodeGraph,
         proxy,
-        queue,
+        taskManager: dummyTaskManager,
         logger: nodeConnectionManagerLogger,
       });
       await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
@@ -501,7 +499,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
         keyManager,
         nodeGraph,
         proxy,
-        queue,
+        taskManager: dummyTaskManager,
         logger: nodeConnectionManagerLogger,
       });
       await nodeConnectionManager.start({ nodeManager: dummyNodeManager });

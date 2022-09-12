@@ -727,16 +727,19 @@ class NodeManager {
       count += 1;
       if (count <= 1) {
         foundTask = task;
+        // If already running then don't update
+        if (task.status !== 'scheduled') continue;
         // Update the first one
         // total delay is refreshBucketDelay + time since task creation
-        const delay =
+        // time since task creation = now - creation time;
+        const delayNew =
           performance.now() +
           performance.timeOrigin -
           task.created.getTime() +
-          this.refreshBucketDelay;
-        await this.taskManager.updateTask(task.id, { delay }, tran);
+          delay;
+        await this.taskManager.updateTask(task.id, { delay: delayNew }, tran);
         this.logger.debug(
-          'Updating refreshBucket task for bucket ${bucketIndex}',
+          `Updating refreshBucket task for bucket ${bucketIndex}`,
         );
       } else {
         // These are extra, so we cancel them
