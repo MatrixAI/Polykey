@@ -1,7 +1,7 @@
 { runCommandNoCC
 , linkFarm
 , nix-gitignore
-, nodejs
+, nodejs-16_x
 , pkgs
 , lib
 , fetchurl
@@ -9,6 +9,8 @@
 }:
 
 rec {
+  # Fix nodejs version
+  nodejs = nodejs-16_x;
   # This removes the org scoping
   basename = builtins.baseNameOf node2nixDev.packageName;
   # Filter source to only what's necessary for building
