@@ -507,6 +507,8 @@ class NodeConnectionManager {
           nextNodeId,
           nextNodeAddress.address.host,
           nextNodeAddress.address.port,
+          undefined,
+          { signal },
         )
       ) {
         await this.nodeManager!.setNode(nextNodeId, nextNodeAddress.address);
@@ -523,7 +525,7 @@ class NodeConnectionManager {
       // Check to see if any of these are the target node. At the same time, add
       // them to the shortlist
       for (const [nodeId, nodeData] of foundClosest) {
-        if (signal?.aborted) throw new nodesErrors.ErrorNodeAborted();
+        signal?.throwIfAborted();
         // Ignore any nodes that have been contacted or our own node
         if (contacted[nodeId] || localNodeId.equals(nodeId)) {
           continue;
@@ -534,6 +536,8 @@ class NodeConnectionManager {
             nodeId,
             nodeData.address.host,
             nodeData.address.port,
+            undefined,
+            { signal },
           ))
         ) {
           await this.nodeManager!.setNode(nodeId, nodeData.address);
@@ -773,6 +777,7 @@ class NodeConnectionManager {
    * @param host - Host of the target node
    * @param port - Port of the target node
    * @param timer Connection timeout timer
+   * @param options
    */
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
   public async pingNode(
@@ -780,7 +785,9 @@ class NodeConnectionManager {
     host: Host | Hostname,
     port: Port,
     timer?: Timer,
+    options: { signal?: AbortSignal } = {},
   ): Promise<boolean> {
+    const { signal } = { ...options };
     host = await networkUtils.resolveHost(host);
     // If we can create a connection then we have punched though the NAT,
     // authenticated and confirmed the nodeId matches
@@ -791,6 +798,7 @@ class NodeConnectionManager {
     const signature = await this.keyManager.signWithRootKeyPair(
       Buffer.from(proxyAddress),
     );
+    signal?.throwIfAborted();
     // FIXME: this needs to handle aborting
     const holePunchPromises = Array.from(this.getSeedNodes(), (seedNodeId) => {
       return this.sendHolePunchMessage(
@@ -808,8 +816,16 @@ class NodeConnectionManager {
       timer,
     );
 
+    const abortPromise = new Promise((_resolve, reject) => {
+      signal?.addEventListener('abort', () => reject(signal.reason));
+    });
+
     try {
-      await Promise.any([forwardPunchPromise, ...holePunchPromises]);
+      await Promise.any([
+        forwardPunchPromise,
+        ...holePunchPromises,
+        abortPromise,
+      ]);
     } catch (e) {
       return false;
     }

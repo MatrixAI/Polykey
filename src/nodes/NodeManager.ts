@@ -68,7 +68,9 @@ class NodeManager {
     timeout: number,
   ) => {
     const nodeId: NodeId = nodesUtils.decodeNodeId(nodeIdEncoded)!;
-    await this.setNode(nodeId, nodeAddress, true, false, timeout);
+    await this.setNode(nodeId, nodeAddress, true, false, timeout, undefined, {
+      signal: context.signal,
+    });
   };
 
   constructor({
@@ -134,11 +136,12 @@ class NodeManager {
     nodeId: NodeId,
     address?: NodeAddress,
     timer?: Timer,
+    options: { signal?: AbortSignal } = {},
   ): Promise<boolean> {
     // We need to attempt a connection using the proxies
     // For now we will just do a forward connect + relay message
     const targetAddress =
-      address ?? (await this.nodeConnectionManager.findNode(nodeId));
+      address ?? (await this.nodeConnectionManager.findNode(nodeId, options));
     if (targetAddress == null) {
       throw new nodesErrors.ErrorNodeGraphNodeIdNotFound();
     }
@@ -441,6 +444,7 @@ class NodeManager {
     force: boolean = false,
     timeout?: number,
     tran?: DBTransaction,
+    options: { signal?: AbortSignal } = {},
   ): Promise<void> {
     // We don't want to add our own node
     if (nodeId.equals(this.keyManager.getNodeId())) {
@@ -515,6 +519,7 @@ class NodeManager {
           nodeId,
           nodeAddress,
           timeout,
+          options,
         );
       } else {
         this.logger.debug(
@@ -542,27 +547,20 @@ class NodeManager {
     nodeId: NodeId,
     nodeAddress: NodeAddress,
     timeout?: number,
+    options: { signal?: AbortSignal } = {},
   ) {
+    const { signal } = { ...options };
     const oldestNodeIds = await this.nodeGraph.getOldestNode(bucketIndex, 3);
-    // We want to concurrently ping the nodes
-    // Fixme, remove concurrency? we'd want to stick to 1 active connection per
-    //  background task
-    const pingPromises = oldestNodeIds.map((nodeId) => {
-      const doPing = async (): Promise<{
-        nodeId: NodeId;
-        success: boolean;
-      }> => {
-        // This needs to return nodeId and ping result
-        const data = await this.nodeGraph.getNode(nodeId);
-        if (data == null) return { nodeId, success: false };
-        const timer = timeout != null ? timerStart(timeout) : undefined;
-        const result = await this.pingNode(nodeId, nodeAddress, timer);
-        return { nodeId, success: result };
-      };
-      return doPing();
-    });
-    const pingResults = await Promise.all(pingPromises);
-    for (const { nodeId, success } of pingResults) {
+    for (const nodeId of oldestNodeIds) {
+      signal?.throwIfAborted();
+      // This needs to return nodeId and ping result
+      const data = await this.nodeGraph.getNode(nodeId);
+      if (data == null) return { nodeId, success: false };
+      const timer = timeout != null ? timerStart(timeout) : undefined;
+      const success = await this.pingNode(nodeId, nodeAddress, timer, {
+        signal,
+      });
+
       if (success) {
         // Ping succeeded, update the node
         this.logger.debug(
