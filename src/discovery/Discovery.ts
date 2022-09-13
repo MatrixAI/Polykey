@@ -489,7 +489,7 @@ class Discovery {
     // Get our own auth identity id
     const authIdentityIds = await provider.getAuthIdentityIds();
     // If we don't have one then we can't request data so just skip
-    if (authIdentityIds === [] || authIdentityIds[0] == null) {
+    if (authIdentityIds.length === 0 || authIdentityIds[0] == null) {
       return undefined;
     }
     const authIdentityId = authIdentityIds[0];

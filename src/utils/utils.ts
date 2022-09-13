@@ -7,7 +7,12 @@ import type {
 import os from 'os';
 import process from 'process';
 import path from 'path';
+import lexi from 'lexicographic-integer';
 import * as utilsErrors from './errors';
+
+const AsyncFunction = (async () => {}).constructor;
+const GeneratorFunction = function* () {}.constructor;
+const AsyncGeneratorFunction = async function* () {}.constructor;
 
 function getDefaultNodePath(): string | undefined {
   const prefix = 'polykey';
@@ -81,8 +86,8 @@ function pathIncludes(p1: string, p2: string): boolean {
   );
 }
 
-async function sleep(ms: number) {
-  return await new Promise((r) => setTimeout(r, ms));
+async function sleep(ms: number): Promise<void> {
+  return await new Promise<void>((r) => setTimeout(r, ms));
 }
 
 function isEmptyObject(o) {
@@ -189,6 +194,22 @@ function promise<T = void>(): PromiseDeconstructed<T> {
     resolveP,
     rejectP,
   };
+}
+
+/**
+ * Promise constructed from signal
+ * This rejects when the signal is aborted
+ */
+function signalPromise(signal: AbortSignal): Promise<void> {
+  return new Promise<void>((_, reject) => {
+    if (signal.aborted) {
+      reject(signal.reason);
+      return;
+    }
+    signal.addEventListener('abort', () => {
+      reject(signal.reason);
+    });
+  });
 }
 
 function timerStart(timeout: number): Timer {
@@ -309,7 +330,67 @@ function debounce<P extends any[]>(
   };
 }
 
+function isPromise(v: any): v is Promise<unknown> {
+  return (
+    v instanceof Promise ||
+    (v != null &&
+      typeof v.then === 'function' &&
+      typeof v.catch === 'function' &&
+      typeof v.finally === 'function')
+  );
+}
+
+function isPromiseLike(v: any): v is PromiseLike<unknown> {
+  return v != null && typeof v.then === 'function';
+}
+
+/**
+ * Is generator object
+ * Use this to check for generators
+ */
+function isGenerator(v: any): v is Generator<unknown> {
+  return (
+    v != null &&
+    typeof v[Symbol.iterator] === 'function' &&
+    typeof v.next === 'function' &&
+    typeof v.return === 'function' &&
+    typeof v.throw === 'function'
+  );
+}
+
+/**
+ * Is async generator object
+ * Use this to check for async generators
+ */
+function isAsyncGenerator(v: any): v is AsyncGenerator<unknown> {
+  return (
+    v != null &&
+    typeof v === 'object' &&
+    typeof v[Symbol.asyncIterator] === 'function' &&
+    typeof v.next === 'function' &&
+    typeof v.return === 'function' &&
+    typeof v.throw === 'function'
+  );
+}
+
+/**
+ * Encodes whole numbers (inc of 0) to lexicographic buffers
+ */
+function lexiPackBuffer(n: number): Buffer {
+  return Buffer.from(lexi.pack(n));
+}
+
+/**
+ * Decodes lexicographic buffers to whole numbers (inc of 0)
+ */
+function lexiUnpackBuffer(b: Buffer): number {
+  return lexi.unpack([...b]);
+}
+
 export {
+  AsyncFunction,
+  GeneratorFunction,
+  AsyncGeneratorFunction,
   getDefaultNodePath,
   never,
   mkdirExists,
@@ -322,6 +403,7 @@ export {
   poll,
   promisify,
   promise,
+  signalPromise,
   timerStart,
   timerStop,
   arraySet,
@@ -331,4 +413,10 @@ export {
   asyncIterableArray,
   bufferSplit,
   debounce,
+  isPromise,
+  isPromiseLike,
+  isGenerator,
+  isAsyncGenerator,
+  lexiPackBuffer,
+  lexiUnpackBuffer,
 };
