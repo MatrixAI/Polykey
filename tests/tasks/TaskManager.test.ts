@@ -1,17 +1,17 @@
-import type { ContextTimed } from '../../dist/contexts/types';
-import type { Task, TaskHandlerId, TaskPath } from '../../src/tasks/types';
 import type { PromiseCancellable } from '@matrixai/async-cancellable';
+import type { ContextTimed } from '@/contexts/types';
+import type { Task, TaskHandlerId, TaskPath } from '@/tasks/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { DB } from '@matrixai/db';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import * as fc from 'fast-check';
 import { Lock } from '@matrixai/async-locks';
-import * as utils from '@/utils/index';
-import { promise, sleep, never } from '@/utils';
+import * as fc from 'fast-check';
 import TaskManager from '@/tasks/TaskManager';
 import * as tasksErrors from '@/tasks/errors';
+import * as utils from '@/utils';
+import { promise, sleep, never } from '@/utils';
 
 describe(TaskManager.name, () => {
   const logger = new Logger(`${TaskManager.name} test`, LogLevel.WARN, [
@@ -22,7 +22,6 @@ describe(TaskManager.name, () => {
   let db: DB;
 
   beforeEach(async () => {
-    logger.info('SETTING UP');
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -31,13 +30,10 @@ describe(TaskManager.name, () => {
       dbPath,
       logger,
     });
-    logger.info('SET UP');
   });
   afterEach(async () => {
-    logger.info('CLEANING UP');
     await db.stop();
     await fs.promises.rm(dataDir, { recursive: true, force: true });
-    logger.info('CLEANED UP');
   });
 
   test('can start and stop', async () => {
@@ -107,11 +103,9 @@ describe(TaskManager.name, () => {
     });
 
     await sleep(500);
-    logger.info('STOPPING');
     await taskManager.stop();
     expect(handler).toHaveBeenCalledTimes(4);
 
-    logger.info('CREATING');
     handler.mockClear();
     taskManager = await TaskManager.createTaskManager({
       db,
@@ -121,7 +115,6 @@ describe(TaskManager.name, () => {
     taskManager.registerHandler(handlerId, handler);
     await taskManager.startProcessing();
     await sleep(4000);
-    logger.info('STOPPING AGAIN');
     await taskManager.stop();
     expect(handler).toHaveBeenCalledTimes(3);
   });
@@ -182,14 +175,11 @@ describe(TaskManager.name, () => {
     });
 
     await sleep(500);
-    logger.info('STOPPING');
     await taskManager.stop();
     expect(handler).toHaveBeenCalledTimes(4);
     handler.mockClear();
-    logger.info('STARTING');
     await taskManager.start();
     await sleep(4000);
-    logger.info('STOPPING AGAIN');
     await taskManager.stop();
     expect(handler).toHaveBeenCalledTimes(3);
   });
@@ -275,7 +265,6 @@ describe(TaskManager.name, () => {
       .integer({ min: 10, max: 100 })
       .noShrink()
       .map((value) => async (_context) => {
-        logger.info(`sleeping ${value}`);
         await sleep(value);
       });
 
@@ -320,7 +309,6 @@ describe(TaskManager.name, () => {
         // Check for active tasks while tasks are still running
         while (!completed) {
           expect(taskManager.activeCount).toBeLessThanOrEqual(activeLimit);
-          logger.info(`Active tasks: ${taskManager.activeCount}`);
           await Promise.race([sleep(100), waitForcompletionProm]);
         }
 
@@ -1033,7 +1021,6 @@ describe(TaskManager.name, () => {
     // @ts-ignore: private method, only schedule tasks
     await taskManager.startScheduling();
 
-    logger.info('Scheduling task');
     const task1 = await taskManager.scheduleTask({
       handlerId,
       delay: 0,
@@ -1043,7 +1030,6 @@ describe(TaskManager.name, () => {
 
     await sleep(100);
 
-    logger.info('Updating task');
     await expect(
       taskManager.updateTask(task1.id, {
         delay: 1000,
