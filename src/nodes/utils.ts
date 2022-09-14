@@ -8,8 +8,11 @@ import type { KeyPath } from '@matrixai/db';
 import { IdInternal } from '@matrixai/id';
 import lexi from 'lexicographic-integer';
 import { utils as dbUtils } from '@matrixai/db';
+import * as nodesErrors from './errors';
 import { bytes2BigInt } from '../utils';
 import * as keysUtils from '../keys/utils';
+import * as grpcErrors from '../grpc/errors';
+import * as agentErrors from '../agent/errors';
 
 const sepBuffer = dbUtils.sep;
 
@@ -310,6 +313,14 @@ function generateRandomNodeIdForBucket(
   return xOrNodeId(nodeId, randomDistanceForBucket);
 }
 
+function isConnectionError(e): boolean {
+  return (
+    e instanceof nodesErrors.ErrorNodeConnectionDestroyed ||
+    e instanceof grpcErrors.ErrorGRPC ||
+    e instanceof agentErrors.ErrorAgentClientDestroyed
+  );
+}
+
 export {
   sepBuffer,
   encodeNodeId,
@@ -330,4 +341,5 @@ export {
   generateRandomDistanceForBucket,
   xOrNodeId,
   generateRandomNodeIdForBucket,
+  isConnectionError,
 };
