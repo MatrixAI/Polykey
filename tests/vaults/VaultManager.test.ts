@@ -8,7 +8,6 @@ import type {
 import type NotificationsManager from '@/notifications/NotificationsManager';
 import type { Host, Port, TLSConfig } from '@/network/types';
 import type NodeManager from '@/nodes/NodeManager';
-import type Queue from '@/nodes/Queue';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -18,6 +17,7 @@ import { DB } from '@matrixai/db';
 import { destroyed, running } from '@matrixai/async-init';
 import git from 'isomorphic-git';
 import { RWLockWriter } from '@matrixai/async-locks';
+import TaskManager from '@/tasks/TaskManager';
 import ACL from '@/acl/ACL';
 import GestaltGraph from '@/gestalts/GestaltGraph';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
@@ -480,6 +480,7 @@ describe('VaultManager', () => {
     let remoteKeynode1: PolykeyAgent, remoteKeynode2: PolykeyAgent;
     let localNodeId: NodeId;
     let localNodeIdEncoded: NodeIdEncoded;
+    let taskManager: TaskManager;
 
     beforeAll(async () => {
       // Creating agents
@@ -580,18 +581,22 @@ describe('VaultManager', () => {
         serverHost: localHost,
         serverPort: port,
       });
-
+      taskManager = await TaskManager.createTaskManager({
+        db,
+        lazy: true,
+        logger,
+      });
       nodeConnectionManager = new NodeConnectionManager({
         keyManager,
         nodeGraph,
         proxy,
-        queue: {} as Queue,
+        taskManager,
         logger,
       });
       await nodeConnectionManager.start({
         nodeManager: { setNode: jest.fn() } as unknown as NodeManager,
       });
-
+      await taskManager.startProcessing();
       await nodeGraph.setNode(remoteKeynode1Id, {
         host: remoteKeynode1.proxy.getProxyHost(),
         port: remoteKeynode1.proxy.getProxyPort(),
@@ -602,6 +607,7 @@ describe('VaultManager', () => {
       });
     });
     afterEach(async () => {
+      await taskManager.stopProcessing();
       await remoteKeynode1.vaultManager.destroyVault(remoteVaultId);
       await nodeConnectionManager.stop();
       await proxy.stop();
@@ -609,6 +615,7 @@ describe('VaultManager', () => {
       await nodeGraph.destroy();
       await keyManager.stop();
       await keyManager.destroy();
+      await taskManager.stop();
     });
 
     test('clone vaults from a remote keynode using a vault name', async () => {
@@ -1510,17 +1517,23 @@ describe('VaultManager', () => {
       serverHost: localHost,
       serverPort: port,
     });
+    const taskManager = await TaskManager.createTaskManager({
+      db,
+      logger,
+      lazy: true,
+    });
     const nodeConnectionManager = new NodeConnectionManager({
       keyManager,
       logger,
       nodeGraph,
       proxy,
-      queue: {} as Queue,
+      taskManager,
       connConnectTime: 1000,
     });
     await nodeConnectionManager.start({
       nodeManager: { setNode: jest.fn() } as unknown as NodeManager,
     });
+    await taskManager.startProcessing();
     const vaultManager = await VaultManager.createVaultManager({
       vaultsPath,
       keyManager,
@@ -1602,6 +1615,7 @@ describe('VaultManager', () => {
       ]);
       expect(vaults[vaultsUtils.encodeVaultId(vault3)]).toBeUndefined();
     } finally {
+      await taskManager.stopProcessing();
       await vaultManager.stop();
       await vaultManager.destroy();
       await nodeConnectionManager.stop();
@@ -1614,6 +1628,7 @@ describe('VaultManager', () => {
       await acl.destroy();
       await remoteAgent.stop();
       await remoteAgent.destroy();
+      await taskManager.stop();
     }
   });
   test('stopping respects locks', async () => {

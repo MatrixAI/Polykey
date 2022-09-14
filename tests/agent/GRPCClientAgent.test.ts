@@ -6,7 +6,7 @@ import path from 'path';
 import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
-import Queue from '@/nodes/Queue';
+import TaskManager from '@/tasks/TaskManager';
 import GestaltGraph from '@/gestalts/GestaltGraph';
 import ACL from '@/acl/ACL';
 import KeyManager from '@/keys/KeyManager';
@@ -41,7 +41,7 @@ describe(GRPCClientAgent.name, () => {
   let keyManager: KeyManager;
   let vaultManager: VaultManager;
   let nodeGraph: NodeGraph;
-  let queue: Queue;
+  let taskManager: TaskManager;
   let nodeConnectionManager: NodeConnectionManager;
   let nodeManager: NodeManager;
   let sigchain: Sigchain;
@@ -104,12 +104,16 @@ describe(GRPCClientAgent.name, () => {
       keyManager,
       logger,
     });
-    queue = new Queue({ logger });
+    taskManager = await TaskManager.createTaskManager({
+      db,
+      logger,
+      lazy: true,
+    });
     nodeConnectionManager = new NodeConnectionManager({
       keyManager,
       nodeGraph,
       proxy,
-      queue,
+      taskManager,
       logger,
     });
     nodeManager = new NodeManager({
@@ -118,12 +122,12 @@ describe(GRPCClientAgent.name, () => {
       keyManager: keyManager,
       nodeGraph: nodeGraph,
       nodeConnectionManager: nodeConnectionManager,
-      queue,
+      taskManager,
       logger: logger,
     });
-    await queue.start();
     await nodeManager.start();
     await nodeConnectionManager.start({ nodeManager });
+    await taskManager.startProcessing();
     notificationsManager =
       await NotificationsManager.createNotificationsManager({
         acl: acl,
@@ -169,6 +173,7 @@ describe(GRPCClientAgent.name, () => {
     });
   }, globalThis.defaultTimeout);
   afterEach(async () => {
+    await taskManager.stopProcessing();
     await testAgentUtils.closeTestAgentClient(client);
     await testAgentUtils.closeTestAgentServer(server);
     await vaultManager.stop();
@@ -176,13 +181,13 @@ describe(GRPCClientAgent.name, () => {
     await sigchain.stop();
     await nodeConnectionManager.stop();
     await nodeManager.stop();
-    await queue.stop();
     await nodeGraph.stop();
     await gestaltGraph.stop();
     await acl.stop();
     await proxy.stop();
     await db.stop();
     await keyManager.stop();
+    await taskManager.stop();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,

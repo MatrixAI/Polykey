@@ -8,7 +8,7 @@ import { createPrivateKey, createPublicKey } from 'crypto';
 import { exportJWK, SignJWT } from 'jose';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
-import Queue from '@/nodes/Queue';
+import TaskManager from '@/tasks/TaskManager';
 import KeyManager from '@/keys/KeyManager';
 import GRPCServer from '@/grpc/GRPCServer';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
@@ -39,7 +39,7 @@ describe('notificationsSend', () => {
   let senderKeyManager: KeyManager;
   let dataDir: string;
   let nodeGraph: NodeGraph;
-  let queue: Queue;
+  let taskManager: TaskManager;
   let nodeConnectionManager: NodeConnectionManager;
   let nodeManager: NodeManager;
   let notificationsManager: NotificationsManager;
@@ -102,14 +102,16 @@ describe('notificationsSend', () => {
       keyManager,
       logger: logger.getChild('NodeGraph'),
     });
-    queue = new Queue({
-      logger: logger.getChild('queue'),
+    taskManager = await TaskManager.createTaskManager({
+      db,
+      logger,
+      lazy: true,
     });
     nodeConnectionManager = new NodeConnectionManager({
       keyManager,
       nodeGraph,
       proxy,
-      queue,
+      taskManager,
       connConnectTime: 2000,
       connTimeoutTime: 2000,
       logger: logger.getChild('NodeConnectionManager'),
@@ -120,12 +122,12 @@ describe('notificationsSend', () => {
       nodeGraph,
       nodeConnectionManager,
       sigchain,
-      queue,
+      taskManager,
       logger,
     });
-    await queue.start();
     await nodeManager.start();
     await nodeConnectionManager.start({ nodeManager });
+    await taskManager.startProcessing();
     notificationsManager =
       await NotificationsManager.createNotificationsManager({
         acl,
@@ -156,11 +158,11 @@ describe('notificationsSend', () => {
     });
   }, globalThis.defaultTimeout);
   afterEach(async () => {
+    await taskManager.stopProcessing();
     await grpcClient.destroy();
     await grpcServer.stop();
     await notificationsManager.stop();
     await nodeConnectionManager.stop();
-    await queue.stop();
     await nodeManager.stop();
     await sigchain.stop();
     await sigchain.stop();
@@ -169,6 +171,7 @@ describe('notificationsSend', () => {
     await db.stop();
     await senderKeyManager.stop();
     await keyManager.stop();
+    await taskManager.stop();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,

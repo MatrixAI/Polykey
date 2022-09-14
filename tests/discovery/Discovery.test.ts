@@ -6,7 +6,7 @@ import path from 'path';
 import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
-import Queue from '@/nodes/Queue';
+import TaskManager from '@/tasks/TaskManager';
 import PolykeyAgent from '@/PolykeyAgent';
 import Discovery from '@/discovery/Discovery';
 import GestaltGraph from '@/gestalts/GestaltGraph';
@@ -46,7 +46,7 @@ describe('Discovery', () => {
   let gestaltGraph: GestaltGraph;
   let identitiesManager: IdentitiesManager;
   let nodeGraph: NodeGraph;
-  let queue: Queue;
+  let taskManager: TaskManager;
   let nodeConnectionManager: NodeConnectionManager;
   let nodeManager: NodeManager;
   let db: DB;
@@ -124,14 +124,16 @@ describe('Discovery', () => {
       keyManager,
       logger: logger.getChild('NodeGraph'),
     });
-    queue = new Queue({
-      logger: logger.getChild('queue'),
+    taskManager = await TaskManager.createTaskManager({
+      db,
+      logger,
+      lazy: true,
     });
     nodeConnectionManager = new NodeConnectionManager({
       keyManager,
       nodeGraph,
       proxy,
-      queue,
+      taskManager,
       connConnectTime: 2000,
       connTimeoutTime: 2000,
       logger: logger.getChild('NodeConnectionManager'),
@@ -142,12 +144,12 @@ describe('Discovery', () => {
       nodeConnectionManager,
       nodeGraph,
       sigchain,
-      queue,
+      taskManager,
       logger,
     });
-    await queue.start();
     await nodeManager.start();
     await nodeConnectionManager.start({ nodeManager });
+    await taskManager.startProcessing();
     // Set up other gestalt
     nodeA = await PolykeyAgent.createPolykeyAgent({
       password: password,
@@ -200,11 +202,11 @@ describe('Discovery', () => {
     await testProvider.publishClaim(identityId, claim);
   });
   afterEach(async () => {
+    await taskManager.stopProcessing();
     await nodeA.stop();
     await nodeB.stop();
     await nodeConnectionManager.stop();
     await nodeManager.stop();
-    await queue.stop();
     await nodeGraph.stop();
     await proxy.stop();
     await sigchain.stop();
@@ -213,6 +215,7 @@ describe('Discovery', () => {
     await acl.stop();
     await db.stop();
     await keyManager.stop();
+    await taskManager.stop();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,

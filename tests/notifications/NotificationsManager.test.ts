@@ -8,7 +8,7 @@ import path from 'path';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { IdInternal } from '@matrixai/id';
-import Queue from '@/nodes/Queue';
+import TaskManager from '@/tasks/TaskManager';
 import PolykeyAgent from '@/PolykeyAgent';
 import ACL from '@/acl/ACL';
 import Sigchain from '@/sigchain/Sigchain';
@@ -49,7 +49,7 @@ describe('NotificationsManager', () => {
   let acl: ACL;
   let db: DB;
   let nodeGraph: NodeGraph;
-  let queue: Queue;
+  let taskManager: TaskManager;
   let nodeConnectionManager: NodeConnectionManager;
   let nodeManager: NodeManager;
   let keyManager: KeyManager;
@@ -106,12 +106,16 @@ describe('NotificationsManager', () => {
       keyManager,
       logger,
     });
-    queue = new Queue({ logger });
+    taskManager = await TaskManager.createTaskManager({
+      db,
+      logger,
+      lazy: true,
+    });
     nodeConnectionManager = new NodeConnectionManager({
       nodeGraph,
       keyManager,
       proxy,
-      queue,
+      taskManager,
       logger,
     });
     nodeManager = new NodeManager({
@@ -120,12 +124,12 @@ describe('NotificationsManager', () => {
       sigchain,
       nodeConnectionManager,
       nodeGraph,
-      queue,
+      taskManager,
       logger,
     });
-    await queue.start();
     await nodeManager.start();
     await nodeConnectionManager.start({ nodeManager });
+    await taskManager.start();
     // Set up node for receiving notifications
     receiver = await PolykeyAgent.createPolykeyAgent({
       password: password,
@@ -144,8 +148,8 @@ describe('NotificationsManager', () => {
     });
   }, globalThis.defaultTimeout);
   afterEach(async () => {
+    await taskManager.stopProcessing();
     await receiver.stop();
-    await queue.stop();
     await nodeConnectionManager.stop();
     await nodeManager.stop();
     await nodeGraph.stop();
@@ -154,6 +158,7 @@ describe('NotificationsManager', () => {
     await acl.stop();
     await db.stop();
     await keyManager.stop();
+    await taskManager.stop();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,

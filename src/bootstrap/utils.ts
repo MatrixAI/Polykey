@@ -4,7 +4,7 @@ import path from 'path';
 import Logger from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import * as bootstrapErrors from './errors';
-import Queue from '../nodes/Queue';
+import TaskManager from '../tasks/TaskManager';
 import { IdentitiesManager } from '../identities';
 import { SessionManager } from '../sessions';
 import { Status } from '../status';
@@ -143,12 +143,16 @@ async function bootstrapState({
       keyManager,
       logger: logger.getChild(NodeGraph.name),
     });
-    const queue = new Queue({ logger });
+    const taskManager = await TaskManager.createTaskManager({
+      db,
+      logger,
+      lazy: true,
+    });
     const nodeConnectionManager = new NodeConnectionManager({
       keyManager,
       nodeGraph,
       proxy,
-      queue,
+      taskManager,
       logger: logger.getChild(NodeConnectionManager.name),
     });
     const nodeManager = new NodeManager({
@@ -157,7 +161,7 @@ async function bootstrapState({
       nodeGraph,
       nodeConnectionManager,
       sigchain,
-      queue,
+      taskManager,
       logger: logger.getChild(NodeManager.name),
     });
     const notificationsManager =
@@ -196,6 +200,7 @@ async function bootstrapState({
     await acl.stop();
     await sigchain.stop();
     await identitiesManager.stop();
+    await taskManager.stop();
     await db.stop();
     await keyManager.stop();
     await schema.stop();
