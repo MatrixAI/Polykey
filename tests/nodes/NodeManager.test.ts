@@ -18,7 +18,7 @@ import NodeManager from '@/nodes/NodeManager';
 import Proxy from '@/network/Proxy';
 import Sigchain from '@/sigchain/Sigchain';
 import * as claimsUtils from '@/claims/utils';
-import { never, promise, promisify, sleep } from '@/utils';
+import { never, promise, promisify, sleep, timerStart } from '@/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as nodesTestUtils from './utils';
@@ -184,7 +184,11 @@ describe(`${NodeManager.name} test`, () => {
         await server.stop();
         // Check if active
         // Case 1: cannot establish new connection, so offline
-        const active1 = await nodeManager.pingNode(serverNodeId);
+        const active1 = await nodeManager.pingNode(
+          serverNodeId,
+          undefined,
+          timerStart(1000),
+        );
         expect(active1).toBe(false);
         // Bring server node online
         await server.start({
@@ -201,17 +205,22 @@ describe(`${NodeManager.name} test`, () => {
         await nodeGraph.setNode(serverNodeId, serverNodeAddress);
         // Check if active
         // Case 2: can establish new connection, so online
-        const active2 = await nodeManager.pingNode(serverNodeId);
+        const active2 = await nodeManager.pingNode(
+          serverNodeId,
+          undefined,
+          timerStart(1000),
+        );
         expect(active2).toBe(true);
         // Turn server node offline again
         await server.stop();
         await server.destroy();
-        // Give time for the ping buffers to send and wait for timeout on
-        // existing connection
-        await sleep(30000); // FIXME: remove this sleep
         // Check if active
         // Case 3: pre-existing connection no longer active, so offline
-        const active3 = await nodeManager.pingNode(serverNodeId);
+        const active3 = await nodeManager.pingNode(
+          serverNodeId,
+          undefined,
+          timerStart(1000),
+        );
         expect(active3).toBe(false);
       } finally {
         // Clean up

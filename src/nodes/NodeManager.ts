@@ -131,6 +131,7 @@ class NodeManager {
    * @param nodeId - NodeId of the node we're pinging
    * @param address - Optional Host and Port we want to ping
    * @param timer Connection timeout timer
+   * @param options
    */
   public async pingNode(
     nodeId: NodeId,

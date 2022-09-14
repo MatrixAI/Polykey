@@ -821,9 +821,8 @@ class NodeConnectionManager {
     });
 
     try {
-      await Promise.any([
-        forwardPunchPromise,
-        ...holePunchPromises,
+      await Promise.race([
+        Promise.any([forwardPunchPromise, ...holePunchPromises]),
         abortPromise,
       ]);
     } catch (e) {
