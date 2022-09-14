@@ -525,7 +525,7 @@ class NodeConnectionManager {
       // Check to see if any of these are the target node. At the same time, add
       // them to the shortlist
       for (const [nodeId, nodeData] of foundClosest) {
-        signal?.throwIfAborted();
+        if (signal?.aborted) throw signal.reason;
         // Ignore any nodes that have been contacted or our own node
         if (contacted[nodeId] || localNodeId.equals(nodeId)) {
           continue;
@@ -670,7 +670,7 @@ class NodeConnectionManager {
         // Skip our nodeId if it exists
         closestNodeInfo = closestNodes.pop()!;
       }
-      let index = 0;
+      let index = this.nodeGraph.nodeIdBits;
       if (closestNodeInfo != null) {
         const [closestNode] = closestNodeInfo;
         const [bucketIndex] = this.nodeGraph.bucketIndex(closestNode);
@@ -798,7 +798,7 @@ class NodeConnectionManager {
     const signature = await this.keyManager.signWithRootKeyPair(
       Buffer.from(proxyAddress),
     );
-    signal?.throwIfAborted();
+    if (signal?.aborted) throw signal.reason;
     // FIXME: this needs to handle aborting
     const holePunchPromises = Array.from(this.getSeedNodes(), (seedNodeId) => {
       return this.sendHolePunchMessage(

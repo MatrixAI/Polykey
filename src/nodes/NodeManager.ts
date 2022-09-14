@@ -436,6 +436,7 @@ class NodeManager {
    * This will drop the oldest node in favor of the new.
    * @param timeout Connection timeout
    * @param tran
+   * @param options
    */
   @ready(new nodesErrors.ErrorNodeManagerNotRunning())
   public async setNode(
@@ -467,9 +468,11 @@ class NodeManager {
     //  We need to ping the oldest node. If the ping succeeds we need to update
     //  the lastUpdated of the oldest node and drop the new one. If the ping
     //  fails we delete the old node and add in the new one.
+    const [bucketIndex] = this.nodeGraph.bucketIndex(nodeId);
+    // To avoid conflict we want to lock on the bucket index
+    await this.nodeGraph.lockBucket(bucketIndex, tran);
     const nodeData = await this.nodeGraph.getNode(nodeId, tran);
     // If this is a new entry, check the bucket limit
-    const [bucketIndex] = this.nodeGraph.bucketIndex(nodeId);
     const count = await this.nodeGraph.getBucketMetaProp(
       bucketIndex,
       'count',
@@ -553,7 +556,7 @@ class NodeManager {
     const { signal } = { ...options };
     const oldestNodeIds = await this.nodeGraph.getOldestNode(bucketIndex, 3);
     for (const nodeId of oldestNodeIds) {
-      signal?.throwIfAborted();
+      if (signal?.aborted) throw signal.reason;
       // This needs to return nodeId and ping result
       const data = await this.nodeGraph.getNode(nodeId);
       if (data == null) return { nodeId, success: false };

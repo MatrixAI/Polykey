@@ -23,7 +23,7 @@ import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 describe(`${NodeConnectionManager.name} seed nodes test`, () => {
   const logger = new Logger(
     `${NodeConnectionManager.name} test`,
-    LogLevel.DEBUG,
+    LogLevel.WARN,
     [new StreamHandler()],
   );
   grpcUtils.setLogger(logger.getChild('grpc'));
@@ -437,7 +437,7 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
       await nodeConnectionManager.start({ nodeManager });
       await taskManager.startProcessing();
       // This should complete without error
-      await nodeConnectionManager.syncNodeGraph();
+      await nodeConnectionManager.syncNodeGraph(true);
       // Information on remotes are found
       expect(await nodeGraph.getNode(nodeId1)).toBeDefined();
       expect(await nodeGraph.getNode(nodeId2)).toBeDefined();
@@ -502,7 +502,8 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
           logger,
         });
 
-        await sleep(1000);
+        await node1.nodeConnectionManager.syncNodeGraph(true);
+        await node2.nodeConnectionManager.syncNodeGraph(true);
 
         const getAllNodes = async (node: PolykeyAgent) => {
           const nodes: Array<NodeIdEncoded> = [];
