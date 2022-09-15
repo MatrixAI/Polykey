@@ -989,4 +989,57 @@ describe(`${NodeManager.name} test`, () => {
       await nodeManager.stop();
     }
   });
+  test('refreshBucket tasks should have spread delays', async () => {
+    const refreshBucketTimeout = 100000;
+    const nodeManager = new NodeManager({
+      db,
+      sigchain: {} as Sigchain,
+      keyManager,
+      nodeGraph,
+      nodeConnectionManager: dummyNodeConnectionManager,
+      taskManager,
+      refreshBucketDelay: refreshBucketTimeout,
+      logger,
+    });
+    const mockRefreshBucket = jest.spyOn(
+      NodeManager.prototype,
+      'refreshBucket',
+    );
+    try {
+      mockRefreshBucket.mockImplementation(async () => {});
+      await taskManager.startProcessing();
+      await nodeManager.start();
+      await nodeConnectionManager.start({ nodeManager });
+      // Getting starting value
+      const startingDelay = new Set<number>();
+      for await (const task of taskManager.getTasks('asc', true, [
+        'refreshBucket',
+      ])) {
+        startingDelay.add(task.delay);
+      }
+      expect(startingDelay.size).not.toBe(1);
+      // Updating delays should have spread
+      for (
+        let bucketIndex = 0;
+        bucketIndex < nodeGraph.nodeIdBits;
+        bucketIndex++
+      ) {
+        await nodeManager.updateRefreshBucketDelay(
+          bucketIndex,
+          undefined,
+          true,
+        );
+      }
+      const updatedDelay = new Set<number>();
+      for await (const task of taskManager.getTasks('asc', true, [
+        'refreshBucket',
+      ])) {
+        updatedDelay.add(task.delay);
+      }
+      expect(updatedDelay.size).not.toBe(1);
+    } finally {
+      mockRefreshBucket.mockRestore();
+      await nodeManager.stop();
+    }
+  });
 });

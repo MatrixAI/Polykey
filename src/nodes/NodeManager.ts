@@ -38,6 +38,7 @@ class NodeManager {
   protected nodeGraph: NodeGraph;
   protected taskManager: TaskManager;
   protected refreshBucketDelay: number;
+  protected refreshBucketDelaySpread: number;
   public readonly setNodeHandlerId =
     'NodeManager.setNodeHandler' as TaskHandlerId;
   public readonly refreshBucketHandlerId =
@@ -50,8 +51,12 @@ class NodeManager {
   ) => {
     await this.refreshBucket(bucketIndex, { signal: context.signal });
     // When completed reschedule the task
+    const spread =
+      (Math.random() - 0.5) *
+      this.refreshBucketDelay *
+      this.refreshBucketDelaySpread;
     await this.taskManager.scheduleTask({
-      delay: this.refreshBucketDelay,
+      delay: this.refreshBucketDelay + spread,
       handlerId: this.refreshBucketHandlerId,
       lazy: true,
       parameters: [bucketIndex],
@@ -81,6 +86,7 @@ class NodeManager {
     nodeGraph,
     taskManager,
     refreshBucketDelay = 3600000, // 1 hour in milliseconds
+    refreshBucketDelaySpread = 0.5, // Multiple of refreshBucketDelay to spread by
     logger,
   }: {
     db: DB;
@@ -90,6 +96,7 @@ class NodeManager {
     nodeGraph: NodeGraph;
     taskManager: TaskManager;
     refreshBucketDelay?: number;
+    refreshBucketDelaySpread?: number;
     logger?: Logger;
   }) {
     this.logger = logger ?? new Logger(this.constructor.name);
@@ -100,6 +107,11 @@ class NodeManager {
     this.nodeGraph = nodeGraph;
     this.taskManager = taskManager;
     this.refreshBucketDelay = refreshBucketDelay;
+    // Clamped from 0 to 1 inclusive
+    this.refreshBucketDelaySpread = Math.max(
+      0,
+      Math.min(refreshBucketDelaySpread, 1),
+    );
   }
 
   public async start() {
@@ -639,7 +651,6 @@ class NodeManager {
     }
 
     this.logger.info('Setting up refreshBucket tasks');
-
     // 1. Iterate over existing tasks and reset the delay
     const existingTasks: Array<boolean> = new Array(this.nodeGraph.nodeIdBits);
     for await (const task of this.taskManager.getTasks(
@@ -654,30 +665,30 @@ class NodeManager {
           {
             // If it's scheduled then reset delay
             existingTasks[bucketIndex] = true;
-            this.logger.debug(
-              `Updating refreshBucket delay for bucket ${bucketIndex}`,
-            );
             // Total delay is refreshBucketDelay + time since task creation
+            const spread =
+              (Math.random() - 0.5) *
+              this.refreshBucketDelay *
+              this.refreshBucketDelaySpread;
             const delay =
               performance.now() +
               performance.timeOrigin -
               task.created.getTime() +
-              this.refreshBucketDelay;
+              this.refreshBucketDelay +
+              spread;
             await this.taskManager.updateTask(task.id, { delay }, tran);
           }
           break;
         case 'queued':
         case 'active':
           // If it's running then leave it
-          this.logger.debug(
-            `RefreshBucket task for bucket ${bucketIndex} is already active, ignoring`,
-          );
           existingTasks[bucketIndex] = true;
           break;
         default:
-          // Otherwise ignore it, should be re-created
+          // Otherwise, ignore it, should be re-created
           existingTasks[bucketIndex] = false;
       }
+      this.logger.info('Set up refreshBucket tasks');
     }
 
     // 2. Recreate any missing tasks for buckets
@@ -692,9 +703,13 @@ class NodeManager {
         this.logger.debug(
           `Creating refreshBucket task for bucket ${bucketIndex}`,
         );
+        const spread =
+          (Math.random() - 0.5) *
+          this.refreshBucketDelay *
+          this.refreshBucketDelaySpread;
         await this.taskManager.scheduleTask({
           handlerId: this.refreshBucketHandlerId,
-          delay: this.refreshBucketDelay,
+          delay: this.refreshBucketDelay + spread,
           lazy: true,
           parameters: [bucketIndex],
           path: ['refreshBucket', `${bucketIndex}`],
@@ -718,6 +733,8 @@ class NodeManager {
       );
     }
 
+    const spread =
+      (Math.random() - 0.5) * delay * this.refreshBucketDelaySpread;
     let foundTask: Task | undefined;
     let count = 0;
     for await (const task of this.taskManager.getTasks(
@@ -738,7 +755,8 @@ class NodeManager {
           performance.now() +
           performance.timeOrigin -
           task.created.getTime() +
-          delay;
+          delay +
+          spread;
         await this.taskManager.updateTask(task.id, { delay: delayNew }, tran);
         this.logger.debug(
           `Updating refreshBucket task for bucket ${bucketIndex}`,
@@ -757,7 +775,7 @@ class NodeManager {
         `No refreshBucket task for bucket ${bucketIndex}, new one was created`,
       );
       foundTask = await this.taskManager.scheduleTask({
-        delay: this.refreshBucketDelay,
+        delay: delay + spread,
         handlerId: this.refreshBucketHandlerId,
         lazy: true,
         parameters: [bucketIndex],

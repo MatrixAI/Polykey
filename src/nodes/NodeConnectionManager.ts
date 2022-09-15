@@ -215,14 +215,7 @@ class NodeConnectionManager {
   ): Promise<T> {
     return await withF(
       [await this.acquireConnection(targetNodeId, timer)],
-      async ([conn]) => {
-        this.logger.info(
-          `withConnF calling function with connection to ${nodesUtils.encodeNodeId(
-            targetNodeId,
-          )}`,
-        );
-        return await f(conn);
-      },
+      async ([conn]) => await f(conn),
     );
   }
 
@@ -268,25 +261,12 @@ class NodeConnectionManager {
     targetNodeId: NodeId,
     timer?: Timer,
   ): Promise<ConnectionAndTimer> {
-    this.logger.info(
-      `Getting connection to ${nodesUtils.encodeNodeId(targetNodeId)}`,
-    );
     const targetNodeIdString = targetNodeId.toString() as NodeIdString;
     return await this.connectionLocks.withF(
       [targetNodeIdString, RWLockWriter, 'write'],
       async () => {
         const connAndTimer = this.connections.get(targetNodeIdString);
-        if (connAndTimer != null) {
-          this.logger.info(
-            `existing entry found for ${nodesUtils.encodeNodeId(targetNodeId)}`,
-          );
-          return connAndTimer;
-        }
-        this.logger.info(
-          `no existing entry, creating connection to ${nodesUtils.encodeNodeId(
-            targetNodeId,
-          )}`,
-        );
+        if (connAndTimer != null) return connAndTimer;
         // Creating the connection and set in map
         const targetAddress = await this.findNode(targetNodeId);
         if (targetAddress == null) {
@@ -555,6 +535,22 @@ class NodeConnectionManager {
           return 0;
         }
       });
+    }
+    // If the found nodes are less than nodeBucketLimit then
+    //  we expect that refresh buckets won't find anything new
+    if (Object.keys(contacted).length < this.nodeGraph.nodeBucketLimit) {
+      // Reset the delay on all refresh bucket tasks
+      for (
+        let bucketIndex = 0;
+        bucketIndex < this.nodeGraph.nodeIdBits;
+        bucketIndex++
+      ) {
+        await this.nodeManager?.updateRefreshBucketDelay(
+          bucketIndex,
+          undefined,
+          true,
+        );
+      }
     }
     return foundAddress;
   }

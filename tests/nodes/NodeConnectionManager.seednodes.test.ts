@@ -470,7 +470,6 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
       );
       mockedPingNode.mockImplementation(async () => true);
       try {
-        logger.setLevel(LogLevel.WARN);
         node1 = await PolykeyAgent.createPolykeyAgent({
           nodePath: path.join(dataDir, 'node1'),
           password: 'password',
@@ -533,11 +532,76 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
         expect(node2Nodes).toContain(nodeId1);
       } finally {
         mockedPingNode.mockRestore();
-        logger.setLevel(LogLevel.WARN);
         await node1?.stop();
         await node1?.destroy();
         await node2?.stop();
         await node2?.destroy();
+      }
+    },
+    globalThis.defaultTimeout * 2,
+  );
+  test(
+    'refreshBucket delays should be reset after finding less than 20 nodes',
+    async () => {
+      // Using a single seed node we need to check that each entering node adds itself to the seed node.
+      // Also need to check that the new nodes can be seen in the network.
+      let node1: PolykeyAgent | undefined;
+      const seedNodes: SeedNodes = {};
+      seedNodes[nodesUtils.encodeNodeId(remoteNodeId1)] = {
+        host: remoteNode1.proxy.getProxyHost(),
+        port: remoteNode1.proxy.getProxyPort(),
+      };
+      seedNodes[nodesUtils.encodeNodeId(remoteNodeId2)] = {
+        host: remoteNode2.proxy.getProxyHost(),
+        port: remoteNode2.proxy.getProxyPort(),
+      };
+      const mockedPingNode = jest.spyOn(
+        NodeConnectionManager.prototype,
+        'pingNode',
+      );
+      mockedPingNode.mockImplementation(async () => true);
+      try {
+        node1 = await PolykeyAgent.createPolykeyAgent({
+          nodePath: path.join(dataDir, 'node1'),
+          password: 'password',
+          networkConfig: {
+            proxyHost: localHost,
+            agentHost: localHost,
+            clientHost: localHost,
+            forwardHost: localHost,
+          },
+          keysConfig: {
+            privateKeyPemOverride: globalRootKeyPems[3],
+          },
+          seedNodes,
+          logger,
+        });
+
+        // Reset all the refresh bucket timers to a distinct time
+        for (
+          let bucketIndex = 0;
+          bucketIndex < node1.nodeGraph.nodeIdBits;
+          bucketIndex++
+        ) {
+          await node1.nodeManager.updateRefreshBucketDelay(
+            bucketIndex,
+            10000,
+            true,
+          );
+        }
+
+        // Trigger a refreshBucket
+        await node1.nodeManager.refreshBucket(1);
+
+        for await (const task of node1.taskManager.getTasks('asc', true, [
+          'refreshBucket',
+        ])) {
+          expect(task.delay).toBeGreaterThanOrEqual(50000);
+        }
+      } finally {
+        mockedPingNode.mockRestore();
+        await node1?.stop();
+        await node1?.destroy();
       }
     },
     globalThis.defaultTimeout * 2,
