@@ -80,8 +80,6 @@ class NodeConnectionManager {
   protected backoffDefault: number = 300; // 5 min
   protected backoffMultiplier: number = 2; // Doubles every failure
 
-  protected pingAndSetNodeHandlerId: TaskHandlerId =
-    'NodeConnectionManager.pingAndSetNodeHandler' as TaskHandlerId;
   // TODO: make cancelable
   protected pingAndSetNodeHandler: TaskHandler = async (
     context,
@@ -96,6 +94,8 @@ class NodeConnectionManager {
       await this.nodeManager!.setNode(nodeId, { host: host_, port }, true);
     }
   };
+  protected pingAndSetNodeHandlerId: TaskHandlerId =
+    `${this.constructor.name}.${this.pingAndSetNodeHandler.name}` as TaskHandlerId;
 
   public constructor({
     keyManager,

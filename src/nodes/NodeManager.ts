@@ -39,10 +39,6 @@ class NodeManager {
   protected taskManager: TaskManager;
   protected refreshBucketDelay: number;
   protected refreshBucketDelaySpread: number;
-  public readonly setNodeHandlerId =
-    'NodeManager.setNodeHandler' as TaskHandlerId;
-  public readonly refreshBucketHandlerId =
-    'NodeManager.refreshBucketHandler' as TaskHandlerId;
 
   private refreshBucketHandler: TaskHandler = async (
     context,
@@ -64,6 +60,8 @@ class NodeManager {
       priority: 0,
     });
   };
+  public readonly refreshBucketHandlerId =
+    `${this.constructor.name}.${this.refreshBucketHandler.name}` as TaskHandlerId;
 
   private setNodeHandler: TaskHandler = async (
     context,
@@ -77,6 +75,8 @@ class NodeManager {
       signal: context.signal,
     });
   };
+  public readonly setNodeHandlerId =
+    `${this.constructor.name}.${this.setNodeHandler.name}` as TaskHandlerId;
 
   constructor({
     db,
