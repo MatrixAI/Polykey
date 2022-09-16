@@ -5,18 +5,15 @@ import type KeyManager from '../keys/KeyManager';
 import type { PublicKeyPem } from '../keys/types';
 import type Sigchain from '../sigchain/Sigchain';
 import type { ChainData, ChainDataEncoded } from '../sigchain/types';
-import type {
-  NodeId,
-  NodeAddress,
-  NodeBucket,
-  NodeBucketIndex,
-} from '../nodes/types';
+import type { NodeId, NodeAddress, NodeBucket, NodeBucketIndex } from './types';
 import type { ClaimEncoded } from '../claims/types';
 import type { Timer } from '../types';
 import type TaskManager from '../tasks/TaskManager';
 import type { TaskHandler, TaskHandlerId, Task } from '../tasks/types';
 import Logger from '@matrixai/logger';
 import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
+import { Semaphore } from '@matrixai/async-locks';
+import { IdInternal } from '@matrixai/id';
 import * as nodesErrors from './errors';
 import * as nodesUtils from './utils';
 import * as networkUtils from '../network/utils';
@@ -39,6 +36,7 @@ class NodeManager {
   protected taskManager: TaskManager;
   protected refreshBucketDelay: number;
   protected refreshBucketDelaySpread: number;
+  protected pendingNodes: Map<number, Map<string, NodeAddress>> = new Map();
 
   private refreshBucketHandler: TaskHandler = async (
     context,
@@ -558,7 +556,6 @@ class NodeManager {
     }
   }
 
-  // FIXME: make cancellable
   private async garbageCollectOldNode(
     bucketIndex: number,
     nodeId: NodeId,
@@ -604,6 +601,85 @@ class NodeManager {
       // Updating the refreshBucket timer
       await this.updateRefreshBucketDelay(bucketIndex, this.refreshBucketDelay);
     }
+  }
+
+  private async garbageCollectbucket(
+    bucketIndex: number,
+    options: { signal?: AbortSignal } = {},
+  ): Promise<void> {
+    const { signal } = { ...options };
+
+    // This needs to:
+    //  1. Iterate over every node within the bucket pinging K at a time
+    //  2. remove any un-responsive nodes until there is room of all pending
+    //    or run out of existing nodes
+    //  3. fill in the bucket with pending nodes until full
+    //  4. throw out remaining pending nodes
+
+    const pendingNodes = this.pendingNodes.get(bucketIndex);
+    // No pending nodes means nothing to do
+    if (pendingNodes == null || pendingNodes.size === 0) return;
+    this.pendingNodes.set(bucketIndex, new Map());
+    await this.db.withTransactionF(async (tran) => {
+      // Locking on bucket
+      await this.nodeGraph.lockBucket(bucketIndex, tran);
+      const semaphore = new Semaphore(3);
+
+      // Iterating over existing nodes
+      const bucket = await this.getBucket(bucketIndex, tran);
+      if (bucket == null) never();
+      let removedNodes = 0;
+      for (const [nodeId, nodeData] of bucket) {
+        if (removedNodes >= pendingNodes.size) break;
+        const [semaphoreReleaser] = await semaphore.lock()();
+        void (async () => {
+          // Ping and remove or update node in bucket
+          if (
+            await this.pingNode(nodeId, nodeData.address, undefined, { signal })
+          ) {
+            // Succeeded so update
+            await this.setNode(
+              nodeId,
+              nodeData.address,
+              true,
+              false,
+              undefined,
+              tran,
+              { signal },
+            );
+          } else {
+            await this.unsetNode(nodeId, tran);
+            removedNodes += 1;
+          }
+          // Releasing semaphore
+          await semaphoreReleaser();
+        })().then();
+        // Wait for pending pings to complete
+        await semaphore.waitForUnlock();
+        // Fill in bucket with pending nodes
+        for (const [nodeIdString, address] of pendingNodes) {
+          if (removedNodes <= 0) break;
+          const nodeId = IdInternal.fromString<NodeId>(nodeIdString);
+          await this.setNode(nodeId, address, true, false, undefined, tran, {
+            signal,
+          });
+          removedNodes -= 1;
+        }
+      }
+    });
+  }
+
+  protected addPendingNode(
+    bucketIndex: number,
+    nodeId: NodeId,
+    nodeAddress: NodeAddress,
+  ): void {
+    if (!this.pendingNodes.has(bucketIndex)) {
+      this.pendingNodes.set(bucketIndex, new Map());
+    }
+    const pendingNodes = this.pendingNodes.get(bucketIndex);
+    pendingNodes!.set(nodeId.toString(), nodeAddress);
+    // No need to re-set it in the map, Maps are by reference
   }
 
   /**
