@@ -1,6 +1,7 @@
 import process from 'process';
 import * as binUtils from './utils';
 import ErrorPolykey from '../../ErrorPolykey';
+import * as CLIErrors from '../errors';
 
 class ExitHandlers {
   /**
@@ -84,6 +85,19 @@ class ExitHandlers {
     }
   };
 
+  protected deadlockHandler = async () => {
+    if (process.exitCode == null) {
+      const e = new CLIErrors.ErrorCLIPolykeyAsynchronousDeadlock();
+      process.stderr.write(
+        binUtils.outputFormatter({
+          type: this._errFormat,
+          data: e,
+        }),
+      );
+      process.exitCode = e.exitCode;
+    }
+  };
+
   /**
    * Automatically installs all handlers
    */
@@ -110,6 +124,7 @@ class ExitHandlers {
     // Both synchronous and asynchronous errors are handled
     process.once('unhandledRejection', this.errorHandler);
     process.once('uncaughtException', this.errorHandler);
+    process.once('beforeExit', this.deadlockHandler);
   }
 
   public uninstall() {
@@ -119,6 +134,7 @@ class ExitHandlers {
     process.removeListener('SIGHUP', this.signalHandler);
     process.removeListener('unhandledRejection', this.errorHandler);
     process.removeListener('uncaughtException', this.errorHandler);
+    process.removeListener('beforeExit', this.deadlockHandler);
   }
 
   /**

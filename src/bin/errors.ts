@@ -49,6 +49,12 @@ class ErrorCLIPolykeyAgentProcess<T> extends ErrorCLI<T> {
   exitCode = sysexits.OSERR;
 }
 
+class ErrorCLIPolykeyAsynchronousDeadlock<T> extends ErrorCLI<T> {
+  static description =
+    'PolykeyAgent process exited unexpectedly, likely due to promise deadlock';
+  exitCode = sysexits.SOFTWARE;
+}
+
 class ErrorNodeFindFailed<T> extends ErrorCLI<T> {
   static description = 'Failed to find the node in the DHT';
   exitCode = 1;
@@ -70,6 +76,7 @@ export {
   ErrorCLIFileRead,
   ErrorCLIPolykeyAgentStatus,
   ErrorCLIPolykeyAgentProcess,
+  ErrorCLIPolykeyAsynchronousDeadlock,
   ErrorNodeFindFailed,
   ErrorNodePingFailed,
 };
