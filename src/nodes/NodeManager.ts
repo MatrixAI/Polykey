@@ -154,7 +154,8 @@ class NodeManager {
     // We need to attempt a connection using the proxies
     // For now we will just do a forward connect + relay message
     const targetAddress =
-      address ?? (await this.nodeConnectionManager.findNode(nodeId, options));
+      address ??
+      (await this.nodeConnectionManager.findNode(nodeId, false, options));
     if (targetAddress == null) {
       throw new nodesErrors.ErrorNodeGraphNodeIdNotFound();
     }
@@ -640,7 +641,9 @@ class NodeManager {
       bucketIndex,
     );
     // We then need to start a findNode procedure
-    await this.nodeConnectionManager.findNode(bucketRandomNodeId, { signal });
+    await this.nodeConnectionManager.findNode(bucketRandomNodeId, true, {
+      signal,
+    });
   }
 
   private async setupRefreshBucketTasks(tran?: DBTransaction) {

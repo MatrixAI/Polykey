@@ -72,6 +72,13 @@ class NodeConnectionManager {
    */
   protected connections: Map<NodeIdString, ConnectionAndTimer> = new Map();
   protected connectionLocks: LockBox<RWLockWriter> = new LockBox();
+  // Tracks the backoff period for offline nodes
+  protected nodesBackoffMap: Map<
+    string,
+    { lastAttempt: number; delay: number }
+  > = new Map();
+  protected backoffDefault: number = 300; // 5 min
+  protected backoffMultiplier: number = 2; // Doubles every failure
 
   protected pingAndSetNodeHandlerId: TaskHandlerId =
     'NodeConnectionManager.pingAndSetNodeHandler' as TaskHandlerId;
@@ -394,11 +401,13 @@ class NodeConnectionManager {
    * Retrieves the node address. If an entry doesn't exist in the db, then
    * proceeds to locate it using Kademlia.
    * @param targetNodeId Id of the node we are tying to find
+   * @param ignoreRecentOffline skips nodes that are within their backoff period
    * @param options
    */
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
   public async findNode(
     targetNodeId: NodeId,
+    ignoreRecentOffline: boolean = false,
     options: { signal?: AbortSignal } = {},
   ): Promise<NodeAddress | undefined> {
     const { signal } = { ...options };
@@ -407,9 +416,14 @@ class NodeConnectionManager {
     // Otherwise, attempt to locate it by contacting network
     address =
       address ??
-      (await this.getClosestGlobalNodes(targetNodeId, undefined, {
-        signal,
-      }));
+      (await this.getClosestGlobalNodes(
+        targetNodeId,
+        ignoreRecentOffline,
+        undefined,
+        {
+          signal,
+        },
+      ));
     // TODO: This currently just does one iteration
     return address;
   }
@@ -426,6 +440,7 @@ class NodeConnectionManager {
    * port).
    * @param targetNodeId ID of the node attempting to be found (i.e. attempting
    * to find its IP address and port)
+   * @param ignoreRecentOffline skips nodes that are within their backoff period
    * @param timer Connection timeout timer
    * @param options
    * @returns whether the target node was located in the process
@@ -433,6 +448,7 @@ class NodeConnectionManager {
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
   public async getClosestGlobalNodes(
     targetNodeId: NodeId,
+    ignoreRecentOffline: boolean = false,
     timer?: Timer,
     options: { signal?: AbortSignal } = {},
   ): Promise<NodeAddress | undefined> {
@@ -455,9 +471,9 @@ class NodeConnectionManager {
     // Not sufficient to simply check if there's already a pre-existing connection
     // in nodeConnections - what if there's been more than 1 invocation of
     // getClosestGlobalNodes()?
-    const contacted: Record<string, boolean> = {};
+    const contacted: Set<string> = new Set();
     // Iterate until we've found and contacted k nodes
-    while (Object.keys(contacted).length <= this.nodeGraph.nodeBucketLimit) {
+    while (contacted.size <= this.nodeGraph.nodeBucketLimit) {
       if (signal?.aborted) throw signal.reason;
       // Remove the node from the front of the array
       const nextNode = shortlist.shift();
@@ -467,9 +483,8 @@ class NodeConnectionManager {
       }
       const [nextNodeId, nextNodeAddress] = nextNode;
       // Skip if the node has already been contacted
-      if (contacted[nextNodeId]) {
-        continue;
-      }
+      if (contacted.has(nextNodeId.toString())) continue;
+      if (ignoreRecentOffline && this.hasBackoff(nextNodeId)) continue;
       // Connect to the node (check if pre-existing connection exists, otherwise
       // create a new one)
       if (
@@ -482,7 +497,9 @@ class NodeConnectionManager {
         )
       ) {
         await this.nodeManager!.setNode(nextNodeId, nextNodeAddress.address);
+        this.removeBackoff(nextNodeId);
       } else {
+        this.increaseBackoff(nextNodeId);
         continue;
       }
       contacted[nextNodeId] = true;
@@ -827,6 +844,34 @@ class NodeConnectionManager {
       return false;
     }
     return true;
+  }
+
+  protected hasBackoff(nodeId: NodeId): boolean {
+    const backoff = this.nodesBackoffMap.get(nodeId.toString());
+    if (backoff == null) return false;
+    const currentTime = performance.now() + performance.timeOrigin;
+    const backOffDeadline = backoff.lastAttempt + backoff.delay;
+    return currentTime < backOffDeadline;
+  }
+
+  protected increaseBackoff(nodeId: NodeId): void {
+    const backoff = this.nodesBackoffMap.get(nodeId.toString());
+    const currentTime = performance.now() + performance.timeOrigin;
+    if (backoff == null) {
+      this.nodesBackoffMap.set(nodeId.toString(), {
+        lastAttempt: currentTime,
+        delay: this.backoffDefault,
+      });
+    } else {
+      this.nodesBackoffMap.set(nodeId.toString(), {
+        lastAttempt: currentTime,
+        delay: backoff.delay * this.backoffMultiplier,
+      });
+    }
+  }
+
+  protected removeBackoff(nodeId: NodeId): void {
+    this.nodesBackoffMap.delete(nodeId.toString());
   }
 }
 
