@@ -110,8 +110,7 @@
     "readable-stream": "^3.6.0",
     "resource-counter": "^1.2.4",
     "threads": "^1.6.5",
-    "utp-native": "^2.5.3",
-    "uuid": "^8.3.0"
+    "utp-native": "^2.5.3"
   },
   "devDependencies": {
     "@babel/preset-env": "^7.13.10",
@@ -125,7 +124,6 @@
     "@types/pako": "^1.0.2",
     "@types/prompts": "^2.0.13",
     "@types/readable-stream": "^2.3.11",
-    "@types/uuid": "^8.3.0",
     "@typescript-eslint/eslint-plugin": "^5.36.2",
     "@typescript-eslint/parser": "^5.36.2",
     "babel-jest": "^28.1.3",
