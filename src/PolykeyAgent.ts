@@ -582,14 +582,10 @@ class PolykeyAgent {
             );
             // Reverse connection was established and authenticated,
             //  add it to the node graph
-            await this.nodeManager.setNode(
-              data.remoteNodeId,
-              {
-                host: data.remoteHost,
-                port: data.remotePort,
-              },
-              false,
-            );
+            await this.nodeManager.setNode(data.remoteNodeId, {
+              host: data.remoteHost,
+              port: data.remotePort,
+            });
           }
         },
       );

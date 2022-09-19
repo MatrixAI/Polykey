@@ -1148,6 +1148,7 @@ class TaskManager {
     this.logger.debug(`Requeued Task ${taskIdEncoded}`);
   }
 
+  @ready(new tasksErrors.ErrorTaskManagerNotRunning())
   protected async cancelTask(taskId: TaskId, cancelReason: any): Promise<void> {
     const taskIdEncoded = tasksUtils.encodeTaskId(taskId);
     this.logger.debug(`Cancelling Task ${taskIdEncoded}`);

@@ -91,7 +91,7 @@ class NodeConnectionManager {
     const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded)!;
     const host_ = await networkUtils.resolveHost(host);
     if (await this.pingNode(nodeId, host_, port)) {
-      await this.nodeManager!.setNode(nodeId, { host: host_, port }, true);
+      await this.nodeManager!.setNode(nodeId, { host: host_, port });
     }
   };
   protected pingAndSetNodeHandlerId: TaskHandlerId =
@@ -143,7 +143,6 @@ class NodeConnectionManager {
       await this.nodeManager.setNode(
         nodeId,
         this.seedNodes[nodeIdEncoded],
-        true,
         true,
       );
     }
@@ -318,7 +317,7 @@ class NodeConnectionManager {
         });
         // We can assume connection was established and destination was valid,
         // we can add the target to the nodeGraph
-        await this.nodeManager?.setNode(targetNodeId, targetAddress, false);
+        await this.nodeManager?.setNode(targetNodeId, targetAddress);
         // Creating TTL timeout
         const timeToLiveTimer = setTimeout(async () => {
           await this.destroyConnection(targetNodeId);

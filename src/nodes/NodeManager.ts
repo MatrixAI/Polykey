@@ -12,7 +12,7 @@ import type TaskManager from '../tasks/TaskManager';
 import type { TaskHandler, TaskHandlerId, Task } from '../tasks/types';
 import Logger from '@matrixai/logger';
 import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
-import { Semaphore } from '@matrixai/async-locks';
+import { Semaphore, Lock } from '@matrixai/async-locks';
 import { IdInternal } from '@matrixai/id';
 import * as nodesErrors from './errors';
 import * as nodesUtils from './utils';
@@ -22,7 +22,7 @@ import * as utilsPB from '../proto/js/polykey/v1/utils/utils_pb';
 import * as claimsErrors from '../claims/errors';
 import * as sigchainUtils from '../sigchain/utils';
 import * as claimsUtils from '../claims/utils';
-import { timerStart, never } from '../utils/utils';
+import { never } from '../utils/utils';
 
 interface NodeManager extends StartStop {}
 @StartStop()
@@ -38,6 +38,7 @@ class NodeManager {
   protected refreshBucketDelaySpread: number;
   protected pendingNodes: Map<number, Map<string, NodeAddress>> = new Map();
 
+  public readonly basePath = this.constructor.name;
   private refreshBucketHandler: TaskHandler = async (
     context,
     taskInfo,
@@ -54,27 +55,22 @@ class NodeManager {
       handlerId: this.refreshBucketHandlerId,
       lazy: true,
       parameters: [bucketIndex],
-      path: ['refreshBucket', `${bucketIndex}`],
+      path: [this.basePath, this.refreshBucketHandlerId, `${bucketIndex}`],
       priority: 0,
     });
   };
   public readonly refreshBucketHandlerId =
-    `${this.constructor.name}.${this.refreshBucketHandler.name}` as TaskHandlerId;
-
-  private setNodeHandler: TaskHandler = async (
-    context,
-    taskInfo,
-    nodeIdEncoded,
-    nodeAddress: NodeAddress,
-    timeout: number,
+    `${this.basePath}.${this.refreshBucketHandler.name}` as TaskHandlerId;
+  private gcBucketHandler: TaskHandler = async (
+    ctx,
+    _taskInfo,
+    bucketIndex: number,
   ) => {
-    const nodeId: NodeId = nodesUtils.decodeNodeId(nodeIdEncoded)!;
-    await this.setNode(nodeId, nodeAddress, true, false, timeout, undefined, {
-      signal: context.signal,
-    });
+    this.logger.info('RUNNING GARBAGE COLELCT');
+    await this.garbageCollectBucket(bucketIndex, { signal: ctx.signal });
   };
-  public readonly setNodeHandlerId =
-    `${this.constructor.name}.${this.setNodeHandler.name}` as TaskHandlerId;
+  public readonly gcBucketHandlerId =
+    `${this.basePath}.${this.gcBucketHandler.name}` as TaskHandlerId;
 
   constructor({
     db,
@@ -116,12 +112,12 @@ class NodeManager {
     this.logger.info(`Starting ${this.constructor.name}`);
     this.logger.info(`Registering handler for setNode`);
     this.taskManager.registerHandler(
-      this.setNodeHandlerId,
-      this.setNodeHandler,
-    );
-    this.taskManager.registerHandler(
       this.refreshBucketHandlerId,
       this.refreshBucketHandler,
+    );
+    this.taskManager.registerHandler(
+      this.gcBucketHandlerId,
+      this.gcBucketHandler,
     );
     await this.setupRefreshBucketTasks();
     this.logger.info(`Started ${this.constructor.name}`);
@@ -130,8 +126,8 @@ class NodeManager {
   public async stop() {
     this.logger.info(`Stopping ${this.constructor.name}`);
     this.logger.info(`Unregistering handler for setNode`);
-    this.taskManager.deregisterHandler(this.setNodeHandlerId);
     this.taskManager.deregisterHandler(this.refreshBucketHandlerId);
+    this.taskManager.deregisterHandler(this.gcBucketHandlerId);
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
@@ -442,22 +438,18 @@ class NodeManager {
    * This operation is blocking by default - set `block` 2qto false to make it non-blocking
    * @param nodeId - Id of the node we wish to add
    * @param nodeAddress - Expected address of the node we want to add
-   * @param block - Flag for if the operation should block or utilize the async queue
    * @param force - Flag for if we want to add the node without authenticating or if the bucket is full.
    * This will drop the oldest node in favor of the new.
    * @param timeout Connection timeout
    * @param tran
-   * @param options
    */
   @ready(new nodesErrors.ErrorNodeManagerNotRunning())
   public async setNode(
     nodeId: NodeId,
     nodeAddress: NodeAddress,
-    block: boolean = true,
     force: boolean = false,
     timeout?: number,
     tran?: DBTransaction,
-    options: { signal?: AbortSignal } = {},
   ): Promise<void> {
     // We don't want to add our own node
     if (nodeId.equals(this.keyManager.getNodeId())) {
@@ -467,7 +459,7 @@ class NodeManager {
 
     if (tran == null) {
       return this.db.withTransactionF((tran) =>
-        this.setNode(nodeId, nodeAddress, block, force, timeout, tran),
+        this.setNode(nodeId, nodeAddress, force, timeout, tran),
       );
     }
 
@@ -502,7 +494,6 @@ class NodeManager {
       );
     } else {
       // We want to add a node but the bucket is full
-      // We need to ping the oldest node
       if (force) {
         // We just add the new node anyway without checking the old one
         const oldNodeId = (
@@ -523,87 +514,18 @@ class NodeManager {
           tran,
         );
         return;
-      } else if (block) {
-        this.logger.debug(
-          `Bucket was full and blocking was true, garbage collecting old nodes to add ${nodesUtils.encodeNodeId(
-            nodeId,
-          )}`,
-        );
-        await this.garbageCollectOldNode(
-          bucketIndex,
+      }
+      this.logger.debug(
+        `Bucket was full, adding ${nodesUtils.encodeNodeId(
           nodeId,
-          nodeAddress,
-          timeout,
-          options,
-        );
-      } else {
-        this.logger.debug(
-          `Bucket was full and blocking was false, adding ${nodesUtils.encodeNodeId(
-            nodeId,
-          )} to queue`,
-        );
-        // Re-attempt this later asynchronously by adding to the scheduler
-        await this.taskManager.scheduleTask(
-          {
-            handlerId: this.setNodeHandlerId,
-            parameters: [nodesUtils.toString(), nodeAddress, timeout],
-            path: ['setNode'],
-            lazy: true,
-          },
-          tran,
-        );
-      }
+        )} to pending list`,
+      );
+      // Add the node to the pending nodes list
+      await this.addPendingNode(bucketIndex, nodeId, nodeAddress);
     }
   }
 
-  private async garbageCollectOldNode(
-    bucketIndex: number,
-    nodeId: NodeId,
-    nodeAddress: NodeAddress,
-    timeout?: number,
-    options: { signal?: AbortSignal } = {},
-  ) {
-    const { signal } = { ...options };
-    const oldestNodeIds = await this.nodeGraph.getOldestNode(bucketIndex, 3);
-    for (const nodeId of oldestNodeIds) {
-      if (signal?.aborted) throw signal.reason;
-      // This needs to return nodeId and ping result
-      const data = await this.nodeGraph.getNode(nodeId);
-      if (data == null) return { nodeId, success: false };
-      const timer = timeout != null ? timerStart(timeout) : undefined;
-      const success = await this.pingNode(nodeId, nodeAddress, timer, {
-        signal,
-      });
-
-      if (success) {
-        // Ping succeeded, update the node
-        this.logger.debug(
-          `Ping succeeded for ${nodesUtils.encodeNodeId(nodeId)}`,
-        );
-        const node = (await this.nodeGraph.getNode(nodeId))!;
-        await this.nodeGraph.setNode(nodeId, node.address);
-        // Updating the refreshBucket timer
-        await this.updateRefreshBucketDelay(
-          bucketIndex,
-          this.refreshBucketDelay,
-        );
-      } else {
-        this.logger.debug(`Ping failed for ${nodesUtils.encodeNodeId(nodeId)}`);
-        // Otherwise, we remove the node
-        await this.nodeGraph.unsetNode(nodeId);
-      }
-    }
-    // Check if we now have room and add the new node
-    const count = await this.nodeGraph.getBucketMetaProp(bucketIndex, 'count');
-    if (count < this.nodeGraph.nodeBucketLimit) {
-      this.logger.debug(`Bucket ${bucketIndex} now has room, adding new node`);
-      await this.nodeGraph.setNode(nodeId, nodeAddress);
-      // Updating the refreshBucket timer
-      await this.updateRefreshBucketDelay(bucketIndex, this.refreshBucketDelay);
-    }
-  }
-
-  private async garbageCollectbucket(
+  private async garbageCollectBucket(
     bucketIndex: number,
     options: { signal?: AbortSignal } = {},
   ): Promise<void> {
@@ -617,7 +539,7 @@ class NodeManager {
     //  4. throw out remaining pending nodes
 
     const pendingNodes = this.pendingNodes.get(bucketIndex);
-    // No pending nodes means nothing to do
+    // No nodes mean nothing to do
     if (pendingNodes == null || pendingNodes.size === 0) return;
     this.pendingNodes.set(bucketIndex, new Map());
     await this.db.withTransactionF(async (tran) => {
@@ -629,57 +551,90 @@ class NodeManager {
       const bucket = await this.getBucket(bucketIndex, tran);
       if (bucket == null) never();
       let removedNodes = 0;
+      const unsetLock = new Lock();
+      const pendingPromises: Array<Promise<void>> = [];
       for (const [nodeId, nodeData] of bucket) {
         if (removedNodes >= pendingNodes.size) break;
-        const [semaphoreReleaser] = await semaphore.lock()();
-        void (async () => {
-          // Ping and remove or update node in bucket
-          if (
-            await this.pingNode(nodeId, nodeData.address, undefined, { signal })
-          ) {
-            // Succeeded so update
-            await this.setNode(
-              nodeId,
-              nodeData.address,
-              true,
-              false,
-              undefined,
-              tran,
-              { signal },
-            );
-          } else {
-            await this.unsetNode(nodeId, tran);
-            removedNodes += 1;
-          }
-          // Releasing semaphore
-          await semaphoreReleaser();
-        })().then();
-        // Wait for pending pings to complete
         await semaphore.waitForUnlock();
-        // Fill in bucket with pending nodes
-        for (const [nodeIdString, address] of pendingNodes) {
-          if (removedNodes <= 0) break;
-          const nodeId = IdInternal.fromString<NodeId>(nodeIdString);
-          await this.setNode(nodeId, address, true, false, undefined, tran, {
-            signal,
-          });
-          removedNodes -= 1;
-        }
+        if (signal?.aborted === true) break;
+        const [semaphoreReleaser] = await semaphore.lock()();
+        pendingPromises.push(
+          (async () => {
+            // Ping and remove or update node in bucket
+            if (
+              await this.pingNode(nodeId, nodeData.address, undefined, {
+                signal,
+              })
+            ) {
+              // Succeeded so update
+              await this.setNode(
+                nodeId,
+                nodeData.address,
+                false,
+                undefined,
+                tran,
+              );
+            } else {
+              // We need to lock this since it's concurrent
+              //  and shares the transaction
+              await unsetLock.withF(async () => {
+                await this.unsetNode(nodeId, tran);
+                removedNodes += 1;
+              });
+            }
+            // Releasing semaphore
+            await semaphoreReleaser();
+          })(),
+        );
+      }
+      // Wait for pending pings to complete
+      await Promise.all(pendingPromises);
+      // Fill in bucket with pending nodes
+      for (const [nodeIdString, address] of pendingNodes) {
+        if (removedNodes <= 0) break;
+        const nodeId = IdInternal.fromString<NodeId>(nodeIdString);
+        await this.setNode(nodeId, address, false, undefined, tran);
+        removedNodes -= 1;
       }
     });
   }
 
-  protected addPendingNode(
+  protected async addPendingNode(
     bucketIndex: number,
     nodeId: NodeId,
     nodeAddress: NodeAddress,
-  ): void {
+  ): Promise<void> {
     if (!this.pendingNodes.has(bucketIndex)) {
       this.pendingNodes.set(bucketIndex, new Map());
     }
     const pendingNodes = this.pendingNodes.get(bucketIndex);
     pendingNodes!.set(nodeId.toString(), nodeAddress);
     // No need to re-set it in the map, Maps are by reference
+
+    // Check and start a 'garbageCollect` bucket task
+    let first: boolean = true;
+    for await (const task of this.taskManager.getTasks('asc', true, [
+      this.basePath,
+      this.gcBucketHandlerId,
+      `${bucketIndex}`,
+    ])) {
+      if (first) {
+        // Just ignore it.
+        first = false;
+        continue;
+      }
+      // There shouldn't be duplicates, we'll remove extra
+      task.cancel('Removing extra task');
+    }
+    if (first) {
+      // If none were found, schedule a new one
+      await this.taskManager.scheduleTask({
+        handlerId: this.gcBucketHandlerId,
+        parameters: [bucketIndex],
+        path: [this.basePath, this.gcBucketHandlerId, `${bucketIndex}`],
+        lazy: true,
+      });
+    }
   }
 
   /**
@@ -767,7 +722,6 @@ class NodeManager {
           // Otherwise, ignore it, should be re-created
           existingTasks[bucketIndex] = false;
       }
-      this.logger.info('Set up refreshBucket tasks');
     }
 
     // 2. Recreate any missing tasks for buckets
@@ -791,7 +745,7 @@ class NodeManager {
           delay: this.refreshBucketDelay + spread,
           lazy: true,
           parameters: [bucketIndex],
-          path: ['refreshBucket', `${bucketIndex}`],
+          path: [this.basePath, this.refreshBucketHandlerId, `${bucketIndex}`],
           priority: 0,
         });
       }
@@ -850,7 +804,7 @@ class NodeManager {
       }
     }
     if (count === 0) {
-      this.logger.warn(
+      this.logger.debug(
         `No refreshBucket task for bucket ${bucketIndex}, new one was created`,
       );
       foundTask = await this.taskManager.scheduleTask({
@@ -858,7 +812,7 @@ class NodeManager {
         handlerId: this.refreshBucketHandlerId,
         lazy: true,
         parameters: [bucketIndex],
-        path: ['refreshBucket', `${bucketIndex}`],
+        path: [this.basePath, this.refreshBucketHandlerId, `${bucketIndex}`],
         priority: 0,
       });
     }

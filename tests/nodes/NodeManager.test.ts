@@ -123,14 +123,16 @@ describe(`${NodeManager.name} test`, () => {
     });
   });
   afterEach(async () => {
+    await taskManager.stopProcessing();
+    await taskManager.stopTasks();
     mockedPingNode.mockClear();
     mockedPingNode.mockImplementation(async (_) => true);
     await nodeConnectionManager.stop();
-    await taskManager.stop();
     await nodeGraph.stop();
     await nodeGraph.destroy();
     await sigchain.stop();
     await sigchain.destroy();
+    await taskManager.stop();
     await db.stop();
     await db.destroy();
     await keyManager.stop();
@@ -551,10 +553,10 @@ describe(`${NodeManager.name} test`, () => {
       taskManager,
       logger,
     });
+    const nodeManagerPingMock = jest.spyOn(NodeManager.prototype, 'pingNode');
     try {
       await nodeManager.start();
       await nodeConnectionManager.start({ nodeManager });
-      await taskManager.startProcessing();
       const localNodeId = keyManager.getNodeId();
       const bucketIndex = 100;
       // Creating 20 nodes in bucket
@@ -571,14 +573,22 @@ describe(`${NodeManager.name} test`, () => {
         bucketIndex,
       );
       // Mocking ping
-      const nodeManagerPingMock = jest.spyOn(NodeManager.prototype, 'pingNode');
       nodeManagerPingMock.mockResolvedValue(true);
       const oldestNodeId = (await nodeGraph.getOldestNode(bucketIndex)).pop();
       const oldestNode = await nodeGraph.getNode(oldestNodeId!);
       // Waiting for a second to tick over
       await sleep(1500);
       // Adding a new node with bucket full
-      await nodeManager.setNode(nodeId, { port: 55555 } as NodeAddress, true);
+      await nodeManager.setNode(nodeId, { port: 55555 } as NodeAddress);
+      const tasks: Array<Promise<any>> = [];
+      for await (const task of taskManager.getTasks('asc', false, [
+        nodeManager.basePath,
+        nodeManager.gcBucketHandlerId,
+      ])) {
+        tasks.push(task.promise());
+      }
+      await taskManager.startProcessing();
+      await Promise.all(tasks);
       // Bucket still contains max nodes
       const bucket = await nodeManager.getBucket(bucketIndex);
       expect(bucket).toHaveLength(nodeGraph.nodeBucketLimit);
@@ -588,9 +598,9 @@ describe(`${NodeManager.name} test`, () => {
       // Oldest node was updated
       const oldestNodeNew = await nodeGraph.getNode(oldestNodeId!);
       expect(oldestNodeNew!.lastUpdated).not.toEqual(oldestNode!.lastUpdated);
-      nodeManagerPingMock.mockRestore();
     } finally {
       await nodeManager.stop();
+      nodeManagerPingMock.mockRestore();
     }
   });
   test('should add node if bucket is full, old node is alive and force is set', async () => {
@@ -627,12 +637,7 @@ describe(`${NodeManager.name} test`, () => {
       nodeManagerPingMock.mockResolvedValue(true);
       const oldestNodeId = (await nodeGraph.getOldestNode(bucketIndex)).pop();
       // Adding a new node with bucket full
-      await nodeManager.setNode(
-        nodeId,
-        { port: 55555 } as NodeAddress,
-        false,
-        true,
-      );
+      await nodeManager.setNode(nodeId, { port: 55555 } as NodeAddress, true);
       // Bucket still contains max nodes
       const bucket = await nodeManager.getBucket(bucketIndex);
       expect(bucket).toHaveLength(nodeGraph.nodeBucketLimit);
@@ -660,7 +665,6 @@ describe(`${NodeManager.name} test`, () => {
     try {
       await nodeManager.start();
       await nodeConnectionManager.start({ nodeManager });
-      await taskManager.startProcessing();
       const localNodeId = keyManager.getNodeId();
       const bucketIndex = 100;
       // Creating 20 nodes in bucket
@@ -681,7 +685,16 @@ describe(`${NodeManager.name} test`, () => {
       nodeManagerPingMock.mockResolvedValue(false);
       const oldestNodeId = (await nodeGraph.getOldestNode(bucketIndex)).pop();
       // Adding a new node with bucket full
-      await nodeManager.setNode(nodeId, { port: 55555 } as NodeAddress, true);
+      await nodeManager.setNode(nodeId, { port: 55555 } as NodeAddress);
+      const tasks: Array<Promise<any>> = [];
+      for await (const task of taskManager.getTasks('asc', false, [
+        nodeManager.basePath,
+        nodeManager.gcBucketHandlerId,
+      ])) {
+        tasks.push(task.promise());
+      }
+      await taskManager.startProcessing();
+      await Promise.all(tasks);
       // New node was added
       const node = await nodeGraph.getNode(nodeId);
       expect(node).toBeDefined();
@@ -764,7 +777,6 @@ describe(`${NodeManager.name} test`, () => {
     try {
       await nodeManager.start();
       await nodeConnectionManager.start({ nodeManager });
-      await taskManager.startProcessing();
       const nodeId = keyManager.getNodeId();
       const address = { host: localhost, port };
       // Let's fill a bucket
@@ -780,9 +792,18 @@ describe(`${NodeManager.name} test`, () => {
       };
 
       // Pings succeed, node not added
-      mockedPingNode.mockImplementation(async (_) => true);
+      mockedPingNode.mockImplementation(async () => true);
       const newNode = generateNodeIdForBucket(nodeId, 100, 21);
       await nodeManager.setNode(newNode, address);
+      const tasks: Array<Promise<any>> = [];
+      for await (const task of taskManager.getTasks('asc', false, [
+        nodeManager.basePath,
+        nodeManager.gcBucketHandlerId,
+      ])) {
+        tasks.push(task.promise());
+      }
+      await taskManager.startProcessing();
+      await Promise.all(tasks);
       expect(await listBucket(100)).not.toContain(
         nodesUtils.encodeNodeId(newNode),
       );
@@ -804,7 +825,6 @@ describe(`${NodeManager.name} test`, () => {
     await nodeManager.start();
     try {
       await nodeConnectionManager.start({ nodeManager });
-      await taskManager.startProcessing();
       const nodeId = keyManager.getNodeId();
       const address = { host: localhost, port };
       // Let's fill a bucket
@@ -827,6 +847,15 @@ describe(`${NodeManager.name} test`, () => {
       await nodeManager.setNode(newNode1, address);
       await nodeManager.setNode(newNode2, address);
       await nodeManager.setNode(newNode3, address);
+      const tasks: Array<Promise<any>> = [];
+      for await (const task of taskManager.getTasks('asc', false, [
+        nodeManager.basePath,
+        nodeManager.gcBucketHandlerId,
+      ])) {
+        tasks.push(task.promise());
+      }
+      await taskManager.startProcessing();
+      await Promise.all(tasks);
       const list = await listBucket(100);
       expect(list).toContain(nodesUtils.encodeNodeId(newNode1));
       expect(list).toContain(nodesUtils.encodeNodeId(newNode2));
@@ -872,48 +901,13 @@ describe(`${NodeManager.name} test`, () => {
       const newNode4 = generateNodeIdForBucket(nodeId, 100, 25);
       // Set manually to non-blocking
       await expect(
-        nodeManager.setNode(newNode4, address, false),
+        nodeManager.setNode(newNode4, address),
       ).resolves.toBeUndefined();
       delayPing.resolveP();
     } finally {
       await nodeManager.stop();
       await tempNodeGraph.stop();
       await tempNodeGraph.destroy();
-    }
-  });
-  test('should block when blocking is set to true', async () => {
-    mockedPingNode.mockImplementation(async (_) => true);
-    const nodeManager = new NodeManager({
-      db,
-      sigchain: {} as Sigchain,
-      keyManager,
-      nodeGraph,
-      nodeConnectionManager: dummyNodeConnectionManager,
-      taskManager,
-      logger,
-    });
-    await nodeManager.start();
-    try {
-      await nodeConnectionManager.start({ nodeManager });
-      await taskManager.startProcessing();
-      const nodeId = keyManager.getNodeId();
-      const address = { host: localhost, port };
-      // Let's fill a bucket
-      for (let i = 0; i < nodeGraph.nodeBucketLimit; i++) {
-        const newNode = generateNodeIdForBucket(nodeId, 100, i);
-        await nodeManager.setNode(newNode, address);
-      }
-
-      // Set node can block
-      mockedPingNode.mockClear();
-      mockedPingNode.mockImplementation(async () => true);
-      const newNode5 = generateNodeIdForBucket(nodeId, 100, 25);
-      await expect(
-        nodeManager.setNode(newNode5, address, true),
-      ).resolves.toBeUndefined();
-      expect(mockedPingNode).toBeCalled();
-    } finally {
-      await nodeManager.stop();
     }
   });
   test('should update deadline when updating a bucket', async () => {
@@ -941,7 +935,8 @@ describe(`${NodeManager.name} test`, () => {
       const bucketIndex = 100;
       let refreshBucketTask: Task | undefined;
       for await (const task of taskManager.getTasks('asc', true, [
-        'refreshBucket',
+        nodeManager.basePath,
+        nodeManager.refreshBucketHandlerId,
         `${bucketIndex}`,
       ])) {
         refreshBucketTask = task;
@@ -956,7 +951,8 @@ describe(`${NodeManager.name} test`, () => {
       // Deadline should be updated
       let refreshBucketTaskUpdated: Task | undefined;
       for await (const task of taskManager.getTasks('asc', true, [
-        'refreshBucket',
+        nodeManager.basePath,
+        nodeManager.refreshBucketHandlerId,
         `${bucketIndex}`,
       ])) {
         refreshBucketTaskUpdated = task;
@@ -966,6 +962,8 @@ describe(`${NodeManager.name} test`, () => {
         refreshBucketTask.delay,
       );
     } finally {
+      await taskManager.stopProcessing();
+      await taskManager.stopTasks();
       mockRefreshBucket.mockRestore();
       await nodeManager.stop();
     }
