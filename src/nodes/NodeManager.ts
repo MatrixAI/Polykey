@@ -42,7 +42,7 @@ class NodeManager {
   protected pendingNodes: Map<number, Map<string, NodeAddress>> = new Map();
 
   public readonly basePath = this.constructor.name;
-  private refreshBucketHandler: TaskHandler = async (
+  protected refreshBucketHandler: TaskHandler = async (
     ctx,
     _taskInfo,
     bucketIndex,
@@ -65,7 +65,7 @@ class NodeManager {
   };
   public readonly refreshBucketHandlerId =
     `${this.basePath}.${this.refreshBucketHandler.name}` as TaskHandlerId;
-  private gcBucketHandler: TaskHandler = async (
+  protected gcBucketHandler: TaskHandler = async (
     ctx,
     _taskInfo,
     bucketIndex: number,
@@ -532,12 +532,12 @@ class NodeManager {
     }
   }
 
-  private garbageCollectBucket(
+  protected garbageCollectBucket(
     bucketIndex: number,
     ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<void>;
   @timedCancellable(true, 20000)
-  private async garbageCollectBucket(
+  protected async garbageCollectBucket(
     bucketIndex: number,
     @context ctx: ContextTimed,
   ): Promise<void> {
@@ -685,7 +685,7 @@ class NodeManager {
     await this.nodeConnectionManager.findNode(bucketRandomNodeId, true, ctx);
   }
 
-  private async setupRefreshBucketTasks(tran?: DBTransaction) {
+  protected async setupRefreshBucketTasks(tran?: DBTransaction) {
     if (tran == null) {
       return this.db.withTransactionF((tran) =>
         this.setupRefreshBucketTasks(tran),
