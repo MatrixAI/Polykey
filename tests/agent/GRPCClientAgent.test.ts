@@ -174,6 +174,7 @@ describe(GRPCClientAgent.name, () => {
   }, globalThis.defaultTimeout);
   afterEach(async () => {
     await taskManager.stopProcessing();
+    await taskManager.stopTasks();
     await testAgentUtils.closeTestAgentClient(client);
     await testAgentUtils.closeTestAgentServer(server);
     await vaultManager.stop();

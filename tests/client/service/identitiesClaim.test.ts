@@ -168,6 +168,7 @@ describe('identitiesClaim', () => {
   });
   afterEach(async () => {
     await taskManager.stopProcessing();
+    await taskManager.stopTasks();
     await grpcClient.destroy();
     await grpcServer.stop();
     await nodeConnectionManager.stop();

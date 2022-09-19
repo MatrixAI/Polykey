@@ -149,6 +149,7 @@ describe('NotificationsManager', () => {
   }, globalThis.defaultTimeout);
   afterEach(async () => {
     await taskManager.stopProcessing();
+    await taskManager.stopTasks();
     await receiver.stop();
     await nodeConnectionManager.stop();
     await nodeManager.stop();

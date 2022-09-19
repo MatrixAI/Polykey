@@ -203,6 +203,7 @@ describe('Discovery', () => {
   });
   afterEach(async () => {
     await taskManager.stopProcessing();
+    await taskManager.stopTasks();
     await nodeA.stop();
     await nodeB.stop();
     await nodeConnectionManager.stop();

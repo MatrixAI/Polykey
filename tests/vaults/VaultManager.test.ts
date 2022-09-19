@@ -608,6 +608,7 @@ describe('VaultManager', () => {
     });
     afterEach(async () => {
       await taskManager.stopProcessing();
+      await taskManager.stopTasks();
       await remoteKeynode1.vaultManager.destroyVault(remoteVaultId);
       await nodeConnectionManager.stop();
       await proxy.stop();
@@ -1616,6 +1617,7 @@ describe('VaultManager', () => {
       expect(vaults[vaultsUtils.encodeVaultId(vault3)]).toBeUndefined();
     } finally {
       await taskManager.stopProcessing();
+      await taskManager.stopTasks();
       await vaultManager.stop();
       await vaultManager.destroy();
       await nodeConnectionManager.stop();

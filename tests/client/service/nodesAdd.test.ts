@@ -130,7 +130,8 @@ describe('nodesAdd', () => {
     });
   });
   afterEach(async () => {
-    await taskManager.startProcessing();
+    await taskManager.stopProcessing();
+    await taskManager.stopTasks();
     await grpcClient.destroy();
     await grpcServer.stop();
     await nodeGraph.stop();
