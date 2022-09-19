@@ -690,7 +690,7 @@ class NodeManager {
     for await (const task of this.taskManager.getTasks(
       'asc',
       true,
-      ['refreshBucket'],
+      [this.basePath, this.refreshBucketHandlerId],
       tran,
     )) {
       const bucketIndex = parseInt(task.path[0]);
@@ -773,7 +773,7 @@ class NodeManager {
     for await (const task of this.taskManager.getTasks(
       'asc',
       true,
-      ['refreshBucket', `${bucketIndex}`],
+      [this.basePath, this.refreshBucketHandlerId, `${bucketIndex}`],
       tran,
     )) {
       count += 1;

@@ -81,6 +81,7 @@ class NodeConnectionManager {
   protected backoffMultiplier: number = 2; // Doubles every failure
 
   // TODO: make cancelable
+  public readonly basePath = this.constructor.name;
   protected pingAndSetNodeHandler: TaskHandler = async (
     context,
     taskInfo,
@@ -95,7 +96,7 @@ class NodeConnectionManager {
     }
   };
   protected pingAndSetNodeHandlerId: TaskHandlerId =
-    `${this.constructor.name}.${this.pingAndSetNodeHandler.name}` as TaskHandlerId;
+    `${this.basePath}.${this.pingAndSetNodeHandler.name}` as TaskHandlerId;
 
   public constructor({
     keyManager,
@@ -665,7 +666,7 @@ class NodeConnectionManager {
               nodeData.address.host,
               nodeData.address.port,
             ],
-            path: ['pingAndSetNode'],
+            path: [this.basePath, this.pingAndSetNodeHandlerId],
             // Need to be somewhat active so high priority
             priority: 100,
           });
