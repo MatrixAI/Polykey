@@ -17,6 +17,7 @@ import { Semaphore, Lock } from '@matrixai/async-locks';
 import { IdInternal } from '@matrixai/id';
 import * as nodesErrors from './errors';
 import * as nodesUtils from './utils';
+import * as tasksErrors from '../tasks/errors';
 import { timedCancellable, context } from '../contexts';
 import * as networkUtils from '../network/utils';
 import * as validationUtils from '../validation/utils';
@@ -786,8 +787,6 @@ class NodeManager {
       count += 1;
       if (count <= 1) {
         foundTask = task;
-        // If already running then don't update
-        if (task.status !== 'scheduled') continue;
         // Update the first one
         // total delay is refreshBucketDelay + time since task creation
         // time since task creation = now - creation time;
@@ -797,7 +796,15 @@ class NodeManager {
           task.created.getTime() +
           delay +
           spread;
-        await this.taskManager.updateTask(task.id, { delay: delayNew }, tran);
+        try {
+          await this.taskManager.updateTask(task.id, { delay: delayNew });
+        } catch (e) {
+          if (e instanceof tasksErrors.ErrorTaskMissing) {
+            count -= 1;
+          } else if (!(e instanceof tasksErrors.ErrorTaskRunning)) {
+            throw e;
+          }
+        }
         this.logger.debug(
           `Updating refreshBucket task for bucket ${bucketIndex}`,
         );
