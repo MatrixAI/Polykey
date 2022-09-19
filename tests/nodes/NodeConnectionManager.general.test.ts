@@ -8,6 +8,7 @@ import os from 'os';
 import { DB } from '@matrixai/db';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { IdInternal } from '@matrixai/id';
+import { PromiseCancellable } from '@matrixai/async-cancellable';
 import PolykeyAgent from '@/PolykeyAgent';
 import KeyManager from '@/keys/KeyManager';
 import NodeGraph from '@/nodes/NodeGraph';
@@ -271,7 +272,9 @@ describe(`${NodeConnectionManager.name} general test`, () => {
         NodeConnectionManager.prototype,
         'pingNode',
       );
-      mockedPingNode.mockImplementation(async () => true);
+      mockedPingNode.mockImplementation(
+        () => new PromiseCancellable((resolve) => resolve(true)),
+      );
       // NodeConnectionManager under test
       const nodeConnectionManager = new NodeConnectionManager({
         keyManager,
@@ -553,7 +556,9 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       });
 
       // Making pings fail
-      mockedPingNode.mockImplementation(async () => false);
+      mockedPingNode.mockImplementation(
+        () => new PromiseCancellable((resolve) => resolve(false)),
+      );
       await nodeConnectionManager.getClosestGlobalNodes(nodeId3, false);
       expect(mockedPingNode).toHaveBeenCalled();
 

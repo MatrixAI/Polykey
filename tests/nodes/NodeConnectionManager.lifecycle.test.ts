@@ -8,6 +8,7 @@ import { DB } from '@matrixai/db';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { withF } from '@matrixai/resources';
 import { IdInternal } from '@matrixai/id';
+import { Timer } from '@matrixai/timer';
 import TaskManager from '@/tasks/TaskManager';
 import PolykeyAgent from '@/PolykeyAgent';
 import KeyManager from '@/keys/KeyManager';
@@ -18,7 +19,6 @@ import * as nodesUtils from '@/nodes/utils';
 import * as nodesErrors from '@/nodes/errors';
 import * as keysUtils from '@/keys/utils';
 import * as grpcUtils from '@/grpc/utils';
-import { timerStart } from '@/utils';
 import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 
 describe(`${NodeConnectionManager.name} lifecycle test`, () => {
@@ -568,7 +568,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
           remoteNodeId1,
           '127.1.2.3' as Host,
           55555 as Port,
-          timerStart(1000),
+          { timer: new Timer({ delay: 1000 }) },
         ),
       ).toEqual(false);
     } finally {
@@ -593,7 +593,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
           remoteNodeId1,
           remoteNode2.proxy.getProxyHost(),
           remoteNode2.proxy.getProxyPort(),
-          timerStart(1000),
+          { timer: new Timer({ delay: 1000 }) },
         ),
       ).toEqual(false);
 
@@ -602,7 +602,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
           remoteNodeId2,
           remoteNode1.proxy.getProxyHost(),
           remoteNode1.proxy.getProxyPort(),
-          timerStart(1000),
+          { timer: new Timer({ delay: 1000 }) },
         ),
       ).toEqual(false);
     } finally {

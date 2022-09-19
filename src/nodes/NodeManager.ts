@@ -7,15 +7,17 @@ import type Sigchain from '../sigchain/Sigchain';
 import type { ChainData, ChainDataEncoded } from '../sigchain/types';
 import type { NodeId, NodeAddress, NodeBucket, NodeBucketIndex } from './types';
 import type { ClaimEncoded } from '../claims/types';
-import type { Timer } from '../types';
 import type TaskManager from '../tasks/TaskManager';
 import type { TaskHandler, TaskHandlerId, Task } from '../tasks/types';
+import type { ContextTimed } from 'contexts/types';
+import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import Logger from '@matrixai/logger';
 import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
 import { Semaphore, Lock } from '@matrixai/async-locks';
 import { IdInternal } from '@matrixai/id';
 import * as nodesErrors from './errors';
 import * as nodesUtils from './utils';
+import { timedCancellable, context } from '../contexts';
 import * as networkUtils from '../network/utils';
 import * as validationUtils from '../validation/utils';
 import * as utilsPB from '../proto/js/polykey/v1/utils/utils_pb';
@@ -40,11 +42,11 @@ class NodeManager {
 
   public readonly basePath = this.constructor.name;
   private refreshBucketHandler: TaskHandler = async (
-    context,
-    taskInfo,
+    ctx,
+    _taskInfo,
     bucketIndex,
   ) => {
-    await this.refreshBucket(bucketIndex, { signal: context.signal });
+    await this.refreshBucket(bucketIndex, ctx);
     // When completed reschedule the task
     const spread =
       (Math.random() - 0.5) *
@@ -57,6 +59,7 @@ class NodeManager {
       parameters: [bucketIndex],
       path: [this.basePath, this.refreshBucketHandlerId, `${bucketIndex}`],
       priority: 0,
+      deadline: ctx.timer.delay,
     });
   };
   public readonly refreshBucketHandlerId =
@@ -66,8 +69,7 @@ class NodeManager {
     _taskInfo,
     bucketIndex: number,
   ) => {
-    this.logger.info('RUNNING GARBAGE COLELCT');
-    await this.garbageCollectBucket(bucketIndex, { signal: ctx.signal });
+    await this.garbageCollectBucket(bucketIndex, ctx);
   };
   public readonly gcBucketHandlerId =
     `${this.basePath}.${this.gcBucketHandler.name}` as TaskHandlerId;
@@ -136,20 +138,24 @@ class NodeManager {
    * @return true if online, false if offline
    * @param nodeId - NodeId of the node we're pinging
    * @param address - Optional Host and Port we want to ping
-   * @param timer Connection timeout timer
-   * @param options
+   * @param ctx
    */
+  public pingNode(
+    nodeId: NodeId,
+    address?: NodeAddress,
+    ctx?: Partial<ContextTimed>,
+  ): PromiseCancellable<boolean>;
+  @timedCancellable(true, 20000)
   public async pingNode(
     nodeId: NodeId,
     address?: NodeAddress,
-    timer?: Timer,
-    options: { signal?: AbortSignal } = {},
+    @context ctx?: ContextTimed,
   ): Promise<boolean> {
     // We need to attempt a connection using the proxies
     // For now we will just do a forward connect + relay message
     const targetAddress =
       address ??
-      (await this.nodeConnectionManager.findNode(nodeId, false, options));
+      (await this.nodeConnectionManager.findNode(nodeId, false, ctx));
     if (targetAddress == null) {
       throw new nodesErrors.ErrorNodeGraphNodeIdNotFound();
     }
@@ -158,7 +164,7 @@ class NodeManager {
       nodeId,
       targetHost,
       targetAddress.port,
-      timer,
+      ctx,
     );
   }
 
@@ -525,12 +531,15 @@ class NodeManager {
     }
   }
 
+  private garbageCollectBucket(
+    bucketIndex: number,
+    ctx?: Partial<ContextTimed>,
+  ): PromiseCancellable<void>;
+  @timedCancellable(true, 20000)
   private async garbageCollectBucket(
     bucketIndex: number,
-    options: { signal?: AbortSignal } = {},
+    @context ctx: ContextTimed,
   ): Promise<void> {
-    const { signal } = { ...options };
-
     // This needs to:
     //  1. Iterate over every node within the bucket pinging K at a time
     //  2. remove any un-responsive nodes until there is room of all pending
@@ -556,16 +565,12 @@ class NodeManager {
       for (const [nodeId, nodeData] of bucket) {
         if (removedNodes >= pendingNodes.size) break;
         await semaphore.waitForUnlock();
-        if (signal?.aborted === true) break;
+        if (ctx.signal?.aborted === true) break;
         const [semaphoreReleaser] = await semaphore.lock()();
         pendingPromises.push(
           (async () => {
             // Ping and remove or update node in bucket
-            if (
-              await this.pingNode(nodeId, nodeData.address, undefined, {
-                signal,
-              })
-            ) {
+            if (await this.pingNode(nodeId, nodeData.address, ctx)) {
               // Succeeded so update
               await this.setNode(
                 nodeId,
@@ -658,13 +663,17 @@ class NodeManager {
    * Connections during the search will will share node information with other
    * nodes.
    * @param bucketIndex
-   * @param options
+   * @param ctx
    */
+  public refreshBucket(
+    bucketIndex: number,
+    ctx?: Partial<ContextTimed>,
+  ): PromiseCancellable<void>;
+  @timedCancellable(true, 20000)
   public async refreshBucket(
     bucketIndex: NodeBucketIndex,
-    options: { signal?: AbortSignal } = {},
-  ) {
-    const { signal } = { ...options };
+    @context ctx: ContextTimed,
+  ): Promise<void> {
     // We need to generate a random nodeId for this bucket
     const nodeId = this.keyManager.getNodeId();
     const bucketRandomNodeId = nodesUtils.generateRandomNodeIdForBucket(
@@ -672,9 +681,7 @@ class NodeManager {
       bucketIndex,
     );
     // We then need to start a findNode procedure
-    await this.nodeConnectionManager.findNode(bucketRandomNodeId, true, {
-      signal,
-    });
+    await this.nodeConnectionManager.findNode(bucketRandomNodeId, true, ctx);
   }
 
   private async setupRefreshBucketTasks(tran?: DBTransaction) {

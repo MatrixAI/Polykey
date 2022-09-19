@@ -7,6 +7,7 @@ import os from 'os';
 import { DB } from '@matrixai/db';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { IdInternal } from '@matrixai/id';
+import { PromiseCancellable } from '@matrixai/async-cancellable';
 import NodeManager from '@/nodes/NodeManager';
 import PolykeyAgent from '@/PolykeyAgent';
 import KeyManager from '@/keys/KeyManager';
@@ -82,6 +83,14 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
     setNode: jest.fn(),
     refreshBucketQueueAdd: jest.fn(),
   } as unknown as NodeManager;
+
+  function createPromiseCancellable<T>(result: T) {
+    return () => new PromiseCancellable<T>((resolve) => resolve(result));
+  }
+
+  function createPromiseCancellableNop() {
+    return () => new PromiseCancellable<void>((resolve) => resolve());
+  }
 
   beforeAll(async () => {
     dataDir2 = await fs.promises.mkdtemp(
@@ -263,12 +272,12 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
       NodeManager.prototype,
       'refreshBucket',
     );
-    mockedRefreshBucket.mockImplementation(async () => {});
+    mockedRefreshBucket.mockImplementation(createPromiseCancellableNop());
     const mockedPingNode = jest.spyOn(
       NodeConnectionManager.prototype,
       'pingNode',
     );
-    mockedPingNode.mockImplementation(async () => true);
+    mockedPingNode.mockImplementation(createPromiseCancellable(true));
     try {
       const seedNodes: SeedNodes = {};
       seedNodes[nodesUtils.encodeNodeId(remoteNodeId1)] = {
@@ -325,12 +334,12 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
       NodeManager.prototype,
       'refreshBucket',
     );
-    mockedRefreshBucket.mockImplementation(async () => {});
+    mockedRefreshBucket.mockImplementation(createPromiseCancellableNop());
     const mockedPingNode = jest.spyOn(
       NodeConnectionManager.prototype,
       'pingNode',
     );
-    mockedPingNode.mockImplementation(async () => true);
+    mockedPingNode.mockImplementation(createPromiseCancellable(true));
     try {
       const seedNodes: SeedNodes = {};
       seedNodes[nodesUtils.encodeNodeId(remoteNodeId1)] = {
@@ -386,12 +395,12 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
       NodeManager.prototype,
       'refreshBucket',
     );
-    mockedRefreshBucket.mockImplementation(async () => {});
+    mockedRefreshBucket.mockImplementation(createPromiseCancellableNop());
     const mockedPingNode = jest.spyOn(
       NodeConnectionManager.prototype,
       'pingNode',
     );
-    mockedPingNode.mockImplementation(async () => true);
+    mockedPingNode.mockImplementation(createPromiseCancellable(true));
     try {
       const seedNodes: SeedNodes = {};
       seedNodes[nodesUtils.encodeNodeId(remoteNodeId1)] = {
@@ -468,7 +477,7 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
         NodeConnectionManager.prototype,
         'pingNode',
       );
-      mockedPingNode.mockImplementation(async () => true);
+      mockedPingNode.mockImplementation(createPromiseCancellable(true));
       try {
         node1 = await PolykeyAgent.createPolykeyAgent({
           nodePath: path.join(dataDir, 'node1'),
@@ -559,7 +568,7 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
         NodeConnectionManager.prototype,
         'pingNode',
       );
-      mockedPingNode.mockImplementation(async () => true);
+      mockedPingNode.mockImplementation(createPromiseCancellable(true));
       try {
         node1 = await PolykeyAgent.createPolykeyAgent({
           nodePath: path.join(dataDir, 'node1'),

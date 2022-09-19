@@ -14,6 +14,8 @@ import type {
 } from './types';
 import type NodeManager from './NodeManager';
 import type { TaskHandler, TaskHandlerId } from 'tasks/types';
+import type { ContextTimed } from 'contexts/types';
+import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import { withF } from '@matrixai/resources';
 import Logger from '@matrixai/logger';
 import { ready, StartStop } from '@matrixai/async-init/dist/StartStop';
@@ -23,6 +25,7 @@ import { LockBox, RWLockWriter } from '@matrixai/async-locks';
 import NodeConnection from './NodeConnection';
 import * as nodesUtils from './utils';
 import * as nodesErrors from './errors';
+import { context, timedCancellable } from '../contexts';
 import GRPCClientAgent from '../agent/GRPCClientAgent';
 import * as validationUtils from '../validation/utils';
 import * as networkUtils from '../network/utils';
@@ -80,18 +83,17 @@ class NodeConnectionManager {
   protected backoffDefault: number = 300; // 5 min
   protected backoffMultiplier: number = 2; // Doubles every failure
 
-  // TODO: make cancelable
   public readonly basePath = this.constructor.name;
   protected pingAndSetNodeHandler: TaskHandler = async (
-    context,
-    taskInfo,
+    ctx,
+    _taskInfo,
     nodeIdEncoded: string,
     host: Host,
     port: Port,
   ) => {
     const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded)!;
     const host_ = await networkUtils.resolveHost(host);
-    if (await this.pingNode(nodeId, host_, port)) {
+    if (await this.pingNode(nodeId, host_, port, ctx)) {
       await this.nodeManager!.setNode(nodeId, { host: host_, port });
     }
   };
@@ -386,15 +388,15 @@ class NodeConnectionManager {
    * @param nodeId Node ID of the node we are connecting to
    * @param proxyHost Proxy host of the reverse proxy
    * @param proxyPort Proxy port of the reverse proxy
-   * @param timer Connection timeout timer
+   * @param ctx
    */
   public async holePunchForward(
     nodeId: NodeId,
     proxyHost: Host,
     proxyPort: Port,
-    timer?: Timer,
+    ctx?: ContextTimed,
   ): Promise<void> {
-    await this.proxy.openConnectionForward(nodeId, proxyHost, proxyPort, timer);
+    await this.proxy.openConnectionForward(nodeId, proxyHost, proxyPort, ctx);
   }
 
   /**
@@ -402,15 +404,20 @@ class NodeConnectionManager {
    * proceeds to locate it using Kademlia.
    * @param targetNodeId Id of the node we are tying to find
    * @param ignoreRecentOffline skips nodes that are within their backoff period
-   * @param options
+   * @param ctx
    */
+  public findNode(
+    targetNodeId: NodeId,
+    ignoreRecentOffline?: boolean,
+    ctx?: Partial<ContextTimed>,
+  ): PromiseCancellable<NodeAddress | undefined>;
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
+  @timedCancellable(true, 20000)
   public async findNode(
     targetNodeId: NodeId,
     ignoreRecentOffline: boolean = false,
-    options: { signal?: AbortSignal } = {},
+    @context ctx: ContextTimed,
   ): Promise<NodeAddress | undefined> {
-    const { signal } = { ...options };
     // First check if we already have an existing ID -> address record
     let address = (await this.nodeGraph.getNode(targetNodeId))?.address;
     // Otherwise, attempt to locate it by contacting network
@@ -419,10 +426,7 @@ class NodeConnectionManager {
       (await this.getClosestGlobalNodes(
         targetNodeId,
         ignoreRecentOffline,
-        undefined,
-        {
-          signal,
-        },
+        ctx,
       ));
     // TODO: This currently just does one iteration
     return address;
@@ -441,19 +445,22 @@ class NodeConnectionManager {
    * @param targetNodeId ID of the node attempting to be found (i.e. attempting
    * to find its IP address and port)
    * @param ignoreRecentOffline skips nodes that are within their backoff period
-   * @param timer Connection timeout timer
-   * @param options
+   * @param ctx
    * @returns whether the target node was located in the process
    */
+  public getClosestGlobalNodes(
+    targetNodeId: NodeId,
+    ignoreRecentOffline?: boolean,
+    ctx?: Partial<ContextTimed>,
+  ): PromiseCancellable<NodeAddress | undefined>;
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
+  @timedCancellable(true, 20000)
   public async getClosestGlobalNodes(
     targetNodeId: NodeId,
     ignoreRecentOffline: boolean = false,
-    timer?: Timer,
-    options: { signal?: AbortSignal } = {},
+    @context ctx?: ContextTimed,
   ): Promise<NodeAddress | undefined> {
     const localNodeId = this.keyManager.getNodeId();
-    const { signal } = { ...options };
     // Let foundTarget: boolean = false;
     let foundAddress: NodeAddress | undefined = undefined;
     // Get the closest alpha nodes to the target node (set as shortlist)
@@ -474,7 +481,7 @@ class NodeConnectionManager {
     const contacted: Set<string> = new Set();
     // Iterate until we've found and contacted k nodes
     while (contacted.size <= this.nodeGraph.nodeBucketLimit) {
-      if (signal?.aborted) throw signal.reason;
+      if (ctx!.signal?.aborted) return;
       // Remove the node from the front of the array
       const nextNode = shortlist.shift();
       // If we have no nodes left in the shortlist, then stop
@@ -492,8 +499,7 @@ class NodeConnectionManager {
           nextNodeId,
           nextNodeAddress.address.host,
           nextNodeAddress.address.port,
-          undefined,
-          { signal },
+          ctx,
         )
       ) {
         await this.nodeManager!.setNode(nextNodeId, nextNodeAddress.address);
@@ -504,16 +510,24 @@ class NodeConnectionManager {
       }
       contacted[nextNodeId] = true;
       // Ask the node to get their own closest nodes to the target
-      const foundClosest = await this.getRemoteNodeClosestNodes(
-        nextNodeId,
-        targetNodeId,
-        timer,
-      );
+      let foundClosest: Array<[NodeId, NodeData]>;
+      try {
+        foundClosest = await this.getRemoteNodeClosestNodes(
+          nextNodeId,
+          targetNodeId,
+          ctx!.timer.getTimeout() === Infinity
+            ? undefined
+            : timerStart(ctx!.timer.getTimeout()),
+        );
+      } catch (e) {
+        if (e instanceof nodesErrors.ErrorNodeConnectionTimeout) return;
+        throw e;
+      }
       if (foundClosest.length === 0) continue;
       // Check to see if any of these are the target node. At the same time, add
       // them to the shortlist
       for (const [nodeId, nodeData] of foundClosest) {
-        if (signal?.aborted) throw signal.reason;
+        if (ctx!.signal?.aborted) return;
         // Ignore any nodes that have been contacted or our own node
         if (contacted[nodeId] || localNodeId.equals(nodeId)) {
           continue;
@@ -524,8 +538,7 @@ class NodeConnectionManager {
             nodeId,
             nodeData.address.host,
             nodeData.address.port,
-            undefined,
-            { signal },
+            ctx,
           ))
         ) {
           await this.nodeManager!.setNode(nodeId, nodeData.address);
@@ -791,18 +804,22 @@ class NodeConnectionManager {
    * @param nodeId - NodeId of the target
    * @param host - Host of the target node
    * @param port - Port of the target node
-   * @param timer Connection timeout timer
-   * @param options
+   * @param ctx
    */
+  public pingNode(
+    nodeId: NodeId,
+    host: Host | Hostname,
+    port: Port,
+    ctx?: Partial<ContextTimed>,
+  ): PromiseCancellable<boolean>;
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
+  @timedCancellable(true, 20000)
   public async pingNode(
     nodeId: NodeId,
     host: Host | Hostname,
     port: Port,
-    timer?: Timer,
-    options: { signal?: AbortSignal } = {},
+    @context ctx: ContextTimed,
   ): Promise<boolean> {
-    const { signal } = { ...options };
     host = await networkUtils.resolveHost(host);
     // If we can create a connection then we have punched though the NAT,
     // authenticated and confirmed the nodeId matches
@@ -823,16 +840,11 @@ class NodeConnectionManager {
         signature,
       );
     });
-    const forwardPunchPromise = this.holePunchForward(
-      nodeId,
-      host,
-      port,
-      timer,
-    );
+    const forwardPunchPromise = this.holePunchForward(nodeId, host, port, ctx);
 
     const abortPromise = new Promise((_resolve, reject) => {
-      if (signal?.aborted) throw signal.reason;
-      signal?.addEventListener('abort', () => reject(signal.reason));
+      if (ctx.signal.aborted) throw ctx.signal.reason;
+      ctx.signal.addEventListener('abort', () => reject(ctx.signal.reason));
     });
 
     try {

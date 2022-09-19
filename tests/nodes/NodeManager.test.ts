@@ -8,6 +8,8 @@ import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import UTP from 'utp-native';
+import { Timer } from '@matrixai/timer';
+import { PromiseCancellable } from '@matrixai/async-cancellable';
 import TaskManager from '@/tasks/TaskManager';
 import PolykeyAgent from '@/PolykeyAgent';
 import KeyManager from '@/keys/KeyManager';
@@ -18,7 +20,7 @@ import NodeManager from '@/nodes/NodeManager';
 import Proxy from '@/network/Proxy';
 import Sigchain from '@/sigchain/Sigchain';
 import * as claimsUtils from '@/claims/utils';
-import { never, promise, promisify, sleep, timerStart } from '@/utils';
+import { never, promise, promisify, sleep } from '@/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as nodesTestUtils from './utils';
@@ -186,11 +188,9 @@ describe(`${NodeManager.name} test`, () => {
         await server.stop();
         // Check if active
         // Case 1: cannot establish new connection, so offline
-        const active1 = await nodeManager.pingNode(
-          serverNodeId,
-          undefined,
-          timerStart(1000),
-        );
+        const active1 = await nodeManager.pingNode(serverNodeId, undefined, {
+          timer: new Timer({ delay: 1000 }),
+        });
         expect(active1).toBe(false);
         // Bring server node online
         await server.start({
@@ -207,22 +207,18 @@ describe(`${NodeManager.name} test`, () => {
         await nodeGraph.setNode(serverNodeId, serverNodeAddress);
         // Check if active
         // Case 2: can establish new connection, so online
-        const active2 = await nodeManager.pingNode(
-          serverNodeId,
-          undefined,
-          timerStart(1000),
-        );
+        const active2 = await nodeManager.pingNode(serverNodeId, undefined, {
+          timer: new Timer({ delay: 1000 }),
+        });
         expect(active2).toBe(true);
         // Turn server node offline again
         await server.stop();
         await server.destroy();
         // Check if active
         // Case 3: pre-existing connection no longer active, so offline
-        const active3 = await nodeManager.pingNode(
-          serverNodeId,
-          undefined,
-          timerStart(1000),
-        );
+        const active3 = await nodeManager.pingNode(serverNodeId, undefined, {
+          timer: new Timer({ delay: 1000 }),
+        });
         expect(active3).toBe(false);
       } finally {
         // Clean up
@@ -927,7 +923,9 @@ describe(`${NodeManager.name} test`, () => {
       'refreshBucket',
     );
     try {
-      mockRefreshBucket.mockImplementation(async () => {});
+      mockRefreshBucket.mockImplementation(
+        () => new PromiseCancellable((resolve) => resolve()),
+      );
       await taskManager.startProcessing();
       await nodeManager.start();
       await nodeConnectionManager.start({ nodeManager });
@@ -1004,7 +1002,9 @@ describe(`${NodeManager.name} test`, () => {
       'refreshBucket',
     );
     try {
-      mockRefreshBucket.mockImplementation(async () => {});
+      mockRefreshBucket.mockImplementation(
+        () => new PromiseCancellable((resolve) => resolve()),
+      );
       await taskManager.startProcessing();
       await nodeManager.start();
       await nodeConnectionManager.start({ nodeManager });
