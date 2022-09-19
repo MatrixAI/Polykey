@@ -313,6 +313,16 @@ function generateRandomNodeIdForBucket(
   return xOrNodeId(nodeId, randomDistanceForBucket);
 }
 
+/**
+ * This is used to check if the given error is the result of a connection failure.
+ * Connection failures can happen due to the following.
+ * Failure to establish a connection,
+ * an existing connection fails,
+ * the GRPC client has been destroyed,
+ * or the NodeConnection has been destroyed.
+ * This is generally used to check the connection has failed
+ * before cleaning it up.
+ */
 function isConnectionError(e): boolean {
   return (
     e instanceof nodesErrors.ErrorNodeConnectionDestroyed ||
