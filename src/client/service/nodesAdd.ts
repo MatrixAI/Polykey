@@ -79,6 +79,7 @@ function nodesAdd({
             host,
             port,
           } as NodeAddress,
+          true,
           request.getForce(),
           undefined,
           tran,

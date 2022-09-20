@@ -71,6 +71,13 @@ class NodeManager {
     bucketIndex: number,
   ) => {
     await this.garbageCollectBucket(bucketIndex, ctx);
+    // Checking for any new pending tasks
+    const pendingNodesRemaining = this.pendingNodes.get(bucketIndex);
+    if (pendingNodesRemaining == null || pendingNodesRemaining.size === 0) {
+      return;
+    }
+    // Re-schedule the task
+    await this.setupGCTask(bucketIndex);
   };
   public readonly gcBucketHandlerId =
     `${this.basePath}.${this.gcBucketHandler.name}` as TaskHandlerId;
@@ -438,24 +445,34 @@ class NodeManager {
     );
   }
 
-  // FIXME: make cancelable
   /**
    * Adds a node to the node graph. This assumes that you have already authenticated the node
    * Updates the node if the node already exists
    * This operation is blocking by default - set `block` 2qto false to make it non-blocking
    * @param nodeId - Id of the node we wish to add
    * @param nodeAddress - Expected address of the node we want to add
+   * @param block - When true it will wait for any garbage collection to finish before returning.
    * @param force - Flag for if we want to add the node without authenticating or if the bucket is full.
    * This will drop the oldest node in favor of the new.
-   * @param timeout Connection timeout
+   * @param ctx
    * @param tran
    */
+  public setNode(
+    nodeId: NodeId,
+    nodeAddress: NodeAddress,
+    block?: boolean,
+    force?: boolean,
+    ctx?: Partial<ContextTimed>,
+    tran?: DBTransaction,
+  ): PromiseCancellable<void>;
   @ready(new nodesErrors.ErrorNodeManagerNotRunning())
+  @timedCancellable(true, 20000)
   public async setNode(
     nodeId: NodeId,
     nodeAddress: NodeAddress,
+    block: boolean = false,
     force: boolean = false,
-    timeout?: number,
+    @context ctx?: ContextTimed,
     tran?: DBTransaction,
   ): Promise<void> {
     // We don't want to add our own node
@@ -466,7 +483,7 @@ class NodeManager {
 
     if (tran == null) {
       return this.db.withTransactionF((tran) =>
-        this.setNode(nodeId, nodeAddress, force, timeout, tran),
+        this.setNode(nodeId, nodeAddress, block, force, ctx, tran),
       );
     }
 
@@ -528,19 +545,34 @@ class NodeManager {
         )} to pending list`,
       );
       // Add the node to the pending nodes list
-      await this.addPendingNode(bucketIndex, nodeId, nodeAddress);
+      await this.addPendingNode(
+        bucketIndex,
+        nodeId,
+        nodeAddress,
+        block,
+        ctx,
+        tran,
+      );
     }
   }
 
   protected garbageCollectBucket(
     bucketIndex: number,
     ctx?: Partial<ContextTimed>,
+    tran?: DBTransaction,
   ): PromiseCancellable<void>;
   @timedCancellable(true, 20000)
   protected async garbageCollectBucket(
     bucketIndex: number,
     @context ctx: ContextTimed,
+    tran?: DBTransaction,
   ): Promise<void> {
+    if (tran == null) {
+      return this.db.withTransactionF((tran) =>
+        this.garbageCollectBucket(bucketIndex, ctx, tran),
+      );
+    }
+
     // This needs to:
     //  1. Iterate over every node within the bucket pinging K at a time
     //  2. remove any un-responsive nodes until there is room of all pending
@@ -552,63 +584,65 @@ class NodeManager {
     // No nodes mean nothing to do
     if (pendingNodes == null || pendingNodes.size === 0) return;
     this.pendingNodes.set(bucketIndex, new Map());
-    await this.db.withTransactionF(async (tran) => {
-      // Locking on bucket
-      await this.nodeGraph.lockBucket(bucketIndex, tran);
-      const semaphore = new Semaphore(3);
+    // Locking on bucket
+    await this.nodeGraph.lockBucket(bucketIndex, tran);
+    const semaphore = new Semaphore(3);
 
-      // Iterating over existing nodes
-      const bucket = await this.getBucket(bucketIndex, tran);
-      if (bucket == null) never();
-      let removedNodes = 0;
-      const unsetLock = new Lock();
-      const pendingPromises: Array<Promise<void>> = [];
-      for (const [nodeId, nodeData] of bucket) {
-        if (removedNodes >= pendingNodes.size) break;
-        await semaphore.waitForUnlock();
-        if (ctx.signal?.aborted === true) break;
-        const [semaphoreReleaser] = await semaphore.lock()();
-        pendingPromises.push(
-          (async () => {
-            // Ping and remove or update node in bucket
-            if (await this.pingNode(nodeId, nodeData.address, ctx)) {
-              // Succeeded so update
-              await this.setNode(
-                nodeId,
-                nodeData.address,
-                false,
-                undefined,
-                tran,
-              );
-            } else {
-              // We need to lock this since it's concurrent
-              //  and shares the transaction
-              await unsetLock.withF(async () => {
-                await this.unsetNode(nodeId, tran);
-                removedNodes += 1;
-              });
-            }
-            // Releasing semaphore
-            await semaphoreReleaser();
-          })(),
-        );
-      }
-      // Wait for pending pings to complete
-      await Promise.all(pendingPromises);
-      // Fill in bucket with pending nodes
-      for (const [nodeIdString, address] of pendingNodes) {
-        if (removedNodes <= 0) break;
-        const nodeId = IdInternal.fromString<NodeId>(nodeIdString);
-        await this.setNode(nodeId, address, false, undefined, tran);
-        removedNodes -= 1;
-      }
-    });
+    // Iterating over existing nodes
+    const bucket = await this.getBucket(bucketIndex, tran);
+    if (bucket == null) never();
+    let removedNodes = 0;
+    const unsetLock = new Lock();
+    const pendingPromises: Array<Promise<void>> = [];
+    for (const [nodeId, nodeData] of bucket) {
+      if (removedNodes >= pendingNodes.size) break;
+      await semaphore.waitForUnlock();
+      if (ctx.signal?.aborted === true) break;
+      const [semaphoreReleaser] = await semaphore.lock()();
+      pendingPromises.push(
+        (async () => {
+          // Ping and remove or update node in bucket
+          if (await this.pingNode(nodeId, nodeData.address, ctx)) {
+            // Succeeded so update
+            await this.setNode(
+              nodeId,
+              nodeData.address,
+              false,
+              false,
+              undefined,
+              tran,
+            );
+          } else {
+            // We need to lock this since it's concurrent
+            //  and shares the transaction
+            await unsetLock.withF(async () => {
+              await this.unsetNode(nodeId, tran);
+              removedNodes += 1;
+            });
+          }
+          // Releasing semaphore
+          await semaphoreReleaser();
+        })(),
+      );
+    }
+    // Wait for pending pings to complete
+    await Promise.all(pendingPromises);
+    // Fill in bucket with pending nodes
+    for (const [nodeIdString, address] of pendingNodes) {
+      if (removedNodes <= 0) break;
+      const nodeId = IdInternal.fromString<NodeId>(nodeIdString);
+      await this.setNode(nodeId, address, false, false, undefined, tran);
+      removedNodes -= 1;
+    }
   }
 
   protected async addPendingNode(
     bucketIndex: number,
     nodeId: NodeId,
     nodeAddress: NodeAddress,
+    block: boolean = false,
+    ctx?: ContextTimed,
+    tran?: DBTransaction,
   ): Promise<void> {
     if (!this.pendingNodes.has(bucketIndex)) {
       this.pendingNodes.set(bucketIndex, new Map());
@@ -617,22 +651,44 @@ class NodeManager {
     pendingNodes!.set(nodeId.toString(), nodeAddress);
     // No need to re-set it in the map, Maps are by reference
 
+    // If set to blocking we just run the GC operation here
+    //  without setting up a new task
+    if (block) {
+      await this.garbageCollectBucket(bucketIndex, ctx, tran);
+      return;
+    }
+    await this.setupGCTask(bucketIndex);
+  }
+
+  protected async setupGCTask(bucketIndex: number) {
     // Check and start a 'garbageCollect` bucket task
-    let first: boolean = true;
+    let scheduled: boolean = false;
     for await (const task of this.taskManager.getTasks('asc', true, [
       this.basePath,
       this.gcBucketHandlerId,
       `${bucketIndex}`,
     ])) {
-      if (first) {
-        // Just ignore it.
-        first = false;
-        continue;
+      switch (task.status) {
+        case 'queued':
+        case 'active':
+          // Ignore active tasks
+          break;
+        case 'scheduled':
+          {
+            if (scheduled) {
+              // Duplicate scheduled are removed
+              task.cancel('Removing extra scheduled task');
+              break;
+            }
+            scheduled = true;
+          }
+          break;
+        default:
+          task.cancel('Removing extra task');
+          break;
       }
-      // There shouldn't be duplicates, we'll remove extra
-      task.cancel('Removing extra task');
     }
-    if (first) {
+    if (!scheduled) {
       // If none were found, schedule a new one
       await this.taskManager.scheduleTask({
         handlerId: this.gcBucketHandlerId,

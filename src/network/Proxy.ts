@@ -331,10 +331,8 @@ class Proxy {
     proxyPort: Port,
     @context ctx?: ContextTimed,
   ): Promise<void> {
-    let timer_: Timer | undefined;
-    if (ctx?.timer != null) {
-      timer_ = timerStart(this.connConnectTime);
-    }
+    const timerDelay = ctx?.timer.getTimeout() ?? this.connConnectTime;
+    const timer_: Timer = timerStart(timerDelay);
     const proxyAddress = networkUtils.buildAddress(proxyHost, proxyPort);
     let lock = this.connectionLocksForward.get(proxyAddress);
     if (lock == null) {
