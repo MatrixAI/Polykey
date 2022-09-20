@@ -11,6 +11,7 @@ import type TaskManager from '../tasks/TaskManager';
 import type { TaskHandler, TaskHandlerId, Task } from '../tasks/types';
 import type { ContextTimed } from 'contexts/types';
 import type { PromiseCancellable } from '@matrixai/async-cancellable';
+import type { Host, Port } from '../network/types';
 import Logger from '@matrixai/logger';
 import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
 import { Semaphore, Lock } from '@matrixai/async-locks';
@@ -81,6 +82,21 @@ class NodeManager {
   };
   public readonly gcBucketHandlerId =
     `${this.basePath}.${this.gcBucketHandler.name}` as TaskHandlerId;
+  protected pingAndSetNodeHandler: TaskHandler = async (
+    ctx,
+    _taskInfo,
+    nodeIdEncoded: string,
+    host: Host,
+    port: Port,
+  ) => {
+    const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded)!;
+    const host_ = await networkUtils.resolveHost(host);
+    if (await this.pingNode(nodeId, { host: host_, port }, ctx)) {
+      await this.setNode(nodeId, { host: host_, port }, false, false, ctx);
+    }
+  };
+  protected pingAndSetNodeHandlerId: TaskHandlerId =
+    `${this.basePath}.${this.pingAndSetNodeHandler.name}` as TaskHandlerId;
 
   constructor({
     db,
@@ -129,6 +145,10 @@ class NodeManager {
       this.gcBucketHandlerId,
       this.gcBucketHandler,
     );
+    this.taskManager.registerHandler(
+      this.pingAndSetNodeHandlerId,
+      this.pingAndSetNodeHandler,
+    );
     await this.setupRefreshBucketTasks();
     this.logger.info(`Started ${this.constructor.name}`);
   }
@@ -138,6 +158,7 @@ class NodeManager {
     this.logger.info(`Unregistering handler for setNode`);
     this.taskManager.deregisterHandler(this.refreshBucketHandlerId);
     this.taskManager.deregisterHandler(this.gcBucketHandlerId);
+    this.taskManager.deregisterHandler(this.pingAndSetNodeHandlerId);
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
@@ -889,6 +910,79 @@ class NodeManager {
     }
     if (foundTask == null) never();
     return foundTask;
+  }
+
+  /**
+   * Perform an initial database synchronisation: get k of the closest nodes
+   * from each seed node and add them to this database
+   * Establish a proxy connection to each node before adding it
+   * By default this operation is blocking, set `block` to false to make it
+   * non-blocking
+   */
+  public syncNodeGraph(
+    block?: boolean,
+    ctx?: Partial<ContextTimed>,
+  ): PromiseCancellable<void>;
+  @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
+  @timedCancellable(true, 20000)
+  public async syncNodeGraph(
+    block: boolean = true,
+    @context ctx?: ContextTimed,
+  ): Promise<void> {
+    this.logger.info('Syncing nodeGraph');
+    for (const seedNodeId of this.nodeConnectionManager.getSeedNodes()) {
+      // Check if the connection is viable
+      if ((await this.pingNode(seedNodeId, undefined, ctx)) === false) {
+        continue;
+      }
+      const closestNodes =
+        await this.nodeConnectionManager.getRemoteNodeClosestNodes(
+          seedNodeId,
+          this.keyManager.getNodeId(),
+          ctx,
+        );
+      const localNodeId = this.keyManager.getNodeId();
+      for (const [nodeId, nodeData] of closestNodes) {
+        if (!localNodeId.equals(nodeId)) {
+          const pingAndSetTask = await this.taskManager.scheduleTask({
+            delay: 0,
+            handlerId: this.pingAndSetNodeHandlerId,
+            lazy: !block,
+            parameters: [
+              nodesUtils.encodeNodeId(nodeId),
+              nodeData.address.host,
+              nodeData.address.port,
+            ],
+            path: [this.basePath, this.pingAndSetNodeHandlerId],
+            // Need to be somewhat active so high priority
+            priority: 100,
+          });
+          if (block) {
+            try {
+              await pingAndSetTask.promise();
+            } catch (e) {
+              if (!(e instanceof nodesErrors.ErrorNodeGraphSameNodeId)) throw e;
+            }
+          }
+        }
+      }
+      // Refreshing every bucket above the closest node
+      let closestNodeInfo = closestNodes.pop()!;
+      if (this.keyManager.getNodeId().equals(closestNodeInfo[0])) {
+        // Skip our nodeId if it exists
+        closestNodeInfo = closestNodes.pop()!;
+      }
+      let index = this.nodeGraph.nodeIdBits;
+      if (closestNodeInfo != null) {
+        const [closestNode] = closestNodeInfo;
+        const [bucketIndex] = this.nodeGraph.bucketIndex(closestNode);
+        index = bucketIndex;
+      }
+      for (let i = index; i < this.nodeGraph.nodeIdBits; i++) {
+        const task = await this.updateRefreshBucketDelay(i, 0, !block);
+        if (block) await task.promise();
+      }
+    }
   }
 }
 

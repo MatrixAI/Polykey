@@ -316,7 +316,7 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
       });
       await nodeConnectionManager.start({ nodeManager });
       await taskManager.startProcessing();
-      await nodeConnectionManager.syncNodeGraph();
+      await nodeManager.syncNodeGraph();
       expect(await nodeGraph.getNode(nodeId1)).toBeDefined();
       expect(await nodeGraph.getNode(nodeId2)).toBeDefined();
       expect(await nodeGraph.getNode(dummyNodeId)).toBeUndefined();
@@ -378,7 +378,7 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
       });
       await nodeConnectionManager.start({ nodeManager });
       await taskManager.startProcessing();
-      await nodeConnectionManager.syncNodeGraph();
+      await nodeManager.syncNodeGraph();
       await sleep(1000);
       expect(mockedRefreshBucket).toHaveBeenCalled();
     } finally {
@@ -446,7 +446,7 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
       await nodeConnectionManager.start({ nodeManager });
       await taskManager.startProcessing();
       // This should complete without error
-      await nodeConnectionManager.syncNodeGraph(true);
+      await nodeManager.syncNodeGraph(true);
       // Information on remotes are found
       expect(await nodeGraph.getNode(nodeId1)).toBeDefined();
       expect(await nodeGraph.getNode(nodeId2)).toBeDefined();
@@ -510,8 +510,8 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
           logger,
         });
 
-        await node1.nodeConnectionManager.syncNodeGraph(true);
-        await node2.nodeConnectionManager.syncNodeGraph(true);
+        await node1.nodeManager.syncNodeGraph(true);
+        await node2.nodeManager.syncNodeGraph(true);
 
         const getAllNodes = async (node: PolykeyAgent) => {
           const nodes: Array<NodeIdEncoded> = [];
