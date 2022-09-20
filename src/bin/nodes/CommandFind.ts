@@ -93,7 +93,7 @@ class CommandFind extends CommandPolykey {
         );
         // Like ping it should error when failing to find node for automation reasons.
         if (!result.success) {
-          throw new binErrors.ErrorNodeFindFailed(result.message);
+          throw new binErrors.ErrorCLINodeFindFailed(result.message);
         }
       } finally {
         if (pkClient! != null) await pkClient.stop();

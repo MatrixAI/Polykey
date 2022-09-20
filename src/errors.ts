@@ -41,10 +41,6 @@ class ErrorPolykeyClientDestroyed<T> extends ErrorPolykey<T> {
   exitCode = sysexits.USAGE;
 }
 
-class ErrorInvalidId<T> extends ErrorPolykey<T> {}
-
-class ErrorInvalidConfigEnvironment<T> extends ErrorPolykey<T> {}
-
 export {
   sysexits,
   ErrorPolykey,
@@ -56,8 +52,6 @@ export {
   ErrorPolykeyClientRunning,
   ErrorPolykeyClientNotRunning,
   ErrorPolykeyClientDestroyed,
-  ErrorInvalidId,
-  ErrorInvalidConfigEnvironment,
 };
 
 /**
