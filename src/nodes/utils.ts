@@ -331,6 +331,20 @@ function isConnectionError(e): boolean {
   );
 }
 
+/**
+ * This generates a random delay based on the given delay and jitter multiplier.
+ * For example, a delay of 100 and multiplier of 0.5 would result in a delay
+ * randomly between 50 and 150.
+ * @param delay - base delay to 'jitter' around
+ * @param jitterMultiplier - jitter amount as a multiple of the delay
+ */
+function refreshBucketsDelayJitter(
+  delay: number,
+  jitterMultiplier: number,
+): number {
+  return (Math.random() - 0.5) * delay * jitterMultiplier;
+}
+
 export {
   sepBuffer,
   encodeNodeId,
@@ -352,4 +366,5 @@ export {
   xOrNodeId,
   generateRandomNodeIdForBucket,
   isConnectionError,
+  refreshBucketsDelayJitter,
 };
