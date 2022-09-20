@@ -433,7 +433,7 @@ class NodeConnectionManager {
   public async getClosestGlobalNodes(
     targetNodeId: NodeId,
     ignoreRecentOffline: boolean = false,
-    @context ctx?: ContextTimed,
+    @context ctx: ContextTimed,
   ): Promise<NodeAddress | undefined> {
     const localNodeId = this.keyManager.getNodeId();
     // Let foundTarget: boolean = false;
@@ -456,7 +456,7 @@ class NodeConnectionManager {
     const contacted: Set<string> = new Set();
     // Iterate until we've found and contacted k nodes
     while (contacted.size <= this.nodeGraph.nodeBucketLimit) {
-      if (ctx!.signal?.aborted) return;
+      if (ctx.signal?.aborted) return;
       // Remove the node from the front of the array
       const nextNode = shortlist.shift();
       // If we have no nodes left in the shortlist, then stop
@@ -500,7 +500,7 @@ class NodeConnectionManager {
       // Check to see if any of these are the target node. At the same time, add
       // them to the shortlist
       for (const [nodeId, nodeData] of foundClosest) {
-        if (ctx!.signal?.aborted) return;
+        if (ctx.signal?.aborted) return;
         // Ignore any nodes that have been contacted or our own node
         if (contacted[nodeId] || localNodeId.equals(nodeId)) {
           continue;
@@ -575,14 +575,14 @@ class NodeConnectionManager {
   public async getRemoteNodeClosestNodes(
     nodeId: NodeId,
     targetNodeId: NodeId,
-    @context ctx?: ContextTimed,
+    @context ctx: ContextTimed,
   ): Promise<Array<[NodeId, NodeData]>> {
     // Construct the message
     const nodeIdMessage = new nodesPB.Node();
     nodeIdMessage.setNodeId(nodesUtils.encodeNodeId(targetNodeId));
     try {
       // Send through client
-      const timeout = ctx!.timer.getTimeout();
+      const timeout = ctx.timer.getTimeout();
       const response = await this.withConnF(
         nodeId,
         async (connection) => {

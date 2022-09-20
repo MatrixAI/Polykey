@@ -400,7 +400,10 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
       NodeConnectionManager.prototype,
       'pingNode',
     );
-    mockedPingNode.mockImplementation(createPromiseCancellable(true));
+    mockedPingNode.mockImplementation((nodeId: NodeId) => {
+      if (dummyNodeId.equals(nodeId)) return createPromiseCancellable(false)();
+      return createPromiseCancellable(true)();
+    });
     try {
       const seedNodes: SeedNodes = {};
       seedNodes[nodesUtils.encodeNodeId(remoteNodeId1)] = {

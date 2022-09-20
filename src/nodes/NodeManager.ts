@@ -16,6 +16,7 @@ import Logger from '@matrixai/logger';
 import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
 import { Semaphore, Lock } from '@matrixai/async-locks';
 import { IdInternal } from '@matrixai/id';
+import { Timer } from '@matrixai/timer';
 import * as nodesErrors from './errors';
 import * as nodesUtils from './utils';
 import * as tasksErrors from '../tasks/errors';
@@ -71,7 +72,7 @@ class NodeManager {
     _taskInfo,
     bucketIndex: number,
   ) => {
-    await this.garbageCollectBucket(bucketIndex, ctx);
+    await this.garbageCollectBucket(bucketIndex, 1500, ctx);
     // Checking for any new pending tasks
     const pendingNodesRemaining = this.pendingNodes.get(bucketIndex);
     if (pendingNodesRemaining == null || pendingNodesRemaining.size === 0) {
@@ -91,8 +92,17 @@ class NodeManager {
   ) => {
     const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded)!;
     const host_ = await networkUtils.resolveHost(host);
-    if (await this.pingNode(nodeId, { host: host_, port }, ctx)) {
-      await this.setNode(nodeId, { host: host_, port }, false, false, ctx);
+    if (
+      await this.pingNode(nodeId, { host: host_, port }, { signal: ctx.signal })
+    ) {
+      await this.setNode(
+        nodeId,
+        { host: host_, port },
+        false,
+        false,
+        1500,
+        ctx,
+      );
     }
   };
   protected pingAndSetNodeHandlerId: TaskHandlerId =
@@ -174,11 +184,11 @@ class NodeManager {
     address?: NodeAddress,
     ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<boolean>;
-  @timedCancellable(true, 20000)
+  @timedCancellable(true, 2000)
   public async pingNode(
     nodeId: NodeId,
-    address?: NodeAddress,
-    @context ctx?: ContextTimed,
+    address: NodeAddress | undefined,
+    @context ctx: ContextTimed,
   ): Promise<boolean> {
     // We need to attempt a connection using the proxies
     // For now we will just do a forward connect + relay message
@@ -475,6 +485,7 @@ class NodeManager {
    * @param block - When true it will wait for any garbage collection to finish before returning.
    * @param force - Flag for if we want to add the node without authenticating or if the bucket is full.
    * This will drop the oldest node in favor of the new.
+   * @param pingTimeout - Timeout for each ping opearation during garbage collection.
    * @param ctx
    * @param tran
    */
@@ -483,6 +494,7 @@ class NodeManager {
     nodeAddress: NodeAddress,
     block?: boolean,
     force?: boolean,
+    pingTimeout?: number,
     ctx?: Partial<ContextTimed>,
     tran?: DBTransaction,
   ): PromiseCancellable<void>;
@@ -493,7 +505,8 @@ class NodeManager {
     nodeAddress: NodeAddress,
     block: boolean = false,
     force: boolean = false,
-    @context ctx?: ContextTimed,
+    pingTimeout: number = 1500,
+    @context ctx: ContextTimed,
     tran?: DBTransaction,
   ): Promise<void> {
     // We don't want to add our own node
@@ -504,7 +517,7 @@ class NodeManager {
 
     if (tran == null) {
       return this.db.withTransactionF((tran) =>
-        this.setNode(nodeId, nodeAddress, block, force, ctx, tran),
+        this.setNode(nodeId, nodeAddress, block, force, pingTimeout, ctx, tran),
       );
     }
 
@@ -571,6 +584,7 @@ class NodeManager {
         nodeId,
         nodeAddress,
         block,
+        pingTimeout,
         ctx,
         tran,
       );
@@ -579,18 +593,20 @@ class NodeManager {
 
   protected garbageCollectBucket(
     bucketIndex: number,
+    pingTimeout?: number,
     ctx?: Partial<ContextTimed>,
     tran?: DBTransaction,
   ): PromiseCancellable<void>;
   @timedCancellable(true, 20000)
   protected async garbageCollectBucket(
     bucketIndex: number,
+    pingTimeout: number = 1500,
     @context ctx: ContextTimed,
     tran?: DBTransaction,
   ): Promise<void> {
     if (tran == null) {
       return this.db.withTransactionF((tran) =>
-        this.garbageCollectBucket(bucketIndex, ctx, tran),
+        this.garbageCollectBucket(bucketIndex, pingTimeout, ctx, tran),
       );
     }
 
@@ -623,13 +639,18 @@ class NodeManager {
       pendingPromises.push(
         (async () => {
           // Ping and remove or update node in bucket
-          if (await this.pingNode(nodeId, nodeData.address, ctx)) {
+          const pingCtx = {
+            signal: ctx.signal,
+            timer: new Timer({ delay: pingTimeout }),
+          };
+          if (await this.pingNode(nodeId, nodeData.address, pingCtx)) {
             // Succeeded so update
             await this.setNode(
               nodeId,
               nodeData.address,
               false,
               false,
+              undefined,
               undefined,
               tran,
             );
@@ -652,7 +673,15 @@ class NodeManager {
     for (const [nodeIdString, address] of pendingNodes) {
       if (removedNodes <= 0) break;
       const nodeId = IdInternal.fromString<NodeId>(nodeIdString);
-      await this.setNode(nodeId, address, false, false, undefined, tran);
+      await this.setNode(
+        nodeId,
+        address,
+        false,
+        false,
+        undefined,
+        undefined,
+        tran,
+      );
       removedNodes -= 1;
     }
   }
@@ -662,6 +691,7 @@ class NodeManager {
     nodeId: NodeId,
     nodeAddress: NodeAddress,
     block: boolean = false,
+    pingTimeout: number = 1500,
     ctx?: ContextTimed,
     tran?: DBTransaction,
   ): Promise<void> {
@@ -675,7 +705,7 @@ class NodeManager {
     // If set to blocking we just run the GC operation here
     //  without setting up a new task
     if (block) {
-      await this.garbageCollectBucket(bucketIndex, ctx, tran);
+      await this.garbageCollectBucket(bucketIndex, pingTimeout, ctx, tran);
       return;
     }
     await this.setupGCTask(bucketIndex);
@@ -927,12 +957,15 @@ class NodeManager {
   @timedCancellable(true, 20000)
   public async syncNodeGraph(
     block: boolean = true,
-    @context ctx?: ContextTimed,
+    @context ctx: ContextTimed,
   ): Promise<void> {
     this.logger.info('Syncing nodeGraph');
     for (const seedNodeId of this.nodeConnectionManager.getSeedNodes()) {
       // Check if the connection is viable
-      if ((await this.pingNode(seedNodeId, undefined, ctx)) === false) {
+      if (
+        (await this.pingNode(seedNodeId, undefined, { signal: ctx.signal })) ===
+        false
+      ) {
         continue;
       }
       const closestNodes =
