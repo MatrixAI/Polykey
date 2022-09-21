@@ -29,6 +29,9 @@ import * as sigchainUtils from '../sigchain/utils';
 import * as claimsUtils from '../claims/utils';
 import { never } from '../utils/utils';
 
+const abortEphemeralTaskReason = Symbol('abort ephemeral task reason');
+const abortSingletonTaskReason = Symbol('abort singleton task reason');
+
 interface NodeManager extends StartStop {}
 @StartStop()
 class NodeManager {
@@ -170,7 +173,7 @@ class NodeManager {
       this.basePath,
     ])) {
       tasks.push(task.promise());
-      task.cancel('cleaning up ephemeral tasks');
+      task.cancel(abortEphemeralTaskReason);
     }
     // We don't care about the result, only that they've ended
     await Promise.allSettled(tasks);
@@ -738,14 +741,14 @@ class NodeManager {
           {
             if (scheduled) {
               // Duplicate scheduled are removed
-              task.cancel('Removing extra scheduled task');
+              task.cancel(abortSingletonTaskReason);
               break;
             }
             scheduled = true;
           }
           break;
         default:
-          task.cancel('Removing extra task');
+          task.cancel(abortSingletonTaskReason);
           break;
       }
     }
@@ -929,7 +932,7 @@ class NodeManager {
         );
       } else {
         // These are extra, so we cancel them
-        task.cancel('removing duplicate tasks');
+        task.cancel(abortSingletonTaskReason);
         this.logger.warn(
           `Duplicate refreshBucket task was found for bucket ${bucketIndex}, cancelling`,
         );
