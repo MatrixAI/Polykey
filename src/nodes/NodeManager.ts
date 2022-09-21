@@ -895,15 +895,14 @@ class NodeManager {
       this.refreshBucketDelayJitter,
     );
     let foundTask: Task | undefined;
-    let count = 0;
+    let existingTask = false;
     for await (const task of this.taskManager.getTasks(
       'asc',
       true,
       [this.basePath, this.refreshBucketHandlerId, `${bucketIndex}`],
       tran,
     )) {
-      count += 1;
-      if (count <= 1) {
+      if (!existingTask) {
         foundTask = task;
         // Update the first one
         // total delay is refreshBucketDelay + time since task creation
@@ -916,10 +915,12 @@ class NodeManager {
           jitter;
         try {
           await this.taskManager.updateTask(task.id, { delay: delayNew });
+          existingTask = true;
         } catch (e) {
-          if (e instanceof tasksErrors.ErrorTaskMissing) {
-            count -= 1;
-          } else if (!(e instanceof tasksErrors.ErrorTaskRunning)) {
+          if (e instanceof tasksErrors.ErrorTaskRunning) {
+            // Ignore running
+            existingTask = true;
+          } else if (!(e instanceof tasksErrors.ErrorTaskMissing)) {
             throw e;
           }
         }
@@ -934,7 +935,7 @@ class NodeManager {
         );
       }
     }
-    if (count === 0) {
+    if (!existingTask) {
       this.logger.debug(
         `No refreshBucket task for bucket ${bucketIndex}, new one was created`,
       );
