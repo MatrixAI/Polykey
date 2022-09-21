@@ -62,7 +62,6 @@ class NodeManager {
       parameters: [bucketIndex],
       path: [this.basePath, this.refreshBucketHandlerId, `${bucketIndex}`],
       priority: 0,
-      deadline: ctx.timer.delay,
     });
   };
   public readonly refreshBucketHandlerId =
@@ -929,8 +928,7 @@ class NodeManager {
         );
       } else {
         // These are extra, so we cancel them
-        // TODO: make error
-        task.cancel(Error('TMP, cancel extra tasks'));
+        task.cancel('removing duplicate tasks');
         this.logger.warn(
           `Duplicate refreshBucket task was found for bucket ${bucketIndex}, cancelling`,
         );
@@ -964,7 +962,7 @@ class NodeManager {
     block?: boolean,
     ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<void>;
-  @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
+  @ready(new nodesErrors.ErrorNodeManagerNotRunning())
   @timedCancellable(true, 20000)
   public async syncNodeGraph(
     block: boolean = true,
