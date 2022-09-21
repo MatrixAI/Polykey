@@ -672,9 +672,9 @@ class NodeManager {
               removedNodes += 1;
             });
           }
-          // Releasing semaphore
-          await semaphoreReleaser();
-        })(),
+        })()
+          // Clean ensure semaphore is released
+          .finally(async () => await semaphoreReleaser()),
       );
     }
     // Wait for pending pings to complete
