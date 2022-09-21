@@ -315,6 +315,6 @@ describe('send/read/claim', () => {
         .map(JSON.parse);
       expect(readNotifications).toHaveLength(0);
     },
-    globalThis.defaultTimeout * 2,
+    globalThis.defaultTimeout * 3,
   );
 });

@@ -506,7 +506,7 @@ describe(`${NodeConnection.name} test`, () => {
       // Have a nodeConnection try to connect to it
       const killSelf = jest.fn();
       nodeConnection = await NodeConnection.createNodeConnection({
-        timer: timerStart(500),
+        timer: timerStart(2000),
         proxy: clientProxy,
         keyManager: clientKeyManager,
         logger: logger,
