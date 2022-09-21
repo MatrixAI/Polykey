@@ -31,6 +31,7 @@ import * as utils from '../utils';
 const abortSchedulingLoopReason = Symbol('abort scheduling loop reason');
 const abortQueuingLoopReason = Symbol('abort queuing loop reason');
 
+interface TaskManager extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
   new tasksErrors.ErrorTaskManagerRunning(),
   new tasksErrors.ErrorTaskManagerDestroyed(),
