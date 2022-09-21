@@ -12,8 +12,6 @@ import type { NodeId } from '../nodes/types';
 import type { Timer } from '../types';
 import type UTPConnection from 'utp-native/lib/connection';
 import type { ConnectionsReverse } from './ConnectionReverse';
-import type { PromiseCancellable } from '@matrixai/async-cancellable';
-import type { ContextTimed } from 'contexts/types';
 import http from 'http';
 import UTP from 'utp-native';
 import Logger from '@matrixai/logger';
@@ -24,7 +22,6 @@ import ConnectionReverse from './ConnectionReverse';
 import ConnectionForward from './ConnectionForward';
 import * as networkUtils from './utils';
 import * as networkErrors from './errors';
-import { context, timedCancellable } from '../contexts';
 import * as nodesUtils from '../nodes/utils';
 import { promisify, timerStart, timerStop } from '../utils';
 
@@ -317,22 +314,17 @@ class Proxy {
    * It will only stop the timer if using the default timer
    * Set timer to `null` explicitly to wait forever
    */
-  public openConnectionForward(
-    nodeId: NodeId,
-    proxyHost: Host,
-    proxyPort: Port,
-    ctx?: Partial<ContextTimed>,
-  ): PromiseCancellable<void>;
-  @timedCancellable(true, 20000)
   @ready(new networkErrors.ErrorProxyNotRunning(), true)
   public async openConnectionForward(
     nodeId: NodeId,
     proxyHost: Host,
     proxyPort: Port,
-    @context ctx?: ContextTimed,
+    timer?: Timer,
   ): Promise<void> {
-    const timerDelay = ctx?.timer.getTimeout() ?? this.connConnectTime;
-    const timer_: Timer = timerStart(timerDelay);
+    let timer_ = timer;
+    if (timer === undefined) {
+      timer_ = timerStart(this.connConnectTime);
+    }
     const proxyAddress = networkUtils.buildAddress(proxyHost, proxyPort);
     let lock = this.connectionLocksForward.get(proxyAddress);
     if (lock == null) {
@@ -348,8 +340,8 @@ class Proxy {
           timer_,
         );
       } finally {
-        if (timer_ != null) {
-          timerStop(timer_);
+        if (timer === undefined) {
+          timerStop(timer_!);
         }
         this.connectionLocksForward.delete(proxyAddress);
       }

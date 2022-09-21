@@ -371,7 +371,11 @@ class NodeConnectionManager {
     proxyPort: Port,
     ctx?: ContextTimed,
   ): Promise<void> {
-    await this.proxy.openConnectionForward(nodeId, proxyHost, proxyPort, ctx);
+    const timer =
+      ctx?.timer.getTimeout() != null
+        ? timerStart(ctx.timer.getTimeout())
+        : undefined;
+    await this.proxy.openConnectionForward(nodeId, proxyHost, proxyPort, timer);
   }
 
   /**

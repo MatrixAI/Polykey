@@ -6,7 +6,6 @@ import http from 'http';
 import tls from 'tls';
 import UTP from 'utp-native';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { Timer } from '@matrixai/timer';
 import Proxy from '@/network/Proxy';
 import * as networkUtils from '@/network/utils';
 import * as networkErrors from '@/network/errors';
@@ -312,16 +311,16 @@ describe(Proxy.name, () => {
     ).rejects.toThrow(networkErrors.ErrorConnectionStartTimeout);
     expect(receivedCount).toBe(1);
     // Can override the timer
-    const timer = new Timer({ delay: 1000 });
+    const timer = timerStart(2000);
     await expect(() =>
       proxy.openConnectionForward(
         nodeIdABC,
         localHost,
         utpSocketHangPort as Port,
-        { timer },
+        timer,
       ),
     ).rejects.toThrow(networkErrors.ErrorConnectionStartTimeout);
-    timer.cancel('clean up');
+    timerStop(timer);
     expect(receivedCount).toBe(2);
     await expect(() =>
       httpConnect(
