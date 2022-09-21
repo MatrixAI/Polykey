@@ -1,6 +1,7 @@
 import process from 'process';
 import * as binUtils from './utils';
 import ErrorPolykey from '../../ErrorPolykey';
+import * as binErrors from '../errors';
 
 class ExitHandlers {
   /**
@@ -10,38 +11,7 @@ class ExitHandlers {
   public handlers: Array<(signal?: NodeJS.Signals) => Promise<void>>;
   protected _exiting: boolean = false;
   protected _errFormat: 'json' | 'error';
-  /**
-   * Handles synchronous and asynchronous exceptions
-   * This prints out appropriate error message on STDERR
-   * It sets the exit code according to the error
-   * 255 is set for unknown errors
-   */
-  protected errorHandler = async (e: Error) => {
-    if (this._exiting) {
-      return;
-    }
-    this._exiting = true;
-    if (e instanceof ErrorPolykey) {
-      process.stderr.write(
-        binUtils.outputFormatter({
-          type: this._errFormat,
-          data: e,
-        }),
-      );
-      process.exitCode = e.exitCode;
-    } else {
-      // Unknown error, this should not happen
-      process.stderr.write(
-        binUtils.outputFormatter({
-          type: this._errFormat,
-          data: e,
-        }),
-      );
-      process.exitCode = 255;
-    }
-    // Fail fast pattern
-    process.exit();
-  };
+
   /**
    * Handles termination signals
    * This is idempotent
@@ -85,6 +55,67 @@ class ExitHandlers {
   };
 
   /**
+   * Handles asynchronous exceptions
+   * This prints out appropriate error message on STDERR
+   * It sets the exit code to SOFTWARE
+   */
+  protected unhandledRejectionHandler = async (e: Error) => {
+    if (this._exiting) {
+      return;
+    }
+    this._exiting = true;
+    const error = new binErrors.ErrorBinUnhandledRejection(undefined, {
+      cause: e,
+    });
+    process.stderr.write(
+      binUtils.outputFormatter({
+        type: this._errFormat,
+        data: e,
+      }),
+    );
+    process.exitCode = error.exitCode;
+    // Fail fast pattern
+    process.exit();
+  };
+
+  /**
+   * Handles synchronous exceptions
+   * This prints out appropriate error message on STDERR
+   * It sets the exit code to SOFTWARE
+   */
+  protected uncaughtExceptionHandler = async (e: Error) => {
+    if (this._exiting) {
+      return;
+    }
+    this._exiting = true;
+    const error = new binErrors.ErrorBinUncaughtException(undefined, {
+      cause: e,
+    });
+    process.stderr.write(
+      binUtils.outputFormatter({
+        type: this._errFormat,
+        data: e,
+      }),
+    );
+    process.exitCode = error.exitCode;
+    // Fail fast pattern
+    process.exit();
+  };
+
+  protected deadlockHandler = async () => {
+    if (process.exitCode == null) {
+      const e = new binErrors.ErrorBinAsynchronousDeadlock();
+      process.stderr.write(
+        binUtils.outputFormatter({
+          type: this._errFormat,
+          data: e,
+        }),
+      );
+      process.exitCode = e.exitCode;
+    }
+  };
+
+  /**
    * Automatically installs all handlers
    */
   public constructor(
@@ -108,8 +139,9 @@ class ExitHandlers {
     process.on('SIGQUIT', this.signalHandler);
     process.on('SIGHUP', this.signalHandler);
     // Both synchronous and asynchronous errors are handled
-    process.once('unhandledRejection', this.errorHandler);
-    process.once('uncaughtException', this.errorHandler);
+    process.once('unhandledRejection', this.unhandledRejectionHandler);
+    process.once('uncaughtException', this.uncaughtExceptionHandler);
+    process.once('beforeExit', this.deadlockHandler);
   }
 
   public uninstall() {
@@ -117,8 +149,12 @@ class ExitHandlers {
     process.removeListener('SIGTERM', this.signalHandler);
     process.removeListener('SIGQUIT', this.signalHandler);
     process.removeListener('SIGHUP', this.signalHandler);
-    process.removeListener('unhandledRejection', this.errorHandler);
-    process.removeListener('uncaughtException', this.errorHandler);
+    process.removeListener(
+      'unhandledRejection',
+      this.unhandledRejectionHandler,
+    );
+    process.removeListener('uncaughtException', this.uncaughtExceptionHandler);
+    process.removeListener('beforeExit', this.deadlockHandler);
   }
 
   /**

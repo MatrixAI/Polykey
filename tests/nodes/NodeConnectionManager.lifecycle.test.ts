@@ -8,7 +8,8 @@ import { DB } from '@matrixai/db';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { withF } from '@matrixai/resources';
 import { IdInternal } from '@matrixai/id';
-import Queue from '@/nodes/Queue';
+import { Timer } from '@matrixai/timer';
+import TaskManager from '@/tasks/TaskManager';
 import PolykeyAgent from '@/PolykeyAgent';
 import KeyManager from '@/keys/KeyManager';
 import NodeGraph from '@/nodes/NodeGraph';
@@ -18,7 +19,6 @@ import * as nodesUtils from '@/nodes/utils';
 import * as nodesErrors from '@/nodes/errors';
 import * as keysUtils from '@/keys/utils';
 import * as grpcUtils from '@/grpc/utils';
-import { timerStart } from '@/utils';
 import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 
 describe(`${NodeConnectionManager.name} lifecycle test`, () => {
@@ -77,7 +77,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
   let proxy: Proxy;
 
   let nodeGraph: NodeGraph;
-  let queue: Queue;
+  let taskManager: TaskManager;
 
   let remoteNode1: PolykeyAgent;
   let remoteNode2: PolykeyAgent;
@@ -155,10 +155,11 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       keyManager,
       logger: logger.getChild('NodeGraph'),
     });
-    queue = new Queue({
-      logger: logger.getChild('queue'),
+    taskManager = await TaskManager.createTaskManager({
+      db,
+      lazy: true,
+      logger,
     });
-    await queue.start();
     const tlsConfig = {
       keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
       certChainPem: keysUtils.certToPem(keyManager.getRootCert()),
@@ -184,7 +185,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
   });
 
   afterEach(async () => {
-    await queue.stop();
+    await taskManager.stop();
     await nodeGraph.stop();
     await nodeGraph.destroy();
     await db.stop();
@@ -203,10 +204,11 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
         keyManager,
         nodeGraph,
         proxy,
-        queue,
+        taskManager,
         logger: nodeConnectionManagerLogger,
       });
       await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
+      await taskManager.startProcessing();
       // @ts-ignore: kidnap connections
       const connections = nodeConnectionManager.connections;
       // @ts-ignore: kidnap connectionLocks
@@ -229,10 +231,11 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
         keyManager,
         nodeGraph,
         proxy,
-        queue,
+        taskManager,
         logger: nodeConnectionManagerLogger,
       });
       await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
+      await taskManager.startProcessing();
       // @ts-ignore: kidnap connections
       const connections = nodeConnectionManager.connections;
       // @ts-ignore: kidnap connectionLocks
@@ -264,10 +267,11 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
         keyManager,
         nodeGraph,
         proxy,
-        queue,
+        taskManager,
         logger: nodeConnectionManagerLogger,
       });
       await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
+      await taskManager.startProcessing();
       // @ts-ignore: kidnap connections
       const connections = nodeConnectionManager.connections;
       // @ts-ignore: kidnap connectionLocks
@@ -293,11 +297,11 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
         keyManager,
         nodeGraph,
         proxy,
-        queue,
+        taskManager,
         logger: nodeConnectionManagerLogger,
       });
       await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
-
+      await taskManager.startProcessing();
       // @ts-ignore: kidnap connections
       const connections = nodeConnectionManager.connections;
       // @ts-ignore: kidnap connectionLocks
@@ -346,11 +350,12 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
         keyManager,
         nodeGraph,
         proxy,
-        queue,
+        taskManager,
         connConnectTime: 500,
         logger: nodeConnectionManagerLogger,
       });
       await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
+      await taskManager.startProcessing();
       // Add the dummy node
       await nodeGraph.setNode(dummyNodeId, {
         host: '125.0.0.1' as Host,
@@ -388,10 +393,11 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
         keyManager,
         nodeGraph,
         proxy,
-        queue,
+        taskManager,
         logger: nodeConnectionManagerLogger,
       });
       await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
+      await taskManager.startProcessing();
       // @ts-ignore accessing protected NodeConnectionMap
       const connections = nodeConnectionManager.connections;
       expect(connections.size).toBe(0);
@@ -415,10 +421,11 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
         keyManager,
         nodeGraph,
         proxy,
-        queue,
+        taskManager,
         logger: nodeConnectionManagerLogger,
       });
       await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
+      await taskManager.startProcessing();
       // @ts-ignore accessing protected NodeConnectionMap
       const connections = nodeConnectionManager.connections;
       // @ts-ignore: kidnap connectionLocks
@@ -449,10 +456,11 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
         keyManager,
         nodeGraph,
         proxy,
-        queue,
+        taskManager,
         logger: nodeConnectionManagerLogger,
       });
       await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
+      await taskManager.startProcessing();
       // @ts-ignore: kidnap connections
       const connections = nodeConnectionManager.connections;
       // @ts-ignore: kidnap connectionLocks
@@ -483,10 +491,11 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
         keyManager,
         nodeGraph,
         proxy,
-        queue,
+        taskManager,
         logger: nodeConnectionManagerLogger,
       });
       await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
+      await taskManager.startProcessing();
       // Do testing
       // set up connections
       await nodeConnectionManager.withConnF(remoteNodeId1, nop);
@@ -526,10 +535,11 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
         keyManager,
         nodeGraph,
         proxy,
-        queue,
+        taskManager,
         logger: nodeConnectionManagerLogger,
       });
       await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
+      await taskManager.startProcessing();
       await nodeConnectionManager.pingNode(
         remoteNodeId1,
         remoteNode1.proxy.getProxyHost(),
@@ -547,18 +557,18 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
         keyManager,
         nodeGraph,
         proxy,
-        queue,
+        taskManager,
         logger: nodeConnectionManagerLogger,
       });
       await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
-
+      await taskManager.startProcessing();
       // Pinging node
       expect(
         await nodeConnectionManager.pingNode(
           remoteNodeId1,
           '127.1.2.3' as Host,
           55555 as Port,
-          timerStart(1000),
+          { timer: new Timer({ delay: 1000 }) },
         ),
       ).toEqual(false);
     } finally {
@@ -573,17 +583,17 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
         keyManager,
         nodeGraph,
         proxy,
-        queue,
+        taskManager,
         logger: nodeConnectionManagerLogger,
       });
       await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
-
+      await taskManager.startProcessing();
       expect(
         await nodeConnectionManager.pingNode(
           remoteNodeId1,
           remoteNode2.proxy.getProxyHost(),
           remoteNode2.proxy.getProxyPort(),
-          timerStart(1000),
+          { timer: new Timer({ delay: 1000 }) },
         ),
       ).toEqual(false);
 
@@ -592,7 +602,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
           remoteNodeId2,
           remoteNode1.proxy.getProxyHost(),
           remoteNode1.proxy.getProxyPort(),
-          timerStart(1000),
+          { timer: new Timer({ delay: 1000 }) },
         ),
       ).toEqual(false);
     } finally {

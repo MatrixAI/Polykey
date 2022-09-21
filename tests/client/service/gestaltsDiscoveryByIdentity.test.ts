@@ -6,7 +6,7 @@ import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { Metadata } from '@grpc/grpc-js';
-import Queue from '@/nodes/Queue';
+import TaskManager from '@/tasks/TaskManager';
 import GestaltGraph from '@/gestalts/GestaltGraph';
 import ACL from '@/acl/ACL';
 import KeyManager from '@/keys/KeyManager';
@@ -45,7 +45,7 @@ describe('gestaltsDiscoveryByIdentity', () => {
   let gestaltGraph: GestaltGraph;
   let identitiesManager: IdentitiesManager;
   let nodeGraph: NodeGraph;
-  let queue: Queue;
+  let taskManager: TaskManager;
   let nodeConnectionManager: NodeConnectionManager;
   let nodeManager: NodeManager;
   let sigchain: Sigchain;
@@ -113,14 +113,16 @@ describe('gestaltsDiscoveryByIdentity', () => {
       keyManager,
       logger: logger.getChild('NodeGraph'),
     });
-    queue = new Queue({
-      logger: logger.getChild('queue'),
+    taskManager = await TaskManager.createTaskManager({
+      db,
+      logger,
+      lazy: true,
     });
     nodeConnectionManager = new NodeConnectionManager({
       keyManager,
       nodeGraph,
       proxy,
-      queue,
+      taskManager,
       connConnectTime: 2000,
       connTimeoutTime: 2000,
       logger: logger.getChild('NodeConnectionManager'),
@@ -131,12 +133,12 @@ describe('gestaltsDiscoveryByIdentity', () => {
       nodeConnectionManager,
       nodeGraph,
       sigchain,
-      queue,
+      taskManager,
       logger,
     });
-    await queue.start();
     await nodeManager.start();
     await nodeConnectionManager.start({ nodeManager });
+    await taskManager.startProcessing();
     discovery = await Discovery.createDiscovery({
       db,
       keyManager,
@@ -167,13 +169,14 @@ describe('gestaltsDiscoveryByIdentity', () => {
     });
   });
   afterEach(async () => {
+    await taskManager.stopProcessing();
+    await taskManager.stopTasks();
     await grpcClient.destroy();
     await grpcServer.stop();
     await discovery.stop();
     await nodeGraph.stop();
     await nodeConnectionManager.stop();
     await nodeManager.stop();
-    await queue.stop();
     await sigchain.stop();
     await proxy.stop();
     await identitiesManager.stop();
@@ -181,6 +184,7 @@ describe('gestaltsDiscoveryByIdentity', () => {
     await acl.stop();
     await db.stop();
     await keyManager.stop();
+    await taskManager.stop();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,

@@ -56,7 +56,7 @@ class CommandPing extends CommandPolykey {
           );
         } catch (err) {
           if (err.cause instanceof nodesErrors.ErrorNodeGraphNodeIdNotFound) {
-            error = new binErrors.ErrorNodePingFailed(
+            error = new binErrors.ErrorCLINodePingFailed(
               `Failed to resolve node ID ${nodesUtils.encodeNodeId(
                 nodeId,
               )} to an address.`,
@@ -69,7 +69,7 @@ class CommandPing extends CommandPolykey {
         const status = { success: false, message: '' };
         status.success = statusMessage ? statusMessage.getSuccess() : false;
         if (!status.success && !error) {
-          error = new binErrors.ErrorNodePingFailed('No response received');
+          error = new binErrors.ErrorCLINodePingFailed('No response received');
         }
         if (status.success) status.message = 'Node is Active.';
         else status.message = error.message;

@@ -1,13 +1,14 @@
 import type { NodeAddress, NodeBucket, NodeId, SeedNodes } from '@/nodes/types';
 import type { Host, Port } from '@/network/types';
 import type NodeManager from '@/nodes/NodeManager';
+import type TaskManager from '@/tasks/TaskManager';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { DB } from '@matrixai/db';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { IdInternal } from '@matrixai/id';
-import Queue from '@/nodes/Queue';
+import { PromiseCancellable } from '@matrixai/async-cancellable';
 import PolykeyAgent from '@/PolykeyAgent';
 import KeyManager from '@/keys/KeyManager';
 import NodeGraph from '@/nodes/NodeGraph';
@@ -76,7 +77,6 @@ describe(`${NodeConnectionManager.name} general test`, () => {
   let db: DB;
   let proxy: Proxy;
   let nodeGraph: NodeGraph;
-  let queue: Queue;
 
   let remoteNode1: PolykeyAgent;
   let remoteNode2: PolykeyAgent;
@@ -122,7 +122,14 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     return IdInternal.create<NodeId>(idArray);
   };
 
-  const dummyNodeManager = { setNode: jest.fn() } as unknown as NodeManager;
+  const dummyNodeManager = {
+    setNode: jest.fn(),
+    updateRefreshBucketDelay: jest.fn(),
+  } as unknown as NodeManager;
+  const dummyTaskManager: TaskManager = {
+    registerHandler: jest.fn(),
+    deregisterHandler: jest.fn(),
+  } as unknown as TaskManager;
 
   beforeAll(async () => {
     dataDir2 = await fs.promises.mkdtemp(
@@ -197,10 +204,6 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       keyManager,
       logger: logger.getChild('NodeGraph'),
     });
-    queue = new Queue({
-      logger: logger.getChild('queue'),
-    });
-    await queue.start();
     const tlsConfig = {
       keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
       certChainPem: keysUtils.certToPem(keyManager.getRootCert()),
@@ -226,7 +229,6 @@ describe(`${NodeConnectionManager.name} general test`, () => {
   });
 
   afterEach(async () => {
-    await queue.stop();
     await nodeGraph.stop();
     await nodeGraph.destroy();
     await db.stop();
@@ -243,7 +245,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       keyManager,
       nodeGraph,
       proxy,
-      queue,
+      taskManager: dummyTaskManager,
       logger: nodeConnectionManagerLogger,
     });
     await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
@@ -270,13 +272,15 @@ describe(`${NodeConnectionManager.name} general test`, () => {
         NodeConnectionManager.prototype,
         'pingNode',
       );
-      mockedPingNode.mockImplementation(async () => true);
+      mockedPingNode.mockImplementation(
+        () => new PromiseCancellable((resolve) => resolve(true)),
+      );
       // NodeConnectionManager under test
       const nodeConnectionManager = new NodeConnectionManager({
         keyManager,
         nodeGraph,
         proxy,
-        queue,
+        taskManager: dummyTaskManager,
         logger: nodeConnectionManagerLogger,
       });
       await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
@@ -325,7 +329,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
         keyManager,
         nodeGraph,
         proxy,
-        queue,
+        taskManager: dummyTaskManager,
         logger: nodeConnectionManagerLogger,
       });
       await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
@@ -391,7 +395,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
         keyManager,
         nodeGraph,
         proxy,
-        queue,
+        taskManager: dummyTaskManager,
         logger: logger.getChild('NodeConnectionManager'),
       });
 
@@ -463,7 +467,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
         keyManager,
         nodeGraph,
         proxy,
-        queue,
+        taskManager: dummyTaskManager,
         logger: nodeConnectionManagerLogger,
       });
       await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
@@ -501,7 +505,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
         keyManager,
         nodeGraph,
         proxy,
-        queue,
+        taskManager: dummyTaskManager,
         logger: nodeConnectionManagerLogger,
       });
       await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
@@ -519,6 +523,63 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       expect(mockedNodesHolePunchMessageSend).toHaveBeenCalled();
     } finally {
       mockedNodesHolePunchMessageSend.mockRestore();
+      await nodeConnectionManager?.stop();
+    }
+  });
+  test('getClosestGlobalNodes should skip recent offline nodes', async () => {
+    let nodeConnectionManager: NodeConnectionManager | undefined;
+    const mockedPingNode = jest.spyOn(
+      NodeConnectionManager.prototype,
+      'pingNode',
+    );
+    try {
+      nodeConnectionManager = new NodeConnectionManager({
+        keyManager,
+        nodeGraph,
+        proxy,
+        taskManager: dummyTaskManager,
+        logger: nodeConnectionManagerLogger,
+      });
+      await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
+      // Check two things,
+      // 1. existence of a node in the backoff map
+      // 2. getClosestGlobalNodes doesn't try to connect to offline node
+
+      // Add fake data to `NodeGraph`
+      await nodeGraph.setNode(nodeId1, {
+        host: serverHost,
+        port: serverPort,
+      });
+      await nodeGraph.setNode(nodeId2, {
+        host: serverHost,
+        port: serverPort,
+      });
+
+      // Making pings fail
+      mockedPingNode.mockImplementation(
+        () => new PromiseCancellable((resolve) => resolve(false)),
+      );
+      await nodeConnectionManager.getClosestGlobalNodes(nodeId3, false);
+      expect(mockedPingNode).toHaveBeenCalled();
+
+      // Nodes 1 and 2 should exist in backoff map
+      // @ts-ignore: kidnap protected property
+      const backoffMap = nodeConnectionManager.nodesBackoffMap;
+      expect(backoffMap.has(nodeId1.toString())).toBeTrue();
+      expect(backoffMap.has(nodeId2.toString())).toBeTrue();
+      expect(backoffMap.has(nodeId3.toString())).toBeFalse();
+
+      // Next find node should skip offline nodes
+      mockedPingNode.mockClear();
+      await nodeConnectionManager.getClosestGlobalNodes(nodeId3, true);
+      expect(mockedPingNode).not.toHaveBeenCalled();
+
+      // We can try connecting anyway
+      mockedPingNode.mockClear();
+      await nodeConnectionManager.getClosestGlobalNodes(nodeId3, false);
+      expect(mockedPingNode).toHaveBeenCalled();
+    } finally {
+      mockedPingNode.mockRestore();
       await nodeConnectionManager?.stop();
     }
   });

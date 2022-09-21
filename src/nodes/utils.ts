@@ -8,8 +8,11 @@ import type { KeyPath } from '@matrixai/db';
 import { IdInternal } from '@matrixai/id';
 import lexi from 'lexicographic-integer';
 import { utils as dbUtils } from '@matrixai/db';
+import * as nodesErrors from './errors';
 import { bytes2BigInt } from '../utils';
 import * as keysUtils from '../keys/utils';
+import * as grpcErrors from '../grpc/errors';
+import * as agentErrors from '../agent/errors';
 
 const sepBuffer = dbUtils.sep;
 
@@ -310,6 +313,38 @@ function generateRandomNodeIdForBucket(
   return xOrNodeId(nodeId, randomDistanceForBucket);
 }
 
+/**
+ * This is used to check if the given error is the result of a connection failure.
+ * Connection failures can happen due to the following.
+ * Failure to establish a connection,
+ * an existing connection fails,
+ * the GRPC client has been destroyed,
+ * or the NodeConnection has been destroyed.
+ * This is generally used to check the connection has failed
+ * before cleaning it up.
+ */
+function isConnectionError(e): boolean {
+  return (
+    e instanceof nodesErrors.ErrorNodeConnectionDestroyed ||
+    e instanceof grpcErrors.ErrorGRPC ||
+    e instanceof agentErrors.ErrorAgentClientDestroyed
+  );
+}
+
+/**
+ * This generates a random delay based on the given delay and jitter multiplier.
+ * For example, a delay of 100 and multiplier of 0.5 would result in a delay
+ * randomly between 50 and 150.
+ * @param delay - base delay to 'jitter' around
+ * @param jitterMultiplier - jitter amount as a multiple of the delay
+ */
+function refreshBucketsDelayJitter(
+  delay: number,
+  jitterMultiplier: number,
+): number {
+  return (Math.random() - 0.5) * delay * jitterMultiplier;
+}
+
 export {
   sepBuffer,
   encodeNodeId,
@@ -330,4 +365,6 @@ export {
   generateRandomDistanceForBucket,
   xOrNodeId,
   generateRandomNodeIdForBucket,
+  isConnectionError,
+  refreshBucketsDelayJitter,
 };

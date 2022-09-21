@@ -1,31 +1,36 @@
 import type { DB, DBTransaction } from '@matrixai/db';
 import type NodeConnectionManager from './NodeConnectionManager';
 import type NodeGraph from './NodeGraph';
-import type Queue from './Queue';
 import type KeyManager from '../keys/KeyManager';
 import type { PublicKeyPem } from '../keys/types';
 import type Sigchain from '../sigchain/Sigchain';
 import type { ChainData, ChainDataEncoded } from '../sigchain/types';
-import type {
-  NodeId,
-  NodeAddress,
-  NodeBucket,
-  NodeBucketIndex,
-} from '../nodes/types';
+import type { NodeId, NodeAddress, NodeBucket, NodeBucketIndex } from './types';
 import type { ClaimEncoded } from '../claims/types';
-import type { Timer } from '../types';
-import type { PromiseDeconstructed } from '../types';
+import type TaskManager from '../tasks/TaskManager';
+import type { TaskHandler, TaskHandlerId, Task } from '../tasks/types';
+import type { ContextTimed } from 'contexts/types';
+import type { PromiseCancellable } from '@matrixai/async-cancellable';
+import type { Host, Port } from '../network/types';
 import Logger from '@matrixai/logger';
 import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
+import { Semaphore, Lock } from '@matrixai/async-locks';
+import { IdInternal } from '@matrixai/id';
+import { Timer } from '@matrixai/timer';
 import * as nodesErrors from './errors';
 import * as nodesUtils from './utils';
+import * as tasksErrors from '../tasks/errors';
+import { timedCancellable, context } from '../contexts';
 import * as networkUtils from '../network/utils';
 import * as validationUtils from '../validation/utils';
 import * as utilsPB from '../proto/js/polykey/v1/utils/utils_pb';
 import * as claimsErrors from '../claims/errors';
 import * as sigchainUtils from '../sigchain/utils';
 import * as claimsUtils from '../claims/utils';
-import { promise, timerStart } from '../utils/utils';
+import { never } from '../utils/utils';
+
+const abortEphemeralTaskReason = Symbol('abort ephemeral task reason');
+const abortSingletonTaskReason = Symbol('abort singleton task reason');
 
 interface NodeManager extends StartStop {}
 @StartStop()
@@ -36,19 +41,80 @@ class NodeManager {
   protected keyManager: KeyManager;
   protected nodeConnectionManager: NodeConnectionManager;
   protected nodeGraph: NodeGraph;
-  protected queue: Queue;
-  // Refresh bucket timer
-  protected refreshBucketDeadlineMap: Map<NodeBucketIndex, number> = new Map();
-  protected refreshBucketTimer: NodeJS.Timer;
-  protected refreshBucketNext: NodeBucketIndex;
-  public readonly refreshBucketTimerDefault;
-  protected refreshBucketQueue: Set<NodeBucketIndex> = new Set();
-  protected refreshBucketQueueRunning: boolean = false;
-  protected refreshBucketQueueRunner: Promise<void>;
-  protected refreshBucketQueuePlug_: PromiseDeconstructed<void> = promise();
-  protected refreshBucketQueueDrained_: PromiseDeconstructed<void> = promise();
-  protected refreshBucketQueuePause_: PromiseDeconstructed<void> = promise();
-  protected refreshBucketQueueAbortController: AbortController;
+  protected taskManager: TaskManager;
+  protected refreshBucketDelay: number;
+  protected refreshBucketDelayJitter: number;
+  protected pendingNodes: Map<number, Map<string, NodeAddress>> = new Map();
+
+  public readonly basePath = this.constructor.name;
+  protected refreshBucketHandler: TaskHandler = async (
+    ctx,
+    _taskInfo,
+    bucketIndex,
+  ) => {
+    await this.refreshBucket(bucketIndex, ctx);
+    // When completed reschedule the task
+    const jitter = nodesUtils.refreshBucketsDelayJitter(
+      this.refreshBucketDelay,
+      this.refreshBucketDelayJitter,
+    );
+    await this.taskManager.scheduleTask({
+      delay: this.refreshBucketDelay + jitter,
+      handlerId: this.refreshBucketHandlerId,
+      lazy: true,
+      parameters: [bucketIndex],
+      path: [this.basePath, this.refreshBucketHandlerId, `${bucketIndex}`],
+      priority: 0,
+    });
+  };
+  public readonly refreshBucketHandlerId =
+    `${this.basePath}.${this.refreshBucketHandler.name}` as TaskHandlerId;
+  protected gcBucketHandler: TaskHandler = async (
+    ctx,
+    _taskInfo,
+    bucketIndex: number,
+  ) => {
+    await this.garbageCollectBucket(bucketIndex, 1500, ctx);
+    // Checking for any new pending tasks
+    const pendingNodesRemaining = this.pendingNodes.get(bucketIndex);
+    if (pendingNodesRemaining == null || pendingNodesRemaining.size === 0) {
+      return;
+    }
+    // Re-schedule the task
+    await this.setupGCTask(bucketIndex);
+  };
+  public readonly gcBucketHandlerId =
+    `${this.basePath}.${this.gcBucketHandler.name}` as TaskHandlerId;
+  protected pingAndSetNodeHandler: TaskHandler = async (
+    ctx,
+    _taskInfo,
+    nodeIdEncoded: string,
+    host: Host,
+    port: Port,
+  ) => {
+    const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded);
+    if (nodeId == null) {
+      this.logger.error(
+        `pingAndSetNodeHandler received invalid NodeId: ${nodeIdEncoded}`,
+      );
+      never();
+    }
+    const host_ = await networkUtils.resolveHost(host);
+    if (
+      await this.pingNode(nodeId, { host: host_, port }, { signal: ctx.signal })
+    ) {
+      await this.setNode(
+        nodeId,
+        { host: host_, port },
+        false,
+        false,
+        1500,
+        ctx,
+      );
+    }
+  };
+  public readonly pingAndSetNodeHandlerId: TaskHandlerId =
+    `${this.basePath}.${this.pingAndSetNodeHandler.name}` as TaskHandlerId;
 
   constructor({
     db,
@@ -56,8 +122,9 @@ class NodeManager {
     sigchain,
     nodeConnectionManager,
     nodeGraph,
-    queue,
-    refreshBucketTimerDefault = 3600000, // 1 hour in milliseconds
+    taskManager,
+    refreshBucketDelay = 3600000, // 1 hour in milliseconds
+    refreshBucketDelayJitter = 0.5, // Multiple of refreshBucketDelay to jitter by
     logger,
   }: {
     db: DB;
@@ -65,8 +132,9 @@ class NodeManager {
     sigchain: Sigchain;
     nodeConnectionManager: NodeConnectionManager;
     nodeGraph: NodeGraph;
-    queue: Queue;
-    refreshBucketTimerDefault?: number;
+    taskManager: TaskManager;
+    refreshBucketDelay?: number;
+    refreshBucketDelayJitter?: number;
     logger?: Logger;
   }) {
     this.logger = logger ?? new Logger(this.constructor.name);
@@ -75,21 +143,51 @@ class NodeManager {
     this.sigchain = sigchain;
     this.nodeConnectionManager = nodeConnectionManager;
     this.nodeGraph = nodeGraph;
-    this.queue = queue;
-    this.refreshBucketTimerDefault = refreshBucketTimerDefault;
+    this.taskManager = taskManager;
+    this.refreshBucketDelay = refreshBucketDelay;
+    // Clamped from 0 to 1 inclusive
+    this.refreshBucketDelayJitter = Math.max(
+      0,
+      Math.min(refreshBucketDelayJitter, 1),
+    );
   }
 
   public async start() {
     this.logger.info(`Starting ${this.constructor.name}`);
-    this.startRefreshBucketTimers();
-    this.refreshBucketQueueRunner = this.startRefreshBucketQueue();
+    this.logger.info(`Registering handler for setNode`);
+    this.taskManager.registerHandler(
+      this.refreshBucketHandlerId,
+      this.refreshBucketHandler,
+    );
+    this.taskManager.registerHandler(
+      this.gcBucketHandlerId,
+      this.gcBucketHandler,
+    );
+    this.taskManager.registerHandler(
+      this.pingAndSetNodeHandlerId,
+      this.pingAndSetNodeHandler,
+    );
+    await this.setupRefreshBucketTasks();
     this.logger.info(`Started ${this.constructor.name}`);
   }
 
   public async stop() {
     this.logger.info(`Stopping ${this.constructor.name}`);
-    await this.stopRefreshBucketTimers();
-    await this.stopRefreshBucketQueue();
+    this.logger.info('Cancelling ephemeral tasks');
+    const tasks: Array<Promise<any>> = [];
+    for await (const task of this.taskManager.getTasks('asc', false, [
+      this.basePath,
+    ])) {
+      tasks.push(task.promise());
+      task.cancel(abortEphemeralTaskReason);
+    }
+    // We don't care about the result, only that they've ended
+    await Promise.allSettled(tasks);
+    this.logger.info('Cancelled ephemeral tasks');
+    this.logger.info(`Unregistering handler for setNode`);
+    this.taskManager.deregisterHandler(this.refreshBucketHandlerId);
+    this.taskManager.deregisterHandler(this.gcBucketHandlerId);
+    this.taskManager.deregisterHandler(this.pingAndSetNodeHandlerId);
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
@@ -98,17 +196,24 @@ class NodeManager {
    * @return true if online, false if offline
    * @param nodeId - NodeId of the node we're pinging
    * @param address - Optional Host and Port we want to ping
-   * @param timer Connection timeout timer
+   * @param ctx
    */
-  public async pingNode(
+  public pingNode(
     nodeId: NodeId,
     address?: NodeAddress,
-    timer?: Timer,
+    ctx?: Partial<ContextTimed>,
+  ): PromiseCancellable<boolean>;
+  @timedCancellable(true, 2000)
+  public async pingNode(
+    nodeId: NodeId,
+    address: NodeAddress | undefined,
+    @context ctx: ContextTimed,
   ): Promise<boolean> {
     // We need to attempt a connection using the proxies
     // For now we will just do a forward connect + relay message
     const targetAddress =
-      address ?? (await this.nodeConnectionManager.findNode(nodeId));
+      address ??
+      (await this.nodeConnectionManager.findNode(nodeId, false, ctx));
     if (targetAddress == null) {
       throw new nodesErrors.ErrorNodeGraphNodeIdNotFound();
     }
@@ -117,7 +222,7 @@ class NodeManager {
       nodeId,
       targetHost,
       targetAddress.port,
-      timer,
+      ctx,
     );
   }
 
@@ -396,19 +501,31 @@ class NodeManager {
    * This operation is blocking by default - set `block` 2qto false to make it non-blocking
    * @param nodeId - Id of the node we wish to add
    * @param nodeAddress - Expected address of the node we want to add
-   * @param block - Flag for if the operation should block or utilize the async queue
+   * @param block - When true it will wait for any garbage collection to finish before returning.
    * @param force - Flag for if we want to add the node without authenticating or if the bucket is full.
    * This will drop the oldest node in favor of the new.
-   * @param timeout Connection timeout
+   * @param pingTimeout - Timeout for each ping opearation during garbage collection.
+   * @param ctx
    * @param tran
    */
+  public setNode(
+    nodeId: NodeId,
+    nodeAddress: NodeAddress,
+    block?: boolean,
+    force?: boolean,
+    pingTimeout?: number,
+    ctx?: Partial<ContextTimed>,
+    tran?: DBTransaction,
+  ): PromiseCancellable<void>;
   @ready(new nodesErrors.ErrorNodeManagerNotRunning())
+  @timedCancellable(true, 20000)
   public async setNode(
     nodeId: NodeId,
     nodeAddress: NodeAddress,
-    block: boolean = true,
+    block: boolean = false,
     force: boolean = false,
-    timeout?: number,
+    pingTimeout: number = 1500,
+    @context ctx: ContextTimed,
     tran?: DBTransaction,
   ): Promise<void> {
     // We don't want to add our own node
@@ -419,7 +536,7 @@ class NodeManager {
 
     if (tran == null) {
       return this.db.withTransactionF((tran) =>
-        this.setNode(nodeId, nodeAddress, block, force, timeout, tran),
+        this.setNode(nodeId, nodeAddress, block, force, pingTimeout, ctx, tran),
       );
     }
 
@@ -431,9 +548,11 @@ class NodeManager {
     //  We need to ping the oldest node. If the ping succeeds we need to update
     //  the lastUpdated of the oldest node and drop the new one. If the ping
     //  fails we delete the old node and add in the new one.
+    const [bucketIndex] = this.nodeGraph.bucketIndex(nodeId);
+    // To avoid conflict we want to lock on the bucket index
+    await this.nodeGraph.lockBucket(bucketIndex, tran);
     const nodeData = await this.nodeGraph.getNode(nodeId, tran);
     // If this is a new entry, check the bucket limit
-    const [bucketIndex] = this.nodeGraph.bucketIndex(nodeId);
     const count = await this.nodeGraph.getBucketMetaProp(
       bucketIndex,
       'count',
@@ -444,15 +563,20 @@ class NodeManager {
       // We want to add or update the node
       await this.nodeGraph.setNode(nodeId, nodeAddress, tran);
       // Updating the refreshBucket timer
-      this.refreshBucketUpdateDeadline(bucketIndex);
+      await this.updateRefreshBucketDelay(
+        bucketIndex,
+        this.refreshBucketDelay,
+        true,
+        tran,
+      );
     } else {
       // We want to add a node but the bucket is full
-      // We need to ping the oldest node
       if (force) {
         // We just add the new node anyway without checking the old one
         const oldNodeId = (
           await this.nodeGraph.getOldestNode(bucketIndex, 1, tran)
-        ).pop()!;
+        ).pop();
+        if (oldNodeId == null) never();
         this.logger.debug(
           `Force was set, removing ${nodesUtils.encodeNodeId(
             oldNodeId,
@@ -461,80 +585,188 @@ class NodeManager {
         await this.nodeGraph.unsetNode(oldNodeId, tran);
         await this.nodeGraph.setNode(nodeId, nodeAddress, tran);
         // Updating the refreshBucket timer
-        this.refreshBucketUpdateDeadline(bucketIndex);
-        return;
-      } else if (block) {
-        this.logger.debug(
-          `Bucket was full and blocking was true, garbage collecting old nodes to add ${nodesUtils.encodeNodeId(
-            nodeId,
-          )}`,
-        );
-        await this.garbageCollectOldNode(
+        await this.updateRefreshBucketDelay(
           bucketIndex,
-          nodeId,
-          nodeAddress,
-          timeout,
+          this.refreshBucketDelay,
+          true,
+          tran,
         );
-      } else {
-        this.logger.debug(
-          `Bucket was full and blocking was false, adding ${nodesUtils.encodeNodeId(
-            nodeId,
-          )} to queue`,
-        );
-        // Re-attempt this later asynchronously by adding the the queue
-        this.queue.push(() =>
-          this.setNode(nodeId, nodeAddress, true, false, timeout),
-        );
+        return;
       }
+      this.logger.debug(
+        `Bucket was full, adding ${nodesUtils.encodeNodeId(
+          nodeId,
+        )} to pending list`,
+      );
+      // Add the node to the pending nodes list
+      await this.addPendingNode(
+        bucketIndex,
+        nodeId,
+        nodeAddress,
+        block,
+        pingTimeout,
+        ctx,
+        tran,
+      );
     }
   }
 
-  private async garbageCollectOldNode(
+  protected garbageCollectBucket(
+    bucketIndex: number,
+    pingTimeout?: number,
+    ctx?: Partial<ContextTimed>,
+    tran?: DBTransaction,
+  ): PromiseCancellable<void>;
+  @timedCancellable(true, 20000)
+  protected async garbageCollectBucket(
+    bucketIndex: number,
+    pingTimeout: number = 1500,
+    @context ctx: ContextTimed,
+    tran?: DBTransaction,
+  ): Promise<void> {
+    if (tran == null) {
+      return this.db.withTransactionF((tran) =>
+        this.garbageCollectBucket(bucketIndex, pingTimeout, ctx, tran),
+      );
+    }
+
+    // This needs to:
+    //  1. Iterate over every node within the bucket pinging K at a time
+    //  2. remove any un-responsive nodes until there is room of all pending
+    //    or run out of existing nodes
+    //  3. fill in the bucket with pending nodes until full
+    //  4. throw out remaining pending nodes
+
+    const pendingNodes = this.pendingNodes.get(bucketIndex);
+    // No nodes mean nothing to do
+    if (pendingNodes == null || pendingNodes.size === 0) return;
+    this.pendingNodes.set(bucketIndex, new Map());
+    // Locking on bucket
+    await this.nodeGraph.lockBucket(bucketIndex, tran);
+    const semaphore = new Semaphore(3);
+
+    // Iterating over existing nodes
+    const bucket = await this.getBucket(bucketIndex, tran);
+    if (bucket == null) never();
+    let removedNodes = 0;
+    const unsetLock = new Lock();
+    const pendingPromises: Array<Promise<void>> = [];
+    for (const [nodeId, nodeData] of bucket) {
+      if (removedNodes >= pendingNodes.size) break;
+      await semaphore.waitForUnlock();
+      if (ctx.signal?.aborted === true) break;
+      const [semaphoreReleaser] = await semaphore.lock()();
+      pendingPromises.push(
+        (async () => {
+          // Ping and remove or update node in bucket
+          const pingCtx = {
+            signal: ctx.signal,
+            timer: new Timer({ delay: pingTimeout }),
+          };
+          if (await this.pingNode(nodeId, nodeData.address, pingCtx)) {
+            // Succeeded so update
+            await this.setNode(
+              nodeId,
+              nodeData.address,
+              false,
+              false,
+              undefined,
+              undefined,
+              tran,
+            );
+          } else {
+            // We need to lock this since it's concurrent
+            //  and shares the transaction
+            await unsetLock.withF(async () => {
+              await this.unsetNode(nodeId, tran);
+              removedNodes += 1;
+            });
+          }
+        })()
+          // Clean ensure semaphore is released
+          .finally(async () => await semaphoreReleaser()),
+      );
+    }
+    // Wait for pending pings to complete
+    await Promise.all(pendingPromises);
+    // Fill in bucket with pending nodes
+    for (const [nodeIdString, address] of pendingNodes) {
+      if (removedNodes <= 0) break;
+      const nodeId = IdInternal.fromString<NodeId>(nodeIdString);
+      await this.setNode(
+        nodeId,
+        address,
+        false,
+        false,
+        undefined,
+        undefined,
+        tran,
+      );
+      removedNodes -= 1;
+    }
+  }
+
+  protected async addPendingNode(
     bucketIndex: number,
     nodeId: NodeId,
     nodeAddress: NodeAddress,
-    timeout?: number,
-  ) {
-    const oldestNodeIds = await this.nodeGraph.getOldestNode(bucketIndex, 3);
-    // We want to concurrently ping the nodes
-    const pingPromises = oldestNodeIds.map((nodeId) => {
-      const doPing = async (): Promise<{
-        nodeId: NodeId;
-        success: boolean;
-      }> => {
-        // This needs to return nodeId and ping result
-        const data = await this.nodeGraph.getNode(nodeId);
-        if (data == null) return { nodeId, success: false };
-        const timer = timeout != null ? timerStart(timeout) : undefined;
-        const result = await this.pingNode(nodeId, nodeAddress, timer);
-        return { nodeId, success: result };
-      };
-      return doPing();
-    });
-    const pingResults = await Promise.all(pingPromises);
-    for (const { nodeId, success } of pingResults) {
-      if (success) {
-        // Ping succeeded, update the node
-        this.logger.debug(
-          `Ping succeeded for ${nodesUtils.encodeNodeId(nodeId)}`,
-        );
-        const node = (await this.nodeGraph.getNode(nodeId))!;
-        await this.nodeGraph.setNode(nodeId, node.address);
-        // Updating the refreshBucket timer
-        this.refreshBucketUpdateDeadline(bucketIndex);
-      } else {
-        this.logger.debug(`Ping failed for ${nodesUtils.encodeNodeId(nodeId)}`);
-        // Otherwise we remove the node
-        await this.nodeGraph.unsetNode(nodeId);
+    block: boolean = false,
+    pingTimeout: number = 1500,
+    ctx?: ContextTimed,
+    tran?: DBTransaction,
+  ): Promise<void> {
+    if (!this.pendingNodes.has(bucketIndex)) {
+      this.pendingNodes.set(bucketIndex, new Map());
+    }
+    const pendingNodes = this.pendingNodes.get(bucketIndex);
+    pendingNodes!.set(nodeId.toString(), nodeAddress);
+    // No need to re-set it in the map, Maps are by reference
+
+    // If set to blocking we just run the GC operation here
+    //  without setting up a new task
+    if (block) {
+      await this.garbageCollectBucket(bucketIndex, pingTimeout, ctx, tran);
+      return;
+    }
+    await this.setupGCTask(bucketIndex);
+  }
+
+  protected async setupGCTask(bucketIndex: number) {
+    // Check and start a 'garbageCollect` bucket task
+    let scheduled: boolean = false;
+    for await (const task of this.taskManager.getTasks('asc', true, [
+      this.basePath,
+      this.gcBucketHandlerId,
+      `${bucketIndex}`,
+    ])) {
+      switch (task.status) {
+        case 'queued':
+        case 'active':
+          // Ignore active tasks
+          break;
+        case 'scheduled':
+          {
+            if (scheduled) {
+              // Duplicate scheduled are removed
+              task.cancel(abortSingletonTaskReason);
+              break;
+            }
+            scheduled = true;
+          }
+          break;
+        default:
+          task.cancel(abortSingletonTaskReason);
+          break;
       }
     }
-    // Check if we now have room and add the new node
-    const count = await this.nodeGraph.getBucketMetaProp(bucketIndex, 'count');
-    if (count < this.nodeGraph.nodeBucketLimit) {
-      this.logger.debug(`Bucket ${bucketIndex} now has room, adding new node`);
-      await this.nodeGraph.setNode(nodeId, nodeAddress);
-      // Updating the refreshBucket timer
-      this.refreshBucketUpdateDeadline(bucketIndex);
+    if (!scheduled) {
+      // If none were found, schedule a new one
+      await this.taskManager.scheduleTask({
+        handlerId: this.gcBucketHandlerId,
+        parameters: [bucketIndex],
+        path: [this.basePath, this.gcBucketHandlerId, `${bucketIndex}`],
+        lazy: true,
+      });
     }
   }
 
@@ -559,13 +791,17 @@ class NodeManager {
    * Connections during the search will will share node information with other
    * nodes.
    * @param bucketIndex
-   * @param options
+   * @param ctx
    */
+  public refreshBucket(
+    bucketIndex: number,
+    ctx?: Partial<ContextTimed>,
+  ): PromiseCancellable<void>;
+  @timedCancellable(true, 20000)
   public async refreshBucket(
     bucketIndex: NodeBucketIndex,
-    options: { signal?: AbortSignal } = {},
-  ) {
-    const { signal } = { ...options };
+    @context ctx: ContextTimed,
+  ): Promise<void> {
     // We need to generate a random nodeId for this bucket
     const nodeId = this.keyManager.getNodeId();
     const bucketRandomNodeId = nodesUtils.generateRandomNodeIdForBucket(
@@ -573,169 +809,236 @@ class NodeManager {
       bucketIndex,
     );
     // We then need to start a findNode procedure
-    await this.nodeConnectionManager.findNode(bucketRandomNodeId, { signal });
+    await this.nodeConnectionManager.findNode(bucketRandomNodeId, true, ctx);
   }
 
-  // Refresh bucket activity timer methods
+  protected async setupRefreshBucketTasks(tran?: DBTransaction) {
+    if (tran == null) {
+      return this.db.withTransactionF((tran) =>
+        this.setupRefreshBucketTasks(tran),
+      );
+    }
 
-  private startRefreshBucketTimers() {
-    // Setting initial bucket to refresh
-    this.refreshBucketNext = 0;
-    // Setting initial deadline
-    this.refreshBucketTimerReset(this.refreshBucketTimerDefault);
+    this.logger.info('Setting up refreshBucket tasks');
+    // 1. Iterate over existing tasks and reset the delay
+    const existingTasks: Array<boolean> = new Array(this.nodeGraph.nodeIdBits);
+    for await (const task of this.taskManager.getTasks(
+      'asc',
+      true,
+      [this.basePath, this.refreshBucketHandlerId],
+      tran,
+    )) {
+      const bucketIndex = parseInt(task.path[0]);
+      switch (task.status) {
+        case 'scheduled':
+          {
+            // If it's scheduled then reset delay
+            existingTasks[bucketIndex] = true;
+            // Total delay is refreshBucketDelay + time since task creation
+            const delay =
+              performance.now() +
+              performance.timeOrigin -
+              task.created.getTime() +
+              this.refreshBucketDelay +
+              nodesUtils.refreshBucketsDelayJitter(
+                this.refreshBucketDelay,
+                this.refreshBucketDelayJitter,
+              );
+            await this.taskManager.updateTask(task.id, { delay }, tran);
+          }
+          break;
+        case 'queued':
+        case 'active':
+          // If it's running then leave it
+          existingTasks[bucketIndex] = true;
+          break;
+        default:
+          // Otherwise, ignore it, should be re-created
+          existingTasks[bucketIndex] = false;
+      }
+    }
 
+    // 2. Recreate any missing tasks for buckets
     for (
       let bucketIndex = 0;
-      bucketIndex < this.nodeGraph.nodeIdBits;
+      bucketIndex < existingTasks.length;
       bucketIndex++
     ) {
-      const deadline = Date.now() + this.refreshBucketTimerDefault;
-      this.refreshBucketDeadlineMap.set(bucketIndex, deadline);
-    }
-  }
-
-  private async stopRefreshBucketTimers() {
-    clearTimeout(this.refreshBucketTimer);
-  }
-
-  private refreshBucketTimerReset(timeout: number) {
-    clearTimeout(this.refreshBucketTimer);
-    this.refreshBucketTimer = setTimeout(() => {
-      this.refreshBucketRefreshTimer();
-    }, timeout);
-  }
-
-  public refreshBucketUpdateDeadline(bucketIndex: NodeBucketIndex) {
-    // Update the map deadline
-    this.refreshBucketDeadlineMap.set(
-      bucketIndex,
-      Date.now() + this.refreshBucketTimerDefault,
-    );
-    // If the bucket was pending a refresh we remove it
-    this.refreshBucketQueueRemove(bucketIndex);
-    if (bucketIndex === this.refreshBucketNext) {
-      // Bucket is same as next bucket, this affects the timer
-      this.refreshBucketRefreshTimer();
-    }
-  }
-
-  private refreshBucketRefreshTimer() {
-    // Getting new closest deadline
-    let closestBucket = this.refreshBucketNext;
-    let closestDeadline = Date.now() + this.refreshBucketTimerDefault;
-    const now = Date.now();
-    for (const [bucketIndex, deadline] of this.refreshBucketDeadlineMap) {
-      // Skip any queued buckets marked by 0 deadline
-      if (deadline === 0) continue;
-      if (deadline <= now) {
-        // Deadline for this has already passed, we add it to the queue
-        this.refreshBucketQueueAdd(bucketIndex);
-        continue;
-      }
-      if (deadline < closestDeadline) {
-        closestBucket = bucketIndex;
-        closestDeadline = deadline;
-      }
-    }
-    // Working out time left
-    const timeout = closestDeadline - Date.now();
-    this.logger.debug(
-      `Refreshing refreshBucket timer with new timeout ${timeout}`,
-    );
-    // Updating timer and next
-    this.refreshBucketNext = closestBucket;
-    this.refreshBucketTimerReset(timeout);
-  }
-
-  // Refresh bucket async queue methods
-
-  public refreshBucketQueueAdd(bucketIndex: NodeBucketIndex) {
-    this.logger.debug(`Adding bucket ${bucketIndex} to queue`);
-    this.refreshBucketDeadlineMap.set(bucketIndex, 0);
-    this.refreshBucketQueue.add(bucketIndex);
-    this.refreshBucketQueueUnplug();
-  }
-
-  public refreshBucketQueueRemove(bucketIndex: NodeBucketIndex) {
-    this.logger.debug(`Removing bucket ${bucketIndex} from queue`);
-    this.refreshBucketQueue.delete(bucketIndex);
-  }
-
-  public async refreshBucketQueueDrained() {
-    await this.refreshBucketQueueDrained_.p;
-  }
-
-  public refreshBucketQueuePause() {
-    this.logger.debug('Pausing refreshBucketQueue');
-    this.refreshBucketQueuePause_ = promise();
-  }
-
-  public refreshBucketQueueResume() {
-    this.logger.debug('Resuming refreshBucketQueue');
-    this.refreshBucketQueuePause_.resolveP();
-  }
-
-  private async startRefreshBucketQueue(): Promise<void> {
-    this.refreshBucketQueueRunning = true;
-    this.refreshBucketQueuePlug();
-    this.refreshBucketQueueResume();
-    let iterator: IterableIterator<NodeBucketIndex> | undefined;
-    this.refreshBucketQueueAbortController = new AbortController();
-    const pace = async () => {
-      // Wait if paused
-      await this.refreshBucketQueuePause_.p;
-      // Wait for plug
-      await this.refreshBucketQueuePlug_.p;
-      if (iterator == null) {
-        iterator = this.refreshBucketQueue[Symbol.iterator]();
-      }
-      return this.refreshBucketQueueRunning;
-    };
-    while (await pace()) {
-      const bucketIndex: NodeBucketIndex = iterator?.next().value;
-      if (bucketIndex == null) {
-        // Iterator is empty, plug and continue
-        iterator = undefined;
-        this.refreshBucketQueuePlug();
-        continue;
-      }
-      // Do the job
-      this.logger.debug(
-        `processing refreshBucket for bucket ${bucketIndex}, ${this.refreshBucketQueue.size} left in queue`,
-      );
-      try {
-        await this.refreshBucket(bucketIndex, {
-          signal: this.refreshBucketQueueAbortController.signal,
+      const exists = existingTasks[bucketIndex];
+      if (!exists) {
+        // Create a new task
+        this.logger.debug(
+          `Creating refreshBucket task for bucket ${bucketIndex}`,
+        );
+        const jitter = nodesUtils.refreshBucketsDelayJitter(
+          this.refreshBucketDelay,
+          this.refreshBucketDelayJitter,
+        );
+        await this.taskManager.scheduleTask({
+          handlerId: this.refreshBucketHandlerId,
+          delay: this.refreshBucketDelay + jitter,
+          lazy: true,
+          parameters: [bucketIndex],
+          path: [this.basePath, this.refreshBucketHandlerId, `${bucketIndex}`],
+          priority: 0,
         });
-      } catch (e) {
-        if (e instanceof nodesErrors.ErrorNodeAborted) break;
-        throw e;
       }
-      // Remove from queue and update bucket deadline
-      this.refreshBucketQueue.delete(bucketIndex);
-      this.refreshBucketUpdateDeadline(bucketIndex);
     }
-    this.logger.debug('startRefreshBucketQueue has ended');
+    this.logger.info('Set up refreshBucket tasks');
   }
 
-  private async stopRefreshBucketQueue(): Promise<void> {
-    // Flag end and await queue finish
-    this.refreshBucketQueueAbortController.abort();
-    this.refreshBucketQueueRunning = false;
-    this.refreshBucketQueueUnplug();
-    this.refreshBucketQueueResume();
+  @ready(new nodesErrors.ErrorNodeManagerNotRunning())
+  public async updateRefreshBucketDelay(
+    bucketIndex: number,
+    delay: number = this.refreshBucketDelay,
+    lazy: boolean = true,
+    tran?: DBTransaction,
+  ): Promise<Task> {
+    if (tran == null) {
+      return this.db.withTransactionF((tran) =>
+        this.updateRefreshBucketDelay(bucketIndex, delay, lazy, tran),
+      );
+    }
+
+    const jitter = nodesUtils.refreshBucketsDelayJitter(
+      delay,
+      this.refreshBucketDelayJitter,
+    );
+    let foundTask: Task | undefined;
+    let existingTask = false;
+    for await (const task of this.taskManager.getTasks(
+      'asc',
+      true,
+      [this.basePath, this.refreshBucketHandlerId, `${bucketIndex}`],
+      tran,
+    )) {
+      if (!existingTask) {
+        foundTask = task;
+        // Update the first one
+        // total delay is refreshBucketDelay + time since task creation
+        // time since task creation = now - creation time;
+        const delayNew =
+          performance.now() +
+          performance.timeOrigin -
+          task.created.getTime() +
+          delay +
+          jitter;
+        try {
+          await this.taskManager.updateTask(task.id, { delay: delayNew });
+          existingTask = true;
+        } catch (e) {
+          if (e instanceof tasksErrors.ErrorTaskRunning) {
+            // Ignore running
+            existingTask = true;
+          } else if (!(e instanceof tasksErrors.ErrorTaskMissing)) {
+            throw e;
+          }
+        }
+        this.logger.debug(
+          `Updating refreshBucket task for bucket ${bucketIndex}`,
+        );
+      } else {
+        // These are extra, so we cancel them
+        task.cancel(abortSingletonTaskReason);
+        this.logger.warn(
+          `Duplicate refreshBucket task was found for bucket ${bucketIndex}, cancelling`,
+        );
+      }
+    }
+    if (!existingTask) {
+      this.logger.debug(
+        `No refreshBucket task for bucket ${bucketIndex}, new one was created`,
+      );
+      foundTask = await this.taskManager.scheduleTask({
+        delay: delay + jitter,
+        handlerId: this.refreshBucketHandlerId,
+        lazy: true,
+        parameters: [bucketIndex],
+        path: [this.basePath, this.refreshBucketHandlerId, `${bucketIndex}`],
+        priority: 0,
+      });
+    }
+    if (foundTask == null) never();
+    return foundTask;
   }
 
-  private refreshBucketQueuePlug() {
-    this.logger.debug('refresh bucket queue has plugged');
-    this.refreshBucketQueuePlug_ = promise();
-    this.refreshBucketQueueDrained_?.resolveP();
-  }
-
-  private refreshBucketQueueUnplug() {
-    this.logger.debug('refresh bucket queue has unplugged');
-    this.refreshBucketQueueDrained_ = promise();
-    this.refreshBucketQueuePlug_?.resolveP();
+  /**
+   * Perform an initial database synchronisation: get k of the closest nodes
+   * from each seed node and add them to this database
+   * Establish a proxy connection to each node before adding it
+   * By default this operation is blocking, set `block` to false to make it
+   * non-blocking
+   */
+  public syncNodeGraph(
+    block?: boolean,
+    ctx?: Partial<ContextTimed>,
+  ): PromiseCancellable<void>;
+  @ready(new nodesErrors.ErrorNodeManagerNotRunning())
+  @timedCancellable(true, 20000)
+  public async syncNodeGraph(
+    block: boolean = true,
+    @context ctx: ContextTimed,
+  ): Promise<void> {
+    this.logger.info('Syncing nodeGraph');
+    for (const seedNodeId of this.nodeConnectionManager.getSeedNodes()) {
+      // Check if the connection is viable
+      if (
+        (await this.pingNode(seedNodeId, undefined, { signal: ctx.signal })) ===
+        false
+      ) {
+        continue;
+      }
+      const closestNodes =
+        await this.nodeConnectionManager.getRemoteNodeClosestNodes(
+          seedNodeId,
+          this.keyManager.getNodeId(),
+          ctx,
+        );
+      const localNodeId = this.keyManager.getNodeId();
+      for (const [nodeId, nodeData] of closestNodes) {
+        if (!localNodeId.equals(nodeId)) {
+          const pingAndSetTask = await this.taskManager.scheduleTask({
+            delay: 0,
+            handlerId: this.pingAndSetNodeHandlerId,
+            lazy: !block,
+            parameters: [
+              nodesUtils.encodeNodeId(nodeId),
+              nodeData.address.host,
+              nodeData.address.port,
+            ],
+            path: [this.basePath, this.pingAndSetNodeHandlerId],
+            // Need to be somewhat active so high priority
+            priority: 100,
+          });
+          if (block) {
+            try {
+              await pingAndSetTask.promise();
+            } catch (e) {
+              if (!(e instanceof nodesErrors.ErrorNodeGraphSameNodeId)) throw e;
+            }
+          }
+        }
+      }
+      // Refreshing every bucket above the closest node
+      let closestNodeInfo = closestNodes.pop();
+      if (
+        closestNodeInfo != null &&
+        this.keyManager.getNodeId().equals(closestNodeInfo[0])
+      ) {
+        // Skip our nodeId if it exists
+        closestNodeInfo = closestNodes.pop();
+      }
+      let index = this.nodeGraph.nodeIdBits;
+      if (closestNodeInfo != null) {
+        const [closestNode] = closestNodeInfo;
+        const [bucketIndex] = this.nodeGraph.bucketIndex(closestNode);
+        index = bucketIndex;
+      }
+      for (let i = index; i < this.nodeGraph.nodeIdBits; i++) {
+        const task = await this.updateRefreshBucketDelay(i, 0, !block);
+        if (block) await task.promise();
+      }
+    }
   }
 }
 

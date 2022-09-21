@@ -31,6 +31,7 @@ import * as utils from '../utils';
 const abortSchedulingLoopReason = Symbol('abort scheduling loop reason');
 const abortQueuingLoopReason = Symbol('abort queuing loop reason');
 
+interface TaskManager extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
   new tasksErrors.ErrorTaskManagerRunning(),
   new tasksErrors.ErrorTaskManagerDestroyed(),
@@ -235,7 +236,6 @@ class TaskManager {
    * Stop the scheduling and queuing loop
    * This call is idempotent
    */
-  @ready(new tasksErrors.ErrorTaskManagerNotRunning(), false, ['stopping'])
   public async stopProcessing(): Promise<void> {
     await Promise.all([this.stopQueueing(), this.stopScheduling()]);
   }
@@ -244,7 +244,6 @@ class TaskManager {
    * Stop the active tasks
    * This call is idempotent
    */
-  @ready(new tasksErrors.ErrorTaskManagerNotRunning(), false, ['stopping'])
   public async stopTasks(): Promise<void> {
     for (const [, activePromise] of this.activePromises) {
       activePromise.cancel(new tasksErrors.ErrorTaskStop());

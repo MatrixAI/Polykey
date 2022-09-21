@@ -2,7 +2,7 @@ import type { AddressInfo } from 'net';
 import type { NodeId, NodeIdString, SeedNodes } from '@/nodes/types';
 import type { Host, Port, TLSConfig } from '@/network/types';
 import type NodeManager from '@/nodes/NodeManager';
-import type Queue from '@/nodes/Queue';
+import type TaskManager from 'tasks/TaskManager';
 import net from 'net';
 import fs from 'fs';
 import path from 'path';
@@ -84,6 +84,10 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
   let tlsConfig2: TLSConfig;
 
   const dummyNodeManager = { setNode: jest.fn() } as unknown as NodeManager;
+  const dummyTaskManager: TaskManager = {
+    registerHandler: jest.fn(),
+    deregisterHandler: jest.fn(),
+  } as unknown as TaskManager;
 
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
@@ -240,7 +244,7 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
         keyManager,
         nodeGraph,
         proxy,
-        queue: {} as Queue,
+        taskManager: dummyTaskManager,
         logger: logger,
         connConnectTime: 2000,
       });
@@ -281,7 +285,7 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
         keyManager,
         nodeGraph,
         proxy,
-        queue: {} as Queue,
+        taskManager: dummyTaskManager,
         logger: logger,
         connConnectTime: 2000,
       });
@@ -325,7 +329,7 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
         keyManager,
         nodeGraph,
         proxy,
-        queue: {} as Queue,
+        taskManager: dummyTaskManager,
         logger: logger,
         connConnectTime: 2000,
       });
@@ -372,7 +376,7 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
         keyManager,
         nodeGraph,
         proxy: defaultProxy,
-        queue: {} as Queue,
+        taskManager: dummyTaskManager,
         logger: logger,
         connConnectTime: 2000,
       });
@@ -433,7 +437,7 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
         keyManager,
         nodeGraph,
         proxy: defaultProxy,
-        queue: {} as Queue,
+        taskManager: dummyTaskManager,
         logger: logger,
         connConnectTime: 2000,
       });
@@ -516,7 +520,7 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
         keyManager,
         nodeGraph,
         proxy: defaultProxy,
-        queue: {} as Queue,
+        taskManager: dummyTaskManager,
         logger: logger,
         connConnectTime: 2000,
       });
@@ -592,7 +596,7 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
         keyManager,
         nodeGraph,
         proxy: defaultProxy,
-        queue: {} as Queue,
+        taskManager: dummyTaskManager,
         logger: logger,
         connConnectTime: 2000,
       });
@@ -673,7 +677,7 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
         keyManager,
         nodeGraph,
         proxy: defaultProxy,
-        queue: {} as Queue,
+        taskManager: dummyTaskManager,
         logger: logger,
         connConnectTime: 2000,
       });
@@ -754,7 +758,7 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
         keyManager,
         nodeGraph,
         proxy: defaultProxy,
-        queue: {} as Queue,
+        taskManager: dummyTaskManager,
         logger: logger,
         connConnectTime: 2000,
       });

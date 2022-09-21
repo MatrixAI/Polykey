@@ -152,6 +152,15 @@ class NodeGraph {
   }
 
   @ready(new nodesErrors.ErrorNodeGraphNotRunning())
+  public async lockBucket(bucketIndex: number, tran: DBTransaction) {
+    const keyPath = [
+      ...this.nodeGraphMetaDbPath,
+      nodesUtils.bucketKey(bucketIndex),
+    ];
+    return await tran.lock(keyPath.join(''));
+  }
+
+  @ready(new nodesErrors.ErrorNodeGraphNotRunning())
   public async getNode(
     nodeId: NodeId,
     tran?: DBTransaction,

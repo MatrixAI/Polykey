@@ -7,6 +7,7 @@ import os from 'os';
 import { DB } from '@matrixai/db';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { IdInternal } from '@matrixai/id';
+import { PromiseCancellable } from '@matrixai/async-cancellable';
 import NodeManager from '@/nodes/NodeManager';
 import PolykeyAgent from '@/PolykeyAgent';
 import KeyManager from '@/keys/KeyManager';
@@ -16,7 +17,8 @@ import Proxy from '@/network/Proxy';
 import * as nodesUtils from '@/nodes/utils';
 import * as keysUtils from '@/keys/utils';
 import * as grpcUtils from '@/grpc/utils';
-import Queue from '@/nodes/Queue';
+import TaskManager from '@/tasks/TaskManager';
+import { sleep } from '@/utils/index';
 import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 
 describe(`${NodeConnectionManager.name} seed nodes test`, () => {
@@ -76,10 +78,19 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
   let remoteNodeId1: NodeId;
   let remoteNodeId2: NodeId;
 
+  let taskManager: TaskManager;
   const dummyNodeManager = {
     setNode: jest.fn(),
     refreshBucketQueueAdd: jest.fn(),
   } as unknown as NodeManager;
+
+  function createPromiseCancellable<T>(result: T) {
+    return () => new PromiseCancellable<T>((resolve) => resolve(result));
+  }
+
+  function createPromiseCancellableNop() {
+    return () => new PromiseCancellable<void>((resolve) => resolve());
+  }
 
   beforeAll(async () => {
     dataDir2 = await fs.promises.mkdtemp(
@@ -150,6 +161,11 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
         },
       },
     });
+    taskManager = await TaskManager.createTaskManager({
+      db,
+      lazy: true,
+      logger: logger.getChild('taskManager'),
+    });
     nodeGraph = await NodeGraph.createNodeGraph({
       db,
       keyManager,
@@ -187,6 +203,7 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
     await keyManager.stop();
     await keyManager.destroy();
     await proxy.stop();
+    await taskManager.stop();
   });
 
   // Seed nodes
@@ -198,9 +215,7 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
         keyManager,
         nodeGraph,
         proxy,
-        queue: new Queue({
-          logger: logger.getChild('queue'),
-        }),
+        taskManager,
         seedNodes: dummySeedNodes,
         logger: logger,
       });
@@ -210,7 +225,7 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
         logger,
         nodeConnectionManager,
         nodeGraph,
-        queue: {} as Queue,
+        taskManager,
         sigchain: {} as Sigchain,
       });
       await nodeManager.start();
@@ -235,9 +250,7 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
       keyManager,
       nodeGraph,
       proxy,
-      queue: new Queue({
-        logger: logger.getChild('queue'),
-      }),
+      taskManager,
       seedNodes: dummySeedNodes,
       logger: logger,
     });
@@ -255,17 +268,16 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
   test('should synchronise nodeGraph', async () => {
     let nodeConnectionManager: NodeConnectionManager | undefined;
     let nodeManager: NodeManager | undefined;
-    let queue: Queue | undefined;
     const mockedRefreshBucket = jest.spyOn(
       NodeManager.prototype,
       'refreshBucket',
     );
-    mockedRefreshBucket.mockImplementation(async () => {});
+    mockedRefreshBucket.mockImplementation(createPromiseCancellableNop());
     const mockedPingNode = jest.spyOn(
       NodeConnectionManager.prototype,
       'pingNode',
     );
-    mockedPingNode.mockImplementation(async () => true);
+    mockedPingNode.mockImplementation(createPromiseCancellable(true));
     try {
       const seedNodes: SeedNodes = {};
       seedNodes[nodesUtils.encodeNodeId(remoteNodeId1)] = {
@@ -276,12 +288,11 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
         host: remoteNode2.proxy.getProxyHost(),
         port: remoteNode2.proxy.getProxyPort(),
       };
-      queue = new Queue({ logger });
       nodeConnectionManager = new NodeConnectionManager({
         keyManager,
         nodeGraph,
         proxy,
-        queue,
+        taskManager,
         seedNodes,
         logger: logger,
       });
@@ -291,10 +302,9 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
         logger,
         nodeConnectionManager,
         nodeGraph,
-        queue,
+        taskManager,
         sigchain: {} as Sigchain,
       });
-      await queue.start();
       await nodeManager.start();
       await remoteNode1.nodeGraph.setNode(nodeId1, {
         host: serverHost,
@@ -305,7 +315,8 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
         port: serverPort,
       });
       await nodeConnectionManager.start({ nodeManager });
-      await nodeConnectionManager.syncNodeGraph();
+      await taskManager.startProcessing();
+      await nodeManager.syncNodeGraph();
       expect(await nodeGraph.getNode(nodeId1)).toBeDefined();
       expect(await nodeGraph.getNode(nodeId2)).toBeDefined();
       expect(await nodeGraph.getNode(dummyNodeId)).toBeUndefined();
@@ -314,23 +325,21 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
       mockedPingNode.mockRestore();
       await nodeManager?.stop();
       await nodeConnectionManager?.stop();
-      await queue?.stop();
     }
   });
   test('should call refreshBucket when syncing nodeGraph', async () => {
     let nodeConnectionManager: NodeConnectionManager | undefined;
     let nodeManager: NodeManager | undefined;
-    let queue: Queue | undefined;
     const mockedRefreshBucket = jest.spyOn(
       NodeManager.prototype,
       'refreshBucket',
     );
-    mockedRefreshBucket.mockImplementation(async () => {});
+    mockedRefreshBucket.mockImplementation(createPromiseCancellableNop());
     const mockedPingNode = jest.spyOn(
       NodeConnectionManager.prototype,
       'pingNode',
     );
-    mockedPingNode.mockImplementation(async () => true);
+    mockedPingNode.mockImplementation(createPromiseCancellable(true));
     try {
       const seedNodes: SeedNodes = {};
       seedNodes[nodesUtils.encodeNodeId(remoteNodeId1)] = {
@@ -341,12 +350,11 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
         host: remoteNode2.proxy.getProxyHost(),
         port: remoteNode2.proxy.getProxyPort(),
       };
-      queue = new Queue({ logger });
       nodeConnectionManager = new NodeConnectionManager({
         keyManager,
         nodeGraph,
         proxy,
-        queue,
+        taskManager,
         seedNodes,
         logger: logger,
       });
@@ -357,9 +365,8 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
         nodeConnectionManager,
         nodeGraph,
         sigchain: {} as Sigchain,
-        queue,
+        taskManager,
       });
-      await queue.start();
       await nodeManager.start();
       await remoteNode1.nodeGraph.setNode(nodeId1, {
         host: serverHost,
@@ -370,31 +377,33 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
         port: serverPort,
       });
       await nodeConnectionManager.start({ nodeManager });
-      await nodeConnectionManager.syncNodeGraph();
-      await nodeManager.refreshBucketQueueDrained();
+      await taskManager.startProcessing();
+      await nodeManager.syncNodeGraph();
+      await sleep(1000);
       expect(mockedRefreshBucket).toHaveBeenCalled();
     } finally {
       mockedRefreshBucket.mockRestore();
       mockedPingNode.mockRestore();
       await nodeManager?.stop();
       await nodeConnectionManager?.stop();
-      await queue?.stop();
     }
   });
   test('should handle an offline seed node when synchronising nodeGraph', async () => {
     let nodeConnectionManager: NodeConnectionManager | undefined;
     let nodeManager: NodeManager | undefined;
-    let queue: Queue | undefined;
     const mockedRefreshBucket = jest.spyOn(
       NodeManager.prototype,
       'refreshBucket',
     );
-    mockedRefreshBucket.mockImplementation(async () => {});
+    mockedRefreshBucket.mockImplementation(createPromiseCancellableNop());
     const mockedPingNode = jest.spyOn(
       NodeConnectionManager.prototype,
       'pingNode',
     );
-    mockedPingNode.mockImplementation(async () => true);
+    mockedPingNode.mockImplementation((nodeId: NodeId) => {
+      if (dummyNodeId.equals(nodeId)) return createPromiseCancellable(false)();
+      return createPromiseCancellable(true)();
+    });
     try {
       const seedNodes: SeedNodes = {};
       seedNodes[nodesUtils.encodeNodeId(remoteNodeId1)] = {
@@ -418,12 +427,11 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
         host: serverHost,
         port: serverPort,
       });
-      queue = new Queue({ logger });
       nodeConnectionManager = new NodeConnectionManager({
         keyManager,
         nodeGraph,
         proxy,
-        queue,
+        taskManager,
         seedNodes,
         connConnectTime: 500,
         logger: logger,
@@ -435,13 +443,13 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
         nodeConnectionManager,
         nodeGraph,
         sigchain: {} as Sigchain,
-        queue,
+        taskManager,
       });
-      await queue.start();
       await nodeManager.start();
       await nodeConnectionManager.start({ nodeManager });
+      await taskManager.startProcessing();
       // This should complete without error
-      await nodeConnectionManager.syncNodeGraph();
+      await nodeManager.syncNodeGraph(true);
       // Information on remotes are found
       expect(await nodeGraph.getNode(nodeId1)).toBeDefined();
       expect(await nodeGraph.getNode(nodeId2)).toBeDefined();
@@ -450,7 +458,6 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
       mockedPingNode.mockRestore();
       await nodeConnectionManager?.stop();
       await nodeManager?.stop();
-      await queue?.stop();
     }
   });
   test(
@@ -473,9 +480,8 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
         NodeConnectionManager.prototype,
         'pingNode',
       );
-      mockedPingNode.mockImplementation(async () => true);
+      mockedPingNode.mockImplementation(createPromiseCancellable(true));
       try {
-        logger.setLevel(LogLevel.WARN);
         node1 = await PolykeyAgent.createPolykeyAgent({
           nodePath: path.join(dataDir, 'node1'),
           password: 'password',
@@ -507,10 +513,8 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
           logger,
         });
 
-        await node1.queue.drained();
-        await node1.nodeManager.refreshBucketQueueDrained();
-        await node2.queue.drained();
-        await node2.nodeManager.refreshBucketQueueDrained();
+        await node1.nodeManager.syncNodeGraph(true);
+        await node2.nodeManager.syncNodeGraph(true);
 
         const getAllNodes = async (node: PolykeyAgent) => {
           const nodes: Array<NodeIdEncoded> = [];
@@ -540,11 +544,76 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
         expect(node2Nodes).toContain(nodeId1);
       } finally {
         mockedPingNode.mockRestore();
-        logger.setLevel(LogLevel.WARN);
         await node1?.stop();
         await node1?.destroy();
         await node2?.stop();
         await node2?.destroy();
+      }
+    },
+    globalThis.defaultTimeout * 2,
+  );
+  test(
+    'refreshBucket delays should be reset after finding less than 20 nodes',
+    async () => {
+      // Using a single seed node we need to check that each entering node adds itself to the seed node.
+      // Also need to check that the new nodes can be seen in the network.
+      let node1: PolykeyAgent | undefined;
+      const seedNodes: SeedNodes = {};
+      seedNodes[nodesUtils.encodeNodeId(remoteNodeId1)] = {
+        host: remoteNode1.proxy.getProxyHost(),
+        port: remoteNode1.proxy.getProxyPort(),
+      };
+      seedNodes[nodesUtils.encodeNodeId(remoteNodeId2)] = {
+        host: remoteNode2.proxy.getProxyHost(),
+        port: remoteNode2.proxy.getProxyPort(),
+      };
+      const mockedPingNode = jest.spyOn(
+        NodeConnectionManager.prototype,
+        'pingNode',
+      );
+      mockedPingNode.mockImplementation(createPromiseCancellable(true));
+      try {
+        node1 = await PolykeyAgent.createPolykeyAgent({
+          nodePath: path.join(dataDir, 'node1'),
+          password: 'password',
+          networkConfig: {
+            proxyHost: localHost,
+            agentHost: localHost,
+            clientHost: localHost,
+            forwardHost: localHost,
+          },
+          keysConfig: {
+            privateKeyPemOverride: globalRootKeyPems[3],
+          },
+          seedNodes,
+          logger,
+        });
+
+        // Reset all the refresh bucket timers to a distinct time
+        for (
+          let bucketIndex = 0;
+          bucketIndex < node1.nodeGraph.nodeIdBits;
+          bucketIndex++
+        ) {
+          await node1.nodeManager.updateRefreshBucketDelay(
+            bucketIndex,
+            10000,
+            true,
+          );
+        }
+
+        // Trigger a refreshBucket
+        await node1.nodeManager.refreshBucket(1);
+
+        for await (const task of node1.taskManager.getTasks('asc', true, [
+          'refreshBucket',
+        ])) {
+          expect(task.delay).toBeGreaterThanOrEqual(50000);
+        }
+      } finally {
+        mockedPingNode.mockRestore();
+        await node1?.stop();
+        await node1?.destroy();
       }
     },
     globalThis.defaultTimeout * 2,

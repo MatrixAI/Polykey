@@ -4,7 +4,7 @@ import type Proxy from '../network/Proxy';
 import type { Host, Hostname, Port } from '../network/types';
 import type { Timer } from '../types';
 import type NodeGraph from './NodeGraph';
-import type Queue from './Queue';
+import type TaskManager from '../tasks/TaskManager';
 import type {
   NodeAddress,
   NodeData,
@@ -13,6 +13,8 @@ import type {
   SeedNodes,
 } from './types';
 import type NodeManager from './NodeManager';
+import type { ContextTimed } from 'contexts/types';
+import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import { withF } from '@matrixai/resources';
 import Logger from '@matrixai/logger';
 import { ready, StartStop } from '@matrixai/async-init/dist/StartStop';
@@ -22,13 +24,12 @@ import { LockBox, RWLockWriter } from '@matrixai/async-locks';
 import NodeConnection from './NodeConnection';
 import * as nodesUtils from './utils';
 import * as nodesErrors from './errors';
+import { context, timedCancellable } from '../contexts';
 import GRPCClientAgent from '../agent/GRPCClientAgent';
 import * as validationUtils from '../validation/utils';
 import * as networkUtils from '../network/utils';
-import * as agentErrors from '../agent/errors';
-import * as grpcErrors from '../grpc/errors';
 import * as nodesPB from '../proto/js/polykey/v1/nodes/nodes_pb';
-import { timerStart } from '../utils';
+import { timerStart, never } from '../utils';
 
 type ConnectionAndTimer = {
   connection: NodeConnection<GRPCClientAgent>;
@@ -57,7 +58,7 @@ class NodeConnectionManager {
   protected nodeGraph: NodeGraph;
   protected keyManager: KeyManager;
   protected proxy: Proxy;
-  protected queue: Queue;
+  protected taskManager: TaskManager;
   // NodeManager has to be passed in during start to allow co-dependency
   protected nodeManager: NodeManager | undefined;
   protected seedNodes: SeedNodes;
@@ -73,12 +74,19 @@ class NodeConnectionManager {
    */
   protected connections: Map<NodeIdString, ConnectionAndTimer> = new Map();
   protected connectionLocks: LockBox<RWLockWriter> = new LockBox();
+  // Tracks the backoff period for offline nodes
+  protected nodesBackoffMap: Map<
+    string,
+    { lastAttempt: number; delay: number }
+  > = new Map();
+  protected backoffDefault: number = 300; // 5 min
+  protected backoffMultiplier: number = 2; // Doubles every failure
 
   public constructor({
     keyManager,
     nodeGraph,
     proxy,
-    queue,
+    taskManager,
     seedNodes = {},
     initialClosestNodes = 3,
     connConnectTime = 20000,
@@ -88,7 +96,7 @@ class NodeConnectionManager {
     nodeGraph: NodeGraph;
     keyManager: KeyManager;
     proxy: Proxy;
-    queue: Queue;
+    taskManager: TaskManager;
     seedNodes?: SeedNodes;
     initialClosestNodes?: number;
     connConnectTime?: number;
@@ -99,7 +107,7 @@ class NodeConnectionManager {
     this.keyManager = keyManager;
     this.nodeGraph = nodeGraph;
     this.proxy = proxy;
-    this.queue = queue;
+    this.taskManager = taskManager;
     this.seedNodes = seedNodes;
     this.initialClosestNodes = initialClosestNodes;
     this.connConnectTime = connConnectTime;
@@ -109,12 +117,13 @@ class NodeConnectionManager {
   public async start({ nodeManager }: { nodeManager: NodeManager }) {
     this.logger.info(`Starting ${this.constructor.name}`);
     this.nodeManager = nodeManager;
+    // Adding seed nodes
     for (const nodeIdEncoded in this.seedNodes) {
-      const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded)!;
+      const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded);
+      if (nodeId == null) never();
       await this.nodeManager.setNode(
         nodeId,
         this.seedNodes[nodeIdEncoded],
-        true,
         true,
       );
     }
@@ -164,11 +173,7 @@ class NodeConnectionManager {
       return [
         async (e) => {
           await release();
-          if (
-            e instanceof nodesErrors.ErrorNodeConnectionDestroyed ||
-            e instanceof grpcErrors.ErrorGRPC ||
-            e instanceof agentErrors.ErrorAgentClientDestroyed
-          ) {
+          if (nodesUtils.isConnectionError(e)) {
             // Error with connection, shutting connection down
             await this.destroyConnection(targetNodeId);
           }
@@ -195,14 +200,7 @@ class NodeConnectionManager {
   ): Promise<T> {
     return await withF(
       [await this.acquireConnection(targetNodeId, timer)],
-      async ([conn]) => {
-        this.logger.info(
-          `withConnF calling function with connection to ${nodesUtils.encodeNodeId(
-            targetNodeId,
-          )}`,
-        );
-        return await f(conn);
-      },
+      async ([conn]) => await f(conn),
     );
   }
 
@@ -227,7 +225,8 @@ class NodeConnectionManager {
     const [release, conn] = await acquire();
     let caughtError;
     try {
-      return yield* g(conn!);
+      if (conn == null) never();
+      return yield* g(conn);
     } catch (e) {
       caughtError = e;
       throw e;
@@ -248,25 +247,12 @@ class NodeConnectionManager {
     targetNodeId: NodeId,
     timer?: Timer,
   ): Promise<ConnectionAndTimer> {
-    this.logger.info(
-      `Getting connection to ${nodesUtils.encodeNodeId(targetNodeId)}`,
-    );
     const targetNodeIdString = targetNodeId.toString() as NodeIdString;
     return await this.connectionLocks.withF(
       [targetNodeIdString, RWLockWriter, 'write'],
       async () => {
         const connAndTimer = this.connections.get(targetNodeIdString);
-        if (connAndTimer != null) {
-          this.logger.info(
-            `existing entry found for ${nodesUtils.encodeNodeId(targetNodeId)}`,
-          );
-          return connAndTimer;
-        }
-        this.logger.info(
-          `no existing entry, creating connection to ${nodesUtils.encodeNodeId(
-            targetNodeId,
-          )}`,
-        );
+        if (connAndTimer != null) return connAndTimer;
         // Creating the connection and set in map
         const targetAddress = await this.findNode(targetNodeId);
         if (targetAddress == null) {
@@ -311,7 +297,7 @@ class NodeConnectionManager {
         });
         // We can assume connection was established and destination was valid,
         // we can add the target to the nodeGraph
-        await this.nodeManager?.setNode(targetNodeId, targetAddress, false);
+        await this.nodeManager?.setNode(targetNodeId, targetAddress);
         // Creating TTL timeout
         const timeToLiveTimer = setTimeout(async () => {
           await this.destroyConnection(targetNodeId);
@@ -379,14 +365,18 @@ class NodeConnectionManager {
    * @param nodeId Node ID of the node we are connecting to
    * @param proxyHost Proxy host of the reverse proxy
    * @param proxyPort Proxy port of the reverse proxy
-   * @param timer Connection timeout timer
+   * @param ctx
    */
   public async holePunchForward(
     nodeId: NodeId,
     proxyHost: Host,
     proxyPort: Port,
-    timer?: Timer,
+    ctx?: ContextTimed,
   ): Promise<void> {
+    const timer =
+      ctx?.timer.getTimeout() != null
+        ? timerStart(ctx.timer.getTimeout())
+        : undefined;
     await this.proxy.openConnectionForward(nodeId, proxyHost, proxyPort, timer);
   }
 
@@ -394,22 +384,31 @@ class NodeConnectionManager {
    * Retrieves the node address. If an entry doesn't exist in the db, then
    * proceeds to locate it using Kademlia.
    * @param targetNodeId Id of the node we are tying to find
-   * @param options
+   * @param ignoreRecentOffline skips nodes that are within their backoff period
+   * @param ctx
    */
+  public findNode(
+    targetNodeId: NodeId,
+    ignoreRecentOffline?: boolean,
+    ctx?: Partial<ContextTimed>,
+  ): PromiseCancellable<NodeAddress | undefined>;
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
+  @timedCancellable(true, 20000)
   public async findNode(
     targetNodeId: NodeId,
-    options: { signal?: AbortSignal } = {},
+    ignoreRecentOffline: boolean = false,
+    @context ctx: ContextTimed,
   ): Promise<NodeAddress | undefined> {
-    const { signal } = { ...options };
     // First check if we already have an existing ID -> address record
     let address = (await this.nodeGraph.getNode(targetNodeId))?.address;
     // Otherwise, attempt to locate it by contacting network
     address =
       address ??
-      (await this.getClosestGlobalNodes(targetNodeId, undefined, {
-        signal,
-      }));
+      (await this.getClosestGlobalNodes(
+        targetNodeId,
+        ignoreRecentOffline,
+        ctx,
+      ));
     // TODO: This currently just does one iteration
     return address;
   }
@@ -426,24 +425,26 @@ class NodeConnectionManager {
    * port).
    * @param targetNodeId ID of the node attempting to be found (i.e. attempting
    * to find its IP address and port)
-   * @param timer Connection timeout timer
-   * @param options
+   * @param ignoreRecentOffline skips nodes that are within their backoff period
+   * @param ctx
    * @returns whether the target node was located in the process
    */
+  public getClosestGlobalNodes(
+    targetNodeId: NodeId,
+    ignoreRecentOffline?: boolean,
+    ctx?: Partial<ContextTimed>,
+  ): PromiseCancellable<NodeAddress | undefined>;
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
+  @timedCancellable(true, 20000)
   public async getClosestGlobalNodes(
     targetNodeId: NodeId,
-    timer?: Timer,
-    options: { signal?: AbortSignal } = {},
+    ignoreRecentOffline: boolean = false,
+    @context ctx: ContextTimed,
   ): Promise<NodeAddress | undefined> {
     const localNodeId = this.keyManager.getNodeId();
-    const { signal } = { ...options };
     // Let foundTarget: boolean = false;
     let foundAddress: NodeAddress | undefined = undefined;
     // Get the closest alpha nodes to the target node (set as shortlist)
-    // FIXME? this is an array. Shouldn't it be a set?
-    //  It's possible for this to grow faster than we can consume it,
-    //  doubly so if we allow duplicates
     const shortlist = await this.nodeGraph.getClosestNodes(
       targetNodeId,
       this.initialClosestNodes,
@@ -458,11 +459,10 @@ class NodeConnectionManager {
     // Not sufficient to simply check if there's already a pre-existing connection
     // in nodeConnections - what if there's been more than 1 invocation of
     // getClosestGlobalNodes()?
-    const contacted: { [nodeId: string]: boolean } = {};
+    const contacted: Set<string> = new Set();
     // Iterate until we've found and contacted k nodes
-    while (Object.keys(contacted).length <= this.nodeGraph.nodeBucketLimit) {
-      if (signal?.aborted) throw new nodesErrors.ErrorNodeAborted();
-      // While (!foundTarget) {
+    while (contacted.size <= this.nodeGraph.nodeBucketLimit) {
+      if (ctx.signal?.aborted) return;
       // Remove the node from the front of the array
       const nextNode = shortlist.shift();
       // If we have no nodes left in the shortlist, then stop
@@ -471,9 +471,8 @@ class NodeConnectionManager {
       }
       const [nextNodeId, nextNodeAddress] = nextNode;
       // Skip if the node has already been contacted
-      if (contacted[nextNodeId]) {
-        continue;
-      }
+      if (contacted.has(nextNodeId.toString())) continue;
+      if (ignoreRecentOffline && this.hasBackoff(nextNodeId)) continue;
       // Connect to the node (check if pre-existing connection exists, otherwise
       // create a new one)
       if (
@@ -481,23 +480,33 @@ class NodeConnectionManager {
           nextNodeId,
           nextNodeAddress.address.host,
           nextNodeAddress.address.port,
+          ctx,
         )
       ) {
         await this.nodeManager!.setNode(nextNodeId, nextNodeAddress.address);
+        this.removeBackoff(nextNodeId);
       } else {
+        this.increaseBackoff(nextNodeId);
         continue;
       }
       contacted[nextNodeId] = true;
       // Ask the node to get their own closest nodes to the target
-      const foundClosest = await this.getRemoteNodeClosestNodes(
-        nextNodeId,
-        targetNodeId,
-        timer,
-      );
+      let foundClosest: Array<[NodeId, NodeData]>;
+      try {
+        foundClosest = await this.getRemoteNodeClosestNodes(
+          nextNodeId,
+          targetNodeId,
+          ctx,
+        );
+      } catch (e) {
+        if (e instanceof nodesErrors.ErrorNodeConnectionTimeout) return;
+        throw e;
+      }
+      if (foundClosest.length === 0) continue;
       // Check to see if any of these are the target node. At the same time, add
       // them to the shortlist
       for (const [nodeId, nodeData] of foundClosest) {
-        if (signal?.aborted) throw new nodesErrors.ErrorNodeAborted();
+        if (ctx.signal?.aborted) return;
         // Ignore any nodes that have been contacted or our own node
         if (contacted[nodeId] || localNodeId.equals(nodeId)) {
           continue;
@@ -508,6 +517,7 @@ class NodeConnectionManager {
             nodeId,
             nodeData.address.host,
             nodeData.address.port,
+            ctx,
           ))
         ) {
           await this.nodeManager!.setNode(nodeId, nodeData.address);
@@ -535,6 +545,22 @@ class NodeConnectionManager {
         }
       });
     }
+    // If the found nodes are less than nodeBucketLimit then
+    //  we expect that refresh buckets won't find anything new
+    if (Object.keys(contacted).length < this.nodeGraph.nodeBucketLimit) {
+      // Reset the delay on all refresh bucket tasks
+      for (
+        let bucketIndex = 0;
+        bucketIndex < this.nodeGraph.nodeIdBits;
+        bucketIndex++
+      ) {
+        await this.nodeManager?.updateRefreshBucketDelay(
+          bucketIndex,
+          undefined,
+          true,
+        );
+      }
+    }
     return foundAddress;
   }
 
@@ -543,109 +569,60 @@ class NodeConnectionManager {
    * target node ID.
    * @param nodeId the node ID to search on
    * @param targetNodeId the node ID to find other nodes closest to it
-   * @param timer Connection timeout timer
-   * @returns list of nodes and their IP/port that are closest to the target
+   * @param ctx
    */
+  public getRemoteNodeClosestNodes(
+    nodeId: NodeId,
+    targetNodeId: NodeId,
+    ctx?: Partial<ContextTimed>,
+  ): PromiseCancellable<Array<[NodeId, NodeData]>>;
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
+  @timedCancellable(true, 20000)
   public async getRemoteNodeClosestNodes(
     nodeId: NodeId,
     targetNodeId: NodeId,
-    timer?: Timer,
+    @context ctx: ContextTimed,
   ): Promise<Array<[NodeId, NodeData]>> {
     // Construct the message
     const nodeIdMessage = new nodesPB.Node();
     nodeIdMessage.setNodeId(nodesUtils.encodeNodeId(targetNodeId));
-    // Send through client
-    return this.withConnF(
-      nodeId,
-      async (connection) => {
-        const client = connection.getClient();
-        const response = await client.nodesClosestLocalNodesGet(nodeIdMessage);
-        const nodes: Array<[NodeId, NodeData]> = [];
-        // Loop over each map element (from the returned response) and populate nodes
-        response.getNodeTableMap().forEach((address, nodeIdString: string) => {
-          const nodeId = nodesUtils.decodeNodeId(nodeIdString);
-          // If the nodeId is not valid we don't add it to the list of nodes
-          if (nodeId != null) {
-            nodes.push([
-              nodeId,
-              {
-                address: {
-                  host: address.getHost() as Host | Hostname,
-                  port: address.getPort() as Port,
-                },
-                // Not really needed
-                // But if it's needed then we need to add the information to the proto definition
-                lastUpdated: 0,
-              },
-            ]);
-          }
-        });
-        return nodes;
-      },
-      timer,
-    );
-  }
-
-  /**
-   * Perform an initial database synchronisation: get k of the closest nodes
-   * from each seed node and add them to this database
-   * Establish a proxy connection to each node before adding it
-   * By default this operation is blocking, set `block` to false to make it
-   * non-blocking
-   */
-  @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
-  public async syncNodeGraph(block: boolean = true, timer?: Timer) {
-    this.logger.info('Syncing nodeGraph');
-    for (const seedNodeId of this.getSeedNodes()) {
-      // Check if the connection is viable
-      try {
-        await this.getConnection(seedNodeId, timer);
-      } catch (e) {
-        if (e instanceof nodesErrors.ErrorNodeConnectionTimeout) continue;
-        throw e;
-      }
-      const nodes = await this.getRemoteNodeClosestNodes(
-        seedNodeId,
-        this.keyManager.getNodeId(),
-        timer,
+    try {
+      // Send through client
+      const timeout = ctx.timer.getTimeout();
+      const response = await this.withConnF(
+        nodeId,
+        async (connection) => {
+          const client = connection.getClient();
+          return await client.nodesClosestLocalNodesGet(nodeIdMessage);
+        },
+        timeout === Infinity ? undefined : timerStart(timeout),
       );
-      for (const [nodeId, nodeData] of nodes) {
-        if (!nodeId.equals(this.keyManager.getNodeId())) {
-          const pingAndAddNode = async () => {
-            const port = nodeData.address.port;
-            const host = await networkUtils.resolveHost(nodeData.address.host);
-            if (await this.pingNode(nodeId, host, port)) {
-              await this.nodeManager!.setNode(nodeId, nodeData.address, true);
-            }
-          };
-
-          if (!block) {
-            this.queue.push(pingAndAddNode);
-          } else {
-            try {
-              await pingAndAddNode();
-            } catch (e) {
-              if (!(e instanceof nodesErrors.ErrorNodeGraphSameNodeId)) throw e;
-            }
-          }
+      const nodes: Array<[NodeId, NodeData]> = [];
+      // Loop over each map element (from the returned response) and populate nodes
+      response.getNodeTableMap().forEach((address, nodeIdString: string) => {
+        const nodeId = nodesUtils.decodeNodeId(nodeIdString);
+        // If the nodeId is not valid we don't add it to the list of nodes
+        if (nodeId != null) {
+          nodes.push([
+            nodeId,
+            {
+              address: {
+                host: address.getHost() as Host | Hostname,
+                port: address.getPort() as Port,
+              },
+              // Not really needed
+              // But if it's needed then we need to add the information to the proto definition
+              lastUpdated: 0,
+            },
+          ]);
         }
+      });
+      return nodes;
+    } catch (e) {
+      if (nodesUtils.isConnectionError(e)) {
+        return [];
       }
-      // Refreshing every bucket above the closest node
-      const refreshBuckets = async () => {
-        const [closestNode] = (
-          await this.nodeGraph.getClosestNodes(this.keyManager.getNodeId(), 1)
-        ).pop()!;
-        const [bucketIndex] = this.nodeGraph.bucketIndex(closestNode);
-        for (let i = bucketIndex; i < this.nodeGraph.nodeIdBits; i++) {
-          this.nodeManager?.refreshBucketQueueAdd(i);
-        }
-      };
-      if (!block) {
-        this.queue.push(refreshBuckets);
-      } else {
-        await refreshBuckets();
-      }
+      throw e;
     }
   }
 
@@ -726,9 +703,11 @@ class NodeConnectionManager {
    */
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
   public getSeedNodes(): Array<NodeId> {
-    return Object.keys(this.seedNodes).map(
-      (nodeIdEncoded) => nodesUtils.decodeNodeId(nodeIdEncoded)!,
-    );
+    return Object.keys(this.seedNodes).map((nodeIdEncoded) => {
+      const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded);
+      if (nodeId == null) never();
+      return nodeId;
+    });
   }
 
   /**
@@ -738,14 +717,21 @@ class NodeConnectionManager {
    * @param nodeId - NodeId of the target
    * @param host - Host of the target node
    * @param port - Port of the target node
-   * @param timer Connection timeout timer
+   * @param ctx
    */
+  public pingNode(
+    nodeId: NodeId,
+    host: Host | Hostname,
+    port: Port,
+    ctx?: Partial<ContextTimed>,
+  ): PromiseCancellable<boolean>;
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
+  @timedCancellable(true, 2000)
   public async pingNode(
     nodeId: NodeId,
     host: Host | Hostname,
     port: Port,
-    timer?: Timer,
+    @context ctx: ContextTimed,
   ): Promise<boolean> {
     host = await networkUtils.resolveHost(host);
     // If we can create a connection then we have punched though the NAT,
@@ -767,19 +753,50 @@ class NodeConnectionManager {
         signature,
       );
     });
-    const forwardPunchPromise = this.holePunchForward(
-      nodeId,
-      host,
-      port,
-      timer,
-    );
+    const forwardPunchPromise = this.holePunchForward(nodeId, host, port, ctx);
+
+    const abortPromise = new Promise((_resolve, reject) => {
+      if (ctx.signal.aborted) throw ctx.signal.reason;
+      ctx.signal.addEventListener('abort', () => reject(ctx.signal.reason));
+    });
 
     try {
-      await Promise.any([forwardPunchPromise, ...holePunchPromises]);
+      await Promise.race([
+        Promise.any([forwardPunchPromise, ...holePunchPromises]),
+        abortPromise,
+      ]);
     } catch (e) {
       return false;
     }
     return true;
+  }
+
+  protected hasBackoff(nodeId: NodeId): boolean {
+    const backoff = this.nodesBackoffMap.get(nodeId.toString());
+    if (backoff == null) return false;
+    const currentTime = performance.now() + performance.timeOrigin;
+    const backOffDeadline = backoff.lastAttempt + backoff.delay;
+    return currentTime < backOffDeadline;
+  }
+
+  protected increaseBackoff(nodeId: NodeId): void {
+    const backoff = this.nodesBackoffMap.get(nodeId.toString());
+    const currentTime = performance.now() + performance.timeOrigin;
+    if (backoff == null) {
+      this.nodesBackoffMap.set(nodeId.toString(), {
+        lastAttempt: currentTime,
+        delay: this.backoffDefault,
+      });
+    } else {
+      this.nodesBackoffMap.set(nodeId.toString(), {
+        lastAttempt: currentTime,
+        delay: backoff.delay * this.backoffMultiplier,
+      });
+    }
+  }
+
+  protected removeBackoff(nodeId: NodeId): void {
+    this.nodesBackoffMap.delete(nodeId.toString());
   }
 }
 

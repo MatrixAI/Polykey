@@ -1,7 +1,25 @@
 import ErrorPolykey from '../ErrorPolykey';
 import sysexits from '../utils/sysexits';
 
-class ErrorCLI<T> extends ErrorPolykey<T> {}
+class ErrorBin<T> extends ErrorPolykey<T> {}
+
+class ErrorBinUncaughtException<T> extends ErrorBin<T> {
+  static description = '';
+  exitCode = sysexits.SOFTWARE;
+}
+
+class ErrorBinUnhandledRejection<T> extends ErrorBin<T> {
+  static description = '';
+  exitCode = sysexits.SOFTWARE;
+}
+
+class ErrorBinAsynchronousDeadlock<T> extends ErrorBin<T> {
+  static description =
+    'PolykeyAgent process exited unexpectedly, likely due to promise deadlock';
+  exitCode = sysexits.SOFTWARE;
+}
+
+class ErrorCLI<T> extends ErrorBin<T> {}
 
 class ErrorCLINodePath<T> extends ErrorCLI<T> {
   static description = 'Cannot derive default node path from unknown platform';
@@ -49,17 +67,21 @@ class ErrorCLIPolykeyAgentProcess<T> extends ErrorCLI<T> {
   exitCode = sysexits.OSERR;
 }
 
-class ErrorNodeFindFailed<T> extends ErrorCLI<T> {
+class ErrorCLINodeFindFailed<T> extends ErrorCLI<T> {
   static description = 'Failed to find the node in the DHT';
   exitCode = 1;
 }
 
-class ErrorNodePingFailed<T> extends ErrorCLI<T> {
+class ErrorCLINodePingFailed<T> extends ErrorCLI<T> {
   static description = 'Node was not online or not found.';
   exitCode = 1;
 }
 
 export {
+  ErrorBin,
+  ErrorBinUncaughtException,
+  ErrorBinUnhandledRejection,
+  ErrorBinAsynchronousDeadlock,
   ErrorCLI,
   ErrorCLINodePath,
   ErrorCLIClientOptions,
@@ -70,6 +92,6 @@ export {
   ErrorCLIFileRead,
   ErrorCLIPolykeyAgentStatus,
   ErrorCLIPolykeyAgentProcess,
-  ErrorNodeFindFailed,
-  ErrorNodePingFailed,
+  ErrorCLINodeFindFailed,
+  ErrorCLINodePingFailed,
 };

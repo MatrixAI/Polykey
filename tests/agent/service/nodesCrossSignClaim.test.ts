@@ -53,7 +53,7 @@ describe('nodesCrossSignClaim', () => {
       password,
       nodePath: path.join(dataDir, 'remoteNode'),
       keysConfig: {
-        rootKeyPairBits: 2048,
+        privateKeyPemOverride: globalRootKeyPems[1],
       },
       seedNodes: {}, // Explicitly no seed nodes on startup
       networkConfig: {

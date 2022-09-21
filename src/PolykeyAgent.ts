@@ -8,7 +8,6 @@ import process from 'process';
 import Logger from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { CreateDestroyStartStop } from '@matrixai/async-init/dist/CreateDestroyStartStop';
-import Queue from './nodes/Queue';
 import * as networkUtils from './network/utils';
 import KeyManager from './keys/KeyManager';
 import Status from './status/Status';
@@ -35,6 +34,7 @@ import * as errors from './errors';
 import * as utils from './utils';
 import * as keysUtils from './keys/utils';
 import * as nodesUtils from './nodes/utils';
+import TaskManager from './tasks/TaskManager';
 
 type NetworkConfig = {
   forwardHost?: Host;
@@ -87,8 +87,8 @@ class PolykeyAgent {
     acl,
     gestaltGraph,
     proxy,
+    taskManager,
     nodeGraph,
-    queue,
     nodeConnectionManager,
     nodeManager,
     discovery,
@@ -134,8 +134,8 @@ class PolykeyAgent {
     acl?: ACL;
     gestaltGraph?: GestaltGraph;
     proxy?: Proxy;
+    taskManager?: TaskManager;
     nodeGraph?: NodeGraph;
-    queue?: Queue;
     nodeConnectionManager?: NodeConnectionManager;
     nodeManager?: NodeManager;
     discovery?: Discovery;
@@ -285,18 +285,21 @@ class PolykeyAgent {
           keyManager,
           logger: logger.getChild(NodeGraph.name),
         }));
-      queue =
-        queue ??
-        new Queue({
-          logger: logger.getChild(Queue.name),
-        });
+      taskManager =
+        taskManager ??
+        (await TaskManager.createTaskManager({
+          db,
+          fresh,
+          lazy: true,
+          logger,
+        }));
       nodeConnectionManager =
         nodeConnectionManager ??
         new NodeConnectionManager({
           keyManager,
           nodeGraph,
           proxy,
-          queue,
+          taskManager,
           seedNodes,
           ...nodeConnectionManagerConfig_,
           logger: logger.getChild(NodeConnectionManager.name),
@@ -309,7 +312,7 @@ class PolykeyAgent {
           keyManager,
           nodeGraph,
           nodeConnectionManager,
-          queue,
+          taskManager,
           logger: logger.getChild(NodeManager.name),
         });
       await nodeManager.start();
@@ -373,6 +376,7 @@ class PolykeyAgent {
       await notificationsManager?.stop();
       await vaultManager?.stop();
       await discovery?.stop();
+      await taskManager?.stop();
       await proxy?.stop();
       await gestaltGraph?.stop();
       await acl?.stop();
@@ -396,7 +400,7 @@ class PolykeyAgent {
       gestaltGraph,
       proxy,
       nodeGraph,
-      queue,
+      taskManager,
       nodeConnectionManager,
       nodeManager,
       discovery,
@@ -429,7 +433,7 @@ class PolykeyAgent {
   public readonly gestaltGraph: GestaltGraph;
   public readonly proxy: Proxy;
   public readonly nodeGraph: NodeGraph;
-  public readonly queue: Queue;
+  public readonly taskManager: TaskManager;
   public readonly nodeConnectionManager: NodeConnectionManager;
   public readonly nodeManager: NodeManager;
   public readonly discovery: Discovery;
@@ -454,7 +458,7 @@ class PolykeyAgent {
     gestaltGraph,
     proxy,
     nodeGraph,
-    queue,
+    taskManager,
     nodeConnectionManager,
     nodeManager,
     discovery,
@@ -478,7 +482,7 @@ class PolykeyAgent {
     gestaltGraph: GestaltGraph;
     proxy: Proxy;
     nodeGraph: NodeGraph;
-    queue: Queue;
+    taskManager: TaskManager;
     nodeConnectionManager: NodeConnectionManager;
     nodeManager: NodeManager;
     discovery: Discovery;
@@ -504,7 +508,7 @@ class PolykeyAgent {
     this.proxy = proxy;
     this.discovery = discovery;
     this.nodeGraph = nodeGraph;
-    this.queue = queue;
+    this.taskManager = taskManager;
     this.nodeConnectionManager = nodeConnectionManager;
     this.nodeManager = nodeManager;
     this.vaultManager = vaultManager;
@@ -578,14 +582,10 @@ class PolykeyAgent {
             );
             // Reverse connection was established and authenticated,
             //  add it to the node graph
-            await this.nodeManager.setNode(
-              data.remoteNodeId,
-              {
-                host: data.remoteHost,
-                port: data.remotePort,
-              },
-              false,
-            );
+            await this.nodeManager.setNode(data.remoteNodeId, {
+              host: data.remoteHost,
+              port: data.remotePort,
+            });
           }
         },
       );
@@ -667,15 +667,16 @@ class PolykeyAgent {
         proxyPort: networkConfig_.proxyPort,
         tlsConfig,
       });
-      await this.queue.start();
+      await this.taskManager.start({ fresh, lazy: true });
       await this.nodeManager.start();
       await this.nodeConnectionManager.start({ nodeManager: this.nodeManager });
       await this.nodeGraph.start({ fresh });
-      await this.nodeConnectionManager.syncNodeGraph(false);
+      await this.nodeManager.syncNodeGraph(false);
       await this.discovery.start({ fresh });
       await this.vaultManager.start({ fresh });
       await this.notificationsManager.start({ fresh });
       await this.sessionManager.start({ fresh });
+      await this.taskManager.startProcessing();
       await this.status.finishStart({
         pid: process.pid,
         nodeId: this.keyManager.getNodeId(),
@@ -693,14 +694,16 @@ class PolykeyAgent {
       this.logger.warn(`Failed Starting ${this.constructor.name}`);
       this.events.removeAllListeners();
       await this.status?.beginStop({ pid: process.pid });
+      await this.taskManager?.stopProcessing();
+      await this.taskManager?.stopTasks();
       await this.sessionManager?.stop();
       await this.notificationsManager?.stop();
       await this.vaultManager?.stop();
       await this.discovery?.stop();
-      await this.queue?.stop();
       await this.nodeGraph?.stop();
       await this.nodeConnectionManager?.stop();
       await this.nodeManager?.stop();
+      await this.taskManager?.stop();
       await this.proxy?.stop();
       await this.grpcServerAgent?.stop();
       await this.grpcServerClient?.stop();
@@ -723,6 +726,8 @@ class PolykeyAgent {
     this.logger.info(`Stopping ${this.constructor.name}`);
     this.events.removeAllListeners();
     await this.status.beginStop({ pid: process.pid });
+    await this.taskManager.stopProcessing();
+    await this.taskManager.stopTasks();
     await this.sessionManager.stop();
     await this.notificationsManager.stop();
     await this.vaultManager.stop();
@@ -730,7 +735,7 @@ class PolykeyAgent {
     await this.nodeConnectionManager.stop();
     await this.nodeGraph.stop();
     await this.nodeManager.stop();
-    await this.queue.stop();
+    await this.taskManager.stop();
     await this.proxy.stop();
     await this.grpcServerAgent.stop();
     await this.grpcServerClient.stop();
@@ -755,6 +760,7 @@ class PolykeyAgent {
     await this.discovery.destroy();
     await this.nodeGraph.destroy();
     await this.gestaltGraph.destroy();
+    await this.taskManager.destroy();
     await this.acl.destroy();
     await this.sigchain.destroy();
     await this.identitiesManager.destroy();
