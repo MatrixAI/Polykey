@@ -105,7 +105,7 @@ class NodeManager {
       );
     }
   };
-  protected pingAndSetNodeHandlerId: TaskHandlerId =
+  public readonly pingAndSetNodeHandlerId: TaskHandlerId =
     `${this.basePath}.${this.pingAndSetNodeHandler.name}` as TaskHandlerId;
 
   constructor({
@@ -165,6 +165,17 @@ class NodeManager {
 
   public async stop() {
     this.logger.info(`Stopping ${this.constructor.name}`);
+    this.logger.info('Cancelling ephemeral tasks');
+    const tasks: Array<Promise<any>> = [];
+    for await (const task of this.taskManager.getTasks('asc', false, [
+      this.basePath,
+    ])) {
+      tasks.push(task.promise());
+      task.cancel('cleaning up ephemeral tasks');
+    }
+    // We don't care about the result, only that they've ended
+    await Promise.allSettled(tasks);
+    this.logger.info('Cancelled ephemeral tasks');
     this.logger.info(`Unregistering handler for setNode`);
     this.taskManager.deregisterHandler(this.refreshBucketHandlerId);
     this.taskManager.deregisterHandler(this.gcBucketHandlerId);

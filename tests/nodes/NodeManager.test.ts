@@ -1013,4 +1013,45 @@ describe(`${NodeManager.name} test`, () => {
       await nodeManager.stop();
     }
   });
+  test('Stopping nodeManager should cancel all ephemeral tasks', async () => {
+    const nodeManager = new NodeManager({
+      db,
+      sigchain: {} as Sigchain,
+      keyManager,
+      nodeGraph,
+      nodeConnectionManager: dummyNodeConnectionManager,
+      taskManager,
+      logger,
+    });
+    try {
+      await nodeManager.start();
+      await nodeConnectionManager.start({ nodeManager });
+
+      // Creating dummy tasks
+      const task1 = await taskManager.scheduleTask({
+        handlerId: nodeManager.pingAndSetNodeHandlerId,
+        lazy: false,
+        path: [nodeManager.basePath],
+      });
+      const task2 = await taskManager.scheduleTask({
+        handlerId: nodeManager.pingAndSetNodeHandlerId,
+        lazy: false,
+        path: [nodeManager.basePath],
+      });
+
+      // Stopping nodeManager should cancel any nodeManager tasks
+      await nodeManager.stop();
+      const tasks: Array<any> = [];
+      for await (const task of taskManager.getTasks('asc', true, [
+        nodeManager.basePath,
+      ])) {
+        tasks.push(task);
+      }
+      expect(tasks.length).toEqual(0);
+      await expect(task1.promise()).toReject();
+      await expect(task2.promise()).toReject();
+    } finally {
+      await nodeManager.stop();
+    }
+  });
 });
