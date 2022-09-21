@@ -11,6 +11,7 @@ class ExitHandlers {
   public handlers: Array<(signal?: NodeJS.Signals) => Promise<void>>;
   protected _exiting: boolean = false;
   protected _errFormat: 'json' | 'error';
+
   /**
    * Handles termination signals
    * This is idempotent
@@ -52,6 +53,7 @@ class ExitHandlers {
       process.kill(process.pid, signal);
     }
   };
+
   /**
    * Handles asynchronous exceptions
    * This prints out appropriate error message on STDERR
@@ -75,6 +77,7 @@ class ExitHandlers {
     // Fail fast pattern
     process.exit();
   };
+
   /**
    * Handles synchronous exceptions
    * This prints out appropriate error message on STDERR
@@ -98,6 +101,7 @@ class ExitHandlers {
     // Fail fast pattern
     process.exit();
   };
+
   protected deadlockHandler = async () => {
     if (process.exitCode == null) {
       const e = new binErrors.ErrorBinAsynchronousDeadlock();
