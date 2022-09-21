@@ -700,10 +700,10 @@ class PolykeyAgent {
       await this.notificationsManager?.stop();
       await this.vaultManager?.stop();
       await this.discovery?.stop();
-      await this.taskManager?.stop();
       await this.nodeGraph?.stop();
       await this.nodeConnectionManager?.stop();
       await this.nodeManager?.stop();
+      await this.taskManager?.stop();
       await this.proxy?.stop();
       await this.grpcServerAgent?.stop();
       await this.grpcServerClient?.stop();

@@ -22,6 +22,7 @@ import * as nodesUtils from '@/nodes/utils';
 import * as claimsUtils from '@/claims/utils';
 import * as discoveryErrors from '@/discovery/errors';
 import * as keysUtils from '@/keys/utils';
+import * as grpcUtils from '@/grpc/utils/index';
 import * as testNodesUtils from '../nodes/utils';
 import TestProvider from '../identities/TestProvider';
 import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
@@ -59,6 +60,8 @@ describe('Discovery', () => {
   let nodeB: PolykeyAgent;
   let identityId: IdentityId;
   beforeEach(async () => {
+    // Sets the global GRPC logger to the logger
+    grpcUtils.setLogger(logger);
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );

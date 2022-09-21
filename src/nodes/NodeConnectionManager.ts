@@ -29,7 +29,7 @@ import GRPCClientAgent from '../agent/GRPCClientAgent';
 import * as validationUtils from '../validation/utils';
 import * as networkUtils from '../network/utils';
 import * as nodesPB from '../proto/js/polykey/v1/nodes/nodes_pb';
-import { timerStart } from '../utils';
+import { timerStart, never } from '../utils';
 
 type ConnectionAndTimer = {
   connection: NodeConnection<GRPCClientAgent>;
@@ -119,7 +119,8 @@ class NodeConnectionManager {
     this.nodeManager = nodeManager;
     // Adding seed nodes
     for (const nodeIdEncoded in this.seedNodes) {
-      const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded)!;
+      const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded);
+      if (nodeId == null) never();
       await this.nodeManager.setNode(
         nodeId,
         this.seedNodes[nodeIdEncoded],
@@ -224,7 +225,8 @@ class NodeConnectionManager {
     const [release, conn] = await acquire();
     let caughtError;
     try {
-      return yield* g(conn!);
+      if (conn == null) never();
+      return yield* g(conn);
     } catch (e) {
       caughtError = e;
       throw e;
@@ -701,9 +703,11 @@ class NodeConnectionManager {
    */
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
   public getSeedNodes(): Array<NodeId> {
-    return Object.keys(this.seedNodes).map(
-      (nodeIdEncoded) => nodesUtils.decodeNodeId(nodeIdEncoded)!,
-    );
+    return Object.keys(this.seedNodes).map((nodeIdEncoded) => {
+      const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded);
+      if (nodeId == null) never();
+      return nodeId;
+    });
   }
 
   /**

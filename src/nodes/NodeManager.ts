@@ -92,7 +92,13 @@ class NodeManager {
     host: Host,
     port: Port,
   ) => {
-    const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded)!;
+    const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded);
+    if (nodeId == null) {
+      this.logger.error(
+        `pingAndSetNodeHandler received invalid NodeId: ${nodeIdEncoded}`,
+      );
+      never();
+    }
     const host_ = await networkUtils.resolveHost(host);
     if (
       await this.pingNode(nodeId, { host: host_, port }, { signal: ctx.signal })
@@ -569,7 +575,8 @@ class NodeManager {
         // We just add the new node anyway without checking the old one
         const oldNodeId = (
           await this.nodeGraph.getOldestNode(bucketIndex, 1, tran)
-        ).pop()!;
+        ).pop();
+        if (oldNodeId == null) never();
         this.logger.debug(
           `Force was set, removing ${nodesUtils.encodeNodeId(
             oldNodeId,
@@ -1013,10 +1020,13 @@ class NodeManager {
         }
       }
       // Refreshing every bucket above the closest node
-      let closestNodeInfo = closestNodes.pop()!;
-      if (this.keyManager.getNodeId().equals(closestNodeInfo[0])) {
+      let closestNodeInfo = closestNodes.pop();
+      if (
+        closestNodeInfo != null &&
+        this.keyManager.getNodeId().equals(closestNodeInfo[0])
+      ) {
         // Skip our nodeId if it exists
-        closestNodeInfo = closestNodes.pop()!;
+        closestNodeInfo = closestNodes.pop();
       }
       let index = this.nodeGraph.nodeIdBits;
       if (closestNodeInfo != null) {
