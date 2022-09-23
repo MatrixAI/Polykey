@@ -121,6 +121,7 @@ describe('ping', () => {
         message: 'No response received',
       });
     },
+    globalThis.failedConnectionTimeout,
   );
   testUtils.testIf(testUtils.isTestPlatformEmpty)(
     'fails if node cannot be found',
@@ -152,6 +153,7 @@ describe('ping', () => {
         )} to an address.`,
       });
     },
+    globalThis.failedConnectionTimeout,
   );
   testUtils.testIf(testUtils.isTestPlatformEmpty)(
     'succeed when pinging a live node',
