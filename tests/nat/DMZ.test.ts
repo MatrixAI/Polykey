@@ -117,7 +117,7 @@ describe('DMZ', () => {
       expect(exitCode).toBe(null);
       expect(signal).toBe('SIGTERM');
     },
-    globalThis.defaultTimeout * 2,
+    globalThis.defaultTimeout * 4,
   );
   testUtils.testIf(supportsNatTesting)(
     'agents in different namespaces can ping each other',
@@ -236,7 +236,7 @@ describe('DMZ', () => {
       });
       await tearDownNAT();
     },
-    globalThis.defaultTimeout * 2,
+    globalThis.defaultTimeout * 4,
   );
   testUtils.testIf(supportsNatTesting)(
     'agents in different namespaces can ping each other via seed node',
@@ -307,6 +307,6 @@ describe('DMZ', () => {
       });
       await tearDownNAT();
     },
-    globalThis.defaultTimeout * 2,
+    globalThis.defaultTimeout * 4,
   );
 });

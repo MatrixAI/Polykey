@@ -87,7 +87,7 @@ describe('endpoint dependent NAT traversal', () => {
       });
       await tearDownNAT();
     },
-    globalThis.defaultTimeout * 2,
+    globalThis.defaultTimeout * 4,
   );
   testUtils.testIf(supportsNatTesting)(
     'node1 connects to node2 behind EDM NAT',
@@ -173,7 +173,7 @@ describe('endpoint dependent NAT traversal', () => {
       });
       await tearDownNAT();
     },
-    globalThis.defaultTimeout * 2,
+    globalThis.defaultTimeout * 4,
   );
   testUtils.testIf(supportsNatTesting)(
     'node1 behind EDM NAT cannot connect to node2 behind EDM NAT',
@@ -237,7 +237,7 @@ describe('endpoint dependent NAT traversal', () => {
       });
       await tearDownNAT();
     },
-    globalThis.defaultTimeout * 2,
+    globalThis.defaultTimeout * 4,
   );
   testUtils.testIf(supportsNatTesting)(
     'node1 behind EDM NAT cannot connect to node2 behind EIM NAT',
@@ -298,6 +298,6 @@ describe('endpoint dependent NAT traversal', () => {
       });
       await tearDownNAT();
     },
-    globalThis.defaultTimeout * 2,
+    globalThis.defaultTimeout * 4,
   );
 });
