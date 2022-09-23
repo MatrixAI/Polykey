@@ -726,7 +726,7 @@ class NodeConnectionManager {
     ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<boolean>;
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
-  @timedCancellable(true, 2000)
+  @timedCancellable(true, 20000)
   public async pingNode(
     nodeId: NodeId,
     host: Host | Hostname,

@@ -203,7 +203,7 @@ class NodeManager {
     address?: NodeAddress,
     ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<boolean>;
-  @timedCancellable(true, 2000)
+  @timedCancellable(true, 20000)
   public async pingNode(
     nodeId: NodeId,
     address: NodeAddress | undefined,
@@ -524,7 +524,7 @@ class NodeManager {
     nodeAddress: NodeAddress,
     block: boolean = false,
     force: boolean = false,
-    pingTimeout: number = 1500,
+    pingTimeout: number = 10000,
     @context ctx: ContextTimed,
     tran?: DBTransaction,
   ): Promise<void> {
@@ -620,7 +620,7 @@ class NodeManager {
   @timedCancellable(true, 20000)
   protected async garbageCollectBucket(
     bucketIndex: number,
-    pingTimeout: number = 1500,
+    pingTimeout: number = 10000,
     @context ctx: ContextTimed,
     tran?: DBTransaction,
   ): Promise<void> {
@@ -646,12 +646,16 @@ class NodeManager {
     const semaphore = new Semaphore(3);
 
     // Iterating over existing nodes
-    const bucket = await this.getBucket(bucketIndex, tran);
+    const bucket = await this.nodeGraph.getOldestNode(
+      bucketIndex,
+      undefined,
+      tran,
+    );
     if (bucket == null) never();
     let removedNodes = 0;
     const unsetLock = new Lock();
     const pendingPromises: Array<Promise<void>> = [];
-    for (const [nodeId, nodeData] of bucket) {
+    for (const nodeId of bucket) {
       if (removedNodes >= pendingNodes.size) break;
       await semaphore.waitForUnlock();
       if (ctx.signal?.aborted === true) break;
@@ -663,11 +667,13 @@ class NodeManager {
             signal: ctx.signal,
             timer: new Timer({ delay: pingTimeout }),
           };
-          if (await this.pingNode(nodeId, nodeData.address, pingCtx)) {
+          const nodeAddress = await this.getNodeAddress(nodeId, tran);
+          if (nodeAddress == null) never();
+          if (await this.pingNode(nodeId, nodeAddress, pingCtx)) {
             // Succeeded so update
             await this.setNode(
               nodeId,
-              nodeData.address,
+              nodeAddress,
               false,
               false,
               undefined,
@@ -711,7 +717,7 @@ class NodeManager {
     nodeId: NodeId,
     nodeAddress: NodeAddress,
     block: boolean = false,
-    pingTimeout: number = 1500,
+    pingTimeout: number = 10000,
     ctx?: ContextTimed,
     tran?: DBTransaction,
   ): Promise<void> {

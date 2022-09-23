@@ -568,7 +568,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
           remoteNodeId1,
           '127.1.2.3' as Host,
           55555 as Port,
-          { timer: new Timer({ delay: 1000 }) },
+          { timer: new Timer({ delay: 10000 }) },
         ),
       ).toEqual(false);
     } finally {
@@ -593,7 +593,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
           remoteNodeId1,
           remoteNode2.proxy.getProxyHost(),
           remoteNode2.proxy.getProxyPort(),
-          { timer: new Timer({ delay: 1000 }) },
+          { timer: new Timer({ delay: 10000 }) },
         ),
       ).toEqual(false);
 
@@ -602,7 +602,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
           remoteNodeId2,
           remoteNode1.proxy.getProxyHost(),
           remoteNode1.proxy.getProxyPort(),
-          { timer: new Timer({ delay: 1000 }) },
+          { timer: new Timer({ delay: 10000 }) },
         ),
       ).toEqual(false);
     } finally {

@@ -182,14 +182,13 @@ describe(`${NodeManager.name} test`, () => {
         });
         await nodeManager.start();
         await nodeConnectionManager.start({ nodeManager });
-        await taskManager.startProcessing();
 
         // Set server node offline
         await server.stop();
         // Check if active
         // Case 1: cannot establish new connection, so offline
         const active1 = await nodeManager.pingNode(serverNodeId, undefined, {
-          timer: new Timer({ delay: 1000 }),
+          timer: new Timer({ delay: 10000 }),
         });
         expect(active1).toBe(false);
         // Bring server node online
@@ -208,7 +207,7 @@ describe(`${NodeManager.name} test`, () => {
         // Check if active
         // Case 2: can establish new connection, so online
         const active2 = await nodeManager.pingNode(serverNodeId, undefined, {
-          timer: new Timer({ delay: 1000 }),
+          timer: new Timer({ delay: 10000 }),
         });
         expect(active2).toBe(true);
         // Turn server node offline again
@@ -217,7 +216,7 @@ describe(`${NodeManager.name} test`, () => {
         // Check if active
         // Case 3: pre-existing connection no longer active, so offline
         const active3 = await nodeManager.pingNode(serverNodeId, undefined, {
-          timer: new Timer({ delay: 1000 }),
+          timer: new Timer({ delay: 10000 }),
         });
         expect(active3).toBe(false);
       } finally {
@@ -228,7 +227,7 @@ describe(`${NodeManager.name} test`, () => {
       }
     },
     globalThis.failedConnectionTimeout * 2,
-  ); // Ping needs to timeout (takes 20 seconds + setup + pulldown)
+  );
   test('getPublicKey', async () => {
     let server: PolykeyAgent | undefined;
     let nodeManager: NodeManager | undefined;
@@ -262,7 +261,6 @@ describe(`${NodeManager.name} test`, () => {
       });
       await nodeManager.start();
       await nodeConnectionManager.start({ nodeManager });
-      await taskManager.startProcessing();
 
       // We want to get the public key of the server
       const key = await nodeManager.getPublicKey(serverNodeId);
@@ -454,7 +452,6 @@ describe(`${NodeManager.name} test`, () => {
         });
         await nodeManager.start();
         await nodeConnectionManager.start({ nodeManager });
-        await taskManager.startProcessing();
 
         await nodeGraph.setNode(xNodeId, xNodeAddress);
 
@@ -482,7 +479,6 @@ describe(`${NodeManager.name} test`, () => {
     try {
       await nodeManager.start();
       await nodeConnectionManager.start({ nodeManager });
-      await taskManager.startProcessing();
       const localNodeId = keyManager.getNodeId();
       const bucketIndex = 100;
       const nodeId = nodesTestUtils.generateNodeIdForBucket(
@@ -511,7 +507,6 @@ describe(`${NodeManager.name} test`, () => {
     try {
       await nodeManager.start();
       await nodeConnectionManager.start({ nodeManager });
-      await taskManager.startProcessing();
       const localNodeId = keyManager.getNodeId();
       const bucketIndex = 100;
       const nodeId = nodesTestUtils.generateNodeIdForBucket(
@@ -553,7 +548,6 @@ describe(`${NodeManager.name} test`, () => {
     try {
       await nodeManager.start();
       await nodeConnectionManager.start({ nodeManager });
-      await taskManager.startProcessing();
       const localNodeId = keyManager.getNodeId();
       const bucketIndex = 100;
       // Creating 20 nodes in bucket
@@ -604,7 +598,6 @@ describe(`${NodeManager.name} test`, () => {
     try {
       await nodeManager.start();
       await nodeConnectionManager.start({ nodeManager });
-      await taskManager.startProcessing();
       const localNodeId = keyManager.getNodeId();
       const bucketIndex = 100;
       // Creating 20 nodes in bucket
@@ -658,7 +651,6 @@ describe(`${NodeManager.name} test`, () => {
     try {
       await nodeManager.start();
       await nodeConnectionManager.start({ nodeManager });
-      await taskManager.startProcessing();
       const localNodeId = keyManager.getNodeId();
       const bucketIndex = 100;
       // Creating 20 nodes in bucket
@@ -705,7 +697,6 @@ describe(`${NodeManager.name} test`, () => {
     try {
       await nodeManager.start();
       await nodeConnectionManager.start({ nodeManager });
-      await taskManager.startProcessing();
       server = await PolykeyAgent.createPolykeyAgent({
         password: 'password',
         nodePath: path.join(dataDir, 'server'),
@@ -762,7 +753,6 @@ describe(`${NodeManager.name} test`, () => {
     try {
       await nodeManager.start();
       await nodeConnectionManager.start({ nodeManager });
-      await taskManager.startProcessing();
       const nodeId = keyManager.getNodeId();
       const address = { host: localhost, port };
       // Let's fill a bucket
@@ -802,7 +792,6 @@ describe(`${NodeManager.name} test`, () => {
     await nodeManager.start();
     try {
       await nodeConnectionManager.start({ nodeManager });
-      await taskManager.startProcessing();
       const nodeId = keyManager.getNodeId();
       const address = { host: localhost, port };
       // Let's fill a bucket
@@ -852,7 +841,6 @@ describe(`${NodeManager.name} test`, () => {
     await nodeManager.start();
     try {
       await nodeConnectionManager.start({ nodeManager });
-      await taskManager.startProcessing();
       const nodeId = keyManager.getNodeId();
       const address = { host: localhost, port };
       // Let's fill a bucket
@@ -870,7 +858,7 @@ describe(`${NodeManager.name} test`, () => {
       const newNode4 = generateNodeIdForBucket(nodeId, 100, 25);
       // Set manually to non-blocking
       await expect(
-        nodeManager.setNode(newNode4, address),
+        nodeManager.setNode(newNode4, address, false),
       ).resolves.toBeUndefined();
       delayPing.resolveP();
     } finally {
@@ -899,7 +887,6 @@ describe(`${NodeManager.name} test`, () => {
       mockRefreshBucket.mockImplementation(
         () => new PromiseCancellable((resolve) => resolve()),
       );
-      await taskManager.startProcessing();
       await nodeManager.start();
       await nodeConnectionManager.start({ nodeManager });
       // Getting starting value
@@ -951,7 +938,6 @@ describe(`${NodeManager.name} test`, () => {
       logger,
     });
     await nodeConnectionManager.start({ nodeManager });
-    await taskManager.startProcessing();
     try {
       await expect(nodeManager.refreshBucket(100)).resolves.not.toThrow();
     } finally {
@@ -978,7 +964,6 @@ describe(`${NodeManager.name} test`, () => {
       mockRefreshBucket.mockImplementation(
         () => new PromiseCancellable((resolve) => resolve()),
       );
-      await taskManager.startProcessing();
       await nodeManager.start();
       await nodeConnectionManager.start({ nodeManager });
       // Getting starting value
