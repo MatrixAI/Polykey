@@ -799,6 +799,8 @@ describe(`${NodeManager.name} test`, () => {
         const newNode = generateNodeIdForBucket(nodeId, 100, i);
         await nodeManager.setNode(newNode, address);
       }
+      // Wait for 2 secs for new nodes to be added with new times
+      await sleep(2000);
 
       // Helpers
       const listBucket = async (bucketIndex: number) => {
@@ -807,7 +809,7 @@ describe(`${NodeManager.name} test`, () => {
       };
 
       // Pings fail, new nodes get added
-      mockedPingNode.mockImplementation(async (_) => false);
+      mockedPingNode.mockImplementation(async () => false);
       const newNode1 = generateNodeIdForBucket(nodeId, 100, 22);
       const newNode2 = generateNodeIdForBucket(nodeId, 100, 23);
       const newNode3 = generateNodeIdForBucket(nodeId, 100, 24);

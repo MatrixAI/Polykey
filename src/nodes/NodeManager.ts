@@ -648,7 +648,7 @@ class NodeManager {
     // Iterating over existing nodes
     const bucket = await this.nodeGraph.getOldestNode(
       bucketIndex,
-      undefined,
+      this.nodeGraph.nodeBucketLimit,
       tran,
     );
     if (bucket == null) never();
@@ -681,6 +681,8 @@ class NodeManager {
               tran,
             );
           } else {
+            // We don't remove node the ping was aborted
+            if (ctx.signal.aborted) return;
             // We need to lock this since it's concurrent
             //  and shares the transaction
             await unsetLock.withF(async () => {
