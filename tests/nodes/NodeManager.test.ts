@@ -1039,4 +1039,24 @@ describe(`${NodeManager.name} test`, () => {
       await nodeManager.stop();
     }
   });
+  test('Should have unique HandlerIds', async () => {
+    const nodeManager = new NodeManager({
+      db,
+      sigchain: {} as Sigchain,
+      keyManager,
+      nodeGraph,
+      nodeConnectionManager: dummyNodeConnectionManager,
+      taskManager,
+      logger,
+    });
+    expect(nodeManager.gcBucketHandlerId).not.toEqual(
+      nodeManager.refreshBucketHandlerId,
+    );
+    expect(nodeManager.gcBucketHandlerId).not.toEqual(
+      nodeManager.pingAndSetNodeHandlerId,
+    );
+    expect(nodeManager.refreshBucketHandlerId).not.toEqual(
+      nodeManager.pingAndSetNodeHandlerId,
+    );
+  });
 });

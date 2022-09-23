@@ -68,13 +68,13 @@ class NodeManager {
     });
   };
   public readonly refreshBucketHandlerId =
-    `${this.basePath}.${this.refreshBucketHandler.name}` as TaskHandlerId;
+    `${this.basePath}.${this.refreshBucketHandler.name}.refreshBucketHandlerId` as TaskHandlerId;
   protected gcBucketHandler: TaskHandler = async (
     ctx,
     _taskInfo,
     bucketIndex: number,
   ) => {
-    await this.garbageCollectBucket(bucketIndex, 1500, ctx);
+    await this.garbageCollectBucket(bucketIndex, 10000, ctx);
     // Checking for any new pending tasks
     const pendingNodesRemaining = this.pendingNodes.get(bucketIndex);
     if (pendingNodesRemaining == null || pendingNodesRemaining.size === 0) {
@@ -84,7 +84,7 @@ class NodeManager {
     await this.setupGCTask(bucketIndex);
   };
   public readonly gcBucketHandlerId =
-    `${this.basePath}.${this.gcBucketHandler.name}` as TaskHandlerId;
+    `${this.basePath}.${this.gcBucketHandler.name}.gcBucketHandlerId` as TaskHandlerId;
   protected pingAndSetNodeHandler: TaskHandler = async (
     ctx,
     _taskInfo,
@@ -108,13 +108,13 @@ class NodeManager {
         { host: host_, port },
         false,
         false,
-        1500,
+        10000,
         ctx,
       );
     }
   };
   public readonly pingAndSetNodeHandlerId: TaskHandlerId =
-    `${this.basePath}.${this.pingAndSetNodeHandler.name}` as TaskHandlerId;
+    `${this.basePath}.${this.pingAndSetNodeHandler.name}.pingAndSetNodeHandlerId` as TaskHandlerId;
 
   constructor({
     db,
