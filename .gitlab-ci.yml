@@ -45,6 +45,23 @@ stages:
 
 image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
 
+check:scratch:
+  stage: check
+  needs: [ ]
+  script:
+    nix-shell --arg ci true --run $'
+    npm test -- --ci tests/scratch.test.ts;
+    '
+  allow_failure: true
+  rules:
+    # Runs on feature and staging commits and ignores version commits
+    - if: $CI_COMMIT_BRANCH =~ /^(?:feature.*|staging)$/ && $CI_COMMIT_TITLE !~ /^[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
+    # Runs on tag pipeline where the tag is a prerelease or release version
+    - if: $CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
+    # Manually run on commits other than master and ignore version commits
+    - if: $CI_COMMIT_BRANCH && $CI_COMMIT_BRANCH != 'master' && $CI_COMMIT_TITLE !~ /^[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
+      when: manual
+
 check:lint:
   stage: check
   needs: []
