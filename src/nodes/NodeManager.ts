@@ -46,7 +46,6 @@ class NodeManager {
   protected refreshBucketDelayJitter: number;
   protected pendingNodes: Map<number, Map<string, NodeAddress>> = new Map();
 
-  public readonly basePath = this.constructor.name;
   protected refreshBucketHandler: TaskHandler = async (
     ctx,
     _taskInfo,
@@ -63,12 +62,14 @@ class NodeManager {
       handlerId: this.refreshBucketHandlerId,
       lazy: true,
       parameters: [bucketIndex],
-      path: [this.basePath, this.refreshBucketHandlerId, `${bucketIndex}`],
+      path: [
+        this.constructor.name,
+        this.refreshBucketHandlerId,
+        `${bucketIndex}`,
+      ],
       priority: 0,
     });
   };
-  public readonly refreshBucketHandlerId =
-    `${this.basePath}.${this.refreshBucketHandler.name}.refreshBucketHandlerId` as TaskHandlerId;
   protected gcBucketHandler: TaskHandler = async (
     ctx,
     _taskInfo,
@@ -83,8 +84,6 @@ class NodeManager {
     // Re-schedule the task
     await this.setupGCTask(bucketIndex);
   };
-  public readonly gcBucketHandlerId =
-    `${this.basePath}.${this.gcBucketHandler.name}.gcBucketHandlerId` as TaskHandlerId;
   protected pingAndSetNodeHandler: TaskHandler = async (
     ctx,
     _taskInfo,
@@ -113,8 +112,12 @@ class NodeManager {
       );
     }
   };
+  public readonly gcBucketHandlerId =
+    `${this.constructor.name}.${this.gcBucketHandler.name}` as TaskHandlerId;
+  public readonly refreshBucketHandlerId =
+    `${this.constructor.name}.${this.refreshBucketHandler.name}` as TaskHandlerId;
   public readonly pingAndSetNodeHandlerId: TaskHandlerId =
-    `${this.basePath}.${this.pingAndSetNodeHandler.name}.pingAndSetNodeHandlerId` as TaskHandlerId;
+    `${this.constructor.name}.${this.pingAndSetNodeHandler.name}` as TaskHandlerId;
 
   constructor({
     db,
@@ -176,7 +179,7 @@ class NodeManager {
     this.logger.info('Cancelling ephemeral tasks');
     const tasks: Array<Promise<any>> = [];
     for await (const task of this.taskManager.getTasks('asc', false, [
-      this.basePath,
+      this.constructor.name,
     ])) {
       tasks.push(task.promise());
       task.cancel(abortEphemeralTaskReason);
@@ -743,7 +746,7 @@ class NodeManager {
     // Check and start a 'garbageCollect` bucket task
     let scheduled: boolean = false;
     for await (const task of this.taskManager.getTasks('asc', true, [
-      this.basePath,
+      this.constructor.name,
       this.gcBucketHandlerId,
       `${bucketIndex}`,
     ])) {
@@ -772,7 +775,7 @@ class NodeManager {
       await this.taskManager.scheduleTask({
         handlerId: this.gcBucketHandlerId,
         parameters: [bucketIndex],
-        path: [this.basePath, this.gcBucketHandlerId, `${bucketIndex}`],
+        path: [this.constructor.name, this.gcBucketHandlerId, `${bucketIndex}`],
         lazy: true,
       });
     }
@@ -833,7 +836,7 @@ class NodeManager {
     for await (const task of this.taskManager.getTasks(
       'asc',
       true,
-      [this.basePath, this.refreshBucketHandlerId],
+      [this.constructor.name, this.refreshBucketHandlerId],
       tran,
     )) {
       const bucketIndex = parseInt(task.path[0]);
@@ -887,7 +890,11 @@ class NodeManager {
           delay: this.refreshBucketDelay + jitter,
           lazy: true,
           parameters: [bucketIndex],
-          path: [this.basePath, this.refreshBucketHandlerId, `${bucketIndex}`],
+          path: [
+            this.constructor.name,
+            this.refreshBucketHandlerId,
+            `${bucketIndex}`,
+          ],
           priority: 0,
         });
       }
@@ -917,7 +924,7 @@ class NodeManager {
     for await (const task of this.taskManager.getTasks(
       'asc',
       true,
-      [this.basePath, this.refreshBucketHandlerId, `${bucketIndex}`],
+      [this.constructor.name, this.refreshBucketHandlerId, `${bucketIndex}`],
       tran,
     )) {
       if (!existingTask) {
@@ -962,7 +969,11 @@ class NodeManager {
         handlerId: this.refreshBucketHandlerId,
         lazy: true,
         parameters: [bucketIndex],
-        path: [this.basePath, this.refreshBucketHandlerId, `${bucketIndex}`],
+        path: [
+          this.constructor.name,
+          this.refreshBucketHandlerId,
+          `${bucketIndex}`,
+        ],
         priority: 0,
       });
     }
@@ -1014,7 +1025,7 @@ class NodeManager {
               nodeData.address.host,
               nodeData.address.port,
             ],
-            path: [this.basePath, this.pingAndSetNodeHandlerId],
+            path: [this.constructor.name, this.pingAndSetNodeHandlerId],
             // Need to be somewhat active so high priority
             priority: 100,
           });

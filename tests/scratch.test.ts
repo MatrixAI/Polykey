@@ -24,10 +24,9 @@ describe('scratch', () => {
       logger,
     });
     logger.info('checking names');
-    logger.info(nodeManager.basePath);
     logger.info(nodeManager.refreshBucketHandlerId);
     logger.info(nodeManager.gcBucketHandlerId);
-    logger.info(nodeManager.refreshBucketHandlerId);
+    logger.info(nodeManager.pingAndSetNodeHandlerId);
     logger.info('end of names');
     expect(nodeManager.gcBucketHandlerId).not.toEqual(
       nodeManager.refreshBucketHandlerId,

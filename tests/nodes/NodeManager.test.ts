@@ -895,7 +895,7 @@ describe(`${NodeManager.name} test`, () => {
       const bucketIndex = 100;
       let refreshBucketTask: Task | undefined;
       for await (const task of taskManager.getTasks('asc', true, [
-        nodeManager.basePath,
+        nodeManager.constructor.name,
         nodeManager.refreshBucketHandlerId,
         `${bucketIndex}`,
       ])) {
@@ -911,7 +911,7 @@ describe(`${NodeManager.name} test`, () => {
       // Deadline should be updated
       let refreshBucketTaskUpdated: Task | undefined;
       for await (const task of taskManager.getTasks('asc', true, [
-        nodeManager.basePath,
+        nodeManager.constructor.name,
         nodeManager.refreshBucketHandlerId,
         `${bucketIndex}`,
       ])) {
@@ -1018,19 +1018,19 @@ describe(`${NodeManager.name} test`, () => {
       const task1 = await taskManager.scheduleTask({
         handlerId: nodeManager.pingAndSetNodeHandlerId,
         lazy: false,
-        path: [nodeManager.basePath],
+        path: [nodeManager.constructor.name],
       });
       const task2 = await taskManager.scheduleTask({
         handlerId: nodeManager.pingAndSetNodeHandlerId,
         lazy: false,
-        path: [nodeManager.basePath],
+        path: [nodeManager.constructor.name],
       });
 
       // Stopping nodeManager should cancel any nodeManager tasks
       await nodeManager.stop();
       const tasks: Array<any> = [];
       for await (const task of taskManager.getTasks('asc', true, [
-        nodeManager.basePath,
+        nodeManager.constructor.name,
       ])) {
         tasks.push(task);
       }
