@@ -47,6 +47,7 @@ describe('stop', () => {
             PK_ROOT_KEY: globalRootKeyPems[0],
           },
           cwd: dataDir,
+          command: globalThis.testCmd,
         },
         logger,
       );
@@ -67,6 +68,7 @@ describe('stop', () => {
           PK_PASSWORD: password,
         },
         cwd: dataDir,
+        command: globalThis.testCmd,
       });
       await status.waitFor('DEAD');
       await sleep(5000);
@@ -110,6 +112,7 @@ describe('stop', () => {
             PK_ROOT_KEY: globalRootKeyPems[0],
           },
           cwd: dataDir,
+          command: globalThis.testCmd,
         },
         logger,
       );
@@ -121,12 +124,14 @@ describe('stop', () => {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
           },
           cwd: dataDir,
+          command: globalThis.testCmd,
         }),
         testUtils.pkExec(['agent', 'stop', '--password-file', passwordPath], {
           env: {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
           },
           cwd: dataDir,
+          command: globalThis.testCmd,
         }),
       ]);
       // Cannot await for STOPPING
@@ -140,6 +145,7 @@ describe('stop', () => {
             PK_PASSWORD: password,
           },
           cwd: dataDir,
+          command: globalThis.testCmd,
         },
       );
       await status.waitFor('DEAD');
@@ -150,6 +156,7 @@ describe('stop', () => {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
           },
           cwd: dataDir,
+          command: globalThis.testCmd,
         },
       );
       // If the GRPC server gets closed after the GRPC connection is established
@@ -256,6 +263,7 @@ describe('stop', () => {
             PK_ROOT_KEY: globalRootKeyPems[0],
           },
           cwd: dataDir,
+          command: globalThis.testCmd,
         },
         logger,
       );
@@ -278,6 +286,7 @@ describe('stop', () => {
             PK_PASSWORD: 'wrong password',
           },
           cwd: dataDir,
+          command: globalThis.testCmd,
         },
       );
       testUtils.expectProcessError(exitCode, stderr, [
@@ -291,6 +300,7 @@ describe('stop', () => {
           PK_PASSWORD: password,
         },
         cwd: dataDir,
+        command: globalThis.testCmd,
       });
       await status.waitFor('DEAD');
       agentProcess.kill();

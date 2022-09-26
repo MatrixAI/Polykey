@@ -33,6 +33,7 @@ describe('password', () => {
           PK_PASSWORD: agentPassword,
         },
         cwd: agentDir,
+        command: globalThis.testCmd,
       },
     );
     expect(exitCode).toBe(0);
@@ -43,6 +44,7 @@ describe('password', () => {
         PK_PASSWORD: agentPassword,
       },
       cwd: agentDir,
+      command: globalThis.testCmd,
     }));
     expect(exitCode).not.toBe(0);
     // Revert side effects using new password
@@ -55,6 +57,7 @@ describe('password', () => {
           PK_PASSWORD: 'password-change',
         },
         cwd: agentDir,
+        command: globalThis.testCmd,
       },
     ));
   });

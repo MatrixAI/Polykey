@@ -34,12 +34,14 @@ describe('lock', () => {
         PK_PASSWORD: agentPassword,
       },
       cwd: agentDir,
+      command: globalThis.testCmd,
     });
     const { exitCode } = await testUtils.pkExec(['agent', 'lock'], {
       env: {
         PK_NODE_PATH: agentDir,
       },
       cwd: agentDir,
+      command: globalThis.testCmd,
     });
     expect(exitCode).toBe(0);
     const session = await Session.createSession({

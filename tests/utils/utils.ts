@@ -96,6 +96,7 @@ async function setupTestAgent(privateKeyPem: PrivateKeyPem, logger: Logger) {
         PK_ROOT_KEY: privateKeyPem,
       },
       cwd: agentDir,
+      command: globalThis.testCmd,
     },
     logger,
   );

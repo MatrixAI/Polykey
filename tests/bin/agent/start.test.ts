@@ -60,6 +60,7 @@ describe('start', () => {
             PK_PASSWORD: password,
           },
           cwd: dataDir,
+          command: globalThis.testCmd,
         },
         logger,
       );
@@ -136,6 +137,7 @@ describe('start', () => {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
           },
           cwd: dataDir,
+          command: globalThis.testCmd,
         },
         logger,
       );
@@ -235,6 +237,7 @@ describe('start', () => {
               PK_PASSWORD: password,
             },
             cwd: dataDir,
+            command: globalThis.testCmd,
           },
           logger.getChild('agentProcess1'),
         ),
@@ -260,6 +263,7 @@ describe('start', () => {
               PK_PASSWORD: password,
             },
             cwd: dataDir,
+            command: globalThis.testCmd,
           },
           logger.getChild('agentProcess2'),
         ),
@@ -333,6 +337,7 @@ describe('start', () => {
               PK_PASSWORD: password,
             },
             cwd: dataDir,
+            command: globalThis.testCmd,
           },
           logger.getChild('agentProcess'),
         ),
@@ -352,6 +357,7 @@ describe('start', () => {
               PK_PASSWORD: password,
             },
             cwd: dataDir,
+            command: globalThis.testCmd,
           },
           logger.getChild('bootstrapProcess'),
         ),
@@ -421,6 +427,7 @@ describe('start', () => {
             PK_PASSWORD: password,
           },
           cwd: dataDir,
+          command: globalThis.testCmd,
         },
         logger,
       );
@@ -450,6 +457,7 @@ describe('start', () => {
             PK_PASSWORD: password,
           },
           cwd: dataDir,
+          command: globalThis.testCmd,
         },
         logger,
       );
@@ -497,6 +505,7 @@ describe('start', () => {
             PK_PASSWORD: password,
           },
           cwd: dataDir,
+          command: globalThis.testCmd,
         },
         logger.getChild('agentProcess1'),
       );
@@ -540,6 +549,7 @@ describe('start', () => {
             PK_PASSWORD: password,
           },
           cwd: dataDir,
+          command: globalThis.testCmd,
         },
         logger.getChild('agentProcess2'),
       );
@@ -624,6 +634,7 @@ describe('start', () => {
             PK_PASSWORD: password1,
           },
           cwd: dataDir,
+          command: globalThis.testCmd,
         },
         logger.getChild('agentProcess1'),
       );
@@ -662,6 +673,7 @@ describe('start', () => {
             PK_PASSWORD: password2,
           },
           cwd: dataDir,
+          command: globalThis.testCmd,
         },
         logger.getChild('agentProcess2'),
       );
@@ -680,6 +692,7 @@ describe('start', () => {
             PK_PASSWORD: password2,
           },
           cwd: dataDir,
+          command: globalThis.testCmd,
         },
         logger.getChild('agentProcess3'),
       );
@@ -716,6 +729,7 @@ describe('start', () => {
             PK_RECOVERY_CODE: recoveryCode,
           },
           cwd: dataDir,
+          command: globalThis.testCmd,
         },
         logger.getChild('agentProcess4'),
       );
@@ -773,6 +787,7 @@ describe('start', () => {
             PK_PASSWORD: password,
           },
           cwd: dataDir,
+          command: globalThis.testCmd,
         },
         logger.getChild('agentProcess'),
       );
@@ -816,6 +831,7 @@ describe('start', () => {
             PK_ROOT_KEY: privateKeyPem,
           },
           cwd: dataDir,
+          command: globalThis.testCmd,
         },
         logger,
       );
@@ -869,6 +885,7 @@ describe('start', () => {
             PK_PASSWORD: password,
           },
           cwd: dataDir,
+          command: globalThis.testCmd,
         },
         logger,
       );

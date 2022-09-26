@@ -52,6 +52,7 @@ describe('polykey', () => {
           PK_PASSWORD: password,
         },
         cwd: dataDir,
+        command: globalThis.testCmd,
       },
       logger,
     );

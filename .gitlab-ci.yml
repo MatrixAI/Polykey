@@ -353,6 +353,7 @@ integration:docker:
     PK_TEST_TMPDIR: "${CI_PROJECT_DIR}/tmp/test"
   script:
     - docker info
+    - mkdir $PK_TEST_TMPDIR
     - >
       nix-shell --arg ci true --run $'
       image_and_tag="$(docker load --input ./builds/*docker* | cut -d\' \' -f3)";

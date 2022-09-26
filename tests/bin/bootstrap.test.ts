@@ -45,6 +45,7 @@ describe('bootstrap', () => {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
           },
           cwd: dataDir,
+          command: globalThis.testCmd,
         },
       );
       expect(exitCode).toBe(0);
@@ -84,6 +85,7 @@ describe('bootstrap', () => {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
           },
           cwd: dataDir,
+          command: globalThis.testCmd,
         },
       );
       expect(exitCode1).toBe(0);
@@ -95,6 +97,7 @@ describe('bootstrap', () => {
             PK_ROOT_KEY: privateKeyPem,
           },
           cwd: dataDir,
+          command: globalThis.testCmd,
         },
       );
       expect(exitCode2).toBe(0);
@@ -126,6 +129,7 @@ describe('bootstrap', () => {
             PK_PASSWORD: password,
           },
           cwd: dataDir,
+          command: globalThis.testCmd,
         },
       ));
       const errorBootstrapExistingState =
@@ -148,6 +152,7 @@ describe('bootstrap', () => {
             PK_PASSWORD: password,
           },
           cwd: dataDir,
+          command: globalThis.testCmd,
         },
       ));
       expect(exitCode).toBe(0);
@@ -181,6 +186,7 @@ describe('bootstrap', () => {
               PK_PASSWORD: password,
             },
             cwd: dataDir,
+            command: globalThis.testCmd,
           },
           logger.getChild('bootstrapProcess1'),
         ),
@@ -199,6 +205,7 @@ describe('bootstrap', () => {
               PK_PASSWORD: password,
             },
             cwd: dataDir,
+            command: globalThis.testCmd,
           },
           logger.getChild('bootstrapProcess2'),
         ),
@@ -260,6 +267,7 @@ describe('bootstrap', () => {
             PK_PASSWORD: password,
           },
           cwd: dataDir,
+          command: globalThis.testCmd,
         },
         logger.getChild('bootstrapProcess1'),
       );
@@ -296,6 +304,7 @@ describe('bootstrap', () => {
             PK_PASSWORD: password,
           },
           cwd: dataDir,
+          command: globalThis.testCmd,
         },
       );
       const errorBootstrapExistingState =
@@ -314,6 +323,7 @@ describe('bootstrap', () => {
             PK_PASSWORD: password,
           },
           cwd: dataDir,
+          command: globalThis.testCmd,
         },
       );
       expect(bootstrapProcess3.exitCode).toBe(0);

@@ -39,6 +39,7 @@ describe('unlock', () => {
         PK_PASSWORD: agentPassword,
       },
       cwd: agentDir,
+      command: globalThis.testCmd,
     }));
     expect(exitCode).toBe(0);
     // Run command without password
@@ -49,6 +50,7 @@ describe('unlock', () => {
           PK_NODE_PATH: agentDir,
         },
         cwd: agentDir,
+        command: globalThis.testCmd,
       },
     ));
     expect(exitCode).toBe(0);
@@ -62,6 +64,7 @@ describe('unlock', () => {
           PK_TOKEN: await session.readToken(),
         },
         cwd: agentDir,
+        command: globalThis.testCmd,
       },
     ));
     expect(exitCode).toBe(0);

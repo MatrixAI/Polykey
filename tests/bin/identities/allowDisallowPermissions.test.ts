@@ -379,6 +379,7 @@ describe('allow/disallow/permissions', () => {
           PK_PASSWORD: password,
         },
         cwd: dataDir,
+        command: globalThis.testCmd,
       },
     ));
     expect(exitCode).toBe(sysexits.USAGE);
@@ -391,6 +392,7 @@ describe('allow/disallow/permissions', () => {
           PK_PASSWORD: password,
         },
         cwd: dataDir,
+        command: globalThis.testCmd,
       },
     ));
     expect(exitCode).toBe(sysexits.USAGE);
@@ -404,6 +406,7 @@ describe('allow/disallow/permissions', () => {
           PK_PASSWORD: password,
         },
         cwd: dataDir,
+        command: globalThis.testCmd,
       },
     ));
     expect(exitCode).toBe(sysexits.USAGE);
@@ -417,6 +420,7 @@ describe('allow/disallow/permissions', () => {
           PK_PASSWORD: password,
         },
         cwd: dataDir,
+        command: globalThis.testCmd,
       },
     ));
     expect(exitCode).toBe(sysexits.USAGE);
@@ -429,6 +433,7 @@ describe('allow/disallow/permissions', () => {
           PK_PASSWORD: password,
         },
         cwd: dataDir,
+        command: globalThis.testCmd,
       },
     ));
     expect(exitCode).toBe(sysexits.USAGE);
