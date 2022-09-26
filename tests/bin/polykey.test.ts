@@ -19,11 +19,11 @@ describe('polykey', () => {
   testUtils.testIf(
     testUtils.isTestPlatformEmpty || testUtils.isTestPlatformDocker,
   )('format option affects STDERR', async () => {
-    const logger = new Logger('format test', LogLevel.DEBUG, [
+    const logger = new Logger('format test', LogLevel.WARN, [
       new StreamHandler(),
     ]);
     const dataDir = await fs.promises.mkdtemp(
-      path.join(os.tmpdir(), 'polykey-test-'),
+      path.join(globalThis.tmpDir, 'polykey-test-'),
     );
     const password = 'abc123';
     const polykeyPath = path.join(dataDir, 'polykey');
