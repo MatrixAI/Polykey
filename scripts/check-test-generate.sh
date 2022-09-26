@@ -19,6 +19,7 @@ variables:
   npm_config_prefer_offline: "true"
 
 default:
+  image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
   interruptible: true
   before_script:
     # Replace this in windows runners that use powershell
@@ -41,8 +42,6 @@ cache:
 
 stages:
   - check       # Linting, unit tests
-
-image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
 EOF
 
 printf "\n"

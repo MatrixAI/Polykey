@@ -17,6 +17,7 @@ variables:
   HOMEBREW_CACHE: "${CI_PROJECT_DIR}/tmp/Homebrew"
 
 default:
+  image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
   interruptible: true
   before_script:
     # Replace this in windows runners that use powershell
@@ -42,8 +43,6 @@ stages:
   - build       # Cross-platform library compilation, unit tests
   - integration # Cross-platform application bundling, integration tests, and pre-release
   - release     # Cross-platform distribution and deployment
-
-image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
 
 check:scratch:
   stage: check
@@ -381,6 +380,9 @@ integration:linux:
     - if: $CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+(?:-.*[0-9]+)?$/
 
 .integration:windows:
+  inherit:
+    default:
+      - interruptible
   stage: integration
   needs:
     - integration:builds

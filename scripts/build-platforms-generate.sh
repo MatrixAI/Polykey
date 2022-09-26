@@ -28,6 +28,7 @@ variables:
   HOMEBREW_CACHE: "${CI_PROJECT_DIR}/tmp/Homebrew"
 
 default:
+  image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
   interruptible: true
   before_script:
     # Replace this in windows runners that use powershell
@@ -50,8 +51,6 @@ cache:
 
 stages:
   - build       # Cross-platform library compilation, unit tests
-
-image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
 EOF
 
 printf "\n"
@@ -114,6 +113,9 @@ build:linux index:
   coverage: '/All files[^|]*\|[^|]*\s+([\d\.]+)/'
 
 .build:windows:
+  inherit:
+    default:
+      - interruptible
   stage: build
   needs: []
 EOF
