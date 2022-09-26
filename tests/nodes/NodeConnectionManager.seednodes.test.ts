@@ -241,6 +241,7 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
     } finally {
       // Clean up
       await nodeConnectionManager?.stop();
+      await taskManager.stopProcessing();
       await nodeManager?.stop();
     }
   });
@@ -323,6 +324,7 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
     } finally {
       mockedRefreshBucket.mockRestore();
       mockedPingNode.mockRestore();
+      await taskManager.stopProcessing();
       await nodeManager?.stop();
       await nodeConnectionManager?.stop();
     }
@@ -384,6 +386,7 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
     } finally {
       mockedRefreshBucket.mockRestore();
       mockedPingNode.mockRestore();
+      await taskManager.stopProcessing();
       await nodeManager?.stop();
       await nodeConnectionManager?.stop();
     }
@@ -457,6 +460,7 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
       mockedRefreshBucket.mockRestore();
       mockedPingNode.mockRestore();
       await nodeConnectionManager?.stop();
+      await taskManager.stopProcessing();
       await nodeManager?.stop();
     }
   });

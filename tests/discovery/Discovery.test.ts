@@ -6,6 +6,7 @@ import path from 'path';
 import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
+import { PromiseCancellable } from '@matrixai/async-cancellable';
 import TaskManager from '@/tasks/TaskManager';
 import PolykeyAgent from '@/PolykeyAgent';
 import Discovery from '@/discovery/Discovery';
@@ -59,7 +60,16 @@ describe('Discovery', () => {
   let nodeA: PolykeyAgent;
   let nodeB: PolykeyAgent;
   let identityId: IdentityId;
+
+  const mockedRefreshBucket = jest.spyOn(
+    NodeManager.prototype,
+    'refreshBucket',
+  );
+
   beforeEach(async () => {
+    mockedRefreshBucket.mockImplementation(
+      () => new PromiseCancellable((resolve) => resolve()),
+    );
     // Sets the global GRPC logger to the logger
     grpcUtils.setLogger(logger);
     dataDir = await fs.promises.mkdtemp(
@@ -152,7 +162,6 @@ describe('Discovery', () => {
     });
     await nodeManager.start();
     await nodeConnectionManager.start({ nodeManager });
-    await taskManager.startProcessing();
     // Set up other gestalt
     nodeA = await PolykeyAgent.createPolykeyAgent({
       password: password,
@@ -224,6 +233,7 @@ describe('Discovery', () => {
       force: true,
       recursive: true,
     });
+    mockedRefreshBucket.mockRestore();
   });
   test('discovery readiness', async () => {
     const discovery = await Discovery.createDiscovery({
@@ -233,6 +243,7 @@ describe('Discovery', () => {
       identitiesManager,
       nodeManager,
       sigchain,
+      taskManager,
       logger,
     });
     await expect(discovery.destroy()).rejects.toThrow(
@@ -256,10 +267,15 @@ describe('Discovery', () => {
       identitiesManager,
       nodeManager,
       sigchain,
+      taskManager,
       logger,
     });
+    await taskManager.startProcessing();
     await discovery.queueDiscoveryByNode(nodeA.keyManager.getNodeId());
-    await discovery.waitForDrained();
+    let existingTasks: number = 0;
+    do {
+      existingTasks = await discovery.waitForDiscoveryTasks();
+    } while (existingTasks > 0);
     const gestalt = await gestaltGraph.getGestalts();
     const gestaltMatrix = gestalt[0].matrix;
     const gestaltNodes = gestalt[0].nodes;
@@ -279,6 +295,7 @@ describe('Discovery', () => {
     await gestaltGraph.unsetNode(nodeA.keyManager.getNodeId());
     await gestaltGraph.unsetNode(nodeB.keyManager.getNodeId());
     await gestaltGraph.unsetIdentity(testToken.providerId, identityId);
+    await taskManager.stopProcessing();
     await discovery.stop();
     await discovery.destroy();
   });
@@ -290,10 +307,15 @@ describe('Discovery', () => {
       identitiesManager,
       nodeManager,
       sigchain,
+      taskManager,
       logger,
     });
+    await taskManager.startProcessing();
     await discovery.queueDiscoveryByIdentity(testToken.providerId, identityId);
-    await discovery.waitForDrained();
+    let existingTasks: number = 0;
+    do {
+      existingTasks = await discovery.waitForDiscoveryTasks();
+    } while (existingTasks > 0);
     const gestalt = (await gestaltGraph.getGestalts())[0];
     const gestaltMatrix = gestalt.matrix;
     const gestaltNodes = gestalt.nodes;
@@ -313,6 +335,7 @@ describe('Discovery', () => {
     await gestaltGraph.unsetNode(nodeA.keyManager.getNodeId());
     await gestaltGraph.unsetNode(nodeB.keyManager.getNodeId());
     await gestaltGraph.unsetIdentity(testToken.providerId, identityId);
+    await taskManager.stopProcessing();
     await discovery.stop();
     await discovery.destroy();
   });
@@ -324,10 +347,15 @@ describe('Discovery', () => {
       identitiesManager,
       nodeManager,
       sigchain,
+      taskManager,
       logger,
     });
+    await taskManager.startProcessing();
     await discovery.queueDiscoveryByNode(nodeA.keyManager.getNodeId());
-    await discovery.waitForDrained();
+    let existingTasks: number = 0;
+    do {
+      existingTasks = await discovery.waitForDiscoveryTasks();
+    } while (existingTasks > 0);
     const gestalt1 = (await gestaltGraph.getGestalts())[0];
     const gestaltMatrix1 = gestalt1.matrix;
     const gestaltNodes1 = gestalt1.nodes;
@@ -361,7 +389,9 @@ describe('Discovery', () => {
     // Note that eventually we would like to add in a system of revisiting
     // already discovered vertices, however for now we must do this manually.
     await discovery.queueDiscoveryByNode(nodeA.keyManager.getNodeId());
-    await discovery.waitForDrained();
+    do {
+      existingTasks = await discovery.waitForDiscoveryTasks();
+    } while (existingTasks > 0);
     const gestalt2 = (await gestaltGraph.getGestalts())[0];
     const gestaltMatrix2 = gestalt2.matrix;
     const gestaltNodes2 = gestalt2.nodes;
@@ -386,6 +416,7 @@ describe('Discovery', () => {
     // Can just remove the user that the claim is for as this will cause the
     // claim to be dropped during discovery
     delete testProvider.users[identityId2];
+    await taskManager.stopProcessing();
     await discovery.stop();
     await discovery.destroy();
   });
@@ -397,12 +428,17 @@ describe('Discovery', () => {
       identitiesManager,
       nodeManager,
       sigchain,
+      taskManager,
       logger,
     });
     await discovery.queueDiscoveryByNode(nodeA.keyManager.getNodeId());
     await discovery.stop();
     await discovery.start();
-    await discovery.waitForDrained();
+    await taskManager.startProcessing();
+    let existingTasks: number = 0;
+    do {
+      existingTasks = await discovery.waitForDiscoveryTasks();
+    } while (existingTasks > 0);
     const gestalt = (await gestaltGraph.getGestalts())[0];
     const gestaltMatrix = gestalt.matrix;
     const gestaltNodes = gestalt.nodes;
@@ -422,6 +458,7 @@ describe('Discovery', () => {
     await gestaltGraph.unsetNode(nodeA.keyManager.getNodeId());
     await gestaltGraph.unsetNode(nodeB.keyManager.getNodeId());
     await gestaltGraph.unsetIdentity(testToken.providerId, identityId);
+    await taskManager.stopProcessing();
     await discovery.stop();
     await discovery.destroy();
   });

@@ -325,6 +325,7 @@ class PolykeyAgent {
           identitiesManager,
           nodeManager,
           sigchain,
+          taskManager,
           logger: logger.getChild(Discovery.name),
         }));
       notificationsManager =
@@ -754,16 +755,20 @@ class PolykeyAgent {
     this.logger.info(`Destroying ${this.constructor.name}`);
     // DB needs to be running for dependent domains to properly clear state.
     await this.db.start();
+    // TaskManager needs to be running for dependent domains to clear state.
+    await this.taskManager.start({ lazy: true });
     await this.sessionManager.destroy();
     await this.notificationsManager.destroy();
     await this.vaultManager.destroy();
     await this.discovery.destroy();
     await this.nodeGraph.destroy();
     await this.gestaltGraph.destroy();
-    await this.taskManager.destroy();
     await this.acl.destroy();
     await this.sigchain.destroy();
     await this.identitiesManager.destroy();
+    await this.taskManager.stop();
+    await this.taskManager.destroy();
+    // Non-TaskManager dependencies
     await this.db.stop();
     // Non-DB dependencies
     await this.db.destroy();

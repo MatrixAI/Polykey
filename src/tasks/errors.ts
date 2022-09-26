@@ -35,6 +35,11 @@ class ErrorTaskManagerQueue<T> extends ErrorTasks<T> {
   exitCode = sysexits.SOFTWARE;
 }
 
+class ErrorTaskManagerProcessing<T> extends ErrorTasks<T> {
+  static description = 'TaskManager is processing';
+  exitCode = sysexits.USAGE;
+}
+
 class ErrorTask<T> extends ErrorTasks<T> {
   static description = 'Task error';
   exitCode = sysexits.USAGE;
@@ -106,6 +111,7 @@ export {
   ErrorTaskManagerDestroyed,
   ErrorTaskManagerScheduler,
   ErrorTaskManagerQueue,
+  ErrorTaskManagerProcessing,
   ErrorTask,
   ErrorTaskMissing,
   ErrorTaskHandlerMissing,

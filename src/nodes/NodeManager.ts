@@ -174,6 +174,9 @@ class NodeManager {
   public async stop() {
     this.logger.info(`Stopping ${this.constructor.name}`);
     this.logger.info('Cancelling ephemeral tasks');
+    if (this.taskManager.isProcessing()) {
+      throw new tasksErrors.ErrorTaskManagerProcessing();
+    }
     const tasks: Array<Promise<any>> = [];
     for await (const task of this.taskManager.getTasks('asc', false, [
       this.basePath,

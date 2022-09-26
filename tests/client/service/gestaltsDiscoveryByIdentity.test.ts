@@ -138,7 +138,6 @@ describe('gestaltsDiscoveryByIdentity', () => {
     });
     await nodeManager.start();
     await nodeConnectionManager.start({ nodeManager });
-    await taskManager.startProcessing();
     discovery = await Discovery.createDiscovery({
       db,
       keyManager,
@@ -146,8 +145,10 @@ describe('gestaltsDiscoveryByIdentity', () => {
       identitiesManager,
       nodeManager,
       sigchain,
+      taskManager,
       logger,
     });
+    await taskManager.startProcessing();
     const clientService = {
       gestaltsDiscoveryByIdentity: gestaltsDiscoveryByIdentity({
         authenticate,
