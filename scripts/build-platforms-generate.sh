@@ -56,7 +56,7 @@ EOF
 printf "\n"
 
 # Each test directory has its own job
-for test_dir in tests/acl/**/*/; do
+for test_dir in tests/**/*/; do
   # Ignore discovery domain for now
   if [[ "$test_dir" =~ discovery ]]; then
     continue
