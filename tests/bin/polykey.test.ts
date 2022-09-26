@@ -19,7 +19,7 @@ describe('polykey', () => {
   testUtils.testIf(
     testUtils.isTestPlatformEmpty || testUtils.isTestPlatformDocker,
   )('format option affects STDERR', async () => {
-    const logger = new Logger('format test', LogLevel.WARN, [
+    const logger = new Logger('format test', LogLevel.DEBUG, [
       new StreamHandler(),
     ]);
     const dataDir = await fs.promises.mkdtemp(
