@@ -57,7 +57,7 @@ EOF
 printf "\n"
 
 # Each test directory has its own job
-for test_dir in tests/**/*/; do
+for test_dir in tests/acl/**/*/; do
   test_files=("$test_dir"*.test.ts)
   if [ ${#test_files[@]} -eq 0 ]; then
     continue
