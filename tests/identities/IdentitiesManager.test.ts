@@ -4,7 +4,7 @@ import type {
   TokenData,
   IdentityData,
 } from '@/identities/types';
-import type { NodeId } from '@/nodes/types';
+import type { NodeId } from '@/ids/types';
 import type { Claim, ClaimData, SignatureData } from '@/claims/types';
 import type { IdentityClaim } from '@/identities/types';
 import os from 'os';

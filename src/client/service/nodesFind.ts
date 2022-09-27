@@ -1,7 +1,7 @@
 import type * as grpc from '@grpc/grpc-js';
 import type { Authenticate } from '../types';
 import type NodeConnectionManager from '../../nodes/NodeConnectionManager';
-import type { NodeId } from '../../nodes/types';
+import type { NodeId } from '../../ids/types';
 import type Logger from '@matrixai/logger';
 import * as nodesUtils from '../../nodes/utils';
 import * as nodesErrors from '../../nodes/errors';

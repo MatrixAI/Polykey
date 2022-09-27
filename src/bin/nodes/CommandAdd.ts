@@ -1,5 +1,5 @@
 import type PolykeyClient from '../../PolykeyClient';
-import type { NodeId } from '../../nodes/types';
+import type { NodeId } from '../../ids/types';
 import type { Host, Port } from '../../network/types';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils/utils';

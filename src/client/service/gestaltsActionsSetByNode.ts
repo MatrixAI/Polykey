@@ -3,7 +3,7 @@ import type { DB } from '@matrixai/db';
 import type { Authenticate } from '../types';
 import type GestaltGraph from '../../gestalts/GestaltGraph';
 import type { GestaltAction } from '../../gestalts/types';
-import type { NodeId } from '../../nodes/types';
+import type { NodeId } from '../../ids/types';
 import type * as permissionsPB from '../../proto/js/polykey/v1/permissions/permissions_pb';
 import type Logger from '@matrixai/logger';
 import * as grpcUtils from '../../grpc/utils';

@@ -2,7 +2,7 @@ import type * as grpc from '@grpc/grpc-js';
 import type { DB } from '@matrixai/db';
 import type { ClaimEncoded, ClaimIntermediary } from '../../claims/types';
 import type NodeManager from '../../nodes/NodeManager';
-import type { NodeId } from '../../nodes/types';
+import type { NodeId } from '../../ids/types';
 import type Sigchain from '../../sigchain/Sigchain';
 import type KeyManager from '../../keys/KeyManager';
 import type * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';

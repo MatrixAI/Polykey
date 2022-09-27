@@ -1,4 +1,4 @@
-import type { NodeId } from '../nodes/types';
+import type { NodeId } from '../ids/types';
 import type { Host, Port } from '../network/types';
 
 type StatusStarting = {

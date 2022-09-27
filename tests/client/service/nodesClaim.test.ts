@@ -1,5 +1,5 @@
 import type { Notification } from '@/notifications/types';
-import type { NodeIdEncoded } from '@/nodes/types';
+import type { NodeIdEncoded } from '@/ids/types';
 import type { Host, Port } from '@/network/types';
 import fs from 'fs';
 import path from 'path';

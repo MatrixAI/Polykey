@@ -1,4 +1,4 @@
-import type { NodeId } from '@/nodes/types';
+import type { NodeId } from '@/ids/types';
 import type { Host, Port } from '@/network/types';
 import type { VaultActions, VaultName } from '@/vaults/types';
 import type { Notification, NotificationData } from '@/notifications/types';
@@ -42,6 +42,7 @@ describe('NotificationsManager', () => {
       0, 0, 0, 0, 0, 0, 5,
     ]),
   );
+  const vaultIdGenerator = vaultsUtils.createVaultIdGenerator();
   /**
    * Shared ACL, DB, NodeManager, KeyManager for all tests
    */
@@ -211,7 +212,7 @@ describe('NotificationsManager', () => {
     };
     const vaultNotification: NotificationData = {
       type: 'VaultShare',
-      vaultId: vaultsUtils.encodeVaultId(vaultsUtils.generateVaultId()),
+      vaultId: vaultsUtils.encodeVaultId(vaultIdGenerator()),
       vaultName: 'vaultName' as VaultName,
       actions: {
         clone: null,
@@ -275,7 +276,7 @@ describe('NotificationsManager', () => {
     };
     const vaultNotification: NotificationData = {
       type: 'VaultShare',
-      vaultId: vaultsUtils.encodeVaultId(vaultsUtils.generateVaultId()),
+      vaultId: vaultsUtils.encodeVaultId(vaultIdGenerator()),
       vaultName: 'vaultName' as VaultName,
       actions: {
         clone: null,
@@ -338,7 +339,7 @@ describe('NotificationsManager', () => {
     const notification3: Notification = {
       data: {
         type: 'VaultShare',
-        vaultId: vaultsUtils.encodeVaultId(vaultsUtils.generateVaultId()),
+        vaultId: vaultsUtils.encodeVaultId(vaultIdGenerator()),
         vaultName: 'vaultName' as VaultName,
         actions: {
           clone: null,

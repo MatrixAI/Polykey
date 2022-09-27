@@ -1,15 +1,10 @@
 import type { DB, DBTransaction, KeyPath, LevelPath } from '@matrixai/db';
-import type {
-  NotificationId,
-  Notification,
-  NotificationData,
-  NotificationIdGenerator,
-} from './types';
+import type { NotificationId, Notification, NotificationData } from './types';
 import type ACL from '../acl/ACL';
 import type KeyManager from '../keys/KeyManager';
 import type NodeManager from '../nodes/NodeManager';
 import type NodeConnectionManager from '../nodes/NodeConnectionManager';
-import type { NodeId } from '../nodes/types';
+import type { NodeId } from '../ids/types';
 import Logger from '@matrixai/logger';
 import { IdInternal } from '@matrixai/id';
 import {
@@ -93,7 +88,7 @@ class NotificationsManager {
     MESSAGE_COUNT_KEY,
   ];
 
-  protected notificationIdGenerator: NotificationIdGenerator;
+  protected notificationIdGenerator: () => NotificationId;
 
   constructor({
     acl,

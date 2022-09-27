@@ -13,7 +13,7 @@ import type {
   VaultRef,
 } from './types';
 import type KeyManager from '../keys/KeyManager';
-import type { NodeId, NodeIdEncoded } from '../nodes/types';
+import type { NodeId, NodeIdEncoded } from '../ids/types';
 import type NodeConnectionManager from '../nodes/NodeConnectionManager';
 import type GRPCClientAgent from '../agent/GRPCClientAgent';
 import type { POJO } from '../types';

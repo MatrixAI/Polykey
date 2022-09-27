@@ -1,5 +1,5 @@
 import type { Gestalt } from '@/gestalts/types';
-import type { NodeId } from '@/nodes/types';
+import type { NodeId } from '@/ids/types';
 import type { IdentityId, IdentityInfo, ProviderId } from '@/identities/types';
 import type { NodeInfo } from '@/nodes/types';
 import type { Host, Port } from '@/network/types';

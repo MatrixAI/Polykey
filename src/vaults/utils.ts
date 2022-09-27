@@ -1,16 +1,10 @@
-import type {
-  VaultId,
-  VaultIdEncoded,
-  VaultRef,
-  VaultAction,
-  CommitId,
-} from './types';
-import type { NodeId } from '../nodes/types';
 import type { EncryptedFS } from 'encryptedfs';
+import type { VaultRef, VaultAction, CommitId } from './types';
+import type { NodeId } from '../ids/types';
 import path from 'path';
-import { IdInternal, IdRandom } from '@matrixai/id';
 import { tagLast, refs, vaultActions } from './types';
 import * as nodesUtils from '../nodes/utils';
+import { createVaultIdGenerator, encodeVaultId, decodeVaultId } from '../ids';
 
 /**
  * Vault history is designed for linear-history
@@ -20,25 +14,6 @@ import * as nodesUtils from '../nodes/utils';
  */
 const canonicalBranch = 'master';
 const canonicalBranchRef = 'refs/heads/' + canonicalBranch;
-
-const vaultIdGenerator = new IdRandom<VaultId>();
-
-function generateVaultId(): VaultId {
-  return vaultIdGenerator.get();
-}
-
-function encodeVaultId(vaultId: VaultId): VaultIdEncoded {
-  return vaultId.toMultibase('base58btc') as VaultIdEncoded;
-}
-
-function decodeVaultId(vaultIdEncoded: any): VaultId | undefined {
-  if (typeof vaultIdEncoded !== 'string') return;
-  const vaultId = IdInternal.fromMultibase<VaultId>(vaultIdEncoded);
-  if (vaultId == null) return;
-  // All VaultIds are 16 bytes long
-  if (vaultId.length !== 16) return;
-  return vaultId;
-}
 
 /**
  * Vault reference can be HEAD, any of the special tags or a commit ID
@@ -95,7 +70,7 @@ export {
   refs,
   canonicalBranch,
   canonicalBranchRef,
-  generateVaultId,
+  createVaultIdGenerator,
   encodeVaultId,
   decodeVaultId,
   validateRef,

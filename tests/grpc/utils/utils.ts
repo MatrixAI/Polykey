@@ -1,6 +1,6 @@
 import type Logger from '@matrixai/logger';
 import type { Authenticate } from '@/client/types';
-import type { NodeId } from '@/nodes/types';
+import type { NodeId } from '@/ids/types';
 import * as grpc from '@grpc/grpc-js';
 import * as grpcUtils from '@/grpc/utils';
 import * as nodesUtils from '@/nodes/utils';

@@ -1,5 +1,5 @@
 import type { Authenticate } from '../types';
-import type { NodeId } from '../../nodes/types';
+import type { NodeId } from '../../ids/types';
 import type * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
 import type * as grpc from '@grpc/grpc-js';
 import type VaultManager from '../../vaults/VaultManager';

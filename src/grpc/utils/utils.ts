@@ -30,7 +30,7 @@ import type {
 import type { CertificatePemChain, PrivateKeyPem } from '../../keys/types';
 import type { POJO } from '../../types';
 import type { ClientMetadata } from '../types';
-import type { NodeId } from '../../nodes/types';
+import type { NodeId } from '../../ids/types';
 import { Buffer } from 'buffer';
 import { AbstractError } from '@matrixai/errors';
 import * as grpc from '@grpc/grpc-js';

@@ -1,4 +1,4 @@
-import type { NodeId } from '@/nodes/types';
+import type { NodeId } from '@/ids/types';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';

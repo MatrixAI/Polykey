@@ -7,7 +7,7 @@ import type {
   GestaltIdentityId,
   GestaltAction,
 } from './types';
-import type { NodeId } from '../nodes/types';
+import type { NodeId } from '../ids/types';
 import type { IdentityId, ProviderId } from '../identities/types';
 import canonicalize from 'canonicalize';
 import { gestaltActions } from './types';

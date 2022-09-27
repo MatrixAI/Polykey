@@ -1,7 +1,7 @@
 import type { Host, Port } from '@/network/types';
 import type { IdentityId, ProviderId } from '@/identities/types';
 import type { ClaimLinkIdentity } from '@/claims/types';
-import type { NodeId } from '@/nodes/types';
+import type { NodeId } from '@/ids/types';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';

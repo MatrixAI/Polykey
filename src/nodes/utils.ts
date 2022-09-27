@@ -1,46 +1,16 @@
-import type {
-  NodeBucket,
-  NodeBucketIndex,
-  NodeId,
-  NodeIdEncoded,
-} from './types';
+import type { NodeBucket, NodeBucketIndex, NodeId } from './types';
 import type { KeyPath } from '@matrixai/db';
+import { utils as dbUtils } from '@matrixai/db';
 import { IdInternal } from '@matrixai/id';
 import lexi from 'lexicographic-integer';
-import { utils as dbUtils } from '@matrixai/db';
 import * as nodesErrors from './errors';
-import { bytes2BigInt } from '../utils';
 import * as keysUtils from '../keys/utils';
 import * as grpcErrors from '../grpc/errors';
 import * as agentErrors from '../agent/errors';
+import { encodeNodeId, decodeNodeId } from '../ids';
+import { bytes2BigInt } from '../utils';
 
 const sepBuffer = dbUtils.sep;
-
-/**
- * Encodes the NodeId as a `base32hex` string
- */
-function encodeNodeId(nodeId: NodeId): NodeIdEncoded {
-  return nodeId.toMultibase('base32hex') as NodeIdEncoded;
-}
-
-/**
- * Decodes an encoded NodeId string into a NodeId
- */
-function decodeNodeId(nodeIdEncoded: any): NodeId | undefined {
-  if (typeof nodeIdEncoded !== 'string') {
-    return;
-  }
-  const nodeId = IdInternal.fromMultibase<NodeId>(nodeIdEncoded);
-  if (nodeId == null) {
-    return;
-  }
-  // All NodeIds are 32 bytes long
-  // The NodeGraph requires a fixed size for Node Ids
-  if (nodeId.length !== 32) {
-    return;
-  }
-  return nodeId;
-}
 
 /**
  * Calculate the bucket index that the target node should be located in

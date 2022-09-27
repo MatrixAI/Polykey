@@ -1,7 +1,7 @@
 import type * as grpc from '@grpc/grpc-js';
 import type { DB } from '@matrixai/db';
 import type { Authenticate } from '../types';
-import type { NodeId } from '../../nodes/types';
+import type { NodeId } from '../../ids/types';
 import type GestaltGraph from '../../gestalts/GestaltGraph';
 import type * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
 import type Logger from '@matrixai/logger';

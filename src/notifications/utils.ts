@@ -4,16 +4,12 @@ import type {
   VaultShare,
   Notification,
   SignedNotification,
-  NotificationId,
-  NotificationIdGenerator,
 } from './types';
 import type { KeyPairPem } from '../keys/types';
-import type { NodeId } from '../nodes/types';
-import type { VaultId } from '../vaults/types';
+import type { NodeId, VaultId } from '../ids/types';
 import type { DefinedError } from 'ajv';
 import { createPublicKey, createPrivateKey } from 'crypto';
 import { SignJWT, exportJWK, jwtVerify, EmbeddedJWK } from 'jose';
-import { IdSortable } from '@matrixai/id';
 import {
   notificationValidate,
   generalNotificationValidate,
@@ -21,16 +17,8 @@ import {
   vaultShareNotificationValidate,
 } from './schema';
 import * as notificationsErrors from './errors';
+import { createNotificationIdGenerator } from '../ids';
 import * as nodesUtils from '../nodes/utils';
-
-function createNotificationIdGenerator(
-  lastId?: NotificationId,
-): NotificationIdGenerator {
-  const generator = new IdSortable<NotificationId>({
-    lastId,
-  });
-  return () => generator.get();
-}
 
 function constructGestaltInviteMessage(nodeId: NodeId): string {
   return `Keynode with ID ${nodeId} has invited this Keynode to join their Gestalt. Accept this invitation by typing the command: xxx`;

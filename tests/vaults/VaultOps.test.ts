@@ -25,6 +25,7 @@ describe('VaultOps', () => {
   let vault: Vault;
   let db: DB;
   let vaultsDbPath: LevelPath;
+  const vaultIdGenerator = vaultsUtils.createVaultIdGenerator();
   const dummyKeyManager = {
     getNodeId: () => {
       return testNodesUtils.generateRandomNodeId();
@@ -44,7 +45,7 @@ describe('VaultOps', () => {
     });
     await baseEfs.start();
 
-    vaultId = vaultsUtils.generateVaultId();
+    vaultId = vaultIdGenerator();
     await baseEfs.mkdir(
       path.join(vaultsUtils.encodeVaultId(vaultId), 'contents'),
       {

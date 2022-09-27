@@ -3,7 +3,7 @@ import type { TLSSocket } from 'tls';
 import type UTPConnection from 'utp-native/lib/connection';
 import type { Certificate } from '../keys/types';
 import type { Address, Host, NetworkMessage, Port } from './types';
-import type { NodeId } from '../nodes/types';
+import type { NodeId } from '../ids/types';
 import type { AbstractConstructorParameters, Timer } from '../types';
 import tls from 'tls';
 import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';

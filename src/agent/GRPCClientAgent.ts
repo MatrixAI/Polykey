@@ -4,7 +4,7 @@ import type {
   AsyncGeneratorReadableStreamClient,
   AsyncGeneratorDuplexStreamClient,
 } from '../grpc/types';
-import type { NodeId } from '../nodes/types';
+import type { NodeId } from '../ids/types';
 import type { Host, Port, ProxyConfig, TLSConfig } from '../network/types';
 import type * as utilsPB from '../proto/js/polykey/v1/utils/utils_pb';
 import type * as vaultsPB from '../proto/js/polykey/v1/vaults/vaults_pb';

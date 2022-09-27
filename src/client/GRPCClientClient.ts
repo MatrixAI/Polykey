@@ -2,7 +2,7 @@ import type { Interceptor } from '@grpc/grpc-js';
 import type { ClientReadableStream } from '@grpc/grpc-js/build/src/call';
 import type { AsyncGeneratorReadableStreamClient } from '../grpc/types';
 import type { Session } from '../sessions';
-import type { NodeId } from '../nodes/types';
+import type { NodeId } from '../ids/types';
 import type { Host, Port, ProxyConfig, TLSConfig } from '../network/types';
 import type * as utilsPB from '../proto/js/polykey/v1/utils/utils_pb';
 import type * as agentPB from '../proto/js/polykey/v1/agent/agent_pb';

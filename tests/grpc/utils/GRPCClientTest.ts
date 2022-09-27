@@ -1,6 +1,6 @@
 import type { Interceptor } from '@grpc/grpc-js';
 import type Session from '@/sessions/Session';
-import type { NodeId } from '@/nodes/types';
+import type { NodeId } from '@/ids/types';
 import type { Host, Port, TLSConfig, ProxyConfig } from '@/network/types';
 import type * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import type { ClientReadableStream } from '@grpc/grpc-js/build/src/call';

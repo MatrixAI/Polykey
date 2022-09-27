@@ -1,4 +1,4 @@
-import type { NodeIdEncoded } from '@/nodes/types';
+import type { NodeIdEncoded } from '@/ids/types';
 import type { ClaimLinkIdentity } from '@/claims/types';
 import type { ChainData } from '@/sigchain/types';
 import type { Gestalt } from '@/gestalts/types';

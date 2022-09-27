@@ -8,7 +8,7 @@ import type {
   ConnectionEstablishedCallback,
 } from './types';
 import type { ConnectionsForward } from './ConnectionForward';
-import type { NodeId } from '../nodes/types';
+import type { NodeId } from '../ids/types';
 import type { Timer } from '../types';
 import type UTPConnection from 'utp-native/lib/connection';
 import type { ConnectionsReverse } from './ConnectionReverse';

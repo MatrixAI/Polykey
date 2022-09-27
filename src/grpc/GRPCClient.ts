@@ -6,7 +6,7 @@ import type {
   ChannelOptions,
   Interceptor,
 } from '@grpc/grpc-js';
-import type { NodeId } from '../nodes/types';
+import type { NodeId } from '../ids/types';
 import type { Certificate } from '../keys/types';
 import type { Host, Port, TLSConfig, ProxyConfig } from '../network/types';
 import type { Timer } from '../types';

@@ -1,10 +1,5 @@
-import type { Permission, PermissionId } from './types';
-import { IdRandom } from '@matrixai/id';
-
-function createPermIdGenerator() {
-  const generator = new IdRandom<PermissionId>();
-  return () => generator.get();
-}
+import type { Permission } from './types';
+import { createPermIdGenerator } from '../ids';
 
 function permUnion(perm1: Permission, perm2: Permission): Permission {
   const vaults = {

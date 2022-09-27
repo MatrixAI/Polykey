@@ -1,4 +1,4 @@
-import type { NodeId, NodeIdEncoded } from '@/nodes/types';
+import type { NodeId, NodeIdEncoded } from '@/ids/types';
 import type {
   VaultAction,
   VaultId,
@@ -41,6 +41,7 @@ describe('VaultManager', () => {
   const logger = new Logger('VaultManager Test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
+  const vaultIdGenerator = vaultsUtils.createVaultIdGenerator();
   const nonExistentVaultId = IdInternal.fromString<VaultId>('DoesNotExistxxxx');
   const password = 'password';
   let remoteVaultId: VaultId;
@@ -1919,7 +1920,7 @@ describe('VaultManager', () => {
       logger: logger.getChild(VaultManager.name),
     });
     try {
-      const vaultId = vaultsUtils.generateVaultId();
+      const vaultId = vaultIdGenerator();
       await expect(
         vaultManager.withVaults([vaultId], async () => {
           // Do nothing
@@ -1941,7 +1942,10 @@ describe('VaultManager', () => {
       db,
       logger: logger.getChild(VaultManager.name),
     });
-    const generateVaultIdMock = jest.spyOn(vaultsUtils, 'generateVaultId');
+    const generateVaultIdMock = jest.spyOn(
+      vaultManager as any,
+      'vaultIdGenerator',
+    );
     try {
       // Generate 100 ids
       const vaultIds: VaultId[] = [];
@@ -1958,6 +1962,7 @@ describe('VaultManager', () => {
 
       const vaultId = await vaultManager.createVault('testVault');
       // Now only returns duplicates
+      // @ts-ignore - mocking protected method
       generateVaultIdMock.mockReturnValue(vaultId);
       const asd = async () => {
         for (let i = 0; i < 100; i++) {

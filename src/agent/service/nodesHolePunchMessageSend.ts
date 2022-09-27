@@ -3,7 +3,7 @@ import type { DB } from '@matrixai/db';
 import type NodeManager from '../../nodes/NodeManager';
 import type NodeConnectionManager from '../../nodes/NodeConnectionManager';
 import type KeyManager from '../../keys/KeyManager';
-import type { NodeId } from '../../nodes/types';
+import type { NodeId } from '../../ids/types';
 import type * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
 import type Logger from '@matrixai/logger';
 import * as networkUtils from '../../network/utils';
