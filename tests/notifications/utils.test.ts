@@ -13,7 +13,8 @@ import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 describe('Notifications utils', () => {
   const nodeId = testNodesUtils.generateRandomNodeId();
   const nodeIdEncoded = nodesUtils.encodeNodeId(nodeId);
-  const vaultId = vaultsUtils.generateVaultId();
+  const vaultIdGenerator = vaultsUtils.createVaultIdGenerator();
+  const vaultId = vaultIdGenerator();
   const vaultIdEncoded = vaultsUtils.encodeVaultId(vaultId);
 
   test('generates notification ids', async () => {

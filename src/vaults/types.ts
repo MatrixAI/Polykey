@@ -1,4 +1,4 @@
-import type { Id } from '@matrixai/id';
+import type { VaultId, VaultIdString, VaultIdEncoded } from '../ids/types';
 import type { EncryptedFS } from 'encryptedfs';
 import type { Callback, Path } from 'encryptedfs/dist/types';
 import type { FdIndex } from 'encryptedfs/dist/fd/types';
@@ -19,10 +19,6 @@ const tagLast = 'last';
  * Tuple of static references
  */
 const refs = ['HEAD', tagLast] as const;
-
-type VaultId = Opaque<'VaultId', Id>;
-type VaultIdEncoded = Opaque<'VaultIdEncoded', string>;
-type VaultIdString = Opaque<'VaultIdString', string>;
 
 type VaultRef = typeof refs[number];
 

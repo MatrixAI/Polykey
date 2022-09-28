@@ -13,7 +13,7 @@ import type {
   PublicKeyPem,
   RecoveryCode,
 } from './types';
-import type { NodeId } from '../nodes/types';
+import type { NodeId } from '../ids/types';
 import { Buffer } from 'buffer';
 import {
   asn1,

@@ -1,6 +1,6 @@
 import type { Host, Port } from '@/network/types';
 import type { Notification } from '@/notifications/types';
-import type { NodeId } from '@/nodes/types';
+import type { NodeId } from '@/ids/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';

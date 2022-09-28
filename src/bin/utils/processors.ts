@@ -1,6 +1,6 @@
 import type { FileSystem } from '../../types';
 import type { RecoveryCode, PrivateKeyPem } from '../../keys/types';
-import type { NodeId } from '../../nodes/types';
+import type { NodeId } from '../../ids/types';
 import type { Host, Port } from '../../network/types';
 import type {
   StatusStarting,

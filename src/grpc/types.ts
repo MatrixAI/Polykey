@@ -8,7 +8,7 @@ import type {
   UntypedServiceImplementation,
   Metadata,
 } from '@grpc/grpc-js';
-import type { NodeId } from '../nodes/types';
+import type { NodeId } from '../ids/types';
 import type { Host, Port } from '../network/types';
 import type { POJO } from '../types';
 

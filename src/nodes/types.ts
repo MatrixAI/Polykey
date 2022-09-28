@@ -1,5 +1,4 @@
-import type { Id } from '@matrixai/id';
-import type { Opaque } from '../types';
+import type { NodeId, NodeIdString, NodeIdEncoded } from '../ids/types';
 import type { Host, Hostname, Port } from '../network/types';
 import type { Claim, ClaimId } from '../claims/types';
 import type { ChainData } from '../sigchain/types';
@@ -7,10 +6,6 @@ import type { ChainData } from '../sigchain/types';
 // This should be a string
 // actually cause it is a domain
 type NodeGraphSpace = '0' | '1';
-
-type NodeId = Opaque<'NodeId', Id>;
-type NodeIdString = Opaque<'NodeIdString', string>;
-type NodeIdEncoded = Opaque<'NodeIdEncoded', string>;
 
 type NodeAddress = {
   host: Host | Hostname;

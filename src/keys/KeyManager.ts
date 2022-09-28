@@ -9,7 +9,7 @@ import type {
   PrivateKeyPem,
 } from './types';
 import type { FileSystem } from '../types';
-import type { NodeId } from '../nodes/types';
+import type { NodeId } from '../ids/types';
 import type { PolykeyWorkerManagerInterface } from '../workers/types';
 import path from 'path';
 import { Buffer } from 'buffer';

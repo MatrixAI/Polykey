@@ -1,5 +1,5 @@
 import type { ProviderId, IdentityId } from '@/identities/types';
-import type { NodeIdEncoded } from '@/nodes/types';
+import type { NodeIdEncoded } from '@/ids/types';
 import type { Claim, ClaimData } from '@/claims/types';
 import os from 'os';
 import path from 'path';

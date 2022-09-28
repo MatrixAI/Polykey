@@ -1,6 +1,6 @@
 import type { DB } from '@matrixai/db';
 import type { Authenticate } from '../types';
-import type { NodeId } from '../../nodes/types';
+import type { NodeId } from '../../ids/types';
 import type { VaultName, VaultAction, VaultActions } from '../../vaults/types';
 import type VaultManager from '../../vaults/VaultManager';
 import type GestaltGraph from '../../gestalts/GestaltGraph';

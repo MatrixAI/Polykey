@@ -1,7 +1,7 @@
 import type { IClientServiceServer } from '@/proto/js/polykey/v1/client_service_grpc_pb';
 import type { SessionToken } from '@/sessions/types';
 import type PolykeyAgent from '@/PolykeyAgent';
-import type { NodeId } from '@/nodes/types';
+import type { NodeId } from '@/ids/types';
 import type { Host, Port } from '@/network/types';
 import * as grpc from '@grpc/grpc-js';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';

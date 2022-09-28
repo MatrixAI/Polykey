@@ -1,7 +1,7 @@
 import type * as grpc from '@grpc/grpc-js';
 import type { PromiseUnaryCall } from '@/grpc/types';
 import type { SessionToken } from '@/sessions/types';
-import type { NodeId } from '@/nodes/types';
+import type { NodeId } from '@/ids/types';
 import type { Host, Port } from '@/network/types';
 import type { KeyPair, Certificate } from '@/keys/types';
 import type { KeyManager } from '@/keys';

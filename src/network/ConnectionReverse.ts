@@ -2,7 +2,7 @@ import type { Socket, AddressInfo } from 'net';
 import type { TLSSocket } from 'tls';
 import type UTPConnection from 'utp-native/lib/connection';
 import type { Host, Port, Address, NetworkMessage } from './types';
-import type { NodeId } from '../nodes/types';
+import type { NodeId } from '../ids/types';
 import type { Certificate } from '../keys/types';
 import type { AbstractConstructorParameters, Timer } from '../types';
 import net from 'net';

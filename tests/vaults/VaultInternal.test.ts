@@ -31,6 +31,8 @@ describe('VaultInternal', () => {
   let db: DB;
   let vaultsDbPath: LevelPath;
 
+  const vaultIdGenerator = vaultsUtils.createVaultIdGenerator();
+
   const fakeKeyManager = {
     getNodeId: () => {
       return nodeTestUtils.generateRandomNodeId();
@@ -74,7 +76,7 @@ describe('VaultInternal', () => {
     });
     vaultsDbPath = ['vaults'];
 
-    vaultId = vaultsUtils.generateVaultId();
+    vaultId = vaultIdGenerator();
     vault = await VaultInternal.createVaultInternal({
       vaultId,
       keyManager: fakeKeyManager,
@@ -870,7 +872,7 @@ describe('VaultInternal', () => {
   test('can create with CreateVaultInternal', async () => {
     let vault1: VaultInternal | undefined;
     try {
-      const vaultId1 = vaultsUtils.generateVaultId();
+      const vaultId1 = vaultIdGenerator();
       vault1 = await VaultInternal.createVaultInternal({
         db,
         efs,
@@ -892,7 +894,7 @@ describe('VaultInternal', () => {
     let vault1: VaultInternal | undefined;
     let vault2: VaultInternal | undefined;
     try {
-      const vaultId1 = vaultsUtils.generateVaultId();
+      const vaultId1 = vaultIdGenerator();
       vault1 = await VaultInternal.createVaultInternal({
         db,
         efs,

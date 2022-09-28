@@ -1,6 +1,11 @@
 import type { asn1, pki } from 'node-forge';
-import type { NodeId } from '../nodes/types';
 import type { Opaque } from '../types';
+import type {
+  CertificateId,
+  CertificateIdString,
+  CertificateIdEncoded,
+  NodeId,
+} from '../ids/types';
 
 type PublicKey = pki.rsa.PublicKey;
 type PrivateKey = pki.rsa.PrivateKey;
@@ -33,6 +38,9 @@ type KeyManagerChangeData = {
 };
 
 export type {
+  CertificateId,
+  CertificateIdString,
+  CertificateIdEncoded,
   PublicKey,
   PrivateKey,
   PublicKeyAsn1,

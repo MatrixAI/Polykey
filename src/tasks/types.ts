@@ -1,18 +1,18 @@
-import type { Id } from '@matrixai/id';
+import type {
+  TaskHandlerId,
+  TaskId,
+  TaskIdString,
+  TaskIdEncoded,
+} from '../ids/types';
 import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import type { Opaque } from '../types';
 import type { ContextTimed } from '../contexts/types';
-
-type TaskHandlerId = Opaque<'TaskHandlerId', string>;
 
 type TaskHandler = (
   ctx: ContextTimed,
   taskInfo: TaskInfo,
   ...params: TaskParameters
 ) => PromiseLike<any>;
-
-type TaskId = Opaque<'TaskId', Id>;
-type TaskIdEncoded = Opaque<'TaskIdEncoded', string>;
 
 /**
  * Task POJO returned to the user
@@ -107,6 +107,7 @@ export type {
   TaskHandlerId,
   TaskHandler,
   TaskId,
+  TaskIdString,
   TaskIdEncoded,
   Task,
   TaskInfo,

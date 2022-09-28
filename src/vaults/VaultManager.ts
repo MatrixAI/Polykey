@@ -9,7 +9,7 @@ import type {
 import type { Vault } from './Vault';
 import type { FileSystem } from '../types';
 import type { PolykeyWorkerManagerInterface } from '../workers/types';
-import type { NodeId } from '../nodes/types';
+import type { NodeId } from '../ids/types';
 import type KeyManager from '../keys/KeyManager';
 import type NodeConnectionManager from '../nodes/NodeConnectionManager';
 import type GestaltGraph from '../gestalts/GestaltGraph';
@@ -121,6 +121,7 @@ class VaultManager {
   protected vaultLocks: LockBox<RWLockWriter> = new LockBox();
   protected vaultKey: Buffer;
   protected efs: EncryptedFS;
+  protected vaultIdGenerator = vaultsUtils.createVaultIdGenerator();
 
   constructor({
     vaultsPath,
@@ -904,7 +905,7 @@ class VaultManager {
 
   @ready(new vaultsErrors.ErrorVaultManagerNotRunning())
   protected async generateVaultId(): Promise<VaultId> {
-    let vaultId = vaultsUtils.generateVaultId();
+    let vaultId = this.vaultIdGenerator();
     let i = 0;
     while (await this.efs.exists(vaultsUtils.encodeVaultId(vaultId))) {
       i++;
@@ -913,7 +914,7 @@ class VaultManager {
           'Could not create a unique vaultId after 50 attempts',
         );
       }
-      vaultId = vaultsUtils.generateVaultId();
+      vaultId = this.vaultIdGenerator();
     }
     return vaultId;
   }

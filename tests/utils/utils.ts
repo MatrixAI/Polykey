@@ -1,4 +1,4 @@
-import type { NodeId } from '@/nodes/types';
+import type { NodeId } from '@/ids/types';
 import type { PrivateKeyPem } from '@/keys/types';
 import type { StatusLive } from '@/status/types';
 import type Logger from '@matrixai/logger';

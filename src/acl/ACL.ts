@@ -5,7 +5,7 @@ import type {
   Permission,
   VaultActions,
 } from './types';
-import type { NodeId } from '../nodes/types';
+import type { NodeId } from '../ids/types';
 import type { GestaltAction } from '../gestalts/types';
 import type { VaultAction, VaultId } from '../vaults/types';
 import type { Ref } from '../types';

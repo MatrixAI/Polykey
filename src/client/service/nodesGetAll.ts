@@ -2,7 +2,7 @@ import type * as grpc from '@grpc/grpc-js';
 import type Logger from '@matrixai/logger';
 import type { Authenticate } from '../types';
 import type KeyManager from '../../keys/KeyManager';
-import type { NodeId } from '../../nodes/types';
+import type { NodeId } from '../../ids/types';
 import type * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 import type NodeGraph from '../../nodes/NodeGraph';
 import { IdInternal } from '@matrixai/id';

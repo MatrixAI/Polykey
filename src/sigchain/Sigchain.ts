@@ -4,12 +4,11 @@ import type {
   ClaimData,
   ClaimEncoded,
   ClaimId,
-  ClaimIdGenerator,
   ClaimIntermediary,
   ClaimType,
 } from '../claims/types';
 import type KeyManager from '../keys/KeyManager';
-import type { NodeIdEncoded } from '../nodes/types';
+import type { NodeIdEncoded } from '../ids/types';
 import Logger from '@matrixai/logger';
 import { IdInternal } from '@matrixai/id';
 import {
@@ -43,7 +42,7 @@ class Sigchain {
     'metadata',
   ];
 
-  protected generateClaimId: ClaimIdGenerator;
+  protected generateClaimId: () => ClaimId;
 
   static async createSigchain({
     db,

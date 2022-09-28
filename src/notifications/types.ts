@@ -1,11 +1,6 @@
-import type { Id } from '@matrixai/id';
 import type { Opaque } from '../types';
-import type { NodeIdEncoded } from '../nodes/types';
+import type { NotificationId, NodeIdEncoded } from '../ids/types';
 import type { VaultName, VaultActions, VaultIdEncoded } from '../vaults/types';
-
-type NotificationId = Opaque<'NotificationId', Id>;
-
-type NotificationIdGenerator = () => NotificationId;
 
 type GestaltInvite = {
   type: 'GestaltInvite';
@@ -33,7 +28,6 @@ type SignedNotification = Opaque<'SignedNotification', string>;
 
 export type {
   NotificationId,
-  NotificationIdGenerator,
   NotificationData,
   Notification,
   SignedNotification,

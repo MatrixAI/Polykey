@@ -1,6 +1,6 @@
 import type { RecoveryCode } from '@/keys/types';
 import type { StatusLive } from '@/status/types';
-import type { NodeId } from '@/nodes/types';
+import type { NodeId } from '@/ids/types';
 import type { Host, Port } from '@/network/types';
 import path from 'path';
 import fs from 'fs';

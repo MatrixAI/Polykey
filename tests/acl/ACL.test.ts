@@ -1,5 +1,5 @@
 import type { Permission } from '@/acl/types';
-import type { NodeId } from '@/nodes/types';
+import type { NodeId } from '@/ids/types';
 import type { VaultAction, VaultId } from '@/vaults/types';
 import type { GestaltAction } from '@/gestalts/types';
 import os from 'os';
@@ -17,6 +17,8 @@ describe(ACL.name, () => {
   const logger = new Logger(`${ACL.name} test`, LogLevel.WARN, [
     new StreamHandler(),
   ]);
+
+  const vaultIdGenerator = vaultsUtils.createVaultIdGenerator();
 
   // Node Ids
   const nodeIdX = testNodesUtils.generateRandomNodeId();
@@ -51,10 +53,10 @@ describe(ACL.name, () => {
         },
       },
     });
-    vaultId1 = vaultsUtils.generateVaultId();
-    vaultId2 = vaultsUtils.generateVaultId();
-    vaultId3 = vaultsUtils.generateVaultId();
-    vaultId4 = vaultsUtils.generateVaultId();
+    vaultId1 = vaultIdGenerator();
+    vaultId2 = vaultIdGenerator();
+    vaultId3 = vaultIdGenerator();
+    vaultId4 = vaultIdGenerator();
   });
   afterEach(async () => {
     await db.stop();

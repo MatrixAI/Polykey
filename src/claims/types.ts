@@ -1,7 +1,6 @@
-import type { Id } from '@matrixai/id';
 import type { GeneralJWS, FlattenedJWSInput } from 'jose';
-import type { Opaque } from '../types';
-import type { NodeIdEncoded } from '../nodes/types';
+import type { ClaimId, ClaimIdString, ClaimIdEncoded } from '../ids/types';
+import type { NodeIdEncoded } from '../ids/types';
 import type { ProviderId, IdentityId } from '../identities/types';
 
 /**
@@ -41,18 +40,6 @@ type SignatureData = {
     kid: NodeIdEncoded; // Node ID of the signing keynode
   };
 };
-
-/**
- * An arbitrary string serving as a unique identitifer for a particular claim.
- * Depending on the domain the claim is used in, its implementation detail will
- * differ. For example, the sigchain domain uses a lexicographic-integer as the
- * claim ID (representing the sequence number key of the claim).
- */
-type ClaimId = Opaque<'ClaimId', Id>;
-type ClaimIdString = Opaque<'ClaimIdString', string>;
-type ClaimIdEncoded = Opaque<'ClaimIdEncoded', string>;
-
-type ClaimIdGenerator = () => ClaimId;
 
 /**
  * A ClaimEncoded is an encoded version of Claim. It is exactly a JWS using
@@ -107,7 +94,6 @@ export type {
   ClaimId,
   ClaimIdString,
   ClaimIdEncoded,
-  ClaimIdGenerator,
   ClaimEncoded,
   ClaimData,
   ClaimLinkNode,

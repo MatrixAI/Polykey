@@ -2,7 +2,7 @@ import type { Socket } from 'net';
 import type { TLSSocket } from 'tls';
 import type { Host, Hostname, Port, Address, NetworkMessage } from './types';
 import type { Certificate, PublicKey } from '../keys/types';
-import type { NodeId } from '../nodes/types';
+import type { NodeId } from '../ids/types';
 import { Buffer } from 'buffer';
 import dns from 'dns';
 import { IPv4, IPv6, Validator } from 'ip-num';

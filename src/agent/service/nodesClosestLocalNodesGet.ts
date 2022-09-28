@@ -1,7 +1,7 @@
 import type * as grpc from '@grpc/grpc-js';
 import type { NodeGraph } from '../../nodes';
 import type { DB } from '@matrixai/db';
-import type { NodeId } from '../../nodes/types';
+import type { NodeId } from '../../ids/types';
 import type Logger from '@matrixai/logger';
 import * as grpcUtils from '../../grpc/utils';
 import * as nodesUtils from '../../nodes/utils';

@@ -1,5 +1,5 @@
 import type { ClaimLinkIdentity } from '@/claims/types';
-import type { NodeIdEncoded } from '@/nodes/types';
+import type { NodeIdEncoded } from '@/ids/types';
 import type { IdentityId, ProviderId } from '@/identities/types';
 import type { Host, Port } from '@/network/types';
 import type NodeManager from '@/nodes/NodeManager';

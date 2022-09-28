@@ -1,4 +1,4 @@
-import type { NodeId, NodeIdEncoded } from '@/nodes/types';
+import type { NodeId, NodeIdEncoded } from '@/ids/types';
 import type { Host } from '@/network/types';
 import path from 'path';
 import fs from 'fs';

@@ -3,7 +3,7 @@ import type { POJO } from '../types';
 import type { RecoveryCode } from '../keys/types';
 import type { Host, Port } from '../network/types';
 import type { StatusLive } from '../status/types';
-import type { NodeIdEncoded } from '../nodes/types';
+import type { NodeIdEncoded } from '../ids/types';
 
 type AgentStatusLiveData = Omit<StatusLive['data'], 'nodeId'> & {
   nodeId: NodeIdEncoded;

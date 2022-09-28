@@ -1,13 +1,11 @@
 import type {
-  ClaimId,
-  ClaimIdEncoded,
   Claim,
   ClaimEncoded,
   ClaimData,
   SignatureData,
   ClaimIntermediary,
 } from './types';
-import type { NodeId, NodeIdEncoded } from '../nodes/types';
+import type { NodeIdEncoded } from '../ids/types';
 import type { PublicKeyPem, PrivateKeyPem } from '../keys/types';
 import type { POJO } from '../types';
 import type { GeneralJWSInput } from 'jose';
@@ -16,13 +14,13 @@ import { createPublicKey, createPrivateKey } from 'crypto';
 import { md } from 'node-forge';
 import canonicalize from 'canonicalize';
 import { GeneralSign, generalVerify, generateKeyPair, base64url } from 'jose';
-import { IdInternal, IdSortable } from '@matrixai/id';
 import {
   claimIdentityValidate,
   claimNodeSinglySignedValidate,
   claimNodeDoublySignedValidate,
 } from './schema';
 import * as claimsErrors from './errors';
+import { createClaimIdGenerator, encodeClaimId, decodeClaimId } from '../ids';
 import * as nodesPB from '../proto/js/polykey/v1/nodes/nodes_pb';
 
 /**
@@ -478,30 +476,6 @@ function reconstructClaimEncoded(claimMsg: nodesPB.AgentClaim): ClaimEncoded {
     }),
   };
   return claim;
-}
-
-function encodeClaimId(claimId: ClaimId): ClaimIdEncoded {
-  return claimId.toMultibase('base32hex') as ClaimIdEncoded;
-}
-
-function decodeClaimId(claimIdEncoded: string): ClaimId | undefined {
-  const claimId = IdInternal.fromMultibase<ClaimId>(claimIdEncoded);
-  if (claimId == null) {
-    return;
-  }
-  return claimId;
-}
-
-/**
- * Generator for `ClaimId`
- * Make sure the `nodeId` is set to this node's own `NodeId`
- */
-function createClaimIdGenerator(nodeId: NodeId, lastClaimId?: ClaimId) {
-  const generator = new IdSortable<ClaimId>({
-    lastId: lastClaimId,
-    nodeId,
-  });
-  return () => generator.get();
 }
 
 export {
