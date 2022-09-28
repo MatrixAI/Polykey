@@ -48,6 +48,10 @@ printf "\n"
 
 # Each test directory has its own job
 for test_dir in tests/**/*/; do
+  # Ignore discovery domain for now
+  if [[ "$test_dir" =~ discovery ]]; then
+    continue
+  fi
   test_files=("$test_dir"*.test.ts)
   if [ ${#test_files[@]} -eq 0 ]; then
     continue
