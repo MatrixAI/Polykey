@@ -152,7 +152,10 @@ describe('trust/untrust/list', () => {
       expect(exitCode).toBe(0);
       // Since discovery is a background process we need to wait for the
       // gestalt to be discovered
-      await pkAgent.discovery.waitForDrained();
+      let existingTasks: number = 0;
+      do {
+        existingTasks = await pkAgent.discovery.waitForDiscoveryTasks();
+      } while (existingTasks > 0);
       // Check that gestalt was discovered and permission was set
       ({ exitCode, stdout } = await testUtils.pkStdio(
         ['identities', 'list', '--format', 'json'],
@@ -285,7 +288,10 @@ describe('trust/untrust/list', () => {
       expect(exitCode).toBe(sysexits.NOUSER);
       // Since discovery is a background process we need to wait for the
       // gestalt to be discovered
-      await pkAgent.discovery.waitForDrained();
+      let existingTasks: number = 0;
+      do {
+        existingTasks = await pkAgent.discovery.waitForDiscoveryTasks();
+      } while (existingTasks > 0);
       // This time the command should succeed
       ({ exitCode } = await testUtils.pkStdio(
         ['identities', 'trust', providerString],

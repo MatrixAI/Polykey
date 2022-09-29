@@ -198,7 +198,6 @@ describe('gestaltsGestaltTrustByIdentity', () => {
     });
     await nodeManager.start();
     await nodeConnectionManager.start({ nodeManager });
-    await taskManager.startProcessing();
     await nodeManager.setNode(nodesUtils.decodeNodeId(nodeId)!, {
       host: node.proxy.getProxyHost(),
       port: node.proxy.getProxyPort(),
@@ -210,8 +209,10 @@ describe('gestaltsGestaltTrustByIdentity', () => {
       identitiesManager,
       nodeManager,
       sigchain,
+      taskManager,
       logger,
     });
+    await taskManager.startProcessing();
     const clientService = {
       gestaltsGestaltTrustByIdentity: gestaltsGestaltTrustByIdentity({
         authenticate,
@@ -310,7 +311,10 @@ describe('gestaltsGestaltTrustByIdentity', () => {
       gestaltsErrors.ErrorGestaltsGraphIdentityIdMissing,
     );
     // Wait for both identity and node to be set in GG
-    await discovery.waitForDrained();
+    let existingTasks: number = 0;
+    do {
+      existingTasks = await discovery.waitForDiscoveryTasks();
+    } while (existingTasks > 0);
     const response = await grpcClient.gestaltsGestaltTrustByIdentity(
       request,
       clientUtils.encodeAuthFromPassword(password),
@@ -409,7 +413,10 @@ describe('gestaltsGestaltTrustByIdentity', () => {
     );
     // Wait and try again - should succeed second time
     // Wait for both identity and node to be set in GG
-    await discovery.waitForDrained();
+    let existingTasks: number = 0;
+    do {
+      existingTasks = await discovery.waitForDiscoveryTasks();
+    } while (existingTasks > 0);
     const response = await grpcClient.gestaltsGestaltTrustByIdentity(
       request,
       clientUtils.encodeAuthFromPassword(password),

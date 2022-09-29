@@ -240,6 +240,10 @@ class TaskManager {
     await Promise.all([this.stopQueueing(), this.stopScheduling()]);
   }
 
+  public isProcessing(): boolean {
+    return this.schedulingLoop != null && this.queuingLoop != null;
+  }
+
   /**
    * Stop the active tasks
    * This call is idempotent

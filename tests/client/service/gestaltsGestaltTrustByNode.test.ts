@@ -206,7 +206,6 @@ describe('gestaltsGestaltTrustByNode', () => {
     });
     await nodeManager.start();
     await nodeConnectionManager.start({ nodeManager });
-    await taskManager.startProcessing();
     await nodeManager.setNode(nodesUtils.decodeNodeId(nodeId)!, {
       host: node.proxy.getProxyHost(),
       port: node.proxy.getProxyPort(),
@@ -218,8 +217,10 @@ describe('gestaltsGestaltTrustByNode', () => {
       identitiesManager,
       nodeManager,
       sigchain,
+      taskManager,
       logger,
     });
+    await taskManager.startProcessing();
     const clientService = {
       gestaltsGestaltTrustByNode: gestaltsGestaltTrustByNode({
         authenticate,
