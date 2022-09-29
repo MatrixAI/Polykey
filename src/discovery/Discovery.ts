@@ -273,7 +273,7 @@ class Discovery {
             }
           }
           // TODO: for now, the chain data is treated as a 'disjoint' set of
-          //  cryptolink claims from a node to another node/identity
+          //  cryptolink claims from a node to another node/identity.
           //  That is, we have no notion of revocations, or multiple claims to
           //  the same node/identity. Thus, we simply iterate over this chain
           //  of cryptolinks.
@@ -282,10 +282,10 @@ class Discovery {
             id: nodesUtils.encodeNodeId(nodeId),
             chain: vertexChainData,
           };
-          // Iterate over each of the claims in the chain (already verified)
-          // TODO: because we're iterating over keys in a record, I don't believe
-          //  that this will iterate in lexicographical order of keys. For now,
-          //  this doesn't matter though (because of the previous comment).
+          // Iterate over each of the claims in the chain (already verified).
+          // TODO: there is no deterministic iteration order of keys in a record.
+          //  When we change to iterating over ordered sigchain claims,
+          //  this must change into array iteration.
           for (const claimId in vertexChainData) {
             if (ctx.signal.aborted) throw ctx.signal.reason;
             const claim: Claim = vertexChainData[claimId as ClaimIdEncoded];
