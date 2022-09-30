@@ -6,12 +6,13 @@ import http from 'http';
 import tls from 'tls';
 import UTP from 'utp-native';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
+import { Timer } from '@matrixai/timer';
 import Proxy from '@/network/Proxy';
 import * as networkUtils from '@/network/utils';
 import * as networkErrors from '@/network/errors';
 import * as keysUtils from '@/keys/utils';
 import * as nodesUtils from '@/nodes/utils';
-import { poll, promise, promisify, timerStart, timerStop } from '@/utils';
+import { poll, promise, promisify } from '@/utils';
 import * as testUtils from '../utils';
 import * as testNodesUtils from '../nodes/utils';
 
@@ -311,16 +312,16 @@ describe(Proxy.name, () => {
     ).rejects.toThrow(networkErrors.ErrorConnectionStartTimeout);
     expect(receivedCount).toBe(1);
     // Can override the timer
-    const timer = timerStart(2000);
+    const timer = new Timer({ delay: 2000 });
     await expect(() =>
       proxy.openConnectionForward(
         nodeIdABC,
         localHost,
         utpSocketHangPort as Port,
-        timer,
+        { timer },
       ),
     ).rejects.toThrow(networkErrors.ErrorConnectionStartTimeout);
-    timerStop(timer);
+    timer.cancel();
     expect(receivedCount).toBe(2);
     await expect(() =>
       httpConnect(
@@ -2376,11 +2377,11 @@ describe(Proxy.name, () => {
     const utpSocketBind = promisify(utpSocket.bind).bind(utpSocket);
     await utpSocketBind(0, localHost);
     const utpSocketPort = utpSocket.address().port;
-    const timer = timerStart(3000);
+    const timer = new Timer({ delay: 2000 });
     await expect(
-      proxy.openConnectionReverse(localHost, utpSocketPort as Port, timer),
+      proxy.openConnectionReverse(localHost, utpSocketPort as Port, { timer }),
     ).rejects.toThrow(networkErrors.ErrorConnectionStartTimeout);
-    timerStop(timer);
+    timer.cancel();
     await expect(serverConnP).resolves.toBeUndefined();
     await expect(serverConnClosedP).resolves.toBeUndefined();
     utpSocket.close();

@@ -535,7 +535,7 @@ class Proxy {
     proxyHost: Host,
     proxyPort: Port,
     clientSocket: Socket,
-    ctx: ContextTimed,
+    @context ctx: ContextTimed,
   ): Promise<void> {
     const conn = await this.establishConnectionForward(
       nodeId,
@@ -620,7 +620,7 @@ class Proxy {
   public async openConnectionReverse(
     proxyHost: Host,
     proxyPort: Port,
-    ctx: ContextTimed,
+    @context ctx: ContextTimed,
   ): Promise<void> {
     const proxyAddress = networkUtils.buildAddress(proxyHost, proxyPort);
     let lock = this.connectionLocksReverse.get(proxyAddress);
@@ -716,7 +716,7 @@ class Proxy {
     proxyHost: Host,
     proxyPort: Port,
     utpConn: UTPConnection,
-    ctx: ContextTimed,
+    @context ctx: ContextTimed,
   ): Promise<void> {
     const conn = await this.establishConnectionReverse(
       proxyHost,
