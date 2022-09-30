@@ -350,7 +350,11 @@ class NodeConnectionManager {
     proxyPort: Port,
     timer?: Timer,
   ): Promise<void> {
-    await this.proxy.openConnectionReverse(proxyHost, proxyPort, timer);
+    const abortController = new AbortController();
+    void timer?.timerP.then(() => abortController.abort());
+    await this.proxy.openConnectionReverse(proxyHost, proxyPort, {
+      signal: abortController.signal,
+    });
   }
 
   /**
@@ -373,11 +377,7 @@ class NodeConnectionManager {
     proxyPort: Port,
     ctx?: ContextTimed,
   ): Promise<void> {
-    const timer =
-      ctx?.timer.getTimeout() != null
-        ? timerStart(ctx.timer.getTimeout())
-        : undefined;
-    await this.proxy.openConnectionForward(nodeId, proxyHost, proxyPort, timer);
+    await this.proxy.openConnectionForward(nodeId, proxyHost, proxyPort, ctx);
   }
 
   /**

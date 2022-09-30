@@ -1,17 +1,21 @@
 import type { Socket, AddressInfo } from 'net';
 import type { TLSSocket } from 'tls';
 import type UTPConnection from 'utp-native/lib/connection';
+import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import type { Certificate } from '../keys/types';
 import type { Address, Host, NetworkMessage, Port } from './types';
 import type { NodeId } from '../ids/types';
-import type { AbstractConstructorParameters, Timer } from '../types';
+import type { AbstractConstructorParameters } from '../types';
+import type { ContextTimed } from '../contexts/types';
 import tls from 'tls';
 import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
 import Connection from './Connection';
 import * as networkUtils from './utils';
 import * as networkErrors from './errors';
 import * as keysUtils from '../keys/utils';
-import { promise, timerStart, timerStop } from '../utils';
+import { promise } from '../utils';
+import * as contextsErrors from '../contexts/errors';
+import { timedCancellable, context } from '../contexts/index';
 
 type ConnectionsForward = {
   proxy: Map<Address, ConnectionForward>;
@@ -106,11 +110,7 @@ class ConnectionForward extends Connection {
     this.connections = connections;
   }
 
-  public async start({
-    timer,
-  }: {
-    timer?: Timer;
-  } = {}): Promise<void> {
+  public async start({ ctx }: { ctx: ContextTimed }): Promise<void> {
     this.logger.info('Starting Connection Forward');
     // Promise for ready
     const { p: readyP, resolveP: resolveReadyP } = promise<void>();
@@ -119,6 +119,9 @@ class ConnectionForward extends Connection {
     // Promise for secure connection
     const { p: secureConnectP, resolveP: resolveSecureConnectP } =
       promise<void>();
+    // Promise for abortion and timeout
+    const { p: abortedP, resolveP: resolveAbortedP } = promise<void>();
+    ctx.signal.addEventListener('abort', () => resolveAbortedP());
     this.resolveReadyP = resolveReadyP;
     this.utpSocket.on('message', this.handleMessage);
     const handleStartError = (e) => {
@@ -154,7 +157,7 @@ class ConnectionForward extends Connection {
       await Promise.race([
         Promise.all([readyP, secureConnectP]).then(() => {}),
         errorP,
-        ...(timer != null ? [timer.timerP] : []),
+        abortedP,
       ]);
     } catch (e) {
       // Clean up partial start
@@ -177,7 +180,7 @@ class ConnectionForward extends Connection {
     }
     this.tlsSocket.on('error', this.handleError);
     this.tlsSocket.off('error', handleStartError);
-    if (timer?.timedOut) {
+    if (ctx.signal.aborted) {
       // Clean up partial start
       // TLSSocket isn't established yet, so it is destroyed
       if (!this.tlsSocket.destroyed) {
@@ -185,7 +188,12 @@ class ConnectionForward extends Connection {
         this.tlsSocket.destroy();
       }
       this.utpSocket.off('message', this.handleMessage);
-      throw new networkErrors.ErrorConnectionStartTimeout();
+      if (
+        ctx.signal.reason instanceof contextsErrors.ErrorContextsTimedTimeOut
+      ) {
+        throw new networkErrors.ErrorConnectionStartTimeout();
+      }
+      throw ctx.signal.reason;
     }
     const serverCertChain = networkUtils.getCertificateChain(this.tlsSocket);
     try {
@@ -197,7 +205,7 @@ class ConnectionForward extends Connection {
       this.logger.debug('Sends tlsSocket ending');
       // Graceful exit has its own end handler
       this.tlsSocket.removeAllListeners('end');
-      await this.endGracefully(this.tlsSocket, this.endTime);
+      await this.endGracefully(this.tlsSocket);
       throw e;
     }
     await this.startKeepAliveInterval();
@@ -219,14 +227,14 @@ class ConnectionForward extends Connection {
       this.tlsSocket.unpipe();
       // Graceful exit has its own end handler
       this.tlsSocket.removeAllListeners('end');
-      endPs.push(this.endGracefully(this.tlsSocket, this.endTime));
+      endPs.push(this.endGracefully(this.tlsSocket));
     }
     if (this.clientSocket != null && !this.clientSocket.destroyed) {
       this.logger.debug('Sends clientSocket ending');
       this.clientSocket.unpipe();
       // Graceful exit has its own end handler
       this.clientSocket.removeAllListeners('end');
-      endPs.push(this.endGracefully(this.clientSocket, this.endTime));
+      endPs.push(this.endGracefully(this.clientSocket));
     }
     await Promise.all(endPs);
     this.connections.proxy.delete(this.address);
@@ -320,17 +328,25 @@ class ConnectionForward extends Connection {
     clearTimeout(this.timeout);
   }
 
-  protected async endGracefully(socket: Socket, timeout: number) {
+  protected endGracefully(
+    socket: Socket,
+    ctx?: Partial<ContextTimed>,
+  ): PromiseCancellable<void>;
+  @timedCancellable(
+    true,
+    (connectionForward: ConnectionForward) => connectionForward.endTime,
+  )
+  protected async endGracefully(socket: Socket, @context ctx: ContextTimed) {
     const { p: endP, resolveP: resolveEndP } = promise<void>();
     socket.once('end', resolveEndP);
     socket.end();
-    const timer = timerStart(timeout);
-    await Promise.race([endP, timer.timerP]);
+    // Promise for abortion and timeout
+    const { p: abortedP, resolveP: resolveAbortedP } = promise<void>();
+    ctx.signal.addEventListener('abort', () => resolveAbortedP());
+    await Promise.race([endP, abortedP]);
     socket.removeListener('end', resolveEndP);
-    if (timer.timedOut) {
+    if (ctx.signal.aborted) {
       socket.emit('error', new networkErrors.ErrorConnectionEndTimeout());
-    } else {
-      timerStop(timer);
     }
     // Must be destroyed if timed out
     // If not timed out, force destroy the socket due to buggy tlsSocket and utpConn

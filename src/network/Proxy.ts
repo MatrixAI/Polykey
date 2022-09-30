@@ -1,4 +1,5 @@
 import type { AddressInfo, Socket } from 'net';
+import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import type {
   Host,
   Port,
@@ -9,21 +10,23 @@ import type {
 } from './types';
 import type { ConnectionsForward } from './ConnectionForward';
 import type { NodeId } from '../ids/types';
-import type { Timer } from '../types';
 import type UTPConnection from 'utp-native/lib/connection';
 import type { ConnectionsReverse } from './ConnectionReverse';
+import type { ContextTimed } from '../contexts/types';
 import http from 'http';
 import UTP from 'utp-native';
 import Logger from '@matrixai/logger';
 import { Lock } from '@matrixai/async-locks';
 import { withF } from '@matrixai/resources';
 import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
+import { Timer } from '@matrixai/timer';
 import ConnectionReverse from './ConnectionReverse';
 import ConnectionForward from './ConnectionForward';
 import * as networkUtils from './utils';
 import * as networkErrors from './errors';
 import * as nodesUtils from '../nodes/utils';
-import { promisify, timerStart, timerStop } from '../utils';
+import { promisify } from '../utils';
+import { timedCancellable, context } from '../contexts';
 
 interface Proxy extends StartStop {}
 @StartStop()
@@ -45,6 +48,7 @@ class Proxy {
   protected server: http.Server;
   protected utpSocket: UTP;
   protected tlsConfig: TLSConfig;
+  // TODO: replace connection lock maps with `LockBox`
   protected connectionLocksForward: Map<Address, Lock> = new Map();
   protected connectionsForward: ConnectionsForward = {
     proxy: new Map(),
@@ -314,17 +318,20 @@ class Proxy {
    * It will only stop the timer if using the default timer
    * Set timer to `null` explicitly to wait forever
    */
+  public openConnectionForward(
+    nodeId: NodeId,
+    proxyHost: Host,
+    proxyPort: Port,
+    ctx?: Partial<ContextTimed>,
+  ): PromiseCancellable<void>;
   @ready(new networkErrors.ErrorProxyNotRunning(), true)
+  @timedCancellable(true, (proxy: Proxy) => proxy.connConnectTime)
   public async openConnectionForward(
     nodeId: NodeId,
     proxyHost: Host,
     proxyPort: Port,
-    timer?: Timer,
+    @context ctx: ContextTimed,
   ): Promise<void> {
-    let timer_ = timer;
-    if (timer === undefined) {
-      timer_ = timerStart(this.connConnectTime);
-    }
     const proxyAddress = networkUtils.buildAddress(proxyHost, proxyPort);
     let lock = this.connectionLocksForward.get(proxyAddress);
     if (lock == null) {
@@ -337,12 +344,9 @@ class Proxy {
           nodeId,
           proxyHost,
           proxyPort,
-          timer_,
+          ctx,
         );
       } finally {
-        if (timer === undefined) {
-          timerStop(timer_!);
-        }
         this.connectionLocksForward.delete(proxyAddress);
       }
     });
@@ -435,15 +439,15 @@ class Proxy {
       this.connectionLocksForward.set(proxyAddress as Address, lock);
     }
     await withF([lock.lock()], async () => {
+      const timer = new Timer({ delay: this.connConnectTime });
       try {
-        const timer = timerStart(this.connConnectTime);
         try {
           await this.connectForward(
             nodeId,
             proxyHost,
             proxyPort,
             clientSocket,
-            timer,
+            { timer },
           );
         } catch (e) {
           if (e instanceof networkErrors.ErrorProxyConnectInvalidUrl) {
@@ -504,7 +508,7 @@ class Proxy {
           }
           return;
         } finally {
-          timerStop(timer);
+          timer.cancel();
         }
         // After composing, switch off this error handler
         clientSocket.off('error', handleConnectError);
@@ -518,18 +522,26 @@ class Proxy {
     });
   };
 
+  protected connectForward(
+    nodeId: NodeId,
+    proxyHost: Host,
+    proxyPort: Port,
+    clientSocket: Socket,
+    ctx?: Partial<ContextTimed>,
+  ): PromiseCancellable<void>;
+  @timedCancellable(true, (proxy: Proxy) => proxy.connConnectTime)
   protected async connectForward(
     nodeId: NodeId,
     proxyHost: Host,
     proxyPort: Port,
     clientSocket: Socket,
-    timer?: Timer,
+    ctx: ContextTimed,
   ): Promise<void> {
     const conn = await this.establishConnectionForward(
       nodeId,
       proxyHost,
       proxyPort,
-      timer,
+      ctx,
     );
     conn.compose(clientSocket);
     // With the connection composed without error we can assume that the
@@ -546,7 +558,7 @@ class Proxy {
     nodeId: NodeId,
     proxyHost: Host,
     proxyPort: Port,
-    timer?: Timer,
+    ctx: ContextTimed,
   ): Promise<ConnectionForward> {
     if (networkUtils.isHostWildcard(proxyHost)) {
       throw new networkErrors.ErrorProxyConnectInvalidUrl();
@@ -571,7 +583,7 @@ class Proxy {
       keepAliveIntervalTime: this.connKeepAliveIntervalTime,
       logger: this.logger.getChild(`${ConnectionForward.name} ${proxyAddress}`),
     });
-    await conn.start({ timer });
+    await conn.start({ ctx });
     return conn;
   }
 
@@ -598,17 +610,18 @@ class Proxy {
   };
 
   // Reverse connection specific methods
-
+  public openConnectionReverse(
+    proxyHost: Host,
+    proxyPort: Port,
+    ctx?: Partial<ContextTimed>,
+  ): PromiseCancellable<void>;
   @ready(new networkErrors.ErrorProxyNotRunning(), true)
+  @timedCancellable(true, (proxy: Proxy) => proxy.connConnectTime)
   public async openConnectionReverse(
     proxyHost: Host,
     proxyPort: Port,
-    timer?: Timer,
+    ctx: ContextTimed,
   ): Promise<void> {
-    let timer_ = timer;
-    if (timer === undefined) {
-      timer_ = timerStart(this.connConnectTime);
-    }
     const proxyAddress = networkUtils.buildAddress(proxyHost, proxyPort);
     let lock = this.connectionLocksReverse.get(proxyAddress);
     if (lock == null) {
@@ -617,11 +630,8 @@ class Proxy {
     }
     await withF([lock.lock()], async () => {
       try {
-        await this.establishConnectionReverse(proxyHost, proxyPort, timer_);
+        await this.establishConnectionReverse(proxyHost, proxyPort, ctx);
       } finally {
-        if (timer === undefined) {
-          timerStop(timer_!);
-        }
         this.connectionLocksReverse.delete(proxyAddress);
       }
     });
@@ -666,13 +676,13 @@ class Proxy {
     await withF([lock.lock()], async () => {
       try {
         this.logger.info(`Handling connection from ${proxyAddress}`);
-        const timer = timerStart(this.connConnectTime);
+        const timer = new Timer({ delay: this.connConnectTime });
         try {
           await this.connectReverse(
             utpConn.remoteAddress,
             utpConn.remotePort,
             utpConn,
-            timer,
+            { timer },
           );
         } catch (e) {
           if (!(e instanceof networkErrors.ErrorNetwork)) {
@@ -685,7 +695,7 @@ class Proxy {
             `Failed connection from ${proxyAddress} - ${e.toString()}`,
           );
         } finally {
-          timerStop(timer);
+          timer.cancel();
         }
         this.logger.info(`Handled connection from ${proxyAddress}`);
       } finally {
@@ -694,18 +704,26 @@ class Proxy {
     });
   };
 
+  protected connectReverse(
+    proxyHost: Host,
+    proxyPort: Port,
+    utpConn: UTPConnection,
+    ctx?: Partial<ContextTimed>,
+  ): PromiseCancellable<void>;
+  @ready(new networkErrors.ErrorProxyNotRunning(), true)
+  @timedCancellable(true, (proxy: Proxy) => proxy.connConnectTime)
   protected async connectReverse(
     proxyHost: Host,
     proxyPort: Port,
     utpConn: UTPConnection,
-    timer?: Timer,
+    ctx: ContextTimed,
   ): Promise<void> {
     const conn = await this.establishConnectionReverse(
       proxyHost,
       proxyPort,
-      timer,
+      ctx,
     );
-    await conn.compose(utpConn, timer);
+    await conn.compose(utpConn, ctx);
     // With the connection composed without error we can assume that the
     //  connection was established and verified
     await this.connectionEstablishedCallback({
@@ -719,7 +737,7 @@ class Proxy {
   protected async establishConnectionReverse(
     proxyHost: Host,
     proxyPort: Port,
-    timer?: Timer,
+    ctx: ContextTimed,
   ): Promise<ConnectionReverse> {
     if (networkUtils.isHostWildcard(proxyHost)) {
       throw new networkErrors.ErrorProxyConnectInvalidUrl();
@@ -742,7 +760,7 @@ class Proxy {
       punchIntervalTime: this.connPunchIntervalTime,
       logger: this.logger.getChild(`${ConnectionReverse.name} ${proxyAddress}`),
     });
-    await conn.start({ timer });
+    await conn.start({ ctx });
     return conn;
   }
 }
