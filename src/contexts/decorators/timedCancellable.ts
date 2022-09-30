@@ -4,8 +4,8 @@ import * as contextsUtils from '../utils';
 import * as contextsErrors from '../errors';
 
 function timedCancellable(
-  lazy: boolean | ((this: any) => boolean) = false,
-  delay: number | ((this: any) => number) = Infinity,
+  lazy: boolean | ((object: any) => boolean) = false,
+  delay: number | ((object: any) => number) = Infinity,
   errorTimeoutConstructor: new () => Error = contextsErrors.ErrorContextsTimedTimeOut,
 ) {
   return <
@@ -35,8 +35,8 @@ function timedCancellable(
       }
       // Runtime type check on the context parameter
       contextsUtils.checkContextTimed(ctx, key, targetName);
-      const lazy_ = typeof lazy === 'boolean' ? lazy : lazy();
-      const delay_ = typeof delay === 'number' ? delay : delay();
+      const lazy_ = typeof lazy === 'boolean' ? lazy : lazy(this);
+      const delay_ = typeof delay === 'number' ? delay : delay(this);
       return setupTimedCancellable(
         (_, ...args) => f.apply(this, args),
         lazy_,

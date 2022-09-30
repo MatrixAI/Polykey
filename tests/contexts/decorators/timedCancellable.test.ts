@@ -957,5 +957,25 @@ describe('context/decorators/timedCancellable', () => {
       waitPromise.resolveP();
       await prom2;
     });
+    test('dynamically accessing object property', async () => {
+      let kidnappedObject: any;
+      class C {
+        protected value = 100;
+        /**
+         * Async function
+         */
+        f(ctx?: Partial<ContextTimed>): PromiseCancellable<void>;
+        @timedCancellable(true, (object) => {
+          kidnappedObject = object;
+          return object.value;
+        })
+        async f(@context _ctx: ContextTimed): Promise<void> {}
+      }
+      const c = new C();
+
+      await c.f();
+      expect(kidnappedObject).toBeInstanceOf(C);
+      expect(kidnappedObject.value).toEqual(100);
+    });
   });
 });
