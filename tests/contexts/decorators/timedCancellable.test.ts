@@ -869,4 +869,93 @@ describe('context/decorators/timedCancellable', () => {
       await expect(p).rejects.toBe('abort reason begin');
     });
   });
+  describe('timedCancellable decorator dynamically setting parameters', () => {
+    test('dynamically setting lazy parameter', async () => {
+      let waitPromise = promise();
+      let finished = false;
+      // We should be able to change lazy at any time as see the cancellation
+      //  behaviour change accordingly
+      let lazy = false;
+      class C {
+        /**
+         * Async function
+         */
+        f(ctx?: Partial<ContextTimed>): PromiseCancellable<string>;
+        @timedCancellable(() => lazy, 10000)
+        async f(@context _ctx: ContextTimed): Promise<string> {
+          await waitPromise.p;
+          finished = true;
+          return 'hello world';
+        }
+      }
+      const c = new C();
+
+      // Eager cancellation
+      finished = false;
+      lazy = false;
+      const abortController = new AbortController();
+      const prom = c.f({ signal: abortController.signal });
+      expect(finished).toBeFalse();
+      abortController.abort();
+      // Should fast reject and not finish
+      await expect(prom).toReject();
+      expect(finished).toBeFalse();
+      waitPromise.resolveP();
+
+      // Lazy cancellation
+      finished = false;
+      lazy = true;
+      waitPromise = promise();
+      const abortController2 = new AbortController();
+      const prom2 = c.f({ signal: abortController2.signal });
+      expect(finished).toBeFalse();
+      abortController.abort();
+      expect(finished).toBeFalse();
+      waitPromise.resolveP();
+      // Should resolve and finish
+      await expect(prom2).toResolve();
+      expect(finished).toBeTrue();
+      waitPromise.resolveP();
+    });
+    test('dynamically setting delay parameter', async () => {
+      let waitPromise = promise();
+      // We should be able to change delay at any time as see the cancellation
+      //  behaviour change accordingly
+      let delay = 100;
+      let signal: AbortSignal | undefined;
+      class C {
+        /**
+         * Async function
+         */
+        f(ctx?: Partial<ContextTimed>): PromiseCancellable<void>;
+        @timedCancellable(true, () => delay)
+        async f(@context ctx: ContextTimed): Promise<void> {
+          signal = ctx.signal;
+          await waitPromise.p;
+        }
+      }
+      const c = new C();
+
+      // Short delay
+      delay = 50;
+      const prom1 = c.f();
+      expect(signal!.aborted).toBeFalse();
+      await sleep(100);
+      expect(signal!.aborted).toBeTrue();
+      waitPromise.resolveP();
+      await prom1;
+
+      // Long delay
+      waitPromise = promise();
+      delay = 150;
+      const prom2 = c.f();
+      expect(signal!.aborted).toBeFalse();
+      await sleep(100);
+      expect(signal!.aborted).toBeFalse();
+      await sleep(100);
+      expect(signal!.aborted).toBeTrue();
+      waitPromise.resolveP();
+      await prom2;
+    });
+  });
 });
