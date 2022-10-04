@@ -5,6 +5,7 @@
 /tsconfig.build.json
 /babel.config.js
 /jest.config.js
+/nodemon.json
 /scripts
 /src
 /tests
