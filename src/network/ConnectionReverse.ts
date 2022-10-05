@@ -1,10 +1,12 @@
 import type { Socket, AddressInfo } from 'net';
 import type { TLSSocket } from 'tls';
 import type UTPConnection from 'utp-native/lib/connection';
+import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import type { Host, Port, Address, NetworkMessage } from './types';
 import type { NodeId } from '../ids/types';
 import type { Certificate } from '../keys/types';
-import type { AbstractConstructorParameters, Timer } from '../types';
+import type { AbstractConstructorParameters } from '../types';
+import type { ContextTimed } from '../contexts/types';
 import net from 'net';
 import tls from 'tls';
 import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
@@ -12,7 +14,9 @@ import Connection from './Connection';
 import * as networkUtils from './utils';
 import * as networkErrors from './errors';
 import * as keysUtils from '../keys/utils';
-import { promise, timerStart, timerStop } from '../utils';
+import { promise } from '../utils';
+import * as contextsErrors from '../contexts/errors';
+import { timedCancellable, context } from '../contexts';
 
 type ConnectionsReverse = {
   proxy: Map<Address, ConnectionReverse>;
@@ -104,11 +108,7 @@ class ConnectionReverse extends Connection {
     this.connections = connections;
   }
 
-  public async start({
-    timer,
-  }: {
-    timer?: Timer;
-  } = {}): Promise<void> {
+  public async start({ ctx }: { ctx: ContextTimed }): Promise<void> {
     this.logger.info('Starting Connection Reverse');
     // Promise for ready
     const { p: readyP, resolveP: resolveReadyP } = promise<void>();
@@ -116,6 +116,9 @@ class ConnectionReverse extends Connection {
     const { p: socketP, resolveP: resolveSocketP } = promise<void>();
     // Promise for start errors
     const { p: errorP, rejectP: rejectErrorP } = promise<void>();
+    // Promise for abortion and timeout
+    const { p: abortedP, resolveP: resolveAbortedP } = promise<void>();
+    ctx.signal.addEventListener('abort', () => resolveAbortedP());
     this.resolveReadyP = resolveReadyP;
     this.utpSocket.on('message', this.handleMessage);
     this.serverSocket = net.connect(this.serverPort, this.serverHost, () => {
@@ -136,21 +139,13 @@ class ConnectionReverse extends Connection {
     this.serverSocket.on('close', this.handleClose);
     let punchInterval;
     try {
-      await Promise.race([
-        socketP,
-        errorP,
-        ...(timer != null ? [timer.timerP] : []),
-      ]);
+      await Promise.race([socketP, errorP, abortedP]);
       // Send punch & ready signal
       await this.send(networkUtils.pingBuffer);
       punchInterval = setInterval(async () => {
         await this.send(networkUtils.pingBuffer);
       }, this.punchIntervalTime);
-      await Promise.race([
-        readyP,
-        errorP,
-        ...(timer != null ? [timer.timerP] : []),
-      ]);
+      await Promise.race([readyP, errorP, abortedP]);
     } catch (e) {
       // Clean up partial start
       // Socket isn't established yet, so it is destroyed
@@ -169,7 +164,7 @@ class ConnectionReverse extends Connection {
     }
     this.serverSocket.on('error', this.handleError);
     this.serverSocket.off('error', handleStartError);
-    if (timer?.timedOut) {
+    if (ctx.signal.aborted) {
       // Clean up partial start
       // Socket isn't established yet, so it is destroyed
       this.serverSocket.destroy();
@@ -196,14 +191,14 @@ class ConnectionReverse extends Connection {
       this.serverSocket.unpipe();
       // Graceful exit has its own end handler
       this.serverSocket.removeAllListeners('end');
-      endPs.push(this.endGracefully(this.serverSocket, this.endTime));
+      endPs.push(this.endGracefully(this.serverSocket));
     }
     if (this.tlsSocket != null && !this.tlsSocket.destroyed) {
       this.logger.debug('Sends tlsSocket ending');
       this.tlsSocket.unpipe();
       // Graceful exit has its own end handler
       this.tlsSocket.removeAllListeners('end');
-      endPs.push(this.endGracefully(this.tlsSocket, this.endTime));
+      endPs.push(this.endGracefully(this.tlsSocket));
     }
     await Promise.all(endPs);
     this.connections.proxy.delete(this.address);
@@ -212,7 +207,10 @@ class ConnectionReverse extends Connection {
   }
 
   @ready(new networkErrors.ErrorConnectionNotRunning(), true)
-  public async compose(utpConn: UTPConnection, timer?: Timer): Promise<void> {
+  public async compose(
+    utpConn: UTPConnection,
+    ctx: ContextTimed,
+  ): Promise<void> {
     try {
       if (this._composed) {
         throw new networkErrors.ErrorConnectionComposed();
@@ -225,6 +223,9 @@ class ConnectionReverse extends Connection {
       const handleComposeError = (e) => {
         rejectErrorP(e);
       };
+      // Promise for abortion and timeout
+      const { p: abortedP, resolveP: resolveAbortedP } = promise<void>();
+      ctx.signal.addEventListener('abort', () => resolveAbortedP());
       const tlsSocket = new tls.TLSSocket(utpConn, {
         key: Buffer.from(this.tlsConfig.keyPrivatePem, 'ascii'),
         cert: Buffer.from(this.tlsConfig.certChainPem, 'ascii'),
@@ -237,11 +238,7 @@ class ConnectionReverse extends Connection {
       });
       tlsSocket.once('error', handleComposeError);
       try {
-        await Promise.race([
-          secureP,
-          errorP,
-          ...(timer != null ? [timer.timerP] : []),
-        ]);
+        await Promise.race([secureP, errorP, abortedP]);
       } catch (e) {
         // Clean up partial compose
         if (!tlsSocket.destroyed) {
@@ -262,13 +259,18 @@ class ConnectionReverse extends Connection {
         await this.stop();
       });
       tlsSocket.off('error', handleComposeError);
-      if (timer?.timedOut) {
+      if (ctx.signal.aborted) {
         // Clean up partial compose
         if (!tlsSocket.destroyed) {
           tlsSocket.end();
           tlsSocket.destroy();
         }
-        throw new networkErrors.ErrorConnectionComposeTimeout();
+        if (
+          ctx.signal.reason instanceof contextsErrors.ErrorContextsTimedTimeOut
+        ) {
+          throw new networkErrors.ErrorConnectionComposeTimeout();
+        }
+        throw ctx.signal.reason;
       }
       const clientCertChain = networkUtils.getCertificateChain(tlsSocket);
       try {
@@ -360,17 +362,28 @@ class ConnectionReverse extends Connection {
     clearTimeout(this.timeout);
   }
 
-  protected async endGracefully(socket: Socket, timeout: number) {
+  protected endGracefully(
+    socket: Socket,
+    ctx?: Partial<ContextTimed>,
+  ): PromiseCancellable<void>;
+  @timedCancellable(
+    true,
+    (connectionReverse: ConnectionReverse) => connectionReverse.endTime,
+  )
+  protected async endGracefully(
+    socket: Socket,
+    @context ctx: ContextTimed,
+  ): Promise<void> {
     const { p: endP, resolveP: resolveEndP } = promise<void>();
+    // Promise for abortion and timeout
+    const { p: abortedP, resolveP: resolveAbortedP } = promise<void>();
+    ctx.signal.addEventListener('abort', () => resolveAbortedP());
     socket.once('end', resolveEndP);
     socket.end();
-    const timer = timerStart(timeout);
-    await Promise.race([endP, timer.timerP]);
+    await Promise.race([endP, abortedP]);
     socket.removeListener('end', resolveEndP);
-    if (timer.timedOut) {
+    if (ctx.signal.aborted) {
       socket.emit('error', new networkErrors.ErrorConnectionEndTimeout());
-    } else {
-      timerStop(timer);
     }
     // Must be destroyed if timed out
     // If not timed out, force destroy the socket due to buggy tlsSocket and utpConn
