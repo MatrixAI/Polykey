@@ -5,10 +5,12 @@ import type { Certificate, PublicKey, PublicKeyPem } from '../keys/types';
 import type Proxy from '../network/Proxy';
 import type GRPCClient from '../grpc/GRPCClient';
 import type NodeConnectionManager from './NodeConnectionManager';
-import type { Timer } from '../types';
+import type { ContextTimed } from 'contexts/types';
+import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import Logger from '@matrixai/logger';
 import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
 import * as asyncInit from '@matrixai/async-init';
+import { timedCancellable } from 'contexts/index';
 import * as nodesErrors from './errors';
 import * as keysUtils from '../keys/utils';
 import * as grpcErrors from '../grpc/errors';
@@ -34,12 +36,12 @@ class NodeConnection<T extends GRPCClient> {
   protected proxy: Proxy;
   protected client: T;
 
-  static async createNodeConnection<T extends GRPCClient>({
+  static createNodeConnection<T extends GRPCClient>({
     targetNodeId,
     targetHost,
     targetPort,
     targetHostname,
-    timer,
+    ctx,
     proxy,
     keyManager,
     clientFactory,
@@ -51,7 +53,33 @@ class NodeConnection<T extends GRPCClient> {
     targetHost: Host;
     targetPort: Port;
     targetHostname?: Hostname;
-    timer?: Timer;
+    ctx?: Partial<ContextTimed>;
+    proxy: Proxy;
+    keyManager: KeyManager;
+    clientFactory: (...args) => Promise<T>;
+    nodeConnectionManager: NodeConnectionManager;
+    destroyCallback?: () => Promise<void>;
+    logger?: Logger;
+  }): PromiseCancellable<NodeConnection<T>>;
+  @timedCancellable(true, 20000)
+  static async createNodeConnection<T extends GRPCClient>({
+    targetNodeId,
+    targetHost,
+    targetPort,
+    targetHostname,
+    ctx,
+    proxy,
+    keyManager,
+    clientFactory,
+    nodeConnectionManager,
+    destroyCallback = async () => {},
+    logger = new Logger(this.name),
+  }: {
+    targetNodeId: NodeId;
+    targetHost: Host;
+    targetPort: Port;
+    targetHostname?: Hostname;
+    ctx?: Partial<ContextTimed>;
     proxy: Proxy;
     keyManager: KeyManager;
     clientFactory: (...args) => Promise<T>;
@@ -107,6 +135,7 @@ class NodeConnection<T extends GRPCClient> {
             targetNodeId,
             proxyAddress,
             signature,
+            ctx,
           );
         });
       }
@@ -126,7 +155,7 @@ class NodeConnection<T extends GRPCClient> {
               await nodeConnection.destroy();
             }
           },
-          timer: timer,
+          ctx,
         }),
         ...holePunchPromises,
       ]);
@@ -143,7 +172,7 @@ class NodeConnection<T extends GRPCClient> {
       throw e;
     }
     // TODO: This is due to chicken or egg problem
-    // see if we can move to CreateDestroyStartStop to resolve this
+    //  see if we can move to CreateDestroyStartStop to resolve this
     nodeConnection.client = client;
     logger.info(`Created ${this.name}`);
     return nodeConnection;

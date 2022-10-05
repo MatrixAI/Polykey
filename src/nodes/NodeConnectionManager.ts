@@ -2,7 +2,6 @@ import type { ResourceAcquire } from '@matrixai/resources';
 import type KeyManager from '../keys/KeyManager';
 import type Proxy from '../network/Proxy';
 import type { Host, Hostname, Port } from '../network/types';
-import type { Timer } from '../types';
 import type NodeGraph from './NodeGraph';
 import type TaskManager from '../tasks/TaskManager';
 import type {
@@ -29,7 +28,9 @@ import GRPCClientAgent from '../agent/GRPCClientAgent';
 import * as validationUtils from '../validation/utils';
 import * as networkUtils from '../network/utils';
 import * as nodesPB from '../proto/js/polykey/v1/nodes/nodes_pb';
-import { timerStart, never } from '../utils';
+import { never } from '../utils';
+
+// TODO: check all locking and add cancellation for it.
 
 type ConnectionAndTimer = {
   connection: NodeConnection<GRPCClientAgent>;
@@ -148,20 +149,26 @@ class NodeConnectionManager {
    * itself is such that we can pass targetNodeId as a parameter (as opposed to
    * an acquire function with no parameters).
    * @param targetNodeId Id of target node to communicate with
-   * @param timer Connection timeout timer
+   * @param ctx
    * @returns ResourceAcquire Resource API for use in with contexts
    */
+  public acquireConnection(
+    targetNodeId: NodeId,
+    ctx?: Partial<ContextTimed>,
+  ): PromiseCancellable<ResourceAcquire<NodeConnection<GRPCClientAgent>>>;
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
+  @timedCancellable(true, 20000)
   public async acquireConnection(
     targetNodeId: NodeId,
-    timer?: Timer,
+    @context ctx: ContextTimed,
   ): Promise<ResourceAcquire<NodeConnection<GRPCClientAgent>>> {
     return async () => {
       const { connection, timer: timeToLiveTimer } = await this.getConnection(
         targetNodeId,
-        timer,
+        ctx,
       );
       // Acquire the read lock and the release function
+      // FIXME: race the abortion
       const [release] = await this.connectionLocks.lock([
         targetNodeId.toString(),
         RWLockWriter,
@@ -190,16 +197,22 @@ class NodeConnectionManager {
    * for use with normal arrow function
    * @param targetNodeId Id of target node to communicate with
    * @param f Function to handle communication
-   * @param timer Connection timeout timer
+   * @param ctx
    */
+  public withConnF<T>(
+    targetNodeId: NodeId,
+    f: (conn: NodeConnection<GRPCClientAgent>) => Promise<T>,
+    ctx?: Partial<ContextTimed>,
+  ): PromiseCancellable<T>;
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
+  @timedCancellable(true, 20000)
   public async withConnF<T>(
     targetNodeId: NodeId,
     f: (conn: NodeConnection<GRPCClientAgent>) => Promise<T>,
-    timer?: Timer,
+    @context ctx: ContextTimed,
   ): Promise<T> {
     return await withF(
-      [await this.acquireConnection(targetNodeId, timer)],
+      [await this.acquireConnection(targetNodeId, ctx)],
       async ([conn]) => await f(conn),
     );
   }
@@ -211,7 +224,7 @@ class NodeConnectionManager {
    * for use with a generator function
    * @param targetNodeId Id of target node to communicate with
    * @param g Generator function to handle communication
-   * @param timer Connection timeout timer
+   * @param ctx
    */
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
   public async *withConnG<T, TReturn, TNext>(
@@ -219,9 +232,9 @@ class NodeConnectionManager {
     g: (
       conn: NodeConnection<GRPCClientAgent>,
     ) => AsyncGenerator<T, TReturn, TNext>,
-    timer?: Timer,
+    ctx?: ContextTimed,
   ): AsyncGenerator<T, TReturn, TNext> {
-    const acquire = await this.acquireConnection(targetNodeId, timer);
+    const acquire = await this.acquireConnection(targetNodeId, ctx);
     const [release, conn] = await acquire();
     let caughtError;
     try {
@@ -240,12 +253,12 @@ class NodeConnectionManager {
    * Create a connection to another node (without performing any function).
    * This is a NOOP if a connection already exists.
    * @param targetNodeId Id of node we are creating connection to
-   * @param timer Connection timeout timer
+   * @param ctx
    * @returns ConnectionAndLock that was created or exists in the connection map
    */
   protected async getConnection(
     targetNodeId: NodeId,
-    timer?: Timer,
+    ctx: ContextTimed,
   ): Promise<ConnectionAndTimer> {
     const targetNodeIdString = targetNodeId.toString() as NodeIdString;
     return await this.connectionLocks.withF(
@@ -288,7 +301,7 @@ class NodeConnectionManager {
           keyManager: this.keyManager,
           nodeConnectionManager: this,
           destroyCallback,
-          timer: timer ?? timerStart(this.connConnectTime),
+          ctx,
           logger: this.logger.getChild(
             `${NodeConnection.name} ${targetHost}:${targetAddress.port}`,
           ),
@@ -342,19 +355,15 @@ class NodeConnectionManager {
    * sends hole-punching packets back to the client's forward proxy.
    * @param proxyHost host of the client's forward proxy
    * @param proxyPort port of the client's forward proxy
-   * @param timer Connection timeout timer
+   * @param ctx
    */
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
-  public async holePunchReverse(
+  public holePunchReverse(
     proxyHost: Host,
     proxyPort: Port,
-    timer?: Timer,
-  ): Promise<void> {
-    const abortController = new AbortController();
-    void timer?.timerP.then(() => abortController.abort());
-    await this.proxy.openConnectionReverse(proxyHost, proxyPort, {
-      signal: abortController.signal,
-    });
+    ctx?: Partial<ContextTimed>,
+  ): PromiseCancellable<void> {
+    return this.proxy.openConnectionReverse(proxyHost, proxyPort, ctx);
   }
 
   /**
@@ -588,14 +597,13 @@ class NodeConnectionManager {
     nodeIdMessage.setNodeId(nodesUtils.encodeNodeId(targetNodeId));
     try {
       // Send through client
-      const timeout = ctx.timer.getTimeout();
       const response = await this.withConnF(
         nodeId,
         async (connection) => {
           const client = connection.getClient();
           return await client.nodesClosestLocalNodesGet(nodeIdMessage);
         },
-        timeout === Infinity ? undefined : timerStart(timeout),
+        ctx,
       );
       const nodes: Array<[NodeId, NodeData]> = [];
       // Loop over each map element (from the returned response) and populate nodes
@@ -635,17 +643,26 @@ class NodeConnectionManager {
    * @param targetNodeId node ID of the target node to hole punch
    * @param proxyAddress string of address in the form `proxyHost:proxyPort`
    * @param signature signature to verify source node is sender (signature based
-   * @param timer Connection timeout timer
    * on proxyAddress as message)
+   * @param ctx
    */
+  public sendHolePunchMessage(
+    relayNodeId: NodeId,
+    sourceNodeId: NodeId,
+    targetNodeId: NodeId,
+    proxyAddress: string,
+    signature: Buffer,
+    ctx?: Partial<ContextTimed>,
+  ): PromiseCancellable<void>;
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
+  @timedCancellable(true, 20000)
   public async sendHolePunchMessage(
     relayNodeId: NodeId,
     sourceNodeId: NodeId,
     targetNodeId: NodeId,
     proxyAddress: string,
     signature: Buffer,
-    timer?: Timer,
+    @context ctx: ContextTimed,
   ): Promise<void> {
     const relayMsg = new nodesPB.Relay();
     relayMsg.setSrcId(nodesUtils.encodeNodeId(sourceNodeId));
@@ -658,7 +675,7 @@ class NodeConnectionManager {
         const client = connection.getClient();
         await client.nodesHolePunchMessageSend(relayMsg);
       },
-      timer,
+      ctx,
     );
   }
 
@@ -669,12 +686,17 @@ class NodeConnectionManager {
    * node).
    * @param message the original relay message (assumed to be created in
    * nodeConnection.start())
-   * @param timer Connection timeout timer
+   * @param ctx
    */
+  public relayHolePunchMessage(
+    message: nodesPB.Relay,
+    ctx?: Partial<ContextTimed>,
+  ): PromiseCancellable<void>;
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
+  @timedCancellable(true, 20000)
   public async relayHolePunchMessage(
     message: nodesPB.Relay,
-    timer?: Timer,
+    @context ctx: ContextTimed,
   ): Promise<void> {
     // First check if we already have an existing ID -> address record
     // If we're relaying then we trust our own node graph records over
@@ -694,7 +716,7 @@ class NodeConnectionManager {
       validationUtils.parseNodeId(message.getTargetId()),
       proxyAddress,
       Buffer.from(message.getSignature()),
-      timer,
+      ctx,
     );
   }
 
