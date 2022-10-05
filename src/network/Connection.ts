@@ -40,7 +40,7 @@ abstract class Connection {
     tlsConfig,
     keepAliveTimeoutTime = 20000,
     endTime = 1000,
-    punchIntervalTime = 1000,
+    punchIntervalTime = 50,
     keepAliveIntervalTime = 1000,
     logger,
   }: {

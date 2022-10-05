@@ -63,7 +63,7 @@ class Proxy {
     connConnectTime = 20000,
     connKeepAliveTimeoutTime = 20000,
     connEndTime = 1000,
-    connPunchIntervalTime = 1000,
+    connPunchIntervalTime = 50,
     connKeepAliveIntervalTime = 1000,
     connectionEstablishedCallback = () => {},
     logger,
