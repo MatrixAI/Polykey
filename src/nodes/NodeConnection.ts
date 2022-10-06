@@ -5,16 +5,17 @@ import type { Certificate, PublicKey, PublicKeyPem } from '../keys/types';
 import type Proxy from '../network/Proxy';
 import type GRPCClient from '../grpc/GRPCClient';
 import type NodeConnectionManager from './NodeConnectionManager';
-import type { ContextTimed } from 'contexts/types';
+import type { ContextTimed } from '../contexts/types';
 import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import Logger from '@matrixai/logger';
 import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
 import * as asyncInit from '@matrixai/async-init';
-import { timedCancellable } from 'contexts/index';
 import * as nodesErrors from './errors';
+import { context, timedCancellable } from '../contexts/index';
 import * as keysUtils from '../keys/utils';
 import * as grpcErrors from '../grpc/errors';
 import * as networkUtils from '../network/utils';
+import { timerStart } from '../utils/index';
 
 /**
  * Encapsulates the unidirectional client-side connection of one node to another.
@@ -36,57 +37,60 @@ class NodeConnection<T extends GRPCClient> {
   protected proxy: Proxy;
   protected client: T;
 
-  static createNodeConnection<T extends GRPCClient>({
-    targetNodeId,
-    targetHost,
-    targetPort,
-    targetHostname,
-    ctx,
-    proxy,
-    keyManager,
-    clientFactory,
-    nodeConnectionManager,
-    destroyCallback = async () => {},
-    logger = new Logger(this.name),
-  }: {
-    targetNodeId: NodeId;
-    targetHost: Host;
-    targetPort: Port;
-    targetHostname?: Hostname;
-    ctx?: Partial<ContextTimed>;
-    proxy: Proxy;
-    keyManager: KeyManager;
-    clientFactory: (...args) => Promise<T>;
-    nodeConnectionManager: NodeConnectionManager;
-    destroyCallback?: () => Promise<void>;
-    logger?: Logger;
-  }): PromiseCancellable<NodeConnection<T>>;
+  static createNodeConnection<T extends GRPCClient>(
+    {
+      targetNodeId,
+      targetHost,
+      targetPort,
+      targetHostname,
+      proxy,
+      keyManager,
+      clientFactory,
+      nodeConnectionManager,
+      destroyCallback = async () => {},
+      logger = new Logger(this.name),
+    }: {
+      targetNodeId: NodeId;
+      targetHost: Host;
+      targetPort: Port;
+      targetHostname?: Hostname;
+      proxy: Proxy;
+      keyManager: KeyManager;
+      clientFactory: (...args) => Promise<T>;
+      nodeConnectionManager: NodeConnectionManager;
+      destroyCallback?: () => Promise<void>;
+      logger?: Logger;
+    },
+    ctx?: Partial<ContextTimed>,
+  ): PromiseCancellable<NodeConnection<T>>;
   @timedCancellable(true, 20000)
-  static async createNodeConnection<T extends GRPCClient>({
-    targetNodeId,
-    targetHost,
-    targetPort,
-    targetHostname,
-    ctx,
-    proxy,
-    keyManager,
-    clientFactory,
-    nodeConnectionManager,
-    destroyCallback = async () => {},
-    logger = new Logger(this.name),
-  }: {
-    targetNodeId: NodeId;
-    targetHost: Host;
-    targetPort: Port;
-    targetHostname?: Hostname;
-    ctx?: Partial<ContextTimed>;
-    proxy: Proxy;
-    keyManager: KeyManager;
-    clientFactory: (...args) => Promise<T>;
-    nodeConnectionManager: NodeConnectionManager;
-    destroyCallback?: () => Promise<void>;
-    logger?: Logger;
-  }): Promise<NodeConnection<T>> {
+  static async createNodeConnection<T extends GRPCClient>(
+    {
+      targetNodeId,
+      targetHost,
+      targetPort,
+      targetHostname,
+      proxy,
+      keyManager,
+      clientFactory,
+      nodeConnectionManager,
+      destroyCallback = async () => {},
+      logger = new Logger(this.name),
+    }: {
+      targetNodeId: NodeId;
+      targetHost: Host;
+      targetPort: Port;
+      targetHostname?: Hostname;
+      ctx?: Partial<ContextTimed>;
+      proxy: Proxy;
+      keyManager: KeyManager;
+      clientFactory: (...args) => Promise<T>;
+      nodeConnectionManager: NodeConnectionManager;
+      destroyCallback?: () => Promise<void>;
+      logger?: Logger;
+    },
+    @context ctx: ContextTimed,
+  ): Promise<NodeConnection<T>> {
     logger.info(`Creating ${this.name}`);
     // Checking if attempting to connect to a wildcard IP
     if (networkUtils.isHostWildcard(targetHost)) {
@@ -139,26 +143,26 @@ class NodeConnection<T extends GRPCClient> {
           );
         });
       }
-      [client] = await Promise.all([
-        clientFactory({
-          nodeId: targetNodeId,
-          host: targetHost,
-          port: targetPort,
-          proxyConfig: proxyConfig,
-          // Think about this
-          logger: logger.getChild(clientFactory.name),
-          destroyCallback: async () => {
-            if (
-              nodeConnection[asyncInit.status] !== 'destroying' &&
-              !nodeConnection[asyncInit.destroyed]
-            ) {
-              await nodeConnection.destroy();
-            }
-          },
-          ctx,
-        }),
-        ...holePunchPromises,
-      ]);
+      // TODO: this needs to be updated to take a context,
+      //  still uses old timer style.
+      const clientPromise = clientFactory({
+        nodeId: targetNodeId,
+        host: targetHost,
+        port: targetPort,
+        proxyConfig: proxyConfig,
+        // Think about this
+        logger: logger.getChild(clientFactory.name),
+        destroyCallback: async () => {
+          if (
+            nodeConnection[asyncInit.status] !== 'destroying' &&
+            !nodeConnection[asyncInit.destroyed]
+          ) {
+            await nodeConnection.destroy();
+          }
+        },
+        timer: timerStart(ctx.timer.getTimeout()),
+      });
+      [client] = await Promise.all([clientPromise, ...holePunchPromises]);
       // 5. When finished, you have a connection to other node
       // The GRPCClient is ready to be used for requests
     } catch (e) {

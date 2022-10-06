@@ -292,22 +292,24 @@ class NodeConnectionManager {
           await this.destroyConnection(targetNodeId);
         };
         // Creating new connection
-        const newConnection = await NodeConnection.createNodeConnection({
-          targetNodeId: targetNodeId,
-          targetHost: targetHost,
-          targetHostname: targetHostname,
-          targetPort: targetAddress.port,
-          proxy: this.proxy,
-          keyManager: this.keyManager,
-          nodeConnectionManager: this,
-          destroyCallback,
+        const newConnection = await NodeConnection.createNodeConnection(
+          {
+            targetNodeId: targetNodeId,
+            targetHost: targetHost,
+            targetHostname: targetHostname,
+            targetPort: targetAddress.port,
+            proxy: this.proxy,
+            keyManager: this.keyManager,
+            nodeConnectionManager: this,
+            destroyCallback,
+            logger: this.logger.getChild(
+              `${NodeConnection.name} ${targetHost}:${targetAddress.port}`,
+            ),
+            clientFactory: async (args) =>
+              GRPCClientAgent.createGRPCClientAgent(args),
+          },
           ctx,
-          logger: this.logger.getChild(
-            `${NodeConnection.name} ${targetHost}:${targetAddress.port}`,
-          ),
-          clientFactory: async (args) =>
-            GRPCClientAgent.createGRPCClientAgent(args),
-        });
+        );
         // We can assume connection was established and destination was valid,
         // we can add the target to the nodeGraph
         await this.nodeManager?.setNode(targetNodeId, targetAddress);
@@ -766,7 +768,7 @@ class NodeConnectionManager {
       Buffer.from(proxyAddress),
     );
     // FIXME: this needs to handle aborting
-    const holePunchPromises = Array.from(this.getSeedNodes(), (seedNodeId) => {
+    void Array.from(this.getSeedNodes(), (seedNodeId) => {
       return this.sendHolePunchMessage(
         seedNodeId,
         this.keyManager.getNodeId(),
