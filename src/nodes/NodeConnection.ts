@@ -123,16 +123,17 @@ class NodeConnection<T extends GRPCClient> {
       destroyCallback,
       logger,
     });
-    let client;
+    let client: T;
     try {
       // Start the hole punching only if we are not connecting to seed nodes
-      let holePunchPromises: Promise<void>[] = [];
       const seedNodes = nodeConnectionManager.getSeedNodes();
       const isSeedNode = !!seedNodes.find((nodeId) => {
         return nodeId.equals(targetNodeId);
       });
       if (!isSeedNode) {
-        holePunchPromises = Array.from(seedNodes, (nodeId) => {
+        // FIXME: this needs to be cancellable.
+        //  It needs to timeout as well as abort for cleanup
+        void Array.from(seedNodes, (nodeId) => {
           return nodeConnectionManager.sendHolePunchMessage(
             nodeId,
             keyManager.getNodeId(),
@@ -145,7 +146,7 @@ class NodeConnection<T extends GRPCClient> {
       }
       // TODO: this needs to be updated to take a context,
       //  still uses old timer style.
-      const clientPromise = clientFactory({
+      client = await clientFactory({
         nodeId: targetNodeId,
         host: targetHost,
         port: targetPort,
@@ -162,7 +163,6 @@ class NodeConnection<T extends GRPCClient> {
         },
         timer: timerStart(ctx.timer.getTimeout()),
       });
-      [client] = await Promise.all([clientPromise, ...holePunchPromises]);
       // 5. When finished, you have a connection to other node
       // The GRPCClient is ready to be used for requests
     } catch (e) {
@@ -175,6 +175,7 @@ class NodeConnection<T extends GRPCClient> {
       }
       throw e;
     }
+    // FIXME: we need a finally block here to do cleanup.
     // TODO: This is due to chicken or egg problem
     //  see if we can move to CreateDestroyStartStop to resolve this
     nodeConnection.client = client;

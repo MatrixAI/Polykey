@@ -206,7 +206,10 @@ class NodeManager {
     address?: NodeAddress,
     ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<boolean>;
-  @timedCancellable(true, 20000)
+  @timedCancellable(
+    true,
+    (nodeManager: NodeManager) => nodeManager.nodeConnectionManager.pingTimeout,
+  )
   public async pingNode(
     nodeId: NodeId,
     address: NodeAddress | undefined,
@@ -521,13 +524,17 @@ class NodeManager {
     tran?: DBTransaction,
   ): PromiseCancellable<void>;
   @ready(new nodesErrors.ErrorNodeManagerNotRunning())
-  @timedCancellable(true, 20000)
+  @timedCancellable(
+    true,
+    (nodeManager: NodeManager) =>
+      nodeManager.nodeConnectionManager.connConnectTime,
+  )
   public async setNode(
     nodeId: NodeId,
     nodeAddress: NodeAddress,
     block: boolean = false,
     force: boolean = false,
-    pingTimeout: number = 10000,
+    pingTimeout: number = 2000,
     @context ctx: ContextTimed,
     tran?: DBTransaction,
   ): Promise<void> {
@@ -620,10 +627,14 @@ class NodeManager {
     ctx?: Partial<ContextTimed>,
     tran?: DBTransaction,
   ): PromiseCancellable<void>;
-  @timedCancellable(true, 20000)
+  @timedCancellable(
+    true,
+    (nodeManager: NodeManager) =>
+      nodeManager.nodeConnectionManager.connConnectTime,
+  )
   protected async garbageCollectBucket(
     bucketIndex: number,
-    pingTimeout: number = 10000,
+    pingTimeout: number = 2000,
     @context ctx: ContextTimed,
     tran?: DBTransaction,
   ): Promise<void> {
@@ -722,7 +733,7 @@ class NodeManager {
     nodeId: NodeId,
     nodeAddress: NodeAddress,
     block: boolean = false,
-    pingTimeout: number = 10000,
+    pingTimeout: number = 2000,
     ctx?: ContextTimed,
     tran?: DBTransaction,
   ): Promise<void> {
@@ -808,7 +819,11 @@ class NodeManager {
     bucketIndex: number,
     ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<void>;
-  @timedCancellable(true, 20000)
+  @timedCancellable(
+    true,
+    (nodeManager: NodeManager) =>
+      nodeManager.nodeConnectionManager.connConnectTime,
+  )
   public async refreshBucket(
     bucketIndex: NodeBucketIndex,
     @context ctx: ContextTimed,
@@ -985,7 +1000,11 @@ class NodeManager {
     ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<void>;
   @ready(new nodesErrors.ErrorNodeManagerNotRunning())
-  @timedCancellable(true, 20000)
+  @timedCancellable(
+    true,
+    (nodeManager: NodeManager) =>
+      nodeManager.nodeConnectionManager.connConnectTime,
+  )
   public async syncNodeGraph(
     block: boolean = true,
     @context ctx: ContextTimed,

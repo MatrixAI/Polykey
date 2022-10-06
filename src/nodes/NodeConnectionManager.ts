@@ -49,6 +49,12 @@ class NodeConnectionManager {
    * Time to live for `NodeConnection`
    */
   public readonly connTimeoutTime: number;
+
+  /**
+   * Default timeout for pinging nodes
+   */
+  public readonly pingTimeout: number;
+
   /**
    * Alpha constant for kademlia
    * The number of the closest nodes to contact initially
@@ -92,6 +98,7 @@ class NodeConnectionManager {
     initialClosestNodes = 3,
     connConnectTime = 20000,
     connTimeoutTime = 60000,
+    pingTimeout = 2000,
     logger,
   }: {
     nodeGraph: NodeGraph;
@@ -102,6 +109,7 @@ class NodeConnectionManager {
     initialClosestNodes?: number;
     connConnectTime?: number;
     connTimeoutTime?: number;
+    pingTimeout?: number;
     logger?: Logger;
   }) {
     this.logger = logger ?? new Logger(NodeConnectionManager.name);
@@ -113,6 +121,7 @@ class NodeConnectionManager {
     this.initialClosestNodes = initialClosestNodes;
     this.connConnectTime = connConnectTime;
     this.connTimeoutTime = connTimeoutTime;
+    this.pingTimeout = pingTimeout;
   }
 
   public async start({ nodeManager }: { nodeManager: NodeManager }) {
@@ -157,7 +166,11 @@ class NodeConnectionManager {
     ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<ResourceAcquire<NodeConnection<GRPCClientAgent>>>;
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
-  @timedCancellable(true, 20000)
+  @timedCancellable(
+    true,
+    (nodeConnectionManager: NodeConnectionManager) =>
+      nodeConnectionManager.connConnectTime,
+  )
   public async acquireConnection(
     targetNodeId: NodeId,
     @context ctx: ContextTimed,
@@ -205,7 +218,11 @@ class NodeConnectionManager {
     ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<T>;
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
-  @timedCancellable(true, 20000)
+  @timedCancellable(
+    true,
+    (nodeConnectionManager: NodeConnectionManager) =>
+      nodeConnectionManager.connConnectTime,
+  )
   public async withConnF<T>(
     targetNodeId: NodeId,
     f: (conn: NodeConnection<GRPCClientAgent>) => Promise<T>,
@@ -232,7 +249,7 @@ class NodeConnectionManager {
     g: (
       conn: NodeConnection<GRPCClientAgent>,
     ) => AsyncGenerator<T, TReturn, TNext>,
-    ctx?: ContextTimed,
+    ctx?: Partial<ContextTimed>,
   ): AsyncGenerator<T, TReturn, TNext> {
     const acquire = await this.acquireConnection(targetNodeId, ctx);
     const [release, conn] = await acquire();
@@ -404,7 +421,11 @@ class NodeConnectionManager {
     ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<NodeAddress | undefined>;
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
-  @timedCancellable(true, 20000)
+  @timedCancellable(
+    true,
+    (nodeConnectionManager: NodeConnectionManager) =>
+      nodeConnectionManager.connConnectTime,
+  )
   public async findNode(
     targetNodeId: NodeId,
     ignoreRecentOffline: boolean = false,
@@ -446,7 +467,11 @@ class NodeConnectionManager {
     ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<NodeAddress | undefined>;
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
-  @timedCancellable(true, 20000)
+  @timedCancellable(
+    true,
+    (nodeConnectionManager: NodeConnectionManager) =>
+      nodeConnectionManager.connConnectTime,
+  )
   public async getClosestGlobalNodes(
     targetNodeId: NodeId,
     ignoreRecentOffline: boolean = false,
@@ -588,7 +613,11 @@ class NodeConnectionManager {
     ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<Array<[NodeId, NodeData]>>;
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
-  @timedCancellable(true, 20000)
+  @timedCancellable(
+    true,
+    (nodeConnectionManager: NodeConnectionManager) =>
+      nodeConnectionManager.connConnectTime,
+  )
   public async getRemoteNodeClosestNodes(
     nodeId: NodeId,
     targetNodeId: NodeId,
@@ -657,7 +686,11 @@ class NodeConnectionManager {
     ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<void>;
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
-  @timedCancellable(true, 20000)
+  @timedCancellable(
+    true,
+    (nodeConnectionManager: NodeConnectionManager) =>
+      nodeConnectionManager.connConnectTime,
+  )
   public async sendHolePunchMessage(
     relayNodeId: NodeId,
     sourceNodeId: NodeId,
@@ -695,7 +728,11 @@ class NodeConnectionManager {
     ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<void>;
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
-  @timedCancellable(true, 20000)
+  @timedCancellable(
+    true,
+    (nodeConnectionManager: NodeConnectionManager) =>
+      nodeConnectionManager.connConnectTime,
+  )
   public async relayHolePunchMessage(
     message: nodesPB.Relay,
     @context ctx: ContextTimed,
@@ -750,7 +787,11 @@ class NodeConnectionManager {
     ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<boolean>;
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
-  @timedCancellable(true, 20000)
+  @timedCancellable(
+    true,
+    (nodeConnectionManager: NodeConnectionManager) =>
+      nodeConnectionManager.pingTimeout,
+  )
   public async pingNode(
     nodeId: NodeId,
     host: Host | Hostname,
