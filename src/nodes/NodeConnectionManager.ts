@@ -775,21 +775,12 @@ class NodeConnectionManager {
         signature,
       );
     });
-    const forwardPunchPromise = this.holePunchForward(nodeId, host, port, ctx);
-
-    const abortPromise = new Promise((_resolve, reject) => {
-      if (ctx.signal.aborted) throw ctx.signal.reason;
-      ctx.signal.addEventListener('abort', () => reject(ctx.signal.reason));
-    });
-
     try {
-      await Promise.race([
-        Promise.any([forwardPunchPromise, ...holePunchPromises]),
-        abortPromise,
-      ]);
+      await this.holePunchForward(nodeId, host, port, ctx);
     } catch (e) {
       return false;
     }
+    // FIXME: clean up in a finally block, holePunchPromises should be cancelled
     return true;
   }
 
