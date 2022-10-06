@@ -81,7 +81,6 @@ class NodeConnection<T extends GRPCClient> {
       targetHost: Host;
       targetPort: Port;
       targetHostname?: Hostname;
-      ctx?: Partial<ContextTimed>;
       proxy: Proxy;
       keyManager: KeyManager;
       clientFactory: (...args) => Promise<T>;

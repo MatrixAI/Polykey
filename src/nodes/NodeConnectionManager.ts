@@ -161,19 +161,10 @@ class NodeConnectionManager {
    * @param ctx
    * @returns ResourceAcquire Resource API for use in with contexts
    */
-  public acquireConnection(
-    targetNodeId: NodeId,
-    ctx?: Partial<ContextTimed>,
-  ): PromiseCancellable<ResourceAcquire<NodeConnection<GRPCClientAgent>>>;
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
-  @timedCancellable(
-    true,
-    (nodeConnectionManager: NodeConnectionManager) =>
-      nodeConnectionManager.connConnectTime,
-  )
   public async acquireConnection(
     targetNodeId: NodeId,
-    @context ctx: ContextTimed,
+    ctx?: Partial<ContextTimed>,
   ): Promise<ResourceAcquire<NodeConnection<GRPCClientAgent>>> {
     return async () => {
       const { connection, timer: timeToLiveTimer } = await this.getConnection(
@@ -273,9 +264,18 @@ class NodeConnectionManager {
    * @param ctx
    * @returns ConnectionAndLock that was created or exists in the connection map
    */
+  protected getConnection(
+    targetNodeId: NodeId,
+    ctx?: Partial<ContextTimed>,
+  ): PromiseCancellable<ConnectionAndTimer>;
+  @timedCancellable(
+    true,
+    (nodeConnectionManager: NodeConnectionManager) =>
+      nodeConnectionManager.connConnectTime,
+  )
   protected async getConnection(
     targetNodeId: NodeId,
-    ctx: ContextTimed,
+    @context ctx: ContextTimed,
   ): Promise<ConnectionAndTimer> {
     const targetNodeIdString = targetNodeId.toString() as NodeIdString;
     return await this.connectionLocks.withF(

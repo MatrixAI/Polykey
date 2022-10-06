@@ -52,6 +52,7 @@ describe(`${NodeManager.name} test`, () => {
   const externalPort = 0 as Port;
   const mockedPingNode = jest.fn(); // Jest.spyOn(NodeManager.prototype, 'pingNode');
   const dummyNodeConnectionManager = {
+    connConnectTime: 5000,
     pingNode: mockedPingNode,
   } as unknown as NodeConnectionManager;
 
@@ -188,7 +189,7 @@ describe(`${NodeManager.name} test`, () => {
         // Check if active
         // Case 1: cannot establish new connection, so offline
         const active1 = await nodeManager.pingNode(serverNodeId, undefined, {
-          timer: new Timer({ delay: 10000 }),
+          timer: new Timer({ delay: 2000 }),
         });
         expect(active1).toBe(false);
         // Bring server node online
@@ -207,7 +208,7 @@ describe(`${NodeManager.name} test`, () => {
         // Check if active
         // Case 2: can establish new connection, so online
         const active2 = await nodeManager.pingNode(serverNodeId, undefined, {
-          timer: new Timer({ delay: 10000 }),
+          timer: new Timer({ delay: 2000 }),
         });
         expect(active2).toBe(true);
         // Turn server node offline again
@@ -216,7 +217,7 @@ describe(`${NodeManager.name} test`, () => {
         // Check if active
         // Case 3: pre-existing connection no longer active, so offline
         const active3 = await nodeManager.pingNode(serverNodeId, undefined, {
-          timer: new Timer({ delay: 10000 }),
+          timer: new Timer({ delay: 2000 }),
         });
         expect(active3).toBe(false);
       } finally {
@@ -472,7 +473,7 @@ describe(`${NodeManager.name} test`, () => {
       sigchain: {} as Sigchain,
       keyManager,
       nodeGraph,
-      nodeConnectionManager: {} as NodeConnectionManager,
+      nodeConnectionManager: dummyNodeConnectionManager,
       taskManager,
       logger,
     });
@@ -500,7 +501,7 @@ describe(`${NodeManager.name} test`, () => {
       sigchain: {} as Sigchain,
       keyManager,
       nodeGraph,
-      nodeConnectionManager: {} as NodeConnectionManager,
+      nodeConnectionManager: dummyNodeConnectionManager,
       taskManager,
       logger,
     });
@@ -540,7 +541,7 @@ describe(`${NodeManager.name} test`, () => {
       sigchain: {} as Sigchain,
       keyManager,
       nodeGraph,
-      nodeConnectionManager: {} as NodeConnectionManager,
+      nodeConnectionManager: dummyNodeConnectionManager,
       taskManager,
       logger,
     });
@@ -591,7 +592,7 @@ describe(`${NodeManager.name} test`, () => {
       sigchain: {} as Sigchain,
       keyManager,
       nodeGraph,
-      nodeConnectionManager: {} as NodeConnectionManager,
+      nodeConnectionManager: dummyNodeConnectionManager,
       taskManager,
       logger,
     });
@@ -644,7 +645,7 @@ describe(`${NodeManager.name} test`, () => {
       sigchain: {} as Sigchain,
       keyManager,
       nodeGraph,
-      nodeConnectionManager: {} as NodeConnectionManager,
+      nodeConnectionManager: dummyNodeConnectionManager,
       taskManager,
       logger,
     });
@@ -690,7 +691,7 @@ describe(`${NodeManager.name} test`, () => {
       sigchain: {} as Sigchain,
       keyManager,
       nodeGraph,
-      nodeConnectionManager: {} as NodeConnectionManager,
+      nodeConnectionManager: dummyNodeConnectionManager,
       taskManager,
       logger,
     });
@@ -870,7 +871,6 @@ describe(`${NodeManager.name} test`, () => {
     }
   });
   test('should update deadline when updating a bucket', async () => {
-    const refreshBucketTimeout = 100000;
     const nodeManager = new NodeManager({
       db,
       sigchain: {} as Sigchain,
@@ -878,7 +878,7 @@ describe(`${NodeManager.name} test`, () => {
       nodeGraph,
       nodeConnectionManager: dummyNodeConnectionManager,
       taskManager,
-      refreshBucketDelay: refreshBucketTimeout,
+      refreshBucketDelay: 100000,
       logger,
     });
     const mockRefreshBucket = jest.spyOn(
@@ -947,7 +947,6 @@ describe(`${NodeManager.name} test`, () => {
     }
   });
   test('refreshBucket tasks should have spread delays', async () => {
-    const refreshBucketTimeout = 100000;
     const nodeManager = new NodeManager({
       db,
       sigchain: {} as Sigchain,
@@ -955,7 +954,7 @@ describe(`${NodeManager.name} test`, () => {
       nodeGraph,
       nodeConnectionManager: dummyNodeConnectionManager,
       taskManager,
-      refreshBucketDelay: refreshBucketTimeout,
+      refreshBucketDelay: 100000,
       logger,
     });
     const mockRefreshBucket = jest.spyOn(

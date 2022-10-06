@@ -734,7 +734,7 @@ class NodeManager {
     nodeAddress: NodeAddress,
     block: boolean = false,
     pingTimeout: number = 2000,
-    ctx?: ContextTimed,
+    ctx: ContextTimed,
     tran?: DBTransaction,
   ): Promise<void> {
     if (!this.pendingNodes.has(bucketIndex)) {
