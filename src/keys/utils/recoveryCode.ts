@@ -1,4 +1,4 @@
-import type { RecoveryCode } from './types';
+import type { RecoveryCode } from '../types';
 import './webcrypto';
 import * as bip39 from '@scure/bip39';
 import { wordlist as bip39Wordlist } from '@scure/bip39/wordlists/english';

@@ -4,7 +4,7 @@ import {
 } from '@/keys/utils/recoveryCode';
 
 describe('keys/utils/recoveryCode', () => {
-  test('generates recovery code', async () => {
+  test('generates recovery code', () => {
     for (let i = 0; i < 100; i++) {
       const recoveryCode1 = generateRecoveryCode();
       expect(recoveryCode1.split(' ')).toHaveLength(24);

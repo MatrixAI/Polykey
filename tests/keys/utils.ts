@@ -1,11 +1,17 @@
-import type { CertificateId } from '@/keys/types';
+import type {
+  CertificateId,
+  PrivateKey,
+  KeyPair,
+  Key,
+  Signature,
+} from '@/keys/types';
 import { fc } from '@fast-check/jest';
 import * as asymmetric from '@/keys/utils/asymmetric';
 import * as x509 from '@/keys/utils/x509';
-import { bufferWrap } from '@/utils';
+import * as utils from '@/utils';
 
 const bufferArb = (constraints?: fc.IntArrayConstraints) => {
-  return fc.uint8Array(constraints).map(bufferWrap);
+  return fc.uint8Array(constraints).map(utils.bufferWrap);
 };
 
 /**
@@ -13,15 +19,16 @@ const bufferArb = (constraints?: fc.IntArrayConstraints) => {
  */
 const keyArb = fc
   .uint8Array({ minLength: 32, maxLength: 32 })
-  .map(bufferWrap)
-  .noShrink();
+  .map(utils.bufferWrap)
+  .noShrink() as fc.Arbitrary<Key>;
 
 /**
  * Ed25519 Private Key
  */
 const privateKeyArb = fc
   .uint8Array({ minLength: 32, maxLength: 32 })
-  .noShrink();
+  .map(utils.bufferWrap)
+  .noShrink() as fc.Arbitrary<PrivateKey>;
 
 /**
  * Ed25519 Public Key
@@ -33,28 +40,28 @@ const publicKeyArb = privateKeyArb
 /**
  * Keypair of public and private key
  */
-const keyPairPArb = privateKeyArb
-  .map(async (privateKey) => {
+const keyPairArb = privateKeyArb
+  .map((privateKey) => {
+    const publicKey = asymmetric.publicKeyFromPrivateKeyEd25519(privateKey);
     return {
-      publicKey: await asymmetric.publicKeyFromPrivateKeyEd25519(privateKey),
-      privateKey: bufferWrap(privateKey),
+      publicKey,
+      privateKey,
+      secretKey: Buffer.concat([privateKey, publicKey]),
     };
   })
-  .noShrink();
+  .noShrink() as fc.Arbitrary<KeyPair>;
 
-const certArb = fc
+const certPArb = fc
   .record({
-    subjectKeyPairP: keyPairPArb,
-    issuerKeyPairP: keyPairPArb,
+    subjectKeyPair: keyPairArb,
+    issuerKeyPair: keyPairArb,
     certId: fc.uint8Array({
       minLength: 16,
       maxLength: 16,
     }) as fc.Arbitrary<CertificateId>,
     duration: fc.integer({ min: 1, max: 1000 }),
   })
-  .map(async ({ subjectKeyPairP, issuerKeyPairP, certId, duration }) => {
-    const subjectKeyPair = await subjectKeyPairP;
-    const issuerKeyPair = await issuerKeyPairP;
+  .map(async ({ subjectKeyPair, issuerKeyPair, certId, duration }) => {
     const cert = await x509.generateCertificate({
       certId,
       subjectKeyPair: subjectKeyPair,
@@ -65,4 +72,17 @@ const certArb = fc
   })
   .noShrink();
 
-export { bufferArb, keyArb, publicKeyArb, privateKeyArb, keyPairPArb, certArb };
+const signatureArb = fc
+  .uint8Array({ minLength: 64, maxLength: 64 })
+  .map(utils.bufferWrap)
+  .noShrink() as fc.Arbitrary<Signature>;
+
+export {
+  bufferArb,
+  keyArb,
+  publicKeyArb,
+  privateKeyArb,
+  keyPairArb,
+  certPArb,
+  signatureArb,
+};
