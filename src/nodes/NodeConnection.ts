@@ -5,14 +5,17 @@ import type { Certificate, PublicKey, PublicKeyPem } from '../keys/types';
 import type Proxy from '../network/Proxy';
 import type GRPCClient from '../grpc/GRPCClient';
 import type NodeConnectionManager from './NodeConnectionManager';
-import type { Timer } from '../types';
+import type { ContextTimed } from '../contexts/types';
+import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import Logger from '@matrixai/logger';
 import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
 import * as asyncInit from '@matrixai/async-init';
 import * as nodesErrors from './errors';
+import { context, timedCancellable } from '../contexts/index';
 import * as keysUtils from '../keys/utils';
 import * as grpcErrors from '../grpc/errors';
 import * as networkUtils from '../network/utils';
+import { timerStart } from '../utils/index';
 
 /**
  * Encapsulates the unidirectional client-side connection of one node to another.
@@ -34,31 +37,59 @@ class NodeConnection<T extends GRPCClient> {
   protected proxy: Proxy;
   protected client: T;
 
-  static async createNodeConnection<T extends GRPCClient>({
-    targetNodeId,
-    targetHost,
-    targetPort,
-    targetHostname,
-    timer,
-    proxy,
-    keyManager,
-    clientFactory,
-    nodeConnectionManager,
-    destroyCallback = async () => {},
-    logger = new Logger(this.name),
-  }: {
-    targetNodeId: NodeId;
-    targetHost: Host;
-    targetPort: Port;
-    targetHostname?: Hostname;
-    timer?: Timer;
-    proxy: Proxy;
-    keyManager: KeyManager;
-    clientFactory: (...args) => Promise<T>;
-    nodeConnectionManager: NodeConnectionManager;
-    destroyCallback?: () => Promise<void>;
-    logger?: Logger;
-  }): Promise<NodeConnection<T>> {
+  static createNodeConnection<T extends GRPCClient>(
+    {
+      targetNodeId,
+      targetHost,
+      targetPort,
+      targetHostname,
+      proxy,
+      keyManager,
+      clientFactory,
+      nodeConnectionManager,
+      destroyCallback = async () => {},
+      logger = new Logger(this.name),
+    }: {
+      targetNodeId: NodeId;
+      targetHost: Host;
+      targetPort: Port;
+      targetHostname?: Hostname;
+      proxy: Proxy;
+      keyManager: KeyManager;
+      clientFactory: (...args) => Promise<T>;
+      nodeConnectionManager: NodeConnectionManager;
+      destroyCallback?: () => Promise<void>;
+      logger?: Logger;
+    },
+    ctx?: Partial<ContextTimed>,
+  ): PromiseCancellable<NodeConnection<T>>;
+  @timedCancellable(true, 20000)
+  static async createNodeConnection<T extends GRPCClient>(
+    {
+      targetNodeId,
+      targetHost,
+      targetPort,
+      targetHostname,
+      proxy,
+      keyManager,
+      clientFactory,
+      nodeConnectionManager,
+      destroyCallback = async () => {},
+      logger = new Logger(this.name),
+    }: {
+      targetNodeId: NodeId;
+      targetHost: Host;
+      targetPort: Port;
+      targetHostname?: Hostname;
+      proxy: Proxy;
+      keyManager: KeyManager;
+      clientFactory: (...args) => Promise<T>;
+      nodeConnectionManager: NodeConnectionManager;
+      destroyCallback?: () => Promise<void>;
+      logger?: Logger;
+    },
+    @context ctx: ContextTimed,
+  ): Promise<NodeConnection<T>> {
     logger.info(`Creating ${this.name}`);
     // Checking if attempting to connect to a wildcard IP
     if (networkUtils.isHostWildcard(targetHost)) {
@@ -91,45 +122,48 @@ class NodeConnection<T extends GRPCClient> {
       destroyCallback,
       logger,
     });
-    let client;
+    let client: T;
     try {
       // Start the hole punching only if we are not connecting to seed nodes
-      let holePunchPromises: Promise<void>[] = [];
       const seedNodes = nodeConnectionManager.getSeedNodes();
       const isSeedNode = !!seedNodes.find((nodeId) => {
         return nodeId.equals(targetNodeId);
       });
       if (!isSeedNode) {
-        holePunchPromises = Array.from(seedNodes, (nodeId) => {
+        // FIXME: this needs to be cancellable.
+        //  It needs to timeout as well as abort for cleanup
+        void Array.from(seedNodes, (nodeId) => {
           return nodeConnectionManager.sendHolePunchMessage(
             nodeId,
             keyManager.getNodeId(),
             targetNodeId,
             proxyAddress,
             signature,
+            ctx,
           );
         });
       }
-      [client] = await Promise.all([
-        clientFactory({
-          nodeId: targetNodeId,
-          host: targetHost,
-          port: targetPort,
-          proxyConfig: proxyConfig,
-          // Think about this
-          logger: logger.getChild(clientFactory.name),
-          destroyCallback: async () => {
-            if (
-              nodeConnection[asyncInit.status] !== 'destroying' &&
-              !nodeConnection[asyncInit.destroyed]
-            ) {
-              await nodeConnection.destroy();
-            }
-          },
-          timer: timer,
-        }),
-        ...holePunchPromises,
-      ]);
+      // TODO: this needs to be updated to take a context,
+      //  still uses old timer style.
+      client = await clientFactory({
+        nodeId: targetNodeId,
+        host: targetHost,
+        port: targetPort,
+        proxyConfig: proxyConfig,
+        // Think about this
+        logger: logger.getChild(clientFactory.name),
+        destroyCallback: async () => {
+          if (
+            nodeConnection[asyncInit.status] !== 'destroying' &&
+            !nodeConnection[asyncInit.destroyed]
+          ) {
+            await nodeConnection.destroy();
+          }
+        },
+        // FIXME: this needs to be replaced with
+        //  the GRPC timerCancellable update
+        timer: timerStart(ctx.timer.getTimeout()),
+      });
       // 5. When finished, you have a connection to other node
       // The GRPCClient is ready to be used for requests
     } catch (e) {
@@ -142,8 +176,9 @@ class NodeConnection<T extends GRPCClient> {
       }
       throw e;
     }
+    // FIXME: we need a finally block here to do cleanup.
     // TODO: This is due to chicken or egg problem
-    // see if we can move to CreateDestroyStartStop to resolve this
+    //  see if we can move to CreateDestroyStartStop to resolve this
     nodeConnection.client = client;
     logger.info(`Created ${this.name}`);
     return nodeConnection;

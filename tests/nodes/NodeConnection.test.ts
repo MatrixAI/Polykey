@@ -10,6 +10,7 @@ import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { destroyed } from '@matrixai/async-init';
+import { Timer } from '@matrixai/timer';
 import TaskManager from '@/tasks/TaskManager';
 import Proxy from '@/network/Proxy';
 import NodeConnection from '@/nodes/NodeConnection';
@@ -26,14 +27,13 @@ import Sigchain from '@/sigchain/Sigchain';
 import NotificationsManager from '@/notifications/NotificationsManager';
 import * as nodesErrors from '@/nodes/errors';
 import * as networkErrors from '@/network/errors';
-import { poll, promise, promisify } from '@/utils';
+import { poll, promise, promisify, sleep } from '@/utils';
 import PolykeyAgent from '@/PolykeyAgent';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as GRPCErrors from '@/grpc/errors';
 import * as nodesUtils from '@/nodes/utils';
 import * as agentErrors from '@/agent/errors';
 import * as grpcUtils from '@/grpc/utils';
-import { timerStart } from '@/utils';
 import * as testNodesUtils from './utils';
 import * as grpcTestUtils from '../grpc/utils';
 import * as agentTestUtils from '../agent/utils';
@@ -505,18 +505,20 @@ describe(`${NodeConnection.name} test`, () => {
       });
       // Have a nodeConnection try to connect to it
       const killSelf = jest.fn();
-      nodeConnection = await NodeConnection.createNodeConnection({
-        timer: timerStart(2000),
-        proxy: clientProxy,
-        keyManager: clientKeyManager,
-        logger: logger,
-        nodeConnectionManager: dummyNodeConnectionManager,
-        destroyCallback: killSelf,
-        targetHost: polykeyAgent.proxy.getProxyHost(),
-        targetNodeId: polykeyAgent.keyManager.getNodeId(),
-        targetPort: polykeyAgent.proxy.getProxyPort(),
-        clientFactory: (args) => GRPCClientAgent.createGRPCClientAgent(args),
-      });
+      nodeConnection = await NodeConnection.createNodeConnection(
+        {
+          proxy: clientProxy,
+          keyManager: clientKeyManager,
+          logger: logger,
+          nodeConnectionManager: dummyNodeConnectionManager,
+          destroyCallback: killSelf,
+          targetHost: polykeyAgent.proxy.getProxyHost(),
+          targetNodeId: polykeyAgent.keyManager.getNodeId(),
+          targetPort: polykeyAgent.proxy.getProxyPort(),
+          clientFactory: (args) => GRPCClientAgent.createGRPCClientAgent(args),
+        },
+        { timer: new Timer({ delay: 2000 }) },
+      );
 
       // Resolves if the shutdownCallback was called
       await polykeyAgent.stop();
@@ -537,19 +539,44 @@ describe(`${NodeConnection.name} test`, () => {
   });
   test('fails to connect to target (times out)', async () => {
     await expect(
-      NodeConnection.createNodeConnection({
+      NodeConnection.createNodeConnection(
+        {
+          targetNodeId: targetNodeId,
+          targetHost: '128.0.0.1' as Host,
+          targetPort: 12345 as Port,
+          proxy: clientProxy,
+          keyManager: clientKeyManager,
+          nodeConnectionManager: dummyNodeConnectionManager,
+          destroyCallback,
+          logger: logger,
+          clientFactory: (args) => GRPCClientAgent.createGRPCClientAgent(args),
+        },
+        { timer: new Timer({ delay: 300 }) },
+      ),
+    ).rejects.toThrow(nodesErrors.ErrorNodeConnectionTimeout);
+  });
+  test('Times out after expected delay', async () => {
+    let timedOut = false;
+    const connProm = NodeConnection.createNodeConnection(
+      {
         targetNodeId: targetNodeId,
         targetHost: '128.0.0.1' as Host,
         targetPort: 12345 as Port,
-        timer: timerStart(300),
         proxy: clientProxy,
         keyManager: clientKeyManager,
         nodeConnectionManager: dummyNodeConnectionManager,
         destroyCallback,
         logger: logger,
         clientFactory: (args) => GRPCClientAgent.createGRPCClientAgent(args),
-      }),
-    ).rejects.toThrow(nodesErrors.ErrorNodeConnectionTimeout);
+      },
+      { timer: new Timer({ delay: 1000 }) },
+    ).catch(() => (timedOut = true));
+    expect(timedOut).toBeFalse();
+    await sleep(500);
+    expect(timedOut).toBeFalse();
+    await sleep(1000);
+    expect(timedOut).toBeTrue();
+    await connProm;
   });
   test('getRootCertChain', async () => {
     let nodeConnection: NodeConnection<GRPCClientAgent> | undefined;
@@ -615,18 +642,20 @@ describe(`${NodeConnection.name} test`, () => {
       });
       // Have a nodeConnection try to connect to it
       const killSelf = jest.fn();
-      const nodeConnectionP = NodeConnection.createNodeConnection({
-        timer: timerStart(500),
-        proxy: clientProxy,
-        keyManager: clientKeyManager,
-        logger: logger,
-        nodeConnectionManager: dummyNodeConnectionManager,
-        destroyCallback: killSelf,
-        targetHost: proxy.getProxyHost(),
-        targetNodeId: targetNodeId,
-        targetPort: proxy.getProxyPort(),
-        clientFactory: (args) => GRPCClientAgent.createGRPCClientAgent(args),
-      });
+      const nodeConnectionP = NodeConnection.createNodeConnection(
+        {
+          proxy: clientProxy,
+          keyManager: clientKeyManager,
+          logger: logger,
+          nodeConnectionManager: dummyNodeConnectionManager,
+          destroyCallback: killSelf,
+          targetHost: proxy.getProxyHost(),
+          targetNodeId: targetNodeId,
+          targetPort: proxy.getProxyPort(),
+          clientFactory: (args) => GRPCClientAgent.createGRPCClientAgent(args),
+        },
+        { timer: new Timer({ delay: 500 }) },
+      );
 
       // Expecting the connection to fail
       await expect(nodeConnectionP).rejects.toThrow(
@@ -658,18 +687,20 @@ describe(`${NodeConnection.name} test`, () => {
       });
       // Have a nodeConnection try to connect to it
       const killSelf = jest.fn();
-      const nodeConnectionP = NodeConnection.createNodeConnection({
-        timer: timerStart(500),
-        proxy: clientProxy,
-        keyManager: clientKeyManager,
-        logger: logger,
-        nodeConnectionManager: dummyNodeConnectionManager,
-        destroyCallback: killSelf,
-        targetHost: proxy.getProxyHost(),
-        targetNodeId: targetNodeId,
-        targetPort: proxy.getProxyPort(),
-        clientFactory: (args) => GRPCClientAgent.createGRPCClientAgent(args),
-      });
+      const nodeConnectionP = NodeConnection.createNodeConnection(
+        {
+          proxy: clientProxy,
+          keyManager: clientKeyManager,
+          logger: logger,
+          nodeConnectionManager: dummyNodeConnectionManager,
+          destroyCallback: killSelf,
+          targetHost: proxy.getProxyHost(),
+          targetNodeId: targetNodeId,
+          targetPort: proxy.getProxyPort(),
+          clientFactory: (args) => GRPCClientAgent.createGRPCClientAgent(args),
+        },
+        { timer: new Timer({ delay: 500 }) },
+      );
 
       // Expecting the connection to fail
       await expect(nodeConnectionP).rejects.toThrow(
@@ -699,18 +730,20 @@ describe(`${NodeConnection.name} test`, () => {
       });
       // Have a nodeConnection try to connect to it
       const killSelf = jest.fn();
-      nodeConnection = await NodeConnection.createNodeConnection({
-        timer: timerStart(500),
-        proxy: clientProxy,
-        keyManager: clientKeyManager,
-        logger: logger,
-        nodeConnectionManager: dummyNodeConnectionManager,
-        destroyCallback: killSelf,
-        targetHost: polykeyAgent.proxy.getProxyHost(),
-        targetNodeId: polykeyAgent.keyManager.getNodeId(),
-        targetPort: polykeyAgent.proxy.getProxyPort(),
-        clientFactory: (args) => GRPCClientAgent.createGRPCClientAgent(args),
-      });
+      nodeConnection = await NodeConnection.createNodeConnection(
+        {
+          proxy: clientProxy,
+          keyManager: clientKeyManager,
+          logger: logger,
+          nodeConnectionManager: dummyNodeConnectionManager,
+          destroyCallback: killSelf,
+          targetHost: polykeyAgent.proxy.getProxyHost(),
+          targetNodeId: polykeyAgent.keyManager.getNodeId(),
+          targetPort: polykeyAgent.proxy.getProxyPort(),
+          clientFactory: (args) => GRPCClientAgent.createGRPCClientAgent(args),
+        },
+        { timer: new Timer({ delay: 500 }) },
+      );
 
       // Resolves if the shutdownCallback was called
       await polykeyAgent.stop();
@@ -768,22 +801,24 @@ describe(`${NodeConnection.name} test`, () => {
         // Have a nodeConnection try to connect to it
         const killSelfCheck = jest.fn();
         const killSelfP = promise<null>();
-        nodeConnection = await NodeConnection.createNodeConnection({
-          timer: timerStart(2000),
-          proxy: clientProxy,
-          keyManager: clientKeyManager,
-          logger: logger,
-          nodeConnectionManager: dummyNodeConnectionManager,
-          destroyCallback: async () => {
-            await killSelfCheck();
-            killSelfP.resolveP(null);
+        nodeConnection = await NodeConnection.createNodeConnection(
+          {
+            proxy: clientProxy,
+            keyManager: clientKeyManager,
+            logger: logger,
+            nodeConnectionManager: dummyNodeConnectionManager,
+            destroyCallback: async () => {
+              await killSelfCheck();
+              killSelfP.resolveP(null);
+            },
+            targetNodeId: serverKeyManager.getNodeId(),
+            targetHost: testProxy.getProxyHost(),
+            targetPort: testProxy.getProxyPort(),
+            clientFactory: (args) =>
+              grpcTestUtils.GRPCClientTest.createGRPCClientTest(args),
           },
-          targetNodeId: serverKeyManager.getNodeId(),
-          targetHost: testProxy.getProxyHost(),
-          targetPort: testProxy.getProxyPort(),
-          clientFactory: (args) =>
-            grpcTestUtils.GRPCClientTest.createGRPCClientTest(args),
-        });
+          { timer: new Timer({ delay: 2000 }) },
+        );
 
         const client = nodeConnection.getClient();
         const echoMessage = new utilsPB.EchoMessage().setChallenge(option);
@@ -845,22 +880,24 @@ describe(`${NodeConnection.name} test`, () => {
         // Have a nodeConnection try to connect to it
         const killSelfCheck = jest.fn();
         const killSelfP = promise<null>();
-        nodeConnection = await NodeConnection.createNodeConnection({
-          timer: timerStart(2000),
-          proxy: clientProxy,
-          keyManager: clientKeyManager,
-          logger: logger,
-          nodeConnectionManager: dummyNodeConnectionManager,
-          destroyCallback: async () => {
-            await killSelfCheck();
-            killSelfP.resolveP(null);
+        nodeConnection = await NodeConnection.createNodeConnection(
+          {
+            proxy: clientProxy,
+            keyManager: clientKeyManager,
+            logger: logger,
+            nodeConnectionManager: dummyNodeConnectionManager,
+            destroyCallback: async () => {
+              await killSelfCheck();
+              killSelfP.resolveP(null);
+            },
+            targetNodeId: serverKeyManager.getNodeId(),
+            targetHost: testProxy.getProxyHost(),
+            targetPort: testProxy.getProxyPort(),
+            clientFactory: (args) =>
+              grpcTestUtils.GRPCClientTest.createGRPCClientTest(args),
           },
-          targetNodeId: serverKeyManager.getNodeId(),
-          targetHost: testProxy.getProxyHost(),
-          targetPort: testProxy.getProxyPort(),
-          clientFactory: (args) =>
-            grpcTestUtils.GRPCClientTest.createGRPCClientTest(args),
-        });
+          { timer: new Timer({ delay: 2000 }) },
+        );
 
         const client = nodeConnection.getClient();
         const echoMessage = new utilsPB.EchoMessage().setChallenge(option);
@@ -887,19 +924,21 @@ describe(`${NodeConnection.name} test`, () => {
   test('existing connection handles a resetRootKeyPair on sending side', async () => {
     let conn: NodeConnection<GRPCClientAgent> | undefined;
     try {
-      conn = await NodeConnection.createNodeConnection({
-        targetNodeId: targetNodeId,
-        targetHost: localHost,
-        targetPort: targetPort,
-        proxy: clientProxy,
-        keyManager: clientKeyManager,
-        nodeConnectionManager: dummyNodeConnectionManager,
-        destroyCallback,
-        logger: logger,
-        clientFactory: async (args) =>
-          GRPCClientAgent.createGRPCClientAgent(args),
-        timer: timerStart(2000),
-      });
+      conn = await NodeConnection.createNodeConnection(
+        {
+          targetNodeId: targetNodeId,
+          targetHost: localHost,
+          targetPort: targetPort,
+          proxy: clientProxy,
+          keyManager: clientKeyManager,
+          nodeConnectionManager: dummyNodeConnectionManager,
+          destroyCallback,
+          logger: logger,
+          clientFactory: async (args) =>
+            GRPCClientAgent.createGRPCClientAgent(args),
+        },
+        { timer: new Timer({ delay: 2000 }) },
+      );
       const client = conn.getClient();
       await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
 
@@ -916,19 +955,21 @@ describe(`${NodeConnection.name} test`, () => {
   test('existing connection handles a renewRootKeyPair on sending side', async () => {
     let conn: NodeConnection<GRPCClientAgent> | undefined;
     try {
-      conn = await NodeConnection.createNodeConnection({
-        targetNodeId: targetNodeId,
-        targetHost: localHost,
-        targetPort: targetPort,
-        proxy: clientProxy,
-        keyManager: clientKeyManager,
-        nodeConnectionManager: dummyNodeConnectionManager,
-        destroyCallback,
-        logger: logger,
-        clientFactory: async (args) =>
-          GRPCClientAgent.createGRPCClientAgent(args),
-        timer: timerStart(2000),
-      });
+      conn = await NodeConnection.createNodeConnection(
+        {
+          targetNodeId: targetNodeId,
+          targetHost: localHost,
+          targetPort: targetPort,
+          proxy: clientProxy,
+          keyManager: clientKeyManager,
+          nodeConnectionManager: dummyNodeConnectionManager,
+          destroyCallback,
+          logger: logger,
+          clientFactory: async (args) =>
+            GRPCClientAgent.createGRPCClientAgent(args),
+        },
+        { timer: new Timer({ delay: 2000 }) },
+      );
       const client = conn.getClient();
       await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
 
@@ -945,19 +986,21 @@ describe(`${NodeConnection.name} test`, () => {
   test('existing connection handles a resetRootCert on sending side', async () => {
     let conn: NodeConnection<GRPCClientAgent> | undefined;
     try {
-      conn = await NodeConnection.createNodeConnection({
-        targetNodeId: targetNodeId,
-        targetHost: localHost,
-        targetPort: targetPort,
-        proxy: clientProxy,
-        keyManager: clientKeyManager,
-        nodeConnectionManager: dummyNodeConnectionManager,
-        destroyCallback,
-        logger: logger,
-        clientFactory: async (args) =>
-          GRPCClientAgent.createGRPCClientAgent(args),
-        timer: timerStart(2000),
-      });
+      conn = await NodeConnection.createNodeConnection(
+        {
+          targetNodeId: targetNodeId,
+          targetHost: localHost,
+          targetPort: targetPort,
+          proxy: clientProxy,
+          keyManager: clientKeyManager,
+          nodeConnectionManager: dummyNodeConnectionManager,
+          destroyCallback,
+          logger: logger,
+          clientFactory: async (args) =>
+            GRPCClientAgent.createGRPCClientAgent(args),
+        },
+        { timer: new Timer({ delay: 2000 }) },
+      );
       const client = conn.getClient();
       await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
 
@@ -974,19 +1017,21 @@ describe(`${NodeConnection.name} test`, () => {
   test('existing connection handles a resetRootKeyPair on receiving side', async () => {
     let conn: NodeConnection<GRPCClientAgent> | undefined;
     try {
-      conn = await NodeConnection.createNodeConnection({
-        targetNodeId: targetNodeId,
-        targetHost: localHost,
-        targetPort: targetPort,
-        proxy: clientProxy,
-        keyManager: clientKeyManager,
-        nodeConnectionManager: dummyNodeConnectionManager,
-        destroyCallback,
-        logger: logger,
-        clientFactory: async (args) =>
-          GRPCClientAgent.createGRPCClientAgent(args),
-        timer: timerStart(2000),
-      });
+      conn = await NodeConnection.createNodeConnection(
+        {
+          targetNodeId: targetNodeId,
+          targetHost: localHost,
+          targetPort: targetPort,
+          proxy: clientProxy,
+          keyManager: clientKeyManager,
+          nodeConnectionManager: dummyNodeConnectionManager,
+          destroyCallback,
+          logger: logger,
+          clientFactory: async (args) =>
+            GRPCClientAgent.createGRPCClientAgent(args),
+        },
+        { timer: new Timer({ delay: 2000 }) },
+      );
       const client = conn.getClient();
       await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
 
@@ -1003,19 +1048,21 @@ describe(`${NodeConnection.name} test`, () => {
   test('existing connection handles a renewRootKeyPair on receiving side', async () => {
     let conn: NodeConnection<GRPCClientAgent> | undefined;
     try {
-      conn = await NodeConnection.createNodeConnection({
-        targetNodeId: targetNodeId,
-        targetHost: localHost,
-        targetPort: targetPort,
-        proxy: clientProxy,
-        keyManager: clientKeyManager,
-        nodeConnectionManager: dummyNodeConnectionManager,
-        destroyCallback,
-        logger: logger,
-        clientFactory: async (args) =>
-          GRPCClientAgent.createGRPCClientAgent(args),
-        timer: timerStart(2000),
-      });
+      conn = await NodeConnection.createNodeConnection(
+        {
+          targetNodeId: targetNodeId,
+          targetHost: localHost,
+          targetPort: targetPort,
+          proxy: clientProxy,
+          keyManager: clientKeyManager,
+          nodeConnectionManager: dummyNodeConnectionManager,
+          destroyCallback,
+          logger: logger,
+          clientFactory: async (args) =>
+            GRPCClientAgent.createGRPCClientAgent(args),
+        },
+        { timer: new Timer({ delay: 2000 }) },
+      );
       const client = conn.getClient();
       await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
 
@@ -1032,19 +1079,21 @@ describe(`${NodeConnection.name} test`, () => {
   test('existing connection handles a resetRootCert on receiving side', async () => {
     let conn: NodeConnection<GRPCClientAgent> | undefined;
     try {
-      conn = await NodeConnection.createNodeConnection({
-        targetNodeId: targetNodeId,
-        targetHost: localHost,
-        targetPort: targetPort,
-        proxy: clientProxy,
-        keyManager: clientKeyManager,
-        nodeConnectionManager: dummyNodeConnectionManager,
-        destroyCallback,
-        logger: logger,
-        clientFactory: async (args) =>
-          GRPCClientAgent.createGRPCClientAgent(args),
-        timer: timerStart(2000),
-      });
+      conn = await NodeConnection.createNodeConnection(
+        {
+          targetNodeId: targetNodeId,
+          targetHost: localHost,
+          targetPort: targetPort,
+          proxy: clientProxy,
+          keyManager: clientKeyManager,
+          nodeConnectionManager: dummyNodeConnectionManager,
+          destroyCallback,
+          logger: logger,
+          clientFactory: async (args) =>
+            GRPCClientAgent.createGRPCClientAgent(args),
+        },
+        { timer: new Timer({ delay: 2000 }) },
+      );
       const client = conn.getClient();
       await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
 
@@ -1065,19 +1114,21 @@ describe(`${NodeConnection.name} test`, () => {
       await clientKeyManager.resetRootKeyPair(password);
       clientProxy.setTLSConfig(await newTlsConfig(clientKeyManager));
 
-      conn = await NodeConnection.createNodeConnection({
-        targetNodeId: targetNodeId,
-        targetHost: localHost,
-        targetPort: targetPort,
-        proxy: clientProxy,
-        keyManager: clientKeyManager,
-        nodeConnectionManager: dummyNodeConnectionManager,
-        destroyCallback,
-        logger: logger,
-        clientFactory: async (args) =>
-          GRPCClientAgent.createGRPCClientAgent(args),
-        timer: timerStart(2000),
-      });
+      conn = await NodeConnection.createNodeConnection(
+        {
+          targetNodeId: targetNodeId,
+          targetHost: localHost,
+          targetPort: targetPort,
+          proxy: clientProxy,
+          keyManager: clientKeyManager,
+          nodeConnectionManager: dummyNodeConnectionManager,
+          destroyCallback,
+          logger: logger,
+          clientFactory: async (args) =>
+            GRPCClientAgent.createGRPCClientAgent(args),
+        },
+        { timer: new Timer({ delay: 2000 }) },
+      );
 
       const client = conn.getClient();
       await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
@@ -1092,19 +1143,21 @@ describe(`${NodeConnection.name} test`, () => {
       await clientKeyManager.renewRootKeyPair(password);
       clientProxy.setTLSConfig(await newTlsConfig(clientKeyManager));
 
-      conn = await NodeConnection.createNodeConnection({
-        targetNodeId: targetNodeId,
-        targetHost: localHost,
-        targetPort: targetPort,
-        proxy: clientProxy,
-        keyManager: clientKeyManager,
-        nodeConnectionManager: dummyNodeConnectionManager,
-        destroyCallback,
-        logger: logger,
-        clientFactory: async (args) =>
-          GRPCClientAgent.createGRPCClientAgent(args),
-        timer: timerStart(2000),
-      });
+      conn = await NodeConnection.createNodeConnection(
+        {
+          targetNodeId: targetNodeId,
+          targetHost: localHost,
+          targetPort: targetPort,
+          proxy: clientProxy,
+          keyManager: clientKeyManager,
+          nodeConnectionManager: dummyNodeConnectionManager,
+          destroyCallback,
+          logger: logger,
+          clientFactory: async (args) =>
+            GRPCClientAgent.createGRPCClientAgent(args),
+        },
+        { timer: new Timer({ delay: 2000 }) },
+      );
 
       const client = conn.getClient();
       await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
@@ -1119,19 +1172,21 @@ describe(`${NodeConnection.name} test`, () => {
       await clientKeyManager.resetRootCert();
       clientProxy.setTLSConfig(await newTlsConfig(clientKeyManager));
 
-      conn = await NodeConnection.createNodeConnection({
-        targetNodeId: targetNodeId,
-        targetHost: localHost,
-        targetPort: targetPort,
-        proxy: clientProxy,
-        keyManager: clientKeyManager,
-        nodeConnectionManager: dummyNodeConnectionManager,
-        destroyCallback,
-        logger: logger,
-        clientFactory: async (args) =>
-          GRPCClientAgent.createGRPCClientAgent(args),
-        timer: timerStart(2000),
-      });
+      conn = await NodeConnection.createNodeConnection(
+        {
+          targetNodeId: targetNodeId,
+          targetHost: localHost,
+          targetPort: targetPort,
+          proxy: clientProxy,
+          keyManager: clientKeyManager,
+          nodeConnectionManager: dummyNodeConnectionManager,
+          destroyCallback,
+          logger: logger,
+          clientFactory: async (args) =>
+            GRPCClientAgent.createGRPCClientAgent(args),
+        },
+        { timer: new Timer({ delay: 2000 }) },
+      );
 
       const client = conn.getClient();
       await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
@@ -1144,19 +1199,21 @@ describe(`${NodeConnection.name} test`, () => {
     await serverKeyManager.resetRootKeyPair(password);
     serverProxy.setTLSConfig(await newTlsConfig(serverKeyManager));
 
-    const connProm = NodeConnection.createNodeConnection({
-      targetNodeId: targetNodeId,
-      targetHost: localHost,
-      targetPort: targetPort,
-      proxy: clientProxy,
-      keyManager: clientKeyManager,
-      nodeConnectionManager: dummyNodeConnectionManager,
-      destroyCallback,
-      logger: logger,
-      clientFactory: async (args) =>
-        GRPCClientAgent.createGRPCClientAgent(args),
-      timer: timerStart(2000),
-    });
+    const connProm = NodeConnection.createNodeConnection(
+      {
+        targetNodeId: targetNodeId,
+        targetHost: localHost,
+        targetPort: targetPort,
+        proxy: clientProxy,
+        keyManager: clientKeyManager,
+        nodeConnectionManager: dummyNodeConnectionManager,
+        destroyCallback,
+        logger: logger,
+        clientFactory: async (args) =>
+          GRPCClientAgent.createGRPCClientAgent(args),
+      },
+      { timer: new Timer({ delay: 2000 }) },
+    );
 
     await expect(connProm).rejects.toThrow(
       nodesErrors.ErrorNodeConnectionTimeout,
@@ -1190,19 +1247,21 @@ describe(`${NodeConnection.name} test`, () => {
       await serverKeyManager.renewRootKeyPair(password);
       serverProxy.setTLSConfig(await newTlsConfig(serverKeyManager));
 
-      conn = await NodeConnection.createNodeConnection({
-        targetNodeId: targetNodeId,
-        targetHost: localHost,
-        targetPort: targetPort,
-        proxy: clientProxy,
-        keyManager: clientKeyManager,
-        nodeConnectionManager: dummyNodeConnectionManager,
-        destroyCallback,
-        logger: logger,
-        clientFactory: async (args) =>
-          GRPCClientAgent.createGRPCClientAgent(args),
-        timer: timerStart(2000),
-      });
+      conn = await NodeConnection.createNodeConnection(
+        {
+          targetNodeId: targetNodeId,
+          targetHost: localHost,
+          targetPort: targetPort,
+          proxy: clientProxy,
+          keyManager: clientKeyManager,
+          nodeConnectionManager: dummyNodeConnectionManager,
+          destroyCallback,
+          logger: logger,
+          clientFactory: async (args) =>
+            GRPCClientAgent.createGRPCClientAgent(args),
+        },
+        { timer: new Timer({ delay: 2000 }) },
+      );
 
       const client = conn.getClient();
       await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
@@ -1217,19 +1276,21 @@ describe(`${NodeConnection.name} test`, () => {
       await serverKeyManager.resetRootCert();
       serverProxy.setTLSConfig(await newTlsConfig(serverKeyManager));
 
-      conn = await NodeConnection.createNodeConnection({
-        targetNodeId: targetNodeId,
-        targetHost: localHost,
-        targetPort: targetPort,
-        proxy: clientProxy,
-        keyManager: clientKeyManager,
-        nodeConnectionManager: dummyNodeConnectionManager,
-        destroyCallback,
-        logger: logger,
-        clientFactory: async (args) =>
-          GRPCClientAgent.createGRPCClientAgent(args),
-        timer: timerStart(2000),
-      });
+      conn = await NodeConnection.createNodeConnection(
+        {
+          targetNodeId: targetNodeId,
+          targetHost: localHost,
+          targetPort: targetPort,
+          proxy: clientProxy,
+          keyManager: clientKeyManager,
+          nodeConnectionManager: dummyNodeConnectionManager,
+          destroyCallback,
+          logger: logger,
+          clientFactory: async (args) =>
+            GRPCClientAgent.createGRPCClientAgent(args),
+        },
+        { timer: new Timer({ delay: 2000 }) },
+      );
 
       const client = conn.getClient();
       await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));

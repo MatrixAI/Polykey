@@ -121,7 +121,11 @@ class ConnectionForward extends Connection {
       promise<void>();
     // Promise for abortion and timeout
     const { p: abortedP, resolveP: resolveAbortedP } = promise<void>();
-    ctx.signal.addEventListener('abort', () => resolveAbortedP());
+    if (ctx.signal.aborted) {
+      resolveAbortedP();
+    } else {
+      ctx.signal.addEventListener('abort', () => resolveAbortedP());
+    }
     this.resolveReadyP = resolveReadyP;
     this.utpSocket.on('message', this.handleMessage);
     const handleStartError = (e) => {

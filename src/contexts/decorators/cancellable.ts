@@ -25,8 +25,12 @@ function cancellable(lazy: boolean = false) {
       let ctx: Partial<ContextCancellable> = args[contextIndex];
       if (ctx === undefined) {
         ctx = {};
-        args[contextIndex] = ctx;
+      } else {
+        // Copy the ctx into a new ctx object to avoid mutating the ctx in case
+        // it is used again
+        ctx = { ...ctx };
       }
+      args[contextIndex] = ctx;
       // Runtime type check on the context parameter
       contextsUtils.checkContextCancellable(ctx, key, targetName);
       return setupCancellable(

@@ -2,7 +2,6 @@ import type { ResourceAcquire } from '@matrixai/resources';
 import type KeyManager from '../keys/KeyManager';
 import type Proxy from '../network/Proxy';
 import type { Host, Hostname, Port } from '../network/types';
-import type { Timer } from '../types';
 import type NodeGraph from './NodeGraph';
 import type TaskManager from '../tasks/TaskManager';
 import type {
@@ -21,6 +20,7 @@ import { ready, StartStop } from '@matrixai/async-init/dist/StartStop';
 import { IdInternal } from '@matrixai/id';
 import { status } from '@matrixai/async-init';
 import { LockBox, RWLockWriter } from '@matrixai/async-locks';
+import { Timer } from '@matrixai/timer';
 import NodeConnection from './NodeConnection';
 import * as nodesUtils from './utils';
 import * as nodesErrors from './errors';
@@ -29,7 +29,9 @@ import GRPCClientAgent from '../agent/GRPCClientAgent';
 import * as validationUtils from '../validation/utils';
 import * as networkUtils from '../network/utils';
 import * as nodesPB from '../proto/js/polykey/v1/nodes/nodes_pb';
-import { timerStart, never } from '../utils';
+import { never } from '../utils';
+
+// TODO: check all locking and add cancellation for it.
 
 type ConnectionAndTimer = {
   connection: NodeConnection<GRPCClientAgent>;
@@ -48,6 +50,12 @@ class NodeConnectionManager {
    * Time to live for `NodeConnection`
    */
   public readonly connTimeoutTime: number;
+
+  /**
+   * Default timeout for pinging nodes
+   */
+  public readonly pingTimeout: number;
+
   /**
    * Alpha constant for kademlia
    * The number of the closest nodes to contact initially
@@ -91,6 +99,7 @@ class NodeConnectionManager {
     initialClosestNodes = 3,
     connConnectTime = 20000,
     connTimeoutTime = 60000,
+    pingTimeout = 2000,
     logger,
   }: {
     nodeGraph: NodeGraph;
@@ -101,6 +110,7 @@ class NodeConnectionManager {
     initialClosestNodes?: number;
     connConnectTime?: number;
     connTimeoutTime?: number;
+    pingTimeout?: number;
     logger?: Logger;
   }) {
     this.logger = logger ?? new Logger(NodeConnectionManager.name);
@@ -112,6 +122,7 @@ class NodeConnectionManager {
     this.initialClosestNodes = initialClosestNodes;
     this.connConnectTime = connConnectTime;
     this.connTimeoutTime = connTimeoutTime;
+    this.pingTimeout = pingTimeout;
   }
 
   public async start({ nodeManager }: { nodeManager: NodeManager }) {
@@ -148,20 +159,21 @@ class NodeConnectionManager {
    * itself is such that we can pass targetNodeId as a parameter (as opposed to
    * an acquire function with no parameters).
    * @param targetNodeId Id of target node to communicate with
-   * @param timer Connection timeout timer
+   * @param ctx
    * @returns ResourceAcquire Resource API for use in with contexts
    */
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
   public async acquireConnection(
     targetNodeId: NodeId,
-    timer?: Timer,
+    ctx?: Partial<ContextTimed>,
   ): Promise<ResourceAcquire<NodeConnection<GRPCClientAgent>>> {
     return async () => {
       const { connection, timer: timeToLiveTimer } = await this.getConnection(
         targetNodeId,
-        timer,
+        ctx,
       );
       // Acquire the read lock and the release function
+      // FIXME: race the abortion
       const [release] = await this.connectionLocks.lock([
         targetNodeId.toString(),
         RWLockWriter,
@@ -190,16 +202,26 @@ class NodeConnectionManager {
    * for use with normal arrow function
    * @param targetNodeId Id of target node to communicate with
    * @param f Function to handle communication
-   * @param timer Connection timeout timer
+   * @param ctx
    */
+  public withConnF<T>(
+    targetNodeId: NodeId,
+    f: (conn: NodeConnection<GRPCClientAgent>) => Promise<T>,
+    ctx?: Partial<ContextTimed>,
+  ): PromiseCancellable<T>;
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
+  @timedCancellable(
+    true,
+    (nodeConnectionManager: NodeConnectionManager) =>
+      nodeConnectionManager.connConnectTime,
+  )
   public async withConnF<T>(
     targetNodeId: NodeId,
     f: (conn: NodeConnection<GRPCClientAgent>) => Promise<T>,
-    timer?: Timer,
+    @context ctx: ContextTimed,
   ): Promise<T> {
     return await withF(
-      [await this.acquireConnection(targetNodeId, timer)],
+      [await this.acquireConnection(targetNodeId, ctx)],
       async ([conn]) => await f(conn),
     );
   }
@@ -211,7 +233,7 @@ class NodeConnectionManager {
    * for use with a generator function
    * @param targetNodeId Id of target node to communicate with
    * @param g Generator function to handle communication
-   * @param timer Connection timeout timer
+   * @param ctx
    */
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
   public async *withConnG<T, TReturn, TNext>(
@@ -219,9 +241,9 @@ class NodeConnectionManager {
     g: (
       conn: NodeConnection<GRPCClientAgent>,
     ) => AsyncGenerator<T, TReturn, TNext>,
-    timer?: Timer,
+    ctx?: Partial<ContextTimed>,
   ): AsyncGenerator<T, TReturn, TNext> {
-    const acquire = await this.acquireConnection(targetNodeId, timer);
+    const acquire = await this.acquireConnection(targetNodeId, ctx);
     const [release, conn] = await acquire();
     let caughtError;
     try {
@@ -240,12 +262,21 @@ class NodeConnectionManager {
    * Create a connection to another node (without performing any function).
    * This is a NOOP if a connection already exists.
    * @param targetNodeId Id of node we are creating connection to
-   * @param timer Connection timeout timer
+   * @param ctx
    * @returns ConnectionAndLock that was created or exists in the connection map
    */
+  protected getConnection(
+    targetNodeId: NodeId,
+    ctx?: Partial<ContextTimed>,
+  ): PromiseCancellable<ConnectionAndTimer>;
+  @timedCancellable(
+    true,
+    (nodeConnectionManager: NodeConnectionManager) =>
+      nodeConnectionManager.connConnectTime,
+  )
   protected async getConnection(
     targetNodeId: NodeId,
-    timer?: Timer,
+    @context ctx: ContextTimed,
   ): Promise<ConnectionAndTimer> {
     const targetNodeIdString = targetNodeId.toString() as NodeIdString;
     return await this.connectionLocks.withF(
@@ -279,22 +310,24 @@ class NodeConnectionManager {
           await this.destroyConnection(targetNodeId);
         };
         // Creating new connection
-        const newConnection = await NodeConnection.createNodeConnection({
-          targetNodeId: targetNodeId,
-          targetHost: targetHost,
-          targetHostname: targetHostname,
-          targetPort: targetAddress.port,
-          proxy: this.proxy,
-          keyManager: this.keyManager,
-          nodeConnectionManager: this,
-          destroyCallback,
-          timer: timer ?? timerStart(this.connConnectTime),
-          logger: this.logger.getChild(
-            `${NodeConnection.name} ${targetHost}:${targetAddress.port}`,
-          ),
-          clientFactory: async (args) =>
-            GRPCClientAgent.createGRPCClientAgent(args),
-        });
+        const newConnection = await NodeConnection.createNodeConnection(
+          {
+            targetNodeId: targetNodeId,
+            targetHost: targetHost,
+            targetHostname: targetHostname,
+            targetPort: targetAddress.port,
+            proxy: this.proxy,
+            keyManager: this.keyManager,
+            nodeConnectionManager: this,
+            destroyCallback,
+            logger: this.logger.getChild(
+              `${NodeConnection.name} ${targetHost}:${targetAddress.port}`,
+            ),
+            clientFactory: async (args) =>
+              GRPCClientAgent.createGRPCClientAgent(args),
+          },
+          ctx,
+        );
         // We can assume connection was established and destination was valid,
         // we can add the target to the nodeGraph
         await this.nodeManager?.setNode(targetNodeId, targetAddress);
@@ -342,19 +375,15 @@ class NodeConnectionManager {
    * sends hole-punching packets back to the client's forward proxy.
    * @param proxyHost host of the client's forward proxy
    * @param proxyPort port of the client's forward proxy
-   * @param timer Connection timeout timer
+   * @param ctx
    */
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
-  public async holePunchReverse(
+  public holePunchReverse(
     proxyHost: Host,
     proxyPort: Port,
-    timer?: Timer,
-  ): Promise<void> {
-    const abortController = new AbortController();
-    void timer?.timerP.then(() => abortController.abort());
-    await this.proxy.openConnectionReverse(proxyHost, proxyPort, {
-      signal: abortController.signal,
-    });
+    ctx?: Partial<ContextTimed>,
+  ): PromiseCancellable<void> {
+    return this.proxy.openConnectionReverse(proxyHost, proxyPort, ctx);
   }
 
   /**
@@ -385,18 +414,21 @@ class NodeConnectionManager {
    * proceeds to locate it using Kademlia.
    * @param targetNodeId Id of the node we are tying to find
    * @param ignoreRecentOffline skips nodes that are within their backoff period
+   * @param pingTimeout timeout for any ping attempts
    * @param ctx
    */
   public findNode(
     targetNodeId: NodeId,
     ignoreRecentOffline?: boolean,
+    pingTimeout?: number,
     ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<NodeAddress | undefined>;
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
-  @timedCancellable(true, 20000)
+  @timedCancellable(true)
   public async findNode(
     targetNodeId: NodeId,
     ignoreRecentOffline: boolean = false,
+    pingTimeout: number | undefined,
     @context ctx: ContextTimed,
   ): Promise<NodeAddress | undefined> {
     // First check if we already have an existing ID -> address record
@@ -407,6 +439,7 @@ class NodeConnectionManager {
       (await this.getClosestGlobalNodes(
         targetNodeId,
         ignoreRecentOffline,
+        pingTimeout ?? this.pingTimeout,
         ctx,
       ));
     // TODO: This currently just does one iteration
@@ -426,19 +459,22 @@ class NodeConnectionManager {
    * @param targetNodeId ID of the node attempting to be found (i.e. attempting
    * to find its IP address and port)
    * @param ignoreRecentOffline skips nodes that are within their backoff period
+   * @param pingTimeout
    * @param ctx
    * @returns whether the target node was located in the process
    */
   public getClosestGlobalNodes(
     targetNodeId: NodeId,
     ignoreRecentOffline?: boolean,
+    pingTimeout?: number,
     ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<NodeAddress | undefined>;
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
-  @timedCancellable(true, 20000)
+  @timedCancellable(true)
   public async getClosestGlobalNodes(
     targetNodeId: NodeId,
     ignoreRecentOffline: boolean = false,
+    pingTimeout: number | undefined,
     @context ctx: ContextTimed,
   ): Promise<NodeAddress | undefined> {
     const localNodeId = this.keyManager.getNodeId();
@@ -480,7 +516,10 @@ class NodeConnectionManager {
           nextNodeId,
           nextNodeAddress.address.host,
           nextNodeAddress.address.port,
-          ctx,
+          {
+            signal: ctx.signal,
+            timer: new Timer({ delay: pingTimeout ?? this.pingTimeout }),
+          },
         )
       ) {
         await this.nodeManager!.setNode(nextNodeId, nextNodeAddress.address);
@@ -496,7 +535,7 @@ class NodeConnectionManager {
         foundClosest = await this.getRemoteNodeClosestNodes(
           nextNodeId,
           targetNodeId,
-          ctx,
+          { signal: ctx.signal },
         );
       } catch (e) {
         if (e instanceof nodesErrors.ErrorNodeConnectionTimeout) return;
@@ -517,7 +556,10 @@ class NodeConnectionManager {
             nodeId,
             nodeData.address.host,
             nodeData.address.port,
-            ctx,
+            {
+              signal: ctx.signal,
+              timer: new Timer({ delay: pingTimeout ?? this.pingTimeout }),
+            },
           ))
         ) {
           await this.nodeManager!.setNode(nodeId, nodeData.address);
@@ -577,7 +619,11 @@ class NodeConnectionManager {
     ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<Array<[NodeId, NodeData]>>;
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
-  @timedCancellable(true, 20000)
+  @timedCancellable(
+    true,
+    (nodeConnectionManager: NodeConnectionManager) =>
+      nodeConnectionManager.connConnectTime,
+  )
   public async getRemoteNodeClosestNodes(
     nodeId: NodeId,
     targetNodeId: NodeId,
@@ -588,14 +634,13 @@ class NodeConnectionManager {
     nodeIdMessage.setNodeId(nodesUtils.encodeNodeId(targetNodeId));
     try {
       // Send through client
-      const timeout = ctx.timer.getTimeout();
       const response = await this.withConnF(
         nodeId,
         async (connection) => {
           const client = connection.getClient();
           return await client.nodesClosestLocalNodesGet(nodeIdMessage);
         },
-        timeout === Infinity ? undefined : timerStart(timeout),
+        ctx,
       );
       const nodes: Array<[NodeId, NodeData]> = [];
       // Loop over each map element (from the returned response) and populate nodes
@@ -635,17 +680,30 @@ class NodeConnectionManager {
    * @param targetNodeId node ID of the target node to hole punch
    * @param proxyAddress string of address in the form `proxyHost:proxyPort`
    * @param signature signature to verify source node is sender (signature based
-   * @param timer Connection timeout timer
    * on proxyAddress as message)
+   * @param ctx
    */
+  public sendHolePunchMessage(
+    relayNodeId: NodeId,
+    sourceNodeId: NodeId,
+    targetNodeId: NodeId,
+    proxyAddress: string,
+    signature: Buffer,
+    ctx?: Partial<ContextTimed>,
+  ): PromiseCancellable<void>;
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
+  @timedCancellable(
+    true,
+    (nodeConnectionManager: NodeConnectionManager) =>
+      nodeConnectionManager.connConnectTime,
+  )
   public async sendHolePunchMessage(
     relayNodeId: NodeId,
     sourceNodeId: NodeId,
     targetNodeId: NodeId,
     proxyAddress: string,
     signature: Buffer,
-    timer?: Timer,
+    @context ctx: ContextTimed,
   ): Promise<void> {
     const relayMsg = new nodesPB.Relay();
     relayMsg.setSrcId(nodesUtils.encodeNodeId(sourceNodeId));
@@ -658,7 +716,7 @@ class NodeConnectionManager {
         const client = connection.getClient();
         await client.nodesHolePunchMessageSend(relayMsg);
       },
-      timer,
+      ctx,
     );
   }
 
@@ -669,12 +727,21 @@ class NodeConnectionManager {
    * node).
    * @param message the original relay message (assumed to be created in
    * nodeConnection.start())
-   * @param timer Connection timeout timer
+   * @param ctx
    */
+  public relayHolePunchMessage(
+    message: nodesPB.Relay,
+    ctx?: Partial<ContextTimed>,
+  ): PromiseCancellable<void>;
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
+  @timedCancellable(
+    true,
+    (nodeConnectionManager: NodeConnectionManager) =>
+      nodeConnectionManager.connConnectTime,
+  )
   public async relayHolePunchMessage(
     message: nodesPB.Relay,
-    timer?: Timer,
+    @context ctx: ContextTimed,
   ): Promise<void> {
     // First check if we already have an existing ID -> address record
     // If we're relaying then we trust our own node graph records over
@@ -694,7 +761,7 @@ class NodeConnectionManager {
       validationUtils.parseNodeId(message.getTargetId()),
       proxyAddress,
       Buffer.from(message.getSignature()),
-      timer,
+      ctx,
     );
   }
 
@@ -726,7 +793,11 @@ class NodeConnectionManager {
     ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<boolean>;
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
-  @timedCancellable(true, 20000)
+  @timedCancellable(
+    true,
+    (nodeConnectionManager: NodeConnectionManager) =>
+      nodeConnectionManager.pingTimeout,
+  )
   public async pingNode(
     nodeId: NodeId,
     host: Host | Hostname,
@@ -744,7 +815,7 @@ class NodeConnectionManager {
       Buffer.from(proxyAddress),
     );
     // FIXME: this needs to handle aborting
-    const holePunchPromises = Array.from(this.getSeedNodes(), (seedNodeId) => {
+    void Array.from(this.getSeedNodes(), (seedNodeId) => {
       return this.sendHolePunchMessage(
         seedNodeId,
         this.keyManager.getNodeId(),
@@ -753,21 +824,12 @@ class NodeConnectionManager {
         signature,
       );
     });
-    const forwardPunchPromise = this.holePunchForward(nodeId, host, port, ctx);
-
-    const abortPromise = new Promise((_resolve, reject) => {
-      if (ctx.signal.aborted) throw ctx.signal.reason;
-      ctx.signal.addEventListener('abort', () => reject(ctx.signal.reason));
-    });
-
     try {
-      await Promise.race([
-        Promise.any([forwardPunchPromise, ...holePunchPromises]),
-        abortPromise,
-      ]);
+      await this.holePunchForward(nodeId, host, port, ctx);
     } catch (e) {
       return false;
     }
+    // FIXME: clean up in a finally block, holePunchPromises should be cancelled
     return true;
   }
 

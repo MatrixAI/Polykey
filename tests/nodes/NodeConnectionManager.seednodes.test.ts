@@ -8,6 +8,7 @@ import { DB } from '@matrixai/db';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { IdInternal } from '@matrixai/id';
 import { PromiseCancellable } from '@matrixai/async-cancellable';
+import { Timer } from '@matrixai/timer';
 import NodeManager from '@/nodes/NodeManager';
 import PolykeyAgent from '@/PolykeyAgent';
 import KeyManager from '@/keys/KeyManager';
@@ -317,7 +318,7 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
       });
       await nodeConnectionManager.start({ nodeManager });
       await taskManager.startProcessing();
-      await nodeManager.syncNodeGraph();
+      await nodeManager.syncNodeGraph(true, 2000);
       expect(await nodeGraph.getNode(nodeId1)).toBeDefined();
       expect(await nodeGraph.getNode(nodeId2)).toBeDefined();
       expect(await nodeGraph.getNode(dummyNodeId)).toBeUndefined();
@@ -380,7 +381,7 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
       });
       await nodeConnectionManager.start({ nodeManager });
       await taskManager.startProcessing();
-      await nodeManager.syncNodeGraph();
+      await nodeManager.syncNodeGraph(true, 2000);
       await sleep(1000);
       expect(mockedRefreshBucket).toHaveBeenCalled();
     } finally {
@@ -452,7 +453,9 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
       await nodeConnectionManager.start({ nodeManager });
       await taskManager.startProcessing();
       // This should complete without error
-      await nodeManager.syncNodeGraph(true);
+      await nodeManager.syncNodeGraph(true, 5000, {
+        timer: new Timer({ delay: 20000 }),
+      });
       // Information on remotes are found
       expect(await nodeGraph.getNode(nodeId1)).toBeDefined();
       expect(await nodeGraph.getNode(nodeId2)).toBeDefined();
@@ -517,8 +520,8 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
           logger,
         });
 
-        await node1.nodeManager.syncNodeGraph(true);
-        await node2.nodeManager.syncNodeGraph(true);
+        await node1.nodeManager.syncNodeGraph(true, 2000);
+        await node2.nodeManager.syncNodeGraph(true, 2000);
 
         const getAllNodes = async (node: PolykeyAgent) => {
           const nodes: Array<NodeIdEncoded> = [];

@@ -73,7 +73,7 @@ function cancellable<C extends ContextCancellable, P extends Array<any>, R>(
   lazy: boolean = false,
 ): (...params: ContextAndParameters<C, P>) => PromiseCancellable<R> {
   return (...params) => {
-    const ctx = params[0] ?? {};
+    const ctx = params[0] != null ? { ...params[0] } : {};
     const args = params.slice(1) as P;
     return setupCancellable(f, lazy, ctx, args);
   };
