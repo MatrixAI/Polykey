@@ -153,7 +153,7 @@ function timedCancellable<C extends ContextTimed, P extends Array<any>, R>(
   errorTimeoutConstructor: new () => Error = contextsErrors.ErrorContextsTimedTimeOut,
 ): (...params: ContextAndParameters<C, P>) => PromiseCancellable<R> {
   return (...params) => {
-    const ctx = params[0] ?? {};
+    const ctx = params[0] != null ? { ...params[0] } : {};
     const args = params.slice(1) as P;
     return setupTimedCancellable(
       f,

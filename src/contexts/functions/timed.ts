@@ -125,7 +125,7 @@ function timed<C extends ContextTimed, P extends Array<any>>(
 ): (...params: ContextAndParameters<C, P>) => any {
   if (f instanceof utils.AsyncFunction) {
     return async (...params) => {
-      const ctx = params[0] ?? {};
+      const ctx = params[0] != null ? { ...params[0] } : {};
       const args = params.slice(1) as P;
       const teardownContext = setupTimedContext(
         delay,
@@ -140,7 +140,7 @@ function timed<C extends ContextTimed, P extends Array<any>>(
     };
   } else if (f instanceof utils.GeneratorFunction) {
     return function* (...params) {
-      const ctx = params[0] ?? {};
+      const ctx = params[0] != null ? { ...params[0] } : {};
       const args = params.slice(1) as P;
       const teardownContext = setupTimedContext(
         delay,
@@ -155,7 +155,7 @@ function timed<C extends ContextTimed, P extends Array<any>>(
     };
   } else if (f instanceof utils.AsyncGeneratorFunction) {
     return async function* (...params) {
-      const ctx = params[0] ?? {};
+      const ctx = params[0] != null ? { ...params[0] } : {};
       const args = params.slice(1) as P;
       const teardownContext = setupTimedContext(
         delay,
@@ -170,7 +170,7 @@ function timed<C extends ContextTimed, P extends Array<any>>(
     };
   } else {
     return (...params) => {
-      const ctx = params[0] ?? {};
+      const ctx = params[0] != null ? { ...params[0] } : {};
       const args = params.slice(1) as P;
       const teardownContext = setupTimedContext(
         delay,

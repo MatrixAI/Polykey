@@ -31,8 +31,12 @@ function timedCancellable(
       let ctx: Partial<ContextTimed> = args[contextIndex];
       if (ctx === undefined) {
         ctx = {};
-        args[contextIndex] = ctx;
+      } else {
+        // Copy the ctx into a new ctx object to avoid mutating the ctx in case
+        // it is used again
+        ctx = { ...ctx };
       }
+      args[contextIndex] = ctx;
       // Runtime type check on the context parameter
       contextsUtils.checkContextTimed(ctx, key, targetName);
       const lazy_ = typeof lazy === 'boolean' ? lazy : lazy(this);
