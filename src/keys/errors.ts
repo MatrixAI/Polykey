@@ -17,6 +17,21 @@ class ErrorKeyManagerDestroyed<T> extends ErrorKeys<T> {
   exitCode = sysexits.USAGE;
 }
 
+class ErrorKeyRingRunning<T> extends ErrorKeys<T> {
+  static description = 'KeyRing is running';
+  exitCode = sysexits.USAGE;
+}
+
+class ErrorKeyRingNotRunning<T> extends ErrorKeys<T> {
+  static description = 'KeyRing is not running';
+  exitCode = sysexits.USAGE;
+}
+
+class ErrorKeyRingDestroyed<T> extends ErrorKeys<T> {
+  static description = 'KeyRing is destroyed';
+  exitCode = sysexits.USAGE;
+}
+
 class ErrorKeysPasswordInvalid<T> extends ErrorKeys<T> {
   static description = 'Password has invalid format';
   exitCode = sysexits.USAGE;
@@ -30,6 +45,11 @@ class ErrorKeysRecoveryCodeInvalid<T> extends ErrorKeys<T> {
 class ErrorKeysRecoveryCodeIncorrect<T> extends ErrorKeys<T> {
   static description =
     "Recovered key pair's public key does not match the root public key";
+  exitCode = sysexits.USAGE;
+}
+
+class ErrorKeysPrivateKeyInvalid<T> extends ErrorKeys<T> {
+  static description = 'Private key has invalid format';
   exitCode = sysexits.USAGE;
 }
 
@@ -93,9 +113,13 @@ export {
   ErrorKeyManagerRunning,
   ErrorKeyManagerNotRunning,
   ErrorKeyManagerDestroyed,
+  ErrorKeyRingRunning,
+  ErrorKeyRingNotRunning,
+  ErrorKeyRingDestroyed,
   ErrorKeysPasswordInvalid,
   ErrorKeysRecoveryCodeInvalid,
   ErrorKeysRecoveryCodeIncorrect,
+  ErrorKeysPrivateKeyInvalid,
   ErrorRootKeysRead,
   ErrorRootKeysParse,
   ErrorRootKeysWrite,

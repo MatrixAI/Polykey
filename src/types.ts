@@ -84,6 +84,7 @@ type PromiseDeconstructed<T> = {
  */
 interface FileSystem {
   promises: {
+    access: typeof fs.promises.access;
     rm: typeof fs.promises.rm;
     rmdir: typeof fs.promises.rmdir;
     stat: typeof fs.promises.stat;
