@@ -1,34 +1,210 @@
-import type { asn1, pki } from 'node-forge';
+import type { X509Certificate } from '@peculiar/x509';
+import type { NodeId } from '../ids/types';
 import type { Opaque } from '../types';
-import type {
-  CertificateId,
-  CertificateIdString,
-  CertificateIdEncoded,
-  NodeId,
-} from '../ids/types';
 
-type PublicKey = pki.rsa.PublicKey;
-type PrivateKey = pki.rsa.PrivateKey;
-type PublicKeyAsn1 = asn1.Asn1;
-type PrivateKeyAsn1 = asn1.Asn1;
-type PublicKeyPem = string;
-type PrivateKeyPem = string;
-type PublicKeyFingerprintBytes = string;
-type PublicKeyFingerprint = string;
-type KeyPair = pki.rsa.KeyPair;
-type KeyPairAsn1 = {
-  publicKey: PublicKeyAsn1;
-  privateKey: PrivateKeyAsn1;
+/**
+ * Symmetric Key Buffer
+ */
+type Key = Opaque<'Key', Buffer>;
+
+/**
+ * Symmetric Key JWK
+ */
+type KeyJWK = {
+  alg: 'XChaCha20-Poly1305-IETF';
+  kty: 'oct';
+  k: string;
+  ext: true;
+  key_ops:
+    | ['encrypt', 'decrypt', ...Array<string>]
+    | ['decrypt', 'encrypt', ...Array<string>];
 };
+
+/**
+ * Public Key Buffer
+ */
+type PublicKey = Opaque<'PublicKey', Buffer>;
+
+/**
+ * X25519 version of the public key
+ */
+type PublicKeyX = Opaque<'PublicKeyX', Buffer>;
+
+/**
+ * Private Key Buffer
+ */
+type PrivateKey = Opaque<'PrivateKey', Buffer>;
+
+/**
+ * X25519 version of the private key
+ */
+type PrivateKeyX = Opaque<'PrivateKeyX', Buffer>;
+
+/**
+ * Secret Key Buffer.
+ * This is a concatenation of `PrivateKey || PublicKey`.
+ * It is used by libsodium to avoid us having to concatenate on the fly.
+ */
+type SecretKey = Opaque<'SecretKey', Buffer>;
+
+/**
+ * X25519 version of the secret key
+ */
+type SecretKeyX = Opaque<'SecretKeyX', Buffer>;
+
+/**
+ * KeyPair Buffers
+ */
+type KeyPair = Readonly<{
+  publicKey: PublicKey;
+  privateKey: PrivateKey;
+  secretKey: SecretKey;
+}>;
+
+/**
+ * X25519 version of key pair
+ */
+type KeyPairX = Readonly<{
+  publicKey: PublicKeyX;
+  privateKey: PrivateKeyX;
+  secretKey: SecretKeyX;
+}>;
+
+/**
+ * Public Key JWK
+ */
+type PublicKeyJWK = {
+  alg: 'EdDSA';
+  kty: 'OKP';
+  crv: 'Ed25519';
+  x: string; // Public key encoded as base64url
+  ext: true;
+  key_ops: ['verify', ...Array<string>];
+};
+
+/**
+ * Private Key JWK
+ */
+type PrivateKeyJWK = {
+  alg: 'EdDSA';
+  kty: 'OKP';
+  crv: 'Ed25519';
+  x: string; // Public key encoded as base64url
+  d: string; // Private key encoded as base64url
+  ext: true;
+  key_ops:
+    | ['verify', 'sign', ...Array<string>]
+    | ['sign', 'verify', ...Array<string>];
+};
+
+/**
+ * KeyPair JWK
+ */
+type KeyPairJWK = {
+  publicKey: PublicKeyJWK;
+  privateKey: PrivateKeyJWK;
+};
+
+/**
+ * Public Key SPKI PEM
+ */
+type PublicKeyPem = Opaque<'PublicKeyPem', string>;
+
+/**
+ * Private Key PKCS8 PEM
+ */
+type PrivateKeyPem = Opaque<'PrivateKeyPem', string>;
+
+/**
+ * KeyPair PEMs
+ */
 type KeyPairPem = {
   publicKey: PublicKeyPem;
   privateKey: PrivateKeyPem;
 };
-type Certificate = pki.Certificate;
-type CertificateAsn1 = asn1.Asn1;
-type CertificatePem = string;
-type CertificatePemChain = string;
+
+/**
+ * Ed25519 Signature
+ * Will always be 64 bytes
+ */
+type Signature = Opaque<'Signature', Buffer>;
+
+/**
+ * Certificate is an X.509 certificate.
+ * Upstream `X509Certificate` properties can be mutated,
+ * but they do not affect any of the methods on the object.
+ * Here we enforce `Readonly` to prevent accidental mutation.
+ */
+type Certificate = Readonly<X509Certificate>;
+
+/**
+ * Certificate PEM
+ */
+type CertificatePem = Opaque<'CertificatePem', string>;
+
+/**
+ * Certificate PEM Chain.
+ * The order is from leaf to root.
+ */
+type CertificatePemChain = Opaque<'CertificatePemChain', string>;
+
+/**
+ * BIP39 Recovery Code
+ * Can be 12 or 24 words
+ */
 type RecoveryCode = Opaque<'RecoveryCode', string>;
+
+/**
+ * Generic JWK
+ */
+type JWK = JsonWebKey;
+
+/**
+ * JWK that is encrypted as a JWE
+ * We only use these kinds of JWE for encryption
+ */
+type JWKEncrypted =
+  | {
+      ciphertext: string;
+      tag: string;
+      iv: string;
+      unprotected: {
+        alg: 'ECDH-SS-NaCl';
+        enc: 'XSalsa20-Poly1305';
+        cty: 'jwk+json';
+      };
+    }
+  | {
+      ciphertext: string;
+      tag: string;
+      unprotected: {
+        alg: 'ECDH-ES-NaCl';
+        enc: 'XSalsa20-Poly1305';
+        cty: 'jwk+json';
+        epk: {
+          kty: 'OKP';
+          crv: 'X25519';
+          x: string;
+        };
+      };
+    }
+  | {
+      ciphertext: string;
+      tag: string;
+      iv: string;
+      protected: string;
+    };
+
+// There's also
+// PBES2-HS256+A128KW
+// but this time I'm using a password based way of encrypting things
+// The resulting cipher text will need tobe processed by ourselves
+// And when we are encrypting things...
+// We are using not public key encryption
+// We are using symmetric encryption
+
+// Note that key wrapping is also done like the above
+// but we need to be clearer how it works
 
 type KeyManagerChangeData = {
   nodeId: NodeId;
@@ -38,24 +214,34 @@ type KeyManagerChangeData = {
 };
 
 export type {
-  CertificateId,
-  CertificateIdString,
-  CertificateIdEncoded,
+  Key,
+  KeyJWK,
   PublicKey,
+  PublicKeyX,
   PrivateKey,
-  PublicKeyAsn1,
-  PrivateKeyAsn1,
+  PrivateKeyX,
+  SecretKey,
+  SecretKeyX,
+  KeyPair,
+  KeyPairX,
+  PublicKeyJWK,
+  PrivateKeyJWK,
+  KeyPairJWK,
   PublicKeyPem,
   PrivateKeyPem,
-  PublicKeyFingerprintBytes,
-  PublicKeyFingerprint,
-  KeyPair,
-  KeyPairAsn1,
   KeyPairPem,
+  Signature,
   Certificate,
-  CertificateAsn1,
   CertificatePem,
   CertificatePemChain,
+  JWK,
+  JWKEncrypted,
   RecoveryCode,
   KeyManagerChangeData,
 };
+
+export type {
+  CertificateId,
+  CertificateIdString,
+  CertificateIdEncoded,
+} from '../ids/types';

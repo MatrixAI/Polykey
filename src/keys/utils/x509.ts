@@ -1,20 +1,16 @@
-import type { PublicKey, Certificate, CertificatePem } from './types';
+import type { PublicKey, PrivateKey, Certificate } from '../types';
 import type { CertificateId, NodeId } from '../../ids/types';
 import * as x509 from '@peculiar/x509';
 import * as asn1 from '@peculiar/asn1-schema';
 import * as asn1X509 from '@peculiar/asn1-x509';
-import webcrypto from './webcrypto';
+import webcrypto, { importPrivateKey, importPublicKey } from './webcrypto';
 import {
   publicKeyToNodeId,
   publicKeyFromPrivateKeyEd25519,
-  exportPrivateKey,
-  exportPublicKey,
-  importPrivateKey,
-  importPublicKey,
 } from './asymmetric';
 import * as ids from '../../ids';
+import * as utils from '../../utils';
 import config from '../../config';
-import { isBufferSource, bufferWrap } from '../../utils';
 
 x509.cryptoProvider.set(webcrypto);
 
@@ -69,7 +65,7 @@ class PolykeyNodeSignatureExtension extends x509.Extension {
         this.value,
         PolykeyNodeSignatureString,
       );
-      this.signature = bufferWrap(signatureString.value).toString('hex');
+      this.signature = utils.bufferWrap(signatureString.value).toString('hex');
       this.signatureBytes = signatureString.value;
     } else {
       const signature_ = Buffer.from(args[0], 'hex');
@@ -129,40 +125,25 @@ async function generateCertificate({
   issuerAttrsExtra = [],
 }: {
   certId: CertificateId;
-  subjectKeyPair:
-    | {
-        publicKey: BufferSource;
-        privateKey: BufferSource;
-      }
-    | CryptoKeyPair;
-  issuerPrivateKey: BufferSource | CryptoKey;
+  subjectKeyPair: {
+    publicKey: PublicKey;
+    privateKey: PrivateKey;
+  };
+  issuerPrivateKey: PrivateKey;
   duration: number;
   subjectAttrsExtra?: Array<{ [key: string]: Array<string> }>;
   issuerAttrsExtra?: Array<{ [key: string]: Array<string> }>;
 }): Promise<Certificate> {
-  let subjectPublicKey: PublicKey;
-  let subjectPublicCryptoKey: CryptoKey;
-  let subjectPrivateCryptoKey: CryptoKey;
-  let issuerPrivateCryptoKey: CryptoKey;
-  if (isBufferSource(subjectKeyPair.publicKey)) {
-    subjectPublicKey = bufferWrap(subjectKeyPair.publicKey) as PublicKey;
-    subjectPublicCryptoKey = await importPublicKey(subjectKeyPair.publicKey);
-  } else {
-    subjectPublicKey = await exportPublicKey(subjectKeyPair.publicKey);
-    subjectPublicCryptoKey = subjectKeyPair.publicKey;
-  }
-  if (isBufferSource(subjectKeyPair.privateKey)) {
-    subjectPrivateCryptoKey = await importPrivateKey(subjectKeyPair.privateKey);
-  } else {
-    subjectPrivateCryptoKey = subjectKeyPair.privateKey;
-  }
-  if (isBufferSource(issuerPrivateKey)) {
-    issuerPrivateCryptoKey = await importPrivateKey(issuerPrivateKey);
-    issuerPrivateKey = bufferWrap(issuerPrivateKey);
-  } else {
-    issuerPrivateCryptoKey = issuerPrivateKey;
-    issuerPrivateKey = await exportPrivateKey(issuerPrivateKey);
-  }
+  const subjectPublicKey = utils.bufferWrap(
+    subjectKeyPair.publicKey,
+  ) as PublicKey;
+  const subjectPublicCryptoKey = await importPublicKey(
+    subjectKeyPair.publicKey,
+  );
+  const subjectPrivateCryptoKey = await importPrivateKey(
+    subjectKeyPair.privateKey,
+  );
+  const issuerPrivateCryptoKey = await importPrivateKey(issuerPrivateKey);
   if (duration < 0) {
     throw new RangeError('`duration` must be positive');
   }
@@ -182,9 +163,7 @@ async function generateCertificate({
     throw new RangeError('`notAfterDate` cannot be after 2049-12-31T23:59:59Z');
   }
   const subjectNodeId = publicKeyToNodeId(subjectPublicKey);
-  const issuerPublicKey = await publicKeyFromPrivateKeyEd25519(
-    issuerPrivateKey,
-  );
+  const issuerPublicKey = publicKeyFromPrivateKeyEd25519(issuerPrivateKey);
   const issuerNodeId = publicKeyToNodeId(issuerPublicKey);
   const serialNumber = ids.encodeCertId(certId);
   const subjectNodeIdEncoded = ids.encodeNodeId(subjectNodeId);
@@ -256,19 +235,11 @@ async function generateCertificate({
     .signature;
   certConfig.extensions.push(
     new PolykeyNodeSignatureExtension(
-      bufferWrap(nodeSignature).toString('hex'),
+      utils.bufferWrap(nodeSignature).toString('hex'),
     ),
   );
   certConfig.signingKey = issuerPrivateCryptoKey;
   return await x509.X509CertificateGenerator.create(certConfig);
-}
-
-function certToPem(cert: Certificate): CertificatePem {
-  return cert.toString('pem') as CertificatePem;
-}
-
-function certFromPem(certPem: CertificatePem): Certificate {
-  return new x509.X509Certificate(certPem);
 }
 
 /**
@@ -357,7 +328,7 @@ async function certSignedBy(
   cert: Certificate,
   publicKey: BufferSource | CryptoKey,
 ): Promise<boolean> {
-  if (isBufferSource(publicKey)) {
+  if (utils.isBufferSource(publicKey)) {
     publicKey = await importPublicKey(publicKey);
   }
   return cert.verify({
@@ -412,8 +383,6 @@ export {
   PolykeyNodeSignatureExtension,
   extendedKeyUsageFlags,
   generateCertificate,
-  certToPem,
-  certFromPem,
   certEqual,
   certNodeId,
   certIssuedBy,

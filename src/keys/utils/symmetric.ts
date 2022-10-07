@@ -1,224 +1,296 @@
-import type { Key, KeyJWK, JWK, JWEFlattened } from './types';
-import * as jose from 'jose';
-import webcrypto from './webcrypto';
-import { getRandomBytesSync } from './random';
-import { bufferWrap, isBufferSource } from '../../utils';
+import type { Key, JWK, JWKEncrypted } from '../types';
+import sodium from 'sodium-native';
+import { getRandomBytes } from './random';
 
-const ivSize = 16;
-const authTagSize = 16;
+const nonceSize = sodium.crypto_aead_xchacha20poly1305_ietf_NPUBBYTES;
+const macSize = sodium.crypto_aead_xchacha20poly1305_ietf_ABYTES;
 
 /**
- * Imports symmetric `CryptoKey` from key buffer.
- * If `key` is already `CryptoKey`, then this just returns it.
- */
-async function importKey(key: BufferSource | CryptoKey): Promise<CryptoKey> {
-  if (!isBufferSource(key)) {
-    return key;
-  }
-  return await webcrypto.subtle.importKey('raw', key, 'AES-GCM', true, [
-    'encrypt',
-    'decrypt',
-  ]);
-}
-
-/**
- * Exports symmetric `CryptoKey` to `Key`.
- * If `key` is already `Buffer`, then this just returns it.
- */
-async function exportKey(key: CryptoKey | BufferSource): Promise<Key> {
-  if (isBufferSource(key)) {
-    return bufferWrap(key) as Key;
-  }
-  return bufferWrap(await webcrypto.subtle.exportKey('raw', key)) as Key;
-}
-
-async function keyToJWK(key: BufferSource | CryptoKey): Promise<KeyJWK> {
-  const key_ = await exportKey(key);
-  return {
-    alg: 'A256GCM',
-    kty: 'oct',
-    k: key_.toString('base64url'),
-    ext: true,
-    key_ops: ['encrypt', 'decrypt'],
-  };
-}
-
-async function keyFromJWK(keyJWK: JsonWebKey): Promise<Key | undefined> {
-  if (
-    keyJWK.alg !== 'A256GCM' ||
-    keyJWK.kty !== 'oct' ||
-    typeof keyJWK.k !== 'string'
-  ) {
-    return undefined;
-  }
-  const key = Buffer.from(keyJWK.k, 'base64url') as Key;
-  // Any random 32 bytes is a valid key
-  if (key.byteLength !== 32) {
-    return undefined;
-  }
-  return key;
-}
-
-/**
- * Symmetric encryption using AES-GCM.
+ * Symmetric encryption using XChaCha20-Poly1305-IETF.
  * The key is expected to be 256 bits in size.
- * The initialisation vector is randomly generated.
+ * The nonce is randomly generated.
  * The resulting cipher text will be have the following format:
- * `iv || data || authTag`
+ * `nonce || mac || cipherText`
  * This is an authenticated form of encryption.
- * The auth tag provides integrity and authenticity.
+ * The mac provides integrity and authenticity.
  */
-async function encryptWithKey(
-  key: BufferSource | CryptoKey,
-  plainText: ArrayBuffer,
-): Promise<Buffer> {
-  if (isBufferSource(key)) {
-    key = await importKey(key);
-  }
-  const iv = getRandomBytesSync(ivSize);
-  const data = await webcrypto.subtle.encrypt(
-    {
-      name: 'AES-GCM',
-      iv,
-      tagLength: authTagSize * 8,
-    },
-    key,
+function encryptWithKey(
+  key: Key,
+  plainText: Buffer,
+  additionalData: Buffer | null = null,
+): Buffer {
+  const nonce = getRandomBytes(nonceSize);
+  const macAndCipherText = Buffer.allocUnsafe(macSize + plainText.byteLength);
+  sodium.crypto_aead_xchacha20poly1305_ietf_encrypt(
+    macAndCipherText,
     plainText,
+    additionalData,
+    null,
+    nonce,
+    key,
   );
-  return Buffer.concat([iv, bufferWrap(data)]);
+  return Buffer.concat([nonce, macAndCipherText]);
 }
 
 /**
- * Symmetric decryption using AES-GCM.
+ * Symmetric decryption using XChaCha20-Poly1305-IETF.
  * The key is expected to be 256 bits in size.
- * The initialisation vector is extracted from the cipher text.
+ * The nonce extracted from the cipher text.
  * It is expected that the cipher text will have the following format:
- * `iv || data || authTag`
+ * `nonce || mac || cipherText`
  * This is an authenticated form of decryption.
- * The auth tag provides integrity and authenticity.
+ * The mac provides integrity and authenticity.
  */
-async function decryptWithKey(
-  key: BufferSource | CryptoKey,
-  cipherText: ArrayBuffer,
-): Promise<Buffer | undefined> {
-  if (isBufferSource(key)) {
-    key = await importKey(key);
-  }
-  const cipherText_ = bufferWrap(cipherText);
-  if (cipherText_.byteLength < ivSize + authTagSize) {
+function decryptWithKey(
+  key: Key,
+  cipherText: Buffer,
+  additionalData: Buffer | null = null,
+): Buffer | undefined {
+  if (cipherText.byteLength < nonceSize + macSize) {
     return;
   }
-  const iv = cipherText_.subarray(0, ivSize);
-  const data = cipherText_.subarray(ivSize);
-  let plainText: ArrayBuffer;
-  try {
-    plainText = await webcrypto.subtle.decrypt(
-      {
-        name: 'AES-GCM',
-        iv,
-        tagLength: authTagSize * 8,
-      },
-      key,
-      data,
-    );
-  } catch (e) {
-    // This means algorithm is incorrectly setup
-    if (e.name === 'InvalidAccessError') {
-      throw e;
-    }
-    // Otherwise the key is wrong
-    // or the data is wrong
+  const nonce = cipherText.subarray(0, nonceSize);
+  const macAndCipherText = cipherText.subarray(nonceSize);
+  const plainText = Buffer.allocUnsafe(macAndCipherText.byteLength - macSize);
+  const decrypted = sodium.crypto_aead_xchacha20poly1305_ietf_decrypt(
+    plainText,
+    null,
+    macAndCipherText,
+    additionalData,
+    nonce,
+    key,
+  );
+  if (decrypted < 0) {
     return;
   }
-  return bufferWrap(plainText);
+  return plainText;
 }
 
 /**
  * Key wrapping with password
- * This uses `PBES2-HS512+A256KW` algorithm.
- * This is a password-based encryption scheme.
- * A 256-bit content encryption key (CEK) is generated.
- * This CEK encrypts the `keyJWK` contents using symmetric AES-KW.
- * Then the CEK is encrypted with a key derived from PBKDF2
- * using 1000 iterations and random salt and HMAC-SHA256.
- * The encrypted ciphertext, encrypted CEK and PBKDF2 parameters are all stored in the JWE.
- * See: https://www.rfc-editor.org/rfc/rfc7518#section-4.8
+ * This uses `Argon2Id-1.3` to derive a 256-bit key from the password.
+ * The key is then used for encryption with `XChaCha20-Poly1305-IETF`.
  */
-async function wrapWithPassword(
-  password: string,
-  keyJWK: JWK,
-): Promise<JWEFlattened> {
-  const JWEFactory = new jose.FlattenedEncrypt(
-    Buffer.from(JSON.stringify(keyJWK), 'utf-8'),
+function wrapWithPassword(password: string, keyJWK: JWK): JWKEncrypted {
+  const key = Buffer.allocUnsafe(
+    sodium.crypto_aead_xchacha20poly1305_ietf_KEYBYTES,
   );
-  JWEFactory.setProtectedHeader({
-    alg: 'PBES2-HS512+A256KW',
-    enc: 'A256GCM',
+  const salt = getRandomBytes(sodium.crypto_pwhash_SALTBYTES);
+  sodium.crypto_pwhash(
+    key,
+    Buffer.from(password, 'utf-8'),
+    salt,
+    sodium.crypto_pwhash_OPSLIMIT_MODERATE,
+    sodium.crypto_pwhash_MEMLIMIT_MODERATE,
+    sodium.crypto_pwhash_ALG_ARGON2ID13,
+  );
+  const protectedHeader = {
+    alg: 'Argon2id-1.3',
+    enc: 'XChaCha20-Poly1305-IETF',
     cty: 'jwk+json',
-  });
-  const keyJWE = await JWEFactory.encrypt(Buffer.from(password, 'utf-8'));
+    ops: sodium.crypto_pwhash_OPSLIMIT_MODERATE,
+    mem: sodium.crypto_pwhash_MEMLIMIT_MODERATE,
+    salt: salt.toString('base64url'),
+  };
+  const protectedHeaderEncoded = Buffer.from(
+    JSON.stringify(protectedHeader),
+    'utf-8',
+  ).toString('base64url');
+  const plainText = Buffer.from(JSON.stringify(keyJWK), 'utf-8');
+  const additionalData = Buffer.from(protectedHeaderEncoded, 'utf-8');
+  const nonce = getRandomBytes(nonceSize);
+  const mac = Buffer.allocUnsafe(macSize);
+  const cipherText = Buffer.allocUnsafe(plainText.byteLength);
+  sodium.crypto_aead_xchacha20poly1305_ietf_encrypt_detached(
+    cipherText,
+    mac,
+    plainText,
+    additionalData,
+    null,
+    nonce,
+    key,
+  );
+  const keyJWE = {
+    ciphertext: cipherText.toString('base64url'),
+    iv: nonce.toString('base64url'),
+    tag: mac.toString('base64url'),
+    protected: protectedHeaderEncoded,
+  };
   return keyJWE;
 }
 
 /**
  * Key unwrapping with password.
- * This uses `PBES2-HS512+A256KW` algorithm.
- * See: https://www.rfc-editor.org/rfc/rfc7518#section-4.8
  */
-async function unwrapWithPassword(
-  password: string,
-  keyJWE: JWEFlattened,
-): Promise<JWK | undefined> {
-  let keyJWK: JWK;
+function unwrapWithPassword(password: string, keyJWE: any): JWK | undefined {
+  if (typeof keyJWE !== 'object' || keyJWE == null) {
+    return;
+  }
+  if (
+    typeof keyJWE.protected !== 'string' ||
+    typeof keyJWE.iv !== 'string' ||
+    typeof keyJWE.ciphertext !== 'string' ||
+    typeof keyJWE.tag !== 'string'
+  ) {
+    return;
+  }
+  let header;
   try {
-    const result = await jose.flattenedDecrypt(
-      keyJWE,
-      Buffer.from(password, 'utf-8'),
+    header = JSON.parse(
+      Buffer.from(keyJWE.protected, 'base64url').toString('utf-8'),
     );
-    keyJWK = JSON.parse(bufferWrap(result.plaintext).toString('utf-8'));
   } catch {
+    return;
+  }
+  if (
+    typeof header !== 'object' ||
+    header == null ||
+    header.alg !== 'Argon2id-1.3' ||
+    header.enc !== 'XChaCha20-Poly1305-IETF' ||
+    header.cty !== 'jwk+json' ||
+    typeof header.ops !== 'number' ||
+    typeof header.mem !== 'number' ||
+    typeof header.salt !== 'string'
+  ) {
+    return;
+  }
+  const key = Buffer.allocUnsafe(
+    sodium.crypto_aead_xchacha20poly1305_ietf_KEYBYTES,
+  );
+  const salt = Buffer.from(header.salt, 'base64url');
+  sodium.crypto_pwhash(
+    key,
+    Buffer.from(password, 'utf-8'),
+    salt,
+    header.ops,
+    header.mem,
+    sodium.crypto_pwhash_ALG_ARGON2ID13,
+  );
+  const additionalData = Buffer.from(keyJWE.protected, 'base64url');
+  const nonce = Buffer.from(keyJWE.iv, 'base64url');
+  const mac = Buffer.from(keyJWE.tag, 'base64url');
+  const cipherText = Buffer.from(keyJWE.ciphertext, 'base64url');
+  const plainText = Buffer.allocUnsafe(cipherText.byteLength);
+  try {
+    sodium.crypto_aead_xchacha20poly1305_ietf_decrypt_detached(
+      plainText,
+      null,
+      mac,
+      cipherText,
+      additionalData,
+      nonce,
+      key,
+    );
+  } catch {
+    return;
+  }
+  let keyJWK;
+  try {
+    keyJWK = JSON.parse(plainText.toString('utf-8'));
+  } catch {
+    return;
+  }
+  if (typeof keyJWK !== 'object' || keyJWK == null) {
     return;
   }
   return keyJWK;
 }
 
-async function wrapWithKey(
-  key: BufferSource | CryptoKey,
-  keyJWK: JWK,
-): Promise<JWEFlattened> {
-  const JWEFactory = new jose.FlattenedEncrypt(
-    Buffer.from(JSON.stringify(keyJWK), 'utf-8'),
-  );
-  JWEFactory.setProtectedHeader({
-    alg: 'A256KW',
-    enc: 'A256GCM',
+function wrapWithKey(key: Key, keyJWK: JWK): JWKEncrypted {
+  const protectedHeader = {
+    alg: 'dir',
+    enc: 'XChaCha20-Poly1305-IETF',
     cty: 'jwk+json',
-  });
-  const keyJWE = await JWEFactory.encrypt(await exportKey(key));
+  };
+  const protectedHeaderEncoded = Buffer.from(
+    JSON.stringify(protectedHeader),
+    'utf-8',
+  ).toString('base64url');
+  const plainText = Buffer.from(JSON.stringify(keyJWK), 'utf-8');
+  const additionalData = Buffer.from(protectedHeaderEncoded, 'utf-8');
+  const nonce = getRandomBytes(nonceSize);
+  const mac = Buffer.allocUnsafe(macSize);
+  const cipherText = Buffer.allocUnsafe(plainText.byteLength);
+  sodium.crypto_aead_xchacha20poly1305_ietf_encrypt_detached(
+    cipherText,
+    mac,
+    plainText,
+    additionalData,
+    null,
+    nonce,
+    key,
+  );
+  const keyJWE = {
+    ciphertext: cipherText.toString('base64url'),
+    iv: nonce.toString('base64url'),
+    tag: mac.toString('base64url'),
+    protected: protectedHeaderEncoded,
+  };
   return keyJWE;
 }
 
-async function unwrapWithKey(
-  key: BufferSource | CryptoKey,
-  keyJWE: JWEFlattened,
-): Promise<JWK | undefined> {
-  let keyJWK: JWK;
+function unwrapWithKey(key: Key, keyJWE: any): JWK | undefined {
+  if (typeof keyJWE !== 'object' || keyJWE == null) {
+    return;
+  }
+  if (
+    typeof keyJWE.protected !== 'string' ||
+    typeof keyJWE.iv !== 'string' ||
+    typeof keyJWE.ciphertext !== 'string' ||
+    typeof keyJWE.tag !== 'string'
+  ) {
+    return;
+  }
+  let header;
   try {
-    const result = await jose.flattenedDecrypt(keyJWE, await exportKey(key));
-    keyJWK = JSON.parse(bufferWrap(result.plaintext).toString('utf-8'));
+    header = JSON.parse(
+      Buffer.from(keyJWE.protected, 'base64url').toString('utf-8'),
+    );
   } catch {
+    return;
+  }
+  if (
+    typeof header !== 'object' ||
+    header == null ||
+    header.alg !== 'dir' ||
+    header.enc !== 'XChaCha20-Poly1305-IETF' ||
+    header.cty !== 'jwk+json'
+  ) {
+    return;
+  }
+  const additionalData = Buffer.from(keyJWE.protected, 'base64url');
+  const nonce = Buffer.from(keyJWE.iv, 'base64url');
+  const mac = Buffer.from(keyJWE.tag, 'base64url');
+  const cipherText = Buffer.from(keyJWE.ciphertext, 'base64url');
+  const plainText = Buffer.allocUnsafe(cipherText.byteLength);
+  try {
+    sodium.crypto_aead_xchacha20poly1305_ietf_decrypt_detached(
+      plainText,
+      null,
+      mac,
+      cipherText,
+      additionalData,
+      nonce,
+      key,
+    );
+  } catch {
+    return;
+  }
+  let keyJWK;
+  try {
+    keyJWK = JSON.parse(plainText.toString('utf-8'));
+  } catch {
+    return;
+  }
+  if (typeof keyJWK !== 'object' || keyJWK == null) {
     return;
   }
   return keyJWK;
 }
 
 export {
-  ivSize,
-  authTagSize,
-  importKey,
-  exportKey,
-  keyToJWK,
-  keyFromJWK,
+  nonceSize,
+  macSize,
   encryptWithKey,
   decryptWithKey,
   wrapWithPassword,

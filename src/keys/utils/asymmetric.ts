@@ -1,149 +1,29 @@
 import type {
-  KeyPair,
   PublicKey,
   PrivateKey,
-  PublicKeyJWK,
-  PrivateKeyJWK,
-  KeyPairJWK,
-  PublicKeyPem,
-  PrivateKeyPem,
-  KeyPairPem,
+  KeyPair,
+  PublicKeyX,
+  PrivateKeyX,
+  KeyPairX,
+  Signature,
   JWK,
-  JWEFlattened,
-} from './types';
+  JWKEncrypted,
+} from '../types';
 import type { NodeId } from '../../ids/types';
-import * as jose from 'jose';
+import sodium from 'sodium-native';
 import { IdInternal } from '@matrixai/id';
-import * as nobleEd25519 from '@noble/ed25519';
-import * as nobleHkdf from '@noble/hashes/hkdf';
-import { sha256 as nobleSha256 } from '@noble/hashes/sha256';
-import { sha512 as nobleSha512 } from '@noble/hashes/sha512';
-import webcrypto from './webcrypto';
-import { generateKeyPair } from './generate';
-import { encryptWithKey, decryptWithKey } from './symmetric';
-import { bufferWrap, isBufferSource } from '../../utils';
+import { getRandomBytes } from './random';
+import * as utils from '../../utils';
 
 /**
- * Imports Ed25519 public `CryptoKey` from key buffer.
- * If `publicKey` is already `CryptoKey`, then this just returns it.
+ * Use this to make a key pair if you only have public key and private key
  */
-async function importPublicKey(
-  publicKey: BufferSource | CryptoKey,
-): Promise<CryptoKey> {
-  if (!isBufferSource(publicKey)) {
-    return publicKey;
-  }
-  return webcrypto.subtle.importKey(
-    'raw',
+function makeKeyPair(publicKey: PublicKey, privateKey: PrivateKey): KeyPair {
+  return {
     publicKey,
-    {
-      name: 'EdDSA',
-      namedCurve: 'Ed25519',
-    },
-    true,
-    ['verify'],
-  );
-}
-
-/**
- * Imports Ed25519 private `CryptoKey` from key buffer.
- * If `privateKey` is already `CryptoKey`, then this just returns it.
- */
-async function importPrivateKey(
-  privateKey: BufferSource | CryptoKey,
-): Promise<CryptoKey> {
-  if (!isBufferSource(privateKey)) {
-    return privateKey;
-  }
-  return await webcrypto.subtle.importKey(
-    'jwk',
-    {
-      alg: 'EdDSA',
-      kty: 'OKP',
-      crv: 'Ed25519',
-      d: bufferWrap(privateKey).toString('base64url'),
-    },
-    {
-      name: 'EdDSA',
-      namedCurve: 'Ed25519',
-    },
-    true,
-    ['sign'],
-  );
-}
-
-/**
- * Imports Ed25519 `CryptoKeyPair` from key pair buffer.
- * If any of the keys are already `CryptoKey`, then this will return them.
- */
-async function importKeyPair({
-  publicKey,
-  privateKey,
-}: {
-  publicKey: CryptoKey | BufferSource;
-  privateKey: CryptoKey | BufferSource;
-}): Promise<CryptoKeyPair> {
-  return {
-    publicKey: isBufferSource(publicKey)
-      ? await importPublicKey(publicKey)
-      : publicKey,
-    privateKey: isBufferSource(privateKey)
-      ? await importPrivateKey(privateKey)
-      : privateKey,
-  };
-}
-
-/**
- * Exports Ed25519 public `CryptoKey` to `PublicKey`.
- * If `publicKey` is already `Buffer`, then this just returns it.
- */
-async function exportPublicKey(
-  publicKey: CryptoKey | BufferSource,
-): Promise<PublicKey> {
-  if (isBufferSource(publicKey)) {
-    return bufferWrap(publicKey) as PublicKey;
-  }
-  return bufferWrap(
-    await webcrypto.subtle.exportKey('raw', publicKey),
-  ) as PublicKey;
-}
-
-/**
- * Exports Ed25519 private `CryptoKey` to `PrivateKey`
- * If `privateKey` is already `Buffer`, then this just returns it.
- */
-async function exportPrivateKey(
-  privateKey: CryptoKey | BufferSource,
-): Promise<PrivateKey> {
-  if (isBufferSource(privateKey)) {
-    return bufferWrap(privateKey) as PrivateKey;
-  }
-  const privateJWK = await webcrypto.subtle.exportKey('jwk', privateKey);
-  if (privateJWK.d == null) {
-    throw new TypeError('Private key is not an Ed25519 private key');
-  }
-  return Buffer.from(privateJWK.d, 'base64url') as PrivateKey;
-}
-
-/**
- * Exports Ed25519 `CryptoKeyPair` to `KeyPair`
- * If any of the keys are already `Buffer`, then this will return them.
- */
-async function exportKeyPair({
-  publicKey,
-  privateKey,
-}: {
-  publicKey: CryptoKey | BufferSource;
-  privateKey: CryptoKey | BufferSource;
-}): Promise<KeyPair> {
-  return {
-    publicKey: isBufferSource(publicKey)
-      ? (bufferWrap(publicKey) as PublicKey)
-      : await exportPublicKey(publicKey),
-    privateKey: isBufferSource(privateKey)
-      ? (bufferWrap(privateKey) as PrivateKey)
-      : await exportPrivateKey(privateKey),
-  };
+    privateKey,
+    secretKey: Buffer.concat([publicKey, privateKey]),
+  } as KeyPair;
 }
 
 function publicKeyToNodeId(publicKey: PublicKey): NodeId {
@@ -151,465 +31,359 @@ function publicKeyToNodeId(publicKey: PublicKey): NodeId {
 }
 
 function publicKeyFromNodeId(nodeId: NodeId): PublicKey {
-  const publicKey = bufferWrap(nodeId);
+  const publicKey = utils.bufferWrap(nodeId);
   return publicKey as PublicKey;
-}
-
-async function publicKeyToJWK(
-  publicKey: BufferSource | CryptoKey,
-): Promise<PublicKeyJWK> {
-  const publicKey_ = await exportPublicKey(publicKey);
-  return {
-    alg: 'EdDSA',
-    kty: 'OKP',
-    crv: 'Ed25519',
-    x: publicKey_.toString('base64url'),
-    ext: true,
-    key_ops: ['verify'],
-  };
-}
-
-async function publicKeyFromJWK(
-  publicKeyJWK: JWK,
-): Promise<PublicKey | undefined> {
-  if (
-    publicKeyJWK.alg !== 'EdDSA' ||
-    publicKeyJWK.kty !== 'OKP' ||
-    publicKeyJWK.crv !== 'Ed25519' ||
-    typeof publicKeyJWK.x !== 'string'
-  ) {
-    return undefined;
-  }
-  const publicKey = Buffer.from(publicKeyJWK.x, 'base64url') as PublicKey;
-  if (!validatePublicKey(publicKey)) {
-    return undefined;
-  }
-  return publicKey;
-}
-
-async function privateKeyToJWK(
-  privateKey: BufferSource | CryptoKey,
-): Promise<PrivateKeyJWK> {
-  const privateKey_ = await exportPrivateKey(privateKey);
-  const publicKey = await publicKeyFromPrivateKeyEd25519(privateKey_);
-  return {
-    alg: 'EdDSA',
-    kty: 'OKP',
-    crv: 'Ed25519',
-    x: publicKey.toString('base64url'),
-    d: privateKey_.toString('base64url'),
-    ext: true,
-    key_ops: ['verify', 'sign'],
-  };
-}
-
-/**
- * Extracts private key out of JWK.
- * This checks if the public key matches the private key in the JWK.
- */
-async function privateKeyFromJWK(
-  privateKeyJWK: JWK,
-): Promise<PrivateKey | undefined> {
-  if (
-    privateKeyJWK.alg !== 'EdDSA' ||
-    privateKeyJWK.kty !== 'OKP' ||
-    privateKeyJWK.crv !== 'Ed25519' ||
-    typeof privateKeyJWK.x !== 'string' ||
-    typeof privateKeyJWK.d !== 'string'
-  ) {
-    return undefined;
-  }
-  const publicKey = Buffer.from(privateKeyJWK.x, 'base64url');
-  const privateKey = Buffer.from(privateKeyJWK.d, 'base64url');
-  // Any random 32 bytes is a valid private key
-  if (privateKey.byteLength !== 32) {
-    return undefined;
-  }
-  // If the public key doesn't match, then the JWK is invalid
-  const publicKey_ = await publicKeyFromPrivateKeyEd25519(privateKey);
-  if (!publicKey_.equals(publicKey)) {
-    return undefined;
-  }
-  return privateKey as PrivateKey;
-}
-
-async function keyPairToJWK(keyPair: {
-  publicKey: CryptoKey | BufferSource;
-  privateKey: CryptoKey | BufferSource;
-}): Promise<KeyPairJWK> {
-  return {
-    publicKey: await publicKeyToJWK(keyPair.publicKey),
-    privateKey: await privateKeyToJWK(keyPair.privateKey),
-  };
-}
-
-async function keyPairFromJWK(
-  keyPair: KeyPairJWK,
-): Promise<KeyPair | undefined> {
-  const publicKey = await publicKeyFromJWK(keyPair.publicKey);
-  const privateKey = await privateKeyFromJWK(keyPair.privateKey);
-  if (publicKey == null || privateKey == null) {
-    return undefined;
-  }
-  return {
-    publicKey,
-    privateKey,
-  };
-}
-
-async function publicKeyToPem(
-  publicKey: BufferSource | CryptoKey,
-): Promise<PublicKeyPem> {
-  if (isBufferSource(publicKey)) {
-    publicKey = await importPublicKey(publicKey);
-  }
-  const spki = bufferWrap(await webcrypto.subtle.exportKey('spki', publicKey));
-  return `-----BEGIN PUBLIC KEY-----\n${spki.toString(
-    'base64',
-  )}\n-----END PUBLIC KEY-----\n` as PublicKeyPem;
-}
-
-async function publicKeyFromPem(
-  publicKeyPem: PublicKeyPem,
-): Promise<PublicKey | undefined> {
-  const match = publicKeyPem.match(
-    /-----BEGIN PUBLIC KEY-----\n([A-Za-z0-9+/=]+)\n-----END PUBLIC KEY-----\n/,
-  );
-  if (match == null) {
-    return undefined;
-  }
-  const spki = Buffer.from(match[1], 'base64');
-  let publicKey;
-  try {
-    publicKey = await webcrypto.subtle.importKey(
-      'spki',
-      spki,
-      {
-        name: 'EdDSA',
-        namedCurve: 'Ed25519',
-      },
-      true,
-      ['verify'],
-    );
-  } catch (e) {
-    if (e instanceof TypeError) {
-      return undefined;
-    }
-    throw e;
-  }
-  return exportPublicKey(publicKey);
-}
-
-async function privateKeyToPem(
-  privateKey: BufferSource | CryptoKey,
-): Promise<PrivateKeyPem> {
-  if (isBufferSource(privateKey)) {
-    privateKey = await importPrivateKey(privateKey);
-  }
-  const pkcs8 = bufferWrap(
-    await webcrypto.subtle.exportKey('pkcs8', privateKey),
-  );
-  return `-----BEGIN PRIVATE KEY-----\n${pkcs8.toString(
-    'base64',
-  )}\n-----END PRIVATE KEY-----\n` as PrivateKeyPem;
-}
-
-async function privateKeyFromPem(
-  privateKeyPem: PrivateKeyPem,
-): Promise<PrivateKey | undefined> {
-  const match = privateKeyPem.match(
-    /-----BEGIN PRIVATE KEY-----\n([A-Za-z0-9+/=]+)\n-----END PRIVATE KEY-----\n/,
-  );
-  if (match == null) {
-    return undefined;
-  }
-  const pkcs8 = Buffer.from(match[1], 'base64');
-  let privateKey;
-  try {
-    privateKey = await webcrypto.subtle.importKey(
-      'pkcs8',
-      pkcs8,
-      {
-        name: 'EdDSA',
-        namedCurve: 'Ed25519',
-      },
-      true,
-      ['sign'],
-    );
-  } catch (e) {
-    if (e instanceof TypeError) {
-      return undefined;
-    }
-    throw e;
-  }
-  return exportPrivateKey(privateKey);
-}
-
-async function keyPairToPem(keyPair: {
-  publicKey: CryptoKey | BufferSource;
-  privateKey: CryptoKey | BufferSource;
-}): Promise<KeyPairPem> {
-  return {
-    publicKey: await publicKeyToPem(keyPair.publicKey),
-    privateKey: await privateKeyToPem(keyPair.privateKey),
-  };
-}
-
-async function keyPairFromPem(
-  keyPair: KeyPairPem,
-): Promise<KeyPair | undefined> {
-  const publicKey = await publicKeyFromPem(keyPair.publicKey);
-  const privateKey = await privateKeyFromPem(keyPair.privateKey);
-  if (publicKey == null || privateKey == null) {
-    return undefined;
-  }
-  return {
-    publicKey,
-    privateKey,
-  };
 }
 
 /**
  * Extracts Ed25519 Public Key from Ed25519 Private Key
  */
-async function publicKeyFromPrivateKeyEd25519(
-  privateKey: BufferSource,
-): Promise<PublicKey> {
-  return bufferWrap(
-    await nobleEd25519.getPublicKey(bufferWrap(privateKey)),
-  ) as PublicKey;
+function publicKeyFromPrivateKeyEd25519(privateKey: PrivateKey): PublicKey {
+  const publicKey = Buffer.allocUnsafe(sodium.crypto_sign_PUBLICKEYBYTES);
+  sodium.crypto_sign_seed_keypair(
+    publicKey,
+    Buffer.allocUnsafe(sodium.crypto_sign_SECRETKEYBYTES),
+    privateKey,
+  );
+  return publicKey as PublicKey;
 }
 
 /**
  * Extracts X25519 Public Key from X25519 Private Key
  */
-function publicKeyFromPrivateKeyX25519(privateKey: BufferSource): Buffer {
-  return bufferWrap(
-    nobleEd25519.curve25519.scalarMultBase(bufferWrap(privateKey)),
+function publicKeyFromPrivateKeyX25519(privateKey: PrivateKeyX): PublicKeyX {
+  const publicKey = Buffer.allocUnsafe(sodium.crypto_box_PUBLICKEYBYTES);
+  sodium.crypto_box_seed_keypair(
+    publicKey,
+    Buffer.allocUnsafe(sodium.crypto_box_SECRETKEYBYTES),
+    privateKey,
   );
+  return publicKey as PublicKeyX;
 }
 
 /**
  * Maps Ed25519 public key to X25519 public key
  */
-function publicKeyEd25519ToX25519(publicKey: BufferSource): Buffer {
-  return bufferWrap(
-    nobleEd25519.Point.fromHex(bufferWrap(publicKey)).toX25519(),
-  );
+function publicKeyEd25519ToX25519(publicKey: PublicKey): PublicKeyX {
+  const publicKeyX25519 = Buffer.allocUnsafe(sodium.crypto_box_PUBLICKEYBYTES);
+  sodium.crypto_sign_ed25519_pk_to_curve25519(publicKeyX25519, publicKey);
+  return publicKeyX25519 as PublicKeyX;
 }
 
 /**
  * Maps Ed25519 private key to X25519 private key
  */
-async function privateKeyEd25519ToX25519(
-  privateKey: BufferSource,
-): Promise<Buffer> {
-  return bufferWrap(
-    (await nobleEd25519.utils.getExtendedPublicKey(bufferWrap(privateKey)))
-      .head,
+function privateKeyEd25519ToX25519(privateKey: PrivateKey): PrivateKeyX {
+  const secretKeyX25519 = Buffer.allocUnsafe(sodium.crypto_box_SECRETKEYBYTES);
+  const publicKey = publicKeyFromPrivateKeyEd25519(privateKey);
+  const secretKeyEd25519 = Buffer.concat([privateKey, publicKey]);
+  sodium.crypto_sign_ed25519_sk_to_curve25519(
+    secretKeyX25519,
+    secretKeyEd25519,
   );
+  const privateKeyX25519 = secretKeyX25519.slice(
+    0,
+    sodium.crypto_box_SEEDBYTES,
+  );
+  return privateKeyX25519 as PrivateKeyX;
 }
 
 /**
  * Maps Ed25519 keypair to X25519 keypair
  */
-async function keyPairEd25519ToX25519(keyPair: {
-  publicKey: BufferSource;
-  privateKey: BufferSource;
-}): Promise<{ publicKey: Buffer; privateKey: Buffer }> {
+function keyPairEd25519ToX25519(keyPair: KeyPair): KeyPairX {
+  const publicKeyX25519 = publicKeyEd25519ToX25519(keyPair.publicKey);
+  const secretKeyX25519 = Buffer.allocUnsafe(sodium.crypto_box_SECRETKEYBYTES);
+  sodium.crypto_sign_ed25519_sk_to_curve25519(
+    secretKeyX25519,
+    keyPair.secretKey,
+  );
+  const privateKeyX25519 = secretKeyX25519.slice(
+    0,
+    sodium.crypto_box_SEEDBYTES,
+  );
   return {
-    publicKey: publicKeyEd25519ToX25519(keyPair.publicKey),
-    privateKey: await privateKeyEd25519ToX25519(keyPair.privateKey),
-  };
+    publicKey: publicKeyX25519,
+    privateKey: privateKeyX25519,
+    secretKey: secretKeyX25519,
+  } as KeyPairX;
 }
 
 /**
  * Asymmetric public key encryption also known as ECIES.
  * The sender key pair will be randomly generated if not supplied.
  * If it is randomly generated, then we are using an ephemeral sender.
- * This is more secure than using a static sender key pair.
+ *
+ * Using a static sender key pair means there is no forward secrecy.
+ * If the private key of the sender or receiver is compromised, all messages
+ * are compromised.
+ *
+ * Using an ephemeral sender key pair provides 1-way forward secrecy.
+ * Only if the private key of the receiver is compromised, all messages
+ * are compromised.
+ *
+ * Using both ephemeral sender and receiver maintains forward secrecy.
+ * However this requires live negotiation between the sender and receiver.
  *
  * This supports:
  *   - ECDH-ES - ephemeral sender, static receiver
  *   - ECDH-SS - static sender, static receiver
- *   - ECDH-EE - ephemeral sender, ephemeral receiver
- * To understand the difference, see:
- * https://crypto.stackexchange.com/a/61760/102416
  *
- * The resulting cipher text will have the following format:
- * `publicKey || iv || cipherText || authTag`
+ * The static receiver could be ephemeral, but that depends on where you get
+ * the sender key pair.
  *
- * This scheme is derives X25519 key pair from Ed25519 key pair to perform ECDH.
- * See: https://eprint.iacr.org/2011/615 and https://eprint.iacr.org/2021/509
+ * More information: https://crypto.stackexchange.com/a/61760/102416
+ *
+ * Under ECDH-SS, the result will have the following format:
+ * `iv<24> || mac<16> || cipherText`
+ * Note that the sender public key is not attached in the result.
+ * You can do that if you want to.
+ *
+ * Under ECDH-ES, the result will have the following format:
+ * `publicKeyX<32> || mac<16> || cipherText`
+ * Where `publicKeyX` is the X25519 public key.
  */
-async function encryptWithPublicKey(
-  receiverPublicKey: BufferSource | CryptoKey,
-  plainText: BufferSource,
-  senderKeyPair?: {
-    publicKey: BufferSource | CryptoKey;
-    privateKey: BufferSource | CryptoKey;
-  },
-): Promise<Buffer> {
-  receiverPublicKey = await exportPublicKey(receiverPublicKey);
-  let senderKeyPair_: KeyPair;
-  // Generate ephemeral key pair if the sender key pair is not set
-  if (senderKeyPair == null) {
-    senderKeyPair_ = await generateKeyPair();
+function encryptWithPublicKey(
+  receiverPublicKey: PublicKey,
+  plainText: Buffer,
+  senderKeyPair?: KeyPair,
+): Buffer {
+  const recieverPublicKeyX25519 = publicKeyEd25519ToX25519(receiverPublicKey);
+  // 24 bytes of nonce
+  if (senderKeyPair != null) {
+    // ECDH-SS and ECDH-SE
+    const senderKeyPairX25519 = keyPairEd25519ToX25519(senderKeyPair);
+    const nonce = getRandomBytes(sodium.crypto_box_NONCEBYTES);
+    const macAndCipherText = Buffer.allocUnsafe(
+      sodium.crypto_box_MACBYTES + plainText.byteLength,
+    );
+    sodium.crypto_box_easy(
+      macAndCipherText,
+      plainText,
+      nonce,
+      recieverPublicKeyX25519,
+      senderKeyPairX25519.secretKey,
+    );
+    // Note that no public key is concatenated here
+    // If it needs to be done, you must do it yourself
+    return Buffer.concat([nonce, macAndCipherText]);
   } else {
-    senderKeyPair_ = {
-      publicKey: await exportPublicKey(senderKeyPair.publicKey),
-      privateKey: await exportPrivateKey(senderKeyPair.privateKey),
-    };
+    // ECDH-ES and ECDH-EE
+    // This does not require a nonce
+    // The nonce is automatically calculated based on the ephemeral public key
+    // The SEALBYTES is 48 bytes
+    // The first 32 bytes are the ephemeral public key
+    // The next 16 bytes is used by the MAC
+    const publicKeyAndMacAndCipherText = Buffer.allocUnsafe(
+      sodium.crypto_box_SEALBYTES + plainText.byteLength,
+    );
+    sodium.crypto_box_seal(
+      publicKeyAndMacAndCipherText,
+      plainText,
+      recieverPublicKeyX25519,
+    );
+    return publicKeyAndMacAndCipherText;
   }
-  const receiverPublicKeyX25519 = publicKeyEd25519ToX25519(receiverPublicKey);
-  const senderPrivateKeyX25519 = await privateKeyEd25519ToX25519(
-    senderKeyPair_.privateKey,
-  );
-  const senderPublicKeyX25519 = publicKeyFromPrivateKeyX25519(
-    senderPrivateKeyX25519,
-  );
-  const sharedSecret = deriveSharedSecret(
-    receiverPublicKeyX25519,
-    senderPrivateKeyX25519,
-  );
-  const pseudoRandomKey = derivePseudoRandomKey(
-    sharedSecret,
-    senderPublicKeyX25519,
-    receiverPublicKeyX25519,
-  );
-  const encryptionKey = deriveEncryptionKey(pseudoRandomKey);
-  // Authenticated symmetric encryption
-  // This uses AES-GCM, so the cipher text already has a message authentication code
-  const cipherText = await encryptWithKey(encryptionKey, bufferWrap(plainText));
-  return Buffer.concat([senderKeyPair_.publicKey, cipherText]);
 }
 
 /**
  * Asymmetric public key decryption also known as ECIES.
  *
- * It is expected that the cipher text will have the following format:
- * `publicKey || iv || cipherText || authTag`
+ * Under ECDH-SS, the cipher text should have the following format:
+ * `iv<24> || cipherText || mac<16>`
+ *
+ * Under ECDH-ES and ECDH-EE, the cipher text should have the following format:
+ * `publicKey<32> || cihperText || mac<16>`
  */
-async function decryptWithPrivateKey(
-  receiverPrivateKey: BufferSource | CryptoKey,
-  cipherText: BufferSource,
-): Promise<Buffer | undefined> {
-  receiverPrivateKey = await exportPrivateKey(receiverPrivateKey);
-  const cipherText_ = bufferWrap(cipherText);
-  if (cipherText_.byteLength < 32) {
-    return;
+function decryptWithPrivateKey(
+  receiverKeyPair: KeyPair,
+  cipherText: Buffer,
+  senderPublicKey?: PublicKey,
+): Buffer | undefined {
+  const receiverKeyPairX25519 = keyPairEd25519ToX25519(receiverKeyPair);
+  if (senderPublicKey != null) {
+    // You know where this message is from
+    if (
+      cipherText.byteLength <
+      sodium.crypto_box_NONCEBYTES + sodium.crypto_box_MACBYTES
+    ) {
+      return;
+    }
+    const senderPublicKeyX25519 = publicKeyEd25519ToX25519(senderPublicKey);
+    const nonce = cipherText.slice(0, sodium.crypto_box_NONCEBYTES);
+    const cipherTextAndMac = cipherText.slice(sodium.crypto_box_NONCEBYTES);
+    const plainText = Buffer.allocUnsafe(
+      cipherTextAndMac.byteLength - sodium.crypto_box_MACBYTES,
+    );
+    const decrypted = sodium.crypto_box_open_easy(
+      plainText,
+      cipherTextAndMac,
+      nonce,
+      senderPublicKeyX25519,
+      receiverKeyPairX25519.secretKey,
+    );
+    if (!decrypted) {
+      return;
+    }
+    return plainText;
+  } else {
+    if (cipherText.byteLength < sodium.crypto_box_SEALBYTES) {
+      return;
+    }
+    // ES style, you don't know who it was from
+    // you can still do sign-then-encrypt though
+    const plainText = Buffer.allocUnsafe(
+      cipherText.byteLength - sodium.crypto_box_SEALBYTES,
+    );
+    const decrypted = sodium.crypto_box_seal_open(
+      plainText,
+      cipherText,
+      receiverKeyPairX25519.publicKey,
+      receiverKeyPairX25519.secretKey,
+    );
+    if (!decrypted) {
+      return;
+    }
+    return plainText;
   }
-  const senderPublicKey = cipherText_.slice(0, 32) as PublicKey;
-  const data = cipherText_.slice(32);
-  const senderPublicKeyX25519 = publicKeyEd25519ToX25519(senderPublicKey);
-  const receiverPrivateKeyX25519 = await privateKeyEd25519ToX25519(
-    receiverPrivateKey,
-  );
-  const receiverPublicKeyX25519 = publicKeyFromPrivateKeyX25519(
-    receiverPrivateKeyX25519,
-  );
-  const sharedSecret = deriveSharedSecret(
-    senderPublicKeyX25519,
-    receiverPrivateKeyX25519,
-  );
-  const pseudoRandomKey = derivePseudoRandomKey(
-    sharedSecret,
-    senderPublicKeyX25519,
-    receiverPublicKeyX25519,
-  );
-  const encryptionKey = deriveEncryptionKey(pseudoRandomKey);
-  const plainText = await decryptWithKey(encryptionKey, data);
-  return plainText;
 }
 
 /**
  * Sign with private key.
  * This returns a signature buffer.
  */
-async function signWithPrivateKey(
-  privateKey: BufferSource | CryptoKey,
-  data: BufferSource,
-): Promise<Buffer> {
-  if (!isBufferSource(privateKey)) {
-    privateKey = await exportPrivateKey(privateKey);
+function signWithPrivateKey(
+  privateKeyOrKeyPair: PrivateKey | KeyPair,
+  data: Buffer,
+): Signature {
+  const signature = Buffer.allocUnsafe(sodium.crypto_sign_BYTES);
+  let secretKey;
+  if (Buffer.isBuffer(privateKeyOrKeyPair)) {
+    const publicKey = publicKeyFromPrivateKeyEd25519(privateKeyOrKeyPair);
+    secretKey = Buffer.concat([privateKeyOrKeyPair, publicKey]);
+  } else {
+    secretKey = privateKeyOrKeyPair.secretKey;
   }
-  return bufferWrap(
-    await nobleEd25519.sign(bufferWrap(data), bufferWrap(privateKey)),
-  );
+  sodium.crypto_sign_detached(signature, data, secretKey);
+  return signature as Signature;
 }
 
 /**
  * Verifies signature with public key
  */
-async function verifyWithPublicKey(
-  publicKey: BufferSource | CryptoKey,
-  data: BufferSource,
-  signature: BufferSource,
-): Promise<boolean> {
-  if (!isBufferSource(publicKey)) {
-    publicKey = await exportPublicKey(publicKey);
-  }
-  return nobleEd25519.verify(
-    bufferWrap(signature),
-    bufferWrap(data),
-    bufferWrap(publicKey),
-  );
+function verifyWithPublicKey(
+  publicKey: PublicKey,
+  data: Buffer,
+  signature: Signature,
+): boolean {
+  return sodium.crypto_sign_verify_detached(signature, data, publicKey);
 }
 
 /**
  * Key Encapsulation Mechanism (KEM).
- * This encapsulates a JWK with a public key and produces a JWE.
- * This uses the same ECIES scheme as `encryptWithPublicKey`.
+ * This encapsulates a JWK with a public key and produces a custom JWE.
+ * This applies the ECIES protocol in `encryptWithPublicKey` from libsodium to JWE.
+ *
+ * This JWE uses custom header properties:
+ *   - alg: "ECDH-SS-NaCl"
+ *   - enc: "XSalsa20-Poly1305"
+ * or when doing ECDH-ES:
+ *   - alg: "ECDH-ES-NaCl"
+ *   - enc: "XSalsa20-Poly1305"
  */
-async function encapsulateWithPublicKey(
-  receiverPublicKey: BufferSource | CryptoKey,
+function encapsulateWithPublicKey(
+  receiverPublicKey: PublicKey,
   keyJWK: JWK,
-  senderKeyPair?: {
-    publicKey: BufferSource | CryptoKey;
-    privateKey: BufferSource | CryptoKey;
-  },
-): Promise<JWEFlattened> {
-  receiverPublicKey = await exportPublicKey(receiverPublicKey);
-  let senderKeyPair_: KeyPair;
-  // Generate ephemeral key pair if the sender key pair is not set
-  if (senderKeyPair == null) {
-    senderKeyPair_ = await generateKeyPair();
-  } else {
-    senderKeyPair_ = {
-      publicKey: await exportPublicKey(senderKeyPair.publicKey),
-      privateKey: await exportPrivateKey(senderKeyPair.privateKey),
+  senderKeyPair?: KeyPair,
+): JWKEncrypted {
+  const recieverPublicKeyX25519 = publicKeyEd25519ToX25519(receiverPublicKey);
+  if (senderKeyPair != null) {
+    // ECDH-SS and ECDH-SE
+    const senderKeyPairX25519 = keyPairEd25519ToX25519(senderKeyPair);
+    // This assumes nonce here is used for both generating shared secret
+    // and for the symmetric encryption
+    // But is this true?
+    // in JWE the nonce/iv is supposed to be used by the `enc` algorithm
+    // Which does in fact require a nonce, are they re-using the same nonce somehow?
+    const nonce = getRandomBytes(sodium.crypto_box_NONCEBYTES);
+    const mac = Buffer.allocUnsafe(sodium.crypto_box_MACBYTES);
+    const plainText = Buffer.from(JSON.stringify(keyJWK), 'utf-8');
+    const cipherText = Buffer.allocUnsafe(plainText.byteLength);
+    sodium.crypto_box_detached(
+      cipherText,
+      mac,
+      plainText,
+      nonce,
+      recieverPublicKeyX25519,
+      senderKeyPairX25519.secretKey,
+    );
+    // Normally in JOSE, the protected header contents is base64url encoded then
+    // passed along as the AAD when computing the auth tag during symmetric encryption.
+    // This means if the header was tampered with, the AEAD decryption will fail.
+    // Note that there is no integrity check of the protected header.
+    // However there is no AAD in libsodium's PKAE/ECIES https://crypto.stackexchange.com/q/29311/102416
+    // This means the header cannot be used to authenticate the message.
+    // This is not a big problem, because the header is public information used to aid
+    // the decryption process. Even if the header is tampered with, we still have
+    // authenticated encryption with the mac that was computed.
+    // All we lose here is the ability to "trust" that the header wasn't tampered with.
+    // But this is not relevant to the use case of key encapsulation.
+    // So in this situation, we use JWE's shared unprotected header property instead.
+    // However this prevents us from ever using compact serialization, which only supports
+    // protected headers.
+    const sharedUnprotectedHeader = {
+      alg: 'ECDH-SS-NaCl' as const,
+      enc: 'XSalsa20-Poly1305' as const,
+      cty: 'jwk+json' as const,
     };
+    const keyJWE = {
+      ciphertext: cipherText.toString('base64url'),
+      iv: nonce.toString('base64url'),
+      tag: mac.toString('base64url'),
+      unprotected: sharedUnprotectedHeader,
+    };
+    return keyJWE;
+  } else {
+    // ECDH-ES and ECDH-EE
+    const plainText = Buffer.from(JSON.stringify(keyJWK), 'utf-8');
+    const publicKeyAndMacAndCipherText = Buffer.allocUnsafe(
+      sodium.crypto_box_SEALBYTES + plainText.byteLength,
+    );
+    // Libsodium does not have a detached variant of sealed boxes
+    // Here we have to extract out of the resulting buffer
+    sodium.crypto_box_seal(
+      publicKeyAndMacAndCipherText,
+      plainText,
+      recieverPublicKeyX25519,
+    );
+    const senderPublicKeyX25519 = publicKeyAndMacAndCipherText.slice(
+      0,
+      sodium.crypto_box_PUBLICKEYBYTES,
+    ) as PublicKeyX;
+    const mac = publicKeyAndMacAndCipherText.slice(
+      sodium.crypto_box_PUBLICKEYBYTES,
+      sodium.crypto_box_PUBLICKEYBYTES + sodium.crypto_box_MACBYTES,
+    );
+    const cipherText = publicKeyAndMacAndCipherText.slice(
+      sodium.crypto_box_PUBLICKEYBYTES + sodium.crypto_box_MACBYTES,
+    );
+    const sharedUnprotectedHeader = {
+      alg: 'ECDH-ES-NaCl' as const,
+      enc: 'XSalsa20-Poly1305' as const,
+      cty: 'jwk+json' as const,
+      epk: {
+        kty: 'OKP' as const,
+        crv: 'X25519' as const,
+        x: senderPublicKeyX25519.toString('base64url'),
+      },
+    };
+    const keyJWE = {
+      ciphertext: cipherText.toString('base64url'),
+      tag: mac.toString('base64url'),
+      unprotected: sharedUnprotectedHeader,
+    };
+    return keyJWE;
   }
-  const receiverPublicKeyX25519 = publicKeyEd25519ToX25519(receiverPublicKey);
-  const senderPrivateKeyX25519 = await privateKeyEd25519ToX25519(
-    senderKeyPair_.privateKey,
-  );
-  const senderPublicKeyX25519 = publicKeyFromPrivateKeyX25519(
-    senderPrivateKeyX25519,
-  );
-  const sharedSecret = deriveSharedSecret(
-    receiverPublicKeyX25519,
-    senderPrivateKeyX25519,
-  );
-  const pseudoRandomKey = derivePseudoRandomKey(
-    sharedSecret,
-    senderPublicKeyX25519,
-    receiverPublicKeyX25519,
-  );
-  const encryptionKey = deriveEncryptionKey(pseudoRandomKey);
-  const keyJWEFactory = new jose.FlattenedEncrypt(
-    Buffer.from(JSON.stringify(keyJWK), 'utf-8'),
-  );
-  // Because this is a custom ECDH-ES
-  // we inject the spk manually into the protected header
-  keyJWEFactory.setProtectedHeader({
-    alg: 'dir',
-    enc: 'A256GCM',
-    cty: 'jwk+json',
-    spk: await publicKeyToJWK(senderKeyPair_.publicKey),
-  });
-  const keyJWE = await keyJWEFactory.encrypt(encryptionKey);
-  return keyJWE;
 }
 
 /**
@@ -617,45 +391,89 @@ async function encapsulateWithPublicKey(
  * This decapsulates a JWE with a private key and produces a JWK.
  * This uses the same ECIES scheme as `decryptWithPrivateKey`.
  */
-async function decapsulateWithPrivateKey(
-  receiverPrivateKey: BufferSource | CryptoKey,
-  keyJWE: JWEFlattened,
-): Promise<JWK | undefined> {
-  receiverPrivateKey = await exportPrivateKey(receiverPrivateKey);
-  let header: jose.ProtectedHeaderParameters;
+function decapsulateWithPrivateKey(
+  receiverKeyPair: KeyPair,
+  keyJWE: any,
+  senderPublicKey?: PublicKey,
+): JWK | undefined {
+  if (typeof keyJWE !== 'object' || keyJWE == null) {
+    return;
+  }
+  if (
+    typeof keyJWE.unprotected !== 'object' ||
+    keyJWE.unprotected == null ||
+    typeof keyJWE.ciphertext !== 'string' ||
+    typeof keyJWE.tag !== 'string'
+  ) {
+    return;
+  }
+  const header = keyJWE.unprotected;
+  if (header.enc !== 'XSalsa20-Poly1305' || header.cty !== 'jwk+json') {
+    return;
+  }
+  const receiverKeyPairX25519 = keyPairEd25519ToX25519(receiverKeyPair);
+  let plainText;
+  if (senderPublicKey != null) {
+    if (header.alg !== 'ECDH-SS-NaCl') {
+      return;
+    }
+    if (keyJWE.iv == null) {
+      return;
+    }
+    const senderPublicKeyX25519 = publicKeyEd25519ToX25519(senderPublicKey);
+    const cipherText = Buffer.from(keyJWE.ciphertext, 'base64url');
+    plainText = Buffer.allocUnsafe(cipherText.byteLength);
+    const mac = Buffer.from(keyJWE.tag, 'base64url');
+    const nonce = Buffer.from(keyJWE.iv, 'base64url');
+    const decrypted = sodium.crypto_box_open_detached(
+      plainText,
+      mac,
+      cipherText,
+      nonce,
+      senderPublicKeyX25519,
+      receiverKeyPairX25519.secretKey,
+    );
+    if (!decrypted) {
+      return;
+    }
+  } else {
+    if (
+      header.alg !== 'ECDH-ES-NaCl' ||
+      typeof header.epk !== 'object' ||
+      header.epk == null
+    ) {
+      return;
+    }
+    const senderPublicJWK = header.epk as any;
+    if (
+      senderPublicJWK.kty !== 'OKP' ||
+      senderPublicJWK.crv !== 'X25519' ||
+      typeof senderPublicJWK.x !== 'string'
+    ) {
+      return;
+    }
+    const senderPublicKeyX25519 = Buffer.from(senderPublicJWK.x, 'base64url');
+    const mac = Buffer.from(keyJWE.tag, 'base64url');
+    const cipherText = Buffer.from(keyJWE.ciphertext, 'base64url');
+    plainText = Buffer.allocUnsafe(cipherText.byteLength);
+    const publicKeyAndMacAndCipherText = Buffer.concat([
+      senderPublicKeyX25519,
+      mac,
+      cipherText,
+    ]);
+    const decrypted = sodium.crypto_box_seal_open(
+      plainText,
+      publicKeyAndMacAndCipherText,
+      receiverKeyPairX25519.publicKey,
+      receiverKeyPairX25519.secretKey,
+    );
+    if (!decrypted) {
+      return;
+    }
+  }
+  let keyJWK;
   try {
-    header = jose.decodeProtectedHeader(keyJWE);
-  } catch {
-    return;
-  }
-  if (header.spk == null) {
-    return;
-  }
-  const senderPublicKey = await publicKeyFromJWK(header.spk as JWK);
-  if (senderPublicKey == null) {
-    return;
-  }
-  const senderPublicKeyX25519 = publicKeyEd25519ToX25519(senderPublicKey);
-  const receiverPrivateKeyX25519 = await privateKeyEd25519ToX25519(
-    receiverPrivateKey,
-  );
-  const receiverPublicKeyX25519 = publicKeyFromPrivateKeyX25519(
-    receiverPrivateKeyX25519,
-  );
-  const sharedSecret = deriveSharedSecret(
-    senderPublicKeyX25519,
-    receiverPrivateKeyX25519,
-  );
-  const pseudoRandomKey = derivePseudoRandomKey(
-    sharedSecret,
-    senderPublicKeyX25519,
-    receiverPublicKeyX25519,
-  );
-  const encryptionKey = deriveEncryptionKey(pseudoRandomKey);
-  let keyJWK: JWK;
-  try {
-    const result = await jose.flattenedDecrypt(keyJWE, encryptionKey);
-    keyJWK = JSON.parse(bufferWrap(result.plaintext).toString('utf-8'));
+    keyJWK = JSON.parse(plainText.toString('utf-8'));
   } catch {
     return;
   }
@@ -666,99 +484,13 @@ async function decapsulateWithPrivateKey(
  * Checks if the public key is a point on the Ed25519 curve
  */
 function validatePublicKey(publicKey: PublicKey): boolean {
-  try {
-    nobleEd25519.Point.fromHex(publicKey);
-    return true;
-  } catch {
-    // If there's an error, it is an invalid public key
-    return false;
-  }
-}
-
-/**
- * Elliptic Curve Diffie Hellman Key Exchange.
- * This takes X25519 keys to perform ECDH.
- * On the sending side, use:
- *   - receiver's public key
- *   - ephemeral private key OR sender's private key
- * On the receiving side, use:
- *   - sender's public key
- *   - receiver's private key
- * It is possible that multiple public keys can produce the same shared secret.
- * Therefore the shared secret must be passed into KDF before being used.
- */
-function deriveSharedSecret(
-  publicKeyX25519: Buffer,
-  privateKeyX25519: Buffer,
-): Buffer {
-  // Const publicKeyX25519 = publicKeyEd25519ToX25519(publicKey);
-  // const privateKeyX25519 = await privateKeyEd25519ToX25519(privateKey);
-  const sharedSecret = nobleEd25519.curve25519.scalarMult(
-    privateKeyX25519,
-    publicKeyX25519,
-  );
-  return bufferWrap(sharedSecret);
-}
-
-/**
- * Derive PRK from concatenated shared secret, sender public key and receiver
- * public key using HKDF. It is possible that multiple public keys can produce
- * the same shared secret. Therefore the sender and receiver public keys are
- * concatenated as an extra layer of security.
- * This should only be done once, and multiple
- * subkeys should be derived from the PRK.
- * The returned size is 64 bytes.
- */
-function derivePseudoRandomKey(
-  sharedSecret: Buffer,
-  senderPublicKeyX25519: Buffer,
-  receiverPublicKeyX25519: Buffer,
-): Buffer {
-  return bufferWrap(
-    nobleHkdf.extract(
-      nobleSha512,
-      Buffer.concat([
-        sharedSecret,
-        senderPublicKeyX25519,
-        receiverPublicKeyX25519,
-      ]),
-    ),
-  );
-}
-
-/**
- * Derive encryption key from PRK using HKDF.
- * This key is suitable for AES256GCM encryption/decryption.
- * The returned size is 32 bytes.
- */
-function deriveEncryptionKey(pseudoRandomKey: Buffer): Buffer {
-  // Use `info` to expand to different keys
-  return bufferWrap(
-    nobleHkdf.expand(nobleSha256, pseudoRandomKey, 'encryption', 32),
-  );
+  return sodium.crypto_core_ed25519_is_valid_point(publicKey);
 }
 
 export {
-  importPublicKey,
-  importPrivateKey,
-  importKeyPair,
-  exportPublicKey,
-  exportPrivateKey,
-  exportKeyPair,
+  makeKeyPair,
   publicKeyToNodeId,
   publicKeyFromNodeId,
-  publicKeyToJWK,
-  publicKeyFromJWK,
-  privateKeyToJWK,
-  privateKeyFromJWK,
-  keyPairToJWK,
-  keyPairFromJWK,
-  publicKeyToPem,
-  publicKeyFromPem,
-  privateKeyToPem,
-  privateKeyFromPem,
-  keyPairToPem,
-  keyPairFromPem,
   publicKeyFromPrivateKeyEd25519,
   publicKeyFromPrivateKeyX25519,
   publicKeyEd25519ToX25519,
@@ -771,7 +503,4 @@ export {
   encapsulateWithPublicKey,
   decapsulateWithPrivateKey,
   validatePublicKey,
-  deriveSharedSecret,
-  derivePseudoRandomKey,
-  deriveEncryptionKey,
 };

@@ -6,7 +6,7 @@ import type {
   RecoveryCode,
   JWK,
   JWEFlattened,
-} from './utils/types';
+} from './types';
 import type { NodeId } from '../ids/types';
 import type { FileSystem } from '../types';
 import path from 'path';
