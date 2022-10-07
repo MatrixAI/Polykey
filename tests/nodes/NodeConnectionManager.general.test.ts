@@ -321,8 +321,6 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     },
     globalThis.polykeyStartupTimeout,
   );
-  // FIXME: This is a know failure due to connection deadline bug,
-  //  disabling for now
   test(
     'cannot find node (contacts remote node)',
     async () => {

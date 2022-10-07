@@ -27,7 +27,7 @@ import Sigchain from '@/sigchain/Sigchain';
 import NotificationsManager from '@/notifications/NotificationsManager';
 import * as nodesErrors from '@/nodes/errors';
 import * as networkErrors from '@/network/errors';
-import { poll, promise, promisify } from '@/utils';
+import { poll, promise, promisify, sleep } from '@/utils';
 import PolykeyAgent from '@/PolykeyAgent';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as GRPCErrors from '@/grpc/errors';
@@ -554,6 +554,29 @@ describe(`${NodeConnection.name} test`, () => {
         { timer: new Timer({ delay: 300 }) },
       ),
     ).rejects.toThrow(nodesErrors.ErrorNodeConnectionTimeout);
+  });
+  test('Times out after expected delay', async () => {
+    let timedOut = false;
+    const connProm = NodeConnection.createNodeConnection(
+      {
+        targetNodeId: targetNodeId,
+        targetHost: '128.0.0.1' as Host,
+        targetPort: 12345 as Port,
+        proxy: clientProxy,
+        keyManager: clientKeyManager,
+        nodeConnectionManager: dummyNodeConnectionManager,
+        destroyCallback,
+        logger: logger,
+        clientFactory: (args) => GRPCClientAgent.createGRPCClientAgent(args),
+      },
+      { timer: new Timer({ delay: 1000 }) },
+    ).catch(() => (timedOut = true));
+    expect(timedOut).toBeFalse();
+    await sleep(500);
+    expect(timedOut).toBeFalse();
+    await sleep(1000);
+    expect(timedOut).toBeTrue();
+    await connProm;
   });
   test('getRootCertChain', async () => {
     let nodeConnection: NodeConnection<GRPCClientAgent> | undefined;
