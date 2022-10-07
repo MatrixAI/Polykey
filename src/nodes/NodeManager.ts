@@ -46,18 +46,17 @@ class NodeManager {
   protected refreshBucketDelayJitter: number;
   protected pendingNodes: Map<number, Map<string, NodeAddress>> = new Map();
 
-  /**
-   * This is the timeout for long running tasks that make multiple connections
-   */
-  public readonly longTaskTimeout: number;
-
   public readonly basePath = this.constructor.name;
   protected refreshBucketHandler: TaskHandler = async (
     ctx,
     _taskInfo,
     bucketIndex,
   ) => {
-    await this.refreshBucket(bucketIndex, ctx);
+    await this.refreshBucket(
+      bucketIndex,
+      this.nodeConnectionManager.pingTimeout,
+      ctx,
+    );
     // When completed reschedule the task
     const jitter = nodesUtils.refreshBucketsDelayJitter(
       this.refreshBucketDelay,
@@ -134,7 +133,6 @@ class NodeManager {
     taskManager,
     refreshBucketDelay = 3600000, // 1 hour in milliseconds
     refreshBucketDelayJitter = 0.5, // Multiple of refreshBucketDelay to jitter by
-    longTaskTimeout = 120000, // 2 minuets for long running tasks
     logger,
   }: {
     db: DB;
@@ -156,7 +154,6 @@ class NodeManager {
     this.nodeGraph = nodeGraph;
     this.taskManager = taskManager;
     this.refreshBucketDelay = refreshBucketDelay;
-    this.longTaskTimeout = longTaskTimeout;
     // Clamped from 0 to 1 inclusive
     this.refreshBucketDelayJitter = Math.max(
       0,
@@ -231,7 +228,12 @@ class NodeManager {
     // For now we will just do a forward connect + relay message
     const targetAddress =
       address ??
-      (await this.nodeConnectionManager.findNode(nodeId, false, ctx));
+      (await this.nodeConnectionManager.findNode(
+        nodeId,
+        false,
+        this.nodeConnectionManager.pingTimeout,
+        ctx,
+      ));
     if (targetAddress == null) {
       throw new nodesErrors.ErrorNodeGraphNodeIdNotFound();
     }
@@ -536,10 +538,7 @@ class NodeManager {
     tran?: DBTransaction,
   ): PromiseCancellable<void>;
   @ready(new nodesErrors.ErrorNodeManagerNotRunning())
-  @timedCancellable(
-    true,
-    (nodeManager: NodeManager) => nodeManager.longTaskTimeout,
-  )
+  @timedCancellable(true)
   public async setNode(
     nodeId: NodeId,
     nodeAddress: NodeAddress,
@@ -638,10 +637,7 @@ class NodeManager {
     ctx?: Partial<ContextTimed>,
     tran?: DBTransaction,
   ): PromiseCancellable<void>;
-  @timedCancellable(
-    true,
-    (nodeManager: NodeManager) => nodeManager.longTaskTimeout,
-  )
+  @timedCancellable(true)
   protected async garbageCollectBucket(
     bucketIndex: number,
     pingTimeout: number | undefined,
@@ -830,18 +826,18 @@ class NodeManager {
    * Connections during the search will will share node information with other
    * nodes.
    * @param bucketIndex
+   * @param pingTimeout
    * @param ctx
    */
   public refreshBucket(
     bucketIndex: number,
+    pingTimeout?: number,
     ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<void>;
-  @timedCancellable(
-    true,
-    (nodeManager: NodeManager) => nodeManager.longTaskTimeout,
-  )
+  @timedCancellable(true)
   public async refreshBucket(
     bucketIndex: NodeBucketIndex,
+    pingTimeout: number | undefined,
     @context ctx: ContextTimed,
   ): Promise<void> {
     // We need to generate a random nodeId for this bucket
@@ -851,7 +847,12 @@ class NodeManager {
       bucketIndex,
     );
     // We then need to start a findNode procedure
-    await this.nodeConnectionManager.findNode(bucketRandomNodeId, true, ctx);
+    await this.nodeConnectionManager.findNode(
+      bucketRandomNodeId,
+      true,
+      pingTimeout,
+      ctx,
+    );
   }
 
   protected async setupRefreshBucketTasks(tran?: DBTransaction) {
@@ -1017,10 +1018,7 @@ class NodeManager {
     ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<void>;
   @ready(new nodesErrors.ErrorNodeManagerNotRunning())
-  @timedCancellable(
-    true,
-    (nodeManager: NodeManager) => nodeManager.longTaskTimeout,
-  )
+  @timedCancellable(true)
   public async syncNodeGraph(
     block: boolean = true,
     pingTimeout: number | undefined,
@@ -1029,11 +1027,11 @@ class NodeManager {
     this.logger.info('Syncing nodeGraph');
     for (const seedNodeId of this.nodeConnectionManager.getSeedNodes()) {
       // Check if the connection is viable
-      const timer =
-        pingTimeout != null ? new Timer({ delay: pingTimeout }) : undefined;
       if (
         (await this.pingNode(seedNodeId, undefined, {
-          timer,
+          timer: new Timer({
+            delay: pingTimeout ?? this.nodeConnectionManager.pingTimeout,
+          }),
           signal: ctx.signal,
         })) === false
       ) {
@@ -1043,7 +1041,7 @@ class NodeManager {
         await this.nodeConnectionManager.getRemoteNodeClosestNodes(
           seedNodeId,
           this.keyManager.getNodeId(),
-          ctx,
+          { signal: ctx.signal },
         );
       const localNodeId = this.keyManager.getNodeId();
       for (const [nodeId, nodeData] of closestNodes) {

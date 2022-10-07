@@ -160,6 +160,8 @@ class NodeConnection<T extends GRPCClient> {
             await nodeConnection.destroy();
           }
         },
+        // FIXME: this needs to be replaced with
+        //  the GRPC timerCancellable update
         timer: timerStart(ctx.timer.getTimeout()),
       });
       // 5. When finished, you have a connection to other node

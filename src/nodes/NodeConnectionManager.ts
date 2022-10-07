@@ -20,6 +20,7 @@ import { ready, StartStop } from '@matrixai/async-init/dist/StartStop';
 import { IdInternal } from '@matrixai/id';
 import { status } from '@matrixai/async-init';
 import { LockBox, RWLockWriter } from '@matrixai/async-locks';
+import { Timer } from '@matrixai/timer';
 import NodeConnection from './NodeConnection';
 import * as nodesUtils from './utils';
 import * as nodesErrors from './errors';
@@ -413,22 +414,21 @@ class NodeConnectionManager {
    * proceeds to locate it using Kademlia.
    * @param targetNodeId Id of the node we are tying to find
    * @param ignoreRecentOffline skips nodes that are within their backoff period
+   * @param pingTimeout timeout for any ping attempts
    * @param ctx
    */
   public findNode(
     targetNodeId: NodeId,
     ignoreRecentOffline?: boolean,
+    pingTimeout?: number,
     ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<NodeAddress | undefined>;
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
-  @timedCancellable(
-    true,
-    (nodeConnectionManager: NodeConnectionManager) =>
-      nodeConnectionManager.connConnectTime,
-  )
+  @timedCancellable(true)
   public async findNode(
     targetNodeId: NodeId,
     ignoreRecentOffline: boolean = false,
+    pingTimeout: number | undefined,
     @context ctx: ContextTimed,
   ): Promise<NodeAddress | undefined> {
     // First check if we already have an existing ID -> address record
@@ -439,6 +439,7 @@ class NodeConnectionManager {
       (await this.getClosestGlobalNodes(
         targetNodeId,
         ignoreRecentOffline,
+        pingTimeout ?? this.pingTimeout,
         ctx,
       ));
     // TODO: This currently just does one iteration
@@ -458,23 +459,22 @@ class NodeConnectionManager {
    * @param targetNodeId ID of the node attempting to be found (i.e. attempting
    * to find its IP address and port)
    * @param ignoreRecentOffline skips nodes that are within their backoff period
+   * @param pingTimeout
    * @param ctx
    * @returns whether the target node was located in the process
    */
   public getClosestGlobalNodes(
     targetNodeId: NodeId,
     ignoreRecentOffline?: boolean,
+    pingTimeout?: number,
     ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<NodeAddress | undefined>;
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
-  @timedCancellable(
-    true,
-    (nodeConnectionManager: NodeConnectionManager) =>
-      nodeConnectionManager.connConnectTime,
-  )
+  @timedCancellable(true)
   public async getClosestGlobalNodes(
     targetNodeId: NodeId,
     ignoreRecentOffline: boolean = false,
+    pingTimeout: number | undefined,
     @context ctx: ContextTimed,
   ): Promise<NodeAddress | undefined> {
     const localNodeId = this.keyManager.getNodeId();
@@ -516,7 +516,10 @@ class NodeConnectionManager {
           nextNodeId,
           nextNodeAddress.address.host,
           nextNodeAddress.address.port,
-          ctx,
+          {
+            signal: ctx.signal,
+            timer: new Timer({ delay: pingTimeout ?? this.pingTimeout }),
+          },
         )
       ) {
         await this.nodeManager!.setNode(nextNodeId, nextNodeAddress.address);
@@ -532,7 +535,7 @@ class NodeConnectionManager {
         foundClosest = await this.getRemoteNodeClosestNodes(
           nextNodeId,
           targetNodeId,
-          ctx,
+          { signal: ctx.signal },
         );
       } catch (e) {
         if (e instanceof nodesErrors.ErrorNodeConnectionTimeout) return;
@@ -553,7 +556,10 @@ class NodeConnectionManager {
             nodeId,
             nodeData.address.host,
             nodeData.address.port,
-            ctx,
+            {
+              signal: ctx.signal,
+              timer: new Timer({ delay: pingTimeout ?? this.pingTimeout }),
+            },
           ))
         ) {
           await this.nodeManager!.setNode(nodeId, nodeData.address);
