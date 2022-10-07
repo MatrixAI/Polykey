@@ -4,10 +4,14 @@
  * @module
  */
 
-export { default as webcrypto } from './webcrypto';
+export * from './webcrypto';
+export * from './asymmetric';
 export * from './generate';
+export * from './jwk';
+export * from './memory';
+export * from './password';
+export * from './pem';
 export * from './random';
 export * from './recoveryCode';
 export * from './symmetric';
-export * from './asymmetric';
 export * from './x509';

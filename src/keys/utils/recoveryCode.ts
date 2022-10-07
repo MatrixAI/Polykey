@@ -1,4 +1,4 @@
-import type { RecoveryCode } from './types';
+import type { RecoveryCode } from '../types';
 import './webcrypto';
 import * as bip39 from '@scure/bip39';
 import { wordlist as bip39Wordlist } from '@scure/bip39/wordlists/english';
@@ -12,7 +12,7 @@ function generateRecoveryCode(size: 12 | 24 = 24): RecoveryCode {
   throw RangeError(size);
 }
 
-function validateRecoveryCode(recoveryCode: string): boolean {
+function validateRecoveryCode(recoveryCode: string): recoveryCode is RecoveryCode {
   return bip39.validateMnemonic(recoveryCode, bip39Wordlist);
 }
 

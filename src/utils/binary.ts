@@ -88,10 +88,16 @@ function bigInt2Hex(bigInt: bigint, size?: number): string {
  * Big-endian order
  * Use parseInt for vice-versa
  */
-function dec2Hex(dec: number, size: number): string {
-  dec %= 16 ** size;
-  // `>>>` coerces dec to unsigned integer
-  return (dec >>> 0).toString(16).padStart(size, '0');
+function dec2Hex(dec: number, size?: number): string {
+  if (dec < 0) throw RangeError('`dec` must be positive');
+  if (size != null) {
+    if (size < 0) throw RangeError('`size` must be positive');
+    if (size === 0) return '';
+    dec %= 16 ** size;
+  } else {
+    size = 0;
+  }
+  return dec.toString(16).padStart(size, '0');
 }
 
 /**
@@ -99,10 +105,16 @@ function dec2Hex(dec: number, size: number): string {
  * Big-endian order
  * Use parseInt for vice-versa
  */
-function dec2Bits(dec: number, size: number): string {
-  dec %= 2 ** size;
-  // `>>>` coerces dec to unsigned integer
-  return (dec >>> 0).toString(2).padStart(size, '0');
+function dec2Bits(dec: number, size?: number): string {
+  if (dec < 0) throw RangeError('`dec` must be positive');
+  if (size != null) {
+    if (size < 0) throw RangeError('`size` must be positive');
+    if (size === 0) return '';
+    dec %= 2 ** size;
+  } else {
+    size = 0;
+  }
+  return dec.toString(2).padStart(size, '0');
 }
 
 /**

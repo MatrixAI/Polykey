@@ -1,42 +1,19 @@
-import webcrypto from './webcrypto';
-import { sleep } from '../../utils';
+import sodium from 'sodium-native';
 
-/**
- * Get random bytes asynchronously.
- * This yields the event loop each 65,536 bytes.
- */
-async function getRandomBytes(size: number): Promise<Buffer> {
+function getRandomBytes(size: number, seedNumber?: number) {
   const randomBytes = Buffer.allocUnsafe(size);
-  let i = 0;
-  while (size > 0) {
-    // Webcrypto limits a max 65,536 random bytes at a time
-    const chunkSize = Math.min(size, 65536);
-    const chunk = randomBytes.slice(i, chunkSize);
-    webcrypto.getRandomValues(chunk);
-    i += chunkSize;
-    size -= chunkSize;
-    if (size > 0) {
-      await sleep(0);
-    }
+  if (seedNumber == null) {
+    sodium.randombytes_buf(randomBytes);
+  } else {
+    // Convert JS number to 8 byte buffer
+    const seedBytes = Buffer.alloc(8);
+    seedBytes.writeDoubleBE(seedNumber);
+    // Stretch seed number bytes to seed buffer required for deterministic random bytes
+    const seedBuffer = Buffer.allocUnsafe(sodium.randombytes_SEEDBYTES);
+    sodium.crypto_generichash(seedBuffer, seedBytes);
+    sodium.randombytes_buf_deterministic(randomBytes, seedBuffer);
   }
   return randomBytes;
 }
 
-/**
- * Get random bytes synchronously.
- * This loops each 65,536 bytes until the buffer is filled.
- */
-function getRandomBytesSync(size: number): Buffer {
-  const randomBytes = Buffer.allocUnsafe(size);
-  let i = 0;
-  while (size > 0) {
-    const chunkSize = Math.min(size, 65536);
-    const chunk = randomBytes.slice(i, chunkSize);
-    webcrypto.getRandomValues(chunk);
-    i += chunkSize;
-    size -= chunkSize;
-  }
-  return randomBytes;
-}
-
-export { getRandomBytes, getRandomBytesSync };
+export { getRandomBytes };

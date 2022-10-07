@@ -32,6 +32,21 @@ class ErrorKeyRingDestroyed<T> extends ErrorKeys<T> {
   exitCode = sysexits.USAGE;
 }
 
+class ErrorCertManagerRunning<T> extends ErrorKeys<T> {
+  static description = 'CertManager is running';
+  exitCode = sysexits.USAGE;
+}
+
+class ErrorCertManagerNotRunning<T> extends ErrorKeys<T> {
+  static description = 'CertManager is not running';
+  exitCode = sysexits.USAGE;
+}
+
+class ErrorCertManagerDestroyed<T> extends ErrorKeys<T> {
+  static description = 'CertManager is destroyed';
+  exitCode = sysexits.USAGE;
+}
+
 class ErrorKeysPasswordInvalid<T> extends ErrorKeys<T> {
   static description = 'Password has invalid format';
   exitCode = sysexits.USAGE;
@@ -65,6 +80,11 @@ class ErrorRootKeysParse<T> extends ErrorKeys<T> {
 
 class ErrorRootKeysWrite<T> extends ErrorKeys<T> {
   static description = 'Unable to write root keypair';
+  exitCode = sysexits.IOERR;
+}
+
+class ErrorRootKeysRotate<T> extends ErrorKeys<T> {
+  static description = 'Unable to rotate root keypair';
   exitCode = sysexits.IOERR;
 }
 
@@ -108,6 +128,11 @@ class ErrorDBKeyParse<T> extends ErrorKeys<T> {
   exitCode = sysexits.IOERR;
 }
 
+class ErrorBufferLock<T> extends ErrorKeys<T> {
+  static description = 'Unable to lock sensitive memory buffer';
+  exitCode = sysexits.TEMPFAIL;
+}
+
 export {
   ErrorKeys,
   ErrorKeyManagerRunning,
@@ -116,6 +141,9 @@ export {
   ErrorKeyRingRunning,
   ErrorKeyRingNotRunning,
   ErrorKeyRingDestroyed,
+  ErrorCertManagerRunning,
+  ErrorCertManagerNotRunning,
+  ErrorCertManagerDestroyed,
   ErrorKeysPasswordInvalid,
   ErrorKeysRecoveryCodeInvalid,
   ErrorKeysRecoveryCodeIncorrect,
@@ -123,6 +151,7 @@ export {
   ErrorRootKeysRead,
   ErrorRootKeysParse,
   ErrorRootKeysWrite,
+  ErrorRootKeysRotate,
   ErrorRootCertRead,
   ErrorRootCertWrite,
   ErrorRootCertRenew,
@@ -131,4 +160,5 @@ export {
   ErrorDBKeyRead,
   ErrorDBKeyWrite,
   ErrorDBKeyParse,
+  ErrorBufferLock,
 };

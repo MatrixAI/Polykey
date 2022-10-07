@@ -10,8 +10,8 @@ describe('keys/utils/x509', () => {
   testProp(
     'generate x509 certificates',
     [
-      testsKeysUtils.keyPairPArb,
-      testsKeysUtils.keyPairPArb,
+      testsKeysUtils.keyPairArb,
+      testsKeysUtils.keyPairArb,
       fc.integer({ min: 0, max: 1000 }),
       fc.date({
         // X509's minimum date is 1970-01-01T00:00:00.000Z
@@ -21,13 +21,11 @@ describe('keys/utils/x509', () => {
         max: new Date(new Date('2050').getTime() - 1),
       }),
     ],
-    async (issuerKeyPairP, subjectKeyPairP, duration, now) => {
+    async (issuerKeyPair, subjectKeyPair, duration, now) => {
       // Truncate to the nearest second
       const nowS = new Date(now.getTime() - (now.getTime() % 1000));
       // The current time plus duration must be lower than the 2050 time
       fc.pre(new Date(nowS.getTime() + duration * 1000) < new Date('2050'));
-      const subjectKeyPair = await subjectKeyPairP;
-      const issuerKeyPair = await issuerKeyPairP;
       jest.useFakeTimers();
       jest.setSystemTime(nowS);
       try {
@@ -41,6 +39,10 @@ describe('keys/utils/x509', () => {
         expect(cert.notAfter.getTime()).toBe(nowS.getTime() + duration * 1000);
         // Certificate is equal to itself
         expect(x509.certEqual(cert, cert)).toBe(true);
+        // Certificate public key is equal to the subject public key
+        expect(x509.certPublicKey(cert)).toStrictEqual(
+          subjectKeyPair.publicKey,
+        );
         // Certificate node ID is equal to the subject public key node ID
         expect(x509.certNodeId(cert)).toStrictEqual(
           asymmetric.publicKeyToNodeId(subjectKeyPair.publicKey),
@@ -61,28 +63,9 @@ describe('keys/utils/x509', () => {
     },
   );
   testProp(
-    'import and export PEM',
-    [testsKeysUtils.keyPairPArb, testsKeysUtils.keyPairPArb],
-    async (issuerKeyPairP, subjectKeyPairP) => {
-      const subjectKeyPair = await subjectKeyPairP;
-      const issuerKeyPair = await issuerKeyPairP;
-      const cert = await x509.generateCertificate({
-        certId: certIdGenerator(),
-        subjectKeyPair: subjectKeyPair,
-        issuerPrivateKey: issuerKeyPair.privateKey,
-        duration: 1000,
-      });
-      const certPem = x509.certToPem(cert);
-      const cert_ = x509.certFromPem(certPem);
-      expect(x509.certEqual(cert, cert_)).toBe(true);
-    },
-  );
-  testProp(
     'certificate is issued by parent certificate',
-    [testsKeysUtils.keyPairPArb, testsKeysUtils.keyPairPArb],
-    async (issuerKeyPairP, subjectKeyPairP) => {
-      const issuerKeyPair = await issuerKeyPairP;
-      const subjectKeyPair = await subjectKeyPairP;
+    [testsKeysUtils.keyPairArb, testsKeysUtils.keyPairArb],
+    async (issuerKeyPair, subjectKeyPair) => {
       // The issuer cert is self-signed with the issuer key pair
       const issuerCert = await x509.generateCertificate({
         certId: certIdGenerator(),
@@ -131,7 +114,7 @@ describe('keys/utils/x509', () => {
     'certificate is not expired by date',
     [fc.integer({ min: 0, max: 1000 })],
     async (duration) => {
-      const subjectKeyPair = await generate.generateKeyPair();
+      const subjectKeyPair = generate.generateKeyPair();
       // Truncate to the nearest second
       const now = new Date();
       const nowS = new Date(now.getTime() - (now.getTime() % 1000));
@@ -167,6 +150,21 @@ describe('keys/utils/x509', () => {
       } finally {
         jest.useRealTimers();
       }
+    },
+  );
+  testProp(
+    'certificate convert to and from PEM',
+    [testsKeysUtils.keyPairArb, testsKeysUtils.keyPairArb],
+    async (issuerKeyPair, subjectKeyPair) => {
+      const cert = await x509.generateCertificate({
+        certId: certIdGenerator(),
+        subjectKeyPair: subjectKeyPair,
+        issuerPrivateKey: issuerKeyPair.privateKey,
+        duration: 1000,
+      });
+      const certPEM = x509.certToPEM(cert);
+      const cert_ = x509.certFromPEM(certPEM)!;
+      expect(x509.certEqual(cert, cert_)).toBe(true);
     },
   );
 });
