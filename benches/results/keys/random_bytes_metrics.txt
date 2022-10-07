@@ -1,0 +1,14 @@
+# TYPE keys.random_bytes_ops gauge
+keys.random_bytes_ops{name="random 512 B of data"} 332050
+keys.random_bytes_ops{name="random 1 KiB of data"} 294369
+keys.random_bytes_ops{name="random 10 KiB of data"} 134212
+
+# TYPE keys.random_bytes_margin gauge
+keys.random_bytes_margin{name="random 512 B of data"} 1.95
+keys.random_bytes_margin{name="random 1 KiB of data"} 3.01
+keys.random_bytes_margin{name="random 10 KiB of data"} 0.88
+
+# TYPE keys.random_bytes_samples counter
+keys.random_bytes_samples{name="random 512 B of data"} 85
+keys.random_bytes_samples{name="random 1 KiB of data"} 76
+keys.random_bytes_samples{name="random 10 KiB of data"} 85

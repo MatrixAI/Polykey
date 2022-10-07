@@ -1,6 +1,5 @@
-import path from 'path';
 import b from 'benny';
-import { suiteCommon } from './utils';
+import { summaryName, suiteCommon } from '../../utils';
 
 async function main() {
   let map = new Map();
@@ -8,7 +7,7 @@ async function main() {
   let arr: any = [];
   let set = new Set();
   const summary = await b.suite(
-    path.basename(__filename, path.extname(__filename)),
+    summaryName(__filename),
     b.add('map', async () => {
       map = new Map();
       return async () => {

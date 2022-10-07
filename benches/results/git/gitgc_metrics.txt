@@ -1,0 +1,17 @@
+# TYPE git.gitgc_ops gauge
+git.gitgc_ops{name="map"} 11981
+git.gitgc_ops{name="obj"} 11282
+git.gitgc_ops{name="arr"} 81864
+git.gitgc_ops{name="set"} 16279
+
+# TYPE git.gitgc_margin gauge
+git.gitgc_margin{name="map"} 1.66
+git.gitgc_margin{name="obj"} 0.35
+git.gitgc_margin{name="arr"} 0.35
+git.gitgc_margin{name="set"} 2.71
+
+# TYPE git.gitgc_samples counter
+git.gitgc_samples{name="map"} 70
+git.gitgc_samples{name="obj"} 89
+git.gitgc_samples{name="arr"} 90
+git.gitgc_samples{name="set"} 76
