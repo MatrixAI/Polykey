@@ -319,6 +319,36 @@ function bufferSplit(
   return output;
 }
 
+/**
+ * Zero-copy wraps ArrayBuffer-like objects into Buffer
+ * This supports ArrayBuffer, TypedArrays and the NodeJS Buffer
+ */
+function bufferWrap(
+  array: BufferSource,
+  offset?: number,
+  length?: number,
+): Buffer {
+  if (Buffer.isBuffer(array)) {
+    return array;
+  } else if (ArrayBuffer.isView(array)) {
+    return Buffer.from(
+      array.buffer,
+      offset ?? array.byteOffset,
+      length ?? array.byteLength,
+    );
+  } else {
+    return Buffer.from(array, offset, length);
+  }
+}
+
+/**
+ * Checks if data is an ArrayBuffer-like object
+ * This includes ArrayBuffer, TypedArrays and the NodeJS Buffer
+ */
+function isBufferSource(data: unknown): data is BufferSource {
+  return ArrayBuffer.isView(data) || data instanceof ArrayBuffer;
+}
+
 function debounce<P extends any[]>(
   f: (...params: P) => any,
   timeout: number = 0,
@@ -419,4 +449,6 @@ export {
   isAsyncGenerator,
   lexiPackBuffer,
   lexiUnpackBuffer,
+  bufferWrap,
+  isBufferSource,
 };
