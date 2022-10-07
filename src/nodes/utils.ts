@@ -297,7 +297,8 @@ function isConnectionError(e): boolean {
   return (
     e instanceof nodesErrors.ErrorNodeConnectionDestroyed ||
     e instanceof grpcErrors.ErrorGRPC ||
-    e instanceof agentErrors.ErrorAgentClientDestroyed
+    e instanceof agentErrors.ErrorAgentClientDestroyed ||
+    e instanceof nodesErrors.ErrorNodeConnectionTimeout
   );
 }
 

@@ -46,6 +46,11 @@ class NodeManager {
   protected refreshBucketDelayJitter: number;
   protected pendingNodes: Map<number, Map<string, NodeAddress>> = new Map();
 
+  /**
+   * This is the timeout for long running tasks that make multiple connections
+   */
+  public readonly longTaskTimeout: number;
+
   public readonly basePath = this.constructor.name;
   protected refreshBucketHandler: TaskHandler = async (
     ctx,
@@ -74,7 +79,11 @@ class NodeManager {
     _taskInfo,
     bucketIndex: number,
   ) => {
-    await this.garbageCollectBucket(bucketIndex, 10000, ctx);
+    await this.garbageCollectBucket(
+      bucketIndex,
+      this.nodeConnectionManager.pingTimeout,
+      ctx,
+    );
     // Checking for any new pending tasks
     const pendingNodesRemaining = this.pendingNodes.get(bucketIndex);
     if (pendingNodesRemaining == null || pendingNodesRemaining.size === 0) {
@@ -125,6 +134,7 @@ class NodeManager {
     taskManager,
     refreshBucketDelay = 3600000, // 1 hour in milliseconds
     refreshBucketDelayJitter = 0.5, // Multiple of refreshBucketDelay to jitter by
+    longTaskTimeout = 120000, // 2 minuets for long running tasks
     logger,
   }: {
     db: DB;
@@ -135,6 +145,7 @@ class NodeManager {
     taskManager: TaskManager;
     refreshBucketDelay?: number;
     refreshBucketDelayJitter?: number;
+    longTaskTimeout?: number;
     logger?: Logger;
   }) {
     this.logger = logger ?? new Logger(this.constructor.name);
@@ -145,6 +156,7 @@ class NodeManager {
     this.nodeGraph = nodeGraph;
     this.taskManager = taskManager;
     this.refreshBucketDelay = refreshBucketDelay;
+    this.longTaskTimeout = longTaskTimeout;
     // Clamped from 0 to 1 inclusive
     this.refreshBucketDelayJitter = Math.max(
       0,
@@ -526,15 +538,14 @@ class NodeManager {
   @ready(new nodesErrors.ErrorNodeManagerNotRunning())
   @timedCancellable(
     true,
-    (nodeManager: NodeManager) =>
-      nodeManager.nodeConnectionManager.connConnectTime,
+    (nodeManager: NodeManager) => nodeManager.longTaskTimeout,
   )
   public async setNode(
     nodeId: NodeId,
     nodeAddress: NodeAddress,
     block: boolean = false,
     force: boolean = false,
-    pingTimeout: number = 2000,
+    pingTimeout: number | undefined,
     @context ctx: ContextTimed,
     tran?: DBTransaction,
   ): Promise<void> {
@@ -614,7 +625,7 @@ class NodeManager {
         nodeId,
         nodeAddress,
         block,
-        pingTimeout,
+        pingTimeout ?? this.nodeConnectionManager.pingTimeout,
         ctx,
         tran,
       );
@@ -629,12 +640,11 @@ class NodeManager {
   ): PromiseCancellable<void>;
   @timedCancellable(
     true,
-    (nodeManager: NodeManager) =>
-      nodeManager.nodeConnectionManager.connConnectTime,
+    (nodeManager: NodeManager) => nodeManager.longTaskTimeout,
   )
   protected async garbageCollectBucket(
     bucketIndex: number,
-    pingTimeout: number = 2000,
+    pingTimeout: number | undefined,
     @context ctx: ContextTimed,
     tran?: DBTransaction,
   ): Promise<void> {
@@ -679,7 +689,9 @@ class NodeManager {
           // Ping and remove or update node in bucket
           const pingCtx = {
             signal: ctx.signal,
-            timer: new Timer({ delay: pingTimeout }),
+            timer: new Timer({
+              delay: pingTimeout ?? this.nodeConnectionManager.pingTimeout,
+            }),
           };
           const nodeAddress = await this.getNodeAddress(nodeId, tran);
           if (nodeAddress == null) never();
@@ -733,7 +745,7 @@ class NodeManager {
     nodeId: NodeId,
     nodeAddress: NodeAddress,
     block: boolean = false,
-    pingTimeout: number = 2000,
+    pingTimeout: number | undefined,
     ctx: ContextTimed,
     tran?: DBTransaction,
   ): Promise<void> {
@@ -747,7 +759,12 @@ class NodeManager {
     // If set to blocking we just run the GC operation here
     //  without setting up a new task
     if (block) {
-      await this.garbageCollectBucket(bucketIndex, pingTimeout, ctx, tran);
+      await this.garbageCollectBucket(
+        bucketIndex,
+        pingTimeout ?? this.nodeConnectionManager.pingTimeout,
+        ctx,
+        tran,
+      );
       return;
     }
     await this.setupGCTask(bucketIndex);
@@ -821,8 +838,7 @@ class NodeManager {
   ): PromiseCancellable<void>;
   @timedCancellable(
     true,
-    (nodeManager: NodeManager) =>
-      nodeManager.nodeConnectionManager.connConnectTime,
+    (nodeManager: NodeManager) => nodeManager.longTaskTimeout,
   )
   public async refreshBucket(
     bucketIndex: NodeBucketIndex,
@@ -997,24 +1013,29 @@ class NodeManager {
    */
   public syncNodeGraph(
     block?: boolean,
+    pingTimeout?: number,
     ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<void>;
   @ready(new nodesErrors.ErrorNodeManagerNotRunning())
   @timedCancellable(
     true,
-    (nodeManager: NodeManager) =>
-      nodeManager.nodeConnectionManager.connConnectTime,
+    (nodeManager: NodeManager) => nodeManager.longTaskTimeout,
   )
   public async syncNodeGraph(
     block: boolean = true,
+    pingTimeout: number | undefined,
     @context ctx: ContextTimed,
   ): Promise<void> {
     this.logger.info('Syncing nodeGraph');
     for (const seedNodeId of this.nodeConnectionManager.getSeedNodes()) {
       // Check if the connection is viable
+      const timer =
+        pingTimeout != null ? new Timer({ delay: pingTimeout }) : undefined;
       if (
-        (await this.pingNode(seedNodeId, undefined, { signal: ctx.signal })) ===
-        false
+        (await this.pingNode(seedNodeId, undefined, {
+          timer,
+          signal: ctx.signal,
+        })) === false
       ) {
         continue;
       }
@@ -1064,10 +1085,12 @@ class NodeManager {
         const [bucketIndex] = this.nodeGraph.bucketIndex(closestNode);
         index = bucketIndex;
       }
+      const refreshBuckets: Array<Promise<any>> = [];
       for (let i = index; i < this.nodeGraph.nodeIdBits; i++) {
         const task = await this.updateRefreshBucketDelay(i, 0, !block);
-        if (block) await task.promise();
+        refreshBuckets.push(task.promise());
       }
+      if (block) await Promise.all(refreshBuckets);
     }
   }
 }

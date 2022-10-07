@@ -30,7 +30,7 @@ import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 describe(`${NodeConnectionManager.name} termination test`, () => {
   const logger = new Logger(
     `${NodeConnectionManager.name} test`,
-    LogLevel.DEBUG,
+    LogLevel.WARN,
     [new StreamHandler()],
   );
   grpcUtils.setLogger(logger.getChild('grpc'));

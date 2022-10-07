@@ -64,7 +64,7 @@ const mockedGenerateDeterministicKeyPair = jest.spyOn(
 );
 
 describe(`${NodeConnection.name} test`, () => {
-  const logger = new Logger(`${NodeConnection.name} test`, LogLevel.INFO, [
+  const logger = new Logger(`${NodeConnection.name} test`, LogLevel.WARN, [
     new StreamHandler(),
   ]);
   grpcUtils.setLogger(logger.getChild('grpc'));
