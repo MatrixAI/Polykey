@@ -1,0 +1,125 @@
+# TYPE git.gitgc_ops gauge
+git.gitgc_ops{name="map"} 11981
+git.gitgc_ops{name="obj"} 11282
+git.gitgc_ops{name="arr"} 81864
+git.gitgc_ops{name="set"} 16279
+
+# TYPE git.gitgc_margin gauge
+git.gitgc_margin{name="map"} 1.66
+git.gitgc_margin{name="obj"} 0.35
+git.gitgc_margin{name="arr"} 0.35
+git.gitgc_margin{name="set"} 2.71
+
+# TYPE git.gitgc_samples counter
+git.gitgc_samples{name="map"} 70
+git.gitgc_samples{name="obj"} 89
+git.gitgc_samples{name="arr"} 90
+git.gitgc_samples{name="set"} 76
+
+# TYPE keys.asymmetric_crypto_ops gauge
+keys.asymmetric_crypto_ops{name="encrypt 512 B of data"} 357
+keys.asymmetric_crypto_ops{name="encrypt 1 KiB of data"} 366
+keys.asymmetric_crypto_ops{name="encrypt 10 KiB of data"} 368
+keys.asymmetric_crypto_ops{name="decrypt 512 B of data"} 411
+keys.asymmetric_crypto_ops{name="decrypt 1 KiB of data"} 414
+keys.asymmetric_crypto_ops{name="decrypt 10 KiB of data"} 417
+keys.asymmetric_crypto_ops{name="sign 512 B of data"} 1802
+keys.asymmetric_crypto_ops{name="sign 1 KiB of data"} 1778
+keys.asymmetric_crypto_ops{name="sign 10 KiB of data"} 1684
+keys.asymmetric_crypto_ops{name="verify 512 B of data"} 393
+keys.asymmetric_crypto_ops{name="verify 1 KiB of data"} 398
+keys.asymmetric_crypto_ops{name="verify 10 KiB of data"} 386
+
+# TYPE keys.asymmetric_crypto_margin gauge
+keys.asymmetric_crypto_margin{name="encrypt 512 B of data"} 0.61
+keys.asymmetric_crypto_margin{name="encrypt 1 KiB of data"} 0.64
+keys.asymmetric_crypto_margin{name="encrypt 10 KiB of data"} 0.3
+keys.asymmetric_crypto_margin{name="decrypt 512 B of data"} 0.48
+keys.asymmetric_crypto_margin{name="decrypt 1 KiB of data"} 0.68
+keys.asymmetric_crypto_margin{name="decrypt 10 KiB of data"} 0.57
+keys.asymmetric_crypto_margin{name="sign 512 B of data"} 0.8
+keys.asymmetric_crypto_margin{name="sign 1 KiB of data"} 0.92
+keys.asymmetric_crypto_margin{name="sign 10 KiB of data"} 0.72
+keys.asymmetric_crypto_margin{name="verify 512 B of data"} 0.57
+keys.asymmetric_crypto_margin{name="verify 1 KiB of data"} 0.42
+keys.asymmetric_crypto_margin{name="verify 10 KiB of data"} 0.31
+
+# TYPE keys.asymmetric_crypto_samples counter
+keys.asymmetric_crypto_samples{name="encrypt 512 B of data"} 87
+keys.asymmetric_crypto_samples{name="encrypt 1 KiB of data"} 89
+keys.asymmetric_crypto_samples{name="encrypt 10 KiB of data"} 90
+keys.asymmetric_crypto_samples{name="decrypt 512 B of data"} 86
+keys.asymmetric_crypto_samples{name="decrypt 1 KiB of data"} 87
+keys.asymmetric_crypto_samples{name="decrypt 10 KiB of data"} 88
+keys.asymmetric_crypto_samples{name="sign 512 B of data"} 87
+keys.asymmetric_crypto_samples{name="sign 1 KiB of data"} 86
+keys.asymmetric_crypto_samples{name="sign 10 KiB of data"} 88
+keys.asymmetric_crypto_samples{name="verify 512 B of data"} 87
+keys.asymmetric_crypto_samples{name="verify 1 KiB of data"} 88
+keys.asymmetric_crypto_samples{name="verify 10 KiB of data"} 89
+
+# TYPE keys.key_generation_ops gauge
+keys.key_generation_ops{name="generate root asymmetric keypair"} 3563
+keys.key_generation_ops{name="generate deterministic root keypair"} 107
+keys.key_generation_ops{name="generate 256 bit symmetric key"} 319065
+
+# TYPE keys.key_generation_margin gauge
+keys.key_generation_margin{name="generate root asymmetric keypair"} 0.6
+keys.key_generation_margin{name="generate deterministic root keypair"} 1.74
+keys.key_generation_margin{name="generate 256 bit symmetric key"} 0.6
+
+# TYPE keys.key_generation_samples counter
+keys.key_generation_samples{name="generate root asymmetric keypair"} 85
+keys.key_generation_samples{name="generate deterministic root keypair"} 83
+keys.key_generation_samples{name="generate 256 bit symmetric key"} 89
+
+# TYPE keys.random_bytes_ops gauge
+keys.random_bytes_ops{name="random 512 B of data"} 332050
+keys.random_bytes_ops{name="random 1 KiB of data"} 294369
+keys.random_bytes_ops{name="random 10 KiB of data"} 134212
+
+# TYPE keys.random_bytes_margin gauge
+keys.random_bytes_margin{name="random 512 B of data"} 1.95
+keys.random_bytes_margin{name="random 1 KiB of data"} 3.01
+keys.random_bytes_margin{name="random 10 KiB of data"} 0.88
+
+# TYPE keys.random_bytes_samples counter
+keys.random_bytes_samples{name="random 512 B of data"} 85
+keys.random_bytes_samples{name="random 1 KiB of data"} 76
+keys.random_bytes_samples{name="random 10 KiB of data"} 85
+
+# TYPE keys.recovery_code_ops gauge
+keys.recovery_code_ops{name="generate 24 word recovery code"} 68387
+keys.recovery_code_ops{name="generate 12 word recovery code"} 80916
+
+# TYPE keys.recovery_code_margin gauge
+keys.recovery_code_margin{name="generate 24 word recovery code"} 1.44
+keys.recovery_code_margin{name="generate 12 word recovery code"} 1.58
+
+# TYPE keys.recovery_code_samples counter
+keys.recovery_code_samples{name="generate 24 word recovery code"} 80
+keys.recovery_code_samples{name="generate 12 word recovery code"} 85
+
+# TYPE keys.symmetric_crypto_ops gauge
+keys.symmetric_crypto_ops{name="encrypt 512 B of data"} 38859
+keys.symmetric_crypto_ops{name="encrypt 1 KiB of data"} 34177
+keys.symmetric_crypto_ops{name="encrypt 10 KiB of data"} 29253
+keys.symmetric_crypto_ops{name="decrypt 512 B of data"} 47148
+keys.symmetric_crypto_ops{name="decrypt 1 KiB of data"} 43245
+keys.symmetric_crypto_ops{name="decrypt 10 KiB of data"} 31158
+
+# TYPE keys.symmetric_crypto_margin gauge
+keys.symmetric_crypto_margin{name="encrypt 512 B of data"} 1.1
+keys.symmetric_crypto_margin{name="encrypt 1 KiB of data"} 1.34
+keys.symmetric_crypto_margin{name="encrypt 10 KiB of data"} 1.27
+keys.symmetric_crypto_margin{name="decrypt 512 B of data"} 1.7
+keys.symmetric_crypto_margin{name="decrypt 1 KiB of data"} 1.73
+keys.symmetric_crypto_margin{name="decrypt 10 KiB of data"} 1.89
+
+# TYPE keys.symmetric_crypto_samples counter
+keys.symmetric_crypto_samples{name="encrypt 512 B of data"} 83
+keys.symmetric_crypto_samples{name="encrypt 1 KiB of data"} 76
+keys.symmetric_crypto_samples{name="encrypt 10 KiB of data"} 84
+keys.symmetric_crypto_samples{name="decrypt 512 B of data"} 76
+keys.symmetric_crypto_samples{name="decrypt 1 KiB of data"} 81
+keys.symmetric_crypto_samples{name="decrypt 10 KiB of data"} 75

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta http-equiv="X-UA-Compatible" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.5.1/dist/chart.min.js"></script>
-    <title>gitgc</title>
+    <title>keys.recovery_code</title>
     <style>
       body {
         margin: 0;
@@ -28,7 +28,7 @@
   </head>
   <body>
     <div class="container">
-      <canvas id="chart1643349110845" width="16" height="9"></canvas>
+      <canvas id="chart1663996919439" width="16" height="9"></canvas>
     </div>
     <script>
       const format = (num) => {
@@ -51,18 +51,18 @@
           chunked.map((chunk) => chunk.join('')).join(' ') + fractionStr
         )
       }
-      const ctx1643349110845 = document
-        .getElementById('chart1643349110845')
+      const ctx1663996919439 = document
+        .getElementById('chart1663996919439')
         .getContext('2d')
-      const chart1643349110845 = new Chart(ctx1643349110845, {
+      const chart1663996919439 = new Chart(ctx1663996919439, {
         type: 'bar',
         data: {
-          labels: ["map","obj","arr","set"],
+          labels: ["generate 24 word recovery code","generate 12 word recovery code"],
           datasets: [
             {
-              data: [12413,17311,80712,16847],
-              backgroundColor: ["hsl(18.455999999999996, 85%, 55%)","hsl(25.740000000000002, 85%, 55%)","hsl(120, 85%, 55%)","hsl(25.044000000000008, 85%, 55%)"],
-              borderColor: ["hsl(18.455999999999996, 85%, 55%)","hsl(25.740000000000002, 85%, 55%)","hsl(120, 85%, 55%)","hsl(25.044000000000008, 85%, 55%)"],
+              data: [6419,6704],
+              backgroundColor: ["hsl(114.9, 85%, 55%)","hsl(120, 85%, 55%)"],
+              borderColor: ["hsl(114.9, 85%, 55%)","hsl(120, 85%, 55%)"],
               borderWidth: 2,
             },
           ],
@@ -72,7 +72,7 @@
           plugins: {
             title: {
               display: true,
-              text: 'gitgc',
+              text: 'keys.recovery_code',
               font: { size: 20 },
               padding: 20,
             },

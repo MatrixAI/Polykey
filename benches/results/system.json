@@ -11,9 +11,11 @@
     "speed": 3.7,
     "speedMin": 2.2,
     "speedMax": 3.7,
-    "governor": "ondemand",
+    "governor": "performance",
     "cores": 16,
     "physicalCores": 8,
+    "performanceCores": 8,
+    "efficiencyCores": 0,
     "processors": 1,
     "socket": "",
     "flags": "fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl nonstop_tsc cpuid extd_apicid aperfmperf pni pclmulqdq monitor ssse3 fma cx16 sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand lahf_lm cmp_legacy svm extapic cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw skinit wdt tce topoext perfctr_core perfctr_nb bpext perfctr_llc mwaitx cpb hw_pstate sme ssbd sev ibpb vmmcall sev_es fsgsbase bmi1 avx2 smep bmi2 rdseed adx smap clflushopt sha_ni xsaveopt xsavec xgetbv1 xsaves clzero irperf xsaveerptr arat npt lbrv svm_lock nrip_save tsc_scale vmcb_clean flushbyasid decodeassists pausefilter pfthreshold avic v_vmsave_vmload vgif overflow_recov succor smca",
@@ -27,9 +29,9 @@
   },
   "osInfo": {
     "platform": "linux",
-    "distro": "Matrix ML 1",
-    "release": "unknown",
-    "kernel": "5.10.81",
+    "distro": "nixos",
+    "release": "22.05",
+    "kernel": "5.10.138",
     "arch": "x64"
   },
   "system": {
