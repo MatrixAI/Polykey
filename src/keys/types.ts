@@ -3,6 +3,12 @@ import type { NodeId } from '../ids/types';
 import type { Opaque } from '../types';
 
 /**
+ * Locked buffer wrapper type for sensitive in-memory data.
+ */
+type BufferLocked<T extends Buffer> = T & { readonly [locked]: true };
+declare const locked: unique symbol;
+
+/**
  * Symmetric Key Buffer
  */
 type Key = Opaque<'Key', Buffer>;
@@ -53,12 +59,21 @@ type SecretKey = Opaque<'SecretKey', Buffer>;
 type SecretKeyX = Opaque<'SecretKeyX', Buffer>;
 
 /**
- * KeyPair Buffers
+ * KeyPair buffers
  */
 type KeyPair = Readonly<{
   publicKey: PublicKey;
   privateKey: PrivateKey;
   secretKey: SecretKey;
+}>;
+
+/**
+ * KeyPair buffers that are locked
+ */
+type KeyPairLocked = Readonly<{
+  publicKey: BufferLocked<PublicKey>;
+  privateKey: BufferLocked<PrivateKey>;
+  secretKey: BufferLocked<SecretKey>;
 }>;
 
 /**
@@ -199,6 +214,7 @@ type PasswordSalt = Opaque<'PasswordSalt', Buffer>;
  */
 type RecoveryCode = Opaque<'RecoveryCode', string>;
 
+type RecoveryCodeLocked = Opaque<'RecoverCodeLocked', BufferLocked<Buffer>>;
 
 type KeyManagerChangeData = {
   nodeId: NodeId;
@@ -208,6 +224,7 @@ type KeyManagerChangeData = {
 };
 
 export type {
+  BufferLocked,
   Key,
   KeyJWK,
   PublicKey,
@@ -217,6 +234,7 @@ export type {
   SecretKey,
   SecretKeyX,
   KeyPair,
+  KeyPairLocked,
   KeyPairX,
   PublicKeyJWK,
   PrivateKeyJWK,
@@ -233,6 +251,7 @@ export type {
   PasswordHash,
   PasswordSalt,
   RecoveryCode,
+  RecoveryCodeLocked,
   KeyManagerChangeData,
 };
 
