@@ -6,13 +6,13 @@ async function main() {
   const summary = await b.suite(
     summaryName(__filename),
     b.add('random 512 B of data', () => {
-      random.getRandomBytesSync(512);
+      random.getRandomBytes(512);
     }),
     b.add('random 1 KiB of data', () => {
-      random.getRandomBytesSync(1024);
+      random.getRandomBytes(1024);
     }),
     b.add('random 10 KiB of data', () => {
-      random.getRandomBytesSync(1024 * 10);
+      random.getRandomBytes(1024 * 10);
     }),
     ...suiteCommon,
   );
