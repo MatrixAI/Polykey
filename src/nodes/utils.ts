@@ -246,7 +246,7 @@ function bucketSortByDistance(
 }
 
 function generateRandomDistanceForBucket(bucketIndex: NodeBucketIndex): NodeId {
-  const buffer = keysUtils.getRandomBytesSync(32);
+  const buffer = keysUtils.getRandomBytes(32);
   // Calculate the most significant byte for bucket
   const base = bucketIndex / 8;
   const mSigByte = Math.floor(base);
