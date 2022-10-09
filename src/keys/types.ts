@@ -219,7 +219,10 @@ type RecoveryCode = Opaque<'RecoveryCode', string>;
  */
 type RecoveryCodeLocked = Opaque<'RecoverCodeLocked', BufferLocked<Buffer>>;
 
-type KeyManagerChangeData = {
+/**
+ * Change data for KeyRing
+ */
+type CertificateManagerChangeData = {
   nodeId: NodeId;
   rootKeyPair: KeyPair;
   rootCert: Certificate;
@@ -255,7 +258,7 @@ export type {
   PasswordSalt,
   RecoveryCode,
   RecoveryCodeLocked,
-  KeyManagerChangeData,
+  CertificateManagerChangeData,
 };
 
 export type {

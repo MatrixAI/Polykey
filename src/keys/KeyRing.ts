@@ -253,13 +253,13 @@ class KeyRing {
       this.writeKeyPair(keyPair, password),
       this.writeDbKey(this._dbKey!, keyPair.publicKey),
     ]);
-    this._keyPair = keyPair as {
-      publicKey: BufferLocked<PublicKey>;
-      privateKey: BufferLocked<PrivateKey>;
-      secretKey: BufferLocked<SecretKey>;
-    };
+    bufferUnlock(this._keyPair!.publicKey);
+    bufferUnlock(this._keyPair!.privateKey);
+    bufferUnlock(this._keyPair!.secretKey);
+    this._keyPair = keyPair;
     const recoveryCodeData = Buffer.from(recoveryCode, 'utf-8');
     bufferLock(recoveryCodeData);
+    bufferUnlock(this._recoveryCodeData!);
     this._recoveryCodeData = recoveryCodeData as RecoveryCodeLocked;
     this.logger.info('Rotated root key pair');
   }
