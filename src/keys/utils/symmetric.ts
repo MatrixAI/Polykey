@@ -1,6 +1,7 @@
-import type { Key, JWK, JWKEncrypted } from '../types';
+import type { Key, JWK, JWKEncrypted, PasswordSalt } from '../types';
 import sodium from 'sodium-native';
 import { getRandomBytes } from './random';
+import { passwordOpsLimit, passwordMemLimit, hashPassword } from './password';
 
 const nonceSize = sodium.crypto_aead_xchacha20poly1305_ietf_NPUBBYTES;
 const macSize = sodium.crypto_aead_xchacha20poly1305_ietf_ABYTES;
@@ -52,6 +53,7 @@ function decryptWithKey(
   const nonce = cipherText.subarray(0, nonceSize);
   const macAndCipherText = cipherText.subarray(nonceSize);
   const plainText = Buffer.allocUnsafe(macAndCipherText.byteLength - macSize);
+  // This returns the number of bytes that has been decrypted
   const decrypted = sodium.crypto_aead_xchacha20poly1305_ietf_decrypt(
     plainText,
     null,
@@ -60,36 +62,26 @@ function decryptWithKey(
     nonce,
     key,
   );
-  if (decrypted < 0) {
+  if (decrypted !== plainText.byteLength) {
     return;
   }
   return plainText;
 }
 
 /**
- * Key wrapping with password
+ * Key wrapping with password.
  * This uses `Argon2Id-1.3` to derive a 256-bit key from the password.
  * The key is then used for encryption with `XChaCha20-Poly1305-IETF`.
+ * The password can be an empty string.
  */
 function wrapWithPassword(password: string, keyJWK: JWK): JWKEncrypted {
-  const key = Buffer.allocUnsafe(
-    sodium.crypto_aead_xchacha20poly1305_ietf_KEYBYTES,
-  );
-  const salt = getRandomBytes(sodium.crypto_pwhash_SALTBYTES);
-  sodium.crypto_pwhash(
-    key,
-    Buffer.from(password, 'utf-8'),
-    salt,
-    sodium.crypto_pwhash_OPSLIMIT_MODERATE,
-    sodium.crypto_pwhash_MEMLIMIT_MODERATE,
-    sodium.crypto_pwhash_ALG_ARGON2ID13,
-  );
+  const [key, salt] = hashPassword(password);
   const protectedHeader = {
     alg: 'Argon2id-1.3',
     enc: 'XChaCha20-Poly1305-IETF',
     cty: 'jwk+json',
-    ops: sodium.crypto_pwhash_OPSLIMIT_MODERATE,
-    mem: sodium.crypto_pwhash_MEMLIMIT_MODERATE,
+    ops: passwordOpsLimit,
+    mem: passwordMemLimit,
     salt: salt.toString('base64url'),
   };
   const protectedHeaderEncoded = Buffer.from(
@@ -121,6 +113,7 @@ function wrapWithPassword(password: string, keyJWK: JWK): JWKEncrypted {
 
 /**
  * Key unwrapping with password.
+ * The password can be an empty string.
  */
 function unwrapWithPassword(password: string, keyJWE: any): JWK | undefined {
   if (typeof keyJWE !== 'object' || keyJWE == null) {
@@ -154,29 +147,26 @@ function unwrapWithPassword(password: string, keyJWE: any): JWK | undefined {
   ) {
     return;
   }
-  const key = Buffer.allocUnsafe(
-    sodium.crypto_aead_xchacha20poly1305_ietf_KEYBYTES,
-  );
-  const salt = Buffer.from(header.salt, 'base64url');
-  sodium.crypto_pwhash(
-    key,
-    Buffer.from(password, 'utf-8'),
-    salt,
-    header.ops,
-    header.mem,
-    sodium.crypto_pwhash_ALG_ARGON2ID13,
-  );
-  const additionalData = Buffer.from(keyJWE.protected, 'base64url');
+  // If the ops and mem setting is greater than the limit
+  // then it may be maliciously trying to DOS this agent
+  if (header.ops > passwordOpsLimit || header.mem > passwordMemLimit) {
+    return;
+  }
+  const salt = Buffer.from(header.salt, 'base64url') as PasswordSalt;
+  const [key] = hashPassword(password, salt);
+  const additionalData = Buffer.from(keyJWE.protected, 'utf-8');
   const nonce = Buffer.from(keyJWE.iv, 'base64url');
   const mac = Buffer.from(keyJWE.tag, 'base64url');
   const cipherText = Buffer.from(keyJWE.ciphertext, 'base64url');
   const plainText = Buffer.allocUnsafe(cipherText.byteLength);
   try {
+    // This returns `undefined`
+    // It will throw if the MAC cannot be authenticated
     sodium.crypto_aead_xchacha20poly1305_ietf_decrypt_detached(
       plainText,
       null,
-      mac,
       cipherText,
+      mac,
       additionalData,
       nonce,
       key,
@@ -258,17 +248,19 @@ function unwrapWithKey(key: Key, keyJWE: any): JWK | undefined {
   ) {
     return;
   }
-  const additionalData = Buffer.from(keyJWE.protected, 'base64url');
+  const additionalData = Buffer.from(keyJWE.protected, 'utf-8');
   const nonce = Buffer.from(keyJWE.iv, 'base64url');
   const mac = Buffer.from(keyJWE.tag, 'base64url');
   const cipherText = Buffer.from(keyJWE.ciphertext, 'base64url');
   const plainText = Buffer.allocUnsafe(cipherText.byteLength);
   try {
+    // This returns `undefined`
+    // It will throw if the MAC cannot be authenticated
     sodium.crypto_aead_xchacha20poly1305_ietf_decrypt_detached(
       plainText,
       null,
-      mac,
       cipherText,
+      mac,
       additionalData,
       nonce,
       key,

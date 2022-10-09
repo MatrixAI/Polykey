@@ -138,4 +138,43 @@ describe('keys/utils/asymmetric', () => {
       expect(publicKey).toStrictEqual(publicKey_);
     },
   );
+  testProp(
+    'encapsulate & decapsulate keys - ephemeral static',
+    [
+      testsKeysUtils.keyPairArb,
+      testsKeysUtils.keyJWKArb
+    ],
+    (receiverKeyPair, keyJWK) => {
+      const encapsulatedKey = asymmetric.encapsulateWithPublicKey(
+        receiverKeyPair.publicKey,
+        keyJWK
+      );
+      const keyJWK_ = asymmetric.decapsulateWithPrivateKey(
+        receiverKeyPair,
+        encapsulatedKey
+      );
+      expect(keyJWK_).toStrictEqual(keyJWK);
+    }
+  );
+  testProp(
+    'encapsulate & decapsulate keys - static static',
+    [
+      testsKeysUtils.keyPairArb,
+      testsKeysUtils.keyPairArb,
+      testsKeysUtils.keyJWKArb
+    ],
+    (senderKeyPair, receiverKeyPair, keyJWK) => {
+      const encapsulatedKey = asymmetric.encapsulateWithPublicKey(
+        receiverKeyPair.publicKey,
+        keyJWK,
+        senderKeyPair
+      );
+      const keyJWK_ = asymmetric.decapsulateWithPrivateKey(
+        receiverKeyPair,
+        encapsulatedKey,
+        senderKeyPair.publicKey
+      );
+      expect(keyJWK_).toStrictEqual(keyJWK);
+    }
+  );
 });

@@ -27,4 +27,32 @@ describe('keys/utils/symmetric', () => {
       expect(plainText).toBeUndefined();
     },
   );
+  testProp(
+    'wrap & unwrap with random password',
+    [
+      fc.string({ minLength: 0, maxLength: 8 }),
+      testsKeysUtils.keyJWKArb,
+    ],
+    (password, keyJWK) => {
+      const wrappedKey = symmetric.wrapWithPassword(password, keyJWK);
+      const keyJWK_ = symmetric.unwrapWithPassword(password, wrappedKey);
+      expect(keyJWK_).toStrictEqual(keyJWK);
+    },
+    {
+      // Password based encryption is intended to be slow
+      numRuns: 5,
+    }
+  );
+  testProp(
+    'wrap & unwrap with random key',
+    [
+      testsKeysUtils.keyArb,
+      testsKeysUtils.keyJWKArb,
+    ],
+    (key, keyJWK) => {
+      const wrappedKey = symmetric.wrapWithKey(key, keyJWK);
+      const keyJWK_ = symmetric.unwrapWithKey(key, wrappedKey);
+      expect(keyJWK_).toStrictEqual(keyJWK);
+    }
+  );
 });
