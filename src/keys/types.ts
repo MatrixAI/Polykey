@@ -11,7 +11,7 @@ declare const locked: unique symbol;
 /**
  * Symmetric Key Buffer
  */
-type Key = Opaque<'Key', Buffer>;
+type Key = Opaque<'Key', Readonly<Buffer>>;
 
 /**
  * Symmetric Key JWK
@@ -29,34 +29,34 @@ type KeyJWK = {
 /**
  * Public Key Buffer
  */
-type PublicKey = Opaque<'PublicKey', Buffer>;
+type PublicKey = Opaque<'PublicKey', Readonly<Buffer>>;
 
 /**
  * X25519 version of the public key
  */
-type PublicKeyX = Opaque<'PublicKeyX', Buffer>;
+type PublicKeyX = Opaque<'PublicKeyX', Readonly<Buffer>>;
 
 /**
  * Private Key Buffer
  */
-type PrivateKey = Opaque<'PrivateKey', Buffer>;
+type PrivateKey = Opaque<'PrivateKey', Readonly<Buffer>>;
 
 /**
  * X25519 version of the private key
  */
-type PrivateKeyX = Opaque<'PrivateKeyX', Buffer>;
+type PrivateKeyX = Opaque<'PrivateKeyX', Readonly<Buffer>>;
 
 /**
  * Secret Key Buffer.
  * This is a concatenation of `PrivateKey || PublicKey`.
  * It is used by libsodium to avoid us having to concatenate on the fly.
  */
-type SecretKey = Opaque<'SecretKey', Buffer>;
+type SecretKey = Opaque<'SecretKey', Readonly<Buffer>>;
 
 /**
  * X25519 version of the secret key
  */
-type SecretKeyX = Opaque<'SecretKeyX', Buffer>;
+type SecretKeyX = Opaque<'SecretKeyX', Readonly<Buffer>>;
 
 /**
  * KeyPair buffers
@@ -214,6 +214,9 @@ type PasswordSalt = Opaque<'PasswordSalt', Buffer>;
  */
 type RecoveryCode = Opaque<'RecoveryCode', string>;
 
+/**
+ * Recovery code in a locked buffer
+ */
 type RecoveryCodeLocked = Opaque<'RecoverCodeLocked', BufferLocked<Buffer>>;
 
 type KeyManagerChangeData = {

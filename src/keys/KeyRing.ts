@@ -25,23 +25,39 @@ import * as keysErrors from './errors';
 import { bufferLock, bufferUnlock } from './utils/memory';
 
 interface KeyRing extends CreateDestroyStartStop {}
-@CreateDestroyStartStop()
+@CreateDestroyStartStop(
+  new keysErrors.ErrorKeyRingRunning(),
+  new keysErrors.ErrorKeyRingDestroyed(),
+)
 class KeyRing {
   public static async createKeyRing({
     keysPath,
     fs = require('fs'),
     logger = new Logger(this.name),
-  }:
-    | {
-        keysPath: string;
-        fs?: FileSystem;
-        logger?: Logger;
+    ...startOptions
+  }: {
+      keysPath: string;
+      fs?: FileSystem;
+      logger?: Logger;
+    } & (
+      {
+        password: string;
+        fresh?: boolean;
+      } | {
+        password: string;
+        recoveryCode: RecoveryCode
+        fresh?: boolean;
+      } | {
+        password: string;
+        privateKey: PrivateKey;
+        fresh?: boolean;
+      } | {
+        password: string;
+        privateKeyPath: string;
+        fresh?: boolean;
       }
-    | {
-        keysPath: string;
-        fs?: FileSystem;
-        logger?: Logger;
-      }) {
+    )
+  ) {
     logger.info(`Creating ${this.name}`);
     logger.info(`Setting keys path to ${keysPath}`);
     const keyRing = new this({
@@ -49,6 +65,7 @@ class KeyRing {
       fs,
       logger,
     });
+    await keyRing.start(startOptions);
     logger.info(`Created ${this.name}`);
     return keyRing;
   }
@@ -60,11 +77,7 @@ class KeyRing {
 
   protected fs: FileSystem;
   protected logger: Logger;
-  protected _keyPair?: {
-    publicKey: BufferLocked<PublicKey>;
-    privateKey: BufferLocked<PrivateKey>;
-    secretKey: BufferLocked<SecretKey>;
-  };
+  protected _keyPair?: KeyPairLocked;
   protected _dbKey?: BufferLocked<Key>;
   protected passwordHash?: Readonly<{
     hash: BufferLocked<PasswordHash>,
@@ -171,12 +184,12 @@ class KeyRing {
   }
 
   @ready(new keysErrors.ErrorKeyRingNotRunning())
-  get keyPair(): KeyPair {
+  get keyPair(): KeyPairLocked {
     return this._keyPair!;
   }
 
   @ready(new keysErrors.ErrorKeyRingNotRunning())
-  get dbKey(): Key {
+  get dbKey(): BufferLocked<Key> {
     return this._dbKey!;
   }
 
