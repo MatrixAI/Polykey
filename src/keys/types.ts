@@ -149,12 +149,6 @@ type CertificatePem = Opaque<'CertificatePem', string>;
 type CertificatePemChain = Opaque<'CertificatePemChain', string>;
 
 /**
- * BIP39 Recovery Code
- * Can be 12 or 24 words
- */
-type RecoveryCode = Opaque<'RecoveryCode', string>;
-
-/**
  * Generic JWK
  */
 type JWK = JsonWebKey;
@@ -195,16 +189,11 @@ type JWKEncrypted =
       protected: string;
     };
 
-// There's also
-// PBES2-HS256+A128KW
-// but this time I'm using a password based way of encrypting things
-// The resulting cipher text will need tobe processed by ourselves
-// And when we are encrypting things...
-// We are using not public key encryption
-// We are using symmetric encryption
-
-// Note that key wrapping is also done like the above
-// but we need to be clearer how it works
+/**
+ * BIP39 Recovery Code
+ * Can be 12 or 24 words
+ */
+type RecoveryCode = Opaque<'RecoveryCode', string>;
 
 type KeyManagerChangeData = {
   nodeId: NodeId;
