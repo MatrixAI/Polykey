@@ -182,15 +182,27 @@ class KeyRing {
     this.logger.info('Changing root key pair password');
     await this.writeKeyPair(this._keyPair!, password);
     this.setupPasswordHash(password);
+    this.logger.info('Changed root key pair password');
   }
 
+  /**
+   * Rotates the key pair.
+   * This generates a new recovery code and new key pair.
+   * The DB key is not rotated, it is just re-encrypted with the new key pair.
+   * The key pair is wrapped with the new password.
+   */
   @ready(new keysErrors.ErrorKeyRingNotRunning())
-  public async rotateKeyPair() {
-    // Reset does a clean reset of the root cert chain
-    // this from the keyring perspective doesn't change anything
-    // the KeyManager doesn't depend on this
-    // this is UI driven?
-    // so in a way, we rotating the key pair by creating a new one
+  public async rotateKeyPair(password: string): Promise<void> {
+    this.logger.info('Rotating root key pair');
+    const recoveryCode = keysUtils.generateRecoveryCode(24);
+    const keyPair = await this.generateKeyPair(recoveryCode);
+    await Promise.all([
+      this.writeKeyPair(keyPair, password),
+      this.writeDbKey(this._dbKey!, keyPair.publicKey),
+    ]);
+    this._keyPair = keyPair;
+    this._recoveryCode = recoveryCode;
+    this.logger.info('Rotated root key pair');
   }
 
   /**
