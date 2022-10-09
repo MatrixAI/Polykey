@@ -108,6 +108,11 @@ class ErrorDBKeyParse<T> extends ErrorKeys<T> {
   exitCode = sysexits.IOERR;
 }
 
+class ErrorBufferLock<T> extends ErrorKeys<T> {
+  static description = 'Unable to lock sensitive memory buffer';
+  exitCode = sysexits.TEMPFAIL;
+}
+
 export {
   ErrorKeys,
   ErrorKeyManagerRunning,
@@ -131,4 +136,5 @@ export {
   ErrorDBKeyRead,
   ErrorDBKeyWrite,
   ErrorDBKeyParse,
+  ErrorBufferLock,
 };

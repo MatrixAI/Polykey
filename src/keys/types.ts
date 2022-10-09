@@ -3,9 +3,15 @@ import type { NodeId } from '../ids/types';
 import type { Opaque } from '../types';
 
 /**
+ * Locked buffer wrapper type for sensitive in-memory data.
+ */
+type BufferLocked<T extends Buffer> = T & { readonly [locked]: true };
+declare const locked: unique symbol;
+
+/**
  * Symmetric Key Buffer
  */
-type Key = Opaque<'Key', Buffer>;
+type Key = Opaque<'Key', Readonly<Buffer>>;
 
 /**
  * Symmetric Key JWK
@@ -23,42 +29,51 @@ type KeyJWK = {
 /**
  * Public Key Buffer
  */
-type PublicKey = Opaque<'PublicKey', Buffer>;
+type PublicKey = Opaque<'PublicKey', Readonly<Buffer>>;
 
 /**
  * X25519 version of the public key
  */
-type PublicKeyX = Opaque<'PublicKeyX', Buffer>;
+type PublicKeyX = Opaque<'PublicKeyX', Readonly<Buffer>>;
 
 /**
  * Private Key Buffer
  */
-type PrivateKey = Opaque<'PrivateKey', Buffer>;
+type PrivateKey = Opaque<'PrivateKey', Readonly<Buffer>>;
 
 /**
  * X25519 version of the private key
  */
-type PrivateKeyX = Opaque<'PrivateKeyX', Buffer>;
+type PrivateKeyX = Opaque<'PrivateKeyX', Readonly<Buffer>>;
 
 /**
  * Secret Key Buffer.
  * This is a concatenation of `PrivateKey || PublicKey`.
  * It is used by libsodium to avoid us having to concatenate on the fly.
  */
-type SecretKey = Opaque<'SecretKey', Buffer>;
+type SecretKey = Opaque<'SecretKey', Readonly<Buffer>>;
 
 /**
  * X25519 version of the secret key
  */
-type SecretKeyX = Opaque<'SecretKeyX', Buffer>;
+type SecretKeyX = Opaque<'SecretKeyX', Readonly<Buffer>>;
 
 /**
- * KeyPair Buffers
+ * KeyPair buffers
  */
 type KeyPair = Readonly<{
   publicKey: PublicKey;
   privateKey: PrivateKey;
   secretKey: SecretKey;
+}>;
+
+/**
+ * KeyPair buffers that are locked
+ */
+type KeyPairLocked = Readonly<{
+  publicKey: BufferLocked<PublicKey>;
+  privateKey: BufferLocked<PrivateKey>;
+  secretKey: BufferLocked<SecretKey>;
 }>;
 
 /**
@@ -199,8 +214,15 @@ type PasswordSalt = Opaque<'PasswordSalt', Buffer>;
  */
 type RecoveryCode = Opaque<'RecoveryCode', string>;
 
+/**
+ * Recovery code in a locked buffer
+ */
+type RecoveryCodeLocked = Opaque<'RecoverCodeLocked', BufferLocked<Buffer>>;
 
-type KeyManagerChangeData = {
+/**
+ * Change data for KeyRing
+ */
+type CertificateManagerChangeData = {
   nodeId: NodeId;
   rootKeyPair: KeyPair;
   rootCert: Certificate;
@@ -208,6 +230,7 @@ type KeyManagerChangeData = {
 };
 
 export type {
+  BufferLocked,
   Key,
   KeyJWK,
   PublicKey,
@@ -217,6 +240,7 @@ export type {
   SecretKey,
   SecretKeyX,
   KeyPair,
+  KeyPairLocked,
   KeyPairX,
   PublicKeyJWK,
   PrivateKeyJWK,
@@ -233,7 +257,8 @@ export type {
   PasswordHash,
   PasswordSalt,
   RecoveryCode,
-  KeyManagerChangeData,
+  RecoveryCodeLocked,
+  CertificateManagerChangeData,
 };
 
 export type {
