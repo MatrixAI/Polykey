@@ -30,7 +30,7 @@ describe('keys/utils/symmetric', () => {
   testProp(
     'wrap & unwrap with random password',
     [
-      fc.string({ minLength: 0, maxLength: 8 }),
+      testsKeysUtils.passwordArb,
       testsKeysUtils.keyJWKArb,
     ],
     (password, keyJWK) => {
