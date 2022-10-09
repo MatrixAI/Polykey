@@ -6,6 +6,13 @@ const nonceSize = sodium.crypto_aead_xchacha20poly1305_ietf_NPUBBYTES;
 const macSize = sodium.crypto_aead_xchacha20poly1305_ietf_ABYTES;
 
 /**
+ * This ensures that deriving a key from a password uses
+ * 256 MiB of RAM and 0.7 seconds on a 2.8 GHz Intel Core i7.
+ */
+const passwordOpsLimit = sodium.crypto_pwhash_OPSLIMIT_MODERATE;
+const passwordMemLimit = sodium.crypto_pwhash_MEMLIMIT_MODERATE;
+
+/**
  * Symmetric encryption using XChaCha20-Poly1305-IETF.
  * The key is expected to be 256 bits in size.
  * The nonce is randomly generated.
@@ -80,16 +87,16 @@ function wrapWithPassword(password: string, keyJWK: JWK): JWKEncrypted {
     key,
     Buffer.from(password, 'utf-8'),
     salt,
-    sodium.crypto_pwhash_OPSLIMIT_MODERATE,
-    sodium.crypto_pwhash_MEMLIMIT_MODERATE,
+    passwordOpsLimit,
+    passwordMemLimit,
     sodium.crypto_pwhash_ALG_ARGON2ID13,
   );
   const protectedHeader = {
     alg: 'Argon2id-1.3',
     enc: 'XChaCha20-Poly1305-IETF',
     cty: 'jwk+json',
-    ops: sodium.crypto_pwhash_OPSLIMIT_MODERATE,
-    mem: sodium.crypto_pwhash_MEMLIMIT_MODERATE,
+    ops: passwordOpsLimit,
+    mem: passwordMemLimit,
     salt: salt.toString('base64url'),
   };
   const protectedHeaderEncoded = Buffer.from(
@@ -166,7 +173,7 @@ function unwrapWithPassword(password: string, keyJWE: any): JWK | undefined {
     header.mem,
     sodium.crypto_pwhash_ALG_ARGON2ID13,
   );
-  const additionalData = Buffer.from(keyJWE.protected, 'base64url');
+  const additionalData = Buffer.from(keyJWE.protected, 'utf-8');
   const nonce = Buffer.from(keyJWE.iv, 'base64url');
   const mac = Buffer.from(keyJWE.tag, 'base64url');
   const cipherText = Buffer.from(keyJWE.ciphertext, 'base64url');
@@ -175,8 +182,8 @@ function unwrapWithPassword(password: string, keyJWE: any): JWK | undefined {
     sodium.crypto_aead_xchacha20poly1305_ietf_decrypt_detached(
       plainText,
       null,
-      mac,
       cipherText,
+      mac,
       additionalData,
       nonce,
       key,
@@ -258,7 +265,7 @@ function unwrapWithKey(key: Key, keyJWE: any): JWK | undefined {
   ) {
     return;
   }
-  const additionalData = Buffer.from(keyJWE.protected, 'base64url');
+  const additionalData = Buffer.from(keyJWE.protected, 'utf-8');
   const nonce = Buffer.from(keyJWE.iv, 'base64url');
   const mac = Buffer.from(keyJWE.tag, 'base64url');
   const cipherText = Buffer.from(keyJWE.ciphertext, 'base64url');
@@ -267,8 +274,8 @@ function unwrapWithKey(key: Key, keyJWE: any): JWK | undefined {
     sodium.crypto_aead_xchacha20poly1305_ietf_decrypt_detached(
       plainText,
       null,
-      mac,
       cipherText,
+      mac,
       additionalData,
       nonce,
       key,
@@ -291,6 +298,8 @@ function unwrapWithKey(key: Key, keyJWE: any): JWK | undefined {
 export {
   nonceSize,
   macSize,
+  passwordOpsLimit,
+  passwordMemLimit,
   encryptWithKey,
   decryptWithKey,
   wrapWithPassword,

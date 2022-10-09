@@ -5,7 +5,7 @@ import type {
   PrivateKey,
   RecoveryCode,
   JWK,
-  JWEFlattened,
+  JWKEncrypted,
 } from './types';
 import type { NodeId } from '../ids/types';
 import type { FileSystem } from '../types';
@@ -76,17 +76,25 @@ class KeyRing {
     this.dbKeyPath = path.join(keysPath, 'db.jwk');
   }
 
-  public async start({
-    password,
-    recoveryCodeOrPrivateKey,
-    fresh = false,
-  }: {
+  public async start(options: {
     password: string;
-    recoveryCodeOrPrivateKey?: RecoveryCode | PrivateKey;
-    fresh?: boolean;
+    fresh?: boolean
+  } | {
+    password: string;
+    recoveryCode: RecoveryCode;
+    fresh?: boolean
+  } | {
+    password: string;
+    privateKey: PrivateKey;
+    fresh?: boolean
+  } | {
+    password: string;
+    privateKeyPath: string;
+    fresh?: boolean
   }): Promise<void> {
+    const { fresh = false, ...setupKeyPairOptions } = options;
     this.logger.info(`Starting ${this.constructor.name}`);
-    if (fresh) {
+    if (options.fresh) {
       await this.fs.promises.rm(this.keysPath, {
         force: true,
         recursive: true,
@@ -94,8 +102,7 @@ class KeyRing {
     }
     await this.fs.promises.mkdir(this.keysPath, { recursive: true });
     const [keyPair, recoveryCode] = await this.setupKeyPair(
-      password,
-      recoveryCodeOrPrivateKey,
+      setupKeyPairOptions,
     );
     const dbKey = await this.setupDbKey(keyPair);
     this._keyPair = keyPair;
@@ -216,10 +223,15 @@ class KeyRing {
    * If the root key pair already exists:
    *   - If password is supplied, the key pair is decrypted with the password.
    *     The key pair is returned without the recovery code.
-   *   - If password and recovery code is supplied, then the key pair will be recovered.
-   *     The recovery code is used to derive a key pair that is checked against the existing key pair.
-   *     If the key pairs match, then the derived key pair is encrypted with the password.
+   *   - If password and recovery code is supplied, then the key pair will be
+   *     recovered.
+   *     The recovery code is used to derive a key pair that is checked against
+   *     the existing key pair.
+   *     If the key pairs match, then the derived key pair is encrypted with
+   *     the password.
    *     The key pair is returned without the recovery code.
+   *   - Private key and private key path is ignored, and this is handled the
+   *     same as if only the password was supplied.
    * If the root key pair does not exist:
    *   - If password is supplied, then recovery code and key pair is generated.
    *     The key pair is encrypted with the password.
@@ -231,67 +243,79 @@ class KeyRing {
    *     The key pair is encrypted with the password.
    *     The key pair is returned without the recovery code.
    */
-  protected async setupKeyPair(
-    password: string,
-    recoveryCodeOrPrivateKey?: RecoveryCode | PrivateKey,
-  ): Promise<[KeyPair, RecoveryCode | undefined]> {
-    if (password.length < 1) {
+  protected async setupKeyPair(options: {
+    password: string;
+  } | {
+    password: string;
+    recoveryCode: RecoveryCode;
+  } | {
+    password: string;
+    privateKey: PrivateKey;
+  } | {
+    password: string;
+    privateKeyPath: string;
+  }): Promise<[KeyPair, RecoveryCode | undefined]> {
+
+    // If the password is a "string"
+    // then yea, same thing could occur here
+    // unless we are able to pass it something else
+    // Also does an empty password hurt?
+    // I'm not entirely sure
+
+    if (options.password.length < 1) {
       throw new keysErrors.ErrorKeysPasswordInvalid('Password cannot be empty');
     }
     let rootKeyPair: KeyPair;
     let recoveryCodeNew: RecoveryCode | undefined;
     if (await this.existsKeyPair()) {
-      if (typeof recoveryCodeOrPrivateKey === 'string') {
+      if ('recoveryCode' in options) {
         // Recover the key pair
         this.logger.info('Recovering root key pair');
-        if (!keysUtils.validateRecoveryCode(recoveryCodeOrPrivateKey)) {
-          throw new keysErrors.ErrorKeysRecoveryCodeInvalid();
-        }
-        const recoveredKeyPair = await this.recoverKeyPair(
-          recoveryCodeOrPrivateKey,
-        );
+        const recoveredKeyPair = await this.recoverKeyPair(options.recoveryCode);
         if (recoveredKeyPair == null) {
           throw new keysErrors.ErrorKeysRecoveryCodeIncorrect();
         }
         // Recovered key pair, write the key pair with the new password
         rootKeyPair = recoveredKeyPair;
-        await this.writeKeyPair(recoveredKeyPair, password);
+        await this.writeKeyPair(recoveredKeyPair, options.password);
       } else {
         // Load key pair by decrypting with password
         this.logger.info('Loading root key pair');
-        rootKeyPair = await this.readKeyPair(password);
+        rootKeyPair = await this.readKeyPair(options.password);
       }
       return [rootKeyPair, undefined];
     } else {
-      if (utils.isBufferSource(recoveryCodeOrPrivateKey)) {
-        this.logger.info('Deriving root key pair from provided private key');
-        if (recoveryCodeOrPrivateKey.byteLength !== 32) {
-          throw new keysErrors.ErrorKeysPrivateKeyInvalid();
-        }
-        const privateKey = recoveryCodeOrPrivateKey;
-        const publicKey = await keysUtils.publicKeyFromPrivateKeyEd25519(
-          privateKey,
-        );
-        rootKeyPair = { privateKey, publicKey };
-        await this.writeKeyPair(rootKeyPair, password);
-        return [rootKeyPair, undefined];
-      } else if (typeof recoveryCodeOrPrivateKey === 'string') {
+      if ('recoveryCode' in options) {
         this.logger.info('Generating root key pair from recovery code');
-        if (!keysUtils.validateRecoveryCode(recoveryCodeOrPrivateKey)) {
-          throw new keysErrors.ErrorKeysRecoveryCodeInvalid();
-        }
         // Deterministic key pair generation from recovery code
         // Recovery code is new by virtue of generating key pair
-        recoveryCodeNew = recoveryCodeOrPrivateKey;
-        rootKeyPair = await this.generateKeyPair(recoveryCodeOrPrivateKey);
-        await this.writeKeyPair(rootKeyPair, password);
+        recoveryCodeNew = options.recoveryCode;
+        rootKeyPair = await this.generateKeyPair(options.recoveryCode);
+        await this.writeKeyPair(rootKeyPair, options.password);
         return [rootKeyPair, recoveryCodeNew];
+      } else if ('privateKey' in options) {
+        this.logger.info('Making root key pair from provided private key');
+        const privateKey = options.privateKey;
+        const publicKey = keysUtils.publicKeyFromPrivateKeyEd25519(privateKey);
+        rootKeyPair = keysUtils.makeKeyPair(publicKey, privateKey);
+        await this.writeKeyPair(rootKeyPair, options.password);
+        return [rootKeyPair, undefined];
+      } else if ('privateKeyPath' in options) {
+        this.logger.info('Making root key pair from provided private key path');
+        const privateKey = await this.readPrivateKey(
+          options.password,
+          options.privateKeyPath
+        );
+        const publicKey = keysUtils.publicKeyFromPrivateKeyEd25519(privateKey);
+        rootKeyPair = keysUtils.makeKeyPair(publicKey, privateKey);
+        await this.writeKeyPair(rootKeyPair, options.password);
+        return [rootKeyPair, undefined];
       } else {
         this.logger.info('Generating root key pair and recovery code');
         // Randomly generated recovery code
         recoveryCodeNew = keysUtils.generateRecoveryCode(24);
         rootKeyPair = await this.generateKeyPair(recoveryCodeNew);
-        await this.writeKeyPair(rootKeyPair, password);
+        await this.writeKeyPair(rootKeyPair, options.password);
         return [rootKeyPair, recoveryCodeNew];
       }
     }
@@ -400,7 +424,14 @@ class KeyRing {
    * The private key is expected to be encrypted with `PBES2-HS512+A256KW`.
    * See: https://www.rfc-editor.org/rfc/rfc7518#section-4.8
    */
-  protected async readPrivateKey(password: string): Promise<PrivateKey> {
+  protected async readPrivateKey(
+    password: string,
+    privateKeyPath: string = this.privateKeyPath,
+  ): Promise<PrivateKey> {
+
+    // the private key path can be overwritten...
+
+
     let privateJWEJSON: string;
     try {
       privateJWEJSON = await this.fs.promises.readFile(

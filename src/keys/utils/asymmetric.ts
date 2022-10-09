@@ -26,6 +26,25 @@ function makeKeyPair(publicKey: PublicKey, privateKey: PrivateKey): KeyPair {
   } as KeyPair;
 }
 
+function publicKeyFromData(data: BufferSource): PublicKey | undefined {
+  const publicKey = utils.bufferWrap(data);
+  if (publicKey.byteLength !== sodium.crypto_sign_PUBLICKEYBYTES) {
+    return;
+  }
+  if (!validatePublicKey(publicKey as PublicKey)) {
+    return;
+  }
+  return publicKey as PublicKey;
+}
+
+function privateKeyFromData(data: BufferSource): PrivateKey | undefined {
+  const privateKey = utils.bufferWrap(data);
+  if (privateKey.byteLength !== sodium.crypto_sign_SEEDBYTES) {
+    return;
+  }
+  return privateKey as PrivateKey;
+}
+
 function publicKeyToNodeId(publicKey: PublicKey): NodeId {
   return IdInternal.create<NodeId>(publicKey);
 }
@@ -489,6 +508,8 @@ function validatePublicKey(publicKey: PublicKey): boolean {
 
 export {
   makeKeyPair,
+  publicKeyFromData,
+  privateKeyFromData,
   publicKeyToNodeId,
   publicKeyFromNodeId,
   publicKeyFromPrivateKeyEd25519,
