@@ -255,16 +255,6 @@ class KeyRing {
     password: string;
     privateKeyPath: string;
   }): Promise<[KeyPair, RecoveryCode | undefined]> {
-
-    // If the password is a "string"
-    // then yea, same thing could occur here
-    // unless we are able to pass it something else
-    // Also does an empty password hurt?
-    // I'm not entirely sure
-
-    if (options.password.length < 1) {
-      throw new keysErrors.ErrorKeysPasswordInvalid('Password cannot be empty');
-    }
     let rootKeyPair: KeyPair;
     let recoveryCodeNew: RecoveryCode | undefined;
     if (await this.existsKeyPair()) {

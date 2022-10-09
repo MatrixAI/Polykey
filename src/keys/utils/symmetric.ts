@@ -59,6 +59,7 @@ function decryptWithKey(
   const nonce = cipherText.subarray(0, nonceSize);
   const macAndCipherText = cipherText.subarray(nonceSize);
   const plainText = Buffer.allocUnsafe(macAndCipherText.byteLength - macSize);
+  // This returns the number of bytes that has been decrypted
   const decrypted = sodium.crypto_aead_xchacha20poly1305_ietf_decrypt(
     plainText,
     null,
@@ -67,16 +68,17 @@ function decryptWithKey(
     nonce,
     key,
   );
-  if (decrypted < 0) {
+  if (decrypted !== plainText.byteLength) {
     return;
   }
   return plainText;
 }
 
 /**
- * Key wrapping with password
+ * Key wrapping with password.
  * This uses `Argon2Id-1.3` to derive a 256-bit key from the password.
  * The key is then used for encryption with `XChaCha20-Poly1305-IETF`.
+ * The password can be an empty string.
  */
 function wrapWithPassword(password: string, keyJWK: JWK): JWKEncrypted {
   const key = Buffer.allocUnsafe(
@@ -128,6 +130,7 @@ function wrapWithPassword(password: string, keyJWK: JWK): JWKEncrypted {
 
 /**
  * Key unwrapping with password.
+ * The password can be an empty string.
  */
 function unwrapWithPassword(password: string, keyJWE: any): JWK | undefined {
   if (typeof keyJWE !== 'object' || keyJWE == null) {
@@ -161,6 +164,11 @@ function unwrapWithPassword(password: string, keyJWE: any): JWK | undefined {
   ) {
     return;
   }
+  // If the ops and mem setting is greater than the limit
+  // then it may be maliciously trying to DOS this agent
+  if (header.ops > passwordOpsLimit || header.mem > passwordMemLimit) {
+    return;
+  }
   const key = Buffer.allocUnsafe(
     sodium.crypto_aead_xchacha20poly1305_ietf_KEYBYTES,
   );
@@ -179,6 +187,8 @@ function unwrapWithPassword(password: string, keyJWE: any): JWK | undefined {
   const cipherText = Buffer.from(keyJWE.ciphertext, 'base64url');
   const plainText = Buffer.allocUnsafe(cipherText.byteLength);
   try {
+    // This returns `undefined`
+    // It will throw if the MAC cannot be authenticated
     sodium.crypto_aead_xchacha20poly1305_ietf_decrypt_detached(
       plainText,
       null,
@@ -271,6 +281,8 @@ function unwrapWithKey(key: Key, keyJWE: any): JWK | undefined {
   const cipherText = Buffer.from(keyJWE.ciphertext, 'base64url');
   const plainText = Buffer.allocUnsafe(cipherText.byteLength);
   try {
+    // This returns `undefined`
+    // It will throw if the MAC cannot be authenticated
     sodium.crypto_aead_xchacha20poly1305_ietf_decrypt_detached(
       plainText,
       null,

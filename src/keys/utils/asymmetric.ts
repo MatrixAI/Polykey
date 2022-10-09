@@ -302,11 +302,13 @@ function verifyWithPublicKey(
  * Key Encapsulation Mechanism (KEM).
  * This encapsulates a JWK with a public key and produces a custom JWE.
  * This applies the ECIES protocol in `encryptWithPublicKey` from libsodium to JWE.
+ * This JWE uses custom header properties.
  *
- * This JWE uses custom header properties:
+ * For ECDH-SS:
  *   - alg: "ECDH-SS-NaCl"
  *   - enc: "XSalsa20-Poly1305"
- * or when doing ECDH-ES:
+ *
+ * For ECDH-ES:
  *   - alg: "ECDH-ES-NaCl"
  *   - enc: "XSalsa20-Poly1305"
  */
@@ -446,8 +448,8 @@ function decapsulateWithPrivateKey(
     const nonce = Buffer.from(keyJWE.iv, 'base64url');
     const decrypted = sodium.crypto_box_open_detached(
       plainText,
-      mac,
       cipherText,
+      mac,
       nonce,
       senderPublicKeyX25519,
       receiverKeyPairX25519.secretKey,
