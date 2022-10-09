@@ -3,6 +3,7 @@ import type {
   PrivateKey,
   KeyPair,
   Key,
+  KeyJWK,
   Signature,
 } from '@/keys/types';
 import { fc } from '@fast-check/jest';
@@ -21,6 +22,16 @@ const keyArb = fc
   .uint8Array({ minLength: 32, maxLength: 32 })
   .map(utils.bufferWrap)
   .noShrink() as fc.Arbitrary<Key>;
+
+const keyJWKArb = keyArb.map((key) => {
+  return {
+    alg: 'XChaCha20-Poly1305-IETF',
+    kty: 'oct',
+    k: key.toString('base64url'),
+    ext: true,
+    key_ops: ['encrypt', 'decrypt'],
+  };
+}).noShrink() as fc.Arbitrary<KeyJWK>;
 
 /**
  * Ed25519 Private Key
@@ -80,6 +91,7 @@ const signatureArb = fc
 export {
   bufferArb,
   keyArb,
+  keyJWKArb,
   publicKeyArb,
   privateKeyArb,
   keyPairArb,

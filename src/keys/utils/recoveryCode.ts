@@ -12,7 +12,7 @@ function generateRecoveryCode(size: 12 | 24 = 24): RecoveryCode {
   throw RangeError(size);
 }
 
-function validateRecoveryCode(recoveryCode: string): boolean {
+function validateRecoveryCode(recoveryCode: string): recoveryCode is RecoveryCode {
   return bip39.validateMnemonic(recoveryCode, bip39Wordlist);
 }
 
