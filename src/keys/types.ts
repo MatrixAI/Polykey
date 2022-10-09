@@ -189,11 +189,16 @@ type JWKEncrypted =
       protected: string;
     };
 
+type PasswordHash = Opaque<'PasswordHash', Buffer>;
+
+type PasswordSalt = Opaque<'PasswordSalt', Buffer>;
+
 /**
  * BIP39 Recovery Code
  * Can be 12 or 24 words
  */
 type RecoveryCode = Opaque<'RecoveryCode', string>;
+
 
 type KeyManagerChangeData = {
   nodeId: NodeId;
@@ -225,6 +230,8 @@ export type {
   CertificatePemChain,
   JWK,
   JWKEncrypted,
+  PasswordHash,
+  PasswordSalt,
   RecoveryCode,
   KeyManagerChangeData,
 };

@@ -5,6 +5,8 @@ import type {
   PrivateKey,
   RecoveryCode,
   Signature,
+  PasswordHash,
+  PasswordSalt,
 } from './types';
 import type { NodeId } from '../ids/types';
 import type { FileSystem } from '../types';
@@ -56,6 +58,10 @@ class KeyRing {
   protected _keyPair?: KeyPair;
   protected _recoveryCode?: RecoveryCode;
   protected _dbKey?: Key;
+  protected passwordHash?: Readonly<{
+    hash: PasswordHash,
+    salt: PasswordSalt
+  }>;
 
   public constructor({
     keysPath,
@@ -103,6 +109,7 @@ class KeyRing {
       setupKeyPairOptions,
     );
     const dbKey = await this.setupDbKey(keyPair);
+    this.setupPasswordHash(options.password);
     this._keyPair = keyPair;
     this._recoveryCode = recoveryCode;
     this._dbKey = dbKey;
@@ -114,6 +121,7 @@ class KeyRing {
     delete this._keyPair;
     delete this._recoveryCode;
     delete this._dbKey;
+    delete this.passwordHash;
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
@@ -146,20 +154,34 @@ class KeyRing {
     return keysUtils.publicKeyToNodeId(this._keyPair!.publicKey);
   }
 
+  /**
+   * Warning: this is intended to be a slow operation to prevent brute force
+   * attacks
+   */
   @ready(new keysErrors.ErrorKeyRingNotRunning())
   public async checkPassword(password: string): Promise<boolean> {
-    try {
-      await this.readPrivateKey(password);
-    } catch {
-      return false;
-    }
-    return true;
+    return keysUtils.checkPassword(
+      password,
+      this.passwordHash!.hash,
+      this.passwordHash!.salt
+    );
   }
 
+  /**
+   * Changes the root key pair password.
+   * This will re-wrap the private key.
+   * The password is the new password.
+   * This does not require the old password because
+   * if the `KeyRing` is ready, that means the agent is unlocked
+   * at least from the perspective of the `KeyRing`.
+   * If an external client intends to change the password,
+   * they must be authenticated first.
+   */
   @ready(new keysErrors.ErrorKeyRingNotRunning())
   public async changePassword(password: string): Promise<void> {
     this.logger.info('Changing root key pair password');
-    return this.writeKeyPair(this._keyPair!, password);
+    await this.writeKeyPair(this._keyPair!, password);
+    this.setupPasswordHash(password);
   }
 
   @ready(new keysErrors.ErrorKeyRingNotRunning())
@@ -676,10 +698,18 @@ class KeyRing {
   protected generateDbKey(): Key {
     return keysUtils.generateKey();
   }
-}
 
-// Make it an observable
-// so you can "subscribe" to this data
-// BehaviourObservable? BehaviourSubject
+  /**
+   * This sets up a password hash in-memory.
+   * This is used to check if the password is correct.
+   */
+  protected setupPasswordHash(password: string): void {
+    const [hash, salt] = keysUtils.hashPassword(password);
+    this.passwordHash = {
+      hash,
+      salt
+    };
+  }
+}
 
 export default KeyRing;

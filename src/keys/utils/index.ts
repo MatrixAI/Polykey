@@ -8,6 +8,7 @@ export * from './webcrypto';
 export * from './asymmetric';
 export * from './generate';
 export * from './jwk';
+export * from './password';
 export * from './pem';
 export * from './random';
 export * from './recoveryCode';

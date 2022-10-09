@@ -1,16 +1,10 @@
-import type { Key, JWK, JWKEncrypted } from '../types';
+import type { Key, JWK, JWKEncrypted, PasswordSalt } from '../types';
 import sodium from 'sodium-native';
 import { getRandomBytes } from './random';
+import { passwordOpsLimit, passwordMemLimit, hashPassword } from './password';
 
 const nonceSize = sodium.crypto_aead_xchacha20poly1305_ietf_NPUBBYTES;
 const macSize = sodium.crypto_aead_xchacha20poly1305_ietf_ABYTES;
-
-/**
- * This ensures that deriving a key from a password uses
- * 256 MiB of RAM and 0.7 seconds on a 2.8 GHz Intel Core i7.
- */
-const passwordOpsLimit = sodium.crypto_pwhash_OPSLIMIT_MODERATE;
-const passwordMemLimit = sodium.crypto_pwhash_MEMLIMIT_MODERATE;
 
 /**
  * Symmetric encryption using XChaCha20-Poly1305-IETF.
@@ -81,18 +75,7 @@ function decryptWithKey(
  * The password can be an empty string.
  */
 function wrapWithPassword(password: string, keyJWK: JWK): JWKEncrypted {
-  const key = Buffer.allocUnsafe(
-    sodium.crypto_aead_xchacha20poly1305_ietf_KEYBYTES,
-  );
-  const salt = getRandomBytes(sodium.crypto_pwhash_SALTBYTES);
-  sodium.crypto_pwhash(
-    key,
-    Buffer.from(password, 'utf-8'),
-    salt,
-    passwordOpsLimit,
-    passwordMemLimit,
-    sodium.crypto_pwhash_ALG_ARGON2ID13,
-  );
+  const [key, salt] = hashPassword(password);
   const protectedHeader = {
     alg: 'Argon2id-1.3',
     enc: 'XChaCha20-Poly1305-IETF',
@@ -169,18 +152,8 @@ function unwrapWithPassword(password: string, keyJWE: any): JWK | undefined {
   if (header.ops > passwordOpsLimit || header.mem > passwordMemLimit) {
     return;
   }
-  const key = Buffer.allocUnsafe(
-    sodium.crypto_aead_xchacha20poly1305_ietf_KEYBYTES,
-  );
-  const salt = Buffer.from(header.salt, 'base64url');
-  sodium.crypto_pwhash(
-    key,
-    Buffer.from(password, 'utf-8'),
-    salt,
-    header.ops,
-    header.mem,
-    sodium.crypto_pwhash_ALG_ARGON2ID13,
-  );
+  const salt = Buffer.from(header.salt, 'base64url') as PasswordSalt;
+  const [key] = hashPassword(password, salt);
   const additionalData = Buffer.from(keyJWE.protected, 'utf-8');
   const nonce = Buffer.from(keyJWE.iv, 'base64url');
   const mac = Buffer.from(keyJWE.tag, 'base64url');
@@ -310,8 +283,6 @@ function unwrapWithKey(key: Key, keyJWE: any): JWK | undefined {
 export {
   nonceSize,
   macSize,
-  passwordOpsLimit,
-  passwordMemLimit,
   encryptWithKey,
   decryptWithKey,
   wrapWithPassword,
