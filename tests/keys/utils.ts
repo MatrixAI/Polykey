@@ -88,6 +88,8 @@ const signatureArb = fc
   .map(utils.bufferWrap)
   .noShrink() as fc.Arbitrary<Signature>;
 
+const passwordArb = fc.string({ minLength: 0, maxLength: 20 }).noShrink();
+
 export {
   bufferArb,
   keyArb,
@@ -97,4 +99,5 @@ export {
   keyPairArb,
   certPArb,
   signatureArb,
+  passwordArb,
 };
