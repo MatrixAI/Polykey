@@ -39,6 +39,10 @@ describe('keys/utils/x509', () => {
         expect(cert.notAfter.getTime()).toBe(nowS.getTime() + duration * 1000);
         // Certificate is equal to itself
         expect(x509.certEqual(cert, cert)).toBe(true);
+        // Certificate public key is equal to the subject public key
+        expect(x509.certPublicKey(cert)).toStrictEqual(
+          subjectKeyPair.publicKey,
+        );
         // Certificate node ID is equal to the subject public key node ID
         expect(x509.certNodeId(cert)).toStrictEqual(
           asymmetric.publicKeyToNodeId(subjectKeyPair.publicKey),
@@ -146,6 +150,21 @@ describe('keys/utils/x509', () => {
       } finally {
         jest.useRealTimers();
       }
+    },
+  );
+  testProp(
+    'certificate convert to and from PEM',
+    [testsKeysUtils.keyPairArb, testsKeysUtils.keyPairArb],
+    async (issuerKeyPair, subjectKeyPair) => {
+      const cert = await x509.generateCertificate({
+        certId: certIdGenerator(),
+        subjectKeyPair: subjectKeyPair,
+        issuerPrivateKey: issuerKeyPair.privateKey,
+        duration: 1000,
+      });
+      const certPEM = x509.certToPEM(cert);
+      const cert_ = x509.certFromPEM(certPEM)!;
+      expect(x509.certEqual(cert, cert_)).toBe(true);
     },
   );
 });

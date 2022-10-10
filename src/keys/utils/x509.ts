@@ -1,5 +1,11 @@
-import type { PublicKey, PrivateKey, Certificate } from '../types';
-import type { CertificateId, NodeId } from '../../ids/types';
+import type {
+  PublicKey,
+  PrivateKey,
+  Certificate,
+  CertificateASN1,
+  CertificatePEM,
+} from '../types';
+import type { CertId, NodeId } from '../../ids/types';
 import * as x509 from '@peculiar/x509';
 import * as asn1 from '@peculiar/asn1-schema';
 import * as asn1X509 from '@peculiar/asn1-x509';
@@ -7,6 +13,7 @@ import webcrypto, { importPrivateKey, importPublicKey } from './webcrypto';
 import {
   publicKeyToNodeId,
   publicKeyFromPrivateKeyEd25519,
+  validatePublicKey,
 } from './asymmetric';
 import * as ids from '../../ids';
 import * as utils from '../../utils';
@@ -124,7 +131,7 @@ async function generateCertificate({
   subjectAttrsExtra = [],
   issuerAttrsExtra = [],
 }: {
-  certId: CertificateId;
+  certId: CertId;
   subjectKeyPair: {
     publicKey: PublicKey;
     privateKey: PrivateKey;
@@ -242,6 +249,28 @@ async function generateCertificate({
   return await x509.X509CertificateGenerator.create(certConfig);
 }
 
+function certCertId(cert: Certificate): CertId | undefined {
+  return ids.decodeCertId(cert.serialNumber);
+}
+
+function certPublicKey(cert: Certificate): PublicKey | undefined {
+  const spki = asn1.AsnConvert.parse(cert.publicKey.rawData, asn1X509.SubjectPublicKeyInfo);
+  const publicKey = utils.bufferWrap(spki.subjectPublicKey);
+  if (!validatePublicKey(publicKey)) {
+    return;
+  }
+  return publicKey;
+}
+
+function certNodeId(cert: Certificate): NodeId | undefined {
+  const subject = cert.subjectName.toJSON();
+  const subjectNodeId = subject.find((attr) => 'CN' in attr)?.CN[0];
+  if (subjectNodeId != null) {
+    return ids.decodeNodeId(subjectNodeId);
+  }
+  return undefined;
+}
+
 /**
  * Checks if 2 certificates are exactly the same
  * This checks equality of the raw data buffer
@@ -326,24 +355,13 @@ function certNotExpiredBy(cert: Certificate, now: Date = new Date()): boolean {
  */
 async function certSignedBy(
   cert: Certificate,
-  publicKey: BufferSource | CryptoKey,
+  publicKey: PublicKey,
 ): Promise<boolean> {
-  if (utils.isBufferSource(publicKey)) {
-    publicKey = await importPublicKey(publicKey);
-  }
+  const publicCryptoKey = await importPublicKey(publicKey);
   return cert.verify({
-    publicKey,
+    publicKey: publicCryptoKey,
     signatureOnly: true,
   });
-}
-
-function certNodeId(cert: Certificate): NodeId | undefined {
-  const subject = cert.subjectName.toJSON();
-  const subjectNodeId = subject.find((attr) => 'CN' in attr)?.CN[0];
-  if (subjectNodeId != null) {
-    return ids.decodeNodeId(subjectNodeId);
-  }
-  return undefined;
 }
 
 /**
@@ -376,6 +394,30 @@ async function certNodeSigned(cert: Certificate): Promise<boolean> {
   );
 }
 
+function certToASN1(cert: Certificate): CertificateASN1 {
+  return utils.bufferWrap(cert.rawData) as CertificateASN1;
+}
+
+function certFromASN1(certASN1: CertificateASN1): Certificate | undefined {
+  try {
+    return new x509.X509Certificate(certASN1);
+  } catch {
+    return;
+  }
+}
+
+function certToPEM(cert: Certificate): CertificatePEM {
+  return cert.toString('pem') as CertificatePEM;
+}
+
+function certFromPEM(certPEM: CertificatePEM): Certificate | undefined {
+  try {
+    return new x509.X509Certificate(certPEM);
+  } catch {
+    return;
+  }
+}
+
 export {
   PolykeyVersionString,
   PolykeyVersionExtension,
@@ -383,12 +425,18 @@ export {
   PolykeyNodeSignatureExtension,
   extendedKeyUsageFlags,
   generateCertificate,
-  certEqual,
+  certCertId,
+  certPublicKey,
   certNodeId,
+  certEqual,
   certIssuedBy,
   certNotExpiredBy,
   certSignedBy,
   certNodeSigned,
+  certToASN1,
+  certFromASN1,
+  certToPEM,
+  certFromPEM,
 };
 
 export { createCertIdGenerator, encodeCertId, decodeCertId } from '../../ids';

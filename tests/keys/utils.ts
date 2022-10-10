@@ -1,5 +1,5 @@
 import type {
-  CertificateId,
+  CertId,
   PrivateKey,
   KeyPair,
   Key,
@@ -74,7 +74,7 @@ const certPArb = fc
     certId: fc.uint8Array({
       minLength: 16,
       maxLength: 16,
-    }) as fc.Arbitrary<CertificateId>,
+    }) as fc.Arbitrary<CertId>,
     duration: fc.integer({ min: 1, max: 1000 }),
   })
   .map(async ({ subjectKeyPair, issuerKeyPair, certId, duration }) => {
