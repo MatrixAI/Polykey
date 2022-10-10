@@ -1,7 +1,20 @@
-import type { Key, JWK, JWKEncrypted, PasswordSalt } from '../types';
+import type {
+  Key,
+  JWK,
+  JWKEncrypted,
+  PasswordSalt,
+  PasswordOpsLimit,
+  PasswordMemLimit
+} from '../types';
 import sodium from 'sodium-native';
 import { getRandomBytes } from './random';
-import { passwordOpsLimit, passwordMemLimit, hashPassword } from './password';
+import {
+  passwordOpsLimits,
+  passwordMemLimits,
+  passwordOpsLimitDefault,
+  passwordMemLimitDefault,
+  hashPassword
+} from './password';
 
 const nonceSize = sodium.crypto_aead_xchacha20poly1305_ietf_NPUBBYTES;
 const macSize = sodium.crypto_aead_xchacha20poly1305_ietf_ABYTES;
@@ -74,14 +87,24 @@ function decryptWithKey(
  * The key is then used for encryption with `XChaCha20-Poly1305-IETF`.
  * The password can be an empty string.
  */
-function wrapWithPassword(password: string, keyJWK: JWK): JWKEncrypted {
-  const [key, salt] = hashPassword(password);
+function wrapWithPassword(
+  password: string,
+  keyJWK: JWK,
+  opsLimit: PasswordOpsLimit = passwordOpsLimitDefault,
+  memLimit: PasswordMemLimit = passwordMemLimitDefault,
+): JWKEncrypted {
+  const [key, salt] = hashPassword(
+    password,
+    undefined,
+    opsLimit,
+    memLimit,
+  );
   const protectedHeader = {
     alg: 'Argon2id-1.3',
     enc: 'XChaCha20-Poly1305-IETF',
     cty: 'jwk+json',
-    ops: passwordOpsLimit,
-    mem: passwordMemLimit,
+    ops: opsLimit,
+    mem: memLimit,
     salt: salt.toString('base64url'),
   };
   const protectedHeaderEncoded = Buffer.from(
@@ -115,7 +138,12 @@ function wrapWithPassword(password: string, keyJWK: JWK): JWKEncrypted {
  * Key unwrapping with password.
  * The password can be an empty string.
  */
-function unwrapWithPassword(password: string, keyJWE: any): JWK | undefined {
+function unwrapWithPassword(
+  password: string,
+  keyJWE: any,
+  opsLimit: PasswordOpsLimit = passwordOpsLimitDefault,
+  memLimit: PasswordMemLimit = passwordMemLimitDefault,
+): JWK | undefined {
   if (typeof keyJWE !== 'object' || keyJWE == null) {
     return;
   }
@@ -149,11 +177,21 @@ function unwrapWithPassword(password: string, keyJWE: any): JWK | undefined {
   }
   // If the ops and mem setting is greater than the limit
   // then it may be maliciously trying to DOS this agent
-  if (header.ops > passwordOpsLimit || header.mem > passwordMemLimit) {
+  if (
+    header.ops < passwordOpsLimits.min ||
+    header.ops > opsLimit ||
+    header.mem < passwordMemLimits.min ||
+    header.mem > memLimit
+  ) {
     return;
   }
   const salt = Buffer.from(header.salt, 'base64url') as PasswordSalt;
-  const [key] = hashPassword(password, salt);
+  const [key] = hashPassword(
+    password,
+    salt,
+    header.ops,
+    header.mem,
+  );
   const additionalData = Buffer.from(keyJWE.protected, 'utf-8');
   const nonce = Buffer.from(keyJWE.iv, 'base64url');
   const mac = Buffer.from(keyJWE.tag, 'base64url');

@@ -208,6 +208,10 @@ type PasswordHash = Opaque<'PasswordHash', Buffer>;
 
 type PasswordSalt = Opaque<'PasswordSalt', Buffer>;
 
+type PasswordOpsLimit = Opaque<'PasswordOpsLimit', number>;
+
+type PasswordMemLimit = Opaque<'PasswordMemLimit', number>;
+
 /**
  * BIP39 Recovery Code
  * Can be 12 or 24 words
@@ -256,6 +260,8 @@ export type {
   JWKEncrypted,
   PasswordHash,
   PasswordSalt,
+  PasswordOpsLimit,
+  PasswordMemLimit,
   RecoveryCode,
   RecoveryCodeLocked,
   CertificateManagerChangeData,
