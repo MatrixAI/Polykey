@@ -32,7 +32,7 @@ describe(CertManager.name, () => {
       privateKey,
       logger,
       passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
     });
     const dbPath = `${dataDir}/db`;
     db = await DB.createDB({
@@ -44,13 +44,13 @@ describe(CertManager.name, () => {
           encrypt: async (key, plainText) => {
             return keysUtils.encryptWithKey(
               utils.bufferWrap(key) as Key,
-              utils.bufferWrap(plainText)
+              utils.bufferWrap(plainText),
             );
           },
           decrypt: async (key, cipherText) => {
             return keysUtils.decryptWithKey(
               utils.bufferWrap(key) as Key,
-              utils.bufferWrap(cipherText)
+              utils.bufferWrap(cipherText),
             );
           },
         },
@@ -164,10 +164,6 @@ describe(CertManager.name, () => {
 
     await certManager.stop();
   });
-  test('renew root certificate with new key pair', async () => {
-
-  });
-  test('order of certificate chain should be leaf to root', async () => {
-
-  });
+  test('renew root certificate with new key pair', async () => {});
+  test('order of certificate chain should be leaf to root', async () => {});
 });

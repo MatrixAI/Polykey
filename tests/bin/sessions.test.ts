@@ -12,7 +12,6 @@ import { Session } from '@/sessions';
 import { sleep } from '@/utils';
 import config from '@/config';
 import * as clientErrors from '@/client/errors';
-import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 import * as testUtils from '../utils';
 
 jest.mock('prompts');
@@ -28,7 +27,6 @@ describe('sessions', () => {
   let dataDir: string;
   beforeEach(async () => {
     ({ agentDir, agentPassword, agentClose } = await testUtils.setupTestAgent(
-      globalRootKeyPems[0],
       logger,
     ));
     dataDir = await fs.promises.mkdtemp(

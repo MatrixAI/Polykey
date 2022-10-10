@@ -4,7 +4,7 @@ import path from 'path';
 import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { Metadata } from '@grpc/grpc-js';
-import KeyManager from '@/keys/KeyManager';
+import KeyRing from '@/keys/KeyRing';
 import GRPCServer from '@/grpc/GRPCServer';
 import GRPCClientClient from '@/client/GRPCClientClient';
 import keysKeyPairRoot from '@/client/service/keysKeyPairRoot';
@@ -13,7 +13,6 @@ import * as keysPB from '@/proto/js/polykey/v1/keys/keys_pb';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as clientUtils from '@/client/utils/utils';
 import * as keysUtils from '@/keys/utils';
-import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('keysKeyPairRoot', () => {
   const logger = new Logger('keysKeyPairRoot test', LogLevel.WARN, [
@@ -23,7 +22,7 @@ describe('keysKeyPairRoot', () => {
   const authenticate = async (metaClient, metaServer = new Metadata()) =>
     metaServer;
   let dataDir: string;
-  let keyManager: KeyManager;
+  let keyRing: KeyRing;
   let grpcServer: GRPCServer;
   let grpcClient: GRPCClientClient;
   beforeEach(async () => {
@@ -31,16 +30,15 @@ describe('keysKeyPairRoot', () => {
       path.join(os.tmpdir(), 'polykey-test-'),
     );
     const keysPath = path.join(dataDir, 'keys');
-    keyManager = await KeyManager.createKeyManager({
+    keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
       logger,
-      privateKeyPemOverride: globalRootKeyPems[0],
     });
     const clientService = {
       keysKeyPairRoot: keysKeyPairRoot({
         authenticate,
-        keyManager,
+        keyRing,
         logger,
       }),
     };
@@ -51,7 +49,7 @@ describe('keysKeyPairRoot', () => {
       port: 0 as Port,
     });
     grpcClient = await GRPCClientClient.createGRPCClientClient({
-      nodeId: keyManager.getNodeId(),
+      nodeId: keyRing.getNodeId(),
       host: '127.0.0.1' as Host,
       port: grpcServer.getPort(),
       logger,
@@ -60,7 +58,7 @@ describe('keysKeyPairRoot', () => {
   afterEach(async () => {
     await grpcClient.destroy();
     await grpcServer.stop();
-    await keyManager.stop();
+    await keyRing.stop();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,

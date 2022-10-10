@@ -11,7 +11,6 @@ import * as nodesUtils from '@/nodes/utils';
 import * as claimsUtils from '@/claims/utils';
 import * as identitiesUtils from '@/identities/utils';
 import TestProvider from '../../identities/TestProvider';
-import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 import * as testUtils from '../../utils';
 
 describe('trust/untrust/list', () => {
@@ -47,9 +46,6 @@ describe('trust/untrust/list', () => {
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },
-      keysConfig: {
-        privateKeyPemOverride: globalRootKeyPems[0],
-      },
       logger,
     });
     pkAgent.identitiesManager.registerProvider(provider);
@@ -64,12 +60,9 @@ describe('trust/untrust/list', () => {
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },
-      keysConfig: {
-        privateKeyPemOverride: globalRootKeyPems[1],
-      },
       logger,
     });
-    nodeId = node.keyManager.getNodeId();
+    nodeId = node.keyRing.getNodeId();
     nodeHost = node.proxy.getProxyHost();
     nodePort = node.proxy.getProxyPort();
     node.identitiesManager.registerProvider(provider);
@@ -79,7 +72,7 @@ describe('trust/untrust/list', () => {
     provider.users[identity] = {};
     const identityClaim: ClaimLinkIdentity = {
       type: 'identity',
-      node: nodesUtils.encodeNodeId(node.keyManager.getNodeId()),
+      node: nodesUtils.encodeNodeId(node.keyRing.getNodeId()),
       provider: provider.id,
       identity: identity,
     };

@@ -7,6 +7,7 @@ import type {
 import type { NodeId } from '@/ids/types';
 import type { Claim, ClaimData, SignatureData } from '@/claims/types';
 import type { IdentityClaim } from '@/identities/types';
+import type { Key } from '@/keys/types';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
@@ -16,6 +17,7 @@ import { IdentitiesManager, providers } from '@/identities';
 import * as identitiesErrors from '@/identities/errors';
 import * as keysUtils from '@/keys/utils';
 import * as nodesUtils from '@/nodes/utils';
+import * as utils from '@/utils/index';
 import TestProvider from './TestProvider';
 import * as testNodesUtils from '../nodes/utils';
 
@@ -36,8 +38,18 @@ describe('IdentitiesManager', () => {
       crypto: {
         key: await keysUtils.generateKey(),
         ops: {
-          encrypt: keysUtils.encryptWithKey,
-          decrypt: keysUtils.decryptWithKey,
+          encrypt: async (key, plainText) => {
+            return keysUtils.encryptWithKey(
+              utils.bufferWrap(key) as Key,
+              utils.bufferWrap(plainText),
+            );
+          },
+          decrypt: async (key, cipherText) => {
+            return keysUtils.decryptWithKey(
+              utils.bufferWrap(key) as Key,
+              utils.bufferWrap(cipherText),
+            );
+          },
         },
       },
     });

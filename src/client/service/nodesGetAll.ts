@@ -1,7 +1,7 @@
 import type * as grpc from '@grpc/grpc-js';
 import type Logger from '@matrixai/logger';
 import type { Authenticate } from '../types';
-import type KeyManager from '../../keys/KeyManager';
+import type KeyRing from '../../keys/KeyRing';
 import type { NodeId } from '../../ids/types';
 import type * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 import type NodeGraph from '../../nodes/NodeGraph';
@@ -18,12 +18,12 @@ import * as clientUtils from '../utils';
 function nodesGetAll({
   authenticate,
   nodeGraph,
-  keyManager,
+  keyRing,
   logger,
 }: {
   authenticate: Authenticate;
   nodeGraph: NodeGraph;
-  keyManager: KeyManager;
+  keyRing: KeyRing;
   logger: Logger;
 }) {
   return async (
@@ -47,7 +47,7 @@ function nodesGetAll({
           // For every node in every bucket, add it to our message
           if (!index) {
             index = nodesUtils.bucketIndex(
-              keyManager.getNodeId(),
+              keyRing.getNodeId(),
               IdInternal.fromString<NodeId>(id),
             );
           }

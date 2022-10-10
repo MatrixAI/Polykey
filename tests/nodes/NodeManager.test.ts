@@ -2,6 +2,7 @@ import type { CertificatePem, KeyPairPem, PublicKeyPem } from '@/keys/types';
 import type { Host, Port } from '@/network/types';
 import type { NodeId, NodeAddress } from '@/nodes/types';
 import type { Task } from '@/tasks/types';
+import type { Key } from '@/keys/types';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
@@ -12,7 +13,7 @@ import { Timer } from '@matrixai/timer';
 import { PromiseCancellable } from '@matrixai/async-cancellable';
 import TaskManager from '@/tasks/TaskManager';
 import PolykeyAgent from '@/PolykeyAgent';
-import KeyManager from '@/keys/KeyManager';
+import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import NodeGraph from '@/nodes/NodeGraph';
@@ -23,9 +24,9 @@ import * as claimsUtils from '@/claims/utils';
 import { never, promise, promisify, sleep } from '@/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
+import * as utils from '@/utils/index';
 import * as nodesTestUtils from './utils';
 import { generateNodeIdForBucket } from './utils';
-import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 
 describe(`${NodeManager.name} test`, () => {
   const password = 'password';
@@ -37,7 +38,7 @@ describe(`${NodeManager.name} test`, () => {
   let taskManager: TaskManager;
   let nodeConnectionManager: NodeConnectionManager;
   let proxy: Proxy;
-  let keyManager: KeyManager;
+  let keyRing: KeyRing;
   let keyPairPem: KeyPairPem;
   let certPem: CertificatePem;
   let db: DB;
@@ -63,15 +64,14 @@ describe(`${NodeManager.name} test`, () => {
       path.join(os.tmpdir(), 'polykey-test-'),
     );
     const keysPath = `${dataDir}/keys`;
-    keyManager = await KeyManager.createKeyManager({
+    keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
       logger,
-      privateKeyPemOverride: globalRootKeyPems[0],
     });
 
-    const cert = keyManager.getRootCert();
-    keyPairPem = keyManager.getRootKeyPairPem();
+    const cert = keyRing.getRootCert();
+    keyPairPem = keyRing.getRootKeyPairPem();
     certPem = keysUtils.certToPem(cert);
 
     proxy = new Proxy({
@@ -96,18 +96,28 @@ describe(`${NodeManager.name} test`, () => {
       dbPath,
       logger,
       crypto: {
-        key: keyManager.dbKey,
+        key: keyRing.dbKey,
         ops: {
-          encrypt: keysUtils.encryptWithKey,
-          decrypt: keysUtils.decryptWithKey,
+          encrypt: async (key, plainText) => {
+            return keysUtils.encryptWithKey(
+              utils.bufferWrap(key) as Key,
+              utils.bufferWrap(plainText),
+            );
+          },
+          decrypt: async (key, cipherText) => {
+            return keysUtils.decryptWithKey(
+              utils.bufferWrap(key) as Key,
+              utils.bufferWrap(cipherText),
+            );
+          },
         },
       },
     });
-    sigchain = await Sigchain.createSigchain({ keyManager, db, logger });
+    sigchain = await Sigchain.createSigchain({ keyRing, db, logger });
 
     nodeGraph = await NodeGraph.createNodeGraph({
       db,
-      keyManager,
+      keyRing,
       logger,
     });
     taskManager = await TaskManager.createTaskManager({
@@ -117,7 +127,7 @@ describe(`${NodeManager.name} test`, () => {
       logger,
     });
     nodeConnectionManager = new NodeConnectionManager({
-      keyManager,
+      keyRing,
       nodeGraph,
       taskManager,
       proxy,
@@ -137,8 +147,8 @@ describe(`${NodeManager.name} test`, () => {
     await taskManager.stop();
     await db.stop();
     await db.destroy();
-    await keyManager.stop();
-    await keyManager.destroy();
+    await keyRing.stop();
+    await keyRing.destroy();
     await proxy.stop();
     utpSocket.close();
     utpSocket.unref();
@@ -156,15 +166,12 @@ describe(`${NodeManager.name} test`, () => {
         server = await PolykeyAgent.createPolykeyAgent({
           password: 'password',
           nodePath: path.join(dataDir, 'server'),
-          keysConfig: {
-            privateKeyPemOverride: globalRootKeyPems[1],
-          },
           networkConfig: {
             proxyHost: '127.0.0.1' as Host,
           },
           logger: logger,
         });
-        const serverNodeId = server.keyManager.getNodeId();
+        const serverNodeId = server.keyRing.getNodeId();
         let serverNodeAddress: NodeAddress = {
           host: server.proxy.getProxyHost(),
           port: server.proxy.getProxyPort(),
@@ -174,7 +181,7 @@ describe(`${NodeManager.name} test`, () => {
         nodeManager = new NodeManager({
           db,
           sigchain,
-          keyManager,
+          keyRing,
           nodeGraph,
           nodeConnectionManager,
           taskManager,
@@ -235,15 +242,12 @@ describe(`${NodeManager.name} test`, () => {
       server = await PolykeyAgent.createPolykeyAgent({
         password: 'password',
         nodePath: path.join(dataDir, 'server'),
-        keysConfig: {
-          privateKeyPemOverride: globalRootKeyPems[2],
-        },
         networkConfig: {
           proxyHost: '127.0.0.1' as Host,
         },
         logger: logger,
       });
-      const serverNodeId = server.keyManager.getNodeId();
+      const serverNodeId = server.keyRing.getNodeId();
       const serverNodeAddress: NodeAddress = {
         host: server.proxy.getProxyHost(),
         port: server.proxy.getProxyPort(),
@@ -253,7 +257,7 @@ describe(`${NodeManager.name} test`, () => {
       nodeManager = new NodeManager({
         db,
         sigchain,
-        keyManager,
+        keyRing,
         nodeGraph,
         nodeConnectionManager,
         taskManager,
@@ -264,7 +268,7 @@ describe(`${NodeManager.name} test`, () => {
 
       // We want to get the public key of the server
       const key = await nodeManager.getPublicKey(serverNodeId);
-      const expectedKey = server.keyManager.getRootKeyPairPem().publicKey;
+      const expectedKey = server.keyRing.getRootKeyPairPem().publicKey;
       expect(key).toEqual(expectedKey);
     } finally {
       // Clean up
@@ -301,21 +305,18 @@ describe(`${NodeManager.name} test`, () => {
       x = await PolykeyAgent.createPolykeyAgent({
         password: 'password',
         nodePath: xDataDir,
-        keysConfig: {
-          privateKeyPemOverride: globalRootKeyPems[3],
-        },
         networkConfig: {
           proxyHost: '127.0.0.1' as Host,
         },
         logger,
       });
 
-      xNodeId = x.keyManager.getNodeId();
+      xNodeId = x.keyRing.getNodeId();
       xNodeAddress = {
         host: externalHost,
         port: x.proxy.getProxyPort(),
       };
-      xPublicKey = x.keyManager.getRootKeyPairPem().publicKey;
+      xPublicKey = x.keyRing.getRootKeyPairPem().publicKey;
 
       yDataDir = await fs.promises.mkdtemp(
         path.join(os.tmpdir(), 'polykey-test-'),
@@ -323,20 +324,17 @@ describe(`${NodeManager.name} test`, () => {
       y = await PolykeyAgent.createPolykeyAgent({
         password: 'password',
         nodePath: yDataDir,
-        keysConfig: {
-          privateKeyPemOverride: globalRootKeyPems[4],
-        },
         networkConfig: {
           proxyHost: '127.0.0.1' as Host,
         },
         logger,
       });
-      yNodeId = y.keyManager.getNodeId();
+      yNodeId = y.keyRing.getNodeId();
       yNodeAddress = {
         host: externalHost,
         port: y.proxy.getProxyPort(),
       };
-      yPublicKey = y.keyManager.getRootKeyPairPem().publicKey;
+      yPublicKey = y.keyRing.getRootKeyPairPem().publicKey;
 
       await x.nodeGraph.setNode(yNodeId, yNodeAddress);
       await y.nodeGraph.setNode(xNodeId, xNodeAddress);
@@ -444,7 +442,7 @@ describe(`${NodeManager.name} test`, () => {
         nodeManager = new NodeManager({
           db,
           sigchain,
-          keyManager,
+          keyRing,
           nodeGraph,
           nodeConnectionManager,
           taskManager,
@@ -470,7 +468,7 @@ describe(`${NodeManager.name} test`, () => {
     const nodeManager = new NodeManager({
       db,
       sigchain: {} as Sigchain,
-      keyManager,
+      keyRing,
       nodeGraph,
       nodeConnectionManager: {} as NodeConnectionManager,
       taskManager,
@@ -479,7 +477,7 @@ describe(`${NodeManager.name} test`, () => {
     try {
       await nodeManager.start();
       await nodeConnectionManager.start({ nodeManager });
-      const localNodeId = keyManager.getNodeId();
+      const localNodeId = keyRing.getNodeId();
       const bucketIndex = 100;
       const nodeId = nodesTestUtils.generateNodeIdForBucket(
         localNodeId,
@@ -498,7 +496,7 @@ describe(`${NodeManager.name} test`, () => {
     const nodeManager = new NodeManager({
       db,
       sigchain: {} as Sigchain,
-      keyManager,
+      keyRing,
       nodeGraph,
       nodeConnectionManager: {} as NodeConnectionManager,
       taskManager,
@@ -507,7 +505,7 @@ describe(`${NodeManager.name} test`, () => {
     try {
       await nodeManager.start();
       await nodeConnectionManager.start({ nodeManager });
-      const localNodeId = keyManager.getNodeId();
+      const localNodeId = keyRing.getNodeId();
       const bucketIndex = 100;
       const nodeId = nodesTestUtils.generateNodeIdForBucket(
         localNodeId,
@@ -538,7 +536,7 @@ describe(`${NodeManager.name} test`, () => {
     const nodeManager = new NodeManager({
       db,
       sigchain: {} as Sigchain,
-      keyManager,
+      keyRing,
       nodeGraph,
       nodeConnectionManager: {} as NodeConnectionManager,
       taskManager,
@@ -548,7 +546,7 @@ describe(`${NodeManager.name} test`, () => {
     try {
       await nodeManager.start();
       await nodeConnectionManager.start({ nodeManager });
-      const localNodeId = keyManager.getNodeId();
+      const localNodeId = keyRing.getNodeId();
       const bucketIndex = 100;
       // Creating 20 nodes in bucket
       for (let i = 1; i <= 20; i++) {
@@ -589,7 +587,7 @@ describe(`${NodeManager.name} test`, () => {
     const nodeManager = new NodeManager({
       db,
       sigchain: {} as Sigchain,
-      keyManager,
+      keyRing,
       nodeGraph,
       nodeConnectionManager: {} as NodeConnectionManager,
       taskManager,
@@ -598,7 +596,7 @@ describe(`${NodeManager.name} test`, () => {
     try {
       await nodeManager.start();
       await nodeConnectionManager.start({ nodeManager });
-      const localNodeId = keyManager.getNodeId();
+      const localNodeId = keyRing.getNodeId();
       const bucketIndex = 100;
       // Creating 20 nodes in bucket
       for (let i = 1; i <= 20; i++) {
@@ -642,7 +640,7 @@ describe(`${NodeManager.name} test`, () => {
     const nodeManager = new NodeManager({
       db,
       sigchain: {} as Sigchain,
-      keyManager,
+      keyRing,
       nodeGraph,
       nodeConnectionManager: {} as NodeConnectionManager,
       taskManager,
@@ -651,7 +649,7 @@ describe(`${NodeManager.name} test`, () => {
     try {
       await nodeManager.start();
       await nodeConnectionManager.start({ nodeManager });
-      const localNodeId = keyManager.getNodeId();
+      const localNodeId = keyRing.getNodeId();
       const bucketIndex = 100;
       // Creating 20 nodes in bucket
       for (let i = 1; i <= 20; i++) {
@@ -688,7 +686,7 @@ describe(`${NodeManager.name} test`, () => {
     const nodeManager = new NodeManager({
       db,
       sigchain: {} as Sigchain,
-      keyManager,
+      keyRing,
       nodeGraph,
       nodeConnectionManager: {} as NodeConnectionManager,
       taskManager,
@@ -700,15 +698,12 @@ describe(`${NodeManager.name} test`, () => {
       server = await PolykeyAgent.createPolykeyAgent({
         password: 'password',
         nodePath: path.join(dataDir, 'server'),
-        keysConfig: {
-          privateKeyPemOverride: globalRootKeyPems[5],
-        },
         networkConfig: {
           proxyHost: localhost,
         },
         logger: logger,
       });
-      const serverNodeId = server.keyManager.getNodeId();
+      const serverNodeId = server.keyRing.getNodeId();
       const serverNodeAddress: NodeAddress = {
         host: server.proxy.getProxyHost(),
         port: server.proxy.getProxyPort(),
@@ -717,7 +712,7 @@ describe(`${NodeManager.name} test`, () => {
 
       const expectedHost = proxy.getProxyHost();
       const expectedPort = proxy.getProxyPort();
-      const expectedNodeId = keyManager.getNodeId();
+      const expectedNodeId = keyRing.getNodeId();
 
       const nodeData = await server.nodeGraph.getNode(expectedNodeId);
       expect(nodeData).toBeUndefined();
@@ -744,7 +739,7 @@ describe(`${NodeManager.name} test`, () => {
     const nodeManager = new NodeManager({
       db,
       sigchain: {} as Sigchain,
-      keyManager,
+      keyRing,
       nodeGraph,
       nodeConnectionManager: dummyNodeConnectionManager,
       taskManager,
@@ -753,7 +748,7 @@ describe(`${NodeManager.name} test`, () => {
     try {
       await nodeManager.start();
       await nodeConnectionManager.start({ nodeManager });
-      const nodeId = keyManager.getNodeId();
+      const nodeId = keyRing.getNodeId();
       const address = { host: localhost, port };
       // Let's fill a bucket
       for (let i = 0; i < nodeGraph.nodeBucketLimit; i++) {
@@ -783,7 +778,7 @@ describe(`${NodeManager.name} test`, () => {
     const nodeManager = new NodeManager({
       db,
       sigchain: {} as Sigchain,
-      keyManager,
+      keyRing,
       nodeGraph,
       nodeConnectionManager: dummyNodeConnectionManager,
       taskManager,
@@ -792,7 +787,7 @@ describe(`${NodeManager.name} test`, () => {
     await nodeManager.start();
     try {
       await nodeConnectionManager.start({ nodeManager });
-      const nodeId = keyManager.getNodeId();
+      const nodeId = keyRing.getNodeId();
       const address = { host: localhost, port };
       // Let's fill a bucket
       for (let i = 0; i < nodeGraph.nodeBucketLimit; i++) {
@@ -827,14 +822,14 @@ describe(`${NodeManager.name} test`, () => {
   test('should not block when bucket is full', async () => {
     const tempNodeGraph = await NodeGraph.createNodeGraph({
       db,
-      keyManager,
+      keyRing,
       logger,
     });
     mockedPingNode.mockImplementation(async (_) => true);
     const nodeManager = new NodeManager({
       db,
       sigchain: {} as Sigchain,
-      keyManager,
+      keyRing,
       nodeGraph: tempNodeGraph,
       nodeConnectionManager: dummyNodeConnectionManager,
       taskManager,
@@ -843,7 +838,7 @@ describe(`${NodeManager.name} test`, () => {
     await nodeManager.start();
     try {
       await nodeConnectionManager.start({ nodeManager });
-      const nodeId = keyManager.getNodeId();
+      const nodeId = keyRing.getNodeId();
       const address = { host: localhost, port };
       // Let's fill a bucket
       for (let i = 0; i < nodeGraph.nodeBucketLimit; i++) {
@@ -874,7 +869,7 @@ describe(`${NodeManager.name} test`, () => {
     const nodeManager = new NodeManager({
       db,
       sigchain: {} as Sigchain,
-      keyManager,
+      keyRing,
       nodeGraph,
       nodeConnectionManager: dummyNodeConnectionManager,
       taskManager,
@@ -903,7 +898,7 @@ describe(`${NodeManager.name} test`, () => {
       }
       if (refreshBucketTask == null) never();
       const nodeId = nodesTestUtils.generateNodeIdForBucket(
-        keyManager.getNodeId(),
+        keyRing.getNodeId(),
         bucketIndex,
       );
       await sleep(100);
@@ -932,7 +927,7 @@ describe(`${NodeManager.name} test`, () => {
     const nodeManager = new NodeManager({
       db,
       sigchain: {} as Sigchain,
-      keyManager,
+      keyRing,
       nodeGraph,
       nodeConnectionManager,
       taskManager,
@@ -951,7 +946,7 @@ describe(`${NodeManager.name} test`, () => {
     const nodeManager = new NodeManager({
       db,
       sigchain: {} as Sigchain,
-      keyManager,
+      keyRing,
       nodeGraph,
       nodeConnectionManager: dummyNodeConnectionManager,
       taskManager,
@@ -1004,7 +999,7 @@ describe(`${NodeManager.name} test`, () => {
     const nodeManager = new NodeManager({
       db,
       sigchain: {} as Sigchain,
-      keyManager,
+      keyRing,
       nodeGraph,
       nodeConnectionManager: dummyNodeConnectionManager,
       taskManager,
@@ -1045,7 +1040,7 @@ describe(`${NodeManager.name} test`, () => {
     const nodeManager = new NodeManager({
       db,
       sigchain: {} as Sigchain,
-      keyManager,
+      keyRing,
       nodeGraph,
       nodeConnectionManager: dummyNodeConnectionManager,
       taskManager,

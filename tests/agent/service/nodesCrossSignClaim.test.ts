@@ -15,7 +15,6 @@ import * as nodesUtils from '@/nodes/utils';
 import * as claimsUtils from '@/claims/utils';
 import * as grpcErrors from '@/grpc/errors';
 import * as testNodesUtils from '../../nodes/utils';
-import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('nodesCrossSignClaim', () => {
   const logger = new Logger('nodesCrossSignClaim test', LogLevel.WARN, [
@@ -38,34 +37,28 @@ describe('nodesCrossSignClaim', () => {
     pkAgent = await PolykeyAgent.createPolykeyAgent({
       password,
       nodePath,
-      keysConfig: {
-        privateKeyPemOverride: globalRootKeyPems[0],
-      },
       seedNodes: {}, // Explicitly no seed nodes on startup
       networkConfig: {
         proxyHost: '127.0.0.1' as Host,
       },
       logger,
     });
-    localId = pkAgent.keyManager.getNodeId();
+    localId = pkAgent.keyRing.getNodeId();
     // Setting up a remote keynode
     remoteNode = await PolykeyAgent.createPolykeyAgent({
       password,
       nodePath: path.join(dataDir, 'remoteNode'),
-      keysConfig: {
-        privateKeyPemOverride: globalRootKeyPems[1],
-      },
       seedNodes: {}, // Explicitly no seed nodes on startup
       networkConfig: {
         proxyHost: '127.0.0.1' as Host,
       },
       logger,
     });
-    remoteId = remoteNode.keyManager.getNodeId();
+    remoteId = remoteNode.keyRing.getNodeId();
     await testNodesUtils.nodesConnect(pkAgent, remoteNode);
     const agentService = {
       nodesCrossSignClaim: nodesCrossSignClaim({
-        keyManager: pkAgent.keyManager,
+        keyRing: pkAgent.keyRing,
         nodeManager: pkAgent.nodeManager,
         sigchain: pkAgent.sigchain,
         db: pkAgent.db,
@@ -79,7 +72,7 @@ describe('nodesCrossSignClaim', () => {
       port: 0 as Port,
     });
     grpcClient = await GRPCClientAgent.createGRPCClientAgent({
-      nodeId: pkAgent.keyManager.getNodeId(),
+      nodeId: pkAgent.keyRing.getNodeId(),
       host: '127.0.0.1' as Host,
       port: grpcServer.getPort(),
       logger,
@@ -103,7 +96,7 @@ describe('nodesCrossSignClaim', () => {
     expect(genClaims.stream.destroyed).toBe(false);
     // Create a dummy intermediary claim to "receive"
     const claim = await claimsUtils.createClaim({
-      privateKey: remoteNode.keyManager.getRootKeyPairPem().privateKey,
+      privateKey: remoteNode.keyRing.getRootKeyPairPem().privateKey,
       hPrev: null,
       seq: 1,
       data: {
@@ -140,24 +133,24 @@ describe('nodesCrossSignClaim', () => {
     // Verify the intermediary claim with X's public key
     const verifiedSingly = await claimsUtils.verifyIntermediaryClaimSignature(
       constructedIntermediary,
-      pkAgent.keyManager.getRootKeyPairPem().publicKey,
+      pkAgent.keyRing.getRootKeyPairPem().publicKey,
     );
     expect(verifiedSingly).toBe(true);
     // Verify the doubly signed claim with both public keys
     const verifiedDoubly =
       (await claimsUtils.verifyClaimSignature(
         constructedDoubly,
-        remoteNode.keyManager.getRootKeyPairPem().publicKey,
+        remoteNode.keyRing.getRootKeyPairPem().publicKey,
       )) &&
       (await claimsUtils.verifyClaimSignature(
         constructedDoubly,
-        pkAgent.keyManager.getRootKeyPairPem().publicKey,
+        pkAgent.keyRing.getRootKeyPairPem().publicKey,
       ));
     expect(verifiedDoubly).toBe(true);
     // 4. X <- sends doubly signed claim (X's intermediary) <- Y
     const doublyResponse = await claimsUtils.signIntermediaryClaim({
       claim: constructedIntermediary,
-      privateKey: remoteNode.keyManager.getRootKeyPairPem().privateKey,
+      privateKey: remoteNode.keyRing.getRootKeyPairPem().privateKey,
       signeeNodeId: nodesUtils.encodeNodeId(remoteId),
     });
     const doublyMessage = claimsUtils.createCrossSignMessage({

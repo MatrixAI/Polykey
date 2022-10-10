@@ -9,7 +9,7 @@ import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { Metadata } from '@grpc/grpc-js';
-import KeyManager from '@/keys/KeyManager';
+import KeyRing from '@/keys/KeyRing';
 import VaultManager from '@/vaults/VaultManager';
 import GRPCServer from '@/grpc/GRPCServer';
 import GRPCClientClient from '@/client/GRPCClientClient';
@@ -19,7 +19,6 @@ import * as vaultsPB from '@/proto/js/polykey/v1/vaults/vaults_pb';
 import * as clientUtils from '@/client/utils/utils';
 import * as vaultsUtils from '@/vaults/utils';
 import * as testUtils from '../../utils';
-import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('vaultsRename', () => {
   const logger = new Logger('vaultsRename test', LogLevel.WARN, [
@@ -29,7 +28,7 @@ describe('vaultsRename', () => {
   const authenticate = async (metaClient, metaServer = new Metadata()) =>
     metaServer;
   let dataDir: string;
-  let keyManager: KeyManager;
+  let keyRing: KeyRing;
   let db: DB;
   let vaultManager: VaultManager;
   let grpcServer: GRPCServer;
@@ -39,11 +38,10 @@ describe('vaultsRename', () => {
       path.join(os.tmpdir(), 'polykey-test-'),
     );
     const keysPath = path.join(dataDir, 'keys');
-    keyManager = await KeyManager.createKeyManager({
+    keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
       logger,
-      privateKeyPemOverride: globalRootKeyPems[0],
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
@@ -55,7 +53,7 @@ describe('vaultsRename', () => {
       vaultsPath,
       db,
       acl: {} as ACL,
-      keyManager,
+      keyRing,
       nodeConnectionManager: {} as NodeConnectionManager,
       gestaltGraph: {} as GestaltGraph,
       notificationsManager: {} as NotificationsManager,
@@ -87,7 +85,7 @@ describe('vaultsRename', () => {
     await grpcServer.stop();
     await vaultManager.stop();
     await db.stop();
-    await keyManager.stop();
+    await keyRing.stop();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,

@@ -25,7 +25,7 @@ describe(KeyRing.name, () => {
       recursive: true,
     });
   });
-  // testProp(
+  // TestProp(
   //   'KeyRing readiness',
   //   [ testsKeysUtils.passwordArb, ],
   //   async (password) => {
@@ -38,7 +38,7 @@ describe(KeyRing.name, () => {
       password,
       logger,
       passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
     });
     await expect(async () => {
       await keyRing.destroy();
@@ -64,7 +64,7 @@ describe(KeyRing.name, () => {
       password,
       logger,
       passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
     });
     const keysPathContents = await fs.promises.readdir(keysPath);
     expect(keysPathContents).toContain('public.jwk');

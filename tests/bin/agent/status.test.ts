@@ -5,7 +5,6 @@ import Status from '@/status/Status';
 import * as nodesUtils from '@/nodes/utils';
 import config from '@/config';
 import * as testUtils from '../../utils';
-import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('status', () => {
   const logger = new Logger('status test', LogLevel.WARN, [
@@ -56,7 +55,6 @@ describe('status', () => {
           env: {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
             PK_PASSWORD: password,
-            PK_ROOT_KEY: globalRootKeyPems[0],
           },
           cwd: dataDir,
           command: globalThis.testCmd,
@@ -144,7 +142,6 @@ describe('status', () => {
     let agentClose;
     beforeEach(async () => {
       ({ agentDir, agentPassword, agentClose } = await testUtils.setupTestAgent(
-        globalRootKeyPems[1],
         logger,
       ));
     });

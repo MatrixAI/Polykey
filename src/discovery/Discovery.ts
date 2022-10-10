@@ -14,7 +14,7 @@ import type {
   IdentityClaims,
 } from '../identities/types';
 import type Sigchain from '../sigchain/Sigchain';
-import type KeyManager from '../keys/KeyManager';
+import type KeyRing from '../keys/KeyRing';
 import type { ClaimIdEncoded, Claim, ClaimLinkIdentity } from '../claims/types';
 import type { ChainData } from '../sigchain/types';
 import type TaskManager from '../tasks/TaskManager';
@@ -59,7 +59,7 @@ interface Discovery extends CreateDestroyStartStop {}
 class Discovery {
   static async createDiscovery({
     db,
-    keyManager,
+    keyRing,
     gestaltGraph,
     identitiesManager,
     nodeManager,
@@ -69,7 +69,7 @@ class Discovery {
     fresh = false,
   }: {
     db: DB;
-    keyManager: KeyManager;
+    keyRing: KeyRing;
     gestaltGraph: GestaltGraph;
     identitiesManager: IdentitiesManager;
     nodeManager: NodeManager;
@@ -81,7 +81,7 @@ class Discovery {
     logger.info(`Creating ${this.name}`);
     const discovery = new this({
       db,
-      keyManager,
+      keyRing,
       gestaltGraph,
       identitiesManager,
       nodeManager,
@@ -97,7 +97,7 @@ class Discovery {
   protected logger: Logger;
   protected db: DB;
   protected sigchain: Sigchain;
-  protected keyManager: KeyManager;
+  protected keyRing: KeyRing;
   protected gestaltGraph: GestaltGraph;
   protected identitiesManager: IdentitiesManager;
   protected nodeManager: NodeManager;
@@ -131,7 +131,7 @@ class Discovery {
     `${this.constructor.name}.${this.discoverVertexHandler.name}.discoverVertexHandlerId` as TaskHandlerId;
 
   public constructor({
-    keyManager,
+    keyRing,
     db,
     gestaltGraph,
     identitiesManager,
@@ -141,7 +141,7 @@ class Discovery {
     logger,
   }: {
     db: DB;
-    keyManager: KeyManager;
+    keyRing: KeyRing;
     gestaltGraph: GestaltGraph;
     identitiesManager: IdentitiesManager;
     nodeManager: NodeManager;
@@ -150,7 +150,7 @@ class Discovery {
     logger: Logger;
   }) {
     this.db = db;
-    this.keyManager = keyManager;
+    this.keyRing = keyRing;
     this.gestaltGraph = gestaltGraph;
     this.identitiesManager = identitiesManager;
     this.nodeManager = nodeManager;
@@ -251,7 +251,7 @@ class Discovery {
           let vertexChainData: ChainData = {};
           // If the vertex we've found is our own node, we simply get our own chain
           const nodeId = nodesUtils.decodeNodeId(vertexGId.nodeId)!;
-          if (nodeId.equals(this.keyManager.getNodeId())) {
+          if (nodeId.equals(this.keyRing.getNodeId())) {
             const vertexChainDataEncoded = await this.sigchain.getChainData();
             // Decode all our claims - no need to verify (on our own sigChain)
             for (const c in vertexChainDataEncoded) {
