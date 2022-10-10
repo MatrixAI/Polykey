@@ -139,9 +139,7 @@ function parseRecoveryCode(data: any): RecoveryCode {
  */
 function parsePublicKey(data: any): PublicKey {
   if (!utils.isBufferSource(data)) {
-    throw new validationErrors.ErrorParse(
-      'Public key must be a BufferSource',
-    );
+    throw new validationErrors.ErrorParse('Public key must be a BufferSource');
   }
   const publicKey = keysUtils.publicKeyFromData(data);
   if (publicKey == null) {
@@ -157,9 +155,7 @@ function parsePublicKey(data: any): PublicKey {
  */
 function parsePrivateKey(data: any): PrivateKey {
   if (!utils.isBufferSource(data)) {
-    throw new validationErrors.ErrorParse(
-      'Private key must be a BufferSource',
-    );
+    throw new validationErrors.ErrorParse('Private key must be a BufferSource');
   }
   const privateKey = keysUtils.privateKeyFromData(data);
   if (privateKey == null) {
@@ -341,7 +337,7 @@ export {
   parsePublicKey,
   parsePrivateKey,
   parseRecoveryCode,
-  // parsePrivateKeyPem,
+  // ParsePrivateKeyPem,
   parseGestaltAction,
   parseVaultAction,
   parseHost,

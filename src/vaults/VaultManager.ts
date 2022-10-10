@@ -10,7 +10,7 @@ import type { Vault } from './Vault';
 import type { FileSystem } from '../types';
 import type { PolykeyWorkerManagerInterface } from '../workers/types';
 import type { NodeId } from '../ids/types';
-import type KeyManager from '../keys/KeyManager';
+import type KeyRing from '../keys/KeyRing';
 import type NodeConnectionManager from '../nodes/NodeConnectionManager';
 import type GestaltGraph from '../gestalts/GestaltGraph';
 import type NotificationsManager from '../notifications/NotificationsManager';
@@ -62,11 +62,10 @@ class VaultManager {
     vaultsPath,
     db,
     acl,
-    keyManager,
+    keyRing,
     nodeConnectionManager,
     gestaltGraph,
     notificationsManager,
-    keyBits = 256,
     fs = require('fs'),
     logger = new Logger(this.name),
     fresh = false,
@@ -74,11 +73,10 @@ class VaultManager {
     vaultsPath: string;
     db: DB;
     acl: ACL;
-    keyManager: KeyManager;
+    keyRing: KeyRing;
     nodeConnectionManager: NodeConnectionManager;
     gestaltGraph: GestaltGraph;
     notificationsManager: NotificationsManager;
-    keyBits?: 128 | 192 | 256;
     fs?: FileSystem;
     logger?: Logger;
     fresh?: boolean;
@@ -89,11 +87,10 @@ class VaultManager {
       vaultsPath,
       db,
       acl,
-      keyManager,
+      keyRing,
       nodeConnectionManager,
       gestaltGraph,
       notificationsManager,
-      keyBits,
       fs,
       logger,
     });
@@ -104,13 +101,12 @@ class VaultManager {
 
   public readonly vaultsPath: string;
   public readonly efsPath: string;
-  public readonly keyBits: 128 | 192 | 256;
 
   protected fs: FileSystem;
   protected logger: Logger;
   protected db: DB;
   protected acl: ACL;
-  protected keyManager: KeyManager;
+  protected keyRing: KeyRing;
   protected nodeConnectionManager: NodeConnectionManager;
   protected gestaltGraph: GestaltGraph;
   protected notificationsManager: NotificationsManager;
@@ -127,22 +123,20 @@ class VaultManager {
     vaultsPath,
     db,
     acl,
-    keyManager,
+    keyRing,
     nodeConnectionManager,
     gestaltGraph,
     notificationsManager,
-    keyBits,
     fs,
     logger,
   }: {
     vaultsPath: string;
     db: DB;
     acl: ACL;
-    keyManager: KeyManager;
+    keyRing: KeyRing;
     nodeConnectionManager: NodeConnectionManager;
     gestaltGraph: GestaltGraph;
     notificationsManager: NotificationsManager;
-    keyBits: 128 | 192 | 256;
     fs: FileSystem;
     logger: Logger;
   }) {
@@ -151,11 +145,10 @@ class VaultManager {
     this.efsPath = path.join(this.vaultsPath, config.defaults.efsBase);
     this.db = db;
     this.acl = acl;
-    this.keyManager = keyManager;
+    this.keyRing = keyRing;
     this.nodeConnectionManager = nodeConnectionManager;
     this.gestaltGraph = gestaltGraph;
     this.notificationsManager = notificationsManager;
-    this.keyBits = keyBits;
     this.fs = fs;
   }
 
@@ -175,7 +168,7 @@ class VaultManager {
           });
         }
         await mkdirExists(this.fs, this.vaultsPath);
-        const vaultKey = await this.setupKey(this.keyBits, tran);
+        const vaultKey = await this.setupKey(tran);
         let efs;
         try {
           efs = await EncryptedFS.createEncryptedFS({
@@ -295,7 +288,7 @@ class VaultManager {
         const vault = await VaultInternal.createVaultInternal({
           vaultId,
           vaultName,
-          keyManager: this.keyManager,
+          keyRing: this.keyRing,
           efs: this.efs,
           logger: this.logger.getChild(VaultInternal.name),
           db: this.db,
@@ -642,7 +635,7 @@ class VaultManager {
           db: this.db,
           nodeConnectionManager: this.nodeConnectionManager,
           vaultsDbPath: this.vaultsDbPath,
-          keyManager: this.keyManager,
+          keyRing: this.keyRing,
           efs: this.efs,
           logger: this.logger.getChild(VaultInternal.name),
           tran,
@@ -941,7 +934,7 @@ class VaultManager {
     // 2. if the state exists then create, add to map and return that
     const newVault = await VaultInternal.createVaultInternal({
       vaultId,
-      keyManager: this.keyManager,
+      keyRing: this.keyRing,
       efs: this.efs,
       logger: this.logger.getChild(VaultInternal.name),
       db: this.db,
@@ -989,10 +982,7 @@ class VaultManager {
     });
   }
 
-  protected async setupKey(
-    bits: 128 | 192 | 256,
-    tran: DBTransaction,
-  ): Promise<Buffer> {
+  protected async setupKey(tran: DBTransaction): Promise<Buffer> {
     let key: Buffer | undefined;
     key = await tran.get([...this.vaultsDbPath, 'key'], true);
     // If the EFS already exists, but the key doesn't, then we have lost the key
@@ -1003,13 +993,9 @@ class VaultManager {
       return key;
     }
     this.logger.info('Generating vaults key');
-    key = await this.generateKey(bits);
+    key = keysUtils.generateKey();
     await tran.put([...this.vaultsDbPath, 'key'], key, true);
     return key;
-  }
-
-  protected async generateKey(bits: 128 | 192 | 256): Promise<Buffer> {
-    return await keysUtils.generateKey(bits);
   }
 
   protected async existsEFS(): Promise<boolean> {

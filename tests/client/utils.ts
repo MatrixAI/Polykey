@@ -24,7 +24,7 @@ async function openTestClientServer({
   const _secure = secure ?? true;
   const clientService: IClientServiceServer = createClientService({
     pkAgent,
-    keyManager: pkAgent.keyManager,
+    keyRing: pkAgent.keyRing,
     vaultManager: pkAgent.vaultManager,
     nodeGraph: pkAgent.nodeGraph,
     nodeConnectionManager: pkAgent.nodeConnectionManager,
@@ -46,8 +46,8 @@ async function openTestClientServer({
 
   const callCredentials = _secure
     ? grpcUtils.serverSecureCredentials(
-        pkAgent.keyManager.getRootKeyPairPem().privateKey,
-        await pkAgent.keyManager.getRootCertChainPem(),
+        pkAgent.keyRing.getRootKeyPairPem().privateKey,
+        await pkAgent.keyRing.getRootCertChainPem(),
       )
     : grpcUtils.serverInsecureCredentials();
 

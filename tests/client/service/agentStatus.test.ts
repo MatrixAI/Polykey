@@ -4,7 +4,7 @@ import path from 'path';
 import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { Metadata } from '@grpc/grpc-js';
-import KeyManager from '@/keys/KeyManager';
+import KeyRing from '@/keys/KeyRing';
 import Proxy from '@/network/Proxy';
 import GRPCServer from '@/grpc/GRPCServer';
 import GRPCClientClient from '@/client/GRPCClientClient';
@@ -13,7 +13,6 @@ import { ClientServiceService } from '@/proto/js/polykey/v1/client_service_grpc_
 import * as agentPB from '@/proto/js/polykey/v1/agent/agent_pb';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as clientUtils from '@/client/utils/utils';
-import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('agentStatus', () => {
   const logger = new Logger('agentStatus test', LogLevel.WARN, [
@@ -24,7 +23,7 @@ describe('agentStatus', () => {
     metaServer;
   const authToken = 'abc123';
   let dataDir: string;
-  let keyManager: KeyManager;
+  let keyRing: KeyRing;
   let grpcServerClient: GRPCServer;
   let grpcServerAgent: GRPCServer;
   let proxy: Proxy;
@@ -35,11 +34,10 @@ describe('agentStatus', () => {
       path.join(os.tmpdir(), 'polykey-test-'),
     );
     const keysPath = path.join(dataDir, 'keys');
-    keyManager = await KeyManager.createKeyManager({
+    keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
       logger,
-      privateKeyPemOverride: globalRootKeyPems[0],
     });
     grpcServerClient = new GRPCServer({ logger });
     await grpcServerClient.start({
@@ -57,14 +55,14 @@ describe('agentStatus', () => {
       serverHost: '127.0.0.1' as Host,
       serverPort: 0 as Port,
       tlsConfig: {
-        keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
-        certChainPem: await keyManager.getRootCertChainPem(),
+        keyPrivatePem: keyRing.getRootKeyPairPem().privateKey,
+        certChainPem: await keyRing.getRootCertChainPem(),
       },
     });
     const clientService = {
       agentStatus: agentStatus({
         authenticate,
-        keyManager,
+        keyRing,
         grpcServerClient,
         grpcServerAgent,
         proxy,
@@ -78,7 +76,7 @@ describe('agentStatus', () => {
       port: 0 as Port,
     });
     grpcClient = await GRPCClientClient.createGRPCClientClient({
-      nodeId: keyManager.getNodeId(),
+      nodeId: keyRing.getNodeId(),
       host: '127.0.0.1' as Host,
       port: grpcServer.getPort(),
       logger,
@@ -90,7 +88,7 @@ describe('agentStatus', () => {
     await proxy.stop();
     await grpcServerAgent.stop();
     await grpcServerClient.stop();
-    await keyManager.stop();
+    await keyRing.stop();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,

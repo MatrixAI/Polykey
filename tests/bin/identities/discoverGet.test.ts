@@ -13,7 +13,6 @@ import * as claimsUtils from '@/claims/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as testNodesUtils from '../../nodes/utils';
 import TestProvider from '../../identities/TestProvider';
-import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 import * as testUtils from '../../utils';
 
 describe('discover/get', () => {
@@ -52,12 +51,9 @@ describe('discover/get', () => {
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },
-      keysConfig: {
-        privateKeyPemOverride: globalRootKeyPems[0],
-      },
       logger,
     });
-    nodeAId = nodeA.keyManager.getNodeId();
+    nodeAId = nodeA.keyRing.getNodeId();
     nodeAHost = nodeA.proxy.getProxyHost();
     nodeAPort = nodeA.proxy.getProxyPort();
     nodeB = await PolykeyAgent.createPolykeyAgent({
@@ -69,12 +65,9 @@ describe('discover/get', () => {
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },
-      keysConfig: {
-        privateKeyPemOverride: globalRootKeyPems[1],
-      },
       logger,
     });
-    nodeBId = nodeB.keyManager.getNodeId();
+    nodeBId = nodeB.keyRing.getNodeId();
     await testNodesUtils.nodesConnect(nodeA, nodeB);
     nodePath = path.join(dataDir, 'polykey');
     // Cannot use global shared agent since we need to register a provider
@@ -86,9 +79,6 @@ describe('discover/get', () => {
         forwardHost: '127.0.0.1' as Host,
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
-      },
-      keysConfig: {
-        privateKeyPemOverride: globalRootKeyPems[2],
       },
       logger,
     });

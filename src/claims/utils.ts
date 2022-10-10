@@ -6,11 +6,10 @@ import type {
   ClaimIntermediary,
 } from './types';
 import type { NodeIdEncoded } from '../ids/types';
-import type { PublicKeyPem, PrivateKeyPem } from '../keys/types';
+import type { PublicKey, PrivateKey } from '../keys/types';
 import type { POJO } from '../types';
 import type { GeneralJWSInput } from 'jose';
 import type { DefinedError } from 'ajv';
-import { createPublicKey, createPrivateKey } from 'crypto';
 import { md } from 'node-forge';
 import canonicalize from 'canonicalize';
 import { GeneralSign, generalVerify, generateKeyPair, base64url } from 'jose';
@@ -22,6 +21,7 @@ import {
 import * as claimsErrors from './errors';
 import { createClaimIdGenerator, encodeClaimId, decodeClaimId } from '../ids';
 import * as nodesPB from '../proto/js/polykey/v1/nodes/nodes_pb';
+import { importPublicKey, importPrivateKey } from '../keys/utils';
 
 /**
  * Helper function to generate a JWS containing the contents of the claim to be
@@ -42,7 +42,7 @@ async function createClaim({
   kid,
   alg = 'RS256',
 }: {
-  privateKey: PrivateKeyPem;
+  privateKey: PrivateKey;
   hPrev: string | null;
   seq: number;
   data: ClaimData;
@@ -60,7 +60,7 @@ async function createClaim({
   const byteEncoder = new TextEncoder();
   const claim = new GeneralSign(byteEncoder.encode(canonicalizedPayload));
   claim
-    .addSignature(createPrivateKey(privateKey))
+    .addSignature(await importPrivateKey(privateKey))
     .setProtectedHeader({ alg: alg, kid: kid });
   const signedClaim = await claim.sign();
   return signedClaim as ClaimEncoded;
@@ -77,7 +77,7 @@ async function signExistingClaim({
   alg = 'RS256',
 }: {
   claim: ClaimEncoded;
-  privateKey: PrivateKeyPem;
+  privateKey: PrivateKey;
   kid: NodeIdEncoded;
   alg?: string;
 }): Promise<ClaimEncoded> {
@@ -88,7 +88,7 @@ async function signExistingClaim({
   const byteEncoder = new TextEncoder();
   const newClaim = new GeneralSign(byteEncoder.encode(canonicalizedPayload));
   newClaim
-    .addSignature(createPrivateKey(privateKey))
+    .addSignature(await importPrivateKey(privateKey))
     .setProtectedHeader({ alg: alg, kid: kid });
   const signedClaim = await newClaim.sign();
   // Add our signature to the existing claim
@@ -109,7 +109,7 @@ async function signIntermediaryClaim({
   alg = 'RS256',
 }: {
   claim: ClaimIntermediary;
-  privateKey: PrivateKeyPem;
+  privateKey: PrivateKey;
   signeeNodeId: NodeIdEncoded;
   alg?: string;
 }): Promise<ClaimEncoded> {
@@ -298,9 +298,9 @@ async function encodeClaim(claim: Claim): Promise<ClaimEncoded> {
 
 async function verifyClaimSignature(
   claim: ClaimEncoded,
-  publicKey: PublicKeyPem,
+  publicKey: PublicKey,
 ): Promise<boolean> {
-  const jwkPublicKey = createPublicKey(publicKey);
+  const jwkPublicKey = await importPublicKey(publicKey);
   try {
     await generalVerify(claim as GeneralJWSInput, jwkPublicKey);
     return true;
@@ -311,7 +311,7 @@ async function verifyClaimSignature(
 
 async function verifyIntermediaryClaimSignature(
   claim: ClaimIntermediary,
-  publicKey: PublicKeyPem,
+  publicKey: PublicKey,
 ): Promise<boolean> {
   // Reconstruct as ClaimEncoded
   const reconstructedClaim: ClaimEncoded = {
@@ -323,7 +323,7 @@ async function verifyIntermediaryClaimSignature(
       },
     ],
   };
-  const jwkPublicKey = createPublicKey(publicKey);
+  const jwkPublicKey = await importPublicKey(publicKey);
   try {
     await generalVerify(reconstructedClaim as GeneralJWSInput, jwkPublicKey);
     return true;

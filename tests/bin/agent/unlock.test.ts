@@ -4,7 +4,6 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import Session from '@/sessions/Session';
 import config from '@/config';
 import * as testUtils from '../../utils';
-import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('unlock', () => {
   const logger = new Logger('unlock test', LogLevel.WARN, [
@@ -15,7 +14,6 @@ describe('unlock', () => {
   let agentClose;
   beforeEach(async () => {
     ({ agentDir, agentPassword, agentClose } = await testUtils.setupTestAgent(
-      globalRootKeyPems[0],
       logger,
     ));
   });

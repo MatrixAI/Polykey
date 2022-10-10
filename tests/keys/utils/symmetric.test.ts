@@ -29,10 +29,7 @@ describe('keys/utils/symmetric', () => {
   );
   testProp(
     'wrap & unwrap with random password',
-    [
-      testsKeysUtils.passwordArb,
-      testsKeysUtils.keyJWKArb,
-    ],
+    [testsKeysUtils.passwordArb, testsKeysUtils.keyJWKArb],
     (password, keyJWK) => {
       const wrappedKey = symmetric.wrapWithPassword(password, keyJWK);
       const keyJWK_ = symmetric.unwrapWithPassword(password, wrappedKey);
@@ -41,18 +38,15 @@ describe('keys/utils/symmetric', () => {
     {
       // Password based encryption is intended to be slow
       numRuns: 5,
-    }
+    },
   );
   testProp(
     'wrap & unwrap with random key',
-    [
-      testsKeysUtils.keyArb,
-      testsKeysUtils.keyJWKArb,
-    ],
+    [testsKeysUtils.keyArb, testsKeysUtils.keyJWKArb],
     (key, keyJWK) => {
       const wrappedKey = symmetric.wrapWithKey(key, keyJWK);
       const keyJWK_ = symmetric.unwrapWithKey(key, wrappedKey);
       expect(keyJWK_).toStrictEqual(keyJWK);
-    }
+    },
   );
 });

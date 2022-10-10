@@ -9,7 +9,7 @@ import { exportJWK, SignJWT } from 'jose';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import TaskManager from '@/tasks/TaskManager';
-import KeyManager from '@/keys/KeyManager';
+import KeyRing from '@/keys/KeyRing';
 import GRPCServer from '@/grpc/GRPCServer';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import NodeGraph from '@/nodes/NodeGraph';
@@ -27,7 +27,6 @@ import * as notificationsPB from '@/proto/js/polykey/v1/notifications/notificati
 import * as nodesUtils from '@/nodes/utils';
 import * as notificationsUtils from '@/notifications/utils';
 import * as testUtils from '../../utils';
-import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('notificationsSend', () => {
   const logger = new Logger('notificationsSend test', LogLevel.WARN, [
@@ -36,7 +35,7 @@ describe('notificationsSend', () => {
   const password = 'helloworld';
   const authToken = 'abc123';
   let senderId: NodeId;
-  let senderKeyManager: KeyManager;
+  let senderKeyRing: KeyRing;
   let dataDir: string;
   let nodeGraph: NodeGraph;
   let taskManager: TaskManager;
@@ -48,7 +47,7 @@ describe('notificationsSend', () => {
   let proxy: Proxy;
 
   let db: DB;
-  let keyManager: KeyManager;
+  let keyRing: KeyRing;
   let grpcServer: GRPCServer;
   let grpcClient: GRPCClientAgent;
   beforeEach(async () => {
@@ -57,20 +56,17 @@ describe('notificationsSend', () => {
     );
     const keysPath = path.join(dataDir, 'keys');
     const senderKeysPath = path.join(dataDir, 'senderKeys');
-    senderKeyManager = await KeyManager.createKeyManager({
+    senderKeyRing = await KeyRing.createKeyRing({
       password,
       keysPath: senderKeysPath,
       logger,
-      privateKeyPemOverride: globalRootKeyPems[0],
     });
-    keyManager = await KeyManager.createKeyManager({
+    keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
-      rootKeyPairBits: 1024,
       logger,
-      privateKeyPemOverride: globalRootKeyPems[1],
     });
-    senderId = senderKeyManager.getNodeId();
+    senderId = senderKeyRing.getNodeId();
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
       dbPath,
@@ -86,20 +82,20 @@ describe('notificationsSend', () => {
     });
     await proxy.start({
       tlsConfig: {
-        keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
-        certChainPem: await keyManager.getRootCertChainPem(),
+        keyPrivatePem: keyRing.getRootKeyPairPem().privateKey,
+        certChainPem: await keyRing.getRootCertChainPem(),
       },
       serverHost: '127.0.0.1' as Host,
       serverPort: 0 as Port,
     });
     sigchain = await Sigchain.createSigchain({
       db,
-      keyManager,
+      keyRing,
       logger,
     });
     nodeGraph = await NodeGraph.createNodeGraph({
       db,
-      keyManager,
+      keyRing,
       logger: logger.getChild('NodeGraph'),
     });
     taskManager = await TaskManager.createTaskManager({
@@ -108,7 +104,7 @@ describe('notificationsSend', () => {
       lazy: true,
     });
     nodeConnectionManager = new NodeConnectionManager({
-      keyManager,
+      keyRing,
       nodeGraph,
       proxy,
       taskManager,
@@ -118,7 +114,7 @@ describe('notificationsSend', () => {
     });
     nodeManager = new NodeManager({
       db,
-      keyManager,
+      keyRing,
       nodeGraph,
       nodeConnectionManager,
       sigchain,
@@ -134,7 +130,7 @@ describe('notificationsSend', () => {
         db,
         nodeConnectionManager,
         nodeManager,
-        keyManager,
+        keyRing,
         logger,
       });
     const agentService = {
@@ -151,7 +147,7 @@ describe('notificationsSend', () => {
       port: 0 as Port,
     });
     grpcClient = await GRPCClientAgent.createGRPCClientAgent({
-      nodeId: keyManager.getNodeId(),
+      nodeId: keyRing.getNodeId(),
       host: '127.0.0.1' as Host,
       port: grpcServer.getPort(),
       logger,
@@ -170,8 +166,8 @@ describe('notificationsSend', () => {
     await proxy.stop();
     await acl.stop();
     await db.stop();
-    await senderKeyManager.stop();
-    await keyManager.stop();
+    await senderKeyRing.stop();
+    await keyRing.stop();
     await taskManager.stop();
     await fs.promises.rm(dataDir, {
       force: true,
@@ -195,7 +191,7 @@ describe('notificationsSend', () => {
     };
     const signedNotification = await notificationsUtils.signNotification(
       notification,
-      senderKeyManager.getRootKeyPairPem(),
+      senderKeyRing.getRootKeyPairPem(),
     );
     const request = new notificationsPB.AgentNotification();
     request.setContent(signedNotification);
@@ -244,10 +240,10 @@ describe('notificationsSend', () => {
       isRead: false,
     };
     const publicKey = createPublicKey(
-      senderKeyManager.getRootKeyPairPem().publicKey,
+      senderKeyRing.getRootKeyPairPem().publicKey,
     );
     const privateKey = createPrivateKey(
-      senderKeyManager.getRootKeyPairPem().privateKey,
+      senderKeyRing.getRootKeyPairPem().privateKey,
     );
     const jwkPublicKey = await exportJWK(publicKey);
     const signedNotification = await new SignJWT(notification2)
@@ -278,7 +274,7 @@ describe('notificationsSend', () => {
     };
     const signedNotification = await notificationsUtils.signNotification(
       notification,
-      senderKeyManager.getRootKeyPairPem(),
+      senderKeyRing.getRootKeyPairPem(),
     );
     const request = new notificationsPB.AgentNotification();
     request.setContent(signedNotification);

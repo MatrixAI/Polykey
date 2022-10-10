@@ -1,5 +1,5 @@
 import type { ResourceAcquire } from '@matrixai/resources';
-import type KeyManager from '../keys/KeyManager';
+import type KeyRing from '../keys/KeyRing';
 import type Proxy from '../network/Proxy';
 import type { Host, Hostname, Port } from '../network/types';
 import type NodeGraph from './NodeGraph';
@@ -67,7 +67,7 @@ class NodeConnectionManager {
 
   protected logger: Logger;
   protected nodeGraph: NodeGraph;
-  protected keyManager: KeyManager;
+  protected keyRing: KeyRing;
   protected proxy: Proxy;
   protected taskManager: TaskManager;
   // NodeManager has to be passed in during start to allow co-dependency
@@ -95,7 +95,7 @@ class NodeConnectionManager {
   protected ncDestroyTimeout: number;
 
   public constructor({
-    keyManager,
+    keyRing,
     nodeGraph,
     proxy,
     taskManager,
@@ -108,7 +108,7 @@ class NodeConnectionManager {
     logger,
   }: {
     nodeGraph: NodeGraph;
-    keyManager: KeyManager;
+    keyRing: KeyRing;
     proxy: Proxy;
     taskManager: TaskManager;
     seedNodes?: SeedNodes;
@@ -120,11 +120,11 @@ class NodeConnectionManager {
     logger?: Logger;
   }) {
     this.logger = logger ?? new Logger(NodeConnectionManager.name);
-    this.keyManager = keyManager;
+    this.keyRing = keyRing;
     this.nodeGraph = nodeGraph;
     this.proxy = proxy;
     this.taskManager = taskManager;
-    const localNodeIdEncoded = nodesUtils.encodeNodeId(keyManager.getNodeId());
+    const localNodeIdEncoded = nodesUtils.encodeNodeId(keyRing.getNodeId());
     delete seedNodes[localNodeIdEncoded];
     this.seedNodes = seedNodes;
     this.initialClosestNodes = initialClosestNodes;
@@ -176,7 +176,7 @@ class NodeConnectionManager {
     targetNodeId: NodeId,
     ctx?: Partial<ContextTimed>,
   ): Promise<ResourceAcquire<NodeConnection<GRPCClientAgent>>> {
-    if (this.keyManager.getNodeId().equals(targetNodeId)) {
+    if (this.keyRing.getNodeId().equals(targetNodeId)) {
       this.logger.warn('Attempting connection to our own NodeId');
     }
     return async () => {
@@ -333,7 +333,7 @@ class NodeConnectionManager {
             return (
               this.sendSignalingMessage(
                 seedNodeId,
-                this.keyManager.getNodeId(),
+                this.keyRing.getNodeId(),
                 targetNodeId,
                 undefined,
                 ctx,
@@ -598,7 +598,7 @@ class NodeConnectionManager {
     pingTimeout: number | undefined,
     @context ctx: ContextTimed,
   ): Promise<NodeAddress | undefined> {
-    const localNodeId = this.keyManager.getNodeId();
+    const localNodeId = this.keyRing.getNodeId();
     // Let foundTarget: boolean = false;
     let foundAddress: NodeAddress | undefined = undefined;
     // Get the closest alpha nodes to the target node (set as shortlist)
@@ -763,7 +763,7 @@ class NodeConnectionManager {
         },
         ctx,
       );
-      const localNodeId = this.keyManager.getNodeId();
+      const localNodeId = this.keyRing.getNodeId();
       const nodes: Array<[NodeId, NodeData]> = [];
       // Loop over each map element (from the returned response) and populate nodes
       response.getNodeTableMap().forEach((address, nodeIdString: string) => {
@@ -825,8 +825,8 @@ class NodeConnectionManager {
     @context ctx: ContextTimed,
   ): Promise<void> {
     if (
-      this.keyManager.getNodeId().equals(relayNodeId) ||
-      this.keyManager.getNodeId().equals(targetNodeId)
+      this.keyRing.getNodeId().equals(relayNodeId) ||
+      this.keyRing.getNodeId().equals(targetNodeId)
     ) {
       // Logging and silently dropping operation
       this.logger.warn('Attempted to send signaling message to our own NodeId');
@@ -951,7 +951,7 @@ class NodeConnectionManager {
         // FIXME: this needs to handle aborting
         void this.sendSignalingMessage(
           seedNodeId,
-          this.keyManager.getNodeId(),
+          this.keyRing.getNodeId(),
           nodeId,
         ).catch(() => {});
       });

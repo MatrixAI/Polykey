@@ -1,6 +1,6 @@
 import type { DB } from '@matrixai/db';
 import type TaskManager from '@/tasks/TaskManager';
-import type KeyManager from '@/keys/KeyManager';
+import type KeyRing from '@/keys/KeyRing';
 import type NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import type NodeGraph from '@/nodes/NodeGraph';
 import type Sigchain from '@/sigchain/Sigchain';
@@ -17,7 +17,7 @@ describe('scratch', () => {
     const nodeManager = new NodeManager({
       db: {} as DB,
       sigchain: {} as Sigchain,
-      keyManager: {} as KeyManager,
+      keyRing: {} as KeyRing,
       nodeGraph: {} as NodeGraph,
       nodeConnectionManager: {} as NodeConnectionManager,
       taskManager: {} as TaskManager,

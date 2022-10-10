@@ -1,6 +1,6 @@
 import type { Host, Port, ProxyConfig } from '@/network/types';
 import type { IAgentServiceServer } from '@/proto/js/polykey/v1/agent_service_grpc_pb';
-import type { KeyManager } from '@/keys';
+import type { KeyRing } from '@/keys';
 import type { VaultManager } from '@/vaults';
 import type { NodeConnectionManager, NodeGraph, NodeManager } from '@/nodes';
 import type { Sigchain } from '@/sigchain';
@@ -23,7 +23,7 @@ import { timerStart } from '@/utils';
 import * as testNodesUtils from '../nodes/utils';
 
 async function openTestAgentServer({
-  keyManager,
+  keyRing,
   vaultManager,
   nodeConnectionManager,
   nodeManager,
@@ -36,7 +36,7 @@ async function openTestAgentServer({
   db,
   logger,
 }: {
-  keyManager: KeyManager;
+  keyRing: KeyRing;
   vaultManager: VaultManager;
   nodeConnectionManager: NodeConnectionManager;
   nodeManager: NodeManager;
@@ -50,7 +50,7 @@ async function openTestAgentServer({
   logger: Logger;
 }): Promise<[Server, Port]> {
   const agentService: IAgentServiceServer = createAgentService({
-    keyManager,
+    keyRing,
     vaultManager,
     nodeManager,
     nodeGraph,

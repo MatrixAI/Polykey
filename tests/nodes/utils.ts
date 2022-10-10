@@ -14,10 +14,10 @@ import { bigInt2Bytes } from '@/utils';
  */
 function generateRandomNodeId(readable: boolean = false): NodeId {
   if (readable) {
-    const random = keysUtils.getRandomBytesSync(16).toString('hex');
+    const random = keysUtils.getRandomBytes(16).toString('hex');
     return IdInternal.fromString<NodeId>(random);
   } else {
-    const random = keysUtils.getRandomBytesSync(32);
+    const random = keysUtils.getRandomBytes(32);
     return IdInternal.fromBuffer<NodeId>(random);
   }
 }
@@ -68,12 +68,12 @@ function generateNodeIdForBucket(
  */
 async function nodesConnect(localNode: PolykeyAgent, remoteNode: PolykeyAgent) {
   // Add remote node's details to local node
-  await localNode.nodeManager.setNode(remoteNode.keyManager.getNodeId(), {
+  await localNode.nodeManager.setNode(remoteNode.keyRing.getNodeId(), {
     host: remoteNode.proxy.getProxyHost(),
     port: remoteNode.proxy.getProxyPort(),
   } as NodeAddress);
   // Add local node's details to remote node
-  await remoteNode.nodeManager.setNode(localNode.keyManager.getNodeId(), {
+  await remoteNode.nodeManager.setNode(localNode.keyRing.getNodeId(), {
     host: localNode.proxy.getProxyHost(),
     port: localNode.proxy.getProxyPort(),
   } as NodeAddress);

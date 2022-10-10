@@ -123,9 +123,9 @@ async function main(_argv = process.argv): Promise<number> {
   }
   const messageOut: AgentChildProcessOutput = {
     status: 'SUCCESS',
-    recoveryCode: pkAgent.keyManager.getRecoveryCode(),
+    recoveryCode: pkAgent.keyRing.recoveryCode,
     pid: process.pid,
-    nodeId: nodesUtils.encodeNodeId(pkAgent.keyManager.getNodeId()),
+    nodeId: nodesUtils.encodeNodeId(pkAgent.keyRing.getNodeId()),
     clientHost: pkAgent.grpcServerClient.getHost(),
     clientPort: pkAgent.grpcServerClient.getPort(),
     agentHost: pkAgent.grpcServerAgent.getHost(),

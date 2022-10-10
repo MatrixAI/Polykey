@@ -4,7 +4,7 @@ import path from 'path';
 import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { Metadata } from '@grpc/grpc-js';
-import KeyManager from '@/keys/KeyManager';
+import KeyRing from '@/keys/KeyRing';
 import GRPCServer from '@/grpc/GRPCServer';
 import GRPCClientClient from '@/client/GRPCClientClient';
 import keysPasswordChange from '@/client/service/keysPasswordChange';
@@ -12,7 +12,6 @@ import { ClientServiceService } from '@/proto/js/polykey/v1/client_service_grpc_
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as sessionsPB from '@/proto/js/polykey/v1/sessions/sessions_pb';
 import * as clientUtils from '@/client/utils/utils';
-import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('keysPasswordChange', () => {
   const logger = new Logger('keysPasswordChange test', LogLevel.WARN, [
@@ -24,7 +23,7 @@ describe('keysPasswordChange', () => {
   let mockedChangePassword: jest.SpyInstance;
   beforeAll(async () => {
     mockedChangePassword = jest
-      .spyOn(KeyManager.prototype, 'changePassword')
+      .spyOn(KeyRing.prototype, 'changePassword')
       .mockImplementation(async () => {
         password = 'newpassword';
       });
@@ -33,7 +32,7 @@ describe('keysPasswordChange', () => {
     mockedChangePassword.mockRestore();
   });
   let dataDir: string;
-  let keyManager: KeyManager;
+  let keyRing: KeyRing;
   let grpcServer: GRPCServer;
   let grpcClient: GRPCClientClient;
   beforeEach(async () => {
@@ -41,16 +40,15 @@ describe('keysPasswordChange', () => {
       path.join(os.tmpdir(), 'polykey-test-'),
     );
     const keysPath = path.join(dataDir, 'keys');
-    keyManager = await KeyManager.createKeyManager({
+    keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
       logger,
-      privateKeyPemOverride: globalRootKeyPems[0],
     });
     const clientService = {
       keysPasswordChange: keysPasswordChange({
         authenticate,
-        keyManager,
+        keyRing,
         logger,
       }),
     };
@@ -61,7 +59,7 @@ describe('keysPasswordChange', () => {
       port: 0 as Port,
     });
     grpcClient = await GRPCClientClient.createGRPCClientClient({
-      nodeId: keyManager.getNodeId(),
+      nodeId: keyRing.getNodeId(),
       host: '127.0.0.1' as Host,
       port: grpcServer.getPort(),
       logger,
@@ -70,7 +68,7 @@ describe('keysPasswordChange', () => {
   afterEach(async () => {
     await grpcClient.destroy();
     await grpcServer.stop();
-    await keyManager.stop();
+    await keyRing.stop();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,

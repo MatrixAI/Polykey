@@ -2,7 +2,7 @@ import type {
   PasswordHash,
   PasswordSalt,
   PasswordOpsLimit,
-  PasswordMemLimit
+  PasswordMemLimit,
 } from '../types';
 import sodium from 'sodium-native';
 import { getRandomBytes } from './random';
@@ -11,11 +11,11 @@ import { getRandomBytes } from './random';
  * Use the `min` limit during testing to improve performance.
  */
 const passwordOpsLimits: {
-  min: PasswordOpsLimit,
-  max: PasswordOpsLimit,
-  interactive: PasswordOpsLimit,
-  moderate: PasswordOpsLimit,
-  sensitive: PasswordOpsLimit,
+  min: PasswordOpsLimit;
+  max: PasswordOpsLimit;
+  interactive: PasswordOpsLimit;
+  moderate: PasswordOpsLimit;
+  sensitive: PasswordOpsLimit;
 } = {
   min: sodium.crypto_pwhash_OPSLIMIT_MIN,
   max: sodium.crypto_pwhash_OPSLIMIT_MAX,
@@ -28,11 +28,11 @@ const passwordOpsLimits: {
  * Use the `min` limit during testing to improve performance.
  */
 const passwordMemLimits: {
-  min: PasswordMemLimit,
-  max: PasswordMemLimit,
-  interactive: PasswordMemLimit,
-  moderate: PasswordMemLimit,
-  sensitive: PasswordMemLimit,
+  min: PasswordMemLimit;
+  max: PasswordMemLimit;
+  interactive: PasswordMemLimit;
+  moderate: PasswordMemLimit;
+  sensitive: PasswordMemLimit;
 } = {
   min: sodium.crypto_pwhash_MEMLIMIT_MIN,
   max: sodium.crypto_pwhash_MEMLIMIT_MAX,
@@ -52,11 +52,11 @@ const passwordOpsLimitDefault = passwordOpsLimits.moderate;
 const passwordMemLimitDefault = passwordMemLimits.moderate;
 
 function isPasswordOpsLimit(opsLimit: number): opsLimit is PasswordOpsLimit {
-  return (opsLimit > passwordOpsLimits.min) && (opsLimit < passwordOpsLimits.max);
+  return opsLimit > passwordOpsLimits.min && opsLimit < passwordOpsLimits.max;
 }
 
 function isPasswordMemLimit(memLimit: number): memLimit is PasswordMemLimit {
-  return (memLimit > passwordMemLimits.min) && (memLimit < passwordMemLimits.max);
+  return memLimit > passwordMemLimits.min && memLimit < passwordMemLimits.max;
 }
 
 /**

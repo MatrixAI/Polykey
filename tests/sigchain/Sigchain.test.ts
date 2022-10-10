@@ -1,19 +1,20 @@
 import type { ProviderId, IdentityId } from '@/identities/types';
 import type { NodeIdEncoded } from '@/ids/types';
 import type { Claim, ClaimData } from '@/claims/types';
+import type { Key } from '@/keys/types';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
-import KeyManager from '@/keys/KeyManager';
+import KeyRing from '@/keys/KeyRing';
 import Sigchain from '@/sigchain/Sigchain';
 import * as claimsUtils from '@/claims/utils';
 import * as sigchainErrors from '@/sigchain/errors';
 import * as nodesUtils from '@/nodes/utils';
 import * as keysUtils from '@/keys/utils';
+import * as utils from '@/utils/index';
 import * as testNodesUtils from '../nodes/utils';
-import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 
 describe('Sigchain', () => {
   const logger = new Logger('Sigchain Test', LogLevel.WARN, [
@@ -43,28 +44,37 @@ describe('Sigchain', () => {
   );
 
   let dataDir: string;
-  let keyManager: KeyManager;
+  let keyRing: KeyRing;
   let db: DB;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
     const keysPath = `${dataDir}/keys`;
-    keyManager = await KeyManager.createKeyManager({
+    keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
       logger,
-      privateKeyPemOverride: globalRootKeyPems[0],
     });
     const dbPath = `${dataDir}/db`;
     db = await DB.createDB({
       dbPath,
       logger,
       crypto: {
-        key: keyManager.dbKey,
+        key: keyRing.dbKey,
         ops: {
-          encrypt: keysUtils.encryptWithKey,
-          decrypt: keysUtils.decryptWithKey,
+          encrypt: async (key, plainText) => {
+            return keysUtils.encryptWithKey(
+              utils.bufferWrap(key) as Key,
+              utils.bufferWrap(plainText),
+            );
+          },
+          decrypt: async (key, cipherText) => {
+            return keysUtils.decryptWithKey(
+              utils.bufferWrap(key) as Key,
+              utils.bufferWrap(cipherText),
+            );
+          },
         },
       },
     });
@@ -72,8 +82,8 @@ describe('Sigchain', () => {
   afterEach(async () => {
     await db.stop();
     await db.destroy();
-    await keyManager.stop();
-    await keyManager.destroy();
+    await keyRing.stop();
+    await keyRing.destroy();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
@@ -81,7 +91,7 @@ describe('Sigchain', () => {
   });
 
   test('sigchain readiness', async () => {
-    const sigchain = await Sigchain.createSigchain({ keyManager, db, logger });
+    const sigchain = await Sigchain.createSigchain({ keyRing, db, logger });
     await expect(async () => {
       await sigchain.destroy();
     }).rejects.toThrow(sigchainErrors.ErrorSigchainRunning);
@@ -94,7 +104,7 @@ describe('Sigchain', () => {
     }).rejects.toThrow(sigchainErrors.ErrorSigchainDestroyed);
   });
   test('async start initialises the sequence number', async () => {
-    const sigchain = await Sigchain.createSigchain({ keyManager, db, logger });
+    const sigchain = await Sigchain.createSigchain({ keyRing, db, logger });
     const sequenceNumber = await db.withTransactionF(async (tran) =>
       // @ts-ignore - get protected method
       sigchain.getSequenceNumber(tran),
@@ -103,7 +113,7 @@ describe('Sigchain', () => {
     await sigchain.stop();
   });
   test('adds and retrieves a cryptolink, verifies signature', async () => {
-    const sigchain = await Sigchain.createSigchain({ keyManager, db, logger });
+    const sigchain = await Sigchain.createSigchain({ keyRing, db, logger });
     const cryptolink: ClaimData = {
       type: 'node',
       node1: srcNodeIdEncoded,
@@ -140,14 +150,14 @@ describe('Sigchain', () => {
     });
     const verified = await claimsUtils.verifyClaimSignature(
       claim,
-      keyManager.getRootKeyPairPem().publicKey,
+      keyRing.keyPair.publicKey,
     );
     expect(verified).toBe(true);
 
     await sigchain.stop();
   });
   test('adds and retrieves 2 cryptolinks, verifies signatures and hash', async () => {
-    const sigchain = await Sigchain.createSigchain({ keyManager, db, logger });
+    const sigchain = await Sigchain.createSigchain({ keyRing, db, logger });
     const cryptolink: ClaimData = {
       type: 'node',
       node1: srcNodeIdEncoded,
@@ -206,7 +216,7 @@ describe('Sigchain', () => {
     });
     const verified1 = await claimsUtils.verifyClaimSignature(
       claim1,
-      keyManager.getRootKeyPairPem().publicKey,
+      keyRing.keyPair.publicKey,
     );
     expect(verified1).toBe(true);
 
@@ -218,7 +228,7 @@ describe('Sigchain', () => {
     });
     const verified2 = await claimsUtils.verifyClaimSignature(
       claim2,
-      keyManager.getRootKeyPairPem().publicKey,
+      keyRing.keyPair.publicKey,
     );
     expect(verified2).toBe(true);
 
@@ -232,7 +242,7 @@ describe('Sigchain', () => {
     await sigchain.stop();
   });
   test('adds an existing claim', async () => {
-    const sigchain = await Sigchain.createSigchain({ keyManager, db, logger });
+    const sigchain = await Sigchain.createSigchain({ keyRing, db, logger });
     // Create a claim
     // Firstly, check that we can add an existing claim if it's the first claim
     // in the sigchain
@@ -247,7 +257,7 @@ describe('Sigchain', () => {
     expect(hPrev1).toBeNull();
     expect(seq1).toBe(0);
     const claim1 = await claimsUtils.createClaim({
-      privateKey: keyManager.getRootKeyPairPem().privateKey,
+      privateKey: keyRing.keyPair.privateKey,
       hPrev: hPrev1,
       seq: seq1 + 1,
       data: {
@@ -271,7 +281,7 @@ describe('Sigchain', () => {
 
     // Now check we can add an additional claim after the first
     const claim2 = await claimsUtils.createClaim({
-      privateKey: keyManager.getRootKeyPairPem().privateKey,
+      privateKey: keyRing.keyPair.privateKey,
       hPrev: hPrev2,
       seq: seq2 + 1,
       data: {
@@ -295,7 +305,7 @@ describe('Sigchain', () => {
 
     // Check a claim with an invalid hash will throw an exception
     const claimInvalidHash = await claimsUtils.createClaim({
-      privateKey: keyManager.getRootKeyPairPem().privateKey,
+      privateKey: keyRing.keyPair.privateKey,
       hPrev: 'invalidHash',
       seq: seq3 + 1,
       data: {
@@ -311,7 +321,7 @@ describe('Sigchain', () => {
 
     // Check a claim with an invalid sequence number will throw an exception
     const claimInvalidSeqNum = await claimsUtils.createClaim({
-      privateKey: keyManager.getRootKeyPairPem().privateKey,
+      privateKey: keyRing.keyPair.privateKey,
       hPrev: hPrev3,
       seq: 1,
       data: {
@@ -326,7 +336,7 @@ describe('Sigchain', () => {
     ).rejects.toThrow(sigchainErrors.ErrorSigchainInvalidSequenceNum);
   });
   test('retrieves chain data', async () => {
-    const sigchain = await Sigchain.createSigchain({ keyManager, db, logger });
+    const sigchain = await Sigchain.createSigchain({ keyRing, db, logger });
     const node2s: NodeIdEncoded[] = [];
 
     // Add 10 claims
@@ -375,7 +385,7 @@ describe('Sigchain', () => {
     }
   });
   test('retrieves all cryptolinks (nodes and identities) from sigchain (in expected lexicographic order)', async () => {
-    const sigchain = await Sigchain.createSigchain({ keyManager, db, logger });
+    const sigchain = await Sigchain.createSigchain({ keyRing, db, logger });
     const nodes: NodeIdEncoded[] = [];
 
     // Add 30 claims
@@ -447,7 +457,7 @@ describe('Sigchain', () => {
       });
       const verified = await claimsUtils.verifyClaimSignature(
         nodeLinks[i],
-        keyManager.getRootKeyPairPem().publicKey,
+        keyRing.keyPair.publicKey,
       );
       expect(verified).toBe(true);
       // Because every node link was an even number, we can simply add 2 to
@@ -500,7 +510,7 @@ describe('Sigchain', () => {
       });
       const verified = await claimsUtils.verifyClaimSignature(
         nodeLinks[i],
-        keyManager.getRootKeyPairPem().publicKey,
+        keyRing.keyPair.publicKey,
       );
       expect(verified).toBe(true);
       // Because every identity link was an odd number, we can simply add 2 to

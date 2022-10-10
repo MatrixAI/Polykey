@@ -1,8 +1,8 @@
 import type { DB, DBTransaction } from '@matrixai/db';
 import type NodeConnectionManager from './NodeConnectionManager';
 import type NodeGraph from './NodeGraph';
-import type KeyManager from '../keys/KeyManager';
-import type { PublicKeyPem } from '../keys/types';
+import type KeyRing from '../keys/KeyRing';
+import type { PublicKey } from '../keys/types';
 import type Sigchain from '../sigchain/Sigchain';
 import type { ChainData, ChainDataEncoded } from '../sigchain/types';
 import type {
@@ -43,7 +43,7 @@ class NodeManager {
   protected db: DB;
   protected logger: Logger;
   protected sigchain: Sigchain;
-  protected keyManager: KeyManager;
+  protected keyRing: KeyRing;
   protected nodeConnectionManager: NodeConnectionManager;
   protected nodeGraph: NodeGraph;
   protected taskManager: TaskManager;
@@ -176,7 +176,7 @@ class NodeManager {
 
   constructor({
     db,
-    keyManager,
+    keyRing,
     sigchain,
     nodeConnectionManager,
     nodeGraph,
@@ -187,7 +187,7 @@ class NodeManager {
     logger,
   }: {
     db: DB;
-    keyManager: KeyManager;
+    keyRing: KeyRing;
     sigchain: Sigchain;
     nodeConnectionManager: NodeConnectionManager;
     nodeGraph: NodeGraph;
@@ -200,7 +200,7 @@ class NodeManager {
   }) {
     this.logger = logger ?? new Logger(this.constructor.name);
     this.db = db;
-    this.keyManager = keyManager;
+    this.keyRing = keyRing;
     this.sigchain = sigchain;
     this.nodeConnectionManager = nodeConnectionManager;
     this.nodeGraph = nodeGraph;
@@ -314,7 +314,7 @@ class NodeManager {
    * certificate chain (corresponding to the provided public key fingerprint -
    * the node ID).
    */
-  public async getPublicKey(targetNodeId: NodeId): Promise<PublicKeyPem> {
+  public async getPublicKey(targetNodeId: NodeId): Promise<PublicKey> {
     const publicKey = await this.nodeConnectionManager.withConnF(
       targetNodeId,
       async (connection) => {
@@ -324,7 +324,7 @@ class NodeManager {
     if (publicKey == null) {
       throw new nodesErrors.ErrorNodeConnectionPublicKeyNotFound();
     }
-    return publicKey as PublicKeyPem;
+    return publicKey;
   }
 
   /**
@@ -375,9 +375,7 @@ class NodeManager {
               payload: claimMsg.getPayload(),
             } as ClaimEncoded;
           });
-          const publicKey = connection.getExpectedPublicKey(
-            targetNodeId,
-          ) as PublicKeyPem;
+          const publicKey = connection.getExpectedPublicKey(targetNodeId);
           return [unverifiedChainData, publicKey];
         },
         { signal: ctx.signal, timer },
@@ -398,10 +396,10 @@ class NodeManager {
       const payload = verifiedChainData[claimId].payload;
       if (payload.data.type === 'node') {
         const endNodeId = validationUtils.parseNodeId(payload.data.node2);
-        let endPublicKey: PublicKeyPem;
+        let endPublicKey: PublicKey | null;
         // If the claim points back to our own node, don't attempt to connect
-        if (endNodeId.equals(this.keyManager.getNodeId())) {
-          endPublicKey = this.keyManager.getRootKeyPairPem().publicKey;
+        if (endNodeId.equals(this.keyRing.getNodeId())) {
+          endPublicKey = this.keyRing.keyPair.publicKey;
           // Otherwise, get the public key from the root cert chain (by connection)
         } else {
           const timer =
@@ -411,7 +409,7 @@ class NodeManager {
           endPublicKey = await this.nodeConnectionManager.withConnF(
             endNodeId,
             async (connection) => {
-              return connection.getExpectedPublicKey(endNodeId) as PublicKeyPem;
+              return connection.getExpectedPublicKey(endNodeId);
             },
             { signal: ctx.signal, timer },
           );
@@ -450,7 +448,7 @@ class NodeManager {
     const singlySignedClaim = await this.sigchain.createIntermediaryClaim(
       {
         type: 'node',
-        node1: nodesUtils.encodeNodeId(this.keyManager.getNodeId()),
+        node1: nodesUtils.encodeNodeId(this.keyRing.getNodeId()),
         node2: nodesUtils.encodeNodeId(targetNodeId),
       },
       tran,
@@ -514,7 +512,7 @@ class NodeManager {
           const verifiedDoubly =
             (await claimsUtils.verifyClaimSignature(
               constructedDoublySignedClaim,
-              this.keyManager.getRootKeyPairPem().publicKey,
+              this.keyRing.keyPair.publicKey,
             )) &&
             (await claimsUtils.verifyClaimSignature(
               constructedDoublySignedClaim,
@@ -527,10 +525,8 @@ class NodeManager {
           const doublySignedClaimResponse =
             await claimsUtils.signIntermediaryClaim({
               claim: constructedIntermediaryClaim,
-              privateKey: this.keyManager.getRootKeyPairPem().privateKey,
-              signeeNodeId: nodesUtils.encodeNodeId(
-                this.keyManager.getNodeId(),
-              ),
+              privateKey: this.keyRing.keyPair.privateKey,
+              signeeNodeId: nodesUtils.encodeNodeId(this.keyRing.getNodeId()),
             });
           // Should never be reached, but just for type safety
           if (!doublySignedClaimResponse.payload) {
@@ -632,7 +628,7 @@ class NodeManager {
     tran?: DBTransaction,
   ): Promise<void> {
     // We don't want to add our own node
-    if (nodeId.equals(this.keyManager.getNodeId())) {
+    if (nodeId.equals(this.keyRing.getNodeId())) {
       this.logger.debug('Is own NodeId, skipping');
       return;
     }
@@ -902,7 +898,7 @@ class NodeManager {
    * to the new node ID.
    */
   public async resetBuckets(): Promise<void> {
-    return await this.nodeGraph.resetBuckets(this.keyManager.getNodeId());
+    return await this.nodeGraph.resetBuckets(this.keyRing.getNodeId());
   }
 
   /**
@@ -926,7 +922,7 @@ class NodeManager {
     @context ctx: ContextTimed,
   ): Promise<void> {
     // We need to generate a random nodeId for this bucket
-    const nodeId = this.keyManager.getNodeId();
+    const nodeId = this.keyRing.getNodeId();
     const bucketRandomNodeId = nodesUtils.generateRandomNodeIdForBucket(
       nodeId,
       bucketIndex,
@@ -1160,7 +1156,7 @@ class NodeManager {
     }
     // Using a map to avoid duplicates
     const closestNodesAll: Map<NodeId, NodeData> = new Map();
-    const localNodeId = this.keyManager.getNodeId();
+    const localNodeId = this.keyRing.getNodeId();
     let closestNode: NodeId | null = null;
     logger.debug('Getting closest nodes');
     for (const [nodeId] of connections) {

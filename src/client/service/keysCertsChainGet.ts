@@ -1,6 +1,6 @@
 import type * as grpc from '@grpc/grpc-js';
 import type { Authenticate } from '../types';
-import type KeyManager from '../../keys/KeyManager';
+import type KeyRing from '../../keys/KeyRing';
 import type * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 import type Logger from '@matrixai/logger';
 import * as grpcUtils from '../../grpc/utils';
@@ -9,11 +9,11 @@ import * as clientUtils from '../utils';
 
 function keysCertsChainGet({
   authenticate,
-  keyManager,
+  keyRing,
   logger,
 }: {
   authenticate: Authenticate;
-  keyManager: KeyManager;
+  keyRing: KeyRing;
   logger: Logger;
 }) {
   return async (
@@ -23,7 +23,7 @@ function keysCertsChainGet({
     try {
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
-      const certs: Array<string> = await keyManager.getRootCertChainPems();
+      const certs: Array<string> = await keyRing.getRootCertChainPems();
       let certMessage: keysPB.Certificate;
       for (const cert of certs) {
         certMessage = new keysPB.Certificate();
