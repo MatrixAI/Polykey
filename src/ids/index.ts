@@ -48,9 +48,7 @@ function decodeNodeId(nodeIdEncoded: any): NodeId | undefined {
 /**
  * Generates CertId
  */
-function createCertIdGenerator(
-  lastCertId?: CertId,
-): () => CertId {
+function createCertIdGenerator(lastCertId?: CertId): () => CertId {
   const generator = new IdSortable<CertId>({
     lastId: lastCertId,
   });

@@ -9,6 +9,7 @@ import type {
 } from '@/identities/types';
 import type { Claim, SignatureData } from '@/claims/types';
 import type { ChainData } from '@/sigchain/types';
+import type { Key } from '@/keys/types';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
@@ -18,6 +19,7 @@ import GestaltGraph from '@/gestalts/GestaltGraph';
 import ACL from '@/acl/ACL';
 import * as gestaltsErrors from '@/gestalts/errors';
 import * as gestaltsUtils from '@/gestalts/utils';
+import * as utils from '@/utils';
 import * as keysUtils from '@/keys/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as testNodesUtils from '../nodes/utils';
@@ -59,8 +61,18 @@ describe('GestaltGraph', () => {
       crypto: {
         key: await keysUtils.generateKey(),
         ops: {
-          encrypt: keysUtils.encryptWithKey,
-          decrypt: keysUtils.decryptWithKey,
+          encrypt: async (key, plainText) => {
+            return keysUtils.encryptWithKey(
+              utils.bufferWrap(key) as Key,
+              utils.bufferWrap(plainText),
+            );
+          },
+          decrypt: async (key, cipherText) => {
+            return keysUtils.decryptWithKey(
+              utils.bufferWrap(key) as Key,
+              utils.bufferWrap(cipherText),
+            );
+          },
         },
       },
     });

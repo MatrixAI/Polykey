@@ -95,6 +95,8 @@ class CommandStart extends CommandPolykey {
       const agentConfig = {
         password,
         nodePath: options.nodePath,
+        // FIXME: keys config has changed.
+        //  need to update options to reflect this.
         keysConfig: {
           rootKeyPairBits: options.rootKeyPairBits,
           recoveryCode: recoveryCodeIn,

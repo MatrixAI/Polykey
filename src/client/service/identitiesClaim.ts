@@ -1,7 +1,7 @@
 import type * as grpc from '@grpc/grpc-js';
 import type { DB } from '@matrixai/db';
 import type { Authenticate } from '../types';
-import type KeyManager from '../../keys/KeyManager';
+import type KeyRing from '../../keys/KeyRing';
 import type Sigchain from '../../sigchain/Sigchain';
 import type IdentitiesManager from '../../identities/IdentitiesManager';
 import type { IdentityId, ProviderId } from '../../identities/types';
@@ -23,14 +23,14 @@ function identitiesClaim({
   authenticate,
   identitiesManager,
   sigchain,
-  keyManager,
+  keyRing,
   db,
   logger,
 }: {
   authenticate: Authenticate;
   identitiesManager: IdentitiesManager;
   sigchain: Sigchain;
-  keyManager: KeyManager;
+  keyRing: KeyRing;
   db: DB;
   logger: Logger;
 }) {
@@ -75,7 +75,7 @@ function identitiesClaim({
         sigchain.addClaim(
           {
             type: 'identity',
-            node: nodesUtils.encodeNodeId(keyManager.getNodeId()),
+            node: nodesUtils.encodeNodeId(keyRing.getNodeId()),
             provider: providerId,
             identity: identityId,
           },

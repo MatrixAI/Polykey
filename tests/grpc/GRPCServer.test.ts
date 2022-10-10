@@ -1,20 +1,21 @@
 import type { Authenticate } from '@/client/types';
 import type { Host, Port } from '@/network/types';
+import type { Key } from '@/keys/types';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import GRPCServer from '@/grpc/GRPCServer';
-import KeyManager from '@/keys/KeyManager';
+import KeyRing from '@/keys/KeyRing';
 import SessionManager from '@/sessions/SessionManager';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as grpcErrors from '@/grpc/errors';
 import * as grpcUtils from '@/grpc/utils';
 import * as keysUtils from '@/keys/utils';
 import * as clientUtils from '@/client/utils';
+import * as utils from '@/utils/index';
 import * as testGrpcUtils from './utils';
-import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 
 describe('GRPCServer', () => {
   const logger = new Logger('GRPCServer Test', LogLevel.WARN, [
@@ -22,7 +23,7 @@ describe('GRPCServer', () => {
   ]);
   const password = 'password';
   let dataDir: string;
-  let keyManager: KeyManager;
+  let keyRing: KeyRing;
   let db: DB;
   let sessionManager: SessionManager;
   let authenticate: Authenticate;
@@ -31,36 +32,45 @@ describe('GRPCServer', () => {
       path.join(os.tmpdir(), 'polykey-test-'),
     );
     const keysPath = path.join(dataDir, 'keys');
-    keyManager = await KeyManager.createKeyManager({
+    keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
       logger,
-      privateKeyPemOverride: globalRootKeyPems[0],
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
       dbPath,
       logger,
       crypto: {
-        key: keyManager.dbKey,
+        key: keyRing.dbKey,
         ops: {
-          encrypt: keysUtils.encryptWithKey,
-          decrypt: keysUtils.decryptWithKey,
+          encrypt: async (key, plainText) => {
+            return keysUtils.encryptWithKey(
+              utils.bufferWrap(key) as Key,
+              utils.bufferWrap(plainText),
+            );
+          },
+          decrypt: async (key, cipherText) => {
+            return keysUtils.decryptWithKey(
+              utils.bufferWrap(key) as Key,
+              utils.bufferWrap(cipherText),
+            );
+          },
         },
       },
     });
     sessionManager = await SessionManager.createSessionManager({
       db,
-      keyManager,
+      keyRing,
       logger,
       expiry: 60000,
     });
-    authenticate = clientUtils.authenticator(sessionManager, keyManager);
+    authenticate = clientUtils.authenticator(sessionManager, keyRing);
   });
   afterEach(async () => {
     await sessionManager.stop();
     await db.stop();
-    await keyManager.stop();
+    await keyRing.stop();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,

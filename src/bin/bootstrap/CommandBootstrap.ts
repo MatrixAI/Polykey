@@ -28,6 +28,8 @@ class CommandBootstrap extends CommandPolykey {
       const recoveryCodeOut = await bootstrapUtils.bootstrapState({
         password,
         nodePath: options.nodePath,
+        // FIXME: keys config has changed.
+        //  need to update options to reflect this.
         keysConfig: {
           rootKeyPairBits: options.rootKeyPairBits,
           recoveryCode: recoveryCodeIn,

@@ -1,5 +1,5 @@
 import type { Host, Port } from '@/network/types';
-import type KeyManager from '@/keys/KeyManager';
+import type KeyRing from '@/keys/KeyRing';
 import type NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import type ACL from '@/acl/ACL';
 import type GestaltGraph from '@/gestalts/GestaltGraph';
@@ -42,7 +42,7 @@ describe('vaultsPull', () => {
       vaultsPath,
       db,
       acl: {} as ACL,
-      keyManager: {} as KeyManager,
+      keyRing: {} as KeyRing,
       nodeConnectionManager: {} as NodeConnectionManager,
       gestaltGraph: {} as GestaltGraph,
       notificationsManager: {} as NotificationsManager,

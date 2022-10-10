@@ -1,5 +1,5 @@
 import type { DB } from '@matrixai/db';
-import type KeyManager from '../../keys/KeyManager';
+import type KeyRing from '../../keys/KeyRing';
 import type VaultManager from '../../vaults/VaultManager';
 import type NodeGraph from '../../nodes/NodeGraph';
 import type NodeManager from '../../nodes/NodeManager';
@@ -31,7 +31,7 @@ function createService({
   ...containerRest
 }: {
   db: DB;
-  keyManager: KeyManager;
+  keyRing: KeyRing;
   vaultManager: VaultManager;
   nodeConnectionManager: NodeConnectionManager;
   nodeManager: NodeManager;

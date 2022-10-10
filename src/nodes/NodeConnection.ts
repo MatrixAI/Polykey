@@ -223,14 +223,12 @@ class NodeConnection<T extends GRPCClient> {
    * found in the certificate chain.
    */
   @ready(new nodesErrors.ErrorNodeConnectionDestroyed())
-  public getExpectedPublicKey(expectedNodeId: NodeId): PublicKeyPem | null {
+  public getExpectedPublicKey(expectedNodeId: NodeId): PublicKey | null {
     const certificates = this.getRootCertChain();
-    let publicKey: PublicKeyPem | null = null;
+    let publicKey: PublicKey | null = null;
     for (const cert of certificates) {
       if (keysUtils.certNodeId(cert)!.equals(expectedNodeId)) {
-        publicKey = keysUtils.publicKeyToPem(
-          cert.publicKey as PublicKey,
-        ) as PublicKeyPem;
+        publicKey = keysUtils.certPublicKey(cert)!;
       }
     }
     return publicKey;

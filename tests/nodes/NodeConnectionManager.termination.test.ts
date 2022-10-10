@@ -3,6 +3,7 @@ import type { NodeId, NodeIdString, SeedNodes } from '@/nodes/types';
 import type { Host, Port, TLSConfig } from '@/network/types';
 import type NodeManager from '@/nodes/NodeManager';
 import type TaskManager from 'tasks/TaskManager';
+import type { Key } from '@/keys/types';
 import net from 'net';
 import fs from 'fs';
 import path from 'path';
@@ -12,7 +13,7 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { destroyed } from '@matrixai/async-init/';
 import { IdInternal } from '@matrixai/id';
 import PolykeyAgent from '@/PolykeyAgent';
-import KeyManager from '@/keys/KeyManager';
+import KeyRing from '@/keys/KeyRing';
 import NodeGraph from '@/nodes/NodeGraph';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import Proxy from '@/network/Proxy';
@@ -24,8 +25,8 @@ import * as grpcUtils from '@/grpc/utils';
 import * as agentErrors from '@/agent/errors';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import { promise, promisify } from '@/utils';
+import * as utils from '@/utils/index';
 import * as testUtils from '../utils';
-import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 
 describe(`${NodeConnectionManager.name} termination test`, () => {
   const logger = new Logger(
@@ -76,7 +77,7 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
   //
   let dataDir: string;
   let nodePath: string;
-  let keyManager: KeyManager;
+  let keyRing: KeyRing;
   let db: DB;
   let defaultProxy: Proxy;
   let nodeGraph: NodeGraph;
@@ -95,32 +96,41 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
     );
     nodePath = path.join(dataDir, 'node');
     const keysPath = path.join(dataDir, 'keys');
-    keyManager = await KeyManager.createKeyManager({
+    keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
-      privateKeyPemOverride: globalRootKeyPems[0],
-      logger: logger.getChild('keyManager'),
+      logger: logger.getChild('keyRing'),
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
       dbPath,
       logger: logger,
       crypto: {
-        key: keyManager.dbKey,
+        key: keyRing.dbKey,
         ops: {
-          encrypt: keysUtils.encryptWithKey,
-          decrypt: keysUtils.decryptWithKey,
+          encrypt: async (key, plainText) => {
+            return keysUtils.encryptWithKey(
+              utils.bufferWrap(key) as Key,
+              utils.bufferWrap(plainText),
+            );
+          },
+          decrypt: async (key, cipherText) => {
+            return keysUtils.decryptWithKey(
+              utils.bufferWrap(key) as Key,
+              utils.bufferWrap(cipherText),
+            );
+          },
         },
       },
     });
     nodeGraph = await NodeGraph.createNodeGraph({
       db,
-      keyManager,
+      keyRing,
       logger: logger.getChild('NodeGraph'),
     });
     const tlsConfig = {
-      keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
-      certChainPem: keysUtils.certToPem(keyManager.getRootCert()),
+      keyPrivatePem: keyRing.getRootKeyPairPem().privateKey,
+      certChainPem: keysUtils.certToPem(keyRing.getRootCert()),
     };
     defaultProxy = new Proxy({
       authToken: 'auth',
@@ -151,8 +161,8 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
     await nodeGraph.destroy();
     await db.stop();
     await db.destroy();
-    await keyManager.stop();
-    await keyManager.destroy();
+    await keyRing.stop();
+    await keyRing.destroy();
     await defaultProxy.stop();
   });
 
@@ -241,7 +251,7 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
         port: proxy.getProxyPort(),
       });
       nodeConnectionManager = new NodeConnectionManager({
-        keyManager,
+        keyRing,
         nodeGraph,
         proxy,
         taskManager: dummyTaskManager,
@@ -282,7 +292,7 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
         port: proxy.getProxyPort(),
       });
       nodeConnectionManager = new NodeConnectionManager({
-        keyManager,
+        keyRing,
         nodeGraph,
         proxy,
         taskManager: dummyTaskManager,
@@ -326,7 +336,7 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
         port: proxy.getProxyPort(),
       });
       nodeConnectionManager = new NodeConnectionManager({
-        keyManager,
+        keyRing,
         nodeGraph,
         proxy,
         taskManager: dummyTaskManager,
@@ -361,19 +371,16 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
         networkConfig: {
           proxyHost: '127.0.0.1' as Host,
         },
-        keysConfig: {
-          privateKeyPemOverride: globalRootKeyPems[1],
-        },
         logger: logger,
       });
 
-      const agentNodeId = polykeyAgent.keyManager.getNodeId();
+      const agentNodeId = polykeyAgent.keyRing.getNodeId();
       await nodeGraph.setNode(agentNodeId, {
         host: polykeyAgent.proxy.getProxyHost(),
         port: polykeyAgent.proxy.getProxyPort(),
       });
       nodeConnectionManager = new NodeConnectionManager({
-        keyManager,
+        keyRing,
         nodeGraph,
         proxy: defaultProxy,
         taskManager: dummyTaskManager,
@@ -422,19 +429,16 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
         networkConfig: {
           proxyHost: '127.0.0.1' as Host,
         },
-        keysConfig: {
-          privateKeyPemOverride: globalRootKeyPems[2],
-        },
         logger: logger,
       });
-      const agentNodeId = polykeyAgent.keyManager.getNodeId();
+      const agentNodeId = polykeyAgent.keyRing.getNodeId();
       await nodeGraph.setNode(agentNodeId, {
         host: polykeyAgent.proxy.getProxyHost(),
         port: polykeyAgent.proxy.getProxyPort(),
       });
 
       nodeConnectionManager = new NodeConnectionManager({
-        keyManager,
+        keyRing,
         nodeGraph,
         proxy: defaultProxy,
         taskManager: dummyTaskManager,
@@ -505,19 +509,16 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
         networkConfig: {
           proxyHost: '127.0.0.1' as Host,
         },
-        keysConfig: {
-          privateKeyPemOverride: globalRootKeyPems[3],
-        },
         logger: logger,
       });
 
-      const agentNodeId = polykeyAgent.keyManager.getNodeId();
+      const agentNodeId = polykeyAgent.keyRing.getNodeId();
       await nodeGraph.setNode(agentNodeId, {
         host: polykeyAgent.proxy.getProxyHost(),
         port: polykeyAgent.proxy.getProxyPort(),
       });
       nodeConnectionManager = new NodeConnectionManager({
-        keyManager,
+        keyRing,
         nodeGraph,
         proxy: defaultProxy,
         taskManager: dummyTaskManager,
@@ -581,19 +582,16 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
         networkConfig: {
           proxyHost: '127.0.0.1' as Host,
         },
-        keysConfig: {
-          privateKeyPemOverride: globalRootKeyPems[4],
-        },
         logger: logger,
       });
 
-      const agentNodeId = polykeyAgent.keyManager.getNodeId();
+      const agentNodeId = polykeyAgent.keyRing.getNodeId();
       await nodeGraph.setNode(agentNodeId, {
         host: polykeyAgent.proxy.getProxyHost(),
         port: polykeyAgent.proxy.getProxyPort(),
       });
       nodeConnectionManager = new NodeConnectionManager({
-        keyManager,
+        keyRing,
         nodeGraph,
         proxy: defaultProxy,
         taskManager: dummyTaskManager,
@@ -662,19 +660,16 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
         networkConfig: {
           proxyHost: '127.0.0.1' as Host,
         },
-        keysConfig: {
-          privateKeyPemOverride: globalRootKeyPems[5],
-        },
         logger: logger,
       });
 
-      const agentNodeId = polykeyAgent.keyManager.getNodeId();
+      const agentNodeId = polykeyAgent.keyRing.getNodeId();
       await nodeGraph.setNode(agentNodeId, {
         host: polykeyAgent.proxy.getProxyHost(),
         port: polykeyAgent.proxy.getProxyPort(),
       });
       nodeConnectionManager = new NodeConnectionManager({
-        keyManager,
+        keyRing,
         nodeGraph,
         proxy: defaultProxy,
         taskManager: dummyTaskManager,
@@ -743,19 +738,16 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
         networkConfig: {
           proxyHost: '127.0.0.1' as Host,
         },
-        keysConfig: {
-          privateKeyPemOverride: globalRootKeyPems[6],
-        },
         logger: logger,
       });
 
-      const agentNodeId = polykeyAgent.keyManager.getNodeId();
+      const agentNodeId = polykeyAgent.keyRing.getNodeId();
       await nodeGraph.setNode(agentNodeId, {
         host: polykeyAgent.proxy.getProxyHost(),
         port: polykeyAgent.proxy.getProxyPort(),
       });
       nodeConnectionManager = new NodeConnectionManager({
-        keyManager,
+        keyRing,
         nodeGraph,
         proxy: defaultProxy,
         taskManager: dummyTaskManager,

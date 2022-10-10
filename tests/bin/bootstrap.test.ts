@@ -65,7 +65,7 @@ describe('bootstrap', () => {
       const password = 'password';
       const passwordPath = path.join(dataDir, 'password');
       await fs.promises.writeFile(passwordPath, password);
-      const keyPair = await keysUtils.generateKeyPair(4096);
+      const keyPair = await keysUtils.generateKeyPair();
       const privateKeyPem = keysUtils.privateKeyToPem(keyPair.privateKey);
       const privateKeyPath = path.join(dataDir, 'private.pem');
       await fs.promises.writeFile(privateKeyPath, privateKeyPem, {
@@ -279,7 +279,7 @@ describe('bootstrap', () => {
           // This line is brittle
           // It may change if the log format changes
           // Make sure to keep it updated at the exact point when the root key pair is generated
-          if (l === 'INFO:polykey.KeyManager:Generating root key pair') {
+          if (l === 'INFO:polykey.KeyRing:Generating root key pair') {
             bootstrapProcess1.kill('SIGINT');
             resolve();
           }

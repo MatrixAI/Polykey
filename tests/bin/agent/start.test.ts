@@ -13,7 +13,6 @@ import * as statusErrors from '@/status/errors';
 import config from '@/config';
 import * as keysUtils from '@/keys/utils';
 import * as testUtils from '../../utils';
-import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('start', () => {
   const logger = new Logger('start test', LogLevel.WARN, [new StreamHandler()]);
@@ -917,9 +916,9 @@ describe('start', () => {
           path.join(globalThis.tmpDir, 'polykey-test-'),
         );
         ({ agentStatus: agent1Status, agentClose: agent1Close } =
-          await testUtils.setupTestAgent(globalRootKeyPems[0], logger));
+          await testUtils.setupTestAgent(logger));
         ({ agentStatus: agent2Status, agentClose: agent2Close } =
-          await testUtils.setupTestAgent(globalRootKeyPems[1], logger));
+          await testUtils.setupTestAgent(logger));
         seedNodeId1 = agent1Status.data.nodeId;
         seedNodeHost1 = agent1Status.data.proxyHost;
         seedNodePort1 = agent1Status.data.proxyPort;

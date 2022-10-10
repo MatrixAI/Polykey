@@ -1,6 +1,7 @@
 import type { NodeId, NodeIdEncoded, SeedNodes } from '@/nodes/types';
 import type { Host, Port } from '@/network/types';
 import type { Sigchain } from '@/sigchain';
+import type { Key } from '@/keys/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -11,7 +12,7 @@ import { PromiseCancellable } from '@matrixai/async-cancellable';
 import { Timer } from '@matrixai/timer';
 import NodeManager from '@/nodes/NodeManager';
 import PolykeyAgent from '@/PolykeyAgent';
-import KeyManager from '@/keys/KeyManager';
+import KeyRing from '@/keys/KeyRing';
 import NodeGraph from '@/nodes/NodeGraph';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import Proxy from '@/network/Proxy';
@@ -20,7 +21,7 @@ import * as keysUtils from '@/keys/utils';
 import * as grpcUtils from '@/grpc/utils';
 import TaskManager from '@/tasks/TaskManager';
 import { sleep } from '@/utils/index';
-import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
+import * as utils from '@/utils/index';
 
 describe(`${NodeConnectionManager.name} seed nodes test`, () => {
   const logger = new Logger(
@@ -68,7 +69,7 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
 
   let dataDir: string;
   let dataDir2: string;
-  let keyManager: KeyManager;
+  let keyRing: KeyRing;
   let db: DB;
   let proxy: Proxy;
 
@@ -104,24 +105,18 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
       networkConfig: {
         proxyHost: '127.0.0.1' as Host,
       },
-      keysConfig: {
-        privateKeyPemOverride: globalRootKeyPems[0],
-      },
       logger: logger.getChild('remoteNode1'),
     });
-    remoteNodeId1 = remoteNode1.keyManager.getNodeId();
+    remoteNodeId1 = remoteNode1.keyRing.getNodeId();
     remoteNode2 = await PolykeyAgent.createPolykeyAgent({
       password,
       nodePath: path.join(dataDir2, 'remoteNode2'),
       networkConfig: {
         proxyHost: '127.0.0.1' as Host,
       },
-      keysConfig: {
-        privateKeyPemOverride: globalRootKeyPems[1],
-      },
       logger: logger.getChild('remoteNode2'),
     });
-    remoteNodeId2 = remoteNode2.keyManager.getNodeId();
+    remoteNodeId2 = remoteNode2.keyRing.getNodeId();
   });
 
   afterAll(async () => {
@@ -144,21 +139,30 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
       path.join(os.tmpdir(), 'polykey-test-'),
     );
     const keysPath = path.join(dataDir, 'keys');
-    keyManager = await KeyManager.createKeyManager({
+    keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
-      privateKeyPemOverride: globalRootKeyPems[2],
-      logger: logger.getChild('keyManager'),
+      logger: logger.getChild('keyRing'),
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
       dbPath,
       logger: logger,
       crypto: {
-        key: keyManager.dbKey,
+        key: keyRing.dbKey,
         ops: {
-          encrypt: keysUtils.encryptWithKey,
-          decrypt: keysUtils.decryptWithKey,
+          encrypt: async (key, plainText) => {
+            return keysUtils.encryptWithKey(
+              utils.bufferWrap(key) as Key,
+              utils.bufferWrap(plainText),
+            );
+          },
+          decrypt: async (key, cipherText) => {
+            return keysUtils.decryptWithKey(
+              utils.bufferWrap(key) as Key,
+              utils.bufferWrap(cipherText),
+            );
+          },
         },
       },
     });
@@ -169,12 +173,12 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
     });
     nodeGraph = await NodeGraph.createNodeGraph({
       db,
-      keyManager,
+      keyRing,
       logger: logger.getChild('NodeGraph'),
     });
     const tlsConfig = {
-      keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
-      certChainPem: keysUtils.certToPem(keyManager.getRootCert()),
+      keyPrivatePem: keyRing.getRootKeyPairPem().privateKey,
+      certChainPem: keysUtils.certToPem(keyRing.getRootCert()),
     };
     proxy = new Proxy({
       authToken: 'auth',
@@ -201,8 +205,8 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
     await nodeGraph.destroy();
     await db.stop();
     await db.destroy();
-    await keyManager.stop();
-    await keyManager.destroy();
+    await keyRing.stop();
+    await keyRing.destroy();
     await proxy.stop();
     await taskManager.stop();
   });
@@ -213,7 +217,7 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
     let nodeManager: NodeManager | undefined;
     try {
       nodeConnectionManager = new NodeConnectionManager({
-        keyManager,
+        keyRing,
         nodeGraph,
         proxy,
         taskManager,
@@ -222,7 +226,7 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
       });
       nodeManager = new NodeManager({
         db,
-        keyManager,
+        keyRing,
         logger,
         nodeConnectionManager,
         nodeGraph,
@@ -249,7 +253,7 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
   test('should get seed nodes', async () => {
     // NodeConnectionManager under test
     const nodeConnectionManager = new NodeConnectionManager({
-      keyManager,
+      keyRing,
       nodeGraph,
       proxy,
       taskManager,
@@ -291,7 +295,7 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
         port: remoteNode2.proxy.getProxyPort(),
       };
       nodeConnectionManager = new NodeConnectionManager({
-        keyManager,
+        keyRing,
         nodeGraph,
         proxy,
         taskManager,
@@ -300,7 +304,7 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
       });
       nodeManager = new NodeManager({
         db,
-        keyManager,
+        keyRing,
         logger,
         nodeConnectionManager,
         nodeGraph,
@@ -354,7 +358,7 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
         port: remoteNode2.proxy.getProxyPort(),
       };
       nodeConnectionManager = new NodeConnectionManager({
-        keyManager,
+        keyRing,
         nodeGraph,
         proxy,
         taskManager,
@@ -363,7 +367,7 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
       });
       nodeManager = new NodeManager({
         db,
-        keyManager,
+        keyRing,
         logger,
         nodeConnectionManager,
         nodeGraph,
@@ -432,7 +436,7 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
         port: serverPort,
       });
       nodeConnectionManager = new NodeConnectionManager({
-        keyManager,
+        keyRing,
         nodeGraph,
         proxy,
         taskManager,
@@ -442,7 +446,7 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
       });
       nodeManager = new NodeManager({
         db,
-        keyManager,
+        keyRing,
         logger,
         nodeConnectionManager,
         nodeGraph,
@@ -498,9 +502,6 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
             clientHost: localHost,
             forwardHost: localHost,
           },
-          keysConfig: {
-            privateKeyPemOverride: globalRootKeyPems[3],
-          },
           seedNodes,
           logger,
         });
@@ -512,9 +513,6 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
             agentHost: localHost,
             clientHost: localHost,
             forwardHost: localHost,
-          },
-          keysConfig: {
-            privateKeyPemOverride: globalRootKeyPems[4],
           },
           seedNodes,
           logger,
@@ -537,8 +535,8 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
 
         const nodeIdR1 = nodesUtils.encodeNodeId(remoteNodeId1);
         const nodeIdR2 = nodesUtils.encodeNodeId(remoteNodeId2);
-        const nodeId1 = nodesUtils.encodeNodeId(node1.keyManager.getNodeId());
-        const nodeId2 = nodesUtils.encodeNodeId(node2.keyManager.getNodeId());
+        const nodeId1 = nodesUtils.encodeNodeId(node1.keyRing.getNodeId());
+        const nodeId2 = nodesUtils.encodeNodeId(node2.keyRing.getNodeId());
         expect(rNode1Nodes).toContain(nodeId1);
         expect(rNode1Nodes).toContain(nodeId2);
         expect(rNode2Nodes).toContain(nodeId1);
@@ -588,9 +586,6 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
             agentHost: localHost,
             clientHost: localHost,
             forwardHost: localHost,
-          },
-          keysConfig: {
-            privateKeyPemOverride: globalRootKeyPems[3],
           },
           seedNodes,
           logger,

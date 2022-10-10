@@ -1,6 +1,6 @@
 import type { DB } from '@matrixai/db';
 import type PolykeyAgent from '../../PolykeyAgent';
-import type KeyManager from '../../keys/KeyManager';
+import type KeyRing from '../../keys/KeyRing';
 import type { VaultManager } from '../../vaults';
 import type {
   NodeManager,
@@ -89,7 +89,7 @@ import * as clientUtils from '../utils';
 import { ClientServiceService } from '../../proto/js/polykey/v1/client_service_grpc_pb';
 
 function createService({
-  keyManager,
+  keyRing,
   sessionManager,
   db,
   logger = new Logger('GRPCClientClientService'),
@@ -98,7 +98,7 @@ function createService({
 }: {
   pkAgent: PolykeyAgent;
   db: DB;
-  keyManager: KeyManager;
+  keyRing: KeyRing;
   vaultManager: VaultManager;
   nodeGraph: NodeGraph;
   nodeConnectionManager: NodeConnectionManager;
@@ -116,10 +116,10 @@ function createService({
   logger?: Logger;
   fs?: FileSystem;
 }) {
-  const authenticate = clientUtils.authenticator(sessionManager, keyManager);
+  const authenticate = clientUtils.authenticator(sessionManager, keyRing);
   const container = {
     ...containerRest,
-    keyManager,
+    keyRing,
     sessionManager,
     db,
     logger,
@@ -157,6 +157,8 @@ function createService({
     keysCertsGet: keysCertsGet(container),
     keysDecrypt: keysDecrypt(container),
     keysEncrypt: keysEncrypt(container),
+    // FIXME: Is there a distinction between renewing or resetting a keyPair?
+    //  Is this just rotate now?
     keysKeyPairRenew: keysKeyPairRenew(container),
     keysKeyPairReset: keysKeyPairReset(container),
     keysKeyPairRoot: keysKeyPairRoot(container),

@@ -8,7 +8,6 @@ import * as notificationsErrors from '@/notifications/errors';
 import * as vaultsUtils from '@/vaults/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as testNodesUtils from '../nodes/utils';
-import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 
 describe('Notifications utils', () => {
   const nodeId = testNodesUtils.generateRandomNodeId();

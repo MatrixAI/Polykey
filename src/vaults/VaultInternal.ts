@@ -12,7 +12,7 @@ import type {
   VaultName,
   VaultRef,
 } from './types';
-import type KeyManager from '../keys/KeyManager';
+import type KeyRing from '../keys/KeyRing';
 import type { NodeId, NodeIdEncoded } from '../ids/types';
 import type NodeConnectionManager from '../nodes/NodeConnectionManager';
 import type GRPCClientAgent from '../agent/GRPCClientAgent';
@@ -51,7 +51,7 @@ class VaultInternal {
     vaultName,
     db,
     vaultsDbPath,
-    keyManager,
+    keyRing,
     efs,
     logger = new Logger(this.name),
     fresh = false,
@@ -61,7 +61,7 @@ class VaultInternal {
     vaultName?: VaultName;
     db: DB;
     vaultsDbPath: LevelPath;
-    keyManager: KeyManager;
+    keyRing: KeyRing;
     efs: EncryptedFS;
     logger?: Logger;
     fresh?: boolean;
@@ -74,7 +74,7 @@ class VaultInternal {
           vaultName,
           db,
           vaultsDbPath,
-          keyManager,
+          keyRing,
           efs,
           logger,
           fresh,
@@ -89,7 +89,7 @@ class VaultInternal {
       vaultId,
       db,
       vaultsDbPath,
-      keyManager,
+      keyRing,
       efs,
       logger,
     });
@@ -104,7 +104,7 @@ class VaultInternal {
     vaultId,
     db,
     vaultsDbPath,
-    keyManager,
+    keyRing,
     nodeConnectionManager,
     efs,
     logger = new Logger(this.name),
@@ -116,7 +116,7 @@ class VaultInternal {
     db: DB;
     vaultsDbPath: LevelPath;
     efs: EncryptedFS;
-    keyManager: KeyManager;
+    keyRing: KeyRing;
     nodeConnectionManager: NodeConnectionManager;
     logger?: Logger;
     tran?: DBTransaction;
@@ -129,7 +129,7 @@ class VaultInternal {
           vaultId,
           db,
           vaultsDbPath,
-          keyManager,
+          keyRing,
           nodeConnectionManager,
           efs,
           logger,
@@ -144,7 +144,7 @@ class VaultInternal {
       vaultId,
       db,
       vaultsDbPath,
-      keyManager,
+      keyRing,
       efs,
       logger,
     });
@@ -213,7 +213,7 @@ class VaultInternal {
   protected db: DB;
   protected vaultsDbPath: LevelPath;
   protected vaultMetadataDbPath: LevelPath;
-  protected keyManager: KeyManager;
+  protected keyRing: KeyRing;
   protected vaultsNamesPath: LevelPath;
   protected efs: EncryptedFS;
   protected efsVault: EncryptedFS;
@@ -227,14 +227,14 @@ class VaultInternal {
     vaultId,
     db,
     vaultsDbPath,
-    keyManager,
+    keyRing,
     efs,
     logger,
   }: {
     vaultId: VaultId;
     db: DB;
     vaultsDbPath: LevelPath;
-    keyManager: KeyManager;
+    keyRing: KeyRing;
     efs: EncryptedFS;
     logger: Logger;
   }) {
@@ -246,7 +246,7 @@ class VaultInternal {
     this.vaultGitDir = path.join(vaultIdEncoded, '.git');
     this.db = db;
     this.vaultsDbPath = vaultsDbPath;
-    this.keyManager = keyManager;
+    this.keyRing = keyRing;
     this.efs = efs;
   }
 
@@ -721,7 +721,7 @@ class VaultInternal {
         fs: this.efs,
         dir: this.vaultDataDir,
         gitdir: this.vaultGitDir,
-        author: vaultsUtils.commitAuthor(this.keyManager.getNodeId()),
+        author: vaultsUtils.commitAuthor(this.keyRing.getNodeId()),
         message: 'Initial Commit',
         ref: 'HEAD',
       })) as CommitId;
@@ -867,7 +867,7 @@ class VaultInternal {
       gitdir: this.vaultGitDir,
       ref: vaultsUtils.canonicalBranchRef,
     });
-    const nodeIdEncoded = nodesUtils.encodeNodeId(this.keyManager.getNodeId());
+    const nodeIdEncoded = nodesUtils.encodeNodeId(this.keyRing.getNodeId());
     // Staging changes and creating commit message
     const message: string[] = [];
     // Get the status of each file in the working directory

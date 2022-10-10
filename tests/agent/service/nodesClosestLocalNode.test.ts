@@ -13,7 +13,6 @@ import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as nodesUtils from '@/nodes/utils';
 import nodesChainDataGet from '@/agent/service/nodesChainDataGet';
 import * as testNodesUtils from '../../nodes/utils';
-import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('nodesChainDataGet', () => {
   const logger = new Logger('nodesChainDataGet test', LogLevel.WARN, [
@@ -33,9 +32,6 @@ describe('nodesChainDataGet', () => {
     pkAgent = await PolykeyAgent.createPolykeyAgent({
       password,
       nodePath,
-      keysConfig: {
-        privateKeyPemOverride: globalRootKeyPems[0],
-      },
       seedNodes: {}, // Explicitly no seed nodes on startup
       networkConfig: {
         proxyHost: '127.0.0.1' as Host,
@@ -56,7 +52,7 @@ describe('nodesChainDataGet', () => {
       port: 0 as Port,
     });
     grpcClient = await GRPCClientAgent.createGRPCClientAgent({
-      nodeId: pkAgent.keyManager.getNodeId(),
+      nodeId: pkAgent.keyRing.getNodeId(),
       host: '127.0.0.1' as Host,
       port: grpcServer.getPort(),
       logger,
@@ -74,7 +70,7 @@ describe('nodesChainDataGet', () => {
   });
   test('should get closest nodes', async () => {
     const srcNodeIdEncoded = nodesUtils.encodeNodeId(
-      pkAgent.keyManager.getNodeId(),
+      pkAgent.keyRing.getNodeId(),
     );
     // Add 10 claims
     for (let i = 1; i <= 5; i++) {

@@ -4,7 +4,8 @@ import type { SessionToken } from '@/sessions/types';
 import type { NodeId } from '@/ids/types';
 import type { Host, Port } from '@/network/types';
 import type { KeyPair, Certificate } from '@/keys/types';
-import type { KeyManager } from '@/keys';
+import type { KeyRing } from '@/keys';
+import type { Key } from '@/keys/types';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
@@ -17,7 +18,8 @@ import * as grpcErrors from '@/grpc/errors';
 import * as clientUtils from '@/client/utils';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import { timerStart } from '@/utils';
-import * as utils from './utils';
+import * as utils from '@/utils';
+import * as clientTestUtils from './utils';
 import * as testNodesUtils from '../nodes/utils';
 import * as testUtils from '../utils';
 
@@ -42,7 +44,7 @@ describe('GRPCClient', () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
-    const serverKeyPair = await keysUtils.generateKeyPair(4096);
+    const serverKeyPair = await keysUtils.generateKeyPair();
     const serverCert = keysUtils.generateCertificate(
       serverKeyPair.publicKey,
       serverKeyPair.privateKey,
@@ -57,23 +59,33 @@ describe('GRPCClient', () => {
       crypto: {
         key: await keysUtils.generateKey(),
         ops: {
-          encrypt: keysUtils.encryptWithKey,
-          decrypt: keysUtils.decryptWithKey,
+          encrypt: async (key, plainText) => {
+            return keysUtils.encryptWithKey(
+              utils.bufferWrap(key) as Key,
+              utils.bufferWrap(plainText),
+            );
+          },
+          decrypt: async (key, cipherText) => {
+            return keysUtils.decryptWithKey(
+              utils.bufferWrap(key) as Key,
+              utils.bufferWrap(cipherText),
+            );
+          },
         },
       },
     });
-    const keyManager = {
+    const keyRing = {
       getNodeId: () => testNodesUtils.generateRandomNodeId(),
-    } as KeyManager; // Cheeky mocking.
+    } as KeyRing; // Cheeky mocking.
     sessionManager = await SessionManager.createSessionManager({
       db,
-      keyManager,
+      keyRing,
       logger,
       expiry: 60000,
     });
     // This has to pass the session manager and the key manager
-    const authenticate = clientUtils.authenticator(sessionManager, keyManager);
-    [server, port] = await utils.openTestServerSecure(
+    const authenticate = clientUtils.authenticator(sessionManager, keyRing);
+    [server, port] = await clientTestUtils.openTestServerSecure(
       keysUtils.privateKeyToPem(serverKeyPair.privateKey),
       keysUtils.certToPem(serverCert),
       authenticate,
@@ -92,9 +104,9 @@ describe('GRPCClient', () => {
       // Duplex error tests prevents the GRPC server from gracefully shutting down
       // this will force it to shutdown
       logger.info('Test GRPC Server Hanging, Forcing Shutdown');
-      utils.closeTestServerSecureForce(server);
+      clientTestUtils.closeTestServerSecureForce(server);
     }, 2000);
-    await utils.closeTestServerSecure(server);
+    await clientTestUtils.closeTestServerSecure(server);
     await sessionManager.stop();
     await db.stop();
     await fs.promises.rm(dataDir, {
@@ -103,7 +115,7 @@ describe('GRPCClient', () => {
     });
   });
   test('starting and stopping the client', async () => {
-    const client = await utils.GRPCClientTest.createGRPCClientTest({
+    const client = await clientTestUtils.GRPCClientTest.createGRPCClientTest({
       nodeId: nodeIdServer,
       host: '127.0.0.1' as Host,
       port: port as Port,
@@ -117,7 +129,7 @@ describe('GRPCClient', () => {
     await client.destroy();
   });
   test('calling unary', async () => {
-    const client = await utils.GRPCClientTest.createGRPCClientTest({
+    const client = await clientTestUtils.GRPCClientTest.createGRPCClientTest({
       nodeId: nodeIdServer,
       host: '127.0.0.1' as Host,
       port: port as Port,
@@ -149,7 +161,7 @@ describe('GRPCClient', () => {
     });
     expect(await session.readToken()).toBe('initialtoken');
     // Setting session will trigger the session interceptor
-    const client = await utils.GRPCClientTest.createGRPCClientTest({
+    const client = await clientTestUtils.GRPCClientTest.createGRPCClientTest({
       nodeId: nodeIdServer,
       host: '127.0.0.1' as Host,
       port: port as Port,
@@ -186,7 +198,7 @@ describe('GRPCClient', () => {
     await session.stop();
   });
   test('calling server stream', async () => {
-    const client = await utils.GRPCClientTest.createGRPCClientTest({
+    const client = await clientTestUtils.GRPCClientTest.createGRPCClientTest({
       nodeId: nodeIdServer,
       host: '127.0.0.1' as Host,
       port: port as Port,
@@ -228,7 +240,7 @@ describe('GRPCClient', () => {
       logger,
     });
     // Setting session will trigger the session interceptor
-    const client = await utils.GRPCClientTest.createGRPCClientTest({
+    const client = await clientTestUtils.GRPCClientTest.createGRPCClientTest({
       nodeId: nodeIdServer,
       host: '127.0.0.1' as Host,
       port: port as Port,
@@ -254,7 +266,7 @@ describe('GRPCClient', () => {
     await session.stop();
   });
   test('calling client stream', async () => {
-    const client = await utils.GRPCClientTest.createGRPCClientTest({
+    const client = await clientTestUtils.GRPCClientTest.createGRPCClientTest({
       nodeId: nodeIdServer,
       host: '127.0.0.1' as Host,
       port: port as Port,
@@ -291,7 +303,7 @@ describe('GRPCClient', () => {
       logger,
     });
     // Setting session will trigger the session interceptor
-    const client = await utils.GRPCClientTest.createGRPCClientTest({
+    const client = await clientTestUtils.GRPCClientTest.createGRPCClientTest({
       nodeId: nodeIdServer,
       host: '127.0.0.1' as Host,
       port: port as Port,
@@ -315,7 +327,7 @@ describe('GRPCClient', () => {
     await session.stop();
   });
   test('calling duplex stream', async () => {
-    const client = await utils.GRPCClientTest.createGRPCClientTest({
+    const client = await clientTestUtils.GRPCClientTest.createGRPCClientTest({
       nodeId: nodeIdServer,
       host: '127.0.0.1' as Host,
       port: port as Port,
@@ -349,7 +361,7 @@ describe('GRPCClient', () => {
       logger,
     });
     // Setting session will trigger the session interceptor
-    const client = await utils.GRPCClientTest.createGRPCClientTest({
+    const client = await clientTestUtils.GRPCClientTest.createGRPCClientTest({
       nodeId: nodeIdServer,
       host: '127.0.0.1' as Host,
       port: port as Port,

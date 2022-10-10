@@ -7,7 +7,6 @@ import PolykeyAgent from '@/PolykeyAgent';
 import * as nodesUtils from '@/nodes/utils';
 import { sysexits } from '@/errors';
 import * as testNodesUtils from '../../nodes/utils';
-import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 import * as testUtils from '../../utils';
 
 describe('find', () => {
@@ -42,9 +41,6 @@ describe('find', () => {
         connConnectTime: 2000,
         connTimeoutTime: 2000,
       },
-      keysConfig: {
-        privateKeyPemOverride: globalRootKeyPems[0],
-      },
       seedNodes: {}, // Explicitly no seed nodes on startup
       logger,
     });
@@ -58,12 +54,9 @@ describe('find', () => {
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },
-      keysConfig: {
-        privateKeyPemOverride: globalRootKeyPems[1],
-      },
       logger,
     });
-    remoteOnlineNodeId = remoteOnline.keyManager.getNodeId();
+    remoteOnlineNodeId = remoteOnline.keyRing.getNodeId();
     remoteOnlineHost = remoteOnline.proxy.getProxyHost();
     remoteOnlinePort = remoteOnline.proxy.getProxyPort();
     await testNodesUtils.nodesConnect(polykeyAgent, remoteOnline);
@@ -77,12 +70,9 @@ describe('find', () => {
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },
-      keysConfig: {
-        privateKeyPemOverride: globalRootKeyPems[2],
-      },
       logger,
     });
-    remoteOfflineNodeId = remoteOffline.keyManager.getNodeId();
+    remoteOfflineNodeId = remoteOffline.keyRing.getNodeId();
     remoteOfflineHost = remoteOffline.proxy.getProxyHost();
     remoteOfflinePort = remoteOffline.proxy.getProxyPort();
     await testNodesUtils.nodesConnect(polykeyAgent, remoteOffline);

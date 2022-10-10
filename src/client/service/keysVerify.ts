@@ -1,6 +1,6 @@
 import type * as grpc from '@grpc/grpc-js';
 import type { Authenticate } from '../types';
-import type KeyManager from '../../keys/KeyManager';
+import type KeyRing from '../../keys/KeyRing';
 import type * as keysPB from '../../proto/js/polykey/v1/keys/keys_pb';
 import type Logger from '@matrixai/logger';
 import * as grpcUtils from '../../grpc/utils';
@@ -9,11 +9,11 @@ import * as clientUtils from '../utils';
 
 function keysVerify({
   authenticate,
-  keyManager,
+  keyRing,
   logger,
 }: {
   authenticate: Authenticate;
-  keyManager: KeyManager;
+  keyRing: KeyRing;
   logger: Logger;
 }) {
   return async (
@@ -24,7 +24,8 @@ function keysVerify({
       const response = new utilsPB.StatusMessage();
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
-      const status = await keyManager.verifyWithRootKeyPair(
+      // FIXME: do we need to provide a public key now?
+      const status = await keyRing.verify(
         Buffer.from(call.request.getData(), 'binary'),
         Buffer.from(call.request.getSignature(), 'binary'),
       );
