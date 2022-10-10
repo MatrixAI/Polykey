@@ -504,7 +504,10 @@ function decapsulateWithPrivateKey(
 /**
  * Checks if the public key is a point on the Ed25519 curve
  */
-function validatePublicKey(publicKey: PublicKey): boolean {
+function validatePublicKey(publicKey: Buffer): publicKey is PublicKey {
+  if (publicKey.byteLength !== sodium.crypto_sign_PUBLICKEYBYTES) {
+    return false;
+  }
   return sodium.crypto_core_ed25519_is_valid_point(publicKey);
 }
 

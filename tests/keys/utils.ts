@@ -4,10 +4,13 @@ import type {
   KeyPair,
   Key,
   KeyJWK,
+  PublicKeyJWK,
+  PrivateKeyJWK,
   Signature,
 } from '@/keys/types';
 import { fc } from '@fast-check/jest';
 import * as asymmetric from '@/keys/utils/asymmetric';
+import * as jwk from '@/keys/utils/jwk';
 import * as x509 from '@/keys/utils/x509';
 import * as utils from '@/utils';
 
@@ -23,15 +26,9 @@ const keyArb = fc
   .map(utils.bufferWrap)
   .noShrink() as fc.Arbitrary<Key>;
 
-const keyJWKArb = keyArb.map((key) => {
-  return {
-    alg: 'XChaCha20-Poly1305-IETF',
-    kty: 'oct',
-    k: key.toString('base64url'),
-    ext: true,
-    key_ops: ['encrypt', 'decrypt'],
-  };
-}).noShrink() as fc.Arbitrary<KeyJWK>;
+const keyJWKArb = keyArb.map((key) =>
+  jwk.keyToJWK(key)
+).noShrink() as fc.Arbitrary<KeyJWK>;
 
 /**
  * Ed25519 Private Key
@@ -61,6 +58,14 @@ const keyPairArb = privateKeyArb
     };
   })
   .noShrink() as fc.Arbitrary<KeyPair>;
+
+const publicKeyJWKArb = publicKeyArb.map((publicKey) =>
+  jwk.publicKeyToJWK(publicKey)
+).noShrink() as fc.Arbitrary<PublicKeyJWK>;
+
+const privateKeyJWKArb = privateKeyArb.map((privateKey) =>
+  jwk.privateKeyToJWK(privateKey)
+).noShrink() as fc.Arbitrary<PrivateKeyJWK>;
 
 const certPArb = fc
   .record({
@@ -96,6 +101,8 @@ export {
   keyJWKArb,
   publicKeyArb,
   privateKeyArb,
+  publicKeyJWKArb,
+  privateKeyJWKArb,
   keyPairArb,
   certPArb,
   signatureArb,
