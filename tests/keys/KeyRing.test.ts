@@ -37,6 +37,8 @@ describe(KeyRing.name, () => {
       keysPath,
       password,
       logger,
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min
     });
     await expect(async () => {
       await keyRing.destroy();
@@ -61,6 +63,8 @@ describe(KeyRing.name, () => {
       keysPath,
       password,
       logger,
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min
     });
     const keysPathContents = await fs.promises.readdir(keysPath);
     expect(keysPathContents).toContain('public.jwk');

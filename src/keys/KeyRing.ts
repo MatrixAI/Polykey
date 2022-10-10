@@ -11,6 +11,8 @@ import type {
   PasswordSalt,
   BufferLocked,
   RecoveryCodeLocked,
+  PasswordOpsLimit,
+  PasswordMemLimit,
 } from './types';
 import type { NodeId } from '../ids/types';
 import type { FileSystem } from '../types';
@@ -34,27 +36,24 @@ class KeyRing {
     keysPath,
     fs = require('fs'),
     logger = new Logger(this.name),
+    passwordOpsLimit,
+    passwordMemLimit,
     ...startOptions
   }: {
       keysPath: string;
+      password: string;
       fs?: FileSystem;
       logger?: Logger;
+      passwordOpsLimit?: PasswordOpsLimit;
+      passwordMemLimit?: PasswordMemLimit;
+      fresh?: boolean;
     } & (
-      {
-        password: string;
-        fresh?: boolean;
-      } | {
-        password: string;
+      { } | {
         recoveryCode: RecoveryCode
-        fresh?: boolean;
       } | {
-        password: string;
         privateKey: PrivateKey;
-        fresh?: boolean;
       } | {
-        password: string;
         privateKeyPath: string;
-        fresh?: boolean;
       }
     )
   ) {
@@ -64,6 +63,8 @@ class KeyRing {
       keysPath,
       fs,
       logger,
+      passwordOpsLimit,
+      passwordMemLimit,
     });
     await keyRing.start(startOptions);
     logger.info(`Created ${this.name}`);
@@ -83,20 +84,28 @@ class KeyRing {
     hash: BufferLocked<PasswordHash>,
     salt: BufferLocked<PasswordSalt>
   }>;
+  protected passwordOpsLimit?: PasswordOpsLimit;
+  protected passwordMemLimit?: PasswordMemLimit;
   protected _recoveryCodeData?: RecoveryCodeLocked;
 
   public constructor({
     keysPath,
     fs,
     logger,
+    passwordOpsLimit,
+    passwordMemLimit
   }: {
     keysPath: string;
     fs: FileSystem;
     logger: Logger;
+    passwordOpsLimit?: PasswordOpsLimit;
+    passwordMemLimit?: PasswordMemLimit;
   }) {
     this.logger = logger;
     this.keysPath = keysPath;
     this.fs = fs;
+    this.passwordOpsLimit = passwordOpsLimit;
+    this.passwordMemLimit = passwordMemLimit;
     this.publicKeyPath = path.join(keysPath, 'public.jwk');
     this.privateKeyPath = path.join(keysPath, 'private.jwk');
     this.dbKeyPath = path.join(keysPath, 'db.jwk');
@@ -104,20 +113,13 @@ class KeyRing {
 
   public async start(options: {
     password: string;
-    fresh?: boolean
-  } | {
-    password: string;
-    recoveryCode: RecoveryCode;
-    fresh?: boolean
-  } | {
-    password: string;
-    privateKey: PrivateKey;
-    fresh?: boolean
-  } | {
-    password: string;
-    privateKeyPath: string;
-    fresh?: boolean
-  }): Promise<void> {
+    fresh?: boolean;
+  } & (
+    { } |
+    { recoveryCode: RecoveryCode; } |
+    { privateKey: PrivateKey; } |
+    { privateKeyPath: string; }
+  )): Promise<void> {
     const { fresh = false, ...setupKeyPairOptions } = options;
     this.logger.info(`Starting ${this.constructor.name}`);
     if (options.fresh) {
@@ -592,7 +594,12 @@ class KeyRing {
     const publicJWK = keysUtils.publicKeyToJWK(keyPair.publicKey);
     const privateJWK = keysUtils.privateKeyToJWK(keyPair.privateKey);
     const publicJWKJSON = JSON.stringify(publicJWK);
-    const privateJWE = keysUtils.wrapWithPassword(password, privateJWK);
+    const privateJWE = keysUtils.wrapWithPassword(
+      password,
+      privateJWK,
+      this.passwordOpsLimit,
+      this.passwordMemLimit,
+    );
     const privateJWEJSON = JSON.stringify(privateJWE);
     try {
       await Promise.all([
@@ -791,11 +798,18 @@ class KeyRing {
    * This sets up a password hash in-memory.
    * This is used to check if the password is correct.
    */
-  protected setupPasswordHash(password: string): [
+  protected setupPasswordHash(
+    password: string,
+  ): [
     BufferLocked<PasswordHash>,
     BufferLocked<PasswordSalt>
   ] {
-    const [hash, salt] = keysUtils.hashPassword(password);
+    const [hash, salt] = keysUtils.hashPassword(
+      password,
+      undefined,
+      this.passwordOpsLimit,
+      this.passwordMemLimit,
+    );
     bufferLock(hash);
     bufferLock(salt);
     return [hash, salt];
