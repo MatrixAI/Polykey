@@ -10,7 +10,6 @@ import * as vaultsUtils from '@/vaults/utils';
 import sysexits from '@/utils/sysexits';
 import NotificationsManager from '@/notifications/NotificationsManager';
 import * as testNodesUtils from '../../nodes/utils';
-import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 import * as testUtils from '../../utils';
 
 describe('CLI vaults', () => {
@@ -59,9 +58,6 @@ describe('CLI vaults', () => {
       password,
       nodePath: dataDir,
       logger: logger,
-      keysConfig: {
-        privateKeyPemOverride: globalRootKeyPems[0],
-      },
     });
     await polykeyAgent.gestaltGraph.setNode(node1);
     await polykeyAgent.gestaltGraph.setNode(node2);
@@ -234,9 +230,6 @@ describe('CLI vaults', () => {
         networkConfig: {
           proxyHost: '127.0.0.1' as Host,
         },
-        keysConfig: {
-          privateKeyPemOverride: globalRootKeyPems[1],
-        },
         logger: logger,
       });
       const vaultId = await targetPolykeyAgent.vaultManager.createVault(
@@ -252,17 +245,17 @@ describe('CLI vaults', () => {
       );
 
       await targetPolykeyAgent.gestaltGraph.setNode({
-        id: nodesUtils.encodeNodeId(polykeyAgent.keyManager.getNodeId()),
+        id: nodesUtils.encodeNodeId(polykeyAgent.keyRing.getNodeId()),
         chain: {},
       });
-      const targetNodeId = targetPolykeyAgent.keyManager.getNodeId();
+      const targetNodeId = targetPolykeyAgent.keyRing.getNodeId();
       const targetNodeIdEncoded = nodesUtils.encodeNodeId(targetNodeId);
       await polykeyAgent.nodeManager.setNode(targetNodeId, {
         host: targetPolykeyAgent.proxy.getProxyHost(),
         port: targetPolykeyAgent.proxy.getProxyPort(),
       });
       await targetPolykeyAgent.nodeManager.setNode(
-        polykeyAgent.keyManager.getNodeId(),
+        polykeyAgent.keyRing.getNodeId(),
         {
           host: polykeyAgent.proxy.getProxyHost(),
           port: polykeyAgent.proxy.getProxyPort(),
@@ -275,7 +268,7 @@ describe('CLI vaults', () => {
         vaults: {},
       });
 
-      const nodeId = polykeyAgent.keyManager.getNodeId();
+      const nodeId = polykeyAgent.keyRing.getNodeId();
       await targetPolykeyAgent.gestaltGraph.setGestaltActionByNode(
         nodeId,
         'scan',
@@ -830,11 +823,8 @@ describe('CLI vaults', () => {
             networkConfig: {
               proxyHost: '127.0.0.1' as Host,
             },
-            keysConfig: {
-              privateKeyPemOverride: globalRootKeyPems[2],
-            },
           });
-          const remoteOnlineNodeId = remoteOnline.keyManager.getNodeId();
+          const remoteOnlineNodeId = remoteOnline.keyRing.getNodeId();
           const remoteOnlineNodeIdEncoded =
             nodesUtils.encodeNodeId(remoteOnlineNodeId);
           await polykeyAgent.nodeManager.setNode(remoteOnlineNodeId, {
@@ -843,7 +833,7 @@ describe('CLI vaults', () => {
           } as NodeAddress);
 
           await remoteOnline.gestaltGraph.setNode({
-            id: nodesUtils.encodeNodeId(polykeyAgent.keyManager.getNodeId()),
+            id: nodesUtils.encodeNodeId(polykeyAgent.keyRing.getNodeId()),
             chain: {},
           });
 
@@ -864,7 +854,7 @@ describe('CLI vaults', () => {
           );
 
           await remoteOnline.gestaltGraph.setGestaltActionByNode(
-            polykeyAgent.keyManager.getNodeId(),
+            polykeyAgent.keyRing.getNodeId(),
             'notify',
           );
 
@@ -885,7 +875,7 @@ describe('CLI vaults', () => {
           );
 
           await remoteOnline.gestaltGraph.setGestaltActionByNode(
-            polykeyAgent.keyManager.getNodeId(),
+            polykeyAgent.keyRing.getNodeId(),
             'scan',
           );
 
@@ -898,7 +888,7 @@ describe('CLI vaults', () => {
           const vault3Id = await remoteOnline.vaultManager.createVault(
             'Vault3' as VaultName,
           );
-          const nodeId = polykeyAgent.keyManager.getNodeId();
+          const nodeId = polykeyAgent.keyRing.getNodeId();
           await remoteOnline.acl.setVaultAction(vault1Id, nodeId, 'clone');
           await remoteOnline.acl.setVaultAction(vault2Id, nodeId, 'pull');
           await remoteOnline.acl.setVaultAction(vault2Id, nodeId, 'clone');

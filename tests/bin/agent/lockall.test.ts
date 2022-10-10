@@ -7,7 +7,6 @@ import Session from '@/sessions/Session';
 import config from '@/config';
 import * as errors from '@/errors';
 import * as testUtils from '../../utils';
-import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 /**
  * Mock prompts module which is used prompt for password
@@ -24,7 +23,6 @@ describe('lockall', () => {
   let agentClose;
   beforeEach(async () => {
     ({ agentDir, agentPassword, agentClose } = await testUtils.setupTestAgent(
-      globalRootKeyPems[0],
       logger,
     ));
   });

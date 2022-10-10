@@ -5,8 +5,8 @@ import * as ids from '@/ids';
 import { summaryName, suiteCommon } from '../../utils';
 
 async function main() {
-  const issuerKeyPair = await generate.generateKeyPair();
-  const subjectKeyPair = await generate.generateKeyPair();
+  const issuerKeyPair = generate.generateKeyPair();
+  const subjectKeyPair = generate.generateKeyPair();
   const certIdGenerator = ids.createCertIdGenerator();
   const summary = await b.suite(
     summaryName(__filename),

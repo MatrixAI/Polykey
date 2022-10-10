@@ -5,7 +5,6 @@ import path from 'path';
 import readline from 'readline';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as testUtils from '../utils';
-import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 
 type NATType = 'eim' | 'edm' | 'dmz';
 
@@ -1050,7 +1049,6 @@ async function setupNATWithSeedNode(
     {
       env: {
         PK_PASSWORD: password,
-        PK_ROOT_KEY: globalRootKeyPems[0],
       },
       command: `nsenter ${nsenter(usrns.pid!, seedNetns.pid!).join(
         ' ',
@@ -1091,7 +1089,6 @@ async function setupNATWithSeedNode(
     {
       env: {
         PK_PASSWORD: password,
-        PK_ROOT_KEY: globalRootKeyPems[1],
       },
       command: `nsenter ${nsenter(usrns.pid!, agent1Netns.pid!).join(
         ' ',
@@ -1131,7 +1128,6 @@ async function setupNATWithSeedNode(
     {
       env: {
         PK_PASSWORD: password,
-        PK_ROOT_KEY: globalRootKeyPems[2],
       },
       command: `nsenter ${nsenter(usrns.pid!, agent2Netns.pid!).join(
         ' ',
@@ -1301,7 +1297,6 @@ async function setupNAT(
     {
       env: {
         PK_PASSWORD: password,
-        PK_ROOT_KEY: globalRootKeyPems[3],
       },
       command: `nsenter ${nsenter(usrns.pid!, agent1Netns.pid!).join(
         ' ',
@@ -1339,7 +1334,6 @@ async function setupNAT(
     {
       env: {
         PK_PASSWORD: password,
-        PK_ROOT_KEY: globalRootKeyPems[4],
       },
       command: `nsenter ${nsenter(usrns.pid!, agent2Netns.pid!).join(
         ' ',

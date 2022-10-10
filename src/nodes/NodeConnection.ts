@@ -1,7 +1,7 @@
 import type { NodeId } from './types';
 import type { Host, Hostname, Port } from '../network/types';
-import type KeyManager from '../keys/KeyManager';
-import type { Certificate, PublicKey, PublicKeyPem } from '../keys/types';
+import type KeyRing from '../keys/KeyRing';
+import type { Certificate, PublicKey } from '../keys/types';
 import type Proxy from '../network/Proxy';
 import type GRPCClient from '../grpc/GRPCClient';
 import type NodeConnectionManager from './NodeConnectionManager';
@@ -41,7 +41,7 @@ class NodeConnection<T extends GRPCClient> {
     targetHostname,
     timer,
     proxy,
-    keyManager,
+    keyRing,
     clientFactory,
     nodeConnectionManager,
     destroyCallback = async () => {},
@@ -53,7 +53,7 @@ class NodeConnection<T extends GRPCClient> {
     targetHostname?: Hostname;
     timer?: Timer;
     proxy: Proxy;
-    keyManager: KeyManager;
+    keyRing: KeyRing;
     clientFactory: (...args) => Promise<T>;
     nodeConnectionManager: NodeConnectionManager;
     destroyCallback?: () => Promise<void>;
@@ -74,9 +74,7 @@ class NodeConnection<T extends GRPCClient> {
       proxy.getProxyHost(),
       proxy.getProxyPort(),
     );
-    const signature = await keyManager.signWithRootKeyPair(
-      Buffer.from(proxyAddress),
-    );
+    const signature = keyRing.sign(Buffer.from(proxyAddress));
     // 2. Ask fwdProxy for connection to target (the revProxy of other node)
     // 2. Start sending hole-punching packets to the target (via the client start -
     // this establishes a HTTP CONNECT request with the forward proxy)
@@ -103,7 +101,7 @@ class NodeConnection<T extends GRPCClient> {
         holePunchPromises = Array.from(seedNodes, (nodeId) => {
           return nodeConnectionManager.sendHolePunchMessage(
             nodeId,
-            keyManager.getNodeId(),
+            keyRing.getNodeId(),
             targetNodeId,
             proxyAddress,
             signature,
@@ -214,14 +212,12 @@ class NodeConnection<T extends GRPCClient> {
    * found in the certificate chain.
    */
   @ready(new nodesErrors.ErrorNodeConnectionDestroyed())
-  public getExpectedPublicKey(expectedNodeId: NodeId): PublicKeyPem | null {
+  public getExpectedPublicKey(expectedNodeId: NodeId): PublicKey | null {
     const certificates = this.getRootCertChain();
-    let publicKey: PublicKeyPem | null = null;
+    let publicKey: PublicKey | null = null;
     for (const cert of certificates) {
       if (keysUtils.certNodeId(cert)!.equals(expectedNodeId)) {
-        publicKey = keysUtils.publicKeyToPem(
-          cert.publicKey as PublicKey,
-        ) as PublicKeyPem;
+        publicKey = keysUtils.certPublicKey(cert)!;
       }
     }
     return publicKey;

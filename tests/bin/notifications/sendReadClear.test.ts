@@ -6,7 +6,6 @@ import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as nodesUtils from '@/nodes/utils';
-import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 import * as testUtils from '../../utils';
 
 describe('send/read/claim', () => {
@@ -39,7 +38,7 @@ describe('send/read/claim', () => {
       agentClose: senderAgentClose,
       agentDir: senderAgentDir,
       agentPassword: senderAgentPassword,
-    } = await testUtils.setupTestAgent(globalRootKeyPems[0], logger));
+    } = await testUtils.setupTestAgent(logger));
     senderId = senderAgentStatus.data.nodeId;
     senderHost = senderAgentStatus.data.proxyHost;
     senderPort = senderAgentStatus.data.proxyPort;
@@ -48,7 +47,7 @@ describe('send/read/claim', () => {
       agentClose: receiverAgentClose,
       agentDir: receiverAgentDir,
       agentPassword: receiverAgentPassword,
-    } = await testUtils.setupTestAgent(globalRootKeyPems[1], logger));
+    } = await testUtils.setupTestAgent(logger));
     receiverId = receiverAgentStatus.data.nodeId;
     receiverHost = receiverAgentStatus.data.proxyHost;
     receiverPort = receiverAgentStatus.data.proxyPort;

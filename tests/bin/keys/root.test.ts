@@ -1,5 +1,4 @@
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 import * as testUtils from '../../utils';
 
 describe('root', () => {
@@ -9,7 +8,6 @@ describe('root', () => {
   let agentClose;
   beforeEach(async () => {
     ({ agentDir, agentPassword, agentClose } = await testUtils.setupTestAgent(
-      globalRootKeyPems[0],
       logger,
     ));
   });

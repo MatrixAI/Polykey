@@ -4,7 +4,7 @@ import type {
   InterceptorOptions,
 } from '@grpc/grpc-js/build/src/client-interceptors';
 import type ErrorPolykey from '../../ErrorPolykey';
-import type KeyManager from '../../keys/KeyManager';
+import type KeyRing from '../../keys/KeyRing';
 import type Session from '../../sessions/Session';
 import type SessionManager from '../../sessions/SessionManager';
 import type { SessionToken } from '../../sessions/types';
@@ -66,7 +66,7 @@ function sessionInterceptor(session: Session): Interceptor {
 
 function authenticator(
   sessionManager: SessionManager,
-  keyManager: KeyManager,
+  keyRing: KeyRing,
 ): Authenticate {
   return async (
     metadataClient: grpc.Metadata,
@@ -90,7 +90,7 @@ function authenticator(
         throw new clientErrors.ErrorClientAuthFormat();
       }
       const password = match[1];
-      if (!(await keyManager.checkPassword(password))) {
+      if (!(await keyRing.checkPassword(password))) {
         throw new clientErrors.ErrorClientAuthDenied();
       }
     } else {

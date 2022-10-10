@@ -1,6 +1,6 @@
 import type * as grpc from '@grpc/grpc-js';
 import type { Authenticate } from '../types';
-import type KeyManager from '../../keys/KeyManager';
+import type KeyRing from '../../keys/KeyRing';
 import type Logger from '@matrixai/logger';
 import * as grpcUtils from '../../grpc/utils';
 import * as keysPB from '../../proto/js/polykey/v1/keys/keys_pb';
@@ -8,11 +8,11 @@ import * as clientUtils from '../utils';
 
 function keysEncrypt({
   authenticate,
-  keyManager,
+  keyRing,
   logger,
 }: {
   authenticate: Authenticate;
-  keyManager: KeyManager;
+  keyRing: KeyRing;
   logger: Logger;
 }) {
   return async (
@@ -23,7 +23,9 @@ function keysEncrypt({
       const response = new keysPB.Crypto();
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
-      const data = await keyManager.encryptWithRootKeyPair(
+      // FIXME: do we need to provide a target node now?
+      //  or is it some other encrypt function?
+      const data = await keyRing.encrypt(
         Buffer.from(call.request.getData(), 'binary'),
       );
       response.setData(data.toString('binary'));

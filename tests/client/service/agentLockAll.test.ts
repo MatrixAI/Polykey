@@ -1,4 +1,5 @@
 import type { Host, Port } from '@/network/types';
+import type { Key } from '@/keys/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -6,7 +7,7 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { Metadata } from '@grpc/grpc-js';
 import { DB } from '@matrixai/db';
 import SessionManager from '@/sessions/SessionManager';
-import KeyManager from '@/keys/KeyManager';
+import KeyRing from '@/keys/KeyRing';
 import GRPCServer from '@/grpc/GRPCServer';
 import GRPCClientClient from '@/client/GRPCClientClient';
 import agentLockAll from '@/client/service/agentLockAll';
@@ -15,7 +16,7 @@ import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as keysUtils from '@/keys/utils';
 import * as clientUtils from '@/client/utils/utils';
 import { timerStart } from '@/utils/index';
-import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
+import * as utils from '@/utils/index';
 
 describe('agentLockall', () => {
   const logger = new Logger('agentLockall test', LogLevel.WARN, [
@@ -27,7 +28,7 @@ describe('agentLockall', () => {
   let dataDir: string;
   let sessionManager: SessionManager;
   let db: DB;
-  let keyManager: KeyManager;
+  let keyRing: KeyRing;
   let grpcServer: GRPCServer;
   let grpcClient: GRPCClientClient;
   beforeEach(async () => {
@@ -35,27 +36,36 @@ describe('agentLockall', () => {
       path.join(os.tmpdir(), 'polykey-test-'),
     );
     const keysPath = path.join(dataDir, 'keys');
-    keyManager = await KeyManager.createKeyManager({
+    keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
       logger,
-      privateKeyPemOverride: globalRootKeyPems[0],
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
       dbPath,
       logger,
       crypto: {
-        key: keyManager.dbKey,
+        key: keyRing.dbKey,
         ops: {
-          encrypt: keysUtils.encryptWithKey,
-          decrypt: keysUtils.decryptWithKey,
+          encrypt: async (key, plainText) => {
+            return keysUtils.encryptWithKey(
+              utils.bufferWrap(key) as Key,
+              utils.bufferWrap(plainText),
+            );
+          },
+          decrypt: async (key, cipherText) => {
+            return keysUtils.decryptWithKey(
+              utils.bufferWrap(key) as Key,
+              utils.bufferWrap(cipherText),
+            );
+          },
         },
       },
     });
     sessionManager = await SessionManager.createSessionManager({
       db,
-      keyManager,
+      keyRing,
       logger,
     });
     const clientService = {
@@ -73,7 +83,7 @@ describe('agentLockall', () => {
       port: 0 as Port,
     });
     grpcClient = await GRPCClientClient.createGRPCClientClient({
-      nodeId: keyManager.getNodeId(),
+      nodeId: keyRing.getNodeId(),
       host: '127.0.0.1' as Host,
       port: grpcServer.getPort(),
       timer: timerStart(5000),
@@ -85,7 +95,7 @@ describe('agentLockall', () => {
     await grpcServer.stop();
     await sessionManager.stop();
     await db.stop();
-    await keyManager.stop();
+    await keyRing.stop();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,

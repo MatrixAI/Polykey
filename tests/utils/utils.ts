@@ -1,5 +1,4 @@
 import type { NodeId } from '@/ids/types';
-import type { PrivateKeyPem } from '@/keys/types';
 import type { StatusLive } from '@/status/types';
 import type Logger from '@matrixai/logger';
 import type * as fc from 'fast-check';
@@ -18,6 +17,7 @@ import * as execUtils from './exec';
  * Setup the global keypair
  * This is expected to be executed by multiple worker processes
  */
+// FIXME: this should be removed
 async function setupGlobalKeypair() {
   const globalKeyPairDir = path.join(globalThis.dataDir, 'keypair');
   const globalKeyPairLock = await fs.promises.open(
@@ -47,7 +47,7 @@ async function setupGlobalKeypair() {
         return globalKeyPair;
       }
     }
-    const globalKeyPair = await keysUtils.generateKeyPair(4096);
+    const globalKeyPair = await keysUtils.generateKeyPair();
     const globalKeyPairPem = keysUtils.keyPairToPem(globalKeyPair);
     await Promise.all([
       fs.promises.writeFile(
@@ -69,7 +69,7 @@ async function setupGlobalKeypair() {
   }
 }
 
-async function setupTestAgent(privateKeyPem: PrivateKeyPem, logger: Logger) {
+async function setupTestAgent(logger: Logger) {
   const agentDir = await fs.promises.mkdtemp(
     path.join(globalThis.tmpDir, 'polykey-test-'),
   );
@@ -93,7 +93,6 @@ async function setupTestAgent(privateKeyPem: PrivateKeyPem, logger: Logger) {
     {
       env: {
         PK_PASSWORD: agentPassword,
-        PK_ROOT_KEY: privateKeyPem,
       },
       cwd: agentDir,
       command: globalThis.testCmd,
@@ -135,7 +134,7 @@ async function setupTestAgent(privateKeyPem: PrivateKeyPem, logger: Logger) {
 }
 
 function generateRandomNodeId(): NodeId {
-  const random = keysUtils.getRandomBytesSync(16).toString('hex');
+  const random = keysUtils.getRandomBytes(16).toString('hex');
   return IdInternal.fromString<NodeId>(random);
 }
 

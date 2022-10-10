@@ -1,6 +1,6 @@
 import type * as grpc from '@grpc/grpc-js';
 import type { Authenticate } from '../types';
-import type KeyManager from '../../keys/KeyManager';
+import type KeyRing from '../../keys/KeyRing';
 import type GRPCServer from '../../grpc/GRPCServer';
 import type Proxy from '../../network/Proxy';
 import type * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
@@ -13,14 +13,14 @@ import * as clientUtils from '../utils';
 
 function agentStatus({
   authenticate,
-  keyManager,
+  keyRing,
   grpcServerClient,
   grpcServerAgent,
   proxy,
   logger,
 }: {
   authenticate: Authenticate;
-  keyManager: KeyManager;
+  keyRing: KeyRing;
   grpcServerClient: GRPCServer;
   grpcServerAgent: GRPCServer;
   proxy: Proxy;
@@ -35,7 +35,7 @@ function agentStatus({
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
       response.setPid(process.pid);
-      response.setNodeId(nodesUtils.encodeNodeId(keyManager.getNodeId()));
+      response.setNodeId(nodesUtils.encodeNodeId(keyRing.getNodeId()));
       response.setClientHost(grpcServerClient.getHost());
       response.setClientPort(grpcServerClient.getPort());
       response.setAgentHost(grpcServerAgent.getHost());
@@ -44,8 +44,8 @@ function agentStatus({
       response.setForwardPort(proxy.getForwardPort());
       response.setProxyHost(proxy.getProxyHost());
       response.setProxyPort(proxy.getProxyPort());
-      response.setRootPublicKeyPem(keyManager.getRootKeyPairPem().publicKey);
-      response.setRootCertPem(keyManager.getRootCertPem());
+      response.setRootPublicKeyPem(keyRing.getRootKeyPairPem().publicKey);
+      response.setRootCertPem(keyRing.getRootCertPem());
       callback(null, response);
       return;
     } catch (e) {

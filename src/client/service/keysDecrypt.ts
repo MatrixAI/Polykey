@@ -1,18 +1,19 @@
 import type * as grpc from '@grpc/grpc-js';
 import type { Authenticate } from '../types';
-import type KeyManager from '../../keys/KeyManager';
+import type KeyRing from '../../keys/KeyRing';
 import type Logger from '@matrixai/logger';
 import * as grpcUtils from '../../grpc/utils';
 import * as keysPB from '../../proto/js/polykey/v1/keys/keys_pb';
 import * as clientUtils from '../utils';
+import { never } from '../../utils/index';
 
 function keysDecrypt({
   authenticate,
-  keyManager,
+  keyRing,
   logger,
 }: {
   authenticate: Authenticate;
-  keyManager: KeyManager;
+  keyRing: KeyRing;
   logger: Logger;
 }) {
   return async (
@@ -23,9 +24,10 @@ function keysDecrypt({
       const response = new keysPB.Crypto();
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
-      const data = await keyManager.decryptWithRootKeyPair(
+      const data = keyRing.decrypt(
         Buffer.from(call.request.getData(), 'binary'),
       );
+      if (data == null) never();
       response.setData(data.toString('binary'));
       callback(null, response);
       return;

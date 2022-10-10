@@ -267,8 +267,4 @@ export type {
   CertManagerChangeData,
 };
 
-export type {
-  CertId,
-  CertIdString,
-  CertIdEncoded,
-} from '../ids/types';
+export type { CertId, CertIdString, CertIdEncoded } from '../ids/types';

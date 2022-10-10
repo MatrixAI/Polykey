@@ -11,7 +11,6 @@ import * as claimsErrors from '@/claims/errors';
 import { utils as keysUtils } from '@/keys';
 import { utils as nodesUtils } from '@/nodes';
 import * as testNodesUtils from '../nodes/utils';
-import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 
 describe('claims/utils', () => {
   // Node Ids
@@ -329,7 +328,7 @@ describe('claims/utils', () => {
     expect(await claimsUtils.verifyClaimSignature(claim, publicKey)).toBe(true);
 
     // Create some dummy public key, and check that this does not verify
-    const dummyKeyPair = await keysUtils.generateKeyPair(2048);
+    const dummyKeyPair = await keysUtils.generateKeyPair();
     const dummyPublicKey = keysUtils.publicKeyToPem(dummyKeyPair.publicKey);
     expect(await claimsUtils.verifyClaimSignature(claim, dummyPublicKey)).toBe(
       false,

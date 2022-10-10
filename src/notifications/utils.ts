@@ -5,10 +5,9 @@ import type {
   Notification,
   SignedNotification,
 } from './types';
-import type { KeyPairPem } from '../keys/types';
 import type { NodeId, VaultId } from '../ids/types';
 import type { DefinedError } from 'ajv';
-import { createPublicKey, createPrivateKey } from 'crypto';
+import type { KeyPairLocked } from '../keys/types';
 import { SignJWT, exportJWK, jwtVerify, EmbeddedJWK } from 'jose';
 import {
   notificationValidate,
@@ -19,6 +18,7 @@ import {
 import * as notificationsErrors from './errors';
 import { createNotificationIdGenerator } from '../ids';
 import * as nodesUtils from '../nodes/utils';
+import { importPublicKey, importPrivateKey } from '../keys/utils';
 
 function constructGestaltInviteMessage(nodeId: NodeId): string {
   return `Keynode with ID ${nodeId} has invited this Keynode to join their Gestalt. Accept this invitation by typing the command: xxx`;
@@ -37,10 +37,10 @@ function constructVaultShareMessage(vaultId: VaultId): string {
  */
 async function signNotification(
   notification: Notification,
-  keyPair: KeyPairPem,
+  keyPair: KeyPairLocked,
 ): Promise<SignedNotification> {
-  const publicKey = createPublicKey(keyPair.publicKey);
-  const privateKey = createPrivateKey(keyPair.privateKey);
+  const publicKey = await importPublicKey(keyPair.publicKey);
+  const privateKey = await importPrivateKey(keyPair.privateKey);
   const jwkPublicKey = await exportJWK(publicKey);
   const jwt = await new SignJWT(notification)
     .setProtectedHeader({ alg: 'RS256', jwk: jwkPublicKey })

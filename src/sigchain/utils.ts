@@ -1,4 +1,4 @@
-import type { PublicKeyPem } from '../keys/types';
+import type { PublicKey } from '../keys/types';
 import type { ChainData, ChainDataEncoded } from './types';
 import * as claimsUtils from '../claims/utils';
 
@@ -8,7 +8,7 @@ import * as claimsUtils from '../claims/utils';
  */
 async function verifyChainData(
   chain: ChainDataEncoded,
-  publicKey: PublicKeyPem,
+  publicKey: PublicKey,
 ): Promise<ChainData> {
   const decodedChain: ChainData = {};
   for (const claimId in chain) {

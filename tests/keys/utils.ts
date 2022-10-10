@@ -26,9 +26,9 @@ const keyArb = fc
   .map(utils.bufferWrap)
   .noShrink() as fc.Arbitrary<Key>;
 
-const keyJWKArb = keyArb.map((key) =>
-  jwk.keyToJWK(key)
-).noShrink() as fc.Arbitrary<KeyJWK>;
+const keyJWKArb = keyArb
+  .map((key) => jwk.keyToJWK(key))
+  .noShrink() as fc.Arbitrary<KeyJWK>;
 
 /**
  * Ed25519 Private Key
@@ -59,13 +59,13 @@ const keyPairArb = privateKeyArb
   })
   .noShrink() as fc.Arbitrary<KeyPair>;
 
-const publicKeyJWKArb = publicKeyArb.map((publicKey) =>
-  jwk.publicKeyToJWK(publicKey)
-).noShrink() as fc.Arbitrary<PublicKeyJWK>;
+const publicKeyJWKArb = publicKeyArb
+  .map((publicKey) => jwk.publicKeyToJWK(publicKey))
+  .noShrink() as fc.Arbitrary<PublicKeyJWK>;
 
-const privateKeyJWKArb = privateKeyArb.map((privateKey) =>
-  jwk.privateKeyToJWK(privateKey)
-).noShrink() as fc.Arbitrary<PrivateKeyJWK>;
+const privateKeyJWKArb = privateKeyArb
+  .map((privateKey) => jwk.privateKeyToJWK(privateKey))
+  .noShrink() as fc.Arbitrary<PrivateKeyJWK>;
 
 const certPArb = fc
   .record({

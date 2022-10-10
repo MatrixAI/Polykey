@@ -7,7 +7,7 @@ import type {
   ClaimIntermediary,
   ClaimType,
 } from '../claims/types';
-import type KeyManager from '../keys/KeyManager';
+import type KeyRing from '../keys/KeyRing';
 import type { NodeIdEncoded } from '../ids/types';
 import Logger from '@matrixai/logger';
 import { IdInternal } from '@matrixai/id';
@@ -28,7 +28,7 @@ class Sigchain {
   protected readonly sequenceNumberKey: string = 'prevSequenceNumber';
 
   protected logger: Logger;
-  protected keyManager: KeyManager;
+  protected keyRing: KeyRing;
   protected db: DB;
   // Top-level database for the sigchain domain
   protected sigchainDbPath: LevelPath = [this.constructor.name];
@@ -46,17 +46,17 @@ class Sigchain {
 
   static async createSigchain({
     db,
-    keyManager,
+    keyRing,
     logger = new Logger(this.name),
     fresh = false,
   }: {
     db: DB;
-    keyManager: KeyManager;
+    keyRing: KeyRing;
     logger?: Logger;
     fresh?: boolean;
   }): Promise<Sigchain> {
     logger.info(`Creating ${this.name}`);
-    const sigchain = new this({ db, keyManager, logger });
+    const sigchain = new this({ db, keyRing, logger });
     await sigchain.start({ fresh });
     logger.info(`Created ${this.name}`);
     return sigchain;
@@ -64,16 +64,16 @@ class Sigchain {
 
   constructor({
     db,
-    keyManager,
+    keyRing,
     logger,
   }: {
     db: DB;
-    keyManager: KeyManager;
+    keyRing: KeyRing;
     logger: Logger;
   }) {
     this.logger = logger;
     this.db = db;
-    this.keyManager = keyManager;
+    this.keyRing = keyRing;
   }
 
   public async start({
@@ -103,7 +103,7 @@ class Sigchain {
       // Creating the ID generator
       const latestId = await this.getLatestClaimId(tran);
       this.generateClaimId = claimsUtils.createClaimIdGenerator(
-        this.keyManager.getNodeId(),
+        this.keyRing.getNodeId(),
         latestId,
       );
     });
@@ -145,7 +145,7 @@ class Sigchain {
       kid = data.node;
     }
     return await claimsUtils.createClaim({
-      privateKey: this.keyManager.getRootKeyPairPem().privateKey,
+      privateKey: this.keyRing.keyPair.privateKey,
       hPrev: hPrev,
       seq: seq,
       data: data,
