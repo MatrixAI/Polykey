@@ -12,14 +12,14 @@ describe('keys/utils/pem', () => {
     'keypair convert to and from PEM',
     [testsKeysUtils.keyPairArb],
     async (keyPair) => {
-      const keyPairPem = pem.keyPairToPem(keyPair);
-      expect(keyPairPem.publicKey).toBeString();
-      expect(keyPairPem.privateKey).toBeString();
-      expect(keyPairPem.publicKey).toMatch(/-----BEGIN PUBLIC KEY-----/);
-      expect(keyPairPem.publicKey).toMatch(/-----END PUBLIC KEY-----/);
-      expect(keyPairPem.privateKey).toMatch(/-----BEGIN PRIVATE KEY-----/);
-      expect(keyPairPem.privateKey).toMatch(/-----END PRIVATE KEY-----/);
-      const keyPair_ = pem.keyPairFromPem(keyPairPem);
+      const keyPairPEM = pem.keyPairToPEM(keyPair);
+      expect(keyPairPEM.publicKey).toBeString();
+      expect(keyPairPEM.privateKey).toBeString();
+      expect(keyPairPEM.publicKey).toMatch(/-----BEGIN PUBLIC KEY-----/);
+      expect(keyPairPEM.publicKey).toMatch(/-----END PUBLIC KEY-----/);
+      expect(keyPairPEM.privateKey).toMatch(/-----BEGIN PRIVATE KEY-----/);
+      expect(keyPairPEM.privateKey).toMatch(/-----END PRIVATE KEY-----/);
+      const keyPair_ = pem.keyPairFromPEM(keyPairPEM);
       expect(keyPair_).toBeDefined();
       expect(keyPair_!.publicKey).toStrictEqual(keyPair.publicKey);
       expect(keyPair_!.privateKey).toStrictEqual(keyPair.privateKey);
@@ -37,8 +37,8 @@ describe('keys/utils/pem', () => {
       const pkcs8PEM = `-----BEGIN PRIVATE KEY-----\n${pkcs8.toString(
         'base64',
       )}\n-----END PRIVATE KEY-----\n`;
-      expect(spkiPEM).toStrictEqual(keyPairPem.publicKey);
-      expect(pkcs8PEM).toStrictEqual(keyPairPem.privateKey);
+      expect(spkiPEM).toStrictEqual(keyPairPEM.publicKey);
+      expect(pkcs8PEM).toStrictEqual(keyPairPEM.privateKey);
     },
   );
   testProp(
@@ -51,8 +51,8 @@ describe('keys/utils/pem', () => {
         issuerPrivateKey: issuerKeyPair.privateKey,
         duration: 1000,
       });
-      const certPem = pem.certToPem(cert);
-      const cert_ = pem.certFromPem(certPem);
+      const certPEM = pem.certToPEM(cert);
+      const cert_ = pem.certFromPEM(certPEM)!;
       expect(x509.certEqual(cert, cert_)).toBe(true);
     },
   );

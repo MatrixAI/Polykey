@@ -123,19 +123,19 @@ type KeyPairJWK = {
 /**
  * Public Key SPKI PEM
  */
-type PublicKeyPem = Opaque<'PublicKeyPem', string>;
+type PublicKeyPEM = Opaque<'PublicKeyPEM', string>;
 
 /**
  * Private Key PKCS8 PEM
  */
-type PrivateKeyPem = Opaque<'PrivateKeyPem', string>;
+type PrivateKeyPEM = Opaque<'PrivateKeyPEM', string>;
 
 /**
  * KeyPair PEMs
  */
-type KeyPairPem = {
-  publicKey: PublicKeyPem;
-  privateKey: PrivateKeyPem;
+type KeyPairPEM = {
+  publicKey: PublicKeyPEM;
+  privateKey: PrivateKeyPEM;
 };
 
 /**
@@ -153,15 +153,20 @@ type Signature = Opaque<'Signature', Buffer>;
 type Certificate = Readonly<X509Certificate>;
 
 /**
+ * Certificate ASN.1 buffer
+ */
+type CertificateASN1 = Opaque<'CertificateASN1', Buffer>;
+
+/**
  * Certificate PEM
  */
-type CertificatePem = Opaque<'CertificatePem', string>;
+type CertificatePEM = Opaque<'CertificatePEM', string>;
 
 /**
  * Certificate PEM Chain.
  * The order is from leaf to root.
  */
-type CertificatePemChain = Opaque<'CertificatePemChain', string>;
+type CertificatePEMChain = Opaque<'CertificatePEMChain', string>;
 
 /**
  * Generic JWK
@@ -249,13 +254,14 @@ export type {
   PublicKeyJWK,
   PrivateKeyJWK,
   KeyPairJWK,
-  PublicKeyPem,
-  PrivateKeyPem,
-  KeyPairPem,
+  PublicKeyPEM,
+  PrivateKeyPEM,
+  KeyPairPEM,
   Signature,
   Certificate,
-  CertificatePem,
-  CertificatePemChain,
+  CertificateASN1,
+  CertificatePEM,
+  CertificatePEMChain,
   JWK,
   JWKEncrypted,
   PasswordHash,

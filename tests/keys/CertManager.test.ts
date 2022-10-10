@@ -85,4 +85,89 @@ describe(CertManager.name, () => {
       await certManager.getCert();
     }).rejects.toThrow(keysErrors.ErrorCertManagerNotRunning);
   });
+  test('constructs root cert, root certs', async () => {
+    const certManager = await CertManager.createCertManager({
+      db,
+      keyRing,
+      logger,
+    });
+    const rootCertPem = certManager.getCertPem();
+    expect(typeof rootCertPem).toBe('string');
+    const rootCertPems = await certManager.getCertChainPems();
+    expect(rootCertPems.length).toBe(1);
+    const rootCertChainPem = await certManager.getRootCertChainPem();
+    expect(typeof rootCertChainPem).toBe('string');
+    await certManager.stop();
+  });
+  test('reset root certificate with existing key pair', async () => {
+    const certManager = await CertManager.createCertManager({
+      db,
+      keyRing,
+      logger,
+    });
+    const keyPair1 = keyRing.keyPair;
+    const rootCert1 = certManager.getCert();
+
+    // We now use IdSortable, this means the next ID is always oging to be higher
+    // no need to set the time
+
+    await certManager.resetCertWithExistingKeyPair();
+
+    const rootCert2 = certManager.getCert();
+
+    // The key pair has not changed
+    expect(keyRing.keyPair).toStrictEqual(keyPair1);
+
+    // The serial number should be greater
+    expect(rootCert2.serialNumber).toBeGreaterThan(rootCert1.serialNumber);
+
+    expect(rootCert1.validity.notBefore < rootCert2.validity.notBefore).toBe(
+      true,
+    );
+
+    expect(rootCert1.validity.notAfter < rootCert2.validity.notAfter).toBe(
+      true,
+    );
+    await certManager.stop();
+  });
+  test('reset root certificate with new key pair', async () => {
+    const certManager = await CertManager.createCertManager({
+      db,
+      keyRing,
+      logger,
+    });
+
+    const rootKeyPair1 = certManager.getKeyPair();
+    const rootCert1 = certManager.getCert();
+
+    await certManager.resetCertWithNewKeyPair('password');
+
+    const rootKeyPair2 = certManager.getRootKeyPair();
+    const rootCert2 = certManager.getCert();
+
+    expect(rootCert1.serialNumber).not.toBe(rootCert2.serialNumber);
+    expect(rootCert1.validity.notBefore < rootCert2.validity.notBefore).toBe(
+      true,
+    );
+    expect(rootCert1.validity.notAfter < rootCert2.validity.notAfter).toBe(
+      true,
+    );
+    expect(keysUtils.keyPairToPem(rootKeyPair1)).not.toBe(
+      keysUtils.keyPairToPem(rootKeyPair2),
+    );
+    expect(keysUtils.publicKeyToPem(rootCert1.publicKey as PublicKey)).toBe(
+      keysUtils.publicKeyToPem(rootKeyPair1.publicKey as PublicKey),
+    );
+    expect(keysUtils.publicKeyToPem(rootCert2.publicKey as PublicKey)).toBe(
+      keysUtils.publicKeyToPem(rootKeyPair2.publicKey as PublicKey),
+    );
+
+    await certManager.stop();
+  });
+  test('renew root certificate with new key pair', async () => {
+
+  });
+  test('order of certificate chain should be leaf to root', async () => {
+
+  });
 });

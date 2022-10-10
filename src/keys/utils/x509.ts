@@ -1,4 +1,4 @@
-import type { PublicKey, PrivateKey, Certificate } from '../types';
+import type { PublicKey, PrivateKey, Certificate, CertificateASN1 } from '../types';
 import type { CertId, NodeId } from '../../ids/types';
 import * as x509 from '@peculiar/x509';
 import * as asn1 from '@peculiar/asn1-schema';
@@ -7,6 +7,7 @@ import webcrypto, { importPrivateKey, importPublicKey } from './webcrypto';
 import {
   publicKeyToNodeId,
   publicKeyFromPrivateKeyEd25519,
+  validatePublicKey,
 } from './asymmetric';
 import * as ids from '../../ids';
 import * as utils from '../../utils';
@@ -326,15 +327,22 @@ function certNotExpiredBy(cert: Certificate, now: Date = new Date()): boolean {
  */
 async function certSignedBy(
   cert: Certificate,
-  publicKey: BufferSource | CryptoKey,
+  publicKey: PublicKey,
 ): Promise<boolean> {
-  if (utils.isBufferSource(publicKey)) {
-    publicKey = await importPublicKey(publicKey);
-  }
+  const publicCryptoKey = await importPublicKey(publicKey);
   return cert.verify({
-    publicKey,
+    publicKey: publicCryptoKey,
     signatureOnly: true,
   });
+}
+
+function certPublicKey(cert: Certificate): PublicKey | undefined {
+  const spki = asn1.AsnConvert.parse(cert.publicKey.rawData, asn1X509.SubjectPublicKeyInfo);
+  const publicKey = utils.bufferWrap(spki.subjectPublicKey);
+  if (!validatePublicKey(publicKey)) {
+    return;
+  }
+  return publicKey;
 }
 
 function certNodeId(cert: Certificate): NodeId | undefined {
@@ -376,6 +384,18 @@ async function certNodeSigned(cert: Certificate): Promise<boolean> {
   );
 }
 
+function certToASN1(cert: Certificate): CertificateASN1 {
+  return utils.bufferWrap(cert.rawData) as CertificateASN1;
+}
+
+function certFromASN1(certASN1: CertificateASN1): Certificate | undefined {
+  try {
+    return new x509.X509Certificate(certASN1);
+  } catch {
+    return;
+  }
+}
+
 export {
   PolykeyVersionString,
   PolykeyVersionExtension,
@@ -384,11 +404,14 @@ export {
   extendedKeyUsageFlags,
   generateCertificate,
   certEqual,
+  certPublicKey,
   certNodeId,
   certIssuedBy,
   certNotExpiredBy,
   certSignedBy,
   certNodeSigned,
+  certToASN1,
+  certFromASN1,
 };
 
 export { createCertIdGenerator, encodeCertId, decodeCertId } from '../../ids';
