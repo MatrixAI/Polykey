@@ -5,8 +5,6 @@ import type {
   PublicKeyPEM,
   PrivateKeyPEM,
   KeyPairPEM,
-  Certificate,
-  CertificatePEM,
 } from '../types';
 import * as x509 from '@peculiar/x509';
 import * as asn1 from '@peculiar/asn1-schema';
@@ -110,18 +108,6 @@ function keyPairFromPEM(keyPair: KeyPairPEM): KeyPair | undefined {
   } as KeyPair;
 }
 
-function certToPEM(cert: Certificate): CertificatePEM {
-  return cert.toString('pem') as CertificatePEM;
-}
-
-function certFromPEM(certPEM: CertificatePEM): Certificate | undefined {
-  try {
-    return new x509.X509Certificate(certPEM);
-  } catch {
-    return;
-  }
-}
-
 export {
   publicKeyToPEM,
   publicKeyFromPEM,
@@ -129,6 +115,4 @@ export {
   privateKeyFromPEM,
   keyPairToPEM,
   keyPairFromPEM,
-  certToPEM,
-  certFromPEM,
 };

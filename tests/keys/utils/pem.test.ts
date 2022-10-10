@@ -1,7 +1,6 @@
 import { testProp } from '@fast-check/jest';
 import webcrypto, { importKeyPair } from '@/keys/utils/webcrypto';
 import * as pem from '@/keys/utils/pem';
-import * as x509 from '@/keys/utils/x509';
 import * as ids from '@/ids';
 import * as utils from '@/utils';
 import * as testsKeysUtils from '../utils';
@@ -39,21 +38,6 @@ describe('keys/utils/pem', () => {
       )}\n-----END PRIVATE KEY-----\n`;
       expect(spkiPEM).toStrictEqual(keyPairPEM.publicKey);
       expect(pkcs8PEM).toStrictEqual(keyPairPEM.privateKey);
-    },
-  );
-  testProp(
-    'certificate convert to and from PEM',
-    [testsKeysUtils.keyPairArb, testsKeysUtils.keyPairArb],
-    async (issuerKeyPair, subjectKeyPair) => {
-      const cert = await x509.generateCertificate({
-        certId: certIdGenerator(),
-        subjectKeyPair: subjectKeyPair,
-        issuerPrivateKey: issuerKeyPair.privateKey,
-        duration: 1000,
-      });
-      const certPEM = pem.certToPEM(cert);
-      const cert_ = pem.certFromPEM(certPEM)!;
-      expect(x509.certEqual(cert, cert_)).toBe(true);
     },
   );
 });

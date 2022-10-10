@@ -143,6 +143,10 @@ class CertManager {
     return IdInternal.fromBuffer<CertId>(lastCertIdBuffer);
   }
 
+  /**
+   * Get a certificate according to the certificate ID
+   */
+  @ready(new keysErrors.ErrorCertManagerNotRunning())
   public async getCert(certId: CertId, tran?: DBTransaction): Promise<Certificate | undefined> {
     const certData = await (tran ?? this.db).get(
       [...this.dbCertsPath, certId.toBuffer()],
@@ -154,22 +158,7 @@ class CertManager {
     return keysUtils.certFromASN1(certData as CertificateASN1);
   }
 
-  // root mean "original" cert
-  // or root in the case of the root key pair?
-  // ah shit
-  // that is a bit annoying
-  // you can say
-  // getNodeCertificate (end-entity certificate)
-  // but this is a "root chain"
-  // or leaf certificate
-  // the main certificate is the current certificate
-  // yea that doens't make any sense
-
-
-  // root certificate
-  // vs
-  // leaf certificate
-
+  @ready(new keysErrors.ErrorCertManagerNotRunning())
   public async getRootCert() {
 
   }
@@ -194,16 +183,23 @@ class CertManager {
     return cert!;
   }
 
+  // Converstion to PEM should be done
+  // using the key utility
+  // you can convert however you want
+  // we don't need to provide so many fucntions
   @ready(new keysErrors.ErrorCertManagerNotRunning())
   public async getCertPem() {
   }
 
   @ready(new keysErrors.ErrorCertManagerNotRunning())
-  public async getCertChain() {
+  public async getCertChain(): Promise<Array<Certificate>> {
+    // this gest all of them in one go
+    // notice whether we need to do any garbage collection
+    // of expired identities
   }
 
-  @ready(new keysErrors.ErrorCertManagerNotRunning())
-  public async getCertChainPems() {
+  public async *getCertChains(): AsyncGenerator<Certificate> {
+
   }
 
   @ready(new keysErrors.ErrorCertManagerNotRunning())

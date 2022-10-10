@@ -1,4 +1,10 @@
-import type { PublicKey, PrivateKey, Certificate, CertificateASN1 } from '../types';
+import type {
+  PublicKey,
+  PrivateKey,
+  Certificate,
+  CertificateASN1,
+  CertificatePEM,
+} from '../types';
 import type { CertId, NodeId } from '../../ids/types';
 import * as x509 from '@peculiar/x509';
 import * as asn1 from '@peculiar/asn1-schema';
@@ -243,6 +249,28 @@ async function generateCertificate({
   return await x509.X509CertificateGenerator.create(certConfig);
 }
 
+function certCertId(cert: Certificate): CertId | undefined {
+  return ids.decodeCertId(cert.serialNumber);
+}
+
+function certPublicKey(cert: Certificate): PublicKey | undefined {
+  const spki = asn1.AsnConvert.parse(cert.publicKey.rawData, asn1X509.SubjectPublicKeyInfo);
+  const publicKey = utils.bufferWrap(spki.subjectPublicKey);
+  if (!validatePublicKey(publicKey)) {
+    return;
+  }
+  return publicKey;
+}
+
+function certNodeId(cert: Certificate): NodeId | undefined {
+  const subject = cert.subjectName.toJSON();
+  const subjectNodeId = subject.find((attr) => 'CN' in attr)?.CN[0];
+  if (subjectNodeId != null) {
+    return ids.decodeNodeId(subjectNodeId);
+  }
+  return undefined;
+}
+
 /**
  * Checks if 2 certificates are exactly the same
  * This checks equality of the raw data buffer
@@ -336,24 +364,6 @@ async function certSignedBy(
   });
 }
 
-function certPublicKey(cert: Certificate): PublicKey | undefined {
-  const spki = asn1.AsnConvert.parse(cert.publicKey.rawData, asn1X509.SubjectPublicKeyInfo);
-  const publicKey = utils.bufferWrap(spki.subjectPublicKey);
-  if (!validatePublicKey(publicKey)) {
-    return;
-  }
-  return publicKey;
-}
-
-function certNodeId(cert: Certificate): NodeId | undefined {
-  const subject = cert.subjectName.toJSON();
-  const subjectNodeId = subject.find((attr) => 'CN' in attr)?.CN[0];
-  if (subjectNodeId != null) {
-    return ids.decodeNodeId(subjectNodeId);
-  }
-  return undefined;
-}
-
 /**
  * Checks if the certificate's node signature is valid.
  * This has to extract the TBS data, remove the node signature extension.
@@ -396,6 +406,18 @@ function certFromASN1(certASN1: CertificateASN1): Certificate | undefined {
   }
 }
 
+function certToPEM(cert: Certificate): CertificatePEM {
+  return cert.toString('pem') as CertificatePEM;
+}
+
+function certFromPEM(certPEM: CertificatePEM): Certificate | undefined {
+  try {
+    return new x509.X509Certificate(certPEM);
+  } catch {
+    return;
+  }
+}
+
 export {
   PolykeyVersionString,
   PolykeyVersionExtension,
@@ -403,15 +425,18 @@ export {
   PolykeyNodeSignatureExtension,
   extendedKeyUsageFlags,
   generateCertificate,
-  certEqual,
+  certCertId,
   certPublicKey,
   certNodeId,
+  certEqual,
   certIssuedBy,
   certNotExpiredBy,
   certSignedBy,
   certNodeSigned,
   certToASN1,
   certFromASN1,
+  certToPEM,
+  certFromPEM,
 };
 
 export { createCertIdGenerator, encodeCertId, decodeCertId } from '../../ids';

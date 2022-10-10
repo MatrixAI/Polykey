@@ -4,7 +4,6 @@ import * as x509 from '@/keys/utils/x509';
 import * as asymmetric from '@/keys/utils/asymmetric';
 import * as ids from '@/ids';
 import * as testsKeysUtils from '../utils';
-import * as utils from '@/utils';
 
 describe('keys/utils/x509', () => {
   const certIdGenerator = ids.createCertIdGenerator();
@@ -151,6 +150,21 @@ describe('keys/utils/x509', () => {
       } finally {
         jest.useRealTimers();
       }
+    },
+  );
+  testProp(
+    'certificate convert to and from PEM',
+    [testsKeysUtils.keyPairArb, testsKeysUtils.keyPairArb],
+    async (issuerKeyPair, subjectKeyPair) => {
+      const cert = await x509.generateCertificate({
+        certId: certIdGenerator(),
+        subjectKeyPair: subjectKeyPair,
+        issuerPrivateKey: issuerKeyPair.privateKey,
+        duration: 1000,
+      });
+      const certPEM = x509.certToPEM(cert);
+      const cert_ = x509.certFromPEM(certPEM)!;
+      expect(x509.certEqual(cert, cert_)).toBe(true);
     },
   );
 });
