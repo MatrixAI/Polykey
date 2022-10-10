@@ -1,9 +1,7 @@
 import type { DB, DBTransaction, LevelPath, KeyPath } from '@matrixai/db';
-import type { ResourceRelease } from '@matrixai/resources';
 import type { Certificate, CertificateASN1, CertificatePEM, KeyPair } from './types';
 import type KeyRing from './KeyRing';
 import type { CertId } from '../ids/types';
-import path from 'path';
 import Logger from '@matrixai/logger';
 import { IdInternal } from '@matrixai/id';
 import {
@@ -12,7 +10,6 @@ import {
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import * as keysUtils from './utils';
 import * as keysErrors from './errors';
-import * as utils from '../utils';
 
 interface CertManager extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
@@ -254,21 +251,24 @@ class CertManager {
     issuerAttrsExtra?: Array<{ [key: string]: Array<string> }>,
   ) {
     this.logger.info('Renewing certificate chain with new key pair');
-    await this.keyRing.rotateKeyPair(
-      password,
-      async (keyPairNew: KeyPair, keyPairOld: KeyPair) => {
-        const certNew = await keysUtils.generateCertificate({
-          certId: this.generateCertId(),
-          subjectKeyPair: keyPairNew,
-          issuerPrivateKey: keyPairOld.privateKey,
-          duration,
-          subjectAttrsExtra,
-          issuerAttrsExtra,
-        });
-        await this.putCert(certNew);
-      }
-    );
-    await this.gcCerts();
+    try {
+      await this.keyRing.rotateKeyPair(
+        password,
+        async (keyPairNew: KeyPair, keyPairOld: KeyPair) => {
+          const certNew = await keysUtils.generateCertificate({
+            certId: this.generateCertId(),
+            subjectKeyPair: keyPairNew,
+            issuerPrivateKey: keyPairOld.privateKey,
+            duration,
+            subjectAttrsExtra,
+            issuerAttrsExtra,
+          });
+          await this.putCert(certNew);
+        }
+      );
+    } finally {
+      await this.gcCerts();
+    }
     this.logger.info('Renewed certificate chain with new key pair');
   }
 
@@ -285,21 +285,24 @@ class CertManager {
     issuerAttrsExtra?: Array<{ [key: string]: Array<string> }>,
   ) {
     this.logger.info('Resetting certificate chain with new key pair');
-    await this.keyRing.rotateKeyPair(
-      password,
-      async (keyPairNew: KeyPair) => {
-        const certNew = await keysUtils.generateCertificate({
-          certId: this.generateCertId(),
-          subjectKeyPair: keyPairNew,
-          issuerPrivateKey: keyPairNew.privateKey,
-          duration,
-          subjectAttrsExtra,
-          issuerAttrsExtra,
-        });
-        await this.putCert(certNew);
-      }
-    );
-    await this.gcCerts();
+    try {
+      await this.keyRing.rotateKeyPair(
+        password,
+        async (keyPairNew: KeyPair) => {
+          const certNew = await keysUtils.generateCertificate({
+            certId: this.generateCertId(),
+            subjectKeyPair: keyPairNew,
+            issuerPrivateKey: keyPairNew.privateKey,
+            duration,
+            subjectAttrsExtra,
+            issuerAttrsExtra,
+          });
+          await this.putCert(certNew);
+        }
+      );
+    } finally {
+      await this.gcCerts();
+    }
     this.logger.info('Resetted certificate chain with new key pair');
   }
 
@@ -373,17 +376,41 @@ class CertManager {
    * Garbage collect invalid or expired certificates.
    * Expired certificates are no longer valid and should be deleted.
    * Invalid certificates can happen if key rotation does not succeed.
-   * It could mean that the leaf certificate does not match the root key pair.
+   * It could mean that the leaf certificate does not match the current key pair.
    */
-  protected async gcCerts(tran?: DBTransaction): Promise<void> {
-
-    // Ok this is where it has to happen
-    // this is called every time we do a renew, reset and on start
-    // it has to iterate over all certs starting from the LEAF certificate
-    // identify if they are invalid (if it is valid, then this check is not done)
-    // or if the date is expired
-    // then remove them appropriately in one single transaction
-
+  protected async gcCerts(): Promise<void> {
+    this.logger.info('Garbage collecting certificates');
+    await this.db.withTransactionF(async (tran) => {
+      await tran.lock(this.dbCertsPath.join(''));
+      const now = new Date();
+      let currentCertFound: boolean = false;
+      for await (const [kP, certASN1] of tran.iterator(this.dbCertsPath, {
+        reverse: true,
+      })) {
+        const certIdBuffer = kP[0] as Buffer;
+        const certId = IdInternal.fromBuffer<CertId>(certIdBuffer);
+        const cert = keysUtils.certFromASN1(certASN1 as CertificateASN1)!;
+        if (!currentCertFound) {
+          const certPublicKey = keysUtils.certPublicKey(cert)!;
+          if (certPublicKey.equals(this.keyRing.keyPair.publicKey)) {
+            currentCertFound = true;
+          } else {
+            // Delete this invalid certificate.
+            // This can only happen if the key pair rotation failed
+            // after the certificate was put in to the DB.
+            this.delCert(certId, tran);
+            // This will iterate up the chain to the root
+            // until we find the current certificate.
+            // It should be the very next certificate that is correct.
+            continue;
+          }
+          if (!keysUtils.certNotExpiredBy(cert, now)) {
+            this.delCert(certId, tran);
+          }
+        }
+      }
+    });
+    this.logger.info('Garbage collected certificates');
   }
 }
 
