@@ -1,7 +1,7 @@
 import type {
   PermissionId,
-  CertificateId,
-  CertificateIdEncoded,
+  CertId,
+  CertIdEncoded,
   NodeId,
   NodeIdEncoded,
   VaultId,
@@ -46,36 +46,36 @@ function decodeNodeId(nodeIdEncoded: any): NodeId | undefined {
 }
 
 /**
- * Generates CertificateId
+ * Generates CertId
  */
 function createCertIdGenerator(
-  lastCertId?: CertificateId,
-): () => CertificateId {
-  const generator = new IdSortable<CertificateId>({
+  lastCertId?: CertId,
+): () => CertId {
+  const generator = new IdSortable<CertId>({
     lastId: lastCertId,
   });
   return () => generator.get();
 }
 
 /**
- * Encodes `CertificateId` to `CertificateIdEncoded`
+ * Encodes `CertId` to `CertIdEncoded`
  */
-function encodeCertId(certId: CertificateId): CertificateIdEncoded {
-  return certId.toMultibase('base32hex') as CertificateIdEncoded;
+function encodeCertId(certId: CertId): CertIdEncoded {
+  return certId.toMultibase('base32hex') as CertIdEncoded;
 }
 
 /**
- * Decodes `CertificateIdEncoded` to `CertificateId`
+ * Decodes `CertIdEncoded` to `CertId`
  */
-function decodeCertId(certIdEncoded: unknown): CertificateId | undefined {
+function decodeCertId(certIdEncoded: unknown): CertId | undefined {
   if (typeof certIdEncoded !== 'string') {
     return;
   }
-  const certId = IdInternal.fromMultibase<CertificateId>(certIdEncoded);
+  const certId = IdInternal.fromMultibase<CertId>(certIdEncoded);
   if (certId == null) {
     return;
   }
-  // All `CertificateId` are 16 bytes long
+  // All `CertId` are 16 bytes long
   if (certId.length !== 16) {
     return;
   }

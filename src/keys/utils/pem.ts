@@ -2,11 +2,9 @@ import type {
   PublicKey,
   PrivateKey,
   KeyPair,
-  PublicKeyPem,
-  PrivateKeyPem,
-  KeyPairPem,
-  Certificate,
-  CertificatePem,
+  PublicKeyPEM,
+  PrivateKeyPEM,
+  KeyPairPEM,
 } from '../types';
 import * as x509 from '@peculiar/x509';
 import * as asn1 from '@peculiar/asn1-schema';
@@ -20,7 +18,7 @@ import * as utils from '../../utils';
  * SPKI is "SubjectPublicKeyInfo" which is used in certificates.
  * This format is based on ASN.1 DER encoding.
  */
-function publicKeyToPem(publicKey: PublicKey): PublicKeyPem {
+function publicKeyToPEM(publicKey: PublicKey): PublicKeyPEM {
   const spki = new asn1X509.SubjectPublicKeyInfo({
     algorithm: new asn1X509.AlgorithmIdentifier({
       algorithm: x509.idEd25519,
@@ -30,11 +28,11 @@ function publicKeyToPem(publicKey: PublicKey): PublicKeyPem {
   const data = utils.bufferWrap(asn1.AsnSerializer.serialize(spki));
   return `-----BEGIN PUBLIC KEY-----\n${data.toString(
     'base64',
-  )}\n-----END PUBLIC KEY-----\n` as PublicKeyPem;
+  )}\n-----END PUBLIC KEY-----\n` as PublicKeyPEM;
 }
 
-function publicKeyFromPem(publicKeyPem: PublicKeyPem): PublicKey | undefined {
-  const match = publicKeyPem.match(
+function publicKeyFromPEM(publicKeyPEM: PublicKeyPEM): PublicKey | undefined {
+  const match = publicKeyPEM.match(
     /-----BEGIN PUBLIC KEY-----\n([A-Za-z0-9+/=]+)\n-----END PUBLIC KEY-----\n/,
   );
   if (match == null) {
@@ -42,14 +40,14 @@ function publicKeyFromPem(publicKeyPem: PublicKeyPem): PublicKey | undefined {
   }
   const data = Buffer.from(match[1], 'base64');
   const spki = asn1.AsnConvert.parse(data, asn1X509.SubjectPublicKeyInfo);
-  const publicKey = utils.bufferWrap(spki.subjectPublicKey) as PublicKey;
+  const publicKey = utils.bufferWrap(spki.subjectPublicKey);
   if (!validatePublicKey(publicKey)) {
     return;
   }
   return publicKey;
 }
 
-function privateKeyToPem(privateKey: PrivateKey): PrivateKeyPem {
+function privateKeyToPEM(privateKey: PrivateKey): PrivateKeyPEM {
   const pkcs8 = new asn1Pkcs8.PrivateKeyInfo({
     privateKeyAlgorithm: new asn1X509.AlgorithmIdentifier({
       algorithm: x509.idEd25519,
@@ -61,13 +59,13 @@ function privateKeyToPem(privateKey: PrivateKey): PrivateKeyPem {
   const data = utils.bufferWrap(asn1.AsnSerializer.serialize(pkcs8));
   return `-----BEGIN PRIVATE KEY-----\n${data.toString(
     'base64',
-  )}\n-----END PRIVATE KEY-----\n` as PrivateKeyPem;
+  )}\n-----END PRIVATE KEY-----\n` as PrivateKeyPEM;
 }
 
-function privateKeyFromPem(
-  privateKeyPem: PrivateKeyPem,
+function privateKeyFromPEM(
+  privateKeyPEM: PrivateKeyPEM,
 ): PrivateKey | undefined {
-  const match = privateKeyPem.match(
+  const match = privateKeyPEM.match(
     /-----BEGIN PRIVATE KEY-----\n([A-Za-z0-9+/=]+)\n-----END PRIVATE KEY-----\n/,
   );
   if (match == null) {
@@ -86,19 +84,19 @@ function privateKeyFromPem(
   return privateKey;
 }
 
-function keyPairToPem(keyPair: {
+function keyPairToPEM(keyPair: {
   publicKey: PublicKey;
   privateKey: PrivateKey;
-}): KeyPairPem {
+}): KeyPairPEM {
   return {
-    publicKey: publicKeyToPem(keyPair.publicKey),
-    privateKey: privateKeyToPem(keyPair.privateKey),
+    publicKey: publicKeyToPEM(keyPair.publicKey),
+    privateKey: privateKeyToPEM(keyPair.privateKey),
   };
 }
 
-function keyPairFromPem(keyPair: KeyPairPem): KeyPair | undefined {
-  const publicKey = publicKeyFromPem(keyPair.publicKey);
-  const privateKey = privateKeyFromPem(keyPair.privateKey);
+function keyPairFromPEM(keyPair: KeyPairPEM): KeyPair | undefined {
+  const publicKey = publicKeyFromPEM(keyPair.publicKey);
+  const privateKey = privateKeyFromPEM(keyPair.privateKey);
   if (publicKey == null || privateKey == null) {
     return undefined;
   }
@@ -110,21 +108,11 @@ function keyPairFromPem(keyPair: KeyPairPem): KeyPair | undefined {
   } as KeyPair;
 }
 
-function certToPem(cert: Certificate): CertificatePem {
-  return cert.toString('pem') as CertificatePem;
-}
-
-function certFromPem(certPem: CertificatePem): Certificate {
-  return new x509.X509Certificate(certPem);
-}
-
 export {
-  publicKeyToPem,
-  publicKeyFromPem,
-  privateKeyToPem,
-  privateKeyFromPem,
-  keyPairToPem,
-  keyPairFromPem,
-  certToPem,
-  certFromPem,
+  publicKeyToPEM,
+  publicKeyFromPEM,
+  privateKeyToPEM,
+  privateKeyFromPEM,
+  keyPairToPEM,
+  keyPairFromPEM,
 };

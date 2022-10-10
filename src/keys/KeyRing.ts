@@ -22,6 +22,7 @@ import {
   CreateDestroyStartStop,
   ready,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
+import { Lock } from '@matrixai/async-locks';
 import * as keysUtils from './utils';
 import * as keysErrors from './errors';
 import { bufferLock, bufferUnlock } from './utils/memory';
@@ -56,7 +57,7 @@ class KeyRing {
         privateKeyPath: string;
       }
     )
-  ) {
+  ): Promise<KeyRing> {
     logger.info(`Creating ${this.name}`);
     logger.info(`Setting keys path to ${keysPath}`);
     const keyRing = new this({
@@ -87,6 +88,7 @@ class KeyRing {
   protected passwordOpsLimit?: PasswordOpsLimit;
   protected passwordMemLimit?: PasswordMemLimit;
   protected _recoveryCodeData?: RecoveryCodeLocked;
+  protected rotateLock: Lock = new Lock();
 
   public constructor({
     keysPath,
@@ -230,14 +232,16 @@ class KeyRing {
    */
   @ready(new keysErrors.ErrorKeyRingNotRunning())
   public async changePassword(password: string): Promise<void> {
-    this.logger.info('Changing root key pair password');
-    await this.writeKeyPair(this._keyPair!, password);
-    const [passwordHash, passwordSalt] = this.setupPasswordHash(password);
-    this.passwordHash = {
-      hash: passwordHash,
-      salt: passwordSalt
-    };
-    this.logger.info('Changed root key pair password');
+    await this.rotateLock.withF(async () => {
+      this.logger.info('Changing root key pair password');
+      await this.writeKeyPair(this._keyPair!, password);
+      const [passwordHash, passwordSalt] = this.setupPasswordHash(password);
+      this.passwordHash = {
+        hash: passwordHash,
+        salt: passwordSalt
+      };
+      this.logger.info('Changed root key pair password');
+    });
   }
 
   /**
@@ -247,23 +251,112 @@ class KeyRing {
    * The key pair is wrapped with the new password.
    */
   @ready(new keysErrors.ErrorKeyRingNotRunning())
-  public async rotateKeyPair(password: string): Promise<void> {
-    this.logger.info('Rotating root key pair');
-    const recoveryCode = keysUtils.generateRecoveryCode(24);
-    const keyPair = await this.generateKeyPair(recoveryCode);
-    await Promise.all([
-      this.writeKeyPair(keyPair, password),
-      this.writeDbKey(this._dbKey!, keyPair.publicKey),
-    ]);
-    bufferUnlock(this._keyPair!.publicKey);
-    bufferUnlock(this._keyPair!.privateKey);
-    bufferUnlock(this._keyPair!.secretKey);
-    this._keyPair = keyPair;
-    const recoveryCodeData = Buffer.from(recoveryCode, 'utf-8');
-    bufferLock(recoveryCodeData);
-    bufferUnlock(this._recoveryCodeData!);
-    this._recoveryCodeData = recoveryCodeData as RecoveryCodeLocked;
-    this.logger.info('Rotated root key pair');
+  public async rotateKeyPair(
+    password: string,
+    rotateHook?: (
+      keyPairNew: KeyPair,
+      keyPairOld: KeyPair,
+      recoveryCodeNew: RecoveryCode,
+      recoveryCodeOld?: RecoveryCode,
+    ) => Promise<void>,
+  ): Promise<void> {
+    await this.rotateLock.withF(async () => {
+      this.logger.info('Rotating root key pair');
+      try {
+        this.logger.info('Backing up root key pair and DB key');
+        await Promise.all([
+          this.fs.promises.copyFile(
+            this.publicKeyPath,
+            `${this.publicKeyPath}.bak`
+          ),
+          this.fs.promises.copyFile(
+            this.privateKeyPath,
+            `${this.privateKeyPath}.bak`
+          ),
+          this.fs.promises.copyFile(
+            this.dbKeyPath,
+            `${this.dbKeyPath}.bak`
+          )
+        ]);
+      } catch (e) {
+        this.logger.error('Failed backing up root key pair and DB key');
+        try {
+          await Promise.all([
+            this.fs.promises.rm(
+              `${this.publicKeyPath}.bak`,
+              { force: true, }
+            ),
+            this.fs.promises.rm(
+              `${this.privateKeyPath}.bak`,
+              { force: true }
+            ),
+            this.fs.promises.rm(
+              `${this.dbKeyPath}.bak`,
+              { force: true }
+            )
+          ]);
+        } catch (e) {
+          // Any error here should not terminate the program
+          this.logger.error(`Failed to remove backups due to \`${e}\``);
+        }
+        throw new keysErrors.ErrorRootKeysRotate(
+          'Failed backing up root key pair and DB key',
+          { cause: e }
+        );
+      }
+      try {
+        const recoveryCode = keysUtils.generateRecoveryCode(24);
+        const keyPair = await this.generateKeyPair(recoveryCode);
+        if (rotateHook != null) {
+          // Intercepting callback used for generating a certificate
+          await rotateHook(
+            keyPair,
+            this._keyPair!,
+            recoveryCode,
+            this._recoveryCodeData?.toString('utf-8') as RecoveryCode,
+          );
+        }
+        await Promise.all([
+          this.writeKeyPair(keyPair, password),
+          this.writeDbKey(this._dbKey!, keyPair.publicKey),
+        ]);
+        bufferUnlock(this._keyPair!.publicKey);
+        bufferUnlock(this._keyPair!.privateKey);
+        bufferUnlock(this._keyPair!.secretKey);
+        this._keyPair = keyPair;
+        const recoveryCodeData = Buffer.from(recoveryCode, 'utf-8');
+        bufferLock(recoveryCodeData);
+        bufferUnlock(this._recoveryCodeData!);
+        this._recoveryCodeData = recoveryCodeData as RecoveryCodeLocked;
+        this.logger.info('Rotated root key pair');
+      } catch (e) {
+        this.logger.error('Failed rotating root key pair, recovering from backups');
+        try {
+          await Promise.all([
+            this.fs.promises.rename(
+              `${this.publicKeyPath}.bak`,
+              this.publicKeyPath,
+            ),
+            this.fs.promises.rename(
+              `${this.privateKeyPath}.bak`,
+              this.privateKeyPath,
+            ),
+            this.fs.promises.rename(
+              `${this.dbKeyPath}.bak`,
+              this.dbKeyPath,
+            )
+          ]);
+        } catch (e) {
+          // Any error here should not terminate the program
+          this.logger.error(`Failed to recover from backups due to \`${e}\``);
+          // If this happens, the user will need to recover manually
+        }
+        throw new keysErrors.ErrorRootKeysRotate(
+          'Failed rotating root key pair',
+          { cause: e }
+        );
+      }
+    });
   }
 
   /**
@@ -602,6 +695,7 @@ class KeyRing {
     );
     const privateJWEJSON = JSON.stringify(privateJWE);
     try {
+      // Write to temporary files first, then atomically rename
       await Promise.all([
         this.fs.promises.writeFile(`${this.publicKeyPath}.tmp`, publicJWKJSON),
         this.fs.promises.writeFile(
@@ -769,16 +863,17 @@ class KeyRing {
   protected async writeDbKey(
     dbKey: Key,
     publicKey: PublicKey,
-    dbKeyPath: string = this.dbKeyPath
   ): Promise<void> {
     const dbJWK = keysUtils.keyToJWK(dbKey);
     const dbJWE = keysUtils.encapsulateWithPublicKey(publicKey, dbJWK);
     const dbJWEJSON = JSON.stringify(dbJWE);
     try {
-      await this.fs.promises.writeFile(`${dbKeyPath}`, dbJWEJSON);
+      // Write to temporary file first, then atomically rename
+      await this.fs.promises.writeFile(`${this.dbKeyPath}.tmp`, dbJWEJSON),
+      await this.fs.promises.rename(`${this.dbKeyPath}.tmp`, this.dbKeyPath);
     } catch (e) {
       throw new keysErrors.ErrorDBKeyWrite(
-        `DB key path ${dbKeyPath} cannot be written to`,
+        `DB key path ${this.dbKeyPath} cannot be written to`,
         { cause: e }
       );
     }
