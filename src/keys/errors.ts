@@ -83,6 +83,11 @@ class ErrorRootKeysWrite<T> extends ErrorKeys<T> {
   exitCode = sysexits.IOERR;
 }
 
+class ErrorRootKeysRotate<T> extends ErrorKeys<T> {
+  static description = 'Unable to rotate root keypair';
+  exitCode = sysexits.IOERR;
+}
+
 class ErrorRootCertRead<T> extends ErrorKeys<T> {
   static description = 'Unable to read root certificate';
   exitCode = sysexits.IOERR;
@@ -146,6 +151,7 @@ export {
   ErrorRootKeysRead,
   ErrorRootKeysParse,
   ErrorRootKeysWrite,
+  ErrorRootKeysRotate,
   ErrorRootCertRead,
   ErrorRootCertWrite,
   ErrorRootCertRenew,

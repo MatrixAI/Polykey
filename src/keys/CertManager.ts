@@ -1,6 +1,6 @@
 import type { DB, DBTransaction, LevelPath, KeyPath } from '@matrixai/db';
 import type { ResourceRelease } from '@matrixai/resources';
-import type { Certificate, CertificateASN1, KeyPair } from './types';
+import type { Certificate, CertificateASN1, CertificatePEM, KeyPair } from './types';
 import type KeyRing from './KeyRing';
 import type { CertId } from '../ids/types';
 import path from 'path';
@@ -12,11 +12,7 @@ import {
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import * as keysUtils from './utils';
 import * as keysErrors from './errors';
-import * as ids from '../ids';
 import * as utils from '../utils';
-
-// certs now go into the DB, which makes it easier for us to manage
-// plus we have a cert id generator
 
 interface CertManager extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
@@ -29,12 +25,16 @@ class CertManager {
     keyRing,
     certDuration = 31536000,
     logger = new Logger(this.name),
+    subjectAttrsExtra,
+    issuerAttrsExtra,
     fresh = false,
   }: {
       db: DB;
       keyRing: KeyRing;
       certDuration?: number;
       logger?: Logger;
+      subjectAttrsExtra?: Array<{ [key: string]: Array<string> }>,
+      issuerAttrsExtra?: Array<{ [key: string]: Array<string> }>,
       fresh?: boolean;
     }
   ): Promise<CertManager> {
@@ -46,6 +46,8 @@ class CertManager {
       logger,
     });
     await certManager.start({
+      subjectAttrsExtra,
+      issuerAttrsExtra,
       fresh
     });
     logger.info(`Created ${this.name}`);
@@ -61,23 +63,12 @@ class CertManager {
   protected db: DB;
   protected keyRing: KeyRing;
   protected generateCertId: () => CertId;
-
-  // do we call this something else?
-  // usually it is given 1 domain to deal with it
-  // but this is currently in the keys domain
-  // so we are just using the current path
-  // certManager
-  // we could also just use `dbPath` to indicate whatever base path this is
-  // without bothering with a fancy name
-
   protected dbPath: LevelPath = [this.constructor.name];
-
   /**
    * Certificate colleciton
    * `CertManager/certs/{CertId} -> {raw(CertificateASN1)}`
    */
   protected dbCertsPath: LevelPath = [...this.dbPath, 'certs'];
-
   /**
    * Maintain last `CertID` to preserve monotonicity across process restarts
    * `CertManager/lastCertId -> {raw(CertId)}`
@@ -102,8 +93,12 @@ class CertManager {
   }
 
   public async start({
+    subjectAttrsExtra,
+    issuerAttrsExtra,
     fresh = false,
   }: {
+    subjectAttrsExtra?: Array<{ [key: string]: Array<string> }>,
+    issuerAttrsExtra?: Array<{ [key: string]: Array<string> }>,
     fresh?: boolean;
   } = {}): Promise<void> {
     this.logger.info(`Starting ${this.constructor.name}`);
@@ -112,11 +107,11 @@ class CertManager {
     }
     const lastCertId = await this.getLastCertId();
     this.generateCertId = keysUtils.createCertIdGenerator(lastCertId);
-    const cert = await this.setupCert(
-      this.keyRing.keyPair,
-      this.certDuration,
+    await this.setupCurrentCert(
+      subjectAttrsExtra,
+      issuerAttrsExtra,
     );
-
+    await this.gcCerts();
     this.logger.info(`Started ${this.constructor.name}`);
   }
 
@@ -144,7 +139,7 @@ class CertManager {
   }
 
   /**
-   * Get a certificate according to the certificate ID
+   * Get a certificate according to the `CertID`
    */
   @ready(new keysErrors.ErrorCertManagerNotRunning())
   public async getCert(certId: CertId, tran?: DBTransaction): Promise<Certificate | undefined> {
@@ -158,52 +153,89 @@ class CertManager {
     return keysUtils.certFromASN1(certData as CertificateASN1);
   }
 
-  @ready(new keysErrors.ErrorCertManagerNotRunning())
-  public async getRootCert() {
-
-  }
-
   /**
-   * The root certificate is the first certificate in the chain.
-   * There will always be at least 1 certificate.
+   * Get `Certificate` from leaf to root
    */
   @ready(new keysErrors.ErrorCertManagerNotRunning())
-  public async getCurrentCert(tran?: DBTransaction): Promise<Certificate> {
+  public async *getCerts(tran?: DBTransaction): AsyncGenerator<Certificate> {
     if (tran == null) {
-      return this.db.withTransactionF((tran) => this.getCurrentCert(tran));
+      return yield* this.db.withTransactionG((tran) => this.getCerts(tran));
     }
-    let cert: Certificate;
     for await (const [, certASN1] of tran.iterator(this.dbCertsPath, {
       keys: false,
       reverse: true,
       limit: 1,
     })) {
-      cert = keysUtils.certFromASN1(certASN1 as CertificateASN1)!;
+      yield keysUtils.certFromASN1(certASN1 as CertificateASN1)!;
+    }
+  }
+
+  /**
+   * Gets an array of `Certificate` in order of leaf to root
+   */
+  @ready(new keysErrors.ErrorCertManagerNotRunning())
+  public async getCertsChain(tran?: DBTransaction): Promise<Array<Certificate>> {
+    let certs: Array<Certificate> = [];
+    for await (const cert of this.getCerts(tran)) {
+      certs.push(cert);
+    }
+    return certs;
+  }
+
+  /**
+   * Get `CertificatePEM` from leaf to root
+   */
+  @ready(new keysErrors.ErrorCertManagerNotRunning())
+  public async *getCertPEMs(tran?: DBTransaction): AsyncGenerator<CertificatePEM> {
+    for await (const cert of this.getCerts(tran)) {
+      yield keysUtils.certToPEM(cert);
+    }
+  }
+
+  /**
+   * Gets an array of `CertificatePEM` in order of leaf to root
+   */
+  @ready(new keysErrors.ErrorCertManagerNotRunning())
+  public async getCertPEMsChain(tran?: DBTransaction): Promise<Array<CertificatePEM>> {
+    const pems: Array<CertificatePEM> = [];
+    for await (const certPem of this.getCertPEMs(tran)) {
+      pems.push(certPem);
+    }
+    return pems;
+  }
+
+  /**
+   * Gets a concatenated `CertificatePEM` ordered from leaf to root
+   */
+  @ready(new keysErrors.ErrorCertManagerNotRunning())
+  public async getCertPEMsChainPEM(tran?: DBTransaction): Promise<CertificatePEM> {
+    let pem = '';
+    for await (const certPem of this.getCertPEMs(tran)) {
+      pem += certPem;
+    }
+    return pem as CertificatePEM;
+  }
+
+  /**
+   * Get the current (leaf) certificate
+   */
+  @ready(new keysErrors.ErrorCertManagerNotRunning())
+  public async getCurrentCert(tran?: DBTransaction): Promise<Certificate> {
+    let cert: Certificate;
+    for await (const cert_ of this.getCerts(tran)) {
+      cert = cert_;
+      break;
     }
     return cert!;
   }
 
-  // Converstion to PEM should be done
-  // using the key utility
-  // you can convert however you want
-  // we don't need to provide so many fucntions
+  /**
+   * Get the current (leaf) certificate in PEM
+   */
   @ready(new keysErrors.ErrorCertManagerNotRunning())
-  public async getCertPem() {
-  }
-
-  @ready(new keysErrors.ErrorCertManagerNotRunning())
-  public async getCertChain(): Promise<Array<Certificate>> {
-    // this gest all of them in one go
-    // notice whether we need to do any garbage collection
-    // of expired identities
-  }
-
-  public async *getCertChains(): AsyncGenerator<Certificate> {
-
-  }
-
-  @ready(new keysErrors.ErrorCertManagerNotRunning())
-  public async getCertChainPem () {
+  public async getCurrentCertPEM(tran?: DBTransaction): Promise<CertificatePEM> {
+    const cert = await this.getCurrentCert(tran);
+    return keysUtils.certToPEM(cert);
   }
 
   /**
@@ -218,13 +250,26 @@ class CertManager {
   public async renewCertWithNewKeyPair(
     password: string,
     duration: number = 31536000,
+    subjectAttrsExtra?: Array<{ [key: string]: Array<string> }>,
+    issuerAttrsExtra?: Array<{ [key: string]: Array<string> }>,
   ) {
-
-    // Because we need a password to do this
-    // it actually means you must always pass a new password
-
-
-
+    this.logger.info('Renewing certificate chain with new key pair');
+    await this.keyRing.rotateKeyPair(
+      password,
+      async (keyPairNew: KeyPair, keyPairOld: KeyPair) => {
+        const certNew = await keysUtils.generateCertificate({
+          certId: this.generateCertId(),
+          subjectKeyPair: keyPairNew,
+          issuerPrivateKey: keyPairOld.privateKey,
+          duration,
+          subjectAttrsExtra,
+          issuerAttrsExtra,
+        });
+        await this.putCert(certNew);
+      }
+    );
+    await this.gcCerts();
+    this.logger.info('Renewed certificate chain with new key pair');
   }
 
   /**
@@ -236,8 +281,26 @@ class CertManager {
   public async resetCertWithNewKeyPair(
     password: string,
     duration: number = 31536000,
+    subjectAttrsExtra?: Array<{ [key: string]: Array<string> }>,
+    issuerAttrsExtra?: Array<{ [key: string]: Array<string> }>,
   ) {
-
+    this.logger.info('Resetting certificate chain with new key pair');
+    await this.keyRing.rotateKeyPair(
+      password,
+      async (keyPairNew: KeyPair) => {
+        const certNew = await keysUtils.generateCertificate({
+          certId: this.generateCertId(),
+          subjectKeyPair: keyPairNew,
+          issuerPrivateKey: keyPairNew.privateKey,
+          duration,
+          subjectAttrsExtra,
+          issuerAttrsExtra,
+        });
+        await this.putCert(certNew);
+      }
+    );
+    await this.gcCerts();
+    this.logger.info('Resetted certificate chain with new key pair');
   }
 
   /**
@@ -247,44 +310,81 @@ class CertManager {
    * It does result in a new certificate.
    */
   @ready(new keysErrors.ErrorCertManagerNotRunning())
-  public async resetCertWithExistingKeyPair(
+  public async resetCertWithCurrentKeyPair(
     duration: number = 31536000,
+    subjectAttrsExtra?: Array<{ [key: string]: Array<string> }>,
+    issuerAttrsExtra?: Array<{ [key: string]: Array<string> }>,
   ) {
-
+    this.logger.info('Resetting certificate chain with current key pair');
+    const certNew = await keysUtils.generateCertificate({
+      certId: this.generateCertId(),
+      subjectKeyPair: this.keyRing.keyPair,
+      issuerPrivateKey: this.keyRing.keyPair.privateKey,
+      duration,
+      subjectAttrsExtra,
+      issuerAttrsExtra,
+    });
+    await this.putCert(certNew);
+    await this.gcCerts();
+    this.logger.info('Resetted certificate chain with current key pair');
   }
 
-  protected async setupRootCert(
-    keyPair: KeyPair
-  ): Promise<Certificate> {
+  protected async putCert(cert: Certificate, tran?: DBTransaction): Promise<void> {
+    const certId = keysUtils.certCertId(cert)!;
+    const certASN1 = keysUtils.certToASN1(cert);
+    await (tran ?? this.db).put(
+      [...this.dbCertsPath, certId.toBuffer()],
+      certASN1,
+      true
+    );
+  }
 
-    // if this already exists
-    // we don't bother creating one
-    // we have to check first
+  protected async delCert(certId: CertId, tran?: DBTransaction) : Promise<void> {
+    await (tran ?? this.db).del([...this.dbCertsPath, certId.toBuffer()]);
+  }
 
-    if (!await this.existsRootCert()) {
-
+  protected async setupCurrentCert(
+    subjectAttrsExtra?: Array<{ [key: string]: Array<string> }>,
+    issuerAttrsExtra?: Array<{ [key: string]: Array<string> }>,
+  ): Promise<void> {
+    let cert: Certificate | undefined;
+    for await (const [, certASN1] of this.db.iterator(this.dbCertsPath, {
+      keys: false,
+      reverse: true,
+      limit: 1,
+    })) {
+      cert = keysUtils.certFromASN1(certASN1 as CertificateASN1);
     }
-
-    // let cert: Certificate;
-    // for await (const [, certASN1] of tran.iterator(this.dbCertsPath, {
-    //   keys: false,
-    //   reverse: true,
-    //   limit: 1,
-    // })) {
-    //   cert = keysUtils.certFromASN1(certASN1 as CertificateASN1)!;
-    // }
-
+    // If no certificate, we will create the first one
+    if (cert == null) {
+      cert = await keysUtils.generateCertificate({
+        certId: this.generateCertId(),
+        subjectKeyPair: this.keyRing.keyPair,
+        issuerPrivateKey: this.keyRing.keyPair.privateKey,
+        duration: this.certDuration,
+        subjectAttrsExtra,
+        issuerAttrsExtra,
+      });
+      await this.putCert(cert);
+    }
   }
 
-  // wait there may be multiple certs now
-  // but there's only 1 ROOT cert
-  // so you check
-  protected existsRootCert(): Promise<boolean> {
+  /**
+   * Garbage collect invalid or expired certificates.
+   * Expired certificates are no longer valid and should be deleted.
+   * Invalid certificates can happen if key rotation does not succeed.
+   * It could mean that the leaf certificate does not match the root key pair.
+   */
+  protected async gcCerts(tran?: DBTransaction): Promise<void> {
 
+    // Ok this is where it has to happen
+    // this is called every time we do a renew, reset and on start
+    // it has to iterate over all certs starting from the LEAF certificate
+    // identify if they are invalid (if it is valid, then this check is not done)
+    // or if the date is expired
+    // then remove them appropriately in one single transaction
 
   }
-
-
 }
 
 export default CertManager;
