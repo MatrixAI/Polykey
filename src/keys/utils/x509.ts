@@ -1,5 +1,5 @@
 import type { PublicKey, PrivateKey, Certificate } from '../types';
-import type { CertificateId, NodeId } from '../../ids/types';
+import type { CertId, NodeId } from '../../ids/types';
 import * as x509 from '@peculiar/x509';
 import * as asn1 from '@peculiar/asn1-schema';
 import * as asn1X509 from '@peculiar/asn1-x509';
@@ -124,7 +124,7 @@ async function generateCertificate({
   subjectAttrsExtra = [],
   issuerAttrsExtra = [],
 }: {
-  certId: CertificateId;
+  certId: CertId;
   subjectKeyPair: {
     publicKey: PublicKey;
     privateKey: PrivateKey;

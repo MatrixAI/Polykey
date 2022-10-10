@@ -268,7 +268,7 @@ export type {
 };
 
 export type {
-  CertificateId,
-  CertificateIdString,
-  CertificateIdEncoded,
+  CertId,
+  CertIdString,
+  CertIdEncoded,
 } from '../ids/types';

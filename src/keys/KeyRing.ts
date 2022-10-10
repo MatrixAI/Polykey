@@ -56,7 +56,7 @@ class KeyRing {
         privateKeyPath: string;
       }
     )
-  ) {
+  ): Promise<KeyRing> {
     logger.info(`Creating ${this.name}`);
     logger.info(`Setting keys path to ${keysPath}`);
     const keyRing = new this({

@@ -4,9 +4,9 @@ import type { Opaque } from '../types';
 type PermissionId = Opaque<'PermissionId', Id>;
 type PermissionIdString = Opaque<'PermissionIdString', string>;
 
-type CertificateId = Opaque<'CertificateId', Id>;
-type CertificateIdString = Opaque<'CertificateIdString', string>;
-type CertificateIdEncoded = Opaque<'CertificateIdEncoded', string>;
+type CertId = Opaque<'CertId', Id>;
+type CertIdString = Opaque<'CertIdString', string>;
+type CertIdEncoded = Opaque<'CertIdEncoded', string>;
 
 type NodeId = Opaque<'NodeId', Id>;
 type NodeIdString = Opaque<'NodeIdString', string>;
@@ -39,9 +39,9 @@ type NotificationIdEncoded = Opaque<'NotificationIdEncoded', string>;
 export type {
   PermissionId,
   PermissionIdString,
-  CertificateId,
-  CertificateIdString,
-  CertificateIdEncoded,
+  CertId,
+  CertIdString,
+  CertIdEncoded,
   NodeId,
   NodeIdString,
   NodeIdEncoded,

@@ -32,6 +32,21 @@ class ErrorKeyRingDestroyed<T> extends ErrorKeys<T> {
   exitCode = sysexits.USAGE;
 }
 
+class ErrorCertManagerRunning<T> extends ErrorKeys<T> {
+  static description = 'CertManager is running';
+  exitCode = sysexits.USAGE;
+}
+
+class ErrorCertManagerNotRunning<T> extends ErrorKeys<T> {
+  static description = 'CertManager is not running';
+  exitCode = sysexits.USAGE;
+}
+
+class ErrorCertManagerDestroyed<T> extends ErrorKeys<T> {
+  static description = 'CertManager is destroyed';
+  exitCode = sysexits.USAGE;
+}
+
 class ErrorKeysPasswordInvalid<T> extends ErrorKeys<T> {
   static description = 'Password has invalid format';
   exitCode = sysexits.USAGE;
@@ -121,6 +136,9 @@ export {
   ErrorKeyRingRunning,
   ErrorKeyRingNotRunning,
   ErrorKeyRingDestroyed,
+  ErrorCertManagerRunning,
+  ErrorCertManagerNotRunning,
+  ErrorCertManagerDestroyed,
   ErrorKeysPasswordInvalid,
   ErrorKeysRecoveryCodeInvalid,
   ErrorKeysRecoveryCodeIncorrect,
