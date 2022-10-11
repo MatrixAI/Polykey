@@ -14,7 +14,6 @@ import sodium from 'sodium-native';
 import { IdInternal } from '@matrixai/id';
 import { getRandomBytes } from './random';
 import * as utils from '../../utils';
-import fs from 'fs';
 
 /**
  * Use this to make a key pair if you only have public key and private key
@@ -23,7 +22,7 @@ function makeKeyPair(publicKey: PublicKey, privateKey: PrivateKey): KeyPair {
   return {
     publicKey,
     privateKey,
-    secretKey: Buffer.concat([publicKey, privateKey]),
+    secretKey: Buffer.concat([privateKey, publicKey]),
   } as KeyPair;
 }
 
