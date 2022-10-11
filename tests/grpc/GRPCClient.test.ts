@@ -3,7 +3,7 @@ import type { PromiseUnaryCall } from '@/grpc/types';
 import type { SessionToken } from '@/sessions/types';
 import type { NodeId } from '@/ids/types';
 import type { Host, Port } from '@/network/types';
-import type { KeyPair, Certificate } from '@/keys/types';
+import type { KeyPair, Certificate, CertificatePEMChain } from '@/keys/types';
 import type { KeyRing } from '@/keys';
 import type { Key } from '@/keys/types';
 import os from 'os';
@@ -40,17 +40,19 @@ describe('GRPCClient', () => {
   let db: DB;
   let sessionManager: SessionManager;
 
+  const generateCertId = keysUtils.createCertIdGenerator();
+
   beforeAll(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
     const serverKeyPair = await keysUtils.generateKeyPair();
-    const serverCert = keysUtils.generateCertificate(
-      serverKeyPair.publicKey,
-      serverKeyPair.privateKey,
-      serverKeyPair.privateKey,
-      31536000,
-    );
+    const serverCert = await keysUtils.generateCertificate({
+      certId: generateCertId(),
+      duration: 31536000,
+      issuerPrivateKey: serverKeyPair.privateKey,
+      subjectKeyPair: { privateKey: serverKeyPair.privateKey, publicKey: serverKeyPair.publicKey }
+    });
     nodeIdServer = keysUtils.certNodeId(serverCert)!;
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
@@ -86,18 +88,18 @@ describe('GRPCClient', () => {
     // This has to pass the session manager and the key manager
     const authenticate = clientUtils.authenticator(sessionManager, keyRing);
     [server, port] = await clientTestUtils.openTestServerSecure(
-      keysUtils.privateKeyToPem(serverKeyPair.privateKey),
-      keysUtils.certToPem(serverCert),
+      keysUtils.privateKeyToPEM(serverKeyPair.privateKey),
+      keysUtils.certToPEM(serverCert),
       authenticate,
       logger,
     );
-    clientKeyPair = await keysUtils.generateKeyPair(4096);
-    clientCert = keysUtils.generateCertificate(
-      clientKeyPair.publicKey,
-      clientKeyPair.privateKey,
-      clientKeyPair.privateKey,
-      31536000,
-    );
+    clientKeyPair = await keysUtils.generateKeyPair();
+    clientCert = await keysUtils.generateCertificate({
+      certId: generateCertId(),
+      duration: 31536000,
+      issuerPrivateKey: clientKeyPair.privateKey,
+      subjectKeyPair: { privateKey: clientKeyPair.privateKey, publicKey: clientKeyPair.publicKey }
+    });
   });
   afterAll(async () => {
     setTimeout(() => {
@@ -120,8 +122,8 @@ describe('GRPCClient', () => {
       host: '127.0.0.1' as Host,
       port: port as Port,
       tlsConfig: {
-        keyPrivatePem: keysUtils.privateKeyToPem(clientKeyPair.privateKey),
-        certChainPem: keysUtils.certToPem(clientCert),
+        keyPrivatePem: keysUtils.privateKeyToPEM(clientKeyPair.privateKey),
+        certChainPem: keysUtils.certToPEM(clientCert) as unknown as CertificatePEMChain,
       },
       timer: timerStart(1000),
       logger,
@@ -134,8 +136,8 @@ describe('GRPCClient', () => {
       host: '127.0.0.1' as Host,
       port: port as Port,
       tlsConfig: {
-        keyPrivatePem: keysUtils.privateKeyToPem(clientKeyPair.privateKey),
-        certChainPem: keysUtils.certToPem(clientCert),
+        keyPrivatePem: keysUtils.privateKeyToPEM(clientKeyPair.privateKey),
+        certChainPem: keysUtils.certToPEM(clientCert) as unknown as CertificatePEMChain,
       },
       timer: timerStart(1000),
       logger,
@@ -166,8 +168,8 @@ describe('GRPCClient', () => {
       host: '127.0.0.1' as Host,
       port: port as Port,
       tlsConfig: {
-        keyPrivatePem: keysUtils.privateKeyToPem(clientKeyPair.privateKey),
-        certChainPem: keysUtils.certToPem(clientCert),
+        keyPrivatePem: keysUtils.privateKeyToPEM(clientKeyPair.privateKey),
+        certChainPem: keysUtils.certToPEM(clientCert) as unknown as CertificatePEMChain,
       },
       session,
       timer: timerStart(1000),
@@ -203,8 +205,8 @@ describe('GRPCClient', () => {
       host: '127.0.0.1' as Host,
       port: port as Port,
       tlsConfig: {
-        keyPrivatePem: keysUtils.privateKeyToPem(clientKeyPair.privateKey),
-        certChainPem: keysUtils.certToPem(clientCert),
+        keyPrivatePem: keysUtils.privateKeyToPEM(clientKeyPair.privateKey),
+        certChainPem: keysUtils.certToPEM(clientCert) as unknown as CertificatePEMChain,
       },
       timer: timerStart(1000),
       logger,
@@ -245,8 +247,8 @@ describe('GRPCClient', () => {
       host: '127.0.0.1' as Host,
       port: port as Port,
       tlsConfig: {
-        keyPrivatePem: keysUtils.privateKeyToPem(clientKeyPair.privateKey),
-        certChainPem: keysUtils.certToPem(clientCert),
+        keyPrivatePem: keysUtils.privateKeyToPEM(clientKeyPair.privateKey),
+        certChainPem: keysUtils.certToPEM(clientCert) as unknown as CertificatePEMChain,
       },
       session,
       timer: timerStart(1000),
@@ -271,8 +273,8 @@ describe('GRPCClient', () => {
       host: '127.0.0.1' as Host,
       port: port as Port,
       tlsConfig: {
-        keyPrivatePem: keysUtils.privateKeyToPem(clientKeyPair.privateKey),
-        certChainPem: keysUtils.certToPem(clientCert),
+        keyPrivatePem: keysUtils.privateKeyToPEM(clientKeyPair.privateKey),
+        certChainPem: keysUtils.certToPEM(clientCert) as unknown as CertificatePEMChain,
       },
       timer: timerStart(1000),
       logger,
@@ -308,8 +310,8 @@ describe('GRPCClient', () => {
       host: '127.0.0.1' as Host,
       port: port as Port,
       tlsConfig: {
-        keyPrivatePem: keysUtils.privateKeyToPem(clientKeyPair.privateKey),
-        certChainPem: keysUtils.certToPem(clientCert),
+        keyPrivatePem: keysUtils.privateKeyToPEM(clientKeyPair.privateKey),
+        certChainPem: keysUtils.certToPEM(clientCert) as unknown as CertificatePEMChain,
       },
       session,
       timer: timerStart(1000),
@@ -332,8 +334,8 @@ describe('GRPCClient', () => {
       host: '127.0.0.1' as Host,
       port: port as Port,
       tlsConfig: {
-        keyPrivatePem: keysUtils.privateKeyToPem(clientKeyPair.privateKey),
-        certChainPem: keysUtils.certToPem(clientCert),
+        keyPrivatePem: keysUtils.privateKeyToPEM(clientKeyPair.privateKey),
+        certChainPem: keysUtils.certToPEM(clientCert) as unknown as CertificatePEMChain,
       },
       timer: timerStart(1000),
       logger,
@@ -366,8 +368,8 @@ describe('GRPCClient', () => {
       host: '127.0.0.1' as Host,
       port: port as Port,
       tlsConfig: {
-        keyPrivatePem: keysUtils.privateKeyToPem(clientKeyPair.privateKey),
-        certChainPem: keysUtils.certToPem(clientCert),
+        keyPrivatePem: keysUtils.privateKeyToPEM(clientKeyPair.privateKey),
+        certChainPem: keysUtils.certToPEM(clientCert) as unknown as CertificatePEMChain,
       },
       session,
       timer: timerStart(1000),
