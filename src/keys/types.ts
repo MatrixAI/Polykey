@@ -86,6 +86,47 @@ type KeyPairX = Readonly<{
 }>;
 
 /**
+ * Generic JWK
+ */
+type JWK = JsonWebKey;
+
+/**
+ * JWK that is encrypted as a JWE
+ * We only use these kinds of JWE for encryption
+ */
+type JWKEncrypted =
+  | {
+      ciphertext: string;
+      tag: string;
+      iv: string;
+      unprotected: {
+        alg: 'ECDH-SS-NaCl';
+        enc: 'XSalsa20-Poly1305';
+        cty: 'jwk+json';
+      };
+    }
+  | {
+      ciphertext: string;
+      tag: string;
+      unprotected: {
+        alg: 'ECDH-ES-NaCl';
+        enc: 'XSalsa20-Poly1305';
+        cty: 'jwk+json';
+        epk: {
+          kty: 'OKP';
+          crv: 'X25519';
+          x: string;
+        };
+      };
+    }
+  | {
+      ciphertext: string;
+      tag: string;
+      iv: string;
+      protected: string;
+    };
+
+/**
  * Public Key JWK
  */
 type PublicKeyJWK = {
@@ -144,6 +185,25 @@ type KeyPairPEM = {
  */
 type Signature = Opaque<'Signature', Buffer>;
 
+type PasswordHash = Opaque<'PasswordHash', Buffer>;
+
+type PasswordSalt = Opaque<'PasswordSalt', Buffer>;
+
+type PasswordOpsLimit = Opaque<'PasswordOpsLimit', number>;
+
+type PasswordMemLimit = Opaque<'PasswordMemLimit', number>;
+
+/**
+ * BIP39 Recovery Code
+ * Can be 12 or 24 words
+ */
+type RecoveryCode = Opaque<'RecoveryCode', string>;
+
+/**
+ * Recovery code in a locked buffer
+ */
+type RecoveryCodeLocked = Opaque<'RecoverCodeLocked', BufferLocked<Buffer>>;
+
 /**
  * Certificate is an X.509 certificate.
  * Upstream `X509Certificate` properties can be mutated,
@@ -169,66 +229,6 @@ type CertificatePEM = Opaque<'CertificatePEM', string>;
 type CertificatePEMChain = Opaque<'CertificatePEMChain', string>;
 
 /**
- * Generic JWK
- */
-type JWK = JsonWebKey;
-
-/**
- * JWK that is encrypted as a JWE
- * We only use these kinds of JWE for encryption
- */
-type JWKEncrypted =
-  | {
-      ciphertext: string;
-      tag: string;
-      iv: string;
-      unprotected: {
-        alg: 'ECDH-SS-NaCl';
-        enc: 'XSalsa20-Poly1305';
-        cty: 'jwk+json';
-      };
-    }
-  | {
-      ciphertext: string;
-      tag: string;
-      unprotected: {
-        alg: 'ECDH-ES-NaCl';
-        enc: 'XSalsa20-Poly1305';
-        cty: 'jwk+json';
-        epk: {
-          kty: 'OKP';
-          crv: 'X25519';
-          x: string;
-        };
-      };
-    }
-  | {
-      ciphertext: string;
-      tag: string;
-      iv: string;
-      protected: string;
-    };
-
-type PasswordHash = Opaque<'PasswordHash', Buffer>;
-
-type PasswordSalt = Opaque<'PasswordSalt', Buffer>;
-
-type PasswordOpsLimit = Opaque<'PasswordOpsLimit', number>;
-
-type PasswordMemLimit = Opaque<'PasswordMemLimit', number>;
-
-/**
- * BIP39 Recovery Code
- * Can be 12 or 24 words
- */
-type RecoveryCode = Opaque<'RecoveryCode', string>;
-
-/**
- * Recovery code in a locked buffer
- */
-type RecoveryCodeLocked = Opaque<'RecoverCodeLocked', BufferLocked<Buffer>>;
-
-/**
  * Change data for KeyRing
  */
 type CertManagerChangeData = {
@@ -251,6 +251,8 @@ export type {
   KeyPair,
   KeyPairLocked,
   KeyPairX,
+  JWK,
+  JWKEncrypted,
   PublicKeyJWK,
   PrivateKeyJWK,
   KeyPairJWK,
@@ -258,18 +260,16 @@ export type {
   PrivateKeyPEM,
   KeyPairPEM,
   Signature,
-  Certificate,
-  CertificateASN1,
-  CertificatePEM,
-  CertificatePEMChain,
-  JWK,
-  JWKEncrypted,
   PasswordHash,
   PasswordSalt,
   PasswordOpsLimit,
   PasswordMemLimit,
   RecoveryCode,
   RecoveryCodeLocked,
+  Certificate,
+  CertificateASN1,
+  CertificatePEM,
+  CertificatePEMChain,
   CertManagerChangeData,
 };
 
