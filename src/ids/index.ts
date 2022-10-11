@@ -59,7 +59,7 @@ function createCertIdGenerator(lastCertId?: CertId): () => CertId {
  * Encodes `CertId` to `CertIdEncoded`
  */
 function encodeCertId(certId: CertId): CertIdEncoded {
-  return certId.toMultibase('base32hex') as CertIdEncoded;
+  return certId.toBuffer().toString('hex') as CertIdEncoded;
 }
 
 /**
@@ -69,7 +69,8 @@ function decodeCertId(certIdEncoded: unknown): CertId | undefined {
   if (typeof certIdEncoded !== 'string') {
     return;
   }
-  const certId = IdInternal.fromMultibase<CertId>(certIdEncoded);
+  const certIdBuffer = Buffer.from(certIdEncoded, 'hex');
+  const certId = IdInternal.fromBuffer<CertId>(certIdBuffer);
   if (certId == null) {
     return;
   }
