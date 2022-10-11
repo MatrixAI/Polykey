@@ -54,11 +54,6 @@ type PrivateKeyX = Opaque<'PrivateKeyX', Readonly<Buffer>>;
 type SecretKey = Opaque<'SecretKey', Readonly<Buffer>>;
 
 /**
- * X25519 version of the secret key
- */
-type SecretKeyX = Opaque<'SecretKeyX', Readonly<Buffer>>;
-
-/**
  * KeyPair buffers
  */
 type KeyPair = Readonly<{
@@ -77,12 +72,12 @@ type KeyPairLocked = Readonly<{
 }>;
 
 /**
- * X25519 version of key pair
+ * X25519 version of key pair.
+ * The X25519 routines in libsodium does not have a separate secret key.
  */
 type KeyPairX = Readonly<{
   publicKey: PublicKeyX;
   privateKey: PrivateKeyX;
-  secretKey: SecretKeyX;
 }>;
 
 /**
@@ -247,7 +242,6 @@ export type {
   PrivateKey,
   PrivateKeyX,
   SecretKey,
-  SecretKeyX,
   KeyPair,
   KeyPairLocked,
   KeyPairX,
