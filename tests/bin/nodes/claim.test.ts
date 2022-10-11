@@ -6,7 +6,6 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
 import * as nodesUtils from '@/nodes/utils';
 import * as testNodesUtils from '../../nodes/utils';
-import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 import * as testUtils from '../../utils';
 
 describe('claim', () => {
@@ -33,13 +32,10 @@ describe('claim', () => {
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },
-      keysConfig: {
-        privateKeyPemOverride: globalRootKeyPems[0],
-      },
       seedNodes: {}, // Explicitly no seed nodes on startup
       logger,
     });
-    localId = pkAgent.keyManager.getNodeId();
+    localId = pkAgent.keyRing.getNodeId();
     // Setting up a remote keynode
     remoteNode = await PolykeyAgent.createPolykeyAgent({
       password,
@@ -50,13 +46,10 @@ describe('claim', () => {
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },
-      keysConfig: {
-        privateKeyPemOverride: globalRootKeyPems[1],
-      },
       seedNodes: {}, // Explicitly no seed nodes on startup
       logger,
     });
-    remoteId = remoteNode.keyManager.getNodeId();
+    remoteId = remoteNode.keyRing.getNodeId();
     remoteIdEncoded = nodesUtils.encodeNodeId(remoteId);
     await testNodesUtils.nodesConnect(pkAgent, remoteNode);
     await pkAgent.acl.setNodePerm(remoteId, {

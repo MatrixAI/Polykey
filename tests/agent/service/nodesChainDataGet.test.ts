@@ -12,7 +12,6 @@ import * as nodesPB from '@/proto/js/polykey/v1/nodes/nodes_pb';
 import * as nodesUtils from '@/nodes/utils';
 import nodesClosestLocalNodesGet from '@/agent/service/nodesClosestLocalNodesGet';
 import * as testNodesUtils from '../../nodes/utils';
-import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('nodesClosestLocalNode', () => {
   const logger = new Logger('nodesClosestLocalNode test', LogLevel.WARN, [
@@ -32,9 +31,6 @@ describe('nodesClosestLocalNode', () => {
     pkAgent = await PolykeyAgent.createPolykeyAgent({
       password,
       nodePath,
-      keysConfig: {
-        privateKeyPemOverride: globalRootKeyPems[0],
-      },
       seedNodes: {}, // Explicitly no seed nodes on startup
       networkConfig: {
         proxyHost: '127.0.0.1' as Host,
@@ -56,7 +52,7 @@ describe('nodesClosestLocalNode', () => {
       port: 0 as Port,
     });
     grpcClient = await GRPCClientAgent.createGRPCClientAgent({
-      nodeId: pkAgent.keyManager.getNodeId(),
+      nodeId: pkAgent.keyRing.getNodeId(),
       host: '127.0.0.1' as Host,
       port: grpcServer.getPort(),
       logger,

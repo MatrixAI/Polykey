@@ -1,5 +1,6 @@
 import type { NodeId, NodeIdString, SeedNodes } from '@/nodes/types';
 import type { Host, Port } from '@/network/types';
+import type { Key } from '@/keys/types';
 import type NodeManager from 'nodes/NodeManager';
 import fs from 'fs';
 import path from 'path';
@@ -11,7 +12,7 @@ import { IdInternal } from '@matrixai/id';
 import { Timer } from '@matrixai/timer';
 import TaskManager from '@/tasks/TaskManager';
 import PolykeyAgent from '@/PolykeyAgent';
-import KeyManager from '@/keys/KeyManager';
+import KeyRing from '@/keys/KeyRing';
 import NodeGraph from '@/nodes/NodeGraph';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import Proxy from '@/network/Proxy';
@@ -19,7 +20,7 @@ import * as nodesUtils from '@/nodes/utils';
 import * as nodesErrors from '@/nodes/errors';
 import * as keysUtils from '@/keys/utils';
 import * as grpcUtils from '@/grpc/utils';
-import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
+import * as utils from '@/utils/index';
 
 describe(`${NodeConnectionManager.name} lifecycle test`, () => {
   const logger = new Logger(
@@ -72,7 +73,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
 
   let dataDir: string;
   let dataDir2: string;
-  let keyManager: KeyManager;
+  let keyRing: KeyRing;
   let db: DB;
   let proxy: Proxy;
 
@@ -98,12 +99,9 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       networkConfig: {
         proxyHost: serverHost,
       },
-      keysConfig: {
-        privateKeyPemOverride: globalRootKeyPems[0],
-      },
       logger: logger.getChild('remoteNode1'),
     });
-    remoteNodeId1 = remoteNode1.keyManager.getNodeId();
+    remoteNodeId1 = remoteNode1.keyRing.getNodeId();
     remoteNodeIdString1 = remoteNodeId1.toString() as NodeIdString;
     remoteNode2 = await PolykeyAgent.createPolykeyAgent({
       password,
@@ -111,12 +109,9 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       networkConfig: {
         proxyHost: serverHost,
       },
-      keysConfig: {
-        privateKeyPemOverride: globalRootKeyPems[1],
-      },
       logger: logger.getChild('remoteNode2'),
     });
-    remoteNodeId2 = remoteNode2.keyManager.getNodeId();
+    remoteNodeId2 = remoteNode2.keyRing.getNodeId();
   });
 
   afterAll(async () => {
@@ -132,27 +127,36 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       path.join(os.tmpdir(), 'polykey-test-'),
     );
     const keysPath = path.join(dataDir, 'keys');
-    keyManager = await KeyManager.createKeyManager({
+    keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
-      logger: logger.getChild('keyManager'),
-      privateKeyPemOverride: globalRootKeyPems[2],
+      logger: logger.getChild('keyRing'),
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
       dbPath,
       logger: nodeConnectionManagerLogger,
       crypto: {
-        key: keyManager.dbKey,
+        key: keyRing.dbKey,
         ops: {
-          encrypt: keysUtils.encryptWithKey,
-          decrypt: keysUtils.decryptWithKey,
+          encrypt: async (key, plainText) => {
+            return keysUtils.encryptWithKey(
+              utils.bufferWrap(key) as Key,
+              utils.bufferWrap(plainText),
+            );
+          },
+          decrypt: async (key, cipherText) => {
+            return keysUtils.decryptWithKey(
+              utils.bufferWrap(key) as Key,
+              utils.bufferWrap(cipherText),
+            );
+          },
         },
       },
     });
     nodeGraph = await NodeGraph.createNodeGraph({
       db,
-      keyManager,
+      keyRing,
       logger: logger.getChild('NodeGraph'),
     });
     taskManager = await TaskManager.createTaskManager({
@@ -161,8 +165,8 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       logger,
     });
     const tlsConfig = {
-      keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
-      certChainPem: keysUtils.certToPem(keyManager.getRootCert()),
+      keyPrivatePem: keyRing.getRootKeyPairPem().privateKey,
+      certChainPem: keysUtils.certToPem(keyRing.getRootCert()),
     };
     proxy = new Proxy({
       authToken: 'auth',
@@ -190,8 +194,8 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     await nodeGraph.destroy();
     await db.stop();
     await db.destroy();
-    await keyManager.stop();
-    await keyManager.destroy();
+    await keyRing.stop();
+    await keyRing.destroy();
     await proxy.stop();
   });
 
@@ -201,7 +205,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     let nodeConnectionManager: NodeConnectionManager | undefined;
     try {
       nodeConnectionManager = new NodeConnectionManager({
-        keyManager,
+        keyRing,
         nodeGraph,
         proxy,
         taskManager,
@@ -228,7 +232,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     let nodeConnectionManager: NodeConnectionManager | undefined;
     try {
       nodeConnectionManager = new NodeConnectionManager({
-        keyManager,
+        keyRing,
         nodeGraph,
         proxy,
         taskManager,
@@ -264,7 +268,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     let nodeConnectionManager: NodeConnectionManager | undefined;
     try {
       nodeConnectionManager = new NodeConnectionManager({
-        keyManager,
+        keyRing,
         nodeGraph,
         proxy,
         taskManager,
@@ -294,7 +298,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     let nodeConnectionManager: NodeConnectionManager | undefined;
     try {
       nodeConnectionManager = new NodeConnectionManager({
-        keyManager,
+        keyRing,
         nodeGraph,
         proxy,
         taskManager,
@@ -347,7 +351,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     try {
       // NodeConnectionManager under test
       nodeConnectionManager = new NodeConnectionManager({
-        keyManager,
+        keyRing,
         nodeGraph,
         proxy,
         taskManager,
@@ -390,7 +394,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     try {
       // NodeConnectionManager under test
       nodeConnectionManager = new NodeConnectionManager({
-        keyManager,
+        keyRing,
         nodeGraph,
         proxy,
         taskManager,
@@ -418,7 +422,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     try {
       // NodeConnectionManager under test
       nodeConnectionManager = new NodeConnectionManager({
-        keyManager,
+        keyRing,
         nodeGraph,
         proxy,
         taskManager,
@@ -453,7 +457,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     let nodeConnectionManager: NodeConnectionManager | undefined;
     try {
       nodeConnectionManager = new NodeConnectionManager({
-        keyManager,
+        keyRing,
         nodeGraph,
         proxy,
         taskManager,
@@ -488,7 +492,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     let nodeConnectionManager: NodeConnectionManager | undefined;
     try {
       nodeConnectionManager = new NodeConnectionManager({
-        keyManager,
+        keyRing,
         nodeGraph,
         proxy,
         taskManager,
@@ -532,7 +536,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     let nodeConnectionManager: NodeConnectionManager | undefined;
     try {
       nodeConnectionManager = new NodeConnectionManager({
-        keyManager,
+        keyRing,
         nodeGraph,
         proxy,
         taskManager,
@@ -554,7 +558,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     let nodeConnectionManager: NodeConnectionManager | undefined;
     try {
       nodeConnectionManager = new NodeConnectionManager({
-        keyManager,
+        keyRing,
         nodeGraph,
         proxy,
         taskManager,
@@ -580,7 +584,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     let nodeConnectionManager: NodeConnectionManager | undefined;
     try {
       nodeConnectionManager = new NodeConnectionManager({
-        keyManager,
+        keyRing,
         nodeGraph,
         proxy,
         taskManager,

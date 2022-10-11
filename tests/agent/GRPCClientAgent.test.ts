@@ -1,6 +1,7 @@
 import type { Host, Port, TLSConfig } from '@/network/types';
 import type * as grpc from '@grpc/grpc-js';
 import type { NodeId } from '@/ids/types';
+import type { Key } from '@/keys/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -9,7 +10,7 @@ import { DB } from '@matrixai/db';
 import TaskManager from '@/tasks/TaskManager';
 import GestaltGraph from '@/gestalts/GestaltGraph';
 import ACL from '@/acl/ACL';
-import KeyManager from '@/keys/KeyManager';
+import KeyRing from '@/keys/KeyRing';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import NodeGraph from '@/nodes/NodeGraph';
 import NodeManager from '@/nodes/NodeManager';
@@ -22,8 +23,8 @@ import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as agentErrors from '@/agent/errors';
 import * as keysUtils from '@/keys/utils';
 import { timerStart } from '@/utils';
+import * as utils from '@/utils/index';
 import * as testAgentUtils from './utils';
-import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 
 describe(GRPCClientAgent.name, () => {
   const host = '127.0.0.1' as Host;
@@ -38,7 +39,7 @@ describe(GRPCClientAgent.name, () => {
   let keysPath: string;
   let vaultsPath: string;
   let dbPath: string;
-  let keyManager: KeyManager;
+  let keyRing: KeyRing;
   let vaultManager: VaultManager;
   let nodeGraph: NodeGraph;
   let taskManager: TaskManager;
@@ -58,16 +59,15 @@ describe(GRPCClientAgent.name, () => {
     keysPath = path.join(dataDir, 'keys');
     vaultsPath = path.join(dataDir, 'vaults');
     dbPath = path.join(dataDir, 'db');
-    keyManager = await KeyManager.createKeyManager({
+    keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
       fs: fs,
       logger: logger,
-      privateKeyPemOverride: globalRootKeyPems[0],
     });
     const tlsConfig: TLSConfig = {
-      keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
-      certChainPem: await keyManager.getRootCertChainPem(),
+      keyPrivatePem: keyRing.getRootKeyPairPem().privateKey,
+      certChainPem: await keyRing.getRootCertChainPem(),
     };
     proxy = new Proxy({
       authToken: 'abc',
@@ -78,10 +78,20 @@ describe(GRPCClientAgent.name, () => {
       fs: fs,
       logger: logger,
       crypto: {
-        key: keyManager.dbKey,
+        key: keyRing.dbKey,
         ops: {
-          encrypt: keysUtils.encryptWithKey,
-          decrypt: keysUtils.decryptWithKey,
+          encrypt: async (key, plainText) => {
+            return keysUtils.encryptWithKey(
+              utils.bufferWrap(key) as Key,
+              utils.bufferWrap(plainText),
+            );
+          },
+          decrypt: async (key, cipherText) => {
+            return keysUtils.decryptWithKey(
+              utils.bufferWrap(key) as Key,
+              utils.bufferWrap(cipherText),
+            );
+          },
         },
       },
     });
@@ -95,13 +105,13 @@ describe(GRPCClientAgent.name, () => {
       logger: logger,
     });
     sigchain = await Sigchain.createSigchain({
-      keyManager: keyManager,
+      keyRing: keyRing,
       db: db,
       logger: logger,
     });
     nodeGraph = await NodeGraph.createNodeGraph({
       db,
-      keyManager,
+      keyRing,
       logger,
     });
     taskManager = await TaskManager.createTaskManager({
@@ -110,7 +120,7 @@ describe(GRPCClientAgent.name, () => {
       lazy: true,
     });
     nodeConnectionManager = new NodeConnectionManager({
-      keyManager,
+      keyRing,
       nodeGraph,
       proxy,
       taskManager,
@@ -119,7 +129,7 @@ describe(GRPCClientAgent.name, () => {
     nodeManager = new NodeManager({
       db: db,
       sigchain: sigchain,
-      keyManager: keyManager,
+      keyRing: keyRing,
       nodeGraph: nodeGraph,
       nodeConnectionManager: nodeConnectionManager,
       taskManager,
@@ -134,12 +144,12 @@ describe(GRPCClientAgent.name, () => {
         db: db,
         nodeConnectionManager: nodeConnectionManager,
         nodeManager: nodeManager,
-        keyManager: keyManager,
+        keyRing: keyRing,
         messageCap: 5,
         logger: logger,
       });
     vaultManager = await VaultManager.createVaultManager({
-      keyManager: keyManager,
+      keyRing: keyRing,
       vaultsPath: vaultsPath,
       nodeConnectionManager: nodeConnectionManager,
       db: db,
@@ -150,7 +160,7 @@ describe(GRPCClientAgent.name, () => {
       logger: logger,
     });
     [server, port] = await testAgentUtils.openTestAgentServer({
-      keyManager,
+      keyRing,
       vaultManager,
       nodeManager,
       nodeConnectionManager,
@@ -187,7 +197,7 @@ describe(GRPCClientAgent.name, () => {
     await acl.stop();
     await proxy.stop();
     await db.stop();
-    await keyManager.stop();
+    await keyRing.stop();
     await taskManager.stop();
     await fs.promises.rm(dataDir, {
       force: true,
@@ -223,12 +233,12 @@ describe(GRPCClientAgent.name, () => {
 
     let clientWithProxies1: GRPCClientAgent;
     let clientProxy1: Proxy;
-    let clientKeyManager1: KeyManager;
+    let clientKeyRing1: KeyRing;
     let nodeId1: NodeId;
 
     let clientWithProxies2: GRPCClientAgent;
     let clientProxy2: Proxy;
-    let clientKeyManager2: KeyManager;
+    let clientKeyRing2: KeyRing;
     let nodeId2: NodeId;
 
     beforeEach(async () => {
@@ -240,17 +250,16 @@ describe(GRPCClientAgent.name, () => {
         authToken: 'auth',
         logger,
       });
-      clientKeyManager1 = await KeyManager.createKeyManager({
+      clientKeyRing1 = await KeyRing.createKeyRing({
         keysPath: path.join(dataDir, 'clientKeys1'),
         password: 'password',
         logger,
-        privateKeyPemOverride: globalRootKeyPems[1],
       });
-      nodeId1 = clientKeyManager1.getNodeId();
+      nodeId1 = clientKeyRing1.getNodeId();
       await clientProxy1.start({
         tlsConfig: {
-          keyPrivatePem: clientKeyManager1.getRootKeyPairPem().privateKey,
-          certChainPem: await clientKeyManager1.getRootCertChainPem(),
+          keyPrivatePem: clientKeyRing1.getRootKeyPairPem().privateKey,
+          certChainPem: await clientKeyRing1.getRootCertChainPem(),
         },
         proxyHost: localHost,
         forwardHost: localHost,
@@ -259,7 +268,7 @@ describe(GRPCClientAgent.name, () => {
       });
       clientWithProxies1 = await GRPCClientAgent.createGRPCClientAgent({
         host: localHost,
-        nodeId: keyManager.getNodeId(),
+        nodeId: keyRing.getNodeId(),
         port: proxy.getProxyPort(),
         proxyConfig: {
           host: clientProxy1.getForwardHost(),
@@ -274,17 +283,16 @@ describe(GRPCClientAgent.name, () => {
         authToken: 'auth',
         logger,
       });
-      clientKeyManager2 = await KeyManager.createKeyManager({
+      clientKeyRing2 = await KeyRing.createKeyRing({
         keysPath: path.join(dataDir, 'clientKeys2'),
         password: 'password',
         logger,
-        privateKeyPemOverride: globalRootKeyPems[2],
       });
-      nodeId2 = clientKeyManager2.getNodeId();
+      nodeId2 = clientKeyRing2.getNodeId();
       await clientProxy2.start({
         tlsConfig: {
-          keyPrivatePem: clientKeyManager2.getRootKeyPairPem().privateKey,
-          certChainPem: await clientKeyManager2.getRootCertChainPem(),
+          keyPrivatePem: clientKeyRing2.getRootKeyPairPem().privateKey,
+          certChainPem: await clientKeyRing2.getRootCertChainPem(),
         },
         proxyHost: localHost,
         forwardHost: localHost,
@@ -294,7 +302,7 @@ describe(GRPCClientAgent.name, () => {
       clientWithProxies2 = await GRPCClientAgent.createGRPCClientAgent({
         host: localHost,
         logger,
-        nodeId: keyManager.getNodeId(),
+        nodeId: keyRing.getNodeId(),
         port: proxy.getProxyPort(),
         proxyConfig: {
           host: clientProxy2.getForwardHost(),
@@ -307,10 +315,10 @@ describe(GRPCClientAgent.name, () => {
     afterEach(async () => {
       await testAgentUtils.closeTestAgentClient(clientWithProxies1);
       await clientProxy1.stop();
-      await clientKeyManager1.stop();
+      await clientKeyRing1.stop();
       await testAgentUtils.closeTestAgentClient(clientWithProxies2);
       await clientProxy2.stop();
-      await clientKeyManager2.stop();
+      await clientKeyRing2.stop();
     });
     test('connectionInfoGetter returns correct information for each connection', async () => {
       // We can't directly spy on the connectionInfoGetter result

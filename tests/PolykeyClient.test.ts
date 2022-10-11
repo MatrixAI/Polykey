@@ -6,7 +6,6 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { PolykeyClient, PolykeyAgent } from '@';
 import { Session } from '@/sessions';
 import config from '@/config';
-import { globalRootKeyPems } from './fixtures/globalRootKeyPems';
 
 describe('PolykeyClient', () => {
   const password = 'password';
@@ -25,9 +24,6 @@ describe('PolykeyClient', () => {
       password,
       nodePath,
       logger,
-      keysConfig: {
-        privateKeyPemOverride: globalRootKeyPems[0],
-      },
     });
   });
   afterEach(async () => {
@@ -39,7 +35,7 @@ describe('PolykeyClient', () => {
   });
   test('create PolykeyClient and connect to PolykeyAgent', async () => {
     const pkClient = await PolykeyClient.createPolykeyClient({
-      nodeId: pkAgent.keyManager.getNodeId(),
+      nodeId: pkAgent.keyRing.getNodeId(),
       host: pkAgent.grpcServerClient.getHost(),
       port: pkAgent.grpcServerClient.getPort(),
       nodePath,
@@ -47,7 +43,7 @@ describe('PolykeyClient', () => {
       logger,
     });
     expect(pkClient.grpcClient.nodeId).toStrictEqual(
-      pkAgent.keyManager.getNodeId(),
+      pkAgent.keyRing.getNodeId(),
     );
     expect(pkClient.grpcClient.host).toBe(pkAgent.grpcServerClient.getHost());
     expect(pkClient.grpcClient.port).toBe(pkAgent.grpcServerClient.getPort());
@@ -63,7 +59,7 @@ describe('PolykeyClient', () => {
     await session.writeToken('dummy' as SessionToken);
     // Using fresh: true means that any token would be destroyed
     const pkClient = await PolykeyClient.createPolykeyClient({
-      nodeId: pkAgent.keyManager.getNodeId(),
+      nodeId: pkAgent.keyRing.getNodeId(),
       host: pkAgent.grpcServerClient.getHost(),
       port: pkAgent.grpcServerClient.getPort(),
       nodePath,

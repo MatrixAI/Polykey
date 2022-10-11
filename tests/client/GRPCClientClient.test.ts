@@ -12,7 +12,6 @@ import * as clientErrors from '@/client/errors';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import { timerStart } from '@/utils';
 import * as testClientUtils from './utils';
-import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 
 describe(GRPCClientClient.name, () => {
   const password = 'password';
@@ -36,11 +35,8 @@ describe(GRPCClientClient.name, () => {
       password,
       nodePath,
       logger: logger,
-      keysConfig: {
-        privateKeyPemOverride: globalRootKeyPems[0],
-      },
     });
-    nodeId = pkAgent.keyManager.getNodeId();
+    nodeId = pkAgent.keyRing.getNodeId();
     [server, port] = await testClientUtils.openTestClientServer({
       pkAgent,
     });

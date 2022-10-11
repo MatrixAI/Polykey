@@ -1,7 +1,7 @@
 import type { Host, Port, TLSConfig } from '@/network/types';
 import type Proxy from '@/network/Proxy';
 import type Status from '@/status/Status';
-import type KeyManager from '@/keys/KeyManager';
+import type KeyRing from '@/keys/KeyRing';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -31,7 +31,7 @@ describe('keysKeyPairReset', () => {
   let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
   beforeAll(async () => {
     const globalKeyPair = await testUtils.setupGlobalKeypair();
-    const newKeyPair = await keysUtils.generateKeyPair(1024);
+    const newKeyPair = await keysUtils.generateKeyPair();
     mockedRefreshBuckets = jest.spyOn(NodeManager.prototype, 'resetBuckets');
     mockedGenerateKeyPair = jest
       .spyOn(keysUtils, 'generateKeyPair')
@@ -48,7 +48,7 @@ describe('keysKeyPairReset', () => {
     mockedGenerateDeterministicKeyPair.mockRestore();
   });
   let dataDir: string;
-  let keyManager: KeyManager;
+  let keyRing: KeyRing;
   let grpcServerClient: GRPCServer;
   let proxy: Proxy;
 
@@ -66,14 +66,14 @@ describe('keysKeyPairReset', () => {
       nodePath,
       logger,
     });
-    keyManager = pkAgent.keyManager;
+    keyRing = pkAgent.keyRing;
     grpcServerClient = pkAgent.grpcServerClient;
     proxy = pkAgent.proxy;
     status = pkAgent.status;
     const clientService = {
       keysKeyPairReset: keysKeyPairReset({
         authenticate,
-        keyManager,
+        keyRing,
         logger,
       }),
     };
@@ -84,7 +84,7 @@ describe('keysKeyPairReset', () => {
       port: 0 as Port,
     });
     grpcClient = await GRPCClientClient.createGRPCClientClient({
-      nodeId: keyManager.getNodeId(),
+      nodeId: keyRing.getNodeId(),
       host: '127.0.0.1' as Host,
       port: grpcServer.getPort(),
       logger,
@@ -100,15 +100,15 @@ describe('keysKeyPairReset', () => {
     });
   });
   test('resets the root key pair', async () => {
-    const rootKeyPair1 = keyManager.getRootKeyPairPem();
-    const nodeId1 = keyManager.getNodeId();
+    const rootKeyPair1 = keyRing.getRootKeyPairPem();
+    const nodeId1 = keyRing.getNodeId();
     // @ts-ignore - get protected property
     const fwdTLSConfig1 = proxy.tlsConfig;
     // @ts-ignore - get protected property
     const serverTLSConfig1 = grpcServerClient.tlsConfig;
     const expectedTLSConfig1: TLSConfig = {
       keyPrivatePem: rootKeyPair1.privateKey,
-      certChainPem: await keyManager.getRootCertChainPem(),
+      certChainPem: await keyRing.getRootCertChainPem(),
     };
     const nodeIdStatus1 = (await status.readStatus())!.data.nodeId;
     expect(mockedRefreshBuckets).not.toHaveBeenCalled();
@@ -123,15 +123,15 @@ describe('keysKeyPairReset', () => {
       clientUtils.encodeAuthFromPassword(password),
     );
     expect(response).toBeInstanceOf(utilsPB.EmptyMessage);
-    const rootKeyPair2 = keyManager.getRootKeyPairPem();
-    const nodeId2 = keyManager.getNodeId();
+    const rootKeyPair2 = keyRing.getRootKeyPairPem();
+    const nodeId2 = keyRing.getNodeId();
     // @ts-ignore - get protected property
     const fwdTLSConfig2 = proxy.tlsConfig;
     // @ts-ignore - get protected property
     const serverTLSConfig2 = grpcServerClient.tlsConfig;
     const expectedTLSConfig2: TLSConfig = {
       keyPrivatePem: rootKeyPair2.privateKey,
-      certChainPem: await keyManager.getRootCertChainPem(),
+      certChainPem: await keyRing.getRootCertChainPem(),
     };
     const nodeIdStatus2 = (await status.readStatus())!.data.nodeId;
     expect(mockedRefreshBuckets).toHaveBeenCalled();

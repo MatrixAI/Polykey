@@ -1,15 +1,16 @@
 import type { FileSystem } from './types';
 import type { PolykeyWorkerManagerInterface } from './workers/types';
-import type { ConnectionData, Host, Port } from './network/types';
+import type { ConnectionData, Host, Port, TLSConfig } from './network/types';
 import type { SeedNodes } from './nodes/types';
-import type { KeyManagerChangeData, PrivateKeyPem } from './keys/types';
+import type { Key } from './keys/types';
+import type { RecoveryCode, PrivateKey } from './keys/types';
 import path from 'path';
 import process from 'process';
 import Logger from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { CreateDestroyStartStop } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import * as networkUtils from './network/utils';
-import KeyManager from './keys/KeyManager';
+import KeyRing from './keys/KeyRing';
 import Status from './status/Status';
 import Schema from './schema/Schema';
 import VaultManager from './vaults/VaultManager';
@@ -72,7 +73,7 @@ class PolykeyAgent {
     password,
     // Optional configuration
     nodePath = config.defaults.nodePath,
-    keysConfig = {},
+    keyRingConfig = {},
     networkConfig = {},
     proxyConfig = {},
     nodeConnectionManagerConfig = {},
@@ -80,7 +81,7 @@ class PolykeyAgent {
     // Optional dependencies
     status,
     schema,
-    keyManager,
+    keyRing,
     db,
     identitiesManager,
     sigchain,
@@ -103,12 +104,10 @@ class PolykeyAgent {
   }: {
     password: string;
     nodePath?: string;
-    keysConfig?: {
-      rootKeyPairBits?: number;
-      rootCertDuration?: number;
-      dbKeyBits?: number;
-      recoveryCode?: string;
-      privateKeyPemOverride?: PrivateKeyPem;
+    keyRingConfig?: {
+      recoveryCode?: RecoveryCode;
+      privateKey?: PrivateKey;
+      privateKeyPath?: string;
     };
     proxyConfig?: {
       authToken?: string;
@@ -127,7 +126,7 @@ class PolykeyAgent {
     seedNodes?: SeedNodes;
     status?: Status;
     schema?: Schema;
-    keyManager?: KeyManager;
+    keyRing?: KeyRing;
     db?: DB;
     identitiesManager?: IdentitiesManager;
     sigchain?: Sigchain;
@@ -156,12 +155,8 @@ class PolykeyAgent {
       throw new errors.ErrorUtilsNodePath();
     }
     logger.info(`Setting node path to ${nodePath}`);
-    const keysConfig_ = {
-      ...config.defaults.keysConfig,
-      ...utils.filterEmptyObject(keysConfig),
-    };
     const proxyConfig_ = {
-      authToken: (await keysUtils.getRandomBytes(10)).toString(),
+      authToken: keysUtils.getRandomBytes(10).toString(),
       ...config.defaults.proxyConfig,
       ...utils.filterEmptyObject(proxyConfig),
     };
@@ -198,20 +193,18 @@ class PolykeyAgent {
           logger: logger.getChild(Schema.name),
           fresh,
         }));
-      keyManager =
-        keyManager ??
-        (await KeyManager.createKeyManager({
-          ...keysConfig_,
+      keyRing =
+        keyRing ??
+        (await KeyRing.createKeyRing({
+          fresh,
+          fs,
           keysPath,
           password,
-          fs,
-          changeCallback: (data) =>
-            events.emitAsync(PolykeyAgent.eventSymbols.KeyManager, data),
-          logger: logger.getChild(KeyManager.name),
-          fresh,
+          ...keyRingConfig,
+          logger: logger.getChild(KeyRing.name),
         }));
       // Remove your own node ID if provided as a seed node
-      const nodeIdOwn = keyManager.getNodeId();
+      const nodeIdOwn = keyRing.getNodeId();
       const nodeIdEncodedOwn = Object.keys(seedNodes).find((nodeIdEncoded) => {
         return nodeIdOwn.equals(nodesUtils.decodeNodeId(nodeIdEncoded)!);
       });
@@ -223,10 +216,20 @@ class PolykeyAgent {
         (await DB.createDB({
           dbPath,
           crypto: {
-            key: keyManager.dbKey,
+            key: keyRing.dbKey,
             ops: {
-              encrypt: keysUtils.encryptWithKey,
-              decrypt: keysUtils.decryptWithKey,
+              encrypt: async (key, plainText) => {
+                return keysUtils.encryptWithKey(
+                  utils.bufferWrap(key) as Key,
+                  utils.bufferWrap(plainText),
+                );
+              },
+              decrypt: async (key, cipherText) => {
+                return keysUtils.decryptWithKey(
+                  utils.bufferWrap(key) as Key,
+                  utils.bufferWrap(cipherText),
+                );
+              },
             },
           },
           fs,
@@ -249,7 +252,7 @@ class PolykeyAgent {
       sigchain =
         sigchain ??
         (await Sigchain.createSigchain({
-          keyManager,
+          keyRing,
           db,
           logger: logger.getChild(Sigchain.name),
           fresh,
@@ -282,7 +285,7 @@ class PolykeyAgent {
         (await NodeGraph.createNodeGraph({
           db,
           fresh,
-          keyManager,
+          keyRing,
           logger: logger.getChild(NodeGraph.name),
         }));
       taskManager =
@@ -296,7 +299,7 @@ class PolykeyAgent {
       nodeConnectionManager =
         nodeConnectionManager ??
         new NodeConnectionManager({
-          keyManager,
+          keyRing,
           nodeGraph,
           proxy,
           taskManager,
@@ -309,7 +312,7 @@ class PolykeyAgent {
         new NodeManager({
           db,
           sigchain,
-          keyManager,
+          keyRing,
           nodeGraph,
           nodeConnectionManager,
           taskManager,
@@ -320,7 +323,7 @@ class PolykeyAgent {
         discovery ??
         (await Discovery.createDiscovery({
           db,
-          keyManager,
+          keyRing,
           gestaltGraph,
           identitiesManager,
           nodeManager,
@@ -335,7 +338,7 @@ class PolykeyAgent {
           db,
           nodeConnectionManager,
           nodeManager,
-          keyManager,
+          keyRing,
           logger: logger.getChild(NotificationsManager.name),
           fresh,
         }));
@@ -343,7 +346,7 @@ class PolykeyAgent {
         vaultManager ??
         (await VaultManager.createVaultManager({
           vaultsPath,
-          keyManager,
+          keyRing,
           nodeConnectionManager,
           notificationsManager,
           gestaltGraph,
@@ -357,7 +360,7 @@ class PolykeyAgent {
         sessionManager ??
         (await SessionManager.createSessionManager({
           db,
-          keyManager,
+          keyRing,
           logger: logger.getChild(SessionManager.name),
           fresh,
         }));
@@ -384,7 +387,7 @@ class PolykeyAgent {
       await sigchain?.stop();
       await identitiesManager?.stop();
       await db?.stop();
-      await keyManager?.stop();
+      await keyRing?.stop();
       await schema?.stop();
       await status?.stop({});
       throw e;
@@ -393,7 +396,7 @@ class PolykeyAgent {
       nodePath,
       status,
       schema,
-      keyManager,
+      keyRing,
       db,
       identitiesManager,
       sigchain,
@@ -426,7 +429,7 @@ class PolykeyAgent {
   public readonly nodePath: string;
   public readonly status: Status;
   public readonly schema: Schema;
-  public readonly keyManager: KeyManager;
+  public readonly keyRing: KeyRing;
   public readonly db: DB;
   public readonly identitiesManager: IdentitiesManager;
   public readonly sigchain: Sigchain;
@@ -451,7 +454,7 @@ class PolykeyAgent {
     nodePath,
     status,
     schema,
-    keyManager,
+    keyRing,
     db,
     identitiesManager,
     sigchain,
@@ -475,7 +478,7 @@ class PolykeyAgent {
     nodePath: string;
     status: Status;
     schema: Schema;
-    keyManager: KeyManager;
+    keyRing: KeyRing;
     db: DB;
     identitiesManager: IdentitiesManager;
     sigchain: Sigchain;
@@ -500,7 +503,7 @@ class PolykeyAgent {
     this.nodePath = nodePath;
     this.status = status;
     this.schema = schema;
-    this.keyManager = keyManager;
+    this.keyRing = keyRing;
     this.db = db;
     this.identitiesManager = identitiesManager;
     this.sigchain = sigchain;
@@ -553,7 +556,7 @@ class PolykeyAgent {
       this.events.on(
         PolykeyAgent.eventSymbols.KeyManager,
         async (data: KeyManagerChangeData) => {
-          this.logger.info(`${KeyManager.name} change propagating`);
+          this.logger.info(`${KeyRing.name} change propagating`);
           await this.status.updateStatusLive({
             nodeId: data.nodeId,
           });
@@ -562,11 +565,11 @@ class PolykeyAgent {
             keyPrivatePem: keysUtils.privateKeyToPem(
               data.rootKeyPair.privateKey,
             ),
-            certChainPem: await this.keyManager.getRootCertChainPem(),
+            certChainPem: await this.keyRing.getRootCertChainPem(),
           };
           this.grpcServerClient.setTLSConfig(tlsConfig);
           this.proxy.setTLSConfig(tlsConfig);
-          this.logger.info(`${KeyManager.name} change propagated`);
+          this.logger.info(`${KeyRing.name} change propagated`);
         },
       );
       this.events.on(
@@ -598,7 +601,7 @@ class PolykeyAgent {
       await this.schema.start({ fresh });
       const agentService = createAgentService({
         db: this.db,
-        keyManager: this.keyManager,
+        keyRing: this.keyRing,
         vaultManager: this.vaultManager,
         nodeManager: this.nodeManager,
         nodeGraph: this.nodeGraph,
@@ -616,7 +619,7 @@ class PolykeyAgent {
         discovery: this.discovery,
         gestaltGraph: this.gestaltGraph,
         identitiesManager: this.identitiesManager,
-        keyManager: this.keyManager,
+        keyRing: this.keyRing,
         nodeGraph: this.nodeGraph,
         nodeConnectionManager: this.nodeConnectionManager,
         nodeManager: this.nodeManager,
@@ -632,7 +635,7 @@ class PolykeyAgent {
         logger: this.logger.getChild('GRPCClientClientService'),
       });
       // Starting modules
-      await this.keyManager.start({
+      await this.keyRing.start({
         password,
         fresh,
       });
@@ -642,9 +645,9 @@ class PolykeyAgent {
       await this.acl.start({ fresh });
       await this.gestaltGraph.start({ fresh });
       // GRPC Server
-      const tlsConfig = {
-        keyPrivatePem: this.keyManager.getRootKeyPairPem().privateKey,
-        certChainPem: await this.keyManager.getRootCertChainPem(),
+      const tlsConfig: TLSConfig = {
+        keyPrivatePem: this.keyRing.getRootKeyPairPem().privateKey,
+        certChainPem: await this.keyRing.getRootCertChainPem(),
       };
       // Client server
       await this.grpcServerClient.start({
@@ -672,7 +675,7 @@ class PolykeyAgent {
       await this.nodeManager.start();
       await this.nodeConnectionManager.start({ nodeManager: this.nodeManager });
       await this.nodeGraph.start({ fresh });
-      await this.nodeManager.syncNodeGraph(false);
+      await this.nodeManager.syncNodeGraph(false, 2000);
       await this.discovery.start({ fresh });
       await this.vaultManager.start({ fresh });
       await this.notificationsManager.start({ fresh });
@@ -680,7 +683,7 @@ class PolykeyAgent {
       await this.taskManager.startProcessing();
       await this.status.finishStart({
         pid: process.pid,
-        nodeId: this.keyManager.getNodeId(),
+        nodeId: this.keyRing.getNodeId(),
         clientHost: this.grpcServerClient.getHost(),
         clientPort: this.grpcServerClient.getPort(),
         agentHost: this.grpcServerAgent.getHost(),
@@ -713,7 +716,7 @@ class PolykeyAgent {
       await this.sigchain?.stop();
       await this.identitiesManager?.stop();
       await this.db?.stop();
-      await this.keyManager?.stop();
+      await this.keyRing?.stop();
       await this.schema?.stop();
       await this.status?.stop({});
       throw e;
@@ -745,7 +748,7 @@ class PolykeyAgent {
     await this.sigchain.stop();
     await this.identitiesManager.stop();
     await this.db.stop();
-    await this.keyManager.stop();
+    await this.keyRing.stop();
     await this.schema.stop();
     await this.status.stop({});
     this.logger.info(`Stopped ${this.constructor.name}`);
@@ -772,20 +775,18 @@ class PolykeyAgent {
     await this.db.stop();
     // Non-DB dependencies
     await this.db.destroy();
-    await this.keyManager.destroy();
+    await this.keyRing.destroy();
     await this.schema.destroy();
     this.logger.info(`Destroyed ${this.constructor.name}`);
   }
 
   public setWorkerManager(workerManager: PolykeyWorkerManagerInterface) {
     this.db.setWorkerManager(workerManager);
-    this.keyManager.setWorkerManager(workerManager);
     this.vaultManager.setWorkerManager(workerManager);
   }
 
   public unsetWorkerManager() {
     this.db.unsetWorkerManager();
-    this.keyManager.unsetWorkerManager();
     this.vaultManager.unsetWorkerManager();
   }
 }

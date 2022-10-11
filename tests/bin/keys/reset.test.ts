@@ -16,7 +16,7 @@ describe('reset', () => {
   let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
   beforeAll(async () => {
     const globalKeyPair = await testUtils.setupGlobalKeypair();
-    const newKeyPair = await keysUtils.generateKeyPair(1024);
+    const newKeyPair = await keysUtils.generateKeyPair();
     mockedGenerateKeyPair = jest
       .spyOn(keysUtils, 'generateKeyPair')
       .mockResolvedValueOnce(globalKeyPair)

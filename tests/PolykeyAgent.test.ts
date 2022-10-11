@@ -1,5 +1,5 @@
 import type { StateVersion } from '@/schema/types';
-import type { KeyManagerChangeData } from '@/keys/types';
+import type { KeyRingChangeData } from '@/keys/types';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
@@ -11,7 +11,6 @@ import * as errors from '@/errors';
 import * as keysUtils from '@/keys/utils';
 import config from '@/config';
 import { promise } from '@/utils/index';
-import { globalRootKeyPems } from './fixtures/globalRootKeyPems';
 
 describe('PolykeyAgent', () => {
   const password = 'password';
@@ -53,9 +52,6 @@ describe('PolykeyAgent', () => {
       password,
       nodePath,
       logger,
-      keysConfig: {
-        privateKeyPemOverride: globalRootKeyPems[0],
-      },
     });
     await expect(pkAgent.destroy()).rejects.toThrow(
       errors.ErrorPolykeyAgentRunning,
@@ -74,9 +70,6 @@ describe('PolykeyAgent', () => {
       password,
       nodePath,
       logger,
-      keysConfig: {
-        privateKeyPemOverride: globalRootKeyPems[0],
-      },
     });
     let nodePathContents = await fs.promises.readdir(nodePath);
     expect(nodePathContents).toContain(config.defaults.statusBase);
@@ -111,9 +104,6 @@ describe('PolykeyAgent', () => {
       password,
       nodePath,
       logger,
-      keysConfig: {
-        privateKeyPemOverride: globalRootKeyPems[0],
-      },
     });
     const status = new Status({
       statusPath,
@@ -144,9 +134,6 @@ describe('PolykeyAgent', () => {
       password,
       nodePath,
       logger,
-      keysConfig: {
-        privateKeyPemOverride: globalRootKeyPems[0],
-      },
     });
     expect(await schema.readVersion()).toBe(config.stateVersion);
     await pkAgent.stop();
@@ -169,9 +156,6 @@ describe('PolykeyAgent', () => {
         password,
         nodePath,
         logger,
-        keysConfig: {
-          privateKeyPemOverride: globalRootKeyPems[0],
-        },
       }),
     ).rejects.toThrow(errors.ErrorSchemaVersionTooNew);
     // The 0 version will always be too old
@@ -188,9 +172,6 @@ describe('PolykeyAgent', () => {
         password,
         nodePath,
         logger,
-        keysConfig: {
-          privateKeyPemOverride: globalRootKeyPems[0],
-        },
       }),
     ).rejects.toThrow(errors.ErrorSchemaVersionTooOld);
   });
@@ -202,18 +183,15 @@ describe('PolykeyAgent', () => {
         password,
         nodePath,
         logger,
-        keysConfig: {
-          privateKeyPemOverride: globalRootKeyPems[0],
-        },
       });
-      const prom = promise<KeyManagerChangeData>();
+      const prom = promise<KeyRingChangeData>();
       pkAgent.events.on(
-        PolykeyAgent.eventSymbols.KeyManager,
-        async (data: KeyManagerChangeData) => {
+        PolykeyAgent.eventSymbols.KeyRing,
+        async (data: KeyRingChangeData) => {
           prom.resolveP(data);
         },
       );
-      await pkAgent.keyManager.renewRootKeyPair(password);
+      await pkAgent.keyRing.renewRootKeyPair(password);
 
       await expect(prom.p).resolves.toBeDefined();
     } finally {
@@ -229,18 +207,15 @@ describe('PolykeyAgent', () => {
         password,
         nodePath,
         logger,
-        keysConfig: {
-          privateKeyPemOverride: globalRootKeyPems[0],
-        },
       });
-      const prom = promise<KeyManagerChangeData>();
+      const prom = promise<KeyRingChangeData>();
       pkAgent.events.on(
-        PolykeyAgent.eventSymbols.KeyManager,
-        async (data: KeyManagerChangeData) => {
+        PolykeyAgent.eventSymbols.KeyRing,
+        async (data: KeyRingChangeData) => {
           prom.resolveP(data);
         },
       );
-      await pkAgent.keyManager.resetRootKeyPair(password);
+      await pkAgent.keyRing.resetRootKeyPair(password);
 
       await expect(prom.p).resolves.toBeDefined();
     } finally {
@@ -256,18 +231,15 @@ describe('PolykeyAgent', () => {
         password,
         nodePath,
         logger,
-        keysConfig: {
-          privateKeyPemOverride: globalRootKeyPems[0],
-        },
       });
-      const prom = promise<KeyManagerChangeData>();
+      const prom = promise<KeyRingChangeData>();
       pkAgent.events.on(
-        PolykeyAgent.eventSymbols.KeyManager,
-        async (data: KeyManagerChangeData) => {
+        PolykeyAgent.eventSymbols.KeyRing,
+        async (data: KeyRingChangeData) => {
           prom.resolveP(data);
         },
       );
-      await pkAgent.keyManager.resetRootCert();
+      await pkAgent.keyRing.resetRootCert();
 
       await expect(prom.p).resolves.toBeDefined();
     } finally {

@@ -2,6 +2,7 @@ import type { NodeId, NodeIdString, SeedNodes } from '@/nodes/types';
 import type { Host, Port } from '@/network/types';
 import type NodeManager from 'nodes/NodeManager';
 import type TaskManager from '@/tasks/TaskManager';
+import type { Key } from '@/keys/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -9,7 +10,7 @@ import { DB } from '@matrixai/db';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { IdInternal } from '@matrixai/id';
 import PolykeyAgent from '@/PolykeyAgent';
-import KeyManager from '@/keys/KeyManager';
+import KeyRing from '@/keys/KeyRing';
 import NodeGraph from '@/nodes/NodeGraph';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import Proxy from '@/network/Proxy';
@@ -17,7 +18,7 @@ import * as nodesUtils from '@/nodes/utils';
 import * as keysUtils from '@/keys/utils';
 import * as grpcUtils from '@/grpc/utils';
 import { sleep } from '@/utils';
-import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
+import * as utils from '@/utils/index';
 
 describe(`${NodeConnectionManager.name} timeout test`, () => {
   const logger = new Logger(
@@ -67,7 +68,7 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
 
   let dataDir: string;
   let dataDir2: string;
-  let keyManager: KeyManager;
+  let keyRing: KeyRing;
   let db: DB;
   let proxy: Proxy;
   let nodeGraph: NodeGraph;
@@ -94,11 +95,8 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
       networkConfig: {
         proxyHost: '127.0.0.1' as Host,
       },
-      keysConfig: {
-        privateKeyPemOverride: globalRootKeyPems[0],
-      },
     });
-    remoteNodeId1 = remoteNode1.keyManager.getNodeId();
+    remoteNodeId1 = remoteNode1.keyRing.getNodeId();
     remoteNode2 = await PolykeyAgent.createPolykeyAgent({
       password,
       nodePath: path.join(dataDir2, 'remoteNode2'),
@@ -106,11 +104,8 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
       networkConfig: {
         proxyHost: '127.0.0.1' as Host,
       },
-      keysConfig: {
-        privateKeyPemOverride: globalRootKeyPems[1],
-      },
     });
-    remoteNodeId2 = remoteNode2.keyManager.getNodeId();
+    remoteNodeId2 = remoteNode2.keyRing.getNodeId();
   });
 
   afterAll(async () => {
@@ -126,32 +121,41 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
       path.join(os.tmpdir(), 'polykey-test-'),
     );
     const keysPath = path.join(dataDir, 'keys');
-    keyManager = await KeyManager.createKeyManager({
+    keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
-      logger: logger.getChild('keyManager'),
-      privateKeyPemOverride: globalRootKeyPems[2],
+      logger: logger.getChild('keyRing'),
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
       dbPath,
       logger: nodeConnectionManagerLogger,
       crypto: {
-        key: keyManager.dbKey,
+        key: keyRing.dbKey,
         ops: {
-          encrypt: keysUtils.encryptWithKey,
-          decrypt: keysUtils.decryptWithKey,
+          encrypt: async (key, plainText) => {
+            return keysUtils.encryptWithKey(
+              utils.bufferWrap(key) as Key,
+              utils.bufferWrap(plainText),
+            );
+          },
+          decrypt: async (key, cipherText) => {
+            return keysUtils.decryptWithKey(
+              utils.bufferWrap(key) as Key,
+              utils.bufferWrap(cipherText),
+            );
+          },
         },
       },
     });
     nodeGraph = await NodeGraph.createNodeGraph({
       db,
-      keyManager,
+      keyRing,
       logger: logger.getChild('NodeGraph'),
     });
     const tlsConfig = {
-      keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
-      certChainPem: keysUtils.certToPem(keyManager.getRootCert()),
+      keyPrivatePem: keyRing.getRootKeyPairPem().privateKey,
+      certChainPem: keysUtils.certToPem(keyRing.getRootCert()),
     };
     proxy = new Proxy({
       authToken: 'auth',
@@ -178,8 +182,8 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
     await nodeGraph.destroy();
     await db.stop();
     await db.destroy();
-    await keyManager.stop();
-    await keyManager.destroy();
+    await keyRing.stop();
+    await keyRing.destroy();
     await proxy.stop();
   });
 
@@ -189,7 +193,7 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
     let nodeConnectionManager: NodeConnectionManager | undefined;
     try {
       nodeConnectionManager = new NodeConnectionManager({
-        keyManager,
+        keyRing,
         nodeGraph,
         proxy,
         taskManager: dummyTaskManager,
@@ -227,7 +231,7 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
     let nodeConnectionManager: NodeConnectionManager | undefined;
     try {
       nodeConnectionManager = new NodeConnectionManager({
-        keyManager,
+        keyRing,
         nodeGraph,
         proxy,
         taskManager: dummyTaskManager,
@@ -281,7 +285,7 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
     let nodeConnectionManager: NodeConnectionManager | undefined;
     try {
       nodeConnectionManager = new NodeConnectionManager({
-        keyManager,
+        keyRing,
         nodeGraph,
         proxy,
         taskManager: dummyTaskManager,

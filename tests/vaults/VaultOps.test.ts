@@ -1,6 +1,6 @@
 import type { VaultId } from '@/vaults/types';
 import type { Vault } from '@/vaults/Vault';
-import type KeyManager from '@/keys/KeyManager';
+import type KeyRing from '@/keys/KeyRing';
 import type { LevelPath } from '@matrixai/db';
 import fs from 'fs';
 import path from 'path';
@@ -26,11 +26,11 @@ describe('VaultOps', () => {
   let db: DB;
   let vaultsDbPath: LevelPath;
   const vaultIdGenerator = vaultsUtils.createVaultIdGenerator();
-  const dummyKeyManager = {
+  const dummyKeyRing = {
     getNodeId: () => {
       return testNodesUtils.generateRandomNodeId();
     },
-  } as KeyManager;
+  } as KeyRing;
 
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
@@ -58,7 +58,7 @@ describe('VaultOps', () => {
     });
     vaultsDbPath = ['vaults'];
     vaultInternal = await VaultInternal.createVaultInternal({
-      keyManager: dummyKeyManager,
+      keyRing: dummyKeyRing,
       vaultId,
       efs: baseEfs,
       logger: logger.getChild(VaultInternal.name),

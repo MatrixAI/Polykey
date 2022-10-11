@@ -21,7 +21,7 @@ import TaskManager from '@/tasks/TaskManager';
 import ACL from '@/acl/ACL';
 import GestaltGraph from '@/gestalts/GestaltGraph';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
-import KeyManager from '@/keys/KeyManager';
+import KeyRing from '@/keys/KeyRing';
 import PolykeyAgent from '@/PolykeyAgent';
 import VaultManager from '@/vaults/VaultManager';
 import * as vaultsErrors from '@/vaults/errors';
@@ -33,7 +33,6 @@ import { sleep } from '@/utils';
 import VaultInternal from '@/vaults/VaultInternal';
 import * as nodeTestUtils from '../nodes/utils';
 import * as testUtils from '../utils';
-import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 
 describe('VaultManager', () => {
   const localHost = '127.0.0.1' as Host;
@@ -63,9 +62,9 @@ describe('VaultManager', () => {
 
   // We only ever use this to get NodeId, No need to create a whole one
   const nodeId = nodeTestUtils.generateRandomNodeId();
-  const dummyKeyManager = {
+  const dummyKeyRing = {
     getNodeId: () => nodeId,
-  } as KeyManager;
+  } as KeyRing;
 
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
@@ -90,7 +89,7 @@ describe('VaultManager', () => {
   test('VaultManager readiness', async () => {
     const vaultManager = await VaultManager.createVaultManager({
       vaultsPath,
-      keyManager: dummyKeyManager,
+      keyRing: dummyKeyRing,
       gestaltGraph: {} as GestaltGraph,
       nodeConnectionManager: {} as NodeConnectionManager,
       acl: {} as ACL,
@@ -120,7 +119,7 @@ describe('VaultManager', () => {
   test('is type correct', async () => {
     const vaultManager = await VaultManager.createVaultManager({
       vaultsPath,
-      keyManager: dummyKeyManager,
+      keyRing: dummyKeyRing,
       gestaltGraph: {} as GestaltGraph,
       nodeConnectionManager: {} as NodeConnectionManager,
       acl: {} as ACL,
@@ -140,7 +139,7 @@ describe('VaultManager', () => {
     async () => {
       const vaultManager = await VaultManager.createVaultManager({
         vaultsPath,
-        keyManager: dummyKeyManager,
+        keyRing: dummyKeyRing,
         gestaltGraph: {} as GestaltGraph,
         nodeConnectionManager: {} as NodeConnectionManager,
         acl: {} as ACL,
@@ -182,7 +181,7 @@ describe('VaultManager', () => {
   test('can rename a vault', async () => {
     const vaultManager = await VaultManager.createVaultManager({
       vaultsPath,
-      keyManager: dummyKeyManager,
+      keyRing: dummyKeyRing,
       gestaltGraph: {} as GestaltGraph,
       nodeConnectionManager: {} as NodeConnectionManager,
       acl: {} as ACL,
@@ -215,7 +214,7 @@ describe('VaultManager', () => {
   test('can delete a vault', async () => {
     const vaultManager = await VaultManager.createVaultManager({
       vaultsPath,
-      keyManager: dummyKeyManager,
+      keyRing: dummyKeyRing,
       gestaltGraph: {} as GestaltGraph,
       nodeConnectionManager: {} as NodeConnectionManager,
       acl: {} as ACL,
@@ -243,7 +242,7 @@ describe('VaultManager', () => {
   test('can list vaults', async () => {
     const vaultManager = await VaultManager.createVaultManager({
       vaultsPath,
-      keyManager: dummyKeyManager,
+      keyRing: dummyKeyRing,
       gestaltGraph: {} as GestaltGraph,
       nodeConnectionManager: {} as NodeConnectionManager,
       acl: {} as ACL,
@@ -275,7 +274,7 @@ describe('VaultManager', () => {
     async () => {
       const vaultManager = await VaultManager.createVaultManager({
         vaultsPath,
-        keyManager: dummyKeyManager,
+        keyRing: dummyKeyRing,
         gestaltGraph: {} as GestaltGraph,
         nodeConnectionManager: {} as NodeConnectionManager,
         acl: {} as ACL,
@@ -320,7 +319,7 @@ describe('VaultManager', () => {
   test('concurrently creating vault with same name only creates 1 vault', async () => {
     const vaultManager = await VaultManager.createVaultManager({
       vaultsPath,
-      keyManager: dummyKeyManager,
+      keyRing: dummyKeyRing,
       gestaltGraph: {} as GestaltGraph,
       nodeConnectionManager: {} as NodeConnectionManager,
       acl: {} as ACL,
@@ -346,7 +345,7 @@ describe('VaultManager', () => {
   test('can concurrently rename the same vault', async () => {
     const vaultManager = await VaultManager.createVaultManager({
       vaultsPath,
-      keyManager: dummyKeyManager,
+      keyRing: dummyKeyRing,
       gestaltGraph: {} as GestaltGraph,
       nodeConnectionManager: {} as NodeConnectionManager,
       acl: {} as ACL,
@@ -371,7 +370,7 @@ describe('VaultManager', () => {
   test('can concurrently open and rename the same vault', async () => {
     const vaultManager = await VaultManager.createVaultManager({
       vaultsPath,
-      keyManager: dummyKeyManager,
+      keyRing: dummyKeyRing,
       gestaltGraph: {} as GestaltGraph,
       nodeConnectionManager: {} as NodeConnectionManager,
       acl: {} as ACL,
@@ -396,7 +395,7 @@ describe('VaultManager', () => {
   test('can save the commit state of a vault', async () => {
     const vaultManager = await VaultManager.createVaultManager({
       vaultsPath,
-      keyManager: dummyKeyManager,
+      keyRing: dummyKeyRing,
       gestaltGraph: {} as GestaltGraph,
       nodeConnectionManager: {} as NodeConnectionManager,
       acl: {} as ACL,
@@ -432,7 +431,7 @@ describe('VaultManager', () => {
   test('do actions on a vault using `withVault`', async () => {
     const vaultManager = await VaultManager.createVaultManager({
       vaultsPath,
-      keyManager: dummyKeyManager,
+      keyRing: dummyKeyRing,
       gestaltGraph: {} as GestaltGraph,
       nodeConnectionManager: {} as NodeConnectionManager,
       acl: {} as ACL,
@@ -474,7 +473,7 @@ describe('VaultManager', () => {
   });
   describe('with remote agents', () => {
     let allDataDir: string;
-    let keyManager: KeyManager;
+    let keyRing: KeyRing;
     let proxy: Proxy;
     let nodeGraph: NodeGraph;
     let nodeConnectionManager: NodeConnectionManager;
@@ -496,11 +495,8 @@ describe('VaultManager', () => {
         networkConfig: {
           proxyHost: localHost,
         },
-        keysConfig: {
-          privateKeyPemOverride: globalRootKeyPems[0],
-        },
       });
-      remoteKeynode1Id = remoteKeynode1.keyManager.getNodeId();
+      remoteKeynode1Id = remoteKeynode1.keyRing.getNodeId();
       remoteKeynode1IdEncoded = nodesUtils.encodeNodeId(remoteKeynode1Id);
       remoteKeynode2 = await PolykeyAgent.createPolykeyAgent({
         password,
@@ -509,11 +505,8 @@ describe('VaultManager', () => {
         networkConfig: {
           proxyHost: localHost,
         },
-        keysConfig: {
-          privateKeyPemOverride: globalRootKeyPems[1],
-        },
       });
-      remoteKeynode2Id = remoteKeynode2.keyManager.getNodeId();
+      remoteKeynode2Id = remoteKeynode2.keyRing.getNodeId();
       remoteKeynode2IdEncoded = nodesUtils.encodeNodeId(remoteKeynode2Id);
 
       // Adding details to each agent
@@ -555,7 +548,7 @@ describe('VaultManager', () => {
 
       nodeGraph = await NodeGraph.createNodeGraph({
         db,
-        keyManager: dummyKeyManager,
+        keyRing: dummyKeyRing,
         logger,
       });
       proxy = new Proxy({
@@ -563,18 +556,17 @@ describe('VaultManager', () => {
         logger,
       });
 
-      keyManager = await KeyManager.createKeyManager({
-        keysPath: path.join(allDataDir, 'allKeyManager'),
+      keyRing = await KeyRing.createKeyRing({
+        keysPath: path.join(allDataDir, 'allKeyRing'),
         password: 'password',
         logger,
-        privateKeyPemOverride: globalRootKeyPems[2],
       });
-      localNodeId = keyManager.getNodeId();
+      localNodeId = keyRing.getNodeId();
       localNodeIdEncoded = nodesUtils.encodeNodeId(localNodeId);
 
       const tlsConfig: TLSConfig = {
-        keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
-        certChainPem: await keyManager.getRootCertChainPem(),
+        keyPrivatePem: keyRing.getRootKeyPairPem().privateKey,
+        certChainPem: await keyRing.getRootCertChainPem(),
       };
 
       await proxy.start({
@@ -588,7 +580,7 @@ describe('VaultManager', () => {
         logger,
       });
       nodeConnectionManager = new NodeConnectionManager({
-        keyManager,
+        keyRing,
         nodeGraph,
         proxy,
         taskManager,
@@ -615,15 +607,15 @@ describe('VaultManager', () => {
       await proxy.stop();
       await nodeGraph.stop();
       await nodeGraph.destroy();
-      await keyManager.stop();
-      await keyManager.destroy();
+      await keyRing.stop();
+      await keyRing.destroy();
       await taskManager.stop();
     });
 
     test('clone vaults from a remote keynode using a vault name', async () => {
       const vaultManager = await VaultManager.createVaultManager({
         vaultsPath,
-        keyManager: dummyKeyManager,
+        keyRing: dummyKeyRing,
         gestaltGraph: {} as GestaltGraph,
         nodeConnectionManager,
         acl: {} as ACL,
@@ -687,7 +679,7 @@ describe('VaultManager', () => {
     test('clone vaults from a remote keynode using a vault name with no history', async () => {
       const vaultManager = await VaultManager.createVaultManager({
         vaultsPath,
-        keyManager: dummyKeyManager,
+        keyRing: dummyKeyRing,
         gestaltGraph: {} as GestaltGraph,
         nodeConnectionManager,
         acl: {} as ACL,
@@ -727,7 +719,7 @@ describe('VaultManager', () => {
     test('fails to clone non existing vault', async () => {
       const vaultManager = await VaultManager.createVaultManager({
         vaultsPath,
-        keyManager: dummyKeyManager,
+        keyRing: dummyKeyRing,
         gestaltGraph: {} as GestaltGraph,
         nodeConnectionManager,
         acl: {} as ACL,
@@ -771,7 +763,7 @@ describe('VaultManager', () => {
     test('clone and pull vaults using a vault id', async () => {
       const vaultManager = await VaultManager.createVaultManager({
         vaultsPath,
-        keyManager: dummyKeyManager,
+        keyRing: dummyKeyRing,
         gestaltGraph: {} as GestaltGraph,
         nodeConnectionManager,
         acl: {} as ACL,
@@ -835,7 +827,7 @@ describe('VaultManager', () => {
     test('should reject cloning when permissions are not set', async () => {
       const vaultManager = await VaultManager.createVaultManager({
         vaultsPath,
-        keyManager: dummyKeyManager,
+        keyRing: dummyKeyRing,
         gestaltGraph: {} as GestaltGraph,
         nodeConnectionManager,
         acl: {} as ACL,
@@ -859,7 +851,7 @@ describe('VaultManager', () => {
     test('should reject Pulling when permissions are not set', async () => {
       const vaultManager = await VaultManager.createVaultManager({
         vaultsPath,
-        keyManager: dummyKeyManager,
+        keyRing: dummyKeyRing,
         gestaltGraph: {} as GestaltGraph,
         nodeConnectionManager,
         acl: {} as ACL,
@@ -902,7 +894,7 @@ describe('VaultManager', () => {
       async () => {
         const vaultManager = await VaultManager.createVaultManager({
           vaultsPath,
-          keyManager: dummyKeyManager,
+          keyRing: dummyKeyRing,
           gestaltGraph: {} as GestaltGraph,
           nodeConnectionManager,
           acl: {} as ACL,
@@ -991,7 +983,7 @@ describe('VaultManager', () => {
       async () => {
         const vaultManager = await VaultManager.createVaultManager({
           vaultsPath,
-          keyManager: dummyKeyManager,
+          keyRing: dummyKeyRing,
           gestaltGraph: {} as GestaltGraph,
           nodeConnectionManager,
           acl: {} as ACL,
@@ -1127,7 +1119,7 @@ describe('VaultManager', () => {
       async () => {
         const vaultManager = await VaultManager.createVaultManager({
           vaultsPath,
-          keyManager: dummyKeyManager,
+          keyRing: dummyKeyRing,
           gestaltGraph: {} as GestaltGraph,
           nodeConnectionManager,
           acl: {} as ACL,
@@ -1201,7 +1193,7 @@ describe('VaultManager', () => {
     test('throw when trying to commit to a cloned vault', async () => {
       const vaultManager = await VaultManager.createVaultManager({
         vaultsPath,
-        keyManager: dummyKeyManager,
+        keyRing: dummyKeyRing,
         gestaltGraph: {} as GestaltGraph,
         nodeConnectionManager,
         acl: {} as ACL,
@@ -1259,7 +1251,7 @@ describe('VaultManager', () => {
     test("test pulling a vault that isn't remote", async () => {
       const vaultManager = await VaultManager.createVaultManager({
         vaultsPath,
-        keyManager: dummyKeyManager,
+        keyRing: dummyKeyRing,
         gestaltGraph: {} as GestaltGraph,
         nodeConnectionManager,
         acl: {} as ACL,
@@ -1285,7 +1277,7 @@ describe('VaultManager', () => {
         // and the VaultInternal write lock
         const vaultManager = await VaultManager.createVaultManager({
           vaultsPath,
-          keyManager: dummyKeyManager,
+          keyRing: dummyKeyRing,
           gestaltGraph: {} as GestaltGraph,
           nodeConnectionManager,
           acl: {} as ACL,
@@ -1410,7 +1402,7 @@ describe('VaultManager', () => {
     });
     const vaultManager = await VaultManager.createVaultManager({
       vaultsPath,
-      keyManager: dummyKeyManager,
+      keyRing: dummyKeyRing,
       nodeConnectionManager: {} as NodeConnectionManager,
       acl,
       gestaltGraph,
@@ -1482,9 +1474,6 @@ describe('VaultManager', () => {
       networkConfig: {
         proxyHost: localHost,
       },
-      keysConfig: {
-        privateKeyPemOverride: globalRootKeyPems[3],
-      },
       logger,
     });
     const acl = await ACL.createACL({
@@ -1498,23 +1487,22 @@ describe('VaultManager', () => {
     });
     const nodeGraph = await NodeGraph.createNodeGraph({
       db,
-      keyManager: dummyKeyManager,
+      keyRing: dummyKeyRing,
       logger,
     });
     const proxy = new Proxy({
       authToken: 'auth',
       logger,
     });
-    const keyManager = await KeyManager.createKeyManager({
+    const keyRing = await KeyRing.createKeyRing({
       keysPath: path.join(dataDir, 'keys'),
       password: 'password',
-      privateKeyPemOverride: globalRootKeyPems[4],
       logger,
     });
     await proxy.start({
       tlsConfig: {
-        keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
-        certChainPem: await keyManager.getRootCertChainPem(),
+        keyPrivatePem: keyRing.getRootKeyPairPem().privateKey,
+        certChainPem: await keyRing.getRootCertChainPem(),
       },
       serverHost: localHost,
       serverPort: port,
@@ -1525,7 +1513,7 @@ describe('VaultManager', () => {
       lazy: true,
     });
     const nodeConnectionManager = new NodeConnectionManager({
-      keyManager,
+      keyRing,
       logger,
       nodeGraph,
       proxy,
@@ -1538,7 +1526,7 @@ describe('VaultManager', () => {
     await taskManager.startProcessing();
     const vaultManager = await VaultManager.createVaultManager({
       vaultsPath,
-      keyManager,
+      keyRing,
       nodeConnectionManager,
       acl,
       gestaltGraph,
@@ -1548,8 +1536,8 @@ describe('VaultManager', () => {
     });
     try {
       // Setting up state
-      const targetNodeId = remoteAgent.keyManager.getNodeId();
-      const nodeId1 = keyManager.getNodeId();
+      const targetNodeId = remoteAgent.keyRing.getNodeId();
+      const nodeId1 = keyRing.getNodeId();
 
       // Letting nodeGraph know where the remote agent is
       await nodeGraph.setNode(targetNodeId, {
@@ -1637,7 +1625,7 @@ describe('VaultManager', () => {
   test('stopping respects locks', async () => {
     const vaultManager = await VaultManager.createVaultManager({
       vaultsPath,
-      keyManager: dummyKeyManager,
+      keyRing: dummyKeyRing,
       gestaltGraph: {} as GestaltGraph,
       nodeConnectionManager: {} as NodeConnectionManager,
       acl: {} as ACL,
@@ -1680,7 +1668,7 @@ describe('VaultManager', () => {
   test('destroying respects locks', async () => {
     const vaultManager = await VaultManager.createVaultManager({
       vaultsPath,
-      keyManager: dummyKeyManager,
+      keyRing: dummyKeyRing,
       gestaltGraph: {} as GestaltGraph,
       nodeConnectionManager: {} as NodeConnectionManager,
       acl: {} as ACL,
@@ -1722,7 +1710,7 @@ describe('VaultManager', () => {
   test('withVault respects locks', async () => {
     const vaultManager = await VaultManager.createVaultManager({
       vaultsPath,
-      keyManager: dummyKeyManager,
+      keyRing: dummyKeyRing,
       gestaltGraph: {} as GestaltGraph,
       nodeConnectionManager: {} as NodeConnectionManager,
       acl: {} as ACL,
@@ -1761,7 +1749,7 @@ describe('VaultManager', () => {
   test('creation adds a vault', async () => {
     const vaultManager = await VaultManager.createVaultManager({
       vaultsPath,
-      keyManager: dummyKeyManager,
+      keyRing: dummyKeyRing,
       gestaltGraph: {} as GestaltGraph,
       nodeConnectionManager: {} as NodeConnectionManager,
       acl: {} as ACL,
@@ -1782,7 +1770,7 @@ describe('VaultManager', () => {
   test('vaults persist', async () => {
     const vaultManager = await VaultManager.createVaultManager({
       vaultsPath,
-      keyManager: dummyKeyManager,
+      keyRing: dummyKeyRing,
       gestaltGraph: {} as GestaltGraph,
       nodeConnectionManager: {} as NodeConnectionManager,
       acl: {} as ACL,
@@ -1813,7 +1801,7 @@ describe('VaultManager', () => {
   test('vaults can be removed from map', async () => {
     const vaultManager = await VaultManager.createVaultManager({
       vaultsPath,
-      keyManager: dummyKeyManager,
+      keyRing: dummyKeyRing,
       gestaltGraph: {} as GestaltGraph,
       nodeConnectionManager: {} as NodeConnectionManager,
       acl: {} as ACL,
@@ -1841,7 +1829,7 @@ describe('VaultManager', () => {
   test('stopping vaultManager empties map and stops all vaults', async () => {
     const vaultManager = await VaultManager.createVaultManager({
       vaultsPath,
-      keyManager: dummyKeyManager,
+      keyRing: dummyKeyRing,
       gestaltGraph: {} as GestaltGraph,
       nodeConnectionManager: {} as NodeConnectionManager,
       acl: {} as ACL,
@@ -1871,7 +1859,7 @@ describe('VaultManager', () => {
   test('destroying vaultManager destroys all data', async () => {
     const vaultManager = await VaultManager.createVaultManager({
       vaultsPath,
-      keyManager: dummyKeyManager,
+      keyRing: dummyKeyRing,
       gestaltGraph: {} as GestaltGraph,
       nodeConnectionManager: {} as NodeConnectionManager,
       acl: {} as ACL,
@@ -1888,7 +1876,7 @@ describe('VaultManager', () => {
       expect(await db.count([VaultManager.constructor.name])).toBe(0);
       vaultManager2 = await VaultManager.createVaultManager({
         vaultsPath,
-        keyManager: dummyKeyManager,
+        keyRing: dummyKeyRing,
         gestaltGraph: {} as GestaltGraph,
         nodeConnectionManager: {} as NodeConnectionManager,
         acl: {} as ACL,
@@ -1911,7 +1899,7 @@ describe('VaultManager', () => {
   test("withVaults should throw if vaultId doesn't exist", async () => {
     const vaultManager = await VaultManager.createVaultManager({
       vaultsPath,
-      keyManager: dummyKeyManager,
+      keyRing: dummyKeyRing,
       gestaltGraph: {} as GestaltGraph,
       nodeConnectionManager: {} as NodeConnectionManager,
       acl: {} as ACL,
@@ -1934,7 +1922,7 @@ describe('VaultManager', () => {
   test('generateVaultId handles vault conflicts', async () => {
     const vaultManager = await VaultManager.createVaultManager({
       vaultsPath,
-      keyManager: dummyKeyManager,
+      keyRing: dummyKeyRing,
       gestaltGraph: {} as GestaltGraph,
       nodeConnectionManager: {} as NodeConnectionManager,
       acl: {} as ACL,

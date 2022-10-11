@@ -1,6 +1,6 @@
 import type { DB, DBTransaction, LevelPath } from '@matrixai/db';
 import type { SessionToken } from './types';
-import type KeyManager from '../keys/KeyManager';
+import type KeyRing from '../keys/KeyRing';
 import Logger from '@matrixai/logger';
 import {
   CreateDestroyStartStop,
@@ -20,25 +20,22 @@ interface SessionManager extends CreateDestroyStartStop {}
 class SessionManager {
   static async createSessionManager({
     db,
-    keyManager,
+    keyRing,
     expiry,
-    keyBits = 256,
     logger = new Logger(this.name),
     fresh = false,
   }: {
     db: DB;
-    keyManager: KeyManager;
+    keyRing: KeyRing;
     expiry?: number;
-    keyBits?: 128 | 192 | 256;
     logger?: Logger;
     fresh?: boolean;
   }): Promise<SessionManager> {
     logger.info(`Creating ${this.name}`);
     const sessionManager = new this({
       db,
-      keyManager,
+      keyRing,
       expiry,
-      keyBits,
       logger,
     });
     await sessionManager.start({ fresh });
@@ -47,31 +44,27 @@ class SessionManager {
   }
 
   public readonly expiry?: number;
-  public readonly keyBits: 128 | 192 | 256;
 
   protected logger: Logger;
   protected db: DB;
-  protected keyManager: KeyManager;
+  protected keyRing: KeyRing;
   protected sessionsDbPath: LevelPath = [this.constructor.name];
 
   public constructor({
     db,
-    keyManager,
+    keyRing,
     expiry,
-    keyBits,
     logger,
   }: {
     db: DB;
-    keyManager: KeyManager;
+    keyRing: KeyRing;
     expiry?: number;
-    keyBits: 128 | 192 | 256;
     logger: Logger;
   }) {
     this.logger = logger;
     this.db = db;
-    this.keyManager = keyManager;
+    this.keyRing = keyRing;
     this.expiry = expiry;
-    this.keyBits = keyBits;
   }
 
   public async start({
@@ -83,7 +76,7 @@ class SessionManager {
     if (fresh) {
       await this.db.clear(this.sessionsDbPath);
     }
-    await this.setupKey(this.keyBits);
+    await this.setupKey();
     this.logger.info(`Started ${this.constructor.name}`);
   }
 
@@ -101,7 +94,7 @@ class SessionManager {
   @ready(new sessionsErrors.ErrorSessionManagerNotRunning())
   public async resetKey(tran?: DBTransaction): Promise<void> {
     const tranOrDb = tran ?? this.db;
-    const key = await this.generateKey(this.keyBits);
+    const key = keysUtils.generateKey();
     await tranOrDb.put([...this.sessionsDbPath, 'key'], key, true);
   }
 
@@ -117,8 +110,8 @@ class SessionManager {
   ): Promise<SessionToken> {
     const tranOrDb = tran ?? this.db;
     const payload = {
-      iss: nodesUtils.encodeNodeId(this.keyManager.getNodeId()),
-      sub: nodesUtils.encodeNodeId(this.keyManager.getNodeId()),
+      iss: nodesUtils.encodeNodeId(this.keyRing.getNodeId()),
+      sub: nodesUtils.encodeNodeId(this.keyRing.getNodeId()),
     };
     const key = await tranOrDb.get([...this.sessionsDbPath, 'key'], true);
     return await sessionsUtils.createSessionToken(payload, key!, expiry);
@@ -135,7 +128,7 @@ class SessionManager {
     return result !== undefined;
   }
 
-  protected async setupKey(bits: 128 | 192 | 256): Promise<Buffer> {
+  protected async setupKey(): Promise<Buffer> {
     return await withF([this.db.transaction()], async ([tran]) => {
       let key: Buffer | undefined;
       key = await tran.get([...this.sessionsDbPath, 'key'], true);
@@ -143,14 +136,10 @@ class SessionManager {
         return key;
       }
       this.logger.info('Generating sessions key');
-      key = await this.generateKey(bits);
+      key = keysUtils.generateKey();
       await tran.put([...this.sessionsDbPath, 'key'], key, true);
       return key;
     });
-  }
-
-  protected async generateKey(bits: 128 | 192 | 256): Promise<Buffer> {
-    return await keysUtils.generateKey(bits);
   }
 }
 

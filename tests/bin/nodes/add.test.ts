@@ -9,7 +9,6 @@ import PolykeyAgent from '@/PolykeyAgent';
 import * as nodesUtils from '@/nodes/utils';
 import NodeManager from '@/nodes/NodeManager';
 import * as testNodesUtils from '../../nodes/utils';
-import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 import * as testUtils from '../../utils';
 
 describe('add', () => {
@@ -39,9 +38,6 @@ describe('add', () => {
         forwardHost: '127.0.0.1' as Host,
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
-      },
-      keysConfig: {
-        privateKeyPemOverride: globalRootKeyPems[0],
       },
       logger,
     });

@@ -2,6 +2,7 @@ import type { NodeId } from '@/ids/types';
 import type { Host, Port } from '@/network/types';
 import type { VaultActions, VaultName } from '@/vaults/types';
 import type { Notification, NotificationData } from '@/notifications/types';
+import type { Key } from '@/keys/types';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -12,7 +13,7 @@ import TaskManager from '@/tasks/TaskManager';
 import PolykeyAgent from '@/PolykeyAgent';
 import ACL from '@/acl/ACL';
 import Sigchain from '@/sigchain/Sigchain';
-import KeyManager from '@/keys/KeyManager';
+import KeyRing from '@/keys/KeyRing';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import NodeGraph from '@/nodes/NodeGraph';
 import NodeManager from '@/nodes/NodeManager';
@@ -22,8 +23,8 @@ import * as notificationsErrors from '@/notifications/errors';
 import * as vaultsUtils from '@/vaults/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as keysUtils from '@/keys/utils';
+import * as utils from '@/utils/index';
 import * as testUtils from '../utils';
-import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 
 describe('NotificationsManager', () => {
   const password = 'password';
@@ -44,7 +45,7 @@ describe('NotificationsManager', () => {
   );
   const vaultIdGenerator = vaultsUtils.createVaultIdGenerator();
   /**
-   * Shared ACL, DB, NodeManager, KeyManager for all tests
+   * Shared ACL, DB, NodeManager, KeyRing for all tests
    */
   let dataDir: string;
   let acl: ACL;
@@ -53,7 +54,7 @@ describe('NotificationsManager', () => {
   let taskManager: TaskManager;
   let nodeConnectionManager: NodeConnectionManager;
   let nodeManager: NodeManager;
-  let keyManager: KeyManager;
+  let keyRing: KeyRing;
   let sigchain: Sigchain;
   let proxy: Proxy;
 
@@ -63,21 +64,30 @@ describe('NotificationsManager', () => {
       path.join(os.tmpdir(), 'polykey-test-'),
     );
     const keysPath = path.join(dataDir, 'keys');
-    keyManager = await KeyManager.createKeyManager({
+    keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
       logger,
-      privateKeyPemOverride: globalRootKeyPems[0],
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
       dbPath,
       logger,
       crypto: {
-        key: keyManager.dbKey,
+        key: keyRing.dbKey,
         ops: {
-          encrypt: keysUtils.encryptWithKey,
-          decrypt: keysUtils.decryptWithKey,
+          encrypt: async (key, plainText) => {
+            return keysUtils.encryptWithKey(
+              utils.bufferWrap(key) as Key,
+              utils.bufferWrap(plainText),
+            );
+          },
+          decrypt: async (key, cipherText) => {
+            return keysUtils.decryptWithKey(
+              utils.bufferWrap(key) as Key,
+              utils.bufferWrap(cipherText),
+            );
+          },
         },
       },
     });
@@ -87,7 +97,7 @@ describe('NotificationsManager', () => {
     });
     sigchain = await Sigchain.createSigchain({
       db,
-      keyManager,
+      keyRing,
       logger,
     });
     proxy = new Proxy({
@@ -96,15 +106,15 @@ describe('NotificationsManager', () => {
     });
     await proxy.start({
       tlsConfig: {
-        keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
-        certChainPem: await keyManager.getRootCertChainPem(),
+        keyPrivatePem: keyRing.getRootKeyPairPem().privateKey,
+        certChainPem: await keyRing.getRootCertChainPem(),
       },
       serverHost: '127.0.0.1' as Host,
       serverPort: 0 as Port,
     });
     nodeGraph = await NodeGraph.createNodeGraph({
       db,
-      keyManager,
+      keyRing,
       logger,
     });
     taskManager = await TaskManager.createTaskManager({
@@ -114,14 +124,14 @@ describe('NotificationsManager', () => {
     });
     nodeConnectionManager = new NodeConnectionManager({
       nodeGraph,
-      keyManager,
+      keyRing,
       proxy,
       taskManager,
       logger,
     });
     nodeManager = new NodeManager({
       db,
-      keyManager,
+      keyRing,
       sigchain,
       nodeConnectionManager,
       nodeGraph,
@@ -135,15 +145,12 @@ describe('NotificationsManager', () => {
     receiver = await PolykeyAgent.createPolykeyAgent({
       password: password,
       nodePath: path.join(dataDir, 'receiver'),
-      keysConfig: {
-        privateKeyPemOverride: globalRootKeyPems[1],
-      },
       networkConfig: {
         proxyHost: '127.0.0.1' as Host,
       },
       logger,
     });
-    await nodeGraph.setNode(receiver.keyManager.getNodeId(), {
+    await nodeGraph.setNode(receiver.keyRing.getNodeId(), {
       host: receiver.proxy.getProxyHost(),
       port: receiver.proxy.getProxyPort(),
     });
@@ -159,7 +166,7 @@ describe('NotificationsManager', () => {
     await sigchain.stop();
     await acl.stop();
     await db.stop();
-    await keyManager.stop();
+    await keyRing.stop();
     await taskManager.stop();
     await fs.promises.rm(dataDir, {
       force: true,
@@ -173,7 +180,7 @@ describe('NotificationsManager', () => {
         db,
         nodeConnectionManager,
         nodeManager,
-        keyManager,
+        keyRing,
         logger,
       });
     await expect(notificationsManager.destroy()).rejects.toThrow(
@@ -200,7 +207,7 @@ describe('NotificationsManager', () => {
         db,
         nodeConnectionManager,
         nodeManager,
-        keyManager,
+        keyRing,
         logger,
       });
     const generalNotification: NotificationData = {
@@ -219,22 +226,22 @@ describe('NotificationsManager', () => {
         pull: null,
       } as VaultActions,
     };
-    await receiver.acl.setNodePerm(keyManager.getNodeId(), {
+    await receiver.acl.setNodePerm(keyRing.getNodeId(), {
       gestalt: {
         notify: null,
       },
       vaults: {},
     });
     await notificationsManager.sendNotification(
-      receiver.keyManager.getNodeId(),
+      receiver.keyRing.getNodeId(),
       generalNotification,
     );
     await notificationsManager.sendNotification(
-      receiver.keyManager.getNodeId(),
+      receiver.keyRing.getNodeId(),
       gestaltNotification,
     );
     await notificationsManager.sendNotification(
-      receiver.keyManager.getNodeId(),
+      receiver.keyRing.getNodeId(),
       vaultNotification,
     );
     const receivedNotifications =
@@ -242,19 +249,19 @@ describe('NotificationsManager', () => {
     expect(receivedNotifications).toHaveLength(3);
     expect(receivedNotifications[0].data).toEqual(vaultNotification);
     expect(receivedNotifications[0].senderId).toBe(
-      nodesUtils.encodeNodeId(keyManager.getNodeId()),
+      nodesUtils.encodeNodeId(keyRing.getNodeId()),
     );
     expect(receivedNotifications[1].data).toEqual(gestaltNotification);
     expect(receivedNotifications[1].senderId).toBe(
-      nodesUtils.encodeNodeId(keyManager.getNodeId()),
+      nodesUtils.encodeNodeId(keyRing.getNodeId()),
     );
     expect(receivedNotifications[2].data).toEqual(generalNotification);
     expect(receivedNotifications[2].senderId).toBe(
-      nodesUtils.encodeNodeId(keyManager.getNodeId()),
+      nodesUtils.encodeNodeId(keyRing.getNodeId()),
     );
     // Reverse side-effects
     await receiver.notificationsManager.clearNotifications();
-    await receiver.acl.unsetNodePerm(keyManager.getNodeId());
+    await receiver.acl.unsetNodePerm(keyRing.getNodeId());
     await notificationsManager.stop();
   });
   test('cannot send notifications without permission', async () => {
@@ -264,7 +271,7 @@ describe('NotificationsManager', () => {
         db,
         nodeConnectionManager,
         nodeManager,
-        keyManager,
+        keyRing,
         logger,
       });
     const generalNotification: NotificationData = {
@@ -286,21 +293,21 @@ describe('NotificationsManager', () => {
 
     await testUtils.expectRemoteError(
       notificationsManager.sendNotification(
-        receiver.keyManager.getNodeId(),
+        receiver.keyRing.getNodeId(),
         generalNotification,
       ),
       notificationsErrors.ErrorNotificationsPermissionsNotFound,
     );
     await testUtils.expectRemoteError(
       notificationsManager.sendNotification(
-        receiver.keyManager.getNodeId(),
+        receiver.keyRing.getNodeId(),
         gestaltNotification,
       ),
       notificationsErrors.ErrorNotificationsPermissionsNotFound,
     );
     await testUtils.expectRemoteError(
       notificationsManager.sendNotification(
-        receiver.keyManager.getNodeId(),
+        receiver.keyRing.getNodeId(),
         vaultNotification,
       ),
       notificationsErrors.ErrorNotificationsPermissionsNotFound,
@@ -318,7 +325,7 @@ describe('NotificationsManager', () => {
         db,
         nodeConnectionManager,
         nodeManager,
-        keyManager,
+        keyRing,
         logger,
       });
     const notification1: Notification = {
@@ -379,7 +386,7 @@ describe('NotificationsManager', () => {
         db,
         nodeConnectionManager,
         nodeManager,
-        keyManager,
+        keyRing,
         logger,
       });
     const notification: Notification = {
@@ -417,7 +424,7 @@ describe('NotificationsManager', () => {
         db,
         nodeConnectionManager,
         nodeManager,
-        keyManager,
+        keyRing,
         logger,
       });
     const notification: Notification = {
@@ -451,7 +458,7 @@ describe('NotificationsManager', () => {
         db,
         nodeConnectionManager,
         nodeManager,
-        keyManager,
+        keyRing,
         logger,
       });
     const notification1: Notification = {
@@ -505,7 +512,7 @@ describe('NotificationsManager', () => {
         db,
         nodeConnectionManager,
         nodeManager,
-        keyManager,
+        keyRing,
         logger,
       });
     const notification1: Notification = {
@@ -558,7 +565,7 @@ describe('NotificationsManager', () => {
         db,
         nodeConnectionManager,
         nodeManager,
-        keyManager,
+        keyRing,
         logger,
       });
     const notification1: Notification = {
@@ -610,7 +617,7 @@ describe('NotificationsManager', () => {
         db,
         nodeConnectionManager,
         nodeManager,
-        keyManager,
+        keyRing,
         logger,
       });
     const notification1: Notification = {
@@ -665,7 +672,7 @@ describe('NotificationsManager', () => {
         db,
         nodeConnectionManager,
         nodeManager,
-        keyManager,
+        keyRing,
         messageCap: 2,
         logger,
       });
@@ -719,7 +726,7 @@ describe('NotificationsManager', () => {
         db,
         nodeConnectionManager,
         nodeManager,
-        keyManager,
+        keyRing,
         logger,
       });
     const notification: Notification = {
@@ -752,7 +759,7 @@ describe('NotificationsManager', () => {
         db,
         nodeConnectionManager,
         nodeManager,
-        keyManager,
+        keyRing,
         logger,
       });
     const notification: Notification = {
@@ -785,7 +792,7 @@ describe('NotificationsManager', () => {
         db,
         nodeConnectionManager,
         nodeManager,
-        keyManager,
+        keyRing,
         logger,
       });
     const notification1: Notification = {
@@ -839,7 +846,7 @@ describe('NotificationsManager', () => {
         db,
         nodeConnectionManager,
         nodeManager,
-        keyManager,
+        keyRing,
         logger,
       });
     const notification: Notification = {

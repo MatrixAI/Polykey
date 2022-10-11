@@ -4,7 +4,7 @@ import type { ClaimEncoded, ClaimIntermediary } from '../../claims/types';
 import type NodeManager from '../../nodes/NodeManager';
 import type { NodeId } from '../../ids/types';
 import type Sigchain from '../../sigchain/Sigchain';
-import type KeyManager from '../../keys/KeyManager';
+import type KeyRing from '../../keys/KeyRing';
 import type * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
 import type Logger from '@matrixai/logger';
 import * as grpcUtils from '../../grpc/utils';
@@ -18,13 +18,13 @@ import * as agentUtils from '../utils';
 
 function nodesCrossSignClaim({
   db,
-  keyManager,
+  keyRing,
   nodeManager,
   sigchain,
   logger,
 }: {
   db: DB;
-  keyManager: KeyManager;
+  keyRing: KeyRing;
   nodeManager: NodeManager;
   sigchain: Sigchain;
   logger: Logger;
@@ -32,7 +32,7 @@ function nodesCrossSignClaim({
   return async (
     call: grpc.ServerDuplexStream<nodesPB.CrossSign, nodesPB.CrossSign>,
   ) => {
-    const nodeId = keyManager.getNodeId();
+    const nodeId = keyRing.getNodeId();
     const genClaims = grpcUtils.generatorDuplex(
       call,
       { nodeId, command: nodesCrossSignClaim.name },
@@ -106,14 +106,14 @@ function nodesCrossSignClaim({
         // If verified, add your own signature to the received claim
         const doublySignedClaim = await claimsUtils.signIntermediaryClaim({
           claim: constructedIntermediaryClaim,
-          privateKey: keyManager.getRootKeyPairPem().privateKey,
-          signeeNodeId: nodesUtils.encodeNodeId(keyManager.getNodeId()),
+          privateKey: keyRing.keyPair.privateKey,
+          signeeNodeId: nodesUtils.encodeNodeId(keyRing.getNodeId()),
         });
         // Then create your own intermediary node claim (from X -> Y)
         const singlySignedClaim = await sigchain.createIntermediaryClaim(
           {
             type: 'node',
-            node1: nodesUtils.encodeNodeId(keyManager.getNodeId()),
+            node1: nodesUtils.encodeNodeId(keyRing.getNodeId()),
             node2: payloadData.node1,
           },
           tran,
@@ -156,7 +156,7 @@ function nodesCrossSignClaim({
         const verifiedDoubly =
           (await claimsUtils.verifyClaimSignature(
             constructedDoublySignedClaim,
-            keyManager.getRootKeyPairPem().publicKey,
+            keyRing.keyPair.publicKey,
           )) &&
           (await claimsUtils.verifyClaimSignature(
             constructedDoublySignedClaim,

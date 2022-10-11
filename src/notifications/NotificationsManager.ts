@@ -1,7 +1,7 @@
 import type { DB, DBTransaction, KeyPath, LevelPath } from '@matrixai/db';
 import type { NotificationId, Notification, NotificationData } from './types';
 import type ACL from '../acl/ACL';
-import type KeyManager from '../keys/KeyManager';
+import type KeyRing from '../keys/KeyRing';
 import type NodeManager from '../nodes/NodeManager';
 import type NodeConnectionManager from '../nodes/NodeConnectionManager';
 import type { NodeId } from '../ids/types';
@@ -34,7 +34,7 @@ class NotificationsManager {
     db,
     nodeConnectionManager,
     nodeManager,
-    keyManager,
+    keyRing,
     messageCap = 10000,
     logger = new Logger(this.name),
     fresh = false,
@@ -43,7 +43,7 @@ class NotificationsManager {
     db: DB;
     nodeConnectionManager: NodeConnectionManager;
     nodeManager: NodeManager;
-    keyManager: KeyManager;
+    keyRing: KeyRing;
     messageCap?: number;
     logger?: Logger;
     fresh?: boolean;
@@ -52,7 +52,7 @@ class NotificationsManager {
     const notificationsManager = new this({
       acl,
       db,
-      keyManager,
+      keyRing,
       logger,
       messageCap,
       nodeConnectionManager,
@@ -67,7 +67,7 @@ class NotificationsManager {
   protected logger: Logger;
   protected acl: ACL;
   protected db: DB;
-  protected keyManager: KeyManager;
+  protected keyRing: KeyRing;
   protected nodeManager: NodeManager;
   protected nodeConnectionManager: NodeConnectionManager;
   protected messageCap: number;
@@ -95,7 +95,7 @@ class NotificationsManager {
     db,
     nodeConnectionManager,
     nodeManager,
-    keyManager,
+    keyRing,
     messageCap,
     logger,
   }: {
@@ -103,7 +103,7 @@ class NotificationsManager {
     db: DB;
     nodeConnectionManager: NodeConnectionManager;
     nodeManager: NodeManager;
-    keyManager: KeyManager;
+    keyRing: KeyRing;
     messageCap: number;
     logger: Logger;
   }) {
@@ -111,7 +111,7 @@ class NotificationsManager {
     this.messageCap = messageCap;
     this.acl = acl;
     this.db = db;
-    this.keyManager = keyManager;
+    this.keyRing = keyRing;
     this.nodeConnectionManager = nodeConnectionManager;
     this.nodeManager = nodeManager;
   }
@@ -166,12 +166,12 @@ class NotificationsManager {
   ): Promise<void> {
     const notification = {
       data: data,
-      senderId: nodesUtils.encodeNodeId(this.keyManager.getNodeId()),
+      senderId: nodesUtils.encodeNodeId(this.keyRing.getNodeId()),
       isRead: false,
     };
     const signedNotification = await notificationsUtils.signNotification(
       notification,
-      this.keyManager.getRootKeyPairPem(),
+      this.keyRing.keyPair,
     );
     const notificationMsg = new notificationsPB.AgentNotification();
     notificationMsg.setContent(signedNotification);

@@ -4,6 +4,7 @@ import type { ChainData } from '@/sigchain/types';
 import type { Gestalt } from '@/gestalts/types';
 import type { IdentityId } from '@/identities/types';
 import type { Host, Port } from '@/network/types';
+import type { Key } from '@/keys/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -12,7 +13,7 @@ import { DB } from '@matrixai/db';
 import { Metadata } from '@grpc/grpc-js';
 import TaskManager from '@/tasks/TaskManager';
 import PolykeyAgent from '@/PolykeyAgent';
-import KeyManager from '@/keys/KeyManager';
+import KeyRing from '@/keys/KeyRing';
 import Discovery from '@/discovery/Discovery';
 import IdentitiesManager from '@/identities/IdentitiesManager';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
@@ -33,8 +34,8 @@ import * as claimsUtils from '@/claims/utils';
 import * as keysUtils from '@/keys/utils';
 import * as clientUtils from '@/client/utils/utils';
 import * as nodesUtils from '@/nodes/utils';
+import * as utils from '@/utils/index';
 import TestProvider from '../../identities/TestProvider';
-import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('gestaltsGestaltTrustByNode', () => {
   const logger = new Logger('gestaltsGestaltTrustByNode test', LogLevel.WARN, [
@@ -68,12 +69,9 @@ describe('gestaltsGestaltTrustByNode', () => {
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },
-      keysConfig: {
-        privateKeyPemOverride: globalRootKeyPems[0],
-      },
       logger,
     });
-    nodeId = nodesUtils.encodeNodeId(node.keyManager.getNodeId());
+    nodeId = nodesUtils.encodeNodeId(node.keyRing.getNodeId());
     node.identitiesManager.registerProvider(testProvider);
     await node.identitiesManager.putToken(testProvider.id, connectedIdentity, {
       accessToken: 'abc123',
@@ -81,7 +79,7 @@ describe('gestaltsGestaltTrustByNode', () => {
     testProvider.users['trusted-node'] = {};
     const identityClaim: ClaimLinkIdentity = {
       type: 'identity',
-      node: nodesUtils.encodeNodeId(node.keyManager.getNodeId()),
+      node: nodesUtils.encodeNodeId(node.keyRing.getNodeId()),
       provider: testProvider.id,
       identity: connectedIdentity,
     };
@@ -112,7 +110,7 @@ describe('gestaltsGestaltTrustByNode', () => {
 
   let acl: ACL;
   let db: DB;
-  let keyManager: KeyManager;
+  let keyRing: KeyRing;
   let grpcServer: GRPCServer;
   let grpcClient: GRPCClientClient;
   beforeEach(async () => {
@@ -120,21 +118,30 @@ describe('gestaltsGestaltTrustByNode', () => {
       path.join(os.tmpdir(), 'polykey-test-'),
     );
     const keysPath = path.join(dataDir, 'keys');
-    keyManager = await KeyManager.createKeyManager({
+    keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
       logger,
-      privateKeyPemOverride: globalRootKeyPems[1],
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
       dbPath,
       logger,
       crypto: {
-        key: keyManager.dbKey,
+        key: keyRing.dbKey,
         ops: {
-          encrypt: keysUtils.encryptWithKey,
-          decrypt: keysUtils.decryptWithKey,
+          encrypt: async (key, plainText) => {
+            return keysUtils.encryptWithKey(
+              utils.bufferWrap(key) as Key,
+              utils.bufferWrap(plainText),
+            );
+          },
+          decrypt: async (key, cipherText) => {
+            return keysUtils.decryptWithKey(
+              utils.bufferWrap(key) as Key,
+              utils.bufferWrap(cipherText),
+            );
+          },
         },
       },
     });
@@ -167,18 +174,18 @@ describe('gestaltsGestaltTrustByNode', () => {
       serverHost: '127.0.0.1' as Host,
       serverPort: 0 as Port,
       tlsConfig: {
-        keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
-        certChainPem: await keyManager.getRootCertChainPem(),
+        keyPrivatePem: keyRing.getRootKeyPairPem().privateKey,
+        certChainPem: await keyRing.getRootCertChainPem(),
       },
     });
     sigchain = await Sigchain.createSigchain({
       db,
-      keyManager,
+      keyRing,
       logger,
     });
     nodeGraph = await NodeGraph.createNodeGraph({
       db,
-      keyManager,
+      keyRing,
       logger: logger.getChild('NodeGraph'),
     });
     taskManager = await TaskManager.createTaskManager({
@@ -187,7 +194,7 @@ describe('gestaltsGestaltTrustByNode', () => {
       lazy: true,
     });
     nodeConnectionManager = new NodeConnectionManager({
-      keyManager,
+      keyRing,
       nodeGraph,
       proxy,
       taskManager,
@@ -197,7 +204,7 @@ describe('gestaltsGestaltTrustByNode', () => {
     });
     nodeManager = new NodeManager({
       db,
-      keyManager,
+      keyRing,
       nodeConnectionManager,
       nodeGraph,
       sigchain,
@@ -212,7 +219,7 @@ describe('gestaltsGestaltTrustByNode', () => {
     });
     discovery = await Discovery.createDiscovery({
       db,
-      keyManager,
+      keyRing,
       gestaltGraph,
       identitiesManager,
       nodeManager,
@@ -237,7 +244,7 @@ describe('gestaltsGestaltTrustByNode', () => {
       port: 0 as Port,
     });
     grpcClient = await GRPCClientClient.createGRPCClientClient({
-      nodeId: keyManager.getNodeId(),
+      nodeId: keyRing.getNodeId(),
       host: '127.0.0.1' as Host,
       port: grpcServer.getPort(),
       logger,
@@ -258,7 +265,7 @@ describe('gestaltsGestaltTrustByNode', () => {
     await gestaltGraph.stop();
     await acl.stop();
     await db.stop();
-    await keyManager.stop();
+    await keyRing.stop();
     await taskManager.stop();
     await fs.promises.rm(dataDir, {
       force: true,

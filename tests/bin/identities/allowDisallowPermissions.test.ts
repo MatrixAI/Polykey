@@ -13,7 +13,6 @@ import * as claimsUtils from '@/claims/utils';
 import * as identitiesUtils from '@/identities/utils';
 import * as testUtils from '../../utils';
 import TestProvider from '../../identities/TestProvider';
-import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('allow/disallow/permissions', () => {
   const logger = new Logger('allow/disallow/permissions test', LogLevel.WARN, [
@@ -48,9 +47,6 @@ describe('allow/disallow/permissions', () => {
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },
-      keysConfig: {
-        privateKeyPemOverride: globalRootKeyPems[0],
-      },
       logger,
     });
     pkAgent.identitiesManager.registerProvider(provider);
@@ -65,12 +61,9 @@ describe('allow/disallow/permissions', () => {
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },
-      keysConfig: {
-        privateKeyPemOverride: globalRootKeyPems[1],
-      },
       logger,
     });
-    nodeId = node.keyManager.getNodeId();
+    nodeId = node.keyRing.getNodeId();
     nodeHost = node.proxy.getProxyHost();
     nodePort = node.proxy.getProxyPort();
     node.identitiesManager.registerProvider(provider);
@@ -80,7 +73,7 @@ describe('allow/disallow/permissions', () => {
     provider.users[identity] = {};
     const identityClaim: ClaimLinkIdentity = {
       type: 'identity',
-      node: nodesUtils.encodeNodeId(node.keyManager.getNodeId()),
+      node: nodesUtils.encodeNodeId(node.keyRing.getNodeId()),
       provider: provider.id,
       identity: identity,
     };

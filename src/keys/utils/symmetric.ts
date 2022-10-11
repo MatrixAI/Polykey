@@ -4,7 +4,7 @@ import type {
   JWKEncrypted,
   PasswordSalt,
   PasswordOpsLimit,
-  PasswordMemLimit
+  PasswordMemLimit,
 } from '../types';
 import sodium from 'sodium-native';
 import { getRandomBytes } from './random';
@@ -13,7 +13,7 @@ import {
   passwordMemLimits,
   passwordOpsLimitDefault,
   passwordMemLimitDefault,
-  hashPassword
+  hashPassword,
 } from './password';
 
 const nonceSize = sodium.crypto_aead_xchacha20poly1305_ietf_NPUBBYTES;
@@ -93,12 +93,7 @@ function wrapWithPassword(
   opsLimit: PasswordOpsLimit = passwordOpsLimitDefault,
   memLimit: PasswordMemLimit = passwordMemLimitDefault,
 ): JWKEncrypted {
-  const [key, salt] = hashPassword(
-    password,
-    undefined,
-    opsLimit,
-    memLimit,
-  );
+  const [key, salt] = hashPassword(password, undefined, opsLimit, memLimit);
   const protectedHeader = {
     alg: 'Argon2id-1.3',
     enc: 'XChaCha20-Poly1305-IETF',
@@ -186,12 +181,7 @@ function unwrapWithPassword(
     return;
   }
   const salt = Buffer.from(header.salt, 'base64url') as PasswordSalt;
-  const [key] = hashPassword(
-    password,
-    salt,
-    header.ops,
-    header.mem,
-  );
+  const [key] = hashPassword(password, salt, header.ops, header.mem);
   const additionalData = Buffer.from(keyJWE.protected, 'utf-8');
   const nonce = Buffer.from(keyJWE.iv, 'base64url');
   const mac = Buffer.from(keyJWE.tag, 'base64url');

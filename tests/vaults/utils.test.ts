@@ -28,7 +28,7 @@ describe('Vaults utils', () => {
   });
 
   test('EFS can be read recursively', async () => {
-    const key = await keysUtils.generateKey(256);
+    const key = await keysUtils.generateKey();
     const efs = await EncryptedFS.createEncryptedFS({
       dbKey: key,
       dbPath: dataDir,

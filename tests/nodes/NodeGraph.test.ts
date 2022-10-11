@@ -5,6 +5,7 @@ import type {
   NodeBucket,
   NodeBucketIndex,
 } from '@/nodes/types';
+import type { Key } from '@/keys/types';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
@@ -13,13 +14,12 @@ import { DB } from '@matrixai/db';
 import { IdInternal } from '@matrixai/id';
 import * as fc from 'fast-check';
 import NodeGraph from '@/nodes/NodeGraph';
-import KeyManager from '@/keys/KeyManager';
+import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as nodesErrors from '@/nodes/errors';
 import * as utils from '@/utils';
 import * as testNodesUtils from './utils';
-import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 
 describe(`${NodeGraph.name} test`, () => {
   const password = 'password';
@@ -27,7 +27,7 @@ describe(`${NodeGraph.name} test`, () => {
     new StreamHandler(),
   ]);
   let dataDir: string;
-  let keyManager: KeyManager;
+  let keyRing: KeyRing;
   let dbKey: Buffer;
   let dbPath: string;
   let db: DB;
@@ -36,17 +36,16 @@ describe(`${NodeGraph.name} test`, () => {
       path.join(os.tmpdir(), 'polykey-test-'),
     );
     const keysPath = `${dataDir}/keys`;
-    keyManager = await KeyManager.createKeyManager({
+    keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
       logger,
-      privateKeyPemOverride: globalRootKeyPems[0],
     });
     dbKey = await keysUtils.generateKey();
     dbPath = `${dataDir}/db`;
   });
   afterAll(async () => {
-    await keyManager.stop();
+    await keyRing.stop();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
@@ -59,8 +58,18 @@ describe(`${NodeGraph.name} test`, () => {
       crypto: {
         key: dbKey,
         ops: {
-          encrypt: keysUtils.encryptWithKey,
-          decrypt: keysUtils.decryptWithKey,
+          encrypt: async (key, plainText) => {
+            return keysUtils.encryptWithKey(
+              utils.bufferWrap(key) as Key,
+              utils.bufferWrap(plainText),
+            );
+          },
+          decrypt: async (key, cipherText) => {
+            return keysUtils.decryptWithKey(
+              utils.bufferWrap(key) as Key,
+              utils.bufferWrap(cipherText),
+            );
+          },
         },
       },
     });
@@ -72,17 +81,17 @@ describe(`${NodeGraph.name} test`, () => {
   test('get, set and unset node IDs', async () => {
     const nodeGraph = await NodeGraph.createNodeGraph({
       db,
-      keyManager,
+      keyRing,
       logger,
     });
     let nodeId1: NodeId;
     do {
       nodeId1 = testNodesUtils.generateRandomNodeId();
-    } while (nodeId1.equals(keyManager.getNodeId()));
+    } while (nodeId1.equals(keyRing.getNodeId()));
     let nodeId2: NodeId;
     do {
       nodeId2 = testNodesUtils.generateRandomNodeId();
-    } while (nodeId2.equals(keyManager.getNodeId()));
+    } while (nodeId2.equals(keyRing.getNodeId()));
 
     await nodeGraph.setNode(nodeId1, {
       host: '10.0.0.1',
@@ -152,15 +161,13 @@ describe(`${NodeGraph.name} test`, () => {
   test('get all nodes', async () => {
     const nodeGraph = await NodeGraph.createNodeGraph({
       db,
-      keyManager,
+      keyRing,
       logger,
     });
     let nodeIds = Array.from({ length: 25 }, () => {
       return testNodesUtils.generateRandomNodeId();
     });
-    nodeIds = nodeIds.filter(
-      (nodeId) => !nodeId.equals(keyManager.getNodeId()),
-    );
+    nodeIds = nodeIds.filter((nodeId) => !nodeId.equals(keyRing.getNodeId()));
     let bucketIndexes: Array<NodeBucketIndex>;
     let nodes: NodeBucket;
     nodes = await utils.asyncIterableArray(nodeGraph.getNodes());
@@ -176,7 +183,7 @@ describe(`${NodeGraph.name} test`, () => {
     expect(nodes).toHaveLength(25);
     // Sorted by bucket indexes ascending
     bucketIndexes = nodes.map(([nodeId]) =>
-      nodesUtils.bucketIndex(keyManager.getNodeId(), nodeId),
+      nodesUtils.bucketIndex(keyRing.getNodeId(), nodeId),
     );
     expect(
       bucketIndexes.slice(1).every((bucketIndex, i) => {
@@ -186,7 +193,7 @@ describe(`${NodeGraph.name} test`, () => {
     // Sorted by bucket indexes ascending explicitly
     nodes = await utils.asyncIterableArray(nodeGraph.getNodes('asc'));
     bucketIndexes = nodes.map(([nodeId]) =>
-      nodesUtils.bucketIndex(keyManager.getNodeId(), nodeId),
+      nodesUtils.bucketIndex(keyRing.getNodeId(), nodeId),
     );
     expect(
       bucketIndexes.slice(1).every((bucketIndex, i) => {
@@ -197,7 +204,7 @@ describe(`${NodeGraph.name} test`, () => {
     expect(nodes).toHaveLength(25);
     // Sorted by bucket indexes descending
     bucketIndexes = nodes.map(([nodeId]) =>
-      nodesUtils.bucketIndex(keyManager.getNodeId(), nodeId),
+      nodesUtils.bucketIndex(keyRing.getNodeId(), nodeId),
     );
     expect(
       bucketIndexes.slice(1).every((bucketIndex, i) => {
@@ -209,11 +216,11 @@ describe(`${NodeGraph.name} test`, () => {
   test('setting same node ID throws error', async () => {
     const nodeGraph = await NodeGraph.createNodeGraph({
       db,
-      keyManager,
+      keyRing,
       logger,
     });
     await expect(
-      nodeGraph.setNode(keyManager.getNodeId(), {
+      nodeGraph.setNode(keyRing.getNodeId(), {
         host: '127.0.0.1',
         port: 55555,
       } as NodeAddress),
@@ -223,19 +230,19 @@ describe(`${NodeGraph.name} test`, () => {
   test('get bucket with 1 node', async () => {
     const nodeGraph = await NodeGraph.createNodeGraph({
       db,
-      keyManager,
+      keyRing,
       logger,
     });
     let nodeId: NodeId;
     do {
       nodeId = testNodesUtils.generateRandomNodeId();
-    } while (nodeId.equals(keyManager.getNodeId()));
+    } while (nodeId.equals(keyRing.getNodeId()));
     // Set one node
     await nodeGraph.setNode(nodeId, {
       host: '127.0.0.1',
       port: 55555,
     } as NodeAddress);
-    const bucketIndex = nodesUtils.bucketIndex(keyManager.getNodeId(), nodeId);
+    const bucketIndex = nodesUtils.bucketIndex(keyRing.getNodeId(), nodeId);
     const bucket = await nodeGraph.getBucket(bucketIndex);
     expect(bucket).toHaveLength(1);
     expect(bucket[0]).toStrictEqual([
@@ -269,18 +276,16 @@ describe(`${NodeGraph.name} test`, () => {
   test('get bucket with multiple nodes', async () => {
     const nodeGraph = await NodeGraph.createNodeGraph({
       db,
-      keyManager,
+      keyRing,
       logger,
     });
     // Contiguous node IDs starting from 0
     let nodeIds = Array.from({ length: 25 }, (_, i) =>
       IdInternal.create<NodeId>(
-        utils.bigInt2Bytes(BigInt(i), keyManager.getNodeId().byteLength),
+        utils.bigInt2Bytes(BigInt(i), keyRing.getNodeId().byteLength),
       ),
     );
-    nodeIds = nodeIds.filter(
-      (nodeId) => !nodeId.equals(keyManager.getNodeId()),
-    );
+    nodeIds = nodeIds.filter((nodeId) => !nodeId.equals(keyRing.getNodeId()));
     for (const nodeId of nodeIds) {
       await utils.sleep(100);
       await nodeGraph.setNode(nodeId, {
@@ -290,11 +295,11 @@ describe(`${NodeGraph.name} test`, () => {
     }
     // Use first and last buckets because node IDs may be split between buckets
     const bucketIndexFirst = nodesUtils.bucketIndex(
-      keyManager.getNodeId(),
+      keyRing.getNodeId(),
       nodeIds[0],
     );
     const bucketIndexLast = nodesUtils.bucketIndex(
-      keyManager.getNodeId(),
+      keyRing.getNodeId(),
       nodeIds[nodeIds.length - 1],
     );
     const bucketFirst = await nodeGraph.getBucket(bucketIndexFirst);
@@ -335,7 +340,7 @@ describe(`${NodeGraph.name} test`, () => {
     // Sort by distance asc
     bucket = await nodeGraph.getBucket(bucketIndex, 'distance', 'asc');
     let bucketDistances = bucket.map(([nodeId]) =>
-      nodesUtils.nodeDistance(keyManager.getNodeId(), nodeId),
+      nodesUtils.nodeDistance(keyRing.getNodeId(), nodeId),
     );
     expect(
       bucketDistances.slice(1).every((distance, i) => {
@@ -345,7 +350,7 @@ describe(`${NodeGraph.name} test`, () => {
     // Sort by distance desc
     bucket = await nodeGraph.getBucket(bucketIndex, 'distance', 'desc');
     bucketDistances = bucket.map(([nodeId]) =>
-      nodesUtils.nodeDistance(keyManager.getNodeId(), nodeId),
+      nodesUtils.nodeDistance(keyRing.getNodeId(), nodeId),
     );
     expect(
       bucketDistances.slice(1).every((distance, i) => {
@@ -372,7 +377,7 @@ describe(`${NodeGraph.name} test`, () => {
   test('get all buckets', async () => {
     const nodeGraph = await NodeGraph.createNodeGraph({
       db,
-      keyManager,
+      keyRing,
       logger,
     });
     const now = utils.getUnixtime();
@@ -394,7 +399,7 @@ describe(`${NodeGraph.name} test`, () => {
       expect(bucket.length > 0).toBe(true);
       for (const [nodeId, nodeData] of bucket) {
         expect(nodeId.byteLength).toBe(32);
-        expect(nodesUtils.bucketIndex(keyManager.getNodeId(), nodeId)).toBe(
+        expect(nodesUtils.bucketIndex(keyRing.getNodeId(), nodeId)).toBe(
           bucketIndex,
         );
         expect(nodeData.address.host).toBe('127.0.0.1');
@@ -413,7 +418,7 @@ describe(`${NodeGraph.name} test`, () => {
     // There must have been at least 1 bucket
     expect(bucketIndex_).not.toBe(-1);
     // Descending order
-    bucketIndex_ = keyManager.getNodeId().length * 8;
+    bucketIndex_ = keyRing.getNodeId().length * 8;
     for await (const [bucketIndex, bucket] of nodeGraph.getBuckets(
       'nodeId',
       'desc',
@@ -423,7 +428,7 @@ describe(`${NodeGraph.name} test`, () => {
       expect(bucket.length > 0).toBe(true);
       for (const [nodeId, nodeData] of bucket) {
         expect(nodeId.byteLength).toBe(32);
-        expect(nodesUtils.bucketIndex(keyManager.getNodeId(), nodeId)).toBe(
+        expect(nodesUtils.bucketIndex(keyRing.getNodeId(), nodeId)).toBe(
           bucketIndex,
         );
         expect(nodeData.address.host).toBe('127.0.0.1');
@@ -439,7 +444,7 @@ describe(`${NodeGraph.name} test`, () => {
         }),
       ).toBe(true);
     }
-    expect(bucketIndex_).not.toBe(keyManager.getNodeId().length * 8);
+    expect(bucketIndex_).not.toBe(keyRing.getNodeId().length * 8);
     // Distance ascending order
     // Lower distance buckets first
     bucketIndex_ = -1;
@@ -452,7 +457,7 @@ describe(`${NodeGraph.name} test`, () => {
       expect(bucket.length > 0).toBe(true);
       for (const [nodeId, nodeData] of bucket) {
         expect(nodeId.byteLength).toBe(32);
-        expect(nodesUtils.bucketIndex(keyManager.getNodeId(), nodeId)).toBe(
+        expect(nodesUtils.bucketIndex(keyRing.getNodeId(), nodeId)).toBe(
           bucketIndex,
         );
         expect(nodeData.address.host).toBe('127.0.0.1');
@@ -462,7 +467,7 @@ describe(`${NodeGraph.name} test`, () => {
         expect(nodeData.lastUpdated >= now).toBe(true);
       }
       const bucketDistances = bucket.map(([nodeId]) =>
-        nodesUtils.nodeDistance(keyManager.getNodeId(), nodeId),
+        nodesUtils.nodeDistance(keyRing.getNodeId(), nodeId),
       );
       // It's the LAST bucket that fails this
       expect(
@@ -473,7 +478,7 @@ describe(`${NodeGraph.name} test`, () => {
     }
     // Distance descending order
     // Higher distance buckets first
-    bucketIndex_ = keyManager.getNodeId().length * 8;
+    bucketIndex_ = keyRing.getNodeId().length * 8;
     for await (const [bucketIndex, bucket] of nodeGraph.getBuckets(
       'distance',
       'desc',
@@ -483,7 +488,7 @@ describe(`${NodeGraph.name} test`, () => {
       expect(bucket.length > 0).toBe(true);
       for (const [nodeId, nodeData] of bucket) {
         expect(nodeId.byteLength).toBe(32);
-        expect(nodesUtils.bucketIndex(keyManager.getNodeId(), nodeId)).toBe(
+        expect(nodesUtils.bucketIndex(keyRing.getNodeId(), nodeId)).toBe(
           bucketIndex,
         );
         expect(nodeData.address.host).toBe('127.0.0.1');
@@ -493,7 +498,7 @@ describe(`${NodeGraph.name} test`, () => {
         expect(nodeData.lastUpdated >= now).toBe(true);
       }
       const bucketDistances = bucket.map(([nodeId]) =>
-        nodesUtils.nodeDistance(keyManager.getNodeId(), nodeId),
+        nodesUtils.nodeDistance(keyRing.getNodeId(), nodeId),
       );
       expect(
         bucketDistances.slice(1).every((distance, i) => {
@@ -513,7 +518,7 @@ describe(`${NodeGraph.name} test`, () => {
       expect(bucket.length > 0).toBe(true);
       for (const [nodeId, nodeData] of bucket) {
         expect(nodeId.byteLength).toBe(32);
-        expect(nodesUtils.bucketIndex(keyManager.getNodeId(), nodeId)).toBe(
+        expect(nodesUtils.bucketIndex(keyRing.getNodeId(), nodeId)).toBe(
           bucketIndex,
         );
         expect(nodeData.address.host).toBe('127.0.0.1');
@@ -533,7 +538,7 @@ describe(`${NodeGraph.name} test`, () => {
     }
     // Last updated descending order
     // Bucket index is descending
-    bucketIndex_ = keyManager.getNodeId().length * 8;
+    bucketIndex_ = keyRing.getNodeId().length * 8;
     for await (const [bucketIndex, bucket] of nodeGraph.getBuckets(
       'lastUpdated',
       'desc',
@@ -543,7 +548,7 @@ describe(`${NodeGraph.name} test`, () => {
       expect(bucket.length > 0).toBe(true);
       for (const [nodeId, nodeData] of bucket) {
         expect(nodeId.byteLength).toBe(32);
-        expect(nodesUtils.bucketIndex(keyManager.getNodeId(), nodeId)).toBe(
+        expect(nodesUtils.bucketIndex(keyRing.getNodeId(), nodeId)).toBe(
           bucketIndex,
         );
         expect(nodeData.address.host).toBe('127.0.0.1');
@@ -565,9 +570,9 @@ describe(`${NodeGraph.name} test`, () => {
   });
   test('reset buckets', async () => {
     const getNodeIdMock = jest.fn();
-    const dummyKeyManager = {
+    const dummyKeyRing = {
       getNodeId: getNodeIdMock,
-    } as unknown as KeyManager;
+    } as unknown as KeyRing;
 
     const nodeIdArb = fc
       .int8Array({ minLength: 32, maxLength: 32 })
@@ -593,7 +598,7 @@ describe(`${NodeGraph.name} test`, () => {
           getNodeIdMock.mockImplementation(() => nodeIds[0]);
           const nodeGraph = await NodeGraph.createNodeGraph({
             db,
-            keyManager: dummyKeyManager,
+            keyRing: dummyKeyRing,
             logger,
           });
           for (const nodeId of initialNodes) {
@@ -607,7 +612,7 @@ describe(`${NodeGraph.name} test`, () => {
           );
           // Reset the buckets according to the new node ID
           // Note that this should normally be only executed when the key manager NodeID changes
-          // This means methods that use the KeyManager's node ID cannot be used here in this test
+          // This means methods that use the KeyRing's node ID cannot be used here in this test
           getNodeIdMock.mockImplementation(() => nodeIds[1]);
           const nodeIdNew1 = nodeIds[1];
           await nodeGraph.resetBuckets(nodeIdNew1);
@@ -692,9 +697,9 @@ describe(`${NodeGraph.name} test`, () => {
   });
   test('reset buckets should re-order the buckets', async () => {
     const getNodeIdMock = jest.fn();
-    const dummyKeyManager = {
+    const dummyKeyRing = {
       getNodeId: getNodeIdMock,
-    } as unknown as KeyManager;
+    } as unknown as KeyRing;
 
     const nodeIdArb = fc
       .int8Array({ minLength: 32, maxLength: 32 })
@@ -716,7 +721,7 @@ describe(`${NodeGraph.name} test`, () => {
           getNodeIdMock.mockImplementation(() => nodeIds[0]);
           const nodeGraph = await NodeGraph.createNodeGraph({
             db,
-            keyManager: dummyKeyManager,
+            keyRing: dummyKeyRing,
             fresh: true,
             logger,
           });
@@ -731,7 +736,7 @@ describe(`${NodeGraph.name} test`, () => {
           );
           // Reset the buckets according to the new node ID
           // Note that this should normally be only executed when the key manager NodeID changes
-          // This means methods that use the KeyManager's node ID cannot be used here in this test
+          // This means methods that use the KeyRing's node ID cannot be used here in this test
           getNodeIdMock.mockImplementation(() => nodeIds[1]);
           const nodeIdNew1 = nodeIds[1];
           await nodeGraph.resetBuckets(nodeIdNew1);
@@ -747,9 +752,9 @@ describe(`${NodeGraph.name} test`, () => {
   });
   test('reset buckets should not corrupt data', async () => {
     const getNodeIdMock = jest.fn();
-    const dummyKeyManager = {
+    const dummyKeyRing = {
       getNodeId: getNodeIdMock,
-    } as unknown as KeyManager;
+    } as unknown as KeyRing;
 
     const nodeIdArb = fc
       .int8Array({ minLength: 32, maxLength: 32 })
@@ -771,7 +776,7 @@ describe(`${NodeGraph.name} test`, () => {
           getNodeIdMock.mockImplementation(() => nodeIds[0]);
           const nodeGraph = await NodeGraph.createNodeGraph({
             db,
-            keyManager: dummyKeyManager,
+            keyRing: dummyKeyRing,
             fresh: true,
             logger,
           });
@@ -786,7 +791,7 @@ describe(`${NodeGraph.name} test`, () => {
           }
           // Reset the buckets according to the new node ID
           // Note that this should normally be only executed when the key manager NodeID changes
-          // This means methods that use the KeyManager's node ID cannot be used here in this test
+          // This means methods that use the KeyRing's node ID cannot be used here in this test
           getNodeIdMock.mockImplementation(() => nodeIds[1]);
           const nodeIdNew1 = nodeIds[1];
           await nodeGraph.resetBuckets(nodeIdNew1);
@@ -816,9 +821,9 @@ describe(`${NodeGraph.name} test`, () => {
   });
   test('reset buckets to an existing node should remove node', async () => {
     const getNodeIdMock = jest.fn();
-    const dummyKeyManager = {
+    const dummyKeyRing = {
       getNodeId: getNodeIdMock,
-    } as unknown as KeyManager;
+    } as unknown as KeyRing;
 
     const nodeIdArb = fc
       .int8Array({ minLength: 32, maxLength: 32 })
@@ -835,7 +840,7 @@ describe(`${NodeGraph.name} test`, () => {
           getNodeIdMock.mockImplementation(() => nodeId);
           const nodeGraph = await NodeGraph.createNodeGraph({
             db,
-            keyManager: dummyKeyManager,
+            keyRing: dummyKeyRing,
             logger,
           });
           for (const nodeId of initialNodes) {
@@ -846,7 +851,7 @@ describe(`${NodeGraph.name} test`, () => {
           }
           // Reset the buckets according to the new node ID
           // Note that this should normally be only executed when the key manager NodeID changes
-          // This means methods that use the KeyManager's node ID cannot be used here in this test
+          // This means methods that use the KeyRing's node ID cannot be used here in this test
           getNodeIdMock.mockImplementation(() => initialNodes[nodeIndex]);
           const nodeIdNew1 = initialNodes[nodeIndex];
           await nodeGraph.resetBuckets(nodeIdNew1);
@@ -870,7 +875,7 @@ describe(`${NodeGraph.name} test`, () => {
   test('reset buckets is persistent', async () => {
     const nodeGraph = await NodeGraph.createNodeGraph({
       db,
-      keyManager,
+      keyRing,
       logger,
     });
     const now = utils.getUnixtime();
@@ -922,10 +927,10 @@ describe(`${NodeGraph.name} test`, () => {
   test('get closest nodes, 40 nodes lower than target, take 20', async () => {
     const nodeGraph = await NodeGraph.createNodeGraph({
       db,
-      keyManager,
+      keyRing,
       logger,
     });
-    const baseNodeId = keyManager.getNodeId();
+    const baseNodeId = keyRing.getNodeId();
     const nodeIds: NodeBucket = [];
     // Add 1 node to each bucket
     for (let i = 0; i < 40; i++) {
@@ -966,10 +971,10 @@ describe(`${NodeGraph.name} test`, () => {
   test('get closest nodes, 15 nodes lower than target, take 20', async () => {
     const nodeGraph = await NodeGraph.createNodeGraph({
       db,
-      keyManager,
+      keyRing,
       logger,
     });
-    const baseNodeId = keyManager.getNodeId();
+    const baseNodeId = keyRing.getNodeId();
     const nodeIds: NodeBucket = [];
     // Add 1 node to each bucket
     for (let i = 0; i < 15; i++) {
@@ -1010,10 +1015,10 @@ describe(`${NodeGraph.name} test`, () => {
   test('get closest nodes, 10 nodes lower than target, 30 nodes above,  take 20', async () => {
     const nodeGraph = await NodeGraph.createNodeGraph({
       db,
-      keyManager,
+      keyRing,
       logger,
     });
-    const baseNodeId = keyManager.getNodeId();
+    const baseNodeId = keyRing.getNodeId();
     const nodeIds: NodeBucket = [];
     // Add 1 node to each bucket
     for (let i = 0; i < 40; i++) {
@@ -1054,10 +1059,10 @@ describe(`${NodeGraph.name} test`, () => {
   test('get closest nodes, 10 nodes lower than target, 30 nodes above,  take 5', async () => {
     const nodeGraph = await NodeGraph.createNodeGraph({
       db,
-      keyManager,
+      keyRing,
       logger,
     });
-    const baseNodeId = keyManager.getNodeId();
+    const baseNodeId = keyRing.getNodeId();
     const nodeIds: NodeBucket = [];
     // Add 1 node to each bucket
     for (let i = 0; i < 40; i++) {
@@ -1098,10 +1103,10 @@ describe(`${NodeGraph.name} test`, () => {
   test('get closest nodes, 5 nodes lower than target, 10 nodes above,  take 20', async () => {
     const nodeGraph = await NodeGraph.createNodeGraph({
       db,
-      keyManager,
+      keyRing,
       logger,
     });
-    const baseNodeId = keyManager.getNodeId();
+    const baseNodeId = keyRing.getNodeId();
     const nodeIds: NodeBucket = [];
     // Add 1 node to each bucket
     for (let i = 0; i < 15; i++) {
@@ -1142,10 +1147,10 @@ describe(`${NodeGraph.name} test`, () => {
   test('get closest nodes, 40 nodes above target,  take 20', async () => {
     const nodeGraph = await NodeGraph.createNodeGraph({
       db,
-      keyManager,
+      keyRing,
       logger,
     });
-    const baseNodeId = keyManager.getNodeId();
+    const baseNodeId = keyRing.getNodeId();
     const nodeIds: NodeBucket = [];
     // Add 1 node to each bucket
     for (let i = 0; i < 40; i++) {
@@ -1186,10 +1191,10 @@ describe(`${NodeGraph.name} test`, () => {
   test('get closest nodes, 15 nodes above target,  take 20', async () => {
     const nodeGraph = await NodeGraph.createNodeGraph({
       db,
-      keyManager,
+      keyRing,
       logger,
     });
-    const baseNodeId = keyManager.getNodeId();
+    const baseNodeId = keyRing.getNodeId();
     const nodeIds: NodeBucket = [];
     // Add 1 node to each bucket
     for (let i = 0; i < 15; i++) {
@@ -1230,10 +1235,10 @@ describe(`${NodeGraph.name} test`, () => {
   test('get closest nodes, no nodes, take 20', async () => {
     const nodeGraph = await NodeGraph.createNodeGraph({
       db,
-      keyManager,
+      keyRing,
       logger,
     });
-    const baseNodeId = keyManager.getNodeId();
+    const baseNodeId = keyRing.getNodeId();
     const nodeIds: NodeBucket = [];
     const targetNodeId = testNodesUtils.generateNodeIdForBucket(
       baseNodeId,

@@ -4,7 +4,6 @@ import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
 import { vaultOps } from '@/vaults';
-import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 import * as testUtils from '../../utils';
 
 describe('CLI secrets', () => {
@@ -25,9 +24,6 @@ describe('CLI secrets', () => {
       password,
       nodePath: dataDir,
       logger: logger,
-      keysConfig: {
-        privateKeyPemOverride: globalRootKeyPems[0],
-      },
     });
     // Authorize session
     await testUtils.pkStdio(

@@ -14,7 +14,6 @@ import {
   hasNsenter,
   hasUnshare,
 } from '../utils/platform';
-import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 
 const supportsNatTesting =
   isPlatformLinux && hasIp && hasIptables && hasNsenter && hasUnshare;
@@ -61,7 +60,6 @@ describe('DMZ', () => {
         {
           env: {
             PK_PASSWORD: password,
-            PK_ROOT_KEY: globalRootKeyPems[0],
           },
           command: `nsenter ${testNatUtils
             .nsenter(usrns.pid!, netns.pid!)
