@@ -328,7 +328,7 @@ class KeyRing {
         this._keyPair = keyPair;
         const recoveryCodeData = Buffer.from(recoveryCode, 'utf-8');
         bufferLock(recoveryCodeData);
-        bufferUnlock(this._recoveryCodeData!);
+        if (this._recoveryCodeData != null) bufferUnlock(this._recoveryCodeData);
         this._recoveryCodeData = recoveryCodeData as RecoveryCodeLocked;
         this.logger.info('Rotated root key pair');
       } catch (e) {
