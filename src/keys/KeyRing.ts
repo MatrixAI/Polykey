@@ -777,14 +777,14 @@ class KeyRing {
    * This is the data encryption key for the rest of PK.
    * This is what makes PK a hybrid cryptosystem.
    */
-  protected async setupDbKey(rootKeyPair: KeyPair): Promise<BufferLocked<Key>> {
+  protected async setupDbKey(keyPair: KeyPair): Promise<BufferLocked<Key>> {
     let dbKey: BufferLocked<Key>;
     if (await this.existsDbKey()) {
-      dbKey = await this.readDbKey(rootKeyPair);
+      dbKey = await this.readDbKey(keyPair);
     } else {
       this.logger.info('Generating db key');
       dbKey = this.generateDbKey();
-      await this.writeDbKey(dbKey, rootKeyPair.publicKey);
+      await this.writeDbKey(dbKey, keyPair.publicKey);
     }
     return dbKey;
   }

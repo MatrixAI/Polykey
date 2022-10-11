@@ -78,7 +78,7 @@ describe(KeyRing.name, () => {
     expect(keyRing.dbKey.byteLength).toBe(32);
     await keyRing.stop();
   });
-  test.only('start and stop is persistent', async () => {
+  test('start and stop is persistent', async () => {
     const keysPath = `${dataDir}/keys`;
     const keyRing = await KeyRing.createKeyRing({
       keysPath,
@@ -103,6 +103,20 @@ describe(KeyRing.name, () => {
     expect(keyRing.recoveryCode).toBeUndefined();
     await keyRing.stop();
   });
+  test('can check and change the password', async () => {
+    const keysPath = `${dataDir}/keys`;
+    const keyRing = await KeyRing.createKeyRing({
+      keysPath,
+      password,
+      logger,
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min
+    });
+    expect(await keyRing.checkPassword(password)).toBe(true);
+    await keyRing.changePassword('new password');
+    expect(await keyRing.checkPassword('new password')).toBe(true);
+    await keyRing.stop();
+  });
   test('changed password persists after restart', async () => {
     const keysPath = `${dataDir}/keys`;
     const keyRing = await KeyRing.createKeyRing({
@@ -120,20 +134,6 @@ describe(KeyRing.name, () => {
     expect(await keyRing.checkPassword('new password')).toBe(true);
     await keyRing.stop();
   });
-  test('can check and change the password', async () => {
-    const keysPath = `${dataDir}/keys`;
-    const keyRing = await KeyRing.createKeyRing({
-      keysPath,
-      password,
-      logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min
-    });
-    expect(await keyRing.checkPassword(password)).toBe(true);
-    await keyRing.changePassword('new password');
-    expect(await keyRing.checkPassword('new password')).toBe(true);
-    await keyRing.stop();
-  });
   test('creates a recovery code and can recover from the same code', async () => {
     const keysPath = `${dataDir}/keys`;
     const keyRing = await KeyRing.createKeyRing({
@@ -147,7 +147,6 @@ describe(KeyRing.name, () => {
     const recoveryCode = keyRing.recoveryCode!;
     expect(recoveryCode).toBeDefined();
     await keyRing.stop();
-    // Oops forgot the password
     // Use the recovery code to recover and set the new password
     await keyRing.start({
       password: 'newpassword',
