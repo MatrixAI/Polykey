@@ -231,10 +231,10 @@ type RecoveryCodeLocked = Opaque<'RecoverCodeLocked', BufferLocked<Buffer>>;
 /**
  * Change data for KeyRing
  */
-type CertificateManagerChangeData = {
+type CertManagerChangeData = {
   nodeId: NodeId;
-  rootKeyPair: KeyPair;
-  rootCert: Certificate;
+  keyPair: KeyPair;
+  cert: Certificate;
   recoveryCode?: RecoveryCode;
 };
 
@@ -270,7 +270,7 @@ export type {
   PasswordMemLimit,
   RecoveryCode,
   RecoveryCodeLocked,
-  CertificateManagerChangeData,
+  CertManagerChangeData,
 };
 
 export type {
