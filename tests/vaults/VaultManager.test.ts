@@ -33,6 +33,8 @@ import { sleep } from '@/utils';
 import VaultInternal from '@/vaults/VaultInternal';
 import * as nodeTestUtils from '../nodes/utils';
 import * as testUtils from '../utils';
+import * as keysUtils from '@/keys/utils/index';
+import { CertificatePEMChain } from '@/keys/types';
 
 describe('VaultManager', () => {
   const localHost = '127.0.0.1' as Host;
@@ -565,8 +567,8 @@ describe('VaultManager', () => {
       localNodeIdEncoded = nodesUtils.encodeNodeId(localNodeId);
 
       const tlsConfig: TLSConfig = {
-        keyPrivatePem: keyRing.getRootKeyPairPem().privateKey,
-        certChainPem: await keyRing.getRootCertChainPem(),
+        keyPrivatePem: keysUtils.privateKeyToPEM(keyRing.keyPair.privateKey),
+        certChainPem: keysUtils.publicKeyToPEM(keyRing.keyPair.publicKey) as unknown as CertificatePEMChain,
       };
 
       await proxy.start({
@@ -1501,8 +1503,8 @@ describe('VaultManager', () => {
     });
     await proxy.start({
       tlsConfig: {
-        keyPrivatePem: keyRing.getRootKeyPairPem().privateKey,
-        certChainPem: await keyRing.getRootCertChainPem(),
+        keyPrivatePem: keysUtils.privateKeyToPEM(keyRing.keyPair.privateKey),
+        certChainPem: keysUtils.publicKeyToPEM(keyRing.keyPair.publicKey) as unknown as CertificatePEMChain,
       },
       serverHost: localHost,
       serverPort: port,

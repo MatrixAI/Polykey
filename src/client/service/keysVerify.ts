@@ -25,11 +25,12 @@ function keysVerify({
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
       // FIXME: do we need to provide a public key now?
-      const status = await keyRing.verify(
-        Buffer.from(call.request.getData(), 'binary'),
-        Buffer.from(call.request.getSignature(), 'binary'),
-      );
-      response.setSuccess(status);
+      // const status = await keyRing.verify(
+      //   Buffer.from(call.request.getData(), 'binary'),
+      //   Buffer.from(call.request.getSignature(), 'binary'),
+      // );
+      // response.setSuccess(status);
+      throw Error('TMP FIXME');
       callback(null, response);
       return;
     } catch (e) {

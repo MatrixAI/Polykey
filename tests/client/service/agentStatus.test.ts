@@ -5,6 +5,7 @@ import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { Metadata } from '@grpc/grpc-js';
 import KeyRing from '@/keys/KeyRing';
+import CertManager  from '@/keys/CertManager';
 import Proxy from '@/network/Proxy';
 import GRPCServer from '@/grpc/GRPCServer';
 import GRPCClientClient from '@/client/GRPCClientClient';
@@ -13,6 +14,9 @@ import { ClientServiceService } from '@/proto/js/polykey/v1/client_service_grpc_
 import * as agentPB from '@/proto/js/polykey/v1/agent/agent_pb';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as clientUtils from '@/client/utils/utils';
+import * as keysUtils from '@/keys/utils';
+import { CertificatePEMChain } from '@/keys/types';
+import { DB } from '@matrixai/db';
 
 describe('agentStatus', () => {
   const logger = new Logger('agentStatus test', LogLevel.WARN, [
@@ -23,7 +27,9 @@ describe('agentStatus', () => {
     metaServer;
   const authToken = 'abc123';
   let dataDir: string;
+  let db: DB;
   let keyRing: KeyRing;
+  let certManager: CertManager;
   let grpcServerClient: GRPCServer;
   let grpcServerAgent: GRPCServer;
   let proxy: Proxy;
@@ -34,11 +40,21 @@ describe('agentStatus', () => {
       path.join(os.tmpdir(), 'polykey-test-'),
     );
     const keysPath = path.join(dataDir, 'keys');
+    const dbPath = path.join(dataDir, 'db');
+    db = await DB.createDB({
+      dbPath,
+      logger,
+    })
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
       logger,
     });
+    certManager = await CertManager.createCertManager({
+      db,
+      keyRing,
+      logger,
+    })
     grpcServerClient = new GRPCServer({ logger });
     await grpcServerClient.start({
       services: [],
@@ -55,14 +71,15 @@ describe('agentStatus', () => {
       serverHost: '127.0.0.1' as Host,
       serverPort: 0 as Port,
       tlsConfig: {
-        keyPrivatePem: keyRing.getRootKeyPairPem().privateKey,
-        certChainPem: await keyRing.getRootCertChainPem(),
+        keyPrivatePem: keysUtils.privateKeyToPEM(keyRing.keyPair.privateKey),
+        certChainPem: keysUtils.publicKeyToPEM(keyRing.keyPair.publicKey) as unknown as CertificatePEMChain,
       },
     });
     const clientService = {
       agentStatus: agentStatus({
         authenticate,
         keyRing,
+        certManager,
         grpcServerClient,
         grpcServerAgent,
         proxy,
@@ -88,7 +105,9 @@ describe('agentStatus', () => {
     await proxy.stop();
     await grpcServerAgent.stop();
     await grpcServerClient.stop();
+    await certManager.stop();
     await keyRing.stop();
+    await db.stop();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,

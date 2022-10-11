@@ -25,6 +25,7 @@ import * as keysUtils from '@/keys/utils';
 import { timerStart } from '@/utils';
 import * as utils from '@/utils/index';
 import * as testAgentUtils from './utils';
+import { CertificatePEMChain } from '@/keys/types';
 
 describe(GRPCClientAgent.name, () => {
   const host = '127.0.0.1' as Host;
@@ -291,8 +292,8 @@ describe(GRPCClientAgent.name, () => {
       nodeId2 = clientKeyRing2.getNodeId();
       await clientProxy2.start({
         tlsConfig: {
-          keyPrivatePem: clientKeyRing2.getRootKeyPairPem().privateKey,
-          certChainPem: await clientKeyRing2.getRootCertChainPem(),
+          keyPrivatePem: keysUtils.privateKeyToPEM(keyRing.keyPair.privateKey),
+          certChainPem: keysUtils.publicKeyToPEM(keyRing.keyPair.publicKey) as unknown as CertificatePEMChain,
         },
         proxyHost: localHost,
         forwardHost: localHost,

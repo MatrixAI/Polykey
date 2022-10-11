@@ -27,6 +27,8 @@ import * as nodesUtils from '@/nodes/utils';
 import * as validationErrors from '@/validation/errors';
 import TestProvider from '../../identities/TestProvider';
 import * as testUtils from '../../utils';
+import * as keysUtils from '@/keys/utils/index';
+import { CertificatePEMChain } from '@/keys/types';
 
 describe('identitiesClaim', () => {
   const logger = new Logger('identitiesClaim test', LogLevel.WARN, [
@@ -112,8 +114,8 @@ describe('identitiesClaim', () => {
       serverHost: '127.0.0.1' as Host,
       serverPort: 0 as Port,
       tlsConfig: {
-        keyPrivatePem: keyRing.getRootKeyPairPem().privateKey,
-        certChainPem: await keyRing.getRootCertChainPem(),
+        keyPrivatePem: keysUtils.privateKeyToPEM(keyRing.keyPair.privateKey),
+        certChainPem: keysUtils.publicKeyToPEM(keyRing.keyPair.publicKey) as unknown as CertificatePEMChain,
       },
     });
     sigchain = await Sigchain.createSigchain({
