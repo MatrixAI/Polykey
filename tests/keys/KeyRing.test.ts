@@ -1,7 +1,7 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { testProp, fc } from '@fast-check/jest';
+import { testProp } from '@fast-check/jest';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';

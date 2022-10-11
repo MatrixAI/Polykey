@@ -19,10 +19,14 @@ import * as utils from '../../utils';
  * Use this to make a key pair if you only have public key and private key
  */
 function makeKeyPair(publicKey: PublicKey, privateKey: PrivateKey): KeyPair {
+  // This ensures `secretKey.buffer` is not using the shared internal pool
+  const secretKey = Buffer.allocUnsafeSlow(privateKey.byteLength + publicKey.byteLength);
+  privateKey.copy(secretKey);
+  publicKey.copy(secretKey, privateKey.byteLength);
   return {
     publicKey,
     privateKey,
-    secretKey: Buffer.concat([privateKey, publicKey]),
+    secretKey,
   } as KeyPair;
 }
 
