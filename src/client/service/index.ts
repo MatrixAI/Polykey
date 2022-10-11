@@ -1,6 +1,7 @@
 import type { DB } from '@matrixai/db';
 import type PolykeyAgent from '../../PolykeyAgent';
 import type KeyRing from '../../keys/KeyRing';
+import type CertManager from '../../keys/CertManager';
 import type { VaultManager } from '../../vaults';
 import type {
   NodeManager,
@@ -92,12 +93,14 @@ function createService({
   keyRing,
   sessionManager,
   db,
+  certManager,
   logger = new Logger('GRPCClientClientService'),
   fs = require('fs'),
   ...containerRest
 }: {
   pkAgent: PolykeyAgent;
   db: DB;
+  certManager: CertManager;
   keyRing: KeyRing;
   vaultManager: VaultManager;
   nodeGraph: NodeGraph;
@@ -122,6 +125,7 @@ function createService({
     keyRing,
     sessionManager,
     db,
+    certManager,
     logger,
     fs,
     authenticate,
@@ -157,8 +161,8 @@ function createService({
     keysCertsGet: keysCertsGet(container),
     keysDecrypt: keysDecrypt(container),
     keysEncrypt: keysEncrypt(container),
-    // FIXME: Is there a distinction between renewing or resetting a keyPair?
-    //  Is this just rotate now?
+    // TODO: these names need to be updated to reflect changes,
+    //  needs to be updated all the way down to the BIN commands.
     keysKeyPairRenew: keysKeyPairRenew(container),
     keysKeyPairReset: keysKeyPairReset(container),
     keysKeyPairRoot: keysKeyPairRoot(container),

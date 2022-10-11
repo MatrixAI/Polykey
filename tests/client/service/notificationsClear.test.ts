@@ -20,6 +20,8 @@ import notificationsClear from '@/client/service/notificationsClear';
 import { ClientServiceService } from '@/proto/js/polykey/v1/client_service_grpc_pb';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as clientUtils from '@/client/utils/utils';
+import * as keysUtils from '@/keys/utils/index';
+import { CertificatePEMChain } from '@/keys/types';
 
 describe('notificationsClear', () => {
   const logger = new Logger('notificationsClear test', LogLevel.WARN, [
@@ -77,8 +79,8 @@ describe('notificationsClear', () => {
     });
     await proxy.start({
       tlsConfig: {
-        keyPrivatePem: keyRing.getRootKeyPairPem().privateKey,
-        certChainPem: await keyRing.getRootCertChainPem(),
+        keyPrivatePem: keysUtils.privateKeyToPEM(keyRing.keyPair.privateKey),
+        certChainPem: keysUtils.publicKeyToPEM(keyRing.keyPair.publicKey) as unknown as CertificatePEMChain,
       },
       serverHost: '127.0.0.1' as Host,
       serverPort: 0 as Port,

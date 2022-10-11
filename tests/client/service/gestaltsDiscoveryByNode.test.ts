@@ -29,6 +29,7 @@ import * as clientUtils from '@/client/utils/utils';
 import * as keysUtils from '@/keys/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as testNodesUtils from '../../nodes/utils';
+import { CertificatePEMChain } from '@/keys/types';
 
 describe('gestaltsDiscoveryByNode', () => {
   const logger = new Logger('gestaltsDiscoveryByNode test', LogLevel.WARN, [
@@ -110,8 +111,8 @@ describe('gestaltsDiscoveryByNode', () => {
       serverHost: '127.0.0.1' as Host,
       serverPort: 0 as Port,
       tlsConfig: {
-        keyPrivatePem: keyRing.getRootKeyPairPem().privateKey,
-        certChainPem: await keyRing.getRootCertChainPem(),
+        keyPrivatePem: keysUtils.privateKeyToPEM(keyRing.keyPair.privateKey),
+        certChainPem: keysUtils.publicKeyToPEM(keyRing.keyPair.publicKey) as unknown as CertificatePEMChain,
       },
     });
     sigchain = await Sigchain.createSigchain({

@@ -25,10 +25,11 @@ function keysEncrypt({
       call.sendMetadata(metadata);
       // FIXME: do we need to provide a target node now?
       //  or is it some other encrypt function?
-      const data = await keyRing.encrypt(
-        Buffer.from(call.request.getData(), 'binary'),
-      );
-      response.setData(data.toString('binary'));
+      // const data = await keyRing.encrypt(
+      //   Buffer.from(call.request.getData(), 'binary'),
+      // );
+      // response.setData(data.toString('binary'));
+      throw Error('TMP FIXME');
       callback(null, response);
       return;
     } catch (e) {

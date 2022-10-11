@@ -36,6 +36,7 @@ import * as nodesUtils from '@/nodes/utils';
 import * as utils from '@/utils/index';
 import * as testUtils from '../../utils';
 import TestProvider from '../../identities/TestProvider';
+import { CertificatePEMChain } from '@/keys/types';
 
 describe('gestaltsGestaltTrustByIdentity', () => {
   const logger = new Logger(
@@ -166,8 +167,8 @@ describe('gestaltsGestaltTrustByIdentity', () => {
       serverHost: '127.0.0.1' as Host,
       serverPort: 0 as Port,
       tlsConfig: {
-        keyPrivatePem: keyRing.getRootKeyPairPem().privateKey,
-        certChainPem: await keyRing.getRootCertChainPem(),
+        keyPrivatePem: keysUtils.privateKeyToPEM(keyRing.keyPair.privateKey),
+        certChainPem: keysUtils.publicKeyToPEM(keyRing.keyPair.publicKey) as unknown as CertificatePEMChain,
       },
     });
     sigchain = await Sigchain.createSigchain({

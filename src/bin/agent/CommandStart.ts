@@ -230,10 +230,10 @@ class CommandStart extends CommandPolykey {
           });
           pkAgent.setWorkerManager(workerManager);
         }
-        recoveryCodeOut = pkAgent.keyManager.getRecoveryCode();
+        recoveryCodeOut = pkAgent.keyRing.recoveryCode;
         statusLiveData = {
           pid: process.pid,
-          nodeId: nodesUtils.encodeNodeId(pkAgent.keyManager.getNodeId()),
+          nodeId: nodesUtils.encodeNodeId(pkAgent.keyRing.getNodeId()),
           clientHost: pkAgent.grpcServerClient.getHost(),
           clientPort: pkAgent.grpcServerClient.getPort(),
           agentHost: pkAgent.grpcServerAgent.getHost(),
