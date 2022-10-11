@@ -22,6 +22,8 @@ import * as nodesUtils from '@/nodes/utils';
 import * as clientUtils from '@/client/utils/utils';
 import * as validationErrors from '@/validation/errors';
 import * as testUtils from '../../utils';
+import * as keysUtils from '@/keys/utils/index';
+import { CertificatePEMChain } from '@/keys/types';
 
 describe('nodesAdd', () => {
   const logger = new Logger('nodesAdd test', LogLevel.WARN, [
@@ -64,8 +66,8 @@ describe('nodesAdd', () => {
     });
     await proxy.start({
       tlsConfig: {
-        keyPrivatePem: keyRing.getRootKeyPairPem().privateKey,
-        certChainPem: await keyRing.getRootCertChainPem(),
+        keyPrivatePem: keysUtils.privateKeyToPEM(keyRing.keyPair.privateKey),
+        certChainPem: keysUtils.publicKeyToPEM(keyRing.keyPair.publicKey) as unknown as CertificatePEMChain,
       },
       serverHost: '127.0.0.1' as Host,
       serverPort: 0 as Port,

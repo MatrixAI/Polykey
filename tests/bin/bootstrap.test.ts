@@ -66,7 +66,7 @@ describe('bootstrap', () => {
       const passwordPath = path.join(dataDir, 'password');
       await fs.promises.writeFile(passwordPath, password);
       const keyPair = await keysUtils.generateKeyPair();
-      const privateKeyPem = keysUtils.privateKeyToPem(keyPair.privateKey);
+      const privateKeyPem = keysUtils.privateKeyToPEM(keyPair.privateKey);
       const privateKeyPath = path.join(dataDir, 'private.pem');
       await fs.promises.writeFile(privateKeyPath, privateKeyPem, {
         encoding: 'utf-8',

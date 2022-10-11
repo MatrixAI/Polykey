@@ -27,6 +27,7 @@ import * as identitiesPB from '@/proto/js/polykey/v1/identities/identities_pb';
 import * as utils from '@/utils';
 import * as clientUtils from '@/client/utils/utils';
 import * as keysUtils from '@/keys/utils';
+import { CertificatePEMChain } from '@/keys/types';
 
 describe('gestaltsDiscoveryByIdentity', () => {
   const logger = new Logger('gestaltsDiscoveryByIdentity test', LogLevel.WARN, [
@@ -109,8 +110,8 @@ describe('gestaltsDiscoveryByIdentity', () => {
       serverHost: '127.0.0.1' as Host,
       serverPort: 0 as Port,
       tlsConfig: {
-        keyPrivatePem: keyRing.getRootKeyPairPem().privateKey,
-        certChainPem: await keyRing.getRootCertChainPem(),
+        keyPrivatePem: keysUtils.privateKeyToPEM(keyRing.keyPair.privateKey),
+        certChainPem: keysUtils.publicKeyToPEM(keyRing.keyPair.publicKey) as unknown as CertificatePEMChain,
       },
     });
     sigchain = await Sigchain.createSigchain({
