@@ -440,9 +440,9 @@ class CertManager {
             // It should be the very next certificate that is correct.
             continue;
           }
-          if (!keysUtils.certNotExpiredBy(cert, now)) {
-            this.delCert(certId, tran);
-          }
+        }
+        if (!keysUtils.certNotExpiredBy(cert, now)) {
+          this.delCert(certId, tran);
         }
       }
     });
