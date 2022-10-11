@@ -1,5 +1,5 @@
 import type { DB, DBTransaction, LevelPath, KeyPath } from '@matrixai/db';
-import type { Certificate, CertificateASN1, CertificatePEM, KeyPair } from './types';
+import type { Certificate, CertificateASN1, CertManagerChangeData, CertificatePEM, KeyPair, RecoveryCode } from './types';
 import type KeyRing from './KeyRing';
 import type { CertId } from '../ids/types';
 import Logger from '@matrixai/logger';
@@ -21,6 +21,7 @@ class CertManager {
     db,
     keyRing,
     certDuration = 31536000,
+    changeCallback,
     logger = new Logger(this.name),
     subjectAttrsExtra,
     issuerAttrsExtra,
@@ -29,6 +30,7 @@ class CertManager {
       db: DB;
       keyRing: KeyRing;
       certDuration?: number;
+      changeCallback?: (data: CertManagerChangeData) => any;
       logger?: Logger;
       subjectAttrsExtra?: Array<{ [key: string]: Array<string> }>,
       issuerAttrsExtra?: Array<{ [key: string]: Array<string> }>,
@@ -40,6 +42,7 @@ class CertManager {
       db,
       keyRing,
       certDuration,
+      changeCallback,
       logger,
     });
     await certManager.start({
@@ -71,22 +74,26 @@ class CertManager {
    * `CertManager/lastCertId -> {raw(CertId)}`
    */
   protected dblastCertIdPath: KeyPath = [...this.dbPath, 'lastCertId'];
+  protected changeCallback?: (data: CertManagerChangeData) => any;
 
   public constructor({
     db,
     keyRing,
     certDuration,
+    changeCallback,
     logger,
   }: {
     db: DB;
     keyRing: KeyRing;
     certDuration: number;
+    changeCallback?: (data: CertManagerChangeData) => any;
     logger: Logger;
   }) {
     this.logger = logger;
     this.db = db;
     this.keyRing = keyRing;
     this.certDuration = certDuration;
+    this.changeCallback = changeCallback;
   }
 
   public async start({
@@ -251,11 +258,14 @@ class CertManager {
     issuerAttrsExtra?: Array<{ [key: string]: Array<string> }>,
   ) {
     this.logger.info('Renewing certificate chain with new key pair');
+    let certNew: Certificate;
+    let recoveryCodeNew: RecoveryCode;
     try {
       await this.keyRing.rotateKeyPair(
         password,
-        async (keyPairNew: KeyPair, keyPairOld: KeyPair) => {
-          const certNew = await keysUtils.generateCertificate({
+        async (keyPairNew: KeyPair, keyPairOld: KeyPair, recoveryCodeNew_: RecoveryCode) => {
+          recoveryCodeNew = recoveryCodeNew_;
+          certNew = await keysUtils.generateCertificate({
             certId: this.generateCertId(),
             subjectKeyPair: keyPairNew,
             issuerPrivateKey: keyPairOld.privateKey,
@@ -268,6 +278,14 @@ class CertManager {
       );
     } finally {
       await this.gcCerts();
+    }
+    if (this.changeCallback != null) {
+      await this.changeCallback({
+        nodeId: this.keyRing.getNodeId(),
+        keyPair: this.keyRing.keyPair,
+        cert: certNew!,
+        recoveryCode: recoveryCodeNew!,
+      });
     }
     this.logger.info('Renewed certificate chain with new key pair');
   }
@@ -285,11 +303,14 @@ class CertManager {
     issuerAttrsExtra?: Array<{ [key: string]: Array<string> }>,
   ) {
     this.logger.info('Resetting certificate chain with new key pair');
+    let certNew: Certificate;
+    let recoveryCodeNew: RecoveryCode;
     try {
       await this.keyRing.rotateKeyPair(
         password,
-        async (keyPairNew: KeyPair) => {
-          const certNew = await keysUtils.generateCertificate({
+        async (keyPairNew: KeyPair, _, recoveryCodeNew_) => {
+          recoveryCodeNew = recoveryCodeNew_;
+          certNew = await keysUtils.generateCertificate({
             certId: this.generateCertId(),
             subjectKeyPair: keyPairNew,
             issuerPrivateKey: keyPairNew.privateKey,
@@ -302,6 +323,14 @@ class CertManager {
       );
     } finally {
       await this.gcCerts();
+    }
+    if (this.changeCallback != null) {
+      await this.changeCallback({
+        nodeId: this.keyRing.getNodeId(),
+        keyPair: this.keyRing.keyPair,
+        cert: certNew!,
+        recoveryCode: recoveryCodeNew!,
+      });
     }
     this.logger.info('Resetted certificate chain with new key pair');
   }
@@ -329,6 +358,13 @@ class CertManager {
     });
     await this.putCert(certNew);
     await this.gcCerts();
+    if (this.changeCallback != null) {
+      await this.changeCallback({
+        nodeId: this.keyRing.getNodeId(),
+        keyPair: this.keyRing.keyPair,
+        cert: certNew!,
+      });
+    }
     this.logger.info('Resetted certificate chain with current key pair');
   }
 

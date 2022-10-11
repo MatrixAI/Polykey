@@ -258,7 +258,7 @@ class KeyRing {
       keyPairOld: KeyPair,
       recoveryCodeNew: RecoveryCode,
       recoveryCodeOld?: RecoveryCode,
-    ) => Promise<void>,
+    ) => any,
   ): Promise<void> {
     await this.rotateLock.withF(async () => {
       this.logger.info('Rotating root key pair');
