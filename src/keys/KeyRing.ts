@@ -216,7 +216,9 @@ class KeyRing {
     return keysUtils.checkPassword(
       password,
       this.passwordHash!.hash,
-      this.passwordHash!.salt
+      this.passwordHash!.salt,
+      this.passwordOpsLimit,
+      this.passwordMemLimit,
     );
   }
 
@@ -597,7 +599,7 @@ class KeyRing {
     try {
       publicJWKJSON = await this.fs.promises.readFile(
         publicKeyPath,
-        'utf8',
+        'utf-8',
       );
     } catch (e) {
       throw new keysErrors.ErrorRootKeysRead(
@@ -655,7 +657,9 @@ class KeyRing {
     }
     const privateJWK = keysUtils.unwrapWithPassword(
       password,
-      privateJWE
+      privateJWE,
+      this.passwordOpsLimit,
+      this.passwordMemLimit
     );
     if (privateJWK == null) {
       throw new keysErrors.ErrorRootKeysParse(
@@ -697,10 +701,11 @@ class KeyRing {
     try {
       // Write to temporary files first, then atomically rename
       await Promise.all([
-        this.fs.promises.writeFile(`${this.publicKeyPath}.tmp`, publicJWKJSON),
+        this.fs.promises.writeFile(`${this.publicKeyPath}.tmp`, publicJWKJSON, 'utf-8'),
         this.fs.promises.writeFile(
           `${this.privateKeyPath}.tmp`,
           privateJWEJSON,
+          'utf-8'
         ),
       ]);
       await Promise.all([
@@ -869,7 +874,7 @@ class KeyRing {
     const dbJWEJSON = JSON.stringify(dbJWE);
     try {
       // Write to temporary file first, then atomically rename
-      await this.fs.promises.writeFile(`${this.dbKeyPath}.tmp`, dbJWEJSON),
+      await this.fs.promises.writeFile(`${this.dbKeyPath}.tmp`, dbJWEJSON, 'utf-8'),
       await this.fs.promises.rename(`${this.dbKeyPath}.tmp`, this.dbKeyPath);
     } catch (e) {
       throw new keysErrors.ErrorDBKeyWrite(

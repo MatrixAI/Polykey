@@ -14,6 +14,7 @@ import sodium from 'sodium-native';
 import { IdInternal } from '@matrixai/id';
 import { getRandomBytes } from './random';
 import * as utils from '../../utils';
+import fs from 'fs';
 
 /**
  * Use this to make a key pair if you only have public key and private key
@@ -84,7 +85,9 @@ function publicKeyFromPrivateKeyX25519(privateKey: PrivateKeyX): PublicKeyX {
  * Maps Ed25519 public key to X25519 public key
  */
 function publicKeyEd25519ToX25519(publicKey: PublicKey): PublicKeyX {
-  const publicKeyX25519 = Buffer.allocUnsafe(sodium.crypto_box_PUBLICKEYBYTES);
+  const publicKeyX25519 = Buffer.allocUnsafe(
+    sodium.crypto_box_PUBLICKEYBYTES
+  );
   sodium.crypto_sign_ed25519_pk_to_curve25519(publicKeyX25519, publicKey);
   return publicKeyX25519 as PublicKeyX;
 }
@@ -93,16 +96,14 @@ function publicKeyEd25519ToX25519(publicKey: PublicKey): PublicKeyX {
  * Maps Ed25519 private key to X25519 private key
  */
 function privateKeyEd25519ToX25519(privateKey: PrivateKey): PrivateKeyX {
-  const secretKeyX25519 = Buffer.allocUnsafe(sodium.crypto_box_SECRETKEYBYTES);
   const publicKey = publicKeyFromPrivateKeyEd25519(privateKey);
   const secretKeyEd25519 = Buffer.concat([privateKey, publicKey]);
-  sodium.crypto_sign_ed25519_sk_to_curve25519(
-    secretKeyX25519,
-    secretKeyEd25519,
+  const privateKeyX25519 = Buffer.allocUnsafe(
+    sodium.crypto_box_SECRETKEYBYTES
   );
-  const privateKeyX25519 = secretKeyX25519.slice(
-    0,
-    sodium.crypto_box_SEEDBYTES,
+  sodium.crypto_sign_ed25519_sk_to_curve25519(
+    privateKeyX25519,
+    secretKeyEd25519,
   );
   return privateKeyX25519 as PrivateKeyX;
 }
@@ -112,19 +113,16 @@ function privateKeyEd25519ToX25519(privateKey: PrivateKey): PrivateKeyX {
  */
 function keyPairEd25519ToX25519(keyPair: KeyPair): KeyPairX {
   const publicKeyX25519 = publicKeyEd25519ToX25519(keyPair.publicKey);
-  const secretKeyX25519 = Buffer.allocUnsafe(sodium.crypto_box_SECRETKEYBYTES);
-  sodium.crypto_sign_ed25519_sk_to_curve25519(
-    secretKeyX25519,
-    keyPair.secretKey,
+  const privateKeyX25519 = Buffer.allocUnsafe(
+    sodium.crypto_box_SECRETKEYBYTES
   );
-  const privateKeyX25519 = secretKeyX25519.slice(
-    0,
-    sodium.crypto_box_SEEDBYTES,
+  sodium.crypto_sign_ed25519_sk_to_curve25519(
+    privateKeyX25519,
+    keyPair.secretKey,
   );
   return {
     publicKey: publicKeyX25519,
     privateKey: privateKeyX25519,
-    secretKey: secretKeyX25519,
   } as KeyPairX;
 }
 
@@ -181,7 +179,7 @@ function encryptWithPublicKey(
       plainText,
       nonce,
       recieverPublicKeyX25519,
-      senderKeyPairX25519.secretKey,
+      senderKeyPairX25519.privateKey,
     );
     // Note that no public key is concatenated here
     // If it needs to be done, you must do it yourself
@@ -239,7 +237,7 @@ function decryptWithPrivateKey(
       cipherTextAndMac,
       nonce,
       senderPublicKeyX25519,
-      receiverKeyPairX25519.secretKey,
+      receiverKeyPairX25519.privateKey,
     );
     if (!decrypted) {
       return;
@@ -258,7 +256,7 @@ function decryptWithPrivateKey(
       plainText,
       cipherText,
       receiverKeyPairX25519.publicKey,
-      receiverKeyPairX25519.secretKey,
+      receiverKeyPairX25519.privateKey,
     );
     if (!decrypted) {
       return;
@@ -336,7 +334,7 @@ function encapsulateWithPublicKey(
       plainText,
       nonce,
       recieverPublicKeyX25519,
-      senderKeyPairX25519.secretKey,
+      senderKeyPairX25519.privateKey,
     );
     // Normally in JOSE, the protected header contents is base64url encoded then
     // passed along as the AAD when computing the auth tag during symmetric encryption.
@@ -452,7 +450,7 @@ function decapsulateWithPrivateKey(
       mac,
       nonce,
       senderPublicKeyX25519,
-      receiverKeyPairX25519.secretKey,
+      receiverKeyPairX25519.privateKey,
     );
     if (!decrypted) {
       return;
@@ -486,7 +484,7 @@ function decapsulateWithPrivateKey(
       plainText,
       publicKeyAndMacAndCipherText,
       receiverKeyPairX25519.publicKey,
-      receiverKeyPairX25519.secretKey,
+      receiverKeyPairX25519.privateKey,
     );
     if (!decrypted) {
       return;
