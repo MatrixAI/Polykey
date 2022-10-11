@@ -1,0 +1,17 @@
+# TYPE workers.worker_overhead_ops gauge
+workers.worker_overhead_ops{name="call overhead"} 872
+workers.worker_overhead_ops{name="parallel call overhead"} 444
+workers.worker_overhead_ops{name="parallel queue overhead"} 443
+workers.worker_overhead_ops{name="transfer overhead"} 785
+
+# TYPE workers.worker_overhead_margin gauge
+workers.worker_overhead_margin{name="call overhead"} 0.45
+workers.worker_overhead_margin{name="parallel call overhead"} 0.32
+workers.worker_overhead_margin{name="parallel queue overhead"} 0.31
+workers.worker_overhead_margin{name="transfer overhead"} 0.71
+
+# TYPE workers.worker_overhead_samples counter
+workers.worker_overhead_samples{name="call overhead"} 49
+workers.worker_overhead_samples{name="parallel call overhead"} 58
+workers.worker_overhead_samples{name="parallel queue overhead"} 86
+workers.worker_overhead_samples{name="transfer overhead"} 85
