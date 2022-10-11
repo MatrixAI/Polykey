@@ -169,7 +169,6 @@ class CertManager {
     for await (const [, certASN1] of tran.iterator(this.dbCertsPath, {
       keys: false,
       reverse: true,
-      limit: 1,
     })) {
       yield keysUtils.certFromASN1(certASN1 as CertificateASN1)!;
     }
@@ -436,7 +435,7 @@ class CertManager {
             // Delete this invalid certificate.
             // This can only happen if the key pair rotation failed
             // after the certificate was put in to the DB.
-            this.delCert(certId, tran);
+            await this.delCert(certId, tran);
             // This will iterate up the chain to the root
             // until we find the current certificate.
             // It should be the very next certificate that is correct.
@@ -444,7 +443,7 @@ class CertManager {
           }
         }
         if (!keysUtils.certNotExpiredBy(cert, now)) {
-          this.delCert(certId, tran);
+          await this.delCert(certId, tran);
         }
       }
     });
