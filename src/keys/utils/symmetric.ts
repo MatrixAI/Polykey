@@ -27,6 +27,8 @@ const macSize = sodium.crypto_aead_xchacha20poly1305_ietf_ABYTES;
  * `nonce || mac || cipherText`
  * This is an authenticated form of encryption.
  * The mac provides integrity and authenticity.
+ * The returned buffers are guaranteed to unpooled.
+ * This means the underlying `ArrayBuffer` is safely transferrable.
  */
 function encryptWithKey(
   key: Key,
@@ -43,7 +45,11 @@ function encryptWithKey(
     nonce,
     key,
   );
-  return Buffer.concat([nonce, macAndCipherText]);
+  // This ensures `result.buffer` is not using the shared internal pool
+  const result = Buffer.allocUnsafeSlow(nonceSize + macSize + plainText.byteLength);
+  nonce.copy(result);
+  macAndCipherText.copy(result, nonceSize);
+  return result;
 }
 
 /**
@@ -54,6 +60,8 @@ function encryptWithKey(
  * `nonce || mac || cipherText`
  * This is an authenticated form of decryption.
  * The mac provides integrity and authenticity.
+ * The returned buffers are guaranteed to unpooled.
+ * This means the underlying `ArrayBuffer` is safely transferrable.
  */
 function decryptWithKey(
   key: Key,
@@ -65,7 +73,8 @@ function decryptWithKey(
   }
   const nonce = cipherText.subarray(0, nonceSize);
   const macAndCipherText = cipherText.subarray(nonceSize);
-  const plainText = Buffer.allocUnsafe(macAndCipherText.byteLength - macSize);
+  // This ensures `plainText.buffer` is not using the shared internal pool
+  const plainText = Buffer.allocUnsafeSlow(macAndCipherText.byteLength - macSize);
   // This returns the number of bytes that has been decrypted
   const decrypted = sodium.crypto_aead_xchacha20poly1305_ietf_decrypt(
     plainText,

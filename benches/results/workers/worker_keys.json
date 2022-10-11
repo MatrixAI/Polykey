@@ -1,0 +1,60 @@
+{
+  "name": "workers.worker_keys",
+  "date": "2022-10-12T03:05:02.045Z",
+  "version": "1.0.1-alpha.0",
+  "results": [
+    {
+      "name": "hash password",
+      "ops": 2,
+      "margin": 1.81,
+      "options": {
+        "delay": 0.005,
+        "initCount": 1,
+        "minTime": 0.05,
+        "maxTime": 5,
+        "minSamples": 5
+      },
+      "samples": 16,
+      "promise": true,
+      "details": {
+        "min": 0.422363514,
+        "max": 0.477020219,
+        "mean": 0.4364584141249999,
+        "median": 0.4304040455,
+        "standardDeviation": 0.014861342161802208,
+        "marginOfError": 0.007917380036700125,
+        "relativeMarginOfError": 1.8140055914771802,
+        "standardErrorOfMean": 0.003715335540450552,
+        "sampleVariance": 0.00022085949085015995,
+        "sampleResults": [
+          0.422363514,
+          0.422510841,
+          0.425292823,
+          0.426674968,
+          0.427101653,
+          0.428116758,
+          0.428460346,
+          0.43034512,
+          0.430462971,
+          0.4304906,
+          0.435256717,
+          0.448289342,
+          0.448387885,
+          0.450609797,
+          0.451951072,
+          0.477020219
+        ]
+      },
+      "completed": true,
+      "percentSlower": 0
+    }
+  ],
+  "fastest": {
+    "name": "hash password",
+    "index": 0
+  },
+  "slowest": {
+    "name": "hash password",
+    "index": 0
+  }
+}

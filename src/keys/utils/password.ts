@@ -63,6 +63,8 @@ function isPasswordMemLimit(memLimit: number): memLimit is PasswordMemLimit {
  * Hashes the password and returns a 256-bit hash and 128-bit salt.
  * The 256-bit hash can be used as a key for symmetric encryption/decryption.
  * Pass the salt in case you are trying to get the same hash.
+ * The returned buffers are guaranteed to unpooled.
+ * This means the underlying `ArrayBuffer` is safely transferrable.
  */
 function hashPassword(
   password: string,
@@ -70,10 +72,14 @@ function hashPassword(
   opsLimit: PasswordOpsLimit = passwordOpsLimitDefault,
   memLimit: PasswordMemLimit = passwordMemLimitDefault,
 ): [PasswordHash, PasswordSalt] {
-  const hash = Buffer.allocUnsafe(
+  const hash = Buffer.allocUnsafeSlow(
     sodium.crypto_aead_xchacha20poly1305_ietf_KEYBYTES,
   );
-  salt ??= getRandomBytes(sodium.crypto_pwhash_SALTBYTES) as PasswordSalt;
+  salt ??= getRandomBytes(
+    sodium.crypto_pwhash_SALTBYTES,
+    undefined,
+    false
+  ) as PasswordSalt;
   sodium.crypto_pwhash(
     hash,
     Buffer.from(password, 'utf-8'),
@@ -85,6 +91,11 @@ function hashPassword(
   return [hash as PasswordHash, salt];
 }
 
+/**
+ * Checks the password.
+ * The returned buffers are guaranteed to unpooled.
+ * This means the underlying `ArrayBuffer` is safely transferrable.
+ */
 function checkPassword(
   password: string,
   hash: PasswordHash,
@@ -92,7 +103,7 @@ function checkPassword(
   opsLimit: PasswordOpsLimit = passwordOpsLimitDefault,
   memLimit: PasswordMemLimit = passwordMemLimitDefault,
 ): boolean {
-  const hash_ = Buffer.allocUnsafe(
+  const hash_ = Buffer.allocUnsafeSlow(
     sodium.crypto_aead_xchacha20poly1305_ietf_KEYBYTES,
   );
   if (hash.byteLength !== hash_.byteLength) {
