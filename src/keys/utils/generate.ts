@@ -28,8 +28,7 @@ function generateKeyPair(): KeyPair {
   // 32-byte secret seed (private key) and 32-byte public key.
   // We already have the public key, so we slice out just the private key.
   // This makes it easier to use with other libraries.
-  const privateKey = Buffer.allocUnsafe(sodium.crypto_sign_SEEDBYTES);
-  sodium.crypto_sign_ed25519_sk_to_pk(privateKey, secretKey);
+  const privateKey = secretKey.slice(0, sodium.crypto_sign_SEEDBYTES);
   return {
     publicKey,
     privateKey,
