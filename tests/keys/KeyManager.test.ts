@@ -50,30 +50,6 @@ describe('KeyManager', () => {
       recursive: true,
     });
   });
-  test('KeyManager readiness', async () => {
-    const keysPath = `${dataDir}/keys`;
-    const keyManager = await KeyManager.createKeyManager({
-      keysPath,
-      password,
-      logger,
-    });
-    await expect(async () => {
-      await keyManager.destroy();
-    }).rejects.toThrow(keysErrors.ErrorKeyManagerRunning);
-    // Should be a noop
-    await keyManager.start({ password });
-    await keyManager.stop();
-    await keyManager.destroy();
-    await expect(keyManager.start({ password })).rejects.toThrow(
-      keysErrors.ErrorKeyManagerDestroyed,
-    );
-    expect(() => {
-      keyManager.getRootKeyPair();
-    }).toThrow(keysErrors.ErrorKeyManagerNotRunning);
-    await expect(async () => {
-      await keyManager.getRootCertChain();
-    }).rejects.toThrow(keysErrors.ErrorKeyManagerNotRunning);
-  });
   test('constructs root key pair, root cert, root certs and db key', async () => {
     const keysPath = `${dataDir}/keys`;
     const keyManager = await KeyManager.createKeyManager({
@@ -98,92 +74,6 @@ describe('KeyManager', () => {
     expect(rootCertChainPem).not.toBeUndefined();
     await keyManager.stop();
   });
-  test(
-    'creates a recovery code and can recover from the same code',
-    async () => {
-      // Use the real generateDeterministicKeyPair
-      mockedGenerateDeterministicKeyPair.mockRestore();
-      const keysPath = `${dataDir}/keys`;
-      // Minimum key pair size is 1024
-      // Key pair generation can take 4 to 15 seconds
-      const keyManager = await KeyManager.createKeyManager({
-        password,
-        keysPath,
-        rootKeyPairBits: 1024,
-        logger,
-      });
-      const nodeId = keyManager.getNodeId();
-      // Acquire the recovery code
-      const recoveryCode = keyManager.getRecoveryCode()!;
-      expect(recoveryCode).toBeDefined();
-      await keyManager.stop();
-      // Oops forgot the password
-      // Use the recovery code to recover and set the new password
-      await keyManager.start({
-        password: 'newpassword',
-        recoveryCode,
-      });
-      expect(await keyManager.checkPassword('newpassword')).toBe(true);
-      expect(keyManager.getNodeId()).toStrictEqual(nodeId);
-      await keyManager.stop();
-    },
-    globalThis.defaultTimeout * 2,
-  );
-  test(
-    'create deterministic keypair with recovery code',
-    async () => {
-      // Use the real generateDeterministicKeyPair
-      mockedGenerateDeterministicKeyPair.mockRestore();
-      const recoveryCode = keysUtils.generateRecoveryCode();
-      const keysPath1 = `${dataDir}/keys1`;
-      const keyManager1 = await KeyManager.createKeyManager({
-        password,
-        recoveryCode,
-        keysPath: keysPath1,
-        rootKeyPairBits: 1024,
-        logger,
-      });
-      expect(keyManager1.getRecoveryCode()).toBe(recoveryCode);
-      const nodeId1 = keyManager1.getNodeId();
-      await keyManager1.stop();
-      const keysPath2 = `${dataDir}/keys2`;
-      const keyManager2 = await KeyManager.createKeyManager({
-        password,
-        recoveryCode,
-        keysPath: keysPath2,
-        rootKeyPairBits: 1024,
-        logger,
-      });
-      expect(keyManager2.getRecoveryCode()).toBe(recoveryCode);
-      const nodeId2 = keyManager2.getNodeId();
-      await keyManager2.stop();
-      expect(nodeId1).toStrictEqual(nodeId2);
-    },
-    globalThis.defaultTimeout * 2,
-  );
-  test('override key generation with privateKeyOverride', async () => {
-    const keysPath = `${dataDir}/keys`;
-    const keyPair = await keysUtils.generateKeyPair(4096);
-    const privateKeyPem = keysUtils.privateKeyToPem(keyPair.privateKey);
-    const mockedGenerateKeyPair = jest.spyOn(
-      keysUtils,
-      'generateDeterministicKeyPair',
-    );
-    const keyManager = await KeyManager.createKeyManager({
-      keysPath,
-      password,
-      privateKeyPemOverride: privateKeyPem,
-      logger,
-    });
-    expect(mockedGenerateKeyPair).not.toHaveBeenCalled();
-    const keysPathContents = await fs.promises.readdir(keysPath);
-    expect(keysPathContents).toContain('root.pub');
-    expect(keysPathContents).toContain('root.key');
-    expect(
-      keysUtils.publicKeyToPem(keyManager.getRootKeyPair().publicKey),
-    ).toEqual(keysUtils.publicKeyToPem(keyPair.publicKey));
-    await keyManager.stop();
-  });
   test('uses WorkerManager for generating root key pair', async () => {
     const keysPath = `${dataDir}/keys`;
     const keyManager = await KeyManager.createKeyManager({
@@ -197,18 +87,6 @@ describe('KeyManager', () => {
     expect(keysPathContents).toContain('root.key');
     await keyManager.stop();
     keyManager.unsetWorkerManager();
-  });
-  test('encrypting and decrypting with root key', async () => {
-    const keyManager = await KeyManager.createKeyManager({
-      password,
-      keysPath: `${dataDir}/keys`,
-      logger,
-    });
-    const plainText = Buffer.from('abc');
-    const cipherText = await keyManager.encryptWithRootKeyPair(plainText);
-    const plainText_ = await keyManager.decryptWithRootKeyPair(cipherText);
-    expect(plainText_.equals(plainText)).toBe(true);
-    await keyManager.stop();
   });
   test('uses WorkerManager for encryption and decryption with root key', async () => {
     const keyManager = await KeyManager.createKeyManager({
@@ -224,35 +102,6 @@ describe('KeyManager', () => {
     await keyManager.stop();
     keyManager.unsetWorkerManager();
   });
-  test('encrypting beyond maximum size', async () => {
-    const keyManager = await KeyManager.createKeyManager({
-      password,
-      keysPath: `${dataDir}/keys`,
-      logger,
-    });
-    // No way we can encrypt 1000 bytes without a ridiculous key size
-    const plainText = Buffer.from(new Array(1000 + 1).join('A'));
-    const maxSize = keysUtils.maxEncryptSize(
-      keysUtils.publicKeyBitSize(keyPair.publicKey) / 8,
-      32,
-    );
-    await expect(keyManager.encryptWithRootKeyPair(plainText)).rejects.toThrow(
-      `Maximum plain text byte size is ${maxSize}`,
-    );
-    await keyManager.stop();
-  });
-  test('signing and verifying with root key', async () => {
-    const keyManager = await KeyManager.createKeyManager({
-      password,
-      keysPath: `${dataDir}/keys`,
-      logger,
-    });
-    const data = Buffer.from('abc');
-    const signature = await keyManager.signWithRootKeyPair(data);
-    const signed = await keyManager.verifyWithRootKeyPair(data, signature);
-    expect(signed).toBe(true);
-    await keyManager.stop();
-  });
   test('uses WorkerManager for signing and verifying with root key', async () => {
     const keyManager = await KeyManager.createKeyManager({
       password,
@@ -266,29 +115,6 @@ describe('KeyManager', () => {
     expect(signed).toBe(true);
     await keyManager.stop();
     keyManager.unsetWorkerManager();
-  });
-  test('can change root key password', async () => {
-    const keysPath = `${dataDir}/keys`;
-    const keyManager = await KeyManager.createKeyManager({
-      password,
-      keysPath,
-      logger,
-    });
-    await keyManager.changePassword('newpassword');
-    await keyManager.stop();
-    await expect(async () => {
-      await KeyManager.createKeyManager({
-        password: 'password',
-        keysPath,
-        logger,
-      });
-    }).rejects.toThrow(keysErrors.ErrorRootKeysParse);
-    await KeyManager.createKeyManager({
-      password: 'newpassword',
-      keysPath,
-      logger,
-    });
-    await keyManager.stop();
   });
   test('can reset root certificate', async () => {
     const keysPath = `${dataDir}/keys`;
@@ -456,83 +282,5 @@ describe('KeyManager', () => {
       rootCertPem1,
     ]);
     await keyManager.stop();
-  });
-  describe('dbKey', () => {
-    test('Creates a key when started.', async () => {
-      const keysPath = `${dataDir}/keys`;
-      const keyManager = await KeyManager.createKeyManager({
-        password,
-        keysPath,
-        logger,
-      });
-      expect(await fs.promises.readdir(keysPath)).toContain('db.key');
-      expect(keyManager.dbKey.toString()).toBeTruthy();
-      await keyManager.stop();
-    });
-    test('Throws an exception when it fails to parse the key.', async () => {
-      const keysPath = `${dataDir}/keys`;
-      const keyManager = await KeyManager.createKeyManager({
-        password,
-        keysPath,
-        logger,
-      });
-      expect(await fs.promises.readdir(keysPath)).toContain('db.key');
-      expect(keyManager.dbKey.toString()).toBeTruthy();
-      await keyManager.stop();
-      await expect(
-        KeyManager.createKeyManager({
-          password: 'OtherPassword',
-          keysPath,
-          logger,
-        }),
-      ).rejects.toThrow();
-      await keyManager.stop();
-    });
-    test('key remains unchanged when resetting keys.', async () => {
-      const keysPath = `${dataDir}/keys`;
-      const keyManager1 = await KeyManager.createKeyManager({
-        password,
-        keysPath,
-        logger,
-      });
-      expect(await fs.promises.readdir(keysPath)).toContain('db.key');
-      expect(keyManager1.dbKey.toString()).toBeTruthy();
-      const dbKey = keyManager1.dbKey;
-
-      await keyManager1.resetRootKeyPair('NewPassword');
-      expect(keyManager1.dbKey).toEqual(dbKey);
-      await keyManager1.stop();
-
-      const keyManager2 = await KeyManager.createKeyManager({
-        password: 'NewPassword',
-        keysPath,
-        logger,
-      });
-      expect(keyManager2.dbKey).toEqual(dbKey);
-      await keyManager2.stop();
-    });
-    test('key remains unchanged when renewing keys.', async () => {
-      const keysPath = `${dataDir}/keys`;
-      const keyManager1 = await KeyManager.createKeyManager({
-        password,
-        keysPath,
-        logger,
-      });
-      expect(await fs.promises.readdir(keysPath)).toContain('db.key');
-      expect(keyManager1.dbKey.toString()).toBeTruthy();
-      const dbKey = keyManager1.dbKey;
-
-      await keyManager1.renewRootKeyPair('NewPassword');
-      expect(keyManager1.dbKey).toEqual(dbKey);
-      await keyManager1.stop();
-
-      const keyManager2 = await KeyManager.createKeyManager({
-        password: 'NewPassword',
-        keysPath,
-        logger,
-      });
-      expect(keyManager2.dbKey).toEqual(dbKey);
-      await keyManager2.stop();
-    });
   });
 });

@@ -328,7 +328,7 @@ class KeyRing {
         this._keyPair = keyPair;
         const recoveryCodeData = Buffer.from(recoveryCode, 'utf-8');
         bufferLock(recoveryCodeData);
-        bufferUnlock(this._recoveryCodeData!);
+        if (this._recoveryCodeData != null) bufferUnlock(this._recoveryCodeData);
         this._recoveryCodeData = recoveryCodeData as RecoveryCodeLocked;
         this.logger.info('Rotated root key pair');
       } catch (e) {
@@ -371,11 +371,11 @@ class KeyRing {
    * `sign-then-encrypt`, by adding a signature into the plain text being sent.
    */
   @ready(new keysErrors.ErrorKeyRingNotRunning())
-  public async encrypt(
+  public encrypt(
     receiverPublicKey: PublicKey,
     plainText: Buffer,
     authenticated: boolean = false
-  ) {
+  ): Buffer {
     return keysUtils.encryptWithPublicKey(
       receiverPublicKey,
       plainText,
@@ -396,7 +396,7 @@ class KeyRing {
   }
 
   @ready(new keysErrors.ErrorKeyRingNotRunning())
-  public sign(data: Buffer): Buffer {
+  public sign(data: Buffer): Signature {
     return keysUtils.signWithPrivateKey(this._keyPair!, data);
   }
 
@@ -634,9 +634,9 @@ class KeyRing {
     password: string,
     privateKeyPath: string = this.privateKeyPath,
   ): Promise<BufferLocked<PrivateKey>> {
-    let privateJWEJSON: string;
+    let privateJSON: string;
     try {
-      privateJWEJSON = await this.fs.promises.readFile(
+      privateJSON = await this.fs.promises.readFile(
         privateKeyPath,
         'utf-8',
       );
@@ -646,34 +646,49 @@ class KeyRing {
         { cause: e }
       );
     }
-    let privateJWE: any;
+    let privateObject: any;
     try {
-      privateJWE = JSON.parse(privateJWEJSON);
+      privateObject = JSON.parse(privateJSON);
     } catch (e) {
       throw new keysErrors.ErrorRootKeysParse(
         `Private key path ${privateKeyPath} is not a valid JSON file`,
         { cause: e }
       );
     }
-    const privateJWK = keysUtils.unwrapWithPassword(
-      password,
-      privateJWE,
-      this.passwordOpsLimit,
-      this.passwordMemLimit
-    );
-    if (privateJWK == null) {
+    if ('kty' in privateObject) {
+      const privateKey = keysUtils.privateKeyFromJWK(privateObject);
+      if (privateKey == null) {
+        throw new keysErrors.ErrorRootKeysParse(
+          `Private key path ${privateKeyPath} is not a valid JWK`
+        );
+      }
+      bufferLock(privateKey);
+      return privateKey;
+    } else if ('ciphertext' in privateObject) {
+      const privateJWK = keysUtils.unwrapWithPassword(
+        password,
+        privateObject,
+        this.passwordOpsLimit,
+        this.passwordMemLimit
+      );
+      if (privateJWK == null) {
+        throw new keysErrors.ErrorRootKeysParse(
+          `Private key path ${privateKeyPath} is not a valid encrypted JWK`
+        );
+      }
+      const privateKey = keysUtils.privateKeyFromJWK(privateJWK);
+      if (privateKey == null) {
+        throw new keysErrors.ErrorRootKeysParse(
+          `Private key path ${privateKeyPath} is not a valid private key`
+        );
+      }
+      bufferLock(privateKey);
+      return privateKey;
+    } else {
       throw new keysErrors.ErrorRootKeysParse(
-        `Private key path ${privateKeyPath} is not a valid encrypted JWK`
+        `Private key path ${privateKeyPath} has to be a JWK or an encrypted JWK`
       );
     }
-    const privateKey = keysUtils.privateKeyFromJWK(privateJWK);
-    if (privateKey == null) {
-      throw new keysErrors.ErrorRootKeysParse(
-        `Private key path ${privateKeyPath} is not a valid private key`
-      );
-    }
-    bufferLock(privateKey);
-    return privateKey;
   }
 
   /**
@@ -777,14 +792,14 @@ class KeyRing {
    * This is the data encryption key for the rest of PK.
    * This is what makes PK a hybrid cryptosystem.
    */
-  protected async setupDbKey(rootKeyPair: KeyPair): Promise<BufferLocked<Key>> {
+  protected async setupDbKey(keyPair: KeyPair): Promise<BufferLocked<Key>> {
     let dbKey: BufferLocked<Key>;
     if (await this.existsDbKey()) {
-      dbKey = await this.readDbKey(rootKeyPair);
+      dbKey = await this.readDbKey(keyPair);
     } else {
       this.logger.info('Generating db key');
       dbKey = this.generateDbKey();
-      await this.writeDbKey(dbKey, rootKeyPair.publicKey);
+      await this.writeDbKey(dbKey, keyPair.publicKey);
     }
     return dbKey;
   }

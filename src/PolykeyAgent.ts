@@ -2,7 +2,7 @@ import type { FileSystem } from './types';
 import type { PolykeyWorkerManagerInterface } from './workers/types';
 import type { ConnectionData, Host, Port, TLSConfig } from './network/types';
 import type { SeedNodes } from './nodes/types';
-import type { Key } from './keys/types';
+import type { CertificatePEMChain, CertManagerChangeData, Key } from './keys/types';
 import type { RecoveryCode, PrivateKey } from './keys/types';
 import path from 'path';
 import process from 'process';
@@ -11,6 +11,7 @@ import { DB } from '@matrixai/db';
 import { CreateDestroyStartStop } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import * as networkUtils from './network/utils';
 import KeyRing from './keys/KeyRing';
+import CertManager from './keys/CertManager';
 import Status from './status/Status';
 import Schema from './schema/Schema';
 import VaultManager from './vaults/VaultManager';
@@ -61,10 +62,10 @@ class PolykeyAgent {
    * These represent event topics
    */
   public static readonly eventSymbols = {
-    [KeyManager.name]: Symbol(KeyManager.name),
+    [CertManager.name]: Symbol(CertManager.name),
     [Proxy.name]: Symbol(Proxy.name),
   } as {
-    readonly KeyManager: unique symbol;
+    readonly CertManager: unique symbol;
     readonly Proxy: unique symbol;
   };
 
@@ -74,6 +75,7 @@ class PolykeyAgent {
     // Optional configuration
     nodePath = config.defaults.nodePath,
     keyRingConfig = {},
+    certManagerConfig = {},
     networkConfig = {},
     proxyConfig = {},
     nodeConnectionManagerConfig = {},
@@ -83,6 +85,7 @@ class PolykeyAgent {
     schema,
     keyRing,
     db,
+    certManager,
     identitiesManager,
     sigchain,
     acl,
@@ -109,6 +112,9 @@ class PolykeyAgent {
       privateKey?: PrivateKey;
       privateKeyPath?: string;
     };
+    certManagerConfig?: {
+
+    },
     proxyConfig?: {
       authToken?: string;
       connConnectTime?: number;
@@ -128,6 +134,7 @@ class PolykeyAgent {
     schema?: Schema;
     keyRing?: KeyRing;
     db?: DB;
+    certManager?: CertManager;
     identitiesManager?: IdentitiesManager;
     sigchain?: Sigchain;
     acl?: ACL;
@@ -155,6 +162,7 @@ class PolykeyAgent {
       throw new errors.ErrorUtilsNodePath();
     }
     logger.info(`Setting node path to ${nodePath}`);
+    // TODO: certManagerConfig defaults...
     const proxyConfig_ = {
       authToken: keysUtils.getRandomBytes(10).toString(),
       ...config.defaults.proxyConfig,
@@ -236,6 +244,13 @@ class PolykeyAgent {
           logger: logger.getChild(DB.name),
           fresh,
         }));
+      certManager = certManager ?? (await CertManager.createCertManager({
+        changeCallback: async (data) => events.emitAsync(PolykeyAgent.eventSymbols.CertManager, data),
+        keyRing,
+        db,
+        logger: logger.getChild(CertManager.name),
+        fresh
+      }))
       identitiesManager =
         identitiesManager ??
         (await IdentitiesManager.createIdentitiesManager({
@@ -386,6 +401,7 @@ class PolykeyAgent {
       await acl?.stop();
       await sigchain?.stop();
       await identitiesManager?.stop();
+      await certManager?.stop();
       await db?.stop();
       await keyRing?.stop();
       await schema?.stop();
@@ -398,6 +414,7 @@ class PolykeyAgent {
       schema,
       keyRing,
       db,
+      certManager,
       identitiesManager,
       sigchain,
       acl,
@@ -431,6 +448,7 @@ class PolykeyAgent {
   public readonly schema: Schema;
   public readonly keyRing: KeyRing;
   public readonly db: DB;
+  public readonly certManager: CertManager;
   public readonly identitiesManager: IdentitiesManager;
   public readonly sigchain: Sigchain;
   public readonly acl: ACL;
@@ -456,6 +474,7 @@ class PolykeyAgent {
     schema,
     keyRing,
     db,
+    certManager,
     identitiesManager,
     sigchain,
     acl,
@@ -480,6 +499,7 @@ class PolykeyAgent {
     schema: Schema;
     keyRing: KeyRing;
     db: DB;
+    certManager: CertManager;
     identitiesManager: IdentitiesManager;
     sigchain: Sigchain;
     acl: ACL;
@@ -505,6 +525,7 @@ class PolykeyAgent {
     this.schema = schema;
     this.keyRing = keyRing;
     this.db = db;
+    this.certManager = certManager;
     this.identitiesManager = identitiesManager;
     this.sigchain = sigchain;
     this.acl = acl;
@@ -554,18 +575,18 @@ class PolykeyAgent {
       };
       // Register event handlers
       this.events.on(
-        PolykeyAgent.eventSymbols.KeyManager,
-        async (data: KeyManagerChangeData) => {
+        PolykeyAgent.eventSymbols.CertManager,
+        async (data: CertManagerChangeData) => {
           this.logger.info(`${KeyRing.name} change propagating`);
           await this.status.updateStatusLive({
             nodeId: data.nodeId,
           });
           await this.nodeManager.resetBuckets();
-          const tlsConfig = {
-            keyPrivatePem: keysUtils.privateKeyToPem(
-              data.rootKeyPair.privateKey,
+          const tlsConfig: TLSConfig = {
+            keyPrivatePem: keysUtils.privateKeyToPEM(
+              data.keyPair.privateKey,
             ),
-            certChainPem: await this.keyRing.getRootCertChainPem(),
+            certChainPem: (await this.certManager.getCertPEMsChain()).join('') as CertificatePEMChain,
           };
           this.grpcServerClient.setTLSConfig(tlsConfig);
           this.proxy.setTLSConfig(tlsConfig);
@@ -617,6 +638,7 @@ class PolykeyAgent {
       const clientService = createClientService({
         pkAgent: this,
         db: this.db,
+        certManager: this.certManager,
         discovery: this.discovery,
         gestaltGraph: this.gestaltGraph,
         identitiesManager: this.identitiesManager,
@@ -641,14 +663,15 @@ class PolykeyAgent {
         fresh,
       });
       await this.db.start({ fresh });
+      await this.certManager.start({ fresh });
       await this.identitiesManager.start({ fresh });
       await this.sigchain.start({ fresh });
       await this.acl.start({ fresh });
       await this.gestaltGraph.start({ fresh });
       // GRPC Server
       const tlsConfig: TLSConfig = {
-        keyPrivatePem: this.keyRing.getRootKeyPairPem().privateKey,
-        certChainPem: await this.keyRing.getRootCertChainPem(),
+        keyPrivatePem: keysUtils.privateKeyToPEM(this.keyRing.keyPair.privateKey),
+        certChainPem: (await this.certManager.getCertPEMsChain()).join('') as CertificatePEMChain,
       };
       // Client server
       await this.grpcServerClient.start({
@@ -676,7 +699,7 @@ class PolykeyAgent {
       await this.nodeManager.start();
       await this.nodeConnectionManager.start({ nodeManager: this.nodeManager });
       await this.nodeGraph.start({ fresh });
-      await this.nodeManager.syncNodeGraph(false, 2000);
+      await this.nodeManager.syncNodeGraph(false);
       await this.discovery.start({ fresh });
       await this.vaultManager.start({ fresh });
       await this.notificationsManager.start({ fresh });
@@ -716,6 +739,7 @@ class PolykeyAgent {
       await this.acl?.stop();
       await this.sigchain?.stop();
       await this.identitiesManager?.stop();
+      await this.certManager?.stop();
       await this.db?.stop();
       await this.keyRing?.stop();
       await this.schema?.stop();
@@ -748,6 +772,7 @@ class PolykeyAgent {
     await this.acl.stop();
     await this.sigchain.stop();
     await this.identitiesManager.stop();
+    await this.certManager.stop();
     await this.db.stop();
     await this.keyRing.stop();
     await this.schema.stop();
@@ -772,6 +797,7 @@ class PolykeyAgent {
     await this.identitiesManager.destroy();
     await this.taskManager.stop();
     await this.taskManager.destroy();
+    await this.certManager.destroy();
     // Non-TaskManager dependencies
     await this.db.stop();
     // Non-DB dependencies

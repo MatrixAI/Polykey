@@ -25,6 +25,7 @@ import * as nodesUtils from '@/nodes/utils';
 import * as keysUtils from '@/keys/utils';
 import * as utils from '@/utils/index';
 import * as testUtils from '../utils';
+import { CertificatePEMChain } from '@/keys/types';
 
 describe('NotificationsManager', () => {
   const password = 'password';
@@ -106,8 +107,8 @@ describe('NotificationsManager', () => {
     });
     await proxy.start({
       tlsConfig: {
-        keyPrivatePem: keyRing.getRootKeyPairPem().privateKey,
-        certChainPem: await keyRing.getRootCertChainPem(),
+        keyPrivatePem: keysUtils.privateKeyToPEM(keyRing.keyPair.privateKey),
+        certChainPem: keysUtils.publicKeyToPEM(keyRing.keyPair.publicKey) as unknown as CertificatePEMChain,
       },
       serverHost: '127.0.0.1' as Host,
       serverPort: 0 as Port,

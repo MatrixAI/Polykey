@@ -27,6 +27,8 @@ import * as notificationsPB from '@/proto/js/polykey/v1/notifications/notificati
 import * as nodesUtils from '@/nodes/utils';
 import * as notificationsUtils from '@/notifications/utils';
 import * as testUtils from '../../utils';
+import * as keysUtils from '@/keys/utils/index';
+import { CertificatePEMChain } from '@/keys/types';
 
 describe('notificationsSend', () => {
   const logger = new Logger('notificationsSend test', LogLevel.WARN, [
@@ -82,8 +84,8 @@ describe('notificationsSend', () => {
     });
     await proxy.start({
       tlsConfig: {
-        keyPrivatePem: keyRing.getRootKeyPairPem().privateKey,
-        certChainPem: await keyRing.getRootCertChainPem(),
+        keyPrivatePem: keysUtils.privateKeyToPEM(keyRing.keyPair.privateKey),
+        certChainPem: keysUtils.publicKeyToPEM(keyRing.keyPair.publicKey) as unknown as CertificatePEMChain,
       },
       serverHost: '127.0.0.1' as Host,
       serverPort: 0 as Port,

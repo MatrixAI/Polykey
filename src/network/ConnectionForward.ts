@@ -328,7 +328,7 @@ class ConnectionForward extends Connection {
 
   @ready(new networkErrors.ErrorConnectionNotRunning())
   public getServerCertificates(): Array<Certificate> {
-    return this.serverCertChain.map((crt) => keysUtils.certCopy(crt));
+    return this.serverCertChain;
   }
 
   @ready(new networkErrors.ErrorConnectionNotRunning())
