@@ -13,7 +13,7 @@ async function main() {
       const dataDir = await fs.promises.mkdtemp(
         path.join(os.tmpdir(), 'polykey-bench-'),
       );
-      const logger = new Logger(`${KeyRing.name} Bench`, LogLevel.WARN, [
+      const logger = new Logger(`keyring_lifecycle bench`, LogLevel.WARN, [
         new StreamHandler(),
       ]);
       return async () => {
@@ -30,7 +30,7 @@ async function main() {
       const dataDir = await fs.promises.mkdtemp(
         path.join(os.tmpdir(), 'polykey-bench-'),
       );
-      const logger = new Logger(`${KeyRing.name} Bench`, LogLevel.WARN, [
+      const logger = new Logger(`keyring_lifecycle bench`, LogLevel.WARN, [
         new StreamHandler(),
       ]);
       const keyRing = await KeyRing.createKeyRing({
