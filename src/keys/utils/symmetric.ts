@@ -43,7 +43,11 @@ function encryptWithKey(
     nonce,
     key,
   );
-  return Buffer.concat([nonce, macAndCipherText]);
+  // This ensures `result.buffer` is not using the shared internal pool
+  const result = Buffer.allocUnsafeSlow(nonceSize + macSize + plainText.byteLength);
+  nonce.copy(result);
+  macAndCipherText.copy(result, nonceSize);
+  return result;
 }
 
 /**
@@ -65,7 +69,8 @@ function decryptWithKey(
   }
   const nonce = cipherText.subarray(0, nonceSize);
   const macAndCipherText = cipherText.subarray(nonceSize);
-  const plainText = Buffer.allocUnsafe(macAndCipherText.byteLength - macSize);
+  // This ensures `plainText.buffer` is not using the shared internal pool
+  const plainText = Buffer.allocUnsafeSlow(macAndCipherText.byteLength - macSize);
   // This returns the number of bytes that has been decrypted
   const decrypted = sodium.crypto_aead_xchacha20poly1305_ietf_decrypt(
     plainText,
