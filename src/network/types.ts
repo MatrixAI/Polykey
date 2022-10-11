@@ -1,7 +1,7 @@
 import type { NodeId } from '../ids/types';
 import type {
-  CertificatePemChain,
-  PrivateKeyPem,
+  CertificatePEMChain,
+  PrivateKeyPEM,
   Certificate,
 } from '../keys/types';
 import type { Opaque } from '../types';
@@ -27,8 +27,8 @@ type Port = Opaque<'Port', number>;
 type Address = Opaque<'Address', string>;
 
 type TLSConfig = {
-  keyPrivatePem: PrivateKeyPem;
-  certChainPem: CertificatePemChain;
+  keyPrivatePem: PrivateKeyPEM;
+  certChainPem: CertificatePEMChain;
 };
 
 type ProxyConfig = {
