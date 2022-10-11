@@ -1,6 +1,6 @@
 import type * as grpc from '@grpc/grpc-js';
 import type { Authenticate } from '../types';
-import type KeyManager from '../../keys/KeyManager';
+import type CertManager from '../../keys/CertManager';
 import type * as keysPB from '../../proto/js/polykey/v1/keys/keys_pb';
 import type Logger from '@matrixai/logger';
 import * as grpcUtils from '../../grpc/utils';
@@ -9,11 +9,11 @@ import * as clientUtils from '../utils';
 
 function keysKeyPairReset({
   authenticate,
-  keyManager,
+  certManager,
   logger,
 }: {
   authenticate: Authenticate;
-  keyManager: KeyManager;
+  certManager: CertManager;
   logger: Logger;
 }) {
   return async (
@@ -26,7 +26,7 @@ function keysKeyPairReset({
       call.sendMetadata(metadata);
       // Other domains will be updated accordingly via the `EventBus` so we
       // only need to modify the KeyManager
-      await keyManager.resetRootKeyPair(call.request.getName());
+      await certManager.resetCertWithNewKeyPair(call.request.getName());
       callback(null, response);
       return;
     } catch (e) {

@@ -1,6 +1,7 @@
 import type * as grpc from '@grpc/grpc-js';
 import type { Authenticate } from '../types';
 import type KeyRing from '../../keys/KeyRing';
+import type CertManager from '../../keys/CertManager';
 import type GRPCServer from '../../grpc/GRPCServer';
 import type Proxy from '../../network/Proxy';
 import type * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
@@ -10,10 +11,12 @@ import * as grpcUtils from '../../grpc/utils';
 import * as nodesUtils from '../../nodes/utils';
 import * as agentPB from '../../proto/js/polykey/v1/agent/agent_pb';
 import * as clientUtils from '../utils';
+import * as keysUtils from '../../keys/utils';
 
 function agentStatus({
   authenticate,
   keyRing,
+  certManager,
   grpcServerClient,
   grpcServerAgent,
   proxy,
@@ -21,6 +24,7 @@ function agentStatus({
 }: {
   authenticate: Authenticate;
   keyRing: KeyRing;
+  certManager: CertManager;
   grpcServerClient: GRPCServer;
   grpcServerAgent: GRPCServer;
   proxy: Proxy;
@@ -44,8 +48,8 @@ function agentStatus({
       response.setForwardPort(proxy.getForwardPort());
       response.setProxyHost(proxy.getProxyHost());
       response.setProxyPort(proxy.getProxyPort());
-      response.setRootPublicKeyPem(keyRing.getRootKeyPairPem().publicKey);
-      response.setRootCertPem(keyRing.getRootCertPem());
+      response.setRootPublicKeyPem(keysUtils.publicKeyToPEM(keyRing.keyPair.publicKey));
+      response.setRootCertPem((await certManager.getCertPEMsChain()).join('\n'));
       callback(null, response);
       return;
     } catch (e) {

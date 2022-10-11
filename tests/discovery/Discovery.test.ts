@@ -28,6 +28,7 @@ import * as keysUtils from '@/keys/utils';
 import * as grpcUtils from '@/grpc/utils/index';
 import * as testNodesUtils from '../nodes/utils';
 import TestProvider from '../identities/TestProvider';
+import { CertificatePEMChain } from '@/keys/types';
 
 describe('Discovery', () => {
   const password = 'password';
@@ -138,8 +139,8 @@ describe('Discovery', () => {
       serverPort: 0 as Port,
       proxyHost: '127.0.0.1' as Host,
       tlsConfig: {
-        keyPrivatePem: keyRing.getRootKeyPairPem().privateKey,
-        certChainPem: await keyRing.getRootCertChainPem(),
+        keyPrivatePem: keysUtils.privateKeyToPEM(keyRing.keyPair.privateKey),
+        certChainPem: keysUtils.publicKeyToPEM(keyRing.keyPair.publicKey) as unknown as CertificatePEMChain,
       },
     });
     nodeGraph = await NodeGraph.createNodeGraph({

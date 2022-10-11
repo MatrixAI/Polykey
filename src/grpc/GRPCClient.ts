@@ -292,7 +292,7 @@ abstract class GRPCClient<T extends Client = Client> {
     if (this.serverCertChain == null) {
       return;
     }
-    return keysUtils.certCopy(this.serverCertChain[0]);
+    return this.serverCertChain[0];
   }
 
   /**
@@ -303,7 +303,7 @@ abstract class GRPCClient<T extends Client = Client> {
     if (this.serverCertChain == null) {
       return;
     }
-    return this.serverCertChain!.map((crt) => keysUtils.certCopy(crt));
+    return this.serverCertChain!;
   }
 
   /**
