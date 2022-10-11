@@ -6,6 +6,11 @@ type PermissionIdString = Opaque<'PermissionIdString', string>;
 
 type CertId = Opaque<'CertId', Id>;
 type CertIdString = Opaque<'CertIdString', string>;
+/**
+ * This must be a raw lowercase base16 string and not a multibase string.
+ * The x509 certificate will strip any non-hex characters and add padding
+ * to the nearest byte.
+ */
 type CertIdEncoded = Opaque<'CertIdEncoded', string>;
 
 type NodeId = Opaque<'NodeId', Id>;

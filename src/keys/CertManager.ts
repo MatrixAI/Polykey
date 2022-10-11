@@ -10,6 +10,7 @@ import {
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import * as keysUtils from './utils';
 import * as keysErrors from './errors';
+import { never } from '../utils';
 
 interface CertManager extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
@@ -370,6 +371,7 @@ class CertManager {
 
   protected async putCert(cert: Certificate, tran?: DBTransaction): Promise<void> {
     const certId = keysUtils.certCertId(cert)!;
+    if (certId == null) never();
     const certASN1 = keysUtils.certToASN1(cert);
     await (tran ?? this.db).put(
       [...this.dbCertsPath, certId.toBuffer()],
