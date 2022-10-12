@@ -1,5 +1,11 @@
 import type { TransferDescriptor } from 'threads';
-import { Key } from '../keys/types';
+import {
+  Key,
+  PasswordHash,
+  PasswordSalt,
+  PasswordMemLimit,
+  PasswordOpsLimit,
+} from '../keys/types';
 // import type { PublicKeyAsn1, PrivateKeyAsn1, KeyPairAsn1 } from '../keys/types';
 import { isWorkerRuntime } from 'threads';
 import { Transfer } from 'threads/worker';
@@ -7,11 +13,30 @@ import * as keysUtils from '../keys/utils';
 import * as utils from '../utils';
 
 /**
- * Worker object that contains all functions that will be executed in parallel
- * Functions should be using CPU-parallelism not IO-parallelism
- * Most functions should be synchronous, not asynchronous
- * Making them asynchronous does not make a difference to the caller
- * The caller must always await because the fucntions will run on the pool
+ * Worker object that contains all functions that will be executed in parallel.
+ * Functions should be using CPU-parallelism not IO-parallelism.
+ * Most functions should be synchronous, not asynchronous.
+ * Making them asynchronous does not make a difference to the caller.
+ * The caller must always await because the fucntions will run on the pool.
+ *
+ * When passing in `Buffer`, it is coerced into an `Uint8Array`. To avoid
+ * confusion, do not pass in `Buffer` and instead use `ArrayBuffer`.
+ *
+ * If you are passing the underlying `ArrayBuffer`, ensure that the containing
+ * `Buffer` is unpooled, or make a slice copy of the underlying `ArrayBuffer`
+ * with the `Buffer.byteOffset` and `Buffer.byteLength`.
+ *
+ * Remember the subtyping relationship of buffers:
+ * Buffers < Uint8Array < ArrayBuffer < BufferSource
+ *
+ * Only the `ArrayBuffer` is "transferrable" which means they can be zero-copy
+ * transferred. When transferring a structure that contains `ArrayBuffer`, you
+ * must pass the array of transferrable objects as the second parameter to
+ * `Transfer`.
+ *
+ * Only transfer things that you don't expect to be using in the sending thread.
+ *
+ * Note that `Buffer.from(ArrayBuffer)` is a zero-copy wrapper.
  */
 const polykeyWorker = {
   /**
@@ -42,6 +67,51 @@ const polykeyWorker = {
     // so we transfer the ArrayBuffer instead
     return Transfer(data);
   },
+
+  hashPassword(
+    password: string,
+    salt?: ArrayBuffer,
+    opsLimit?: PasswordOpsLimit,
+    memLimit?: PasswordMemLimit
+  ): TransferDescriptor<[ArrayBuffer, ArrayBuffer]> {
+    let salt_: PasswordSalt | undefined;
+    if (salt != null) {
+      salt = Buffer.from(salt) as PasswordSalt;
+    }
+    // It is guaranteed that `keysUtils.hashPassword` returns non-pooled buffers
+    const hashAndSalt = keysUtils.hashPassword(
+      password,
+      salt_,
+      opsLimit,
+      memLimit
+    );
+    // Result is a tuple of [hash, salt] as transferable `ArrayBuffer`
+    const result: [ArrayBuffer, ArrayBuffer] = [
+      hashAndSalt[0].buffer,
+      hashAndSalt[1].buffer
+    ];
+    return Transfer(result, [result[0], result[1]]);
+  },
+
+  checkPassword(
+    password: string,
+    hash: ArrayBuffer,
+    salt: ArrayBuffer,
+    opsLimit?: PasswordOpsLimit,
+    memLimit?: PasswordMemLimit
+  ): boolean {
+    const hash_ = Buffer.from(hash) as PasswordHash;
+    const salt_ = Buffer.from(salt) as PasswordSalt;
+    return keysUtils.checkPassword(
+      password,
+      hash_,
+      salt_,
+      opsLimit,
+      memLimit
+    );
+  },
+
+
   // EFS functions
   encrypt(
     key: ArrayBuffer,

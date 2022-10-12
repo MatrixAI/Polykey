@@ -1,7 +1,19 @@
 import sodium from 'sodium-native';
 
-function getRandomBytes(size: number, seedNumber?: number) {
-  const randomBytes = Buffer.allocUnsafe(size);
+/**
+ * Get random bytes.
+ * Use the JS seed number for deterministic randomisation.
+ * The seed number will be encoded into a 8 byte buffer.
+ * Set `pool` to false to acquire an unpooled buffer.
+ * This means the underlying `ArrayBuffer` is safely transferrable.
+ */
+function getRandomBytes(size: number, seedNumber?: number, pool = true): Buffer {
+  let randomBytes: Buffer;
+  if (pool) {
+    randomBytes = Buffer.allocUnsafe(size);
+  } else {
+    randomBytes = Buffer.allocUnsafeSlow(size);
+  }
   if (seedNumber == null) {
     sodium.randombytes_buf(randomBytes);
   } else {
