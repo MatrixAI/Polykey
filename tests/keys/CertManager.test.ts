@@ -10,6 +10,7 @@ import * as keysUtils from '@/keys/utils';
 import * as keysErrors from '@/keys/errors';
 import * as utils from '@/utils';
 import { sleep } from '@/utils';
+import { Certificate } from '@/keys/types';
 
 describe(CertManager.name, () => {
   const password = keysUtils.getRandomBytes(10).toString('utf-8');
@@ -187,20 +188,52 @@ describe(CertManager.name, () => {
       logger,
     });
 
-    const rootCert0 = await certManager.getCurrentCert();
+    try {
+      const certs: Array<Certificate> = [];
+      certs.push(await certManager.getCurrentCert());
+
+      for (let i = 0; i < 20; i++) {
+        await certManager.renewCertWithNewKeyPair('password');
+        certs.push(await certManager.getCurrentCert())
+      }
+
+      // ordered newest to oldest
+      const reversedCerts = certs.reverse();
+      const certChain = await certManager.getCertsChain();
+
+      for (let i = 0; i < certChain.length; i++) {
+        expect(certChain[i].equal(reversedCerts[i]));
+      }
+    } finally {
+      await certManager.stop();
+    }
+  });
+  test('certificate PEM matches format', async () => {
+    const certManager = await CertManager.createCertManager({
+      db,
+      keyRing,
+      logger,
+    });
+
+    const certificatePEM = await certManager.getCurrentCertPEM();
+
+    const validPEM = /-----BEGIN CERTIFICATE-----\n(([A-Za-z0-9+\/=]+)\n)+-----END CERTIFICATE-----\n/
+    expect(certificatePEM).toMatch(validPEM);
+
+    await certManager.stop();
+  });
+  test('certificate chain PEM matches format',  async () => {
+    const certManager = await CertManager.createCertManager({
+      db,
+      keyRing,
+      logger,
+    });
 
     await certManager.renewCertWithNewKeyPair('password');
-    const rootCert1 = await certManager.getCurrentCert();
-
     await certManager.renewCertWithNewKeyPair('password');
-    const rootCert2 = await certManager.getCurrentCert();
-
-
-    const certChain = await certManager.getCertsChain()
-    // ordered newest to oldest
-    expect(rootCert2.equal(certChain[0])).toBeTrue();
-    expect(rootCert1.equal(certChain[1])).toBeTrue();
-    expect(rootCert0.equal(certChain[2])).toBeTrue();
+    const certificateChainPEM = await certManager.getCertPEMsChainPEM();
+    const validPEM = /(-----BEGIN CERTIFICATE-----\n(([A-Za-z0-9+\/=]+)\n)+-----END CERTIFICATE-----\n)/
+    expect(certificateChainPEM).toMatch(validPEM);
 
     await certManager.stop();
   });
