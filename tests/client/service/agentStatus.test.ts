@@ -14,8 +14,6 @@ import { ClientServiceService } from '@/proto/js/polykey/v1/client_service_grpc_
 import * as agentPB from '@/proto/js/polykey/v1/agent/agent_pb';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as clientUtils from '@/client/utils/utils';
-import * as keysUtils from '@/keys/utils';
-import { CertificatePEMChain } from '@/keys/types';
 import { DB } from '@matrixai/db';
 import * as testsUtils from '../../utils';
 
@@ -129,8 +127,8 @@ describe('agentStatus', () => {
       forwardPort: expect.any(Number),
       proxyHost: expect.any(String),
       proxyPort: expect.any(Number),
-      rootPublicKeyPem: expect.any(String),
-      rootCertPem: expect.any(String),
+      publicKeyJwk: expect.any(String),
+      certChainPem: expect.any(String),
     });
   });
 });

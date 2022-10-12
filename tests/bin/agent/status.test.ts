@@ -170,6 +170,7 @@ describe('status', () => {
         },
       );
       expect(exitCode).toBe(0);
+      console.log(JSON.parse(stdout));
       expect(JSON.parse(stdout)).toMatchObject({
         status: 'LIVE',
         pid: expect.any(Number),
@@ -182,8 +183,8 @@ describe('status', () => {
         agentPort: expect.any(Number),
         forwardHost: expect.any(String),
         forwardPort: expect.any(Number),
-        rootPublicKeyPem: expect.any(String),
-        rootCertPem: expect.any(String),
+        publicKeyJWK: expect.any(String),
+        certChainPEM: expect.any(String),
       });
     });
     testUtils.testIf(
@@ -236,8 +237,8 @@ describe('status', () => {
         agentPort: expect.any(Number),
         forwardHost: expect.any(String),
         forwardPort: expect.any(Number),
-        rootPublicKeyPem: expect.any(String),
-        rootCertPem: expect.any(String),
+        publicKeyJWK: expect.any(String),
+        certChainPEM: expect.any(String),
       });
     });
   });
