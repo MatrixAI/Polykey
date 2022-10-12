@@ -1,4 +1,4 @@
-import type { PublicKeyPem } from '@/keys/types';
+import type { PublicKey } from '@/keys/types';
 import type { AbstractConstructorParameters } from '@/types';
 import type { Host, Port } from '@/network/types';
 import type Proxy from '@/network/Proxy';
@@ -12,7 +12,7 @@ import NodeConnection from '@/nodes/NodeConnection';
  * the other node.
  */
 class TestNodeConnection extends NodeConnection<GRPCClientAgent> {
-  protected publicKey: PublicKeyPem | null;
+  protected publicKey: PublicKey | null;
 
   static async createTestNodeConnection({
     publicKey,
@@ -22,7 +22,7 @@ class TestNodeConnection extends NodeConnection<GRPCClientAgent> {
     destroyCallback,
     logger,
   }: {
-    publicKey: PublicKeyPem | null;
+    publicKey: PublicKey | null;
     targetHost: Host;
     targetPort: Port;
     proxy: Proxy;
@@ -44,13 +44,13 @@ class TestNodeConnection extends NodeConnection<GRPCClientAgent> {
     publicKey = null,
     ...rest
   }: {
-    publicKey?: PublicKeyPem | null;
+    publicKey?: PublicKey | null;
   } & AbstractConstructorParameters<typeof NodeConnection>[0]) {
     super(rest);
     this.publicKey = publicKey;
   }
 
-  public getExpectedPublicKey(): PublicKeyPem | null {
+  public getExpectedPublicKey(): PublicKey | null {
     return this.publicKey;
   }
 }

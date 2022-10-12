@@ -193,7 +193,7 @@ describe('notificationsSend', () => {
     };
     const signedNotification = await notificationsUtils.signNotification(
       notification,
-      senderKeyRing.getRootKeyPairPem(),
+      senderKeyRing.keyPair,
     );
     const request = new notificationsPB.AgentNotification();
     request.setContent(signedNotification);
@@ -242,10 +242,10 @@ describe('notificationsSend', () => {
       isRead: false,
     };
     const publicKey = createPublicKey(
-      senderKeyRing.getRootKeyPairPem().publicKey,
+      senderKeyRing.keyPair.publicKey,
     );
     const privateKey = createPrivateKey(
-      senderKeyRing.getRootKeyPairPem().privateKey,
+      senderKeyRing.keyPair.privateKey,
     );
     const jwkPublicKey = await exportJWK(publicKey);
     const signedNotification = await new SignJWT(notification2)
@@ -276,7 +276,7 @@ describe('notificationsSend', () => {
     };
     const signedNotification = await notificationsUtils.signNotification(
       notification,
-      senderKeyRing.getRootKeyPairPem(),
+      senderKeyRing.keyPair,
     );
     const request = new notificationsPB.AgentNotification();
     request.setContent(signedNotification);

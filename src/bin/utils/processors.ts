@@ -1,5 +1,5 @@
 import type { FileSystem } from '../../types';
-import type { RecoveryCode, PrivateKeyPem } from '../../keys/types';
+import type { RecoveryCode, PrivateKeyPEM } from '../../keys/types';
 import type { NodeId } from '../../ids/types';
 import type { Host, Port } from '../../network/types';
 import type {
@@ -406,10 +406,10 @@ async function processAuthentication(
 async function processRootKey(
   privateKeyFile: string | undefined,
   fs: FileSystem = require('fs'),
-): Promise<PrivateKeyPem | undefined> {
+): Promise<PrivateKeyPEM | undefined> {
   if (privateKeyFile != null) {
     try {
-      return (await fs.promises.readFile(privateKeyFile, 'utf-8')).trim();
+      return (await fs.promises.readFile(privateKeyFile, 'utf-8')).trim() as PrivateKeyPEM;
     } catch (e) {
       throw new binErrors.ErrorCLIPrivateKeyFileRead(e.message, {
         data: {
@@ -422,7 +422,7 @@ async function processRootKey(
       });
     }
   } else if (typeof process.env['PK_ROOT_KEY'] === 'string') {
-    return process.env['PK_ROOT_KEY'];
+    return process.env['PK_ROOT_KEY'] as PrivateKeyPEM;
   }
 }
 

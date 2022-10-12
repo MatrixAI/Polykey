@@ -113,7 +113,7 @@ class PolykeyAgent {
       privateKeyPath?: string;
     };
     certManagerConfig?: {
-
+      certDuration?: number,
     },
     proxyConfig?: {
       authToken?: string;
@@ -162,7 +162,10 @@ class PolykeyAgent {
       throw new errors.ErrorUtilsNodePath();
     }
     logger.info(`Setting node path to ${nodePath}`);
-    // TODO: certManagerConfig defaults...
+    const certManagerConfig_ = {
+      ...config.defaults.certManagerConfig,
+      ...utils.filterEmptyObject(certManagerConfig),
+    }
     const proxyConfig_ = {
       authToken: keysUtils.getRandomBytes(10).toString(),
       ...config.defaults.proxyConfig,
@@ -249,7 +252,8 @@ class PolykeyAgent {
         keyRing,
         db,
         logger: logger.getChild(CertManager.name),
-        fresh
+        fresh,
+        ...certManagerConfig_,
       }))
       identitiesManager =
         identitiesManager ??

@@ -56,7 +56,7 @@ describe('identitiesClaim', () => {
   let mockedAddClaim: jest.SpyInstance;
   const dummyNodeManager = { setNode: jest.fn() } as unknown as NodeManager;
   beforeAll(async () => {
-    const privateKey = globalRootKeyPems[0];
+    const privateKey = keysUtils.generateKeyPair().privateKey;
     const claim = await claimsUtils.createClaim({
       privateKey: privateKey,
       hPrev: null,

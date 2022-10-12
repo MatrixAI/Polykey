@@ -71,12 +71,8 @@ describe('keysKeyPairRoot', () => {
       clientUtils.encodeAuthFromPassword(password),
     );
     expect(response).toBeInstanceOf(keysPB.KeyPair);
-    const publicKey = keysUtils.publicKeyToPem(
-      keysUtils.publicKeyFromPrivateKey(
-        keysUtils.privateKeyFromPem(globalRootKeyPems[0]),
-      ),
-    );
-    expect(response.getPublic()).toBe(publicKey);
-    expect(response.getPrivate()).toBe(globalRootKeyPems[0]);
+    const keyPairPem = keysUtils.keyPairToPEM(keyRing.keyPair)
+    expect(response.getPublic()).toBe(keyPairPem.publicKey);
+    expect(response.getPrivate()).toBe(keyPairPem.privateKey);
   });
 });
