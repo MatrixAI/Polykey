@@ -16,7 +16,6 @@ import {
   validatePublicKey,
 } from './asymmetric';
 import * as ids from '../../ids';
-import * as utils from '../../utils';
 import config from '../../config';
 
 x509.cryptoProvider.set(webcrypto);
@@ -72,7 +71,7 @@ class PolykeyNodeSignatureExtension extends x509.Extension {
         this.value,
         PolykeyNodeSignatureString,
       );
-      this.signature = utils.bufferWrap(signatureString.value).toString('hex');
+      this.signature = Buffer.from(signatureString.value).toString('hex');
       this.signatureBytes = signatureString.value;
     } else {
       const signature_ = Buffer.from(args[0], 'hex');
@@ -141,9 +140,7 @@ async function generateCertificate({
   subjectAttrsExtra?: Array<{ [key: string]: Array<string> }>;
   issuerAttrsExtra?: Array<{ [key: string]: Array<string> }>;
 }): Promise<Certificate> {
-  const subjectPublicKey = utils.bufferWrap(
-    subjectKeyPair.publicKey,
-  ) as PublicKey;
+  const subjectPublicKey = subjectKeyPair.publicKey;
   const subjectPublicCryptoKey = await importPublicKey(
     subjectKeyPair.publicKey,
   );
@@ -242,7 +239,7 @@ async function generateCertificate({
     .signature;
   certConfig.extensions.push(
     new PolykeyNodeSignatureExtension(
-      utils.bufferWrap(nodeSignature).toString('hex'),
+      Buffer.from(nodeSignature).toString('hex'),
     ),
   );
   certConfig.signingKey = issuerPrivateCryptoKey;
