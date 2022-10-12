@@ -5,74 +5,15 @@ import type * as fc from 'fast-check';
 import path from 'path';
 import fs from 'fs';
 import readline from 'readline';
-import lock from 'fd-lock';
 import { IdInternal } from '@matrixai/id';
 import * as keysUtils from '@/keys/utils';
 import * as grpcErrors from '@/grpc/errors';
 import * as validationUtils from '@/validation/utils';
-import { sleep, promise } from '@/utils';
+import { promise } from '@/utils';
 import * as execUtils from './exec';
-import KeyRing from '../../src/keys/KeyRing';
 import { CertId } from '@/ids/types';
 import { TLSConfig } from '../../src/network/types';
 import { CertificatePEMChain, KeyPair } from '../../src/keys/types';
-
-/**
- * Setup the global keypair
- * This is expected to be executed by multiple worker processes
- */
-// FIXME: this should be removed
-async function setupGlobalKeypair() {
-  const globalKeyPairDir = path.join(globalThis.dataDir, 'keypair');
-  const globalKeyPairLock = await fs.promises.open(
-    path.join(globalThis.dataDir, 'keypair.lock'),
-    fs.constants.O_WRONLY | fs.constants.O_CREAT,
-  );
-  while (!lock(globalKeyPairLock.fd)) {
-    await sleep(1000);
-  }
-  try {
-    try {
-      await fs.promises.mkdir(globalKeyPairDir);
-    } catch (e) {
-      // Return key pair if the directory exists
-      if (e.code === 'EEXIST') {
-        const globalKeyPairPem = {
-          publicKey: fs.readFileSync(
-            path.join(globalKeyPairDir, 'root.pub'),
-            'utf-8',
-          ),
-          privateKey: fs.readFileSync(
-            path.join(globalKeyPairDir, 'root.key'),
-            'utf-8',
-          ),
-        };
-        throw Error('setupGlobalKeypair SHOULD BE REMOVED')
-        // const globalKeyPair = keysUtils.keyPairFromPEM(globalKeyPairPem);
-        // return globalKeyPair;
-      }
-    }
-    const globalKeyPair = await keysUtils.generateKeyPair();
-    const globalKeyPairPem = keysUtils.keyPairToPEM(globalKeyPair);
-    await Promise.all([
-      fs.promises.writeFile(
-        path.join(globalKeyPairDir, 'root.pub'),
-        globalKeyPairPem.publicKey,
-        'utf-8',
-      ),
-      fs.promises.writeFile(
-        path.join(globalKeyPairDir, 'root.key'),
-        globalKeyPairPem.privateKey,
-        'utf-8',
-      ),
-    ]);
-    return globalKeyPair;
-  } finally {
-    // Unlock when we have returned the keypair
-    lock.unlock(globalKeyPairLock.fd);
-    await globalKeyPairLock.close();
-  }
-}
 
 async function setupTestAgent(logger: Logger) {
   const agentDir = await fs.promises.mkdtemp(
@@ -187,7 +128,6 @@ async function createTLSConfig(keyPair: KeyPair, generateCertId?: () => CertId):
 }
 
 export {
-  setupGlobalKeypair,
   setupTestAgent,
   generateRandomNodeId,
   expectRemoteError,
