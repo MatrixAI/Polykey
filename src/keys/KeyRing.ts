@@ -27,7 +27,6 @@ import { Lock } from '@matrixai/async-locks';
 import * as keysUtils from './utils';
 import * as keysErrors from './errors';
 import { bufferLock, bufferUnlock } from './utils/memory';
-import * as utils from '../utils';
 
 interface KeyRing extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
@@ -38,19 +37,19 @@ class KeyRing {
   public static async createKeyRing({
     keysPath,
     workerManager,
-    fs = require('fs'),
-    logger = new Logger(this.name),
     passwordOpsLimit,
     passwordMemLimit,
+    fs = require('fs'),
+    logger = new Logger(this.name),
     ...startOptions
   }: {
       keysPath: string;
       password: string;
       workerManager?: PolykeyWorkerManagerInterface;
-      fs?: FileSystem;
-      logger?: Logger;
       passwordOpsLimit?: PasswordOpsLimit;
       passwordMemLimit?: PasswordMemLimit;
+      fs?: FileSystem;
+      logger?: Logger;
       fresh?: boolean;
     } & (
       { } | {
@@ -67,10 +66,10 @@ class KeyRing {
     const keyRing = new this({
       keysPath,
       workerManager,
-      fs,
-      logger,
       passwordOpsLimit,
       passwordMemLimit,
+      fs,
+      logger,
     });
     await keyRing.start(startOptions);
     logger.info(`Created ${this.name}`);
@@ -99,17 +98,17 @@ class KeyRing {
   public constructor({
     keysPath,
     workerManager,
+    passwordOpsLimit,
+    passwordMemLimit,
     fs,
     logger,
-    passwordOpsLimit,
-    passwordMemLimit
   }: {
     keysPath: string;
     workerManager?: PolykeyWorkerManagerInterface;
-    fs: FileSystem;
-    logger: Logger;
     passwordOpsLimit?: PasswordOpsLimit;
     passwordMemLimit?: PasswordMemLimit;
+    fs: FileSystem;
+    logger: Logger;
   }) {
     this.logger = logger;
     this.keysPath = keysPath;
@@ -968,12 +967,12 @@ class KeyRing {
       );
     } else {
       [hash, salt] = await this.workerManager.call(async (w) => {
-        const result = (await w.hashPassword(
+        const result = await w.hashPassword(
           password,
           undefined,
           this.passwordOpsLimit,
           this.passwordMemLimit,
-        ));
+        );
         result[0] = Buffer.from(result[0]);
         result[1] = Buffer.from(result[1]);
         return result as [PasswordHash, PasswordSalt];

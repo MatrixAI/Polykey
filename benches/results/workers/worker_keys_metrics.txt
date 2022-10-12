@@ -1,8 +1,17 @@
 # TYPE workers.worker_keys_ops gauge
-workers.worker_keys_ops{name="hash password"} 2
+workers.worker_keys_ops{name="hash password"} 2.1
+workers.worker_keys_ops{name="check password"} 2.3
+workers.worker_keys_ops{name="generate deterministic key pair"} 85.8
+workers.worker_keys_ops{name="generate certificate"} 71.1
 
 # TYPE workers.worker_keys_margin gauge
-workers.worker_keys_margin{name="hash password"} 1.81
+workers.worker_keys_margin{name="hash password"} 13.69
+workers.worker_keys_margin{name="check password"} 0.95
+workers.worker_keys_margin{name="generate deterministic key pair"} 1.38
+workers.worker_keys_margin{name="generate certificate"} 4.3
 
 # TYPE workers.worker_keys_samples counter
-workers.worker_keys_samples{name="hash password"} 16
+workers.worker_keys_samples{name="hash password"} 15
+workers.worker_keys_samples{name="check password"} 16
+workers.worker_keys_samples{name="generate deterministic key pair"} 81
+workers.worker_keys_samples{name="generate certificate"} 74

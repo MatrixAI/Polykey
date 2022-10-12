@@ -1,5 +1,7 @@
 import type { DB, DBTransaction, LevelPath, KeyPath } from '@matrixai/db';
 import type {
+  PublicKey,
+  PrivateKey,
   Certificate,
   CertificateASN1,
   CertManagerChangeData,
@@ -10,6 +12,7 @@ import type {
 } from './types';
 import type KeyRing from './KeyRing';
 import type { CertId } from '../ids/types';
+import type { PolykeyWorkerManagerInterface } from '../workers/types';
 import Logger from '@matrixai/logger';
 import { IdInternal } from '@matrixai/id';
 import {
@@ -18,7 +21,6 @@ import {
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import * as keysUtils from './utils';
 import * as keysErrors from './errors';
-import { never } from '../utils';
 
 interface CertManager extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
@@ -31,6 +33,7 @@ class CertManager {
     keyRing,
     certDuration = 31536000,
     changeCallback,
+    workerManager,
     logger = new Logger(this.name),
     subjectAttrsExtra,
     issuerAttrsExtra,
@@ -40,6 +43,7 @@ class CertManager {
       keyRing: KeyRing;
       certDuration?: number;
       changeCallback?: (data: CertManagerChangeData) => any;
+      workerManager?: PolykeyWorkerManagerInterface;
       logger?: Logger;
       subjectAttrsExtra?: Array<{ [key: string]: Array<string> }>,
       issuerAttrsExtra?: Array<{ [key: string]: Array<string> }>,
@@ -52,6 +56,7 @@ class CertManager {
       keyRing,
       certDuration,
       changeCallback,
+      workerManager,
       logger,
     });
     await certManager.start({
@@ -69,6 +74,7 @@ class CertManager {
   public readonly certDuration: number;
 
   protected logger: Logger;
+  protected workerManager?: PolykeyWorkerManagerInterface;
   protected db: DB;
   protected keyRing: KeyRing;
   protected generateCertId: () => CertId;
@@ -90,12 +96,14 @@ class CertManager {
     keyRing,
     certDuration,
     changeCallback,
+    workerManager,
     logger,
   }: {
     db: DB;
     keyRing: KeyRing;
     certDuration: number;
     changeCallback?: (data: CertManagerChangeData) => any;
+    workerManager?: PolykeyWorkerManagerInterface;
     logger: Logger;
   }) {
     this.logger = logger;
@@ -103,6 +111,15 @@ class CertManager {
     this.keyRing = keyRing;
     this.certDuration = certDuration;
     this.changeCallback = changeCallback;
+    this.workerManager = workerManager;
+  }
+
+  public setWorkerManager(workerManager: PolykeyWorkerManagerInterface) {
+    this.workerManager = workerManager;
+  }
+
+  public unsetWorkerManager() {
+    delete this.workerManager;
   }
 
   public async start({
@@ -273,8 +290,7 @@ class CertManager {
         password,
         async (keyPairNew: KeyPair, keyPairOld: KeyPair, recoveryCodeNew_: RecoveryCode) => {
           recoveryCodeNew = recoveryCodeNew_;
-          certNew = await keysUtils.generateCertificate({
-            certId: this.generateCertId(),
+          certNew = await this.generateCertificate({
             subjectKeyPair: keyPairNew,
             issuerPrivateKey: keyPairOld.privateKey,
             duration,
@@ -318,14 +334,13 @@ class CertManager {
         password,
         async (keyPairNew: KeyPair, _, recoveryCodeNew_) => {
           recoveryCodeNew = recoveryCodeNew_;
-          certNew = await keysUtils.generateCertificate({
-            certId: this.generateCertId(),
+          certNew = await this.generateCertificate({
             subjectKeyPair: keyPairNew,
             issuerPrivateKey: keyPairNew.privateKey,
             duration,
             subjectAttrsExtra,
             issuerAttrsExtra,
-          });
+          })
           await this.putCert(certNew);
         }
       );
@@ -356,8 +371,7 @@ class CertManager {
     issuerAttrsExtra?: Array<{ [key: string]: Array<string> }>,
   ) {
     this.logger.info('Resetting certificate chain with current key pair');
-    const certNew = await keysUtils.generateCertificate({
-      certId: this.generateCertId(),
+    const certNew = await this.generateCertificate({
       subjectKeyPair: this.keyRing.keyPair,
       issuerPrivateKey: this.keyRing.keyPair.privateKey,
       duration,
@@ -378,7 +392,6 @@ class CertManager {
 
   protected async putCert(cert: Certificate, tran?: DBTransaction): Promise<void> {
     const certId = keysUtils.certCertId(cert)!;
-    if (certId == null) never();
     const certASN1 = keysUtils.certToASN1(cert);
     await (tran ?? this.db).put(
       [...this.dbCertsPath, certId.toBuffer()],
@@ -405,8 +418,7 @@ class CertManager {
     }
     // If no certificate, we will create the first one
     if (cert == null) {
-      cert = await keysUtils.generateCertificate({
-        certId: this.generateCertId(),
+      cert = await this.generateCertificate({
         subjectKeyPair: this.keyRing.keyPair,
         issuerPrivateKey: this.keyRing.keyPair.privateKey,
         duration: this.certDuration,
@@ -415,6 +427,51 @@ class CertManager {
       });
       await this.putCert(cert);
     }
+  }
+
+  protected async generateCertificate({
+    subjectKeyPair,
+    issuerPrivateKey,
+    duration,
+    subjectAttrsExtra,
+    issuerAttrsExtra,
+  }: {
+    subjectKeyPair: {
+      publicKey: PublicKey;
+      privateKey: PrivateKey;
+    };
+    issuerPrivateKey: PrivateKey;
+    duration: number;
+    subjectAttrsExtra?: Array<{ [key: string]: Array<string> }>;
+    issuerAttrsExtra?: Array<{ [key: string]: Array<string> }>;
+  }): Promise<Certificate> {
+    let cert: Certificate;
+    if (this.workerManager == null) {
+      cert = await keysUtils.generateCertificate({
+        certId: this.generateCertId(),
+        subjectKeyPair,
+        issuerPrivateKey,
+        duration,
+        subjectAttrsExtra,
+        issuerAttrsExtra,
+      });
+    } else {
+      cert = await this.workerManager.call(async (w) => {
+        const result = await w.generateCertificate({
+          certId: this.generateCertId().buffer,
+          subjectKeyPair: {
+            publicKey: subjectKeyPair.publicKey.buffer,
+            privateKey: subjectKeyPair.privateKey.buffer,
+          },
+          issuerPrivateKey: issuerPrivateKey.buffer,
+          duration,
+          subjectAttrsExtra,
+          issuerAttrsExtra,
+        });
+        return keysUtils.certFromASN1(Buffer.from(result) as CertificateASN1)!;
+      });
+    }
+    return cert;
   }
 
   /**
