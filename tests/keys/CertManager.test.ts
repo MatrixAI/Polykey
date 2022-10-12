@@ -1,16 +1,20 @@
-import type { Key } from '@/keys/types';
+import type {
+  Key,
+  Certificate,
+  CertificatePEM,
+  CertificatePEMChain
+} from '@/keys/types';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
+import * as asynciterable from 'ix/asynciterable';
 import KeyRing from '@/keys/KeyRing';
 import CertManager from '@/keys/CertManager';
 import * as keysUtils from '@/keys/utils';
 import * as keysErrors from '@/keys/errors';
 import * as utils from '@/utils';
-import { sleep } from '@/utils';
-import { Certificate } from '@/keys/types';
 
 describe(CertManager.name, () => {
   const password = keysUtils.getRandomBytes(10).toString('utf-8');
@@ -43,15 +47,15 @@ describe(CertManager.name, () => {
         ops: {
           encrypt: async (key, plainText) => {
             return keysUtils.encryptWithKey(
-              utils.bufferWrap(key) as Key,
-              utils.bufferWrap(plainText),
-            );
+              Buffer.from(key) as Key,
+              Buffer.from(plainText),
+            ).buffer;
           },
           decrypt: async (key, cipherText) => {
             return keysUtils.decryptWithKey(
-              utils.bufferWrap(key) as Key,
-              utils.bufferWrap(cipherText),
-            );
+              Buffer.from(key) as Key,
+              Buffer.from(cipherText),
+            )?.buffer;
           },
         },
       },
@@ -69,172 +73,260 @@ describe(CertManager.name, () => {
     const certManager = await CertManager.createCertManager({
       db,
       keyRing,
+      password,
       logger,
     });
     await expect(async () => {
       await certManager.destroy();
     }).rejects.toThrow(keysErrors.ErrorCertManagerRunning);
     // Should be a noop
-    await certManager.start();
+    await certManager.start({ password });
     await certManager.stop();
     await certManager.destroy();
-    await expect(certManager.start()).rejects.toThrow(
+    await expect(certManager.start({ password })).rejects.toThrow(
       keysErrors.ErrorCertManagerDestroyed,
     );
     await expect(async () => {
       await certManager.getCurrentCert();
     }).rejects.toThrow(keysErrors.ErrorCertManagerNotRunning);
   });
-  test('constructs root cert, root certs', async () => {
+  test('constructs 1 current cert at start', async () => {
     const certManager = await CertManager.createCertManager({
       db,
       keyRing,
+      password,
       logger,
     });
-    const rootCertPem = await certManager.getCurrentCertPEM();
-    expect(typeof rootCertPem).toBe('string');
-    const rootCertPems = await certManager.getCertPEMsChain();
-    expect(rootCertPems.length).toBe(1);
-    const rootCertChainPem = await certManager.getCertPEMsChainPEM();
-    expect(typeof rootCertChainPem).toBe('string');
+    const cert = await certManager.getCurrentCert();
+    expect(keysUtils.certNodeId(cert)).toStrictEqual(keyRing.getNodeId());
+    expect(keysUtils.certPublicKey(cert)).toStrictEqual(keyRing.keyPair.publicKey);
+    expect(await keysUtils.certSignedBy(cert, keyRing.keyPair.publicKey)).toBe(true);
+    expect(keysUtils.certIssuedBy(cert, cert)).toBe(true);
+    expect(keysUtils.certNotExpiredBy(cert, new Date())).toBe(true);
+    expect(await keysUtils.certNodeSigned(cert)).toBe(true);
     await certManager.stop();
   });
-  test('reset root certificate with existing key pair', async () => {
+  test('get certificate and certificates chain', async () => {
     const certManager = await CertManager.createCertManager({
       db,
       keyRing,
+      password,
       logger,
     });
-    const keyPairPem1 = keysUtils.keyPairToPEM(keyRing.keyPair);
-    const rootCert1 = await certManager.getCurrentCert();
-
-    // We now use IdSortable, this means the next ID is always going to be higher
-    // no need to set the time
-    await sleep(2000);
-    await certManager.resetCertWithCurrentKeyPair();
-
-    const rootCert2 = await certManager.getCurrentCert();
-
-    // The key pair has not changed
-    expect(keysUtils.keyPairToPEM(keyRing.keyPair)).toStrictEqual(keyPairPem1);
-
-    // The serial number should be greater
-    expect(keysUtils.certCertId(rootCert2)!.toBuffer().compare(keysUtils.certCertId(rootCert1)!.toBuffer())).toBe(1);
-    expect(rootCert1.notBefore).toBeBefore(rootCert2.notBefore);
-    expect(rootCert1.notAfter).toBeBefore(rootCert2.notAfter);
+    let cert: Certificate;
+    let certs: Array<Certificate>;
+    cert = await certManager.getCurrentCert();
+    certs = await certManager.getCertsChain();
+    const certOld = cert;
+    const certId = keysUtils.certCertId(cert)!;
+    expect(keysUtils.certEqual(
+      (await certManager.getCert(certId))!,
+      cert
+    )).toBe(true);
+    expect(certs).toHaveLength(1);
+    expect(keysUtils.certEqual(certs[0], cert)).toBe(true);
+    // After renewal there will be 2 certificates
+    await certManager.renewCertWithNewKeyPair(password, 1000);
+    cert = await certManager.getCurrentCert();
+    certs = await certManager.getCertsChain();
+    expect(keysUtils.certEqual(cert, certOld)).not.toBe(true);
+    expect(keysUtils.certEqual(certs[1], certOld)).toBe(true);
     await certManager.stop();
   });
-  test('reset root certificate with new key pair', async () => {
+  test('get certificate PEM and PEMs', async () => {
     const certManager = await CertManager.createCertManager({
       db,
       keyRing,
+      password,
       logger,
     });
-
-    const rootKeyPairPem1 = keysUtils.keyPairToPEM(keyRing.keyPair);
-    const publicKeyPem1 = keysUtils.publicKeyToPEM(keyRing.keyPair.publicKey);
-    const rootCert1 = await certManager.getCurrentCert();
-
-    await sleep(2000);
-    await certManager.resetCertWithNewKeyPair('password');
-
-    const rootKeyPairPem2 = keysUtils.keyPairToPEM(keyRing.keyPair);
-    const publicKeyPem2 = keysUtils.publicKeyToPEM(keyRing.keyPair.publicKey);
-    const rootCert2 = await certManager.getCurrentCert();
-
-    expect(rootCert1.serialNumber).not.toBe(rootCert2.serialNumber);
-    expect(rootCert1.notBefore).toBeBefore(rootCert2.notBefore)
-    expect(rootCert1.notAfter).toBeBefore(rootCert2.notAfter)
-    expect(rootKeyPairPem1).not.toBe(rootKeyPairPem2);
-
-    expect(keysUtils.publicKeyToPEM(keysUtils.certPublicKey(rootCert1)!)).toBe(publicKeyPem1);
-    expect(keysUtils.publicKeyToPEM(keysUtils.certPublicKey(rootCert2)!)).toBe(publicKeyPem2);
-
+    let certPEM: CertificatePEM;
+    let certPEMs: Array<CertificatePEM>;
+    let certChainPEM: CertificatePEMChain;
+    const cert = await certManager.getCurrentCert();
+    certPEM = await certManager.getCurrentCertPEM();
+    expect(certPEM).toMatch(
+      /-----BEGIN CERTIFICATE-----\n([A-Za-z0-9+/=\n]+)-----END CERTIFICATE-----\n/,
+    );
+    const currentCert = keysUtils.certFromPEM(certPEM)!;
+    const currentCertPEM = certPEM;
+    expect(keysUtils.certNodeId(currentCert)).toStrictEqual(keyRing.getNodeId());
+    expect(keysUtils.certPublicKey(currentCert)).toStrictEqual(keyRing.keyPair.publicKey);
+    expect(await keysUtils.certSignedBy(currentCert, keyRing.keyPair.publicKey)).toBe(true);
+    expect(keysUtils.certIssuedBy(currentCert, currentCert)).toBe(true);
+    expect(keysUtils.certNotExpiredBy(currentCert, new Date())).toBe(true);
+    expect(await keysUtils.certNodeSigned(currentCert)).toBe(true);
+    expect(keysUtils.certToPEM(cert)).toStrictEqual(certPEM);
+    certPEMs = await certManager.getCertPEMsChain();
+    expect(certPEMs).toHaveLength(1);
+    expect(certPEMs[0]).toStrictEqual(certPEM);
+    certChainPEM = await certManager.getCertPEMsChainPEM();
+    expect(certChainPEM).toStrictEqual(certPEM);
+    // After renewal there will be 2 certificates
+    await certManager.renewCertWithNewKeyPair(password, 1000);
+    certPEM = await certManager.getCurrentCertPEM();
+    certPEMs = await certManager.getCertPEMsChain();
+    certChainPEM = await certManager.getCertPEMsChainPEM();
+    expect(certPEM).not.toStrictEqual(currentCertPEM);
+    expect(certPEMs).toHaveLength(2);
+    expect(
+      keysUtils.certEqual(
+        keysUtils.certFromPEM(certPEMs[1])!,
+        cert
+      )
+    ).toBe(true);
+    expect(certChainPEM).toMatch(
+      /-----BEGIN CERTIFICATE-----\n([A-Za-z0-9+/=\n]+)-----END CERTIFICATE-----\n-----BEGIN CERTIFICATE-----\n([A-Za-z0-9+/=\n]+)-----END CERTIFICATE-----\n/,
+    );
     await certManager.stop();
   });
-  test('renew root certificate with new key pair', async () => {
+  test('get certificate and certificates generator', async () => {
     const certManager = await CertManager.createCertManager({
       db,
       keyRing,
+      password,
       logger,
     });
-
-    const publicKeyPem1 = keysUtils.publicKeyToPEM(keyRing.keyPair.publicKey);
-    const keyPairPem1 = keysUtils.keyPairToPEM(keyRing.keyPair);
-    const rootCert1 = await certManager.getCurrentCert();
-
-    await sleep(2000);
-    await certManager.renewCertWithNewKeyPair('password');
-
-    const publicKeyPem2 = keysUtils.publicKeyToPEM(keyRing.keyPair.publicKey);
-    const keyPairPem2 = keysUtils.keyPairToPEM(keyRing.keyPair)
-
-    const rootCert2 = await certManager.getCurrentCert();
-
-    expect(rootCert1.serialNumber).not.toBe(rootCert2.serialNumber);
-    expect(rootCert1.notBefore).toBeBefore(rootCert2.notBefore)
-    expect(rootCert1.notAfter).toBeBefore(rootCert2.notAfter)
-    expect(keyPairPem1).not.toBe(keyPairPem2);
-
-    expect(publicKeyPem1).not.toBe(publicKeyPem2);
-    expect(keysUtils.publicKeyToPEM(keysUtils.certPublicKey(rootCert2)!)).toBe(publicKeyPem2);
-
+    // Only a single certificate will exist at the beginning
+    let certs: Array<Certificate>;
+    let certPEMs: Array<string>;
+    let currentCert: Certificate;
+    certs = await asynciterable.toArray(certManager.getCerts());
+    currentCert = certs[0];
+    expect(certs).toHaveLength(1);
+    expect(keysUtils.certNodeId(currentCert)).toStrictEqual(keyRing.getNodeId());
+    expect(keysUtils.certPublicKey(currentCert)).toStrictEqual(keyRing.keyPair.publicKey);
+    expect(await keysUtils.certSignedBy(currentCert, keyRing.keyPair.publicKey)).toBe(true);
+    expect(keysUtils.certIssuedBy(currentCert, currentCert)).toBe(true);
+    expect(keysUtils.certNotExpiredBy(currentCert, new Date())).toBe(true);
+    expect(await keysUtils.certNodeSigned(currentCert)).toBe(true);
+    certPEMs = await asynciterable.toArray(certManager.getCertPEMs());
+    expect(certPEMs).toHaveLength(1);
+    expect(certPEMs[0]).toStrictEqual(keysUtils.certToPEM(currentCert!));
+    // After renewal there will be 2 certificates
+    await certManager.renewCertWithNewKeyPair(password, 1000);
+    certs = await asynciterable.toArray(certManager.getCerts());
+    certPEMs = await asynciterable.toArray(certManager.getCertPEMs());
+    expect(certs).toHaveLength(2);
+    currentCert = certs[0];
+    expect(certPEMs).toHaveLength(2);
+    // The new leaf certificate would be issued and signed by the prior certificate
+    expect(keysUtils.certIssuedBy(currentCert, certs[1])).toBe(true);
+    expect(
+      await keysUtils.certSignedBy(
+        currentCert,
+        keysUtils.certPublicKey(certs[1])!
+      )
+    ).toBe(true);
     await certManager.stop();
   });
-  test('order of certificate chain should be leaf to root', async () => {
-    const certManager = await CertManager.createCertManager({
-      db,
-      keyRing,
-      logger,
-    });
+  // test('reset root certificate with existing key pair', async () => {
+  //   const certManager = await CertManager.createCertManager({
+  //     db,
+  //     keyRing,
+  //     logger,
+  //   });
+  //   const keyPairPem1 = keysUtils.keyPairToPEM(keyRing.keyPair);
+  //   const rootCert1 = await certManager.getCurrentCert();
 
-    try {
-      const certs: Array<Certificate> = [];
-      certs.push(await certManager.getCurrentCert());
+  //   // We now use IdSortable, this means the next ID is always going to be higher
+  //   // no need to set the time
+  //   await sleep(2000);
+  //   await certManager.resetCertWithCurrentKeyPair();
 
-      for (let i = 0; i < 20; i++) {
-        await certManager.renewCertWithNewKeyPair('password');
-        certs.push(await certManager.getCurrentCert())
-      }
+  //   const rootCert2 = await certManager.getCurrentCert();
 
-      // ordered newest to oldest
-      const reversedCerts = certs.reverse();
-      const certChain = await certManager.getCertsChain();
+  //   // The key pair has not changed
+  //   expect(keysUtils.keyPairToPEM(keyRing.keyPair)).toStrictEqual(keyPairPem1);
 
-      for (let i = 0; i < certChain.length; i++) {
-        expect(certChain[i].equal(reversedCerts[i]));
-      }
-    } finally {
-      await certManager.stop();
-    }
-  });
-  test('certificate PEM matches format', async () => {
-    const certManager = await CertManager.createCertManager({
-      db,
-      keyRing,
-      logger,
-    });
+  //   // The serial number should be greater
+  //   expect(keysUtils.certCertId(rootCert2)!.toBuffer().compare(keysUtils.certCertId(rootCert1)!.toBuffer())).toBe(1);
+  //   expect(rootCert1.notBefore).toBeBefore(rootCert2.notBefore);
+  //   expect(rootCert1.notAfter).toBeBefore(rootCert2.notAfter);
+  //   await certManager.stop();
+  // });
+  // test('reset root certificate with new key pair', async () => {
+  //   const certManager = await CertManager.createCertManager({
+  //     db,
+  //     keyRing,
+  //     logger,
+  //   });
 
-    const certificatePEM = await certManager.getCurrentCertPEM();
+  //   const rootKeyPairPem1 = keysUtils.keyPairToPEM(keyRing.keyPair);
+  //   const publicKeyPem1 = keysUtils.publicKeyToPEM(keyRing.keyPair.publicKey);
+  //   const rootCert1 = await certManager.getCurrentCert();
 
-    const validPEM = /-----BEGIN CERTIFICATE-----\n(([A-Za-z0-9+\/=]+)\n)+-----END CERTIFICATE-----\n/
-    expect(certificatePEM).toMatch(validPEM);
+  //   await sleep(2000);
+  //   await certManager.resetCertWithNewKeyPair('password');
 
-    await certManager.stop();
-  });
-  test('certificate chain PEM matches format',  async () => {
-    const certManager = await CertManager.createCertManager({
-      db,
-      keyRing,
-      logger,
-    });
+  //   const rootKeyPairPem2 = keysUtils.keyPairToPEM(keyRing.keyPair);
+  //   const publicKeyPem2 = keysUtils.publicKeyToPEM(keyRing.keyPair.publicKey);
+  //   const rootCert2 = await certManager.getCurrentCert();
 
-    await certManager.renewCertWithNewKeyPair('password');
-    await certManager.renewCertWithNewKeyPair('password');
-    const certificateChainPEM = await certManager.getCertPEMsChainPEM();
-    const validPEM = /(-----BEGIN CERTIFICATE-----\n(([A-Za-z0-9+\/=]+)\n)+-----END CERTIFICATE-----\n)/
-    expect(certificateChainPEM).toMatch(validPEM);
+  //   expect(rootCert1.serialNumber).not.toBe(rootCert2.serialNumber);
+  //   expect(rootCert1.notBefore).toBeBefore(rootCert2.notBefore)
+  //   expect(rootCert1.notAfter).toBeBefore(rootCert2.notAfter)
+  //   expect(rootKeyPairPem1).not.toBe(rootKeyPairPem2);
 
-    await certManager.stop();
-  });
+  //   expect(keysUtils.publicKeyToPEM(keysUtils.certPublicKey(rootCert1)!)).toBe(publicKeyPem1);
+  //   expect(keysUtils.publicKeyToPEM(keysUtils.certPublicKey(rootCert2)!)).toBe(publicKeyPem2);
+
+  //   await certManager.stop();
+  // });
+  // test('renew root certificate with new key pair', async () => {
+  //   const certManager = await CertManager.createCertManager({
+  //     db,
+  //     keyRing,
+  //     logger,
+  //   });
+
+  //   const publicKeyPem1 = keysUtils.publicKeyToPEM(keyRing.keyPair.publicKey);
+  //   const keyPairPem1 = keysUtils.keyPairToPEM(keyRing.keyPair);
+  //   const rootCert1 = await certManager.getCurrentCert();
+
+  //   await sleep(2000);
+  //   await certManager.renewCertWithNewKeyPair('password');
+
+  //   const publicKeyPem2 = keysUtils.publicKeyToPEM(keyRing.keyPair.publicKey);
+  //   const keyPairPem2 = keysUtils.keyPairToPEM(keyRing.keyPair)
+
+  //   const rootCert2 = await certManager.getCurrentCert();
+
+  //   expect(rootCert1.serialNumber).not.toBe(rootCert2.serialNumber);
+  //   expect(rootCert1.notBefore).toBeBefore(rootCert2.notBefore)
+  //   expect(rootCert1.notAfter).toBeBefore(rootCert2.notAfter)
+  //   expect(keyPairPem1).not.toBe(keyPairPem2);
+
+  //   expect(publicKeyPem1).not.toBe(publicKeyPem2);
+  //   expect(keysUtils.publicKeyToPEM(keysUtils.certPublicKey(rootCert2)!)).toBe(publicKeyPem2);
+
+  //   await certManager.stop();
+  // });
+  // test('order of certificate chain should be leaf to root', async () => {
+  //   const certManager = await CertManager.createCertManager({
+  //     db,
+  //     keyRing,
+  //     logger,
+  //   });
+
+  //   try {
+  //     const certs: Array<Certificate> = [];
+  //     certs.push(await certManager.getCurrentCert());
+
+  //     for (let i = 0; i < 20; i++) {
+  //       await certManager.renewCertWithNewKeyPair('password');
+  //       certs.push(await certManager.getCurrentCert())
+  //     }
+
+  //     // ordered newest to oldest
+  //     const reversedCerts = certs.reverse();
+  //     const certChain = await certManager.getCertsChain();
+
+  //     for (let i = 0; i < certChain.length; i++) {
+  //       expect(certChain[i].equal(reversedCerts[i]));
+  //     }
+  //   } finally {
+  //     await certManager.stop();
+  //   }
+  // });
 });

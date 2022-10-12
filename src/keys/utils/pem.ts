@@ -25,9 +25,8 @@ function publicKeyToPEM(publicKey: PublicKey): PublicKeyPEM {
     subjectPublicKey: publicKey,
   });
   const data = Buffer.from(asn1.AsnSerializer.serialize(spki));
-  return `-----BEGIN PUBLIC KEY-----\n${data.toString(
-    'base64',
-  )}\n-----END PUBLIC KEY-----\n` as PublicKeyPEM;
+  const contents = data.toString('base64').replace(/(.{64})/g, '$1\n').trimEnd() + '\n';
+  return `-----BEGIN PUBLIC KEY-----\n${contents}-----END PUBLIC KEY-----\n` as PublicKeyPEM;
 }
 
 /**
@@ -36,7 +35,7 @@ function publicKeyToPEM(publicKey: PublicKey): PublicKeyPEM {
  */
 function publicKeyFromPEM(publicKeyPEM: PublicKeyPEM): PublicKey | undefined {
   const match = publicKeyPEM.match(
-    /-----BEGIN PUBLIC KEY-----\n([A-Za-z0-9+/=]+)\n-----END PUBLIC KEY-----\n/,
+    /-----BEGIN PUBLIC KEY-----\n([A-Za-z0-9+/=\n]+)-----END PUBLIC KEY-----\n/,
   );
   if (match == null) {
     return undefined;
@@ -60,9 +59,8 @@ function privateKeyToPEM(privateKey: PrivateKey): PrivateKeyPEM {
     ),
   });
   const data = Buffer.from(asn1.AsnSerializer.serialize(pkcs8));
-  return `-----BEGIN PRIVATE KEY-----\n${data.toString(
-    'base64',
-  )}\n-----END PRIVATE KEY-----\n` as PrivateKeyPEM;
+  const contents = data.toString('base64').replace(/(.{64})/g, '$1\n').trimEnd() + '\n';
+  return `-----BEGIN PRIVATE KEY-----\n${contents}-----END PRIVATE KEY-----\n` as PrivateKeyPEM;
 }
 
 /**
@@ -73,7 +71,7 @@ function privateKeyFromPEM(
   privateKeyPEM: PrivateKeyPEM,
 ): PrivateKey | undefined {
   const match = privateKeyPEM.match(
-    /-----BEGIN PRIVATE KEY-----\n([A-Za-z0-9+/=]+)\n-----END PRIVATE KEY-----\n/,
+    /-----BEGIN PRIVATE KEY-----\n([A-Za-z0-9+/=\n]+)-----END PRIVATE KEY-----\n/,
   );
   if (match == null) {
     return;
