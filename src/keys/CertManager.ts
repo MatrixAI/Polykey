@@ -28,9 +28,14 @@ interface CertManager extends CreateDestroyStartStop {}
   new keysErrors.ErrorCertManagerDestroyed(),
 )
 class CertManager {
+  /**
+   * The password is needed in case there needs to be an automatic renewal.
+   * When the certificate is automatically renewed, a new key pair is generated.
+   */
   public static async createCertManager({
     db,
     keyRing,
+    password,
     certDuration = 31536000,
     changeCallback,
     workerManager,
@@ -41,6 +46,7 @@ class CertManager {
   }: {
       db: DB;
       keyRing: KeyRing;
+      password: string;
       certDuration?: number;
       changeCallback?: (data: CertManagerChangeData) => any;
       workerManager?: PolykeyWorkerManagerInterface;
@@ -60,6 +66,7 @@ class CertManager {
       logger,
     });
     await certManager.start({
+      password,
       subjectAttrsExtra,
       issuerAttrsExtra,
       fresh
@@ -123,14 +130,16 @@ class CertManager {
   }
 
   public async start({
+    password,
     subjectAttrsExtra,
     issuerAttrsExtra,
     fresh = false,
   }: {
+    password: string;
     subjectAttrsExtra?: Array<{ [key: string]: Array<string> }>,
     issuerAttrsExtra?: Array<{ [key: string]: Array<string> }>,
     fresh?: boolean;
-  } = {}): Promise<void> {
+  }): Promise<void> {
     this.logger.info(`Starting ${this.constructor.name}`);
     if (fresh) {
       await this.db.clear(this.dbPath);
@@ -138,10 +147,10 @@ class CertManager {
     const lastCertId = await this.getLastCertId();
     this.generateCertId = keysUtils.createCertIdGenerator(lastCertId);
     await this.setupCurrentCert(
+      password,
       subjectAttrsExtra,
       issuerAttrsExtra,
     );
-    await this.gcCerts();
     this.logger.info(`Started ${this.constructor.name}`);
   }
 
@@ -275,7 +284,7 @@ class CertManager {
    * This maintains a certificate chain that provides zero-downtime migration
    * This results in a new `NodeId`.
    */
-  @ready(new keysErrors.ErrorCertManagerNotRunning())
+  @ready(new keysErrors.ErrorCertManagerNotRunning(), false, ['starting'])
   public async renewCertWithNewKeyPair(
     password: string,
     duration: number = 31536000,
@@ -405,9 +414,11 @@ class CertManager {
   }
 
   protected async setupCurrentCert(
+    password: string,
     subjectAttrsExtra?: Array<{ [key: string]: Array<string> }>,
     issuerAttrsExtra?: Array<{ [key: string]: Array<string> }>,
   ): Promise<void> {
+    this.logger.info('Begin current certificate setup');
     let cert: Certificate | undefined;
     for await (const [, certASN1] of this.db.iterator(this.dbCertsPath, {
       keys: false,
@@ -418,6 +429,7 @@ class CertManager {
     }
     // If no certificate, we will create the first one
     if (cert == null) {
+      this.logger.info('Generating new current certificate');
       cert = await this.generateCertificate({
         subjectKeyPair: this.keyRing.keyPair,
         issuerPrivateKey: this.keyRing.keyPair.privateKey,
@@ -426,7 +438,25 @@ class CertManager {
         issuerAttrsExtra,
       });
       await this.putCert(cert);
+      await this.gcCerts();
+    } else {
+      this.logger.info('Existing current certificate found');
+      const now = new Date();
+      const certPublicKey = keysUtils.certPublicKey(cert)!;
+      if (
+        !certPublicKey.equals(this.keyRing.keyPair.publicKey) ||
+        !keysUtils.certNotExpiredBy(cert, now)
+      ) {
+        this.logger.info('Existing current certificate is invalid or expired, starting certificate renewal');
+        await this.renewCertWithNewKeyPair(
+          password,
+          this.certDuration,
+          subjectAttrsExtra,
+          issuerAttrsExtra,
+        );
+      }
     }
+    this.logger.info('Finish current certificate setup');
   }
 
   protected async generateCertificate({
