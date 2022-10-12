@@ -590,7 +590,7 @@ class PolykeyAgent {
             keyPrivatePem: keysUtils.privateKeyToPEM(
               data.keyPair.privateKey,
             ),
-            certChainPem: (await this.certManager.getCertPEMsChain()).join('') as CertificatePEMChain,
+            certChainPem: await this.certManager.getCertPEMsChainPEM(),
           };
           this.grpcServerClient.setTLSConfig(tlsConfig);
           this.proxy.setTLSConfig(tlsConfig);
@@ -674,7 +674,7 @@ class PolykeyAgent {
       // GRPC Server
       const tlsConfig: TLSConfig = {
         keyPrivatePem: keysUtils.privateKeyToPEM(this.keyRing.keyPair.privateKey),
-        certChainPem: (await this.certManager.getCertPEMsChain()).join('') as CertificatePEMChain,
+        certChainPem: await this.certManager.getCertPEMsChainPEM(),
       };
       // Client server
       await this.grpcServerClient.start({

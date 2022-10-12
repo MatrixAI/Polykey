@@ -30,6 +30,7 @@ import * as keysUtils from '@/keys/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as testNodesUtils from '../../nodes/utils';
 import { CertificatePEMChain } from '@/keys/types';
+import * as testsUtils from '../../utils/index';
 
 describe('gestaltsDiscoveryByNode', () => {
   const logger = new Logger('gestaltsDiscoveryByNode test', LogLevel.WARN, [
@@ -110,10 +111,7 @@ describe('gestaltsDiscoveryByNode', () => {
     await proxy.start({
       serverHost: '127.0.0.1' as Host,
       serverPort: 0 as Port,
-      tlsConfig: {
-        keyPrivatePem: keysUtils.privateKeyToPEM(keyRing.keyPair.privateKey),
-        certChainPem: keysUtils.publicKeyToPEM(keyRing.keyPair.publicKey) as unknown as CertificatePEMChain,
-      },
+      tlsConfig: await testsUtils.createTLSConfig(keyRing.keyPair),
     });
     sigchain = await Sigchain.createSigchain({
       db,
