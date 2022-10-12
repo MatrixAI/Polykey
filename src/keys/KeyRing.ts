@@ -15,6 +15,7 @@ import type {
   PasswordMemLimit,
 } from './types';
 import type { NodeId } from '../ids/types';
+import type { PolykeyWorkerManagerInterface } from '../workers/types';
 import type { FileSystem } from '../types';
 import path from 'path';
 import Logger from '@matrixai/logger';
@@ -26,6 +27,7 @@ import { Lock } from '@matrixai/async-locks';
 import * as keysUtils from './utils';
 import * as keysErrors from './errors';
 import { bufferLock, bufferUnlock } from './utils/memory';
+import * as utils from '../utils';
 
 interface KeyRing extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
@@ -35,6 +37,7 @@ interface KeyRing extends CreateDestroyStartStop {}
 class KeyRing {
   public static async createKeyRing({
     keysPath,
+    workerManager,
     fs = require('fs'),
     logger = new Logger(this.name),
     passwordOpsLimit,
@@ -43,6 +46,7 @@ class KeyRing {
   }: {
       keysPath: string;
       password: string;
+      workerManager?: PolykeyWorkerManagerInterface;
       fs?: FileSystem;
       logger?: Logger;
       passwordOpsLimit?: PasswordOpsLimit;
@@ -62,6 +66,7 @@ class KeyRing {
     logger.info(`Setting keys path to ${keysPath}`);
     const keyRing = new this({
       keysPath,
+      workerManager,
       fs,
       logger,
       passwordOpsLimit,
@@ -77,8 +82,9 @@ class KeyRing {
   public readonly privateKeyPath: string;
   public readonly dbKeyPath: string;
 
-  protected fs: FileSystem;
   protected logger: Logger;
+  protected fs: FileSystem;
+  protected workerManager?: PolykeyWorkerManagerInterface;
   protected _keyPair?: KeyPairLocked;
   protected _dbKey?: BufferLocked<Key>;
   protected passwordHash?: Readonly<{
@@ -92,12 +98,14 @@ class KeyRing {
 
   public constructor({
     keysPath,
+    workerManager,
     fs,
     logger,
     passwordOpsLimit,
     passwordMemLimit
   }: {
     keysPath: string;
+    workerManager?: PolykeyWorkerManagerInterface;
     fs: FileSystem;
     logger: Logger;
     passwordOpsLimit?: PasswordOpsLimit;
@@ -105,12 +113,21 @@ class KeyRing {
   }) {
     this.logger = logger;
     this.keysPath = keysPath;
+    this.workerManager = workerManager;
     this.fs = fs;
     this.passwordOpsLimit = passwordOpsLimit;
     this.passwordMemLimit = passwordMemLimit;
     this.publicKeyPath = path.join(keysPath, 'public.jwk');
     this.privateKeyPath = path.join(keysPath, 'private.jwk');
     this.dbKeyPath = path.join(keysPath, 'db.jwk');
+  }
+
+  public setWorkerManager(workerManager: PolykeyWorkerManagerInterface) {
+    this.workerManager = workerManager;
+  }
+
+  public unsetWorkerManager() {
+    delete this.workerManager;
   }
 
   public async start(options: {
@@ -135,7 +152,7 @@ class KeyRing {
       setupKeyPairOptions,
     );
     const dbKey = await this.setupDbKey(keyPair);
-    const [passwordHash, passwordSalt] = this.setupPasswordHash(options.password);
+    const [passwordHash, passwordSalt] = await this.setupPasswordHash(options.password);
     this._keyPair = keyPair as {
       publicKey: BufferLocked<PublicKey>;
       privateKey: BufferLocked<PrivateKey>;
@@ -213,13 +230,25 @@ class KeyRing {
    */
   @ready(new keysErrors.ErrorKeyRingNotRunning())
   public async checkPassword(password: string): Promise<boolean> {
-    return keysUtils.checkPassword(
-      password,
-      this.passwordHash!.hash,
-      this.passwordHash!.salt,
-      this.passwordOpsLimit,
-      this.passwordMemLimit,
-    );
+    if (this.workerManager == null) {
+      return keysUtils.checkPassword(
+        password,
+        this.passwordHash!.hash,
+        this.passwordHash!.salt,
+        this.passwordOpsLimit,
+        this.passwordMemLimit,
+      );
+    } else {
+      return await this.workerManager.call(async (w) => {
+        return await w.checkPassword(
+          password,
+          this.passwordHash!.hash.buffer,
+          this.passwordHash!.salt.buffer,
+          this.passwordOpsLimit,
+          this.passwordMemLimit,
+        );
+      });
+    }
   }
 
   /**
@@ -237,7 +266,7 @@ class KeyRing {
     await this.rotateLock.withF(async () => {
       this.logger.info('Changing root key pair password');
       await this.writeKeyPair(this._keyPair!, password);
-      const [passwordHash, passwordSalt] = this.setupPasswordHash(password);
+      const [passwordHash, passwordSalt] = await this.setupPasswordHash(password);
       this.passwordHash = {
         hash: passwordHash,
         salt: passwordSalt
@@ -912,19 +941,37 @@ class KeyRing {
   /**
    * This sets up a password hash in-memory.
    * This is used to check if the password is correct.
+   * The returned buffers are guaranteed to unpooled and memory-locked.
+   * This means the underlying `ArrayBuffer` is safely transferrable.
    */
-  protected setupPasswordHash(
+  protected async setupPasswordHash(
     password: string,
-  ): [
+  ): Promise<[
     BufferLocked<PasswordHash>,
     BufferLocked<PasswordSalt>
-  ] {
-    const [hash, salt] = keysUtils.hashPassword(
-      password,
-      undefined,
-      this.passwordOpsLimit,
-      this.passwordMemLimit,
-    );
+  ]> {
+    let hash: PasswordHash, salt: PasswordSalt;
+    if (this.workerManager == null) {
+      [hash, salt] = keysUtils.hashPassword(
+        password,
+        undefined,
+        this.passwordOpsLimit,
+        this.passwordMemLimit,
+      );
+    } else {
+      [hash, salt] = await this.workerManager.call(async (w) => {
+        const [hashAB, saltAB] = (await w.hashPassword(
+          password,
+          undefined,
+          this.passwordOpsLimit,
+          this.passwordMemLimit,
+        ));
+        return [
+          Buffer.from(hashAB) as PasswordHash,
+          Buffer.from(saltAB) as PasswordSalt
+        ];
+      });
+    }
     bufferLock(hash);
     bufferLock(salt);
     return [hash, salt];
