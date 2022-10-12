@@ -7,6 +7,8 @@ import * as utils from '../../utils';
  * Generates a Key.
  * These symmetric keys are always 32 bytes/256 bits long.
  * This will work for all symmetric algos being used in PK.
+ * The returned buffers are guaranteed to unpooled.
+ * This means the underlying `ArrayBuffer` is safely transferrable.
  */
 function generateKey(): Key {
   // This ensures `key.buffer` is not using the shared internal pool
@@ -20,6 +22,8 @@ function generateKey(): Key {
 /**
  * Generates KeyPair.
  * These are Ed25519 keypairs.
+ * The returned buffers are guaranteed to unpooled.
+ * This means the underlying `ArrayBuffer` is safely transferrable.
  */
 function generateKeyPair(): KeyPair {
   // This ensures `publicKey.buffer` is not using the shared internal pool
@@ -42,6 +46,8 @@ function generateKeyPair(): KeyPair {
 /**
  * Generates KeyPair deterministically from a seed.
  * The seed has to be a 12 or 24 word BIP39 mnemonic.
+ * The returned buffers are guaranteed to unpooled.
+ * This means the underlying `ArrayBuffer` is safely transferrable.
  */
 async function generateDeterministicKeyPair(
   recoveryCode: RecoveryCode,

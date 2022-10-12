@@ -25,6 +25,10 @@ function keyToJWK(key: Key): KeyJWK {
   };
 }
 
+/**
+ * The returned buffers are guaranteed to unpooled.
+ * This means the underlying `ArrayBuffer` is safely transferrable.
+ */
 function keyFromJWK(keyJWK: JWK): Key | undefined {
   if (
     keyJWK.alg !== 'XChaCha20-Poly1305-IETF' ||
@@ -33,12 +37,16 @@ function keyFromJWK(keyJWK: JWK): Key | undefined {
   ) {
     return;
   }
-  const key = Buffer.from(keyJWK.k, 'base64url') as Key;
+  const data = Buffer.from(keyJWK.k, 'base64url');
   // Any random 32 bytes is a valid key
-  if (key.byteLength !== sodium.crypto_aead_xchacha20poly1305_ietf_KEYBYTES) {
+  if (data.byteLength !== sodium.crypto_aead_xchacha20poly1305_ietf_KEYBYTES) {
     return;
   }
-  return key;
+  const key = Buffer.allocUnsafeSlow(
+    sodium.crypto_aead_xchacha20poly1305_ietf_KEYBYTES,
+  );
+  data.copy(key);
+  return key as Key;
 }
 
 function publicKeyToJWK(publicKey: PublicKey): PublicKeyJWK {
@@ -52,6 +60,10 @@ function publicKeyToJWK(publicKey: PublicKey): PublicKeyJWK {
   };
 }
 
+/**
+ * The returned buffers are guaranteed to unpooled.
+ * This means the underlying `ArrayBuffer` is safely transferrable.
+ */
 function publicKeyFromJWK(publicKeyJWK: JWK): PublicKey | undefined {
   if (
     publicKeyJWK.alg !== 'EdDSA' ||
@@ -61,11 +73,13 @@ function publicKeyFromJWK(publicKeyJWK: JWK): PublicKey | undefined {
   ) {
     return;
   }
-  const publicKey = Buffer.from(publicKeyJWK.x, 'base64url') as PublicKey;
-  if (!validatePublicKey(publicKey)) {
+  const data = Buffer.from(publicKeyJWK.x, 'base64url');
+  if (!validatePublicKey(data)) {
     return;
   }
-  return publicKey;
+  const publicKey = Buffer.allocUnsafeSlow(sodium.crypto_sign_PUBLICKEYBYTES);
+  data.copy(publicKey);
+  return publicKey as PublicKey;
 }
 
 function privateKeyToJWK(privateKey: PrivateKey): PrivateKeyJWK {
@@ -84,6 +98,8 @@ function privateKeyToJWK(privateKey: PrivateKey): PrivateKeyJWK {
 /**
  * Extracts private key out of JWK.
  * This checks if the public key matches the private key in the JWK.
+ * The returned buffers are guaranteed to unpooled.
+ * This means the underlying `ArrayBuffer` is safely transferrable.
  */
 function privateKeyFromJWK(privateKeyJWK: JWK): PrivateKey | undefined {
   if (
@@ -95,17 +111,21 @@ function privateKeyFromJWK(privateKeyJWK: JWK): PrivateKey | undefined {
   ) {
     return;
   }
-  const publicKey = Buffer.from(privateKeyJWK.x, 'base64url') as PublicKey;
-  const privateKey = Buffer.from(privateKeyJWK.d, 'base64url') as PrivateKey;
+  const publicKeyData = Buffer.from(privateKeyJWK.x, 'base64url');
+  const privateKeyData = Buffer.from(privateKeyJWK.d, 'base64url');
   // Any random 32 bytes is a valid private key
-  if (privateKey.byteLength !== sodium.crypto_sign_SEEDBYTES) {
+  if (privateKeyData.byteLength !== sodium.crypto_sign_SEEDBYTES) {
     return;
   }
   // If the public key doesn't match, then the JWK is invalid
-  const publicKey_ = publicKeyFromPrivateKeyEd25519(privateKey);
-  if (!publicKey_.equals(publicKey)) {
+  const publicKeyData_ = publicKeyFromPrivateKeyEd25519(privateKeyData as PrivateKey);
+  if (!publicKeyData_.equals(publicKeyData)) {
     return;
   }
+  const publicKey = Buffer.allocUnsafeSlow(sodium.crypto_sign_PUBLICKEYBYTES);
+  const privateKey = Buffer.allocUnsafeSlow(sodium.crypto_sign_SEEDBYTES);
+  publicKeyData.copy(publicKey);
+  privateKeyData.copy(privateKey);
   return privateKey as PrivateKey;
 }
 
@@ -119,13 +139,19 @@ function keyPairToJWK(keyPair: {
   };
 }
 
+/**
+ * The returned buffers is guaranteed to unpooled.
+ * This means the underlying `ArrayBuffer` is safely transferrable.
+ */
 function keyPairFromJWK(keyPair: KeyPairJWK): KeyPair | undefined {
   const publicKey = publicKeyFromJWK(keyPair.publicKey);
   const privateKey = privateKeyFromJWK(keyPair.privateKey);
   if (publicKey == null || privateKey == null) {
     return;
   }
-  const secretKey = Buffer.concat([privateKey, publicKey]);
+  const secretKey = Buffer.allocUnsafeSlow(privateKey.byteLength + publicKey.byteLength);
+  privateKey.copy(secretKey);
+  publicKey.copy(secretKey, privateKey.byteLength);
   return {
     publicKey,
     privateKey,

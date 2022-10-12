@@ -1,6 +1,7 @@
 import type { TransferDescriptor } from 'threads';
 import {
   Key,
+  RecoveryCode,
   PasswordHash,
   PasswordSalt,
   PasswordMemLimit,
@@ -85,7 +86,7 @@ const polykeyWorker = {
       opsLimit,
       memLimit
     );
-    // Result is a tuple of [hash, salt] as transferable `ArrayBuffer`
+    // Result is a tuple of [hash, salt] using transferable `ArrayBuffer`
     const result: [ArrayBuffer, ArrayBuffer] = [
       hashAndSalt[0].buffer,
       hashAndSalt[1].buffer
@@ -109,6 +110,23 @@ const polykeyWorker = {
       opsLimit,
       memLimit
     );
+  },
+
+  async generateDeterministicKeyPair(
+    recoveryCode: RecoveryCode
+  ): Promise<TransferDescriptor<{
+    publicKey: ArrayBuffer;
+    privateKey: ArrayBuffer;
+    secretKey: ArrayBuffer;
+  }>> {
+    const keyPair = await keysUtils.generateDeterministicKeyPair(recoveryCode);
+    // Result is a record of {publicKey, privateKey, secretKey} using transferable `ArrayBuffer`
+    const result = {
+      publicKey: keyPair.privateKey.buffer,
+      privateKey: keyPair.privateKey.buffer,
+      secretKey: keyPair.secretKey.buffer
+    };
+    return Transfer(result, [result.publicKey, result.privateKey, result.secretKey]);
   },
 
 

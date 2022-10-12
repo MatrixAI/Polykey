@@ -1,4 +1,5 @@
 import type { PublicKey, PrivateKey, KeyPair } from '../types';
+import sodium from 'sodium-native';
 import { Crypto } from '@peculiar/webcrypto';
 import * as utils from '../../utils';
 
@@ -73,28 +74,35 @@ async function importKeyPair({
 /**
  * Exports Ed25519 public `CryptoKey` to `PublicKey`.
  * If `publicKey` is already `Buffer`, then this just returns it.
+ * The returned buffers is guaranteed to unpooled.
+ * This means the underlying `ArrayBuffer` is safely transferrable.
  */
-async function exportPublicKey(publicKey: CryptoKey): Promise<PublicKey> {
-  return utils.bufferWrap(
-    await webcrypto.subtle.exportKey('raw', publicKey),
-  ) as PublicKey;
+async function exportPublicKey(publicCryptoKey: CryptoKey): Promise<PublicKey> {
+  return Buffer.from(await webcrypto.subtle.exportKey('raw', publicCryptoKey)) as PublicKey;
 }
 
 /**
  * Exports Ed25519 private `CryptoKey` to `PrivateKey`
  * If `privateKey` is already `Buffer`, then this just returns it.
+ * The returned buffers is guaranteed to unpooled.
+ * This means the underlying `ArrayBuffer` is safely transferrable.
  */
-async function exportPrivateKey(privateKey: CryptoKey): Promise<PrivateKey> {
-  const privateJWK = await webcrypto.subtle.exportKey('jwk', privateKey);
+async function exportPrivateKey(privateCryptoKey: CryptoKey): Promise<PrivateKey> {
+  const privateJWK = await webcrypto.subtle.exportKey('jwk', privateCryptoKey);
   if (privateJWK.d == null) {
     throw new TypeError('Private key is not an Ed25519 private key');
   }
-  return Buffer.from(privateJWK.d, 'base64url') as PrivateKey;
+  const data = Buffer.from(privateJWK.d, 'base64url');
+  const privateKey = Buffer.allocUnsafeSlow(sodium.crypto_sign_SEEDBYTES);
+  data.copy(privateKey);
+  return privateKey as PrivateKey;
 }
 
 /**
  * Exports Ed25519 `CryptoKeyPair` to `KeyPair`
  * If any of the keys are already `Buffer`, then this will return them.
+ * The returned buffers is guaranteed to unpooled.
+ * This means the underlying `ArrayBuffer` is safely transferrable.
  */
 async function exportKeyPair(keyPair: {
   publicKey: CryptoKey;
@@ -102,7 +110,9 @@ async function exportKeyPair(keyPair: {
 }): Promise<KeyPair> {
   const publicKey = await exportPublicKey(keyPair.publicKey);
   const privateKey = await exportPrivateKey(keyPair.privateKey);
-  const secretKey = Buffer.concat([privateKey, publicKey]);
+  const secretKey = Buffer.allocUnsafeSlow(privateKey.byteLength + publicKey.byteLength);
+  privateKey.copy(secretKey);
+  publicKey.copy(secretKey, privateKey.byteLength);
   return {
     publicKey,
     privateKey,

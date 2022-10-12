@@ -1,12 +1,12 @@
 {
   "name": "keys.keyring_lifecycle",
-  "date": "2022-10-11T11:08:52.087Z",
+  "date": "2022-10-12T03:13:09.471Z",
   "version": "1.0.1-alpha.0",
   "results": [
     {
-      "name": "KeyRing creation",
-      "ops": 1.07,
-      "margin": 10.89,
+      "name": "KeyRing fresh creation",
+      "ops": 1.1,
+      "margin": 10.63,
       "options": {
         "delay": 0.005,
         "initCount": 1,
@@ -17,35 +17,35 @@
       "samples": 10,
       "promise": true,
       "details": {
-        "min": 0.871994011,
-        "max": 1.331817954,
-        "mean": 0.9304457612999999,
-        "median": 0.8853160819999999,
-        "standardDeviation": 0.14162684119715513,
-        "marginOfError": 0.10130670017474269,
-        "relativeMarginOfError": 10.887974816844673,
-        "standardErrorOfMean": 0.04478633959979783,
-        "sampleVariance": 0.0200581621474842,
+        "min": 0.842626693,
+        "max": 1.270134619,
+        "mean": 0.8931530158,
+        "median": 0.848858812,
+        "standardDeviation": 0.1327245021273314,
+        "marginOfError": 0.09493879288134296,
+        "relativeMarginOfError": 10.629622382935805,
+        "standardErrorOfMean": 0.04197117280342306,
+        "sampleVariance": 0.017615793464947994,
         "sampleResults": [
-          0.871994011,
-          0.872479055,
-          0.873349342,
-          0.878362531,
-          0.880962148,
-          0.889670016,
-          0.893293643,
-          0.903678742,
-          0.908850171,
-          1.331817954
+          0.842626693,
+          0.843687128,
+          0.846727584,
+          0.848241091,
+          0.848705612,
+          0.849012012,
+          0.849573799,
+          0.865577811,
+          0.867243809,
+          1.270134619
         ]
       },
       "completed": true,
-      "percentSlower": 6.14
+      "percentSlower": 8.33
     },
     {
       "name": "KeyRing start & stop",
-      "ops": 1.14,
-      "margin": 1.8,
+      "ops": 1.2,
+      "margin": 1.71,
       "options": {
         "delay": 0.005,
         "initCount": 1,
@@ -56,26 +56,26 @@
       "samples": 10,
       "promise": true,
       "details": {
-        "min": 0.857353395,
-        "max": 0.923425187,
-        "mean": 0.8750140236,
-        "median": 0.861656645,
-        "standardDeviation": 0.021963349359663455,
-        "marginOfError": 0.01571054208089792,
-        "relativeMarginOfError": 1.7954617477170591,
-        "standardErrorOfMean": 0.006945420902253722,
-        "sampleVariance": 0.0004823887150946291,
+        "min": 0.837481872,
+        "max": 0.892986147,
+        "mean": 0.8601947366000001,
+        "median": 0.8546125124999999,
+        "standardDeviation": 0.020571418811463696,
+        "marginOfError": 0.014714884128502869,
+        "relativeMarginOfError": 1.710645683169932,
+        "standardErrorOfMean": 0.006505253814545919,
+        "sampleVariance": 0.00042318327191664235,
         "sampleResults": [
-          0.857353395,
-          0.859489803,
-          0.860424032,
-          0.860533828,
-          0.860919277,
-          0.862394013,
-          0.88045675,
-          0.889546965,
-          0.895596986,
-          0.923425187
+          0.837481872,
+          0.840824935,
+          0.842477959,
+          0.84259421,
+          0.849936598,
+          0.859288427,
+          0.874165629,
+          0.876421311,
+          0.885770278,
+          0.892986147
         ]
       },
       "completed": true,
@@ -87,7 +87,7 @@
     "index": 1
   },
   "slowest": {
-    "name": "KeyRing creation",
+    "name": "KeyRing fresh creation",
     "index": 0
   }
 }
