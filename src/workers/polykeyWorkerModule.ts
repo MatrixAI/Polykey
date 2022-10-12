@@ -1,17 +1,22 @@
 import type { TransferDescriptor } from 'threads';
 import {
   Key,
+  KeyPair,
+  PrivateKey,
   RecoveryCode,
   PasswordHash,
   PasswordSalt,
   PasswordMemLimit,
   PasswordOpsLimit,
+  CertId,
+  CertificateASN1,
 } from '../keys/types';
 // import type { PublicKeyAsn1, PrivateKeyAsn1, KeyPairAsn1 } from '../keys/types';
 import { isWorkerRuntime } from 'threads';
 import { Transfer } from 'threads/worker';
 import * as keysUtils from '../keys/utils';
 import * as utils from '../utils';
+import { IdInternal } from '@matrixai/id';
 
 /**
  * Worker object that contains all functions that will be executed in parallel.
@@ -75,14 +80,11 @@ const polykeyWorker = {
     opsLimit?: PasswordOpsLimit,
     memLimit?: PasswordMemLimit
   ): TransferDescriptor<[ArrayBuffer, ArrayBuffer]> {
-    let salt_: PasswordSalt | undefined;
-    if (salt != null) {
-      salt = Buffer.from(salt) as PasswordSalt;
-    }
+    if (salt != null) salt = Buffer.from(salt);
     // It is guaranteed that `keysUtils.hashPassword` returns non-pooled buffers
     const hashAndSalt = keysUtils.hashPassword(
       password,
-      salt_,
+      salt as PasswordSalt | undefined,
       opsLimit,
       memLimit
     );
@@ -101,12 +103,12 @@ const polykeyWorker = {
     opsLimit?: PasswordOpsLimit,
     memLimit?: PasswordMemLimit
   ): boolean {
-    const hash_ = Buffer.from(hash) as PasswordHash;
-    const salt_ = Buffer.from(salt) as PasswordSalt;
+    hash = Buffer.from(hash);
+    salt = Buffer.from(salt);
     return keysUtils.checkPassword(
       password,
-      hash_,
-      salt_,
+      hash as PasswordHash,
+      salt as PasswordSalt,
       opsLimit,
       memLimit
     );
@@ -122,12 +124,46 @@ const polykeyWorker = {
     const keyPair = await keysUtils.generateDeterministicKeyPair(recoveryCode);
     // Result is a record of {publicKey, privateKey, secretKey} using transferable `ArrayBuffer`
     const result = {
-      publicKey: keyPair.privateKey.buffer,
+      publicKey: keyPair.publicKey.buffer,
       privateKey: keyPair.privateKey.buffer,
       secretKey: keyPair.secretKey.buffer
     };
     return Transfer(result, [result.publicKey, result.privateKey, result.secretKey]);
   },
+
+  async generateCertificate({
+    certId,
+    subjectKeyPair,
+    issuerPrivateKey,
+    duration,
+    subjectAttrsExtra,
+    issuerAttrsExtra,
+  }: {
+    certId: ArrayBuffer;
+    subjectKeyPair: {
+      publicKey: ArrayBuffer;
+      privateKey: ArrayBuffer;
+    },
+    issuerPrivateKey: ArrayBuffer,
+    duration: number;
+    subjectAttrsExtra?: Array<{ [key: string]: Array<string> }>;
+    issuerAttrsExtra?: Array<{ [key: string]: Array<string> }>;
+  }): Promise<TransferDescriptor<ArrayBuffer>> {
+    certId = IdInternal.create<CertId>(certId);
+    subjectKeyPair.publicKey = Buffer.from(subjectKeyPair.publicKey);
+    subjectKeyPair.privateKey = Buffer.from(subjectKeyPair.privateKey);
+    issuerPrivateKey = Buffer.from(issuerPrivateKey);
+    const cert = await keysUtils.generateCertificate({
+      certId: certId as CertId,
+      subjectKeyPair: subjectKeyPair as KeyPair,
+      issuerPrivateKey: issuerPrivateKey as PrivateKey,
+      duration,
+      subjectAttrsExtra,
+      issuerAttrsExtra,
+    });
+    return Transfer(cert.rawData);
+  },
+
 
 
   // EFS functions
