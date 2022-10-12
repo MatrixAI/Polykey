@@ -1,5 +1,13 @@
 import type { DB, DBTransaction, LevelPath, KeyPath } from '@matrixai/db';
-import type { Certificate, CertificateASN1, CertManagerChangeData, CertificatePEM, KeyPair, RecoveryCode } from './types';
+import type {
+  Certificate,
+  CertificateASN1,
+  CertManagerChangeData,
+  CertificatePEM,
+  KeyPair,
+  RecoveryCode,
+  CertificatePEMChain,
+} from './types';
 import type KeyRing from './KeyRing';
 import type { CertId } from '../ids/types';
 import Logger from '@matrixai/logger';
@@ -212,12 +220,12 @@ class CertManager {
    * Gets a concatenated `CertificatePEM` ordered from leaf to root
    */
   @ready(new keysErrors.ErrorCertManagerNotRunning())
-  public async getCertPEMsChainPEM(tran?: DBTransaction): Promise<CertificatePEM> {
+  public async getCertPEMsChainPEM(tran?: DBTransaction): Promise<CertificatePEMChain> {
     let pem = '';
     for await (const certPem of this.getCertPEMs(tran)) {
       pem += certPem;
     }
-    return pem as CertificatePEM;
+    return pem as CertificatePEMChain;
   }
 
   /**
