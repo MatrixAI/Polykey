@@ -13,6 +13,6 @@ message InfoMessage {
   uint32 agent_port = 10;
   string forward_host = 11;
   uint32 forward_port = 12;
-  string root_public_key_pem = 13;
-  string root_cert_pem = 14;
+  string public_key_jwk = 13;
+  string cert_chain_pem = 14;
 }
