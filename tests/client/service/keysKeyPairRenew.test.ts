@@ -97,7 +97,7 @@ describe('keysKeyPairRenew', () => {
     const serverTLSConfig1 = grpcServerClient.tlsConfig;
     const expectedTLSConfig1: TLSConfig = {
       keyPrivatePem: keysUtils.privateKeyToPEM(rootKeyPair1.privateKey),
-      certChainPem: (await certManager.getCertPEMsChain()).join('') as unknown as CertificatePEMChain,
+      certChainPem: await certManager.getCertPEMsChainPEM(),
     };
     const nodeIdStatus1 = (await status.readStatus())!.data.nodeId;
     expect(mockedRefreshBuckets).toHaveBeenCalledTimes(0);
@@ -120,7 +120,7 @@ describe('keysKeyPairRenew', () => {
     const serverTLSConfig2 = grpcServerClient.tlsConfig;
     const expectedTLSConfig2: TLSConfig = {
       keyPrivatePem: keysUtils.privateKeyToPEM(rootKeyPair2.privateKey),
-      certChainPem: (await certManager.getCertPEMsChain()).join('') as unknown as CertificatePEMChain,
+      certChainPem: await certManager.getCertPEMsChainPEM(),
     };
     const nodeIdStatus2 = (await status.readStatus())!.data.nodeId;
     expect(mockedRefreshBuckets).toHaveBeenCalled();

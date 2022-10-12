@@ -37,6 +37,7 @@ import * as utils from '@/utils/index';
 import * as testUtils from '../../utils';
 import TestProvider from '../../identities/TestProvider';
 import { CertificatePEMChain } from '@/keys/types';
+import * as testsUtils from '../../utils/index';
 
 describe('gestaltsGestaltTrustByIdentity', () => {
   const logger = new Logger(
@@ -166,10 +167,7 @@ describe('gestaltsGestaltTrustByIdentity', () => {
     await proxy.start({
       serverHost: '127.0.0.1' as Host,
       serverPort: 0 as Port,
-      tlsConfig: {
-        keyPrivatePem: keysUtils.privateKeyToPEM(keyRing.keyPair.privateKey),
-        certChainPem: keysUtils.publicKeyToPEM(keyRing.keyPair.publicKey) as unknown as CertificatePEMChain,
-      },
+      tlsConfig: await testsUtils.createTLSConfig(keyRing.keyPair),
     });
     sigchain = await Sigchain.createSigchain({
       db,

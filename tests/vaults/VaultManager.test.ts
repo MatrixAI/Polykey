@@ -35,6 +35,7 @@ import * as nodeTestUtils from '../nodes/utils';
 import * as testUtils from '../utils';
 import * as keysUtils from '@/keys/utils/index';
 import { CertificatePEMChain } from '@/keys/types';
+import * as testsUtils from '../utils/index';
 
 describe('VaultManager', () => {
   const localHost = '127.0.0.1' as Host;
@@ -566,10 +567,7 @@ describe('VaultManager', () => {
       localNodeId = keyRing.getNodeId();
       localNodeIdEncoded = nodesUtils.encodeNodeId(localNodeId);
 
-      const tlsConfig: TLSConfig = {
-        keyPrivatePem: keysUtils.privateKeyToPEM(keyRing.keyPair.privateKey),
-        certChainPem: keysUtils.publicKeyToPEM(keyRing.keyPair.publicKey) as unknown as CertificatePEMChain,
-      };
+      const tlsConfig: TLSConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
 
       await proxy.start({
         tlsConfig,
@@ -1502,10 +1500,7 @@ describe('VaultManager', () => {
       logger,
     });
     await proxy.start({
-      tlsConfig: {
-        keyPrivatePem: keysUtils.privateKeyToPEM(keyRing.keyPair.privateKey),
-        certChainPem: keysUtils.publicKeyToPEM(keyRing.keyPair.publicKey) as unknown as CertificatePEMChain,
-      },
+      tlsConfig: await testsUtils.createTLSConfig(keyRing.keyPair),
       serverHost: localHost,
       serverPort: port,
     });
