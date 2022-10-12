@@ -22,6 +22,7 @@ import * as grpcUtils from '@/grpc/utils';
 import TaskManager from '@/tasks/TaskManager';
 import { sleep } from '@/utils/index';
 import * as utils from '@/utils/index';
+import * as testsUtils from '../utils';
 
 describe(`${NodeConnectionManager.name} seed nodes test`, () => {
   const logger = new Logger(
@@ -176,10 +177,7 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
       keyRing,
       logger: logger.getChild('NodeGraph'),
     });
-    const tlsConfig = {
-      keyPrivatePem: keyRing.getRootKeyPairPem().privateKey,
-      certChainPem: keysUtils.certToPem(keyRing.getRootCert()),
-    };
+    const tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
     proxy = new Proxy({
       authToken: 'auth',
       logger: logger.getChild('proxy'),

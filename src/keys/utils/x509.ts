@@ -415,7 +415,7 @@ function certFromASN1(certASN1: CertificateASN1): Certificate | undefined {
 }
 
 function certToPEM(cert: Certificate): CertificatePEM {
-  return cert.toString('pem') as CertificatePEM;
+  return cert.toString('pem') + '\n' as CertificatePEM;
 }
 
 function certFromPEM(certPEM: CertificatePEM): Certificate | undefined {

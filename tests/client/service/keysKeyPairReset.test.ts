@@ -2,6 +2,7 @@ import type { Host, Port, TLSConfig } from '@/network/types';
 import type Proxy from '@/network/Proxy';
 import type Status from '@/status/Status';
 import type KeyRing from '@/keys/KeyRing';
+import type CertManager from '@/keys/CertManager';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -17,7 +18,7 @@ import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as clientUtils from '@/client/utils/utils';
 import * as keysUtils from '@/keys/utils';
 import { NodeManager } from '@/nodes';
-import * as testUtils from '../../utils';
+import { CertificatePEMChain } from '../../../src/keys/types';
 
 describe('keysKeyPairReset', () => {
   const logger = new Logger('keysKeyPairReset test', LogLevel.WARN, [
@@ -27,28 +28,15 @@ describe('keysKeyPairReset', () => {
   const authenticate = async (metaClient, metaServer = new Metadata()) =>
     metaServer;
   let mockedRefreshBuckets: jest.SpyInstance;
-  let mockedGenerateKeyPair: jest.SpyInstance;
-  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
   beforeAll(async () => {
-    const globalKeyPair = await testUtils.setupGlobalKeypair();
-    const newKeyPair = await keysUtils.generateKeyPair();
     mockedRefreshBuckets = jest.spyOn(NodeManager.prototype, 'resetBuckets');
-    mockedGenerateKeyPair = jest
-      .spyOn(keysUtils, 'generateKeyPair')
-      .mockResolvedValueOnce(globalKeyPair)
-      .mockResolvedValue(newKeyPair);
-    mockedGenerateDeterministicKeyPair = jest
-      .spyOn(keysUtils, 'generateDeterministicKeyPair')
-      .mockResolvedValueOnce(globalKeyPair)
-      .mockResolvedValue(newKeyPair);
   });
   afterAll(async () => {
     mockedRefreshBuckets.mockRestore();
-    mockedGenerateKeyPair.mockRestore();
-    mockedGenerateDeterministicKeyPair.mockRestore();
   });
   let dataDir: string;
   let keyRing: KeyRing;
+  let certManager: CertManager;
   let grpcServerClient: GRPCServer;
   let proxy: Proxy;
 
@@ -67,13 +55,14 @@ describe('keysKeyPairReset', () => {
       logger,
     });
     keyRing = pkAgent.keyRing;
+    certManager = pkAgent.certManager;
     grpcServerClient = pkAgent.grpcServerClient;
     proxy = pkAgent.proxy;
     status = pkAgent.status;
     const clientService = {
       keysKeyPairReset: keysKeyPairReset({
         authenticate,
-        keyRing,
+        certManager,
         logger,
       }),
     };
@@ -100,15 +89,15 @@ describe('keysKeyPairReset', () => {
     });
   });
   test('resets the root key pair', async () => {
-    const rootKeyPair1 = keyRing.getRootKeyPairPem();
+    const rootKeyPair1 = keyRing.keyPair;
     const nodeId1 = keyRing.getNodeId();
     // @ts-ignore - get protected property
     const fwdTLSConfig1 = proxy.tlsConfig;
     // @ts-ignore - get protected property
     const serverTLSConfig1 = grpcServerClient.tlsConfig;
     const expectedTLSConfig1: TLSConfig = {
-      keyPrivatePem: rootKeyPair1.privateKey,
-      certChainPem: await keyRing.getRootCertChainPem(),
+      keyPrivatePem: keysUtils.privateKeyToPEM(rootKeyPair1.privateKey),
+      certChainPem: await certManager.getCertPEMsChainPEM(),
     };
     const nodeIdStatus1 = (await status.readStatus())!.data.nodeId;
     expect(mockedRefreshBuckets).not.toHaveBeenCalled();
@@ -123,15 +112,15 @@ describe('keysKeyPairReset', () => {
       clientUtils.encodeAuthFromPassword(password),
     );
     expect(response).toBeInstanceOf(utilsPB.EmptyMessage);
-    const rootKeyPair2 = keyRing.getRootKeyPairPem();
+    const rootKeyPair2 = keyRing.keyPair;
     const nodeId2 = keyRing.getNodeId();
     // @ts-ignore - get protected property
     const fwdTLSConfig2 = proxy.tlsConfig;
     // @ts-ignore - get protected property
     const serverTLSConfig2 = grpcServerClient.tlsConfig;
     const expectedTLSConfig2: TLSConfig = {
-      keyPrivatePem: rootKeyPair2.privateKey,
-      certChainPem: await keyRing.getRootCertChainPem(),
+      keyPrivatePem: keysUtils.privateKeyToPEM(rootKeyPair2.privateKey),
+      certChainPem: await certManager.getCertPEMsChainPEM(),
     };
     const nodeIdStatus2 = (await status.readStatus())!.data.nodeId;
     expect(mockedRefreshBuckets).toHaveBeenCalled();

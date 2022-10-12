@@ -1,5 +1,5 @@
 import type { GeneralJWSInput } from 'jose';
-import type { PrivateKeyPem, PublicKeyPem } from '@/keys/types';
+import type { PublicKey, PrivateKey } from '@/keys/types';
 import type { IdentityId, ProviderId } from '@/identities/types';
 import type { Claim } from '@/claims/types';
 import { createPublicKey, createPrivateKey } from 'crypto';
@@ -8,7 +8,7 @@ import canonicalize from 'canonicalize';
 import { sleep } from '@/utils';
 import * as claimsUtils from '@/claims/utils';
 import * as claimsErrors from '@/claims/errors';
-import { utils as keysUtils } from '@/keys';
+import * as keysUtils from '@/keys/utils';
 import { utils as nodesUtils } from '@/nodes';
 import * as testNodesUtils from '../nodes/utils';
 
@@ -19,15 +19,12 @@ describe('claims/utils', () => {
   const nodeId2 = testNodesUtils.generateRandomNodeId();
   const nodeId2Encoded = nodesUtils.encodeNodeId(nodeId2);
 
-  let publicKey: PublicKeyPem;
-  let privateKey: PrivateKeyPem;
-  beforeAll(async () => {
-    privateKey = globalRootKeyPems[0];
-    publicKey = keysUtils.publicKeyToPem(
-      keysUtils.publicKeyFromPrivateKey(
-        keysUtils.privateKeyFromPem(privateKey),
-      ),
-    );
+  let publicKey: PublicKey;
+  let privateKey: PrivateKey;
+  beforeEach(async () => {
+    const keyPair = keysUtils.generateKeyPair();
+    privateKey = keyPair.privateKey;
+    publicKey = keyPair.publicKey;
   });
   test('creates a claim (both node and identity)', async () => {
     const nodeClaim = await claimsUtils.createClaim({
@@ -235,7 +232,7 @@ describe('claims/utils', () => {
     const canonicalizedPayload = canonicalize(payload);
     const byteEncoder = new TextEncoder();
     const claim = new GeneralSign(byteEncoder.encode(canonicalizedPayload));
-    claim.addSignature(createPrivateKey(privateKey)).setProtectedHeader({
+    claim.addSignature(createPrivateKey(keysUtils.privateKeyToPEM(privateKey))).setProtectedHeader({
       alg: 'RS256',
       kid: nodeId1Encoded,
     });
@@ -329,8 +326,7 @@ describe('claims/utils', () => {
 
     // Create some dummy public key, and check that this does not verify
     const dummyKeyPair = await keysUtils.generateKeyPair();
-    const dummyPublicKey = keysUtils.publicKeyToPem(dummyKeyPair.publicKey);
-    expect(await claimsUtils.verifyClaimSignature(claim, dummyPublicKey)).toBe(
+    expect(await claimsUtils.verifyClaimSignature(claim, dummyKeyPair.publicKey)).toBe(
       false,
     );
   });

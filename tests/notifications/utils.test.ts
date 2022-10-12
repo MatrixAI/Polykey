@@ -70,24 +70,22 @@ describe('Notifications utils', () => {
       isRead: false,
     };
 
-    const privateKey = keysUtils.privateKeyFromPem(globalRootKeyPems[0]);
-    const publicKey = keysUtils.publicKeyFromPrivateKey(privateKey);
-    const keyPairPem = keysUtils.keyPairToPem({ privateKey, publicKey });
-    const jwkPublicKey = await exportJWK(createPublicKey(keyPairPem.publicKey));
+    const keyPair = keysUtils.generateKeyPair();
+    const jwkPublicKey = await exportJWK(createPublicKey(keyPair.publicKey));
 
     const signedGeneralNotification = await notificationsUtils.signNotification(
       generalNotification,
-      keyPairPem,
+      keyPair,
     );
     const signedGestaltInviteNotification =
       await notificationsUtils.signNotification(
         gestaltInviteNotification,
-        keyPairPem,
+        keyPair,
       );
     const signedVaultShareNotification =
       await notificationsUtils.signNotification(
         vaultShareNotification,
-        keyPairPem,
+        keyPair,
       );
 
     let result = await jwtVerify(signedGeneralNotification, EmbeddedJWK, {});
@@ -152,23 +150,21 @@ describe('Notifications utils', () => {
       isRead: false,
     };
 
-    const privateKey = keysUtils.privateKeyFromPem(globalRootKeyPems[1]);
-    const publicKey = keysUtils.publicKeyFromPrivateKey(privateKey);
-    const keyPairPem = keysUtils.keyPairToPem({ privateKey, publicKey });
+    const keyPair = keysUtils.generateKeyPair();
 
     const signedGeneralNotification = await notificationsUtils.signNotification(
       generalNotification,
-      keyPairPem,
+      keyPair,
     );
     const signedGestaltInviteNotification =
       await notificationsUtils.signNotification(
         gestaltInviteNotification,
-        keyPairPem,
+        keyPair,
       );
     const signedVaultShareNotification =
       await notificationsUtils.signNotification(
         vaultShareNotification,
-        keyPairPem,
+        keyPair,
       );
 
     const decodedGeneralNotification =

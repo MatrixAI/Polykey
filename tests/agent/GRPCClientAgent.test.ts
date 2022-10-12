@@ -1,4 +1,4 @@
-import type { Host, Port, TLSConfig } from '@/network/types';
+import type { Host, Port } from '@/network/types';
 import type * as grpc from '@grpc/grpc-js';
 import type { NodeId } from '@/ids/types';
 import type { Key } from '@/keys/types';
@@ -25,7 +25,7 @@ import * as keysUtils from '@/keys/utils';
 import { timerStart } from '@/utils';
 import * as utils from '@/utils/index';
 import * as testAgentUtils from './utils';
-import { CertificatePEMChain } from '@/keys/types';
+import * as testsUtils from '../utils';
 
 describe(GRPCClientAgent.name, () => {
   const host = '127.0.0.1' as Host;
@@ -66,10 +66,7 @@ describe(GRPCClientAgent.name, () => {
       fs: fs,
       logger: logger,
     });
-    const tlsConfig: TLSConfig = {
-      keyPrivatePem: keyRing.getRootKeyPairPem().privateKey,
-      certChainPem: await keyRing.getRootCertChainPem(),
-    };
+    const tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
     proxy = new Proxy({
       authToken: 'abc',
       logger: logger,
@@ -258,10 +255,7 @@ describe(GRPCClientAgent.name, () => {
       });
       nodeId1 = clientKeyRing1.getNodeId();
       await clientProxy1.start({
-        tlsConfig: {
-          keyPrivatePem: clientKeyRing1.getRootKeyPairPem().privateKey,
-          certChainPem: await clientKeyRing1.getRootCertChainPem(),
-        },
+        tlsConfig: await testsUtils.createTLSConfig(clientKeyRing1.keyPair),
         proxyHost: localHost,
         forwardHost: localHost,
         serverHost: host,
@@ -291,10 +285,7 @@ describe(GRPCClientAgent.name, () => {
       });
       nodeId2 = clientKeyRing2.getNodeId();
       await clientProxy2.start({
-        tlsConfig: {
-          keyPrivatePem: keysUtils.privateKeyToPEM(keyRing.keyPair.privateKey),
-          certChainPem: keysUtils.publicKeyToPEM(keyRing.keyPair.publicKey) as unknown as CertificatePEMChain,
-        },
+        tlsConfig: await testsUtils.createTLSConfig(clientKeyRing2.keyPair),
         proxyHost: localHost,
         forwardHost: localHost,
         serverHost: host,

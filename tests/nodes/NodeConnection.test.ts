@@ -39,24 +39,15 @@ import * as utils from '@/utils';
 import * as testNodesUtils from './utils';
 import * as grpcTestUtils from '../grpc/utils';
 import * as agentTestUtils from '../agent/utils';
-import * as testUtils from '../utils';
+import * as testsUtils from '../utils';
 
 const destroyCallback = async () => {};
-
-const mockedGenerateDeterministicKeyPair = jest.spyOn(
-  keysUtils,
-  'generateDeterministicKeyPair',
-);
 
 describe(`${NodeConnection.name} test`, () => {
   const logger = new Logger(`${NodeConnection.name} test`, LogLevel.WARN, [
     new StreamHandler(),
   ]);
   grpcUtils.setLogger(logger.getChild('grpc'));
-
-  mockedGenerateDeterministicKeyPair.mockImplementation((bits, _) => {
-    return keysUtils.generateKeyPair();
-  });
 
   const password = 'password';
   const node: NodeInfo = {
@@ -160,13 +151,6 @@ describe(`${NodeConnection.name} test`, () => {
     };
   }
 
-  const newTlsConfig = async (keyRing: KeyRing): Promise<TLSConfig> => {
-    return {
-      keyPrivatePem: keyRing.getRootKeyPairPem().privateKey,
-      certChainPem: await keyRing.getRootCertChainPem(),
-    };
-  };
-
   beforeEach(async () => {
     // Server setup
     serverDataDir = await fs.promises.mkdtemp(
@@ -183,10 +167,7 @@ describe(`${NodeConnection.name} test`, () => {
       logger: logger,
     });
 
-    serverTLSConfig = {
-      keyPrivatePem: serverKeyRing.getRootKeyPairPem().privateKey,
-      certChainPem: await serverKeyRing.getRootCertChainPem(),
-    };
+    serverTLSConfig = await testsUtils.createTLSConfig(serverKeyRing.keyPair);
 
     serverDb = await DB.createDB({
       dbPath: serverDbPath,
@@ -313,10 +294,7 @@ describe(`${NodeConnection.name} test`, () => {
       logger,
     });
 
-    const clientTLSConfig = {
-      keyPrivatePem: clientKeyRing.getRootKeyPairPem().privateKey,
-      certChainPem: await clientKeyRing.getRootCertChainPem(),
-    };
+    const clientTLSConfig = await testsUtils.createTLSConfig(clientKeyRing.keyPair);
 
     sourceNodeId = clientKeyRing.getNodeId();
     clientProxy = new Proxy({
@@ -342,18 +320,7 @@ describe(`${NodeConnection.name} test`, () => {
     await clientNodeConnectionManager.start({ nodeManager: {} as NodeManager });
 
     // Other setup
-    const privateKey = keysUtils.privateKeyFromPem(globalRootKeyPems[0]);
-    const publicKey = keysUtils.publicKeyFromPrivateKey(privateKey);
-    const cert = keysUtils.generateCertificate(
-      publicKey,
-      privateKey,
-      privateKey,
-      86400,
-    );
-    tlsConfig = {
-      keyPrivatePem: globalRootKeyPems[0],
-      certChainPem: keysUtils.certToPem(cert),
-    };
+    tlsConfig = await testsUtils.createTLSConfig(keysUtils.generateKeyPair());
   }, globalThis.polykeyStartupTimeout * 2);
 
   afterEach(async () => {
@@ -606,8 +573,8 @@ describe(`${NodeConnection.name} test`, () => {
 
       const expectedPublicKey =
         nodeConnection.getExpectedPublicKey(targetNodeId);
-      const publicKeyPem = serverKeyRing.getRootKeyPairPem().publicKey;
-      expect(expectedPublicKey).toBe(publicKeyPem);
+      const publicKey = serverKeyRing.keyPair.publicKey;
+      expect(keysUtils.publicKeyToPEM(expectedPublicKey!)).toBe(keysUtils.publicKeyToPEM(publicKey)!);
     } finally {
       await nodeConnection?.destroy();
     }
@@ -760,11 +727,11 @@ describe(`${NodeConnection.name} test`, () => {
       let testProxy: Proxy | undefined;
       let testProcess: ChildProcessWithoutNullStreams | undefined;
       try {
-        const testProcess = await testUtils.spawn(
+        const testProcess = await testsUtils.spawn(
           'ts-node',
           [
             '--project',
-            testUtils.tsConfigPath,
+            testsUtils.tsConfigPath,
             `${globalThis.testDir}/grpc/utils/testServer.ts`,
           ],
           undefined,
@@ -837,11 +804,11 @@ describe(`${NodeConnection.name} test`, () => {
       let testProxy: Proxy | undefined;
       let testProcess: ChildProcessWithoutNullStreams | undefined;
       try {
-        const testProcess = await testUtils.spawn(
+        const testProcess = await testsUtils.spawn(
           'ts-node',
           [
             '--project',
-            testUtils.tsConfigPath,
+            testsUtils.tsConfigPath,
             `${globalThis.testDir}/grpc/utils/testServer.ts`,
           ],
           undefined,
@@ -929,8 +896,7 @@ describe(`${NodeConnection.name} test`, () => {
       await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
 
       // Simulate key change
-      await clientKeyRing.resetRootKeyPair(password);
-      clientProxy.setTLSConfig(await newTlsConfig(clientKeyRing));
+      clientProxy.setTLSConfig(await testsUtils.createTLSConfig(keysUtils.generateKeyPair()));
 
       // Try again
       await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
@@ -958,8 +924,7 @@ describe(`${NodeConnection.name} test`, () => {
       await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
 
       // Simulate key change
-      await clientKeyRing.renewRootKeyPair(password);
-      clientProxy.setTLSConfig(await newTlsConfig(clientKeyRing));
+      clientProxy.setTLSConfig(await testsUtils.createTLSConfig(keysUtils.generateKeyPair()));
 
       // Try again
       await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
@@ -987,8 +952,7 @@ describe(`${NodeConnection.name} test`, () => {
       await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
 
       // Simulate key change
-      await clientKeyRing.resetRootCert();
-      clientProxy.setTLSConfig(await newTlsConfig(clientKeyRing));
+      clientProxy.setTLSConfig(await testsUtils.createTLSConfig(keysUtils.generateKeyPair()));
 
       // Try again
       await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
@@ -1016,8 +980,7 @@ describe(`${NodeConnection.name} test`, () => {
       await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
 
       // Simulate key change
-      await serverKeyRing.resetRootKeyPair(password);
-      serverProxy.setTLSConfig(await newTlsConfig(serverKeyRing));
+      serverProxy.setTLSConfig(await testsUtils.createTLSConfig(keysUtils.generateKeyPair()));
 
       // Try again
       await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
@@ -1045,8 +1008,7 @@ describe(`${NodeConnection.name} test`, () => {
       await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
 
       // Simulate key change
-      await serverKeyRing.renewRootKeyPair(password);
-      serverProxy.setTLSConfig(await newTlsConfig(serverKeyRing));
+      serverProxy.setTLSConfig(await testsUtils.createTLSConfig(keysUtils.generateKeyPair()));
 
       // Try again
       await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
@@ -1074,8 +1036,7 @@ describe(`${NodeConnection.name} test`, () => {
       await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
 
       // Simulate key change
-      await serverKeyRing.resetRootCert();
-      serverProxy.setTLSConfig(await newTlsConfig(serverKeyRing));
+      serverProxy.setTLSConfig(await testsUtils.createTLSConfig(keysUtils.generateKeyPair()));
 
       // Try again
       await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
@@ -1087,8 +1048,7 @@ describe(`${NodeConnection.name} test`, () => {
     let conn: NodeConnection<GRPCClientAgent> | undefined;
     try {
       // Simulate key change
-      await clientKeyRing.resetRootKeyPair(password);
-      clientProxy.setTLSConfig(await newTlsConfig(clientKeyRing));
+      clientProxy.setTLSConfig(await testsUtils.createTLSConfig(keysUtils.generateKeyPair()));
 
       conn = await NodeConnection.createNodeConnection(
         {
@@ -1114,8 +1074,7 @@ describe(`${NodeConnection.name} test`, () => {
     let conn: NodeConnection<GRPCClientAgent> | undefined;
     try {
       // Simulate key change
-      await clientKeyRing.renewRootKeyPair(password);
-      clientProxy.setTLSConfig(await newTlsConfig(clientKeyRing));
+      clientProxy.setTLSConfig(await testsUtils.createTLSConfig(keysUtils.generateKeyPair()));
 
       conn = await NodeConnection.createNodeConnection(
         {
@@ -1141,8 +1100,7 @@ describe(`${NodeConnection.name} test`, () => {
     let conn: NodeConnection<GRPCClientAgent> | undefined;
     try {
       // Simulate key change
-      await clientKeyRing.resetRootCert();
-      clientProxy.setTLSConfig(await newTlsConfig(clientKeyRing));
+      clientProxy.setTLSConfig(await testsUtils.createTLSConfig(keysUtils.generateKeyPair()));
 
       conn = await NodeConnection.createNodeConnection(
         {
@@ -1166,8 +1124,7 @@ describe(`${NodeConnection.name} test`, () => {
   });
   test('new connection handles a resetRootKeyPair on receiving side', async () => {
     // Simulate key change
-    await serverKeyRing.resetRootKeyPair(password);
-    serverProxy.setTLSConfig(await newTlsConfig(serverKeyRing));
+    serverProxy.setTLSConfig(await testsUtils.createTLSConfig(keysUtils.generateKeyPair()));
 
     const connProm = NodeConnection.createNodeConnection(
       {
@@ -1210,8 +1167,7 @@ describe(`${NodeConnection.name} test`, () => {
     let conn: NodeConnection<GRPCClientAgent> | undefined;
     try {
       // Simulate key change
-      await serverKeyRing.renewRootKeyPair(password);
-      serverProxy.setTLSConfig(await newTlsConfig(serverKeyRing));
+      serverProxy.setTLSConfig(await testsUtils.createTLSConfig(keysUtils.generateKeyPair()));
 
       conn = await NodeConnection.createNodeConnection(
         {
@@ -1237,8 +1193,7 @@ describe(`${NodeConnection.name} test`, () => {
     let conn: NodeConnection<GRPCClientAgent> | undefined;
     try {
       // Simulate key change
-      await serverKeyRing.resetRootCert();
-      serverProxy.setTLSConfig(await newTlsConfig(serverKeyRing));
+      serverProxy.setTLSConfig(await testsUtils.createTLSConfig(keysUtils.generateKeyPair()));
 
       conn = await NodeConnection.createNodeConnection(
         {

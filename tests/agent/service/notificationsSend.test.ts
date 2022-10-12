@@ -29,6 +29,7 @@ import * as notificationsUtils from '@/notifications/utils';
 import * as testUtils from '../../utils';
 import * as keysUtils from '@/keys/utils/index';
 import { CertificatePEMChain } from '@/keys/types';
+import * as testsUtils from '../../utils/index';
 
 describe('notificationsSend', () => {
   const logger = new Logger('notificationsSend test', LogLevel.WARN, [
@@ -83,10 +84,7 @@ describe('notificationsSend', () => {
       logger,
     });
     await proxy.start({
-      tlsConfig: {
-        keyPrivatePem: keysUtils.privateKeyToPEM(keyRing.keyPair.privateKey),
-        certChainPem: keysUtils.publicKeyToPEM(keyRing.keyPair.publicKey) as unknown as CertificatePEMChain,
-      },
+      tlsConfig: await testsUtils.createTLSConfig(keyRing.keyPair),
       serverHost: '127.0.0.1' as Host,
       serverPort: 0 as Port,
     });
@@ -193,7 +191,7 @@ describe('notificationsSend', () => {
     };
     const signedNotification = await notificationsUtils.signNotification(
       notification,
-      senderKeyRing.getRootKeyPairPem(),
+      senderKeyRing.keyPair,
     );
     const request = new notificationsPB.AgentNotification();
     request.setContent(signedNotification);
@@ -242,10 +240,10 @@ describe('notificationsSend', () => {
       isRead: false,
     };
     const publicKey = createPublicKey(
-      senderKeyRing.getRootKeyPairPem().publicKey,
+      senderKeyRing.keyPair.publicKey,
     );
     const privateKey = createPrivateKey(
-      senderKeyRing.getRootKeyPairPem().privateKey,
+      senderKeyRing.keyPair.privateKey,
     );
     const jwkPublicKey = await exportJWK(publicKey);
     const signedNotification = await new SignJWT(notification2)
@@ -276,7 +274,7 @@ describe('notificationsSend', () => {
     };
     const signedNotification = await notificationsUtils.signNotification(
       notification,
-      senderKeyRing.getRootKeyPairPem(),
+      senderKeyRing.keyPair,
     );
     const request = new notificationsPB.AgentNotification();
     request.setContent(signedNotification);

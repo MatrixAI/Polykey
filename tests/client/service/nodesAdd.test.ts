@@ -21,9 +21,7 @@ import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as nodesUtils from '@/nodes/utils';
 import * as clientUtils from '@/client/utils/utils';
 import * as validationErrors from '@/validation/errors';
-import * as testUtils from '../../utils';
-import * as keysUtils from '@/keys/utils/index';
-import { CertificatePEMChain } from '@/keys/types';
+import * as testsUtils from '../../utils';
 
 describe('nodesAdd', () => {
   const logger = new Logger('nodesAdd test', LogLevel.WARN, [
@@ -65,10 +63,7 @@ describe('nodesAdd', () => {
       logger,
     });
     await proxy.start({
-      tlsConfig: {
-        keyPrivatePem: keysUtils.privateKeyToPEM(keyRing.keyPair.privateKey),
-        certChainPem: keysUtils.publicKeyToPEM(keyRing.keyPair.publicKey) as unknown as CertificatePEMChain,
-      },
+      tlsConfig: await testsUtils.createTLSConfig(keyRing.keyPair),
       serverHost: '127.0.0.1' as Host,
       serverPort: 0 as Port,
     });
@@ -179,7 +174,7 @@ describe('nodesAdd', () => {
     request.setForce(false);
     request.setNodeId('vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0');
     request.setAddress(addressMessage);
-    await testUtils.expectRemoteError(
+    await testsUtils.expectRemoteError(
       grpcClient.nodesAdd(
         request,
         clientUtils.encodeAuthFromPassword(password),
@@ -189,7 +184,7 @@ describe('nodesAdd', () => {
     // Invalid port
     addressMessage.setHost('127.0.0.1');
     addressMessage.setPort(111111);
-    await testUtils.expectRemoteError(
+    await testsUtils.expectRemoteError(
       grpcClient.nodesAdd(
         request,
         clientUtils.encodeAuthFromPassword(password),
@@ -199,7 +194,7 @@ describe('nodesAdd', () => {
     // Invalid nodeid
     addressMessage.setPort(11111);
     request.setNodeId('nodeId');
-    await testUtils.expectRemoteError(
+    await testsUtils.expectRemoteError(
       grpcClient.nodesAdd(
         request,
         clientUtils.encodeAuthFromPassword(password),

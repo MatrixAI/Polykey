@@ -49,7 +49,7 @@ function agentStatus({
       response.setProxyHost(proxy.getProxyHost());
       response.setProxyPort(proxy.getProxyPort());
       response.setRootPublicKeyPem(keysUtils.publicKeyToPEM(keyRing.keyPair.publicKey));
-      response.setRootCertPem((await certManager.getCertPEMsChain()).join('\n'));
+      response.setRootCertPem(await certManager.getCertPEMsChainPEM());
       callback(null, response);
       return;
     } catch (e) {

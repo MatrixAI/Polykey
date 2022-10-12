@@ -29,6 +29,7 @@ import TestProvider from '../../identities/TestProvider';
 import * as testUtils from '../../utils';
 import * as keysUtils from '@/keys/utils/index';
 import { CertificatePEMChain } from '@/keys/types';
+import * as testsUtils from '../../utils/index';
 
 describe('identitiesClaim', () => {
   const logger = new Logger('identitiesClaim test', LogLevel.WARN, [
@@ -56,7 +57,7 @@ describe('identitiesClaim', () => {
   let mockedAddClaim: jest.SpyInstance;
   const dummyNodeManager = { setNode: jest.fn() } as unknown as NodeManager;
   beforeAll(async () => {
-    const privateKey = globalRootKeyPems[0];
+    const privateKey = keysUtils.generateKeyPair().privateKey;
     const claim = await claimsUtils.createClaim({
       privateKey: privateKey,
       hPrev: null,
@@ -113,10 +114,7 @@ describe('identitiesClaim', () => {
     await proxy.start({
       serverHost: '127.0.0.1' as Host,
       serverPort: 0 as Port,
-      tlsConfig: {
-        keyPrivatePem: keysUtils.privateKeyToPEM(keyRing.keyPair.privateKey),
-        certChainPem: keysUtils.publicKeyToPEM(keyRing.keyPair.publicKey) as unknown as CertificatePEMChain,
-      },
+      tlsConfig: await testsUtils.createTLSConfig(keyRing.keyPair),
     });
     sigchain = await Sigchain.createSigchain({
       db,

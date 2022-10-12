@@ -96,7 +96,7 @@ describe('nodesCrossSignClaim', () => {
     expect(genClaims.stream.destroyed).toBe(false);
     // Create a dummy intermediary claim to "receive"
     const claim = await claimsUtils.createClaim({
-      privateKey: remoteNode.keyRing.getRootKeyPairPem().privateKey,
+      privateKey: remoteNode.keyRing.keyPair.privateKey,
       hPrev: null,
       seq: 1,
       data: {
@@ -133,24 +133,24 @@ describe('nodesCrossSignClaim', () => {
     // Verify the intermediary claim with X's public key
     const verifiedSingly = await claimsUtils.verifyIntermediaryClaimSignature(
       constructedIntermediary,
-      pkAgent.keyRing.getRootKeyPairPem().publicKey,
+      pkAgent.keyRing.keyPair.publicKey,
     );
     expect(verifiedSingly).toBe(true);
     // Verify the doubly signed claim with both public keys
     const verifiedDoubly =
       (await claimsUtils.verifyClaimSignature(
         constructedDoubly,
-        remoteNode.keyRing.getRootKeyPairPem().publicKey,
+        remoteNode.keyRing.keyPair.publicKey,
       )) &&
       (await claimsUtils.verifyClaimSignature(
         constructedDoubly,
-        pkAgent.keyRing.getRootKeyPairPem().publicKey,
+        pkAgent.keyRing.keyPair.publicKey,
       ));
     expect(verifiedDoubly).toBe(true);
     // 4. X <- sends doubly signed claim (X's intermediary) <- Y
     const doublyResponse = await claimsUtils.signIntermediaryClaim({
       claim: constructedIntermediary,
-      privateKey: remoteNode.keyRing.getRootKeyPairPem().privateKey,
+      privateKey: remoteNode.keyRing.keyPair.privateKey,
       signeeNodeId: nodesUtils.encodeNodeId(remoteId),
     });
     const doublyMessage = claimsUtils.createCrossSignMessage({

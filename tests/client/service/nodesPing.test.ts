@@ -23,6 +23,7 @@ import * as validationErrors from '@/validation/errors';
 import * as testUtils from '../../utils';
 import * as keysUtils from '@/keys/utils/index';
 import { CertificatePEMChain } from '@/keys/types';
+import * as testsUtils from '../../utils/index';
 
 describe('nodesPing', () => {
   const logger = new Logger('nodesPing test', LogLevel.WARN, [
@@ -74,10 +75,7 @@ describe('nodesPing', () => {
       logger,
     });
     await proxy.start({
-      tlsConfig: {
-        keyPrivatePem: keysUtils.privateKeyToPEM(keyRing.keyPair.privateKey),
-        certChainPem: keysUtils.publicKeyToPEM(keyRing.keyPair.publicKey) as unknown as CertificatePEMChain,
-      },
+      tlsConfig: await testsUtils.createTLSConfig(keyRing.keyPair),
       serverHost: '127.0.0.1' as Host,
       serverPort: 0 as Port,
     });

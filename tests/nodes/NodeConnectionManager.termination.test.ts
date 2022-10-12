@@ -27,6 +27,7 @@ import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import { promise, promisify } from '@/utils';
 import * as utils from '@/utils/index';
 import * as testUtils from '../utils';
+import * as testsUtils from '../utils/index';
 
 describe(`${NodeConnectionManager.name} termination test`, () => {
   const logger = new Logger(
@@ -128,10 +129,7 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
       keyRing,
       logger: logger.getChild('NodeGraph'),
     });
-    const tlsConfig = {
-      keyPrivatePem: keyRing.getRootKeyPairPem().privateKey,
-      certChainPem: keysUtils.certToPem(keyRing.getRootCert()),
-    };
+    const tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
     defaultProxy = new Proxy({
       authToken: 'auth',
       logger: logger.getChild('proxy'),
@@ -143,17 +141,7 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
       tlsConfig,
     });
     // Other setup
-    const globalKeyPair = await testUtils.setupGlobalKeypair();
-    const cert = keysUtils.generateCertificate(
-      globalKeyPair.publicKey,
-      globalKeyPair.privateKey,
-      globalKeyPair.privateKey,
-      86400,
-    );
-    tlsConfig2 = {
-      keyPrivatePem: keysUtils.keyPairToPem(globalKeyPair).privateKey,
-      certChainPem: keysUtils.certToPem(cert),
-    };
+    tlsConfig2 = await testsUtils.createTLSConfig(keysUtils.generateKeyPair());
   });
 
   afterEach(async () => {

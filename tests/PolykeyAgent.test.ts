@@ -1,5 +1,5 @@
 import type { StateVersion } from '@/schema/types';
-import type { KeyRingChangeData } from '@/keys/types';
+import type { CertManagerChangeData } from '@/keys/types';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
@@ -8,7 +8,6 @@ import PolykeyAgent from '@/PolykeyAgent';
 import { Status } from '@/status';
 import { Schema } from '@/schema';
 import * as errors from '@/errors';
-import * as keysUtils from '@/keys/utils';
 import config from '@/config';
 import { promise } from '@/utils/index';
 
@@ -17,23 +16,6 @@ describe('PolykeyAgent', () => {
   const logger = new Logger('PolykeyAgent Test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
-  let mockedGenerateKeyPair: jest.SpyInstance;
-  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
-  beforeAll(async () => {
-    const privateKey = keysUtils.privateKeyFromPem(globalRootKeyPems[1]);
-    const publicKey = keysUtils.publicKeyFromPrivateKey(privateKey);
-    const keyPair = { privateKey, publicKey };
-    mockedGenerateKeyPair = jest
-      .spyOn(keysUtils, 'generateKeyPair')
-      .mockResolvedValue(keyPair);
-    mockedGenerateDeterministicKeyPair = jest
-      .spyOn(keysUtils, 'generateDeterministicKeyPair')
-      .mockResolvedValue(keyPair);
-  });
-  afterAll(async () => {
-    mockedGenerateKeyPair.mockRestore();
-    mockedGenerateDeterministicKeyPair.mockRestore();
-  });
   let dataDir: string;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
@@ -184,14 +166,14 @@ describe('PolykeyAgent', () => {
         nodePath,
         logger,
       });
-      const prom = promise<KeyRingChangeData>();
+      const prom = promise<CertManagerChangeData>();
       pkAgent.events.on(
-        PolykeyAgent.eventSymbols.KeyRing,
-        async (data: KeyRingChangeData) => {
+        PolykeyAgent.eventSymbols.CertManager,
+        async (data: CertManagerChangeData) => {
           prom.resolveP(data);
         },
       );
-      await pkAgent.keyRing.renewRootKeyPair(password);
+      await pkAgent.certManager.renewCertWithNewKeyPair(password);
 
       await expect(prom.p).resolves.toBeDefined();
     } finally {
@@ -208,14 +190,14 @@ describe('PolykeyAgent', () => {
         nodePath,
         logger,
       });
-      const prom = promise<KeyRingChangeData>();
+      const prom = promise<CertManagerChangeData>();
       pkAgent.events.on(
-        PolykeyAgent.eventSymbols.KeyRing,
-        async (data: KeyRingChangeData) => {
+        PolykeyAgent.eventSymbols.CertManager,
+        async (data: CertManagerChangeData) => {
           prom.resolveP(data);
         },
       );
-      await pkAgent.keyRing.resetRootKeyPair(password);
+      await pkAgent.certManager.resetCertWithNewKeyPair(password);
 
       await expect(prom.p).resolves.toBeDefined();
     } finally {
@@ -232,14 +214,14 @@ describe('PolykeyAgent', () => {
         nodePath,
         logger,
       });
-      const prom = promise<KeyRingChangeData>();
+      const prom = promise<CertManagerChangeData>();
       pkAgent.events.on(
-        PolykeyAgent.eventSymbols.KeyRing,
-        async (data: KeyRingChangeData) => {
+        PolykeyAgent.eventSymbols.CertManager,
+        async (data: CertManagerChangeData) => {
           prom.resolveP(data);
         },
       );
-      await pkAgent.keyRing.resetRootCert();
+      await pkAgent.certManager.resetCertWithCurrentKeyPair();
 
       await expect(prom.p).resolves.toBeDefined();
     } finally {
