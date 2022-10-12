@@ -17,6 +17,8 @@ import * as utils from '../../utils';
 
 /**
  * Use this to make a key pair if you only have public key and private key
+ * The returned secret key is guaranteed to unpooled.
+ * This means the underlying `ArrayBuffer` is safely transferrable.
  */
 function makeKeyPair(publicKey: PublicKey, privateKey: PrivateKey): KeyPair {
   // This ensures `secretKey.buffer` is not using the shared internal pool
@@ -60,9 +62,11 @@ function publicKeyFromNodeId(nodeId: NodeId): PublicKey {
 
 /**
  * Extracts Ed25519 Public Key from Ed25519 Private Key
+ * The returned buffers are guaranteed to unpooled.
+ * This means the underlying `ArrayBuffer` is safely transferrable.
  */
 function publicKeyFromPrivateKeyEd25519(privateKey: PrivateKey): PublicKey {
-  const publicKey = Buffer.allocUnsafe(sodium.crypto_sign_PUBLICKEYBYTES);
+  const publicKey = Buffer.allocUnsafeSlow(sodium.crypto_sign_PUBLICKEYBYTES);
   sodium.crypto_sign_seed_keypair(
     publicKey,
     Buffer.allocUnsafe(sodium.crypto_sign_SECRETKEYBYTES),
@@ -73,9 +77,11 @@ function publicKeyFromPrivateKeyEd25519(privateKey: PrivateKey): PublicKey {
 
 /**
  * Extracts X25519 Public Key from X25519 Private Key
+ * The returned buffers are guaranteed to unpooled.
+ * This means the underlying `ArrayBuffer` is safely transferrable.
  */
 function publicKeyFromPrivateKeyX25519(privateKey: PrivateKeyX): PublicKeyX {
-  const publicKey = Buffer.allocUnsafe(sodium.crypto_box_PUBLICKEYBYTES);
+  const publicKey = Buffer.allocUnsafeSlow(sodium.crypto_box_PUBLICKEYBYTES);
   sodium.crypto_box_seed_keypair(
     publicKey,
     Buffer.allocUnsafe(sodium.crypto_box_SECRETKEYBYTES),
@@ -86,9 +92,11 @@ function publicKeyFromPrivateKeyX25519(privateKey: PrivateKeyX): PublicKeyX {
 
 /**
  * Maps Ed25519 public key to X25519 public key
+ * The returned buffers are guaranteed to unpooled.
+ * This means the underlying `ArrayBuffer` is safely transferrable.
  */
 function publicKeyEd25519ToX25519(publicKey: PublicKey): PublicKeyX {
-  const publicKeyX25519 = Buffer.allocUnsafe(
+  const publicKeyX25519 = Buffer.allocUnsafeSlow(
     sodium.crypto_box_PUBLICKEYBYTES
   );
   sodium.crypto_sign_ed25519_pk_to_curve25519(publicKeyX25519, publicKey);
@@ -97,11 +105,13 @@ function publicKeyEd25519ToX25519(publicKey: PublicKey): PublicKeyX {
 
 /**
  * Maps Ed25519 private key to X25519 private key
+ * The returned buffers are guaranteed to unpooled.
+ * This means the underlying `ArrayBuffer` is safely transferrable.
  */
 function privateKeyEd25519ToX25519(privateKey: PrivateKey): PrivateKeyX {
   const publicKey = publicKeyFromPrivateKeyEd25519(privateKey);
   const secretKeyEd25519 = Buffer.concat([privateKey, publicKey]);
-  const privateKeyX25519 = Buffer.allocUnsafe(
+  const privateKeyX25519 = Buffer.allocUnsafeSlow(
     sodium.crypto_box_SECRETKEYBYTES
   );
   sodium.crypto_sign_ed25519_sk_to_curve25519(
@@ -113,10 +123,12 @@ function privateKeyEd25519ToX25519(privateKey: PrivateKey): PrivateKeyX {
 
 /**
  * Maps Ed25519 keypair to X25519 keypair
+ * The returned buffers are guaranteed to unpooled.
+ * This means the underlying `ArrayBuffer` is safely transferrable.
  */
 function keyPairEd25519ToX25519(keyPair: KeyPair): KeyPairX {
   const publicKeyX25519 = publicKeyEd25519ToX25519(keyPair.publicKey);
-  const privateKeyX25519 = Buffer.allocUnsafe(
+  const privateKeyX25519 = Buffer.allocUnsafeSlow(
     sodium.crypto_box_SECRETKEYBYTES
   );
   sodium.crypto_sign_ed25519_sk_to_curve25519(
@@ -162,6 +174,9 @@ function keyPairEd25519ToX25519(keyPair: KeyPair): KeyPairX {
  * Under ECDH-ES, the result will have the following format:
  * `publicKeyX<32> || mac<16> || cipherText`
  * Where `publicKeyX` is the X25519 public key.
+ *
+ * The returned buffers are guaranteed to unpooled.
+ * This means the underlying `ArrayBuffer` is safely transferrable.
  */
 function encryptWithPublicKey(
   receiverPublicKey: PublicKey,
@@ -184,9 +199,12 @@ function encryptWithPublicKey(
       recieverPublicKeyX25519,
       senderKeyPairX25519.privateKey,
     );
+    const result = Buffer.allocUnsafeSlow(nonce.byteLength + macAndCipherText.byteLength);
+    nonce.copy(result);
+    macAndCipherText.copy(result, nonce.byteLength);
     // Note that no public key is concatenated here
     // If it needs to be done, you must do it yourself
-    return Buffer.concat([nonce, macAndCipherText]);
+    return result;
   } else {
     // ECDH-ES and ECDH-EE
     // This does not require a nonce
@@ -194,7 +212,7 @@ function encryptWithPublicKey(
     // The SEALBYTES is 48 bytes
     // The first 32 bytes are the ephemeral public key
     // The next 16 bytes is used by the MAC
-    const publicKeyAndMacAndCipherText = Buffer.allocUnsafe(
+    const publicKeyAndMacAndCipherText = Buffer.allocUnsafeSlow(
       sodium.crypto_box_SEALBYTES + plainText.byteLength,
     );
     sodium.crypto_box_seal(
@@ -214,6 +232,9 @@ function encryptWithPublicKey(
  *
  * Under ECDH-ES and ECDH-EE, the cipher text should have the following format:
  * `publicKey<32> || cihperText || mac<16>`
+ *
+ * The returned buffers are guaranteed to unpooled.
+ * This means the underlying `ArrayBuffer` is safely transferrable.
  */
 function decryptWithPrivateKey(
   receiverKeyPair: KeyPair,
@@ -232,7 +253,7 @@ function decryptWithPrivateKey(
     const senderPublicKeyX25519 = publicKeyEd25519ToX25519(senderPublicKey);
     const nonce = cipherText.slice(0, sodium.crypto_box_NONCEBYTES);
     const cipherTextAndMac = cipherText.slice(sodium.crypto_box_NONCEBYTES);
-    const plainText = Buffer.allocUnsafe(
+    const plainText = Buffer.allocUnsafeSlow(
       cipherTextAndMac.byteLength - sodium.crypto_box_MACBYTES,
     );
     const decrypted = sodium.crypto_box_open_easy(
@@ -252,7 +273,7 @@ function decryptWithPrivateKey(
     }
     // ES style, you don't know who it was from
     // you can still do sign-then-encrypt though
-    const plainText = Buffer.allocUnsafe(
+    const plainText = Buffer.allocUnsafeSlow(
       cipherText.byteLength - sodium.crypto_box_SEALBYTES,
     );
     const decrypted = sodium.crypto_box_seal_open(
@@ -271,12 +292,15 @@ function decryptWithPrivateKey(
 /**
  * Sign with private key.
  * This returns a signature buffer.
+ *
+ * The returned buffers are guaranteed to unpooled.
+ * This means the underlying `ArrayBuffer` is safely transferrable.
  */
 function signWithPrivateKey(
   privateKeyOrKeyPair: PrivateKey | KeyPair,
   data: Buffer,
 ): Signature {
-  const signature = Buffer.allocUnsafe(sodium.crypto_sign_BYTES);
+  const signature = Buffer.allocUnsafeSlow(sodium.crypto_sign_BYTES);
   let secretKey;
   if (Buffer.isBuffer(privateKeyOrKeyPair)) {
     const publicKey = publicKeyFromPrivateKeyEd25519(privateKeyOrKeyPair);

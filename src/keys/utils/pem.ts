@@ -11,7 +11,6 @@ import * as asn1 from '@peculiar/asn1-schema';
 import * as asn1X509 from '@peculiar/asn1-x509';
 import * as asn1Pkcs8 from '@peculiar/asn1-pkcs8';
 import { validatePublicKey } from './asymmetric';
-import * as utils from '../../utils';
 
 /**
  * Converts PublicKey to SPKI PEM format.
@@ -25,12 +24,16 @@ function publicKeyToPEM(publicKey: PublicKey): PublicKeyPEM {
     }),
     subjectPublicKey: publicKey,
   });
-  const data = utils.bufferWrap(asn1.AsnSerializer.serialize(spki));
+  const data = Buffer.from(asn1.AsnSerializer.serialize(spki));
   return `-----BEGIN PUBLIC KEY-----\n${data.toString(
     'base64',
   )}\n-----END PUBLIC KEY-----\n` as PublicKeyPEM;
 }
 
+/**
+ * The returned buffers is guaranteed to unpooled.
+ * This means the underlying `ArrayBuffer` is safely transferrable.
+ */
 function publicKeyFromPEM(publicKeyPEM: PublicKeyPEM): PublicKey | undefined {
   const match = publicKeyPEM.match(
     /-----BEGIN PUBLIC KEY-----\n([A-Za-z0-9+/=]+)\n-----END PUBLIC KEY-----\n/,
@@ -40,7 +43,7 @@ function publicKeyFromPEM(publicKeyPEM: PublicKeyPEM): PublicKey | undefined {
   }
   const data = Buffer.from(match[1], 'base64');
   const spki = asn1.AsnConvert.parse(data, asn1X509.SubjectPublicKeyInfo);
-  const publicKey = utils.bufferWrap(spki.subjectPublicKey);
+  const publicKey = Buffer.from(spki.subjectPublicKey);
   if (!validatePublicKey(publicKey)) {
     return;
   }
@@ -56,12 +59,16 @@ function privateKeyToPEM(privateKey: PrivateKey): PrivateKeyPEM {
       new asn1.OctetString(privateKey).toASN().toBER(),
     ),
   });
-  const data = utils.bufferWrap(asn1.AsnSerializer.serialize(pkcs8));
+  const data = Buffer.from(asn1.AsnSerializer.serialize(pkcs8));
   return `-----BEGIN PRIVATE KEY-----\n${data.toString(
     'base64',
   )}\n-----END PRIVATE KEY-----\n` as PrivateKeyPEM;
 }
 
+/**
+ * The returned buffers is guaranteed to unpooled.
+ * This means the underlying `ArrayBuffer` is safely transferrable.
+ */
 function privateKeyFromPEM(
   privateKeyPEM: PrivateKeyPEM,
 ): PrivateKey | undefined {
@@ -77,7 +84,7 @@ function privateKeyFromPEM(
     pkcs8.privateKey,
     asn1Pkcs8.PrivateKey,
   );
-  const privateKey = utils.bufferWrap(privateKeyAsn.buffer) as PrivateKey;
+  const privateKey = Buffer.from(privateKeyAsn.buffer) as PrivateKey;
   if (privateKey.byteLength !== 32) {
     return;
   }
@@ -94,13 +101,19 @@ function keyPairToPEM(keyPair: {
   };
 }
 
+/**
+ * The returned buffers is guaranteed to unpooled.
+ * This means the underlying `ArrayBuffer` is safely transferrable.
+ */
 function keyPairFromPEM(keyPair: KeyPairPEM): KeyPair | undefined {
   const publicKey = publicKeyFromPEM(keyPair.publicKey);
   const privateKey = privateKeyFromPEM(keyPair.privateKey);
   if (publicKey == null || privateKey == null) {
     return undefined;
   }
-  const secretKey = Buffer.concat([privateKey, publicKey]);
+  const secretKey = Buffer.allocUnsafeSlow(privateKey.byteLength + publicKey.byteLength);
+  privateKey.copy(secretKey);
+  publicKey.copy(secretKey, privateKey.byteLength);
   return {
     publicKey,
     privateKey,
