@@ -9,11 +9,11 @@ class CommandBootstrap extends CommandPolykey {
     this.name('bootstrap');
     this.description('Bootstrap Keynode State');
     this.addOption(binOptions.recoveryCodeFile);
-    this.addOption(binOptions.rootKeyPairBits);
     this.addOption(binOptions.fresh);
     this.addOption(binOptions.rootKeyFile);
     this.action(async (options) => {
       const bootstrapUtils = await import('../../bootstrap/utils');
+      const keysUtils = await import('../../keys/utils');
       const password = await binProcessors.processNewPassword(
         options.passwordFile,
         this.fs,
@@ -28,12 +28,9 @@ class CommandBootstrap extends CommandPolykey {
       const recoveryCodeOut = await bootstrapUtils.bootstrapState({
         password,
         nodePath: options.nodePath,
-        // FIXME: keys config has changed.
-        //  need to update options to reflect this.
-        keysConfig: {
-          rootKeyPairBits: options.rootKeyPairBits,
+        keyRingConfig: {
           recoveryCode: recoveryCodeIn,
-          privateKeyPemOverride: privateKeyPem,
+          privateKey: keysUtils.privateKeyFromPEM(privateKeyPem!),
         },
         fresh: options.fresh,
         fs: this.fs,

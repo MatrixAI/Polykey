@@ -1,4 +1,4 @@
-import type { CertificatePem, KeyPairPem, PublicKeyPem } from '@/keys/types';
+import type { CertificatePEM, KeyPairPEM, PublicKeyPEM, PublicKey } from '@/keys/types';
 import type { Host, Port } from '@/network/types';
 import type { NodeId, NodeAddress } from '@/nodes/types';
 import type { Task } from '@/tasks/types';
@@ -27,6 +27,7 @@ import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as utils from '@/utils/index';
 import * as nodesTestUtils from './utils';
 import { generateNodeIdForBucket } from './utils';
+import * as testsUtils from '../utils';
 
 describe(`${NodeManager.name} test`, () => {
   const password = 'password';
@@ -39,8 +40,6 @@ describe(`${NodeManager.name} test`, () => {
   let nodeConnectionManager: NodeConnectionManager;
   let proxy: Proxy;
   let keyRing: KeyRing;
-  let keyPairPem: KeyPairPem;
-  let certPem: CertificatePem;
   let db: DB;
   let sigchain: Sigchain;
   let utpSocket: UTP;
@@ -70,10 +69,6 @@ describe(`${NodeManager.name} test`, () => {
       logger,
     });
 
-    const cert = keyRing.getRootCert();
-    keyPairPem = keyRing.getRootKeyPairPem();
-    certPem = keysUtils.certToPem(cert);
-
     proxy = new Proxy({
       authToken: 'abc',
       logger: logger,
@@ -86,10 +81,7 @@ describe(`${NodeManager.name} test`, () => {
       serverPort,
       proxyHost: externalHost,
       proxyPort: externalPort,
-      tlsConfig: {
-        keyPrivatePem: keyPairPem.privateKey,
-        certChainPem: certPem,
-      },
+      tlsConfig: await testsUtils.createTLSConfig(keyRing.keyPair),
     });
     const dbPath = `${dataDir}/db`;
     db = await DB.createDB({
@@ -268,8 +260,8 @@ describe(`${NodeManager.name} test`, () => {
 
       // We want to get the public key of the server
       const key = await nodeManager.getPublicKey(serverNodeId);
-      const expectedKey = server.keyRing.getRootKeyPairPem().publicKey;
-      expect(key).toEqual(expectedKey);
+      const expectedKey = server.keyRing.keyPair.publicKey;
+      expect(keysUtils.publicKeyToPEM(key)).toEqual(keysUtils.publicKeyToPEM(expectedKey));
     } finally {
       // Clean up
       await nodeManager?.stop();
@@ -290,13 +282,13 @@ describe(`${NodeManager.name} test`, () => {
     let x: PolykeyAgent;
     let xNodeId: NodeId;
     let xNodeAddress: NodeAddress;
-    let xPublicKey: PublicKeyPem;
+    let xPublicKey: PublicKey;
 
     let yDataDir: string;
     let y: PolykeyAgent;
     let yNodeId: NodeId;
     let yNodeAddress: NodeAddress;
-    let yPublicKey: PublicKeyPem;
+    let yPublicKey: PublicKey;
 
     beforeAll(async () => {
       xDataDir = await fs.promises.mkdtemp(
@@ -316,7 +308,7 @@ describe(`${NodeManager.name} test`, () => {
         host: externalHost,
         port: x.proxy.getProxyPort(),
       };
-      xPublicKey = x.keyRing.getRootKeyPairPem().publicKey;
+      xPublicKey = x.keyRing.keyPair.publicKey;
 
       yDataDir = await fs.promises.mkdtemp(
         path.join(os.tmpdir(), 'polykey-test-'),
@@ -334,7 +326,7 @@ describe(`${NodeManager.name} test`, () => {
         host: externalHost,
         port: y.proxy.getProxyPort(),
       };
-      yPublicKey = y.keyRing.getRootKeyPairPem().publicKey;
+      yPublicKey = y.keyRing.keyPair.publicKey;
 
       await x.nodeGraph.setNode(yNodeId, yNodeAddress);
       await y.nodeGraph.setNode(xNodeId, xNodeAddress);

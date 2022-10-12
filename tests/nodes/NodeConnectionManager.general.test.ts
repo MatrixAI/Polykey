@@ -23,6 +23,7 @@ import * as nodesPB from '@/proto/js/polykey/v1/nodes/nodes_pb';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as utils from '@/utils/index';
 import * as testNodesUtils from './utils';
+import * as testsUtils from '../utils';
 
 describe(`${NodeConnectionManager.name} general test`, () => {
   const logger = new Logger(
@@ -208,10 +209,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       keyRing,
       logger: logger.getChild('NodeGraph'),
     });
-    const tlsConfig = {
-      keyPrivatePem: keyRing.getRootKeyPairPem().privateKey,
-      certChainPem: keysUtils.certToPem(keyRing.getRootCert()),
-    };
+    const tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
     proxy = new Proxy({
       authToken: 'auth',
       logger: logger.getChild('proxy'),

@@ -12,19 +12,7 @@ describe('renew', () => {
   let dataDir: string;
   let nodePath: string;
   let pkAgent: PolykeyAgent;
-  let mockedGenerateKeyPair: jest.SpyInstance;
-  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
-  beforeAll(async () => {
-    const globalKeyPair = await testUtils.setupGlobalKeypair();
-    const newKeyPair = await keysUtils.generateKeyPair();
-    mockedGenerateKeyPair = jest
-      .spyOn(keysUtils, 'generateKeyPair')
-      .mockResolvedValueOnce(globalKeyPair)
-      .mockResolvedValue(newKeyPair);
-    mockedGenerateDeterministicKeyPair = jest
-      .spyOn(keysUtils, 'generateDeterministicKeyPair')
-      .mockResolvedValueOnce(globalKeyPair)
-      .mockResolvedValue(newKeyPair);
+  beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(globalThis.tmpDir, 'polykey-test-'),
     );
@@ -41,14 +29,12 @@ describe('renew', () => {
       logger,
     });
   }, globalThis.defaultTimeout * 2);
-  afterAll(async () => {
+  afterEach(async () => {
     await pkAgent.stop();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
     });
-    mockedGenerateKeyPair.mockRestore();
-    mockedGenerateDeterministicKeyPair.mockRestore();
   });
   testUtils.testIf(testUtils.isTestPlatformEmpty)(
     'renews the keypair',

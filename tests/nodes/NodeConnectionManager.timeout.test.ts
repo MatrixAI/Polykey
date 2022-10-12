@@ -18,7 +18,8 @@ import * as nodesUtils from '@/nodes/utils';
 import * as keysUtils from '@/keys/utils';
 import * as grpcUtils from '@/grpc/utils';
 import { sleep } from '@/utils';
-import * as utils from '@/utils/index';
+import * as utils from '@/utils';
+import * as testsUtils from '../utils';
 
 describe(`${NodeConnectionManager.name} timeout test`, () => {
   const logger = new Logger(
@@ -153,10 +154,7 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
       keyRing,
       logger: logger.getChild('NodeGraph'),
     });
-    const tlsConfig = {
-      keyPrivatePem: keyRing.getRootKeyPairPem().privateKey,
-      certChainPem: keysUtils.certToPem(keyRing.getRootCert()),
-    };
+    const tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
     proxy = new Proxy({
       authToken: 'auth',
       logger: logger.getChild('proxy'),

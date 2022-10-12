@@ -25,7 +25,6 @@ function keysKeyPairRoot({
       const response = new keysPB.KeyPair();
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
-      // const keyPair = keyManager.getRootKeyPairPem();
       const keyPair = keyRing.keyPair;
       response.setPublic(keysUtils.publicKeyToPEM(keyPair.publicKey));
       response.setPrivate(keysUtils.privateKeyToPEM(keyPair.privateKey));

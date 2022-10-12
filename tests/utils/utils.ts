@@ -12,6 +12,10 @@ import * as grpcErrors from '@/grpc/errors';
 import * as validationUtils from '@/validation/utils';
 import { sleep, promise } from '@/utils';
 import * as execUtils from './exec';
+import KeyRing from '../../src/keys/KeyRing';
+import { CertId } from '@/ids/types';
+import { TLSConfig } from '../../src/network/types';
+import { CertificatePEMChain, KeyPair } from '../../src/keys/types';
 
 /**
  * Setup the global keypair
@@ -43,12 +47,13 @@ async function setupGlobalKeypair() {
             'utf-8',
           ),
         };
-        const globalKeyPair = keysUtils.keyPairFromPem(globalKeyPairPem);
-        return globalKeyPair;
+        throw Error('setupGlobalKeypair SHOULD BE REMOVED')
+        // const globalKeyPair = keysUtils.keyPairFromPEM(globalKeyPairPem);
+        // return globalKeyPair;
       }
     }
     const globalKeyPair = await keysUtils.generateKeyPair();
-    const globalKeyPairPem = keysUtils.keyPairToPem(globalKeyPair);
+    const globalKeyPairPem = keysUtils.keyPairToPEM(globalKeyPair);
     await Promise.all([
       fs.promises.writeFile(
         path.join(globalKeyPairDir, 'root.pub'),
@@ -167,6 +172,20 @@ const scheduleCall = <T>(
   label: string = 'scheduled call',
 ) => s.schedule(Promise.resolve(label)).then(() => f());
 
+async function createTLSConfig(keyPair: KeyPair, generateCertId?: () => CertId): Promise<TLSConfig> {
+  generateCertId  = generateCertId ?? keysUtils.createCertIdGenerator();
+  const certificate = await keysUtils.generateCertificate({
+    certId: generateCertId(),
+    duration: 31536000,
+    issuerPrivateKey: keyPair.privateKey,
+    subjectKeyPair: { privateKey: keyPair.privateKey, publicKey: keyPair.publicKey }
+  });
+  return {
+    keyPrivatePem: keysUtils.privateKeyToPEM(keyPair.privateKey),
+    certChainPem: keysUtils.certToPEM(certificate) as unknown as CertificatePEMChain,
+  };
+}
+
 export {
   setupGlobalKeypair,
   setupTestAgent,
@@ -175,4 +194,5 @@ export {
   testIf,
   describeIf,
   scheduleCall,
+  createTLSConfig,
 };

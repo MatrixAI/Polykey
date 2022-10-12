@@ -20,7 +20,8 @@ import * as nodesUtils from '@/nodes/utils';
 import * as nodesErrors from '@/nodes/errors';
 import * as keysUtils from '@/keys/utils';
 import * as grpcUtils from '@/grpc/utils';
-import * as utils from '@/utils/index';
+import * as utils from '@/utils';
+import * as testsUtils from '../utils';
 
 describe(`${NodeConnectionManager.name} lifecycle test`, () => {
   const logger = new Logger(
@@ -164,10 +165,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       lazy: true,
       logger,
     });
-    const tlsConfig = {
-      keyPrivatePem: keyRing.getRootKeyPairPem().privateKey,
-      certChainPem: keysUtils.certToPem(keyRing.getRootCert()),
-    };
+    const tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
     proxy = new Proxy({
       authToken: 'auth',
       logger: logger.getChild('proxy'),

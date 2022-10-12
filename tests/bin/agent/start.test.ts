@@ -815,19 +815,15 @@ describe('start', () => {
         logger,
       });
       const password = 'abc123';
-      const privateKeyPem = globalRootKeyPems[0];
-      const nodeId = keysUtils.publicKeyToNodeId(
-        keysUtils.publicKeyFromPrivateKey(
-          keysUtils.privateKeyFromPem(privateKeyPem),
-        ),
-      );
+      const keyPair = keysUtils.generateKeyPair();
+      const nodeId = keysUtils.publicKeyToNodeId(keyPair.publicKey);
       const agentProcess = await testUtils.pkSpawn(
         ['agent', 'start', '--workers', '0', '--verbose'],
         {
           env: {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
             PK_PASSWORD: password,
-            PK_ROOT_KEY: privateKeyPem,
+            PK_ROOT_KEY: keysUtils.privateKeyToPEM(keyPair.privateKey),
           },
           cwd: dataDir,
           command: globalThis.testCmd,
@@ -858,12 +854,9 @@ describe('start', () => {
         logger,
       });
       const password = 'abc123';
-      const privateKeyPem = globalRootKeyPems[0];
-      const nodeId = keysUtils.publicKeyToNodeId(
-        keysUtils.publicKeyFromPrivateKey(
-          keysUtils.privateKeyFromPem(privateKeyPem),
-        ),
-      );
+      const keyPair = keysUtils.generateKeyPair();
+      const nodeId = keysUtils.publicKeyToNodeId(keyPair.publicKey);
+      const privateKeyPem = keysUtils.privateKeyToPEM(keyPair.privateKey);
       const privateKeyPath = path.join(dataDir, 'private.pem');
       await fs.promises.writeFile(privateKeyPath, privateKeyPem, {
         encoding: 'utf-8',

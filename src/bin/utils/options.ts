@@ -121,6 +121,7 @@ const backgroundErrFile = new commander.Option(
   'Path to STDERR for agent process',
 );
 
+// FIXME: this needs to be removed, we can't set the root key bits anymore.
 const rootKeyPairBits = new commander.Option(
   '-rkpb --root-key-pair-bits <bitsize>',
   'Bit size of root key pair',
