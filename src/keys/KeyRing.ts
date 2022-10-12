@@ -602,8 +602,6 @@ class KeyRing {
    * Reads the key pair from the filesystem.
    * This only needs to read the private key as the public key is derived.
    * The private key is expected to be stored in a flattened JWE format.
-   * The private key is expected to be encrypted with `PBES2-HS512+A256KW`.
-   * See: https://www.rfc-editor.org/rfc/rfc7518#section-4.8
    */
   protected async readKeyPair(password: string): Promise<KeyPairLocked> {
     const privateKey = await this.readPrivateKey(password);
@@ -779,7 +777,17 @@ class KeyRing {
   ): Promise<KeyPairLocked> {
     let keyPair: KeyPair;
     if (recoveryCode != null) {
-      keyPair = await keysUtils.generateDeterministicKeyPair(recoveryCode);
+      if (this.workerManager == null) {
+        keyPair = await keysUtils.generateDeterministicKeyPair(recoveryCode);
+      } else {
+        keyPair = await this.workerManager.call(async (w) => {
+          const result = await w.generateDeterministicKeyPair(recoveryCode);
+          result.publicKey = Buffer.from(result.publicKey);
+          result.privateKey = Buffer.from(result.privateKey);
+          result.secretKey = Buffer.from(result.secretKey);
+          return result as KeyPair;
+        });
+      }
     } else {
       keyPair = keysUtils.generateKeyPair();
     }
@@ -960,16 +968,15 @@ class KeyRing {
       );
     } else {
       [hash, salt] = await this.workerManager.call(async (w) => {
-        const [hashAB, saltAB] = (await w.hashPassword(
+        const result = (await w.hashPassword(
           password,
           undefined,
           this.passwordOpsLimit,
           this.passwordMemLimit,
         ));
-        return [
-          Buffer.from(hashAB) as PasswordHash,
-          Buffer.from(saltAB) as PasswordSalt
-        ];
+        result[0] = Buffer.from(result[0]);
+        result[1] = Buffer.from(result[1]);
+        return result as [PasswordHash, PasswordSalt];
       });
     }
     bufferLock(hash);

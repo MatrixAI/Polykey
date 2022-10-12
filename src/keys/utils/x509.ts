@@ -253,9 +253,13 @@ function certCertId(cert: Certificate): CertId | undefined {
   return ids.decodeCertId(cert.serialNumber);
 }
 
+/**
+ * The returned buffers is guaranteed to unpooled.
+ * This means the underlying `ArrayBuffer` is safely transferrable.
+ */
 function certPublicKey(cert: Certificate): PublicKey | undefined {
   const spki = asn1.AsnConvert.parse(cert.publicKey.rawData, asn1X509.SubjectPublicKeyInfo);
-  const publicKey = utils.bufferWrap(spki.subjectPublicKey);
+  const publicKey = Buffer.from(spki.subjectPublicKey);
   if (!validatePublicKey(publicKey)) {
     return;
   }
@@ -394,8 +398,12 @@ async function certNodeSigned(cert: Certificate): Promise<boolean> {
   );
 }
 
+/**
+ * The returned buffers is guaranteed to unpooled.
+ * This means the underlying `ArrayBuffer` is safely transferrable.
+ */
 function certToASN1(cert: Certificate): CertificateASN1 {
-  return utils.bufferWrap(cert.rawData) as CertificateASN1;
+  return Buffer.from(cert.rawData) as CertificateASN1;
 }
 
 function certFromASN1(certASN1: CertificateASN1): Certificate | undefined {

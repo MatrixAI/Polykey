@@ -27,6 +27,8 @@ const macSize = sodium.crypto_aead_xchacha20poly1305_ietf_ABYTES;
  * `nonce || mac || cipherText`
  * This is an authenticated form of encryption.
  * The mac provides integrity and authenticity.
+ * The returned buffers are guaranteed to unpooled.
+ * This means the underlying `ArrayBuffer` is safely transferrable.
  */
 function encryptWithKey(
   key: Key,
@@ -58,6 +60,8 @@ function encryptWithKey(
  * `nonce || mac || cipherText`
  * This is an authenticated form of decryption.
  * The mac provides integrity and authenticity.
+ * The returned buffers are guaranteed to unpooled.
+ * This means the underlying `ArrayBuffer` is safely transferrable.
  */
 function decryptWithKey(
   key: Key,
