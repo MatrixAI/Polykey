@@ -27,10 +27,10 @@ export class InfoMessage extends jspb.Message {
     setForwardHost(value: string): InfoMessage;
     getForwardPort(): number;
     setForwardPort(value: number): InfoMessage;
-    getRootPublicKeyPem(): string;
-    setRootPublicKeyPem(value: string): InfoMessage;
-    getRootCertPem(): string;
-    setRootCertPem(value: string): InfoMessage;
+    getPublicKeyJwk(): string;
+    setPublicKeyJwk(value: string): InfoMessage;
+    getCertChainPem(): string;
+    setCertChainPem(value: string): InfoMessage;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): InfoMessage.AsObject;
@@ -54,7 +54,7 @@ export namespace InfoMessage {
         agentPort: number,
         forwardHost: string,
         forwardPort: number,
-        rootPublicKeyPem: string,
-        rootCertPem: string,
+        publicKeyJwk: string,
+        certChainPem: string,
     }
 }

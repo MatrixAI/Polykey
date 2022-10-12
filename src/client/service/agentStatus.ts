@@ -48,8 +48,8 @@ function agentStatus({
       response.setForwardPort(proxy.getForwardPort());
       response.setProxyHost(proxy.getProxyHost());
       response.setProxyPort(proxy.getProxyPort());
-      response.setRootPublicKeyPem(keysUtils.publicKeyToPEM(keyRing.keyPair.publicKey));
-      response.setRootCertPem(await certManager.getCertPEMsChainPEM());
+      response.setPublicKeyJwk(JSON.stringify(keysUtils.publicKeyToJWK(keyRing.keyPair.publicKey)));
+      response.setCertChainPem(await certManager.getCertPEMsChainPEM());
       callback(null, response);
       return;
     } catch (e) {
