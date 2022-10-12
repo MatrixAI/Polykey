@@ -27,15 +27,13 @@ describe('keys/utils/pem', () => {
       const spki = utils.bufferWrap(
         await webcrypto.subtle.exportKey('spki', cryptoKeyPair.publicKey),
       );
+      const spkiContents = spki.toString('base64').replace(/(.{64})/g, '$1\n').trimEnd() + '\n';
       const pkcs8 = utils.bufferWrap(
         await webcrypto.subtle.exportKey('pkcs8', cryptoKeyPair.privateKey),
       );
-      const spkiPEM = `-----BEGIN PUBLIC KEY-----\n${spki.toString(
-        'base64',
-      )}\n-----END PUBLIC KEY-----\n`;
-      const pkcs8PEM = `-----BEGIN PRIVATE KEY-----\n${pkcs8.toString(
-        'base64',
-      )}\n-----END PRIVATE KEY-----\n`;
+      const pkcs8Contents = pkcs8.toString('base64').replace(/(.{64})/g, '$1\n').trimEnd() + '\n';
+      const spkiPEM = `-----BEGIN PUBLIC KEY-----\n${spkiContents}-----END PUBLIC KEY-----\n`;
+      const pkcs8PEM = `-----BEGIN PRIVATE KEY-----\n${pkcs8Contents}-----END PRIVATE KEY-----\n`;
       expect(spkiPEM).toStrictEqual(keyPairPEM.publicKey);
       expect(pkcs8PEM).toStrictEqual(keyPairPEM.privateKey);
     },

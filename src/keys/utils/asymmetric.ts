@@ -52,7 +52,7 @@ function privateKeyFromData(data: BufferSource): PrivateKey | undefined {
 }
 
 function publicKeyToNodeId(publicKey: PublicKey): NodeId {
-  return IdInternal.create<NodeId>(publicKey);
+  return IdInternal.fromBuffer<NodeId>(publicKey);
 }
 
 function publicKeyFromNodeId(nodeId: NodeId): PublicKey {

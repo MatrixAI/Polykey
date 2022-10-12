@@ -163,6 +163,8 @@ describe('keys/utils/x509', () => {
         duration: 1000,
       });
       const certPEM = x509.certToPEM(cert);
+      // There should be a line terminator
+      expect(certPEM).toEndWith('\n');
       const cert_ = x509.certFromPEM(certPEM)!;
       expect(x509.certEqual(cert, cert_)).toBe(true);
     },
