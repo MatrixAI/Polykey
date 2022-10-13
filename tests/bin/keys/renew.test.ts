@@ -27,6 +27,11 @@ describe('renew', () => {
         clientHost: '127.0.0.1' as Host,
       },
       logger,
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        memoryLocked: false,
+      },
     });
   }, globalThis.defaultTimeout * 2);
   afterEach(async () => {

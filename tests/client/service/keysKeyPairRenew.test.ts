@@ -53,6 +53,11 @@ describe('keysKeyPairRenew', () => {
       password,
       nodePath,
       logger,
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        memoryLocked: false,
+      },
     });
     keyRing = pkAgent.keyRing;
     certManager = pkAgent.certManager;

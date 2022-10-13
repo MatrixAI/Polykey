@@ -67,6 +67,7 @@ describe(GRPCClientAgent.name, () => {
       logger: logger,
       passwordOpsLimit: keysUtils.passwordOpsLimits.min,
       passwordMemLimit: keysUtils.passwordMemLimits.min,
+      memoryLocked: false,
     });
     const tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
     proxy = new Proxy({
@@ -256,6 +257,7 @@ describe(GRPCClientAgent.name, () => {
         logger,
         passwordOpsLimit: keysUtils.passwordOpsLimits.min,
         passwordMemLimit: keysUtils.passwordMemLimits.min,
+        memoryLocked: false,
       });
       nodeId1 = clientKeyRing1.getNodeId();
       await clientProxy1.start({
@@ -288,6 +290,7 @@ describe(GRPCClientAgent.name, () => {
         logger,
         passwordOpsLimit: keysUtils.passwordOpsLimits.min,
         passwordMemLimit: keysUtils.passwordMemLimits.min,
+        memoryLocked: false,
       });
       nodeId2 = clientKeyRing2.getNodeId();
       await clientProxy2.start({

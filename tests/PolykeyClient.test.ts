@@ -6,6 +6,7 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { PolykeyClient, PolykeyAgent } from '@';
 import { Session } from '@/sessions';
 import config from '@/config';
+import * as keysUtils from '@/keys/utils/index';
 
 describe('PolykeyClient', () => {
   const password = 'password';
@@ -24,6 +25,11 @@ describe('PolykeyClient', () => {
       password,
       nodePath,
       logger,
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        memoryLocked: false,
+      },
     });
   });
   afterEach(async () => {
