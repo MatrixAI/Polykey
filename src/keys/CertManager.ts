@@ -35,7 +35,6 @@ class CertManager {
   public static async createCertManager({
     db,
     keyRing,
-    password,
     certDuration = 31536000,
     changeCallback,
     workerManager,
@@ -46,7 +45,6 @@ class CertManager {
   }: {
       db: DB;
       keyRing: KeyRing;
-      password: string;
       certDuration?: number;
       changeCallback?: (data: CertManagerChangeData) => any;
       workerManager?: PolykeyWorkerManagerInterface;
@@ -66,7 +64,6 @@ class CertManager {
       logger,
     });
     await certManager.start({
-      password,
       subjectAttrsExtra,
       issuerAttrsExtra,
       fresh
@@ -130,16 +127,14 @@ class CertManager {
   }
 
   public async start({
-    password,
     subjectAttrsExtra,
     issuerAttrsExtra,
     fresh = false,
   }: {
-    password: string;
     subjectAttrsExtra?: Array<{ [key: string]: Array<string> }>,
     issuerAttrsExtra?: Array<{ [key: string]: Array<string> }>,
     fresh?: boolean;
-  }): Promise<void> {
+  } = {}): Promise<void> {
     this.logger.info(`Starting ${this.constructor.name}`);
     if (fresh) {
       await this.db.clear(this.dbPath);
@@ -147,7 +142,6 @@ class CertManager {
     const lastCertId = await this.getLastCertId();
     this.generateCertId = keysUtils.createCertIdGenerator(lastCertId);
     await this.setupCurrentCert(
-      password,
       subjectAttrsExtra,
       issuerAttrsExtra,
     );
@@ -284,7 +278,7 @@ class CertManager {
    * This maintains a certificate chain that provides zero-downtime migration
    * This results in a new `NodeId`.
    */
-  @ready(new keysErrors.ErrorCertManagerNotRunning(), false, ['starting'])
+  @ready(new keysErrors.ErrorCertManagerNotRunning())
   public async renewCertWithNewKeyPair(
     password: string,
     duration: number = 31536000,
@@ -309,9 +303,14 @@ class CertManager {
           await this.putCert(certNew);
         }
       );
-    } finally {
+    } catch (e) {
       await this.gcCerts();
+      throw new keysErrors.ErrorCertsRenew(
+        'Failed renewing with new key pair',
+        { cause: e }
+      );
     }
+    await this.gcCerts();
     if (this.changeCallback != null) {
       await this.changeCallback({
         nodeId: this.keyRing.getNodeId(),
@@ -321,6 +320,42 @@ class CertManager {
       });
     }
     this.logger.info('Renewed certificate chain with new key pair');
+  }
+
+  @ready(new keysErrors.ErrorCertManagerNotRunning(), false, ['starting'])
+  public async renewCertWithCurrentKeyPair(
+    duration: number = 31536000,
+    subjectAttrsExtra?: Array<{ [key: string]: Array<string> }>,
+    issuerAttrsExtra?: Array<{ [key: string]: Array<string> }>,
+  ) {
+    this.logger.info('Renewing certificate chain with current key pair');
+    let certNew: Certificate;
+    try {
+      certNew = await this.generateCertificate({
+        subjectKeyPair: this.keyRing.keyPair,
+        issuerPrivateKey: this.keyRing.keyPair.privateKey,
+        duration,
+        subjectAttrsExtra,
+        issuerAttrsExtra,
+      });
+      await this.putCert(certNew);
+    } catch (e) {
+      await this.gcCerts();
+      throw new keysErrors.ErrorCertsRenew(
+        'Failed renewing with current key pair',
+        { cause: e }
+      );
+    }
+    await this.gcCerts();
+    if (this.changeCallback != null) {
+      await this.changeCallback({
+        nodeId: this.keyRing.getNodeId(),
+        keyPair: this.keyRing.keyPair,
+        cert: certNew,
+        recoveryCode: undefined,
+      });
+    }
+    this.logger.info('Renewed certificate chain with current key pair');
   }
 
   /**
@@ -353,9 +388,15 @@ class CertManager {
           await this.putCert(certNew);
         }
       );
-    } finally {
+    } catch (e) {
       await this.gcCerts();
+      throw new keysErrors.ErrorCertsReset(
+        'Failed resetting with new key pair',
+        { cause: e }
+      );
     }
+    // Force delete certificates beyond the current certificate
+    await this.gcCerts(true);
     if (this.changeCallback != null) {
       await this.changeCallback({
         nodeId: this.keyRing.getNodeId(),
@@ -380,15 +421,25 @@ class CertManager {
     issuerAttrsExtra?: Array<{ [key: string]: Array<string> }>,
   ) {
     this.logger.info('Resetting certificate chain with current key pair');
-    const certNew = await this.generateCertificate({
-      subjectKeyPair: this.keyRing.keyPair,
-      issuerPrivateKey: this.keyRing.keyPair.privateKey,
-      duration,
-      subjectAttrsExtra,
-      issuerAttrsExtra,
-    });
-    await this.putCert(certNew);
-    await this.gcCerts();
+    let certNew: Certificate;
+    try {
+      certNew = await this.generateCertificate({
+        subjectKeyPair: this.keyRing.keyPair,
+        issuerPrivateKey: this.keyRing.keyPair.privateKey,
+        duration,
+        subjectAttrsExtra,
+        issuerAttrsExtra,
+      });
+      await this.putCert(certNew);
+    } catch (e) {
+      await this.gcCerts();
+      throw new keysErrors.ErrorCertsReset(
+        'Failed resetting with current key pair',
+        { cause: e }
+      );
+    }
+    // Force delete certificates beyond the current certificate
+    await this.gcCerts(true);
     if (this.changeCallback != null) {
       await this.changeCallback({
         nodeId: this.keyRing.getNodeId(),
@@ -414,7 +465,6 @@ class CertManager {
   }
 
   protected async setupCurrentCert(
-    password: string,
     subjectAttrsExtra?: Array<{ [key: string]: Array<string> }>,
     issuerAttrsExtra?: Array<{ [key: string]: Array<string> }>,
   ): Promise<void> {
@@ -448,8 +498,7 @@ class CertManager {
         !keysUtils.certNotExpiredBy(cert, now)
       ) {
         this.logger.info('Existing current certificate is invalid or expired, starting certificate renewal');
-        await this.renewCertWithNewKeyPair(
-          password,
+        await this.renewCertWithCurrentKeyPair(
           this.certDuration,
           subjectAttrsExtra,
           issuerAttrsExtra,
@@ -510,7 +559,7 @@ class CertManager {
    * Invalid certificates can happen if key rotation does not succeed.
    * It could mean that the leaf certificate does not match the current key pair.
    */
-  protected async gcCerts(): Promise<void> {
+  protected async gcCerts(force: boolean = false): Promise<void> {
     this.logger.info('Garbage collecting certificates');
     await this.db.withTransactionF(async (tran) => {
       await tran.lock(this.dbCertsPath.join(''));
@@ -522,6 +571,8 @@ class CertManager {
         const certIdBuffer = kP[0] as Buffer;
         const certId = IdInternal.fromBuffer<CertId>(certIdBuffer);
         const cert = keysUtils.certFromASN1(certASN1 as CertificateASN1)!;
+        // Delete certificates until you find the current certificate
+        // There should always be a current certificate
         if (!currentCertFound) {
           const certPublicKey = keysUtils.certPublicKey(cert)!;
           if (certPublicKey.equals(this.keyRing.keyPair.publicKey)) {
@@ -537,9 +588,17 @@ class CertManager {
             continue;
           }
         }
-        if (!keysUtils.certNotExpiredBy(cert, now)) {
+        if (force || !keysUtils.certNotExpiredBy(cert, now)) {
           await this.delCert(certId, tran);
         }
+      }
+      if (!currentCertFound) {
+        // This should never occur
+        // because there should always be a current certificate
+        // even during renewal or resetting
+        throw new keysErrors.ErrorCertsGC(
+          'Current certificate is not found during garbage collection'
+        );
       }
     });
     this.logger.info('Garbage collected certificates');
