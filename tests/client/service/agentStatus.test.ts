@@ -16,6 +16,7 @@ import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as clientUtils from '@/client/utils/utils';
 import { DB } from '@matrixai/db';
 import * as testsUtils from '../../utils';
+import * as keysUtils from '@/keys/utils/index';
 
 describe('agentStatus', () => {
   const logger = new Logger('agentStatus test', LogLevel.WARN, [
@@ -48,6 +49,8 @@ describe('agentStatus', () => {
       password,
       keysPath,
       logger,
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
     });
     certManager = await CertManager.createCertManager({
       db,

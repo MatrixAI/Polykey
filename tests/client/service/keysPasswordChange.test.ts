@@ -12,6 +12,7 @@ import { ClientServiceService } from '@/proto/js/polykey/v1/client_service_grpc_
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as sessionsPB from '@/proto/js/polykey/v1/sessions/sessions_pb';
 import * as clientUtils from '@/client/utils/utils';
+import * as keysUtils from '@/keys/utils/index';
 
 describe('keysPasswordChange', () => {
   const logger = new Logger('keysPasswordChange test', LogLevel.WARN, [
@@ -44,6 +45,8 @@ describe('keysPasswordChange', () => {
       password,
       keysPath,
       logger,
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
     });
     const clientService = {
       keysPasswordChange: keysPasswordChange({

@@ -24,6 +24,7 @@ import * as clientUtils from '@/client/utils/utils';
 import * as vaultsUtils from '@/vaults/utils';
 import * as vaultsErrors from '@/vaults/errors';
 import * as testUtils from '../../utils';
+import * as keysUtils from '@/keys/utils/index';
 
 describe('vaultsSecretsNewDeleteGet', () => {
   const logger = new Logger('vaultsSecretsNewDeleteGet test', LogLevel.WARN, [
@@ -47,6 +48,8 @@ describe('vaultsSecretsNewDeleteGet', () => {
       password,
       keysPath,
       logger,
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
