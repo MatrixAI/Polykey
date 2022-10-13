@@ -40,7 +40,7 @@ import * as keysUtils from '../keys/utils';
 import config from '../config';
 import { mkdirExists } from '../utils/utils';
 import * as utilsPB from '../proto/js/polykey/v1/utils/utils_pb';
-import * as utils from 'utils/index';
+import * as utils from '@/utils';
 import { Key } from 'keys/types';
 
 /**
