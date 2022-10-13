@@ -73,17 +73,16 @@ describe(CertManager.name, () => {
     const certManager = await CertManager.createCertManager({
       db,
       keyRing,
-      password,
       logger,
     });
     await expect(async () => {
       await certManager.destroy();
     }).rejects.toThrow(keysErrors.ErrorCertManagerRunning);
     // Should be a noop
-    await certManager.start({ password });
+    await certManager.start();
     await certManager.stop();
     await certManager.destroy();
-    await expect(certManager.start({ password })).rejects.toThrow(
+    await expect(certManager.start()).rejects.toThrow(
       keysErrors.ErrorCertManagerDestroyed,
     );
     await expect(async () => {
@@ -94,7 +93,6 @@ describe(CertManager.name, () => {
     const certManager = await CertManager.createCertManager({
       db,
       keyRing,
-      password,
       logger,
     });
     const cert = await certManager.getCurrentCert();
@@ -110,7 +108,6 @@ describe(CertManager.name, () => {
     const certManager = await CertManager.createCertManager({
       db,
       keyRing,
-      password,
       logger,
     });
     let cert: Certificate;
@@ -137,7 +134,6 @@ describe(CertManager.name, () => {
     const certManager = await CertManager.createCertManager({
       db,
       keyRing,
-      password,
       logger,
     });
     let certPEM: CertificatePEM;
@@ -184,7 +180,6 @@ describe(CertManager.name, () => {
     const certManager = await CertManager.createCertManager({
       db,
       keyRing,
-      password,
       logger,
     });
     // Only a single certificate will exist at the beginning
