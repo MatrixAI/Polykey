@@ -1,8 +1,7 @@
 import b from 'benny';
 import crypto from 'crypto';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { Transfer } from 'threads';
-import { WorkerManager, PolykeyWorkerModule, utils as workersUtils } from '@/workers';
+import * as workersUtils from '@/workers/utils';
 import { summaryName, suiteCommon } from '../../utils';
 
 async function main() {
@@ -48,19 +47,6 @@ async function main() {
           await w.sleep(0);
         }),
       ]);
-    }),
-    b.add('transfer overhead', async () => {
-      // This is the fastest possible ArrayBuffer transfer
-      // First with a 1 MiB slice-copy
-      // Then with a basic transfer to, and transfer back
-      const inputAB = bytes.buffer.slice(
-        bytes.byteOffset,
-        bytes.byteOffset + bytes.byteLength,
-      );
-      await workerManager.call(async (w) => {
-        const outputAB = await w.transferBuffer(Transfer(inputAB));
-        return Buffer.from(outputAB);
-      });
     }),
     ...suiteCommon,
   );
