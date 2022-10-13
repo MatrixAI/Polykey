@@ -103,6 +103,7 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
       logger: logger.getChild('keyRing'),
       passwordOpsLimit: keysUtils.passwordOpsLimits.min,
       passwordMemLimit: keysUtils.passwordMemLimits.min,
+      memoryLocked: false,
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
@@ -362,6 +363,11 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
           proxyHost: '127.0.0.1' as Host,
         },
         logger: logger,
+        keyRingConfig: {
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+          memoryLocked: false,
+        },
       });
 
       const agentNodeId = polykeyAgent.keyRing.getNodeId();
@@ -420,6 +426,11 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
           proxyHost: '127.0.0.1' as Host,
         },
         logger: logger,
+        keyRingConfig: {
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+          memoryLocked: false,
+        },
       });
       const agentNodeId = polykeyAgent.keyRing.getNodeId();
       await nodeGraph.setNode(agentNodeId, {
@@ -500,6 +511,11 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
           proxyHost: '127.0.0.1' as Host,
         },
         logger: logger,
+        keyRingConfig: {
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+          memoryLocked: false,
+        },
       });
 
       const agentNodeId = polykeyAgent.keyRing.getNodeId();
@@ -573,6 +589,11 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
           proxyHost: '127.0.0.1' as Host,
         },
         logger: logger,
+        keyRingConfig: {
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+          memoryLocked: false,
+        },
       });
 
       const agentNodeId = polykeyAgent.keyRing.getNodeId();
@@ -651,6 +672,11 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
           proxyHost: '127.0.0.1' as Host,
         },
         logger: logger,
+        keyRingConfig: {
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+          memoryLocked: false,
+        },
       });
 
       const agentNodeId = polykeyAgent.keyRing.getNodeId();
@@ -729,6 +755,11 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
           proxyHost: '127.0.0.1' as Host,
         },
         logger: logger,
+        keyRingConfig: {
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+          memoryLocked: false,
+        },
       });
 
       const agentNodeId = polykeyAgent.keyRing.getNodeId();

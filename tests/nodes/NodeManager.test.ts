@@ -73,6 +73,7 @@ describe(`${NodeManager.name} test`, () => {
       logger,
       passwordOpsLimit: keysUtils.passwordOpsLimits.min,
       passwordMemLimit: keysUtils.passwordMemLimits.min,
+      memoryLocked: false,
     });
 
     proxy = new Proxy({
@@ -170,6 +171,11 @@ describe(`${NodeManager.name} test`, () => {
             proxyHost: '127.0.0.1' as Host,
           },
           logger: logger,
+          keyRingConfig: {
+            passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+            passwordMemLimit: keysUtils.passwordMemLimits.min,
+            memoryLocked: false,
+          },
         });
         const serverNodeId = server.keyRing.getNodeId();
         let serverNodeAddress: NodeAddress = {
@@ -246,6 +252,11 @@ describe(`${NodeManager.name} test`, () => {
           proxyHost: '127.0.0.1' as Host,
         },
         logger: logger,
+        keyRingConfig: {
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+          memoryLocked: false,
+        },
       });
       const serverNodeId = server.keyRing.getNodeId();
       const serverNodeAddress: NodeAddress = {
@@ -309,6 +320,11 @@ describe(`${NodeManager.name} test`, () => {
           proxyHost: '127.0.0.1' as Host,
         },
         logger,
+        keyRingConfig: {
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+          memoryLocked: false,
+        },
       });
 
       xNodeId = x.keyRing.getNodeId();
@@ -328,6 +344,11 @@ describe(`${NodeManager.name} test`, () => {
           proxyHost: '127.0.0.1' as Host,
         },
         logger,
+        keyRingConfig: {
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+          memoryLocked: false,
+        },
       });
       yNodeId = y.keyRing.getNodeId();
       yNodeAddress = {
@@ -702,6 +723,11 @@ describe(`${NodeManager.name} test`, () => {
           proxyHost: localhost,
         },
         logger: logger,
+        keyRingConfig: {
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+          memoryLocked: false,
+        },
       });
       const serverNodeId = server.keyRing.getNodeId();
       const serverNodeAddress: NodeAddress = {

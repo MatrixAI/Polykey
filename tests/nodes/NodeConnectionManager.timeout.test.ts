@@ -96,6 +96,11 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
       networkConfig: {
         proxyHost: '127.0.0.1' as Host,
       },
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        memoryLocked: false,
+      },
     });
     remoteNodeId1 = remoteNode1.keyRing.getNodeId();
     remoteNode2 = await PolykeyAgent.createPolykeyAgent({
@@ -104,6 +109,11 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
       logger: logger.getChild('remoteNode2'),
       networkConfig: {
         proxyHost: '127.0.0.1' as Host,
+      },
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        memoryLocked: false,
       },
     });
     remoteNodeId2 = remoteNode2.keyRing.getNodeId();
@@ -128,6 +138,7 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
       logger: logger.getChild('keyRing'),
       passwordOpsLimit: keysUtils.passwordOpsLimits.min,
       passwordMemLimit: keysUtils.passwordMemLimits.min,
+      memoryLocked: false,
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
