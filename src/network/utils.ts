@@ -385,8 +385,8 @@ function verifyServerCertificateChain(
       certParent = certChain[certIndex];
       certChild = certChain[certIndex - 1];
       if (
-        !keysUtils.certIssuedBy(certParent, certChild)
-        // !keysUtils.certSignedBy(certParent, certChild) // FIXME
+        !keysUtils.certIssuedBy(certParent, certChild) ||
+        !keysUtils.certSignedBy(certParent, keysUtils.certPublicKey(certChild)!)
       ) {
         throw new networkErrors.ErrorCertChainBroken(
           'Chain certificate is not signed by parent certificate',
@@ -472,8 +472,8 @@ function verifyClientCertificateChain(certChain: Array<Certificate>): void {
     }
     if (certNext != null) {
       if (
-        !keysUtils.certIssuedBy(certNext, cert)
-        // !keysUtils.certSignedBy(certNext, cert) // FIXME
+        !keysUtils.certIssuedBy(certNext, cert) ||
+        !keysUtils.certSignedBy(certNext, keysUtils.certPublicKey(cert)!)
       ) {
         throw new networkErrors.ErrorCertChainSignatureInvalid(
           'Chain certificate is not signed by parent certificate',
