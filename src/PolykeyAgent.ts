@@ -667,7 +667,9 @@ class PolykeyAgent {
         fresh,
       });
       await this.db.start({ fresh });
-      await this.certManager.start({ fresh });
+      await this.certManager.start({
+        fresh
+      });
       await this.identitiesManager.start({ fresh });
       await this.sigchain.start({ fresh });
       await this.acl.start({ fresh });
