@@ -329,7 +329,7 @@ class KeyRing {
           // Any error here should not terminate the program
           this.logger.error(`Failed to remove backups due to \`${e}\``);
         }
-        throw new keysErrors.ErrorRootKeysRotate(
+        throw new keysErrors.ErrorKeyPairRotate(
           'Failed backing up root key pair and DB key',
           { cause: e }
         );
@@ -381,7 +381,7 @@ class KeyRing {
           this.logger.error(`Failed to recover from backups due to \`${e}\``);
           // If this happens, the user will need to recover manually
         }
-        throw new keysErrors.ErrorRootKeysRotate(
+        throw new keysErrors.ErrorKeyPairRotate(
           'Failed rotating root key pair',
           { cause: e }
         );
@@ -555,7 +555,7 @@ class KeyRing {
       if (e.code === 'ENOENT') {
         return false;
       }
-      throw new keysErrors.ErrorRootKeysRead(
+      throw new keysErrors.ErrorKeyPairRead(
         `Failed to check for existence of ${this.privateKeyPath}`,
         { cause: e }
       );
@@ -575,7 +575,7 @@ class KeyRing {
       if (e.code === 'ENOENT') {
         return false;
       }
-      throw new keysErrors.ErrorRootKeysRead(e.message, { cause: e });
+      throw new keysErrors.ErrorKeyPairRead(e.message, { cause: e });
     }
     return true;
   }
@@ -592,7 +592,7 @@ class KeyRing {
       if (e.code === 'ENOENT') {
         return false;
       }
-      throw new keysErrors.ErrorRootKeysRead(e.message, { cause: e });
+      throw new keysErrors.ErrorKeyPairRead(e.message, { cause: e });
     }
     return true;
   }
@@ -628,7 +628,7 @@ class KeyRing {
         'utf-8',
       );
     } catch (e) {
-      throw new keysErrors.ErrorRootKeysRead(
+      throw new keysErrors.ErrorKeyPairRead(
         `Public key path ${publicKeyPath} cannot be read`,
         { cause: e }
       );
@@ -637,14 +637,14 @@ class KeyRing {
     try {
       publicJWK = JSON.parse(publicJWKJSON);
     } catch (e) {
-      throw new keysErrors.ErrorRootKeysParse(
+      throw new keysErrors.ErrorKeyPairParse(
         `Public key path ${publicKeyPath} is not a valid JSON file`,
         { cause: e }
       );
     }
     const publicKey = keysUtils.publicKeyFromJWK(publicJWK);
     if (publicKey == null) {
-      throw new keysErrors.ErrorRootKeysParse(
+      throw new keysErrors.ErrorKeyPairParse(
         `Public key path ${publicKeyPath} is not a valid public key`
       );
     }
@@ -667,7 +667,7 @@ class KeyRing {
         'utf-8',
       );
     } catch (e) {
-      throw new keysErrors.ErrorRootKeysRead(
+      throw new keysErrors.ErrorKeyPairRead(
         `Private key path ${privateKeyPath} cannot be read`,
         { cause: e }
       );
@@ -676,7 +676,7 @@ class KeyRing {
     try {
       privateObject = JSON.parse(privateJSON);
     } catch (e) {
-      throw new keysErrors.ErrorRootKeysParse(
+      throw new keysErrors.ErrorKeyPairParse(
         `Private key path ${privateKeyPath} is not a valid JSON file`,
         { cause: e }
       );
@@ -684,7 +684,7 @@ class KeyRing {
     if ('kty' in privateObject) {
       const privateKey = keysUtils.privateKeyFromJWK(privateObject);
       if (privateKey == null) {
-        throw new keysErrors.ErrorRootKeysParse(
+        throw new keysErrors.ErrorKeyPairParse(
           `Private key path ${privateKeyPath} is not a valid JWK`
         );
       }
@@ -698,20 +698,20 @@ class KeyRing {
         this.passwordMemLimit
       );
       if (privateJWK == null) {
-        throw new keysErrors.ErrorRootKeysParse(
+        throw new keysErrors.ErrorKeyPairParse(
           `Private key path ${privateKeyPath} is not a valid encrypted JWK`
         );
       }
       const privateKey = keysUtils.privateKeyFromJWK(privateJWK);
       if (privateKey == null) {
-        throw new keysErrors.ErrorRootKeysParse(
+        throw new keysErrors.ErrorKeyPairParse(
           `Private key path ${privateKeyPath} is not a valid private key`
         );
       }
       bufferLock(privateKey);
       return privateKey;
     } else {
-      throw new keysErrors.ErrorRootKeysParse(
+      throw new keysErrors.ErrorKeyPairParse(
         `Private key path ${privateKeyPath} has to be a JWK or an encrypted JWK`
       );
     }
@@ -760,7 +760,7 @@ class KeyRing {
         ),
       ]);
     } catch (e) {
-      throw new keysErrors.ErrorRootKeysWrite(
+      throw new keysErrors.ErrorKeyPairWrite(
         `Key pair paths ${this.publicKeyPath} and ${this.privateKeyPath} cannot be written to`,
         { cause: e }
       );
