@@ -2,21 +2,6 @@ import { ErrorPolykey, sysexits } from '../errors';
 
 class ErrorKeys<T> extends ErrorPolykey<T> {}
 
-class ErrorKeyManagerRunning<T> extends ErrorKeys<T> {
-  static description = 'KeyManager is running';
-  exitCode = sysexits.USAGE;
-}
-
-class ErrorKeyManagerNotRunning<T> extends ErrorKeys<T> {
-  static description = 'KeyManager is not running';
-  exitCode = sysexits.USAGE;
-}
-
-class ErrorKeyManagerDestroyed<T> extends ErrorKeys<T> {
-  static description = 'KeyManager is destroyed';
-  exitCode = sysexits.USAGE;
-}
-
 class ErrorKeyRingRunning<T> extends ErrorKeys<T> {
   static description = 'KeyRing is running';
   exitCode = sysexits.USAGE;
@@ -88,31 +73,6 @@ class ErrorRootKeysRotate<T> extends ErrorKeys<T> {
   exitCode = sysexits.IOERR;
 }
 
-class ErrorRootCertRead<T> extends ErrorKeys<T> {
-  static description = 'Unable to read root certificate';
-  exitCode = sysexits.IOERR;
-}
-
-class ErrorRootCertWrite<T> extends ErrorKeys<T> {
-  static description = 'Unable to write root certificate';
-  exitCode = sysexits.IOERR;
-}
-
-class ErrorRootCertRenew<T> extends ErrorKeys<T> {
-  static description = 'Unable to renew root certificate';
-  exitCode = sysexits.IOERR;
-}
-
-class ErrorRootCertsGC<T> extends ErrorKeys<T> {
-  static description = 'Unexpected error during garbage collection';
-  exitCode = sysexits.IOERR;
-}
-
-class ErrorEncryptSize<T> extends ErrorKeys<T> {
-  static description = 'Cannot encrypt data with key bit size';
-  exitCode = sysexits.USAGE;
-}
-
 class ErrorDBKeyRead<T> extends ErrorKeys<T> {
   static description = 'Unable to read key';
   exitCode = sysexits.IOERR;
@@ -128,6 +88,21 @@ class ErrorDBKeyParse<T> extends ErrorKeys<T> {
   exitCode = sysexits.IOERR;
 }
 
+class ErrorCertsRenew<T> extends ErrorKeys<T> {
+  static description = 'Unable to renew certificate chain';
+  exitCode = sysexits.IOERR;
+}
+
+class ErrorCertsReset<T> extends ErrorKeys<T> {
+  static description = 'Unable to reset certificate chain';
+  exitCode = sysexits.IOERR;
+}
+
+class ErrorCertsGC<T> extends ErrorKeys<T> {
+  static description = 'Unexpected error during certificate garbage collection';
+  exitCode = sysexits.SOFTWARE;
+}
+
 class ErrorBufferLock<T> extends ErrorKeys<T> {
   static description = 'Unable to lock sensitive memory buffer';
   exitCode = sysexits.TEMPFAIL;
@@ -135,9 +110,6 @@ class ErrorBufferLock<T> extends ErrorKeys<T> {
 
 export {
   ErrorKeys,
-  ErrorKeyManagerRunning,
-  ErrorKeyManagerNotRunning,
-  ErrorKeyManagerDestroyed,
   ErrorKeyRingRunning,
   ErrorKeyRingNotRunning,
   ErrorKeyRingDestroyed,
@@ -152,13 +124,11 @@ export {
   ErrorRootKeysParse,
   ErrorRootKeysWrite,
   ErrorRootKeysRotate,
-  ErrorRootCertRead,
-  ErrorRootCertWrite,
-  ErrorRootCertRenew,
-  ErrorRootCertsGC,
-  ErrorEncryptSize,
   ErrorDBKeyRead,
   ErrorDBKeyWrite,
   ErrorDBKeyParse,
+  ErrorCertsRenew,
+  ErrorCertsReset,
+  ErrorCertsGC,
   ErrorBufferLock,
 };
