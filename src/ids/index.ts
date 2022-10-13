@@ -13,9 +13,12 @@ import type {
   NotificationId,
 } from './types';
 import { IdInternal, IdSortable, IdRandom } from '@matrixai/id';
+import * as keysUtilsRandom from '../keys/utils/random';
 
 function createPermIdGenerator() {
-  const generator = new IdRandom<PermissionId>();
+  const generator = new IdRandom<PermissionId>({
+    randomSource: keysUtilsRandom.getRandomBytes,
+  });
   return () => generator.get();
 }
 
@@ -51,6 +54,7 @@ function decodeNodeId(nodeIdEncoded: any): NodeId | undefined {
 function createCertIdGenerator(lastCertId?: CertId): () => CertId {
   const generator = new IdSortable<CertId>({
     lastId: lastCertId,
+    randomSource: keysUtilsRandom.getRandomBytes,
   });
   return () => generator.get();
 }
@@ -82,7 +86,9 @@ function decodeCertId(certIdEncoded: unknown): CertId | undefined {
 }
 
 function createVaultIdGenerator(): () => VaultId {
-  const generator = new IdRandom<VaultId>();
+  const generator = new IdRandom<VaultId>({
+    randomSource: keysUtilsRandom.getRandomBytes,
+  });
   return () => generator.get();
 }
 
@@ -108,6 +114,7 @@ function decodeVaultId(vaultIdEncoded: any): VaultId | undefined {
 function createTaskIdGenerator(lastTaskId?: TaskId) {
   const generator = new IdSortable<TaskId>({
     lastId: lastTaskId,
+    randomSource: keysUtilsRandom.getRandomBytes,
   });
   return () => generator.get();
 }
@@ -143,8 +150,9 @@ function decodeTaskId(taskIdEncoded: any): TaskId | undefined {
  */
 function createClaimIdGenerator(nodeId: NodeId, lastClaimId?: ClaimId) {
   const generator = new IdSortable<ClaimId>({
-    lastId: lastClaimId,
     nodeId,
+    lastId: lastClaimId,
+    randomSource: keysUtilsRandom.getRandomBytes,
   });
   return () => generator.get();
 }
@@ -166,6 +174,7 @@ function createNotificationIdGenerator(
 ): () => NotificationId {
   const generator = new IdSortable<NotificationId>({
     lastId,
+    randomSource: keysUtilsRandom.getRandomBytes,
   });
   return () => generator.get();
 }
