@@ -15,6 +15,7 @@ import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as keysPB from '@/proto/js/polykey/v1/keys/keys_pb';
 import * as clientUtils from '@/client/utils/utils';
 import { CertificatePEM } from '@/keys/types';
+import * as keysUtils from '@/keys/utils/index';
 
 describe('keysCertsGet', () => {
   const logger = new Logger('keysCertsGet test', LogLevel.WARN, [
@@ -48,6 +49,8 @@ describe('keysCertsGet', () => {
       password,
       keysPath,
       logger,
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
     });
     db = await DB.createDB({
       dbPath,

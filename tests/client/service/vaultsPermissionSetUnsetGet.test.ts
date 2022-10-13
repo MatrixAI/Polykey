@@ -24,6 +24,7 @@ import * as vaultsPB from '@/proto/js/polykey/v1/vaults/vaults_pb';
 import * as clientUtils from '@/client/utils/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as testUtils from '../../utils';
+import * as keysUtils from '@/keys/utils/index';
 
 describe('vaultsPermissionSetUnsetGet', () => {
   const logger = new Logger('vaultsPermissionSetUnsetGet test', LogLevel.WARN, [
@@ -60,6 +61,8 @@ describe('vaultsPermissionSetUnsetGet', () => {
       password,
       keysPath,
       logger,
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({

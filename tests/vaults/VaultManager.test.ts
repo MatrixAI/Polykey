@@ -563,6 +563,8 @@ describe('VaultManager', () => {
         keysPath: path.join(allDataDir, 'allKeyRing'),
         password: 'password',
         logger,
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
       });
       localNodeId = keyRing.getNodeId();
       localNodeIdEncoded = nodesUtils.encodeNodeId(localNodeId);
@@ -1498,6 +1500,8 @@ describe('VaultManager', () => {
       keysPath: path.join(dataDir, 'keys'),
       password: 'password',
       logger,
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
     });
     await proxy.start({
       tlsConfig: await testsUtils.createTLSConfig(keyRing.keyPair),

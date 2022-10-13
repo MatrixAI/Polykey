@@ -40,6 +40,8 @@ describe(`${NodeGraph.name} test`, () => {
       password,
       keysPath,
       logger,
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
     });
     dbKey = await keysUtils.generateKey();
     dbPath = `${dataDir}/db`;

@@ -22,6 +22,7 @@ import * as nodesUtils from '@/nodes/utils';
 import * as clientUtils from '@/client/utils/utils';
 import * as validationErrors from '@/validation/errors';
 import * as testsUtils from '../../utils';
+import * as keysUtils from '@/keys/utils/index';
 
 describe('nodesAdd', () => {
   const logger = new Logger('nodesAdd test', LogLevel.WARN, [
@@ -52,6 +53,8 @@ describe('nodesAdd', () => {
       password,
       keysPath,
       logger,
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({

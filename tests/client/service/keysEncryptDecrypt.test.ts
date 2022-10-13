@@ -12,6 +12,7 @@ import keysDecrypt from '@/client/service/keysDecrypt';
 import { ClientServiceService } from '@/proto/js/polykey/v1/client_service_grpc_pb';
 import * as keysPB from '@/proto/js/polykey/v1/keys/keys_pb';
 import * as clientUtils from '@/client/utils/utils';
+import * as keysUtils from '@/keys/utils/index';
 
 describe('keysEncryptDecrypt', () => {
   const logger = new Logger('keysEncryptDecrypt test', LogLevel.WARN, [
@@ -33,6 +34,8 @@ describe('keysEncryptDecrypt', () => {
       password,
       keysPath,
       logger,
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
     });
     const clientService = {
       keysEncrypt: keysEncrypt({

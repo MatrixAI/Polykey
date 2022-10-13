@@ -19,6 +19,7 @@ import { ClientServiceService } from '@/proto/js/polykey/v1/client_service_grpc_
 import * as vaultsPB from '@/proto/js/polykey/v1/vaults/vaults_pb';
 import * as clientUtils from '@/client/utils/utils';
 import * as testUtils from '../../utils';
+import * as keysUtils from '@/keys/utils/index';
 
 describe('vaultsLog', () => {
   const logger = new Logger('vaultsLog test', LogLevel.WARN, [
@@ -49,6 +50,8 @@ describe('vaultsLog', () => {
       password,
       keysPath,
       logger,
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({

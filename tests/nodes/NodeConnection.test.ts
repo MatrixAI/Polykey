@@ -181,6 +181,8 @@ describe(`${NodeConnection.name} test`, () => {
       keysPath: serverKeysPath,
       fs: fs,
       logger: logger,
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
     });
 
     serverTLSConfig = await testsUtils.createTLSConfig(serverKeyRing.keyPair);
@@ -308,6 +310,8 @@ describe(`${NodeConnection.name} test`, () => {
       password,
       keysPath: clientKeysPath,
       logger,
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
     });
 
     const clientTLSConfig = await testsUtils.createTLSConfig(clientKeyRing.keyPair);
