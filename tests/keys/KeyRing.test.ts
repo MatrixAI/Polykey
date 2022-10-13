@@ -157,7 +157,7 @@ describe(KeyRing.name, () => {
           passwordOpsLimit: keysUtils.passwordOpsLimits.min,
           passwordMemLimit: keysUtils.passwordMemLimits.min
         });
-      }).rejects.toThrow(keysErrors.ErrorRootKeysParse);
+      }).rejects.toThrow(keysErrors.ErrorKeyPairParse);
     });
   });
   describe('recovery code', () => {
