@@ -10,6 +10,7 @@ import { Schema } from '@/schema';
 import * as errors from '@/errors';
 import config from '@/config';
 import { promise } from '@/utils/index';
+import * as keysUtils from '@/keys/utils/index';
 
 describe('PolykeyAgent', () => {
   const password = 'password';
@@ -34,6 +35,11 @@ describe('PolykeyAgent', () => {
       password,
       nodePath,
       logger,
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        memoryLocked: false,
+      },
     });
     await expect(pkAgent.destroy()).rejects.toThrow(
       errors.ErrorPolykeyAgentRunning,
@@ -52,6 +58,11 @@ describe('PolykeyAgent', () => {
       password,
       nodePath,
       logger,
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        memoryLocked: false,
+      },
     });
     let nodePathContents = await fs.promises.readdir(nodePath);
     expect(nodePathContents).toContain(config.defaults.statusBase);
@@ -86,6 +97,11 @@ describe('PolykeyAgent', () => {
       password,
       nodePath,
       logger,
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        memoryLocked: false,
+      },
     });
     const status = new Status({
       statusPath,
@@ -116,6 +132,11 @@ describe('PolykeyAgent', () => {
       password,
       nodePath,
       logger,
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        memoryLocked: false,
+      },
     });
     expect(await schema.readVersion()).toBe(config.stateVersion);
     await pkAgent.stop();
@@ -138,6 +159,11 @@ describe('PolykeyAgent', () => {
         password,
         nodePath,
         logger,
+        keyRingConfig: {
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+          memoryLocked: false,
+        },
       }),
     ).rejects.toThrow(errors.ErrorSchemaVersionTooNew);
     // The 0 version will always be too old
@@ -154,6 +180,11 @@ describe('PolykeyAgent', () => {
         password,
         nodePath,
         logger,
+        keyRingConfig: {
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+          memoryLocked: false,
+        },
       }),
     ).rejects.toThrow(errors.ErrorSchemaVersionTooOld);
   });
@@ -165,6 +196,11 @@ describe('PolykeyAgent', () => {
         password,
         nodePath,
         logger,
+        keyRingConfig: {
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+          memoryLocked: false,
+        },
       });
       const prom = promise<CertManagerChangeData>();
       pkAgent.events.on(
@@ -189,6 +225,11 @@ describe('PolykeyAgent', () => {
         password,
         nodePath,
         logger,
+        keyRingConfig: {
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+          memoryLocked: false,
+        },
       });
       const prom = promise<CertManagerChangeData>();
       pkAgent.events.on(
@@ -213,6 +254,11 @@ describe('PolykeyAgent', () => {
         password,
         nodePath,
         logger,
+        keyRingConfig: {
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+          memoryLocked: false,
+        },
       });
       const prom = promise<CertManagerChangeData>();
       pkAgent.events.on(

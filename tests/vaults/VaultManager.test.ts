@@ -498,6 +498,11 @@ describe('VaultManager', () => {
         networkConfig: {
           proxyHost: localHost,
         },
+        keyRingConfig: {
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+          memoryLocked: false,
+        },
       });
       remoteKeynode1Id = remoteKeynode1.keyRing.getNodeId();
       remoteKeynode1IdEncoded = nodesUtils.encodeNodeId(remoteKeynode1Id);
@@ -507,6 +512,11 @@ describe('VaultManager', () => {
         nodePath: path.join(allDataDir, 'remoteKeynode2'),
         networkConfig: {
           proxyHost: localHost,
+        },
+        keyRingConfig: {
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+          memoryLocked: false,
         },
       });
       remoteKeynode2Id = remoteKeynode2.keyRing.getNodeId();
@@ -565,6 +575,7 @@ describe('VaultManager', () => {
         logger,
         passwordOpsLimit: keysUtils.passwordOpsLimits.min,
         passwordMemLimit: keysUtils.passwordMemLimits.min,
+        memoryLocked: false,
       });
       localNodeId = keyRing.getNodeId();
       localNodeIdEncoded = nodesUtils.encodeNodeId(localNodeId);
@@ -1477,6 +1488,11 @@ describe('VaultManager', () => {
         proxyHost: localHost,
       },
       logger,
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        memoryLocked: false,
+      },
     });
     const acl = await ACL.createACL({
       db,
@@ -1502,6 +1518,7 @@ describe('VaultManager', () => {
       logger,
       passwordOpsLimit: keysUtils.passwordOpsLimits.min,
       passwordMemLimit: keysUtils.passwordMemLimits.min,
+      memoryLocked: false,
     });
     await proxy.start({
       tlsConfig: await testsUtils.createTLSConfig(keyRing.keyPair),

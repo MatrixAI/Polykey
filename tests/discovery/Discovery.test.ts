@@ -84,6 +84,7 @@ describe('Discovery', () => {
       logger: logger.getChild('KeyRing'),
       passwordOpsLimit: keysUtils.passwordOpsLimits.min,
       passwordMemLimit: keysUtils.passwordMemLimits.min,
+      memoryLocked: false,
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
@@ -183,6 +184,11 @@ describe('Discovery', () => {
         clientHost: '127.0.0.1' as Host,
       },
       logger: logger.getChild('nodeA'),
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        memoryLocked: false,
+      },
     });
     nodeB = await PolykeyAgent.createPolykeyAgent({
       password: password,
@@ -194,6 +200,11 @@ describe('Discovery', () => {
         clientHost: '127.0.0.1' as Host,
       },
       logger: logger.getChild('nodeB'),
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        memoryLocked: false,
+      },
     });
     await testNodesUtils.nodesConnect(nodeA, nodeB);
     await nodeGraph.setNode(nodeA.keyRing.getNodeId(), {

@@ -8,6 +8,7 @@ import { sysexits } from '@/utils';
 import * as identitiesUtils from '@/identities/utils';
 import TestProvider from '../../identities/TestProvider';
 import * as testUtils from '../../utils';
+import * as keysUtils from '@/keys/utils/index';
 
 describe('search', () => {
   const logger = new Logger('search test', LogLevel.WARN, [
@@ -122,6 +123,11 @@ describe('search', () => {
         clientHost: '127.0.0.1' as Host,
       },
       logger,
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        memoryLocked: false,
+      },
     });
     pkAgent.identitiesManager.registerProvider(provider1);
     pkAgent.identitiesManager.registerProvider(provider2);

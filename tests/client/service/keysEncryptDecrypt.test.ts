@@ -36,6 +36,7 @@ describe('keysEncryptDecrypt', () => {
       logger,
       passwordOpsLimit: keysUtils.passwordOpsLimits.min,
       passwordMemLimit: keysUtils.passwordMemLimits.min,
+      memoryLocked: false,
     });
     const clientService = {
       keysEncrypt: keysEncrypt({

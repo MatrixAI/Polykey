@@ -10,6 +10,7 @@ import * as nodesUtils from '@/nodes/utils';
 import NodeManager from '@/nodes/NodeManager';
 import * as testNodesUtils from '../../nodes/utils';
 import * as testUtils from '../../utils';
+import * as keysUtils from '@/keys/utils/index';
 
 describe('add', () => {
   const logger = new Logger('add test', LogLevel.WARN, [new StreamHandler()]);
@@ -40,6 +41,11 @@ describe('add', () => {
         clientHost: '127.0.0.1' as Host,
       },
       logger,
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        memoryLocked: false,
+      },
     });
     await pkAgent.nodeGraph.stop();
     await pkAgent.nodeGraph.start({ fresh: true });

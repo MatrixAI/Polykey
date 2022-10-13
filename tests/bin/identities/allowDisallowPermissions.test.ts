@@ -13,6 +13,7 @@ import * as claimsUtils from '@/claims/utils';
 import * as identitiesUtils from '@/identities/utils';
 import * as testUtils from '../../utils';
 import TestProvider from '../../identities/TestProvider';
+import * as keysUtils from '@/keys/utils/index';
 
 describe('allow/disallow/permissions', () => {
   const logger = new Logger('allow/disallow/permissions test', LogLevel.WARN, [
@@ -48,6 +49,11 @@ describe('allow/disallow/permissions', () => {
         clientHost: '127.0.0.1' as Host,
       },
       logger,
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        memoryLocked: false,
+      },
     });
     pkAgent.identitiesManager.registerProvider(provider);
     // Set up a gestalt to modify the permissions of
@@ -62,6 +68,11 @@ describe('allow/disallow/permissions', () => {
         clientHost: '127.0.0.1' as Host,
       },
       logger,
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        memoryLocked: false,
+      },
     });
     nodeId = node.keyRing.getNodeId();
     nodeHost = node.proxy.getProxyHost();

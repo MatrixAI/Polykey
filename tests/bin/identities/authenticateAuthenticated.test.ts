@@ -8,6 +8,7 @@ import { sysexits } from '@/utils';
 import * as identitiesUtils from '@/identities/utils';
 import TestProvider from '../../identities/TestProvider';
 import * as testUtils from '../../utils';
+import * as keysUtils from '@/keys/utils/index';
 
 describe('authenticate/authenticated', () => {
   const logger = new Logger('authenticate/authenticated test', LogLevel.WARN, [
@@ -38,6 +39,11 @@ describe('authenticate/authenticated', () => {
         clientHost: '127.0.0.1' as Host,
       },
       logger,
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        memoryLocked: false,
+      },
     });
     testProvider = new TestProvider();
     pkAgent.identitiesManager.registerProvider(testProvider);

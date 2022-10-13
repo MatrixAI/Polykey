@@ -8,6 +8,7 @@ import * as nodesUtils from '@/nodes/utils';
 import { sysexits } from '@/errors';
 import * as testNodesUtils from '../../nodes/utils';
 import * as testUtils from '../../utils';
+import * as keysUtils from '@/keys/utils/index';
 
 describe('ping', () => {
   const logger = new Logger('ping test', LogLevel.WARN, [new StreamHandler()]);
@@ -42,6 +43,11 @@ describe('ping', () => {
       },
       seedNodes: {}, // Explicitly no seed nodes on startup
       logger,
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        memoryLocked: false,
+      },
     });
     // Setting up a remote keynode
     remoteOnline = await PolykeyAgent.createPolykeyAgent({
@@ -54,6 +60,11 @@ describe('ping', () => {
         clientHost: '127.0.0.1' as Host,
       },
       logger,
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        memoryLocked: false,
+      },
     });
     remoteOnlineNodeId = remoteOnline.keyRing.getNodeId();
     await testNodesUtils.nodesConnect(polykeyAgent, remoteOnline);
@@ -68,6 +79,11 @@ describe('ping', () => {
         clientHost: '127.0.0.1' as Host,
       },
       logger,
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        memoryLocked: false,
+      },
     });
     remoteOfflineNodeId = remoteOffline.keyRing.getNodeId();
     await testNodesUtils.nodesConnect(polykeyAgent, remoteOffline);

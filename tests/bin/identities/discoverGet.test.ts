@@ -14,6 +14,7 @@ import * as nodesUtils from '@/nodes/utils';
 import * as testNodesUtils from '../../nodes/utils';
 import TestProvider from '../../identities/TestProvider';
 import * as testUtils from '../../utils';
+import * as keysUtils from '@/keys/utils/index';
 
 describe('discover/get', () => {
   const logger = new Logger('discover/get test', LogLevel.WARN, [
@@ -52,6 +53,11 @@ describe('discover/get', () => {
         clientHost: '127.0.0.1' as Host,
       },
       logger,
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        memoryLocked: false,
+      },
     });
     nodeAId = nodeA.keyRing.getNodeId();
     nodeAHost = nodeA.proxy.getProxyHost();
@@ -66,6 +72,11 @@ describe('discover/get', () => {
         clientHost: '127.0.0.1' as Host,
       },
       logger,
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        memoryLocked: false,
+      },
     });
     nodeBId = nodeB.keyRing.getNodeId();
     await testNodesUtils.nodesConnect(nodeA, nodeB);
@@ -81,6 +92,11 @@ describe('discover/get', () => {
         clientHost: '127.0.0.1' as Host,
       },
       logger,
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        memoryLocked: false,
+      },
     });
     pkAgent.identitiesManager.registerProvider(testProvider);
     // Add node claim to gestalt

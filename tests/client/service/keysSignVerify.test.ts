@@ -37,6 +37,7 @@ describe('keysSignVerify', () => {
       logger,
       passwordOpsLimit: keysUtils.passwordOpsLimits.min,
       passwordMemLimit: keysUtils.passwordMemLimits.min,
+      memoryLocked: false,
     });
     const clientService = {
       keysSign: keysSign({
