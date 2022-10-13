@@ -42,6 +42,7 @@ class CertManager {
     logger = new Logger(this.name),
     subjectAttrsExtra,
     issuerAttrsExtra,
+    now = new Date,
     fresh = false,
   }: {
       db: DB;
@@ -52,6 +53,7 @@ class CertManager {
       logger?: Logger;
       subjectAttrsExtra?: Array<{ [key: string]: Array<string> }>,
       issuerAttrsExtra?: Array<{ [key: string]: Array<string> }>,
+      now?: Date;
       fresh?: boolean;
     }
   ): Promise<CertManager> {
@@ -67,6 +69,7 @@ class CertManager {
     await certManager.start({
       subjectAttrsExtra,
       issuerAttrsExtra,
+      now,
       fresh
     });
     logger.info(`Created ${this.name}`);
@@ -131,10 +134,12 @@ class CertManager {
   public async start({
     subjectAttrsExtra,
     issuerAttrsExtra,
+    now = new Date,
     fresh = false,
   }: {
     subjectAttrsExtra?: Array<{ [key: string]: Array<string> }>,
     issuerAttrsExtra?: Array<{ [key: string]: Array<string> }>,
+    now?: Date;
     fresh?: boolean;
   } = {}): Promise<void> {
     this.logger.info(`Starting ${this.constructor.name}`);
@@ -146,6 +151,7 @@ class CertManager {
     await this.setupCurrentCert(
       subjectAttrsExtra,
       issuerAttrsExtra,
+      now,
     );
     this.logger.info(`Started ${this.constructor.name}`);
   }
@@ -285,6 +291,7 @@ class CertManager {
     password: string,
     duration: number = 31536000,
     subjectAttrsExtra?: Array<{ [key: string]: Array<string> }>,
+    now: Date = new Date,
   ) {
     await this.renewResetLock.withF(async () => {
       this.logger.info('Renewing certificate chain with new key pair');
@@ -302,6 +309,7 @@ class CertManager {
               duration,
               subjectAttrsExtra,
               issuerAttrsExtra: currentCert.subjectName.toJSON(),
+              now,
             });
             // Putting the new certificate into the DB must complete
             // before the key pair rotation completes.
@@ -311,13 +319,13 @@ class CertManager {
           }
         );
       } catch (e) {
-        await this.gcCerts();
+        await this.gcCerts(false, now);
         throw new keysErrors.ErrorCertsRenew(
           'Failed renewing with new key pair',
           { cause: e }
         );
       }
-      await this.gcCerts();
+      await this.gcCerts(false, now);
       if (this.changeCallback != null) {
         await this.changeCallback({
           nodeId: this.keyRing.getNodeId(),
@@ -334,6 +342,7 @@ class CertManager {
   public async renewCertWithCurrentKeyPair(
     duration: number = 31536000,
     subjectAttrsExtra?: Array<{ [key: string]: Array<string> }>,
+    now: Date = new Date,
   ) {
     await this.renewResetLock.withF(async () => {
       this.logger.info('Renewing certificate chain with current key pair');
@@ -346,16 +355,17 @@ class CertManager {
           duration,
           subjectAttrsExtra,
           issuerAttrsExtra: currentCert.subjectName.toJSON(),
+          now,
         });
         await this.putCert(certNew);
       } catch (e) {
-        await this.gcCerts();
+        await this.gcCerts(false, now);
         throw new keysErrors.ErrorCertsRenew(
           'Failed renewing with current key pair',
           { cause: e }
         );
       }
-      await this.gcCerts();
+      await this.gcCerts(false, now);
       if (this.changeCallback != null) {
         await this.changeCallback({
           nodeId: this.keyRing.getNodeId(),
@@ -378,6 +388,7 @@ class CertManager {
     password: string,
     duration: number = 31536000,
     subjectAttrsExtra?: Array<{ [key: string]: Array<string> }>,
+    now: Date = new Date,
   ) {
     await this.renewResetLock.withF(async () => {
       this.logger.info('Resetting certificate chain with new key pair');
@@ -395,6 +406,7 @@ class CertManager {
               duration,
               subjectAttrsExtra,
               issuerAttrsExtra: currentCert.subjectName.toJSON(),
+              now,
             });
             // Putting the new certificate into the DB must complete
             // before the key pair rotation completes.
@@ -404,14 +416,14 @@ class CertManager {
           }
         );
       } catch (e) {
-        await this.gcCerts();
+        await this.gcCerts(false, now);
         throw new keysErrors.ErrorCertsReset(
           'Failed resetting with new key pair',
           { cause: e }
         );
       }
       // Force delete certificates beyond the current certificate
-      await this.gcCerts(true);
+      await this.gcCerts(true, now);
       if (this.changeCallback != null) {
         await this.changeCallback({
           nodeId: this.keyRing.getNodeId(),
@@ -434,6 +446,7 @@ class CertManager {
   public async resetCertWithCurrentKeyPair(
     duration: number = 31536000,
     subjectAttrsExtra?: Array<{ [key: string]: Array<string> }>,
+    now: Date = new Date,
   ) {
     await this.renewResetLock.withF(async () => {
       this.logger.info('Resetting certificate chain with current key pair');
@@ -446,17 +459,18 @@ class CertManager {
           duration,
           subjectAttrsExtra,
           issuerAttrsExtra: currentCert.subjectName.toJSON(),
+          now,
         });
         await this.putCert(certNew);
       } catch (e) {
-        await this.gcCerts();
+        await this.gcCerts(false, now);
         throw new keysErrors.ErrorCertsReset(
           'Failed resetting with current key pair',
           { cause: e }
         );
       }
       // Force delete certificates beyond the current certificate
-      await this.gcCerts(true);
+      await this.gcCerts(true, now);
       if (this.changeCallback != null) {
         await this.changeCallback({
           nodeId: this.keyRing.getNodeId(),
@@ -485,6 +499,7 @@ class CertManager {
   protected async setupCurrentCert(
     subjectAttrsExtra?: Array<{ [key: string]: Array<string> }>,
     issuerAttrsExtra?: Array<{ [key: string]: Array<string> }>,
+    now: Date = new Date,
   ): Promise<void> {
     this.logger.info('Begin current certificate setup');
     let cert: Certificate | undefined;
@@ -504,12 +519,12 @@ class CertManager {
         duration: this.certDuration,
         subjectAttrsExtra,
         issuerAttrsExtra,
+        now,
       });
       await this.putCert(cert);
-      await this.gcCerts();
+      await this.gcCerts(false, now);
     } else {
       this.logger.info('Existing current certificate found');
-      const now = new Date();
       const certPublicKey = keysUtils.certPublicKey(cert)!;
       if (
         !certPublicKey.equals(this.keyRing.keyPair.publicKey) ||
@@ -519,6 +534,7 @@ class CertManager {
         await this.renewCertWithCurrentKeyPair(
           this.certDuration,
           subjectAttrsExtra,
+          now,
         );
       }
     }
@@ -531,6 +547,7 @@ class CertManager {
     duration,
     subjectAttrsExtra,
     issuerAttrsExtra,
+    now = new Date,
   }: {
     subjectKeyPair: {
       publicKey: PublicKey;
@@ -540,6 +557,7 @@ class CertManager {
     duration: number;
     subjectAttrsExtra?: Array<{ [key: string]: Array<string> }>;
     issuerAttrsExtra?: Array<{ [key: string]: Array<string> }>;
+    now?: Date;
   }): Promise<Certificate> {
     let cert: Certificate;
     if (this.workerManager == null) {
@@ -550,6 +568,7 @@ class CertManager {
         duration,
         subjectAttrsExtra,
         issuerAttrsExtra,
+        now,
       });
     } else {
       cert = await this.workerManager.call(async (w) => {
@@ -563,6 +582,7 @@ class CertManager {
           duration,
           subjectAttrsExtra,
           issuerAttrsExtra,
+          now,
         });
         return keysUtils.certFromASN1(Buffer.from(result) as CertificateASN1)!;
       });
@@ -576,11 +596,13 @@ class CertManager {
    * Invalid certificates can happen if key rotation does not succeed.
    * It could mean that the leaf certificate does not match the current key pair.
    */
-  protected async gcCerts(force: boolean = false): Promise<void> {
+  protected async gcCerts(
+    force: boolean = false,
+    now: Date = new Date,
+  ): Promise<void> {
     this.logger.info('Garbage collecting certificates');
     await this.db.withTransactionF(async (tran) => {
       await tran.lock(this.dbCertsPath.join(''));
-      const now = new Date();
       let currentCertFound: boolean = false;
       for await (const [kP, certASN1] of tran.iterator(this.dbCertsPath, {
         reverse: true,

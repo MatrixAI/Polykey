@@ -26,40 +26,38 @@ describe('keys/utils/x509', () => {
       const nowS = new Date(now.getTime() - (now.getTime() % 1000));
       // The current time plus duration must be lower than the 2050 time
       fc.pre(new Date(nowS.getTime() + duration * 1000) < new Date('2050'));
-      jest.useFakeTimers();
-      jest.setSystemTime(nowS);
-      try {
-        const cert = await x509.generateCertificate({
-          certId: certIdGenerator(),
-          subjectKeyPair,
-          issuerPrivateKey: issuerKeyPair.privateKey,
-          duration,
-        });
-        expect(cert.notBefore.getTime()).toBe(nowS.getTime());
-        expect(cert.notAfter.getTime()).toBe(nowS.getTime() + duration * 1000);
-        // Certificate is equal to itself
-        expect(x509.certEqual(cert, cert)).toBe(true);
-        // Certificate public key is equal to the subject public key
-        expect(x509.certPublicKey(cert)).toStrictEqual(
-          subjectKeyPair.publicKey,
-        );
-        // Certificate node ID is equal to the subject public key node ID
-        expect(x509.certNodeId(cert)).toStrictEqual(
-          asymmetric.publicKeyToNodeId(subjectKeyPair.publicKey),
-        );
-        // The cert is not self-issued
-        expect(x509.certIssuedBy(cert, cert)).toBe(false);
-        // The certificate is signed by the issuer
-        expect(await x509.certSignedBy(cert, issuerKeyPair.publicKey)).toBe(
-          true,
-        );
-        // The certificate has a node signature and it is valid
-        expect(await x509.certNodeSigned(cert)).toBe(true);
-        // It is not expired now
-        expect(x509.certNotExpiredBy(cert, nowS)).toBe(true);
-      } finally {
-        jest.useRealTimers();
-      }
+      const cert = await x509.generateCertificate({
+        certId: certIdGenerator(),
+        subjectKeyPair,
+        issuerPrivateKey: issuerKeyPair.privateKey,
+        duration,
+        now
+      });
+      expect(cert.notBefore.getTime()).toBe(nowS.getTime());
+      expect(cert.notAfter.getTime()).toBe(nowS.getTime() + duration * 1000);
+      // Certificate is equal to itself
+      expect(x509.certEqual(cert, cert)).toBe(true);
+      // Certificate public key is equal to the subject public key
+      expect(x509.certPublicKey(cert)).toStrictEqual(
+        subjectKeyPair.publicKey,
+      );
+      // Certificate node ID is equal to the subject public key node ID
+      expect(x509.certNodeId(cert)).toStrictEqual(
+        asymmetric.publicKeyToNodeId(subjectKeyPair.publicKey),
+      );
+      // The cert is not self-issued
+      expect(x509.certIssuedBy(cert, cert)).toBe(false);
+      // The certificate is signed by the issuer
+      expect(await x509.certSignedBy(cert, issuerKeyPair.publicKey)).toBe(
+        true,
+      );
+      // The certificate has a node signature and it is valid
+      expect(await x509.certNodeSigned(cert)).toBe(true);
+      // It is not expired now
+      expect(x509.certNotExpiredBy(cert, nowS)).toBe(true);
+      // It is also not expired even if we pass the original ms resolution
+      // because it truncates internally
+      expect(x509.certNotExpiredBy(cert, now)).toBe(true);
     },
   );
   testProp(
@@ -119,37 +117,32 @@ describe('keys/utils/x509', () => {
       const now = new Date();
       const nowS = new Date(now.getTime() - (now.getTime() % 1000));
       const nowTime = nowS.getTime();
-      jest.useFakeTimers();
-      jest.setSystemTime(nowS);
-      try {
-        const cert = await x509.generateCertificate({
-          certId: certIdGenerator(),
-          subjectKeyPair,
-          issuerPrivateKey: subjectKeyPair.privateKey,
-          duration,
-        });
-        // It not expired now
-        expect(x509.certNotExpiredBy(cert)).toBe(true);
-        // Is not expired now with explicit now
+      const cert = await x509.generateCertificate({
+        certId: certIdGenerator(),
+        subjectKeyPair,
+        issuerPrivateKey: subjectKeyPair.privateKey,
+        duration,
+        now,
+      });
+      // It not expired now
+      expect(x509.certNotExpiredBy(cert)).toBe(true);
+      // Is not expired now with explicit now
+      expect(x509.certNotExpiredBy(cert, nowS)).toBe(true);
+      // Only if duration is greater than 0
+      if (duration > 0) {
+        // Is not expired within the duration
+        nowS.setTime(nowTime + (duration - 1) * 1000);
         expect(x509.certNotExpiredBy(cert, nowS)).toBe(true);
-        // Only if duration is greater than 0
-        if (duration > 0) {
-          // Is not expired within the duration
-          nowS.setTime(nowTime + (duration - 1) * 1000);
-          expect(x509.certNotExpiredBy(cert, nowS)).toBe(true);
-        }
-        // Is not expired at the duration
-        nowS.setTime(nowTime + duration * 1000);
-        expect(x509.certNotExpiredBy(cert, nowS)).toBe(true);
-        // Is expired after the duration
-        nowS.setTime(nowTime + (duration + 1) * 1000);
-        expect(x509.certNotExpiredBy(cert, nowS)).toBe(false);
-        // Is expired before the duration
-        nowS.setTime(nowTime - 1 * 1000);
-        expect(x509.certNotExpiredBy(cert, nowS)).toBe(false);
-      } finally {
-        jest.useRealTimers();
       }
+      // Is not expired at the duration
+      nowS.setTime(nowTime + duration * 1000);
+      expect(x509.certNotExpiredBy(cert, nowS)).toBe(true);
+      // Is expired after the duration
+      nowS.setTime(nowTime + (duration + 1) * 1000);
+      expect(x509.certNotExpiredBy(cert, nowS)).toBe(false);
+      // Is expired before the duration
+      nowS.setTime(nowTime - 1 * 1000);
+      expect(x509.certNotExpiredBy(cert, nowS)).toBe(false);
     },
   );
   testProp(

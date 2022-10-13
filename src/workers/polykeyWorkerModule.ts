@@ -125,6 +125,7 @@ const polykeyWorker = {
     duration,
     subjectAttrsExtra,
     issuerAttrsExtra,
+    now = new Date,
   }: {
     certId: ArrayBuffer;
     subjectKeyPair: {
@@ -135,6 +136,7 @@ const polykeyWorker = {
     duration: number;
     subjectAttrsExtra?: Array<{ [key: string]: Array<string> }>;
     issuerAttrsExtra?: Array<{ [key: string]: Array<string> }>;
+    now?: Date;
   }): Promise<TransferDescriptor<ArrayBuffer>> {
     certId = IdInternal.create<CertId>(certId);
     subjectKeyPair.publicKey = Buffer.from(subjectKeyPair.publicKey);
@@ -147,6 +149,7 @@ const polykeyWorker = {
       duration,
       subjectAttrsExtra,
       issuerAttrsExtra,
+      now
     });
     return Transfer(cert.rawData);
   },
