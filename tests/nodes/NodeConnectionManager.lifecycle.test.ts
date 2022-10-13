@@ -101,6 +101,11 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
         proxyHost: serverHost,
       },
       logger: logger.getChild('remoteNode1'),
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        memoryLocked: false,
+      },
     });
     remoteNodeId1 = remoteNode1.keyRing.getNodeId();
     remoteNodeIdString1 = remoteNodeId1.toString() as NodeIdString;
@@ -111,6 +116,11 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
         proxyHost: serverHost,
       },
       logger: logger.getChild('remoteNode2'),
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        memoryLocked: false,
+      },
     });
     remoteNodeId2 = remoteNode2.keyRing.getNodeId();
   });
@@ -134,6 +144,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       logger: logger.getChild('keyRing'),
       passwordOpsLimit: keysUtils.passwordOpsLimits.min,
       passwordMemLimit: keysUtils.passwordMemLimits.min,
+      memoryLocked: false,
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({

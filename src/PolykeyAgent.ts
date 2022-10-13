@@ -37,6 +37,7 @@ import * as utils from './utils';
 import * as keysUtils from './keys/utils';
 import * as nodesUtils from './nodes/utils';
 import TaskManager from './tasks/TaskManager';
+import { PasswordMemLimit, PasswordOpsLimit } from './keys/types';
 
 type NetworkConfig = {
   forwardHost?: Host;
@@ -111,6 +112,9 @@ class PolykeyAgent {
       recoveryCode?: RecoveryCode;
       privateKey?: PrivateKey;
       privateKeyPath?: string;
+      passwordOpsLimit?: PasswordOpsLimit,
+      passwordMemLimit?: PasswordMemLimit,
+      memoryLocked?: boolean;
     };
     certManagerConfig?: {
       certDuration?: number,

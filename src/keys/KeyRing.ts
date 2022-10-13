@@ -39,6 +39,7 @@ class KeyRing {
     workerManager,
     passwordOpsLimit,
     passwordMemLimit,
+    memoryLocked = true,
     fs = require('fs'),
     logger = new Logger(this.name),
     ...startOptions
@@ -48,6 +49,7 @@ class KeyRing {
       workerManager?: PolykeyWorkerManagerInterface;
       passwordOpsLimit?: PasswordOpsLimit;
       passwordMemLimit?: PasswordMemLimit;
+      memoryLocked?: boolean;
       fs?: FileSystem;
       logger?: Logger;
       fresh?: boolean;
@@ -68,6 +70,7 @@ class KeyRing {
       workerManager,
       passwordOpsLimit,
       passwordMemLimit,
+      memoryLocked,
       fs,
       logger,
     });
@@ -80,6 +83,7 @@ class KeyRing {
   public readonly publicKeyPath: string;
   public readonly privateKeyPath: string;
   public readonly dbKeyPath: string;
+  public readonly memoryLocked: boolean;
 
   protected logger: Logger;
   protected fs: FileSystem;
@@ -100,6 +104,7 @@ class KeyRing {
     workerManager,
     passwordOpsLimit,
     passwordMemLimit,
+    memoryLocked,
     fs,
     logger,
   }: {
@@ -107,6 +112,7 @@ class KeyRing {
     workerManager?: PolykeyWorkerManagerInterface;
     passwordOpsLimit?: PasswordOpsLimit;
     passwordMemLimit?: PasswordMemLimit;
+    memoryLocked: boolean;
     fs: FileSystem;
     logger: Logger;
   }) {
@@ -116,6 +122,7 @@ class KeyRing {
     this.fs = fs;
     this.passwordOpsLimit = passwordOpsLimit;
     this.passwordMemLimit = passwordMemLimit;
+    this.memoryLocked = memoryLocked;
     this.publicKeyPath = path.join(keysPath, 'public.jwk');
     this.privateKeyPath = path.join(keysPath, 'private.jwk');
     this.dbKeyPath = path.join(keysPath, 'db.jwk');
@@ -164,7 +171,7 @@ class KeyRing {
     };
     if (recoveryCode != null) {
       const recoveryCodeData = Buffer.from(recoveryCode, 'utf-8');
-      bufferLock(recoveryCodeData);
+      bufferLock(recoveryCodeData, this.memoryLocked);
       this._recoveryCodeData = recoveryCodeData as RecoveryCodeLocked;
     }
     this.logger.info(`Started ${this.constructor.name}`);
@@ -182,10 +189,6 @@ class KeyRing {
       bufferUnlock(this._recoveryCodeData);
     }
     delete this._recoveryCodeData;
-    if (this._dbKey != null) {
-      bufferUnlock(this._dbKey);
-    }
-    delete this._dbKey;
     if (this.passwordHash != null) {
       bufferUnlock(this.passwordHash.hash);
       bufferUnlock(this.passwordHash.salt);
@@ -196,6 +199,7 @@ class KeyRing {
 
   public async destroy() {
     this.logger.info(`Destroying ${this.constructor.name}`);
+    delete this._dbKey;
     await this.fs.promises.rm(this.keysPath, {
       force: true,
       recursive: true,
@@ -355,7 +359,7 @@ class KeyRing {
         bufferUnlock(this._keyPair!.secretKey);
         this._keyPair = keyPair;
         const recoveryCodeData = Buffer.from(recoveryCode, 'utf-8');
-        bufferLock(recoveryCodeData);
+        bufferLock(recoveryCodeData, this.memoryLocked);
         if (this._recoveryCodeData != null) bufferUnlock(this._recoveryCodeData);
         this._recoveryCodeData = recoveryCodeData as RecoveryCodeLocked;
         this.logger.info('Rotated root key pair');
@@ -507,9 +511,9 @@ class KeyRing {
         const privateKey = options.privateKey;
         const publicKey = keysUtils.publicKeyFromPrivateKeyEd25519(privateKey);
         const keyPair = keysUtils.makeKeyPair(publicKey, privateKey);
-        bufferLock(keyPair.publicKey);
-        bufferLock(keyPair.privateKey);
-        bufferLock(keyPair.secretKey);
+        bufferLock(keyPair.publicKey, this.memoryLocked);
+        bufferLock(keyPair.privateKey, this.memoryLocked);
+        bufferLock(keyPair.secretKey, this.memoryLocked);
         rootKeyPair = keyPair as KeyPairLocked;
         await this.writeKeyPair(rootKeyPair, options.password);
         return [rootKeyPair, undefined];
@@ -521,9 +525,9 @@ class KeyRing {
         );
         const publicKey = keysUtils.publicKeyFromPrivateKeyEd25519(privateKey);
         const keyPair = keysUtils.makeKeyPair(publicKey, privateKey);
-        bufferLock(keyPair.publicKey);
-        bufferLock(keyPair.privateKey);
-        bufferLock(keyPair.secretKey);
+        bufferLock(keyPair.publicKey, this.memoryLocked);
+        bufferLock(keyPair.privateKey, this.memoryLocked);
+        bufferLock(keyPair.secretKey, this.memoryLocked);
         rootKeyPair = keyPair as KeyPairLocked;
         await this.writeKeyPair(rootKeyPair, options.password);
         return [rootKeyPair, undefined];
@@ -609,8 +613,8 @@ class KeyRing {
     );
     const keyPair = keysUtils.makeKeyPair(publicKey, privateKey);
     // Private key is already locked
-    bufferLock(keyPair.publicKey);
-    bufferLock(keyPair.secretKey);
+    bufferLock(keyPair.publicKey, this.memoryLocked);
+    bufferLock(keyPair.secretKey, this.memoryLocked);
     return keyPair as KeyPairLocked;
   }
 
@@ -648,7 +652,7 @@ class KeyRing {
         `Public key path ${publicKeyPath} is not a valid public key`
       );
     }
-    bufferLock(publicKey);
+    bufferLock(publicKey, this.memoryLocked);
     return publicKey;
   }
 
@@ -688,7 +692,7 @@ class KeyRing {
           `Private key path ${privateKeyPath} is not a valid JWK`
         );
       }
-      bufferLock(privateKey);
+      bufferLock(privateKey, this.memoryLocked);
       return privateKey;
     } else if ('ciphertext' in privateObject) {
       const privateJWK = keysUtils.unwrapWithPassword(
@@ -708,7 +712,7 @@ class KeyRing {
           `Private key path ${privateKeyPath} is not a valid private key`
         );
       }
-      bufferLock(privateKey);
+      bufferLock(privateKey, this.memoryLocked);
       return privateKey;
     } else {
       throw new keysErrors.ErrorKeyPairParse(
@@ -790,9 +794,9 @@ class KeyRing {
     } else {
       keyPair = keysUtils.generateKeyPair();
     }
-    bufferLock(keyPair.publicKey);
-    bufferLock(keyPair.privateKey);
-    bufferLock(keyPair.secretKey);
+    bufferLock(keyPair.publicKey, this.memoryLocked);
+    bufferLock(keyPair.privateKey, this.memoryLocked);
+    bufferLock(keyPair.secretKey, this.memoryLocked);
     return keyPair as KeyPairLocked;
   }
 
@@ -907,7 +911,7 @@ class KeyRing {
         `DB key path ${dbKeyPath} is not a valid key`
       );
     }
-    bufferLock(dbKey);
+    bufferLock(dbKey, this.memoryLocked);
     return dbKey;
   }
 
@@ -941,7 +945,7 @@ class KeyRing {
    */
   protected generateDbKey(): BufferLocked<Key> {
     const key = keysUtils.generateKey();
-    bufferLock(key);
+    bufferLock(key, this.memoryLocked);
     return key;
   }
 
@@ -978,8 +982,8 @@ class KeyRing {
         return result as [PasswordHash, PasswordSalt];
       });
     }
-    bufferLock(hash);
-    bufferLock(salt);
+    bufferLock(hash, this.memoryLocked);
+    bufferLock(salt, this.memoryLocked);
     return [hash, salt];
   }
 }

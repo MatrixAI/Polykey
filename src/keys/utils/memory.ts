@@ -9,10 +9,16 @@ import * as keysErrors from '../errors';
  */
 function bufferLock<T extends Buffer>(
   data: T,
+  safeLock: boolean,
 ): asserts data is BufferLocked<T> {
-  if (sodium.sodium_mlock(data) === -1) {
+  try {
+    if (safeLock && sodium.sodium_mlock(data) === -1) {
+      throw new keysErrors.ErrorBufferLock();
+    }
+  } catch {
     throw new keysErrors.ErrorBufferLock();
   }
+
 }
 
 /**
