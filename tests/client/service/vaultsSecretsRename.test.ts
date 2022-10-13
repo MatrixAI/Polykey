@@ -21,6 +21,7 @@ import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as clientUtils from '@/client/utils/utils';
 import * as vaultsUtils from '@/vaults/utils';
 import * as testUtils from '../../utils';
+import * as keysUtils from '@/keys/utils/index';
 
 describe('vaultsSecretsRename', () => {
   const logger = new Logger('vaultsSecretsRename test', LogLevel.WARN, [
@@ -44,6 +45,8 @@ describe('vaultsSecretsRename', () => {
       password,
       keysPath,
       logger,
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({

@@ -21,6 +21,7 @@ import * as secretsPB from '@/proto/js/polykey/v1/secrets/secrets_pb';
 import * as clientUtils from '@/client/utils/utils';
 import * as vaultsUtils from '@/vaults/utils';
 import * as testUtils from '../../utils';
+import * as keysUtils from '@/keys/utils/index';
 
 describe('vaultsSecretsEdit', () => {
   const logger = new Logger('vaultsSecretsEdit test', LogLevel.WARN, [
@@ -44,6 +45,8 @@ describe('vaultsSecretsEdit', () => {
       password,
       keysPath,
       logger,
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({

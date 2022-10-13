@@ -71,6 +71,8 @@ describe(`${NodeManager.name} test`, () => {
       password,
       keysPath,
       logger,
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
     });
 
     proxy = new Proxy({

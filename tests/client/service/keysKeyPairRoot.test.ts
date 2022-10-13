@@ -34,6 +34,8 @@ describe('keysKeyPairRoot', () => {
       password,
       keysPath,
       logger,
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
     });
     const clientService = {
       keysKeyPairRoot: keysKeyPairRoot({
