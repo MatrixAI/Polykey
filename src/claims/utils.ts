@@ -10,7 +10,7 @@ import type { PublicKey, PrivateKey } from '../keys/types';
 import type { POJO } from '../types';
 import type { GeneralJWSInput } from 'jose';
 import type { DefinedError } from 'ajv';
-import { md } from 'node-forge';
+import sodium from 'sodium-native';
 import canonicalize from 'canonicalize';
 import { GeneralSign, generalVerify, generateKeyPair, base64url } from 'jose';
 import {
@@ -22,6 +22,8 @@ import * as claimsErrors from './errors';
 import { createClaimIdGenerator, encodeClaimId, decodeClaimId } from '../ids';
 import * as nodesPB from '../proto/js/polykey/v1/nodes/nodes_pb';
 import { importPublicKey, importPrivateKey } from '../keys/utils';
+import { CryptoKey } from '@peculiar/webcrypto';
+import { isCryptoKey } from 'util/types';
 
 /**
  * Helper function to generate a JWS containing the contents of the claim to be
@@ -59,6 +61,10 @@ async function createClaim({
   const canonicalizedPayload = canonicalize(payload);
   const byteEncoder = new TextEncoder();
   const claim = new GeneralSign(byteEncoder.encode(canonicalizedPayload));
+  const key = await importPrivateKey(privateKey);
+  console.log(key);
+  console.log(key instanceof CryptoKey);
+  console.log(isCryptoKey(key));
   claim
     .addSignature(await importPrivateKey(privateKey))
     .setProtectedHeader({ alg: alg, kid: kid });
@@ -142,15 +148,17 @@ async function signIntermediaryClaim({
  * entirety of the provided claim.
  */
 function hashClaim(claim: ClaimEncoded): string {
-  const hash = md.sha256.create();
   // Make the payload contents deterministic
   const canonicalizedClaim = canonicalize(claim);
   // Should never be reached, but just to be type safe (can return undefined)
   if (canonicalizedClaim == null) {
     throw new claimsErrors.ErrorClaimsUndefinedCanonicalizedClaim();
   }
-  hash.update(canonicalizedClaim);
-  return hash.digest().toHex();
+  const inBuffer = Buffer.from(canonicalizedClaim);
+  const outBuffer = Buffer.alloc(256, 0);
+  sodium.crypto_hash_sha256(outBuffer, inBuffer);
+  console.log(outBuffer.toString('hex'));
+  return outBuffer.toString('hex');
 }
 
 /**
