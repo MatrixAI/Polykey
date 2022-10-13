@@ -1,10 +1,8 @@
 import type { Summary } from 'benny/lib/internal/common-types';
 import type { CertificateASN1 } from '@/keys/types';
 import b from 'benny';
-import crypto from 'crypto';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { Transfer } from 'threads';
-import { WorkerManager, PolykeyWorkerModule, utils as workersUtils } from '@/workers';
+import * as workersUtils from '@/workers/utils';
 import * as keysUtils from '@/keys/utils';
 import { summaryName, suiteCommon } from '../../utils';
 
