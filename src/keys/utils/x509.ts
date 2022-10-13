@@ -129,6 +129,7 @@ async function generateCertificate({
   duration,
   subjectAttrsExtra = [],
   issuerAttrsExtra = [],
+  now = new Date(),
 }: {
   certId: CertId;
   subjectKeyPair: {
@@ -139,6 +140,7 @@ async function generateCertificate({
   duration: number;
   subjectAttrsExtra?: Array<{ [key: string]: Array<string> }>;
   issuerAttrsExtra?: Array<{ [key: string]: Array<string> }>;
+  now?: Date,
 }): Promise<Certificate> {
   const subjectPublicKey = subjectKeyPair.publicKey;
   const subjectPublicCryptoKey = await importPublicKey(
@@ -151,7 +153,6 @@ async function generateCertificate({
   if (duration < 0) {
     throw new RangeError('`duration` must be positive');
   }
-  const now = new Date();
   // X509 `UTCTime` format only has resolution of seconds
   // this truncates to second resolution
   const notBeforeDate = new Date(now.getTime() - (now.getTime() % 1000));
@@ -346,7 +347,9 @@ function certIssuedBy(subject: Certificate, issuer: Certificate): boolean {
  * The time range is exclusive i.e. not-before and not-after.
  */
 function certNotExpiredBy(cert: Certificate, now: Date = new Date()): boolean {
-  const time = now.getTime();
+  // X509 `UTCTime` format only has resolution of seconds
+  // this truncates to second resolution
+  const time = now.getTime() - (now.getTime() % 1000);
   return cert.notBefore.getTime() <= time && time <= cert.notAfter.getTime();
 }
 
