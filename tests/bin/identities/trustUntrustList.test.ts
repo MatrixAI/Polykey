@@ -12,6 +12,7 @@ import * as claimsUtils from '@/claims/utils';
 import * as identitiesUtils from '@/identities/utils';
 import TestProvider from '../../identities/TestProvider';
 import * as testUtils from '../../utils';
+import * as keysUtils from '@/keys/utils/index';
 
 describe('trust/untrust/list', () => {
   const logger = new Logger('trust/untrust/list test', LogLevel.WARN, [
@@ -47,6 +48,11 @@ describe('trust/untrust/list', () => {
         clientHost: '127.0.0.1' as Host,
       },
       logger,
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        memoryLocked: false,
+      },
     });
     pkAgent.identitiesManager.registerProvider(provider);
     // Set up a gestalt to trust
@@ -61,6 +67,11 @@ describe('trust/untrust/list', () => {
         clientHost: '127.0.0.1' as Host,
       },
       logger,
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        memoryLocked: false,
+      },
     });
     nodeId = node.keyRing.getNodeId();
     nodeHost = node.proxy.getProxyHost();

@@ -42,6 +42,7 @@ describe('agentLockall', () => {
       logger,
       passwordOpsLimit: keysUtils.passwordOpsLimits.min,
       passwordMemLimit: keysUtils.passwordMemLimits.min,
+      memoryLocked: false,
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({

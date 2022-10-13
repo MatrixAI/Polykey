@@ -65,6 +65,7 @@ describe('notificationsSend', () => {
       logger,
       passwordOpsLimit: keysUtils.passwordOpsLimits.min,
       passwordMemLimit: keysUtils.passwordMemLimits.min,
+      memoryLocked: false,
     });
     keyRing = await KeyRing.createKeyRing({
       password,
@@ -72,6 +73,7 @@ describe('notificationsSend', () => {
       logger,
       passwordOpsLimit: keysUtils.passwordOpsLimits.min,
       passwordMemLimit: keysUtils.passwordMemLimits.min,
+      memoryLocked: false,
     });
     senderId = senderKeyRing.getNodeId();
     const dbPath = path.join(dataDir, 'db');

@@ -14,6 +14,7 @@ import config from '@/config';
 import { ClientServiceService } from '@/proto/js/polykey/v1/client_service_grpc_pb';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as clientUtils from '@/client/utils/utils';
+import * as keysUtils from '@/keys/utils/index';
 
 describe('agentStop', () => {
   const logger = new Logger('agentStop test', LogLevel.WARN, [
@@ -37,6 +38,11 @@ describe('agentStop', () => {
       password,
       nodePath,
       logger,
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        memoryLocked: false,
+      },
     });
     const clientService = {
       agentStop: agentStop({

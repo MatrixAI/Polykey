@@ -7,6 +7,7 @@ import PolykeyAgent from '@/PolykeyAgent';
 import * as nodesUtils from '@/nodes/utils';
 import * as testNodesUtils from '../../nodes/utils';
 import * as testUtils from '../../utils';
+import * as keysUtils from '@/keys/utils/index';
 
 describe('claim', () => {
   const logger = new Logger('claim test', LogLevel.WARN, [new StreamHandler()]);
@@ -34,6 +35,11 @@ describe('claim', () => {
       },
       seedNodes: {}, // Explicitly no seed nodes on startup
       logger,
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        memoryLocked: false,
+      },
     });
     localId = pkAgent.keyRing.getNodeId();
     // Setting up a remote keynode
@@ -48,6 +54,11 @@ describe('claim', () => {
       },
       seedNodes: {}, // Explicitly no seed nodes on startup
       logger,
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        memoryLocked: false,
+      },
     });
     remoteId = remoteNode.keyRing.getNodeId();
     remoteIdEncoded = nodesUtils.encodeNodeId(remoteId);

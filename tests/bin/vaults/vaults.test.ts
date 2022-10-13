@@ -11,6 +11,7 @@ import sysexits from '@/utils/sysexits';
 import NotificationsManager from '@/notifications/NotificationsManager';
 import * as testNodesUtils from '../../nodes/utils';
 import * as testUtils from '../../utils';
+import * as keysUtils from '@/keys/utils/index';
 
 describe('CLI vaults', () => {
   const password = 'password';
@@ -58,6 +59,11 @@ describe('CLI vaults', () => {
       password,
       nodePath: dataDir,
       logger: logger,
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        memoryLocked: false,
+      },
     });
     await polykeyAgent.gestaltGraph.setNode(node1);
     await polykeyAgent.gestaltGraph.setNode(node2);
@@ -231,6 +237,11 @@ describe('CLI vaults', () => {
           proxyHost: '127.0.0.1' as Host,
         },
         logger: logger,
+        keyRingConfig: {
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+          memoryLocked: false,
+        },
       });
       const vaultId = await targetPolykeyAgent.vaultManager.createVault(
         vaultName,
@@ -822,6 +833,11 @@ describe('CLI vaults', () => {
             nodePath: path.join(dataDir, 'remoteOnline'),
             networkConfig: {
               proxyHost: '127.0.0.1' as Host,
+            },
+            keyRingConfig: {
+              passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+              passwordMemLimit: keysUtils.passwordMemLimits.min,
+              memoryLocked: false,
             },
           });
           const remoteOnlineNodeId = remoteOnline.keyRing.getNodeId();

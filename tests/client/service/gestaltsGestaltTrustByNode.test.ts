@@ -72,6 +72,11 @@ describe('gestaltsGestaltTrustByNode', () => {
         clientHost: '127.0.0.1' as Host,
       },
       logger,
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        memoryLocked: false,
+      },
     });
     nodeId = nodesUtils.encodeNodeId(node.keyRing.getNodeId());
     node.identitiesManager.registerProvider(testProvider);
@@ -126,6 +131,7 @@ describe('gestaltsGestaltTrustByNode', () => {
       logger,
       passwordOpsLimit: keysUtils.passwordOpsLimits.min,
       passwordMemLimit: keysUtils.passwordMemLimits.min,
+      memoryLocked: false,
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
