@@ -148,6 +148,11 @@ describe(`${NodeConnectionManager.name} general test`, () => {
         forwardHost: localHost,
       },
       logger: logger.getChild('remoteNode1'),
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        memoryLocked: false,
+      },
     });
     remoteNodeId1 = remoteNode1.keyRing.getNodeId();
     remoteNode2 = await PolykeyAgent.createPolykeyAgent({
@@ -160,6 +165,11 @@ describe(`${NodeConnectionManager.name} general test`, () => {
         forwardHost: localHost,
       },
       logger: logger.getChild('remoteNode2'),
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        memoryLocked: false,
+      },
     });
     remoteNodeId2 = remoteNode2.keyRing.getNodeId();
   });
@@ -183,6 +193,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       logger: logger.getChild('keyRing'),
       passwordOpsLimit: keysUtils.passwordOpsLimits.min,
       passwordMemLimit: keysUtils.passwordMemLimits.min,
+      memoryLocked: false,
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
@@ -305,6 +316,11 @@ describe(`${NodeConnectionManager.name} general test`, () => {
             forwardHost: localHost,
           },
           logger: nodeConnectionManagerLogger,
+          keyRingConfig: {
+            passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+            passwordMemLimit: keysUtils.passwordMemLimits.min,
+            memoryLocked: false,
+          },
         });
         await nodeGraph.setNode(server.keyRing.getNodeId(), {
           host: server.proxy.getProxyHost(),
@@ -347,6 +363,11 @@ describe(`${NodeConnectionManager.name} general test`, () => {
             forwardHost: localHost,
           },
           logger: nodeConnectionManagerLogger,
+          keyRingConfig: {
+            passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+            passwordMemLimit: keysUtils.passwordMemLimits.min,
+            memoryLocked: false,
+          },
         });
         await nodeGraph.setNode(server.keyRing.getNodeId(), {
           host: server.proxy.getProxyHost(),
@@ -384,6 +405,11 @@ describe(`${NodeConnectionManager.name} general test`, () => {
           agentHost: localHost,
           clientHost: localHost,
           forwardHost: localHost,
+        },
+        keyRingConfig: {
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+          memoryLocked: false,
         },
       });
       nodeConnectionManager = new NodeConnectionManager({

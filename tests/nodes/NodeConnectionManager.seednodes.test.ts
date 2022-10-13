@@ -107,6 +107,11 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
         proxyHost: '127.0.0.1' as Host,
       },
       logger: logger.getChild('remoteNode1'),
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        memoryLocked: false,
+      },
     });
     remoteNodeId1 = remoteNode1.keyRing.getNodeId();
     remoteNode2 = await PolykeyAgent.createPolykeyAgent({
@@ -116,6 +121,11 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
         proxyHost: '127.0.0.1' as Host,
       },
       logger: logger.getChild('remoteNode2'),
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        memoryLocked: false,
+      },
     });
     remoteNodeId2 = remoteNode2.keyRing.getNodeId();
   });
@@ -146,6 +156,7 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
       logger: logger.getChild('keyRing'),
       passwordOpsLimit: keysUtils.passwordOpsLimits.min,
       passwordMemLimit: keysUtils.passwordMemLimits.min,
+      memoryLocked: false,
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
@@ -504,6 +515,11 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
           },
           seedNodes,
           logger,
+          keyRingConfig: {
+            passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+            passwordMemLimit: keysUtils.passwordMemLimits.min,
+            memoryLocked: false,
+          },
         });
         node2 = await PolykeyAgent.createPolykeyAgent({
           nodePath: path.join(dataDir, 'node2'),
@@ -516,6 +532,11 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
           },
           seedNodes,
           logger,
+          keyRingConfig: {
+            passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+            passwordMemLimit: keysUtils.passwordMemLimits.min,
+            memoryLocked: false,
+          },
         });
 
         await node1.nodeManager.syncNodeGraph(true, 2000);
@@ -589,6 +610,11 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
           },
           seedNodes,
           logger,
+          keyRingConfig: {
+            passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+            passwordMemLimit: keysUtils.passwordMemLimits.min,
+            memoryLocked: false,
+          },
         });
 
         // Reset all the refresh bucket timers to a distinct time
