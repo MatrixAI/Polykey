@@ -32,43 +32,28 @@ class ErrorCertManagerDestroyed<T> extends ErrorKeys<T> {
   exitCode = sysexits.USAGE;
 }
 
-class ErrorKeysPasswordInvalid<T> extends ErrorKeys<T> {
-  static description = 'Password has invalid format';
-  exitCode = sysexits.USAGE;
-}
-
-class ErrorKeysRecoveryCodeInvalid<T> extends ErrorKeys<T> {
-  static description = 'Recovery code has invalid format';
-  exitCode = sysexits.USAGE;
-}
-
 class ErrorKeysRecoveryCodeIncorrect<T> extends ErrorKeys<T> {
   static description =
     "Recovered key pair's public key does not match the root public key";
   exitCode = sysexits.USAGE;
 }
 
-class ErrorKeysPrivateKeyInvalid<T> extends ErrorKeys<T> {
-  static description = 'Private key has invalid format';
-  exitCode = sysexits.USAGE;
-}
-
-class ErrorRootKeysRead<T> extends ErrorKeys<T> {
+class ErrorKeyPairRead<T> extends ErrorKeys<T> {
   static description = 'Unable to read root keypair';
   exitCode = sysexits.IOERR;
 }
 
-class ErrorRootKeysParse<T> extends ErrorKeys<T> {
+class ErrorKeyPairParse<T> extends ErrorKeys<T> {
   static description = 'Unable to parse root keypair';
   exitCode = sysexits.IOERR;
 }
 
-class ErrorRootKeysWrite<T> extends ErrorKeys<T> {
+class ErrorKeyPairWrite<T> extends ErrorKeys<T> {
   static description = 'Unable to write root keypair';
   exitCode = sysexits.IOERR;
 }
 
-class ErrorRootKeysRotate<T> extends ErrorKeys<T> {
+class ErrorKeyPairRotate<T> extends ErrorKeys<T> {
   static description = 'Unable to rotate root keypair';
   exitCode = sysexits.IOERR;
 }
@@ -116,14 +101,11 @@ export {
   ErrorCertManagerRunning,
   ErrorCertManagerNotRunning,
   ErrorCertManagerDestroyed,
-  ErrorKeysPasswordInvalid,
-  ErrorKeysRecoveryCodeInvalid,
   ErrorKeysRecoveryCodeIncorrect,
-  ErrorKeysPrivateKeyInvalid,
-  ErrorRootKeysRead,
-  ErrorRootKeysParse,
-  ErrorRootKeysWrite,
-  ErrorRootKeysRotate,
+  ErrorKeyPairRead,
+  ErrorKeyPairParse,
+  ErrorKeyPairWrite,
+  ErrorKeyPairRotate,
   ErrorDBKeyRead,
   ErrorDBKeyWrite,
   ErrorDBKeyParse,

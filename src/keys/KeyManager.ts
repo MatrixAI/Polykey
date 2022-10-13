@@ -275,7 +275,7 @@ class KeyManager {
         encoding: 'utf8',
       });
     } catch (e) {
-      throw new keysErrors.ErrorRootKeysRead(e.message, {
+      throw new keysErrors.ErrorKeyPairRead(e.message, {
         data: {
           errno: e.errno,
           syscall: e.syscall,
@@ -663,7 +663,7 @@ class KeyManager {
       if (e.code === 'ENOENT') {
         return false;
       }
-      throw new keysErrors.ErrorRootKeysRead(e.message, {
+      throw new keysErrors.ErrorKeyPairRead(e.message, {
         data: {
           errno: e.errno,
           syscall: e.syscall,
@@ -685,7 +685,7 @@ class KeyManager {
         this.fs.promises.readFile(this.rootKeyPath, { encoding: 'utf8' }),
       ]);
     } catch (e) {
-      throw new keysErrors.ErrorRootKeysRead(e.message, {
+      throw new keysErrors.ErrorKeyPairRead(e.message, {
         data: {
           errno: e.errno,
           syscall: e.syscall,
@@ -759,7 +759,7 @@ class KeyManager {
         encoding: 'utf8',
       });
     } catch (e) {
-      throw new keysErrors.ErrorRootKeysRead(e.message, {
+      throw new keysErrors.ErrorKeyPairRead(e.message, {
         data: {
           errno: e.errno,
           syscall: e.syscall,
