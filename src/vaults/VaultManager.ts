@@ -1,4 +1,4 @@
-import type { DB, DBTransaction, LevelPath } from '@matrixai/db';
+import type { DBTransaction, LevelPath } from '@matrixai/db';
 import type {
   VaultId,
   VaultName,
@@ -18,6 +18,7 @@ import type ACL from '../acl/ACL';
 import type { RemoteInfo } from './VaultInternal';
 import type { VaultAction } from './types';
 import type { MultiLockRequest } from '@matrixai/async-locks';
+import { DB } from '@matrixai/db';
 import path from 'path';
 import { PassThrough } from 'readable-stream';
 import { EncryptedFS, errors as encryptedFsErrors } from 'encryptedfs';
@@ -39,6 +40,8 @@ import * as keysUtils from '../keys/utils';
 import config from '../config';
 import { mkdirExists } from '../utils/utils';
 import * as utilsPB from '../proto/js/polykey/v1/utils/utils_pb';
+import * as utils from 'utils/index';
+import { Key } from 'keys/types';
 
 /**
  * Object map pattern for each vault
@@ -116,6 +119,7 @@ class VaultManager {
   protected vaultMap: VaultMap = new Map();
   protected vaultLocks: LockBox<RWLockWriter> = new LockBox();
   protected vaultKey: Buffer;
+  protected efsDb: DB;
   protected efs: EncryptedFS;
   protected vaultIdGenerator = vaultsUtils.createVaultIdGenerator();
 
@@ -169,11 +173,34 @@ class VaultManager {
         }
         await mkdirExists(this.fs, this.vaultsPath);
         const vaultKey = await this.setupKey(tran);
-        let efs;
+        let efsDb: DB;
+        let efs: EncryptedFS;
         try {
-          efs = await EncryptedFS.createEncryptedFS({
+          efsDb = await DB.createDB({
+            fresh,
+            crypto: {
+              key: vaultKey,
+              ops: {
+                encrypt: async (key, plainText) => {
+                  return keysUtils.encryptWithKey(
+                    utils.bufferWrap(key) as Key,
+                    utils.bufferWrap(plainText),
+                  );
+                },
+                decrypt: async (key, cipherText) => {
+                  return keysUtils.decryptWithKey(
+                    utils.bufferWrap(key) as Key,
+                    utils.bufferWrap(cipherText),
+                  );
+                },
+              },
+            },
             dbPath: this.efsPath,
-            dbKey: vaultKey,
+            logger: this.logger.getChild('EFS Database'),
+          })
+          efs = await EncryptedFS.createEncryptedFS({
+            fresh,
+            db: efsDb,
             logger: this.logger.getChild('EncryptedFileSystem'),
           });
         } catch (e) {
@@ -193,11 +220,13 @@ class VaultManager {
           });
         }
         this.vaultKey = vaultKey;
+        this.efsDb = efsDb;
         this.efs = efs;
         this.logger.info(`Started ${this.constructor.name}`);
       } catch (e) {
         this.logger.warn(`Failed Starting ${this.constructor.name}`);
         await this.efs?.stop();
+        await this.efsDb?.stop();
         throw e;
       }
     });
@@ -225,6 +254,7 @@ class VaultManager {
     }
     await Promise.all(promises);
     await this.efs.stop();
+    await this.efsDb.stop();
     this.vaultMap = new Map();
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
@@ -232,6 +262,7 @@ class VaultManager {
   public async destroy(): Promise<void> {
     this.logger.info(`Destroying ${this.constructor.name}`);
     await this.efs.destroy();
+    await this.efsDb.destroy();
     // Clearing all vaults db data
     await this.db.clear(this.vaultsDbPath);
     // Is it necessary to remove the vaults' domain?
