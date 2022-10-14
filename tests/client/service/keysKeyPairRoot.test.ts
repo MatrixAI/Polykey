@@ -7,7 +7,7 @@ import { Metadata } from '@grpc/grpc-js';
 import KeyRing from '@/keys/KeyRing';
 import GRPCServer from '@/grpc/GRPCServer';
 import GRPCClientClient from '@/client/GRPCClientClient';
-import keysKeyPairRoot from '@/client/service/keysKeyPairRoot';
+import keysPrivateKey from '../../../src/client/service/keysPrivateKey';
 import { ClientServiceService } from '@/proto/js/polykey/v1/client_service_grpc_pb';
 import * as keysPB from '@/proto/js/polykey/v1/keys/keys_pb';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
@@ -39,7 +39,7 @@ describe('keysKeyPairRoot', () => {
       strictMemoryLock: false,
     });
     const clientService = {
-      keysKeyPairRoot: keysKeyPairRoot({
+      keysKeyPairRoot: keysPrivateKey({
         authenticate,
         keyRing,
         logger,

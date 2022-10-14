@@ -458,16 +458,16 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   }
 
   @ready(new clientErrors.ErrorClientClientDestroyed())
-  public keysKeyPairRoot(...args) {
-    return grpcUtils.promisifyUnaryCall<keysPB.KeyPair>(
+  public keysKeyPair(...args) {
+    return grpcUtils.promisifyUnaryCall<keysPB.KeyPairJWK>(
       this.client,
       {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
-        command: this.keysKeyPairRoot.name,
+        command: this.keysKeyPair.name,
       },
-      this.client.keysKeyPairRoot,
+      this.client.keysPrivateKey,
     )(...args);
   }
 
