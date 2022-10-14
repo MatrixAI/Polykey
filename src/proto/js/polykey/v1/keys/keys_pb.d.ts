@@ -11,6 +11,8 @@ export class Crypto extends jspb.Message {
     setData(value: string): Crypto;
     getSignature(): string;
     setSignature(value: string): Crypto;
+    getPublicKeyJwk(): string;
+    setPublicKeyJwk(value: string): Crypto;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): Crypto.AsObject;
@@ -26,6 +28,7 @@ export namespace Crypto {
     export type AsObject = {
         data: string,
         signature: string,
+        publicKeyJwk: string,
     }
 }
 
