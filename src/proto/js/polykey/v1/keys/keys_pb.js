@@ -136,7 +136,8 @@ proto.polykey.v1.keys.Crypto.prototype.toObject = function(opt_includeInstance) 
 proto.polykey.v1.keys.Crypto.toObject = function(includeInstance, msg) {
   var f, obj = {
     data: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    signature: jspb.Message.getFieldWithDefault(msg, 2, "")
+    signature: jspb.Message.getFieldWithDefault(msg, 2, ""),
+    publicKeyJwk: jspb.Message.getFieldWithDefault(msg, 3, "")
   };
 
   if (includeInstance) {
@@ -181,6 +182,10 @@ proto.polykey.v1.keys.Crypto.deserializeBinaryFromReader = function(msg, reader)
       var value = /** @type {string} */ (reader.readString());
       msg.setSignature(value);
       break;
+    case 3:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setPublicKeyJwk(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -224,6 +229,13 @@ proto.polykey.v1.keys.Crypto.serializeBinaryToWriter = function(message, writer)
       f
     );
   }
+  f = message.getPublicKeyJwk();
+  if (f.length > 0) {
+    writer.writeString(
+      3,
+      f
+    );
+  }
 };
 
 
@@ -260,6 +272,24 @@ proto.polykey.v1.keys.Crypto.prototype.getSignature = function() {
  */
 proto.polykey.v1.keys.Crypto.prototype.setSignature = function(value) {
   return jspb.Message.setProto3StringField(this, 2, value);
+};
+
+
+/**
+ * optional string public_key_jwk = 3;
+ * @return {string}
+ */
+proto.polykey.v1.keys.Crypto.prototype.getPublicKeyJwk = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.polykey.v1.keys.Crypto} returns this
+ */
+proto.polykey.v1.keys.Crypto.prototype.setPublicKeyJwk = function(value) {
+  return jspb.Message.setProto3StringField(this, 3, value);
 };
 
 
