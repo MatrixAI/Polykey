@@ -104,15 +104,6 @@ function describeIf(condition: boolean) {
   return condition ? describe : describe.skip;
 }
 
-/**
- * Used with fast-check to schedule calling of a function
- */
-const scheduleCall = <T>(
-  s: fc.Scheduler,
-  f: () => Promise<T>,
-  label: string = 'scheduled call',
-) => s.schedule(Promise.resolve(label)).then(() => f());
-
 async function createTLSConfig(keyPair: KeyPair, generateCertId?: () => CertId): Promise<TLSConfig> {
   generateCertId  = generateCertId ?? keysUtils.createCertIdGenerator();
   const certificate = await keysUtils.generateCertificate({
@@ -133,6 +124,5 @@ export {
   expectRemoteError,
   testIf,
   describeIf,
-  scheduleCall,
   createTLSConfig,
 };

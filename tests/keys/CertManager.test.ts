@@ -18,7 +18,7 @@ import * as keysUtils from '@/keys/utils';
 import * as keysErrors from '@/keys/errors';
 import * as utils from '@/utils';
 import * as testsKeysUtils from './utils';
-import { sleep } from '@/utils';
+import * as testsUtils from '../utils';
 
 describe(CertManager.name, () => {
   const password = keysUtils.getRandomBytes(10).toString('utf-8');
@@ -84,6 +84,7 @@ describe(CertManager.name, () => {
       keyRing,
       taskManager,
       logger,
+      lazy: true
     });
     await expect(async () => {
       await certManager.destroy();
@@ -105,6 +106,7 @@ describe(CertManager.name, () => {
       keyRing,
       taskManager,
       logger,
+      lazy: true,
     });
     const cert = await certManager.getCurrentCert();
     expect(keysUtils.certNodeId(cert)).toStrictEqual(keyRing.getNodeId());
@@ -121,6 +123,7 @@ describe(CertManager.name, () => {
       keyRing,
       taskManager,
       logger,
+      lazy: true,
     });
     let cert: Certificate;
     let certs: Array<Certificate>;
@@ -148,6 +151,7 @@ describe(CertManager.name, () => {
       keyRing,
       taskManager,
       logger,
+      lazy: true,
     });
     let certPEM: CertificatePEM;
     let certPEMs: Array<CertificatePEM>;
@@ -195,6 +199,7 @@ describe(CertManager.name, () => {
       keyRing,
       taskManager,
       logger,
+      lazy: true,
     });
     // Only a single certificate will exist at the beginning
     let certs: Array<Certificate>;
@@ -229,229 +234,327 @@ describe(CertManager.name, () => {
     ).toBe(true);
     await certManager.stop();
   });
-  test.only('DETERMINISTIC TEST', async () => {
-
-    // Set to 0 duration
-    // it is technically still valid
-    // for the current time
-    // but we need to do this
-    // at 1 second later
-    const cmds = [
-      new testsKeysUtils.RenewCertWithCurrentKeyPairCommand(
-        0
-      ),
-      new testsKeysUtils.RenewCertWithCurrentKeyPairCommand(
-        605
-      ),
-    ];
-
-    // LAZY is true to avoid starting the tasks
-    // this can make it easier to test
-    // instead of having concurrent background tasks running
-
+  test('garbage collecting 0-duration certificates', async () => {
     const certMgr = await CertManager.createCertManager({
       db,
       keyRing,
       taskManager,
       logger,
       lazy: true,
-      fresh: true
     });
-
-    await certMgr.renewCertWithCurrentKeyPair(0);
-    // wait 1 second
-    // otherwise we may still have a valid cert above
-    // in this case, the previous cert should be done!
-    // and this is the problem
-    // if we want to run a command to ADVANCE the time
-    // that's important to deal with
-    await sleep(1000);
-    await certMgr.renewCertWithCurrentKeyPair(605);
-
-
-    // const model = {
-    //   certCount: 1,
-    //   currentCert: await certMgr.getCurrentCert(),
-    // };
-    // const modelSetup = async () => {
-    //   return {
-    //     model,
-    //     real: certMgr,
-    //   };
-    // };
-    // await fc.asyncModelRun(modelSetup, cmds);
-
+    const now = new Date();
+    // 0-duration certificate will be valid now
+    await certMgr.renewCertWithCurrentKeyPair(0, now);
+    const cert2 = await certMgr.getCurrentCert();
+    // The certificate is still valid for now, but it does have a duration of 0
+    expect(keysUtils.certNotExpiredBy(cert2, now)).toBe(true);
+    expect(keysUtils.certRemainingDuration(cert2)).toBe(0);
+    // Until we advance the time by 1 second
+    await utils.sleep(1000);
+    // Then at this point, the previous certificate is expired
+    // and the first certificate will be deleted
+    await certMgr.renewCertWithCurrentKeyPair(100);
+    // We expect to see 2 certificates
+    // the third current certificate and the second expired certificate
+    // the first certificate would have been deleted
+    const cert3 = await certMgr.getCurrentCert();
+    const certs = await certMgr.getCertsChain();
+    expect(certs).toHaveLength(2);
+    expect(keysUtils.certEqual(certs[0], cert3)).toBe(true);
+    // The second certificate is in fact expired
+    expect(keysUtils.certEqual(certs[1], cert2)).toBe(true);
+    expect(keysUtils.certRemainingDuration(certs[1])).toBe(0);
+    expect(keysUtils.certNotExpiredBy(certs[1], new Date())).toBe(false);
     await certMgr.stop();
-
-
   });
-  testProp(
-    'abc',
-    [
-      fc.commands(
-        [
-          // Renew with current key pair command
-          fc.integer({ min: 0, max: 1000 }).map(
-            (d) => new testsKeysUtils.RenewCertWithCurrentKeyPairCommand(d)
-          ),
-          // Renew with new key pair command
-          fc.tuple(
-            testsKeysUtils.passwordArb,
-            fc.integer({ min: 0, max: 1000 }),
-          ).map(([p, d]) =>
-            new testsKeysUtils.RenewCertWithNewKeyPairCommand(p, d)
-          ),
-        ],
-      ),
-    ],
-    async (cmds) => {
-
-      console.log('COMMANDS', cmds);
-
-
-      // Start a fresh certificate manager for each property test
-      const certMgr = await CertManager.createCertManager({
-        db,
-        keyRing,
-        taskManager,
-        logger,
-        fresh: true
-      });
-      const model = {
-        certCount: 1,
-        currentCert: await certMgr.getCurrentCert(),
-      };
-      const modelSetup = async () => {
-        return {
-          model,
-          real: certMgr,
-        };
-      };
-      await fc.asyncModelRun(modelSetup, cmds);
-      await certMgr.stop();
-    },
-    {
-      numRuns: 1,
-    }
-  );
-  test('renew with current key pair', async () => {
-
-    // we shouldd use fast check to iterate the number of renewals
-    // to do this, we have to genrate commands
-    // or whatever
-    // however many renewals and shit
-
-  });
-  test('renew with new key pair', async () => {
-    const certManager = await CertManager.createCertManager({
+  test('automatic background certificate renewal', async () => {
+    const certMgr = await CertManager.createCertManager({
       db,
       keyRing,
       taskManager,
       logger,
     });
-
-    const publicKeyPem1 = keysUtils.publicKeyToPEM(keyRing.keyPair.publicKey);
-    const keyPairPem1 = keysUtils.keyPairToPEM(keyRing.keyPair);
-    const rootCert1 = await certManager.getCurrentCert();
-
-    await utils.sleep(2000);
-    await certManager.renewCertWithNewKeyPair('password');
-
-    const publicKeyPem2 = keysUtils.publicKeyToPEM(keyRing.keyPair.publicKey);
-    const keyPairPem2 = keysUtils.keyPairToPEM(keyRing.keyPair)
-
-    const rootCert2 = await certManager.getCurrentCert();
-
-    expect(rootCert1.serialNumber).not.toBe(rootCert2.serialNumber);
-    expect(rootCert1.notBefore).toBeBefore(rootCert2.notBefore)
-    expect(rootCert1.notAfter).toBeBefore(rootCert2.notAfter)
-    expect(keyPairPem1).not.toBe(keyPairPem2);
-
-    expect(publicKeyPem1).not.toBe(publicKeyPem2);
-    expect(keysUtils.publicKeyToPEM(keysUtils.certPublicKey(rootCert2)!)).toBe(publicKeyPem2);
-
-    await certManager.stop();
+    // Renew certificate with 1 second duration
+    const certOld = await certMgr.renewCertWithCurrentKeyPair(1);
+    // Wait 1.5 seconds for the automatic renewal to have occurred due to the 1 second delay
+    await utils.sleep(1500);
+    const certNew = await certMgr.getCurrentCert();
+    // New certificate with have a greater `CertId`
+    expect(keysUtils.certCertId(certNew)! > keysUtils.certCertId(certOld)!).toBe(true);
+    // Same key pair preserves the NodeId
+    expect(keysUtils.certNodeId(certNew)).toStrictEqual(keysUtils.certNodeId(certOld));
+    // New certificate issued by old certificate
+    expect(keysUtils.certIssuedBy(certNew, certOld)).toBe(true);
+    // New certificate signed by old certificate
+    expect(await keysUtils.certSignedBy(certNew, keysUtils.certPublicKey(certOld)!)).toBe(true);
+    // New certificate is self-signed via the node signature extension
+    expect(await keysUtils.certNodeSigned(certNew)).toBe(true);
+    await certMgr.stop();
   });
-  test('reset with current key pair', async () => {
-    const certManager = await CertManager.createCertManager({
-      db,
-      keyRing,
-      taskManager,
-      logger,
-    });
-    const keyPairPem1 = keysUtils.keyPairToPEM(keyRing.keyPair);
-    const rootCert1 = await certManager.getCurrentCert();
-
-    // We now use IdSortable, this means the next ID is always going to be higher
-    // no need to set the time
-    await utils.sleep(2000);
-    await certManager.resetCertWithCurrentKeyPair();
-
-    const rootCert2 = await certManager.getCurrentCert();
-
-    // The key pair has not changed
-    expect(keysUtils.keyPairToPEM(keyRing.keyPair)).toStrictEqual(keyPairPem1);
-
-    // The serial number should be greater
-    expect(keysUtils.certCertId(rootCert2)!.toBuffer().compare(keysUtils.certCertId(rootCert1)!.toBuffer())).toBe(1);
-    expect(rootCert1.notBefore).toBeBefore(rootCert2.notBefore);
-    expect(rootCert1.notAfter).toBeBefore(rootCert2.notAfter);
-    await certManager.stop();
+  describe('model-check renewing and resetting the certificates', () => {
+    testProp(
+      'renewing and resetting with current key pair',
+      [
+        fc.commands(
+          [
+            // Sleep command
+            fc.integer({ min: 250, max: 250 }).map(
+              (ms) => new testsUtils.SleepCommand(ms)
+            ),
+            fc.integer({ min: 0, max: 2 }).map(
+              (d) => new testsKeysUtils.RenewCertWithCurrentKeyPairCommand(d)
+            ),
+            fc.integer({ min: 0, max: 3 }).map(
+              (d) => new testsKeysUtils.ResetCertWithCurrentKeyPairCommand(d)
+            ),
+          ],
+        ),
+      ],
+      async (cmds) => {
+        // Start a fresh certificate manager for each property test
+        // ensure that we are using lazy to avoid testing the background task
+        const certMgr = await CertManager.createCertManager({
+          db,
+          keyRing,
+          taskManager,
+          logger,
+          lazy: true,
+          fresh: true
+        });
+        try {
+          const model = {
+            certs: [await certMgr.getCurrentCert()],
+          };
+          const modelSetup = async () => {
+            return {
+              model,
+              real: certMgr,
+            };
+          };
+          await fc.asyncModelRun(modelSetup, cmds);
+        } finally {
+          await certMgr.stop();
+        }
+      },
+      {
+        numRuns: 10,
+      }
+    );
+    testProp(
+      'renewing and resetting with new key pair',
+      [
+        fc.commands(
+          [
+            // Sleep command
+            fc.integer({ min: 250, max: 250 }).map(
+              (ms) => new testsUtils.SleepCommand(ms)
+            ),
+            fc.tuple(
+              testsKeysUtils.passwordArb,
+              fc.integer({ min: 0, max: 2 }),
+            ).map(([p, d]) =>
+              new testsKeysUtils.RenewCertWithNewKeyPairCommand(p, d)
+            ),
+            fc.tuple(
+              testsKeysUtils.passwordArb,
+              fc.integer({ min: 0, max: 3 }),
+            ).map(([p, d]) =>
+              new testsKeysUtils.ResetCertWithNewKeyPairCommand(p, d)
+            ),
+          ],
+        ),
+      ],
+      async (cmds) => {
+        // Start a fresh certificate manager for each property test
+        // ensure that we are using lazy to avoid testing the background task
+        const certMgr = await CertManager.createCertManager({
+          db,
+          keyRing,
+          taskManager,
+          logger,
+          lazy: true,
+          fresh: true
+        });
+        try {
+          const model = {
+            certs: [await certMgr.getCurrentCert()],
+          };
+          const modelSetup = async () => {
+            return {
+              model,
+              real: certMgr,
+            };
+          };
+          await fc.asyncModelRun(modelSetup, cmds);
+        } finally {
+          await certMgr.stop();
+        }
+      },
+      {
+        numRuns: 10,
+      }
+    );
+    testProp(
+      'renewing with current and new key pair',
+      [
+        fc.commands(
+          [
+            // Sleep command
+            fc.integer({ min: 250, max: 250 }).map(
+              (ms) => new testsUtils.SleepCommand(ms)
+            ),
+            fc.integer({ min: 0, max: 2 }).map(
+              (d) => new testsKeysUtils.RenewCertWithCurrentKeyPairCommand(d)
+            ),
+            fc.tuple(
+              testsKeysUtils.passwordArb,
+              fc.integer({ min: 0, max: 2 }),
+            ).map(([p, d]) =>
+              new testsKeysUtils.RenewCertWithNewKeyPairCommand(p, d)
+            ),
+          ],
+        ),
+      ],
+      async (cmds) => {
+        // Start a fresh certificate manager for each property test
+        // ensure that we are using lazy to avoid testing the background task
+        const certMgr = await CertManager.createCertManager({
+          db,
+          keyRing,
+          taskManager,
+          logger,
+          lazy: true,
+          fresh: true
+        });
+        try {
+          const model = {
+            certs: [await certMgr.getCurrentCert()],
+          };
+          const modelSetup = async () => {
+            return {
+              model,
+              real: certMgr,
+            };
+          };
+          await fc.asyncModelRun(modelSetup, cmds);
+        } finally {
+          await certMgr.stop();
+        }
+      },
+      {
+        numRuns: 10,
+      }
+    );
+    testProp(
+      'resetting with current and new key pair',
+      [
+        fc.commands(
+          [
+            // Sleep command
+            fc.integer({ min: 250, max: 250 }).map(
+              (ms) => new testsUtils.SleepCommand(ms)
+            ),
+            fc.integer({ min: 0, max: 2 }).map(
+              (d) => new testsKeysUtils.ResetCertWithCurrentKeyPairCommand(d)
+            ),
+            fc.tuple(
+              testsKeysUtils.passwordArb,
+              fc.integer({ min: 0, max: 3 }),
+            ).map(([p, d]) =>
+              new testsKeysUtils.ResetCertWithNewKeyPairCommand(p, d)
+            ),
+          ],
+        ),
+      ],
+      async (cmds) => {
+        // Start a fresh certificate manager for each property test
+        // ensure that we are using lazy to avoid testing the background task
+        const certMgr = await CertManager.createCertManager({
+          db,
+          keyRing,
+          taskManager,
+          logger,
+          lazy: true,
+          fresh: true
+        });
+        try {
+          const model = {
+            certs: [await certMgr.getCurrentCert()],
+          };
+          const modelSetup = async () => {
+            return {
+              model,
+              real: certMgr,
+            };
+          };
+          await fc.asyncModelRun(modelSetup, cmds);
+        } finally {
+          await certMgr.stop();
+        }
+      },
+      {
+        numRuns: 10,
+      }
+    );
+    testProp(
+      'renewing and resetting with current and new key pair',
+      [
+        fc.commands(
+          [
+            // Sleep command
+            fc.integer({ min: 250, max: 250 }).map(
+              (ms) => new testsUtils.SleepCommand(ms)
+            ),
+            fc.integer({ min: 0, max: 2 }).map(
+              (d) => new testsKeysUtils.RenewCertWithCurrentKeyPairCommand(d)
+            ),
+            fc.integer({ min: 0, max: 3 }).map(
+              (d) => new testsKeysUtils.ResetCertWithCurrentKeyPairCommand(d)
+            ),
+            fc.tuple(
+              testsKeysUtils.passwordArb,
+              fc.integer({ min: 0, max: 2 }),
+            ).map(([p, d]) =>
+              new testsKeysUtils.RenewCertWithNewKeyPairCommand(p, d)
+            ),
+            fc.tuple(
+              testsKeysUtils.passwordArb,
+              fc.integer({ min: 0, max: 3 }),
+            ).map(([p, d]) =>
+              new testsKeysUtils.ResetCertWithNewKeyPairCommand(p, d)
+            ),
+          ],
+        ),
+      ],
+      async (cmds) => {
+        // Start a fresh certificate manager for each property test
+        // ensure that we are using lazy to avoid testing the background task
+        const certMgr = await CertManager.createCertManager({
+          db,
+          keyRing,
+          taskManager,
+          logger,
+          lazy: true,
+          fresh: true
+        });
+        try {
+          const model = {
+            certs: [await certMgr.getCurrentCert()],
+          };
+          const modelSetup = async () => {
+            return {
+              model,
+              real: certMgr,
+            };
+          };
+          await fc.asyncModelRun(modelSetup, cmds);
+        } finally {
+          await certMgr.stop();
+        }
+      },
+      {
+        numRuns: 10,
+      }
+    );
   });
-  test('reset with new key pair', async () => {
-    const certManager = await CertManager.createCertManager({
-      db,
-      keyRing,
-      taskManager,
-      logger,
-    });
-
-    const rootKeyPairPem1 = keysUtils.keyPairToPEM(keyRing.keyPair);
-    const publicKeyPem1 = keysUtils.publicKeyToPEM(keyRing.keyPair.publicKey);
-    const rootCert1 = await certManager.getCurrentCert();
-
-    await utils.sleep(2000);
-    await certManager.resetCertWithNewKeyPair('password');
-
-    const rootKeyPairPem2 = keysUtils.keyPairToPEM(keyRing.keyPair);
-    const publicKeyPem2 = keysUtils.publicKeyToPEM(keyRing.keyPair.publicKey);
-    const rootCert2 = await certManager.getCurrentCert();
-
-    expect(rootCert1.serialNumber).not.toBe(rootCert2.serialNumber);
-    expect(rootCert1.notBefore).toBeBefore(rootCert2.notBefore)
-    expect(rootCert1.notAfter).toBeBefore(rootCert2.notAfter)
-    expect(rootKeyPairPem1).not.toBe(rootKeyPairPem2);
-
-    expect(keysUtils.publicKeyToPEM(keysUtils.certPublicKey(rootCert1)!)).toBe(publicKeyPem1);
-    expect(keysUtils.publicKeyToPEM(keysUtils.certPublicKey(rootCert2)!)).toBe(publicKeyPem2);
-
-    await certManager.stop();
-  });
-  // test('order of certificate chain should be leaf to root', async () => {
-  //   const certManager = await CertManager.createCertManager({
-  //     db,
-  //     keyRing,
-  //     logger,
-  //   });
-
-  //   try {
-  //     const certs: Array<Certificate> = [];
-  //     certs.push(await certManager.getCurrentCert());
-
-  //     for (let i = 0; i < 20; i++) {
-  //       await certManager.renewCertWithNewKeyPair('password');
-  //       certs.push(await certManager.getCurrentCert())
-  //     }
-
-  //     // ordered newest to oldest
-  //     const reversedCerts = certs.reverse();
-  //     const certChain = await certManager.getCertsChain();
-
-  //     for (let i = 0; i < certChain.length; i++) {
-  //       expect(certChain[i].equal(reversedCerts[i]));
-  //     }
-  //   } finally {
-  //     await certManager.stop();
-  //   }
-  // });
 });
