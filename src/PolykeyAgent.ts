@@ -251,10 +251,19 @@ class PolykeyAgent {
           logger: logger.getChild(DB.name),
           fresh,
         }));
+      taskManager =
+        taskManager ??
+        (await TaskManager.createTaskManager({
+          db,
+          fresh,
+          lazy: true,
+          logger,
+        }));
       certManager = certManager ?? (await CertManager.createCertManager({
-        changeCallback: async (data) => events.emitAsync(PolykeyAgent.eventSymbols.CertManager, data),
         keyRing,
         db,
+        taskManager,
+        changeCallback: async (data) => events.emitAsync(PolykeyAgent.eventSymbols.CertManager, data),
         logger: logger.getChild(CertManager.name),
         fresh,
         ...certManagerConfig_,
@@ -310,14 +319,6 @@ class PolykeyAgent {
           fresh,
           keyRing,
           logger: logger.getChild(NodeGraph.name),
-        }));
-      taskManager =
-        taskManager ??
-        (await TaskManager.createTaskManager({
-          db,
-          fresh,
-          lazy: true,
-          logger,
         }));
       nodeConnectionManager =
         nodeConnectionManager ??
@@ -403,13 +404,13 @@ class PolykeyAgent {
       await notificationsManager?.stop();
       await vaultManager?.stop();
       await discovery?.stop();
-      await taskManager?.stop();
       await proxy?.stop();
       await gestaltGraph?.stop();
       await acl?.stop();
       await sigchain?.stop();
       await identitiesManager?.stop();
       await certManager?.stop();
+      await taskManager?.stop();
       await db?.stop();
       await keyRing?.stop();
       await schema?.stop();
@@ -670,6 +671,7 @@ class PolykeyAgent {
         fresh,
       });
       await this.db.start({ fresh });
+      await this.taskManager.start({ fresh, lazy: true });
       await this.certManager.start({
         fresh
       });
@@ -704,7 +706,6 @@ class PolykeyAgent {
         proxyPort: networkConfig_.proxyPort,
         tlsConfig,
       });
-      await this.taskManager.start({ fresh, lazy: true });
       await this.nodeManager.start();
       await this.nodeConnectionManager.start({ nodeManager: this.nodeManager });
       await this.nodeGraph.start({ fresh });
@@ -740,7 +741,6 @@ class PolykeyAgent {
       await this.nodeGraph?.stop();
       await this.nodeConnectionManager?.stop();
       await this.nodeManager?.stop();
-      await this.taskManager?.stop();
       await this.proxy?.stop();
       await this.grpcServerAgent?.stop();
       await this.grpcServerClient?.stop();
@@ -749,6 +749,7 @@ class PolykeyAgent {
       await this.sigchain?.stop();
       await this.identitiesManager?.stop();
       await this.certManager?.stop();
+      await this.taskManager?.stop();
       await this.db?.stop();
       await this.keyRing?.stop();
       await this.schema?.stop();
@@ -773,7 +774,6 @@ class PolykeyAgent {
     await this.nodeConnectionManager.stop();
     await this.nodeGraph.stop();
     await this.nodeManager.stop();
-    await this.taskManager.stop();
     await this.proxy.stop();
     await this.grpcServerAgent.stop();
     await this.grpcServerClient.stop();
@@ -782,6 +782,7 @@ class PolykeyAgent {
     await this.sigchain.stop();
     await this.identitiesManager.stop();
     await this.certManager.stop();
+    await this.taskManager.stop();
     await this.db.stop();
     await this.keyRing.stop();
     await this.schema.stop();
@@ -804,9 +805,9 @@ class PolykeyAgent {
     await this.acl.destroy();
     await this.sigchain.destroy();
     await this.identitiesManager.destroy();
+    await this.certManager.destroy();
     await this.taskManager.stop();
     await this.taskManager.destroy();
-    await this.certManager.destroy();
     // Non-TaskManager dependencies
     await this.db.stop();
     // Non-DB dependencies

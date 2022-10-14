@@ -5,6 +5,7 @@ import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { Metadata } from '@grpc/grpc-js';
 import KeyRing from '@/keys/KeyRing';
+import TaskManager from '@/tasks/TaskManager';
 import CertManager  from '@/keys/CertManager';
 import Proxy from '@/network/Proxy';
 import GRPCServer from '@/grpc/GRPCServer';
@@ -29,6 +30,7 @@ describe('agentStatus', () => {
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
+  let taskManager: TaskManager;
   let certManager: CertManager;
   let grpcServerClient: GRPCServer;
   let grpcServerAgent: GRPCServer;
@@ -53,9 +55,11 @@ describe('agentStatus', () => {
       passwordMemLimit: keysUtils.passwordMemLimits.min,
       strictMemoryLock: false,
     });
+    taskManager = await TaskManager.createTaskManager({ db, logger });
     certManager = await CertManager.createCertManager({
       db,
       keyRing,
+      taskManager,
       logger,
     })
     grpcServerClient = new GRPCServer({ logger });
@@ -106,6 +110,7 @@ describe('agentStatus', () => {
     await grpcServerAgent.stop();
     await grpcServerClient.stop();
     await certManager.stop();
+    await taskManager.stop();
     await keyRing.stop();
     await db.stop();
     await fs.promises.rm(dataDir, {

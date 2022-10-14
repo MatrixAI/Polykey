@@ -5,8 +5,9 @@ import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { Metadata } from '@grpc/grpc-js';
-import CertManager from '@/keys/CertManager';
 import KeyRing from '@/keys/KeyRing';
+import TaskManager from '@/tasks/TaskManager';
+import CertManager from '@/keys/CertManager';
 import GRPCServer from '@/grpc/GRPCServer';
 import GRPCClientClient from '@/client/GRPCClientClient';
 import keysCertsGet from '@/client/service/keysCertsGet';
@@ -36,6 +37,7 @@ describe('keysCertsGet', () => {
   let dataDir: string;
   let keyRing: KeyRing;
   let db: DB;
+  let taskManager: TaskManager;
   let certManager: CertManager;
   let grpcServer: GRPCServer;
   let grpcClient: GRPCClientClient;
@@ -56,10 +58,12 @@ describe('keysCertsGet', () => {
     db = await DB.createDB({
       dbPath,
       logger,
-    })
+    });
+    taskManager = await TaskManager.createTaskManager({ db, logger });
     certManager = await CertManager.createCertManager({
       db,
       keyRing,
+      taskManager,
       logger,
     })
     const clientService = {
@@ -86,6 +90,7 @@ describe('keysCertsGet', () => {
     await grpcClient.destroy();
     await grpcServer.stop();
     await certManager.stop();
+    await taskManager.stop();
     await db.stop();
     await keyRing.stop();
     await fs.promises.rm(dataDir, {
