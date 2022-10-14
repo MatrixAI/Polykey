@@ -229,6 +229,114 @@ class RenewCertWithNewKeyPairCommand implements CertManagerCommand {
   }
 }
 
+class ResetCertWithCurrentKeyPairCommand implements CertManagerCommand {
+  constructor(
+    public readonly duration: number = 31536000,
+    public readonly subjectAttrsExtra?: Array<{ [key: string]: Array<string> }>,
+  ) {}
+
+  check() {
+    return true;
+  }
+
+  async run(model: CertManagerModel, real: CertManager) {
+    // Update the real
+    const now = new Date();
+    await real.resetCertWithCurrentKeyPair(
+      this.duration,
+      this.subjectAttrsExtra,
+      now
+    );
+    const certOld = model.currentCert;
+    const certNew = await real.getCurrentCert();
+    const [certNew_, certOld_] = await AsyncIterable.as(real.getCerts()).take(2).toArray();
+    // Different key pair changes the the NodeId
+    expect(x509.certNodeId(certNew),).not.toStrictEqual(x509.certNodeId(certOld));
+    // New certificates should match
+    expect(x509.certEqual(certNew_, certNew)).toBe(true);
+    // Old certificate was the previous current certificate
+    expect(x509.certEqual(certOld_, certOld)).toBe(true);
+    // New certificate issued by old certificate
+    expect(x509.certIssuedBy(certNew, certOld)).toBe(true);
+    // New certificate signed by old certificate
+    expect(await x509.certSignedBy(certNew, x509.certPublicKey(certOld)!)).toBe(true);
+    // New certificate is self-signed via the node signature extension
+    expect(await x509.certNodeSigned(certNew)).toBe(true);
+    // New certificate is not expired from now and inclusive of the duration
+    expect(x509.certNotExpiredBy(certNew, now)).toBe(true);
+    expect(
+      x509.certNotExpiredBy(
+        certNew,
+        new Date(now.getTime() + this.duration * 1000)
+      )
+    ).toBe(true);
+    expect((await real.getCertsChain()).length).toBe(model.certCount + 1);
+    // Update the model
+    model.certCount++;
+    model.currentCert = certNew;
+  }
+
+  toString() {
+    return `ResetCertWithCurrentKeyPair(${this.duration}, ${JSON.stringify(this.subjectAttrsExtra)})`;
+  }
+}
+
+
+class ResetCertWithNewKeyPairCommand implements CertManagerCommand {
+  constructor(
+    public readonly password: string,
+    public readonly duration: number = 31536000,
+    public readonly subjectAttrsExtra?: Array<{ [key: string]: Array<string> }>,
+  ) {}
+
+  check() {
+    return true;
+  }
+
+  async run(model: CertManagerModel, real: CertManager) {
+    // Update the real
+    const now = new Date();
+    await real.resetCertWithNewKeyPair(
+      this.password,
+      this.duration,
+      this.subjectAttrsExtra,
+      now
+    );
+    const certOld = model.currentCert;
+    const certNew = await real.getCurrentCert();
+    const [certNew_, certOld_] = await AsyncIterable.as(real.getCerts()).take(2).toArray();
+    // Different key pair changes the the NodeId
+    expect(x509.certNodeId(certNew),).not.toStrictEqual(x509.certNodeId(certOld));
+    // New certificates should match
+    expect(x509.certEqual(certNew_, certNew)).toBe(true);
+    // Old certificate was the previous current certificate
+    expect(x509.certEqual(certOld_, certOld)).toBe(true);
+    // New certificate issued by old certificate
+    expect(x509.certIssuedBy(certNew, certOld)).toBe(true);
+    // New certificate signed by old certificate
+    expect(await x509.certSignedBy(certNew, x509.certPublicKey(certOld)!)).toBe(true);
+    // New certificate is self-signed via the node signature extension
+    expect(await x509.certNodeSigned(certNew)).toBe(true);
+    // New certificate is not expired from now and inclusive of the duration
+    expect(x509.certNotExpiredBy(certNew, now)).toBe(true);
+    expect(
+      x509.certNotExpiredBy(
+        certNew,
+        new Date(now.getTime() + this.duration * 1000)
+      )
+    ).toBe(true);
+    expect((await real.getCertsChain()).length).toBe(model.certCount + 1);
+    // Update the model
+    model.certCount++;
+    model.currentCert = certNew;
+  }
+
+  toString() {
+    return `ResetCertWithNewKeyPairCommand('${this.password}', ${this.duration}, ${JSON.stringify(this.subjectAttrsExtra)})`;
+  }
+}
+
+
 export {
   bufferArb,
   keyArb,
@@ -243,6 +351,8 @@ export {
   passwordArb,
   RenewCertWithCurrentKeyPairCommand,
   RenewCertWithNewKeyPairCommand,
+  ResetCertWithCurrentKeyPairCommand,
+  ResetCertWithNewKeyPairCommand,
 };
 
 export type {

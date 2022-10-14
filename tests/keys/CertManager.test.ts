@@ -84,6 +84,7 @@ describe(CertManager.name, () => {
       keyRing,
       taskManager,
       logger,
+      lazy: true
     });
     await expect(async () => {
       await certManager.destroy();
@@ -105,6 +106,7 @@ describe(CertManager.name, () => {
       keyRing,
       taskManager,
       logger,
+      lazy: true,
     });
     const cert = await certManager.getCurrentCert();
     expect(keysUtils.certNodeId(cert)).toStrictEqual(keyRing.getNodeId());
@@ -121,6 +123,7 @@ describe(CertManager.name, () => {
       keyRing,
       taskManager,
       logger,
+      lazy: true,
     });
     let cert: Certificate;
     let certs: Array<Certificate>;
@@ -148,6 +151,7 @@ describe(CertManager.name, () => {
       keyRing,
       taskManager,
       logger,
+      lazy: true,
     });
     let certPEM: CertificatePEM;
     let certPEMs: Array<CertificatePEM>;
@@ -195,6 +199,7 @@ describe(CertManager.name, () => {
       keyRing,
       taskManager,
       logger,
+      lazy: true,
     });
     // Only a single certificate will exist at the beginning
     let certs: Array<Certificate>;
@@ -229,61 +234,38 @@ describe(CertManager.name, () => {
     ).toBe(true);
     await certManager.stop();
   });
-  test.only('DETERMINISTIC TEST', async () => {
-
-    // Set to 0 duration
-    // it is technically still valid
-    // for the current time
-    // but we need to do this
-    // at 1 second later
-    const cmds = [
-      new testsKeysUtils.RenewCertWithCurrentKeyPairCommand(
-        0
-      ),
-      new testsKeysUtils.RenewCertWithCurrentKeyPairCommand(
-        605
-      ),
-    ];
-
-    // LAZY is true to avoid starting the tasks
-    // this can make it easier to test
-    // instead of having concurrent background tasks running
-
+  test('garbage collecting 0-duration certificates', async () => {
     const certMgr = await CertManager.createCertManager({
       db,
       keyRing,
       taskManager,
       logger,
       lazy: true,
-      fresh: true
     });
-
-    await certMgr.renewCertWithCurrentKeyPair(0);
-    // wait 1 second
-    // otherwise we may still have a valid cert above
-    // in this case, the previous cert should be done!
-    // and this is the problem
-    // if we want to run a command to ADVANCE the time
-    // that's important to deal with
+    const now = new Date();
+    // 0-duration certificate will be valid now
+    await certMgr.renewCertWithCurrentKeyPair(0, undefined, now);
+    const cert2 = await certMgr.getCurrentCert();
+    // The certificate is still valid for now, but it does have a duration of 0
+    expect(keysUtils.certNotExpiredBy(cert2, now)).toBe(true);
+    expect(keysUtils.certRemainingDuration(cert2)).toBe(0);
+    // Until we advance the time by 1 second
     await sleep(1000);
-    await certMgr.renewCertWithCurrentKeyPair(605);
-
-
-    // const model = {
-    //   certCount: 1,
-    //   currentCert: await certMgr.getCurrentCert(),
-    // };
-    // const modelSetup = async () => {
-    //   return {
-    //     model,
-    //     real: certMgr,
-    //   };
-    // };
-    // await fc.asyncModelRun(modelSetup, cmds);
-
+    // Then at this point, the previous certificate is expired
+    // and the first certificate will be deleted
+    await certMgr.renewCertWithCurrentKeyPair(100);
+    // We expect to see 2 certificates
+    // the third current certificate and the second expired certificate
+    // the first certificate would have been deleted
+    const cert3 = await certMgr.getCurrentCert();
+    const certs = await certMgr.getCertsChain();
+    expect(certs).toHaveLength(2);
+    expect(keysUtils.certEqual(certs[0], cert3)).toBe(true);
+    // The second certificate is in fact expired
+    expect(keysUtils.certEqual(certs[1], cert2)).toBe(true);
+    expect(keysUtils.certRemainingDuration(certs[1])).toBe(0);
+    expect(keysUtils.certNotExpiredBy(certs[1], new Date())).toBe(false);
     await certMgr.stop();
-
-
   });
   testProp(
     'abc',
