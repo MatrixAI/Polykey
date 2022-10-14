@@ -127,7 +127,11 @@ class RenewCertWithCurrentKeyPairCommand implements CertManagerCommand {
   constructor(
     public readonly duration: number = 31536000,
     public readonly subjectAttrsExtra?: Array<{ [key: string]: Array<string> }>,
-  ) {}
+  ) {
+    console.log('RENEW WITH CURRENT KEY PAIR');
+    console.log(this.duration);
+    console.log(this.subjectAttrsExtra);
+  }
 
   check() {
     return true;
@@ -180,7 +184,11 @@ class RenewCertWithNewKeyPairCommand implements CertManagerCommand {
     public readonly password: string,
     public readonly duration: number = 31536000,
     public readonly subjectAttrsExtra?: Array<{ [key: string]: Array<string> }>,
-  ) {}
+  ) {
+    console.log('RENEW WITH NEW KEY PAIR');
+    console.log(this.duration);
+    console.log(this.subjectAttrsExtra);
+  }
 
   check() {
     return true;
