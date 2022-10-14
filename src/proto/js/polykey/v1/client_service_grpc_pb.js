@@ -168,15 +168,15 @@ function deserialize_polykey_v1_keys_Key(buffer_arg) {
   return polykey_v1_keys_keys_pb.Key.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_polykey_v1_keys_KeyPair(arg) {
-  if (!(arg instanceof polykey_v1_keys_keys_pb.KeyPair)) {
-    throw new Error('Expected argument of type polykey.v1.keys.KeyPair');
+function serialize_polykey_v1_keys_KeyPairJWK(arg) {
+  if (!(arg instanceof polykey_v1_keys_keys_pb.KeyPairJWK)) {
+    throw new Error('Expected argument of type polykey.v1.keys.KeyPairJWK');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
-function deserialize_polykey_v1_keys_KeyPair(buffer_arg) {
-  return polykey_v1_keys_keys_pb.KeyPair.deserializeBinary(new Uint8Array(buffer_arg));
+function deserialize_polykey_v1_keys_KeyPairJWK(buffer_arg) {
+  return polykey_v1_keys_keys_pb.KeyPairJWK.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_polykey_v1_nodes_Claim(arg) {
@@ -591,18 +591,20 @@ nodesAdd: {
     responseDeserialize: deserialize_polykey_v1_nodes_NodeBuckets,
   },
   // Keys
-keysKeyPairRoot: {
-    path: '/polykey.v1.ClientService/KeysKeyPairRoot',
+//  rpc KeysPublicKey (polykey.v1.utils.EmptyMessage) returns (polykey.v1.keys.KeyPairJWK);
+keysPrivateKey: {
+    path: '/polykey.v1.ClientService/KeysPrivateKey',
     requestStream: false,
     responseStream: false,
-    requestType: polykey_v1_utils_utils_pb.EmptyMessage,
-    responseType: polykey_v1_keys_keys_pb.KeyPair,
-    requestSerialize: serialize_polykey_v1_utils_EmptyMessage,
-    requestDeserialize: deserialize_polykey_v1_utils_EmptyMessage,
-    responseSerialize: serialize_polykey_v1_keys_KeyPair,
-    responseDeserialize: deserialize_polykey_v1_keys_KeyPair,
+    requestType: polykey_v1_sessions_sessions_pb.Password,
+    responseType: polykey_v1_keys_keys_pb.KeyPairJWK,
+    requestSerialize: serialize_polykey_v1_sessions_Password,
+    requestDeserialize: deserialize_polykey_v1_sessions_Password,
+    responseSerialize: serialize_polykey_v1_keys_KeyPairJWK,
+    responseDeserialize: deserialize_polykey_v1_keys_KeyPairJWK,
   },
-  keysKeyPairReset: {
+  //  rpc KeysKeyPair (polykey.v1.sessions.Password) returns (polykey.v1.keys.KeyPairJWK);
+keysKeyPairReset: {
     path: '/polykey.v1.ClientService/KeysKeyPairReset',
     requestStream: false,
     responseStream: false,

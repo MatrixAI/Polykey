@@ -52,7 +52,7 @@ import keysDecrypt from './keysDecrypt';
 import keysEncrypt from './keysEncrypt';
 import keysKeyPairRenew from './keysKeyPairRenew';
 import keysKeyPairReset from './keysKeyPairReset';
-import keysKeyPairRoot from './keysKeyPairRoot';
+import keysPrivateKey from './keysPrivateKey';
 import keysPasswordChange from './keysPasswordChange';
 import keysSign from './keysSign';
 import keysVerify from './keysVerify';
@@ -164,7 +164,7 @@ function createService({
     //  needs to be updated all the way down to the BIN commands.
     keysKeyPairRenew: keysKeyPairRenew(container),
     keysKeyPairReset: keysKeyPairReset(container),
-    keysKeyPairRoot: keysKeyPairRoot(container),
+    keysPrivateKey: keysPrivateKey(container),
     keysPasswordChange: keysPasswordChange(container),
     keysSign: keysSign(container),
     keysVerify: keysVerify(container),

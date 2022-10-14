@@ -5,7 +5,7 @@ import CommandEncrypt from './CommandEncrypt';
 import CommandPassword from './CommandPassword';
 import CommandRenew from './CommandRenew';
 import CommandReset from './CommandReset';
-import CommandRoot from './CommandRoot';
+import CommandPrivateKey from './CommandPrivateKey';
 import CommandSign from './CommandSign';
 import CommandVerify from './CommandVerify';
 import CommandPolykey from '../CommandPolykey';
@@ -22,7 +22,7 @@ class CommandKeys extends CommandPolykey {
     this.addCommand(new CommandPassword(...args));
     this.addCommand(new CommandRenew(...args));
     this.addCommand(new CommandReset(...args));
-    this.addCommand(new CommandRoot(...args));
+    this.addCommand(new CommandPrivateKey(...args));
     this.addCommand(new CommandSign(...args));
     this.addCommand(new CommandVerify(...args));
   }
