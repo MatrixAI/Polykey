@@ -27,6 +27,7 @@ import * as utilsPB from '../proto/js/polykey/v1/utils/utils_pb';
 import * as claimsErrors from '../claims/errors';
 import * as sigchainUtils from '../sigchain/utils';
 import * as claimsUtils from '../claims/utils';
+import * as keysUtils from '../keys/utils';
 import { never } from '../utils/utils';
 
 const abortEphemeralTaskReason = Symbol('abort ephemeral task reason');
@@ -230,24 +231,6 @@ class NodeManager {
   }
 
   /**
-   * Connects to the target node and retrieves its public key from its root
-   * certificate chain (corresponding to the provided public key fingerprint -
-   * the node ID).
-   */
-  public async getPublicKey(targetNodeId: NodeId): Promise<PublicKey> {
-    const publicKey = await this.nodeConnectionManager.withConnF(
-      targetNodeId,
-      async (connection) => {
-        return connection.getExpectedPublicKey(targetNodeId);
-      },
-    );
-    if (publicKey == null) {
-      throw new nodesErrors.ErrorNodeConnectionPublicKeyNotFound();
-    }
-    return publicKey;
-  }
-
-  /**
    * Connects to the target node, and retrieves its sigchain data.
    * Verifies and returns the decoded chain as ChainData. Note: this will drop
    * any unverifiable claims.
@@ -256,7 +239,7 @@ class NodeManager {
    */
   public async requestChainData(targetNodeId: NodeId): Promise<ChainData> {
     // Verify the node's chain with its own public key
-    const [unverifiedChainData, publicKey] =
+    const unverifiedChainData =
       await this.nodeConnectionManager.withConnF(
         targetNodeId,
         async (connection) => {
@@ -281,14 +264,10 @@ class NodeManager {
               payload: claimMsg.getPayload(),
             } as ClaimEncoded;
           });
-          const publicKey = connection.getExpectedPublicKey(targetNodeId);
-          return [unverifiedChainData, publicKey];
+          return unverifiedChainData;
         },
       );
-
-    if (!publicKey) {
-      throw new nodesErrors.ErrorNodeConnectionPublicKeyNotFound();
-    }
+    const publicKey = keysUtils.publicKeyFromNodeId(targetNodeId);
     const verifiedChainData = await sigchainUtils.verifyChainData(
       unverifiedChainData,
       publicKey,
@@ -301,22 +280,7 @@ class NodeManager {
       const payload = verifiedChainData[claimId].payload;
       if (payload.data.type === 'node') {
         const endNodeId = validationUtils.parseNodeId(payload.data.node2);
-        let endPublicKey: PublicKey | null;
-        // If the claim points back to our own node, don't attempt to connect
-        if (endNodeId.equals(this.keyRing.getNodeId())) {
-          endPublicKey = this.keyRing.keyPair.publicKey;
-          // Otherwise, get the public key from the root cert chain (by connection)
-        } else {
-          endPublicKey = await this.nodeConnectionManager.withConnF(
-            endNodeId,
-            async (connection) => {
-              return connection.getExpectedPublicKey(endNodeId);
-            },
-          );
-          if (!endPublicKey) {
-            throw new nodesErrors.ErrorNodeConnectionPublicKeyNotFound();
-          }
-        }
+        let endPublicKey: PublicKey = keysUtils.publicKeyFromNodeId(endNodeId);
         const verified = await claimsUtils.verifyClaimSignature(
           unverifiedChainData[claimId],
           endPublicKey,
@@ -396,7 +360,7 @@ class NodeManager {
           const constructedDoublySignedClaim =
             claimsUtils.reconstructClaimEncoded(doublySignedClaimMessage);
           // Verify the singly signed claim with the sender's public key
-          const senderPublicKey = connection.getExpectedPublicKey(targetNodeId);
+          const senderPublicKey = keysUtils.publicKeyFromNodeId(targetNodeId);
           if (!senderPublicKey) {
             throw new nodesErrors.ErrorNodeConnectionPublicKeyNotFound();
           }
