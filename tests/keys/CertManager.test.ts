@@ -13,10 +13,12 @@ import { DB } from '@matrixai/db';
 import * as asynciterable from 'ix/asynciterable';
 import KeyRing from '@/keys/KeyRing';
 import CertManager from '@/keys/CertManager';
+import TaskManager from '@/tasks/TaskManager';
 import * as keysUtils from '@/keys/utils';
 import * as keysErrors from '@/keys/errors';
 import * as utils from '@/utils';
 import * as testsKeysUtils from './utils';
+import { sleep } from '@/utils';
 
 describe(CertManager.name, () => {
   const password = keysUtils.getRandomBytes(10).toString('utf-8');
@@ -28,6 +30,7 @@ describe(CertManager.name, () => {
   let dbPath: string;
   let db: DB;
   let keyRing: KeyRing;
+  let taskManager: TaskManager;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
@@ -64,8 +67,10 @@ describe(CertManager.name, () => {
         },
       },
     });
+    taskManager = await TaskManager.createTaskManager({ db, logger });
   });
   afterEach(async () => {
+    await taskManager.stop();
     await db.stop();
     await keyRing.stop();
     await fs.promises.rm(dataDir, {
@@ -77,6 +82,7 @@ describe(CertManager.name, () => {
     const certManager = await CertManager.createCertManager({
       db,
       keyRing,
+      taskManager,
       logger,
     });
     await expect(async () => {
@@ -93,10 +99,11 @@ describe(CertManager.name, () => {
       await certManager.getCurrentCert();
     }).rejects.toThrow(keysErrors.ErrorCertManagerNotRunning);
   });
-  test('constructs 1 current cert at start', async () => {
+  test('constructs 1 current certificate at start', async () => {
     const certManager = await CertManager.createCertManager({
       db,
       keyRing,
+      taskManager,
       logger,
     });
     const cert = await certManager.getCurrentCert();
@@ -112,6 +119,7 @@ describe(CertManager.name, () => {
     const certManager = await CertManager.createCertManager({
       db,
       keyRing,
+      taskManager,
       logger,
     });
     let cert: Certificate;
@@ -138,6 +146,7 @@ describe(CertManager.name, () => {
     const certManager = await CertManager.createCertManager({
       db,
       keyRing,
+      taskManager,
       logger,
     });
     let certPEM: CertificatePEM;
@@ -184,6 +193,7 @@ describe(CertManager.name, () => {
     const certManager = await CertManager.createCertManager({
       db,
       keyRing,
+      taskManager,
       logger,
     });
     // Only a single certificate will exist at the beginning
@@ -219,7 +229,63 @@ describe(CertManager.name, () => {
     ).toBe(true);
     await certManager.stop();
   });
-  testProp.only(
+  test.only('DETERMINISTIC TEST', async () => {
+
+    // Set to 0 duration
+    // it is technically still valid
+    // for the current time
+    // but we need to do this
+    // at 1 second later
+    const cmds = [
+      new testsKeysUtils.RenewCertWithCurrentKeyPairCommand(
+        0
+      ),
+      new testsKeysUtils.RenewCertWithCurrentKeyPairCommand(
+        605
+      ),
+    ];
+
+    // LAZY is true to avoid starting the tasks
+    // this can make it easier to test
+    // instead of having concurrent background tasks running
+
+    const certMgr = await CertManager.createCertManager({
+      db,
+      keyRing,
+      taskManager,
+      logger,
+      lazy: true,
+      fresh: true
+    });
+
+    await certMgr.renewCertWithCurrentKeyPair(0);
+    // wait 1 second
+    // otherwise we may still have a valid cert above
+    // in this case, the previous cert should be done!
+    // and this is the problem
+    // if we want to run a command to ADVANCE the time
+    // that's important to deal with
+    await sleep(1000);
+    await certMgr.renewCertWithCurrentKeyPair(605);
+
+
+    // const model = {
+    //   certCount: 1,
+    //   currentCert: await certMgr.getCurrentCert(),
+    // };
+    // const modelSetup = async () => {
+    //   return {
+    //     model,
+    //     real: certMgr,
+    //   };
+    // };
+    // await fc.asyncModelRun(modelSetup, cmds);
+
+    await certMgr.stop();
+
+
+  });
+  testProp(
     'abc',
     [
       fc.commands(
@@ -239,10 +305,15 @@ describe(CertManager.name, () => {
       ),
     ],
     async (cmds) => {
+
+      console.log('COMMANDS', cmds);
+
+
       // Start a fresh certificate manager for each property test
       const certMgr = await CertManager.createCertManager({
         db,
         keyRing,
+        taskManager,
         logger,
         fresh: true
       });
@@ -260,7 +331,7 @@ describe(CertManager.name, () => {
       await certMgr.stop();
     },
     {
-      numRuns: 20,
+      numRuns: 1,
     }
   );
   test('renew with current key pair', async () => {
@@ -275,6 +346,7 @@ describe(CertManager.name, () => {
     const certManager = await CertManager.createCertManager({
       db,
       keyRing,
+      taskManager,
       logger,
     });
 
@@ -304,6 +376,7 @@ describe(CertManager.name, () => {
     const certManager = await CertManager.createCertManager({
       db,
       keyRing,
+      taskManager,
       logger,
     });
     const keyPairPem1 = keysUtils.keyPairToPEM(keyRing.keyPair);
@@ -329,6 +402,7 @@ describe(CertManager.name, () => {
     const certManager = await CertManager.createCertManager({
       db,
       keyRing,
+      taskManager,
       logger,
     });
 

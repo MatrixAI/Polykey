@@ -11,7 +11,9 @@ import type {
   CertificatePEMChain,
 } from './types';
 import type KeyRing from './KeyRing';
-import type { CertId } from '../ids/types';
+import type TaskManager from '../tasks/TaskManager';
+import type { CertId, TaskHandlerId, TaskId } from '../ids/types';
+import type { TaskHandler } from '../tasks/types';
 import type { PolykeyWorkerManagerInterface } from '../workers/types';
 import Logger from '@matrixai/logger';
 import { IdInternal } from '@matrixai/id';
@@ -22,6 +24,9 @@ import {
 import { Lock } from '@matrixai/async-locks';
 import * as keysUtils from './utils';
 import * as keysErrors from './errors';
+import * as ids from '../ids';
+
+const abortRenewCertTaskReason = Symbol('abort certificate task reason');
 
 interface CertManager extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
@@ -32,28 +37,44 @@ class CertManager {
   /**
    * The password is needed in case there needs to be an automatic renewal.
    * When the certificate is automatically renewed, a new key pair is generated.
+   *
+   * The `certDuration` is in seconds. This is the default duration of generated
+   * certificates. Certificates will be valid from now until inclusive of
+   * `now + certDuration`. Certificates only have second resolution, so `now` is
+   * always interpreted as truncated to the second.
+   *
+   * The `certRenewLeadTime` is in seconds. This is the amount time set before the
+   * last valid second timestamp, in which to automatically run the certificate
+   * renewal with the current key pair. This must ensure enough time for change
+   * propagation across the gestalt graph.
    */
   public static async createCertManager({
     db,
     keyRing,
+    taskManager,
     certDuration = 31536000,
+    certRenewLeadTime = 86400,
     changeCallback,
     workerManager,
     logger = new Logger(this.name),
     subjectAttrsExtra,
     issuerAttrsExtra,
     now = new Date,
+    lazy = false,
     fresh = false,
   }: {
       db: DB;
       keyRing: KeyRing;
+      taskManager: TaskManager;
       certDuration?: number;
+      certRenewLeadTime?: number;
       changeCallback?: (data: CertManagerChangeData) => any;
       workerManager?: PolykeyWorkerManagerInterface;
       logger?: Logger;
       subjectAttrsExtra?: Array<{ [key: string]: Array<string> }>,
       issuerAttrsExtra?: Array<{ [key: string]: Array<string> }>,
       now?: Date;
+      lazy?: boolean;
       fresh?: boolean;
     }
   ): Promise<CertManager> {
@@ -61,7 +82,9 @@ class CertManager {
     const certManager = new this({
       db,
       keyRing,
+      taskManager,
       certDuration,
+      certRenewLeadTime,
       changeCallback,
       workerManager,
       logger,
@@ -70,6 +93,7 @@ class CertManager {
       subjectAttrsExtra,
       issuerAttrsExtra,
       now,
+      lazy,
       fresh
     });
     logger.info(`Created ${this.name}`);
@@ -80,11 +104,14 @@ class CertManager {
    * Certificate duration in seconds
    */
   public readonly certDuration: number;
+  public readonly certRenewLeadTime: number;
 
   protected logger: Logger;
-  protected workerManager?: PolykeyWorkerManagerInterface;
   protected db: DB;
   protected keyRing: KeyRing;
+  protected taskManager: TaskManager;
+  protected changeCallback?: (data: CertManagerChangeData) => any;
+  protected workerManager?: PolykeyWorkerManagerInterface;
   protected generateCertId: () => CertId;
   protected dbPath: LevelPath = [this.constructor.name];
   /**
@@ -97,20 +124,43 @@ class CertManager {
    * `CertManager/lastCertId -> {raw(CertId)}`
    */
   protected dblastCertIdPath: KeyPath = [...this.dbPath, 'lastCertId'];
-  protected changeCallback?: (data: CertManagerChangeData) => any;
   protected renewResetLock: Lock = new Lock();
+
+  protected renewCurrentCertHandler: TaskHandler = async (
+    _ctx,
+    _taskInfo,
+    duration: number,
+    subjectAttrsExtra?: Array<{ [key: string]: Array<string> }>,
+  ) => {
+    // If the certificate is already being renewed or reset
+    // then we can cancel this automatic renewal operation
+    if (this.renewResetLock.isLocked()) {
+      return;
+    }
+    await this.renewCertWithCurrentKeyPair(
+      duration,
+      subjectAttrsExtra
+    );
+  };
+  protected renewCurrentCertHandlerId: TaskHandlerId =
+    `${this.constructor.name}.renewCurrentCert` as TaskHandlerId;
+  protected renewCurrentCertTaskId?: TaskId;
 
   public constructor({
     db,
     keyRing,
+    taskManager,
     certDuration,
+    certRenewLeadTime,
     changeCallback,
     workerManager,
     logger,
   }: {
     db: DB;
     keyRing: KeyRing;
+    taskManager: TaskManager;
     certDuration: number;
+    certRenewLeadTime: number;
     changeCallback?: (data: CertManagerChangeData) => any;
     workerManager?: PolykeyWorkerManagerInterface;
     logger: Logger;
@@ -118,7 +168,9 @@ class CertManager {
     this.logger = logger;
     this.db = db;
     this.keyRing = keyRing;
+    this.taskManager = taskManager;
     this.certDuration = certDuration;
+    this.certRenewLeadTime = certRenewLeadTime;
     this.changeCallback = changeCallback;
     this.workerManager = workerManager;
   }
@@ -135,11 +187,13 @@ class CertManager {
     subjectAttrsExtra,
     issuerAttrsExtra,
     now = new Date,
+    lazy = false,
     fresh = false,
   }: {
     subjectAttrsExtra?: Array<{ [key: string]: Array<string> }>,
     issuerAttrsExtra?: Array<{ [key: string]: Array<string> }>,
     now?: Date;
+    lazy?: boolean;
     fresh?: boolean;
   } = {}): Promise<void> {
     this.logger.info(`Starting ${this.constructor.name}`);
@@ -153,11 +207,25 @@ class CertManager {
       issuerAttrsExtra,
       now,
     );
+    this.logger.info(`Registering handler ${this.renewCurrentCertHandlerId}`);
+    this.taskManager.registerHandler(
+      this.renewCurrentCertHandlerId,
+      this.renewCurrentCertHandler,
+    );
+    if (!lazy) {
+      await this.startTasks({
+        subjectAttrsExtra,
+        now,
+      });
+    }
     this.logger.info(`Started ${this.constructor.name}`);
   }
 
   public async stop() {
     this.logger.info(`Stopping ${this.constructor.name}`);
+    await this.stopTasks();
+    this.logger.info(`Deregistering handler ${this.renewCurrentCertHandlerId}`);
+    this.taskManager.deregisterHandler(this.renewCurrentCertHandlerId);
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
@@ -165,6 +233,48 @@ class CertManager {
     this.logger.info(`Destroying ${this.constructor.name}`);
     await this.db.clear(this.dbPath);
     this.logger.info(`Destroyed ${this.constructor.name}`);
+  }
+
+  /**
+   * Start background tasks.
+   * This is idempotent.
+   */
+  @ready(new keysErrors.ErrorCertManagerNotRunning(), false, ['starting'])
+  public async startTasks({
+    subjectAttrsExtra,
+    now = new Date,
+  }: {
+    subjectAttrsExtra?: Array<{ [key: string]: Array<string> }>,
+    now?: Date;
+  }): Promise<void> {
+    await this.setupRenewCurrentCertTask({
+      subjectAttrsExtra,
+      now,
+    });
+  }
+
+  /**
+   * Stop background tasks.
+   * This is idempotent.
+   */
+  public async stopTasks(): Promise<void> {
+    // No persistence required for this task
+    // it will be registered again upon startup
+    if (this.renewCurrentCertTaskId != null) {
+      this.logger.info(
+        `Cancelling task ${
+          this.renewCurrentCertHandlerId
+        }:${
+          ids.encodeTaskId(this.renewCurrentCertTaskId)
+        }`
+      );
+      const task = await this.taskManager.getTask(this.renewCurrentCertTaskId);
+      if (task != null) {
+        task.cancel(abortRenewCertTaskReason);
+        await task.promise();
+      }
+      delete this.renewCurrentCertTaskId;
+    }
   }
 
   @ready(new keysErrors.ErrorCertManagerNotRunning(), false, ['starting'])
@@ -281,10 +391,17 @@ class CertManager {
   /**
    * Generates a new leaf certificate with a new key pair.
    * This new certificate is chained to the previous certificate.
+   *
    * It is self-signed and also signed by the previous certificate
-   * The parent signature is encoded with `NodeSignatureExtension`>
-   * This maintains a certificate chain that provides zero-downtime migration
-   * This results in a new `NodeId`.
+   *
+   * The self-signed signature is encoded within the `NodeSignatureExtension`.
+   * The certificate signature is produced by the previous certificate's
+   * public key.
+   *
+   * Garbage collection of old certificates is executed immediately afterwards.
+   * The garbage collection will be checking if the certificates are expired.
+   * It will reference the same timestamp that was used to generate the new
+   * certificate.
    */
   @ready(new keysErrors.ErrorCertManagerNotRunning())
   public async renewCertWithNewKeyPair(
@@ -319,12 +436,16 @@ class CertManager {
           }
         );
       } catch (e) {
+        // Use the same now to ensure that the new certificate is not expired
+        // even if the duration is set to 0
         await this.gcCerts(false, now);
         throw new keysErrors.ErrorCertsRenew(
           'Failed renewing with new key pair',
           { cause: e }
         );
       }
+      // Use the same now to ensure that the new certificate is not expired
+      // even if the duration is set to 0
       await this.gcCerts(false, now);
       if (this.changeCallback != null) {
         await this.changeCallback({
@@ -338,6 +459,23 @@ class CertManager {
     });
   }
 
+  /**
+   * Generates a new leaf certificate with the current key pair.
+   * This new certificate is chained to the previous certificate.
+   * It is self-signed and also signed by the previous certificate
+   *
+   * The self-signed signature is encoded within the `NodeSignatureExtension`.
+   * The certificate signature is produced by the previous certificate's
+   * public key.
+   *
+   * This maintains a certificate chain that provides zero-downtime migration.
+   * The `NodeId` does not change.
+   *
+   * Garbage collection of old certificates is executed immediately afterwards.
+   * The garbage collection will be checking if the certificates are expired.
+   * It will reference the same timestamp that was used to generate the new
+   * certificate.
+   */
   @ready(new keysErrors.ErrorCertManagerNotRunning(), false, ['starting'])
   public async renewCertWithCurrentKeyPair(
     duration: number = 31536000,
@@ -359,12 +497,16 @@ class CertManager {
         });
         await this.putCert(certNew);
       } catch (e) {
+        // Use the same now to ensure that the new certificate is not expired
+        // even if the duration is set to 0
         await this.gcCerts(false, now);
         throw new keysErrors.ErrorCertsRenew(
           'Failed renewing with current key pair',
           { cause: e }
         );
       }
+      // Use the same now to ensure that the new certificate is not expired
+      // even if the duration is set to 0
       await this.gcCerts(false, now);
       if (this.changeCallback != null) {
         await this.changeCallback({
@@ -382,6 +524,13 @@ class CertManager {
    * Generates a new certificate chain starting with a new key pair.
    * The new certificate is self-signed, and has no previous certificate.
    * The results in a new `NodeId`.
+   *
+   * The self-signed signature is encoded within the `NodeSignatureExtension`.
+   *
+   * Garbage collection of old certificates is executed immediately afterwards.
+   * The garbage collection will be checking if the certificates are expired.
+   * It will reference the same timestamp that was used to generate the new
+   * certificate.
    */
   @ready(new keysErrors.ErrorCertManagerNotRunning())
   public async resetCertWithNewKeyPair(
@@ -416,12 +565,16 @@ class CertManager {
           }
         );
       } catch (e) {
+        // Use the same now to ensure that the new certificate is not expired
+        // even if the duration is set to 0
         await this.gcCerts(false, now);
         throw new keysErrors.ErrorCertsReset(
           'Failed resetting with new key pair',
           { cause: e }
         );
       }
+      // Use the same now to ensure that the new certificate is not expired
+      // even if the duration is set to 0
       // Force delete certificates beyond the current certificate
       await this.gcCerts(true, now);
       if (this.changeCallback != null) {
@@ -439,8 +592,14 @@ class CertManager {
   /**
    * Generates a new certificate chain starting with the current key pair.
    * The new certificate is self-signed, and has no previous certificate.
-   * This does not result in a new `NodeId`.
-   * It does result in a new certificate.
+   * The `NodeId` does not change.
+   *
+   * The self-signed signature is encoded within the `NodeSignatureExtension`.
+   *
+   * Garbage collection of old certificates is executed immediately afterwards.
+   * The garbage collection will be checking if the certificates are expired.
+   * It will reference the same timestamp that was used to generate the new
+   * certificate.
    */
   @ready(new keysErrors.ErrorCertManagerNotRunning())
   public async resetCertWithCurrentKeyPair(
@@ -463,12 +622,16 @@ class CertManager {
         });
         await this.putCert(certNew);
       } catch (e) {
+        // Use the same now to ensure that the new certificate is not expired
+        // even if the duration is set to 0
         await this.gcCerts(false, now);
         throw new keysErrors.ErrorCertsReset(
           'Failed resetting with current key pair',
           { cause: e }
         );
       }
+      // Use the same now to ensure that the new certificate is not expired
+      // even if the duration is set to 0
       // Force delete certificates beyond the current certificate
       await this.gcCerts(true, now);
       if (this.changeCallback != null) {
@@ -541,6 +704,32 @@ class CertManager {
     this.logger.info('Finish current certificate setup');
   }
 
+  /**
+   * Sets up the renew current certificate task.
+   * This will set the renewal of the certificate to 1 day before the expiration.
+   * If the certificate duration is below 1 day, it will set it to the last valid second.
+   * This task is a singleton. It must be updated when the current certificate is renewed.
+   *
+   * TBD, therefore this function can be an idempotent function.
+   * Upon running, it always sets the new function up to be running.
+   * The only issue is if the duration is set too short.
+   * This will cause a LOOP of setting up the new certificate ALL the time.
+   * That is literally a bad idea!
+   * We don't want the durations to be below 1 second.
+   * Well we could say that there needs to be a minimum amount of time the certificate is set to.
+   * But we can't say for sure what that should be.
+   */
+  protected async setupRenewCurrentCertTask({
+    subjectAttrsExtra,
+    now = new Date,
+  }: {
+    subjectAttrsExtra?: Array<{ [key: string]: Array<string> }>,
+    now?: Date;
+  }): Promise<void> {
+    // TBD
+    // Use the `this.certRenewalLeadTime` too
+  }
+
   protected async generateCertificate({
     subjectKeyPair,
     issuerPrivateKey,
@@ -592,21 +781,41 @@ class CertManager {
 
   /**
    * Garbage collect invalid or expired certificates.
-   * Expired certificates are no longer valid and should be deleted.
    * Invalid certificates can happen if key rotation does not succeed.
    * It could mean that the leaf certificate does not match the current key pair.
+   *
+   * Expired certificates are no longer valid and should be deleted.
+   * This will always ensure that the current certificate is kept.
+   * It will also keep the first expired certificate in the chain.
+   * All subsequent certificates will be deleted.
+   *
+   * Note if generating a new certificate, it may be generated with a duration
+   * of 0. When this occurs, the certificate is considered still valid for the
+   * `now` timestamp at generation. Therefore upon finding the current
+   * certificate we don't bother checking whether it is not expired. We can
+   * assume it is not expired. However to be absolutely robust, pass the same
+   * `now` between generation and `this.gcCerts` to prevent accidental garbage
+   * collection of a 0-duration current certificate.
    */
   protected async gcCerts(
     force: boolean = false,
     now: Date = new Date,
   ): Promise<void> {
+    console.group('GC CERT at ', now);
+
     this.logger.info('Garbage collecting certificates');
     await this.db.withTransactionF(async (tran) => {
       await tran.lock(this.dbCertsPath.join(''));
       let currentCertFound: boolean = false;
+      let expiredCertFound: boolean = false;
       for await (const [kP, certASN1] of tran.iterator(this.dbCertsPath, {
         reverse: true,
       })) {
+
+        this.logger.debug('Iterating at Certificate');
+
+        console.group('Cert Iteration');
+
         const certIdBuffer = kP[0] as Buffer;
         const certId = IdInternal.fromBuffer<CertId>(certIdBuffer);
         const cert = keysUtils.certFromASN1(certASN1 as CertificateASN1)!;
@@ -615,32 +824,91 @@ class CertManager {
         if (!currentCertFound) {
           const certPublicKey = keysUtils.certPublicKey(cert)!;
           if (certPublicKey.equals(this.keyRing.keyPair.publicKey)) {
+
+            console.log(
+              'FOUND CURRENT CERT',
+              ids.encodeCertId(certId),
+              keysUtils.certRemainingDuration(cert, now)
+            );
+
             currentCertFound = true;
           } else {
+
+            console.log('INVALID CERTIFICATE, BAD KEY ROTATION', ids.encodeCertId(certId));
+
+            this.logger.warn(`Garbage collecting invalid certificate ${ids.encodeCertId(certId)} caused by failed key rotation`);
             // Delete this invalid certificate.
             // This can only happen if the key pair rotation failed
             // after the certificate was put in to the DB.
             await this.delCert(certId, tran);
-            // This will iterate up the chain to the root
-            // until we find the current certificate.
-            // It should be the very next certificate that is correct.
-            continue;
           }
+          console.groupEnd();
+          continue;
         }
-        if (force || !keysUtils.certNotExpiredBy(cert, now)) {
+        // If forcing, delete all certificates after the current certificate.
+        // This is only used during resetting of the certificate chain.
+        if (force) {
+          await this.delCert(certId, tran);
+          console.log('FORCE DELETING Cert', ids.encodeCertId(certId));
+          console.groupEnd();
+          continue;
+        }
+        if (!expiredCertFound) {
+          // Keep the first expired certificate we find
+          if (!keysUtils.certNotExpiredBy(cert, now)) {
+
+            console.log(
+              'FOUND the First Expired Cert',
+              ids.encodeCertId(certId),
+              keysUtils.certRemainingDuration(cert, now)
+            );
+
+            expiredCertFound = true;
+          }
+
+          // Don't delete the first expired certificate
+          // the end result is like currentCert, expiredCert, ...ALL DELETED...
+          console.log(
+            'NOT EXPIRED, continuing',
+            ids.encodeCertId(certId),
+            keysUtils.certRemainingDuration(cert, now)
+          );
+
+        } else {
+
+          console.log('DELETING AFTER EXPIRED', ids.encodeCertId(certId));
+          // Remaining time of the certificate
+
+
+          // Delete all certificates after the first expired certificate
           await this.delCert(certId, tran);
         }
+
+
+
+        // console.log('CERTIFICATE', cert);
+        // // this is at truncated time now
+        // console.log('NOT BEFORE', cert.notBefore);
+        // // this is 1 year ahead at 2023
+        // console.log('NOT AFTER', cert.notAfter)
+        // the next certificate is
+        // START: 42:14.000
+        // and add 605 seconds to it
+        // STOP: 52:19.000
+        // each time we are producing an ew cert
+
+        console.groupEnd();
       }
       if (!currentCertFound) {
-        // This should never occur
-        // because there should always be a current certificate
-        // even during renewal or resetting
+        // This should never occur because there should always be a "valid"
+        // current certificate after renewal or resetting
         throw new keysErrors.ErrorCertsGC(
           'Current certificate is not found during garbage collection'
         );
       }
     });
     this.logger.info('Garbage collected certificates');
+    console.groupEnd();
   }
 }
 
