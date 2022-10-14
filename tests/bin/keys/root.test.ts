@@ -1,7 +1,7 @@
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as testUtils from '../../utils';
 
-describe('root', () => {
+describe('privateKey', () => {
   const logger = new Logger('root test', LogLevel.WARN, [new StreamHandler()]);
   let agentDir;
   let agentPassword;
@@ -14,11 +14,12 @@ describe('root', () => {
   afterEach(async () => {
     await agentClose();
   });
-  testUtils.testIf(
-    testUtils.isTestPlatformEmpty || testUtils.isTestPlatformDocker,
-  )('root gets the public key', async () => {
-    const { exitCode, stdout } = await testUtils.pkExec(
-      ['keys', 'root', '--format', 'json'],
+  // testUtils.testIf(
+  //   testUtils.isTestPlatformEmpty || testUtils.isTestPlatformDocker,
+  // )
+  test('root gets the public key', async () => {
+    const { exitCode, stdout, stderr } = await testUtils.pkExec(
+      ['keys', 'privateKey', 'password', '--format', 'json'],
       {
         env: {
           PK_NODE_PATH: agentDir,
@@ -30,7 +31,10 @@ describe('root', () => {
     );
     expect(exitCode).toBe(0);
     expect(JSON.parse(stdout)).toEqual({
-      publicKey: expect.any(String),
+      ciphertext: expect.any(String),
+      iv: expect.any(String),
+      protected: expect.any(String),
+      tag: expect.any(String),
     });
   });
   testUtils.testIf(
