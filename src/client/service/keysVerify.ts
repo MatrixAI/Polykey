@@ -6,6 +6,10 @@ import type Logger from '@matrixai/logger';
 import * as grpcUtils from '../../grpc/utils';
 import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 import * as clientUtils from '../utils';
+import * as keysUtils from '../../keys/utils'
+import * as keysErrors from '../../keys/errors'
+import { never } from '../../utils/index';
+import { Signature, JWK, PublicKey } from '../../keys/types';
 
 function keysVerify({
   authenticate,
@@ -24,13 +28,20 @@ function keysVerify({
       const response = new utilsPB.StatusMessage();
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
-      // FIXME: do we need to provide a public key now?
-      // const status = await keyRing.verify(
-      //   Buffer.from(call.request.getData(), 'binary'),
-      //   Buffer.from(call.request.getSignature(), 'binary'),
-      // );
-      // response.setSuccess(status);
-      throw Error('TMP FIXME');
+      let publicKey: PublicKey | undefined;
+      try {
+        const jwk = JSON.parse(call.request.getPublicKeyJwk()) as JWK;
+        publicKey = keysUtils.publicKeyFromJWK(jwk);
+        if (publicKey == null) never();
+      } catch (e) {
+        throw new keysErrors.ErrorPublicKeyParse(undefined, {cause: e});
+      }
+      const status = keyRing.verify(
+        publicKey,
+        Buffer.from(call.request.getData(), 'binary'),
+        Buffer.from(call.request.getSignature(), 'binary') as Signature,
+      );
+      response.setSuccess(status);
       callback(null, response);
       return;
     } catch (e) {

@@ -5,6 +5,7 @@ package polykey.v1.keys;
 message Crypto {
   string data = 1;
   string signature = 2;
+  string public_key_jwk = 3;
 }
 
 message Key {

@@ -58,6 +58,11 @@ class ErrorKeyPairRotate<T> extends ErrorKeys<T> {
   exitCode = sysexits.IOERR;
 }
 
+class ErrorPublicKeyParse<T> extends ErrorKeys<T> {
+  static description = 'Unable to parse public key';
+  exitCode = sysexits.IOERR;
+}
+
 class ErrorDBKeyRead<T> extends ErrorKeys<T> {
   static description = 'Unable to read key';
   exitCode = sysexits.IOERR;
@@ -106,6 +111,7 @@ export {
   ErrorKeyPairParse,
   ErrorKeyPairWrite,
   ErrorKeyPairRotate,
+  ErrorPublicKeyParse,
   ErrorDBKeyRead,
   ErrorDBKeyWrite,
   ErrorDBKeyParse,

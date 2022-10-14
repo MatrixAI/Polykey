@@ -52,6 +52,11 @@ class ErrorCLIPrivateKeyFileRead<T> extends ErrorCLI<T> {
   exitCode = sysexits.NOINPUT;
 }
 
+class ErrorCLIPublicJWKFileRead<T> extends ErrorCLI<T> {
+  static description = 'Failed to read public JWK file';
+  exitCode = sysexits.NOINPUT;
+}
+
 class ErrorCLIFileRead<T> extends ErrorCLI<T> {
   static description = 'Failed to read file';
   exitCode = sysexits.NOINPUT;
@@ -89,6 +94,7 @@ export {
   ErrorCLIPasswordFileRead,
   ErrorCLIRecoveryCodeFileRead,
   ErrorCLIPrivateKeyFileRead,
+  ErrorCLIPublicJWKFileRead,
   ErrorCLIFileRead,
   ErrorCLIPolykeyAgentStatus,
   ErrorCLIPolykeyAgentProcess,
