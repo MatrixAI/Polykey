@@ -18,6 +18,7 @@ import * as keysUtils from '@/keys/utils';
 import * as keysErrors from '@/keys/errors';
 import * as utils from '@/utils';
 import * as testsKeysUtils from './utils';
+import { sleep } from '@/utils';
 
 describe(CertManager.name, () => {
   const password = keysUtils.getRandomBytes(10).toString('utf-8');
@@ -228,33 +229,58 @@ describe(CertManager.name, () => {
     ).toBe(true);
     await certManager.stop();
   });
-  test.only('det test', async () => {
+  test.only('DETERMINISTIC TEST', async () => {
 
+    // Set to 0 duration
+    // it is technically still valid
+    // for the current time
+    // but we need to do this
+    // at 1 second later
     const cmds = [
       new testsKeysUtils.RenewCertWithCurrentKeyPairCommand(
+        0
+      ),
+      new testsKeysUtils.RenewCertWithCurrentKeyPairCommand(
         605
-      )
+      ),
     ];
+
+    // LAZY is true to avoid starting the tasks
+    // this can make it easier to test
+    // instead of having concurrent background tasks running
 
     const certMgr = await CertManager.createCertManager({
       db,
       keyRing,
       taskManager,
       logger,
+      lazy: true,
       fresh: true
     });
 
-    const model = {
-      certCount: 1,
-      currentCert: await certMgr.getCurrentCert(),
-    };
-    const modelSetup = async () => {
-      return {
-        model,
-        real: certMgr,
-      };
-    };
-    await fc.asyncModelRun(modelSetup, cmds);
+    await certMgr.renewCertWithCurrentKeyPair(0);
+    // wait 1 second
+    // otherwise we may still have a valid cert above
+    // in this case, the previous cert should be done!
+    // and this is the problem
+    // if we want to run a command to ADVANCE the time
+    // that's important to deal with
+    await sleep(1000);
+    await certMgr.renewCertWithCurrentKeyPair(605);
+
+
+    // const model = {
+    //   certCount: 1,
+    //   currentCert: await certMgr.getCurrentCert(),
+    // };
+    // const modelSetup = async () => {
+    //   return {
+    //     model,
+    //     real: certMgr,
+    //   };
+    // };
+    // await fc.asyncModelRun(modelSetup, cmds);
+
     await certMgr.stop();
 
 
