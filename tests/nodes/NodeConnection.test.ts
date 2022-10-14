@@ -568,28 +568,6 @@ describe(`${NodeConnection.name} test`, () => {
       await nodeConnection?.destroy();
     }
   });
-  test('getExpectedPublicKey', async () => {
-    let nodeConnection: NodeConnection<GRPCClientAgent> | undefined;
-    try {
-      nodeConnection = await NodeConnection.createNodeConnection({
-        targetNodeId: targetNodeId,
-        targetHost: localHost,
-        targetPort: targetPort,
-        proxy: clientProxy,
-        destroyCallback,
-        logger: logger,
-        clientFactory: async (args) =>
-          GRPCClientAgent.createGRPCClientAgent(args),
-      });
-
-      const expectedPublicKey =
-        nodeConnection.getExpectedPublicKey(targetNodeId);
-      const publicKey = serverKeyRing.keyPair.publicKey;
-      expect(keysUtils.publicKeyToPEM(expectedPublicKey!)).toBe(keysUtils.publicKeyToPEM(publicKey)!);
-    } finally {
-      await nodeConnection?.destroy();
-    }
-  });
   test('should call `killSelf if connection is closed based on bad certificate', async () => {
     let proxy: Proxy | undefined;
     let nodeConnection: NodeConnection<GRPCClientAgent> | undefined;

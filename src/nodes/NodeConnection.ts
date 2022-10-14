@@ -214,25 +214,6 @@ class NodeConnection<T extends GRPCClient> {
     }
     return connInfo.remoteCertificates;
   }
-
-  /**
-   * Finds the public key of a corresponding node ID, from the certificate chain
-   * of the node at the end of this connection.
-   * Because a keynode's root key can be refreshed, its node ID can also change.
-   * Sometimes these previous root keys are also still valid - these would be
-   * found in the certificate chain.
-   */
-  @ready(new nodesErrors.ErrorNodeConnectionDestroyed())
-  public getExpectedPublicKey(expectedNodeId: NodeId): PublicKey | null {
-    const certificates = this.getRootCertChain();
-    let publicKey: PublicKey | null = null;
-    for (const cert of certificates) {
-      if (keysUtils.certNodeId(cert)!.equals(expectedNodeId)) {
-        publicKey = keysUtils.certPublicKey(cert)!;
-      }
-    }
-    return publicKey;
-  }
 }
 
 export default NodeConnection;
