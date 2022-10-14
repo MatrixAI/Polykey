@@ -11,25 +11,12 @@ import type {
 } from '@/keys/types';
 import type CertManager from '@/keys/CertManager';
 import { fc } from '@fast-check/jest';
-
-// This overloads the `AsyncIterable`, using the overloaded extensions
-// then subsequently we are monkey patching operators using the `toarray`
-// like below
-// I still don'tu nderstand what's the point
-// Factories can be brought in with `ix/add...
+import { IterableX as Iterable } from 'ix/iterable';
 import { AsyncIterableX as AsyncIterable } from 'ix/asynciterable';
-
-// import 'ix/add/asynciterable/toArray';
-// import 'ix/add/asynciterable/last';
-// import 'ix/add/asynciterable-operators/map';
-
-// import 'ix/add/asynciterable/as';
+import 'ix/add/iterable-operators/takewhile';
+import 'ix/add/iterable-operators/toarray';
 import 'ix/add/asynciterable-operators/toarray';
 import 'ix/add/asynciterable-operators/take';
-
-// import * as asynciterable from 'ix/asynciterable';
-// import * as asynciterableoperators from 'ix/asynciterable/operators';
-
 import * as asymmetric from '@/keys/utils/asymmetric';
 import * as jwk from '@/keys/utils/jwk';
 import * as x509 from '@/keys/utils/x509';
@@ -117,8 +104,7 @@ const signatureArb = fc
 const passwordArb = fc.string({ minLength: 0, maxLength: 20 }).noShrink();
 
 type CertManagerModel = {
-  certCount: number;
-  currentCert: Certificate;
+  certs: Array<Certificate>,
 };
 
 type CertManagerCommand = fc.AsyncCommand<CertManagerModel, CertManager>;
@@ -141,11 +127,28 @@ class RenewCertWithCurrentKeyPairCommand implements CertManagerCommand {
       this.subjectAttrsExtra,
       now
     );
-    const certOld = model.currentCert;
+    // Update the model
+    const certOld = model.certs[0];
     const certNew = await real.getCurrentCert();
+    // Take the certs until it reaches the first expired certificate
+    // but includes the first expired certificate
+    const firstExpiredCert = model.certs.find((cert) => {
+      return !x509.certNotExpiredBy(cert, now);
+    });
+    model.certs = [certNew].concat(
+      Iterable.as(model.certs).takeWhile((cert) => {
+        return x509.certNotExpiredBy(cert, now);
+      }).toArray(),
+    );
+    if (firstExpiredCert != null) {
+      model.certs.push(firstExpiredCert);
+    }
+    // Check consistency
     const [certNew_, certOld_] = await AsyncIterable.as(real.getCerts()).take(2).toArray();
+    // New certificate with have a greater `CertId`
+    expect(x509.certCertId(certNew)! > x509.certCertId(certOld)!).toBe(true);
     // Same key pair preserves the NodeId
-    expect(x509.certNodeId(certNew),).toStrictEqual(x509.certNodeId(certOld));
+    expect(x509.certNodeId(certNew)).toStrictEqual(x509.certNodeId(certOld));
     // New certificates should match
     expect(x509.certEqual(certNew_, certNew)).toBe(true);
     // Old certificate was the previous current certificate
@@ -164,10 +167,7 @@ class RenewCertWithCurrentKeyPairCommand implements CertManagerCommand {
         new Date(now.getTime() + this.duration * 1000)
       )
     ).toBe(true);
-    expect((await real.getCertsChain()).length).toBe(model.certCount + 1);
-    // Update the model
-    model.certCount++;
-    model.currentCert = certNew;
+    expect(await real.getCertsChain()).toStrictEqual(model.certs);
   }
 
   toString() {
@@ -195,9 +195,26 @@ class RenewCertWithNewKeyPairCommand implements CertManagerCommand {
       this.subjectAttrsExtra,
       now
     );
-    const certOld = model.currentCert;
+    // Update the model
+    const certOld = model.certs[0];
     const certNew = await real.getCurrentCert();
+    // Take the certs until it reaches the first expired certificate
+    // but includes the first expired certificate
+    const firstExpiredCert = model.certs.find((cert) => {
+      return !x509.certNotExpiredBy(cert, now);
+    });
+    model.certs = [certNew].concat(
+      Iterable.as(model.certs).takeWhile((cert) => {
+        return x509.certNotExpiredBy(cert, now);
+      }).toArray(),
+    );
+    if (firstExpiredCert != null) {
+      model.certs.push(firstExpiredCert);
+    }
+    // Check consistency
     const [certNew_, certOld_] = await AsyncIterable.as(real.getCerts()).take(2).toArray();
+    // New certificate with have a greater `CertId`
+    expect(x509.certCertId(certNew)! > x509.certCertId(certOld)!).toBe(true);
     // Different key pair changes the the NodeId
     expect(x509.certNodeId(certNew),).not.toStrictEqual(x509.certNodeId(certOld));
     // New certificates should match
@@ -218,10 +235,7 @@ class RenewCertWithNewKeyPairCommand implements CertManagerCommand {
         new Date(now.getTime() + this.duration * 1000)
       )
     ).toBe(true);
-    expect((await real.getCertsChain()).length).toBe(model.certCount + 1);
-    // Update the model
-    model.certCount++;
-    model.currentCert = certNew;
+    expect(await real.getCertsChain()).toStrictEqual(model.certs);
   }
 
   toString() {
@@ -247,19 +261,23 @@ class ResetCertWithCurrentKeyPairCommand implements CertManagerCommand {
       this.subjectAttrsExtra,
       now
     );
-    const certOld = model.currentCert;
+    // Update the model
+    const certOld = model.certs[0];
     const certNew = await real.getCurrentCert();
+    model.certs = [certNew];
     const [certNew_, certOld_] = await AsyncIterable.as(real.getCerts()).take(2).toArray();
+    // New certificate with have a greater `CertId`
+    expect(x509.certCertId(certNew)! > x509.certCertId(certOld)!).toBe(true);
     // Different key pair changes the the NodeId
-    expect(x509.certNodeId(certNew),).not.toStrictEqual(x509.certNodeId(certOld));
+    expect(x509.certNodeId(certNew),).toStrictEqual(x509.certNodeId(certOld));
     // New certificates should match
     expect(x509.certEqual(certNew_, certNew)).toBe(true);
-    // Old certificate was the previous current certificate
-    expect(x509.certEqual(certOld_, certOld)).toBe(true);
-    // New certificate issued by old certificate
-    expect(x509.certIssuedBy(certNew, certOld)).toBe(true);
-    // New certificate signed by old certificate
-    expect(await x509.certSignedBy(certNew, x509.certPublicKey(certOld)!)).toBe(true);
+    // Old certificate no longer exists
+    expect(certOld_).toBeUndefined();
+    // New certificate issued by itself
+    expect(x509.certIssuedBy(certNew, certNew)).toBe(true);
+    // New certificate is self-signed
+    expect(await x509.certSignedBy(certNew, x509.certPublicKey(certNew)!)).toBe(true);
     // New certificate is self-signed via the node signature extension
     expect(await x509.certNodeSigned(certNew)).toBe(true);
     // New certificate is not expired from now and inclusive of the duration
@@ -270,17 +288,13 @@ class ResetCertWithCurrentKeyPairCommand implements CertManagerCommand {
         new Date(now.getTime() + this.duration * 1000)
       )
     ).toBe(true);
-    expect((await real.getCertsChain()).length).toBe(model.certCount + 1);
-    // Update the model
-    model.certCount++;
-    model.currentCert = certNew;
+    expect(await real.getCertsChain()).toStrictEqual(model.certs);
   }
 
   toString() {
     return `ResetCertWithCurrentKeyPair(${this.duration}, ${JSON.stringify(this.subjectAttrsExtra)})`;
   }
 }
-
 
 class ResetCertWithNewKeyPairCommand implements CertManagerCommand {
   constructor(
@@ -302,19 +316,23 @@ class ResetCertWithNewKeyPairCommand implements CertManagerCommand {
       this.subjectAttrsExtra,
       now
     );
-    const certOld = model.currentCert;
+    // Update the model
+    const certOld = model.certs[0];
     const certNew = await real.getCurrentCert();
+    model.certs = [certNew];
     const [certNew_, certOld_] = await AsyncIterable.as(real.getCerts()).take(2).toArray();
+    // New certificate with have a greater `CertId`
+    expect(x509.certCertId(certNew)! > x509.certCertId(certOld)!).toBe(true);
     // Different key pair changes the the NodeId
     expect(x509.certNodeId(certNew),).not.toStrictEqual(x509.certNodeId(certOld));
     // New certificates should match
     expect(x509.certEqual(certNew_, certNew)).toBe(true);
-    // Old certificate was the previous current certificate
-    expect(x509.certEqual(certOld_, certOld)).toBe(true);
-    // New certificate issued by old certificate
-    expect(x509.certIssuedBy(certNew, certOld)).toBe(true);
-    // New certificate signed by old certificate
-    expect(await x509.certSignedBy(certNew, x509.certPublicKey(certOld)!)).toBe(true);
+    // Old certificate no longer exists
+    expect(certOld_).toBeUndefined();
+    // New certificate issued by itself
+    expect(x509.certIssuedBy(certNew, certNew)).toBe(true);
+    // New certificate is self-signed
+    expect(await x509.certSignedBy(certNew, x509.certPublicKey(certNew)!)).toBe(true);
     // New certificate is self-signed via the node signature extension
     expect(await x509.certNodeSigned(certNew)).toBe(true);
     // New certificate is not expired from now and inclusive of the duration
@@ -325,17 +343,13 @@ class ResetCertWithNewKeyPairCommand implements CertManagerCommand {
         new Date(now.getTime() + this.duration * 1000)
       )
     ).toBe(true);
-    expect((await real.getCertsChain()).length).toBe(model.certCount + 1);
-    // Update the model
-    model.certCount++;
-    model.currentCert = certNew;
+    expect(await real.getCertsChain()).toStrictEqual(model.certs);
   }
 
   toString() {
     return `ResetCertWithNewKeyPairCommand('${this.password}', ${this.duration}, ${JSON.stringify(this.subjectAttrsExtra)})`;
   }
 }
-
 
 export {
   bufferArb,

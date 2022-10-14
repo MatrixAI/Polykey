@@ -58,7 +58,6 @@ class CertManager {
     workerManager,
     logger = new Logger(this.name),
     subjectAttrsExtra,
-    issuerAttrsExtra,
     now = new Date,
     lazy = false,
     fresh = false,
@@ -91,7 +90,6 @@ class CertManager {
     });
     await certManager.start({
       subjectAttrsExtra,
-      issuerAttrsExtra,
       now,
       lazy,
       fresh
@@ -185,13 +183,11 @@ class CertManager {
 
   public async start({
     subjectAttrsExtra,
-    issuerAttrsExtra,
     now = new Date,
     lazy = false,
     fresh = false,
   }: {
     subjectAttrsExtra?: Array<{ [key: string]: Array<string> }>,
-    issuerAttrsExtra?: Array<{ [key: string]: Array<string> }>,
     now?: Date;
     lazy?: boolean;
     fresh?: boolean;
@@ -204,7 +200,6 @@ class CertManager {
     this.generateCertId = keysUtils.createCertIdGenerator(lastCertId);
     await this.setupCurrentCert(
       subjectAttrsExtra,
-      issuerAttrsExtra,
       now,
     );
     this.logger.info(`Registering handler ${this.renewCurrentCertHandlerId}`);
@@ -554,7 +549,7 @@ class CertManager {
               issuerPrivateKey: keyPairNew.privateKey,
               duration,
               subjectAttrsExtra,
-              issuerAttrsExtra: currentCert.subjectName.toJSON(),
+              issuerAttrsExtra: subjectAttrsExtra,
               now,
             });
             // Putting the new certificate into the DB must complete
@@ -617,7 +612,7 @@ class CertManager {
           issuerPrivateKey: this.keyRing.keyPair.privateKey,
           duration,
           subjectAttrsExtra,
-          issuerAttrsExtra: currentCert.subjectName.toJSON(),
+          issuerAttrsExtra: subjectAttrsExtra,
           now,
         });
         await this.putCert(certNew);
@@ -661,7 +656,6 @@ class CertManager {
 
   protected async setupCurrentCert(
     subjectAttrsExtra?: Array<{ [key: string]: Array<string> }>,
-    issuerAttrsExtra?: Array<{ [key: string]: Array<string> }>,
     now: Date = new Date,
   ): Promise<void> {
     this.logger.info('Begin current certificate setup');
@@ -681,7 +675,7 @@ class CertManager {
         issuerPrivateKey: this.keyRing.keyPair.privateKey,
         duration: this.certDuration,
         subjectAttrsExtra,
-        issuerAttrsExtra,
+        issuerAttrsExtra: subjectAttrsExtra,
         now,
       });
       await this.putCert(cert);
@@ -801,8 +795,6 @@ class CertManager {
     force: boolean = false,
     now: Date = new Date,
   ): Promise<void> {
-    console.group('GC CERT at ', now);
-
     this.logger.info('Garbage collecting certificates');
     await this.db.withTransactionF(async (tran) => {
       await tran.lock(this.dbCertsPath.join(''));
@@ -811,11 +803,6 @@ class CertManager {
       for await (const [kP, certASN1] of tran.iterator(this.dbCertsPath, {
         reverse: true,
       })) {
-
-        this.logger.debug('Iterating at Certificate');
-
-        console.group('Cert Iteration');
-
         const certIdBuffer = kP[0] as Buffer;
         const certId = IdInternal.fromBuffer<CertId>(certIdBuffer);
         const cert = keysUtils.certFromASN1(certASN1 as CertificateASN1)!;
@@ -824,80 +811,31 @@ class CertManager {
         if (!currentCertFound) {
           const certPublicKey = keysUtils.certPublicKey(cert)!;
           if (certPublicKey.equals(this.keyRing.keyPair.publicKey)) {
-
-            console.log(
-              'FOUND CURRENT CERT',
-              ids.encodeCertId(certId),
-              keysUtils.certRemainingDuration(cert, now)
-            );
-
             currentCertFound = true;
           } else {
-
-            console.log('INVALID CERTIFICATE, BAD KEY ROTATION', ids.encodeCertId(certId));
-
             this.logger.warn(`Garbage collecting invalid certificate ${ids.encodeCertId(certId)} caused by failed key rotation`);
             // Delete this invalid certificate.
             // This can only happen if the key pair rotation failed
             // after the certificate was put in to the DB.
             await this.delCert(certId, tran);
           }
-          console.groupEnd();
           continue;
         }
         // If forcing, delete all certificates after the current certificate.
         // This is only used during resetting of the certificate chain.
         if (force) {
           await this.delCert(certId, tran);
-          console.log('FORCE DELETING Cert', ids.encodeCertId(certId));
-          console.groupEnd();
           continue;
         }
         if (!expiredCertFound) {
           // Keep the first expired certificate we find
           if (!keysUtils.certNotExpiredBy(cert, now)) {
-
-            console.log(
-              'FOUND the First Expired Cert',
-              ids.encodeCertId(certId),
-              keysUtils.certRemainingDuration(cert, now)
-            );
-
             expiredCertFound = true;
           }
-
-          // Don't delete the first expired certificate
-          // the end result is like currentCert, expiredCert, ...ALL DELETED...
-          console.log(
-            'NOT EXPIRED, continuing',
-            ids.encodeCertId(certId),
-            keysUtils.certRemainingDuration(cert, now)
-          );
-
         } else {
-
-          console.log('DELETING AFTER EXPIRED', ids.encodeCertId(certId));
-          // Remaining time of the certificate
-
-
           // Delete all certificates after the first expired certificate
           await this.delCert(certId, tran);
         }
-
-
-
-        // console.log('CERTIFICATE', cert);
-        // // this is at truncated time now
-        // console.log('NOT BEFORE', cert.notBefore);
-        // // this is 1 year ahead at 2023
-        // console.log('NOT AFTER', cert.notAfter)
-        // the next certificate is
-        // START: 42:14.000
-        // and add 605 seconds to it
-        // STOP: 52:19.000
-        // each time we are producing an ew cert
-
-        console.groupEnd();
       }
       if (!currentCertFound) {
         // This should never occur because there should always be a "valid"
@@ -908,7 +846,6 @@ class CertManager {
       }
     });
     this.logger.info('Garbage collected certificates');
-    console.groupEnd();
   }
 }
 
