@@ -46,7 +46,7 @@ describe('ping', () => {
       keyRingConfig: {
         passwordOpsLimit: keysUtils.passwordOpsLimits.min,
         passwordMemLimit: keysUtils.passwordMemLimits.min,
-        memoryLocked: false,
+        strictMemoryLock: false,
       },
     });
     // Setting up a remote keynode
@@ -63,7 +63,7 @@ describe('ping', () => {
       keyRingConfig: {
         passwordOpsLimit: keysUtils.passwordOpsLimits.min,
         passwordMemLimit: keysUtils.passwordMemLimits.min,
-        memoryLocked: false,
+        strictMemoryLock: false,
       },
     });
     remoteOnlineNodeId = remoteOnline.keyRing.getNodeId();
@@ -82,7 +82,7 @@ describe('ping', () => {
       keyRingConfig: {
         passwordOpsLimit: keysUtils.passwordOpsLimits.min,
         passwordMemLimit: keysUtils.passwordMemLimits.min,
-        memoryLocked: false,
+        strictMemoryLock: false,
       },
     });
     remoteOfflineNodeId = remoteOffline.keyRing.getNodeId();

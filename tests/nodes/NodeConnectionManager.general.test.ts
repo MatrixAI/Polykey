@@ -151,7 +151,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       keyRingConfig: {
         passwordOpsLimit: keysUtils.passwordOpsLimits.min,
         passwordMemLimit: keysUtils.passwordMemLimits.min,
-        memoryLocked: false,
+        strictMemoryLock: false,
       },
     });
     remoteNodeId1 = remoteNode1.keyRing.getNodeId();
@@ -168,7 +168,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       keyRingConfig: {
         passwordOpsLimit: keysUtils.passwordOpsLimits.min,
         passwordMemLimit: keysUtils.passwordMemLimits.min,
-        memoryLocked: false,
+        strictMemoryLock: false,
       },
     });
     remoteNodeId2 = remoteNode2.keyRing.getNodeId();
@@ -193,7 +193,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       logger: logger.getChild('keyRing'),
       passwordOpsLimit: keysUtils.passwordOpsLimits.min,
       passwordMemLimit: keysUtils.passwordMemLimits.min,
-      memoryLocked: false,
+      strictMemoryLock: false,
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
@@ -319,7 +319,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
           keyRingConfig: {
             passwordOpsLimit: keysUtils.passwordOpsLimits.min,
             passwordMemLimit: keysUtils.passwordMemLimits.min,
-            memoryLocked: false,
+            strictMemoryLock: false,
           },
         });
         await nodeGraph.setNode(server.keyRing.getNodeId(), {
@@ -366,7 +366,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
           keyRingConfig: {
             passwordOpsLimit: keysUtils.passwordOpsLimits.min,
             passwordMemLimit: keysUtils.passwordMemLimits.min,
-            memoryLocked: false,
+            strictMemoryLock: false,
           },
         });
         await nodeGraph.setNode(server.keyRing.getNodeId(), {
@@ -409,7 +409,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
         keyRingConfig: {
           passwordOpsLimit: keysUtils.passwordOpsLimits.min,
           passwordMemLimit: keysUtils.passwordMemLimits.min,
-          memoryLocked: false,
+          strictMemoryLock: false,
         },
       });
       nodeConnectionManager = new NodeConnectionManager({

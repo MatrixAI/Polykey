@@ -57,7 +57,7 @@ describe('Sigchain', () => {
       logger,
       passwordOpsLimit: keysUtils.passwordOpsLimits.min,
       passwordMemLimit: keysUtils.passwordMemLimits.min,
-      memoryLocked: false,
+      strictMemoryLock: false,
     });
     const dbPath = `${dataDir}/db`;
     db = await DB.createDB({

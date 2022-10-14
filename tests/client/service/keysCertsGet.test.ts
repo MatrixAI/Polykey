@@ -51,7 +51,7 @@ describe('keysCertsGet', () => {
       logger,
       passwordOpsLimit: keysUtils.passwordOpsLimits.min,
       passwordMemLimit: keysUtils.passwordMemLimits.min,
-      memoryLocked: false,
+      strictMemoryLock: false,
     });
     db = await DB.createDB({
       dbPath,

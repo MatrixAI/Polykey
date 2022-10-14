@@ -30,7 +30,7 @@ describe('renew', () => {
       keyRingConfig: {
         passwordOpsLimit: keysUtils.passwordOpsLimits.min,
         passwordMemLimit: keysUtils.passwordMemLimits.min,
-        memoryLocked: false,
+        strictMemoryLock: false,
       },
     });
   }, globalThis.defaultTimeout * 2);

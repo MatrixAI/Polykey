@@ -103,7 +103,7 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
       logger: logger.getChild('keyRing'),
       passwordOpsLimit: keysUtils.passwordOpsLimits.min,
       passwordMemLimit: keysUtils.passwordMemLimits.min,
-      memoryLocked: false,
+      strictMemoryLock: false,
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
@@ -366,7 +366,7 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
         keyRingConfig: {
           passwordOpsLimit: keysUtils.passwordOpsLimits.min,
           passwordMemLimit: keysUtils.passwordMemLimits.min,
-          memoryLocked: false,
+          strictMemoryLock: false,
         },
       });
 
@@ -429,7 +429,7 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
         keyRingConfig: {
           passwordOpsLimit: keysUtils.passwordOpsLimits.min,
           passwordMemLimit: keysUtils.passwordMemLimits.min,
-          memoryLocked: false,
+          strictMemoryLock: false,
         },
       });
       const agentNodeId = polykeyAgent.keyRing.getNodeId();
@@ -514,7 +514,7 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
         keyRingConfig: {
           passwordOpsLimit: keysUtils.passwordOpsLimits.min,
           passwordMemLimit: keysUtils.passwordMemLimits.min,
-          memoryLocked: false,
+          strictMemoryLock: false,
         },
       });
 
@@ -592,7 +592,7 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
         keyRingConfig: {
           passwordOpsLimit: keysUtils.passwordOpsLimits.min,
           passwordMemLimit: keysUtils.passwordMemLimits.min,
-          memoryLocked: false,
+          strictMemoryLock: false,
         },
       });
 
@@ -675,7 +675,7 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
         keyRingConfig: {
           passwordOpsLimit: keysUtils.passwordOpsLimits.min,
           passwordMemLimit: keysUtils.passwordMemLimits.min,
-          memoryLocked: false,
+          strictMemoryLock: false,
         },
       });
 
@@ -758,7 +758,7 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
         keyRingConfig: {
           passwordOpsLimit: keysUtils.passwordOpsLimits.min,
           passwordMemLimit: keysUtils.passwordMemLimits.min,
-          memoryLocked: false,
+          strictMemoryLock: false,
         },
       });
 

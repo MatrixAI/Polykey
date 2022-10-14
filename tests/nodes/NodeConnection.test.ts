@@ -167,7 +167,7 @@ describe(`${NodeConnection.name} test`, () => {
       logger: logger,
       passwordOpsLimit: keysUtils.passwordOpsLimits.min,
       passwordMemLimit: keysUtils.passwordMemLimits.min,
-      memoryLocked: false,
+      strictMemoryLock: false,
     });
 
     serverTLSConfig = await testsUtils.createTLSConfig(serverKeyRing.keyPair);
@@ -297,7 +297,7 @@ describe(`${NodeConnection.name} test`, () => {
       logger,
       passwordOpsLimit: keysUtils.passwordOpsLimits.min,
       passwordMemLimit: keysUtils.passwordMemLimits.min,
-      memoryLocked: false,
+      strictMemoryLock: false,
     });
 
     const clientTLSConfig = await testsUtils.createTLSConfig(clientKeyRing.keyPair);
@@ -472,7 +472,7 @@ describe(`${NodeConnection.name} test`, () => {
         keyRingConfig: {
           passwordOpsLimit: keysUtils.passwordOpsLimits.min,
           passwordMemLimit: keysUtils.passwordMemLimits.min,
-          memoryLocked: false,
+          strictMemoryLock: false,
         },
       });
       // Have a nodeConnection try to connect to it
@@ -702,7 +702,7 @@ describe(`${NodeConnection.name} test`, () => {
         keyRingConfig: {
           passwordOpsLimit: keysUtils.passwordOpsLimits.min,
           passwordMemLimit: keysUtils.passwordMemLimits.min,
-          memoryLocked: false,
+          strictMemoryLock: false,
         },
       });
       // Have a nodeConnection try to connect to it
