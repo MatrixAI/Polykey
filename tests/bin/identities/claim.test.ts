@@ -44,7 +44,7 @@ describe('claim', () => {
       keyRingConfig: {
         passwordOpsLimit: keysUtils.passwordOpsLimits.min,
         passwordMemLimit: keysUtils.passwordMemLimits.min,
-        memoryLocked: false,
+        strictMemoryLock: false,
       },
     });
     testProvider = new TestProvider();

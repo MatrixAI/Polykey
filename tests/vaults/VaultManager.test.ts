@@ -501,7 +501,7 @@ describe('VaultManager', () => {
         keyRingConfig: {
           passwordOpsLimit: keysUtils.passwordOpsLimits.min,
           passwordMemLimit: keysUtils.passwordMemLimits.min,
-          memoryLocked: false,
+          strictMemoryLock: false,
         },
       });
       remoteKeynode1Id = remoteKeynode1.keyRing.getNodeId();
@@ -516,7 +516,7 @@ describe('VaultManager', () => {
         keyRingConfig: {
           passwordOpsLimit: keysUtils.passwordOpsLimits.min,
           passwordMemLimit: keysUtils.passwordMemLimits.min,
-          memoryLocked: false,
+          strictMemoryLock: false,
         },
       });
       remoteKeynode2Id = remoteKeynode2.keyRing.getNodeId();
@@ -575,7 +575,7 @@ describe('VaultManager', () => {
         logger,
         passwordOpsLimit: keysUtils.passwordOpsLimits.min,
         passwordMemLimit: keysUtils.passwordMemLimits.min,
-        memoryLocked: false,
+        strictMemoryLock: false,
       });
       localNodeId = keyRing.getNodeId();
       localNodeIdEncoded = nodesUtils.encodeNodeId(localNodeId);
@@ -1491,7 +1491,7 @@ describe('VaultManager', () => {
       keyRingConfig: {
         passwordOpsLimit: keysUtils.passwordOpsLimits.min,
         passwordMemLimit: keysUtils.passwordMemLimits.min,
-        memoryLocked: false,
+        strictMemoryLock: false,
       },
     });
     const acl = await ACL.createACL({
@@ -1518,7 +1518,7 @@ describe('VaultManager', () => {
       logger,
       passwordOpsLimit: keysUtils.passwordOpsLimits.min,
       passwordMemLimit: keysUtils.passwordMemLimits.min,
-      memoryLocked: false,
+      strictMemoryLock: false,
     });
     await proxy.start({
       tlsConfig: await testsUtils.createTLSConfig(keyRing.keyPair),

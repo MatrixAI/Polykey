@@ -51,7 +51,7 @@ describe('agentStatus', () => {
       logger,
       passwordOpsLimit: keysUtils.passwordOpsLimits.min,
       passwordMemLimit: keysUtils.passwordMemLimits.min,
-      memoryLocked: false,
+      strictMemoryLock: false,
     });
     certManager = await CertManager.createCertManager({
       db,

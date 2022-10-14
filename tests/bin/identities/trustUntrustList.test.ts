@@ -51,7 +51,7 @@ describe('trust/untrust/list', () => {
       keyRingConfig: {
         passwordOpsLimit: keysUtils.passwordOpsLimits.min,
         passwordMemLimit: keysUtils.passwordMemLimits.min,
-        memoryLocked: false,
+        strictMemoryLock: false,
       },
     });
     pkAgent.identitiesManager.registerProvider(provider);
@@ -70,7 +70,7 @@ describe('trust/untrust/list', () => {
       keyRingConfig: {
         passwordOpsLimit: keysUtils.passwordOpsLimits.min,
         passwordMemLimit: keysUtils.passwordMemLimits.min,
-        memoryLocked: false,
+        strictMemoryLock: false,
       },
     });
     nodeId = node.keyRing.getNodeId();

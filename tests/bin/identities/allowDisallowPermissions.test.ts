@@ -52,7 +52,7 @@ describe('allow/disallow/permissions', () => {
       keyRingConfig: {
         passwordOpsLimit: keysUtils.passwordOpsLimits.min,
         passwordMemLimit: keysUtils.passwordMemLimits.min,
-        memoryLocked: false,
+        strictMemoryLock: false,
       },
     });
     pkAgent.identitiesManager.registerProvider(provider);
@@ -71,7 +71,7 @@ describe('allow/disallow/permissions', () => {
       keyRingConfig: {
         passwordOpsLimit: keysUtils.passwordOpsLimits.min,
         passwordMemLimit: keysUtils.passwordMemLimits.min,
-        memoryLocked: false,
+        strictMemoryLock: false,
       },
     });
     nodeId = node.keyRing.getNodeId();

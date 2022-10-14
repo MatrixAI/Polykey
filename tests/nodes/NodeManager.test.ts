@@ -73,7 +73,7 @@ describe(`${NodeManager.name} test`, () => {
       logger,
       passwordOpsLimit: keysUtils.passwordOpsLimits.min,
       passwordMemLimit: keysUtils.passwordMemLimits.min,
-      memoryLocked: false,
+      strictMemoryLock: false,
     });
 
     proxy = new Proxy({
@@ -174,7 +174,7 @@ describe(`${NodeManager.name} test`, () => {
           keyRingConfig: {
             passwordOpsLimit: keysUtils.passwordOpsLimits.min,
             passwordMemLimit: keysUtils.passwordMemLimits.min,
-            memoryLocked: false,
+            strictMemoryLock: false,
           },
         });
         const serverNodeId = server.keyRing.getNodeId();
@@ -255,7 +255,7 @@ describe(`${NodeManager.name} test`, () => {
         keyRingConfig: {
           passwordOpsLimit: keysUtils.passwordOpsLimits.min,
           passwordMemLimit: keysUtils.passwordMemLimits.min,
-          memoryLocked: false,
+          strictMemoryLock: false,
         },
       });
       const serverNodeId = server.keyRing.getNodeId();
@@ -323,7 +323,7 @@ describe(`${NodeManager.name} test`, () => {
         keyRingConfig: {
           passwordOpsLimit: keysUtils.passwordOpsLimits.min,
           passwordMemLimit: keysUtils.passwordMemLimits.min,
-          memoryLocked: false,
+          strictMemoryLock: false,
         },
       });
 
@@ -347,7 +347,7 @@ describe(`${NodeManager.name} test`, () => {
         keyRingConfig: {
           passwordOpsLimit: keysUtils.passwordOpsLimits.min,
           passwordMemLimit: keysUtils.passwordMemLimits.min,
-          memoryLocked: false,
+          strictMemoryLock: false,
         },
       });
       yNodeId = y.keyRing.getNodeId();
@@ -726,7 +726,7 @@ describe(`${NodeManager.name} test`, () => {
         keyRingConfig: {
           passwordOpsLimit: keysUtils.passwordOpsLimits.min,
           passwordMemLimit: keysUtils.passwordMemLimits.min,
-          memoryLocked: false,
+          strictMemoryLock: false,
         },
       });
       const serverNodeId = server.keyRing.getNodeId();

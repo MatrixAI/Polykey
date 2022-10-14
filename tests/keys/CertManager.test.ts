@@ -43,7 +43,7 @@ describe(CertManager.name, () => {
       logger,
       passwordOpsLimit: keysUtils.passwordOpsLimits.min,
       passwordMemLimit: keysUtils.passwordMemLimits.min,
-      memoryLocked: false,
+      strictMemoryLock: false,
     });
     dbPath = `${dataDir}/db`;
     db = await DB.createDB({

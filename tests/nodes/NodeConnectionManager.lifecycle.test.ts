@@ -107,7 +107,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       keyRingConfig: {
         passwordOpsLimit: keysUtils.passwordOpsLimits.min,
         passwordMemLimit: keysUtils.passwordMemLimits.min,
-        memoryLocked: false,
+        strictMemoryLock: false,
       },
     });
     remoteNodeId1 = remoteNode1.keyRing.getNodeId();
@@ -122,7 +122,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       keyRingConfig: {
         passwordOpsLimit: keysUtils.passwordOpsLimits.min,
         passwordMemLimit: keysUtils.passwordMemLimits.min,
-        memoryLocked: false,
+        strictMemoryLock: false,
       },
     });
     remoteNodeId2 = remoteNode2.keyRing.getNodeId();
@@ -148,7 +148,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       logger: logger.getChild('keyRing'),
       passwordOpsLimit: keysUtils.passwordOpsLimits.min,
       passwordMemLimit: keysUtils.passwordMemLimits.min,
-      memoryLocked: false,
+      strictMemoryLock: false,
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
