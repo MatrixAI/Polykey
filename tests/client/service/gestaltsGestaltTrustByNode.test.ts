@@ -75,7 +75,7 @@ describe('gestaltsGestaltTrustByNode', () => {
       keyRingConfig: {
         passwordOpsLimit: keysUtils.passwordOpsLimits.min,
         passwordMemLimit: keysUtils.passwordMemLimits.min,
-        memoryLocked: false,
+        strictMemoryLock: false,
       },
     });
     nodeId = nodesUtils.encodeNodeId(node.keyRing.getNodeId());
@@ -131,7 +131,7 @@ describe('gestaltsGestaltTrustByNode', () => {
       logger,
       passwordOpsLimit: keysUtils.passwordOpsLimits.min,
       passwordMemLimit: keysUtils.passwordMemLimits.min,
-      memoryLocked: false,
+      strictMemoryLock: false,
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({

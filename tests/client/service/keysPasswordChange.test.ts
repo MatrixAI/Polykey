@@ -47,7 +47,7 @@ describe('keysPasswordChange', () => {
       logger,
       passwordOpsLimit: keysUtils.passwordOpsLimits.min,
       passwordMemLimit: keysUtils.passwordMemLimits.min,
-      memoryLocked: false,
+      strictMemoryLock: false,
     });
     const clientService = {
       keysPasswordChange: keysPasswordChange({

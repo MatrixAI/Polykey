@@ -56,7 +56,7 @@ describe('discover/get', () => {
       keyRingConfig: {
         passwordOpsLimit: keysUtils.passwordOpsLimits.min,
         passwordMemLimit: keysUtils.passwordMemLimits.min,
-        memoryLocked: false,
+        strictMemoryLock: false,
       },
     });
     nodeAId = nodeA.keyRing.getNodeId();
@@ -75,7 +75,7 @@ describe('discover/get', () => {
       keyRingConfig: {
         passwordOpsLimit: keysUtils.passwordOpsLimits.min,
         passwordMemLimit: keysUtils.passwordMemLimits.min,
-        memoryLocked: false,
+        strictMemoryLock: false,
       },
     });
     nodeBId = nodeB.keyRing.getNodeId();
@@ -95,7 +95,7 @@ describe('discover/get', () => {
       keyRingConfig: {
         passwordOpsLimit: keysUtils.passwordOpsLimits.min,
         passwordMemLimit: keysUtils.passwordMemLimits.min,
-        memoryLocked: false,
+        strictMemoryLock: false,
       },
     });
     pkAgent.identitiesManager.registerProvider(testProvider);

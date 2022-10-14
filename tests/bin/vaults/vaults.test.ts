@@ -62,7 +62,7 @@ describe('CLI vaults', () => {
       keyRingConfig: {
         passwordOpsLimit: keysUtils.passwordOpsLimits.min,
         passwordMemLimit: keysUtils.passwordMemLimits.min,
-        memoryLocked: false,
+        strictMemoryLock: false,
       },
     });
     await polykeyAgent.gestaltGraph.setNode(node1);
@@ -240,7 +240,7 @@ describe('CLI vaults', () => {
         keyRingConfig: {
           passwordOpsLimit: keysUtils.passwordOpsLimits.min,
           passwordMemLimit: keysUtils.passwordMemLimits.min,
-          memoryLocked: false,
+          strictMemoryLock: false,
         },
       });
       const vaultId = await targetPolykeyAgent.vaultManager.createVault(
@@ -837,7 +837,7 @@ describe('CLI vaults', () => {
             keyRingConfig: {
               passwordOpsLimit: keysUtils.passwordOpsLimits.min,
               passwordMemLimit: keysUtils.passwordMemLimits.min,
-              memoryLocked: false,
+              strictMemoryLock: false,
             },
           });
           const remoteOnlineNodeId = remoteOnline.keyRing.getNodeId();

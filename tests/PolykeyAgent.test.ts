@@ -38,7 +38,7 @@ describe('PolykeyAgent', () => {
       keyRingConfig: {
         passwordOpsLimit: keysUtils.passwordOpsLimits.min,
         passwordMemLimit: keysUtils.passwordMemLimits.min,
-        memoryLocked: false,
+        strictMemoryLock: false,
       },
     });
     await expect(pkAgent.destroy()).rejects.toThrow(
@@ -61,7 +61,7 @@ describe('PolykeyAgent', () => {
       keyRingConfig: {
         passwordOpsLimit: keysUtils.passwordOpsLimits.min,
         passwordMemLimit: keysUtils.passwordMemLimits.min,
-        memoryLocked: false,
+        strictMemoryLock: false,
       },
     });
     let nodePathContents = await fs.promises.readdir(nodePath);
@@ -100,7 +100,7 @@ describe('PolykeyAgent', () => {
       keyRingConfig: {
         passwordOpsLimit: keysUtils.passwordOpsLimits.min,
         passwordMemLimit: keysUtils.passwordMemLimits.min,
-        memoryLocked: false,
+        strictMemoryLock: false,
       },
     });
     const status = new Status({
@@ -135,7 +135,7 @@ describe('PolykeyAgent', () => {
       keyRingConfig: {
         passwordOpsLimit: keysUtils.passwordOpsLimits.min,
         passwordMemLimit: keysUtils.passwordMemLimits.min,
-        memoryLocked: false,
+        strictMemoryLock: false,
       },
     });
     expect(await schema.readVersion()).toBe(config.stateVersion);
@@ -162,7 +162,7 @@ describe('PolykeyAgent', () => {
         keyRingConfig: {
           passwordOpsLimit: keysUtils.passwordOpsLimits.min,
           passwordMemLimit: keysUtils.passwordMemLimits.min,
-          memoryLocked: false,
+          strictMemoryLock: false,
         },
       }),
     ).rejects.toThrow(errors.ErrorSchemaVersionTooNew);
@@ -183,7 +183,7 @@ describe('PolykeyAgent', () => {
         keyRingConfig: {
           passwordOpsLimit: keysUtils.passwordOpsLimits.min,
           passwordMemLimit: keysUtils.passwordMemLimits.min,
-          memoryLocked: false,
+          strictMemoryLock: false,
         },
       }),
     ).rejects.toThrow(errors.ErrorSchemaVersionTooOld);
@@ -199,7 +199,7 @@ describe('PolykeyAgent', () => {
         keyRingConfig: {
           passwordOpsLimit: keysUtils.passwordOpsLimits.min,
           passwordMemLimit: keysUtils.passwordMemLimits.min,
-          memoryLocked: false,
+          strictMemoryLock: false,
         },
       });
       const prom = promise<CertManagerChangeData>();
@@ -228,7 +228,7 @@ describe('PolykeyAgent', () => {
         keyRingConfig: {
           passwordOpsLimit: keysUtils.passwordOpsLimits.min,
           passwordMemLimit: keysUtils.passwordMemLimits.min,
-          memoryLocked: false,
+          strictMemoryLock: false,
         },
       });
       const prom = promise<CertManagerChangeData>();
@@ -257,7 +257,7 @@ describe('PolykeyAgent', () => {
         keyRingConfig: {
           passwordOpsLimit: keysUtils.passwordOpsLimits.min,
           passwordMemLimit: keysUtils.passwordMemLimits.min,
-          memoryLocked: false,
+          strictMemoryLock: false,
         },
       });
       const prom = promise<CertManagerChangeData>();

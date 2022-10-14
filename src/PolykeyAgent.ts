@@ -114,7 +114,7 @@ class PolykeyAgent {
       privateKeyPath?: string;
       passwordOpsLimit?: PasswordOpsLimit,
       passwordMemLimit?: PasswordMemLimit,
-      memoryLocked?: boolean;
+      strictMemoryLock?: boolean;
     };
     certManagerConfig?: {
       certDuration?: number,

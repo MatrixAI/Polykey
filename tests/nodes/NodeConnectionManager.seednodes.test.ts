@@ -109,7 +109,7 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
       keyRingConfig: {
         passwordOpsLimit: keysUtils.passwordOpsLimits.min,
         passwordMemLimit: keysUtils.passwordMemLimits.min,
-        memoryLocked: false,
+        strictMemoryLock: false,
       },
     });
     remoteNodeId1 = remoteNode1.keyRing.getNodeId();
@@ -123,7 +123,7 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
       keyRingConfig: {
         passwordOpsLimit: keysUtils.passwordOpsLimits.min,
         passwordMemLimit: keysUtils.passwordMemLimits.min,
-        memoryLocked: false,
+        strictMemoryLock: false,
       },
     });
     remoteNodeId2 = remoteNode2.keyRing.getNodeId();
@@ -155,7 +155,7 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
       logger: logger.getChild('keyRing'),
       passwordOpsLimit: keysUtils.passwordOpsLimits.min,
       passwordMemLimit: keysUtils.passwordMemLimits.min,
-      memoryLocked: false,
+      strictMemoryLock: false,
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
@@ -515,7 +515,7 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
           keyRingConfig: {
             passwordOpsLimit: keysUtils.passwordOpsLimits.min,
             passwordMemLimit: keysUtils.passwordMemLimits.min,
-            memoryLocked: false,
+            strictMemoryLock: false,
           },
         });
         node2 = await PolykeyAgent.createPolykeyAgent({
@@ -532,7 +532,7 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
           keyRingConfig: {
             passwordOpsLimit: keysUtils.passwordOpsLimits.min,
             passwordMemLimit: keysUtils.passwordMemLimits.min,
-            memoryLocked: false,
+            strictMemoryLock: false,
           },
         });
 
@@ -610,7 +610,7 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
           keyRingConfig: {
             passwordOpsLimit: keysUtils.passwordOpsLimits.min,
             passwordMemLimit: keysUtils.passwordMemLimits.min,
-            memoryLocked: false,
+            strictMemoryLock: false,
           },
         });
 

@@ -20,7 +20,7 @@ describe('CLI secrets', () => {
     );
     passwordFile = path.join(dataDir, 'passwordFile');
     await fs.promises.writeFile(passwordFile, 'password');
-    polykeyAgent = await PolykeyAgent.memoryLocked: false({
+    polykeyAgent = await PolykeyAgent.strictMemoryLock: false({
       password,
       nodePath: dataDir,
       logger: logger,
