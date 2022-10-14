@@ -112,7 +112,6 @@ type CertManagerCommand = fc.AsyncCommand<CertManagerModel, CertManager>;
 class RenewCertWithCurrentKeyPairCommand implements CertManagerCommand {
   constructor(
     public readonly duration: number = 31536000,
-    public readonly subjectAttrsExtra?: Array<{ [key: string]: Array<string> }>,
   ) {}
 
   check() {
@@ -124,7 +123,6 @@ class RenewCertWithCurrentKeyPairCommand implements CertManagerCommand {
     const now = new Date();
     await real.renewCertWithCurrentKeyPair(
       this.duration,
-      this.subjectAttrsExtra,
       now
     );
     // Update the model
@@ -171,7 +169,7 @@ class RenewCertWithCurrentKeyPairCommand implements CertManagerCommand {
   }
 
   toString() {
-    return `RenewCertWithCurrentKeyPairCommand(${this.duration}, ${JSON.stringify(this.subjectAttrsExtra)})`;
+    return `RenewCertWithCurrentKeyPairCommand(${this.duration})`;
   }
 }
 
@@ -179,7 +177,6 @@ class RenewCertWithNewKeyPairCommand implements CertManagerCommand {
   constructor(
     public readonly password: string,
     public readonly duration: number = 31536000,
-    public readonly subjectAttrsExtra?: Array<{ [key: string]: Array<string> }>,
   ) {}
 
   check() {
@@ -192,7 +189,6 @@ class RenewCertWithNewKeyPairCommand implements CertManagerCommand {
     await real.renewCertWithNewKeyPair(
       this.password,
       this.duration,
-      this.subjectAttrsExtra,
       now
     );
     // Update the model
@@ -239,14 +235,13 @@ class RenewCertWithNewKeyPairCommand implements CertManagerCommand {
   }
 
   toString() {
-    return `RenewCertWithNewKeyPairCommand('${this.password}', ${this.duration}, ${JSON.stringify(this.subjectAttrsExtra)})`;
+    return `RenewCertWithNewKeyPairCommand('${this.password}', ${this.duration})`;
   }
 }
 
 class ResetCertWithCurrentKeyPairCommand implements CertManagerCommand {
   constructor(
     public readonly duration: number = 31536000,
-    public readonly subjectAttrsExtra?: Array<{ [key: string]: Array<string> }>,
   ) {}
 
   check() {
@@ -258,7 +253,6 @@ class ResetCertWithCurrentKeyPairCommand implements CertManagerCommand {
     const now = new Date();
     await real.resetCertWithCurrentKeyPair(
       this.duration,
-      this.subjectAttrsExtra,
       now
     );
     // Update the model
@@ -292,7 +286,7 @@ class ResetCertWithCurrentKeyPairCommand implements CertManagerCommand {
   }
 
   toString() {
-    return `ResetCertWithCurrentKeyPair(${this.duration}, ${JSON.stringify(this.subjectAttrsExtra)})`;
+    return `ResetCertWithCurrentKeyPair(${this.duration})`;
   }
 }
 
@@ -300,7 +294,6 @@ class ResetCertWithNewKeyPairCommand implements CertManagerCommand {
   constructor(
     public readonly password: string,
     public readonly duration: number = 31536000,
-    public readonly subjectAttrsExtra?: Array<{ [key: string]: Array<string> }>,
   ) {}
 
   check() {
@@ -313,7 +306,6 @@ class ResetCertWithNewKeyPairCommand implements CertManagerCommand {
     await real.resetCertWithNewKeyPair(
       this.password,
       this.duration,
-      this.subjectAttrsExtra,
       now
     );
     // Update the model
@@ -347,7 +339,7 @@ class ResetCertWithNewKeyPairCommand implements CertManagerCommand {
   }
 
   toString() {
-    return `ResetCertWithNewKeyPairCommand('${this.password}', ${this.duration}, ${JSON.stringify(this.subjectAttrsExtra)})`;
+    return `ResetCertWithNewKeyPairCommand('${this.password}', ${this.duration})`;
   }
 }
 

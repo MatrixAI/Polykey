@@ -244,7 +244,7 @@ describe(CertManager.name, () => {
     });
     const now = new Date();
     // 0-duration certificate will be valid now
-    await certMgr.renewCertWithCurrentKeyPair(0, undefined, now);
+    await certMgr.renewCertWithCurrentKeyPair(0, now);
     const cert2 = await certMgr.getCurrentCert();
     // The certificate is still valid for now, but it does have a duration of 0
     expect(keysUtils.certNotExpiredBy(cert2, now)).toBe(true);
@@ -265,6 +265,30 @@ describe(CertManager.name, () => {
     expect(keysUtils.certEqual(certs[1], cert2)).toBe(true);
     expect(keysUtils.certRemainingDuration(certs[1])).toBe(0);
     expect(keysUtils.certNotExpiredBy(certs[1], new Date())).toBe(false);
+    await certMgr.stop();
+  });
+  test('automatic background certificate renewal', async () => {
+    const certMgr = await CertManager.createCertManager({
+      db,
+      keyRing,
+      taskManager,
+      logger,
+    });
+    // Renew certificate with 1 second duration
+    const certOld = await certMgr.renewCertWithCurrentKeyPair(1);
+    // Wait 1.5 seconds for the automatic renewal to have occurred due to the 1 second delay
+    await utils.sleep(1500);
+    const certNew = await certMgr.getCurrentCert();
+    // New certificate with have a greater `CertId`
+    expect(keysUtils.certCertId(certNew)! > keysUtils.certCertId(certOld)!).toBe(true);
+    // Same key pair preserves the NodeId
+    expect(keysUtils.certNodeId(certNew)).toStrictEqual(keysUtils.certNodeId(certOld));
+    // New certificate issued by old certificate
+    expect(keysUtils.certIssuedBy(certNew, certOld)).toBe(true);
+    // New certificate signed by old certificate
+    expect(await keysUtils.certSignedBy(certNew, keysUtils.certPublicKey(certOld)!)).toBe(true);
+    // New certificate is self-signed via the node signature extension
+    expect(await keysUtils.certNodeSigned(certNew)).toBe(true);
     await certMgr.stop();
   });
   describe('model-check renewing and resetting the certificates', () => {
@@ -533,5 +557,4 @@ describe(CertManager.name, () => {
       }
     );
   });
-  // Test that the background task works
 });
