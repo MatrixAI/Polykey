@@ -353,6 +353,12 @@ function certNotExpiredBy(cert: Certificate, now: Date = new Date()): boolean {
   return cert.notBefore.getTime() <= time && time <= cert.notAfter.getTime();
 }
 
+function certRemainingDuration(cert: Certificate, now: Date = new Date()): number {
+  const time = now.getTime() - (now.getTime() % 1000);
+  const duration = Math.max(cert.notAfter.getTime() - time, 0);
+  return duration / 1000;
+}
+
 /**
  * Checks if certificate is signed by public key.
  * This does not check if the certificate is valid for the current datetime.
@@ -439,6 +445,7 @@ export {
   certEqual,
   certIssuedBy,
   certNotExpiredBy,
+  certRemainingDuration,
   certSignedBy,
   certNodeSigned,
   certToASN1,
