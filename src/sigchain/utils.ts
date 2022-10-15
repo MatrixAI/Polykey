@@ -25,3 +25,5 @@ async function verifyChainData(
 }
 
 export { verifyChainData };
+
+export { createClaimIdGenerator, encodeClaimId, decodeClaimId } from '../ids';
