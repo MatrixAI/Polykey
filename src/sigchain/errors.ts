@@ -22,10 +22,10 @@ class ErrorSigchainSequenceNumUndefined<T> extends ErrorSigchain<T> {
   exitCode = sysexits.IOERR;
 }
 
-class ErrorSigchainClaimUndefined<T> extends ErrorSigchain<T> {
-  static description = 'Could not retrieve claim';
-  exitCode = sysexits.USAGE;
-}
+// class ErrorSigchainClaimUndefined<T> extends ErrorSigchain<T> {
+//   static description = 'Could not retrieve claim';
+//   exitCode = sysexits.USAGE;
+// }
 
 class ErrorSigchainInvalidSequenceNum<T> extends ErrorSigchain<T> {
   static description = 'Claim has invalid sequence number';
@@ -46,7 +46,7 @@ export {
   ErrorSigchainNotRunning,
   ErrorSigchainDestroyed,
   ErrorSigchainSequenceNumUndefined,
-  ErrorSigchainClaimUndefined,
+  // ErrorSigchainClaimUndefined,
   ErrorSigchainInvalidSequenceNum,
   ErrorSigchainInvalidHash,
   ErrorSigchainDecrypt,

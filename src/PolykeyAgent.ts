@@ -591,6 +591,8 @@ class PolykeyAgent {
             nodeId: data.nodeId,
           });
           await this.nodeManager.resetBuckets();
+          // Update the sigchain
+          await this.sigchain.onKeyRingChange();
           const tlsConfig: TLSConfig = {
             keyPrivatePem: keysUtils.privateKeyToPEM(
               data.keyPair.privateKey,
