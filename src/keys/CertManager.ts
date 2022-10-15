@@ -116,7 +116,7 @@ class CertManager {
   protected generateCertId: () => CertId;
   protected dbPath: LevelPath = [this.constructor.name];
   /**
-   * Certificate colleciton
+   * Certificate collection
    * `CertManager/certs/{CertId} -> {raw(CertificateASN1)}`
    */
   protected dbCertsPath: LevelPath = [...this.dbPath, 'certs'];
@@ -124,7 +124,7 @@ class CertManager {
    * Maintain last `CertID` to preserve monotonicity across process restarts
    * `CertManager/lastCertId -> {raw(CertId)}`
    */
-  protected dblastCertIdPath: KeyPath = [...this.dbPath, 'lastCertId'];
+  protected dbLastCertIdPath: KeyPath = [...this.dbPath, 'lastCertId'];
   protected renewResetLock: Lock = new Lock();
   protected renewCurrentCertHandler: TaskHandler = async () => {
     // If the certificate is already being renewed or reset
@@ -269,7 +269,7 @@ class CertManager {
     tran?: DBTransaction,
   ): Promise<CertId | undefined> {
     const lastCertIdBuffer = await (tran ?? this.db).get(
-      this.dblastCertIdPath,
+      this.dbLastCertIdPath,
       true,
     );
     if (lastCertIdBuffer == null) return;
@@ -644,13 +644,20 @@ class CertManager {
   }
 
   protected async putCert(cert: Certificate, tran?: DBTransaction): Promise<void> {
+    if (tran == null) {
+      return this.db.withTransactionF((tran) =>
+        this.putCert(cert, tran)
+      );
+    }
     const certId = keysUtils.certCertId(cert)!;
+    const certIdBuffer = certId.toBuffer();
     const certASN1 = keysUtils.certToASN1(cert);
-    await (tran ?? this.db).put(
-      [...this.dbCertsPath, certId.toBuffer()],
+    await tran.put(
+      [...this.dbCertsPath, certIdBuffer],
       certASN1,
       true
     );
+    await tran.put(this.dbLastCertIdPath, certIdBuffer, true);
   }
 
   protected async delCert(certId: CertId, tran?: DBTransaction) : Promise<void> {
