@@ -2,11 +2,14 @@ import type {
   Key,
   JWK,
   JWKEncrypted,
+  MAC,
   PasswordSalt,
   PasswordOpsLimit,
   PasswordMemLimit,
+  Digest,
 } from '../types';
 import sodium from 'sodium-native';
+import canonicalize from 'canonicalize';
 import { getRandomBytes } from './random';
 import {
   passwordOpsLimits,
@@ -15,6 +18,7 @@ import {
   passwordMemLimitDefault,
   hashPassword,
 } from './password';
+import * as utils from '../../utils';
 
 const nonceSize = sodium.crypto_aead_xchacha20poly1305_ietf_NPUBBYTES;
 const macSize = sodium.crypto_aead_xchacha20poly1305_ietf_ABYTES;
@@ -90,6 +94,65 @@ function decryptWithKey(
   return plainText;
 }
 
+function macWithKey(key: Key, data: Buffer): MAC {
+  const digest = Buffer.allocUnsafeSlow(
+    sodium.crypto_generichash_BYTES
+  );
+  sodium.crypto_generichash(digest, data, key);
+  return digest as Digest<'blake2b-256'>;
+}
+
+function *macWithKeyG(key: Key): Generator<void, MAC, BufferSource | null>{
+  const digest = Buffer.allocUnsafeSlow(
+    sodium.crypto_generichash_BYTES
+  );
+  const state = Buffer.allocUnsafe(
+    sodium.crypto_generichash_STATEBYTES
+  );
+  sodium.crypto_generichash_init(state, key, sodium.crypto_generichash_BYTES);
+  while (true) {
+    const data = yield;
+    if (data === null) {
+      sodium.crypto_generichash_final(state, digest);
+      return digest as Digest<'blake2b-256'>;
+    }
+    sodium.crypto_generichash_update(state, utils.bufferWrap(data));
+  }
+}
+
+function macWithKeyI(key: Key, data: Iterable<BufferSource>): MAC {
+  const digest = Buffer.allocUnsafeSlow(
+    sodium.crypto_generichash_BYTES
+  );
+  const state = Buffer.allocUnsafe(
+    sodium.crypto_generichash_STATEBYTES
+  );
+  sodium.crypto_generichash_init(state, key, sodium.crypto_generichash_BYTES);
+  for (const d of data) {
+    sodium.crypto_generichash_update(state, utils.bufferWrap(d));
+  }
+  sodium.crypto_generichash_final(state, digest);
+  return digest as Digest<'blake2b-256'>;
+}
+
+function authWithKey(key: Key, data: Buffer, digest: Buffer): boolean {
+  const digest_ = macWithKey(key, data);
+  if (digest_.byteLength !== digest.byteLength) return false;
+  return sodium.sodium_memcmp(digest_, digest);
+}
+
+function *authWithKeyG(key: Key, digest: Buffer): Generator<void, boolean, BufferSource | null> {
+  const digest_ = yield * macWithKeyG(key);
+  if (digest_.byteLength !== digest.byteLength) return false;
+  return sodium.sodium_memcmp(digest_, digest);
+}
+
+function authWithKeyI(key: Key, data: Iterable<BufferSource>, digest: Buffer): boolean {
+  const digest_ = macWithKeyI(key, data);
+  if (digest_.byteLength !== digest.byteLength) return false;
+  return sodium.sodium_memcmp(digest_, digest);
+}
+
 /**
  * Key wrapping with password.
  * This uses `Argon2Id-1.3` to derive a 256-bit key from the password.
@@ -112,10 +175,10 @@ function wrapWithPassword(
     salt: salt.toString('base64url'),
   };
   const protectedHeaderEncoded = Buffer.from(
-    JSON.stringify(protectedHeader),
+    canonicalize(protectedHeader)!,
     'utf-8',
   ).toString('base64url');
-  const plainText = Buffer.from(JSON.stringify(keyJWK), 'utf-8');
+  const plainText = Buffer.from(canonicalize(keyJWK)!, 'utf-8');
   const additionalData = Buffer.from(protectedHeaderEncoded, 'utf-8');
   const nonce = getRandomBytes(nonceSize);
   const mac = Buffer.allocUnsafe(macSize);
@@ -230,10 +293,10 @@ function wrapWithKey(key: Key, keyJWK: JWK): JWKEncrypted {
     cty: 'jwk+json',
   };
   const protectedHeaderEncoded = Buffer.from(
-    JSON.stringify(protectedHeader),
+    canonicalize(protectedHeader)!,
     'utf-8',
   ).toString('base64url');
-  const plainText = Buffer.from(JSON.stringify(keyJWK), 'utf-8');
+  const plainText = Buffer.from(canonicalize(keyJWK)!, 'utf-8');
   const additionalData = Buffer.from(protectedHeaderEncoded, 'utf-8');
   const nonce = getRandomBytes(nonceSize);
   const mac = Buffer.allocUnsafe(macSize);
@@ -322,6 +385,12 @@ export {
   macSize,
   encryptWithKey,
   decryptWithKey,
+  macWithKey,
+  macWithKeyG,
+  macWithKeyI,
+  authWithKey,
+  authWithKeyG,
+  authWithKeyI,
   wrapWithPassword,
   unwrapWithPassword,
   wrapWithKey,

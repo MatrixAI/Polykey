@@ -11,6 +11,7 @@ import type {
 } from '../types';
 import type { NodeId } from '../../ids/types';
 import sodium from 'sodium-native';
+import canonicalize from 'canonicalize';
 import { IdInternal } from '@matrixai/id';
 import { getRandomBytes } from './random';
 import * as utils from '../../utils';
@@ -318,8 +319,9 @@ function signWithPrivateKey(
 function verifyWithPublicKey(
   publicKey: PublicKey,
   data: Buffer,
-  signature: Signature,
+  signature: Buffer,
 ): boolean {
+  if (signature.byteLength !== sodium.crypto_sign_BYTES) return false;
   return sodium.crypto_sign_verify_detached(signature, data, publicKey);
 }
 
@@ -353,7 +355,7 @@ function encapsulateWithPublicKey(
     // Which does in fact require a nonce, are they re-using the same nonce somehow?
     const nonce = getRandomBytes(sodium.crypto_box_NONCEBYTES);
     const mac = Buffer.allocUnsafe(sodium.crypto_box_MACBYTES);
-    const plainText = Buffer.from(JSON.stringify(keyJWK), 'utf-8');
+    const plainText = Buffer.from(canonicalize(keyJWK)!, 'utf-8');
     const cipherText = Buffer.allocUnsafe(plainText.byteLength);
     sodium.crypto_box_detached(
       cipherText,
@@ -391,7 +393,7 @@ function encapsulateWithPublicKey(
     return keyJWE;
   } else {
     // ECDH-ES and ECDH-EE
-    const plainText = Buffer.from(JSON.stringify(keyJWK), 'utf-8');
+    const plainText = Buffer.from(canonicalize(keyJWK)!, 'utf-8');
     const publicKeyAndMacAndCipherText = Buffer.allocUnsafe(
       sodium.crypto_box_SEALBYTES + plainText.byteLength,
     );

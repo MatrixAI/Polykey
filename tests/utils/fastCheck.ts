@@ -20,13 +20,14 @@ class SleepCommand implements fc.AsyncCommand<any, any> {
 }
 
 /**
- * Used with fast-check to schedule calling of a function
+ * Used with fast-check to schedule calling of a function.
+ * This enables the `f` call to be randomly delayed by the fast check scheduler.
+ * You must still await the result of this call if you want to see the results.
  */
 const scheduleCall = <T>(
   s: fc.Scheduler,
   f: () => Promise<T>,
-  label: string = 'scheduled call',
-) => s.schedule(Promise.resolve(label)).then(() => f());
+) => s.schedule(Promise.resolve()).then(() => f());
 
 export {
   SleepCommand,

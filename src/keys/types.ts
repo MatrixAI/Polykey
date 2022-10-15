@@ -1,6 +1,6 @@
 import type { X509Certificate } from '@peculiar/x509';
 import type { NodeId } from '../ids/types';
-import type { Opaque } from '../types';
+import type { Opaque, InverseRecord } from '../types';
 
 /**
  * Locked buffer wrapper type for sensitive in-memory data.
@@ -86,8 +86,8 @@ type KeyPairX = Readonly<{
 type JWK = JsonWebKey;
 
 /**
- * JWK that is encrypted as a JWE
- * We only use these kinds of JWE for encryption
+ * JWK encrypted as a Flattened JWE JSON
+ * This covers ECDH-SS, ECDH-ES and key wrapping
  */
 type JWKEncrypted =
   | {
@@ -180,6 +180,35 @@ type KeyPairPEM = {
  */
 type Signature = Opaque<'Signature', Buffer>;
 
+/**
+ * Multihash codes
+ * Format -> Code
+ */
+const multihashCodes = {
+  'sha2-256': 0x12,
+  'sha2-512': 0x18,
+  'sha2-512-256': 0x1015,
+  'blake2b-256': 0xb220,
+} as const;
+
+/**
+ * Multihash code inverse
+ * Code -> Format
+ */
+const multihashCodesI = {} as InverseRecord<typeof multihashCodes>;
+for (const [key, code] of Object.entries(multihashCodes)) {
+  multihashCodesI[code as any] = key;
+}
+
+type DigestFormats = keyof typeof multihashCodes;
+type DigestCode<K extends DigestFormats> = typeof multihashCodes[K];
+type Digest<K extends DigestFormats> = Opaque<K, Buffer>;
+
+/**
+ * Use BLAKE2b as the default Message Authentication Code
+ */
+type MAC = Digest<'blake2b-256'>;
+
 type PasswordHash = Opaque<'PasswordHash', Buffer>;
 
 type PasswordSalt = Opaque<'PasswordSalt', Buffer>;
@@ -254,6 +283,10 @@ export type {
   PrivateKeyPEM,
   KeyPairPEM,
   Signature,
+  DigestFormats,
+  DigestCode,
+  Digest,
+  MAC,
   PasswordHash,
   PasswordSalt,
   PasswordOpsLimit,
@@ -268,3 +301,8 @@ export type {
 };
 
 export type { CertId, CertIdString, CertIdEncoded } from '../ids/types';
+
+export {
+  multihashCodes,
+  multihashCodesI,
+};

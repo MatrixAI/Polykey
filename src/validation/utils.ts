@@ -13,6 +13,13 @@ import type { GestaltAction, GestaltId } from '../gestalts/types';
 import type { VaultAction, VaultId } from '../vaults/types';
 import type { Host, Hostname, Port } from '../network/types';
 import type { ClaimId } from '../claims/types';
+import type {
+  TokenProtectedHeader,
+  TokenPayload,
+  TokenSignature,
+  TokenHeaderSignature,
+  SignedToken,
+} from '../tokens/types';
 import * as validationErrors from './errors';
 import * as nodesUtils from '../nodes/utils';
 import * as gestaltsUtils from '../gestalts/utils';
@@ -20,6 +27,7 @@ import * as vaultsUtils from '../vaults/utils';
 import * as networkUtils from '../network/utils';
 import * as claimsUtils from '../claims/utils';
 import * as keysUtils from '../keys/utils';
+import * as tokenUtils from '../tokens/utils';
 import * as utils from '../utils';
 import config from '../config';
 
@@ -166,22 +174,6 @@ function parsePrivateKey(data: any): PrivateKey {
   return privateKey;
 }
 
-// This is not necessary
-// function parsePrivateKeyPem(data: any): PrivateKey {
-//   if (typeof data !== 'string') {
-//     throw new validationErrors.ErrorParse('Private key Pem must be a string');
-//   }
-//   let privateKey: PrivateKey;
-//   try {
-//     privateKey = keysUtils.privateKeyFromPem(data);
-//   } catch (e) {
-//     throw new validationErrors.ErrorParse(
-//       'Must provide a valid private key Pem',
-//     );
-//   }
-//   return privateKey;
-// }
-
 function parseGestaltAction(data: any): GestaltAction {
   if (!gestaltsUtils.isGestaltAction(data)) {
     throw new validationErrors.ErrorParse(
@@ -325,6 +317,93 @@ function parseSeedNodes(data: any): [SeedNodes, boolean] {
   return [seedNodes, defaults];
 }
 
+/**
+ * Parses an encoded  token payload
+ */
+function parseTokenPayload(data: any): TokenPayload {
+  const payload = tokenUtils.decodePayload(data);
+  if (payload == null) {
+    throw new validationErrors.ErrorParse(
+      'Token payload has an invalid format or has unexpected properties',
+    );
+  }
+  return payload;
+}
+
+/**
+ * Parses an encoded token header
+ */
+function parseTokenProtectedHeader(data: any): TokenProtectedHeader {
+  const protectedHeader = tokenUtils.decodeProtectedHeader(data);
+  if (protectedHeader == null) {
+    throw new validationErrors.ErrorParse(
+      'Token header has an invalid format or has unexpected properties',
+    );
+  }
+  return protectedHeader;
+}
+
+/**
+ * Parses an encoded token signature
+ */
+function parseTokenSignature(data: any): TokenSignature {
+  const signature = tokenUtils.decodeSignature(data);
+  if (signature == null) {
+    throw new validationErrors.ErrorParse(
+      'Token signature has an invalid format',
+    );
+  }
+  return signature;
+}
+
+/**
+ * Parses an JSON encoded token signed
+ */
+function parseSignedToken(data: any): SignedToken {
+  if (typeof data !== 'string') {
+    throw new validationErrors.ErrorParse(
+      'Token signed must be a string',
+    );
+  }
+  let tokenSigned;
+  try {
+    tokenSigned = JSON.parse(data)
+  } catch (e) {
+    throw new validationErrors.ErrorParse(
+      'Token signed must be a JSON string',
+    );
+  }
+  if (typeof data !== 'object' || data === null) {
+    throw new validationErrors.ErrorParse(
+      'Token signed must be a JSON POJO',
+    );
+  }
+  const payload = parseTokenPayload(tokenSigned.payload);
+  if (!Array.isArray(tokenSigned.signatures)) {
+    throw new validationErrors.ErrorParse(
+      'Token signed is missing signatures',
+    );
+  }
+  const signatures: Array<TokenHeaderSignature> = [];
+  for (const headerSignatureEncoded of tokenSigned.signatures) {
+    if (typeof headerSignatureEncoded !== 'object' || headerSignatureEncoded === null) {
+      throw new validationErrors.ErrorParse(
+        'Token signed signature element must be a POJO',
+      );
+    }
+    const protectedHeader = parseTokenProtectedHeader(headerSignatureEncoded.protected);
+    const signature = parseTokenSignature(headerSignatureEncoded.signature);
+    signatures.push({
+      protected: protectedHeader,
+      signature,
+    });
+  }
+  return {
+    payload,
+    signatures
+  };
+}
+
 export {
   parseInteger,
   parseNumber,
@@ -337,7 +416,6 @@ export {
   parsePublicKey,
   parsePrivateKey,
   parseRecoveryCode,
-  // ParsePrivateKeyPem,
   parseGestaltAction,
   parseVaultAction,
   parseHost,
@@ -346,4 +424,8 @@ export {
   parsePort,
   parseNetwork,
   parseSeedNodes,
+  parseTokenPayload,
+  parseTokenProtectedHeader,
+  parseTokenSignature,
+  parseSignedToken,
 };

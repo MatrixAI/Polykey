@@ -9,7 +9,6 @@ import type Session from '../../sessions/Session';
 import type SessionManager from '../../sessions/SessionManager';
 import type { SessionToken } from '../../sessions/types';
 import type { Authenticate, ClientClientErrors } from '../types';
-import * as base64 from 'multiformats/bases/base64';
 import * as grpc from '@grpc/grpc-js';
 import * as validationErrors from '../../validation/errors';
 import * as clientErrors from '../errors';
@@ -83,9 +82,8 @@ function authenticator(
       }
     } else if (auth.startsWith('Basic ')) {
       const encoded = auth.substring(6);
-      const decoded = base64.base64pad.baseDecode(encoded);
-      const decodedString = String.fromCharCode(...decoded);
-      const match = decodedString.match(/:(.*)/);
+      const decoded = Buffer.from(encoded, 'base64').toString('utf-8');
+      const match = decoded.match(/:(.*)/);
       if (match == null) {
         throw new clientErrors.ErrorClientAuthFormat();
       }
@@ -125,9 +123,7 @@ function encodeAuthFromPassword(
   password: string,
   metadata: grpc.Metadata = new grpc.Metadata(),
 ): grpc.Metadata {
-  const encoded = base64.base64pad.baseEncode(
-    Uint8Array.from([...`:${password}`].map((c) => c.charCodeAt(0))),
-  );
+  const encoded = Buffer.from(`:${password}`).toString('base64');
   metadata.set('Authorization', `Basic ${encoded}`);
   return metadata;
 }
