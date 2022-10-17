@@ -7,6 +7,7 @@
 export * from './webcrypto';
 export * from './asymmetric';
 export * from './generate';
+export * from './hash';
 export * from './jwk';
 export * from './memory';
 export * from './password';
