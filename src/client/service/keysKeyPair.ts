@@ -8,7 +8,7 @@ import * as keysPB from '../../proto/js/polykey/v1/keys/keys_pb';
 import * as clientUtils from '../utils';
 import * as keysUtils from '../../keys/utils';
 
-function keysPrivateKey({
+function keysKeyPair({
   authenticate,
   keyRing,
   logger,
@@ -26,8 +26,11 @@ function keysPrivateKey({
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
       const privateJWK = keysUtils.privateKeyToJWK(keyRing.keyPair.privateKey);
-      const privateJWE = keysUtils.wrapWithPassword(call.request.getPassword(), privateJWK);
-      const publicJWK = keysUtils.publicKeyToJWK(keyRing.keyPair.publicKey)
+      const privateJWE = keysUtils.wrapWithPassword(
+        call.request.getPassword(),
+        privateJWK,
+      );
+      const publicJWK = keysUtils.publicKeyToJWK(keyRing.keyPair.publicKey);
       response.setPrivateKeyJwe(JSON.stringify(privateJWE));
       response.setPublicKeyJwk(JSON.stringify(publicJWK));
       callback(null, response);
@@ -35,10 +38,10 @@ function keysPrivateKey({
     } catch (e) {
       callback(grpcUtils.fromError(e));
       !clientUtils.isClientClientError(e) &&
-        logger.error(`${keysPrivateKey.name}:${e}`);
+        logger.error(`${keysKeyPair.name}:${e}`);
       return;
     }
   };
 }
 
-export default keysPrivateKey;
+export default keysKeyPair;

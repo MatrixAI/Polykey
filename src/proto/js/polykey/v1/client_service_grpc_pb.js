@@ -591,9 +591,19 @@ nodesAdd: {
     responseDeserialize: deserialize_polykey_v1_nodes_NodeBuckets,
   },
   // Keys
-//  rpc KeysPublicKey (polykey.v1.utils.EmptyMessage) returns (polykey.v1.keys.KeyPairJWK);
-keysPrivateKey: {
-    path: '/polykey.v1.ClientService/KeysPrivateKey',
+keysPublicKey: {
+    path: '/polykey.v1.ClientService/KeysPublicKey',
+    requestStream: false,
+    responseStream: false,
+    requestType: polykey_v1_utils_utils_pb.EmptyMessage,
+    responseType: polykey_v1_keys_keys_pb.KeyPairJWK,
+    requestSerialize: serialize_polykey_v1_utils_EmptyMessage,
+    requestDeserialize: deserialize_polykey_v1_utils_EmptyMessage,
+    responseSerialize: serialize_polykey_v1_keys_KeyPairJWK,
+    responseDeserialize: deserialize_polykey_v1_keys_KeyPairJWK,
+  },
+  keysKeyPair: {
+    path: '/polykey.v1.ClientService/KeysKeyPair',
     requestStream: false,
     responseStream: false,
     requestType: polykey_v1_sessions_sessions_pb.Password,
@@ -603,8 +613,7 @@ keysPrivateKey: {
     responseSerialize: serialize_polykey_v1_keys_KeyPairJWK,
     responseDeserialize: deserialize_polykey_v1_keys_KeyPairJWK,
   },
-  //  rpc KeysKeyPair (polykey.v1.sessions.Password) returns (polykey.v1.keys.KeyPairJWK);
-keysKeyPairReset: {
+  keysKeyPairReset: {
     path: '/polykey.v1.ClientService/KeysKeyPairReset',
     requestStream: false,
     responseStream: false,
