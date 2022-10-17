@@ -4,21 +4,22 @@ import * as binUtils from '../utils';
 import * as binOptions from '../utils/options';
 import * as binProcessors from '../utils/processors';
 
-class CommandPrivateKey extends CommandPolykey {
+class CommandPrivate extends CommandPolykey {
   constructor(...args: ConstructorParameters<typeof CommandPolykey>) {
     super(...args);
-    this.name('privateKey');
-    this.description('Exports the encrypted private key JWE');
+    this.name('pair');
+    this.description(
+      'Exports the encrypted private key JWE and public key JWK',
+    );
     this.addOption(binOptions.nodeId);
     this.addOption(binOptions.clientHost);
     this.addOption(binOptions.clientPort);
-    this.argument(
-      '<password>',
-      'Password to encrypt the JWE with',
-    );
+    this.argument('<password>', 'Password to encrypt the JWE with');
     this.action(async (password, options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
-      const sessionsPB = await import('../../proto/js/polykey/v1/sessions/sessions_pb');
+      const sessionsPB = await import(
+        '../../proto/js/polykey/v1/sessions/sessions_pb'
+      );
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -49,15 +50,16 @@ class CommandPrivateKey extends CommandPolykey {
           (auth) => pkClient.grpcClient.keysKeyPair(passwordMessage, auth),
           meta,
         );
+        const publicKeyJWK = JSON.parse(keyPairJWK.getPublicKeyJwk());
         const privateKeyJWE = JSON.parse(keyPairJWK.getPrivateKeyJwe());
-        let output: any = privateKeyJWE;
-        if (options.format === 'human') {
-          output.push(`Private key:\t\t${privateKeyJWE}`);
-        }
+        const pair = {
+          publicKey: publicKeyJWK,
+          privateKey: privateKeyJWE,
+        };
         process.stdout.write(
           binUtils.outputFormatter({
-            type: options.format === 'json' ? 'json' : 'list',
-            data: output,
+            type: options.format === 'json' ? 'json' : 'dict',
+            data: pair,
           }),
         );
       } finally {
@@ -67,4 +69,4 @@ class CommandPrivateKey extends CommandPolykey {
   }
 }
 
-export default CommandPrivateKey;
+export default CommandPrivate;

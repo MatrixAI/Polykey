@@ -33,6 +33,7 @@ import * as networkErrors from '../network/errors';
 import * as gestaltsUtils from '../gestalts/utils';
 import * as claimsUtils from '../claims/utils';
 import * as nodesUtils from '../nodes/utils';
+import * as keysUtils from '../keys/utils';
 import { never } from '../utils';
 import { context } from '../contexts/index';
 import TimedCancellable from '../contexts/decorators/timedCancellable';
@@ -613,9 +614,7 @@ class Discovery {
       // Verify the claim with the public key of the node
       const verified = await claimsUtils.verifyClaimSignature(
         encoded,
-        await this.nodeManager.getPublicKey(
-          nodesUtils.decodeNodeId(data.node)!,
-        ),
+        publicKey,
       );
       // If verified, add to the record
       if (verified) {

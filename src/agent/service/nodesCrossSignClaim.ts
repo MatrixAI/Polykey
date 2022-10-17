@@ -11,6 +11,7 @@ import * as grpcUtils from '../../grpc/utils';
 import * as claimsUtils from '../../claims/utils';
 import * as claimsErrors from '../../claims/errors';
 import * as nodesUtils from '../../nodes/utils';
+import * as keysUtils from '../../keys/utils';
 import { validateSync } from '../../validation';
 import * as validationUtils from '../../validation/utils';
 import { matchSync } from '../../utils';
@@ -95,7 +96,7 @@ function nodesCrossSignClaim({
           },
         );
         // Verify the claim
-        const senderPublicKey = await nodeManager.getPublicKey(nodeId);
+        const senderPublicKey = keysUtils.publicKeyFromNodeId(nodeId);
         const verified = await claimsUtils.verifyClaimSignature(
           constructedEncodedClaim,
           senderPublicKey,

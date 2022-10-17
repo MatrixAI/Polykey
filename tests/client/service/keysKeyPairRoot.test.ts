@@ -39,7 +39,7 @@ describe('keysKeyPairRoot', () => {
       strictMemoryLock: false,
     });
     const clientService = {
-      keysKeyPairRoot: keysPrivateKey({
+      keysKeyPairRoot: keysPair({
         authenticate,
         keyRing,
         logger,
@@ -74,7 +74,7 @@ describe('keysKeyPairRoot', () => {
       clientUtils.encodeAuthFromPassword(password),
     );
     expect(response).toBeInstanceOf(keysPB.KeyPair);
-    const keyPairPem = keysUtils.keyPairToPEM(keyRing.keyPair)
+    const keyPairPem = keysUtils.keyPairToPEM(keyRing.keyPair);
     expect(response.getPublic()).toBe(keyPairPem.publicKey);
     expect(response.getPrivate()).toBe(keyPairPem.privateKey);
   });
