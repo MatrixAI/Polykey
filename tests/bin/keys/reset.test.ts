@@ -47,11 +47,12 @@ describe('reset', () => {
       // Can't test with target executable due to mocking
       // Get previous keypair and nodeId
       let { exitCode, stdout } = await testUtils.pkStdio(
-        ['keys', 'root', '--private-key', '--format', 'json'],
+        ['keys', 'keypair', '--format', 'json'],
         {
           env: {
             PK_NODE_PATH: nodePath,
             PK_PASSWORD: password,
+            PK_PASSWORD_NEW: 'some-password',
           },
           cwd: dataDir,
         },
@@ -87,11 +88,12 @@ describe('reset', () => {
       expect(exitCode).toBe(0);
       // Get new keypair and nodeId and compare against old
       ({ exitCode, stdout } = await testUtils.pkStdio(
-        ['keys', 'root', '--private-key', '--format', 'json'],
+        ['keys', 'keypair', '--format', 'json'],
         {
           env: {
             PK_NODE_PATH: nodePath,
             PK_PASSWORD: 'password-new',
+            PK_PASSWORD_NEW: 'some-password',
           },
           cwd: dataDir,
         },
@@ -114,19 +116,6 @@ describe('reset', () => {
       expect(newPublicKey).not.toBe(prevPublicKey);
       expect(newPrivateKey).not.toBe(prevPrivateKey);
       expect(newNodeId).not.toBe(prevNodeId);
-      // Revert side effects
-      await fs.promises.writeFile(passPath, password);
-      ({ exitCode } = await testUtils.pkStdio(
-        ['keys', 'password', '--password-new-file', passPath],
-        {
-          env: {
-            PK_NODE_PATH: nodePath,
-            PK_PASSWORD: 'password-new',
-          },
-          cwd: dataDir,
-        },
-      ));
-      expect(exitCode).toBe(0);
     },
   );
 });
