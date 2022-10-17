@@ -4,10 +4,8 @@ import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as bootstrapUtils from '@/bootstrap/utils';
 import * as bootstrapErrors from '@/bootstrap/errors';
-import { utils as keysUtils } from '@/keys';
 import { errors as statusErrors } from '@/status';
 import config from '@/config';
-import * as testUtils from '../utils';
 
 describe('bootstrap/utils', () => {
   const logger = new Logger('bootstrap/utils test', LogLevel.WARN, [

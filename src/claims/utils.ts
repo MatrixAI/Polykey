@@ -62,9 +62,6 @@ async function createClaim({
   const byteEncoder = new TextEncoder();
   const claim = new GeneralSign(byteEncoder.encode(canonicalizedPayload));
   const key = await importPrivateKey(privateKey);
-  console.log(key);
-  console.log(key instanceof CryptoKey);
-  console.log(isCryptoKey(key));
   claim
     .addSignature(await importPrivateKey(privateKey))
     .setProtectedHeader({ alg: alg, kid: kid });
@@ -157,7 +154,6 @@ function hashClaim(claim: ClaimEncoded): string {
   const inBuffer = Buffer.from(canonicalizedClaim);
   const outBuffer = Buffer.alloc(256, 0);
   sodium.crypto_hash_sha256(outBuffer, inBuffer);
-  console.log(outBuffer.toString('hex'));
   return outBuffer.toString('hex');
 }
 

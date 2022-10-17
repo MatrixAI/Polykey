@@ -481,7 +481,7 @@ class KeyRing {
     let rootKeyPair: KeyPairLocked;
     let recoveryCodeNew: RecoveryCode | undefined;
     if (await this.existsKeyPair()) {
-      if ('recoveryCode' in options) {
+      if ('recoveryCode' in options && options.recoveryCode != null) {
         // Recover the key pair
         this.logger.info('Recovering root key pair');
         const recoveredKeyPair = await this.recoverKeyPair(options.recoveryCode);
@@ -498,7 +498,7 @@ class KeyRing {
       }
       return [rootKeyPair, undefined];
     } else {
-      if ('recoveryCode' in options) {
+      if ('recoveryCode' in options && options.recoveryCode != null) {
         this.logger.info('Generating root key pair from recovery code');
         // Deterministic key pair generation from recovery code
         // Recovery code is new by virtue of generating key pair
@@ -506,7 +506,7 @@ class KeyRing {
         rootKeyPair = await this.generateKeyPair(options.recoveryCode);
         await this.writeKeyPair(rootKeyPair, options.password);
         return [rootKeyPair, recoveryCodeNew];
-      } else if ('privateKey' in options) {
+      } else if ('privateKey' in options && options.privateKey != null) {
         this.logger.info('Making root key pair from provided private key');
         const privateKey = options.privateKey;
         const publicKey = keysUtils.publicKeyFromPrivateKeyEd25519(privateKey);
@@ -517,7 +517,7 @@ class KeyRing {
         rootKeyPair = keyPair as KeyPairLocked;
         await this.writeKeyPair(rootKeyPair, options.password);
         return [rootKeyPair, undefined];
-      } else if ('privateKeyPath' in options) {
+      } else if ('privateKeyPath' in options && options.privateKeyPath != null) {
         this.logger.info('Making root key pair from provided private key path');
         const privateKey = await this.readPrivateKey(
           options.password,
@@ -685,7 +685,7 @@ class KeyRing {
         { cause: e }
       );
     }
-    if ('kty' in privateObject) {
+    if ('kty' in privateObject && privateObject.kty != null) {
       const privateKey = keysUtils.privateKeyFromJWK(privateObject);
       if (privateKey == null) {
         throw new keysErrors.ErrorKeyPairParse(
@@ -694,7 +694,7 @@ class KeyRing {
       }
       bufferLock(privateKey, this.strictMemoryLock);
       return privateKey;
-    } else if ('ciphertext' in privateObject) {
+    } else if ('ciphertext' in privateObject && privateObject.ciphertext != null) {
       const privateJWK = keysUtils.unwrapWithPassword(
         password,
         privateObject,

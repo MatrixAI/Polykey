@@ -42,8 +42,6 @@ describe('start', () => {
           'start',
           '--node-path',
           path.join(dataDir, 'polykey'),
-          '--root-key-pair-bits',
-          '1024',
           '--client-host',
           '127.0.0.1',
           '--proxy-host',
@@ -57,6 +55,7 @@ describe('start', () => {
         {
           env: {
             PK_PASSWORD: password,
+            PK_FAST_PASSWORD_HASH: 'true',
           },
           cwd: dataDir,
           command: globalThis.testCmd,
@@ -114,8 +113,6 @@ describe('start', () => {
           'start',
           '--password-file',
           passwordPath,
-          '--root-key-pair-bits',
-          '1024',
           '--client-host',
           '127.0.0.1',
           '--proxy-host',
@@ -134,6 +131,7 @@ describe('start', () => {
         {
           env: {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
+            PK_FAST_PASSWORD_HASH: 'true',
           },
           cwd: dataDir,
           command: globalThis.testCmd,
@@ -218,8 +216,6 @@ describe('start', () => {
           [
             'agent',
             'start',
-            '--root-key-pair-bits',
-            '1024',
             '--client-host',
             '127.0.0.1',
             '--proxy-host',
@@ -234,6 +230,7 @@ describe('start', () => {
             env: {
               PK_NODE_PATH: path.join(dataDir, 'polykey'),
               PK_PASSWORD: password,
+              PK_FAST_PASSWORD_HASH: 'true',
             },
             cwd: dataDir,
             command: globalThis.testCmd,
@@ -244,8 +241,6 @@ describe('start', () => {
           [
             'agent',
             'start',
-            '--root-key-pair-bits',
-            '1024',
             '--client-host',
             '127.0.0.1',
             '--proxy-host',
@@ -260,6 +255,7 @@ describe('start', () => {
             env: {
               PK_NODE_PATH: path.join(dataDir, 'polykey'),
               PK_PASSWORD: password,
+              PK_FAST_PASSWORD_HASH: 'true',
             },
             cwd: dataDir,
             command: globalThis.testCmd,
@@ -318,8 +314,6 @@ describe('start', () => {
           [
             'agent',
             'start',
-            '--root-key-pair-bits',
-            '1024',
             '--client-host',
             '127.0.0.1',
             '--proxy-host',
@@ -334,6 +328,7 @@ describe('start', () => {
             env: {
               PK_NODE_PATH: path.join(dataDir, 'polykey'),
               PK_PASSWORD: password,
+              PK_FAST_PASSWORD_HASH: 'true',
             },
             cwd: dataDir,
             command: globalThis.testCmd,
@@ -344,8 +339,6 @@ describe('start', () => {
           [
             'bootstrap',
             '--fresh',
-            '--root-key-pair-bits',
-            '1024',
             '--verbose',
             '--format',
             'json',
@@ -354,6 +347,7 @@ describe('start', () => {
             env: {
               PK_NODE_PATH: path.join(dataDir, 'polykey'),
               PK_PASSWORD: password,
+              PK_FAST_PASSWORD_HASH: 'true',
             },
             cwd: dataDir,
             command: globalThis.testCmd,
@@ -410,8 +404,6 @@ describe('start', () => {
         [
           'agent',
           'start',
-          '--root-key-pair-bits',
-          '1024',
           '--client-host',
           '127.0.0.1',
           '--proxy-host',
@@ -424,6 +416,7 @@ describe('start', () => {
           env: {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
             PK_PASSWORD: password,
+            PK_FAST_PASSWORD_HASH: 'true',
           },
           cwd: dataDir,
           command: globalThis.testCmd,
@@ -440,8 +433,6 @@ describe('start', () => {
         [
           'agent',
           'start',
-          '--root-key-pair-bits',
-          '1024',
           '--client-host',
           '127.0.0.1',
           '--proxy-host',
@@ -454,6 +445,7 @@ describe('start', () => {
           env: {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
             PK_PASSWORD: password,
+            PK_FAST_PASSWORD_HASH: 'true',
           },
           cwd: dataDir,
           command: globalThis.testCmd,
@@ -488,8 +480,6 @@ describe('start', () => {
         [
           'agent',
           'start',
-          '--root-key-pair-bits',
-          '1024',
           '--client-host',
           '127.0.0.1',
           '--proxy-host',
@@ -502,6 +492,7 @@ describe('start', () => {
           env: {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
             PK_PASSWORD: password,
+            PK_FAST_PASSWORD_HASH: 'true',
           },
           cwd: dataDir,
           command: globalThis.testCmd,
@@ -529,8 +520,6 @@ describe('start', () => {
         [
           'agent',
           'start',
-          '--root-key-pair-bits',
-          '1024',
           '--client-host',
           '127.0.0.1',
           '--proxy-host',
@@ -546,6 +535,7 @@ describe('start', () => {
           env: {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
             PK_PASSWORD: password,
+            PK_FAST_PASSWORD_HASH: 'true',
           },
           cwd: dataDir,
           command: globalThis.testCmd,
@@ -616,8 +606,6 @@ describe('start', () => {
           'start',
           '--node-path',
           path.join(dataDir, 'polykey'),
-          '--root-key-pair-bits',
-          '1024',
           '--client-host',
           '127.0.0.1',
           '--proxy-host',
@@ -631,6 +619,7 @@ describe('start', () => {
         {
           env: {
             PK_PASSWORD: password1,
+            PK_FAST_PASSWORD_HASH: 'true',
           },
           cwd: dataDir,
           command: globalThis.testCmd,
@@ -656,8 +645,6 @@ describe('start', () => {
           'start',
           '--recovery-code-file',
           recoveryCodePath,
-          '--root-key-pair-bits',
-          '2048',
           '--client-host',
           '127.0.0.1',
           '--proxy-host',
@@ -670,6 +657,7 @@ describe('start', () => {
           env: {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
             PK_PASSWORD: password2,
+            PK_FAST_PASSWORD_HASH: 'true',
           },
           cwd: dataDir,
           command: globalThis.testCmd,
@@ -689,6 +677,7 @@ describe('start', () => {
           env: {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
             PK_PASSWORD: password2,
+            PK_FAST_PASSWORD_HASH: 'true',
           },
           cwd: dataDir,
           command: globalThis.testCmd,
@@ -711,8 +700,6 @@ describe('start', () => {
         [
           'agent',
           'start',
-          '--root-key-pair-bits',
-          '1024',
           '--client-host',
           '127.0.0.1',
           '--proxy-host',
@@ -725,6 +712,7 @@ describe('start', () => {
           env: {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
             PK_PASSWORD: password2,
+            PK_FAST_PASSWORD_HASH: 'true',
             PK_RECOVERY_CODE: recoveryCode,
           },
           cwd: dataDir,
@@ -766,8 +754,6 @@ describe('start', () => {
         [
           'agent',
           'start',
-          '--root-key-pair-bits',
-          '1024',
           '--workers',
           '0',
           '--client-host',
@@ -784,6 +770,7 @@ describe('start', () => {
           env: {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
             PK_PASSWORD: password,
+            PK_FAST_PASSWORD_HASH: 'true',
           },
           cwd: dataDir,
           command: globalThis.testCmd,
@@ -802,7 +789,7 @@ describe('start', () => {
   testUtils.testIf(
     testUtils.isTestPlatformEmpty || testUtils.isTestPlatformDocker,
   )(
-    'start with PK_ROOT_KEY env override',
+    'start with --private-key-file override',
     async () => {
       const status = new Status({
         statusPath: path.join(dataDir, 'polykey', config.defaults.statusBase),
@@ -817,48 +804,10 @@ describe('start', () => {
       const password = 'abc123';
       const keyPair = keysUtils.generateKeyPair();
       const nodeId = keysUtils.publicKeyToNodeId(keyPair.publicKey);
-      const agentProcess = await testUtils.pkSpawn(
-        ['agent', 'start', '--workers', '0', '--verbose'],
-        {
-          env: {
-            PK_NODE_PATH: path.join(dataDir, 'polykey'),
-            PK_PASSWORD: password,
-            PK_ROOT_KEY: keysUtils.privateKeyToPEM(keyPair.privateKey),
-          },
-          cwd: dataDir,
-          command: globalThis.testCmd,
-        },
-        logger,
-      );
-      const statusInfo = await status.waitFor('LIVE');
-      expect(nodeId.equals(statusInfo.data.nodeId)).toBe(true);
-      agentProcess.kill('SIGINT');
-      // Check for graceful exit
-      await status.waitFor('DEAD');
-    },
-    globalThis.defaultTimeout * 2,
-  );
-  testUtils.testIf(
-    testUtils.isTestPlatformEmpty || testUtils.isTestPlatformDocker,
-  )(
-    'start with --root-key-file override',
-    async () => {
-      const status = new Status({
-        statusPath: path.join(dataDir, 'polykey', config.defaults.statusBase),
-        statusLockPath: path.join(
-          dataDir,
-          'polykey',
-          config.defaults.statusLockBase,
-        ),
-        fs,
-        logger,
-      });
-      const password = 'abc123';
-      const keyPair = keysUtils.generateKeyPair();
-      const nodeId = keysUtils.publicKeyToNodeId(keyPair.publicKey);
-      const privateKeyPem = keysUtils.privateKeyToPEM(keyPair.privateKey);
-      const privateKeyPath = path.join(dataDir, 'private.pem');
-      await fs.promises.writeFile(privateKeyPath, privateKeyPem, {
+      const privateKeyJWK = keysUtils.privateKeyToJWK(keyPair.privateKey);
+      const privateKeyJWE = keysUtils.wrapWithPassword(password, privateKeyJWK, keysUtils.passwordOpsLimits.min, keysUtils.passwordMemLimits.min)
+      const privateKeyPath = path.join(dataDir, 'private.jwe');
+      await fs.promises.writeFile(privateKeyPath, JSON.stringify(privateKeyJWE), {
         encoding: 'utf-8',
       });
       const agentProcess = await testUtils.pkSpawn(
@@ -868,13 +817,14 @@ describe('start', () => {
           '--workers',
           '0',
           '--verbose',
-          '--root-key-file',
+          '--private-key-file',
           privateKeyPath,
         ],
         {
           env: {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
             PK_PASSWORD: password,
+            PK_FAST_PASSWORD_HASH: 'true',
           },
           cwd: dataDir,
           command: globalThis.testCmd,
@@ -889,7 +839,8 @@ describe('start', () => {
     },
     globalThis.defaultTimeout * 2,
   );
-  testUtils.describeIf(testUtils.isTestPlatformEmpty)(
+  // testUtils.describeIf(testUtils.isTestPlatformEmpty)
+  describe(
     'start with global agent',
     () => {
       let agentDataDir;
@@ -958,8 +909,6 @@ describe('start', () => {
             [
               'agent',
               'start',
-              '--root-key-pair-bits',
-              '1024',
               '--client-host',
               '127.0.0.1',
               '--proxy-host',
@@ -976,6 +925,7 @@ describe('start', () => {
               env: {
                 PK_NODE_PATH: nodePath,
                 PK_PASSWORD: password,
+                PK_FAST_PASSWORD_HASH: 'true',
               },
               cwd: dataDir,
             },
@@ -984,6 +934,7 @@ describe('start', () => {
             env: {
               PK_NODE_PATH: nodePath,
               PK_PASSWORD: password,
+              PK_FAST_PASSWORD_HASH: 'true',
             },
             cwd: dataDir,
           });
@@ -1023,8 +974,6 @@ describe('start', () => {
             [
               'agent',
               'start',
-              '--root-key-pair-bits',
-              '1024',
               '--client-host',
               '127.0.0.1',
               '--proxy-host',
@@ -1037,6 +986,7 @@ describe('start', () => {
               env: {
                 PK_NODE_PATH: nodePath,
                 PK_PASSWORD: password,
+                PK_FAST_PASSWORD_HASH: 'true',
                 PK_SEED_NODES: `<defaults>;${seedNodeId1}@${seedNodeHost1}:${seedNodePort1}`,
                 PK_NETWORK: 'testnet',
               },
@@ -1047,6 +997,7 @@ describe('start', () => {
             env: {
               PK_NODE_PATH: nodePath,
               PK_PASSWORD: password,
+              PK_FAST_PASSWORD_HASH: 'true',
             },
             cwd: dataDir,
           });

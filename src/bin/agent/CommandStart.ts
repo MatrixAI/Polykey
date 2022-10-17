@@ -24,7 +24,6 @@ class CommandStart extends CommandPolykey {
     this.name('start');
     this.description('Start the Polykey Agent');
     this.addOption(binOptions.recoveryCodeFile);
-    this.addOption(binOptions.rootKeyPairBits);
     this.addOption(binOptions.clientHost);
     this.addOption(binOptions.clientPort);
     this.addOption(binOptions.proxyHost);
@@ -37,7 +36,7 @@ class CommandStart extends CommandPolykey {
     this.addOption(binOptions.backgroundOutFile);
     this.addOption(binOptions.backgroundErrFile);
     this.addOption(binOptions.fresh);
-    this.addOption(binOptions.rootKeyFile);
+    this.addOption(binOptions.privateKeyFile);
     this.action(async (options) => {
       options.clientHost =
         options.clientHost ?? config.defaults.networkConfig.clientHost;
@@ -48,6 +47,7 @@ class CommandStart extends CommandPolykey {
         '../../workers'
       );
       const nodesUtils = await import('../../nodes/utils');
+      const keysUtils = await import('../../keys/utils/index');
       let password: string | undefined;
       if (options.fresh) {
         // If fresh, then get a new password
@@ -89,18 +89,15 @@ class CommandStart extends CommandPolykey {
       const [seedNodes, defaults] = options.seedNodes;
       let seedNodes_ = seedNodes;
       if (defaults) seedNodes_ = { ...options.network, ...seedNodes };
-      const privateKeyPem = await binProcessors.processRootKey(
-        options.rootKeyFile,
-      );
+      const fastPasswordHash = process.env.PK_FAST_PASSWORD_HASH === 'true';
       const agentConfig = {
         password,
         nodePath: options.nodePath,
-        // FIXME: keys config has changed.
-        //  need to update options to reflect this.
-        keysConfig: {
-          rootKeyPairBits: options.rootKeyPairBits,
+        keyRingConfig: {
           recoveryCode: recoveryCodeIn,
-          privateKeyPemOverride: privateKeyPem,
+          privateKeyPath: options.privateKeyFile,
+          passwordOpsLimit: fastPasswordHash ? keysUtils.passwordOpsLimits.min : undefined,
+          passwordMemLimit: fastPasswordHash ? keysUtils.passwordMemLimits.min : undefined,
         },
         proxyConfig: {
           connConnectTime: options.connectionTimeout,
