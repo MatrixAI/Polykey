@@ -30,9 +30,8 @@ service ClientService {
   rpc NodesListConnections(polykey.v1.utils.EmptyMessage) returns (stream polykey.v1.nodes.NodeConnection);
 
   // Keys
-//  rpc KeysPublicKey (polykey.v1.utils.EmptyMessage) returns (polykey.v1.keys.KeyPairJWK);
-  rpc KeysPrivateKey (polykey.v1.sessions.Password) returns (polykey.v1.keys.KeyPairJWK);
-//  rpc KeysKeyPair (polykey.v1.sessions.Password) returns (polykey.v1.keys.KeyPairJWK);
+  rpc KeysPublicKey (polykey.v1.utils.EmptyMessage) returns (polykey.v1.keys.KeyPairJWK);
+  rpc KeysKeyPair (polykey.v1.sessions.Password) returns (polykey.v1.keys.KeyPairJWK);
   rpc KeysKeyPairReset (polykey.v1.keys.Key) returns (polykey.v1.utils.EmptyMessage);
   rpc KeysKeyPairRenew (polykey.v1.keys.Key) returns (polykey.v1.utils.EmptyMessage);
   rpc KeysEncrypt (polykey.v1.keys.Crypto) returns (polykey.v1.keys.Crypto);

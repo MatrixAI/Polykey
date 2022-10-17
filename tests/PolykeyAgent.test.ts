@@ -117,7 +117,7 @@ describe('PolykeyAgent', () => {
     expect(await status.readStatus()).toMatchObject({ status: 'DEAD' });
     await expect(
       pkAgent.start({ password: 'wrong password' }),
-    ).rejects.toThrowError(errors.ErrorRootKeysParse);
+    ).rejects.toThrowError(errors.ErrorKeyPairParse);
     expect(await status.readStatus()).toMatchObject({ status: 'DEAD' });
     await pkAgent.destroy();
     expect(await status.readStatus()).toMatchObject({ status: 'DEAD' });
