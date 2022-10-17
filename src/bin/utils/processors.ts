@@ -114,7 +114,7 @@ async function processPassword(
  * Use this when a new password is necessary
  * Order of operations are:
  * 1. Reads --password-new-file
- * 2. Reads PK_PASSWORD
+ * 2. Reads PK_PASSWORD_NEW
  * 3. Prompts and confirms password
  * If processNewPassword is used when an existing password is needed
  * for authentication, then the existing boolean should be set to true
@@ -145,6 +145,8 @@ async function processNewPassword(
     }
   } else if (!existing && typeof process.env['PK_PASSWORD'] === 'string') {
     passwordNew = process.env['PK_PASSWORD'];
+  } else if(typeof process.env['PK_PASSWORD_NEW'] === 'string'){
+    passwordNew = process.env['PK_PASSWORD_NEW'];
   } else {
     passwordNew = await promptNewPassword();
     if (passwordNew === undefined) {

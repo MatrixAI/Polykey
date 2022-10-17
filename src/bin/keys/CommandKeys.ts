@@ -7,7 +7,7 @@ import CommandRenew from './CommandRenew';
 import CommandReset from './CommandReset';
 import CommandPublic from './CommandPublic';
 import CommandPrivate from './CommandPrivate';
-import CommandPair from './CommandPair';
+import CommandKeypair from './CommandPair';
 import CommandSign from './CommandSign';
 import CommandVerify from './CommandVerify';
 import CommandPolykey from '../CommandPolykey';
@@ -26,7 +26,7 @@ class CommandKeys extends CommandPolykey {
     this.addCommand(new CommandReset(...args));
     this.addCommand(new CommandPublic(...args));
     this.addCommand(new CommandPrivate(...args));
-    this.addCommand(new CommandPair(...args));
+    this.addCommand(new CommandKeypair(...args));
     this.addCommand(new CommandSign(...args));
     this.addCommand(new CommandVerify(...args));
   }
