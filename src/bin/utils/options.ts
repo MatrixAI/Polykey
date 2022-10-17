@@ -121,12 +121,6 @@ const backgroundErrFile = new commander.Option(
   'Path to STDERR for agent process',
 );
 
-// FIXME: this needs to be removed, we can't set the root key bits anymore.
-const rootKeyPairBits = new commander.Option(
-  '-rkpb --root-key-pair-bits <bitsize>',
-  'Bit size of root key pair',
-).argParser(binParsers.parseInteger);
-
 const seedNodes = new commander.Option(
   '-sn, --seed-nodes [nodeId1@host:port;nodeId2@host:port;...]',
   'Seed node address mappings',
@@ -164,9 +158,9 @@ const noPing = new commander.Option('--no-ping', 'Skip ping step').default(
   true,
 );
 
-const rootKeyFile = new commander.Option(
-  '--root-key-file <rootKeyFile>',
-  'Override key generation with a private key Pem from a file.',
+const privateKeyFile = new commander.Option(
+  '--private-key-file <privateKeyFile>',
+  'Override key creation with a private key JWE from a file',
 );
 
 export {
@@ -186,12 +180,11 @@ export {
   background,
   backgroundOutFile,
   backgroundErrFile,
-  rootKeyPairBits,
   seedNodes,
   network,
   workers,
   pullVault,
   forceNodeAdd,
   noPing,
-  rootKeyFile,
+  privateKeyFile,
 };

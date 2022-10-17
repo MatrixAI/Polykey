@@ -170,7 +170,6 @@ describe('status', () => {
         },
       );
       expect(exitCode).toBe(0);
-      console.log(JSON.parse(stdout));
       expect(JSON.parse(stdout)).toMatchObject({
         status: 'LIVE',
         pid: expect.any(Number),

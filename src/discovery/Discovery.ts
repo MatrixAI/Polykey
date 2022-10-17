@@ -612,6 +612,7 @@ class Discovery {
       const data = claim.payload.data as ClaimLinkIdentity;
       const encoded = await claimsUtils.encodeClaim(decodedClaim);
       // Verify the claim with the public key of the node
+      const publicKey = keysUtils.publicKeyFromNodeId(nodesUtils.decodeNodeId(data.node)!);
       const verified = await claimsUtils.verifyClaimSignature(
         encoded,
         publicKey,

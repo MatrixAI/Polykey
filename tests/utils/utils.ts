@@ -39,6 +39,7 @@ async function setupTestAgent(logger: Logger) {
     {
       env: {
         PK_PASSWORD: agentPassword,
+        PK_FAST_PASSWORD_HASH: 'true',
       },
       cwd: agentDir,
       command: globalThis.testCmd,
