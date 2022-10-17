@@ -15,6 +15,7 @@ import * as nodesUtils from '@/nodes/utils';
 import * as claimsUtils from '@/claims/utils';
 import * as grpcErrors from '@/grpc/errors';
 import * as testNodesUtils from '../../nodes/utils';
+import * as keysUtils from '../../../src/keys/utils/index';
 
 describe('nodesCrossSignClaim', () => {
   const logger = new Logger('nodesCrossSignClaim test', LogLevel.WARN, [
@@ -41,6 +42,11 @@ describe('nodesCrossSignClaim', () => {
       networkConfig: {
         proxyHost: '127.0.0.1' as Host,
       },
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
       logger,
     });
     localId = pkAgent.keyRing.getNodeId();
@@ -51,6 +57,11 @@ describe('nodesCrossSignClaim', () => {
       seedNodes: {}, // Explicitly no seed nodes on startup
       networkConfig: {
         proxyHost: '127.0.0.1' as Host,
+      },
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
       },
       logger,
     });

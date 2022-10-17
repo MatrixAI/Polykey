@@ -1049,6 +1049,7 @@ async function setupNATWithSeedNode(
     {
       env: {
         PK_PASSWORD: password,
+        PK_FAST_PASSWORD_HASH: 'true',
       },
       command: `nsenter ${nsenter(usrns.pid!, seedNetns.pid!).join(
         ' ',
@@ -1089,6 +1090,7 @@ async function setupNATWithSeedNode(
     {
       env: {
         PK_PASSWORD: password,
+        PK_FAST_PASSWORD_HASH: 'true',
       },
       command: `nsenter ${nsenter(usrns.pid!, agent1Netns.pid!).join(
         ' ',
@@ -1128,6 +1130,7 @@ async function setupNATWithSeedNode(
     {
       env: {
         PK_PASSWORD: password,
+        PK_FAST_PASSWORD_HASH: 'true',
       },
       command: `nsenter ${nsenter(usrns.pid!, agent2Netns.pid!).join(
         ' ',
@@ -1297,6 +1300,7 @@ async function setupNAT(
     {
       env: {
         PK_PASSWORD: password,
+        PK_FAST_PASSWORD_HASH: 'true',
       },
       command: `nsenter ${nsenter(usrns.pid!, agent1Netns.pid!).join(
         ' ',
@@ -1334,6 +1338,7 @@ async function setupNAT(
     {
       env: {
         PK_PASSWORD: password,
+        PK_FAST_PASSWORD_HASH: 'true',
       },
       command: `nsenter ${nsenter(usrns.pid!, agent2Netns.pid!).join(
         ' ',

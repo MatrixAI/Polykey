@@ -12,6 +12,7 @@ import * as nodesPB from '@/proto/js/polykey/v1/nodes/nodes_pb';
 import * as nodesUtils from '@/nodes/utils';
 import nodesClosestLocalNodesGet from '@/agent/service/nodesClosestLocalNodesGet';
 import * as testNodesUtils from '../../nodes/utils';
+import * as keysUtils from '../../../src/keys/utils/index';
 
 describe('nodesClosestLocalNode', () => {
   const logger = new Logger('nodesClosestLocalNode test', LogLevel.WARN, [
@@ -34,6 +35,11 @@ describe('nodesClosestLocalNode', () => {
       seedNodes: {}, // Explicitly no seed nodes on startup
       networkConfig: {
         proxyHost: '127.0.0.1' as Host,
+      },
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
       },
       logger,
     });

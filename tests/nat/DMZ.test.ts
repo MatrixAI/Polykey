@@ -60,6 +60,7 @@ describe('DMZ', () => {
         {
           env: {
             PK_PASSWORD: password,
+            PK_FAST_PASSWORD_HASH: 'true',
           },
           command: `nsenter ${testNatUtils
             .nsenter(usrns.pid!, netns.pid!)

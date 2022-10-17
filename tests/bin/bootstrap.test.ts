@@ -41,6 +41,7 @@ describe('bootstrap', () => {
         {
           env: {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
+            PK_FAST_PASSWORD_HASH: 'true',
           },
           cwd: dataDir,
           command: globalThis.testCmd,
@@ -82,6 +83,7 @@ describe('bootstrap', () => {
         {
           env: {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
+            PK_FAST_PASSWORD_HASH: 'true',
           },
           cwd: dataDir,
           command: globalThis.testCmd,
@@ -112,6 +114,7 @@ describe('bootstrap', () => {
         {
           env: {
             PK_PASSWORD: password,
+            PK_FAST_PASSWORD_HASH: 'true',
           },
           cwd: dataDir,
           command: globalThis.testCmd,
@@ -133,6 +136,7 @@ describe('bootstrap', () => {
         {
           env: {
             PK_PASSWORD: password,
+            PK_FAST_PASSWORD_HASH: 'true',
           },
           cwd: dataDir,
           command: globalThis.testCmd,
@@ -165,6 +169,7 @@ describe('bootstrap', () => {
             env: {
               PK_NODE_PATH: path.join(dataDir, 'polykey'),
               PK_PASSWORD: password,
+              PK_FAST_PASSWORD_HASH: 'true',
             },
             cwd: dataDir,
             command: globalThis.testCmd,
@@ -182,6 +187,7 @@ describe('bootstrap', () => {
             env: {
               PK_NODE_PATH: path.join(dataDir, 'polykey'),
               PK_PASSWORD: password,
+              PK_FAST_PASSWORD_HASH: 'true',
             },
             cwd: dataDir,
             command: globalThis.testCmd,
@@ -244,6 +250,7 @@ describe('bootstrap', () => {
           env: {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
             PK_PASSWORD: password,
+            PK_FAST_PASSWORD_HASH: 'true',
           },
           cwd: dataDir,
           command: globalThis.testCmd,
@@ -279,6 +286,7 @@ describe('bootstrap', () => {
           env: {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
             PK_PASSWORD: password,
+            PK_FAST_PASSWORD_HASH: 'true',
           },
           cwd: dataDir,
           command: globalThis.testCmd,
@@ -298,6 +306,7 @@ describe('bootstrap', () => {
           env: {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
             PK_PASSWORD: password,
+            PK_FAST_PASSWORD_HASH: 'true',
           },
           cwd: dataDir,
           command: globalThis.testCmd,

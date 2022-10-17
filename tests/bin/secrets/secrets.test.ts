@@ -5,6 +5,7 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
 import { vaultOps } from '@/vaults';
 import * as testUtils from '../../utils';
+import * as keysUtils from '../../../src/keys/utils/index';
 
 describe('CLI secrets', () => {
   const password = 'password';
@@ -23,6 +24,11 @@ describe('CLI secrets', () => {
     polykeyAgent = await PolykeyAgent.createPolykeyAgent({
       password,
       nodePath: dataDir,
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
       logger: logger,
     });
     // Authorize session
