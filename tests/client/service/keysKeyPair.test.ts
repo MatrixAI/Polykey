@@ -7,15 +7,15 @@ import { Metadata } from '@grpc/grpc-js';
 import KeyRing from '@/keys/KeyRing';
 import GRPCServer from '@/grpc/GRPCServer';
 import GRPCClientClient from '@/client/GRPCClientClient';
-import keysPrivateKey from '../../../src/client/service/keysPrivateKey';
+import keysKeyPair from '../../../src/client/service/keysKeyPair';
 import { ClientServiceService } from '@/proto/js/polykey/v1/client_service_grpc_pb';
 import * as keysPB from '@/proto/js/polykey/v1/keys/keys_pb';
-import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
+import * as sessionsPB from '@/proto/js/polykey/v1/sessions/sessions_pb';
 import * as clientUtils from '@/client/utils/utils';
 import * as keysUtils from '@/keys/utils';
 
-describe('keysKeyPairRoot', () => {
-  const logger = new Logger('keysKeyPairRoot test', LogLevel.WARN, [
+describe('keysKeyPair', () => {
+  const logger = new Logger('keysKeyPair test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
   const password = 'helloworld';
@@ -39,7 +39,7 @@ describe('keysKeyPairRoot', () => {
       strictMemoryLock: false,
     });
     const clientService = {
-      keysKeyPairRoot: keysPair({
+      keysKeyPair: keysKeyPair({
         authenticate,
         keyRing,
         logger,
@@ -67,15 +67,27 @@ describe('keysKeyPairRoot', () => {
       recursive: true,
     });
   });
-  test('gets the root keypair', async () => {
-    const request = new utilsPB.EmptyMessage();
-    const response = await grpcClient.keysKeyPairRoot(
+  test('gets the keypair', async () => {
+    const request = new sessionsPB.Password();
+    request.setPassword('password');
+    const response = await grpcClient.keysKeyPair(
       request,
       clientUtils.encodeAuthFromPassword(password),
     );
-    expect(response).toBeInstanceOf(keysPB.KeyPair);
-    const keyPairPem = keysUtils.keyPairToPEM(keyRing.keyPair);
-    expect(response.getPublic()).toBe(keyPairPem.publicKey);
-    expect(response.getPrivate()).toBe(keyPairPem.privateKey);
+    expect(response).toBeInstanceOf(keysPB.KeyPairJWK);
+    expect(JSON.parse(response.getPrivateKeyJwe())).toEqual({
+      ciphertext: expect.any(String),
+      iv: expect.any(String),
+      protected: expect.any(String),
+      tag: expect.any(String),
+    });
+    expect(JSON.parse(response.getPublicKeyJwk())).toEqual({
+      alg: expect.any(String),
+      crv: expect.any(String),
+      ext: expect.any(Boolean),
+      key_ops: expect.any(Array<string>),
+      kty: expect.any(String),
+      x: expect.any(String),
+    });
   });
 });
