@@ -12,8 +12,8 @@ class CommandPrivate extends CommandPolykey {
     this.addOption(binOptions.nodeId);
     this.addOption(binOptions.clientHost);
     this.addOption(binOptions.clientPort);
-    this.argument('<password>', 'Password to encrypt the JWE with');
-    this.action(async (password, options) => {
+    this.addOption(binOptions.passwordNewFile);
+    this.action(async (options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
       const sessionsPB = await import(
         '../../proto/js/polykey/v1/sessions/sessions_pb'
@@ -30,6 +30,11 @@ class CommandPrivate extends CommandPolykey {
         options.passwordFile,
         this.fs,
       );
+      const passwordNew = await binProcessors.processNewPassword(
+        options.passwordNewFile,
+        this.fs,
+        true,
+      );
       let pkClient: PolykeyClient;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
@@ -43,7 +48,7 @@ class CommandPrivate extends CommandPolykey {
           logger: this.logger.getChild(PolykeyClient.name),
         });
         const passwordMessage = new sessionsPB.Password();
-        passwordMessage.setPassword(password);
+        passwordMessage.setPassword(passwordNew);
         const keyPairJWK = await binUtils.retryAuthentication(
           (auth) => pkClient.grpcClient.keysKeyPair(passwordMessage, auth),
           meta,

@@ -1,8 +1,8 @@
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as testUtils from '../../utils';
 
-describe('pair', () => {
-  const logger = new Logger('root test', LogLevel.WARN, [new StreamHandler()]);
+describe('keypair', () => {
+  const logger = new Logger('keypair test', LogLevel.WARN, [new StreamHandler()]);
   let agentDir;
   let agentPassword;
   let agentClose;
@@ -16,13 +16,14 @@ describe('pair', () => {
   });
   testUtils.testIf(
     testUtils.isTestPlatformEmpty || testUtils.isTestPlatformDocker,
-  )('public gets public key', async () => {
-    const { exitCode, stdout, stderr } = await testUtils.pkExec(
-      ['keys', 'pair', 'password', '--format', 'json'],
+  )('keypair gets private and public key', async () => {
+    const { exitCode, stdout } = await testUtils.pkExec(
+      ['keys', 'keypair', 'password', '--format', 'json'],
       {
         env: {
           PK_NODE_PATH: agentDir,
           PK_PASSWORD: agentPassword,
+          PK_PASSWORD_NEW: 'newPassword',
         },
         cwd: agentDir,
         command: globalThis.testCmd,

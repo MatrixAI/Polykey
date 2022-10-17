@@ -2,7 +2,7 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as testUtils from '../../utils';
 
 describe('public', () => {
-  const logger = new Logger('root test', LogLevel.WARN, [new StreamHandler()]);
+  const logger = new Logger('public test', LogLevel.WARN, [new StreamHandler()]);
   let agentDir;
   let agentPassword;
   let agentClose;
