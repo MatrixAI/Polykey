@@ -43,6 +43,7 @@ describe('stop', () => {
           env: {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
             PK_PASSWORD: password,
+            PK_FAST_PASSWORD_HASH: 'true',
           },
           cwd: dataDir,
           command: globalThis.testCmd,
@@ -107,6 +108,7 @@ describe('stop', () => {
           env: {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
             PK_PASSWORD: password,
+            PK_FAST_PASSWORD_HASH: 'true',
           },
           cwd: dataDir,
           command: globalThis.testCmd,
@@ -204,6 +206,7 @@ describe('stop', () => {
           env: {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
             PK_PASSWORD: password,
+            PK_FAST_PASSWORD_HASH: 'true',
           },
           cwd: dataDir,
         },
@@ -256,6 +259,7 @@ describe('stop', () => {
           env: {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
             PK_PASSWORD: password,
+            PK_FAST_PASSWORD_HASH: 'true',
           },
           cwd: dataDir,
           command: globalThis.testCmd,

@@ -13,6 +13,7 @@ import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as nodesUtils from '@/nodes/utils';
 import nodesChainDataGet from '@/agent/service/nodesChainDataGet';
 import * as testNodesUtils from '../../nodes/utils';
+import * as keysUtils from '../../../src/keys/utils/index';
 
 describe('nodesChainDataGet', () => {
   const logger = new Logger('nodesChainDataGet test', LogLevel.WARN, [
@@ -35,6 +36,11 @@ describe('nodesChainDataGet', () => {
       seedNodes: {}, // Explicitly no seed nodes on startup
       networkConfig: {
         proxyHost: '127.0.0.1' as Host,
+      },
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
       },
       logger,
     });
