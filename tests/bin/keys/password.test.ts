@@ -36,27 +36,15 @@ describe('password', () => {
     );
     expect(exitCode).toBe(0);
     // Old password should no longer work
-    ({ exitCode } = await testUtils.pkExec(['keys', 'root'], {
+    ({ exitCode } = await testUtils.pkExec(['keys', 'keypair'], {
       env: {
         PK_NODE_PATH: agentDir,
         PK_PASSWORD: agentPassword,
+        PK_PASSWORD_NEW: 'newPassword2',
       },
       cwd: agentDir,
       command: globalThis.testCmd,
     }));
-    expect(exitCode).not.toBe(0);
-    // Revert side effects using new password
-    await fs.promises.writeFile(passPath, agentPassword);
-    ({ exitCode } = await testUtils.pkExec(
-      ['keys', 'password', '--password-new-file', passPath],
-      {
-        env: {
-          PK_NODE_PATH: agentDir,
-          PK_PASSWORD: 'password-change',
-        },
-        cwd: agentDir,
-        command: globalThis.testCmd,
-      },
-    ));
+    expect(exitCode).toBe(77);
   });
 });
