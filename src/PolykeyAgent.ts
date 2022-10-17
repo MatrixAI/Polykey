@@ -118,7 +118,7 @@ class PolykeyAgent {
     };
     certManagerConfig?: {
       certDuration?: number,
-    },
+    };
     proxyConfig?: {
       authToken?: string;
       connConnectTime?: number;
