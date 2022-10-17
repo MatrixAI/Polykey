@@ -162,8 +162,6 @@ function createService({
     keysCertsGet: keysCertsGet(container),
     keysDecrypt: keysDecrypt(container),
     keysEncrypt: keysEncrypt(container),
-    // TODO: these names need to be updated to reflect changes,
-    //  needs to be updated all the way down to the BIN commands.
     keysKeyPairRenew: keysKeyPairRenew(container),
     keysKeyPairReset: keysKeyPairReset(container),
     keysKeyPair: keysKeyPair(container),
