@@ -12,6 +12,10 @@ import type { GeneralJWSInput } from 'jose';
 import type { DefinedError } from 'ajv';
 import sodium from 'sodium-native';
 import canonicalize from 'canonicalize';
+
+import * as x from 'multiformats/basics';
+// import * as hasher from 'multiformats/hashes/hasher';
+
 import { GeneralSign, generalVerify, generateKeyPair, base64url } from 'jose';
 import {
   claimIdentityValidate,
@@ -144,17 +148,21 @@ async function signIntermediaryClaim({
  * Canonicalizes the claim (to create a deterministic string) and hashs the
  * entirety of the provided claim.
  */
-function hashClaim(claim: ClaimEncoded): string {
-  // Make the payload contents deterministic
+function hashClaim(claim: POJO): string {
+  // Deterministically encode the claim
   const canonicalizedClaim = canonicalize(claim);
-  // Should never be reached, but just to be type safe (can return undefined)
   if (canonicalizedClaim == null) {
     throw new claimsErrors.ErrorClaimsUndefinedCanonicalizedClaim();
   }
-  const inBuffer = Buffer.from(canonicalizedClaim);
-  const outBuffer = Buffer.alloc(256, 0);
-  sodium.crypto_hash_sha256(outBuffer, inBuffer);
-  return outBuffer.toString('hex');
+
+
+  // We should be using the multiformats
+
+
+  // const inBuffer = Buffer.from(canonicalizedClaim);
+  // const outBuffer = Buffer.alloc(256, 0);
+  // sodium.crypto_hash_sha256(outBuffer, inBuffer);
+  // return outBuffer.toString('hex');
 }
 
 /**
