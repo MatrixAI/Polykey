@@ -291,10 +291,6 @@ describe('Discovery', () => {
       nodesUtils.encodeNodeId(nodeB.keyManager.getNodeId()),
     );
     expect(gestaltString).toContain(identityId);
-    // Reverse side-effects
-    await gestaltGraph.unsetNode(nodeA.keyManager.getNodeId());
-    await gestaltGraph.unsetNode(nodeB.keyManager.getNodeId());
-    await gestaltGraph.unsetIdentity(testToken.providerId, identityId);
     await taskManager.stopProcessing();
     await discovery.stop();
     await discovery.destroy();
@@ -331,10 +327,6 @@ describe('Discovery', () => {
       nodesUtils.encodeNodeId(nodeB.keyManager.getNodeId()),
     );
     expect(gestaltString).toContain(identityId);
-    // Reverse side-effects
-    await gestaltGraph.unsetNode(nodeA.keyManager.getNodeId());
-    await gestaltGraph.unsetNode(nodeB.keyManager.getNodeId());
-    await gestaltGraph.unsetIdentity(testToken.providerId, identityId);
     await taskManager.stopProcessing();
     await discovery.stop();
     await discovery.destroy();
@@ -408,11 +400,6 @@ describe('Discovery', () => {
     );
     expect(gestaltString2).toContain(identityId);
     expect(gestaltString2).toContain(identityId2);
-    // Reverse side-effects
-    await gestaltGraph.unsetNode(nodeA.keyManager.getNodeId());
-    await gestaltGraph.unsetNode(nodeB.keyManager.getNodeId());
-    await gestaltGraph.unsetIdentity(testToken.providerId, identityId);
-    await gestaltGraph.unsetIdentity(testToken.providerId, identityId2);
     // Can just remove the user that the claim is for as this will cause the
     // claim to be dropped during discovery
     delete testProvider.users[identityId2];
@@ -454,10 +441,6 @@ describe('Discovery', () => {
       nodesUtils.encodeNodeId(nodeB.keyManager.getNodeId()),
     );
     expect(gestaltString).toContain(identityId);
-    // Reverse side-effects
-    await gestaltGraph.unsetNode(nodeA.keyManager.getNodeId());
-    await gestaltGraph.unsetNode(nodeB.keyManager.getNodeId());
-    await gestaltGraph.unsetIdentity(testToken.providerId, identityId);
     await taskManager.stopProcessing();
     await discovery.stop();
     await discovery.destroy();

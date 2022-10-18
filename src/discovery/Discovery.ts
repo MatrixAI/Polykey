@@ -25,6 +25,7 @@ import {
   CreateDestroyStartStop,
   ready,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
+import { Timer } from '@matrixai/timer';
 import * as discoveryErrors from './errors';
 import * as tasksErrors from '../tasks/errors';
 import * as nodesErrors from '../nodes/errors';
@@ -110,7 +111,7 @@ class Discovery {
     vertex: GestaltKey,
   ) => {
     try {
-      await this.processVertex(vertex, ctx);
+      await this.processVertex(vertex, 2000, ctx);
     } catch (e) {
       if (
         e instanceof tasksErrors.ErrorTaskStop ||
@@ -235,11 +236,13 @@ class Discovery {
 
   protected processVertex(
     vertex: GestaltKey,
-    ctx?: ContextTimed,
+    connectionTimeout?: number,
+    ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<void>;
-  @TimedCancellable(true, 20000)
+  @TimedCancellable(true)
   protected async processVertex(
     vertex: GestaltKey,
+    connectionTimeout: number | undefined,
     @context ctx: ContextTimed,
   ): Promise<void> {
     this.logger.debug(`Processing vertex: ${vertex}`);
@@ -263,7 +266,11 @@ class Discovery {
             // Otherwise, request the verified chain data from the node
           } else {
             try {
-              vertexChainData = await this.nodeManager.requestChainData(nodeId);
+              vertexChainData = await this.nodeManager.requestChainData(
+                nodeId,
+                connectionTimeout,
+                ctx,
+              );
             } catch (e) {
               this.visitedVertices.add(vertex);
               this.logger.error(
@@ -307,9 +314,10 @@ class Discovery {
                 gestaltsUtils.keyFromNode(linkedVertexNodeId);
               let linkedVertexChainData: ChainData;
               try {
-                // TODO: this needs to be cancelable
                 linkedVertexChainData = await this.nodeManager.requestChainData(
                   linkedVertexNodeId,
+                  connectionTimeout,
+                  ctx,
                 );
               } catch (e) {
                 if (
@@ -347,9 +355,14 @@ class Discovery {
             if (claim.payload.data.type === 'identity') {
               // Attempt to get the identity info on the identity provider
               // TODO: this needs to be cancellable
+              const timer =
+                connectionTimeout != null
+                  ? new Timer({ delay: connectionTimeout })
+                  : undefined;
               const identityInfo = await this.getIdentityInfo(
                 claim.payload.data.provider,
                 claim.payload.data.identity,
+                { signal: ctx.signal, timer },
               );
               // If we can't get identity info, simply skip this claim
               if (identityInfo == null) {
@@ -376,10 +389,14 @@ class Discovery {
         {
           // If the next vertex is an identity, perform a social discovery
           // Firstly get the identity info of this identity
-          // TODO: this needs to be cancellable
+          const timer =
+            connectionTimeout != null
+              ? new Timer({ delay: connectionTimeout })
+              : undefined;
           const vertexIdentityInfo = await this.getIdentityInfo(
             vertexGId.providerId,
             vertexGId.identityId,
+            { signal: ctx.signal, timer },
           );
           // If we don't have identity info, simply skip this vertex
           if (vertexIdentityInfo == null) {
@@ -402,6 +419,8 @@ class Discovery {
             try {
               linkedVertexChainData = await this.nodeManager.requestChainData(
                 linkedVertexNodeId,
+                connectionTimeout,
+                ctx,
               );
             } catch (e) {
               if (
@@ -525,9 +544,16 @@ class Discovery {
    * Returns undefined if no identity info to be retrieved (either no provider
    * or identity data found).
    */
+  protected getIdentityInfo(
+    providerId: ProviderId,
+    identityId: IdentityId,
+    ctx: Partial<ContextTimed>,
+  ): Promise<IdentityInfo | undefined>;
+  @TimedCancellable(true, 20000)
   protected async getIdentityInfo(
     providerId: ProviderId,
     identityId: IdentityId,
+    @context ctx: ContextTimed,
   ): Promise<IdentityInfo | undefined> {
     const provider = this.identitiesManager.getProvider(providerId);
     // If we don't have this provider, no identity info to find
@@ -545,6 +571,7 @@ class Discovery {
     const identityData = await provider.getIdentityData(
       authIdentityId,
       identityId,
+      { signal: ctx.signal },
     );
     // If we don't have identity data, no identity info to find
     if (identityData == null) {

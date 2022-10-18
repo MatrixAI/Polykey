@@ -271,8 +271,22 @@ class NodeManager {
    * For node1 -> node2 claims, the verification process also involves connecting
    * to node2 to verify the claim (to retrieve its signing public key).
    */
-  public async requestChainData(targetNodeId: NodeId): Promise<ChainData> {
+  public requestChainData(
+    targetNodeId: NodeId,
+    connectionTimeout?: number,
+    ctx?: Partial<ContextTimed>,
+  ): PromiseCancellable<ChainData>;
+  @timedCancellable(true)
+  public async requestChainData(
+    targetNodeId: NodeId,
+    connectionTimeout: number | undefined,
+    @context ctx: ContextTimed,
+  ): Promise<ChainData> {
     // Verify the node's chain with its own public key
+    const timer =
+      connectionTimeout != null
+        ? new Timer({ delay: connectionTimeout })
+        : undefined;
     const [unverifiedChainData, publicKey] =
       await this.nodeConnectionManager.withConnF(
         targetNodeId,
@@ -303,6 +317,7 @@ class NodeManager {
           ) as PublicKeyPem;
           return [unverifiedChainData, publicKey];
         },
+        { signal: ctx.signal, timer },
       );
 
     if (!publicKey) {
@@ -326,11 +341,16 @@ class NodeManager {
           endPublicKey = this.keyManager.getRootKeyPairPem().publicKey;
           // Otherwise, get the public key from the root cert chain (by connection)
         } else {
+          const timer =
+            connectionTimeout != null
+              ? new Timer({ delay: connectionTimeout })
+              : undefined;
           endPublicKey = await this.nodeConnectionManager.withConnF(
             endNodeId,
             async (connection) => {
               return connection.getExpectedPublicKey(endNodeId) as PublicKeyPem;
             },
+            { signal: ctx.signal, timer },
           );
           if (!endPublicKey) {
             throw new nodesErrors.ErrorNodeConnectionPublicKeyNotFound();

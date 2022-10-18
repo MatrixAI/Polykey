@@ -213,7 +213,9 @@ class GitHubProvider extends Provider {
   public async getIdentityData(
     authIdentityId: IdentityId,
     identityId: IdentityId,
+    options: { signal?: AbortSignal } = {},
   ): Promise<IdentityData | undefined> {
+    const { signal } = options;
     let tokenData = await this.getToken(authIdentityId);
     if (tokenData == null) {
       throw new identitiesErrors.ErrorProviderUnauthenticated(
@@ -228,7 +230,7 @@ class GitHubProvider extends Provider {
       },
       tokenData,
     );
-    const response = await fetch(request);
+    const response = await fetch(request, { signal });
     if (!response.ok) {
       if (response.status === 404) {
         return;

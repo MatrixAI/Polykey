@@ -154,6 +154,7 @@ abstract class Provider {
   public abstract getIdentityData(
     authIdentityId: IdentityId,
     identityId: IdentityId,
+    options?: { signal?: AbortSignal },
   ): Promise<IdentityData | undefined>;
 
   /**
