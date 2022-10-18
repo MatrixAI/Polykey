@@ -12,10 +12,6 @@ import type { GeneralJWSInput } from 'jose';
 import type { DefinedError } from 'ajv';
 import sodium from 'sodium-native';
 import canonicalize from 'canonicalize';
-
-import * as x from 'multiformats/basics';
-// import * as hasher from 'multiformats/hashes/hasher';
-
 import { GeneralSign, generalVerify, generateKeyPair, base64url } from 'jose';
 import {
   claimIdentityValidate,
