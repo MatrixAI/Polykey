@@ -11,25 +11,29 @@ function sha256(data: BufferSource): Buffer {
 
 /**
  * Stream compute a SHA256 hash.
- * Make sure to prime the generator with `g.next()`.
+ * This is a pre-primed generator.
+ * Use `next(null)` to finish the consumer.
  */
-function *sha256G(): Generator<Buffer | undefined, void, BufferSource>{
-  const digest = Buffer.allocUnsafeSlow(
-    sodium.crypto_hash_sha256_BYTES
-  );
-  const state = Buffer.allocUnsafe(
-    sodium.crypto_hash_sha256_STATEBYTES
-  );
-  sodium.crypto_hash_sha256_init(state);
-  try {
+function sha256G(): Iterator<void, Buffer, BufferSource | null>{
+  const g = (function *() {
+    const digest = Buffer.allocUnsafeSlow(
+      sodium.crypto_hash_sha256_BYTES
+    );
+    const state = Buffer.allocUnsafe(
+      sodium.crypto_hash_sha256_STATEBYTES
+    );
+    sodium.crypto_hash_sha256_init(state);
     while (true) {
       const data = yield;
+      if (data === null) {
+        sodium.crypto_hash_sha256_final(state, digest);
+        return digest;
+      }
       sodium.crypto_hash_sha256_update(state, utils.bufferWrap(data));
     }
-  } finally {
-    sodium.crypto_hash_sha256_final(state, digest);
-    yield digest;
-  }
+  })();
+  g.next();
+  return g;
 }
 
 /**
@@ -60,25 +64,29 @@ function sha512(data: BufferSource): Buffer {
 
 /**
  * Stream compute a SHA512 hash.
- * Make sure to prime the generator with `g.next()`.
+ * This is a pre-primed generator.
+ * Use `next(null)` to finish the consumer.
  */
-function *sha512G(): Generator<Buffer | undefined, void, BufferSource>{
-  const digest = Buffer.allocUnsafeSlow(
-    sodium.crypto_hash_sha512_BYTES
-  );
-  const state = Buffer.allocUnsafe(
-    sodium.crypto_hash_sha512_STATEBYTES
-  );
-  sodium.crypto_hash_sha512_init(state);
-  try {
+function sha512G(): Iterator<void, Buffer, BufferSource | null>{
+  const g = (function *() {
+    const digest = Buffer.allocUnsafeSlow(
+      sodium.crypto_hash_sha512_BYTES
+    );
+    const state = Buffer.allocUnsafe(
+      sodium.crypto_hash_sha512_STATEBYTES
+    );
+    sodium.crypto_hash_sha512_init(state);
     while (true) {
       const data = yield;
+      if (data === null) {
+        sodium.crypto_hash_sha512_final(state, digest);
+        return digest;
+      }
       sodium.crypto_hash_sha512_update(state, utils.bufferWrap(data));
     }
-  } finally {
-    sodium.crypto_hash_sha512_final(state, digest);
-    yield digest;
-  }
+  })();
+  g.next();
+  return g;
 }
 
 /**

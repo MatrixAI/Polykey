@@ -53,13 +53,14 @@ describe('keys/utils/hash', () => {
     ],
     (datas) => {
       const hasher = hash.sha256G();
-      hasher.next();
       for (const data of datas) {
         hasher.next(data);
       }
-      const digest1 = hasher.return().value;
-      const digest2 = hash.sha256(Buffer.concat(datas));
+      const result = hasher.next(null);
+      const digest1 = result.value;
+      expect(result.done).toBe(true);
       expect(digest1).toHaveLength(32);
+      const digest2 = hash.sha256(Buffer.concat(datas));
       expect(digest1).toStrictEqual(digest2);
     }
   );
@@ -70,13 +71,14 @@ describe('keys/utils/hash', () => {
     ],
     (datas) => {
       const hasher = hash.sha512G();
-      hasher.next();
       for (const data of datas) {
         hasher.next(data);
       }
-      const digest1 = hasher.return().value;
-      const digest2 = hash.sha512(Buffer.concat(datas));
+      const result = hasher.next(null);
+      const digest1 = result.value;
+      expect(result.done).toBe(true);
       expect(digest1).toHaveLength(64);
+      const digest2 = hash.sha512(Buffer.concat(datas));
       expect(digest1).toStrictEqual(digest2);
     }
   );
