@@ -1,12 +1,36 @@
 import type { X509Certificate } from '@peculiar/x509';
 import type { NodeId } from '../ids/types';
-import type { Opaque } from '../types';
+import type { Opaque, InverseRecord } from '../types';
 
 /**
  * Locked buffer wrapper type for sensitive in-memory data.
  */
 type BufferLocked<T extends Buffer> = T & { readonly [locked]: true };
 declare const locked: unique symbol;
+
+/**
+ * Multihash codes
+ * Format -> Code
+ */
+const multihashCodes = {
+  'sha2-256': 0x12,
+  'sha2-512': 0x18,
+  'sha2-512-256': 0x1015,
+  'blake2b-256': 0xb220,
+} as const;
+
+/**
+ * Multihash code inverse
+ * Code -> Format
+ */
+const multihashCodesI = {} as InverseRecord<typeof multihashCodes>;
+for (const [key, code] of Object.entries(multihashCodes)) {
+  multihashCodesI[code as any] = key;
+}
+
+type DigestFormats = keyof typeof multihashCodes;
+type DigestCode<K extends DigestFormats> = typeof multihashCodes[K];
+type Digest<K extends DigestFormats> = Opaque<K, Buffer>;
 
 /**
  * Symmetric Key Buffer
@@ -235,6 +259,9 @@ type CertManagerChangeData = {
 
 export type {
   BufferLocked,
+  DigestFormats,
+  DigestCode,
+  Digest,
   Key,
   KeyJWK,
   PublicKey,
@@ -268,3 +295,8 @@ export type {
 };
 
 export type { CertId, CertIdString, CertIdEncoded } from '../ids/types';
+
+export {
+  multihashCodes,
+  multihashCodesI,
+};

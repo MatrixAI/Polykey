@@ -27,6 +27,7 @@ import {
 import * as sigchainErrors from './errors';
 import * as sigchainUtils from './utils';
 import * as claimsUtils from '../claims/utils';
+import * as tokenUtils from '../tokens/utils';
 
 interface Sigchain extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
@@ -273,7 +274,7 @@ class Sigchain {
     tran?: DBTransaction,
   ): Promise<[ClaimId, TokenClaim]> {
     if (tran == null) {
-      return this.db.withTransactionF((tran) => this.addClaim(data, tran));
+      return this.db.withTransactionF((tran) => this.addClaim(data, date, tran));
     }
     // Appending is a serialised operation
     await this.lockLastClaimId(tran);
@@ -288,12 +289,15 @@ class Sigchain {
     const claimId = this.generateClaimId();
     const seq = this.generateSequenceNumber();
 
+    // hash on the previous thing
+    // to create a claim
+    // we have to pass the previous claim on it
+    const hashPrevious = tokenUtils.hashToken(claimPrevious, 'sha2-256');
+
+
+    // this is hashing the previous claim structure
+
     // const hPrev = await this.hashPrevious(tran);
-
-    // we should be using the multihash algo in this case
-    // not the sodium hash
-
-
     // hash the PREVIOUS claim
 
     const claim = await this.createClaim({
@@ -305,6 +309,60 @@ class Sigchain {
     await tran.put(this.dbLastClaimIdPath, seq);
     await tran.put(this.dbLastSequenceNumberPath, claimId.toBuffer(), true);
     return [claimId, claim];
+  }
+
+  /**
+   * Helper function to create claims internally in the Sigchain class.
+   * Wraps claims::createClaim() with the static information common to all
+   * claims in this sigchain (i.e. the private key).
+   */
+  //   {
+  //   hPrev,
+  //   seq,
+  //   data,
+  //   alg,
+  // }: {
+  //   hPrev: string | null;
+  //   seq: number;
+  //   data: ClaimData;
+  //   alg?: string;
+  // }
+
+  // Change this to take the previous claim
+  // and construct the relevant structure
+
+  protected async createClaim(claimPrevious): Promise<ClaimEncoded> {
+
+    const hashPrevious = tokenUtils.hashToken(claimPrevious, 'sha2-256');
+    const claimId = this.generateClaimId();
+    const seq = this.generateSequenceNumber();
+
+    // we are going to need to do this here?
+
+    const claim = await claimsUtils.createClaim({
+      hPrev,
+      seq,
+      data: claimData,
+    });
+
+
+    // // Get kid from the claim data
+    // let kid: NodeIdEncoded;
+    // if (data.type === 'node') {
+    //   kid = data.node1;
+    // } else {
+    //   kid = data.node;
+    // }
+
+
+    // return await claimsUtils.createClaim({
+    //   privateKey: this.keyRing.keyPair.privateKey,
+    //   hPrev: hPrev,
+    //   seq: seq,
+    //   data: data,
+    //   kid: kid,
+    //   alg: alg,
+    // });
   }
 
 
@@ -501,38 +559,6 @@ class Sigchain {
   // }
 
 
-  // /**
-  //  * Helper function to create claims internally in the Sigchain class.
-  //  * Wraps claims::createClaim() with the static information common to all
-  //  * claims in this sigchain (i.e. the private key).
-  //  */
-  // protected async createClaim({
-  //   hPrev,
-  //   seq,
-  //   data,
-  //   alg,
-  // }: {
-  //   hPrev: string | null;
-  //   seq: number;
-  //   data: ClaimData;
-  //   alg?: string;
-  // }): Promise<ClaimEncoded> {
-  //   // Get kid from the claim data
-  //   let kid: NodeIdEncoded;
-  //   if (data.type === 'node') {
-  //     kid = data.node1;
-  //   } else {
-  //     kid = data.node;
-  //   }
-  //   return await claimsUtils.createClaim({
-  //     privateKey: this.keyRing.keyPair.privateKey,
-  //     hPrev: hPrev,
-  //     seq: seq,
-  //     data: data,
-  //     kid: kid,
-  //     alg: alg,
-  //   });
-  // }
 
   // /**
   //  * Retrieves the sequence number from the metadata database of the most recent
