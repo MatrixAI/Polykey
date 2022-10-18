@@ -1,27 +1,33 @@
-// import * as hashing from './src/keys/utils/hashing';
+import * as hash from './src/keys/utils/hash';
 import * as hashing from './src/tokens/utils';
 
 async function main () {
 
-  console.log(hashing.sha256);
-  const encodeR = await hashing.sha256.encode(Buffer.from('abc'));
-  const digestR = await hashing.sha256.digest(Buffer.from('abc'));
+  // thisis what it takes to do it
 
-  console.log(encodeR.byteLength);
-  console.log(encodeR);
-
-  console.log(digestR);
-
-  // so remember
-  // that upon hashing, you have a multihash digest
-
-  // this is the actual byte reprentation
-  // the remaining stuff still needs to be "multibase" encoded
-  console.log(digestR.bytes);
+  const digest = hash.sha256(Buffer.from('hello world'));
+  console.log(hashing.sha256MultiHash(digest));
 
 
-  // so therefore
-  // BASEENCODING + MULTIHASH is exactly what you want
+
+  // const encodeR = await hashing.sha256M.encode(Buffer.from('abc'));
+  // const digestR = await hashing.sha256M.digest(Buffer.from('abc'));
+
+  // console.log(encodeR.byteLength);
+  // console.log(encodeR);
+
+  // console.log(digestR);
+
+  // // so remember
+  // // that upon hashing, you have a multihash digest
+
+  // // this is the actual byte reprentation
+  // // the remaining stuff still needs to be "multibase" encoded
+  // console.log(digestR.bytes);
+
+
+  // // so therefore
+  // // BASEENCODING + MULTIHASH is exactly what you want
 
 
 

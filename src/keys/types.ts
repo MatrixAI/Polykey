@@ -2,6 +2,10 @@ import type { X509Certificate } from '@peculiar/x509';
 import type { NodeId } from '../ids/types';
 import type { Opaque } from '../types';
 
+type HashSHA256 = Opaque<'HashSha256', Buffer>;
+
+type HashSHA512 = Opaque<'HashSHA512', Buffer>;
+
 /**
  * Locked buffer wrapper type for sensitive in-memory data.
  */
@@ -234,6 +238,8 @@ type CertManagerChangeData = {
 };
 
 export type {
+  HashSHA256,
+  HashSHA512,
   BufferLocked,
   Key,
   KeyJWK,
