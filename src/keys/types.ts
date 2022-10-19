@@ -1,6 +1,6 @@
 import type { X509Certificate } from '@peculiar/x509';
 import type { NodeId } from '../ids/types';
-import type { Opaque } from '../types';
+import type { Opaque, InverseRecord } from '../types';
 
 /**
  * Locked buffer wrapper type for sensitive in-memory data.
@@ -9,21 +9,26 @@ type BufferLocked<T extends Buffer> = T & { readonly [locked]: true };
 declare const locked: unique symbol;
 
 /**
- * SHA2-256 Hash
- * Multihash code is 0x12
+ * Multihash codes
+ * Format -> Code
  */
-type SHA2256 = typeof sha2256;
-const sha2256: unique symbol = Symbol(`${0x12}`);
+const multihashCodes = {
+  'sha2-256': 0x12,
+  'sha2-512': 0x18,
+} as const;
 
 /**
- * SHA2-512 Hash
- * Multihash code is 0x18
+ * Multihash code inverse
+ * Code -> Format
  */
-type SHA2512 = typeof sha2512;
-const sha2512: unique symbol = Symbol(`${0x13}`);
+const multihashCodesI = {} as InverseRecord<typeof multihashCodes>;
+for (const [key, code] of Object.entries(multihashCodes)) {
+  multihashCodesI[code as any] = key;
+}
 
-type DigestTypes = SHA2256 | SHA2512;
-type Digest<K extends DigestTypes> = Opaque<K, Buffer>;
+type DigestFormats = keyof typeof multihashCodes;
+type DigestCode<K extends DigestFormats> = typeof multihashCodes[K];
+type Digest<K extends DigestFormats> = Opaque<K, Buffer>;
 
 /**
  * Symmetric Key Buffer
@@ -252,9 +257,10 @@ type CertManagerChangeData = {
 
 export type {
   BufferLocked,
-  SHA2256,
-  SHA2512,
-  DigestTypes,
+  // SHA2256,
+  // SHA2512,
+  DigestFormats,
+  DigestCode,
   Digest,
   Key,
   KeyJWK,
@@ -291,6 +297,6 @@ export type {
 export type { CertId, CertIdString, CertIdEncoded } from '../ids/types';
 
 export {
-  sha2256,
-  sha2512,
+  multihashCodes,
+  multihashCodesI,
 };

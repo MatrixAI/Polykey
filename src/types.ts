@@ -119,6 +119,21 @@ type NonFunctionPropertyNames<T> = {
  */
 type NonFunctionProperties<T> = Pick<T, NonFunctionPropertyNames<T>>;
 
+
+/**
+ * Finds the key type corresponding to a value type for a record type
+ */
+type RecordKeyFromValue<T, V> = {
+  [K in keyof T]: V extends T[K] ? K : never
+}[keyof T];
+
+/**
+ * Inverses a record type, "flipping a record"
+ */
+type InverseRecord<M extends Record<string | number | symbol, string | number | symbol>> = {
+  [K in M[keyof M]]: RecordKeyFromValue<M, K>
+};
+
 export type {
   POJO,
   Opaque,
@@ -136,4 +151,6 @@ export type {
   FileHandle,
   FunctionProperties,
   NonFunctionProperties,
+  RecordKeyFromValue,
+  InverseRecord
 };
