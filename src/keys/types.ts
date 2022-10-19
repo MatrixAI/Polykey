@@ -15,6 +15,8 @@ declare const locked: unique symbol;
 const multihashCodes = {
   'sha2-256': 0x12,
   'sha2-512': 0x18,
+  'sha2-512-256': 0x1015,
+  'blake2b-256': 0xb220,
 } as const;
 
 /**
