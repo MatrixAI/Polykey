@@ -22,24 +22,30 @@ function encodeSha512Multihash(digest: HashSHA512) {
   return multiformats.digest.create(0x13, digest).bytes;
 }
 
+// ok I get it now
+// it's actually sha2-256
+// ok so we actually are using sha2 algorithms here
+// and sha2-512 are our lower level functions
+// then in order to use it here
+// we also need to indicate what we are talking about here
 
 /**
  * Decodes multihash into digest
  */
-function decodeMultihash(mHash: unknown): Buffer | undefined {
-  if (!utils.isBufferSource(mHash)) {
-    return;
-  }
-  let digest: Uint8Array;
-  try {
-    digest = multiformats.digest.decode(
-      utils.bufferWrap(mHash)
-    ).digest;
-  } catch {
-    return;
-  }
-  return utils.bufferWrap(digest);
-}
+// function decodeMultihash(mHash: unknown): Buffer | undefined {
+//   if (!utils.isBufferSource(mHash)) {
+//     return;
+//   }
+//   let digest: Uint8Array;
+//   try {
+//     digest = multiformats.digest.decode(
+//       utils.bufferWrap(mHash)
+//     ).digest;
+//   } catch {
+//     return;
+//   }
+//   return utils.bufferWrap(digest);
+// }
 
 
 

@@ -2,15 +2,28 @@ import type { X509Certificate } from '@peculiar/x509';
 import type { NodeId } from '../ids/types';
 import type { Opaque } from '../types';
 
-type HashSHA256 = Opaque<'HashSha256', Buffer>;
-
-type HashSHA512 = Opaque<'HashSHA512', Buffer>;
-
 /**
  * Locked buffer wrapper type for sensitive in-memory data.
  */
 type BufferLocked<T extends Buffer> = T & { readonly [locked]: true };
 declare const locked: unique symbol;
+
+/**
+ * SHA2-256 Hash
+ * Multihash code is 0x12
+ */
+type SHA2256 = typeof sha2256;
+const sha2256: unique symbol = Symbol(`${0x12}`);
+
+/**
+ * SHA2-512 Hash
+ * Multihash code is 0x18
+ */
+type SHA2512 = typeof sha2512;
+const sha2512: unique symbol = Symbol(`${0x13}`);
+
+type DigestTypes = SHA2256 | SHA2512;
+type Digest<K extends DigestTypes> = Opaque<K, Buffer>;
 
 /**
  * Symmetric Key Buffer
@@ -238,9 +251,11 @@ type CertManagerChangeData = {
 };
 
 export type {
-  HashSHA256,
-  HashSHA512,
   BufferLocked,
+  SHA2256,
+  SHA2512,
+  DigestTypes,
+  Digest,
   Key,
   KeyJWK,
   PublicKey,
@@ -274,3 +289,8 @@ export type {
 };
 
 export type { CertId, CertIdString, CertIdEncoded } from '../ids/types';
+
+export {
+  sha2256,
+  sha2512,
+};
