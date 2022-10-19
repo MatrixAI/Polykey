@@ -257,8 +257,6 @@ type CertManagerChangeData = {
 
 export type {
   BufferLocked,
-  // SHA2256,
-  // SHA2512,
   DigestFormats,
   DigestCode,
   Digest,

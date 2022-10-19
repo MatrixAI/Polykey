@@ -10,6 +10,7 @@ import sodium from 'sodium-native';
 import * as multiformats from 'multiformats';
 import * as types from '../types';
 import * as utils from '../../utils';
+import * as errors from '../../errors';
 
 function sha2256(data: BufferSource): Digest<'sha2-256'> {
   const digest = Buffer.allocUnsafeSlow(
@@ -117,10 +118,49 @@ function sha2512I(data: Iterable<BufferSource>): Digest<'sha2-512'> {
   return digest as Digest<'sha2-512'>;
 }
 
-function digestToMultidigest<K extends DigestFormats>(
-  digest: Digest<K>,
-  code: DigestCode<K>
-): MultihashDigest<DigestCode<K>> {
+function hash<F extends DigestFormats>(data: BufferSource, format: F): Digest<F> {
+  switch (format) {
+    case 'sha2-256':
+      return sha2256(data) as Digest<F>;
+    case 'sha2-512':
+      return sha2512(data) as Digest<F>;
+    default:
+      throw new errors.ErrorUtilsUndefinedBehaviour();
+  }
+}
+
+function hashG<F extends DigestFormats>(
+  format: F
+): Iterator<void, Digest<F>, BufferSource | null> {
+  switch (format) {
+    case 'sha2-256':
+      return sha2256G() as Iterator<void, Digest<F>, BufferSource | null>;
+    case 'sha2-512':
+      return sha2512G() as Iterator<void, Digest<F>, BufferSource | null>;
+    default:
+      throw new errors.ErrorUtilsUndefinedBehaviour();
+  }
+}
+
+function hashI<F extends DigestFormats>(
+  data: Iterable<BufferSource>,
+  format: F
+): Digest<F> {
+  switch (format) {
+    case 'sha2-256':
+      return sha2256I(data) as Digest<F>;
+    case 'sha2-512':
+      return sha2512I(data) as Digest<F>;
+    default:
+      throw new errors.ErrorUtilsUndefinedBehaviour();
+  }
+}
+
+function digestToMultidigest<F extends DigestFormats>(
+  digest: Digest<F>,
+  format: F
+): MultihashDigest<DigestCode<F>> {
+  const code = types.multihashCodes[format];
   return multiformats.digest.create(code, digest);
 }
 
@@ -153,6 +193,9 @@ export {
   sha2512,
   sha2512G,
   sha2512I,
+  hash,
+  hashG,
+  hashI,
   digestToMultidigest,
   digestFromMultidigest,
 };
