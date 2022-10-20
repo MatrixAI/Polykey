@@ -23,15 +23,30 @@ type Token = {
 };
 
 /**
+ * Token header properties based on JWT specification
+ */
+type TokenHeader = {
+  alg: 'EdDSA';
+  kid: NodeIdEncoded;
+  [key: string]: any;
+} | {
+  alg: 'BLAKE2b';
+  [key: string]: any;
+};
+
+/**
  * Signed token based on General JWS specification.
  */
 type TokenSigned = {
   payload: string;
-  signatures: Array<{
-    signature: string;
-    protected: string;
-  }>;
+  signatures: Array<TokenSignature>;
 };
+
+type TokenSignature = Opaque<'TokenSignature', {
+  protected: string;
+  signature: string;
+}>;
+
 
 // OK I see it now
 // we actually do have a support for blke2b
@@ -169,7 +184,8 @@ type TokenSigned = {
 
 export type {
   Token,
+  TokenHeader,
   TokenSigned,
   // TokenClaim,
-  // TokenSignature,
+  TokenSignature,
 };
