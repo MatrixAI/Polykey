@@ -33,3 +33,7 @@
 // find out whether claims on identity should have their own "ID"
 // i dont think so, since there's no way to locate them
 // further more, claims should have their own ID encoded in their data
+
+export { default as Token } from './Token';
+export * as types from './types';
+export * as utils from './utils';

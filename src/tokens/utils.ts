@@ -1,10 +1,9 @@
-import type { Token, TokenHeader, TokenSignature } from './types';
+import type { TokenPayload, TokenHeader, TokenSignature } from './types';
 import type { PrivateKey, Key, Digest, DigestFormats, KeyPair, PublicKey } from '../keys/types';
 import type { POJO } from  '../types';
 import canonicalize from 'canonicalize';
 import * as keysUtils from '../keys/utils';
 import * as ids from '../ids';
-
 
 // function hashToken<F extends DigestFormats>(
 //   token: Token,
@@ -21,7 +20,7 @@ import * as ids from '../ids';
 
 function signWithPrivateKey(
   privateKeyOrKeyPair: PrivateKey | KeyPair,
-  token: Token,
+  token: TokenPayload,
   additionalProtectedHeader: POJO = {},
 ): TokenSignature {
   let keyPair: KeyPair;
@@ -57,7 +56,7 @@ function signWithPrivateKey(
 
 function signWithKey(
   key: Key,
-  token: Token,
+  token: TokenPayload,
   additionalProtectedHeader: POJO = {}
 ): TokenSignature {
   const protectedHeader = {
@@ -75,7 +74,7 @@ function signWithKey(
     'utf-8'
   ).toString('base64url');
   const data = Buffer.from(payloadEncoded + '.' + protectedHeaderEncoded, 'utf-8');
-  const signature = keysUtils.hashWithKey(key, data);
+  const signature = keysUtils.macWithKey(key, data);
   const signatureEncoded = signature.toString('base64url');
   return {
     protected: protectedHeaderEncoded,

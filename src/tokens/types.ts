@@ -6,12 +6,19 @@ import type {
 // import type { ProviderId, IdentityId } from '../identities/types';
 import { Opaque, POJO } from 'encryptedfs';
 
+
+
+// /**
+//  * TokenSigned is like JWS
+//  */
+// type TokenSigned
+
 /**
  * Token based on JWT specification.
  * All properties are "claims" and they are all optional.
  * The entire POJO is put into the payload for signing.
  */
-type Token = {
+type TokenPayload = {
   iss?: string;
   sub?: string;
   aud?: string | Array<string>;
@@ -21,6 +28,11 @@ type Token = {
   jti?: string;
   [key: string]: any;
 };
+
+type TokenSignature = Opaque<'TokenSignature', {
+  protected: string;
+  signature: string;
+}>;
 
 /**
  * Token header properties based on JWT specification
@@ -35,17 +47,12 @@ type TokenHeader = {
 };
 
 /**
- * Signed token based on General JWS specification.
+ * Token serialised as a General JWS JSON
  */
 type TokenSigned = {
   payload: string;
   signatures: Array<TokenSignature>;
 };
-
-type TokenSignature = Opaque<'TokenSignature', {
-  protected: string;
-  signature: string;
-}>;
 
 
 // OK I see it now
@@ -183,7 +190,7 @@ type TokenSignature = Opaque<'TokenSignature', {
 // };
 
 export type {
-  Token,
+  TokenPayload,
   TokenHeader,
   TokenSigned,
   // TokenClaim,
