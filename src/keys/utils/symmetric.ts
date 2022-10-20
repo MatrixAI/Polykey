@@ -2,6 +2,7 @@ import type {
   Key,
   JWK,
   JWKEncrypted,
+  MAC,
   PasswordSalt,
   PasswordOpsLimit,
   PasswordMemLimit,
@@ -93,7 +94,7 @@ function decryptWithKey(
   return plainText;
 }
 
-function hashWithKey(key: Key, data: Buffer): Digest<'blake2b-256'> {
+function macWithKey(key: Key, data: Buffer): MAC {
   const digest = Buffer.allocUnsafeSlow(
     sodium.crypto_generichash_BYTES
   );
@@ -101,7 +102,7 @@ function hashWithKey(key: Key, data: Buffer): Digest<'blake2b-256'> {
   return digest as Digest<'blake2b-256'>;
 }
 
-function *hashWithKeyG(key: Key): Generator<void, Digest<'blake2b-256'>, BufferSource | null>{
+function *macWithKeyG(key: Key): Generator<void, MAC, BufferSource | null>{
   const digest = Buffer.allocUnsafeSlow(
     sodium.crypto_generichash_BYTES
   );
@@ -119,7 +120,7 @@ function *hashWithKeyG(key: Key): Generator<void, Digest<'blake2b-256'>, BufferS
   }
 }
 
-function hashWithKeyI(key: Key, data: Iterable<BufferSource>): Digest<'blake2b-256'> {
+function macWithKeyI(key: Key, data: Iterable<BufferSource>): MAC {
   const digest = Buffer.allocUnsafeSlow(
     sodium.crypto_generichash_BYTES
   );
@@ -132,6 +133,24 @@ function hashWithKeyI(key: Key, data: Iterable<BufferSource>): Digest<'blake2b-2
   }
   sodium.crypto_generichash_final(state, digest);
   return digest as Digest<'blake2b-256'>;
+}
+
+function authWithKey(key: Key, data: Buffer, digest: Buffer): boolean {
+  const digest_ = macWithKey(key, data);
+  if (digest_.byteLength !== digest.byteLength) return false;
+  return sodium.sodium_memcmp(digest_, digest);
+}
+
+function *authWithKeyG(key: Key, digest: Buffer): Generator<void, boolean, BufferSource | null> {
+  const digest_ = yield * macWithKeyG(key);
+  if (digest_.byteLength !== digest.byteLength) return false;
+  return sodium.sodium_memcmp(digest_, digest);
+}
+
+function authWithKeyI(key: Key, data: Iterable<BufferSource>, digest: Buffer): boolean {
+  const digest_ = macWithKeyI(key, data);
+  if (digest_.byteLength !== digest.byteLength) return false;
+  return sodium.sodium_memcmp(digest_, digest);
 }
 
 /**
@@ -366,9 +385,12 @@ export {
   macSize,
   encryptWithKey,
   decryptWithKey,
-  hashWithKey,
-  hashWithKeyG,
-  hashWithKeyI,
+  macWithKey,
+  macWithKeyG,
+  macWithKeyI,
+  authWithKey,
+  authWithKeyG,
+  authWithKeyI,
   wrapWithPassword,
   unwrapWithPassword,
   wrapWithKey,

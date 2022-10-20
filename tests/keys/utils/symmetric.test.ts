@@ -5,7 +5,7 @@ import * as testsKeysUtils from '../utils';
 
 describe('keys/utils/symmetric', () => {
   testProp(
-    'encrypt & decrypt with raw key',
+    'encrypt & decrypt with key',
     [
       testsKeysUtils.keyArb,
       testsKeysUtils.bufferArb({ minLength: 0, maxLength: 1024 }),
@@ -25,6 +25,30 @@ describe('keys/utils/symmetric', () => {
     (key, cipherText) => {
       const plainText = symmetric.decryptWithKey(key, cipherText);
       expect(plainText).toBeUndefined();
+    },
+  );
+  testProp(
+    'mac & auth with key',
+    [
+      testsKeysUtils.keyArb,
+      testsKeysUtils.keyArb,
+      testsKeysUtils.bufferArb({ minLength: 0, maxLength: 1024 }),
+      testsKeysUtils.bufferArb({ minLength: 0, maxLength: 1024 }),
+      testsKeysUtils.bufferArb({ minLength: 0, maxLength: 1024 }),
+    ],
+    (keyCorrect, keyWrong, dataCorrect, dataWrong, macWrong) => {
+      fc.pre(!keyCorrect.equals(keyWrong));
+      fc.pre(!dataCorrect.equals(dataWrong));
+      const macCorrect = symmetric.macWithKey(keyCorrect, dataCorrect);
+      expect(macCorrect).toHaveLength(32);
+      expect(symmetric.authWithKey(keyCorrect, dataCorrect, macCorrect)).toBe(true);
+      expect(symmetric.authWithKey(keyCorrect, dataWrong, macWrong)).toBe(false);
+      expect(symmetric.authWithKey(keyCorrect, dataWrong, macCorrect)).toBe(false);
+      expect(symmetric.authWithKey(keyCorrect, dataCorrect, macWrong)).toBe(false);
+      expect(symmetric.authWithKey(keyWrong, dataCorrect, macCorrect)).toBe(false);
+      expect(symmetric.authWithKey(keyWrong, dataWrong, macCorrect)).toBe(false);
+      expect(symmetric.authWithKey(keyWrong, dataWrong, macWrong)).toBe(false);
+      expect(symmetric.authWithKey(keyWrong, dataCorrect, macWrong)).toBe(false);
     },
   );
   testProp(
