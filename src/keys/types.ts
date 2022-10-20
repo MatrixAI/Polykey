@@ -86,8 +86,8 @@ type KeyPairX = Readonly<{
 type JWK = JsonWebKey;
 
 /**
- * JWK that is encrypted as a JWE
- * We only use these kinds of JWE for encryption
+ * JWK encrypted as a Flattened JWE JSON
+ * This covers ECDH-SS, ECDH-ES and key wrapping
  */
 type JWKEncrypted =
   | {

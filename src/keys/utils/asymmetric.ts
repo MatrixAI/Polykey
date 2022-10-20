@@ -319,8 +319,9 @@ function signWithPrivateKey(
 function verifyWithPublicKey(
   publicKey: PublicKey,
   data: Buffer,
-  signature: Signature,
+  signature: Buffer,
 ): boolean {
+  if (signature.byteLength !== sodium.crypto_sign_BYTES) return false;
   return sodium.crypto_sign_verify_detached(signature, data, publicKey);
 }
 
