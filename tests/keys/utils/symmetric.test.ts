@@ -52,6 +52,44 @@ describe('keys/utils/symmetric', () => {
     },
   );
   testProp(
+    'mac with key generator',
+    [
+      testsKeysUtils.keyArb,
+      fc.array(fc.uint8Array({ minLength: 0, maxLength: 1024 }))
+    ],
+    (key, datas) => {
+      const maccer = symmetric.macWithKeyG(key);
+      maccer.next();
+      for (const data of datas) {
+        maccer.next(data);
+      }
+      const result1 = maccer.next(null);
+      expect(result1.done).toBe(true);
+      expect(result1.value).toHaveLength(32);
+      const auther = symmetric.authWithKeyG(key, result1.value!);
+      auther.next();
+      for (const data of datas) {
+        auther.next(data);
+      }
+      const result2 = auther.next(null);
+      expect(result2.done).toBe(true);
+      expect(result2.value).toBe(true);
+      expect(symmetric.macWithKey(key, Buffer.concat(datas))).toStrictEqual(result1.value);
+    }
+  );
+  testProp(
+    'mac & auth with key iterator',
+    [
+      testsKeysUtils.keyArb,
+      fc.array(fc.uint8Array({ minLength: 0, maxLength: 1024 }))
+    ],
+    (key, datas) => {
+      const digest = symmetric.macWithKeyI(key, datas);
+      expect(symmetric.authWithKeyI(key, datas, digest)).toBe(true);
+      expect(symmetric.macWithKey(key, Buffer.concat(datas))).toStrictEqual(digest);
+    }
+  );
+  testProp(
     'wrap & unwrap with random password',
     [testsKeysUtils.passwordArb, testsKeysUtils.keyJWKArb],
     (password, keyJWK) => {
