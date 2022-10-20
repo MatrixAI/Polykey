@@ -1,7 +1,9 @@
-import type { Token } from './types';
-import type { Digest, DigestFormats } from '../keys/types';
+import type { Token, TokenHeader, TokenSignature } from './types';
+import type { PrivateKey, Key, Digest, DigestFormats, KeyPair, PublicKey } from '../keys/types';
+import type { POJO } from  '../types';
 import canonicalize from 'canonicalize';
 import * as keysUtils from '../keys/utils';
+import * as ids from '../ids';
 
 
 // function hashToken<F extends DigestFormats>(
@@ -16,26 +18,73 @@ import * as keysUtils from '../keys/utils';
 //   return tokenDigest;
 // }
 
-// here we are signign a token
-// ah shit I don't have a Blake2b algorithm at all
-// i only have HS512256
 
-function signWithPrivateKey(token: Token): TokenSigned {
-
+function signWithPrivateKey(
+  privateKeyOrKeyPair: PrivateKey | KeyPair,
+  token: Token,
+  additionalProtectedHeader: POJO = {},
+): TokenSignature {
+  let keyPair: KeyPair;
+  if (Buffer.isBuffer(privateKeyOrKeyPair)) {
+    const publicKey = keysUtils.publicKeyFromPrivateKeyEd25519(privateKeyOrKeyPair);
+    keyPair = keysUtils.makeKeyPair(publicKey, privateKeyOrKeyPair);
+  } else {
+    keyPair = privateKeyOrKeyPair;
+  }
+  const protectedHeader = {
+    ...additionalProtectedHeader,
+    alg: 'EdDSA',
+    kid: ids.encodeNodeId(keysUtils.publicKeyToNodeId(keyPair.publicKey))
+  };
+  const tokenJSON = canonicalize(token)!;
+  const protectedHeaderJSON = canonicalize(protectedHeader)!
+  const payloadEncoded = Buffer.from(
+    tokenJSON,
+    'utf-8'
+  ).toString('base64url');
+  const protectedHeaderEncoded = Buffer.from(
+    protectedHeaderJSON,
+    'utf-8'
+  ).toString('base64url');
+  const data = Buffer.from(payloadEncoded + '.' + protectedHeaderEncoded, 'utf-8');
+  const signature = keysUtils.signWithPrivateKey(keyPair, data);
+  const signatureEncoded = signature.toString('base64url');
+  return {
+    protected: protectedHeaderEncoded,
+    signature: signatureEncoded
+  } as TokenSignature;
 }
 
-// here we authenticating a token
-// what do we mean by this
-// when we sign with public key
-// sign with hash
-
-function signWithKey(token: Token): TokenSigned {
-
+function signWithKey(
+  key: Key,
+  token: Token,
+  additionalProtectedHeader: POJO = {}
+): TokenSignature {
+  const protectedHeader = {
+    ...additionalProtectedHeader,
+    alg: 'BLAKE2b'
+  };
+  const tokenJSON = canonicalize(token)!;
+  const protectedHeaderJSON = canonicalize(protectedHeader)!
+  const payloadEncoded = Buffer.from(
+    tokenJSON,
+    'utf-8'
+  ).toString('base64url');
+  const protectedHeaderEncoded = Buffer.from(
+    protectedHeaderJSON,
+    'utf-8'
+  ).toString('base64url');
+  const data = Buffer.from(payloadEncoded + '.' + protectedHeaderEncoded, 'utf-8');
+  const signature = keysUtils.hashWithKey(key, data);
+  const signatureEncoded = signature.toString('base64url');
+  return {
+    protected: protectedHeaderEncoded,
+    signature: signatureEncoded
+  } as TokenSignature;
 }
-
-
-
 
 export {
-  hashToken
+  // hashToken
+  signWithPrivateKey,
+  signWithKey,
 };
