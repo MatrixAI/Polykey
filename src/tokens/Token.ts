@@ -146,7 +146,7 @@ class Token {
       const protectedJSON = Buffer.from(signature.protected, 'base64url').toString('utf-8');
       const protectedHeader = JSON.parse(protectedJSON);
       const { alg } = protectedHeader;
-      if (alg !== 'BLAKE2b') {
+      if (alg !== 'EdDSA') {
         continue;
       }
       const data = Buffer.from(this.payloadEncoded + '.' + signature.protected, 'utf-8');
