@@ -13,6 +13,7 @@ import type { GestaltAction, GestaltId } from '../gestalts/types';
 import type { VaultAction, VaultId } from '../vaults/types';
 import type { Host, Hostname, Port } from '../network/types';
 import type { ClaimId } from '../claims/types';
+import type { TokenHeader, TokenPayload, TokenSigned } from '../tokens/types';
 import * as validationErrors from './errors';
 import * as nodesUtils from '../nodes/utils';
 import * as gestaltsUtils from '../gestalts/utils';
@@ -20,6 +21,7 @@ import * as vaultsUtils from '../vaults/utils';
 import * as networkUtils from '../network/utils';
 import * as claimsUtils from '../claims/utils';
 import * as keysUtils from '../keys/utils';
+import * as tokenUtils from '../tokens/utils';
 import * as utils from '../utils';
 import config from '../config';
 
@@ -166,22 +168,6 @@ function parsePrivateKey(data: any): PrivateKey {
   return privateKey;
 }
 
-// This is not necessary
-// function parsePrivateKeyPem(data: any): PrivateKey {
-//   if (typeof data !== 'string') {
-//     throw new validationErrors.ErrorParse('Private key Pem must be a string');
-//   }
-//   let privateKey: PrivateKey;
-//   try {
-//     privateKey = keysUtils.privateKeyFromPem(data);
-//   } catch (e) {
-//     throw new validationErrors.ErrorParse(
-//       'Must provide a valid private key Pem',
-//     );
-//   }
-//   return privateKey;
-// }
-
 function parseGestaltAction(data: any): GestaltAction {
   if (!gestaltsUtils.isGestaltAction(data)) {
     throw new validationErrors.ErrorParse(
@@ -325,6 +311,63 @@ function parseSeedNodes(data: any): [SeedNodes, boolean] {
   return [seedNodes, defaults];
 }
 
+function parseTokenPayload(data: any): TokenPayload {
+  if (!tokenUtils.isPayload(data)) {
+    throw new validationErrors.ErrorParse(
+      'Token payload does not match expected properties',
+    );
+  }
+  return data;
+}
+
+function parseTokenHeader(data: any): TokenHeader {
+  if (!tokenUtils.isHeader(data)) {
+    throw new validationErrors.ErrorParse(
+      'Token header does not match expected properties',
+    );
+  }
+  return data;
+}
+
+
+function parseTokenSigned(data: any): TokenSigned {
+  if (typeof data !== 'object' || data === null) {
+    throw new validationErrors.ErrorParse(
+      'Token must be an object',
+    );
+  }
+  const payload = tokenUtils.decodePayload(data.payload);
+  if (payload == null) {
+    throw new validationErrors.ErrorParse(
+      'Token payload must be base64url encoded JSON string',
+    );
+  }
+
+  // this is not about verifying the signatures
+  // only that the format is correct
+  // so here we need to check that each signature is involved here
+
+  data.signatures
+
+
+
+
+  // wait the string has to be parsed
+  // lol
+
+  // const payload = parseTokenPayload(data.payload);
+
+  // data.payload
+
+
+  // if ('payload' in data) {
+
+  // }
+
+
+  return data;
+}
+
 export {
   parseInteger,
   parseNumber,
@@ -337,7 +380,6 @@ export {
   parsePublicKey,
   parsePrivateKey,
   parseRecoveryCode,
-  // ParsePrivateKeyPem,
   parseGestaltAction,
   parseVaultAction,
   parseHost,
@@ -346,4 +388,6 @@ export {
   parsePort,
   parseNetwork,
   parseSeedNodes,
+  parseTokenPayload,
+  parseTokenSigned,
 };

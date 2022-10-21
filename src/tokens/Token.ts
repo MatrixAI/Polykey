@@ -1,10 +1,19 @@
-import type { TokenPayload, TokenSignature, TokenSigned }  from './types';
+import type {
+  TokenPayload,
+  TokenPayloadEncoded,
+  TokenSignature,
+  TokenSignatureEncoded,
+  TokenSigned,
+  TokenHeaderSignature,
+  TokenHeaderSignatureEncoded,
+}  from './types';
 import type { Key, PublicKey, PrivateKey, KeyPair, Signature } from '../keys/types';
 import type { POJO, DeepReadonly } from '../types';
 import canonicalize from 'canonicalize';
 import * as tokenUtils from './utils';
 import * as keysUtils from '../keys/utils';
 import * as ids from '../ids';
+import * as tokenErrors from './errors';
 
 /**
  * Token represents a single token with methods to sign and verify.
@@ -19,93 +28,146 @@ import * as ids from '../ids';
  */
 class Token {
   public readonly payload: DeepReadonly<TokenPayload>;
+  public readonly payloadEncoded: TokenPayloadEncoded;
 
-  // Store the encoded string, you can make use of
-  // this can be a protected parameter
-  // this can help us optimise later
-  public readonly payloadEncoded: string;
+  protected _signatures: Array<TokenHeaderSignature> = [];
+  protected _signaturesEncoded: Array<TokenHeaderSignatureEncoded> = [];
+  protected signatureIndex: Set<TokenSignatureEncoded> = new Set();
 
-  protected signatures: Array<TokenSignature> = [];
-  // Index the signatures by the `kid`
-  protected signaturesByKid: Map<string, TokenSignature> = new Map();
-
-  // this allows us to quickly look it up
-  // incase we are doing this
-
-
-
-  // how do we ensure that
-  // we can look up the individual payload
-  // and if we are constructing it
-  // we can construct it with different methods
-  // the payload is added in
-  // you may also acquire it from the full structure
-  // Token.from(payload)
-  // Token.from({ payload: ..., signatures: ... })
-  // new Token({ ... })
-
-  // construct it from signed
-  public static fromPayload(tokenPayload: TokenPayload): Token {
-
-    const token = new this(tokenPayload);
-
-    // token.payload = tokenPayload;
-
+  public static fromPayload(payload: TokenPayload): Token {
+    const payloadEncoded = tokenUtils.encodePayload(payload);
+    const token = new this(payload, payloadEncoded);
+    return token;
   }
 
   public static fromSigned(tokenSigned: TokenSigned): Token {
-    // take from an existing signed token
-    // we have to parse out the details
-    // and put them here
-    // it's kind of like the x509 structure
-    // in this sense
-  }
+    const payloadEncoded = tokenSigned.payload;
+    const payload = tokenUtils.decodePayload(payloadEncoded);
+    if (payload == null) {
+      throw new tokenErrors.ErrorTokensPayloadParse();
+    }
+
+    // we have to indicate whether this is a signatures
+    // if it is
+    for (const signature of tokenSigned.signatures) {
+
+      // each part of the signature must be decoded properly
+
+    }
 
 
-  protected constructor(payload: TokenPayload) {
-    this.payload = payload;
-    const payloadJSON = canonicalize(this.payload)!;
-    const payloadEncoded = Buffer.from(
-      payloadJSON,
-      'utf-8'
-    ).toString('base64url');
-    this.payloadEncoded = payloadEncoded;
-  }
 
-
-  public signWithKey(key: Key, additionalProtectedHeader?: POJO): void {
-    const signature = tokenUtils.signWithKey(
-      key,
-      this.payload as TokenPayload,
-      additionalProtectedHeader
+    const token = new this(
+      payload,
+      payloadEncoded as TokenPayloadEncoded
     );
-    this.signatures.push(signature);
+    return token;
+  }
+
+  public constructor(
+    payload: TokenPayload,
+    payloadEncoded: TokenPayloadEncoded,
+    signatures: Array<TokenHeaderSignature> = [],
+    signaturesEncoded: Array<TokenHeaderSignatureEncoded> = []
+  ) {
+    this.payload = payload;
+    this.payloadEncoded = payloadEncoded;
+    this._signatures = signatures;
+    this._signaturesEncoded = signaturesEncoded;
+    for (const headerSignature of signaturesEncoded) {
+      this.signatureIndex.add(headerSignature.signature);
+    }
+  }
+
+  get signatures(): DeepReadonly<typeof this._signatures> {
+    return this._signatures;
+  }
+
+  get signaturesEncoded(): DeepReadonly<typeof this._signaturesEncoded> {
+    return this._signaturesEncoded;
+  }
+
+  public signWithKey(
+    key: Key,
+    additionalProtectedHeader?: POJO,
+    force: boolean = false
+  ): void {
+    const protectedHeader = {
+      ...additionalProtectedHeader,
+      alg: 'BLAKE2b' as const
+    };
+    const protectedHeaderEncoded = tokenUtils.encodeProtectedHeader(
+      protectedHeader
+    );
+    const data = Buffer.from(
+      this.payloadEncoded + '.' + protectedHeaderEncoded,
+      'ascii'
+    );
+    const signature = keysUtils.macWithKey(key, data);
+    const signatureEncoded = tokenUtils.encodeSignature(signature);
+    if (
+      !force &&
+      this.signatureIndex.has(signatureEncoded)
+    ) {
+      throw new tokenErrors.ErrorTokensDuplicateSignature();
+    }
+    this._signatures.push({
+      protected: protectedHeader,
+      signature: signature
+    });
+    this._signaturesEncoded.push({
+      protected: protectedHeaderEncoded,
+      signature: signatureEncoded
+    });
+    this.signatureIndex.add(signatureEncoded);
   }
 
   public signWithPrivateKey(
     privateKeyOrKeyPair: PrivateKey | KeyPair,
-    additionalProtectedHeader?: POJO
-  ) {
-
-    // The KID has to be part of this
-    // to make this efficient
-    // our utility functions
-    // have to be BROUGHT into this method here
-    const kid = ids.encodeNodeId(keysUtils.publicKeyToNodeId(keyPair.publicKey));
-
-    if (this.signaturesByKid.has(kid)) {
-      // Already has been signed
-      throw new Error();
+    additionalProtectedHeader?: POJO,
+    force: boolean = false
+  ): void {
+    let keyPair: KeyPair;
+    if (Buffer.isBuffer(privateKeyOrKeyPair)) {
+      const publicKey = keysUtils.publicKeyFromPrivateKeyEd25519(
+        privateKeyOrKeyPair
+      );
+      keyPair = keysUtils.makeKeyPair(publicKey, privateKeyOrKeyPair);
+    } else {
+      keyPair = privateKeyOrKeyPair;
     }
-
-    const signature = tokenUtils.signWithPrivateKey(
-      privateKeyOrKeyPair,
-      this.payload as TokenPayload,
-      additionalProtectedHeader
+    const kid = ids.encodeNodeId(
+      keysUtils.publicKeyToNodeId(keyPair.publicKey)
     );
-    this.signatures.push(signature);
-
-    this.signaturesByKid.set(kid, signature);
+    const protectedHeader = {
+      ...additionalProtectedHeader,
+      alg: 'EdDSA' as const,
+      kid
+    };
+    const protectedHeaderEncoded = tokenUtils.encodeProtectedHeader(
+      protectedHeader
+    );
+    const data = Buffer.from(
+      this.payloadEncoded + '.' + protectedHeaderEncoded,
+      'ascii'
+    );
+    const signature = keysUtils.signWithPrivateKey(keyPair, data);
+    const signatureEncoded = tokenUtils.encodeSignature(signature);
+    if (
+      !force &&
+      this.signatureIndex.has(signatureEncoded)
+    ) {
+      throw new tokenErrors.ErrorTokensDuplicateSignature();
+    }
+    this._signatures.push({
+      protected: protectedHeader,
+      signature: signature
+    });
+    this._signaturesEncoded.push({
+      protected: protectedHeaderEncoded,
+      signature: signatureEncoded
+    });
+    this.signatureIndex.add(signatureEncoded);
   }
 
   /**
@@ -114,18 +176,20 @@ class Token {
    * If it has a specific override... then that would be useful
    */
   public verifyWithKey(key: Key): boolean {
-    for (const signature of this.signatures) {
-      const protectedJSON = Buffer.from(signature.protected, 'base64url').toString('utf-8');
-      const protectedHeader = JSON.parse(protectedJSON);
-      const { alg } = protectedHeader;
-      if (alg !== 'BLAKE2b') {
+    for (let i = 0; i < this._signatures.length; i++) {
+      const headerSignature = this._signatures[i];
+      const headerSignatureEncoded = this._signaturesEncoded[i];
+      if (headerSignature.protected.alg !== 'BLAKE2b') {
         continue;
       }
-      const data = Buffer.from(this.payloadEncoded + '.' + signature.protected, 'utf-8');
+      const data = Buffer.from(
+        this.payloadEncoded + '.' + headerSignatureEncoded.protected,
+        'ascii'
+      );
       const auth = keysUtils.authWithKey(
         key,
         data,
-        Buffer.from(signature.signature, 'base64url'),
+        headerSignature.signature
       );
       if (!auth) continue;
       return true;
@@ -137,23 +201,20 @@ class Token {
    * Iterates over the signatures by default
    */
   public verifyWithPublicKey(publicKey: PublicKey) {
-
-    // although if we know what the signatures are part of
-    // we can index it more easily
-    // and deal with them
-
-    for (const signature of this.signatures) {
-      const protectedJSON = Buffer.from(signature.protected, 'base64url').toString('utf-8');
-      const protectedHeader = JSON.parse(protectedJSON);
-      const { alg } = protectedHeader;
-      if (alg !== 'EdDSA') {
+    for (let i = 0; i < this._signatures.length; i++) {
+      const headerSignature = this._signatures[i];
+      const headerSignatureEncoded = this._signaturesEncoded[i];
+      if (headerSignature.protected.alg !== 'EdDSA') {
         continue;
       }
-      const data = Buffer.from(this.payloadEncoded + '.' + signature.protected, 'utf-8');
+      const data = Buffer.from(
+        this.payloadEncoded + '.' + headerSignatureEncoded.protected,
+        'ascii'
+      );
       const auth = keysUtils.verifyWithPublicKey(
         publicKey,
         data,
-        Buffer.from(signature.signature, 'base64url') as Signature,
+        headerSignature.signature,
       );
       if (!auth) continue;
       return true;
@@ -161,30 +222,15 @@ class Token {
     return false;
   }
 
-  // now when you verify
-  // you must select the signatures
-
-  public serialize(): TokenSigned {
-
-    // i feel like the encoding and canoncialization is being repeated here
-
-    const payloadJSON = canonicalize(this.payload)!;
-    const payloadEncoded = Buffer.from(payloadJSON, 'utf-8').toString('base64url');
-
-    // the signatures should be a COPY
-    // you are not meant to mutate this
-
-    // the signatures should be formed afterwards
-    // each signature
-    // can be stored
-
-
+  /**
+   * Exports this `Token` into `TokenSigned`
+   */
+  public toSigned(): TokenSigned {
     return {
-      payload: payloadEncoded,
-      signatures: this.signatures
+      payload: this.payloadEncoded,
+      signatures: [...this._signaturesEncoded],
     };
   }
-
 }
 
 export default Token;

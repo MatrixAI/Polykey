@@ -96,7 +96,7 @@ describe('keys/utils/asymmetric', () => {
     'verify returns `false` for random data',
     [
       testsKeysUtils.publicKeyArb,
-      testsKeysUtils.signatureArb,
+      fc.uint8Array({ minLength: 0, maxLength: 1024 }).map(utils.bufferWrap),
       fc.uint8Array({ minLength: 0, maxLength: 2048 }).map(utils.bufferWrap),
     ],
     (publicKey, signature, message) => {
