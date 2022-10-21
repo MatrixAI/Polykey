@@ -3,24 +3,6 @@ import type { Signature, MAC } from '../keys/types';
 import type { NodeIdEncoded, } from '../ids/types';
 
 /**
- * Token header properties based on JWT specification
- */
-type TokenProtectedHeader = {
-  alg: 'EdDSA';
-  kid: NodeIdEncoded;
-  [key: string]: any;
-} | {
-  alg: 'BLAKE2b';
-  [key: string]: any;
-};
-
-/**
- * Encoded token header
- * `base64url(json(TokenHeader))`
- */
-type TokenProtectedHeaderEncoded = Opaque<'TokenProtectedHeaderEncoded', string>;
-
-/**
  * Token based on JWT specification.
  * All properties are "claims" and they are all optional.
  * The entire POJO is put into the payload for signing.
@@ -41,6 +23,24 @@ type TokenPayload = {
  * `base64url(json(TokenPayload))`
  */
 type TokenPayloadEncoded = Opaque<'TokenPayloadEncoded', string>;
+
+/**
+ * Token header properties based on JWT specification
+ */
+type TokenProtectedHeader = {
+  alg: 'EdDSA';
+  kid: NodeIdEncoded;
+  [key: string]: any;
+} | {
+  alg: 'BLAKE2b';
+  [key: string]: any;
+};
+
+/**
+ * Encoded token header
+ * `base64url(json(TokenHeader))`
+ */
+type TokenProtectedHeaderEncoded = Opaque<'TokenProtectedHeaderEncoded', string>;
 
 /**
  * Signature can either be Ed25519 signature or BLAKE2b MAC code
@@ -143,7 +143,6 @@ type TokenSignedEncoded = {
 //   provider: ProviderId;
 //   identity: IdentityId;
 // };
-
 
 export type {
   TokenPayload,

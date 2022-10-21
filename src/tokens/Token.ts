@@ -3,16 +3,18 @@ import type {
   TokenPayloadEncoded,
   TokenSignature,
   TokenSignatureEncoded,
-  TokenSigned,
   TokenHeaderSignature,
   TokenHeaderSignatureEncoded,
+  TokenSigned,
+  TokenSignedEncoded,
 }  from './types';
 import type { Key, PublicKey, PrivateKey, KeyPair, Signature } from '../keys/types';
 import type { POJO, DeepReadonly } from '../types';
 import canonicalize from 'canonicalize';
+import * as ids from '../ids';
 import * as tokenUtils from './utils';
 import * as keysUtils from '../keys/utils';
-import * as ids from '../ids';
+import * as utils from '../utils';
 import * as tokenErrors from './errors';
 
 /**
@@ -36,32 +38,27 @@ class Token {
 
   public static fromPayload(payload: TokenPayload): Token {
     const payloadEncoded = tokenUtils.encodePayload(payload);
-    const token = new this(payload, payloadEncoded);
-    return token;
+    return new this(payload, payloadEncoded);
   }
 
   public static fromSigned(tokenSigned: TokenSigned): Token {
-    const payloadEncoded = tokenSigned.payload;
-    const payload = tokenUtils.decodePayload(payloadEncoded);
-    if (payload == null) {
-      throw new tokenErrors.ErrorTokensPayloadParse();
-    }
-
-    // we have to indicate whether this is a signatures
-    // if it is
-    for (const signature of tokenSigned.signatures) {
-
-      // each part of the signature must be decoded properly
-
-    }
-
-
-
-    const token = new this(
-      payload,
-      payloadEncoded as TokenPayloadEncoded
+    const payloadEncoded = tokenUtils.encodePayload(tokenSigned.payload);
+    const signaturesEncoded = tokenSigned.signatures.map((headerSignature) => {
+      return {
+        protected: tokenUtils.encodeProtectedHeader(headerSignature.protected),
+        signature: tokenUtils.encodeSignature(headerSignature.signature)
+      };
+    });
+    return new this(
+      tokenSigned.payload,
+      payloadEncoded,
+      tokenSigned.signatures,
+      signaturesEncoded
     );
-    return token;
+  }
+
+  public static fromEncoded(): Token {
+
   }
 
   public constructor(
@@ -226,6 +223,16 @@ class Token {
    * Exports this `Token` into `TokenSigned`
    */
   public toSigned(): TokenSigned {
+    return {
+      payload: utils.structuredClone(this.payload);
+      signatures: utils.structuredClone(this._signatures)
+    };
+  }
+
+  /**
+   * Exports this `Token` into `TokenSignedEncoded`
+   */
+  public toEncoded(): TokenSignedEncoded {
     return {
       payload: this.payloadEncoded,
       signatures: [...this._signaturesEncoded],

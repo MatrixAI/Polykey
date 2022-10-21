@@ -1,10 +1,14 @@
 import type {
   TokenPayload,
-  TokenHeader,
-  TokenSignature,
   TokenPayloadEncoded,
-  TokenHeaderEncoded,
+  TokenProtectedHeader,
+  TokenProtectedHeaderEncoded,
+  TokenSignature,
   TokenSignatureEncoded,
+  TokenHeaderSignature,
+  TokenHeaderSignatureEncoded,
+  TokenSigned,
+  TokenSignedEncoded,
 } from './types';
 import type { PrivateKey, Key, Digest, DigestFormats, KeyPair, PublicKey } from '../keys/types';
 import type { POJO } from  '../types';
@@ -12,7 +16,7 @@ import canonicalize from 'canonicalize';
 import * as keysUtils from '../keys/utils';
 import * as ids from '../ids';
 
-function isHeader(header: any): header is TokenHeader {
+function isHeader(header: any): header is TokenProtectedHeader {
   if (typeof header !== 'object' || header === null) {
     return false;
   }
@@ -99,13 +103,13 @@ function decodePayload(
 }
 
 
-function encodeProtectedHeader(header: TokenHeader): TokenHeaderEncoded {
+function encodeProtectedHeader(header: TokenProtectedHeader): TokenProtectedHeaderEncoded {
   const headerJSON = canonicalize(header)!
   const headerData = Buffer.from(headerJSON, 'utf-8');
-  return headerData.toString('base64url') as TokenHeaderEncoded;
+  return headerData.toString('base64url') as TokenProtectedHeaderEncoded;
 }
 
-function decodeProtectedHeader(headerEncoded: unknown): TokenHeader | undefined {
+function decodeProtectedHeader(headerEncoded: unknown): TokenProtectedHeader | undefined {
   if (typeof headerEncoded !== 'string') {
     return;
   }
@@ -224,6 +228,6 @@ export {
   encodeSignature,
   decodeSignature,
   // hashToken
-  signWithPrivateKey,
-  signWithKey,
+  // signWithPrivateKey,
+  // signWithKey,
 };
