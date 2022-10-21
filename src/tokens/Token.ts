@@ -29,7 +29,7 @@ import * as utils from '../utils';
  * For MAC signatures, it only supports `BLAKE2b` algorithm.
  * Multiple signatures are allowed, including 0 signatures.
  * During signing, additional properties can be part of the protected header.
- * The serialised format is compatible with the General JWS JSON format.
+ * The encoded format is compatible with the General JWS JSON format.
  */
 class Token {
   public readonly payload: DeepReadonly<TokenPayload>;
@@ -262,6 +262,13 @@ class Token {
       payload: this.payloadEncoded,
       signatures: [...this._signaturesEncoded],
     };
+  }
+
+  /**
+   * The JSON representation of this `Token` is `TokenSignedEncoded`
+   */
+  public toJSON() {
+    return this.toEncoded();
   }
 }
 
