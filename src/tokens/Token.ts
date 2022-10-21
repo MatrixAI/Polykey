@@ -15,8 +15,8 @@ import type {
 } from '../keys/types';
 import type { POJO, DeepReadonly } from '../types';
 import * as ids from '../ids';
-import * as tokenUtils from './utils';
-import * as tokenErrors from './errors';
+import * as tokensUtils from './utils';
+import * as tokensErrors from './errors';
 import * as keysUtils from '../keys/utils';
 import * as utils from '../utils';
 
@@ -40,12 +40,12 @@ class Token {
   protected signatureSet: Set<TokenSignatureEncoded> = new Set();
 
   public static fromPayload(payload: TokenPayload): Token {
-    const payloadEncoded = tokenUtils.encodePayload(payload);
+    const payloadEncoded = tokensUtils.encodePayload(payload);
     return new this(payload, payloadEncoded);
   }
 
   public static fromSigned(tokenSigned: TokenSigned): Token {
-    const tokenSignedEncoded = tokenUtils.encodeSigned(tokenSigned);
+    const tokenSignedEncoded = tokensUtils.encodeSigned(tokenSigned);
     return new this(
       tokenSigned.payload,
       tokenSignedEncoded.payload,
@@ -55,9 +55,9 @@ class Token {
   }
 
   public static fromEncoded(tokenSignedEncoded: TokenSignedEncoded): Token {
-    const tokenSigned = tokenUtils.decodeSigned(tokenSignedEncoded);
+    const tokenSigned = tokensUtils.decodeSigned(tokenSignedEncoded);
     if (tokenSigned == null) {
-      throw new tokenErrors.ErrorTokensSignedParse();
+      throw new tokensErrors.ErrorTokensSignedParse();
     }
 
     // const payload = tokenUtils.decodePayload(tokenEncoded.payload);
@@ -120,7 +120,7 @@ class Token {
       ...additionalProtectedHeader,
       alg: 'BLAKE2b' as const
     };
-    const protectedHeaderEncoded = tokenUtils.encodeProtectedHeader(
+    const protectedHeaderEncoded = tokensUtils.encodeProtectedHeader(
       protectedHeader
     );
     const data = Buffer.from(
@@ -128,12 +128,12 @@ class Token {
       'ascii'
     );
     const signature = keysUtils.macWithKey(key, data);
-    const signatureEncoded = tokenUtils.encodeSignature(signature);
+    const signatureEncoded = tokensUtils.encodeSignature(signature);
     if (
       !force &&
       this.signatureSet.has(signatureEncoded)
     ) {
-      throw new tokenErrors.ErrorTokensDuplicateSignature();
+      throw new tokensErrors.ErrorTokensDuplicateSignature();
     }
     this._signatures.push({
       protected: protectedHeader,
@@ -168,7 +168,7 @@ class Token {
       alg: 'EdDSA' as const,
       kid
     };
-    const protectedHeaderEncoded = tokenUtils.encodeProtectedHeader(
+    const protectedHeaderEncoded = tokensUtils.encodeProtectedHeader(
       protectedHeader
     );
     const data = Buffer.from(
@@ -176,9 +176,9 @@ class Token {
       'ascii'
     );
     const signature = keysUtils.signWithPrivateKey(keyPair, data);
-    const signatureEncoded = tokenUtils.encodeSignature(signature);
+    const signatureEncoded = tokensUtils.encodeSignature(signature);
     if (!force && this.signatureSet.has(signatureEncoded)) {
-      throw new tokenErrors.ErrorTokensDuplicateSignature();
+      throw new tokensErrors.ErrorTokensDuplicateSignature();
     }
     const headerSignature = {
       protected: protectedHeader,
