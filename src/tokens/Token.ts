@@ -1,21 +1,24 @@
 import type {
   TokenPayload,
   TokenPayloadEncoded,
-  TokenSignature,
   TokenSignatureEncoded,
   TokenHeaderSignature,
   TokenHeaderSignatureEncoded,
   TokenSigned,
   TokenSignedEncoded,
 }  from './types';
-import type { Key, PublicKey, PrivateKey, KeyPair, Signature } from '../keys/types';
+import type {
+  Key,
+  PublicKey,
+  PrivateKey,
+  KeyPair
+} from '../keys/types';
 import type { POJO, DeepReadonly } from '../types';
-import canonicalize from 'canonicalize';
 import * as ids from '../ids';
 import * as tokenUtils from './utils';
+import * as tokenErrors from './errors';
 import * as keysUtils from '../keys/utils';
 import * as utils from '../utils';
-import * as tokenErrors from './errors';
 
 /**
  * Token represents a single token with methods to sign and verify.
@@ -57,8 +60,32 @@ class Token {
     );
   }
 
-  public static fromEncoded(): Token {
-
+  public static fromEncoded(tokenEncoded: TokenSignedEncoded): Token {
+    const payload = tokenUtils.decodePayload(tokenEncoded.payload);
+    if (payload == null) {
+      throw new tokenErrors.ErrorTokensPayloadParse();
+    }
+    const signatures: Array<TokenHeaderSignature> = [];
+    for (const headerSignatureEncoded of tokenEncoded.signatures) {
+      const protectedHeader = tokenUtils.decodeProtectedHeader(headerSignatureEncoded.protected)
+      if (protectedHeader == null) {
+        throw new tokenErrors.ErrorTokensProtectedHeaderParse();
+      }
+      const signature = tokenUtils.decodeSignature(headerSignatureEncoded.signature);
+      if (signature == null) {
+        throw new tokenErrors.ErrorTokensSignatureParse();
+      }
+      signatures.push({
+        protected: protectedHeader,
+        signature
+      });
+    }
+    return new this(
+      payload,
+      tokenEncoded.payload,
+      signatures,
+      tokenEncoded.signatures
+    );
   }
 
   public constructor(
@@ -168,9 +195,7 @@ class Token {
   }
 
   /**
-   * Iterates over the signatures by default
-   * And attempts to authenticate the token
-   * If it has a specific override... then that would be useful
+   * Iterates over the signatures and attempts MAC verification
    */
   public verifyWithKey(key: Key): boolean {
     for (let i = 0; i < this._signatures.length; i++) {
@@ -195,7 +220,7 @@ class Token {
   }
 
   /**
-   * Iterates over the signatures by default
+   * Iterates over the signatures and attempts digital signature verification
    */
   public verifyWithPublicKey(publicKey: PublicKey) {
     for (let i = 0; i < this._signatures.length; i++) {
@@ -224,8 +249,8 @@ class Token {
    */
   public toSigned(): TokenSigned {
     return {
-      payload: utils.structuredClone(this.payload);
-      signatures: utils.structuredClone(this._signatures)
+      payload: utils.structuredClone(this.payload),
+      signatures: utils.structuredClone(this._signatures),
     };
   }
 

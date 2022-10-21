@@ -5,35 +5,9 @@ import type {
   TokenProtectedHeaderEncoded,
   TokenSignature,
   TokenSignatureEncoded,
-  TokenHeaderSignature,
-  TokenHeaderSignatureEncoded,
-  TokenSigned,
-  TokenSignedEncoded,
 } from './types';
-import type { PrivateKey, Key, Digest, DigestFormats, KeyPair, PublicKey } from '../keys/types';
-import type { POJO } from  '../types';
 import canonicalize from 'canonicalize';
-import * as keysUtils from '../keys/utils';
 import * as ids from '../ids';
-
-function isHeader(header: any): header is TokenProtectedHeader {
-  if (typeof header !== 'object' || header === null) {
-    return false;
-  }
-  if ('alg' in header && typeof header.alg !== 'string') {
-    return false;
-  }
-  if (header.alg !== 'EdDSA' && header.alg !== 'BLAKE2b') {
-    return false;
-  }
-  if (header.alg === 'EdDSA') {
-    const nodeId = ids.decodeNodeId(header.kid);
-    if (nodeId == null) {
-      return false;
-    }
-  }
-  return true;
-}
 
 function isPayload(payload: any): payload is TokenPayload {
   if (typeof payload !== 'object' || payload === null) {
@@ -102,6 +76,24 @@ function decodePayload(
   return payload;
 }
 
+function isProtectedHeader(header: any): header is TokenProtectedHeader {
+  if (typeof header !== 'object' || header === null) {
+    return false;
+  }
+  if ('alg' in header && typeof header.alg !== 'string') {
+    return false;
+  }
+  if (header.alg !== 'EdDSA' && header.alg !== 'BLAKE2b') {
+    return false;
+  }
+  if (header.alg === 'EdDSA') {
+    const nodeId = ids.decodeNodeId(header.kid);
+    if (nodeId == null) {
+      return false;
+    }
+  }
+  return true;
+}
 
 function encodeProtectedHeader(header: TokenProtectedHeader): TokenProtectedHeaderEncoded {
   const headerJSON = canonicalize(header)!
@@ -121,7 +113,7 @@ function decodeProtectedHeader(headerEncoded: unknown): TokenProtectedHeader | u
   } catch {
     return;
   }
-  if (!isHeader(header)) {
+  if (!isProtectedHeader(header)) {
     return;
   }
   return header;
@@ -139,9 +131,6 @@ function decodeSignature(signatureEncoded: unknown): TokenSignature | undefined 
   return signature as TokenSignature;
 }
 
-// we can iterate over the signatures here
-
-
 // function hashToken<F extends DigestFormats>(
 //   token: Token,
 //   format: F
@@ -154,80 +143,14 @@ function decodeSignature(signatureEncoded: unknown): TokenSignature | undefined 
 //   return tokenDigest;
 // }
 
-// function signWithPrivateKey(
-//   privateKeyOrKeyPair: PrivateKey | KeyPair,
-//   token: TokenPayload,
-//   additionalProtectedHeader: POJO = {},
-// ): TokenSignature {
-//   let keyPair: KeyPair;
-//   if (Buffer.isBuffer(privateKeyOrKeyPair)) {
-//     const publicKey = keysUtils.publicKeyFromPrivateKeyEd25519(privateKeyOrKeyPair);
-//     keyPair = keysUtils.makeKeyPair(publicKey, privateKeyOrKeyPair);
-//   } else {
-//     keyPair = privateKeyOrKeyPair;
-//   }
-//   const protectedHeader = {
-//     ...additionalProtectedHeader,
-//     alg: 'EdDSA',
-//     kid: ids.encodeNodeId(keysUtils.publicKeyToNodeId(keyPair.publicKey))
-//   };
-//   const tokenJSON = canonicalize(token)!;
-//   const protectedHeaderJSON = canonicalize(protectedHeader)!
-//   const payloadEncoded = Buffer.from(
-//     tokenJSON,
-//     'utf-8'
-//   ).toString('base64url');
-//   const protectedHeaderEncoded = Buffer.from(
-//     protectedHeaderJSON,
-//     'utf-8'
-//   ).toString('base64url');
-//   const data = Buffer.from(payloadEncoded + '.' + protectedHeaderEncoded, 'utf-8');
-//   const signature = keysUtils.signWithPrivateKey(keyPair, data);
-//   const signatureEncoded = signature.toString('base64url');
-//   return {
-//     protected: protectedHeaderEncoded,
-//     signature: signatureEncoded
-//   } as TokenSignature;
-// }
-
-// function signWithKey(
-//   key: Key,
-//   token: TokenPayload,
-//   additionalProtectedHeader: POJO = {}
-// ): TokenSignature {
-//   const protectedHeader = {
-//     ...additionalProtectedHeader,
-//     alg: 'BLAKE2b'
-//   };
-//   const tokenJSON = canonicalize(token)!;
-//   const protectedHeaderJSON = canonicalize(protectedHeader)!
-//   const payloadEncoded = Buffer.from(
-//     tokenJSON,
-//     'utf-8'
-//   ).toString('base64url');
-//   const protectedHeaderEncoded = Buffer.from(
-//     protectedHeaderJSON,
-//     'utf-8'
-//   ).toString('base64url');
-//   const data = Buffer.from(payloadEncoded + '.' + protectedHeaderEncoded, 'utf-8');
-//   const signature = keysUtils.macWithKey(key, data);
-//   const signatureEncoded = signature.toString('base64url');
-//   return {
-//     protected: protectedHeaderEncoded,
-//     signature: signatureEncoded
-//   } as TokenSignature;
-// }
-
 export {
-  isHeader,
   isPayload,
-  encodeProtectedHeader,
-  decodeProtectedHeader,
   encodePayload,
   decodePayload,
+  isProtectedHeader,
+  encodeProtectedHeader,
+  decodeProtectedHeader,
   encodeSignature,
   decodeSignature,
   // hashToken
-  // signWithPrivateKey,
-  // signWithKey,
 };
