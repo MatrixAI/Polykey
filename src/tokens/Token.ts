@@ -37,7 +37,7 @@ class Token {
 
   protected _signatures: Array<TokenHeaderSignature> = [];
   protected _signaturesEncoded: Array<TokenHeaderSignatureEncoded> = [];
-  protected signatureIndex: Set<TokenSignatureEncoded> = new Set();
+  protected signatureSet: Set<TokenSignatureEncoded> = new Set();
 
   public static fromPayload(payload: TokenPayload): Token {
     const payloadEncoded = tokenUtils.encodePayload(payload);
@@ -45,46 +45,46 @@ class Token {
   }
 
   public static fromSigned(tokenSigned: TokenSigned): Token {
-    const payloadEncoded = tokenUtils.encodePayload(tokenSigned.payload);
-    const signaturesEncoded = tokenSigned.signatures.map((headerSignature) => {
-      return {
-        protected: tokenUtils.encodeProtectedHeader(headerSignature.protected),
-        signature: tokenUtils.encodeSignature(headerSignature.signature)
-      };
-    });
+    const tokenSignedEncoded = tokenUtils.encodeSigned(tokenSigned);
     return new this(
       tokenSigned.payload,
-      payloadEncoded,
+      tokenSignedEncoded.payload,
       tokenSigned.signatures,
-      signaturesEncoded
+      tokenSignedEncoded.signatures
     );
   }
 
-  public static fromEncoded(tokenEncoded: TokenSignedEncoded): Token {
-    const payload = tokenUtils.decodePayload(tokenEncoded.payload);
-    if (payload == null) {
-      throw new tokenErrors.ErrorTokensPayloadParse();
+  public static fromEncoded(tokenSignedEncoded: TokenSignedEncoded): Token {
+    const tokenSigned = tokenUtils.decodeSigned(tokenSignedEncoded);
+    if (tokenSigned == null) {
+      throw new tokenErrors.ErrorTokensSignedParse();
     }
-    const signatures: Array<TokenHeaderSignature> = [];
-    for (const headerSignatureEncoded of tokenEncoded.signatures) {
-      const protectedHeader = tokenUtils.decodeProtectedHeader(headerSignatureEncoded.protected)
-      if (protectedHeader == null) {
-        throw new tokenErrors.ErrorTokensProtectedHeaderParse();
-      }
-      const signature = tokenUtils.decodeSignature(headerSignatureEncoded.signature);
-      if (signature == null) {
-        throw new tokenErrors.ErrorTokensSignatureParse();
-      }
-      signatures.push({
-        protected: protectedHeader,
-        signature
-      });
-    }
+
+    // const payload = tokenUtils.decodePayload(tokenEncoded.payload);
+    // if (payload == null) {
+    //   throw new tokenErrors.ErrorTokensPayloadParse();
+    // }
+    // const signatures: Array<TokenHeaderSignature> = [];
+    // for (const headerSignatureEncoded of tokenEncoded.signatures) {
+    //   const protectedHeader = tokenUtils.decodeProtectedHeader(headerSignatureEncoded.protected)
+    //   if (protectedHeader == null) {
+    //     throw new tokenErrors.ErrorTokensProtectedHeaderParse();
+    //   }
+    //   const signature = tokenUtils.decodeSignature(headerSignatureEncoded.signature);
+    //   if (signature == null) {
+    //     throw new tokenErrors.ErrorTokensSignatureParse();
+    //   }
+    //   signatures.push({
+    //     protected: protectedHeader,
+    //     signature
+    //   });
+    // }
+
     return new this(
-      payload,
-      tokenEncoded.payload,
-      signatures,
-      tokenEncoded.signatures
+      tokenSigned.payload,
+      tokenSignedEncoded.payload,
+      tokenSigned.signatures,
+      tokenSignedEncoded.signatures
     );
   }
 
@@ -98,16 +98,16 @@ class Token {
     this.payloadEncoded = payloadEncoded;
     this._signatures = signatures;
     this._signaturesEncoded = signaturesEncoded;
-    for (const headerSignature of signaturesEncoded) {
-      this.signatureIndex.add(headerSignature.signature);
+    for (const headerSignatureEncoded of signaturesEncoded) {
+      this.signatureSet.add(headerSignatureEncoded.signature);
     }
   }
 
-  get signatures(): DeepReadonly<typeof this._signatures> {
+  public get signatures(): DeepReadonly<typeof this._signatures> {
     return this._signatures;
   }
 
-  get signaturesEncoded(): DeepReadonly<typeof this._signaturesEncoded> {
+  public get signaturesEncoded(): DeepReadonly<typeof this._signaturesEncoded> {
     return this._signaturesEncoded;
   }
 
@@ -131,7 +131,7 @@ class Token {
     const signatureEncoded = tokenUtils.encodeSignature(signature);
     if (
       !force &&
-      this.signatureIndex.has(signatureEncoded)
+      this.signatureSet.has(signatureEncoded)
     ) {
       throw new tokenErrors.ErrorTokensDuplicateSignature();
     }
@@ -143,7 +143,7 @@ class Token {
       protected: protectedHeaderEncoded,
       signature: signatureEncoded
     });
-    this.signatureIndex.add(signatureEncoded);
+    this.signatureSet.add(signatureEncoded);
   }
 
   public signWithPrivateKey(
@@ -177,21 +177,20 @@ class Token {
     );
     const signature = keysUtils.signWithPrivateKey(keyPair, data);
     const signatureEncoded = tokenUtils.encodeSignature(signature);
-    if (
-      !force &&
-      this.signatureIndex.has(signatureEncoded)
-    ) {
+    if (!force && this.signatureSet.has(signatureEncoded)) {
       throw new tokenErrors.ErrorTokensDuplicateSignature();
     }
-    this._signatures.push({
+    const headerSignature = {
       protected: protectedHeader,
       signature: signature
-    });
-    this._signaturesEncoded.push({
+    };
+    const headerSignatureEncoded = {
       protected: protectedHeaderEncoded,
       signature: signatureEncoded
-    });
-    this.signatureIndex.add(signatureEncoded);
+    };
+    this._signatures.push(headerSignature);
+    this._signaturesEncoded.push(headerSignatureEncoded);
+    this.signatureSet.add(signatureEncoded);
   }
 
   /**

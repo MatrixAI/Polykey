@@ -5,6 +5,9 @@ import type {
   TokenProtectedHeaderEncoded,
   TokenSignature,
   TokenSignatureEncoded,
+  TokenHeaderSignature,
+  TokenSigned,
+  TokenSignedEncoded,
 } from './types';
 import canonicalize from 'canonicalize';
 import * as ids from '../ids';
@@ -56,9 +59,7 @@ function encodePayload(payload: TokenPayload): TokenPayloadEncoded {
   return payloadData.toString('base64url') as TokenPayloadEncoded;
 }
 
-function decodePayload(
-  payloadEncoded: unknown
-): TokenPayload | undefined {
+function decodePayload(payloadEncoded: any): TokenPayload | undefined {
   if (typeof payloadEncoded !== 'string') {
     return;
   }
@@ -101,7 +102,7 @@ function encodeProtectedHeader(header: TokenProtectedHeader): TokenProtectedHead
   return headerData.toString('base64url') as TokenProtectedHeaderEncoded;
 }
 
-function decodeProtectedHeader(headerEncoded: unknown): TokenProtectedHeader | undefined {
+function decodeProtectedHeader(headerEncoded: any): TokenProtectedHeader | undefined {
   if (typeof headerEncoded !== 'string') {
     return;
   }
@@ -123,12 +124,61 @@ function encodeSignature(signature: TokenSignature): TokenSignatureEncoded {
   return signature.toString('base64url') as TokenSignatureEncoded;
 }
 
-function decodeSignature(signatureEncoded: unknown): TokenSignature | undefined {
+function decodeSignature(signatureEncoded: any): TokenSignature | undefined {
   if (typeof signatureEncoded !== 'string') {
     return;
   }
   const signature = Buffer.from(signatureEncoded, 'base64url');
   return signature as TokenSignature;
+}
+
+function encodeSigned(signed: TokenSigned): TokenSignedEncoded {
+  const payloadEncoded = encodePayload(signed.payload);
+  const signaturesEncoded = signed.signatures.map((headerSignature) => {
+    return {
+      protected: encodeProtectedHeader(headerSignature.protected),
+      signature: encodeSignature(headerSignature.signature)
+    };
+  });
+  return {
+    payload: payloadEncoded,
+    signatures: signaturesEncoded
+  };
+}
+
+function decodeSigned(signedEncoded: any): TokenSigned | undefined {
+  if (typeof signedEncoded !== 'object' || signedEncoded === null) {
+    return;
+  }
+  const payload = decodePayload(signedEncoded.payload);
+  if (payload == null) {
+    return;
+  }
+  if (!Array.isArray(signedEncoded.signatures)) {
+    return;
+  }
+  const signatures: Array<TokenHeaderSignature> = [];
+  for (const headerSignatureEncoded of signedEncoded.signatures) {
+    if (typeof headerSignatureEncoded !== 'object' || headerSignatureEncoded === null) {
+      return;
+    }
+    const protectedHeader = decodeProtectedHeader(headerSignatureEncoded.protected)
+    if (protectedHeader == null) {
+      return;
+    }
+    const signature = decodeSignature(headerSignatureEncoded.signature);
+    if (signature == null) {
+      return;
+    }
+    signatures.push({
+      protected: protectedHeader,
+      signature
+    });
+  }
+  return {
+    payload,
+    signatures
+  };
 }
 
 // function hashToken<F extends DigestFormats>(
@@ -152,5 +202,7 @@ export {
   decodeProtectedHeader,
   encodeSignature,
   decodeSignature,
+  encodeSigned,
+  decodeSigned,
   // hashToken
 };
