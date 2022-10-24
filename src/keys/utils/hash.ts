@@ -8,7 +8,7 @@ import type {
 } from '../types';
 import sodium from 'sodium-native';
 import * as multiformats from 'multiformats';
-import * as types from '../types';
+import * as keysTypes from '../types';
 import * as utils from '../../utils';
 import * as errors from '../../errors';
 
@@ -240,7 +240,7 @@ function digestToMultidigest<F extends DigestFormats>(
   digest: Digest<F>,
   format: F
 ): MultihashDigest<DigestCode<F>> {
-  const code = types.multihashCodes[format];
+  const code = keysTypes.multihashCodes[format];
   return multiformats.digest.create(code, digest);
 }
 
@@ -259,7 +259,7 @@ function digestFromMultidigest(
     // Fails if the length is incorrect
     return;
   }
-  if (!(digest.code in types.multihashCodesI)) {
+  if (!(digest.code in keysTypes.multihashCodesI)) {
     // Not a supported hash
     return;
   }

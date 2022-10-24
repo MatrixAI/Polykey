@@ -6,8 +6,8 @@ import type {
   TokenSignature,
   TokenSignatureEncoded,
   TokenHeaderSignature,
-  TokenSigned,
-  TokenSignedEncoded,
+  SignedToken,
+  SignedTokenEncoded,
 } from './types';
 import canonicalize from 'canonicalize';
 import * as ids from '../ids';
@@ -59,7 +59,7 @@ function encodePayload(payload: TokenPayload): TokenPayloadEncoded {
   return payloadData.toString('base64url') as TokenPayloadEncoded;
 }
 
-function decodePayload(payloadEncoded: any): TokenPayload | undefined {
+function decodePayload<P extends TokenPayload = TokenPayload>(payloadEncoded: any): P | undefined {
   if (typeof payloadEncoded !== 'string') {
     return;
   }
@@ -74,7 +74,7 @@ function decodePayload(payloadEncoded: any): TokenPayload | undefined {
   if (!isPayload(payload)) {
     return;
   }
-  return payload;
+  return payload as P;
 }
 
 function isProtectedHeader(header: any): header is TokenProtectedHeader {
@@ -132,7 +132,7 @@ function decodeSignature(signatureEncoded: any): TokenSignature | undefined {
   return signature as TokenSignature;
 }
 
-function encodeSigned(signed: TokenSigned): TokenSignedEncoded {
+function encodeSigned(signed: SignedToken): SignedTokenEncoded {
   const payloadEncoded = encodePayload(signed.payload);
   const signaturesEncoded = signed.signatures.map((headerSignature) => {
     return {
@@ -146,7 +146,7 @@ function encodeSigned(signed: TokenSigned): TokenSignedEncoded {
   };
 }
 
-function decodeSigned(signedEncoded: any): TokenSigned | undefined {
+function decodeSigned<P extends TokenPayload = TokenPayload>(signedEncoded: any): SignedToken<P> | undefined {
   if (typeof signedEncoded !== 'object' || signedEncoded === null) {
     return;
   }
@@ -176,7 +176,7 @@ function decodeSigned(signedEncoded: any): TokenSigned | undefined {
     });
   }
   return {
-    payload,
+    payload: payload as P,
     signatures
   };
 }

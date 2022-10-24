@@ -3,8 +3,9 @@ import type { Host, Hostname, Port } from '../network/types';
 import type { Claim, ClaimId } from '../claims/types';
 import type { ChainData } from '../sigchain/types';
 
-// This should be a string
-// actually cause it is a domain
+/**
+ * Key indicating which space the NodeGraph is in
+ */
 type NodeGraphSpace = '0' | '1';
 
 type NodeAddress = {
@@ -13,25 +14,12 @@ type NodeAddress = {
 };
 
 type NodeBucketIndex = number;
-// Type NodeBucket = Record<NodeIdString, NodeData>;
 
-// TODO:
-// No longer need to use NodeIdString
-// It's an array, if you want to lookup
-// It's ordered by the last updated date
-// On the other hand, does this matter
-// Not really?
-// USE THIS TYPE INSTEAD
 type NodeBucket = Array<[NodeId, NodeData]>;
 
 type NodeBucketMeta = {
   count: number;
 };
-
-// Just make the bucket entries also
-// bucketIndex anot as a key
-// but as the domain
-// !!NodeGraph!!meta!!ff!!count
 
 type NodeData = {
   address: NodeAddress;

@@ -4,9 +4,9 @@ import type {
   TokenSignatureEncoded,
   TokenHeaderSignature,
   TokenHeaderSignatureEncoded,
-  TokenSigned,
-  TokenSignedEncoded,
-}  from './types';
+  SignedToken,
+  SignedTokenEncoded,
+} from './types';
 import type {
   Key,
   PublicKey,
@@ -31,20 +31,24 @@ import * as utils from '../utils';
  * During signing, additional properties can be part of the protected header.
  * The encoded format is compatible with the General JWS JSON format.
  */
-class Token {
-  public readonly payload: DeepReadonly<TokenPayload>;
+class Token<P extends TokenPayload = TokenPayload> {
+  public readonly payload: DeepReadonly<P>;
   public readonly payloadEncoded: TokenPayloadEncoded;
 
   protected _signatures: Array<TokenHeaderSignature> = [];
   protected _signaturesEncoded: Array<TokenHeaderSignatureEncoded> = [];
   protected signatureSet: Set<TokenSignatureEncoded> = new Set();
 
-  public static fromPayload(payload: TokenPayload): Token {
+  public static fromPayload<P extends TokenPayload = TokenPayload>(
+    payload: P
+  ): Token<P> {
     const payloadEncoded = tokensUtils.encodePayload(payload);
     return new this(payload, payloadEncoded);
   }
 
-  public static fromSigned(tokenSigned: TokenSigned): Token {
+  public static fromSigned<P extends TokenPayload = TokenPayload>(
+    tokenSigned: SignedToken<P>
+  ): Token<P> {
     const tokenSignedEncoded = tokensUtils.encodeSigned(tokenSigned);
     return new this(
       tokenSigned.payload,
@@ -54,32 +58,17 @@ class Token {
     );
   }
 
-  public static fromEncoded(tokenSignedEncoded: TokenSignedEncoded): Token {
-    const tokenSigned = tokensUtils.decodeSigned(tokenSignedEncoded);
+  /**
+   * Construct from encoded payload.
+   * It is up the caller to decide what the payload type should be.
+   */
+  public static fromEncoded<P extends TokenPayload = TokenPayload>(
+    tokenSignedEncoded: SignedTokenEncoded
+  ): Token<P> {
+    const tokenSigned = tokensUtils.decodeSigned<P>(tokenSignedEncoded);
     if (tokenSigned == null) {
       throw new tokensErrors.ErrorTokensSignedParse();
     }
-
-    // const payload = tokenUtils.decodePayload(tokenEncoded.payload);
-    // if (payload == null) {
-    //   throw new tokenErrors.ErrorTokensPayloadParse();
-    // }
-    // const signatures: Array<TokenHeaderSignature> = [];
-    // for (const headerSignatureEncoded of tokenEncoded.signatures) {
-    //   const protectedHeader = tokenUtils.decodeProtectedHeader(headerSignatureEncoded.protected)
-    //   if (protectedHeader == null) {
-    //     throw new tokenErrors.ErrorTokensProtectedHeaderParse();
-    //   }
-    //   const signature = tokenUtils.decodeSignature(headerSignatureEncoded.signature);
-    //   if (signature == null) {
-    //     throw new tokenErrors.ErrorTokensSignatureParse();
-    //   }
-    //   signatures.push({
-    //     protected: protectedHeader,
-    //     signature
-    //   });
-    // }
-
     return new this(
       tokenSigned.payload,
       tokenSignedEncoded.payload,
@@ -89,7 +78,7 @@ class Token {
   }
 
   public constructor(
-    payload: TokenPayload,
+    payload: P,
     payloadEncoded: TokenPayloadEncoded,
     signatures: Array<TokenHeaderSignature> = [],
     signaturesEncoded: Array<TokenHeaderSignatureEncoded> = []
@@ -246,7 +235,7 @@ class Token {
   /**
    * Exports this `Token` into `TokenSigned`
    */
-  public toSigned(): TokenSigned {
+  public toSigned(): SignedToken<P> {
     return {
       payload: utils.structuredClone(this.payload),
       signatures: utils.structuredClone(this._signatures),
@@ -256,7 +245,7 @@ class Token {
   /**
    * Exports this `Token` into `TokenSignedEncoded`
    */
-  public toEncoded(): TokenSignedEncoded {
+  public toEncoded(): SignedTokenEncoded {
     return {
       payload: this.payloadEncoded,
       signatures: [...this._signaturesEncoded],

@@ -72,41 +72,20 @@ type TokenHeaderSignatureEncoded = {
 /**
  * Token that is signed
  */
-type TokenSigned = {
-  payload: TokenPayload;
+type SignedToken<P extends TokenPayload = TokenPayload> = {
+  payload: P;
   signatures: Array<TokenHeaderSignature>;
 };
 
 /**
  * Token as a General JWS JSON
  */
-type TokenSignedEncoded = {
+type SignedTokenEncoded = {
   payload: TokenPayloadEncoded;
   signatures: Array<TokenHeaderSignatureEncoded>;
 };
 
-// This is a json encoded string containing providerid and identity id
-// type ProviderIdentityId = Opaque<'ProviderIdentityId', string>;
 
-// type TokenLinkNode = {
-//   jti: ClaimIdEncoded;
-//   iat: number;
-//   iss: NodeIdEncoded;
-//   sub: NodeIdEncoded;
-//   nbf: number;
-//   prev: string | null;
-//   seq: number;
-// };
-
-// type TokenLinkIdentity {
-//   jti: ClaimIdEncoded;
-//   iat: number;
-//   iss: NodeIdEncoded;
-//   sub: ProviderIdentityId;
-//   nbf: number;
-//   prev: string | null;
-//   seq: number;
-// };
 
 // type TokenNotification<T> = {
 //   jti: NotificationIdEncoded;
@@ -116,11 +95,11 @@ type TokenSignedEncoded = {
 //   data: T;
 // };
 
-// The TokenSigned is always a fully signed token
+// The SignedToken is always a fully signed token
 // But we need an intermediate format for these things
 // To avoid having to base64url decode it all the time
 
-// type TokenSigned = {
+// type SignedToken = {
 //   payload: {
 //     hPrev: string | null; // Hash of the previous claim (null if first claim)
 //     seq: number; // Sequence number of the claim
@@ -153,6 +132,6 @@ export type {
   TokenSignatureEncoded,
   TokenHeaderSignature,
   TokenHeaderSignatureEncoded,
-  TokenSigned,
-  TokenSignedEncoded,
+  SignedToken ,
+  SignedTokenEncoded ,
 };

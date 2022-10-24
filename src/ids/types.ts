@@ -28,11 +28,24 @@ type TaskIdEncoded = Opaque<'TaskIdEncoded', string>;
 type TaskHandlerId = Opaque<'TaskHandlerId', string>;
 
 /**
- * An arbitrary string serving as a unique identitifer for a particular claim.
- * Depending on the domain the claim is used in, its implementation detail will
- * differ. For example, the sigchain domain uses a lexicographic-integer as the
- * claim ID (representing the sequence number key of the claim).
+ * Provider Id identifies an identity provider.
+ * e.g. `github.com`
  */
+type ProviderId = Opaque<'ProviderId', string>;
+
+/**
+ * Identity Id must uniquely identify the identity on the identity provider.
+ * It must be the key that is used to look up the identity.
+ * If the provider uses a non-string type, make the necessary conversions.
+ */
+type IdentityId = Opaque<'IdentityId', string>;
+
+/**
+ * Composition of ProviderId and IdentityId.
+ * This is a JSON encoding of `[ProviderId, IdentityId]`
+ */
+type ProviderIdentityId = Opaque<'ProviderIdentityId', string>;
+
 type ClaimId = Opaque<'ClaimId', Id>;
 type ClaimIdString = Opaque<'ClaimIdString', string>;
 type ClaimIdEncoded = Opaque<'ClaimIdEncoded', string>;
@@ -57,6 +70,9 @@ export type {
   TaskIdString,
   TaskIdEncoded,
   TaskHandlerId,
+  ProviderId,
+  IdentityId,
+  ProviderIdentityId,
   ClaimId,
   ClaimIdString,
   ClaimIdEncoded,

@@ -1,17 +1,24 @@
 import type { Opaque, POJO } from '../types';
 import type { Claim } from '../claims/types';
 
-/**
- * Provider Id should be the domain of the identity provider
- */
-type ProviderId = Opaque<'ProviderId', string>;
+// /**
+//  * Provider Id should be the domain of the identity provider
+//  */
+// type ProviderId = Opaque<'ProviderId', string>;
 
-/**
- * Identity Id must uniquely identify the identity on the identity provider.
- * It must be the key that is used to look up the identity.
- * If the provider uses a non-string type, make the necessary conversions.
- */
-type IdentityId = Opaque<'IdentityId', string>;
+// /**
+//  * Identity Id must uniquely identify the identity on the identity provider.
+//  * It must be the key that is used to look up the identity.
+//  * If the provider uses a non-string type, make the necessary conversions.
+//  */
+// type IdentityId = Opaque<'IdentityId', string>;
+
+
+// /**
+//  * Composition of ProviderId and IdentityId.
+//  * This is a JSON encoding of `[ProviderId, IdentityId]`
+//  */
+// type ProviderIdentityId = Opaque<'ProviderIdentityId', string>;
 
 /**
  * A unique identifier for the claim itself, found on the identity provider.
@@ -70,8 +77,9 @@ type ProviderAuthenticateRequest = {
 };
 
 export type {
-  ProviderId,
-  IdentityId,
+  // ProviderId,
+  // IdentityId,
+  // ProviderIdentityId,
   IdentityClaimId,
   IdentityClaim,
   IdentityClaims,
@@ -81,3 +89,9 @@ export type {
   ProviderTokens,
   ProviderAuthenticateRequest,
 };
+
+export type {
+  ProviderId,
+  IdentityId,
+  ProviderIdentityId
+} from '../ids/types';

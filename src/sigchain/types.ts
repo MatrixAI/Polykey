@@ -1,16 +1,26 @@
-import type { Claim, ClaimEncoded, ClaimIdEncoded } from '../claims/types';
+import type { TokenPayload } from '../tokens/types';
+import type { ClaimHeaderSignature, ClaimDefault } from '../claims/types';
 
 /**
- * Serialized version of a node's sigchain.
- * Currently used for storage in the gestalt graph.
+ * During the creation of `Claim`, only properties that are not automatically
+ * defined by `Sigchain` are allowed.
  */
-type ChainData = Record<ClaimIdEncoded, Claim>;
+type ClaimInput = TokenPayload & {
+  [Property in keyof ClaimDefault]?: undefined;
+}
 
 /**
- * Serialized version of a node's sigchain, but with the claims as
- * Should be used when needing to transport ChainData, such that the claims can
- * be verified without having to be re-encoded as ClaimEncoded types.
+ * Storing `ClaimHeaderSignature` into the `Sigchain` requires JSON serialisation.
+ * The signature is a `Buffer`, which will be converted to JSON and back.
  */
-type ChainDataEncoded = Record<ClaimIdEncoded, ClaimEncoded>;
+interface ClaimHeaderSignatureJSON extends Omit<ClaimHeaderSignature, 'signature'> {
+  signature: {
+    type: 'Buffer',
+    data: Array<number>
+  };
+}
 
-export type { ChainData, ChainDataEncoded };
+export type {
+  ClaimInput,
+  ClaimHeaderSignatureJSON,
+};

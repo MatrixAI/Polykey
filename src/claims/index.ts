@@ -1,7 +1,8 @@
-// Provide to the keys domain
-// a way to extract or render `LinkClaimNode`
-// each side only needs to publish the other keynode that it's associated with
-// remember we must assign a specific OID under our Polykey OID
+/**
+ * Claims are tokens that are put onto the sigchain.
+ * The claims are used by `sigchain` and `identities`.
+ * @module
+ */
 
 export * as schema from './schema';
 export * as utils from './utils';
