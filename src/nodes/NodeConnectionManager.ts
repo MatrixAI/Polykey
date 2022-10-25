@@ -799,14 +799,20 @@ class NodeConnectionManager {
     @context ctx: ContextTimed,
   ): Promise<boolean> {
     host = await networkUtils.resolveHost(host);
-    // FIXME: this needs to handle aborting
-    void Array.from(this.getSeedNodes(), (seedNodeId) => {
-      return this.sendSignallingMessage(
-        seedNodeId,
-        this.keyManager.getNodeId(),
-        nodeId,
-      );
+    const seedNodes = this.getSeedNodes();
+    const isSeedNode = !!seedNodes.find((nodeId) => {
+      return nodeId.equals(nodeId);
     });
+    if (!isSeedNode) {
+      void Array.from(this.getSeedNodes(), (seedNodeId) => {
+        // FIXME: this needs to handle aborting
+        return this.sendSignallingMessage(
+          seedNodeId,
+          this.keyManager.getNodeId(),
+          nodeId,
+        );
+      });
+    }
     try {
       await this.holePunchForward(nodeId, host, port, ctx);
     } catch (e) {
