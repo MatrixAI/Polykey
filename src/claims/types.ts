@@ -34,8 +34,9 @@ type ClaimDefault = {
   jti: ClaimIdEncoded;
   iat: number;
   nbf: number;
-  prev: string | null;
   seq: number;
+  prevClaimId: ClaimIdEncoded | null;
+  prevDigest: string | null;
 };
 
 type ClaimHeaderSignature = TokenHeaderSignature;

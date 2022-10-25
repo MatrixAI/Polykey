@@ -40,12 +40,6 @@ import * as keysTypes from '../keys/types';
 import * as utils from '../utils';
 
 /**
- * Helper function to hash a provided claim (with SHA256).
- * Canonicalizes the claim (to create a deterministic string) and hashs the
- * entirety of the provided claim.
- */
-
-/**
  * Hashes claim into a digest
  */
 function hashSignedClaim<F extends DigestFormats>(

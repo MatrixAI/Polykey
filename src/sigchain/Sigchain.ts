@@ -172,7 +172,10 @@ class Sigchain {
 
   @ready(new sigchainErrors.ErrorSigchainNotRunning())
   public async getLastSignedClaim(tran?: DBTransaction): Promise<[ClaimId, SignedClaim] | undefined> {
-    for await (const signedClaimEntry of this.getSignedClaims({ order: 'desc', limit: 1}, tran)) {
+    for await (const signedClaimEntry of this.getSignedClaims({
+      order: 'desc',
+      limit: 1
+    }, tran)) {
       return signedClaimEntry;
     }
     return;
@@ -266,7 +269,7 @@ class Sigchain {
     if (tran == null) {
       return yield* this.db.withTransactionG((tran) => this.getClaims({ order, seek }, tran));
     }
-    const orderOptions = (order !== 'asc') ? { reverse: false } : { reverse: true};
+    const orderOptions = (order === 'asc') ? { reverse: false } : { reverse: true };
     let seekOptions: { gte: [ClaimId] } | { lte: [ClaimId] } | {} = {};
     if (seek != null) {
       seekOptions = (order === 'asc') ? {
@@ -305,7 +308,7 @@ class Sigchain {
     if (tran == null) {
       return yield* this.db.withTransactionG((tran) => this.getSignedClaims({ order, seek }, tran));
     }
-    const orderOptions = (order !== 'asc') ? { reverse: false } : { reverse: true};
+    const orderOptions = (order === 'asc') ? { reverse: false } : { reverse: true };
     let seekOptions: { gte: [ClaimId] } | { lte: [ClaimId] } | {} = {};
     if (seek != null) {
       seekOptions = (order === 'asc') ? {
@@ -334,6 +337,9 @@ class Sigchain {
 
   /**
    * Appends a claim (of any type) to the sigchain.
+   * For `ClaimInput`, it will be JSON encoded.
+   * Remember that `undefined` properties are deleted.
+   * While `undefined` values in arrays are converted to `null`.
    */
   @ready(new sigchainErrors.ErrorSigchainNotRunning())
   public async addClaim(
@@ -367,6 +373,7 @@ class Sigchain {
     });
     let claim: Claim;
     if (prevSignedClaim != null) {
+      const prevClaimId = prevSignedClaim[0];
       const prevDigest = claimsUtils.hashSignedClaim(
         prevSignedClaim[1],
         'blake2b-256'
@@ -380,8 +387,9 @@ class Sigchain {
         jti: claimsUtils.encodeClaimId(claimId),
         iat: time,
         nbf: time,
-        prev: prevDigestEncoded,
-        seq
+        seq,
+        prevClaimId: claimsUtils.encodeClaimId(prevClaimId),
+        prevDigest: prevDigestEncoded,
       };
     } else {
       claim = {
@@ -389,8 +397,9 @@ class Sigchain {
         jti: claimsUtils.encodeClaimId(claimId),
         iat: time,
         nbf: time,
-        prev: null,
-        seq
+        seq,
+        prevClaimId: null,
+        prevDigest: null,
       };
     }
     const claimToken = Token.fromPayload<Claim>(claim);
@@ -413,9 +422,12 @@ class Sigchain {
         headerSignature
       );
     }
-    await tran.put(this.dbLastClaimIdPath, seq);
-    await tran.put(this.dbLastSequenceNumberPath, claimIdBuffer, true);
-    return [claimId, signedClaim];
+    await tran.put(this.dbLastClaimIdPath, claimIdBuffer, true);
+    await tran.put(this.dbLastSequenceNumberPath, seq);
+    // Due to JSON encoding performed by the DB, the returned data
+    // can look different, so we fetch it from the DB again to return
+    const signedClaim_ = (await this.getSignedClaim(claimId, tran))!;
+    return [claimId, signedClaim_];
   }
 
   /**

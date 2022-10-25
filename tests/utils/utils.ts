@@ -1,7 +1,8 @@
-import type { NodeId } from '@/ids/types';
-import type { StatusLive } from '@/status/types';
 import type Logger from '@matrixai/logger';
-import type * as fc from 'fast-check';
+import type { NodeId, CertId } from '@/ids/types';
+import type { StatusLive } from '@/status/types';
+import type { TLSConfig } from '@/network/types';
+import type { CertificatePEMChain, KeyPair } from '@/keys/types';
 import path from 'path';
 import fs from 'fs';
 import readline from 'readline';
@@ -9,11 +10,8 @@ import { IdInternal } from '@matrixai/id';
 import * as keysUtils from '@/keys/utils';
 import * as grpcErrors from '@/grpc/errors';
 import * as validationUtils from '@/validation/utils';
-import { promise } from '@/utils';
+import * as utils from '@/utils';
 import * as execUtils from './exec';
-import { CertId } from '@/ids/types';
-import { TLSConfig } from '../../src/network/types';
-import { CertificatePEMChain, KeyPair } from '../../src/keys/types';
 
 async function setupTestAgent(logger: Logger) {
   const agentDir = await fs.promises.mkdtemp(
@@ -46,7 +44,7 @@ async function setupTestAgent(logger: Logger) {
     },
     logger,
   );
-  const startedProm = promise<any>();
+  const startedProm = utils.promise<any>();
   agentProcess.on('error', (d) => startedProm.rejectP(d));
   const rlOut = readline.createInterface(agentProcess.stdout!);
   rlOut.on('line', (l) => startedProm.resolveP(JSON.parse(l.toString())));

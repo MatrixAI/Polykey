@@ -18,7 +18,7 @@ import type {
   TokenPayload,
   TokenSignature,
   TokenHeaderSignature,
-  TokenSigned,
+  SignedToken,
 } from '../tokens/types';
 import * as validationErrors from './errors';
 import * as nodesUtils from '../nodes/utils';
@@ -359,7 +359,7 @@ function parseTokenSignature(data: any): TokenSignature {
 /**
  * Parses an JSON encoded token signed
  */
-function parseTokenSigned(data: any): TokenSigned {
+function parseSignedToken(data: any): SignedToken {
   if (typeof data !== 'string') {
     throw new validationErrors.ErrorParse(
       'Token signed must be a string',
@@ -427,5 +427,5 @@ export {
   parseTokenPayload,
   parseTokenProtectedHeader,
   parseTokenSignature,
-  parseTokenSigned,
+  parseSignedToken,
 };
