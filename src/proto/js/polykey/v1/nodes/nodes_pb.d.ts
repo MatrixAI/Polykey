@@ -188,8 +188,6 @@ export class Relay extends jspb.Message {
     setTargetId(value: string): Relay;
     getProxyAddress(): string;
     setProxyAddress(value: string): Relay;
-    getSignature(): string;
-    setSignature(value: string): Relay;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): Relay.AsObject;
@@ -206,7 +204,6 @@ export namespace Relay {
         srcId: string,
         targetId: string,
         proxyAddress: string,
-        signature: string,
     }
 }
 

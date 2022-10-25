@@ -1,4 +1,5 @@
 import type { Host, Port } from '@/network/types';
+import type { ConnectionInfo } from '@/network/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -46,6 +47,7 @@ describe('nodesHolePunchMessage', () => {
         nodeConnectionManager: pkAgent.nodeConnectionManager,
         nodeManager: pkAgent.nodeManager,
         db: pkAgent.db,
+        connectionInfoGet: () => ({} as ConnectionInfo),
         logger,
       }),
     };
@@ -78,14 +80,10 @@ describe('nodesHolePunchMessage', () => {
       pkAgent.proxy.getProxyHost(),
       pkAgent.proxy.getProxyPort(),
     );
-    const signature = await pkAgent.keyManager.signWithRootKeyPair(
-      Buffer.from(proxyAddress),
-    );
     const relayMessage = new nodesPB.Relay();
     relayMessage
       .setTargetId(nodeId)
       .setSrcId(nodeId)
-      .setSignature(signature.toString())
       .setProxyAddress(proxyAddress);
     await grpcClient.nodesHolePunchMessageSend(relayMessage);
     // TODO: check if the ping was sent

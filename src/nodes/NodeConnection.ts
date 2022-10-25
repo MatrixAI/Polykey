@@ -100,15 +100,7 @@ class NodeConnection<T extends GRPCClient> {
       port: proxy.getForwardPort(),
       authToken: proxy.authToken,
     };
-    // 1. Get the proxy port of the fwdProxy (used for hole punching)
-    const proxyAddress = networkUtils.buildAddress(
-      proxy.getProxyHost(),
-      proxy.getProxyPort(),
-    );
-    const signature = await keyManager.signWithRootKeyPair(
-      Buffer.from(proxyAddress),
-    );
-    // 2. Ask fwdProxy for connection to target (the revProxy of other node)
+    // 1. Ask fwdProxy for connection to target (the revProxy of other node)
     // 2. Start sending hole-punching packets to the target (via the client start -
     // this establishes a HTTP CONNECT request with the forward proxy)
     // 3. Relay the proxy port to the broker/s (such that they can inform the other node)
@@ -132,13 +124,12 @@ class NodeConnection<T extends GRPCClient> {
       if (!isSeedNode) {
         // FIXME: this needs to be cancellable.
         //  It needs to timeout as well as abort for cleanup
-        void Array.from(seedNodes, (nodeId) => {
-          return nodeConnectionManager.sendHolePunchMessage(
-            nodeId,
+        void Array.from(seedNodes, (seedNodeId) => {
+          return nodeConnectionManager.sendSignallingMessage(
+            seedNodeId,
             keyManager.getNodeId(),
             targetNodeId,
-            proxyAddress,
-            signature,
+            undefined,
             ctx,
           );
         });

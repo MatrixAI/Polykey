@@ -679,16 +679,13 @@ class NodeConnectionManager {
    * @param sourceNodeId node ID of the current node (i.e. the sender)
    * @param targetNodeId node ID of the target node to hole punch
    * @param proxyAddress string of address in the form `proxyHost:proxyPort`
-   * @param signature signature to verify source node is sender (signature based
-   * on proxyAddress as message)
    * @param ctx
    */
-  public sendHolePunchMessage(
+  public sendSignallingMessage(
     relayNodeId: NodeId,
     sourceNodeId: NodeId,
     targetNodeId: NodeId,
-    proxyAddress: string,
-    signature: Buffer,
+    proxyAddress?: string,
     ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<void>;
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
@@ -697,19 +694,17 @@ class NodeConnectionManager {
     (nodeConnectionManager: NodeConnectionManager) =>
       nodeConnectionManager.connConnectTime,
   )
-  public async sendHolePunchMessage(
+  public async sendSignallingMessage(
     relayNodeId: NodeId,
     sourceNodeId: NodeId,
     targetNodeId: NodeId,
-    proxyAddress: string,
-    signature: Buffer,
+    proxyAddress: string | undefined,
     @context ctx: ContextTimed,
   ): Promise<void> {
     const relayMsg = new nodesPB.Relay();
     relayMsg.setSrcId(nodesUtils.encodeNodeId(sourceNodeId));
     relayMsg.setTargetId(nodesUtils.encodeNodeId(targetNodeId));
-    relayMsg.setProxyAddress(proxyAddress);
-    relayMsg.setSignature(signature.toString());
+    if (proxyAddress != null) relayMsg.setProxyAddress(proxyAddress);
     await this.withConnF(
       relayNodeId,
       async (connection) => {
@@ -729,7 +724,7 @@ class NodeConnectionManager {
    * nodeConnection.start())
    * @param ctx
    */
-  public relayHolePunchMessage(
+  public relaySignallingMessage(
     message: nodesPB.Relay,
     ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<void>;
@@ -739,7 +734,7 @@ class NodeConnectionManager {
     (nodeConnectionManager: NodeConnectionManager) =>
       nodeConnectionManager.connConnectTime,
   )
-  public async relayHolePunchMessage(
+  public async relaySignallingMessage(
     message: nodesPB.Relay,
     @context ctx: ContextTimed,
   ): Promise<void> {
@@ -755,12 +750,11 @@ class NodeConnectionManager {
         knownAddress.port,
       );
     }
-    await this.sendHolePunchMessage(
+    await this.sendSignallingMessage(
       validationUtils.parseNodeId(message.getTargetId()),
       sourceNode,
       validationUtils.parseNodeId(message.getTargetId()),
       proxyAddress,
-      Buffer.from(message.getSignature()),
       ctx,
     );
   }
@@ -805,23 +799,12 @@ class NodeConnectionManager {
     @context ctx: ContextTimed,
   ): Promise<boolean> {
     host = await networkUtils.resolveHost(host);
-    // If we can create a connection then we have punched though the NAT,
-    // authenticated and confirmed the nodeId matches
-    const proxyAddress = networkUtils.buildAddress(
-      this.proxy.getProxyHost(),
-      this.proxy.getProxyPort(),
-    );
-    const signature = await this.keyManager.signWithRootKeyPair(
-      Buffer.from(proxyAddress),
-    );
     // FIXME: this needs to handle aborting
     void Array.from(this.getSeedNodes(), (seedNodeId) => {
-      return this.sendHolePunchMessage(
+      return this.sendSignallingMessage(
         seedNodeId,
         this.keyManager.getNodeId(),
         nodeId,
-        proxyAddress,
-        signature,
       );
     });
     try {
