@@ -111,6 +111,9 @@ class ConnectionForward extends Connection {
   }
 
   public async start({ ctx }: { ctx: ContextTimed }): Promise<void> {
+    if (ctx.timer.getTimeout() >= 20000) {
+      throw new networkErrors.ErrorConnectionStartTimeoutMax();
+    }
     this.logger.info('Starting Connection Forward');
     // Promise for ready
     const { p: readyP, resolveP: resolveReadyP } = promise<void>();
@@ -122,7 +125,15 @@ class ConnectionForward extends Connection {
     // Promise for abortion and timeout
     const { p: abortedP, resolveP: resolveAbortedP } = promise<void>();
     if (ctx.signal.aborted) {
-      resolveAbortedP();
+      this.logger.info(`Forward was aborted with: ${ctx.signal.reason}`);
+      // This is for arbitrary abortion reason provided by the caller
+      // Re-throw the default timeout error as a network timeout error
+      if (
+        ctx.signal.reason instanceof contextsErrors.ErrorContextsTimedTimeOut
+      ) {
+        throw new networkErrors.ErrorConnectionStartTimeout();
+      }
+      throw ctx.signal.reason;
     } else {
       ctx.signal.addEventListener('abort', () => resolveAbortedP());
     }
@@ -159,7 +170,7 @@ class ConnectionForward extends Connection {
         await this.send(networkUtils.pingBuffer);
       }, this.punchIntervalTime);
       await Promise.race([
-        Promise.all([readyP, secureConnectP]).then(() => {}),
+        Promise.all([readyP, secureConnectP]),
         errorP,
         abortedP,
       ]);
@@ -171,12 +182,7 @@ class ConnectionForward extends Connection {
         this.tlsSocket.destroy();
       }
       this.utpSocket.off('message', this.handleMessage);
-      throw new networkErrors.ErrorConnectionStart(e.message, {
-        data: {
-          code: e.code,
-          errno: e.errno,
-          syscall: e.syscall,
-        },
+      throw new networkErrors.ErrorConnectionStart(undefined, {
         cause: e,
       });
     } finally {
@@ -192,6 +198,8 @@ class ConnectionForward extends Connection {
         this.tlsSocket.destroy();
       }
       this.utpSocket.off('message', this.handleMessage);
+      // This is for arbitrary abortion reason provided by the caller
+      // Re-throw the default timeout error as a network timeout error
       if (
         ctx.signal.reason instanceof contextsErrors.ErrorContextsTimedTimeOut
       ) {

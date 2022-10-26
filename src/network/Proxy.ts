@@ -60,7 +60,7 @@ class Proxy {
 
   constructor({
     authToken,
-    connConnectTime = 20000,
+    connConnectTime = 2000,
     connKeepAliveTimeoutTime = 20000,
     connEndTime = 1000,
     connPunchIntervalTime = 50,

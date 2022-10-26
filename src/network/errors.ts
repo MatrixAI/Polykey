@@ -70,6 +70,12 @@ class ErrorConnectionStartTimeout<T> extends ErrorConnectionStart<T> {
   exitCode = sysexits.NOHOST;
 }
 
+class ErrorConnectionStartTimeoutMax<T> extends ErrorConnectionStart<T> {
+  static description =
+    'Connection start timeout exceeds max allowable of 20 seconds';
+  exitCode = sysexits.USAGE;
+}
+
 /**
  * Used by ConnectionReverse
  */
@@ -144,6 +150,7 @@ export {
   ErrorConnectionEndTimeout,
   ErrorConnectionStart,
   ErrorConnectionStartTimeout,
+  ErrorConnectionStartTimeoutMax,
   ErrorConnectionCompose,
   ErrorConnectionComposeTimeout,
   ErrorCertChain,

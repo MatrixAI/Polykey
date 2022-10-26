@@ -97,7 +97,7 @@ class NodeConnectionManager {
     taskManager,
     seedNodes = {},
     initialClosestNodes = 3,
-    connConnectTime = 20000,
+    connConnectTime = 2000,
     connTimeoutTime = 60000,
     pingTimeout = 2000,
     logger,

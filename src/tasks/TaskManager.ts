@@ -940,13 +940,6 @@ class TaskManager {
         );
         await this.gcTask(taskId, tran);
         tran.queueSuccess(() => {
-          // THIS only runs after the transaction is committed
-          // IS IT POSSIBLE
-          // that I HAVE REGISTERED EVENT HANDLERS is at there
-          // cause if so, it would then be able to
-          // to get an event listener registered
-          // only afterwards
-
           this.taskEvents.dispatchEvent(
             new TaskEvent(taskIdEncoded, {
               detail: {

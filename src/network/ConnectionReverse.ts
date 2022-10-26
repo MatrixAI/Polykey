@@ -109,6 +109,9 @@ class ConnectionReverse extends Connection {
   }
 
   public async start({ ctx }: { ctx: ContextTimed }): Promise<void> {
+    if (ctx.timer.getTimeout() >= 20000) {
+      throw new networkErrors.ErrorConnectionStartTimeoutMax();
+    }
     this.logger.info('Starting Connection Reverse');
     // Promise for ready
     const { p: readyP, resolveP: resolveReadyP } = promise<void>();
@@ -118,7 +121,19 @@ class ConnectionReverse extends Connection {
     const { p: errorP, rejectP: rejectErrorP } = promise<void>();
     // Promise for abortion and timeout
     const { p: abortedP, resolveP: resolveAbortedP } = promise<void>();
-    ctx.signal.addEventListener('abort', () => resolveAbortedP());
+    if (ctx.signal.aborted) {
+      this.logger.info(`Reverse was aborted with: ${ctx.signal.reason}`);
+      // This is for arbitrary abortion reason provided by the caller
+      // Re-throw the default timeout error as a network timeout error
+      if (
+        ctx.signal.reason instanceof contextsErrors.ErrorContextsTimedTimeOut
+      ) {
+        throw new networkErrors.ErrorConnectionStartTimeout();
+      }
+      throw ctx.signal.reason;
+    } else {
+      ctx.signal.addEventListener('abort', () => resolveAbortedP());
+    }
     this.resolveReadyP = resolveReadyP;
     this.utpSocket.on('message', this.handleMessage);
     this.serverSocket = net.connect(this.serverPort, this.serverHost, () => {
@@ -151,12 +166,7 @@ class ConnectionReverse extends Connection {
       // Socket isn't established yet, so it is destroyed
       this.serverSocket.destroy();
       this.utpSocket.off('message', this.handleMessage);
-      throw new networkErrors.ErrorConnectionStart(e.message, {
-        data: {
-          code: e.code,
-          errno: e.errno,
-          syscall: e.syscall,
-        },
+      throw new networkErrors.ErrorConnectionStart(undefined, {
         cause: e,
       });
     } finally {
@@ -169,7 +179,14 @@ class ConnectionReverse extends Connection {
       // Socket isn't established yet, so it is destroyed
       this.serverSocket.destroy();
       this.utpSocket.off('message', this.handleMessage);
-      throw new networkErrors.ErrorConnectionStartTimeout();
+      // This is for arbitrary abortion reason provided by the caller
+      // Re-throw the default timeout error as a network timeout error
+      if (
+        ctx.signal.reason instanceof contextsErrors.ErrorContextsTimedTimeOut
+      ) {
+        throw new networkErrors.ErrorConnectionStartTimeout();
+      }
+      throw ctx.signal.reason;
     }
     this.connections.proxy.set(this.address, this);
     this.connections.reverse.set(this.proxyAddress, this);

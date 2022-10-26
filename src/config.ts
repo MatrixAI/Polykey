@@ -83,14 +83,14 @@ const config = {
       clientPort: 0 as Port,
     },
     proxyConfig: {
-      connConnectTime: 20000,
+      connConnectTime: 2000,
       connKeepAliveTimeoutTime: 20000,
       connEndTime: 1000,
       connPunchIntervalTime: 1000,
       connKeepAliveIntervalTime: 1000,
     },
     nodeConnectionManagerConfig: {
-      connConnectTime: 20000,
+      connConnectTime: 2000,
       connTimeoutTime: 60000,
       initialClosestNodes: 3,
     },
