@@ -7,6 +7,21 @@ import type fs from 'fs';
 type POJO = { [key: string]: any };
 
 /**
+ * Strict JSON values.
+ * These are the only types that JSON can represent.
+ * All input values are encoded into JSON.
+ * Take note that `undefined` values are not allowed.
+ * `JSON.stringify` automatically converts `undefined` to `null.
+ */
+type JSONValue =
+  { [key: string]: JSONValue } |
+  Array<JSONValue> |
+  string |
+  number |
+  boolean |
+  null;
+
+/**
  * Opaque types are wrappers of existing types
  * that require smart constructors
  */
@@ -136,6 +151,7 @@ type InverseRecord<M extends Record<string | number | symbol, string | number | 
 
 export type {
   POJO,
+  JSONValue,
   Opaque,
   Callback,
   NonEmptyArray,

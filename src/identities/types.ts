@@ -1,51 +1,16 @@
-import type { Opaque, POJO } from '../types';
-import type { Claim } from '../claims/types';
-
-// /**
-//  * Provider Id should be the domain of the identity provider
-//  */
-// type ProviderId = Opaque<'ProviderId', string>;
-
-// /**
-//  * Identity Id must uniquely identify the identity on the identity provider.
-//  * It must be the key that is used to look up the identity.
-//  * If the provider uses a non-string type, make the necessary conversions.
-//  */
-// type IdentityId = Opaque<'IdentityId', string>;
-
-
-// /**
-//  * Composition of ProviderId and IdentityId.
-//  * This is a JSON encoding of `[ProviderId, IdentityId]`
-//  */
-// type ProviderIdentityId = Opaque<'ProviderIdentityId', string>;
+import type { POJO } from '../types';
+import type {
+  ProviderId,
+  IdentityId,
+  ProviderIdentityClaimId,
+} from '../ids/types';
+import type { SignedClaim } from '../claims/types';
+import type { ClaimLinkIdentity } from '../claims/payloads';
 
 /**
- * A unique identifier for the claim itself, found on the identity provider.
- * e.g. the gist ID on GitHub
- * TODO: REMOVE: This is the new LinkId (but only for IdentityClaim - NodeClaims
- * will not have a NodeClaimId?)
+ * Identity data contains key details about the
+ * identity on the identity provider.
  */
-type IdentityClaimId = Opaque<'IdentityClaimId', string>;
-
-/**
- * A wrapper for the Claim itself, used for our own internal usage of a cryptolink
- * to an identity (i.e. contains extra internal metadata: id and url).
- * It wouldn't make sense for the ClaimLinkIdentity within claims domain to
- * contain the id and URL of the claim, as this shouldn't be published with the
- * claim.
- * TODO: REMOVE: this is the new LinkInfoIdentity
- */
-type IdentityClaim = Claim & {
-  id: IdentityClaimId;
-  url?: string;
-};
-
-/**
- * A map of claims from an identity to a keynode.
- */
-type IdentityClaims = Record<IdentityClaimId, IdentityClaim>;
-
 type IdentityData = {
   providerId: ProviderId;
   identityId: IdentityId;
@@ -55,21 +20,31 @@ type IdentityData = {
 };
 
 /**
- * Data related to a particular identity on an identity provider.
- * claims: a map of IdentityClaimId to an (identity -> keynode) claim
+ * Identity claims wraps `SignedClaim<ClaimLinkIdentity>`.
+ * The signed `claim` is what is published and also stored in the `Sigchain`.
+ * Additional metadata `id` and `url` is provided by the identity provider.
+ * These metadata properties would not be part of the signed claim.
  */
-type IdentityInfo = IdentityData & {
-  claims: IdentityClaims;
+type IdentitySignedClaim = {
+  id: ProviderIdentityClaimId;
+  url?: string;
+  claim: SignedClaim<ClaimLinkIdentity>;
 };
 
-type TokenData = {
+/**
+ * Authentication tokens to the identity provider
+ */
+type ProviderToken = {
   accessToken: string;
   refreshToken?: string;
   accessTokenExpiresIn?: number;
   refreshTokenExpiresIn?: number;
 };
 
-type ProviderTokens = Record<IdentityId, TokenData>;
+/**
+ * Authentication tokens indexed by the `IdentityId`
+ */
+type ProviderTokens = Record<IdentityId, ProviderToken>;
 
 type ProviderAuthenticateRequest = {
   url: string;
@@ -77,15 +52,9 @@ type ProviderAuthenticateRequest = {
 };
 
 export type {
-  // ProviderId,
-  // IdentityId,
-  // ProviderIdentityId,
-  IdentityClaimId,
-  IdentityClaim,
-  IdentityClaims,
   IdentityData,
-  IdentityInfo,
-  TokenData,
+  IdentitySignedClaim,
+  ProviderToken,
   ProviderTokens,
   ProviderAuthenticateRequest,
 };
@@ -93,5 +62,6 @@ export type {
 export type {
   ProviderId,
   IdentityId,
-  ProviderIdentityId
+  ProviderIdentityId,
+  ProviderIdentityClaimId,
 } from '../ids/types';

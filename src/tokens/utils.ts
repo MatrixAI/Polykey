@@ -8,201 +8,285 @@ import type {
   TokenHeaderSignature,
   SignedToken,
   SignedTokenEncoded,
+  TokenHeaderSignatureEncoded,
 } from './types';
+import { Buffer } from 'buffer';
 import canonicalize from 'canonicalize';
 import * as ids from '../ids';
+import * as validationErrors from '../validation/errors';
+import * as keysUtils from '../keys/utils';
+import * as utils from '../utils';
 
-function isPayload(payload: any): payload is TokenPayload {
-  if (typeof payload !== 'object' || payload === null) {
-    return false;
-  }
-  if ('iss' in payload && typeof payload.iss !== 'string') {
-    return false;
-  }
-  if ('sub' in payload && typeof payload.sub !== 'string') {
-    return false;
-  }
-  if (
-    'aud' in payload &&
-    typeof payload.aud !== 'string'
-  ) {
-    if (!Array.isArray(payload.aud)) {
-      return false;
-    }
-    for (const aud_ of payload.aud) {
-      if (typeof aud_ !== 'string') {
-        return false;
-      }
-    }
-  }
-  if ('exp' in payload && typeof payload.exp !== 'number') {
-    return false;
-  }
-  if ('nbf' in payload && typeof payload.nbf !== 'number') {
-    return false;
-  }
-  if ('iat' in payload && typeof payload.iat !== 'number') {
-    return false;
-  }
-  if ('jti' in payload && typeof payload.jti !== 'string') {
-    return false;
-  }
-  return true;
-}
-
-/**
- * Encodes token payload with `base64url(json(TokenPayload))`
- */
-function encodePayload(payload: TokenPayload): TokenPayloadEncoded {
+function generateTokenPayload(payload: TokenPayload): TokenPayloadEncoded {
   const payloadJSON = canonicalize(payload)!;
   const payloadData = Buffer.from(payloadJSON, 'utf-8');
   return payloadData.toString('base64url') as TokenPayloadEncoded;
 }
 
-function decodePayload<P extends TokenPayload = TokenPayload>(payloadEncoded: any): P | undefined {
-  if (typeof payloadEncoded !== 'string') {
-    return;
-  }
-  const payloadData = Buffer.from(payloadEncoded, 'base64url');
-  const payloadJSON = payloadData.toString('utf-8');
-  let payload;
-  try {
-    payload = JSON.parse(payloadJSON);
-  } catch {
-    return;
-  }
-  if (!isPayload(payload)) {
-    return;
-  }
-  return payload as P;
-}
-
-function isProtectedHeader(header: any): header is TokenProtectedHeader {
-  if (typeof header !== 'object' || header === null) {
-    return false;
-  }
-  if ('alg' in header && typeof header.alg !== 'string') {
-    return false;
-  }
-  if (header.alg !== 'EdDSA' && header.alg !== 'BLAKE2b') {
-    return false;
-  }
-  if (header.alg === 'EdDSA') {
-    const nodeId = ids.decodeNodeId(header.kid);
-    if (nodeId == null) {
-      return false;
-    }
-  }
-  return true;
-}
-
-function encodeProtectedHeader(header: TokenProtectedHeader): TokenProtectedHeaderEncoded {
+function generateTokenProtectedHeader(
+  header: TokenProtectedHeader
+): TokenProtectedHeaderEncoded {
   const headerJSON = canonicalize(header)!
   const headerData = Buffer.from(headerJSON, 'utf-8');
   return headerData.toString('base64url') as TokenProtectedHeaderEncoded;
 }
 
-function decodeProtectedHeader(headerEncoded: any): TokenProtectedHeader | undefined {
-  if (typeof headerEncoded !== 'string') {
-    return;
-  }
-  const headerData = Buffer.from(headerEncoded, 'base64url');
-  const headerJSON = headerData.toString('utf-8');
-  let header;
-  try {
-    header = JSON.parse(headerJSON);
-  } catch {
-    return;
-  }
-  if (!isProtectedHeader(header)) {
-    return;
-  }
-  return header;
-}
-
-function encodeSignature(signature: TokenSignature): TokenSignatureEncoded {
+function generateTokenSignature(
+  signature: TokenSignature
+): TokenSignatureEncoded {
   return signature.toString('base64url') as TokenSignatureEncoded;
 }
 
-function decodeSignature(signatureEncoded: any): TokenSignature | undefined {
-  if (typeof signatureEncoded !== 'string') {
-    return;
-  }
-  const signature = Buffer.from(signatureEncoded, 'base64url');
-  return signature as TokenSignature;
-}
-
-function encodeSigned(signed: SignedToken): SignedTokenEncoded {
-  const payloadEncoded = encodePayload(signed.payload);
-  const signaturesEncoded = signed.signatures.map((headerSignature) => {
-    return {
-      protected: encodeProtectedHeader(headerSignature.protected),
-      signature: encodeSignature(headerSignature.signature)
-    };
-  });
+function generateTokenHeaderSignature(
+  tokenHeaderSignature: TokenHeaderSignature
+): TokenHeaderSignatureEncoded {
   return {
-    payload: payloadEncoded,
-    signatures: signaturesEncoded
+    protected: generateTokenProtectedHeader(tokenHeaderSignature.protected),
+    signature: generateTokenSignature(tokenHeaderSignature.signature)
   };
 }
 
-function decodeSigned<P extends TokenPayload = TokenPayload>(signedEncoded: any): SignedToken<P> | undefined {
-  if (typeof signedEncoded !== 'object' || signedEncoded === null) {
-    return;
-  }
-  const payload = decodePayload(signedEncoded.payload);
-  if (payload == null) {
-    return;
-  }
-  if (!Array.isArray(signedEncoded.signatures)) {
-    return;
-  }
-  const signatures: Array<TokenHeaderSignature> = [];
-  for (const headerSignatureEncoded of signedEncoded.signatures) {
-    if (typeof headerSignatureEncoded !== 'object' || headerSignatureEncoded === null) {
-      return;
-    }
-    const protectedHeader = decodeProtectedHeader(headerSignatureEncoded.protected)
-    if (protectedHeader == null) {
-      return;
-    }
-    const signature = decodeSignature(headerSignatureEncoded.signature);
-    if (signature == null) {
-      return;
-    }
-    signatures.push({
-      protected: protectedHeader,
-      signature
-    });
-  }
+function generateSignedToken(signed: SignedToken): SignedTokenEncoded {
+  const payload = generateTokenPayload(signed.payload);
+  const signatures = signed.signatures.map((tokenHeaderSignature) =>
+    generateTokenHeaderSignature(tokenHeaderSignature)
+  );
   return {
-    payload: payload as P,
+    payload,
     signatures
   };
 }
 
-// function hashToken<F extends DigestFormats>(
-//   token: Token,
-//   format: F
-// ): Digest<F> {
-//   const tokenString = canonicalize(token)!;
-//   const tokenDigest = keysUtils.hash(
-//     Buffer.from(tokenString, 'utf-8'),
-//     format
-//   );
-//   return tokenDigest;
-// }
+/**
+ * Parses `TokenPayloadEncoded` to `TokenPayload`
+ */
+function parseTokenPayload<P extends TokenPayload = TokenPayload>(
+  tokenPayloadEncoded: unknown
+): P {
+  if (typeof tokenPayloadEncoded !== 'string') {
+    throw new validationErrors.ErrorParse(
+      'must be a string',
+    );
+  }
+  const tokenPayloadData = Buffer.from(
+    tokenPayloadEncoded, 'base64url'
+  );
+  const tokenPayloadJSON = tokenPayloadData.toString('utf-8');
+  let tokenPayload;
+  try {
+    tokenPayload = JSON.parse(tokenPayloadJSON);
+  } catch {
+    throw new validationErrors.ErrorParse(
+      'must be a base64url encoded JSON POJO',
+    );
+  }
+  if (!utils.isObject(tokenPayload)) {
+    throw new validationErrors.ErrorParse(
+      'must be a base64url encoded JSON POJO',
+    );
+  }
+  if ('iss' in tokenPayload && typeof tokenPayload['iss'] !== 'string') {
+    throw new validationErrors.ErrorParse(
+      '`iss` property must be a string',
+    );
+  }
+  if ('sub' in tokenPayload && typeof tokenPayload['sub'] !== 'string') {
+    throw new validationErrors.ErrorParse(
+      '`sub` property must be a string',
+    );
+  }
+  if (
+    'aud' in tokenPayload &&
+    typeof tokenPayload['aud'] !== 'string'
+  ) {
+    if (!Array.isArray(tokenPayload['aud'])) {
+      throw new validationErrors.ErrorParse(
+        '`aud` property must be a string or array of strings',
+      );
+    }
+    for (const aud of tokenPayload['aud']) {
+      if (typeof aud !== 'string') {
+        throw new validationErrors.ErrorParse(
+          '`aud` property must be a string or array of strings',
+        );
+      }
+    }
+  }
+  if ('exp' in tokenPayload && typeof tokenPayload['exp'] !== 'number') {
+    throw new validationErrors.ErrorParse(
+      '`exp` property must be a number',
+    );
+  }
+  if ('nbf' in tokenPayload && typeof tokenPayload['nbf'] !== 'number') {
+    throw new validationErrors.ErrorParse(
+      '`nbf` property must be a number',
+    );
+  }
+  if ('iat' in tokenPayload && typeof tokenPayload['iat'] !== 'number') {
+    throw new validationErrors.ErrorParse(
+      '`iat` property must be a number',
+    );
+  }
+  if ('jti' in tokenPayload && typeof tokenPayload['jti'] !== 'string') {
+    throw new validationErrors.ErrorParse(
+      '`jti` property must be a string',
+    );
+  }
+  return tokenPayload as P;
+}
+
+/**
+ * Parses `TokenProtectedHeaderEncoded` to `TokenProtectedHeader`
+ */
+function parseTokenProtectedHeader(
+  tokenProtectedHeaderEncoded: unknown
+): TokenProtectedHeader {
+  if (typeof tokenProtectedHeaderEncoded !== 'string') {
+    throw new validationErrors.ErrorParse(
+      'must be a string',
+    );
+  }
+  const tokenProtectedHeaderData = Buffer.from(
+    tokenProtectedHeaderEncoded, 'base64url'
+  );
+  const tokenProtectedHeaderJSON = tokenProtectedHeaderData.toString('utf-8');
+  let tokenProtectedHeader: any;
+  try {
+    tokenProtectedHeader = JSON.parse(tokenProtectedHeaderJSON);
+  } catch {
+    throw new validationErrors.ErrorParse(
+      'must be a base64url encoded JSON POJO',
+    );
+  }
+  if (!utils.isObject(tokenProtectedHeader)) {
+    throw new validationErrors.ErrorParse(
+      'must be a base64url encoded JSON POJO',
+    );
+  }
+  if (typeof tokenProtectedHeader['alg'] !== 'string') {
+    throw new validationErrors.ErrorParse(
+      '`alg` property must be a string',
+    );
+  }
+  if (
+    tokenProtectedHeader['alg'] !== 'EdDSA' &&
+    tokenProtectedHeader['alg'] !== 'BLAKE2b'
+  ) {
+    throw new validationErrors.ErrorParse(
+      '`alg` property must be EdDSA or BLAKE2b',
+    );
+  }
+  if (tokenProtectedHeader['alg'] === 'EdDSA') {
+    const nodeId = ids.decodeNodeId(tokenProtectedHeader['kid']);
+    if (nodeId == null) {
+      throw new validationErrors.ErrorParse(
+        '`kid` property must be a encoded node ID if `alg` property is EdDSA',
+      );
+    }
+  }
+  return tokenProtectedHeader as TokenProtectedHeader;
+}
+
+
+/**
+ * Parses `TokenSignatureEncoded` to `TokenSignature`
+ */
+function parseTokenSignature(tokenSignatureEncoded: unknown): TokenSignature {
+  if (typeof tokenSignatureEncoded !== 'string') {
+    throw new validationErrors.ErrorParse(
+      'must be a string',
+    );
+  }
+  const signature = Buffer.from(tokenSignatureEncoded, 'base64url');
+  if (!keysUtils.isSignature(signature) && !keysUtils.isMAC(signature)) {
+    throw new validationErrors.ErrorParse(
+      'must be a base64url encoded signature or MAC digest',
+    );
+  }
+  return signature;
+}
+
+/**
+ * Parses `TokenHeaderSignatureEncoded` to `TokenHeaderSignature`
+ */
+function parseTokenHeaderSignature(
+  tokenHeaderSignatureEncoded: unknown
+): TokenHeaderSignature {
+  if (!utils.isObject(tokenHeaderSignatureEncoded)) {
+    throw new validationErrors.ErrorParse(
+      'must be a JSON POJO',
+    );
+  }
+  if (!('protected' in tokenHeaderSignatureEncoded)) {
+    throw new validationErrors.ErrorParse(
+      '`protected` property must be defined',
+    );
+  }
+  if (!('signature' in tokenHeaderSignatureEncoded)) {
+    throw new validationErrors.ErrorParse(
+      '`signature` property must be defined',
+    );
+  }
+  const protectedHeader = parseTokenProtectedHeader(
+    tokenHeaderSignatureEncoded['protected']
+  );
+  const signature = parseTokenSignature(
+    tokenHeaderSignatureEncoded['signature']
+  );
+  return {
+    protected: protectedHeader,
+    signature: signature,
+  };
+}
+
+
+/**
+ * Parses `SignedTokenEncoded` to `SignedToken`
+ */
+function parseSignedToken<P extends TokenPayload = TokenPayload>(
+  signedTokenEncoded: unknown
+): SignedToken<P> {
+  if (!utils.isObject(signedTokenEncoded)) {
+    throw new validationErrors.ErrorParse(
+      'must be a JSON POJO',
+    );
+  }
+  if (!('payload' in signedTokenEncoded)) {
+    throw new validationErrors.ErrorParse(
+      '`payload` property must be defined',
+    );
+  }
+  if (!('signatures' in signedTokenEncoded)) {
+    throw new validationErrors.ErrorParse(
+      '`signatures` property must be defined',
+    );
+  }
+  const payload = parseTokenPayload<P>(signedTokenEncoded['payload']);
+  if (!Array.isArray(signedTokenEncoded['signatures'])) {
+    throw new validationErrors.ErrorParse(
+      '`signatures` property must be an array',
+    );
+  }
+  const signatures: Array<TokenHeaderSignature> = [];
+  for (const headerSignatureEncoded of signedTokenEncoded['signatures']) {
+    const tokenHeaderSignature = parseTokenHeaderSignature(headerSignatureEncoded);
+    signatures.push(tokenHeaderSignature);
+  }
+  return {
+    payload,
+    signatures
+  };
+}
 
 export {
-  isPayload,
-  encodePayload,
-  decodePayload,
-  isProtectedHeader,
-  encodeProtectedHeader,
-  decodeProtectedHeader,
-  encodeSignature,
-  decodeSignature,
-  encodeSigned,
-  decodeSigned,
-  // hashToken
+  generateTokenPayload,
+  generateTokenProtectedHeader,
+  generateTokenSignature,
+  generateTokenHeaderSignature,
+  generateSignedToken,
+  parseTokenPayload,
+  parseTokenProtectedHeader,
+  parseTokenSignature,
+  parseTokenHeaderSignature,
+  parseSignedToken,
 };

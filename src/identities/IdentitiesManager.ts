@@ -2,7 +2,7 @@ import type {
   ProviderId,
   IdentityId,
   ProviderTokens,
-  TokenData,
+  ProviderToken,
 } from './types';
 import type { DB, DBTransaction, KeyPath, LevelPath } from '@matrixai/db';
 import type Provider from './Provider';
@@ -128,7 +128,7 @@ class IdentitiesManager {
     providerId: ProviderId,
     identityId: IdentityId,
     tran?: DBTransaction,
-  ): Promise<TokenData | undefined> {
+  ): Promise<ProviderToken | undefined> {
     if (tran == null) {
       return this.db.withTransactionF((tran) =>
         this.getToken(providerId, identityId, tran),
@@ -149,16 +149,16 @@ class IdentitiesManager {
   public async putToken(
     providerId: ProviderId,
     identityId: IdentityId,
-    tokenData: TokenData,
+    providerToken: ProviderToken,
     tran?: DBTransaction,
   ): Promise<void> {
     if (tran == null) {
       return this.db.withTransactionF((tran) =>
-        this.putToken(providerId, identityId, tokenData, tran),
+        this.putToken(providerId, identityId, providerToken, tran),
       );
     }
     const providerTokens = await this.getTokens(providerId);
-    providerTokens[identityId] = tokenData;
+    providerTokens[identityId] = providerToken;
     const providerIdPath = [
       ...this.identitiesTokensDbPath,
       providerId,

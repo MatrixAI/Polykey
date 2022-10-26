@@ -29,7 +29,7 @@ describe('identitiesTokenPutDeleteGet', () => {
   const testToken = {
     providerId: 'test-provider' as ProviderId,
     identityId: 'test_user' as IdentityId,
-    tokenData: {
+    providerToken: {
       accessToken: 'abc123',
     },
   };
@@ -104,7 +104,7 @@ describe('identitiesTokenPutDeleteGet', () => {
     providerMessage.setProviderId(testToken.providerId);
     providerMessage.setIdentityId(testToken.identityId);
     putRequest.setProvider(providerMessage);
-    putRequest.setToken(testToken.tokenData.accessToken);
+    putRequest.setToken(testToken.providerToken.accessToken);
     const putResponse = await grpcClient.identitiesTokenPut(
       putRequest,
       clientUtils.encodeAuthFromPassword(password),
@@ -116,7 +116,7 @@ describe('identitiesTokenPutDeleteGet', () => {
       clientUtils.encodeAuthFromPassword(password),
     );
     expect(getPutResponse).toBeInstanceOf(identitiesPB.Token);
-    expect(JSON.parse(getPutResponse.getToken())).toEqual(testToken.tokenData);
+    expect(JSON.parse(getPutResponse.getToken())).toEqual(testToken.providerToken);
     // Delete token
     const deleteResponse = await grpcClient.identitiesTokenDelete(
       providerMessage,

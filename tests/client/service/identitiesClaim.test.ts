@@ -41,7 +41,7 @@ describe('identitiesClaim', () => {
   const testToken = {
     providerId: 'test-provider' as ProviderId,
     identityId: 'test_user' as IdentityId,
-    tokenData: {
+    providerToken: {
       accessToken: 'abc123',
     },
   };
@@ -190,7 +190,7 @@ describe('identitiesClaim', () => {
     await identitiesManager.putToken(
       testToken.providerId,
       testToken.identityId,
-      testToken.tokenData,
+      testToken.providerToken,
     );
     const request = new identitiesPB.Provider();
     request.setIdentityId(testToken.identityId);
