@@ -66,6 +66,11 @@ class CommandPolykey extends commander.Command {
       // Set the logger according to the verbosity
       this.logger.setLevel(binUtils.verboseToLogLevel(opts.verbose));
       // Set the logger formatter according to the format
+      this.logger.handlers.forEach((handler) =>
+        handler.setFormatter(
+          formatting.format`${formatting.date}:${formatting.level}:${formatting.key}:${formatting.msg}`,
+        ),
+      );
       if (opts.format === 'json') {
         this.logger.handlers.forEach((handler) =>
           handler.setFormatter(formatting.jsonFormatter),

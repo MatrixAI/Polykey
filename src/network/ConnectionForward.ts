@@ -42,6 +42,7 @@ class ConnectionForward extends Connection {
     data: Buffer,
     remoteInfo: { address: string; port: number },
   ) => {
+    this.logger.info(`forward Connection received message: ${data}`);
     // Ignore messages not intended for this target
     if (remoteInfo.address !== this.host || remoteInfo.port !== this.port) {
       return;
@@ -59,6 +60,9 @@ class ConnectionForward extends Connection {
       this.startKeepAliveTimeout();
     }
     if (msg.type === 'ping') {
+      this.logger.info(
+        `FG -- Forward received ping, responding with pong and resolving readyP`,
+      );
       this.resolveReadyP();
       // Respond with ready message
       await this.send(networkUtils.pongBuffer);
@@ -75,7 +79,7 @@ class ConnectionForward extends Connection {
    * Handler is removed and not executed when `end` is initiated here
    */
   protected handleEnd = async () => {
-    this.logger.debug('Receives tlsSocket ending');
+    this.logger.info('Receives tlsSocket ending');
     if (this.utpConn.destroyed) {
       this.tlsSocket.destroy();
       this.logger.debug('Destroyed tlsSocket');
@@ -94,6 +98,7 @@ class ConnectionForward extends Connection {
    * If already stopped, then this does nothing
    */
   protected handleClose = async () => {
+    this.logger.info(`TLS Close`);
     await this.stop();
   };
 
@@ -140,14 +145,17 @@ class ConnectionForward extends Connection {
     this.resolveReadyP = resolveReadyP;
     this.utpSocket.on('message', this.handleMessage);
     const handleStartError = (e) => {
+      this.logger.info(`TLS error connection ${e}`);
       rejectErrorP(e);
     };
     // Normal sockets defaults to `allowHalfOpen: false`
     // But UTP defaults to `allowHalfOpen: true`
     // Setting `allowHalfOpen: false` on UTP is buggy and cannot be used
+    this.logger.info(`Starting UTP connection to ${this.host}:${this.port}`);
     this.utpConn = this.utpSocket.connect(this.port, this.host, {
       allowHalfOpen: true,
     });
+    this.logger.info('Starting TLS connection');
     this.tlsSocket = tls.connect(
       {
         key: Buffer.from(this.tlsConfig.keyPrivatePem, 'ascii'),
@@ -165,16 +173,22 @@ class ConnectionForward extends Connection {
     let punchInterval;
     try {
       // Send punch signal
+      this.logger.info(`Forward starting pings to ${this.host}:${this.port}`);
+      this.logger.info(`C -- Forward sending ping`);
       await this.send(networkUtils.pingBuffer);
       punchInterval = setInterval(async () => {
+        this.logger.info(`C -- Forward sending ping`);
         await this.send(networkUtils.pingBuffer);
       }, this.punchIntervalTime);
+      this.logger.info(`forward racing ready and secure with error and abort`);
       await Promise.race([
         Promise.all([readyP, secureConnectP]),
         errorP,
         abortedP,
       ]);
+      this.logger.info(`forward race succeeded`);
     } catch (e) {
+      this.logger.error(`race threw error ${e}`);
       // Clean up partial start
       // TLSSocket isn't established yet, so it is destroyed
       if (!this.tlsSocket.destroyed) {
@@ -191,6 +205,7 @@ class ConnectionForward extends Connection {
     this.tlsSocket.on('error', this.handleError);
     this.tlsSocket.off('error', handleStartError);
     if (ctx.signal.aborted) {
+      this.logger.info(`Forward was aborted with: ${ctx.signal.reason}`);
       // Clean up partial start
       // TLSSocket isn't established yet, so it is destroyed
       if (!this.tlsSocket.destroyed) {
@@ -214,7 +229,7 @@ class ConnectionForward extends Connection {
       // Clean up partial start
       this.utpSocket.off('message', this.handleMessage);
       // TLSSocket is established, and is ended gracefully
-      this.logger.debug('Sends tlsSocket ending');
+      this.logger.info('Sends tlsSocket ending');
       // Graceful exit has its own end handler
       this.tlsSocket.removeAllListeners('end');
       await this.endGracefully(this.tlsSocket);
