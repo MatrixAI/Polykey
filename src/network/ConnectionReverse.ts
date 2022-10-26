@@ -42,7 +42,6 @@ class ConnectionReverse extends Connection {
     data: Buffer,
     remoteInfo: { address: string; port: number },
   ) => {
-    this.logger.info(`reverse Connection received message: ${data}`);
     // Ignore messages not intended for this target
     if (remoteInfo.address !== this.host || remoteInfo.port !== this.port) {
       return;
@@ -60,10 +59,8 @@ class ConnectionReverse extends Connection {
       this.startKeepAliveTimeout();
     }
     if (msg.type === 'ping') {
-      this.logger.info(`E -- Reverse received ping, responding with pong`);
       await this.send(networkUtils.pongBuffer);
     } else if (msg.type === 'pong') {
-      this.logger.info(`H -- Reverse received pong, resolving ready`);
       this.resolveReadyP();
     }
   };
@@ -78,7 +75,7 @@ class ConnectionReverse extends Connection {
    * Handler is removed and not executed when `end` is initiated here
    */
   protected handleEnd = async () => {
-    this.logger.info('Receives serverSocket ending');
+    this.logger.debug('Receives serverSocket ending');
     this.logger.debug('Responds serverSocket ending');
     this.serverSocket.end();
     this.serverSocket.destroy();
@@ -92,7 +89,6 @@ class ConnectionReverse extends Connection {
    * If already stopped, then this does nothing
    */
   protected handleClose = async () => {
-    this.logger.info('reverse socket closing');
     await this.stop();
   };
 
@@ -126,7 +122,6 @@ class ConnectionReverse extends Connection {
     // Promise for abortion and timeout
     const { p: abortedP, resolveP: resolveAbortedP } = promise<void>();
     if (ctx.signal.aborted) {
-      this.logger.info(`Reverse was aborted with: ${ctx.signal.reason}`);
       // This is for arbitrary abortion reason provided by the caller
       // Re-throw the default timeout error as a network timeout error
       if (
@@ -140,9 +135,6 @@ class ConnectionReverse extends Connection {
     }
     this.resolveReadyP = resolveReadyP;
     this.utpSocket.on('message', this.handleMessage);
-    this.logger.info(
-      `reverse creating socket to ${this.serverHost}:${this.serverPort}`,
-    );
     this.serverSocket = net.connect(this.serverPort, this.serverHost, () => {
       const proxyAddressInfo = this.serverSocket.address() as AddressInfo;
       this.proxyHost = proxyAddressInfo.address as Host;
@@ -154,7 +146,6 @@ class ConnectionReverse extends Connection {
       resolveSocketP();
     });
     const handleStartError = (e) => {
-      this.logger.info(`reverse error ${e}`);
       rejectErrorP(e);
     };
     this.serverSocket.once('error', handleStartError);
@@ -162,24 +153,14 @@ class ConnectionReverse extends Connection {
     this.serverSocket.on('close', this.handleClose);
     let punchInterval;
     try {
-      this.logger.info('Reverse racing socket, error and abort stage 1');
       await Promise.race([socketP, errorP, abortedP]);
-      this.logger.info(
-        'B -- Connection Reverse has connected to the GRPC Agent server',
-      );
       // Send punch & ready signal
-      this.logger.info(`Reverse starting pinging to ${this.host}:${this.port}`);
-      this.logger.info('D -- Reverse sending ping');
       await this.send(networkUtils.pingBuffer);
       punchInterval = setInterval(async () => {
-        this.logger.info('D -- Reverse sending ping');
         await this.send(networkUtils.pingBuffer);
       }, this.punchIntervalTime);
-      this.logger.info('Reverse racing ready, error and abort stage 2');
       await Promise.race([readyP, errorP, abortedP]);
-      this.logger.info('Racing completed');
     } catch (e) {
-      this.logger.info(`racing error ${e}`);
       // Clean up partial start
       // Socket isn't established yet, so it is destroyed
       this.serverSocket.destroy();
@@ -193,7 +174,6 @@ class ConnectionReverse extends Connection {
     this.serverSocket.on('error', this.handleError);
     this.serverSocket.off('error', handleStartError);
     if (ctx.signal.aborted) {
-      this.logger.info(`reverse aborted`);
       // Clean up partial start
       // Socket isn't established yet, so it is destroyed
       this.serverSocket.destroy();

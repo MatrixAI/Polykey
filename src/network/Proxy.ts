@@ -477,7 +477,6 @@ class Proxy {
       await clientSocketWrite(
         'HTTP/1.1 200 Connection Established\r\n' + '\r\n',
       );
-      this.logger.info(`A -- GRPC client connected to Proxy TCP server`);
       this.logger.info(`Handled CONNECT to ${proxyAddress}`);
     });
   };
