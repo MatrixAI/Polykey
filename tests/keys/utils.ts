@@ -8,6 +8,7 @@ import type {
   PublicKeyJWK,
   PrivateKeyJWK,
   Signature,
+  MAC,
 } from '@/keys/types';
 import type CertManager from '@/keys/CertManager';
 import { fc } from '@fast-check/jest';
@@ -100,6 +101,11 @@ const signatureArb = fc
   .uint8Array({ minLength: 64, maxLength: 64 })
   .map(utils.bufferWrap)
   .noShrink() as fc.Arbitrary<Signature>;
+
+const macArb = fc
+  .uint8Array({ minLength: 32, maxLength: 32 })
+  .map(utils.bufferWrap)
+  .noShrink() as fc.Arbitrary<MAC>;
 
 const passwordArb = fc.string({ minLength: 0, maxLength: 20 }).noShrink();
 
@@ -353,6 +359,7 @@ export {
   privateKeyJWKArb,
   keyPairArb,
   certPArb,
+  macArb,
   signatureArb,
   passwordArb,
   RenewCertWithCurrentKeyPairCommand,

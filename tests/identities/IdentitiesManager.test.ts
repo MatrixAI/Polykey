@@ -1,7 +1,7 @@
 import type {
   ProviderId,
   IdentityId,
-  TokenData,
+  ProviderToken,
   IdentityData,
 } from '@/identities/types';
 import type { NodeId } from '@/ids/types';
@@ -92,19 +92,19 @@ describe('IdentitiesManager', () => {
     });
     const providerId = 'test-provider' as ProviderId;
     const identityId = 'test-user' as IdentityId;
-    const tokenData = {
+    const providerToken = {
       accessToken: 'abc',
     };
-    await identitiesManager.putToken(providerId, identityId, tokenData);
-    const tokenData_ = await identitiesManager.getToken(providerId, identityId);
-    expect(tokenData).toStrictEqual(tokenData_);
+    await identitiesManager.putToken(providerId, identityId, providerToken);
+    const providerToken_ = await identitiesManager.getToken(providerId, identityId);
+    expect(providerToken).toStrictEqual(providerToken_);
     await identitiesManager.delToken(providerId, identityId);
     await identitiesManager.delToken(providerId, identityId);
-    const tokenData__ = await identitiesManager.getToken(
+    const providerToken__ = await identitiesManager.getToken(
       providerId,
       identityId,
     );
-    expect(tokenData__).toBeUndefined();
+    expect(providerToken__).toBeUndefined();
     await identitiesManager.stop();
   });
   test('start and stop preserves state', async () => {
@@ -115,10 +115,10 @@ describe('IdentitiesManager', () => {
     });
     const providerId = 'test-provider' as ProviderId;
     const identityId = 'test-user' as IdentityId;
-    const tokenData = {
+    const providerToken = {
       accessToken: 'abc',
     };
-    await identitiesManager.putToken(providerId, identityId, tokenData);
+    await identitiesManager.putToken(providerId, identityId, providerToken);
     const testProvider = new TestProvider();
     identitiesManager.registerProvider(testProvider);
     await identitiesManager.stop();
@@ -128,8 +128,8 @@ describe('IdentitiesManager', () => {
       logger,
     });
     identitiesManager.registerProvider(testProvider);
-    const tokenData_ = await identitiesManager.getToken(providerId, identityId);
-    expect(tokenData).toStrictEqual(tokenData_);
+    const providerToken_ = await identitiesManager.getToken(providerId, identityId);
+    expect(providerToken).toStrictEqual(providerToken_);
     expect(identitiesManager.getProviders()).toStrictEqual({
       [testProvider.id]: testProvider,
     });
@@ -142,10 +142,10 @@ describe('IdentitiesManager', () => {
     });
     const providerId = 'test-provider' as ProviderId;
     const identityId = 'test-user' as IdentityId;
-    const tokenData = {
+    const providerToken = {
       accessToken: 'abc',
     };
-    await identitiesManager.putToken(providerId, identityId, tokenData);
+    await identitiesManager.putToken(providerId, identityId, providerToken);
     const testProvider = new TestProvider();
     identitiesManager.registerProvider(testProvider);
     await identitiesManager.stop();
@@ -155,8 +155,8 @@ describe('IdentitiesManager', () => {
       logger,
       fresh: true,
     });
-    const tokenData_ = await identitiesManager.getToken(providerId, identityId);
-    expect(tokenData_).toBeUndefined();
+    const providerToken_ = await identitiesManager.getToken(providerId, identityId);
+    expect(providerToken_).toBeUndefined();
     expect(identitiesManager.getProviders()).toStrictEqual({});
     await identitiesManager.stop();
   });
@@ -206,9 +206,9 @@ describe('IdentitiesManager', () => {
     expect(result2.value).toBeDefined();
     expect(result2.done).toBe(true);
     const identityId = result2.value as IdentityId;
-    const tokenData = (await testProvider.getToken(identityId)) as TokenData;
-    expect(tokenData).toBeDefined();
-    const identityId_ = await testProvider.getIdentityId(tokenData);
+    const providerToken = (await testProvider.getToken(identityId)) as ProviderToken;
+    expect(providerToken).toBeDefined();
+    const identityId_ = await testProvider.getIdentityId(providerToken);
     expect(identityId).toBe(identityId_);
     const authIdentityIds = await testProvider.getAuthIdentityIds();
     expect(authIdentityIds).toContain(identityId);

@@ -25,7 +25,7 @@ describe('identitiesInfoGet', () => {
     metaServer;
   const testToken = {
     identityId: 'test_user' as IdentityId,
-    tokenData: {
+    providerToken: {
       accessToken: 'abc123',
     },
   };
@@ -94,7 +94,7 @@ describe('identitiesInfoGet', () => {
     await identitiesManager.putToken(
       provider.id,
       testToken.identityId,
-      testToken.tokenData,
+      testToken.providerToken,
     );
     const request = new identitiesPB.ProviderSearch();
     request.setIdentityId(user1.identityId);
@@ -144,12 +144,12 @@ describe('identitiesInfoGet', () => {
     await identitiesManager.putToken(
       provider1.id,
       testToken.identityId,
-      testToken.tokenData,
+      testToken.providerToken,
     );
     await identitiesManager.putToken(
       provider2.id,
       testToken.identityId,
-      testToken.tokenData,
+      testToken.providerToken,
     );
     const request = new identitiesPB.ProviderSearch();
     request.setIdentityId('user1');
@@ -208,12 +208,12 @@ describe('identitiesInfoGet', () => {
     await identitiesManager.putToken(
       provider1.id,
       testToken.identityId,
-      testToken.tokenData,
+      testToken.providerToken,
     );
     await identitiesManager.putToken(
       provider2.id,
       testToken.identityId,
-      testToken.tokenData,
+      testToken.providerToken,
     );
     const request = new identitiesPB.ProviderSearch();
     request.setIdentityId('user1');
@@ -262,7 +262,7 @@ describe('identitiesInfoGet', () => {
     await identitiesManager.putToken(
       provider.id,
       testToken.identityId,
-      testToken.tokenData,
+      testToken.providerToken,
     );
     const request = new identitiesPB.ProviderSearch();
     request.setIdentityId('user1');
@@ -304,12 +304,12 @@ describe('identitiesInfoGet', () => {
     await identitiesManager.putToken(
       provider1.id,
       testToken.identityId,
-      testToken.tokenData,
+      testToken.providerToken,
     );
     await identitiesManager.putToken(
       provider2.id,
       testToken.identityId,
-      testToken.tokenData,
+      testToken.providerToken,
     );
     const request = new identitiesPB.ProviderSearch();
     request.setIdentityId('user1');
@@ -360,12 +360,12 @@ describe('identitiesInfoGet', () => {
     await identitiesManager.putToken(
       provider1.id,
       testToken.identityId,
-      testToken.tokenData,
+      testToken.providerToken,
     );
     await identitiesManager.putToken(
       provider2.id,
       testToken.identityId,
-      testToken.tokenData,
+      testToken.providerToken,
     );
     const request = new identitiesPB.ProviderSearch();
     request.setIdentityId('user1');
@@ -425,7 +425,7 @@ describe('identitiesInfoGet', () => {
     await identitiesManager.putToken(
       provider1.id,
       testToken.identityId,
-      testToken.tokenData,
+      testToken.providerToken,
     );
     const request = new identitiesPB.ProviderSearch();
     request.setIdentityId('user1');

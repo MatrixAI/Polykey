@@ -326,6 +326,13 @@ function verifyWithPublicKey(
 }
 
 /**
+ * Checks if data is a signature
+ */
+function isSignature(signature: unknown): signature is Signature {
+  return Buffer.isBuffer(signature) && signature.byteLength === sodium.crypto_sign_BYTES;
+}
+
+/**
  * Key Encapsulation Mechanism (KEM).
  * This encapsulates a JWK with a public key and produces a custom JWE.
  * This applies the ECIES protocol in `encryptWithPublicKey` from libsodium to JWE.
@@ -553,6 +560,7 @@ export {
   decryptWithPrivateKey,
   signWithPrivateKey,
   verifyWithPublicKey,
+  isSignature,
   encapsulateWithPublicKey,
   decapsulateWithPrivateKey,
   validatePublicKey,

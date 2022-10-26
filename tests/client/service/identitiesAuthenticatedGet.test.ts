@@ -23,7 +23,7 @@ describe('identitiesAuthenticatedGet', () => {
   const password = 'helloworld';
   const authenticate = async (metaClient, metaServer = new Metadata()) =>
     metaServer;
-  const tokenData = {
+  const providerToken = {
     accessToken: 'abc123',
   };
   let dataDir: string;
@@ -88,7 +88,7 @@ describe('identitiesAuthenticatedGet', () => {
     await identitiesManager.putToken(
       user1.providerId,
       user1.identityId,
-      tokenData,
+      providerToken,
     );
     const request = new identitiesPB.OptionalProvider();
     const response = grpcClient.identitiesAuthenticatedGet(
@@ -116,7 +116,7 @@ describe('identitiesAuthenticatedGet', () => {
     await identitiesManager.putToken(
       user1.providerId,
       user1.identityId,
-      tokenData,
+      providerToken,
     );
     await identitiesManager.delToken(user1.providerId, user1.identityId);
     const request = new identitiesPB.OptionalProvider();
@@ -156,17 +156,17 @@ describe('identitiesAuthenticatedGet', () => {
     await identitiesManager.putToken(
       user1.providerId,
       user1.identityId,
-      tokenData,
+      providerToken,
     );
     await identitiesManager.putToken(
       user2.providerId,
       user2.identityId,
-      tokenData,
+      providerToken,
     );
     await identitiesManager.putToken(
       user3.providerId,
       user3.identityId,
-      tokenData,
+      providerToken,
     );
     const request = new identitiesPB.OptionalProvider();
     const response = grpcClient.identitiesAuthenticatedGet(
@@ -208,17 +208,17 @@ describe('identitiesAuthenticatedGet', () => {
     await identitiesManager.putToken(
       user1.providerId,
       user1.identityId,
-      tokenData,
+      providerToken,
     );
     await identitiesManager.putToken(
       user2.providerId,
       user2.identityId,
-      tokenData,
+      providerToken,
     );
     await identitiesManager.putToken(
       user3.providerId,
       user3.identityId,
-      tokenData,
+      providerToken,
     );
     const request = new identitiesPB.OptionalProvider();
     request.setProviderId(provider2.id);

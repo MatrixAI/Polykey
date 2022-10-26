@@ -8,3 +8,4 @@ export { default as Token } from './Token';
 export * as utils from './utils';
 export * as errors from './errors';
 export * as types from './types';
+export * as schemas from './schemas';

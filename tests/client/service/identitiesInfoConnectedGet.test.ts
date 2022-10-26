@@ -27,7 +27,7 @@ describe('identitiesInfoConnectedGet', () => {
     metaServer;
   const testToken = {
     identityId: 'test_user' as IdentityId,
-    tokenData: {
+    providerToken: {
       accessToken: 'abc123',
     },
   };
@@ -104,7 +104,7 @@ describe('identitiesInfoConnectedGet', () => {
     await identitiesManager.putToken(
       provider.id,
       testToken.identityId,
-      testToken.tokenData,
+      testToken.providerToken,
     );
     provider.users[testToken.identityId].connected = [
       user1.identityId,
@@ -165,13 +165,13 @@ describe('identitiesInfoConnectedGet', () => {
     await identitiesManager.putToken(
       provider.id,
       testToken.identityId,
-      testToken.tokenData,
+      testToken.providerToken,
     );
     provider.users[testToken.identityId].connected = [user1.identityId];
     await identitiesManager.putToken(
       provider.id,
       'otherAuthenticatedId' as IdentityId,
-      testToken.tokenData,
+      testToken.providerToken,
     );
     provider.users['otherAuthenticatedId'] = { connected: [user2.identityId] };
     const request = new identitiesPB.ProviderSearch();
@@ -223,13 +223,13 @@ describe('identitiesInfoConnectedGet', () => {
     await identitiesManager.putToken(
       provider1.id,
       testToken.identityId,
-      testToken.tokenData,
+      testToken.providerToken,
     );
     provider1.users[testToken.identityId].connected = [user1.identityId];
     await identitiesManager.putToken(
       provider2.id,
       testToken.identityId,
-      testToken.tokenData,
+      testToken.providerToken,
     );
     provider2.users[testToken.identityId].connected = [user2.identityId];
     const request = new identitiesPB.ProviderSearch();
@@ -289,13 +289,13 @@ describe('identitiesInfoConnectedGet', () => {
     await identitiesManager.putToken(
       provider1.id,
       testToken.identityId,
-      testToken.tokenData,
+      testToken.providerToken,
     );
     provider1.users[testToken.identityId].connected = [user1.identityId];
     await identitiesManager.putToken(
       provider2.id,
       testToken.identityId,
-      testToken.tokenData,
+      testToken.providerToken,
     );
     provider2.users[testToken.identityId].connected = [user2.identityId];
     const request = new identitiesPB.ProviderSearch();
@@ -353,7 +353,7 @@ describe('identitiesInfoConnectedGet', () => {
     await identitiesManager.putToken(
       provider.id,
       testToken.identityId,
-      testToken.tokenData,
+      testToken.providerToken,
     );
     provider.users[testToken.identityId].connected = [
       user1.identityId,
@@ -405,7 +405,7 @@ describe('identitiesInfoConnectedGet', () => {
     await identitiesManager.putToken(
       provider.id,
       testToken.identityId,
-      testToken.tokenData,
+      testToken.providerToken,
     );
     provider.users[testToken.identityId].connected = [
       user1.identityId,
@@ -468,12 +468,12 @@ describe('identitiesInfoConnectedGet', () => {
     await identitiesManager.putToken(
       provider1.id,
       testToken.identityId,
-      testToken.tokenData,
+      testToken.providerToken,
     );
     await identitiesManager.putToken(
       provider2.id,
       testToken.identityId,
-      testToken.tokenData,
+      testToken.providerToken,
     );
     provider1.users[testToken.identityId].connected = [user1.identityId];
     provider2.users[testToken.identityId].connected = [user2.identityId];
@@ -532,7 +532,7 @@ describe('identitiesInfoConnectedGet', () => {
     await identitiesManager.putToken(
       provider.id,
       testToken.identityId,
-      testToken.tokenData,
+      testToken.providerToken,
     );
     provider.users[testToken.identityId].connected = [
       user1.identityId,
@@ -577,12 +577,12 @@ describe('identitiesInfoConnectedGet', () => {
     await identitiesManager.putToken(
       provider1.id,
       testToken.identityId,
-      testToken.tokenData,
+      testToken.providerToken,
     );
     await identitiesManager.putToken(
       provider2.id,
       testToken.identityId,
-      testToken.tokenData,
+      testToken.providerToken,
     );
     provider1.users[testToken.identityId].connected = [user1.identityId];
     provider2.users[testToken.identityId].connected = [user2.identityId];
@@ -634,12 +634,12 @@ describe('identitiesInfoConnectedGet', () => {
     await identitiesManager.putToken(
       provider1.id,
       testToken.identityId,
-      testToken.tokenData,
+      testToken.providerToken,
     );
     await identitiesManager.putToken(
       provider2.id,
       testToken.identityId,
-      testToken.tokenData,
+      testToken.providerToken,
     );
     provider1.users[testToken.identityId].connected = [user1.identityId];
     provider2.users[testToken.identityId].connected = [user2.identityId];
@@ -700,7 +700,7 @@ describe('identitiesInfoConnectedGet', () => {
     await identitiesManager.putToken(
       provider1.id,
       testToken.identityId,
-      testToken.tokenData,
+      testToken.providerToken,
     );
     provider1.users[testToken.identityId].connected = [user1.identityId];
     provider2.users[testToken.identityId].connected = [user2.identityId];

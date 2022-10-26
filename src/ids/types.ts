@@ -1,8 +1,12 @@
 import type { Id } from '@matrixai/id';
 import type { Opaque } from '../types';
 
+// ACL
+
 type PermissionId = Opaque<'PermissionId', Id>;
 type PermissionIdString = Opaque<'PermissionIdString', string>;
+
+// Keys
 
 type CertId = Opaque<'CertId', Id>;
 type CertIdString = Opaque<'CertIdString', string>;
@@ -13,19 +17,32 @@ type CertIdString = Opaque<'CertIdString', string>;
  */
 type CertIdEncoded = Opaque<'CertIdEncoded', string>;
 
+// Nodes
+
 type NodeId = Opaque<'NodeId', Id>;
 type NodeIdString = Opaque<'NodeIdString', string>;
 type NodeIdEncoded = Opaque<'NodeIdEncoded', string>;
+
+// Vaults
 
 type VaultId = Opaque<'VaultId', Id>;
 type VaultIdString = Opaque<'VaultIdString', string>;
 type VaultIdEncoded = Opaque<'VaultIdEncoded', string>;
 
+// Tasks
+
 type TaskId = Opaque<'TaskId', Id>;
 type TaskIdString = Opaque<'TaskIdEncoded', string>;
 type TaskIdEncoded = Opaque<'TaskIdEncoded', string>;
-
 type TaskHandlerId = Opaque<'TaskHandlerId', string>;
+
+// Claims
+
+type ClaimId = Opaque<'ClaimId', Id>;
+type ClaimIdString = Opaque<'ClaimIdString', string>;
+type ClaimIdEncoded = Opaque<'ClaimIdEncoded', string>;
+
+// Identities
 
 /**
  * Provider Id identifies an identity provider.
@@ -37,6 +54,7 @@ type ProviderId = Opaque<'ProviderId', string>;
  * Identity Id must uniquely identify the identity on the identity provider.
  * It must be the key that is used to look up the identity.
  * If the provider uses a non-string type, make the necessary conversions.
+ * e.g. `cmcdragonkai`
  */
 type IdentityId = Opaque<'IdentityId', string>;
 
@@ -46,9 +64,13 @@ type IdentityId = Opaque<'IdentityId', string>;
  */
 type ProviderIdentityId = Opaque<'ProviderIdentityId', string>;
 
-type ClaimId = Opaque<'ClaimId', Id>;
-type ClaimIdString = Opaque<'ClaimIdString', string>;
-type ClaimIdEncoded = Opaque<'ClaimIdEncoded', string>;
+/**
+ * A unique identifier for the published claim, found on the identity provider.
+ * e.g. the gist ID on GitHub
+ */
+type ProviderIdentityClaimId = Opaque<'ProviderIdentityClaimId', string>;
+
+// Notifications
 
 type NotificationId = Opaque<'NotificationId', Id>;
 type NotificationIdString = Opaque<'NotificationIdString', string>;
@@ -70,12 +92,13 @@ export type {
   TaskIdString,
   TaskIdEncoded,
   TaskHandlerId,
-  ProviderId,
-  IdentityId,
-  ProviderIdentityId,
   ClaimId,
   ClaimIdString,
   ClaimIdEncoded,
+  ProviderId,
+  IdentityId,
+  ProviderIdentityId,
+  ProviderIdentityClaimId,
   NotificationId,
   NotificationIdString,
   NotificationIdEncoded,

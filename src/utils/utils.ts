@@ -91,6 +91,18 @@ async function sleep(ms: number): Promise<void> {
   return await new Promise<void>((r) => setTimeout(r, ms));
 }
 
+/**
+ * Checks if value is an object.
+ * Arrays are also considered objects.
+ * The type guard here says `o is any`.
+ * TODO: When TS 4.9.x is released, change this to `o is object`.
+ * At that point `'x' in o` checks become type guards that
+ * can assert the property's existence.
+ */
+function isObject(o: unknown): o is object {
+  return o !== null && typeof o === 'object';
+}
+
 function isEmptyObject(o) {
   for (const k in o) return false;
   return true;
@@ -438,6 +450,7 @@ export {
   dirEmpty,
   pathIncludes,
   sleep,
+  isObject,
   isEmptyObject,
   filterEmptyObject,
   getUnixtime,

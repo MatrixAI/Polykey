@@ -154,6 +154,13 @@ function authWithKeyI(key: Key, data: Iterable<BufferSource>, digest: Buffer): b
 }
 
 /**
+ * Checks if data is a MAC
+ */
+function isMAC(mac: unknown): mac is MAC {
+  return Buffer.isBuffer(mac) && mac.byteLength === sodium.crypto_generichash_BYTES;
+}
+
+/**
  * Key wrapping with password.
  * This uses `Argon2Id-1.3` to derive a 256-bit key from the password.
  * The key is then used for encryption with `XChaCha20-Poly1305-IETF`.
@@ -391,6 +398,7 @@ export {
   authWithKey,
   authWithKeyG,
   authWithKeyI,
+  isMAC,
   wrapWithPassword,
   unwrapWithPassword,
   wrapWithKey,

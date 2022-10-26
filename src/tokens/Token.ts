@@ -14,11 +14,12 @@ import type {
   KeyPair
 } from '../keys/types';
 import type { POJO, DeepReadonly } from '../types';
-import * as ids from '../ids';
 import * as tokensUtils from './utils';
 import * as tokensErrors from './errors';
+import * as ids from '../ids';
 import * as keysUtils from '../keys/utils';
 import * as utils from '../utils';
+import * as validationErrors from '../validation/errors';
 
 /**
  * Token represents a single token with methods to sign and verify.
@@ -32,7 +33,7 @@ import * as utils from '../utils';
  * The encoded format is compatible with the General JWS JSON format.
  */
 class Token<P extends TokenPayload = TokenPayload> {
-  public readonly payload: DeepReadonly<P>;
+  public readonly payload: Readonly<P>;
   public readonly payloadEncoded: TokenPayloadEncoded;
 
   protected _signatures: Array<TokenHeaderSignature> = [];
@@ -42,14 +43,14 @@ class Token<P extends TokenPayload = TokenPayload> {
   public static fromPayload<P extends TokenPayload = TokenPayload>(
     payload: P
   ): Token<P> {
-    const payloadEncoded = tokensUtils.encodePayload(payload);
+    const payloadEncoded = tokensUtils.generateTokenPayload(payload);
     return new this(payload, payloadEncoded);
   }
 
   public static fromSigned<P extends TokenPayload = TokenPayload>(
     tokenSigned: SignedToken<P>
   ): Token<P> {
-    const tokenSignedEncoded = tokensUtils.encodeSigned(tokenSigned);
+    const tokenSignedEncoded = tokensUtils.generateSignedToken(tokenSigned);
     return new this(
       tokenSigned.payload,
       tokenSignedEncoded.payload,
@@ -63,17 +64,23 @@ class Token<P extends TokenPayload = TokenPayload> {
    * It is up the caller to decide what the payload type should be.
    */
   public static fromEncoded<P extends TokenPayload = TokenPayload>(
-    tokenSignedEncoded: SignedTokenEncoded
+    signedTokenEncoded: SignedTokenEncoded
   ): Token<P> {
-    const tokenSigned = tokensUtils.decodeSigned<P>(tokenSignedEncoded);
-    if (tokenSigned == null) {
-      throw new tokensErrors.ErrorTokensSignedParse();
+    let signedToken: SignedToken<P>;
+    try {
+      signedToken = tokensUtils.parseSignedToken<P>(signedTokenEncoded);
+    } catch (e) {
+      if (e instanceof validationErrors.ErrorParse) {
+        throw new tokensErrors.ErrorTokensSignedParse(undefined, { cause: e });
+      } else {
+        throw e;
+      }
     }
     return new this(
-      tokenSigned.payload,
-      tokenSignedEncoded.payload,
-      tokenSigned.signatures,
-      tokenSignedEncoded.signatures
+      signedToken.payload,
+      signedTokenEncoded.payload,
+      signedToken.signatures,
+      signedTokenEncoded.signatures
     );
   }
 
@@ -92,11 +99,11 @@ class Token<P extends TokenPayload = TokenPayload> {
     }
   }
 
-  public get signatures(): DeepReadonly<typeof this._signatures> {
+  public get signatures(): Readonly<Array<Readonly<TokenHeaderSignature>>> {
     return this._signatures;
   }
 
-  public get signaturesEncoded(): DeepReadonly<typeof this._signaturesEncoded> {
+  public get signaturesEncoded(): Readonly<Array<Readonly<TokenHeaderSignatureEncoded>>> {
     return this._signaturesEncoded;
   }
 
@@ -109,7 +116,7 @@ class Token<P extends TokenPayload = TokenPayload> {
       ...additionalProtectedHeader,
       alg: 'BLAKE2b' as const
     };
-    const protectedHeaderEncoded = tokensUtils.encodeProtectedHeader(
+    const protectedHeaderEncoded = tokensUtils.generateTokenProtectedHeader(
       protectedHeader
     );
     const data = Buffer.from(
@@ -117,7 +124,7 @@ class Token<P extends TokenPayload = TokenPayload> {
       'ascii'
     );
     const signature = keysUtils.macWithKey(key, data);
-    const signatureEncoded = tokensUtils.encodeSignature(signature);
+    const signatureEncoded = tokensUtils.generateTokenSignature(signature);
     if (
       !force &&
       this.signatureSet.has(signatureEncoded)
@@ -157,7 +164,7 @@ class Token<P extends TokenPayload = TokenPayload> {
       alg: 'EdDSA' as const,
       kid
     };
-    const protectedHeaderEncoded = tokensUtils.encodeProtectedHeader(
+    const protectedHeaderEncoded = tokensUtils.generateTokenProtectedHeader(
       protectedHeader
     );
     const data = Buffer.from(
@@ -165,7 +172,7 @@ class Token<P extends TokenPayload = TokenPayload> {
       'ascii'
     );
     const signature = keysUtils.signWithPrivateKey(keyPair, data);
-    const signatureEncoded = tokensUtils.encodeSignature(signature);
+    const signatureEncoded = tokensUtils.generateTokenSignature(signature);
     if (!force && this.signatureSet.has(signatureEncoded)) {
       throw new tokensErrors.ErrorTokensDuplicateSignature();
     }
@@ -233,7 +240,7 @@ class Token<P extends TokenPayload = TokenPayload> {
   }
 
   /**
-   * Exports this `Token` into `TokenSigned`
+   * Exports this `Token` into `SignedToken`
    */
   public toSigned(): SignedToken<P> {
     return {
@@ -243,7 +250,7 @@ class Token<P extends TokenPayload = TokenPayload> {
   }
 
   /**
-   * Exports this `Token` into `TokenSignedEncoded`
+   * Exports this `Token` into `SignedTokenEncoded`
    */
   public toEncoded(): SignedTokenEncoded {
     return {
@@ -253,7 +260,7 @@ class Token<P extends TokenPayload = TokenPayload> {
   }
 
   /**
-   * The JSON representation of this `Token` is `TokenSignedEncoded`
+   * The JSON representation of this `Token` is `SignedTokenEncoded`
    */
   public toJSON() {
     return this.toEncoded();

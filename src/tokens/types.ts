@@ -1,21 +1,24 @@
-import type { Opaque } from '../types';
+import type { Opaque, JSONValue } from '../types';
 import type { Signature, MAC } from '../keys/types';
 import type { NodeIdEncoded, } from '../ids/types';
 
 /**
  * Token based on JWT specification.
  * All properties are "claims" and they are all optional.
- * The entire POJO is put into the payload for signing.
+ * Note that the properties here have to be strict JSON values.
+ * This is because tokens are going to be JSON encoded.
+ * It avoids confusion if input types are not allowed to be rich.
  */
 type TokenPayload = {
+  jti?: string;
+  iat?: number;
+  nbf?: number;
+  exp?: number;
   iss?: string;
   sub?: string;
   aud?: string | Array<string>;
-  exp?: number;
-  nbf?: number;
-  iat?: number;
-  jti?: string;
-  [key: string]: any;
+  // The `undefined` is a hack to include the optional reserved properties
+  [key: string]: JSONValue | undefined;
 };
 
 /**
@@ -30,10 +33,10 @@ type TokenPayloadEncoded = Opaque<'TokenPayloadEncoded', string>;
 type TokenProtectedHeader = {
   alg: 'EdDSA';
   kid: NodeIdEncoded;
-  [key: string]: any;
+  [key: string]: JSONValue;
 } | {
   alg: 'BLAKE2b';
-  [key: string]: any;
+  [key: string]: JSONValue;
 };
 
 /**
@@ -85,44 +88,6 @@ type SignedTokenEncoded = {
   signatures: Array<TokenHeaderSignatureEncoded>;
 };
 
-
-
-// type TokenNotification<T> = {
-//   jti: NotificationIdEncoded;
-//   iat: number;
-//   iss: NodeIdEncoded;
-//   sub: NodeIdEncoded;
-//   data: T;
-// };
-
-// The SignedToken is always a fully signed token
-// But we need an intermediate format for these things
-// To avoid having to base64url decode it all the time
-
-// type SignedToken = {
-//   payload: {
-//     hPrev: string | null; // Hash of the previous claim (null if first claim)
-//     seq: number; // Sequence number of the claim
-//     data: ClaimData; // Our custom payload data
-//     iat: number; // Timestamp (initialised at JWS field)
-//   };
-//   signatures: Record<NodeIdEncoded, TokenSignature>; // Signee node ID -> claim signature
-// };
-
-// type ClaimData = ClaimLinkNode | ClaimLinkIdentity;
-// // Cryptolink (to either a node or an identity)
-// type ClaimLinkNode = {
-//   type: 'node';
-//   node1: NodeIdEncoded;
-//   node2: NodeIdEncoded;
-// };
-// type ClaimLinkIdentity = {
-//   type: 'identity';
-//   node: NodeIdEncoded;
-//   provider: ProviderId;
-//   identity: IdentityId;
-// };
-
 export type {
   TokenPayload,
   TokenPayloadEncoded,
@@ -132,6 +97,6 @@ export type {
   TokenSignatureEncoded,
   TokenHeaderSignature,
   TokenHeaderSignatureEncoded,
-  SignedToken ,
-  SignedTokenEncoded ,
+  SignedToken,
+  SignedTokenEncoded,
 };

@@ -28,7 +28,7 @@ describe('identitiesAuthenticate', () => {
   const testToken = {
     providerId: 'test-provider' as ProviderId,
     identityId: 'test_user' as IdentityId,
-    tokenData: {
+    providerToken: {
       accessToken: 'abc123',
     },
   };
@@ -116,7 +116,7 @@ describe('identitiesAuthenticate', () => {
         testToken.providerId,
         testToken.identityId,
       ),
-    ).toEqual(testToken.tokenData);
+    ).toEqual(testToken.providerToken);
     expect(response.stream.destroyed).toBeTruthy();
     await identitiesManager.delToken(
       testToken.providerId,

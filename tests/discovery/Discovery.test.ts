@@ -39,7 +39,7 @@ describe('Discovery', () => {
   const testToken = {
     providerId: 'test-provider' as ProviderId,
     identityId: 'test_user' as IdentityId,
-    tokenData: {
+    providerToken: {
       accessToken: 'abc123',
     },
   };
@@ -125,7 +125,7 @@ describe('Discovery', () => {
     await identitiesManager.putToken(
       testToken.providerId,
       testToken.identityId,
-      testToken.tokenData,
+      testToken.providerToken,
     );
     sigchain = await Sigchain.createSigchain({
       db,

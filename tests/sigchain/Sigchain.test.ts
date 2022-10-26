@@ -146,7 +146,7 @@ describe(Sigchain.name, () => {
     let seq = 0;
     for (const data of datas) {
       const [, signedClaim] = await sigchain.addClaim(
-        data,
+        data as ClaimInput,
       );
       seq++;
       expect(signedClaim.payload.seq).toBe(seq);
@@ -173,7 +173,7 @@ describe(Sigchain.name, () => {
       for (const data of datas) {
         addClaimPs.push(
           // Delay the `Sigchain.addClaim` call
-          s.schedule(Promise.resolve()).then(() => sigchain.addClaim(data))
+          s.schedule(Promise.resolve()).then(() => sigchain.addClaim(data as ClaimInput))
         );
       }
       // Scheduler will randomly call add claim
@@ -221,7 +221,7 @@ describe(Sigchain.name, () => {
         }
       );
       for (const data of datas) {
-        const [, signedClaim] = await sigchain.addClaim(data);
+        const [, signedClaim] = await sigchain.addClaim(data as ClaimInput);
         const token = Token.fromSigned(signedClaim);
         expect(token.verifyWithPublicKey(keyRing.keyPair.publicKey)).toBe(true);
       }
@@ -241,7 +241,7 @@ describe(Sigchain.name, () => {
     );
     const claimIdSignedClaims: Array<[ClaimId, SignedClaim]> = [];
     for (const [index, data] of datas.entries()) {
-      const claimIdSignedClaim = await sigchain.addClaim(data);
+      const claimIdSignedClaim = await sigchain.addClaim(data as ClaimInput);
       if (claimIdSignedClaims.length > 0) {
         const prevDigest = claimsUtils.hashSignedClaim(
           claimIdSignedClaims[index - 1][1],
@@ -272,7 +272,7 @@ describe(Sigchain.name, () => {
     );
     const claimIdSignedClaims: Array<[ClaimId, SignedClaim]> = [];
     for (const data of datas) {
-      const claimIdSignedClaim = await sigchain.addClaim(data);
+      const claimIdSignedClaim = await sigchain.addClaim(data as ClaimInput);
       claimIdSignedClaims.push(claimIdSignedClaim);
     }
     for (const [claimId, signedClaim] of claimIdSignedClaims) {
@@ -302,7 +302,7 @@ describe(Sigchain.name, () => {
     );
     const claimIdSignedClaims: Array<[ClaimId, SignedClaim]> = [];
     for (const data of datas) {
-      const claimIdSignedClaim = await sigchain.addClaim(data);
+      const claimIdSignedClaim = await sigchain.addClaim(data as ClaimInput);
       claimIdSignedClaims.push(claimIdSignedClaim);
     }
     const lastClaimIdSignedClaims = claimIdSignedClaims[claimIdSignedClaims.length - 1];

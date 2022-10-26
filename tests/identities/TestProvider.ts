@@ -2,7 +2,7 @@ import type { POJO } from '@/types';
 import type {
   ProviderId,
   IdentityId,
-  TokenData,
+  ProviderToken,
   IdentityData,
   IdentityClaim,
   IdentityClaimId,
@@ -54,13 +54,13 @@ class TestProvider extends Provider {
       },
     };
     // Always gives back the abc123 token
-    const tokenData = { accessToken: 'abc123' };
-    const identityId = await this.getIdentityId(tokenData);
-    await this.putToken(identityId, tokenData);
+    const providerToken = { accessToken: 'abc123' };
+    const identityId = await this.getIdentityId(providerToken);
+    await this.putToken(identityId, providerToken);
     return identityId;
   }
 
-  public async refreshToken(): Promise<TokenData> {
+  public async refreshToken(): Promise<ProviderToken> {
     throw new identitiesErrors.ErrorProviderUnimplemented();
   }
 
@@ -69,22 +69,22 @@ class TestProvider extends Provider {
     return Object.keys(providerTokens) as Array<IdentityId>;
   }
 
-  public async getIdentityId(tokenData: TokenData): Promise<IdentityId> {
-    tokenData = await this.checkToken(tokenData);
-    return this.userTokens[tokenData.accessToken];
+  public async getIdentityId(providerToken: ProviderToken): Promise<IdentityId> {
+    providerToken = await this.checkToken(providerToken);
+    return this.userTokens[providerToken.accessToken];
   }
 
   public async getIdentityData(
     authIdentityId: IdentityId,
     identityId: IdentityId,
   ): Promise<IdentityData | undefined> {
-    let tokenData = await this.getToken(authIdentityId);
-    if (!tokenData) {
+    let providerToken = await this.getToken(authIdentityId);
+    if (!providerToken) {
       throw new identitiesErrors.ErrorProviderUnauthenticated(
         `${authIdentityId} has not been authenticated`,
       );
     }
-    tokenData = await this.checkToken(tokenData, authIdentityId);
+    providerToken = await this.checkToken(providerToken, authIdentityId);
     const user = this.users[identityId];
     if (!user) {
       return;
@@ -102,13 +102,13 @@ class TestProvider extends Provider {
     authIdentityId: IdentityId,
     searchTerms: Array<string> = [],
   ): AsyncGenerator<IdentityData> {
-    let tokenData = await this.getToken(authIdentityId);
-    if (!tokenData) {
+    let providerToken = await this.getToken(authIdentityId);
+    if (!providerToken) {
       throw new identitiesErrors.ErrorProviderUnauthenticated(
         `${authIdentityId} has not been authenticated`,
       );
     }
-    tokenData = await this.checkToken(tokenData, authIdentityId);
+    providerToken = await this.checkToken(providerToken, authIdentityId);
     for (const [k, v] of Object.entries(this.users) as Array<
       [
         IdentityId,
@@ -139,13 +139,13 @@ class TestProvider extends Provider {
     authIdentityId: IdentityId,
     identityClaim: Claim,
   ): Promise<IdentityClaim> {
-    let tokenData = await this.getToken(authIdentityId);
-    if (!tokenData) {
+    let providerToken = await this.getToken(authIdentityId);
+    if (!providerToken) {
       throw new identitiesErrors.ErrorProviderUnauthenticated(
         `${authIdentityId} has not been authenticated`,
       );
     }
-    tokenData = await this.checkToken(tokenData, authIdentityId);
+    providerToken = await this.checkToken(providerToken, authIdentityId);
     const linkId = this.linkIdCounter.toString() as IdentityClaimId;
     this.linkIdCounter++;
     this.links[linkId] = JSON.stringify(identityClaim);
@@ -165,13 +165,13 @@ class TestProvider extends Provider {
     authIdentityId: IdentityId,
     claimId: IdentityClaimId,
   ): Promise<IdentityClaim | undefined> {
-    let tokenData = await this.getToken(authIdentityId);
-    if (!tokenData) {
+    let providerToken = await this.getToken(authIdentityId);
+    if (!providerToken) {
       throw new identitiesErrors.ErrorProviderUnauthenticated(
         `${authIdentityId} has not been authenticated`,
       );
     }
-    tokenData = await this.checkToken(tokenData, authIdentityId);
+    providerToken = await this.checkToken(providerToken, authIdentityId);
     const linkClaimData = this.links[claimId];
     if (!linkClaimData) {
       return;
@@ -191,13 +191,13 @@ class TestProvider extends Provider {
     authIdentityId: IdentityId,
     identityId: IdentityId,
   ): AsyncGenerator<IdentityClaim> {
-    let tokenData = await this.getToken(authIdentityId);
-    if (!tokenData) {
+    let providerToken = await this.getToken(authIdentityId);
+    if (!providerToken) {
       throw new identitiesErrors.ErrorProviderUnauthenticated(
         `${authIdentityId} has not been authenticated`,
       );
     }
-    tokenData = await this.checkToken(tokenData, authIdentityId);
+    providerToken = await this.checkToken(providerToken, authIdentityId);
     const claimIds = this.userLinks[identityId] ?? [];
     for (const claimId of claimIds) {
       const claimInfo = await this.getClaim(
