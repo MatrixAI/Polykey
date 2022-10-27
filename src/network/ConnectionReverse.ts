@@ -122,6 +122,7 @@ class ConnectionReverse extends Connection {
     // Promise for abortion and timeout
     const { p: abortedP, resolveP: resolveAbortedP } = promise<void>();
     if (ctx.signal.aborted) {
+      this.logger.info(`Failed to start Connection Reverse: aborted`);
       // This is for arbitrary abortion reason provided by the caller
       // Re-throw the default timeout error as a network timeout error
       if (
@@ -161,6 +162,7 @@ class ConnectionReverse extends Connection {
       }, this.punchIntervalTime);
       await Promise.race([readyP, errorP, abortedP]);
     } catch (e) {
+      this.logger.info(`Failed to start Connection Reverse: ${e.message}`);
       // Clean up partial start
       // Socket isn't established yet, so it is destroyed
       this.serverSocket.destroy();
@@ -174,6 +176,7 @@ class ConnectionReverse extends Connection {
     this.serverSocket.on('error', this.handleError);
     this.serverSocket.off('error', handleStartError);
     if (ctx.signal.aborted) {
+      this.logger.info(`Failed to start Connection Reverse: aborted`);
       // Clean up partial start
       // Socket isn't established yet, so it is destroyed
       this.serverSocket.destroy();
