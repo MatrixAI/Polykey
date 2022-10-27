@@ -42,6 +42,18 @@ describe('endpoint dependent NAT traversal', () => {
         agent2ProxyPort,
         tearDownNAT,
       } = await testNatUtils.setupNAT('edm', 'dmz', logger);
+      //                       Namespace1
+      // ┌────────────────────────────────────────────────────┐
+      // │                                                    │                  Namespace2
+      // │                  55551<->PORT1   192.168.0.1:PORT1 │    ┌────────────────────────────────────┐
+      // │   ┌────────┐        ┌─────┐         ┌─────────┐    │    │                                    │
+      // │   │        │        │     ├─────────┤         │    │    │    ┌─────────┐        ┌────────┐   │
+      // │   │ Agent1 ├────────┤ NAT │         │ Router1 │    │    │    │ Router2 ├────────┤ Agent2 │   │
+      // │   │        │        │     │         │         │    │    │    └─────────┘        └────────┘   │
+      // │   └────────┘        └─────┘         └─────────┘    │    │ 192.168.0.2:55555   10.0.0.2:55552 │
+      // │ 10.0.0.2:55551                                     │    │                                    │
+      // │                                                    │    └────────────────────────────────────┘
+      // └────────────────────────────────────────────────────┘
       // Since node2 is not behind a NAT can directly add its details
       await testUtils.pkExec(
         [
@@ -106,6 +118,18 @@ describe('endpoint dependent NAT traversal', () => {
         agent2NodeId,
         tearDownNAT,
       } = await testNatUtils.setupNAT('dmz', 'edm', logger);
+      //                                                                   Namespace2
+      //                                           ┌────────────────────────────────────────────────────┐
+      //               Namespace1                  │                                                    │
+      // ┌────────────────────────────────────┐    │ 192.168.0.2:PORT1   PORT1<->55552                  │
+      // │                                    │    │    ┌─────────┐         ┌─────┐        ┌────────┐   │
+      // │   ┌────────┐        ┌─────────┐    │    │    │         ├─────────┤     │        │        │   │
+      // │   │ Agent1 ├────────┤ Router1 │    │    │    │ Router2 │         │ NAT ├────────┤ Agent2 │   │
+      // │   └────────┘        └─────────┘    │    │    │         │         │     │        │        │   │
+      // │ 10.0.0.2:55551   192.168.0.1:55555 │    │    └─────────┘         └─────┘        └────────┘   │
+      // │                                    │    │                                     10.0.0.2:55552 │
+      // └────────────────────────────────────┘    │                                                    │
+      //                                           └────────────────────────────────────────────────────┘
       // Agent 2 must ping Agent 1 first, since Agent 2 is behind a NAT
       await testUtils.pkExec(
         [
@@ -190,6 +214,18 @@ describe('endpoint dependent NAT traversal', () => {
         agent2NodeId,
         tearDownNAT,
       } = await testNatUtils.setupNATWithSeedNode('edm', 'edm', logger);
+      //                       Namespace1                            Namespace3                             Namespace2
+      // ┌────────────────────────────────────────────────────┐ ┌──────────────────┐ ┌────────────────────────────────────────────────────┐
+      // │                                                    │ │                  │ │                                                    │
+      // │                  55551<->PORT1   192.168.0.1:PORT1 │ │   ┌──────────┐   │ │ 192.168.0.2:PORT1   PORT1<->55552                  │
+      // │   ┌────────┐        ┌─────┐         ┌─────────┐    │ │   │ SeedNode │   │ │    ┌─────────┐         ┌─────┐        ┌────────┐   │
+      // │   │        │        │     ├─────────┤         │    │ │   └──────────┘   │ │    │         ├─────────┤     │        │        │   │
+      // │   │ Agent1 ├────────┤ NAT │         │ Router1 │    │ │ 192.168.0.3:PORT │ │    │ Router2 │         │ NAT ├────────┤ Agent2 │   │
+      // │   │        │        │     ├─────────┤         │    │ │                  │ │    │         ├─────────┤     │        │        │   │
+      // │   └────────┘        └─────┘         └─────────┘    │ └──────────────────┘ │    └─────────┘         └─────┘        └────────┘   │
+      // │ 10.0.0.2:55551   55551<->PORT2   192.168.0.1:PORT2 │                      │ 192.168.0.2:PORT2   PORT2<->55552   10.0.0.2:55552 │
+      // │                                                    │                      │                                                    │
+      // └────────────────────────────────────────────────────┘                      └────────────────────────────────────────────────────┘
       // Contact details are retrieved from the seed node, but cannot be used
       // since port mapping changes between targets in EDM mapping
       // Node 2 -> Node 1 ping should fail (Node 1 behind NAT)
@@ -254,6 +290,24 @@ describe('endpoint dependent NAT traversal', () => {
         agent2NodeId,
         tearDownNAT,
       } = await testNatUtils.setupNATWithSeedNode('edm', 'eim', logger);
+      //                                                                 Namespace3
+      //                                                           ┌──────────────────┐
+      //                                                           │                  │
+      //                       Namespace1                          │   ┌──────────┐   │
+      // ┌────────────────────────────────────────────────────┐    │   │ SeedNode │   │
+      // │                                                    │    │   └──────────┘   │
+      // │                  55551<->PORT1   192.168.0.1:PORT1 │    │ 192.168.0.3:PORT │
+      // │   ┌────────┐        ┌─────┐         ┌─────────┐    │    │                  │
+      // │   │        │        │     ├─────────┤         │    │    └──────────────────┘
+      // │   │ Agent1 ├────────┤ NAT │         │ Router1 │    │                          Namespace2
+      // │   │        │        │     ├─────────┤         │    │    ┌──────────────────────────────────────────────────┐
+      // │   └────────┘        └─────┘         └─────────┘    │    │                                                  │
+      // │ 10.0.0.2:55551   55551<->PORT2   192.168.0.1:PORT2 │    │    ┌─────────┐       ┌─────┐        ┌────────┐   │
+      // │                                                    │    │    │ Router2 ├───────┤ NAT ├────────┤ Agent2 │   │
+      // └────────────────────────────────────────────────────┘    │    └─────────┘       └─────┘        └────────┘   │
+      //                                                           │ 192.168.0.2:PORT   PORT<->55552   10.0.0.2:55552 │
+      //                                                           │                                                  │
+      //                                                           └──────────────────────────────────────────────────┘
       // Since one of the nodes uses EDM NAT we cannot punch through
       let exitCode, stdout;
       ({ exitCode, stdout } = await testUtils.pkExec(
