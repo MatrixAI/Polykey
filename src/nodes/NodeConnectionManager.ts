@@ -711,6 +711,7 @@ class NodeConnectionManager {
     relayMsg.setSrcId(srcNode);
     relayMsg.setTargetId(tgtNode);
     if (proxyAddress != null) relayMsg.setProxyAddress(proxyAddress);
+    // Send message and ignore any error
     await this.withConnF(
       relayNodeId,
       async (connection) => {
@@ -718,7 +719,7 @@ class NodeConnectionManager {
         await client.nodesHolePunchMessageSend(relayMsg);
       },
       ctx,
-    );
+    ).catch(() => {});
   }
 
   /**
@@ -811,13 +812,12 @@ class NodeConnectionManager {
           seedNodeId,
           this.keyManager.getNodeId(),
           nodeId,
-        ).catch();
+        ).catch(() => console.log('failed to relay message'));
       });
     }
     try {
       await this.holePunchForward(nodeId, host, port, ctx);
     } catch (e) {
-      console.error(e);
       console.log(
         'pinging failed',
         nodesUtils.encodeNodeId(nodeId),

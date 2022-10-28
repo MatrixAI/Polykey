@@ -235,7 +235,7 @@ class NodeManager {
         ctx,
       ));
     if (targetAddress == null) {
-      throw new nodesErrors.ErrorNodeGraphNodeIdNotFound();
+      return false;
     }
     const targetHost = await networkUtils.resolveHost(targetAddress.host);
     return await this.nodeConnectionManager.pingNode(

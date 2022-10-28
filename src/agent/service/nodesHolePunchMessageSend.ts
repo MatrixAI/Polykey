@@ -73,7 +73,12 @@ function nodesHolePunchMessageSend({
             logger.info(
               `Received signalling message to target ${call.request.getSrcId()}@${host}:${port}`,
             );
-            await nodeConnectionManager.holePunchReverse(host, port);
+            // Ignore failure
+            try {
+              await nodeConnectionManager.holePunchReverse(host, port);
+            } catch {
+              // Do nothing
+            }
           } else {
             logger.error(
               'Received signalling message, target information was missing, skipping reverse hole punch',
@@ -104,6 +109,7 @@ function nodesHolePunchMessageSend({
       callback(null, response);
       return;
     } catch (e) {
+      console.error(e);
       callback(grpcUtils.fromError(e, true));
       !agentUtils.isAgentClientError(e) &&
         logger.error(`${nodesHolePunchMessageSend.name}:${e}`);

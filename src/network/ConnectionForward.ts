@@ -184,26 +184,26 @@ class ConnectionForward extends Connection {
     let punchInterval;
     try {
       // Send punch signal
-      if (this.port !== 1314) {
-        console.log(
-          new Date(),
-          'CONNECTION FORWARD SENDING PING MESSAGE',
-          nodesUtils.encodeNodeId(this.nodeId),
-          this.host,
-          this.port,
-        );
-      }
+      // if (this.port !== 1314) {
+      //   console.log(
+      //     new Date(),
+      //     'CONNECTION FORWARD SENDING PING MESSAGE',
+      //     nodesUtils.encodeNodeId(this.nodeId),
+      //     this.host,
+      //     this.port,
+      //   );
+      // }
       await this.send(networkUtils.pingBuffer);
       punchInterval = setInterval(async () => {
-        if (this.port !== 1314) {
-          console.log(
-            new Date(),
-            'CONNECTION FORWARD SENDING PING MESSAGE',
-            nodesUtils.encodeNodeId(this.nodeId),
-            this.host,
-            this.port,
-          );
-        }
+        // If (this.port !== 1314) {
+        //   console.log(
+        //     new Date(),
+        //     'CONNECTION FORWARD SENDING PING MESSAGE',
+        //     nodesUtils.encodeNodeId(this.nodeId),
+        //     this.host,
+        //     this.port,
+        //   );
+        // }
         await this.send(networkUtils.pingBuffer);
       }, this.punchIntervalTime);
       await Promise.race([

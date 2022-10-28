@@ -17,7 +17,7 @@ describe('testnet connection', () => {
   // The testnet node ids/addresses are not fixed
   // These will need to be updated whenever they change
   const seedNodeId1 =
-    'v5cfpj6f5s3l1137t4729299hb7s7t8p1j5v8p1ajrlpqmb7csbf0' as NodeIdEncoded;
+    'vdrn5ok1cdrghve4r72dufhk5si9m42665eutias61sgavjusar60' as NodeIdEncoded;
 
   const seedNodeIp1 = 'testnet.polykey.io' as Host;
   const seedNodePort = 1314 as Port;
@@ -301,9 +301,11 @@ describe('testnet connection', () => {
         agent2.proxy.getProxyPort(),
       );
       console.log('Attempting ping');
-      console.log(
-        await agent2.nodeManager.pingNode(agent1.keyManager.getNodeId()),
+      const pingResult = await agent2.nodeManager.pingNode(
+        agent1.keyManager.getNodeId(),
       );
+      console.log(pingResult);
+      expect(pingResult).toBe(true);
     } catch (e) {
       console.error(e);
       throw e;

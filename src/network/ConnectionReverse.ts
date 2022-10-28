@@ -42,14 +42,14 @@ class ConnectionReverse extends Connection {
     data: Buffer,
     remoteInfo: { address: string; port: number },
   ) => {
-    if (remoteInfo.port !== 1314) {
-      console.log(
-        new Date(),
-        'CONNECTION REVERSE RECEIVED MESSAGE',
-        remoteInfo,
-        data,
-      );
-    }
+    // If (remoteInfo.port !== 1314) {
+    //   console.log(
+    //     new Date(),
+    //     'CONNECTION REVERSE RECEIVED MESSAGE',
+    //     remoteInfo,
+    //     data,
+    //   );
+    // }
     // Ignore messages not intended for this target
     if (remoteInfo.address !== this.host || remoteInfo.port !== this.port) {
       return;
@@ -178,24 +178,24 @@ class ConnectionReverse extends Connection {
     try {
       await Promise.race([socketP, errorP, abortedP]);
       // Send punch & ready signal
-      if (this.port !== 1314) {
-        console.log(
-          new Date(),
-          'CONNECTION REVERSE SENDING PING MESSAGE',
-          this.host,
-          this.port,
-        );
-      }
+      // if (this.port !== 1314) {
+      //   console.log(
+      //     new Date(),
+      //     'CONNECTION REVERSE SENDING PING MESSAGE',
+      //     this.host,
+      //     this.port,
+      //   );
+      // }
       await this.send(networkUtils.pingBuffer);
       punchInterval = setInterval(async () => {
-        if (this.port !== 1314) {
-          console.log(
-            new Date(),
-            'CONNECTION REVERSE SENDING PING MESSAGE',
-            this.host,
-            this.port,
-          );
-        }
+        // If (this.port !== 1314) {
+        //   console.log(
+        //     new Date(),
+        //     'CONNECTION REVERSE SENDING PING MESSAGE',
+        //     this.host,
+        //     this.port,
+        //   );
+        // }
         await this.send(networkUtils.pingBuffer);
       }, this.punchIntervalTime);
       await Promise.race([readyP, errorP, abortedP]);
