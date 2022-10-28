@@ -209,7 +209,7 @@ class ConnectionForward extends Connection {
       await Promise.race([
         Promise.all([readyP, secureConnectP]),
         errorP,
-        abortedP,
+        // abortedP,
       ]);
     } catch (e) {
       // Clean up partial start

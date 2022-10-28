@@ -176,7 +176,7 @@ class ConnectionReverse extends Connection {
     this.serverSocket.on('close', this.handleClose);
     let punchInterval;
     try {
-      await Promise.race([socketP, errorP, abortedP]);
+      await Promise.race([socketP, errorP, /*abortedP*/]);
       // Send punch & ready signal
       // if (this.port !== 1314) {
       //   console.log(
@@ -198,7 +198,7 @@ class ConnectionReverse extends Connection {
         // }
         await this.send(networkUtils.pingBuffer);
       }, this.punchIntervalTime);
-      await Promise.race([readyP, errorP, abortedP]);
+      await Promise.race([readyP, errorP, /*abortedP*/]);
     } catch (e) {
       this.logger.info(`Failed to start Connection Reverse: ${e.message}`);
       // Clean up partial start
