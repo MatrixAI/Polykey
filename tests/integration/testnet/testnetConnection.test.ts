@@ -1,20 +1,24 @@
-import type { NodeIdEncoded } from '@/nodes/types';
+import type { NodeIdEncoded, SeedNodes } from '@/nodes/types';
 import type { Host, Port } from '@/network/types';
 import path from 'path';
 import fs from 'fs';
 import readline from 'readline';
-import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
+import Logger, { LogLevel, StreamHandler, formatting } from '@matrixai/logger';
+import PolykeyAgent from '@/PolykeyAgent';
+import * as nodesUtils from '@/nodes/utils';
 import * as testUtils from '../../utils';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
+import { sleep } from '../../../src/utils/index';
 
 describe('testnet connection', () => {
-  const logger = new Logger('testnet connection test', LogLevel.INFO, [
-    new StreamHandler(),
-  ]);
+  const logger = new Logger('TCT', LogLevel.INFO, [new StreamHandler()]);
+  const format = formatting.format`${formatting.keys}:${formatting.msg}`;
+  logger.handlers.forEach((handler) => handler.setFormatter(format));
   // The testnet node ids/addresses are not fixed
   // These will need to be updated whenever they change
   const seedNodeId1 =
-    'vcfi7mgmfn5u82a3obv1gd958ei68ateu4b62i9opm8fc07jvr6dg' as NodeIdEncoded;
+    'v5cfpj6f5s3l1137t4729299hb7s7t8p1j5v8p1ajrlpqmb7csbf0' as NodeIdEncoded;
+
   const seedNodeIp1 = 'testnet.polykey.io' as Host;
   const seedNodePort = 1314 as Port;
   let dataDir: string;
@@ -201,4 +205,116 @@ describe('testnet connection', () => {
       await testUtils.processExit(agentProcessB);
     }
   });
+  test('testing hole punching', async () => {
+    const nodePathS = path.join(dataDir, 'seed');
+    const nodePath1 = path.join(dataDir, 'node1');
+    const nodePath2 = path.join(dataDir, 'node2');
+    const password = 'password';
+    const localhost = '127.0.0.1' as Host;
+    logger.setLevel(LogLevel.WARN);
+    // Console.log('Starting Seed');
+    // const seed = await PolykeyAgent.createPolykeyAgent({
+    //   password,
+    //   nodePath: nodePathS,
+    //   networkConfig: {
+    //     proxyHost: localhost,
+    //     agentHost: localhost,
+    //     clientHost: localhost,
+    //     forwardHost: localhost,
+    //     proxyPort: 55550 as Port,
+    //   },
+    //   keysConfig: {
+    //     privateKeyPemOverride: globalRootKeyPems[0],
+    //   },
+    //   logger: logger.getChild('S'),
+    // });
+    // const seedNodes: SeedNodes = {
+    //   [nodesUtils.encodeNodeId(seed.keyManager.getNodeId())]: {
+    //     host: seed.proxy.getProxyHost(),
+    //     port: seed.proxy.getProxyPort(),
+    //   },
+    // };
+    const seedNodes: SeedNodes = {
+      [seedNodeId1]: {
+        host: seedNodeIp1,
+        port: seedNodePort,
+      },
+    };
+    console.log('Starting Agent1');
+    const agent1 = await PolykeyAgent.createPolykeyAgent({
+      password,
+      nodePath: nodePath1,
+      seedNodes,
+      keysConfig: {
+        privateKeyPemOverride: globalRootKeyPems[1],
+      },
+      networkConfig: {
+        // ProxyHost: localhost,
+        agentHost: localhost,
+        clientHost: localhost,
+        forwardHost: localhost,
+        proxyPort: 55551 as Port,
+      },
+
+      logger: logger.getChild('A1'),
+    });
+    console.log('Starting Agent2');
+    logger.setLevel(LogLevel.INFO);
+    const agent2 = await PolykeyAgent.createPolykeyAgent({
+      password,
+      nodePath: nodePath2,
+      seedNodes,
+      keysConfig: {
+        privateKeyPemOverride: globalRootKeyPems[2],
+      },
+      networkConfig: {
+        // ProxyHost: localhost,
+        agentHost: localhost,
+        clientHost: localhost,
+        forwardHost: localhost,
+        proxyPort: 55552 as Port,
+      },
+      logger: logger.getChild('A2'),
+    });
+
+    try {
+      logger.setLevel(LogLevel.INFO);
+      // Console.log('syncing 1');
+      // await agent1.nodeManager.syncNodeGraph(true);
+      // console.log('syncing 2');
+      // await agent2.nodeManager.syncNodeGraph(true);
+
+      // seed   hun0
+      // agent1 ijtg
+      // agent2 fhmg
+
+      // Ping the node
+      await sleep(5000);
+      console.log(
+        nodesUtils.encodeNodeId(agent1.keyManager.getNodeId()),
+        agent1.proxy.getProxyHost(),
+        agent1.proxy.getProxyPort(),
+      );
+      console.log(
+        nodesUtils.encodeNodeId(agent2.keyManager.getNodeId()),
+        agent2.proxy.getProxyHost(),
+        agent2.proxy.getProxyPort(),
+      );
+      console.log('Attempting ping');
+      console.log(
+        await agent2.nodeManager.pingNode(agent1.keyManager.getNodeId()),
+      );
+    } catch (e) {
+      console.error(e);
+      throw e;
+    } finally {
+      logger.setLevel(LogLevel.WARN);
+      console.log('cleaning up');
+      // Await seed.stop();
+      await agent1.stop();
+      await agent2.stop();
+    }
+  }, 100000);
+
+  // We want to ping each other
 });

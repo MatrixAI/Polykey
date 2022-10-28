@@ -701,9 +701,15 @@ class NodeConnectionManager {
     proxyAddress: string | undefined,
     @context ctx: ContextTimed,
   ): Promise<void> {
+    const rlyNode = nodesUtils.encodeNodeId(relayNodeId);
+    const srcNode = nodesUtils.encodeNodeId(sourceNodeId);
+    const tgtNode = nodesUtils.encodeNodeId(targetNodeId);
+    this.logger.info(
+      `sendSignallingMessage sending Signalling message relay: ${rlyNode}, source: ${srcNode}, target: ${tgtNode}, proxy: ${proxyAddress}`,
+    );
     const relayMsg = new nodesPB.Relay();
-    relayMsg.setSrcId(nodesUtils.encodeNodeId(sourceNodeId));
-    relayMsg.setTargetId(nodesUtils.encodeNodeId(targetNodeId));
+    relayMsg.setSrcId(srcNode);
+    relayMsg.setTargetId(tgtNode);
     if (proxyAddress != null) relayMsg.setProxyAddress(proxyAddress);
     await this.withConnF(
       relayNodeId,
@@ -722,10 +728,12 @@ class NodeConnectionManager {
    * node).
    * @param message the original relay message (assumed to be created in
    * nodeConnection.start())
+   * @param sourceAddress
    * @param ctx
    */
   public relaySignallingMessage(
     message: nodesPB.Relay,
+    sourceAddress: NodeAddress,
     ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<void>;
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
@@ -736,25 +744,18 @@ class NodeConnectionManager {
   )
   public async relaySignallingMessage(
     message: nodesPB.Relay,
+    sourceAddress: NodeAddress,
     @context ctx: ContextTimed,
   ): Promise<void> {
     // First check if we already have an existing ID -> address record
     // If we're relaying then we trust our own node graph records over
     // what was provided in the message
     const sourceNode = validationUtils.parseNodeId(message.getSrcId());
-    const knownAddress = (await this.nodeGraph.getNode(sourceNode))?.address;
-    let proxyAddress = message.getProxyAddress();
-    if (knownAddress != null) {
-      proxyAddress = networkUtils.buildAddress(
-        knownAddress.host as Host,
-        knownAddress.port,
-      );
-    }
     await this.sendSignallingMessage(
       validationUtils.parseNodeId(message.getTargetId()),
       sourceNode,
       validationUtils.parseNodeId(message.getTargetId()),
-      proxyAddress,
+      networkUtils.buildAddress(sourceAddress.host as Host, sourceAddress.port),
       ctx,
     );
   }
@@ -800,25 +801,32 @@ class NodeConnectionManager {
   ): Promise<boolean> {
     host = await networkUtils.resolveHost(host);
     const seedNodes = this.getSeedNodes();
-    const isSeedNode = !!seedNodes.find((nodeId) => {
-      return nodeId.equals(nodeId);
+    const isSeedNode = !!seedNodes.find((seedNodeId) => {
+      return nodeId.equals(seedNodeId);
     });
     if (!isSeedNode) {
-      void Array.from(this.getSeedNodes(), (seedNodeId) => {
+      void Array.from(this.getSeedNodes(), async (seedNodeId) => {
         // FIXME: this needs to handle aborting
-        return this.sendSignallingMessage(
+        void this.sendSignallingMessage(
           seedNodeId,
           this.keyManager.getNodeId(),
           nodeId,
-        );
+        ).catch();
       });
     }
     try {
       await this.holePunchForward(nodeId, host, port, ctx);
     } catch (e) {
+      console.error(e);
+      console.log(
+        'pinging failed',
+        nodesUtils.encodeNodeId(nodeId),
+        !isSeedNode,
+      );
       return false;
     }
     // FIXME: clean up in a finally block, holePunchPromises should be cancelled
+    console.log('pinging succ', nodesUtils.encodeNodeId(nodeId), !isSeedNode);
     return true;
   }
 

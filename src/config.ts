@@ -83,15 +83,15 @@ const config = {
       clientPort: 0 as Port,
     },
     proxyConfig: {
-      connConnectTime: 2000,
+      connConnectTime: 10000,
       connKeepAliveTimeoutTime: 20000,
       connEndTime: 1000,
-      connPunchIntervalTime: 1000,
+      connPunchIntervalTime: 250,
       connKeepAliveIntervalTime: 1000,
     },
     nodeConnectionManagerConfig: {
-      connConnectTime: 2000,
-      connTimeoutTime: 60000,
+      connConnectTime: 10000,
+      connTimeoutTime: 600000000, // FIXME: revert back.
       initialClosestNodes: 3,
     },
     // This is not used by the `PolykeyAgent` which defaults to `{}`

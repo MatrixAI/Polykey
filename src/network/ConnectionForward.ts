@@ -13,6 +13,7 @@ import Connection from './Connection';
 import * as networkUtils from './utils';
 import * as networkErrors from './errors';
 import * as keysUtils from '../keys/utils';
+import * as nodesUtils from '../nodes/utils';
 import { promise } from '../utils';
 import * as contextsErrors from '../contexts/errors';
 import { timedCancellable, context } from '../contexts/index';
@@ -42,6 +43,15 @@ class ConnectionForward extends Connection {
     data: Buffer,
     remoteInfo: { address: string; port: number },
   ) => {
+    if (remoteInfo.port !== 1314) {
+      console.log(
+        new Date(),
+        'CONNECTION FORWARD RECEIVED MESSAGE',
+        nodesUtils.encodeNodeId(this.nodeId),
+        remoteInfo,
+        data,
+      );
+    }
     // Ignore messages not intended for this target
     if (remoteInfo.address !== this.host || remoteInfo.port !== this.port) {
       return;
@@ -59,6 +69,14 @@ class ConnectionForward extends Connection {
       this.startKeepAliveTimeout();
     }
     if (msg.type === 'ping') {
+      if (remoteInfo.port !== 1314) {
+        console.log(
+          new Date(),
+          'CONNECTION FORWARD RECEIVED PING MESSAGE, RESPONDING WITH PONG',
+          nodesUtils.encodeNodeId(this.nodeId),
+          remoteInfo,
+        );
+      }
       this.resolveReadyP();
       // Respond with ready message
       await this.send(networkUtils.pongBuffer);
@@ -166,8 +184,26 @@ class ConnectionForward extends Connection {
     let punchInterval;
     try {
       // Send punch signal
+      if (this.port !== 1314) {
+        console.log(
+          new Date(),
+          'CONNECTION FORWARD SENDING PING MESSAGE',
+          nodesUtils.encodeNodeId(this.nodeId),
+          this.host,
+          this.port,
+        );
+      }
       await this.send(networkUtils.pingBuffer);
       punchInterval = setInterval(async () => {
+        if (this.port !== 1314) {
+          console.log(
+            new Date(),
+            'CONNECTION FORWARD SENDING PING MESSAGE',
+            nodesUtils.encodeNodeId(this.nodeId),
+            this.host,
+            this.port,
+          );
+        }
         await this.send(networkUtils.pingBuffer);
       }, this.punchIntervalTime);
       await Promise.race([

@@ -11,6 +11,7 @@ import * as networkUtils from '../../network/utils';
 import * as grpcUtils from '../../grpc/utils';
 import { validateSync } from '../../validation';
 import * as validationUtils from '../../validation/utils';
+import * as nodesUtils from '../../nodes/utils';
 import { matchSync } from '../../utils';
 import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 import * as agentUtils from '../utils';
@@ -59,6 +60,7 @@ function nodesHolePunchMessageSend({
         },
       );
       const connectionInfo = connectionInfoGet(call);
+      const srcNodeId = nodesUtils.encodeNodeId(connectionInfo!.remoteNodeId);
       // Firstly, check if this node is the desired node
       // If so, then we want to make this node start sending hole punching packets
       // back to the source node.
@@ -68,18 +70,35 @@ function nodesHolePunchMessageSend({
             const [host, port] = networkUtils.parseAddress(
               call.request.getProxyAddress(),
             );
+            logger.info(
+              `Received signalling message to target ${call.request.getSrcId()}@${host}:${port}`,
+            );
             await nodeConnectionManager.holePunchReverse(host, port);
+          } else {
+            logger.error(
+              'Received signalling message, target information was missing, skipping reverse hole punch',
+            );
           }
+        } else if (await nodeManager.knowsNode(sourceId, tran)) {
           // Otherwise, find if node in table
           // If so, ask the nodeManager to relay to the node
-        } else if (await nodeManager.knowsNode(sourceId, tran)) {
-          // Const newHolePunchMessage = new nodesPB.Relay();
+          const targetNodeId = call.request.getTargetId();
           const proxyAddress = networkUtils.buildAddress(
             connectionInfo!.remoteHost,
             connectionInfo!.remotePort,
           );
           call.request.setProxyAddress(proxyAddress);
-          await nodeConnectionManager.relaySignallingMessage(call.request);
+          logger.info(
+            `Relaying signalling message from ${srcNodeId}@${
+              connectionInfo!.remoteHost
+            }:${
+              connectionInfo!.remotePort
+            } to ${targetNodeId} with information ${proxyAddress}`,
+          );
+          await nodeConnectionManager.relaySignallingMessage(call.request, {
+            host: connectionInfo!.remoteHost,
+            port: connectionInfo!.remotePort,
+          });
         }
       });
       callback(null, response);
