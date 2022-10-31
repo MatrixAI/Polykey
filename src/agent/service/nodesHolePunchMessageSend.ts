@@ -70,7 +70,7 @@ function nodesHolePunchMessageSend({
             const [host, port] = networkUtils.parseAddress(
               call.request.getProxyAddress(),
             );
-            logger.info(
+            logger.debug(
               `Received signalling message to target ${call.request.getSrcId()}@${host}:${port}`,
             );
             // Ignore failure
@@ -93,7 +93,7 @@ function nodesHolePunchMessageSend({
             connectionInfo!.remotePort,
           );
           call.request.setProxyAddress(proxyAddress);
-          logger.info(
+          logger.debug(
             `Relaying signalling message from ${srcNodeId}@${
               connectionInfo!.remoteHost
             }:${
@@ -109,7 +109,6 @@ function nodesHolePunchMessageSend({
       callback(null, response);
       return;
     } catch (e) {
-      console.error(e);
       callback(grpcUtils.fromError(e, true));
       !agentUtils.isAgentClientError(e) &&
         logger.error(`${nodesHolePunchMessageSend.name}:${e}`);

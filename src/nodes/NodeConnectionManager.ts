@@ -704,7 +704,7 @@ class NodeConnectionManager {
     const rlyNode = nodesUtils.encodeNodeId(relayNodeId);
     const srcNode = nodesUtils.encodeNodeId(sourceNodeId);
     const tgtNode = nodesUtils.encodeNodeId(targetNodeId);
-    this.logger.info(
+    this.logger.debug(
       `sendSignallingMessage sending Signalling message relay: ${rlyNode}, source: ${srcNode}, target: ${tgtNode}, proxy: ${proxyAddress}`,
     );
     const relayMsg = new nodesPB.Relay();
@@ -812,21 +812,15 @@ class NodeConnectionManager {
           seedNodeId,
           this.keyManager.getNodeId(),
           nodeId,
-        ).catch(() => console.log('failed to relay message'));
+        ).catch(() => {});
       });
     }
     try {
       await this.holePunchForward(nodeId, host, port, ctx);
     } catch (e) {
-      console.log(
-        'pinging failed',
-        nodesUtils.encodeNodeId(nodeId),
-        !isSeedNode,
-      );
       return false;
     }
     // FIXME: clean up in a finally block, holePunchPromises should be cancelled
-    console.log('pinging succ', nodesUtils.encodeNodeId(nodeId), !isSeedNode);
     return true;
   }
 

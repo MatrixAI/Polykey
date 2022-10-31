@@ -42,14 +42,6 @@ class ConnectionReverse extends Connection {
     data: Buffer,
     remoteInfo: { address: string; port: number },
   ) => {
-    // If (remoteInfo.port !== 1314) {
-    //   console.log(
-    //     new Date(),
-    //     'CONNECTION REVERSE RECEIVED MESSAGE',
-    //     remoteInfo,
-    //     data,
-    //   );
-    // }
     // Ignore messages not intended for this target
     if (remoteInfo.address !== this.host || remoteInfo.port !== this.port) {
       return;
@@ -67,22 +59,8 @@ class ConnectionReverse extends Connection {
       this.startKeepAliveTimeout();
     }
     if (msg.type === 'ping') {
-      if (remoteInfo.port !== 1314) {
-        console.log(
-          new Date(),
-          'CONNECTION REVERSE RECEIVED PING MESSAGE, RESPONDING WITH PONG',
-          remoteInfo,
-        );
-      }
       await this.send(networkUtils.pongBuffer);
     } else if (msg.type === 'pong') {
-      if (remoteInfo.port !== 1314) {
-        console.log(
-          new Date(),
-          'CONNECTION REVERSE RECEIVED PONG MESSAGE, RESOLVING READY',
-          remoteInfo,
-        );
-      }
       this.resolveReadyP();
     }
   };
@@ -144,7 +122,7 @@ class ConnectionReverse extends Connection {
     // Promise for abortion and timeout
     const { p: abortedP, resolveP: resolveAbortedP } = promise<void>();
     if (ctx.signal.aborted) {
-      this.logger.info(`Failed to start Connection Reverse: aborted`);
+      this.logger.debug(`Failed to start Connection Reverse: aborted`);
       // This is for arbitrary abortion reason provided by the caller
       // Re-throw the default timeout error as a network timeout error
       if (
@@ -176,31 +154,15 @@ class ConnectionReverse extends Connection {
     this.serverSocket.on('close', this.handleClose);
     let punchInterval;
     try {
-      await Promise.race([socketP, errorP, /*abortedP*/]);
+      await Promise.race([socketP, errorP, abortedP]);
       // Send punch & ready signal
-      // if (this.port !== 1314) {
-      //   console.log(
-      //     new Date(),
-      //     'CONNECTION REVERSE SENDING PING MESSAGE',
-      //     this.host,
-      //     this.port,
-      //   );
-      // }
       await this.send(networkUtils.pingBuffer);
       punchInterval = setInterval(async () => {
-        // If (this.port !== 1314) {
-        //   console.log(
-        //     new Date(),
-        //     'CONNECTION REVERSE SENDING PING MESSAGE',
-        //     this.host,
-        //     this.port,
-        //   );
-        // }
         await this.send(networkUtils.pingBuffer);
       }, this.punchIntervalTime);
-      await Promise.race([readyP, errorP, /*abortedP*/]);
+      await Promise.race([readyP, errorP, abortedP]);
     } catch (e) {
-      this.logger.info(`Failed to start Connection Reverse: ${e.message}`);
+      this.logger.debug(`Failed to start Connection Reverse: ${e.message}`);
       // Clean up partial start
       // Socket isn't established yet, so it is destroyed
       this.serverSocket.destroy();
@@ -214,7 +176,7 @@ class ConnectionReverse extends Connection {
     this.serverSocket.on('error', this.handleError);
     this.serverSocket.off('error', handleStartError);
     if (ctx.signal.aborted) {
-      this.logger.info(`Failed to start Connection Reverse: aborted`);
+      this.logger.debug(`Failed to start Connection Reverse: aborted`);
       // Clean up partial start
       // Socket isn't established yet, so it is destroyed
       this.serverSocket.destroy();

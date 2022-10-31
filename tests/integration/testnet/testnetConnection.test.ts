@@ -5,7 +5,6 @@ import fs from 'fs';
 import readline from 'readline';
 import Logger, { LogLevel, StreamHandler, formatting } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
-import * as nodesUtils from '@/nodes/utils';
 import * as testUtils from '../../utils';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 import { sleep } from '../../../src/utils/index';
@@ -18,7 +17,6 @@ describe('testnet connection', () => {
   // These will need to be updated whenever they change
   const seedNodeId1 =
     'vdrn5ok1cdrghve4r72dufhk5si9m42665eutias61sgavjusar60' as NodeIdEncoded;
-
   const seedNodeIp1 = 'testnet.polykey.io' as Host;
   const seedNodePort = 1314 as Port;
   let dataDir: string;
@@ -205,8 +203,9 @@ describe('testnet connection', () => {
       await testUtils.processExit(agentProcessB);
     }
   });
+  // This test is known to fail, two nodes on the same network can't hole punch
   test('testing hole punching', async () => {
-    const nodePathS = path.join(dataDir, 'seed');
+    // Const nodePathS = path.join(dataDir, 'seed');
     const nodePath1 = path.join(dataDir, 'node1');
     const nodePath2 = path.join(dataDir, 'node2');
     const password = 'password';
@@ -240,7 +239,7 @@ describe('testnet connection', () => {
         port: seedNodePort,
       },
     };
-    console.log('Starting Agent1');
+    // Console.log('Starting Agent1');
     const agent1 = await PolykeyAgent.createPolykeyAgent({
       password,
       nodePath: nodePath1,
@@ -258,7 +257,7 @@ describe('testnet connection', () => {
 
       logger: logger.getChild('A1'),
     });
-    console.log('Starting Agent2');
+    // Console.log('Starting Agent2');
     logger.setLevel(LogLevel.INFO);
     const agent2 = await PolykeyAgent.createPolykeyAgent({
       password,
@@ -290,33 +289,30 @@ describe('testnet connection', () => {
 
       // Ping the node
       await sleep(5000);
-      console.log(
-        nodesUtils.encodeNodeId(agent1.keyManager.getNodeId()),
-        agent1.proxy.getProxyHost(),
-        agent1.proxy.getProxyPort(),
-      );
-      console.log(
-        nodesUtils.encodeNodeId(agent2.keyManager.getNodeId()),
-        agent2.proxy.getProxyHost(),
-        agent2.proxy.getProxyPort(),
-      );
-      console.log('Attempting ping');
+      // Console.log(
+      //   nodesUtils.encodeNodeId(agent1.keyManager.getNodeId()),
+      //   agent1.proxy.getProxyHost(),
+      //   agent1.proxy.getProxyPort(),
+      // );
+      // console.log(
+      //   nodesUtils.encodeNodeId(agent2.keyManager.getNodeId()),
+      //   agent2.proxy.getProxyHost(),
+      //   agent2.proxy.getProxyPort(),
+      // );
+      // console.log('Attempting ping');
       const pingResult = await agent2.nodeManager.pingNode(
         agent1.keyManager.getNodeId(),
       );
-      console.log(pingResult);
+      // Console.log(pingResult);
       expect(pingResult).toBe(true);
-    } catch (e) {
-      console.error(e);
-      throw e;
     } finally {
       logger.setLevel(LogLevel.WARN);
-      console.log('cleaning up');
+      // Console.log('cleaning up');
       // Await seed.stop();
       await agent1.stop();
       await agent2.stop();
     }
-  }, 100000);
+  });
 
   // We want to ping each other
 });

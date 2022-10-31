@@ -13,7 +13,6 @@ import Connection from './Connection';
 import * as networkUtils from './utils';
 import * as networkErrors from './errors';
 import * as keysUtils from '../keys/utils';
-import * as nodesUtils from '../nodes/utils';
 import { promise } from '../utils';
 import * as contextsErrors from '../contexts/errors';
 import { timedCancellable, context } from '../contexts/index';
@@ -43,15 +42,6 @@ class ConnectionForward extends Connection {
     data: Buffer,
     remoteInfo: { address: string; port: number },
   ) => {
-    if (remoteInfo.port !== 1314) {
-      console.log(
-        new Date(),
-        'CONNECTION FORWARD RECEIVED MESSAGE',
-        nodesUtils.encodeNodeId(this.nodeId),
-        remoteInfo,
-        data,
-      );
-    }
     // Ignore messages not intended for this target
     if (remoteInfo.address !== this.host || remoteInfo.port !== this.port) {
       return;
@@ -69,14 +59,6 @@ class ConnectionForward extends Connection {
       this.startKeepAliveTimeout();
     }
     if (msg.type === 'ping') {
-      if (remoteInfo.port !== 1314) {
-        console.log(
-          new Date(),
-          'CONNECTION FORWARD RECEIVED PING MESSAGE, RESPONDING WITH PONG',
-          nodesUtils.encodeNodeId(this.nodeId),
-          remoteInfo,
-        );
-      }
       this.resolveReadyP();
       // Respond with ready message
       await this.send(networkUtils.pongBuffer);
@@ -93,7 +75,7 @@ class ConnectionForward extends Connection {
    * Handler is removed and not executed when `end` is initiated here
    */
   protected handleEnd = async () => {
-    this.logger.info('Receives tlsSocket ending');
+    this.logger.debug('Receives tlsSocket ending');
     if (this.utpConn.destroyed) {
       this.tlsSocket.destroy();
       this.logger.debug('Destroyed tlsSocket');
@@ -112,7 +94,6 @@ class ConnectionForward extends Connection {
    * If already stopped, then this does nothing
    */
   protected handleClose = async () => {
-    this.logger.info('Receives tlsSocket close');
     await this.stop();
   };
 
@@ -144,7 +125,7 @@ class ConnectionForward extends Connection {
     // Promise for abortion and timeout
     const { p: abortedP, resolveP: resolveAbortedP } = promise<void>();
     if (ctx.signal.aborted) {
-      this.logger.info(`Failed to start Connection Forward: aborted`);
+      this.logger.debug(`Failed to start Connection Forward: aborted`);
       // This is for arbitrary abortion reason provided by the caller
       // Re-throw the default timeout error as a network timeout error
       if (
@@ -184,32 +165,14 @@ class ConnectionForward extends Connection {
     let punchInterval;
     try {
       // Send punch signal
-      // if (this.port !== 1314) {
-      //   console.log(
-      //     new Date(),
-      //     'CONNECTION FORWARD SENDING PING MESSAGE',
-      //     nodesUtils.encodeNodeId(this.nodeId),
-      //     this.host,
-      //     this.port,
-      //   );
-      // }
       await this.send(networkUtils.pingBuffer);
       punchInterval = setInterval(async () => {
-        // If (this.port !== 1314) {
-        //   console.log(
-        //     new Date(),
-        //     'CONNECTION FORWARD SENDING PING MESSAGE',
-        //     nodesUtils.encodeNodeId(this.nodeId),
-        //     this.host,
-        //     this.port,
-        //   );
-        // }
         await this.send(networkUtils.pingBuffer);
       }, this.punchIntervalTime);
       await Promise.race([
         Promise.all([readyP, secureConnectP]),
         errorP,
-        // abortedP,
+        abortedP,
       ]);
     } catch (e) {
       // Clean up partial start
@@ -219,7 +182,7 @@ class ConnectionForward extends Connection {
         this.tlsSocket.destroy();
       }
       this.utpSocket.off('message', this.handleMessage);
-      this.logger.info(`Failed to start Connection Forward: ${e.message}`);
+      this.logger.debug(`Failed to start Connection Forward: ${e.message}`);
       throw new networkErrors.ErrorConnectionStart(undefined, {
         cause: e,
       });
@@ -229,7 +192,7 @@ class ConnectionForward extends Connection {
     this.tlsSocket.on('error', this.handleError);
     this.tlsSocket.off('error', handleStartError);
     if (ctx.signal.aborted) {
-      this.logger.info(`Failed to start Connection Forward: aborted`);
+      this.logger.debug(`Failed to start Connection Forward: aborted`);
       // Clean up partial start
       // TLSSocket isn't established yet, so it is destroyed
       if (!this.tlsSocket.destroyed) {
@@ -250,7 +213,7 @@ class ConnectionForward extends Connection {
     try {
       networkUtils.verifyServerCertificateChain(this.nodeId, serverCertChain);
     } catch (e) {
-      this.logger.info(
+      this.logger.debug(
         `Failed to start Connection Forward: verification failed`,
       );
       // Clean up partial start

@@ -207,7 +207,6 @@ function toError(
             cause: error,
           },
         );
-        console.error(remoteError);
         if (error instanceof errors.ErrorPolykey) {
           remoteError.exitCode = error.exitCode;
         }

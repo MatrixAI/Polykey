@@ -1081,7 +1081,6 @@ class NodeManager {
           });
           if (block) {
             try {
-              console.log('awaiting ping');
               await pingAndSetTask.promise();
             } catch (e) {
               if (!(e instanceof nodesErrors.ErrorNodeGraphSameNodeId)) throw e;
