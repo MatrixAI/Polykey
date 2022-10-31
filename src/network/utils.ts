@@ -1,15 +1,18 @@
 import type { Socket } from 'net';
 import type { TLSSocket } from 'tls';
+import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import type { Host, Hostname, Port, Address, NetworkMessage } from './types';
 import type { Certificate, PublicKey } from '../keys/types';
 import type { NodeId } from '../ids/types';
+import type { ContextTimed } from '../contexts/types';
 import { Buffer } from 'buffer';
 import dns from 'dns';
 import { IPv4, IPv6, Validator } from 'ip-num';
 import * as networkErrors from './errors';
+import timedCancellable from '../contexts/functions/timedCancellable';
 import * as keysUtils from '../keys/utils';
 import * as nodesUtils from '../nodes/utils';
-import { isEmptyObject, promisify } from '../utils';
+import * as utils from '../utils';
 
 const pingBuffer = serializeNetworkMessage({
   type: 'ping',
@@ -90,25 +93,118 @@ function parseAddress(address: string): [Host, Port] {
 }
 
 /**
- * Resolves a provided hostname to its respective IP address (type Host)
+ * Checks if error is software error.
+ * These error codes would mean there's something broken with DNS.
  */
-async function resolveHost(host: Host | Hostname): Promise<Host> {
-  // If already IPv4/IPv6 address, return it
-  if (isHost(host)) {
-    return host as Host;
-  }
-  const lookup = promisify(dns.lookup).bind(dns);
-  let resolvedHost;
-  try {
-    // Resolve the hostname and get the IPv4 address
-    resolvedHost = await lookup(host, 4);
-  } catch (e) {
-    throw new networkErrors.ErrorHostnameResolutionFailed(e.message, {
-      cause: e,
+function isDNSError(e: { code: string }): boolean {
+  return (
+    e.code === dns.EOF ||
+    e.code === dns.FILE ||
+    e.code === dns.NOMEM ||
+    e.code === dns.DESTRUCTION ||
+    e.code === dns.BADFLAGS ||
+    e.code === dns.BADHINTS ||
+    e.code === dns.NOTINITIALIZED ||
+    e.code === dns.LOADIPHLPAPI ||
+    e.code === dns.ADDRGETNETWORKPARAMS
+  );
+}
+
+/**
+ * Resolve a hostname to all IPv4 and IPv6 hosts.
+ * It does an iterative BFS over any CNAME records.
+ * This performs proper DNS lookup, it does not use the operating system's
+ * resolver. However the default set of DNS servers is inherited from the
+ * operating system configuration.
+ * The default time limit is practically infinity.
+ * This means if the DNS server doesn't respond, this function could take
+ * a very long time.
+ */
+function resolveHostname(
+  hostname: Hostname,
+  servers?: Array<string>,
+  ctx?: Partial<ContextTimed>,
+): PromiseCancellable<Array<Host>> {
+  const f = async (ctx: ContextTimed) => {
+    const hosts: Array<Host> = [];
+    if (ctx.signal.aborted) {
+      return hosts;
+    }
+    // These settings here practically ensure an infinite resolver
+    // The `timeout` is the timeout per DNS packet
+    // The default of `-1` is an exponential backoff starting at 5s
+    // It doubles from there
+    // The maximum timeout is `Math.pow(2, 31) - 1`
+    // The maximum number of tries is `Math.pow(2, 31) - 1`
+    const resolver = new dns.promises.Resolver({
+      timeout: -1,
+      tries: Math.pow(2, 31) - 1,
     });
-  }
-  // Returns an array of [ resolved address, family (4 or 6) ]
-  return resolvedHost[0] as Host;
+    // Even if you set a custom set of servers
+    // it is possible for it retrieve cached results
+    // Note that you should use `dns.getServers()` to get
+    // the default set to be used
+    // Servers will be tried in array-order
+    if (servers != null) {
+      resolver.setServers(servers);
+    }
+    // The default DNS servers are inherited from the OS
+    ctx.signal.addEventListener('abort', () => {
+      // This will trigger `dns.CANCELLED` error
+      // This will result in just returning whatever is in the hosts
+      resolver.cancel();
+    });
+    // Breadth first search through the CNAME records
+    const queue = [hostname];
+    while (queue.length > 0) {
+      const target = queue.shift()!;
+      let cnames: Array<Hostname>;
+      try {
+        cnames = (await resolver.resolveCname(target)) as Array<Hostname>;
+      } catch (e) {
+        if (e.code === dns.CANCELLED || e.code === dns.TIMEOUT) {
+          return hosts;
+        } else if (isDNSError(e)) {
+          throw new networkErrors.ErrorDNSResolver(undefined, { cause: e });
+        } else {
+          cnames = [];
+        }
+      }
+      if (cnames.length > 0) {
+        // Usually only 1 CNAME is used
+        // but here we can support multiple CNAMEs
+        queue.push(...cnames);
+      } else {
+        let ipv4Hosts: Array<Host>;
+        try {
+          ipv4Hosts = (await resolver.resolve4(hostname)) as Array<Host>;
+        } catch (e) {
+          if (e.code === dns.CANCELLED || e.code === dns.TIMEOUT) {
+            return hosts;
+          } else if (isDNSError(e)) {
+            throw new networkErrors.ErrorDNSResolver(undefined, { cause: e });
+          } else {
+            ipv4Hosts = [];
+          }
+        }
+        let ipv6Hosts: Array<Host>;
+        try {
+          ipv6Hosts = (await resolver.resolve6(hostname)) as Array<Host>;
+        } catch (e) {
+          if (e.code === dns.CANCELLED || e.code === dns.TIMEOUT) {
+            return hosts;
+          } else if (isDNSError(e)) {
+            throw new networkErrors.ErrorDNSResolver(undefined, { cause: e });
+          } else {
+            ipv6Hosts = [];
+          }
+        }
+        hosts.push(...ipv4Hosts, ...ipv6Hosts);
+      }
+    }
+    return hosts;
+  };
+  return timedCancellable(f, true)(ctx);
 }
 
 /**
@@ -153,7 +249,7 @@ function getCertificateChain(socket: TLSSocket): Array<Certificate> {
   // The order of certificates is always leaf to root
   const certs: Array<Certificate> = [];
   let cert_ = socket.getPeerCertificate(true);
-  if (isEmptyObject(cert_)) {
+  if (utils.isEmptyObject(cert_)) {
     return certs;
   }
   while (true) {
@@ -387,7 +483,8 @@ export {
   toAuthToken,
   buildAddress,
   parseAddress,
-  resolveHost,
+  isDNSError,
+  resolveHostname,
   resolvesZeroIP,
   serializeNetworkMessage,
   unserializeNetworkMessage,

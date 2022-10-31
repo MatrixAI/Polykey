@@ -129,9 +129,9 @@ class ErrorCertChainSignatureInvalid<T> extends ErrorCertChain<T> {
   exitCode = sysexits.PROTOCOL;
 }
 
-class ErrorHostnameResolutionFailed<T> extends ErrorNetwork<T> {
-  static description = 'Unable to resolve hostname';
-  exitCode = sysexits.USAGE;
+class ErrorDNSResolver<T> extends ErrorNetwork<T> {
+  static description = 'DNS resolution failed';
+  exitCode = sysexits.SOFTWARE;
 }
 
 export {
@@ -161,5 +161,5 @@ export {
   ErrorCertChainNameInvalid,
   ErrorCertChainKeyInvalid,
   ErrorCertChainSignatureInvalid,
-  ErrorHostnameResolutionFailed,
+  ErrorDNSResolver,
 };
