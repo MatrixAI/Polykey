@@ -294,7 +294,9 @@ class NodeConnectionManager {
         const targetHostname = !networkUtils.isHost(targetAddress.host)
           ? (targetAddress.host as string as Hostname)
           : undefined;
-        const targetHost = await networkUtils.resolveHost(targetAddress.host);
+        const targetHosts = networkUtils.isHost(targetAddress.host)
+          ? [targetAddress.host]
+          : await networkUtils.resolveHostname(targetAddress.host);
         // Creating the destroyCallback
         const destroyCallback = async () => {
           // To avoid deadlock only in the case where this is called
@@ -313,7 +315,7 @@ class NodeConnectionManager {
         const newConnection = await NodeConnection.createNodeConnection(
           {
             targetNodeId: targetNodeId,
-            targetHost: targetHost,
+            targetHost: targetHosts[0],
             targetHostname: targetHostname,
             targetPort: targetAddress.port,
             proxy: this.proxy,
@@ -321,7 +323,7 @@ class NodeConnectionManager {
             nodeConnectionManager: this,
             destroyCallback,
             logger: this.logger.getChild(
-              `${NodeConnection.name} ${targetHost}:${targetAddress.port}`,
+              `${NodeConnection.name} ${targetHosts[0]}:${targetAddress.port}`,
             ),
             clientFactory: async (args) =>
               GRPCClientAgent.createGRPCClientAgent(args),
@@ -406,7 +408,7 @@ class NodeConnectionManager {
     proxyPort: Port,
     ctx?: ContextTimed,
   ): Promise<void> {
-    await this.proxy.openConnectionForward(nodeId, proxyHost, proxyPort, ctx);
+    await this.proxy.openConnectionForward([nodeId], proxyHost, proxyPort, ctx);
   }
 
   /**
@@ -796,11 +798,10 @@ class NodeConnectionManager {
   )
   public async pingNode(
     nodeId: NodeId,
-    host: Host | Hostname,
+    host: Host,
     port: Port,
     @context ctx: ContextTimed,
   ): Promise<boolean> {
-    host = await networkUtils.resolveHost(host);
     const seedNodes = this.getSeedNodes();
     const isSeedNode = !!seedNodes.find((seedNodeId) => {
       return nodeId.equals(seedNodeId);

@@ -25,8 +25,8 @@ type ConnectionsForward = {
 interface ConnectionForward extends StartStop {}
 @StartStop()
 class ConnectionForward extends Connection {
-  public readonly nodeId: NodeId;
-
+  protected nodeId_: NodeId;
+  protected nodeIds: Array<NodeId>;
   protected connections: ConnectionsForward;
   protected pingInterval: ReturnType<typeof setInterval>;
   protected utpConn: UTPConnection;
@@ -98,15 +98,15 @@ class ConnectionForward extends Connection {
   };
 
   public constructor({
-    nodeId,
+    nodeIds,
     connections,
     ...rest
   }: {
-    nodeId: NodeId;
+    nodeIds: Array<NodeId>;
     connections: ConnectionsForward;
   } & AbstractConstructorParameters<typeof Connection>[0]) {
     super(rest);
-    this.nodeId = nodeId;
+    this.nodeIds = nodeIds;
     this.connections = connections;
   }
 
@@ -211,7 +211,10 @@ class ConnectionForward extends Connection {
     }
     const serverCertChain = networkUtils.getCertificateChain(this.tlsSocket);
     try {
-      networkUtils.verifyServerCertificateChain(this.nodeId, serverCertChain);
+      this.nodeId_ = networkUtils.verifyServerCertificateChain(
+        this.nodeIds,
+        serverCertChain,
+      );
     } catch (e) {
       this.logger.debug(
         `Failed to start Connection Forward: verification failed`,
@@ -257,6 +260,11 @@ class ConnectionForward extends Connection {
     this.connections.proxy.delete(this.address);
     this.connections.client.delete(this.clientAddress);
     this.logger.info('Stopped Connection Forward');
+  }
+
+  @ready(new networkErrors.ErrorConnectionNotRunning())
+  get nodeId() {
+    return this.nodeId_;
   }
 
   @ready(new networkErrors.ErrorConnectionNotRunning())

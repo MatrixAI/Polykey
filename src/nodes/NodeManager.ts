@@ -21,7 +21,6 @@ import * as nodesErrors from './errors';
 import * as nodesUtils from './utils';
 import * as tasksErrors from '../tasks/errors';
 import { timedCancellable, context } from '../contexts';
-import * as networkUtils from '../network/utils';
 import * as validationUtils from '../validation/utils';
 import * as utilsPB from '../proto/js/polykey/v1/utils/utils_pb';
 import * as claimsErrors from '../claims/errors';
@@ -107,18 +106,8 @@ class NodeManager {
       );
       never();
     }
-    const host_ = await networkUtils.resolveHost(host);
-    if (
-      await this.pingNode(nodeId, { host: host_, port }, { signal: ctx.signal })
-    ) {
-      await this.setNode(
-        nodeId,
-        { host: host_, port },
-        false,
-        false,
-        2000,
-        ctx,
-      );
+    if (await this.pingNode(nodeId, { host, port }, { signal: ctx.signal })) {
+      await this.setNode(nodeId, { host, port }, false, false, 2000, ctx);
     }
   };
   public readonly pingAndSetNodeHandlerId: TaskHandlerId =
@@ -237,10 +226,9 @@ class NodeManager {
     if (targetAddress == null) {
       return false;
     }
-    const targetHost = await networkUtils.resolveHost(targetAddress.host);
     return await this.nodeConnectionManager.pingNode(
       nodeId,
-      targetHost,
+      targetAddress.host,
       targetAddress.port,
       ctx,
     );

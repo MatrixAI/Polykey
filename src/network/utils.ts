@@ -284,17 +284,23 @@ function isTLSSocket(socket: Socket | TLSSocket): socket is TLSSocket {
  * verify that the new NodeId is the true descendant of the target NodeId.
  */
 function verifyServerCertificateChain(
-  nodeId: NodeId,
+  nodeIds: Array<NodeId>,
   certChain: Array<Certificate>,
-): void {
+): NodeId {
   if (!certChain.length) {
     throw new networkErrors.ErrorCertChainEmpty(
       'No certificates available to verify',
     );
   }
+  if (!nodeIds.length) {
+    throw new networkErrors.ErrorConnectionNodesEmpty(
+      'No nodes were provided to verify against',
+    );
+  }
   const now = new Date();
-  let certClaim: Certificate | undefined;
-  let certClaimIndex: number | undefined;
+  let certClaim: Certificate | null = null;
+  let certClaimIndex: number | null = null;
+  let verifiedNodeId: NodeId | null = null;
   for (let certIndex = 0; certIndex < certChain.length; certIndex++) {
     const cert = certChain[certIndex];
     if (now < cert.validity.notBefore || now > cert.validity.notAfter) {
@@ -348,18 +354,22 @@ function verifyServerCertificateChain(
         },
       );
     }
-    if (commonName.value === nodesUtils.encodeNodeId(nodeId)) {
-      // Found the certificate claiming the nodeId
-      certClaim = cert;
-      certClaimIndex = certIndex;
-      break;
+    for (const nodeId of nodeIds) {
+      if (commonName.value === nodesUtils.encodeNodeId(nodeId)) {
+        // Found the certificate claiming the nodeId
+        certClaim = cert;
+        certClaimIndex = certIndex;
+        verifiedNodeId = nodeId;
+      }
     }
+    // If cert is found then break out of loop
+    if (verifiedNodeId != null) break;
   }
-  if (certClaimIndex == null || certClaim == null) {
+  if (certClaimIndex == null || certClaim == null || verifiedNodeId == null) {
     throw new networkErrors.ErrorCertChainUnclaimed(
-      'Node ID is not claimed by any certificate',
+      'Node IDs is not claimed by any certificate',
       {
-        data: { nodeId },
+        data: { nodeIds },
       },
     );
   }
@@ -386,6 +396,7 @@ function verifyServerCertificateChain(
       }
     }
   }
+  return verifiedNodeId;
 }
 
 /**

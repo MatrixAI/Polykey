@@ -516,7 +516,10 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       relayMessage.setSrcId(nodesUtils.encodeNodeId(sourceNodeId));
       relayMessage.setTargetId(nodesUtils.encodeNodeId(remoteNodeId1));
       relayMessage.setProxyAddress('');
-      await nodeConnectionManager.relaySignallingMessage(relayMessage);
+      await nodeConnectionManager.relaySignallingMessage(relayMessage, {
+        host: '' as Host,
+        port: 0 as Port,
+      });
 
       expect(mockedNodesHolePunchMessageSend).toHaveBeenCalled();
     } finally {

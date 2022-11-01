@@ -57,6 +57,11 @@ class ErrorConnectionEndTimeout<T> extends ErrorConnection<T> {
   exitCode = sysexits.UNAVAILABLE;
 }
 
+class ErrorConnectionNodesEmpty<T> extends ErrorConnection<T> {
+  static description = 'Nodes list to verify against was empty';
+  exitCode = sysexits.USAGE;
+}
+
 /**
  * Used by ConnectionForward and ConnectionReverse
  */
@@ -148,6 +153,7 @@ export {
   ErrorConnectionMessageParse,
   ErrorConnectionTimeout,
   ErrorConnectionEndTimeout,
+  ErrorConnectionNodesEmpty,
   ErrorConnectionStart,
   ErrorConnectionStartTimeout,
   ErrorConnectionStartTimeoutMax,
