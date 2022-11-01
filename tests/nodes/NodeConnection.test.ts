@@ -42,22 +42,6 @@ import * as testUtils from '../utils';
 
 const destroyCallback = async () => {};
 
-// Dummy nodeConnectionManager
-// We only need the hole punch function, and frankly it's not used in testing here
-// This is really dirty so don't do this outside of testing EVER
-const dummyNodeConnectionManager = {
-  openConnection: async (_host, _port) => {
-    throw Error('This is a dummy function, should not be called');
-  },
-  withConnF: async () => {
-    throw Error('Test, please ignore');
-  },
-  getSeedNodes: () => [],
-  sendHolePunchMessage: async () => {
-    throw Error('Test, please ignore');
-  },
-} as unknown as NodeConnectionManager;
-
 const mockedGenerateDeterministicKeyPair = jest.spyOn(
   keysUtils,
   'generateDeterministicKeyPair',
@@ -98,6 +82,7 @@ describe(`${NodeConnection.name} test`, () => {
   let clientDataDir: string;
   let sourceNodeId: NodeId;
   let clientKeyManager: KeyManager;
+  let clientNodeConnectionManager: NodeConnectionManager;
   const authToken = 'AUTH';
   let clientProxy: Proxy;
 
@@ -266,7 +251,7 @@ describe(`${NodeConnection.name} test`, () => {
     serverVaultManager = await VaultManager.createVaultManager({
       keyManager: serverKeyManager,
       vaultsPath: serverVaultsPath,
-      nodeConnectionManager: dummyNodeConnectionManager,
+      nodeConnectionManager: serverNodeConnectionManager,
       notificationsManager: serverNotificationsManager,
       db: serverDb,
       acl: serverACL,
@@ -288,7 +273,7 @@ describe(`${NodeConnection.name} test`, () => {
       db: serverDb,
       keyManager: serverKeyManager,
       vaultManager: serverVaultManager,
-      nodeConnectionManager: dummyNodeConnectionManager,
+      nodeConnectionManager: serverNodeConnectionManager,
       nodeManager: serverNodeManager,
       nodeGraph: serverNodeGraph,
       sigchain: serverSigchain,
@@ -337,6 +322,15 @@ describe(`${NodeConnection.name} test`, () => {
       serverPort: 0 as Port,
     });
     sourcePort = clientProxy.getProxyPort();
+
+    clientNodeConnectionManager = new NodeConnectionManager({
+      keyManager: clientKeyManager,
+      nodeGraph: {} as NodeGraph,
+      proxy: clientProxy,
+      taskManager: {} as TaskManager,
+      logger: logger,
+    });
+    await clientNodeConnectionManager.start({ nodeManager: {} as NodeManager });
 
     // Other setup
     const privateKey = keysUtils.privateKeyFromPem(globalRootKeyPems[0]);
@@ -396,7 +390,7 @@ describe(`${NodeConnection.name} test`, () => {
       targetPort: targetPort,
       proxy: clientProxy,
       keyManager: clientKeyManager,
-      nodeConnectionManager: dummyNodeConnectionManager,
+      nodeConnectionManager: clientNodeConnectionManager,
       destroyCallback,
       logger: logger,
       clientFactory: (args) => GRPCClientAgent.createGRPCClientAgent(args),
@@ -420,7 +414,7 @@ describe(`${NodeConnection.name} test`, () => {
       targetPort: targetPort,
       proxy: clientProxy,
       keyManager: clientKeyManager,
-      nodeConnectionManager: dummyNodeConnectionManager,
+      nodeConnectionManager: clientNodeConnectionManager,
       destroyCallback,
       logger: logger,
       clientFactory: async (args) =>
@@ -450,7 +444,7 @@ describe(`${NodeConnection.name} test`, () => {
   });
   test('connects to its target but proxies connect first', async () => {
     await clientProxy.openConnectionForward(
-      targetNodeId,
+      [targetNodeId],
       localHost,
       targetPort,
     );
@@ -460,7 +454,7 @@ describe(`${NodeConnection.name} test`, () => {
       targetPort: targetPort,
       proxy: clientProxy,
       keyManager: clientKeyManager,
-      nodeConnectionManager: dummyNodeConnectionManager,
+      nodeConnectionManager: clientNodeConnectionManager,
       destroyCallback,
       logger: logger,
       clientFactory: async (args) =>
@@ -510,7 +504,7 @@ describe(`${NodeConnection.name} test`, () => {
           proxy: clientProxy,
           keyManager: clientKeyManager,
           logger: logger,
-          nodeConnectionManager: dummyNodeConnectionManager,
+          nodeConnectionManager: clientNodeConnectionManager,
           destroyCallback: killSelf,
           targetHost: polykeyAgent.proxy.getProxyHost(),
           targetNodeId: polykeyAgent.keyManager.getNodeId(),
@@ -546,7 +540,7 @@ describe(`${NodeConnection.name} test`, () => {
           targetPort: 12345 as Port,
           proxy: clientProxy,
           keyManager: clientKeyManager,
-          nodeConnectionManager: dummyNodeConnectionManager,
+          nodeConnectionManager: clientNodeConnectionManager,
           destroyCallback,
           logger: logger,
           clientFactory: (args) => GRPCClientAgent.createGRPCClientAgent(args),
@@ -560,17 +554,22 @@ describe(`${NodeConnection.name} test`, () => {
     const connProm = NodeConnection.createNodeConnection(
       {
         targetNodeId: targetNodeId,
-        targetHost: '128.0.0.1' as Host,
-        targetPort: 12345 as Port,
+        targetHost: localHost,
+        targetPort: 55556 as Port,
         proxy: clientProxy,
         keyManager: clientKeyManager,
-        nodeConnectionManager: dummyNodeConnectionManager,
+        nodeConnectionManager: clientNodeConnectionManager,
         destroyCallback,
         logger: logger,
         clientFactory: (args) => GRPCClientAgent.createGRPCClientAgent(args),
       },
       { timer: new Timer({ delay: 1000 }) },
-    ).catch(() => (timedOut = true));
+    ).then(
+      () => {},
+      () => {
+        timedOut = true;
+      },
+    );
     expect(timedOut).toBeFalse();
     await sleep(500);
     expect(timedOut).toBeFalse();
@@ -587,7 +586,7 @@ describe(`${NodeConnection.name} test`, () => {
         targetPort: targetPort,
         proxy: clientProxy,
         keyManager: clientKeyManager,
-        nodeConnectionManager: dummyNodeConnectionManager,
+        nodeConnectionManager: clientNodeConnectionManager,
         destroyCallback,
         logger: logger,
         clientFactory: async (args) =>
@@ -608,7 +607,7 @@ describe(`${NodeConnection.name} test`, () => {
         targetPort: targetPort,
         proxy: clientProxy,
         keyManager: clientKeyManager,
-        nodeConnectionManager: dummyNodeConnectionManager,
+        nodeConnectionManager: clientNodeConnectionManager,
         destroyCallback,
         logger: logger,
         clientFactory: async (args) =>
@@ -647,7 +646,7 @@ describe(`${NodeConnection.name} test`, () => {
           proxy: clientProxy,
           keyManager: clientKeyManager,
           logger: logger,
-          nodeConnectionManager: dummyNodeConnectionManager,
+          nodeConnectionManager: clientNodeConnectionManager,
           destroyCallback: killSelf,
           targetHost: proxy.getProxyHost(),
           targetNodeId: targetNodeId,
@@ -692,7 +691,7 @@ describe(`${NodeConnection.name} test`, () => {
           proxy: clientProxy,
           keyManager: clientKeyManager,
           logger: logger,
-          nodeConnectionManager: dummyNodeConnectionManager,
+          nodeConnectionManager: clientNodeConnectionManager,
           destroyCallback: killSelf,
           targetHost: proxy.getProxyHost(),
           targetNodeId: targetNodeId,
@@ -735,7 +734,7 @@ describe(`${NodeConnection.name} test`, () => {
           proxy: clientProxy,
           keyManager: clientKeyManager,
           logger: logger,
-          nodeConnectionManager: dummyNodeConnectionManager,
+          nodeConnectionManager: clientNodeConnectionManager,
           destroyCallback: killSelf,
           targetHost: polykeyAgent.proxy.getProxyHost(),
           targetNodeId: polykeyAgent.keyManager.getNodeId(),
@@ -806,7 +805,7 @@ describe(`${NodeConnection.name} test`, () => {
             proxy: clientProxy,
             keyManager: clientKeyManager,
             logger: logger,
-            nodeConnectionManager: dummyNodeConnectionManager,
+            nodeConnectionManager: clientNodeConnectionManager,
             destroyCallback: async () => {
               await killSelfCheck();
               killSelfP.resolveP(null);
@@ -885,7 +884,7 @@ describe(`${NodeConnection.name} test`, () => {
             proxy: clientProxy,
             keyManager: clientKeyManager,
             logger: logger,
-            nodeConnectionManager: dummyNodeConnectionManager,
+            nodeConnectionManager: clientNodeConnectionManager,
             destroyCallback: async () => {
               await killSelfCheck();
               killSelfP.resolveP(null);
@@ -931,7 +930,7 @@ describe(`${NodeConnection.name} test`, () => {
           targetPort: targetPort,
           proxy: clientProxy,
           keyManager: clientKeyManager,
-          nodeConnectionManager: dummyNodeConnectionManager,
+          nodeConnectionManager: clientNodeConnectionManager,
           destroyCallback,
           logger: logger,
           clientFactory: async (args) =>
@@ -962,7 +961,7 @@ describe(`${NodeConnection.name} test`, () => {
           targetPort: targetPort,
           proxy: clientProxy,
           keyManager: clientKeyManager,
-          nodeConnectionManager: dummyNodeConnectionManager,
+          nodeConnectionManager: clientNodeConnectionManager,
           destroyCallback,
           logger: logger,
           clientFactory: async (args) =>
@@ -993,7 +992,7 @@ describe(`${NodeConnection.name} test`, () => {
           targetPort: targetPort,
           proxy: clientProxy,
           keyManager: clientKeyManager,
-          nodeConnectionManager: dummyNodeConnectionManager,
+          nodeConnectionManager: clientNodeConnectionManager,
           destroyCallback,
           logger: logger,
           clientFactory: async (args) =>
@@ -1024,7 +1023,7 @@ describe(`${NodeConnection.name} test`, () => {
           targetPort: targetPort,
           proxy: clientProxy,
           keyManager: clientKeyManager,
-          nodeConnectionManager: dummyNodeConnectionManager,
+          nodeConnectionManager: clientNodeConnectionManager,
           destroyCallback,
           logger: logger,
           clientFactory: async (args) =>
@@ -1055,7 +1054,7 @@ describe(`${NodeConnection.name} test`, () => {
           targetPort: targetPort,
           proxy: clientProxy,
           keyManager: clientKeyManager,
-          nodeConnectionManager: dummyNodeConnectionManager,
+          nodeConnectionManager: clientNodeConnectionManager,
           destroyCallback,
           logger: logger,
           clientFactory: async (args) =>
@@ -1086,7 +1085,7 @@ describe(`${NodeConnection.name} test`, () => {
           targetPort: targetPort,
           proxy: clientProxy,
           keyManager: clientKeyManager,
-          nodeConnectionManager: dummyNodeConnectionManager,
+          nodeConnectionManager: clientNodeConnectionManager,
           destroyCallback,
           logger: logger,
           clientFactory: async (args) =>
@@ -1121,7 +1120,7 @@ describe(`${NodeConnection.name} test`, () => {
           targetPort: targetPort,
           proxy: clientProxy,
           keyManager: clientKeyManager,
-          nodeConnectionManager: dummyNodeConnectionManager,
+          nodeConnectionManager: clientNodeConnectionManager,
           destroyCallback,
           logger: logger,
           clientFactory: async (args) =>
@@ -1150,7 +1149,7 @@ describe(`${NodeConnection.name} test`, () => {
           targetPort: targetPort,
           proxy: clientProxy,
           keyManager: clientKeyManager,
-          nodeConnectionManager: dummyNodeConnectionManager,
+          nodeConnectionManager: clientNodeConnectionManager,
           destroyCallback,
           logger: logger,
           clientFactory: async (args) =>
@@ -1179,7 +1178,7 @@ describe(`${NodeConnection.name} test`, () => {
           targetPort: targetPort,
           proxy: clientProxy,
           keyManager: clientKeyManager,
-          nodeConnectionManager: dummyNodeConnectionManager,
+          nodeConnectionManager: clientNodeConnectionManager,
           destroyCallback,
           logger: logger,
           clientFactory: async (args) =>
@@ -1206,7 +1205,7 @@ describe(`${NodeConnection.name} test`, () => {
         targetPort: targetPort,
         proxy: clientProxy,
         keyManager: clientKeyManager,
-        nodeConnectionManager: dummyNodeConnectionManager,
+        nodeConnectionManager: clientNodeConnectionManager,
         destroyCallback,
         logger: logger,
         clientFactory: async (args) =>
@@ -1228,7 +1227,7 @@ describe(`${NodeConnection.name} test`, () => {
         targetPort: targetPort,
         proxy: clientProxy,
         keyManager: clientKeyManager,
-        nodeConnectionManager: dummyNodeConnectionManager,
+        nodeConnectionManager: clientNodeConnectionManager,
         destroyCallback,
         logger: logger,
         clientFactory: async (args) =>
@@ -1254,7 +1253,7 @@ describe(`${NodeConnection.name} test`, () => {
           targetPort: targetPort,
           proxy: clientProxy,
           keyManager: clientKeyManager,
-          nodeConnectionManager: dummyNodeConnectionManager,
+          nodeConnectionManager: clientNodeConnectionManager,
           destroyCallback,
           logger: logger,
           clientFactory: async (args) =>
@@ -1283,7 +1282,7 @@ describe(`${NodeConnection.name} test`, () => {
           targetPort: targetPort,
           proxy: clientProxy,
           keyManager: clientKeyManager,
-          nodeConnectionManager: dummyNodeConnectionManager,
+          nodeConnectionManager: clientNodeConnectionManager,
           destroyCallback,
           logger: logger,
           clientFactory: async (args) =>

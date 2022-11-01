@@ -137,6 +137,10 @@ class ConnectionForward extends Connection {
     } else {
       ctx.signal.addEventListener('abort', () => resolveAbortedP());
     }
+    void ctx.timer.then(
+      () => resolveAbortedP(),
+      () => {},
+    );
     this.resolveReadyP = resolveReadyP;
     this.utpSocket.on('message', this.handleMessage);
     const handleStartError = (e) => {

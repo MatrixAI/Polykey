@@ -5,7 +5,13 @@ import type KeyManager from '../keys/KeyManager';
 import type { PublicKeyPem } from '../keys/types';
 import type Sigchain from '../sigchain/Sigchain';
 import type { ChainData, ChainDataEncoded } from '../sigchain/types';
-import type { NodeId, NodeAddress, NodeBucket, NodeBucketIndex } from './types';
+import type {
+  NodeId,
+  NodeAddress,
+  NodeBucket,
+  NodeBucketIndex,
+  NodeData,
+} from './types';
 import type { ClaimEncoded } from '../claims/types';
 import type TaskManager from '../tasks/TaskManager';
 import type { TaskHandler, TaskHandlerId, Task } from '../tasks/types';
@@ -1033,71 +1039,107 @@ class NodeManager {
     @context ctx: ContextTimed,
   ): Promise<void> {
     this.logger.info('Syncing nodeGraph');
-    for (const seedNodeId of this.nodeConnectionManager.getSeedNodes()) {
-      // Check if the connection is viable
-      if (
-        (await this.pingNode(seedNodeId, undefined, {
-          timer: new Timer({
-            delay: pingTimeout ?? this.nodeConnectionManager.pingTimeout,
-          }),
-          signal: ctx.signal,
-        })) === false
-      ) {
-        continue;
-      }
+    // Getting the seed node connection information
+    const seedNodes = this.nodeConnectionManager.getSeedNodes();
+    const addresses = await Promise.all(
+      await this.db.withTransactionF(async (tran) =>
+        seedNodes.map(
+          async (seedNode) =>
+            (
+              await this.nodeGraph.getNode(seedNode, tran)
+            )?.address,
+        ),
+      ),
+    );
+    const filteredAddresses = addresses.filter(
+      (address) => address != null,
+    ) as Array<NodeAddress>;
+    // Establishing connections to the seed nodes
+    const connections =
+      await this.nodeConnectionManager.establishMultiConnection(
+        seedNodes,
+        filteredAddresses,
+        pingTimeout,
+        undefined,
+        { signal: ctx.signal },
+      );
+    // Using a map to avoid duplicates
+    const closestNodesAll: Map<NodeId, NodeData> = new Map();
+    const localNodeId = this.keyManager.getNodeId();
+    let closestNode: NodeId | null = null;
+    for (const [nodeId] of connections) {
       const closestNodes =
         await this.nodeConnectionManager.getRemoteNodeClosestNodes(
-          seedNodeId,
-          this.keyManager.getNodeId(),
+          nodeId,
+          localNodeId,
           { signal: ctx.signal },
         );
-      const localNodeId = this.keyManager.getNodeId();
-      for (const [nodeId, nodeData] of closestNodes) {
-        if (!localNodeId.equals(nodeId)) {
-          const pingAndSetTask = await this.taskManager.scheduleTask({
-            delay: 0,
-            handlerId: this.pingAndSetNodeHandlerId,
-            lazy: !block,
-            parameters: [
-              nodesUtils.encodeNodeId(nodeId),
-              nodeData.address.host,
-              nodeData.address.port,
-            ],
-            path: [this.basePath, this.pingAndSetNodeHandlerId],
-            // Need to be somewhat active so high priority
-            priority: 100,
-          });
-          if (block) {
-            try {
-              await pingAndSetTask.promise();
-            } catch (e) {
-              if (!(e instanceof nodesErrors.ErrorNodeGraphSameNodeId)) throw e;
-            }
-          }
-        }
+      // Setting node information into the map
+      closestNodes.forEach((item) => closestNodesAll.set(...item));
+
+      // Getting the closest node
+      let closeNodeInfo = closestNodes.pop();
+      if (closeNodeInfo != null && localNodeId.equals(closeNodeInfo[0])) {
+        closeNodeInfo = closestNodes.pop();
       }
-      // Refreshing every bucket above the closest node
-      let closestNodeInfo = closestNodes.pop();
-      if (
-        closestNodeInfo != null &&
-        this.keyManager.getNodeId().equals(closestNodeInfo[0])
-      ) {
-        // Skip our nodeId if it exists
-        closestNodeInfo = closestNodes.pop();
-      }
-      let index = this.nodeGraph.nodeIdBits;
-      if (closestNodeInfo != null) {
-        const [closestNode] = closestNodeInfo;
-        const [bucketIndex] = this.nodeGraph.bucketIndex(closestNode);
-        index = bucketIndex;
-      }
-      const refreshBuckets: Array<Promise<any>> = [];
-      for (let i = index; i < this.nodeGraph.nodeIdBits; i++) {
-        const task = await this.updateRefreshBucketDelay(i, 0, !block);
-        refreshBuckets.push(task.promise());
-      }
-      if (block) await Promise.all(refreshBuckets);
+      if (closeNodeInfo == null) continue;
+      const [closeNode] = closeNodeInfo;
+      if (closestNode == null) closestNode = closeNode;
+      const distA = nodesUtils.nodeDistance(localNodeId, closeNode);
+      const distB = nodesUtils.nodeDistance(localNodeId, closestNode);
+      if (distA < distB) closestNode = closeNode;
     }
+    const pingTasks: Array<Task> = [];
+    for (const [nodeId, nodeData] of closestNodesAll) {
+      if (!localNodeId.equals(nodeId)) {
+        const pingAndSetTask = await this.taskManager.scheduleTask({
+          delay: 0,
+          handlerId: this.pingAndSetNodeHandlerId,
+          lazy: !block,
+          parameters: [
+            nodesUtils.encodeNodeId(nodeId),
+            nodeData.address.host,
+            nodeData.address.port,
+          ],
+          path: [this.basePath, this.pingAndSetNodeHandlerId],
+          // Need to be somewhat active so high priority
+          priority: 100,
+          deadline: pingTimeout,
+        });
+        pingTasks.push(pingAndSetTask);
+      }
+    }
+    if (block) {
+      // We want to wait for all the tasks
+      await Promise.all(
+        pingTasks.map((task) => {
+          const prom = task.promise();
+          // Hook on cancellation
+          if (ctx.signal.aborted) {
+            prom.cancel(ctx.signal.reason);
+          } else {
+            ctx.signal.addEventListener('abort', () =>
+              prom.cancel(ctx.signal.reason),
+            );
+          }
+          // Ignore errors
+          return task.promise().catch(() => {});
+        }),
+      );
+    }
+
+    // Refreshing every bucket above the closest node
+    let index = this.nodeGraph.nodeIdBits;
+    if (closestNode != null) {
+      const [bucketIndex] = this.nodeGraph.bucketIndex(closestNode);
+      index = bucketIndex;
+    }
+    const refreshBuckets: Array<Promise<any>> = [];
+    for (let i = index; i < this.nodeGraph.nodeIdBits; i++) {
+      const task = await this.updateRefreshBucketDelay(i, 0, !block);
+      refreshBuckets.push(task.promise());
+    }
+    if (block) await Promise.all(refreshBuckets);
   }
 }
 

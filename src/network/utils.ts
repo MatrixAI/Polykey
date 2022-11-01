@@ -5,6 +5,7 @@ import type { Host, Hostname, Port, Address, NetworkMessage } from './types';
 import type { Certificate, PublicKey } from '../keys/types';
 import type { NodeId } from '../ids/types';
 import type { ContextTimed } from '../contexts/types';
+import type { NodeAddress } from 'nodes/types';
 import { Buffer } from 'buffer';
 import dns from 'dns';
 import { IPv4, IPv6, Validator } from 'ip-num';
@@ -484,6 +485,28 @@ function verifyClientCertificateChain(certChain: Array<Certificate>): void {
   }
 }
 
+async function resolveAddresses(addresses: Array<NodeAddress>) {
+  const existingAddresses: Set<string> = new Set();
+  const final: Array<{ host: Host; port: Port }> = [];
+  for (const address of addresses) {
+    if (isHost(address.host)) {
+      if (existingAddresses.has(`${address.host}|${address.port}`)) continue;
+      final.push({ host: address.host, port: address.port });
+      existingAddresses.add(`${address.host}|${address.port}`);
+      continue;
+    }
+    const resolvedAddresses = await resolveHostname(address.host);
+    for (const resolvedHost of resolvedAddresses) {
+      const newAddress = { host: resolvedHost, port: address.port };
+      if (!Validator.isValidIPv4String(resolvedHost)[0]) continue;
+      if (existingAddresses.has(`${resolvedHost}|${address.port}`)) continue;
+      final.push(newAddress);
+      existingAddresses.add(`${resolvedHost}|${address.port}`);
+    }
+  }
+  return final;
+}
+
 export {
   pingBuffer,
   pongBuffer,
@@ -503,4 +526,5 @@ export {
   getCertificateChain,
   verifyServerCertificateChain,
   verifyClientCertificateChain,
+  resolveAddresses,
 };
