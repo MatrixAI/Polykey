@@ -52,13 +52,22 @@ function privateKeyFromData(data: BufferSource): PrivateKey | undefined {
   return privateKey as PrivateKey;
 }
 
+/**
+ * Copies PublicKey to NodeId.
+ * This copies to prevent mutations like
+ * `bufferUnlock` from affecting the output.
+ */
 function publicKeyToNodeId(publicKey: PublicKey): NodeId {
-  return IdInternal.fromBuffer<NodeId>(publicKey);
+  return IdInternal.create<NodeId>(publicKey);
 }
 
+/**
+ * Copies NodeId to PublicKey
+ * This copies to prevent mutations like
+ * `bufferUnlock` from affecting the input.
+ */
 function publicKeyFromNodeId(nodeId: NodeId): PublicKey {
-  const publicKey = utils.bufferWrap(nodeId);
-  return publicKey as PublicKey;
+  return Buffer.from(nodeId) as PublicKey;
 }
 
 /**

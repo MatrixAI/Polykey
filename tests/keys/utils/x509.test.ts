@@ -124,8 +124,14 @@ describe('keys/utils/x509', () => {
         duration,
         now,
       });
-      // It not expired now
-      expect(x509.certNotExpiredBy(cert)).toBe(true);
+      jest.useFakeTimers();
+      jest.setSystemTime(nowS);
+      try {
+        // It not expired now
+        expect(x509.certNotExpiredBy(cert)).toBe(true);
+      } finally {
+        jest.useRealTimers();
+      }
       // Is not expired now with explicit now
       expect(x509.certNotExpiredBy(cert, nowS)).toBe(true);
       // Only if duration is greater than 0

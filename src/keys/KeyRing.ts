@@ -4,7 +4,6 @@ import type {
   KeyPairLocked,
   PublicKey,
   PrivateKey,
-  SecretKey,
   RecoveryCode,
   Signature,
   PasswordHash,
@@ -159,11 +158,13 @@ class KeyRing {
     );
     const dbKey = await this.setupDbKey(keyPair);
     const [passwordHash, passwordSalt] = await this.setupPasswordHash(options.password);
-    this._keyPair = keyPair as {
-      publicKey: BufferLocked<PublicKey>;
-      privateKey: BufferLocked<PrivateKey>;
-      secretKey: BufferLocked<SecretKey>;
-    };
+    bufferLock(keyPair.publicKey, this.strictMemoryLock);
+    bufferLock(keyPair.privateKey, this.strictMemoryLock);
+    bufferLock(keyPair.secretKey, this.strictMemoryLock);
+    bufferLock(dbKey, this.strictMemoryLock);
+    bufferLock(passwordHash, this.strictMemoryLock);
+    bufferLock(passwordSalt, this.strictMemoryLock);
+    this._keyPair = keyPair as KeyPairLocked;
     this._dbKey = dbKey;
     this.passwordHash = {
       hash: passwordHash,
@@ -185,15 +186,19 @@ class KeyRing {
       bufferUnlock(this._keyPair.secretKey);
     }
     delete this._keyPair;
-    if (this._recoveryCodeData != null) {
-      bufferUnlock(this._recoveryCodeData);
+    if (this._dbKey != null) {
+      bufferUnlock(this._dbKey);
     }
-    delete this._recoveryCodeData;
+    delete this._dbKey;
     if (this.passwordHash != null) {
       bufferUnlock(this.passwordHash.hash);
       bufferUnlock(this.passwordHash.salt);
     }
     delete this.passwordHash;
+    if (this._recoveryCodeData != null) {
+      bufferUnlock(this._recoveryCodeData);
+    }
+    delete this._recoveryCodeData;
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
@@ -270,6 +275,10 @@ class KeyRing {
       this.logger.info('Changing root key pair password');
       await this.writeKeyPair(this._keyPair!, password);
       const [passwordHash, passwordSalt] = await this.setupPasswordHash(password);
+      bufferUnlock(this.passwordHash!.hash);
+      bufferUnlock(this.passwordHash!.salt);
+      bufferLock(passwordHash, this.strictMemoryLock);
+      bufferLock(passwordSalt, this.strictMemoryLock);
       this.passwordHash = {
         hash: passwordHash,
         salt: passwordSalt
@@ -357,7 +366,10 @@ class KeyRing {
         bufferUnlock(this._keyPair!.publicKey);
         bufferUnlock(this._keyPair!.privateKey);
         bufferUnlock(this._keyPair!.secretKey);
-        this._keyPair = keyPair;
+        bufferLock(keyPair.publicKey, this.strictMemoryLock);
+        bufferLock(keyPair.privateKey, this.strictMemoryLock);
+        bufferLock(keyPair.secretKey, this.strictMemoryLock);
+        this._keyPair = keyPair as KeyPairLocked;
         const recoveryCodeData = Buffer.from(recoveryCode, 'utf-8');
         bufferLock(recoveryCodeData, this.strictMemoryLock);
         if (this._recoveryCodeData != null) bufferUnlock(this._recoveryCodeData);
@@ -477,8 +489,8 @@ class KeyRing {
   } | {
     password: string;
     privateKeyPath: string;
-  }): Promise<[KeyPairLocked, RecoveryCode | undefined]> {
-    let rootKeyPair: KeyPairLocked;
+  }): Promise<[KeyPair, RecoveryCode | undefined]> {
+    let rootKeyPair: KeyPair;
     let recoveryCodeNew: RecoveryCode | undefined;
     if (await this.existsKeyPair()) {
       if ('recoveryCode' in options && options.recoveryCode != null) {
@@ -511,9 +523,6 @@ class KeyRing {
         const privateKey = options.privateKey;
         const publicKey = keysUtils.publicKeyFromPrivateKeyEd25519(privateKey);
         const keyPair = keysUtils.makeKeyPair(publicKey, privateKey);
-        bufferLock(keyPair.publicKey, this.strictMemoryLock);
-        bufferLock(keyPair.privateKey, this.strictMemoryLock);
-        bufferLock(keyPair.secretKey, this.strictMemoryLock);
         rootKeyPair = keyPair as KeyPairLocked;
         await this.writeKeyPair(rootKeyPair, options.password);
         return [rootKeyPair, undefined];
@@ -525,9 +534,6 @@ class KeyRing {
         );
         const publicKey = keysUtils.publicKeyFromPrivateKeyEd25519(privateKey);
         const keyPair = keysUtils.makeKeyPair(publicKey, privateKey);
-        bufferLock(keyPair.publicKey, this.strictMemoryLock);
-        bufferLock(keyPair.privateKey, this.strictMemoryLock);
-        bufferLock(keyPair.secretKey, this.strictMemoryLock);
         rootKeyPair = keyPair as KeyPairLocked;
         await this.writeKeyPair(rootKeyPair, options.password);
         return [rootKeyPair, undefined];
@@ -606,16 +612,13 @@ class KeyRing {
    * This only needs to read the private key as the public key is derived.
    * The private key is expected to be stored in a flattened JWE format.
    */
-  protected async readKeyPair(password: string): Promise<KeyPairLocked> {
+  protected async readKeyPair(password: string): Promise<KeyPair> {
     const privateKey = await this.readPrivateKey(password);
     const publicKey = keysUtils.publicKeyFromPrivateKeyEd25519(
       privateKey,
     );
     const keyPair = keysUtils.makeKeyPair(publicKey, privateKey);
-    // Private key is already locked
-    bufferLock(keyPair.publicKey, this.strictMemoryLock);
-    bufferLock(keyPair.secretKey, this.strictMemoryLock);
-    return keyPair as KeyPairLocked;
+    return keyPair;
   }
 
   /**
@@ -624,7 +627,7 @@ class KeyRing {
    */
   protected async readPublicKey(
     publicKeyPath: string = this.publicKeyPath
-  ): Promise<BufferLocked<PublicKey>> {
+  ): Promise<PublicKey> {
     let publicJWKJSON: string;
     try {
       publicJWKJSON = await this.fs.promises.readFile(
@@ -652,7 +655,6 @@ class KeyRing {
         `Public key path ${publicKeyPath} is not a valid public key`
       );
     }
-    bufferLock(publicKey, this.strictMemoryLock);
     return publicKey;
   }
 
@@ -663,7 +665,7 @@ class KeyRing {
   protected async readPrivateKey(
     password: string,
     privateKeyPath: string = this.privateKeyPath,
-  ): Promise<BufferLocked<PrivateKey>> {
+  ): Promise<PrivateKey> {
     let privateJSON: string;
     try {
       privateJSON = await this.fs.promises.readFile(
@@ -692,7 +694,6 @@ class KeyRing {
           `Private key path ${privateKeyPath} is not a valid JWK`
         );
       }
-      bufferLock(privateKey, this.strictMemoryLock);
       return privateKey;
     } else if ('ciphertext' in privateObject && privateObject.ciphertext != null) {
       const privateJWK = keysUtils.unwrapWithPassword(
@@ -712,7 +713,6 @@ class KeyRing {
           `Private key path ${privateKeyPath} is not a valid private key`
         );
       }
-      bufferLock(privateKey, this.strictMemoryLock);
       return privateKey;
     } else {
       throw new keysErrors.ErrorKeyPairParse(
@@ -777,7 +777,7 @@ class KeyRing {
    */
   protected async generateKeyPair(
     recoveryCode?: RecoveryCode,
-  ): Promise<KeyPairLocked> {
+  ): Promise<KeyPair> {
     let keyPair: KeyPair;
     if (recoveryCode != null) {
       if (this.workerManager == null) {
@@ -794,15 +794,12 @@ class KeyRing {
     } else {
       keyPair = keysUtils.generateKeyPair();
     }
-    bufferLock(keyPair.publicKey, this.strictMemoryLock);
-    bufferLock(keyPair.privateKey, this.strictMemoryLock);
-    bufferLock(keyPair.secretKey, this.strictMemoryLock);
-    return keyPair as KeyPairLocked;
+    return keyPair;
   }
 
   protected async recoverKeyPair(
     recoveryCode: RecoveryCode,
-  ): Promise<KeyPairLocked | undefined> {
+  ): Promise<KeyPair | undefined> {
     const recoveredKeyPair = await this.generateKeyPair(recoveryCode);
     // If the public key exists, we can check that the public keys match
     if (await this.existsPublicKey()) {
@@ -832,8 +829,8 @@ class KeyRing {
    * This is the data encryption key for the rest of PK.
    * This is what makes PK a hybrid cryptosystem.
    */
-  protected async setupDbKey(keyPair: KeyPair): Promise<BufferLocked<Key>> {
-    let dbKey: BufferLocked<Key>;
+  protected async setupDbKey(keyPair: KeyPair): Promise<Key> {
+    let dbKey: Key;
     if (await this.existsDbKey()) {
       dbKey = await this.readDbKey(keyPair);
     } else {
@@ -877,7 +874,7 @@ class KeyRing {
   protected async readDbKey(
     keyPair: KeyPair,
     dbKeyPath: string = this.dbKeyPath
-  ): Promise<BufferLocked<Key>> {
+  ): Promise<Key> {
     let dbJWEJSON: string;
     try {
       dbJWEJSON = await this.fs.promises.readFile(dbKeyPath, 'utf-8');
@@ -911,7 +908,6 @@ class KeyRing {
         `DB key path ${dbKeyPath} is not a valid key`
       );
     }
-    bufferLock(dbKey, this.strictMemoryLock);
     return dbKey;
   }
 
@@ -943,10 +939,8 @@ class KeyRing {
    * Generates the DB key.
    * This is 256 bit key.
    */
-  protected generateDbKey(): BufferLocked<Key> {
-    const key = keysUtils.generateKey();
-    bufferLock(key, this.strictMemoryLock);
-    return key;
+  protected generateDbKey(): Key {
+    return keysUtils.generateKey();
   }
 
   /**
@@ -958,8 +952,8 @@ class KeyRing {
   protected async setupPasswordHash(
     password: string,
   ): Promise<[
-    BufferLocked<PasswordHash>,
-    BufferLocked<PasswordSalt>
+    PasswordHash,
+    PasswordSalt
   ]> {
     let hash: PasswordHash, salt: PasswordSalt;
     if (this.workerManager == null) {
@@ -982,8 +976,6 @@ class KeyRing {
         return result as [PasswordHash, PasswordSalt];
       });
     }
-    bufferLock(hash, this.strictMemoryLock);
-    bufferLock(salt, this.strictMemoryLock);
     return [hash, salt];
   }
 }
