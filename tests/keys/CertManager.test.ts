@@ -18,7 +18,7 @@ import * as keysUtils from '@/keys/utils';
 import * as keysErrors from '@/keys/errors';
 import * as utils from '@/utils';
 import * as testsKeysUtils from './utils';
-import * as testsUtils from '../utils';
+import * as testsUtilsFastCheck from '../utils/fastCheck';
 
 describe(CertManager.name, () => {
   const password = keysUtils.getRandomBytes(10).toString('utf-8');
@@ -299,7 +299,7 @@ describe(CertManager.name, () => {
           [
             // Sleep command
             fc.integer({ min: 250, max: 250 }).map(
-              (ms) => new testsUtils.SleepCommand(ms)
+              (ms) => new testsUtilsFastCheck.SleepCommand(ms)
             ),
             fc.integer({ min: 0, max: 2 }).map(
               (d) => new testsKeysUtils.RenewCertWithCurrentKeyPairCommand(d)
@@ -347,7 +347,7 @@ describe(CertManager.name, () => {
           [
             // Sleep command
             fc.integer({ min: 250, max: 250 }).map(
-              (ms) => new testsUtils.SleepCommand(ms)
+              (ms) => new testsUtilsFastCheck.SleepCommand(ms)
             ),
             fc.tuple(
               testsKeysUtils.passwordArb,
@@ -401,7 +401,7 @@ describe(CertManager.name, () => {
           [
             // Sleep command
             fc.integer({ min: 250, max: 250 }).map(
-              (ms) => new testsUtils.SleepCommand(ms)
+              (ms) => new testsUtilsFastCheck.SleepCommand(ms)
             ),
             fc.integer({ min: 0, max: 2 }).map(
               (d) => new testsKeysUtils.RenewCertWithCurrentKeyPairCommand(d)
@@ -452,7 +452,7 @@ describe(CertManager.name, () => {
           [
             // Sleep command
             fc.integer({ min: 250, max: 250 }).map(
-              (ms) => new testsUtils.SleepCommand(ms)
+              (ms) => new testsUtilsFastCheck.SleepCommand(ms)
             ),
             fc.integer({ min: 0, max: 2 }).map(
               (d) => new testsKeysUtils.ResetCertWithCurrentKeyPairCommand(d)
@@ -503,7 +503,7 @@ describe(CertManager.name, () => {
           [
             // Sleep command
             fc.integer({ min: 250, max: 250 }).map(
-              (ms) => new testsUtils.SleepCommand(ms)
+              (ms) => new testsUtilsFastCheck.SleepCommand(ms)
             ),
             fc.integer({ min: 0, max: 2 }).map(
               (d) => new testsKeysUtils.RenewCertWithCurrentKeyPairCommand(d)
