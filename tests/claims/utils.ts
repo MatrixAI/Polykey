@@ -1,7 +1,6 @@
 import type { SignedClaim } from '@/claims/types';
 import { fc } from '@fast-check/jest';
 import * as claimsUtils from '@/claims/utils';
-import * as tokensUtils from '@/tokens/utils';
 import * as testsTokensUtils from '../tokens/utils';
 import * as testsIdsUtils from '../ids/utils';
 
@@ -49,7 +48,7 @@ const claimArb = fc.oneof(
   })
 );
 
-const claimEncodedArb = claimArb.map(tokensUtils.generateTokenPayload);
+const claimEncodedArb = claimArb.map(claimsUtils.generateClaim);
 
 const signedClaimArb = fc.record({
   payload: claimArb,
@@ -57,7 +56,7 @@ const signedClaimArb = fc.record({
 }) as fc.Arbitrary<SignedClaim>;
 
 const signedClaimEncodedArb = signedClaimArb.map(
-  tokensUtils.generateSignedToken
+  claimsUtils.generateSignedClaim
 );
 
 export {

@@ -1,4 +1,4 @@
-import type { NodeId, ClaimId } from '@/ids/types';
+import type { NodeId, ClaimId, CertId } from '@/ids/types';
 import { fc } from '@fast-check/jest';
 import { IdInternal } from '@matrixai/id';
 import * as ids from '@/ids';
@@ -16,9 +16,18 @@ const claimIdArb = fc.uint8Array({
 
 const claimIdEncodedArb = claimIdArb.map(ids.encodeClaimId);
 
+const certIdArb = fc.uint8Array({
+  minLength: 16,
+  maxLength: 16,
+}).map(IdInternal.create) as fc.Arbitrary<CertId>;
+
+const certIdEncodedArb = certIdArb.map(ids.encodeCertId);
+
 export {
   nodeIdArb,
   nodeIdEncodedArb,
   claimIdArb,
   claimIdEncodedArb,
+  certIdArb,
+  certIdEncodedArb,
 };

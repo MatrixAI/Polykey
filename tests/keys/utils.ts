@@ -22,6 +22,7 @@ import * as asymmetric from '@/keys/utils/asymmetric';
 import * as jwk from '@/keys/utils/jwk';
 import * as x509 from '@/keys/utils/x509';
 import * as utils from '@/utils';
+import * as testsIdsUtils from '../ids/utils';
 
 const bufferArb = (constraints?: fc.IntArrayConstraints) => {
   return fc.uint8Array(constraints).map(utils.bufferWrap);
@@ -80,10 +81,7 @@ const certPArb = fc
   .record({
     subjectKeyPair: keyPairArb,
     issuerKeyPair: keyPairArb,
-    certId: fc.uint8Array({
-      minLength: 16,
-      maxLength: 16,
-    }) as fc.Arbitrary<CertId>,
+    certId: testsIdsUtils.certIdArb,
     duration: fc.integer({ min: 1, max: 1000 }),
   })
   .map(async ({ subjectKeyPair, issuerKeyPair, certId, duration }) => {
