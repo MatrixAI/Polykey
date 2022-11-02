@@ -1,4 +1,10 @@
-import type { NodeId, ClaimId, CertId } from '@/ids/types';
+import type {
+  NodeId,
+  ClaimId,
+  CertId,
+  ProviderId,
+  IdentityId,
+} from '@/ids/types';
 import { fc } from '@fast-check/jest';
 import { IdInternal } from '@matrixai/id';
 import * as ids from '@/ids';
@@ -23,6 +29,22 @@ const certIdArb = fc.uint8Array({
 
 const certIdEncodedArb = certIdArb.map(ids.encodeCertId);
 
+const providerIdArb = fc.constantFrom(
+  'github.com',
+  'facebook.com',
+  'twitter.com',
+  'google.com',
+  'linkedin.com'
+) as fc.Arbitrary<ProviderId>;
+
+const identityIdArb = fc.string() as fc.Arbitrary<IdentityId>;
+
+const providerIdentityIdArb = fc.tuple(providerIdArb, identityIdArb).map(
+  (value) => {
+    return JSON.stringify(value);
+  }
+);
+
 export {
   nodeIdArb,
   nodeIdEncodedArb,
@@ -30,4 +52,7 @@ export {
   claimIdEncodedArb,
   certIdArb,
   certIdEncodedArb,
+  providerIdArb,
+  identityIdArb,
+  providerIdentityIdArb,
 };
