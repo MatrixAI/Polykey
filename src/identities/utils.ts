@@ -86,3 +86,8 @@ function matchIdentityData(
 }
 
 export { browser, matchIdentityData };
+
+export {
+  encodeProviderIdentityId,
+  decodeProviderIdentityId
+} from '../ids';

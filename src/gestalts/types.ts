@@ -1,130 +1,157 @@
-import type { Opaque } from '../types';
-import type { NodeIdEncoded } from '../nodes/types';
-import type { IdentityId, ProviderId } from '../identities/types';
-import { ClaimId } from '@/ids';
+import type { JSONValue, Opaque } from '../types';
+import type {
+  IdentityId,
+  ProviderId,
+  GestaltIdEncoded,
+  ProviderIdentityClaimId,
+  NodeId,
+  GestaltLinkId
+} from '../ids/types';
+import type {
+  SignedClaim,
+  SignedClaimJSON,
+} from '../claims/types';
+import type {
+  ClaimLinkIdentity,
+  ClaimLinkNode
+} from '../claims/payloads';
 
 const gestaltActions = ['notify', 'scan'] as const;
 
-// CONSOLIDATING the `NodeInfo` and `IdentityInfo` types
-// these are just to contain the relevant claim data
-// identities contain `ProviderIdentityClaimId -> IdentitySignedClaim`
-// nodes contain `ClaimId -> SignedClaim<ClaimLinkNode> | SignedClaim<ClaimLinkIdentity>`
-// these parts will be need to be put together
-// Change to using wrappers
-// if there needs to be wrappers around the claims too? for nodes
+type GestaltKey = Opaque<'GestaltKey', Buffer>;
 
-/**
- * GestaltNodeInfo = {
- *   id: NodeIdEncoded,
- *   claims: Record<ClaimId, SignedClaim<ClaimLinkNode | ClaimLinkIdentity>>
- * }
- *
- * GestaltIdentityInfo = {
- *   identity: IdentityData,
- *   claims: Record<ProviderIdentityClaimId, IdentitySignedClaim>
- * }
- *
- * I don't like how the structures are NOT consistent.
- * It will make it difficult for them to compare.
- * The other question is what exactly the data we should keep here.
- * Since identity data we can just fetch live. We don't have to keep it in the gestalt
- *
- * So may we do this instead:
- *
- * GestaltNodeInfo = {
- *   id: NodeIdEncoded,
- *   claims: Record<ClaimId, SignedClaim<ClaimLinkNode | ClaimLinkIdentity>>
- * }
- *
- * GestaltIdentityInfo = {
- *   providerId: ProviderIdentityId;
- *   identityId: IdentityId;
- *   claims: Record<ClaimId, IdentitySignedClaim>
- * }
- *
- * Notice how the `IdentitySignedClaim` has additional info.
- * But the other claims doesn't. It doesn't require that additional metadata.
- *
- * But yea, this should be good to go...
- */
-
-// We use these 2 new things
-// They have to be encoded forms
-// As these will be stored on DISK
-// And we cannot store buffers yet
-// So all the IDs must be "encoded"
+type GestaltInfo = ['node', GestaltNodeInfo]
+                 | ['identity', GestaltIdentityInfo];
 
 type GestaltNodeInfo = {
-  id: NodeIdEncoded;
-  chain: Array<[ClaimIdEncoded, SignedClaim<ClaimLinkNode | ClaimLinkIdentity>]>;
+  nodeId: NodeId;
+  // The `undefined` is a hack to include the optional reserved properties
+  [key: string]: JSONValue | undefined;
 };
+
+/**
+ * Storing `GestaltNodeInfo` into `GestaltGraph` requries JSON serialisation.
+ * The `nodeId` is a `IdInternal`, which will be converted to JSON and back.
+ */
+interface GestaltNodeInfoJSON extends Omit<GestaltNodeInfo, 'nodeId'> {
+  nodeId: {
+    type: 'IdInternal',
+    data: Array<number>
+  };
+}
 
 type GestaltIdentityInfo = {
   providerId: ProviderId;
   identityId: IdentityId;
-  claims: Array<[ClaimIdEncoded, IdentitySignedClaim]>;
+  name?: string;
+  email?: string;
+  url?: string;
+  // The `undefined` is a hack to include the optional reserved properties
+  [key: string]: JSONValue | undefined;
 };
 
-// Why are we using `NodeIdEncoded`?
-// Is it becasue it needs to be a string?
-// I think so... that's the reason
-// Well then we have an issue with `ClaimIdEncoded` too
-// It cannto be `ClaimId`
-// Since it's a record
-// but at the same time, there's no ORDER to these claims
-// so it also doesn't make sense
-// Also another piece of the pie
-// WHY do we store claims at all?
-// I guess cause the gestalt is literally about
-// Storing the links
-// but if so, why store the signatures?
-// I guess it's another way of validating it?
-// The links are being stored with each one linking the other one
-// The gestalt graph is not yet transactional
+/**
+ * Links are edges between node and identity vertexes.
+ * The data within these links would be acquired by discovery.
+ */
+type GestaltLink = ['node', GestaltLinkNode] | ['identity', GestaltLinkIdentity];
 
+type GestaltLinkJSON = ['node', GestaltLinkNodeJSON] | ['identity', GestaltLinkIdentityJSON];
 
-type GestaltAction = typeof gestaltActions[number];
-type GestaltActions = Partial<Record<GestaltAction, null>>;
-
-type GestaltId = GestaltNodeId | GestaltIdentityId;
-type GestaltNodeId = {
-  type: 'node';
-  nodeId: NodeIdEncoded;
-};
-type GestaltIdentityId = {
-  type: 'identity';
-  identityId: IdentityId;
-  providerId: ProviderId;
+/**
+ * Linking node to node.
+ * The only data required is the `SignedClaim<ClaimLinkNode>`
+ */
+type GestaltLinkNode = {
+  id: GestaltLinkId;
+  claim: SignedClaim<ClaimLinkNode>;
+  meta: {
+    // The `undefined` is a hack to include the optional reserved properties
+    [key: string]: JSONValue | undefined;
+  };
 };
 
-type GestaltKey = GestaltNodeKey | GestaltIdentityKey;
-type GestaltNodeKey = Opaque<'GestaltNodeKey', string>;
-type GestaltIdentityKey = Opaque<'GestaltIdentityKey', string>;
+type GestaltLinkNodeJSON = Omit<GestaltLinkNode, 'id' | 'claim'> & {
+  id: {
+    type: 'IdInternal',
+    data: Array<number>
+  },
+  claim: SignedClaimJSON<ClaimLinkNode>;
+};
 
-type GestaltKeySet = Record<GestaltKey, null>;
-type GestaltMatrix = Record<GestaltKey, GestaltKeySet>;
-type GestaltNodes = Record<GestaltNodeKey, GestaltNodeInfo>;
-type GestaltIdentities = Record<GestaltIdentityKey, GestaltIdentityInfo>;
+/**
+ * Link node to identity.
+ * The `SignedClaim<ClaimLinkIdentity>` is wrapped in `IdentitySignedClaim`.
+ * This provides additional metadata outside of the the `SignedClaim`.
+ */
+type GestaltLinkIdentity = {
+  id: GestaltLinkId;
+  claim: SignedClaim<ClaimLinkIdentity>;
+  meta: {
+    providerIdentityClaimId: ProviderIdentityClaimId;
+    url?: string;
+    // The `undefined` is a hack to include the optional reserved properties
+    [key: string]: JSONValue | undefined;
+  }
+};
+
+type GestaltLinkIdentityJSON = Omit<GestaltLinkNode, 'id' | 'claim'> & {
+  id: {
+    type: 'IdInternal',
+    data: Array<number>
+  },
+  claim: SignedClaimJSON<ClaimLinkIdentity>;
+};
+
+type GestaltLinks = Record<GestaltIdEncoded, GestaltLink>;
+
+type GestaltMatrix = Record<GestaltIdEncoded, GestaltLinks>;
+
+type GestaltNodes = Record<
+  GestaltIdEncoded,
+  GestaltNodeInfo
+>;
+
+type GestaltIdentities = Record<
+  GestaltIdEncoded,
+  GestaltIdentityInfo
+>;
+
 type Gestalt = {
   matrix: GestaltMatrix;
   nodes: GestaltNodes;
   identities: GestaltIdentities;
 };
 
+type GestaltAction = typeof gestaltActions[number];
+type GestaltActions = Partial<Record<GestaltAction, null>>;
+
 export { gestaltActions };
 
 export type {
-  GestaltAction,
-  GestaltActions,
-  GestaltId,
-  GestaltNodeId,
-  GestaltIdentityId,
   GestaltKey,
-  GestaltNodeKey,
-  GestaltIdentityKey,
-  GestaltKeySet,
+  GestaltInfo,
+  GestaltNodeInfo,
+  GestaltNodeInfoJSON,
+  GestaltIdentityInfo,
+  GestaltLink,
+  GestaltLinkJSON,
+  GestaltLinkNode,
+  GestaltLinkNodeJSON,
+  GestaltLinkIdentity,
+  GestaltLinkIdentityJSON,
+  GestaltLinks,
   GestaltMatrix,
   GestaltNodes,
   GestaltIdentities,
   Gestalt,
+  GestaltAction,
+  GestaltActions,
 };
+
+export type {
+  GestaltId,
+  GestaltIdEncoded,
+  GestaltLinkId,
+  GestaltLinkIdString,
+} from '../ids/types';

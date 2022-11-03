@@ -1,10 +1,10 @@
 import type { DB, DBTransaction, LevelPath, KeyPath } from '@matrixai/db';
-import type {
-  ClaimInput,
-  ClaimHeaderSignatureJSON
-} from './types';
+import type { ClaimInput } from './types';
 import type KeyRing from '../keys/KeyRing';
-import type { TokenSignature } from '../tokens/types';
+import type {
+  TokenSignature,
+  TokenHeaderSignatureJSON
+} from '../tokens/types';
 import type {
   ClaimId,
   Claim,
@@ -235,7 +235,7 @@ class Sigchain {
       return this.db.withTransactionF((tran) => this.getSignatures(claimId, tran));
     }
     const headerSignatures: Array<ClaimHeaderSignature> = [];
-    for await (const [, headerSignatureJSON] of tran.iterator<ClaimHeaderSignatureJSON>(
+    for await (const [, headerSignatureJSON] of tran.iterator<TokenHeaderSignatureJSON>(
       [...this.dbSignaturesPath, claimId.toBuffer()],
       {
         keys: false,

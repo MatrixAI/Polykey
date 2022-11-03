@@ -3,6 +3,7 @@ import type {
   TokenPayload,
   TokenHeaderSignature,
   SignedToken,
+  SignedTokenJSON,
   SignedTokenEncoded,
   TokenPayloadEncoded,
 } from '../tokens/types';
@@ -43,6 +44,8 @@ type ClaimHeaderSignature = TokenHeaderSignature;
  */
 type SignedClaim<P extends Claim = Claim> = SignedToken<P>;
 
+type SignedClaimJSON<P extends Claim = Claim> = SignedTokenJSON<P>;
+
 type SignedClaimEncoded = SignedTokenEncoded;
 
 type SignedClaimDigestEncoded = Opaque<'SignedClaimDigestEncoded', string>;
@@ -53,6 +56,7 @@ export type {
   ClaimEncoded,
   ClaimHeaderSignature,
   SignedClaim,
+  SignedClaimJSON,
   SignedClaimEncoded,
   SignedClaimDigestEncoded,
 };

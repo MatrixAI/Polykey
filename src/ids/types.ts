@@ -59,16 +59,51 @@ type ProviderId = Opaque<'ProviderId', string>;
 type IdentityId = Opaque<'IdentityId', string>;
 
 /**
- * Composition of ProviderId and IdentityId.
+ * Tuple of `[ProviderId, IdentityId]`
+ */
+type ProviderIdentityId = [ProviderId, IdentityId];
+
+/**
  * This is a JSON encoding of `[ProviderId, IdentityId]`
  */
-type ProviderIdentityId = Opaque<'ProviderIdentityId', string>;
+type ProviderIdentityIdEncoded = Opaque<'ProviderIdentityIdEncoded', string>;
 
 /**
  * A unique identifier for the published claim, found on the identity provider.
  * e.g. the gist ID on GitHub
  */
 type ProviderIdentityClaimId = Opaque<'ProviderIdentityClaimId', string>;
+
+// Gestalts
+
+/**
+ * Prefixed NodeId and ProviderIdentityId.
+ * This is done to ensure there is no chance of conflict between
+ * `NodeId` and `ProviderIdentityId`.
+ */
+type GestaltId = ['node', NodeId] | ['identity', ProviderIdentityId];
+
+// type GestaltNodeId = ['node', NodeId];
+// type GestaltIdentityId = ['identity', ProviderIdentityId];
+
+/**
+ * GestaltId encoded.
+ */
+type GestaltIdEncoded = Opaque<'GestaltIdEncoded', string>;
+// type GestaltIdEncoded = GestaltNodeIdEncoded | GestaltIdentityIdEncoded;
+
+// /**
+//  * Concatenation of `'node'` and `NodeIdEncoded`
+//  */
+// type GestaltNodeIdEncoded = Opaque<'GestaltNodeIdEncoded', string>;
+
+// /**
+//  * Concatenation of `'identity'` and `ProviderIdentityIdEncoded`
+//  */
+// type GestaltIdentityIdEncoded = Opaque<'GestaltIdentityIdEncoded', string>;
+
+type GestaltLinkId = Opaque<'GestaltLinkId', Id>;
+type GestaltLinkIdString = Opaque<'GestaltLinkIdString', string>;
 
 // Notifications
 
@@ -98,7 +133,16 @@ export type {
   ProviderId,
   IdentityId,
   ProviderIdentityId,
+  ProviderIdentityIdEncoded,
   ProviderIdentityClaimId,
+  GestaltId,
+  // GestaltNodeId,
+  // GestaltIdentityId,
+  GestaltIdEncoded,
+  // GestaltNodeIdEncoded,
+  // GestaltIdentityIdEncoded,
+  GestaltLinkId,
+  GestaltLinkIdString,
   NotificationId,
   NotificationIdString,
   NotificationIdEncoded,

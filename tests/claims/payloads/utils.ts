@@ -16,7 +16,7 @@ const claimLinkIdentityArb = testsClaimsUtils.claimArb.chain(
   (claim) => {
     return fc.record({
       iss: testsIdsUtils.nodeIdEncodedArb,
-      sub: testsIdsUtils.providerIdentityIdArb
+      sub: testsIdsUtils.providerIdentityIdEncodedArb
     }).chain(value => {
       return fc.constant({
         ...claim,

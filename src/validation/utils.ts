@@ -53,12 +53,9 @@ function parseGestaltId(data: any): GestaltId {
   if (typeof data !== 'string') {
     throw new validationErrors.ErrorParse('Gestalt ID must be string');
   }
-  const node = nodesUtils.decodeNodeId(data);
-  if (node != null) {
-    return {
-      type: 'node',
-      nodeId: nodesUtils.encodeNodeId(node),
-    };
+  const nodeId = nodesUtils.decodeNodeId(data);
+  if (nodeId != null) {
+    return ['node', nodeId];
   }
   const match = (data as string).match(/^(.+):(.+)$/);
   if (match == null) {
@@ -68,11 +65,10 @@ function parseGestaltId(data: any): GestaltId {
   }
   const providerId = parseProviderId(match[1]);
   const identityId = parseIdentityId(match[2]);
-  return {
-    type: 'identity',
-    providerId,
-    identityId,
-  };
+  return [
+    'identity',
+    [providerId, identityId]
+  ]
 }
 
 function parseClaimId(data: any): ClaimId {
