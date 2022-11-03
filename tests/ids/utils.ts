@@ -39,10 +39,10 @@ const providerIdArb = fc.constantFrom(
 
 const identityIdArb = fc.string() as fc.Arbitrary<IdentityId>;
 
-const providerIdentityIdArb = fc.tuple(providerIdArb, identityIdArb).map(
-  (value) => {
-    return JSON.stringify(value);
-  }
+const providerIdentityIdArb = fc.tuple(providerIdArb, identityIdArb);
+
+const providerIdentityIdEncodedArb = providerIdentityIdArb.map(
+  ids.encodeProviderIdentityId
 );
 
 export {
@@ -55,4 +55,5 @@ export {
   providerIdArb,
   identityIdArb,
   providerIdentityIdArb,
+  providerIdentityIdEncodedArb,
 };

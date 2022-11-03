@@ -1,78 +1,101 @@
 import type {
-  GestaltKey,
-  GestaltNodeKey,
-  GestaltIdentityKey,
+  GestaltLinkId,
+  NodeId,
+  ProviderIdentityId
+} from '../ids/types';
+import type {
+  TokenSignature
+} from '../tokens/types';
+import type {
   GestaltId,
-  GestaltNodeId,
-  GestaltIdentityId,
+  GestaltKey,
   GestaltAction,
+  GestaltNodeInfo,
+  GestaltNodeInfoJSON,
+  GestaltLink,
+  GestaltLinkJSON,
+  GestaltLinkNode,
+  GestaltLinkNodeJSON,
+  GestaltLinkIdentity,
+  GestaltLinkIdentityJSON,
 } from './types';
-import type { NodeId } from '../ids/types';
-import type { IdentityId, ProviderId } from '../identities/types';
-import canonicalize from 'canonicalize';
+import { IdInternal } from '@matrixai/id';
 import { gestaltActions } from './types';
-import * as nodesUtils from '../nodes/utils';
+import * as ids from '../ids';
+import type { ClaimLinkNode, ClaimLinkIdentity } from '../claims/payloads';
 
-/**
- * Construct GestaltKey from GestaltId
- */
-function gestaltKey(gestaltId: GestaltNodeId): GestaltNodeKey;
-function gestaltKey(gestaltId: GestaltIdentityId): GestaltIdentityKey;
-function gestaltKey(gestaltId: GestaltId): GestaltKey;
-function gestaltKey(gestaltId: GestaltId): GestaltKey {
-  return canonicalize(gestaltId) as GestaltKey;
+function toGestaltKey(gestaltId: GestaltId): GestaltKey {
+  switch(gestaltId[0]) {
+    case 'node':
+      return toGestaltNodeKey(gestaltId);
+    case 'identity':
+      return toGestaltIdentityKey(gestaltId);
+  }
 }
 
-/**
- * Deconstruct GestaltKey to GestaltId
- */
-function ungestaltKey(gestaltKey: GestaltNodeKey): GestaltNodeId;
-function ungestaltKey(gestaltKey: GestaltIdentityKey): GestaltIdentityId;
-function ungestaltKey(gestaltKey: GestaltKey): GestaltId;
-function ungestaltKey(gestaltKey: GestaltKey): GestaltId {
-  return JSON.parse(gestaltKey);
+function fromGestaltKey(gestaltKey: GestaltKey): GestaltId {
+  const type = gestaltKey.slice(0, gestaltKey.indexOf('-'));
+  if (type.equals(Buffer.from('node'))) {
+    return fromGestaltNodeKey(gestaltKey);
+  } else if (type.equals(Buffer.from('identity'))) {
+    return fromGestaltIdentityKey(gestaltKey);
+  } else {
+    throw new TypeError('Buffer is neither a GestaltNodeKey nor GestaltIdentityKey');
+  }
 }
 
-/**
- * Construct GestaltKey from NodeId
- */
-function keyFromNode(nodeId: NodeId): GestaltNodeKey {
-  return gestaltKey({
-    type: 'node',
-    nodeId: nodesUtils.encodeNodeId(nodeId),
-  }) as GestaltNodeKey;
+function toGestaltNodeKey(gestaltNodeId: ['node', NodeId]): GestaltKey {
+  return Buffer.concat([
+    Buffer.from(gestaltNodeId[0], 'utf-8'),
+    Buffer.from('-'),
+    gestaltNodeId[1].toBuffer(),
+  ]) as GestaltKey;
 }
 
-/**
- * Construct GestaltKey from IdentityId and ProviderId
- */
-function keyFromIdentity(
-  providerId: ProviderId,
-  identityId: IdentityId,
-): GestaltIdentityKey {
-  return gestaltKey({
-    type: 'identity',
-    providerId,
-    identityId,
-  }) as GestaltIdentityKey;
+function fromGestaltNodeKey(gestaltNodeKey: GestaltKey): ['node', NodeId] {
+  const type = gestaltNodeKey.slice(0, gestaltNodeKey.indexOf('-'));
+  if (!type.equals(Buffer.from('node'))) {
+    throw new TypeError('Buffer is not a GestaltNodeKey');
+  }
+  const nodeIdBuffer = gestaltNodeKey.slice(gestaltNodeKey.indexOf('-') + 1);
+  const nodeId = IdInternal.fromBuffer<NodeId>(nodeIdBuffer);
+  if (nodeId.length !== 32) {
+    throw new TypeError('Buffer is not a GestaltNodeKey');
+  }
+  return [
+    'node',
+    nodeId,
+  ];
 }
 
-/**
- * Deconstruct GestaltKey to NodeId
- */
-function nodeFromKey(nodeKey: GestaltNodeKey): NodeId {
-  const node = ungestaltKey(nodeKey) as GestaltNodeId;
-  return nodesUtils.decodeNodeId(node.nodeId)!;
+function toGestaltIdentityKey(
+  gestaltIdentityId: ['identity', ProviderIdentityId]
+): GestaltKey {
+  return Buffer.concat([
+    Buffer.from(gestaltIdentityId[0], 'utf-8'),
+    Buffer.from('-'),
+    Buffer.from(ids.encodeProviderIdentityId(gestaltIdentityId[1]), 'utf-8')
+  ]) as GestaltKey;
 }
 
-/**
- * Deconstruct GestaltKey to IdentityId and ProviderId
- */
-function identityFromKey(
-  identityKey: GestaltIdentityKey,
-): [ProviderId, IdentityId] {
-  const identity = ungestaltKey(identityKey) as GestaltIdentityId;
-  return [identity.providerId, identity.identityId];
+function fromGestaltIdentityKey(
+  gestaltIdentityKey: GestaltKey
+): ['identity', ProviderIdentityId] {
+  const type = gestaltIdentityKey.slice(0, gestaltIdentityKey.indexOf('-'));
+  if (!type.equals(Buffer.from('identity'))) {
+    throw new TypeError('Buffer is not a GestaltIdentityKey');
+  }
+  const providerIdentityIdEncoded = gestaltIdentityKey.slice(gestaltIdentityKey.indexOf('-') + 1);
+  const providerIdentityId = ids.decodeProviderIdentityId(
+    providerIdentityIdEncoded.toString('utf-8')
+  );
+  if (providerIdentityId == null) {
+    throw new TypeError('Buffer is not a GestaltIdentityKey');
+  }
+  return [
+    'identity',
+    providerIdentityId,
+  ];
 }
 
 function isGestaltAction(action: any): action is GestaltAction {
@@ -80,12 +103,93 @@ function isGestaltAction(action: any): action is GestaltAction {
   return (gestaltActions as Readonly<Array<string>>).includes(action);
 }
 
+function fromGestaltNodeInfoJSON(
+  gestaltNodeInfoJSON: GestaltNodeInfoJSON
+): GestaltNodeInfo {
+  return {
+    ...gestaltNodeInfoJSON,
+    nodeId: IdInternal.fromJSON<NodeId>(
+      gestaltNodeInfoJSON.nodeId
+    )!
+  };
+}
+
+function fromGestaltLinkJSON(gestaltLinkJSON: GestaltLinkJSON): GestaltLink {
+  const [type, gestaltLinkJSONData] = gestaltLinkJSON;
+  return [
+    type,
+    {
+      ...gestaltLinkJSONData,
+      id: IdInternal.fromJSON<GestaltLinkId>(gestaltLinkJSONData.id)!,
+      claim: {
+        ...gestaltLinkJSONData.claim,
+        signatures: gestaltLinkJSONData.claim.signatures.map(
+          headerSignatureJSON => ({
+            ...headerSignatureJSON,
+            signature: Buffer.from(headerSignatureJSON.signature.data) as TokenSignature,
+          })
+        ),
+      },
+    }
+  ] as GestaltLink;
+}
+
+/**
+ * Checks if the link node has matching node IDs
+ */
+function checkLinkNodeMatches(
+  nodeId1: NodeId,
+  nodeId2: NodeId,
+  claimPayload: ClaimLinkNode
+): boolean {
+  const issNodeId = ids.decodeNodeId(claimPayload.iss)!;
+  const subNodeId = ids.decodeNodeId(claimPayload.sub)!;
+  if (issNodeId.equals(nodeId1)) {
+    if (subNodeId.equals(nodeId2)) {
+      return true;
+    }
+  } else if (issNodeId.equals(nodeId2)) {
+    if (subNodeId.equals(nodeId1)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function checkLinkIdentityMatches(
+  nodeId: NodeId,
+  providerIdentityId: ProviderIdentityId,
+  claimPayload: ClaimLinkIdentity,
+) {
+  const [providerId, identityId] = providerIdentityId;
+  const issNodeId = ids.decodeNodeId(claimPayload.iss)!;
+  const [subProviderId, subIdentityId] = ids.decodeProviderIdentityId((claimPayload.sub))!;
+
+  return issNodeId.equals(nodeId) &&
+    subProviderId === providerId &&
+    subIdentityId === identityId;
+}
+
 export {
-  gestaltKey,
-  ungestaltKey,
-  keyFromNode,
-  keyFromIdentity,
-  nodeFromKey,
-  identityFromKey,
+  toGestaltKey,
+  fromGestaltKey,
+  toGestaltNodeKey,
+  fromGestaltNodeKey,
+  toGestaltIdentityKey,
+  fromGestaltIdentityKey,
   isGestaltAction,
+  fromGestaltNodeInfoJSON,
+  fromGestaltLinkJSON,
+  checkLinkNodeMatches,
+  checkLinkIdentityMatches,
 };
+
+export {
+  encodeGestaltId,
+  encodeGestaltNodeId,
+  encodeGestaltIdentityId,
+  decodeGestaltId,
+  decodeGestaltNodeId,
+  decodeGestaltIdentityId,
+  createGestaltLinkIdGenerator,
+} from '../ids';

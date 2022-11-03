@@ -51,6 +51,14 @@ type TokenProtectedHeaderEncoded = Opaque<'TokenProtectedHeaderEncoded', string>
 type TokenSignature = Signature | MAC;
 
 /**
+ * Token signature in JSON
+ */
+type TokenSignatureJSON = {
+  type: 'Buffer';
+  data: Array<number>;
+};
+
+/**
  * Encoded token signature
  * `base64url(TokenSignature)`
  */
@@ -62,6 +70,13 @@ type TokenSignatureEncoded = Opaque<'TokenSignatureEncoded', string>;
 type TokenHeaderSignature = {
   protected: TokenProtectedHeader;
   signature: TokenSignature;
+};
+
+/**
+ * Token header and signature in JSON
+ */
+type TokenHeaderSignatureJSON = Omit<TokenHeaderSignature, 'signature'> & {
+  signature: TokenSignatureJSON;
 };
 
 /**
@@ -81,6 +96,13 @@ type SignedToken<P extends TokenPayload = TokenPayload> = {
 };
 
 /**
+ * Token that is signed in JSON
+ */
+type SignedTokenJSON<P extends TokenPayload = TokenPayload> = Omit<SignedToken<P>, 'signatures'> & {
+  signatures: Array<TokenHeaderSignatureJSON>;
+};
+
+/**
  * Token as a General JWS JSON
  */
 type SignedTokenEncoded = {
@@ -94,9 +116,12 @@ export type {
   TokenProtectedHeader,
   TokenProtectedHeaderEncoded,
   TokenSignature,
+  TokenSignatureJSON,
   TokenSignatureEncoded,
   TokenHeaderSignature,
+  TokenHeaderSignatureJSON,
   TokenHeaderSignatureEncoded,
   SignedToken,
+  SignedTokenJSON,
   SignedTokenEncoded,
 };

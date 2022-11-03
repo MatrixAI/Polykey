@@ -63,5 +63,6 @@ export type {
   ProviderId,
   IdentityId,
   ProviderIdentityId,
+  ProviderIdentityIdEncoded,
   ProviderIdentityClaimId,
 } from '../ids/types';
