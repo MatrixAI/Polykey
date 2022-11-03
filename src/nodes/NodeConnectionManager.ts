@@ -120,6 +120,8 @@ class NodeConnectionManager {
     this.nodeGraph = nodeGraph;
     this.proxy = proxy;
     this.taskManager = taskManager;
+    const localNodeIdEncoded = nodesUtils.encodeNodeId(keyManager.getNodeId());
+    delete seedNodes[localNodeIdEncoded];
     this.seedNodes = seedNodes;
     this.initialClosestNodes = initialClosestNodes;
     this.connConnectTime = connConnectTime;

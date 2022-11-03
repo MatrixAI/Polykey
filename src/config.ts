@@ -97,7 +97,16 @@ const config = {
     // This is not used by the `PolykeyAgent` which defaults to `{}`
     network: {
       mainnet: {},
-      testnet: {},
+      testnet: {
+        vg9a9e957878s2qgtbdmu2atvli8ms7muukb1dk4dpbm4llkki3h0: {
+          host: 'testnet.polykey.io' as Host,
+          port: 1314 as Port,
+        },
+        vh9oqtvct10eaiv3cl4ebm0ko33sl0qqpvb59vud8cngfvqs4p4ng: {
+          host: 'testnet.polykey.io' as Host,
+          port: 1314 as Port,
+        },
+      },
     },
   },
 };
