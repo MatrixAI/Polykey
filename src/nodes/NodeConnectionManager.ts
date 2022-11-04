@@ -24,13 +24,14 @@ import { Timer } from '@matrixai/timer';
 import NodeConnection from './NodeConnection';
 import * as nodesUtils from './utils';
 import * as nodesErrors from './errors';
+import * as contextsErrors from '../contexts/errors';
 import { context, timedCancellable } from '../contexts';
 import GRPCClientAgent from '../agent/GRPCClientAgent';
 import * as validationUtils from '../validation/utils';
 import * as networkUtils from '../network/utils';
 import * as nodesPB from '../proto/js/polykey/v1/nodes/nodes_pb';
 import { never, promise } from '../utils';
-import { resolveAddresses } from '../network/utils';
+import { resolveHostnames } from '../network/utils';
 
 // TODO: check all locking and add cancellation for it.
 
@@ -39,6 +40,9 @@ type ConnectionAndTimer = {
   timer: Timer | null;
   usageCount: number;
 };
+
+// Default timeout for trying to establish connections
+const defaultConnectionTimeout = 2000;
 
 interface NodeConnectionManager extends StartStop {}
 @StartStop()
@@ -91,6 +95,7 @@ class NodeConnectionManager {
   > = new Map();
   protected backoffDefault: number = 300; // 5 min
   protected backoffMultiplier: number = 2; // Doubles every failure
+  protected ncDestroyTimeout: number;
 
   public constructor({
     keyManager,
@@ -102,6 +107,7 @@ class NodeConnectionManager {
     connConnectTime = 2000,
     connTimeoutTime = 60000,
     pingTimeout = 2000,
+    ncDestroyTimeout = 2000,
     logger,
   }: {
     nodeGraph: NodeGraph;
@@ -113,6 +119,7 @@ class NodeConnectionManager {
     connConnectTime?: number;
     connTimeoutTime?: number;
     pingTimeout?: number;
+    ncDestroyTimeout?: number;
     logger?: Logger;
   }) {
     this.logger = logger ?? new Logger(NodeConnectionManager.name);
@@ -127,6 +134,7 @@ class NodeConnectionManager {
     this.connConnectTime = connConnectTime;
     this.connTimeoutTime = connTimeoutTime;
     this.pingTimeout = pingTimeout;
+    this.ncDestroyTimeout = ncDestroyTimeout;
   }
 
   public async start({ nodeManager }: { nodeManager: NodeManager }) {
@@ -163,16 +171,18 @@ class NodeConnectionManager {
    * itself is such that we can pass targetNodeId as a parameter (as opposed to
    * an acquire function with no parameters).
    * @param targetNodeId Id of target node to communicate with
+   * @param connectionTimeout Timeout for each attempted connection to a host address
    * @param ctx
    * @returns ResourceAcquire Resource API for use in with contexts
    */
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
   public async acquireConnection(
     targetNodeId: NodeId,
+    connectionTimeout: number = defaultConnectionTimeout,
     ctx?: Partial<ContextTimed>,
   ): Promise<ResourceAcquire<NodeConnection<GRPCClientAgent>>> {
     return async () => {
-      const connectionAndTimer = await this.getConnection(targetNodeId, ctx);
+      const connectionAndTimer = await this.getConnection(targetNodeId, connectionTimeout, ctx);
       // Increment usage count, and cancel timer
       connectionAndTimer.usageCount += 1;
       connectionAndTimer.timer?.cancel();
@@ -206,11 +216,13 @@ class NodeConnectionManager {
    * for use with normal arrow function
    * @param targetNodeId Id of target node to communicate with
    * @param f Function to handle communication
+   * @param connectionTimeout Timeout for each attempted connection to a host address
    * @param ctx
    */
   public withConnF<T>(
     targetNodeId: NodeId,
     f: (conn: NodeConnection<GRPCClientAgent>) => Promise<T>,
+    connectionTimeout?: number,
     ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<T>;
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
@@ -222,10 +234,11 @@ class NodeConnectionManager {
   public async withConnF<T>(
     targetNodeId: NodeId,
     f: (conn: NodeConnection<GRPCClientAgent>) => Promise<T>,
+    connectionTimeout: number = defaultConnectionTimeout,
     @context ctx: ContextTimed,
   ): Promise<T> {
     return await withF(
-      [await this.acquireConnection(targetNodeId, ctx)],
+      [await this.acquireConnection(targetNodeId, connectionTimeout, ctx)],
       async ([conn]) => await f(conn),
     );
   }
@@ -237,6 +250,7 @@ class NodeConnectionManager {
    * for use with a generator function
    * @param targetNodeId Id of target node to communicate with
    * @param g Generator function to handle communication
+   * @param connectionTimeout Timeout for each attempted connection to a host address
    * @param ctx
    */
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
@@ -245,9 +259,10 @@ class NodeConnectionManager {
     g: (
       conn: NodeConnection<GRPCClientAgent>,
     ) => AsyncGenerator<T, TReturn, TNext>,
+    connectionTimeout: number = defaultConnectionTimeout,
     ctx?: Partial<ContextTimed>,
   ): AsyncGenerator<T, TReturn, TNext> {
-    const acquire = await this.acquireConnection(targetNodeId, ctx);
+    const acquire = await this.acquireConnection(targetNodeId, connectionTimeout, ctx);
     const [release, conn] = await acquire();
     let caughtError;
     try {
@@ -266,11 +281,13 @@ class NodeConnectionManager {
    * Create a connection to another node (without performing any function).
    * This is a NOOP if a connection already exists.
    * @param targetNodeId Id of node we are creating connection to
+   * @param connectionTimeout Timeout for each attempted connection to a host address
    * @param ctx
    * @returns ConnectionAndLock that was created or exists in the connection map
    */
   protected getConnection(
     targetNodeId: NodeId,
+    connectionTimeout?: number,
     ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<ConnectionAndTimer>;
   @timedCancellable(
@@ -280,105 +297,139 @@ class NodeConnectionManager {
   )
   protected async getConnection(
     targetNodeId: NodeId,
+    connectionTimeout: number = defaultConnectionTimeout,
     @context ctx: ContextTimed,
   ): Promise<ConnectionAndTimer> {
     const targetNodeIdString = targetNodeId.toString() as NodeIdString;
+    const targetNodeIdEncoded = nodesUtils.encodeNodeId(targetNodeId);
+    this.logger.info(`Getting NodeConnection for ${targetNodeIdEncoded}`);
     return await this.connectionLocks.withF(
       [targetNodeIdString, Lock],
       async () => {
         const connAndTimer = this.connections.get(targetNodeIdString);
-        if (connAndTimer != null) return connAndTimer;
+        if (connAndTimer != null) {
+          this.logger.info(
+            `Found existing NodeConnection for ${targetNodeIdEncoded}`,
+          );
+          return connAndTimer;
+        }
         // Creating the connection and set in map
+        this.logger.info(`Finding address for ${targetNodeIdEncoded}`);
         const targetAddress = await this.findNode(targetNodeId);
         if (targetAddress == null) {
           throw new nodesErrors.ErrorNodeGraphNodeIdNotFound();
         }
+        this.logger.info(
+          `Found address for ${targetNodeIdEncoded} at ${targetAddress.host}:${targetAddress.port}`,
+        );
         // If the stored host is not a valid host (IP address),
         // then we assume it to be a hostname
         const targetHostname = !networkUtils.isHost(targetAddress.host)
           ? (targetAddress.host as string as Hostname)
           : undefined;
-        const targetHosts = networkUtils.isHost(targetAddress.host)
-          ? [targetAddress.host]
-          : await networkUtils.resolveHostname(targetAddress.host);
-        // Creating the destroyCallback
-        const destroyCallback = async () => {
-          // To avoid deadlock only in the case where this is called
-          // we want to check for destroying connection and read lock
-          const connAndTimer = this.connections.get(targetNodeIdString);
-          // If the connection is calling destroyCallback then it SHOULD
-          // exist in the connection map
-          if (connAndTimer == null) return;
-          // Already locked so already destroying
-          if (this.connectionLocks.isLocked(targetNodeIdString)) return;
-          // Connection is already destroying
-          if (connAndTimer?.connection?.[status] === 'destroying') return;
-          await this.destroyConnection(targetNodeId);
-        };
-        // Creating new connection
-        const firstResolvedIndex = promise<number>();
-        const cleanUpReason = Symbol('clean up');
-        const connectionPromises = targetHosts.map((host, index) => {
-          return NodeConnection.createNodeConnection(
-            {
-              targetNodeId: targetNodeId,
-              targetHost: host,
-              targetHostname: targetHostname,
-              targetPort: targetAddress.port,
-              proxy: this.proxy,
-              keyManager: this.keyManager,
-              nodeConnectionManager: this,
-              destroyCallback,
-              logger: this.logger.getChild(
-                `${NodeConnection.name} ${nodesUtils.encodeNodeId(
-                  targetNodeId,
-                )}:${targetAddress.port}`,
-              ),
-              clientFactory: async (args) =>
-                GRPCClientAgent.createGRPCClientAgent(args),
+        const targetAddresses = await networkUtils.resolveHostnames([
+          targetAddress,
+        ]);
+        this.logger.info(`Creating NodeConnection for ${targetNodeIdEncoded}`);
+        const errors: Array<any> = [];
+        for (const address of targetAddresses) {
+          // Creating new connection
+          const destroyCallbackProm = promise<void>();
+          const abortController = new AbortController();
+          const timer = new Timer({
+            handler: () => {
+              abortController.abort(contextsErrors.ErrorContextsTimedTimeOut);
             },
-            ctx,
-          ).finally(() => {
-            // Resolve the index of the first successful connection
-            firstResolvedIndex.resolveP(index);
+            delay: connectionTimeout,
           });
-        });
-        // Race the first connection
-        const newConnection = await Promise.race(connectionPromises);
-        for (const prom of connectionPromises) {
-          const index = connectionPromises.indexOf(prom);
-          // Clean up remaining connections
-          if (index !== (await firstResolvedIndex.p)) {
-            prom.cancel(cleanUpReason);
-            await prom.then(
-              async (connection) => {
-                // Destroy any extra connections that succeeded.
-                // DestroyCallback is a NOP if the connection is not in
-                // the connection map.
-                await connection.destroy();
+          const eventListener = () => {
+            abortController.abort(ctx.signal.reason);
+          };
+          if (ctx.signal.aborted) abortController.abort(ctx.signal.reason);
+          else {
+            ctx.signal.addEventListener('abort', eventListener);
+          }
+          try {
+            const newConnection = await NodeConnection.createNodeConnection(
+              {
+                targetNodeId: targetNodeId,
+                targetHost: address.host,
+                targetHostname: targetHostname,
+                targetPort: address.port,
+                proxy: this.proxy,
+                keyManager: this.keyManager,
+                nodeConnectionManager: this,
+                destroyCallback: async () => {
+                  destroyCallbackProm.resolveP();
+                },
+                logger: this.logger.getChild(
+                  `${NodeConnection.name} [${nodesUtils.encodeNodeId(
+                    targetNodeId,
+                  )}@${address.host}:${address.port}]`,
+                ),
+                clientFactory: async (args) =>
+                  GRPCClientAgent.createGRPCClientAgent(args),
               },
-              () => {
-                // Ignore rejections
-              },
+              { signal: abortController.signal, timer },
             );
+            void destroyCallbackProm.p.then(async () => {
+              this.logger.info('DestroyedCallback was called');
+              // To avoid deadlock only in the case where this is called
+              // we want to check for destroying connection and read lock
+              const connAndTimer = this.connections.get(targetNodeIdString);
+              // If the connection is calling destroyCallback then it SHOULD
+              // exist in the connection map
+              if (connAndTimer == null) return;
+              // Already locked so already destroying
+              if (this.connectionLocks.isLocked(targetNodeIdString)) return;
+              // Connection is already destroying
+              if (connAndTimer?.connection?.[status] === 'destroying') return;
+              await this.destroyConnection(targetNodeId);
+            });
+            // We can assume connection was established and destination was valid,
+            // we can add the target to the nodeGraph
+            await this.nodeManager?.setNode(targetNodeId, targetAddress);
+            // Creating TTL timeout
+            const timeToLiveTimer = new Timer({
+              handler: async () => await this.destroyConnection(targetNodeId),
+              delay: this.connTimeoutTime,
+            });
+            const newConnAndTimer: ConnectionAndTimer = {
+              connection: newConnection,
+              timer: timeToLiveTimer,
+              usageCount: 0,
+            };
+            this.connections.set(targetNodeIdString, newConnAndTimer);
+            // Enable destroyCallback clean up
+            this.logger.info(
+              `Created NodeConnection for ${targetNodeIdEncoded}`,
+            );
+            return newConnAndTimer;
+          } catch (e) {
+            this.logger.info(
+              `Creating NodeConnection failed for ${targetNodeIdEncoded}`,
+            );
+            // Disable destroyCallback clean up
+            void destroyCallbackProm.p.then(() => {});
+            errors.push(e);
+          } finally {
+            abortController.signal.removeEventListener('abort', eventListener);
+            timer.cancel();
           }
         }
-        // We can assume connection was established and destination was valid,
-        // we can add the target to the nodeGraph
-        await this.nodeManager?.setNode(targetNodeId, targetAddress);
-        // Creating TTL timeout
-        const timeToLiveTimer = new Timer({
-          handler: async () => await this.destroyConnection(targetNodeId),
-          delay: this.connTimeoutTime,
-        });
-
-        const newConnAndTimer: ConnectionAndTimer = {
-          connection: newConnection,
-          timer: timeToLiveTimer,
-          usageCount: 0,
-        };
-        this.connections.set(targetNodeIdString, newConnAndTimer);
-        return newConnAndTimer;
+        this.logger.info(
+          `Failed NodeConnection for ${targetNodeIdEncoded} with ${errors}`,
+        );
+        if (errors.length === 1) {
+          throw errors[0];
+        } else {
+          throw new nodesErrors.ErrorNodeConnectionMultiConnectionFailed(
+            'failed to establish connection with multiple hosts',
+            {
+              cause: new AggregateError(errors),
+            },
+          );
+        }
       },
     );
   }
@@ -394,7 +445,14 @@ class NodeConnectionManager {
       async () => {
         const connAndTimer = this.connections.get(targetNodeIdString);
         if (connAndTimer?.connection == null) return;
-        await connAndTimer.connection.destroy();
+        this.logger.info(
+          `Destroying NodeConnection for ${nodesUtils.encodeNodeId(
+            targetNodeId,
+          )}`,
+        );
+        await connAndTimer.connection.destroy({
+          timeout: this.ncDestroyTimeout,
+        });
         // Destroying TTL timer
         if (connAndTimer.timer != null) connAndTimer.timer.cancel();
         // Updating the connection map
@@ -677,6 +735,7 @@ class NodeConnectionManager {
           const client = connection.getClient();
           return await client.nodesClosestLocalNodesGet(nodeIdMessage);
         },
+        undefined,
         ctx,
       );
       const nodes: Array<[NodeId, NodeData]> = [];
@@ -755,6 +814,7 @@ class NodeConnectionManager {
         const client = connection.getClient();
         await client.nodesHolePunchMessageSend(relayMsg);
       },
+      undefined,
       ctx,
     ).catch(() => {});
   }
@@ -872,12 +932,12 @@ class NodeConnectionManager {
   public async establishMultiConnection(
     nodeIds: Array<NodeId>,
     addresses: Array<NodeAddress>,
-    connectionTimeout: number = 2000,
+    connectionTimeout: number = defaultConnectionTimeout,
     limit: number | undefined,
     @context ctx: ContextTimed,
   ): Promise<Map<NodeId, { host: Host; port: Port }>> {
     // Get the full list of addresses by flattening results
-    const addresses_ = await resolveAddresses(addresses);
+    const addresses_ = await resolveHostnames(addresses);
     // We want to establish forward connections to each address
     const pendingConnectionProms: Array<Promise<void>> = [];
     const semaphore = limit != null ? new Semaphore(limit) : null;

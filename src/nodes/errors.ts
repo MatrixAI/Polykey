@@ -62,6 +62,11 @@ class ErrorNodeConnectionTimeout<T> extends ErrorNodes<T> {
   exitCode = sysexits.UNAVAILABLE;
 }
 
+class ErrorNodeConnectionMultiConnectionFailed<T> extends ErrorNodes<T> {
+  static description: 'Could not establish connection when multiple resolved hosts were involved';
+  exitCode = sysexits.UNAVAILABLE;
+}
+
 class ErrorNodeConnectionInfoNotExist<T> extends ErrorNodes<T> {
   static description: 'NodeConnection info was not found';
   exitCode = sysexits.UNAVAILABLE;
@@ -101,6 +106,7 @@ export {
   ErrorNodeGraphBucketIndex,
   ErrorNodeConnectionDestroyed,
   ErrorNodeConnectionTimeout,
+  ErrorNodeConnectionMultiConnectionFailed,
   ErrorNodeConnectionInfoNotExist,
   ErrorNodeConnectionPublicKeyNotFound,
   ErrorNodeConnectionManagerNotRunning,

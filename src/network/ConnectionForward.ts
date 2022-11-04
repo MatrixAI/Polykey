@@ -125,7 +125,7 @@ class ConnectionForward extends Connection {
     // Promise for abortion and timeout
     const { p: abortedP, resolveP: resolveAbortedP } = promise<void>();
     if (ctx.signal.aborted) {
-      this.logger.debug(`Failed to start Connection Forward: aborted`);
+      this.logger.info(`Failed to start Connection Forward: aborted`);
       // This is for arbitrary abortion reason provided by the caller
       // Re-throw the default timeout error as a network timeout error
       if (
@@ -186,7 +186,7 @@ class ConnectionForward extends Connection {
         this.tlsSocket.destroy();
       }
       this.utpSocket.off('message', this.handleMessage);
-      this.logger.debug(`Failed to start Connection Forward: ${e.message}`);
+      this.logger.info(`Failed to start Connection Forward: ${e.message}`);
       throw new networkErrors.ErrorConnectionStart(undefined, {
         cause: e,
       });
@@ -196,7 +196,7 @@ class ConnectionForward extends Connection {
     this.tlsSocket.on('error', this.handleError);
     this.tlsSocket.off('error', handleStartError);
     if (ctx.signal.aborted) {
-      this.logger.debug(`Failed to start Connection Forward: aborted`);
+      this.logger.info(`Failed to start Connection Forward: aborted`);
       // Clean up partial start
       // TLSSocket isn't established yet, so it is destroyed
       if (!this.tlsSocket.destroyed) {
@@ -220,7 +220,7 @@ class ConnectionForward extends Connection {
         serverCertChain,
       );
     } catch (e) {
-      this.logger.debug(
+      this.logger.info(
         `Failed to start Connection Forward: verification failed`,
       );
       // Clean up partial start

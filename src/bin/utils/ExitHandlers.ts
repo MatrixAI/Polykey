@@ -67,6 +67,7 @@ class ExitHandlers {
     const error = new binErrors.ErrorBinUnhandledRejection(undefined, {
       cause: e,
     });
+    console.log('unhandledRejectionHandler');
     process.stderr.write(
       binUtils.outputFormatter({
         type: this._errFormat,
@@ -91,6 +92,7 @@ class ExitHandlers {
     const error = new binErrors.ErrorBinUncaughtException(undefined, {
       cause: e,
     });
+    console.log('UncaughtExceptionhandler');
     process.stderr.write(
       binUtils.outputFormatter({
         type: this._errFormat,
@@ -105,6 +107,7 @@ class ExitHandlers {
   protected deadlockHandler = async () => {
     if (process.exitCode == null) {
       const e = new binErrors.ErrorBinAsynchronousDeadlock();
+      console.log('deadlockHandler');
       process.stderr.write(
         binUtils.outputFormatter({
           type: this._errFormat,

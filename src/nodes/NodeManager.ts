@@ -311,6 +311,7 @@ class NodeManager {
           ) as PublicKeyPem;
           return [unverifiedChainData, publicKey];
         },
+        connectionTimeout,
         { signal: ctx.signal, timer },
       );
 
@@ -344,6 +345,7 @@ class NodeManager {
             async (connection) => {
               return connection.getExpectedPublicKey(endNodeId) as PublicKeyPem;
             },
+            connectionTimeout,
             { signal: ctx.signal, timer },
           );
           if (!endPublicKey) {
@@ -1038,44 +1040,65 @@ class NodeManager {
     pingTimeout: number | undefined,
     @context ctx: ContextTimed,
   ): Promise<void> {
-    this.logger.info('Syncing nodeGraph');
+    const logger = this.logger.getChild('syncNodeGraph');
+    logger.info('Syncing nodeGraph');
     // Getting the seed node connection information
     const seedNodes = this.nodeConnectionManager.getSeedNodes();
-    const addresses = await Promise.all(
-      await this.db.withTransactionF(async (tran) =>
-        seedNodes.map(
-          async (seedNode) =>
-            (
-              await this.nodeGraph.getNode(seedNode, tran)
-            )?.address,
-        ),
-      ),
-    );
-    const filteredAddresses = addresses.filter(
-      (address) => address != null,
-    ) as Array<NodeAddress>;
-    // Establishing connections to the seed nodes
-    const connections =
-      await this.nodeConnectionManager.establishMultiConnection(
-        seedNodes,
-        filteredAddresses,
-        pingTimeout,
-        undefined,
-        { signal: ctx.signal },
-      );
+    // FIXME: remove or uncomment, need to decide
+    // const addresses = await Promise.all(
+    //   await this.db.withTransactionF(async (tran) =>
+    //     seedNodes.map(
+    //       async (seedNode) =>
+    //         (
+    //           await this.nodeGraph.getNode(seedNode, tran)
+    //         )?.address,
+    //     ),
+    //   ),
+    // );
+    // const filteredAddresses = addresses.filter(
+    //   (address) => address != null,
+    // ) as Array<NodeAddress>;
+    // logger.info(
+    //   `establishing multi-connection to the following seed nodes ${seedNodes.map(
+    //     (nodeId) => nodesUtils.encodeNodeId(nodeId),
+    //   )}`,
+    // );
+    // logger.info(
+    //   `and addresses addresses ${filteredAddresses.map(
+    //     (address) => `${address.host}:${address.port}`,
+    //   )}`,
+    // );
+    // // Establishing connections to the seed nodes
+    // const connections =
+    //   await this.nodeConnectionManager.establishMultiConnection(
+    //     seedNodes,
+    //     filteredAddresses,
+    //     pingTimeout,
+    //     undefined,
+    //     { signal: ctx.signal },
+    //   );
+    // logger.info(`Multi-connection established for`);
+    // connections.forEach((address, key) => {
+    //   logger.info(
+    //     `${nodesUtils.encodeNodeId(key)}@${address.host}:${address.port}`,
+    //   );
+    // });
     // Using a map to avoid duplicates
     const closestNodesAll: Map<NodeId, NodeData> = new Map();
     const localNodeId = this.keyManager.getNodeId();
     let closestNode: NodeId | null = null;
-    for (const [nodeId] of connections) {
+    logger.info('Getting closest nodes');
+    for (const nodeId of seedNodes) {
       const closestNodes =
         await this.nodeConnectionManager.getRemoteNodeClosestNodes(
           nodeId,
           localNodeId,
           { signal: ctx.signal },
         );
-      // Setting node information into the map
-      closestNodes.forEach((item) => closestNodesAll.set(...item));
+      // Setting node information into the map, filtering out local node
+      closestNodes.forEach(([nodeId, address]) => {
+        if (!localNodeId.equals(nodeId)) closestNodesAll.set(nodeId, address);
+      });
 
       // Getting the closest node
       let closeNodeInfo = closestNodes.pop();
@@ -1089,9 +1112,15 @@ class NodeManager {
       const distB = nodesUtils.nodeDistance(localNodeId, closestNode);
       if (distA < distB) closestNode = closeNode;
     }
+    logger.info('Starting pingsAndSet tasks');
     const pingTasks: Array<Task> = [];
     for (const [nodeId, nodeData] of closestNodesAll) {
       if (!localNodeId.equals(nodeId)) {
+        logger.info(
+          `pingAndSetTask for ${nodesUtils.encodeNodeId(nodeId)}@${
+            nodeData.address.host
+          }:${nodeData.address.port}`,
+        );
         const pingAndSetTask = await this.taskManager.scheduleTask({
           delay: 0,
           handlerId: this.pingAndSetNodeHandlerId,
@@ -1111,6 +1140,7 @@ class NodeManager {
     }
     if (block) {
       // We want to wait for all the tasks
+      logger.info('Awaiting all pingAndSetTasks');
       await Promise.all(
         pingTasks.map((task) => {
           const prom = task.promise();
@@ -1127,8 +1157,8 @@ class NodeManager {
         }),
       );
     }
-
     // Refreshing every bucket above the closest node
+    logger.info(`Triggering refreshBucket tasks`);
     let index = this.nodeGraph.nodeIdBits;
     if (closestNode != null) {
       const [bucketIndex] = this.nodeGraph.bucketIndex(closestNode);
@@ -1139,7 +1169,10 @@ class NodeManager {
       const task = await this.updateRefreshBucketDelay(i, 0, !block);
       refreshBuckets.push(task.promise());
     }
-    if (block) await Promise.all(refreshBuckets);
+    if (block) {
+      logger.info(`Awaiting refreshBucket tasks`);
+      await Promise.all(refreshBuckets);
+    }
   }
 }
 

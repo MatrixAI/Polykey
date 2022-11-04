@@ -485,7 +485,12 @@ function verifyClientCertificateChain(certChain: Array<Certificate>): void {
   }
 }
 
-async function resolveAddresses(addresses: Array<NodeAddress>) {
+/**
+ * Takes an array of host or hostnames and resolves them to the host addresses.
+ * It will also filter out any duplicates or IPV6 addresses.
+ * @param addresses
+ */
+async function resolveHostnames(addresses: Array<NodeAddress>) {
   const existingAddresses: Set<string> = new Set();
   const final: Array<{ host: Host; port: Port }> = [];
   for (const address of addresses) {
@@ -526,5 +531,5 @@ export {
   getCertificateChain,
   verifyServerCertificateChain,
   verifyClientCertificateChain,
-  resolveAddresses,
+  resolveHostnames,
 };

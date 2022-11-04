@@ -75,6 +75,7 @@ class NodeConnection<T extends GRPCClient> {
       clientFactory,
       nodeConnectionManager,
       destroyCallback = async () => {},
+      destroyTimeout = 2000,
       logger = new Logger(this.name),
     }: {
       targetNodeId: NodeId;
@@ -86,6 +87,7 @@ class NodeConnection<T extends GRPCClient> {
       clientFactory: (...args) => Promise<T>;
       nodeConnectionManager: NodeConnectionManager;
       destroyCallback?: () => Promise<void>;
+      destroyTimeout?: number;
       logger?: Logger;
     },
     @context ctx: ContextTimed,
@@ -136,19 +138,21 @@ class NodeConnection<T extends GRPCClient> {
       }
       // TODO: this needs to be updated to take a context,
       //  still uses old timer style.
+      const clientLogger = logger.getChild(clientFactory.name);
       client = await clientFactory({
         nodeId: targetNodeId,
         host: targetHost,
         port: targetPort,
         proxyConfig: proxyConfig,
         // Think about this
-        logger: logger.getChild(clientFactory.name),
+        logger: clientLogger,
         destroyCallback: async () => {
+          clientLogger.info(`GRPC client triggered destroyedCallback`);
           if (
             nodeConnection[asyncInit.status] !== 'destroying' &&
             !nodeConnection[asyncInit.destroyed]
           ) {
-            await nodeConnection.destroy();
+            await nodeConnection.destroy({ timeout: destroyTimeout });
           }
         },
         // FIXME: this needs to be replaced with
@@ -158,7 +162,7 @@ class NodeConnection<T extends GRPCClient> {
       // 5. When finished, you have a connection to other node
       // The GRPCClient is ready to be used for requests
     } catch (e) {
-      await nodeConnection.destroy();
+      await nodeConnection.destroy({ timeout: destroyTimeout });
       // If the connection times out, re-throw this with a higher level nodes exception
       if (e instanceof grpcErrors.ErrorGRPCClientTimeout) {
         throw new nodesErrors.ErrorNodeConnectionTimeout(e.message, {
@@ -198,15 +202,20 @@ class NodeConnection<T extends GRPCClient> {
     this.destroyCallback = destroyCallback;
   }
 
-  public async destroy() {
+  public async destroy({
+    timeout,
+  }: {
+    timeout?: number;
+  } = {}) {
     this.logger.info(`Destroying ${this.constructor.name}`);
     if (
       this.client != null &&
       this.client[asyncInit.status] !== 'destroying' &&
       !this.client[asyncInit.destroyed]
     ) {
-      await this.client.destroy();
+      await this.client.destroy({ timeout });
     }
+    this.logger.info(`${this.constructor.name} triggered destroyedCallback`);
     await this.destroyCallback();
     this.logger.info(`Destroyed ${this.constructor.name}`);
   }
