@@ -181,8 +181,15 @@ class NodeConnectionManager {
     connectionTimeout: number = defaultConnectionTimeout,
     ctx?: Partial<ContextTimed>,
   ): Promise<ResourceAcquire<NodeConnection<GRPCClientAgent>>> {
+    if (this.keyManager.getNodeId().equals(targetNodeId)) {
+      this.logger.warn('Attempting connection to our own NodeId');
+    }
     return async () => {
-      const connectionAndTimer = await this.getConnection(targetNodeId, connectionTimeout, ctx);
+      const connectionAndTimer = await this.getConnection(
+        targetNodeId,
+        connectionTimeout,
+        ctx,
+      );
       // Increment usage count, and cancel timer
       connectionAndTimer.usageCount += 1;
       connectionAndTimer.timer?.cancel();
@@ -262,7 +269,11 @@ class NodeConnectionManager {
     connectionTimeout: number = defaultConnectionTimeout,
     ctx?: Partial<ContextTimed>,
   ): AsyncGenerator<T, TReturn, TNext> {
-    const acquire = await this.acquireConnection(targetNodeId, connectionTimeout, ctx);
+    const acquire = await this.acquireConnection(
+      targetNodeId,
+      connectionTimeout,
+      ctx,
+    );
     const [release, conn] = await acquire();
     let caughtError;
     try {
@@ -345,8 +356,9 @@ class NodeConnectionManager {
           const eventListener = () => {
             abortController.abort(ctx.signal.reason);
           };
-          if (ctx.signal.aborted) abortController.abort(ctx.signal.reason);
-          else {
+          if (ctx.signal.aborted) {
+            abortController.abort(ctx.signal.reason);
+          } else {
             ctx.signal.addEventListener('abort', eventListener);
           }
           try {
@@ -738,12 +750,14 @@ class NodeConnectionManager {
         undefined,
         ctx,
       );
+      const localNodeId = this.keyManager.getNodeId();
       const nodes: Array<[NodeId, NodeData]> = [];
       // Loop over each map element (from the returned response) and populate nodes
       response.getNodeTableMap().forEach((address, nodeIdString: string) => {
         const nodeId = nodesUtils.decodeNodeId(nodeIdString);
         // If the nodeId is not valid we don't add it to the list of nodes
-        if (nodeId != null) {
+        // Our own nodeId is considered not valid here
+        if (nodeId != null && !localNodeId.equals(nodeId)) {
           nodes.push([
             nodeId,
             {

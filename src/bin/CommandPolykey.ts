@@ -1,6 +1,11 @@
 import type { FileSystem } from '../types';
 import commander from 'commander';
-import Logger, { StreamHandler, formatting, levelToString, evalLogDataValue } from '@matrixai/logger';
+import Logger, {
+  StreamHandler,
+  formatting,
+  levelToString,
+  evalLogDataValue,
+} from '@matrixai/logger';
 import * as binUtils from './utils';
 import * as binOptions from './utils/options';
 import * as binErrors from './errors';

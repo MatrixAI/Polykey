@@ -86,6 +86,13 @@ class ErrorNodeConnectionHostWildcard<T> extends ErrorNodes<T> {
   static description = 'An IP wildcard was provided for the target host';
   exitCode = sysexits.USAGE;
 }
+
+class ErrorNodeConnectionSameNodeId<T> extends ErrorNodes<T> {
+  static description =
+    'Provided NodeId is the same as this agent, attempts to connect is improper usage';
+  exitCode = sysexits.USAGE;
+}
+
 class ErrorNodePingFailed<T> extends ErrorNodes<T> {
   static description =
     'Failed to ping the node when attempting to authenticate';
@@ -111,5 +118,6 @@ export {
   ErrorNodeConnectionPublicKeyNotFound,
   ErrorNodeConnectionManagerNotRunning,
   ErrorNodeConnectionHostWildcard,
+  ErrorNodeConnectionSameNodeId,
   ErrorNodePingFailed,
 };
