@@ -41,9 +41,6 @@ type ConnectionAndTimer = {
   usageCount: number;
 };
 
-// Default timeout for trying to establish connections
-const defaultConnectionTimeout = 2000;
-
 interface NodeConnectionManager extends StartStop {}
 @StartStop()
 class NodeConnectionManager {
@@ -171,23 +168,19 @@ class NodeConnectionManager {
    * itself is such that we can pass targetNodeId as a parameter (as opposed to
    * an acquire function with no parameters).
    * @param targetNodeId Id of target node to communicate with
-   * @param connectionTimeout Timeout for each attempted connection to a host address
    * @param ctx
    * @returns ResourceAcquire Resource API for use in with contexts
    */
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
   public async acquireConnection(
     targetNodeId: NodeId,
-    connectionTimeout: number = defaultConnectionTimeout,
     ctx?: Partial<ContextTimed>,
   ): Promise<ResourceAcquire<NodeConnection<GRPCClientAgent>>> {
     if (this.keyManager.getNodeId().equals(targetNodeId)) {
       this.logger.warn('Attempting connection to our own NodeId');
     }
     return async () => {
-      const connectionAndTimer = await this.getConnection(
-        targetNodeId,
-        connectionTimeout,
+      const connectionAndTimer = await this.getConnection(targetNodeId,
         ctx,
       );
       // Increment usage count, and cancel timer
@@ -223,13 +216,11 @@ class NodeConnectionManager {
    * for use with normal arrow function
    * @param targetNodeId Id of target node to communicate with
    * @param f Function to handle communication
-   * @param connectionTimeout Timeout for each attempted connection to a host address
    * @param ctx
    */
   public withConnF<T>(
     targetNodeId: NodeId,
     f: (conn: NodeConnection<GRPCClientAgent>) => Promise<T>,
-    connectionTimeout?: number,
     ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<T>;
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
@@ -241,11 +232,10 @@ class NodeConnectionManager {
   public async withConnF<T>(
     targetNodeId: NodeId,
     f: (conn: NodeConnection<GRPCClientAgent>) => Promise<T>,
-    connectionTimeout: number = defaultConnectionTimeout,
     @context ctx: ContextTimed,
   ): Promise<T> {
     return await withF(
-      [await this.acquireConnection(targetNodeId, connectionTimeout, ctx)],
+      [await this.acquireConnection(targetNodeId, ctx)],
       async ([conn]) => await f(conn),
     );
   }
@@ -257,7 +247,6 @@ class NodeConnectionManager {
    * for use with a generator function
    * @param targetNodeId Id of target node to communicate with
    * @param g Generator function to handle communication
-   * @param connectionTimeout Timeout for each attempted connection to a host address
    * @param ctx
    */
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
@@ -266,12 +255,9 @@ class NodeConnectionManager {
     g: (
       conn: NodeConnection<GRPCClientAgent>,
     ) => AsyncGenerator<T, TReturn, TNext>,
-    connectionTimeout: number = defaultConnectionTimeout,
     ctx?: Partial<ContextTimed>,
   ): AsyncGenerator<T, TReturn, TNext> {
-    const acquire = await this.acquireConnection(
-      targetNodeId,
-      connectionTimeout,
+    const acquire = await this.acquireConnection(targetNodeId,
       ctx,
     );
     const [release, conn] = await acquire();
@@ -292,13 +278,11 @@ class NodeConnectionManager {
    * Create a connection to another node (without performing any function).
    * This is a NOOP if a connection already exists.
    * @param targetNodeId Id of node we are creating connection to
-   * @param connectionTimeout Timeout for each attempted connection to a host address
    * @param ctx
    * @returns ConnectionAndLock that was created or exists in the connection map
    */
   protected getConnection(
     targetNodeId: NodeId,
-    connectionTimeout?: number,
     ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<ConnectionAndTimer>;
   @timedCancellable(
@@ -308,7 +292,6 @@ class NodeConnectionManager {
   )
   protected async getConnection(
     targetNodeId: NodeId,
-    connectionTimeout: number = defaultConnectionTimeout,
     @context ctx: ContextTimed,
   ): Promise<ConnectionAndTimer> {
     const targetNodeIdString = targetNodeId.toString() as NodeIdString;
@@ -343,6 +326,7 @@ class NodeConnectionManager {
         ]);
         this.logger.info(`Creating NodeConnection for ${targetNodeIdEncoded}`);
         const errors: Array<any> = [];
+        let connectionsCount = targetAddresses.length;
         for (const address of targetAddresses) {
           // Creating new connection
           const destroyCallbackProm = promise<void>();
@@ -351,8 +335,9 @@ class NodeConnectionManager {
             handler: () => {
               abortController.abort(contextsErrors.ErrorContextsTimedTimeOut);
             },
-            delay: connectionTimeout,
+            delay: ctx.timer.getTimeout() / connectionsCount,
           });
+          connectionsCount -= 1;
           const eventListener = () => {
             abortController.abort(ctx.signal.reason);
           };
@@ -747,7 +732,6 @@ class NodeConnectionManager {
           const client = connection.getClient();
           return await client.nodesClosestLocalNodesGet(nodeIdMessage);
         },
-        undefined,
         ctx,
       );
       const localNodeId = this.keyManager.getNodeId();
@@ -838,7 +822,6 @@ class NodeConnectionManager {
         const client = connection.getClient();
         await client.nodesHolePunchMessageSend(relayMsg);
       },
-      undefined,
       ctx,
     ).catch(() => {});
   }
@@ -956,7 +939,7 @@ class NodeConnectionManager {
   public async establishMultiConnection(
     nodeIds: Array<NodeId>,
     addresses: Array<NodeAddress>,
-    connectionTimeout: number = defaultConnectionTimeout,
+    connectionTimeout: number = 2000,
     limit: number | undefined,
     @context ctx: ContextTimed,
   ): Promise<Map<NodeId, { host: Host; port: Port }>> {

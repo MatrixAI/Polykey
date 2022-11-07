@@ -311,7 +311,6 @@ class NodeManager {
           ) as PublicKeyPem;
           return [unverifiedChainData, publicKey];
         },
-        connectionTimeout,
         { signal: ctx.signal, timer },
       );
 
@@ -345,7 +344,6 @@ class NodeManager {
             async (connection) => {
               return connection.getExpectedPublicKey(endNodeId) as PublicKeyPem;
             },
-            connectionTimeout,
             { signal: ctx.signal, timer },
           );
           if (!endPublicKey) {
