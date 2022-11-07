@@ -14,6 +14,7 @@ import type {
 import type NodeManager from './NodeManager';
 import type { ContextTimed } from 'contexts/types';
 import type { PromiseCancellable } from '@matrixai/async-cancellable';
+import type { PromiseDeconstructed } from '../types';
 import { withF } from '@matrixai/resources';
 import Logger from '@matrixai/logger';
 import { ready, StartStop } from '@matrixai/async-init/dist/StartStop';
@@ -24,7 +25,6 @@ import { Timer } from '@matrixai/timer';
 import NodeConnection from './NodeConnection';
 import * as nodesUtils from './utils';
 import * as nodesErrors from './errors';
-import * as contextsErrors from '../contexts/errors';
 import { context, timedCancellable } from '../contexts';
 import GRPCClientAgent from '../agent/GRPCClientAgent';
 import * as validationUtils from '../validation/utils';
@@ -346,110 +346,116 @@ class NodeConnectionManager {
             );
           });
         }
+        const destroyCallbackProms: Array<PromiseDeconstructed<void>> = [];
         const errors: Array<any> = [];
-        let connectionsCount = targetAddresses.length;
-        for (const address of targetAddresses) {
-          // Creating new connection
+        const firstConnectionIndexProm = promise<number | null>();
+        const nodeConnectionProms = targetAddresses.map((address, index) => {
           const destroyCallbackProm = promise<void>();
-          const abortController = new AbortController();
-          const timer = new Timer({
-            handler: () => {
-              abortController.abort(contextsErrors.ErrorContextsTimedTimeOut);
-            },
-            delay: ctx.timer.getTimeout() / connectionsCount,
-          });
-          connectionsCount -= 1;
-          const eventListener = () => {
-            abortController.abort(ctx.signal.reason);
-          };
-          if (ctx.signal.aborted) {
-            abortController.abort(ctx.signal.reason);
-          } else {
-            ctx.signal.addEventListener('abort', eventListener);
-          }
-          try {
-            const newConnection = await NodeConnection.createNodeConnection(
-              {
-                targetNodeId: targetNodeId,
-                targetHost: address.host,
-                targetHostname: targetHostname,
-                targetPort: address.port,
-                proxy: this.proxy,
-                destroyCallback: async () => {
-                  destroyCallbackProm.resolveP();
-                },
-                logger: this.logger.getChild(
-                  `${NodeConnection.name} [${nodesUtils.encodeNodeId(
-                    targetNodeId,
-                  )}@${address.host}:${address.port}]`,
-                ),
-                clientFactory: async (args) =>
-                  GRPCClientAgent.createGRPCClientAgent(args),
-              },
-              { signal: abortController.signal, timer },
-            );
-            void destroyCallbackProm.p.then(async () => {
-              this.logger.info('DestroyedCallback was called');
-              // To avoid deadlock only in the case where this is called
-              // we want to check for destroying connection and read lock
-              const connAndTimer = this.connections.get(targetNodeIdString);
-              // If the connection is calling destroyCallback then it SHOULD
-              // exist in the connection map
-              if (connAndTimer == null) return;
-              // Already locked so already destroying
-              if (this.connectionLocks.isLocked(targetNodeIdString)) return;
-              // Connection is already destroying
-              if (connAndTimer?.connection?.[status] === 'destroying') return;
-              await this.destroyConnection(targetNodeId);
-            });
-            // We can assume connection was established and destination was valid,
-            // we can add the target to the nodeGraph
-            await this.nodeManager?.setNode(targetNodeId, targetAddress);
-            // Creating TTL timeout.
-            // We don't create a TTL for seed nodes.
-            const timeToLiveTimer = !this.isSeedNode(targetNodeId)
-              ? new Timer({
-                  handler: async () =>
-                    await this.destroyConnection(targetNodeId),
-                  delay: this.connTimeoutTime,
-                })
-              : null;
-            const newConnAndTimer: ConnectionAndTimer = {
-              connection: newConnection,
-              timer: timeToLiveTimer,
-              usageCount: 0,
-            };
-            this.connections.set(targetNodeIdString, newConnAndTimer);
-            // Enable destroyCallback clean up
-            this.logger.info(
-              `Created NodeConnection for ${targetNodeIdEncoded}`,
-            );
-            return newConnAndTimer;
-          } catch (e) {
-            this.logger.info(
-              `Creating NodeConnection failed for ${targetNodeIdEncoded}`,
-            );
-            // Disable destroyCallback clean up
-            void destroyCallbackProm.p.then(() => {});
-            errors.push(e);
-          } finally {
-            abortController.signal.removeEventListener('abort', eventListener);
-            timer.cancel();
-          }
-        }
-        this.logger.info(
-          `Failed NodeConnection for ${targetNodeIdEncoded} with ${errors}`,
-        );
-        if (errors.length === 1) {
-          throw errors[0];
-        } else {
-          throw new nodesErrors.ErrorNodeConnectionMultiConnectionFailed(
-            'failed to establish connection with multiple hosts',
+          destroyCallbackProms[index] = destroyCallbackProm;
+          const nodeConnectionProm = NodeConnection.createNodeConnection(
             {
-              cause: new AggregateError(errors),
+              targetNodeId: targetNodeId,
+              targetHost: address.host,
+              targetHostname: targetHostname,
+              targetPort: address.port,
+              proxy: this.proxy,
+              destroyTimeout: this.ncDestroyTimeout,
+              destroyCallback: async () => {
+                destroyCallbackProm.resolveP();
+              },
+              logger: this.logger.getChild(
+                `${NodeConnection.name} [${nodesUtils.encodeNodeId(
+                  targetNodeId,
+                )}@${address.host}:${address.port}]`,
+              ),
+              clientFactory: async (args) =>
+                GRPCClientAgent.createGRPCClientAgent(args),
+            },
+            ctx,
+          );
+          void nodeConnectionProm.then(
+            () => firstConnectionIndexProm.resolveP(index),
+            (e) => {
+              this.logger.info(
+                `Creating NodeConnection failed for ${targetNodeIdEncoded}`,
+              );
+              // Disable destroyCallback clean up
+              void destroyCallbackProm.p.then(() => {});
+              errors.push(e);
+              if (errors.length === targetAddresses.length) {
+                firstConnectionIndexProm.resolveP(null);
+              }
             },
           );
+          return nodeConnectionProm;
+        });
+        let newConnection: NodeConnection<GRPCClientAgent>;
+        try {
+          newConnection = await Promise.any(nodeConnectionProms);
+        } catch (e) {
+          // All connections failed to establish
+          this.logger.info(
+            `Failed NodeConnection for ${targetNodeIdEncoded} with ${errors}`,
+          );
+          if (errors.length === 1) {
+            throw errors[0];
+          } else {
+            throw new nodesErrors.ErrorNodeConnectionMultiConnectionFailed(
+              'failed to establish connection with multiple hosts',
+              {
+                cause: new AggregateError(errors),
+              },
+            );
+          }
         }
+        // Cleaning up other connections
+        const successfulIndex = await firstConnectionIndexProm.p;
+        if (successfulIndex === null) never();
+        const cleanUpReason = Symbol('cleanUpReason');
+        await Promise.allSettled(
+          nodeConnectionProms.map(async (nodeConnectionProm, index) => {
+            if (index === successfulIndex) return;
+            nodeConnectionProm.cancel(cleanUpReason);
+            return nodeConnectionProm.then(async (nodeConnection) => {
+              await nodeConnection.destroy({ timeout: this.ncDestroyTimeout });
+            });
+          }),
+        );
+        // Final set up
+        void destroyCallbackProms[successfulIndex].p.then(async () => {
+          this.logger.info('DestroyedCallback was called');
+          // To avoid deadlock only in the case where this is called
+          // we want to check for destroying connection and read lock
+          const connAndTimer = this.connections.get(targetNodeIdString);
+          // If the connection is calling destroyCallback then it SHOULD
+          // exist in the connection map
+          if (connAndTimer == null) return;
+          // Already locked so already destroying
+          if (this.connectionLocks.isLocked(targetNodeIdString)) return;
+          // Connection is already destroying
+          if (connAndTimer?.connection?.[status] === 'destroying') return;
+          await this.destroyConnection(targetNodeId);
+        });
+        // We can assume connection was established and destination was valid,
+        // we can add the target to the nodeGraph
+        await this.nodeManager?.setNode(targetNodeId, targetAddress);
+        // Creating TTL timeout.
+        // We don't create a TTL for seed nodes.
+        const timeToLiveTimer = !this.isSeedNode(targetNodeId)
+          ? new Timer({
+              handler: async () => await this.destroyConnection(targetNodeId),
+              delay: this.connTimeoutTime,
+            })
+          : null;
+        const newConnAndTimer: ConnectionAndTimer = {
+          connection: newConnection!,
+          timer: timeToLiveTimer,
+          usageCount: 0,
+        };
+        this.connections.set(targetNodeIdString, newConnAndTimer);
+        // Enable destroyCallback clean up
+        this.logger.info(`Created NodeConnection for ${targetNodeIdEncoded}`);
+        return newConnAndTimer;
       },
     );
   }

@@ -44,6 +44,7 @@ class NodeConnection<T extends GRPCClient> {
       proxy,
       clientFactory,
       destroyCallback = async () => {},
+      destroyTimeout,
       logger = new Logger(this.name),
     }: {
       targetNodeId: NodeId;
@@ -53,6 +54,7 @@ class NodeConnection<T extends GRPCClient> {
       proxy: Proxy;
       clientFactory: (...args) => Promise<T>;
       destroyCallback?: () => Promise<void>;
+      destroyTimeout?: number;
       logger?: Logger;
     },
     ctx?: Partial<ContextTimed>,

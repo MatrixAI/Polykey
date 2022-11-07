@@ -490,7 +490,9 @@ function verifyClientCertificateChain(certChain: Array<Certificate>): void {
  * It will also filter out any duplicates or IPV6 addresses.
  * @param addresses
  */
-async function resolveHostnames(addresses: Array<NodeAddress>) {
+async function resolveHostnames(
+  addresses: Array<NodeAddress>,
+): Promise<Array<{ host: Host; port: Port }>> {
   const existingAddresses: Set<string> = new Set();
   const final: Array<{ host: Host; port: Port }> = [];
   for (const address of addresses) {
