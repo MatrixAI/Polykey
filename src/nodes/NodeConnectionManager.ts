@@ -191,15 +191,18 @@ class NodeConnectionManager {
           if (nodesUtils.isConnectionError(e)) {
             // Error with connection, shutting connection down
             await this.destroyConnection(targetNodeId);
-          } else {
-            // Decrement usage count and set up TTL if needed
-            connectionAndTimer.usageCount -= 1;
-            if (connectionAndTimer.usageCount <= 0) {
-              connectionAndTimer.timer = new Timer({
-                handler: async () => await this.destroyConnection(targetNodeId),
-                delay: this.connTimeoutTime,
-              });
-            }
+          }
+          // Decrement usage count and set up TTL if needed.
+          // We're only setting up TTLs for non-seed nodes.
+          connectionAndTimer.usageCount -= 1;
+          if (
+            connectionAndTimer.usageCount <= 0 &&
+            !this.isSeedNode(targetNodeId)
+          ) {
+            connectionAndTimer.timer = new Timer({
+              handler: async () => await this.destroyConnection(targetNodeId),
+              delay: this.connTimeoutTime,
+            });
           }
         },
         connectionAndTimer.connection,
@@ -323,10 +326,7 @@ class NodeConnectionManager {
         this.logger.info(`Creating NodeConnection for ${targetNodeIdEncoded}`);
         // Start the hole punching only if we are not connecting to seed nodes
         const seedNodes = this.getSeedNodes();
-        const isSeedNode = !!seedNodes.find((nodeId) => {
-          return nodeId.equals(targetNodeId);
-        });
-        if (!isSeedNode) {
+        if (this.isSeedNode(targetNodeId)) {
           // FIXME: this needs to be cancellable.
           //  It needs to timeout as well as abort for cleanup
           void Array.from(seedNodes, (seedNodeId) => {
@@ -405,11 +405,15 @@ class NodeConnectionManager {
             // We can assume connection was established and destination was valid,
             // we can add the target to the nodeGraph
             await this.nodeManager?.setNode(targetNodeId, targetAddress);
-            // Creating TTL timeout
-            const timeToLiveTimer = new Timer({
-              handler: async () => await this.destroyConnection(targetNodeId),
-              delay: this.connTimeoutTime,
-            });
+            // Creating TTL timeout.
+            // We don't create a TTL for seed nodes.
+            const timeToLiveTimer = !this.isSeedNode(targetNodeId)
+              ? new Timer({
+                  handler: async () =>
+                    await this.destroyConnection(targetNodeId),
+                  delay: this.connTimeoutTime,
+                })
+              : null;
             const newConnAndTimer: ConnectionAndTimer = {
               connection: newConnection,
               timer: timeToLiveTimer,
@@ -893,6 +897,17 @@ class NodeConnectionManager {
       const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded);
       if (nodeId == null) never();
       return nodeId;
+    });
+  }
+
+  /**
+   * Returns true if the given node is a seed node.
+   */
+  @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
+  public isSeedNode(nodeId: NodeId): boolean {
+    const seedNodes = this.getSeedNodes();
+    return !!seedNodes.find((seedNode) => {
+      return nodeId.equals(seedNode);
     });
   }
 
