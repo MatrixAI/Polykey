@@ -1,10 +1,8 @@
 import type { NodeId } from './types';
 import type { Host, Hostname, Port } from '../network/types';
-import type KeyManager from '../keys/KeyManager';
 import type { Certificate, PublicKey, PublicKeyPem } from '../keys/types';
 import type Proxy from '../network/Proxy';
 import type GRPCClient from '../grpc/GRPCClient';
-import type NodeConnectionManager from './NodeConnectionManager';
 import type { ContextTimed } from '../contexts/types';
 import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import Logger from '@matrixai/logger';
@@ -44,9 +42,7 @@ class NodeConnection<T extends GRPCClient> {
       targetPort,
       targetHostname,
       proxy,
-      keyManager,
       clientFactory,
-      nodeConnectionManager,
       destroyCallback = async () => {},
       logger = new Logger(this.name),
     }: {
@@ -55,9 +51,7 @@ class NodeConnection<T extends GRPCClient> {
       targetPort: Port;
       targetHostname?: Hostname;
       proxy: Proxy;
-      keyManager: KeyManager;
       clientFactory: (...args) => Promise<T>;
-      nodeConnectionManager: NodeConnectionManager;
       destroyCallback?: () => Promise<void>;
       logger?: Logger;
     },
@@ -71,9 +65,7 @@ class NodeConnection<T extends GRPCClient> {
       targetPort,
       targetHostname,
       proxy,
-      keyManager,
       clientFactory,
-      nodeConnectionManager,
       destroyCallback = async () => {},
       destroyTimeout = 2000,
       logger = new Logger(this.name),
@@ -83,9 +75,7 @@ class NodeConnection<T extends GRPCClient> {
       targetPort: Port;
       targetHostname?: Hostname;
       proxy: Proxy;
-      keyManager: KeyManager;
       clientFactory: (...args) => Promise<T>;
-      nodeConnectionManager: NodeConnectionManager;
       destroyCallback?: () => Promise<void>;
       destroyTimeout?: number;
       logger?: Logger;
@@ -118,24 +108,6 @@ class NodeConnection<T extends GRPCClient> {
     });
     let client: T;
     try {
-      // Start the hole punching only if we are not connecting to seed nodes
-      const seedNodes = nodeConnectionManager.getSeedNodes();
-      const isSeedNode = !!seedNodes.find((nodeId) => {
-        return nodeId.equals(targetNodeId);
-      });
-      if (!isSeedNode) {
-        // FIXME: this needs to be cancellable.
-        //  It needs to timeout as well as abort for cleanup
-        void Array.from(seedNodes, (seedNodeId) => {
-          return nodeConnectionManager.sendSignallingMessage(
-            seedNodeId,
-            keyManager.getNodeId(),
-            targetNodeId,
-            undefined,
-            ctx,
-          );
-        });
-      }
       // TODO: this needs to be updated to take a context,
       //  still uses old timer style.
       const clientLogger = logger.getChild(clientFactory.name);

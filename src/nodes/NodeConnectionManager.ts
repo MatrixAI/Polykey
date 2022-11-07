@@ -180,9 +180,7 @@ class NodeConnectionManager {
       this.logger.warn('Attempting connection to our own NodeId');
     }
     return async () => {
-      const connectionAndTimer = await this.getConnection(targetNodeId,
-        ctx,
-      );
+      const connectionAndTimer = await this.getConnection(targetNodeId, ctx);
       // Increment usage count, and cancel timer
       connectionAndTimer.usageCount += 1;
       connectionAndTimer.timer?.cancel();
@@ -257,9 +255,7 @@ class NodeConnectionManager {
     ) => AsyncGenerator<T, TReturn, TNext>,
     ctx?: Partial<ContextTimed>,
   ): AsyncGenerator<T, TReturn, TNext> {
-    const acquire = await this.acquireConnection(targetNodeId,
-      ctx,
-    );
+    const acquire = await this.acquireConnection(targetNodeId, ctx);
     const [release, conn] = await acquire();
     let caughtError;
     try {
@@ -325,6 +321,31 @@ class NodeConnectionManager {
           targetAddress,
         ]);
         this.logger.info(`Creating NodeConnection for ${targetNodeIdEncoded}`);
+        // Start the hole punching only if we are not connecting to seed nodes
+        const seedNodes = this.getSeedNodes();
+        const isSeedNode = !!seedNodes.find((nodeId) => {
+          return nodeId.equals(targetNodeId);
+        });
+        if (!isSeedNode) {
+          // FIXME: this needs to be cancellable.
+          //  It needs to timeout as well as abort for cleanup
+          void Array.from(seedNodes, (seedNodeId) => {
+            return (
+              this.sendSignallingMessage(
+                seedNodeId,
+                this.keyManager.getNodeId(),
+                targetNodeId,
+                undefined,
+                ctx,
+              )
+                // Ignore results
+                .then(
+                  () => {},
+                  () => {},
+                )
+            );
+          });
+        }
         const errors: Array<any> = [];
         let connectionsCount = targetAddresses.length;
         for (const address of targetAddresses) {
@@ -354,8 +375,6 @@ class NodeConnectionManager {
                 targetHostname: targetHostname,
                 targetPort: address.port,
                 proxy: this.proxy,
-                keyManager: this.keyManager,
-                nodeConnectionManager: this,
                 destroyCallback: async () => {
                   destroyCallbackProm.resolveP();
                 },
