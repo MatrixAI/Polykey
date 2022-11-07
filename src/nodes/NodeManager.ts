@@ -690,6 +690,8 @@ class NodeManager {
     const unsetLock = new Lock();
     const pendingPromises: Array<Promise<void>> = [];
     for (const nodeId of bucket) {
+      // We want to retain seed nodes regardless of state, so skip them
+      if (this.nodeConnectionManager.isSeedNode(nodeId)) continue;
       if (removedNodes >= pendingNodes.size) break;
       await semaphore.waitForUnlock();
       if (ctx.signal?.aborted === true) break;
