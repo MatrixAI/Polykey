@@ -92,6 +92,13 @@ function nodesHolePunchMessageSend({
             connectionInfo!.remoteHost,
             connectionInfo!.remotePort,
           );
+          // Checking if the source and destination are the same
+          if (sourceId?.equals(targetId)) {
+            // Logging and silently dropping operation
+            logger.warn('Signalling relay message requested signal to itself');
+            callback(null, response);
+            return;
+          }
           call.request.setProxyAddress(proxyAddress);
           logger.debug(
             `Relaying signalling message from ${srcNodeId}@${

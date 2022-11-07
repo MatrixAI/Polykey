@@ -811,6 +811,16 @@ class NodeConnectionManager {
     proxyAddress: string | undefined,
     @context ctx: ContextTimed,
   ): Promise<void> {
+    if (
+      this.keyManager.getNodeId().equals(relayNodeId) ||
+      this.keyManager.getNodeId().equals(targetNodeId)
+    ) {
+      // Logging and silently dropping operation
+      this.logger.warn(
+        'Attempted to send signalling message to our own NodeId',
+      );
+      return;
+    }
     const rlyNode = nodesUtils.encodeNodeId(relayNodeId);
     const srcNode = nodesUtils.encodeNodeId(sourceNodeId);
     const tgtNode = nodesUtils.encodeNodeId(targetNodeId);
