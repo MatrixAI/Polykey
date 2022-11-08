@@ -295,24 +295,24 @@ class NodeConnectionManager {
   ): Promise<ConnectionAndTimer> {
     const targetNodeIdString = targetNodeId.toString() as NodeIdString;
     const targetNodeIdEncoded = nodesUtils.encodeNodeId(targetNodeId);
-    this.logger.info(`Getting NodeConnection for ${targetNodeIdEncoded}`);
+    this.logger.debug(`Getting NodeConnection for ${targetNodeIdEncoded}`);
     return await this.connectionLocks.withF(
       [targetNodeIdString, Lock],
       async () => {
         const connAndTimer = this.connections.get(targetNodeIdString);
         if (connAndTimer != null) {
-          this.logger.info(
+          this.logger.debug(
             `Found existing NodeConnection for ${targetNodeIdEncoded}`,
           );
           return connAndTimer;
         }
         // Creating the connection and set in map
-        this.logger.info(`Finding address for ${targetNodeIdEncoded}`);
+        this.logger.debug(`Finding address for ${targetNodeIdEncoded}`);
         const targetAddress = await this.findNode(targetNodeId);
         if (targetAddress == null) {
           throw new nodesErrors.ErrorNodeGraphNodeIdNotFound();
         }
-        this.logger.info(
+        this.logger.debug(
           `Found address for ${targetNodeIdEncoded} at ${targetAddress.host}:${targetAddress.port}`,
         );
         // If the stored host is not a valid host (IP address),
@@ -323,7 +323,7 @@ class NodeConnectionManager {
         const targetAddresses = await networkUtils.resolveHostnames([
           targetAddress,
         ]);
-        this.logger.info(`Creating NodeConnection for ${targetNodeIdEncoded}`);
+        this.logger.debug(`Creating NodeConnection for ${targetNodeIdEncoded}`);
         // Start the hole punching only if we are not connecting to seed nodes
         const seedNodes = this.getSeedNodes();
         if (this.isSeedNode(targetNodeId)) {
@@ -376,7 +376,7 @@ class NodeConnectionManager {
           void nodeConnectionProm.then(
             () => firstConnectionIndexProm.resolveP(index),
             (e) => {
-              this.logger.info(
+              this.logger.debug(
                 `Creating NodeConnection failed for ${targetNodeIdEncoded}`,
               );
               // Disable destroyCallback clean up
@@ -394,7 +394,7 @@ class NodeConnectionManager {
           newConnection = await Promise.any(nodeConnectionProms);
         } catch (e) {
           // All connections failed to establish
-          this.logger.info(
+          this.logger.debug(
             `Failed NodeConnection for ${targetNodeIdEncoded} with ${errors}`,
           );
           if (errors.length === 1) {
@@ -423,7 +423,7 @@ class NodeConnectionManager {
         );
         // Final set up
         void destroyCallbackProms[successfulIndex].p.then(async () => {
-          this.logger.info('DestroyedCallback was called');
+          this.logger.debug('DestroyedCallback was called');
           // To avoid deadlock only in the case where this is called
           // we want to check for destroying connection and read lock
           const connAndTimer = this.connections.get(targetNodeIdString);
@@ -454,7 +454,7 @@ class NodeConnectionManager {
         };
         this.connections.set(targetNodeIdString, newConnAndTimer);
         // Enable destroyCallback clean up
-        this.logger.info(`Created NodeConnection for ${targetNodeIdEncoded}`);
+        this.logger.debug(`Created NodeConnection for ${targetNodeIdEncoded}`);
         return newConnAndTimer;
       },
     );
@@ -471,7 +471,7 @@ class NodeConnectionManager {
       async () => {
         const connAndTimer = this.connections.get(targetNodeIdString);
         if (connAndTimer?.connection == null) return;
-        this.logger.info(
+        this.logger.debug(
           `Destroying NodeConnection for ${nodesUtils.encodeNodeId(
             targetNodeId,
           )}`,

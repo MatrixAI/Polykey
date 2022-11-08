@@ -123,7 +123,7 @@ class NodeManager {
     ctx,
     taskInfo,
   ) => {
-    this.logger.info('Checking seed connections');
+    this.logger.debug('Checking seed connections');
     // Check for existing seed node connections
     const seedNodes = this.nodeConnectionManager.getSeedNodes();
     const allInactive = !seedNodes
@@ -131,7 +131,7 @@ class NodeManager {
       .reduce((a, b) => a || b);
     try {
       if (allInactive) {
-        this.logger.info(
+        this.logger.debug(
           'No active seed connections were found, retrying network entry',
         );
         // If no seed node connections exist then we redo syncNodeGraph
@@ -142,7 +142,7 @@ class NodeManager {
           seedNodes.map((nodeId) => {
             // Retry any failed seed node connections
             if (!this.nodeConnectionManager.hasConnection(nodeId)) {
-              this.logger.info(
+              this.logger.debug(
                 `Re-establishing seed connection for ${nodesUtils.encodeNodeId(
                   nodeId,
                 )}`,
@@ -159,7 +159,7 @@ class NodeManager {
         );
       }
     } finally {
-      this.logger.info('Checked seed connections');
+      this.logger.debug('Checked seed connections');
       // Re-schedule this task
       await this.taskManager.scheduleTask({
         delay: taskInfo.delay,
@@ -1126,12 +1126,12 @@ class NodeManager {
     const filteredAddresses = addresses.filter(
       (address) => address != null,
     ) as Array<NodeAddress>;
-    logger.info(
+    logger.debug(
       `establishing multi-connection to the following seed nodes ${seedNodes.map(
         (nodeId) => nodesUtils.encodeNodeId(nodeId),
       )}`,
     );
-    logger.info(
+    logger.debug(
       `and addresses ${filteredAddresses.map(
         (address) => `${address.host}:${address.port}`,
       )}`,
@@ -1145,9 +1145,9 @@ class NodeManager {
         undefined,
         { signal: ctx.signal },
       );
-    logger.info(`Multi-connection established for`);
+    logger.debug(`Multi-connection established for`);
     connections.forEach((address, key) => {
-      logger.info(
+      logger.debug(
         `${nodesUtils.encodeNodeId(key)}@${address.host}:${address.port}`,
       );
     });
@@ -1162,7 +1162,7 @@ class NodeManager {
     const closestNodesAll: Map<NodeId, NodeData> = new Map();
     const localNodeId = this.keyManager.getNodeId();
     let closestNode: NodeId | null = null;
-    logger.info('Getting closest nodes');
+    logger.debug('Getting closest nodes');
     for (const [nodeId] of connections) {
       const closestNodes =
         await this.nodeConnectionManager.getRemoteNodeClosestNodes(
@@ -1187,11 +1187,11 @@ class NodeManager {
       const distB = nodesUtils.nodeDistance(localNodeId, closestNode);
       if (distA < distB) closestNode = closeNode;
     }
-    logger.info('Starting pingsAndSet tasks');
+    logger.debug('Starting pingsAndSet tasks');
     const pingTasks: Array<Task> = [];
     for (const [nodeId, nodeData] of closestNodesAll) {
       if (!localNodeId.equals(nodeId)) {
-        logger.info(
+        logger.debug(
           `pingAndSetTask for ${nodesUtils.encodeNodeId(nodeId)}@${
             nodeData.address.host
           }:${nodeData.address.port}`,
@@ -1215,7 +1215,7 @@ class NodeManager {
     }
     if (block) {
       // We want to wait for all the tasks
-      logger.info('Awaiting all pingAndSetTasks');
+      logger.debug('Awaiting all pingAndSetTasks');
       await Promise.all(
         pingTasks.map((task) => {
           const prom = task.promise();
@@ -1233,7 +1233,7 @@ class NodeManager {
       );
     }
     // Refreshing every bucket above the closest node
-    logger.info(`Triggering refreshBucket tasks`);
+    logger.debug(`Triggering refreshBucket tasks`);
     let index = this.nodeGraph.nodeIdBits;
     if (closestNode != null) {
       const [bucketIndex] = this.nodeGraph.bucketIndex(closestNode);
@@ -1245,7 +1245,7 @@ class NodeManager {
       refreshBuckets.push(task.promise());
     }
     if (block) {
-      logger.info(`Awaiting refreshBucket tasks`);
+      logger.debug(`Awaiting refreshBucket tasks`);
       await Promise.all(refreshBuckets);
     }
   }

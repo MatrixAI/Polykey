@@ -121,7 +121,7 @@ class NodeConnection<T extends GRPCClient> {
         // Think about this
         logger: clientLogger,
         destroyCallback: async () => {
-          clientLogger.info(`GRPC client triggered destroyedCallback`);
+          clientLogger.debug(`GRPC client triggered destroyedCallback`);
           if (
             nodeConnection[asyncInit.status] !== 'destroying' &&
             !nodeConnection[asyncInit.destroyed]
@@ -189,7 +189,7 @@ class NodeConnection<T extends GRPCClient> {
     ) {
       await this.client.destroy({ timeout });
     }
-    this.logger.info(`${this.constructor.name} triggered destroyedCallback`);
+    this.logger.debug(`${this.constructor.name} triggered destroyedCallback`);
     await this.destroyCallback();
     this.logger.info(`Destroyed ${this.constructor.name}`);
   }
