@@ -331,7 +331,7 @@ class NodeConnectionManager {
           //  It needs to timeout as well as abort for cleanup
           void Array.from(seedNodes, (seedNodeId) => {
             return (
-              this.sendSignallingMessage(
+              this.sendSignalingMessage(
                 seedNodeId,
                 this.keyManager.getNodeId(),
                 targetNodeId,
@@ -804,7 +804,7 @@ class NodeConnectionManager {
    * @param proxyAddress string of address in the form `proxyHost:proxyPort`
    * @param ctx
    */
-  public sendSignallingMessage(
+  public sendSignalingMessage(
     relayNodeId: NodeId,
     sourceNodeId: NodeId,
     targetNodeId: NodeId,
@@ -817,7 +817,7 @@ class NodeConnectionManager {
     (nodeConnectionManager: NodeConnectionManager) =>
       nodeConnectionManager.connConnectTime,
   )
-  public async sendSignallingMessage(
+  public async sendSignalingMessage(
     relayNodeId: NodeId,
     sourceNodeId: NodeId,
     targetNodeId: NodeId,
@@ -830,7 +830,7 @@ class NodeConnectionManager {
     ) {
       // Logging and silently dropping operation
       this.logger.warn(
-        'Attempted to send signalling message to our own NodeId',
+        'Attempted to send signaling message to our own NodeId',
       );
       return;
     }
@@ -838,7 +838,7 @@ class NodeConnectionManager {
     const srcNode = nodesUtils.encodeNodeId(sourceNodeId);
     const tgtNode = nodesUtils.encodeNodeId(targetNodeId);
     this.logger.debug(
-      `sendSignallingMessage sending Signalling message relay: ${rlyNode}, source: ${srcNode}, target: ${tgtNode}, proxy: ${proxyAddress}`,
+      `sendSignalingMessage sending Signaling message relay: ${rlyNode}, source: ${srcNode}, target: ${tgtNode}, proxy: ${proxyAddress}`,
     );
     const relayMsg = new nodesPB.Relay();
     relayMsg.setSrcId(srcNode);
@@ -865,7 +865,7 @@ class NodeConnectionManager {
    * @param sourceAddress
    * @param ctx
    */
-  public relaySignallingMessage(
+  public relaySignalingMessage(
     message: nodesPB.Relay,
     sourceAddress: NodeAddress,
     ctx?: Partial<ContextTimed>,
@@ -876,7 +876,7 @@ class NodeConnectionManager {
     (nodeConnectionManager: NodeConnectionManager) =>
       nodeConnectionManager.connConnectTime,
   )
-  public async relaySignallingMessage(
+  public async relaySignalingMessage(
     message: nodesPB.Relay,
     sourceAddress: NodeAddress,
     @context ctx: ContextTimed,
@@ -885,7 +885,7 @@ class NodeConnectionManager {
     // If we're relaying then we trust our own node graph records over
     // what was provided in the message
     const sourceNode = validationUtils.parseNodeId(message.getSrcId());
-    await this.sendSignallingMessage(
+    await this.sendSignalingMessage(
       validationUtils.parseNodeId(message.getTargetId()),
       sourceNode,
       validationUtils.parseNodeId(message.getTargetId()),
@@ -951,7 +951,7 @@ class NodeConnectionManager {
     if (!isSeedNode) {
       void Array.from(this.getSeedNodes(), async (seedNodeId) => {
         // FIXME: this needs to handle aborting
-        void this.sendSignallingMessage(
+        void this.sendSignalingMessage(
           seedNodeId,
           this.keyManager.getNodeId(),
           nodeId,

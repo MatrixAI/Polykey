@@ -1132,7 +1132,7 @@ class NodeManager {
       )}`,
     );
     logger.info(
-      `and addresses addresses ${filteredAddresses.map(
+      `and addresses ${filteredAddresses.map(
         (address) => `${address.host}:${address.port}`,
       )}`,
     );
