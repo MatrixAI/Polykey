@@ -829,9 +829,7 @@ class NodeConnectionManager {
       this.keyManager.getNodeId().equals(targetNodeId)
     ) {
       // Logging and silently dropping operation
-      this.logger.warn(
-        'Attempted to send signaling message to our own NodeId',
-      );
+      this.logger.warn('Attempted to send signaling message to our own NodeId');
       return;
     }
     const rlyNode = nodesUtils.encodeNodeId(relayNodeId);

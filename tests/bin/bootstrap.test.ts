@@ -279,7 +279,7 @@ describe('bootstrap', () => {
           // This line is brittle
           // It may change if the log format changes
           // Make sure to keep it updated at the exact point when the root key pair is generated
-          if (l === 'INFO:KeyManager:Generating root key pair') {
+          if (l === 'INFO:polykey.KeyManager:Generating root key pair') {
             bootstrapProcess1.kill('SIGINT');
             resolve();
           }
