@@ -26,6 +26,8 @@ import * as nodesUtils from '../nodes/utils';
 import { promisify } from '../utils';
 import { timedCancellable, context } from '../contexts';
 
+const clientConnectionClosedReason = Symbol('clientConnectionClosedReason');
+
 interface Proxy extends StartStop {}
 @StartStop()
 class Proxy {
@@ -418,8 +420,9 @@ class Proxy {
     }
     await this.connectionLocksForward.withF([proxyAddress, Lock], async () => {
       const timer = new Timer({ delay: this.connConnectTime });
+      let cleanUpConnectionListener = () => {};
       try {
-        await this.connectForward(
+        const connectForwardProm = this.connectForward(
           [nodeId],
           proxyHost,
           proxyPort,
@@ -428,6 +431,11 @@ class Proxy {
             timer,
           },
         );
+        cleanUpConnectionListener = () => {
+          connectForwardProm.cancel(clientConnectionClosedReason);
+        };
+        clientSocket.addListener('close', cleanUpConnectionListener);
+        await connectForwardProm;
       } catch (e) {
         if (e instanceof networkErrors.ErrorProxyConnectInvalidUrl) {
           if (!clientSocket.destroyed) {
@@ -486,6 +494,7 @@ class Proxy {
         return;
       } finally {
         timer.cancel();
+        clientSocket.removeListener('close', cleanUpConnectionListener);
       }
       // After composing, switch off this error handler
       clientSocket.off('error', handleConnectError);
