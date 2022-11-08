@@ -104,6 +104,8 @@ function setupTimedCancellable<C extends ContextTimed, P extends Array<any>, R>(
     );
     ctx.signal = abortController.signal;
     teardownContext = () => {
+      // The timer is not cancelled here because
+      // it was not created in this scope
       finished = true;
     };
   } else {

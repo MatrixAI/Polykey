@@ -57,6 +57,11 @@ class ErrorConnectionEndTimeout<T> extends ErrorConnection<T> {
   exitCode = sysexits.UNAVAILABLE;
 }
 
+class ErrorConnectionNodesEmpty<T> extends ErrorConnection<T> {
+  static description = 'Nodes list to verify against was empty';
+  exitCode = sysexits.USAGE;
+}
+
 /**
  * Used by ConnectionForward and ConnectionReverse
  */
@@ -129,9 +134,9 @@ class ErrorCertChainSignatureInvalid<T> extends ErrorCertChain<T> {
   exitCode = sysexits.PROTOCOL;
 }
 
-class ErrorHostnameResolutionFailed<T> extends ErrorNetwork<T> {
-  static description = 'Unable to resolve hostname';
-  exitCode = sysexits.USAGE;
+class ErrorDNSResolver<T> extends ErrorNetwork<T> {
+  static description = 'DNS resolution failed';
+  exitCode = sysexits.SOFTWARE;
 }
 
 export {
@@ -148,6 +153,7 @@ export {
   ErrorConnectionMessageParse,
   ErrorConnectionTimeout,
   ErrorConnectionEndTimeout,
+  ErrorConnectionNodesEmpty,
   ErrorConnectionStart,
   ErrorConnectionStartTimeout,
   ErrorConnectionStartTimeoutMax,
@@ -161,5 +167,5 @@ export {
   ErrorCertChainNameInvalid,
   ErrorCertChainKeyInvalid,
   ErrorCertChainSignatureInvalid,
-  ErrorHostnameResolutionFailed,
+  ErrorDNSResolver,
 };

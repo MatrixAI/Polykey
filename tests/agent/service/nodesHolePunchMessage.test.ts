@@ -47,7 +47,12 @@ describe('nodesHolePunchMessage', () => {
         nodeConnectionManager: pkAgent.nodeConnectionManager,
         nodeManager: pkAgent.nodeManager,
         db: pkAgent.db,
-        connectionInfoGet: () => ({} as ConnectionInfo),
+        connectionInfoGet: () =>
+          ({
+            remoteHost: '127.0.0.1' as Host,
+            remotePort: 55555 as Port,
+            remoteNodeId: pkAgent.keyManager.getNodeId(),
+          } as ConnectionInfo),
         logger,
       }),
     };

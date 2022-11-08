@@ -1,7 +1,29 @@
 import type { Host, Port } from './network/types';
+import type { NodeAddress } from 'nodes/types';
 import { getDefaultNodePath } from './utils';
 // @ts-ignore package.json is outside rootDir
 import { version } from '../package.json';
+
+/**
+ * Configuration for testnet node addresses.
+ * Extracted here to enforce types properly.
+ */
+const testnet: Record<string, NodeAddress> = {
+  vg9a9e957878s2qgtbdmu2atvli8ms7muukb1dk4dpbm4llkki3h0: {
+    host: 'testnet.polykey.io' as Host,
+    port: 1314 as Port,
+  },
+  vh9oqtvct10eaiv3cl4ebm0ko33sl0qqpvb59vud8cngfvqs4p4ng: {
+    host: 'testnet.polykey.io' as Host,
+    port: 1314 as Port,
+  },
+};
+
+/**
+ * Configuration for main net node addresses.
+ * Extracted here to enforce types properly.
+ */
+const mainnet: Record<string, NodeAddress> = {};
 
 /**
  * Polykey static configuration
@@ -96,8 +118,8 @@ const config = {
     },
     // This is not used by the `PolykeyAgent` which defaults to `{}`
     network: {
-      mainnet: {},
-      testnet: {},
+      mainnet: mainnet,
+      testnet: testnet,
     },
   },
 };

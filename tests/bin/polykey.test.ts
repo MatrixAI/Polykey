@@ -64,7 +64,7 @@ describe('polykey', () => {
     const stderrParsed = JSON.parse(stderrStart);
     expect(stderrParsed).toMatchObject({
       level: expect.stringMatching(/INFO|WARN|ERROR|DEBUG/),
-      key: expect.any(String),
+      keys: expect.any(String),
       msg: expect.any(String),
     });
     agentProcess.kill('SIGTERM');

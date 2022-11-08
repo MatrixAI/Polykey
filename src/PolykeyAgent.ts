@@ -573,6 +573,7 @@ class PolykeyAgent {
         PolykeyAgent.eventSymbols.Proxy,
         async (data: ConnectionData) => {
           if (data.type === 'reverse') {
+            if (this.keyManager.getNodeId().equals(data.remoteNodeId)) return;
             const address = networkUtils.buildAddress(
               data.remoteHost,
               data.remotePort,

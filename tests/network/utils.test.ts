@@ -1,6 +1,5 @@
-import type { Host, Port } from '@/network/types';
+import type { Host, Hostname, Port } from '@/network/types';
 import * as networkUtils from '@/network/utils';
-import * as networkErrors from '@/network/errors';
 
 describe('utils', () => {
   test('building addresses', async () => {
@@ -25,12 +24,14 @@ describe('utils', () => {
   });
   test('resolving hostnames', async () => {
     await expect(
-      networkUtils.resolveHost('www.google.com' as Host),
+      networkUtils.resolveHostname('www.google.com' as Hostname),
     ).resolves.toBeDefined();
-    const host = await networkUtils.resolveHost('www.google.com' as Host);
-    expect(networkUtils.isHost(host)).toBeTruthy();
+    const hosts = await networkUtils.resolveHostname(
+      'www.google.com' as Hostname,
+    );
+    expect(hosts.length).toBeGreaterThan(0);
     await expect(
-      networkUtils.resolveHost('invalidHostname' as Host),
-    ).rejects.toThrow(networkErrors.ErrorHostnameResolutionFailed);
+      networkUtils.resolveHostname('invalidHostname' as Hostname),
+    ).resolves.toHaveLength(0);
   });
 });

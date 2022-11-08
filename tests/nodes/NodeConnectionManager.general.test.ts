@@ -476,7 +476,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       // 3. check that the relevant call was made.
       const sourceNodeId = testNodesUtils.generateRandomNodeId();
       const targetNodeId = testNodesUtils.generateRandomNodeId();
-      await nodeConnectionManager.sendSignallingMessage(
+      await nodeConnectionManager.sendSignalingMessage(
         remoteNodeId1,
         sourceNodeId,
         targetNodeId,
@@ -516,7 +516,10 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       relayMessage.setSrcId(nodesUtils.encodeNodeId(sourceNodeId));
       relayMessage.setTargetId(nodesUtils.encodeNodeId(remoteNodeId1));
       relayMessage.setProxyAddress('');
-      await nodeConnectionManager.relaySignallingMessage(relayMessage);
+      await nodeConnectionManager.relaySignalingMessage(relayMessage, {
+        host: '' as Host,
+        port: 0 as Port,
+      });
 
       expect(mockedNodesHolePunchMessageSend).toHaveBeenCalled();
     } finally {

@@ -72,8 +72,12 @@ class GRPCClientAgent extends GRPCClient<AgentServiceClient> {
     return grpcClientAgent;
   }
 
-  public async destroy() {
-    await super.destroy();
+  public async destroy({
+    timeout,
+  }: {
+    timeout?: number;
+  } = {}) {
+    await super.destroy({ timeout });
   }
 
   @ready(new agentErrors.ErrorAgentClientDestroyed())

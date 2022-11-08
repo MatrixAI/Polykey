@@ -51,14 +51,16 @@ describe(`${NodeManager.name} test`, () => {
   const serverPort = 0 as Port;
   const externalPort = 0 as Port;
   const mockedPingNode = jest.fn(); // Jest.spyOn(NodeManager.prototype, 'pingNode');
+  const mockedIsSeedNode = jest.fn();
   const dummyNodeConnectionManager = {
     connConnectTime: 5000,
     pingNode: mockedPingNode,
+    isSeedNode: mockedIsSeedNode,
   } as unknown as NodeConnectionManager;
 
   beforeEach(async () => {
-    mockedPingNode.mockClear();
     mockedPingNode.mockImplementation(async (_) => true);
+    mockedIsSeedNode.mockReturnValue(false);
 
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),

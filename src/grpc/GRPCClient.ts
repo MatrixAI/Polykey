@@ -152,7 +152,7 @@ abstract class GRPCClient<T extends Client = Client> {
       const socket = session.socket as TLSSocket;
       serverCertChain = networkUtils.getCertificateChain(socket);
       try {
-        networkUtils.verifyServerCertificateChain(nodeId, serverCertChain);
+        networkUtils.verifyServerCertificateChain([nodeId], serverCertChain);
       } catch (e) {
         const e_ = e;
         if (e instanceof networkErrors.ErrorCertChain) {

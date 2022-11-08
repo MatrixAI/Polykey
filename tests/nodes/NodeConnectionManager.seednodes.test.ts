@@ -453,8 +453,8 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
       await nodeConnectionManager.start({ nodeManager });
       await taskManager.startProcessing();
       // This should complete without error
-      await nodeManager.syncNodeGraph(true, 5000, {
-        timer: new Timer({ delay: 20000 }),
+      await nodeManager.syncNodeGraph(true, 2000, {
+        timer: new Timer({ delay: 15000 }),
       });
       // Information on remotes are found
       expect(await nodeGraph.getNode(nodeId1)).toBeDefined();

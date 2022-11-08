@@ -26,6 +26,8 @@ import * as nodesUtils from '../nodes/utils';
 import { promisify } from '../utils';
 import { timedCancellable, context } from '../contexts';
 
+const clientConnectionClosedReason = Symbol('clientConnectionClosedReason');
+
 interface Proxy extends StartStop {}
 @StartStop()
 class Proxy {
@@ -316,23 +318,32 @@ class Proxy {
    * Set timer to `null` explicitly to wait forever
    */
   public openConnectionForward(
-    nodeId: NodeId,
+    nodeIds: Array<NodeId>,
     proxyHost: Host,
     proxyPort: Port,
     ctx?: Partial<ContextTimed>,
-  ): PromiseCancellable<void>;
+  ): PromiseCancellable<NodeId>;
   @ready(new networkErrors.ErrorProxyNotRunning(), true)
   @timedCancellable(true, (proxy: Proxy) => proxy.connConnectTime)
   public async openConnectionForward(
-    nodeId: NodeId,
+    nodeId: Array<NodeId>,
     proxyHost: Host,
     proxyPort: Port,
     @context ctx: ContextTimed,
-  ): Promise<void> {
+  ): Promise<NodeId> {
     const proxyAddress = networkUtils.buildAddress(proxyHost, proxyPort);
-    await this.connectionLocksForward.withF([proxyAddress, Lock], async () => {
-      await this.establishConnectionForward(nodeId, proxyHost, proxyPort, ctx);
-    });
+    return await this.connectionLocksForward.withF(
+      [proxyAddress, Lock],
+      async () => {
+        const connectionForward = await this.establishConnectionForward(
+          nodeId,
+          proxyHost,
+          proxyPort,
+          ctx,
+        );
+        return connectionForward.nodeId;
+      },
+    );
   }
 
   @ready(new networkErrors.ErrorProxyNotRunning(), true)
@@ -409,10 +420,22 @@ class Proxy {
     }
     await this.connectionLocksForward.withF([proxyAddress, Lock], async () => {
       const timer = new Timer({ delay: this.connConnectTime });
+      let cleanUpConnectionListener = () => {};
       try {
-        await this.connectForward(nodeId, proxyHost, proxyPort, clientSocket, {
-          timer,
-        });
+        const connectForwardProm = this.connectForward(
+          [nodeId],
+          proxyHost,
+          proxyPort,
+          clientSocket,
+          {
+            timer,
+          },
+        );
+        cleanUpConnectionListener = () => {
+          connectForwardProm.cancel(clientConnectionClosedReason);
+        };
+        clientSocket.addListener('close', cleanUpConnectionListener);
+        await connectForwardProm;
       } catch (e) {
         if (e instanceof networkErrors.ErrorProxyConnectInvalidUrl) {
           if (!clientSocket.destroyed) {
@@ -471,6 +494,7 @@ class Proxy {
         return;
       } finally {
         timer.cancel();
+        clientSocket.removeListener('close', cleanUpConnectionListener);
       }
       // After composing, switch off this error handler
       clientSocket.off('error', handleConnectError);
@@ -482,22 +506,22 @@ class Proxy {
   };
 
   protected connectForward(
-    nodeId: NodeId,
+    nodeIds: Array<NodeId>,
     proxyHost: Host,
     proxyPort: Port,
     clientSocket: Socket,
     ctx?: Partial<ContextTimed>,
-  ): PromiseCancellable<void>;
+  ): PromiseCancellable<NodeId>;
   @timedCancellable(true, (proxy: Proxy) => proxy.connConnectTime)
   protected async connectForward(
-    nodeId: NodeId,
+    nodeIds: Array<NodeId>,
     proxyHost: Host,
     proxyPort: Port,
     clientSocket: Socket,
     @context ctx: ContextTimed,
-  ): Promise<void> {
+  ): Promise<NodeId> {
     const conn = await this.establishConnectionForward(
-      nodeId,
+      nodeIds,
       proxyHost,
       proxyPort,
       ctx,
@@ -511,10 +535,11 @@ class Proxy {
       remotePort: conn.port,
       type: 'forward',
     });
+    return conn.nodeId;
   }
 
   protected async establishConnectionForward(
-    nodeId: NodeId,
+    nodeIds: Array<NodeId>,
     proxyHost: Host,
     proxyPort: Port,
     ctx: ContextTimed,
@@ -530,7 +555,7 @@ class Proxy {
       return conn;
     }
     conn = new ConnectionForward({
-      nodeId,
+      nodeIds,
       connections: this.connectionsForward,
       utpSocket: this.utpSocket,
       host: proxyHost,

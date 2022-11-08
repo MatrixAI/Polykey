@@ -71,7 +71,7 @@ function nodesHolePunchMessageSend({
               call.request.getProxyAddress(),
             );
             logger.debug(
-              `Received signalling message to target ${call.request.getSrcId()}@${host}:${port}`,
+              `Received signaling message to target ${call.request.getSrcId()}@${host}:${port}`,
             );
             // Ignore failure
             try {
@@ -81,7 +81,7 @@ function nodesHolePunchMessageSend({
             }
           } else {
             logger.error(
-              'Received signalling message, target information was missing, skipping reverse hole punch',
+              'Received signaling message, target information was missing, skipping reverse hole punch',
             );
           }
         } else if (await nodeManager.knowsNode(sourceId, tran)) {
@@ -92,15 +92,22 @@ function nodesHolePunchMessageSend({
             connectionInfo!.remoteHost,
             connectionInfo!.remotePort,
           );
+          // Checking if the source and destination are the same
+          if (sourceId?.equals(targetId)) {
+            // Logging and silently dropping operation
+            logger.warn('Signaling relay message requested signal to itself');
+            callback(null, response);
+            return;
+          }
           call.request.setProxyAddress(proxyAddress);
           logger.debug(
-            `Relaying signalling message from ${srcNodeId}@${
+            `Relaying signaling message from ${srcNodeId}@${
               connectionInfo!.remoteHost
             }:${
               connectionInfo!.remotePort
             } to ${targetNodeId} with information ${proxyAddress}`,
           );
-          await nodeConnectionManager.relaySignallingMessage(call.request, {
+          await nodeConnectionManager.relaySignalingMessage(call.request, {
             host: connectionInfo!.remoteHost,
             port: connectionInfo!.remotePort,
           });

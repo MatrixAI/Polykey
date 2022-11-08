@@ -517,7 +517,7 @@ describe('start', () => {
           // This line is brittle
           // It may change if the log format changes
           // Make sure to keep it updated at the exact point when the DB is created
-          if (l === 'INFO:DB:Created DB') {
+          if (l === 'INFO:polykey.PolykeyAgent.DB:Created DB') {
             agentProcess1.kill('SIGINT');
             resolve();
           }

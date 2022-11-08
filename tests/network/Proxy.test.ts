@@ -259,7 +259,7 @@ describe(Proxy.name, () => {
     });
     // Cannot open connection to port 0
     await expect(() =>
-      proxy.openConnectionForward(nodeIdABC, localHost, 0 as Port),
+      proxy.openConnectionForward([nodeIdABC], localHost, 0 as Port),
     ).rejects.toThrow(networkErrors.ErrorConnectionStart);
     await expect(() =>
       httpConnect(
@@ -305,7 +305,7 @@ describe(Proxy.name, () => {
     const utpSocketHangPort = utpSocketHang.address().port;
     await expect(() =>
       proxy.openConnectionForward(
-        nodeIdABC,
+        [nodeIdABC],
         localHost,
         utpSocketHangPort as Port,
       ),
@@ -315,7 +315,7 @@ describe(Proxy.name, () => {
     const timer = new Timer({ delay: 2000 });
     await expect(() =>
       proxy.openConnectionForward(
-        nodeIdABC,
+        [nodeIdABC],
         localHost,
         utpSocketHangPort as Port,
         { timer },
@@ -342,6 +342,7 @@ describe(Proxy.name, () => {
     const proxy = new Proxy({
       authToken,
       logger: logger.getChild('Proxy connection reset'),
+      connConnectTime: 10000,
     });
     await proxy.start({
       tlsConfig: {
@@ -368,7 +369,7 @@ describe(Proxy.name, () => {
     const utpSocketEndPort = utpSocketEnd.address().port;
     await expect(() =>
       proxy.openConnectionForward(
-        nodeIdABC,
+        [nodeIdABC],
         localHost,
         utpSocketEndPort as Port,
       ),
@@ -377,11 +378,11 @@ describe(Proxy.name, () => {
     // The actual error is UTP_ECONNRESET to be precise
     await expect(() =>
       proxy.openConnectionForward(
-        nodeIdABC,
+        [nodeIdABC],
         localHost,
         utpSocketEndPort as Port,
       ),
-    ).rejects.toThrow(/UTP_ECONNRESET/);
+    ).rejects.toThrow(networkErrors.ErrorConnectionStart);
     expect(receivedCount).toBe(2);
     // 502 Bad Gateway on HTTP Connect
     await expect(() =>
@@ -483,7 +484,7 @@ describe(Proxy.name, () => {
     // This is a TLS handshake failure
     await expect(() =>
       proxy.openConnectionForward(
-        nodeIdRandom,
+        [nodeIdRandom],
         utpSocketHost as Host,
         utpSocketPort as Port,
       ),
@@ -722,7 +723,7 @@ describe(Proxy.name, () => {
     expect(proxy.getConnectionForwardCount()).toBe(0);
     await expect(() =>
       proxy.openConnectionForward(
-        nodeIdRandom,
+        [nodeIdRandom],
         utpSocketHost as Host,
         utpSocketPort as Port,
       ),
@@ -983,7 +984,7 @@ describe(Proxy.name, () => {
     const utpSocketPort = utpSocket.address().port;
     expect(proxy.getConnectionForwardCount()).toBe(0);
     await proxy.openConnectionForward(
-      serverNodeId,
+      [serverNodeId],
       utpSocketHost as Host,
       utpSocketPort as Port,
     );
@@ -991,7 +992,7 @@ describe(Proxy.name, () => {
     await expect(remoteSecureP).resolves.toBeUndefined();
     // Opening a duplicate connection is noop
     await proxy.openConnectionForward(
-      serverNodeId,
+      [serverNodeId],
       utpSocketHost as Host,
       utpSocketPort as Port,
     );
@@ -1115,7 +1116,7 @@ describe(Proxy.name, () => {
     const utpSocketPort = utpSocket.address().port;
     expect(proxy.getConnectionForwardCount()).toBe(0);
     await proxy.openConnectionForward(
-      serverNodeId,
+      [serverNodeId],
       utpSocketHost as Host,
       utpSocketPort as Port,
     );
@@ -1123,7 +1124,7 @@ describe(Proxy.name, () => {
     await expect(remoteSecureP).resolves.toBeUndefined();
     // Opening a duplicate connection is noop
     await proxy.openConnectionForward(
-      serverNodeId,
+      [serverNodeId],
       utpSocketHost as Host,
       utpSocketPort as Port,
     );
@@ -1300,7 +1301,7 @@ describe(Proxy.name, () => {
     });
     // Opening a duplicate connection is noop
     await proxy.openConnectionForward(
-      serverNodeId,
+      [serverNodeId],
       utpSocketHost as Host,
       utpSocketPort as Port,
     );
@@ -1454,7 +1455,7 @@ describe(Proxy.name, () => {
     });
     // Opening a duplicate connection is noop
     await proxy.openConnectionForward(
-      serverNodeId,
+      [serverNodeId],
       utpSocketHost as Host,
       utpSocketPort as Port,
     );
@@ -1614,7 +1615,7 @@ describe(Proxy.name, () => {
     });
     // Opening a duplicate connection is noop
     await proxy.openConnectionForward(
-      serverNodeId,
+      [serverNodeId],
       utpSocketHost as Host,
       utpSocketPort as Port,
     );
@@ -1752,7 +1753,7 @@ describe(Proxy.name, () => {
     const utpSocketHost = utpSocket.address().address;
     const utpSocketPort = utpSocket.address().port;
     await proxy.openConnectionForward(
-      serverNodeId,
+      [serverNodeId],
       utpSocketHost as Host,
       utpSocketPort as Port,
     );
@@ -1888,7 +1889,7 @@ describe(Proxy.name, () => {
     const utpSocketPort = utpSocket.address().port;
     expect(proxy.getConnectionForwardCount()).toBe(0);
     await proxy.openConnectionForward(
-      serverNodeId,
+      [serverNodeId],
       utpSocketHost as Host,
       utpSocketPort as Port,
     );
@@ -2134,7 +2135,7 @@ describe(Proxy.name, () => {
     const utpSocketPort = utpSocket.address().port;
     expect(proxy.getConnectionForwardCount()).toBe(0);
     await proxy.openConnectionForward(
-      serverNodeId,
+      [serverNodeId],
       utpSocketHost as Host,
       utpSocketPort as Port,
     );
@@ -2285,12 +2286,12 @@ describe(Proxy.name, () => {
     const utpSocketPort2 = utpSocket2.address().port;
     expect(proxy.getConnectionForwardCount()).toBe(0);
     await proxy.openConnectionForward(
-      serverNodeId1,
+      [serverNodeId1],
       utpSocketHost1 as Host,
       utpSocketPort1 as Port,
     );
     await proxy.openConnectionForward(
-      serverNodeId2,
+      [serverNodeId2],
       utpSocketHost2 as Host,
       utpSocketPort2 as Port,
     );

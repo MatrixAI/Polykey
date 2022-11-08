@@ -5,7 +5,13 @@ import type KeyManager from '../keys/KeyManager';
 import type { PublicKeyPem } from '../keys/types';
 import type Sigchain from '../sigchain/Sigchain';
 import type { ChainData, ChainDataEncoded } from '../sigchain/types';
-import type { NodeId, NodeAddress, NodeBucket, NodeBucketIndex } from './types';
+import type {
+  NodeId,
+  NodeAddress,
+  NodeBucket,
+  NodeBucketIndex,
+  NodeData,
+} from './types';
 import type { ClaimEncoded } from '../claims/types';
 import type TaskManager from '../tasks/TaskManager';
 import type { TaskHandler, TaskHandlerId, Task } from '../tasks/types';
@@ -21,7 +27,6 @@ import * as nodesErrors from './errors';
 import * as nodesUtils from './utils';
 import * as tasksErrors from '../tasks/errors';
 import { timedCancellable, context } from '../contexts';
-import * as networkUtils from '../network/utils';
 import * as validationUtils from '../validation/utils';
 import * as utilsPB from '../proto/js/polykey/v1/utils/utils_pb';
 import * as claimsErrors from '../claims/errors';
@@ -44,6 +49,7 @@ class NodeManager {
   protected taskManager: TaskManager;
   protected refreshBucketDelay: number;
   protected refreshBucketDelayJitter: number;
+  protected retrySeedConnectionsDelay: number;
   protected pendingNodes: Map<number, Map<string, NodeAddress>> = new Map();
 
   public readonly basePath = this.constructor.name;
@@ -107,22 +113,66 @@ class NodeManager {
       );
       never();
     }
-    const host_ = await networkUtils.resolveHost(host);
-    if (
-      await this.pingNode(nodeId, { host: host_, port }, { signal: ctx.signal })
-    ) {
-      await this.setNode(
-        nodeId,
-        { host: host_, port },
-        false,
-        false,
-        2000,
-        ctx,
-      );
+    if (await this.pingNode(nodeId, { host, port }, { signal: ctx.signal })) {
+      await this.setNode(nodeId, { host, port }, false, false, 2000, ctx);
     }
   };
   public readonly pingAndSetNodeHandlerId: TaskHandlerId =
     `${this.basePath}.${this.pingAndSetNodeHandler.name}.pingAndSetNodeHandlerId` as TaskHandlerId;
+  protected checkSeedConnectionsHandler: TaskHandler = async (
+    ctx,
+    taskInfo,
+  ) => {
+    this.logger.debug('Checking seed connections');
+    // Check for existing seed node connections
+    const seedNodes = this.nodeConnectionManager.getSeedNodes();
+    const allInactive = !seedNodes
+      .map((nodeId) => this.nodeConnectionManager.hasConnection(nodeId))
+      .reduce((a, b) => a || b);
+    try {
+      if (allInactive) {
+        this.logger.debug(
+          'No active seed connections were found, retrying network entry',
+        );
+        // If no seed node connections exist then we redo syncNodeGraph
+        await this.syncNodeGraph(true, undefined, ctx);
+      } else {
+        // Doing this concurrently, we don't care about the results
+        await Promise.allSettled(
+          seedNodes.map((nodeId) => {
+            // Retry any failed seed node connections
+            if (!this.nodeConnectionManager.hasConnection(nodeId)) {
+              this.logger.debug(
+                `Re-establishing seed connection for ${nodesUtils.encodeNodeId(
+                  nodeId,
+                )}`,
+              );
+              return this.nodeConnectionManager.withConnF(
+                nodeId,
+                async () => {
+                  // Do nothing, we just want to establish a connection
+                },
+                ctx,
+              );
+            }
+          }),
+        );
+      }
+    } finally {
+      this.logger.debug('Checked seed connections');
+      // Re-schedule this task
+      await this.taskManager.scheduleTask({
+        delay: taskInfo.delay,
+        deadline: taskInfo.deadline,
+        handlerId: this.checkSeedConnectionsHandlerId,
+        lazy: true,
+        path: [this.basePath, this.checkSeedConnectionsHandlerId],
+        priority: taskInfo.priority,
+      });
+    }
+  };
+  public readonly checkSeedConnectionsHandlerId: TaskHandlerId =
+    `${this.basePath}.${this.checkSeedConnectionsHandler.name}.checkSeedConnectionsHandler` as TaskHandlerId;
 
   constructor({
     db,
@@ -133,6 +183,7 @@ class NodeManager {
     taskManager,
     refreshBucketDelay = 3600000, // 1 hour in milliseconds
     refreshBucketDelayJitter = 0.5, // Multiple of refreshBucketDelay to jitter by
+    retrySeedConnectionsDelay = 120000, // 2 minuets
     logger,
   }: {
     db: DB;
@@ -143,6 +194,7 @@ class NodeManager {
     taskManager: TaskManager;
     refreshBucketDelay?: number;
     refreshBucketDelayJitter?: number;
+    retrySeedConnectionsDelay?: number;
     longTaskTimeout?: number;
     logger?: Logger;
   }) {
@@ -159,6 +211,7 @@ class NodeManager {
       0,
       Math.min(refreshBucketDelayJitter, 1),
     );
+    this.retrySeedConnectionsDelay = retrySeedConnectionsDelay;
   }
 
   public async start() {
@@ -176,7 +229,17 @@ class NodeManager {
       this.pingAndSetNodeHandlerId,
       this.pingAndSetNodeHandler,
     );
+    this.taskManager.registerHandler(
+      this.checkSeedConnectionsHandlerId,
+      this.checkSeedConnectionsHandler,
+    );
     await this.setupRefreshBucketTasks();
+    await this.taskManager.scheduleTask({
+      delay: this.retrySeedConnectionsDelay,
+      handlerId: this.checkSeedConnectionsHandlerId,
+      lazy: true,
+      path: [this.basePath, this.checkSeedConnectionsHandlerId],
+    });
     this.logger.info(`Started ${this.constructor.name}`);
   }
 
@@ -200,6 +263,7 @@ class NodeManager {
     this.taskManager.deregisterHandler(this.refreshBucketHandlerId);
     this.taskManager.deregisterHandler(this.gcBucketHandlerId);
     this.taskManager.deregisterHandler(this.pingAndSetNodeHandlerId);
+    this.taskManager.deregisterHandler(this.checkSeedConnectionsHandlerId);
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
@@ -237,10 +301,9 @@ class NodeManager {
     if (targetAddress == null) {
       return false;
     }
-    const targetHost = await networkUtils.resolveHost(targetAddress.host);
     return await this.nodeConnectionManager.pingNode(
       nodeId,
-      targetHost,
+      targetAddress.host,
       targetAddress.port,
       ctx,
     );
@@ -696,6 +759,8 @@ class NodeManager {
     const unsetLock = new Lock();
     const pendingPromises: Array<Promise<void>> = [];
     for (const nodeId of bucket) {
+      // We want to retain seed nodes regardless of state, so skip them
+      if (this.nodeConnectionManager.isSeedNode(nodeId)) continue;
       if (removedNodes >= pendingNodes.size) break;
       await semaphore.waitForUnlock();
       if (ctx.signal?.aborted === true) break;
@@ -1044,71 +1109,144 @@ class NodeManager {
     pingTimeout: number | undefined,
     @context ctx: ContextTimed,
   ): Promise<void> {
-    this.logger.info('Syncing nodeGraph');
-    for (const seedNodeId of this.nodeConnectionManager.getSeedNodes()) {
-      // Check if the connection is viable
-      if (
-        (await this.pingNode(seedNodeId, undefined, {
-          timer: new Timer({
-            delay: pingTimeout ?? this.nodeConnectionManager.pingTimeout,
-          }),
-          signal: ctx.signal,
-        })) === false
-      ) {
-        continue;
-      }
+    const logger = this.logger.getChild('syncNodeGraph');
+    logger.info('Syncing nodeGraph');
+    // Getting the seed node connection information
+    const seedNodes = this.nodeConnectionManager.getSeedNodes();
+    const addresses = await Promise.all(
+      await this.db.withTransactionF(async (tran) =>
+        seedNodes.map(
+          async (seedNode) =>
+            (
+              await this.nodeGraph.getNode(seedNode, tran)
+            )?.address,
+        ),
+      ),
+    );
+    const filteredAddresses = addresses.filter(
+      (address) => address != null,
+    ) as Array<NodeAddress>;
+    logger.debug(
+      `establishing multi-connection to the following seed nodes ${seedNodes.map(
+        (nodeId) => nodesUtils.encodeNodeId(nodeId),
+      )}`,
+    );
+    logger.debug(
+      `and addresses ${filteredAddresses.map(
+        (address) => `${address.host}:${address.port}`,
+      )}`,
+    );
+    // Establishing connections to the seed nodes
+    const connections =
+      await this.nodeConnectionManager.establishMultiConnection(
+        seedNodes,
+        filteredAddresses,
+        pingTimeout,
+        undefined,
+        { signal: ctx.signal },
+      );
+    logger.debug(`Multi-connection established for`);
+    connections.forEach((address, key) => {
+      logger.debug(
+        `${nodesUtils.encodeNodeId(key)}@${address.host}:${address.port}`,
+      );
+    });
+    if (connections.size === 0) {
+      // Not explicitly a failure but we do want to stop here
+      this.logger.warn(
+        'Failed to connect to any seed nodes when syncing node graph',
+      );
+      return;
+    }
+    // Using a map to avoid duplicates
+    const closestNodesAll: Map<NodeId, NodeData> = new Map();
+    const localNodeId = this.keyManager.getNodeId();
+    let closestNode: NodeId | null = null;
+    logger.debug('Getting closest nodes');
+    for (const [nodeId] of connections) {
       const closestNodes =
         await this.nodeConnectionManager.getRemoteNodeClosestNodes(
-          seedNodeId,
-          this.keyManager.getNodeId(),
+          nodeId,
+          localNodeId,
           { signal: ctx.signal },
         );
-      const localNodeId = this.keyManager.getNodeId();
-      for (const [nodeId, nodeData] of closestNodes) {
-        if (!localNodeId.equals(nodeId)) {
-          const pingAndSetTask = await this.taskManager.scheduleTask({
-            delay: 0,
-            handlerId: this.pingAndSetNodeHandlerId,
-            lazy: !block,
-            parameters: [
-              nodesUtils.encodeNodeId(nodeId),
-              nodeData.address.host,
-              nodeData.address.port,
-            ],
-            path: [this.basePath, this.pingAndSetNodeHandlerId],
-            // Need to be somewhat active so high priority
-            priority: 100,
-          });
-          if (block) {
-            try {
-              await pingAndSetTask.promise();
-            } catch (e) {
-              if (!(e instanceof nodesErrors.ErrorNodeGraphSameNodeId)) throw e;
-            }
+      // Setting node information into the map, filtering out local node
+      closestNodes.forEach(([nodeId, address]) => {
+        if (!localNodeId.equals(nodeId)) closestNodesAll.set(nodeId, address);
+      });
+
+      // Getting the closest node
+      let closeNodeInfo = closestNodes.pop();
+      if (closeNodeInfo != null && localNodeId.equals(closeNodeInfo[0])) {
+        closeNodeInfo = closestNodes.pop();
+      }
+      if (closeNodeInfo == null) continue;
+      const [closeNode] = closeNodeInfo;
+      if (closestNode == null) closestNode = closeNode;
+      const distA = nodesUtils.nodeDistance(localNodeId, closeNode);
+      const distB = nodesUtils.nodeDistance(localNodeId, closestNode);
+      if (distA < distB) closestNode = closeNode;
+    }
+    logger.debug('Starting pingsAndSet tasks');
+    const pingTasks: Array<Task> = [];
+    for (const [nodeId, nodeData] of closestNodesAll) {
+      if (!localNodeId.equals(nodeId)) {
+        logger.debug(
+          `pingAndSetTask for ${nodesUtils.encodeNodeId(nodeId)}@${
+            nodeData.address.host
+          }:${nodeData.address.port}`,
+        );
+        const pingAndSetTask = await this.taskManager.scheduleTask({
+          delay: 0,
+          handlerId: this.pingAndSetNodeHandlerId,
+          lazy: !block,
+          parameters: [
+            nodesUtils.encodeNodeId(nodeId),
+            nodeData.address.host,
+            nodeData.address.port,
+          ],
+          path: [this.basePath, this.pingAndSetNodeHandlerId],
+          // Need to be somewhat active so high priority
+          priority: 100,
+          deadline: pingTimeout,
+        });
+        pingTasks.push(pingAndSetTask);
+      }
+    }
+    if (block) {
+      // We want to wait for all the tasks
+      logger.debug('Awaiting all pingAndSetTasks');
+      await Promise.all(
+        pingTasks.map((task) => {
+          const prom = task.promise();
+          // Hook on cancellation
+          if (ctx.signal.aborted) {
+            prom.cancel(ctx.signal.reason);
+          } else {
+            ctx.signal.addEventListener('abort', () =>
+              prom.cancel(ctx.signal.reason),
+            );
           }
-        }
-      }
-      // Refreshing every bucket above the closest node
-      let closestNodeInfo = closestNodes.pop();
-      if (
-        closestNodeInfo != null &&
-        this.keyManager.getNodeId().equals(closestNodeInfo[0])
-      ) {
-        // Skip our nodeId if it exists
-        closestNodeInfo = closestNodes.pop();
-      }
-      let index = this.nodeGraph.nodeIdBits;
-      if (closestNodeInfo != null) {
-        const [closestNode] = closestNodeInfo;
-        const [bucketIndex] = this.nodeGraph.bucketIndex(closestNode);
-        index = bucketIndex;
-      }
-      const refreshBuckets: Array<Promise<any>> = [];
-      for (let i = index; i < this.nodeGraph.nodeIdBits; i++) {
-        const task = await this.updateRefreshBucketDelay(i, 0, !block);
-        refreshBuckets.push(task.promise());
-      }
-      if (block) await Promise.all(refreshBuckets);
+          // Ignore errors
+          return task.promise().catch(() => {});
+        }),
+      );
+    }
+    // Refreshing every bucket above the closest node
+    logger.debug(`Triggering refreshBucket tasks`);
+    let index = this.nodeGraph.nodeIdBits;
+    if (closestNode != null) {
+      const [bucketIndex] = this.nodeGraph.bucketIndex(closestNode);
+      index = bucketIndex;
+    }
+    const refreshBuckets: Array<Promise<any>> = [];
+    for (let i = index; i < this.nodeGraph.nodeIdBits; i++) {
+      const task = await this.updateRefreshBucketDelay(i, 0, !block);
+      refreshBuckets.push(task.promise());
+    }
+    if (block) {
+      logger.debug(`Awaiting refreshBucket tasks`);
+      await Promise.all(refreshBuckets);
     }
   }
 }
