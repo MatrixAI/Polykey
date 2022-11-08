@@ -1030,6 +1030,10 @@ class NodeConnectionManager {
     return establishedMap;
   }
 
+  public hasConnection(nodeId: NodeId): boolean {
+    return this.connections.has(nodeId.toString() as NodeIdString);
+  }
+
   protected hasBackoff(nodeId: NodeId): boolean {
     const backoff = this.nodesBackoffMap.get(nodeId.toString());
     if (backoff == null) return false;

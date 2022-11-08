@@ -49,6 +49,7 @@ class NodeManager {
   protected taskManager: TaskManager;
   protected refreshBucketDelay: number;
   protected refreshBucketDelayJitter: number;
+  protected retrySeedConnectionsDelay: number;
   protected pendingNodes: Map<number, Map<string, NodeAddress>> = new Map();
 
   public readonly basePath = this.constructor.name;
@@ -118,6 +119,60 @@ class NodeManager {
   };
   public readonly pingAndSetNodeHandlerId: TaskHandlerId =
     `${this.basePath}.${this.pingAndSetNodeHandler.name}.pingAndSetNodeHandlerId` as TaskHandlerId;
+  protected checkSeedConnectionsHandler: TaskHandler = async (
+    ctx,
+    taskInfo,
+  ) => {
+    this.logger.info('Checking seed connections');
+    // Check for existing seed node connections
+    const seedNodes = this.nodeConnectionManager.getSeedNodes();
+    const allInactive = !seedNodes
+      .map((nodeId) => this.nodeConnectionManager.hasConnection(nodeId))
+      .reduce((a, b) => a || b);
+    try {
+      if (allInactive) {
+        this.logger.info(
+          'No active seed connections were found, retrying network entry',
+        );
+        // If no seed node connections exist then we redo syncNodeGraph
+        await this.syncNodeGraph(true, undefined, ctx);
+      } else {
+        // Doing this concurrently, we don't care about the results
+        await Promise.allSettled(
+          seedNodes.map((nodeId) => {
+            // Retry any failed seed node connections
+            if (!this.nodeConnectionManager.hasConnection(nodeId)) {
+              this.logger.info(
+                `Re-establishing seed connection for ${nodesUtils.encodeNodeId(
+                  nodeId,
+                )}`,
+              );
+              return this.nodeConnectionManager.withConnF(
+                nodeId,
+                async () => {
+                  // Do nothing, we just want to establish a connection
+                },
+                ctx,
+              );
+            }
+          }),
+        );
+      }
+    } finally {
+      this.logger.info('Checked seed connections');
+      // Re-schedule this task
+      await this.taskManager.scheduleTask({
+        delay: taskInfo.delay,
+        deadline: taskInfo.deadline,
+        handlerId: this.checkSeedConnectionsHandlerId,
+        lazy: true,
+        path: [this.basePath, this.checkSeedConnectionsHandlerId],
+        priority: taskInfo.priority,
+      });
+    }
+  };
+  public readonly checkSeedConnectionsHandlerId: TaskHandlerId =
+    `${this.basePath}.${this.checkSeedConnectionsHandler.name}.checkSeedConnectionsHandler` as TaskHandlerId;
 
   constructor({
     db,
@@ -128,6 +183,7 @@ class NodeManager {
     taskManager,
     refreshBucketDelay = 3600000, // 1 hour in milliseconds
     refreshBucketDelayJitter = 0.5, // Multiple of refreshBucketDelay to jitter by
+    retrySeedConnectionsDelay = 120000, // 2 minuets
     logger,
   }: {
     db: DB;
@@ -138,6 +194,7 @@ class NodeManager {
     taskManager: TaskManager;
     refreshBucketDelay?: number;
     refreshBucketDelayJitter?: number;
+    retrySeedConnectionsDelay?: number;
     longTaskTimeout?: number;
     logger?: Logger;
   }) {
@@ -154,6 +211,7 @@ class NodeManager {
       0,
       Math.min(refreshBucketDelayJitter, 1),
     );
+    this.retrySeedConnectionsDelay = retrySeedConnectionsDelay;
   }
 
   public async start() {
@@ -171,7 +229,17 @@ class NodeManager {
       this.pingAndSetNodeHandlerId,
       this.pingAndSetNodeHandler,
     );
+    this.taskManager.registerHandler(
+      this.checkSeedConnectionsHandlerId,
+      this.checkSeedConnectionsHandler,
+    );
     await this.setupRefreshBucketTasks();
+    await this.taskManager.scheduleTask({
+      delay: this.retrySeedConnectionsDelay,
+      handlerId: this.checkSeedConnectionsHandlerId,
+      lazy: true,
+      path: [this.basePath, this.checkSeedConnectionsHandlerId],
+    });
     this.logger.info(`Started ${this.constructor.name}`);
   }
 
@@ -195,6 +263,7 @@ class NodeManager {
     this.taskManager.deregisterHandler(this.refreshBucketHandlerId);
     this.taskManager.deregisterHandler(this.gcBucketHandlerId);
     this.taskManager.deregisterHandler(this.pingAndSetNodeHandlerId);
+    this.taskManager.deregisterHandler(this.checkSeedConnectionsHandlerId);
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
@@ -1044,51 +1113,57 @@ class NodeManager {
     logger.info('Syncing nodeGraph');
     // Getting the seed node connection information
     const seedNodes = this.nodeConnectionManager.getSeedNodes();
-    // FIXME: remove or uncomment, need to decide
-    // const addresses = await Promise.all(
-    //   await this.db.withTransactionF(async (tran) =>
-    //     seedNodes.map(
-    //       async (seedNode) =>
-    //         (
-    //           await this.nodeGraph.getNode(seedNode, tran)
-    //         )?.address,
-    //     ),
-    //   ),
-    // );
-    // const filteredAddresses = addresses.filter(
-    //   (address) => address != null,
-    // ) as Array<NodeAddress>;
-    // logger.info(
-    //   `establishing multi-connection to the following seed nodes ${seedNodes.map(
-    //     (nodeId) => nodesUtils.encodeNodeId(nodeId),
-    //   )}`,
-    // );
-    // logger.info(
-    //   `and addresses addresses ${filteredAddresses.map(
-    //     (address) => `${address.host}:${address.port}`,
-    //   )}`,
-    // );
-    // // Establishing connections to the seed nodes
-    // const connections =
-    //   await this.nodeConnectionManager.establishMultiConnection(
-    //     seedNodes,
-    //     filteredAddresses,
-    //     pingTimeout,
-    //     undefined,
-    //     { signal: ctx.signal },
-    //   );
-    // logger.info(`Multi-connection established for`);
-    // connections.forEach((address, key) => {
-    //   logger.info(
-    //     `${nodesUtils.encodeNodeId(key)}@${address.host}:${address.port}`,
-    //   );
-    // });
+    const addresses = await Promise.all(
+      await this.db.withTransactionF(async (tran) =>
+        seedNodes.map(
+          async (seedNode) =>
+            (
+              await this.nodeGraph.getNode(seedNode, tran)
+            )?.address,
+        ),
+      ),
+    );
+    const filteredAddresses = addresses.filter(
+      (address) => address != null,
+    ) as Array<NodeAddress>;
+    logger.info(
+      `establishing multi-connection to the following seed nodes ${seedNodes.map(
+        (nodeId) => nodesUtils.encodeNodeId(nodeId),
+      )}`,
+    );
+    logger.info(
+      `and addresses addresses ${filteredAddresses.map(
+        (address) => `${address.host}:${address.port}`,
+      )}`,
+    );
+    // Establishing connections to the seed nodes
+    const connections =
+      await this.nodeConnectionManager.establishMultiConnection(
+        seedNodes,
+        filteredAddresses,
+        pingTimeout,
+        undefined,
+        { signal: ctx.signal },
+      );
+    logger.info(`Multi-connection established for`);
+    connections.forEach((address, key) => {
+      logger.info(
+        `${nodesUtils.encodeNodeId(key)}@${address.host}:${address.port}`,
+      );
+    });
+    if (connections.size === 0) {
+      // Not explicitly a failure but we do want to stop here
+      this.logger.warn(
+        'Failed to connect to any seed nodes when syncing node graph',
+      );
+      return;
+    }
     // Using a map to avoid duplicates
     const closestNodesAll: Map<NodeId, NodeData> = new Map();
     const localNodeId = this.keyManager.getNodeId();
     let closestNode: NodeId | null = null;
     logger.info('Getting closest nodes');
-    for (const nodeId of seedNodes) {
+    for (const [nodeId] of connections) {
       const closestNodes =
         await this.nodeConnectionManager.getRemoteNodeClosestNodes(
           nodeId,
