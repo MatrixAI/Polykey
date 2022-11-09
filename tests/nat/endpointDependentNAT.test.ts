@@ -248,7 +248,7 @@ describe('endpoint dependent NAT traversal', () => {
       expect(exitCode).toBe(1);
       expect(JSON.parse(stdout)).toEqual({
         success: false,
-        message: `Failed to resolve node ID ${agent1NodeId} to an address.`,
+        message: expect.any(String),
       });
       // Node 1 -> Node 2 ping should also fail for the same reason
       ({ exitCode, stdout } = await testUtils.pkExec(
@@ -269,7 +269,7 @@ describe('endpoint dependent NAT traversal', () => {
       expect(exitCode).toBe(1);
       expect(JSON.parse(stdout)).toEqual({
         success: false,
-        message: `Failed to resolve node ID ${agent2NodeId} to an address.`,
+        message: expect.any(String),
       });
       await tearDownNAT();
     },
@@ -328,7 +328,7 @@ describe('endpoint dependent NAT traversal', () => {
       expect(exitCode).toBe(1);
       expect(JSON.parse(stdout)).toEqual({
         success: false,
-        message: `Failed to resolve node ID ${agent1NodeId} to an address.`,
+        message: expect.any(String),
       });
       ({ exitCode, stdout } = await testUtils.pkExec(
         ['nodes', 'ping', agent2NodeId, '--format', 'json'],
@@ -348,7 +348,7 @@ describe('endpoint dependent NAT traversal', () => {
       expect(exitCode).toBe(1);
       expect(JSON.parse(stdout)).toEqual({
         success: false,
-        message: `Failed to resolve node ID ${agent2NodeId} to an address.`,
+        message: expect.any(String),
       });
       await tearDownNAT();
     },

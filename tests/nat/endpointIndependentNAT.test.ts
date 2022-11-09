@@ -505,7 +505,7 @@ describe('endpoint independent NAT traversal', () => {
       expect(exitCode).toBe(1);
       expect(JSON.parse(stdout)).toEqual({
         success: false,
-        message: `Failed to resolve node ID ${agent1NodeId} to an address.`,
+        message: expect.any(String),
       });
       ({ exitCode, stdout } = await testUtils.pkExec(
         ['nodes', 'ping', agent2NodeId, '--format', 'json'],
@@ -525,7 +525,7 @@ describe('endpoint independent NAT traversal', () => {
       expect(exitCode).toBe(1);
       expect(JSON.parse(stdout)).toEqual({
         success: false,
-        message: `Failed to resolve node ID ${agent2NodeId} to an address.`,
+        message: expect.any(String),
       });
       await tearDownNAT();
     },
