@@ -5,20 +5,18 @@ import fs from 'fs';
 import readline from 'readline';
 import Logger, { LogLevel, StreamHandler, formatting } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
+import config from '@/config';
 import * as testUtils from '../../utils';
 import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 import { sleep } from '../../../src/utils/index';
 
-describe('testnet connection', () => {
+describe.skip('testnet connection', () => {
   const logger = new Logger('TCT', LogLevel.INFO, [new StreamHandler()]);
   const format = formatting.format`${formatting.keys}:${formatting.msg}`;
   logger.handlers.forEach((handler) => handler.setFormatter(format));
-  // The testnet node ids/addresses are not fixed
-  // These will need to be updated whenever they change
-  const seedNodeId1 =
-    'vdrn5ok1cdrghve4r72dufhk5si9m42665eutias61sgavjusar60' as NodeIdEncoded;
-  const seedNodeIp1 = 'testnet.polykey.io' as Host;
-  const seedNodePort = 1314 as Port;
+  const seedNodes = Object.entries(config.defaults.network.testnet);
+  const seedNodeId1 = seedNodes[0][0] as NodeIdEncoded;
+  const seedNodeAddress1 = seedNodes[0][1];
   let dataDir: string;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
@@ -34,13 +32,13 @@ describe('testnet connection', () => {
   test('can connect to `testnet.polykey.io` seed node', async () => {
     const password = 'abc123';
     const nodePath = path.join(dataDir, 'polykey');
-    // Starting an agent with the testnet as a seed ndoe
+    // Starting an agent with the testnet as a seed node
     const agentProcess = await testUtils.pkSpawn(
       [
         'agent',
         'start',
         '--seed-nodes',
-        `${seedNodeId1}@${seedNodeIp1}:${seedNodePort}`,
+        `${seedNodeId1}@${seedNodeAddress1.host}:${seedNodeAddress1.port}`,
         '--format',
         'json',
         '--verbose',
@@ -77,6 +75,7 @@ describe('testnet connection', () => {
       );
       expect(exitCode1).toBe(0);
     } finally {
+      agentProcess.kill('SIGINT');
       await testUtils.processExit(agentProcess);
     }
   });
@@ -90,7 +89,7 @@ describe('testnet connection', () => {
         'agent',
         'start',
         '--seed-nodes',
-        `${seedNodeId1}@${seedNodeIp1}:${seedNodePort}`,
+        `${seedNodeId1}@${seedNodeAddress1.host}:${seedNodeAddress1.port}`,
         '--format',
         'json',
         '--verbose',
@@ -112,7 +111,7 @@ describe('testnet connection', () => {
         'agent',
         'start',
         '--seed-nodes',
-        `${seedNodeId1}@${seedNodeIp1}:${seedNodePort}`,
+        `${seedNodeId1}@${seedNodeAddress1.host}:${seedNodeAddress1.port}`,
         '--format',
         'json',
         '--verbose',
@@ -199,12 +198,14 @@ describe('testnet connection', () => {
       );
       expect(exitCode4).toBe(0);
     } finally {
+      agentProcessA.kill('SIGINT');
+      agentProcessB.kill('SIGINT');
       await testUtils.processExit(agentProcessA);
       await testUtils.processExit(agentProcessB);
     }
   });
   // This test is known to fail, two nodes on the same network can't hole punch
-  test('testing hole punching', async () => {
+  test.skip('testing hole punching', async () => {
     // Const nodePathS = path.join(dataDir, 'seed');
     const nodePath1 = path.join(dataDir, 'node1');
     const nodePath2 = path.join(dataDir, 'node2');
@@ -234,10 +235,7 @@ describe('testnet connection', () => {
     //   },
     // };
     const seedNodes: SeedNodes = {
-      [seedNodeId1]: {
-        host: seedNodeIp1,
-        port: seedNodePort,
-      },
+      [seedNodeId1]: seedNodeAddress1,
     };
     // Console.log('Starting Agent1');
     const agent1 = await PolykeyAgent.createPolykeyAgent({
