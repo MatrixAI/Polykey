@@ -120,7 +120,8 @@ describe('discover/get', () => {
       recursive: true,
     });
   });
-  testUtils.testIf(testUtils.isTestPlatformEmpty)(
+  // TestUtils.testIf(testUtils.isTestPlatformEmpty)
+  test(
     'discovers and gets gestalt by node',
     async () => {
       // Need an authenticated identity
@@ -223,6 +224,7 @@ describe('discover/get', () => {
       // @ts-ignore - get protected property
       pkAgent.discovery.visitedVertices.clear();
     },
+    globalThis.defaultTimeout * 3,
   );
   testUtils.testIf(testUtils.isTestPlatformEmpty)(
     'discovers and gets gestalt by identity',

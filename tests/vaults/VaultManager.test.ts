@@ -1530,7 +1530,8 @@ describe('VaultManager', () => {
       nodeGraph,
       proxy,
       taskManager,
-      connConnectTime: 1000,
+      connConnectTime: 4000,
+      pingTimeout: 4000,
     });
     await nodeConnectionManager.start({
       nodeManager: { setNode: jest.fn() } as unknown as NodeManager,

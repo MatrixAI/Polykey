@@ -256,7 +256,7 @@ describe.skip('testnet connection', () => {
       logger: logger.getChild('A1'),
     });
     // Console.log('Starting Agent2');
-    logger.setLevel(LogLevel.INFO);
+    logger.setLevel(LogLevel.WARN);
     const agent2 = await PolykeyAgent.createPolykeyAgent({
       password,
       nodePath: nodePath2,
@@ -275,7 +275,7 @@ describe.skip('testnet connection', () => {
     });
 
     try {
-      logger.setLevel(LogLevel.INFO);
+      logger.setLevel(LogLevel.WARN);
       // Console.log('syncing 1');
       // await agent1.nodeManager.syncNodeGraph(true);
       // console.log('syncing 2');

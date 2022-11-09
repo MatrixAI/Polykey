@@ -25,7 +25,7 @@ import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 describe(`${NodeConnectionManager.name} lifecycle test`, () => {
   const logger = new Logger(
     `${NodeConnectionManager.name} test`,
-    LogLevel.INFO,
+    LogLevel.WARN,
     [new StreamHandler()],
   );
   grpcUtils.setLogger(logger.getChild('grpc'));
