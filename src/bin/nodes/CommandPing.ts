@@ -19,7 +19,6 @@ class CommandPing extends CommandPolykey {
     this.action(async (nodeId: NodeId, options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
       const nodesUtils = await import('../../nodes/utils');
-      const nodesErrors = await import('../../nodes/errors');
       const nodesPB = await import('../../proto/js/polykey/v1/nodes/nodes_pb');
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
@@ -47,25 +46,11 @@ class CommandPing extends CommandPolykey {
         });
         const nodeMessage = new nodesPB.Node();
         nodeMessage.setNodeId(nodesUtils.encodeNodeId(nodeId));
-        let statusMessage;
         let error;
-        try {
-          statusMessage = await binUtils.retryAuthentication(
-            (auth) => pkClient.grpcClient.nodesPing(nodeMessage, auth),
-            meta,
-          );
-        } catch (err) {
-          if (err.cause instanceof nodesErrors.ErrorNodeGraphNodeIdNotFound) {
-            error = new binErrors.ErrorCLINodePingFailed(
-              `Failed to resolve node ID ${nodesUtils.encodeNodeId(
-                nodeId,
-              )} to an address.`,
-              { cause: err },
-            );
-          } else {
-            throw err;
-          }
-        }
+        const statusMessage = await binUtils.retryAuthentication(
+          (auth) => pkClient.grpcClient.nodesPing(nodeMessage, auth),
+          meta,
+        );
         const status = { success: false, message: '' };
         status.success = statusMessage ? statusMessage.getSuccess() : false;
         if (!status.success && !error) {

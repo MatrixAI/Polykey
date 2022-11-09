@@ -148,9 +148,7 @@ describe('ping', () => {
       expect(exitCode).not.toBe(0); // Should fail if node doesn't exist.
       expect(JSON.parse(stdout)).toEqual({
         success: false,
-        message: `Failed to resolve node ID ${nodesUtils.encodeNodeId(
-          fakeNodeId!,
-        )} to an address.`,
+        message: `No response received`,
       });
     },
     globalThis.failedConnectionTimeout,
