@@ -15,6 +15,9 @@ import type {
   GestaltLinkNode,
   // GestaltNodeId,
   // GestaltIdentityId,
+  GestaltInfo,
+  GestaltLinkIdentity,
+  GestaltId,
 } from './types';
 import type { NodeId, ProviderIdentityId } from '../ids/types';
 import type { Permission } from '../acl/types';
@@ -31,6 +34,11 @@ import * as nodesUtils from '../nodes/utils';
 import * as aclUtils from '../acl/utils';
 import * as utils from '../utils';
 import * as ids from '../ids';
+import { never } from '../utils';
+import { identity } from 'ix/util/identity';
+
+const notImplementedError = () => Error('IMP Not implemented');
+const invalidCombinationError = () => Error('TMP Invalid combination error');
 
 interface GestaltGraph extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
@@ -117,43 +125,7 @@ class GestaltGraph {
     this.logger.info(`Destroyed ${this.constructor.name}`);
   }
 
-  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
-  public async *getGestalts(tran?: DBTransaction): AsyncGenerator<Gestalt> {
-    if (tran == null) {
-      return yield* this.db.withTransactionG((tran) =>
-        this.getGestalts(tran),
-      );
-    }
-    const visited: Set<string> = new Set();
-    let lastGestaltKey: GestaltKey | null = null;
-    for await (const [[gestaltKey]] of tran.iterator(
-      this.dbMatrixPath,
-      { values: false }
-    ) as DBIterator<[GestaltKey], undefined>) {
-      if (lastGestaltKey == null) {
-        lastGestaltKey = gestaltKey;
-      }
-      if (visited.has(gestaltKey.toString('binary'))) {
-        // Garbage collect the last gestalt key since it will never be iterated upon
-        if (!lastGestaltKey.equals(gestaltKey)) {
-          visited.delete(lastGestaltKey.toString('binary'));
-          lastGestaltKey = gestaltKey;
-        }
-        continue;
-      }
-      // Garbage collect the last gestalt key since it will never be iterated upon
-      if (!lastGestaltKey.equals(gestaltKey)) {
-        visited.delete(lastGestaltKey.toString('binary'));
-        lastGestaltKey = gestaltKey;
-      }
-      const gestalt = (await this.getGestaltByKey(
-        gestaltKey,
-        visited,
-        tran
-      ))!;
-      yield gestalt;
-    }
-  }
+  // Getting and setting vertices
 
   /**
    * Sets a node in the graph
@@ -222,6 +194,69 @@ class GestaltGraph {
     await tran.put([...this.dbIdentitiesPath, gestaltIdentityKey], identityInfo);
     return gestaltIdentityId;
   }
+
+  // TODO
+  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
+  public unsetNode(
+    nodeId: NodeId,
+    tran?: DBTransaction,
+  ): Promise<void> {
+    const gestaltNodeId = ['node', nodeId] as ['node', NodeId];
+    // When a vertex is unset, their permissions in the ACL must be deleted,
+    //  and all their links must also be broken. This means you have to iterate
+    //  over all its neighbours and remove those entries in matrix. But you must
+    //  also remove themselves from the matrix if they are a singleton gestalt.
+    throw notImplementedError();
+  };
+
+  // TODO
+  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
+  public unsetIdentity(
+    providerIdentityId: ProviderIdentityId,
+    tran?: DBTransaction,
+  ): Promise<void> {
+    // When a vertex is unset, their permissions in the ACL must be deleted,
+    //  and all their links must also be broken. This means you have to iterate
+    //  over all its neighbours and remove those entries in matrix. But you must
+    //  also remove themselves from the matrix if they are a singleton gestalt.
+    throw notImplementedError();
+  };
+
+  // Calls one of `setNode` or `setIdentity`
+  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
+  public setVertex(
+    gestaltInfo: GestaltInfo,
+    tran?: DBTransaction,
+  ): Promise<GestaltId> {
+    const [type, info] = gestaltInfo;
+    switch(type) {
+      case 'node':
+        return this.setNode(info, tran);
+      case 'identity':
+        return this.setIdentity(info, tran);
+      default:
+        never();
+    }
+  };
+
+  // Calls one of `unsetNode` or `unsetIdentity`
+  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
+  public unsetVertex(
+    gestaltId: GestaltId,
+    tran?: DBTransaction,
+  ): Promise<void>{
+    const [type, id] = gestaltId;
+    switch (type) {
+      case 'node':
+        return this.unsetNode(id, tran);
+      case 'identity':
+        return this.unsetIdentity(id, tran);
+      default:
+        never();
+    }
+  };
+
+  // LINKING AND UNLINKING VERTICES
 
   /**
    * This checks if the link node has matching issuer and subject.
@@ -387,6 +422,172 @@ class GestaltGraph {
   }
 
   @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
+  public linkNodeAndIdentity(
+    nodeInfo: GestaltNodeInfo,
+    identityInfo: GestaltIdentityInfo,
+    linkIdentity: Omit<GestaltLinkIdentity, 'id'>,
+    tran?: DBTransaction,
+  ): Promise<GestaltLinkId> {
+    throw notImplementedError();
+  };
+
+  // Overloaded version of linkNodeAndNode and linkNodeAndIdentity
+  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
+  public linkVertexAndVertex(
+    gestaltInfo1: GestaltInfo,
+    gestaltInfo2: GestaltInfo,
+    link: [GestaltLink[0], Omit<GestaltLink[1], 'id'>],
+    tran?: DBTransaction,
+  ): Promise<GestaltLinkId> {
+    const [type1, info1] = gestaltInfo1;
+    const [type2, info2] = gestaltInfo2;
+    const [type3, linkInfo] = link;
+
+    // Keeping the switch flat with implicit typing here doesn't work,
+    //  so we need to use enforce the types here
+    switch (`${type1}-${type2}-${type3}`) {
+      case 'node-node-node':
+        return this.linkNodeAndNode(info1 as GestaltNodeInfo, info2 as GestaltNodeInfo, linkInfo as Omit<GestaltLinkNode, "id">, tran);
+      case 'node-identity-identity':
+        return this.linkNodeAndIdentity(info1 as GestaltNodeInfo, info2 as GestaltIdentityInfo, linkInfo as Omit<GestaltLinkIdentity, "id">, tran);
+      case 'identity-node-identity':
+        return this.linkNodeAndIdentity(info2 as GestaltNodeInfo, info1 as GestaltIdentityInfo, linkInfo as Omit<GestaltLinkIdentity, "id">, tran);
+        // These are not valid
+      case 'identity-identity-identity':
+      case 'identity-identity-node':
+      case 'node-node-identity':
+      case 'node-identity-node':
+      case 'identity-node-node':
+        throw invalidCombinationError();
+      default:
+        never();
+    }
+  };
+
+  // TODO
+  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
+  public unlinkNodeAndNode(
+    nodeId1: NodeId,
+    nodeId2: NodeId,
+    tran?: DBTransaction,
+  ): Promise<void> {
+    throw notImplementedError();
+  };
+
+  // TODO
+  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
+  public unlinkNodeAndIdentity(
+    nodeId: NodeId,
+    providerIdentityId: ProviderIdentityId,
+    tran?: DBTransaction,
+  ): Promise<void> {
+    throw notImplementedError();
+  };
+
+  // Overlaoded version of unlinkNodeAndNode and unlinkNodeAndIdentity
+  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
+  public unlinkVertexAndVertex(
+    gestaltId1: GestaltId,
+    gestaltId2: GestaltId,
+    tran?: DBTransaction,
+  ): Promise<void> {
+    const [type1, info1] = gestaltId1;
+    const [type2, info2] = gestaltId2;
+    switch(`${type1}-${type2}`) {
+      case 'node-node':
+        return this.unlinkNodeAndNode(info1 as NodeId, info2 as NodeId, tran);
+      case 'node-identity':
+        return this.unlinkNodeAndIdentity(info1 as NodeId, info2 as ProviderIdentityId, tran);
+      case 'identity-node':
+        return this.unlinkNodeAndIdentity(info2 as NodeId, info1 as ProviderIdentityId, tran);
+      case 'identity-identity':
+        throw invalidCombinationError();
+      default:
+        never();
+    }
+  };
+
+  // GESTALT ACTIONS
+
+  // TODO
+  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
+  public getGestaltActions(
+    gestaltId: GestaltId,
+    tran?: DBTransaction
+  ): Promise<GestaltActions | undefined>{
+    throw notImplementedError();
+  }
+
+  // TODO
+  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
+  public setGestaltActions(
+    gestaltId: GestaltId,
+    action: GestaltAction,
+    tran?: DBTransaction
+  ): Promise<void>{
+    throw notImplementedError();
+  }
+
+  // TODO
+  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
+  public unsetGestaltActions(
+    gestaltId: GestaltId,
+    action: GestaltAction,
+    tran?: DBTransaction
+  ): Promise<void>{
+    throw notImplementedError();
+  }
+
+  // GETTERS
+
+  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
+  public async *getGestalts(tran?: DBTransaction): AsyncGenerator<Gestalt> {
+    if (tran == null) {
+      return yield* this.db.withTransactionG((tran) =>
+        this.getGestalts(tran),
+      );
+    }
+    const visited: Set<string> = new Set();
+    let lastGestaltKey: GestaltKey | null = null;
+    for await (const [[gestaltKey]] of tran.iterator(
+      this.dbMatrixPath,
+      { values: false }
+    ) as DBIterator<[GestaltKey], undefined>) {
+      if (lastGestaltKey == null) {
+        lastGestaltKey = gestaltKey;
+      }
+      if (visited.has(gestaltKey.toString('binary'))) {
+        // Garbage collect the last gestalt key since it will never be iterated upon
+        if (!lastGestaltKey.equals(gestaltKey)) {
+          visited.delete(lastGestaltKey.toString('binary'));
+          lastGestaltKey = gestaltKey;
+        }
+        continue;
+      }
+      // Garbage collect the last gestalt key since it will never be iterated upon
+      if (!lastGestaltKey.equals(gestaltKey)) {
+        visited.delete(lastGestaltKey.toString('binary'));
+        lastGestaltKey = gestaltKey;
+      }
+      const gestalt = (await this.getGestaltByKey(
+        gestaltKey,
+        visited,
+        tran
+      ))!;
+      yield gestalt;
+    }
+  }
+
+  // TODO
+  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
+  public getGestalt(
+    gestaltId: GestaltId,
+    tran?: DBTransaction
+  ): Promise<Gestalt | undefined> {
+    throw notImplementedError();
+  };
+
+  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
   public async getGestaltByNode(
     nodeId: NodeId,
     tran?: DBTransaction,
@@ -414,6 +615,75 @@ class GestaltGraph {
     return this.getGestaltByKey(identityKey, undefined, tran);
   }
 
+  // TODO
+  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
+  public getNode(
+    nodeId: NodeId,
+    tran?: DBTransaction,
+  ): Promise<GestaltNodeInfo | undefined> {
+    throw notImplementedError();
+  };
+
+  // TODO
+  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
+  public getIdentity(
+    providerIdentityId: ProviderIdentityId,
+    tran?: DBTransaction,
+  ): Promise<GestaltIdentityInfo | undefined> {
+    throw notImplementedError();
+  };
+
+// Overloaded getVertex
+
+  // TODO
+  public getVertex(
+    gestaltId: ['node', NodeId],
+    tran?: DBTransaction,
+  ): Promise<['node', GestaltNodeInfo] | undefined>;
+  public getVertex(
+    gestaltId: ['identity', ProviderIdentityId],
+    tran?: DBTransaction,
+  ): Promise<['identity', GestaltIdentityInfo] | undefined>;
+  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
+  public getVertex(
+    gestaltId: GestaltId,
+    tran?: DBTransaction,
+  ): Promise<GestaltInfo | undefined>{
+    throw notImplementedError();
+  };
+
+// Overloaded getLink
+
+  // TODO
+  public getLink(
+    linkId: GestaltLinkId,
+    tran?: DBTransaction,
+  ): Promise<GestaltLink | undefined>;
+  public getLink(
+    gestaltId1: ['node', NodeId],
+    gestaltId2: ['node', NodeId],
+    tran?: DBTransaction,
+  ): Promise<['node', GestaltLinkNode] | undefined>;
+  public getLink(
+    gestaltId1: ['identity', ProviderIdentityId],
+    gestaltId2: ['node', NodeId],
+    tran?: DBTransaction,
+  ): Promise<['identity', GestaltLinkIdentity] | undefined>;
+  public getLink(
+    gestaltId1: ['node', NodeId],
+    gestaltId2: ['identity', ProviderIdentityId],
+    tran?: DBTransaction,
+  ): Promise<['identity', GestaltLinkIdentity] | undefined>;
+  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
+  public getLink(
+    gestaltId1: GestaltId,
+    gestaltId2: GestaltId,
+    tran?: DBTransaction,
+  ): Promise<GestaltLink | undefined> {
+    throw notImplementedError();
+  };
+
+  // END OF SCAFFOLDING
 
   // @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
   // public async unsetIdentity(
