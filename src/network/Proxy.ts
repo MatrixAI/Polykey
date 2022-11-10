@@ -302,6 +302,22 @@ class Proxy {
   }
 
   @ready(new networkErrors.ErrorProxyNotRunning())
+  public listConnectionsForward() {
+    const forwardConnections = this.connectionsForward.proxy;
+    for (const [, connectionForward] of forwardConnections) {
+      console.log(connectionForward.nodeId);
+    }
+  }
+
+  @ready(new networkErrors.ErrorProxyNotRunning())
+  public listConnectionsReverse() {
+    const forwardConnections = this.connectionsReverse.proxy;
+    for (const [, connectionReverse] of forwardConnections) {
+      console.log(connectionReverse.serverHost);
+    }
+  }
+
+  @ready(new networkErrors.ErrorProxyNotRunning())
   public setTLSConfig(tlsConfig: TLSConfig): void {
     this.logger.info(`Updating ${this.constructor.name} TLS Config`);
     this.tlsConfig = tlsConfig;

@@ -22,6 +22,7 @@ import CommandKeys from './keys';
 import CommandNodes from './nodes';
 import CommandIdentities from './identities';
 import CommandNotifications from './notifications';
+import CommandNetwork from './network';
 import CommandPolykey from './CommandPolykey';
 import * as binUtils from './utils';
 import ErrorPolykey from '../ErrorPolykey';
@@ -48,6 +49,7 @@ async function main(argv = process.argv): Promise<number> {
   rootCommand.addCommand(new CommandVaults({ exitHandlers, fs }));
   rootCommand.addCommand(new CommandIdentities({ exitHandlers, fs }));
   rootCommand.addCommand(new CommandNotifications({ exitHandlers, fs }));
+  rootCommand.addCommand(new CommandNetwork({ exitHandlers, fs }));
   try {
     // `argv` will have node path and the script path as the first 2 parameters
     // navigates and executes the subcommand
