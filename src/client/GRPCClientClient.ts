@@ -916,6 +916,25 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   }
 
   @ready(new clientErrors.ErrorClientClientDestroyed())
+  public nodesListConnections(
+    ...args
+  ): AsyncGeneratorReadableStreamClient<
+    nodesPB.NodeConnection,
+    ClientReadableStream<nodesPB.NodeConnection>
+  > {
+    return grpcUtils.promisifyReadableStreamCall<nodesPB.NodeConnection>(
+      this.client,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+        command: this.nodesListConnections.name,
+      },
+      this.client.nodesListConnections,
+    )(...args);
+  }
+
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public identitiesAuthenticate(...args) {
     return grpcUtils.promisifyReadableStreamCall<identitiesPB.AuthenticationProcess>(
       this.client,

@@ -3,6 +3,7 @@ import CommandClaim from './CommandClaim';
 import CommandFind from './CommandFind';
 import CommandPing from './CommandPing';
 import CommandGetAll from './CommandGetAll';
+import CommandConnections from './CommandConnections';
 import CommandPolykey from '../CommandPolykey';
 
 class CommandNodes extends CommandPolykey {
@@ -15,6 +16,7 @@ class CommandNodes extends CommandPolykey {
     this.addCommand(new CommandFind(...args));
     this.addCommand(new CommandPing(...args));
     this.addCommand(new CommandGetAll(...args));
+    this.addCommand(new CommandConnections(...args));
   }
 }
 

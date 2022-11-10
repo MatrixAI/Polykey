@@ -286,6 +286,32 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       await nodeConnectionManager?.stop();
     }
   });
+  test('should list active connections', async () => {
+    // NodeConnectionManager under test
+    let nodeConnectionManager: NodeConnectionManager | undefined;
+    try {
+      nodeConnectionManager = new NodeConnectionManager({
+        keyManager,
+        nodeGraph,
+        proxy,
+        taskManager,
+        logger: nodeConnectionManagerLogger,
+      });
+      await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
+      await taskManager.startProcessing();
+      await nodeConnectionManager.withConnF(remoteNodeId1, async () => {
+        // Do nothing
+        expect(nodeConnectionManager?.listConnections()).toHaveLength(1);
+      });
+      await nodeConnectionManager.withConnF(remoteNodeId2, async () => {
+        // Do nothing
+        expect(nodeConnectionManager?.listConnections()).toHaveLength(2);
+      });
+      expect(nodeConnectionManager?.listConnections()).toHaveLength(2);
+    } finally {
+      await nodeConnectionManager?.stop();
+    }
+  });
   test('withConnG should create connection', async () => {
     // NodeConnectionManager under test
     let nodeConnectionManager: NodeConnectionManager | undefined;

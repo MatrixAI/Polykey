@@ -37,6 +37,15 @@ message NodeBuckets {
   map<int32, NodeTable> buckets = 1;
 }
 
+message NodeConnection {
+  string node_id = 1;
+  string host = 2;
+  string hostname = 3;
+  int32 port = 4;
+  int32 usage_count = 5;
+  int32 timeout = 6;
+}
+
 // Agent specific.
 
 message Connection {

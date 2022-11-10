@@ -1028,8 +1028,42 @@ class NodeConnectionManager {
     return establishedMap;
   }
 
+  @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
   public hasConnection(nodeId: NodeId): boolean {
     return this.connections.has(nodeId.toString() as NodeIdString);
+  }
+
+  @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
+  public listConnections(): Array<{
+    nodeId: NodeId;
+    address: { host: Host; port: Port; hostname: Hostname | undefined };
+    usageCount: number;
+    timeout: number | undefined;
+  }> {
+    const results: Array<{
+      nodeId: NodeId;
+      address: { host: Host; port: Port; hostname: Hostname | undefined };
+      usageCount: number;
+      timeout: number | undefined;
+    }> = [];
+    for (const [
+      nodeIdString,
+      connectionAndTimer,
+    ] of this.connections.entries()) {
+      const connection = connectionAndTimer.connection;
+      const nodeId = IdInternal.fromString<NodeId>(nodeIdString);
+      results.push({
+        nodeId,
+        address: {
+          host: connection.host,
+          port: connection.port,
+          hostname: connection.hostname,
+        },
+        usageCount: connectionAndTimer.usageCount,
+        timeout: connectionAndTimer.timer?.getTimeout(),
+      });
+    }
+    return results;
   }
 
   protected hasBackoff(nodeId: NodeId): boolean {
