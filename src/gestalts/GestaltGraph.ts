@@ -195,31 +195,78 @@ class GestaltGraph {
     return gestaltIdentityId;
   }
 
-  // TODO
   @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
-  public unsetNode(
+  public async unsetNode(
     nodeId: NodeId,
     tran?: DBTransaction,
   ): Promise<void> {
-    const gestaltNodeId = ['node', nodeId] as ['node', NodeId];
+    if (tran == null) {
+      return this.db.withTransactionF((tran) =>
+        this.unsetNode(nodeId, tran),
+      );
+    }
     // When a vertex is unset, their permissions in the ACL must be deleted,
     //  and all their links must also be broken. This means you have to iterate
     //  over all its neighbours and remove those entries in matrix. But you must
     //  also remove themselves from the matrix if they are a singleton gestalt.
-    throw notImplementedError();
+    const gestaltNodeKey = gestaltsUtils.toGestaltNodeKey(['node', nodeId]);
+    // 1. Iterate over all links and delete them
+    for await (const [keyPath, gestaltLinkIdBuffer] of tran.iterator([...this.dbMatrixPath, gestaltNodeKey], {valueAsBuffer: true})){
+      // We want to delete each link but also the reverse link
+      if (gestaltLinkIdBuffer == null) continue;
+      const linkedGestaltIdKey = keyPath[keyPath.length - 1] as GestaltKey;
+      const [type, id] = gestaltsUtils.fromGestaltKey(linkedGestaltIdKey);
+      switch(type) {
+        case 'node':
+          // id goes first since that side of the split gestalt gets its
+          // permissions updated
+          await this.unlinkNodeAndNode(id, nodeId, tran);
+          break;
+        case 'identity':
+          await this.unlinkNodeAndIdentity(nodeId, id, tran);
+          break;
+        default:
+          never();
+      }
+    }
+    // 2. remove the node information.
+    await tran.del([...this.dbNodesPath, gestaltNodeKey]);
+    // 1. unset the permissions for the node in the ACL
+    await this.acl.unsetNodePerm(nodeId, tran);
   };
 
-  // TODO
   @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
-  public unsetIdentity(
+  public async unsetIdentity(
     providerIdentityId: ProviderIdentityId,
     tran?: DBTransaction,
   ): Promise<void> {
+    if (tran == null) {
+      return this.db.withTransactionF((tran) =>
+        this.unsetIdentity(providerIdentityId, tran),
+      );
+    }
     // When a vertex is unset, their permissions in the ACL must be deleted,
     //  and all their links must also be broken. This means you have to iterate
     //  over all its neighbours and remove those entries in matrix. But you must
     //  also remove themselves from the matrix if they are a singleton gestalt.
-    throw notImplementedError();
+    const gestaltIdentityKey = gestaltsUtils.toGestaltIdentityKey(['identity', providerIdentityId]);
+    // 1. Iterate over all links and delete them
+    for await (const [keyPath, gestaltLinkIdBuffer] of tran.iterator([...this.dbMatrixPath, gestaltIdentityKey], {valueAsBuffer: true})){
+      // We want to delete each link but also the reverse link
+      if (gestaltLinkIdBuffer == null) continue;
+      const linkedGestaltIdKey = keyPath[keyPath.length - 1] as GestaltKey;
+      const [type, id] = gestaltsUtils.fromGestaltKey(linkedGestaltIdKey);
+      switch(type) {
+        case 'node':
+          await this.unlinkNodeAndIdentity(id, providerIdentityId, tran);
+          break;
+        case 'identity':
+        default:
+          never();
+      }
+    }
+    // 2. remove the node information.
+    await tran.del([...this.dbIdentitiesPath, gestaltIdentityKey]);
   };
 
   // Calls one of `setNode` or `setIdentity`
@@ -597,24 +644,116 @@ class GestaltGraph {
     }
   };
 
-  // TODO
   @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
-  public unlinkNodeAndNode(
+  public async unlinkNodeAndNode(
     nodeId1: NodeId,
     nodeId2: NodeId,
     tran?: DBTransaction,
   ): Promise<void> {
-    throw notImplementedError();
+    if (tran == null) {
+      return this.db.withTransactionF((tran) =>
+        this.unlinkNodeAndNode(nodeId1, nodeId2, tran),
+      );
+    }
+    // Unlinking needs to do the following:
+    // 1. check if both nodes exist as verticies
+    // 2. check if the link exists between them
+    // 3. remove the link between them
+    // 5. Check if any of the vertices became a singleton
+    // 4. check if the gestalt splits into two separate gestalts and copy the
+    //  permissions between them.
+    const nodeKey1 = gestaltsUtils.toGestaltNodeKey(['node', nodeId1]);
+    const nodeKey2 = gestaltsUtils.toGestaltNodeKey(['node', nodeId2]);
+    // Checking if the vertices exist
+    if (await tran.get([...this.dbNodesPath, nodeKey1], true) == null) return;
+    if (await tran.get([...this.dbNodesPath, nodeKey2], true) == null) return;
+    // Checking if the link exists
+    const linkId = await tran.get([...this.dbMatrixPath, nodeKey1, nodeKey2], true);
+    if (linkId == null) return;
+    // Remove the link
+    await tran.del([...this.dbLinksPath, linkId]);
+    await tran.del([...this.dbMatrixPath, nodeKey1, nodeKey2]);
+    await tran.del([...this.dbMatrixPath, nodeKey2, nodeKey1]);
+    // we check this by iterating over the links in the matrix.
+    let nodeNeighbors1 = false;
+    for await (const _ of tran.iterator([...this.dbMatrixPath, nodeKey1], {limit: 1})){
+      nodeNeighbors1 = true;
+    }
+    // Set as a singleton
+    if (!nodeNeighbors1) await tran.put([...this.dbMatrixPath, nodeKey1], null);
+    let nodeNeighbors2 = false;
+    for await (const _ of tran.iterator([...this.dbMatrixPath, nodeKey2], {limit: 1})){
+      nodeNeighbors2 = true;
+    }
+    // Set as a singleton
+    if (!nodeNeighbors2) await tran.put([...this.dbMatrixPath, nodeKey2], null);
+    // Check if the gestalt was split in two
+    const gestalt = (await this.getGestaltByKey(nodeKey1, undefined, tran))!;
+    const nodeKeyEncoded2 = gestaltsUtils.encodeGestaltNodeId(['node', nodeId2]);
+    // If the nodes are part of the same gestalt then do nothing to the permissions
+    if (gestalt.nodes[nodeKeyEncoded2] != null) return;
+    // Need to copy the ACL permissions between the two gestalts
+    const nodeIds = Object.keys(gestalt.nodes)
+      .map(nodeIdEncoded => gestaltsUtils.decodeGestaltNodeId(nodeIdEncoded)![1])
+    const perm = (await this.acl.getNodePerm(nodeId1))!
+    await this.acl.setNodesPerm(nodeIds, perm, tran);
   };
 
-  // TODO
   @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
-  public unlinkNodeAndIdentity(
+  public async unlinkNodeAndIdentity(
     nodeId: NodeId,
     providerIdentityId: ProviderIdentityId,
     tran?: DBTransaction,
   ): Promise<void> {
-    throw notImplementedError();
+    if (tran == null) {
+      return this.db.withTransactionF((tran) =>
+        this.unlinkNodeAndIdentity(nodeId, providerIdentityId, tran),
+      );
+    }
+    // Unlinking needs to do the following:
+    // 1. check if both nodes exist as verticies
+    // 2. check if the link exists between them
+    // 3. remove the link between them
+    // 5. Check if any of the vertices became a singleton
+    // 4. check if the gestalt splits into two separate gestalts and copy the
+    //  permissions between them.
+    const nodeKey = gestaltsUtils.toGestaltNodeKey(['node', nodeId]);
+    const identityKey = gestaltsUtils.toGestaltIdentityKey(['identity', providerIdentityId]);
+    // Checking if the verticies exist
+    if (await tran.get([...this.dbNodesPath, nodeKey], true) == null) return;
+    if (await tran.get([...this.dbIdentitiesPath, identityKey], true) == null) return;
+    // Checking if the link exists
+    const linkId = await tran.get([...this.dbMatrixPath, nodeKey, identityKey], true);
+    if (linkId == null) return;
+    // Remove the link
+    await tran.del([...this.dbLinksPath, linkId]);
+    await tran.del([...this.dbMatrixPath, nodeKey, identityKey]);
+    await tran.del([...this.dbMatrixPath, identityKey, nodeKey]);
+    // Check if the gestalt was split in two
+    const gestalt = (await this.getGestaltByKey(nodeKey, undefined, tran))!;
+    const identityKeyId = gestaltsUtils.encodeGestaltIdentityId(['identity', providerIdentityId]);
+    // If the nodes are part of the same gestalt then do nothing to the permissions
+    if (gestalt.identities[identityKeyId] != null) return;
+    // Check if the vertices should be singletons now.
+    // we check this by iterating over the links in the matrix.
+    let nodeNeighbors = false;
+    for await (const _ of tran.iterator([...this.dbMatrixPath, nodeKey], {limit: 1})){
+      nodeNeighbors = true;
+    }
+    // Set as a singleton
+    if (!nodeNeighbors) await tran.put([...this.dbMatrixPath, nodeKey], null);
+    const identityLinkedNode = await this.getIdentityLinkedNodeId(providerIdentityId, tran);
+    // If the identity is a singleton now
+    // Then there is no need to update permissions
+    if (identityLinkedNode == null) {
+      await tran.put([...this.dbMatrixPath, identityKey], null);
+      return;
+    }
+    // Need to copy the ACL permissions between the two gestalts
+    const nodeIds = Object.keys(gestalt.nodes)
+      .map(nodeIdEncoded => gestaltsUtils.decodeGestaltNodeId(nodeIdEncoded)![1])
+    const perm = (await this.acl.getNodePerm(identityLinkedNode))!
+    await this.acl.setNodesPerm(nodeIds, perm, tran);
   };
 
   // Overlaoded version of unlinkNodeAndNode and unlinkNodeAndIdentity
@@ -657,13 +796,13 @@ class GestaltGraph {
 
     switch (type) {
       case 'node':{
-        if (await tran.get([...this.dbNodesPath, gestaltKey], true)) return;
+        if (await tran.get([...this.dbNodesPath, gestaltKey], true) == null) return;
         const perm = await this.acl.getNodePerm(id, tran);
         if (perm == null) return;
         return perm.gestalt;
       }
       case 'identity':{
-        if (await tran.get([...this.dbIdentitiesPath, gestaltKey], true)) return;
+        if (await tran.get([...this.dbIdentitiesPath, gestaltKey], true) == null) return;
         const linkedNodeId = await this.getIdentityLinkedNodeId(id, tran);
         if (linkedNodeId == null) return;
         const perm = await this.acl.getNodePerm(linkedNodeId, tran);
@@ -691,12 +830,12 @@ class GestaltGraph {
 
     switch (type) {
       case 'node':{
-        if (await tran.get([...this.dbNodesPath, gestaltKey], true)) throw new gestaltsErrors.ErrorGestaltsGraphNodeIdMissing();
+        if (await tran.get([...this.dbNodesPath, gestaltKey], true) == null) throw new gestaltsErrors.ErrorGestaltsGraphNodeIdMissing();
         await this.acl.setNodeAction(id, action, tran);
         return;
       }
       case 'identity':{
-        if (await tran.get([...this.dbIdentitiesPath, gestaltKey], true)) throw new gestaltsErrors.ErrorGestaltsGraphIdentityIdMissing();;
+        if (await tran.get([...this.dbIdentitiesPath, gestaltKey], true) == null) throw new gestaltsErrors.ErrorGestaltsGraphIdentityIdMissing();;
         const linkedNodeId = await this.getIdentityLinkedNodeId(id, tran);
         if (linkedNodeId == null) throw new gestaltsErrors.ErrorGestaltsGraphNodeIdMissing();;
         await this.acl.setNodeAction(linkedNodeId, action, tran);
@@ -723,12 +862,12 @@ class GestaltGraph {
 
     switch (type) {
       case 'node':{
-        if (await tran.get([...this.dbNodesPath, gestaltKey], true)) throw new gestaltsErrors.ErrorGestaltsGraphNodeIdMissing();
+        if (await tran.get([...this.dbNodesPath, gestaltKey], true) == null) throw new gestaltsErrors.ErrorGestaltsGraphNodeIdMissing();
         await this.acl.unsetNodeAction(id, action, tran);
         return;
       }
       case 'identity':{
-        if (await tran.get([...this.dbIdentitiesPath, gestaltKey], true)) throw new gestaltsErrors.ErrorGestaltsGraphIdentityIdMissing();;
+        if (await tran.get([...this.dbIdentitiesPath, gestaltKey], true) == null) throw new gestaltsErrors.ErrorGestaltsGraphIdentityIdMissing();;
         const linkedNodeId = await this.getIdentityLinkedNodeId(id, tran);
         if (linkedNodeId == null) throw new gestaltsErrors.ErrorGestaltsGraphNodeIdMissing();;
         await this.acl.unsetNodeAction(linkedNodeId, action, tran);
@@ -928,7 +1067,6 @@ class GestaltGraph {
   //   await tran.del(identityKeyPath);
   // }
 
-
   // /**
   //  * Removes a node in the graph
   //  * If this node exists, it will remove the node pointer
@@ -975,263 +1113,6 @@ class GestaltGraph {
   //   // Unsets the gestalt in the acl
   //   // this must be done after all unlinking operations
   //   await this.acl.unsetNodePerm(nodeId, tran);
-  // }
-
-  // @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
-  // public async linkNodeAndIdentity(
-  //   nodeInfo: NodeInfo,
-  //   identityInfo: IdentityInfo,
-  //   tran?: DBTransaction,
-  // ): Promise<void> {
-  //   if (tran == null) {
-  //     return this.db.withTransactionF((tran) =>
-  //       this.linkNodeAndIdentity(nodeInfo, identityInfo, tran),
-  //     );
-  //   }
-  //   const nodeKey = gestaltsUtils.keyFromNode(
-  //     nodesUtils.decodeNodeId(nodeInfo.id)!,
-  //   );
-  //   const identityKey = gestaltsUtils.keyFromIdentity(
-  //     identityInfo.providerId,
-  //     identityInfo.identityId,
-  //   );
-  //   const nodeKeyPath = [
-  //     ...this.gestaltGraphMatrixDbPath,
-  //     nodeKey,
-  //   ] as unknown as KeyPath;
-  //   const identityKeyPath = [
-  //     ...this.gestaltGraphMatrixDbPath,
-  //     identityKey,
-  //   ] as unknown as KeyPath;
-  //   let nodeKeyKeys = await tran.get<GestaltKeySet>(nodeKeyPath);
-  //   let identityKeyKeys = await tran.get<GestaltKeySet>(identityKeyPath);
-  //   // If they are already connected we do nothing
-  //   if (
-  //     nodeKeyKeys &&
-  //     identityKey in nodeKeyKeys &&
-  //     identityKeyKeys &&
-  //     nodeKey in identityKeyKeys
-  //   ) {
-  //     return;
-  //   }
-  //   let nodeNew = false;
-  //   if (nodeKeyKeys == null) {
-  //     nodeNew = true;
-  //     nodeKeyKeys = {};
-  //   }
-  //   let identityNew = false;
-  //   if (identityKeyKeys == null) {
-  //     identityNew = true;
-  //     identityKeyKeys = {};
-  //   }
-  //   // Acl changes depend on the situation:
-  //   // if both node and identity are new  then
-  //   //   set a new permission for the node
-  //   // if both node and identity exists then
-  //   //   if the identity key set is empty then
-  //   //     do nothing
-  //   //   else
-  //   //     join identity gestalt's permission to the node gestalt
-  //   //     make sure to do a perm union
-  //   // if node exists but identity is new then
-  //   //   do nothing
-  //   // if node is new but identity exists
-  //   //   if the identity key set is empty then
-  //   //     set a new permission for the node
-  //   //   else
-  //   //     join node gestalt's permission to the identity gestalt
-  //   if (nodeNew && identityNew) {
-  //     await this.acl.setNodePerm(
-  //       nodesUtils.decodeNodeId(nodeInfo.id)!,
-  //       {
-  //         gestalt: {},
-  //         vaults: {},
-  //       },
-  //       tran,
-  //     );
-  //   } else if (
-  //     !nodeNew &&
-  //     !identityNew &&
-  //     !utils.isEmptyObject(identityKeyKeys)
-  //   ) {
-  //     const [, identityNodeKeys] = await this.traverseGestalt(
-  //       Object.keys(identityKeyKeys) as Array<GestaltKey>,
-  //       [identityKey],
-  //       tran,
-  //     );
-  //     const identityNodeIds = Array.from(identityNodeKeys, (key) =>
-  //       gestaltsUtils.nodeFromKey(key),
-  //     );
-  //     // These must exist
-  //     const nodePerm = (await this.acl.getNodePerm(
-  //       nodesUtils.decodeNodeId(nodeInfo.id)!,
-  //       tran,
-  //     )) as Permission;
-  //     const identityPerm = (await this.acl.getNodePerm(
-  //       identityNodeIds[0],
-  //       tran,
-  //     )) as Permission;
-  //     // Union the perms together
-  //     const permNew = aclUtils.permUnion(nodePerm, identityPerm);
-  //     // Node perm is updated and identity perm is joined to node perm
-  //     // this has to be done as 1 call to acl in order to combine ref count update
-  //     // and the perm record update
-  //     await this.acl.joinNodePerm(
-  //       nodesUtils.decodeNodeId(nodeInfo.id)!,
-  //       identityNodeIds,
-  //       permNew,
-  //       tran,
-  //     );
-  //   } else if (nodeNew && !identityNew) {
-  //     if (utils.isEmptyObject(identityKeyKeys)) {
-  //       await this.acl.setNodePerm(
-  //         nodesUtils.decodeNodeId(nodeInfo.id)!,
-  //         {
-  //           gestalt: {},
-  //           vaults: {},
-  //         },
-  //         tran,
-  //       );
-  //     } else {
-  //       let identityNodeKey: GestaltNodeKey;
-  //       for (const gK in identityKeyKeys) {
-  //         identityNodeKey = gK as GestaltNodeKey;
-  //         break;
-  //       }
-  //       const identityNodeId = gestaltsUtils.nodeFromKey(identityNodeKey!);
-  //       await this.acl.joinNodePerm(
-  //         identityNodeId,
-  //         [nodesUtils.decodeNodeId(nodeInfo.id)!],
-  //         undefined,
-  //         tran,
-  //       );
-  //     }
-  //   }
-  //   nodeKeyKeys[identityKey] = null;
-  //   identityKeyKeys[nodeKey] = null;
-  //   await tran.put(nodeKeyPath, nodeKeyKeys);
-  //   await tran.put(identityKeyPath, identityKeyKeys);
-  //   const nodePath = [
-  //     ...this.gestaltGraphNodesDbPath,
-  //     nodeKey,
-  //   ] as unknown as KeyPath;
-  //   await tran.put(nodePath, nodeInfo);
-  //   const identityPath = [
-  //     ...this.gestaltGraphIdentitiesDbPath,
-  //     identityKey,
-  //   ] as unknown as KeyPath;
-  //   await tran.put(identityPath, identityInfo);
-  // }
-
-
-  // @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
-  // public async unlinkNodeAndIdentity(
-  //   nodeId: NodeId,
-  //   providerId: ProviderId,
-  //   identityId: IdentityId,
-  //   tran?: DBTransaction,
-  // ): Promise<void> {
-  //   if (tran == null) {
-  //     return this.db.withTransactionF((tran) =>
-  //       this.unlinkNodeAndIdentity(nodeId, providerId, identityId, tran),
-  //     );
-  //   }
-  //   const nodeKey = gestaltsUtils.keyFromNode(nodeId);
-  //   const identityKey = gestaltsUtils.keyFromIdentity(providerId, identityId);
-  //   const nodeKeyPath = [
-  //     ...this.gestaltGraphMatrixDbPath,
-  //     nodeKey,
-  //   ] as unknown as KeyPath;
-  //   const identityKeyPath = [
-  //     ...this.gestaltGraphMatrixDbPath,
-  //     identityKey,
-  //   ] as unknown as KeyPath;
-  //   const nodeKeyKeys = await tran.get<GestaltKeySet>(nodeKeyPath);
-  //   const identityKeyKeys = await tran.get<GestaltKeySet>(identityKeyPath);
-  //   let unlinking = false;
-  //   if (nodeKeyKeys && identityKey in nodeKeyKeys) {
-  //     unlinking = true;
-  //     delete nodeKeyKeys[identityKey];
-  //     await tran.put(nodeKeyPath, nodeKeyKeys);
-  //   }
-  //   if (identityKeyKeys && nodeKey in identityKeyKeys) {
-  //     unlinking = true;
-  //     delete identityKeyKeys[nodeKey];
-  //     await tran.put(identityKeyPath, identityKeyKeys);
-  //   }
-  //   if (nodeKeyKeys && identityKeyKeys && unlinking) {
-  //     // Check if the gestalts have split
-  //     // if so, the node gestalt will inherit a new copy of the permission
-  //     const [, gestaltNodeKeys, gestaltIdentityKeys] =
-  //       await this.traverseGestalt(
-  //         Object.keys(nodeKeyKeys) as Array<GestaltKey>,
-  //         [nodeKey],
-  //         tran,
-  //       );
-  //     if (!gestaltIdentityKeys.has(identityKey)) {
-  //       const nodeIds = Array.from(gestaltNodeKeys, (key) =>
-  //         gestaltsUtils.nodeFromKey(key),
-  //       );
-  //       // It is assumed that an existing gestalt has a permission
-  //       const perm = (await this.acl.getNodePerm(nodeId, tran)) as Permission;
-  //       // This remaps all existing nodes to a new permission
-  //       await this.acl.setNodesPerm(nodeIds, perm, tran);
-  //     }
-  //   }
-  // }
-
-  // @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
-  // public async unlinkNodeAndNode(
-  //   nodeId1: NodeId,
-  //   nodeId2: NodeId,
-  //   tran?: DBTransaction,
-  // ): Promise<void> {
-  //   if (tran == null) {
-  //     return this.db.withTransactionF((tran) =>
-  //       this.unlinkNodeAndNode(nodeId1, nodeId2, tran),
-  //     );
-  //   }
-  //   const nodeKey1 = gestaltsUtils.keyFromNode(nodeId1);
-  //   const nodeKey2 = gestaltsUtils.keyFromNode(nodeId2);
-  //   const nodeKey1Path = [
-  //     ...this.gestaltGraphMatrixDbPath,
-  //     nodeKey1,
-  //   ] as unknown as KeyPath;
-  //   const nodeKey2Path = [
-  //     ...this.gestaltGraphMatrixDbPath,
-  //     nodeKey2,
-  //   ] as unknown as KeyPath;
-  //   const nodeKeyKeys1 = await tran.get<GestaltKeySet>(nodeKey1Path);
-  //   const nodeKeyKeys2 = await tran.get<GestaltKeySet>(nodeKey2Path);
-  //   let unlinking = false;
-  //   if (nodeKeyKeys1 && nodeKey2 in nodeKeyKeys1) {
-  //     unlinking = true;
-  //     delete nodeKeyKeys1[nodeKey2];
-  //     await tran.put(nodeKey1Path, nodeKeyKeys1);
-  //   }
-  //   if (nodeKeyKeys2 && nodeKey1 in nodeKeyKeys2) {
-  //     unlinking = true;
-  //     delete nodeKeyKeys2[nodeKey1];
-  //     await tran.put(nodeKey2Path, nodeKeyKeys2);
-  //   }
-  //   if (nodeKeyKeys1 && nodeKeyKeys2 && unlinking) {
-  //     // Check if the gestalts have split
-  //     // if so, the node gestalt will inherit a new copy of the permission
-  //     const [, gestaltNodeKeys] = await this.traverseGestalt(
-  //       Object.keys(nodeKeyKeys1) as Array<GestaltKey>,
-  //       [nodeKey1],
-  //       tran,
-  //     );
-  //     if (!gestaltNodeKeys.has(nodeKey2)) {
-  //       const nodeIds = Array.from(gestaltNodeKeys, (key) =>
-  //         gestaltsUtils.nodeFromKey(key),
-  //       );
-  //       // It is assumed that an existing gestalt has a permission
-  //       const perm = (await this.acl.getNodePerm(nodeId1, tran)) as Permission;
-  //       // This remaps all existing nodes to a new permission
-  //       await this.acl.setNodesPerm(nodeIds, perm, tran);
-  //     }
-  //   }
   // }
 
   /**
