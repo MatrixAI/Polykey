@@ -22,7 +22,7 @@ import type {
 import { IdInternal } from '@matrixai/id';
 import { gestaltActions } from './types';
 import * as ids from '../ids';
-import type { ClaimLinkNode } from '../claims/payloads';
+import type { ClaimLinkNode, ClaimLinkIdentity } from '../claims/payloads';
 
 function toGestaltKey(gestaltId: GestaltId): GestaltKey {
   switch(gestaltId[0]) {
@@ -156,6 +156,20 @@ function checkLinkNodeMatches(
   return false;
 }
 
+function checkLinkIdentityMatches(
+  nodeId: NodeId,
+  providerIdentityId: ProviderIdentityId,
+  claimPayload: ClaimLinkIdentity,
+) {
+  const [providerId, identityId] = providerIdentityId;
+  const issNodeId = ids.decodeNodeId(claimPayload.iss)!;
+  const [subProviderId, subIdentityId] = ids.decodeProviderIdentityId((claimPayload.sub))!;
+
+  return issNodeId.equals(nodeId) &&
+    subProviderId === providerId &&
+    subIdentityId === identityId;
+}
+
 export {
   toGestaltKey,
   fromGestaltKey,
@@ -167,6 +181,7 @@ export {
   fromGestaltNodeInfoJSON,
   fromGestaltLinkJSON,
   checkLinkNodeMatches,
+  checkLinkIdentityMatches,
 };
 
 export {
