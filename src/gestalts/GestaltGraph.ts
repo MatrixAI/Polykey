@@ -3,41 +3,28 @@ import type {
   Gestalt,
   GestaltAction,
   GestaltActions,
-  // GestaltIdentityKey,
   GestaltKey,
   GestaltLinkId,
   GestaltNodeInfo,
   GestaltNodeInfoJSON,
   GestaltIdentityInfo,
   GestaltLink,
-  GestaltLinks,
-  // GestaltNodeKey,
   GestaltLinkNode,
-  // GestaltNodeId,
-  // GestaltIdentityId,
   GestaltInfo,
   GestaltLinkIdentity,
   GestaltId,
 } from './types';
+import { GestaltLinkJSON } from './types';
 import type { NodeId, ProviderIdentityId } from '../ids/types';
-import type { Permission } from '../acl/types';
 import type ACL from '../acl/ACL';
 import Logger from '@matrixai/logger';
-import {
-  CreateDestroyStartStop,
-  ready,
-} from '@matrixai/async-init/dist/CreateDestroyStartStop';
+import { CreateDestroyStartStop, ready } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import { IdInternal } from '@matrixai/id';
 import * as gestaltsUtils from './utils';
 import * as gestaltsErrors from './errors';
-import * as nodesUtils from '../nodes/utils';
 import * as aclUtils from '../acl/utils';
-import * as utils from '../utils';
-import * as ids from '../ids';
 import { never } from '../utils';
-import { identity } from 'ix/util/identity';
 
-const notImplementedError = () => Error('IMP Not implemented');
 const invalidCombinationError = () => Error('TMP Invalid combination error');
 
 interface GestaltGraph extends CreateDestroyStartStop {}
@@ -779,8 +766,6 @@ class GestaltGraph {
     }
   };
 
-  // GESTALT ACTIONS
-
   @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
   public async getGestaltActions(
     gestaltId: GestaltId,
@@ -835,9 +820,9 @@ class GestaltGraph {
         return;
       }
       case 'identity':{
-        if (await tran.get([...this.dbIdentitiesPath, gestaltKey], true) == null) throw new gestaltsErrors.ErrorGestaltsGraphIdentityIdMissing();;
+        if (await tran.get([...this.dbIdentitiesPath, gestaltKey], true) == null) throw new gestaltsErrors.ErrorGestaltsGraphIdentityIdMissing();
         const linkedNodeId = await this.getIdentityLinkedNodeId(id, tran);
-        if (linkedNodeId == null) throw new gestaltsErrors.ErrorGestaltsGraphNodeIdMissing();;
+        if (linkedNodeId == null) throw new gestaltsErrors.ErrorGestaltsGraphNodeIdMissing();
         await this.acl.setNodeAction(linkedNodeId, action, tran);
         return;
       }
@@ -867,9 +852,9 @@ class GestaltGraph {
         return;
       }
       case 'identity':{
-        if (await tran.get([...this.dbIdentitiesPath, gestaltKey], true) == null) throw new gestaltsErrors.ErrorGestaltsGraphIdentityIdMissing();;
+        if (await tran.get([...this.dbIdentitiesPath, gestaltKey], true) == null) throw new gestaltsErrors.ErrorGestaltsGraphIdentityIdMissing();
         const linkedNodeId = await this.getIdentityLinkedNodeId(id, tran);
-        if (linkedNodeId == null) throw new gestaltsErrors.ErrorGestaltsGraphNodeIdMissing();;
+        if (linkedNodeId == null) throw new gestaltsErrors.ErrorGestaltsGraphNodeIdMissing();
         await this.acl.unsetNodeAction(linkedNodeId, action, tran);
         return;
       }
@@ -918,13 +903,19 @@ class GestaltGraph {
     }
   }
 
-  // TODO
-  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
-  public getGestalt(
+  public async getGestalt(
     gestaltId: GestaltId,
     tran?: DBTransaction
   ): Promise<Gestalt | undefined> {
-    throw notImplementedError();
+    const [type, id] = gestaltId;
+    switch(type) {
+      case 'node':
+        return await this.getGestaltByNode(id, tran);
+      case 'identity':
+        return await this.getGestaltByIdentity(id, tran);
+      default:
+        never();
+    }
   };
 
   @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
@@ -955,165 +946,115 @@ class GestaltGraph {
     return this.getGestaltByKey(identityKey, undefined, tran);
   }
 
-  // TODO
   @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
-  public getNode(
+  public async getNode(
     nodeId: NodeId,
     tran?: DBTransaction,
   ): Promise<GestaltNodeInfo | undefined> {
-    throw notImplementedError();
+    if (tran == null) {
+      return this.db.withTransactionF((tran) => this.getNode(nodeId, tran));
+    }
+    const gestaltNodeKey = gestaltsUtils.toGestaltNodeKey(['node', nodeId]);
+    const gestaltNodeInfoJSON = await tran.get<GestaltNodeInfoJSON>([...this.dbNodesPath, gestaltNodeKey]);
+    if (gestaltNodeInfoJSON == null) return;
+    return gestaltsUtils.fromGestaltNodeInfoJSON(gestaltNodeInfoJSON);
   };
 
-  // TODO
   @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
-  public getIdentity(
+  public async getIdentity(
     providerIdentityId: ProviderIdentityId,
     tran?: DBTransaction,
   ): Promise<GestaltIdentityInfo | undefined> {
-    throw notImplementedError();
+    if (tran == null) {
+      return this.db.withTransactionF((tran) => this.getIdentity(providerIdentityId, tran));
+    }
+    const gestaltIdentityKey = gestaltsUtils.toGestaltIdentityKey(['identity', providerIdentityId]);
+    return await tran.get<GestaltIdentityInfo>([...this.dbNodesPath, gestaltIdentityKey]);
   };
 
 // Overloaded getVertex
 
-  // TODO
-  public getVertex(
+  public async getVertex(
     gestaltId: ['node', NodeId],
     tran?: DBTransaction,
   ): Promise<['node', GestaltNodeInfo] | undefined>;
-  public getVertex(
+  public async getVertex(
     gestaltId: ['identity', ProviderIdentityId],
     tran?: DBTransaction,
   ): Promise<['identity', GestaltIdentityInfo] | undefined>;
   @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
-  public getVertex(
+  public async getVertex(
     gestaltId: GestaltId,
     tran?: DBTransaction,
   ): Promise<GestaltInfo | undefined>{
-    throw notImplementedError();
+    const [type, id] = gestaltId;
+    switch(type) {
+      case 'node':{
+        const gestaltNodeInfo = await this.getNode(id, tran);
+        if (gestaltNodeInfo == null) return;
+        return ['node', gestaltNodeInfo];
+      }
+      case 'identity':{
+        const gestaltIdentityInfo = await this.getIdentity(id, tran);
+        if (gestaltIdentityInfo == null) return;
+        return ['identity', gestaltIdentityInfo];
+      }
+      default:
+        never();
+    }
   };
 
 // Overloaded getLink
 
-  // TODO
-  public getLink(
-    linkId: GestaltLinkId,
-    tran?: DBTransaction,
-  ): Promise<GestaltLink | undefined>;
-  public getLink(
+  public async getLink(
     gestaltId1: ['node', NodeId],
     gestaltId2: ['node', NodeId],
     tran?: DBTransaction,
   ): Promise<['node', GestaltLinkNode] | undefined>;
-  public getLink(
+  public async getLink(
     gestaltId1: ['identity', ProviderIdentityId],
     gestaltId2: ['node', NodeId],
     tran?: DBTransaction,
   ): Promise<['identity', GestaltLinkIdentity] | undefined>;
-  public getLink(
+  public async getLink(
     gestaltId1: ['node', NodeId],
     gestaltId2: ['identity', ProviderIdentityId],
     tran?: DBTransaction,
   ): Promise<['identity', GestaltLinkIdentity] | undefined>;
   @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
-  public getLink(
+  public async getLink(
     gestaltId1: GestaltId,
     gestaltId2: GestaltId,
     tran?: DBTransaction,
   ): Promise<GestaltLink | undefined> {
-    throw notImplementedError();
+    if (tran == null) {
+      return this.db.withTransactionF((tran) =>
+        // @ts-ignore: Recursive type funzies
+        this.getLink(gestaltId1, gestaltId2, tran)
+      )
+    }
+
+    const [type1, id1] = gestaltId1;
+    const [type2, id2] = gestaltId2;
+    if (type1 === 'identity' && type2 === 'identity') throw invalidCombinationError();
+    // checking for invalid types
+    switch (`${type1}-${type2}`) {
+      case 'node-node':
+      case 'node-identity':
+      case 'identity-node':
+        break;
+      default:
+        never();
+    }
+    const gestaltKey1 = gestaltsUtils.toGestaltKey(gestaltId1);
+    const gestaltKey2 = gestaltsUtils.toGestaltKey(gestaltId2);
+    // Getting link Id.
+    const linkIdBuffer = await tran.get([...this.dbMatrixPath, gestaltKey1, gestaltKey2], true)
+    if (linkIdBuffer == null) return;
+    const gestaltLinkJSON = await tran.get<GestaltLinkJSON>([...this.dbLinksPath, linkIdBuffer]);
+    if (gestaltLinkJSON == null) return;
+    return gestaltsUtils.fromGestaltLinkJSON(gestaltLinkJSON);
   };
-
-  // TODO: make a get links method
-
-  // END OF SCAFFOLDING
-
-  // @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
-  // public async unsetIdentity(
-  //   providerId: ProviderId,
-  //   identityId: IdentityId,
-  //   tran?: DBTransaction,
-  // ) {
-  //   if (tran == null) {
-  //     return this.db.withTransactionF((tran) =>
-  //       this.unsetIdentity(providerId, identityId, tran),
-  //     );
-  //   }
-  //   const identityKey = gestaltsUtils.keyFromIdentity(providerId, identityId);
-  //   const identityKeyPath = [
-  //     ...this.gestaltGraphMatrixDbPath,
-  //     identityKey,
-  //   ] as unknown as KeyPath;
-  //   const identityKeyKeys = await tran.get<GestaltKeySet>(identityKeyPath);
-  //   if (identityKeyKeys == null) {
-  //     return;
-  //   }
-  //   const identityPath = [
-  //     ...this.gestaltGraphIdentitiesDbPath,
-  //     identityKey,
-  //   ] as unknown as KeyPath;
-  //   await tran.del(identityPath);
-  //   for (const key of Object.keys(identityKeyKeys) as Array<GestaltKey>) {
-  //     const gId = gestaltsUtils.ungestaltKey(key);
-  //     if (gId.type === 'node') {
-  //       await this.unlinkNodeAndIdentity(
-  //         nodesUtils.decodeNodeId(gId.nodeId)!,
-  //         providerId,
-  //         identityId,
-  //         tran,
-  //       );
-  //     }
-  //   }
-  //   // Ensure that an empty key set is still deleted
-  //   await tran.del(identityKeyPath);
-  // }
-
-  // /**
-  //  * Removes a node in the graph
-  //  * If this node exists, it will remove the node pointer
-  //  * to the gestalt permission in the acl
-  //  */
-  // @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
-  // public async unsetNode(nodeId: NodeId, tran?: DBTransaction): Promise<void> {
-  //   if (tran == null) {
-  //     return this.db.withTransactionF((tran) => this.unsetNode(nodeId, tran));
-  //   }
-  //   const nodeKey = gestaltsUtils.keyFromNode(nodeId);
-  //   const nodeKeyPath = [
-  //     ...this.gestaltGraphMatrixDbPath,
-  //     nodeKey,
-  //   ] as unknown as KeyPath;
-  //   const nodeKeyKeys = await tran.get<GestaltKeySet>(nodeKeyPath);
-  //   if (nodeKeyKeys == null) {
-  //     return;
-  //   }
-  //   const nodePath = [
-  //     ...this.gestaltGraphNodesDbPath,
-  //     nodeKey,
-  //   ] as unknown as KeyPath;
-  //   await tran.del(nodePath);
-  //   for (const key of Object.keys(nodeKeyKeys) as Array<GestaltKey>) {
-  //     const gId = gestaltsUtils.ungestaltKey(key);
-  //     if (gId.type === 'node') {
-  //       await this.unlinkNodeAndNode(
-  //         nodeId,
-  //         nodesUtils.decodeNodeId(gId.nodeId)!,
-  //         tran,
-  //       );
-  //     } else if (gId.type === 'identity') {
-  //       await this.unlinkNodeAndIdentity(
-  //         nodeId,
-  //         gId.providerId,
-  //         gId.identityId,
-  //         tran,
-  //       );
-  //     }
-  //   }
-  //   // Ensure that an empty key set is still deleted
-  //   await tran.del(nodeKeyPath);
-  //   // Unsets the gestalt in the acl
-  //   // this must be done after all unlinking operations
-  //   await this.acl.unsetNodePerm(nodeId, tran);
-  // }
 
   /**
    * Gets a gestalt using BFS.
@@ -1154,13 +1095,11 @@ class GestaltGraph {
         const gestaltNodeInfoJSON = (await tran.get<GestaltNodeInfoJSON>(
           [...this.dbNodesPath, gestaltKey],
         ))!;
-        const gestaltNodeInfo = gestaltsUtils.fromGestaltNodeInfoJSON(gestaltNodeInfoJSON);
-        gestalt.nodes[gestaltIdEncoded] = gestaltNodeInfo;
+        gestalt.nodes[gestaltIdEncoded] = gestaltsUtils.fromGestaltNodeInfoJSON(gestaltNodeInfoJSON);
       } else if (gestaltId[0] === 'identity') {
-        const gestaltIdentityInfo = (await tran.get<GestaltIdentityInfo>(
+        gestalt.identities[gestaltIdEncoded] = (await tran.get<GestaltIdentityInfo>(
           [...this.dbIdentitiesPath, gestaltKey],
         ))!;
-        gestalt.identities[gestaltIdEncoded] = gestaltIdentityInfo;
       }
       // Singleton gestalts will just have an empty record
       gestalt.matrix[gestaltIdEncoded] ??= {};
