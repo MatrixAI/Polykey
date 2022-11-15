@@ -121,7 +121,8 @@
     "resource-counter": "^1.2.4",
     "sodium-native": "^3.4.1",
     "threads": "^1.6.5",
-    "utp-native": "^2.5.3"
+    "utp-native": "^2.5.3",
+    "ws": "^8.11.0"
   },
   "devDependencies": {
     "@babel/preset-env": "^7.13.10",
