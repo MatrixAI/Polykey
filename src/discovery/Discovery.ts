@@ -3,9 +3,7 @@ import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import type { NodeId } from '../nodes/types';
 import type NodeManager from '../nodes/NodeManager';
 import type GestaltGraph from '../gestalts/GestaltGraph';
-import type { GestaltId, GestaltNodeInfo } from '../gestalts/types';
-import { GestaltIdEncoded } from '../gestalts/types';
-import type Provider from '../identities/Provider';
+import type { GestaltId, GestaltNodeInfo, GestaltIdEncoded } from '../gestalts/types';
 import type IdentitiesManager from '../identities/IdentitiesManager';
 import type {
   IdentityData,
@@ -14,9 +12,8 @@ import type {
   ProviderIdentityClaimId,
   ProviderIdentityId,
 } from '../identities/types';
-import type Sigchain from '../sigchain/Sigchain';
 import type KeyRing from '../keys/KeyRing';
-import type { ClaimIdEncoded, SignedClaim } from '../claims/types';
+import type { ClaimId, ClaimIdEncoded, SignedClaim } from '../claims/types';
 import type TaskManager from '../tasks/TaskManager';
 import type { ContextTimed } from '../contexts/types';
 import type { TaskHandler, TaskHandlerId } from '../tasks/types';
@@ -25,8 +22,6 @@ import { CreateDestroyStartStop, ready } from '@matrixai/async-init/dist/CreateD
 import { Timer } from '@matrixai/timer';
 import * as discoveryErrors from './errors';
 import * as tasksErrors from '../tasks/errors';
-import * as nodesErrors from '../nodes/errors';
-import * as networkErrors from '../network/errors';
 import * as gestaltsUtils from '../gestalts/utils';
 import * as nodesUtils from '../nodes/utils';
 import * as keysUtils from '../keys/utils';
@@ -34,7 +29,9 @@ import { never } from '../utils';
 import { context } from '../contexts/index';
 import TimedCancellable from '../contexts/decorators/timedCancellable';
 import { ClaimLinkIdentity, ClaimLinkNode } from '../claims/payloads/index';
-import Token from 'tokens/Token';
+import Token from '../tokens/Token';
+import { decodeClaimId } from '../ids/index';
+import { utils as idUtils } from '@matrixai/id';
 
 /**
  * This is the reason used to cancel duplicate tasks for vertices
@@ -63,7 +60,6 @@ class Discovery {
     gestaltGraph,
     identitiesManager,
     nodeManager,
-    sigchain,
     taskManager,
     logger = new Logger(this.name),
     fresh = false,
@@ -73,7 +69,6 @@ class Discovery {
     gestaltGraph: GestaltGraph;
     identitiesManager: IdentitiesManager;
     nodeManager: NodeManager;
-    sigchain: Sigchain;
     taskManager: TaskManager;
     logger?: Logger;
     fresh?: boolean;
@@ -85,7 +80,6 @@ class Discovery {
       gestaltGraph,
       identitiesManager,
       nodeManager,
-      sigchain,
       taskManager,
       logger,
     });
@@ -96,7 +90,6 @@ class Discovery {
 
   protected logger: Logger;
   protected db: DB;
-  protected sigchain: Sigchain;
   protected keyRing: KeyRing;
   protected gestaltGraph: GestaltGraph;
   protected identitiesManager: IdentitiesManager;
@@ -136,7 +129,6 @@ class Discovery {
     gestaltGraph,
     identitiesManager,
     nodeManager,
-    sigchain,
     taskManager,
     logger,
   }: {
@@ -145,7 +137,6 @@ class Discovery {
     gestaltGraph: GestaltGraph;
     identitiesManager: IdentitiesManager;
     nodeManager: NodeManager;
-    sigchain: Sigchain;
     taskManager: TaskManager;
     logger: Logger;
   }) {
@@ -154,7 +145,6 @@ class Discovery {
     this.gestaltGraph = gestaltGraph;
     this.identitiesManager = identitiesManager;
     this.nodeManager = nodeManager;
-    this.sigchain = sigchain;
     this.taskManager = taskManager;
     this.logger = logger;
   }
@@ -231,6 +221,8 @@ class Discovery {
     await this.scheduleDiscoveryForVertex(['identity', [providerId, identityId]]);
   }
 
+  // Fixme, when processing a vertex, we need to check existing links in the
+  //  GestaltGraph and ask for claims newer than that
   protected processVertex(
     vertex: GestaltIdEncoded,
     connectionTimeout?: number,
@@ -266,12 +258,26 @@ class Discovery {
       this.visitedVertices.add(encodedGestaltNodeId);
       return;
     }
+    // Get the oldest known claim for this node
+    const gestaltLinks = await this.gestaltGraph.getLinks(['node', nodeId]);
+    // get the oldest one
+    let newestClaimId: ClaimId | undefined = undefined;
+    for (let [,gestaltLink] of gestaltLinks) {
+      const claimIdEncoded = gestaltLink[1].claim.payload.jti;
+      const claimId = decodeClaimId(claimIdEncoded)!;
+      if (newestClaimId == null) newestClaimId = claimId
+      else if (Buffer.compare(newestClaimId, claimId) == -1) {
+        newestClaimId = claimId;
+      }
+    }
+
     // The sigChain data of the vertex (containing all cryptolinks)
     let vertexChainData: Record<ClaimIdEncoded, SignedClaim> = {};
     try {
       vertexChainData = await this.nodeManager.requestChainData(
         nodeId,
         connectionTimeout,
+        newestClaimId,
         ctx,
       );
     } catch (e) {

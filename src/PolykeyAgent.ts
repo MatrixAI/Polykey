@@ -268,19 +268,6 @@ class PolykeyAgent {
         fresh,
         ...certManagerConfig_,
       }))
-      identitiesManager =
-        identitiesManager ??
-        (await IdentitiesManager.createIdentitiesManager({
-          db,
-          logger: logger.getChild(IdentitiesManager.name),
-          fresh,
-        }));
-      // Registering providers
-      const githubProvider = new providers.GithubProvider({
-        clientId: config.providers['github.com'].clientId,
-        logger: logger.getChild(providers.GithubProvider.name),
-      });
-      identitiesManager.registerProvider(githubProvider);
       sigchain =
         sigchain ??
         (await Sigchain.createSigchain({
@@ -304,6 +291,22 @@ class PolykeyAgent {
           logger: logger.getChild(GestaltGraph.name),
           fresh,
         }));
+      identitiesManager =
+        identitiesManager ??
+        (await IdentitiesManager.createIdentitiesManager({
+          keyRing,
+          db,
+          sigchain,
+          gestaltGraph,
+          logger: logger.getChild(IdentitiesManager.name),
+          fresh,
+        }));
+      // Registering providers
+      const githubProvider = new providers.GithubProvider({
+        clientId: config.providers['github.com'].clientId,
+        logger: logger.getChild(providers.GithubProvider.name),
+      });
+      identitiesManager.registerProvider(githubProvider);
       proxy =
         proxy ??
         new Proxy({
@@ -351,7 +354,6 @@ class PolykeyAgent {
           gestaltGraph,
           identitiesManager,
           nodeManager,
-          sigchain,
           taskManager,
           logger: logger.getChild(Discovery.name),
         }));
@@ -405,10 +407,10 @@ class PolykeyAgent {
       await vaultManager?.stop();
       await discovery?.stop();
       await proxy?.stop();
+      await identitiesManager?.stop();
       await gestaltGraph?.stop();
       await acl?.stop();
       await sigchain?.stop();
-      await identitiesManager?.stop();
       await certManager?.stop();
       await taskManager?.stop();
       await db?.stop();
@@ -535,8 +537,8 @@ class PolykeyAgent {
     this.keyRing = keyRing;
     this.db = db;
     this.certManager = certManager;
-    this.identitiesManager = identitiesManager;
     this.sigchain = sigchain;
+    this.identitiesManager = identitiesManager;
     this.acl = acl;
     this.gestaltGraph = gestaltGraph;
     this.proxy = proxy;
@@ -678,10 +680,10 @@ class PolykeyAgent {
       await this.certManager.start({
         fresh
       });
-      await this.identitiesManager.start({ fresh });
       await this.sigchain.start({ fresh });
       await this.acl.start({ fresh });
       await this.gestaltGraph.start({ fresh });
+      await this.identitiesManager.start({ fresh });
       // GRPC Server
       const tlsConfig: TLSConfig = {
         keyPrivatePem: keysUtils.privateKeyToPEM(this.keyRing.keyPair.privateKey),
@@ -747,10 +749,10 @@ class PolykeyAgent {
       await this.proxy?.stop();
       await this.grpcServerAgent?.stop();
       await this.grpcServerClient?.stop();
+      await this.identitiesManager?.stop();
       await this.gestaltGraph?.stop();
       await this.acl?.stop();
       await this.sigchain?.stop();
-      await this.identitiesManager?.stop();
       await this.certManager?.stop();
       await this.taskManager?.stop();
       await this.db?.stop();
@@ -780,10 +782,10 @@ class PolykeyAgent {
     await this.proxy.stop();
     await this.grpcServerAgent.stop();
     await this.grpcServerClient.stop();
+    await this.identitiesManager.stop();
     await this.gestaltGraph.stop();
     await this.acl.stop();
     await this.sigchain.stop();
-    await this.identitiesManager.stop();
     await this.certManager.stop();
     await this.taskManager.stop();
     await this.db.stop();
@@ -804,10 +806,10 @@ class PolykeyAgent {
     await this.vaultManager.destroy();
     await this.discovery.destroy();
     await this.nodeGraph.destroy();
+    await this.identitiesManager.destroy();
     await this.gestaltGraph.destroy();
     await this.acl.destroy();
     await this.sigchain.destroy();
-    await this.identitiesManager.destroy();
     await this.certManager.destroy();
     await this.taskManager.stop();
     await this.taskManager.destroy();

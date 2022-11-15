@@ -115,11 +115,6 @@ async function bootstrapState({
       },
       fresh,
     });
-    const identitiesManager = await IdentitiesManager.createIdentitiesManager({
-      db,
-      logger: logger.getChild(IdentitiesManager.name),
-      fresh,
-    });
     const sigchain = await Sigchain.createSigchain({
       db,
       keyRing,
@@ -135,6 +130,14 @@ async function bootstrapState({
       acl,
       db,
       logger: logger.getChild(GestaltGraph.name),
+      fresh,
+    });
+    const identitiesManager = await IdentitiesManager.createIdentitiesManager({
+      keyRing,
+      db,
+      sigchain,
+      gestaltGraph,
+      logger: logger.getChild(IdentitiesManager.name),
       fresh,
     });
     // Proxies are constructed only, but not started
@@ -201,10 +204,10 @@ async function bootstrapState({
     await sessionManager.stop();
     await notificationsManager.stop();
     await vaultManager.stop();
+    await identitiesManager.stop();
     await gestaltGraph.stop();
     await acl.stop();
     await sigchain.stop();
-    await identitiesManager.stop();
     await taskManager.stop();
     await db.stop();
     await keyRing.stop();

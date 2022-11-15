@@ -306,28 +306,6 @@ export namespace Claims {
     }
 }
 
-export class ChainData extends jspb.Message { 
-
-    getChainDataMap(): jspb.Map<string, AgentClaim>;
-    clearChainDataMap(): void;
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): ChainData.AsObject;
-    static toObject(includeInstance: boolean, msg: ChainData): ChainData.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: ChainData, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): ChainData;
-    static deserializeBinaryFromReader(message: ChainData, reader: jspb.BinaryReader): ChainData;
-}
-
-export namespace ChainData {
-    export type AsObject = {
-
-        chainDataMap: Array<[string, AgentClaim.AsObject]>,
-    }
-}
-
 export class AgentClaim extends jspb.Message { 
     getPayload(): string;
     setPayload(value: string): AgentClaim;
@@ -335,6 +313,8 @@ export class AgentClaim extends jspb.Message {
     getSignaturesList(): Array<Signature>;
     setSignaturesList(value: Array<Signature>): AgentClaim;
     addSignatures(value?: Signature, index?: number): Signature;
+    getClaimId(): string;
+    setClaimId(value: string): AgentClaim;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): AgentClaim.AsObject;
@@ -350,6 +330,7 @@ export namespace AgentClaim {
     export type AsObject = {
         payload: string,
         signaturesList: Array<Signature.AsObject>,
+        claimId: string,
     }
 }
 
@@ -376,57 +357,22 @@ export namespace Signature {
     }
 }
 
-export class ClaimIntermediary extends jspb.Message { 
-    getPayload(): string;
-    setPayload(value: string): ClaimIntermediary;
-
-    hasSignature(): boolean;
-    clearSignature(): void;
-    getSignature(): Signature | undefined;
-    setSignature(value?: Signature): ClaimIntermediary;
+export class ClaimId extends jspb.Message { 
+    getClaimId(): string;
+    setClaimId(value: string): ClaimId;
 
     serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): ClaimIntermediary.AsObject;
-    static toObject(includeInstance: boolean, msg: ClaimIntermediary): ClaimIntermediary.AsObject;
+    toObject(includeInstance?: boolean): ClaimId.AsObject;
+    static toObject(includeInstance: boolean, msg: ClaimId): ClaimId.AsObject;
     static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
     static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: ClaimIntermediary, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): ClaimIntermediary;
-    static deserializeBinaryFromReader(message: ClaimIntermediary, reader: jspb.BinaryReader): ClaimIntermediary;
+    static serializeBinaryToWriter(message: ClaimId, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): ClaimId;
+    static deserializeBinaryFromReader(message: ClaimId, reader: jspb.BinaryReader): ClaimId;
 }
 
-export namespace ClaimIntermediary {
+export namespace ClaimId {
     export type AsObject = {
-        payload: string,
-        signature?: Signature.AsObject,
-    }
-}
-
-export class CrossSign extends jspb.Message { 
-
-    hasSinglySignedClaim(): boolean;
-    clearSinglySignedClaim(): void;
-    getSinglySignedClaim(): ClaimIntermediary | undefined;
-    setSinglySignedClaim(value?: ClaimIntermediary): CrossSign;
-
-    hasDoublySignedClaim(): boolean;
-    clearDoublySignedClaim(): void;
-    getDoublySignedClaim(): AgentClaim | undefined;
-    setDoublySignedClaim(value?: AgentClaim): CrossSign;
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): CrossSign.AsObject;
-    static toObject(includeInstance: boolean, msg: CrossSign): CrossSign.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: CrossSign, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): CrossSign;
-    static deserializeBinaryFromReader(message: CrossSign, reader: jspb.BinaryReader): CrossSign;
-}
-
-export namespace CrossSign {
-    export type AsObject = {
-        singlySignedClaim?: ClaimIntermediary.AsObject,
-        doublySignedClaim?: AgentClaim.AsObject,
+        claimId: string,
     }
 }

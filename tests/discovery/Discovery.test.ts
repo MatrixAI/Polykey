@@ -118,7 +118,9 @@ describe('Discovery', () => {
       logger: logger.getChild('gestaltGraph'),
     });
     identitiesManager = await IdentitiesManager.createIdentitiesManager({
+      keyRing,
       db,
+      sigchain,
       logger: logger.getChild('identities'),
     });
     identitiesManager.registerProvider(testProvider);

@@ -2,7 +2,7 @@ import type {
   ProviderId,
   IdentityId,
   ProviderTokens,
-  ProviderToken,
+  ProviderToken, IdentitySignedClaim,
 } from './types';
 import type { DB, DBTransaction, KeyPath, LevelPath } from '@matrixai/db';
 import type Provider from './Provider';
@@ -12,6 +12,14 @@ import {
   ready,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import * as identitiesErrors from './errors';
+import * as nodesUtils from '../nodes/utils';
+import { SignedClaim } from '../claims/types';
+import { ClaimLinkIdentity }  from '../claims/payloads';
+import KeyRing from '../keys/KeyRing';
+import Sigchain  from '../sigchain/Sigchain';
+import GestaltGraph from '../gestalts/GestaltGraph';
+import { promise } from '../utils/index';
+import { encodeProviderIdentityId } from '../ids';
 
 interface IdentitiesManager extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
@@ -21,22 +29,31 @@ interface IdentitiesManager extends CreateDestroyStartStop {}
 class IdentitiesManager {
   static async createIdentitiesManager({
     db,
+    sigchain,
+    keyRing,
+    gestaltGraph,
     logger = new Logger(this.name),
     fresh = false,
   }: {
     db: DB;
+    sigchain: Sigchain;
+    keyRing: KeyRing;
+    gestaltGraph: GestaltGraph;
     logger: Logger;
     fresh?: boolean;
   }): Promise<IdentitiesManager> {
     logger.info(`Creating ${this.name}`);
-    const identitiesManager = new this({ db, logger });
+    const identitiesManager = new this({ db, sigchain, keyRing, gestaltGraph, logger });
     await identitiesManager.start({ fresh });
     logger.info(`Created ${this.name}`);
     return identitiesManager;
   }
 
-  protected logger: Logger;
+  protected keyRing: KeyRing;
   protected db: DB;
+  protected sigchain: Sigchain;
+  protected gestaltGraph: GestaltGraph;
+  protected logger: Logger;
   protected identitiesDbPath: LevelPath = [this.constructor.name];
   /**
    * Tokens stores ProviderId -> ProviderTokens
@@ -47,9 +64,12 @@ class IdentitiesManager {
   ];
   protected providers: Map<ProviderId, Provider> = new Map();
 
-  constructor({ db, logger }: { db: DB; logger: Logger }) {
-    this.logger = logger;
+  constructor({ keyRing, db, sigchain, gestaltGraph, logger }: { keyRing: KeyRing; db: DB; sigchain: Sigchain; gestaltGraph: GestaltGraph; logger: Logger }) {
+    this.keyRing = keyRing;
     this.db = db;
+    this.sigchain = sigchain;
+    this.gestaltGraph = gestaltGraph
+    this.logger = logger;
   }
 
   public async start({ fresh = false }: { fresh?: boolean } = {}) {
@@ -191,6 +211,58 @@ class IdentitiesManager {
       return;
     }
     await tran.put(providerIdPath, providerTokens);
+  }
+
+  public async handleClaimIdentity(
+    providerId: ProviderId,
+    identityId: IdentityId
+  ) {
+    // Check provider is authenticated
+    const provider = this.getProvider(providerId);
+    if (provider == null) {
+      throw new identitiesErrors.ErrorProviderMissing();
+    }
+    const identities = await provider.getAuthIdentityIds();
+    if (!identities.includes(identityId)) {
+      throw new identitiesErrors.ErrorProviderUnauthenticated();
+    }
+    // Create identity claim on our node
+    const publishedClaimProm = promise<IdentitySignedClaim>()
+    await this.db.withTransactionF((tran) =>
+      this.sigchain.addClaim(
+        {
+          typ: 'identity',
+          iss: nodesUtils.encodeNodeId(this.keyRing.getNodeId()),
+          sub: encodeProviderIdentityId([providerId, identityId]),
+        },
+        undefined,
+        async (token) => {
+          // Publishing in the callback to avoid adding bad claims
+          const claim = token.toSigned()
+          publishedClaimProm.resolveP(await provider.publishClaim(identityId, claim as SignedClaim<ClaimLinkIdentity>))
+        },
+        tran,
+      ),
+    );
+    const publishedClaim = await publishedClaimProm.p;
+    // Publish claim on identity
+    const issNodeInfo = {
+      nodeId: this.keyRing.getNodeId(),
+    }
+    const subIdentityInfo = {
+      providerId: providerId,
+      identityId: identityId,
+      url: publishedClaim.url,
+    }
+    await this.gestaltGraph.linkNodeAndIdentity(
+      issNodeInfo,
+      subIdentityInfo,
+      {
+        meta: { providerIdentityClaimId: publishedClaim.id },
+        claim: publishedClaim.claim
+      }
+    )
+    return publishedClaim;
   }
 }
 

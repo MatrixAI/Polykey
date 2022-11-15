@@ -103,6 +103,8 @@ describe('gestaltsDiscoveryByIdentity', () => {
       logger,
     });
     identitiesManager = await IdentitiesManager.createIdentitiesManager({
+      keyRing,
+      sigchain,
       db,
       logger,
     });

@@ -396,7 +396,7 @@ class GitHubProvider extends Provider {
       description: this.gistDescription,
       files: {
         [this.gistFilename]: {
-          content: signedClaimEncoded,
+          content: JSON.stringify(signedClaimEncoded),
         },
       },
       public: true,

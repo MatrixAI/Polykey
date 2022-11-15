@@ -7,7 +7,6 @@ import type IdentitiesManager from '../../identities/IdentitiesManager';
 import type { IdentityId, ProviderId } from '../../identities/types';
 import type Logger from '@matrixai/logger';
 import * as grpcUtils from '../../grpc/utils';
-import * as claimsUtils from '../../claims/utils';
 import * as nodesUtils from '../../nodes/utils';
 import * as identitiesErrors from '../../identities/errors';
 import { validateSync } from '../../validation';
@@ -24,16 +23,10 @@ import { ClaimLinkIdentity } from 'claims/payloads/index';
 function identitiesClaim({
   authenticate,
   identitiesManager,
-  sigchain,
-  keyRing,
-  db,
   logger,
 }: {
   authenticate: Authenticate;
   identitiesManager: IdentitiesManager;
-  sigchain: Sigchain;
-  keyRing: KeyRing;
-  db: DB;
   logger: Logger;
 }) {
   return async (
@@ -63,31 +56,7 @@ function identitiesClaim({
           identityId: call.request.getIdentityId(),
         },
       );
-      // Check provider is authenticated
-      const provider = identitiesManager.getProvider(providerId);
-      if (provider == null) {
-        throw new identitiesErrors.ErrorProviderMissing();
-      }
-      const identities = await provider.getAuthIdentityIds();
-      if (!identities.includes(identityId)) {
-        throw new identitiesErrors.ErrorProviderUnauthenticated();
-      }
-      // Create identity claim on our node
-      const [, claim] = await db.withTransactionF((tran) =>
-        sigchain.addClaim(
-          {
-            typ: 'identity',
-            node: nodesUtils.encodeNodeId(keyRing.getNodeId()),
-            provider: providerId,
-            identity: identityId,
-          },
-          undefined,
-          undefined,
-          tran,
-        ),
-      );
-      // Publish claim on identity
-      const claimData = await provider.publishClaim(identityId, claim as SignedClaim<ClaimLinkIdentity>);
+      const claimData = await identitiesManager.handleClaimIdentity(providerId, identityId);
       response.setClaimId(claimData.id);
       if (claimData.url) {
         response.setUrl(claimData.url);

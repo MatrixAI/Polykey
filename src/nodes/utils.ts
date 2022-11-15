@@ -7,8 +7,13 @@ import * as nodesErrors from './errors';
 import * as keysUtils from '../keys/utils';
 import * as grpcErrors from '../grpc/errors';
 import * as agentErrors from '../agent/errors';
-import { encodeNodeId, decodeNodeId } from '../ids';
+import { encodeNodeId, decodeNodeId, ClaimId, decodeClaimId } from '../ids';
 import { bytes2BigInt } from '../utils';
+import * as nodesPB from '../proto/js/polykey/v1/nodes/nodes_pb';
+import { SignedClaim, SignedClaimEncoded, Claim } from '../claims/types';
+import { TokenPayloadEncoded, TokenHeaderSignatureEncoded, SignedToken } from '../tokens/types';
+import { parseSignedClaim } from '../claims/utils';
+import * as claimsUtils from '../claims/utils';
 
 const sepBuffer = dbUtils.sep;
 
@@ -317,6 +322,36 @@ function refreshBucketsDelayJitter(
   return (Math.random() - 0.5) * delay * jitterMultiplier;
 }
 
+function agentClaimMessageToSignedClaim(receivedClaim: nodesPB.AgentClaim): [ClaimId | undefined, SignedClaim] {
+  const claimId: ClaimId | undefined = decodeClaimId(receivedClaim.getClaimId());
+  const payload = receivedClaim.getPayload() as TokenPayloadEncoded;
+  const signatures = receivedClaim.getSignaturesList().map(item => {
+    return {
+      protected: item.getProtected(),
+      signature: item.getSignature(),
+    } as TokenHeaderSignatureEncoded;
+  });
+  const signedClaimEncoded: SignedClaimEncoded = {
+    payload,
+    signatures,
+  };
+  const signedClaim = parseSignedClaim(signedClaimEncoded);
+  return [claimId, signedClaim];
+}
+
+function signedClaimToAgentClaimMessage(halfSignedClaim: SignedToken<Claim>) {
+  const halfSignedClaimEncoded = claimsUtils.generateSignedClaim(halfSignedClaim);
+  const agentClaimMessage = new nodesPB.AgentClaim();
+  agentClaimMessage.setPayload(halfSignedClaimEncoded.payload);
+  const signatureMessages = halfSignedClaimEncoded.signatures.map(item => {
+    return new nodesPB.Signature()
+      .setSignature(item.signature)
+      .setProtected(item.protected);
+  });
+  agentClaimMessage.setSignaturesList(signatureMessages);
+  return agentClaimMessage;
+}
+
 export {
   sepBuffer,
   encodeNodeId,
@@ -339,4 +374,6 @@ export {
   generateRandomNodeIdForBucket,
   isConnectionError,
   refreshBucketsDelayJitter,
+  agentClaimMessageToSignedClaim,
+  signedClaimToAgentClaimMessage,
 };

@@ -75,15 +75,11 @@ message Claims {
   repeated AgentClaim claims = 1;
 }
 
-// A map of ClaimId -> ClaimEncoded
-message ChainData {
-  map<string, AgentClaim> chain_data = 1;
-}
-
 // The components of a ClaimEncoded type (i.e. a GeneralJWS) for GRPC transport
 message AgentClaim {
   string payload = 1;  // base64 encoded
   repeated Signature signatures = 2;
+  string claim_id = 3;
 }
 
 message Signature {
@@ -91,12 +87,6 @@ message Signature {
   string protected = 2; // base64 encoded ('protected' header field in GeneralJWS)
 }
 
-message ClaimIntermediary {
-  string payload = 1;
-  Signature signature = 2;
-}
-
-message CrossSign {
-  ClaimIntermediary singly_signed_claim = 1;
-  AgentClaim doubly_signed_claim = 2;
+message ClaimId {
+  string claim_id = 1;
 }

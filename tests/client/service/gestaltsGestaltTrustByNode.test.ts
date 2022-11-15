@@ -165,6 +165,8 @@ describe('gestaltsGestaltTrustByNode', () => {
       logger,
     });
     identitiesManager = await IdentitiesManager.createIdentitiesManager({
+      keyRing,
+      sigchain,
       db,
       logger,
     });

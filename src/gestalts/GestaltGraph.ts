@@ -1056,6 +1056,27 @@ class GestaltGraph {
     return gestaltsUtils.fromGestaltLinkJSON(gestaltLinkJSON);
   };
 
+  public async getLinks(
+    gestaltId: GestaltId,
+    tran?: DBTransaction,
+  ): Promise<Array<[GestaltId, GestaltLink]>> {
+    if (tran == null) {
+      return this.db.withTransactionF((tran) =>
+        this.getLinks(gestaltId, tran),
+      )
+    }
+    const gestaltKey = gestaltsUtils.toGestaltKey(gestaltId);
+    const results: Array<[GestaltId, GestaltLink]> = [];
+    for await (const [keyPath ,gestaltLinkJson] of tran.iterator<GestaltLinkJSON>([...this.dbMatrixPath, gestaltKey], {valueAsBuffer: false})) {
+      if (gestaltLinkJson == null) continue;
+      const gestaltLink = gestaltsUtils.fromGestaltLinkJSON(gestaltLinkJson);
+      const linkedGestaltKey = keyPath[keyPath.length - 1] as GestaltKey;
+      const linkedGestaltId = gestaltsUtils.fromGestaltKey(linkedGestaltKey);
+      results.push([linkedGestaltId, gestaltLink]);
+    }
+    return results;
+  }
+
   /**
    * Gets a gestalt using BFS.
    * During execution the`visited` set indicates the vertexes that have been queued.

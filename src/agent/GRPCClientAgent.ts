@@ -182,7 +182,7 @@ class GRPCClientAgent extends GRPCClient<AgentServiceClient> {
 
   @ready(new agentErrors.ErrorAgentClientDestroyed())
   public nodesChainDataGet(...args) {
-    return grpcUtils.promisifyUnaryCall<nodesPB.ChainData>(
+    return grpcUtils.promisifyReadableStreamCall<nodesPB.AgentClaim>(
       this.client,
       {
         nodeId: this.nodeId,
@@ -226,13 +226,13 @@ class GRPCClientAgent extends GRPCClient<AgentServiceClient> {
   public nodesCrossSignClaim(
     ...args
   ): AsyncGeneratorDuplexStreamClient<
-    nodesPB.CrossSign,
-    nodesPB.CrossSign,
-    ClientDuplexStream<nodesPB.CrossSign, nodesPB.CrossSign>
+    nodesPB.AgentClaim,
+    nodesPB.AgentClaim,
+    ClientDuplexStream<nodesPB.AgentClaim, nodesPB.AgentClaim>
   > {
     return grpcUtils.promisifyDuplexStreamCall<
-      nodesPB.CrossSign,
-      nodesPB.CrossSign
+      nodesPB.AgentClaim,
+      nodesPB.AgentClaim
     >(
       this.client,
       {
