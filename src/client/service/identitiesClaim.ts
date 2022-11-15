@@ -15,6 +15,8 @@ import * as validationUtils from '../../validation/utils';
 import { matchSync } from '../../utils';
 import * as identitiesPB from '../../proto/js/polykey/v1/identities/identities_pb';
 import * as clientUtils from '../utils';
+import { SignedClaim } from 'claims/types';
+import { ClaimLinkIdentity } from 'claims/payloads/index';
 
 /**
  * Augments the keynode with a new identity.
@@ -74,17 +76,18 @@ function identitiesClaim({
       const [, claim] = await db.withTransactionF((tran) =>
         sigchain.addClaim(
           {
-            type: 'identity',
+            typ: 'identity',
             node: nodesUtils.encodeNodeId(keyRing.getNodeId()),
             provider: providerId,
             identity: identityId,
           },
+          undefined,
+          undefined,
           tran,
         ),
       );
       // Publish claim on identity
-      const claimDecoded = claimsUtils.decodeClaim(claim);
-      const claimData = await provider.publishClaim(identityId, claimDecoded);
+      const claimData = await provider.publishClaim(identityId, claim as SignedClaim<ClaimLinkIdentity>);
       response.setClaimId(claimData.id);
       if (claimData.url) {
         response.setUrl(claimData.url);

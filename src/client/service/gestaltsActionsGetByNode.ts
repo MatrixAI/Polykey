@@ -43,7 +43,7 @@ function gestaltsActionsGetByNode({
         },
       );
       const result = await db.withTransactionF((tran) =>
-        gestaltGraph.getGestaltActionsByNode(nodeId, tran),
+        gestaltGraph.getGestaltActions(['node', nodeId], tran),
       );
       if (result == null) {
         // Node doesn't exist, so no permissions

@@ -1,6 +1,6 @@
 import type { NodeId } from './types';
 import type { Host, Hostname, Port } from '../network/types';
-import type { Certificate, PublicKey, PublicKeyPem } from '../keys/types';
+import type { Certificate } from '../keys/types';
 import type Proxy from '../network/Proxy';
 import type GRPCClient from '../grpc/GRPCClient';
 import type { ContextTimed } from '../contexts/types';
@@ -10,7 +10,6 @@ import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
 import * as asyncInit from '@matrixai/async-init';
 import * as nodesErrors from './errors';
 import { context, timedCancellable } from '../contexts/index';
-import * as keysUtils from '../keys/utils';
 import * as grpcErrors from '../grpc/errors';
 import * as networkUtils from '../network/utils';
 import { timerStart } from '../utils/index';
@@ -43,9 +42,9 @@ class NodeConnection<T extends GRPCClient> {
       targetHostname,
       proxy,
       clientFactory,
-      destroyCallback = async () => {},
+      destroyCallback,
       destroyTimeout,
-      logger = new Logger(this.name),
+      logger,
     }: {
       targetNodeId: NodeId;
       targetHost: Host;

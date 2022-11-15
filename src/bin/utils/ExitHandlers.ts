@@ -104,7 +104,7 @@ class ExitHandlers {
 
   protected deadlockHandler = async () => {
     if (process.exitCode == null) {
-      const e = new binErrors.ErrorBinAsynchronousDeadlock();
+      const e = new binErrors.ErrorBinAsynchronousDeadlock<undefined>();
       process.stderr.write(
         binUtils.outputFormatter({
           type: this._errFormat,

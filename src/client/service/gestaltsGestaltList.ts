@@ -28,8 +28,12 @@ function gestaltsGestaltList({
     try {
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
-      const certs: Array<Gestalt> = await db.withTransactionF((tran) =>
-        gestaltGraph.getGestalts(tran),
+      const certs: Array<Gestalt> = [] // FIXME: this should be streaming the data
+      await db.withTransactionF(async (tran) => {
+          for await (const gestalt of gestaltGraph.getGestalts(tran)) {
+            certs.push(gestalt);
+          }
+        }
       );
       for (const cert of certs) {
         gestaltMessage = new gestaltsPB.Gestalt();

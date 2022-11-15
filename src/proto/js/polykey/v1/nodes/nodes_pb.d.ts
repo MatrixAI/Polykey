@@ -6,7 +6,7 @@
 
 import * as jspb from "google-protobuf";
 
-export class Node extends jspb.Message {
+export class Node extends jspb.Message { 
     getNodeId(): string;
     setNodeId(value: string): Node;
 
@@ -26,7 +26,7 @@ export namespace Node {
     }
 }
 
-export class Address extends jspb.Message {
+export class Address extends jspb.Message { 
     getHost(): string;
     setHost(value: string): Address;
     getPort(): number;
@@ -49,7 +49,7 @@ export namespace Address {
     }
 }
 
-export class NodeAddress extends jspb.Message {
+export class NodeAddress extends jspb.Message { 
     getNodeId(): string;
     setNodeId(value: string): NodeAddress;
 
@@ -75,7 +75,7 @@ export namespace NodeAddress {
     }
 }
 
-export class Claim extends jspb.Message {
+export class Claim extends jspb.Message { 
     getNodeId(): string;
     setNodeId(value: string): Claim;
     getForceInvite(): boolean;
@@ -98,7 +98,7 @@ export namespace Claim {
     }
 }
 
-export class NodeAdd extends jspb.Message {
+export class NodeAdd extends jspb.Message { 
     getNodeId(): string;
     setNodeId(value: string): NodeAdd;
 
@@ -130,7 +130,7 @@ export namespace NodeAdd {
     }
 }
 
-export class NodeBuckets extends jspb.Message {
+export class NodeBuckets extends jspb.Message { 
 
     getBucketsMap(): jspb.Map<number, NodeTable>;
     clearBucketsMap(): void;
@@ -152,7 +152,7 @@ export namespace NodeBuckets {
     }
 }
 
-export class NodeConnection extends jspb.Message {
+export class NodeConnection extends jspb.Message { 
     getNodeId(): string;
     setNodeId(value: string): NodeConnection;
     getHost(): string;
@@ -187,7 +187,7 @@ export namespace NodeConnection {
     }
 }
 
-export class Connection extends jspb.Message {
+export class Connection extends jspb.Message { 
     getAId(): string;
     setAId(value: string): Connection;
     getBId(): string;
@@ -216,7 +216,7 @@ export namespace Connection {
     }
 }
 
-export class Relay extends jspb.Message {
+export class Relay extends jspb.Message { 
     getSrcId(): string;
     setSrcId(value: string): Relay;
     getTargetId(): string;
@@ -242,7 +242,7 @@ export namespace Relay {
     }
 }
 
-export class NodeTable extends jspb.Message {
+export class NodeTable extends jspb.Message { 
 
     getNodeTableMap(): jspb.Map<string, Address>;
     clearNodeTableMap(): void;
@@ -264,7 +264,7 @@ export namespace NodeTable {
     }
 }
 
-export class ClaimType extends jspb.Message {
+export class ClaimType extends jspb.Message { 
     getClaimType(): string;
     setClaimType(value: string): ClaimType;
 
@@ -284,7 +284,7 @@ export namespace ClaimType {
     }
 }
 
-export class Claims extends jspb.Message {
+export class Claims extends jspb.Message { 
     clearClaimsList(): void;
     getClaimsList(): Array<AgentClaim>;
     setClaimsList(value: Array<AgentClaim>): Claims;
@@ -306,7 +306,7 @@ export namespace Claims {
     }
 }
 
-export class ChainData extends jspb.Message {
+export class ChainData extends jspb.Message { 
 
     getChainDataMap(): jspb.Map<string, AgentClaim>;
     clearChainDataMap(): void;
@@ -328,7 +328,7 @@ export namespace ChainData {
     }
 }
 
-export class AgentClaim extends jspb.Message {
+export class AgentClaim extends jspb.Message { 
     getPayload(): string;
     setPayload(value: string): AgentClaim;
     clearSignaturesList(): void;
@@ -353,7 +353,7 @@ export namespace AgentClaim {
     }
 }
 
-export class Signature extends jspb.Message {
+export class Signature extends jspb.Message { 
     getSignature(): string;
     setSignature(value: string): Signature;
     getProtected(): string;
@@ -376,7 +376,7 @@ export namespace Signature {
     }
 }
 
-export class ClaimIntermediary extends jspb.Message {
+export class ClaimIntermediary extends jspb.Message { 
     getPayload(): string;
     setPayload(value: string): ClaimIntermediary;
 
@@ -402,7 +402,7 @@ export namespace ClaimIntermediary {
     }
 }
 
-export class CrossSign extends jspb.Message {
+export class CrossSign extends jspb.Message { 
 
     hasSinglySignedClaim(): boolean;
     clearSinglySignedClaim(): void;

@@ -33,6 +33,8 @@ class CommandDisallow extends CommandPolykey {
         '../../proto/js/polykey/v1/permissions/permissions_pb'
       );
       const nodesPB = await import('../../proto/js/polykey/v1/nodes/nodes_pb');
+      const utils = await import('../../utils');
+      const nodesUtils = await import('../../nodes/utils');
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -59,35 +61,43 @@ class CommandDisallow extends CommandPolykey {
         });
         const setActionMessage = new permissionsPB.ActionSet();
         setActionMessage.setAction(permissions);
-        if (gestaltId.type === 'node') {
-          // Setting by Node
-          const nodeMessage = new nodesPB.Node();
-          nodeMessage.setNodeId(gestaltId.nodeId);
-          setActionMessage.setNode(nodeMessage);
-          // Trusting
-          await binUtils.retryAuthentication(
-            (auth) =>
-              pkClient.grpcClient.gestaltsActionsUnsetByNode(
-                setActionMessage,
-                auth,
-              ),
-            meta,
-          );
-        } else {
-          //  Setting by Identity
-          const providerMessage = new identitiesPB.Provider();
-          providerMessage.setProviderId(gestaltId.providerId);
-          providerMessage.setIdentityId(gestaltId.identityId);
-          setActionMessage.setIdentity(providerMessage);
-          // Trusting.
-          await binUtils.retryAuthentication(
-            (auth) =>
-              pkClient.grpcClient.gestaltsActionsUnsetByIdentity(
-                setActionMessage,
-                auth,
-              ),
-            meta,
-          );
+        const [type, id] = gestaltId;
+        switch (type) {
+          case 'node': {
+            // Setting by Node
+            const nodeMessage = new nodesPB.Node();
+            nodeMessage.setNodeId(nodesUtils.encodeNodeId(id));
+            setActionMessage.setNode(nodeMessage);
+            // Trusting
+            await binUtils.retryAuthentication(
+              (auth) =>
+                pkClient.grpcClient.gestaltsActionsUnsetByNode(
+                  setActionMessage,
+                  auth,
+                ),
+              meta,
+            );
+          }
+            break;
+          case 'identity': {
+            //  Setting by Identity
+            const providerMessage = new identitiesPB.Provider();
+            providerMessage.setProviderId(id[0]);
+            providerMessage.setIdentityId(id[1]);
+            setActionMessage.setIdentity(providerMessage);
+            // Trusting.
+            await binUtils.retryAuthentication(
+              (auth) =>
+                pkClient.grpcClient.gestaltsActionsUnsetByIdentity(
+                  setActionMessage,
+                  auth,
+                ),
+              meta,
+            );
+          }
+            break;
+          default:
+            utils.never();
         }
       } finally {
         if (pkClient! != null) await pkClient.stop();

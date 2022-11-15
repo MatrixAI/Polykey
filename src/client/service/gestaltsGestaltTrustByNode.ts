@@ -56,8 +56,7 @@ function gestaltsGestaltTrustByNode({
         if ((await gestaltGraph.getGestaltByNode(nodeId, tran)) == null) {
           await gestaltGraph.setNode(
             {
-              id: nodesUtils.encodeNodeId(nodeId),
-              chain: {},
+              nodeId,
             },
             tran,
           );
@@ -65,7 +64,7 @@ function gestaltsGestaltTrustByNode({
           await discovery.queueDiscoveryByNode(nodeId);
         }
         // Set notify permission
-        await gestaltGraph.setGestaltActionByNode(nodeId, 'notify', tran);
+        await gestaltGraph.setGestaltActions(['node', nodeId], 'notify', tran);
       });
       callback(null, response);
       return;

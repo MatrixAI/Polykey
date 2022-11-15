@@ -16,6 +16,7 @@ import * as nodesUtils from '../nodes/utils';
 import * as utils from '../utils';
 import { CertificateASN1 } from '../keys/types';
 import { keys } from '@matrixai/logger/dist/formatting';
+import { never } from '../utils';
 
 const pingBuffer = serializeNetworkMessage({
   type: 'ping',

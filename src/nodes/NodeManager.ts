@@ -317,6 +317,7 @@ class NodeManager {
    * For node1 -> node2 claims, the verification process also involves connecting
    * to node2 to verify the claim (to retrieve its signing public key).
    */
+  // FIXME: this should be a generator/stream
   public requestChainData(
     targetNodeId: NodeId,
     connectionTimeout?: number,

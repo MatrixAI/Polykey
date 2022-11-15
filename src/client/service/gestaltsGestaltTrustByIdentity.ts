@@ -58,8 +58,7 @@ function gestaltsGestaltTrustByIdentity({
       await db.withTransactionF(async (tran) => {
         if (
           (await gestaltGraph.getGestaltByIdentity(
-            providerId,
-            identityId,
+            [providerId, identityId],
             tran,
           )) == null
         ) {
@@ -73,9 +72,8 @@ function gestaltsGestaltTrustByIdentity({
         // will throw an error. Since discovery can take time, you may need to
         // reattempt this command if it fails on the first attempt and you expect
         // there to be a linked node for the identity.
-        await gestaltGraph.setGestaltActionByIdentity(
-          providerId,
-          identityId,
+        await gestaltGraph.setGestaltActions(
+          ['identity', [providerId, identityId]],
           'notify',
           tran,
         );

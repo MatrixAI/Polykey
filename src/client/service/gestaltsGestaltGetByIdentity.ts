@@ -51,7 +51,7 @@ function gestaltsGestaltGetByIdentity({
         },
       );
       const gestalt = await db.withTransactionF((tran) =>
-        gestaltGraph.getGestaltByIdentity(providerId, identityId, tran),
+        gestaltGraph.getGestaltByIdentity([providerId, identityId], tran),
       );
       if (gestalt != null) {
         response.setGestaltGraph(JSON.stringify(gestalt));

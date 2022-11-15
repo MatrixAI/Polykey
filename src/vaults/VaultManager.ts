@@ -598,7 +598,7 @@ class VaultManager {
     if (vaultMeta == null) throw new vaultsErrors.ErrorVaultsVaultUndefined();
     // NodeId permissions translated to other nodes in
     // a gestalt by other domains
-    await this.gestaltGraph.setGestaltActionByNode(nodeId, 'scan', tran);
+    await this.gestaltGraph.setGestaltActions(['node', nodeId], 'scan', tran);
     await this.acl.setVaultAction(vaultId, nodeId, 'pull', tran);
     await this.acl.setVaultAction(vaultId, nodeId, 'clone', tran);
     await this.notificationsManager.sendNotification(nodeId, {
@@ -630,7 +630,7 @@ class VaultManager {
 
     const vaultMeta = await this.getVaultMeta(vaultId, tran);
     if (!vaultMeta) throw new vaultsErrors.ErrorVaultsVaultUndefined();
-    await this.gestaltGraph.unsetGestaltActionByNode(nodeId, 'scan', tran);
+    await this.gestaltGraph.unsetGestaltActions(['node', nodeId], 'scan', tran);
     await this.acl.unsetVaultAction(vaultId, nodeId, 'pull', tran);
     await this.acl.unsetVaultAction(vaultId, nodeId, 'clone', tran);
   }
