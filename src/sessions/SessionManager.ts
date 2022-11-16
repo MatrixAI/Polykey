@@ -11,6 +11,7 @@ import * as sessionsUtils from './utils';
 import * as sessionsErrors from './errors';
 import * as keysUtils from '../keys/utils';
 import * as nodesUtils from '../nodes/utils';
+import { Key } from '../keys/types';
 
 interface SessionManager extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
@@ -102,6 +103,7 @@ class SessionManager {
    * Creates session token
    * This is not blocked by key reset
    * @param expiry Seconds from now or default
+   * @param tran
    */
   @ready(new sessionsErrors.ErrorSessionManagerNotRunning())
   public async createToken(
@@ -113,7 +115,7 @@ class SessionManager {
       iss: nodesUtils.encodeNodeId(this.keyRing.getNodeId()),
       sub: nodesUtils.encodeNodeId(this.keyRing.getNodeId()),
     };
-    const key = await tranOrDb.get([...this.sessionsDbPath, 'key'], true);
+    const key = await tranOrDb.get([...this.sessionsDbPath, 'key'], true) as Key;
     return await sessionsUtils.createSessionToken(payload, key!, expiry);
   }
 
@@ -123,7 +125,7 @@ class SessionManager {
     tran?: DBTransaction,
   ): Promise<boolean> {
     const tranOrDb = tran ?? this.db;
-    const key = await tranOrDb.get([...this.sessionsDbPath, 'key'], true);
+    const key = await tranOrDb.get([...this.sessionsDbPath, 'key'], true) as Key;
     const result = await sessionsUtils.verifySessionToken(token, key!);
     return result !== undefined;
   }
