@@ -43,31 +43,10 @@ function notificationsRead({
           tran,
         }),
       );
-      const notifMessages: Array<notificationsPB.Notification> = [];
+      const notifMessages: Array<notificationsPB.AgentNotification> = [];
       for (const notif of notifications) {
-        const notificationsMessage = new notificationsPB.Notification();
-        switch (notif.data.type) {
-          case 'General': {
-            const generalMessage = new notificationsPB.General();
-            generalMessage.setMessage(notif.data.message);
-            notificationsMessage.setGeneral(generalMessage);
-            break;
-          }
-          case 'GestaltInvite': {
-            notificationsMessage.setGestaltInvite('GestaltInvite');
-            break;
-          }
-          case 'VaultShare': {
-            const vaultShareMessage = new notificationsPB.Share();
-            vaultShareMessage.setVaultId(notif.data.vaultId);
-            vaultShareMessage.setVaultName(notif.data.vaultName);
-            vaultShareMessage.setActionsList(Object.keys(notif.data.actions));
-            notificationsMessage.setVaultShare(vaultShareMessage);
-            break;
-          }
-        }
-        notificationsMessage.setSenderId(notif.senderId);
-        notificationsMessage.setIsRead(notif.isRead);
+        const notificationsMessage = new notificationsPB.AgentNotification();
+        notificationsMessage.setContent(JSON.stringify(notif));
         notifMessages.push(notificationsMessage);
       }
       response.setNotificationList(notifMessages);

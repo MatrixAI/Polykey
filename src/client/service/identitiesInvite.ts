@@ -1,11 +1,10 @@
 import type * as grpc from '@grpc/grpc-js';
-import type { DB } from '@matrixai/db';
 import type { Authenticate } from '../types';
-import type NodeManager from '../../nodes/NodeManager';
 import type { NodeId } from '../../ids/types';
 import type NotificationsManager from '../../notifications/NotificationsManager';
 import type * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
 import type Logger from '@matrixai/logger';
+import type ACL from '../../acl/ACL';
 import * as grpcUtils from '../../grpc/utils';
 import { validateSync } from '../../validation';
 import * as validationUtils from '../../validation/utils';
@@ -15,21 +14,18 @@ import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 import * as clientUtils from '../utils';
 
 /**
- * Checks whether there is an existing Gestalt Invitation from the other node.
- * If not, send an invitation, if so, create a cryptolink claim between the
- * other node and host node.
+ * Adds permission for a node to claim us using nodes claim.
+ * Also sends a notification alerting the node of the new permission.
  */
-function nodesClaim({
+function identitiesInvite({
   authenticate,
-  nodeManager,
   notificationsManager,
-  db,
+  acl,
   logger,
 }: {
   authenticate: Authenticate;
-  nodeManager: NodeManager;
   notificationsManager: NotificationsManager;
-  db: DB;
+  acl: ACL;
   logger: Logger;
 }) {
   return async (
@@ -55,22 +51,27 @@ function nodesClaim({
           nodeId: call.request.getNodeId(),
         },
       );
-      await db.withTransactionF(async (tran) => {
-        // Attempt to claim the node,
-        // if there is no permission then we get an error
-        await nodeManager.claimNode(nodeId, tran);
-        response.setSuccess(true);
-      });
+      // Sending the notification, we don't care if it fails
+      try {
+        await notificationsManager.sendNotification(nodeId, {
+          type: 'GestaltInvite',
+        });
+      } catch {
+        logger.warn('Failed to send gestalt invitation to target node');
+      }
+      // Allowing claims from that gestalt
+      await acl.setNodeAction(nodeId, 'claim');
+      response.setSuccess(true);
       callback(null, response);
       return;
     } catch (e) {
       callback(grpcUtils.fromError(e));
       !clientUtils.isClientClientError(e, [
         nodesErrors.ErrorNodeGraphNodeIdNotFound,
-      ]) && logger.error(`${nodesClaim.name}:${e}`);
+      ]) && logger.error(`${identitiesInvite.name}:${e}`);
       return;
     }
   };
 }
 
-export default nodesClaim;
+export default identitiesInvite;

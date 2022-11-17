@@ -5,13 +5,13 @@ import type { NodeId } from '../../ids/types';
 import type * as notificationsPB from '../../proto/js/polykey/v1/notifications/notifications_pb';
 import type Logger from '@matrixai/logger';
 import * as grpcUtils from '../../grpc/utils';
-import * as notificationsUtils from '../../notifications/utils';
 import { validateSync } from '../../validation';
 import * as validationUtils from '../../validation/utils';
 import * as nodesErrors from '../../nodes/errors';
 import { matchSync } from '../../utils';
 import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 import * as clientUtils from '../utils';
+import { General } from '../../notifications/types';
 
 function notificationsSend({
   authenticate,
@@ -45,13 +45,11 @@ function notificationsSend({
           nodeId: call.request.getReceiverId(),
         },
       );
-      const data = {
+      const data: General = {
         type: 'General',
-        message: call.request.getData()?.getMessage(),
+        message: call.request.getData()!.getMessage(),
       };
-      const validatedData =
-        notificationsUtils.validateGeneralNotification(data);
-      await notificationsManager.sendNotification(nodeId, validatedData);
+      await notificationsManager.sendNotification(nodeId, data);
       callback(null, response);
       return;
     } catch (e) {

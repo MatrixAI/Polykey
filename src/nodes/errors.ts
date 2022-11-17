@@ -99,6 +99,12 @@ class ErrorNodePingFailed<T> extends ErrorNodes<T> {
   exitCode = sysexits.NOHOST;
 }
 
+class ErrorNodePermissionDenied<T> extends ErrorNodes<T> {
+  static description =
+    'Permission not given to do this action';
+  exitCode = sysexits.NOHOST;
+}
+
 export {
   ErrorNodes,
   ErrorNodeAborted,
@@ -120,4 +126,5 @@ export {
   ErrorNodeConnectionHostWildcard,
   ErrorNodeConnectionSameNodeId,
   ErrorNodePingFailed,
+  ErrorNodePermissionDenied,
 };

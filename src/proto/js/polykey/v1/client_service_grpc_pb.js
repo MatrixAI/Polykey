@@ -1066,6 +1066,17 @@ identitiesAuthenticate: {
     responseSerialize: serialize_polykey_v1_identities_Claim,
     responseDeserialize: deserialize_polykey_v1_identities_Claim,
   },
+  identitiesInvite: {
+    path: '/polykey.v1.ClientService/IdentitiesInvite',
+    requestStream: false,
+    responseStream: false,
+    requestType: polykey_v1_nodes_nodes_pb.Claim,
+    responseType: polykey_v1_utils_utils_pb.StatusMessage,
+    requestSerialize: serialize_polykey_v1_nodes_Claim,
+    requestDeserialize: deserialize_polykey_v1_nodes_Claim,
+    responseSerialize: serialize_polykey_v1_utils_StatusMessage,
+    responseDeserialize: deserialize_polykey_v1_utils_StatusMessage,
+  },
   // Gestalts
 gestaltsGestaltList: {
     path: '/polykey.v1.ClientService/GestaltsGestaltList',

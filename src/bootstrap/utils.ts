@@ -170,6 +170,7 @@ async function bootstrapState({
       nodeConnectionManager,
       sigchain,
       taskManager,
+      gestaltGraph,
       logger: logger.getChild(NodeManager.name),
     });
     const notificationsManager =

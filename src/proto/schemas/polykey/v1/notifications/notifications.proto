@@ -24,7 +24,7 @@ message Read {
 }
 
 message List {
-  repeated Notification notification = 1;
+  repeated AgentNotification notification = 1;
 }
 
 message General {

@@ -16,7 +16,7 @@ import type {
   ClaimLinkNode
 } from '../claims/payloads';
 
-const gestaltActions = ['notify', 'scan'] as const;
+const gestaltActions = ['notify', 'scan', 'claim'] as const;
 
 type GestaltKey = Opaque<'GestaltKey', Buffer>;
 

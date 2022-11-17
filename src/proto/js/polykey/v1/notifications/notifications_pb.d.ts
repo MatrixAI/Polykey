@@ -111,9 +111,9 @@ export namespace Read {
 
 export class List extends jspb.Message { 
     clearNotificationList(): void;
-    getNotificationList(): Array<Notification>;
-    setNotificationList(value: Array<Notification>): List;
-    addNotification(value?: Notification, index?: number): Notification;
+    getNotificationList(): Array<AgentNotification>;
+    setNotificationList(value: Array<AgentNotification>): List;
+    addNotification(value?: AgentNotification, index?: number): AgentNotification;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): List.AsObject;
@@ -127,7 +127,7 @@ export class List extends jspb.Message {
 
 export namespace List {
     export type AsObject = {
-        notificationList: Array<Notification.AsObject>,
+        notificationList: Array<AgentNotification.AsObject>,
     }
 }
 

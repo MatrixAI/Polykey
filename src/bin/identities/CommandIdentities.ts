@@ -10,6 +10,7 @@ import CommandPermissions from './CommandPermissions';
 import CommandSearch from './CommandSearch';
 import CommandTrust from './CommandTrust';
 import CommandUntrust from './CommandUntrust';
+import CommandInvite from './CommandInvite';
 import CommandPolykey from '../CommandPolykey';
 
 class CommandIdentities extends CommandPolykey {
@@ -29,6 +30,7 @@ class CommandIdentities extends CommandPolykey {
     this.addCommand(new CommandSearch(...args));
     this.addCommand(new CommandTrust(...args));
     this.addCommand(new CommandUntrust(...args));
+    this.addCommand(new CommandInvite(...args));
   }
 }
 

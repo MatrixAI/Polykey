@@ -19,8 +19,10 @@ type General = {
 type NotificationData = GestaltInvite | VaultShare | General;
 
 type Notification = {
+  typ: 'notification';
   data: NotificationData;
-  senderId: NodeIdEncoded;
+  iss: string; // Issuer, sender NodeIdEncoded
+  sub: string; // Subject, target NodeIdEncoded
   isRead: boolean;
 };
 

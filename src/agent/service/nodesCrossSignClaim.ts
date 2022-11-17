@@ -7,15 +7,19 @@ import * as grpcUtils from '../../grpc/utils';
 import * as claimsErrors from '../../claims/errors';
 import * as agentUtils from '../utils';
 import { ConnectionInfoGet } from '../types';
+import ACL from '../../acl/ACL';
+import * as nodesErrors  from '../../nodes/errors';
 
 function nodesCrossSignClaim({
   keyRing,
   nodeManager,
+  acl,
   connectionInfoGet,
   logger,
 }: {
   keyRing: KeyRing;
   nodeManager: NodeManager;
+  acl: ACL;
   connectionInfoGet: ConnectionInfoGet;
   logger: Logger;
 }) {
@@ -30,8 +34,13 @@ function nodesCrossSignClaim({
       true,
     );
     try {
+      // Check the ACL for permissions
+      const permissions = await acl.getNodePerm(requestingNodeId)
+      if (permissions?.gestalt.claim !== null) throw new nodesErrors.ErrorNodePermissionDenied();
+      // Handle claiming the node
       await nodeManager.handleClaimNode(requestingNodeId, genClaims);
     } catch (e) {
+      console.error(e);
       await genClaims.throw(e);
       !agentUtils.isAgentClientError(e, [
         claimsErrors.ErrorEmptyStream,

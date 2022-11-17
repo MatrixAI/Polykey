@@ -6,19 +6,16 @@ import type {
   SignedNotification,
 } from './types';
 import type { NodeId, VaultId } from '../ids/types';
-import type { DefinedError } from 'ajv';
 import type { KeyPairLocked } from '../keys/types';
-import { SignJWT, exportJWK, jwtVerify, EmbeddedJWK } from 'jose';
-import {
-  notificationValidate,
-  generalNotificationValidate,
-  gestaltInviteNotificationValidate,
-  vaultShareNotificationValidate,
-} from './schema';
 import * as notificationsErrors from './errors';
-import { createNotificationIdGenerator } from '../ids';
+import { createNotificationIdGenerator, decodeVaultId } from '../ids';
 import * as nodesUtils from '../nodes/utils';
-import { importPublicKey, importPrivateKey } from '../keys/utils';
+import * as keysUtils from '../keys/utils';
+import Token from 'tokens/Token';
+import * as validationErrors from '../validation/errors';
+import * as utils from '../utils';
+import * as ids from '../ids/index';
+import { vaultActions } from '../vaults/types';
 
 function constructGestaltInviteMessage(nodeId: NodeId): string {
   return `Keynode with ID ${nodeId} has invited this Keynode to join their Gestalt. Accept this invitation by typing the command: xxx`;
@@ -35,111 +32,185 @@ function constructVaultShareMessage(vaultId: VaultId): string {
  * Sign and encode a notification so it can be sent. Encoded as a
  * SignJWT type (Compact JWS formatted JWT string).
  */
-async function signNotification(
+async function generateNotification(
   notification: Notification,
   keyPair: KeyPairLocked,
 ): Promise<SignedNotification> {
-  const publicKey = await importPublicKey(keyPair.publicKey);
-  const privateKey = await importPrivateKey(keyPair.privateKey);
-  const jwkPublicKey = await exportJWK(publicKey);
-  const jwt = await new SignJWT(notification)
-    .setProtectedHeader({ alg: 'RS256', jwk: jwkPublicKey })
-    .setIssuedAt()
-    .sign(privateKey);
-  return jwt as SignedNotification;
+  const token = Token.fromPayload({
+    ...notification,
+    iat: Date.now() / 1000,
+  });
+  token.signWithPrivateKey(keyPair.privateKey)
+  return JSON.stringify(token.toJSON()) as SignedNotification;
 }
 
 /**
  * Verify, decode, validate, and return a notification. Assumes it was signed
  * using signNotification as a SignJWT.
  */
-async function verifyAndDecodeNotif(notifJWT: string): Promise<Notification> {
-  try {
-    const { payload } = await jwtVerify(notifJWT, EmbeddedJWK, {});
-    return validateNotification(payload);
-  } catch (err) {
-    if (err instanceof notificationsErrors.ErrorNotificationsInvalidType) {
-      throw err;
-    } else if (
-      err instanceof notificationsErrors.ErrorNotificationsValidationFailed
-    ) {
-      throw err;
-    } else {
-      // Error came from jose
-      throw new notificationsErrors.ErrorNotificationsParse(err.message, {
-        cause: err,
-      });
-    }
-  }
+async function verifyAndDecodeNotif(signedNotification: SignedNotification, nodeId: NodeId): Promise<Notification> {
+  const token = Token.fromEncoded(JSON.parse(signedNotification));
+  const issuerNodeId = nodesUtils.decodeNodeId(token.payload.iss)!
+  const issuerPublicKey = keysUtils.publicKeyFromNodeId(issuerNodeId);
+  if (!token.verifyWithPublicKey(issuerPublicKey))
+    throw new notificationsErrors.ErrorNotificationsVerificationFailed();
+  if (token.payload.sub !== nodesUtils.encodeNodeId(nodeId))
+    throw new notificationsErrors.ErrorNotificationsInvalidDestination();
+  const payload  = token.payload;
+  return parseNotification(payload);
 }
 
 /**
  * JSON schema validator for a notification type
  */
-function validateNotification(
-  notification: Record<string, unknown>,
-): Notification {
-  // Also ensure the sender's node ID is valid
-  if (
-    notificationValidate(notification) &&
-    nodesUtils.decodeNodeId(notification['senderId'])
-  ) {
-    return notification as Notification;
-  } else {
-    for (const err of notificationValidate.errors as DefinedError[]) {
-      if (err.keyword === 'oneOf') {
-        throw new notificationsErrors.ErrorNotificationsInvalidType();
-      }
-    }
-    throw new notificationsErrors.ErrorNotificationsValidationFailed();
+function assertNotification(notification: unknown): asserts notification is Notification {
+  if (!utils.isObject(notification)) {
+    throw new validationErrors.ErrorParse(
+      'must be POJO',
+    );
   }
+  if (notification['typ'] !== 'notification')
+    throw new validationErrors.ErrorParse('Payload typ was not a notification');
+  if (
+    notification['iss'] == null ||
+    ids.decodeNodeId(notification['iss']) == null
+  ) {
+    throw new validationErrors.ErrorParse(
+      '`iss` property must be an encoded node ID',
+    );
+  }
+  if (
+    notification['sub'] == null ||
+    ids.decodeNodeId(notification['sub']) == null
+  ) {
+    throw new validationErrors.ErrorParse(
+      '`sub` property must be an encoded node ID',
+    );
+  }
+  if (typeof notification['isRead'] !== 'boolean') {
+    throw new validationErrors.ErrorParse(
+      '`isRead` property must be a boolean'
+    );
+  }
+  // Checking the data
+  const notificationData = notification['data'];
+  if (
+    notificationData !== null &&
+    !utils.isObject(notificationData)
+  ) {
+    throw new validationErrors.ErrorParse(
+      '`data` property must be a POJO'
+    );
+  }
+  if (typeof notificationData['type'] !== 'string') {
+    throw new validationErrors.ErrorParse(
+      '`type` property must be a string'
+    );
+  }
+  switch (notificationData['type']) {
+    case 'GestaltInvite':
+      assertGestaltInvite(notificationData);
+      break;
+    case 'VaultShare':
+      assertVaultShare(notificationData);
+      break;
+    case 'General':
+      assertGeneral(notificationData);
+      break;
+    default:
+      throw new validationErrors.ErrorParse(
+        '`type` property must be a valid type'
+      );
+  }
+}
+
+function parseNotification(
+  signedNotification: unknown,
+): Notification {
+  assertNotification(signedNotification);
+  return signedNotification;
 }
 
 /**
  * JSON schema validator for a General notification's data field
  */
-function validateGeneralNotification(data: Record<string, unknown>): General {
-  if (generalNotificationValidate(data)) {
-    return data as General;
-  } else {
-    throw new notificationsErrors.ErrorNotificationsGeneralInvalid();
+function assertGeneral(general: unknown): asserts general is General {
+  if (!utils.isObject(general)) {
+    throw new validationErrors.ErrorParse(
+      'must be POJO',
+    );
+  }
+  if (general['type'] !== 'General')
+    throw new validationErrors.ErrorParse('`type` property must be `General`');
+  if (typeof general['message'] !== 'string') {
+    throw new validationErrors.ErrorParse(
+      '`message` property must be a string'
+    );
   }
 }
 
 /**
  * JSON schema validator for a GestaltInvite notification's data field
  */
-function validateGestaltInviteNotification(
-  data: Record<string, unknown>,
-): GestaltInvite {
-  if (gestaltInviteNotificationValidate(data)) {
-    return data as GestaltInvite;
-  } else {
-    throw new notificationsErrors.ErrorNotificationsGestaltInviteInvalid();
+function assertGestaltInvite(gestaltInvite: unknown): asserts gestaltInvite is GestaltInvite {
+  if (!utils.isObject(gestaltInvite)) {
+    throw new validationErrors.ErrorParse(
+      'must be POJO',
+    );
   }
+  if (gestaltInvite['type'] !== 'GestaltInvite')
+    throw new validationErrors.ErrorParse('`type` property must be `GestaltInvite`');
 }
 
 /**
  * JSON schema validator for a VaultShare notification's data field
  */
-function validateVaultShareNotification(
-  data: Record<string, unknown>,
-): VaultShare {
-  if (vaultShareNotificationValidate(data)) {
-    return data as VaultShare;
-  } else {
-    throw new notificationsErrors.ErrorNotificationsVaultShareInvalid();
+function assertVaultShare(vaultShare: unknown): asserts vaultShare is VaultShare {
+  if (!utils.isObject(vaultShare)) {
+    throw new validationErrors.ErrorParse(
+      'must be POJO',
+    );
+  }
+  if (vaultShare['type'] !== 'VaultShare')
+    throw new validationErrors.ErrorParse('`type` property must be `VaultShare`');
+  if (
+    vaultShare['vaultId'] == null ||
+    ids.decodeVaultId(vaultShare['vaultId']) == null
+  ) {
+    throw new validationErrors.ErrorParse(
+      '`vaultId` property must be an encoded vault ID',
+    );
+  }
+  if (typeof vaultShare['vaultName'] !== 'string') {
+    throw new validationErrors.ErrorParse(
+      '`vaultName` property must be a string'
+    );
+  }
+  if (
+    vaultShare['actions'] !== null &&
+    !utils.isObject(vaultShare['actions'])
+  ) {
+    throw new validationErrors.ErrorParse(
+      '`actions` property must be a POJO'
+    );
+  }
+  for (const action of vaultShare['actions']) {
+    if (!(action in vaultActions))
+      throw new validationErrors.ErrorParse(
+        '`actions` property must contain valid actions'
+      );
   }
 }
 
 export {
   createNotificationIdGenerator,
-  signNotification,
+  generateNotification,
   verifyAndDecodeNotif,
   constructGestaltInviteMessage,
   constructVaultShareMessage,
-  validateNotification,
-  validateGeneralNotification,
-  validateGestaltInviteNotification,
-  validateVaultShareNotification,
+  assertNotification,
+  parseNotification,
+  assertGeneral,
+  assertGestaltInvite,
+  assertVaultShare,
 };

@@ -343,6 +343,7 @@ class PolykeyAgent {
           nodeGraph,
           nodeConnectionManager,
           taskManager,
+          gestaltGraph,
           logger: logger.getChild(NodeManager.name),
         });
       await nodeManager.start();

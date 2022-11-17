@@ -46,6 +46,7 @@ import identitiesProvidersList from './identitiesProvidersList';
 import identitiesTokenDelete from './identitiesTokenDelete';
 import identitiesTokenGet from './identitiesTokenGet';
 import identitiesTokenPut from './identitiesTokenPut';
+import identitiesInvite from './identitiesInvite';
 import keysCertsChainGet from './keysCertsChainGet';
 import keysCertsGet from './keysCertsGet';
 import keysDecrypt from './keysDecrypt';
@@ -158,6 +159,7 @@ function createService({
     identitiesTokenDelete: identitiesTokenDelete(container),
     identitiesTokenGet: identitiesTokenGet(container),
     identitiesTokenPut: identitiesTokenPut(container),
+    identitiesInvite: identitiesInvite(container),
     keysCertsChainGet: keysCertsChainGet(container),
     keysCertsGet: keysCertsGet(container),
     keysDecrypt: keysDecrypt(container),

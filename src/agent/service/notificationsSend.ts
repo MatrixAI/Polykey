@@ -8,14 +8,18 @@ import * as notificationsUtils from '../../notifications/utils';
 import * as notificationsErrors from '../../notifications/errors';
 import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 import * as agentUtils from '../utils';
+import { SignedNotification } from '../../notifications/types';
+import KeyRing from '../../keys/KeyRing';
 
 function notificationsSend({
   notificationsManager,
   db,
+  keyRing,
   logger,
 }: {
   notificationsManager: NotificationsManager;
   db: DB;
+  keyRing: KeyRing;
   logger: Logger;
 }) {
   return async (
@@ -26,8 +30,8 @@ function notificationsSend({
     callback: grpc.sendUnaryData<utilsPB.EmptyMessage>,
   ): Promise<void> => {
     try {
-      const jwt = call.request.getContent();
-      const notification = await notificationsUtils.verifyAndDecodeNotif(jwt);
+      const signedNotification = call.request.getContent() as SignedNotification;
+      const notification = await notificationsUtils.verifyAndDecodeNotif(signedNotification, keyRing.getNodeId());
       await db.withTransactionF((tran) =>
         notificationsManager.receiveNotification(notification, tran),
       );

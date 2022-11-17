@@ -75,6 +75,7 @@ service ClientService {
   rpc IdentitiesInfoGet(polykey.v1.identities.ProviderSearch) returns (stream polykey.v1.identities.Info);
   rpc IdentitiesInfoConnectedGet(polykey.v1.identities.ProviderSearch) returns (stream polykey.v1.identities.Info);
   rpc IdentitiesClaim(polykey.v1.identities.Provider) returns (polykey.v1.identities.Claim);
+  rpc IdentitiesInvite(polykey.v1.nodes.Claim) returns (polykey.v1.utils.StatusMessage);
 
   // Gestalts
   rpc GestaltsGestaltList(polykey.v1.utils.EmptyMessage) returns (stream polykey.v1.gestalts.Gestalt);

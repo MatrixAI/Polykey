@@ -186,6 +186,7 @@ class NodeManager {
     nodeConnectionManager,
     nodeGraph,
     taskManager,
+    gestaltGraph,
     refreshBucketDelay = 3600000, // 1 hour in milliseconds
     refreshBucketDelayJitter = 0.5, // Multiple of refreshBucketDelay to jitter by
     retrySeedConnectionsDelay = 120000, // 2 minuets
@@ -197,6 +198,7 @@ class NodeManager {
     nodeConnectionManager: NodeConnectionManager;
     nodeGraph: NodeGraph;
     taskManager: TaskManager;
+    gestaltGraph: GestaltGraph;
     refreshBucketDelay?: number;
     refreshBucketDelayJitter?: number;
     retrySeedConnectionsDelay?: number;
@@ -210,6 +212,7 @@ class NodeManager {
     this.nodeConnectionManager = nodeConnectionManager;
     this.nodeGraph = nodeGraph;
     this.taskManager = taskManager;
+    this.gestaltGraph = gestaltGraph;
     this.refreshBucketDelay = refreshBucketDelay;
     // Clamped from 0 to 1 inclusive
     this.refreshBucketDelayJitter = Math.max(
@@ -396,7 +399,6 @@ class NodeManager {
    * Call this function upon receiving a "claim node request" notification from
    * another node.
    */
-  //TODO: Should update the GestaltGraph when the claim has been created.
   public async claimNode(
     targetNodeId: NodeId,
     tran?: DBTransaction,
@@ -448,7 +450,7 @@ class NodeManager {
               if (readStatus2.done) {
                 throw new claimsErrors.ErrorEmptyStream();
               }
-              const receivedClaimRemote = readStatus.value;
+              const receivedClaimRemote = readStatus2.value;
               // We need to re-construct the token from the message
               const [,signedClaimRemote] = nodesUtils.agentClaimMessageToSignedClaim(receivedClaimRemote);
               // This is a singly signed claim,
@@ -494,7 +496,6 @@ class NodeManager {
     )
   }
 
-  //TODO: Should update the GestaltGraph when the claim has been created.
   public async handleClaimNode(
     requestingNodeId: NodeId,
     genClaims: AsyncGeneratorDuplexStream<nodesPB.AgentClaim, nodesPB.AgentClaim, ServerDuplexStream<nodesPB.AgentClaim, nodesPB.AgentClaim>>,
@@ -505,7 +506,6 @@ class NodeManager {
         this.handleClaimNode(requestingNodeId, genClaims, tran),
       )
     }
-
     const readStatus = await genClaims.read();
     // If nothing to read, end and destroy
     if (readStatus.done) {

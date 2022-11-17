@@ -62,6 +62,16 @@ class ErrorNotificationsValidationFailed<T> extends ErrorSchemaValidate<T> {
   exitCode = sysexits.USAGE;
 }
 
+class ErrorNotificationsVerificationFailed<T> extends ErrorSchemaValidate<T> {
+  static description = 'Notification was not signed by the issuer';
+  exitCode = sysexits.SOFTWARE;
+}
+
+class ErrorNotificationsInvalidDestination<T> extends ErrorSchemaValidate<T> {
+  static description = 'Notification was not intended for us';
+  exitCode = sysexits.SOFTWARE;
+}
+
 export {
   ErrorNotifications,
   ErrorNotificationsRunning,
@@ -75,4 +85,6 @@ export {
   ErrorNotificationsGestaltInviteInvalid,
   ErrorNotificationsVaultShareInvalid,
   ErrorNotificationsValidationFailed,
+  ErrorNotificationsVerificationFailed,
+  ErrorNotificationsInvalidDestination,
 };

@@ -164,12 +164,14 @@ class NotificationsManager {
     nodeId: NodeId,
     data: NotificationData,
   ): Promise<void> {
-    const notification = {
+    const notification: Notification = {
+      typ: 'notification',
       data: data,
-      senderId: nodesUtils.encodeNodeId(this.keyRing.getNodeId()),
       isRead: false,
+      iss: nodesUtils.encodeNodeId(this.keyRing.getNodeId()),
+      sub: nodesUtils.encodeNodeId(nodeId),
     };
-    const signedNotification = await notificationsUtils.signNotification(
+    const signedNotification = await notificationsUtils.generateNotification(
       notification,
       this.keyRing.keyPair,
     );
@@ -197,7 +199,7 @@ class NotificationsManager {
 
     await tran.lock(this.notificationsMessageCounterDbPath.join(''));
     const nodePerms = await this.acl.getNodePerm(
-      nodesUtils.decodeNodeId(notification.senderId)!,
+      nodesUtils.decodeNodeId(notification.iss)!,
     );
     if (nodePerms === undefined) {
       throw new notificationsErrors.ErrorNotificationsPermissionsNotFound();
@@ -293,7 +295,7 @@ class NotificationsManager {
     for (const notification of notifications) {
       if (
         notification.data.type === 'GestaltInvite' &&
-        nodesUtils.decodeNodeId(notification.senderId)!.equals(fromNode)
+        nodesUtils.decodeNodeId(notification.iss)!.equals(fromNode)
       ) {
         return notification;
       }

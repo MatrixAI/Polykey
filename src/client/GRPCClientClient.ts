@@ -1019,6 +1019,20 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   }
 
   @ready(new clientErrors.ErrorClientClientDestroyed())
+  public identitiesInvite(...args) {
+    return grpcUtils.promisifyUnaryCall<utilsPB.StatusMessage>(
+      this.client,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+        command: this.identitiesInvite.name,
+      },
+      this.client.identitiesInvite,
+    )(...args);
+  }
+
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public notificationsSend(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
       this.client,
