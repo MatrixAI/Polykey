@@ -195,28 +195,18 @@ async function client4() {
 async function* handler5(
   input: AsyncIterableIterator<Buffer>
 ): AsyncGenerator<Buffer, Buffer | undefined> {
-  // Wait there's an issue here
-  // It's not triggered yet
-  // It has to be triggered
-  // Otherwise it won't work
-  // This won't run until the first `next()` is called
-
   while (true) {
+    let value, done;
     try {
-      const { value, done } = await input.next();
-      console.log('server received', value, done);
-
-      yield Buffer.from('GOT IT');
-
-      if (done) {
-        console.log('server done');
-        break;
-      }
+      ({ value, done } = await input.next());
     } catch (e) {
-      // Suppose the connection breaks
-      // then here we would have an exception
       console.log('SERVER GOT ERROR:', e.message);
-      // We should break the loop OR or rethrow here
+      break;
+    }
+    console.log('server received', value, done);
+    yield Buffer.from('GOT IT');
+    if (done) {
+      console.log('server done');
       break;
     }
   }
@@ -225,68 +215,34 @@ async function* handler5(
 
 async function client5() {
   console.log('CLIENT 5 START');
+  // In this scenario
   async function* input() {
-    try {
-      let counter = 0;
-      while (true) {
+    while (true) {
+      await sleep(100);
+      try {
         yield Buffer.from('hello');
-        await sleep(500);
-        counter++;
-        if (counter > 10) {
-          throw new Error('CONNECTION FAILED');
-        }
+      } catch (e) {
+        yield;
+        throw e;
       }
-    } catch(e) {
-      console.log('AN ERROR');
-      // throw e;
-      throw new Error('Wrapped Error');
     }
-    return;
-
-
-    // yield Buffer.from('world');
-    // console.log('I AM HERE...');
-    // await sleep(10);
-    // yield Buffer.from('world');
-    // await sleep(10);
-    // yield Buffer.from('world');
-    // await sleep(10);
-    // yield Buffer.from('world');
-    // await sleep(10);
-    // yield Buffer.from('world');
-    // await sleep(10);
-    // yield Buffer.from('world');
   }
-
   const inputG = input();
-
-
-  const output = handler5(inputG);
-
-  try {
-    // setTimeout(() => {
-    //   void inputG.throw(new Error('Connection Failed'));
-    //   // inputG.return();
-    // }, 2000);
-
-    let done, value;
-    ({ done, value } = await output.next());
+  const output = handler5(inputG as AsyncIterableIterator<Buffer>);
+  setTimeout(() => {
+    void inputG.throw(new Error('Connection Failed'));
+  }, 250);
+  while(true) {
+    const { done, value } = await output.next();
     console.log('client received', value);
-    while(!done) {
-      ({ done, value } = await output.next());
-      console.log('client received', value);
+    if (done) {
+      break;
     }
-
-  } catch (e) {
-    console.log('IS THERE ERROR?');
   }
-
   console.log('CLIENT 5 STOP');
 }
 
-
 // Convert to `push`
-
 
 async function main() {
   // await client1();
