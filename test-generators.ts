@@ -1,3 +1,5 @@
+import { Subject } from 'rxjs';
+
 // This example demonstrates a simple handler with
 // input async generator and output async generator
 
@@ -244,12 +246,84 @@ async function client5() {
 
 // Convert to `push`
 
+// This is a push based system
+// if you don't answer it
+// let's see
+const subject = new Subject<Buffer>();
+
+subject.subscribe({
+  next: (v) => console.log('PUSH:', v)
+});
+
+async function *handler6 (
+  input: AsyncIterableIterator<Buffer>
+): AsyncGenerator<Buffer, Buffer | undefined> {
+
+  // This is "done" asynchronously, while we pull from the stream
+  // How to do this in an asynchronus way?
+  const p = (async () => {
+    while (true) {
+      const { value, done } = await input.next();
+      subject.next(value);
+      if (done) {
+        break;
+      }
+    }
+  })();
+
+  await sleep(100);
+
+  yield Buffer.from('Hello');
+  yield Buffer.from('World');
+  // The stream is FINISHED
+  // but is the function call still completing?
+  // Consider what happens if that is the case
+  // We may want the function's lifecycle to be more complete
+
+  // Await to finish this
+  // This is what allows you to capture any errors
+  // And the RPC system to throw it back up!!!
+  await p;
+
+  // This sort of means that the OUTPUT stream isn't finished
+  // UNTIL you are finishign the INPUT stream
+  // This is a bit of a problem
+  // You can also send it earlier
+  // But if there's an exception in the processing...
+
+  // WELL YEA... you'd need to keep the output stream open
+  // while you are consuming data
+  // otherwise you cannot signal that something failed
+  return;
+}
+
+async function client6() {
+  console.log('CLIENT 6 START');
+  // In this scenario
+  async function* input() {
+    yield Buffer.from('first');
+    yield Buffer.from('second');
+    return;
+  }
+  const output = handler6(input());
+  while(true) {
+    const { done, value } = await output.next();
+    console.log('client received', value);
+    if (done) {
+      break;
+    }
+  }
+  console.log('CLIENT 6 STOP');
+}
+
+
 async function main() {
   // await client1();
   // await client2();
   // await client3();
   // await client4();
-  await client5();
+  // await client5();
+  await client6();
 }
 
 void main();

@@ -121,6 +121,7 @@
     "pull-pushable": "^2.2.0",
     "readable-stream": "^3.6.0",
     "resource-counter": "^1.2.4",
+    "rxjs": "^7.5.7",
     "sodium-native": "^3.4.1",
     "stream-to-pull-stream": "^1.7.3",
     "threads": "^1.6.5",
