@@ -10,13 +10,14 @@ import type {
   NodeBucketIndex,
   NodeData,
 } from './types';
-import type { ClaimId, SignedClaim, SignedClaimEncoded, Claim } from '../claims/types';
+import type { ClaimId, SignedClaim, SignedClaimEncoded } from '../claims/types';
 import type TaskManager from '../tasks/TaskManager';
 import type GestaltGraph  from '../gestalts/GestaltGraph';
 import type { TaskHandler, TaskHandlerId, Task } from '../tasks/types';
 import type { ContextTimed } from 'contexts/types';
 import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import type { Host, Port } from '../network/types';
+import type { TokenHeaderSignatureEncoded, TokenPayloadEncoded } from '../tokens/types';
 import Logger from '@matrixai/logger';
 import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
 import { Semaphore, Lock } from '@matrixai/async-locks';
@@ -26,17 +27,15 @@ import * as nodesErrors from './errors';
 import * as nodesUtils from './utils';
 import * as tasksErrors from '../tasks/errors';
 import { timedCancellable, context } from '../contexts';
-import * as utilsPB from '../proto/js/polykey/v1/utils/utils_pb';
 import * as nodesPB from '../proto/js/polykey/v1/nodes/nodes_pb';
 import * as claimsErrors from '../claims/errors';
 import * as keysUtils from '../keys/utils';
 import { never } from '../utils/utils';
 import { decodeClaimId, encodeClaimId, parseSignedClaim } from '../claims/utils';
-import { TokenHeaderSignatureEncoded, TokenPayloadEncoded } from 'tokens/types';
-import Token from 'tokens/Token';
+import Token from '../tokens/Token';
 import { AsyncGeneratorDuplexStream } from '../grpc/types';
 import { ServerDuplexStream } from '@grpc/grpc-js';
-import { ClaimLinkNode } from 'claims/payloads/index';
+import { ClaimLinkNode } from '../claims/payloads/index';
 
 const abortEphemeralTaskReason = Symbol('abort ephemeral task reason');
 const abortSingletonTaskReason = Symbol('abort singleton task reason');

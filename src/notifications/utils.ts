@@ -8,10 +8,10 @@ import type {
 import type { NodeId, VaultId } from '../ids/types';
 import type { KeyPairLocked } from '../keys/types';
 import * as notificationsErrors from './errors';
-import { createNotificationIdGenerator, decodeVaultId } from '../ids';
+import { createNotificationIdGenerator } from '../ids';
 import * as nodesUtils from '../nodes/utils';
 import * as keysUtils from '../keys/utils';
-import Token from 'tokens/Token';
+import Token from '../tokens/Token';
 import * as validationErrors from '../validation/errors';
 import * as utils from '../utils';
 import * as ids from '../ids/index';
