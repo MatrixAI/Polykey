@@ -18,7 +18,7 @@ async function createSessionToken(
   key: Key,
   expiry?: number,
 ): Promise<SessionToken> {
-  const expiry_ = expiry != null ? Date.now() / 1000 + expiry : undefined
+  const expiry_ = expiry != null ? Math.round(Date.now() / 1000) + expiry : undefined
   const token = Token.fromPayload({
     ...payload,
     exp: expiry_,
@@ -40,9 +40,11 @@ async function verifySessionToken(
   try {
     const signedTokenEncoded = JSON.parse(token);
     const parsedToken = Token.fromEncoded(signedTokenEncoded);
-    parsedToken.verifyWithKey(key);
+    if (!parsedToken.verifyWithKey(key)) return;
+    const expiry = parsedToken.payload.exp;
+    if (expiry != null && expiry < Math.round(Date.now() / 1000) ) return;
     return parsedToken.payload;
-  } catch {
+  } catch (e) {
     return;
   }
 }

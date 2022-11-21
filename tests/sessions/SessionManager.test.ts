@@ -143,6 +143,7 @@ describe('SessionManager', () => {
       logger,
     });
     const token = await sessionManager1.createToken();
+    expect(await sessionManager1.verifyToken(token)).toBe(true);
     await sessionManager1.stop();
     const sessionManager2 = await SessionManager.createSessionManager({
       db,
