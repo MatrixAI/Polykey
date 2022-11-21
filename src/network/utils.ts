@@ -12,10 +12,8 @@ import { IPv4, IPv6, Validator } from 'ip-num';
 import * as networkErrors from './errors';
 import timedCancellable from '../contexts/functions/timedCancellable';
 import * as keysUtils from '../keys/utils';
-import * as nodesUtils from '../nodes/utils';
 import * as utils from '../utils';
 import { CertificateASN1 } from '../keys/types';
-import { keys } from '@matrixai/logger/dist/formatting';
 import { never } from '../utils';
 
 const pingBuffer = serializeNetworkMessage({
@@ -322,36 +320,10 @@ function verifyServerCertificateChain(
         },
       );
     }
-    // TODO: re-enable this and fix it.
-    // const commonName = cert.subject.getField({ type: '2.5.4.3' });
-    // if (commonName == null) {
-    //   throw new networkErrors.ErrorCertChainNameInvalid(
-    //     'Chain certificate common name attribute is missing',
-    //     {
-    //       data: {
-    //         cert,
-    //         certIndex,
-    //       },
-    //     },
-    //   );
-    // }
-    // const certNodeId = keysUtils.publicKeyToNodeId(cert.publicKey as PublicKey);
-    // if (commonName.value !== nodesUtils.encodeNodeId(certNodeId)) {
-    //   throw new networkErrors.ErrorCertChainKeyInvalid(
-    //     'Chain certificate public key does not generate its node id',
-    //     {
-    //       data: {
-    //         cert,
-    //         certIndex,
-    //         nodeId: certNodeId,
-    //         commonName: commonName.value,
-    //       },
-    //     },
-    //   );
-    // }
-    if (!keysUtils.certNodeSigned(cert)) {
-      throw new networkErrors.ErrorCertChainSignatureInvalid(
-        'Chain certificate does not have a valid node-signature',
+    const certNodeId = keysUtils.certNodeId(cert);
+    if (certNodeId == null) {
+      throw new networkErrors.ErrorCertChainNameInvalid(
+        'Chain certificate common name attribute is missing',
         {
           data: {
             cert,
@@ -360,8 +332,33 @@ function verifyServerCertificateChain(
         },
       );
     }
+    const certPublicKey = keysUtils.certPublicKey(cert);
+    if (certPublicKey == null) {
+      throw new networkErrors.ErrorCertChainKeyInvalid(
+        'Chain certificate public key is missing',
+        {
+          data: {
+            cert,
+            certIndex,
+          },
+        },
+      );
+    }
+    if (!keysUtils.certNodeSigned(cert)) {
+      throw new networkErrors.ErrorCertChainSignatureInvalid(
+        'Chain certificate does not have a valid node-signature',
+        {
+          data: {
+            cert,
+            certIndex,
+            nodeId: keysUtils.publicKeyToNodeId(certPublicKey),
+            commonName: certNodeId,
+          },
+        },
+      );
+    }
     for (const nodeId of nodeIds) {
-      if (nodeId.equals(keysUtils.certNodeId(cert)!)) {
+      if (certNodeId.equals(nodeId)) {
         // Found the certificate claiming the nodeId
         certClaim = cert;
         certClaimIndex = certIndex;
@@ -433,33 +430,30 @@ function verifyClientCertificateChain(certChain: Array<Certificate>): void {
         },
       );
     }
-    // FIXME: re-enable and fix this
-    // const commonName = cert.subject.getField({ type: '2.5.4.3' });
-    // if (commonName == null) {
-    //   throw new networkErrors.ErrorCertChainNameInvalid(
-    //     'Chain certificate common name attribute is missing',
-    //     {
-    //       data: {
-    //         cert,
-    //         certIndex,
-    //       },
-    //     },
-    //   );
-    // }
-    // const certNodeId = keysUtils.publicKeyToNodeId(cert.publicKey as PublicKey);
-    // if (commonName.value !== nodesUtils.encodeNodeId(certNodeId)) {
-    //   throw new networkErrors.ErrorCertChainKeyInvalid(
-    //     'Chain certificate public key does not generate its node id',
-    //     {
-    //       data: {
-    //         cert,
-    //         certIndex,
-    //         nodeId: certNodeId,
-    //         commonName: commonName.value,
-    //       },
-    //     },
-    //   );
-    // }
+    const certNodeId = keysUtils.certNodeId(cert);
+    if (certNodeId == null) {
+      throw new networkErrors.ErrorCertChainNameInvalid(
+        'Chain certificate common name attribute is missing',
+        {
+          data: {
+            cert,
+            certIndex,
+          },
+        },
+      );
+    }
+    const certPublicKey = keysUtils.certPublicKey(cert);
+    if (certPublicKey == null) {
+      throw new networkErrors.ErrorCertChainKeyInvalid(
+        'Chain certificate public key is missing',
+        {
+          data: {
+            cert,
+            certIndex,
+          },
+        },
+      );
+    }
     if (!keysUtils.certNodeSigned(cert)) {
       throw new networkErrors.ErrorCertChainSignatureInvalid(
         'Chain certificate does not have a valid node-signature',
@@ -467,6 +461,8 @@ function verifyClientCertificateChain(certChain: Array<Certificate>): void {
           data: {
             cert,
             certIndex,
+            nodeId: keysUtils.publicKeyToNodeId(certPublicKey),
+            commonName: certNodeId,
           },
         },
       );
