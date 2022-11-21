@@ -48,7 +48,7 @@ function gestaltsActionsUnsetByNode({
           },
         );
       await db.withTransactionF((tran) =>
-        gestaltGraph.unsetGestaltActions(['node', nodeId], action, tran),
+        gestaltGraph.unsetGestaltAction(['node', nodeId], action, tran),
       );
       callback(null, response);
       return;

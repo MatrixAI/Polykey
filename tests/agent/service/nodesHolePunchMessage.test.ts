@@ -53,7 +53,7 @@ describe('nodesHolePunchMessage', () => {
           ({
             remoteHost: '127.0.0.1' as Host,
             remotePort: 55555 as Port,
-            remoteNodeId: pkAgent.keyManager.getNodeId(),
+            remoteNodeId: pkAgent.keyRing.getNodeId(),
           } as ConnectionInfo),
         logger,
       }),
@@ -75,7 +75,6 @@ describe('nodesHolePunchMessage', () => {
     await grpcClient.destroy();
     await grpcServer.stop();
     await pkAgent.stop();
-    await pkAgent.destroy();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,

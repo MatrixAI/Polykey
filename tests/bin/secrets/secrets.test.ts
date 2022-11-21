@@ -42,7 +42,6 @@ describe('CLI secrets', () => {
   });
   afterEach(async () => {
     await polykeyAgent.stop();
-    await polykeyAgent.destroy();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,

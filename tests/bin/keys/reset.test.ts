@@ -7,7 +7,7 @@ import * as keysUtils from '@/keys/utils';
 import * as testUtils from '../../utils';
 
 describe('reset', () => {
-  const logger = new Logger('reset test', LogLevel.WARN, [new StreamHandler()]);
+  const logger = new Logger('reset test', LogLevel.INFO, [new StreamHandler()]);
   const password = 'helloworld';
   let dataDir: string;
   let nodePath: string;
@@ -87,6 +87,7 @@ describe('reset', () => {
       ));
       expect(exitCode).toBe(0);
       // Get new keypair and nodeId and compare against old
+      // FIXME, this is still on the old password for some reason
       ({ exitCode, stdout } = await testUtils.pkStdio(
         ['keys', 'keypair', '--format', 'json'],
         {

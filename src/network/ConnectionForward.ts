@@ -215,7 +215,7 @@ class ConnectionForward extends Connection {
     }
     const serverCertChain = networkUtils.getCertificateChain(this.tlsSocket);
     try {
-      this.nodeId_ = networkUtils.verifyServerCertificateChain(
+      this.nodeId_ = await networkUtils.verifyServerCertificateChain(
         this.nodeIds,
         serverCertChain,
       );

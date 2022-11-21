@@ -6,9 +6,9 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
 import { sysexits } from '@/utils';
 import * as identitiesUtils from '@/identities/utils';
+import * as keysUtils from '@/keys/utils/index';
 import TestProvider from '../../identities/TestProvider';
 import * as testUtils from '../../utils';
-import * as keysUtils from '@/keys/utils/index';
 
 describe('search', () => {
   const logger = new Logger('search test', LogLevel.WARN, [

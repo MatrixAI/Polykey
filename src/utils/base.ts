@@ -30,11 +30,6 @@ function fromMultibase(s: string): Buffer | undefined {
   return bufferWrap(data);
 }
 
-export {
-  toMultibase,
-  fromMultibase,
-};
+export { toMultibase, fromMultibase };
 
-export type {
-  MultibaseFormats
-};
+export type { MultibaseFormats };

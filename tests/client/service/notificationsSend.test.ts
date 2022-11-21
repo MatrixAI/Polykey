@@ -1,5 +1,6 @@
 import type { Host, Port } from '@/network/types';
 import type { SignedNotification } from '@/notifications/types';
+import type GestaltGraph from '@/gestalts/GestaltGraph';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -25,7 +26,6 @@ import * as nodesUtils from '@/nodes/utils';
 import * as notificationsUtils from '@/notifications/utils';
 import * as clientUtils from '@/client/utils';
 import * as keysUtils from '@/keys/utils/index';
-import { CertificatePEMChain } from '@/keys/types';
 import * as testsUtils from '../../utils/index';
 
 describe('notificationsSend', () => {
@@ -39,7 +39,7 @@ describe('notificationsSend', () => {
   let mockedSendNotification: jest.SpyInstance;
   beforeAll(async () => {
     mockedSignNotification = jest
-      .spyOn(notificationsUtils, 'signNotification')
+      .spyOn(notificationsUtils, 'generateNotification')
       .mockImplementation(async () => {
         return 'signedNotification' as SignedNotification;
       });
@@ -125,6 +125,7 @@ describe('notificationsSend', () => {
       keyRing,
       nodeConnectionManager,
       nodeGraph,
+      gestaltGraph: {} as GestaltGraph,
       sigchain,
       taskManager,
       logger,
@@ -202,11 +203,13 @@ describe('notificationsSend', () => {
     ).toEqual(receiverNodeIdEncoded);
     // Check notification content
     expect(mockedSignNotification.mock.calls[0][0]).toEqual({
+      typ: 'notification',
       data: {
         type: 'General',
         message: 'test',
       },
-      senderId: nodesUtils.encodeNodeId(keyRing.getNodeId()),
+      iss: nodesUtils.encodeNodeId(keyRing.getNodeId()),
+      sub: receiverNodeIdEncoded,
       isRead: false,
     });
   });

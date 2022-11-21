@@ -31,16 +31,14 @@ describe('keys/utils/x509', () => {
         subjectKeyPair,
         issuerPrivateKey: issuerKeyPair.privateKey,
         duration,
-        now
+        now,
       });
       expect(cert.notBefore.getTime()).toBe(nowS.getTime());
       expect(cert.notAfter.getTime()).toBe(nowS.getTime() + duration * 1000);
       // Certificate is equal to itself
       expect(x509.certEqual(cert, cert)).toBe(true);
       // Certificate public key is equal to the subject public key
-      expect(x509.certPublicKey(cert)).toStrictEqual(
-        subjectKeyPair.publicKey,
-      );
+      expect(x509.certPublicKey(cert)).toStrictEqual(subjectKeyPair.publicKey);
       // Certificate node ID is equal to the subject public key node ID
       expect(x509.certNodeId(cert)).toStrictEqual(
         asymmetric.publicKeyToNodeId(subjectKeyPair.publicKey),
@@ -48,9 +46,7 @@ describe('keys/utils/x509', () => {
       // The cert is not self-issued
       expect(x509.certIssuedBy(cert, cert)).toBe(false);
       // The certificate is signed by the issuer
-      expect(await x509.certSignedBy(cert, issuerKeyPair.publicKey)).toBe(
-        true,
-      );
+      expect(await x509.certSignedBy(cert, issuerKeyPair.publicKey)).toBe(true);
       // The certificate has a node signature and it is valid
       expect(await x509.certNodeSigned(cert)).toBe(true);
       // It is not expired now

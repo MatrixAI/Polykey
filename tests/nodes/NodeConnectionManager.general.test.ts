@@ -176,9 +176,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
 
   afterAll(async () => {
     await remoteNode1.stop();
-    await remoteNode1.destroy();
     await remoteNode2.stop();
-    await remoteNode2.destroy();
     await fs.promises.rm(dataDir2, { force: true, recursive: true });
   });
 
@@ -245,11 +243,8 @@ describe(`${NodeConnectionManager.name} general test`, () => {
 
   afterEach(async () => {
     await nodeGraph.stop();
-    await nodeGraph.destroy();
     await db.stop();
-    await db.destroy();
     await keyRing.stop();
-    await keyRing.destroy();
     await proxy.stop();
   });
 
@@ -469,7 +464,6 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       expect(closest).toEqual(addedClosestNodes);
     } finally {
       await serverPKAgent?.stop();
-      await serverPKAgent?.destroy();
       await nodeConnectionManager?.stop();
     }
   });

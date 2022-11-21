@@ -1,6 +1,7 @@
 import type { DB, DBTransaction, LevelPath } from '@matrixai/db';
 import type { SessionToken } from './types';
 import type KeyRing from '../keys/KeyRing';
+import type { Key } from '../keys/types';
 import Logger from '@matrixai/logger';
 import {
   CreateDestroyStartStop,
@@ -11,7 +12,6 @@ import * as sessionsUtils from './utils';
 import * as sessionsErrors from './errors';
 import * as keysUtils from '../keys/utils';
 import * as nodesUtils from '../nodes/utils';
-import { Key } from '../keys/types';
 
 interface SessionManager extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
@@ -115,7 +115,10 @@ class SessionManager {
       iss: nodesUtils.encodeNodeId(this.keyRing.getNodeId()),
       sub: nodesUtils.encodeNodeId(this.keyRing.getNodeId()),
     };
-    const key = await tranOrDb.get([...this.sessionsDbPath, 'key'], true) as Key;
+    const key = (await tranOrDb.get(
+      [...this.sessionsDbPath, 'key'],
+      true,
+    )) as Key;
     return await sessionsUtils.createSessionToken(payload, key!, expiry);
   }
 
@@ -125,7 +128,10 @@ class SessionManager {
     tran?: DBTransaction,
   ): Promise<boolean> {
     const tranOrDb = tran ?? this.db;
-    const key = await tranOrDb.get([...this.sessionsDbPath, 'key'], true) as Key;
+    const key = (await tranOrDb.get(
+      [...this.sessionsDbPath, 'key'],
+      true,
+    )) as Key;
     const result = await sessionsUtils.verifySessionToken(token, key!);
     return result !== undefined;
   }

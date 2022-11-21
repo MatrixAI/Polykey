@@ -1,5 +1,12 @@
 import type { NodeBucket, NodeBucketIndex, NodeId } from './types';
 import type { KeyPath } from '@matrixai/db';
+import type { ClaimId } from '../ids';
+import type { SignedClaim, SignedClaimEncoded, Claim } from '../claims/types';
+import type {
+  TokenPayloadEncoded,
+  TokenHeaderSignatureEncoded,
+  SignedToken,
+} from '../tokens/types';
 import { utils as dbUtils } from '@matrixai/db';
 import { IdInternal } from '@matrixai/id';
 import lexi from 'lexicographic-integer';
@@ -7,11 +14,9 @@ import * as nodesErrors from './errors';
 import * as keysUtils from '../keys/utils';
 import * as grpcErrors from '../grpc/errors';
 import * as agentErrors from '../agent/errors';
-import { encodeNodeId, decodeNodeId, ClaimId, decodeClaimId } from '../ids';
+import { encodeNodeId, decodeNodeId, decodeClaimId } from '../ids';
 import { bytes2BigInt } from '../utils';
 import * as nodesPB from '../proto/js/polykey/v1/nodes/nodes_pb';
-import { SignedClaim, SignedClaimEncoded, Claim } from '../claims/types';
-import { TokenPayloadEncoded, TokenHeaderSignatureEncoded, SignedToken } from '../tokens/types';
 import { parseSignedClaim } from '../claims/utils';
 import * as claimsUtils from '../claims/utils';
 
@@ -322,10 +327,14 @@ function refreshBucketsDelayJitter(
   return (Math.random() - 0.5) * delay * jitterMultiplier;
 }
 
-function agentClaimMessageToSignedClaim(receivedClaim: nodesPB.AgentClaim): [ClaimId | undefined, SignedClaim] {
-  const claimId: ClaimId | undefined = decodeClaimId(receivedClaim.getClaimId());
+function agentClaimMessageToSignedClaim(
+  receivedClaim: nodesPB.AgentClaim,
+): [ClaimId | undefined, SignedClaim] {
+  const claimId: ClaimId | undefined = decodeClaimId(
+    receivedClaim.getClaimId(),
+  );
   const payload = receivedClaim.getPayload() as TokenPayloadEncoded;
-  const signatures = receivedClaim.getSignaturesList().map(item => {
+  const signatures = receivedClaim.getSignaturesList().map((item) => {
     return {
       protected: item.getProtected(),
       signature: item.getSignature(),
@@ -340,10 +349,11 @@ function agentClaimMessageToSignedClaim(receivedClaim: nodesPB.AgentClaim): [Cla
 }
 
 function signedClaimToAgentClaimMessage(halfSignedClaim: SignedToken<Claim>) {
-  const halfSignedClaimEncoded = claimsUtils.generateSignedClaim(halfSignedClaim);
+  const halfSignedClaimEncoded =
+    claimsUtils.generateSignedClaim(halfSignedClaim);
   const agentClaimMessage = new nodesPB.AgentClaim();
   agentClaimMessage.setPayload(halfSignedClaimEncoded.payload);
-  const signatureMessages = halfSignedClaimEncoded.signatures.map(item => {
+  const signatureMessages = halfSignedClaimEncoded.signatures.map((item) => {
     return new nodesPB.Signature()
       .setSignature(item.signature)
       .setProtected(item.protected);

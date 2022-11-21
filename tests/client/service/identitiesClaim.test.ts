@@ -1,8 +1,9 @@
-import type { ClaimLinkIdentity } from '@/claims/types';
-import type { NodeIdEncoded } from '@/ids/types';
 import type { IdentityId, ProviderId } from '@/identities/types';
 import type { Host, Port } from '@/network/types';
 import type NodeManager from '@/nodes/NodeManager';
+import type { ClaimLinkIdentity } from '@/claims/payloads/index';
+import type { Claim } from '@/claims/types';
+import type GestaltGraph from 'gestalts/GestaltGraph';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -25,10 +26,11 @@ import * as clientUtils from '@/client/utils/utils';
 import * as claimsUtils from '@/claims/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as validationErrors from '@/validation/errors';
+import * as keysUtils from '@/keys/utils/index';
+import Token from '@/tokens/Token';
+import { encodeProviderIdentityId } from '@/identities/utils';
 import TestProvider from '../../identities/TestProvider';
 import * as testUtils from '../../utils';
-import * as keysUtils from '@/keys/utils/index';
-import { CertificatePEMChain } from '@/keys/types';
 import * as testsUtils from '../../utils/index';
 
 describe('identitiesClaim', () => {
@@ -45,29 +47,39 @@ describe('identitiesClaim', () => {
       accessToken: 'abc123',
     },
   };
-  const claimData: ClaimLinkIdentity = {
-    type: 'identity',
-    node: 'vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg' as NodeIdEncoded,
-    provider: testToken.providerId,
-    identity: testToken.identityId,
-  };
-  const claimId = claimsUtils.createClaimIdGenerator(
-    nodesUtils.decodeNodeId(claimData.node)!,
-  )();
+  const issNodeKeypair = keysUtils.generateKeyPair();
+  const issNodeId = keysUtils.publicKeyToNodeId(issNodeKeypair.publicKey);
+  const claimId = claimsUtils.createClaimIdGenerator(issNodeId)();
   let mockedAddClaim: jest.SpyInstance;
   const dummyNodeManager = { setNode: jest.fn() } as unknown as NodeManager;
   beforeAll(async () => {
-    const privateKey = keysUtils.generateKeyPair().privateKey;
-    const claim = await claimsUtils.createClaim({
-      privateKey: privateKey,
-      hPrev: null,
+    const dummyClaim: ClaimLinkIdentity = {
+      typ: 'ClaimLinkIdentity',
+      iss: nodesUtils.encodeNodeId(issNodeId),
+      sub: encodeProviderIdentityId([
+        testToken.providerId,
+        testToken.identityId,
+      ]),
+      jti: claimsUtils.encodeClaimId(claimId),
+      iat: 0,
+      nbf: 0,
+      exp: 0,
+      aud: '',
       seq: 0,
-      data: claimData,
-      kid: claimData.node,
-    });
+      prevClaimId: null,
+      prevDigest: null,
+    };
+    const token = Token.fromPayload(dummyClaim);
+    token.signWithPrivateKey(issNodeKeypair);
+    const signedClaim = token.toSigned();
     mockedAddClaim = jest
       .spyOn(Sigchain.prototype, 'addClaim')
-      .mockResolvedValue([claimId, claim]);
+      .mockImplementation(async (payload, _, func) => {
+        const token = Token.fromPayload(payload);
+        // We need to call the function to resolve a promise in the code
+        func != null && (await func(token as unknown as Token<Claim>));
+        return [claimId, signedClaim];
+      });
   });
   afterAll(async () => {
     mockedAddClaim.mockRestore();
@@ -104,8 +116,18 @@ describe('identitiesClaim', () => {
       dbPath,
       logger,
     });
+    sigchain = await Sigchain.createSigchain({
+      db,
+      keyRing,
+      logger,
+    });
     identitiesManager = await IdentitiesManager.createIdentitiesManager({
       db,
+      gestaltGraph: {
+        linkNodeAndIdentity: jest.fn(),
+      } as unknown as GestaltGraph,
+      keyRing: keyRing,
+      sigchain: sigchain,
       logger,
     });
     testProvider = new TestProvider();
@@ -118,11 +140,6 @@ describe('identitiesClaim', () => {
       serverHost: '127.0.0.1' as Host,
       serverPort: 0 as Port,
       tlsConfig: await testsUtils.createTLSConfig(keyRing.keyPair),
-    });
-    sigchain = await Sigchain.createSigchain({
-      db,
-      keyRing,
-      logger,
     });
     nodeGraph = await NodeGraph.createNodeGraph({
       db,
@@ -148,10 +165,7 @@ describe('identitiesClaim', () => {
       identitiesClaim: identitiesClaim({
         authenticate,
         identitiesManager,
-        sigchain,
-        keyRing,
         logger,
-        db,
       }),
     };
     grpcServer = new GRPCServer({ logger });

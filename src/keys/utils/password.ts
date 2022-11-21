@@ -78,7 +78,7 @@ function hashPassword(
   salt ??= getRandomBytes(
     sodium.crypto_pwhash_SALTBYTES,
     undefined,
-    false
+    false,
   ) as PasswordSalt;
   sodium.crypto_pwhash(
     hash,

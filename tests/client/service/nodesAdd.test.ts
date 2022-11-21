@@ -1,4 +1,5 @@
 import type { Host, Port } from '@/network/types';
+import type GestaltGraph from '@/gestalts/GestaltGraph';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -21,8 +22,8 @@ import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as nodesUtils from '@/nodes/utils';
 import * as clientUtils from '@/client/utils/utils';
 import * as validationErrors from '@/validation/errors';
-import * as testsUtils from '../../utils';
 import * as keysUtils from '@/keys/utils/index';
+import * as testsUtils from '../../utils';
 
 describe('nodesAdd', () => {
   const logger = new Logger('nodesAdd test', LogLevel.WARN, [
@@ -102,6 +103,7 @@ describe('nodesAdd', () => {
       nodeGraph,
       sigchain,
       taskManager,
+      gestaltGraph: {} as GestaltGraph,
       logger,
     });
     await nodeManager.start();

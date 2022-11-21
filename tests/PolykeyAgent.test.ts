@@ -41,13 +41,13 @@ describe('PolykeyAgent', () => {
         strictMemoryLock: false,
       },
     });
-    await expect(pkAgent.destroy()).rejects.toThrow(
+    await expect(pkAgent.destroy(password)).rejects.toThrow(
       errors.ErrorPolykeyAgentRunning,
     );
     // Should be a noop
     await pkAgent.start({ password });
     await pkAgent.stop();
-    await pkAgent.destroy();
+    await pkAgent.destroy(password);
     await expect(pkAgent.start({ password })).rejects.toThrow(
       errors.ErrorPolykeyAgentDestroyed,
     );
@@ -83,7 +83,7 @@ describe('PolykeyAgent', () => {
     expect(stateContents).toContain(config.defaults.keysBase);
     expect(stateContents).toContain(config.defaults.dbBase);
     expect(stateContents).toContain(config.defaults.vaultsBase);
-    await pkAgent.destroy();
+    await pkAgent.destroy(password);
     nodePathContents = await fs.promises.readdir(nodePath);
     // The status will be the only file left over
     expect(nodePathContents).toHaveLength(1);
@@ -119,7 +119,7 @@ describe('PolykeyAgent', () => {
       pkAgent.start({ password: 'wrong password' }),
     ).rejects.toThrowError(errors.ErrorKeyPairParse);
     expect(await status.readStatus()).toMatchObject({ status: 'DEAD' });
-    await pkAgent.destroy();
+    await pkAgent.destroy(password);
     expect(await status.readStatus()).toMatchObject({ status: 'DEAD' });
   });
   test('schema state version is maintained after start and stop', async () => {
@@ -214,7 +214,7 @@ describe('PolykeyAgent', () => {
       await expect(prom.p).resolves.toBeDefined();
     } finally {
       await pkAgent?.stop();
-      await pkAgent?.destroy();
+      await pkAgent?.destroy(password);
     }
   });
   test('resetRootKeyPair change event propagates', async () => {
@@ -243,7 +243,7 @@ describe('PolykeyAgent', () => {
       await expect(prom.p).resolves.toBeDefined();
     } finally {
       await pkAgent?.stop();
-      await pkAgent?.destroy();
+      await pkAgent?.destroy(password);
     }
   });
   test('resetRootCert change event propagates', async () => {
@@ -272,7 +272,7 @@ describe('PolykeyAgent', () => {
       await expect(prom.p).resolves.toBeDefined();
     } finally {
       await pkAgent?.stop();
-      await pkAgent?.destroy();
+      await pkAgent?.destroy(password);
     }
   });
 });

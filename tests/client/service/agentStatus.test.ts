@@ -4,9 +4,10 @@ import path from 'path';
 import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { Metadata } from '@grpc/grpc-js';
+import { DB } from '@matrixai/db';
 import KeyRing from '@/keys/KeyRing';
 import TaskManager from '@/tasks/TaskManager';
-import CertManager  from '@/keys/CertManager';
+import CertManager from '@/keys/CertManager';
 import Proxy from '@/network/Proxy';
 import GRPCServer from '@/grpc/GRPCServer';
 import GRPCClientClient from '@/client/GRPCClientClient';
@@ -15,9 +16,8 @@ import { ClientServiceService } from '@/proto/js/polykey/v1/client_service_grpc_
 import * as agentPB from '@/proto/js/polykey/v1/agent/agent_pb';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as clientUtils from '@/client/utils/utils';
-import { DB } from '@matrixai/db';
-import * as testsUtils from '../../utils';
 import * as keysUtils from '@/keys/utils/index';
+import * as testsUtils from '../../utils';
 
 describe('agentStatus', () => {
   const logger = new Logger('agentStatus test', LogLevel.WARN, [
@@ -46,7 +46,7 @@ describe('agentStatus', () => {
     db = await DB.createDB({
       dbPath,
       logger,
-    })
+    });
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
@@ -61,7 +61,7 @@ describe('agentStatus', () => {
       keyRing,
       taskManager,
       logger,
-    })
+    });
     grpcServerClient = new GRPCServer({ logger });
     await grpcServerClient.start({
       services: [],

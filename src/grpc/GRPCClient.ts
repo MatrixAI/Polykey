@@ -15,7 +15,6 @@ import Logger from '@matrixai/logger';
 import * as grpc from '@grpc/grpc-js';
 import * as grpcUtils from './utils';
 import * as grpcErrors from './errors';
-import * as keysUtils from '../keys/utils';
 import * as networkUtils from '../network/utils';
 import * as networkErrors from '../network/errors';
 import * as nodeUtils from '../nodes/utils';
@@ -152,7 +151,10 @@ abstract class GRPCClient<T extends Client = Client> {
       const socket = session.socket as TLSSocket;
       serverCertChain = networkUtils.getCertificateChain(socket);
       try {
-        networkUtils.verifyServerCertificateChain([nodeId], serverCertChain);
+        await networkUtils.verifyServerCertificateChain(
+          [nodeId],
+          serverCertChain,
+        );
       } catch (e) {
         const e_ = e;
         if (e instanceof networkErrors.ErrorCertChain) {

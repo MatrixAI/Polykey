@@ -10,8 +10,8 @@ async function main() {
     b.add('generate root asymmetric keypair', () => {
       generate.generateKeyPair();
     }),
-    b.add('generate deterministic root keypair', () => {
-      generate.generateDeterministicKeyPair(code);
+    b.add('generate deterministic root keypair', async () => {
+      await generate.generateDeterministicKeyPair(code);
     }),
     b.add('generate 256 bit symmetric key', () => {
       generate.generateKey();

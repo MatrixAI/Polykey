@@ -18,7 +18,6 @@ import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as clientUtils from '@/client/utils/utils';
 import * as keysUtils from '@/keys/utils';
 import { NodeManager } from '@/nodes';
-import { CertificatePEMChain } from '../../../src/keys/types';
 
 describe('keysKeyPairRenew', () => {
   const logger = new Logger('keysKeyPairRenew test', LogLevel.WARN, [

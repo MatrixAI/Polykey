@@ -33,6 +33,8 @@ class CommandReset extends CommandPolykey {
         this.fs,
         true,
       );
+      this.logger.error('ASDASDASD');
+      this.logger.error(passwordNew);
       let pkClient: PolykeyClient;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();

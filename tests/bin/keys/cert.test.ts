@@ -45,7 +45,7 @@ describe('cert', () => {
       },
     ));
     expect(exitCode).toBe(0);
-    const certStatus = JSON.parse(stdout).rootCertPem;
+    const certStatus = JSON.parse(stdout).certChainPEM;
     expect(certCommand).toBe(certStatus);
   });
 });

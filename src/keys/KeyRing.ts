@@ -43,25 +43,27 @@ class KeyRing {
     logger = new Logger(this.name),
     ...startOptions
   }: {
-      keysPath: string;
-      password: string;
-      workerManager?: PolykeyWorkerManagerInterface;
-      passwordOpsLimit?: PasswordOpsLimit;
-      passwordMemLimit?: PasswordMemLimit;
-      strictMemoryLock?: boolean;
-      fs?: FileSystem;
-      logger?: Logger;
-      fresh?: boolean;
-    } & (
-      { } | {
-        recoveryCode: RecoveryCode
-      } | {
+    keysPath: string;
+    password: string;
+    workerManager?: PolykeyWorkerManagerInterface;
+    passwordOpsLimit?: PasswordOpsLimit;
+    passwordMemLimit?: PasswordMemLimit;
+    strictMemoryLock?: boolean;
+    fs?: FileSystem;
+    logger?: Logger;
+    fresh?: boolean;
+  } & ( // eslint-disable-next-line @typescript-eslint/ban-types
+    | {}
+    | {
+        recoveryCode: RecoveryCode;
+      }
+    | {
         privateKey: PrivateKey;
-      } | {
+      }
+    | {
         privateKeyPath: string;
       }
-    )
-  ): Promise<KeyRing> {
+  )): Promise<KeyRing> {
     logger.info(`Creating ${this.name}`);
     logger.info(`Setting keys path to ${keysPath}`);
     const keyRing = new this({
@@ -90,8 +92,8 @@ class KeyRing {
   protected _keyPair?: KeyPairLocked;
   protected _dbKey?: BufferLocked<Key>;
   protected passwordHash?: Readonly<{
-    hash: BufferLocked<PasswordHash>,
-    salt: BufferLocked<PasswordSalt>
+    hash: BufferLocked<PasswordHash>;
+    salt: BufferLocked<PasswordSalt>;
   }>;
   protected passwordOpsLimit?: PasswordOpsLimit;
   protected passwordMemLimit?: PasswordMemLimit;
@@ -135,18 +137,20 @@ class KeyRing {
     delete this.workerManager;
   }
 
-  public async start(options: {
-    password: string;
-    fresh?: boolean;
-  } & (
-    { } |
-    { recoveryCode: RecoveryCode; } |
-    { privateKey: PrivateKey; } |
-    { privateKeyPath: string; }
-  )): Promise<void> {
+  public async start(
+    options: {
+      password: string;
+      fresh?: boolean;
+    } & ( // eslint-disable-next-line @typescript-eslint/ban-types
+      | {}
+      | { recoveryCode: RecoveryCode }
+      | { privateKey: PrivateKey }
+      | { privateKeyPath: string }
+    ),
+  ): Promise<void> {
     const { fresh = false, ...setupKeyPairOptions } = options;
     this.logger.info(`Starting ${this.constructor.name}`);
-    if (options.fresh) {
+    if (fresh) {
       await this.fs.promises.rm(this.keysPath, {
         force: true,
         recursive: true,
@@ -157,7 +161,9 @@ class KeyRing {
       setupKeyPairOptions,
     );
     const dbKey = await this.setupDbKey(keyPair);
-    const [passwordHash, passwordSalt] = await this.setupPasswordHash(options.password);
+    const [passwordHash, passwordSalt] = await this.setupPasswordHash(
+      options.password,
+    );
     bufferLock(keyPair.publicKey, this.strictMemoryLock);
     bufferLock(keyPair.privateKey, this.strictMemoryLock);
     bufferLock(keyPair.secretKey, this.strictMemoryLock);
@@ -168,7 +174,7 @@ class KeyRing {
     this._dbKey = dbKey;
     this.passwordHash = {
       hash: passwordHash,
-      salt: passwordSalt
+      salt: passwordSalt,
     };
     if (recoveryCode != null) {
       const recoveryCodeData = Buffer.from(recoveryCode, 'utf-8');
@@ -274,14 +280,16 @@ class KeyRing {
     await this.rotateLock.withF(async () => {
       this.logger.info('Changing root key pair password');
       await this.writeKeyPair(this._keyPair!, password);
-      const [passwordHash, passwordSalt] = await this.setupPasswordHash(password);
+      const [passwordHash, passwordSalt] = await this.setupPasswordHash(
+        password,
+      );
       bufferUnlock(this.passwordHash!.hash);
       bufferUnlock(this.passwordHash!.salt);
       bufferLock(passwordHash, this.strictMemoryLock);
       bufferLock(passwordSalt, this.strictMemoryLock);
       this.passwordHash = {
         hash: passwordHash,
-        salt: passwordSalt
+        salt: passwordSalt,
       };
       this.logger.info('Changed root key pair password');
     });
@@ -310,33 +318,21 @@ class KeyRing {
         await Promise.all([
           this.fs.promises.copyFile(
             this.publicKeyPath,
-            `${this.publicKeyPath}.bak`
+            `${this.publicKeyPath}.bak`,
           ),
           this.fs.promises.copyFile(
             this.privateKeyPath,
-            `${this.privateKeyPath}.bak`
+            `${this.privateKeyPath}.bak`,
           ),
-          this.fs.promises.copyFile(
-            this.dbKeyPath,
-            `${this.dbKeyPath}.bak`
-          )
+          this.fs.promises.copyFile(this.dbKeyPath, `${this.dbKeyPath}.bak`),
         ]);
       } catch (e) {
         this.logger.error('Failed backing up root key pair and DB key');
         try {
           await Promise.all([
-            this.fs.promises.rm(
-              `${this.publicKeyPath}.bak`,
-              { force: true, }
-            ),
-            this.fs.promises.rm(
-              `${this.privateKeyPath}.bak`,
-              { force: true }
-            ),
-            this.fs.promises.rm(
-              `${this.dbKeyPath}.bak`,
-              { force: true }
-            )
+            this.fs.promises.rm(`${this.publicKeyPath}.bak`, { force: true }),
+            this.fs.promises.rm(`${this.privateKeyPath}.bak`, { force: true }),
+            this.fs.promises.rm(`${this.dbKeyPath}.bak`, { force: true }),
           ]);
         } catch (e) {
           // Any error here should not terminate the program
@@ -344,7 +340,7 @@ class KeyRing {
         }
         throw new keysErrors.ErrorKeyPairRotate(
           'Failed backing up root key pair and DB key',
-          { cause: e }
+          { cause: e },
         );
       }
       try {
@@ -372,11 +368,26 @@ class KeyRing {
         this._keyPair = keyPair as KeyPairLocked;
         const recoveryCodeData = Buffer.from(recoveryCode, 'utf-8');
         bufferLock(recoveryCodeData, this.strictMemoryLock);
-        if (this._recoveryCodeData != null) bufferUnlock(this._recoveryCodeData);
+        if (this._recoveryCodeData != null) {
+          bufferUnlock(this._recoveryCodeData);
+        }
         this._recoveryCodeData = recoveryCodeData as RecoveryCodeLocked;
+        const [passwordHash, passwordSalt] = await this.setupPasswordHash(
+          password,
+        );
+        bufferUnlock(this.passwordHash!.hash);
+        bufferUnlock(this.passwordHash!.salt);
+        bufferLock(passwordHash, this.strictMemoryLock);
+        bufferLock(passwordSalt, this.strictMemoryLock);
+        this.passwordHash = {
+          hash: passwordHash,
+          salt: passwordSalt,
+        };
         this.logger.info('Rotated root key pair');
       } catch (e) {
-        this.logger.error('Failed rotating root key pair, recovering from backups');
+        this.logger.error(
+          'Failed rotating root key pair, recovering from backups',
+        );
         try {
           await Promise.all([
             this.fs.promises.rename(
@@ -387,10 +398,7 @@ class KeyRing {
               `${this.privateKeyPath}.bak`,
               this.privateKeyPath,
             ),
-            this.fs.promises.rename(
-              `${this.dbKeyPath}.bak`,
-              this.dbKeyPath,
-            )
+            this.fs.promises.rename(`${this.dbKeyPath}.bak`, this.dbKeyPath),
           ]);
         } catch (e) {
           // Any error here should not terminate the program
@@ -399,7 +407,7 @@ class KeyRing {
         }
         throw new keysErrors.ErrorKeyPairRotate(
           'Failed rotating root key pair',
-          { cause: e }
+          { cause: e },
         );
       }
     });
@@ -418,12 +426,12 @@ class KeyRing {
   public encrypt(
     receiverPublicKey: PublicKey,
     plainText: Buffer,
-    authenticated: boolean = false
+    authenticated: boolean = false,
   ): Buffer {
     return keysUtils.encryptWithPublicKey(
       receiverPublicKey,
       plainText,
-      (authenticated) ? this._keyPair : undefined
+      authenticated ? this._keyPair : undefined,
     );
   }
 
@@ -433,10 +441,7 @@ class KeyRing {
    */
   @ready(new keysErrors.ErrorKeyRingNotRunning())
   public decrypt(cipherText: Buffer): Buffer | undefined {
-    return keysUtils.decryptWithPrivateKey(
-      this._keyPair!,
-      cipherText,
-    );
+    return keysUtils.decryptWithPrivateKey(this._keyPair!, cipherText);
   }
 
   @ready(new keysErrors.ErrorKeyRingNotRunning())
@@ -478,25 +483,33 @@ class KeyRing {
    *     The key pair is encrypted with the password.
    *     The key pair is returned without the recovery code.
    */
-  protected async setupKeyPair(options: {
-    password: string;
-  } | {
-    password: string;
-    recoveryCode: RecoveryCode;
-  } | {
-    password: string;
-    privateKey: PrivateKey;
-  } | {
-    password: string;
-    privateKeyPath: string;
-  }): Promise<[KeyPair, RecoveryCode | undefined]> {
+  protected async setupKeyPair(
+    options:
+      | {
+          password: string;
+        }
+      | {
+          password: string;
+          recoveryCode: RecoveryCode;
+        }
+      | {
+          password: string;
+          privateKey: PrivateKey;
+        }
+      | {
+          password: string;
+          privateKeyPath: string;
+        },
+  ): Promise<[KeyPair, RecoveryCode | undefined]> {
     let rootKeyPair: KeyPair;
     let recoveryCodeNew: RecoveryCode | undefined;
     if (await this.existsKeyPair()) {
       if ('recoveryCode' in options && options.recoveryCode != null) {
         // Recover the key pair
         this.logger.info('Recovering root key pair');
-        const recoveredKeyPair = await this.recoverKeyPair(options.recoveryCode);
+        const recoveredKeyPair = await this.recoverKeyPair(
+          options.recoveryCode,
+        );
         if (recoveredKeyPair == null) {
           throw new keysErrors.ErrorKeysRecoveryCodeIncorrect();
         }
@@ -526,11 +539,14 @@ class KeyRing {
         rootKeyPair = keyPair as KeyPairLocked;
         await this.writeKeyPair(rootKeyPair, options.password);
         return [rootKeyPair, undefined];
-      } else if ('privateKeyPath' in options && options.privateKeyPath != null) {
+      } else if (
+        'privateKeyPath' in options &&
+        options.privateKeyPath != null
+      ) {
         this.logger.info('Making root key pair from provided private key path');
         const privateKey = await this.readPrivateKey(
           options.password,
-          options.privateKeyPath
+          options.privateKeyPath,
         );
         const publicKey = keysUtils.publicKeyFromPrivateKeyEd25519(privateKey);
         const keyPair = keysUtils.makeKeyPair(publicKey, privateKey);
@@ -567,7 +583,7 @@ class KeyRing {
       }
       throw new keysErrors.ErrorKeyPairRead(
         `Failed to check for existence of ${this.privateKeyPath}`,
-        { cause: e }
+        { cause: e },
       );
     }
     return true;
@@ -614,9 +630,7 @@ class KeyRing {
    */
   protected async readKeyPair(password: string): Promise<KeyPair> {
     const privateKey = await this.readPrivateKey(password);
-    const publicKey = keysUtils.publicKeyFromPrivateKeyEd25519(
-      privateKey,
-    );
+    const publicKey = keysUtils.publicKeyFromPrivateKeyEd25519(privateKey);
     const keyPair = keysUtils.makeKeyPair(publicKey, privateKey);
     return keyPair;
   }
@@ -626,18 +640,15 @@ class KeyRing {
    * The public key is expected to be stored in a flattened JWE format.
    */
   protected async readPublicKey(
-    publicKeyPath: string = this.publicKeyPath
+    publicKeyPath: string = this.publicKeyPath,
   ): Promise<PublicKey> {
     let publicJWKJSON: string;
     try {
-      publicJWKJSON = await this.fs.promises.readFile(
-        publicKeyPath,
-        'utf-8',
-      );
+      publicJWKJSON = await this.fs.promises.readFile(publicKeyPath, 'utf-8');
     } catch (e) {
       throw new keysErrors.ErrorKeyPairRead(
         `Public key path ${publicKeyPath} cannot be read`,
-        { cause: e }
+        { cause: e },
       );
     }
     let publicJWK: any;
@@ -646,13 +657,13 @@ class KeyRing {
     } catch (e) {
       throw new keysErrors.ErrorKeyPairParse(
         `Public key path ${publicKeyPath} is not a valid JSON file`,
-        { cause: e }
+        { cause: e },
       );
     }
     const publicKey = keysUtils.publicKeyFromJWK(publicJWK);
     if (publicKey == null) {
       throw new keysErrors.ErrorKeyPairParse(
-        `Public key path ${publicKeyPath} is not a valid public key`
+        `Public key path ${publicKeyPath} is not a valid public key`,
       );
     }
     return publicKey;
@@ -668,14 +679,11 @@ class KeyRing {
   ): Promise<PrivateKey> {
     let privateJSON: string;
     try {
-      privateJSON = await this.fs.promises.readFile(
-        privateKeyPath,
-        'utf-8',
-      );
+      privateJSON = await this.fs.promises.readFile(privateKeyPath, 'utf-8');
     } catch (e) {
       throw new keysErrors.ErrorKeyPairRead(
         `Private key path ${privateKeyPath} cannot be read`,
-        { cause: e }
+        { cause: e },
       );
     }
     let privateObject: any;
@@ -684,39 +692,42 @@ class KeyRing {
     } catch (e) {
       throw new keysErrors.ErrorKeyPairParse(
         `Private key path ${privateKeyPath} is not a valid JSON file`,
-        { cause: e }
+        { cause: e },
       );
     }
     if ('kty' in privateObject && privateObject.kty != null) {
       const privateKey = keysUtils.privateKeyFromJWK(privateObject);
       if (privateKey == null) {
         throw new keysErrors.ErrorKeyPairParse(
-          `Private key path ${privateKeyPath} is not a valid JWK`
+          `Private key path ${privateKeyPath} is not a valid JWK`,
         );
       }
       return privateKey;
-    } else if ('ciphertext' in privateObject && privateObject.ciphertext != null) {
+    } else if (
+      'ciphertext' in privateObject &&
+      privateObject.ciphertext != null
+    ) {
       const privateJWK = keysUtils.unwrapWithPassword(
         password,
         privateObject,
         this.passwordOpsLimit,
-        this.passwordMemLimit
+        this.passwordMemLimit,
       );
       if (privateJWK == null) {
         throw new keysErrors.ErrorKeyPairParse(
-          `Private key path ${privateKeyPath} is not a valid encrypted JWK`
+          `Private key path ${privateKeyPath} is not a valid encrypted JWK`,
         );
       }
       const privateKey = keysUtils.privateKeyFromJWK(privateJWK);
       if (privateKey == null) {
         throw new keysErrors.ErrorKeyPairParse(
-          `Private key path ${privateKeyPath} is not a valid private key`
+          `Private key path ${privateKeyPath} is not a valid private key`,
         );
       }
       return privateKey;
     } else {
       throw new keysErrors.ErrorKeyPairParse(
-        `Private key path ${privateKeyPath} has to be a JWK or an encrypted JWK`
+        `Private key path ${privateKeyPath} has to be a JWK or an encrypted JWK`,
       );
     }
   }
@@ -746,11 +757,15 @@ class KeyRing {
     try {
       // Write to temporary files first, then atomically rename
       await Promise.all([
-        this.fs.promises.writeFile(`${this.publicKeyPath}.tmp`, publicJWKJSON, 'utf-8'),
+        this.fs.promises.writeFile(
+          `${this.publicKeyPath}.tmp`,
+          publicJWKJSON,
+          'utf-8',
+        ),
         this.fs.promises.writeFile(
           `${this.privateKeyPath}.tmp`,
           privateJWEJSON,
-          'utf-8'
+          'utf-8',
         ),
       ]);
       await Promise.all([
@@ -766,7 +781,7 @@ class KeyRing {
     } catch (e) {
       throw new keysErrors.ErrorKeyPairWrite(
         `Key pair paths ${this.publicKeyPath} and ${this.privateKeyPath} cannot be written to`,
-        { cause: e }
+        { cause: e },
       );
     }
   }
@@ -873,7 +888,7 @@ class KeyRing {
    */
   protected async readDbKey(
     keyPair: KeyPair,
-    dbKeyPath: string = this.dbKeyPath
+    dbKeyPath: string = this.dbKeyPath,
   ): Promise<Key> {
     let dbJWEJSON: string;
     try {
@@ -881,7 +896,7 @@ class KeyRing {
     } catch (e) {
       throw new keysErrors.ErrorDBKeyRead(
         `DB key path ${dbKeyPath} cannot be read`,
-        { cause: e }
+        { cause: e },
       );
     }
     let dbJWE: any;
@@ -890,22 +905,19 @@ class KeyRing {
     } catch (e) {
       throw new keysErrors.ErrorDBKeyParse(
         `DB key path ${dbKeyPath} is not a valid JSON file`,
-        { cause: e }
+        { cause: e },
       );
     }
-    const dbJWK = keysUtils.decapsulateWithPrivateKey(
-      keyPair,
-      dbJWE
-    );
+    const dbJWK = keysUtils.decapsulateWithPrivateKey(keyPair, dbJWE);
     if (dbJWK == null) {
       throw new keysErrors.ErrorDBKeyParse(
-        `DB key path ${dbKeyPath} is not a valid encrypted JWK`
+        `DB key path ${dbKeyPath} is not a valid encrypted JWK`,
       );
     }
     const dbKey = keysUtils.keyFromJWK(dbJWK);
     if (dbKey == null) {
       throw new keysErrors.ErrorDBKeyParse(
-        `DB key path ${dbKeyPath} is not a valid key`
+        `DB key path ${dbKeyPath} is not a valid key`,
       );
     }
     return dbKey;
@@ -916,21 +928,22 @@ class KeyRing {
    * The DB key will be stored in flattened JWE format.
    * The DB key will be encrypted with our ECIES.
    */
-  protected async writeDbKey(
-    dbKey: Key,
-    publicKey: PublicKey,
-  ): Promise<void> {
+  protected async writeDbKey(dbKey: Key, publicKey: PublicKey): Promise<void> {
     const dbJWK = keysUtils.keyToJWK(dbKey);
     const dbJWE = keysUtils.encapsulateWithPublicKey(publicKey, dbJWK);
     const dbJWEJSON = JSON.stringify(dbJWE);
     try {
       // Write to temporary file first, then atomically rename
-      await this.fs.promises.writeFile(`${this.dbKeyPath}.tmp`, dbJWEJSON, 'utf-8'),
-      await this.fs.promises.rename(`${this.dbKeyPath}.tmp`, this.dbKeyPath);
+      await this.fs.promises.writeFile(
+        `${this.dbKeyPath}.tmp`,
+        dbJWEJSON,
+        'utf-8',
+      ),
+        await this.fs.promises.rename(`${this.dbKeyPath}.tmp`, this.dbKeyPath);
     } catch (e) {
       throw new keysErrors.ErrorDBKeyWrite(
         `DB key path ${this.dbKeyPath} cannot be written to`,
-        { cause: e }
+        { cause: e },
       );
     }
   }
@@ -951,10 +964,7 @@ class KeyRing {
    */
   protected async setupPasswordHash(
     password: string,
-  ): Promise<[
-    PasswordHash,
-    PasswordSalt
-  ]> {
+  ): Promise<[PasswordHash, PasswordSalt]> {
     let hash: PasswordHash, salt: PasswordSalt;
     if (this.workerManager == null) {
       [hash, salt] = keysUtils.hashPassword(

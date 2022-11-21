@@ -2,10 +2,11 @@ import type { Socket } from 'net';
 import type { TLSSocket } from 'tls';
 import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import type { Host, Hostname, Port, Address, NetworkMessage } from './types';
-import type { Certificate, PublicKey } from '../keys/types';
+import type { Certificate } from '../keys/types';
 import type { NodeId } from '../ids/types';
 import type { ContextTimed } from '../contexts/types';
 import type { NodeAddress } from 'nodes/types';
+import type { CertificateASN1 } from '../keys/types';
 import { Buffer } from 'buffer';
 import dns from 'dns';
 import { IPv4, IPv6, Validator } from 'ip-num';
@@ -13,7 +14,6 @@ import * as networkErrors from './errors';
 import timedCancellable from '../contexts/functions/timedCancellable';
 import * as keysUtils from '../keys/utils';
 import * as utils from '../utils';
-import { CertificateASN1 } from '../keys/types';
 import { never } from '../utils';
 
 const pingBuffer = serializeNetworkMessage({
@@ -286,10 +286,10 @@ function isTLSSocket(socket: Socket | TLSSocket): socket is TLSSocket {
  * It is possible that the server has a new NodeId. In that case we will
  * verify that the new NodeId is the true descendant of the target NodeId.
  */
-function verifyServerCertificateChain(
+async function verifyServerCertificateChain(
   nodeIds: Array<NodeId>,
   certChain: Array<Certificate>,
-): NodeId {
+): Promise<NodeId> {
   if (!certChain.length) {
     throw new networkErrors.ErrorCertChainEmpty(
       'No certificates available to verify',
@@ -344,7 +344,7 @@ function verifyServerCertificateChain(
         },
       );
     }
-    if (!keysUtils.certNodeSigned(cert)) {
+    if (!(await keysUtils.certNodeSigned(cert))) {
       throw new networkErrors.ErrorCertChainSignatureInvalid(
         'Chain certificate does not have a valid node-signature',
         {
@@ -384,7 +384,10 @@ function verifyServerCertificateChain(
       certChild = certChain[certIndex - 1];
       if (
         !keysUtils.certIssuedBy(certParent, certChild) ||
-        !keysUtils.certSignedBy(certParent, keysUtils.certPublicKey(certChild)!)
+        !(await keysUtils.certSignedBy(
+          certParent,
+          keysUtils.certPublicKey(certChild)!,
+        ))
       ) {
         throw new networkErrors.ErrorCertChainBroken(
           'Chain certificate is not signed by parent certificate',
@@ -406,7 +409,9 @@ function verifyServerCertificateChain(
  * Verify the client certificate chain when it connects to the server.
  * The server does have a target NodeId. This means we verify the entire chain.
  */
-function verifyClientCertificateChain(certChain: Array<Certificate>): void {
+async function verifyClientCertificateChain(
+  certChain: Array<Certificate>,
+): Promise<void> {
   if (!certChain.length) {
     throw new networkErrors.ErrorCertChainEmpty(
       'No certificates available to verify',
@@ -454,7 +459,7 @@ function verifyClientCertificateChain(certChain: Array<Certificate>): void {
         },
       );
     }
-    if (!keysUtils.certNodeSigned(cert)) {
+    if (!(await keysUtils.certNodeSigned(cert))) {
       throw new networkErrors.ErrorCertChainSignatureInvalid(
         'Chain certificate does not have a valid node-signature',
         {
@@ -470,7 +475,10 @@ function verifyClientCertificateChain(certChain: Array<Certificate>): void {
     if (certNext != null) {
       if (
         !keysUtils.certIssuedBy(certNext, cert) ||
-        !keysUtils.certSignedBy(certNext, keysUtils.certPublicKey(cert)!)
+        !(await keysUtils.certSignedBy(
+          certNext,
+          keysUtils.certPublicKey(cert)!,
+        ))
       ) {
         throw new networkErrors.ErrorCertChainSignatureInvalid(
           'Chain certificate is not signed by parent certificate',

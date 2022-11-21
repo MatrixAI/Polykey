@@ -14,6 +14,7 @@ import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as keysPB from '@/proto/js/polykey/v1/keys/keys_pb';
 import * as clientUtils from '@/client/utils/utils';
 import * as keysUtils from '@/keys/utils/index';
+import { publicKeyToJWK } from '@/keys/utils/index';
 
 describe('keysSignVerify', () => {
   const logger = new Logger('keysSignVerify test', LogLevel.WARN, [
@@ -82,6 +83,8 @@ describe('keysSignVerify', () => {
       clientUtils.encodeAuthFromPassword(password),
     );
     expect(signed).toBeInstanceOf(keysPB.Crypto);
+    const publicKeyJWK = publicKeyToJWK(keyRing.keyPair.publicKey);
+    signed.setPublicKeyJwk(JSON.stringify(publicKeyJWK));
     const response = await grpcClient.keysVerify(
       signed,
       clientUtils.encodeAuthFromPassword(password),

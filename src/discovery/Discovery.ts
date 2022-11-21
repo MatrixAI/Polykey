@@ -3,7 +3,11 @@ import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import type { NodeId } from '../nodes/types';
 import type NodeManager from '../nodes/NodeManager';
 import type GestaltGraph from '../gestalts/GestaltGraph';
-import type { GestaltId, GestaltNodeInfo, GestaltIdEncoded } from '../gestalts/types';
+import type {
+  GestaltId,
+  GestaltNodeInfo,
+  GestaltIdEncoded,
+} from '../gestalts/types';
 import type IdentitiesManager from '../identities/IdentitiesManager';
 import type {
   IdentityData,
@@ -17,8 +21,15 @@ import type { ClaimId, ClaimIdEncoded, SignedClaim } from '../claims/types';
 import type TaskManager from '../tasks/TaskManager';
 import type { ContextTimed } from '../contexts/types';
 import type { TaskHandler, TaskHandlerId } from '../tasks/types';
+import type {
+  ClaimLinkIdentity,
+  ClaimLinkNode,
+} from '../claims/payloads/index';
 import Logger from '@matrixai/logger';
-import { CreateDestroyStartStop, ready } from '@matrixai/async-init/dist/CreateDestroyStartStop';
+import {
+  CreateDestroyStartStop,
+  ready,
+} from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import { Timer } from '@matrixai/timer';
 import * as discoveryErrors from './errors';
 import * as tasksErrors from '../tasks/errors';
@@ -28,10 +39,8 @@ import * as keysUtils from '../keys/utils';
 import { never } from '../utils';
 import { context } from '../contexts/index';
 import TimedCancellable from '../contexts/decorators/timedCancellable';
-import { ClaimLinkIdentity, ClaimLinkNode } from '../claims/payloads/index';
 import Token from '../tokens/Token';
 import { decodeClaimId } from '../ids/index';
-import { utils as idUtils } from '@matrixai/id';
 
 /**
  * This is the reason used to cancel duplicate tasks for vertices
@@ -110,7 +119,9 @@ class Discovery {
         e === discoveryStoppingTaskReason
       ) {
         // We need to recreate the task for the vertex
-        await this.scheduleDiscoveryForVertex(gestaltsUtils.decodeGestaltId(vertex)!);
+        const vertexId = gestaltsUtils.decodeGestaltId(vertex);
+        if (vertexId == null) never();
+        await this.scheduleDiscoveryForVertex(vertexId);
         return;
       }
       // Aborting a duplicate task is not an error
@@ -218,7 +229,10 @@ class Discovery {
     providerId: ProviderId,
     identityId: IdentityId,
   ): Promise<void> {
-    await this.scheduleDiscoveryForVertex(['identity', [providerId, identityId]]);
+    await this.scheduleDiscoveryForVertex([
+      'identity',
+      [providerId, identityId],
+    ]);
   }
 
   // Fixme, when processing a vertex, we need to check existing links in the
@@ -235,7 +249,9 @@ class Discovery {
     @context ctx: ContextTimed,
   ): Promise<void> {
     this.logger.debug(`Processing vertex: ${vertex}`);
-    const [type, id] = gestaltsUtils.decodeGestaltId(vertex)!;
+    const vertexId = gestaltsUtils.decodeGestaltId(vertex);
+    if (vertexId == null) never();
+    const [type, id] = vertexId;
     switch (type) {
       case 'node':
         return await this.processNode(id, connectionTimeout, ctx);
@@ -247,11 +263,16 @@ class Discovery {
     this.visitedVertices.add(vertex);
   }
 
-  protected async processNode(id: NodeId, connectionTimeout: number | undefined, ctx: ContextTimed) {
-
+  protected async processNode(
+    nodeId: NodeId,
+    connectionTimeout: number | undefined,
+    ctx: ContextTimed,
+  ) {
     // If the vertex we've found is our own node, we simply get our own chain
-    const nodeId = nodesUtils.decodeNodeId(id)!;
-    const encodedGestaltNodeId = gestaltsUtils.encodeGestaltNodeId(['node', nodeId])
+    const encodedGestaltNodeId = gestaltsUtils.encodeGestaltNodeId([
+      'node',
+      nodeId,
+    ]);
     if (nodeId.equals(this.keyRing.getNodeId())) {
       // Skip our own nodeId, we actively add this information when it changes,
       // so there is no need to scan it.
@@ -259,18 +280,21 @@ class Discovery {
       return;
     }
     // Get the oldest known claim for this node
-    const gestaltLinks = await this.gestaltGraph.getLinks(['node', nodeId]);
     // get the oldest one
     let newestClaimId: ClaimId | undefined = undefined;
-    for (let [,gestaltLink] of gestaltLinks) {
+    for await (const [, gestaltLink] of this.gestaltGraph.getLinks([
+      'node',
+      nodeId,
+    ])) {
       const claimIdEncoded = gestaltLink[1].claim.payload.jti;
-      const claimId = decodeClaimId(claimIdEncoded)!;
-      if (newestClaimId == null) newestClaimId = claimId
-      else if (Buffer.compare(newestClaimId, claimId) == -1) {
+      const claimId = decodeClaimId(claimIdEncoded);
+      if (claimId == null) never();
+      if (newestClaimId == null) {
+        newestClaimId = claimId;
+      } else if (Buffer.compare(newestClaimId, claimId) === -1) {
         newestClaimId = claimId;
       }
     }
-
     // The sigChain data of the vertex (containing all cryptolinks)
     let vertexChainData: Record<ClaimIdEncoded, SignedClaim> = {};
     try {
@@ -283,7 +307,9 @@ class Discovery {
     } catch (e) {
       this.visitedVertices.add(encodedGestaltNodeId);
       this.logger.error(
-        `Failed to discover ${id} - ${e.toString()}`,
+        `Failed to discover ${nodesUtils.encodeNodeId(
+          nodeId,
+        )} - ${e.toString()}`,
       );
       return;
     }
@@ -303,105 +329,138 @@ class Discovery {
     for (const signedClaim of Object.values(vertexChainData)) {
       if (ctx.signal.aborted) throw ctx.signal.reason;
       switch (signedClaim.payload.typ) {
-        case 'node': {
-          // Get the chain data of the linked node
-          // Could be node1 or node2 in the claim so get the one that's
-          // not equal to nodeId from above
-          const node1Id = nodesUtils.decodeNodeId(
-            signedClaim.payload.iss,
-          )!;
-          const node2Id = nodesUtils.decodeNodeId(
-            signedClaim.payload.sub,
-          )!;
-          // Verify the claim
-          const node1PublicKey = keysUtils.publicKeyFromNodeId(node1Id);
-          const node2PublicKey = keysUtils.publicKeyFromNodeId(node2Id);
-          const token = Token.fromSigned(signedClaim);
-          if (
-            !token.verifyWithPublicKey(node1PublicKey) ||
-            !token.verifyWithPublicKey(node2PublicKey)
-          ) {
-            this.logger.warn(`Failed to verify node claim between ${signedClaim.payload.iss} and ${signedClaim.payload.sub}`);
-            continue;
-          }
-          const linkedVertexNodeId = node1Id.equals(nodeId)
-            ? node2Id
-            : node1Id;
-          const linkedVertexNodeInfo: GestaltNodeInfo = {
-            nodeId: linkedVertexNodeId,
-          };
-          await this.gestaltGraph.linkNodeAndNode(
-            vertexNodeInfo,
-            linkedVertexNodeInfo,
-            {
-              claim: signedClaim as SignedClaim<ClaimLinkNode>,
-              meta: {},
+        case 'ClaimLinkNode':
+          {
+            // Get the chain data of the linked node
+            // Could be node1 or node2 in the claim so get the one that's
+            // not equal to nodeId from above
+            const node1Id = nodesUtils.decodeNodeId(signedClaim.payload.iss);
+            if (node1Id == null) never();
+            const node2Id = nodesUtils.decodeNodeId(signedClaim.payload.sub);
+            if (node2Id == null) never();
+            // Verify the claim
+            const node1PublicKey = keysUtils.publicKeyFromNodeId(node1Id);
+            const node2PublicKey = keysUtils.publicKeyFromNodeId(node2Id);
+            const token = Token.fromSigned(signedClaim);
+            if (
+              !token.verifyWithPublicKey(node1PublicKey) ||
+              !token.verifyWithPublicKey(node2PublicKey)
+            ) {
+              this.logger.warn(
+                `Failed to verify node claim between ${signedClaim.payload.iss} and ${signedClaim.payload.sub}`,
+              );
+              continue;
             }
-          );
-          // Add this vertex to the queue if it hasn't already been visited
-          if (!this.visitedVertices.has(gestaltsUtils.encodeGestaltNodeId(['node', linkedVertexNodeId]))) {
-            await this.scheduleDiscoveryForVertex(['node', linkedVertexNodeId]);
-          }
-        }
-        break;
-        case 'identity': {
-          // Checking the claim is valid
-          const publicKey = keysUtils.publicKeyFromNodeId(nodeId);
-          const token = Token.fromSigned(signedClaim);
-          if (!token.verifyWithPublicKey(publicKey)) {
-            this.logger.warn(`Failed to verify identity claim between ${nodesUtils.encodeNodeId(nodeId)} and ${signedClaim.payload.sub}`);
-            continue;
-          }
-          // Attempt to get the identity info on the identity provider
-          const timer =
-            connectionTimeout != null
-              ? new Timer({ delay: connectionTimeout })
-              : undefined;
-          const [providerId, identityId] = JSON.parse(signedClaim.payload.sub!);
-          const identityInfo = await this.getIdentityInfo(
-            providerId,
-            identityId,
-            { signal: ctx.signal, timer },
-          );
-          // If we can't get identity info, simply skip this claim
-          if (identityInfo == null) {
-            this.logger.warn(`Failed to get identity info for ${providerId}:${identityId}`);
-            continue;
-          }
-          // Need to get the corresponding claim for this
-          let providerIdentityClaimId: ProviderIdentityClaimId | null = null;
-          const identityClaims = await this.verifyIdentityClaims(providerId, identityId)
-          for (const [id, claim] of Object.entries(identityClaims)) {
-            const issuerNodeId = nodesUtils.decodeNodeId(claim.payload.iss);
-            if (issuerNodeId == null) continue;
-            if (nodeId.equals(issuerNodeId)){
-              providerIdentityClaimId = id as ProviderIdentityClaimId;
-              break;
-            }
-          }
-          if (providerIdentityClaimId == null) {
-            this.logger.warn(`Failed to get corresponding identity claim for ${providerId}:${identityId}`);
-            continue;
-          }
-          // Link the node to the found identity info
-          await this.gestaltGraph.linkNodeAndIdentity(
-            vertexNodeInfo,
-            identityInfo,
-            {
-              claim : signedClaim as SignedClaim<ClaimLinkIdentity>,
-              meta: {
-                providerIdentityClaimId: providerIdentityClaimId,
-                url: identityInfo.url
+            const linkedVertexNodeId = node1Id.equals(nodeId)
+              ? node2Id
+              : node1Id;
+            const linkedVertexNodeInfo: GestaltNodeInfo = {
+              nodeId: linkedVertexNodeId,
+            };
+            await this.gestaltGraph.linkNodeAndNode(
+              vertexNodeInfo,
+              linkedVertexNodeInfo,
+              {
+                claim: signedClaim as SignedClaim<ClaimLinkNode>,
+                meta: {},
               },
+            );
+            // Add this vertex to the queue if it hasn't already been visited
+            if (
+              !this.visitedVertices.has(
+                gestaltsUtils.encodeGestaltNodeId(['node', linkedVertexNodeId]),
+              )
+            ) {
+              await this.scheduleDiscoveryForVertex([
+                'node',
+                linkedVertexNodeId,
+              ]);
             }
-          );
-          // Add this identity vertex to the queue if it is not present
-          const providerIdentityId = JSON.parse(signedClaim.payload.sub!);
-          if (!this.visitedVertices.has(gestaltsUtils.encodeGestaltIdentityId(['identity', providerIdentityId]))) {
-            await this.scheduleDiscoveryForVertex(['identity', providerIdentityId]);
           }
-        }
-        break;
+          break;
+        case 'ClaimLinkIdentity':
+          {
+            // Checking the claim is valid
+            const publicKey = keysUtils.publicKeyFromNodeId(nodeId);
+            const token = Token.fromSigned(signedClaim);
+            if (!token.verifyWithPublicKey(publicKey)) {
+              this.logger.warn(
+                `Failed to verify identity claim between ${nodesUtils.encodeNodeId(
+                  nodeId,
+                )} and ${signedClaim.payload.sub}`,
+              );
+              continue;
+            }
+            // Attempt to get the identity info on the identity provider
+            const timer =
+              connectionTimeout != null
+                ? new Timer({ delay: connectionTimeout })
+                : undefined;
+            if (signedClaim.payload.sub == null) never();
+            const [providerId, identityId] = JSON.parse(
+              signedClaim.payload.sub,
+            );
+            const identityInfo = await this.getIdentityInfo(
+              providerId,
+              identityId,
+              { signal: ctx.signal, timer },
+            );
+            // If we can't get identity info, simply skip this claim
+            if (identityInfo == null) {
+              this.logger.warn(
+                `Failed to get identity info for ${providerId}:${identityId}`,
+              );
+              continue;
+            }
+            // Need to get the corresponding claim for this
+            let providerIdentityClaimId: ProviderIdentityClaimId | null = null;
+            const identityClaims = await this.verifyIdentityClaims(
+              providerId,
+              identityId,
+            );
+            for (const [id, claim] of Object.entries(identityClaims)) {
+              const issuerNodeId = nodesUtils.decodeNodeId(claim.payload.iss);
+              if (issuerNodeId == null) continue;
+              if (nodeId.equals(issuerNodeId)) {
+                providerIdentityClaimId = id as ProviderIdentityClaimId;
+                break;
+              }
+            }
+            if (providerIdentityClaimId == null) {
+              this.logger.warn(
+                `Failed to get corresponding identity claim for ${providerId}:${identityId}`,
+              );
+              continue;
+            }
+            // Link the node to the found identity info
+            await this.gestaltGraph.linkNodeAndIdentity(
+              vertexNodeInfo,
+              identityInfo,
+              {
+                claim: signedClaim as SignedClaim<ClaimLinkIdentity>,
+                meta: {
+                  providerIdentityClaimId: providerIdentityClaimId,
+                  url: identityInfo.url,
+                },
+              },
+            );
+            // Add this identity vertex to the queue if it is not present
+            const providerIdentityId = JSON.parse(signedClaim.payload.sub!);
+            if (
+              !this.visitedVertices.has(
+                gestaltsUtils.encodeGestaltIdentityId([
+                  'identity',
+                  providerIdentityId,
+                ]),
+              )
+            ) {
+              await this.scheduleDiscoveryForVertex([
+                'identity',
+                providerIdentityId,
+              ]);
+            }
+          }
+          break;
         default:
           never();
       }
@@ -409,7 +468,11 @@ class Discovery {
     this.visitedVertices.add(encodedGestaltNodeId);
   }
 
-  protected async processIdentity(id: ProviderIdentityId, connectionTimeout: number | undefined, ctx: ContextTimed) {
+  protected async processIdentity(
+    id: ProviderIdentityId,
+    connectionTimeout: number | undefined,
+    ctx: ContextTimed,
+  ) {
     // If the next vertex is an identity, perform a social discovery
     // Firstly get the identity info of this identity
     const providerIdentityId = id;
@@ -435,7 +498,8 @@ class Discovery {
       if (ctx.signal.aborted) throw ctx.signal.reason;
       // Claims on an identity provider will always be node -> identity
       // So just cast payload data as such
-      const linkedVertexNodeId = nodesUtils.decodeNodeId(claim.payload.node)!;
+      const linkedVertexNodeId = nodesUtils.decodeNodeId(claim.payload.iss);
+      if (linkedVertexNodeId == null) never();
       // With this verified chain, we can link
       const linkedVertexNodeInfo = {
         nodeId: linkedVertexNodeId,
@@ -448,15 +512,27 @@ class Discovery {
           meta: {
             providerIdentityClaimId: claimId as ProviderIdentityClaimId,
             url: vertexIdentityInfo.url,
-          }
-        }
+          },
+        },
       );
       // Add this vertex to the queue if it is not present
-      if (!this.visitedVertices.has(gestaltsUtils.encodeGestaltIdentityId(['identity', providerIdentityId]))) {
-        await this.scheduleDiscoveryForVertex(['identity', providerIdentityId]);
+      if (
+        !this.visitedVertices.has(
+          gestaltsUtils.encodeGestaltNodeId([
+            'node',
+            linkedVertexNodeInfo.nodeId,
+          ]),
+        )
+      ) {
+        await this.scheduleDiscoveryForVertex([
+          'node',
+          linkedVertexNodeInfo.nodeId,
+        ]);
       }
     }
-    this.visitedVertices.add(gestaltsUtils.encodeGestaltIdentityId(['identity', providerIdentityId]));
+    this.visitedVertices.add(
+      gestaltsUtils.encodeGestaltIdentityId(['identity', providerIdentityId]),
+    );
   }
 
   /**
@@ -506,7 +582,11 @@ class Discovery {
     const gestaltIdEncoded = gestaltsUtils.encodeGestaltId(vertex);
     // Locking on vertex to avoid duplicates
     await tran.lock(
-      [this.constructor.name, this.discoverVertexHandlerId, gestaltIdEncoded].join(''),
+      [
+        this.constructor.name,
+        this.discoverVertexHandlerId,
+        gestaltIdEncoded,
+      ].join(''),
     );
     // Check if task exists
     let taskExists = false;
@@ -528,7 +608,11 @@ class Discovery {
       {
         handlerId: this.discoverVertexHandlerId,
         parameters: [gestaltIdEncoded],
-        path: [this.constructor.name, this.discoverVertexHandlerId, gestaltIdEncoded],
+        path: [
+          this.constructor.name,
+          this.discoverVertexHandlerId,
+          gestaltIdEncoded,
+        ],
         lazy: true,
       },
       tran,
@@ -566,11 +650,9 @@ class Discovery {
     }
     const authIdentityId = authIdentityIds[0];
     // Return the identity data
-    return await provider.getIdentityData(
-      authIdentityId,
-      identityId,
-      { signal: ctx.signal },
-    );
+    return await provider.getIdentityData(authIdentityId, identityId, {
+      signal: ctx.signal,
+    });
   }
 
   /**
@@ -594,14 +676,22 @@ class Discovery {
       return {};
     }
     const authIdentityId = authIdentityIds[0];
-    const identityClaims: Record<ProviderIdentityClaimId, SignedClaim<ClaimLinkIdentity>> = {};
-    for await (const identitySignedClaim of provider.getClaims(authIdentityId, identityId)) {
-      identitySignedClaim.claim
+    const identityClaims: Record<
+      ProviderIdentityClaimId,
+      SignedClaim<ClaimLinkIdentity>
+    > = {};
+    for await (const identitySignedClaim of provider.getClaims(
+      authIdentityId,
+      identityId,
+    )) {
+      identitySignedClaim.claim;
       // Claims on an identity provider will always be node -> identity
       const claim = identitySignedClaim.claim;
       const data = claim.payload;
       // Verify the claim with the public key of the node
-      const publicKey = keysUtils.publicKeyFromNodeId(nodesUtils.decodeNodeId(data.node)!);
+      const nodeId = nodesUtils.decodeNodeId(data.iss);
+      if (nodeId == null) never();
+      const publicKey = keysUtils.publicKeyFromNodeId(nodeId);
       const token = Token.fromSigned(claim);
       // If verified, add to the record
       if (token.verifyWithPublicKey(publicKey)) {

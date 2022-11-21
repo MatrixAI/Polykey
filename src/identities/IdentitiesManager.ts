@@ -2,22 +2,23 @@ import type {
   ProviderId,
   IdentityId,
   ProviderTokens,
-  ProviderToken, IdentitySignedClaim,
+  ProviderToken,
+  IdentitySignedClaim,
 } from './types';
 import type { DB, DBTransaction, KeyPath, LevelPath } from '@matrixai/db';
 import type Provider from './Provider';
-import Logger from '@matrixai/logger';
+import type { SignedClaim } from '../claims/types';
+import type { ClaimLinkIdentity } from '../claims/payloads';
+import type KeyRing from '../keys/KeyRing';
+import type Sigchain from '../sigchain/Sigchain';
+import type GestaltGraph from '../gestalts/GestaltGraph';
 import {
   CreateDestroyStartStop,
   ready,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
+import Logger from '@matrixai/logger';
 import * as identitiesErrors from './errors';
 import * as nodesUtils from '../nodes/utils';
-import { SignedClaim } from '../claims/types';
-import { ClaimLinkIdentity }  from '../claims/payloads';
-import KeyRing from '../keys/KeyRing';
-import Sigchain  from '../sigchain/Sigchain';
-import GestaltGraph from '../gestalts/GestaltGraph';
 import { promise } from '../utils/index';
 import { encodeProviderIdentityId } from '../ids';
 
@@ -43,7 +44,13 @@ class IdentitiesManager {
     fresh?: boolean;
   }): Promise<IdentitiesManager> {
     logger.info(`Creating ${this.name}`);
-    const identitiesManager = new this({ db, sigchain, keyRing, gestaltGraph, logger });
+    const identitiesManager = new this({
+      db,
+      sigchain,
+      keyRing,
+      gestaltGraph,
+      logger,
+    });
     await identitiesManager.start({ fresh });
     logger.info(`Created ${this.name}`);
     return identitiesManager;
@@ -64,11 +71,23 @@ class IdentitiesManager {
   ];
   protected providers: Map<ProviderId, Provider> = new Map();
 
-  constructor({ keyRing, db, sigchain, gestaltGraph, logger }: { keyRing: KeyRing; db: DB; sigchain: Sigchain; gestaltGraph: GestaltGraph; logger: Logger }) {
+  constructor({
+    keyRing,
+    db,
+    sigchain,
+    gestaltGraph,
+    logger,
+  }: {
+    keyRing: KeyRing;
+    db: DB;
+    sigchain: Sigchain;
+    gestaltGraph: GestaltGraph;
+    logger: Logger;
+  }) {
     this.keyRing = keyRing;
     this.db = db;
     this.sigchain = sigchain;
-    this.gestaltGraph = gestaltGraph
+    this.gestaltGraph = gestaltGraph;
     this.logger = logger;
   }
 
@@ -215,7 +234,7 @@ class IdentitiesManager {
 
   public async handleClaimIdentity(
     providerId: ProviderId,
-    identityId: IdentityId
+    identityId: IdentityId,
   ) {
     // Check provider is authenticated
     const provider = this.getProvider(providerId);
@@ -227,19 +246,24 @@ class IdentitiesManager {
       throw new identitiesErrors.ErrorProviderUnauthenticated();
     }
     // Create identity claim on our node
-    const publishedClaimProm = promise<IdentitySignedClaim>()
+    const publishedClaimProm = promise<IdentitySignedClaim>();
     await this.db.withTransactionF((tran) =>
       this.sigchain.addClaim(
         {
-          typ: 'identity',
+          typ: 'ClaimLinkIdentity',
           iss: nodesUtils.encodeNodeId(this.keyRing.getNodeId()),
           sub: encodeProviderIdentityId([providerId, identityId]),
         },
         undefined,
         async (token) => {
           // Publishing in the callback to avoid adding bad claims
-          const claim = token.toSigned()
-          publishedClaimProm.resolveP(await provider.publishClaim(identityId, claim as SignedClaim<ClaimLinkIdentity>))
+          const claim = token.toSigned();
+          const asd = await provider.publishClaim(
+            identityId,
+            claim as SignedClaim<ClaimLinkIdentity>,
+          );
+          publishedClaimProm.resolveP(asd);
+          return token;
         },
         tran,
       ),
@@ -248,20 +272,16 @@ class IdentitiesManager {
     // Publish claim on identity
     const issNodeInfo = {
       nodeId: this.keyRing.getNodeId(),
-    }
+    };
     const subIdentityInfo = {
       providerId: providerId,
       identityId: identityId,
       url: publishedClaim.url,
-    }
-    await this.gestaltGraph.linkNodeAndIdentity(
-      issNodeInfo,
-      subIdentityInfo,
-      {
-        meta: { providerIdentityClaimId: publishedClaim.id },
-        claim: publishedClaim.claim
-      }
-    )
+    };
+    await this.gestaltGraph.linkNodeAndIdentity(issNodeInfo, subIdentityInfo, {
+      meta: { providerIdentityClaimId: publishedClaim.id },
+      claim: publishedClaim.claim,
+    });
     return publishedClaim;
   }
 }

@@ -416,7 +416,7 @@ describe('GRPC utils', () => {
   });
   test('serialising and deserialising Polykey errors', async () => {
     const timestamp = new Date();
-    const error = new errors.ErrorPolykey('test error', {
+    const error = new errors.ErrorPolykey<undefined>('test error', {
       timestamp,
       data: {
         int: 1,
@@ -532,7 +532,7 @@ describe('GRPC utils', () => {
   });
   test('serialising and deserialising sensitive errors', async () => {
     const timestamp = new Date();
-    const error = new errors.ErrorPolykey('test error', {
+    const error = new errors.ErrorPolykey<undefined>('test error', {
       timestamp,
       data: {
         int: 1,

@@ -2,10 +2,10 @@ import type * as grpc from '@grpc/grpc-js';
 import type { Authenticate } from '../types';
 import type KeyRing from '../../keys/KeyRing';
 import type Logger from '@matrixai/logger';
+import type { PublicKey, JWK } from '../../keys/types';
 import * as grpcUtils from '../../grpc/utils';
 import * as keysPB from '../../proto/js/polykey/v1/keys/keys_pb';
 import * as clientUtils from '../utils';
-import { PublicKey, JWK } from '../../keys/types';
 import * as keysUtils from '../../keys/utils/index';
 import { never } from '../../utils/index';
 import * as keysErrors from '../../keys/errors';
@@ -33,7 +33,7 @@ function keysEncrypt({
         publicKey = keysUtils.publicKeyFromJWK(jwk);
         if (publicKey == null) never();
       } catch (e) {
-        throw new keysErrors.ErrorPublicKeyParse(undefined, {cause: e});
+        throw new keysErrors.ErrorPublicKeyParse(undefined, { cause: e });
       }
       const data = keyRing.encrypt(
         publicKey,

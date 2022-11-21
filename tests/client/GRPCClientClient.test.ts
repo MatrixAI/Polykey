@@ -11,8 +11,8 @@ import Session from '@/sessions/Session';
 import * as clientErrors from '@/client/errors';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import { timerStart } from '@/utils';
-import * as testClientUtils from './utils';
 import * as keysUtils from '@/keys/utils/index';
+import * as testClientUtils from './utils';
 
 describe(GRPCClientClient.name, () => {
   const password = 'password';
@@ -57,7 +57,6 @@ describe(GRPCClientClient.name, () => {
     await client.destroy();
     await testClientUtils.closeTestClientServer(server);
     await pkAgent.stop();
-    await pkAgent.destroy();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,

@@ -1,12 +1,12 @@
+import type { StatusLive } from '@/status/types';
+import type { Signature } from '@/keys/types';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import * as testUtils from '../../utils';
-import { StatusLive } from '@/status/types';
 import * as keysUtils from '@/keys/utils';
 import * as nodesUtils from '@/nodes/utils';
 import sysexits from '@/utils/sysexits';
-import { Signature } from '@/keys/types';
+import * as testUtils from '../../utils';
 
 describe('sign-verify', () => {
   const logger = new Logger('sign-verify test', LogLevel.WARN, [
@@ -17,9 +17,8 @@ describe('sign-verify', () => {
   let agentClose;
   let agentStatus: StatusLive;
   beforeEach(async () => {
-    ({ agentDir, agentPassword, agentClose, agentStatus } = await testUtils.setupTestAgent(
-      logger,
-    ));
+    ({ agentDir, agentPassword, agentClose, agentStatus } =
+      await testUtils.setupTestAgent(logger));
   });
   afterEach(async () => {
     await agentClose();
@@ -49,11 +48,13 @@ describe('sign-verify', () => {
     });
     const signed = JSON.parse(stdout).signature;
 
-    expect(keysUtils.verifyWithPublicKey(
-      publicKey,
-      Buffer.from('sign-me'),
-      Buffer.from(signed, 'binary') as Signature,
-    )).toBeTrue();
+    expect(
+      keysUtils.verifyWithPublicKey(
+        publicKey,
+        Buffer.from('sign-me'),
+        Buffer.from(signed, 'binary') as Signature,
+      ),
+    ).toBeTrue();
   });
   testUtils.testIf(
     testUtils.isTestPlatformEmpty || testUtils.isTestPlatformDocker,
@@ -64,13 +65,24 @@ describe('sign-verify', () => {
     await fs.promises.writeFile(dataPath, 'sign-me', {
       encoding: 'binary',
     });
-    const signed = keysUtils.signWithPrivateKey(sourceKeyPair, Buffer.from('sign-me', 'binary'));
+    const signed = keysUtils.signWithPrivateKey(
+      sourceKeyPair,
+      Buffer.from('sign-me', 'binary'),
+    );
     const signaturePath = path.join(agentDir, 'signature');
     await fs.promises.writeFile(signaturePath, signed, {
       encoding: 'binary',
     });
     const { exitCode, stdout } = await testUtils.pkExec(
-      ['keys', 'verify', dataPath, signaturePath, nodesUtils.encodeNodeId(nodeId), '--format', 'json'],
+      [
+        'keys',
+        'verify',
+        dataPath,
+        signaturePath,
+        nodesUtils.encodeNodeId(nodeId),
+        '--format',
+        'json',
+      ],
       {
         env: {
           PK_NODE_PATH: agentDir,
@@ -94,7 +106,10 @@ describe('sign-verify', () => {
     await fs.promises.writeFile(dataPath, 'sign-me', {
       encoding: 'binary',
     });
-    const signed = keysUtils.signWithPrivateKey(sourceKeyPair, Buffer.from('sign-me', 'binary'));
+    const signed = keysUtils.signWithPrivateKey(
+      sourceKeyPair,
+      Buffer.from('sign-me', 'binary'),
+    );
     const signaturePath = path.join(agentDir, 'signature');
     await fs.promises.writeFile(signaturePath, signed, {
       encoding: 'binary',

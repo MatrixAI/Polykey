@@ -14,12 +14,12 @@ type POJO = { [key: string]: any };
  * `JSON.stringify` automatically converts `undefined` to `null.
  */
 type JSONValue =
-  { [key: string]: JSONValue } |
-  Array<JSONValue> |
-  string |
-  number |
-  boolean |
-  null;
+  | { [key: string]: JSONValue }
+  | Array<JSONValue>
+  | string
+  | number
+  | boolean
+  | null;
 
 /**
  * Opaque types are wrappers of existing types
@@ -134,19 +134,20 @@ type NonFunctionPropertyNames<T> = {
  */
 type NonFunctionProperties<T> = Pick<T, NonFunctionPropertyNames<T>>;
 
-
 /**
  * Finds the key type corresponding to a value type for a record type
  */
 type RecordKeyFromValue<T, V> = {
-  [K in keyof T]: V extends T[K] ? K : never
+  [K in keyof T]: V extends T[K] ? K : never;
 }[keyof T];
 
 /**
  * Inverses a record type, "flipping a record"
  */
-type InverseRecord<M extends Record<string | number | symbol, string | number | symbol>> = {
-  [K in M[keyof M]]: RecordKeyFromValue<M, K>
+type InverseRecord<
+  M extends Record<string | number | symbol, string | number | symbol>,
+> = {
+  [K in M[keyof M]]: RecordKeyFromValue<M, K>;
 };
 
 export type {
@@ -168,5 +169,5 @@ export type {
   FunctionProperties,
   NonFunctionProperties,
   RecordKeyFromValue,
-  InverseRecord
+  InverseRecord,
 };

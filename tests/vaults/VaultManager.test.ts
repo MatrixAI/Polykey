@@ -1,4 +1,4 @@
-import type { NodeId, NodeIdEncoded } from '@/ids/types';
+import type { NodeId } from '@/ids/types';
 import type {
   VaultAction,
   VaultId,
@@ -26,15 +26,13 @@ import PolykeyAgent from '@/PolykeyAgent';
 import VaultManager from '@/vaults/VaultManager';
 import * as vaultsErrors from '@/vaults/errors';
 import NodeGraph from '@/nodes/NodeGraph';
-import * as nodesUtils from '@/nodes/utils';
 import Proxy from '@/network/Proxy';
 import * as vaultsUtils from '@/vaults/utils';
 import { sleep } from '@/utils';
 import VaultInternal from '@/vaults/VaultInternal';
+import * as keysUtils from '@/keys/utils/index';
 import * as nodeTestUtils from '../nodes/utils';
 import * as testUtils from '../utils';
-import * as keysUtils from '@/keys/utils/index';
-import { CertificatePEMChain } from '@/keys/types';
 import * as testsUtils from '../utils/index';
 
 describe('VaultManager', () => {
@@ -49,9 +47,7 @@ describe('VaultManager', () => {
   let remoteVaultId: VaultId;
 
   let remoteKeynode1Id: NodeId;
-  let remoteKeynode1IdEncoded: NodeIdEncoded;
   let remoteKeynode2Id: NodeId;
-  let remoteKeynode2IdEncoded: NodeIdEncoded;
 
   const secretNames = ['Secret1', 'Secret2', 'Secret3', 'Secret4'];
 
@@ -482,7 +478,6 @@ describe('VaultManager', () => {
     let nodeConnectionManager: NodeConnectionManager;
     let remoteKeynode1: PolykeyAgent, remoteKeynode2: PolykeyAgent;
     let localNodeId: NodeId;
-    let localNodeIdEncoded: NodeIdEncoded;
     let taskManager: TaskManager;
 
     beforeAll(async () => {
@@ -505,7 +500,6 @@ describe('VaultManager', () => {
         },
       });
       remoteKeynode1Id = remoteKeynode1.keyRing.getNodeId();
-      remoteKeynode1IdEncoded = nodesUtils.encodeNodeId(remoteKeynode1Id);
       remoteKeynode2 = await PolykeyAgent.createPolykeyAgent({
         password,
         logger: logger.getChild('Remote Keynode 2'),
@@ -520,7 +514,6 @@ describe('VaultManager', () => {
         },
       });
       remoteKeynode2Id = remoteKeynode2.keyRing.getNodeId();
-      remoteKeynode2IdEncoded = nodesUtils.encodeNodeId(remoteKeynode2Id);
 
       // Adding details to each agent
       await remoteKeynode1.nodeGraph.setNode(remoteKeynode2Id, {
@@ -533,19 +526,15 @@ describe('VaultManager', () => {
       });
 
       await remoteKeynode1.gestaltGraph.setNode({
-        id: remoteKeynode2IdEncoded,
-        chain: {},
+        nodeId: remoteKeynode2Id,
       });
       await remoteKeynode2.gestaltGraph.setNode({
-        id: remoteKeynode1IdEncoded,
-        chain: {},
+        nodeId: remoteKeynode1Id,
       });
     });
     afterAll(async () => {
       await remoteKeynode2.stop();
-      await remoteKeynode2.destroy();
       await remoteKeynode1.stop();
-      await remoteKeynode1.destroy();
       await fs.promises.rm(allDataDir, {
         recursive: true,
         force: true,
@@ -578,9 +567,10 @@ describe('VaultManager', () => {
         strictMemoryLock: false,
       });
       localNodeId = keyRing.getNodeId();
-      localNodeIdEncoded = nodesUtils.encodeNodeId(localNodeId);
 
-      const tlsConfig: TLSConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
+      const tlsConfig: TLSConfig = await testsUtils.createTLSConfig(
+        keyRing.keyPair,
+      );
 
       await proxy.start({
         tlsConfig,
@@ -650,11 +640,10 @@ describe('VaultManager', () => {
 
         // Setting permissions
         await remoteKeynode1.gestaltGraph.setNode({
-          id: localNodeIdEncoded,
-          chain: {},
+          nodeId: localNodeId,
         });
-        await remoteKeynode1.gestaltGraph.setGestaltActionByNode(
-          localNodeId,
+        await remoteKeynode1.gestaltGraph.setGestaltAction(
+          ['node', localNodeId],
           'scan',
         );
         await remoteKeynode1.acl.setVaultAction(
@@ -703,11 +692,10 @@ describe('VaultManager', () => {
       try {
         // Setting permissions
         await remoteKeynode1.gestaltGraph.setNode({
-          id: localNodeIdEncoded,
-          chain: {},
+          nodeId: localNodeId,
         });
-        await remoteKeynode1.gestaltGraph.setGestaltActionByNode(
-          localNodeId,
+        await remoteKeynode1.gestaltGraph.setGestaltAction(
+          ['node', localNodeId],
           'scan',
         );
         await remoteKeynode1.acl.setVaultAction(
@@ -743,11 +731,10 @@ describe('VaultManager', () => {
       try {
         // Setting permissions
         await remoteKeynode1.gestaltGraph.setNode({
-          id: localNodeIdEncoded,
-          chain: {},
+          nodeId: localNodeId,
         });
-        await remoteKeynode1.gestaltGraph.setGestaltActionByNode(
-          localNodeId,
+        await remoteKeynode1.gestaltGraph.setGestaltAction(
+          ['node', localNodeId],
           'scan',
         );
         await remoteKeynode1.acl.setVaultAction(
@@ -798,11 +785,10 @@ describe('VaultManager', () => {
 
         // Setting permissions
         await remoteKeynode1.gestaltGraph.setNode({
-          id: localNodeIdEncoded,
-          chain: {},
+          nodeId: localNodeId,
         });
-        await remoteKeynode1.gestaltGraph.setGestaltActionByNode(
-          localNodeId,
+        await remoteKeynode1.gestaltGraph.setGestaltAction(
+          ['node', localNodeId],
           'scan',
         );
         await remoteKeynode1.acl.setVaultAction(
@@ -875,11 +861,10 @@ describe('VaultManager', () => {
       try {
         // Setting permissions
         await remoteKeynode1.gestaltGraph.setNode({
-          id: localNodeIdEncoded,
-          chain: {},
+          nodeId: localNodeId,
         });
-        await remoteKeynode1.gestaltGraph.setGestaltActionByNode(
-          localNodeId,
+        await remoteKeynode1.gestaltGraph.setGestaltAction(
+          ['node', localNodeId],
           'scan',
         );
         await remoteKeynode1.acl.setVaultAction(
@@ -928,11 +913,10 @@ describe('VaultManager', () => {
 
           // Setting permissions
           await remoteKeynode1.gestaltGraph.setNode({
-            id: localNodeIdEncoded,
-            chain: {},
+            nodeId: localNodeId,
           });
-          await remoteKeynode1.gestaltGraph.setGestaltActionByNode(
-            localNodeId,
+          await remoteKeynode1.gestaltGraph.setGestaltAction(
+            ['node', localNodeId],
             'scan',
           );
           await remoteKeynode1.acl.setVaultAction(
@@ -1018,11 +1002,10 @@ describe('VaultManager', () => {
 
           // Setting permissions
           await remoteKeynode1.gestaltGraph.setNode({
-            id: localNodeIdEncoded,
-            chain: {},
+            nodeId: localNodeId,
           });
-          await remoteKeynode1.gestaltGraph.setGestaltActionByNode(
-            localNodeId,
+          await remoteKeynode1.gestaltGraph.setGestaltAction(
+            ['node', localNodeId],
             'scan',
           );
           await remoteKeynode1.acl.setVaultAction(
@@ -1037,11 +1020,10 @@ describe('VaultManager', () => {
           );
 
           await remoteKeynode1.gestaltGraph.setNode({
-            id: remoteKeynode2IdEncoded,
-            chain: {},
+            nodeId: remoteKeynode2Id,
           });
-          await remoteKeynode1.gestaltGraph.setGestaltActionByNode(
-            remoteKeynode2Id,
+          await remoteKeynode1.gestaltGraph.setGestaltAction(
+            ['node', remoteKeynode2Id],
             'scan',
           );
           await remoteKeynode1.acl.setVaultAction(
@@ -1062,11 +1044,10 @@ describe('VaultManager', () => {
             );
 
           await remoteKeynode2.gestaltGraph.setNode({
-            id: localNodeIdEncoded,
-            chain: {},
+            nodeId: localNodeId,
           });
-          await remoteKeynode2.gestaltGraph.setGestaltActionByNode(
-            localNodeId,
+          await remoteKeynode2.gestaltGraph.setGestaltAction(
+            ['node', localNodeId],
             'scan',
           );
           await remoteKeynode2.acl.setVaultAction(
@@ -1228,11 +1209,10 @@ describe('VaultManager', () => {
 
         // Setting permissions
         await remoteKeynode1.gestaltGraph.setNode({
-          id: localNodeIdEncoded,
-          chain: {},
+          nodeId: localNodeId,
         });
-        await remoteKeynode1.gestaltGraph.setGestaltActionByNode(
-          localNodeId,
+        await remoteKeynode1.gestaltGraph.setGestaltAction(
+          ['node', localNodeId],
           'scan',
         );
         await remoteKeynode1.acl.setVaultAction(
@@ -1314,11 +1294,10 @@ describe('VaultManager', () => {
 
           // Setting permissions
           await remoteKeynode1.gestaltGraph.setNode({
-            id: localNodeIdEncoded,
-            chain: {},
+            nodeId: localNodeId,
           });
-          await remoteKeynode1.gestaltGraph.setGestaltActionByNode(
-            localNodeId,
+          await remoteKeynode1.gestaltGraph.setGestaltAction(
+            ['node', localNodeId],
             'scan',
           );
           await remoteKeynode1.acl.setVaultAction(
@@ -1428,14 +1407,12 @@ describe('VaultManager', () => {
       const nodeId1 = nodeTestUtils.generateRandomNodeId();
       const nodeId2 = nodeTestUtils.generateRandomNodeId();
       await gestaltGraph.setNode({
-        id: nodesUtils.encodeNodeId(nodeId1),
-        chain: {},
+        nodeId: nodeId1,
       });
       await gestaltGraph.setNode({
-        id: nodesUtils.encodeNodeId(nodeId2),
-        chain: {},
+        nodeId: nodeId2,
       });
-      await gestaltGraph.setGestaltActionByNode(nodeId1, 'scan');
+      await gestaltGraph.setGestaltAction(['node', nodeId1], 'scan');
 
       const vault1 = await vaultManager.createVault('testVault1' as VaultName);
       const vault2 = await vaultManager.createVault('testVault2' as VaultName);
@@ -1464,7 +1441,7 @@ describe('VaultManager', () => {
         }
       }).rejects.toThrow(vaultsErrors.ErrorVaultsPermissionDenied);
       // Should throw due to lack of scan permission
-      await gestaltGraph.setGestaltActionByNode(nodeId2, 'notify');
+      await gestaltGraph.setGestaltAction(['node', nodeId2], 'notify');
       await expect(async () => {
         for await (const _ of vaultManager.handleScanVaults(nodeId2)) {
           // Should throw
@@ -1565,8 +1542,7 @@ describe('VaultManager', () => {
       });
 
       await remoteAgent.gestaltGraph.setNode({
-        id: nodesUtils.encodeNodeId(nodeId1),
-        chain: {},
+        nodeId: nodeId1,
       });
 
       const vault1 = await remoteAgent.vaultManager.createVault(
@@ -1592,14 +1568,20 @@ describe('VaultManager', () => {
         vaultsErrors.ErrorVaultsPermissionDenied,
       );
       // Should throw due to lack of scan permission
-      await remoteAgent.gestaltGraph.setGestaltActionByNode(nodeId1, 'notify');
+      await remoteAgent.gestaltGraph.setGestaltAction(
+        ['node', nodeId1],
+        'notify',
+      );
       await testUtils.expectRemoteError(
         testFun(),
         vaultsErrors.ErrorVaultsPermissionDenied,
       );
 
       // Setting permissions
-      await remoteAgent.gestaltGraph.setGestaltActionByNode(nodeId1, 'scan');
+      await remoteAgent.gestaltGraph.setGestaltAction(
+        ['node', nodeId1],
+        'scan',
+      );
       await remoteAgent.acl.setVaultAction(vault1, nodeId1, 'clone');
       await remoteAgent.acl.setVaultAction(vault1, nodeId1, 'pull');
       await remoteAgent.acl.setVaultAction(vault2, nodeId1, 'clone');
@@ -1637,7 +1619,6 @@ describe('VaultManager', () => {
       await acl.stop();
       await acl.destroy();
       await remoteAgent.stop();
-      await remoteAgent.destroy();
       await taskManager.stop();
     }
   });

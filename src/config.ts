@@ -87,7 +87,7 @@ const config = {
     efsBase: 'efs',
     tokenBase: 'token',
     certManagerConfig: {
-      certDuration: 31536000
+      certDuration: 31536000,
     },
     networkConfig: {
       // ForwardProxy

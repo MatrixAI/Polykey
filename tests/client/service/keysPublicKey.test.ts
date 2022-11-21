@@ -7,12 +7,12 @@ import { Metadata } from '@grpc/grpc-js';
 import KeyRing from '@/keys/KeyRing';
 import GRPCServer from '@/grpc/GRPCServer';
 import GRPCClientClient from '@/client/GRPCClientClient';
-import keysPublicKey from '../../../src/client/service/keysPublicKey';
 import { ClientServiceService } from '@/proto/js/polykey/v1/client_service_grpc_pb';
 import * as keysPB from '@/proto/js/polykey/v1/keys/keys_pb';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as clientUtils from '@/client/utils/utils';
 import * as keysUtils from '@/keys/utils';
+import keysPublicKey from '../../../src/client/service/keysPublicKey';
 
 describe('keysPublicKey', () => {
   const logger = new Logger('keysPublicKey test', LogLevel.WARN, [
@@ -78,7 +78,7 @@ describe('keysPublicKey', () => {
       alg: expect.any(String),
       crv: expect.any(String),
       ext: expect.any(Boolean),
-      key_ops: expect.any(Array<string>),
+      key_ops: expect.any(Array),
       kty: expect.any(String),
       x: expect.any(String),
     });

@@ -76,7 +76,7 @@ class GRPCServer {
       const http2Servers = server.http2ServerList;
       for (const http2ServerObjects of http2Servers) {
         const http2Server = http2ServerObjects.server as Http2SecureServer;
-        http2Server.on('session', (session: Http2Session) => {
+        http2Server.on('session', async (session: Http2Session) => {
           const socket = session.socket as TLSSocket;
           const address = networkUtils.buildAddress(
             socket.remoteAddress as Host,
@@ -91,7 +91,7 @@ class GRPCServer {
             );
           } else {
             try {
-              networkUtils.verifyClientCertificateChain(clientCertChain);
+              await networkUtils.verifyClientCertificateChain(clientCertChain);
               this.logger.debug(`Verified certificate from ${address}`);
               this.clientCertChains.set(session, clientCertChain);
             } catch (e) {

@@ -54,7 +54,7 @@ describe('VaultInternal', () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
-    dbKey = await keysUtils.generateKey();
+    dbKey = keysUtils.generateKey();
     efsDbPath = path.join(dataDir, 'efsDb');
     await fs.promises.mkdir(efsDbPath);
     efs = await EncryptedFS.createEncryptedFS({
@@ -66,7 +66,7 @@ describe('VaultInternal', () => {
 
     db = await DB.createDB({
       crypto: {
-        key: await keysUtils.generateKey(),
+        key: keysUtils.generateKey(),
         ops: {
           encrypt: async (key, plainText) => {
             return keysUtils.encryptWithKey(

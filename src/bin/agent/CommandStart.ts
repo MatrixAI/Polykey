@@ -96,8 +96,12 @@ class CommandStart extends CommandPolykey {
         keyRingConfig: {
           recoveryCode: recoveryCodeIn,
           privateKeyPath: options.privateKeyFile,
-          passwordOpsLimit: fastPasswordHash ? keysUtils.passwordOpsLimits.min : undefined,
-          passwordMemLimit: fastPasswordHash ? keysUtils.passwordMemLimits.min : undefined,
+          passwordOpsLimit: fastPasswordHash
+            ? keysUtils.passwordOpsLimits.min
+            : undefined,
+          passwordMemLimit: fastPasswordHash
+            ? keysUtils.passwordMemLimits.min
+            : undefined,
         },
         proxyConfig: {
           connConnectTime: options.connectionTimeout,

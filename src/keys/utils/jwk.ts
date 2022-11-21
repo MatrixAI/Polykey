@@ -118,7 +118,9 @@ function privateKeyFromJWK(privateKeyJWK: JWK): PrivateKey | undefined {
     return;
   }
   // If the public key doesn't match, then the JWK is invalid
-  const publicKeyData_ = publicKeyFromPrivateKeyEd25519(privateKeyData as PrivateKey);
+  const publicKeyData_ = publicKeyFromPrivateKeyEd25519(
+    privateKeyData as PrivateKey,
+  );
   if (!publicKeyData_.equals(publicKeyData)) {
     return;
   }
@@ -149,7 +151,9 @@ function keyPairFromJWK(keyPair: KeyPairJWK): KeyPair | undefined {
   if (publicKey == null || privateKey == null) {
     return;
   }
-  const secretKey = Buffer.allocUnsafeSlow(privateKey.byteLength + publicKey.byteLength);
+  const secretKey = Buffer.allocUnsafeSlow(
+    privateKey.byteLength + publicKey.byteLength,
+  );
   privateKey.copy(secretKey);
   publicKey.copy(secretKey, privateKey.byteLength);
   return {

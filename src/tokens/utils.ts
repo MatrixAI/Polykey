@@ -24,36 +24,36 @@ function generateTokenPayload(payload: TokenPayload): TokenPayloadEncoded {
 }
 
 function generateTokenProtectedHeader(
-  header: TokenProtectedHeader
+  header: TokenProtectedHeader,
 ): TokenProtectedHeaderEncoded {
-  const headerJSON = canonicalize(header)!
+  const headerJSON = canonicalize(header)!;
   const headerData = Buffer.from(headerJSON, 'utf-8');
   return headerData.toString('base64url') as TokenProtectedHeaderEncoded;
 }
 
 function generateTokenSignature(
-  signature: TokenSignature
+  signature: TokenSignature,
 ): TokenSignatureEncoded {
   return signature.toString('base64url') as TokenSignatureEncoded;
 }
 
 function generateTokenHeaderSignature(
-  tokenHeaderSignature: TokenHeaderSignature
+  tokenHeaderSignature: TokenHeaderSignature,
 ): TokenHeaderSignatureEncoded {
   return {
     protected: generateTokenProtectedHeader(tokenHeaderSignature.protected),
-    signature: generateTokenSignature(tokenHeaderSignature.signature)
+    signature: generateTokenSignature(tokenHeaderSignature.signature),
   };
 }
 
 function generateSignedToken(signed: SignedToken): SignedTokenEncoded {
   const payload = generateTokenPayload(signed.payload);
   const signatures = signed.signatures.map((tokenHeaderSignature) =>
-    generateTokenHeaderSignature(tokenHeaderSignature)
+    generateTokenHeaderSignature(tokenHeaderSignature),
   );
   return {
     payload,
-    signatures
+    signatures,
   };
 }
 
@@ -61,16 +61,12 @@ function generateSignedToken(signed: SignedToken): SignedTokenEncoded {
  * Parses `TokenPayloadEncoded` to `TokenPayload`
  */
 function parseTokenPayload<P extends TokenPayload = TokenPayload>(
-  tokenPayloadEncoded: unknown
+  tokenPayloadEncoded: unknown,
 ): P {
   if (typeof tokenPayloadEncoded !== 'string') {
-    throw new validationErrors.ErrorParse(
-      'must be a string',
-    );
+    throw new validationErrors.ErrorParse('must be a string');
   }
-  const tokenPayloadData = Buffer.from(
-    tokenPayloadEncoded, 'base64url'
-  );
+  const tokenPayloadData = Buffer.from(tokenPayloadEncoded, 'base64url');
   const tokenPayloadJSON = tokenPayloadData.toString('utf-8');
   let tokenPayload;
   try {
@@ -86,19 +82,12 @@ function parseTokenPayload<P extends TokenPayload = TokenPayload>(
     );
   }
   if ('iss' in tokenPayload && typeof tokenPayload['iss'] !== 'string') {
-    throw new validationErrors.ErrorParse(
-      '`iss` property must be a string',
-    );
+    throw new validationErrors.ErrorParse('`iss` property must be a string');
   }
   if ('sub' in tokenPayload && typeof tokenPayload['sub'] !== 'string') {
-    throw new validationErrors.ErrorParse(
-      '`sub` property must be a string',
-    );
+    throw new validationErrors.ErrorParse('`sub` property must be a string');
   }
-  if (
-    'aud' in tokenPayload &&
-    typeof tokenPayload['aud'] !== 'string'
-  ) {
+  if ('aud' in tokenPayload && typeof tokenPayload['aud'] !== 'string') {
     if (!Array.isArray(tokenPayload['aud'])) {
       throw new validationErrors.ErrorParse(
         '`aud` property must be a string or array of strings',
@@ -113,24 +102,16 @@ function parseTokenPayload<P extends TokenPayload = TokenPayload>(
     }
   }
   if ('exp' in tokenPayload && typeof tokenPayload['exp'] !== 'number') {
-    throw new validationErrors.ErrorParse(
-      '`exp` property must be a number',
-    );
+    throw new validationErrors.ErrorParse('`exp` property must be a number');
   }
   if ('nbf' in tokenPayload && typeof tokenPayload['nbf'] !== 'number') {
-    throw new validationErrors.ErrorParse(
-      '`nbf` property must be a number',
-    );
+    throw new validationErrors.ErrorParse('`nbf` property must be a number');
   }
   if ('iat' in tokenPayload && typeof tokenPayload['iat'] !== 'number') {
-    throw new validationErrors.ErrorParse(
-      '`iat` property must be a number',
-    );
+    throw new validationErrors.ErrorParse('`iat` property must be a number');
   }
   if ('jti' in tokenPayload && typeof tokenPayload['jti'] !== 'string') {
-    throw new validationErrors.ErrorParse(
-      '`jti` property must be a string',
-    );
+    throw new validationErrors.ErrorParse('`jti` property must be a string');
   }
   return tokenPayload as P;
 }
@@ -139,15 +120,14 @@ function parseTokenPayload<P extends TokenPayload = TokenPayload>(
  * Parses `TokenProtectedHeaderEncoded` to `TokenProtectedHeader`
  */
 function parseTokenProtectedHeader(
-  tokenProtectedHeaderEncoded: unknown
+  tokenProtectedHeaderEncoded: unknown,
 ): TokenProtectedHeader {
   if (typeof tokenProtectedHeaderEncoded !== 'string') {
-    throw new validationErrors.ErrorParse(
-      'must be a string',
-    );
+    throw new validationErrors.ErrorParse('must be a string');
   }
   const tokenProtectedHeaderData = Buffer.from(
-    tokenProtectedHeaderEncoded, 'base64url'
+    tokenProtectedHeaderEncoded,
+    'base64url',
   );
   const tokenProtectedHeaderJSON = tokenProtectedHeaderData.toString('utf-8');
   let tokenProtectedHeader: any;
@@ -164,9 +144,7 @@ function parseTokenProtectedHeader(
     );
   }
   if (typeof tokenProtectedHeader['alg'] !== 'string') {
-    throw new validationErrors.ErrorParse(
-      '`alg` property must be a string',
-    );
+    throw new validationErrors.ErrorParse('`alg` property must be a string');
   }
   if (
     tokenProtectedHeader['alg'] !== 'EdDSA' &&
@@ -187,15 +165,12 @@ function parseTokenProtectedHeader(
   return tokenProtectedHeader as TokenProtectedHeader;
 }
 
-
 /**
  * Parses `TokenSignatureEncoded` to `TokenSignature`
  */
 function parseTokenSignature(tokenSignatureEncoded: unknown): TokenSignature {
   if (typeof tokenSignatureEncoded !== 'string') {
-    throw new validationErrors.ErrorParse(
-      'must be a string',
-    );
+    throw new validationErrors.ErrorParse('must be a string');
   }
   const signature = Buffer.from(tokenSignatureEncoded, 'base64url');
   if (!keysUtils.isSignature(signature) && !keysUtils.isMAC(signature)) {
@@ -210,12 +185,10 @@ function parseTokenSignature(tokenSignatureEncoded: unknown): TokenSignature {
  * Parses `TokenHeaderSignatureEncoded` to `TokenHeaderSignature`
  */
 function parseTokenHeaderSignature(
-  tokenHeaderSignatureEncoded: unknown
+  tokenHeaderSignatureEncoded: unknown,
 ): TokenHeaderSignature {
   if (!utils.isObject(tokenHeaderSignatureEncoded)) {
-    throw new validationErrors.ErrorParse(
-      'must be a JSON POJO',
-    );
+    throw new validationErrors.ErrorParse('must be a JSON POJO');
   }
   if (!('protected' in tokenHeaderSignatureEncoded)) {
     throw new validationErrors.ErrorParse(
@@ -228,10 +201,10 @@ function parseTokenHeaderSignature(
     );
   }
   const protectedHeader = parseTokenProtectedHeader(
-    tokenHeaderSignatureEncoded['protected']
+    tokenHeaderSignatureEncoded['protected'],
   );
   const signature = parseTokenSignature(
-    tokenHeaderSignatureEncoded['signature']
+    tokenHeaderSignatureEncoded['signature'],
   );
   return {
     protected: protectedHeader,
@@ -239,22 +212,17 @@ function parseTokenHeaderSignature(
   };
 }
 
-
 /**
  * Parses `SignedTokenEncoded` to `SignedToken`
  */
 function parseSignedToken<P extends TokenPayload = TokenPayload>(
-  signedTokenEncoded: unknown
+  signedTokenEncoded: unknown,
 ): SignedToken<P> {
   if (!utils.isObject(signedTokenEncoded)) {
-    throw new validationErrors.ErrorParse(
-      'must be a JSON POJO',
-    );
+    throw new validationErrors.ErrorParse('must be a JSON POJO');
   }
   if (!('payload' in signedTokenEncoded)) {
-    throw new validationErrors.ErrorParse(
-      '`payload` property must be defined',
-    );
+    throw new validationErrors.ErrorParse('`payload` property must be defined');
   }
   if (!('signatures' in signedTokenEncoded)) {
     throw new validationErrors.ErrorParse(
@@ -269,12 +237,14 @@ function parseSignedToken<P extends TokenPayload = TokenPayload>(
   }
   const signatures: Array<TokenHeaderSignature> = [];
   for (const headerSignatureEncoded of signedTokenEncoded['signatures']) {
-    const tokenHeaderSignature = parseTokenHeaderSignature(headerSignatureEncoded);
+    const tokenHeaderSignature = parseTokenHeaderSignature(
+      headerSignatureEncoded,
+    );
     signatures.push(tokenHeaderSignature);
   }
   return {
     payload,
-    signatures
+    signatures,
   };
 }
 

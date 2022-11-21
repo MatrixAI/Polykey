@@ -45,14 +45,7 @@ function gestaltsActionsGetByNode({
       const result = await db.withTransactionF((tran) =>
         gestaltGraph.getGestaltActions(['node', nodeId], tran),
       );
-      if (result == null) {
-        // Node doesn't exist, so no permissions
-        response.setActionList([]);
-      } else {
-        // Contains permission
-        const actions = Object.keys(result);
-        response.setActionList(actions);
-      }
+      response.setActionList(Object.keys(result));
       callback(null, response);
       return;
     } catch (e) {

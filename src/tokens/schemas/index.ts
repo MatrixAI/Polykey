@@ -5,13 +5,7 @@ import SignedTokenEncodedSchema from './SignedTokenEncodedSchema.json';
 
 const ajv = new Ajv();
 
-const validateSignedTokenEncoded: ValidateFunction<
-  SignedTokenEncoded
-> = ajv.compile(
-  SignedTokenEncodedSchema
-);
+const validateSignedTokenEncoded: ValidateFunction<SignedTokenEncoded> =
+  ajv.compile(SignedTokenEncodedSchema);
 
-export {
-  SignedTokenEncodedSchema,
-  validateSignedTokenEncoded
-};
+export { SignedTokenEncodedSchema, validateSignedTokenEncoded };

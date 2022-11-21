@@ -110,12 +110,15 @@ const generateCertId = keysUtils.createCertIdGenerator();
 
 async function createTLSSocketConfig(serverKeyPair: KeyPair) {
   const serverKeyPairPem = keysUtils.keyPairToPEM(serverKeyPair);
-  const serverCert = (await keysUtils.generateCertificate({
+  const serverCert = await keysUtils.generateCertificate({
     certId: generateCertId(),
     duration: 31536000,
     issuerPrivateKey: serverKeyPair.privateKey,
-    subjectKeyPair: { privateKey: serverKeyPair.privateKey, publicKey: serverKeyPair.publicKey }
-  }));
+    subjectKeyPair: {
+      privateKey: serverKeyPair.privateKey,
+      publicKey: serverKeyPair.publicKey,
+    },
+  });
   const serverCertPem = keysUtils.certToPEM(serverCert);
   return {
     key: Buffer.from(serverKeyPairPem.privateKey, 'ascii'),
@@ -123,7 +126,7 @@ async function createTLSSocketConfig(serverKeyPair: KeyPair) {
     isServer: true,
     requestCert: true,
     rejectUnauthorized: false,
-  }
+  };
 }
 
 describe(Proxy.name, () => {
@@ -141,7 +144,6 @@ describe(Proxy.name, () => {
   // The Proxy acts like both a client and a server.
   // This is the TLSConfig for the Proxy.
   let tlsConfig: TLSConfig;
-  let certPem: string;
   beforeEach(async () => {
     tlsConfig = await testsUtils.createTLSConfig(keysUtils.generateKeyPair());
   });
@@ -607,7 +609,7 @@ describe(Proxy.name, () => {
     await proxy.stop();
   });
   test('open connection fails due to invalid node id', async () => {
-    const serverKeyPair = await keysUtils.generateKeyPair();
+    const serverKeyPair = keysUtils.generateKeyPair();
     const proxy = new Proxy({
       authToken,
       logger: logger.getChild('Proxy invalid node id'),
@@ -643,7 +645,10 @@ describe(Proxy.name, () => {
       utpConn.on('end', async () => {
         utpConn.destroy();
       });
-      const tlsSocket = new tls.TLSSocket(utpConn, await createTLSSocketConfig(serverKeyPair));
+      const tlsSocket = new tls.TLSSocket(
+        utpConn,
+        await createTLSSocketConfig(serverKeyPair),
+      );
       tlsSocket.on('secure', () => {
         secured = true;
       });
@@ -717,7 +722,7 @@ describe(Proxy.name, () => {
     await proxy.stop();
   });
   test('HTTP CONNECT fails due to invalid node id', async () => {
-    const serverKeyPair = await keysUtils.generateKeyPair();
+    const serverKeyPair = keysUtils.generateKeyPair();
     const proxy = new Proxy({
       authToken,
       logger: logger.getChild('Proxy invalid node id'),
@@ -753,7 +758,10 @@ describe(Proxy.name, () => {
       utpConn.on('end', async () => {
         utpConn.destroy();
       });
-      const tlsSocket = new tls.TLSSocket(utpConn, await createTLSSocketConfig(serverKeyPair));
+      const tlsSocket = new tls.TLSSocket(
+        utpConn,
+        await createTLSSocketConfig(serverKeyPair),
+      );
       tlsSocket.on('secure', () => {
         secured = true;
       });
@@ -830,7 +838,7 @@ describe(Proxy.name, () => {
     await proxy.stop();
   });
   test('open connection success - forward initiates end', async () => {
-    const serverKeyPair = await keysUtils.generateKeyPair();
+    const serverKeyPair = keysUtils.generateKeyPair();
     const serverNodeId = keysUtils.publicKeyToNodeId(serverKeyPair.publicKey)!;
     const proxy = new Proxy({
       authToken,
@@ -870,7 +878,10 @@ describe(Proxy.name, () => {
       utpConn.on('end', async () => {
         utpConn.destroy();
       });
-      const tlsSocket = new tls.TLSSocket(utpConn, await createTLSSocketConfig(serverKeyPair));
+      const tlsSocket = new tls.TLSSocket(
+        utpConn,
+        await createTLSSocketConfig(serverKeyPair),
+      );
       tlsSocket.on('secure', () => {
         resolveRemoteSecureP();
       });
@@ -950,7 +961,7 @@ describe(Proxy.name, () => {
     await proxy.stop();
   });
   test('open connection success - reverse initiates end', async () => {
-    const serverKeyPair = await keysUtils.generateKeyPair();
+    const serverKeyPair = keysUtils.generateKeyPair();
     const serverNodeId = keysUtils.publicKeyToNodeId(serverKeyPair.publicKey)!;
     const proxy = new Proxy({
       authToken,
@@ -984,7 +995,10 @@ describe(Proxy.name, () => {
       utpConn.on('error', (e) => {
         utpConnError(e);
       });
-      const tlsSocket = new tls.TLSSocket(utpConn, await createTLSSocketConfig(serverKeyPair));
+      const tlsSocket = new tls.TLSSocket(
+        utpConn,
+        await createTLSSocketConfig(serverKeyPair),
+      );
       tlsSocket_ = tlsSocket;
       tlsSocket.on('secure', () => {
         resolveRemoteSecureP();
@@ -1084,7 +1098,7 @@ describe(Proxy.name, () => {
     await proxy.stop();
   });
   test('HTTP CONNECT success - forward initiates end', async () => {
-    const serverKeyPair = await keysUtils.generateKeyPair();
+    const serverKeyPair = keysUtils.generateKeyPair();
     const serverNodeId = keysUtils.publicKeyToNodeId(serverKeyPair.publicKey)!;
     const serverNodeIdEncoded = nodesUtils.encodeNodeId(serverNodeId);
     const proxy = new Proxy({
@@ -1125,7 +1139,10 @@ describe(Proxy.name, () => {
       utpConn.on('end', async () => {
         utpConn.destroy();
       });
-      const tlsSocket = new tls.TLSSocket(utpConn, await createTLSSocketConfig(serverKeyPair));
+      const tlsSocket = new tls.TLSSocket(
+        utpConn,
+        await createTLSSocketConfig(serverKeyPair),
+      );
       tlsSocket.on('secure', () => {
         resolveRemoteSecureP();
       });
@@ -1227,7 +1244,7 @@ describe(Proxy.name, () => {
     await proxy.stop();
   });
   test('HTTP CONNECT success - reverse initiates end', async () => {
-    const serverKeyPair = await keysUtils.generateKeyPair();
+    const serverKeyPair = keysUtils.generateKeyPair();
     const serverNodeId = keysUtils.publicKeyToNodeId(serverKeyPair.publicKey)!;
     const serverNodeIdEncoded = nodesUtils.encodeNodeId(serverNodeId);
     const proxy = new Proxy({
@@ -1261,7 +1278,10 @@ describe(Proxy.name, () => {
       utpConn.on('error', (e) => {
         utpConnError(e);
       });
-      const tlsSocket = new tls.TLSSocket(utpConn, await createTLSSocketConfig(serverKeyPair));
+      const tlsSocket = new tls.TLSSocket(
+        utpConn,
+        await createTLSSocketConfig(serverKeyPair),
+      );
       tlsSocket_ = tlsSocket;
       tlsSocket.on('secure', () => {
         resolveRemoteSecureP();
@@ -1383,7 +1403,7 @@ describe(Proxy.name, () => {
     await proxy.stop();
   });
   test('HTTP CONNECT success - client initiates end', async () => {
-    const serverKeyPair = await keysUtils.generateKeyPair();
+    const serverKeyPair = keysUtils.generateKeyPair();
     const serverNodeId = keysUtils.publicKeyToNodeId(serverKeyPair.publicKey)!;
     const serverNodeIdEncoded = nodesUtils.encodeNodeId(serverNodeId);
     const proxy = new Proxy({
@@ -1415,7 +1435,10 @@ describe(Proxy.name, () => {
       utpConn.on('error', (e) => {
         utpConnError(e);
       });
-      const tlsSocket = new tls.TLSSocket(utpConn, await createTLSSocketConfig(serverKeyPair));
+      const tlsSocket = new tls.TLSSocket(
+        utpConn,
+        await createTLSSocketConfig(serverKeyPair),
+      );
       tlsSocket.on('secure', () => {
         resolveRemoteSecureP();
       });
@@ -1526,7 +1549,7 @@ describe(Proxy.name, () => {
     await proxy.stop();
   });
   test('HTTP CONNECT success by opening connection first', async () => {
-    const serverKeyPair = await keysUtils.generateKeyPair();
+    const serverKeyPair = keysUtils.generateKeyPair();
     const serverNodeId = keysUtils.publicKeyToNodeId(serverKeyPair.publicKey)!;
     const serverNodeIdEncoded = nodesUtils.encodeNodeId(serverNodeId);
     const proxy = new Proxy({
@@ -1556,7 +1579,10 @@ describe(Proxy.name, () => {
       utpConn.on('error', (e) => {
         utpConnError(e);
       });
-      const tlsSocket = new tls.TLSSocket(utpConn, await createTLSSocketConfig(serverKeyPair));
+      const tlsSocket = new tls.TLSSocket(
+        utpConn,
+        await createTLSSocketConfig(serverKeyPair),
+      );
       tlsSocket.on('secure', () => {
         resolveRemoteSecureP();
       });
@@ -1642,7 +1668,7 @@ describe(Proxy.name, () => {
     await proxy.stop();
   });
   test('open connection keepalive timeout', async () => {
-    const serverKeyPair = await keysUtils.generateKeyPair();
+    const serverKeyPair = keysUtils.generateKeyPair();
     const serverNodeId = keysUtils.publicKeyToNodeId(serverKeyPair.publicKey)!;
     const proxy = new Proxy({
       authToken,
@@ -1673,7 +1699,10 @@ describe(Proxy.name, () => {
       utpConn.on('error', (e) => {
         utpConnError(e);
       });
-      const tlsSocket = new tls.TLSSocket(utpConn, await createTLSSocketConfig(serverKeyPair));
+      const tlsSocket = new tls.TLSSocket(
+        utpConn,
+        await createTLSSocketConfig(serverKeyPair),
+      );
       tlsSocket.on('secure', () => {
         resolveRemoteSecureP();
       });
@@ -1744,7 +1773,7 @@ describe(Proxy.name, () => {
     await proxy.stop();
   });
   test('HTTP CONNECT keepalive timeout', async () => {
-    const serverKeyPair = await keysUtils.generateKeyPair();
+    const serverKeyPair = keysUtils.generateKeyPair();
     const serverNodeId = keysUtils.publicKeyToNodeId(serverKeyPair.publicKey)!;
     const serverNodeIdEncoded = nodesUtils.encodeNodeId(serverNodeId);
     const proxy = new Proxy({
@@ -1776,7 +1805,10 @@ describe(Proxy.name, () => {
       utpConn.on('error', (e) => {
         utpConnError(e);
       });
-      const tlsSocket = new tls.TLSSocket(utpConn, await createTLSSocketConfig(serverKeyPair));
+      const tlsSocket = new tls.TLSSocket(
+        utpConn,
+        await createTLSSocketConfig(serverKeyPair),
+      );
       tlsSocket.on('secure', () => {
         resolveRemoteSecureP();
       });
@@ -1870,7 +1902,7 @@ describe(Proxy.name, () => {
     await proxy.stop();
   });
   test('stopping the proxy with open forward connections', async () => {
-    const serverKeyPair = await keysUtils.generateKeyPair();
+    const serverKeyPair = keysUtils.generateKeyPair();
     const serverNodeId = keysUtils.publicKeyToNodeId(serverKeyPair.publicKey)!;
     const proxy = new Proxy({
       authToken,
@@ -1891,7 +1923,10 @@ describe(Proxy.name, () => {
     const { p: remoteClosedP, resolveP: resolveRemoteClosedP } =
       promise<void>();
     const utpSocket = UTP.createServer(async (utpConn) => {
-      const tlsSocket = new tls.TLSSocket(utpConn, await createTLSSocketConfig(serverKeyPair));
+      const tlsSocket = new tls.TLSSocket(
+        utpConn,
+        await createTLSSocketConfig(serverKeyPair),
+      );
       tlsSocket.on('secure', () => {
         resolveRemoteSecureP();
       });
@@ -1951,11 +1986,15 @@ describe(Proxy.name, () => {
   });
   test('open connection to multiple servers', async () => {
     // First server keys
-    const serverKeyPair1 = await keysUtils.generateKeyPair();
-    const serverNodeId1 = keysUtils.publicKeyToNodeId(serverKeyPair1.publicKey)!;
+    const serverKeyPair1 = keysUtils.generateKeyPair();
+    const serverNodeId1 = keysUtils.publicKeyToNodeId(
+      serverKeyPair1.publicKey,
+    )!;
     // Second server keys
-    const serverKeyPair2 = await keysUtils.generateKeyPair();
-    const serverNodeId2 = keysUtils.publicKeyToNodeId(serverKeyPair2.publicKey)!;
+    const serverKeyPair2 = keysUtils.generateKeyPair();
+    const serverNodeId2 = keysUtils.publicKeyToNodeId(
+      serverKeyPair2.publicKey,
+    )!;
     const proxy = new Proxy({
       authToken,
       logger,
@@ -1980,7 +2019,10 @@ describe(Proxy.name, () => {
     const { p: remoteClosedP2, resolveP: resolveRemoteClosedP2 } =
       promise<void>();
     const utpSocket1 = UTP.createServer(async (utpConn) => {
-      const tlsSocket = new tls.TLSSocket(utpConn, await createTLSSocketConfig(serverKeyPair1));
+      const tlsSocket = new tls.TLSSocket(
+        utpConn,
+        await createTLSSocketConfig(serverKeyPair1),
+      );
       tlsSocket.on('close', () => {
         resolveRemoteClosedP1();
       });
@@ -2017,7 +2059,10 @@ describe(Proxy.name, () => {
     const utpSocketHost1 = utpSocket1.address().address;
     const utpSocketPort1 = utpSocket1.address().port;
     const utpSocket2 = UTP.createServer(async (utpConn) => {
-      const tlsSocket = new tls.TLSSocket(utpConn, await createTLSSocketConfig(serverKeyPair2));
+      const tlsSocket = new tls.TLSSocket(
+        utpConn,
+        await createTLSSocketConfig(serverKeyPair2),
+      );
       tlsSocket.on('close', () => {
         resolveRemoteClosedP2();
       });
@@ -2527,14 +2572,17 @@ describe(Proxy.name, () => {
     await serverClose();
   });
   test('connect success', async () => {
-    const clientKeyPair = await keysUtils.generateKeyPair();
+    const clientKeyPair = keysUtils.generateKeyPair();
     const clientKeyPairPem = keysUtils.keyPairToPEM(clientKeyPair);
-    const clientCert = (await keysUtils.generateCertificate({
+    const clientCert = await keysUtils.generateCertificate({
       certId: generateCertId(),
       duration: 31536000,
       issuerPrivateKey: clientKeyPair.privateKey,
-      subjectKeyPair: { privateKey: clientKeyPair.privateKey, publicKey: clientKeyPair.publicKey }
-    }));
+      subjectKeyPair: {
+        privateKey: clientKeyPair.privateKey,
+        publicKey: clientKeyPair.publicKey,
+      },
+    });
     const clientCertPem = keysUtils.certToPEM(clientCert);
     const {
       serverListen,
@@ -2623,14 +2671,17 @@ describe(Proxy.name, () => {
     await serverClose();
   });
   test('stopping the proxy with open reverse connections', async () => {
-    const clientKeyPair = await keysUtils.generateKeyPair();
+    const clientKeyPair = keysUtils.generateKeyPair();
     const clientKeyPairPem = keysUtils.keyPairToPEM(clientKeyPair);
-    const clientCert = (await keysUtils.generateCertificate({
+    const clientCert = await keysUtils.generateCertificate({
       certId: generateCertId(),
       duration: 31536000,
       issuerPrivateKey: clientKeyPair.privateKey,
-      subjectKeyPair: { privateKey: clientKeyPair.privateKey, publicKey: clientKeyPair.publicKey }
-    }));
+      subjectKeyPair: {
+        privateKey: clientKeyPair.privateKey,
+        publicKey: clientKeyPair.publicKey,
+      },
+    });
     const clientCertPem = keysUtils.certToPEM(clientCert);
     const {
       serverListen,
@@ -2718,14 +2769,17 @@ describe(Proxy.name, () => {
     await serverClose();
   });
   test('connectionEstablishedCallback is called when a ReverseConnection is established', async () => {
-    const clientKeyPair = await keysUtils.generateKeyPair();
+    const clientKeyPair = keysUtils.generateKeyPair();
     const clientKeyPairPem = keysUtils.keyPairToPEM(clientKeyPair);
-    const clientCert = (await keysUtils.generateCertificate({
+    const clientCert = await keysUtils.generateCertificate({
       certId: generateCertId(),
       duration: 31536000,
       issuerPrivateKey: clientKeyPair.privateKey,
-      subjectKeyPair: { privateKey: clientKeyPair.privateKey, publicKey: clientKeyPair.publicKey }
-    }));
+      subjectKeyPair: {
+        privateKey: clientKeyPair.privateKey,
+        publicKey: clientKeyPair.publicKey,
+      },
+    });
     const clientCertPem = keysUtils.certToPEM(clientCert);
     const {
       serverListen,

@@ -5,7 +5,7 @@ import type { Host, Port } from '../network/types';
 import type { StatusLive } from '../status/types';
 import type { NodeIdEncoded } from '../ids/types';
 import type { PrivateKey } from '../keys/types';
-import { PasswordOpsLimit, PasswordMemLimit } from '../keys/types';
+import type { PasswordOpsLimit, PasswordMemLimit } from '../keys/types';
 
 type AgentStatusLiveData = Omit<StatusLive['data'], 'nodeId'> & {
   nodeId: NodeIdEncoded;
@@ -28,12 +28,12 @@ type AgentChildProcessInput = {
       recoveryCode?: RecoveryCode;
       privateKey?: PrivateKey;
       privateKeyPath?: string;
-      passwordOpsLimit?: PasswordOpsLimit,
-      passwordMemLimit?: PasswordMemLimit,
+      passwordOpsLimit?: PasswordOpsLimit;
+      passwordMemLimit?: PasswordMemLimit;
       strictMemoryLock?: boolean;
     };
     certManagerConfig?: {
-      certDuration?: number,
+      certDuration?: number;
     };
     forwardProxyConfig?: {
       authToken?: string;

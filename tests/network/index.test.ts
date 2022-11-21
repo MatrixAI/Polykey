@@ -22,10 +22,10 @@ describe('network index', () => {
   let serverNodeId: NodeId;
   beforeAll(async () => {
     // Client keys
-    clientKeyPair = await keysUtils.generateKeyPair();
+    clientKeyPair = keysUtils.generateKeyPair();
     clientNodeId = keysUtils.publicKeyToNodeId(clientKeyPair.publicKey)!;
     // Server keys
-    serverKeyPair = await keysUtils.generateKeyPair();
+    serverKeyPair = keysUtils.generateKeyPair();
     serverNodeId = keysUtils.publicKeyToNodeId(serverKeyPair.publicKey)!;
   });
   let server;

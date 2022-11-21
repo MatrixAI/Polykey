@@ -82,7 +82,7 @@ describe(Sigchain.name, () => {
     await sigchain.stop();
     await sigchain.destroy();
     await expect(sigchain.start()).rejects.toThrow(
-      sigchainErrors.ErrorSigchainDestroyed
+      sigchainErrors.ErrorSigchainDestroyed,
     );
     await expect(async () => {
       for await (const _ of sigchain.getClaims()) {
@@ -92,18 +92,14 @@ describe(Sigchain.name, () => {
   });
   testProp(
     'claims must have claim default properties',
-    [
-      fc.array(fc.object(), { minLength: 1, maxLength: 32 }),
-    ],
+    [fc.array(fc.object(), { minLength: 1, maxLength: 32 })],
     async (datas) => {
-      const sigchain = await Sigchain.createSigchain(
-        {
-          keyRing,
-          db,
-          logger,
-          fresh: true
-        }
-      );
+      const sigchain = await Sigchain.createSigchain({
+        keyRing,
+        db,
+        logger,
+        fresh: true,
+      });
       const now = new Date();
       for (const data of datas) {
         // Force adding properties that will be overridden
@@ -117,7 +113,7 @@ describe(Sigchain.name, () => {
             prevClaimId: 12345,
             prevDigest: 55555,
           } as unknown as ClaimInput,
-          now
+          now,
         );
         // Other properties may exist, but these must always exist
         expect(signedClaim.payload).toMatchObject({
@@ -126,54 +122,49 @@ describe(Sigchain.name, () => {
           nbf: utils.getUnixtime(now),
           prevClaimId: expect.toBeOneOf([null, expect.any(String)]),
           prevDigest: expect.toBeOneOf([null, expect.any(String)]),
-          seq: expect.any(Number)
+          seq: expect.any(Number),
         });
       }
       await sigchain.stop();
-    }
+    },
   );
-  testProp('claim sequence number is monotonic', [
-    fc.array(fc.object(), { minLength: 1, maxLength: 32 }),
-  ], async (datas) => {
-    const sigchain = await Sigchain.createSigchain(
-      {
+  testProp(
+    'claim sequence number is monotonic',
+    [fc.array(fc.object(), { minLength: 1, maxLength: 32 })],
+    async (datas) => {
+      const sigchain = await Sigchain.createSigchain({
         keyRing,
         db,
         logger,
-        fresh: true
+        fresh: true,
+      });
+      let seq = 0;
+      for (const data of datas) {
+        const [, signedClaim] = await sigchain.addClaim(data as ClaimInput);
+        seq++;
+        expect(signedClaim.payload.seq).toBe(seq);
       }
-    );
-    let seq = 0;
-    for (const data of datas) {
-      const [, signedClaim] = await sigchain.addClaim(
-        data as ClaimInput,
-      );
-      seq++;
-      expect(signedClaim.payload.seq).toBe(seq);
-    }
-    await sigchain.stop();
-  });
+      await sigchain.stop();
+    },
+  );
   testProp(
     'adding claims is serialised',
-    [
-      fc.scheduler(),
-      fc.array(fc.object(), { minLength: 1, maxLength: 32 }),
-    ],
+    [fc.scheduler(), fc.array(fc.object(), { minLength: 1, maxLength: 32 })],
     async (s, datas) => {
-      const sigchain = await Sigchain.createSigchain(
-        {
-          keyRing,
-          db,
-          logger,
-          fresh: true
-        }
-      );
+      const sigchain = await Sigchain.createSigchain({
+        keyRing,
+        db,
+        logger,
+        fresh: true,
+      });
       // Build up concurrent calls to add claim
-      let addClaimPs: Array<Promise<[ClaimId, SignedClaim]>> = [];
+      const addClaimPs: Array<Promise<[ClaimId, SignedClaim]>> = [];
       for (const data of datas) {
         addClaimPs.push(
           // Delay the `Sigchain.addClaim` call
-          s.schedule(Promise.resolve()).then(() => sigchain.addClaim(data as ClaimInput))
+          s
+            .schedule(Promise.resolve())
+            .then(() => sigchain.addClaim(data as ClaimInput)),
         );
       }
       // Scheduler will randomly call add claim
@@ -184,139 +175,204 @@ describe(Sigchain.name, () => {
         expect(result.status).toBe('fulfilled');
       }
       // Get all chain of claims in descending order
-      const signedClaims = await AsyncIterable.as(sigchain.getSignedClaims({
-        order: 'desc'
-      })).toArray();
+      const signedClaims = await AsyncIterable.as(
+        sigchain.getSignedClaims({
+          order: 'desc',
+        }),
+      ).toArray();
       expect(signedClaims.length).toBe(datas.length);
       let digest: string | null = null;
       for (const [, signedClaim] of signedClaims) {
         if (digest != null) {
           const currentDigest = claimsUtils.hashSignedClaim(
             signedClaim,
-            'blake2b-256'
+            'blake2b-256',
           );
           const currentDigestEncoded = claimsUtils.encodeSignedClaimDigest(
             currentDigest,
-            'blake2b-256'
+            'blake2b-256',
           );
           expect(currentDigestEncoded).toBe(digest);
         }
         digest = signedClaim.payload.prevDigest;
       }
       await sigchain.stop();
-    }
+    },
   );
   testProp(
     'claims are all signed by the current node',
-    [
-      fc.array(fc.object(), { minLength: 1, maxLength: 32 }),
-    ],
+    [fc.array(fc.object(), { minLength: 1, maxLength: 32 })],
     async (datas) => {
-      const sigchain = await Sigchain.createSigchain(
-        {
-          keyRing,
-          db,
-          logger,
-          fresh: true
-        }
-      );
+      const sigchain = await Sigchain.createSigchain({
+        keyRing,
+        db,
+        logger,
+        fresh: true,
+      });
       for (const data of datas) {
         const [, signedClaim] = await sigchain.addClaim(data as ClaimInput);
         const token = Token.fromSigned(signedClaim);
         expect(token.verifyWithPublicKey(keyRing.keyPair.publicKey)).toBe(true);
       }
       await sigchain.stop();
-    }
+    },
   );
-  testProp('claims form a hash chain', [
-    fc.array(fc.object(), { minLength: 1, maxLength: 32 }),
-  ], async (datas) => {
-    const sigchain = await Sigchain.createSigchain(
-      {
+  testProp(
+    'claims form a hash chain',
+    [fc.array(fc.object(), { minLength: 1, maxLength: 32 })],
+    async (datas) => {
+      const sigchain = await Sigchain.createSigchain({
         keyRing,
         db,
         logger,
-        fresh: true
+        fresh: true,
+      });
+      const claimIdSignedClaims: Array<[ClaimId, SignedClaim]> = [];
+      for (const [index, data] of datas.entries()) {
+        const claimIdSignedClaim = await sigchain.addClaim(data as ClaimInput);
+        if (claimIdSignedClaims.length > 0) {
+          const prevDigest = claimsUtils.hashSignedClaim(
+            claimIdSignedClaims[index - 1][1],
+            'blake2b-256',
+          );
+          const prevDigestEncoded = claimsUtils.encodeSignedClaimDigest(
+            prevDigest,
+            'blake2b-256',
+          );
+          expect(claimIdSignedClaim[1].payload.prevDigest).toBe(
+            prevDigestEncoded,
+          );
+        } else {
+          expect(claimIdSignedClaim[1].payload.prevDigest).toBeNull();
+        }
+        claimIdSignedClaims.push(claimIdSignedClaim);
       }
-    );
-    const claimIdSignedClaims: Array<[ClaimId, SignedClaim]> = [];
-    for (const [index, data] of datas.entries()) {
-      const claimIdSignedClaim = await sigchain.addClaim(data as ClaimInput);
-      if (claimIdSignedClaims.length > 0) {
-        const prevDigest = claimsUtils.hashSignedClaim(
-          claimIdSignedClaims[index - 1][1],
-          'blake2b-256'
-        );
-        const prevDigestEncoded = claimsUtils.encodeSignedClaimDigest(
-          prevDigest,
-          'blake2b-256'
-        );
-        expect(claimIdSignedClaim[1].payload.prevDigest).toBe(prevDigestEncoded);
-      } else {
-        expect(claimIdSignedClaim[1].payload.prevDigest).toBeNull();
+      await sigchain.stop();
+    },
+  );
+  testProp(
+    'get claim(s), get signed claim(s) and get signatures',
+    [fc.array(fc.object(), { minLength: 1, maxLength: 32 })],
+    async (datas) => {
+      const sigchain = await Sigchain.createSigchain({
+        keyRing,
+        db,
+        logger,
+        fresh: true,
+      });
+      const claimIdSignedClaims: Array<[ClaimId, SignedClaim]> = [];
+      for (const data of datas) {
+        const claimIdSignedClaim = await sigchain.addClaim(data as ClaimInput);
+        claimIdSignedClaims.push(claimIdSignedClaim);
       }
-      claimIdSignedClaims.push(claimIdSignedClaim);
+      for (const [claimId, signedClaim] of claimIdSignedClaims) {
+        const claim_ = await sigchain.getClaim(claimId);
+        expect(claim_).toEqual(signedClaim.payload);
+        const signedClaim_ = await sigchain.getSignedClaim(claimId);
+        expect(signedClaim_).toEqual(signedClaim);
+        const signatures = await sigchain.getSignatures(claimId);
+        expect(signatures).toEqual(signedClaim.signatures);
+      }
+      const signedClaims = await AsyncIterable.as(
+        sigchain.getSignedClaims(),
+      ).toArray();
+      expect(signedClaims).toEqual(claimIdSignedClaims);
+      const claims = await AsyncIterable.as(sigchain.getClaims()).toArray();
+      expect(claims).toEqual(
+        claimIdSignedClaims.map((c) => [c[0], c[1].payload]),
+      );
+      await sigchain.stop();
+    },
+  );
+  testProp(
+    'get last claim, get last signed claim, get last claim ID, get last sequence',
+    [fc.array(fc.object(), { minLength: 1, maxLength: 32 })],
+    async (datas) => {
+      const sigchain = await Sigchain.createSigchain({
+        keyRing,
+        db,
+        logger,
+        fresh: true,
+      });
+      const claimIdSignedClaims: Array<[ClaimId, SignedClaim]> = [];
+      for (const data of datas) {
+        const claimIdSignedClaim = await sigchain.addClaim(data as ClaimInput);
+        claimIdSignedClaims.push(claimIdSignedClaim);
+      }
+      const lastClaimIdSignedClaims =
+        claimIdSignedClaims[claimIdSignedClaims.length - 1];
+      const lastClaimId = await sigchain.getLastClaimId();
+      expect(lastClaimId).toEqual(lastClaimIdSignedClaims[0]);
+      const lastSequenceNumber = await sigchain.getLastSequenceNumber();
+      expect(lastSequenceNumber).toEqual(
+        lastClaimIdSignedClaims[1].payload.seq,
+      );
+      const lastClaim = await sigchain.getLastClaim();
+      expect(lastClaim).toEqual([
+        lastClaimIdSignedClaims[0],
+        lastClaimIdSignedClaims[1].payload,
+      ]);
+      const lastSignedClaim = await sigchain.getLastSignedClaim();
+      expect(lastSignedClaim).toEqual(lastClaimIdSignedClaims);
+      await sigchain.stop();
+    },
+  );
+  test('getClaims with seek ascending', async () => {
+    const sigchain = await Sigchain.createSigchain({
+      keyRing,
+      db,
+      logger,
+      fresh: true,
+    });
+    const claims: Array<[ClaimId, SignedClaim]> = [];
+    for (let i = 0; i < 3; i++) {
+      claims.push(await sigchain.addClaim({}));
     }
-    await sigchain.stop();
+    const claimsAsc = await AsyncIterable.as(
+      sigchain.getClaims({ seek: claims[1][0], order: 'asc' }),
+    ).toArray();
+    expect(claimsAsc).toHaveLength(2);
+    // The claim we seeked to is included
+    expect(claimsAsc[0][0].equals(claims[1][0])).toBeTrue();
+    // And the claim after
+    expect(claimsAsc[1][0].equals(claims[2][0])).toBeTrue();
   });
-  testProp('get claim(s), get signed claim(s) and get signatures', [
-    fc.array(fc.object(), { minLength: 1, maxLength: 32 }),
-  ], async (datas) => {
-    const sigchain = await Sigchain.createSigchain(
-      {
-        keyRing,
-        db,
-        logger,
-        fresh: true
-      }
-    );
-    const claimIdSignedClaims: Array<[ClaimId, SignedClaim]> = [];
-    for (const data of datas) {
-      const claimIdSignedClaim = await sigchain.addClaim(data as ClaimInput);
-      claimIdSignedClaims.push(claimIdSignedClaim);
+  test('getClaims with seek descending', async () => {
+    const sigchain = await Sigchain.createSigchain({
+      keyRing,
+      db,
+      logger,
+      fresh: true,
+    });
+    const claims: Array<[ClaimId, SignedClaim]> = [];
+    for (let i = 0; i < 3; i++) {
+      claims.push(await sigchain.addClaim({}));
     }
-    for (const [claimId, signedClaim] of claimIdSignedClaims) {
-      const claim_ = await sigchain.getClaim(claimId);
-      expect(claim_).toEqual(signedClaim.payload);
-      const signedClaim_ = await sigchain.getSignedClaim(claimId);
-      expect(signedClaim_).toEqual(signedClaim);
-      const signatures = await sigchain.getSignatures(claimId);
-      expect(signatures).toEqual(signedClaim.signatures);
-    }
-    const signedClaims = await AsyncIterable.as(sigchain.getSignedClaims()).toArray();
-    expect(signedClaims).toEqual(claimIdSignedClaims);
-    const claims = await AsyncIterable.as(sigchain.getClaims()).toArray();
-    expect(claims).toEqual(claimIdSignedClaims.map(c => [c[0], c[1].payload]));
-    await sigchain.stop();
+    const claimsAsc = await AsyncIterable.as(
+      sigchain.getClaims({ seek: claims[1][0], order: 'desc' }),
+    ).toArray();
+    expect(claimsAsc).toHaveLength(2);
+    // The claim we seeked to is included
+    expect(claimsAsc[0][0].equals(claims[1][0])).toBeTrue();
+    // And the claim after
+    expect(claimsAsc[1][0].equals(claims[0][0])).toBeTrue();
   });
-  testProp('get last claim, get last signed claim, get last claim ID, get last sequence', [
-    fc.array(fc.object(), { minLength: 1, maxLength: 32 }),
-  ], async (datas) => {
-    const sigchain = await Sigchain.createSigchain(
-      {
-        keyRing,
-        db,
-        logger,
-        fresh: true
-      }
-    );
-    const claimIdSignedClaims: Array<[ClaimId, SignedClaim]> = [];
-    for (const data of datas) {
-      const claimIdSignedClaim = await sigchain.addClaim(data as ClaimInput);
-      claimIdSignedClaims.push(claimIdSignedClaim);
+  test('getClaims with seek with limit', async () => {
+    const sigchain = await Sigchain.createSigchain({
+      keyRing,
+      db,
+      logger,
+      fresh: true,
+    });
+    const claims: Array<[ClaimId, SignedClaim]> = [];
+    for (let i = 0; i < 3; i++) {
+      claims.push(await sigchain.addClaim({}));
     }
-    const lastClaimIdSignedClaims = claimIdSignedClaims[claimIdSignedClaims.length - 1];
-    const lastClaimId = await sigchain.getLastClaimId();
-    expect(lastClaimId).toEqual(lastClaimIdSignedClaims[0]);
-    const lastSequenceNumber = await sigchain.getLastSequenceNumber();
-    expect(lastSequenceNumber).toEqual(lastClaimIdSignedClaims[1].payload.seq);
-    const lastClaim = await sigchain.getLastClaim();
-    expect(lastClaim).toEqual([
-      lastClaimIdSignedClaims[0],
-      lastClaimIdSignedClaims[1].payload
-    ]);
-    const lastSignedClaim = await sigchain.getLastSignedClaim();
-    expect(lastSignedClaim).toEqual(lastClaimIdSignedClaims);
-    await sigchain.stop();
+    const claimsAsc = await AsyncIterable.as(
+      sigchain.getClaims({ seek: claims[1][0], limit: 1 }),
+    ).toArray();
+    expect(claimsAsc).toHaveLength(1);
+    // The claim we seeked to is included
+    expect(claimsAsc[0][0].equals(claims[1][0])).toBeTrue();
   });
 });

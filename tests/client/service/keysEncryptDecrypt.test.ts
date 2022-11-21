@@ -76,6 +76,8 @@ describe('keysEncryptDecrypt', () => {
     const plainText = Buffer.from('abc');
     const request = new keysPB.Crypto();
     request.setData(plainText.toString('binary'));
+    const publicKeyJWK = keysUtils.publicKeyToJWK(keyRing.keyPair.publicKey);
+    request.setPublicKeyJwk(JSON.stringify(publicKeyJWK));
     const encrypted = await grpcClient.keysEncrypt(
       request,
       clientUtils.encodeAuthFromPassword(password),

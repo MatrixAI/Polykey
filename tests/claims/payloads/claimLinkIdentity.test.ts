@@ -5,48 +5,45 @@ import * as testsClaimsPayloadsUtils from './utils';
 describe('claims/payloads/claimLinkIdentity', () => {
   testProp(
     'parse claim link identity',
-    [
-      testsClaimsPayloadsUtils.claimLinkIdentityEncodedArb,
-      fc.string()
-    ],
+    [testsClaimsPayloadsUtils.claimLinkIdentityEncodedArb, fc.string()],
     (claimLinkIdentityEncodedCorrect, claimLinkIdentityEncodedIncorrect) => {
       expect(() => {
         claimsPayloadsClaimLinkIdentity.parseClaimLinkIdentity(
-          claimLinkIdentityEncodedCorrect
+          claimLinkIdentityEncodedCorrect,
         );
       }).not.toThrow();
       expect(() => {
         claimsPayloadsClaimLinkIdentity.parseClaimLinkIdentity(
-          claimLinkIdentityEncodedIncorrect
+          claimLinkIdentityEncodedIncorrect,
         );
       }).toThrow();
-    }
+    },
   );
   testProp(
     'parse signed claim link identity',
     [
       testsClaimsPayloadsUtils.signedClaimEncodedArb(
-        testsClaimsPayloadsUtils.claimLinkIdentityArb
+        testsClaimsPayloadsUtils.claimLinkIdentityArb,
       ),
       fc.record({
         payload: fc.string(),
-        signatures: fc.array(fc.string())
-      })
+        signatures: fc.array(fc.string()),
+      }),
     ],
     (
       signedClaimLinkIdentityEncodedCorrect,
-      signedClaimLinkIdentityEncodedIncorrect
+      signedClaimLinkIdentityEncodedIncorrect,
     ) => {
       expect(() => {
         claimsPayloadsClaimLinkIdentity.parseSignedClaimLinkIdentity(
-          signedClaimLinkIdentityEncodedCorrect
+          signedClaimLinkIdentityEncodedCorrect,
         );
       }).not.toThrow();
       expect(() => {
         claimsPayloadsClaimLinkIdentity.parseSignedClaimLinkIdentity(
-          signedClaimLinkIdentityEncodedIncorrect
+          signedClaimLinkIdentityEncodedIncorrect,
         );
       }).toThrow();
-    }
+    },
   );
 });

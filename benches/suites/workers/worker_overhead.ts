@@ -1,5 +1,4 @@
 import b from 'benny';
-import crypto from 'crypto';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as workersUtils from '@/workers/utils';
 import { summaryName, suiteCommon } from '../../utils';
@@ -9,10 +8,12 @@ async function main() {
   const logger = new Logger(`worker_overhead bench`, LogLevel.WARN, [
     new StreamHandler(),
   ]);
-  const workerManager = await workersUtils.createWorkerManager({ cores, logger });
+  const workerManager = await workersUtils.createWorkerManager({
+    cores,
+    logger,
+  });
   // 1 MiB worth of data is the ballpark range of data to be worth parallelising
   // 1 KiB of data is still too small
-  const bytes = crypto.randomBytes(1024 * 1024);
   const summary = await b.suite(
     summaryName(__filename),
     b.add('call overhead', async () => {

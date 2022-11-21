@@ -63,38 +63,40 @@ class CommandDisallow extends CommandPolykey {
         setActionMessage.setAction(permissions);
         const [type, id] = gestaltId;
         switch (type) {
-          case 'node': {
-            // Setting by Node
-            const nodeMessage = new nodesPB.Node();
-            nodeMessage.setNodeId(nodesUtils.encodeNodeId(id));
-            setActionMessage.setNode(nodeMessage);
-            // Trusting
-            await binUtils.retryAuthentication(
-              (auth) =>
-                pkClient.grpcClient.gestaltsActionsUnsetByNode(
-                  setActionMessage,
-                  auth,
-                ),
-              meta,
-            );
-          }
+          case 'node':
+            {
+              // Setting by Node
+              const nodeMessage = new nodesPB.Node();
+              nodeMessage.setNodeId(nodesUtils.encodeNodeId(id));
+              setActionMessage.setNode(nodeMessage);
+              // Trusting
+              await binUtils.retryAuthentication(
+                (auth) =>
+                  pkClient.grpcClient.gestaltsActionsUnsetByNode(
+                    setActionMessage,
+                    auth,
+                  ),
+                meta,
+              );
+            }
             break;
-          case 'identity': {
-            //  Setting by Identity
-            const providerMessage = new identitiesPB.Provider();
-            providerMessage.setProviderId(id[0]);
-            providerMessage.setIdentityId(id[1]);
-            setActionMessage.setIdentity(providerMessage);
-            // Trusting.
-            await binUtils.retryAuthentication(
-              (auth) =>
-                pkClient.grpcClient.gestaltsActionsUnsetByIdentity(
-                  setActionMessage,
-                  auth,
-                ),
-              meta,
-            );
-          }
+          case 'identity':
+            {
+              //  Setting by Identity
+              const providerMessage = new identitiesPB.Provider();
+              providerMessage.setProviderId(id[0]);
+              providerMessage.setIdentityId(id[1]);
+              setActionMessage.setIdentity(providerMessage);
+              // Trusting.
+              await binUtils.retryAuthentication(
+                (auth) =>
+                  pkClient.grpcClient.gestaltsActionsUnsetByIdentity(
+                    setActionMessage,
+                    auth,
+                  ),
+                meta,
+              );
+            }
             break;
           default:
             utils.never();

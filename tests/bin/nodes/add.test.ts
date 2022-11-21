@@ -8,9 +8,9 @@ import { sysexits } from '@/utils';
 import PolykeyAgent from '@/PolykeyAgent';
 import * as nodesUtils from '@/nodes/utils';
 import NodeManager from '@/nodes/NodeManager';
+import * as keysUtils from '@/keys/utils/index';
 import * as testNodesUtils from '../../nodes/utils';
 import * as testUtils from '../../utils';
-import * as keysUtils from '@/keys/utils/index';
 
 describe('add', () => {
   const logger = new Logger('add test', LogLevel.WARN, [new StreamHandler()]);
@@ -53,7 +53,6 @@ describe('add', () => {
   });
   afterEach(async () => {
     await pkAgent.stop();
-    await pkAgent.destroy();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,

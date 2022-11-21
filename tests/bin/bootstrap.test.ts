@@ -32,12 +32,7 @@ describe('bootstrap', () => {
       const passwordPath = path.join(dataDir, 'password');
       await fs.promises.writeFile(passwordPath, password);
       const { exitCode, stdout } = await testUtils.pkExec(
-        [
-          'bootstrap',
-          '--password-file',
-          passwordPath,
-          '--verbose',
-        ],
+        ['bootstrap', '--password-file', passwordPath, '--verbose'],
         {
           env: {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -64,13 +59,22 @@ describe('bootstrap', () => {
       const password = 'password';
       const passwordPath = path.join(dataDir, 'password');
       await fs.promises.writeFile(passwordPath, password);
-      const keyPair = await keysUtils.generateKeyPair();
+      const keyPair = keysUtils.generateKeyPair();
       const privateKeyjwK = keysUtils.privateKeyToJWK(keyPair.privateKey);
-      const privateKeyJWE = keysUtils.wrapWithPassword(password, privateKeyjwK, keysUtils.passwordOpsLimits.min, keysUtils.passwordMemLimits.min)
+      const privateKeyJWE = keysUtils.wrapWithPassword(
+        password,
+        privateKeyjwK,
+        keysUtils.passwordOpsLimits.min,
+        keysUtils.passwordMemLimits.min,
+      );
       const privateKeyPath = path.join(dataDir, 'private.jwe');
-      await fs.promises.writeFile(privateKeyPath, JSON.stringify(privateKeyJWE), {
-        encoding: 'utf-8',
-      });
+      await fs.promises.writeFile(
+        privateKeyPath,
+        JSON.stringify(privateKeyJWE),
+        {
+          encoding: 'utf-8',
+        },
+      );
       const { exitCode: exitCode1 } = await testUtils.pkExec(
         [
           'bootstrap',
@@ -159,12 +163,7 @@ describe('bootstrap', () => {
       const password = 'password';
       const [bootstrapProcess1, bootstrapProcess2] = await Promise.all([
         testUtils.pkSpawn(
-          [
-            'bootstrap',
-            '--verbose',
-            '--format',
-            'json',
-          ],
+          ['bootstrap', '--verbose', '--format', 'json'],
           {
             env: {
               PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -177,12 +176,7 @@ describe('bootstrap', () => {
           logger.getChild('bootstrapProcess1'),
         ),
         testUtils.pkSpawn(
-          [
-            'bootstrap',
-            '--verbose',
-            '--format',
-            'json',
-          ],
+          ['bootstrap', '--verbose', '--format', 'json'],
           {
             env: {
               PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -265,7 +259,10 @@ describe('bootstrap', () => {
           // This line is brittle
           // It may change if the log format changes
           // Make sure to keep it updated at the exact point when the root key pair is generated
-          if (l === 'INFO:polykey.KeyRing:Generating root key pair and recovery code') {
+          if (
+            l ===
+            'INFO:polykey.KeyRing:Generating root key pair and recovery code'
+          ) {
             bootstrapProcess1.kill('SIGINT');
             resolve();
           }
@@ -276,12 +273,7 @@ describe('bootstrap', () => {
       });
       // Attempting to bootstrap should fail with existing state
       const bootstrapProcess2 = await testUtils.pkExec(
-        [
-          'bootstrap',
-          '--verbose',
-          '--format',
-          'json',
-        ],
+        ['bootstrap', '--verbose', '--format', 'json'],
         {
           env: {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),

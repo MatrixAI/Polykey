@@ -42,7 +42,7 @@ describe(ACL.name, () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
-    const dbKey = await keysUtils.generateKey();
+    const dbKey = keysUtils.generateKey();
     const dbPath = `${dataDir}/db`;
     db = await DB.createDB({
       dbPath,

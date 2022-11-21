@@ -7,7 +7,11 @@ import sodium from 'sodium-native';
  * Set `pool` to false to acquire an unpooled buffer.
  * This means the underlying `ArrayBuffer` is safely transferrable.
  */
-function getRandomBytes(size: number, seedNumber?: number, pool = true): Buffer {
+function getRandomBytes(
+  size: number,
+  seedNumber?: number,
+  pool = true,
+): Buffer {
   let randomBytes: Buffer;
   if (pool) {
     randomBytes = Buffer.allocUnsafe(size);

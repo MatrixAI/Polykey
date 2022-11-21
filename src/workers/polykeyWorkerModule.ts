@@ -1,5 +1,5 @@
 import type { TransferDescriptor } from 'threads';
-import {
+import type {
   Key,
   KeyPair,
   PrivateKey,
@@ -12,8 +12,8 @@ import {
 } from '../keys/types';
 import { isWorkerRuntime } from 'threads';
 import { Transfer } from 'threads/worker';
-import * as keysUtils from '../keys/utils';
 import { IdInternal } from '@matrixai/id';
+import * as keysUtils from '../keys/utils';
 
 /**
  * Worker object that contains all functions that will be executed in parallel.
@@ -42,7 +42,6 @@ import { IdInternal } from '@matrixai/id';
  * Note that `Buffer.from(ArrayBuffer)` is a zero-copy wrapper.
  */
 const polykeyWorker = {
-
   // Diagnostic functions
 
   /**
@@ -68,7 +67,7 @@ const polykeyWorker = {
     password: string,
     salt?: ArrayBuffer,
     opsLimit?: PasswordOpsLimit,
-    memLimit?: PasswordMemLimit
+    memLimit?: PasswordMemLimit,
   ): TransferDescriptor<[ArrayBuffer, ArrayBuffer]> {
     if (salt != null) salt = Buffer.from(salt);
     // It is guaranteed that `keysUtils.hashPassword` returns non-pooled buffers
@@ -76,12 +75,12 @@ const polykeyWorker = {
       password,
       salt as PasswordSalt | undefined,
       opsLimit,
-      memLimit
+      memLimit,
     );
     // Result is a tuple of [hash, salt] using transferable `ArrayBuffer`
     const result: [ArrayBuffer, ArrayBuffer] = [
       hashAndSalt[0].buffer,
-      hashAndSalt[1].buffer
+      hashAndSalt[1].buffer,
     ];
     return Transfer(result, [result[0], result[1]]);
   },
@@ -90,7 +89,7 @@ const polykeyWorker = {
     hash: ArrayBuffer,
     salt: ArrayBuffer,
     opsLimit?: PasswordOpsLimit,
-    memLimit?: PasswordMemLimit
+    memLimit?: PasswordMemLimit,
   ): boolean {
     hash = Buffer.from(hash);
     salt = Buffer.from(salt);
@@ -99,24 +98,28 @@ const polykeyWorker = {
       hash as PasswordHash,
       salt as PasswordSalt,
       opsLimit,
-      memLimit
+      memLimit,
     );
   },
-  async generateDeterministicKeyPair(
-    recoveryCode: RecoveryCode
-  ): Promise<TransferDescriptor<{
-    publicKey: ArrayBuffer;
-    privateKey: ArrayBuffer;
-    secretKey: ArrayBuffer;
-  }>> {
+  async generateDeterministicKeyPair(recoveryCode: RecoveryCode): Promise<
+    TransferDescriptor<{
+      publicKey: ArrayBuffer;
+      privateKey: ArrayBuffer;
+      secretKey: ArrayBuffer;
+    }>
+  > {
     const keyPair = await keysUtils.generateDeterministicKeyPair(recoveryCode);
     // Result is a record of {publicKey, privateKey, secretKey} using transferable `ArrayBuffer`
     const result = {
       publicKey: keyPair.publicKey.buffer,
       privateKey: keyPair.privateKey.buffer,
-      secretKey: keyPair.secretKey.buffer
+      secretKey: keyPair.secretKey.buffer,
     };
-    return Transfer(result, [result.publicKey, result.privateKey, result.secretKey]);
+    return Transfer(result, [
+      result.publicKey,
+      result.privateKey,
+      result.secretKey,
+    ]);
   },
   async generateCertificate({
     certId,
@@ -125,14 +128,14 @@ const polykeyWorker = {
     duration,
     subjectAttrsExtra,
     issuerAttrsExtra,
-    now = new Date,
+    now = new Date(),
   }: {
     certId: ArrayBuffer;
     subjectKeyPair: {
       publicKey: ArrayBuffer;
       privateKey: ArrayBuffer;
-    },
-    issuerPrivateKey: ArrayBuffer,
+    };
+    issuerPrivateKey: ArrayBuffer;
     duration: number;
     subjectAttrsExtra?: Array<{ [key: string]: Array<string> }>;
     issuerAttrsExtra?: Array<{ [key: string]: Array<string> }>;
@@ -149,7 +152,7 @@ const polykeyWorker = {
       duration,
       subjectAttrsExtra,
       issuerAttrsExtra,
-      now
+      now,
     });
     return Transfer(cert.rawData);
   },
@@ -162,7 +165,7 @@ const polykeyWorker = {
   ): TransferDescriptor<ArrayBuffer> {
     const cipherText = keysUtils.encryptWithKey(
       Buffer.from(key) as Key,
-      Buffer.from(plainText)
+      Buffer.from(plainText),
     );
     return Transfer(cipherText.buffer);
   },
@@ -172,7 +175,7 @@ const polykeyWorker = {
   ): TransferDescriptor<ArrayBuffer> | undefined {
     const plainText = keysUtils.decryptWithKey(
       Buffer.from(key) as Key,
-      Buffer.from(cipherText)
+      Buffer.from(cipherText),
     );
     if (plainText != null) {
       return Transfer(plainText.buffer);

@@ -53,32 +53,37 @@ class CommandDiscover extends CommandPolykey {
         });
         const [type, id] = gestaltId;
         switch (type) {
-          case 'node': {
-            // Discovery by Node
-            const nodeMessage = new nodesPB.Node();
-            nodeMessage.setNodeId(nodesUtils.encodeNodeId(id));
-            await binUtils.retryAuthentication(
-              (auth) =>
-                pkClient.grpcClient.gestaltsDiscoveryByNode(nodeMessage, auth),
-              meta,
-            );
-          }
-          break;
-          case 'identity': {
-            //  Discovery by Identity
-            const providerMessage = new identitiesPB.Provider();
-            providerMessage.setProviderId(id[0]);
-            providerMessage.setIdentityId(id[1]);
-            await binUtils.retryAuthentication(
-              (auth) =>
-                pkClient.grpcClient.gestaltsDiscoveryByIdentity(
-                  providerMessage,
-                  auth,
-                ),
-              meta,
-            );
-          }
-          break;
+          case 'node':
+            {
+              // Discovery by Node
+              const nodeMessage = new nodesPB.Node();
+              nodeMessage.setNodeId(nodesUtils.encodeNodeId(id));
+              await binUtils.retryAuthentication(
+                (auth) =>
+                  pkClient.grpcClient.gestaltsDiscoveryByNode(
+                    nodeMessage,
+                    auth,
+                  ),
+                meta,
+              );
+            }
+            break;
+          case 'identity':
+            {
+              //  Discovery by Identity
+              const providerMessage = new identitiesPB.Provider();
+              providerMessage.setProviderId(id[0]);
+              providerMessage.setIdentityId(id[1]);
+              await binUtils.retryAuthentication(
+                (auth) =>
+                  pkClient.grpcClient.gestaltsDiscoveryByIdentity(
+                    providerMessage,
+                    auth,
+                  ),
+                meta,
+              );
+            }
+            break;
           default:
             utils.never();
         }

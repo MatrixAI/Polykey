@@ -130,9 +130,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
 
   afterAll(async () => {
     await remoteNode1.stop();
-    await remoteNode1.destroy();
     await remoteNode2.stop();
-    await remoteNode2.destroy();
     await fs.promises.rm(dataDir2, { force: true, recursive: true });
   });
 
@@ -306,7 +304,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     let nodeConnectionManager: NodeConnectionManager | undefined;
     try {
       nodeConnectionManager = new NodeConnectionManager({
-        keyManager,
+        keyRing,
         nodeGraph,
         proxy,
         taskManager,

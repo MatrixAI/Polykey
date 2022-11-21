@@ -50,7 +50,8 @@ class CommandClaim extends CommandPolykey {
         const nodeClaimMessage = new nodesPB.Claim();
         nodeClaimMessage.setNodeId(nodesUtils.encodeNodeId(nodeId));
         await binUtils.retryAuthentication(
-          (auth) => pkClient.grpcClient.identitiesInvite(nodeClaimMessage, auth),
+          (auth) =>
+            pkClient.grpcClient.identitiesInvite(nodeClaimMessage, auth),
           meta,
         );
         process.stdout.write(

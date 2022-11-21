@@ -12,8 +12,4 @@ class ErrorTokensSignedParse<T> extends ErrorTokens<T> {
   exitCode = sysexits.USAGE;
 }
 
-export {
-  ErrorTokens,
-  ErrorTokensDuplicateSignature,
-  ErrorTokensSignedParse,
-};
+export { ErrorTokens, ErrorTokensDuplicateSignature, ErrorTokensSignedParse };

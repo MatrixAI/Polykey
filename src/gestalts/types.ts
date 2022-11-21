@@ -5,23 +5,18 @@ import type {
   GestaltIdEncoded,
   ProviderIdentityClaimId,
   NodeId,
-  GestaltLinkId
+  GestaltLinkId,
 } from '../ids/types';
-import type {
-  SignedClaim,
-  SignedClaimJSON,
-} from '../claims/types';
-import type {
-  ClaimLinkIdentity,
-  ClaimLinkNode
-} from '../claims/payloads';
+import type { SignedClaim, SignedClaimJSON } from '../claims/types';
+import type { ClaimLinkIdentity, ClaimLinkNode } from '../claims/payloads';
 
 const gestaltActions = ['notify', 'scan', 'claim'] as const;
 
 type GestaltKey = Opaque<'GestaltKey', Buffer>;
 
-type GestaltInfo = ['node', GestaltNodeInfo]
-                 | ['identity', GestaltIdentityInfo];
+type GestaltInfo =
+  | ['node', GestaltNodeInfo]
+  | ['identity', GestaltIdentityInfo];
 
 type GestaltNodeInfo = {
   nodeId: NodeId;
@@ -35,8 +30,8 @@ type GestaltNodeInfo = {
  */
 interface GestaltNodeInfoJSON extends Omit<GestaltNodeInfo, 'nodeId'> {
   nodeId: {
-    type: 'IdInternal',
-    data: Array<number>
+    type: 'IdInternal';
+    data: Array<number>;
   };
 }
 
@@ -54,9 +49,13 @@ type GestaltIdentityInfo = {
  * Links are edges between node and identity vertexes.
  * The data within these links would be acquired by discovery.
  */
-type GestaltLink = ['node', GestaltLinkNode] | ['identity', GestaltLinkIdentity];
+type GestaltLink =
+  | ['node', GestaltLinkNode]
+  | ['identity', GestaltLinkIdentity];
 
-type GestaltLinkJSON = ['node', GestaltLinkNodeJSON] | ['identity', GestaltLinkIdentityJSON];
+type GestaltLinkJSON =
+  | ['node', GestaltLinkNodeJSON]
+  | ['identity', GestaltLinkIdentityJSON];
 
 /**
  * Linking node to node.
@@ -73,9 +72,9 @@ type GestaltLinkNode = {
 
 type GestaltLinkNodeJSON = Omit<GestaltLinkNode, 'id' | 'claim'> & {
   id: {
-    type: 'IdInternal',
-    data: Array<number>
-  },
+    type: 'IdInternal';
+    data: Array<number>;
+  };
   claim: SignedClaimJSON<ClaimLinkNode>;
 };
 
@@ -92,14 +91,14 @@ type GestaltLinkIdentity = {
     url?: string;
     // The `undefined` is a hack to include the optional reserved properties
     [key: string]: JSONValue | undefined;
-  }
+  };
 };
 
 type GestaltLinkIdentityJSON = Omit<GestaltLinkNode, 'id' | 'claim'> & {
   id: {
-    type: 'IdInternal',
-    data: Array<number>
-  },
+    type: 'IdInternal';
+    data: Array<number>;
+  };
   claim: SignedClaimJSON<ClaimLinkIdentity>;
 };
 
@@ -107,15 +106,9 @@ type GestaltLinks = Record<GestaltIdEncoded, GestaltLink>;
 
 type GestaltMatrix = Record<GestaltIdEncoded, GestaltLinks>;
 
-type GestaltNodes = Record<
-  GestaltIdEncoded,
-  GestaltNodeInfo
->;
+type GestaltNodes = Record<GestaltIdEncoded, GestaltNodeInfo>;
 
-type GestaltIdentities = Record<
-  GestaltIdEncoded,
-  GestaltIdentityInfo
->;
+type GestaltIdentities = Record<GestaltIdEncoded, GestaltIdentityInfo>;
 
 type Gestalt = {
   matrix: GestaltMatrix;

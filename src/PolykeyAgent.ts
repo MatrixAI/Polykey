@@ -2,8 +2,9 @@ import type { FileSystem } from './types';
 import type { PolykeyWorkerManagerInterface } from './workers/types';
 import type { ConnectionData, Host, Port, TLSConfig } from './network/types';
 import type { SeedNodes } from './nodes/types';
-import type { CertificatePEMChain, CertManagerChangeData, Key } from './keys/types';
+import type { CertManagerChangeData, Key } from './keys/types';
 import type { RecoveryCode, PrivateKey } from './keys/types';
+import type { PasswordMemLimit, PasswordOpsLimit } from './keys/types';
 import path from 'path';
 import process from 'process';
 import Logger from '@matrixai/logger';
@@ -37,7 +38,6 @@ import * as utils from './utils';
 import * as keysUtils from './keys/utils';
 import * as nodesUtils from './nodes/utils';
 import TaskManager from './tasks/TaskManager';
-import { PasswordMemLimit, PasswordOpsLimit } from './keys/types';
 
 type NetworkConfig = {
   forwardHost?: Host;
@@ -112,12 +112,12 @@ class PolykeyAgent {
       recoveryCode?: RecoveryCode;
       privateKey?: PrivateKey;
       privateKeyPath?: string;
-      passwordOpsLimit?: PasswordOpsLimit,
-      passwordMemLimit?: PasswordMemLimit,
+      passwordOpsLimit?: PasswordOpsLimit;
+      passwordMemLimit?: PasswordMemLimit;
       strictMemoryLock?: boolean;
     };
     certManagerConfig?: {
-      certDuration?: number,
+      certDuration?: number;
     };
     proxyConfig?: {
       authToken?: string;
@@ -169,7 +169,7 @@ class PolykeyAgent {
     const certManagerConfig_ = {
       ...config.defaults.certManagerConfig,
       ...utils.filterEmptyObject(certManagerConfig),
-    }
+    };
     const proxyConfig_ = {
       authToken: keysUtils.getRandomBytes(10).toString(),
       ...config.defaults.proxyConfig,
@@ -259,15 +259,18 @@ class PolykeyAgent {
           lazy: true,
           logger,
         }));
-      certManager = certManager ?? (await CertManager.createCertManager({
-        keyRing,
-        db,
-        taskManager,
-        changeCallback: async (data) => events.emitAsync(PolykeyAgent.eventSymbols.CertManager, data),
-        logger: logger.getChild(CertManager.name),
-        fresh,
-        ...certManagerConfig_,
-      }))
+      certManager =
+        certManager ??
+        (await CertManager.createCertManager({
+          keyRing,
+          db,
+          taskManager,
+          changeCallback: async (data) =>
+            events.emitAsync(PolykeyAgent.eventSymbols.CertManager, data),
+          logger: logger.getChild(CertManager.name),
+          fresh,
+          ...certManagerConfig_,
+        }));
       sigchain =
         sigchain ??
         (await Sigchain.createSigchain({
@@ -597,9 +600,7 @@ class PolykeyAgent {
           // Update the sigchain
           await this.sigchain.onKeyRingChange();
           const tlsConfig: TLSConfig = {
-            keyPrivatePem: keysUtils.privateKeyToPEM(
-              data.keyPair.privateKey,
-            ),
+            keyPrivatePem: keysUtils.privateKeyToPEM(data.keyPair.privateKey),
             certChainPem: await this.certManager.getCertPEMsChainPEM(),
           };
           this.grpcServerClient.setTLSConfig(tlsConfig);
@@ -676,18 +677,41 @@ class PolykeyAgent {
         password,
         fresh,
       });
-      await this.db.start({ fresh });
+      await this.db.start({
+        crypto: {
+          key: this.keyRing.dbKey,
+          ops: {
+            encrypt: async (key, plainText) => {
+              return keysUtils.encryptWithKey(
+                utils.bufferWrap(key) as Key,
+                utils.bufferWrap(plainText),
+              );
+            },
+            decrypt: async (key, cipherText) => {
+              return keysUtils.decryptWithKey(
+                utils.bufferWrap(key) as Key,
+                utils.bufferWrap(cipherText),
+              );
+            },
+          },
+        },
+        fresh,
+      });
       await this.taskManager.start({ fresh, lazy: true });
       await this.certManager.start({
-        fresh
+        fresh,
       });
       await this.sigchain.start({ fresh });
       await this.acl.start({ fresh });
       await this.gestaltGraph.start({ fresh });
+      // Adding self to the gestaltGraph
+      await this.gestaltGraph.setNode({ nodeId: this.keyRing.getNodeId() });
       await this.identitiesManager.start({ fresh });
       // GRPC Server
       const tlsConfig: TLSConfig = {
-        keyPrivatePem: keysUtils.privateKeyToPEM(this.keyRing.keyPair.privateKey),
+        keyPrivatePem: keysUtils.privateKeyToPEM(
+          this.keyRing.keyPair.privateKey,
+        ),
         certChainPem: await this.certManager.getCertPEMsChainPEM(),
       };
       // Client server
@@ -796,10 +820,30 @@ class PolykeyAgent {
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
-  public async destroy() {
+  public async destroy(password: string) {
     this.logger.info(`Destroying ${this.constructor.name}`);
+    // KeyRing needs to be started for the DB
+    await this.keyRing.start({ password });
     // DB needs to be running for dependent domains to properly clear state.
-    await this.db.start();
+    await this.db.start({
+      crypto: {
+        key: this.keyRing.dbKey,
+        ops: {
+          encrypt: async (key, plainText) => {
+            return keysUtils.encryptWithKey(
+              utils.bufferWrap(key) as Key,
+              utils.bufferWrap(plainText),
+            );
+          },
+          decrypt: async (key, cipherText) => {
+            return keysUtils.decryptWithKey(
+              utils.bufferWrap(key) as Key,
+              utils.bufferWrap(cipherText),
+            );
+          },
+        },
+      },
+    });
     // TaskManager needs to be running for dependent domains to clear state.
     await this.taskManager.start({ lazy: true });
     await this.sessionManager.destroy();
@@ -818,6 +862,7 @@ class PolykeyAgent {
     await this.db.stop();
     // Non-DB dependencies
     await this.db.destroy();
+    await this.keyRing.stop();
     await this.keyRing.destroy();
     await this.schema.destroy();
     this.logger.info(`Destroyed ${this.constructor.name}`);

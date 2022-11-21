@@ -83,14 +83,14 @@ type ProviderIdentityClaimId = Opaque<'ProviderIdentityClaimId', string>;
  */
 type GestaltId = ['node', NodeId] | ['identity', ProviderIdentityId];
 
-// type GestaltNodeId = ['node', NodeId];
+// Type GestaltNodeId = ['node', NodeId];
 // type GestaltIdentityId = ['identity', ProviderIdentityId];
 
 /**
  * GestaltId encoded.
  */
 type GestaltIdEncoded = Opaque<'GestaltIdEncoded', string>;
-// type GestaltIdEncoded = GestaltNodeIdEncoded | GestaltIdentityIdEncoded;
+// Type GestaltIdEncoded = GestaltNodeIdEncoded | GestaltIdentityIdEncoded;
 
 // /**
 //  * Concatenation of `'node'` and `NodeIdEncoded`

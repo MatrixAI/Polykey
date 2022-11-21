@@ -21,8 +21,8 @@ import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as secretsPB from '@/proto/js/polykey/v1/secrets/secrets_pb';
 import * as clientUtils from '@/client/utils/utils';
 import * as vaultsUtils from '@/vaults/utils';
-import * as testUtils from '../../utils';
 import * as keysUtils from '@/keys/utils/index';
+import * as testUtils from '../../utils';
 
 describe('vaultsSecretsNewDirList', () => {
   const logger = new Logger('vaultsSecretsNewDirList test', LogLevel.WARN, [

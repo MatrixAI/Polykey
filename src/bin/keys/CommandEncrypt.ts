@@ -1,10 +1,10 @@
 import type PolykeyClient from '../../PolykeyClient';
+import type { JWK } from '../../keys/types';
 import * as binErrors from '../errors';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
 import * as binOptions from '../utils/options';
 import * as binProcessors from '../utils/processors';
-import { JWK } from '../../keys/types';
 
 class CommandEncypt extends CommandPolykey {
   constructor(...args: ConstructorParameters<typeof CommandPolykey>) {
@@ -15,10 +15,7 @@ class CommandEncypt extends CommandPolykey {
       '<filePath>',
       'Path to the file to encrypt, file must use binary encoding',
     );
-    this.argument(
-      '<nodeIdOrJwkFile>',
-      'NodeId or public JWK for target node'
-    )
+    this.argument('<nodeIdOrJwkFile>', 'NodeId or public JWK for target node');
     this.addOption(binOptions.nodeId);
     this.addOption(binOptions.clientHost);
     this.addOption(binOptions.clientPort);
@@ -71,18 +68,23 @@ class CommandEncypt extends CommandPolykey {
         let publicJWK: JWK;
         const nodeId = nodesUtils.decodeNodeId(nodeIdOrJwkFile);
         if (nodeId != null) {
-          publicJWK = keysUtils.publicKeyToJWK(keysUtils.publicKeyFromNodeId(nodeId));
+          publicJWK = keysUtils.publicKeyToJWK(
+            keysUtils.publicKeyFromNodeId(nodeId),
+          );
         } else {
           // If it's not a NodeId then it's a file path to the JWK
           try {
             const rawJWK = await this.fs.promises.readFile(nodeIdOrJwkFile, {
               encoding: 'utf-8',
-            })
+            });
             publicJWK = JSON.parse(rawJWK) as JWK;
             // Checking if the JWK is valid
             keysUtils.publicKeyFromJWK(publicJWK);
           } catch (e) {
-            throw new binErrors.ErrorCLIPublicJWKFileRead('Failed to parse JWK file', {cause: e});
+            throw new binErrors.ErrorCLIPublicJWKFileRead(
+              'Failed to parse JWK file',
+              { cause: e },
+            );
           }
         }
         cryptoMessage.setData(plainText);

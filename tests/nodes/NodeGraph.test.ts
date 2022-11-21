@@ -12,7 +12,7 @@ import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { IdInternal } from '@matrixai/id';
-import * as fc from 'fast-check';
+import { testProp, fc } from '@fast-check/jest';
 import NodeGraph from '@/nodes/NodeGraph';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
@@ -31,7 +31,7 @@ describe(`${NodeGraph.name} test`, () => {
   let dbKey: Buffer;
   let dbPath: string;
   let db: DB;
-  beforeAll(async () => {
+  beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -44,17 +44,8 @@ describe(`${NodeGraph.name} test`, () => {
       passwordMemLimit: keysUtils.passwordMemLimits.min,
       strictMemoryLock: false,
     });
-    dbKey = await keysUtils.generateKey();
+    dbKey = keysUtils.generateKey();
     dbPath = `${dataDir}/db`;
-  });
-  afterAll(async () => {
-    await keyRing.stop();
-    await fs.promises.rm(dataDir, {
-      force: true,
-      recursive: true,
-    });
-  });
-  beforeEach(async () => {
     db = await DB.createDB({
       dbPath,
       logger,
@@ -80,6 +71,11 @@ describe(`${NodeGraph.name} test`, () => {
   afterEach(async () => {
     await db.stop();
     await db.destroy();
+    await keyRing.stop();
+    await fs.promises.rm(dataDir, {
+      force: true,
+      recursive: true,
+    });
   });
   test('get, set and unset node IDs', async () => {
     const nodeGraph = await NodeGraph.createNodeGraph({
@@ -571,310 +567,223 @@ describe(`${NodeGraph.name} test`, () => {
     }
     await nodeGraph.stop();
   });
-  test('reset buckets', async () => {
-    const getNodeIdMock = jest.fn();
-    const dummyKeyRing = {
-      getNodeId: getNodeIdMock,
-    } as unknown as KeyRing;
-
-    const nodeIdArb = fc
-      .int8Array({ minLength: 32, maxLength: 32 })
-      .map((value) => IdInternal.fromBuffer<NodeId>(Buffer.from(value)));
-    const nodeIdArrayArb = fc
-      .array(nodeIdArb, { maxLength: 100, minLength: 100 })
-      .noShrink();
-    const uniqueNodeIdArb = fc
-      .array(nodeIdArb, { maxLength: 3, minLength: 3 })
-      .noShrink()
-      .filter((values) => {
-        return (
-          !values[0].equals(values[1]) &&
-          !values[0].equals(values[2]) &&
-          !values[1].equals(values[2])
-        );
+  testProp(
+    'reset buckets',
+    [testNodesUtils.uniqueNodeIdArb(3), testNodesUtils.nodeIdArrayArb(100)],
+    async (nodeIds, initialNodes) => {
+      const getNodeIdMock = jest.fn();
+      const dummyKeyRing = {
+        getNodeId: getNodeIdMock,
+      } as unknown as KeyRing;
+      getNodeIdMock.mockImplementation(() => nodeIds[0]);
+      const nodeGraph = await NodeGraph.createNodeGraph({
+        db,
+        keyRing: dummyKeyRing,
+        logger,
       });
-    await fc.assert(
-      fc.asyncProperty(
-        uniqueNodeIdArb,
-        nodeIdArrayArb,
-        async (nodeIds, initialNodes) => {
-          getNodeIdMock.mockImplementation(() => nodeIds[0]);
-          const nodeGraph = await NodeGraph.createNodeGraph({
-            db,
-            keyRing: dummyKeyRing,
-            logger,
-          });
-          for (const nodeId of initialNodes) {
-            await nodeGraph.setNode(nodeId, {
-              host: '127.0.0.1',
-              port: utils.getRandomInt(0, 2 ** 16),
-            } as NodeAddress);
+      for (const nodeId of initialNodes) {
+        await nodeGraph.setNode(nodeId, {
+          host: '127.0.0.1',
+          port: utils.getRandomInt(0, 2 ** 16),
+        } as NodeAddress);
+      }
+      const buckets0 = await utils.asyncIterableArray(nodeGraph.getBuckets());
+      // Reset the buckets according to the new node ID
+      // Note that this should normally be only executed when the key manager NodeID changes
+      // This means methods that use the KeyRing's node ID cannot be used here in this test
+      getNodeIdMock.mockImplementation(() => nodeIds[1]);
+      const nodeIdNew1 = nodeIds[1];
+      await nodeGraph.resetBuckets(nodeIdNew1);
+      const buckets1 = await utils.asyncIterableArray(nodeGraph.getBuckets());
+      expect(buckets1.length > 0).toBe(true);
+      for (const [bucketIndex, bucket] of buckets1) {
+        expect(bucket.length > 0).toBe(true);
+        for (const [nodeId, nodeData] of bucket) {
+          expect(nodeId.byteLength).toBe(32);
+          expect(nodesUtils.bucketIndex(nodeIdNew1, nodeId)).toBe(bucketIndex);
+          expect(nodeData.address.host).toBe('127.0.0.1');
+          // Port of 0 is not allowed
+          expect(nodeData.address.port > 0).toBe(true);
+          expect(nodeData.address.port < 2 ** 16).toBe(true);
+        }
+      }
+      expect(buckets1).not.toStrictEqual(buckets0);
+      // Resetting again should change the space
+      getNodeIdMock.mockImplementation(() => nodeIds[2]);
+      const nodeIdNew2 = nodeIds[2];
+      await nodeGraph.resetBuckets(nodeIdNew2);
+      const buckets2 = await utils.asyncIterableArray(nodeGraph.getBuckets());
+      expect(buckets2.length > 0).toBe(true);
+      for (const [bucketIndex, bucket] of buckets2) {
+        expect(bucket.length > 0).toBe(true);
+        for (const [nodeId, nodeData] of bucket) {
+          expect(nodeId.byteLength).toBe(32);
+          expect(nodesUtils.bucketIndex(nodeIdNew2, nodeId)).toBe(bucketIndex);
+          expect(nodeData.address.host).toBe('127.0.0.1');
+          // Port of 0 is not allowed
+          expect(nodeData.address.port > 0).toBe(true);
+          expect(nodeData.address.port < 2 ** 16).toBe(true);
+        }
+      }
+      expect(buckets2).not.toStrictEqual(buckets1);
+      // Resetting to the same NodeId results in the same bucket structure
+      await nodeGraph.resetBuckets(nodeIdNew2);
+      const buckets3 = await utils.asyncIterableArray(nodeGraph.getBuckets());
+      expect(buckets3).toStrictEqual(buckets2);
+      // Resetting to an existing NodeId
+      const nodeIdExisting = buckets3[0][1][0][0];
+      let nodeIdExistingFound = false;
+      await nodeGraph.resetBuckets(nodeIdExisting);
+      const buckets4 = await utils.asyncIterableArray(nodeGraph.getBuckets());
+      expect(buckets4.length > 0).toBe(true);
+      for (const [bucketIndex, bucket] of buckets4) {
+        expect(bucket.length > 0).toBe(true);
+        for (const [nodeId, nodeData] of bucket) {
+          if (nodeId.equals(nodeIdExisting)) {
+            nodeIdExistingFound = true;
           }
-          const buckets0 = await utils.asyncIterableArray(
-            nodeGraph.getBuckets(),
+          expect(nodeId.byteLength).toBe(32);
+          expect(nodesUtils.bucketIndex(nodeIdExisting, nodeId)).toBe(
+            bucketIndex,
           );
-          // Reset the buckets according to the new node ID
-          // Note that this should normally be only executed when the key manager NodeID changes
-          // This means methods that use the KeyRing's node ID cannot be used here in this test
-          getNodeIdMock.mockImplementation(() => nodeIds[1]);
-          const nodeIdNew1 = nodeIds[1];
-          await nodeGraph.resetBuckets(nodeIdNew1);
-          const buckets1 = await utils.asyncIterableArray(
-            nodeGraph.getBuckets(),
-          );
-          expect(buckets1.length > 0).toBe(true);
-          for (const [bucketIndex, bucket] of buckets1) {
-            expect(bucket.length > 0).toBe(true);
-            for (const [nodeId, nodeData] of bucket) {
-              expect(nodeId.byteLength).toBe(32);
-              expect(nodesUtils.bucketIndex(nodeIdNew1, nodeId)).toBe(
-                bucketIndex,
-              );
-              expect(nodeData.address.host).toBe('127.0.0.1');
-              // Port of 0 is not allowed
-              expect(nodeData.address.port > 0).toBe(true);
-              expect(nodeData.address.port < 2 ** 16).toBe(true);
-            }
-          }
-          expect(buckets1).not.toStrictEqual(buckets0);
-          // Resetting again should change the space
-          getNodeIdMock.mockImplementation(() => nodeIds[2]);
-          const nodeIdNew2 = nodeIds[2];
-          await nodeGraph.resetBuckets(nodeIdNew2);
-          const buckets2 = await utils.asyncIterableArray(
-            nodeGraph.getBuckets(),
-          );
-          expect(buckets2.length > 0).toBe(true);
-          for (const [bucketIndex, bucket] of buckets2) {
-            expect(bucket.length > 0).toBe(true);
-            for (const [nodeId, nodeData] of bucket) {
-              expect(nodeId.byteLength).toBe(32);
-              expect(nodesUtils.bucketIndex(nodeIdNew2, nodeId)).toBe(
-                bucketIndex,
-              );
-              expect(nodeData.address.host).toBe('127.0.0.1');
-              // Port of 0 is not allowed
-              expect(nodeData.address.port > 0).toBe(true);
-              expect(nodeData.address.port < 2 ** 16).toBe(true);
-            }
-          }
-          expect(buckets2).not.toStrictEqual(buckets1);
-          // Resetting to the same NodeId results in the same bucket structure
-          await nodeGraph.resetBuckets(nodeIdNew2);
-          const buckets3 = await utils.asyncIterableArray(
-            nodeGraph.getBuckets(),
-          );
-          expect(buckets3).toStrictEqual(buckets2);
-          // Resetting to an existing NodeId
-          const nodeIdExisting = buckets3[0][1][0][0];
-          let nodeIdExistingFound = false;
-          await nodeGraph.resetBuckets(nodeIdExisting);
-          const buckets4 = await utils.asyncIterableArray(
-            nodeGraph.getBuckets(),
-          );
-          expect(buckets4.length > 0).toBe(true);
-          for (const [bucketIndex, bucket] of buckets4) {
-            expect(bucket.length > 0).toBe(true);
-            for (const [nodeId, nodeData] of bucket) {
-              if (nodeId.equals(nodeIdExisting)) {
-                nodeIdExistingFound = true;
-              }
-              expect(nodeId.byteLength).toBe(32);
-              expect(nodesUtils.bucketIndex(nodeIdExisting, nodeId)).toBe(
-                bucketIndex,
-              );
-              expect(nodeData.address.host).toBe('127.0.0.1');
-              // Port of 0 is not allowed
-              expect(nodeData.address.port > 0).toBe(true);
-              expect(nodeData.address.port < 2 ** 16).toBe(true);
-            }
-          }
-          expect(buckets4).not.toStrictEqual(buckets3);
-          // The existing node ID should not be put into the NodeGraph
-          expect(nodeIdExistingFound).toBe(false);
-          await nodeGraph.stop();
-        },
-      ),
-      { numRuns: 1 },
-    );
-  });
-  test('reset buckets should re-order the buckets', async () => {
-    const getNodeIdMock = jest.fn();
-    const dummyKeyRing = {
-      getNodeId: getNodeIdMock,
-    } as unknown as KeyRing;
-
-    const nodeIdArb = fc
-      .int8Array({ minLength: 32, maxLength: 32 })
-      .map((value) => IdInternal.fromBuffer<NodeId>(Buffer.from(value)));
-    const nodeIdArrayArb = fc
-      .array(nodeIdArb, { maxLength: 50, minLength: 50 })
-      .noShrink();
-    const uniqueNodeIdArb = fc
-      .array(nodeIdArb, { maxLength: 2, minLength: 2 })
-      .noShrink()
-      .filter((values) => {
-        return !values[0].equals(values[1]);
+          expect(nodeData.address.host).toBe('127.0.0.1');
+          // Port of 0 is not allowed
+          expect(nodeData.address.port > 0).toBe(true);
+          expect(nodeData.address.port < 2 ** 16).toBe(true);
+        }
+      }
+      expect(buckets4).not.toStrictEqual(buckets3);
+      // The existing node ID should not be put into the NodeGraph
+      expect(nodeIdExistingFound).toBe(false);
+      await nodeGraph.stop();
+    },
+    { numRuns: 1 },
+  );
+  testProp(
+    'reset buckets should re-order the buckets',
+    [testNodesUtils.uniqueNodeIdArb(2), testNodesUtils.nodeIdArrayArb(50)],
+    async (nodeIds, initialNodes) => {
+      const getNodeIdMock = jest.fn();
+      const dummyKeyRing = {
+        getNodeId: getNodeIdMock,
+      } as unknown as KeyRing;
+      getNodeIdMock.mockImplementation(() => nodeIds[0]);
+      const nodeGraph = await NodeGraph.createNodeGraph({
+        db,
+        keyRing: dummyKeyRing,
+        fresh: true,
+        logger,
       });
-    await fc.assert(
-      fc.asyncProperty(
-        uniqueNodeIdArb,
-        nodeIdArrayArb,
-        async (nodeIds, initialNodes) => {
-          getNodeIdMock.mockImplementation(() => nodeIds[0]);
-          const nodeGraph = await NodeGraph.createNodeGraph({
-            db,
-            keyRing: dummyKeyRing,
-            fresh: true,
-            logger,
-          });
-          for (const nodeId of initialNodes) {
-            await nodeGraph.setNode(nodeId, {
-              host: '127.0.0.1',
-              port: utils.getRandomInt(0, 2 ** 16),
-            } as NodeAddress);
-          }
-          const buckets0 = await utils.asyncIterableArray(
-            nodeGraph.getBuckets(),
-          );
-          // Reset the buckets according to the new node ID
-          // Note that this should normally be only executed when the key manager NodeID changes
-          // This means methods that use the KeyRing's node ID cannot be used here in this test
-          getNodeIdMock.mockImplementation(() => nodeIds[1]);
-          const nodeIdNew1 = nodeIds[1];
-          await nodeGraph.resetBuckets(nodeIdNew1);
-          const buckets1 = await utils.asyncIterableArray(
-            nodeGraph.getBuckets(),
-          );
-          expect(buckets1).not.toStrictEqual(buckets0);
-          await nodeGraph.stop();
-        },
-      ),
-      { numRuns: 20 },
-    );
-  });
-  test('reset buckets should not corrupt data', async () => {
-    const getNodeIdMock = jest.fn();
-    const dummyKeyRing = {
-      getNodeId: getNodeIdMock,
-    } as unknown as KeyRing;
-
-    const nodeIdArb = fc
-      .int8Array({ minLength: 32, maxLength: 32 })
-      .map((value) => IdInternal.fromBuffer<NodeId>(Buffer.from(value)));
-    const nodeIdArrayArb = fc
-      .array(nodeIdArb, { maxLength: 10, minLength: 10 })
-      .noShrink();
-    const uniqueNodeIdArb = fc
-      .array(nodeIdArb, { maxLength: 2, minLength: 2 })
-      .noShrink()
-      .filter((values) => {
-        return !values[0].equals(values[1]);
+      for (const nodeId of initialNodes) {
+        await nodeGraph.setNode(nodeId, {
+          host: '127.0.0.1',
+          port: utils.getRandomInt(0, 2 ** 16),
+        } as NodeAddress);
+      }
+      const buckets0 = await utils.asyncIterableArray(nodeGraph.getBuckets());
+      // Reset the buckets according to the new node ID
+      // Note that this should normally be only executed when the key manager NodeID changes
+      // This means methods that use the KeyRing's node ID cannot be used here in this test
+      getNodeIdMock.mockImplementation(() => nodeIds[1]);
+      const nodeIdNew1 = nodeIds[1];
+      await nodeGraph.resetBuckets(nodeIdNew1);
+      const buckets1 = await utils.asyncIterableArray(nodeGraph.getBuckets());
+      expect(buckets1).not.toStrictEqual(buckets0);
+      await nodeGraph.stop();
+    },
+    { numRuns: 20 },
+  );
+  testProp(
+    'reset buckets should not corrupt data',
+    [testNodesUtils.uniqueNodeIdArb(2), testNodesUtils.nodeIdArrayArb(10)],
+    async (nodeIds, initialNodes) => {
+      const getNodeIdMock = jest.fn();
+      const dummyKeyRing = {
+        getNodeId: getNodeIdMock,
+      } as unknown as KeyRing;
+      getNodeIdMock.mockImplementation(() => nodeIds[0]);
+      const nodeGraph = await NodeGraph.createNodeGraph({
+        db,
+        keyRing: dummyKeyRing,
+        fresh: true,
+        logger,
       });
-    await fc.assert(
-      fc.asyncProperty(
-        uniqueNodeIdArb,
-        nodeIdArrayArb,
-        async (nodeIds, initialNodes) => {
-          getNodeIdMock.mockImplementation(() => nodeIds[0]);
-          const nodeGraph = await NodeGraph.createNodeGraph({
-            db,
-            keyRing: dummyKeyRing,
-            fresh: true,
-            logger,
-          });
-          const nodeAddresses: Map<string, NodeAddress> = new Map();
-          for (const nodeId of initialNodes) {
-            const nodeAddress = {
-              host: '127.0.0.1',
-              port: utils.getRandomInt(0, 2 ** 16),
-            } as NodeAddress;
-            await nodeGraph.setNode(nodeId, nodeAddress);
-            nodeAddresses.set(nodeId.toString(), nodeAddress);
-          }
-          // Reset the buckets according to the new node ID
-          // Note that this should normally be only executed when the key manager NodeID changes
-          // This means methods that use the KeyRing's node ID cannot be used here in this test
-          getNodeIdMock.mockImplementation(() => nodeIds[1]);
-          const nodeIdNew1 = nodeIds[1];
-          await nodeGraph.resetBuckets(nodeIdNew1);
-          const buckets1 = await utils.asyncIterableArray(
-            nodeGraph.getBuckets(),
+      const nodeAddresses: Map<string, NodeAddress> = new Map();
+      for (const nodeId of initialNodes) {
+        const nodeAddress = {
+          host: '127.0.0.1',
+          port: utils.getRandomInt(0, 2 ** 16),
+        } as NodeAddress;
+        await nodeGraph.setNode(nodeId, nodeAddress);
+        nodeAddresses.set(nodeId.toString(), nodeAddress);
+      }
+      // Reset the buckets according to the new node ID
+      // Note that this should normally be only executed when the key manager NodeID changes
+      // This means methods that use the KeyRing's node ID cannot be used here in this test
+      getNodeIdMock.mockImplementation(() => nodeIds[1]);
+      const nodeIdNew1 = nodeIds[1];
+      await nodeGraph.resetBuckets(nodeIdNew1);
+      const buckets1 = await utils.asyncIterableArray(nodeGraph.getBuckets());
+      expect(buckets1.length > 0).toBe(true);
+      for (const [bucketIndex, bucket] of buckets1) {
+        expect(bucket.length > 0).toBe(true);
+        for (const [nodeId, nodeData] of bucket) {
+          expect(nodeId.byteLength).toBe(32);
+          expect(nodesUtils.bucketIndex(nodeIdNew1, nodeId)).toBe(bucketIndex);
+          expect(nodeData.address.host).toBe('127.0.0.1');
+          expect(nodeAddresses.get(nodeId.toString())).toBeDefined();
+          expect(nodeAddresses.get(nodeId.toString())?.port).toBe(
+            nodeData.address.port,
           );
-          expect(buckets1.length > 0).toBe(true);
-          for (const [bucketIndex, bucket] of buckets1) {
-            expect(bucket.length > 0).toBe(true);
-            for (const [nodeId, nodeData] of bucket) {
-              expect(nodeId.byteLength).toBe(32);
-              expect(nodesUtils.bucketIndex(nodeIdNew1, nodeId)).toBe(
-                bucketIndex,
-              );
-              expect(nodeData.address.host).toBe('127.0.0.1');
-              expect(nodeAddresses.get(nodeId.toString())).toBeDefined();
-              expect(nodeAddresses.get(nodeId.toString())?.port).toBe(
-                nodeData.address.port,
-              );
-            }
-          }
-          await nodeGraph.stop();
-        },
-      ),
-      { numRuns: 20 },
-    );
-  });
-  test('reset buckets to an existing node should remove node', async () => {
-    const getNodeIdMock = jest.fn();
-    const dummyKeyRing = {
-      getNodeId: getNodeIdMock,
-    } as unknown as KeyRing;
-
-    const nodeIdArb = fc
-      .int8Array({ minLength: 32, maxLength: 32 })
-      .map((value) => IdInternal.fromBuffer<NodeId>(Buffer.from(value)));
-    const nodeIdArrayArb = fc
-      .array(nodeIdArb, { maxLength: 20, minLength: 20 })
-      .noShrink();
-    await fc.assert(
-      fc.asyncProperty(
-        nodeIdArb,
-        nodeIdArrayArb,
-        fc.integer({ min: 0, max: 19 }),
-        async (nodeId, initialNodes, nodeIndex) => {
-          getNodeIdMock.mockImplementation(() => nodeId);
-          const nodeGraph = await NodeGraph.createNodeGraph({
-            db,
-            keyRing: dummyKeyRing,
-            logger,
-          });
-          for (const nodeId of initialNodes) {
-            await nodeGraph.setNode(nodeId, {
-              host: '127.0.0.1',
-              port: utils.getRandomInt(0, 2 ** 16),
-            } as NodeAddress);
-          }
-          // Reset the buckets according to the new node ID
-          // Note that this should normally be only executed when the key manager NodeID changes
-          // This means methods that use the KeyRing's node ID cannot be used here in this test
-          getNodeIdMock.mockImplementation(() => initialNodes[nodeIndex]);
-          const nodeIdNew1 = initialNodes[nodeIndex];
-          await nodeGraph.resetBuckets(nodeIdNew1);
-          const buckets1 = await utils.asyncIterableArray(
-            nodeGraph.getBuckets(),
-          );
-          expect(buckets1.length > 0).toBe(true);
-          for (const [, bucket] of buckets1) {
-            expect(bucket.length > 0).toBe(true);
-            for (const [nodeId] of bucket) {
-              // The new node should not be in the graph
-              expect(nodeIdNew1.equals(nodeId)).toBeFalse();
-            }
-          }
-          await nodeGraph.stop();
-        },
-      ),
-      { numRuns: 15 },
-    );
-  });
+        }
+      }
+      await nodeGraph.stop();
+    },
+    { numRuns: 20 },
+  );
+  testProp(
+    'reset buckets to an existing node should remove node',
+    [
+      testNodesUtils.nodeIdArb,
+      testNodesUtils.nodeIdArrayArb(20),
+      fc.integer({ min: 0, max: 19 }),
+    ],
+    async (nodeId, initialNodes, nodeIndex) => {
+      const getNodeIdMock = jest.fn();
+      const dummyKeyRing = {
+        getNodeId: getNodeIdMock,
+      } as unknown as KeyRing;
+      getNodeIdMock.mockImplementation(() => nodeId);
+      const nodeGraph = await NodeGraph.createNodeGraph({
+        db,
+        keyRing: dummyKeyRing,
+        logger,
+      });
+      for (const nodeId of initialNodes) {
+        await nodeGraph.setNode(nodeId, {
+          host: '127.0.0.1',
+          port: utils.getRandomInt(0, 2 ** 16),
+        } as NodeAddress);
+      }
+      // Reset the buckets according to the new node ID
+      // Note that this should normally be only executed when the key manager NodeID changes
+      // This means methods that use the KeyRing's node ID cannot be used here in this test
+      getNodeIdMock.mockImplementation(() => initialNodes[nodeIndex]);
+      const nodeIdNew1 = initialNodes[nodeIndex];
+      await nodeGraph.resetBuckets(nodeIdNew1);
+      const buckets1 = await utils.asyncIterableArray(nodeGraph.getBuckets());
+      expect(buckets1.length > 0).toBe(true);
+      for (const [, bucket] of buckets1) {
+        expect(bucket.length > 0).toBe(true);
+        for (const [nodeId] of bucket) {
+          // The new node should not be in the graph
+          expect(nodeIdNew1.equals(nodeId)).toBeFalse();
+        }
+      }
+      await nodeGraph.stop();
+    },
+    { numRuns: 15 },
+  );
   test('reset buckets is persistent', async () => {
     const nodeGraph = await NodeGraph.createNodeGraph({
       db,

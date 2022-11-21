@@ -6,12 +6,16 @@ import type {
   IdentityData,
   ProviderAuthenticateRequest,
 } from '@/identities/types';
+import type {
+  IdentitySignedClaim,
+  ProviderIdentityClaimId,
+} from '@/identities/types';
+import type { SignedClaim } from '@/claims/types';
+import type { ClaimLinkIdentity } from '@/claims/payloads/index';
 import { Provider } from '@/identities';
 import * as identitiesUtils from '@/identities/utils';
 import * as identitiesErrors from '@/identities/errors';
-import { IdentitySignedClaim, ProviderIdentityClaimId } from '@/identities/types';
-import { SignedClaim } from '@/claims/types';
-import { ClaimLinkIdentity } from '@/claims/payloads/index';
+import * as tokenUtils from '@/tokens/utils';
 
 class TestProvider extends Provider {
   public readonly id: ProviderId;
@@ -19,10 +23,7 @@ class TestProvider extends Provider {
   public linkIdCounter: number = 0;
   public users: Record<IdentityId, POJO>;
   public links: Record<ProviderIdentityClaimId, string>;
-  protected userLinks: Record<
-    IdentityId,
-    Array<ProviderIdentityClaimId>
-  >;
+  protected userLinks: Record<IdentityId, Array<ProviderIdentityClaimId>>;
   protected userTokens: Record<string, IdentityId>;
 
   public constructor(providerId: ProviderId = 'test-provider' as ProviderId) {
@@ -70,7 +71,9 @@ class TestProvider extends Provider {
     return Object.keys(providerTokens) as Array<IdentityId>;
   }
 
-  public async getIdentityId(providerToken: ProviderToken): Promise<IdentityId> {
+  public async getIdentityId(
+    providerToken: ProviderToken,
+  ): Promise<IdentityId> {
     providerToken = await this.checkToken(providerToken);
     return this.userTokens[providerToken.accessToken];
   }
@@ -140,16 +143,17 @@ class TestProvider extends Provider {
     authIdentityId: IdentityId,
     identityClaim: SignedClaim<ClaimLinkIdentity>,
   ): Promise<IdentitySignedClaim> {
-    let providerToken = await this.getToken(authIdentityId);
+    const providerToken = await this.getToken(authIdentityId);
     if (!providerToken) {
       throw new identitiesErrors.ErrorProviderUnauthenticated(
         `${authIdentityId} has not been authenticated`,
       );
     }
-    providerToken = await this.checkToken(providerToken, authIdentityId);
+    await this.checkToken(providerToken, authIdentityId);
     const linkId = this.linkIdCounter.toString() as ProviderIdentityClaimId;
     this.linkIdCounter++;
-    this.links[linkId] = JSON.stringify(identityClaim);
+    const identityClainEncoded = tokenUtils.generateSignedToken(identityClaim);
+    this.links[linkId] = JSON.stringify(identityClainEncoded);
     this.userLinks[authIdentityId] = this.userLinks[authIdentityId]
       ? this.userLinks[authIdentityId]
       : [];
@@ -166,13 +170,13 @@ class TestProvider extends Provider {
     authIdentityId: IdentityId,
     claimId: ProviderIdentityClaimId,
   ): Promise<IdentitySignedClaim | undefined> {
-    let providerToken = await this.getToken(authIdentityId);
+    const providerToken = await this.getToken(authIdentityId);
     if (!providerToken) {
       throw new identitiesErrors.ErrorProviderUnauthenticated(
         `${authIdentityId} has not been authenticated`,
       );
     }
-    providerToken = await this.checkToken(providerToken, authIdentityId);
+    await this.checkToken(providerToken, authIdentityId);
     const linkClaimData = this.links[claimId];
     if (!linkClaimData) {
       return;
@@ -192,20 +196,17 @@ class TestProvider extends Provider {
     authIdentityId: IdentityId,
     identityId: IdentityId,
   ): AsyncGenerator<IdentitySignedClaim> {
-    let providerToken = await this.getToken(authIdentityId);
+    const providerToken = await this.getToken(authIdentityId);
     if (!providerToken) {
       throw new identitiesErrors.ErrorProviderUnauthenticated(
         `${authIdentityId} has not been authenticated`,
       );
     }
-    providerToken = await this.checkToken(providerToken, authIdentityId);
+    await this.checkToken(providerToken, authIdentityId);
     const claimIds = this.userLinks[identityId] ?? [];
     for (const claimId of claimIds) {
-      const claimInfo = await this.getClaim(
-        authIdentityId,
-        claimId,
-      );
-      if (claimInfo) {
+      const claimInfo = await this.getClaim(authIdentityId, claimId);
+      if (claimInfo != null) {
         yield claimInfo;
       }
     }

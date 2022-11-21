@@ -1,11 +1,5 @@
-import type {
-  MultihashDigest
-} from 'multiformats/hashes/interface';
-import type {
-  Digest,
-  DigestCode,
-  DigestFormats,
-} from '../types';
+import type { MultihashDigest } from 'multiformats/hashes/interface';
+import type { Digest, DigestCode, DigestFormats } from '../types';
 import sodium from 'sodium-native';
 import * as multiformats from 'multiformats';
 import * as keysTypes from '../types';
@@ -13,9 +7,7 @@ import * as utils from '../../utils';
 import * as errors from '../../errors';
 
 function sha2256(data: BufferSource): Digest<'sha2-256'> {
-  const digest = Buffer.allocUnsafeSlow(
-    sodium.crypto_hash_sha256_BYTES
-  );
+  const digest = Buffer.allocUnsafeSlow(sodium.crypto_hash_sha256_BYTES);
   sodium.crypto_hash_sha256(digest, utils.bufferWrap(data));
   return digest as Digest<'sha2-256'>;
 }
@@ -25,13 +17,9 @@ function sha2256(data: BufferSource): Digest<'sha2-256'> {
  * Use `next()` to prime the generator.
  * Use `next(null)` to finish the consumer.
  */
-function *sha2256G(): Generator<void, Digest<'sha2-256'>, BufferSource | null>{
-  const digest = Buffer.allocUnsafeSlow(
-    sodium.crypto_hash_sha256_BYTES
-  );
-  const state = Buffer.allocUnsafe(
-    sodium.crypto_hash_sha256_STATEBYTES
-  );
+function* sha2256G(): Generator<void, Digest<'sha2-256'>, BufferSource | null> {
+  const digest = Buffer.allocUnsafeSlow(sodium.crypto_hash_sha256_BYTES);
+  const state = Buffer.allocUnsafe(sodium.crypto_hash_sha256_STATEBYTES);
   sodium.crypto_hash_sha256_init(state);
   while (true) {
     const data = yield;
@@ -47,12 +35,8 @@ function *sha2256G(): Generator<void, Digest<'sha2-256'>, BufferSource | null>{
  * Stream compute a SHA256 hash with iterable
  */
 function sha2256I(data: Iterable<BufferSource>): Digest<'sha2-256'> {
-  const digest = Buffer.allocUnsafeSlow(
-    sodium.crypto_hash_sha256_BYTES
-  );
-  const state = Buffer.allocUnsafe(
-    sodium.crypto_hash_sha256_STATEBYTES
-  );
+  const digest = Buffer.allocUnsafeSlow(sodium.crypto_hash_sha256_BYTES);
+  const state = Buffer.allocUnsafe(sodium.crypto_hash_sha256_STATEBYTES);
   sodium.crypto_hash_sha256_init(state);
   for (const d of data) {
     sodium.crypto_hash_sha256_update(state, utils.bufferWrap(d));
@@ -62,9 +46,7 @@ function sha2256I(data: Iterable<BufferSource>): Digest<'sha2-256'> {
 }
 
 function sha2512(data: BufferSource): Digest<'sha2-512'> {
-  const digest = Buffer.allocUnsafeSlow(
-    sodium.crypto_hash_sha512_BYTES
-  );
+  const digest = Buffer.allocUnsafeSlow(sodium.crypto_hash_sha512_BYTES);
   sodium.crypto_hash_sha512(digest, utils.bufferWrap(data));
   return digest as Digest<'sha2-512'>;
 }
@@ -74,13 +56,9 @@ function sha2512(data: BufferSource): Digest<'sha2-512'> {
  * Use `next()` to prime the generator.
  * Use `next(null)` to finish the consumer.
  */
-function *sha2512G(): Generator<void, Digest<'sha2-512'>, BufferSource | null>{
-  const digest = Buffer.allocUnsafeSlow(
-    sodium.crypto_hash_sha512_BYTES
-  );
-  const state = Buffer.allocUnsafe(
-    sodium.crypto_hash_sha512_STATEBYTES
-  );
+function* sha2512G(): Generator<void, Digest<'sha2-512'>, BufferSource | null> {
+  const digest = Buffer.allocUnsafeSlow(sodium.crypto_hash_sha512_BYTES);
+  const state = Buffer.allocUnsafe(sodium.crypto_hash_sha512_STATEBYTES);
   sodium.crypto_hash_sha512_init(state);
   while (true) {
     const data = yield;
@@ -96,12 +74,8 @@ function *sha2512G(): Generator<void, Digest<'sha2-512'>, BufferSource | null>{
  * Stream compute a SHA512 hash with iterable
  */
 function sha2512I(data: Iterable<BufferSource>): Digest<'sha2-512'> {
-  const digest = Buffer.allocUnsafeSlow(
-    sodium.crypto_hash_sha512_BYTES
-  );
-  const state = Buffer.allocUnsafe(
-    sodium.crypto_hash_sha512_STATEBYTES
-  );
+  const digest = Buffer.allocUnsafeSlow(sodium.crypto_hash_sha512_BYTES);
+  const state = Buffer.allocUnsafe(sodium.crypto_hash_sha512_STATEBYTES);
   sodium.crypto_hash_sha512_init(state);
   for (const d of data) {
     sodium.crypto_hash_sha512_update(state, utils.bufferWrap(d));
@@ -113,16 +87,20 @@ function sha2512I(data: Iterable<BufferSource>): Digest<'sha2-512'> {
 function sha2512256(data: BufferSource): Digest<'sha2-512-256'> {
   const digest = sha2512(data);
   const digestTruncated = Buffer.allocUnsafeSlow(
-    sodium.crypto_hash_sha256_BYTES
+    sodium.crypto_hash_sha256_BYTES,
   );
   digest.copy(digestTruncated, 0, 0, sodium.crypto_hash_sha256_BYTES);
   return digestTruncated as Digest<'sha2-512-256'>;
 }
 
-function *sha2512256G(): Generator<void, Digest<'sha2-512-256'>, BufferSource | null> {
+function* sha2512256G(): Generator<
+  void,
+  Digest<'sha2-512-256'>,
+  BufferSource | null
+> {
   const digest = yield* sha2512G();
   const digestTruncated = Buffer.allocUnsafeSlow(
-    sodium.crypto_hash_sha256_BYTES
+    sodium.crypto_hash_sha256_BYTES,
   );
   digest.copy(digestTruncated, 0, 0, sodium.crypto_hash_sha256_BYTES);
   return digestTruncated as Digest<'sha2-512-256'>;
@@ -131,16 +109,14 @@ function *sha2512256G(): Generator<void, Digest<'sha2-512-256'>, BufferSource | 
 function sha2512256I(data: Iterable<BufferSource>): Digest<'sha2-512-256'> {
   const digest = sha2512I(data);
   const digestTruncated = Buffer.allocUnsafeSlow(
-    sodium.crypto_hash_sha256_BYTES
+    sodium.crypto_hash_sha256_BYTES,
   );
   digest.copy(digestTruncated, 0, 0, sodium.crypto_hash_sha256_BYTES);
   return digestTruncated as Digest<'sha2-512-256'>;
 }
 
 function blake2b256(data: BufferSource): Digest<'blake2b-256'> {
-  const digest = Buffer.allocUnsafeSlow(
-    sodium.crypto_generichash_BYTES
-  );
+  const digest = Buffer.allocUnsafeSlow(sodium.crypto_generichash_BYTES);
   sodium.crypto_generichash(digest, utils.bufferWrap(data));
   return digest as Digest<'blake2b-256'>;
 }
@@ -150,14 +126,18 @@ function blake2b256(data: BufferSource): Digest<'blake2b-256'> {
  * This is a pre-primed generator.
  * Use `next(null)` to finish the consumer.
  */
-function *blake2b256G(): Generator<void, Digest<'blake2b-256'>, BufferSource | null>{
-  const digest = Buffer.allocUnsafeSlow(
-    sodium.crypto_generichash_BYTES
+function* blake2b256G(): Generator<
+  void,
+  Digest<'blake2b-256'>,
+  BufferSource | null
+> {
+  const digest = Buffer.allocUnsafeSlow(sodium.crypto_generichash_BYTES);
+  const state = Buffer.allocUnsafe(sodium.crypto_generichash_STATEBYTES);
+  sodium.crypto_generichash_init(
+    state,
+    undefined,
+    sodium.crypto_generichash_BYTES,
   );
-  const state = Buffer.allocUnsafe(
-    sodium.crypto_generichash_STATEBYTES
-  );
-  sodium.crypto_generichash_init(state, undefined, sodium.crypto_generichash_BYTES);
   while (true) {
     const data = yield;
     if (data === null) {
@@ -172,13 +152,13 @@ function *blake2b256G(): Generator<void, Digest<'blake2b-256'>, BufferSource | n
  * Stream compute a BLAKE2b hash with iterable
  */
 function blake2b256I(data: Iterable<BufferSource>): Digest<'blake2b-256'> {
-  const digest = Buffer.allocUnsafeSlow(
-    sodium.crypto_generichash_BYTES
+  const digest = Buffer.allocUnsafeSlow(sodium.crypto_generichash_BYTES);
+  const state = Buffer.allocUnsafe(sodium.crypto_generichash_STATEBYTES);
+  sodium.crypto_generichash_init(
+    state,
+    undefined,
+    sodium.crypto_generichash_BYTES,
   );
-  const state = Buffer.allocUnsafe(
-    sodium.crypto_generichash_STATEBYTES
-  );
-  sodium.crypto_generichash_init(state, undefined, sodium.crypto_generichash_BYTES);
   for (const d of data) {
     sodium.crypto_generichash_update(state, utils.bufferWrap(d));
   }
@@ -186,7 +166,10 @@ function blake2b256I(data: Iterable<BufferSource>): Digest<'blake2b-256'> {
   return digest as Digest<'blake2b-256'>;
 }
 
-function hash<F extends DigestFormats>(data: BufferSource, format: F): Digest<F> {
+function hash<F extends DigestFormats>(
+  data: BufferSource,
+  format: F,
+): Digest<F> {
   switch (format) {
     case 'sha2-256':
       return sha2256(data) as Digest<F>;
@@ -202,7 +185,7 @@ function hash<F extends DigestFormats>(data: BufferSource, format: F): Digest<F>
 }
 
 function hashG<F extends DigestFormats>(
-  format: F
+  format: F,
 ): Generator<void, Digest<F>, BufferSource | null> {
   switch (format) {
     case 'sha2-256':
@@ -220,7 +203,7 @@ function hashG<F extends DigestFormats>(
 
 function hashI<F extends DigestFormats>(
   data: Iterable<BufferSource>,
-  format: F
+  format: F,
 ): Digest<F> {
   switch (format) {
     case 'sha2-256':
@@ -238,23 +221,21 @@ function hashI<F extends DigestFormats>(
 
 function digestToMultidigest<F extends DigestFormats>(
   digest: Digest<F>,
-  format: F
+  format: F,
 ): MultihashDigest<DigestCode<F>> {
   const code = keysTypes.multihashCodes[format];
   return multiformats.digest.create(code, digest);
 }
 
 function digestFromMultidigest(
-  multiDigest: unknown
+  multiDigest: unknown,
 ): MultihashDigest<DigestCode<DigestFormats>> | undefined {
   if (!utils.isBufferSource(multiDigest)) {
     return;
   }
   let digest: MultihashDigest<number>;
   try {
-    digest = multiformats.digest.decode(
-      utils.bufferWrap(multiDigest)
-    );
+    digest = multiformats.digest.decode(utils.bufferWrap(multiDigest));
   } catch {
     // Fails if the length is incorrect
     return;

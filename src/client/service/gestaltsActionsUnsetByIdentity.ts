@@ -57,7 +57,7 @@ function gestaltsActionsUnsetByIdentity({
         },
       );
       await db.withTransactionF((tran) =>
-        gestaltGraph.unsetGestaltActions(
+        gestaltGraph.unsetGestaltAction(
           ['identity', [providerId, identityId]],
           action,
           tran,

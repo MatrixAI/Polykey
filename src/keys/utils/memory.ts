@@ -9,11 +9,11 @@ import * as keysErrors from '../errors';
  */
 function bufferLock<T extends Buffer>(
   data: T,
-  strict: boolean = true
+  strict: boolean = true,
 ): asserts data is BufferLocked<T> {
   try {
     // There's a limit to how much data can be locked
-    sodium.sodium_mlock(data)
+    sodium.sodium_mlock(data);
   } catch {
     // If strict, we will throw an exception for being unable to lock
     if (strict) {

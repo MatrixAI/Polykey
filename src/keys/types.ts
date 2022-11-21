@@ -302,7 +302,4 @@ export type {
 
 export type { CertId, CertIdString, CertIdEncoded } from '../ids/types';
 
-export {
-  multihashCodes,
-  multihashCodesI,
-};
+export { multihashCodes, multihashCodesI };

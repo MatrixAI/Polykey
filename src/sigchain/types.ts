@@ -7,8 +7,6 @@ import type { ClaimDefault } from '../claims/types';
  */
 type ClaimInput = TokenPayload & {
   [Property in keyof ClaimDefault]?: undefined;
-}
-
-export type {
-  ClaimInput,
 };
+
+export type { ClaimInput };

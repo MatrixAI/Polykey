@@ -10,16 +10,20 @@ import * as utils from '../../utils';
  * Linking 2 nodes together
  */
 interface ClaimLinkNode extends Claim {
+  typ: 'ClaimLinkNode';
   iss: NodeIdEncoded;
   sub: NodeIdEncoded;
 }
 
 function assertClaimLinkNode(
-  claimLinkNode: unknown
+  claimLinkNode: unknown,
 ): asserts claimLinkNode is ClaimLinkNode {
   if (!utils.isObject(claimLinkNode)) {
+    throw new validationErrors.ErrorParse('must be POJO');
+  }
+  if (claimLinkNode['typ'] !== 'ClaimLinkNode') {
     throw new validationErrors.ErrorParse(
-      'must be POJO',
+      '`typ` property must be `ClaimLinkNode`',
     );
   }
   if (
@@ -40,32 +44,20 @@ function assertClaimLinkNode(
   }
 }
 
-function parseClaimLinkNode(
-  claimLinkNodeEncoded: unknown
-): ClaimLinkNode {
-  const claimLinkNode = claimsUtils.parseClaim(
-    claimLinkNodeEncoded
-  );
+function parseClaimLinkNode(claimLinkNodeEncoded: unknown): ClaimLinkNode {
+  const claimLinkNode = claimsUtils.parseClaim(claimLinkNodeEncoded);
   assertClaimLinkNode(claimLinkNode);
   return claimLinkNode;
 }
 
 function parseSignedClaimLinkNode(
-  signedClaimLinkNodeEncoded: unknown
+  signedClaimLinkNodeEncoded: unknown,
 ): SignedClaim<ClaimLinkNode> {
-  const signedClaim = tokensUtils.parseSignedToken(
-    signedClaimLinkNodeEncoded
-  );
+  const signedClaim = tokensUtils.parseSignedToken(signedClaimLinkNodeEncoded);
   assertClaimLinkNode(signedClaim.payload);
   return signedClaim as SignedClaim<ClaimLinkNode>;
 }
 
-export {
-  assertClaimLinkNode,
-  parseClaimLinkNode,
-  parseSignedClaimLinkNode,
-};
+export { assertClaimLinkNode, parseClaimLinkNode, parseSignedClaimLinkNode };
 
-export type {
-  ClaimLinkNode
-};
+export type { ClaimLinkNode };

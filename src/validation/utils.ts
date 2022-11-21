@@ -65,10 +65,7 @@ function parseGestaltId(data: any): GestaltId {
   }
   const providerId = parseProviderId(match[1]);
   const identityId = parseIdentityId(match[2]);
-  return [
-    'identity',
-    [providerId, identityId]
-  ]
+  return ['identity', [providerId, identityId]];
 }
 
 function parseClaimId(data: any): ClaimId {
@@ -304,7 +301,6 @@ function parseSeedNodes(data: any): [SeedNodes, boolean] {
   }
   return [seedNodes, defaults];
 }
-
 
 export {
   parseInteger,

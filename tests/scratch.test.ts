@@ -4,6 +4,7 @@ import type KeyRing from '@/keys/KeyRing';
 import type NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import type NodeGraph from '@/nodes/NodeGraph';
 import type Sigchain from '@/sigchain/Sigchain';
+import type GestaltGraph from '@/gestalts/GestaltGraph';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import NodeManager from '@/nodes/NodeManager';
 
@@ -21,6 +22,7 @@ describe('scratch', () => {
       nodeGraph: {} as NodeGraph,
       nodeConnectionManager: {} as NodeConnectionManager,
       taskManager: {} as TaskManager,
+      gestaltGraph: {} as GestaltGraph,
       logger,
     });
     logger.info('checking names');

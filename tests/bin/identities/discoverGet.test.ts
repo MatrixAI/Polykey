@@ -1,20 +1,20 @@
 import type { IdentityId, ProviderId } from '@/identities/types';
-import type { ClaimLinkIdentity } from '@/claims/types';
-import type { Gestalt } from '@/gestalts/types';
 import type { Host, Port } from '@/network/types';
 import type { NodeId } from '@/ids/types';
+import type { ClaimLinkIdentity } from '@/claims/payloads/index';
+import type { SignedClaim } from '@/claims/types';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
-import { poll, sysexits } from '@/utils';
+import { sysexits } from '@/utils';
 import * as identitiesUtils from '@/identities/utils';
-import * as claimsUtils from '@/claims/utils';
 import * as nodesUtils from '@/nodes/utils';
-import * as testNodesUtils from '../../nodes/utils';
-import TestProvider from '../../identities/TestProvider';
-import * as testUtils from '../../utils';
 import * as keysUtils from '@/keys/utils/index';
+import { encodeProviderIdentityId } from '@/identities/utils';
+import * as testUtils from '../../utils';
+import TestProvider from '../../identities/TestProvider';
+import * as testNodesUtils from '../../nodes/utils';
 
 describe('discover/get', () => {
   const logger = new Logger('discover/get test', LogLevel.WARN, [
@@ -100,6 +100,7 @@ describe('discover/get', () => {
     });
     pkAgent.identitiesManager.registerProvider(testProvider);
     // Add node claim to gestalt
+    await nodeB.acl.setNodeAction(nodeAId, 'claim');
     await nodeA.nodeManager.claimNode(nodeBId);
     // Add identity claim to gestalt
     testProvider.users[identityId] = {};
@@ -107,15 +108,16 @@ describe('discover/get', () => {
     await nodeA.identitiesManager.putToken(testProvider.id, identityId, {
       accessToken: 'abc123',
     });
-    const identityClaim: ClaimLinkIdentity = {
-      type: 'identity',
-      node: nodesUtils.encodeNodeId(nodeAId),
-      provider: testProvider.id,
-      identity: identityId,
+    const identityClaim = {
+      typ: 'ClaimLinkIdentity',
+      iss: nodesUtils.encodeNodeId(nodeAId),
+      sub: encodeProviderIdentityId([testProvider.id, identityId]),
     };
-    const [, claimEncoded] = await nodeA.sigchain.addClaim(identityClaim);
-    const claim = claimsUtils.decodeClaim(claimEncoded);
-    await testProvider.publishClaim(identityId, claim);
+    const [, claim] = await nodeA.sigchain.addClaim(identityClaim);
+    await testProvider.publishClaim(
+      identityId,
+      claim as SignedClaim<ClaimLinkIdentity>,
+    );
   });
   afterEach(async () => {
     await pkAgent.stop();
@@ -126,8 +128,7 @@ describe('discover/get', () => {
       recursive: true,
     });
   });
-  // TestUtils.testIf(testUtils.isTestPlatformEmpty)
-  test(
+  testUtils.testIf(testUtils.isTestPlatformEmpty)(
     'discovers and gets gestalt by node',
     async () => {
       // Need an authenticated identity
@@ -180,28 +181,9 @@ describe('discover/get', () => {
       );
       expect(discoverResponse.exitCode).toBe(0);
       // Since discovery is a background process we need to wait for the
-      // gestalt to be discovered
-      await poll<Gestalt>(
-        async () => {
-          const gestalts = await poll<Array<Gestalt>>(
-            async () => {
-              return await pkAgent.gestaltGraph.getGestalts();
-            },
-            (_, result) => {
-              if (result.length === 1) return true;
-              return false;
-            },
-            100,
-          );
-          return gestalts[0];
-        },
-        (_, result) => {
-          if (result === undefined) return false;
-          if (Object.keys(result.matrix).length === 3) return true;
-          return false;
-        },
-        100,
-      );
+      while ((await pkAgent.discovery.waitForDiscoveryTasks()) > 0) {
+        // Gestalt to be discovered
+      }
       // Now we can get the gestalt
       const getResponse = await testUtils.pkStdio(
         ['identities', 'get', nodesUtils.encodeNodeId(nodeAId)],
@@ -220,7 +202,7 @@ describe('discover/get', () => {
       // Revert side effects
       await pkAgent.gestaltGraph.unsetNode(nodeAId);
       await pkAgent.gestaltGraph.unsetNode(nodeBId);
-      await pkAgent.gestaltGraph.unsetIdentity(testProvider.id, identityId);
+      await pkAgent.gestaltGraph.unsetIdentity([testProvider.id, identityId]);
       await pkAgent.nodeGraph.unsetNode(nodeAId);
       await pkAgent.identitiesManager.delToken(
         testToken.providerId,
@@ -285,28 +267,9 @@ describe('discover/get', () => {
       );
       expect(discoverResponse.exitCode).toBe(0);
       // Since discovery is a background process we need to wait for the
-      // gestalt to be discovered
-      await poll<Gestalt>(
-        async () => {
-          const gestalts = await poll<Array<Gestalt>>(
-            async () => {
-              return await pkAgent.gestaltGraph.getGestalts();
-            },
-            (_, result) => {
-              if (result.length === 1) return true;
-              return false;
-            },
-            100,
-          );
-          return gestalts[0];
-        },
-        (_, result) => {
-          if (result === undefined) return false;
-          if (Object.keys(result.matrix).length === 3) return true;
-          return false;
-        },
-        100,
-      );
+      while ((await pkAgent.discovery.waitForDiscoveryTasks()) > 0) {
+        // Gestalt to be discovered
+      }
       // Now we can get the gestalt
       const getResponse = await testUtils.pkStdio(
         ['identities', 'get', providerString],
@@ -325,7 +288,7 @@ describe('discover/get', () => {
       // Revert side effects
       await pkAgent.gestaltGraph.unsetNode(nodeAId);
       await pkAgent.gestaltGraph.unsetNode(nodeBId);
-      await pkAgent.gestaltGraph.unsetIdentity(testProvider.id, identityId);
+      await pkAgent.gestaltGraph.unsetIdentity([testProvider.id, identityId]);
       await pkAgent.nodeGraph.unsetNode(nodeAId);
       await pkAgent.identitiesManager.delToken(
         testToken.providerId,

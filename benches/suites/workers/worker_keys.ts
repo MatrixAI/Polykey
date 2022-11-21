@@ -11,7 +11,10 @@ async function main() {
   const logger = new Logger(`worker_overhead bench`, LogLevel.WARN, [
     new StreamHandler(),
   ]);
-  const workerManager = await workersUtils.createWorkerManager({ cores, logger });
+  const workerManager = await workersUtils.createWorkerManager({
+    cores,
+    logger,
+  });
   let summary: Summary;
   try {
     summary = await b.suite(
@@ -56,7 +59,9 @@ async function main() {
               issuerPrivateKey: subjectKeyPair.privateKey.buffer,
               duration: 1000,
             });
-            return keysUtils.certFromASN1(Buffer.from(result) as CertificateASN1)!;
+            return keysUtils.certFromASN1(
+              Buffer.from(result) as CertificateASN1,
+            )!;
           });
         };
       }),

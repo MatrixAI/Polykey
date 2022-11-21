@@ -57,32 +57,37 @@ class CommandGet extends CommandPolykey {
         let res: gestaltsPB.Graph | null = null;
         const [type, id] = gestaltId;
         switch (type) {
-          case 'node': {
-            // Getting from node
-            const nodeMessage = new nodesPB.Node();
-            nodeMessage.setNodeId(nodesUtils.encodeNodeId(id));
-            res = await binUtils.retryAuthentication(
-              (auth) =>
-                pkClient.grpcClient.gestaltsGestaltGetByNode(nodeMessage, auth),
-              meta,
-            );
-          }
-          break;
-          case 'identity': {
-            // Getting from identity.
-            const providerMessage = new identitiesPB.Provider();
-            providerMessage.setProviderId(id[0]);
-            providerMessage.setIdentityId(id[1]);
-            res = await binUtils.retryAuthentication(
-              (auth) =>
-                pkClient.grpcClient.gestaltsGestaltGetByIdentity(
-                  providerMessage,
-                  auth,
-                ),
-              meta,
-            );
-          }
-          break;
+          case 'node':
+            {
+              // Getting from node
+              const nodeMessage = new nodesPB.Node();
+              nodeMessage.setNodeId(nodesUtils.encodeNodeId(id));
+              res = await binUtils.retryAuthentication(
+                (auth) =>
+                  pkClient.grpcClient.gestaltsGestaltGetByNode(
+                    nodeMessage,
+                    auth,
+                  ),
+                meta,
+              );
+            }
+            break;
+          case 'identity':
+            {
+              // Getting from identity.
+              const providerMessage = new identitiesPB.Provider();
+              providerMessage.setProviderId(id[0]);
+              providerMessage.setIdentityId(id[1]);
+              res = await binUtils.retryAuthentication(
+                (auth) =>
+                  pkClient.grpcClient.gestaltsGestaltGetByIdentity(
+                    providerMessage,
+                    auth,
+                  ),
+                meta,
+              );
+            }
+            break;
           default:
             utils.never();
         }
@@ -94,7 +99,7 @@ class CommandGet extends CommandPolykey {
           // Listing nodes.
           for (const nodeKey of Object.keys(gestalt.nodes)) {
             const node = gestalt.nodes[nodeKey];
-            output.push(`${node.id}`);
+            output.push(`${node.nodeId}`);
           }
           // Listing identities
           for (const identityKey of Object.keys(gestalt.identities)) {

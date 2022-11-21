@@ -1,5 +1,8 @@
 import type { IdentityId, ProviderId } from '@/identities/types';
 import type { Host, Port } from '@/network/types';
+import type GestaltGraph from '@/gestalts/GestaltGraph';
+import type KeyRing from '@/keys/KeyRing';
+import type Sigchain from '@/sigchain/Sigchain';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -49,6 +52,9 @@ describe('identitiesTokenPutDeleteGet', () => {
     });
     identitiesManager = await IdentitiesManager.createIdentitiesManager({
       db,
+      gestaltGraph: {} as GestaltGraph,
+      keyRing: {} as KeyRing,
+      sigchain: {} as Sigchain,
       logger,
     });
     identitiesManager.registerProvider(new TestProvider());
@@ -116,7 +122,9 @@ describe('identitiesTokenPutDeleteGet', () => {
       clientUtils.encodeAuthFromPassword(password),
     );
     expect(getPutResponse).toBeInstanceOf(identitiesPB.Token);
-    expect(JSON.parse(getPutResponse.getToken())).toEqual(testToken.providerToken);
+    expect(JSON.parse(getPutResponse.getToken())).toEqual(
+      testToken.providerToken,
+    );
     // Delete token
     const deleteResponse = await grpcClient.identitiesTokenDelete(
       providerMessage,

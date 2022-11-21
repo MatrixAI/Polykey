@@ -1,4 +1,5 @@
 import type { Host, Port } from '@/network/types';
+import type { CertificatePEM } from '../../../src/keys/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -15,7 +16,6 @@ import { ClientServiceService } from '@/proto/js/polykey/v1/client_service_grpc_
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as keysPB from '@/proto/js/polykey/v1/keys/keys_pb';
 import * as clientUtils from '@/client/utils/utils';
-import { CertificatePEM } from '../../../src/keys/types';
 import * as keysUtils from '@/keys/utils/index';
 
 describe('keysCertsChainGet', () => {
@@ -59,14 +59,14 @@ describe('keysCertsChainGet', () => {
     db = await DB.createDB({
       dbPath,
       logger,
-    })
+    });
     taskManager = await TaskManager.createTaskManager({ db, logger });
     certManager = await CertManager.createCertManager({
       db,
       keyRing,
       taskManager,
       logger,
-    })
+    });
     const clientService = {
       keysCertsChainGet: keysCertsChainGet({
         authenticate,

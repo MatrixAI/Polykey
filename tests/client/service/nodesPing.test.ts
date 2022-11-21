@@ -1,4 +1,5 @@
 import type { Host, Port } from '@/network/types';
+import type GestaltGraph from '@/gestalts/GestaltGraph';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -20,9 +21,8 @@ import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as nodesPB from '@/proto/js/polykey/v1/nodes/nodes_pb';
 import * as clientUtils from '@/client/utils/utils';
 import * as validationErrors from '@/validation/errors';
-import * as testUtils from '../../utils';
 import * as keysUtils from '@/keys/utils/index';
-import { CertificatePEMChain } from '@/keys/types';
+import * as testUtils from '../../utils';
 import * as testsUtils from '../../utils/index';
 
 describe('nodesPing', () => {
@@ -113,6 +113,7 @@ describe('nodesPing', () => {
       nodeGraph,
       sigchain,
       taskManager,
+      gestaltGraph: {} as GestaltGraph,
       logger,
     });
     await nodeConnectionManager.start({ nodeManager });

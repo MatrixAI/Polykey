@@ -5,9 +5,9 @@ import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
 import * as nodesUtils from '@/nodes/utils';
+import * as keysUtils from '@/keys/utils/index';
 import * as testNodesUtils from '../../nodes/utils';
 import * as testUtils from '../../utils';
-import * as keysUtils from '@/keys/utils/index';
 
 describe('claim', () => {
   const logger = new Logger('claim test', LogLevel.WARN, [new StreamHandler()]);
@@ -66,21 +66,21 @@ describe('claim', () => {
     await pkAgent.acl.setNodePerm(remoteId, {
       gestalt: {
         notify: null,
+        claim: null,
       },
       vaults: {},
     });
     await remoteNode.acl.setNodePerm(localId, {
       gestalt: {
         notify: null,
+        claim: null,
       },
       vaults: {},
     });
   });
   afterEach(async () => {
     await pkAgent.stop();
-    await pkAgent.destroy();
     await remoteNode.stop();
-    await remoteNode.destroy();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
@@ -100,7 +100,7 @@ describe('claim', () => {
         },
       );
       expect(exitCode).toBe(0);
-      expect(stdout).toContain('Gestalt Invite');
+      expect(stdout).toContain('Successfully generated a cryptolink claim');
       expect(stdout).toContain(remoteIdEncoded);
     },
   );
@@ -121,7 +121,7 @@ describe('claim', () => {
         },
       );
       expect(exitCode).toBe(0);
-      expect(stdout).toContain('Gestalt Invite');
+      expect(stdout).toContain('Successfully generated a cryptolink');
       expect(stdout).toContain(nodesUtils.encodeNodeId(remoteId));
     },
   );

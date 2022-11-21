@@ -1,5 +1,6 @@
 import type { Host, Port } from '@/network/types';
 import type { VaultIdEncoded, VaultName } from '@/vaults/types';
+import type GestaltGraph from '@/gestalts/GestaltGraph';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -22,9 +23,8 @@ import { ClientServiceService } from '@/proto/js/polykey/v1/client_service_grpc_
 import * as notificationsPB from '@/proto/js/polykey/v1/notifications/notifications_pb';
 import * as nodesUtils from '@/nodes/utils';
 import * as clientUtils from '@/client/utils';
-import * as testNodesUtils from '../../nodes/utils';
 import * as keysUtils from '@/keys/utils/index';
-import { CertificatePEMChain } from '@/keys/types';
+import * as testNodesUtils from '../../nodes/utils';
 import * as testsUtils from '../../utils/index';
 
 describe('notificationsRead', () => {
@@ -33,6 +33,7 @@ describe('notificationsRead', () => {
   ]);
   const nodeIdSender = testNodesUtils.generateRandomNodeId();
   const nodeIdSenderEncoded = nodesUtils.encodeNodeId(nodeIdSender);
+  const nodeIdReceiverEncoded = 'test';
   const password = 'helloworld';
   const authenticate = async (metaClient, metaServer = new Metadata()) =>
     metaServer;
@@ -42,61 +43,74 @@ describe('notificationsRead', () => {
       .spyOn(NotificationsManager.prototype, 'readNotifications')
       .mockResolvedValueOnce([
         {
+          typ: 'notification',
           data: {
             type: 'General',
             message: 'test',
           },
-          senderId: nodeIdSenderEncoded,
+          iss: nodeIdSenderEncoded,
+          sub: nodeIdReceiverEncoded,
           isRead: true,
         },
       ])
       .mockResolvedValueOnce([
         {
+          typ: 'notification',
           data: {
             type: 'General',
             message: 'test1',
           },
-          senderId: nodeIdSenderEncoded,
+          iss: nodeIdSenderEncoded,
+          sub: nodeIdReceiverEncoded,
           isRead: true,
         },
         {
+          typ: 'notification',
           data: {
             type: 'General',
             message: 'test2',
           },
-          senderId: nodeIdSenderEncoded,
+          iss: nodeIdSenderEncoded,
+          sub: nodeIdReceiverEncoded,
           isRead: true,
         },
       ])
       .mockResolvedValueOnce([
         {
+          typ: 'notification',
           data: {
             type: 'General',
             message: 'test2',
           },
-          senderId: nodeIdSenderEncoded,
+          iss: nodeIdSenderEncoded,
+          sub: nodeIdReceiverEncoded,
           isRead: true,
         },
         {
+          typ: 'notification',
           data: {
             type: 'General',
             message: 'test1',
           },
-          senderId: nodeIdSenderEncoded,
+          iss: nodeIdSenderEncoded,
+          sub: nodeIdReceiverEncoded,
           isRead: true,
         },
       ])
       .mockResolvedValueOnce([
         {
+          typ: 'notification',
           data: {
             type: 'GestaltInvite',
           },
-          senderId: nodeIdSenderEncoded,
+          iss: nodeIdSenderEncoded,
+          sub: nodeIdReceiverEncoded,
           isRead: true,
         },
       ])
       .mockResolvedValueOnce([
         {
+          typ: 'notification',
           data: {
             type: 'VaultShare',
             vaultId: 'vault' as VaultIdEncoded,
@@ -106,7 +120,8 @@ describe('notificationsRead', () => {
               pull: null,
             },
           },
-          senderId: nodeIdSenderEncoded,
+          iss: nodeIdSenderEncoded,
+          sub: nodeIdReceiverEncoded,
           isRead: true,
         },
       ])
@@ -190,6 +205,7 @@ describe('notificationsRead', () => {
       keyRing,
       nodeConnectionManager,
       nodeGraph,
+      gestaltGraph: {} as GestaltGraph,
       sigchain,
       taskManager,
       logger,
@@ -259,10 +275,12 @@ describe('notificationsRead', () => {
     expect(response).toBeInstanceOf(notificationsPB.List);
     const output = response.getNotificationList();
     expect(output).toHaveLength(1);
-    expect(output[0].hasGeneral()).toBeTruthy();
-    expect(output[0].getGeneral()!.getMessage()).toBe('test');
-    expect(output[0].getSenderId()).toBe(nodeIdSenderEncoded);
-    expect(output[0].getIsRead()).toBeTruthy();
+    const notification = JSON.parse(output[0].getContent());
+    expect(notification.data.type).toBe('General');
+    expect(notification.data.message).toBe('test');
+    expect(notification.iss).toBe(nodeIdSenderEncoded);
+    expect(notification.sub).toBe(nodeIdReceiverEncoded);
+    expect(notification.isRead).toBeTruthy();
     // Check request was parsed correctly
     expect(mockedReadNotifications.mock.calls[0][0].unread).toBeFalsy();
     expect(mockedReadNotifications.mock.calls[0][0].number).toBe(1);
@@ -280,14 +298,18 @@ describe('notificationsRead', () => {
     expect(response).toBeInstanceOf(notificationsPB.List);
     const output = response.getNotificationList();
     expect(output).toHaveLength(2);
-    expect(output[0].hasGeneral()).toBeTruthy();
-    expect(output[0].getGeneral()!.getMessage()).toBe('test1');
-    expect(output[0].getSenderId()).toBe(nodeIdSenderEncoded);
-    expect(output[0].getIsRead()).toBeTruthy();
-    expect(output[1].hasGeneral()).toBeTruthy();
-    expect(output[1].getGeneral()!.getMessage()).toBe('test2');
-    expect(output[1].getSenderId()).toBe(nodeIdSenderEncoded);
-    expect(output[1].getIsRead()).toBeTruthy();
+    const notification1 = JSON.parse(output[0].getContent());
+    const notification2 = JSON.parse(output[1].getContent());
+    expect(notification1.data.type).toBe('General');
+    expect(notification1.data.message).toBe('test1');
+    expect(notification1.iss).toBe(nodeIdSenderEncoded);
+    expect(notification1.sub).toBe(nodeIdReceiverEncoded);
+    expect(notification1.isRead).toBeTruthy();
+    expect(notification2.data.type).toBe('General');
+    expect(notification2.data.message).toBe('test2');
+    expect(notification2.iss).toBe(nodeIdSenderEncoded);
+    expect(notification2.sub).toBe(nodeIdReceiverEncoded);
+    expect(notification2.isRead).toBeTruthy();
     // Check request was parsed correctly
     expect(mockedReadNotifications.mock.calls[1][0].unread).toBeTruthy();
     expect(mockedReadNotifications.mock.calls[1][0].number).toBe('all');
@@ -305,14 +327,18 @@ describe('notificationsRead', () => {
     expect(response).toBeInstanceOf(notificationsPB.List);
     const output = response.getNotificationList();
     expect(output).toHaveLength(2);
-    expect(output[0].hasGeneral()).toBeTruthy();
-    expect(output[0].getGeneral()!.getMessage()).toBe('test2');
-    expect(output[0].getSenderId()).toBe(nodeIdSenderEncoded);
-    expect(output[0].getIsRead()).toBeTruthy();
-    expect(output[1].hasGeneral()).toBeTruthy();
-    expect(output[1].getGeneral()!.getMessage()).toBe('test1');
-    expect(output[1].getSenderId()).toBe(nodeIdSenderEncoded);
-    expect(output[1].getIsRead()).toBeTruthy();
+    const notification1 = JSON.parse(output[0].getContent());
+    const notification2 = JSON.parse(output[1].getContent());
+    expect(notification1.data.type).toBe('General');
+    expect(notification1.data.message).toBe('test2');
+    expect(notification1.iss).toBe(nodeIdSenderEncoded);
+    expect(notification1.sub).toBe(nodeIdReceiverEncoded);
+    expect(notification1.isRead).toBeTruthy();
+    expect(notification2.data.type).toBe('General');
+    expect(notification2.data.message).toBe('test1');
+    expect(notification2.iss).toBe(nodeIdSenderEncoded);
+    expect(notification2.sub).toBe(nodeIdReceiverEncoded);
+    expect(notification2.isRead).toBeTruthy();
     // Check request was parsed correctly
     expect(mockedReadNotifications.mock.calls[2][0].unread).toBeFalsy();
     expect(mockedReadNotifications.mock.calls[2][0].number).toBe('all');
@@ -330,10 +356,11 @@ describe('notificationsRead', () => {
     expect(response).toBeInstanceOf(notificationsPB.List);
     const output = response.getNotificationList();
     expect(output).toHaveLength(1);
-    expect(output[0].hasGestaltInvite()).toBeTruthy();
-    expect(output[0].getGestaltInvite()).toBe('GestaltInvite');
-    expect(output[0].getSenderId()).toBe(nodeIdSenderEncoded);
-    expect(output[0].getIsRead()).toBeTruthy();
+    const notification = JSON.parse(output[0].getContent());
+    expect(notification.data.type).toBe('GestaltInvite');
+    expect(notification.iss).toBe(nodeIdSenderEncoded);
+    expect(notification.sub).toBe(nodeIdReceiverEncoded);
+    expect(notification.isRead).toBeTruthy();
     // Check request was parsed correctly
     expect(mockedReadNotifications.mock.calls[3][0].unread).toBeFalsy();
     expect(mockedReadNotifications.mock.calls[3][0].number).toBe('all');
@@ -351,13 +378,17 @@ describe('notificationsRead', () => {
     expect(response).toBeInstanceOf(notificationsPB.List);
     const output = response.getNotificationList();
     expect(output).toHaveLength(1);
-    expect(output[0].hasVaultShare()).toBeTruthy();
-    expect(output[0].getVaultShare()!.getVaultId()).toBe('vault');
-    expect(output[0].getVaultShare()!.getVaultName()).toBe('vault');
-    expect(output[0].getVaultShare()!.getActionsList()).toContain('clone');
-    expect(output[0].getVaultShare()!.getActionsList()).toContain('pull');
-    expect(output[0].getSenderId()).toBe(nodeIdSenderEncoded);
-    expect(output[0].getIsRead()).toBeTruthy();
+    const notification = JSON.parse(output[0].getContent());
+    expect(notification.data.type).toBe('VaultShare');
+    expect(notification.data.vaultId).toBe('vault');
+    expect(notification.data.vaultName).toBe('vault');
+    expect(notification.data.actions).toStrictEqual({
+      clone: null,
+      pull: null,
+    });
+    expect(notification.iss).toBe(nodeIdSenderEncoded);
+    expect(notification.sub).toBe(nodeIdReceiverEncoded);
+    expect(notification.isRead).toBeTruthy();
     // Check request was parsed correctly
     expect(mockedReadNotifications.mock.calls[4][0].unread).toBeFalsy();
     expect(mockedReadNotifications.mock.calls[4][0].number).toBe('all');

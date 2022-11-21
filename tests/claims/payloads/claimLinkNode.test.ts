@@ -5,48 +5,45 @@ import * as testsClaimsPayloadsUtils from './utils';
 describe('claims/payloads/claimLinkNode', () => {
   testProp(
     'parse claim link node',
-    [
-      testsClaimsPayloadsUtils.claimLinkNodeEncodedArb,
-      fc.string()
-    ],
+    [testsClaimsPayloadsUtils.claimLinkNodeEncodedArb, fc.string()],
     (claimLinkNodeEncodedCorrect, claimLinkNodeEncodedIncorrect) => {
       expect(() => {
         claimsPayloadsClaimLinkNode.parseClaimLinkNode(
-          claimLinkNodeEncodedCorrect
+          claimLinkNodeEncodedCorrect,
         );
       }).not.toThrow();
       expect(() => {
         claimsPayloadsClaimLinkNode.parseClaimLinkNode(
-          claimLinkNodeEncodedIncorrect
+          claimLinkNodeEncodedIncorrect,
         );
       }).toThrow();
-    }
+    },
   );
   testProp(
     'parse signed claim link node',
     [
       testsClaimsPayloadsUtils.signedClaimEncodedArb(
-        testsClaimsPayloadsUtils.claimLinkNodeArb
+        testsClaimsPayloadsUtils.claimLinkNodeArb,
       ),
       fc.record({
         payload: fc.string(),
-        signatures: fc.array(fc.string())
-      })
+        signatures: fc.array(fc.string()),
+      }),
     ],
     (
       signedClaimLinkNodeEncodedCorrect,
-      signedClaimLinkNodeEncodedIncorrect
+      signedClaimLinkNodeEncodedIncorrect,
     ) => {
       expect(() => {
         claimsPayloadsClaimLinkNode.parseSignedClaimLinkNode(
-          signedClaimLinkNodeEncodedCorrect
+          signedClaimLinkNodeEncodedCorrect,
         );
       }).not.toThrow();
       expect(() => {
         claimsPayloadsClaimLinkNode.parseSignedClaimLinkNode(
-          signedClaimLinkNodeEncodedIncorrect
+          signedClaimLinkNodeEncodedIncorrect,
         );
       }).toThrow();
-    }
+    },
   );
 });

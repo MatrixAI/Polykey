@@ -25,7 +25,11 @@ function publicKeyToPEM(publicKey: PublicKey): PublicKeyPEM {
     subjectPublicKey: publicKey,
   });
   const data = Buffer.from(asn1.AsnSerializer.serialize(spki));
-  const contents = data.toString('base64').replace(/(.{64})/g, '$1\n').trimEnd() + '\n';
+  const contents =
+    data
+      .toString('base64')
+      .replace(/(.{64})/g, '$1\n')
+      .trimEnd() + '\n';
   return `-----BEGIN PUBLIC KEY-----\n${contents}-----END PUBLIC KEY-----\n` as PublicKeyPEM;
 }
 
@@ -59,7 +63,11 @@ function privateKeyToPEM(privateKey: PrivateKey): PrivateKeyPEM {
     ),
   });
   const data = Buffer.from(asn1.AsnSerializer.serialize(pkcs8));
-  const contents = data.toString('base64').replace(/(.{64})/g, '$1\n').trimEnd() + '\n';
+  const contents =
+    data
+      .toString('base64')
+      .replace(/(.{64})/g, '$1\n')
+      .trimEnd() + '\n';
   return `-----BEGIN PRIVATE KEY-----\n${contents}-----END PRIVATE KEY-----\n` as PrivateKeyPEM;
 }
 
@@ -109,7 +117,9 @@ function keyPairFromPEM(keyPair: KeyPairPEM): KeyPair | undefined {
   if (publicKey == null || privateKey == null) {
     return undefined;
   }
-  const secretKey = Buffer.allocUnsafeSlow(privateKey.byteLength + publicKey.byteLength);
+  const secretKey = Buffer.allocUnsafeSlow(
+    privateKey.byteLength + publicKey.byteLength,
+  );
   privateKey.copy(secretKey);
   publicKey.copy(secretKey, privateKey.byteLength);
   return {

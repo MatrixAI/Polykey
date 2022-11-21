@@ -133,6 +133,7 @@ describe(GRPCClientAgent.name, () => {
       keyRing: keyRing,
       nodeGraph: nodeGraph,
       nodeConnectionManager: nodeConnectionManager,
+      gestaltGraph,
       taskManager,
       logger: logger,
     });

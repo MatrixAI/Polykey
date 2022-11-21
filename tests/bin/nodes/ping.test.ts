@@ -6,9 +6,9 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
 import * as nodesUtils from '@/nodes/utils';
 import { sysexits } from '@/errors';
+import * as keysUtils from '@/keys/utils/index';
 import * as testNodesUtils from '../../nodes/utils';
 import * as testUtils from '../../utils';
-import * as keysUtils from '@/keys/utils/index';
 
 describe('ping', () => {
   const logger = new Logger('ping test', LogLevel.WARN, [new StreamHandler()]);
@@ -91,11 +91,8 @@ describe('ping', () => {
   });
   afterEach(async () => {
     await polykeyAgent.stop();
-    await polykeyAgent.destroy();
     await remoteOnline.stop();
-    await remoteOnline.destroy();
     await remoteOffline.stop();
-    await remoteOffline.destroy();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,

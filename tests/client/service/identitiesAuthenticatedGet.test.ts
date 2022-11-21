@@ -1,5 +1,8 @@
 import type { IdentityId, ProviderId } from '@/identities/types';
 import type { Host, Port } from '@/network/types';
+import type GestaltGraph from '@/gestalts/GestaltGraph';
+import type KeyRing from '@/keys/KeyRing';
+import type Sigchain from '@/sigchain/Sigchain';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -42,6 +45,9 @@ describe('identitiesAuthenticatedGet', () => {
     });
     identitiesManager = await IdentitiesManager.createIdentitiesManager({
       db,
+      gestaltGraph: {} as GestaltGraph,
+      keyRing: {} as KeyRing,
+      sigchain: {} as Sigchain,
       logger,
     });
     const clientService = {

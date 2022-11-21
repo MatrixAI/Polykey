@@ -2,6 +2,7 @@ import type { NodeId, NodeIdEncoded, SeedNodes } from '@/nodes/types';
 import type { Host, Port } from '@/network/types';
 import type { Sigchain } from '@/sigchain';
 import type { Key } from '@/keys/types';
+import type { GestaltGraph } from '@/gestalts/index';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -132,9 +133,7 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
 
   afterAll(async () => {
     await remoteNode1.stop();
-    await remoteNode1.destroy();
     await remoteNode2.stop();
-    await remoteNode2.destroy();
     await fs.promises.rm(dataDir2, { force: true, recursive: true });
   });
 
@@ -213,11 +212,8 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
 
   afterEach(async () => {
     await nodeGraph.stop();
-    await nodeGraph.destroy();
     await db.stop();
-    await db.destroy();
     await keyRing.stop();
-    await keyRing.destroy();
     await proxy.stop();
     await taskManager.stop();
   });
@@ -238,6 +234,7 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
       nodeManager = new NodeManager({
         db,
         keyRing,
+        gestaltGraph: {} as GestaltGraph,
         logger,
         nodeConnectionManager,
         nodeGraph,
@@ -316,6 +313,7 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
       nodeManager = new NodeManager({
         db,
         keyRing,
+        gestaltGraph: {} as GestaltGraph,
         logger,
         nodeConnectionManager,
         nodeGraph,
@@ -379,6 +377,7 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
       nodeManager = new NodeManager({
         db,
         keyRing,
+        gestaltGraph: {} as GestaltGraph,
         logger,
         nodeConnectionManager,
         nodeGraph,
@@ -458,6 +457,7 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
       nodeManager = new NodeManager({
         db,
         keyRing,
+        gestaltGraph: {} as GestaltGraph,
         logger,
         nodeConnectionManager,
         nodeGraph,
@@ -571,9 +571,7 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
       } finally {
         mockedPingNode.mockRestore();
         await node1?.stop();
-        await node1?.destroy();
         await node2?.stop();
-        await node2?.destroy();
       }
     },
     globalThis.defaultTimeout * 2,
@@ -641,7 +639,6 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
       } finally {
         mockedPingNode.mockRestore();
         await node1?.stop();
-        await node1?.destroy();
       }
     },
     globalThis.defaultTimeout * 2,

@@ -1,31 +1,32 @@
 import type { Host, Port } from '@/network/types';
 import type { IdentityId, ProviderId } from '@/identities/types';
-import type { ClaimLinkIdentity } from '@/claims/types';
 import type { NodeId } from '@/ids/types';
+import type { ClaimLinkIdentity } from '@/claims/payloads/index';
+import type { SignedClaim } from '@/claims/types';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
 import { sysexits } from '@/utils';
 import * as nodesUtils from '@/nodes/utils';
-import * as claimsUtils from '@/claims/utils';
 import * as identitiesUtils from '@/identities/utils';
-import TestProvider from '../../identities/TestProvider';
-import * as testUtils from '../../utils';
 import * as keysUtils from '@/keys/utils/index';
+import { encodeProviderIdentityId } from '@/identities/utils';
+import * as testUtils from '../../utils';
+import TestProvider from '../../identities/TestProvider';
 
 describe('trust/untrust/list', () => {
   const logger = new Logger('trust/untrust/list test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
   const password = 'password';
-  const provider = new TestProvider();
   const identity = 'abc' as IdentityId;
-  const providerString = `${provider.id}:${identity}`;
   const testToken = {
     providerId: 'test-provider' as ProviderId,
     identityId: 'test_user' as IdentityId,
   };
+  let provider: TestProvider;
+  let providerString: string;
   let dataDir: string;
   let nodePath: string;
   let pkAgent: PolykeyAgent;
@@ -34,6 +35,8 @@ describe('trust/untrust/list', () => {
   let nodeHost: Host;
   let nodePort: Port;
   beforeEach(async () => {
+    provider = new TestProvider();
+    providerString = `${provider.id}:${identity}`;
     dataDir = await fs.promises.mkdtemp(
       path.join(globalThis.tmpDir, 'polykey-test-'),
     );
@@ -81,15 +84,16 @@ describe('trust/untrust/list', () => {
       accessToken: 'def456',
     });
     provider.users[identity] = {};
-    const identityClaim: ClaimLinkIdentity = {
-      type: 'identity',
-      node: nodesUtils.encodeNodeId(node.keyRing.getNodeId()),
-      provider: provider.id,
-      identity: identity,
+    const identityClaim = {
+      typ: 'ClaimLinkIdentity',
+      iss: nodesUtils.encodeNodeId(node.keyRing.getNodeId()),
+      sub: encodeProviderIdentityId([provider.id, identity]),
     };
-    const [, claimEncoded] = await node.sigchain.addClaim(identityClaim);
-    const claim = claimsUtils.decodeClaim(claimEncoded);
-    await provider.publishClaim(identity, claim);
+    const [, claim] = await node.sigchain.addClaim(identityClaim);
+    await provider.publishClaim(
+      identity,
+      claim as SignedClaim<ClaimLinkIdentity>,
+    );
   });
   afterEach(async () => {
     await node.stop();
@@ -172,10 +176,10 @@ describe('trust/untrust/list', () => {
         },
       ));
       expect(exitCode).toBe(0);
-      expect(JSON.parse(stdout)).toHaveLength(1);
+      expect(JSON.parse(stdout)).toHaveLength(2);
       expect(JSON.parse(stdout)[0]).toEqual({
         permissions: ['notify'],
-        nodes: [{ id: nodesUtils.encodeNodeId(nodeId) }],
+        nodes: [{ nodeId: nodesUtils.encodeNodeId(nodeId) }],
         identities: [
           {
             providerId: provider.id,
@@ -209,10 +213,10 @@ describe('trust/untrust/list', () => {
         },
       ));
       expect(exitCode).toBe(0);
-      expect(JSON.parse(stdout)).toHaveLength(1);
+      expect(JSON.parse(stdout)).toHaveLength(2);
       expect(JSON.parse(stdout)[0]).toEqual({
         permissions: null,
-        nodes: [{ id: nodesUtils.encodeNodeId(nodeId) }],
+        nodes: [{ nodeId: nodesUtils.encodeNodeId(nodeId) }],
         identities: [
           {
             providerId: provider.id,
@@ -222,7 +226,7 @@ describe('trust/untrust/list', () => {
       });
       // Revert side-effects
       await pkAgent.gestaltGraph.unsetNode(nodeId);
-      await pkAgent.gestaltGraph.unsetIdentity(provider.id, identity);
+      await pkAgent.gestaltGraph.unsetIdentity([provider.id, identity]);
       await pkAgent.nodeGraph.unsetNode(nodeId);
       await pkAgent.identitiesManager.delToken(
         testToken.providerId,
@@ -320,10 +324,10 @@ describe('trust/untrust/list', () => {
         },
       ));
       expect(exitCode).toBe(0);
-      expect(JSON.parse(stdout)).toHaveLength(1);
+      expect(JSON.parse(stdout)).toHaveLength(2);
       expect(JSON.parse(stdout)[0]).toEqual({
         permissions: ['notify'],
-        nodes: [{ id: nodesUtils.encodeNodeId(nodeId) }],
+        nodes: [{ nodeId: nodesUtils.encodeNodeId(nodeId) }],
         identities: [
           {
             providerId: provider.id,
@@ -357,10 +361,10 @@ describe('trust/untrust/list', () => {
         },
       ));
       expect(exitCode).toBe(0);
-      expect(JSON.parse(stdout)).toHaveLength(1);
+      expect(JSON.parse(stdout)).toHaveLength(2);
       expect(JSON.parse(stdout)[0]).toEqual({
         permissions: null,
-        nodes: [{ id: nodesUtils.encodeNodeId(nodeId) }],
+        nodes: [{ nodeId: nodesUtils.encodeNodeId(nodeId) }],
         identities: [
           {
             providerId: provider.id,
@@ -370,7 +374,7 @@ describe('trust/untrust/list', () => {
       });
       // Revert side-effects
       await pkAgent.gestaltGraph.unsetNode(nodeId);
-      await pkAgent.gestaltGraph.unsetIdentity(provider.id, identity);
+      await pkAgent.gestaltGraph.unsetIdentity([provider.id, identity]);
       await pkAgent.nodeGraph.unsetNode(nodeId);
       await pkAgent.identitiesManager.delToken(
         testToken.providerId,

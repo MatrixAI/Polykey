@@ -76,7 +76,9 @@ class CommandRead extends CommandPolykey {
         const notificationMessages = response.getNotificationList();
         const notifications: Array<Notification> = [];
         for (const message of notificationMessages) {
-          const notification = notificationsUtils.parseNotification(JSON.parse(message.getContent()));
+          const notification = notificationsUtils.parseNotification(
+            JSON.parse(message.getContent()),
+          );
           notifications.push(notification);
         }
         for (const notification of notifications) {

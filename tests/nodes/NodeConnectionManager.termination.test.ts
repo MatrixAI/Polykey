@@ -26,7 +26,6 @@ import * as agentErrors from '@/agent/errors';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import { promise, promisify } from '@/utils';
 import * as utils from '@/utils/index';
-import * as testUtils from '../utils';
 import * as testsUtils from '../utils/index';
 
 describe(`${NodeConnectionManager.name} termination test`, () => {
@@ -149,11 +148,8 @@ describe(`${NodeConnectionManager.name} termination test`, () => {
 
   afterEach(async () => {
     await nodeGraph.stop();
-    await nodeGraph.destroy();
     await db.stop();
-    await db.destroy();
     await keyRing.stop();
-    await keyRing.destroy();
     await defaultProxy.stop();
   });
 

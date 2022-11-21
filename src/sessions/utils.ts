@@ -1,7 +1,7 @@
 import type { SessionToken } from './types';
+import type { TokenPayload } from '../tokens/types';
+import type { Key } from '../keys/types';
 import Token from '../tokens/Token';
-import { TokenPayload } from '../tokens/types';
-import { Key } from '../keys/types';
 
 /**
  * Create session token
@@ -18,12 +18,13 @@ async function createSessionToken(
   key: Key,
   expiry?: number,
 ): Promise<SessionToken> {
-  const expiry_ = expiry != null ? Math.round(Date.now() / 1000) + expiry : undefined
+  const expiry_ =
+    expiry != null ? Math.round(Date.now() / 1000) + expiry : undefined;
   const token = Token.fromPayload({
     ...payload,
     exp: expiry_,
     iat: Date.now() / 1000,
-  })
+  });
   token.signWithKey(key);
   return JSON.stringify(token.toJSON()) as SessionToken;
 }
@@ -42,7 +43,7 @@ async function verifySessionToken(
     const parsedToken = Token.fromEncoded(signedTokenEncoded);
     if (!parsedToken.verifyWithKey(key)) return;
     const expiry = parsedToken.payload.exp;
-    if (expiry != null && expiry < Math.round(Date.now() / 1000) ) return;
+    if (expiry != null && expiry < Math.round(Date.now() / 1000)) return;
     return parsedToken.payload;
   } catch (e) {
     return;

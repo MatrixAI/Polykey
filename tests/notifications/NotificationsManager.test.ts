@@ -1,8 +1,9 @@
-import type { NodeId } from '@/ids/types';
+import type { NodeId, NodeIdEncoded } from '@/ids/types';
 import type { Host, Port } from '@/network/types';
 import type { VaultActions, VaultName } from '@/vaults/types';
 import type { Notification, NotificationData } from '@/notifications/types';
 import type { Key } from '@/keys/types';
+import type GestaltGraph from '@/gestalts/GestaltGraph';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -25,7 +26,6 @@ import * as nodesUtils from '@/nodes/utils';
 import * as keysUtils from '@/keys/utils';
 import * as utils from '@/utils/index';
 import * as testUtils from '../utils';
-import { CertificatePEMChain } from '@/keys/types';
 import * as testsUtils from '../utils/index';
 
 describe('NotificationsManager', () => {
@@ -39,12 +39,8 @@ describe('NotificationsManager', () => {
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 5,
   ]);
-  const senderIdEncoded = nodesUtils.encodeNodeId(
-    IdInternal.create<NodeId>([
-      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-      0, 0, 0, 0, 0, 0, 5,
-    ]),
-  );
+  const senderIdEncoded = nodesUtils.encodeNodeId(senderId);
+  const targetIdEncoded = 'Target' as NodeIdEncoded;
   const vaultIdGenerator = vaultsUtils.createVaultIdGenerator();
   /**
    * Shared ACL, DB, NodeManager, KeyRing for all tests
@@ -138,6 +134,7 @@ describe('NotificationsManager', () => {
       nodeConnectionManager,
       nodeGraph,
       taskManager,
+      gestaltGraph: {} as GestaltGraph,
       logger,
     });
     await nodeManager.start();
@@ -255,15 +252,15 @@ describe('NotificationsManager', () => {
       await receiver.notificationsManager.readNotifications();
     expect(receivedNotifications).toHaveLength(3);
     expect(receivedNotifications[0].data).toEqual(vaultNotification);
-    expect(receivedNotifications[0].senderId).toBe(
+    expect(receivedNotifications[0].iss).toBe(
       nodesUtils.encodeNodeId(keyRing.getNodeId()),
     );
     expect(receivedNotifications[1].data).toEqual(gestaltNotification);
-    expect(receivedNotifications[1].senderId).toBe(
+    expect(receivedNotifications[1].iss).toBe(
       nodesUtils.encodeNodeId(keyRing.getNodeId()),
     );
     expect(receivedNotifications[2].data).toEqual(generalNotification);
-    expect(receivedNotifications[2].senderId).toBe(
+    expect(receivedNotifications[2].iss).toBe(
       nodesUtils.encodeNodeId(keyRing.getNodeId()),
     );
     // Reverse side-effects
@@ -336,21 +333,26 @@ describe('NotificationsManager', () => {
         logger,
       });
     const notification1: Notification = {
+      typ: 'notification',
       data: {
         type: 'General',
         message: 'msg',
       },
-      senderId: senderIdEncoded,
+      iss: senderIdEncoded,
+      sub: targetIdEncoded,
       isRead: false,
     };
     const notification2: Notification = {
+      typ: 'notification',
       data: {
         type: 'GestaltInvite',
       },
-      senderId: senderIdEncoded,
+      iss: senderIdEncoded,
+      sub: targetIdEncoded,
       isRead: false,
     };
     const notification3: Notification = {
+      typ: 'notification',
       data: {
         type: 'VaultShare',
         vaultId: vaultsUtils.encodeVaultId(vaultIdGenerator()),
@@ -360,7 +362,8 @@ describe('NotificationsManager', () => {
           pull: null,
         } as VaultActions,
       },
-      senderId: senderIdEncoded,
+      iss: senderIdEncoded,
+      sub: targetIdEncoded,
       isRead: false,
     };
     await acl.setNodePerm(senderId, {
@@ -376,11 +379,11 @@ describe('NotificationsManager', () => {
       await notificationsManager.readNotifications();
     expect(receivedNotifications).toHaveLength(3);
     expect(receivedNotifications[0].data).toEqual(notification3.data);
-    expect(receivedNotifications[0].senderId).toEqual(senderIdEncoded);
+    expect(receivedNotifications[0].iss).toEqual(senderIdEncoded);
     expect(receivedNotifications[1].data).toEqual(notification2.data);
-    expect(receivedNotifications[1].senderId).toEqual(senderIdEncoded);
+    expect(receivedNotifications[1].iss).toEqual(senderIdEncoded);
     expect(receivedNotifications[2].data).toEqual(notification1.data);
-    expect(receivedNotifications[2].senderId).toEqual(senderIdEncoded);
+    expect(receivedNotifications[2].iss).toEqual(senderIdEncoded);
     // Reverse side-effects
     await notificationsManager.clearNotifications();
     await acl.unsetNodePerm(senderId);
@@ -397,11 +400,13 @@ describe('NotificationsManager', () => {
         logger,
       });
     const notification: Notification = {
+      typ: 'notification',
       data: {
         type: 'General',
         message: 'msg',
       },
-      senderId: senderIdEncoded,
+      iss: senderIdEncoded,
+      sub: targetIdEncoded,
       isRead: false,
     };
     // No permissions
@@ -435,11 +440,13 @@ describe('NotificationsManager', () => {
         logger,
       });
     const notification: Notification = {
+      typ: 'notification',
       data: {
         type: 'General',
         message: 'msg',
       },
-      senderId: senderIdEncoded,
+      iss: senderIdEncoded,
+      sub: targetIdEncoded,
       isRead: false,
     };
     await acl.setNodePerm(senderId, {
@@ -469,27 +476,33 @@ describe('NotificationsManager', () => {
         logger,
       });
     const notification1: Notification = {
+      typ: 'notification',
       data: {
         type: 'General',
         message: 'msg1',
       },
-      senderId: senderIdEncoded,
+      iss: senderIdEncoded,
+      sub: targetIdEncoded,
       isRead: false,
     };
     const notification2: Notification = {
+      typ: 'notification',
       data: {
         type: 'General',
         message: 'msg2',
       },
-      senderId: senderIdEncoded,
+      iss: senderIdEncoded,
+      sub: targetIdEncoded,
       isRead: false,
     };
     const notification3: Notification = {
+      typ: 'notification',
       data: {
         type: 'General',
         message: 'msg3',
       },
-      senderId: senderIdEncoded,
+      iss: senderIdEncoded,
+      sub: targetIdEncoded,
       isRead: false,
     };
     await acl.setNodePerm(senderId, {
@@ -523,27 +536,33 @@ describe('NotificationsManager', () => {
         logger,
       });
     const notification1: Notification = {
+      typ: 'notification',
       data: {
         type: 'General',
         message: 'msg1',
       },
-      senderId: senderIdEncoded,
+      iss: senderIdEncoded,
+      sub: targetIdEncoded,
       isRead: false,
     };
     const notification2: Notification = {
+      typ: 'notification',
       data: {
         type: 'General',
         message: 'msg2',
       },
-      senderId: senderIdEncoded,
+      iss: senderIdEncoded,
+      sub: targetIdEncoded,
       isRead: false,
     };
     const notification3: Notification = {
+      typ: 'notification',
       data: {
         type: 'General',
         message: 'msg3',
       },
-      senderId: senderIdEncoded,
+      iss: senderIdEncoded,
+      sub: targetIdEncoded,
       isRead: false,
     };
     await acl.setNodePerm(senderId, {
@@ -576,27 +595,33 @@ describe('NotificationsManager', () => {
         logger,
       });
     const notification1: Notification = {
+      typ: 'notification',
       data: {
         type: 'General',
         message: 'msg1',
       },
-      senderId: senderIdEncoded,
+      iss: senderIdEncoded,
+      sub: targetIdEncoded,
       isRead: false,
     };
     const notification2: Notification = {
+      typ: 'notification',
       data: {
         type: 'General',
         message: 'msg2',
       },
-      senderId: senderIdEncoded,
+      iss: senderIdEncoded,
+      sub: targetIdEncoded,
       isRead: false,
     };
     const notification3: Notification = {
+      typ: 'notification',
       data: {
         type: 'General',
         message: 'msg3',
       },
-      senderId: senderIdEncoded,
+      iss: senderIdEncoded,
+      sub: targetIdEncoded,
       isRead: false,
     };
     await acl.setNodePerm(senderId, {
@@ -628,27 +653,33 @@ describe('NotificationsManager', () => {
         logger,
       });
     const notification1: Notification = {
+      typ: 'notification',
       data: {
         type: 'General',
         message: 'msg1',
       },
-      senderId: senderIdEncoded,
+      iss: senderIdEncoded,
+      sub: targetIdEncoded,
       isRead: false,
     };
     const notification2: Notification = {
+      typ: 'notification',
       data: {
         type: 'General',
         message: 'msg2',
       },
-      senderId: senderIdEncoded,
+      iss: senderIdEncoded,
+      sub: targetIdEncoded,
       isRead: false,
     };
     const notification3: Notification = {
+      typ: 'notification',
       data: {
         type: 'General',
         message: 'msg3',
       },
-      senderId: senderIdEncoded,
+      iss: senderIdEncoded,
+      sub: targetIdEncoded,
       isRead: false,
     };
     await acl.setNodePerm(senderId, {
@@ -684,27 +715,33 @@ describe('NotificationsManager', () => {
         logger,
       });
     const notification1: Notification = {
+      typ: 'notification',
       data: {
         type: 'General',
         message: 'msg1',
       },
-      senderId: senderIdEncoded,
+      iss: senderIdEncoded,
+      sub: targetIdEncoded,
       isRead: false,
     };
     const notification2: Notification = {
+      typ: 'notification',
       data: {
         type: 'General',
         message: 'msg2',
       },
-      senderId: senderIdEncoded,
+      iss: senderIdEncoded,
+      sub: targetIdEncoded,
       isRead: false,
     };
     const notification3: Notification = {
+      typ: 'notification',
       data: {
         type: 'General',
         message: 'msg3',
       },
-      senderId: senderIdEncoded,
+      iss: senderIdEncoded,
+      sub: targetIdEncoded,
       isRead: false,
     };
     await acl.setNodePerm(senderId, {
@@ -737,10 +774,12 @@ describe('NotificationsManager', () => {
         logger,
       });
     const notification: Notification = {
+      typ: 'notification',
       data: {
         type: 'GestaltInvite',
       },
-      senderId: senderIdEncoded,
+      iss: senderIdEncoded,
+      sub: targetIdEncoded,
       isRead: false,
     };
     await acl.setNodePerm(senderId, {
@@ -770,11 +809,13 @@ describe('NotificationsManager', () => {
         logger,
       });
     const notification: Notification = {
+      typ: 'notification',
       data: {
         type: 'General',
         message: 'msg',
       },
-      senderId: senderIdEncoded,
+      iss: senderIdEncoded,
+      sub: targetIdEncoded,
       isRead: false,
     };
     await acl.setNodePerm(senderId, {
@@ -803,19 +844,23 @@ describe('NotificationsManager', () => {
         logger,
       });
     const notification1: Notification = {
+      typ: 'notification',
       data: {
         type: 'General',
         message: 'msg1',
       },
-      senderId: senderIdEncoded,
+      iss: senderIdEncoded,
+      sub: targetIdEncoded,
       isRead: false,
     };
     const notification2: Notification = {
+      typ: 'notification',
       data: {
         type: 'General',
         message: 'msg2',
       },
-      senderId: senderIdEncoded,
+      iss: senderIdEncoded,
+      sub: targetIdEncoded,
       isRead: false,
     };
     await acl.setNodePerm(senderId, {
@@ -834,13 +879,13 @@ describe('NotificationsManager', () => {
     });
     expect(unreadNotifications).toHaveLength(1);
     expect(unreadNotifications[0].data).toEqual(notification1.data);
-    expect(unreadNotifications[0].senderId).toBe(notification1.senderId);
+    expect(unreadNotifications[0].iss).toBe(notification1.iss);
     const latestNotification = await notificationsManager.readNotifications({
       number: 1,
     });
     expect(latestNotification).toHaveLength(1);
     expect(latestNotification[0].data).toEqual(notification2.data);
-    expect(latestNotification[0].senderId).toBe(notification2.senderId);
+    expect(latestNotification[0].iss).toBe(notification2.iss);
     // Reverse side-effects
     await notificationsManager.clearNotifications();
     await acl.unsetNodePerm(senderId);
@@ -857,11 +902,13 @@ describe('NotificationsManager', () => {
         logger,
       });
     const notification: Notification = {
+      typ: 'notification',
       data: {
         type: 'General',
         message: 'msg',
       },
-      senderId: senderIdEncoded,
+      iss: senderIdEncoded,
+      sub: targetIdEncoded,
       isRead: false,
     };
     await acl.setNodePerm(senderId, {

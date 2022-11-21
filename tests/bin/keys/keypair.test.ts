@@ -2,7 +2,9 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as testUtils from '../../utils';
 
 describe('keypair', () => {
-  const logger = new Logger('keypair test', LogLevel.WARN, [new StreamHandler()]);
+  const logger = new Logger('keypair test', LogLevel.WARN, [
+    new StreamHandler(),
+  ]);
   let agentDir;
   let agentPassword;
   let agentClose;
@@ -33,18 +35,18 @@ describe('keypair', () => {
     expect(JSON.parse(stdout)).toEqual({
       publicKey: {
         alg: expect.any(String),
-          crv: expect.any(String),
+        crv: expect.any(String),
         ext: expect.any(Boolean),
-        key_ops: expect.any(Array<string>),
+        key_ops: expect.any(Array),
         kty: expect.any(String),
         x: expect.any(String),
       },
-        privateKey: {
+      privateKey: {
         ciphertext: expect.any(String),
         iv: expect.any(String),
         protected: expect.any(String),
         tag: expect.any(String),
-      }
+      },
     });
   });
 });

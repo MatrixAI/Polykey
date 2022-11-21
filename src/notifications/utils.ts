@@ -16,6 +16,7 @@ import * as validationErrors from '../validation/errors';
 import * as utils from '../utils';
 import * as ids from '../ids/index';
 import { vaultActions } from '../vaults/types';
+import { never } from '../utils';
 
 function constructGestaltInviteMessage(nodeId: NodeId): string {
   return `Keynode with ID ${nodeId} has invited this Keynode to join their Gestalt. Accept this invitation by typing the command: xxx`;
@@ -40,7 +41,7 @@ async function generateNotification(
     ...notification,
     iat: Date.now() / 1000,
   });
-  token.signWithPrivateKey(keyPair.privateKey)
+  token.signWithPrivateKey(keyPair.privateKey);
   return JSON.stringify(token.toJSON()) as SignedNotification;
 }
 
@@ -48,29 +49,37 @@ async function generateNotification(
  * Verify, decode, validate, and return a notification. Assumes it was signed
  * using signNotification as a SignJWT.
  */
-async function verifyAndDecodeNotif(signedNotification: SignedNotification, nodeId: NodeId): Promise<Notification> {
+async function verifyAndDecodeNotif(
+  signedNotification: SignedNotification,
+  nodeId: NodeId,
+): Promise<Notification> {
   const token = Token.fromEncoded(JSON.parse(signedNotification));
-  const issuerNodeId = nodesUtils.decodeNodeId(token.payload.iss)!
+  assertNotification(token.payload);
+  const issuerNodeId = nodesUtils.decodeNodeId(token.payload.iss);
+  if (issuerNodeId == null) never();
   const issuerPublicKey = keysUtils.publicKeyFromNodeId(issuerNodeId);
-  if (!token.verifyWithPublicKey(issuerPublicKey))
+  if (!token.verifyWithPublicKey(issuerPublicKey)) {
     throw new notificationsErrors.ErrorNotificationsVerificationFailed();
-  if (token.payload.sub !== nodesUtils.encodeNodeId(nodeId))
+  }
+  if (token.payload.sub !== nodesUtils.encodeNodeId(nodeId)) {
     throw new notificationsErrors.ErrorNotificationsInvalidDestination();
-  const payload  = token.payload;
+  }
+  const payload = token.payload;
   return parseNotification(payload);
 }
 
 /**
  * JSON schema validator for a notification type
  */
-function assertNotification(notification: unknown): asserts notification is Notification {
+function assertNotification(
+  notification: unknown,
+): asserts notification is Notification {
   if (!utils.isObject(notification)) {
-    throw new validationErrors.ErrorParse(
-      'must be POJO',
-    );
+    throw new validationErrors.ErrorParse('must be POJO');
   }
-  if (notification['typ'] !== 'notification')
+  if (notification['typ'] !== 'notification') {
     throw new validationErrors.ErrorParse('Payload typ was not a notification');
+  }
   if (
     notification['iss'] == null ||
     ids.decodeNodeId(notification['iss']) == null
@@ -89,23 +98,16 @@ function assertNotification(notification: unknown): asserts notification is Noti
   }
   if (typeof notification['isRead'] !== 'boolean') {
     throw new validationErrors.ErrorParse(
-      '`isRead` property must be a boolean'
+      '`isRead` property must be a boolean',
     );
   }
   // Checking the data
   const notificationData = notification['data'];
-  if (
-    notificationData !== null &&
-    !utils.isObject(notificationData)
-  ) {
-    throw new validationErrors.ErrorParse(
-      '`data` property must be a POJO'
-    );
+  if (notificationData !== null && !utils.isObject(notificationData)) {
+    throw new validationErrors.ErrorParse('`data` property must be a POJO');
   }
   if (typeof notificationData['type'] !== 'string') {
-    throw new validationErrors.ErrorParse(
-      '`type` property must be a string'
-    );
+    throw new validationErrors.ErrorParse('`type` property must be a string');
   }
   switch (notificationData['type']) {
     case 'GestaltInvite':
@@ -119,14 +121,12 @@ function assertNotification(notification: unknown): asserts notification is Noti
       break;
     default:
       throw new validationErrors.ErrorParse(
-        '`type` property must be a valid type'
+        '`type` property must be a valid type',
       );
   }
 }
 
-function parseNotification(
-  signedNotification: unknown,
-): Notification {
+function parseNotification(signedNotification: unknown): Notification {
   assertNotification(signedNotification);
   return signedNotification;
 }
@@ -136,15 +136,14 @@ function parseNotification(
  */
 function assertGeneral(general: unknown): asserts general is General {
   if (!utils.isObject(general)) {
-    throw new validationErrors.ErrorParse(
-      'must be POJO',
-    );
+    throw new validationErrors.ErrorParse('must be POJO');
   }
-  if (general['type'] !== 'General')
+  if (general['type'] !== 'General') {
     throw new validationErrors.ErrorParse('`type` property must be `General`');
+  }
   if (typeof general['message'] !== 'string') {
     throw new validationErrors.ErrorParse(
-      '`message` property must be a string'
+      '`message` property must be a string',
     );
   }
 }
@@ -152,27 +151,33 @@ function assertGeneral(general: unknown): asserts general is General {
 /**
  * JSON schema validator for a GestaltInvite notification's data field
  */
-function assertGestaltInvite(gestaltInvite: unknown): asserts gestaltInvite is GestaltInvite {
+function assertGestaltInvite(
+  gestaltInvite: unknown,
+): asserts gestaltInvite is GestaltInvite {
   if (!utils.isObject(gestaltInvite)) {
+    throw new validationErrors.ErrorParse('must be POJO');
+  }
+  if (gestaltInvite['type'] !== 'GestaltInvite') {
     throw new validationErrors.ErrorParse(
-      'must be POJO',
+      '`type` property must be `GestaltInvite`',
     );
   }
-  if (gestaltInvite['type'] !== 'GestaltInvite')
-    throw new validationErrors.ErrorParse('`type` property must be `GestaltInvite`');
 }
 
 /**
  * JSON schema validator for a VaultShare notification's data field
  */
-function assertVaultShare(vaultShare: unknown): asserts vaultShare is VaultShare {
+function assertVaultShare(
+  vaultShare: unknown,
+): asserts vaultShare is VaultShare {
   if (!utils.isObject(vaultShare)) {
+    throw new validationErrors.ErrorParse('must be POJO');
+  }
+  if (vaultShare['type'] !== 'VaultShare') {
     throw new validationErrors.ErrorParse(
-      'must be POJO',
+      '`type` property must be `VaultShare`',
     );
   }
-  if (vaultShare['type'] !== 'VaultShare')
-    throw new validationErrors.ErrorParse('`type` property must be `VaultShare`');
   if (
     vaultShare['vaultId'] == null ||
     ids.decodeVaultId(vaultShare['vaultId']) == null
@@ -183,22 +188,21 @@ function assertVaultShare(vaultShare: unknown): asserts vaultShare is VaultShare
   }
   if (typeof vaultShare['vaultName'] !== 'string') {
     throw new validationErrors.ErrorParse(
-      '`vaultName` property must be a string'
+      '`vaultName` property must be a string',
     );
   }
   if (
     vaultShare['actions'] !== null &&
     !utils.isObject(vaultShare['actions'])
   ) {
-    throw new validationErrors.ErrorParse(
-      '`actions` property must be a POJO'
-    );
+    throw new validationErrors.ErrorParse('`actions` property must be a POJO');
   }
-  for (const action of vaultShare['actions']) {
-    if (!(action in vaultActions))
+  for (const action of Object.keys(vaultShare['actions'])) {
+    if (vaultActions.find((i) => action === i) == null) {
       throw new validationErrors.ErrorParse(
-        '`actions` property must contain valid actions'
+        '`actions` property must contain valid actions',
       );
+    }
   }
 }
 

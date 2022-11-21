@@ -1,6 +1,7 @@
 import type { NodeId, NodeAddress } from '@/nodes/types';
 import type PolykeyAgent from '@/PolykeyAgent';
 import { IdInternal } from '@matrixai/id';
+import * as fc from 'fast-check';
 import * as keysUtils from '@/keys/utils';
 import { bigInt2Bytes } from '@/utils';
 
@@ -79,4 +80,30 @@ async function nodesConnect(localNode: PolykeyAgent, remoteNode: PolykeyAgent) {
   } as NodeAddress);
 }
 
-export { generateRandomNodeId, generateNodeIdForBucket, nodesConnect };
+const nodeIdArb = fc
+  .int8Array({ minLength: 32, maxLength: 32 })
+  .map((value) => IdInternal.fromBuffer<NodeId>(Buffer.from(value)));
+
+const nodeIdArrayArb = (length: number) =>
+  fc.array(nodeIdArb, { maxLength: length, minLength: length }).noShrink();
+
+const uniqueNodeIdArb = (length: number) =>
+  fc
+    .array(nodeIdArb, { maxLength: length, minLength: length })
+    .noShrink()
+    .filter((values) => {
+      for (let i = 0; i < values.length; i++) {
+        for (let j = i; j < values.length; j++) {
+          if (values[i].equals(values[j])) return true;
+        }
+      }
+      return false;
+    });
+export {
+  generateRandomNodeId,
+  generateNodeIdForBucket,
+  nodesConnect,
+  nodeIdArb,
+  nodeIdArrayArb,
+  uniqueNodeIdArb,
+};

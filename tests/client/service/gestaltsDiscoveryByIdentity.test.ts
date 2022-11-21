@@ -1,6 +1,7 @@
-import type { IdentityId, IdentityInfo, ProviderId } from '@/identities/types';
+import type { IdentityId, ProviderId } from '@/identities/types';
 import type { Host, Port } from '@/network/types';
 import type { Key } from '@/keys/types';
+import type { GestaltIdentityInfo } from '@/gestalts/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -27,7 +28,6 @@ import * as identitiesPB from '@/proto/js/polykey/v1/identities/identities_pb';
 import * as utils from '@/utils';
 import * as clientUtils from '@/client/utils/utils';
 import * as keysUtils from '@/keys/utils';
-import { CertificatePEMChain } from '@/keys/types';
 import * as testsUtils from '../../utils/index';
 
 describe('gestaltsDiscoveryByIdentity', () => {
@@ -37,10 +37,9 @@ describe('gestaltsDiscoveryByIdentity', () => {
   const password = 'helloworld';
   const authenticate = async (metaClient, metaServer = new Metadata()) =>
     metaServer;
-  const identity: IdentityInfo = {
+  const identity: GestaltIdentityInfo = {
     identityId: 'identityId' as IdentityId,
     providerId: 'providerId' as ProviderId,
-    claims: {},
   };
   const authToken = 'abc123';
   let dataDir: string;
@@ -106,6 +105,7 @@ describe('gestaltsDiscoveryByIdentity', () => {
       keyRing,
       sigchain,
       db,
+      gestaltGraph,
       logger,
     });
     proxy = new Proxy({
@@ -148,6 +148,7 @@ describe('gestaltsDiscoveryByIdentity', () => {
       nodeGraph,
       sigchain,
       taskManager,
+      gestaltGraph,
       logger,
     });
     await nodeManager.start();
@@ -158,7 +159,6 @@ describe('gestaltsDiscoveryByIdentity', () => {
       gestaltGraph,
       identitiesManager,
       nodeManager,
-      sigchain,
       taskManager,
       logger,
     });

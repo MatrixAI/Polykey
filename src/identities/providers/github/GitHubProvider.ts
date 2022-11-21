@@ -177,7 +177,9 @@ class GitHubProvider extends Provider {
    * GitHub has user ids, but it is an implementation detail.
    * Usernames on GitHub are changeable.
    */
-  public async getIdentityId(providerToken: ProviderToken): Promise<IdentityId> {
+  public async getIdentityId(
+    providerToken: ProviderToken,
+  ): Promise<IdentityId> {
     providerToken = await this.checkToken(providerToken);
     const request = this.createRequest(
       `${this.apiUrl}/user`,

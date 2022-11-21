@@ -20,8 +20,8 @@ import { ClientServiceService } from '@/proto/js/polykey/v1/client_service_grpc_
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as vaultsPB from '@/proto/js/polykey/v1/vaults/vaults_pb';
 import * as clientUtils from '@/client/utils/utils';
-import * as testUtils from '../../utils';
 import * as keysUtils from '@/keys/utils/index';
+import * as testUtils from '../../utils';
 
 describe('vaultsCreateDeleteList', () => {
   const logger = new Logger('vaultsCreateDeleteList test', LogLevel.WARN, [

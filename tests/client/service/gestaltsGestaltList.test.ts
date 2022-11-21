@@ -1,7 +1,10 @@
-import type { Gestalt } from '@/gestalts/types';
+import type {
+  Gestalt,
+  GestaltIdentityInfo,
+  GestaltNodeInfo,
+} from '@/gestalts/types';
 import type { NodeId } from '@/ids/types';
-import type { IdentityId, IdentityInfo, ProviderId } from '@/identities/types';
-import type { NodeInfo } from '@/nodes/types';
+import type { IdentityId, ProviderId } from '@/identities/types';
 import type { Host, Port } from '@/network/types';
 import fs from 'fs';
 import path from 'path';
@@ -20,7 +23,6 @@ import * as gestaltsPB from '@/proto/js/polykey/v1/gestalts/gestalts_pb';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as gestaltUtils from '@/gestalts/utils';
 import * as clientUtils from '@/client/utils/utils';
-import * as nodesUtils from '@/nodes/utils';
 
 describe('gestaltsGestaltList', () => {
   const logger = new Logger('gestaltsGestaltList test', LogLevel.WARN, [
@@ -34,34 +36,32 @@ describe('gestaltsGestaltList', () => {
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 5,
   ]);
-  const node: NodeInfo = {
-    id: nodesUtils.encodeNodeId(nodeId),
-    chain: {},
+  const node: GestaltNodeInfo = {
+    nodeId: nodeId,
   };
-  const identity: IdentityInfo = {
+  const identity: GestaltIdentityInfo = {
     identityId: 'identityId' as IdentityId,
     providerId: 'providerId' as ProviderId,
-    claims: {},
   };
-  const nodeKey = gestaltUtils.keyFromNode(nodeId);
-  const identityKey = gestaltUtils.keyFromIdentity(
-    identity.providerId,
-    identity.identityId,
-  );
+  const nodeKey = gestaltUtils.encodeGestaltId(['node', nodeId]);
+  const identityKey = gestaltUtils.encodeGestaltId([
+    'identity',
+    [identity.providerId, identity.identityId],
+  ]);
   const gestalt1: Gestalt = {
     matrix: {},
     nodes: {},
     identities: {},
   };
   gestalt1.matrix[nodeKey] = {};
-  gestalt1.nodes[nodeKey] = node;
+  gestalt1.nodes[nodeKey] = expect.any(Object);
   const gestalt2: Gestalt = {
     matrix: {},
     nodes: {},
     identities: {},
   };
   gestalt2.matrix[identityKey] = {};
-  gestalt2.identities[identityKey] = identity;
+  gestalt2.identities[identityKey] = expect.any(Object);
   let dataDir: string;
   let gestaltGraph: GestaltGraph;
   let acl: ACL;
@@ -135,7 +135,6 @@ describe('gestaltsGestaltList', () => {
       gestalts.push(JSON.parse(gestalt.getName()));
     }
     expect(gestalts).toHaveLength(2);
-    expect(gestalts).toContainEqual(gestalt1);
-    expect(gestalts).toContainEqual(gestalt2);
+    expect(gestalts).toMatchObject([gestalt2, gestalt1]);
   });
 });

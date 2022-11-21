@@ -3,7 +3,6 @@ import type { DB } from '@matrixai/db';
 import type { Authenticate } from '../types';
 import type NodeManager from '../../nodes/NodeManager';
 import type { NodeId } from '../../ids/types';
-import type NotificationsManager from '../../notifications/NotificationsManager';
 import type * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
 import type Logger from '@matrixai/logger';
 import * as grpcUtils from '../../grpc/utils';
@@ -22,13 +21,11 @@ import * as clientUtils from '../utils';
 function nodesClaim({
   authenticate,
   nodeManager,
-  notificationsManager,
   db,
   logger,
 }: {
   authenticate: Authenticate;
   nodeManager: NodeManager;
-  notificationsManager: NotificationsManager;
   db: DB;
   logger: Logger;
 }) {

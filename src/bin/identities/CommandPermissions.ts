@@ -54,34 +54,39 @@ class CommandPermissions extends CommandPolykey {
         const [type, id] = gestaltId;
         let actions: string[] = [];
         switch (type) {
-          case 'node': {
-            // Getting by Node
-            const nodeMessage = new nodesPB.Node();
-            nodeMessage.setNodeId(nodesUtils.encodeNodeId(id));
-            const res = await binUtils.retryAuthentication(
-              (auth) =>
-                pkClient.grpcClient.gestaltsActionsGetByNode(nodeMessage, auth),
-              meta,
-            );
-            actions = res.getActionList();
-          }
+          case 'node':
+            {
+              // Getting by Node
+              const nodeMessage = new nodesPB.Node();
+              nodeMessage.setNodeId(nodesUtils.encodeNodeId(id));
+              const res = await binUtils.retryAuthentication(
+                (auth) =>
+                  pkClient.grpcClient.gestaltsActionsGetByNode(
+                    nodeMessage,
+                    auth,
+                  ),
+                meta,
+              );
+              actions = res.getActionList();
+            }
             break;
-          case 'identity': {
-            // Getting by Identity
-            const providerMessage = new identitiesPB.Provider();
-            providerMessage.setProviderId(id[0]);
-            providerMessage.setIdentityId(id[1]);
-            const res = await binUtils.retryAuthentication(
-              (auth) =>
-                pkClient.grpcClient.gestaltsActionsGetByIdentity(
-                  providerMessage,
-                  auth,
-                ),
-              meta,
-            );
-            actions = res.getActionList();
-          }
-          break;
+          case 'identity':
+            {
+              // Getting by Identity
+              const providerMessage = new identitiesPB.Provider();
+              providerMessage.setProviderId(id[0]);
+              providerMessage.setIdentityId(id[1]);
+              const res = await binUtils.retryAuthentication(
+                (auth) =>
+                  pkClient.grpcClient.gestaltsActionsGetByIdentity(
+                    providerMessage,
+                    auth,
+                  ),
+                meta,
+              );
+              actions = res.getActionList();
+            }
+            break;
           default:
             utils.never();
         }

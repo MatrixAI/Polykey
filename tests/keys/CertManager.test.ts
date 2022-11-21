@@ -2,7 +2,7 @@ import type {
   Key,
   Certificate,
   CertificatePEM,
-  CertificatePEMChain
+  CertificatePEMChain,
 } from '@/keys/types';
 import fs from 'fs';
 import os from 'os';
@@ -84,7 +84,7 @@ describe(CertManager.name, () => {
       keyRing,
       taskManager,
       logger,
-      lazy: true
+      lazy: true,
     });
     await expect(async () => {
       await certManager.destroy();
@@ -110,8 +110,12 @@ describe(CertManager.name, () => {
     });
     const cert = await certManager.getCurrentCert();
     expect(keysUtils.certNodeId(cert)).toStrictEqual(keyRing.getNodeId());
-    expect(keysUtils.certPublicKey(cert)).toStrictEqual(keyRing.keyPair.publicKey);
-    expect(await keysUtils.certSignedBy(cert, keyRing.keyPair.publicKey)).toBe(true);
+    expect(keysUtils.certPublicKey(cert)).toStrictEqual(
+      keyRing.keyPair.publicKey,
+    );
+    expect(await keysUtils.certSignedBy(cert, keyRing.keyPair.publicKey)).toBe(
+      true,
+    );
     expect(keysUtils.certIssuedBy(cert, cert)).toBe(true);
     expect(keysUtils.certNotExpiredBy(cert, new Date())).toBe(true);
     expect(await keysUtils.certNodeSigned(cert)).toBe(true);
@@ -131,10 +135,9 @@ describe(CertManager.name, () => {
     certs = await certManager.getCertsChain();
     const certOld = cert;
     const certId = keysUtils.certCertId(cert)!;
-    expect(keysUtils.certEqual(
-      (await certManager.getCert(certId))!,
-      cert
-    )).toBe(true);
+    expect(
+      keysUtils.certEqual((await certManager.getCert(certId))!, cert),
+    ).toBe(true);
     expect(certs).toHaveLength(1);
     expect(keysUtils.certEqual(certs[0], cert)).toBe(true);
     // After renewal there will be 2 certificates
@@ -163,9 +166,15 @@ describe(CertManager.name, () => {
     );
     const currentCert = keysUtils.certFromPEM(certPEM)!;
     const currentCertPEM = certPEM;
-    expect(keysUtils.certNodeId(currentCert)).toStrictEqual(keyRing.getNodeId());
-    expect(keysUtils.certPublicKey(currentCert)).toStrictEqual(keyRing.keyPair.publicKey);
-    expect(await keysUtils.certSignedBy(currentCert, keyRing.keyPair.publicKey)).toBe(true);
+    expect(keysUtils.certNodeId(currentCert)).toStrictEqual(
+      keyRing.getNodeId(),
+    );
+    expect(keysUtils.certPublicKey(currentCert)).toStrictEqual(
+      keyRing.keyPair.publicKey,
+    );
+    expect(
+      await keysUtils.certSignedBy(currentCert, keyRing.keyPair.publicKey),
+    ).toBe(true);
     expect(keysUtils.certIssuedBy(currentCert, currentCert)).toBe(true);
     expect(keysUtils.certNotExpiredBy(currentCert, new Date())).toBe(true);
     expect(await keysUtils.certNodeSigned(currentCert)).toBe(true);
@@ -182,12 +191,9 @@ describe(CertManager.name, () => {
     certChainPEM = await certManager.getCertPEMsChainPEM();
     expect(certPEM).not.toStrictEqual(currentCertPEM);
     expect(certPEMs).toHaveLength(2);
-    expect(
-      keysUtils.certEqual(
-        keysUtils.certFromPEM(certPEMs[1])!,
-        cert
-      )
-    ).toBe(true);
+    expect(keysUtils.certEqual(keysUtils.certFromPEM(certPEMs[1])!, cert)).toBe(
+      true,
+    );
     expect(certChainPEM).toMatch(
       /-----BEGIN CERTIFICATE-----\n([A-Za-z0-9+/=\n]+)-----END CERTIFICATE-----\n-----BEGIN CERTIFICATE-----\n([A-Za-z0-9+/=\n]+)-----END CERTIFICATE-----\n/,
     );
@@ -208,9 +214,15 @@ describe(CertManager.name, () => {
     certs = await asynciterable.toArray(certManager.getCerts());
     currentCert = certs[0];
     expect(certs).toHaveLength(1);
-    expect(keysUtils.certNodeId(currentCert)).toStrictEqual(keyRing.getNodeId());
-    expect(keysUtils.certPublicKey(currentCert)).toStrictEqual(keyRing.keyPair.publicKey);
-    expect(await keysUtils.certSignedBy(currentCert, keyRing.keyPair.publicKey)).toBe(true);
+    expect(keysUtils.certNodeId(currentCert)).toStrictEqual(
+      keyRing.getNodeId(),
+    );
+    expect(keysUtils.certPublicKey(currentCert)).toStrictEqual(
+      keyRing.keyPair.publicKey,
+    );
+    expect(
+      await keysUtils.certSignedBy(currentCert, keyRing.keyPair.publicKey),
+    ).toBe(true);
     expect(keysUtils.certIssuedBy(currentCert, currentCert)).toBe(true);
     expect(keysUtils.certNotExpiredBy(currentCert, new Date())).toBe(true);
     expect(await keysUtils.certNodeSigned(currentCert)).toBe(true);
@@ -229,8 +241,8 @@ describe(CertManager.name, () => {
     expect(
       await keysUtils.certSignedBy(
         currentCert,
-        keysUtils.certPublicKey(certs[1])!
-      )
+        keysUtils.certPublicKey(certs[1])!,
+      ),
     ).toBe(true);
     await certManager.stop();
   });
@@ -280,13 +292,19 @@ describe(CertManager.name, () => {
     await utils.sleep(1500);
     const certNew = await certMgr.getCurrentCert();
     // New certificate with have a greater `CertId`
-    expect(keysUtils.certCertId(certNew)! > keysUtils.certCertId(certOld)!).toBe(true);
+    expect(
+      keysUtils.certCertId(certNew)! > keysUtils.certCertId(certOld)!,
+    ).toBe(true);
     // Same key pair preserves the NodeId
-    expect(keysUtils.certNodeId(certNew)).toStrictEqual(keysUtils.certNodeId(certOld));
+    expect(keysUtils.certNodeId(certNew)).toStrictEqual(
+      keysUtils.certNodeId(certOld),
+    );
     // New certificate issued by old certificate
     expect(keysUtils.certIssuedBy(certNew, certOld)).toBe(true);
     // New certificate signed by old certificate
-    expect(await keysUtils.certSignedBy(certNew, keysUtils.certPublicKey(certOld)!)).toBe(true);
+    expect(
+      await keysUtils.certSignedBy(certNew, keysUtils.certPublicKey(certOld)!),
+    ).toBe(true);
     // New certificate is self-signed via the node signature extension
     expect(await keysUtils.certNodeSigned(certNew)).toBe(true);
     await certMgr.stop();
@@ -295,20 +313,22 @@ describe(CertManager.name, () => {
     testProp(
       'renewing and resetting with current key pair',
       [
-        fc.commands(
-          [
-            // Sleep command
-            fc.integer({ min: 250, max: 250 }).map(
-              (ms) => new testsUtilsFastCheck.SleepCommand(ms)
+        fc.commands([
+          // Sleep command
+          fc
+            .integer({ min: 250, max: 250 })
+            .map((ms) => new testsUtilsFastCheck.SleepCommand(ms)),
+          fc
+            .integer({ min: 0, max: 2 })
+            .map(
+              (d) => new testsKeysUtils.RenewCertWithCurrentKeyPairCommand(d),
             ),
-            fc.integer({ min: 0, max: 2 }).map(
-              (d) => new testsKeysUtils.RenewCertWithCurrentKeyPairCommand(d)
+          fc
+            .integer({ min: 0, max: 3 })
+            .map(
+              (d) => new testsKeysUtils.ResetCertWithCurrentKeyPairCommand(d),
             ),
-            fc.integer({ min: 0, max: 3 }).map(
-              (d) => new testsKeysUtils.ResetCertWithCurrentKeyPairCommand(d)
-            ),
-          ],
-        ),
+        ]),
       ],
       async (cmds) => {
         // Start a fresh certificate manager for each property test
@@ -319,7 +339,7 @@ describe(CertManager.name, () => {
           taskManager,
           logger,
           lazy: true,
-          fresh: true
+          fresh: true,
         });
         try {
           const model = {
@@ -338,31 +358,29 @@ describe(CertManager.name, () => {
       },
       {
         numRuns: 10,
-      }
+      },
     );
     testProp(
       'renewing and resetting with new key pair',
       [
-        fc.commands(
-          [
-            // Sleep command
-            fc.integer({ min: 250, max: 250 }).map(
-              (ms) => new testsUtilsFastCheck.SleepCommand(ms)
+        fc.commands([
+          // Sleep command
+          fc
+            .integer({ min: 250, max: 250 })
+            .map((ms) => new testsUtilsFastCheck.SleepCommand(ms)),
+          fc
+            .tuple(testsKeysUtils.passwordArb, fc.integer({ min: 0, max: 2 }))
+            .map(
+              ([p, d]) =>
+                new testsKeysUtils.RenewCertWithNewKeyPairCommand(p, d),
             ),
-            fc.tuple(
-              testsKeysUtils.passwordArb,
-              fc.integer({ min: 0, max: 2 }),
-            ).map(([p, d]) =>
-              new testsKeysUtils.RenewCertWithNewKeyPairCommand(p, d)
+          fc
+            .tuple(testsKeysUtils.passwordArb, fc.integer({ min: 0, max: 3 }))
+            .map(
+              ([p, d]) =>
+                new testsKeysUtils.ResetCertWithNewKeyPairCommand(p, d),
             ),
-            fc.tuple(
-              testsKeysUtils.passwordArb,
-              fc.integer({ min: 0, max: 3 }),
-            ).map(([p, d]) =>
-              new testsKeysUtils.ResetCertWithNewKeyPairCommand(p, d)
-            ),
-          ],
-        ),
+        ]),
       ],
       async (cmds) => {
         // Start a fresh certificate manager for each property test
@@ -373,7 +391,7 @@ describe(CertManager.name, () => {
           taskManager,
           logger,
           lazy: true,
-          fresh: true
+          fresh: true,
         });
         try {
           const model = {
@@ -392,28 +410,28 @@ describe(CertManager.name, () => {
       },
       {
         numRuns: 10,
-      }
+      },
     );
     testProp(
       'renewing with current and new key pair',
       [
-        fc.commands(
-          [
-            // Sleep command
-            fc.integer({ min: 250, max: 250 }).map(
-              (ms) => new testsUtilsFastCheck.SleepCommand(ms)
+        fc.commands([
+          // Sleep command
+          fc
+            .integer({ min: 250, max: 250 })
+            .map((ms) => new testsUtilsFastCheck.SleepCommand(ms)),
+          fc
+            .integer({ min: 0, max: 2 })
+            .map(
+              (d) => new testsKeysUtils.RenewCertWithCurrentKeyPairCommand(d),
             ),
-            fc.integer({ min: 0, max: 2 }).map(
-              (d) => new testsKeysUtils.RenewCertWithCurrentKeyPairCommand(d)
+          fc
+            .tuple(testsKeysUtils.passwordArb, fc.integer({ min: 0, max: 2 }))
+            .map(
+              ([p, d]) =>
+                new testsKeysUtils.RenewCertWithNewKeyPairCommand(p, d),
             ),
-            fc.tuple(
-              testsKeysUtils.passwordArb,
-              fc.integer({ min: 0, max: 2 }),
-            ).map(([p, d]) =>
-              new testsKeysUtils.RenewCertWithNewKeyPairCommand(p, d)
-            ),
-          ],
-        ),
+        ]),
       ],
       async (cmds) => {
         // Start a fresh certificate manager for each property test
@@ -424,7 +442,7 @@ describe(CertManager.name, () => {
           taskManager,
           logger,
           lazy: true,
-          fresh: true
+          fresh: true,
         });
         try {
           const model = {
@@ -443,28 +461,28 @@ describe(CertManager.name, () => {
       },
       {
         numRuns: 10,
-      }
+      },
     );
     testProp(
       'resetting with current and new key pair',
       [
-        fc.commands(
-          [
-            // Sleep command
-            fc.integer({ min: 250, max: 250 }).map(
-              (ms) => new testsUtilsFastCheck.SleepCommand(ms)
+        fc.commands([
+          // Sleep command
+          fc
+            .integer({ min: 250, max: 250 })
+            .map((ms) => new testsUtilsFastCheck.SleepCommand(ms)),
+          fc
+            .integer({ min: 0, max: 2 })
+            .map(
+              (d) => new testsKeysUtils.ResetCertWithCurrentKeyPairCommand(d),
             ),
-            fc.integer({ min: 0, max: 2 }).map(
-              (d) => new testsKeysUtils.ResetCertWithCurrentKeyPairCommand(d)
+          fc
+            .tuple(testsKeysUtils.passwordArb, fc.integer({ min: 0, max: 3 }))
+            .map(
+              ([p, d]) =>
+                new testsKeysUtils.ResetCertWithNewKeyPairCommand(p, d),
             ),
-            fc.tuple(
-              testsKeysUtils.passwordArb,
-              fc.integer({ min: 0, max: 3 }),
-            ).map(([p, d]) =>
-              new testsKeysUtils.ResetCertWithNewKeyPairCommand(p, d)
-            ),
-          ],
-        ),
+        ]),
       ],
       async (cmds) => {
         // Start a fresh certificate manager for each property test
@@ -475,7 +493,7 @@ describe(CertManager.name, () => {
           taskManager,
           logger,
           lazy: true,
-          fresh: true
+          fresh: true,
         });
         try {
           const model = {
@@ -494,37 +512,39 @@ describe(CertManager.name, () => {
       },
       {
         numRuns: 10,
-      }
+      },
     );
     testProp(
       'renewing and resetting with current and new key pair',
       [
-        fc.commands(
-          [
-            // Sleep command
-            fc.integer({ min: 250, max: 250 }).map(
-              (ms) => new testsUtilsFastCheck.SleepCommand(ms)
+        fc.commands([
+          // Sleep command
+          fc
+            .integer({ min: 250, max: 250 })
+            .map((ms) => new testsUtilsFastCheck.SleepCommand(ms)),
+          fc
+            .integer({ min: 0, max: 2 })
+            .map(
+              (d) => new testsKeysUtils.RenewCertWithCurrentKeyPairCommand(d),
             ),
-            fc.integer({ min: 0, max: 2 }).map(
-              (d) => new testsKeysUtils.RenewCertWithCurrentKeyPairCommand(d)
+          fc
+            .integer({ min: 0, max: 3 })
+            .map(
+              (d) => new testsKeysUtils.ResetCertWithCurrentKeyPairCommand(d),
             ),
-            fc.integer({ min: 0, max: 3 }).map(
-              (d) => new testsKeysUtils.ResetCertWithCurrentKeyPairCommand(d)
+          fc
+            .tuple(testsKeysUtils.passwordArb, fc.integer({ min: 0, max: 2 }))
+            .map(
+              ([p, d]) =>
+                new testsKeysUtils.RenewCertWithNewKeyPairCommand(p, d),
             ),
-            fc.tuple(
-              testsKeysUtils.passwordArb,
-              fc.integer({ min: 0, max: 2 }),
-            ).map(([p, d]) =>
-              new testsKeysUtils.RenewCertWithNewKeyPairCommand(p, d)
+          fc
+            .tuple(testsKeysUtils.passwordArb, fc.integer({ min: 0, max: 3 }))
+            .map(
+              ([p, d]) =>
+                new testsKeysUtils.ResetCertWithNewKeyPairCommand(p, d),
             ),
-            fc.tuple(
-              testsKeysUtils.passwordArb,
-              fc.integer({ min: 0, max: 3 }),
-            ).map(([p, d]) =>
-              new testsKeysUtils.ResetCertWithNewKeyPairCommand(p, d)
-            ),
-          ],
-        ),
+        ]),
       ],
       async (cmds) => {
         // Start a fresh certificate manager for each property test
@@ -535,7 +555,7 @@ describe(CertManager.name, () => {
           taskManager,
           logger,
           lazy: true,
-          fresh: true
+          fresh: true,
         });
         try {
           const model = {
@@ -554,7 +574,7 @@ describe(CertManager.name, () => {
       },
       {
         numRuns: 10,
-      }
+      },
     );
   });
 });

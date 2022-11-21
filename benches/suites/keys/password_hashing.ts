@@ -10,7 +10,7 @@ async function main() {
         'password',
         undefined,
         password.passwordOpsLimits.min,
-        password.passwordMemLimits.min
+        password.passwordMemLimits.min,
       );
     }),
     b.add('password hashing - interactive', () => {
@@ -18,7 +18,7 @@ async function main() {
         'password',
         undefined,
         password.passwordOpsLimits.interactive,
-        password.passwordMemLimits.interactive
+        password.passwordMemLimits.interactive,
       );
     }),
     b.add('password hashing - moderate', () => {
@@ -26,7 +26,7 @@ async function main() {
         'password',
         undefined,
         password.passwordOpsLimits.moderate,
-        password.passwordMemLimits.moderate
+        password.passwordMemLimits.moderate,
       );
     }),
     b.add('password hashing - sensitive', () => {
@@ -34,7 +34,7 @@ async function main() {
         'password',
         undefined,
         password.passwordOpsLimits.sensitive,
-        password.passwordMemLimits.sensitive
+        password.passwordMemLimits.sensitive,
       );
     }),
     ...suiteCommon,

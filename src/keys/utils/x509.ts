@@ -140,7 +140,7 @@ async function generateCertificate({
   duration: number;
   subjectAttrsExtra?: Array<{ [key: string]: Array<string> }>;
   issuerAttrsExtra?: Array<{ [key: string]: Array<string> }>;
-  now?: Date,
+  now?: Date;
 }): Promise<Certificate> {
   const subjectPublicKey = subjectKeyPair.publicKey;
   const subjectPublicCryptoKey = await importPublicKey(
@@ -256,7 +256,10 @@ function certCertId(cert: Certificate): CertId | undefined {
  * This means the underlying `ArrayBuffer` is safely transferrable.
  */
 function certPublicKey(cert: Certificate): PublicKey | undefined {
-  const spki = asn1.AsnConvert.parse(cert.publicKey.rawData, asn1X509.SubjectPublicKeyInfo);
+  const spki = asn1.AsnConvert.parse(
+    cert.publicKey.rawData,
+    asn1X509.SubjectPublicKeyInfo,
+  );
   const publicKey = Buffer.from(spki.subjectPublicKey);
   if (!validatePublicKey(publicKey)) {
     return;
@@ -353,7 +356,10 @@ function certNotExpiredBy(cert: Certificate, now: Date = new Date()): boolean {
   return cert.notBefore.getTime() <= time && time <= cert.notAfter.getTime();
 }
 
-function certRemainingDuration(cert: Certificate, now: Date = new Date()): number {
+function certRemainingDuration(
+  cert: Certificate,
+  now: Date = new Date(),
+): number {
   const time = now.getTime() - (now.getTime() % 1000);
   const duration = Math.max(cert.notAfter.getTime() - time, 0);
   return duration / 1000;
@@ -421,7 +427,7 @@ function certFromASN1(certASN1: CertificateASN1): Certificate | undefined {
 }
 
 function certToPEM(cert: Certificate): CertificatePEM {
-  return cert.toString('pem') + '\n' as CertificatePEM;
+  return (cert.toString('pem') + '\n') as CertificatePEM;
 }
 
 function certFromPEM(certPEM: CertificatePEM): Certificate | undefined {

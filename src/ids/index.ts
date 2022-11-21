@@ -183,12 +183,14 @@ function decodeClaimId(claimIdEncoded: unknown): ClaimId | undefined {
 }
 
 function encodeProviderIdentityId(
-  providerIdentityId: ProviderIdentityId
+  providerIdentityId: ProviderIdentityId,
 ): ProviderIdentityIdEncoded {
   return JSON.stringify(providerIdentityId) as ProviderIdentityIdEncoded;
 }
 
-function decodeProviderIdentityId(providerIdentityIdEncoded: unknown): ProviderIdentityId | undefined {
+function decodeProviderIdentityId(
+  providerIdentityIdEncoded: unknown,
+): ProviderIdentityId | undefined {
   if (typeof providerIdentityIdEncoded !== 'string') {
     return;
   }
@@ -209,11 +211,11 @@ function decodeProviderIdentityId(providerIdentityIdEncoded: unknown): ProviderI
   return providerIdentityId as ProviderIdentityId;
 }
 
-// function encodeGestaltId(gestaltId: GestaltNodeId): GestaltNodeIdEncoded;
+// Function encodeGestaltId(gestaltId: GestaltNodeId): GestaltNodeIdEncoded;
 // function encodeGestaltId(gestaltId: GestaltIdentityId): GestaltIdentityIdEncoded;
 // function encodeGestaltId(gestaltId: GestaltId): GestaltIdEncoded;
 function encodeGestaltId(gestaltId: GestaltId): GestaltIdEncoded {
-  switch(gestaltId[0]) {
+  switch (gestaltId[0]) {
     case 'node':
       return encodeGestaltNodeId(gestaltId);
     case 'identity':
@@ -222,18 +224,22 @@ function encodeGestaltId(gestaltId: GestaltId): GestaltIdEncoded {
 }
 
 function encodeGestaltNodeId(
-  gestaltNodeId: ['node', NodeId]
+  gestaltNodeId: ['node', NodeId],
 ): GestaltIdEncoded {
-  return gestaltNodeId[0] + '-' + encodeNodeId(gestaltNodeId[1]) as GestaltIdEncoded;
+  return (gestaltNodeId[0] +
+    '-' +
+    encodeNodeId(gestaltNodeId[1])) as GestaltIdEncoded;
 }
 
 function encodeGestaltIdentityId(
-  gestaltIdentityId: ['identity', ProviderIdentityId]
+  gestaltIdentityId: ['identity', ProviderIdentityId],
 ): GestaltIdEncoded {
-  return gestaltIdentityId[0] + '-' + encodeProviderIdentityId(gestaltIdentityId[1]) as GestaltIdEncoded;
+  return (gestaltIdentityId[0] +
+    '-' +
+    encodeProviderIdentityId(gestaltIdentityId[1])) as GestaltIdEncoded;
 }
 
-// function decodeGestaltId(gestaltIdEncoded: GestaltNodeIdEncoded): GestaltNodeId;
+// Function decodeGestaltId(gestaltIdEncoded: GestaltNodeIdEncoded): GestaltNodeId;
 // function decodeGestaltId(gestaltIdEncoded: GestaltIdentityIdEncoded): GestaltIdentityId;
 // function decodeGestaltId(gestaltIdEncoded: GestaltIdEncoded): GestaltId;
 // function decodeGestaltId(gestaltIdEncoded: unknown): GestaltId | undefined;
@@ -249,7 +255,9 @@ function decodeGestaltId(gestaltIdEncoded: unknown): GestaltId | undefined {
   }
 }
 
-function decodeGestaltNodeId(gestaltNodeIdEncoded: unknown): ['node', NodeId] | undefined {
+function decodeGestaltNodeId(
+  gestaltNodeIdEncoded: unknown,
+): ['node', NodeId] | undefined {
   if (typeof gestaltNodeIdEncoded !== 'string') {
     return;
   }
@@ -264,7 +272,9 @@ function decodeGestaltNodeId(gestaltNodeIdEncoded: unknown): ['node', NodeId] | 
   return ['node', nodeId];
 }
 
-function decodeGestaltIdentityId(gestaltIdentityId: unknown): ['identity', ProviderIdentityId] | undefined {
+function decodeGestaltIdentityId(
+  gestaltIdentityId: unknown,
+): ['identity', ProviderIdentityId] | undefined {
   if (typeof gestaltIdentityId !== 'string') {
     return;
   }
@@ -272,7 +282,9 @@ function decodeGestaltIdentityId(gestaltIdentityId: unknown): ['identity', Provi
     return;
   }
   const providerIdentityIdEncoded = gestaltIdentityId.slice(9);
-  const providerIdentityId = decodeProviderIdentityId(providerIdentityIdEncoded);
+  const providerIdentityId = decodeProviderIdentityId(
+    providerIdentityIdEncoded,
+  );
   if (providerIdentityId == null) {
     return;
   }
@@ -296,13 +308,17 @@ function createNotificationIdGenerator(
   return () => generator.get();
 }
 
-function encodeNotificationId(notificationId: NotificationId): NotificationIdEncoded {
+function encodeNotificationId(
+  notificationId: NotificationId,
+): NotificationIdEncoded {
   return notificationId.toMultibase('base32hex') as NotificationIdEncoded;
 }
 
-function decodeNotificationId(notificationIdEncoded: string): NotificationId | undefined {
+function decodeNotificationId(
+  notificationIdEncoded: string,
+): NotificationId | undefined {
   const notificationId = IdInternal.fromMultibase<NotificationId>(
-    notificationIdEncoded
+    notificationIdEncoded,
   );
   if (notificationId == null) {
     return;

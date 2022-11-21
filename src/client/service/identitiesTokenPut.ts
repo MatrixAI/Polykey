@@ -2,7 +2,11 @@ import type * as grpc from '@grpc/grpc-js';
 import type { DB } from '@matrixai/db';
 import type { Authenticate } from '../types';
 import type IdentitiesManager from '../../identities/IdentitiesManager';
-import type { IdentityId, ProviderId, ProviderToken } from '../../identities/types';
+import type {
+  IdentityId,
+  ProviderId,
+  ProviderToken,
+} from '../../identities/types';
 import type * as identitiesPB from '../../proto/js/polykey/v1/identities/identities_pb';
 import type Logger from '@matrixai/logger';
 import * as grpcUtils from '../../grpc/utils';

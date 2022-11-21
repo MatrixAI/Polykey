@@ -1,6 +1,6 @@
-import type { NodeInfo } from '@/nodes/types';
 import type { Host, Port } from '@/network/types';
 import type { Key } from '@/keys/types';
+import type { GestaltNodeInfo } from '@/gestalts/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -29,7 +29,6 @@ import * as clientUtils from '@/client/utils/utils';
 import * as keysUtils from '@/keys/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as testNodesUtils from '../../nodes/utils';
-import { CertificatePEMChain } from '@/keys/types';
 import * as testsUtils from '../../utils/index';
 
 describe('gestaltsDiscoveryByNode', () => {
@@ -39,9 +38,8 @@ describe('gestaltsDiscoveryByNode', () => {
   const password = 'helloworld';
   const authenticate = async (metaClient, metaServer = new Metadata()) =>
     metaServer;
-  const node: NodeInfo = {
-    id: nodesUtils.encodeNodeId(testNodesUtils.generateRandomNodeId()),
-    chain: {},
+  const node: GestaltNodeInfo = {
+    nodeId: testNodesUtils.generateRandomNodeId(),
   };
   const authToken = 'abc123';
   let dataDir: string;
@@ -107,6 +105,7 @@ describe('gestaltsDiscoveryByNode', () => {
       keyRing,
       sigchain,
       db,
+      gestaltGraph,
       logger,
     });
     proxy = new Proxy({
@@ -149,6 +148,7 @@ describe('gestaltsDiscoveryByNode', () => {
       nodeGraph,
       sigchain,
       taskManager,
+      gestaltGraph,
       logger,
     });
     await nodeManager.start();
@@ -159,7 +159,6 @@ describe('gestaltsDiscoveryByNode', () => {
       gestaltGraph,
       identitiesManager,
       nodeManager,
-      sigchain,
       taskManager,
       logger,
     });
@@ -211,7 +210,7 @@ describe('gestaltsDiscoveryByNode', () => {
       .spyOn(Discovery.prototype, 'queueDiscoveryByNode')
       .mockResolvedValue();
     const request = new nodesPB.Node();
-    request.setNodeId(node.id);
+    request.setNodeId(nodesUtils.encodeNodeId(node.nodeId));
     const response = await grpcClient.gestaltsDiscoveryByNode(
       request,
       clientUtils.encodeAuthFromPassword(password),

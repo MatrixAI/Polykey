@@ -1,5 +1,5 @@
 import type { FileSystem } from '../../types';
-import type { RecoveryCode, PrivateKeyPEM } from '../../keys/types';
+import type { RecoveryCode } from '../../keys/types';
 import type { NodeId } from '../../ids/types';
 import type { Host, Port } from '../../network/types';
 import type {
@@ -145,7 +145,7 @@ async function processNewPassword(
     }
   } else if (!existing && typeof process.env['PK_PASSWORD'] === 'string') {
     passwordNew = process.env['PK_PASSWORD'];
-  } else if(typeof process.env['PK_PASSWORD_NEW'] === 'string'){
+  } else if (typeof process.env['PK_PASSWORD_NEW'] === 'string') {
     passwordNew = process.env['PK_PASSWORD_NEW'];
   } else {
     passwordNew = await promptNewPassword();

@@ -2,7 +2,9 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as testUtils from '../../utils';
 
 describe('private', () => {
-  const logger = new Logger('private test', LogLevel.WARN, [new StreamHandler()]);
+  const logger = new Logger('private test', LogLevel.WARN, [
+    new StreamHandler(),
+  ]);
   let agentDir;
   let agentPassword;
   let agentClose;
@@ -23,7 +25,7 @@ describe('private', () => {
         env: {
           PK_NODE_PATH: agentDir,
           PK_PASSWORD: agentPassword,
-          PK_PASSWORD_NEW: 'newPassword'
+          PK_PASSWORD_NEW: 'newPassword',
         },
         cwd: agentDir,
         command: globalThis.testCmd,

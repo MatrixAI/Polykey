@@ -91,7 +91,7 @@ abstract class Provider {
    * This does not verify whether the signature is correct
    */
   public parseClaim(
-    signedClaimEncodedJSON: string
+    signedClaimEncodedJSON: string,
   ): SignedClaim<ClaimLinkIdentity> | undefined {
     let signedClaimEncoded;
     try {
@@ -104,9 +104,8 @@ abstract class Provider {
     }
     let signedClaim: SignedClaim<ClaimLinkIdentity>;
     try {
-      signedClaim = claimLinkIdentity.parseSignedClaimLinkIdentity(
-        signedClaimEncoded
-      );
+      signedClaim =
+        claimLinkIdentity.parseSignedClaimLinkIdentity(signedClaimEncoded);
     } catch {
       return;
     }
@@ -141,7 +140,9 @@ abstract class Provider {
   /**
    * Gets the corresponding identity ID to a token key
    */
-  public abstract getIdentityId(ProviderToken: ProviderToken): Promise<IdentityId>;
+  public abstract getIdentityId(
+    providerToken: ProviderToken,
+  ): Promise<IdentityId>;
 
   /**
    * Gets the identity data for a given identity

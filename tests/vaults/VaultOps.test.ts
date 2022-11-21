@@ -37,7 +37,7 @@ describe('VaultOps', () => {
       path.join(os.tmpdir(), 'polykey-test-'),
     );
     const dbPath = path.join(dataDir, 'efsDb');
-    const dbKey = await keysUtils.generateKey();
+    const dbKey = keysUtils.generateKey();
     baseEfs = await EncryptedFS.createEncryptedFS({
       dbKey,
       dbPath,
@@ -363,7 +363,7 @@ describe('VaultOps', () => {
     );
     const secretDirName = path.basename(secretDir);
     const name = 'secret';
-    const content = await keysUtils.getRandomBytes(5);
+    const content = keysUtils.getRandomBytes(5);
     await fs.promises.writeFile(path.join(secretDir, name), content);
 
     await vaultOps.addSecretDirectory(vault, secretDir, fs);

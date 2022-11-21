@@ -7,47 +7,42 @@ import * as testsTokensUtils from './utils';
 describe('tokens/utils', () => {
   testProp(
     'generate token signature',
-    [ testsTokensUtils.tokenSignatureArb, ],
-    ( tokenSignature) => {
-      const tokenSignatureEncoded = tokensUtils.generateTokenSignature(tokenSignature);
-      const tokenSignature_ = tokensUtils.parseTokenSignature(tokenSignatureEncoded);
+    [testsTokensUtils.tokenSignatureArb],
+    (tokenSignature) => {
+      const tokenSignatureEncoded =
+        tokensUtils.generateTokenSignature(tokenSignature);
+      const tokenSignature_ = tokensUtils.parseTokenSignature(
+        tokenSignatureEncoded,
+      );
       expect(tokenSignature_).toStrictEqual(tokenSignature);
-    }
+    },
   );
   testProp(
     'parse token signature',
-    [
-      testsTokensUtils.tokenSignatureEncodedArb,
-      fc.string()
-    ],
-    (
-      tokenSignatureEncodedCorrect,
-      tokenSignatureEncodedIncorrect
-    ) => {
+    [testsTokensUtils.tokenSignatureEncodedArb, fc.string()],
+    (tokenSignatureEncodedCorrect, tokenSignatureEncodedIncorrect) => {
       const tokenSignatureEncodedIncorrectBuffer = Buffer.from(
-        tokenSignatureEncodedIncorrect, 'base64url'
+        tokenSignatureEncodedIncorrect,
+        'base64url',
       );
       fc.pre(
         !keysUtils.isSignature(tokenSignatureEncodedIncorrectBuffer) &&
-        !keysUtils.isMAC(tokenSignatureEncodedIncorrectBuffer)
+          !keysUtils.isMAC(tokenSignatureEncodedIncorrectBuffer),
       );
       expect(() => {
-        tokensUtils.parseTokenSignature(
-          tokenSignatureEncodedCorrect
-        );
+        tokensUtils.parseTokenSignature(tokenSignatureEncodedCorrect);
       }).not.toThrow();
       expect(() => {
-        tokensUtils.parseTokenSignature(
-          tokenSignatureEncodedIncorrect
-        );
+        tokensUtils.parseTokenSignature(tokenSignatureEncodedIncorrect);
       }).toThrow(validationErrors.ErrorParse);
-    }
+    },
   );
   testProp(
     'generate token payload',
-    [ testsTokensUtils.tokenPayloadArb, ],
-    ( tokenPayload ) => {
-      const tokenPayloadEncoded = tokensUtils.generateTokenPayload(tokenPayload);
+    [testsTokensUtils.tokenPayloadArb],
+    (tokenPayload) => {
+      const tokenPayloadEncoded =
+        tokensUtils.generateTokenPayload(tokenPayload);
       const tokenPayload_ = tokensUtils.parseTokenPayload(tokenPayloadEncoded);
       // Use `toEqual` to avoid matching `undefined` properties
       expect(tokenPayload_).toEqual(tokenPayload);
@@ -55,32 +50,24 @@ describe('tokens/utils', () => {
   );
   testProp(
     'parse token payload',
-    [
-      testsTokensUtils.tokenPayloadEncodedArb,
-      fc.string()
-    ],
+    [testsTokensUtils.tokenPayloadEncodedArb, fc.string()],
     (tokenPayloadEncodedCorrect, tokenPayloadEncodedIncorrect) => {
       expect(() => {
-        tokensUtils.parseTokenPayload(
-          tokenPayloadEncodedCorrect
-        );
+        tokensUtils.parseTokenPayload(tokenPayloadEncodedCorrect);
       }).not.toThrow();
       expect(() => {
-        tokensUtils.parseTokenPayload(
-          tokenPayloadEncodedIncorrect
-        );
+        tokensUtils.parseTokenPayload(tokenPayloadEncodedIncorrect);
       }).toThrow(validationErrors.ErrorParse);
-    }
+    },
   );
   testProp(
     'generate token protected header',
-    [ testsTokensUtils.tokenProtectedHeaderArb, ],
-    ( tokenProtectedHeader ) => {
-      const tokenProtectedHeaderEncoded = tokensUtils.generateTokenProtectedHeader(
-        tokenProtectedHeader
-      );
+    [testsTokensUtils.tokenProtectedHeaderArb],
+    (tokenProtectedHeader) => {
+      const tokenProtectedHeaderEncoded =
+        tokensUtils.generateTokenProtectedHeader(tokenProtectedHeader);
       const tokenProtectedHeader_ = tokensUtils.parseTokenProtectedHeader(
-        tokenProtectedHeaderEncoded
+        tokenProtectedHeaderEncoded,
       );
       // Use `toEqual` to avoid matching `undefined` properties
       expect(tokenProtectedHeader_).toEqual(tokenProtectedHeader);
@@ -88,70 +75,64 @@ describe('tokens/utils', () => {
   );
   testProp(
     'parse token protected header',
-    [
-      testsTokensUtils.tokenProtectedHeaderEncodedArb,
-      fc.string()
-    ],
-    (tokenProtectedHeaderEncodedCorrect, tokenProtectedHeaderEncodedIncorrect) => {
+    [testsTokensUtils.tokenProtectedHeaderEncodedArb, fc.string()],
+    (
+      tokenProtectedHeaderEncodedCorrect,
+      tokenProtectedHeaderEncodedIncorrect,
+    ) => {
       expect(() => {
         tokensUtils.parseTokenProtectedHeader(
-          tokenProtectedHeaderEncodedCorrect
+          tokenProtectedHeaderEncodedCorrect,
         );
       }).not.toThrow();
       expect(() => {
         tokensUtils.parseTokenProtectedHeader(
-          tokenProtectedHeaderEncodedIncorrect
+          tokenProtectedHeaderEncodedIncorrect,
         );
       }).toThrow(validationErrors.ErrorParse);
-    }
+    },
   );
   testProp(
     'generate token header signature',
-    [
-      testsTokensUtils.tokenHeaderSignatureArb,
-    ],
-    ( tokenHeaderSignature ) => {
-      const tokenHeaderSignatureEncoded = tokensUtils.generateTokenHeaderSignature(
-        tokenHeaderSignature
-      );
+    [testsTokensUtils.tokenHeaderSignatureArb],
+    (tokenHeaderSignature) => {
+      const tokenHeaderSignatureEncoded =
+        tokensUtils.generateTokenHeaderSignature(tokenHeaderSignature);
       const tokenHeaderSignature_ = tokensUtils.parseTokenHeaderSignature(
-        tokenHeaderSignatureEncoded
+        tokenHeaderSignatureEncoded,
       );
       // Use `toEqual` to avoid matching `undefined` properties
       expect(tokenHeaderSignature_).toEqual(tokenHeaderSignature);
-    }
+    },
   );
   testProp(
     'parse token header signature',
-    [
-      testsTokensUtils.tokenHeaderSignatureEncodedArb,
-      fc.string()
-    ],
+    [testsTokensUtils.tokenHeaderSignatureEncodedArb, fc.string()],
     (
       tokenHeaderSignatureEncodedCorrect,
-      tokenHeaderSignatureEncodedIncorrect
+      tokenHeaderSignatureEncodedIncorrect,
     ) => {
       expect(() => {
         tokensUtils.parseTokenHeaderSignature(
-          tokenHeaderSignatureEncodedCorrect
+          tokenHeaderSignatureEncodedCorrect,
         );
       }).not.toThrow();
       expect(() => {
         tokensUtils.parseTokenHeaderSignature(
-          tokenHeaderSignatureEncodedIncorrect
+          tokenHeaderSignatureEncodedIncorrect,
         );
       }).toThrow(validationErrors.ErrorParse);
-    }
+    },
   );
   testProp(
     'generate signed token',
-    [ testsTokensUtils.signedTokenArb, ],
-    ( signedToken ) => {
+    [testsTokensUtils.signedTokenArb],
+    (signedToken) => {
       const signedTokenEncoded = tokensUtils.generateSignedToken(signedToken);
       const signedToken_ = tokensUtils.parseSignedToken(signedTokenEncoded);
       // Use `toEqual` to avoid matching `undefined` properties
       expect(signedToken_).toEqual(signedToken);
-    }
+    },
   );
   testProp(
     'parse signed token',
@@ -159,20 +140,16 @@ describe('tokens/utils', () => {
       testsTokensUtils.signedTokenEncodedArb,
       fc.record({
         payload: fc.string(),
-        signatures: fc.array(fc.string())
-      })
+        signatures: fc.array(fc.string()),
+      }),
     ],
     (signedTokenEncodedCorrect, signedTokenEncodedIncorrect) => {
       expect(() => {
-        tokensUtils.parseSignedToken(
-          signedTokenEncodedCorrect
-        );
+        tokensUtils.parseSignedToken(signedTokenEncodedCorrect);
       }).not.toThrow();
       expect(() => {
-        tokensUtils.parseSignedToken(
-          signedTokenEncodedIncorrect
-        );
+        tokensUtils.parseSignedToken(signedTokenEncodedIncorrect);
       }).toThrow(validationErrors.ErrorParse);
-    }
+    },
   );
 });

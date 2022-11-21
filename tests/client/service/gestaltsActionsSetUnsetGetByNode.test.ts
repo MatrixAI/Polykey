@@ -1,5 +1,6 @@
-import type { NodeId, NodeInfo } from '@/nodes/types';
+import type { NodeId } from '@/nodes/types';
 import type { Host, Port } from '@/network/types';
+import type { GestaltNodeInfo } from '@/gestalts/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -32,9 +33,8 @@ describe('gestaltsActionsByNode', () => {
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 5,
   ]);
-  const node: NodeInfo = {
-    id: nodesUtils.encodeNodeId(nodeId),
-    chain: {},
+  const node: GestaltNodeInfo = {
+    nodeId: nodeId,
   };
   let dataDir: string;
   let gestaltGraph: GestaltGraph;
@@ -112,7 +112,7 @@ describe('gestaltsActionsByNode', () => {
   test('sets/unsets/gets actions by node', async () => {
     // Set permission
     const nodeMessage = new nodesPB.Node();
-    nodeMessage.setNodeId(node.id);
+    nodeMessage.setNodeId(nodesUtils.encodeNodeId(node.nodeId));
     const request = new permissionsPB.ActionSet();
     request.setNode(nodeMessage);
     request.setAction('notify');

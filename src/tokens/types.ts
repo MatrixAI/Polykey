@@ -1,6 +1,6 @@
 import type { Opaque, JSONValue } from '../types';
 import type { Signature, MAC } from '../keys/types';
-import type { NodeIdEncoded, } from '../ids/types';
+import type { NodeIdEncoded } from '../ids/types';
 
 /**
  * Token based on JWT specification.
@@ -30,20 +30,25 @@ type TokenPayloadEncoded = Opaque<'TokenPayloadEncoded', string>;
 /**
  * Token header properties based on JWT specification
  */
-type TokenProtectedHeader = {
-  alg: 'EdDSA';
-  kid: NodeIdEncoded;
-  [key: string]: JSONValue;
-} | {
-  alg: 'BLAKE2b';
-  [key: string]: JSONValue;
-};
+type TokenProtectedHeader =
+  | {
+      alg: 'EdDSA';
+      kid: NodeIdEncoded;
+      [key: string]: JSONValue;
+    }
+  | {
+      alg: 'BLAKE2b';
+      [key: string]: JSONValue;
+    };
 
 /**
  * Encoded token header
  * `base64url(json(TokenHeader))`
  */
-type TokenProtectedHeaderEncoded = Opaque<'TokenProtectedHeaderEncoded', string>;
+type TokenProtectedHeaderEncoded = Opaque<
+  'TokenProtectedHeaderEncoded',
+  string
+>;
 
 /**
  * Signature can either be Ed25519 signature or BLAKE2b MAC code
@@ -98,7 +103,10 @@ type SignedToken<P extends TokenPayload = TokenPayload> = {
 /**
  * Token that is signed in JSON
  */
-type SignedTokenJSON<P extends TokenPayload = TokenPayload> = Omit<SignedToken<P>, 'signatures'> & {
+type SignedTokenJSON<P extends TokenPayload = TokenPayload> = Omit<
+  SignedToken<P>,
+  'signatures'
+> & {
   signatures: Array<TokenHeaderSignatureJSON>;
 };
 

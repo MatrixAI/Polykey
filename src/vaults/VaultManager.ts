@@ -18,8 +18,9 @@ import type ACL from '../acl/ACL';
 import type { RemoteInfo } from './VaultInternal';
 import type { VaultAction } from './types';
 import type { MultiLockRequest } from '@matrixai/async-locks';
-import { DB } from '@matrixai/db';
+import type { Key } from 'keys/types';
 import path from 'path';
+import { DB } from '@matrixai/db';
 import { PassThrough } from 'readable-stream';
 import { EncryptedFS, errors as encryptedFsErrors } from 'encryptedfs';
 import Logger from '@matrixai/logger';
@@ -31,6 +32,7 @@ import { IdInternal } from '@matrixai/id';
 import { withF, withG } from '@matrixai/resources';
 import { LockBox, RWLockWriter } from '@matrixai/async-locks';
 import VaultInternal from './VaultInternal';
+import * as utils from '../utils';
 import * as vaultsUtils from '../vaults/utils';
 import * as vaultsErrors from '../vaults/errors';
 import * as gitUtils from '../git/utils';
@@ -40,8 +42,6 @@ import * as keysUtils from '../keys/utils';
 import config from '../config';
 import { mkdirExists } from '../utils/utils';
 import * as utilsPB from '../proto/js/polykey/v1/utils/utils_pb';
-import * as utils from '@/utils';
-import { Key } from 'keys/types';
 
 /**
  * Object map pattern for each vault
@@ -197,7 +197,7 @@ class VaultManager {
             },
             dbPath: this.efsPath,
             logger: this.logger.getChild('EFS Database'),
-          })
+          });
           efs = await EncryptedFS.createEncryptedFS({
             fresh,
             db: efsDb,
@@ -598,7 +598,7 @@ class VaultManager {
     if (vaultMeta == null) throw new vaultsErrors.ErrorVaultsVaultUndefined();
     // NodeId permissions translated to other nodes in
     // a gestalt by other domains
-    await this.gestaltGraph.setGestaltActions(['node', nodeId], 'scan', tran);
+    await this.gestaltGraph.setGestaltAction(['node', nodeId], 'scan', tran);
     await this.acl.setVaultAction(vaultId, nodeId, 'pull', tran);
     await this.acl.setVaultAction(vaultId, nodeId, 'clone', tran);
     await this.notificationsManager.sendNotification(nodeId, {
@@ -630,7 +630,7 @@ class VaultManager {
 
     const vaultMeta = await this.getVaultMeta(vaultId, tran);
     if (!vaultMeta) throw new vaultsErrors.ErrorVaultsVaultUndefined();
-    await this.gestaltGraph.unsetGestaltActions(['node', nodeId], 'scan', tran);
+    await this.gestaltGraph.unsetGestaltAction(['node', nodeId], 'scan', tran);
     await this.acl.unsetVaultAction(vaultId, nodeId, 'pull', tran);
     await this.acl.unsetVaultAction(vaultId, nodeId, 'clone', tran);
   }

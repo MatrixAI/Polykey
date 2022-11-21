@@ -1,8 +1,8 @@
-import type { CertificatePEM, KeyPairPEM, PublicKeyPEM, PublicKey } from '@/keys/types';
 import type { Host, Port } from '@/network/types';
 import type { NodeId, NodeAddress } from '@/nodes/types';
 import type { Task } from '@/tasks/types';
 import type { Key } from '@/keys/types';
+import type { SignedClaim } from '@/claims/types';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
@@ -20,13 +20,15 @@ import NodeGraph from '@/nodes/NodeGraph';
 import NodeManager from '@/nodes/NodeManager';
 import Proxy from '@/network/Proxy';
 import Sigchain from '@/sigchain/Sigchain';
-import * as claimsUtils from '@/claims/utils';
 import { never, promise, promisify, sleep } from '@/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as utils from '@/utils/index';
-import * as nodesTestUtils from './utils';
+import ACL from '@/acl/ACL';
+import GestaltGraph from '@/gestalts/GestaltGraph';
+import Token from '@/tokens/Token';
 import { generateNodeIdForBucket } from './utils';
+import * as nodesTestUtils from './utils';
 import * as testsUtils from '../utils';
 
 describe(`${NodeManager.name} test`, () => {
@@ -37,6 +39,8 @@ describe(`${NodeManager.name} test`, () => {
   let dataDir: string;
   let nodeGraph: NodeGraph;
   let taskManager: TaskManager;
+  let acl: ACL;
+  let gestaltGraph: GestaltGraph;
   let nodeConnectionManager: NodeConnectionManager;
   let proxy: Proxy;
   let keyRing: KeyRing;
@@ -134,6 +138,15 @@ describe(`${NodeManager.name} test`, () => {
       pingTimeout: 4000,
       logger,
     });
+    acl = await ACL.createACL({
+      db,
+      logger,
+    });
+    gestaltGraph = await GestaltGraph.createGestaltGraph({
+      acl,
+      db,
+      logger,
+    });
   });
   afterEach(async () => {
     await taskManager.stopProcessing();
@@ -142,14 +155,10 @@ describe(`${NodeManager.name} test`, () => {
     mockedPingNode.mockImplementation(async (_) => true);
     await nodeConnectionManager.stop();
     await nodeGraph.stop();
-    await nodeGraph.destroy();
     await sigchain.stop();
-    await sigchain.destroy();
     await taskManager.stop();
     await db.stop();
-    await db.destroy();
     await keyRing.stop();
-    await keyRing.destroy();
     await proxy.stop();
     utpSocket.close();
     utpSocket.unref();
@@ -183,10 +192,10 @@ describe(`${NodeManager.name} test`, () => {
           port: server.proxy.getProxyPort(),
         };
         await nodeGraph.setNode(serverNodeId, serverNodeAddress);
-
         nodeManager = new NodeManager({
           db,
           sigchain,
+          gestaltGraph,
           keyRing,
           nodeGraph,
           nodeConnectionManager,
@@ -225,7 +234,6 @@ describe(`${NodeManager.name} test`, () => {
         expect(active2).toBe(true);
         // Turn server node offline again
         await server.stop();
-        await server.destroy();
         // Check if active
         // Case 3: pre-existing connection no longer active, so offline
         const active3 = await nodeManager.pingNode(serverNodeId, undefined, {
@@ -236,58 +244,10 @@ describe(`${NodeManager.name} test`, () => {
         // Clean up
         await nodeManager?.stop();
         await server?.stop();
-        await server?.destroy();
       }
     },
     globalThis.failedConnectionTimeout * 2,
   );
-  test('getPublicKey', async () => {
-    let server: PolykeyAgent | undefined;
-    let nodeManager: NodeManager | undefined;
-    try {
-      server = await PolykeyAgent.createPolykeyAgent({
-        password: 'password',
-        nodePath: path.join(dataDir, 'server'),
-        networkConfig: {
-          proxyHost: '127.0.0.1' as Host,
-        },
-        logger: logger,
-        keyRingConfig: {
-          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-          passwordMemLimit: keysUtils.passwordMemLimits.min,
-          strictMemoryLock: false,
-        },
-      });
-      const serverNodeId = server.keyRing.getNodeId();
-      const serverNodeAddress: NodeAddress = {
-        host: server.proxy.getProxyHost(),
-        port: server.proxy.getProxyPort(),
-      };
-      await nodeGraph.setNode(serverNodeId, serverNodeAddress);
-
-      nodeManager = new NodeManager({
-        db,
-        sigchain,
-        keyRing,
-        nodeGraph,
-        nodeConnectionManager,
-        taskManager,
-        logger,
-      });
-      await nodeManager.start();
-      await nodeConnectionManager.start({ nodeManager });
-
-      // We want to get the public key of the server
-      const key = await nodeManager.getPublicKey(serverNodeId);
-      const expectedKey = server.keyRing.keyPair.publicKey;
-      expect(keysUtils.publicKeyToPEM(key)).toEqual(keysUtils.publicKeyToPEM(expectedKey));
-    } finally {
-      // Clean up
-      await nodeManager?.stop();
-      await server?.stop();
-      await server?.destroy();
-    }
-  });
   describe('Cross signing claims', () => {
     // These tests follow the following process (from the perspective of Y):
     // 1. X -> sends notification (to start cross signing request) -> Y
@@ -301,13 +261,11 @@ describe(`${NodeManager.name} test`, () => {
     let x: PolykeyAgent;
     let xNodeId: NodeId;
     let xNodeAddress: NodeAddress;
-    let xPublicKey: PublicKey;
 
     let yDataDir: string;
     let y: PolykeyAgent;
     let yNodeId: NodeId;
     let yNodeAddress: NodeAddress;
-    let yPublicKey: PublicKey;
 
     beforeAll(async () => {
       xDataDir = await fs.promises.mkdtemp(
@@ -332,7 +290,6 @@ describe(`${NodeManager.name} test`, () => {
         host: externalHost,
         port: x.proxy.getProxyPort(),
       };
-      xPublicKey = x.keyRing.keyPair.publicKey;
 
       yDataDir = await fs.promises.mkdtemp(
         path.join(os.tmpdir(), 'polykey-test-'),
@@ -355,7 +312,6 @@ describe(`${NodeManager.name} test`, () => {
         host: externalHost,
         port: y.proxy.getProxyPort(),
       };
-      yPublicKey = y.keyRing.keyPair.publicKey;
 
       await x.nodeGraph.setNode(yNodeId, yNodeAddress);
       await y.nodeGraph.setNode(xNodeId, xNodeAddress);
@@ -386,83 +342,56 @@ describe(`${NodeManager.name} test`, () => {
       // 2. X <- sends its intermediary signed claim <- Y
       // 3. X -> sends doubly signed claim (Y's intermediary) + its own intermediary claim -> Y
       // 4. X <- sends doubly signed claim (X's intermediary) <- Y
+      await x.acl.setNodeAction(yNodeId, 'claim');
       await y.nodeManager.claimNode(xNodeId);
 
       // Check X's sigchain state
-      const xChain = await x.sigchain.getChainData();
-      expect(Object.keys(xChain).length).toBe(1);
-      // Iterate just to be safe, but expected to only have this single claim
-      for (const claimId of Object.keys(xChain)) {
-        const claim = xChain[claimId];
-        const decoded = claimsUtils.decodeClaim(claim);
-        expect(decoded).toStrictEqual({
-          payload: {
-            hPrev: null,
-            seq: 1,
-            data: {
-              type: 'node',
-              node1: nodesUtils.encodeNodeId(xNodeId),
-              node2: nodesUtils.encodeNodeId(yNodeId),
-            },
-            iat: expect.any(Number),
-          },
-          signatures: expect.any(Object),
-        });
-        const signatureNodeIds = Object.keys(decoded.signatures);
-        expect(signatureNodeIds.length).toBe(2);
-        // Verify the 2 signatures
-        expect(signatureNodeIds).toContain(nodesUtils.encodeNodeId(xNodeId));
-        expect(await claimsUtils.verifyClaimSignature(claim, xPublicKey)).toBe(
-          true,
-        );
-        expect(signatureNodeIds).toContain(nodesUtils.encodeNodeId(yNodeId));
-        expect(await claimsUtils.verifyClaimSignature(claim, yPublicKey)).toBe(
-          true,
-        );
+      let claimX: SignedClaim | undefined;
+      for await (const [, claim_] of x.sigchain.getSignedClaims()) {
+        claimX = claim_;
       }
+      if (claimX == null) fail('No claims exist');
+      expect(claimX.payload.typ).toBe('ClaimLinkNode');
+      expect(claimX.payload.iss).toBe(nodesUtils.encodeNodeId(yNodeId));
+      expect(claimX.payload.sub).toBe(nodesUtils.encodeNodeId(xNodeId));
+      // Expect it to be signed by both sides
+      const tokenX = Token.fromSigned(claimX);
+      expect(
+        tokenX.verifyWithPublicKey(x.keyRing.keyPair.publicKey),
+      ).toBeTrue();
+      expect(
+        tokenX.verifyWithPublicKey(y.keyRing.keyPair.publicKey),
+      ).toBeTrue();
 
       // Check Y's sigchain state
-      const yChain = await y.sigchain.getChainData();
-      expect(Object.keys(yChain).length).toBe(1);
-      // Iterate just to be safe, but expected to only have this single claim
-      for (const claimId of Object.keys(yChain)) {
-        const claim = yChain[claimId];
-        const decoded = claimsUtils.decodeClaim(claim);
-        expect(decoded).toStrictEqual({
-          payload: {
-            hPrev: null,
-            seq: 1,
-            data: {
-              type: 'node',
-              node1: nodesUtils.encodeNodeId(yNodeId),
-              node2: nodesUtils.encodeNodeId(xNodeId),
-            },
-            iat: expect.any(Number),
-          },
-          signatures: expect.any(Object),
-        });
-        const signatureNodeIds = Object.keys(decoded.signatures);
-        expect(signatureNodeIds.length).toBe(2);
-        // Verify the 2 signatures
-        expect(signatureNodeIds).toContain(nodesUtils.encodeNodeId(xNodeId));
-        expect(await claimsUtils.verifyClaimSignature(claim, xPublicKey)).toBe(
-          true,
-        );
-        expect(signatureNodeIds).toContain(nodesUtils.encodeNodeId(yNodeId));
-        expect(await claimsUtils.verifyClaimSignature(claim, yPublicKey)).toBe(
-          true,
-        );
+      let claimY: SignedClaim | undefined;
+      for await (const [, claim_] of y.sigchain.getSignedClaims()) {
+        claimY = claim_;
       }
+      if (claimY == null) fail('No claims exist');
+      expect(claimY.payload.typ).toBe('ClaimLinkNode');
+      expect(claimY.payload.iss).toBe(nodesUtils.encodeNodeId(yNodeId));
+      expect(claimY.payload.sub).toBe(nodesUtils.encodeNodeId(xNodeId));
+      // Expect it to be signed by both sides
+      const tokenY = Token.fromSigned(claimY);
+      expect(
+        tokenY.verifyWithPublicKey(x.keyRing.keyPair.publicKey),
+      ).toBeTrue();
+      expect(
+        tokenY.verifyWithPublicKey(y.keyRing.keyPair.publicKey),
+      ).toBeTrue();
     });
     test('can request chain data', async () => {
       let nodeManager: NodeManager | undefined;
       try {
         // Cross signing claims
+        await x.acl.setNodeAction(yNodeId, 'claim');
         await y.nodeManager.claimNode(xNodeId);
 
         nodeManager = new NodeManager({
           db,
           sigchain,
+          gestaltGraph,
           keyRing,
           nodeGraph,
           nodeConnectionManager,
@@ -473,7 +402,6 @@ describe(`${NodeManager.name} test`, () => {
         await nodeConnectionManager.start({ nodeManager });
 
         await nodeGraph.setNode(xNodeId, xNodeAddress);
-
         // We want to get the public key of the server
         const chainData = JSON.stringify(
           await nodeManager.requestChainData(xNodeId),
@@ -490,6 +418,7 @@ describe(`${NodeManager.name} test`, () => {
       db,
       sigchain: {} as Sigchain,
       keyRing,
+      gestaltGraph,
       nodeGraph,
       nodeConnectionManager: dummyNodeConnectionManager,
       taskManager,
@@ -518,6 +447,7 @@ describe(`${NodeManager.name} test`, () => {
       db,
       sigchain: {} as Sigchain,
       keyRing,
+      gestaltGraph,
       nodeGraph,
       nodeConnectionManager: dummyNodeConnectionManager,
       taskManager,
@@ -558,6 +488,7 @@ describe(`${NodeManager.name} test`, () => {
       db,
       sigchain: {} as Sigchain,
       keyRing,
+      gestaltGraph,
       nodeGraph,
       nodeConnectionManager: dummyNodeConnectionManager,
       taskManager,
@@ -609,6 +540,7 @@ describe(`${NodeManager.name} test`, () => {
       db,
       sigchain: {} as Sigchain,
       keyRing,
+      gestaltGraph,
       nodeGraph,
       nodeConnectionManager: dummyNodeConnectionManager,
       taskManager,
@@ -662,6 +594,7 @@ describe(`${NodeManager.name} test`, () => {
       db,
       sigchain: {} as Sigchain,
       keyRing,
+      gestaltGraph,
       nodeGraph,
       nodeConnectionManager: dummyNodeConnectionManager,
       taskManager,
@@ -708,6 +641,7 @@ describe(`${NodeManager.name} test`, () => {
       db,
       sigchain: {} as Sigchain,
       keyRing,
+      gestaltGraph,
       nodeGraph,
       nodeConnectionManager: dummyNodeConnectionManager,
       taskManager,
@@ -756,7 +690,6 @@ describe(`${NodeManager.name} test`, () => {
     } finally {
       // Clean up
       await server?.stop();
-      await server?.destroy();
       await nodeManager.stop();
     }
   });
@@ -766,6 +699,7 @@ describe(`${NodeManager.name} test`, () => {
       db,
       sigchain: {} as Sigchain,
       keyRing,
+      gestaltGraph,
       nodeGraph,
       nodeConnectionManager: dummyNodeConnectionManager,
       taskManager,
@@ -805,6 +739,7 @@ describe(`${NodeManager.name} test`, () => {
       db,
       sigchain: {} as Sigchain,
       keyRing,
+      gestaltGraph,
       nodeGraph,
       nodeConnectionManager: dummyNodeConnectionManager,
       taskManager,
@@ -856,6 +791,7 @@ describe(`${NodeManager.name} test`, () => {
       db,
       sigchain: {} as Sigchain,
       keyRing,
+      gestaltGraph,
       nodeGraph: tempNodeGraph,
       nodeConnectionManager: dummyNodeConnectionManager,
       taskManager,
@@ -887,7 +823,6 @@ describe(`${NodeManager.name} test`, () => {
     } finally {
       await nodeManager.stop();
       await tempNodeGraph.stop();
-      await tempNodeGraph.destroy();
     }
   });
   test('should update deadline when updating a bucket', async () => {
@@ -895,6 +830,7 @@ describe(`${NodeManager.name} test`, () => {
       db,
       sigchain: {} as Sigchain,
       keyRing,
+      gestaltGraph,
       nodeGraph,
       nodeConnectionManager: dummyNodeConnectionManager,
       taskManager,
@@ -953,6 +889,7 @@ describe(`${NodeManager.name} test`, () => {
       db,
       sigchain: {} as Sigchain,
       keyRing,
+      gestaltGraph,
       nodeGraph,
       nodeConnectionManager,
       taskManager,
@@ -971,6 +908,7 @@ describe(`${NodeManager.name} test`, () => {
       db,
       sigchain: {} as Sigchain,
       keyRing,
+      gestaltGraph,
       nodeGraph,
       nodeConnectionManager: dummyNodeConnectionManager,
       taskManager,
@@ -1024,6 +962,7 @@ describe(`${NodeManager.name} test`, () => {
       db,
       sigchain: {} as Sigchain,
       keyRing,
+      gestaltGraph,
       nodeGraph,
       nodeConnectionManager: dummyNodeConnectionManager,
       taskManager,
@@ -1065,6 +1004,7 @@ describe(`${NodeManager.name} test`, () => {
       db,
       sigchain: {} as Sigchain,
       keyRing,
+      gestaltGraph,
       nodeGraph,
       nodeConnectionManager: dummyNodeConnectionManager,
       taskManager,

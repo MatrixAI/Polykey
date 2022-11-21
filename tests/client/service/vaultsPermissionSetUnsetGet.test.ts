@@ -23,8 +23,8 @@ import * as nodesPB from '@/proto/js/polykey/v1/nodes/nodes_pb';
 import * as vaultsPB from '@/proto/js/polykey/v1/vaults/vaults_pb';
 import * as clientUtils from '@/client/utils/utils';
 import * as nodesUtils from '@/nodes/utils';
-import * as testUtils from '../../utils';
 import * as keysUtils from '@/keys/utils/index';
+import * as testUtils from '../../utils';
 
 describe('vaultsPermissionSetUnsetGet', () => {
   const logger = new Logger('vaultsPermissionSetUnsetGet test', LogLevel.WARN, [
@@ -80,8 +80,7 @@ describe('vaultsPermissionSetUnsetGet', () => {
       logger,
     });
     await gestaltGraph.setNode({
-      id: nodesUtils.encodeNodeId(nodeId),
-      chain: {},
+      nodeId: nodeId,
     });
     notificationsManager =
       await NotificationsManager.createNotificationsManager({

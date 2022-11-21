@@ -61,8 +61,4 @@ export type {
   SignedClaimDigestEncoded,
 };
 
-export type {
-  ClaimId,
-  ClaimIdString,
-  ClaimIdEncoded,
-} from '../ids/types';
+export type { ClaimId, ClaimIdString, ClaimIdEncoded } from '../ids/types';

@@ -21,7 +21,7 @@ async function main() {
           keysPath: `${dataDir}/keys`,
           password: 'password',
           logger,
-          fresh: true
+          fresh: true,
         });
         await keyRing.stop();
       };
@@ -36,13 +36,13 @@ async function main() {
       const keyRing = await KeyRing.createKeyRing({
         keysPath: `${dataDir}/keys`,
         password: 'password',
-        logger
+        logger,
       });
       await keyRing.stop();
       return async () => {
         // Due to password hashing this is intended to be slow
         await keyRing.start({
-          password: 'password'
+          password: 'password',
         });
         await keyRing.stop();
       };

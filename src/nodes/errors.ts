@@ -100,8 +100,7 @@ class ErrorNodePingFailed<T> extends ErrorNodes<T> {
 }
 
 class ErrorNodePermissionDenied<T> extends ErrorNodes<T> {
-  static description =
-    'Permission not given to do this action';
+  static description = 'Permission not given to do this action';
   exitCode = sysexits.NOHOST;
 }
 

@@ -3,12 +3,12 @@ import type NodeManager from '../../nodes/NodeManager';
 import type KeyRing from '../../keys/KeyRing';
 import type * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
 import type Logger from '@matrixai/logger';
+import type { ConnectionInfoGet } from '../types';
+import type ACL from '../../acl/ACL';
 import * as grpcUtils from '../../grpc/utils';
 import * as claimsErrors from '../../claims/errors';
 import * as agentUtils from '../utils';
-import { ConnectionInfoGet } from '../types';
-import ACL from '../../acl/ACL';
-import * as nodesErrors  from '../../nodes/errors';
+import * as nodesErrors from '../../nodes/errors';
 
 function nodesCrossSignClaim({
   keyRing,
@@ -26,7 +26,7 @@ function nodesCrossSignClaim({
   return async (
     call: grpc.ServerDuplexStream<nodesPB.AgentClaim, nodesPB.AgentClaim>,
   ) => {
-    const requestingNodeId = connectionInfoGet(call)!.remoteNodeId
+    const requestingNodeId = connectionInfoGet(call)!.remoteNodeId;
     const nodeId = keyRing.getNodeId();
     const genClaims = grpcUtils.generatorDuplex(
       call,
@@ -35,12 +35,13 @@ function nodesCrossSignClaim({
     );
     try {
       // Check the ACL for permissions
-      const permissions = await acl.getNodePerm(requestingNodeId)
-      if (permissions?.gestalt.claim !== null) throw new nodesErrors.ErrorNodePermissionDenied();
+      const permissions = await acl.getNodePerm(requestingNodeId);
+      if (permissions?.gestalt.claim !== null) {
+        throw new nodesErrors.ErrorNodePermissionDenied();
+      }
       // Handle claiming the node
       await nodeManager.handleClaimNode(requestingNodeId, genClaims);
     } catch (e) {
-      console.error(e);
       await genClaims.throw(e);
       !agentUtils.isAgentClientError(e, [
         claimsErrors.ErrorEmptyStream,

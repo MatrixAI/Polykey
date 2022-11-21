@@ -41,21 +41,35 @@ describe('keys/utils/symmetric', () => {
       fc.pre(!dataCorrect.equals(dataWrong));
       const macCorrect = symmetric.macWithKey(keyCorrect, dataCorrect);
       expect(macCorrect).toHaveLength(32);
-      expect(symmetric.authWithKey(keyCorrect, dataCorrect, macCorrect)).toBe(true);
-      expect(symmetric.authWithKey(keyCorrect, dataWrong, macWrong)).toBe(false);
-      expect(symmetric.authWithKey(keyCorrect, dataWrong, macCorrect)).toBe(false);
-      expect(symmetric.authWithKey(keyCorrect, dataCorrect, macWrong)).toBe(false);
-      expect(symmetric.authWithKey(keyWrong, dataCorrect, macCorrect)).toBe(false);
-      expect(symmetric.authWithKey(keyWrong, dataWrong, macCorrect)).toBe(false);
+      expect(symmetric.authWithKey(keyCorrect, dataCorrect, macCorrect)).toBe(
+        true,
+      );
+      expect(symmetric.authWithKey(keyCorrect, dataWrong, macWrong)).toBe(
+        false,
+      );
+      expect(symmetric.authWithKey(keyCorrect, dataWrong, macCorrect)).toBe(
+        false,
+      );
+      expect(symmetric.authWithKey(keyCorrect, dataCorrect, macWrong)).toBe(
+        false,
+      );
+      expect(symmetric.authWithKey(keyWrong, dataCorrect, macCorrect)).toBe(
+        false,
+      );
+      expect(symmetric.authWithKey(keyWrong, dataWrong, macCorrect)).toBe(
+        false,
+      );
       expect(symmetric.authWithKey(keyWrong, dataWrong, macWrong)).toBe(false);
-      expect(symmetric.authWithKey(keyWrong, dataCorrect, macWrong)).toBe(false);
+      expect(symmetric.authWithKey(keyWrong, dataCorrect, macWrong)).toBe(
+        false,
+      );
     },
   );
   testProp(
     'mac with key generator',
     [
       testsKeysUtils.keyArb,
-      fc.array(fc.uint8Array({ minLength: 0, maxLength: 1024 }))
+      fc.array(fc.uint8Array({ minLength: 0, maxLength: 1024 })),
     ],
     (key, datas) => {
       const maccer = symmetric.macWithKeyG(key);
@@ -74,20 +88,24 @@ describe('keys/utils/symmetric', () => {
       const result2 = auther.next(null);
       expect(result2.done).toBe(true);
       expect(result2.value).toBe(true);
-      expect(symmetric.macWithKey(key, Buffer.concat(datas))).toStrictEqual(result1.value);
-    }
+      expect(symmetric.macWithKey(key, Buffer.concat(datas))).toStrictEqual(
+        result1.value,
+      );
+    },
   );
   testProp(
     'mac & auth with key iterator',
     [
       testsKeysUtils.keyArb,
-      fc.array(fc.uint8Array({ minLength: 0, maxLength: 1024 }))
+      fc.array(fc.uint8Array({ minLength: 0, maxLength: 1024 })),
     ],
     (key, datas) => {
       const digest = symmetric.macWithKeyI(key, datas);
       expect(symmetric.authWithKeyI(key, datas, digest)).toBe(true);
-      expect(symmetric.macWithKey(key, Buffer.concat(datas))).toStrictEqual(digest);
-    }
+      expect(symmetric.macWithKey(key, Buffer.concat(datas))).toStrictEqual(
+        digest,
+      );
+    },
   );
   testProp(
     'wrap & unwrap with random password',

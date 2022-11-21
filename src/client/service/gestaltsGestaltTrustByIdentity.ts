@@ -72,7 +72,7 @@ function gestaltsGestaltTrustByIdentity({
         // will throw an error. Since discovery can take time, you may need to
         // reattempt this command if it fails on the first attempt and you expect
         // there to be a linked node for the identity.
-        await gestaltGraph.setGestaltActions(
+        await gestaltGraph.setGestaltAction(
           ['identity', [providerId, identityId]],
           'notify',
           tran,

@@ -7,13 +7,8 @@ import type {
   SignedToken,
   SignedTokenEncoded,
 } from './types';
-import type {
-  Key,
-  PublicKey,
-  PrivateKey,
-  KeyPair
-} from '../keys/types';
-import type { POJO, DeepReadonly } from '../types';
+import type { Key, PublicKey, PrivateKey, KeyPair } from '../keys/types';
+import type { POJO } from '../types';
 import * as tokensUtils from './utils';
 import * as tokensErrors from './errors';
 import * as ids from '../ids';
@@ -41,21 +36,21 @@ class Token<P extends TokenPayload = TokenPayload> {
   protected signatureSet: Set<TokenSignatureEncoded> = new Set();
 
   public static fromPayload<P extends TokenPayload = TokenPayload>(
-    payload: P
+    payload: P,
   ): Token<P> {
     const payloadEncoded = tokensUtils.generateTokenPayload(payload);
     return new this(payload, payloadEncoded);
   }
 
   public static fromSigned<P extends TokenPayload = TokenPayload>(
-    tokenSigned: SignedToken<P>
+    tokenSigned: SignedToken<P>,
   ): Token<P> {
     const tokenSignedEncoded = tokensUtils.generateSignedToken(tokenSigned);
     return new this(
       tokenSigned.payload,
       tokenSignedEncoded.payload,
       tokenSigned.signatures,
-      tokenSignedEncoded.signatures
+      tokenSignedEncoded.signatures,
     );
   }
 
@@ -64,7 +59,7 @@ class Token<P extends TokenPayload = TokenPayload> {
    * It is up the caller to decide what the payload type should be.
    */
   public static fromEncoded<P extends TokenPayload = TokenPayload>(
-    signedTokenEncoded: SignedTokenEncoded
+    signedTokenEncoded: SignedTokenEncoded,
   ): Token<P> {
     let signedToken: SignedToken<P>;
     try {
@@ -80,7 +75,7 @@ class Token<P extends TokenPayload = TokenPayload> {
       signedToken.payload,
       signedTokenEncoded.payload,
       signedToken.signatures,
-      signedTokenEncoded.signatures
+      signedTokenEncoded.signatures,
     );
   }
 
@@ -88,7 +83,7 @@ class Token<P extends TokenPayload = TokenPayload> {
     payload: P,
     payloadEncoded: TokenPayloadEncoded,
     signatures: Array<TokenHeaderSignature> = [],
-    signaturesEncoded: Array<TokenHeaderSignatureEncoded> = []
+    signaturesEncoded: Array<TokenHeaderSignatureEncoded> = [],
   ) {
     this.payload = payload;
     this.payloadEncoded = payloadEncoded;
@@ -103,41 +98,39 @@ class Token<P extends TokenPayload = TokenPayload> {
     return this._signatures;
   }
 
-  public get signaturesEncoded(): Readonly<Array<Readonly<TokenHeaderSignatureEncoded>>> {
+  public get signaturesEncoded(): Readonly<
+    Array<Readonly<TokenHeaderSignatureEncoded>>
+  > {
     return this._signaturesEncoded;
   }
 
   public signWithKey(
     key: Key,
     additionalProtectedHeader?: POJO,
-    force: boolean = false
+    force: boolean = false,
   ): void {
     const protectedHeader = {
       ...additionalProtectedHeader,
-      alg: 'BLAKE2b' as const
+      alg: 'BLAKE2b' as const,
     };
-    const protectedHeaderEncoded = tokensUtils.generateTokenProtectedHeader(
-      protectedHeader
-    );
+    const protectedHeaderEncoded =
+      tokensUtils.generateTokenProtectedHeader(protectedHeader);
     const data = Buffer.from(
       this.payloadEncoded + '.' + protectedHeaderEncoded,
-      'ascii'
+      'ascii',
     );
     const signature = keysUtils.macWithKey(key, data);
     const signatureEncoded = tokensUtils.generateTokenSignature(signature);
-    if (
-      !force &&
-      this.signatureSet.has(signatureEncoded)
-    ) {
+    if (!force && this.signatureSet.has(signatureEncoded)) {
       throw new tokensErrors.ErrorTokensDuplicateSignature();
     }
     this._signatures.push({
       protected: protectedHeader,
-      signature: signature
+      signature: signature,
     });
     this._signaturesEncoded.push({
       protected: protectedHeaderEncoded,
-      signature: signatureEncoded
+      signature: signatureEncoded,
     });
     this.signatureSet.add(signatureEncoded);
   }
@@ -145,31 +138,29 @@ class Token<P extends TokenPayload = TokenPayload> {
   public signWithPrivateKey(
     privateKeyOrKeyPair: PrivateKey | KeyPair,
     additionalProtectedHeader?: POJO,
-    force: boolean = false
+    force: boolean = false,
   ): void {
     let keyPair: KeyPair;
     if (Buffer.isBuffer(privateKeyOrKeyPair)) {
-      const publicKey = keysUtils.publicKeyFromPrivateKeyEd25519(
-        privateKeyOrKeyPair
-      );
+      const publicKey =
+        keysUtils.publicKeyFromPrivateKeyEd25519(privateKeyOrKeyPair);
       keyPair = keysUtils.makeKeyPair(publicKey, privateKeyOrKeyPair);
     } else {
       keyPair = privateKeyOrKeyPair;
     }
     const kid = ids.encodeNodeId(
-      keysUtils.publicKeyToNodeId(keyPair.publicKey)
+      keysUtils.publicKeyToNodeId(keyPair.publicKey),
     );
     const protectedHeader = {
       ...additionalProtectedHeader,
       alg: 'EdDSA' as const,
-      kid
+      kid,
     };
-    const protectedHeaderEncoded = tokensUtils.generateTokenProtectedHeader(
-      protectedHeader
-    );
+    const protectedHeaderEncoded =
+      tokensUtils.generateTokenProtectedHeader(protectedHeader);
     const data = Buffer.from(
       this.payloadEncoded + '.' + protectedHeaderEncoded,
-      'ascii'
+      'ascii',
     );
     const signature = keysUtils.signWithPrivateKey(keyPair, data);
     const signatureEncoded = tokensUtils.generateTokenSignature(signature);
@@ -178,11 +169,11 @@ class Token<P extends TokenPayload = TokenPayload> {
     }
     const headerSignature = {
       protected: protectedHeader,
-      signature: signature
+      signature: signature,
     };
     const headerSignatureEncoded = {
       protected: protectedHeaderEncoded,
-      signature: signatureEncoded
+      signature: signatureEncoded,
     };
     this._signatures.push(headerSignature);
     this._signaturesEncoded.push(headerSignatureEncoded);
@@ -201,13 +192,9 @@ class Token<P extends TokenPayload = TokenPayload> {
       }
       const data = Buffer.from(
         this.payloadEncoded + '.' + headerSignatureEncoded.protected,
-        'ascii'
+        'ascii',
       );
-      const auth = keysUtils.authWithKey(
-        key,
-        data,
-        headerSignature.signature
-      );
+      const auth = keysUtils.authWithKey(key, data, headerSignature.signature);
       if (!auth) continue;
       return true;
     }
@@ -226,7 +213,7 @@ class Token<P extends TokenPayload = TokenPayload> {
       }
       const data = Buffer.from(
         this.payloadEncoded + '.' + headerSignatureEncoded.protected,
-        'ascii'
+        'ascii',
       );
       const auth = keysUtils.verifyWithPublicKey(
         publicKey,

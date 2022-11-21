@@ -50,7 +50,9 @@ function encryptWithKey(
     key,
   );
   // This ensures `result.buffer` is not using the shared internal pool
-  const result = Buffer.allocUnsafeSlow(nonceSize + macSize + plainText.byteLength);
+  const result = Buffer.allocUnsafeSlow(
+    nonceSize + macSize + plainText.byteLength,
+  );
   nonce.copy(result);
   macAndCipherText.copy(result, nonceSize);
   return result;
@@ -78,7 +80,9 @@ function decryptWithKey(
   const nonce = cipherText.subarray(0, nonceSize);
   const macAndCipherText = cipherText.subarray(nonceSize);
   // This ensures `plainText.buffer` is not using the shared internal pool
-  const plainText = Buffer.allocUnsafeSlow(macAndCipherText.byteLength - macSize);
+  const plainText = Buffer.allocUnsafeSlow(
+    macAndCipherText.byteLength - macSize,
+  );
   // This returns the number of bytes that has been decrypted
   const decrypted = sodium.crypto_aead_xchacha20poly1305_ietf_decrypt(
     plainText,
@@ -95,20 +99,14 @@ function decryptWithKey(
 }
 
 function macWithKey(key: Key, data: Buffer): MAC {
-  const digest = Buffer.allocUnsafeSlow(
-    sodium.crypto_generichash_BYTES
-  );
+  const digest = Buffer.allocUnsafeSlow(sodium.crypto_generichash_BYTES);
   sodium.crypto_generichash(digest, data, key);
   return digest as Digest<'blake2b-256'>;
 }
 
-function *macWithKeyG(key: Key): Generator<void, MAC, BufferSource | null>{
-  const digest = Buffer.allocUnsafeSlow(
-    sodium.crypto_generichash_BYTES
-  );
-  const state = Buffer.allocUnsafe(
-    sodium.crypto_generichash_STATEBYTES
-  );
+function* macWithKeyG(key: Key): Generator<void, MAC, BufferSource | null> {
+  const digest = Buffer.allocUnsafeSlow(sodium.crypto_generichash_BYTES);
+  const state = Buffer.allocUnsafe(sodium.crypto_generichash_STATEBYTES);
   sodium.crypto_generichash_init(state, key, sodium.crypto_generichash_BYTES);
   while (true) {
     const data = yield;
@@ -121,12 +119,8 @@ function *macWithKeyG(key: Key): Generator<void, MAC, BufferSource | null>{
 }
 
 function macWithKeyI(key: Key, data: Iterable<BufferSource>): MAC {
-  const digest = Buffer.allocUnsafeSlow(
-    sodium.crypto_generichash_BYTES
-  );
-  const state = Buffer.allocUnsafe(
-    sodium.crypto_generichash_STATEBYTES
-  );
+  const digest = Buffer.allocUnsafeSlow(sodium.crypto_generichash_BYTES);
+  const state = Buffer.allocUnsafe(sodium.crypto_generichash_STATEBYTES);
   sodium.crypto_generichash_init(state, key, sodium.crypto_generichash_BYTES);
   for (const d of data) {
     sodium.crypto_generichash_update(state, utils.bufferWrap(d));
@@ -141,13 +135,20 @@ function authWithKey(key: Key, data: Buffer, digest: Buffer): boolean {
   return sodium.sodium_memcmp(digest_, digest);
 }
 
-function *authWithKeyG(key: Key, digest: Buffer): Generator<void, boolean, BufferSource | null> {
-  const digest_ = yield * macWithKeyG(key);
+function* authWithKeyG(
+  key: Key,
+  digest: Buffer,
+): Generator<void, boolean, BufferSource | null> {
+  const digest_ = yield* macWithKeyG(key);
   if (digest_.byteLength !== digest.byteLength) return false;
   return sodium.sodium_memcmp(digest_, digest);
 }
 
-function authWithKeyI(key: Key, data: Iterable<BufferSource>, digest: Buffer): boolean {
+function authWithKeyI(
+  key: Key,
+  data: Iterable<BufferSource>,
+  digest: Buffer,
+): boolean {
   const digest_ = macWithKeyI(key, data);
   if (digest_.byteLength !== digest.byteLength) return false;
   return sodium.sodium_memcmp(digest_, digest);
@@ -157,7 +158,9 @@ function authWithKeyI(key: Key, data: Iterable<BufferSource>, digest: Buffer): b
  * Checks if data is a MAC
  */
 function isMAC(mac: unknown): mac is MAC {
-  return Buffer.isBuffer(mac) && mac.byteLength === sodium.crypto_generichash_BYTES;
+  return (
+    Buffer.isBuffer(mac) && mac.byteLength === sodium.crypto_generichash_BYTES
+  );
 }
 
 /**

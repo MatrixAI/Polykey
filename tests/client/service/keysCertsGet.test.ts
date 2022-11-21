@@ -1,4 +1,5 @@
 import type { Host, Port } from '@/network/types';
+import type { CertificatePEM } from '@/keys/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -15,7 +16,6 @@ import { ClientServiceService } from '@/proto/js/polykey/v1/client_service_grpc_
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as keysPB from '@/proto/js/polykey/v1/keys/keys_pb';
 import * as clientUtils from '@/client/utils/utils';
-import { CertificatePEM } from '@/keys/types';
 import * as keysUtils from '@/keys/utils/index';
 
 describe('keysCertsGet', () => {
@@ -65,7 +65,7 @@ describe('keysCertsGet', () => {
       keyRing,
       taskManager,
       logger,
-    })
+    });
     const clientService = {
       keysCertsGet: keysCertsGet({
         authenticate,

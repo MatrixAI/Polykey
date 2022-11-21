@@ -10,16 +10,20 @@ import * as utils from '../../utils';
  * Linking node and digital identity together
  */
 interface ClaimLinkIdentity extends Claim {
+  typ: 'ClaimLinkIdentity';
   iss: NodeIdEncoded;
   sub: ProviderIdentityIdEncoded;
 }
 
 function assertClaimLinkIdentity(
-  claimLinkIdentity: unknown
+  claimLinkIdentity: unknown,
 ): asserts claimLinkIdentity is ClaimLinkIdentity {
   if (!utils.isObject(claimLinkIdentity)) {
+    throw new validationErrors.ErrorParse('must be POJO');
+  }
+  if (claimLinkIdentity['typ'] !== 'ClaimLinkIdentity') {
     throw new validationErrors.ErrorParse(
-      'must be POJO',
+      '`typ` property must be `ClaimLinkIdentity`',
     );
   }
   if (
@@ -31,27 +35,23 @@ function assertClaimLinkIdentity(
     );
   }
   if (typeof claimLinkIdentity['sub'] !== 'string') {
-    throw new validationErrors.ErrorParse(
-      '`sub` property must be a string'
-    );
+    throw new validationErrors.ErrorParse('`sub` property must be a string');
   }
 }
 
 function parseClaimLinkIdentity(
-  claimLinkIdentityEncoded: unknown
+  claimLinkIdentityEncoded: unknown,
 ): ClaimLinkIdentity {
-  const claimLinkIdentity = claimsUtils.parseClaim(
-    claimLinkIdentityEncoded
-  );
+  const claimLinkIdentity = claimsUtils.parseClaim(claimLinkIdentityEncoded);
   assertClaimLinkIdentity(claimLinkIdentity);
   return claimLinkIdentity;
 }
 
 function parseSignedClaimLinkIdentity(
-  signedClaimLinkIdentityEncoded: unknown
+  signedClaimLinkIdentityEncoded: unknown,
 ): SignedClaim<ClaimLinkIdentity> {
   const signedClaim = tokensUtils.parseSignedToken(
-    signedClaimLinkIdentityEncoded
+    signedClaimLinkIdentityEncoded,
   );
   assertClaimLinkIdentity(signedClaim.payload);
   return signedClaim as SignedClaim<ClaimLinkIdentity>;
@@ -63,6 +63,4 @@ export {
   parseSignedClaimLinkIdentity,
 };
 
-export type {
-  ClaimLinkIdentity
-};
+export type { ClaimLinkIdentity };

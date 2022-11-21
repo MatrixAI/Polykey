@@ -1,9 +1,10 @@
-import type { NodeIdEncoded } from '@/ids/types';
-import type { ClaimLinkIdentity } from '@/claims/types';
-import type { ChainData } from '@/sigchain/types';
+import type { NodeId, ProviderIdentityClaimId } from '@/ids/types';
 import type { IdentityId } from '@/identities/types';
 import type { Host, Port } from '@/network/types';
 import type { Key } from '@/keys/types';
+import type { ClaimId } from '@/ids/types';
+import type { SignedClaim } from '@/claims/types';
+import type { ClaimLinkIdentity } from '@/claims/payloads/index';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -28,16 +29,16 @@ import gestaltsGestaltTrustByIdentity from '@/client/service/gestaltsGestaltTrus
 import { ClientServiceService } from '@/proto/js/polykey/v1/client_service_grpc_pb';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as identitiesPB from '@/proto/js/polykey/v1/identities/identities_pb';
-import * as claimsUtils from '@/claims/utils';
 import * as gestaltsErrors from '@/gestalts/errors';
 import * as keysUtils from '@/keys/utils';
 import * as clientUtils from '@/client/utils/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as utils from '@/utils/index';
-import * as testUtils from '../../utils';
-import TestProvider from '../../identities/TestProvider';
-import { CertificatePEMChain } from '@/keys/types';
+import { encodeProviderIdentityId } from '@/ids/index';
+import { sleep } from '@/utils/index';
 import * as testsUtils from '../../utils/index';
+import TestProvider from '../../identities/TestProvider';
+import * as testUtils from '../../utils';
 
 describe('gestaltsGestaltTrustByIdentity', () => {
   const logger = new Logger(
@@ -48,13 +49,14 @@ describe('gestaltsGestaltTrustByIdentity', () => {
   const password = 'helloworld';
   const authenticate = async (metaClient, metaServer = new Metadata()) =>
     metaServer;
-  const testProvider = new TestProvider();
+  let testProvider: TestProvider;
   // Create node to trust
   const connectedIdentity = 'trusted-node' as IdentityId;
   let nodeDataDir: string;
   let node: PolykeyAgent;
-  let nodeId: NodeIdEncoded;
-  const nodeChainData: ChainData = {};
+  let nodeId: NodeId;
+  let claimId: ClaimId;
+  const nodeChainData: Record<ClaimId, SignedClaim> = {};
   let mockedRequestChainData: jest.SpyInstance;
   const authToken = 'abc123';
   let dataDir: string;
@@ -73,6 +75,7 @@ describe('gestaltsGestaltTrustByIdentity', () => {
   let grpcServer: GRPCServer;
   let grpcClient: GRPCClientClient;
   beforeEach(async () => {
+    testProvider = new TestProvider();
     mockedRequestChainData = jest
       .spyOn(NodeManager.prototype, 'requestChainData')
       .mockResolvedValue(nodeChainData);
@@ -96,22 +99,24 @@ describe('gestaltsGestaltTrustByIdentity', () => {
         strictMemoryLock: false,
       },
     });
-    nodeId = nodesUtils.encodeNodeId(node.keyRing.getNodeId());
+    nodeId = node.keyRing.getNodeId();
     node.identitiesManager.registerProvider(testProvider);
     await node.identitiesManager.putToken(testProvider.id, connectedIdentity, {
       accessToken: 'abc123',
     });
     testProvider.users['trusted-node'] = {};
-    const identityClaim: ClaimLinkIdentity = {
-      type: 'identity',
-      node: nodesUtils.encodeNodeId(node.keyRing.getNodeId()),
-      provider: testProvider.id,
-      identity: connectedIdentity,
+    const identityClaim = {
+      typ: 'ClaimLinkIdentity',
+      iss: nodesUtils.encodeNodeId(node.keyRing.getNodeId()),
+      sub: encodeProviderIdentityId([testProvider.id, connectedIdentity]),
     };
-    const [claimId, claimEncoded] = await node.sigchain.addClaim(identityClaim);
-    const claim = claimsUtils.decodeClaim(claimEncoded);
-    nodeChainData[claimId] = claim;
-    await testProvider.publishClaim(connectedIdentity, claim);
+    const [claimId_, claim] = await node.sigchain.addClaim(identityClaim);
+    claimId = claimId_;
+    nodeChainData[claimId_] = claim;
+    await testProvider.publishClaim(
+      connectedIdentity,
+      claim as SignedClaim<ClaimLinkIdentity>,
+    );
 
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
@@ -160,6 +165,7 @@ describe('gestaltsGestaltTrustByIdentity', () => {
       keyRing,
       sigchain,
       db,
+      gestaltGraph,
       logger,
     });
     identitiesManager.registerProvider(testProvider);
@@ -210,11 +216,12 @@ describe('gestaltsGestaltTrustByIdentity', () => {
       nodeGraph,
       sigchain,
       taskManager,
+      gestaltGraph,
       logger,
     });
     await nodeManager.start();
     await nodeConnectionManager.start({ nodeManager });
-    await nodeManager.setNode(nodesUtils.decodeNodeId(nodeId)!, {
+    await nodeManager.setNode(nodeId, {
       host: node.proxy.getProxyHost(),
       port: node.proxy.getProxyPort(),
     });
@@ -224,7 +231,6 @@ describe('gestaltsGestaltTrustByIdentity', () => {
       gestaltGraph,
       identitiesManager,
       nodeManager,
-      sigchain,
       taskManager,
       logger,
     });
@@ -283,14 +289,16 @@ describe('gestaltsGestaltTrustByIdentity', () => {
   test('trusts an identity (already set in gestalt graph)', async () => {
     testProvider.users['disconnected-user'] = {};
     await gestaltGraph.linkNodeAndIdentity(
-      {
-        id: nodeId,
-        chain: {},
-      },
+      { nodeId: nodeId },
       {
         providerId: testProvider.id,
         identityId: connectedIdentity,
-        claims: {},
+      },
+      {
+        claim: nodeChainData[claimId] as SignedClaim<ClaimLinkIdentity>,
+        meta: {
+          providerIdentityClaimId: '' as ProviderIdentityClaimId,
+        },
       },
     );
     const request = new identitiesPB.Provider();
@@ -302,16 +310,13 @@ describe('gestaltsGestaltTrustByIdentity', () => {
     );
     expect(response).toBeInstanceOf(utilsPB.EmptyMessage);
     expect(
-      await gestaltGraph.getGestaltActionsByIdentity(
-        testProvider.id,
-        connectedIdentity,
-      ),
+      await gestaltGraph.getGestaltActions([
+        'identity',
+        [testProvider.id, connectedIdentity],
+      ]),
     ).toEqual({
       notify: null,
     });
-    // Reverse side effects
-    await gestaltGraph.unsetNode(nodesUtils.decodeNodeId(nodeId)!);
-    await gestaltGraph.unsetIdentity(testProvider.id, connectedIdentity);
   });
   test('trusts an identity (new identity)', async () => {
     const request = new identitiesPB.Provider();
@@ -337,16 +342,13 @@ describe('gestaltsGestaltTrustByIdentity', () => {
     );
     expect(response).toBeInstanceOf(utilsPB.EmptyMessage);
     expect(
-      await gestaltGraph.getGestaltActionsByIdentity(
-        testProvider.id,
-        connectedIdentity,
-      ),
+      await gestaltGraph.getGestaltActions([
+        'identity',
+        [testProvider.id, connectedIdentity],
+      ]),
     ).toEqual({
       notify: null,
     });
-    // Reverse side effects
-    await gestaltGraph.unsetNode(nodesUtils.decodeNodeId(nodeId)!);
-    await gestaltGraph.unsetIdentity(testProvider.id, connectedIdentity);
   });
   test('cannot trust a disconnected identity', async () => {
     testProvider.users['disconnected-user'] = {};
@@ -373,14 +375,16 @@ describe('gestaltsGestaltTrustByIdentity', () => {
   });
   test('trust extends to entire gestalt', async () => {
     await gestaltGraph.linkNodeAndIdentity(
-      {
-        id: nodeId,
-        chain: {},
-      },
+      { nodeId: nodeId },
       {
         providerId: testProvider.id,
         identityId: connectedIdentity,
-        claims: {},
+      },
+      {
+        claim: nodeChainData[claimId] as SignedClaim<ClaimLinkIdentity>,
+        meta: {
+          providerIdentityClaimId: '' as ProviderIdentityClaimId,
+        },
       },
     );
     const request = new identitiesPB.Provider();
@@ -392,28 +396,20 @@ describe('gestaltsGestaltTrustByIdentity', () => {
     );
     expect(response).toBeInstanceOf(utilsPB.EmptyMessage);
     expect(
-      await gestaltGraph.getGestaltActionsByIdentity(
-        testProvider.id,
-        connectedIdentity,
-      ),
+      await gestaltGraph.getGestaltActions([
+        'identity',
+        [testProvider.id, connectedIdentity],
+      ]),
     ).toEqual({
       notify: null,
     });
-    expect(
-      await gestaltGraph.getGestaltActionsByNode(
-        nodesUtils.decodeNodeId(nodeId)!,
-      ),
-    ).toEqual({
+    expect(await gestaltGraph.getGestaltActions(['node', nodeId])).toEqual({
       notify: null,
     });
-    // Reverse side effects
-    await gestaltGraph.unsetNode(nodesUtils.decodeNodeId(nodeId)!);
-    await gestaltGraph.unsetIdentity(testProvider.id, connectedIdentity);
   });
   test('links trusted identity to an existing node', async () => {
     await gestaltGraph.setNode({
-      id: nodeId,
-      chain: {},
+      nodeId: nodeId,
     });
     const request = new identitiesPB.Provider();
     request.setProviderId(testProvider.id);
@@ -428,6 +424,11 @@ describe('gestaltsGestaltTrustByIdentity', () => {
       gestaltsErrors.ErrorGestaltsGraphIdentityIdMissing,
     );
     // Wait and try again - should succeed second time
+    await sleep(2000);
+    await grpcClient.gestaltsGestaltTrustByIdentity(
+      request,
+      clientUtils.encodeAuthFromPassword(password),
+    );
     // Wait for both identity and node to be set in GG
     let existingTasks: number = 0;
     do {
@@ -439,22 +440,15 @@ describe('gestaltsGestaltTrustByIdentity', () => {
     );
     expect(response).toBeInstanceOf(utilsPB.EmptyMessage);
     expect(
-      await gestaltGraph.getGestaltActionsByIdentity(
-        testProvider.id,
-        connectedIdentity,
-      ),
+      await gestaltGraph.getGestaltActions([
+        'identity',
+        [testProvider.id, connectedIdentity],
+      ]),
     ).toEqual({
       notify: null,
     });
-    expect(
-      await gestaltGraph.getGestaltActionsByNode(
-        nodesUtils.decodeNodeId(nodeId)!,
-      ),
-    ).toEqual({
+    expect(await gestaltGraph.getGestaltActions(['node', nodeId])).toEqual({
       notify: null,
     });
-    // Reverse side effects
-    await gestaltGraph.unsetNode(nodesUtils.decodeNodeId(nodeId)!);
-    await gestaltGraph.unsetIdentity(testProvider.id, connectedIdentity);
   });
 });

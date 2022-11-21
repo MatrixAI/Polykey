@@ -1,10 +1,7 @@
 import type { DB, DBTransaction, LevelPath, KeyPath } from '@matrixai/db';
 import type { ClaimInput } from './types';
 import type KeyRing from '../keys/KeyRing';
-import type {
-  TokenSignature,
-  TokenHeaderSignatureJSON
-} from '../tokens/types';
+import type { TokenSignature, TokenHeaderSignatureJSON } from '../tokens/types';
 import type {
   ClaimId,
   Claim,
@@ -17,8 +14,8 @@ import {
   CreateDestroyStartStop,
   ready,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
-import Token from '../tokens/Token';
 import * as sigchainErrors from './errors';
+import Token from '../tokens/Token';
 import * as claimsUtils from '../claims/utils';
 import * as utils from '../utils';
 
@@ -72,7 +69,10 @@ class Sigchain {
    * The sequence number provides cardinal and ordinal information regarding a claim.
    * `Sigchain/lastSequenceNumber -> {SequenceNumber}}`
    */
-  protected dbLastSequenceNumberPath: KeyPath = [...this.dbPath, 'lastSequenceNumber'];
+  protected dbLastSequenceNumberPath: KeyPath = [
+    ...this.dbPath,
+    'lastSequenceNumber',
+  ];
 
   constructor({
     db,
@@ -144,7 +144,7 @@ class Sigchain {
     tran?: DBTransaction,
   ): Promise<number | undefined> {
     const lastSequenceNumber = await (tran ?? this.db).get<number>(
-      this.dbLastSequenceNumberPath
+      this.dbLastSequenceNumberPath,
     );
     return lastSequenceNumber;
   }
@@ -163,19 +163,29 @@ class Sigchain {
   }
 
   @ready(new sigchainErrors.ErrorSigchainNotRunning())
-  public async getLastClaim(tran?: DBTransaction): Promise<[ClaimId, Claim] | undefined> {
-    for await (const claimEntry of this.getClaims({ order: 'desc', limit: 1}, tran)) {
+  public async getLastClaim(
+    tran?: DBTransaction,
+  ): Promise<[ClaimId, Claim] | undefined> {
+    for await (const claimEntry of this.getClaims(
+      { order: 'desc', limit: 1 },
+      tran,
+    )) {
       return claimEntry;
     }
     return;
   }
 
   @ready(new sigchainErrors.ErrorSigchainNotRunning())
-  public async getLastSignedClaim(tran?: DBTransaction): Promise<[ClaimId, SignedClaim] | undefined> {
-    for await (const signedClaimEntry of this.getSignedClaims({
-      order: 'desc',
-      limit: 1
-    }, tran)) {
+  public async getLastSignedClaim(
+    tran?: DBTransaction,
+  ): Promise<[ClaimId, SignedClaim] | undefined> {
+    for await (const signedClaimEntry of this.getSignedClaims(
+      {
+        order: 'desc',
+        limit: 1,
+      },
+      tran,
+    )) {
       return signedClaimEntry;
     }
     return;
@@ -192,10 +202,7 @@ class Sigchain {
     if (tran == null) {
       return this.db.withTransactionF((tran) => this.getClaim(claimId, tran));
     }
-    return tran.get<Claim>([
-      ... this.dbClaimsPath,
-      claimId.toBuffer(),
-    ]);
+    return tran.get<Claim>([...this.dbClaimsPath, claimId.toBuffer()]);
   }
 
   /**
@@ -207,10 +214,12 @@ class Sigchain {
     tran?: DBTransaction,
   ): Promise<SignedClaim | undefined> {
     if (tran == null) {
-      return this.db.withTransactionF((tran) => this.getSignedClaim(claimId, tran));
+      return this.db.withTransactionF((tran) =>
+        this.getSignedClaim(claimId, tran),
+      );
     }
     const claim = await tran.get<Claim>([
-      ... this.dbClaimsPath,
+      ...this.dbClaimsPath,
       claimId.toBuffer(),
     ]);
     if (claim == null) {
@@ -219,7 +228,7 @@ class Sigchain {
     const claimSignatures = await this.getSignatures(claimId, tran);
     return {
       payload: claim,
-      signatures: claimSignatures
+      signatures: claimSignatures,
     };
   }
 
@@ -232,19 +241,26 @@ class Sigchain {
     tran?: DBTransaction,
   ): Promise<Array<ClaimHeaderSignature>> {
     if (tran == null) {
-      return this.db.withTransactionF((tran) => this.getSignatures(claimId, tran));
+      return this.db.withTransactionF((tran) =>
+        this.getSignatures(claimId, tran),
+      );
     }
     const headerSignatures: Array<ClaimHeaderSignature> = [];
-    for await (const [, headerSignatureJSON] of tran.iterator<TokenHeaderSignatureJSON>(
+    for await (const [
+      ,
+      headerSignatureJSON,
+    ] of tran.iterator<TokenHeaderSignatureJSON>(
       [...this.dbSignaturesPath, claimId.toBuffer()],
       {
         keys: false,
-        valueAsBuffer: false
-      }
+        valueAsBuffer: false,
+      },
     )) {
       headerSignatures.push({
         protected: headerSignatureJSON.protected,
-        signature: Buffer.from(headerSignatureJSON.signature.data) as TokenSignature
+        signature: Buffer.from(
+          headerSignatureJSON.signature.data,
+        ) as TokenSignature,
       });
     }
     return headerSignatures;
@@ -258,25 +274,34 @@ class Sigchain {
     {
       order = 'asc',
       seek,
-      limit
+      limit,
     }: {
       order?: 'asc' | 'desc';
       seek?: ClaimId;
       limit?: number;
     } = {},
-    tran?: DBTransaction
+    tran?: DBTransaction,
   ): AsyncGenerator<[ClaimId, Claim]> {
     if (tran == null) {
-      return yield* this.db.withTransactionG((tran) => this.getClaims({ order, seek }, tran));
+      return yield* this.db.withTransactionG((tran) =>
+        this.getClaims({ order, seek, limit }, tran),
+      );
     }
-    const orderOptions = (order === 'asc') ? { reverse: false } : { reverse: true };
-    let seekOptions: { gte: [ClaimId] } | { lte: [ClaimId] } | {} = {};
+    const orderOptions =
+      order === 'asc' ? { reverse: false } : { reverse: true };
+    let seekOptions:
+      | { gte: [Buffer] }
+      | { lte: [Buffer] }
+      | Record<string, never> = {};
     if (seek != null) {
-      seekOptions = (order === 'asc') ? {
-        gte: [seek.toBuffer()],
-      } : {
-        lte: [seek.toBuffer()],
-      };
+      seekOptions =
+        order === 'asc'
+          ? {
+              gte: [seek.toBuffer()],
+            }
+          : {
+              lte: [seek.toBuffer()],
+            };
     }
     for await (const [kP, claim] of tran.iterator<Claim>(this.dbClaimsPath, {
       valueAsBuffer: false,
@@ -297,25 +322,34 @@ class Sigchain {
     {
       order = 'asc',
       seek,
-      limit
+      limit,
     }: {
       order?: 'asc' | 'desc';
       seek?: ClaimId;
       limit?: number;
     } = {},
-    tran?: DBTransaction
+    tran?: DBTransaction,
   ): AsyncGenerator<[ClaimId, SignedClaim]> {
     if (tran == null) {
-      return yield* this.db.withTransactionG((tran) => this.getSignedClaims({ order, seek }, tran));
+      return yield* this.db.withTransactionG((tran) =>
+        this.getSignedClaims({ order, seek }, tran),
+      );
     }
-    const orderOptions = (order === 'asc') ? { reverse: false } : { reverse: true };
-    let seekOptions: { gte: [ClaimId] } | { lte: [ClaimId] } | {} = {};
+    const orderOptions =
+      order === 'asc' ? { reverse: false } : { reverse: true };
+    let seekOptions:
+      | { gte: [Buffer] }
+      | { lte: [Buffer] }
+      | Record<string, never> = {};
     if (seek != null) {
-      seekOptions = (order === 'asc') ? {
-        gte: [seek.toBuffer()],
-      } : {
-        lte: [seek.toBuffer()],
-      };
+      seekOptions =
+        order === 'asc'
+          ? {
+              lte: [seek.toBuffer()],
+            }
+          : {
+              gte: [seek.toBuffer()],
+            };
     }
     for await (const [kP, claim] of tran.iterator<Claim>(this.dbClaimsPath, {
       valueAsBuffer: false,
@@ -329,8 +363,8 @@ class Sigchain {
         claimId,
         {
           payload: claim,
-          signatures: claimSignatures
-        }
+          signatures: claimSignatures,
+        },
       ];
     }
   }
@@ -345,16 +379,13 @@ class Sigchain {
   public async addClaim(
     data: ClaimInput,
     date: Date = new Date(),
-    signingHook?: (token: Token<Claim>) => Promise<void>,
+    signingHook?: (token: Token<Claim>) => Promise<Token<Claim>>,
     tran?: DBTransaction,
   ): Promise<[ClaimId, SignedClaim]> {
     if (tran == null) {
-      return this.db.withTransactionF((tran) => this.addClaim(
-        data,
-        date,
-        signingHook,
-        tran
-      ));
+      return this.db.withTransactionF((tran) =>
+        this.addClaim(data, date, signingHook, tran),
+      );
     }
     // Appending is a serialised operation
     await this.lockLastClaimId(tran);
@@ -376,11 +407,11 @@ class Sigchain {
       const prevClaimId = prevSignedClaim[0];
       const prevDigest = claimsUtils.hashSignedClaim(
         prevSignedClaim[1],
-        'blake2b-256'
+        'blake2b-256',
       );
       const prevDigestEncoded = claimsUtils.encodeSignedClaimDigest(
         prevDigest,
-        'blake2b-256'
+        'blake2b-256',
       );
       claim = {
         ...data,
@@ -402,24 +433,18 @@ class Sigchain {
         prevDigest: null,
       };
     }
-    const claimToken = Token.fromPayload<Claim>(claim);
+    let claimToken = Token.fromPayload<Claim>(claim);
     // Sign all claims with this node's keypair
-    claimToken.signWithPrivateKey(
-      this.keyRing.keyPair
-    );
+    claimToken.signWithPrivateKey(this.keyRing.keyPair);
     if (signingHook != null) {
-      await signingHook(claimToken);
+      claimToken = await signingHook(claimToken);
     }
     const signedClaim = claimToken.toSigned();
     await tran.put([...this.dbClaimsPath, claimIdBuffer], signedClaim.payload);
     for (const [index, headerSignature] of signedClaim.signatures.entries()) {
       await tran.put(
-        [
-          ...this.dbSignaturesPath,
-          claimIdBuffer,
-          utils.lexiPackBuffer(index)
-        ],
-        headerSignature
+        [...this.dbSignaturesPath, claimIdBuffer, utils.lexiPackBuffer(index)],
+        headerSignature,
       );
     }
     await tran.put(this.dbLastClaimIdPath, claimIdBuffer, true);

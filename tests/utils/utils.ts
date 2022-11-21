@@ -103,17 +103,25 @@ function describeIf(condition: boolean) {
   return condition ? describe : describe.skip;
 }
 
-async function createTLSConfig(keyPair: KeyPair, generateCertId?: () => CertId): Promise<TLSConfig> {
-  generateCertId  = generateCertId ?? keysUtils.createCertIdGenerator();
+async function createTLSConfig(
+  keyPair: KeyPair,
+  generateCertId?: () => CertId,
+): Promise<TLSConfig> {
+  generateCertId = generateCertId ?? keysUtils.createCertIdGenerator();
   const certificate = await keysUtils.generateCertificate({
     certId: generateCertId(),
     duration: 31536000,
     issuerPrivateKey: keyPair.privateKey,
-    subjectKeyPair: { privateKey: keyPair.privateKey, publicKey: keyPair.publicKey }
+    subjectKeyPair: {
+      privateKey: keyPair.privateKey,
+      publicKey: keyPair.publicKey,
+    },
   });
   return {
     keyPrivatePem: keysUtils.privateKeyToPEM(keyPair.privateKey),
-    certChainPem: keysUtils.certToPEM(certificate) as unknown as CertificatePEMChain,
+    certChainPem: keysUtils.certToPEM(
+      certificate,
+    ) as unknown as CertificatePEMChain,
   };
 }
 

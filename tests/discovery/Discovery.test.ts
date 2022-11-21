@@ -1,13 +1,16 @@
-import type { ClaimLinkIdentity } from '@/claims/types';
 import type { IdentityId, ProviderId } from '@/identities/types';
 import type { Host, Port } from '@/network/types';
 import type { Key } from '@/keys/types';
+import type { SignedClaim } from '../../src/claims/types';
+import type { ClaimLinkIdentity } from '@/claims/payloads';
+import type { NodeId } from '../../src/ids/index';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { PromiseCancellable } from '@matrixai/async-cancellable';
+import { AsyncIterableX as AsyncIterable } from 'ix/asynciterable';
 import TaskManager from '@/tasks/TaskManager';
 import PolykeyAgent from '@/PolykeyAgent';
 import Discovery from '@/discovery/Discovery';
@@ -22,20 +25,21 @@ import Sigchain from '@/sigchain/Sigchain';
 import Proxy from '@/network/Proxy';
 import * as utils from '@/utils';
 import * as nodesUtils from '@/nodes/utils';
-import * as claimsUtils from '@/claims/utils';
 import * as discoveryErrors from '@/discovery/errors';
 import * as keysUtils from '@/keys/utils';
 import * as grpcUtils from '@/grpc/utils/index';
+import * as gestaltsUtils from '@/gestalts/utils';
 import * as testNodesUtils from '../nodes/utils';
 import TestProvider from '../identities/TestProvider';
 import * as testsUtils from '../utils';
+import { encodeProviderIdentityId } from '../../src/ids/index';
+import 'ix/add/asynciterable-operators/toarray';
 
 describe('Discovery', () => {
   const password = 'password';
   const logger = new Logger(`${Discovery.name} Test`, LogLevel.WARN, [
     new StreamHandler(),
   ]);
-  const testProvider = new TestProvider();
   const testToken = {
     providerId: 'test-provider' as ProviderId,
     identityId: 'test_user' as IdentityId,
@@ -62,6 +66,9 @@ describe('Discovery', () => {
   let nodeA: PolykeyAgent;
   let nodeB: PolykeyAgent;
   let identityId: IdentityId;
+  let nodeIdA: NodeId;
+  let nodeIdB: NodeId;
+  let testProvider: TestProvider;
 
   const mockedRefreshBucket = jest.spyOn(
     NodeManager.prototype,
@@ -69,6 +76,7 @@ describe('Discovery', () => {
   );
 
   beforeEach(async () => {
+    testProvider = new TestProvider();
     mockedRefreshBucket.mockImplementation(
       () => new PromiseCancellable((resolve) => resolve()),
     );
@@ -107,6 +115,7 @@ describe('Discovery', () => {
           },
         },
       },
+      fresh: true,
     });
     acl = await ACL.createACL({
       db,
@@ -116,10 +125,12 @@ describe('Discovery', () => {
       db,
       acl,
       logger: logger.getChild('gestaltGraph'),
+      fresh: true,
     });
     identitiesManager = await IdentitiesManager.createIdentitiesManager({
       keyRing,
       db,
+      gestaltGraph,
       sigchain,
       logger: logger.getChild('identities'),
     });
@@ -169,6 +180,7 @@ describe('Discovery', () => {
       keyRing,
       nodeConnectionManager,
       nodeGraph,
+      gestaltGraph,
       sigchain,
       taskManager,
       logger,
@@ -208,11 +220,14 @@ describe('Discovery', () => {
         strictMemoryLock: false,
       },
     });
+    nodeIdA = nodeA.keyRing.getNodeId();
+    nodeIdB = nodeB.keyRing.getNodeId();
     await testNodesUtils.nodesConnect(nodeA, nodeB);
     await nodeGraph.setNode(nodeA.keyRing.getNodeId(), {
       host: nodeA.proxy.getProxyHost(),
       port: nodeA.proxy.getProxyPort(),
     });
+    await nodeB.acl.setNodeAction(nodeA.keyRing.getNodeId(), 'claim');
     await nodeA.nodeManager.claimNode(nodeB.keyRing.getNodeId());
     nodeA.identitiesManager.registerProvider(testProvider);
     identityId = 'other-gestalt' as IdentityId;
@@ -220,15 +235,10 @@ describe('Discovery', () => {
       accessToken: 'def456',
     });
     testProvider.users[identityId] = {};
-    const identityClaim: ClaimLinkIdentity = {
-      type: 'identity',
-      node: nodesUtils.encodeNodeId(nodeB.keyRing.getNodeId()),
-      provider: testProvider.id,
-      identity: identityId,
-    };
-    const [, claimEncoded] = await nodeB.sigchain.addClaim(identityClaim);
-    const claim = claimsUtils.decodeClaim(claimEncoded);
-    await testProvider.publishClaim(identityId, claim);
+    await nodeA.identitiesManager.handleClaimIdentity(
+      testProvider.id,
+      identityId,
+    );
   });
   afterEach(async () => {
     await taskManager.stopProcessing();
@@ -259,7 +269,6 @@ describe('Discovery', () => {
       gestaltGraph,
       identitiesManager,
       nodeManager,
-      sigchain,
       taskManager,
       logger,
     });
@@ -283,9 +292,9 @@ describe('Discovery', () => {
       gestaltGraph,
       identitiesManager,
       nodeManager,
-      sigchain,
       taskManager,
       logger,
+      fresh: true,
     });
     await taskManager.startProcessing();
     await discovery.queueDiscoveryByNode(nodeA.keyRing.getNodeId());
@@ -293,19 +302,22 @@ describe('Discovery', () => {
     do {
       existingTasks = await discovery.waitForDiscoveryTasks();
     } while (existingTasks > 0);
-    const gestalt = await gestaltGraph.getGestalts();
-    const gestaltMatrix = gestalt[0].matrix;
-    const gestaltNodes = gestalt[0].nodes;
-    const gestaltIdentities = gestalt[0].identities;
+    const gestalts = await AsyncIterable.as(
+      gestaltGraph.getGestalts(),
+    ).toArray();
+    const gestalt = gestalts[0];
+    const gestaltMatrix = gestalt.matrix;
+    const gestaltNodes = gestalt.nodes;
+    const gestaltIdentities = gestalt.identities;
     expect(Object.keys(gestaltMatrix)).toHaveLength(3);
     expect(Object.keys(gestaltNodes)).toHaveLength(2);
     expect(Object.keys(gestaltIdentities)).toHaveLength(1);
-    const gestaltString = JSON.stringify(gestalt[0]);
+    const gestaltString = JSON.stringify(gestalt);
     expect(gestaltString).toContain(
-      nodesUtils.encodeNodeId(nodeA.keyRing.getNodeId()),
+      gestaltsUtils.encodeGestaltId(['node', nodeIdA]),
     );
     expect(gestaltString).toContain(
-      nodesUtils.encodeNodeId(nodeB.keyRing.getNodeId()),
+      gestaltsUtils.encodeGestaltId(['node', nodeIdB]),
     );
     expect(gestaltString).toContain(identityId);
     await taskManager.stopProcessing();
@@ -319,7 +331,6 @@ describe('Discovery', () => {
       gestaltGraph,
       identitiesManager,
       nodeManager,
-      sigchain,
       taskManager,
       logger,
     });
@@ -329,7 +340,10 @@ describe('Discovery', () => {
     do {
       existingTasks = await discovery.waitForDiscoveryTasks();
     } while (existingTasks > 0);
-    const gestalt = (await gestaltGraph.getGestalts())[0];
+    const gestalts = await AsyncIterable.as(
+      gestaltGraph.getGestalts(),
+    ).toArray();
+    const gestalt = gestalts[0];
     const gestaltMatrix = gestalt.matrix;
     const gestaltNodes = gestalt.nodes;
     const gestaltIdentities = gestalt.identities;
@@ -355,7 +369,6 @@ describe('Discovery', () => {
       gestaltGraph,
       identitiesManager,
       nodeManager,
-      sigchain,
       taskManager,
       logger,
     });
@@ -365,7 +378,10 @@ describe('Discovery', () => {
     do {
       existingTasks = await discovery.waitForDiscoveryTasks();
     } while (existingTasks > 0);
-    const gestalt1 = (await gestaltGraph.getGestalts())[0];
+    const gestalts1 = await AsyncIterable.as(
+      gestaltGraph.getGestalts(),
+    ).toArray();
+    const gestalt1 = gestalts1[0];
     const gestaltMatrix1 = gestalt1.matrix;
     const gestaltNodes1 = gestalt1.nodes;
     const gestaltIdentities1 = gestalt1.identities;
@@ -386,22 +402,26 @@ describe('Discovery', () => {
       accessToken: 'ghi789',
     });
     testProvider.users[identityId2] = {};
-    const identityClaim: ClaimLinkIdentity = {
-      type: 'identity',
-      node: nodesUtils.encodeNodeId(nodeA.keyRing.getNodeId()),
-      provider: testProvider.id,
-      identity: identityId2,
+    const identityClaim = {
+      typ: 'ClaimLinkIdentity',
+      iss: nodesUtils.encodeNodeId(nodeA.keyRing.getNodeId()),
+      sub: encodeProviderIdentityId([testProvider.id, identityId2]),
     };
-    const [, claimEncoded] = await nodeA.sigchain.addClaim(identityClaim);
-    const claim = claimsUtils.decodeClaim(claimEncoded);
-    await testProvider.publishClaim(identityId2, claim);
+    const [, signedClaim] = await nodeA.sigchain.addClaim(identityClaim);
+    await testProvider.publishClaim(
+      identityId2,
+      signedClaim as SignedClaim<ClaimLinkIdentity>,
+    );
     // Note that eventually we would like to add in a system of revisiting
     // already discovered vertices, however for now we must do this manually.
     await discovery.queueDiscoveryByNode(nodeA.keyRing.getNodeId());
     do {
       existingTasks = await discovery.waitForDiscoveryTasks();
     } while (existingTasks > 0);
-    const gestalt2 = (await gestaltGraph.getGestalts())[0];
+    const gestalts2 = await AsyncIterable.as(
+      gestaltGraph.getGestalts(),
+    ).toArray();
+    const gestalt2 = gestalts2[0];
     const gestaltMatrix2 = gestalt2.matrix;
     const gestaltNodes2 = gestalt2.nodes;
     const gestaltIdentities2 = gestalt2.identities;
@@ -431,7 +451,6 @@ describe('Discovery', () => {
       gestaltGraph,
       identitiesManager,
       nodeManager,
-      sigchain,
       taskManager,
       logger,
     });
@@ -443,7 +462,10 @@ describe('Discovery', () => {
     do {
       existingTasks = await discovery.waitForDiscoveryTasks();
     } while (existingTasks > 0);
-    const gestalt = (await gestaltGraph.getGestalts())[0];
+    const gestalts = await AsyncIterable.as(
+      gestaltGraph.getGestalts(),
+    ).toArray();
+    const gestalt = gestalts[0];
     const gestaltMatrix = gestalt.matrix;
     const gestaltNodes = gestalt.nodes;
     const gestaltIdentities = gestalt.identities;

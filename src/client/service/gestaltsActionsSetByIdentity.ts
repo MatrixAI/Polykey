@@ -57,7 +57,7 @@ function gestaltsActionsSetByIdentity({
         },
       );
       await db.withTransactionF((tran) =>
-        gestaltGraph.setGestaltActions(
+        gestaltGraph.setGestaltAction(
           ['identity', [providerId, identityId]],
           action,
           tran,

@@ -1,5 +1,5 @@
 import type { Opaque } from '../types';
-import type { NotificationId, NodeIdEncoded } from '../ids/types';
+import type { NotificationId } from '../ids/types';
 import type { VaultName, VaultActions, VaultIdEncoded } from '../vaults/types';
 
 type GestaltInvite = {

@@ -1,6 +1,7 @@
 import type { Notification } from '@/notifications/types';
 import type { NodeIdEncoded } from '@/ids/types';
 import type { Host, Port } from '@/network/types';
+import type GestaltGraph from 'gestalts/GestaltGraph';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -24,9 +25,8 @@ import * as nodesPB from '@/proto/js/polykey/v1/nodes/nodes_pb';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as clientUtils from '@/client/utils/utils';
 import * as validationErrors from '@/validation/errors';
-import * as testUtils from '../../utils';
 import * as keysUtils from '@/keys/utils/index';
-import { CertificatePEMChain } from '@/keys/types';
+import * as testUtils from '../../utils';
 import * as testsUtils from '../../utils/index';
 
 describe('nodesClaim', () => {
@@ -37,11 +37,12 @@ describe('nodesClaim', () => {
   const authenticate = async (metaClient, metaServer = new Metadata()) =>
     metaServer;
   const dummyNotification: Notification = {
+    typ: 'notification',
     data: {
       type: 'GestaltInvite',
     },
-    senderId:
-      'vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg' as NodeIdEncoded,
+    iss: 'vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg' as NodeIdEncoded,
+    sub: 'test' as NodeIdEncoded,
     isRead: false,
   };
   let mockedFindGestaltInvite: jest.SpyInstance;
@@ -140,6 +141,7 @@ describe('nodesClaim', () => {
       nodeGraph,
       sigchain,
       taskManager,
+      gestaltGraph: {} as GestaltGraph,
       logger,
     });
     await nodeManager.start();
@@ -158,7 +160,6 @@ describe('nodesClaim', () => {
       nodesClaim: nodesClaim({
         authenticate,
         nodeManager,
-        notificationsManager,
         logger,
         db,
       }),
@@ -195,30 +196,6 @@ describe('nodesClaim', () => {
       force: true,
       recursive: true,
     });
-  });
-  test('sends a gestalt invite (none existing)', async () => {
-    const request = new nodesPB.Claim();
-    request.setNodeId('vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0');
-    request.setForceInvite(false);
-    const response = await grpcClient.nodesClaim(
-      request,
-      clientUtils.encodeAuthFromPassword(password),
-    );
-    expect(response).toBeInstanceOf(utilsPB.StatusMessage);
-    // Does not claim (sends gestalt invite)
-    expect(response.getSuccess()).toBeFalsy();
-  });
-  test('sends a gestalt invite (force invite)', async () => {
-    const request = new nodesPB.Claim();
-    request.setNodeId('vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0');
-    request.setForceInvite(true);
-    const response = await grpcClient.nodesClaim(
-      request,
-      clientUtils.encodeAuthFromPassword(password),
-    );
-    expect(response).toBeInstanceOf(utilsPB.StatusMessage);
-    // Does not claim (sends gestalt invite)
-    expect(response.getSuccess()).toBeFalsy();
   });
   test('claims a node', async () => {
     const request = new nodesPB.Claim();

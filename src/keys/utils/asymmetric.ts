@@ -23,7 +23,9 @@ import * as utils from '../../utils';
  */
 function makeKeyPair(publicKey: PublicKey, privateKey: PrivateKey): KeyPair {
   // This ensures `secretKey.buffer` is not using the shared internal pool
-  const secretKey = Buffer.allocUnsafeSlow(privateKey.byteLength + publicKey.byteLength);
+  const secretKey = Buffer.allocUnsafeSlow(
+    privateKey.byteLength + publicKey.byteLength,
+  );
   privateKey.copy(secretKey);
   publicKey.copy(secretKey, privateKey.byteLength);
   return {
@@ -107,7 +109,7 @@ function publicKeyFromPrivateKeyX25519(privateKey: PrivateKeyX): PublicKeyX {
  */
 function publicKeyEd25519ToX25519(publicKey: PublicKey): PublicKeyX {
   const publicKeyX25519 = Buffer.allocUnsafeSlow(
-    sodium.crypto_box_PUBLICKEYBYTES
+    sodium.crypto_box_PUBLICKEYBYTES,
   );
   sodium.crypto_sign_ed25519_pk_to_curve25519(publicKeyX25519, publicKey);
   return publicKeyX25519 as PublicKeyX;
@@ -122,7 +124,7 @@ function privateKeyEd25519ToX25519(privateKey: PrivateKey): PrivateKeyX {
   const publicKey = publicKeyFromPrivateKeyEd25519(privateKey);
   const secretKeyEd25519 = Buffer.concat([privateKey, publicKey]);
   const privateKeyX25519 = Buffer.allocUnsafeSlow(
-    sodium.crypto_box_SECRETKEYBYTES
+    sodium.crypto_box_SECRETKEYBYTES,
   );
   sodium.crypto_sign_ed25519_sk_to_curve25519(
     privateKeyX25519,
@@ -139,7 +141,7 @@ function privateKeyEd25519ToX25519(privateKey: PrivateKey): PrivateKeyX {
 function keyPairEd25519ToX25519(keyPair: KeyPair): KeyPairX {
   const publicKeyX25519 = publicKeyEd25519ToX25519(keyPair.publicKey);
   const privateKeyX25519 = Buffer.allocUnsafeSlow(
-    sodium.crypto_box_SECRETKEYBYTES
+    sodium.crypto_box_SECRETKEYBYTES,
   );
   sodium.crypto_sign_ed25519_sk_to_curve25519(
     privateKeyX25519,
@@ -209,7 +211,9 @@ function encryptWithPublicKey(
       recieverPublicKeyX25519,
       senderKeyPairX25519.privateKey,
     );
-    const result = Buffer.allocUnsafeSlow(nonce.byteLength + macAndCipherText.byteLength);
+    const result = Buffer.allocUnsafeSlow(
+      nonce.byteLength + macAndCipherText.byteLength,
+    );
     nonce.copy(result);
     macAndCipherText.copy(result, nonce.byteLength);
     // Note that no public key is concatenated here
@@ -338,7 +342,10 @@ function verifyWithPublicKey(
  * Checks if data is a signature
  */
 function isSignature(signature: unknown): signature is Signature {
-  return Buffer.isBuffer(signature) && signature.byteLength === sodium.crypto_sign_BYTES;
+  return (
+    Buffer.isBuffer(signature) &&
+    signature.byteLength === sodium.crypto_sign_BYTES
+  );
 }
 
 /**

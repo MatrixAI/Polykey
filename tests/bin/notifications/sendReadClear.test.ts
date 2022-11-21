@@ -193,7 +193,8 @@ describe('send/read/claim', () => {
           type: 'General',
           message: 'test message 3',
         },
-        senderId: nodesUtils.encodeNodeId(senderId),
+        iss: nodesUtils.encodeNodeId(senderId),
+        sub: nodesUtils.encodeNodeId(receiverId),
         isRead: true,
       });
       expect(readNotifications[1]).toMatchObject({
@@ -201,7 +202,8 @@ describe('send/read/claim', () => {
           type: 'General',
           message: 'test message 2',
         },
-        senderId: nodesUtils.encodeNodeId(senderId),
+        iss: nodesUtils.encodeNodeId(senderId),
+        sub: nodesUtils.encodeNodeId(receiverId),
         isRead: true,
       });
       expect(readNotifications[2]).toMatchObject({
@@ -209,7 +211,8 @@ describe('send/read/claim', () => {
           type: 'General',
           message: 'test message 1',
         },
-        senderId: nodesUtils.encodeNodeId(senderId),
+        iss: nodesUtils.encodeNodeId(senderId),
+        sub: nodesUtils.encodeNodeId(receiverId),
         isRead: true,
       });
       // Read only unread (none)
@@ -253,7 +256,8 @@ describe('send/read/claim', () => {
           type: 'General',
           message: 'test message 1',
         },
-        senderId: nodesUtils.encodeNodeId(senderId),
+        iss: nodesUtils.encodeNodeId(senderId),
+        sub: nodesUtils.encodeNodeId(receiverId),
         isRead: true,
       });
       expect(readNotifications[1]).toMatchObject({
@@ -261,7 +265,8 @@ describe('send/read/claim', () => {
           type: 'General',
           message: 'test message 2',
         },
-        senderId: nodesUtils.encodeNodeId(senderId),
+        iss: nodesUtils.encodeNodeId(senderId),
+        sub: nodesUtils.encodeNodeId(receiverId),
         isRead: true,
       });
       expect(readNotifications[2]).toMatchObject({
@@ -269,7 +274,8 @@ describe('send/read/claim', () => {
           type: 'General',
           message: 'test message 3',
         },
-        senderId: nodesUtils.encodeNodeId(senderId),
+        iss: nodesUtils.encodeNodeId(senderId),
+        sub: nodesUtils.encodeNodeId(receiverId),
         isRead: true,
       });
       // Read only one notification
@@ -295,7 +301,8 @@ describe('send/read/claim', () => {
           type: 'General',
           message: 'test message 3',
         },
-        senderId: nodesUtils.encodeNodeId(senderId),
+        iss: nodesUtils.encodeNodeId(senderId),
+        sub: nodesUtils.encodeNodeId(receiverId),
         isRead: true,
       });
       // Clear notifications

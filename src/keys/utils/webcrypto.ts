@@ -78,7 +78,9 @@ async function importKeyPair({
  * This means the underlying `ArrayBuffer` is safely transferrable.
  */
 async function exportPublicKey(publicCryptoKey: CryptoKey): Promise<PublicKey> {
-  return Buffer.from(await webcrypto.subtle.exportKey('raw', publicCryptoKey)) as PublicKey;
+  return Buffer.from(
+    await webcrypto.subtle.exportKey('raw', publicCryptoKey),
+  ) as PublicKey;
 }
 
 /**
@@ -87,7 +89,9 @@ async function exportPublicKey(publicCryptoKey: CryptoKey): Promise<PublicKey> {
  * The returned buffers is guaranteed to unpooled.
  * This means the underlying `ArrayBuffer` is safely transferrable.
  */
-async function exportPrivateKey(privateCryptoKey: CryptoKey): Promise<PrivateKey> {
+async function exportPrivateKey(
+  privateCryptoKey: CryptoKey,
+): Promise<PrivateKey> {
   const privateJWK = await webcrypto.subtle.exportKey('jwk', privateCryptoKey);
   if (privateJWK.d == null) {
     throw new TypeError('Private key is not an Ed25519 private key');
@@ -110,7 +114,9 @@ async function exportKeyPair(keyPair: {
 }): Promise<KeyPair> {
   const publicKey = await exportPublicKey(keyPair.publicKey);
   const privateKey = await exportPrivateKey(keyPair.privateKey);
-  const secretKey = Buffer.allocUnsafeSlow(privateKey.byteLength + publicKey.byteLength);
+  const secretKey = Buffer.allocUnsafeSlow(
+    privateKey.byteLength + publicKey.byteLength,
+  );
   privateKey.copy(secretKey);
   publicKey.copy(secretKey, privateKey.byteLength);
   return {

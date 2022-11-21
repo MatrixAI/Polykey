@@ -19,9 +19,8 @@ import { ClientServiceService } from '@/proto/js/polykey/v1/client_service_grpc_
 import * as nodesPB from '@/proto/js/polykey/v1/nodes/nodes_pb';
 import * as clientUtils from '@/client/utils/utils';
 import * as validationErrors from '@/validation/errors';
-import * as testUtils from '../../utils';
 import * as keysUtils from '@/keys/utils/index';
-import { CertificatePEMChain } from '@/keys/types';
+import * as testUtils from '../../utils';
 import * as testsUtils from '../../utils/index';
 
 describe('nodesFind', () => {

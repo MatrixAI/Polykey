@@ -15,25 +15,20 @@ const claimInitialArb = fc.record({
 
 const signedClaimInitialArb = fc.record({
   payload: claimInitialArb,
-  signatures: fc.array(testsTokensUtils.tokenHeaderSignatureArb)
+  signatures: fc.array(testsTokensUtils.tokenHeaderSignatureArb),
 }) as fc.Arbitrary<SignedClaim>;
 
-const signedClaimDigestArb = signedClaimInitialArb.map(
-  (signedClaimInitial) => {
-    return claimsUtils.hashSignedClaim(
-      signedClaimInitial,
-      'blake2b-256'
-    );
-  }
-);
+const signedClaimDigestArb = signedClaimInitialArb.map((signedClaimInitial) => {
+  return claimsUtils.hashSignedClaim(signedClaimInitial, 'blake2b-256');
+});
 
 const signedClaimDigestEncodedArb = signedClaimDigestArb.map(
   (signedClaimDigest) => {
     return claimsUtils.encodeSignedClaimDigest(
       signedClaimDigest,
-      'blake2b-256'
+      'blake2b-256',
     );
-  }
+  },
 );
 
 const claimArb = fc.oneof(
@@ -44,19 +39,19 @@ const claimArb = fc.oneof(
     nbf: fc.nat(),
     seq: fc.nat(),
     prevClaimId: testsIdsUtils.claimIdEncodedArb,
-    prevDigest: signedClaimDigestEncodedArb
-  })
+    prevDigest: signedClaimDigestEncodedArb,
+  }),
 );
 
 const claimEncodedArb = claimArb.map(claimsUtils.generateClaim);
 
 const signedClaimArb = fc.record({
   payload: claimArb,
-  signatures: fc.array(testsTokensUtils.tokenHeaderSignatureArb)
+  signatures: fc.array(testsTokensUtils.tokenHeaderSignatureArb),
 }) as fc.Arbitrary<SignedClaim>;
 
 const signedClaimEncodedArb = signedClaimArb.map(
-  claimsUtils.generateSignedClaim
+  claimsUtils.generateSignedClaim,
 );
 
 export {

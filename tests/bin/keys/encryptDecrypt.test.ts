@@ -1,11 +1,11 @@
+import type { StatusLive } from '@/status/types';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import * as testUtils from '../../utils';
 import * as keysUtils from '@/keys/utils';
 import * as nodesUtils from '@/nodes/utils';
 import sysexits from '@/utils/sysexits';
-import { StatusLive } from '@/status/types';
+import * as testUtils from '../../utils';
 
 describe('encrypt-decrypt', () => {
   const logger = new Logger('encrypt-decrypt test', LogLevel.WARN, [
@@ -16,9 +16,8 @@ describe('encrypt-decrypt', () => {
   let agentClose;
   let agentStatus: StatusLive;
   beforeEach(async () => {
-    ({ agentDir, agentPassword, agentClose, agentStatus } = await testUtils.setupTestAgent(
-      logger,
-    ));
+    ({ agentDir, agentPassword, agentClose, agentStatus } =
+      await testUtils.setupTestAgent(logger));
   });
   afterEach(async () => {
     await agentClose();
@@ -28,7 +27,10 @@ describe('encrypt-decrypt', () => {
   )('decrypts data', async () => {
     const dataPath = path.join(agentDir, 'data');
     const publicKey = keysUtils.publicKeyFromNodeId(agentStatus.data.nodeId);
-    const encrypted = keysUtils.encryptWithPublicKey(publicKey, Buffer.from('abc'));
+    const encrypted = keysUtils.encryptWithPublicKey(
+      publicKey,
+      Buffer.from('abc'),
+    );
     await fs.promises.writeFile(dataPath, encrypted, {
       encoding: 'binary',
     });
@@ -59,7 +61,14 @@ describe('encrypt-decrypt', () => {
       encoding: 'binary',
     });
     const { exitCode, stdout } = await testUtils.pkExec(
-      ['keys', 'encrypt', dataPath, nodesUtils.encodeNodeId(targetNodeId), '--format', 'json'],
+      [
+        'keys',
+        'encrypt',
+        dataPath,
+        nodesUtils.encodeNodeId(targetNodeId),
+        '--format',
+        'json',
+      ],
       {
         env: {
           PK_NODE_PATH: agentDir,
@@ -74,9 +83,11 @@ describe('encrypt-decrypt', () => {
       encryptedData: expect.any(String),
     });
     const encrypted = JSON.parse(stdout).encryptedData;
-    const decrypted = keysUtils.decryptWithPrivateKey(targetkeyPair, Buffer.from(encrypted, 'binary'))
+    const decrypted = keysUtils.decryptWithPrivateKey(
+      targetkeyPair,
+      Buffer.from(encrypted, 'binary'),
+    );
     expect(decrypted?.toString()).toBe('abc');
-
   });
   testUtils.testIf(
     testUtils.isTestPlatformEmpty || testUtils.isTestPlatformDocker,
@@ -106,13 +117,15 @@ describe('encrypt-decrypt', () => {
       encryptedData: expect.any(String),
     });
     const encrypted = JSON.parse(stdout).encryptedData;
-    const decrypted = keysUtils.decryptWithPrivateKey(targetkeyPair, Buffer.from(encrypted, 'binary'))
+    const decrypted = keysUtils.decryptWithPrivateKey(
+      targetkeyPair,
+      Buffer.from(encrypted, 'binary'),
+    );
     expect(decrypted?.toString()).toBe('abc');
   });
   testUtils.testIf(
     testUtils.isTestPlatformEmpty || testUtils.isTestPlatformDocker,
   )('encrypts data fails with invalid JWK file', async () => {
-
     const dataPath = path.join(agentDir, 'data');
     const jwkPath = path.join(agentDir, 'jwk');
     await fs.promises.writeFile(dataPath, 'abc', {
