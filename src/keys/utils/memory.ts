@@ -29,7 +29,7 @@ function bufferLock<T extends Buffer>(
  * TS does not allow unbranding of `BufferLocked`.
  * If the buffer is not locked, it will just zero out the data.
  */
-function bufferUnlock(data: BufferLocked<Buffer>): void {
+function bufferUnlock<T extends Readonly<Buffer>>(data: BufferLocked<T>): void {
   sodium.sodium_munlock(data);
 }
 

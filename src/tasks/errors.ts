@@ -42,7 +42,7 @@ class ErrorTaskManagerProcessing<T> extends ErrorTasks<T> {
 
 class ErrorTask<T> extends ErrorTasks<T> {
   static description = 'Task error';
-  exitCode = sysexits.USAGE;
+  exitCode: number = sysexits.USAGE;
 }
 
 class ErrorTaskMissing<T> extends ErrorTask<T> {

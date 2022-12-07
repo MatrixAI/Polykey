@@ -52,7 +52,7 @@ class ErrorGRPCServerVerification<T> extends ErrorGRPC<T> {
 
 class ErrorPolykeyRemote<T> extends ErrorPolykey<T> {
   static description = 'Remote error from RPC call';
-  exitCode = sysexits.UNAVAILABLE;
+  exitCode: number = sysexits.UNAVAILABLE;
   metadata: ClientMetadata;
 
   constructor(metadata: ClientMetadata, message?: string, options?) {
