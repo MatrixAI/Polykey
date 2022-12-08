@@ -18,30 +18,28 @@ for var in "${required_env_vars[@]}"; do
 done
 
 cluster="$1"
-service="$2"
 
 if [ -z "$cluster" ]; then
   printf '%s\n' 'Unset or empty ECS cluster name' >&2
   exit 1
 fi
 
-if [ -z "$service" ]; then
-  printf '%s\n' 'Unset or empty ECS service name' >&2
-  exit 1
-fi
+services=$(aws ecs list-services --cluster "$cluster" | cut -d'/' -f3)
 
-exec aws ecs update-service \
-  --cluster "$cluster" \
-  --service "$service" \
-  --force-new-deployment \
-  --output json \
-  --query 'service.{
-    serviceName: serviceName,
-    serviceArn: serviceArn,
-    status: status, deployments: deployments[].{
-      id: id,
-      status: status,
-      rolloutState: rolloutState,
-      rolloutStateReason: rolloutStateReason
-    }
-  }'
+for service in $services; do
+  aws ecs update-service \
+    --cluster "$cluster" \
+    --service "$service" \
+    --force-new-deployment \
+    --output json \
+    --query 'service.{
+      serviceName: serviceName,
+      serviceArn: serviceArn,
+      status: status, deployments: deployments[].{
+        id: id,
+        status: status,
+        rolloutState: rolloutState,
+        rolloutStateReason: rolloutStateReason
+      }
+    }'
+done

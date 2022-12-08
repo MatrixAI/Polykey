@@ -302,7 +302,7 @@ integration:deployment:
     - echo 'Deploying ECS service to testnet'
     - >
       nix-shell --run $'
-      ./scripts/deploy-service.sh \'polykey-testnet\' \'polykey-testnet\';
+      ./scripts/deploy-service.sh \'polykey-testnet\';
       '
   after_script:
     - rm -f "$REGISTRY_AUTH_FILE"
