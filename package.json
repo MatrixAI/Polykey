@@ -61,7 +61,7 @@
   "scripts": {
     "prepare": "tsc -p ./tsconfig.build.json",
     "build": "shx rm -rf ./dist && tsc -p ./tsconfig.build.json",
-    "postbuild": "shx cp -fR src/proto dist && shx cp -f src/notifications/*.json dist/notifications/ && shx cp -f src/claims/*.json dist/claims/ && shx cp -f src/status/*.json dist/status/",
+    "postbuild": "shx cp -fR src/proto dist && shx cp -f src/status/*.json dist/status/",
     "postversion": "npm install --package-lock-only --ignore-scripts --silent",
     "ts-node": "ts-node",
     "ts-node-inspect": "node --require ts-node/register --inspect",
