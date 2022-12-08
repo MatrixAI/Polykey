@@ -33,8 +33,6 @@ describe('polykey', () => {
         'start',
         '--node-path',
         path.join(dataDir, 'polykey'),
-        '--root-key-pair-bits',
-        '1024',
         '--client-host',
         '127.0.0.1',
         '--proxy-host',
@@ -49,6 +47,7 @@ describe('polykey', () => {
         env: {
           PK_TEST_DATA_PATH: dataDir,
           PK_PASSWORD: password,
+          PK_FAST_PASSWORD_HASH: 'true',
         },
         cwd: dataDir,
         command: globalThis.testCmd,

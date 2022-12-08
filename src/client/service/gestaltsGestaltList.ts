@@ -2,12 +2,12 @@ import type * as grpc from '@grpc/grpc-js';
 import type { DB } from '@matrixai/db';
 import type { Authenticate } from '../types';
 import type GestaltGraph from '../../gestalts/GestaltGraph';
-import type { Gestalt } from '../../gestalts/types';
 import type * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 import type Logger from '@matrixai/logger';
 import * as grpcUtils from '../../grpc/utils';
 import * as gestaltsPB from '../../proto/js/polykey/v1/gestalts/gestalts_pb';
 import * as clientUtils from '../utils';
+import * as nodesUtils from '../../nodes/utils';
 
 function gestaltsGestaltList({
   authenticate,
@@ -24,18 +24,36 @@ function gestaltsGestaltList({
     call: grpc.ServerWritableStream<utilsPB.EmptyMessage, gestaltsPB.Gestalt>,
   ): Promise<void> => {
     const genWritable = grpcUtils.generatorWritable(call, false);
-    let gestaltMessage: gestaltsPB.Gestalt;
     try {
       const metadata = await authenticate(call.metadata);
       call.sendMetadata(metadata);
-      const certs: Array<Gestalt> = await db.withTransactionF((tran) =>
-        gestaltGraph.getGestalts(tran),
-      );
-      for (const cert of certs) {
-        gestaltMessage = new gestaltsPB.Gestalt();
-        gestaltMessage.setName(JSON.stringify(cert));
-        await genWritable.next(gestaltMessage);
-      }
+      await db.withTransactionF(async (tran) => {
+        for await (const gestalt of gestaltGraph.getGestalts(tran)) {
+          const newGestalt = {
+            matrix: {},
+            nodes: {},
+            identities: gestalt.identities,
+          };
+          for (const [key, value] of Object.entries(gestalt.nodes)) {
+            newGestalt.nodes[key] = {
+              nodeId: nodesUtils.encodeNodeId(value.nodeId),
+            };
+          }
+          for (const keyA of Object.keys(gestalt.matrix)) {
+            let record = newGestalt.matrix[keyA];
+            if (record == null) {
+              record = {};
+              newGestalt.matrix[keyA] = record;
+            }
+            for (const keyB of Object.keys(gestalt.matrix[keyA])) {
+              record[keyB] = null;
+            }
+          }
+          const gestaltMessage = new gestaltsPB.Gestalt();
+          gestaltMessage.setName(JSON.stringify(newGestalt));
+          await genWritable.next(gestaltMessage);
+        }
+      });
       await genWritable.next(null);
       return;
     } catch (e) {

@@ -1,6 +1,7 @@
 import type { DB } from '@matrixai/db';
 import type PolykeyAgent from '../../PolykeyAgent';
-import type KeyManager from '../../keys/KeyManager';
+import type KeyRing from '../../keys/KeyRing';
+import type CertManager from '../../keys/CertManager';
 import type { VaultManager } from '../../vaults';
 import type {
   NodeManager,
@@ -45,13 +46,15 @@ import identitiesProvidersList from './identitiesProvidersList';
 import identitiesTokenDelete from './identitiesTokenDelete';
 import identitiesTokenGet from './identitiesTokenGet';
 import identitiesTokenPut from './identitiesTokenPut';
+import identitiesInvite from './identitiesInvite';
 import keysCertsChainGet from './keysCertsChainGet';
 import keysCertsGet from './keysCertsGet';
 import keysDecrypt from './keysDecrypt';
 import keysEncrypt from './keysEncrypt';
 import keysKeyPairRenew from './keysKeyPairRenew';
 import keysKeyPairReset from './keysKeyPairReset';
-import keysKeyPairRoot from './keysKeyPairRoot';
+import keysKeyPair from './keysKeyPair';
+import keysPublicKey from './keysPublicKey';
 import keysPasswordChange from './keysPasswordChange';
 import keysSign from './keysSign';
 import keysVerify from './keysVerify';
@@ -89,16 +92,18 @@ import * as clientUtils from '../utils';
 import { ClientServiceService } from '../../proto/js/polykey/v1/client_service_grpc_pb';
 
 function createService({
-  keyManager,
+  keyRing,
   sessionManager,
   db,
+  certManager,
   logger = new Logger('GRPCClientClientService'),
   fs = require('fs'),
   ...containerRest
 }: {
   pkAgent: PolykeyAgent;
   db: DB;
-  keyManager: KeyManager;
+  certManager: CertManager;
+  keyRing: KeyRing;
   vaultManager: VaultManager;
   nodeGraph: NodeGraph;
   nodeConnectionManager: NodeConnectionManager;
@@ -116,12 +121,13 @@ function createService({
   logger?: Logger;
   fs?: FileSystem;
 }) {
-  const authenticate = clientUtils.authenticator(sessionManager, keyManager);
+  const authenticate = clientUtils.authenticator(sessionManager, keyRing);
   const container = {
     ...containerRest,
-    keyManager,
+    keyRing,
     sessionManager,
     db,
+    certManager,
     logger,
     fs,
     authenticate,
@@ -153,13 +159,15 @@ function createService({
     identitiesTokenDelete: identitiesTokenDelete(container),
     identitiesTokenGet: identitiesTokenGet(container),
     identitiesTokenPut: identitiesTokenPut(container),
+    identitiesInvite: identitiesInvite(container),
     keysCertsChainGet: keysCertsChainGet(container),
     keysCertsGet: keysCertsGet(container),
     keysDecrypt: keysDecrypt(container),
     keysEncrypt: keysEncrypt(container),
     keysKeyPairRenew: keysKeyPairRenew(container),
     keysKeyPairReset: keysKeyPairReset(container),
-    keysKeyPairRoot: keysKeyPairRoot(container),
+    keysKeyPair: keysKeyPair(container),
+    keysPublicKey: keysPublicKey(container),
     keysPasswordChange: keysPasswordChange(container),
     keysSign: keysSign(container),
     keysVerify: keysVerify(container),

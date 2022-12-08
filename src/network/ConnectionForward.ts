@@ -215,7 +215,7 @@ class ConnectionForward extends Connection {
     }
     const serverCertChain = networkUtils.getCertificateChain(this.tlsSocket);
     try {
-      this.nodeId_ = networkUtils.verifyServerCertificateChain(
+      this.nodeId_ = await networkUtils.verifyServerCertificateChain(
         this.nodeIds,
         serverCertChain,
       );
@@ -328,7 +328,7 @@ class ConnectionForward extends Connection {
 
   @ready(new networkErrors.ErrorConnectionNotRunning())
   public getServerCertificates(): Array<Certificate> {
-    return this.serverCertChain.map((crt) => keysUtils.certCopy(crt));
+    return this.serverCertChain;
   }
 
   @ready(new networkErrors.ErrorConnectionNotRunning())

@@ -1,7 +1,8 @@
 import type { VaultId } from '@/vaults/types';
 import type { Vault } from '@/vaults/Vault';
-import type KeyManager from '@/keys/KeyManager';
+import type KeyRing from '@/keys/KeyRing';
 import type { LevelPath } from '@matrixai/db';
+import type { Key } from '@/keys/types';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
@@ -15,6 +16,7 @@ import * as vaultsErrors from '@/vaults/errors';
 import { sleep } from '@/utils';
 import * as keysUtils from '@/keys/utils';
 import * as vaultsUtils from '@/vaults/utils';
+import * as utils from '@/utils/index';
 import * as nodeTestUtils from '../nodes/utils';
 
 describe('VaultInternal', () => {
@@ -33,11 +35,11 @@ describe('VaultInternal', () => {
 
   const vaultIdGenerator = vaultsUtils.createVaultIdGenerator();
 
-  const fakeKeyManager = {
+  const fakeKeyRing = {
     getNodeId: () => {
       return nodeTestUtils.generateRandomNodeId();
     },
-  } as KeyManager;
+  } as KeyRing;
   const secret1 = { name: 'secret-1', content: 'secret-content-1' };
   const secret2 = { name: 'secret-2', content: 'secret-content-2' };
   const secret3 = { name: 'secret-3', content: 'secret-content-3' };
@@ -52,7 +54,7 @@ describe('VaultInternal', () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
-    dbKey = await keysUtils.generateKey();
+    dbKey = keysUtils.generateKey();
     efsDbPath = path.join(dataDir, 'efsDb');
     await fs.promises.mkdir(efsDbPath);
     efs = await EncryptedFS.createEncryptedFS({
@@ -64,10 +66,20 @@ describe('VaultInternal', () => {
 
     db = await DB.createDB({
       crypto: {
-        key: await keysUtils.generateKey(),
+        key: keysUtils.generateKey(),
         ops: {
-          encrypt: keysUtils.encryptWithKey,
-          decrypt: keysUtils.decryptWithKey,
+          encrypt: async (key, plainText) => {
+            return keysUtils.encryptWithKey(
+              utils.bufferWrap(key) as Key,
+              utils.bufferWrap(plainText),
+            );
+          },
+          decrypt: async (key, cipherText) => {
+            return keysUtils.decryptWithKey(
+              utils.bufferWrap(key) as Key,
+              utils.bufferWrap(cipherText),
+            );
+          },
         },
       },
       dbPath: path.join(dataDir, 'db'),
@@ -79,7 +91,7 @@ describe('VaultInternal', () => {
     vaultId = vaultIdGenerator();
     vault = await VaultInternal.createVaultInternal({
       vaultId,
-      keyManager: fakeKeyManager,
+      keyRing: fakeKeyRing,
       efs,
       logger,
       fresh: true,
@@ -139,7 +151,7 @@ describe('VaultInternal', () => {
     await vault.stop();
     vault = await VaultInternal.createVaultInternal({
       vaultId,
-      keyManager: fakeKeyManager,
+      keyRing: fakeKeyRing,
       efs,
       logger,
       fresh: false,
@@ -876,7 +888,7 @@ describe('VaultInternal', () => {
       vault1 = await VaultInternal.createVaultInternal({
         db,
         efs,
-        keyManager: fakeKeyManager,
+        keyRing: fakeKeyRing,
         vaultId: vaultId1,
         vaultsDbPath,
         logger,
@@ -898,7 +910,7 @@ describe('VaultInternal', () => {
       vault1 = await VaultInternal.createVaultInternal({
         db,
         efs,
-        keyManager: fakeKeyManager,
+        keyRing: fakeKeyRing,
         vaultId: vaultId1,
         vaultsDbPath,
         logger,
@@ -917,7 +929,7 @@ describe('VaultInternal', () => {
       vault2 = await VaultInternal.createVaultInternal({
         db,
         efs,
-        keyManager: fakeKeyManager,
+        keyRing: fakeKeyRing,
         vaultId: vaultId1,
         vaultsDbPath,
         logger,

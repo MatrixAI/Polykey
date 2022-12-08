@@ -57,7 +57,7 @@ class CommandList extends CommandPolykey {
             };
             for (const node of Object.keys(gestalt.nodes)) {
               const nodeInfo = gestalt.nodes[node];
-              newGestalt.nodes.push({ id: nodeInfo.id });
+              newGestalt.nodes.push({ nodeId: nodeInfo.nodeId });
             }
             for (const identity of Object.keys(gestalt.identities)) {
               const identityInfo = gestalt.identities[identity];
@@ -68,7 +68,7 @@ class CommandList extends CommandPolykey {
             }
             // Getting the permissions for the gestalt.
             const nodeMessage = new nodesPB.Node();
-            nodeMessage.setNodeId(newGestalt.nodes[0].id);
+            nodeMessage.setNodeId(newGestalt.nodes[0].nodeId);
             const actionsMessage = await binUtils.retryAuthentication(
               (auth) =>
                 pkClient.grpcClient.gestaltsActionsGetByNode(nodeMessage, auth),
@@ -83,7 +83,7 @@ class CommandList extends CommandPolykey {
         }, meta);
         output = gestalts;
         if (options.format !== 'json') {
-          // Convert to a human readable list.
+          // Convert to a human-readable list.
           output = [];
           let count = 1;
           for (const gestalt of gestalts) {

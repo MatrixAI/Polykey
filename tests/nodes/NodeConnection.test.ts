@@ -1,8 +1,10 @@
 import type { AddressInfo } from 'net';
 import type { ConnectionInfo, Host, Port, TLSConfig } from '@/network/types';
-import type { NodeId, NodeInfo } from '@/nodes/types';
+import type { NodeId } from '@/nodes/types';
+import type { Key } from '@/keys/types';
 import type { Server } from '@grpc/grpc-js';
 import type { ChildProcessWithoutNullStreams } from 'child_process';
+import type { GestaltNodeInfo } from '@/gestalts/types';
 import net from 'net';
 import os from 'os';
 import path from 'path';
@@ -18,7 +20,7 @@ import NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import NodeGraph from '@/nodes/NodeGraph';
 import NodeManager from '@/nodes/NodeManager';
 import VaultManager from '@/vaults/VaultManager';
-import KeyManager from '@/keys/KeyManager';
+import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import GRPCClientAgent from '@/agent/GRPCClientAgent';
 import ACL from '@/acl/ACL';
@@ -31,21 +33,15 @@ import { poll, promise, promisify, sleep } from '@/utils';
 import PolykeyAgent from '@/PolykeyAgent';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as GRPCErrors from '@/grpc/errors';
-import * as nodesUtils from '@/nodes/utils';
 import * as agentErrors from '@/agent/errors';
 import * as grpcUtils from '@/grpc/utils';
+import * as utils from '@/utils';
 import * as testNodesUtils from './utils';
 import * as grpcTestUtils from '../grpc/utils';
 import * as agentTestUtils from '../agent/utils';
-import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
-import * as testUtils from '../utils';
+import * as testsUtils from '../utils';
 
 const destroyCallback = async () => {};
-
-const mockedGenerateDeterministicKeyPair = jest.spyOn(
-  keysUtils,
-  'generateDeterministicKeyPair',
-);
 
 describe(`${NodeConnection.name} test`, () => {
   const logger = new Logger(`${NodeConnection.name} test`, LogLevel.WARN, [
@@ -53,20 +49,15 @@ describe(`${NodeConnection.name} test`, () => {
   ]);
   grpcUtils.setLogger(logger.getChild('grpc'));
 
-  mockedGenerateDeterministicKeyPair.mockImplementation((bits, _) => {
-    return keysUtils.generateKeyPair(bits);
-  });
-
   const password = 'password';
-  const node: NodeInfo = {
-    id: nodesUtils.encodeNodeId(testNodesUtils.generateRandomNodeId()),
-    chain: {},
+  const nodeInfo: GestaltNodeInfo = {
+    nodeId: testNodesUtils.generateRandomNodeId(),
   };
 
   // Server
   let serverDataDir: string;
   let targetNodeId: NodeId;
-  let serverKeyManager: KeyManager;
+  let serverKeyRing: KeyRing;
   let serverVaultManager: VaultManager;
   let serverNodeGraph: NodeGraph;
   let serverNodeConnectionManager: NodeConnectionManager;
@@ -81,7 +72,7 @@ describe(`${NodeConnection.name} test`, () => {
   // Client
   let clientDataDir: string;
   let sourceNodeId: NodeId;
-  let clientKeyManager: KeyManager;
+  let clientKeyRing: KeyRing;
   let clientNodeConnectionManager: NodeConnectionManager;
   const authToken = 'AUTH';
   let clientProxy: Proxy;
@@ -159,13 +150,6 @@ describe(`${NodeConnection.name} test`, () => {
     };
   }
 
-  const newTlsConfig = async (keyManager: KeyManager): Promise<TLSConfig> => {
-    return {
-      keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
-      certChainPem: await keyManager.getRootCertChainPem(),
-    };
-  };
-
   beforeEach(async () => {
     // Server setup
     serverDataDir = await fs.promises.mkdtemp(
@@ -175,28 +159,37 @@ describe(`${NodeConnection.name} test`, () => {
     const serverVaultsPath = path.join(serverDataDir, 'serverVaults');
     const serverDbPath = path.join(serverDataDir, 'serverDb');
 
-    serverKeyManager = await KeyManager.createKeyManager({
+    serverKeyRing = await KeyRing.createKeyRing({
       password,
       keysPath: serverKeysPath,
       fs: fs,
       logger: logger,
-      privateKeyPemOverride: globalRootKeyPems[1],
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
     });
 
-    serverTLSConfig = {
-      keyPrivatePem: serverKeyManager.getRootKeyPairPem().privateKey,
-      certChainPem: await serverKeyManager.getRootCertChainPem(),
-    };
+    serverTLSConfig = await testsUtils.createTLSConfig(serverKeyRing.keyPair);
 
     serverDb = await DB.createDB({
       dbPath: serverDbPath,
       fs: fs,
       logger: logger,
       crypto: {
-        key: serverKeyManager.dbKey,
+        key: serverKeyRing.dbKey,
         ops: {
-          encrypt: keysUtils.encryptWithKey,
-          decrypt: keysUtils.decryptWithKey,
+          encrypt: async (key, plainText) => {
+            return keysUtils.encryptWithKey(
+              utils.bufferWrap(key) as Key,
+              utils.bufferWrap(plainText),
+            );
+          },
+          decrypt: async (key, cipherText) => {
+            return keysUtils.decryptWithKey(
+              utils.bufferWrap(key) as Key,
+              utils.bufferWrap(cipherText),
+            );
+          },
         },
       },
     });
@@ -205,7 +198,7 @@ describe(`${NodeConnection.name} test`, () => {
       logger: logger,
     });
     serverSigchain = await Sigchain.createSigchain({
-      keyManager: serverKeyManager,
+      keyRing: serverKeyRing,
       db: serverDb,
       logger: logger,
     });
@@ -222,7 +215,7 @@ describe(`${NodeConnection.name} test`, () => {
 
     serverNodeGraph = await NodeGraph.createNodeGraph({
       db: serverDb,
-      keyManager: serverKeyManager,
+      keyRing: serverKeyRing,
       logger,
     });
     serverTaskManager = await TaskManager.createTaskManager({
@@ -231,7 +224,7 @@ describe(`${NodeConnection.name} test`, () => {
       logger,
     });
     serverNodeConnectionManager = new NodeConnectionManager({
-      keyManager: serverKeyManager,
+      keyRing: serverKeyRing,
       nodeGraph: serverNodeGraph,
       proxy: serverProxy,
       taskManager: serverTaskManager,
@@ -240,7 +233,8 @@ describe(`${NodeConnection.name} test`, () => {
     serverNodeManager = new NodeManager({
       db: serverDb,
       sigchain: serverSigchain,
-      keyManager: serverKeyManager,
+      gestaltGraph: serverGestaltGraph,
+      keyRing: serverKeyRing,
       nodeGraph: serverNodeGraph,
       nodeConnectionManager: serverNodeConnectionManager,
       taskManager: serverTaskManager,
@@ -249,7 +243,7 @@ describe(`${NodeConnection.name} test`, () => {
     await serverNodeManager.start();
     await serverNodeConnectionManager.start({ nodeManager: serverNodeManager });
     serverVaultManager = await VaultManager.createVaultManager({
-      keyManager: serverKeyManager,
+      keyRing: serverKeyRing,
       vaultsPath: serverVaultsPath,
       nodeConnectionManager: serverNodeConnectionManager,
       notificationsManager: serverNotificationsManager,
@@ -265,13 +259,13 @@ describe(`${NodeConnection.name} test`, () => {
         db: serverDb,
         nodeConnectionManager: serverNodeConnectionManager,
         nodeManager: serverNodeManager,
-        keyManager: serverKeyManager,
+        keyRing: serverKeyRing,
         logger: logger,
       });
-    await serverGestaltGraph.setNode(node);
+    await serverGestaltGraph.setNode(nodeInfo);
     [agentServer, serverPort] = await agentTestUtils.openTestAgentServer({
       db: serverDb,
-      keyManager: serverKeyManager,
+      keyRing: serverKeyRing,
       vaultManager: serverVaultManager,
       nodeConnectionManager: serverNodeConnectionManager,
       nodeManager: serverNodeManager,
@@ -290,26 +284,27 @@ describe(`${NodeConnection.name} test`, () => {
       tlsConfig: serverTLSConfig,
     });
     targetPort = serverProxy.getProxyPort();
-    targetNodeId = serverKeyManager.getNodeId();
+    targetNodeId = serverKeyRing.getNodeId();
 
     // Client setup
     clientDataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-client'),
     );
     const clientKeysPath = path.join(clientDataDir, 'clientKeys');
-    clientKeyManager = await KeyManager.createKeyManager({
+    clientKeyRing = await KeyRing.createKeyRing({
       password,
       keysPath: clientKeysPath,
       logger,
-      privateKeyPemOverride: globalRootKeyPems[2],
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
     });
 
-    const clientTLSConfig = {
-      keyPrivatePem: clientKeyManager.getRootKeyPairPem().privateKey,
-      certChainPem: await clientKeyManager.getRootCertChainPem(),
-    };
+    const clientTLSConfig = await testsUtils.createTLSConfig(
+      clientKeyRing.keyPair,
+    );
 
-    sourceNodeId = clientKeyManager.getNodeId();
+    sourceNodeId = clientKeyRing.getNodeId();
     clientProxy = new Proxy({
       authToken: authToken,
       logger: logger,
@@ -324,7 +319,7 @@ describe(`${NodeConnection.name} test`, () => {
     sourcePort = clientProxy.getProxyPort();
 
     clientNodeConnectionManager = new NodeConnectionManager({
-      keyManager: clientKeyManager,
+      keyRing: clientKeyRing,
       nodeGraph: {} as NodeGraph,
       proxy: clientProxy,
       taskManager: {} as TaskManager,
@@ -333,49 +328,29 @@ describe(`${NodeConnection.name} test`, () => {
     await clientNodeConnectionManager.start({ nodeManager: {} as NodeManager });
 
     // Other setup
-    const privateKey = keysUtils.privateKeyFromPem(globalRootKeyPems[0]);
-    const publicKey = keysUtils.publicKeyFromPrivateKey(privateKey);
-    const cert = keysUtils.generateCertificate(
-      publicKey,
-      privateKey,
-      privateKey,
-      86400,
-    );
-    tlsConfig = {
-      keyPrivatePem: globalRootKeyPems[0],
-      certChainPem: keysUtils.certToPem(cert),
-    };
+    tlsConfig = await testsUtils.createTLSConfig(keysUtils.generateKeyPair());
   }, globalThis.polykeyStartupTimeout * 2);
 
   afterEach(async () => {
     await clientProxy.stop();
-    await clientKeyManager.stop();
-    await clientKeyManager.destroy();
+    await clientKeyRing.stop();
     await fs.promises.rm(clientDataDir, {
       force: true,
       recursive: true,
     });
 
     await serverACL.stop();
-    await serverACL.destroy();
     await serverSigchain.stop();
-    await serverSigchain.destroy();
     await serverGestaltGraph.stop();
-    await serverGestaltGraph.destroy();
     await serverVaultManager.stop();
-    await serverVaultManager.destroy();
     await serverNodeGraph.stop();
-    await serverNodeGraph.destroy();
     await serverNodeConnectionManager.stop();
     await serverNodeManager.stop();
     await serverNotificationsManager.stop();
-    await serverNotificationsManager.destroy();
     await agentTestUtils.closeTestAgentServer(agentServer);
     await serverProxy.stop();
-    await serverKeyManager.stop();
-    await serverKeyManager.destroy();
+    await serverKeyRing.stop();
     await serverDb.stop();
-    await serverDb.destroy();
     await fs.promises.rm(serverDataDir, {
       force: true,
       recursive: true,
@@ -487,8 +462,10 @@ describe(`${NodeConnection.name} test`, () => {
         networkConfig: {
           proxyHost: localHost,
         },
-        keysConfig: {
-          privateKeyPemOverride: globalRootKeyPems[3],
+        keyRingConfig: {
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+          strictMemoryLock: false,
         },
       });
       // Have a nodeConnection try to connect to it
@@ -499,7 +476,7 @@ describe(`${NodeConnection.name} test`, () => {
           logger: logger,
           destroyCallback: killSelf,
           targetHost: polykeyAgent.proxy.getProxyHost(),
-          targetNodeId: polykeyAgent.keyManager.getNodeId(),
+          targetNodeId: polykeyAgent.keyRing.getNodeId(),
           targetPort: polykeyAgent.proxy.getProxyPort(),
           clientFactory: (args) => GRPCClientAgent.createGRPCClientAgent(args),
         },
@@ -508,7 +485,6 @@ describe(`${NodeConnection.name} test`, () => {
 
       // Resolves if the shutdownCallback was called
       await polykeyAgent.stop();
-      await polykeyAgent.destroy();
 
       const client = nodeConnection.getClient();
       const echoMessage = new utilsPB.EchoMessage().setChallenge(
@@ -518,9 +494,8 @@ describe(`${NodeConnection.name} test`, () => {
         agentErrors.ErrorAgentClientDestroyed,
       );
     } finally {
-      await polykeyAgent?.stop();
-      await polykeyAgent?.destroy();
       await nodeConnection?.destroy();
+      await polykeyAgent?.stop();
     }
   });
   test('fails to connect to target (times out)', async () => {
@@ -584,28 +559,6 @@ describe(`${NodeConnection.name} test`, () => {
       await nodeConnection?.destroy();
     }
   });
-  test('getExpectedPublicKey', async () => {
-    let nodeConnection: NodeConnection<GRPCClientAgent> | undefined;
-    try {
-      nodeConnection = await NodeConnection.createNodeConnection({
-        targetNodeId: targetNodeId,
-        targetHost: localHost,
-        targetPort: targetPort,
-        proxy: clientProxy,
-        destroyCallback,
-        logger: logger,
-        clientFactory: async (args) =>
-          GRPCClientAgent.createGRPCClientAgent(args),
-      });
-
-      const expectedPublicKey =
-        nodeConnection.getExpectedPublicKey(targetNodeId);
-      const publicKeyPem = serverKeyManager.getRootKeyPairPem().publicKey;
-      expect(expectedPublicKey).toBe(publicKeyPem);
-    } finally {
-      await nodeConnection?.destroy();
-    }
-  });
   test('should call `killSelf if connection is closed based on bad certificate', async () => {
     let proxy: Proxy | undefined;
     let nodeConnection: NodeConnection<GRPCClientAgent> | undefined;
@@ -637,7 +590,6 @@ describe(`${NodeConnection.name} test`, () => {
         },
         { timer: new Timer({ delay: 500 }) },
       );
-
       // Expecting the connection to fail
       await expect(nodeConnectionP).rejects.toThrow(
         nodesErrors.ErrorNodeConnectionTimeout,
@@ -703,8 +655,10 @@ describe(`${NodeConnection.name} test`, () => {
         networkConfig: {
           proxyHost: localHost,
         },
-        keysConfig: {
-          privateKeyPemOverride: globalRootKeyPems[3],
+        keyRingConfig: {
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+          strictMemoryLock: false,
         },
       });
       // Have a nodeConnection try to connect to it
@@ -715,7 +669,7 @@ describe(`${NodeConnection.name} test`, () => {
           logger: logger,
           destroyCallback: killSelf,
           targetHost: polykeyAgent.proxy.getProxyHost(),
-          targetNodeId: polykeyAgent.keyManager.getNodeId(),
+          targetNodeId: polykeyAgent.keyRing.getNodeId(),
           targetPort: polykeyAgent.proxy.getProxyPort(),
           clientFactory: (args) => GRPCClientAgent.createGRPCClientAgent(args),
         },
@@ -724,14 +678,12 @@ describe(`${NodeConnection.name} test`, () => {
 
       // Resolves if the shutdownCallback was called
       await polykeyAgent.stop();
-      await polykeyAgent.destroy();
       // Kill callback should've been called
       expect(killSelf.mock.calls.length).toBe(1);
       // Node connection should've destroyed itself in response to connection being destroyed
       expect(nodeConnection[destroyed]).toBe(true);
     } finally {
       await polykeyAgent?.stop();
-      await polykeyAgent?.destroy();
       await nodeConnection?.destroy();
     }
   });
@@ -745,11 +697,11 @@ describe(`${NodeConnection.name} test`, () => {
       let testProxy: Proxy | undefined;
       let testProcess: ChildProcessWithoutNullStreams | undefined;
       try {
-        const testProcess = await testUtils.spawn(
+        const testProcess = await testsUtils.spawn(
           'ts-node',
           [
             '--project',
-            testUtils.tsConfigPath,
+            testsUtils.tsConfigPath,
             `${globalThis.testDir}/grpc/utils/testServer.ts`,
           ],
           undefined,
@@ -786,7 +738,7 @@ describe(`${NodeConnection.name} test`, () => {
               await killSelfCheck();
               killSelfP.resolveP(null);
             },
-            targetNodeId: serverKeyManager.getNodeId(),
+            targetNodeId: serverKeyRing.getNodeId(),
             targetHost: testProxy.getProxyHost(),
             targetPort: testProxy.getProxyPort(),
             clientFactory: (args) =>
@@ -822,11 +774,11 @@ describe(`${NodeConnection.name} test`, () => {
       let testProxy: Proxy | undefined;
       let testProcess: ChildProcessWithoutNullStreams | undefined;
       try {
-        const testProcess = await testUtils.spawn(
+        const testProcess = await testsUtils.spawn(
           'ts-node',
           [
             '--project',
-            testUtils.tsConfigPath,
+            testsUtils.tsConfigPath,
             `${globalThis.testDir}/grpc/utils/testServer.ts`,
           ],
           undefined,
@@ -863,7 +815,7 @@ describe(`${NodeConnection.name} test`, () => {
               await killSelfCheck();
               killSelfP.resolveP(null);
             },
-            targetNodeId: serverKeyManager.getNodeId(),
+            targetNodeId: serverKeyRing.getNodeId(),
             targetHost: testProxy.getProxyHost(),
             targetPort: testProxy.getProxyPort(),
             clientFactory: (args) =>
@@ -914,8 +866,9 @@ describe(`${NodeConnection.name} test`, () => {
       await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
 
       // Simulate key change
-      await clientKeyManager.resetRootKeyPair(password);
-      clientProxy.setTLSConfig(await newTlsConfig(clientKeyManager));
+      clientProxy.setTLSConfig(
+        await testsUtils.createTLSConfig(keysUtils.generateKeyPair()),
+      );
 
       // Try again
       await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
@@ -943,8 +896,9 @@ describe(`${NodeConnection.name} test`, () => {
       await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
 
       // Simulate key change
-      await clientKeyManager.renewRootKeyPair(password);
-      clientProxy.setTLSConfig(await newTlsConfig(clientKeyManager));
+      clientProxy.setTLSConfig(
+        await testsUtils.createTLSConfig(keysUtils.generateKeyPair()),
+      );
 
       // Try again
       await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
@@ -972,8 +926,9 @@ describe(`${NodeConnection.name} test`, () => {
       await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
 
       // Simulate key change
-      await clientKeyManager.resetRootCert();
-      clientProxy.setTLSConfig(await newTlsConfig(clientKeyManager));
+      clientProxy.setTLSConfig(
+        await testsUtils.createTLSConfig(keysUtils.generateKeyPair()),
+      );
 
       // Try again
       await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
@@ -1001,8 +956,9 @@ describe(`${NodeConnection.name} test`, () => {
       await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
 
       // Simulate key change
-      await serverKeyManager.resetRootKeyPair(password);
-      serverProxy.setTLSConfig(await newTlsConfig(serverKeyManager));
+      serverProxy.setTLSConfig(
+        await testsUtils.createTLSConfig(keysUtils.generateKeyPair()),
+      );
 
       // Try again
       await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
@@ -1030,8 +986,9 @@ describe(`${NodeConnection.name} test`, () => {
       await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
 
       // Simulate key change
-      await serverKeyManager.renewRootKeyPair(password);
-      serverProxy.setTLSConfig(await newTlsConfig(serverKeyManager));
+      serverProxy.setTLSConfig(
+        await testsUtils.createTLSConfig(keysUtils.generateKeyPair()),
+      );
 
       // Try again
       await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
@@ -1059,8 +1016,9 @@ describe(`${NodeConnection.name} test`, () => {
       await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
 
       // Simulate key change
-      await serverKeyManager.resetRootCert();
-      serverProxy.setTLSConfig(await newTlsConfig(serverKeyManager));
+      serverProxy.setTLSConfig(
+        await testsUtils.createTLSConfig(keysUtils.generateKeyPair()),
+      );
 
       // Try again
       await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
@@ -1072,8 +1030,9 @@ describe(`${NodeConnection.name} test`, () => {
     let conn: NodeConnection<GRPCClientAgent> | undefined;
     try {
       // Simulate key change
-      await clientKeyManager.resetRootKeyPair(password);
-      clientProxy.setTLSConfig(await newTlsConfig(clientKeyManager));
+      clientProxy.setTLSConfig(
+        await testsUtils.createTLSConfig(keysUtils.generateKeyPair()),
+      );
 
       conn = await NodeConnection.createNodeConnection(
         {
@@ -1099,8 +1058,9 @@ describe(`${NodeConnection.name} test`, () => {
     let conn: NodeConnection<GRPCClientAgent> | undefined;
     try {
       // Simulate key change
-      await clientKeyManager.renewRootKeyPair(password);
-      clientProxy.setTLSConfig(await newTlsConfig(clientKeyManager));
+      clientProxy.setTLSConfig(
+        await testsUtils.createTLSConfig(keysUtils.generateKeyPair()),
+      );
 
       conn = await NodeConnection.createNodeConnection(
         {
@@ -1126,8 +1086,9 @@ describe(`${NodeConnection.name} test`, () => {
     let conn: NodeConnection<GRPCClientAgent> | undefined;
     try {
       // Simulate key change
-      await clientKeyManager.resetRootCert();
-      clientProxy.setTLSConfig(await newTlsConfig(clientKeyManager));
+      clientProxy.setTLSConfig(
+        await testsUtils.createTLSConfig(keysUtils.generateKeyPair()),
+      );
 
       conn = await NodeConnection.createNodeConnection(
         {
@@ -1151,9 +1112,9 @@ describe(`${NodeConnection.name} test`, () => {
   });
   test('new connection handles a resetRootKeyPair on receiving side', async () => {
     // Simulate key change
-    await serverKeyManager.resetRootKeyPair(password);
-    serverProxy.setTLSConfig(await newTlsConfig(serverKeyManager));
-
+    const keyPair = keysUtils.generateKeyPair();
+    serverProxy.setTLSConfig(await testsUtils.createTLSConfig(keyPair));
+    const newNodeId = keysUtils.publicKeyToNodeId(keyPair.publicKey);
     const connProm = NodeConnection.createNodeConnection(
       {
         targetNodeId: targetNodeId,
@@ -1175,32 +1136,9 @@ describe(`${NodeConnection.name} test`, () => {
     // Connect with the new NodeId
     let conn: NodeConnection<GRPCClientAgent> | undefined;
     try {
-      conn = await NodeConnection.createNodeConnection({
-        targetNodeId: serverKeyManager.getNodeId(),
-        targetHost: localHost,
-        targetPort: targetPort,
-        proxy: clientProxy,
-        destroyCallback,
-        logger: logger,
-        clientFactory: async (args) =>
-          GRPCClientAgent.createGRPCClientAgent(args),
-      });
-      const client = conn.getClient();
-      await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
-    } finally {
-      await conn?.destroy();
-    }
-  });
-  test('new connection handles a renewRootKeyPair on receiving side', async () => {
-    let conn: NodeConnection<GRPCClientAgent> | undefined;
-    try {
-      // Simulate key change
-      await serverKeyManager.renewRootKeyPair(password);
-      serverProxy.setTLSConfig(await newTlsConfig(serverKeyManager));
-
       conn = await NodeConnection.createNodeConnection(
         {
-          targetNodeId: targetNodeId,
+          targetNodeId: newNodeId,
           targetHost: localHost,
           targetPort: targetPort,
           proxy: clientProxy,
@@ -1211,34 +1149,6 @@ describe(`${NodeConnection.name} test`, () => {
         },
         { timer: new Timer({ delay: 2000 }) },
       );
-
-      const client = conn.getClient();
-      await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
-    } finally {
-      await conn?.destroy();
-    }
-  });
-  test('new connection handles a resetRootCert on receiving side', async () => {
-    let conn: NodeConnection<GRPCClientAgent> | undefined;
-    try {
-      // Simulate key change
-      await serverKeyManager.resetRootCert();
-      serverProxy.setTLSConfig(await newTlsConfig(serverKeyManager));
-
-      conn = await NodeConnection.createNodeConnection(
-        {
-          targetNodeId: targetNodeId,
-          targetHost: localHost,
-          targetPort: targetPort,
-          proxy: clientProxy,
-          destroyCallback,
-          logger: logger,
-          clientFactory: async (args) =>
-            GRPCClientAgent.createGRPCClientAgent(args),
-        },
-        { timer: new Timer({ delay: 2000 }) },
-      );
-
       const client = conn.getClient();
       await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
     } finally {

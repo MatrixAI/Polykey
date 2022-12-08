@@ -1,6 +1,5 @@
 import type { Host, Port } from '@/network/types';
-import type { ClaimData } from '@/claims/types';
-import type { IdentityId, ProviderId } from '@/identities/types';
+import type { NodeIdEncoded } from '@/ids/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -9,14 +8,14 @@ import PolykeyAgent from '@/PolykeyAgent';
 import GRPCServer from '@/grpc/GRPCServer';
 import GRPCClientAgent from '@/agent/GRPCClientAgent';
 import { AgentServiceService } from '@/proto/js/polykey/v1/agent_service_grpc_pb';
-import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
+import * as nodesPB from '@/proto/js/polykey/v1/nodes/nodes_pb';
 import * as nodesUtils from '@/nodes/utils';
-import nodesChainDataGet from '@/agent/service/nodesChainDataGet';
+import nodesClosestLocalNodesGet from '@/agent/service/nodesClosestLocalNodesGet';
 import * as testNodesUtils from '../../nodes/utils';
-import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
+import * as keysUtils from '../../../src/keys/utils/index';
 
-describe('nodesChainDataGet', () => {
-  const logger = new Logger('nodesChainDataGet test', LogLevel.WARN, [
+describe('nodesClosestLocalNode', () => {
+  const logger = new Logger('nodesClosestLocalNode test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
   const password = 'helloworld';
@@ -33,18 +32,21 @@ describe('nodesChainDataGet', () => {
     pkAgent = await PolykeyAgent.createPolykeyAgent({
       password,
       nodePath,
-      keysConfig: {
-        privateKeyPemOverride: globalRootKeyPems[0],
-      },
       seedNodes: {}, // Explicitly no seed nodes on startup
       networkConfig: {
         proxyHost: '127.0.0.1' as Host,
       },
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
       logger,
     });
+    // Setting up a remote keynode
     const agentService = {
-      nodesChainDataGet: nodesChainDataGet({
-        sigchain: pkAgent.sigchain,
+      nodesClosestLocalNodesGet: nodesClosestLocalNodesGet({
+        nodeGraph: pkAgent.nodeGraph,
         db: pkAgent.db,
         logger,
       }),
@@ -56,7 +58,7 @@ describe('nodesChainDataGet', () => {
       port: 0 as Port,
     });
     grpcClient = await GRPCClientAgent.createGRPCClientAgent({
-      nodeId: pkAgent.keyManager.getNodeId(),
+      nodeId: pkAgent.keyRing.getNodeId(),
       host: '127.0.0.1' as Host,
       port: grpcServer.getPort(),
       logger,
@@ -66,43 +68,32 @@ describe('nodesChainDataGet', () => {
     await grpcClient.destroy();
     await grpcServer.stop();
     await pkAgent.stop();
-    await pkAgent.destroy();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
     });
   });
-  test('should get closest nodes', async () => {
-    const srcNodeIdEncoded = nodesUtils.encodeNodeId(
-      pkAgent.keyManager.getNodeId(),
-    );
-    // Add 10 claims
-    for (let i = 1; i <= 5; i++) {
-      const node2 = nodesUtils.encodeNodeId(
-        testNodesUtils.generateRandomNodeId(),
-      );
-      const nodeLink: ClaimData = {
-        type: 'node',
-        node1: srcNodeIdEncoded,
-        node2: node2,
-      };
-      await pkAgent.sigchain.addClaim(nodeLink);
+  test('should get closest local nodes', async () => {
+    // Adding 10 nodes
+    const nodes: Array<NodeIdEncoded> = [];
+    for (let i = 0; i < 10; i++) {
+      const nodeId = testNodesUtils.generateRandomNodeId();
+      await pkAgent.nodeGraph.setNode(nodeId, {
+        host: 'localhost' as Host,
+        port: 55555 as Port,
+      });
+      nodes.push(nodesUtils.encodeNodeId(nodeId));
     }
-    for (let i = 6; i <= 10; i++) {
-      const identityLink: ClaimData = {
-        type: 'identity',
-        node: srcNodeIdEncoded,
-        provider: ('ProviderId' + i.toString()) as ProviderId,
-        identity: ('IdentityId' + i.toString()) as IdentityId,
-      };
-      await pkAgent.sigchain.addClaim(identityLink);
-    }
-
-    const response = await grpcClient.nodesChainDataGet(
-      new utilsPB.EmptyMessage(),
+    const nodeIdEncoded = nodesUtils.encodeNodeId(
+      testNodesUtils.generateRandomNodeId(),
     );
-    const chainIds: Array<string> = [];
-    for (const [id] of response.toObject().chainDataMap) chainIds.push(id);
-    expect(chainIds).toHaveLength(10);
+    const nodeMessage = new nodesPB.Node();
+    nodeMessage.setNodeId(nodeIdEncoded);
+    const result = await grpcClient.nodesClosestLocalNodesGet(nodeMessage);
+    const resultNodes: Array<NodeIdEncoded> = [];
+    for (const [resultNode] of result.toObject().nodeTableMap) {
+      resultNodes.push(resultNode as NodeIdEncoded);
+    }
+    expect(nodes.sort()).toEqual(resultNodes.sort());
   });
 });

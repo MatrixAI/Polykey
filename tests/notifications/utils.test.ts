@@ -1,18 +1,19 @@
 import type { Notification, NotificationData } from '@/notifications/types';
 import type { VaultActions, VaultName } from '@/vaults/types';
-import { createPublicKey } from 'crypto';
-import { EmbeddedJWK, jwtVerify, exportJWK } from 'jose';
+import type { KeyPairLocked } from '@/keys/types';
 import * as keysUtils from '@/keys/utils';
 import * as notificationsUtils from '@/notifications/utils';
-import * as notificationsErrors from '@/notifications/errors';
 import * as vaultsUtils from '@/vaults/utils';
 import * as nodesUtils from '@/nodes/utils';
+import * as validationErrors from '@/validation/errors';
 import * as testNodesUtils from '../nodes/utils';
-import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 
 describe('Notifications utils', () => {
-  const nodeId = testNodesUtils.generateRandomNodeId();
+  const keyPair = keysUtils.generateKeyPair() as KeyPairLocked;
+  const nodeId = keysUtils.publicKeyToNodeId(keyPair.publicKey);
   const nodeIdEncoded = nodesUtils.encodeNodeId(nodeId);
+  const targetNodeId = testNodesUtils.generateRandomNodeId();
+  const targetNodeIdEncoded = nodesUtils.encodeNodeId(targetNodeId);
   const vaultIdGenerator = vaultsUtils.createVaultIdGenerator();
   const vaultId = vaultIdGenerator();
   const vaultIdEncoded = vaultsUtils.encodeVaultId(vaultId);
@@ -41,105 +42,28 @@ describe('Notifications utils', () => {
     }
   });
 
-  test('signs notifications', async () => {
-    const generalNotification: Notification = {
-      data: {
-        type: 'General',
-        message: 'msg',
-      } as NotificationData,
-      senderId: nodeIdEncoded,
-      isRead: false,
-    };
-    const gestaltInviteNotification: Notification = {
-      data: {
-        type: 'GestaltInvite',
-      } as NotificationData,
-      senderId: nodeIdEncoded,
-      isRead: false,
-    };
-    const vaultShareNotification: Notification = {
-      data: {
-        type: 'VaultShare',
-        vaultId: vaultIdEncoded,
-        vaultName: 'vaultName' as VaultName,
-        actions: {
-          clone: null,
-          pull: null,
-        } as VaultActions,
-      } as NotificationData,
-      senderId: nodeIdEncoded,
-      isRead: false,
-    };
-
-    const privateKey = keysUtils.privateKeyFromPem(globalRootKeyPems[0]);
-    const publicKey = keysUtils.publicKeyFromPrivateKey(privateKey);
-    const keyPairPem = keysUtils.keyPairToPem({ privateKey, publicKey });
-    const jwkPublicKey = await exportJWK(createPublicKey(keyPairPem.publicKey));
-
-    const signedGeneralNotification = await notificationsUtils.signNotification(
-      generalNotification,
-      keyPairPem,
-    );
-    const signedGestaltInviteNotification =
-      await notificationsUtils.signNotification(
-        gestaltInviteNotification,
-        keyPairPem,
-      );
-    const signedVaultShareNotification =
-      await notificationsUtils.signNotification(
-        vaultShareNotification,
-        keyPairPem,
-      );
-
-    let result = await jwtVerify(signedGeneralNotification, EmbeddedJWK, {});
-    expect(result.payload.data).toEqual({
-      type: 'General',
-      message: 'msg',
-    });
-    expect(result.payload.senderId).toEqual(nodeIdEncoded);
-    expect(result.payload.isRead).toBeFalsy();
-    expect(result.protectedHeader.jwk).toEqual(jwkPublicKey);
-
-    result = await jwtVerify(signedGestaltInviteNotification, EmbeddedJWK, {});
-    expect(result.payload.data).toEqual({
-      type: 'GestaltInvite',
-    });
-    expect(result.payload.senderId).toEqual(nodeIdEncoded);
-    expect(result.payload.isRead).toBeFalsy();
-    expect(result.protectedHeader.jwk).toEqual(jwkPublicKey);
-
-    result = await jwtVerify(signedVaultShareNotification, EmbeddedJWK, {});
-    expect(result.payload.data).toEqual({
-      type: 'VaultShare',
-      vaultId: vaultIdEncoded,
-      vaultName: 'vaultName',
-      actions: {
-        clone: null,
-        pull: null,
-      },
-    });
-    expect(result.payload.senderId).toEqual(nodeIdEncoded);
-    expect(result.payload.isRead).toBeFalsy();
-    expect(result.protectedHeader.jwk).toEqual(jwkPublicKey);
-  });
-
   test('verifies and decodes signed notifications', async () => {
     const generalNotification: Notification = {
+      typ: 'notification',
       data: {
         type: 'General',
         message: 'msg',
       } as NotificationData,
-      senderId: nodeIdEncoded,
+      iss: nodeIdEncoded,
+      sub: targetNodeIdEncoded,
       isRead: false,
     };
     const gestaltInviteNotification: Notification = {
+      typ: 'notification',
       data: {
         type: 'GestaltInvite',
       } as NotificationData,
-      senderId: nodeIdEncoded,
+      iss: nodeIdEncoded,
+      sub: targetNodeIdEncoded,
       isRead: false,
     };
     const vaultShareNotification: Notification = {
+      typ: 'notification',
       data: {
         type: 'VaultShare',
         vaultId: vaultIdEncoded,
@@ -149,51 +73,54 @@ describe('Notifications utils', () => {
           pull: null,
         } as VaultActions,
       } as NotificationData,
-      senderId: nodeIdEncoded,
+      iss: nodeIdEncoded,
+      sub: targetNodeIdEncoded,
       isRead: false,
     };
 
-    const privateKey = keysUtils.privateKeyFromPem(globalRootKeyPems[1]);
-    const publicKey = keysUtils.publicKeyFromPrivateKey(privateKey);
-    const keyPairPem = keysUtils.keyPairToPem({ privateKey, publicKey });
-
-    const signedGeneralNotification = await notificationsUtils.signNotification(
-      generalNotification,
-      keyPairPem,
-    );
+    const signedGeneralNotification =
+      await notificationsUtils.generateNotification(
+        generalNotification,
+        keyPair,
+      );
     const signedGestaltInviteNotification =
-      await notificationsUtils.signNotification(
+      await notificationsUtils.generateNotification(
         gestaltInviteNotification,
-        keyPairPem,
+        keyPair,
       );
     const signedVaultShareNotification =
-      await notificationsUtils.signNotification(
+      await notificationsUtils.generateNotification(
         vaultShareNotification,
-        keyPairPem,
+        keyPair,
       );
 
     const decodedGeneralNotification =
-      await notificationsUtils.verifyAndDecodeNotif(signedGeneralNotification);
+      await notificationsUtils.verifyAndDecodeNotif(
+        signedGeneralNotification,
+        targetNodeId,
+      );
     expect(decodedGeneralNotification.data).toEqual({
       type: 'General',
       message: 'msg',
     });
-    expect(decodedGeneralNotification.senderId).toEqual(nodeIdEncoded);
+    expect(decodedGeneralNotification.iss).toEqual(nodeIdEncoded);
     expect(decodedGeneralNotification.isRead).toBeFalsy();
 
     const decodedGestaltInviteNotification =
       await notificationsUtils.verifyAndDecodeNotif(
         signedGestaltInviteNotification,
+        targetNodeId,
       );
     expect(decodedGestaltInviteNotification.data).toEqual({
       type: 'GestaltInvite',
     });
-    expect(decodedGestaltInviteNotification.senderId).toEqual(nodeIdEncoded);
+    expect(decodedGestaltInviteNotification.iss).toEqual(nodeIdEncoded);
     expect(decodedGestaltInviteNotification.isRead).toBeFalsy();
 
     const decodedVaultShareNotification =
       await notificationsUtils.verifyAndDecodeNotif(
         signedVaultShareNotification,
+        targetNodeId,
       );
     expect(decodedVaultShareNotification.data).toEqual({
       type: 'VaultShare',
@@ -204,37 +131,37 @@ describe('Notifications utils', () => {
         pull: null,
       },
     });
-    expect(decodedVaultShareNotification.senderId).toEqual(nodeIdEncoded);
+    expect(decodedVaultShareNotification.iss).toEqual(nodeIdEncoded);
     expect(decodedVaultShareNotification.isRead).toBeFalsy();
   });
-
   test('validates correct notifications', async () => {
     const nodeIdOther = testNodesUtils.generateRandomNodeId();
     const nodeIdOtherEncoded = nodesUtils.encodeNodeId(nodeIdOther);
     const generalNotification: Notification = {
+      typ: 'notification',
       data: {
         type: 'General',
         message: 'msg',
       } as NotificationData,
-      senderId: nodeIdOtherEncoded,
+      iss: nodeIdOtherEncoded,
+      sub: targetNodeIdEncoded,
       isRead: false,
     };
-    expect(
-      notificationsUtils.validateNotification(generalNotification),
-    ).toEqual(generalNotification);
+    notificationsUtils.parseNotification(generalNotification);
 
-    const gestaltInviteNotification: Notification = {
+    const gestaltInviteNotification = {
+      typ: 'notification',
       data: {
         type: 'GestaltInvite',
       } as NotificationData,
-      senderId: nodeIdEncoded,
+      iss: nodeIdEncoded,
+      sub: targetNodeIdEncoded,
       isRead: false,
     };
-    expect(
-      notificationsUtils.validateNotification(gestaltInviteNotification),
-    ).toEqual(gestaltInviteNotification);
+    notificationsUtils.parseNotification(gestaltInviteNotification);
 
     const vaultShareNotification: Notification = {
+      typ: 'notification',
       data: {
         type: 'VaultShare',
         vaultId: vaultIdEncoded,
@@ -244,12 +171,11 @@ describe('Notifications utils', () => {
           pull: null,
         } as VaultActions,
       } as NotificationData,
-      senderId: nodeIdEncoded,
+      iss: nodeIdEncoded,
+      sub: targetNodeIdEncoded,
       isRead: false,
     };
-    expect(
-      notificationsUtils.validateNotification(vaultShareNotification),
-    ).toEqual(vaultShareNotification);
+    notificationsUtils.parseNotification(vaultShareNotification);
   });
 
   test('does not validate incorrect notifications', async () => {
@@ -258,24 +184,24 @@ describe('Notifications utils', () => {
       data: {
         type: 'Invalid Type',
       },
-      senderId: nodeIdEncoded,
+      iss: nodeIdEncoded,
       isRead: false,
     };
-    expect(() =>
-      notificationsUtils.validateNotification(notification1),
-    ).toThrow(notificationsErrors.ErrorNotificationsInvalidType);
+    expect(() => notificationsUtils.parseNotification(notification1)).toThrow(
+      validationErrors.ErrorParse,
+    );
 
     // Missing field (message)
     const notification2 = {
       data: {
         type: 'General',
       },
-      senderId: nodeIdEncoded,
+      iss: nodeIdEncoded,
       isRead: false,
     };
-    expect(() =>
-      notificationsUtils.validateNotification(notification2),
-    ).toThrow(notificationsErrors.ErrorNotificationsInvalidType);
+    expect(() => notificationsUtils.parseNotification(notification2)).toThrow(
+      validationErrors.ErrorParse,
+    );
 
     // Extra field (message)
     const notification3 = {
@@ -283,12 +209,12 @@ describe('Notifications utils', () => {
         type: 'GestaltInvite',
         message: 'msg',
       },
-      senderId: nodeIdEncoded,
+      iss: nodeIdEncoded,
       isRead: false,
     };
-    expect(() =>
-      notificationsUtils.validateNotification(notification3),
-    ).toThrow(notificationsErrors.ErrorNotificationsInvalidType);
+    expect(() => notificationsUtils.parseNotification(notification3)).toThrow(
+      validationErrors.ErrorParse,
+    );
 
     // Incorrect field type (actions)
     const notification4 = {
@@ -298,12 +224,12 @@ describe('Notifications utils', () => {
         vaultName: 'vaultName' as VaultName,
         actions: 'clone + pull',
       },
-      senderId: nodeIdEncoded,
+      iss: nodeIdEncoded,
       isRead: false,
     };
-    expect(() =>
-      notificationsUtils.validateNotification(notification4),
-    ).toThrow(notificationsErrors.ErrorNotificationsInvalidType);
+    expect(() => notificationsUtils.parseNotification(notification4)).toThrow(
+      validationErrors.ErrorParse,
+    );
 
     // Incorrect field name (sendingId)
     const notification5 = {
@@ -314,8 +240,8 @@ describe('Notifications utils', () => {
       sendingId: nodeIdEncoded,
       isRead: false,
     };
-    expect(() =>
-      notificationsUtils.validateNotification(notification5),
-    ).toThrow(notificationsErrors.ErrorNotificationsValidationFailed);
+    expect(() => notificationsUtils.parseNotification(notification5)).toThrow(
+      validationErrors.ErrorParse,
+    );
   });
 });

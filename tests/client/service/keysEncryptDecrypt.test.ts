@@ -4,7 +4,7 @@ import path from 'path';
 import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { Metadata } from '@grpc/grpc-js';
-import KeyManager from '@/keys/KeyManager';
+import KeyRing from '@/keys/KeyRing';
 import GRPCServer from '@/grpc/GRPCServer';
 import GRPCClientClient from '@/client/GRPCClientClient';
 import keysEncrypt from '@/client/service/keysEncrypt';
@@ -12,7 +12,7 @@ import keysDecrypt from '@/client/service/keysDecrypt';
 import { ClientServiceService } from '@/proto/js/polykey/v1/client_service_grpc_pb';
 import * as keysPB from '@/proto/js/polykey/v1/keys/keys_pb';
 import * as clientUtils from '@/client/utils/utils';
-import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
+import * as keysUtils from '@/keys/utils/index';
 
 describe('keysEncryptDecrypt', () => {
   const logger = new Logger('keysEncryptDecrypt test', LogLevel.WARN, [
@@ -22,7 +22,7 @@ describe('keysEncryptDecrypt', () => {
   const authenticate = async (metaClient, metaServer = new Metadata()) =>
     metaServer;
   let dataDir: string;
-  let keyManager: KeyManager;
+  let keyRing: KeyRing;
   let grpcServer: GRPCServer;
   let grpcClient: GRPCClientClient;
   beforeEach(async () => {
@@ -30,21 +30,23 @@ describe('keysEncryptDecrypt', () => {
       path.join(os.tmpdir(), 'polykey-test-'),
     );
     const keysPath = path.join(dataDir, 'keys');
-    keyManager = await KeyManager.createKeyManager({
+    keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
       logger,
-      privateKeyPemOverride: globalRootKeyPems[0],
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
     });
     const clientService = {
       keysEncrypt: keysEncrypt({
         authenticate,
-        keyManager,
+        keyRing,
         logger,
       }),
       keysDecrypt: keysDecrypt({
         authenticate,
-        keyManager,
+        keyRing,
         logger,
       }),
     };
@@ -55,7 +57,7 @@ describe('keysEncryptDecrypt', () => {
       port: 0 as Port,
     });
     grpcClient = await GRPCClientClient.createGRPCClientClient({
-      nodeId: keyManager.getNodeId(),
+      nodeId: keyRing.getNodeId(),
       host: '127.0.0.1' as Host,
       port: grpcServer.getPort(),
       logger,
@@ -64,7 +66,7 @@ describe('keysEncryptDecrypt', () => {
   afterEach(async () => {
     await grpcClient.destroy();
     await grpcServer.stop();
-    await keyManager.stop();
+    await keyRing.stop();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
@@ -74,6 +76,8 @@ describe('keysEncryptDecrypt', () => {
     const plainText = Buffer.from('abc');
     const request = new keysPB.Crypto();
     request.setData(plainText.toString('binary'));
+    const publicKeyJWK = keysUtils.publicKeyToJWK(keyRing.keyPair.publicKey);
+    request.setPublicKeyJwk(JSON.stringify(publicKeyJWK));
     const encrypted = await grpcClient.keysEncrypt(
       request,
       clientUtils.encodeAuthFromPassword(password),

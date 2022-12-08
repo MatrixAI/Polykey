@@ -1,7 +1,7 @@
 import type {
   PermissionId,
-  CertificateId,
-  CertificateIdEncoded,
+  CertId,
+  CertIdEncoded,
   NodeId,
   NodeIdEncoded,
   VaultId,
@@ -10,12 +10,25 @@ import type {
   TaskIdEncoded,
   ClaimId,
   ClaimIdEncoded,
+  ProviderIdentityId,
+  ProviderIdentityIdEncoded,
   NotificationId,
+  NotificationIdEncoded,
+  GestaltId,
+  // GestaltNodeId,
+  // GestaltIdentityId,
+  GestaltIdEncoded,
+  // GestaltNodeIdEncoded,
+  // GestaltIdentityIdEncoded,
+  GestaltLinkId,
 } from './types';
 import { IdInternal, IdSortable, IdRandom } from '@matrixai/id';
+import * as keysUtilsRandom from '../keys/utils/random';
 
 function createPermIdGenerator() {
-  const generator = new IdRandom<PermissionId>();
+  const generator = new IdRandom<PermissionId>({
+    randomSource: keysUtilsRandom.getRandomBytes,
+  });
   return () => generator.get();
 }
 
@@ -29,7 +42,7 @@ function encodeNodeId(nodeId: NodeId): NodeIdEncoded {
 /**
  * Decodes an encoded NodeId string into a NodeId
  */
-function decodeNodeId(nodeIdEncoded: any): NodeId | undefined {
+function decodeNodeId(nodeIdEncoded: unknown): NodeId | undefined {
   if (typeof nodeIdEncoded !== 'string') {
     return;
   }
@@ -46,36 +59,36 @@ function decodeNodeId(nodeIdEncoded: any): NodeId | undefined {
 }
 
 /**
- * Generates CertificateId
+ * Generates CertId
  */
-function createCertIdGenerator(
-  lastCertId?: CertificateId,
-): () => CertificateId {
-  const generator = new IdSortable<CertificateId>({
+function createCertIdGenerator(lastCertId?: CertId): () => CertId {
+  const generator = new IdSortable<CertId>({
     lastId: lastCertId,
+    randomSource: keysUtilsRandom.getRandomBytes,
   });
   return () => generator.get();
 }
 
 /**
- * Encodes `CertificateId` to `CertificateIdEncoded`
+ * Encodes `CertId` to `CertIdEncoded`
  */
-function encodeCertId(certId: CertificateId): CertificateIdEncoded {
-  return certId.toMultibase('base32hex') as CertificateIdEncoded;
+function encodeCertId(certId: CertId): CertIdEncoded {
+  return certId.toBuffer().toString('hex') as CertIdEncoded;
 }
 
 /**
- * Decodes `CertificateIdEncoded` to `CertificateId`
+ * Decodes `CertIdEncoded` to `CertId`
  */
-function decodeCertId(certIdEncoded: unknown): CertificateId | undefined {
+function decodeCertId(certIdEncoded: unknown): CertId | undefined {
   if (typeof certIdEncoded !== 'string') {
     return;
   }
-  const certId = IdInternal.fromMultibase<CertificateId>(certIdEncoded);
+  const certIdBuffer = Buffer.from(certIdEncoded, 'hex');
+  const certId = IdInternal.fromBuffer<CertId>(certIdBuffer);
   if (certId == null) {
     return;
   }
-  // All `CertificateId` are 16 bytes long
+  // All `CertId` are 16 bytes long
   if (certId.length !== 16) {
     return;
   }
@@ -83,7 +96,9 @@ function decodeCertId(certIdEncoded: unknown): CertificateId | undefined {
 }
 
 function createVaultIdGenerator(): () => VaultId {
-  const generator = new IdRandom<VaultId>();
+  const generator = new IdRandom<VaultId>({
+    randomSource: keysUtilsRandom.getRandomBytes,
+  });
   return () => generator.get();
 }
 
@@ -91,7 +106,7 @@ function encodeVaultId(vaultId: VaultId): VaultIdEncoded {
   return vaultId.toMultibase('base58btc') as VaultIdEncoded;
 }
 
-function decodeVaultId(vaultIdEncoded: any): VaultId | undefined {
+function decodeVaultId(vaultIdEncoded: unknown): VaultId | undefined {
   if (typeof vaultIdEncoded !== 'string') return;
   const vaultId = IdInternal.fromMultibase<VaultId>(vaultIdEncoded);
   if (vaultId == null) return;
@@ -109,6 +124,7 @@ function decodeVaultId(vaultIdEncoded: any): VaultId | undefined {
 function createTaskIdGenerator(lastTaskId?: TaskId) {
   const generator = new IdSortable<TaskId>({
     lastId: lastTaskId,
+    randomSource: keysUtilsRandom.getRandomBytes,
   });
   return () => generator.get();
 }
@@ -123,7 +139,7 @@ function encodeTaskId(taskId: TaskId): TaskIdEncoded {
 /**
  * Decodes an encoded TaskId string into a TaskId
  */
-function decodeTaskId(taskIdEncoded: any): TaskId | undefined {
+function decodeTaskId(taskIdEncoded: unknown): TaskId | undefined {
   if (typeof taskIdEncoded !== 'string') {
     return;
   }
@@ -144,8 +160,9 @@ function decodeTaskId(taskIdEncoded: any): TaskId | undefined {
  */
 function createClaimIdGenerator(nodeId: NodeId, lastClaimId?: ClaimId) {
   const generator = new IdSortable<ClaimId>({
-    lastId: lastClaimId,
     nodeId,
+    lastId: lastClaimId,
+    randomSource: keysUtilsRandom.getRandomBytes,
   });
   return () => generator.get();
 }
@@ -154,7 +171,10 @@ function encodeClaimId(claimId: ClaimId): ClaimIdEncoded {
   return claimId.toMultibase('base32hex') as ClaimIdEncoded;
 }
 
-function decodeClaimId(claimIdEncoded: string): ClaimId | undefined {
+function decodeClaimId(claimIdEncoded: unknown): ClaimId | undefined {
+  if (typeof claimIdEncoded !== 'string') {
+    return;
+  }
   const claimId = IdInternal.fromMultibase<ClaimId>(claimIdEncoded);
   if (claimId == null) {
     return;
@@ -162,13 +182,148 @@ function decodeClaimId(claimIdEncoded: string): ClaimId | undefined {
   return claimId;
 }
 
+function encodeProviderIdentityId(
+  providerIdentityId: ProviderIdentityId,
+): ProviderIdentityIdEncoded {
+  return JSON.stringify(providerIdentityId) as ProviderIdentityIdEncoded;
+}
+
+function decodeProviderIdentityId(
+  providerIdentityIdEncoded: unknown,
+): ProviderIdentityId | undefined {
+  if (typeof providerIdentityIdEncoded !== 'string') {
+    return;
+  }
+  let providerIdentityId: unknown;
+  try {
+    providerIdentityId = JSON.parse(providerIdentityIdEncoded);
+  } catch {
+    return;
+  }
+  if (
+    !Array.isArray(providerIdentityId) ||
+    providerIdentityId.length !== 2 ||
+    typeof providerIdentityId[0] !== 'string' ||
+    typeof providerIdentityId[1] !== 'string'
+  ) {
+    return;
+  }
+  return providerIdentityId as ProviderIdentityId;
+}
+
+// Function encodeGestaltId(gestaltId: GestaltNodeId): GestaltNodeIdEncoded;
+// function encodeGestaltId(gestaltId: GestaltIdentityId): GestaltIdentityIdEncoded;
+// function encodeGestaltId(gestaltId: GestaltId): GestaltIdEncoded;
+function encodeGestaltId(gestaltId: GestaltId): GestaltIdEncoded {
+  switch (gestaltId[0]) {
+    case 'node':
+      return encodeGestaltNodeId(gestaltId);
+    case 'identity':
+      return encodeGestaltIdentityId(gestaltId);
+  }
+}
+
+function encodeGestaltNodeId(
+  gestaltNodeId: ['node', NodeId],
+): GestaltIdEncoded {
+  return (gestaltNodeId[0] +
+    '-' +
+    encodeNodeId(gestaltNodeId[1])) as GestaltIdEncoded;
+}
+
+function encodeGestaltIdentityId(
+  gestaltIdentityId: ['identity', ProviderIdentityId],
+): GestaltIdEncoded {
+  return (gestaltIdentityId[0] +
+    '-' +
+    encodeProviderIdentityId(gestaltIdentityId[1])) as GestaltIdEncoded;
+}
+
+// Function decodeGestaltId(gestaltIdEncoded: GestaltNodeIdEncoded): GestaltNodeId;
+// function decodeGestaltId(gestaltIdEncoded: GestaltIdentityIdEncoded): GestaltIdentityId;
+// function decodeGestaltId(gestaltIdEncoded: GestaltIdEncoded): GestaltId;
+// function decodeGestaltId(gestaltIdEncoded: unknown): GestaltId | undefined;
+function decodeGestaltId(gestaltIdEncoded: unknown): GestaltId | undefined {
+  if (typeof gestaltIdEncoded !== 'string') {
+    return;
+  }
+  switch (gestaltIdEncoded[0]) {
+    case 'n':
+      return decodeGestaltNodeId(gestaltIdEncoded);
+    case 'i':
+      return decodeGestaltIdentityId(gestaltIdEncoded);
+  }
+}
+
+function decodeGestaltNodeId(
+  gestaltNodeIdEncoded: unknown,
+): ['node', NodeId] | undefined {
+  if (typeof gestaltNodeIdEncoded !== 'string') {
+    return;
+  }
+  if (!gestaltNodeIdEncoded.startsWith('node-')) {
+    return;
+  }
+  const nodeIdEncoded = gestaltNodeIdEncoded.slice(5);
+  const nodeId = decodeNodeId(nodeIdEncoded);
+  if (nodeId == null) {
+    return;
+  }
+  return ['node', nodeId];
+}
+
+function decodeGestaltIdentityId(
+  gestaltIdentityId: unknown,
+): ['identity', ProviderIdentityId] | undefined {
+  if (typeof gestaltIdentityId !== 'string') {
+    return;
+  }
+  if (!gestaltIdentityId.startsWith('identity-')) {
+    return;
+  }
+  const providerIdentityIdEncoded = gestaltIdentityId.slice(9);
+  const providerIdentityId = decodeProviderIdentityId(
+    providerIdentityIdEncoded,
+  );
+  if (providerIdentityId == null) {
+    return;
+  }
+  return ['identity', providerIdentityId];
+}
+
+function createGestaltLinkIdGenerator() {
+  const generator = new IdRandom<GestaltLinkId>({
+    randomSource: keysUtilsRandom.getRandomBytes,
+  });
+  return () => generator.get();
+}
+
 function createNotificationIdGenerator(
   lastId?: NotificationId,
 ): () => NotificationId {
   const generator = new IdSortable<NotificationId>({
     lastId,
+    randomSource: keysUtilsRandom.getRandomBytes,
   });
   return () => generator.get();
+}
+
+function encodeNotificationId(
+  notificationId: NotificationId,
+): NotificationIdEncoded {
+  return notificationId.toMultibase('base32hex') as NotificationIdEncoded;
+}
+
+function decodeNotificationId(
+  notificationIdEncoded: string,
+): NotificationId | undefined {
+  const notificationId = IdInternal.fromMultibase<NotificationId>(
+    notificationIdEncoded,
+  );
+  if (notificationId == null) {
+    return;
+  }
+  return notificationId;
 }
 
 export {
@@ -187,7 +342,18 @@ export {
   createClaimIdGenerator,
   encodeClaimId,
   decodeClaimId,
+  encodeProviderIdentityId,
+  decodeProviderIdentityId,
+  encodeGestaltId,
+  encodeGestaltNodeId,
+  encodeGestaltIdentityId,
+  decodeGestaltId,
+  decodeGestaltNodeId,
+  decodeGestaltIdentityId,
+  createGestaltLinkIdGenerator,
   createNotificationIdGenerator,
+  encodeNotificationId,
+  decodeNotificationId,
 };
 
 export * from './types';

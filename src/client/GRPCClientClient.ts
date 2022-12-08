@@ -458,16 +458,30 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   }
 
   @ready(new clientErrors.ErrorClientClientDestroyed())
-  public keysKeyPairRoot(...args) {
-    return grpcUtils.promisifyUnaryCall<keysPB.KeyPair>(
+  public keysKeyPair(...args) {
+    return grpcUtils.promisifyUnaryCall<keysPB.KeyPairJWK>(
       this.client,
       {
         nodeId: this.nodeId,
         host: this.host,
         port: this.port,
-        command: this.keysKeyPairRoot.name,
+        command: this.keysKeyPair.name,
       },
-      this.client.keysKeyPairRoot,
+      this.client.keysKeyPair,
+    )(...args);
+  }
+
+  @ready(new clientErrors.ErrorClientClientDestroyed())
+  public keysPublicKey(...args) {
+    return grpcUtils.promisifyUnaryCall<keysPB.KeyPairJWK>(
+      this.client,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+        command: this.keysPublicKey.name,
+      },
+      this.client.keysPublicKey,
     )(...args);
   }
 
@@ -1001,6 +1015,20 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
         command: this.identitiesAuthenticatedGet.name,
       },
       this.client.identitiesAuthenticatedGet,
+    )(...args);
+  }
+
+  @ready(new clientErrors.ErrorClientClientDestroyed())
+  public identitiesInvite(...args) {
+    return grpcUtils.promisifyUnaryCall<utilsPB.StatusMessage>(
+      this.client,
+      {
+        nodeId: this.nodeId,
+        host: this.host,
+        port: this.port,
+        command: this.identitiesInvite.name,
+      },
+      this.client.identitiesInvite,
     )(...args);
   }
 

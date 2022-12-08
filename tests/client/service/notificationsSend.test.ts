@@ -1,5 +1,6 @@
 import type { Host, Port } from '@/network/types';
 import type { SignedNotification } from '@/notifications/types';
+import type GestaltGraph from '@/gestalts/GestaltGraph';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -7,7 +8,7 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { Metadata } from '@grpc/grpc-js';
 import { DB } from '@matrixai/db';
 import TaskManager from '@/tasks/TaskManager';
-import KeyManager from '@/keys/KeyManager';
+import KeyRing from '@/keys/KeyRing';
 import GRPCServer from '@/grpc/GRPCServer';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import NodeGraph from '@/nodes/NodeGraph';
@@ -24,7 +25,8 @@ import * as notificationsPB from '@/proto/js/polykey/v1/notifications/notificati
 import * as nodesUtils from '@/nodes/utils';
 import * as notificationsUtils from '@/notifications/utils';
 import * as clientUtils from '@/client/utils';
-import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
+import * as keysUtils from '@/keys/utils/index';
+import * as testsUtils from '../../utils/index';
 
 describe('notificationsSend', () => {
   const logger = new Logger('notificationsSend test', LogLevel.WARN, [
@@ -37,7 +39,7 @@ describe('notificationsSend', () => {
   let mockedSendNotification: jest.SpyInstance;
   beforeAll(async () => {
     mockedSignNotification = jest
-      .spyOn(notificationsUtils, 'signNotification')
+      .spyOn(notificationsUtils, 'generateNotification')
       .mockImplementation(async () => {
         return 'signedNotification' as SignedNotification;
       });
@@ -60,7 +62,7 @@ describe('notificationsSend', () => {
   let sigchain: Sigchain;
   let proxy: Proxy;
   let db: DB;
-  let keyManager: KeyManager;
+  let keyRing: KeyRing;
   let grpcServer: GRPCServer;
   let grpcClient: GRPCClientClient;
   beforeEach(async () => {
@@ -68,11 +70,13 @@ describe('notificationsSend', () => {
       path.join(os.tmpdir(), 'polykey-test-'),
     );
     const keysPath = path.join(dataDir, 'keys');
-    keyManager = await KeyManager.createKeyManager({
+    keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
       logger,
-      privateKeyPemOverride: globalRootKeyPems[0],
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
@@ -88,21 +92,18 @@ describe('notificationsSend', () => {
       logger,
     });
     await proxy.start({
-      tlsConfig: {
-        keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
-        certChainPem: await keyManager.getRootCertChainPem(),
-      },
+      tlsConfig: await testsUtils.createTLSConfig(keyRing.keyPair),
       serverHost: '127.0.0.1' as Host,
       serverPort: 0 as Port,
     });
     sigchain = await Sigchain.createSigchain({
       db,
-      keyManager,
+      keyRing,
       logger,
     });
     nodeGraph = await NodeGraph.createNodeGraph({
       db,
-      keyManager,
+      keyRing,
       logger: logger.getChild('NodeGraph'),
     });
     taskManager = await TaskManager.createTaskManager({
@@ -111,7 +112,7 @@ describe('notificationsSend', () => {
       lazy: true,
     });
     nodeConnectionManager = new NodeConnectionManager({
-      keyManager,
+      keyRing,
       nodeGraph,
       proxy,
       taskManager,
@@ -121,9 +122,10 @@ describe('notificationsSend', () => {
     });
     nodeManager = new NodeManager({
       db,
-      keyManager,
+      keyRing,
       nodeConnectionManager,
       nodeGraph,
+      gestaltGraph: {} as GestaltGraph,
       sigchain,
       taskManager,
       logger,
@@ -137,7 +139,7 @@ describe('notificationsSend', () => {
         db,
         nodeConnectionManager,
         nodeManager,
-        keyManager,
+        keyRing,
         logger,
       });
     const clientService = {
@@ -154,7 +156,7 @@ describe('notificationsSend', () => {
       port: 0 as Port,
     });
     grpcClient = await GRPCClientClient.createGRPCClientClient({
-      nodeId: keyManager.getNodeId(),
+      nodeId: keyRing.getNodeId(),
       host: '127.0.0.1' as Host,
       port: grpcServer.getPort(),
       logger,
@@ -173,7 +175,7 @@ describe('notificationsSend', () => {
     await proxy.stop();
     await acl.stop();
     await db.stop();
-    await keyManager.stop();
+    await keyRing.stop();
     await taskManager.stop();
     await fs.promises.rm(dataDir, {
       force: true,
@@ -201,11 +203,13 @@ describe('notificationsSend', () => {
     ).toEqual(receiverNodeIdEncoded);
     // Check notification content
     expect(mockedSignNotification.mock.calls[0][0]).toEqual({
+      typ: 'notification',
       data: {
         type: 'General',
         message: 'test',
       },
-      senderId: nodesUtils.encodeNodeId(keyManager.getNodeId()),
+      iss: nodesUtils.encodeNodeId(keyRing.getNodeId()),
+      sub: receiverNodeIdEncoded,
       isRead: false,
     });
   });

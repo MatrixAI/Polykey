@@ -1,5 +1,8 @@
 import type { IdentityId, ProviderId } from '@/identities/types';
 import type { Host, Port } from '@/network/types';
+import type GestaltGraph from '@/gestalts/GestaltGraph';
+import type KeyRing from '@/keys/KeyRing';
+import type Sigchain from '@/sigchain/Sigchain';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -23,7 +26,7 @@ describe('identitiesAuthenticatedGet', () => {
   const password = 'helloworld';
   const authenticate = async (metaClient, metaServer = new Metadata()) =>
     metaServer;
-  const tokenData = {
+  const providerToken = {
     accessToken: 'abc123',
   };
   let dataDir: string;
@@ -42,6 +45,9 @@ describe('identitiesAuthenticatedGet', () => {
     });
     identitiesManager = await IdentitiesManager.createIdentitiesManager({
       db,
+      gestaltGraph: {} as GestaltGraph,
+      keyRing: {} as KeyRing,
+      sigchain: {} as Sigchain,
       logger,
     });
     const clientService = {
@@ -88,7 +94,7 @@ describe('identitiesAuthenticatedGet', () => {
     await identitiesManager.putToken(
       user1.providerId,
       user1.identityId,
-      tokenData,
+      providerToken,
     );
     const request = new identitiesPB.OptionalProvider();
     const response = grpcClient.identitiesAuthenticatedGet(
@@ -116,7 +122,7 @@ describe('identitiesAuthenticatedGet', () => {
     await identitiesManager.putToken(
       user1.providerId,
       user1.identityId,
-      tokenData,
+      providerToken,
     );
     await identitiesManager.delToken(user1.providerId, user1.identityId);
     const request = new identitiesPB.OptionalProvider();
@@ -156,17 +162,17 @@ describe('identitiesAuthenticatedGet', () => {
     await identitiesManager.putToken(
       user1.providerId,
       user1.identityId,
-      tokenData,
+      providerToken,
     );
     await identitiesManager.putToken(
       user2.providerId,
       user2.identityId,
-      tokenData,
+      providerToken,
     );
     await identitiesManager.putToken(
       user3.providerId,
       user3.identityId,
-      tokenData,
+      providerToken,
     );
     const request = new identitiesPB.OptionalProvider();
     const response = grpcClient.identitiesAuthenticatedGet(
@@ -208,17 +214,17 @@ describe('identitiesAuthenticatedGet', () => {
     await identitiesManager.putToken(
       user1.providerId,
       user1.identityId,
-      tokenData,
+      providerToken,
     );
     await identitiesManager.putToken(
       user2.providerId,
       user2.identityId,
-      tokenData,
+      providerToken,
     );
     await identitiesManager.putToken(
       user3.providerId,
       user3.identityId,
-      tokenData,
+      providerToken,
     );
     const request = new identitiesPB.OptionalProvider();
     request.setProviderId(provider2.id);

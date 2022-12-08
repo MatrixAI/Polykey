@@ -1,6 +1,6 @@
 import type { NodeId } from './types';
 import type { Host, Hostname, Port } from '../network/types';
-import type { Certificate, PublicKey, PublicKeyPem } from '../keys/types';
+import type { Certificate } from '../keys/types';
 import type Proxy from '../network/Proxy';
 import type GRPCClient from '../grpc/GRPCClient';
 import type { ContextTimed } from '../contexts/types';
@@ -10,7 +10,6 @@ import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
 import * as asyncInit from '@matrixai/async-init';
 import * as nodesErrors from './errors';
 import { context, timedCancellable } from '../contexts/index';
-import * as keysUtils from '../keys/utils';
 import * as grpcErrors from '../grpc/errors';
 import * as networkUtils from '../network/utils';
 import { timerStart } from '../utils/index';
@@ -43,9 +42,9 @@ class NodeConnection<T extends GRPCClient> {
       targetHostname,
       proxy,
       clientFactory,
-      destroyCallback = async () => {},
+      destroyCallback,
       destroyTimeout,
-      logger = new Logger(this.name),
+      logger,
     }: {
       targetNodeId: NodeId;
       targetHost: Host;
@@ -213,27 +212,6 @@ class NodeConnection<T extends GRPCClient> {
       throw new nodesErrors.ErrorNodeConnectionInfoNotExist();
     }
     return connInfo.remoteCertificates;
-  }
-
-  /**
-   * Finds the public key of a corresponding node ID, from the certificate chain
-   * of the node at the end of this connection.
-   * Because a keynode's root key can be refreshed, its node ID can also change.
-   * Sometimes these previous root keys are also still valid - these would be
-   * found in the certificate chain.
-   */
-  @ready(new nodesErrors.ErrorNodeConnectionDestroyed())
-  public getExpectedPublicKey(expectedNodeId: NodeId): PublicKeyPem | null {
-    const certificates = this.getRootCertChain();
-    let publicKey: PublicKeyPem | null = null;
-    for (const cert of certificates) {
-      if (keysUtils.certNodeId(cert)!.equals(expectedNodeId)) {
-        publicKey = keysUtils.publicKeyToPem(
-          cert.publicKey as PublicKey,
-        ) as PublicKeyPem;
-      }
-    }
-    return publicKey;
   }
 }
 

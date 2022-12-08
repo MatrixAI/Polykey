@@ -1,5 +1,5 @@
 import type { Opaque } from '../types';
-import type { NotificationId, NodeIdEncoded } from '../ids/types';
+import type { NotificationId } from '../ids/types';
 import type { VaultName, VaultActions, VaultIdEncoded } from '../vaults/types';
 
 type GestaltInvite = {
@@ -19,8 +19,10 @@ type General = {
 type NotificationData = GestaltInvite | VaultShare | General;
 
 type Notification = {
+  typ: 'notification';
   data: NotificationData;
-  senderId: NodeIdEncoded;
+  iss: string; // Issuer, sender NodeIdEncoded
+  sub: string; // Subject, target NodeIdEncoded
   isRead: boolean;
 };
 

@@ -1,6 +1,10 @@
-import type { IdentityId, IdentityInfo, ProviderId } from '@/identities/types';
-import type { NodeId, NodeInfo } from '@/nodes/types';
+import type { IdentityId, ProviderId } from '@/identities/types';
+import type { NodeId } from '@/nodes/types';
 import type { Host, Port } from '@/network/types';
+import type { GestaltIdentityInfo, GestaltNodeInfo } from '@/gestalts/types';
+import type { ClaimLinkIdentity } from '@/claims/payloads/index';
+import type { ClaimIdEncoded } from '@/ids/index';
+import type { ProviderIdentityClaimId } from '@/identities/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -21,6 +25,9 @@ import * as identitiesPB from '@/proto/js/polykey/v1/identities/identities_pb';
 import * as permissionsPB from '@/proto/js/polykey/v1/permissions/permissions_pb';
 import * as nodesUtils from '@/nodes/utils';
 import * as clientUtils from '@/client/utils/utils';
+import { encodeProviderIdentityId } from '@/ids/index';
+import Token from '@/tokens/Token';
+import * as keysUtils from '@/keys/utils';
 
 describe('gestaltsActionsByIdentity', () => {
   const logger = new Logger('gestaltsActionsByIdentity test', LogLevel.WARN, [
@@ -29,18 +36,14 @@ describe('gestaltsActionsByIdentity', () => {
   const password = 'helloworld';
   const authenticate = async (metaClient, metaServer = new Metadata()) =>
     metaServer;
-  const nodeId = IdInternal.create<NodeId>([
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 5,
-  ]);
-  const node: NodeInfo = {
-    id: nodesUtils.encodeNodeId(nodeId),
-    chain: {},
+  const keyPair = keysUtils.generateKeyPair();
+  const nodeId = keysUtils.publicKeyToNodeId(keyPair.publicKey);
+  const node: GestaltNodeInfo = {
+    nodeId: nodeId,
   };
-  const identity: IdentityInfo = {
+  const identity: GestaltIdentityInfo = {
     identityId: 'identityId' as IdentityId,
     providerId: 'providerId' as ProviderId,
-    claims: {},
   };
   let dataDir: string;
   let gestaltGraph: GestaltGraph;
@@ -67,7 +70,27 @@ describe('gestaltsActionsByIdentity', () => {
       logger,
     });
     // Need identity set in GG with linked node to set permissions
-    await gestaltGraph.linkNodeAndIdentity(node, identity);
+    // Constructing the claim
+    const dummyClaim: ClaimLinkIdentity = {
+      typ: 'ClaimLinkIdentity',
+      iss: nodesUtils.encodeNodeId(nodeId),
+      sub: encodeProviderIdentityId([identity.providerId, identity.identityId]),
+      jti: '' as ClaimIdEncoded,
+      iat: 0,
+      nbf: 0,
+      exp: 0,
+      aud: '',
+      seq: 0,
+      prevClaimId: null,
+      prevDigest: null,
+    };
+    const token = Token.fromPayload(dummyClaim);
+    token.signWithPrivateKey(keyPair);
+    const signedClaim = token.toSigned();
+    await gestaltGraph.linkNodeAndIdentity(node, identity, {
+      claim: signedClaim,
+      meta: { providerIdentityClaimId: '' as ProviderIdentityClaimId },
+    });
     const clientService = {
       gestaltsActionsSetByIdentity: gestaltsActionsSetByIdentity({
         authenticate,

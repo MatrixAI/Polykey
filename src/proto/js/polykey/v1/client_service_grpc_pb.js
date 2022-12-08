@@ -168,15 +168,15 @@ function deserialize_polykey_v1_keys_Key(buffer_arg) {
   return polykey_v1_keys_keys_pb.Key.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_polykey_v1_keys_KeyPair(arg) {
-  if (!(arg instanceof polykey_v1_keys_keys_pb.KeyPair)) {
-    throw new Error('Expected argument of type polykey.v1.keys.KeyPair');
+function serialize_polykey_v1_keys_KeyPairJWK(arg) {
+  if (!(arg instanceof polykey_v1_keys_keys_pb.KeyPairJWK)) {
+    throw new Error('Expected argument of type polykey.v1.keys.KeyPairJWK');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
-function deserialize_polykey_v1_keys_KeyPair(buffer_arg) {
-  return polykey_v1_keys_keys_pb.KeyPair.deserializeBinary(new Uint8Array(buffer_arg));
+function deserialize_polykey_v1_keys_KeyPairJWK(buffer_arg) {
+  return polykey_v1_keys_keys_pb.KeyPairJWK.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_polykey_v1_nodes_Claim(arg) {
@@ -613,16 +613,27 @@ nodesAdd: {
     responseDeserialize: deserialize_polykey_v1_nodes_NodeConnection,
   },
   // Keys
-keysKeyPairRoot: {
-    path: '/polykey.v1.ClientService/KeysKeyPairRoot',
+keysPublicKey: {
+    path: '/polykey.v1.ClientService/KeysPublicKey',
     requestStream: false,
     responseStream: false,
     requestType: polykey_v1_utils_utils_pb.EmptyMessage,
-    responseType: polykey_v1_keys_keys_pb.KeyPair,
+    responseType: polykey_v1_keys_keys_pb.KeyPairJWK,
     requestSerialize: serialize_polykey_v1_utils_EmptyMessage,
     requestDeserialize: deserialize_polykey_v1_utils_EmptyMessage,
-    responseSerialize: serialize_polykey_v1_keys_KeyPair,
-    responseDeserialize: deserialize_polykey_v1_keys_KeyPair,
+    responseSerialize: serialize_polykey_v1_keys_KeyPairJWK,
+    responseDeserialize: deserialize_polykey_v1_keys_KeyPairJWK,
+  },
+  keysKeyPair: {
+    path: '/polykey.v1.ClientService/KeysKeyPair',
+    requestStream: false,
+    responseStream: false,
+    requestType: polykey_v1_sessions_sessions_pb.Password,
+    responseType: polykey_v1_keys_keys_pb.KeyPairJWK,
+    requestSerialize: serialize_polykey_v1_sessions_Password,
+    requestDeserialize: deserialize_polykey_v1_sessions_Password,
+    responseSerialize: serialize_polykey_v1_keys_KeyPairJWK,
+    responseDeserialize: deserialize_polykey_v1_keys_KeyPairJWK,
   },
   keysKeyPairReset: {
     path: '/polykey.v1.ClientService/KeysKeyPairReset',
@@ -1054,6 +1065,17 @@ identitiesAuthenticate: {
     requestDeserialize: deserialize_polykey_v1_identities_Provider,
     responseSerialize: serialize_polykey_v1_identities_Claim,
     responseDeserialize: deserialize_polykey_v1_identities_Claim,
+  },
+  identitiesInvite: {
+    path: '/polykey.v1.ClientService/IdentitiesInvite',
+    requestStream: false,
+    responseStream: false,
+    requestType: polykey_v1_nodes_nodes_pb.Claim,
+    responseType: polykey_v1_utils_utils_pb.StatusMessage,
+    requestSerialize: serialize_polykey_v1_nodes_Claim,
+    requestDeserialize: deserialize_polykey_v1_nodes_Claim,
+    responseSerialize: serialize_polykey_v1_utils_StatusMessage,
+    responseDeserialize: deserialize_polykey_v1_utils_StatusMessage,
   },
   // Gestalts
 gestaltsGestaltList: {

@@ -1,14 +1,9 @@
 import type * as grpc from '@grpc/grpc-js';
-import type { DB } from '@matrixai/db';
 import type { Authenticate } from '../types';
-import type KeyManager from '../../keys/KeyManager';
-import type Sigchain from '../../sigchain/Sigchain';
 import type IdentitiesManager from '../../identities/IdentitiesManager';
 import type { IdentityId, ProviderId } from '../../identities/types';
 import type Logger from '@matrixai/logger';
 import * as grpcUtils from '../../grpc/utils';
-import * as claimsUtils from '../../claims/utils';
-import * as nodesUtils from '../../nodes/utils';
 import * as identitiesErrors from '../../identities/errors';
 import { validateSync } from '../../validation';
 import * as validationUtils from '../../validation/utils';
@@ -22,16 +17,10 @@ import * as clientUtils from '../utils';
 function identitiesClaim({
   authenticate,
   identitiesManager,
-  sigchain,
-  keyManager,
-  db,
   logger,
 }: {
   authenticate: Authenticate;
   identitiesManager: IdentitiesManager;
-  sigchain: Sigchain;
-  keyManager: KeyManager;
-  db: DB;
   logger: Logger;
 }) {
   return async (
@@ -61,30 +50,10 @@ function identitiesClaim({
           identityId: call.request.getIdentityId(),
         },
       );
-      // Check provider is authenticated
-      const provider = identitiesManager.getProvider(providerId);
-      if (provider == null) {
-        throw new identitiesErrors.ErrorProviderMissing();
-      }
-      const identities = await provider.getAuthIdentityIds();
-      if (!identities.includes(identityId)) {
-        throw new identitiesErrors.ErrorProviderUnauthenticated();
-      }
-      // Create identity claim on our node
-      const [, claim] = await db.withTransactionF((tran) =>
-        sigchain.addClaim(
-          {
-            type: 'identity',
-            node: nodesUtils.encodeNodeId(keyManager.getNodeId()),
-            provider: providerId,
-            identity: identityId,
-          },
-          tran,
-        ),
+      const claimData = await identitiesManager.handleClaimIdentity(
+        providerId,
+        identityId,
       );
-      // Publish claim on identity
-      const claimDecoded = claimsUtils.decodeClaim(claim);
-      const claimData = await provider.publishClaim(identityId, claimDecoded);
       response.setClaimId(claimData.id);
       if (claimData.url) {
         response.setUrl(claimData.url);

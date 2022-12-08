@@ -1,34 +1,39 @@
 #!/usr/bin/env ts-node
 
+import type { Summary } from 'benny/lib/internal/common-types';
 import fs from 'fs';
 import path from 'path';
 import si from 'systeminformation';
-import gitgc from './gitgc';
+import { fsWalk, resultsPath, suitesPath } from './utils';
 
 async function main(): Promise<void> {
   await fs.promises.mkdir(path.join(__dirname, 'results'), { recursive: true });
-  await gitgc();
-  const resultFilenames = await fs.promises.readdir(
-    path.join(__dirname, 'results'),
-  );
-  const metricsFile = await fs.promises.open(
-    path.join(__dirname, 'results', 'metrics.txt'),
-    'w',
-  );
-  let concatenating = false;
-  for (const resultFilename of resultFilenames) {
-    if (/.+_metrics\.txt$/.test(resultFilename)) {
-      const metricsData = await fs.promises.readFile(
-        path.join(__dirname, 'results', resultFilename),
-      );
-      if (concatenating) {
-        await metricsFile.write('\n');
-      }
-      await metricsFile.write(metricsData);
-      concatenating = true;
+  // Running all suites
+  for await (const suitePath of fsWalk(suitesPath)) {
+    // Skip over non-ts and non-js files
+    const ext = path.extname(suitePath);
+    if (ext !== '.ts' && ext !== '.js') {
+      continue;
     }
+    const suite: () => Promise<Summary> = (await import(suitePath)).default;
+    await suite();
   }
-  await metricsFile.close();
+  // Concatenating metrics
+  const metricsPath = path.join(resultsPath, 'metrics.txt');
+  await fs.promises.rm(metricsPath);
+  let concatenating = false;
+  for await (const metricPath of fsWalk(resultsPath)) {
+    // Skip over non-metrics files
+    if (!metricPath.endsWith('_metrics.txt')) {
+      continue;
+    }
+    const metricData = await fs.promises.readFile(metricPath);
+    if (concatenating) {
+      await fs.promises.appendFile(metricsPath, '\n');
+    }
+    await fs.promises.appendFile(metricsPath, metricData);
+    concatenating = true;
+  }
   const systemData = await si.get({
     cpu: '*',
     osInfo: 'platform, distro, release, kernel, arch',

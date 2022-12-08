@@ -30,7 +30,8 @@ service ClientService {
   rpc NodesListConnections(polykey.v1.utils.EmptyMessage) returns (stream polykey.v1.nodes.NodeConnection);
 
   // Keys
-  rpc KeysKeyPairRoot (polykey.v1.utils.EmptyMessage) returns (polykey.v1.keys.KeyPair);
+  rpc KeysPublicKey (polykey.v1.utils.EmptyMessage) returns (polykey.v1.keys.KeyPairJWK);
+  rpc KeysKeyPair (polykey.v1.sessions.Password) returns (polykey.v1.keys.KeyPairJWK);
   rpc KeysKeyPairReset (polykey.v1.keys.Key) returns (polykey.v1.utils.EmptyMessage);
   rpc KeysKeyPairRenew (polykey.v1.keys.Key) returns (polykey.v1.utils.EmptyMessage);
   rpc KeysEncrypt (polykey.v1.keys.Crypto) returns (polykey.v1.keys.Crypto);
@@ -74,6 +75,7 @@ service ClientService {
   rpc IdentitiesInfoGet(polykey.v1.identities.ProviderSearch) returns (stream polykey.v1.identities.Info);
   rpc IdentitiesInfoConnectedGet(polykey.v1.identities.ProviderSearch) returns (stream polykey.v1.identities.Info);
   rpc IdentitiesClaim(polykey.v1.identities.Provider) returns (polykey.v1.identities.Claim);
+  rpc IdentitiesInvite(polykey.v1.nodes.Claim) returns (polykey.v1.utils.StatusMessage);
 
   // Gestalts
   rpc GestaltsGestaltList(polykey.v1.utils.EmptyMessage) returns (stream polykey.v1.gestalts.Gestalt);

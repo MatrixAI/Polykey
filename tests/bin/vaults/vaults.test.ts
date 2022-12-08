@@ -1,6 +1,7 @@
-import type { NodeIdEncoded, NodeAddress, NodeInfo } from '@/nodes/types';
+import type { NodeAddress } from '@/nodes/types';
 import type { VaultId, VaultName } from '@/vaults/types';
 import type { Host } from '@/network/types';
+import type { GestaltNodeInfo } from '@/gestalts/types';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
@@ -9,8 +10,8 @@ import * as nodesUtils from '@/nodes/utils';
 import * as vaultsUtils from '@/vaults/utils';
 import sysexits from '@/utils/sysexits';
 import NotificationsManager from '@/notifications/NotificationsManager';
+import * as keysUtils from '@/keys/utils/index';
 import * as testNodesUtils from '../../nodes/utils';
-import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 import * as testUtils from '../../utils';
 
 describe('CLI vaults', () => {
@@ -23,24 +24,18 @@ describe('CLI vaults', () => {
   let vaultNumber: number;
   let vaultName: VaultName;
 
-  const nodeId1Encoded =
-    'vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0' as NodeIdEncoded;
-  const nodeId2Encoded =
-    'vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg' as NodeIdEncoded;
-  const nodeId3Encoded =
-    'v359vgrgmqf1r5g4fvisiddjknjko6bmm4qv7646jr7fi9enbfuug' as NodeIdEncoded;
+  const nodeId1 = testNodesUtils.generateRandomNodeId();
+  const nodeId2 = testNodesUtils.generateRandomNodeId();
+  const nodeId3 = testNodesUtils.generateRandomNodeId();
 
-  const node1: NodeInfo = {
-    id: nodeId1Encoded,
-    chain: {},
+  const node1: GestaltNodeInfo = {
+    nodeId: nodeId1,
   };
-  const node2: NodeInfo = {
-    id: nodeId2Encoded,
-    chain: {},
+  const node2: GestaltNodeInfo = {
+    nodeId: nodeId2,
   };
-  const node3: NodeInfo = {
-    id: nodeId3Encoded,
-    chain: {},
+  const node3: GestaltNodeInfo = {
+    nodeId: nodeId3,
   };
 
   // Helper functions
@@ -59,8 +54,10 @@ describe('CLI vaults', () => {
       password,
       nodePath: dataDir,
       logger: logger,
-      keysConfig: {
-        privateKeyPemOverride: globalRootKeyPems[0],
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
       },
     });
     await polykeyAgent.gestaltGraph.setNode(node1);
@@ -82,7 +79,6 @@ describe('CLI vaults', () => {
   });
   afterEach(async () => {
     await polykeyAgent.stop();
-    await polykeyAgent.destroy();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
@@ -234,10 +230,12 @@ describe('CLI vaults', () => {
         networkConfig: {
           proxyHost: '127.0.0.1' as Host,
         },
-        keysConfig: {
-          privateKeyPemOverride: globalRootKeyPems[1],
-        },
         logger: logger,
+        keyRingConfig: {
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+          strictMemoryLock: false,
+        },
       });
       const vaultId = await targetPolykeyAgent.vaultManager.createVault(
         vaultName,
@@ -252,17 +250,16 @@ describe('CLI vaults', () => {
       );
 
       await targetPolykeyAgent.gestaltGraph.setNode({
-        id: nodesUtils.encodeNodeId(polykeyAgent.keyManager.getNodeId()),
-        chain: {},
+        nodeId: polykeyAgent.keyRing.getNodeId(),
       });
-      const targetNodeId = targetPolykeyAgent.keyManager.getNodeId();
+      const targetNodeId = targetPolykeyAgent.keyRing.getNodeId();
       const targetNodeIdEncoded = nodesUtils.encodeNodeId(targetNodeId);
       await polykeyAgent.nodeManager.setNode(targetNodeId, {
         host: targetPolykeyAgent.proxy.getProxyHost(),
         port: targetPolykeyAgent.proxy.getProxyPort(),
       });
       await targetPolykeyAgent.nodeManager.setNode(
-        polykeyAgent.keyManager.getNodeId(),
+        polykeyAgent.keyRing.getNodeId(),
         {
           host: polykeyAgent.proxy.getProxyHost(),
           port: polykeyAgent.proxy.getProxyPort(),
@@ -275,9 +272,9 @@ describe('CLI vaults', () => {
         vaults: {},
       });
 
-      const nodeId = polykeyAgent.keyManager.getNodeId();
-      await targetPolykeyAgent.gestaltGraph.setGestaltActionByNode(
-        nodeId,
+      const nodeId = polykeyAgent.keyRing.getNodeId();
+      await targetPolykeyAgent.gestaltGraph.setGestaltAction(
+        ['node', nodeId],
         'scan',
       );
       await targetPolykeyAgent.acl.setVaultAction(vaultId, nodeId, 'clone');
@@ -388,7 +385,6 @@ describe('CLI vaults', () => {
       expect(result.exitCode).toBe(sysexits.USAGE);
 
       await targetPolykeyAgent.stop();
-      await targetPolykeyAgent.destroy();
       await fs.promises.rm(dataDir2, {
         force: true,
         recursive: true,
@@ -414,8 +410,7 @@ describe('CLI vaults', () => {
           const targetNodeId = testNodesUtils.generateRandomNodeId();
           const targetNodeIdEncoded = nodesUtils.encodeNodeId(targetNodeId);
           await polykeyAgent.gestaltGraph.setNode({
-            id: nodesUtils.encodeNodeId(targetNodeId),
-            chain: {},
+            nodeId: targetNodeId,
           });
           expect(
             (await polykeyAgent.acl.getNodePerm(targetNodeId))?.vaults[vaultId],
@@ -461,13 +456,12 @@ describe('CLI vaults', () => {
         const targetNodeId = testNodesUtils.generateRandomNodeId();
         const targetNodeIdEncoded = nodesUtils.encodeNodeId(targetNodeId);
         await polykeyAgent.gestaltGraph.setNode({
-          id: nodesUtils.encodeNodeId(targetNodeId),
-          chain: {},
+          nodeId: targetNodeId,
         });
 
         // Creating permissions
-        await polykeyAgent.gestaltGraph.setGestaltActionByNode(
-          targetNodeId,
+        await polykeyAgent.gestaltGraph.setGestaltAction(
+          ['node', targetNodeId],
           'scan',
         );
         await polykeyAgent.acl.setVaultAction(vaultId1, targetNodeId, 'clone');
@@ -541,13 +535,12 @@ describe('CLI vaults', () => {
         const targetNodeId = testNodesUtils.generateRandomNodeId();
         const targetNodeIdEncoded = nodesUtils.encodeNodeId(targetNodeId);
         await polykeyAgent.gestaltGraph.setNode({
-          id: nodesUtils.encodeNodeId(targetNodeId),
-          chain: {},
+          nodeId: targetNodeId,
         });
 
         // Creating permissions
-        await polykeyAgent.gestaltGraph.setGestaltActionByNode(
-          targetNodeId,
+        await polykeyAgent.gestaltGraph.setGestaltAction(
+          ['node', targetNodeId],
           'scan',
         );
         await polykeyAgent.acl.setVaultAction(vaultId1, targetNodeId, 'clone');
@@ -830,11 +823,13 @@ describe('CLI vaults', () => {
             networkConfig: {
               proxyHost: '127.0.0.1' as Host,
             },
-            keysConfig: {
-              privateKeyPemOverride: globalRootKeyPems[2],
+            keyRingConfig: {
+              passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+              passwordMemLimit: keysUtils.passwordMemLimits.min,
+              strictMemoryLock: false,
             },
           });
-          const remoteOnlineNodeId = remoteOnline.keyManager.getNodeId();
+          const remoteOnlineNodeId = remoteOnline.keyRing.getNodeId();
           const remoteOnlineNodeIdEncoded =
             nodesUtils.encodeNodeId(remoteOnlineNodeId);
           await polykeyAgent.nodeManager.setNode(remoteOnlineNodeId, {
@@ -843,8 +838,7 @@ describe('CLI vaults', () => {
           } as NodeAddress);
 
           await remoteOnline.gestaltGraph.setNode({
-            id: nodesUtils.encodeNodeId(polykeyAgent.keyManager.getNodeId()),
-            chain: {},
+            nodeId: polykeyAgent.keyRing.getNodeId(),
           });
 
           const commands1 = [
@@ -863,8 +857,8 @@ describe('CLI vaults', () => {
             'ErrorVaultsPermissionDenied: Permission was denied - Scanning is not allowed for',
           );
 
-          await remoteOnline.gestaltGraph.setGestaltActionByNode(
-            polykeyAgent.keyManager.getNodeId(),
+          await remoteOnline.gestaltGraph.setGestaltAction(
+            ['node', polykeyAgent.keyRing.getNodeId()],
             'notify',
           );
 
@@ -884,8 +878,8 @@ describe('CLI vaults', () => {
             'ErrorVaultsPermissionDenied: Permission was denied - Scanning is not allowed for',
           );
 
-          await remoteOnline.gestaltGraph.setGestaltActionByNode(
-            polykeyAgent.keyManager.getNodeId(),
+          await remoteOnline.gestaltGraph.setGestaltAction(
+            ['node', polykeyAgent.keyRing.getNodeId()],
             'scan',
           );
 
@@ -898,7 +892,7 @@ describe('CLI vaults', () => {
           const vault3Id = await remoteOnline.vaultManager.createVault(
             'Vault3' as VaultName,
           );
-          const nodeId = polykeyAgent.keyManager.getNodeId();
+          const nodeId = polykeyAgent.keyRing.getNodeId();
           await remoteOnline.acl.setVaultAction(vault1Id, nodeId, 'clone');
           await remoteOnline.acl.setVaultAction(vault2Id, nodeId, 'pull');
           await remoteOnline.acl.setVaultAction(vault2Id, nodeId, 'clone');
@@ -925,7 +919,6 @@ describe('CLI vaults', () => {
           );
         } finally {
           await remoteOnline?.stop();
-          await remoteOnline?.destroy();
         }
       },
       globalThis.defaultTimeout * 2,

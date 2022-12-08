@@ -36,7 +36,7 @@ const generateDockerArgs = (mountPath: string) => [
   '--userns',
   'host',
   `--user`,
-  `${process.getuid()}`,
+  `${process.getuid!()}`,
   '--mount',
   `type=bind,src=${mountPath},dst=${mountPath}`,
   '--env',

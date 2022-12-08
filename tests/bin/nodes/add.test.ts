@@ -8,8 +8,8 @@ import { sysexits } from '@/utils';
 import PolykeyAgent from '@/PolykeyAgent';
 import * as nodesUtils from '@/nodes/utils';
 import NodeManager from '@/nodes/NodeManager';
+import * as keysUtils from '@/keys/utils/index';
 import * as testNodesUtils from '../../nodes/utils';
-import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 import * as testUtils from '../../utils';
 
 describe('add', () => {
@@ -40,10 +40,12 @@ describe('add', () => {
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },
-      keysConfig: {
-        privateKeyPemOverride: globalRootKeyPems[0],
-      },
       logger,
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
     });
     await pkAgent.nodeGraph.stop();
     await pkAgent.nodeGraph.start({ fresh: true });
@@ -51,7 +53,6 @@ describe('add', () => {
   });
   afterEach(async () => {
     await pkAgent.stop();
-    await pkAgent.destroy();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,

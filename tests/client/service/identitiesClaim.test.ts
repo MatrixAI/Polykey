@@ -1,8 +1,9 @@
-import type { ClaimLinkIdentity } from '@/claims/types';
-import type { NodeIdEncoded } from '@/ids/types';
 import type { IdentityId, ProviderId } from '@/identities/types';
 import type { Host, Port } from '@/network/types';
 import type NodeManager from '@/nodes/NodeManager';
+import type { ClaimLinkIdentity } from '@/claims/payloads/index';
+import type { Claim } from '@/claims/types';
+import type GestaltGraph from 'gestalts/GestaltGraph';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -10,7 +11,7 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { Metadata } from '@grpc/grpc-js';
 import TaskManager from '@/tasks/TaskManager';
-import KeyManager from '@/keys/KeyManager';
+import KeyRing from '@/keys/KeyRing';
 import IdentitiesManager from '@/identities/IdentitiesManager';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import NodeGraph from '@/nodes/NodeGraph';
@@ -25,9 +26,12 @@ import * as clientUtils from '@/client/utils/utils';
 import * as claimsUtils from '@/claims/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as validationErrors from '@/validation/errors';
+import * as keysUtils from '@/keys/utils/index';
+import Token from '@/tokens/Token';
+import { encodeProviderIdentityId } from '@/identities/utils';
 import TestProvider from '../../identities/TestProvider';
 import * as testUtils from '../../utils';
-import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
+import * as testsUtils from '../../utils/index';
 
 describe('identitiesClaim', () => {
   const logger = new Logger('identitiesClaim test', LogLevel.WARN, [
@@ -39,33 +43,43 @@ describe('identitiesClaim', () => {
   const testToken = {
     providerId: 'test-provider' as ProviderId,
     identityId: 'test_user' as IdentityId,
-    tokenData: {
+    providerToken: {
       accessToken: 'abc123',
     },
   };
-  const claimData: ClaimLinkIdentity = {
-    type: 'identity',
-    node: 'vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg' as NodeIdEncoded,
-    provider: testToken.providerId,
-    identity: testToken.identityId,
-  };
-  const claimId = claimsUtils.createClaimIdGenerator(
-    nodesUtils.decodeNodeId(claimData.node)!,
-  )();
+  const issNodeKeypair = keysUtils.generateKeyPair();
+  const issNodeId = keysUtils.publicKeyToNodeId(issNodeKeypair.publicKey);
+  const claimId = claimsUtils.createClaimIdGenerator(issNodeId)();
   let mockedAddClaim: jest.SpyInstance;
   const dummyNodeManager = { setNode: jest.fn() } as unknown as NodeManager;
   beforeAll(async () => {
-    const privateKey = globalRootKeyPems[0];
-    const claim = await claimsUtils.createClaim({
-      privateKey: privateKey,
-      hPrev: null,
+    const dummyClaim: ClaimLinkIdentity = {
+      typ: 'ClaimLinkIdentity',
+      iss: nodesUtils.encodeNodeId(issNodeId),
+      sub: encodeProviderIdentityId([
+        testToken.providerId,
+        testToken.identityId,
+      ]),
+      jti: claimsUtils.encodeClaimId(claimId),
+      iat: 0,
+      nbf: 0,
+      exp: 0,
+      aud: '',
       seq: 0,
-      data: claimData,
-      kid: claimData.node,
-    });
+      prevClaimId: null,
+      prevDigest: null,
+    };
+    const token = Token.fromPayload(dummyClaim);
+    token.signWithPrivateKey(issNodeKeypair);
+    const signedClaim = token.toSigned();
     mockedAddClaim = jest
       .spyOn(Sigchain.prototype, 'addClaim')
-      .mockResolvedValue([claimId, claim]);
+      .mockImplementation(async (payload, _, func) => {
+        const token = Token.fromPayload(payload);
+        // We need to call the function to resolve a promise in the code
+        func != null && (await func(token as unknown as Token<Claim>));
+        return [claimId, signedClaim];
+      });
   });
   afterAll(async () => {
     mockedAddClaim.mockRestore();
@@ -81,7 +95,7 @@ describe('identitiesClaim', () => {
   let proxy: Proxy;
 
   let db: DB;
-  let keyManager: KeyManager;
+  let keyRing: KeyRing;
   let grpcServer: GRPCServer;
   let grpcClient: GRPCClientClient;
   beforeEach(async () => {
@@ -89,19 +103,31 @@ describe('identitiesClaim', () => {
       path.join(os.tmpdir(), 'polykey-test-'),
     );
     const keysPath = path.join(dataDir, 'keys');
-    keyManager = await KeyManager.createKeyManager({
+    keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
       logger,
-      privateKeyPemOverride: globalRootKeyPems[0],
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
       dbPath,
       logger,
     });
+    sigchain = await Sigchain.createSigchain({
+      db,
+      keyRing,
+      logger,
+    });
     identitiesManager = await IdentitiesManager.createIdentitiesManager({
       db,
+      gestaltGraph: {
+        linkNodeAndIdentity: jest.fn(),
+      } as unknown as GestaltGraph,
+      keyRing: keyRing,
+      sigchain: sigchain,
       logger,
     });
     testProvider = new TestProvider();
@@ -113,19 +139,11 @@ describe('identitiesClaim', () => {
     await proxy.start({
       serverHost: '127.0.0.1' as Host,
       serverPort: 0 as Port,
-      tlsConfig: {
-        keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
-        certChainPem: await keyManager.getRootCertChainPem(),
-      },
-    });
-    sigchain = await Sigchain.createSigchain({
-      db,
-      keyManager,
-      logger,
+      tlsConfig: await testsUtils.createTLSConfig(keyRing.keyPair),
     });
     nodeGraph = await NodeGraph.createNodeGraph({
       db,
-      keyManager,
+      keyRing,
       logger: logger.getChild('NodeGraph'),
     });
     taskManager = await TaskManager.createTaskManager({
@@ -136,7 +154,7 @@ describe('identitiesClaim', () => {
     nodeConnectionManager = new NodeConnectionManager({
       connConnectTime: 2000,
       proxy,
-      keyManager,
+      keyRing,
       nodeGraph,
       taskManager,
       logger: logger.getChild('NodeConnectionManager'),
@@ -147,10 +165,7 @@ describe('identitiesClaim', () => {
       identitiesClaim: identitiesClaim({
         authenticate,
         identitiesManager,
-        sigchain,
-        keyManager,
         logger,
-        db,
       }),
     };
     grpcServer = new GRPCServer({ logger });
@@ -160,7 +175,7 @@ describe('identitiesClaim', () => {
       port: 0 as Port,
     });
     grpcClient = await GRPCClientClient.createGRPCClientClient({
-      nodeId: keyManager.getNodeId(),
+      nodeId: keyRing.getNodeId(),
       host: '127.0.0.1' as Host,
       port: grpcServer.getPort(),
       logger,
@@ -177,7 +192,7 @@ describe('identitiesClaim', () => {
     await proxy.stop();
     await identitiesManager.stop();
     await db.stop();
-    await keyManager.stop();
+    await keyRing.stop();
     await taskManager.stop();
     await fs.promises.rm(dataDir, {
       force: true,
@@ -189,7 +204,7 @@ describe('identitiesClaim', () => {
     await identitiesManager.putToken(
       testToken.providerId,
       testToken.identityId,
-      testToken.tokenData,
+      testToken.providerToken,
     );
     const request = new identitiesPB.Provider();
     request.setIdentityId(testToken.identityId);

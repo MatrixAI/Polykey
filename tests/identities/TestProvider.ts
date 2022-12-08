@@ -2,44 +2,46 @@ import type { POJO } from '@/types';
 import type {
   ProviderId,
   IdentityId,
-  TokenData,
+  ProviderToken,
   IdentityData,
-  IdentityClaim,
-  IdentityClaimId,
   ProviderAuthenticateRequest,
 } from '@/identities/types';
-import type { Claim } from '@/claims/types';
+import type {
+  IdentitySignedClaim,
+  ProviderIdentityClaimId,
+} from '@/identities/types';
+import type { SignedClaim } from '@/claims/types';
+import type { ClaimLinkIdentity } from '@/claims/payloads/index';
 import { Provider } from '@/identities';
 import * as identitiesUtils from '@/identities/utils';
 import * as identitiesErrors from '@/identities/errors';
+import * as tokenUtils from '@/tokens/utils';
 
 class TestProvider extends Provider {
   public readonly id: ProviderId;
 
   public linkIdCounter: number = 0;
-  public users: Record<IdentityId | string, POJO>; // FIXME: the string union on VaultId is to prevent some false errors.
-  public links: Record<IdentityClaimId | string, string>; // FIXME: the string union on VaultId is to prevent some false errors.
-  protected userLinks: Record<
-    IdentityId | string,
-    Array<IdentityClaimId | string>
-  >; // FIXME: the string union on VaultId is to prevent some false errors.
+  public users: Record<IdentityId, POJO>;
+  public links: Record<ProviderIdentityClaimId, string>;
+  protected userLinks: Record<IdentityId, Array<ProviderIdentityClaimId>>;
   protected userTokens: Record<string, IdentityId>;
 
   public constructor(providerId: ProviderId = 'test-provider' as ProviderId) {
     super();
     this.id = providerId;
+    const testUser = 'test_user' as IdentityId;
     this.users = {
-      test_user: {
+      [testUser]: {
         email: 'test_user@test.com',
         connected: ['connected_identity'],
       },
     };
     this.userTokens = {
-      abc123: 'test_user' as IdentityId,
+      abc123: testUser,
     };
     this.links = {};
     this.userLinks = {
-      test_user: ['test_link'],
+      [testUser]: ['test_link' as ProviderIdentityClaimId],
     };
   }
 
@@ -54,13 +56,13 @@ class TestProvider extends Provider {
       },
     };
     // Always gives back the abc123 token
-    const tokenData = { accessToken: 'abc123' };
-    const identityId = await this.getIdentityId(tokenData);
-    await this.putToken(identityId, tokenData);
+    const providerToken = { accessToken: 'abc123' };
+    const identityId = await this.getIdentityId(providerToken);
+    await this.putToken(identityId, providerToken);
     return identityId;
   }
 
-  public async refreshToken(): Promise<TokenData> {
+  public async refreshToken(): Promise<ProviderToken> {
     throw new identitiesErrors.ErrorProviderUnimplemented();
   }
 
@@ -69,22 +71,24 @@ class TestProvider extends Provider {
     return Object.keys(providerTokens) as Array<IdentityId>;
   }
 
-  public async getIdentityId(tokenData: TokenData): Promise<IdentityId> {
-    tokenData = await this.checkToken(tokenData);
-    return this.userTokens[tokenData.accessToken];
+  public async getIdentityId(
+    providerToken: ProviderToken,
+  ): Promise<IdentityId> {
+    providerToken = await this.checkToken(providerToken);
+    return this.userTokens[providerToken.accessToken];
   }
 
   public async getIdentityData(
     authIdentityId: IdentityId,
     identityId: IdentityId,
   ): Promise<IdentityData | undefined> {
-    let tokenData = await this.getToken(authIdentityId);
-    if (!tokenData) {
+    let providerToken = await this.getToken(authIdentityId);
+    if (!providerToken) {
       throw new identitiesErrors.ErrorProviderUnauthenticated(
         `${authIdentityId} has not been authenticated`,
       );
     }
-    tokenData = await this.checkToken(tokenData, authIdentityId);
+    providerToken = await this.checkToken(providerToken, authIdentityId);
     const user = this.users[identityId];
     if (!user) {
       return;
@@ -102,13 +106,13 @@ class TestProvider extends Provider {
     authIdentityId: IdentityId,
     searchTerms: Array<string> = [],
   ): AsyncGenerator<IdentityData> {
-    let tokenData = await this.getToken(authIdentityId);
-    if (!tokenData) {
+    let providerToken = await this.getToken(authIdentityId);
+    if (!providerToken) {
       throw new identitiesErrors.ErrorProviderUnauthenticated(
         `${authIdentityId} has not been authenticated`,
       );
     }
-    tokenData = await this.checkToken(tokenData, authIdentityId);
+    providerToken = await this.checkToken(providerToken, authIdentityId);
     for (const [k, v] of Object.entries(this.users) as Array<
       [
         IdentityId,
@@ -137,41 +141,42 @@ class TestProvider extends Provider {
 
   public async publishClaim(
     authIdentityId: IdentityId,
-    identityClaim: Claim,
-  ): Promise<IdentityClaim> {
-    let tokenData = await this.getToken(authIdentityId);
-    if (!tokenData) {
+    identityClaim: SignedClaim<ClaimLinkIdentity>,
+  ): Promise<IdentitySignedClaim> {
+    const providerToken = await this.getToken(authIdentityId);
+    if (!providerToken) {
       throw new identitiesErrors.ErrorProviderUnauthenticated(
         `${authIdentityId} has not been authenticated`,
       );
     }
-    tokenData = await this.checkToken(tokenData, authIdentityId);
-    const linkId = this.linkIdCounter.toString() as IdentityClaimId;
+    await this.checkToken(providerToken, authIdentityId);
+    const linkId = this.linkIdCounter.toString() as ProviderIdentityClaimId;
     this.linkIdCounter++;
-    this.links[linkId] = JSON.stringify(identityClaim);
+    const identityClainEncoded = tokenUtils.generateSignedToken(identityClaim);
+    this.links[linkId] = JSON.stringify(identityClainEncoded);
     this.userLinks[authIdentityId] = this.userLinks[authIdentityId]
       ? this.userLinks[authIdentityId]
       : [];
     const links = this.userLinks[authIdentityId];
     links.push(linkId);
     return {
-      ...identityClaim,
       id: linkId,
       url: 'test.com',
+      claim: identityClaim,
     };
   }
 
   public async getClaim(
     authIdentityId: IdentityId,
-    claimId: IdentityClaimId,
-  ): Promise<IdentityClaim | undefined> {
-    let tokenData = await this.getToken(authIdentityId);
-    if (!tokenData) {
+    claimId: ProviderIdentityClaimId,
+  ): Promise<IdentitySignedClaim | undefined> {
+    const providerToken = await this.getToken(authIdentityId);
+    if (!providerToken) {
       throw new identitiesErrors.ErrorProviderUnauthenticated(
         `${authIdentityId} has not been authenticated`,
       );
     }
-    tokenData = await this.checkToken(tokenData, authIdentityId);
+    await this.checkToken(providerToken, authIdentityId);
     const linkClaimData = this.links[claimId];
     if (!linkClaimData) {
       return;
@@ -181,7 +186,7 @@ class TestProvider extends Provider {
       return;
     }
     return {
-      ...linkClaim,
+      claim: linkClaim,
       id: claimId,
       url: 'test.com',
     };
@@ -190,21 +195,18 @@ class TestProvider extends Provider {
   public async *getClaims(
     authIdentityId: IdentityId,
     identityId: IdentityId,
-  ): AsyncGenerator<IdentityClaim> {
-    let tokenData = await this.getToken(authIdentityId);
-    if (!tokenData) {
+  ): AsyncGenerator<IdentitySignedClaim> {
+    const providerToken = await this.getToken(authIdentityId);
+    if (!providerToken) {
       throw new identitiesErrors.ErrorProviderUnauthenticated(
         `${authIdentityId} has not been authenticated`,
       );
     }
-    tokenData = await this.checkToken(tokenData, authIdentityId);
+    await this.checkToken(providerToken, authIdentityId);
     const claimIds = this.userLinks[identityId] ?? [];
     for (const claimId of claimIds) {
-      const claimInfo = await this.getClaim(
-        authIdentityId,
-        claimId as IdentityClaimId,
-      );
-      if (claimInfo) {
+      const claimInfo = await this.getClaim(authIdentityId, claimId);
+      if (claimInfo != null) {
         yield claimInfo;
       }
     }

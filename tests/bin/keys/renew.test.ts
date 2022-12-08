@@ -12,19 +12,7 @@ describe('renew', () => {
   let dataDir: string;
   let nodePath: string;
   let pkAgent: PolykeyAgent;
-  let mockedGenerateKeyPair: jest.SpyInstance;
-  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
-  beforeAll(async () => {
-    const globalKeyPair = await testUtils.setupGlobalKeypair();
-    const newKeyPair = await keysUtils.generateKeyPair(1024);
-    mockedGenerateKeyPair = jest
-      .spyOn(keysUtils, 'generateKeyPair')
-      .mockResolvedValueOnce(globalKeyPair)
-      .mockResolvedValue(newKeyPair);
-    mockedGenerateDeterministicKeyPair = jest
-      .spyOn(keysUtils, 'generateDeterministicKeyPair')
-      .mockResolvedValueOnce(globalKeyPair)
-      .mockResolvedValue(newKeyPair);
+  beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(globalThis.tmpDir, 'polykey-test-'),
     );
@@ -39,16 +27,19 @@ describe('renew', () => {
         clientHost: '127.0.0.1' as Host,
       },
       logger,
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
     });
   }, globalThis.defaultTimeout * 2);
-  afterAll(async () => {
+  afterEach(async () => {
     await pkAgent.stop();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
     });
-    mockedGenerateKeyPair.mockRestore();
-    mockedGenerateDeterministicKeyPair.mockRestore();
   });
   testUtils.testIf(testUtils.isTestPlatformEmpty)(
     'renews the keypair',
@@ -56,11 +47,12 @@ describe('renew', () => {
       // Can't test with target executable due to mocking
       // Get previous keypair and nodeId
       let { exitCode, stdout } = await testUtils.pkStdio(
-        ['keys', 'root', '--private-key', '--format', 'json'],
+        ['keys', 'keypair', '--format', 'json'],
         {
           env: {
             PK_NODE_PATH: nodePath,
             PK_PASSWORD: password,
+            PK_PASSWORD_NEW: 'some-password',
           },
           cwd: dataDir,
         },
@@ -96,11 +88,12 @@ describe('renew', () => {
       expect(exitCode).toBe(0);
       // Get new keypair and nodeId and compare against old
       ({ exitCode, stdout } = await testUtils.pkStdio(
-        ['keys', 'root', '--private-key', '--format', 'json'],
+        ['keys', 'keypair', '--format', 'json'],
         {
           env: {
             PK_NODE_PATH: nodePath,
             PK_PASSWORD: 'password-new',
+            PK_PASSWORD_NEW: 'some-password',
           },
           cwd: dataDir,
         },
@@ -123,19 +116,6 @@ describe('renew', () => {
       expect(newPublicKey).not.toBe(prevPublicKey);
       expect(newPrivateKey).not.toBe(prevPrivateKey);
       expect(newNodeId).not.toBe(prevNodeId);
-      // Revert side effects
-      await fs.promises.writeFile(passPath, password);
-      ({ exitCode } = await testUtils.pkStdio(
-        ['keys', 'password', '--password-new-file', passPath],
-        {
-          env: {
-            PK_NODE_PATH: nodePath,
-            PK_PASSWORD: 'password-new',
-          },
-          cwd: dataDir,
-        },
-      ));
-      expect(exitCode).toBe(0);
     },
   );
 });

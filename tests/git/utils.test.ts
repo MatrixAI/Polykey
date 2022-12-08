@@ -26,7 +26,7 @@ describe('Git utils', () => {
       path.join(os.tmpdir(), 'polykey-test-'),
     );
     objectsPath = path.join('.git', 'objects');
-    dbKey = await keysUtils.generateKey(256);
+    dbKey = keysUtils.generateKey();
     efs = await EncryptedFS.createEncryptedFS({
       dbKey,
       dbPath: dataDir,

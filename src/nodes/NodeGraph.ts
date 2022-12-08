@@ -8,7 +8,7 @@ import type {
   NodeBucketIndex,
   NodeGraphSpace,
 } from './types';
-import type KeyManager from '../keys/KeyManager';
+import type KeyRing from '../keys/KeyRing';
 import Logger from '@matrixai/logger';
 import {
   CreateDestroyStartStop,
@@ -31,13 +31,13 @@ interface NodeGraph extends CreateDestroyStartStop {}
 class NodeGraph {
   public static async createNodeGraph({
     db,
-    keyManager,
+    keyRing,
     nodeIdBits = 256,
     logger = new Logger(this.name),
     fresh = false,
   }: {
     db: DB;
-    keyManager: KeyManager;
+    keyRing: KeyRing;
     nodeIdBits?: number;
     logger?: Logger;
     fresh?: boolean;
@@ -45,7 +45,7 @@ class NodeGraph {
     logger.info(`Creating ${this.name}`);
     const nodeGraph = new this({
       db,
-      keyManager,
+      keyRing,
       nodeIdBits,
       logger,
     });
@@ -66,7 +66,7 @@ class NodeGraph {
 
   protected logger: Logger;
   protected db: DB;
-  protected keyManager: KeyManager;
+  protected keyRing: KeyRing;
   protected space: NodeGraphSpace;
   protected nodeGraphDbPath: LevelPath = [this.constructor.name];
   protected nodeGraphMetaDbPath: LevelPath;
@@ -75,18 +75,18 @@ class NodeGraph {
 
   constructor({
     db,
-    keyManager,
+    keyRing,
     nodeIdBits,
     logger,
   }: {
     db: DB;
-    keyManager: KeyManager;
+    keyRing: KeyRing;
     nodeIdBits: number;
     logger: Logger;
   }) {
     this.logger = logger;
     this.db = db;
-    this.keyManager = keyManager;
+    this.keyRing = keyRing;
     this.nodeIdBits = nodeIdBits;
   }
 
@@ -353,7 +353,7 @@ class NodeGraph {
       if (sort === 'distance') {
         nodesUtils.bucketSortByDistance(
           bucket,
-          this.keyManager.getNodeId(),
+          this.keyRing.getNodeId(),
           order,
         );
       }
@@ -433,7 +433,7 @@ class NodeGraph {
           if (sort === 'distance') {
             nodesUtils.bucketSortByDistance(
               bucket,
-              this.keyManager.getNodeId(),
+              this.keyRing.getNodeId(),
               order,
             );
           }
@@ -447,7 +447,7 @@ class NodeGraph {
         if (sort === 'distance') {
           nodesUtils.bucketSortByDistance(
             bucket,
-            this.keyManager.getNodeId(),
+            this.keyRing.getNodeId(),
             order,
           );
         }
@@ -693,10 +693,10 @@ class NodeGraph {
     // 2. iterate over 0 ---> T-1
     // 3. iterate over T+1 ---> K
     // Need to work out the relevant bucket to start from
-    const localNodeId = this.keyManager.getNodeId();
+    const localNodeId = this.keyRing.getNodeId();
     const startingBucket = localNodeId.equals(nodeId)
       ? 0
-      : nodesUtils.bucketIndex(this.keyManager.getNodeId(), nodeId);
+      : nodesUtils.bucketIndex(localNodeId, nodeId);
     // Getting the whole target's bucket first
     const nodeIds: NodeBucket = await this.getBucket(
       startingBucket,
@@ -752,7 +752,7 @@ class NodeGraph {
     if (nodeIds.length === 0) return [];
     // Need to get the whole of the last bucket
     const lastBucketIndex = nodesUtils.bucketIndex(
-      this.keyManager.getNodeId(),
+      this.keyRing.getNodeId(),
       nodeIds[nodeIds.length - 1][0],
     );
     const lastBucket = await this.getBucket(
@@ -765,7 +765,7 @@ class NodeGraph {
     let element = nodeIds.pop();
     while (
       element != null &&
-      nodesUtils.bucketIndex(this.keyManager.getNodeId(), element[0]) ===
+      nodesUtils.bucketIndex(this.keyRing.getNodeId(), element[0]) ===
         lastBucketIndex
     ) {
       element = nodeIds.pop();
@@ -803,7 +803,7 @@ class NodeGraph {
    * that preserves lexicographic order
    */
   public bucketIndex(nodeId: NodeId): [NodeBucketIndex, string] {
-    const nodeIdOwn = this.keyManager.getNodeId();
+    const nodeIdOwn = this.keyRing.getNodeId();
     if (nodeId.equals(nodeIdOwn)) {
       throw new nodesErrors.ErrorNodeGraphSameNodeId();
     }

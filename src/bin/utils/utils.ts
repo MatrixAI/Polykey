@@ -84,7 +84,7 @@ function outputFormatter(msg: OutputObject): string {
       if (value == null) {
         value = '';
       }
-      value = value.toString();
+      value = JSON.stringify(value);
       // Remove the last line terminator if it exists
       // This may exist if the value is multi-line string
       value = value.replace(/(?:\r\n|\n)$/, '');

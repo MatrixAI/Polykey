@@ -29,7 +29,8 @@ interface IClientServiceService extends grpc.ServiceDefinition<grpc.UntypedServi
     nodesFind: IClientServiceService_INodesFind;
     nodesGetAll: IClientServiceService_INodesGetAll;
     nodesListConnections: IClientServiceService_INodesListConnections;
-    keysKeyPairRoot: IClientServiceService_IKeysKeyPairRoot;
+    keysPublicKey: IClientServiceService_IKeysPublicKey;
+    keysKeyPair: IClientServiceService_IKeysKeyPair;
     keysKeyPairReset: IClientServiceService_IKeysKeyPairReset;
     keysKeyPairRenew: IClientServiceService_IKeysKeyPairRenew;
     keysEncrypt: IClientServiceService_IKeysEncrypt;
@@ -69,6 +70,7 @@ interface IClientServiceService extends grpc.ServiceDefinition<grpc.UntypedServi
     identitiesInfoGet: IClientServiceService_IIdentitiesInfoGet;
     identitiesInfoConnectedGet: IClientServiceService_IIdentitiesInfoConnectedGet;
     identitiesClaim: IClientServiceService_IIdentitiesClaim;
+    identitiesInvite: IClientServiceService_IIdentitiesInvite;
     gestaltsGestaltList: IClientServiceService_IGestaltsGestaltList;
     gestaltsGestaltGetByNode: IClientServiceService_IGestaltsGestaltGetByNode;
     gestaltsGestaltGetByIdentity: IClientServiceService_IGestaltsGestaltGetByIdentity;
@@ -177,14 +179,23 @@ interface IClientServiceService_INodesListConnections extends grpc.MethodDefinit
     responseSerialize: grpc.serialize<polykey_v1_nodes_nodes_pb.NodeConnection>;
     responseDeserialize: grpc.deserialize<polykey_v1_nodes_nodes_pb.NodeConnection>;
 }
-interface IClientServiceService_IKeysKeyPairRoot extends grpc.MethodDefinition<polykey_v1_utils_utils_pb.EmptyMessage, polykey_v1_keys_keys_pb.KeyPair> {
-    path: "/polykey.v1.ClientService/KeysKeyPairRoot";
+interface IClientServiceService_IKeysPublicKey extends grpc.MethodDefinition<polykey_v1_utils_utils_pb.EmptyMessage, polykey_v1_keys_keys_pb.KeyPairJWK> {
+    path: "/polykey.v1.ClientService/KeysPublicKey";
     requestStream: false;
     responseStream: false;
     requestSerialize: grpc.serialize<polykey_v1_utils_utils_pb.EmptyMessage>;
     requestDeserialize: grpc.deserialize<polykey_v1_utils_utils_pb.EmptyMessage>;
-    responseSerialize: grpc.serialize<polykey_v1_keys_keys_pb.KeyPair>;
-    responseDeserialize: grpc.deserialize<polykey_v1_keys_keys_pb.KeyPair>;
+    responseSerialize: grpc.serialize<polykey_v1_keys_keys_pb.KeyPairJWK>;
+    responseDeserialize: grpc.deserialize<polykey_v1_keys_keys_pb.KeyPairJWK>;
+}
+interface IClientServiceService_IKeysKeyPair extends grpc.MethodDefinition<polykey_v1_sessions_sessions_pb.Password, polykey_v1_keys_keys_pb.KeyPairJWK> {
+    path: "/polykey.v1.ClientService/KeysKeyPair";
+    requestStream: false;
+    responseStream: false;
+    requestSerialize: grpc.serialize<polykey_v1_sessions_sessions_pb.Password>;
+    requestDeserialize: grpc.deserialize<polykey_v1_sessions_sessions_pb.Password>;
+    responseSerialize: grpc.serialize<polykey_v1_keys_keys_pb.KeyPairJWK>;
+    responseDeserialize: grpc.deserialize<polykey_v1_keys_keys_pb.KeyPairJWK>;
 }
 interface IClientServiceService_IKeysKeyPairReset extends grpc.MethodDefinition<polykey_v1_keys_keys_pb.Key, polykey_v1_utils_utils_pb.EmptyMessage> {
     path: "/polykey.v1.ClientService/KeysKeyPairReset";
@@ -537,6 +548,15 @@ interface IClientServiceService_IIdentitiesClaim extends grpc.MethodDefinition<p
     responseSerialize: grpc.serialize<polykey_v1_identities_identities_pb.Claim>;
     responseDeserialize: grpc.deserialize<polykey_v1_identities_identities_pb.Claim>;
 }
+interface IClientServiceService_IIdentitiesInvite extends grpc.MethodDefinition<polykey_v1_nodes_nodes_pb.Claim, polykey_v1_utils_utils_pb.StatusMessage> {
+    path: "/polykey.v1.ClientService/IdentitiesInvite";
+    requestStream: false;
+    responseStream: false;
+    requestSerialize: grpc.serialize<polykey_v1_nodes_nodes_pb.Claim>;
+    requestDeserialize: grpc.deserialize<polykey_v1_nodes_nodes_pb.Claim>;
+    responseSerialize: grpc.serialize<polykey_v1_utils_utils_pb.StatusMessage>;
+    responseDeserialize: grpc.deserialize<polykey_v1_utils_utils_pb.StatusMessage>;
+}
 interface IClientServiceService_IGestaltsGestaltList extends grpc.MethodDefinition<polykey_v1_utils_utils_pb.EmptyMessage, polykey_v1_gestalts_gestalts_pb.Gestalt> {
     path: "/polykey.v1.ClientService/GestaltsGestaltList";
     requestStream: false;
@@ -695,7 +715,8 @@ export interface IClientServiceServer extends grpc.UntypedServiceImplementation 
     nodesFind: grpc.handleUnaryCall<polykey_v1_nodes_nodes_pb.Node, polykey_v1_nodes_nodes_pb.NodeAddress>;
     nodesGetAll: grpc.handleUnaryCall<polykey_v1_utils_utils_pb.EmptyMessage, polykey_v1_nodes_nodes_pb.NodeBuckets>;
     nodesListConnections: grpc.handleServerStreamingCall<polykey_v1_utils_utils_pb.EmptyMessage, polykey_v1_nodes_nodes_pb.NodeConnection>;
-    keysKeyPairRoot: grpc.handleUnaryCall<polykey_v1_utils_utils_pb.EmptyMessage, polykey_v1_keys_keys_pb.KeyPair>;
+    keysPublicKey: grpc.handleUnaryCall<polykey_v1_utils_utils_pb.EmptyMessage, polykey_v1_keys_keys_pb.KeyPairJWK>;
+    keysKeyPair: grpc.handleUnaryCall<polykey_v1_sessions_sessions_pb.Password, polykey_v1_keys_keys_pb.KeyPairJWK>;
     keysKeyPairReset: grpc.handleUnaryCall<polykey_v1_keys_keys_pb.Key, polykey_v1_utils_utils_pb.EmptyMessage>;
     keysKeyPairRenew: grpc.handleUnaryCall<polykey_v1_keys_keys_pb.Key, polykey_v1_utils_utils_pb.EmptyMessage>;
     keysEncrypt: grpc.handleUnaryCall<polykey_v1_keys_keys_pb.Crypto, polykey_v1_keys_keys_pb.Crypto>;
@@ -735,6 +756,7 @@ export interface IClientServiceServer extends grpc.UntypedServiceImplementation 
     identitiesInfoGet: grpc.handleServerStreamingCall<polykey_v1_identities_identities_pb.ProviderSearch, polykey_v1_identities_identities_pb.Info>;
     identitiesInfoConnectedGet: grpc.handleServerStreamingCall<polykey_v1_identities_identities_pb.ProviderSearch, polykey_v1_identities_identities_pb.Info>;
     identitiesClaim: grpc.handleUnaryCall<polykey_v1_identities_identities_pb.Provider, polykey_v1_identities_identities_pb.Claim>;
+    identitiesInvite: grpc.handleUnaryCall<polykey_v1_nodes_nodes_pb.Claim, polykey_v1_utils_utils_pb.StatusMessage>;
     gestaltsGestaltList: grpc.handleServerStreamingCall<polykey_v1_utils_utils_pb.EmptyMessage, polykey_v1_gestalts_gestalts_pb.Gestalt>;
     gestaltsGestaltGetByNode: grpc.handleUnaryCall<polykey_v1_nodes_nodes_pb.Node, polykey_v1_gestalts_gestalts_pb.Graph>;
     gestaltsGestaltGetByIdentity: grpc.handleUnaryCall<polykey_v1_identities_identities_pb.Provider, polykey_v1_gestalts_gestalts_pb.Graph>;
@@ -783,9 +805,12 @@ export interface IClientServiceClient {
     nodesGetAll(request: polykey_v1_utils_utils_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: polykey_v1_nodes_nodes_pb.NodeBuckets) => void): grpc.ClientUnaryCall;
     nodesListConnections(request: polykey_v1_utils_utils_pb.EmptyMessage, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<polykey_v1_nodes_nodes_pb.NodeConnection>;
     nodesListConnections(request: polykey_v1_utils_utils_pb.EmptyMessage, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<polykey_v1_nodes_nodes_pb.NodeConnection>;
-    keysKeyPairRoot(request: polykey_v1_utils_utils_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: polykey_v1_keys_keys_pb.KeyPair) => void): grpc.ClientUnaryCall;
-    keysKeyPairRoot(request: polykey_v1_utils_utils_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: polykey_v1_keys_keys_pb.KeyPair) => void): grpc.ClientUnaryCall;
-    keysKeyPairRoot(request: polykey_v1_utils_utils_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: polykey_v1_keys_keys_pb.KeyPair) => void): grpc.ClientUnaryCall;
+    keysPublicKey(request: polykey_v1_utils_utils_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: polykey_v1_keys_keys_pb.KeyPairJWK) => void): grpc.ClientUnaryCall;
+    keysPublicKey(request: polykey_v1_utils_utils_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: polykey_v1_keys_keys_pb.KeyPairJWK) => void): grpc.ClientUnaryCall;
+    keysPublicKey(request: polykey_v1_utils_utils_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: polykey_v1_keys_keys_pb.KeyPairJWK) => void): grpc.ClientUnaryCall;
+    keysKeyPair(request: polykey_v1_sessions_sessions_pb.Password, callback: (error: grpc.ServiceError | null, response: polykey_v1_keys_keys_pb.KeyPairJWK) => void): grpc.ClientUnaryCall;
+    keysKeyPair(request: polykey_v1_sessions_sessions_pb.Password, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: polykey_v1_keys_keys_pb.KeyPairJWK) => void): grpc.ClientUnaryCall;
+    keysKeyPair(request: polykey_v1_sessions_sessions_pb.Password, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: polykey_v1_keys_keys_pb.KeyPairJWK) => void): grpc.ClientUnaryCall;
     keysKeyPairReset(request: polykey_v1_keys_keys_pb.Key, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     keysKeyPairReset(request: polykey_v1_keys_keys_pb.Key, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     keysKeyPairReset(request: polykey_v1_keys_keys_pb.Key, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
@@ -893,6 +918,9 @@ export interface IClientServiceClient {
     identitiesClaim(request: polykey_v1_identities_identities_pb.Provider, callback: (error: grpc.ServiceError | null, response: polykey_v1_identities_identities_pb.Claim) => void): grpc.ClientUnaryCall;
     identitiesClaim(request: polykey_v1_identities_identities_pb.Provider, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: polykey_v1_identities_identities_pb.Claim) => void): grpc.ClientUnaryCall;
     identitiesClaim(request: polykey_v1_identities_identities_pb.Provider, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: polykey_v1_identities_identities_pb.Claim) => void): grpc.ClientUnaryCall;
+    identitiesInvite(request: polykey_v1_nodes_nodes_pb.Claim, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    identitiesInvite(request: polykey_v1_nodes_nodes_pb.Claim, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    identitiesInvite(request: polykey_v1_nodes_nodes_pb.Claim, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.StatusMessage) => void): grpc.ClientUnaryCall;
     gestaltsGestaltList(request: polykey_v1_utils_utils_pb.EmptyMessage, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<polykey_v1_gestalts_gestalts_pb.Gestalt>;
     gestaltsGestaltList(request: polykey_v1_utils_utils_pb.EmptyMessage, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<polykey_v1_gestalts_gestalts_pb.Gestalt>;
     gestaltsGestaltGetByNode(request: polykey_v1_nodes_nodes_pb.Node, callback: (error: grpc.ServiceError | null, response: polykey_v1_gestalts_gestalts_pb.Graph) => void): grpc.ClientUnaryCall;
@@ -973,9 +1001,12 @@ export class ClientServiceClient extends grpc.Client implements IClientServiceCl
     public nodesGetAll(request: polykey_v1_utils_utils_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: polykey_v1_nodes_nodes_pb.NodeBuckets) => void): grpc.ClientUnaryCall;
     public nodesListConnections(request: polykey_v1_utils_utils_pb.EmptyMessage, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<polykey_v1_nodes_nodes_pb.NodeConnection>;
     public nodesListConnections(request: polykey_v1_utils_utils_pb.EmptyMessage, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<polykey_v1_nodes_nodes_pb.NodeConnection>;
-    public keysKeyPairRoot(request: polykey_v1_utils_utils_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: polykey_v1_keys_keys_pb.KeyPair) => void): grpc.ClientUnaryCall;
-    public keysKeyPairRoot(request: polykey_v1_utils_utils_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: polykey_v1_keys_keys_pb.KeyPair) => void): grpc.ClientUnaryCall;
-    public keysKeyPairRoot(request: polykey_v1_utils_utils_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: polykey_v1_keys_keys_pb.KeyPair) => void): grpc.ClientUnaryCall;
+    public keysPublicKey(request: polykey_v1_utils_utils_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: polykey_v1_keys_keys_pb.KeyPairJWK) => void): grpc.ClientUnaryCall;
+    public keysPublicKey(request: polykey_v1_utils_utils_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: polykey_v1_keys_keys_pb.KeyPairJWK) => void): grpc.ClientUnaryCall;
+    public keysPublicKey(request: polykey_v1_utils_utils_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: polykey_v1_keys_keys_pb.KeyPairJWK) => void): grpc.ClientUnaryCall;
+    public keysKeyPair(request: polykey_v1_sessions_sessions_pb.Password, callback: (error: grpc.ServiceError | null, response: polykey_v1_keys_keys_pb.KeyPairJWK) => void): grpc.ClientUnaryCall;
+    public keysKeyPair(request: polykey_v1_sessions_sessions_pb.Password, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: polykey_v1_keys_keys_pb.KeyPairJWK) => void): grpc.ClientUnaryCall;
+    public keysKeyPair(request: polykey_v1_sessions_sessions_pb.Password, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: polykey_v1_keys_keys_pb.KeyPairJWK) => void): grpc.ClientUnaryCall;
     public keysKeyPairReset(request: polykey_v1_keys_keys_pb.Key, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     public keysKeyPairReset(request: polykey_v1_keys_keys_pb.Key, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     public keysKeyPairReset(request: polykey_v1_keys_keys_pb.Key, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
@@ -1083,6 +1114,9 @@ export class ClientServiceClient extends grpc.Client implements IClientServiceCl
     public identitiesClaim(request: polykey_v1_identities_identities_pb.Provider, callback: (error: grpc.ServiceError | null, response: polykey_v1_identities_identities_pb.Claim) => void): grpc.ClientUnaryCall;
     public identitiesClaim(request: polykey_v1_identities_identities_pb.Provider, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: polykey_v1_identities_identities_pb.Claim) => void): grpc.ClientUnaryCall;
     public identitiesClaim(request: polykey_v1_identities_identities_pb.Provider, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: polykey_v1_identities_identities_pb.Claim) => void): grpc.ClientUnaryCall;
+    public identitiesInvite(request: polykey_v1_nodes_nodes_pb.Claim, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    public identitiesInvite(request: polykey_v1_nodes_nodes_pb.Claim, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    public identitiesInvite(request: polykey_v1_nodes_nodes_pb.Claim, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.StatusMessage) => void): grpc.ClientUnaryCall;
     public gestaltsGestaltList(request: polykey_v1_utils_utils_pb.EmptyMessage, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<polykey_v1_gestalts_gestalts_pb.Gestalt>;
     public gestaltsGestaltList(request: polykey_v1_utils_utils_pb.EmptyMessage, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<polykey_v1_gestalts_gestalts_pb.Gestalt>;
     public gestaltsGestaltGetByNode(request: polykey_v1_nodes_nodes_pb.Node, callback: (error: grpc.ServiceError | null, response: polykey_v1_gestalts_gestalts_pb.Graph) => void): grpc.ClientUnaryCall;

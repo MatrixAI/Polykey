@@ -27,6 +27,18 @@ class ErrorGestaltsGraphIdentityIdMissing<T> extends ErrorGestalts<T> {
   exitCode = sysexits.NOUSER;
 }
 
+class ErrorGestaltsGraphLinkNodeMatch<T> extends ErrorGestalts<T> {
+  static description =
+    'Link node signed claim does not have matching `iss` and `sub` node IDs';
+  exitCode = sysexits.USAGE;
+}
+
+class ErrorGestaltsGraphLinkIdentityMatch<T> extends ErrorGestalts<T> {
+  static description =
+    'Link identity signed claim does not have matching `iss` and `sub` node and identity IDs';
+  exitCode = sysexits.USAGE;
+}
+
 export {
   ErrorGestalts,
   ErrorGestaltsGraphRunning,
@@ -34,4 +46,6 @@ export {
   ErrorGestaltsGraphDestroyed,
   ErrorGestaltsGraphNodeIdMissing,
   ErrorGestaltsGraphIdentityIdMissing,
+  ErrorGestaltsGraphLinkNodeMatch,
+  ErrorGestaltsGraphLinkIdentityMatch,
 };

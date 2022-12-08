@@ -6,8 +6,8 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
 import { sysexits } from '@/utils';
 import * as identitiesUtils from '@/identities/utils';
+import * as keysUtils from '@/keys/utils/index';
 import TestProvider from '../../identities/TestProvider';
-import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 import * as testUtils from '../../utils';
 
 describe('authenticate/authenticated', () => {
@@ -38,10 +38,12 @@ describe('authenticate/authenticated', () => {
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },
-      keysConfig: {
-        privateKeyPemOverride: globalRootKeyPems[0],
-      },
       logger,
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
     });
     testProvider = new TestProvider();
     pkAgent.identitiesManager.registerProvider(testProvider);

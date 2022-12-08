@@ -6,13 +6,13 @@
  * The parse error message must focus on why the validation failed
  * @module
  */
+import type { PublicKey, PrivateKey, RecoveryCode } from '../keys/types';
 import type { NodeId, SeedNodes } from '../nodes/types';
 import type { ProviderId, IdentityId } from '../identities/types';
 import type { GestaltAction, GestaltId } from '../gestalts/types';
 import type { VaultAction, VaultId } from '../vaults/types';
 import type { Host, Hostname, Port } from '../network/types';
 import type { ClaimId } from '../claims/types';
-import type { PrivateKey } from '../keys/types';
 import * as validationErrors from './errors';
 import * as nodesUtils from '../nodes/utils';
 import * as gestaltsUtils from '../gestalts/utils';
@@ -20,6 +20,7 @@ import * as vaultsUtils from '../vaults/utils';
 import * as networkUtils from '../network/utils';
 import * as claimsUtils from '../claims/utils';
 import * as keysUtils from '../keys/utils';
+import * as utils from '../utils';
 import config from '../config';
 
 function parseInteger(data: any): number {
@@ -52,12 +53,9 @@ function parseGestaltId(data: any): GestaltId {
   if (typeof data !== 'string') {
     throw new validationErrors.ErrorParse('Gestalt ID must be string');
   }
-  const node = nodesUtils.decodeNodeId(data);
-  if (node != null) {
-    return {
-      type: 'node',
-      nodeId: nodesUtils.encodeNodeId(node),
-    };
+  const nodeId = nodesUtils.decodeNodeId(data);
+  if (nodeId != null) {
+    return ['node', nodeId];
   }
   const match = (data as string).match(/^(.+):(.+)$/);
   if (match == null) {
@@ -67,11 +65,7 @@ function parseGestaltId(data: any): GestaltId {
   }
   const providerId = parseProviderId(match[1]);
   const identityId = parseIdentityId(match[2]);
-  return {
-    type: 'identity',
-    providerId,
-    identityId,
-  };
+  return ['identity', [providerId, identityId]];
 }
 
 function parseClaimId(data: any): ClaimId {
@@ -89,24 +83,6 @@ function parseVaultId(data: any): VaultId {
   if (data == null) {
     throw new validationErrors.ErrorParse(
       'Vault ID must be multibase base58btc encoded strings',
-    );
-  }
-  return data;
-}
-
-function parseGestaltAction(data: any): GestaltAction {
-  if (!gestaltsUtils.isGestaltAction(data)) {
-    throw new validationErrors.ErrorParse(
-      'Gestalt action must be `notify` or `scan`',
-    );
-  }
-  return data;
-}
-
-function parseVaultAction(data: any): VaultAction {
-  if (!vaultsUtils.isVaultAction(data)) {
-    throw new validationErrors.ErrorParse(
-      'Vault action must be `clone` or `pull`',
     );
   }
   return data;
@@ -134,6 +110,71 @@ function parseIdentityId(data: any): IdentityId {
     );
   }
   return data as IdentityId;
+}
+
+function parseRecoveryCode(data: any): RecoveryCode {
+  if (typeof data !== 'string') {
+    throw new validationErrors.ErrorParse('Recovery code must be a string');
+  }
+  if (data.length < 1) {
+    throw new validationErrors.ErrorParse(
+      'Recovery code length must be greater than 0',
+    );
+  }
+  if (!keysUtils.validateRecoveryCode(data)) {
+    throw new validationErrors.ErrorParse('Recovery code has invalid format');
+  }
+  return data;
+}
+
+/**
+ * Parses buffer source into a public key
+ */
+function parsePublicKey(data: any): PublicKey {
+  if (!utils.isBufferSource(data)) {
+    throw new validationErrors.ErrorParse('Public key must be a BufferSource');
+  }
+  const publicKey = keysUtils.publicKeyFromData(data);
+  if (publicKey == null) {
+    throw new validationErrors.ErrorParse(
+      'Public key is not a valid Ed25519 public key',
+    );
+  }
+  return publicKey;
+}
+
+/**
+ * Parses buffer source into a private key
+ */
+function parsePrivateKey(data: any): PrivateKey {
+  if (!utils.isBufferSource(data)) {
+    throw new validationErrors.ErrorParse('Private key must be a BufferSource');
+  }
+  const privateKey = keysUtils.privateKeyFromData(data);
+  if (privateKey == null) {
+    throw new validationErrors.ErrorParse(
+      'Private key is not a valid Ed25519 private key',
+    );
+  }
+  return privateKey;
+}
+
+function parseGestaltAction(data: any): GestaltAction {
+  if (!gestaltsUtils.isGestaltAction(data)) {
+    throw new validationErrors.ErrorParse(
+      'Gestalt action must be `notify` or `scan`',
+    );
+  }
+  return data;
+}
+
+function parseVaultAction(data: any): VaultAction {
+  if (!vaultsUtils.isVaultAction(data)) {
+    throw new validationErrors.ErrorParse(
+      'Vault action must be `clone` or `pull`',
+    );
+  }
+  return data;
 }
 
 function parseHost(data: any): Host {
@@ -261,21 +302,6 @@ function parseSeedNodes(data: any): [SeedNodes, boolean] {
   return [seedNodes, defaults];
 }
 
-function parsePrivateKeyPem(data: any): PrivateKey {
-  if (typeof data !== 'string') {
-    throw new validationErrors.ErrorParse('Private key Pem must be a string');
-  }
-  let privateKey: PrivateKey;
-  try {
-    privateKey = keysUtils.privateKeyFromPem(data);
-  } catch (e) {
-    throw new validationErrors.ErrorParse(
-      'Must provide a valid private key Pem',
-    );
-  }
-  return privateKey;
-}
-
 export {
   parseInteger,
   parseNumber,
@@ -283,15 +309,17 @@ export {
   parseGestaltId,
   parseClaimId,
   parseVaultId,
-  parseGestaltAction,
-  parseVaultAction,
   parseProviderId,
   parseIdentityId,
+  parsePublicKey,
+  parsePrivateKey,
+  parseRecoveryCode,
+  parseGestaltAction,
+  parseVaultAction,
   parseHost,
   parseHostname,
   parseHostOrHostname,
   parsePort,
   parseNetwork,
   parseSeedNodes,
-  parsePrivateKeyPem,
 };

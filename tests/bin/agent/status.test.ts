@@ -5,7 +5,6 @@ import Status from '@/status/Status';
 import * as nodesUtils from '@/nodes/utils';
 import config from '@/config';
 import * as testUtils from '../../utils';
-import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('status', () => {
   const logger = new Logger('status test', LogLevel.WARN, [
@@ -56,7 +55,7 @@ describe('status', () => {
           env: {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
             PK_PASSWORD: password,
-            PK_ROOT_KEY: globalRootKeyPems[0],
+            PK_FAST_PASSWORD_HASH: 'true',
           },
           cwd: dataDir,
           command: globalThis.testCmd,
@@ -144,7 +143,6 @@ describe('status', () => {
     let agentClose;
     beforeEach(async () => {
       ({ agentDir, agentPassword, agentClose } = await testUtils.setupTestAgent(
-        globalRootKeyPems[1],
         logger,
       ));
     });
@@ -185,8 +183,8 @@ describe('status', () => {
         agentPort: expect.any(Number),
         forwardHost: expect.any(String),
         forwardPort: expect.any(Number),
-        rootPublicKeyPem: expect.any(String),
-        rootCertPem: expect.any(String),
+        publicKeyJWK: expect.any(String),
+        certChainPEM: expect.any(String),
       });
     });
     testUtils.testIf(
@@ -239,8 +237,8 @@ describe('status', () => {
         agentPort: expect.any(Number),
         forwardHost: expect.any(String),
         forwardPort: expect.any(Number),
-        rootPublicKeyPem: expect.any(String),
-        rootCertPem: expect.any(String),
+        publicKeyJWK: expect.any(String),
+        certChainPEM: expect.any(String),
       });
     });
   });

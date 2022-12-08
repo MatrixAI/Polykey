@@ -1,15 +1,14 @@
 import type { Host, Port } from '@/network/types';
 import type { Notification } from '@/notifications/types';
 import type { NodeId } from '@/ids/types';
+import type GestaltGraph from '@/gestalts/GestaltGraph';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import { createPrivateKey, createPublicKey } from 'crypto';
-import { exportJWK, SignJWT } from 'jose';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import TaskManager from '@/tasks/TaskManager';
-import KeyManager from '@/keys/KeyManager';
+import KeyRing from '@/keys/KeyRing';
 import GRPCServer from '@/grpc/GRPCServer';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import NodeGraph from '@/nodes/NodeGraph';
@@ -26,8 +25,11 @@ import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as notificationsPB from '@/proto/js/polykey/v1/notifications/notifications_pb';
 import * as nodesUtils from '@/nodes/utils';
 import * as notificationsUtils from '@/notifications/utils';
+import * as keysUtils from '@/keys/utils/index';
+import Token from '@/tokens/Token';
+import * as validationErrors from '@/validation/errors';
+import * as testsUtils from '../../utils/index';
 import * as testUtils from '../../utils';
-import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('notificationsSend', () => {
   const logger = new Logger('notificationsSend test', LogLevel.WARN, [
@@ -35,8 +37,8 @@ describe('notificationsSend', () => {
   ]);
   const password = 'helloworld';
   const authToken = 'abc123';
-  let senderId: NodeId;
-  let senderKeyManager: KeyManager;
+  let senderNodeId: NodeId;
+  let senderKeyRing: KeyRing;
   let dataDir: string;
   let nodeGraph: NodeGraph;
   let taskManager: TaskManager;
@@ -48,7 +50,7 @@ describe('notificationsSend', () => {
   let proxy: Proxy;
 
   let db: DB;
-  let keyManager: KeyManager;
+  let keyRing: KeyRing;
   let grpcServer: GRPCServer;
   let grpcClient: GRPCClientAgent;
   beforeEach(async () => {
@@ -57,20 +59,23 @@ describe('notificationsSend', () => {
     );
     const keysPath = path.join(dataDir, 'keys');
     const senderKeysPath = path.join(dataDir, 'senderKeys');
-    senderKeyManager = await KeyManager.createKeyManager({
+    senderKeyRing = await KeyRing.createKeyRing({
       password,
       keysPath: senderKeysPath,
       logger,
-      privateKeyPemOverride: globalRootKeyPems[0],
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
     });
-    keyManager = await KeyManager.createKeyManager({
+    keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
-      rootKeyPairBits: 1024,
       logger,
-      privateKeyPemOverride: globalRootKeyPems[1],
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
     });
-    senderId = senderKeyManager.getNodeId();
+    senderNodeId = senderKeyRing.getNodeId();
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
       dbPath,
@@ -85,21 +90,18 @@ describe('notificationsSend', () => {
       logger,
     });
     await proxy.start({
-      tlsConfig: {
-        keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
-        certChainPem: await keyManager.getRootCertChainPem(),
-      },
+      tlsConfig: await testsUtils.createTLSConfig(keyRing.keyPair),
       serverHost: '127.0.0.1' as Host,
       serverPort: 0 as Port,
     });
     sigchain = await Sigchain.createSigchain({
       db,
-      keyManager,
+      keyRing,
       logger,
     });
     nodeGraph = await NodeGraph.createNodeGraph({
       db,
-      keyManager,
+      keyRing,
       logger: logger.getChild('NodeGraph'),
     });
     taskManager = await TaskManager.createTaskManager({
@@ -108,7 +110,7 @@ describe('notificationsSend', () => {
       lazy: true,
     });
     nodeConnectionManager = new NodeConnectionManager({
-      keyManager,
+      keyRing,
       nodeGraph,
       proxy,
       taskManager,
@@ -118,11 +120,12 @@ describe('notificationsSend', () => {
     });
     nodeManager = new NodeManager({
       db,
-      keyManager,
+      keyRing,
       nodeGraph,
       nodeConnectionManager,
       sigchain,
       taskManager,
+      gestaltGraph: {} as GestaltGraph,
       logger,
     });
     await nodeManager.start();
@@ -134,12 +137,13 @@ describe('notificationsSend', () => {
         db,
         nodeConnectionManager,
         nodeManager,
-        keyManager,
+        keyRing,
         logger,
       });
     const agentService = {
       notificationsSend: notificationsSend({
         notificationsManager,
+        keyRing,
         logger,
         db,
       }),
@@ -151,7 +155,7 @@ describe('notificationsSend', () => {
       port: 0 as Port,
     });
     grpcClient = await GRPCClientAgent.createGRPCClientAgent({
-      nodeId: keyManager.getNodeId(),
+      nodeId: keyRing.getNodeId(),
       host: '127.0.0.1' as Host,
       port: grpcServer.getPort(),
       logger,
@@ -170,8 +174,8 @@ describe('notificationsSend', () => {
     await proxy.stop();
     await acl.stop();
     await db.stop();
-    await senderKeyManager.stop();
-    await keyManager.stop();
+    await senderKeyRing.stop();
+    await keyRing.stop();
     await taskManager.stop();
     await fs.promises.rm(dataDir, {
       force: true,
@@ -180,22 +184,24 @@ describe('notificationsSend', () => {
   });
   test('successfully sends a notification', async () => {
     // Set notify permission for sender on receiver
-    await acl.setNodePerm(senderId, {
+    await acl.setNodePerm(senderNodeId, {
       gestalt: { notify: null },
       vaults: {},
     });
     // Construct and send notification
     const notification: Notification = {
+      typ: 'notification',
       data: {
         type: 'General',
         message: 'test',
       },
-      senderId: nodesUtils.encodeNodeId(senderId),
+      iss: nodesUtils.encodeNodeId(senderNodeId),
+      sub: nodesUtils.encodeNodeId(keyRing.getNodeId()),
       isRead: false,
     };
-    const signedNotification = await notificationsUtils.signNotification(
+    const signedNotification = await notificationsUtils.generateNotification(
       notification,
-      senderKeyManager.getRootKeyPairPem(),
+      senderKeyRing.keyPair,
     );
     const request = new notificationsPB.AgentNotification();
     request.setContent(signedNotification);
@@ -206,31 +212,34 @@ describe('notificationsSend', () => {
       await notificationsManager.readNotifications();
     expect(receivedNotifications).toHaveLength(1);
     expect(receivedNotifications[0].data).toEqual(notification.data);
-    expect(receivedNotifications[0].senderId).toEqual(notification.senderId);
+    expect(receivedNotifications[0].iss).toEqual(notification.iss);
     // Reverse side effects
     await notificationsManager.clearNotifications();
-    await acl.unsetNodePerm(senderId);
+    await acl.unsetNodePerm(senderNodeId);
   });
   test('cannot send invalidly formatted notification', async () => {
     // Set notify permission for sender on receiver
-    await acl.setNodePerm(senderId, {
+    await acl.setNodePerm(senderNodeId, {
       gestalt: { notify: null },
       vaults: {},
     });
     // Unsigned notification
     const notification1: Notification = {
+      typ: 'notification',
       data: {
         type: 'General',
         message: 'test',
       },
-      senderId: nodesUtils.encodeNodeId(senderId),
+      iss: nodesUtils.encodeNodeId(senderNodeId),
+      sub: nodesUtils.encodeNodeId(keyRing.getNodeId()),
       isRead: false,
     };
+    const token = Token.fromPayload(notification1);
     const request1 = new notificationsPB.AgentNotification();
-    request1.setContent(notification1.toString());
+    request1.setContent(JSON.stringify(token.toJSON()));
     await testUtils.expectRemoteError(
       grpcClient.notificationsSend(request1),
-      notificationsErrors.ErrorNotificationsParse,
+      notificationsErrors.ErrorNotificationsVerificationFailed,
     );
     // Check notification was not received
     let receivedNotifications = await notificationsManager.readNotifications();
@@ -240,45 +249,41 @@ describe('notificationsSend', () => {
       data: {
         type: 'invalid',
       },
-      senderId,
+      senderId: senderNodeId,
       isRead: false,
     };
-    const publicKey = createPublicKey(
-      senderKeyManager.getRootKeyPairPem().publicKey,
+    const signedNotification = await notificationsUtils.generateNotification(
+      // @ts-ignore: invalidly constructed notification
+      notification2,
+      senderKeyRing.keyPair,
     );
-    const privateKey = createPrivateKey(
-      senderKeyManager.getRootKeyPairPem().privateKey,
-    );
-    const jwkPublicKey = await exportJWK(publicKey);
-    const signedNotification = await new SignJWT(notification2)
-      .setProtectedHeader({ alg: 'RS256', jwk: jwkPublicKey })
-      .setIssuedAt()
-      .sign(privateKey);
     const request2 = new notificationsPB.AgentNotification();
     request2.setContent(signedNotification);
     await testUtils.expectRemoteError(
       grpcClient.notificationsSend(request2),
-      notificationsErrors.ErrorNotificationsValidationFailed,
+      validationErrors.ErrorParse,
     );
     // Check notification was not received
     receivedNotifications = await notificationsManager.readNotifications();
     expect(receivedNotifications).toHaveLength(0);
     // Reverse side effects
-    await acl.unsetNodePerm(senderId);
+    await acl.unsetNodePerm(senderNodeId);
   });
   test('cannot send notification without permission', async () => {
     // Construct and send notification
     const notification: Notification = {
+      typ: 'notification',
       data: {
         type: 'General',
         message: 'test',
       },
-      senderId: nodesUtils.encodeNodeId(senderId),
+      iss: nodesUtils.encodeNodeId(senderNodeId),
+      sub: nodesUtils.encodeNodeId(keyRing.getNodeId()),
       isRead: false,
     };
-    const signedNotification = await notificationsUtils.signNotification(
+    const signedNotification = await notificationsUtils.generateNotification(
       notification,
-      senderKeyManager.getRootKeyPairPem(),
+      senderKeyRing.keyPair,
     );
     const request = new notificationsPB.AgentNotification();
     request.setContent(signedNotification);

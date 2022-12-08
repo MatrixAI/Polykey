@@ -7,6 +7,21 @@ import type fs from 'fs';
 type POJO = { [key: string]: any };
 
 /**
+ * Strict JSON values.
+ * These are the only types that JSON can represent.
+ * All input values are encoded into JSON.
+ * Take note that `undefined` values are not allowed.
+ * `JSON.stringify` automatically converts `undefined` to `null.
+ */
+type JSONValue =
+  | { [key: string]: JSONValue }
+  | Array<JSONValue>
+  | string
+  | number
+  | boolean
+  | null;
+
+/**
  * Opaque types are wrappers of existing types
  * that require smart constructors
  */
@@ -84,6 +99,7 @@ type PromiseDeconstructed<T> = {
  */
 interface FileSystem {
   promises: {
+    access: typeof fs.promises.access;
     rm: typeof fs.promises.rm;
     rmdir: typeof fs.promises.rmdir;
     stat: typeof fs.promises.stat;
@@ -118,8 +134,25 @@ type NonFunctionPropertyNames<T> = {
  */
 type NonFunctionProperties<T> = Pick<T, NonFunctionPropertyNames<T>>;
 
+/**
+ * Finds the key type corresponding to a value type for a record type
+ */
+type RecordKeyFromValue<T, V> = {
+  [K in keyof T]: V extends T[K] ? K : never;
+}[keyof T];
+
+/**
+ * Inverses a record type, "flipping a record"
+ */
+type InverseRecord<
+  M extends Record<string | number | symbol, string | number | symbol>,
+> = {
+  [K in M[keyof M]]: RecordKeyFromValue<M, K>;
+};
+
 export type {
   POJO,
+  JSONValue,
   Opaque,
   Callback,
   NonEmptyArray,
@@ -135,4 +168,6 @@ export type {
   FileHandle,
   FunctionProperties,
   NonFunctionProperties,
+  RecordKeyFromValue,
+  InverseRecord,
 };

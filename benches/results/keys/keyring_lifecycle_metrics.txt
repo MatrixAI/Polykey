@@ -1,0 +1,11 @@
+# TYPE keys.keyring_lifecycle_ops gauge
+keys.keyring_lifecycle_ops{name="KeyRing fresh creation"} 1.1
+keys.keyring_lifecycle_ops{name="KeyRing start & stop"} 1.2
+
+# TYPE keys.keyring_lifecycle_margin gauge
+keys.keyring_lifecycle_margin{name="KeyRing fresh creation"} 10.63
+keys.keyring_lifecycle_margin{name="KeyRing start & stop"} 1.71
+
+# TYPE keys.keyring_lifecycle_samples counter
+keys.keyring_lifecycle_samples{name="KeyRing fresh creation"} 10
+keys.keyring_lifecycle_samples{name="KeyRing start & stop"} 10

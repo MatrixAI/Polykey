@@ -12,7 +12,6 @@ import * as grpcUtils from '../../grpc/utils';
 import * as gestaltsErrors from '../../gestalts/errors';
 import * as validationUtils from '../../validation/utils';
 import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
-import * as nodesUtils from '../../nodes/utils';
 import * as clientUtils from '../utils';
 
 function gestaltsGestaltTrustByNode({
@@ -56,8 +55,7 @@ function gestaltsGestaltTrustByNode({
         if ((await gestaltGraph.getGestaltByNode(nodeId, tran)) == null) {
           await gestaltGraph.setNode(
             {
-              id: nodesUtils.encodeNodeId(nodeId),
-              chain: {},
+              nodeId,
             },
             tran,
           );
@@ -65,7 +63,7 @@ function gestaltsGestaltTrustByNode({
           await discovery.queueDiscoveryByNode(nodeId);
         }
         // Set notify permission
-        await gestaltGraph.setGestaltActionByNode(nodeId, 'notify', tran);
+        await gestaltGraph.setGestaltAction(['node', nodeId], 'notify', tran);
       });
       callback(null, response);
       return;

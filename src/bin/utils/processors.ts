@@ -1,5 +1,5 @@
 import type { FileSystem } from '../../types';
-import type { RecoveryCode, PrivateKeyPem } from '../../keys/types';
+import type { RecoveryCode } from '../../keys/types';
 import type { NodeId } from '../../ids/types';
 import type { Host, Port } from '../../network/types';
 import type {
@@ -114,7 +114,7 @@ async function processPassword(
  * Use this when a new password is necessary
  * Order of operations are:
  * 1. Reads --password-new-file
- * 2. Reads PK_PASSWORD
+ * 2. Reads PK_PASSWORD_NEW
  * 3. Prompts and confirms password
  * If processNewPassword is used when an existing password is needed
  * for authentication, then the existing boolean should be set to true
@@ -145,6 +145,8 @@ async function processNewPassword(
     }
   } else if (!existing && typeof process.env['PK_PASSWORD'] === 'string') {
     passwordNew = process.env['PK_PASSWORD'];
+  } else if (typeof process.env['PK_PASSWORD_NEW'] === 'string') {
+    passwordNew = process.env['PK_PASSWORD_NEW'];
   } else {
     passwordNew = await promptNewPassword();
     if (passwordNew === undefined) {
@@ -403,29 +405,6 @@ async function processAuthentication(
   return meta;
 }
 
-async function processRootKey(
-  privateKeyFile: string | undefined,
-  fs: FileSystem = require('fs'),
-): Promise<PrivateKeyPem | undefined> {
-  if (privateKeyFile != null) {
-    try {
-      return (await fs.promises.readFile(privateKeyFile, 'utf-8')).trim();
-    } catch (e) {
-      throw new binErrors.ErrorCLIPrivateKeyFileRead(e.message, {
-        data: {
-          errno: e.errno,
-          syscall: e.syscall,
-          code: e.code,
-          path: e.path,
-        },
-        cause: e,
-      });
-    }
-  } else if (typeof process.env['PK_ROOT_KEY'] === 'string') {
-    return process.env['PK_ROOT_KEY'];
-  }
-}
-
 export {
   promptPassword,
   promptNewPassword,
@@ -435,5 +414,4 @@ export {
   processClientOptions,
   processClientStatus,
   processAuthentication,
-  processRootKey,
 };

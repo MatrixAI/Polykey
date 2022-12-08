@@ -62,19 +62,19 @@ describe('bin/utils', () => {
           type: 'dict',
           data: { key1: 'value1', key2: 'value2' },
         }),
-      ).toBe('key1\tvalue1\nkey2\tvalue2\n');
+      ).toBe('key1\t"value1"\nkey2\t"value2"\n');
       expect(
         binUtils.outputFormatter({
           type: 'dict',
           data: { key1: 'first\nsecond', key2: 'first\nsecond\n' },
         }),
-      ).toBe('key1\tfirst\n\tsecond\nkey2\tfirst\n\tsecond\n');
+      ).toBe('key1\t"first\\nsecond"\nkey2\t"first\\nsecond\\n"\n');
       expect(
         binUtils.outputFormatter({
           type: 'dict',
           data: { key1: null, key2: undefined },
         }),
-      ).toBe('key1\t\nkey2\t\n');
+      ).toBe('key1\t""\nkey2\t""\n');
       // JSON
       expect(
         binUtils.outputFormatter({
@@ -93,7 +93,7 @@ describe('bin/utils', () => {
       const port = 55555 as Port;
       const nodeId = testUtils.generateRandomNodeId();
       const standardError = new TypeError('some error');
-      const pkError = new ErrorPolykey('some pk error', {
+      const pkError = new ErrorPolykey<undefined>('some pk error', {
         timestamp,
         data,
       });

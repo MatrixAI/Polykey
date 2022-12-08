@@ -12,7 +12,7 @@ import * as nodesPB from '@/proto/js/polykey/v1/nodes/nodes_pb';
 import * as nodesUtils from '@/nodes/utils';
 import nodesHolePunchMessageSend from '@/agent/service/nodesHolePunchMessageSend';
 import * as networkUtils from '@/network/utils';
-import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
+import * as keysUtils from '../../../src/keys/utils/index';
 
 describe('nodesHolePunchMessage', () => {
   const logger = new Logger('nodesHolePunchMessage test', LogLevel.WARN, [
@@ -32,18 +32,20 @@ describe('nodesHolePunchMessage', () => {
     pkAgent = await PolykeyAgent.createPolykeyAgent({
       password,
       nodePath,
-      keysConfig: {
-        privateKeyPemOverride: globalRootKeyPems[0],
-      },
       seedNodes: {}, // Explicitly no seed nodes on startup
       networkConfig: {
         proxyHost: '127.0.0.1' as Host,
+      },
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
       },
       logger,
     });
     const agentService = {
       nodesHolePunchMessageSend: nodesHolePunchMessageSend({
-        keyManager: pkAgent.keyManager,
+        keyRing: pkAgent.keyRing,
         nodeConnectionManager: pkAgent.nodeConnectionManager,
         nodeManager: pkAgent.nodeManager,
         db: pkAgent.db,
@@ -51,7 +53,7 @@ describe('nodesHolePunchMessage', () => {
           ({
             remoteHost: '127.0.0.1' as Host,
             remotePort: 55555 as Port,
-            remoteNodeId: pkAgent.keyManager.getNodeId(),
+            remoteNodeId: pkAgent.keyRing.getNodeId(),
           } as ConnectionInfo),
         logger,
       }),
@@ -63,7 +65,7 @@ describe('nodesHolePunchMessage', () => {
       port: 0 as Port,
     });
     grpcClient = await GRPCClientAgent.createGRPCClientAgent({
-      nodeId: pkAgent.keyManager.getNodeId(),
+      nodeId: pkAgent.keyRing.getNodeId(),
       host: '127.0.0.1' as Host,
       port: grpcServer.getPort(),
       logger,
@@ -73,14 +75,13 @@ describe('nodesHolePunchMessage', () => {
     await grpcClient.destroy();
     await grpcServer.stop();
     await pkAgent.stop();
-    await pkAgent.destroy();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
     });
   });
   test('should get the chain data', async () => {
-    const nodeId = nodesUtils.encodeNodeId(pkAgent.keyManager.getNodeId());
+    const nodeId = nodesUtils.encodeNodeId(pkAgent.keyRing.getNodeId());
     const proxyAddress = networkUtils.buildAddress(
       pkAgent.proxy.getProxyHost(),
       pkAgent.proxy.getProxyPort(),

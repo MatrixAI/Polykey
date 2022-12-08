@@ -1,6 +1,7 @@
 import type { Notification } from '@/notifications/types';
 import type { NodeIdEncoded } from '@/ids/types';
 import type { Host, Port } from '@/network/types';
+import type GestaltGraph from 'gestalts/GestaltGraph';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -8,7 +9,7 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { Metadata } from '@grpc/grpc-js';
 import TaskManager from '@/tasks/TaskManager';
-import KeyManager from '@/keys/KeyManager';
+import KeyRing from '@/keys/KeyRing';
 import NotificationsManager from '@/notifications/NotificationsManager';
 import ACL from '@/acl/ACL';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
@@ -24,8 +25,9 @@ import * as nodesPB from '@/proto/js/polykey/v1/nodes/nodes_pb';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as clientUtils from '@/client/utils/utils';
 import * as validationErrors from '@/validation/errors';
+import * as keysUtils from '@/keys/utils/index';
 import * as testUtils from '../../utils';
-import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
+import * as testsUtils from '../../utils/index';
 
 describe('nodesClaim', () => {
   const logger = new Logger('nodesClaim test', LogLevel.WARN, [
@@ -35,11 +37,12 @@ describe('nodesClaim', () => {
   const authenticate = async (metaClient, metaServer = new Metadata()) =>
     metaServer;
   const dummyNotification: Notification = {
+    typ: 'notification',
     data: {
       type: 'GestaltInvite',
     },
-    senderId:
-      'vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg' as NodeIdEncoded,
+    iss: 'vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg' as NodeIdEncoded,
+    sub: 'test' as NodeIdEncoded,
     isRead: false,
   };
   let mockedFindGestaltInvite: jest.SpyInstance;
@@ -73,7 +76,7 @@ describe('nodesClaim', () => {
   let sigchain: Sigchain;
   let proxy: Proxy;
   let db: DB;
-  let keyManager: KeyManager;
+  let keyRing: KeyRing;
   let grpcServer: GRPCServer;
   let grpcClient: GRPCClientClient;
   beforeEach(async () => {
@@ -81,11 +84,13 @@ describe('nodesClaim', () => {
       path.join(os.tmpdir(), 'polykey-test-'),
     );
     const keysPath = path.join(dataDir, 'keys');
-    keyManager = await KeyManager.createKeyManager({
+    keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
       logger,
-      privateKeyPemOverride: globalRootKeyPems[0],
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
@@ -101,21 +106,18 @@ describe('nodesClaim', () => {
       logger,
     });
     await proxy.start({
-      tlsConfig: {
-        keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
-        certChainPem: await keyManager.getRootCertChainPem(),
-      },
+      tlsConfig: await testsUtils.createTLSConfig(keyRing.keyPair),
       serverHost: '127.0.0.1' as Host,
       serverPort: 0 as Port,
     });
     sigchain = await Sigchain.createSigchain({
       db,
-      keyManager,
+      keyRing,
       logger,
     });
     nodeGraph = await NodeGraph.createNodeGraph({
       db,
-      keyManager,
+      keyRing,
       logger: logger.getChild('NodeGraph'),
     });
     taskManager = await TaskManager.createTaskManager({
@@ -124,7 +126,7 @@ describe('nodesClaim', () => {
       lazy: true,
     });
     nodeConnectionManager = new NodeConnectionManager({
-      keyManager,
+      keyRing,
       nodeGraph,
       proxy,
       taskManager,
@@ -134,11 +136,12 @@ describe('nodesClaim', () => {
     });
     nodeManager = new NodeManager({
       db,
-      keyManager,
+      keyRing,
       nodeConnectionManager,
       nodeGraph,
       sigchain,
       taskManager,
+      gestaltGraph: {} as GestaltGraph,
       logger,
     });
     await nodeManager.start();
@@ -150,14 +153,13 @@ describe('nodesClaim', () => {
         db,
         nodeConnectionManager,
         nodeManager,
-        keyManager,
+        keyRing,
         logger,
       });
     const clientService = {
       nodesClaim: nodesClaim({
         authenticate,
         nodeManager,
-        notificationsManager,
         logger,
         db,
       }),
@@ -169,7 +171,7 @@ describe('nodesClaim', () => {
       port: 0 as Port,
     });
     grpcClient = await GRPCClientClient.createGRPCClientClient({
-      nodeId: keyManager.getNodeId(),
+      nodeId: keyRing.getNodeId(),
       host: '127.0.0.1' as Host,
       port: grpcServer.getPort(),
       logger,
@@ -188,36 +190,12 @@ describe('nodesClaim', () => {
     await proxy.stop();
     await acl.stop();
     await db.stop();
-    await keyManager.stop();
+    await keyRing.stop();
     await taskManager.stop();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
     });
-  });
-  test('sends a gestalt invite (none existing)', async () => {
-    const request = new nodesPB.Claim();
-    request.setNodeId('vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0');
-    request.setForceInvite(false);
-    const response = await grpcClient.nodesClaim(
-      request,
-      clientUtils.encodeAuthFromPassword(password),
-    );
-    expect(response).toBeInstanceOf(utilsPB.StatusMessage);
-    // Does not claim (sends gestalt invite)
-    expect(response.getSuccess()).toBeFalsy();
-  });
-  test('sends a gestalt invite (force invite)', async () => {
-    const request = new nodesPB.Claim();
-    request.setNodeId('vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0');
-    request.setForceInvite(true);
-    const response = await grpcClient.nodesClaim(
-      request,
-      clientUtils.encodeAuthFromPassword(password),
-    );
-    expect(response).toBeInstanceOf(utilsPB.StatusMessage);
-    // Does not claim (sends gestalt invite)
-    expect(response.getSuccess()).toBeFalsy();
   });
   test('claims a node', async () => {
     const request = new nodesPB.Claim();

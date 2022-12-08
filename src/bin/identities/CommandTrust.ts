@@ -25,6 +25,8 @@ class CommandTrust extends CommandPolykey {
         '../../proto/js/polykey/v1/identities/identities_pb'
       );
       const nodesPB = await import('../../proto/js/polykey/v1/nodes/nodes_pb');
+      const utils = await import('../../utils');
+      const nodesUtils = await import('../../nodes/utils');
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -49,28 +51,41 @@ class CommandTrust extends CommandPolykey {
           port: clientOptions.clientPort,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-        if (gestaltId.type === 'node') {
-          // Setting by Node.
-          const nodeMessage = new nodesPB.Node();
-          nodeMessage.setNodeId(gestaltId.nodeId);
-          await binUtils.retryAuthentication(
-            (auth) =>
-              pkClient.grpcClient.gestaltsGestaltTrustByNode(nodeMessage, auth),
-            meta,
-          );
-        } else {
-          //  Setting by Identity
-          const providerMessage = new identitiesPB.Provider();
-          providerMessage.setProviderId(gestaltId.providerId);
-          providerMessage.setIdentityId(gestaltId.identityId);
-          await binUtils.retryAuthentication(
-            (auth) =>
-              pkClient.grpcClient.gestaltsGestaltTrustByIdentity(
-                providerMessage,
-                auth,
-              ),
-            meta,
-          );
+        const [type, id] = gestaltId;
+        switch (type) {
+          case 'node':
+            {
+              // Setting by Node.
+              const nodeMessage = new nodesPB.Node();
+              nodeMessage.setNodeId(nodesUtils.encodeNodeId(id));
+              await binUtils.retryAuthentication(
+                (auth) =>
+                  pkClient.grpcClient.gestaltsGestaltTrustByNode(
+                    nodeMessage,
+                    auth,
+                  ),
+                meta,
+              );
+            }
+            break;
+          case 'identity':
+            {
+              //  Setting by Identity
+              const providerMessage = new identitiesPB.Provider();
+              providerMessage.setProviderId(id[0]);
+              providerMessage.setIdentityId(id[1]);
+              await binUtils.retryAuthentication(
+                (auth) =>
+                  pkClient.grpcClient.gestaltsGestaltTrustByIdentity(
+                    providerMessage,
+                    auth,
+                  ),
+                meta,
+              );
+            }
+            break;
+          default:
+            utils.never();
         }
       } finally {
         if (pkClient! != null) await pkClient.stop();

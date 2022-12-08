@@ -1,11 +1,14 @@
 import type { Host, Port } from '@/network/types';
+import type { NodeId } from '@/ids/index';
+import type { KeyPair } from '@/keys/types';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import grpc from '@grpc/grpc-js';
-import { utils as keysUtils } from '@/keys';
+import * as keysUtils from '@/keys/utils';
 import Proxy from '@/network/Proxy';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import { sleep } from '@/utils';
 import { openTestServer, closeTestServer, GRPCClientTest } from '../grpc/utils';
+import * as testsUtils from '../utils';
 
 describe('network index', () => {
   const logger = new Logger('Network Test', LogLevel.WARN, [
@@ -13,35 +16,17 @@ describe('network index', () => {
   ]);
   const authenticate = async (_metaClient, metaServer = new grpc.Metadata()) =>
     metaServer;
-  let clientKeyPairPem;
-  let clientCertPem;
-  let clientNodeId;
-  let serverKeyPairPem;
-  let serverCertPem;
-  let serverNodeId;
+  let clientKeyPair: KeyPair;
+  let clientNodeId: NodeId;
+  let serverKeyPair: KeyPair;
+  let serverNodeId: NodeId;
   beforeAll(async () => {
     // Client keys
-    const clientKeyPair = await keysUtils.generateKeyPair(1024);
-    clientKeyPairPem = keysUtils.keyPairToPem(clientKeyPair);
-    const clientCert = keysUtils.generateCertificate(
-      clientKeyPair.publicKey,
-      clientKeyPair.privateKey,
-      clientKeyPair.privateKey,
-      12332432423,
-    );
-    clientCertPem = keysUtils.certToPem(clientCert);
-    clientNodeId = keysUtils.certNodeId(clientCert)!;
+    clientKeyPair = keysUtils.generateKeyPair();
+    clientNodeId = keysUtils.publicKeyToNodeId(clientKeyPair.publicKey)!;
     // Server keys
-    const serverKeyPair = await keysUtils.generateKeyPair(1024);
-    serverKeyPairPem = keysUtils.keyPairToPem(serverKeyPair);
-    const serverCert = keysUtils.generateCertificate(
-      serverKeyPair.publicKey,
-      serverKeyPair.privateKey,
-      serverKeyPair.privateKey,
-      12332432423,
-    );
-    serverCertPem = keysUtils.certToPem(serverCert);
-    serverNodeId = keysUtils.certNodeId(serverCert)!;
+    serverKeyPair = keysUtils.generateKeyPair();
+    serverNodeId = keysUtils.publicKeyToNodeId(serverKeyPair.publicKey)!;
   });
   let server;
   let server2;
@@ -62,10 +47,7 @@ describe('network index', () => {
       logger: logger.getChild('Proxy integration'),
     });
     await remoteProxy.start({
-      tlsConfig: {
-        keyPrivatePem: serverKeyPairPem.privateKey,
-        certChainPem: serverCertPem,
-      },
+      tlsConfig: await testsUtils.createTLSConfig(serverKeyPair),
       forwardHost: '127.0.0.1' as Host,
       forwardPort: 0 as Port,
       proxyHost: '127.0.0.1' as Host,
@@ -78,10 +60,7 @@ describe('network index', () => {
       logger: logger.getChild('Proxy integration'),
     });
     await localProxy.start({
-      tlsConfig: {
-        keyPrivatePem: clientKeyPairPem.privateKey,
-        certChainPem: clientCertPem,
-      },
+      tlsConfig: await testsUtils.createTLSConfig(clientKeyPair),
       forwardHost: '127.0.0.1' as Host,
       forwardPort: 0 as Port,
       proxyHost: '127.0.0.1' as Host,

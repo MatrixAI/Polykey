@@ -2,18 +2,19 @@ import type { Socket } from 'net';
 import type { TLSSocket } from 'tls';
 import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import type { Host, Hostname, Port, Address, NetworkMessage } from './types';
-import type { Certificate, PublicKey } from '../keys/types';
+import type { Certificate } from '../keys/types';
 import type { NodeId } from '../ids/types';
 import type { ContextTimed } from '../contexts/types';
 import type { NodeAddress } from 'nodes/types';
+import type { CertificateASN1 } from '../keys/types';
 import { Buffer } from 'buffer';
 import dns from 'dns';
 import { IPv4, IPv6, Validator } from 'ip-num';
 import * as networkErrors from './errors';
 import timedCancellable from '../contexts/functions/timedCancellable';
 import * as keysUtils from '../keys/utils';
-import * as nodesUtils from '../nodes/utils';
 import * as utils from '../utils';
+import { never } from '../utils';
 
 const pingBuffer = serializeNetworkMessage({
   type: 'ping',
@@ -254,9 +255,10 @@ function getCertificateChain(socket: TLSSocket): Array<Certificate> {
     return certs;
   }
   while (true) {
-    let cert: Certificate;
+    let cert: Certificate | undefined;
     try {
-      cert = keysUtils.certFromDer(cert_.raw.toString('binary'));
+      cert = keysUtils.certFromASN1(cert_.raw as CertificateASN1);
+      if (cert == null) never();
     } catch (e) {
       break;
     }
@@ -284,10 +286,10 @@ function isTLSSocket(socket: Socket | TLSSocket): socket is TLSSocket {
  * It is possible that the server has a new NodeId. In that case we will
  * verify that the new NodeId is the true descendant of the target NodeId.
  */
-function verifyServerCertificateChain(
+async function verifyServerCertificateChain(
   nodeIds: Array<NodeId>,
   certChain: Array<Certificate>,
-): NodeId {
+): Promise<NodeId> {
   if (!certChain.length) {
     throw new networkErrors.ErrorCertChainEmpty(
       'No certificates available to verify',
@@ -304,22 +306,22 @@ function verifyServerCertificateChain(
   let verifiedNodeId: NodeId | null = null;
   for (let certIndex = 0; certIndex < certChain.length; certIndex++) {
     const cert = certChain[certIndex];
-    if (now < cert.validity.notBefore || now > cert.validity.notAfter) {
+    if (now < cert.notBefore || now > cert.notAfter) {
       throw new networkErrors.ErrorCertChainDateInvalid(
         'Chain certificate date is invalid',
         {
           data: {
             cert,
             certIndex,
-            notBefore: cert.validity.notBefore,
-            notAfter: cert.validity.notAfter,
+            notBefore: cert.notBefore,
+            notAfter: cert.notAfter,
             now,
           },
         },
       );
     }
-    const commonName = cert.subject.getField({ type: '2.5.4.3' });
-    if (commonName == null) {
+    const certNodeId = keysUtils.certNodeId(cert);
+    if (certNodeId == null) {
       throw new networkErrors.ErrorCertChainNameInvalid(
         'Chain certificate common name attribute is missing',
         {
@@ -330,33 +332,33 @@ function verifyServerCertificateChain(
         },
       );
     }
-    const certNodeId = keysUtils.publicKeyToNodeId(cert.publicKey as PublicKey);
-    if (commonName.value !== nodesUtils.encodeNodeId(certNodeId)) {
+    const certPublicKey = keysUtils.certPublicKey(cert);
+    if (certPublicKey == null) {
       throw new networkErrors.ErrorCertChainKeyInvalid(
-        'Chain certificate public key does not generate its node id',
+        'Chain certificate public key is missing',
         {
           data: {
             cert,
             certIndex,
-            nodeId: certNodeId,
-            commonName: commonName.value,
           },
         },
       );
     }
-    if (!keysUtils.certVerifiedNode(cert)) {
+    if (!(await keysUtils.certNodeSigned(cert))) {
       throw new networkErrors.ErrorCertChainSignatureInvalid(
         'Chain certificate does not have a valid node-signature',
         {
           data: {
             cert,
             certIndex,
+            nodeId: keysUtils.publicKeyToNodeId(certPublicKey),
+            commonName: certNodeId,
           },
         },
       );
     }
     for (const nodeId of nodeIds) {
-      if (commonName.value === nodesUtils.encodeNodeId(nodeId)) {
+      if (certNodeId.equals(nodeId)) {
         // Found the certificate claiming the nodeId
         certClaim = cert;
         certClaimIndex = certIndex;
@@ -375,14 +377,17 @@ function verifyServerCertificateChain(
     );
   }
   if (certClaimIndex > 0) {
-    let certParent;
-    let certChild;
+    let certParent: Certificate;
+    let certChild: Certificate;
     for (let certIndex = certClaimIndex; certIndex > 0; certIndex--) {
       certParent = certChain[certIndex];
       certChild = certChain[certIndex - 1];
       if (
-        !keysUtils.certIssued(certParent, certChild) ||
-        !keysUtils.certVerified(certParent, certChild)
+        !keysUtils.certIssuedBy(certParent, certChild) ||
+        !(await keysUtils.certSignedBy(
+          certParent,
+          keysUtils.certPublicKey(certChild)!,
+        ))
       ) {
         throw new networkErrors.ErrorCertChainBroken(
           'Chain certificate is not signed by parent certificate',
@@ -404,7 +409,9 @@ function verifyServerCertificateChain(
  * Verify the client certificate chain when it connects to the server.
  * The server does have a target NodeId. This means we verify the entire chain.
  */
-function verifyClientCertificateChain(certChain: Array<Certificate>): void {
+async function verifyClientCertificateChain(
+  certChain: Array<Certificate>,
+): Promise<void> {
   if (!certChain.length) {
     throw new networkErrors.ErrorCertChainEmpty(
       'No certificates available to verify',
@@ -414,22 +421,22 @@ function verifyClientCertificateChain(certChain: Array<Certificate>): void {
   for (let certIndex = 0; certIndex < certChain.length; certIndex++) {
     const cert = certChain[certIndex];
     const certNext = certChain[certIndex + 1];
-    if (now < cert.validity.notBefore || now > cert.validity.notAfter) {
+    if (now < cert.notBefore || now > cert.notAfter) {
       throw new networkErrors.ErrorCertChainDateInvalid(
         'Chain certificate date is invalid',
         {
           data: {
             cert,
             certIndex,
-            notBefore: cert.validity.notBefore,
-            notAfter: cert.validity.notAfter,
+            notBefore: cert.notBefore,
+            notAfter: cert.notAfter,
             now,
           },
         },
       );
     }
-    const commonName = cert.subject.getField({ type: '2.5.4.3' });
-    if (commonName == null) {
+    const certNodeId = keysUtils.certNodeId(cert);
+    if (certNodeId == null) {
       throw new networkErrors.ErrorCertChainNameInvalid(
         'Chain certificate common name attribute is missing',
         {
@@ -440,35 +447,38 @@ function verifyClientCertificateChain(certChain: Array<Certificate>): void {
         },
       );
     }
-    const certNodeId = keysUtils.publicKeyToNodeId(cert.publicKey as PublicKey);
-    if (commonName.value !== nodesUtils.encodeNodeId(certNodeId)) {
+    const certPublicKey = keysUtils.certPublicKey(cert);
+    if (certPublicKey == null) {
       throw new networkErrors.ErrorCertChainKeyInvalid(
-        'Chain certificate public key does not generate its node id',
+        'Chain certificate public key is missing',
         {
           data: {
             cert,
             certIndex,
-            nodeId: certNodeId,
-            commonName: commonName.value,
           },
         },
       );
     }
-    if (!keysUtils.certVerifiedNode(cert)) {
+    if (!(await keysUtils.certNodeSigned(cert))) {
       throw new networkErrors.ErrorCertChainSignatureInvalid(
         'Chain certificate does not have a valid node-signature',
         {
           data: {
             cert,
             certIndex,
+            nodeId: keysUtils.publicKeyToNodeId(certPublicKey),
+            commonName: certNodeId,
           },
         },
       );
     }
     if (certNext != null) {
       if (
-        !keysUtils.certIssued(certNext, cert) ||
-        !keysUtils.certVerified(certNext, cert)
+        !keysUtils.certIssuedBy(certNext, cert) ||
+        !(await keysUtils.certSignedBy(
+          certNext,
+          keysUtils.certPublicKey(cert)!,
+        ))
       ) {
         throw new networkErrors.ErrorCertChainSignatureInvalid(
           'Chain certificate is not signed by parent certificate',

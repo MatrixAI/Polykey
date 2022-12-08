@@ -3,8 +3,9 @@ import type { PromiseUnaryCall } from '@/grpc/types';
 import type { SessionToken } from '@/sessions/types';
 import type { NodeId } from '@/ids/types';
 import type { Host, Port } from '@/network/types';
-import type { KeyPair, Certificate } from '@/keys/types';
-import type { KeyManager } from '@/keys';
+import type { KeyPair, Certificate, CertificatePEMChain } from '@/keys/types';
+import type { KeyRing } from '@/keys';
+import type { Key } from '@/keys/types';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
@@ -17,7 +18,8 @@ import * as grpcErrors from '@/grpc/errors';
 import * as clientUtils from '@/client/utils';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import { timerStart } from '@/utils';
-import * as utils from './utils';
+import * as utils from '@/utils';
+import * as clientTestUtils from './utils';
 import * as testNodesUtils from '../nodes/utils';
 import * as testUtils from '../utils';
 
@@ -38,63 +40,81 @@ describe('GRPCClient', () => {
   let db: DB;
   let sessionManager: SessionManager;
 
+  const generateCertId = keysUtils.createCertIdGenerator();
+
   beforeAll(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
-    const serverKeyPair = await keysUtils.generateKeyPair(4096);
-    const serverCert = keysUtils.generateCertificate(
-      serverKeyPair.publicKey,
-      serverKeyPair.privateKey,
-      serverKeyPair.privateKey,
-      31536000,
-    );
+    const serverKeyPair = keysUtils.generateKeyPair();
+    const serverCert = await keysUtils.generateCertificate({
+      certId: generateCertId(),
+      duration: 31536000,
+      issuerPrivateKey: serverKeyPair.privateKey,
+      subjectKeyPair: {
+        privateKey: serverKeyPair.privateKey,
+        publicKey: serverKeyPair.publicKey,
+      },
+    });
     nodeIdServer = keysUtils.certNodeId(serverCert)!;
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
       dbPath,
       logger,
       crypto: {
-        key: await keysUtils.generateKey(),
+        key: keysUtils.generateKey(),
         ops: {
-          encrypt: keysUtils.encryptWithKey,
-          decrypt: keysUtils.decryptWithKey,
+          encrypt: async (key, plainText) => {
+            return keysUtils.encryptWithKey(
+              utils.bufferWrap(key) as Key,
+              utils.bufferWrap(plainText),
+            );
+          },
+          decrypt: async (key, cipherText) => {
+            return keysUtils.decryptWithKey(
+              utils.bufferWrap(key) as Key,
+              utils.bufferWrap(cipherText),
+            );
+          },
         },
       },
     });
-    const keyManager = {
+    const keyRing = {
       getNodeId: () => testNodesUtils.generateRandomNodeId(),
-    } as KeyManager; // Cheeky mocking.
+    } as KeyRing; // Cheeky mocking.
     sessionManager = await SessionManager.createSessionManager({
       db,
-      keyManager,
+      keyRing,
       logger,
       expiry: 60000,
     });
     // This has to pass the session manager and the key manager
-    const authenticate = clientUtils.authenticator(sessionManager, keyManager);
-    [server, port] = await utils.openTestServerSecure(
-      keysUtils.privateKeyToPem(serverKeyPair.privateKey),
-      keysUtils.certToPem(serverCert),
+    const authenticate = clientUtils.authenticator(sessionManager, keyRing);
+    [server, port] = await clientTestUtils.openTestServerSecure(
+      keysUtils.privateKeyToPEM(serverKeyPair.privateKey),
+      keysUtils.certToPEM(serverCert),
       authenticate,
       logger,
     );
-    clientKeyPair = await keysUtils.generateKeyPair(4096);
-    clientCert = keysUtils.generateCertificate(
-      clientKeyPair.publicKey,
-      clientKeyPair.privateKey,
-      clientKeyPair.privateKey,
-      31536000,
-    );
+    clientKeyPair = keysUtils.generateKeyPair();
+    clientCert = await keysUtils.generateCertificate({
+      certId: generateCertId(),
+      duration: 31536000,
+      issuerPrivateKey: clientKeyPair.privateKey,
+      subjectKeyPair: {
+        privateKey: clientKeyPair.privateKey,
+        publicKey: clientKeyPair.publicKey,
+      },
+    });
   });
   afterAll(async () => {
     setTimeout(() => {
       // Duplex error tests prevents the GRPC server from gracefully shutting down
       // this will force it to shutdown
       logger.info('Test GRPC Server Hanging, Forcing Shutdown');
-      utils.closeTestServerSecureForce(server);
+      clientTestUtils.closeTestServerSecureForce(server);
     }, 2000);
-    await utils.closeTestServerSecure(server);
+    await clientTestUtils.closeTestServerSecure(server);
     await sessionManager.stop();
     await db.stop();
     await fs.promises.rm(dataDir, {
@@ -103,13 +123,15 @@ describe('GRPCClient', () => {
     });
   });
   test('starting and stopping the client', async () => {
-    const client = await utils.GRPCClientTest.createGRPCClientTest({
+    const client = await clientTestUtils.GRPCClientTest.createGRPCClientTest({
       nodeId: nodeIdServer,
       host: '127.0.0.1' as Host,
       port: port as Port,
       tlsConfig: {
-        keyPrivatePem: keysUtils.privateKeyToPem(clientKeyPair.privateKey),
-        certChainPem: keysUtils.certToPem(clientCert),
+        keyPrivatePem: keysUtils.privateKeyToPEM(clientKeyPair.privateKey),
+        certChainPem: keysUtils.certToPEM(
+          clientCert,
+        ) as unknown as CertificatePEMChain,
       },
       timer: timerStart(1000),
       logger,
@@ -117,13 +139,15 @@ describe('GRPCClient', () => {
     await client.destroy();
   });
   test('calling unary', async () => {
-    const client = await utils.GRPCClientTest.createGRPCClientTest({
+    const client = await clientTestUtils.GRPCClientTest.createGRPCClientTest({
       nodeId: nodeIdServer,
       host: '127.0.0.1' as Host,
       port: port as Port,
       tlsConfig: {
-        keyPrivatePem: keysUtils.privateKeyToPem(clientKeyPair.privateKey),
-        certChainPem: keysUtils.certToPem(clientCert),
+        keyPrivatePem: keysUtils.privateKeyToPEM(clientKeyPair.privateKey),
+        certChainPem: keysUtils.certToPEM(
+          clientCert,
+        ) as unknown as CertificatePEMChain,
       },
       timer: timerStart(1000),
       logger,
@@ -149,13 +173,15 @@ describe('GRPCClient', () => {
     });
     expect(await session.readToken()).toBe('initialtoken');
     // Setting session will trigger the session interceptor
-    const client = await utils.GRPCClientTest.createGRPCClientTest({
+    const client = await clientTestUtils.GRPCClientTest.createGRPCClientTest({
       nodeId: nodeIdServer,
       host: '127.0.0.1' as Host,
       port: port as Port,
       tlsConfig: {
-        keyPrivatePem: keysUtils.privateKeyToPem(clientKeyPair.privateKey),
-        certChainPem: keysUtils.certToPem(clientCert),
+        keyPrivatePem: keysUtils.privateKeyToPEM(clientKeyPair.privateKey),
+        certChainPem: keysUtils.certToPEM(
+          clientCert,
+        ) as unknown as CertificatePEMChain,
       },
       session,
       timer: timerStart(1000),
@@ -186,13 +212,15 @@ describe('GRPCClient', () => {
     await session.stop();
   });
   test('calling server stream', async () => {
-    const client = await utils.GRPCClientTest.createGRPCClientTest({
+    const client = await clientTestUtils.GRPCClientTest.createGRPCClientTest({
       nodeId: nodeIdServer,
       host: '127.0.0.1' as Host,
       port: port as Port,
       tlsConfig: {
-        keyPrivatePem: keysUtils.privateKeyToPem(clientKeyPair.privateKey),
-        certChainPem: keysUtils.certToPem(clientCert),
+        keyPrivatePem: keysUtils.privateKeyToPEM(clientKeyPair.privateKey),
+        certChainPem: keysUtils.certToPEM(
+          clientCert,
+        ) as unknown as CertificatePEMChain,
       },
       timer: timerStart(1000),
       logger,
@@ -228,13 +256,15 @@ describe('GRPCClient', () => {
       logger,
     });
     // Setting session will trigger the session interceptor
-    const client = await utils.GRPCClientTest.createGRPCClientTest({
+    const client = await clientTestUtils.GRPCClientTest.createGRPCClientTest({
       nodeId: nodeIdServer,
       host: '127.0.0.1' as Host,
       port: port as Port,
       tlsConfig: {
-        keyPrivatePem: keysUtils.privateKeyToPem(clientKeyPair.privateKey),
-        certChainPem: keysUtils.certToPem(clientCert),
+        keyPrivatePem: keysUtils.privateKeyToPEM(clientKeyPair.privateKey),
+        certChainPem: keysUtils.certToPEM(
+          clientCert,
+        ) as unknown as CertificatePEMChain,
       },
       session,
       timer: timerStart(1000),
@@ -254,13 +284,15 @@ describe('GRPCClient', () => {
     await session.stop();
   });
   test('calling client stream', async () => {
-    const client = await utils.GRPCClientTest.createGRPCClientTest({
+    const client = await clientTestUtils.GRPCClientTest.createGRPCClientTest({
       nodeId: nodeIdServer,
       host: '127.0.0.1' as Host,
       port: port as Port,
       tlsConfig: {
-        keyPrivatePem: keysUtils.privateKeyToPem(clientKeyPair.privateKey),
-        certChainPem: keysUtils.certToPem(clientCert),
+        keyPrivatePem: keysUtils.privateKeyToPEM(clientKeyPair.privateKey),
+        certChainPem: keysUtils.certToPEM(
+          clientCert,
+        ) as unknown as CertificatePEMChain,
       },
       timer: timerStart(1000),
       logger,
@@ -291,13 +323,15 @@ describe('GRPCClient', () => {
       logger,
     });
     // Setting session will trigger the session interceptor
-    const client = await utils.GRPCClientTest.createGRPCClientTest({
+    const client = await clientTestUtils.GRPCClientTest.createGRPCClientTest({
       nodeId: nodeIdServer,
       host: '127.0.0.1' as Host,
       port: port as Port,
       tlsConfig: {
-        keyPrivatePem: keysUtils.privateKeyToPem(clientKeyPair.privateKey),
-        certChainPem: keysUtils.certToPem(clientCert),
+        keyPrivatePem: keysUtils.privateKeyToPEM(clientKeyPair.privateKey),
+        certChainPem: keysUtils.certToPEM(
+          clientCert,
+        ) as unknown as CertificatePEMChain,
       },
       session,
       timer: timerStart(1000),
@@ -315,13 +349,15 @@ describe('GRPCClient', () => {
     await session.stop();
   });
   test('calling duplex stream', async () => {
-    const client = await utils.GRPCClientTest.createGRPCClientTest({
+    const client = await clientTestUtils.GRPCClientTest.createGRPCClientTest({
       nodeId: nodeIdServer,
       host: '127.0.0.1' as Host,
       port: port as Port,
       tlsConfig: {
-        keyPrivatePem: keysUtils.privateKeyToPem(clientKeyPair.privateKey),
-        certChainPem: keysUtils.certToPem(clientCert),
+        keyPrivatePem: keysUtils.privateKeyToPEM(clientKeyPair.privateKey),
+        certChainPem: keysUtils.certToPEM(
+          clientCert,
+        ) as unknown as CertificatePEMChain,
       },
       timer: timerStart(1000),
       logger,
@@ -349,13 +385,15 @@ describe('GRPCClient', () => {
       logger,
     });
     // Setting session will trigger the session interceptor
-    const client = await utils.GRPCClientTest.createGRPCClientTest({
+    const client = await clientTestUtils.GRPCClientTest.createGRPCClientTest({
       nodeId: nodeIdServer,
       host: '127.0.0.1' as Host,
       port: port as Port,
       tlsConfig: {
-        keyPrivatePem: keysUtils.privateKeyToPem(clientKeyPair.privateKey),
-        certChainPem: keysUtils.certToPem(clientCert),
+        keyPrivatePem: keysUtils.privateKeyToPEM(clientKeyPair.privateKey),
+        certChainPem: keysUtils.certToPEM(
+          clientCert,
+        ) as unknown as CertificatePEMChain,
       },
       session,
       timer: timerStart(1000),

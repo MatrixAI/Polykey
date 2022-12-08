@@ -13,6 +13,7 @@ import createClientService from '@/client/service';
 import PolykeyClient from '@/PolykeyClient';
 import { promisify, timerStart } from '@/utils';
 import * as grpcUtils from '@/grpc/utils';
+import * as keysUtils from '@/keys/utils';
 
 async function openTestClientServer({
   pkAgent,
@@ -24,7 +25,8 @@ async function openTestClientServer({
   const _secure = secure ?? true;
   const clientService: IClientServiceServer = createClientService({
     pkAgent,
-    keyManager: pkAgent.keyManager,
+    keyRing: pkAgent.keyRing,
+    certManager: pkAgent.certManager,
     vaultManager: pkAgent.vaultManager,
     nodeGraph: pkAgent.nodeGraph,
     nodeConnectionManager: pkAgent.nodeConnectionManager,
@@ -46,8 +48,8 @@ async function openTestClientServer({
 
   const callCredentials = _secure
     ? grpcUtils.serverSecureCredentials(
-        pkAgent.keyManager.getRootKeyPairPem().privateKey,
-        await pkAgent.keyManager.getRootCertChainPem(),
+        keysUtils.privateKeyToPEM(pkAgent.keyRing.keyPair.privateKey),
+        await pkAgent.certManager.getCertPEMsChainPEM(),
       )
     : grpcUtils.serverInsecureCredentials();
 

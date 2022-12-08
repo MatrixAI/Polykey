@@ -1,6 +1,7 @@
 import type { NodeId, NodeAddress } from '@/nodes/types';
 import type PolykeyAgent from '@/PolykeyAgent';
 import { IdInternal } from '@matrixai/id';
+import * as fc from 'fast-check';
 import * as keysUtils from '@/keys/utils';
 import { bigInt2Bytes } from '@/utils';
 
@@ -14,10 +15,10 @@ import { bigInt2Bytes } from '@/utils';
  */
 function generateRandomNodeId(readable: boolean = false): NodeId {
   if (readable) {
-    const random = keysUtils.getRandomBytesSync(16).toString('hex');
+    const random = keysUtils.getRandomBytes(16).toString('hex');
     return IdInternal.fromString<NodeId>(random);
   } else {
-    const random = keysUtils.getRandomBytesSync(32);
+    const random = keysUtils.getRandomBytes(32);
     return IdInternal.fromBuffer<NodeId>(random);
   }
 }
@@ -68,15 +69,41 @@ function generateNodeIdForBucket(
  */
 async function nodesConnect(localNode: PolykeyAgent, remoteNode: PolykeyAgent) {
   // Add remote node's details to local node
-  await localNode.nodeManager.setNode(remoteNode.keyManager.getNodeId(), {
+  await localNode.nodeManager.setNode(remoteNode.keyRing.getNodeId(), {
     host: remoteNode.proxy.getProxyHost(),
     port: remoteNode.proxy.getProxyPort(),
   } as NodeAddress);
   // Add local node's details to remote node
-  await remoteNode.nodeManager.setNode(localNode.keyManager.getNodeId(), {
+  await remoteNode.nodeManager.setNode(localNode.keyRing.getNodeId(), {
     host: localNode.proxy.getProxyHost(),
     port: localNode.proxy.getProxyPort(),
   } as NodeAddress);
 }
 
-export { generateRandomNodeId, generateNodeIdForBucket, nodesConnect };
+const nodeIdArb = fc
+  .int8Array({ minLength: 32, maxLength: 32 })
+  .map((value) => IdInternal.fromBuffer<NodeId>(Buffer.from(value)));
+
+const nodeIdArrayArb = (length: number) =>
+  fc.array(nodeIdArb, { maxLength: length, minLength: length }).noShrink();
+
+const uniqueNodeIdArb = (length: number) =>
+  fc
+    .array(nodeIdArb, { maxLength: length, minLength: length })
+    .noShrink()
+    .filter((values) => {
+      for (let i = 0; i < values.length; i++) {
+        for (let j = i; j < values.length; j++) {
+          if (values[i].equals(values[j])) return true;
+        }
+      }
+      return false;
+    });
+export {
+  generateRandomNodeId,
+  generateNodeIdForBucket,
+  nodesConnect,
+  nodeIdArb,
+  nodeIdArrayArb,
+  uniqueNodeIdArb,
+};

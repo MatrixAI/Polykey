@@ -11,8 +11,8 @@ import Session from '@/sessions/Session';
 import * as clientErrors from '@/client/errors';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import { timerStart } from '@/utils';
+import * as keysUtils from '@/keys/utils/index';
 import * as testClientUtils from './utils';
-import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 
 describe(GRPCClientClient.name, () => {
   const password = 'password';
@@ -36,11 +36,13 @@ describe(GRPCClientClient.name, () => {
       password,
       nodePath,
       logger: logger,
-      keysConfig: {
-        privateKeyPemOverride: globalRootKeyPems[0],
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
       },
     });
-    nodeId = pkAgent.keyManager.getNodeId();
+    nodeId = pkAgent.keyRing.getNodeId();
     [server, port] = await testClientUtils.openTestClientServer({
       pkAgent,
     });
@@ -55,7 +57,6 @@ describe(GRPCClientClient.name, () => {
     await client.destroy();
     await testClientUtils.closeTestClientServer(server);
     await pkAgent.stop();
-    await pkAgent.destroy();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,

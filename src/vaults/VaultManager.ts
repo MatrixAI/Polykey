@@ -1,4 +1,4 @@
-import type { DB, DBTransaction, LevelPath } from '@matrixai/db';
+import type { DBTransaction, LevelPath } from '@matrixai/db';
 import type {
   VaultId,
   VaultName,
@@ -10,7 +10,7 @@ import type { Vault } from './Vault';
 import type { FileSystem } from '../types';
 import type { PolykeyWorkerManagerInterface } from '../workers/types';
 import type { NodeId } from '../ids/types';
-import type KeyManager from '../keys/KeyManager';
+import type KeyRing from '../keys/KeyRing';
 import type NodeConnectionManager from '../nodes/NodeConnectionManager';
 import type GestaltGraph from '../gestalts/GestaltGraph';
 import type NotificationsManager from '../notifications/NotificationsManager';
@@ -18,7 +18,9 @@ import type ACL from '../acl/ACL';
 import type { RemoteInfo } from './VaultInternal';
 import type { VaultAction } from './types';
 import type { MultiLockRequest } from '@matrixai/async-locks';
+import type { Key } from 'keys/types';
 import path from 'path';
+import { DB } from '@matrixai/db';
 import { PassThrough } from 'readable-stream';
 import { EncryptedFS, errors as encryptedFsErrors } from 'encryptedfs';
 import Logger from '@matrixai/logger';
@@ -30,6 +32,7 @@ import { IdInternal } from '@matrixai/id';
 import { withF, withG } from '@matrixai/resources';
 import { LockBox, RWLockWriter } from '@matrixai/async-locks';
 import VaultInternal from './VaultInternal';
+import * as utils from '../utils';
 import * as vaultsUtils from '../vaults/utils';
 import * as vaultsErrors from '../vaults/errors';
 import * as gitUtils from '../git/utils';
@@ -62,11 +65,10 @@ class VaultManager {
     vaultsPath,
     db,
     acl,
-    keyManager,
+    keyRing,
     nodeConnectionManager,
     gestaltGraph,
     notificationsManager,
-    keyBits = 256,
     fs = require('fs'),
     logger = new Logger(this.name),
     fresh = false,
@@ -74,11 +76,10 @@ class VaultManager {
     vaultsPath: string;
     db: DB;
     acl: ACL;
-    keyManager: KeyManager;
+    keyRing: KeyRing;
     nodeConnectionManager: NodeConnectionManager;
     gestaltGraph: GestaltGraph;
     notificationsManager: NotificationsManager;
-    keyBits?: 128 | 192 | 256;
     fs?: FileSystem;
     logger?: Logger;
     fresh?: boolean;
@@ -89,11 +90,10 @@ class VaultManager {
       vaultsPath,
       db,
       acl,
-      keyManager,
+      keyRing,
       nodeConnectionManager,
       gestaltGraph,
       notificationsManager,
-      keyBits,
       fs,
       logger,
     });
@@ -104,13 +104,12 @@ class VaultManager {
 
   public readonly vaultsPath: string;
   public readonly efsPath: string;
-  public readonly keyBits: 128 | 192 | 256;
 
   protected fs: FileSystem;
   protected logger: Logger;
   protected db: DB;
   protected acl: ACL;
-  protected keyManager: KeyManager;
+  protected keyRing: KeyRing;
   protected nodeConnectionManager: NodeConnectionManager;
   protected gestaltGraph: GestaltGraph;
   protected notificationsManager: NotificationsManager;
@@ -120,6 +119,7 @@ class VaultManager {
   protected vaultMap: VaultMap = new Map();
   protected vaultLocks: LockBox<RWLockWriter> = new LockBox();
   protected vaultKey: Buffer;
+  protected efsDb: DB;
   protected efs: EncryptedFS;
   protected vaultIdGenerator = vaultsUtils.createVaultIdGenerator();
 
@@ -127,22 +127,20 @@ class VaultManager {
     vaultsPath,
     db,
     acl,
-    keyManager,
+    keyRing,
     nodeConnectionManager,
     gestaltGraph,
     notificationsManager,
-    keyBits,
     fs,
     logger,
   }: {
     vaultsPath: string;
     db: DB;
     acl: ACL;
-    keyManager: KeyManager;
+    keyRing: KeyRing;
     nodeConnectionManager: NodeConnectionManager;
     gestaltGraph: GestaltGraph;
     notificationsManager: NotificationsManager;
-    keyBits: 128 | 192 | 256;
     fs: FileSystem;
     logger: Logger;
   }) {
@@ -151,11 +149,10 @@ class VaultManager {
     this.efsPath = path.join(this.vaultsPath, config.defaults.efsBase);
     this.db = db;
     this.acl = acl;
-    this.keyManager = keyManager;
+    this.keyRing = keyRing;
     this.nodeConnectionManager = nodeConnectionManager;
     this.gestaltGraph = gestaltGraph;
     this.notificationsManager = notificationsManager;
-    this.keyBits = keyBits;
     this.fs = fs;
   }
 
@@ -175,12 +172,35 @@ class VaultManager {
           });
         }
         await mkdirExists(this.fs, this.vaultsPath);
-        const vaultKey = await this.setupKey(this.keyBits, tran);
-        let efs;
+        const vaultKey = await this.setupKey(tran);
+        let efsDb: DB;
+        let efs: EncryptedFS;
         try {
-          efs = await EncryptedFS.createEncryptedFS({
+          efsDb = await DB.createDB({
+            fresh,
+            crypto: {
+              key: vaultKey,
+              ops: {
+                encrypt: async (key, plainText) => {
+                  return keysUtils.encryptWithKey(
+                    utils.bufferWrap(key) as Key,
+                    utils.bufferWrap(plainText),
+                  );
+                },
+                decrypt: async (key, cipherText) => {
+                  return keysUtils.decryptWithKey(
+                    utils.bufferWrap(key) as Key,
+                    utils.bufferWrap(cipherText),
+                  );
+                },
+              },
+            },
             dbPath: this.efsPath,
-            dbKey: vaultKey,
+            logger: this.logger.getChild('EFS Database'),
+          });
+          efs = await EncryptedFS.createEncryptedFS({
+            fresh,
+            db: efsDb,
             logger: this.logger.getChild('EncryptedFileSystem'),
           });
         } catch (e) {
@@ -200,11 +220,13 @@ class VaultManager {
           });
         }
         this.vaultKey = vaultKey;
+        this.efsDb = efsDb;
         this.efs = efs;
         this.logger.info(`Started ${this.constructor.name}`);
       } catch (e) {
         this.logger.warn(`Failed Starting ${this.constructor.name}`);
         await this.efs?.stop();
+        await this.efsDb?.stop();
         throw e;
       }
     });
@@ -232,6 +254,7 @@ class VaultManager {
     }
     await Promise.all(promises);
     await this.efs.stop();
+    await this.efsDb.stop();
     this.vaultMap = new Map();
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
@@ -239,6 +262,7 @@ class VaultManager {
   public async destroy(): Promise<void> {
     this.logger.info(`Destroying ${this.constructor.name}`);
     await this.efs.destroy();
+    await this.efsDb.destroy();
     // Clearing all vaults db data
     await this.db.clear(this.vaultsDbPath);
     // Is it necessary to remove the vaults' domain?
@@ -295,7 +319,7 @@ class VaultManager {
         const vault = await VaultInternal.createVaultInternal({
           vaultId,
           vaultName,
-          keyManager: this.keyManager,
+          keyRing: this.keyRing,
           efs: this.efs,
           logger: this.logger.getChild(VaultInternal.name),
           db: this.db,
@@ -574,7 +598,7 @@ class VaultManager {
     if (vaultMeta == null) throw new vaultsErrors.ErrorVaultsVaultUndefined();
     // NodeId permissions translated to other nodes in
     // a gestalt by other domains
-    await this.gestaltGraph.setGestaltActionByNode(nodeId, 'scan', tran);
+    await this.gestaltGraph.setGestaltAction(['node', nodeId], 'scan', tran);
     await this.acl.setVaultAction(vaultId, nodeId, 'pull', tran);
     await this.acl.setVaultAction(vaultId, nodeId, 'clone', tran);
     await this.notificationsManager.sendNotification(nodeId, {
@@ -606,7 +630,7 @@ class VaultManager {
 
     const vaultMeta = await this.getVaultMeta(vaultId, tran);
     if (!vaultMeta) throw new vaultsErrors.ErrorVaultsVaultUndefined();
-    await this.gestaltGraph.unsetGestaltActionByNode(nodeId, 'scan', tran);
+    await this.gestaltGraph.unsetGestaltAction(['node', nodeId], 'scan', tran);
     await this.acl.unsetVaultAction(vaultId, nodeId, 'pull', tran);
     await this.acl.unsetVaultAction(vaultId, nodeId, 'clone', tran);
   }
@@ -642,7 +666,7 @@ class VaultManager {
           db: this.db,
           nodeConnectionManager: this.nodeConnectionManager,
           vaultsDbPath: this.vaultsDbPath,
-          keyManager: this.keyManager,
+          keyRing: this.keyRing,
           efs: this.efs,
           logger: this.logger.getChild(VaultInternal.name),
           tran,
@@ -941,7 +965,7 @@ class VaultManager {
     // 2. if the state exists then create, add to map and return that
     const newVault = await VaultInternal.createVaultInternal({
       vaultId,
-      keyManager: this.keyManager,
+      keyRing: this.keyRing,
       efs: this.efs,
       logger: this.logger.getChild(VaultInternal.name),
       db: this.db,
@@ -989,10 +1013,7 @@ class VaultManager {
     });
   }
 
-  protected async setupKey(
-    bits: 128 | 192 | 256,
-    tran: DBTransaction,
-  ): Promise<Buffer> {
+  protected async setupKey(tran: DBTransaction): Promise<Buffer> {
     let key: Buffer | undefined;
     key = await tran.get([...this.vaultsDbPath, 'key'], true);
     // If the EFS already exists, but the key doesn't, then we have lost the key
@@ -1003,13 +1024,9 @@ class VaultManager {
       return key;
     }
     this.logger.info('Generating vaults key');
-    key = await this.generateKey(bits);
+    key = keysUtils.generateKey();
     await tran.put([...this.vaultsDbPath, 'key'], key, true);
     return key;
-  }
-
-  protected async generateKey(bits: 128 | 192 | 256): Promise<Buffer> {
-    return await keysUtils.generateKey(bits);
   }
 
   protected async existsEFS(): Promise<boolean> {

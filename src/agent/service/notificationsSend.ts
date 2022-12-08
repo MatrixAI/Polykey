@@ -3,6 +3,8 @@ import type NotificationsManager from '../../notifications/NotificationsManager'
 import type * as notificationsPB from '../../proto/js/polykey/v1/notifications/notifications_pb';
 import type Logger from '@matrixai/logger';
 import type { DB } from '@matrixai/db';
+import type { SignedNotification } from '../../notifications/types';
+import type KeyRing from '../../keys/KeyRing';
 import * as grpcUtils from '../../grpc/utils';
 import * as notificationsUtils from '../../notifications/utils';
 import * as notificationsErrors from '../../notifications/errors';
@@ -12,10 +14,12 @@ import * as agentUtils from '../utils';
 function notificationsSend({
   notificationsManager,
   db,
+  keyRing,
   logger,
 }: {
   notificationsManager: NotificationsManager;
   db: DB;
+  keyRing: KeyRing;
   logger: Logger;
 }) {
   return async (
@@ -26,8 +30,12 @@ function notificationsSend({
     callback: grpc.sendUnaryData<utilsPB.EmptyMessage>,
   ): Promise<void> => {
     try {
-      const jwt = call.request.getContent();
-      const notification = await notificationsUtils.verifyAndDecodeNotif(jwt);
+      const signedNotification =
+        call.request.getContent() as SignedNotification;
+      const notification = await notificationsUtils.verifyAndDecodeNotif(
+        signedNotification,
+        keyRing.getNodeId(),
+      );
       await db.withTransactionF((tran) =>
         notificationsManager.receiveNotification(notification, tran),
       );

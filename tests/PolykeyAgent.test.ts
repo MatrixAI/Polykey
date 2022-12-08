@@ -1,5 +1,5 @@
 import type { StateVersion } from '@/schema/types';
-import type { KeyManagerChangeData } from '@/keys/types';
+import type { CertManagerChangeData } from '@/keys/types';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
@@ -8,33 +8,15 @@ import PolykeyAgent from '@/PolykeyAgent';
 import { Status } from '@/status';
 import { Schema } from '@/schema';
 import * as errors from '@/errors';
-import * as keysUtils from '@/keys/utils';
 import config from '@/config';
 import { promise } from '@/utils/index';
-import { globalRootKeyPems } from './fixtures/globalRootKeyPems';
+import * as keysUtils from '@/keys/utils/index';
 
 describe('PolykeyAgent', () => {
   const password = 'password';
   const logger = new Logger('PolykeyAgent Test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
-  let mockedGenerateKeyPair: jest.SpyInstance;
-  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
-  beforeAll(async () => {
-    const privateKey = keysUtils.privateKeyFromPem(globalRootKeyPems[1]);
-    const publicKey = keysUtils.publicKeyFromPrivateKey(privateKey);
-    const keyPair = { privateKey, publicKey };
-    mockedGenerateKeyPair = jest
-      .spyOn(keysUtils, 'generateKeyPair')
-      .mockResolvedValue(keyPair);
-    mockedGenerateDeterministicKeyPair = jest
-      .spyOn(keysUtils, 'generateDeterministicKeyPair')
-      .mockResolvedValue(keyPair);
-  });
-  afterAll(async () => {
-    mockedGenerateKeyPair.mockRestore();
-    mockedGenerateDeterministicKeyPair.mockRestore();
-  });
   let dataDir: string;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
@@ -53,17 +35,19 @@ describe('PolykeyAgent', () => {
       password,
       nodePath,
       logger,
-      keysConfig: {
-        privateKeyPemOverride: globalRootKeyPems[0],
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
       },
     });
-    await expect(pkAgent.destroy()).rejects.toThrow(
+    await expect(pkAgent.destroy(password)).rejects.toThrow(
       errors.ErrorPolykeyAgentRunning,
     );
     // Should be a noop
     await pkAgent.start({ password });
     await pkAgent.stop();
-    await pkAgent.destroy();
+    await pkAgent.destroy(password);
     await expect(pkAgent.start({ password })).rejects.toThrow(
       errors.ErrorPolykeyAgentDestroyed,
     );
@@ -74,8 +58,10 @@ describe('PolykeyAgent', () => {
       password,
       nodePath,
       logger,
-      keysConfig: {
-        privateKeyPemOverride: globalRootKeyPems[0],
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
       },
     });
     let nodePathContents = await fs.promises.readdir(nodePath);
@@ -97,7 +83,7 @@ describe('PolykeyAgent', () => {
     expect(stateContents).toContain(config.defaults.keysBase);
     expect(stateContents).toContain(config.defaults.dbBase);
     expect(stateContents).toContain(config.defaults.vaultsBase);
-    await pkAgent.destroy();
+    await pkAgent.destroy(password);
     nodePathContents = await fs.promises.readdir(nodePath);
     // The status will be the only file left over
     expect(nodePathContents).toHaveLength(1);
@@ -111,8 +97,10 @@ describe('PolykeyAgent', () => {
       password,
       nodePath,
       logger,
-      keysConfig: {
-        privateKeyPemOverride: globalRootKeyPems[0],
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
       },
     });
     const status = new Status({
@@ -129,9 +117,9 @@ describe('PolykeyAgent', () => {
     expect(await status.readStatus()).toMatchObject({ status: 'DEAD' });
     await expect(
       pkAgent.start({ password: 'wrong password' }),
-    ).rejects.toThrowError(errors.ErrorRootKeysParse);
+    ).rejects.toThrowError(errors.ErrorKeyPairParse);
     expect(await status.readStatus()).toMatchObject({ status: 'DEAD' });
-    await pkAgent.destroy();
+    await pkAgent.destroy(password);
     expect(await status.readStatus()).toMatchObject({ status: 'DEAD' });
   });
   test('schema state version is maintained after start and stop', async () => {
@@ -144,8 +132,10 @@ describe('PolykeyAgent', () => {
       password,
       nodePath,
       logger,
-      keysConfig: {
-        privateKeyPemOverride: globalRootKeyPems[0],
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
       },
     });
     expect(await schema.readVersion()).toBe(config.stateVersion);
@@ -169,8 +159,10 @@ describe('PolykeyAgent', () => {
         password,
         nodePath,
         logger,
-        keysConfig: {
-          privateKeyPemOverride: globalRootKeyPems[0],
+        keyRingConfig: {
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+          strictMemoryLock: false,
         },
       }),
     ).rejects.toThrow(errors.ErrorSchemaVersionTooNew);
@@ -188,8 +180,10 @@ describe('PolykeyAgent', () => {
         password,
         nodePath,
         logger,
-        keysConfig: {
-          privateKeyPemOverride: globalRootKeyPems[0],
+        keyRingConfig: {
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+          strictMemoryLock: false,
         },
       }),
     ).rejects.toThrow(errors.ErrorSchemaVersionTooOld);
@@ -202,23 +196,25 @@ describe('PolykeyAgent', () => {
         password,
         nodePath,
         logger,
-        keysConfig: {
-          privateKeyPemOverride: globalRootKeyPems[0],
+        keyRingConfig: {
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+          strictMemoryLock: false,
         },
       });
-      const prom = promise<KeyManagerChangeData>();
+      const prom = promise<CertManagerChangeData>();
       pkAgent.events.on(
-        PolykeyAgent.eventSymbols.KeyManager,
-        async (data: KeyManagerChangeData) => {
+        PolykeyAgent.eventSymbols.CertManager,
+        async (data: CertManagerChangeData) => {
           prom.resolveP(data);
         },
       );
-      await pkAgent.keyManager.renewRootKeyPair(password);
+      await pkAgent.certManager.renewCertWithNewKeyPair(password);
 
       await expect(prom.p).resolves.toBeDefined();
     } finally {
       await pkAgent?.stop();
-      await pkAgent?.destroy();
+      await pkAgent?.destroy(password);
     }
   });
   test('resetRootKeyPair change event propagates', async () => {
@@ -229,23 +225,25 @@ describe('PolykeyAgent', () => {
         password,
         nodePath,
         logger,
-        keysConfig: {
-          privateKeyPemOverride: globalRootKeyPems[0],
+        keyRingConfig: {
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+          strictMemoryLock: false,
         },
       });
-      const prom = promise<KeyManagerChangeData>();
+      const prom = promise<CertManagerChangeData>();
       pkAgent.events.on(
-        PolykeyAgent.eventSymbols.KeyManager,
-        async (data: KeyManagerChangeData) => {
+        PolykeyAgent.eventSymbols.CertManager,
+        async (data: CertManagerChangeData) => {
           prom.resolveP(data);
         },
       );
-      await pkAgent.keyManager.resetRootKeyPair(password);
+      await pkAgent.certManager.resetCertWithNewKeyPair(password);
 
       await expect(prom.p).resolves.toBeDefined();
     } finally {
       await pkAgent?.stop();
-      await pkAgent?.destroy();
+      await pkAgent?.destroy(password);
     }
   });
   test('resetRootCert change event propagates', async () => {
@@ -256,23 +254,25 @@ describe('PolykeyAgent', () => {
         password,
         nodePath,
         logger,
-        keysConfig: {
-          privateKeyPemOverride: globalRootKeyPems[0],
+        keyRingConfig: {
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+          strictMemoryLock: false,
         },
       });
-      const prom = promise<KeyManagerChangeData>();
+      const prom = promise<CertManagerChangeData>();
       pkAgent.events.on(
-        PolykeyAgent.eventSymbols.KeyManager,
-        async (data: KeyManagerChangeData) => {
+        PolykeyAgent.eventSymbols.CertManager,
+        async (data: CertManagerChangeData) => {
           prom.resolveP(data);
         },
       );
-      await pkAgent.keyManager.resetRootCert();
+      await pkAgent.certManager.resetCertWithCurrentKeyPair();
 
       await expect(prom.p).resolves.toBeDefined();
     } finally {
       await pkAgent?.stop();
-      await pkAgent?.destroy();
+      await pkAgent?.destroy(password);
     }
   });
 });

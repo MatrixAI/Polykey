@@ -4,8 +4,8 @@ import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
 import { vaultOps } from '@/vaults';
-import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 import * as testUtils from '../../utils';
+import * as keysUtils from '../../../src/keys/utils/index';
 
 describe('CLI secrets', () => {
   const password = 'password';
@@ -24,10 +24,12 @@ describe('CLI secrets', () => {
     polykeyAgent = await PolykeyAgent.createPolykeyAgent({
       password,
       nodePath: dataDir,
-      logger: logger,
-      keysConfig: {
-        privateKeyPemOverride: globalRootKeyPems[0],
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
       },
+      logger: logger,
     });
     // Authorize session
     await testUtils.pkStdio(
@@ -40,7 +42,6 @@ describe('CLI secrets', () => {
   });
   afterEach(async () => {
     await polykeyAgent.stop();
-    await polykeyAgent.destroy();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,

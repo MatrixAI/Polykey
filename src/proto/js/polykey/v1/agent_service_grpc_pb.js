@@ -7,15 +7,26 @@ var polykey_v1_nodes_nodes_pb = require('../../polykey/v1/nodes/nodes_pb.js');
 var polykey_v1_vaults_vaults_pb = require('../../polykey/v1/vaults/vaults_pb.js');
 var polykey_v1_notifications_notifications_pb = require('../../polykey/v1/notifications/notifications_pb.js');
 
-function serialize_polykey_v1_nodes_ChainData(arg) {
-  if (!(arg instanceof polykey_v1_nodes_nodes_pb.ChainData)) {
-    throw new Error('Expected argument of type polykey.v1.nodes.ChainData');
+function serialize_polykey_v1_nodes_AgentClaim(arg) {
+  if (!(arg instanceof polykey_v1_nodes_nodes_pb.AgentClaim)) {
+    throw new Error('Expected argument of type polykey.v1.nodes.AgentClaim');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
-function deserialize_polykey_v1_nodes_ChainData(buffer_arg) {
-  return polykey_v1_nodes_nodes_pb.ChainData.deserializeBinary(new Uint8Array(buffer_arg));
+function deserialize_polykey_v1_nodes_AgentClaim(buffer_arg) {
+  return polykey_v1_nodes_nodes_pb.AgentClaim.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_polykey_v1_nodes_ClaimId(arg) {
+  if (!(arg instanceof polykey_v1_nodes_nodes_pb.ClaimId)) {
+    throw new Error('Expected argument of type polykey.v1.nodes.ClaimId');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_polykey_v1_nodes_ClaimId(buffer_arg) {
+  return polykey_v1_nodes_nodes_pb.ClaimId.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_polykey_v1_nodes_ClaimType(arg) {
@@ -38,17 +49,6 @@ function serialize_polykey_v1_nodes_Claims(arg) {
 
 function deserialize_polykey_v1_nodes_Claims(buffer_arg) {
   return polykey_v1_nodes_nodes_pb.Claims.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_polykey_v1_nodes_CrossSign(arg) {
-  if (!(arg instanceof polykey_v1_nodes_nodes_pb.CrossSign)) {
-    throw new Error('Expected argument of type polykey.v1.nodes.CrossSign');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_polykey_v1_nodes_CrossSign(buffer_arg) {
-  return polykey_v1_nodes_nodes_pb.CrossSign.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_polykey_v1_nodes_Node(arg) {
@@ -224,13 +224,13 @@ nodesClosestLocalNodesGet: {
   nodesChainDataGet: {
     path: '/polykey.v1.AgentService/NodesChainDataGet',
     requestStream: false,
-    responseStream: false,
-    requestType: polykey_v1_utils_utils_pb.EmptyMessage,
-    responseType: polykey_v1_nodes_nodes_pb.ChainData,
-    requestSerialize: serialize_polykey_v1_utils_EmptyMessage,
-    requestDeserialize: deserialize_polykey_v1_utils_EmptyMessage,
-    responseSerialize: serialize_polykey_v1_nodes_ChainData,
-    responseDeserialize: deserialize_polykey_v1_nodes_ChainData,
+    responseStream: true,
+    requestType: polykey_v1_nodes_nodes_pb.ClaimId,
+    responseType: polykey_v1_nodes_nodes_pb.AgentClaim,
+    requestSerialize: serialize_polykey_v1_nodes_ClaimId,
+    requestDeserialize: deserialize_polykey_v1_nodes_ClaimId,
+    responseSerialize: serialize_polykey_v1_nodes_AgentClaim,
+    responseDeserialize: deserialize_polykey_v1_nodes_AgentClaim,
   },
   nodesHolePunchMessageSend: {
     path: '/polykey.v1.AgentService/NodesHolePunchMessageSend',
@@ -247,12 +247,12 @@ nodesClosestLocalNodesGet: {
     path: '/polykey.v1.AgentService/NodesCrossSignClaim',
     requestStream: true,
     responseStream: true,
-    requestType: polykey_v1_nodes_nodes_pb.CrossSign,
-    responseType: polykey_v1_nodes_nodes_pb.CrossSign,
-    requestSerialize: serialize_polykey_v1_nodes_CrossSign,
-    requestDeserialize: deserialize_polykey_v1_nodes_CrossSign,
-    responseSerialize: serialize_polykey_v1_nodes_CrossSign,
-    responseDeserialize: deserialize_polykey_v1_nodes_CrossSign,
+    requestType: polykey_v1_nodes_nodes_pb.AgentClaim,
+    responseType: polykey_v1_nodes_nodes_pb.AgentClaim,
+    requestSerialize: serialize_polykey_v1_nodes_AgentClaim,
+    requestDeserialize: deserialize_polykey_v1_nodes_AgentClaim,
+    responseSerialize: serialize_polykey_v1_nodes_AgentClaim,
+    responseDeserialize: deserialize_polykey_v1_nodes_AgentClaim,
   },
   // Notifications
 notificationsSend: {

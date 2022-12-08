@@ -1,19 +1,19 @@
 import type { Host, Port } from '@/network/types';
 import type { IdentityId, ProviderId } from '@/identities/types';
-import type { ClaimLinkIdentity } from '@/claims/types';
-import type { Gestalt } from '@/gestalts/types';
 import type { NodeId } from '@/ids/types';
+import type { ClaimLinkIdentity } from '@/claims/payloads/index';
+import type { SignedClaim } from '@/claims/types';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
-import { poll, sysexits } from '@/utils';
+import { sysexits } from '@/utils';
 import * as nodesUtils from '@/nodes/utils';
-import * as claimsUtils from '@/claims/utils';
 import * as identitiesUtils from '@/identities/utils';
-import * as testUtils from '../../utils';
+import * as keysUtils from '@/keys/utils/index';
+import { encodeProviderIdentityId } from '@/identities/utils';
 import TestProvider from '../../identities/TestProvider';
-import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
+import * as testUtils from '../../utils';
 
 describe('allow/disallow/permissions', () => {
   const logger = new Logger('allow/disallow/permissions test', LogLevel.WARN, [
@@ -48,10 +48,12 @@ describe('allow/disallow/permissions', () => {
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },
-      keysConfig: {
-        privateKeyPemOverride: globalRootKeyPems[0],
-      },
       logger,
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
     });
     pkAgent.identitiesManager.registerProvider(provider);
     // Set up a gestalt to modify the permissions of
@@ -65,12 +67,14 @@ describe('allow/disallow/permissions', () => {
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },
-      keysConfig: {
-        privateKeyPemOverride: globalRootKeyPems[1],
-      },
       logger,
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
     });
-    nodeId = node.keyManager.getNodeId();
+    nodeId = node.keyRing.getNodeId();
     nodeHost = node.proxy.getProxyHost();
     nodePort = node.proxy.getProxyPort();
     node.identitiesManager.registerProvider(provider);
@@ -78,15 +82,16 @@ describe('allow/disallow/permissions', () => {
       accessToken: 'def456',
     });
     provider.users[identity] = {};
-    const identityClaim: ClaimLinkIdentity = {
-      type: 'identity',
-      node: nodesUtils.encodeNodeId(node.keyManager.getNodeId()),
-      provider: provider.id,
-      identity: identity,
+    const identityClaim = {
+      typ: 'ClaimLinkIdentity',
+      iss: nodesUtils.encodeNodeId(node.keyRing.getNodeId()),
+      sub: encodeProviderIdentityId([provider.id, identity]),
     };
-    const [, claimEncoded] = await node.sigchain.addClaim(identityClaim);
-    const claim = claimsUtils.decodeClaim(claimEncoded);
-    await provider.publishClaim(identity, claim);
+    const [, claim] = await node.sigchain.addClaim(identityClaim);
+    await provider.publishClaim(
+      identity,
+      claim as SignedClaim<ClaimLinkIdentity>,
+    );
   });
   afterEach(async () => {
     await node.stop();
@@ -265,27 +270,9 @@ describe('allow/disallow/permissions', () => {
         },
         cwd: dataDir,
       });
-      await poll<Gestalt>(
-        async () => {
-          const gestalts = await poll<Array<Gestalt>>(
-            async () => {
-              return await pkAgent.gestaltGraph.getGestalts();
-            },
-            (_, result) => {
-              if (result.length === 1) return true;
-              return false;
-            },
-            100,
-          );
-          return gestalts[0];
-        },
-        (_, result) => {
-          if (result === undefined) return false;
-          if (Object.keys(result.matrix).length === 2) return true;
-          return false;
-        },
-        100,
-      );
+      while ((await pkAgent.discovery.waitForDiscoveryTasks()) > 0) {
+        // Waiting for discovery to complete
+      }
       ({ exitCode } = await testUtils.pkStdio(
         ['identities', 'trust', providerString],
         {

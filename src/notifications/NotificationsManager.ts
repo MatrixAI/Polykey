@@ -1,7 +1,7 @@
 import type { DB, DBTransaction, KeyPath, LevelPath } from '@matrixai/db';
 import type { NotificationId, Notification, NotificationData } from './types';
 import type ACL from '../acl/ACL';
-import type KeyManager from '../keys/KeyManager';
+import type KeyRing from '../keys/KeyRing';
 import type NodeManager from '../nodes/NodeManager';
 import type NodeConnectionManager from '../nodes/NodeConnectionManager';
 import type { NodeId } from '../ids/types';
@@ -34,7 +34,7 @@ class NotificationsManager {
     db,
     nodeConnectionManager,
     nodeManager,
-    keyManager,
+    keyRing,
     messageCap = 10000,
     logger = new Logger(this.name),
     fresh = false,
@@ -43,7 +43,7 @@ class NotificationsManager {
     db: DB;
     nodeConnectionManager: NodeConnectionManager;
     nodeManager: NodeManager;
-    keyManager: KeyManager;
+    keyRing: KeyRing;
     messageCap?: number;
     logger?: Logger;
     fresh?: boolean;
@@ -52,7 +52,7 @@ class NotificationsManager {
     const notificationsManager = new this({
       acl,
       db,
-      keyManager,
+      keyRing,
       logger,
       messageCap,
       nodeConnectionManager,
@@ -67,7 +67,7 @@ class NotificationsManager {
   protected logger: Logger;
   protected acl: ACL;
   protected db: DB;
-  protected keyManager: KeyManager;
+  protected keyRing: KeyRing;
   protected nodeManager: NodeManager;
   protected nodeConnectionManager: NodeConnectionManager;
   protected messageCap: number;
@@ -95,7 +95,7 @@ class NotificationsManager {
     db,
     nodeConnectionManager,
     nodeManager,
-    keyManager,
+    keyRing,
     messageCap,
     logger,
   }: {
@@ -103,7 +103,7 @@ class NotificationsManager {
     db: DB;
     nodeConnectionManager: NodeConnectionManager;
     nodeManager: NodeManager;
-    keyManager: KeyManager;
+    keyRing: KeyRing;
     messageCap: number;
     logger: Logger;
   }) {
@@ -111,7 +111,7 @@ class NotificationsManager {
     this.messageCap = messageCap;
     this.acl = acl;
     this.db = db;
-    this.keyManager = keyManager;
+    this.keyRing = keyRing;
     this.nodeConnectionManager = nodeConnectionManager;
     this.nodeManager = nodeManager;
   }
@@ -164,14 +164,16 @@ class NotificationsManager {
     nodeId: NodeId,
     data: NotificationData,
   ): Promise<void> {
-    const notification = {
+    const notification: Notification = {
+      typ: 'notification',
       data: data,
-      senderId: nodesUtils.encodeNodeId(this.keyManager.getNodeId()),
       isRead: false,
+      iss: nodesUtils.encodeNodeId(this.keyRing.getNodeId()),
+      sub: nodesUtils.encodeNodeId(nodeId),
     };
-    const signedNotification = await notificationsUtils.signNotification(
+    const signedNotification = await notificationsUtils.generateNotification(
       notification,
-      this.keyManager.getRootKeyPairPem(),
+      this.keyRing.keyPair,
     );
     const notificationMsg = new notificationsPB.AgentNotification();
     notificationMsg.setContent(signedNotification);
@@ -197,7 +199,7 @@ class NotificationsManager {
 
     await tran.lock(this.notificationsMessageCounterDbPath.join(''));
     const nodePerms = await this.acl.getNodePerm(
-      nodesUtils.decodeNodeId(notification.senderId)!,
+      nodesUtils.decodeNodeId(notification.iss)!,
     );
     if (nodePerms === undefined) {
       throw new notificationsErrors.ErrorNotificationsPermissionsNotFound();
@@ -293,7 +295,7 @@ class NotificationsManager {
     for (const notification of notifications) {
       if (
         notification.data.type === 'GestaltInvite' &&
-        nodesUtils.decodeNodeId(notification.senderId)!.equals(fromNode)
+        nodesUtils.decodeNodeId(notification.iss)!.equals(fromNode)
       ) {
         return notification;
       }

@@ -76,43 +76,10 @@ class CommandRead extends CommandPolykey {
         const notificationMessages = response.getNotificationList();
         const notifications: Array<Notification> = [];
         for (const message of notificationMessages) {
-          let data;
-          switch (message.getDataCase()) {
-            case notificationsPB.Notification.DataCase.GENERAL: {
-              data = {
-                type: 'General',
-                message: message.getGeneral()!.getMessage(),
-              };
-              break;
-            }
-            case notificationsPB.Notification.DataCase.GESTALT_INVITE: {
-              data = {
-                type: 'GestaltInvite',
-              };
-              break;
-            }
-            case notificationsPB.Notification.DataCase.VAULT_SHARE: {
-              const actions = message.getVaultShare()!.getActionsList();
-              data = {
-                type: 'VaultShare',
-                vaultId: message.getVaultShare()!.getVaultId(),
-                vaultName: message.getVaultShare()!.getVaultName(),
-                actions: actions.reduce(
-                  (acc, curr) => ((acc[curr] = null), acc),
-                  {},
-                ),
-              };
-              break;
-            }
-          }
-          const notification = {
-            data: data,
-            senderId: message.getSenderId(),
-            isRead: message.getIsRead(),
-          };
-          notifications.push(
-            notificationsUtils.validateNotification(notification),
+          const notification = notificationsUtils.parseNotification(
+            JSON.parse(message.getContent()),
           );
+          notifications.push(notification);
         }
         for (const notification of notifications) {
           process.stdout.write(

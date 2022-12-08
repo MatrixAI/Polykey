@@ -20,9 +20,9 @@ service AgentService {
   // Nodes
   rpc NodesClosestLocalNodesGet (polykey.v1.nodes.Node) returns (polykey.v1.nodes.NodeTable);
   rpc NodesClaimsGet (polykey.v1.nodes.ClaimType) returns (polykey.v1.nodes.Claims);
-  rpc NodesChainDataGet (polykey.v1.utils.EmptyMessage) returns (polykey.v1.nodes.ChainData);
+  rpc NodesChainDataGet (polykey.v1.nodes.ClaimId) returns (stream polykey.v1.nodes.AgentClaim);
   rpc NodesHolePunchMessageSend (polykey.v1.nodes.Relay) returns (polykey.v1.utils.EmptyMessage);
-  rpc NodesCrossSignClaim (stream polykey.v1.nodes.CrossSign) returns (stream polykey.v1.nodes.CrossSign);
+  rpc NodesCrossSignClaim (stream polykey.v1.nodes.AgentClaim) returns (stream polykey.v1.nodes.AgentClaim);
 
   // Notifications
   rpc NotificationsSend (polykey.v1.notifications.AgentNotification) returns (polykey.v1.utils.EmptyMessage);

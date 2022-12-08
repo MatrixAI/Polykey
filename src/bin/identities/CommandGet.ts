@@ -28,6 +28,8 @@ class CommandGet extends CommandPolykey {
         '../../proto/js/polykey/v1/identities/identities_pb'
       );
       const nodesPB = await import('../../proto/js/polykey/v1/nodes/nodes_pb');
+      const utils = await import('../../utils');
+      const nodesUtils = await import('../../nodes/utils');
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -52,31 +54,44 @@ class CommandGet extends CommandPolykey {
           port: clientOptions.clientPort,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-        let res: gestaltsPB.Graph;
-        if (gestaltId.type === 'node') {
-          // Getting from node
-          const nodeMessage = new nodesPB.Node();
-          nodeMessage.setNodeId(gestaltId.nodeId);
-          res = await binUtils.retryAuthentication(
-            (auth) =>
-              pkClient.grpcClient.gestaltsGestaltGetByNode(nodeMessage, auth),
-            meta,
-          );
-        } else {
-          // Getting from identity.
-          const providerMessage = new identitiesPB.Provider();
-          providerMessage.setProviderId(gestaltId.providerId);
-          providerMessage.setIdentityId(gestaltId.identityId);
-          res = await binUtils.retryAuthentication(
-            (auth) =>
-              pkClient.grpcClient.gestaltsGestaltGetByIdentity(
-                providerMessage,
-                auth,
-              ),
-            meta,
-          );
+        let res: gestaltsPB.Graph | null = null;
+        const [type, id] = gestaltId;
+        switch (type) {
+          case 'node':
+            {
+              // Getting from node
+              const nodeMessage = new nodesPB.Node();
+              nodeMessage.setNodeId(nodesUtils.encodeNodeId(id));
+              res = await binUtils.retryAuthentication(
+                (auth) =>
+                  pkClient.grpcClient.gestaltsGestaltGetByNode(
+                    nodeMessage,
+                    auth,
+                  ),
+                meta,
+              );
+            }
+            break;
+          case 'identity':
+            {
+              // Getting from identity.
+              const providerMessage = new identitiesPB.Provider();
+              providerMessage.setProviderId(id[0]);
+              providerMessage.setIdentityId(id[1]);
+              res = await binUtils.retryAuthentication(
+                (auth) =>
+                  pkClient.grpcClient.gestaltsGestaltGetByIdentity(
+                    providerMessage,
+                    auth,
+                  ),
+                meta,
+              );
+            }
+            break;
+          default:
+            utils.never();
         }
-        const gestalt = JSON.parse(res.getGestaltGraph());
+        const gestalt = JSON.parse(res!.getGestaltGraph());
         let output: any = gestalt;
         if (options.format !== 'json') {
           // Creating a list.
@@ -84,7 +99,7 @@ class CommandGet extends CommandPolykey {
           // Listing nodes.
           for (const nodeKey of Object.keys(gestalt.nodes)) {
             const node = gestalt.nodes[nodeKey];
-            output.push(`${node.id}`);
+            output.push(`${node.nodeId}`);
           }
           // Listing identities
           for (const identityKey of Object.keys(gestalt.identities)) {

@@ -1,28 +1,41 @@
 import type {
   ProviderId,
   IdentityId,
-  TokenData,
+  ProviderToken,
   IdentityData,
+  IdentitySignedClaim,
 } from '@/identities/types';
-import type { NodeId } from '@/ids/types';
-import type { Claim, ClaimData, SignatureData } from '@/claims/types';
-import type { IdentityClaim } from '@/identities/types';
+import type { Key } from '@/keys/types';
+import type GestaltGraph from '@/gestalts/GestaltGraph';
+import type { ClaimLinkIdentity } from '@/claims/payloads/index';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
+import { testProp } from '@fast-check/jest';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { IdentitiesManager, providers } from '@/identities';
 import * as identitiesErrors from '@/identities/errors';
 import * as keysUtils from '@/keys/utils';
 import * as nodesUtils from '@/nodes/utils';
+import * as utils from '@/utils/index';
+import KeyRing from '@/keys/KeyRing';
+import Sigchain from '@/sigchain/Sigchain';
+import { encodeProviderIdentityId } from '@/ids/index';
+import Token from '@/tokens/Token';
+import * as identitiesTestUtils from './utils';
 import TestProvider from './TestProvider';
+import * as claimsTestUtils from '../claims/utils';
+import * as keysTestUtils from '../keys/utils';
 import * as testNodesUtils from '../nodes/utils';
 
 describe('IdentitiesManager', () => {
   const logger = new Logger('IdentitiesManager Test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
+  const dummyKeyRing = {} as KeyRing;
+  const dummySigchain = {} as Sigchain;
+  const dummyGestaltGraph = {} as GestaltGraph;
   let dataDir: string;
   let db: DB;
   beforeEach(async () => {
@@ -34,10 +47,20 @@ describe('IdentitiesManager', () => {
       dbPath,
       logger,
       crypto: {
-        key: await keysUtils.generateKey(),
+        key: keysUtils.generateKey(),
         ops: {
-          encrypt: keysUtils.encryptWithKey,
-          decrypt: keysUtils.decryptWithKey,
+          encrypt: async (key, plainText) => {
+            return keysUtils.encryptWithKey(
+              utils.bufferWrap(key) as Key,
+              utils.bufferWrap(plainText),
+            );
+          },
+          decrypt: async (key, cipherText) => {
+            return keysUtils.decryptWithKey(
+              utils.bufferWrap(key) as Key,
+              utils.bufferWrap(cipherText),
+            );
+          },
         },
       },
     });
@@ -54,6 +77,9 @@ describe('IdentitiesManager', () => {
   test('IdentitiesManager readiness', async () => {
     const identitiesManager = await IdentitiesManager.createIdentitiesManager({
       db,
+      keyRing: dummyKeyRing,
+      gestaltGraph: dummyGestaltGraph,
+      sigchain: dummySigchain,
       logger,
     });
     await expect(async () => {
@@ -73,84 +99,115 @@ describe('IdentitiesManager', () => {
       await identitiesManager.getTokens('abc' as ProviderId);
     }).rejects.toThrow(identitiesErrors.ErrorIdentitiesManagerNotRunning);
   });
-  test('get, set and unset tokens', async () => {
-    const identitiesManager = await IdentitiesManager.createIdentitiesManager({
-      db,
-      logger,
-    });
-    const providerId = 'test-provider' as ProviderId;
-    const identityId = 'test-user' as IdentityId;
-    const tokenData = {
-      accessToken: 'abc',
-    };
-    await identitiesManager.putToken(providerId, identityId, tokenData);
-    const tokenData_ = await identitiesManager.getToken(providerId, identityId);
-    expect(tokenData).toStrictEqual(tokenData_);
-    await identitiesManager.delToken(providerId, identityId);
-    await identitiesManager.delToken(providerId, identityId);
-    const tokenData__ = await identitiesManager.getToken(
-      providerId,
-      identityId,
-    );
-    expect(tokenData__).toBeUndefined();
-    await identitiesManager.stop();
-  });
-  test('start and stop preserves state', async () => {
-    // FIXME, save some actual state to check.
-    let identitiesManager = await IdentitiesManager.createIdentitiesManager({
-      db,
-      logger,
-    });
-    const providerId = 'test-provider' as ProviderId;
-    const identityId = 'test-user' as IdentityId;
-    const tokenData = {
-      accessToken: 'abc',
-    };
-    await identitiesManager.putToken(providerId, identityId, tokenData);
-    const testProvider = new TestProvider();
-    identitiesManager.registerProvider(testProvider);
-    await identitiesManager.stop();
+  testProp(
+    'get, set and unset tokens',
+    [identitiesTestUtils.identitiyIdArb, identitiesTestUtils.providerTokenArb],
+    async (identityId, providerToken) => {
+      const identitiesManager = await IdentitiesManager.createIdentitiesManager(
+        {
+          db,
+          keyRing: dummyKeyRing,
+          gestaltGraph: dummyGestaltGraph,
+          sigchain: dummySigchain,
+          logger,
+          fresh: true,
+        },
+      );
+      const providerId = 'test-provider' as ProviderId;
+      await identitiesManager.putToken(providerId, identityId, providerToken);
+      const providerToken_ = await identitiesManager.getToken(
+        providerId,
+        identityId,
+      );
+      expect(providerToken).toStrictEqual(providerToken_);
+      await identitiesManager.delToken(providerId, identityId);
+      await identitiesManager.delToken(providerId, identityId);
+      const providerToken__ = await identitiesManager.getToken(
+        providerId,
+        identityId,
+      );
+      expect(providerToken__).toBeUndefined();
+      await identitiesManager.stop();
+    },
+  );
+  testProp(
+    'start and stop preserves state',
+    [identitiesTestUtils.identitiyIdArb, identitiesTestUtils.providerTokenArb],
+    async (identityId, providerToken) => {
+      let identitiesManager = await IdentitiesManager.createIdentitiesManager({
+        db,
+        keyRing: dummyKeyRing,
+        gestaltGraph: dummyGestaltGraph,
+        sigchain: dummySigchain,
+        logger,
+        fresh: true,
+      });
+      const providerId = 'test-provider' as ProviderId;
+      await identitiesManager.putToken(providerId, identityId, providerToken);
+      const testProvider = new TestProvider();
+      identitiesManager.registerProvider(testProvider);
+      await identitiesManager.stop();
 
-    identitiesManager = await IdentitiesManager.createIdentitiesManager({
-      db,
-      logger,
-    });
-    identitiesManager.registerProvider(testProvider);
-    const tokenData_ = await identitiesManager.getToken(providerId, identityId);
-    expect(tokenData).toStrictEqual(tokenData_);
-    expect(identitiesManager.getProviders()).toStrictEqual({
-      [testProvider.id]: testProvider,
-    });
-    await identitiesManager.stop();
-  });
-  test('fresh start deletes all state', async () => {
-    let identitiesManager = await IdentitiesManager.createIdentitiesManager({
-      db,
-      logger,
-    });
-    const providerId = 'test-provider' as ProviderId;
-    const identityId = 'test-user' as IdentityId;
-    const tokenData = {
-      accessToken: 'abc',
-    };
-    await identitiesManager.putToken(providerId, identityId, tokenData);
-    const testProvider = new TestProvider();
-    identitiesManager.registerProvider(testProvider);
-    await identitiesManager.stop();
+      identitiesManager = await IdentitiesManager.createIdentitiesManager({
+        db,
+        keyRing: dummyKeyRing,
+        gestaltGraph: dummyGestaltGraph,
+        sigchain: dummySigchain,
+        logger,
+      });
+      identitiesManager.registerProvider(testProvider);
+      const providerToken_ = await identitiesManager.getToken(
+        providerId,
+        identityId,
+      );
+      expect(providerToken).toStrictEqual(providerToken_);
+      expect(identitiesManager.getProviders()).toStrictEqual({
+        [testProvider.id]: testProvider,
+      });
+      await identitiesManager.stop();
+    },
+  );
+  testProp(
+    'fresh start deletes all state',
+    [identitiesTestUtils.identitiyIdArb, identitiesTestUtils.providerTokenArb],
+    async (identityId, providerToken) => {
+      let identitiesManager = await IdentitiesManager.createIdentitiesManager({
+        db,
+        keyRing: dummyKeyRing,
+        gestaltGraph: dummyGestaltGraph,
+        sigchain: dummySigchain,
+        logger,
+        fresh: true,
+      });
+      const providerId = 'test-provider' as ProviderId;
+      await identitiesManager.putToken(providerId, identityId, providerToken);
+      const testProvider = new TestProvider();
+      identitiesManager.registerProvider(testProvider);
+      await identitiesManager.stop();
 
-    identitiesManager = await IdentitiesManager.createIdentitiesManager({
-      db,
-      logger,
-      fresh: true,
-    });
-    const tokenData_ = await identitiesManager.getToken(providerId, identityId);
-    expect(tokenData_).toBeUndefined();
-    expect(identitiesManager.getProviders()).toStrictEqual({});
-    await identitiesManager.stop();
-  });
+      identitiesManager = await IdentitiesManager.createIdentitiesManager({
+        db,
+        keyRing: dummyKeyRing,
+        gestaltGraph: dummyGestaltGraph,
+        sigchain: dummySigchain,
+        logger,
+        fresh: true,
+      });
+      const providerToken_ = await identitiesManager.getToken(
+        providerId,
+        identityId,
+      );
+      expect(providerToken_).toBeUndefined();
+      expect(identitiesManager.getProviders()).toStrictEqual({});
+      await identitiesManager.stop();
+    },
+  );
   test('register and unregister providers', async () => {
     const identitiesManager = await IdentitiesManager.createIdentitiesManager({
       db,
+      keyRing: dummyKeyRing,
+      gestaltGraph: dummyGestaltGraph,
+      sigchain: dummySigchain,
       logger,
     });
     const testProvider = new TestProvider();
@@ -175,91 +232,136 @@ describe('IdentitiesManager', () => {
     expect(ps).toStrictEqual({});
     await identitiesManager.stop();
   });
-  test('using TestProvider', async () => {
-    const identitiesManager = await IdentitiesManager.createIdentitiesManager({
-      db,
-      logger,
-    });
-    const testProvider = new TestProvider();
-    identitiesManager.registerProvider(testProvider);
-    // We are going to run authenticate
-    const authProcess = testProvider.authenticate();
-    const result1 = await authProcess.next();
-    // The test provider will provider a dummy authcode
-    expect(result1.value).toBeDefined();
-    expect(typeof result1.value).toBe('object');
-    expect(result1.done).toBe(false);
-    // This is when we have completed it
-    const result2 = await authProcess.next();
-    expect(result2.value).toBeDefined();
-    expect(result2.done).toBe(true);
-    const identityId = result2.value as IdentityId;
-    const tokenData = (await testProvider.getToken(identityId)) as TokenData;
-    expect(tokenData).toBeDefined();
-    const identityId_ = await testProvider.getIdentityId(tokenData);
-    expect(identityId).toBe(identityId_);
-    const authIdentityIds = await testProvider.getAuthIdentityIds();
-    expect(authIdentityIds).toContain(identityId);
-    const identityData = await testProvider.getIdentityData(
-      identityId,
-      identityId,
-    );
-    expect(identityData).toBeDefined();
-    expect(identityData).toHaveProperty('providerId', testProvider.id);
-    expect(identityData).toHaveProperty('identityId', identityId);
-    // Give the provider a connected identity to discover
-    testProvider.users['some-user'] = {};
-    testProvider.users[identityId].connected = ['some-user'];
-    const identityDatas: Array<IdentityData> = [];
-    for await (const identityData_ of testProvider.getConnectedIdentityDatas(
-      identityId,
-    )) {
-      identityDatas.push(identityData_);
-    }
-    expect(identityDatas).toHaveLength(1);
-    expect(identityDatas).not.toContainEqual(identityData);
-    // Now publish a claim
-    const nodeIdSome = testNodesUtils.generateRandomNodeId();
-    const nodeIdSomeEncoded = nodesUtils.encodeNodeId(nodeIdSome);
-    const signatures: Record<NodeId, SignatureData> = {};
-    signatures[nodeIdSome] = {
-      signature: 'examplesignature',
-      header: {
-        alg: 'RS256',
-        kid: nodeIdSomeEncoded,
-      },
-    };
-    const rawClaim: Claim = {
-      payload: {
-        hPrev: null,
-        seq: 1,
+  testProp(
+    'using TestProvider',
+    [claimsTestUtils.claimArb, keysTestUtils.privateKeyArb],
+    async (claim, privateKey) => {
+      const identitiesManager = await IdentitiesManager.createIdentitiesManager(
+        {
+          db,
+          keyRing: dummyKeyRing,
+          gestaltGraph: dummyGestaltGraph,
+          sigchain: dummySigchain,
+          logger,
+          fresh: true,
+        },
+      );
+      const testProvider = new TestProvider();
+      identitiesManager.registerProvider(testProvider);
+      // We are going to run authenticate
+      const authProcess = testProvider.authenticate();
+      const result1 = await authProcess.next();
+      // The test provider will provider a dummy authcode
+      expect(result1.value).toBeDefined();
+      expect(typeof result1.value).toBe('object');
+      expect(result1.done).toBe(false);
+      // This is when we have completed it
+      const result2 = await authProcess.next();
+      expect(result2.value).toBeDefined();
+      expect(result2.done).toBe(true);
+      const identityId = result2.value as IdentityId;
+      const providerToken = (await testProvider.getToken(
+        identityId,
+      )) as ProviderToken;
+      expect(providerToken).toBeDefined();
+      const identityId_ = await testProvider.getIdentityId(providerToken);
+      expect(identityId).toBe(identityId_);
+      const authIdentityIds = await testProvider.getAuthIdentityIds();
+      expect(authIdentityIds).toContain(identityId);
+      const identityData = await testProvider.getIdentityData(
+        identityId,
+        identityId,
+      );
+      expect(identityData).toBeDefined();
+      expect(identityData).toHaveProperty('providerId', testProvider.id);
+      expect(identityData).toHaveProperty('identityId', identityId);
+      // Give the provider a connected identity to discover
+      testProvider.users['some-user'] = {};
+      testProvider.users[identityId].connected = ['some-user'];
+      const identityDatas: Array<IdentityData> = [];
+      for await (const identityData_ of testProvider.getConnectedIdentityDatas(
+        identityId,
+      )) {
+        identityDatas.push(identityData_);
+      }
+      expect(identityDatas).toHaveLength(1);
+      expect(identityDatas).not.toContainEqual(identityData);
+      // Now publish a claim
+      const nodeIdSome = testNodesUtils.generateRandomNodeId();
+      const claimPayload: ClaimLinkIdentity = {
+        ...claim,
+        typ: 'ClaimLinkIdentity',
         iat: Math.floor(Date.now() / 1000),
-        data: {
-          type: 'identity',
-          node: nodesUtils.encodeNodeId(nodeIdSome),
-          provider: testProvider.id,
-          identity: identityId,
-        } as ClaimData,
-      },
-      signatures: signatures,
-    };
-    const publishedClaim = await testProvider.publishClaim(
-      identityId,
-      rawClaim,
-    );
-    expect(publishedClaim).toBeDefined();
-    // PublishedClaim will contain 2 extra metadata fields: URL and id
-    expect(publishedClaim).toMatchObject(rawClaim);
-    const publishedClaim_ = await testProvider.getClaim(
-      identityId,
-      publishedClaim.id,
-    );
-    expect(publishedClaim).toStrictEqual(publishedClaim_);
-    const publishedClaims: Array<IdentityClaim> = [];
-    for await (const claim of testProvider.getClaims(identityId, identityId)) {
-      publishedClaims.push(claim);
-    }
-    expect(publishedClaims).toContainEqual(publishedClaim);
-    await identitiesManager.stop();
-  });
+        iss: nodesUtils.encodeNodeId(nodeIdSome),
+        sub: encodeProviderIdentityId([testProvider.id, identityId]),
+        seq: 1,
+      };
+      const claimToken = Token.fromPayload(claimPayload);
+      claimToken.signWithPrivateKey(privateKey);
+
+      const publishedClaim = await testProvider.publishClaim(
+        identityId,
+        claimToken.toSigned(),
+      );
+      expect(publishedClaim).toBeDefined();
+      // PublishedClaim will contain 2 extra metadata fields: URL and id
+      expect(publishedClaim.claim.payload).toMatchObject(claimPayload);
+      const publishedClaim_ = await testProvider.getClaim(
+        identityId,
+        publishedClaim.id,
+      );
+      expect(publishedClaim).toMatchObject(publishedClaim_!);
+      const publishedClaims: Array<IdentitySignedClaim> = [];
+      for await (const claim of testProvider.getClaims(
+        identityId,
+        identityId,
+      )) {
+        publishedClaims.push(claim);
+      }
+      expect(publishedClaims).toContainEqual(publishedClaim);
+      await identitiesManager.stop();
+    },
+  );
+  testProp(
+    'handleClaimIdentity',
+    [identitiesTestUtils.identitiyIdArb, identitiesTestUtils.providerTokenArb],
+    async (identitiyId, providerToken) => {
+      const keyRing = await KeyRing.createKeyRing({
+        password: 'password',
+        keysPath: path.join(dataDir, 'keys'),
+        logger,
+        fresh: true,
+        strictMemoryLock: false,
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+      });
+      const sigchain = await Sigchain.createSigchain({
+        db,
+        keyRing,
+        logger,
+        fresh: true,
+      });
+      const mockedLinkNodeAndIdentity = jest.fn();
+      const identitiesManager = await IdentitiesManager.createIdentitiesManager(
+        {
+          db,
+          keyRing,
+          gestaltGraph: {
+            linkNodeAndIdentity: mockedLinkNodeAndIdentity,
+          } as unknown as GestaltGraph,
+          sigchain,
+          logger,
+          fresh: true,
+        },
+      );
+      const providerId = 'test-provider' as ProviderId;
+      const testProvider = new TestProvider();
+      identitiesManager.registerProvider(testProvider);
+      await identitiesManager.putToken(providerId, identitiyId, providerToken);
+      await identitiesManager.handleClaimIdentity(providerId, identitiyId);
+      // Gestalt graph `linkNodeAndIdentity` should've been called
+      expect(mockedLinkNodeAndIdentity).toHaveBeenCalled();
+    },
+    { numRuns: 1 },
+  );
 });

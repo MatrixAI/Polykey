@@ -5,8 +5,8 @@ import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
 import * as nodesUtils from '@/nodes/utils';
+import * as keysUtils from '@/keys/utils/index';
 import * as testNodesUtils from '../../nodes/utils';
-import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 import * as testUtils from '../../utils';
 
 describe('claim', () => {
@@ -33,13 +33,15 @@ describe('claim', () => {
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },
-      keysConfig: {
-        privateKeyPemOverride: globalRootKeyPems[0],
-      },
       seedNodes: {}, // Explicitly no seed nodes on startup
       logger,
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
     });
-    localId = pkAgent.keyManager.getNodeId();
+    localId = pkAgent.keyRing.getNodeId();
     // Setting up a remote keynode
     remoteNode = await PolykeyAgent.createPolykeyAgent({
       password,
@@ -50,33 +52,35 @@ describe('claim', () => {
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },
-      keysConfig: {
-        privateKeyPemOverride: globalRootKeyPems[1],
-      },
       seedNodes: {}, // Explicitly no seed nodes on startup
       logger,
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
     });
-    remoteId = remoteNode.keyManager.getNodeId();
+    remoteId = remoteNode.keyRing.getNodeId();
     remoteIdEncoded = nodesUtils.encodeNodeId(remoteId);
     await testNodesUtils.nodesConnect(pkAgent, remoteNode);
     await pkAgent.acl.setNodePerm(remoteId, {
       gestalt: {
         notify: null,
+        claim: null,
       },
       vaults: {},
     });
     await remoteNode.acl.setNodePerm(localId, {
       gestalt: {
         notify: null,
+        claim: null,
       },
       vaults: {},
     });
   });
   afterEach(async () => {
     await pkAgent.stop();
-    await pkAgent.destroy();
     await remoteNode.stop();
-    await remoteNode.destroy();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
@@ -96,7 +100,7 @@ describe('claim', () => {
         },
       );
       expect(exitCode).toBe(0);
-      expect(stdout).toContain('Gestalt Invite');
+      expect(stdout).toContain('Successfully generated a cryptolink claim');
       expect(stdout).toContain(remoteIdEncoded);
     },
   );
@@ -117,7 +121,7 @@ describe('claim', () => {
         },
       );
       expect(exitCode).toBe(0);
-      expect(stdout).toContain('Gestalt Invite');
+      expect(stdout).toContain('Successfully generated a cryptolink');
       expect(stdout).toContain(nodesUtils.encodeNodeId(remoteId));
     },
   );

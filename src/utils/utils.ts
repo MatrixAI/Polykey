@@ -5,6 +5,7 @@ import type {
   Callback,
 } from '../types';
 import os from 'os';
+import v8 from 'v8';
 import process from 'process';
 import path from 'path';
 import lexi from 'lexicographic-integer';
@@ -88,6 +89,18 @@ function pathIncludes(p1: string, p2: string): boolean {
 
 async function sleep(ms: number): Promise<void> {
   return await new Promise<void>((r) => setTimeout(r, ms));
+}
+
+/**
+ * Checks if value is an object.
+ * Arrays are also considered objects.
+ * The type guard here says `o is any`.
+ * TODO: When TS 4.9.x is released, change this to `o is object`.
+ * At that point `'x' in o` checks become type guards that
+ * can assert the property's existence.
+ */
+function isObject(o: unknown): o is object {
+  return o !== null && typeof o === 'object';
 }
 
 function isEmptyObject(o) {
@@ -319,6 +332,36 @@ function bufferSplit(
   return output;
 }
 
+/**
+ * Zero-copy wraps ArrayBuffer-like objects into Buffer
+ * This supports ArrayBuffer, TypedArrays and the NodeJS Buffer
+ */
+function bufferWrap(
+  array: BufferSource,
+  offset?: number,
+  length?: number,
+): Buffer {
+  if (Buffer.isBuffer(array)) {
+    return array;
+  } else if (ArrayBuffer.isView(array)) {
+    return Buffer.from(
+      array.buffer,
+      offset ?? array.byteOffset,
+      length ?? array.byteLength,
+    );
+  } else {
+    return Buffer.from(array, offset, length);
+  }
+}
+
+/**
+ * Checks if data is an ArrayBuffer-like object
+ * This includes ArrayBuffer, TypedArrays and the NodeJS Buffer
+ */
+function isBufferSource(data: unknown): data is BufferSource {
+  return ArrayBuffer.isView(data) || data instanceof ArrayBuffer;
+}
+
 function debounce<P extends any[]>(
   f: (...params: P) => any,
   timeout: number = 0,
@@ -387,6 +430,17 @@ function lexiUnpackBuffer(b: Buffer): number {
   return lexi.unpack([...b]);
 }
 
+/**
+ * Structured clone does deep copy
+ * Remove the reliance on v8 in Node 17
+ */
+const structuredClone =
+  'structuredClone' in globalThis
+    ? globalThis.structuredClone
+    : (value: any) => {
+        return v8.deserialize(v8.serialize(value));
+      };
+
 export {
   AsyncFunction,
   GeneratorFunction,
@@ -397,6 +451,7 @@ export {
   dirEmpty,
   pathIncludes,
   sleep,
+  isObject,
   isEmptyObject,
   filterEmptyObject,
   getUnixtime,
@@ -419,4 +474,7 @@ export {
   isAsyncGenerator,
   lexiPackBuffer,
   lexiUnpackBuffer,
+  bufferWrap,
+  isBufferSource,
+  structuredClone,
 };

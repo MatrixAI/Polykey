@@ -3,7 +3,6 @@ import type { DB } from '@matrixai/db';
 import type { Authenticate } from '../types';
 import type NodeManager from '../../nodes/NodeManager';
 import type { NodeId } from '../../ids/types';
-import type NotificationsManager from '../../notifications/NotificationsManager';
 import type * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
 import type Logger from '@matrixai/logger';
 import * as grpcUtils from '../../grpc/utils';
@@ -22,13 +21,11 @@ import * as clientUtils from '../utils';
 function nodesClaim({
   authenticate,
   nodeManager,
-  notificationsManager,
   db,
   logger,
 }: {
   authenticate: Authenticate;
   nodeManager: NodeManager;
-  notificationsManager: NotificationsManager;
   db: DB;
   logger: Logger;
 }) {
@@ -56,22 +53,10 @@ function nodesClaim({
         },
       );
       await db.withTransactionF(async (tran) => {
-        const gestaltInvite = await notificationsManager.findGestaltInvite(
-          nodeId,
-          tran,
-        );
-        // Check first whether there is an existing gestalt invite from the remote node
-        // or if we want to force an invitation rather than a claim
-        if (gestaltInvite === undefined || call.request.getForceInvite()) {
-          await notificationsManager.sendNotification(nodeId, {
-            type: 'GestaltInvite',
-          });
-          response.setSuccess(false);
-        } else {
-          // There is an existing invitation, and we want to claim the node
-          await nodeManager.claimNode(nodeId, tran);
-          response.setSuccess(true);
-        }
+        // Attempt to claim the node,
+        // if there is no permission then we get an error
+        await nodeManager.claimNode(nodeId, tran);
+        response.setSuccess(true);
       });
       callback(null, response);
       return;

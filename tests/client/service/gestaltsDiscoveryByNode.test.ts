@@ -1,5 +1,6 @@
-import type { NodeInfo } from '@/nodes/types';
 import type { Host, Port } from '@/network/types';
+import type { Key } from '@/keys/types';
+import type { GestaltNodeInfo } from '@/gestalts/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -9,7 +10,7 @@ import { Metadata } from '@grpc/grpc-js';
 import TaskManager from '@/tasks/TaskManager';
 import GestaltGraph from '@/gestalts/GestaltGraph';
 import ACL from '@/acl/ACL';
-import KeyManager from '@/keys/KeyManager';
+import KeyRing from '@/keys/KeyRing';
 import Discovery from '@/discovery/Discovery';
 import IdentitiesManager from '@/identities/IdentitiesManager';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
@@ -23,11 +24,12 @@ import gestaltsDiscoveryByNode from '@/client/service/gestaltsDiscoveryByNode';
 import { ClientServiceService } from '@/proto/js/polykey/v1/client_service_grpc_pb';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as nodesPB from '@/proto/js/polykey/v1/nodes/nodes_pb';
+import * as utils from '@/utils';
 import * as clientUtils from '@/client/utils/utils';
 import * as keysUtils from '@/keys/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as testNodesUtils from '../../nodes/utils';
-import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
+import * as testsUtils from '../../utils/index';
 
 describe('gestaltsDiscoveryByNode', () => {
   const logger = new Logger('gestaltsDiscoveryByNode test', LogLevel.WARN, [
@@ -36,9 +38,8 @@ describe('gestaltsDiscoveryByNode', () => {
   const password = 'helloworld';
   const authenticate = async (metaClient, metaServer = new Metadata()) =>
     metaServer;
-  const node: NodeInfo = {
-    id: nodesUtils.encodeNodeId(testNodesUtils.generateRandomNodeId()),
-    chain: {},
+  const node: GestaltNodeInfo = {
+    nodeId: testNodesUtils.generateRandomNodeId(),
   };
   const authToken = 'abc123';
   let dataDir: string;
@@ -53,7 +54,7 @@ describe('gestaltsDiscoveryByNode', () => {
   let proxy: Proxy;
   let acl: ACL;
   let db: DB;
-  let keyManager: KeyManager;
+  let keyRing: KeyRing;
   let grpcServer: GRPCServer;
   let grpcClient: GRPCClientClient;
   beforeEach(async () => {
@@ -61,21 +62,33 @@ describe('gestaltsDiscoveryByNode', () => {
       path.join(os.tmpdir(), 'polykey-test-'),
     );
     const keysPath = path.join(dataDir, 'keys');
-    keyManager = await KeyManager.createKeyManager({
+    keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
       logger,
-      privateKeyPemOverride: globalRootKeyPems[0],
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
       dbPath,
       logger,
       crypto: {
-        key: keyManager.dbKey,
+        key: keyRing.dbKey,
         ops: {
-          encrypt: keysUtils.encryptWithKey,
-          decrypt: keysUtils.decryptWithKey,
+          encrypt: async (key, plainText) => {
+            return keysUtils.encryptWithKey(
+              utils.bufferWrap(key) as Key,
+              utils.bufferWrap(plainText),
+            );
+          },
+          decrypt: async (key, cipherText) => {
+            return keysUtils.decryptWithKey(
+              utils.bufferWrap(key) as Key,
+              utils.bufferWrap(cipherText),
+            );
+          },
         },
       },
     });
@@ -89,7 +102,10 @@ describe('gestaltsDiscoveryByNode', () => {
       logger,
     });
     identitiesManager = await IdentitiesManager.createIdentitiesManager({
+      keyRing,
+      sigchain,
       db,
+      gestaltGraph,
       logger,
     });
     proxy = new Proxy({
@@ -99,19 +115,16 @@ describe('gestaltsDiscoveryByNode', () => {
     await proxy.start({
       serverHost: '127.0.0.1' as Host,
       serverPort: 0 as Port,
-      tlsConfig: {
-        keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
-        certChainPem: await keyManager.getRootCertChainPem(),
-      },
+      tlsConfig: await testsUtils.createTLSConfig(keyRing.keyPair),
     });
     sigchain = await Sigchain.createSigchain({
       db,
-      keyManager,
+      keyRing,
       logger,
     });
     nodeGraph = await NodeGraph.createNodeGraph({
       db,
-      keyManager,
+      keyRing,
       logger: logger.getChild('NodeGraph'),
     });
     taskManager = await TaskManager.createTaskManager({
@@ -120,7 +133,7 @@ describe('gestaltsDiscoveryByNode', () => {
       lazy: true,
     });
     nodeConnectionManager = new NodeConnectionManager({
-      keyManager,
+      keyRing,
       nodeGraph,
       proxy,
       taskManager,
@@ -130,22 +143,22 @@ describe('gestaltsDiscoveryByNode', () => {
     });
     nodeManager = new NodeManager({
       db,
-      keyManager,
+      keyRing,
       nodeConnectionManager,
       nodeGraph,
       sigchain,
       taskManager,
+      gestaltGraph,
       logger,
     });
     await nodeManager.start();
     await nodeConnectionManager.start({ nodeManager });
     discovery = await Discovery.createDiscovery({
       db,
-      keyManager,
+      keyRing,
       gestaltGraph,
       identitiesManager,
       nodeManager,
-      sigchain,
       taskManager,
       logger,
     });
@@ -164,7 +177,7 @@ describe('gestaltsDiscoveryByNode', () => {
       port: 0 as Port,
     });
     grpcClient = await GRPCClientClient.createGRPCClientClient({
-      nodeId: keyManager.getNodeId(),
+      nodeId: keyRing.getNodeId(),
       host: '127.0.0.1' as Host,
       port: grpcServer.getPort(),
       logger,
@@ -185,7 +198,7 @@ describe('gestaltsDiscoveryByNode', () => {
     await gestaltGraph.stop();
     await acl.stop();
     await db.stop();
-    await keyManager.stop();
+    await keyRing.stop();
     await taskManager.stop();
     await fs.promises.rm(dataDir, {
       force: true,
@@ -197,7 +210,7 @@ describe('gestaltsDiscoveryByNode', () => {
       .spyOn(Discovery.prototype, 'queueDiscoveryByNode')
       .mockResolvedValue();
     const request = new nodesPB.Node();
-    request.setNodeId(node.id);
+    request.setNodeId(nodesUtils.encodeNodeId(node.nodeId));
     const response = await grpcClient.gestaltsDiscoveryByNode(
       request,
       clientUtils.encodeAuthFromPassword(password),

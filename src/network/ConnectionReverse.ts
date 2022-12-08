@@ -293,7 +293,7 @@ class ConnectionReverse extends Connection {
       }
       const clientCertChain = networkUtils.getCertificateChain(tlsSocket);
       try {
-        networkUtils.verifyClientCertificateChain(clientCertChain);
+        await networkUtils.verifyClientCertificateChain(clientCertChain);
       } catch (e) {
         // Clean up partial compose
         if (!tlsSocket.destroyed) {
@@ -348,7 +348,7 @@ class ConnectionReverse extends Connection {
     if (!this._composed) {
       throw new networkErrors.ErrorConnectionNotComposed();
     }
-    return this.clientCertChain.map((crt) => keysUtils.certCopy(crt));
+    return this.clientCertChain;
   }
 
   @ready(new networkErrors.ErrorConnectionNotRunning())

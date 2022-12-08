@@ -1,4 +1,5 @@
 import type { Host, Port } from '@/network/types';
+import type GestaltGraph from '@/gestalts/GestaltGraph';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -6,7 +7,7 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { Metadata } from '@grpc/grpc-js';
 import TaskManager from '@/tasks/TaskManager';
-import KeyManager from '@/keys/KeyManager';
+import KeyRing from '@/keys/KeyRing';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import NodeGraph from '@/nodes/NodeGraph';
 import NodeManager from '@/nodes/NodeManager';
@@ -21,8 +22,8 @@ import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as nodesUtils from '@/nodes/utils';
 import * as clientUtils from '@/client/utils/utils';
 import * as validationErrors from '@/validation/errors';
-import * as testUtils from '../../utils';
-import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
+import * as keysUtils from '@/keys/utils/index';
+import * as testsUtils from '../../utils';
 
 describe('nodesAdd', () => {
   const logger = new Logger('nodesAdd test', LogLevel.WARN, [
@@ -41,7 +42,7 @@ describe('nodesAdd', () => {
   let proxy: Proxy;
 
   let db: DB;
-  let keyManager: KeyManager;
+  let keyRing: KeyRing;
   let grpcServer: GRPCServer;
   let grpcClient: GRPCClientClient;
   beforeEach(async () => {
@@ -49,11 +50,13 @@ describe('nodesAdd', () => {
       path.join(os.tmpdir(), 'polykey-test-'),
     );
     const keysPath = path.join(dataDir, 'keys');
-    keyManager = await KeyManager.createKeyManager({
+    keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
       logger,
-      privateKeyPemOverride: globalRootKeyPems[0],
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
@@ -65,21 +68,18 @@ describe('nodesAdd', () => {
       logger,
     });
     await proxy.start({
-      tlsConfig: {
-        keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
-        certChainPem: await keyManager.getRootCertChainPem(),
-      },
+      tlsConfig: await testsUtils.createTLSConfig(keyRing.keyPair),
       serverHost: '127.0.0.1' as Host,
       serverPort: 0 as Port,
     });
     sigchain = await Sigchain.createSigchain({
       db,
-      keyManager,
+      keyRing,
       logger,
     });
     nodeGraph = await NodeGraph.createNodeGraph({
       db,
-      keyManager,
+      keyRing,
       logger: logger.getChild('NodeGraph'),
     });
     taskManager = await TaskManager.createTaskManager({
@@ -88,7 +88,7 @@ describe('nodesAdd', () => {
       lazy: true,
     });
     nodeConnectionManager = new NodeConnectionManager({
-      keyManager,
+      keyRing,
       nodeGraph,
       proxy,
       taskManager,
@@ -98,11 +98,12 @@ describe('nodesAdd', () => {
     });
     nodeManager = new NodeManager({
       db,
-      keyManager,
+      keyRing,
       nodeConnectionManager,
       nodeGraph,
       sigchain,
       taskManager,
+      gestaltGraph: {} as GestaltGraph,
       logger,
     });
     await nodeManager.start();
@@ -123,7 +124,7 @@ describe('nodesAdd', () => {
       port: 0 as Port,
     });
     grpcClient = await GRPCClientClient.createGRPCClientClient({
-      nodeId: keyManager.getNodeId(),
+      nodeId: keyRing.getNodeId(),
       host: '127.0.0.1' as Host,
       port: grpcServer.getPort(),
       logger,
@@ -140,7 +141,7 @@ describe('nodesAdd', () => {
     await sigchain.stop();
     await proxy.stop();
     await db.stop();
-    await keyManager.stop();
+    await keyRing.stop();
     await taskManager.stop();
     await fs.promises.rm(dataDir, {
       force: true,
@@ -179,7 +180,7 @@ describe('nodesAdd', () => {
     request.setForce(false);
     request.setNodeId('vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0');
     request.setAddress(addressMessage);
-    await testUtils.expectRemoteError(
+    await testsUtils.expectRemoteError(
       grpcClient.nodesAdd(
         request,
         clientUtils.encodeAuthFromPassword(password),
@@ -189,7 +190,7 @@ describe('nodesAdd', () => {
     // Invalid port
     addressMessage.setHost('127.0.0.1');
     addressMessage.setPort(111111);
-    await testUtils.expectRemoteError(
+    await testsUtils.expectRemoteError(
       grpcClient.nodesAdd(
         request,
         clientUtils.encodeAuthFromPassword(password),
@@ -199,7 +200,7 @@ describe('nodesAdd', () => {
     // Invalid nodeid
     addressMessage.setPort(11111);
     request.setNodeId('nodeId');
-    await testUtils.expectRemoteError(
+    await testsUtils.expectRemoteError(
       grpcClient.nodesAdd(
         request,
         clientUtils.encodeAuthFromPassword(password),

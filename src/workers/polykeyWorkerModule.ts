@@ -1,88 +1,187 @@
 import type { TransferDescriptor } from 'threads';
-import type { PublicKeyAsn1, PrivateKeyAsn1, KeyPairAsn1 } from '../keys/types';
+import type {
+  Key,
+  KeyPair,
+  PrivateKey,
+  RecoveryCode,
+  PasswordHash,
+  PasswordSalt,
+  PasswordMemLimit,
+  PasswordOpsLimit,
+  CertId,
+} from '../keys/types';
+import { isWorkerRuntime } from 'threads';
 import { Transfer } from 'threads/worker';
-import { utils as keysUtils } from '../keys';
+import { IdInternal } from '@matrixai/id';
+import * as keysUtils from '../keys/utils';
 
 /**
- * Worker object that contains all functions that will be executed in parallel
- * Functions should be using CPU-parallelism not IO-parallelism
- * Most functions should be synchronous, not asynchronous
- * Making them asynchronous does not make a difference to the caller
- * The caller must always await because the fucntions will run on the pool
+ * Worker object that contains all functions that will be executed in parallel.
+ * Functions should be using CPU-parallelism not IO-parallelism.
+ * Most functions should be synchronous, not asynchronous.
+ * Making them asynchronous does not make a difference to the caller.
+ * The caller must always await because the fucntions will run on the pool.
+ *
+ * When passing in `Buffer`, it is coerced into an `Uint8Array`. To avoid
+ * confusion, do not pass in `Buffer` and instead use `ArrayBuffer`.
+ *
+ * If you are passing the underlying `ArrayBuffer`, ensure that the containing
+ * `Buffer` is unpooled, or make a slice copy of the underlying `ArrayBuffer`
+ * with the `Buffer.byteOffset` and `Buffer.byteLength`.
+ *
+ * Remember the subtyping relationship of buffers:
+ * Buffers < Uint8Array < ArrayBuffer < BufferSource
+ *
+ * Only the `ArrayBuffer` is "transferrable" which means they can be zero-copy
+ * transferred. When transferring a structure that contains `ArrayBuffer`, you
+ * must pass the array of transferrable objects as the second parameter to
+ * `Transfer`.
+ *
+ * Only transfer things that you don't expect to be using in the sending thread.
+ *
+ * Note that `Buffer.from(ArrayBuffer)` is a zero-copy wrapper.
  */
 const polykeyWorker = {
+  // Diagnostic functions
+
+  /**
+   * Check if we are running in the worker.
+   * Only used for testing
+   */
+  isRunningInWorker(): boolean {
+    return isWorkerRuntime();
+  },
+  /**
+   * Sleep synchronously
+   * This blocks the entire event loop
+   * Only used for testing
+   */
+  sleep(ms: number): void {
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+    return;
+  },
+
+  // Keys functions
+
+  hashPassword(
+    password: string,
+    salt?: ArrayBuffer,
+    opsLimit?: PasswordOpsLimit,
+    memLimit?: PasswordMemLimit,
+  ): TransferDescriptor<[ArrayBuffer, ArrayBuffer]> {
+    if (salt != null) salt = Buffer.from(salt);
+    // It is guaranteed that `keysUtils.hashPassword` returns non-pooled buffers
+    const hashAndSalt = keysUtils.hashPassword(
+      password,
+      salt as PasswordSalt | undefined,
+      opsLimit,
+      memLimit,
+    );
+    // Result is a tuple of [hash, salt] using transferable `ArrayBuffer`
+    const result: [ArrayBuffer, ArrayBuffer] = [
+      hashAndSalt[0].buffer,
+      hashAndSalt[1].buffer,
+    ];
+    return Transfer(result, [result[0], result[1]]);
+  },
+  checkPassword(
+    password: string,
+    hash: ArrayBuffer,
+    salt: ArrayBuffer,
+    opsLimit?: PasswordOpsLimit,
+    memLimit?: PasswordMemLimit,
+  ): boolean {
+    hash = Buffer.from(hash);
+    salt = Buffer.from(salt);
+    return keysUtils.checkPassword(
+      password,
+      hash as PasswordHash,
+      salt as PasswordSalt,
+      opsLimit,
+      memLimit,
+    );
+  },
+  async generateDeterministicKeyPair(recoveryCode: RecoveryCode): Promise<
+    TransferDescriptor<{
+      publicKey: ArrayBuffer;
+      privateKey: ArrayBuffer;
+      secretKey: ArrayBuffer;
+    }>
+  > {
+    const keyPair = await keysUtils.generateDeterministicKeyPair(recoveryCode);
+    // Result is a record of {publicKey, privateKey, secretKey} using transferable `ArrayBuffer`
+    const result = {
+      publicKey: keyPair.publicKey.buffer,
+      privateKey: keyPair.privateKey.buffer,
+      secretKey: keyPair.secretKey.buffer,
+    };
+    return Transfer(result, [
+      result.publicKey,
+      result.privateKey,
+      result.secretKey,
+    ]);
+  },
+  async generateCertificate({
+    certId,
+    subjectKeyPair,
+    issuerPrivateKey,
+    duration,
+    subjectAttrsExtra,
+    issuerAttrsExtra,
+    now = new Date(),
+  }: {
+    certId: ArrayBuffer;
+    subjectKeyPair: {
+      publicKey: ArrayBuffer;
+      privateKey: ArrayBuffer;
+    };
+    issuerPrivateKey: ArrayBuffer;
+    duration: number;
+    subjectAttrsExtra?: Array<{ [key: string]: Array<string> }>;
+    issuerAttrsExtra?: Array<{ [key: string]: Array<string> }>;
+    now?: Date;
+  }): Promise<TransferDescriptor<ArrayBuffer>> {
+    certId = IdInternal.create<CertId>(certId);
+    subjectKeyPair.publicKey = Buffer.from(subjectKeyPair.publicKey);
+    subjectKeyPair.privateKey = Buffer.from(subjectKeyPair.privateKey);
+    issuerPrivateKey = Buffer.from(issuerPrivateKey);
+    const cert = await keysUtils.generateCertificate({
+      certId: certId as CertId,
+      subjectKeyPair: subjectKeyPair as KeyPair,
+      issuerPrivateKey: issuerPrivateKey as PrivateKey,
+      duration,
+      subjectAttrsExtra,
+      issuerAttrsExtra,
+      now,
+    });
+    return Transfer(cert.rawData);
+  },
+
   // EFS functions
-  async encrypt(
+
+  encrypt(
     key: ArrayBuffer,
     plainText: ArrayBuffer,
-  ): Promise<TransferDescriptor<ArrayBuffer>> {
-    const cipherText = await keysUtils.encryptWithKey(key, plainText);
-    return Transfer(cipherText);
+  ): TransferDescriptor<ArrayBuffer> {
+    const cipherText = keysUtils.encryptWithKey(
+      Buffer.from(key) as Key,
+      Buffer.from(plainText),
+    );
+    return Transfer(cipherText.buffer);
   },
-  async decrypt(
+  decrypt(
     key: ArrayBuffer,
     cipherText: ArrayBuffer,
-  ): Promise<TransferDescriptor<ArrayBuffer> | undefined> {
-    const plainText = await keysUtils.decryptWithKey(key, cipherText);
+  ): TransferDescriptor<ArrayBuffer> | undefined {
+    const plainText = keysUtils.decryptWithKey(
+      Buffer.from(key) as Key,
+      Buffer.from(cipherText),
+    );
     if (plainText != null) {
-      return Transfer(plainText);
+      return Transfer(plainText.buffer);
     } else {
       return;
     }
-  },
-
-  // KeyManager operations
-  /**
-   * Generate KeyPair
-   */
-  async generateKeyPairAsn1(bits: number): Promise<KeyPairAsn1> {
-    const keyPair = await keysUtils.generateKeyPair(bits);
-    return keysUtils.keyPairToAsn1(keyPair);
-  },
-  async generateDeterministicKeyPairAsn1(
-    bits: number,
-    recoveryCode: string,
-  ): Promise<KeyPairAsn1> {
-    const keyPair = await keysUtils.generateDeterministicKeyPair(
-      bits,
-      recoveryCode,
-    );
-    return keysUtils.keyPairToAsn1(keyPair);
-  },
-  encryptWithPublicKeyAsn1(
-    publicKeyAsn1: PublicKeyAsn1,
-    plainText: string,
-  ): string {
-    const plainText_ = Buffer.from(plainText, 'binary');
-    const publicKey = keysUtils.publicKeyFromAsn1(publicKeyAsn1);
-    const cipherText = keysUtils.encryptWithPublicKey(publicKey, plainText_);
-    return cipherText.toString('binary');
-  },
-  decryptWithPrivateKeyAsn1(
-    privateKeyAsn1: PrivateKeyAsn1,
-    cipherText: string,
-  ): string {
-    const cipherText_ = Buffer.from(cipherText, 'binary');
-    const privateKey = keysUtils.privateKeyFromAsn1(privateKeyAsn1);
-    const plainText = keysUtils.decryptWithPrivateKey(privateKey, cipherText_);
-    return plainText.toString('binary');
-  },
-  signWithPrivateKeyAsn1(privateKeyAsn1: PrivateKeyAsn1, data: string): string {
-    const data_ = Buffer.from(data, 'binary');
-    const privateKey = keysUtils.privateKeyFromAsn1(privateKeyAsn1);
-    const signature = keysUtils.signWithPrivateKey(privateKey, data_);
-    return signature.toString('binary');
-  },
-  verifyWithPublicKeyAsn1(
-    publicKeyAsn1: PublicKeyAsn1,
-    data: string,
-    signature: string,
-  ): boolean {
-    const data_ = Buffer.from(data, 'binary');
-    const signature_ = Buffer.from(signature, 'binary');
-    const publicKey = keysUtils.publicKeyFromAsn1(publicKeyAsn1);
-    const signed = keysUtils.verifyWithPublicKey(publicKey, data_, signature_);
-    return signed;
   },
 };
 

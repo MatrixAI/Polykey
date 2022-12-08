@@ -75,7 +75,7 @@ function vaultsPermissionUnset({
         const vaultMeta = await vaultManager.getVaultMeta(vaultId, tran);
         if (!vaultMeta) throw new vaultsErrors.ErrorVaultsVaultUndefined();
         // Unsetting permissions
-        await gestaltGraph.setGestaltActionByNode(nodeId, 'scan', tran);
+        await gestaltGraph.setGestaltAction(['node', nodeId], 'scan', tran);
         for (const action of actions) {
           await acl.unsetVaultAction(vaultId, nodeId, action, tran);
         }
@@ -89,7 +89,11 @@ function vaultsPermissionUnset({
             .reduce((prev, current) => current + prev);
           // If no permissions are left then we remove the scan permission
           if (totalPermissions === 0) {
-            await gestaltGraph.unsetGestaltActionByNode(nodeId, 'scan', tran);
+            await gestaltGraph.unsetGestaltAction(
+              ['node', nodeId],
+              'scan',
+              tran,
+            );
           }
         }
       });

@@ -1,5 +1,4 @@
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 import * as testUtils from '../../utils';
 
 describe('cert', () => {
@@ -9,7 +8,6 @@ describe('cert', () => {
   let agentClose;
   beforeEach(async () => {
     ({ agentDir, agentPassword, agentClose } = await testUtils.setupTestAgent(
-      globalRootKeyPems[0],
       logger,
     ));
   });
@@ -47,7 +45,7 @@ describe('cert', () => {
       },
     ));
     expect(exitCode).toBe(0);
-    const certStatus = JSON.parse(stdout).rootCertPem;
+    const certStatus = JSON.parse(stdout).certChainPEM;
     expect(certCommand).toBe(certStatus);
   });
 });

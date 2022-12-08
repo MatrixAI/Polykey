@@ -1,20 +1,22 @@
 import type { Authenticate } from '@/client/types';
 import type { Host, Port } from '@/network/types';
+import type { Key, CertificatePEMChain } from '@/keys/types';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import GRPCServer from '@/grpc/GRPCServer';
-import KeyManager from '@/keys/KeyManager';
+import KeyRing from '@/keys/KeyRing';
 import SessionManager from '@/sessions/SessionManager';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as grpcErrors from '@/grpc/errors';
 import * as grpcUtils from '@/grpc/utils';
 import * as keysUtils from '@/keys/utils';
 import * as clientUtils from '@/client/utils';
+import * as utils from '@/utils/index';
 import * as testGrpcUtils from './utils';
-import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
+import * as testsUtils from '../utils';
 
 describe('GRPCServer', () => {
   const logger = new Logger('GRPCServer Test', LogLevel.WARN, [
@@ -22,45 +24,59 @@ describe('GRPCServer', () => {
   ]);
   const password = 'password';
   let dataDir: string;
-  let keyManager: KeyManager;
+  let keyRing: KeyRing;
   let db: DB;
   let sessionManager: SessionManager;
   let authenticate: Authenticate;
+  const generateCertId = keysUtils.createCertIdGenerator();
+
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
     const keysPath = path.join(dataDir, 'keys');
-    keyManager = await KeyManager.createKeyManager({
+    keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
       logger,
-      privateKeyPemOverride: globalRootKeyPems[0],
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
       dbPath,
       logger,
       crypto: {
-        key: keyManager.dbKey,
+        key: keyRing.dbKey,
         ops: {
-          encrypt: keysUtils.encryptWithKey,
-          decrypt: keysUtils.decryptWithKey,
+          encrypt: async (key, plainText) => {
+            return keysUtils.encryptWithKey(
+              utils.bufferWrap(key) as Key,
+              utils.bufferWrap(plainText),
+            );
+          },
+          decrypt: async (key, cipherText) => {
+            return keysUtils.decryptWithKey(
+              utils.bufferWrap(key) as Key,
+              utils.bufferWrap(cipherText),
+            );
+          },
         },
       },
     });
     sessionManager = await SessionManager.createSessionManager({
       db,
-      keyManager,
+      keyRing,
       logger,
       expiry: 60000,
     });
-    authenticate = clientUtils.authenticator(sessionManager, keyManager);
+    authenticate = clientUtils.authenticator(sessionManager, keyRing);
   });
   afterEach(async () => {
     await sessionManager.stop();
     await db.stop();
-    await keyManager.stop();
+    await keyRing.stop();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
@@ -81,13 +97,6 @@ describe('GRPCServer', () => {
     }).toThrow(grpcErrors.ErrorGRPCServerNotRunning);
   });
   test('starting and stopping the server', async () => {
-    const keyPair = await keysUtils.generateKeyPair(4096);
-    const cert = keysUtils.generateCertificate(
-      keyPair.publicKey,
-      keyPair.privateKey,
-      keyPair.privateKey,
-      31536000,
-    );
     const server = new GRPCServer({
       logger: logger,
     });
@@ -100,23 +109,23 @@ describe('GRPCServer', () => {
       ],
       host: '127.0.0.1' as Host,
       port: 0 as Port,
-      tlsConfig: {
-        keyPrivatePem: keysUtils.privateKeyToPem(keyPair.privateKey),
-        certChainPem: keysUtils.certToPem(cert),
-      },
+      tlsConfig: await testsUtils.createTLSConfig(keysUtils.generateKeyPair()),
     });
     expect(typeof server.getPort()).toBe('number');
     expect(server.getPort()).toBeGreaterThan(0);
     await server.stop();
   });
   test('connecting to the server securely', async () => {
-    const serverKeyPair = await keysUtils.generateKeyPair(4096);
-    const serverCert = keysUtils.generateCertificate(
-      serverKeyPair.publicKey,
-      serverKeyPair.privateKey,
-      serverKeyPair.privateKey,
-      31536000,
-    );
+    const serverKeyPair = keysUtils.generateKeyPair();
+    const serverCert = await keysUtils.generateCertificate({
+      certId: generateCertId(),
+      duration: 31536000,
+      issuerPrivateKey: serverKeyPair.privateKey,
+      subjectKeyPair: {
+        privateKey: serverKeyPair.privateKey,
+        publicKey: serverKeyPair.publicKey,
+      },
+    });
     const server = new GRPCServer({
       logger: logger,
     });
@@ -129,24 +138,24 @@ describe('GRPCServer', () => {
       ],
       host: '127.0.0.1' as Host,
       port: 0 as Port,
-      tlsConfig: {
-        keyPrivatePem: keysUtils.privateKeyToPem(serverKeyPair.privateKey),
-        certChainPem: keysUtils.certToPem(serverCert),
-      },
+      tlsConfig: await testsUtils.createTLSConfig(keysUtils.generateKeyPair()),
     });
     const nodeIdServer = keysUtils.certNodeId(serverCert)!;
-    const clientKeyPair = await keysUtils.generateKeyPair(4096);
-    const clientCert = keysUtils.generateCertificate(
-      clientKeyPair.publicKey,
-      clientKeyPair.privateKey,
-      clientKeyPair.privateKey,
-      31536000,
-    );
+    const clientKeyPair = keysUtils.generateKeyPair();
+    const clientCert = await keysUtils.generateCertificate({
+      certId: generateCertId(),
+      duration: 31536000,
+      issuerPrivateKey: clientKeyPair.privateKey,
+      subjectKeyPair: {
+        privateKey: clientKeyPair.privateKey,
+        publicKey: clientKeyPair.publicKey,
+      },
+    });
     const client = await testGrpcUtils.openTestClientSecure(
       nodeIdServer,
       server.getPort(),
-      keysUtils.privateKeyToPem(clientKeyPair.privateKey),
-      keysUtils.certToPem(clientCert),
+      keysUtils.privateKeyToPEM(clientKeyPair.privateKey),
+      keysUtils.certToPEM(clientCert),
     );
     const unary = grpcUtils.promisifyUnaryCall<utilsPB.EchoMessage>(
       client,
@@ -168,13 +177,16 @@ describe('GRPCServer', () => {
     await server.stop();
   });
   test('changing the private key and certificate on the fly', async () => {
-    const serverKeyPair1 = await keysUtils.generateKeyPair(4096);
-    const serverCert1 = keysUtils.generateCertificate(
-      serverKeyPair1.publicKey,
-      serverKeyPair1.privateKey,
-      serverKeyPair1.privateKey,
-      31536000,
-    );
+    const serverKeyPair1 = keysUtils.generateKeyPair();
+    const serverCert1 = await keysUtils.generateCertificate({
+      certId: generateCertId(),
+      duration: 31536000,
+      issuerPrivateKey: serverKeyPair1.privateKey,
+      subjectKeyPair: {
+        privateKey: serverKeyPair1.privateKey,
+        publicKey: serverKeyPair1.publicKey,
+      },
+    });
     const server = new GRPCServer({
       logger: logger,
     });
@@ -188,24 +200,29 @@ describe('GRPCServer', () => {
       host: '127.0.0.1' as Host,
       port: 0 as Port,
       tlsConfig: {
-        keyPrivatePem: keysUtils.privateKeyToPem(serverKeyPair1.privateKey),
-        certChainPem: keysUtils.certToPem(serverCert1),
+        keyPrivatePem: keysUtils.privateKeyToPEM(serverKeyPair1.privateKey),
+        certChainPem: keysUtils.certToPEM(
+          serverCert1,
+        ) as unknown as CertificatePEMChain,
       },
     });
-    const clientKeyPair = await keysUtils.generateKeyPair(4096);
-    const clientCert = keysUtils.generateCertificate(
-      clientKeyPair.publicKey,
-      clientKeyPair.privateKey,
-      clientKeyPair.privateKey,
-      31536000,
-    );
+    const clientKeyPair = keysUtils.generateKeyPair();
+    const clientCert = await keysUtils.generateCertificate({
+      certId: generateCertId(),
+      duration: 31536000,
+      issuerPrivateKey: clientKeyPair.privateKey,
+      subjectKeyPair: {
+        privateKey: clientKeyPair.privateKey,
+        publicKey: clientKeyPair.publicKey,
+      },
+    });
     // First client connection
     const nodeIdServer1 = keysUtils.certNodeId(serverCert1)!;
     const client1 = await testGrpcUtils.openTestClientSecure(
       nodeIdServer1,
       server.getPort(),
-      keysUtils.privateKeyToPem(clientKeyPair.privateKey),
-      keysUtils.certToPem(clientCert),
+      keysUtils.privateKeyToPEM(clientKeyPair.privateKey),
+      keysUtils.certToPEM(clientCert),
     );
     const unary1 = grpcUtils.promisifyUnaryCall<utilsPB.EchoMessage>(
       client1,
@@ -224,16 +241,21 @@ describe('GRPCServer', () => {
     const m1_ = await pCall1;
     expect(m1_.getChallenge()).toBe(m1.getChallenge());
     // Change key and certificate
-    const serverKeyPair2 = await keysUtils.generateKeyPair(4096);
-    const serverCert2 = keysUtils.generateCertificate(
-      serverKeyPair2.publicKey,
-      serverKeyPair2.privateKey,
-      serverKeyPair2.privateKey,
-      31536000,
-    );
+    const serverKeyPair2 = keysUtils.generateKeyPair();
+    const serverCert2 = await keysUtils.generateCertificate({
+      certId: generateCertId(),
+      duration: 31536000,
+      issuerPrivateKey: serverKeyPair2.privateKey,
+      subjectKeyPair: {
+        privateKey: serverKeyPair2.privateKey,
+        publicKey: serverKeyPair2.publicKey,
+      },
+    });
     server.setTLSConfig({
-      keyPrivatePem: keysUtils.privateKeyToPem(serverKeyPair2.privateKey),
-      certChainPem: keysUtils.certToPem(serverCert2),
+      keyPrivatePem: keysUtils.privateKeyToPEM(serverKeyPair2.privateKey),
+      certChainPem: keysUtils.certToPEM(
+        serverCert2,
+      ) as unknown as CertificatePEMChain,
     });
     // Still using first connection
     const m2 = new utilsPB.EchoMessage();
@@ -247,8 +269,8 @@ describe('GRPCServer', () => {
     const client2 = await testGrpcUtils.openTestClientSecure(
       nodeIdServer2,
       server.getPort(),
-      keysUtils.privateKeyToPem(clientKeyPair.privateKey),
-      keysUtils.certToPem(clientCert),
+      keysUtils.privateKeyToPEM(clientKeyPair.privateKey),
+      keysUtils.certToPEM(clientCert),
     );
     const unary2 = grpcUtils.promisifyUnaryCall<utilsPB.EchoMessage>(
       client2,
@@ -271,13 +293,16 @@ describe('GRPCServer', () => {
     await server.stop();
   });
   test('authenticated commands acquire a token', async () => {
-    const serverKeyPair = await keysUtils.generateKeyPair(4096);
-    const serverCert = keysUtils.generateCertificate(
-      serverKeyPair.publicKey,
-      serverKeyPair.privateKey,
-      serverKeyPair.privateKey,
-      31536000,
-    );
+    const serverKeyPair = keysUtils.generateKeyPair();
+    const serverCert = await keysUtils.generateCertificate({
+      certId: generateCertId(),
+      duration: 31536000,
+      issuerPrivateKey: serverKeyPair.privateKey,
+      subjectKeyPair: {
+        privateKey: serverKeyPair.privateKey,
+        publicKey: serverKeyPair.publicKey,
+      },
+    });
     const server = new GRPCServer({
       logger: logger,
     });
@@ -291,23 +316,28 @@ describe('GRPCServer', () => {
       host: '127.0.0.1' as Host,
       port: 0 as Port,
       tlsConfig: {
-        keyPrivatePem: keysUtils.privateKeyToPem(serverKeyPair.privateKey),
-        certChainPem: keysUtils.certToPem(serverCert),
+        keyPrivatePem: keysUtils.privateKeyToPEM(serverKeyPair.privateKey),
+        certChainPem: keysUtils.certToPEM(
+          serverCert,
+        ) as unknown as CertificatePEMChain,
       },
     });
     const nodeIdServer = keysUtils.certNodeId(serverCert)!;
-    const clientKeyPair = await keysUtils.generateKeyPair(4096);
-    const clientCert = keysUtils.generateCertificate(
-      clientKeyPair.publicKey,
-      clientKeyPair.privateKey,
-      clientKeyPair.privateKey,
-      31536000,
-    );
+    const clientKeyPair = keysUtils.generateKeyPair();
+    const clientCert = await keysUtils.generateCertificate({
+      certId: generateCertId(),
+      duration: 31536000,
+      issuerPrivateKey: clientKeyPair.privateKey,
+      subjectKeyPair: {
+        privateKey: clientKeyPair.privateKey,
+        publicKey: clientKeyPair.publicKey,
+      },
+    });
     const client = await testGrpcUtils.openTestClientSecure(
       nodeIdServer,
       server.getPort(),
-      keysUtils.privateKeyToPem(clientKeyPair.privateKey),
-      keysUtils.certToPem(clientCert),
+      keysUtils.privateKeyToPEM(clientKeyPair.privateKey),
+      keysUtils.certToPEM(clientCert),
     );
     const unary = grpcUtils.promisifyUnaryCall<utilsPB.EchoMessage>(
       client,

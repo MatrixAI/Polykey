@@ -6,8 +6,8 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
 import * as nodesUtils from '@/nodes/utils';
 import { sysexits } from '@/errors';
+import * as keysUtils from '@/keys/utils/index';
 import * as testNodesUtils from '../../nodes/utils';
-import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 import * as testUtils from '../../utils';
 
 describe('ping', () => {
@@ -41,11 +41,13 @@ describe('ping', () => {
         connConnectTime: 2000,
         connTimeoutTime: 1000,
       },
-      keysConfig: {
-        privateKeyPemOverride: globalRootKeyPems[0],
-      },
       seedNodes: {}, // Explicitly no seed nodes on startup
       logger,
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
     });
     // Setting up a remote keynode
     remoteOnline = await PolykeyAgent.createPolykeyAgent({
@@ -57,12 +59,14 @@ describe('ping', () => {
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },
-      keysConfig: {
-        privateKeyPemOverride: globalRootKeyPems[1],
-      },
       logger,
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
     });
-    remoteOnlineNodeId = remoteOnline.keyManager.getNodeId();
+    remoteOnlineNodeId = remoteOnline.keyRing.getNodeId();
     await testNodesUtils.nodesConnect(polykeyAgent, remoteOnline);
     // Setting up an offline remote keynode
     remoteOffline = await PolykeyAgent.createPolykeyAgent({
@@ -74,22 +78,21 @@ describe('ping', () => {
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },
-      keysConfig: {
-        privateKeyPemOverride: globalRootKeyPems[2],
-      },
       logger,
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
     });
-    remoteOfflineNodeId = remoteOffline.keyManager.getNodeId();
+    remoteOfflineNodeId = remoteOffline.keyRing.getNodeId();
     await testNodesUtils.nodesConnect(polykeyAgent, remoteOffline);
     await remoteOffline.stop();
   });
   afterEach(async () => {
     await polykeyAgent.stop();
-    await polykeyAgent.destroy();
     await remoteOnline.stop();
-    await remoteOnline.destroy();
     await remoteOffline.stop();
-    await remoteOffline.destroy();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,

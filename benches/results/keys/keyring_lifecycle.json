@@ -1,0 +1,93 @@
+{
+  "name": "keys.keyring_lifecycle",
+  "date": "2022-10-12T03:13:09.471Z",
+  "version": "1.0.1-alpha.0",
+  "results": [
+    {
+      "name": "KeyRing fresh creation",
+      "ops": 1.1,
+      "margin": 10.63,
+      "options": {
+        "delay": 0.005,
+        "initCount": 1,
+        "minTime": 0.05,
+        "maxTime": 5,
+        "minSamples": 5
+      },
+      "samples": 10,
+      "promise": true,
+      "details": {
+        "min": 0.842626693,
+        "max": 1.270134619,
+        "mean": 0.8931530158,
+        "median": 0.848858812,
+        "standardDeviation": 0.1327245021273314,
+        "marginOfError": 0.09493879288134296,
+        "relativeMarginOfError": 10.629622382935805,
+        "standardErrorOfMean": 0.04197117280342306,
+        "sampleVariance": 0.017615793464947994,
+        "sampleResults": [
+          0.842626693,
+          0.843687128,
+          0.846727584,
+          0.848241091,
+          0.848705612,
+          0.849012012,
+          0.849573799,
+          0.865577811,
+          0.867243809,
+          1.270134619
+        ]
+      },
+      "completed": true,
+      "percentSlower": 8.33
+    },
+    {
+      "name": "KeyRing start & stop",
+      "ops": 1.2,
+      "margin": 1.71,
+      "options": {
+        "delay": 0.005,
+        "initCount": 1,
+        "minTime": 0.05,
+        "maxTime": 5,
+        "minSamples": 5
+      },
+      "samples": 10,
+      "promise": true,
+      "details": {
+        "min": 0.837481872,
+        "max": 0.892986147,
+        "mean": 0.8601947366000001,
+        "median": 0.8546125124999999,
+        "standardDeviation": 0.020571418811463696,
+        "marginOfError": 0.014714884128502869,
+        "relativeMarginOfError": 1.710645683169932,
+        "standardErrorOfMean": 0.006505253814545919,
+        "sampleVariance": 0.00042318327191664235,
+        "sampleResults": [
+          0.837481872,
+          0.840824935,
+          0.842477959,
+          0.84259421,
+          0.849936598,
+          0.859288427,
+          0.874165629,
+          0.876421311,
+          0.885770278,
+          0.892986147
+        ]
+      },
+      "completed": true,
+      "percentSlower": 0
+    }
+  ],
+  "fastest": {
+    "name": "KeyRing start & stop",
+    "index": 1
+  },
+  "slowest": {
+    "name": "KeyRing fresh creation",
+    "index": 0
+  }
+}

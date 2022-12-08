@@ -86,10 +86,8 @@ const config = {
     vaultsBase: 'vaults',
     efsBase: 'efs',
     tokenBase: 'token',
-    keysConfig: {
-      rootKeyPairBits: 4096,
-      rootCertDuration: 31536000,
-      dbKeyBits: 256,
+    certManagerConfig: {
+      certDuration: 31536000,
     },
     networkConfig: {
       // ForwardProxy

@@ -918,7 +918,7 @@ proto.polykey.v1.notifications.List.prototype.toObject = function(opt_includeIns
 proto.polykey.v1.notifications.List.toObject = function(includeInstance, msg) {
   var f, obj = {
     notificationList: jspb.Message.toObjectList(msg.getNotificationList(),
-    proto.polykey.v1.notifications.Notification.toObject, includeInstance)
+    proto.polykey.v1.notifications.AgentNotification.toObject, includeInstance)
   };
 
   if (includeInstance) {
@@ -956,8 +956,8 @@ proto.polykey.v1.notifications.List.deserializeBinaryFromReader = function(msg, 
     var field = reader.getFieldNumber();
     switch (field) {
     case 1:
-      var value = new proto.polykey.v1.notifications.Notification;
-      reader.readMessage(value,proto.polykey.v1.notifications.Notification.deserializeBinaryFromReader);
+      var value = new proto.polykey.v1.notifications.AgentNotification;
+      reader.readMessage(value,proto.polykey.v1.notifications.AgentNotification.deserializeBinaryFromReader);
       msg.addNotification(value);
       break;
     default:
@@ -994,24 +994,24 @@ proto.polykey.v1.notifications.List.serializeBinaryToWriter = function(message, 
     writer.writeRepeatedMessage(
       1,
       f,
-      proto.polykey.v1.notifications.Notification.serializeBinaryToWriter
+      proto.polykey.v1.notifications.AgentNotification.serializeBinaryToWriter
     );
   }
 };
 
 
 /**
- * repeated Notification notification = 1;
- * @return {!Array<!proto.polykey.v1.notifications.Notification>}
+ * repeated AgentNotification notification = 1;
+ * @return {!Array<!proto.polykey.v1.notifications.AgentNotification>}
  */
 proto.polykey.v1.notifications.List.prototype.getNotificationList = function() {
-  return /** @type{!Array<!proto.polykey.v1.notifications.Notification>} */ (
-    jspb.Message.getRepeatedWrapperField(this, proto.polykey.v1.notifications.Notification, 1));
+  return /** @type{!Array<!proto.polykey.v1.notifications.AgentNotification>} */ (
+    jspb.Message.getRepeatedWrapperField(this, proto.polykey.v1.notifications.AgentNotification, 1));
 };
 
 
 /**
- * @param {!Array<!proto.polykey.v1.notifications.Notification>} value
+ * @param {!Array<!proto.polykey.v1.notifications.AgentNotification>} value
  * @return {!proto.polykey.v1.notifications.List} returns this
 */
 proto.polykey.v1.notifications.List.prototype.setNotificationList = function(value) {
@@ -1020,12 +1020,12 @@ proto.polykey.v1.notifications.List.prototype.setNotificationList = function(val
 
 
 /**
- * @param {!proto.polykey.v1.notifications.Notification=} opt_value
+ * @param {!proto.polykey.v1.notifications.AgentNotification=} opt_value
  * @param {number=} opt_index
- * @return {!proto.polykey.v1.notifications.Notification}
+ * @return {!proto.polykey.v1.notifications.AgentNotification}
  */
 proto.polykey.v1.notifications.List.prototype.addNotification = function(opt_value, opt_index) {
-  return jspb.Message.addToRepeatedWrapperField(this, 1, opt_value, proto.polykey.v1.notifications.Notification, opt_index);
+  return jspb.Message.addToRepeatedWrapperField(this, 1, opt_value, proto.polykey.v1.notifications.AgentNotification, opt_index);
 };
 
 

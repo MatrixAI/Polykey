@@ -1,12 +1,16 @@
-import type { ClaimLinkIdentity } from '@/claims/types';
 import type { IdentityId, ProviderId } from '@/identities/types';
 import type { Host, Port } from '@/network/types';
+import type { Key } from '@/keys/types';
+import type { SignedClaim } from '../../src/claims/types';
+import type { ClaimLinkIdentity } from '@/claims/payloads';
+import type { NodeId } from '../../src/ids/index';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { PromiseCancellable } from '@matrixai/async-cancellable';
+import { AsyncIterableX as AsyncIterable } from 'ix/asynciterable';
 import TaskManager from '@/tasks/TaskManager';
 import PolykeyAgent from '@/PolykeyAgent';
 import Discovery from '@/discovery/Discovery';
@@ -15,29 +19,31 @@ import IdentitiesManager from '@/identities/IdentitiesManager';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import NodeGraph from '@/nodes/NodeGraph';
 import NodeManager from '@/nodes/NodeManager';
-import KeyManager from '@/keys/KeyManager';
+import KeyRing from '@/keys/KeyRing';
 import ACL from '@/acl/ACL';
 import Sigchain from '@/sigchain/Sigchain';
 import Proxy from '@/network/Proxy';
+import * as utils from '@/utils';
 import * as nodesUtils from '@/nodes/utils';
-import * as claimsUtils from '@/claims/utils';
 import * as discoveryErrors from '@/discovery/errors';
 import * as keysUtils from '@/keys/utils';
 import * as grpcUtils from '@/grpc/utils/index';
+import * as gestaltsUtils from '@/gestalts/utils';
 import * as testNodesUtils from '../nodes/utils';
 import TestProvider from '../identities/TestProvider';
-import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
+import * as testsUtils from '../utils';
+import { encodeProviderIdentityId } from '../../src/ids/index';
+import 'ix/add/asynciterable-operators/toarray';
 
 describe('Discovery', () => {
   const password = 'password';
   const logger = new Logger(`${Discovery.name} Test`, LogLevel.WARN, [
     new StreamHandler(),
   ]);
-  const testProvider = new TestProvider();
   const testToken = {
     providerId: 'test-provider' as ProviderId,
     identityId: 'test_user' as IdentityId,
-    tokenData: {
+    providerToken: {
       accessToken: 'abc123',
     },
   };
@@ -53,13 +59,16 @@ describe('Discovery', () => {
   let nodeManager: NodeManager;
   let db: DB;
   let acl: ACL;
-  let keyManager: KeyManager;
+  let keyRing: KeyRing;
   let sigchain: Sigchain;
   let proxy: Proxy;
   // Other gestalt
   let nodeA: PolykeyAgent;
   let nodeB: PolykeyAgent;
   let identityId: IdentityId;
+  let nodeIdA: NodeId;
+  let nodeIdB: NodeId;
+  let testProvider: TestProvider;
 
   const mockedRefreshBucket = jest.spyOn(
     NodeManager.prototype,
@@ -67,6 +76,7 @@ describe('Discovery', () => {
   );
 
   beforeEach(async () => {
+    testProvider = new TestProvider();
     mockedRefreshBucket.mockImplementation(
       () => new PromiseCancellable((resolve) => resolve()),
     );
@@ -76,23 +86,36 @@ describe('Discovery', () => {
       path.join(os.tmpdir(), 'polykey-test-'),
     );
     const keysPath = path.join(dataDir, 'keys');
-    keyManager = await KeyManager.createKeyManager({
+    keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
-      privateKeyPemOverride: globalRootKeyPems[0],
-      logger: logger.getChild('KeyManager'),
+      logger: logger.getChild('KeyRing'),
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
       dbPath,
       logger: logger.getChild('db'),
       crypto: {
-        key: keyManager.dbKey,
+        key: keyRing.dbKey,
         ops: {
-          encrypt: keysUtils.encryptWithKey,
-          decrypt: keysUtils.decryptWithKey,
+          encrypt: async (key, plainText) => {
+            return keysUtils.encryptWithKey(
+              utils.bufferWrap(key) as Key,
+              utils.bufferWrap(plainText),
+            );
+          },
+          decrypt: async (key, cipherText) => {
+            return keysUtils.decryptWithKey(
+              utils.bufferWrap(key) as Key,
+              utils.bufferWrap(cipherText),
+            );
+          },
         },
       },
+      fresh: true,
     });
     acl = await ACL.createACL({
       db,
@@ -102,20 +125,24 @@ describe('Discovery', () => {
       db,
       acl,
       logger: logger.getChild('gestaltGraph'),
+      fresh: true,
     });
     identitiesManager = await IdentitiesManager.createIdentitiesManager({
+      keyRing,
       db,
+      gestaltGraph,
+      sigchain,
       logger: logger.getChild('identities'),
     });
     identitiesManager.registerProvider(testProvider);
     await identitiesManager.putToken(
       testToken.providerId,
       testToken.identityId,
-      testToken.tokenData,
+      testToken.providerToken,
     );
     sigchain = await Sigchain.createSigchain({
       db,
-      keyManager,
+      keyRing,
       logger: logger.getChild('sigChain'),
     });
     proxy = new Proxy({
@@ -127,14 +154,11 @@ describe('Discovery', () => {
       serverHost: '127.0.0.1' as Host,
       serverPort: 0 as Port,
       proxyHost: '127.0.0.1' as Host,
-      tlsConfig: {
-        keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
-        certChainPem: await keyManager.getRootCertChainPem(),
-      },
+      tlsConfig: await testsUtils.createTLSConfig(keyRing.keyPair),
     });
     nodeGraph = await NodeGraph.createNodeGraph({
       db,
-      keyManager,
+      keyRing,
       logger: logger.getChild('NodeGraph'),
     });
     taskManager = await TaskManager.createTaskManager({
@@ -143,7 +167,7 @@ describe('Discovery', () => {
       lazy: true,
     });
     nodeConnectionManager = new NodeConnectionManager({
-      keyManager,
+      keyRing,
       nodeGraph,
       proxy,
       taskManager,
@@ -153,9 +177,10 @@ describe('Discovery', () => {
     });
     nodeManager = new NodeManager({
       db,
-      keyManager,
+      keyRing,
       nodeConnectionManager,
       nodeGraph,
+      gestaltGraph,
       sigchain,
       taskManager,
       logger,
@@ -172,10 +197,12 @@ describe('Discovery', () => {
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },
-      keysConfig: {
-        privateKeyPemOverride: globalRootKeyPems[1],
-      },
       logger: logger.getChild('nodeA'),
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
     });
     nodeB = await PolykeyAgent.createPolykeyAgent({
       password: password,
@@ -186,32 +213,32 @@ describe('Discovery', () => {
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },
-      keysConfig: {
-        privateKeyPemOverride: globalRootKeyPems[2],
-      },
       logger: logger.getChild('nodeB'),
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
     });
+    nodeIdA = nodeA.keyRing.getNodeId();
+    nodeIdB = nodeB.keyRing.getNodeId();
     await testNodesUtils.nodesConnect(nodeA, nodeB);
-    await nodeGraph.setNode(nodeA.keyManager.getNodeId(), {
+    await nodeGraph.setNode(nodeA.keyRing.getNodeId(), {
       host: nodeA.proxy.getProxyHost(),
       port: nodeA.proxy.getProxyPort(),
     });
-    await nodeA.nodeManager.claimNode(nodeB.keyManager.getNodeId());
+    await nodeB.acl.setNodeAction(nodeA.keyRing.getNodeId(), 'claim');
+    await nodeA.nodeManager.claimNode(nodeB.keyRing.getNodeId());
     nodeA.identitiesManager.registerProvider(testProvider);
     identityId = 'other-gestalt' as IdentityId;
     await nodeA.identitiesManager.putToken(testToken.providerId, identityId, {
       accessToken: 'def456',
     });
     testProvider.users[identityId] = {};
-    const identityClaim: ClaimLinkIdentity = {
-      type: 'identity',
-      node: nodesUtils.encodeNodeId(nodeB.keyManager.getNodeId()),
-      provider: testProvider.id,
-      identity: identityId,
-    };
-    const [, claimEncoded] = await nodeB.sigchain.addClaim(identityClaim);
-    const claim = claimsUtils.decodeClaim(claimEncoded);
-    await testProvider.publishClaim(identityId, claim);
+    await nodeA.identitiesManager.handleClaimIdentity(
+      testProvider.id,
+      identityId,
+    );
   });
   afterEach(async () => {
     await taskManager.stopProcessing();
@@ -227,7 +254,7 @@ describe('Discovery', () => {
     await gestaltGraph.stop();
     await acl.stop();
     await db.stop();
-    await keyManager.stop();
+    await keyRing.stop();
     await taskManager.stop();
     await fs.promises.rm(dataDir, {
       force: true,
@@ -238,11 +265,10 @@ describe('Discovery', () => {
   test('discovery readiness', async () => {
     const discovery = await Discovery.createDiscovery({
       db,
-      keyManager,
+      keyRing,
       gestaltGraph,
       identitiesManager,
       nodeManager,
-      sigchain,
       taskManager,
       logger,
     });
@@ -262,33 +288,36 @@ describe('Discovery', () => {
   test('discovery by node', async () => {
     const discovery = await Discovery.createDiscovery({
       db,
-      keyManager,
+      keyRing,
       gestaltGraph,
       identitiesManager,
       nodeManager,
-      sigchain,
       taskManager,
       logger,
+      fresh: true,
     });
     await taskManager.startProcessing();
-    await discovery.queueDiscoveryByNode(nodeA.keyManager.getNodeId());
+    await discovery.queueDiscoveryByNode(nodeA.keyRing.getNodeId());
     let existingTasks: number = 0;
     do {
       existingTasks = await discovery.waitForDiscoveryTasks();
     } while (existingTasks > 0);
-    const gestalt = await gestaltGraph.getGestalts();
-    const gestaltMatrix = gestalt[0].matrix;
-    const gestaltNodes = gestalt[0].nodes;
-    const gestaltIdentities = gestalt[0].identities;
+    const gestalts = await AsyncIterable.as(
+      gestaltGraph.getGestalts(),
+    ).toArray();
+    const gestalt = gestalts[0];
+    const gestaltMatrix = gestalt.matrix;
+    const gestaltNodes = gestalt.nodes;
+    const gestaltIdentities = gestalt.identities;
     expect(Object.keys(gestaltMatrix)).toHaveLength(3);
     expect(Object.keys(gestaltNodes)).toHaveLength(2);
     expect(Object.keys(gestaltIdentities)).toHaveLength(1);
-    const gestaltString = JSON.stringify(gestalt[0]);
+    const gestaltString = JSON.stringify(gestalt);
     expect(gestaltString).toContain(
-      nodesUtils.encodeNodeId(nodeA.keyManager.getNodeId()),
+      gestaltsUtils.encodeGestaltId(['node', nodeIdA]),
     );
     expect(gestaltString).toContain(
-      nodesUtils.encodeNodeId(nodeB.keyManager.getNodeId()),
+      gestaltsUtils.encodeGestaltId(['node', nodeIdB]),
     );
     expect(gestaltString).toContain(identityId);
     await taskManager.stopProcessing();
@@ -298,11 +327,10 @@ describe('Discovery', () => {
   test('discovery by identity', async () => {
     const discovery = await Discovery.createDiscovery({
       db,
-      keyManager,
+      keyRing,
       gestaltGraph,
       identitiesManager,
       nodeManager,
-      sigchain,
       taskManager,
       logger,
     });
@@ -312,7 +340,10 @@ describe('Discovery', () => {
     do {
       existingTasks = await discovery.waitForDiscoveryTasks();
     } while (existingTasks > 0);
-    const gestalt = (await gestaltGraph.getGestalts())[0];
+    const gestalts = await AsyncIterable.as(
+      gestaltGraph.getGestalts(),
+    ).toArray();
+    const gestalt = gestalts[0];
     const gestaltMatrix = gestalt.matrix;
     const gestaltNodes = gestalt.nodes;
     const gestaltIdentities = gestalt.identities;
@@ -321,10 +352,10 @@ describe('Discovery', () => {
     expect(Object.keys(gestaltIdentities)).toHaveLength(1);
     const gestaltString = JSON.stringify(gestalt);
     expect(gestaltString).toContain(
-      nodesUtils.encodeNodeId(nodeA.keyManager.getNodeId()),
+      nodesUtils.encodeNodeId(nodeA.keyRing.getNodeId()),
     );
     expect(gestaltString).toContain(
-      nodesUtils.encodeNodeId(nodeB.keyManager.getNodeId()),
+      nodesUtils.encodeNodeId(nodeB.keyRing.getNodeId()),
     );
     expect(gestaltString).toContain(identityId);
     await taskManager.stopProcessing();
@@ -334,21 +365,23 @@ describe('Discovery', () => {
   test('updates previously discovered gestalts', async () => {
     const discovery = await Discovery.createDiscovery({
       db,
-      keyManager,
+      keyRing,
       gestaltGraph,
       identitiesManager,
       nodeManager,
-      sigchain,
       taskManager,
       logger,
     });
     await taskManager.startProcessing();
-    await discovery.queueDiscoveryByNode(nodeA.keyManager.getNodeId());
+    await discovery.queueDiscoveryByNode(nodeA.keyRing.getNodeId());
     let existingTasks: number = 0;
     do {
       existingTasks = await discovery.waitForDiscoveryTasks();
     } while (existingTasks > 0);
-    const gestalt1 = (await gestaltGraph.getGestalts())[0];
+    const gestalts1 = await AsyncIterable.as(
+      gestaltGraph.getGestalts(),
+    ).toArray();
+    const gestalt1 = gestalts1[0];
     const gestaltMatrix1 = gestalt1.matrix;
     const gestaltNodes1 = gestalt1.nodes;
     const gestaltIdentities1 = gestalt1.identities;
@@ -357,10 +390,10 @@ describe('Discovery', () => {
     expect(Object.keys(gestaltIdentities1)).toHaveLength(1);
     const gestaltString1 = JSON.stringify(gestalt1);
     expect(gestaltString1).toContain(
-      nodesUtils.encodeNodeId(nodeA.keyManager.getNodeId()),
+      nodesUtils.encodeNodeId(nodeA.keyRing.getNodeId()),
     );
     expect(gestaltString1).toContain(
-      nodesUtils.encodeNodeId(nodeB.keyManager.getNodeId()),
+      nodesUtils.encodeNodeId(nodeB.keyRing.getNodeId()),
     );
     expect(gestaltString1).toContain(identityId);
     // Add another linked identity
@@ -369,22 +402,26 @@ describe('Discovery', () => {
       accessToken: 'ghi789',
     });
     testProvider.users[identityId2] = {};
-    const identityClaim: ClaimLinkIdentity = {
-      type: 'identity',
-      node: nodesUtils.encodeNodeId(nodeA.keyManager.getNodeId()),
-      provider: testProvider.id,
-      identity: identityId2,
+    const identityClaim = {
+      typ: 'ClaimLinkIdentity',
+      iss: nodesUtils.encodeNodeId(nodeA.keyRing.getNodeId()),
+      sub: encodeProviderIdentityId([testProvider.id, identityId2]),
     };
-    const [, claimEncoded] = await nodeA.sigchain.addClaim(identityClaim);
-    const claim = claimsUtils.decodeClaim(claimEncoded);
-    await testProvider.publishClaim(identityId2, claim);
+    const [, signedClaim] = await nodeA.sigchain.addClaim(identityClaim);
+    await testProvider.publishClaim(
+      identityId2,
+      signedClaim as SignedClaim<ClaimLinkIdentity>,
+    );
     // Note that eventually we would like to add in a system of revisiting
     // already discovered vertices, however for now we must do this manually.
-    await discovery.queueDiscoveryByNode(nodeA.keyManager.getNodeId());
+    await discovery.queueDiscoveryByNode(nodeA.keyRing.getNodeId());
     do {
       existingTasks = await discovery.waitForDiscoveryTasks();
     } while (existingTasks > 0);
-    const gestalt2 = (await gestaltGraph.getGestalts())[0];
+    const gestalts2 = await AsyncIterable.as(
+      gestaltGraph.getGestalts(),
+    ).toArray();
+    const gestalt2 = gestalts2[0];
     const gestaltMatrix2 = gestalt2.matrix;
     const gestaltNodes2 = gestalt2.nodes;
     const gestaltIdentities2 = gestalt2.identities;
@@ -393,10 +430,10 @@ describe('Discovery', () => {
     expect(Object.keys(gestaltIdentities2)).toHaveLength(2);
     const gestaltString2 = JSON.stringify(gestalt2);
     expect(gestaltString2).toContain(
-      nodesUtils.encodeNodeId(nodeA.keyManager.getNodeId()),
+      nodesUtils.encodeNodeId(nodeA.keyRing.getNodeId()),
     );
     expect(gestaltString2).toContain(
-      nodesUtils.encodeNodeId(nodeB.keyManager.getNodeId()),
+      nodesUtils.encodeNodeId(nodeB.keyRing.getNodeId()),
     );
     expect(gestaltString2).toContain(identityId);
     expect(gestaltString2).toContain(identityId2);
@@ -410,15 +447,14 @@ describe('Discovery', () => {
   test('discovery persistence across restarts', async () => {
     const discovery = await Discovery.createDiscovery({
       db,
-      keyManager,
+      keyRing,
       gestaltGraph,
       identitiesManager,
       nodeManager,
-      sigchain,
       taskManager,
       logger,
     });
-    await discovery.queueDiscoveryByNode(nodeA.keyManager.getNodeId());
+    await discovery.queueDiscoveryByNode(nodeA.keyRing.getNodeId());
     await discovery.stop();
     await discovery.start();
     await taskManager.startProcessing();
@@ -426,7 +462,10 @@ describe('Discovery', () => {
     do {
       existingTasks = await discovery.waitForDiscoveryTasks();
     } while (existingTasks > 0);
-    const gestalt = (await gestaltGraph.getGestalts())[0];
+    const gestalts = await AsyncIterable.as(
+      gestaltGraph.getGestalts(),
+    ).toArray();
+    const gestalt = gestalts[0];
     const gestaltMatrix = gestalt.matrix;
     const gestaltNodes = gestalt.nodes;
     const gestaltIdentities = gestalt.identities;
@@ -435,10 +474,10 @@ describe('Discovery', () => {
     expect(Object.keys(gestaltIdentities)).toHaveLength(1);
     const gestaltString = JSON.stringify(gestalt);
     expect(gestaltString).toContain(
-      nodesUtils.encodeNodeId(nodeA.keyManager.getNodeId()),
+      nodesUtils.encodeNodeId(nodeA.keyRing.getNodeId()),
     );
     expect(gestaltString).toContain(
-      nodesUtils.encodeNodeId(nodeB.keyManager.getNodeId()),
+      nodesUtils.encodeNodeId(nodeB.keyRing.getNodeId()),
     );
     expect(gestaltString).toContain(identityId);
     await taskManager.stopProcessing();

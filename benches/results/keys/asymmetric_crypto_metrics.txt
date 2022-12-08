@@ -1,0 +1,41 @@
+# TYPE keys.asymmetric_crypto_ops gauge
+keys.asymmetric_crypto_ops{name="encrypt 512 B of data"} 7590
+keys.asymmetric_crypto_ops{name="encrypt 1 KiB of data"} 7544
+keys.asymmetric_crypto_ops{name="encrypt 10 KiB of data"} 6904
+keys.asymmetric_crypto_ops{name="decrypt 512 B of data"} 10385
+keys.asymmetric_crypto_ops{name="decrypt 1 KiB of data"} 10200
+keys.asymmetric_crypto_ops{name="decrypt 10 KiB of data"} 9059
+keys.asymmetric_crypto_ops{name="sign 512 B of data"} 20480
+keys.asymmetric_crypto_ops{name="sign 1 KiB of data"} 19640
+keys.asymmetric_crypto_ops{name="sign 10 KiB of data"} 11166
+keys.asymmetric_crypto_ops{name="verify 512 B of data"} 15596
+keys.asymmetric_crypto_ops{name="verify 1 KiB of data"} 15538
+keys.asymmetric_crypto_ops{name="verify 10 KiB of data"} 12118
+
+# TYPE keys.asymmetric_crypto_margin gauge
+keys.asymmetric_crypto_margin{name="encrypt 512 B of data"} 0.15
+keys.asymmetric_crypto_margin{name="encrypt 1 KiB of data"} 0.37
+keys.asymmetric_crypto_margin{name="encrypt 10 KiB of data"} 0.56
+keys.asymmetric_crypto_margin{name="decrypt 512 B of data"} 0.31
+keys.asymmetric_crypto_margin{name="decrypt 1 KiB of data"} 0.22
+keys.asymmetric_crypto_margin{name="decrypt 10 KiB of data"} 0.4
+keys.asymmetric_crypto_margin{name="sign 512 B of data"} 0.85
+keys.asymmetric_crypto_margin{name="sign 1 KiB of data"} 0.39
+keys.asymmetric_crypto_margin{name="sign 10 KiB of data"} 0.69
+keys.asymmetric_crypto_margin{name="verify 512 B of data"} 0.77
+keys.asymmetric_crypto_margin{name="verify 1 KiB of data"} 0.69
+keys.asymmetric_crypto_margin{name="verify 10 KiB of data"} 0.25
+
+# TYPE keys.asymmetric_crypto_samples counter
+keys.asymmetric_crypto_samples{name="encrypt 512 B of data"} 97
+keys.asymmetric_crypto_samples{name="encrypt 1 KiB of data"} 98
+keys.asymmetric_crypto_samples{name="encrypt 10 KiB of data"} 94
+keys.asymmetric_crypto_samples{name="decrypt 512 B of data"} 94
+keys.asymmetric_crypto_samples{name="decrypt 1 KiB of data"} 97
+keys.asymmetric_crypto_samples{name="decrypt 10 KiB of data"} 93
+keys.asymmetric_crypto_samples{name="sign 512 B of data"} 95
+keys.asymmetric_crypto_samples{name="sign 1 KiB of data"} 95
+keys.asymmetric_crypto_samples{name="sign 10 KiB of data"} 92
+keys.asymmetric_crypto_samples{name="verify 512 B of data"} 93
+keys.asymmetric_crypto_samples{name="verify 1 KiB of data"} 94
+keys.asymmetric_crypto_samples{name="verify 10 KiB of data"} 95

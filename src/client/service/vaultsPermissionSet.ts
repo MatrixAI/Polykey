@@ -80,7 +80,7 @@ function vaultsPermissionSet({
         if (!vaultMeta) throw new vaultsErrors.ErrorVaultsVaultUndefined();
         // Setting permissions
         const actionsSet: VaultActions = {};
-        await gestaltGraph.setGestaltActionByNode(nodeId, 'scan', tran);
+        await gestaltGraph.setGestaltAction(['node', nodeId], 'scan', tran);
         for (const action of actions) {
           await acl.setVaultAction(vaultId, nodeId, action, tran);
           actionsSet[action] = null;

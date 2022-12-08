@@ -1,0 +1,14 @@
+# TYPE basic.buffer_encoding_decoding_ops gauge
+basic.buffer_encoding_decoding_ops{name="JSON stringify and parse buffer"} 172634
+basic.buffer_encoding_decoding_ops{name="Base64 encode and decode buffer"} 1385074
+basic.buffer_encoding_decoding_ops{name="Base64url encode and decode buffer"} 1327362
+
+# TYPE basic.buffer_encoding_decoding_margin gauge
+basic.buffer_encoding_decoding_margin{name="JSON stringify and parse buffer"} 0.55
+basic.buffer_encoding_decoding_margin{name="Base64 encode and decode buffer"} 0.25
+basic.buffer_encoding_decoding_margin{name="Base64url encode and decode buffer"} 0.69
+
+# TYPE basic.buffer_encoding_decoding_samples counter
+basic.buffer_encoding_decoding_samples{name="JSON stringify and parse buffer"} 95
+basic.buffer_encoding_decoding_samples{name="Base64 encode and decode buffer"} 95
+basic.buffer_encoding_decoding_samples{name="Base64url encode and decode buffer"} 93

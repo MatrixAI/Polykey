@@ -2,23 +2,23 @@ import type {
   ProviderId,
   IdentityId,
   IdentityData,
-  TokenData,
+  IdentitySignedClaim,
+  ProviderToken,
   ProviderTokens,
   ProviderAuthenticateRequest,
+  ProviderIdentityClaimId,
 } from './types';
-import type { Claim } from '../claims/types';
-import type { IdentityClaim, IdentityClaimId } from '../identities/types';
+import type { SignedClaim } from '../claims/types';
+import type { ClaimLinkIdentity } from '../claims/payloads/claimLinkIdentity';
 import * as identitiesErrors from './errors';
-import { schema } from '../claims';
-import { utils as validationUtils, validateSync } from '../validation';
-import { matchSync } from '../utils/matchers';
-import * as validationErrors from '../validation/errors';
+import * as tokensSchema from '../tokens/schemas';
+import * as claimLinkIdentity from '../claims/payloads/claimLinkIdentity';
 
 type GetTokens = () => Promise<ProviderTokens>;
-type GetToken = (identityId: IdentityId) => Promise<TokenData | undefined>;
+type GetToken = (identityId: IdentityId) => Promise<ProviderToken | undefined>;
 type PutToken = (
   identityId: IdentityId,
-  tokenValue: TokenData,
+  providerToken: ProviderToken,
 ) => Promise<void>;
 type DelToken = (identityId: IdentityId) => Promise<void>;
 
@@ -60,62 +60,56 @@ abstract class Provider {
    * If you pass in identityId, expect that the new token will be persisted.
    */
   public async checkToken(
-    tokenData: TokenData,
+    providerToken: ProviderToken,
     identityId?: IdentityId,
-  ): Promise<TokenData> {
+  ): Promise<ProviderToken> {
     const now = Math.floor(Date.now() / 1000);
     if (
-      tokenData.accessTokenExpiresIn &&
-      tokenData.accessTokenExpiresIn >= now
+      providerToken.accessTokenExpiresIn &&
+      providerToken.accessTokenExpiresIn >= now
     ) {
-      if (!tokenData.refreshToken) {
+      if (!providerToken.refreshToken) {
         throw new identitiesErrors.ErrorProviderUnauthenticated(
           'Access token expired',
         );
       }
       if (
-        tokenData.refreshTokenExpiresIn &&
-        tokenData.refreshTokenExpiresIn >= now
+        providerToken.refreshTokenExpiresIn &&
+        providerToken.refreshTokenExpiresIn >= now
       ) {
         throw new identitiesErrors.ErrorProviderUnauthenticated(
           'Refresh token expired',
         );
       }
-      return await this.refreshToken(tokenData, identityId);
+      return await this.refreshToken(providerToken, identityId);
     }
-    return tokenData;
+    return providerToken;
   }
 
   /**
    * This verifies that the claim's JSON data fits our schema
    * This does not verify whether the signature is correct
    */
-  public parseClaim(identityClaimData: string): Claim | undefined {
-    let claim;
+  public parseClaim(
+    signedClaimEncodedJSON: string,
+  ): SignedClaim<ClaimLinkIdentity> | undefined {
+    let signedClaimEncoded;
     try {
-      claim = JSON.parse(identityClaimData);
-    } catch (e) {
+      signedClaimEncoded = JSON.parse(signedClaimEncodedJSON);
+    } catch {
       return;
     }
-    if (!schema.claimIdentityValidate(claim)) {
+    if (!tokensSchema.validateSignedTokenEncoded(signedClaimEncoded)) {
       return;
     }
-    // We want to validate the NodeId in the data
+    let signedClaim: SignedClaim<ClaimLinkIdentity>;
     try {
-      validateSync((keyPath, value) => {
-        return matchSync(keyPath)(
-          [
-            ['payload', 'data', 'nodeId'],
-            () => validationUtils.parseNodeId(value),
-          ],
-          () => value,
-        );
-      }, claim);
-    } catch (e) {
-      if (!(e instanceof validationErrors.ErrorParse)) return;
-      throw e;
+      signedClaim =
+        claimLinkIdentity.parseSignedClaimLinkIdentity(signedClaimEncoded);
+    } catch {
+      return;
     }
-    return claim;
+    return signedClaim;
   }
 
   /**
@@ -134,9 +128,9 @@ abstract class Provider {
    * If identity is passed in, this function should update the token db
    */
   public abstract refreshToken(
-    tokenData: TokenData,
+    providerToken: ProviderToken,
     identityId?: IdentityId,
-  ): Promise<TokenData>;
+  ): Promise<ProviderToken>;
 
   /**
    * Gets an array of authenticated identity ids
@@ -146,7 +140,9 @@ abstract class Provider {
   /**
    * Gets the corresponding identity ID to a token key
    */
-  public abstract getIdentityId(tokenData: TokenData): Promise<IdentityId>;
+  public abstract getIdentityId(
+    providerToken: ProviderToken,
+  ): Promise<IdentityId>;
 
   /**
    * Gets the identity data for a given identity
@@ -171,21 +167,21 @@ abstract class Provider {
 
   /**
    * Publishes an identity claim on the authenticated identity.
-   * Returns an IdentityClaim, wrapping the Claim itself with extra
+   * Returns an `IdentitySignedClaim`, wrapping the `SignedClaim` itself with extra
    * metadata from the published claim (e.g. URL, claim ID on provider)
    */
   public abstract publishClaim(
     authIdentityId: IdentityId,
-    identityClaim: Claim,
-  ): Promise<IdentityClaim>;
+    identityClaim: SignedClaim<ClaimLinkIdentity>,
+  ): Promise<IdentitySignedClaim>;
 
   /**
    * Gets the identity claim given the claim's ID on the provider
    */
   public abstract getClaim(
     authIdentityId: IdentityId,
-    claimId: IdentityClaimId,
-  ): Promise<IdentityClaim | undefined>;
+    claimId: ProviderIdentityClaimId,
+  ): Promise<IdentitySignedClaim | undefined>;
 
   /**
    * Stream identity claims from an identity
@@ -193,7 +189,7 @@ abstract class Provider {
   public abstract getClaims(
     authIdentityId: IdentityId,
     identityId: IdentityId,
-  ): AsyncGenerator<IdentityClaim>;
+  ): AsyncGenerator<IdentitySignedClaim>;
 }
 
 export default Provider;

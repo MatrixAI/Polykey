@@ -1,4 +1,5 @@
 import type PolykeyClient from '../../PolykeyClient';
+import type { JWK } from '../../keys/types';
 import * as binErrors from '../errors';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
@@ -9,17 +10,20 @@ class CommandEncypt extends CommandPolykey {
   constructor(...args: ConstructorParameters<typeof CommandPolykey>) {
     super(...args);
     this.name('encrypt');
-    this.description('Encrypt a File using the Root Keypair');
+    this.description('Encrypt a File for a target node');
     this.argument(
       '<filePath>',
       'Path to the file to encrypt, file must use binary encoding',
     );
+    this.argument('<nodeIdOrJwkFile>', 'NodeId or public JWK for target node');
     this.addOption(binOptions.nodeId);
     this.addOption(binOptions.clientHost);
     this.addOption(binOptions.clientPort);
-    this.action(async (filePath, options) => {
+    this.action(async (filePath, nodeIdOrJwkFile, options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
       const keysPB = await import('../../proto/js/polykey/v1/keys/keys_pb');
+      const nodesUtils = await import('../../nodes/utils');
+      const keysUtils = await import('../../keys/utils');
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -61,7 +65,30 @@ class CommandEncypt extends CommandPolykey {
             cause: e,
           });
         }
+        let publicJWK: JWK;
+        const nodeId = nodesUtils.decodeNodeId(nodeIdOrJwkFile);
+        if (nodeId != null) {
+          publicJWK = keysUtils.publicKeyToJWK(
+            keysUtils.publicKeyFromNodeId(nodeId),
+          );
+        } else {
+          // If it's not a NodeId then it's a file path to the JWK
+          try {
+            const rawJWK = await this.fs.promises.readFile(nodeIdOrJwkFile, {
+              encoding: 'utf-8',
+            });
+            publicJWK = JSON.parse(rawJWK) as JWK;
+            // Checking if the JWK is valid
+            keysUtils.publicKeyFromJWK(publicJWK);
+          } catch (e) {
+            throw new binErrors.ErrorCLIPublicJWKFileRead(
+              'Failed to parse JWK file',
+              { cause: e },
+            );
+          }
+        }
         cryptoMessage.setData(plainText);
+        cryptoMessage.setPublicKeyJwk(JSON.stringify(publicJWK));
         const response = await binUtils.retryAuthentication(
           (auth) => pkClient.grpcClient.keysEncrypt(cryptoMessage, auth),
           meta,

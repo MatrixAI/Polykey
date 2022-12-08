@@ -1,16 +1,12 @@
-import type { Claim, ClaimEncoded, ClaimIdEncoded } from '../claims/types';
+import type { TokenPayload } from '../tokens/types';
+import type { ClaimDefault } from '../claims/types';
 
 /**
- * Serialized version of a node's sigchain.
- * Currently used for storage in the gestalt graph.
+ * During the creation of `Claim`, only properties that are not automatically
+ * defined by `Sigchain` are allowed.
  */
-type ChainData = Record<ClaimIdEncoded, Claim>;
+type ClaimInput = TokenPayload & {
+  [Property in keyof ClaimDefault]?: undefined;
+};
 
-/**
- * Serialized version of a node's sigchain, but with the claims as
- * Should be used when needing to transport ChainData, such that the claims can
- * be verified without having to be re-encoded as ClaimEncoded types.
- */
-type ChainDataEncoded = Record<ClaimIdEncoded, ClaimEncoded>;
-
-export type { ChainData, ChainDataEncoded };
+export type { ClaimInput };

@@ -2,28 +2,33 @@ import { ErrorPolykey, sysexits } from '../errors';
 
 class ErrorKeys<T> extends ErrorPolykey<T> {}
 
-class ErrorKeyManagerRunning<T> extends ErrorKeys<T> {
-  static description = 'KeyManager is running';
+class ErrorKeyRingRunning<T> extends ErrorKeys<T> {
+  static description = 'KeyRing is running';
   exitCode = sysexits.USAGE;
 }
 
-class ErrorKeyManagerNotRunning<T> extends ErrorKeys<T> {
-  static description = 'KeyManager is not running';
+class ErrorKeyRingNotRunning<T> extends ErrorKeys<T> {
+  static description = 'KeyRing is not running';
   exitCode = sysexits.USAGE;
 }
 
-class ErrorKeyManagerDestroyed<T> extends ErrorKeys<T> {
-  static description = 'KeyManager is destroyed';
+class ErrorKeyRingDestroyed<T> extends ErrorKeys<T> {
+  static description = 'KeyRing is destroyed';
   exitCode = sysexits.USAGE;
 }
 
-class ErrorKeysPasswordInvalid<T> extends ErrorKeys<T> {
-  static description = 'Password has invalid format';
+class ErrorCertManagerRunning<T> extends ErrorKeys<T> {
+  static description = 'CertManager is running';
   exitCode = sysexits.USAGE;
 }
 
-class ErrorKeysRecoveryCodeInvalid<T> extends ErrorKeys<T> {
-  static description = 'Recovery code has invalid format';
+class ErrorCertManagerNotRunning<T> extends ErrorKeys<T> {
+  static description = 'CertManager is not running';
+  exitCode = sysexits.USAGE;
+}
+
+class ErrorCertManagerDestroyed<T> extends ErrorKeys<T> {
+  static description = 'CertManager is destroyed';
   exitCode = sysexits.USAGE;
 }
 
@@ -33,44 +38,29 @@ class ErrorKeysRecoveryCodeIncorrect<T> extends ErrorKeys<T> {
   exitCode = sysexits.USAGE;
 }
 
-class ErrorRootKeysRead<T> extends ErrorKeys<T> {
+class ErrorKeyPairRead<T> extends ErrorKeys<T> {
   static description = 'Unable to read root keypair';
   exitCode = sysexits.IOERR;
 }
 
-class ErrorRootKeysParse<T> extends ErrorKeys<T> {
+class ErrorKeyPairParse<T> extends ErrorKeys<T> {
   static description = 'Unable to parse root keypair';
   exitCode = sysexits.IOERR;
 }
 
-class ErrorRootKeysWrite<T> extends ErrorKeys<T> {
+class ErrorKeyPairWrite<T> extends ErrorKeys<T> {
   static description = 'Unable to write root keypair';
   exitCode = sysexits.IOERR;
 }
 
-class ErrorRootCertRead<T> extends ErrorKeys<T> {
-  static description = 'Unable to read root certificate';
+class ErrorKeyPairRotate<T> extends ErrorKeys<T> {
+  static description = 'Unable to rotate root keypair';
   exitCode = sysexits.IOERR;
 }
 
-class ErrorRootCertWrite<T> extends ErrorKeys<T> {
-  static description = 'Unable to write root certificate';
+class ErrorPublicKeyParse<T> extends ErrorKeys<T> {
+  static description = 'Unable to parse public key';
   exitCode = sysexits.IOERR;
-}
-
-class ErrorRootCertRenew<T> extends ErrorKeys<T> {
-  static description = 'Unable to renew root certificate';
-  exitCode = sysexits.IOERR;
-}
-
-class ErrorRootCertsGC<T> extends ErrorKeys<T> {
-  static description = 'Unexpected error during garbage collection';
-  exitCode = sysexits.IOERR;
-}
-
-class ErrorEncryptSize<T> extends ErrorKeys<T> {
-  static description = 'Cannot encrypt data with key bit size';
-  exitCode = sysexits.USAGE;
 }
 
 class ErrorDBKeyRead<T> extends ErrorKeys<T> {
@@ -88,23 +78,45 @@ class ErrorDBKeyParse<T> extends ErrorKeys<T> {
   exitCode = sysexits.IOERR;
 }
 
+class ErrorCertsRenew<T> extends ErrorKeys<T> {
+  static description = 'Unable to renew certificate chain';
+  exitCode = sysexits.IOERR;
+}
+
+class ErrorCertsReset<T> extends ErrorKeys<T> {
+  static description = 'Unable to reset certificate chain';
+  exitCode = sysexits.IOERR;
+}
+
+class ErrorCertsGC<T> extends ErrorKeys<T> {
+  static description = 'Unexpected error during certificate garbage collection';
+  exitCode = sysexits.SOFTWARE;
+}
+
+class ErrorBufferLock<T> extends ErrorKeys<T> {
+  static description = 'Unable to lock sensitive memory buffer';
+  exitCode = sysexits.TEMPFAIL;
+}
+
 export {
   ErrorKeys,
-  ErrorKeyManagerRunning,
-  ErrorKeyManagerNotRunning,
-  ErrorKeyManagerDestroyed,
-  ErrorKeysPasswordInvalid,
-  ErrorKeysRecoveryCodeInvalid,
+  ErrorKeyRingRunning,
+  ErrorKeyRingNotRunning,
+  ErrorKeyRingDestroyed,
+  ErrorCertManagerRunning,
+  ErrorCertManagerNotRunning,
+  ErrorCertManagerDestroyed,
   ErrorKeysRecoveryCodeIncorrect,
-  ErrorRootKeysRead,
-  ErrorRootKeysParse,
-  ErrorRootKeysWrite,
-  ErrorRootCertRead,
-  ErrorRootCertWrite,
-  ErrorRootCertRenew,
-  ErrorRootCertsGC,
-  ErrorEncryptSize,
+  ErrorKeyPairRead,
+  ErrorKeyPairParse,
+  ErrorKeyPairWrite,
+  ErrorKeyPairRotate,
+  ErrorPublicKeyParse,
   ErrorDBKeyRead,
   ErrorDBKeyWrite,
   ErrorDBKeyParse,
+  ErrorCertsRenew,
+  ErrorCertsReset,
+  ErrorCertsGC,
+  ErrorBufferLock,
 };

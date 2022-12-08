@@ -67,7 +67,7 @@ class ErrorConnectionNodesEmpty<T> extends ErrorConnection<T> {
  */
 class ErrorConnectionStart<T> extends ErrorConnection<T> {
   static description = 'Connection start failed';
-  exitCode = sysexits.PROTOCOL;
+  exitCode: number = sysexits.PROTOCOL;
 }
 
 class ErrorConnectionStartTimeout<T> extends ErrorConnectionStart<T> {
@@ -86,7 +86,7 @@ class ErrorConnectionStartTimeoutMax<T> extends ErrorConnectionStart<T> {
  */
 class ErrorConnectionCompose<T> extends ErrorConnection<T> {
   static description = 'Connection compose failed';
-  exitCode = sysexits.PROTOCOL;
+  exitCode: number = sysexits.PROTOCOL;
 }
 
 class ErrorConnectionComposeTimeout<T> extends ErrorConnectionCompose<T> {

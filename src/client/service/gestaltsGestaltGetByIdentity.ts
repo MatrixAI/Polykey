@@ -11,6 +11,7 @@ import * as validationUtils from '../../validation/utils';
 import { matchSync } from '../../utils';
 import * as gestaltsPB from '../../proto/js/polykey/v1/gestalts/gestalts_pb';
 import * as clientUtils from '../utils';
+import * as nodesUtils from '../../nodes/utils';
 
 function gestaltsGestaltGetByIdentity({
   authenticate,
@@ -51,10 +52,30 @@ function gestaltsGestaltGetByIdentity({
         },
       );
       const gestalt = await db.withTransactionF((tran) =>
-        gestaltGraph.getGestaltByIdentity(providerId, identityId, tran),
+        gestaltGraph.getGestaltByIdentity([providerId, identityId], tran),
       );
       if (gestalt != null) {
-        response.setGestaltGraph(JSON.stringify(gestalt));
+        const newGestalt = {
+          matrix: {},
+          nodes: {},
+          identities: gestalt.identities,
+        };
+        for (const [key, value] of Object.entries(gestalt.nodes)) {
+          newGestalt.nodes[key] = {
+            nodeId: nodesUtils.encodeNodeId(value.nodeId),
+          };
+        }
+        for (const keyA of Object.keys(gestalt.matrix)) {
+          for (const keyB of Object.keys(gestalt.matrix[keyA])) {
+            let record = newGestalt.matrix[keyA];
+            if (record == null) {
+              record = {};
+              newGestalt.matrix[keyA] = record;
+            }
+            record[keyB] = null;
+          }
+        }
+        response.setGestaltGraph(JSON.stringify(newGestalt));
       }
       callback(null, response);
       return;

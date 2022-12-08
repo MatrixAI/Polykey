@@ -27,7 +27,7 @@ import type {
   AsyncGeneratorDuplexStream,
   AsyncGeneratorDuplexStreamClient,
 } from '../types';
-import type { CertificatePemChain, PrivateKeyPem } from '../../keys/types';
+import type { CertificatePEMChain, PrivateKeyPEM } from '../../keys/types';
 import type { POJO } from '../../types';
 import type { ClientMetadata } from '../types';
 import type { NodeId } from '../../ids/types';
@@ -64,8 +64,8 @@ function serverInsecureCredentials(): grpc.ServerCredentials {
  * encrypted communication only without authentication
  */
 function clientSecureCredentials(
-  keyPrivatePem?: PrivateKeyPem,
-  certChainPem?: CertificatePemChain,
+  keyPrivatePem?: PrivateKeyPEM,
+  certChainPem?: CertificatePEMChain,
 ): grpc.ChannelCredentials {
   const credentials = grpc.ChannelCredentials.createSsl(
     null,
@@ -85,8 +85,8 @@ function clientSecureCredentials(
  * This is used when the GRPC server is connected directly from the GRPC client
  */
 function serverSecureCredentials(
-  keyPrivatePem: PrivateKeyPem,
-  certChainPem: CertificatePemChain,
+  keyPrivatePem: PrivateKeyPEM,
+  certChainPem: CertificatePEMChain,
 ): grpc.ServerCredentials {
   // This ensures that we get the client certificate
   const checkClientCertificate = false;

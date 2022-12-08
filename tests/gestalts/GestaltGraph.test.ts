@@ -1,52 +1,139 @@
-import type { NodeId, NodeInfo } from '@/nodes/types';
+import type { NodeId } from '@/nodes/types';
+import type { ProviderIdentityId } from '@/identities/types';
+import type { SignedClaim } from '@/claims/types';
+import type { Key } from '@/keys/types';
 import type {
-  IdentityClaimId,
-  IdentityId,
-  IdentityInfo,
-  IdentityClaims,
-  ProviderId,
-  IdentityClaim,
-} from '@/identities/types';
-import type { Claim, SignatureData } from '@/claims/types';
-import type { ChainData } from '@/sigchain/types';
+  ClaimLinkNode,
+  ClaimLinkIdentity,
+} from '../../src/claims/payloads/index';
+import type {
+  GestaltIdentityInfo,
+  GestaltInfo,
+  GestaltNodeInfo,
+  GestaltId,
+  GestaltLink,
+  GestaltLinkId,
+  GestaltLinkNode,
+  GestaltLinkIdentity,
+} from '../../src/gestalts/types';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
+import { fc, testProp } from '@fast-check/jest';
+import { AsyncIterableX as AsyncIterable } from 'ix/asynciterable';
 import GestaltGraph from '@/gestalts/GestaltGraph';
 import ACL from '@/acl/ACL';
 import * as gestaltsErrors from '@/gestalts/errors';
 import * as gestaltsUtils from '@/gestalts/utils';
+import * as utils from '@/utils';
 import * as keysUtils from '@/keys/utils';
-import * as nodesUtils from '@/nodes/utils';
-import * as testNodesUtils from '../nodes/utils';
+import Token from '@/tokens/Token';
+import { encodeGestaltNodeId, encodeGestaltIdentityId } from '@/gestalts/utils';
+import * as testsGestaltsUtils from './utils';
+import * as testsIdentitiesUtils from '../identities/utils';
+import * as testsKeysUtils from '../keys/utils';
+import * as ids from '../../src/ids/index';
+import * as testsIdsUtils from '../ids/utils';
+import 'ix/add/asynciterable-operators/toarray';
 
 describe('GestaltGraph', () => {
   const logger = new Logger('GestaltGraph Test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
-  const nodeIdABC = testNodesUtils.generateRandomNodeId();
-  const nodeIdABCEncoded = nodesUtils.encodeNodeId(nodeIdABC);
-  const nodeIdDEE = testNodesUtils.generateRandomNodeId();
-  const nodeIdDEEEncoded = nodesUtils.encodeNodeId(nodeIdDEE);
-  const nodeIdDEF = testNodesUtils.generateRandomNodeId();
-  const nodeIdDEFEncoded = nodesUtils.encodeNodeId(nodeIdDEF);
-  const nodeIdZZZ = testNodesUtils.generateRandomNodeId();
-  const nodeIdZZZEncoded = nodesUtils.encodeNodeId(nodeIdZZZ);
-
   let dataDir: string;
   let db: DB;
   let acl: ACL;
 
-  // Abc <--> dee claims:
-  const abcDeeSignatures: Record<NodeId, SignatureData> = {};
-  let nodeClaimAbcToDee: Claim;
-  let nodeClaimDeeToAbc: Claim;
-  // Abc <--> GitHub claims:
-  const abcSignature: Record<NodeId, SignatureData> = {};
-  let identityClaimAbcToGH: Claim;
-  let identityClaimGHToAbc: IdentityClaim;
+  // Composed arbs
+  const gestaltNodeInfoComposedArb = testsIdsUtils.nodeIdArb.chain(
+    testsGestaltsUtils.gestaltNodeInfoArb,
+  );
+  const linkNodeComposedArb = fc
+    .tuple(testsKeysUtils.keyPairArb, testsKeysUtils.keyPairArb)
+    .chain(([keyPair1, keyPair2]) => {
+      const nodeId1 = keysUtils.publicKeyToNodeId(keyPair1.publicKey);
+      const nodeId2 = keysUtils.publicKeyToNodeId(keyPair2.publicKey);
+      return fc.record({
+        gestaltNodeInfo1: testsGestaltsUtils.gestaltNodeInfoArb(nodeId1),
+        gestaltNodeInfo2: testsGestaltsUtils.gestaltNodeInfoArb(nodeId2),
+        linkNode: testsGestaltsUtils.linkNodeArb(keyPair1, keyPair2),
+      });
+    })
+    .noShrink();
+  const gestaltIdentityInfoComposedArb = fc
+    .tuple(
+      testsIdentitiesUtils.providerIdArb,
+      testsIdentitiesUtils.identitiyIdArb,
+    )
+    .chain((item) => testsGestaltsUtils.gestaltIdentityInfoArb(...item))
+    .noShrink();
+  const linkIdentityComposedArb = fc
+    .tuple(
+      testsKeysUtils.keyPairArb,
+      testsIdentitiesUtils.providerIdArb,
+      testsIdentitiesUtils.identitiyIdArb,
+    )
+    .chain(([keyPair, providerId, identityId]) => {
+      const nodeId = keysUtils.publicKeyToNodeId(keyPair.publicKey);
+      return fc.record({
+        gestaltNodeInfo: testsGestaltsUtils.gestaltNodeInfoArb(nodeId),
+        gestaltIdentityInfo: testsGestaltsUtils.gestaltIdentityInfoArb(
+          providerId,
+          identityId,
+        ),
+        linkIdentity: testsGestaltsUtils.linkIdentityArb(
+          keyPair,
+          providerId,
+          identityId,
+        ),
+      });
+    })
+    .noShrink();
+  const gestaltInfoComposedArb = fc.oneof(
+    fc.tuple(fc.constant('node'), gestaltNodeInfoComposedArb),
+    fc.tuple(fc.constant('identity'), gestaltIdentityInfoComposedArb),
+  ) as fc.Arbitrary<
+    ['node', GestaltNodeInfo] | ['identity', GestaltIdentityInfo]
+  >;
+  const linkVertexComposedArb = fc
+    .oneof(
+      fc.tuple(fc.constant('node'), linkNodeComposedArb),
+      fc.tuple(fc.constant('identity'), linkIdentityComposedArb),
+    )
+    .map((item) => {
+      const [type, linkData] = item as any;
+      switch (type) {
+        case 'node':
+          return {
+            gestaltVertexInfo1: ['node', linkData.gestaltNodeInfo1] as [
+              'node',
+              GestaltNodeInfo,
+            ],
+            gestaltVertexInfo2: [
+              'node',
+              linkData.gestaltNodeInfo2,
+            ] as GestaltInfo,
+            gestaltLink: ['node', linkData.linkNode] as GestaltLink,
+          };
+        case 'identity':
+          return {
+            gestaltVertexInfo1: ['node', linkData.gestaltNodeInfo] as [
+              'node',
+              GestaltNodeInfo,
+            ],
+            gestaltVertexInfo2: [
+              'identity',
+              linkData.gestaltIdentityInfo,
+            ] as GestaltInfo,
+            gestaltLink: ['identity', linkData.linkIdentity] as GestaltLink,
+          };
+        default:
+      }
+      throw Error();
+    })
+    .noShrink();
 
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
@@ -57,79 +144,89 @@ describe('GestaltGraph', () => {
       dbPath,
       logger,
       crypto: {
-        key: await keysUtils.generateKey(),
+        key: keysUtils.generateKey(),
         ops: {
-          encrypt: keysUtils.encryptWithKey,
-          decrypt: keysUtils.decryptWithKey,
+          encrypt: async (key, plainText) => {
+            return keysUtils.encryptWithKey(
+              utils.bufferWrap(key) as Key,
+              utils.bufferWrap(plainText),
+            );
+          },
+          decrypt: async (key, cipherText) => {
+            return keysUtils.decryptWithKey(
+              utils.bufferWrap(key) as Key,
+              utils.bufferWrap(cipherText),
+            );
+          },
         },
       },
     });
     acl = await ACL.createACL({ db, logger });
-
-    // Initialise some dummy claims:
-    abcDeeSignatures['abc'] = 'abcSignature';
-    abcDeeSignatures['dee'] = 'deeSignature';
-    // Node claim on node abc: abc -> dee
-    nodeClaimAbcToDee = {
-      payload: {
-        hPrev: null,
-        seq: 1,
-        data: {
-          type: 'node',
-          node1: nodeIdABCEncoded,
-          node2: nodeIdDEEEncoded,
-        },
-        iat: 1618203162,
-      },
-      signatures: abcDeeSignatures,
-    };
-    // Node claim on node dee: dee -> abc
-    nodeClaimDeeToAbc = {
-      payload: {
-        hPrev: null,
-        seq: 1,
-        data: {
-          type: 'node',
-          node1: nodeIdDEEEncoded, // TODO: use type guards for all `as NodeID` usages here.
-          node2: nodeIdABCEncoded,
-        },
-        iat: 1618203162,
-      },
-      signatures: abcDeeSignatures,
-    };
-
-    abcSignature['abc'] = 'abcSignature';
-    // Identity claim on node abc: abc -> GitHub
-    identityClaimAbcToGH = {
-      payload: {
-        hPrev: null,
-        seq: 1,
-        data: {
-          type: 'identity',
-          node: nodeIdABCEncoded,
-          provider: 'github.com' as ProviderId,
-          identity: 'abc' as IdentityId,
-        },
-        iat: 1618203162,
-      },
-      signatures: abcSignature,
-    };
-    // Identity claim on Github identity: GitHub -> abc
-    identityClaimGHToAbc = {
-      id: 'abcGistId' as IdentityClaimId,
-      payload: {
-        hPrev: null,
-        seq: 1,
-        data: {
-          type: 'identity',
-          node: nodeIdABCEncoded,
-          provider: 'github.com' as ProviderId,
-          identity: 'abc' as IdentityId,
-        },
-        iat: 1618203162,
-      },
-      signatures: abcSignature,
-    };
+    //
+    // // Initialise some dummy claims:
+    // abcDeeSignatures['abc'] = 'abcSignature';
+    // abcDeeSignatures['dee'] = 'deeSignature';
+    // // Node claim on node abc: abc -> dee
+    // nodeClaimAbcToDee = {
+    //   payload: {
+    //     hPrev: null,
+    //     seq: 1,
+    //     data: {
+    //       type: 'node',
+    //       node1: nodeIdABCEncoded,
+    //       node2: nodeIdDEEEncoded,
+    //     },
+    //     iat: 1618203162,
+    //   },
+    //   signatures: abcDeeSignatures,
+    // };
+    // // Node claim on node dee: dee -> abc
+    // nodeClaimDeeToAbc = {
+    //   payload: {
+    //     hPrev: null,
+    //     seq: 1,
+    //     data: {
+    //       type: 'node',
+    //       node1: nodeIdDEEEncoded, // TODO: use type guards for all `as NodeID` usages here.
+    //       node2: nodeIdABCEncoded,
+    //     },
+    //     iat: 1618203162,
+    //   },
+    //   signatures: abcDeeSignatures,
+    // };
+    //
+    // abcSignature['abc'] = 'abcSignature';
+    // // Identity claim on node abc: abc -> GitHub
+    // identityClaimAbcToGH = {
+    //   payload: {
+    //     hPrev: null,
+    //     seq: 1,
+    //     data: {
+    //       type: 'identity',
+    //       node: nodeIdABCEncoded,
+    //       provider: 'github.com' as ProviderId,
+    //       identity: 'abc' as IdentityId,
+    //     },
+    //     iat: 1618203162,
+    //   },
+    //   signatures: abcSignature,
+    // };
+    // // Identity claim on Github identity: GitHub -> abc
+    // identityClaimGHToAbc = {
+    //   id: 'abcGistId' as IdentityClaimId,
+    //   payload: {
+    //     hPrev: null,
+    //     seq: 1,
+    //     data: {
+    //       type: 'identity',
+    //       node: nodeIdABCEncoded,
+    //       provider: 'github.com' as ProviderId,
+    //       identity: 'abc' as IdentityId,
+    //     },
+    //     iat: 1618203162,
+    //   },
+    //   signatures: abcSignature,
+    // };
   });
   afterEach(async () => {
     await acl.stop();
@@ -158,1102 +255,1103 @@ describe('GestaltGraph', () => {
     await expect(gestaltGraph.start()).rejects.toThrow(
       gestaltsErrors.ErrorGestaltsGraphDestroyed,
     );
-    await expect(gestaltGraph.getGestalts()).rejects.toThrow(
+    const getGestalts = async () => {
+      for await (const _ of gestaltGraph.getGestalts()) {
+        // Do nothing, should throw
+      }
+    };
+    await expect(getGestalts()).rejects.toThrow(
       gestaltsErrors.ErrorGestaltsGraphNotRunning,
     );
   });
-  test('get, set and unset node', async () => {
-    const gestaltGraph = await GestaltGraph.createGestaltGraph({
-      db,
-      acl,
-      logger,
-    });
-    const nodeInfo: NodeInfo = {
-      id: nodeIdABCEncoded,
-      chain: {},
-    };
-    await gestaltGraph.setNode(nodeInfo);
-    const gestalt = await gestaltGraph.getGestaltByNode(nodeIdABC);
-    const gk = gestaltsUtils.keyFromNode(nodeIdABC);
-    expect(gestalt).toStrictEqual({
-      matrix: { [gk]: {} },
-      nodes: {
-        [gk]: {
-          id: nodesUtils.encodeNodeId(nodeIdABC),
-          chain: nodeInfo.chain,
+  testProp(
+    'getNode, setNode and unsetNode',
+    [gestaltNodeInfoComposedArb],
+    async (gestaltNodeInfo) => {
+      const gestaltGraph = await GestaltGraph.createGestaltGraph({
+        db,
+        acl,
+        logger,
+        fresh: true,
+      });
+      expect(await gestaltGraph.setNode(gestaltNodeInfo)).toEqual([
+        'node',
+        gestaltNodeInfo.nodeId,
+      ]);
+      expect(await gestaltGraph.getNode(gestaltNodeInfo.nodeId)).toEqual(
+        gestaltNodeInfo,
+      );
+      await gestaltGraph.unsetNode(gestaltNodeInfo.nodeId);
+      expect(
+        await gestaltGraph.getNode(gestaltNodeInfo.nodeId),
+      ).toBeUndefined();
+      await gestaltGraph.stop();
+    },
+  );
+  testProp(
+    'setNode updates node information',
+    [gestaltNodeInfoComposedArb],
+    async (gestaltNodeInfo) => {
+      const gestaltGraph = await GestaltGraph.createGestaltGraph({
+        db,
+        acl,
+        logger,
+        fresh: true,
+      });
+      expect(await gestaltGraph.setNode(gestaltNodeInfo)).toEqual([
+        'node',
+        gestaltNodeInfo.nodeId,
+      ]);
+      const gestaltNodeInfo_ = {
+        ...gestaltNodeInfo,
+        foo: 'bar',
+      };
+      expect(await gestaltGraph.setNode(gestaltNodeInfo_)).toEqual([
+        'node',
+        gestaltNodeInfo.nodeId,
+      ]);
+      expect(await gestaltGraph.getNode(gestaltNodeInfo.nodeId)).toEqual(
+        gestaltNodeInfo_,
+      );
+      await gestaltGraph.stop();
+    },
+  );
+  testProp(
+    'linkNodeAndNode and unlinkNodeAndNode',
+    [linkNodeComposedArb],
+    async ({ gestaltNodeInfo1, gestaltNodeInfo2, linkNode }) => {
+      const gestaltGraph = await GestaltGraph.createGestaltGraph({
+        db,
+        acl,
+        logger,
+        fresh: true,
+      });
+      const gestaltLinkId = await gestaltGraph.linkNodeAndNode(
+        gestaltNodeInfo1,
+        gestaltNodeInfo2,
+        linkNode,
+      );
+      const gestaltLink = await gestaltGraph.getLinkById(gestaltLinkId);
+      expect(gestaltLink).toBeDefined();
+      expect(gestaltLink).toMatchObject([
+        'node',
+        {
+          id: gestaltLinkId,
+          claim: {
+            payload: {
+              typ: 'ClaimLinkNode',
+              iss: ids.encodeNodeId(gestaltNodeInfo1.nodeId),
+              sub: ids.encodeNodeId(gestaltNodeInfo2.nodeId),
+            },
+            signatures: expect.toSatisfy((signatures) => {
+              return signatures.length === 2;
+            }),
+          },
+          meta: expect.any(Object),
         },
-      },
-      identities: {},
-    });
-    await gestaltGraph.unsetNode(nodeIdABC);
-    await gestaltGraph.unsetNode(nodeIdABC);
-    await expect(
-      gestaltGraph.getGestaltByNode(nodeIdABC),
-    ).resolves.toBeUndefined();
-    await gestaltGraph.stop();
-    await gestaltGraph.destroy();
-  });
-  test('get, set and unset identity', async () => {
-    const gestaltGraph = await GestaltGraph.createGestaltGraph({
-      db,
-      acl,
-      logger,
-    });
-    const identityInfo: IdentityInfo = {
-      providerId: 'github.com' as ProviderId,
-      identityId: 'abc' as IdentityId,
-      claims: {},
-    };
-    await gestaltGraph.setIdentity(identityInfo);
-    const gestalt = await gestaltGraph.getGestaltByIdentity(
-      identityInfo.providerId,
-      identityInfo.identityId,
-    );
-    const gk = gestaltsUtils.keyFromIdentity(
-      identityInfo.providerId,
-      identityInfo.identityId,
-    );
-    expect(gestalt).toStrictEqual({
-      matrix: { [gk]: {} },
-      nodes: {},
-      identities: { [gk]: identityInfo },
-    });
-    await gestaltGraph.unsetIdentity(
-      identityInfo.providerId,
-      identityInfo.identityId,
-    );
-    await gestaltGraph.unsetIdentity(
-      identityInfo.providerId,
-      identityInfo.identityId,
-    );
-    await expect(
-      gestaltGraph.getGestaltByIdentity(
-        identityInfo.providerId,
-        identityInfo.identityId,
-      ),
-    ).resolves.toBeUndefined();
-    await gestaltGraph.stop();
-    await gestaltGraph.destroy();
-  });
-  test('setting independent node and identity gestalts', async () => {
-    const gestaltGraph = await GestaltGraph.createGestaltGraph({
-      db,
-      acl,
-      logger,
-    });
-    const nodeInfo: NodeInfo = {
-      id: nodeIdABCEncoded,
-      chain: {},
-    };
-    const identityInfo: IdentityInfo = {
-      providerId: 'github.com' as ProviderId,
-      identityId: 'abc' as IdentityId,
-      claims: {},
-    };
-    await gestaltGraph.setNode(nodeInfo);
-    await gestaltGraph.setIdentity(identityInfo);
-    const gestaltNode = await gestaltGraph.getGestaltByNode(nodeIdABC);
-    const gestaltIdentity = await gestaltGraph.getGestaltByIdentity(
-      identityInfo.providerId,
-      identityInfo.identityId,
-    );
-    const gkNode = gestaltsUtils.keyFromNode(nodeIdABC);
-    const gkIdentity = gestaltsUtils.keyFromIdentity(
-      identityInfo.providerId,
-      identityInfo.identityId,
-    );
-    expect(gestaltNode).toStrictEqual({
-      matrix: { [gkNode]: {} },
-      nodes: {
-        [gkNode]: {
-          id: nodesUtils.encodeNodeId(nodeIdABC),
-          chain: nodeInfo.chain,
-        },
-      },
-      identities: {},
-    });
-    expect(gestaltIdentity).toStrictEqual({
-      matrix: { [gkIdentity]: {} },
-      nodes: {},
-      identities: { [gkIdentity]: identityInfo },
-    });
-    await gestaltGraph.stop();
-    await gestaltGraph.destroy();
-  });
-  test('start and stop preserves state', async () => {
-    let gestaltGraph = await GestaltGraph.createGestaltGraph({
-      db,
-      acl,
-      logger,
-    });
-    const nodeInfo: NodeInfo = {
-      id: nodeIdABCEncoded,
-      chain: {},
-    };
-    const identityInfo: IdentityInfo = {
-      providerId: 'github.com' as ProviderId,
-      identityId: 'abc' as IdentityId,
-      claims: {},
-    };
-    await gestaltGraph.setNode(nodeInfo);
-    await gestaltGraph.setIdentity(identityInfo);
-    await gestaltGraph.stop();
+      ]);
+      const token = Token.fromSigned(
+        gestaltLink![1].claim as SignedClaim<ClaimLinkNode>,
+      );
+      expect(
+        token.verifyWithPublicKey(
+          keysUtils.publicKeyFromNodeId(gestaltNodeInfo1.nodeId),
+        ),
+      ).toBe(true);
+      expect(
+        token.verifyWithPublicKey(
+          keysUtils.publicKeyFromNodeId(gestaltNodeInfo2.nodeId),
+        ),
+      ).toBe(true);
+      await gestaltGraph.unlinkNodeAndNode(
+        gestaltNodeInfo1.nodeId,
+        gestaltNodeInfo2.nodeId,
+      );
+      expect(await gestaltGraph.getLinkById(gestaltLinkId)).toBeUndefined();
+      await gestaltGraph.stop();
+    },
+  );
+  testProp(
+    'get, set and unset identity',
+    [gestaltIdentityInfoComposedArb],
+    async (gestaltIdentityInfo) => {
+      const gestaltGraph = await GestaltGraph.createGestaltGraph({
+        db,
+        acl,
+        logger,
+        fresh: true,
+      });
+      try {
+        // Setting
+        const [type, providerIdentityId] = await gestaltGraph.setIdentity(
+          gestaltIdentityInfo,
+        );
+        expect(type).toBe('identity');
+        expect(providerIdentityId[0]).toBe(gestaltIdentityInfo.providerId);
+        expect(providerIdentityId[1]).toBe(gestaltIdentityInfo.identityId);
+        // Getting should return the same data
+        expect(
+          await gestaltGraph.getIdentity(providerIdentityId),
+        ).toMatchObject(gestaltIdentityInfo);
+        // Unsetting should remove the identity
+        await gestaltGraph.unsetIdentity(providerIdentityId);
+        expect(
+          await gestaltGraph.getIdentity(providerIdentityId),
+        ).toBeUndefined();
+      } finally {
+        await gestaltGraph.stop();
+      }
+    },
+  );
+  testProp(
+    'setIdentity updates identity info',
+    [gestaltIdentityInfoComposedArb],
+    async (gestaltIdentityInfo) => {
+      const gestaltGraph = await GestaltGraph.createGestaltGraph({
+        db,
+        acl,
+        logger,
+        fresh: true,
+      });
+      try {
+        // Setting
+        const [type, providerIdentityId] = await gestaltGraph.setIdentity(
+          gestaltIdentityInfo,
+        );
+        expect(type).toBe('identity');
+        expect(providerIdentityId[0]).toBe(gestaltIdentityInfo.providerId);
+        expect(providerIdentityId[1]).toBe(gestaltIdentityInfo.identityId);
+        // Getting should return the same data
+        expect(
+          await gestaltGraph.getIdentity(providerIdentityId),
+        ).toMatchObject(gestaltIdentityInfo);
+        // Updating
+        const newGestaltIdentityInfo = {
+          ...gestaltIdentityInfo,
+          foo: 'bar',
+        };
+        const [type_, providerIdentityId_] = await gestaltGraph.setIdentity(
+          newGestaltIdentityInfo,
+        );
+        expect(type_).toBe('identity');
+        expect(providerIdentityId_[0]).toBe(gestaltIdentityInfo.providerId);
+        expect(providerIdentityId_[1]).toBe(gestaltIdentityInfo.identityId);
+        // Getting should return the new data
+        expect(
+          await gestaltGraph.getIdentity(providerIdentityId),
+        ).toMatchObject(newGestaltIdentityInfo);
+      } finally {
+        await gestaltGraph.stop();
+      }
+    },
+  );
+  testProp(
+    'linkNodeAndIdentity and unlinkNodeAndIdentity',
+    [linkIdentityComposedArb],
+    async ({ gestaltNodeInfo, gestaltIdentityInfo, linkIdentity }) => {
+      const gestaltGraph = await GestaltGraph.createGestaltGraph({
+        db,
+        acl,
+        logger,
+        fresh: true,
+      });
+      try {
+        const gestaltLinkId = await gestaltGraph.linkNodeAndIdentity(
+          gestaltNodeInfo,
+          gestaltIdentityInfo,
+          linkIdentity,
+        );
+        const gestaltLink = await gestaltGraph.getLinkById(gestaltLinkId);
+        expect(gestaltLink).toBeDefined();
+        expect(gestaltLink).toMatchObject([
+          'identity',
+          {
+            id: gestaltLinkId,
+            claim: {
+              payload: {
+                typ: 'ClaimLinkIdentity',
+                iss: ids.encodeNodeId(gestaltNodeInfo.nodeId),
+                sub: ids.encodeProviderIdentityId([
+                  gestaltIdentityInfo.providerId,
+                  gestaltIdentityInfo.identityId,
+                ]),
+              },
+              signatures: expect.toSatisfy((signatures) => {
+                return signatures.length === 1;
+              }),
+            },
+            meta: expect.any(Object),
+          },
+        ]);
+        const token = Token.fromSigned(
+          gestaltLink![1].claim as SignedClaim<ClaimLinkIdentity>,
+        );
+        expect(
+          token.verifyWithPublicKey(
+            keysUtils.publicKeyFromNodeId(gestaltNodeInfo.nodeId),
+          ),
+        ).toBe(true);
+        await gestaltGraph.unlinkNodeAndIdentity(gestaltNodeInfo.nodeId, [
+          gestaltIdentityInfo.providerId,
+          gestaltIdentityInfo.identityId,
+        ]);
+        expect(await gestaltGraph.getLinkById(gestaltLinkId)).toBeUndefined();
+      } finally {
+        await gestaltGraph.stop();
+      }
+    },
+  );
+  testProp(
+    'getVertex, setVertex and unsetVertex',
+    [gestaltInfoComposedArb],
+    async (gestaltInfo) => {
+      const gestaltGraph = await GestaltGraph.createGestaltGraph({
+        db,
+        acl,
+        logger,
+        fresh: true,
+      });
+      const [type, vertexInfo] = gestaltInfo;
+      const gestaltId: GestaltId =
+        type === 'node'
+          ? [type, vertexInfo.nodeId]
+          : [type, [vertexInfo.providerId, vertexInfo.identityId]];
+      const vertexId = await gestaltGraph.setVertex(gestaltInfo);
+      expect(vertexId).toEqual(gestaltId);
+      expect(await gestaltGraph.getVertex(vertexId)).toEqual(gestaltInfo);
+      await gestaltGraph.unsetVertex(vertexId);
+      expect(await gestaltGraph.getVertex(vertexId)).toBeUndefined();
+      await gestaltGraph.stop();
+    },
+  );
+  testProp(
+    'setVertex updates vertex information',
+    [gestaltInfoComposedArb],
+    async (gestaltInfo) => {
+      const gestaltGraph = await GestaltGraph.createGestaltGraph({
+        db,
+        acl,
+        logger,
+        fresh: true,
+      });
+      const [type, vertexInfo] = gestaltInfo;
+      const gestaltId: GestaltId =
+        type === 'node'
+          ? [type, vertexInfo.nodeId]
+          : [type, [vertexInfo.providerId, vertexInfo.identityId]];
+      const vertexId = await gestaltGraph.setVertex(gestaltInfo);
+      expect(vertexId).toEqual(gestaltId);
 
-    gestaltGraph = await GestaltGraph.createGestaltGraph({
-      db,
-      acl,
-      logger,
-    });
-    const gestaltNode = await gestaltGraph.getGestaltByNode(nodeIdABC);
-    const gestaltIdentity = await gestaltGraph.getGestaltByIdentity(
-      identityInfo.providerId,
-      identityInfo.identityId,
-    );
-    const gkNode = gestaltsUtils.keyFromNode(nodeIdABC);
-    const gkIdentity = gestaltsUtils.keyFromIdentity(
-      identityInfo.providerId,
-      identityInfo.identityId,
-    );
-    expect(gestaltNode).toStrictEqual({
-      matrix: { [gkNode]: {} },
-      nodes: {
-        [gkNode]: {
-          id: nodesUtils.encodeNodeId(nodeIdABC),
-          chain: nodeInfo.chain,
+      const gestaltInfo_ = [
+        type,
+        {
+          ...gestaltInfo[1],
+          foo: 'bar',
         },
-      },
-      identities: {},
-    });
-    expect(gestaltIdentity).toStrictEqual({
-      matrix: { [gkIdentity]: {} },
-      nodes: {},
-      identities: { [gkIdentity]: identityInfo },
-    });
-    await gestaltGraph.stop();
-    await gestaltGraph.destroy();
-  });
-  test('link node to node', async () => {
+      ] as ['node', GestaltNodeInfo] | ['identity', GestaltIdentityInfo];
+      expect(await gestaltGraph.setVertex(gestaltInfo_)).toEqual(gestaltId);
+      expect(await gestaltGraph.getVertex(vertexId)).toEqual(gestaltInfo_);
+      await gestaltGraph.stop();
+    },
+  );
+  testProp(
+    'linkVertexAndVertex and unlinkVertexAndVertex',
+    [linkVertexComposedArb],
+    async ({ gestaltVertexInfo1, gestaltVertexInfo2, gestaltLink }) => {
+      const gestaltGraph = await GestaltGraph.createGestaltGraph({
+        db,
+        acl,
+        logger,
+        fresh: true,
+      });
+      const [type] = gestaltVertexInfo2;
+      // There is no generic form available for this method.
+      //  We need to cast to the proper types.
+      let gestaltLinkId: GestaltLinkId;
+      switch (type) {
+        case 'node':
+          gestaltLinkId = await gestaltGraph.linkVertexAndVertex(
+            gestaltVertexInfo1 as ['node', GestaltNodeInfo],
+            gestaltVertexInfo2 as ['node', GestaltNodeInfo],
+            gestaltLink as ['node', GestaltLinkNode],
+          );
+          break;
+        case 'identity':
+          gestaltLinkId = await gestaltGraph.linkVertexAndVertex(
+            gestaltVertexInfo1 as ['node', GestaltNodeInfo],
+            gestaltVertexInfo2 as ['identity', GestaltIdentityInfo],
+            gestaltLink as ['identity', GestaltLinkIdentity],
+          );
+          break;
+        default:
+          fail('invalid logic');
+      }
+      const gestaltLinkNew = await gestaltGraph.getLinkById(gestaltLinkId);
+      expect(gestaltLinkNew).toBeDefined();
+      expect(gestaltLinkNew).toMatchObject([
+        type,
+        {
+          id: gestaltLinkId,
+          claim: {
+            payload: gestaltLink[1].claim.payload,
+            signatures: expect.toSatisfy((signatures) => {
+              return signatures.length >= 1;
+            }),
+          },
+          meta: expect.any(Object),
+        },
+      ]);
+      const token = Token.fromSigned(
+        gestaltLinkNew![1].claim as SignedClaim<ClaimLinkNode>,
+      );
+      const nodeId1 = gestaltVertexInfo1[1].nodeId as NodeId;
+      expect(
+        token.verifyWithPublicKey(keysUtils.publicKeyFromNodeId(nodeId1)),
+      ).toBe(true);
+      let nodeId2: NodeId | null = null;
+      if (type === 'node') {
+        nodeId2 = gestaltVertexInfo2[1].nodeId as NodeId;
+        expect(
+          token.verifyWithPublicKey(keysUtils.publicKeyFromNodeId(nodeId2)),
+        ).toBe(true);
+      }
+      // There is no generic form for this method so we need to be type explicit
+      if (nodeId2 != null) {
+        await gestaltGraph.unlinkVertexAndVertex(
+          ['node', nodeId1],
+          ['node', nodeId2],
+        );
+      } else {
+        await gestaltGraph.unlinkVertexAndVertex(['node', nodeId1], [
+          'identity',
+          [gestaltVertexInfo2[1].providerId, gestaltVertexInfo2[1].identityId],
+        ] as ['identity', ProviderIdentityId]);
+      }
+      expect(await gestaltGraph.getLinkById(gestaltLinkId)).toBeUndefined();
+      await gestaltGraph.stop();
+    },
+  );
+  testProp(
+    'getGestaltByNode',
+    [gestaltNodeInfoComposedArb],
+    async (gestaltNodeInfo) => {
+      const gestaltGraph = await GestaltGraph.createGestaltGraph({
+        db,
+        acl,
+        logger,
+        fresh: true,
+      });
+      expect(await gestaltGraph.setNode(gestaltNodeInfo)).toEqual([
+        'node',
+        gestaltNodeInfo.nodeId,
+      ]);
+      const gestalt = await gestaltGraph.getGestaltByNode(
+        gestaltNodeInfo.nodeId,
+      );
+      const gestaltNodeId = encodeGestaltNodeId([
+        'node',
+        gestaltNodeInfo.nodeId,
+      ]);
+      expect(gestalt).toMatchObject({
+        matrix: {
+          [gestaltNodeId]: {},
+        },
+        nodes: {
+          [gestaltNodeId]: gestaltNodeInfo,
+        },
+        identities: {},
+      });
+    },
+  );
+  testProp(
+    'getGestaltByIdentity',
+    [gestaltIdentityInfoComposedArb],
+    async (gestaltIdentityInfo) => {
+      const gestaltGraph = await GestaltGraph.createGestaltGraph({
+        db,
+        acl,
+        logger,
+        fresh: true,
+      });
+      const providerIdentitiyId: ProviderIdentityId = [
+        gestaltIdentityInfo.providerId,
+        gestaltIdentityInfo.identityId,
+      ];
+      expect(await gestaltGraph.setIdentity(gestaltIdentityInfo)).toEqual([
+        'identity',
+        providerIdentitiyId,
+      ]);
+      const gestalt = await gestaltGraph.getGestaltByIdentity(
+        providerIdentitiyId,
+      );
+      const gestaltIdentityId = encodeGestaltIdentityId([
+        'identity',
+        providerIdentitiyId,
+      ]);
+      expect(gestalt).toMatchObject({
+        matrix: {
+          [gestaltIdentityId]: {},
+        },
+        nodes: {},
+        identities: {
+          [gestaltIdentityId]: gestaltIdentityInfo,
+        },
+      });
+    },
+  );
+  testProp('getGestalt', [gestaltInfoComposedArb], async (gestaltInfo) => {
     const gestaltGraph = await GestaltGraph.createGestaltGraph({
       db,
       acl,
       logger,
+      fresh: true,
     });
-    // NodeInfo on node 'abc'. Contains claims:
-    // abc -> dee
-    const nodeInfo1Chain: ChainData = {};
-    nodeInfo1Chain['A'] = nodeClaimAbcToDee;
-    const nodeInfo1: NodeInfo = {
-      id: nodeIdABCEncoded,
-      chain: nodeInfo1Chain,
-    };
-    // NodeInfo on node 'dee'. Contains claims:
-    // dee -> abc
-    const nodeInfo2Chain: ChainData = {};
-    nodeInfo2Chain['A'] = nodeClaimDeeToAbc;
-    const nodeInfo2: NodeInfo = {
-      id: nodeIdDEEEncoded,
-      chain: nodeInfo2Chain,
-    };
-    await gestaltGraph.linkNodeAndNode(nodeInfo1, nodeInfo2);
-    const gestaltNode1 = await gestaltGraph.getGestaltByNode(nodeIdABC);
-    const gestaltNode2 = await gestaltGraph.getGestaltByNode(nodeIdDEE);
-    expect(gestaltNode1).not.toBeUndefined();
-    expect(gestaltNode2).not.toBeUndefined();
-    expect(gestaltNode1).toStrictEqual(gestaltNode2);
-    const gkNode1 = gestaltsUtils.keyFromNode(nodeIdABC);
-    const gkNode2 = gestaltsUtils.keyFromNode(nodeIdDEE);
-    expect(gestaltNode1).toStrictEqual({
-      matrix: {
-        [gkNode1]: {
-          [gkNode2]: null,
-        },
-        [gkNode2]: {
-          [gkNode1]: null,
-        },
-      },
-      nodes: {
-        [gkNode1]: {
-          id: nodesUtils.encodeNodeId(nodeIdABC),
-          chain: nodeInfo1.chain,
-        },
-        [gkNode2]: {
-          id: nodesUtils.encodeNodeId(nodeIdDEE),
-          chain: nodeInfo2.chain,
-        },
-      },
-      identities: {},
-    });
-    await gestaltGraph.stop();
-    await gestaltGraph.destroy();
+    const gestaltId = await gestaltGraph.setVertex(gestaltInfo);
+    const gestalt = await gestaltGraph.getGestalt(gestaltId);
+    const [type] = gestaltInfo;
+    switch (type) {
+      case 'node':
+        {
+          const gestaltNodeId = encodeGestaltNodeId([
+            'node',
+            gestaltInfo[1].nodeId,
+          ]);
+          expect(gestalt).toMatchObject({
+            matrix: {
+              [gestaltNodeId]: {},
+            },
+            nodes: {
+              [gestaltNodeId]: gestaltInfo[1],
+            },
+            identities: {},
+          });
+        }
+        break;
+      case 'identity':
+        {
+          const providerIdentitiyId: ProviderIdentityId = [
+            gestaltInfo[1].providerId,
+            gestaltInfo[1].identityId,
+          ];
+          const gestaltIdentityId = encodeGestaltIdentityId([
+            'identity',
+            providerIdentitiyId,
+          ]);
+          expect(gestalt).toMatchObject({
+            matrix: {
+              [gestaltIdentityId]: {},
+            },
+            nodes: {},
+            identities: {
+              [gestaltIdentityId]: gestaltInfo[1],
+            },
+          });
+        }
+        break;
+      default:
+        fail('invalid type');
+    }
   });
-  test('link node to identity', async () => {
-    const gestaltGraph = await GestaltGraph.createGestaltGraph({
-      db,
-      acl,
-      logger,
-    });
-    // NodeInfo on node 'abc'. Contains claims:
-    // abc -> GitHub
-    const nodeInfo1Chain: ChainData = {};
-    nodeInfo1Chain['A'] = identityClaimAbcToGH;
-    const nodeInfo: NodeInfo = {
-      id: nodeIdABCEncoded,
-      chain: nodeInfo1Chain,
-    };
-    // IdentityInfo on identity from GitHub. Contains claims:
-    // GitHub -> abc
-    const identityInfoClaims: IdentityClaims = {};
-    identityInfoClaims['abcGistId'] = identityClaimGHToAbc;
-    const identityInfo: IdentityInfo = {
-      providerId: 'github.com' as ProviderId,
-      identityId: 'abc' as IdentityId,
-      claims: identityInfoClaims,
-    };
-    await gestaltGraph.linkNodeAndIdentity(nodeInfo, identityInfo);
-    const gestaltNode = await gestaltGraph.getGestaltByNode(nodeIdABC);
-    const gestaltIdentity = await gestaltGraph.getGestaltByIdentity(
-      identityInfo.providerId,
-      identityInfo.identityId,
-    );
-    expect(gestaltNode).not.toBeUndefined();
-    expect(gestaltNode).toStrictEqual(gestaltIdentity);
-    const gkNode = gestaltsUtils.keyFromNode(nodeIdABC);
-    const gkIdentity = gestaltsUtils.keyFromIdentity(
-      identityInfo.providerId,
-      identityInfo.identityId,
-    );
-    expect(gestaltNode).toStrictEqual({
-      matrix: {
-        [gkNode]: {
-          [gkIdentity]: null,
-        },
-        [gkIdentity]: {
-          [gkNode]: null,
-        },
-      },
-      nodes: {
-        [gkNode]: {
-          id: nodesUtils.encodeNodeId(nodeIdABC),
-          chain: nodeInfo.chain,
-        },
-      },
-      identities: {
-        [gkIdentity]: identityInfo,
-      },
-    });
-    await gestaltGraph.stop();
-    await gestaltGraph.destroy();
-  });
-  test('link node to node and identity', async () => {
-    const gestaltGraph = await GestaltGraph.createGestaltGraph({
-      db,
-      acl,
-      logger,
-    });
-    // NodeInfo on node 'abc'. Contains claims:
-    // abc -> dee
-    // abc -> GitHub
-    const nodeInfo1Chain: Record<IdentityClaimId, Claim> = {};
-    nodeInfo1Chain['A'] = nodeClaimAbcToDee;
-    identityClaimAbcToGH.payload.seq = 2;
-    nodeInfo1Chain['B'] = identityClaimAbcToGH;
-    const nodeInfo1: NodeInfo = {
-      id: nodeIdABCEncoded,
-      chain: nodeInfo1Chain,
-    };
-    // NodeInfo on node 'dee'. Contains claims:
-    // dee -> abc
-    const nodeInfo2Chain: ChainData = {};
-    nodeInfo2Chain['A'] = nodeClaimDeeToAbc;
-    const nodeInfo2: NodeInfo = {
-      id: nodeIdDEEEncoded,
-      chain: nodeInfo2Chain,
-    };
-    // IdentityInfo on identity from GitHub. Contains claims:
-    // GitHub -> abc
-    const identityInfoClaims: IdentityClaims = {};
-    identityInfoClaims['abcGistId'] = identityClaimGHToAbc;
-    const identityInfo: IdentityInfo = {
-      providerId: 'github.com' as ProviderId,
-      identityId: 'abc' as IdentityId,
-      claims: identityInfoClaims,
-    };
-    await gestaltGraph.linkNodeAndIdentity(nodeInfo1, identityInfo);
-    await gestaltGraph.linkNodeAndNode(nodeInfo1, nodeInfo2);
-    const gestaltNode1 = await gestaltGraph.getGestaltByNode(nodeIdABC);
-    const gestaltNode2 = await gestaltGraph.getGestaltByNode(nodeIdDEE);
-    const gestaltIdentity = await gestaltGraph.getGestaltByIdentity(
-      identityInfo.providerId,
-      identityInfo.identityId,
-    );
-    expect(gestaltNode1).not.toBeUndefined();
-    expect(gestaltNode2).not.toBeUndefined();
-    expect(gestaltIdentity).not.toBeUndefined();
-    expect(gestaltNode1).toStrictEqual(gestaltNode2);
-    expect(gestaltNode2).toStrictEqual(gestaltIdentity);
-    const gkNode1 = gestaltsUtils.keyFromNode(nodeIdABC);
-    const gkNode2 = gestaltsUtils.keyFromNode(nodeIdDEE);
-    const gkIdentity = gestaltsUtils.keyFromIdentity(
-      identityInfo.providerId,
-      identityInfo.identityId,
-    );
-    expect(gestaltIdentity).toStrictEqual({
-      matrix: {
-        [gkNode1]: {
-          [gkNode2]: null,
-          [gkIdentity]: null,
-        },
-        [gkNode2]: {
-          [gkNode1]: null,
-        },
-        [gkIdentity]: {
-          [gkNode1]: null,
-        },
-      },
-      nodes: {
-        [gkNode1]: {
-          id: nodesUtils.encodeNodeId(nodeIdABC),
-          chain: nodeInfo1.chain,
-        },
-        [gkNode2]: {
-          id: nodesUtils.encodeNodeId(nodeIdDEE),
-          chain: nodeInfo2.chain,
-        },
-      },
-      identities: {
-        [gkIdentity]: identityInfo,
-      },
-    });
-    await gestaltGraph.stop();
-    await gestaltGraph.destroy();
-  });
-  test('getting all gestalts', async () => {
-    const gestaltGraph = await GestaltGraph.createGestaltGraph({
-      db,
-      acl,
-      logger,
-    });
-    const nodeInfo1: NodeInfo = {
-      id: nodeIdABCEncoded,
-      chain: {},
-    };
-    const nodeInfo2: NodeInfo = {
-      id: nodeIdDEFEncoded,
-      chain: {},
-    };
-    const identityInfo: IdentityInfo = {
-      providerId: 'github.com' as ProviderId,
-      identityId: 'abc' as IdentityId,
-      claims: {},
-    };
-    await gestaltGraph.setNode(nodeInfo1);
-    await gestaltGraph.setNode(nodeInfo2);
-    await gestaltGraph.setIdentity(identityInfo);
-    await gestaltGraph.linkNodeAndIdentity(nodeInfo1, identityInfo);
-    const gestalts = await gestaltGraph.getGestalts();
-    const identityGestalt = await gestaltGraph.getGestaltByIdentity(
-      identityInfo.providerId,
-      identityInfo.identityId,
-    );
-    const nodeGestalt = await gestaltGraph.getGestaltByNode(nodeIdABC);
-    expect(gestalts).toContainEqual(identityGestalt);
-    expect(gestalts).toContainEqual(nodeGestalt);
-    expect(gestalts).toHaveLength(2);
+  testProp(
+    'getGestalts with nodes',
+    [fc.array(gestaltNodeInfoComposedArb, { minLength: 2 })],
+    async (gestaltNodeInfos) => {
+      const gestaltGraph = await GestaltGraph.createGestaltGraph({
+        db,
+        acl,
+        logger,
+        fresh: true,
+      });
+      for (const gestaltNodeInfo of gestaltNodeInfos) {
+        await gestaltGraph.setNode(gestaltNodeInfo);
+      }
+      const gestalts = await AsyncIterable.as(
+        gestaltGraph.getGestalts(),
+      ).toArray();
+      expect(gestalts).toHaveLength(gestaltNodeInfos.length);
+      for (const gestalt of gestalts) {
+        const gestaltId = Object.keys(gestalt.nodes)[0];
+        const [, nodeId] = gestaltsUtils.decodeGestaltNodeId(gestaltId)!;
+        expect(gestalt).toMatchObject({
+          matrix: {
+            [gestaltId]: {},
+          },
+          nodes: {
+            [gestaltId]: { nodeId },
+          },
+          identities: {},
+        });
+      }
+    },
+  );
+  testProp(
+    'getGestalts with identities',
+    [fc.array(gestaltIdentityInfoComposedArb, { minLength: 2 }).noShrink()],
+    async (gestaltIdentityInfos) => {
+      const gestaltGraph = await GestaltGraph.createGestaltGraph({
+        db,
+        acl,
+        logger,
+        fresh: true,
+      });
+      for (const gestaltIdentityInfo of gestaltIdentityInfos) {
+        await gestaltGraph.setIdentity(gestaltIdentityInfo);
+      }
+      const gestalts = await AsyncIterable.as(
+        gestaltGraph.getGestalts(),
+      ).toArray();
+      expect(gestalts).toHaveLength(gestaltIdentityInfos.length);
+      for (const gestalt of gestalts) {
+        const gestaltId = Object.keys(gestalt.identities)[0];
+        const [, providerIdentityId] =
+          gestaltsUtils.decodeGestaltIdentityId(gestaltId)!;
+        expect(gestalt).toMatchObject({
+          matrix: {
+            [gestaltId]: {},
+          },
+          nodes: {},
+          identities: {
+            [gestaltId]: {
+              providerId: providerIdentityId[0],
+              identityId: providerIdentityId[1],
+            },
+          },
+        });
+      }
+    },
+  );
+  testProp(
+    'getGestalts with nodes and identities',
+    [fc.array(gestaltInfoComposedArb, { minLength: 2 })],
+    async (gestaltInfos) => {
+      const gestaltGraph = await GestaltGraph.createGestaltGraph({
+        db,
+        acl,
+        logger,
+        fresh: true,
+      });
+      for (const gestaltinfo of gestaltInfos) {
+        await gestaltGraph.setVertex(gestaltinfo);
+      }
+      const gestalts = await AsyncIterable.as(
+        gestaltGraph.getGestalts(),
+      ).toArray();
+      expect(gestalts).toHaveLength(gestaltInfos.length);
+      for (const gestalt of gestalts) {
+        const gestaltId = Object.keys(gestalt.matrix)[0];
+        const [type, id] = gestaltsUtils.decodeGestaltId(gestaltId)!;
+        switch (type) {
+          case 'node':
+            {
+              expect(gestalt).toMatchObject({
+                matrix: {
+                  [gestaltId]: {},
+                },
+                nodes: {
+                  [gestaltId]: { nodeId: id },
+                },
+                identities: {},
+              });
+            }
+            break;
+          case 'identity':
+            {
+              expect(gestalt).toMatchObject({
+                matrix: {
+                  [gestaltId]: {},
+                },
+                nodes: {},
+                identities: {
+                  [gestaltId]: {
+                    providerId: id[0],
+                    identityId: id[1],
+                  },
+                },
+              });
+            }
+            break;
+          default:
+            fail('invalid type');
+        }
+      }
+    },
+  );
+  testProp(
+    'getGestalt with node links',
+    [linkNodeComposedArb],
+    async ({ gestaltNodeInfo1, gestaltNodeInfo2, linkNode }) => {
+      const gestaltGraph = await GestaltGraph.createGestaltGraph({
+        db,
+        acl,
+        logger,
+        fresh: true,
+      });
+      await gestaltGraph.linkNodeAndNode(
+        gestaltNodeInfo1,
+        gestaltNodeInfo2,
+        linkNode,
+      );
 
-    // Check if the two combine after linking.
-    await gestaltGraph.linkNodeAndNode(nodeInfo1, nodeInfo2);
-    const gestalts2 = await gestaltGraph.getGestalts();
-    expect(gestalts2).toHaveLength(1);
-    const gestalts2String = JSON.stringify(gestalts2[0]);
-    expect(gestalts2String).toContain(nodeInfo1.id);
-    expect(gestalts2String).toContain(nodeInfo2.id);
-    expect(gestalts2String).toContain(identityInfo.providerId);
-    expect(gestalts2String).toContain(identityInfo.identityId);
-
-    await gestaltGraph.stop();
-    await gestaltGraph.destroy();
-  });
-  test('new node gestalts creates a new acl record', async () => {
-    const gestaltGraph = await GestaltGraph.createGestaltGraph({
-      db,
-      acl,
-      logger,
-    });
-    const nodeInfo: NodeInfo = {
-      id: nodeIdABCEncoded,
-      chain: {},
-    };
-    expect(await acl.getNodePerm(nodeIdABC)).toBeUndefined();
-    await gestaltGraph.setNode(nodeInfo);
-    const perm = await acl.getNodePerm(nodeIdABC);
-    expect(perm).toBeDefined();
-    expect(perm).toMatchObject({
-      gestalt: {},
-      vaults: {},
-    });
-    const actions = await gestaltGraph.getGestaltActionsByNode(nodeIdABC);
-    expect(actions).toBeDefined();
-    expect(actions).toMatchObject({});
-    await gestaltGraph.stop();
-    await gestaltGraph.destroy();
-  });
-  test('new identity gestalts does not create a new acl record', async () => {
-    const gestaltGraph = await GestaltGraph.createGestaltGraph({
-      db,
-      acl,
-      logger,
-    });
-    const identityInfo: IdentityInfo = {
-      providerId: 'github.com' as ProviderId,
-      identityId: 'abc' as IdentityId,
-      claims: {},
-    };
-    await gestaltGraph.setIdentity(identityInfo);
-    const actions = await gestaltGraph.getGestaltActionsByIdentity(
-      identityInfo.providerId,
-      identityInfo.identityId,
-    );
-    expect(actions).toBeUndefined();
-    await gestaltGraph.stop();
-    await gestaltGraph.destroy();
-  });
-  test('set and unset gestalt actions', async () => {
-    const gestaltGraph = await GestaltGraph.createGestaltGraph({
-      db,
-      acl,
-      logger,
-    });
-    const nodeInfo: NodeInfo = {
-      id: nodeIdABCEncoded,
-      chain: {},
-    };
-    await gestaltGraph.setNode(nodeInfo);
-    await gestaltGraph.setGestaltActionByNode(nodeIdABC, 'notify');
-    let actions;
-    actions = await gestaltGraph.getGestaltActionsByNode(nodeIdABC);
-    expect(actions).toHaveProperty('notify');
-    const perm = await acl.getNodePerm(nodeIdABC);
-    expect(perm).toBeDefined();
-    expect(perm).toMatchObject({
-      gestalt: {
-        notify: null,
-      },
-      vaults: {},
-    });
-    await gestaltGraph.unsetGestaltActionByNode(nodeIdABC, 'notify');
-    actions = await gestaltGraph.getGestaltActionsByNode(nodeIdABC);
-    expect(actions).not.toHaveProperty('notify');
-    await gestaltGraph.stop();
-    await gestaltGraph.destroy();
-  });
-  test('linking 2 new nodes results in a merged permission', async () => {
-    const gestaltGraph = await GestaltGraph.createGestaltGraph({
-      db,
-      acl,
-      logger,
-    });
-    // 2 new nodes should have the same permission
-    // NodeInfo on node 'abc'. Contains claims:
-    // abc -> dee
-    const nodeInfo1Chain: ChainData = {};
-    nodeInfo1Chain['A'] = nodeClaimAbcToDee;
-    const nodeInfo1: NodeInfo = {
-      id: nodeIdABCEncoded,
-      chain: nodeInfo1Chain,
-    };
-    // NodeInfo on node 'dee'. Contains claims:
-    // dee -> abc
-    const nodeInfo2Chain: ChainData = {};
-    nodeInfo2Chain['A'] = nodeClaimDeeToAbc;
-    const nodeInfo2: NodeInfo = {
-      id: nodeIdDEEEncoded,
-      chain: nodeInfo2Chain,
-    };
-    await gestaltGraph.linkNodeAndNode(nodeInfo1, nodeInfo2);
-    let actions1, actions2;
-    actions1 = await gestaltGraph.getGestaltActionsByNode(nodeIdABC);
-    actions2 = await gestaltGraph.getGestaltActionsByNode(nodeIdDEE);
-    expect(actions1).not.toBeUndefined();
-    expect(actions2).not.toBeUndefined();
-    expect(actions1).toEqual(actions2);
-    await gestaltGraph.setGestaltActionByNode(nodeIdABC, 'notify');
-    actions1 = await gestaltGraph.getGestaltActionsByNode(nodeIdABC);
-    actions2 = await gestaltGraph.getGestaltActionsByNode(nodeIdDEE);
-    expect(actions1).toEqual({ notify: null });
-    expect(actions1).toEqual(actions2);
-    await gestaltGraph.stop();
-    await gestaltGraph.destroy();
-  });
-  test('linking 2 existing nodes results in a merged permission', async () => {
-    const gestaltGraph = await GestaltGraph.createGestaltGraph({
-      db,
-      acl,
-      logger,
-    });
-    // 2 existing nodes will have a joined permission
-    const nodeInfo1: NodeInfo = {
-      id: nodeIdABCEncoded,
-      chain: {},
-    };
-    const nodeInfo2: NodeInfo = {
-      id: nodeIdDEEEncoded,
-      chain: {},
-    };
-    await gestaltGraph.setNode(nodeInfo1);
-    await gestaltGraph.setNode(nodeInfo2);
-    await gestaltGraph.setGestaltActionByNode(nodeIdABC, 'notify');
-    await gestaltGraph.setGestaltActionByNode(nodeIdDEE, 'scan');
-    // NodeInfo on node 'abc'. Contains claims:
-    // abc -> dee
-    const nodeInfo1Chain: ChainData = {};
-    nodeInfo1Chain['A'] = nodeClaimAbcToDee;
-    const nodeInfo1Linked: NodeInfo = {
-      id: nodeIdABCEncoded,
-      chain: nodeInfo1Chain,
-    };
-    // NodeInfo on node 'dee'. Contains claims:
-    // dee -> abc
-    const nodeInfo2Chain: ChainData = {};
-    nodeInfo2Chain['A'] = nodeClaimDeeToAbc;
-    const nodeInfo2Linked: NodeInfo = {
-      id: nodeIdDEEEncoded,
-      chain: nodeInfo2Chain,
-    };
-    await gestaltGraph.linkNodeAndNode(nodeInfo1Linked, nodeInfo2Linked);
-    const actions1 = await gestaltGraph.getGestaltActionsByNode(nodeIdABC);
-    const actions2 = await gestaltGraph.getGestaltActionsByNode(nodeIdDEE);
-    expect(actions1).not.toBeUndefined();
-    expect(actions2).not.toBeUndefined();
-    expect(actions1).toEqual({ notify: null, scan: null });
-    expect(actions1).toEqual(actions2);
-    await gestaltGraph.stop();
-    await gestaltGraph.destroy();
-  });
-  test('link existing node to new node', async () => {
-    const gestaltGraph = await GestaltGraph.createGestaltGraph({
-      db,
-      acl,
-      logger,
-    });
-    // Node 1 exists, but node 2 is new
-    const nodeInfo1: NodeInfo = {
-      id: nodeIdABCEncoded,
-      chain: {},
-    };
-    await gestaltGraph.setNode(nodeInfo1);
-    await gestaltGraph.setGestaltActionByNode(nodeIdABC, 'notify');
-    // NodeInfo on node 'abc'. Contains claims:
-    // abc -> dee
-    const nodeInfo1Chain: ChainData = {};
-    nodeInfo1Chain['A'] = nodeClaimAbcToDee;
-    const nodeInfo1Linked: NodeInfo = {
-      id: nodeIdABCEncoded,
-      chain: nodeInfo1Chain,
-    };
-    // NodeInfo on node 'dee'. Contains claims:
-    // dee -> abc
-    const nodeInfo2Chain: ChainData = {};
-    nodeInfo2Chain['A'] = nodeClaimDeeToAbc;
-    const nodeInfo2Linked: NodeInfo = {
-      id: nodeIdDEEEncoded,
-      chain: nodeInfo2Chain,
-    };
-    await gestaltGraph.linkNodeAndNode(nodeInfo1Linked, nodeInfo2Linked);
-    let actions1, actions2;
-    actions1 = await gestaltGraph.getGestaltActionsByNode(nodeIdABC);
-    actions2 = await gestaltGraph.getGestaltActionsByNode(nodeIdDEE);
-    expect(actions1).not.toBeUndefined();
-    expect(actions2).not.toBeUndefined();
-    expect(actions1).toEqual({ notify: null });
-    expect(actions1).toEqual(actions2);
-    // Node 3 is new and linking to node 2 which is now exists
-    const zzzDeeSignatures: Record<NodeId, SignatureData> = {};
-    zzzDeeSignatures['zzz'] = 'zzzSignature';
-    zzzDeeSignatures['dee'] = 'deeSignature';
-    // Node claim on node abc: abc -> dee
-    const nodeClaimZzzToDee: Claim = {
-      payload: {
-        hPrev: null,
-        seq: 1,
-        data: {
-          type: 'node',
-          node1: nodeIdZZZEncoded,
-          node2: nodeIdDEEEncoded,
+      const gestalt = (await gestaltGraph.getGestaltByNode(
+        gestaltNodeInfo1.nodeId,
+      ))!;
+      const gestaltId1 = gestaltsUtils.encodeGestaltNodeId([
+        'node',
+        gestaltNodeInfo1.nodeId,
+      ]);
+      const gestaltId2 = gestaltsUtils.encodeGestaltNodeId([
+        'node',
+        gestaltNodeInfo2.nodeId,
+      ]);
+      // We expect that the links exist, don't care about details for this test
+      expect(gestalt).toMatchObject({
+        matrix: {
+          [gestaltId1]: { [gestaltId2]: expect.any(Array) },
+          [gestaltId2]: { [gestaltId1]: expect.any(Array) },
         },
-        iat: 1618203162,
-      },
-      signatures: zzzDeeSignatures,
-    };
-    // NodeInfo on node 'abc'. Contains claims:
-    // abc -> dee
-    const nodeInfo3Chain: ChainData = {};
-    nodeInfo3Chain['A'] = nodeClaimZzzToDee;
-    const nodeInfo3Linked: NodeInfo = {
-      id: nodeIdZZZEncoded,
-      chain: nodeInfo3Chain,
-    };
-    await gestaltGraph.linkNodeAndNode(nodeInfo3Linked, nodeInfo2Linked);
-    actions1 = await gestaltGraph.getGestaltActionsByNode(nodeIdABC);
-    actions2 = await gestaltGraph.getGestaltActionsByNode(nodeIdDEE);
-    const actions3 = await gestaltGraph.getGestaltActionsByNode(nodeIdZZZ);
-    expect(actions1).not.toBeUndefined();
-    expect(actions2).not.toBeUndefined();
-    expect(actions3).not.toBeUndefined();
-    expect(actions3).toEqual({ notify: null });
-    expect(actions3).toEqual(actions2);
-    await gestaltGraph.stop();
-    await gestaltGraph.destroy();
-  });
-  test('linking new node and new identity results in a merged permission', async () => {
-    const gestaltGraph = await GestaltGraph.createGestaltGraph({
-      db,
-      acl,
-      logger,
-    });
-    // NodeInfo on node 'abc'. Contains claims:
-    // abc -> GitHub
-    const nodeInfo1Chain: ChainData = {};
-    nodeInfo1Chain['A'] = identityClaimAbcToGH;
-    const nodeInfo: NodeInfo = {
-      id: nodeIdABCEncoded,
-      chain: nodeInfo1Chain,
-    };
-    // IdentityInfo on identity from GitHub. Contains claims:
-    // GitHub -> abc
-    const identityInfoClaims: IdentityClaims = {};
-    identityInfoClaims['abcGistId'] = identityClaimGHToAbc;
-    const identityInfo: IdentityInfo = {
-      providerId: 'github.com' as ProviderId,
-      identityId: 'abc' as IdentityId,
-      claims: identityInfoClaims,
-    };
-    await gestaltGraph.linkNodeAndIdentity(nodeInfo, identityInfo);
-    let actions1, actions2;
-    actions1 = await gestaltGraph.getGestaltActionsByNode(nodeIdABC);
-    actions2 = await gestaltGraph.getGestaltActionsByIdentity(
-      identityInfo.providerId,
-      identityInfo.identityId,
-    );
-    expect(actions1).not.toBeUndefined();
-    expect(actions2).not.toBeUndefined();
-    expect(actions1).toEqual({});
-    expect(actions1).toEqual(actions2);
-    await gestaltGraph.setGestaltActionByIdentity(
-      identityInfo.providerId,
-      identityInfo.identityId,
-      'notify',
-    );
-    actions1 = await gestaltGraph.getGestaltActionsByNode(nodeIdABC);
-    actions2 = await gestaltGraph.getGestaltActionsByIdentity(
-      identityInfo.providerId,
-      identityInfo.identityId,
-    );
-    expect(actions1).toEqual({ notify: null });
-    expect(actions1).toEqual(actions2);
-    await gestaltGraph.stop();
-    await gestaltGraph.destroy();
-  });
-  test('linking existing node and existing identity results in merged permission', async () => {
-    const gestaltGraph = await GestaltGraph.createGestaltGraph({
-      db,
-      acl,
-      logger,
-    });
-    const nodeInfo: NodeInfo = {
-      id: nodeIdABCEncoded,
-      chain: {},
-    };
-    const identityInfo: IdentityInfo = {
-      providerId: 'github.com' as ProviderId,
-      identityId: 'abc' as IdentityId,
-      claims: {},
-    };
-    await gestaltGraph.setNode(nodeInfo);
-    await gestaltGraph.setIdentity(identityInfo);
-    await gestaltGraph.setGestaltActionByNode(nodeIdABC, 'notify');
-    // NodeInfo on node 'abc'. Contains claims:
-    // abc -> GitHub
-    const nodeInfo1Chain: ChainData = {};
-    nodeInfo1Chain['A'] = identityClaimAbcToGH;
-    const nodeInfoLinked: NodeInfo = {
-      id: nodeIdABCEncoded,
-      chain: nodeInfo1Chain,
-    };
-    // IdentityInfo on identity from GitHub. Contains claims:
-    // GitHub -> abc
-    const identityInfoClaims: IdentityClaims = {};
-    identityInfoClaims['abcGistId'] = identityClaimGHToAbc;
-    const identityInfoLinked: IdentityInfo = {
-      providerId: 'github.com' as ProviderId,
-      identityId: 'abc' as IdentityId,
-      claims: identityInfoClaims,
-    };
-    await gestaltGraph.linkNodeAndIdentity(nodeInfoLinked, identityInfoLinked);
-    let actions1, actions2;
-    actions1 = await gestaltGraph.getGestaltActionsByNode(nodeIdABC);
-    actions2 = await gestaltGraph.getGestaltActionsByIdentity(
-      identityInfo.providerId,
-      identityInfo.identityId,
-    );
-    expect(actions1).not.toBeUndefined();
-    expect(actions2).not.toBeUndefined();
-    expect(actions1).toEqual({ notify: null });
-    expect(actions1).toEqual(actions2);
-    const nodeInfo2: NodeInfo = {
-      id: nodeIdDEFEncoded,
-      chain: {},
-    };
-    await gestaltGraph.setNode(nodeInfo2);
-    await gestaltGraph.unsetGestaltActionByIdentity(
-      identityInfo.providerId,
-      identityInfo.identityId,
-      'notify',
-    );
-    await gestaltGraph.setGestaltActionByIdentity(
-      identityInfo.providerId,
-      identityInfo.identityId,
-      'scan',
-    );
-    await gestaltGraph.setGestaltActionByNode(nodeIdDEF, 'notify');
-
-    const defSignature: Record<NodeId, SignatureData> = {};
-    defSignature['def'] = 'defSignature';
-    // Identity claim on node abc: def -> GitHub
-    const identityClaimDefToGH: Claim = {
-      payload: {
-        hPrev: null,
-        seq: 1,
-        data: {
-          type: 'identity',
-          node: nodeIdDEFEncoded,
-          provider: 'github.com' as ProviderId,
-          identity: 'abc' as IdentityId,
+        nodes: {
+          [gestaltId1]: expect.any(Object),
+          [gestaltId2]: expect.any(Object),
         },
-        iat: 1618203162,
-      },
-      signatures: defSignature,
-    };
-    // NodeInfo on node 'def'. Contains claims:
-    // def -> GitHub (abc)
-    const nodeInfo2Chain: ChainData = {};
-    nodeInfo1Chain['A'] = identityClaimDefToGH;
-    const nodeInfo2Linked: NodeInfo = {
-      id: nodeIdDEFEncoded,
-      chain: nodeInfo2Chain,
-    };
-
-    // Identity claim on Github identity: GitHub -> def
-    const identityClaimGHToDef = {
-      id: 'abcGistId2' as IdentityClaimId,
-      payload: {
-        hPrev: null,
-        seq: 2,
-        data: {
-          type: 'identity',
-          node: nodeIdDEF,
-          provider: 'github.com' as ProviderId,
-          identity: 'abc' as IdentityId,
+        identities: {},
+      });
+      // Unlinking should split the gestalts
+      await gestaltGraph.unlinkNodeAndNode(
+        gestaltNodeInfo1.nodeId,
+        gestaltNodeInfo2.nodeId,
+      );
+      expect(
+        await gestaltGraph.getGestaltByNode(gestaltNodeInfo1.nodeId),
+      ).toMatchObject({
+        matrix: expect.toSatisfy((item) => {
+          const keys = Object.keys(item);
+          if (keys.length !== 1) return false;
+          return keys[0] === gestaltId1;
+        }),
+        nodes: expect.toSatisfy((item) => {
+          const keys = Object.keys(item);
+          if (keys.length !== 1) return false;
+          return keys[0] === gestaltId1;
+        }),
+        identities: {},
+      });
+      await gestaltGraph.stop();
+    },
+  );
+  testProp(
+    'getGestalt with identity links',
+    [linkIdentityComposedArb],
+    async ({ gestaltNodeInfo, gestaltIdentityInfo, linkIdentity }) => {
+      const gestaltGraph = await GestaltGraph.createGestaltGraph({
+        db,
+        acl,
+        logger,
+        fresh: true,
+      });
+      await gestaltGraph.linkNodeAndIdentity(
+        gestaltNodeInfo,
+        gestaltIdentityInfo,
+        linkIdentity,
+      );
+      const gestalt = (await gestaltGraph.getGestaltByIdentity([
+        gestaltIdentityInfo.providerId,
+        gestaltIdentityInfo.identityId,
+      ]))!;
+      const gestaltId1 = gestaltsUtils.encodeGestaltNodeId([
+        'node',
+        gestaltNodeInfo.nodeId,
+      ]);
+      const gestaltId2 = gestaltsUtils.encodeGestaltIdentityId([
+        'identity',
+        [gestaltIdentityInfo.providerId, gestaltIdentityInfo.identityId],
+      ]);
+      // We expect that the links exist, don't care about details for this test
+      expect(gestalt).toMatchObject({
+        matrix: {
+          [gestaltId1]: { [gestaltId2]: expect.any(Array) },
+          [gestaltId2]: { [gestaltId1]: expect.any(Array) },
         },
-        iat: 1618203162,
+        nodes: {
+          [gestaltId1]: expect.any(Object),
+        },
+        identities: {
+          [gestaltId2]: expect.any(Object),
+        },
+      });
+      // Unlinking should split the gestalts
+      await gestaltGraph.unlinkNodeAndIdentity(gestaltNodeInfo.nodeId, [
+        gestaltIdentityInfo.providerId,
+        gestaltIdentityInfo.identityId,
+      ]);
+      expect(
+        await gestaltGraph.getGestaltByNode(gestaltNodeInfo.nodeId),
+      ).toMatchObject({
+        matrix: expect.toSatisfy((item) => {
+          const keys = Object.keys(item);
+          if (keys.length !== 1) return false;
+          return keys[0] === gestaltId1;
+        }),
+        nodes: expect.toSatisfy((item) => {
+          const keys = Object.keys(item);
+          if (keys.length !== 1) return false;
+          return keys[0] === gestaltId1;
+        }),
+        identities: {},
+      });
+      await gestaltGraph.stop();
+    },
+  );
+  testProp(
+    'getGestalt with node and identity links',
+    [linkVertexComposedArb],
+    async ({ gestaltVertexInfo1, gestaltVertexInfo2, gestaltLink }) => {
+      const gestaltGraph = await GestaltGraph.createGestaltGraph({
+        db,
+        acl,
+        logger,
+        fresh: true,
+      });
+      const [type, info] = gestaltVertexInfo2;
+      switch (type) {
+        case 'node':
+          await gestaltGraph.linkVertexAndVertex(
+            gestaltVertexInfo1 as ['node', GestaltNodeInfo],
+            gestaltVertexInfo2 as ['node', GestaltNodeInfo],
+            gestaltLink as ['node', GestaltLinkNode],
+          );
+          break;
+        case 'identity':
+          await gestaltGraph.linkVertexAndVertex(
+            gestaltVertexInfo1 as ['node', GestaltNodeInfo],
+            gestaltVertexInfo2 as ['identity', GestaltIdentityInfo],
+            gestaltLink as ['identity', GestaltLinkIdentity],
+          );
+          break;
+        default:
+          fail('invalid type');
+      }
+
+      const gestalt = (await gestaltGraph.getGestalt([
+        'node',
+        gestaltVertexInfo1[1].nodeId,
+      ]))!;
+      const gestaltId1 = gestaltsUtils.encodeGestaltNodeId([
+        'node',
+        gestaltVertexInfo1[1].nodeId,
+      ]);
+      switch (type) {
+        case 'node':
+          {
+            const gestaltId2 = gestaltsUtils.encodeGestaltNodeId([
+              'node',
+              info.nodeId,
+            ]);
+            // We expect that the links exist, don't care about details for this test
+            expect(gestalt).toMatchObject({
+              matrix: {
+                [gestaltId1]: { [gestaltId2]: expect.any(Array) },
+                [gestaltId2]: { [gestaltId1]: expect.any(Array) },
+              },
+              nodes: {
+                [gestaltId1]: expect.any(Object),
+                [gestaltId2]: expect.any(Object),
+              },
+              identities: {},
+            });
+            // Unlinking should split the gestalts
+            await gestaltGraph.unlinkVertexAndVertex(
+              ['node', gestaltVertexInfo1[1].nodeId],
+              ['node', info.nodeId],
+            );
+            expect(
+              await gestaltGraph.getGestalt([
+                'node',
+                gestaltVertexInfo1[1].nodeId,
+              ]),
+            ).toMatchObject({
+              matrix: expect.toSatisfy((item) => {
+                const keys = Object.keys(item);
+                if (keys.length !== 1) return false;
+                return keys[0] === gestaltId1;
+              }),
+              nodes: expect.toSatisfy((item) => {
+                const keys = Object.keys(item);
+                if (keys.length !== 1) return false;
+                return keys[0] === gestaltId1;
+              }),
+              identities: {},
+            });
+          }
+          break;
+        case 'identity':
+          {
+            const gestaltId2 = gestaltsUtils.encodeGestaltIdentityId([
+              'identity',
+              [info.providerId, info.identityId],
+            ]);
+            // We expect that the links exist, don't care about details for this test
+            expect(gestalt).toMatchObject({
+              matrix: {
+                [gestaltId1]: { [gestaltId2]: expect.any(Array) },
+                [gestaltId2]: { [gestaltId1]: expect.any(Array) },
+              },
+              nodes: {
+                [gestaltId1]: expect.any(Object),
+              },
+              identities: {
+                [gestaltId2]: expect.any(Object),
+              },
+            });
+            // Unlinking should split the gestalts
+            await gestaltGraph.unlinkVertexAndVertex(
+              ['node', gestaltVertexInfo1[1].nodeId],
+              ['identity', [info.providerId, info.identityId]],
+            );
+            expect(
+              await gestaltGraph.getGestalt([
+                'node',
+                gestaltVertexInfo1[1].nodeId,
+              ]),
+            ).toMatchObject({
+              matrix: expect.toSatisfy((item) => {
+                const keys = Object.keys(item);
+                if (keys.length !== 1) return false;
+                return keys[0] === gestaltId1;
+              }),
+              nodes: expect.toSatisfy((item) => {
+                const keys = Object.keys(item);
+                if (keys.length !== 1) return false;
+                return keys[0] === gestaltId1;
+              }),
+              identities: {},
+            });
+          }
+          break;
+        default:
+          fail('invalid type');
+      }
+      await gestaltGraph.stop();
+    },
+  );
+
+  describe('Model based testing', () => {
+    const altCommandsArb =
+      // Use a record to generate a constrained set of vertices
+      fc
+        .record({
+          keyPairs: fc.array(testsKeysUtils.keyPairArb, { minLength: 2 }),
+          identityInfos: fc.array(gestaltIdentityInfoComposedArb, {
+            minLength: 1,
+          }),
+        })
+        .chain((verticies) => {
+          const { keyPairs, identityInfos } = verticies;
+          const nodeInfos = keyPairs.map((keyPair) => {
+            const nodeId = keysUtils.publicKeyToNodeId(keyPair.publicKey);
+            const nodeInfo: GestaltNodeInfo = { nodeId };
+            return nodeInfo;
+          });
+          const vertexInfos = [
+            ...nodeInfos.map((nodeInfo) => ['node', nodeInfo]),
+            ...identityInfos.map((identityInfo) => ['identity', identityInfo]),
+          ] as Array<GestaltInfo>;
+
+          // Random selection arbs
+          const randomNodeInfoArb = fc.constantFrom(...nodeInfos);
+          const randomNodeIdArb = randomNodeInfoArb.map(
+            (nodeInfo) => nodeInfo.nodeId,
+          );
+          const randomIdentityInfoArb = fc.constantFrom(...identityInfos);
+          const randomProviderIdentityIdArb = randomIdentityInfoArb.map(
+            (identityInfo) =>
+              [
+                identityInfo.providerId,
+                identityInfo.identityId,
+              ] as ProviderIdentityId,
+          );
+          const randomVertexInfo = fc.constantFrom(...vertexInfos);
+          const randomVertexId = fc.oneof(
+            fc.tuple(fc.constant('node'), randomNodeIdArb),
+            fc.tuple(fc.constant('identity'), randomProviderIdentityIdArb),
+          ) as fc.Arbitrary<GestaltId>;
+          const randomKeyPair = fc.constantFrom(...keyPairs);
+
+          const setVertexCommandArb = fc
+            .tuple(randomVertexInfo, testsGestaltsUtils.gestaltActionsArb(1))
+            .map((args) => new testsGestaltsUtils.SetVertexCommand(...args));
+          const unsetVertexCommandArb = randomVertexId.map(
+            (args) => new testsGestaltsUtils.UnsetVertexCommand(args),
+          );
+          const linkNodesParamsArb = fc
+            .tuple(randomKeyPair, randomKeyPair)
+            .filter(([a, b]) => !a.privateKey.equals(b.privateKey))
+            .chain(([keyPair1, keyPair2]) => {
+              const nodeInfo1 = {
+                nodeId: keysUtils.publicKeyToNodeId(keyPair1.publicKey),
+              };
+              const nodeInfo2 = {
+                nodeId: keysUtils.publicKeyToNodeId(keyPair2.publicKey),
+              };
+              return fc.tuple(
+                fc.constant(nodeInfo1),
+                fc.constant(nodeInfo2),
+                testsGestaltsUtils.gestaltLinkNodeArb(keyPair1, keyPair2),
+              );
+            });
+          const linkNodesCommandArb = linkNodesParamsArb.map(
+            ([nodeInfo1, nodeInfo2, linkNode]) =>
+              new testsGestaltsUtils.LinkNodeAndNodeCommand(
+                nodeInfo1,
+                nodeInfo2,
+                linkNode,
+              ),
+          );
+
+          const linkIdentitiesParamsArb = fc
+            .tuple(randomKeyPair, randomIdentityInfoArb)
+            .chain(([keyPair, identityInfo]) => {
+              const nodeInfo = {
+                nodeId: keysUtils.publicKeyToNodeId(keyPair.publicKey),
+              };
+              return fc.tuple(
+                fc.constant(nodeInfo),
+                fc.constant(identityInfo),
+                testsGestaltsUtils.gestaltLinkIdentityArb(
+                  keyPair,
+                  identityInfo.providerId,
+                  identityInfo.identityId,
+                ),
+              );
+            });
+          const linkIdentitiiesCommandArb = linkIdentitiesParamsArb.map(
+            ([nodeInfo, identitiyInfo, linkIdentity]) =>
+              new testsGestaltsUtils.LinkNodeAndIdentityCommand(
+                nodeInfo,
+                identitiyInfo,
+                linkIdentity,
+              ),
+          );
+
+          const linkVertexCommandArb = fc
+            .oneof(
+              linkNodesParamsArb.map(
+                ([info1, info2, link]) =>
+                  [
+                    ['node', info1],
+                    ['node', info2],
+                    ['node', link],
+                  ] as [GestaltInfo, GestaltInfo, GestaltLink],
+              ),
+              linkIdentitiesParamsArb.map(
+                ([info1, info2, link]) =>
+                  [
+                    ['node', info1],
+                    ['identity', info2],
+                    ['identity', link],
+                  ] as [GestaltInfo, GestaltInfo, GestaltLink],
+              ),
+            )
+            .map(
+              ([gestaltInfo1, gestaltInfo2, gestaltLink]) =>
+                new testsGestaltsUtils.LinkVertexAndVertexCommand(
+                  gestaltInfo1 as ['node', GestaltNodeInfo],
+                  gestaltInfo2,
+                  gestaltLink,
+                ),
+            );
+
+          const unlinkNodeCommandArb = fc
+            .tuple(randomNodeIdArb, randomNodeIdArb)
+            .map(
+              ([nodeId1, nodeId2]) =>
+                new testsGestaltsUtils.UnlinkNodeAndNodeCommand(
+                  nodeId1,
+                  nodeId2,
+                ),
+            );
+
+          const unlinkIdentityCommandArb = fc
+            .tuple(randomNodeIdArb, randomProviderIdentityIdArb)
+            .map(
+              ([nodeId, identityId]) =>
+                new testsGestaltsUtils.UnlinkNodeAndIdentityCommand(
+                  nodeId,
+                  identityId,
+                ),
+            );
+
+          const unlinkVertexCommandArb = fc
+            .tuple(
+              randomNodeIdArb.map(
+                (nodeId) => ['node', nodeId] as ['node', NodeId],
+              ),
+              randomVertexId,
+            )
+            .map(
+              ([gestaltId1, gestaltId2]) =>
+                new testsGestaltsUtils.UnlinkVertexAndVertexCommand(
+                  gestaltId1,
+                  gestaltId2,
+                ),
+            );
+
+          const commandsUnlink = fc.commands(
+            [
+              unsetVertexCommandArb,
+              unlinkNodeCommandArb,
+              unlinkIdentityCommandArb,
+              unlinkVertexCommandArb,
+            ],
+            { size: '+1' },
+          );
+
+          const commandsLink = fc.commands(
+            [
+              setVertexCommandArb,
+              linkNodesCommandArb,
+              linkIdentitiiesCommandArb,
+              linkVertexCommandArb,
+            ],
+            { size: '=' },
+          );
+          return fc.tuple(commandsLink, commandsUnlink);
+        })
+        .map(([commandsLink, commandsUnlink]) => {
+          return [...commandsLink, ...commandsUnlink];
+        })
+        .noShrink();
+
+    testProp(
+      'model',
+      [altCommandsArb],
+      async (cmds) => {
+        await acl.start({ fresh: true });
+        const gestaltGraph = await GestaltGraph.createGestaltGraph({
+          db,
+          acl,
+          logger,
+          fresh: true,
+        });
+        try {
+          const model: testsGestaltsUtils.GestaltGraphModel = {
+            matrix: {},
+            nodes: {},
+            identities: {},
+            permissions: {},
+          };
+          const modelSetup = async () => {
+            return {
+              model,
+              real: gestaltGraph,
+            };
+          };
+          await fc.asyncModelRun(modelSetup, cmds);
+        } finally {
+          await gestaltGraph.stop();
+          await acl.stop();
+        }
       },
-      signatures: defSignature,
-    };
-    // IdentityInfo on identity from GitHub. Contains claims:
-    // GitHub (abc) -> abc
-    // GitHub (abc) -> def
-    const identityInfoClaimsAgain: IdentityClaims = {};
-    identityInfoClaimsAgain['abcGistId'] = identityClaimGHToAbc;
-    identityInfoClaimsAgain['abcGistId2'] = identityClaimGHToDef;
-    const identityInfoLinkedAgain: IdentityInfo = {
-      providerId: 'github.com' as ProviderId,
-      identityId: 'abc' as IdentityId,
-      claims: identityInfoClaims,
-    };
-    await gestaltGraph.linkNodeAndIdentity(
-      nodeInfo2Linked,
-      identityInfoLinkedAgain,
+      { numRuns: 50 },
     );
-    actions1 = await gestaltGraph.getGestaltActionsByNode(nodeIdABC);
-    actions2 = await gestaltGraph.getGestaltActionsByIdentity(
-      identityInfo.providerId,
-      identityInfo.identityId,
-    );
-    const actions3 = await gestaltGraph.getGestaltActionsByNode(nodeIdDEF);
-    expect(actions1).not.toBeUndefined();
-    expect(actions2).not.toBeUndefined();
-    expect(actions3).not.toBeUndefined();
-    expect(actions2).toEqual({ notify: null, scan: null });
-    expect(actions1).toEqual(actions2);
-    expect(actions2).toEqual(actions3);
-    await gestaltGraph.stop();
-    await gestaltGraph.destroy();
-  });
-  test('link existing node to new identity', async () => {
-    const gestaltGraph = await GestaltGraph.createGestaltGraph({
-      db,
-      acl,
-      logger,
-    });
-    const nodeInfo: NodeInfo = {
-      id: nodeIdABCEncoded,
-      chain: {},
-    };
-    await gestaltGraph.setNode(nodeInfo);
-    // NodeInfo on node 'abc'. Contains claims:
-    // abc -> GitHub
-    const nodeInfo1Chain: ChainData = {};
-    nodeInfo1Chain['A'] = identityClaimAbcToGH;
-    const nodeInfoLinked: NodeInfo = {
-      id: nodeIdABCEncoded,
-      chain: nodeInfo1Chain,
-    };
-    // IdentityInfo on identity from GitHub. Contains claims:
-    // GitHub -> abc
-    const identityInfoClaims: IdentityClaims = {};
-    identityInfoClaims['abcGistId'] = identityClaimGHToAbc;
-    const identityInfoLinked: IdentityInfo = {
-      providerId: 'github.com' as ProviderId,
-      identityId: 'abc' as IdentityId,
-      claims: identityInfoClaims,
-    };
-    await gestaltGraph.linkNodeAndIdentity(nodeInfoLinked, identityInfoLinked);
-    let actions1, actions2;
-    actions1 = await gestaltGraph.getGestaltActionsByNode(nodeIdABC);
-    actions2 = await gestaltGraph.getGestaltActionsByIdentity(
-      identityInfoLinked.providerId,
-      identityInfoLinked.identityId,
-    );
-    expect(actions1).not.toBeUndefined();
-    expect(actions2).not.toBeUndefined();
-    expect(actions1).toEqual(actions2);
-    expect(actions1).toEqual({});
-    await gestaltGraph.setGestaltActionByIdentity(
-      identityInfoLinked.providerId,
-      identityInfoLinked.identityId,
-      'scan',
-    );
-    await gestaltGraph.setGestaltActionByIdentity(
-      identityInfoLinked.providerId,
-      identityInfoLinked.identityId,
-      'notify',
-    );
-    actions1 = await gestaltGraph.getGestaltActionsByNode(nodeIdABC);
-    actions2 = await gestaltGraph.getGestaltActionsByIdentity(
-      identityInfoLinked.providerId,
-      identityInfoLinked.identityId,
-    );
-    expect(actions1).not.toBeUndefined();
-    expect(actions2).not.toBeUndefined();
-    expect(actions1).toEqual(actions2);
-    expect(actions1).toEqual({
-      scan: null,
-      notify: null,
-    });
-    await gestaltGraph.stop();
-    await gestaltGraph.destroy();
-  });
-  test('link new node to existing identity', async () => {
-    const gestaltGraph = await GestaltGraph.createGestaltGraph({
-      db,
-      acl,
-      logger,
-    });
-    const identityInfo: IdentityInfo = {
-      providerId: 'github.com' as ProviderId,
-      identityId: 'abc' as IdentityId,
-      claims: {},
-    };
-    await gestaltGraph.setIdentity(identityInfo);
-    // NodeInfo on node 'abc'. Contains claims:
-    // abc -> GitHub
-    const nodeInfo1Chain: ChainData = {};
-    nodeInfo1Chain['A'] = identityClaimAbcToGH;
-    const nodeInfoLinked: NodeInfo = {
-      id: nodeIdABCEncoded,
-      chain: nodeInfo1Chain,
-    };
-    // IdentityInfo on identity from GitHub. Contains claims:
-    // GitHub -> abc
-    const identityInfoClaims: IdentityClaims = {};
-    identityInfoClaims['abcGistId'] = identityClaimGHToAbc;
-    const identityInfoLinked: IdentityInfo = {
-      providerId: 'github.com' as ProviderId,
-      identityId: 'abc' as IdentityId,
-      claims: identityInfoClaims,
-    };
-    await gestaltGraph.linkNodeAndIdentity(nodeInfoLinked, identityInfoLinked);
-    let actions1, actions2;
-    actions1 = await gestaltGraph.getGestaltActionsByNode(nodeIdABC);
-    actions2 = await gestaltGraph.getGestaltActionsByIdentity(
-      identityInfo.providerId,
-      identityInfo.identityId,
-    );
-    expect(actions1).not.toBeUndefined();
-    expect(actions2).not.toBeUndefined();
-    expect(actions1).toEqual(actions2);
-    expect(actions1).toEqual({});
-    await gestaltGraph.setGestaltActionByNode(nodeIdABC, 'scan');
-    await gestaltGraph.setGestaltActionByNode(nodeIdABC, 'notify');
-    actions1 = await gestaltGraph.getGestaltActionsByNode(nodeIdABC);
-    actions2 = await gestaltGraph.getGestaltActionsByIdentity(
-      identityInfo.providerId,
-      identityInfo.identityId,
-    );
-    expect(actions1).not.toBeUndefined();
-    expect(actions2).not.toBeUndefined();
-    expect(actions1).toEqual(actions2);
-    expect(actions1).toEqual({
-      scan: null,
-      notify: null,
-    });
-    await gestaltGraph.stop();
-    await gestaltGraph.destroy();
-  });
-  test('splitting node and node results in split inherited permissions', async () => {
-    const gestaltGraph = await GestaltGraph.createGestaltGraph({
-      db,
-      acl,
-      logger,
-    });
-    // NodeInfo on node 'abc'. Contains claims:
-    // abc -> dee
-    const nodeInfo1Chain: ChainData = {};
-    nodeInfo1Chain['A'] = nodeClaimAbcToDee;
-    const nodeInfo1: NodeInfo = {
-      id: nodeIdABCEncoded,
-      chain: nodeInfo1Chain,
-    };
-    // NodeInfo on node 'dee'. Contains claims:
-    // dee -> abc
-    const nodeInfo2Chain: ChainData = {};
-    nodeInfo2Chain['A'] = nodeClaimDeeToAbc;
-    const nodeInfo2: NodeInfo = {
-      id: nodeIdDEEEncoded,
-      chain: nodeInfo2Chain,
-    };
-    await gestaltGraph.linkNodeAndNode(nodeInfo1, nodeInfo2);
-    await gestaltGraph.setGestaltActionByNode(nodeIdABC, 'scan');
-    await gestaltGraph.setGestaltActionByNode(nodeIdABC, 'notify');
-    let nodePerms;
-    nodePerms = await acl.getNodePerms();
-    expect(Object.keys(nodePerms)).toHaveLength(1);
-    await gestaltGraph.unlinkNodeAndNode(nodeIdABC, nodeIdDEE);
-    let actions1, actions2;
-    let perm1, perm2;
-    actions1 = await gestaltGraph.getGestaltActionsByNode(nodeIdABC);
-    actions2 = await gestaltGraph.getGestaltActionsByNode(nodeIdDEE);
-    expect(actions1).toEqual({ scan: null, notify: null });
-    expect(actions2).toEqual({ scan: null, notify: null });
-    perm1 = await acl.getNodePerm(nodeIdABC);
-    perm2 = await acl.getNodePerm(nodeIdDEE);
-    expect(perm1).toEqual(perm2);
-    await gestaltGraph.unsetGestaltActionByNode(nodeIdABC, 'notify');
-    await gestaltGraph.unsetGestaltActionByNode(nodeIdDEE, 'scan');
-    actions1 = await gestaltGraph.getGestaltActionsByNode(nodeIdABC);
-    actions2 = await gestaltGraph.getGestaltActionsByNode(nodeIdDEE);
-    expect(actions1).toEqual({ scan: null });
-    expect(actions2).toEqual({ notify: null });
-    perm1 = await acl.getNodePerm(nodeIdABC);
-    perm2 = await acl.getNodePerm(nodeIdDEE);
-    expect(perm1).not.toEqual(perm2);
-    nodePerms = await acl.getNodePerms();
-    expect(Object.keys(nodePerms)).toHaveLength(2);
-    await gestaltGraph.stop();
-    await gestaltGraph.destroy();
-  });
-  test('splitting node and identity results in split inherited permissions unless the identity is a loner', async () => {
-    const gestaltGraph = await GestaltGraph.createGestaltGraph({
-      db,
-      acl,
-      logger,
-    });
-    // NodeInfo on node 'abc'. Contains claims:
-    // abc -> GitHub
-    const nodeInfo1Chain: ChainData = {};
-    nodeInfo1Chain['A'] = identityClaimAbcToGH;
-    const nodeInfo: NodeInfo = {
-      id: nodeIdABCEncoded,
-      chain: nodeInfo1Chain,
-    };
-    // IdentityInfo on identity from GitHub. Contains claims:
-    // GitHub -> abc
-    const identityInfoClaims: IdentityClaims = {};
-    identityInfoClaims['abcGistId'] = identityClaimGHToAbc;
-    const identityInfo: IdentityInfo = {
-      providerId: 'github.com' as ProviderId,
-      identityId: 'abc' as IdentityId,
-      claims: identityInfoClaims,
-    };
-    await gestaltGraph.linkNodeAndIdentity(nodeInfo, identityInfo);
-    await gestaltGraph.setGestaltActionByIdentity(
-      identityInfo.providerId,
-      identityInfo.identityId,
-      'scan',
-    );
-    await gestaltGraph.setGestaltActionByIdentity(
-      identityInfo.providerId,
-      identityInfo.identityId,
-      'notify',
-    );
-    let nodePerms;
-    nodePerms = await acl.getNodePerms();
-    expect(Object.keys(nodePerms)).toHaveLength(1);
-    await gestaltGraph.unlinkNodeAndIdentity(
-      nodeIdABC,
-      identityInfo.providerId,
-      identityInfo.identityId,
-    );
-    const actions1 = await gestaltGraph.getGestaltActionsByNode(nodeIdABC);
-    const actions2 = await gestaltGraph.getGestaltActionsByIdentity(
-      identityInfo.providerId,
-      identityInfo.identityId,
-    );
-    expect(actions1).toEqual({ scan: null, notify: null });
-    // Identity no longer has attached node therefore it has no permissions
-    expect(actions2).toBeUndefined();
-    nodePerms = await acl.getNodePerms();
-    expect(Object.keys(nodePerms)).toHaveLength(1);
-    await gestaltGraph.stop();
-    await gestaltGraph.destroy();
-  });
-  test('removing a gestalt removes the permission', async () => {
-    const gestaltGraph = await GestaltGraph.createGestaltGraph({
-      db,
-      acl,
-      logger,
-    });
-    // NodeInfo on node 'abc'. Contains claims:
-    // abc -> dee
-    const nodeInfo1Chain: ChainData = {};
-    nodeInfo1Chain['A'] = nodeClaimAbcToDee;
-    const nodeInfo1: NodeInfo = {
-      id: nodeIdABCEncoded,
-      chain: nodeInfo1Chain,
-    };
-    // NodeInfo on node 'dee'. Contains claims:
-    // dee -> abc
-    const nodeInfo2Chain: ChainData = {};
-    nodeInfo2Chain['A'] = nodeClaimDeeToAbc;
-    const nodeInfo2: NodeInfo = {
-      id: nodeIdDEEEncoded,
-      chain: nodeInfo2Chain,
-    };
-    await gestaltGraph.linkNodeAndNode(nodeInfo1, nodeInfo2);
-    await gestaltGraph.setGestaltActionByNode(nodeIdABC, 'scan');
-    await gestaltGraph.setGestaltActionByNode(nodeIdABC, 'notify');
-    let nodePerms = await acl.getNodePerms();
-    expect(Object.keys(nodePerms)).toHaveLength(1);
-    await gestaltGraph.unsetNode(nodeIdABC);
-    // It's still 1 node perm
-    // its just that node 1 is eliminated
-    nodePerms = await acl.getNodePerms();
-    expect(Object.keys(nodePerms)).toHaveLength(1);
-    expect(nodePerms[0][nodeIdABC.toString()]).toBeUndefined();
-    expect(nodePerms[0][nodeIdDEE.toString()]).toBeDefined();
-    await gestaltGraph.unsetNode(nodeIdDEE);
-    nodePerms = await acl.getNodePerms();
-    expect(Object.keys(nodePerms)).toHaveLength(0);
-    await gestaltGraph.stop();
-    await gestaltGraph.destroy();
   });
 });

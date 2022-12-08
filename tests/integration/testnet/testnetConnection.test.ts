@@ -7,7 +7,6 @@ import Logger, { LogLevel, StreamHandler, formatting } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
 import config from '@/config';
 import * as testUtils from '../../utils';
-import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 import { sleep } from '../../../src/utils/index';
 
 describe.skip('testnet connection', () => {
@@ -49,7 +48,6 @@ describe.skip('testnet connection', () => {
         env: {
           PK_NODE_PATH: nodePath,
           PK_PASSWORD: password,
-          PK_ROOT_KEY: globalRootKeyPems[0],
         },
         cwd: dataDir,
       },
@@ -100,7 +98,6 @@ describe.skip('testnet connection', () => {
         env: {
           PK_NODE_PATH: nodePathA,
           PK_PASSWORD: password,
-          PK_ROOT_KEY: globalRootKeyPems[0],
         },
         cwd: dataDir,
       },
@@ -122,7 +119,6 @@ describe.skip('testnet connection', () => {
         env: {
           PK_NODE_PATH: nodePathB,
           PK_PASSWORD: password,
-          PK_ROOT_KEY: globalRootKeyPems[1],
         },
         cwd: dataDir,
       },
@@ -242,9 +238,6 @@ describe.skip('testnet connection', () => {
       password,
       nodePath: nodePath1,
       seedNodes,
-      keysConfig: {
-        privateKeyPemOverride: globalRootKeyPems[1],
-      },
       networkConfig: {
         // ProxyHost: localhost,
         agentHost: localhost,
@@ -261,9 +254,6 @@ describe.skip('testnet connection', () => {
       password,
       nodePath: nodePath2,
       seedNodes,
-      keysConfig: {
-        privateKeyPemOverride: globalRootKeyPems[2],
-      },
       networkConfig: {
         // ProxyHost: localhost,
         agentHost: localhost,
@@ -299,7 +289,7 @@ describe.skip('testnet connection', () => {
       // );
       // console.log('Attempting ping');
       const pingResult = await agent2.nodeManager.pingNode(
-        agent1.keyManager.getNodeId(),
+        agent1.keyRing.getNodeId(),
       );
       // Console.log(pingResult);
       expect(pingResult).toBe(true);

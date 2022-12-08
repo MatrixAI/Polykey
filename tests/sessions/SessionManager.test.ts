@@ -1,14 +1,15 @@
+import type { Key } from '@/keys/types';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { DB } from '@matrixai/db';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import KeyManager from '@/keys/KeyManager';
+import KeyRing from '@/keys/KeyRing';
+import * as utils from '@/utils';
 import * as keysUtils from '@/keys/utils';
 import SessionManager from '@/sessions/SessionManager';
 import * as sessionsErrors from '@/sessions/errors';
 import { sleep } from '@/utils';
-import { globalRootKeyPems } from '../fixtures/globalRootKeyPems';
 
 describe('SessionManager', () => {
   const password = 'password';
@@ -16,38 +17,50 @@ describe('SessionManager', () => {
     new StreamHandler(),
   ]);
   /**
-   * Shared db, keyManager for all tests
+   * Shared db, keyRing for all tests
    */
   let dataDir: string;
   let db: DB;
-  let keyManager: KeyManager;
+  let keyRing: KeyRing;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
     const keysPath = path.join(dataDir, 'keys');
-    keyManager = await KeyManager.createKeyManager({
+    keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
       logger,
-      privateKeyPemOverride: globalRootKeyPems[0],
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
       dbPath,
       logger,
       crypto: {
-        key: keyManager.dbKey,
+        key: keyRing.dbKey,
         ops: {
-          encrypt: keysUtils.encryptWithKey,
-          decrypt: keysUtils.decryptWithKey,
+          encrypt: async (key, plainText) => {
+            return keysUtils.encryptWithKey(
+              utils.bufferWrap(key) as Key,
+              utils.bufferWrap(plainText),
+            );
+          },
+          decrypt: async (key, cipherText) => {
+            return keysUtils.decryptWithKey(
+              utils.bufferWrap(key) as Key,
+              utils.bufferWrap(cipherText),
+            );
+          },
         },
       },
     });
   });
   afterEach(async () => {
     await db.stop();
-    await keyManager.stop();
+    await keyRing.stop();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
@@ -56,7 +69,7 @@ describe('SessionManager', () => {
   test('session manager readiness', async () => {
     const sessionManager = await SessionManager.createSessionManager({
       db,
-      keyManager,
+      keyRing,
       logger,
     });
     await expect(sessionManager.destroy()).rejects.toThrow(
@@ -79,7 +92,7 @@ describe('SessionManager', () => {
   test('creating and verifying session tokens', async () => {
     const sessionManager = await SessionManager.createSessionManager({
       db,
-      keyManager,
+      keyRing,
       logger,
     });
     const token = await sessionManager.createToken();
@@ -91,7 +104,7 @@ describe('SessionManager', () => {
   test('checking expired session tokens', async () => {
     const sessionManager = await SessionManager.createSessionManager({
       db,
-      keyManager,
+      keyRing,
       logger,
     });
     const token = await sessionManager.createToken(0);
@@ -107,7 +120,7 @@ describe('SessionManager', () => {
   test('sessions key is persistent across restarts', async () => {
     const sessionManager1 = await SessionManager.createSessionManager({
       db,
-      keyManager,
+      keyRing,
       logger,
     });
     const token = await sessionManager1.createToken();
@@ -117,7 +130,7 @@ describe('SessionManager', () => {
     await sessionManager1.stop();
     const sessionManager2 = await SessionManager.createSessionManager({
       db,
-      keyManager,
+      keyRing,
       logger,
     });
     expect(await sessionManager2.verifyToken(token)).toBe(true);
@@ -126,14 +139,15 @@ describe('SessionManager', () => {
   test('creating fresh session manager', async () => {
     const sessionManager1 = await SessionManager.createSessionManager({
       db,
-      keyManager,
+      keyRing,
       logger,
     });
     const token = await sessionManager1.createToken();
+    expect(await sessionManager1.verifyToken(token)).toBe(true);
     await sessionManager1.stop();
     const sessionManager2 = await SessionManager.createSessionManager({
       db,
-      keyManager,
+      keyRing,
       logger,
       fresh: true,
     });
@@ -143,7 +157,7 @@ describe('SessionManager', () => {
   test('renewing key invalidates existing tokens', async () => {
     const sessionManager = await SessionManager.createSessionManager({
       db,
-      keyManager,
+      keyRing,
       logger,
     });
     const token1 = await sessionManager.createToken();
@@ -160,7 +174,7 @@ describe('SessionManager', () => {
   test('concurrent token generation with key reset', async () => {
     const sessionManager = await SessionManager.createSessionManager({
       db,
-      keyManager,
+      keyRing,
       logger,
     });
     for (let i = 0; i < 100; i++) {

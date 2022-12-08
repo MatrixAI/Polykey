@@ -10,7 +10,7 @@ import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { Metadata } from '@grpc/grpc-js';
-import KeyManager from '@/keys/KeyManager';
+import KeyRing from '@/keys/KeyRing';
 import VaultManager from '@/vaults/VaultManager';
 import GRPCServer from '@/grpc/GRPCServer';
 import GRPCClientClient from '@/client/GRPCClientClient';
@@ -18,8 +18,8 @@ import vaultsLog from '@/client/service/vaultsLog';
 import { ClientServiceService } from '@/proto/js/polykey/v1/client_service_grpc_pb';
 import * as vaultsPB from '@/proto/js/polykey/v1/vaults/vaults_pb';
 import * as clientUtils from '@/client/utils/utils';
+import * as keysUtils from '@/keys/utils/index';
 import * as testUtils from '../../utils';
-import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('vaultsLog', () => {
   const logger = new Logger('vaultsLog test', LogLevel.WARN, [
@@ -36,7 +36,7 @@ describe('vaultsLog', () => {
   let commit1Oid: string;
   let commit2Oid: string;
   let commit3Oid: string;
-  let keyManager: KeyManager;
+  let keyRing: KeyRing;
   let db: DB;
   let vaultManager: VaultManager;
   let grpcServer: GRPCServer;
@@ -46,11 +46,13 @@ describe('vaultsLog', () => {
       path.join(os.tmpdir(), 'polykey-test-'),
     );
     const keysPath = path.join(dataDir, 'keys');
-    keyManager = await KeyManager.createKeyManager({
+    keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
       logger,
-      privateKeyPemOverride: globalRootKeyPems[0],
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
@@ -62,7 +64,7 @@ describe('vaultsLog', () => {
       vaultsPath,
       db,
       acl: {} as ACL,
-      keyManager,
+      keyRing,
       nodeConnectionManager: {} as NodeConnectionManager,
       gestaltGraph: {} as GestaltGraph,
       notificationsManager: {} as NotificationsManager,
@@ -109,7 +111,7 @@ describe('vaultsLog', () => {
     await grpcServer.stop();
     await vaultManager.stop();
     await db.stop();
-    await keyManager.stop();
+    await keyRing.stop();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,

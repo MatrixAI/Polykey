@@ -1,5 +1,8 @@
 import type { IdentityId, ProviderId } from '@/identities/types';
 import type { Host, Port } from '@/network/types';
+import type KeyRing from 'keys/KeyRing';
+import type Sigchain from 'sigchain/Sigchain';
+import type GestaltGraph from 'gestalts/GestaltGraph';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -28,7 +31,7 @@ describe('identitiesAuthenticate', () => {
   const testToken = {
     providerId: 'test-provider' as ProviderId,
     identityId: 'test_user' as IdentityId,
-    tokenData: {
+    providerToken: {
       accessToken: 'abc123',
     },
   };
@@ -49,6 +52,9 @@ describe('identitiesAuthenticate', () => {
     });
     identitiesManager = await IdentitiesManager.createIdentitiesManager({
       db,
+      gestaltGraph: {} as GestaltGraph,
+      keyRing: {} as KeyRing,
+      sigchain: {} as Sigchain,
       logger,
     });
     testProvider = new TestProvider();
@@ -116,7 +122,7 @@ describe('identitiesAuthenticate', () => {
         testToken.providerId,
         testToken.identityId,
       ),
-    ).toEqual(testToken.tokenData);
+    ).toEqual(testToken.providerToken);
     expect(response.stream.destroyed).toBeTruthy();
     await identitiesManager.delToken(
       testToken.providerId,

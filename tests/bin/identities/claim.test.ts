@@ -1,7 +1,7 @@
 import type {
-  IdentityClaimId,
   IdentityId,
   ProviderId,
+  ProviderIdentityClaimId,
 } from '@/identities/types';
 import type { Host } from '@/network/types';
 import path from 'path';
@@ -10,8 +10,8 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
 import { sysexits } from '@/utils';
 import * as identitiesUtils from '@/identities/utils';
+import * as keysUtils from '@/keys/utils/index';
 import TestProvider from '../../identities/TestProvider';
-import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 import * as testUtils from '../../utils';
 
 describe('claim', () => {
@@ -40,10 +40,12 @@ describe('claim', () => {
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },
-      keysConfig: {
-        privateKeyPemOverride: globalRootKeyPems[0],
-      },
       logger,
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
     });
     testProvider = new TestProvider();
     pkAgent.identitiesManager.registerProvider(testProvider);
@@ -100,11 +102,11 @@ describe('claim', () => {
       // Check for claim on the provider
       const claim = await testProvider.getClaim(
         testToken.identityId,
-        '0' as IdentityClaimId,
+        '0' as ProviderIdentityClaimId,
       );
       expect(claim).toBeDefined();
       expect(claim!.id).toBe('0');
-      expect(claim!.payload.data.type).toBe('identity');
+      // Expect(claim!.payload.data.type).toBe('identity');
       mockedBrowser.mockRestore();
     },
   );

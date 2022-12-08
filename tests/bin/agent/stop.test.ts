@@ -7,7 +7,6 @@ import { sleep } from '@/utils';
 import * as binErrors from '@/bin/errors';
 import * as clientErrors from '@/client/errors';
 import * as testUtils from '../../utils';
-import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
 
 describe('stop', () => {
   const logger = new Logger('stop test', LogLevel.WARN, [new StreamHandler()]);
@@ -44,7 +43,7 @@ describe('stop', () => {
           env: {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
             PK_PASSWORD: password,
-            PK_ROOT_KEY: globalRootKeyPems[0],
+            PK_FAST_PASSWORD_HASH: 'true',
           },
           cwd: dataDir,
           command: globalThis.testCmd,
@@ -109,7 +108,7 @@ describe('stop', () => {
           env: {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
             PK_PASSWORD: password,
-            PK_ROOT_KEY: globalRootKeyPems[0],
+            PK_FAST_PASSWORD_HASH: 'true',
           },
           cwd: dataDir,
           command: globalThis.testCmd,
@@ -207,7 +206,7 @@ describe('stop', () => {
           env: {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
             PK_PASSWORD: password,
-            PK_ROOT_KEY: globalRootKeyPems[0],
+            PK_FAST_PASSWORD_HASH: 'true',
           },
           cwd: dataDir,
         },
@@ -260,7 +259,7 @@ describe('stop', () => {
           env: {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
             PK_PASSWORD: password,
-            PK_ROOT_KEY: globalRootKeyPems[0],
+            PK_FAST_PASSWORD_HASH: 'true',
           },
           cwd: dataDir,
           command: globalThis.testCmd,

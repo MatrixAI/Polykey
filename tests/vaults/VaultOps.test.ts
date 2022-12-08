@@ -1,6 +1,6 @@
 import type { VaultId } from '@/vaults/types';
 import type { Vault } from '@/vaults/Vault';
-import type KeyManager from '@/keys/KeyManager';
+import type KeyRing from '@/keys/KeyRing';
 import type { LevelPath } from '@matrixai/db';
 import fs from 'fs';
 import path from 'path';
@@ -26,18 +26,18 @@ describe('VaultOps', () => {
   let db: DB;
   let vaultsDbPath: LevelPath;
   const vaultIdGenerator = vaultsUtils.createVaultIdGenerator();
-  const dummyKeyManager = {
+  const dummyKeyRing = {
     getNodeId: () => {
       return testNodesUtils.generateRandomNodeId();
     },
-  } as KeyManager;
+  } as KeyRing;
 
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
     const dbPath = path.join(dataDir, 'efsDb');
-    const dbKey = await keysUtils.generateKey();
+    const dbKey = keysUtils.generateKey();
     baseEfs = await EncryptedFS.createEncryptedFS({
       dbKey,
       dbPath,
@@ -58,7 +58,7 @@ describe('VaultOps', () => {
     });
     vaultsDbPath = ['vaults'];
     vaultInternal = await VaultInternal.createVaultInternal({
-      keyManager: dummyKeyManager,
+      keyRing: dummyKeyRing,
       vaultId,
       efs: baseEfs,
       logger: logger.getChild(VaultInternal.name),
@@ -363,7 +363,7 @@ describe('VaultOps', () => {
     );
     const secretDirName = path.basename(secretDir);
     const name = 'secret';
-    const content = await keysUtils.getRandomBytes(5);
+    const content = keysUtils.getRandomBytes(5);
     await fs.promises.writeFile(path.join(secretDir, name), content);
 
     await vaultOps.addSecretDirectory(vault, secretDir, fs);

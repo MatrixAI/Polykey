@@ -2,12 +2,14 @@ import type { Permission } from '@/acl/types';
 import type { NodeId } from '@/ids/types';
 import type { VaultAction, VaultId } from '@/vaults/types';
 import type { GestaltAction } from '@/gestalts/types';
+import type { Key } from '@/keys/types';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import ACL from '@/acl/ACL';
+import * as utils from '@/utils';
 import * as aclErrors from '@/acl/errors';
 import * as keysUtils from '@/keys/utils';
 import * as vaultsUtils from '@/vaults/utils';
@@ -40,7 +42,7 @@ describe(ACL.name, () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
-    const dbKey = await keysUtils.generateKey();
+    const dbKey = keysUtils.generateKey();
     const dbPath = `${dataDir}/db`;
     db = await DB.createDB({
       dbPath,
@@ -48,8 +50,18 @@ describe(ACL.name, () => {
       crypto: {
         key: dbKey,
         ops: {
-          encrypt: keysUtils.encryptWithKey,
-          decrypt: keysUtils.decryptWithKey,
+          encrypt: async (key, plainText) => {
+            return keysUtils.encryptWithKey(
+              utils.bufferWrap(key) as Key,
+              utils.bufferWrap(plainText),
+            );
+          },
+          decrypt: async (key, cipherText) => {
+            return keysUtils.decryptWithKey(
+              utils.bufferWrap(key) as Key,
+              utils.bufferWrap(cipherText),
+            );
+          },
         },
       },
     });

@@ -32,17 +32,11 @@ describe('bootstrap', () => {
       const passwordPath = path.join(dataDir, 'password');
       await fs.promises.writeFile(passwordPath, password);
       const { exitCode, stdout } = await testUtils.pkExec(
-        [
-          'bootstrap',
-          '--password-file',
-          passwordPath,
-          '--root-key-pair-bits',
-          '1024',
-          '--verbose',
-        ],
+        ['bootstrap', '--password-file', passwordPath, '--verbose'],
         {
           env: {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
+            PK_FAST_PASSWORD_HASH: 'true',
           },
           cwd: dataDir,
           command: globalThis.testCmd,
@@ -65,42 +59,41 @@ describe('bootstrap', () => {
       const password = 'password';
       const passwordPath = path.join(dataDir, 'password');
       await fs.promises.writeFile(passwordPath, password);
-      const keyPair = await keysUtils.generateKeyPair(4096);
-      const privateKeyPem = keysUtils.privateKeyToPem(keyPair.privateKey);
-      const privateKeyPath = path.join(dataDir, 'private.pem');
-      await fs.promises.writeFile(privateKeyPath, privateKeyPem, {
-        encoding: 'utf-8',
-      });
+      const keyPair = keysUtils.generateKeyPair();
+      const privateKeyjwK = keysUtils.privateKeyToJWK(keyPair.privateKey);
+      const privateKeyJWE = keysUtils.wrapWithPassword(
+        password,
+        privateKeyjwK,
+        keysUtils.passwordOpsLimits.min,
+        keysUtils.passwordMemLimits.min,
+      );
+      const privateKeyPath = path.join(dataDir, 'private.jwe');
+      await fs.promises.writeFile(
+        privateKeyPath,
+        JSON.stringify(privateKeyJWE),
+        {
+          encoding: 'utf-8',
+        },
+      );
       const { exitCode: exitCode1 } = await testUtils.pkExec(
         [
           'bootstrap',
           '--password-file',
           passwordPath,
           '--verbose',
-          '--root-key-file',
+          '--private-key-file',
           privateKeyPath,
         ],
         {
           env: {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
+            PK_FAST_PASSWORD_HASH: 'true',
           },
           cwd: dataDir,
           command: globalThis.testCmd,
         },
       );
       expect(exitCode1).toBe(0);
-      const { exitCode: exitCode2 } = await testUtils.pkExec(
-        ['bootstrap', '--password-file', passwordPath, '--verbose'],
-        {
-          env: {
-            PK_NODE_PATH: path.join(dataDir, 'polykey2'),
-            PK_ROOT_KEY: privateKeyPem,
-          },
-          cwd: dataDir,
-          command: globalThis.testCmd,
-        },
-      );
-      expect(exitCode2).toBe(0);
     },
     globalThis.defaultTimeout * 2,
   );
@@ -118,8 +111,6 @@ describe('bootstrap', () => {
           'bootstrap',
           '--node-path',
           path.join(dataDir, 'polykey'),
-          '--root-key-pair-bits',
-          '1024',
           '--verbose',
           '--format',
           'json',
@@ -127,6 +118,7 @@ describe('bootstrap', () => {
         {
           env: {
             PK_PASSWORD: password,
+            PK_FAST_PASSWORD_HASH: 'true',
           },
           cwd: dataDir,
           command: globalThis.testCmd,
@@ -142,14 +134,13 @@ describe('bootstrap', () => {
           'bootstrap',
           '--node-path',
           path.join(dataDir, 'polykey'),
-          '--root-key-pair-bits',
-          '1024',
           '--fresh',
           '--verbose',
         ],
         {
           env: {
             PK_PASSWORD: password,
+            PK_FAST_PASSWORD_HASH: 'true',
           },
           cwd: dataDir,
           command: globalThis.testCmd,
@@ -172,18 +163,12 @@ describe('bootstrap', () => {
       const password = 'password';
       const [bootstrapProcess1, bootstrapProcess2] = await Promise.all([
         testUtils.pkSpawn(
-          [
-            'bootstrap',
-            '--root-key-pair-bits',
-            '1024',
-            '--verbose',
-            '--format',
-            'json',
-          ],
+          ['bootstrap', '--verbose', '--format', 'json'],
           {
             env: {
               PK_NODE_PATH: path.join(dataDir, 'polykey'),
               PK_PASSWORD: password,
+              PK_FAST_PASSWORD_HASH: 'true',
             },
             cwd: dataDir,
             command: globalThis.testCmd,
@@ -191,18 +176,12 @@ describe('bootstrap', () => {
           logger.getChild('bootstrapProcess1'),
         ),
         testUtils.pkSpawn(
-          [
-            'bootstrap',
-            '--root-key-pair-bits',
-            '1024',
-            '--verbose',
-            '--format',
-            'json',
-          ],
+          ['bootstrap', '--verbose', '--format', 'json'],
           {
             env: {
               PK_NODE_PATH: path.join(dataDir, 'polykey'),
               PK_PASSWORD: password,
+              PK_FAST_PASSWORD_HASH: 'true',
             },
             cwd: dataDir,
             command: globalThis.testCmd,
@@ -260,11 +239,12 @@ describe('bootstrap', () => {
     async () => {
       const password = 'password';
       const bootstrapProcess1 = await testUtils.pkSpawn(
-        ['bootstrap', '--root-key-pair-bits', '1024', '--verbose'],
+        ['bootstrap', '--verbose'],
         {
           env: {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
             PK_PASSWORD: password,
+            PK_FAST_PASSWORD_HASH: 'true',
           },
           cwd: dataDir,
           command: globalThis.testCmd,
@@ -279,7 +259,10 @@ describe('bootstrap', () => {
           // This line is brittle
           // It may change if the log format changes
           // Make sure to keep it updated at the exact point when the root key pair is generated
-          if (l === 'INFO:polykey.KeyManager:Generating root key pair') {
+          if (
+            l ===
+            'INFO:polykey.KeyRing:Generating root key pair and recovery code'
+          ) {
             bootstrapProcess1.kill('SIGINT');
             resolve();
           }
@@ -290,18 +273,12 @@ describe('bootstrap', () => {
       });
       // Attempting to bootstrap should fail with existing state
       const bootstrapProcess2 = await testUtils.pkExec(
-        [
-          'bootstrap',
-          '--root-key-pair-bits',
-          '1024',
-          '--verbose',
-          '--format',
-          'json',
-        ],
+        ['bootstrap', '--verbose', '--format', 'json'],
         {
           env: {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
             PK_PASSWORD: password,
+            PK_FAST_PASSWORD_HASH: 'true',
           },
           cwd: dataDir,
           command: globalThis.testCmd,
@@ -316,11 +293,12 @@ describe('bootstrap', () => {
       );
       // Attempting to bootstrap with --fresh should succeed
       const bootstrapProcess3 = await testUtils.pkExec(
-        ['bootstrap', '--root-key-pair-bits', '1024', '--fresh', '--verbose'],
+        ['bootstrap', '--fresh', '--verbose'],
         {
           env: {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
             PK_PASSWORD: password,
+            PK_FAST_PASSWORD_HASH: 'true',
           },
           cwd: dataDir,
           command: globalThis.testCmd,

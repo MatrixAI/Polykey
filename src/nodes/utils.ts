@@ -1,5 +1,12 @@
 import type { NodeBucket, NodeBucketIndex, NodeId } from './types';
 import type { KeyPath } from '@matrixai/db';
+import type { ClaimId } from '../ids';
+import type { SignedClaim, SignedClaimEncoded, Claim } from '../claims/types';
+import type {
+  TokenPayloadEncoded,
+  TokenHeaderSignatureEncoded,
+  SignedToken,
+} from '../tokens/types';
 import { utils as dbUtils } from '@matrixai/db';
 import { IdInternal } from '@matrixai/id';
 import lexi from 'lexicographic-integer';
@@ -7,8 +14,11 @@ import * as nodesErrors from './errors';
 import * as keysUtils from '../keys/utils';
 import * as grpcErrors from '../grpc/errors';
 import * as agentErrors from '../agent/errors';
-import { encodeNodeId, decodeNodeId } from '../ids';
+import { encodeNodeId, decodeNodeId, decodeClaimId } from '../ids';
 import { bytes2BigInt } from '../utils';
+import * as nodesPB from '../proto/js/polykey/v1/nodes/nodes_pb';
+import { parseSignedClaim } from '../claims/utils';
+import * as claimsUtils from '../claims/utils';
 
 const sepBuffer = dbUtils.sep;
 
@@ -246,7 +256,7 @@ function bucketSortByDistance(
 }
 
 function generateRandomDistanceForBucket(bucketIndex: NodeBucketIndex): NodeId {
-  const buffer = keysUtils.getRandomBytesSync(32);
+  const buffer = keysUtils.getRandomBytes(32);
   // Calculate the most significant byte for bucket
   const base = bucketIndex / 8;
   const mSigByte = Math.floor(base);
@@ -317,6 +327,41 @@ function refreshBucketsDelayJitter(
   return (Math.random() - 0.5) * delay * jitterMultiplier;
 }
 
+function agentClaimMessageToSignedClaim(
+  receivedClaim: nodesPB.AgentClaim,
+): [ClaimId | undefined, SignedClaim] {
+  const claimId: ClaimId | undefined = decodeClaimId(
+    receivedClaim.getClaimId(),
+  );
+  const payload = receivedClaim.getPayload() as TokenPayloadEncoded;
+  const signatures = receivedClaim.getSignaturesList().map((item) => {
+    return {
+      protected: item.getProtected(),
+      signature: item.getSignature(),
+    } as TokenHeaderSignatureEncoded;
+  });
+  const signedClaimEncoded: SignedClaimEncoded = {
+    payload,
+    signatures,
+  };
+  const signedClaim = parseSignedClaim(signedClaimEncoded);
+  return [claimId, signedClaim];
+}
+
+function signedClaimToAgentClaimMessage(halfSignedClaim: SignedToken<Claim>) {
+  const halfSignedClaimEncoded =
+    claimsUtils.generateSignedClaim(halfSignedClaim);
+  const agentClaimMessage = new nodesPB.AgentClaim();
+  agentClaimMessage.setPayload(halfSignedClaimEncoded.payload);
+  const signatureMessages = halfSignedClaimEncoded.signatures.map((item) => {
+    return new nodesPB.Signature()
+      .setSignature(item.signature)
+      .setProtected(item.protected);
+  });
+  agentClaimMessage.setSignaturesList(signatureMessages);
+  return agentClaimMessage;
+}
+
 export {
   sepBuffer,
   encodeNodeId,
@@ -339,4 +384,6 @@ export {
   generateRandomNodeIdForBucket,
   isConnectionError,
   refreshBucketsDelayJitter,
+  agentClaimMessageToSignedClaim,
+  signedClaimToAgentClaimMessage,
 };

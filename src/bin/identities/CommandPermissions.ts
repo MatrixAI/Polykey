@@ -25,6 +25,8 @@ class CommandPermissions extends CommandPolykey {
         '../../proto/js/polykey/v1/identities/identities_pb'
       );
       const nodesPB = await import('../../proto/js/polykey/v1/nodes/nodes_pb');
+      const utils = await import('../../utils');
+      const nodesUtils = await import('../../nodes/utils');
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -49,31 +51,44 @@ class CommandPermissions extends CommandPolykey {
           port: clientOptions.clientPort,
           logger: this.logger.getChild(PolykeyClient.name),
         });
+        const [type, id] = gestaltId;
         let actions: string[] = [];
-        if (gestaltId.type === 'node') {
-          // Getting by Node
-          const nodeMessage = new nodesPB.Node();
-          nodeMessage.setNodeId(gestaltId.nodeId);
-          const res = await binUtils.retryAuthentication(
-            (auth) =>
-              pkClient.grpcClient.gestaltsActionsGetByNode(nodeMessage, auth),
-            meta,
-          );
-          actions = res.getActionList();
-        } else {
-          // Getting by Identity
-          const providerMessage = new identitiesPB.Provider();
-          providerMessage.setProviderId(gestaltId.providerId);
-          providerMessage.setIdentityId(gestaltId.identityId);
-          const res = await binUtils.retryAuthentication(
-            (auth) =>
-              pkClient.grpcClient.gestaltsActionsGetByIdentity(
-                providerMessage,
-                auth,
-              ),
-            meta,
-          );
-          actions = res.getActionList();
+        switch (type) {
+          case 'node':
+            {
+              // Getting by Node
+              const nodeMessage = new nodesPB.Node();
+              nodeMessage.setNodeId(nodesUtils.encodeNodeId(id));
+              const res = await binUtils.retryAuthentication(
+                (auth) =>
+                  pkClient.grpcClient.gestaltsActionsGetByNode(
+                    nodeMessage,
+                    auth,
+                  ),
+                meta,
+              );
+              actions = res.getActionList();
+            }
+            break;
+          case 'identity':
+            {
+              // Getting by Identity
+              const providerMessage = new identitiesPB.Provider();
+              providerMessage.setProviderId(id[0]);
+              providerMessage.setIdentityId(id[1]);
+              const res = await binUtils.retryAuthentication(
+                (auth) =>
+                  pkClient.grpcClient.gestaltsActionsGetByIdentity(
+                    providerMessage,
+                    auth,
+                  ),
+                meta,
+              );
+              actions = res.getActionList();
+            }
+            break;
+          default:
+            utils.never();
         }
         process.stdout.write(
           binUtils.outputFormatter({

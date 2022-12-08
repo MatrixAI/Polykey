@@ -1,5 +1,5 @@
 import type { FileSystem } from '../types';
-import type { RecoveryCode, PrivateKeyPem } from '../keys/types';
+import type { RecoveryCode, Key, PrivateKey } from '../keys/types';
 import path from 'path';
 import Logger from '@matrixai/logger';
 import { DB } from '@matrixai/db';
@@ -9,10 +9,10 @@ import { IdentitiesManager } from '../identities';
 import { SessionManager } from '../sessions';
 import { Status } from '../status';
 import { Schema } from '../schema';
-import { KeyManager, utils as keyUtils } from '../keys';
 import { Sigchain } from '../sigchain';
 import { ACL } from '../acl';
 import { GestaltGraph } from '../gestalts';
+import { KeyRing } from '../keys';
 import Proxy from '../network/Proxy';
 import { NodeConnectionManager, NodeGraph, NodeManager } from '../nodes';
 import { VaultManager } from '../vaults';
@@ -20,6 +20,7 @@ import { NotificationsManager } from '../notifications';
 import { mkdirExists } from '../utils';
 import config from '../config';
 import * as utils from '../utils';
+import * as keysUtils from '../keys/utils';
 import * as errors from '../errors';
 
 /**
@@ -28,19 +29,17 @@ import * as errors from '../errors';
 async function bootstrapState({
   password,
   nodePath = config.defaults.nodePath,
-  keysConfig = {},
+  keyRingConfig = {},
   fresh = false,
   fs = require('fs'),
   logger = new Logger(bootstrapState.name),
 }: {
   password: string;
   nodePath?: string;
-  keysConfig?: {
-    rootKeyPairBits?: number;
-    rootCertDuration?: number;
-    dbKeyBits?: number;
+  keyRingConfig?: {
     recoveryCode?: RecoveryCode;
-    privateKeyPemOverride?: PrivateKeyPem;
+    privateKey?: PrivateKey;
+    privateKeyPath?: string;
   };
   fresh?: boolean;
   fs?: FileSystem;
@@ -53,10 +52,6 @@ async function bootstrapState({
   if (nodePath == null) {
     throw new errors.ErrorUtilsNodePath();
   }
-  const keysConfig_ = {
-    ...config.defaults.keysConfig,
-    ...utils.filterEmptyObject(keysConfig),
-  };
   await mkdirExists(fs, nodePath);
   // Setup node path and sub paths
   const statusPath = path.join(nodePath, config.defaults.statusBase);
@@ -89,35 +84,40 @@ async function bootstrapState({
       logger: logger.getChild(Schema.name),
       fresh,
     });
-    const keyManager = await KeyManager.createKeyManager({
-      ...keysConfig_,
+    const keyRing = await KeyRing.createKeyRing({
       keysPath,
       password,
       fs,
-      logger: logger.getChild(KeyManager.name),
+      logger: logger.getChild(KeyRing.name),
       fresh,
+      ...keyRingConfig,
     });
     const db = await DB.createDB({
       dbPath,
       fs,
       logger: logger.getChild(DB.name),
       crypto: {
-        key: keyManager.dbKey,
+        key: keyRing.dbKey,
         ops: {
-          encrypt: keyUtils.encryptWithKey,
-          decrypt: keyUtils.decryptWithKey,
+          encrypt: async (key, plainText) => {
+            return keysUtils.encryptWithKey(
+              utils.bufferWrap(key) as Key,
+              utils.bufferWrap(plainText),
+            );
+          },
+          decrypt: async (key, cipherText) => {
+            return keysUtils.decryptWithKey(
+              utils.bufferWrap(key) as Key,
+              utils.bufferWrap(cipherText),
+            );
+          },
         },
       },
       fresh,
     });
-    const identitiesManager = await IdentitiesManager.createIdentitiesManager({
-      db,
-      logger: logger.getChild(IdentitiesManager.name),
-      fresh,
-    });
     const sigchain = await Sigchain.createSigchain({
       db,
-      keyManager,
+      keyRing,
       logger: logger.getChild(Sigchain.name),
       fresh,
     });
@@ -132,6 +132,14 @@ async function bootstrapState({
       logger: logger.getChild(GestaltGraph.name),
       fresh,
     });
+    const identitiesManager = await IdentitiesManager.createIdentitiesManager({
+      keyRing,
+      db,
+      sigchain,
+      gestaltGraph,
+      logger: logger.getChild(IdentitiesManager.name),
+      fresh,
+    });
     // Proxies are constructed only, but not started
     const proxy = new Proxy({
       authToken: '',
@@ -140,7 +148,7 @@ async function bootstrapState({
     const nodeGraph = await NodeGraph.createNodeGraph({
       db,
       fresh,
-      keyManager,
+      keyRing,
       logger: logger.getChild(NodeGraph.name),
     });
     const taskManager = await TaskManager.createTaskManager({
@@ -149,7 +157,7 @@ async function bootstrapState({
       lazy: true,
     });
     const nodeConnectionManager = new NodeConnectionManager({
-      keyManager,
+      keyRing,
       nodeGraph,
       proxy,
       taskManager,
@@ -157,11 +165,12 @@ async function bootstrapState({
     });
     const nodeManager = new NodeManager({
       db,
-      keyManager,
+      keyRing,
       nodeGraph,
       nodeConnectionManager,
       sigchain,
       taskManager,
+      gestaltGraph,
       logger: logger.getChild(NodeManager.name),
     });
     const notificationsManager =
@@ -170,7 +179,7 @@ async function bootstrapState({
         db,
         nodeConnectionManager,
         nodeManager,
-        keyManager,
+        keyRing,
         logger: logger.getChild(NotificationsManager.name),
         fresh,
       });
@@ -178,7 +187,7 @@ async function bootstrapState({
       acl,
       db,
       gestaltGraph,
-      keyManager,
+      keyRing,
       nodeConnectionManager,
       vaultsPath,
       notificationsManager,
@@ -187,22 +196,22 @@ async function bootstrapState({
     });
     const sessionManager = await SessionManager.createSessionManager({
       db,
-      keyManager,
+      keyRing,
       logger: logger.getChild(SessionManager.name),
       fresh,
     });
-    const recoveryCodeNew = keyManager.getRecoveryCode()!;
+    const recoveryCodeNew = keyRing.recoveryCode!;
     await status.beginStop({ pid: process.pid });
     await sessionManager.stop();
     await notificationsManager.stop();
     await vaultManager.stop();
+    await identitiesManager.stop();
     await gestaltGraph.stop();
     await acl.stop();
     await sigchain.stop();
-    await identitiesManager.stop();
     await taskManager.stop();
     await db.stop();
-    await keyManager.stop();
+    await keyRing.stop();
     await schema.stop();
     return recoveryCodeNew;
   } finally {

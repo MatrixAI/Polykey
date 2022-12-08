@@ -14,7 +14,7 @@ import config from '@/config';
 import { ClientServiceService } from '@/proto/js/polykey/v1/client_service_grpc_pb';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as clientUtils from '@/client/utils/utils';
-import { globalRootKeyPems } from '../../fixtures/globalRootKeyPems';
+import * as keysUtils from '@/keys/utils/index';
 
 describe('agentStop', () => {
   const logger = new Logger('agentStop test', LogLevel.WARN, [
@@ -38,8 +38,10 @@ describe('agentStop', () => {
       password,
       nodePath,
       logger,
-      keysConfig: {
-        privateKeyPemOverride: globalRootKeyPems[0],
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
       },
     });
     const clientService = {
@@ -56,7 +58,7 @@ describe('agentStop', () => {
       port: 0 as Port,
     });
     grpcClient = await GRPCClientClient.createGRPCClientClient({
-      nodeId: pkAgent.keyManager.getNodeId(),
+      nodeId: pkAgent.keyRing.getNodeId(),
       host: '127.0.0.1' as Host,
       port: grpcServer.getPort(),
       logger,

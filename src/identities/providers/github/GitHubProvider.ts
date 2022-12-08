@@ -1,20 +1,22 @@
 import type {
   IdentityId,
   ProviderId,
-  TokenData,
+  ProviderToken,
   IdentityData,
-  IdentityClaim,
-  IdentityClaimId,
+  IdentitySignedClaim,
+  ProviderIdentityClaimId,
   ProviderAuthenticateRequest,
 } from '../../types';
-import type { Claim } from '../../../claims/types';
+import type { SignedClaim } from '../../../claims/types';
+import type { ClaimLinkIdentity } from '../../../claims/payloads/claimLinkIdentity';
 import { fetch, Request, Headers } from 'cross-fetch';
-import cheerio from 'cheerio';
+import * as cheerio from 'cheerio';
 import Logger from '@matrixai/logger';
 import Provider from '../../Provider';
 import * as identitiesErrors from '../../errors';
 import * as identitiesUtils from '../../utils';
-import { sleep } from '../../../utils';
+import * as tokensUtils from '../../../tokens/utils';
+import * as utils from '../../../utils';
 
 class GitHubProvider extends Provider {
   public readonly id = 'github.com' as ProviderId;
@@ -126,42 +128,42 @@ class GitHubProvider extends Provider {
         }
         if (data.error) {
           if (data.error === 'authorization_pending') {
-            await sleep(pollInterval);
+            await utils.sleep(pollInterval);
             continue;
           } else if (data.error === 'slow_down') {
             // Convert seconds to milliseconds
             pollInterval = parseInt(data.get('interval') ?? '1') * 1000;
-            await sleep(pollInterval);
+            await utils.sleep(pollInterval);
             continue;
           }
           throw new identitiesErrors.ErrorProviderAuthentication(
             `Provider access token request responded with: ${data.error}`,
           );
         }
-        const tokenData = {
+        const providerToken = {
           accessToken: data.access_token,
         };
-        return tokenData;
+        return providerToken;
       }
     };
-    let tokenData;
+    let providerToken;
     try {
-      tokenData = await Promise.race([pollAccessToken(), pollTimerP]);
+      providerToken = await Promise.race([pollAccessToken(), pollTimerP]);
     } finally {
       clearTimeout(pollTimer);
     }
-    if (tokenData == null) {
+    if (providerToken == null) {
       throw new identitiesErrors.ErrorProviderAuthentication(
         `Provider authentication flow timed out`,
       );
     }
-    const identityId = await this.getIdentityId(tokenData);
-    await this.putToken(identityId, tokenData);
+    const identityId = await this.getIdentityId(providerToken);
+    await this.putToken(identityId, providerToken);
     this.logger.info('Completed authentication with GitHub');
     return identityId;
   }
 
-  public async refreshToken(): Promise<TokenData> {
+  public async refreshToken(): Promise<ProviderToken> {
     throw new identitiesErrors.ErrorProviderUnimplemented();
   }
 
@@ -175,14 +177,16 @@ class GitHubProvider extends Provider {
    * GitHub has user ids, but it is an implementation detail.
    * Usernames on GitHub are changeable.
    */
-  public async getIdentityId(tokenData: TokenData): Promise<IdentityId> {
-    tokenData = await this.checkToken(tokenData);
+  public async getIdentityId(
+    providerToken: ProviderToken,
+  ): Promise<IdentityId> {
+    providerToken = await this.checkToken(providerToken);
     const request = this.createRequest(
       `${this.apiUrl}/user`,
       {
         method: 'GET',
       },
-      tokenData,
+      providerToken,
     );
     const response = await fetch(request);
     if (!response.ok) {
@@ -216,19 +220,19 @@ class GitHubProvider extends Provider {
     options: { signal?: AbortSignal } = {},
   ): Promise<IdentityData | undefined> {
     const { signal } = options;
-    let tokenData = await this.getToken(authIdentityId);
-    if (tokenData == null) {
+    let providerToken = await this.getToken(authIdentityId);
+    if (providerToken == null) {
       throw new identitiesErrors.ErrorProviderUnauthenticated(
         `${authIdentityId} has not been authenticated`,
       );
     }
-    tokenData = await this.checkToken(tokenData, authIdentityId);
+    providerToken = await this.checkToken(providerToken, authIdentityId);
     const request = this.createRequest(
       `${this.apiUrl}/users/${identityId}`,
       {
         method: 'GET',
       },
-      tokenData,
+      providerToken,
     );
     const response = await fetch(request, { signal });
     if (!response.ok) {
@@ -269,13 +273,13 @@ class GitHubProvider extends Provider {
     authIdentityId: IdentityId,
     searchTerms: Array<string> = [],
   ): AsyncGenerator<IdentityData> {
-    let tokenData = await this.getToken(authIdentityId);
-    if (tokenData == null) {
+    let providerToken = await this.getToken(authIdentityId);
+    if (providerToken == null) {
       throw new identitiesErrors.ErrorProviderUnauthenticated(
         `${authIdentityId} has not been authenticated`,
       );
     }
-    tokenData = await this.checkToken(tokenData, authIdentityId);
+    providerToken = await this.checkToken(providerToken, authIdentityId);
     let pageNum = 1;
     while (true) {
       const request = this.createRequest(
@@ -283,7 +287,7 @@ class GitHubProvider extends Provider {
         {
           method: 'GET',
         },
-        tokenData,
+        providerToken,
       );
       const response = await fetch(request);
       if (!response.ok) {
@@ -330,7 +334,7 @@ class GitHubProvider extends Provider {
         {
           method: 'GET',
         },
-        tokenData,
+        providerToken,
       );
       const response = await fetch(request);
       if (!response.ok) {
@@ -378,20 +382,23 @@ class GitHubProvider extends Provider {
    */
   public async publishClaim(
     authIdentityId: IdentityId,
-    identityClaim: Claim, // Give claim we want to publush
-  ): Promise<IdentityClaim> {
-    let tokenData = await this.getToken(authIdentityId);
-    if (tokenData == null) {
+    signedClaim: SignedClaim<ClaimLinkIdentity>,
+  ): Promise<IdentitySignedClaim> {
+    let providerToken = await this.getToken(authIdentityId);
+    if (providerToken == null) {
       throw new identitiesErrors.ErrorProviderUnauthenticated(
         `${authIdentityId} has not been authenticated`,
       );
     }
-    tokenData = await this.checkToken(tokenData, authIdentityId);
+    providerToken = await this.checkToken(providerToken, authIdentityId);
+    const signedClaimEncoded = tokensUtils.generateSignedToken(signedClaim);
+    // The published claim can be a human readable message
+    // but it must contain the identity claim in encoded form
     const payload = {
       description: this.gistDescription,
       files: {
         [this.gistFilename]: {
-          content: JSON.stringify(identityClaim),
+          content: JSON.stringify(signedClaimEncoded),
         },
       },
       public: true,
@@ -402,7 +409,7 @@ class GitHubProvider extends Provider {
         method: 'POST',
         body: JSON.stringify(payload),
       },
-      tokenData,
+      providerToken,
     );
     const response = await fetch(request);
     if (!response.ok) {
@@ -425,9 +432,9 @@ class GitHubProvider extends Provider {
       );
     }
     return {
-      ...identityClaim,
       id: data.id,
       url: data.html_url ?? undefined,
+      claim: signedClaim,
     };
   }
 
@@ -438,21 +445,21 @@ class GitHubProvider extends Provider {
    */
   public async getClaim(
     authIdentityId: IdentityId,
-    claimId: IdentityClaimId,
-  ): Promise<IdentityClaim | undefined> {
-    let tokenData = await this.getToken(authIdentityId);
-    if (tokenData == null) {
+    claimId: ProviderIdentityClaimId,
+  ): Promise<IdentitySignedClaim | undefined> {
+    let providerToken = await this.getToken(authIdentityId);
+    if (providerToken == null) {
       throw new identitiesErrors.ErrorProviderUnauthenticated(
         `${authIdentityId} has not been authenticated`,
       );
     }
-    tokenData = await this.checkToken(tokenData, authIdentityId);
+    providerToken = await this.checkToken(providerToken, authIdentityId);
     const request = this.createRequest(
       `${this.apiUrl}/gists/${claimId}`,
       {
         method: 'GET',
       },
-      tokenData,
+      providerToken,
     );
     const response = await fetch(request);
     if (!response.ok) {
@@ -477,28 +484,28 @@ class GitHubProvider extends Provider {
         { cause: e },
       );
     }
-    const linkClaimData = data.files[this.gistFilename]?.content;
-    if (linkClaimData == null) {
+    const signedClaimEncoded = data.files[this.gistFilename]?.content;
+    if (signedClaimEncoded == null) {
       return;
     }
-    const linkClaim = this.parseClaim(linkClaimData);
-    if (linkClaim == null) {
+    const signedClaim = this.parseClaim(signedClaimEncoded);
+    if (signedClaim == null) {
       return;
     }
     return {
-      ...linkClaim,
       id: claimId,
       url: data.html_url ?? undefined,
+      claim: signedClaim,
     };
   }
 
   /**
-   * Gets all IdentityClaims from a given identity.
+   * Gets all IdentitySignedClaims from a given identity.
    */
   public async *getClaims(
     authIdentityId: IdentityId,
     identityId: IdentityId,
-  ): AsyncGenerator<IdentityClaim> {
+  ): AsyncGenerator<IdentitySignedClaim> {
     const gistsSearchUrl = 'https://gist.github.com/search';
     let pageNum = 1;
     while (true) {
@@ -534,22 +541,22 @@ class GitHubProvider extends Provider {
   protected createRequest(
     url: string,
     options: any,
-    tokenData: TokenData,
+    providerToken: ProviderToken,
   ): Request {
     let headers = options.headers;
     if (headers == null) {
       headers = new Headers();
     }
     headers.set('Accept', 'application/vnd.github.v3+json');
-    headers.set('Authorization', `token ${tokenData.accessToken}`);
+    headers.set('Authorization', `token ${providerToken.accessToken}`);
     return new Request(url, {
       ...options,
       headers,
     }) as Request;
   }
 
-  protected extractClaimIds(html: string): Array<IdentityClaimId> {
-    const claimIds: Array<IdentityClaimId> = [];
+  protected extractClaimIds(html: string): Array<ProviderIdentityClaimId> {
+    const claimIds: Array<ProviderIdentityClaimId> = [];
     const $ = cheerio.load(html);
     $('.gist-snippet > .gist-snippet-meta')
       .children('ul')
@@ -559,7 +566,7 @@ class GitHubProvider extends Provider {
           const matches = claim.match(/\/.+?\/(.+)/);
           if (matches != null) {
             const claimId = matches[1];
-            claimIds.push(claimId as IdentityClaimId);
+            claimIds.push(claimId as ProviderIdentityClaimId);
           }
         }
       });

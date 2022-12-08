@@ -1,6 +1,7 @@
-import type { JWTPayload } from 'jose';
 import type { SessionToken } from './types';
-import { SignJWT, jwtVerify, errors as joseErrors } from 'jose';
+import type { TokenPayload } from '../tokens/types';
+import type { Key } from '../keys/types';
+import Token from '../tokens/Token';
 
 /**
  * Create session token
@@ -8,21 +9,24 @@ import { SignJWT, jwtVerify, errors as joseErrors } from 'jose';
  * This uses the HMAC with SHA-256 JWT
  * It is signed with a symmetric key
  * It is deterministic
+ * @param payload
+ * @param key
  * @param expiry Seconds from now or infinite
  */
 async function createSessionToken(
-  payload: JWTPayload,
-  key: Uint8Array,
+  payload: TokenPayload,
+  key: Key,
   expiry?: number,
 ): Promise<SessionToken> {
-  const jwt = new SignJWT(payload);
-  jwt.setProtectedHeader({ alg: 'HS256' });
-  jwt.setIssuedAt();
-  if (expiry != null) {
-    jwt.setExpirationTime(new Date().getTime() / 1000 + expiry);
-  }
-  const token = await jwt.sign(key);
-  return token as SessionToken;
+  const expiry_ =
+    expiry != null ? Math.round(Date.now() / 1000) + expiry : undefined;
+  const token = Token.fromPayload({
+    ...payload,
+    exp: expiry_,
+    iat: Date.now() / 1000,
+  });
+  token.signWithKey(key);
+  return JSON.stringify(token.toJSON()) as SessionToken;
 }
 
 /**
@@ -32,16 +36,17 @@ async function createSessionToken(
  */
 async function verifySessionToken(
   token: SessionToken,
-  key: Uint8Array,
-): Promise<JWTPayload | undefined> {
+  key: Key,
+): Promise<TokenPayload | undefined> {
   try {
-    const result = await jwtVerify(token, key);
-    return result.payload;
+    const signedTokenEncoded = JSON.parse(token);
+    const parsedToken = Token.fromEncoded(signedTokenEncoded);
+    if (!parsedToken.verifyWithKey(key)) return;
+    const expiry = parsedToken.payload.exp;
+    if (expiry != null && expiry < Math.round(Date.now() / 1000)) return;
+    return parsedToken.payload;
   } catch (e) {
-    if (e instanceof joseErrors.JOSEError) {
-      return;
-    }
-    throw e;
+    return;
   }
 }
 

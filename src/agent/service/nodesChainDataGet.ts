@@ -1,12 +1,12 @@
 import type * as grpc from '@grpc/grpc-js';
 import type { DB } from '@matrixai/db';
 import type Sigchain from '../../sigchain/Sigchain';
-import type * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
-import type { ClaimIdEncoded } from '../../claims/types';
 import type Logger from '@matrixai/logger';
 import * as grpcUtils from '../../grpc/utils';
 import * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
 import * as agentUtils from '../utils';
+import * as claimsUtils from '../../claims/utils';
+import { encodeClaimId } from '../../ids';
 
 /**
  * Retrieves the ChainDataEncoded of this node.
@@ -21,36 +21,32 @@ function nodesChainDataGet({
   logger: Logger;
 }) {
   return async (
-    call: grpc.ServerUnaryCall<utilsPB.EmptyMessage, nodesPB.ChainData>,
-    callback: grpc.sendUnaryData<nodesPB.ChainData>,
+    call: grpc.ServerWritableStream<nodesPB.ClaimId, nodesPB.AgentClaim>,
   ): Promise<void> => {
+    const genClaims = grpcUtils.generatorWritable(call, false);
     try {
-      const response = new nodesPB.ChainData();
-      const chainData = await db.withTransactionF((tran) =>
-        sigchain.getChainData(tran),
-      );
-      // Iterate through each claim in the chain, and serialize for transport
-      let claimIdEncoded: ClaimIdEncoded;
-      for (claimIdEncoded in chainData) {
-        const claim = chainData[claimIdEncoded];
-        const claimMessage = new nodesPB.AgentClaim();
-        // Will always have a payload (never undefined) so cast as string
-        claimMessage.setPayload(claim.payload as string);
-        // Add the signatures
-        for (const signatureData of claim.signatures) {
-          const signature = new nodesPB.Signature();
-          // Will always have a protected header (never undefined) so cast as string
-          signature.setProtected(signatureData.protected as string);
-          signature.setSignature(signatureData.signature);
-          claimMessage.getSignaturesList().push(signature);
+      // Const seekClaimId = decodeClaimId(call.request.getClaimId());
+      await db.withTransactionF(async (tran) => {
+        for await (const [claimId, signedClaim] of sigchain.getSignedClaims(
+          { /* seek: seekClaimId,*/ order: 'asc' },
+          tran,
+        )) {
+          const encodedClaim = claimsUtils.generateSignedClaim(signedClaim);
+          const response = new nodesPB.AgentClaim();
+          response.setClaimId(encodeClaimId(claimId));
+          response.setPayload(encodedClaim.payload);
+          const signatureMessages = encodedClaim.signatures.map((item) => {
+            return new nodesPB.Signature()
+              .setSignature(item.signature)
+              .setProtected(item.protected);
+          });
+          response.setSignaturesList(signatureMessages);
+          await genClaims.next(response);
         }
-        // Add the serialized claim
-        response.getChainDataMap().set(claimIdEncoded, claimMessage);
-      }
-      callback(null, response);
-      return;
+      });
+      await genClaims.next(null);
     } catch (e) {
-      callback(grpcUtils.fromError(e, true));
+      await genClaims.throw(e);
       !agentUtils.isAgentClientError(e) &&
         logger.error(`${nodesChainDataGet.name}:${e}`);
       return;

@@ -4,8 +4,8 @@ import type NotificationsManager from '../../notifications/NotificationsManager'
 import type { NodeId } from '../../ids/types';
 import type * as notificationsPB from '../../proto/js/polykey/v1/notifications/notifications_pb';
 import type Logger from '@matrixai/logger';
+import type { General } from '../../notifications/types';
 import * as grpcUtils from '../../grpc/utils';
-import * as notificationsUtils from '../../notifications/utils';
 import { validateSync } from '../../validation';
 import * as validationUtils from '../../validation/utils';
 import * as nodesErrors from '../../nodes/errors';
@@ -45,13 +45,11 @@ function notificationsSend({
           nodeId: call.request.getReceiverId(),
         },
       );
-      const data = {
+      const data: General = {
         type: 'General',
-        message: call.request.getData()?.getMessage(),
+        message: call.request.getData()!.getMessage(),
       };
-      const validatedData =
-        notificationsUtils.validateGeneralNotification(data);
-      await notificationsManager.sendNotification(nodeId, validatedData);
+      await notificationsManager.sendNotification(nodeId, data);
       callback(null, response);
       return;
     } catch (e) {

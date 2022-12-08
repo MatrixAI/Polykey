@@ -2,7 +2,7 @@ import type * as grpc from '@grpc/grpc-js';
 import type { DB } from '@matrixai/db';
 import type NodeManager from '../../nodes/NodeManager';
 import type NodeConnectionManager from '../../nodes/NodeConnectionManager';
-import type KeyManager from '../../keys/KeyManager';
+import type KeyRing from '../../keys/KeyRing';
 import type { NodeId } from '../../ids/types';
 import type Logger from '@matrixai/logger';
 import type { ConnectionInfoGet } from 'agent/types';
@@ -17,14 +17,14 @@ import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 import * as agentUtils from '../utils';
 
 function nodesHolePunchMessageSend({
-  keyManager,
+  keyRing,
   nodeManager,
   nodeConnectionManager,
   db,
   connectionInfoGet,
   logger,
 }: {
-  keyManager: KeyManager;
+  keyRing: KeyRing;
   nodeManager: NodeManager;
   nodeConnectionManager: NodeConnectionManager;
   db: DB;
@@ -65,7 +65,7 @@ function nodesHolePunchMessageSend({
       // If so, then we want to make this node start sending hole punching packets
       // back to the source node.
       await db.withTransactionF(async (tran) => {
-        if (keyManager.getNodeId().equals(targetId)) {
+        if (keyRing.getNodeId().equals(targetId)) {
           if (call.request.getProxyAddress() !== '') {
             const [host, port] = networkUtils.parseAddress(
               call.request.getProxyAddress(),

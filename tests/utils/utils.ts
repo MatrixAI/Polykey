@@ -1,75 +1,19 @@
-import type { NodeId } from '@/ids/types';
-import type { PrivateKeyPem } from '@/keys/types';
-import type { StatusLive } from '@/status/types';
 import type Logger from '@matrixai/logger';
-import type * as fc from 'fast-check';
+import type { NodeId, CertId } from '@/ids/types';
+import type { StatusLive } from '@/status/types';
+import type { TLSConfig } from '@/network/types';
+import type { CertificatePEMChain, KeyPair } from '@/keys/types';
 import path from 'path';
 import fs from 'fs';
 import readline from 'readline';
-import lock from 'fd-lock';
 import { IdInternal } from '@matrixai/id';
 import * as keysUtils from '@/keys/utils';
 import * as grpcErrors from '@/grpc/errors';
 import * as validationUtils from '@/validation/utils';
-import { sleep, promise } from '@/utils';
+import * as utils from '@/utils';
 import * as execUtils from './exec';
 
-/**
- * Setup the global keypair
- * This is expected to be executed by multiple worker processes
- */
-async function setupGlobalKeypair() {
-  const globalKeyPairDir = path.join(globalThis.dataDir, 'keypair');
-  const globalKeyPairLock = await fs.promises.open(
-    path.join(globalThis.dataDir, 'keypair.lock'),
-    fs.constants.O_WRONLY | fs.constants.O_CREAT,
-  );
-  while (!lock(globalKeyPairLock.fd)) {
-    await sleep(1000);
-  }
-  try {
-    try {
-      await fs.promises.mkdir(globalKeyPairDir);
-    } catch (e) {
-      // Return key pair if the directory exists
-      if (e.code === 'EEXIST') {
-        const globalKeyPairPem = {
-          publicKey: fs.readFileSync(
-            path.join(globalKeyPairDir, 'root.pub'),
-            'utf-8',
-          ),
-          privateKey: fs.readFileSync(
-            path.join(globalKeyPairDir, 'root.key'),
-            'utf-8',
-          ),
-        };
-        const globalKeyPair = keysUtils.keyPairFromPem(globalKeyPairPem);
-        return globalKeyPair;
-      }
-    }
-    const globalKeyPair = await keysUtils.generateKeyPair(4096);
-    const globalKeyPairPem = keysUtils.keyPairToPem(globalKeyPair);
-    await Promise.all([
-      fs.promises.writeFile(
-        path.join(globalKeyPairDir, 'root.pub'),
-        globalKeyPairPem.publicKey,
-        'utf-8',
-      ),
-      fs.promises.writeFile(
-        path.join(globalKeyPairDir, 'root.key'),
-        globalKeyPairPem.privateKey,
-        'utf-8',
-      ),
-    ]);
-    return globalKeyPair;
-  } finally {
-    // Unlock when we have returned the keypair
-    lock.unlock(globalKeyPairLock.fd);
-    await globalKeyPairLock.close();
-  }
-}
-
-async function setupTestAgent(privateKeyPem: PrivateKeyPem, logger: Logger) {
+async function setupTestAgent(logger: Logger) {
   const agentDir = await fs.promises.mkdtemp(
     path.join(globalThis.tmpDir, 'polykey-test-'),
   );
@@ -93,14 +37,14 @@ async function setupTestAgent(privateKeyPem: PrivateKeyPem, logger: Logger) {
     {
       env: {
         PK_PASSWORD: agentPassword,
-        PK_ROOT_KEY: privateKeyPem,
+        PK_FAST_PASSWORD_HASH: 'true',
       },
       cwd: agentDir,
       command: globalThis.testCmd,
     },
     logger,
   );
-  const startedProm = promise<any>();
+  const startedProm = utils.promise<any>();
   agentProcess.on('error', (d) => startedProm.rejectP(d));
   const rlOut = readline.createInterface(agentProcess.stdout!);
   rlOut.on('line', (l) => startedProm.resolveP(JSON.parse(l.toString())));
@@ -135,7 +79,7 @@ async function setupTestAgent(privateKeyPem: PrivateKeyPem, logger: Logger) {
 }
 
 function generateRandomNodeId(): NodeId {
-  const random = keysUtils.getRandomBytesSync(16).toString('hex');
+  const random = keysUtils.getRandomBytes(16).toString('hex');
   return IdInternal.fromString<NodeId>(random);
 }
 
@@ -159,21 +103,33 @@ function describeIf(condition: boolean) {
   return condition ? describe : describe.skip;
 }
 
-/**
- * Used with fast-check to schedule calling of a function
- */
-const scheduleCall = <T>(
-  s: fc.Scheduler,
-  f: () => Promise<T>,
-  label: string = 'scheduled call',
-) => s.schedule(Promise.resolve(label)).then(() => f());
+async function createTLSConfig(
+  keyPair: KeyPair,
+  generateCertId?: () => CertId,
+): Promise<TLSConfig> {
+  generateCertId = generateCertId ?? keysUtils.createCertIdGenerator();
+  const certificate = await keysUtils.generateCertificate({
+    certId: generateCertId(),
+    duration: 31536000,
+    issuerPrivateKey: keyPair.privateKey,
+    subjectKeyPair: {
+      privateKey: keyPair.privateKey,
+      publicKey: keyPair.publicKey,
+    },
+  });
+  return {
+    keyPrivatePem: keysUtils.privateKeyToPEM(keyPair.privateKey),
+    certChainPem: keysUtils.certToPEM(
+      certificate,
+    ) as unknown as CertificatePEMChain,
+  };
+}
 
 export {
-  setupGlobalKeypair,
   setupTestAgent,
   generateRandomNodeId,
   expectRemoteError,
   testIf,
   describeIf,
-  scheduleCall,
+  createTLSConfig,
 };

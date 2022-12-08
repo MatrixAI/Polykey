@@ -11,6 +11,8 @@ export class Crypto extends jspb.Message {
     setData(value: string): Crypto;
     getSignature(): string;
     setSignature(value: string): Crypto;
+    getPublicKeyJwk(): string;
+    setPublicKeyJwk(value: string): Crypto;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): Crypto.AsObject;
@@ -26,6 +28,7 @@ export namespace Crypto {
     export type AsObject = {
         data: string,
         signature: string,
+        publicKeyJwk: string,
     }
 }
 
@@ -52,26 +55,26 @@ export namespace Key {
     }
 }
 
-export class KeyPair extends jspb.Message { 
-    getPublic(): string;
-    setPublic(value: string): KeyPair;
-    getPrivate(): string;
-    setPrivate(value: string): KeyPair;
+export class KeyPairJWK extends jspb.Message { 
+    getPrivateKeyJwe(): string;
+    setPrivateKeyJwe(value: string): KeyPairJWK;
+    getPublicKeyJwk(): string;
+    setPublicKeyJwk(value: string): KeyPairJWK;
 
     serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): KeyPair.AsObject;
-    static toObject(includeInstance: boolean, msg: KeyPair): KeyPair.AsObject;
+    toObject(includeInstance?: boolean): KeyPairJWK.AsObject;
+    static toObject(includeInstance: boolean, msg: KeyPairJWK): KeyPairJWK.AsObject;
     static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
     static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: KeyPair, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): KeyPair;
-    static deserializeBinaryFromReader(message: KeyPair, reader: jspb.BinaryReader): KeyPair;
+    static serializeBinaryToWriter(message: KeyPairJWK, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): KeyPairJWK;
+    static deserializeBinaryFromReader(message: KeyPairJWK, reader: jspb.BinaryReader): KeyPairJWK;
 }
 
-export namespace KeyPair {
+export namespace KeyPairJWK {
     export type AsObject = {
-        pb_public: string,
-        pb_private: string,
+        privateKeyJwe: string,
+        publicKeyJwk: string,
     }
 }
 
