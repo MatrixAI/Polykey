@@ -24,9 +24,10 @@ if [ -z "$cluster" ]; then
   exit 1
 fi
 
-services=$(aws ecs list-services --cluster "$cluster" | cut -d'/' -f3)
+services=$(aws ecs list-services --cluster polykey-testnet --output json | jq -r '.serviceArns[] | capture("(?<service>polykey-testnet-[a-zA-Z0-9]+)$") | .service' )
 
 for service in $services; do
+  echo updating service "$service"
   aws ecs update-service \
     --cluster "$cluster" \
     --service "$service" \
