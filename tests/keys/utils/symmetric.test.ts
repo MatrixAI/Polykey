@@ -112,7 +112,7 @@ describe('keys/utils/symmetric', () => {
     [testsKeysUtils.passwordArb, testsKeysUtils.keyJWKArb],
     (password, keyJWK) => {
       const wrappedKey = symmetric.wrapWithPassword(password, keyJWK);
-      const keyJWK_ = symmetric.unwrapWithPassword(password, wrappedKey);
+      const keyJWK_ = symmetric.unwrapWithPassword(password, wrappedKey)!;
       expect(keyJWK_).toStrictEqual(keyJWK);
     },
     {

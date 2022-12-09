@@ -29,7 +29,6 @@ const nodePath = new commander.Option(
 const format = new commander.Option('-f, --format <format>', 'Output Format')
   .choices(['human', 'json'])
   .default('human');
-
 /**
  * Sets log level, defaults to 0, multiple uses will increase verbosity level
  */
@@ -158,6 +157,30 @@ const noPing = new commander.Option('--no-ping', 'Skip ping step').default(
   true,
 );
 
+// We can't reference the object here so we recreate the list of choices
+const passwordLimitChoices = [
+  'min',
+  'max',
+  'interactive',
+  'moderate',
+  'sensitive',
+];
+const passwordOpsLimit = new commander.Option(
+  '--password-ops-limit <passwordOpsLimit>',
+  'Limit the password generation operations',
+)
+  .choices(passwordLimitChoices)
+  .env('PK_PASSWORD_OPS_LIMIT')
+  .default('moderate');
+
+const passwordMemLimit = new commander.Option(
+  '--password-mem-limit <passwordMemLimit>',
+  'Limit the password generation memory',
+)
+  .choices(passwordLimitChoices)
+  .env('PK_PASSWORD_MEM_LIMIT')
+  .default('moderate');
+
 const privateKeyFile = new commander.Option(
   '--private-key-file <privateKeyFile>',
   'Override key creation with a private key JWE from a file',
@@ -187,4 +210,6 @@ export {
   forceNodeAdd,
   noPing,
   privateKeyFile,
+  passwordOpsLimit,
+  passwordMemLimit,
 };

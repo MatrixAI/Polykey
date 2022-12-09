@@ -1,5 +1,6 @@
 import type { FileSystem } from '../types';
 import type { RecoveryCode, Key, PrivateKey } from '../keys/types';
+import type { PasswordMemLimit, PasswordOpsLimit } from '../keys/types';
 import path from 'path';
 import Logger from '@matrixai/logger';
 import { DB } from '@matrixai/db';
@@ -40,6 +41,8 @@ async function bootstrapState({
     recoveryCode?: RecoveryCode;
     privateKey?: PrivateKey;
     privateKeyPath?: string;
+    passwordOpsLimit?: PasswordOpsLimit;
+    passwordMemLimit?: PasswordMemLimit;
   };
   fresh?: boolean;
   fs?: FileSystem;

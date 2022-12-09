@@ -6,6 +6,7 @@ import type {
 } from '../types';
 import sodium from 'sodium-native';
 import { getRandomBytes } from './random';
+import * as keysErrors from '../errors';
 
 /**
  * Use the `min` limit during testing to improve performance.
@@ -80,15 +81,19 @@ function hashPassword(
     undefined,
     false,
   ) as PasswordSalt;
-  sodium.crypto_pwhash(
-    hash,
-    Buffer.from(password, 'utf-8'),
-    salt,
-    opsLimit,
-    memLimit,
-    sodium.crypto_pwhash_ALG_ARGON2ID13,
-  );
-  return [hash as PasswordHash, salt];
+  try {
+    sodium.crypto_pwhash(
+      hash,
+      Buffer.from(password, 'utf-8'),
+      salt,
+      opsLimit,
+      memLimit,
+      sodium.crypto_pwhash_ALG_ARGON2ID13,
+    );
+    return [hash as PasswordHash, salt];
+  } catch (e) {
+    throw new keysErrors.ErrorPasswordHash(undefined, { cause: e });
+  }
 }
 
 /**

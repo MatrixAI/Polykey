@@ -37,6 +37,8 @@ class CommandStart extends CommandPolykey {
     this.addOption(binOptions.backgroundErrFile);
     this.addOption(binOptions.fresh);
     this.addOption(binOptions.privateKeyFile);
+    this.addOption(binOptions.passwordOpsLimit);
+    this.addOption(binOptions.passwordMemLimit);
     this.action(async (options) => {
       options.clientHost =
         options.clientHost ?? config.defaults.networkConfig.clientHost;
@@ -89,19 +91,16 @@ class CommandStart extends CommandPolykey {
       const [seedNodes, defaults] = options.seedNodes;
       let seedNodes_ = seedNodes;
       if (defaults) seedNodes_ = { ...options.network, ...seedNodes };
-      const fastPasswordHash = process.env.PK_FAST_PASSWORD_HASH === 'true';
       const agentConfig = {
         password,
         nodePath: options.nodePath,
         keyRingConfig: {
           recoveryCode: recoveryCodeIn,
           privateKeyPath: options.privateKeyFile,
-          passwordOpsLimit: fastPasswordHash
-            ? keysUtils.passwordOpsLimits.min
-            : undefined,
-          passwordMemLimit: fastPasswordHash
-            ? keysUtils.passwordMemLimits.min
-            : undefined,
+          passwordOpsLimit:
+            keysUtils.passwordOpsLimits[options.passwordOpsLimit],
+          passwordMemLimit:
+            keysUtils.passwordMemLimits[options.passwordMemLimit],
         },
         proxyConfig: {
           connConnectTime: options.connectionTimeout,

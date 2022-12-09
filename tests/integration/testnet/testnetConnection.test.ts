@@ -10,7 +10,7 @@ import * as testUtils from '../../utils';
 import { sleep } from '../../../src/utils/index';
 
 describe.skip('testnet connection', () => {
-  const logger = new Logger('TCT', LogLevel.INFO, [new StreamHandler()]);
+  const logger = new Logger('TCT', LogLevel.WARN, [new StreamHandler()]);
   const format = formatting.format`${formatting.keys}:${formatting.msg}`;
   logger.handlers.forEach((handler) => handler.setFormatter(format));
   const seedNodes = Object.entries(config.defaults.network.testnet);

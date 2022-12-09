@@ -10,7 +10,7 @@ import NodeManager from '@/nodes/NodeManager';
 
 // This is a 'scratch paper' test file for quickly running tests in the CI
 describe('scratch', () => {
-  const logger = new Logger(`${NodeManager.name} test`, LogLevel.INFO, [
+  const logger = new Logger(`${NodeManager.name} test`, LogLevel.WARN, [
     new StreamHandler(),
   ]);
 

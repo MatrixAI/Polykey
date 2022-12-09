@@ -55,7 +55,8 @@ describe('start', () => {
         {
           env: {
             PK_PASSWORD: password,
-            PK_FAST_PASSWORD_HASH: 'true',
+            PK_PASSWORD_OPS_LIMIT: 'min',
+            PK_PASSWORD_MEM_LIMIT: 'min',
           },
           cwd: dataDir,
           command: globalThis.testCmd,
@@ -131,7 +132,8 @@ describe('start', () => {
         {
           env: {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
-            PK_FAST_PASSWORD_HASH: 'true',
+            PK_PASSWORD_OPS_LIMIT: 'min',
+            PK_PASSWORD_MEM_LIMIT: 'min',
           },
           cwd: dataDir,
           command: globalThis.testCmd,
@@ -230,7 +232,8 @@ describe('start', () => {
             env: {
               PK_NODE_PATH: path.join(dataDir, 'polykey'),
               PK_PASSWORD: password,
-              PK_FAST_PASSWORD_HASH: 'true',
+              PK_PASSWORD_OPS_LIMIT: 'min',
+              PK_PASSWORD_MEM_LIMIT: 'min',
             },
             cwd: dataDir,
             command: globalThis.testCmd,
@@ -255,7 +258,8 @@ describe('start', () => {
             env: {
               PK_NODE_PATH: path.join(dataDir, 'polykey'),
               PK_PASSWORD: password,
-              PK_FAST_PASSWORD_HASH: 'true',
+              PK_PASSWORD_OPS_LIMIT: 'min',
+              PK_PASSWORD_MEM_LIMIT: 'min',
             },
             cwd: dataDir,
             command: globalThis.testCmd,
@@ -328,7 +332,8 @@ describe('start', () => {
             env: {
               PK_NODE_PATH: path.join(dataDir, 'polykey'),
               PK_PASSWORD: password,
-              PK_FAST_PASSWORD_HASH: 'true',
+              PK_PASSWORD_OPS_LIMIT: 'min',
+              PK_PASSWORD_MEM_LIMIT: 'min',
             },
             cwd: dataDir,
             command: globalThis.testCmd,
@@ -341,7 +346,8 @@ describe('start', () => {
             env: {
               PK_NODE_PATH: path.join(dataDir, 'polykey'),
               PK_PASSWORD: password,
-              PK_FAST_PASSWORD_HASH: 'true',
+              PK_PASSWORD_OPS_LIMIT: 'min',
+              PK_PASSWORD_MEM_LIMIT: 'min',
             },
             cwd: dataDir,
             command: globalThis.testCmd,
@@ -410,7 +416,8 @@ describe('start', () => {
           env: {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
             PK_PASSWORD: password,
-            PK_FAST_PASSWORD_HASH: 'true',
+            PK_PASSWORD_OPS_LIMIT: 'min',
+            PK_PASSWORD_MEM_LIMIT: 'min',
           },
           cwd: dataDir,
           command: globalThis.testCmd,
@@ -439,7 +446,8 @@ describe('start', () => {
           env: {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
             PK_PASSWORD: password,
-            PK_FAST_PASSWORD_HASH: 'true',
+            PK_PASSWORD_OPS_LIMIT: 'min',
+            PK_PASSWORD_MEM_LIMIT: 'min',
           },
           cwd: dataDir,
           command: globalThis.testCmd,
@@ -486,7 +494,8 @@ describe('start', () => {
           env: {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
             PK_PASSWORD: password,
-            PK_FAST_PASSWORD_HASH: 'true',
+            PK_PASSWORD_OPS_LIMIT: 'min',
+            PK_PASSWORD_MEM_LIMIT: 'min',
           },
           cwd: dataDir,
           command: globalThis.testCmd,
@@ -529,7 +538,8 @@ describe('start', () => {
           env: {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
             PK_PASSWORD: password,
-            PK_FAST_PASSWORD_HASH: 'true',
+            PK_PASSWORD_OPS_LIMIT: 'min',
+            PK_PASSWORD_MEM_LIMIT: 'min',
           },
           cwd: dataDir,
           command: globalThis.testCmd,
@@ -613,7 +623,8 @@ describe('start', () => {
         {
           env: {
             PK_PASSWORD: password1,
-            PK_FAST_PASSWORD_HASH: 'true',
+            PK_PASSWORD_OPS_LIMIT: 'min',
+            PK_PASSWORD_MEM_LIMIT: 'min',
           },
           cwd: dataDir,
           command: globalThis.testCmd,
@@ -651,7 +662,8 @@ describe('start', () => {
           env: {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
             PK_PASSWORD: password2,
-            PK_FAST_PASSWORD_HASH: 'true',
+            PK_PASSWORD_OPS_LIMIT: 'min',
+            PK_PASSWORD_MEM_LIMIT: 'min',
           },
           cwd: dataDir,
           command: globalThis.testCmd,
@@ -671,7 +683,8 @@ describe('start', () => {
           env: {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
             PK_PASSWORD: password2,
-            PK_FAST_PASSWORD_HASH: 'true',
+            PK_PASSWORD_OPS_LIMIT: 'min',
+            PK_PASSWORD_MEM_LIMIT: 'min',
           },
           cwd: dataDir,
           command: globalThis.testCmd,
@@ -706,7 +719,8 @@ describe('start', () => {
           env: {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
             PK_PASSWORD: password2,
-            PK_FAST_PASSWORD_HASH: 'true',
+            PK_PASSWORD_OPS_LIMIT: 'min',
+            PK_PASSWORD_MEM_LIMIT: 'min',
             PK_RECOVERY_CODE: recoveryCode,
           },
           cwd: dataDir,
@@ -764,7 +778,8 @@ describe('start', () => {
           env: {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
             PK_PASSWORD: password,
-            PK_FAST_PASSWORD_HASH: 'true',
+            PK_PASSWORD_OPS_LIMIT: 'min',
+            PK_PASSWORD_MEM_LIMIT: 'min',
           },
           cwd: dataDir,
           command: globalThis.testCmd,
@@ -827,7 +842,8 @@ describe('start', () => {
           env: {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
             PK_PASSWORD: password,
-            PK_FAST_PASSWORD_HASH: 'true',
+            PK_PASSWORD_OPS_LIMIT: 'min',
+            PK_PASSWORD_MEM_LIMIT: 'min',
           },
           cwd: dataDir,
           command: globalThis.testCmd,
@@ -926,7 +942,8 @@ describe('start', () => {
             env: {
               PK_NODE_PATH: nodePath,
               PK_PASSWORD: password,
-              PK_FAST_PASSWORD_HASH: 'true',
+              PK_PASSWORD_OPS_LIMIT: 'min',
+              PK_PASSWORD_MEM_LIMIT: 'min',
             },
             cwd: dataDir,
           },
@@ -935,7 +952,8 @@ describe('start', () => {
           env: {
             PK_NODE_PATH: nodePath,
             PK_PASSWORD: password,
-            PK_FAST_PASSWORD_HASH: 'true',
+            PK_PASSWORD_OPS_LIMIT: 'min',
+            PK_PASSWORD_MEM_LIMIT: 'min',
           },
           cwd: dataDir,
         });
@@ -987,7 +1005,8 @@ describe('start', () => {
             env: {
               PK_NODE_PATH: nodePath,
               PK_PASSWORD: password,
-              PK_FAST_PASSWORD_HASH: 'true',
+              PK_PASSWORD_OPS_LIMIT: 'min',
+              PK_PASSWORD_MEM_LIMIT: 'min',
               PK_SEED_NODES: `<defaults>;${seedNodeId1}@${seedNodeHost1}:${seedNodePort1}`,
               PK_NETWORK: 'testnet',
             },
@@ -998,7 +1017,8 @@ describe('start', () => {
           env: {
             PK_NODE_PATH: nodePath,
             PK_PASSWORD: password,
-            PK_FAST_PASSWORD_HASH: 'true',
+            PK_PASSWORD_OPS_LIMIT: 'min',
+            PK_PASSWORD_MEM_LIMIT: 'min',
           },
           cwd: dataDir,
         });

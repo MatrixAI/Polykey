@@ -215,12 +215,7 @@ function wrapWithPassword(
  * Key unwrapping with password.
  * The password can be an empty string.
  */
-function unwrapWithPassword(
-  password: string,
-  keyJWE: any,
-  opsLimit: PasswordOpsLimit = passwordOpsLimitDefault,
-  memLimit: PasswordMemLimit = passwordMemLimitDefault,
-): JWK | undefined {
+function unwrapWithPassword(password: string, keyJWE: any): JWK | undefined {
   if (typeof keyJWE !== 'object' || keyJWE == null) {
     return;
   }
@@ -256,9 +251,7 @@ function unwrapWithPassword(
   // then it may be maliciously trying to DOS this agent
   if (
     header.ops < passwordOpsLimits.min ||
-    header.ops > opsLimit ||
-    header.mem < passwordMemLimits.min ||
-    header.mem > memLimit
+    header.mem < passwordMemLimits.min
   ) {
     return;
   }

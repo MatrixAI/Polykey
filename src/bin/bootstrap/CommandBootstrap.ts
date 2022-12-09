@@ -11,8 +11,11 @@ class CommandBootstrap extends CommandPolykey {
     this.addOption(binOptions.recoveryCodeFile);
     this.addOption(binOptions.fresh);
     this.addOption(binOptions.privateKeyFile);
+    this.addOption(binOptions.passwordOpsLimit);
+    this.addOption(binOptions.passwordMemLimit);
     this.action(async (options) => {
       const bootstrapUtils = await import('../../bootstrap/utils');
+      const keysUtils = await import('../../keys/utils/index');
       const password = await binProcessors.processNewPassword(
         options.passwordFile,
         this.fs,
@@ -27,6 +30,10 @@ class CommandBootstrap extends CommandPolykey {
         keyRingConfig: {
           recoveryCode: recoveryCodeIn,
           privateKeyPath: options.privateKeyFile,
+          passwordOpsLimit:
+            keysUtils.passwordOpsLimits[options.passwordOpsLimit],
+          passwordMemLimit:
+            keysUtils.passwordMemLimits[options.passwordMemLimit],
         },
         fresh: options.fresh,
         fs: this.fs,

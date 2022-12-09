@@ -707,12 +707,7 @@ class KeyRing {
       'ciphertext' in privateObject &&
       privateObject.ciphertext != null
     ) {
-      const privateJWK = keysUtils.unwrapWithPassword(
-        password,
-        privateObject,
-        this.passwordOpsLimit,
-        this.passwordMemLimit,
-      );
+      const privateJWK = keysUtils.unwrapWithPassword(password, privateObject);
       if (privateJWK == null) {
         throw new keysErrors.ErrorKeyPairParse(
           `Private key path ${privateKeyPath} is not a valid encrypted JWK`,

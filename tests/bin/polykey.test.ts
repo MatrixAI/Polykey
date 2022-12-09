@@ -47,7 +47,8 @@ describe('polykey', () => {
         env: {
           PK_TEST_DATA_PATH: dataDir,
           PK_PASSWORD: password,
-          PK_FAST_PASSWORD_HASH: 'true',
+          PK_PASSWORD_OPS_LIMIT: 'min',
+          PK_PASSWORD_MEM_LIMIT: 'min',
         },
         cwd: dataDir,
         command: globalThis.testCmd,

@@ -55,7 +55,8 @@ describe('status', () => {
           env: {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
             PK_PASSWORD: password,
-            PK_FAST_PASSWORD_HASH: 'true',
+            PK_PASSWORD_OPS_LIMIT: 'min',
+            PK_PASSWORD_MEM_LIMIT: 'min',
           },
           cwd: dataDir,
           command: globalThis.testCmd,

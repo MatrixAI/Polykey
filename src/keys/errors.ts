@@ -98,6 +98,11 @@ class ErrorBufferLock<T> extends ErrorKeys<T> {
   exitCode = sysexits.TEMPFAIL;
 }
 
+class ErrorPasswordHash<T> extends ErrorKeys<T> {
+  static description = 'Failed to hash password';
+  exitCode = sysexits.UNAVAILABLE;
+}
+
 export {
   ErrorKeys,
   ErrorKeyRingRunning,
@@ -119,4 +124,5 @@ export {
   ErrorCertsReset,
   ErrorCertsGC,
   ErrorBufferLock,
+  ErrorPasswordHash,
 };
