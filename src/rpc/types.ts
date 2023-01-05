@@ -3,7 +3,7 @@ import type { POJO } from '../types';
 /**
  * This is the JSON RPC request object. this is the generic message type used for the RPC.
  */
-type JsonRpcRequest<T extends POJO> = {
+type JsonRpcRequest<T extends POJO | unknown = unknown> = {
   type: 'JsonRpcRequest';
   // A String specifying the version of the JSON-RPC protocol. MUST be exactly "2.0"
   jsonrpc: '2.0';
@@ -20,7 +20,7 @@ type JsonRpcRequest<T extends POJO> = {
   id: string | number | null;
 };
 
-type JsonRpcNotification<T extends POJO> = {
+type JsonRpcNotification<T extends POJO | unknown = unknown> = {
   type: 'JsonRpcNotification';
   // A String specifying the version of the JSON-RPC protocol. MUST be exactly "2.0"
   jsonrpc: '2.0';
@@ -33,7 +33,7 @@ type JsonRpcNotification<T extends POJO> = {
   params?: T;
 };
 
-type JsonRpcResponseResult<T extends POJO> = {
+type JsonRpcResponseResult<T extends POJO | unknown = unknown> = {
   type: 'JsonRpcResponseResult';
   // A String specifying the version of the JSON-RPC protocol. MUST be exactly "2.0".
   jsonrpc: '2.0';
@@ -48,7 +48,7 @@ type JsonRpcResponseResult<T extends POJO> = {
   id: string | number | null;
 };
 
-type JsonRpcResponseError<T extends POJO> = {
+type JsonRpcResponseError<T extends POJO | unknown = unknown> = {
   type: 'JsonRpcResponseError';
   // A String specifying the version of the JSON-RPC protocol. MUST be exactly "2.0".
   jsonrpc: '2.0';
@@ -75,7 +75,7 @@ type JsonRpcResponseError<T extends POJO> = {
 //  -32603	Internal error	Internal JSON-RPC error.
 //  -32000 to -32099
 
-type JsonRpcError<T extends POJO> = {
+type JsonRpcError<T extends POJO | unknown = unknown> = {
   // A Number that indicates the error type that occurred.
   //  This MUST be an integer.
   code: number;
@@ -88,11 +88,12 @@ type JsonRpcError<T extends POJO> = {
   data?: T;
 };
 
-type JsonRpcResponse<T extends POJO, K extends POJO> =
-  | JsonRpcResponseResult<T>
-  | JsonRpcResponseError<K>;
+type JsonRpcResponse<
+  T extends POJO | unknown = unknown,
+  K extends POJO | unknown = unknown,
+> = JsonRpcResponseResult<T> | JsonRpcResponseError<K>;
 
-type jsonRpcMessage<T extends POJO> =
+type JsonRpcMessage<T extends POJO | unknown = unknown> =
   | JsonRpcRequest<T>
   | JsonRpcNotification<T>
   | JsonRpcResponseResult<T>
@@ -105,5 +106,5 @@ export type {
   JsonRpcResponseError,
   JsonRpcError,
   JsonRpcResponse,
-  jsonRpcMessage,
+  JsonRpcMessage,
 };
