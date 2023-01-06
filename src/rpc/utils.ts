@@ -7,7 +7,7 @@ import type {
   JsonRpcResponseError,
   JsonRpcResponseResult,
 } from 'rpc/types';
-import type { POJO } from '../types';
+import type { JSONValue } from '../types';
 import { TransformStream } from 'stream/web';
 import * as rpcErrors from './errors';
 import * as utils from '../utils';
@@ -15,7 +15,7 @@ import * as validationErrors from '../validation/errors';
 import { promise } from '../utils';
 const jsonStreamParsers = require('@streamparser/json');
 
-class JsonToJsonMessage implements Transformer<Buffer, POJO> {
+class JsonToJsonMessage implements Transformer<Buffer, JsonRpcMessage> {
   protected buffer = Buffer.alloc(0);
 
   /**
@@ -58,7 +58,7 @@ class JsonToJsonMessage implements Transformer<Buffer, POJO> {
     return await foundOffset.p;
   }
 
-  transform: TransformerTransformCallback<Buffer, POJO> = async (
+  transform: TransformerTransformCallback<Buffer, JsonRpcMessage> = async (
     chunk,
     controller,
   ) => {
@@ -68,7 +68,9 @@ class JsonToJsonMessage implements Transformer<Buffer, POJO> {
       if (index <= 0) break;
       const outputBuffer = this.buffer.subarray(0, index + 1);
       try {
-        controller.enqueue(JSON.parse(outputBuffer.toString('utf-8')));
+        const jsonObject = JSON.parse(outputBuffer.toString('utf-8'));
+        const jsonRpcMessage = parseJsonRpcMessage(jsonObject);
+        controller.enqueue(jsonRpcMessage);
       } catch (e) {
         throw new rpcErrors.ErrorRpcParse(undefined, { cause: e });
       }
@@ -78,13 +80,29 @@ class JsonToJsonMessage implements Transformer<Buffer, POJO> {
 }
 
 // TODO: rename to something more descriptive?
-class JsonToJsonMessageStream extends TransformStream {
+class JsonToJsonMessageStream extends TransformStream<Buffer, JsonRpcMessage> {
   constructor() {
     super(new JsonToJsonMessage());
   }
 }
 
-function parseJsonRpcRequest<T extends POJO>(
+class JsonMessageToJson implements Transformer<JsonRpcMessage, Buffer> {
+  transform: TransformerTransformCallback<JsonRpcMessage, Buffer> = async (
+    chunk,
+    controller,
+  ) => {
+    controller.enqueue(Buffer.from(JSON.stringify(chunk)));
+  };
+}
+
+// TODO: rename to something more descriptive?
+class JsonMessageToJsonStream extends TransformStream<JsonRpcMessage, Buffer> {
+  constructor() {
+    super(new JsonMessageToJson());
+  }
+}
+
+function parseJsonRpcRequest<T extends JSONValue>(
   message: unknown,
 ): JsonRpcRequest<T> {
   if (!utils.isObject(message)) {
@@ -107,9 +125,9 @@ function parseJsonRpcRequest<T extends POJO>(
   if (typeof message.method !== 'string') {
     throw new validationErrors.ErrorParse('`method` property must be a string');
   }
-  if ('params' in message && !utils.isObject(message.params)) {
-    throw new validationErrors.ErrorParse('`params` property must be a POJO');
-  }
+  // If ('params' in message && !utils.isObject(message.params)) {
+  //   throw new validationErrors.ErrorParse('`params` property must be a POJO');
+  // }
   if (!('id' in message)) {
     throw new validationErrors.ErrorParse('`id` property must be defined');
   }
@@ -125,7 +143,7 @@ function parseJsonRpcRequest<T extends POJO>(
   return message as JsonRpcRequest<T>;
 }
 
-function parseJsonRpcNotification<T extends POJO>(
+function parseJsonRpcNotification<T extends JSONValue>(
   message: unknown,
 ): JsonRpcNotification<T> {
   if (!utils.isObject(message)) {
@@ -148,16 +166,16 @@ function parseJsonRpcNotification<T extends POJO>(
   if (typeof message.method !== 'string') {
     throw new validationErrors.ErrorParse('`method` property must be a string');
   }
-  if ('params' in message && !utils.isObject(message.params)) {
-    throw new validationErrors.ErrorParse('`params` property must be a POJO');
-  }
+  // If ('params' in message && !utils.isObject(message.params)) {
+  //   throw new validationErrors.ErrorParse('`params` property must be a POJO');
+  // }
   if ('id' in message) {
     throw new validationErrors.ErrorParse('`id` property must not be defined');
   }
   return message as JsonRpcNotification<T>;
 }
 
-function parseJsonRpcResponseResult<T extends POJO>(
+function parseJsonRpcResponseResult<T extends JSONValue>(
   message: unknown,
 ): JsonRpcResponseResult<T> {
   if (!utils.isObject(message)) {
@@ -182,9 +200,9 @@ function parseJsonRpcResponseResult<T extends POJO>(
       '`error` property must not be defined',
     );
   }
-  if (!utils.isObject(message.result)) {
-    throw new validationErrors.ErrorParse('`result` property must be a POJO');
-  }
+  // If (!utils.isObject(message.result)) {
+  //   throw new validationErrors.ErrorParse('`result` property must be a POJO');
+  // }
   if (!('id' in message)) {
     throw new validationErrors.ErrorParse('`id` property must be defined');
   }
@@ -200,7 +218,7 @@ function parseJsonRpcResponseResult<T extends POJO>(
   return message as JsonRpcResponseResult<T>;
 }
 
-function parseJsonRpcResponseError<T extends POJO>(
+function parseJsonRpcResponseError<T extends JSONValue>(
   message: unknown,
 ): JsonRpcResponseError<T> {
   if (!utils.isObject(message)) {
@@ -241,7 +259,9 @@ function parseJsonRpcResponseError<T extends POJO>(
   return message as JsonRpcResponseError<T>;
 }
 
-function parseJsonRpcError<T extends POJO>(message: unknown): JsonRpcError<T> {
+function parseJsonRpcError<T extends JSONValue>(
+  message: unknown,
+): JsonRpcError<T> {
   if (!utils.isObject(message)) {
     throw new validationErrors.ErrorParse('must be a JSON POJO');
   }
@@ -259,13 +279,13 @@ function parseJsonRpcError<T extends POJO>(message: unknown): JsonRpcError<T> {
       '`message` property must be a string',
     );
   }
-  if ('data' in message && !utils.isObject(message.data)) {
-    throw new validationErrors.ErrorParse('`data` property must be a POJO');
-  }
+  // If ('data' in message && !utils.isObject(message.data)) {
+  //   throw new validationErrors.ErrorParse('`data` property must be a POJO');
+  // }
   return message as JsonRpcError<T>;
 }
 
-function parseJsonRpcMessage<T extends POJO>(
+function parseJsonRpcMessage<T extends JSONValue>(
   message: unknown,
 ): JsonRpcMessage<T> {
   if (!utils.isObject(message)) {
@@ -303,6 +323,7 @@ function parseJsonRpcMessage<T extends POJO>(
 
 export {
   JsonToJsonMessageStream,
+  JsonMessageToJsonStream,
   parseJsonRpcRequest,
   parseJsonRpcNotification,
   parseJsonRpcResponseResult,
