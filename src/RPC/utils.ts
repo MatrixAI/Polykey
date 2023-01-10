@@ -6,7 +6,7 @@ import type {
   JsonRpcRequest,
   JsonRpcResponseError,
   JsonRpcResponseResult,
-} from 'rpc/types';
+} from 'RPC/types';
 import type { JSONValue } from '../types';
 import { TransformStream } from 'stream/web';
 import * as rpcErrors from './errors';

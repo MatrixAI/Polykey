@@ -11,7 +11,7 @@ import type {
   JsonRpcRequest,
   JsonRpcResponseError,
   JsonRpcResponseResult,
-} from '@/rpc/types';
+} from '@/RPC/types';
 import type { JsonValue } from 'fast-check';
 import { ReadableStream, WritableStream, TransformStream } from 'stream/web';
 import { fc } from '@fast-check/jest';

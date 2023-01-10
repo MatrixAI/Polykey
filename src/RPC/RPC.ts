@@ -23,19 +23,19 @@ import * as rpcUtils from './utils';
 import * as grpcUtils from '../grpc/utils';
 
 // FIXME: Might need to be StartStop. Won't know for sure until it's used.
-interface Rpc extends CreateDestroyStartStop {}
+interface RPC extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
   new rpcErrors.ErrorRpcRunning(),
   new rpcErrors.ErrorRpcDestroyed(),
 )
-class Rpc {
+class RPC {
   static async createRpc({
     container,
     logger = new Logger(this.name),
   }: {
     container: POJO;
     logger?: Logger;
-  }): Promise<Rpc> {
+  }): Promise<RPC> {
     logger.info(`Creating ${this.name}`);
     const rpc = new this({
       container,
@@ -103,11 +103,9 @@ class Rpc {
       connectionInfo,
       ctx,
     ) {
-      let count = 0;
       for await (const inputVal of input) {
-        if (count > 1) throw new rpcErrors.ErrorRpcProtocal();
         yield handler(inputVal, container, connectionInfo, ctx);
-        count += 1;
+        break;
       }
     };
     this.handlerMap.set(method, wrapperDuplex);
@@ -124,11 +122,9 @@ class Rpc {
       connectionInfo,
       ctx,
     ) {
-      let count = 0;
       for await (const inputVal of input) {
-        if (count > 1) throw new rpcErrors.ErrorRpcProtocal();
         yield* handler(inputVal, container, connectionInfo, ctx);
-        count += 1;
+        break;
       }
     };
     this.handlerMap.set(method, wrapperDuplex);
@@ -242,6 +238,7 @@ class Rpc {
           error: rpcError,
           id: null,
         };
+        // TODO: catch this and emit error in the event emitter
         yield rpcErrorMessage;
       }
       resolve();
@@ -268,4 +265,4 @@ class Rpc {
   }
 }
 
-export default Rpc;
+export default RPC;

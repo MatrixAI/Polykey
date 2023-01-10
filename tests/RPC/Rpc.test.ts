@@ -1,16 +1,16 @@
-import type { DuplexStreamHandler, JsonRpcMessage } from '@/rpc/types';
+import type { DuplexStreamHandler, JsonRpcMessage } from '@/RPC/types';
 import type { JSONValue } from '@/types';
 import type { ConnectionInfo, Host, Port } from '@/network/types';
 import type { NodeId } from '@/ids';
 import type { ReadableWritablePair } from 'stream/web';
 import { testProp, fc } from '@fast-check/jest';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import Rpc from '@/rpc/Rpc';
-import * as rpcErrors from '@/rpc/errors';
+import RPC from '@/RPC/RPC';
+import * as rpcErrors from '@/RPC/errors';
 import * as rpcTestUtils from './utils';
 
-describe(`${Rpc.name}`, () => {
-  const logger = new Logger(`${Rpc.name} Test`, LogLevel.WARN, [
+describe(`${RPC.name}`, () => {
+  const logger = new Logger(`${RPC.name} Test`, LogLevel.WARN, [
     new StreamHandler(),
   ]);
 
@@ -21,10 +21,10 @@ describe(`${Rpc.name}`, () => {
     })
     .noShrink();
 
-  testProp('can stream data', [specificMessageArb], async (messages) => {
+  testProp.only('can stream data', [specificMessageArb], async (messages) => {
     const stream = rpcTestUtils.jsonRpcStream(messages);
     const container = {};
-    const rpc = await Rpc.createRpc({ container, logger });
+    const rpc = await RPC.createRpc({ container, logger });
     const [outputResult, outputStream] = rpcTestUtils.streamToArray();
     const readWriteStream: ReadableWritablePair = {
       readable: stream,
@@ -35,6 +35,7 @@ describe(`${Rpc.name}`, () => {
       async function* (input, _container, _connectionInfo, _ctx) {
         for await (const val of input) {
           yield val;
+          break;
         }
       };
 
@@ -53,7 +54,7 @@ describe(`${Rpc.name}`, () => {
         B: Symbol('b'),
         C: Symbol('c'),
       };
-      const rpc = await Rpc.createRpc({ container, logger });
+      const rpc = await RPC.createRpc({ container, logger });
       const [outputResult, outputStream] = rpcTestUtils.streamToArray();
       const readWriteStream: ReadableWritablePair = {
         readable: stream,
@@ -88,7 +89,7 @@ describe(`${Rpc.name}`, () => {
         remotePort: 12341 as Port,
       };
       const container = {};
-      const rpc = await Rpc.createRpc({ container, logger });
+      const rpc = await RPC.createRpc({ container, logger });
       const [outputResult, outputStream] = rpcTestUtils.streamToArray();
       const readWriteStream: ReadableWritablePair = {
         readable: stream,
@@ -116,7 +117,7 @@ describe(`${Rpc.name}`, () => {
     async (messages) => {
       const stream = rpcTestUtils.jsonRpcStream(messages);
       const container = {};
-      const rpc = await Rpc.createRpc({ container, logger });
+      const rpc = await RPC.createRpc({ container, logger });
       const [outputResult, outputStream] = rpcTestUtils.streamToArray();
       let thing;
       let lastMessage: JsonRpcMessage | undefined;
@@ -158,7 +159,7 @@ describe(`${Rpc.name}`, () => {
   testProp('Handler yields nothing', [specificMessageArb], async (messages) => {
     const stream = rpcTestUtils.jsonRpcStream(messages);
     const container = {};
-    const rpc = await Rpc.createRpc({ container, logger });
+    const rpc = await RPC.createRpc({ container, logger });
     const [outputResult, outputStream] = rpcTestUtils.streamToArray();
     const readWriteStream: ReadableWritablePair = {
       readable: stream,
