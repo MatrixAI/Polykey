@@ -1,4 +1,10 @@
-import type { DuplexStreamHandler, JsonRpcMessage } from '@/RPC/types';
+import type {
+  ClientStreamHandler,
+  DuplexStreamHandler,
+  JsonRpcMessage,
+  ServerStreamHandler,
+  UnaryHandler
+} from "@/RPC/types";
 import type { JSONValue } from '@/types';
 import type { ConnectionInfo, Host, Port } from '@/network/types';
 import type { NodeId } from '@/ids';
@@ -21,7 +27,7 @@ describe(`${RPC.name}`, () => {
     })
     .noShrink();
 
-  testProp('can stream data', [specificMessageArb], async (messages) => {
+  testProp('can stream data with duplex stream handler', [specificMessageArb], async (messages) => {
     const stream = rpcTestUtils.jsonRpcStream(messages);
     const container = {};
     const rpc = await RPC.createRpc({ container, logger });
@@ -40,6 +46,83 @@ describe(`${RPC.name}`, () => {
       };
 
     rpc.registerDuplexStreamHandler(methodName, duplexHandler);
+    rpc.handleStream(readWriteStream, {} as ConnectionInfo);
+    await outputResult;
+  });
+
+  testProp('can stream data with client stream handler', [specificMessageArb], async (messages) => {
+    const stream = rpcTestUtils.jsonRpcStream(messages);
+    const container = {};
+    const rpc = await RPC.createRpc({ container, logger });
+    const [outputResult, outputStream] = rpcTestUtils.streamToArray();
+    const readWriteStream: ReadableWritablePair = {
+      readable: stream,
+      writable: outputStream,
+    };
+
+    const clientHandler: ClientStreamHandler<JSONValue, number> =
+      async function (input, _container, _connectionInfo, _ctx) {
+        let count = 0;
+        for await (const val of input) {
+          count += 1;
+        }
+        return count;
+      };
+
+    rpc.registerClientStreamHandler(methodName, clientHandler);
+    rpc.handleStream(readWriteStream, {} as ConnectionInfo);
+    await outputResult
+  });
+
+  const singleNumberMessageArb = fc.array(
+    rpcTestUtils.jsonRpcRequestArb(
+      fc.constant(methodName),
+      fc.integer({min: 1, max: 20}),
+    ),
+    {
+      minLength: 2,
+      maxLength: 10,
+    }
+  )
+
+  testProp('can stream data with server stream handler', [singleNumberMessageArb], async (messages) => {
+    const stream = rpcTestUtils.jsonRpcStream(messages);
+    const container = {};
+    const rpc = await RPC.createRpc({ container, logger });
+    const [outputResult, outputStream] = rpcTestUtils.streamToArray();
+    const readWriteStream: ReadableWritablePair = {
+      readable: stream,
+      writable: outputStream,
+    };
+
+    const serverHandler: ServerStreamHandler<number, number> =
+      async function* (input, _container, _connectionInfo, _ctx) {
+        for (let i = 0; i < input; i++) {
+          yield i;
+        }
+      };
+
+    rpc.registerServerStreamHandler(methodName, serverHandler);
+    rpc.handleStream(readWriteStream, {} as ConnectionInfo);
+    await outputResult
+  });
+
+  testProp('can stream data with server stream handler', [specificMessageArb], async (messages) => {
+    const stream = rpcTestUtils.jsonRpcStream(messages);
+    const container = {};
+    const rpc = await RPC.createRpc({ container, logger });
+    const [outputResult, outputStream] = rpcTestUtils.streamToArray();
+    const readWriteStream: ReadableWritablePair = {
+      readable: stream,
+      writable: outputStream,
+    };
+
+    const unaryHandler: UnaryHandler<JSONValue, JSONValue> =
+      async function (input, _container, _connectionInfo, _ctx) {
+      return input;
+      };
+
+    rpc.registerUnaryHandler(methodName, unaryHandler);
     rpc.handleStream(readWriteStream, {} as ConnectionInfo);
     await outputResult;
   });
@@ -177,13 +260,10 @@ describe(`${RPC.name}`, () => {
     rpc.handleStream(readWriteStream, {} as ConnectionInfo);
     await outputResult;
     // We're just expecting no errors
-  });
+  }
+  );
 
   // TODO:
-  //  - Test for each type of handler
-  //    - duplex
-  //    - client stream
-  //    - server stream
-  //    - unary
   //  - Test odd conditions for handlers, like extra messages where 1 is expected.
+  //  - Expectations can't be inside the handlers otherwise they're caught.
 });
