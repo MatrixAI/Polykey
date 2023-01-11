@@ -1,8 +1,8 @@
 import { testProp, fc } from '@fast-check/jest';
 import { AsyncIterableX as AsyncIterable } from 'ix/asynciterable';
-import * as rpcUtils from '@/rpc/utils';
+import * as rpcUtils from '@/RPC/utils';
 import 'ix/add/asynciterable-operators/toarray';
-import * as rpcErrors from '@/rpc/errors';
+import * as rpcErrors from '@/RPC/errors';
 import * as rpcTestUtils from './utils';
 
 describe('utils tests', () => {
@@ -67,4 +67,7 @@ describe('utils tests', () => {
     },
     { numRuns: 1000 },
   );
+
+  // TODO:
+  //  - Test for badly structured data
 });

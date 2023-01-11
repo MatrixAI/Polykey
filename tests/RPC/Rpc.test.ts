@@ -21,7 +21,7 @@ describe(`${RPC.name}`, () => {
     })
     .noShrink();
 
-  testProp.only('can stream data', [specificMessageArb], async (messages) => {
+  testProp('can stream data', [specificMessageArb], async (messages) => {
     const stream = rpcTestUtils.jsonRpcStream(messages);
     const container = {};
     const rpc = await RPC.createRpc({ container, logger });
