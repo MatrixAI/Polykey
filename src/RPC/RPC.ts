@@ -1,11 +1,11 @@
 import type {
-  ClientStreamHandler,
+  ServerStreamHandler,
   DuplexStreamHandler,
   JsonRpcError,
   JsonRpcMessage,
   JsonRpcResponseError,
   JsonRpcResponseResult,
-  ServerStreamHandler,
+  ClientStreamHandler,
 } from './types';
 import type { ReadableWritablePair } from 'stream/web';
 import type { JSONValue, POJO } from '../types';
@@ -112,9 +112,9 @@ class RPC {
   }
 
   @ready(new rpcErrors.ErrorRpcNotRunning())
-  public registerClientStreamHandler<I extends JSONValue, O extends JSONValue>(
+  public registerServerStreamHandler<I extends JSONValue, O extends JSONValue>(
     method: string,
-    handler: ClientStreamHandler<I, O>,
+    handler: ServerStreamHandler<I, O>,
   ) {
     const wrapperDuplex: DuplexStreamHandler<I, O> = async function* (
       input,
@@ -131,9 +131,9 @@ class RPC {
   }
 
   @ready(new rpcErrors.ErrorRpcNotRunning())
-  public registerServerStreamHandler<I extends JSONValue, O extends JSONValue>(
+  public registerClientStreamHandler<I extends JSONValue, O extends JSONValue>(
     method: string,
-    handler: ServerStreamHandler<I, O>,
+    handler: ClientStreamHandler<I, O>,
   ) {
     const wrapperDuplex: DuplexStreamHandler<I, O> = async function* (
       input,

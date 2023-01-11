@@ -112,11 +112,11 @@ type DuplexStreamHandler<I extends JSONValue, O extends JSONValue> = Handler<
   AsyncGenerator<I>,
   AsyncGenerator<O>
 >;
-type ClientStreamHandler<I extends JSONValue, O extends JSONValue> = Handler<
+type ServerStreamHandler<I extends JSONValue, O extends JSONValue> = Handler<
   I,
   AsyncGenerator<O>
 >;
-type ServerStreamHandler<I extends JSONValue, O extends JSONValue> = Handler<
+type ClientStreamHandler<I extends JSONValue, O extends JSONValue> = Handler<
   AsyncGenerator<I>,
   Promise<O>
 >;
@@ -134,7 +134,7 @@ export type {
   JsonRpcResponse,
   JsonRpcMessage,
   DuplexStreamHandler,
-  ClientStreamHandler,
   ServerStreamHandler,
+  ClientStreamHandler,
   UnaryHandler,
 };
