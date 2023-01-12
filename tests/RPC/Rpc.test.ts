@@ -3,20 +3,20 @@ import type {
   DuplexStreamHandler,
   JsonRpcMessage,
   ServerStreamHandler,
-  UnaryHandler
-} from "@/RPC/types";
+  UnaryHandler,
+} from '@/RPC/types';
 import type { JSONValue } from '@/types';
 import type { ConnectionInfo, Host, Port } from '@/network/types';
 import type { NodeId } from '@/ids';
 import type { ReadableWritablePair } from 'stream/web';
 import { testProp, fc } from '@fast-check/jest';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import RPC from '@/RPC/RPC';
+import RPCServer from '@/RPC/RPCServer';
 import * as rpcErrors from '@/RPC/errors';
 import * as rpcTestUtils from './utils';
 
-describe(`${RPC.name}`, () => {
-  const logger = new Logger(`${RPC.name} Test`, LogLevel.WARN, [
+describe(`${RPCServer.name}`, () => {
+  const logger = new Logger(`${RPCServer.name} Test`, LogLevel.WARN, [
     new StreamHandler(),
   ]);
 
@@ -27,105 +27,125 @@ describe(`${RPC.name}`, () => {
     })
     .noShrink();
 
-  testProp('can stream data with duplex stream handler', [specificMessageArb], async (messages) => {
-    const stream = rpcTestUtils.jsonRpcStream(messages);
-    const container = {};
-    const rpc = await RPC.createRpc({ container, logger });
-    const [outputResult, outputStream] = rpcTestUtils.streamToArray();
-    const readWriteStream: ReadableWritablePair = {
-      readable: stream,
-      writable: outputStream,
-    };
-
-    const duplexHandler: DuplexStreamHandler<JSONValue, JSONValue> =
-      async function* (input, _container, _connectionInfo, _ctx) {
-        for await (const val of input) {
-          yield val;
-          break;
-        }
+  testProp(
+    'can stream data with duplex stream handler',
+    [specificMessageArb],
+    async (messages) => {
+      const stream = rpcTestUtils.jsonRpcStream(messages);
+      const container = {};
+      const rpc = await RPCServer.createRPCServer({ container, logger });
+      const [outputResult, outputStream] = rpcTestUtils.streamToArray();
+      const readWriteStream: ReadableWritablePair = {
+        readable: stream,
+        writable: outputStream,
       };
 
-    rpc.registerDuplexStreamHandler(methodName, duplexHandler);
-    rpc.handleStream(readWriteStream, {} as ConnectionInfo);
-    await outputResult;
-  });
+      const duplexHandler: DuplexStreamHandler<JSONValue, JSONValue> =
+        async function* (input, _container, _connectionInfo, _ctx) {
+          for await (const val of input) {
+            yield val;
+            break;
+          }
+        };
 
-  testProp('can stream data with client stream handler', [specificMessageArb], async (messages) => {
-    const stream = rpcTestUtils.jsonRpcStream(messages);
-    const container = {};
-    const rpc = await RPC.createRpc({ container, logger });
-    const [outputResult, outputStream] = rpcTestUtils.streamToArray();
-    const readWriteStream: ReadableWritablePair = {
-      readable: stream,
-      writable: outputStream,
-    };
+      rpc.registerDuplexStreamHandler(methodName, duplexHandler);
+      rpc.handleStream(readWriteStream, {} as ConnectionInfo);
+      await outputResult;
+    },
+  );
 
-    const clientHandler: ClientStreamHandler<JSONValue, number> =
-      async function (input, _container, _connectionInfo, _ctx) {
-        let count = 0;
-        for await (const val of input) {
-          count += 1;
-        }
-        return count;
+  testProp(
+    'can stream data with client stream handler',
+    [specificMessageArb],
+    async (messages) => {
+      const stream = rpcTestUtils.jsonRpcStream(messages);
+      const container = {};
+      const rpc = await RPCServer.createRPCServer({ container, logger });
+      const [outputResult, outputStream] = rpcTestUtils.streamToArray();
+      const readWriteStream: ReadableWritablePair = {
+        readable: stream,
+        writable: outputStream,
       };
 
-    rpc.registerClientStreamHandler(methodName, clientHandler);
-    rpc.handleStream(readWriteStream, {} as ConnectionInfo);
-    await outputResult
-  });
+      const clientHandler: ClientStreamHandler<JSONValue, number> =
+        async function (input, _container, _connectionInfo, _ctx) {
+          let count = 0;
+          for await (const _ of input) {
+            count += 1;
+          }
+          return count;
+        };
+
+      rpc.registerClientStreamHandler(methodName, clientHandler);
+      rpc.handleStream(readWriteStream, {} as ConnectionInfo);
+      await outputResult;
+    },
+  );
 
   const singleNumberMessageArb = fc.array(
     rpcTestUtils.jsonRpcRequestArb(
       fc.constant(methodName),
-      fc.integer({min: 1, max: 20}),
+      fc.integer({ min: 1, max: 20 }),
     ),
     {
       minLength: 2,
       maxLength: 10,
-    }
-  )
+    },
+  );
 
-  testProp('can stream data with server stream handler', [singleNumberMessageArb], async (messages) => {
-    const stream = rpcTestUtils.jsonRpcStream(messages);
-    const container = {};
-    const rpc = await RPC.createRpc({ container, logger });
-    const [outputResult, outputStream] = rpcTestUtils.streamToArray();
-    const readWriteStream: ReadableWritablePair = {
-      readable: stream,
-      writable: outputStream,
-    };
-
-    const serverHandler: ServerStreamHandler<number, number> =
-      async function* (input, _container, _connectionInfo, _ctx) {
-        for (let i = 0; i < input; i++) {
-          yield i;
-        }
+  testProp(
+    'can stream data with server stream handler',
+    [singleNumberMessageArb],
+    async (messages) => {
+      const stream = rpcTestUtils.jsonRpcStream(messages);
+      const container = {};
+      const rpc = await RPCServer.createRPCServer({ container, logger });
+      const [outputResult, outputStream] = rpcTestUtils.streamToArray();
+      const readWriteStream: ReadableWritablePair = {
+        readable: stream,
+        writable: outputStream,
       };
 
-    rpc.registerServerStreamHandler(methodName, serverHandler);
-    rpc.handleStream(readWriteStream, {} as ConnectionInfo);
-    await outputResult
-  });
+      const serverHandler: ServerStreamHandler<number, number> =
+        async function* (input, _container, _connectionInfo, _ctx) {
+          for (let i = 0; i < input; i++) {
+            yield i;
+          }
+        };
 
-  testProp('can stream data with server stream handler', [specificMessageArb], async (messages) => {
-    const stream = rpcTestUtils.jsonRpcStream(messages);
-    const container = {};
-    const rpc = await RPC.createRpc({ container, logger });
-    const [outputResult, outputStream] = rpcTestUtils.streamToArray();
-    const readWriteStream: ReadableWritablePair = {
-      readable: stream,
-      writable: outputStream,
-    };
+      rpc.registerServerStreamHandler(methodName, serverHandler);
+      rpc.handleStream(readWriteStream, {} as ConnectionInfo);
+      await outputResult;
+    },
+  );
 
-    const unaryHandler: UnaryHandler<JSONValue, JSONValue> =
-      async function (input, _container, _connectionInfo, _ctx) {
-      return input;
+  testProp(
+    'can stream data with server stream handler',
+    [specificMessageArb],
+    async (messages) => {
+      const stream = rpcTestUtils.jsonRpcStream(messages);
+      const container = {};
+      const rpc = await RPCServer.createRPCServer({ container, logger });
+      const [outputResult, outputStream] = rpcTestUtils.streamToArray();
+      const readWriteStream: ReadableWritablePair = {
+        readable: stream,
+        writable: outputStream,
       };
 
-    rpc.registerUnaryHandler(methodName, unaryHandler);
-    rpc.handleStream(readWriteStream, {} as ConnectionInfo);
-    await outputResult;
-  });
+      const unaryHandler: UnaryHandler<JSONValue, JSONValue> = async function (
+        input,
+        _container,
+        _connectionInfo,
+        _ctx,
+      ) {
+        return input;
+      };
+
+      rpc.registerUnaryHandler(methodName, unaryHandler);
+      rpc.handleStream(readWriteStream, {} as ConnectionInfo);
+      await outputResult;
+    },
+  );
 
   testProp(
     'Handler is provided with container',
@@ -137,7 +157,7 @@ describe(`${RPC.name}`, () => {
         B: Symbol('b'),
         C: Symbol('c'),
       };
-      const rpc = await RPC.createRpc({ container, logger });
+      const rpc = await RPCServer.createRPCServer({ container, logger });
       const [outputResult, outputStream] = rpcTestUtils.streamToArray();
       const readWriteStream: ReadableWritablePair = {
         readable: stream,
@@ -172,7 +192,7 @@ describe(`${RPC.name}`, () => {
         remotePort: 12341 as Port,
       };
       const container = {};
-      const rpc = await RPC.createRpc({ container, logger });
+      const rpc = await RPCServer.createRPCServer({ container, logger });
       const [outputResult, outputStream] = rpcTestUtils.streamToArray();
       const readWriteStream: ReadableWritablePair = {
         readable: stream,
@@ -200,7 +220,7 @@ describe(`${RPC.name}`, () => {
     async (messages) => {
       const stream = rpcTestUtils.jsonRpcStream(messages);
       const container = {};
-      const rpc = await RPC.createRpc({ container, logger });
+      const rpc = await RPCServer.createRPCServer({ container, logger });
       const [outputResult, outputStream] = rpcTestUtils.streamToArray();
       let thing;
       let lastMessage: JsonRpcMessage | undefined;
@@ -242,7 +262,7 @@ describe(`${RPC.name}`, () => {
   testProp('Handler yields nothing', [specificMessageArb], async (messages) => {
     const stream = rpcTestUtils.jsonRpcStream(messages);
     const container = {};
-    const rpc = await RPC.createRpc({ container, logger });
+    const rpc = await RPCServer.createRPCServer({ container, logger });
     const [outputResult, outputStream] = rpcTestUtils.streamToArray();
     const readWriteStream: ReadableWritablePair = {
       readable: stream,
@@ -260,10 +280,10 @@ describe(`${RPC.name}`, () => {
     rpc.handleStream(readWriteStream, {} as ConnectionInfo);
     await outputResult;
     // We're just expecting no errors
-  }
-  );
+  });
 
   // TODO:
   //  - Test odd conditions for handlers, like extra messages where 1 is expected.
   //  - Expectations can't be inside the handlers otherwise they're caught.
+  //  - get the tap transform stream working
 });

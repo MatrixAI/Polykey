@@ -23,27 +23,27 @@ import * as rpcUtils from './utils';
 import * as grpcUtils from '../grpc/utils';
 
 // FIXME: Might need to be StartStop. Won't know for sure until it's used.
-interface RPC extends CreateDestroyStartStop {}
+interface RPCServer extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
   new rpcErrors.ErrorRpcRunning(),
   new rpcErrors.ErrorRpcDestroyed(),
 )
-class RPC {
-  static async createRpc({
+class RPCServer {
+  static async createRPCServer({
     container,
     logger = new Logger(this.name),
   }: {
     container: POJO;
     logger?: Logger;
-  }): Promise<RPC> {
+  }): Promise<RPCServer> {
     logger.info(`Creating ${this.name}`);
-    const rpc = new this({
+    const rpcServer = new this({
       container,
       logger,
     });
-    await rpc.start();
+    await rpcServer.start();
     logger.info(`Created ${this.name}`);
-    return rpc;
+    return rpcServer;
   }
 
   // Properties
@@ -265,4 +265,4 @@ class RPC {
   }
 }
 
-export default RPC;
+export default RPCServer;

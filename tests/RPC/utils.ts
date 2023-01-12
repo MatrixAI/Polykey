@@ -102,7 +102,9 @@ const jsonRpcStream = (messages: Array<POJO>) => {
 
 const jsonRpcRequestArb = (
   method: fc.Arbitrary<string> = fc.string(),
-  params: fc.Arbitrary<JsonValue> = fc.jsonValue(),
+  params: fc.Arbitrary<JsonValue> = fc
+    .jsonValue()
+    .map((value) => JSON.parse(JSON.stringify(value))),
 ) =>
   fc
     .record(
