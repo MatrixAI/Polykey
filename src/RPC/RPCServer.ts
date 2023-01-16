@@ -153,6 +153,7 @@ class RPCServer {
   ) {
     // This will take a buffer stream of json messages and set up service
     //  handling for it.
+    // Constructing the PromiseCancellable for tracking the active stream
     let resolve: (value: void | PromiseLike<void>) => void;
     const abortController = new AbortController();
     const handlerProm2: PromiseCancellable<void> = new PromiseCancellable(
@@ -161,6 +162,7 @@ class RPCServer {
       },
       abortController,
     );
+    // Putting the PromiseCancellable into the active streams map
     this.activeStreams.add(handlerProm2);
     void handlerProm2.finally(() => this.activeStreams.delete(handlerProm2));
     // While ReadableStream can be converted to AsyncIterable, we want it as
@@ -170,6 +172,8 @@ class RPCServer {
         new rpcUtils.JsonToJsonMessageStream(),
       );
       for await (const dataMessage of pojoStream) {
+        // FIXME: don't bother filtering, we should assume all input messages are request or notification.
+        //  These should be checked by parsing, no need for a type field.
         // Filtering for request and notification messages
         if (
           dataMessage.type === 'JsonRpcRequest' ||

@@ -125,6 +125,40 @@ type UnaryHandler<I extends JSONValue, O extends JSONValue> = Handler<
   Promise<O>
 >;
 
+/**
+ * @property read Read from the output generator
+ * @property write Write to the input generator
+ * @property inputGenerator Low level access to the input generator
+ * @property outputGenerator Low level access to the output generator
+ * @property end Signal end to the input generator
+ * @property close Signal early close to the output generator
+ * @property throw Throw to both generators
+ */
+type DuplexCallerInterface<I extends JSONValue, O extends JSONValue> = {
+  read: () => Promise<IteratorResult<O, void>>;
+  write: (value: I) => Promise<void>;
+  inputGenerator: AsyncGenerator<void, void, I>;
+  outputGenerator: AsyncGenerator<O, void>;
+  end: () => Promise<void>;
+  close: () => Promise<void>;
+  throw: (reason: any) => Promise<void>;
+};
+
+type ServerCallerInterface<O extends JSONValue> = {
+  read: () => Promise<IteratorResult<O, void>>;
+  outputGenerator: AsyncGenerator<O, void>;
+  close: () => Promise<void>;
+  throw: (reason: any) => Promise<void>;
+};
+
+type ClientCallerInterface<I extends JSONValue, O extends JSONValue> = {
+  write: (value: I) => Promise<void>;
+  result: Promise<O>;
+  inputGenerator: AsyncGenerator<void, void, I>;
+  end: () => Promise<void>;
+  throw: (reason: any) => Promise<void>;
+};
+
 export type {
   JsonRpcRequest,
   JsonRpcNotification,
@@ -137,4 +171,7 @@ export type {
   ServerStreamHandler,
   ClientStreamHandler,
   UnaryHandler,
+  DuplexCallerInterface,
+  ServerCallerInterface,
+  ClientCallerInterface,
 };
