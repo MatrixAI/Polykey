@@ -20,14 +20,12 @@ import * as validationErrors from '../validation/errors';
 const jsonStreamParsers = require('@streamparser/json');
 
 class JsonToJsonMessage implements Transformer<Buffer, JsonRpcMessage> {
-  protected parser = new jsonStreamParsers.JSONParser({ separator: '' });
+  protected parser = new jsonStreamParsers.JSONParser({ separator: '', paths: ['$'] });
 
   start: TransformerStartCallback<JsonRpcMessage> = async (controller) => {
     this.parser.onValue = (value) => {
-      if (value.parent === undefined) {
-        const jsonMessage = rpcUtils.parseJsonRpcMessage(value.value);
-        controller.enqueue(jsonMessage);
-      }
+      const jsonMessage = rpcUtils.parseJsonRpcMessage(value.value);
+      controller.enqueue(jsonMessage);
     };
   };
 
