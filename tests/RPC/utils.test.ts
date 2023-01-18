@@ -68,6 +68,29 @@ describe('utils tests', () => {
     { numRuns: 1000 },
   );
 
+  testProp(
+    'Message size limit is enforced',
+    [
+      fc.array(rpcTestUtils.jsonRpcRequestArb(fc.string({ minLength: 100 })), {
+        minLength: 1,
+      }),
+    ],
+    async (messages) => {
+      const parsedStream = rpcTestUtils
+        .jsonRpcStream(messages)
+        .pipeThrough(new rpcTestUtils.BufferStreamToSnippedStream([10]))
+        .pipeThrough(new rpcUtils.JsonToJsonMessageStream(50));
+
+      const doThing = async () => {
+        for await (const _ of parsedStream) {
+          // No touch, only consume
+        }
+      };
+      await expect(doThing()).rejects.toThrow(rpcErrors.ErrorRpcMessageLength);
+    },
+    { numRuns: 1000 },
+  );
+
   // TODO:
   //  - Test for badly structured data
 });

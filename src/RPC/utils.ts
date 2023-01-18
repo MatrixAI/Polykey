@@ -17,9 +17,14 @@ import * as rpcErrors from './errors';
 import * as rpcUtils from './utils';
 import * as utils from '../utils';
 import * as validationErrors from '../validation/errors';
+import { ErrorRpcMessageLength } from "./errors";
 const jsonStreamParsers = require('@streamparser/json');
 
 class JsonToJsonMessage implements Transformer<Buffer, JsonRpcMessage> {
+  protected bytesWritten: number = 0;
+
+  constructor(protected byteLimit: number) {}
+
   protected parser = new jsonStreamParsers.JSONParser({
     separator: '',
     paths: ['$'],
@@ -29,6 +34,7 @@ class JsonToJsonMessage implements Transformer<Buffer, JsonRpcMessage> {
     this.parser.onValue = (value) => {
       const jsonMessage = rpcUtils.parseJsonRpcMessage(value.value);
       controller.enqueue(jsonMessage);
+      this.bytesWritten = 0;
     };
   };
 
@@ -37,17 +43,21 @@ class JsonToJsonMessage implements Transformer<Buffer, JsonRpcMessage> {
     _controller,
   ) => {
     try {
+      this.bytesWritten += chunk.byteLength;
       this.parser.write(chunk);
     } catch (e) {
       throw new rpcErrors.ErrorRpcParse(undefined, { cause: e });
+    }
+    if (this.bytesWritten > this.byteLimit) {
+      throw new rpcErrors.ErrorRpcMessageLength();
     }
   };
 }
 
 // TODO: rename to something more descriptive?
 class JsonToJsonMessageStream extends TransformStream<Buffer, JsonRpcMessage> {
-  constructor() {
-    super(new JsonToJsonMessage());
+  constructor(byteLimit: number = 1024 * 1024) {
+    super(new JsonToJsonMessage(byteLimit));
   }
 }
 
