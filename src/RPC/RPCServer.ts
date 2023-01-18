@@ -12,22 +12,15 @@ import type { JSONValue, POJO } from '../types';
 import type { ConnectionInfo } from '../network/types';
 import type { UnaryHandler } from './types';
 import { ReadableStream } from 'stream/web';
-import {
-  CreateDestroyStartStop,
-  ready,
-} from '@matrixai/async-init/dist/CreateDestroyStartStop';
+import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
 import Logger from '@matrixai/logger';
 import { PromiseCancellable } from '@matrixai/async-cancellable';
 import * as rpcErrors from './errors';
 import * as rpcUtils from './utils';
 import * as grpcUtils from '../grpc/utils';
 
-// FIXME: Might need to be StartStop. Won't know for sure until it's used.
-interface RPCServer extends CreateDestroyStartStop {}
-@CreateDestroyStartStop(
-  new rpcErrors.ErrorRpcRunning(),
-  new rpcErrors.ErrorRpcDestroyed(),
-)
+interface RPCServer extends CreateDestroy {}
+@CreateDestroy()
 class RPCServer {
   static async createRPCServer({
     container,
@@ -41,7 +34,6 @@ class RPCServer {
       container,
       logger,
     });
-    await rpcServer.start();
     logger.info(`Created ${this.name}`);
     return rpcServer;
   }
@@ -64,27 +56,17 @@ class RPCServer {
     this.logger = logger;
   }
 
-  public async start(): Promise<void> {
-    this.logger.info(`Starting ${this.constructor.name}`);
-    this.logger.info(`Started ${this.constructor.name}`);
-  }
-
-  public async stop(): Promise<void> {
-    this.logger.info(`Stopping ${this.constructor.name}`);
+  public async destroy(): Promise<void> {
+    this.logger.info(`Destroying ${this.constructor.name}`);
     // Stopping any active steams
     const activeStreams = this.activeStreams;
     for await (const [activeStream] of activeStreams.entries()) {
       activeStream.cancel(new rpcErrors.ErrorRpcStopping());
     }
-    this.logger.info(`Stopped ${this.constructor.name}`);
-  }
-
-  public async destroy(): Promise<void> {
-    this.logger.info(`Destroying ${this.constructor.name}`);
     this.logger.info(`Destroyed ${this.constructor.name}`);
   }
 
-  @ready(new rpcErrors.ErrorRpcNotRunning())
+  @ready(new rpcErrors.ErrorRpcDestroyed())
   public registerDuplexStreamHandler<I extends JSONValue, O extends JSONValue>(
     method: string,
     handler: DuplexStreamHandler<I, O>,
@@ -92,7 +74,7 @@ class RPCServer {
     this.handlerMap.set(method, handler);
   }
 
-  @ready(new rpcErrors.ErrorRpcNotRunning())
+  @ready(new rpcErrors.ErrorRpcDestroyed())
   public registerUnaryHandler<I extends JSONValue, O extends JSONValue>(
     method: string,
     handler: UnaryHandler<I, O>,
@@ -111,7 +93,7 @@ class RPCServer {
     this.handlerMap.set(method, wrapperDuplex);
   }
 
-  @ready(new rpcErrors.ErrorRpcNotRunning())
+  @ready(new rpcErrors.ErrorRpcDestroyed())
   public registerServerStreamHandler<I extends JSONValue, O extends JSONValue>(
     method: string,
     handler: ServerStreamHandler<I, O>,
@@ -130,7 +112,7 @@ class RPCServer {
     this.handlerMap.set(method, wrapperDuplex);
   }
 
-  @ready(new rpcErrors.ErrorRpcNotRunning())
+  @ready(new rpcErrors.ErrorRpcDestroyed())
   public registerClientStreamHandler<I extends JSONValue, O extends JSONValue>(
     method: string,
     handler: ClientStreamHandler<I, O>,
@@ -146,7 +128,7 @@ class RPCServer {
     this.handlerMap.set(method, wrapperDuplex);
   }
 
-  @ready(new rpcErrors.ErrorRpcNotRunning())
+  @ready(new rpcErrors.ErrorRpcDestroyed())
   public handleStream(
     streamPair: ReadableWritablePair<Buffer, Buffer>,
     connectionInfo: ConnectionInfo,

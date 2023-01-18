@@ -17,7 +17,6 @@ import * as rpcErrors from './errors';
 import * as rpcUtils from './utils';
 import * as utils from '../utils';
 import * as validationErrors from '../validation/errors';
-import { ErrorRpcMessageLength } from "./errors";
 const jsonStreamParsers = require('@streamparser/json');
 
 class JsonToJsonMessage implements Transformer<Buffer, JsonRpcMessage> {

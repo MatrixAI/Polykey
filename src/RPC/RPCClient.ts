@@ -7,13 +7,13 @@ import type {
 } from './types';
 import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import type { JSONValue, POJO } from 'types';
-import { StartStop } from '@matrixai/async-init/dist/StartStop';
+import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
 import Logger from '@matrixai/logger';
 import * as rpcErrors from './errors';
 import * as rpcUtils from './utils';
 
-interface RPCClient extends StartStop {}
-@StartStop()
+interface RPCClient extends CreateDestroy {}
+@CreateDestroy()
 class RPCClient {
   static async createRPCClient({
     streamPairCreateCallback,
@@ -27,7 +27,6 @@ class RPCClient {
       streamPairCreateCallback,
       logger,
     });
-    await rpcClient.start();
     logger.info(`Created ${this.name}`);
     return rpcClient;
   }
@@ -47,22 +46,18 @@ class RPCClient {
     this.streamPairCreateCallback = streamPairCreateCallback;
   }
 
-  public async start(): Promise<void> {
-    this.logger.info(`Starting ${this.constructor.name}`);
-    this.logger.info(`Started ${this.constructor.name}`);
-  }
-
-  public async stop(): Promise<void> {
-    this.logger.info(`Stopping ${this.constructor.name}`);
+  public async destroy(): Promise<void> {
+    this.logger.info(`Destroying ${this.constructor.name}`);
     for await (const [stream] of this.activeStreams.entries()) {
       stream.cancel(new rpcErrors.ErrorRpcStopping());
     }
     for await (const [stream] of this.activeStreams.entries()) {
       await stream;
     }
-    this.logger.info(`Stopped ${this.constructor.name}`);
+    this.logger.info(`Destroyed ${this.constructor.name}`);
   }
 
+  @ready(new rpcErrors.ErrorRpcDestroyed())
   public async duplexStreamCaller<I extends JSONValue, O extends JSONValue>(
     method: string,
     _metadata: POJO,
@@ -134,6 +129,7 @@ class RPCClient {
     };
   }
 
+  @ready(new rpcErrors.ErrorRpcDestroyed())
   public async serverStreamCaller<I extends JSONValue, O extends JSONValue>(
     method: string,
     parameters: I,
@@ -156,6 +152,7 @@ class RPCClient {
     };
   }
 
+  @ready(new rpcErrors.ErrorRpcDestroyed())
   public async clientStreamCaller<I extends JSONValue, O extends JSONValue>(
     method: string,
     metadata: POJO,
@@ -182,6 +179,7 @@ class RPCClient {
     };
   }
 
+  @ready(new rpcErrors.ErrorRpcDestroyed())
   public async unaryCaller<I extends JSONValue, O extends JSONValue>(
     method: string,
     parameters: I,
