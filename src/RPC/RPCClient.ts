@@ -1,34 +1,30 @@
 import type {
-  DuplexCallerInterface,
-  ServerCallerInterface,
   ClientCallerInterface,
+  DuplexCallerInterface,
   JsonRpcRequest,
+  ServerCallerInterface,
+  StreamPairCreateCallback,
 } from './types';
 import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import type { JSONValue, POJO } from 'types';
-import type { ReadableWritablePair } from 'stream/web';
 import { StartStop } from '@matrixai/async-init/dist/StartStop';
 import Logger from '@matrixai/logger';
 import * as rpcErrors from './errors';
 import * as rpcUtils from './utils';
 
-type QuicConnection = {
-  // EstablishStream: (stream: ReadableWritablePair) => Promise<void>;
-};
-
 interface RPCClient extends StartStop {}
 @StartStop()
 class RPCClient {
   static async createRPCClient({
-    quicConnection,
+    streamPairCreateCallback,
     logger = new Logger(this.name),
   }: {
-    quicConnection: QuicConnection;
+    streamPairCreateCallback: StreamPairCreateCallback;
     logger: Logger;
   }) {
     logger.info(`Creating ${this.name}`);
     const rpcClient = new this({
-      quicConnection,
+      streamPairCreateCallback,
       logger,
     });
     await rpcClient.start();
@@ -38,17 +34,17 @@ class RPCClient {
 
   protected logger: Logger;
   protected activeStreams: Set<PromiseCancellable<void>> = new Set();
-  protected quicConnection: QuicConnection;
+  protected streamPairCreateCallback: StreamPairCreateCallback;
 
   public constructor({
-    quicConnection,
+    streamPairCreateCallback,
     logger,
   }: {
-    quicConnection: QuicConnection;
+    streamPairCreateCallback: StreamPairCreateCallback;
     logger: Logger;
   }) {
     this.logger = logger;
-    this.quicConnection = quicConnection;
+    this.streamPairCreateCallback = streamPairCreateCallback;
   }
 
   public async start(): Promise<void> {
@@ -69,9 +65,9 @@ class RPCClient {
 
   public async duplexStreamCaller<I extends JSONValue, O extends JSONValue>(
     method: string,
-    metadata: POJO,
-    streamPair: ReadableWritablePair<Buffer, Buffer>,
+    _metadata: POJO,
   ): Promise<DuplexCallerInterface<I, O>> {
+    const streamPair = await this.streamPairCreateCallback();
     const inputStream = streamPair.readable.pipeThrough(
       new rpcUtils.JsonToJsonMessageStream(),
     );
@@ -118,7 +114,7 @@ class RPCClient {
     // Initiating the input generator
     await input.next();
 
-    const inter: DuplexCallerInterface<I, O> = {
+    return {
       read: () => output.next(),
       write: async (value: I) => {
         await input.next(value);
@@ -136,19 +132,16 @@ class RPCClient {
         await output.throw(reason);
       },
     };
-    return inter;
   }
 
   public async serverStreamCaller<I extends JSONValue, O extends JSONValue>(
     method: string,
     parameters: I,
     metadata: POJO,
-    streamPair: ReadableWritablePair<Buffer, Buffer>,
   ): Promise<ServerCallerInterface<O>> {
     const callerInterface = await this.duplexStreamCaller<I, O>(
       method,
       metadata,
-      streamPair,
     );
     await callerInterface.write(parameters);
     await callerInterface.end();
@@ -166,12 +159,10 @@ class RPCClient {
   public async clientStreamCaller<I extends JSONValue, O extends JSONValue>(
     method: string,
     metadata: POJO,
-    streamPair: ReadableWritablePair<Buffer, Buffer>,
   ): Promise<ClientCallerInterface<I, O>> {
     const callerInterface = await this.duplexStreamCaller<I, O>(
       method,
       metadata,
-      streamPair,
     );
     const output = callerInterface
       .read()
@@ -195,12 +186,10 @@ class RPCClient {
     method: string,
     parameters: I,
     metadata: POJO,
-    streamPair: ReadableWritablePair<Buffer, Buffer>,
   ): Promise<O> {
     const callerInterface = await this.duplexStreamCaller<I, O>(
       method,
       metadata,
-      streamPair,
     );
     await callerInterface.write(parameters);
     const output = await callerInterface.read();

@@ -27,13 +27,13 @@ describe(`${RPCClient.name}`, () => {
       writable: outputStream,
     };
     const rpcClient = await RPCClient.createRPCClient({
+      streamPairCreateCallback: async () => streamPair,
       logger,
-      quicConnection: {},
     });
     const callerInterface = await rpcClient.duplexStreamCaller<
       JSONValue,
       JSONValue
-    >(methodName, { hello: 'world' }, streamPair);
+    >(methodName, { hello: 'world' });
     while (true) {
       const { value, done } = await callerInterface.read();
       if (done) {
@@ -69,13 +69,13 @@ describe(`${RPCClient.name}`, () => {
         writable: outputStream,
       };
       const rpcClient = await RPCClient.createRPCClient({
+        streamPairCreateCallback: async () => streamPair,
         logger,
-        quicConnection: {},
       });
       const callerInterface = await rpcClient.serverStreamCaller<
         JSONValue,
         JSONValue
-      >(methodName, params as JSONValue, {}, streamPair);
+      >(methodName, params as JSONValue, {});
       const values: Array<JSONValue> = [];
       for await (const value of callerInterface.outputGenerator) {
         values.push(value);
@@ -104,13 +104,13 @@ describe(`${RPCClient.name}`, () => {
         writable: outputStream,
       };
       const rpcClient = await RPCClient.createRPCClient({
+        streamPairCreateCallback: async () => streamPair,
         logger,
-        quicConnection: {},
       });
       const callerInterface = await rpcClient.clientStreamCaller<
         JSONValue,
         JSONValue
-      >(methodName, {}, streamPair);
+      >(methodName, {});
       for (const param of params) {
         await callerInterface.write(param as JSONValue);
       }
@@ -141,14 +141,13 @@ describe(`${RPCClient.name}`, () => {
         writable: outputStream,
       };
       const rpcClient = await RPCClient.createRPCClient({
+        streamPairCreateCallback: async () => streamPair,
         logger,
-        quicConnection: {},
       });
       const result = await rpcClient.unaryCaller<JSONValue, JSONValue>(
         methodName,
         params as JSONValue,
         {},
-        streamPair,
       );
       expect(result).toStrictEqual(message.params);
       expect((await outputResult)[0]?.toString()).toStrictEqual(

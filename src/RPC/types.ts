@@ -1,6 +1,7 @@
 import type { JSONValue, POJO } from '../types';
 import type { ConnectionInfo } from '../network/types';
 import type { ContextCancellable } from '../contexts/types';
+import type { ReadableWritablePair } from 'stream/web';
 
 /**
  * This is the JSON RPC request object. this is the generic message type used for the RPC.
@@ -159,6 +160,10 @@ type ClientCallerInterface<I extends JSONValue, O extends JSONValue> = {
   throw: (reason: any) => Promise<void>;
 };
 
+type StreamPairCreateCallback = () => Promise<
+  ReadableWritablePair<Buffer, Buffer>
+>;
+
 export type {
   JsonRpcRequest,
   JsonRpcNotification,
@@ -174,4 +179,5 @@ export type {
   DuplexCallerInterface,
   ServerCallerInterface,
   ClientCallerInterface,
+  StreamPairCreateCallback,
 };
