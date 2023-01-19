@@ -1,7 +1,7 @@
 import type {
   ClientCallerInterface,
   DuplexCallerInterface,
-  JsonRpcRequest,
+  JsonRpcRequestMessage,
   ServerCallerInterface,
   StreamPairCreateCallback,
 } from './types';
@@ -64,7 +64,7 @@ class RPCClient {
   ): Promise<DuplexCallerInterface<I, O>> {
     const streamPair = await this.streamPairCreateCallback();
     const inputStream = streamPair.readable.pipeThrough(
-      new rpcUtils.JsonToJsonMessageStream(),
+      new rpcUtils.JsonToJsonMessageStream(rpcUtils.parseJsonRpcResponse),
     );
     const outputTransform = new rpcUtils.JsonMessageToJsonStream();
     void outputTransform.readable.pipeTo(streamPair.writable);
@@ -75,9 +75,8 @@ class RPCClient {
       try {
         while (true) {
           value = yield;
-          const message: JsonRpcRequest<I> = {
+          const message: JsonRpcRequestMessage<I> = {
             method,
-            type: 'JsonRpcRequest',
             jsonrpc: '2.0',
             id: null,
             params: value,
@@ -96,12 +95,12 @@ class RPCClient {
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
-        if (
-          value?.type === 'JsonRpcRequest' ||
-          value?.type === 'JsonRpcNotification'
-        ) {
-          yield value.params as O;
+        if ('error' in value) {
+          throw Error('TMP message was an error message', {
+            cause: value.error,
+          });
         }
+        yield value.result as O;
       }
     };
     const output = outputGen();

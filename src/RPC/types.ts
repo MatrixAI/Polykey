@@ -6,8 +6,7 @@ import type { ReadableWritablePair } from 'stream/web';
 /**
  * This is the JSON RPC request object. this is the generic message type used for the RPC.
  */
-type JsonRpcRequest<T extends JSONValue | unknown = unknown> = {
-  type: 'JsonRpcRequest';
+type JsonRpcRequestMessage<T extends JSONValue | unknown = unknown> = {
   // A String specifying the version of the JSON-RPC protocol. MUST be exactly "2.0"
   jsonrpc: '2.0';
   // A String containing the name of the method to be invoked. Method names that begin with the word rpc followed by a
@@ -23,8 +22,7 @@ type JsonRpcRequest<T extends JSONValue | unknown = unknown> = {
   id: string | number | null;
 };
 
-type JsonRpcNotification<T extends JSONValue | unknown = unknown> = {
-  type: 'JsonRpcNotification';
+type JsonRpcRequestNotification<T extends JSONValue | unknown = unknown> = {
   // A String specifying the version of the JSON-RPC protocol. MUST be exactly "2.0"
   jsonrpc: '2.0';
   // A String containing the name of the method to be invoked. Method names that begin with the word rpc followed by a
@@ -37,7 +35,6 @@ type JsonRpcNotification<T extends JSONValue | unknown = unknown> = {
 };
 
 type JsonRpcResponseResult<T extends JSONValue | unknown = unknown> = {
-  type: 'JsonRpcResponseResult';
   // A String specifying the version of the JSON-RPC protocol. MUST be exactly "2.0".
   jsonrpc: '2.0';
   // This member is REQUIRED on success.
@@ -51,14 +48,13 @@ type JsonRpcResponseResult<T extends JSONValue | unknown = unknown> = {
   id: string | number | null;
 };
 
-type JsonRpcResponseError<T extends JSONValue | unknown = unknown> = {
-  type: 'JsonRpcResponseError';
+type JsonRpcResponseError = {
   // A String specifying the version of the JSON-RPC protocol. MUST be exactly "2.0".
   jsonrpc: '2.0';
   // This member is REQUIRED on error.
   //  This member MUST NOT exist if there was no error triggered during invocation.
   //  The value for this member MUST be an Object as defined in section 5.1.
-  error: JsonRpcError<T>;
+  error: JsonRpcError;
   // This member is REQUIRED.
   //  It MUST be the same as the value of the id member in the Request Object.
   //  If there was an error in detecting the id in the Request object (e.g. Parse error/Invalid Request),
@@ -78,7 +74,7 @@ type JsonRpcResponseError<T extends JSONValue | unknown = unknown> = {
 //  -32603	Internal error	Internal JSON-RPC error.
 //  -32000 to -32099
 
-type JsonRpcError<T extends JSONValue | unknown = unknown> = {
+type JsonRpcError = {
   // A Number that indicates the error type that occurred.
   //  This MUST be an integer.
   code: number;
@@ -88,19 +84,20 @@ type JsonRpcError<T extends JSONValue | unknown = unknown> = {
   // A Primitive or Structured value that contains additional information about the error.
   //  This may be omitted.
   //  The value of this member is defined by the Server (e.g. detailed error information, nested errors etc.).
-  data?: T;
+  data?: JSONValue;
 };
 
-type JsonRpcResponse<
-  T extends JSONValue | unknown = unknown,
-  K extends JSONValue | unknown = unknown,
-> = JsonRpcResponseResult<T> | JsonRpcResponseError<K>;
+type JsonRpcRequest<T extends JSONValue | unknown = unknown> =
+  | JsonRpcRequestMessage<T>
+  | JsonRpcRequestNotification<T>;
+
+type JsonRpcResponse<T extends JSONValue | unknown = unknown> =
+  | JsonRpcResponseResult<T>
+  | JsonRpcResponseError;
 
 type JsonRpcMessage<T extends JSONValue | unknown = unknown> =
   | JsonRpcRequest<T>
-  | JsonRpcNotification<T>
-  | JsonRpcResponseResult<T>
-  | JsonRpcResponseError<T>;
+  | JsonRpcResponse<T>;
 
 // Handler types
 type Handler<I, O> = (
@@ -165,11 +162,12 @@ type StreamPairCreateCallback = () => Promise<
 >;
 
 export type {
-  JsonRpcRequest,
-  JsonRpcNotification,
+  JsonRpcRequestMessage,
+  JsonRpcRequestNotification,
   JsonRpcResponseResult,
   JsonRpcResponseError,
   JsonRpcError,
+  JsonRpcRequest,
   JsonRpcResponse,
   JsonRpcMessage,
   DuplexStreamHandler,

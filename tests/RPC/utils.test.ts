@@ -12,7 +12,9 @@ describe('utils tests', () => {
     async (messages) => {
       const parsedStream = rpcTestUtils
         .jsonRpcStream(messages)
-        .pipeThrough(new rpcUtils.JsonToJsonMessageStream()); // Converting back.
+        .pipeThrough(
+          new rpcUtils.JsonToJsonMessageStream(rpcUtils.parseJsonRpcMessage),
+        ); // Converting back.
 
       const asd = await AsyncIterable.as(parsedStream).toArray();
       expect(asd).toEqual(messages);
@@ -27,7 +29,9 @@ describe('utils tests', () => {
       const parsedStream = rpcTestUtils
         .jsonRpcStream(messages)
         .pipeThrough(new rpcTestUtils.BufferStreamToSnippedStream(snippattern)) // Imaginary internet here
-        .pipeThrough(new rpcUtils.JsonToJsonMessageStream()); // Converting back.
+        .pipeThrough(
+          new rpcUtils.JsonToJsonMessageStream(rpcUtils.parseJsonRpcMessage),
+        ); // Converting back.
 
       const asd = await AsyncIterable.as(parsedStream).toArray();
       expect(asd).toStrictEqual(messages);
@@ -50,7 +54,9 @@ describe('utils tests', () => {
         .jsonRpcStream(messages)
         .pipeThrough(new rpcTestUtils.BufferStreamToSnippedStream(snippattern)) // Imaginary internet here
         .pipeThrough(new rpcTestUtils.BufferStreamToNoisyStream(noise)) // Adding bad data to the stream
-        .pipeThrough(new rpcUtils.JsonToJsonMessageStream()); // Converting back.
+        .pipeThrough(
+          new rpcUtils.JsonToJsonMessageStream(rpcUtils.parseJsonRpcMessage),
+        ); // Converting back.
 
       await expect(AsyncIterable.as(parsedStream).toArray()).rejects.toThrow(
         rpcErrors.ErrorRpcParse,
@@ -61,7 +67,7 @@ describe('utils tests', () => {
 
   testProp(
     'can parse messages',
-    [rpcTestUtils.jsonRpcMessageArb],
+    [rpcTestUtils.jsonRpcMessageArb()],
     async (message) => {
       rpcUtils.parseJsonRpcMessage(message);
     },
@@ -71,15 +77,23 @@ describe('utils tests', () => {
   testProp(
     'Message size limit is enforced',
     [
-      fc.array(rpcTestUtils.jsonRpcRequestArb(fc.string({ minLength: 100 })), {
-        minLength: 1,
-      }),
+      fc.array(
+        rpcTestUtils.jsonRpcRequestMessageArb(fc.string({ minLength: 100 })),
+        {
+          minLength: 1,
+        },
+      ),
     ],
     async (messages) => {
       const parsedStream = rpcTestUtils
         .jsonRpcStream(messages)
         .pipeThrough(new rpcTestUtils.BufferStreamToSnippedStream([10]))
-        .pipeThrough(new rpcUtils.JsonToJsonMessageStream(50));
+        .pipeThrough(
+          new rpcUtils.JsonToJsonMessageStream(
+            rpcUtils.parseJsonRpcMessage,
+            50,
+          ),
+        );
 
       const doThing = async () => {
         for await (const _ of parsedStream) {

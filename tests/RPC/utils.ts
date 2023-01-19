@@ -7,10 +7,12 @@ import type { POJO } from '@/types';
 import type {
   JsonRpcError,
   JsonRpcMessage,
-  JsonRpcNotification,
-  JsonRpcRequest,
+  JsonRpcRequestNotification,
+  JsonRpcRequestMessage,
   JsonRpcResponseError,
   JsonRpcResponseResult,
+  JsonRpcResponse,
+  JsonRpcRequest,
 } from '@/RPC/types';
 import type { JsonValue } from 'fast-check';
 import { ReadableStream, WritableStream, TransformStream } from 'stream/web';
@@ -100,11 +102,13 @@ const jsonRpcStream = (messages: Array<POJO>) => {
   });
 };
 
-const jsonRpcRequestArb = (
+const safeJsonValueArb = fc
+  .jsonValue()
+  .map((value) => JSON.parse(JSON.stringify(value)));
+
+const jsonRpcRequestMessageArb = (
   method: fc.Arbitrary<string> = fc.string(),
-  params: fc.Arbitrary<JsonValue> = fc
-    .jsonValue()
-    .map((value) => JSON.parse(JSON.stringify(value))),
+  params: fc.Arbitrary<JsonValue> = safeJsonValueArb,
 ) =>
   fc
     .record(
@@ -119,37 +123,55 @@ const jsonRpcRequestArb = (
         requiredKeys: ['type', 'jsonrpc', 'method', 'id'],
       },
     )
+    .noShrink() as fc.Arbitrary<JsonRpcRequestMessage>;
+
+const jsonRpcRequestNotificationArb = (
+  method: fc.Arbitrary<string> = fc.string(),
+  params: fc.Arbitrary<JsonValue> = safeJsonValueArb,
+) =>
+  fc
+    .record(
+      {
+        type: fc.constant('JsonRpcNotification'),
+        jsonrpc: fc.constant('2.0'),
+        method: method,
+        params: params,
+      },
+      {
+        requiredKeys: ['type', 'jsonrpc', 'method'],
+      },
+    )
+    .noShrink() as fc.Arbitrary<JsonRpcRequestNotification>;
+
+const jsonRpcRequestArb = (
+  method: fc.Arbitrary<string> = fc.string(),
+  params: fc.Arbitrary<JsonValue> = safeJsonValueArb,
+) =>
+  fc
+    .oneof(
+      jsonRpcRequestMessageArb(method, params),
+      jsonRpcRequestNotificationArb(method, params),
+    )
     .noShrink() as fc.Arbitrary<JsonRpcRequest>;
 
-const jsonRpcNotificationArb = fc
-  .record(
-    {
-      type: fc.constant('JsonRpcNotification'),
+const jsonRpcResponseResultArb = (
+  result: fc.Arbitrary<JsonValue> = safeJsonValueArb,
+) =>
+  fc
+    .record({
+      type: fc.constant('JsonRpcResponseResult'),
       jsonrpc: fc.constant('2.0'),
-      method: fc.string(),
-      params: fc.jsonValue(),
-    },
-    {
-      requiredKeys: ['type', 'jsonrpc', 'method'],
-    },
-  )
-  .noShrink() as fc.Arbitrary<JsonRpcNotification>;
-
-const jsonRpcResponseResultArb = fc
-  .record({
-    type: fc.constant('JsonRpcResponseResult'),
-    jsonrpc: fc.constant('2.0'),
-    result: fc.jsonValue(),
-    id: fc.oneof(fc.string(), fc.integer(), fc.constant(null)),
-  })
-  .noShrink() as fc.Arbitrary<JsonRpcResponseResult>;
+      result: result,
+      id: fc.oneof(fc.string(), fc.integer(), fc.constant(null)),
+    })
+    .noShrink() as fc.Arbitrary<JsonRpcResponseResult>;
 
 const jsonRpcErrorArb = fc
   .record(
     {
       code: fc.integer(),
       message: fc.string(),
-      data: fc.jsonValue(),
+      data: safeJsonValueArb,
     },
     {
       requiredKeys: ['code', 'message'],
@@ -166,21 +188,28 @@ const jsonRpcResponseErrorArb = fc
   })
   .noShrink() as fc.Arbitrary<JsonRpcResponseError>;
 
-const jsonRpcMessageArb = fc
-  .oneof(
-    jsonRpcRequestArb(),
-    jsonRpcNotificationArb,
-    jsonRpcResponseResultArb,
-    jsonRpcResponseErrorArb,
-  )
-  .noShrink() as fc.Arbitrary<JsonRpcMessage>;
+const jsonRpcResponseArb = (
+  result: fc.Arbitrary<JsonValue> = safeJsonValueArb,
+) =>
+  fc
+    .oneof(jsonRpcResponseResultArb(result), jsonRpcResponseErrorArb)
+    .noShrink() as fc.Arbitrary<JsonRpcResponse>;
+
+const jsonRpcMessageArb = (
+  method: fc.Arbitrary<string> = fc.string(),
+  params: fc.Arbitrary<JsonValue> = safeJsonValueArb,
+  result: fc.Arbitrary<JsonValue> = safeJsonValueArb,
+) =>
+  fc
+    .oneof(jsonRpcRequestArb(method, params), jsonRpcResponseArb(result))
+    .noShrink() as fc.Arbitrary<JsonRpcMessage>;
 
 const snippingPatternArb = fc
   .array(fc.integer({ min: 1, max: 32 }), { minLength: 100, size: 'medium' })
   .noShrink();
 
 const jsonMessagesArb = fc
-  .array(jsonRpcRequestArb(), { minLength: 2 })
+  .array(jsonRpcRequestMessageArb(), { minLength: 2 })
   .noShrink();
 
 function streamToArray<T>(): [Promise<Array<T>>, WritableStream<T>] {
@@ -200,44 +229,20 @@ function streamToArray<T>(): [Promise<Array<T>>, WritableStream<T>] {
   return [result.p, outputStream];
 }
 
-class Tap<T> implements Transformer<T, T> {
-  protected iteration = 0;
-  protected tapIterator;
-
-  constructor(tapIterator: (chunk: T, iteration: number) => Promise<void>) {
-    this.tapIterator = tapIterator;
-  }
-
-  transform: TransformerTransformCallback<T, T> = async (chunk, controller) => {
-    await this.tapIterator(chunk, this.iteration);
-    controller.enqueue(chunk);
-    this.iteration += 1;
-  };
-}
-
-/**
- * This is used to convert regular chunks into randomly sized chunks based on
- * a provided pattern. This is to replicate randomness introduced by packets
- * splitting up the data.
- */
-class TapStream<T> extends TransformStream<T, T> {
-  constructor(tapIterator: (chunk: T, iteration: number) => Promise<void>) {
-    super(new Tap<T>(tapIterator));
-  }
-}
-
 export {
   BufferStreamToSnippedStream,
   BufferStreamToNoisyStream,
   jsonRpcStream,
+  safeJsonValueArb,
+  jsonRpcRequestMessageArb,
+  jsonRpcRequestNotificationArb,
   jsonRpcRequestArb,
-  jsonRpcNotificationArb,
   jsonRpcResponseResultArb,
   jsonRpcErrorArb,
   jsonRpcResponseErrorArb,
+  jsonRpcResponseArb,
   jsonRpcMessageArb,
   snippingPatternArb,
   jsonMessagesArb,
   streamToArray,
-  TapStream,
 };

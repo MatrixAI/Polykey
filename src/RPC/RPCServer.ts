@@ -17,7 +17,6 @@ import Logger from '@matrixai/logger';
 import { PromiseCancellable } from '@matrixai/async-cancellable';
 import * as rpcErrors from './errors';
 import * as rpcUtils from './utils';
-import * as grpcUtils from '../grpc/utils';
 
 interface RPCServer extends CreateDestroy {}
 @CreateDestroy()
@@ -151,18 +150,10 @@ class RPCServer {
     //  a generator.
     const inputGen = async function* () {
       const pojoStream = streamPair.readable.pipeThrough(
-        new rpcUtils.JsonToJsonMessageStream(),
+        new rpcUtils.JsonToJsonMessageStream(rpcUtils.parseJsonRpcRequest),
       );
       for await (const dataMessage of pojoStream) {
-        // FIXME: don't bother filtering, we should assume all input messages are request or notification.
-        //  These should be checked by parsing, no need for a type field.
-        // Filtering for request and notification messages
-        if (
-          dataMessage.type === 'JsonRpcRequest' ||
-          dataMessage.type === 'JsonRpcNotification'
-        ) {
-          yield dataMessage;
-        }
+        yield dataMessage;
       }
     };
     const container = this.container;
@@ -203,7 +194,6 @@ class RPCServer {
           ctx,
         )) {
           const responseMessage: JsonRpcResponseResult<JSONValue> = {
-            type: 'JsonRpcResponseResult',
             jsonrpc: '2.0',
             result: response,
             id: null,
@@ -216,10 +206,9 @@ class RPCServer {
         const rpcError: JsonRpcError = {
           code: e.exitCode,
           message: e.description,
-          data: grpcUtils.fromError(e),
+          data: rpcUtils.fromError(e),
         };
         const rpcErrorMessage: JsonRpcResponseError = {
-          type: 'JsonRpcResponseError',
           jsonrpc: '2.0',
           error: rpcError,
           id: null,

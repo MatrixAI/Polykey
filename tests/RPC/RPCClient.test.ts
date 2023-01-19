@@ -1,6 +1,6 @@
 import type { ReadableWritablePair } from 'stream/web';
 import type { JSONValue } from '@/types';
-import type { JsonRpcRequest } from '@/RPC/types';
+import type { JsonRpcRequestMessage } from '@/RPC/types';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { testProp, fc } from '@fast-check/jest';
 import RPCClient from '@/RPC/RPCClient';
@@ -14,7 +14,7 @@ describe(`${RPCClient.name}`, () => {
 
   const methodName = 'testMethod';
   const specificMessageArb = fc
-    .array(rpcTestUtils.jsonRpcRequestArb(), {
+    .array(rpcTestUtils.jsonRpcResponseResultArb(), {
       minLength: 5,
     })
     .noShrink();
@@ -43,13 +43,12 @@ describe(`${RPCClient.name}`, () => {
       }
       await callerInterface.write(value);
     }
-    const expectedMessages: Array<JsonRpcRequest> = messages.map((v) => {
-      const request: JsonRpcRequest = {
-        type: 'JsonRpcRequest',
+    const expectedMessages: Array<JsonRpcRequestMessage> = messages.map((v) => {
+      const request: JsonRpcRequestMessage = {
         jsonrpc: '2.0',
         method: methodName,
         id: null,
-        ...(v.params === undefined ? {} : { params: v.params }),
+        ...(v.result === undefined ? {} : { params: v.result }),
       };
       return request;
     });
@@ -80,12 +79,11 @@ describe(`${RPCClient.name}`, () => {
       for await (const value of callerInterface.outputGenerator) {
         values.push(value);
       }
-      const expectedValues = messages.map((v) => v.params);
+      const expectedValues = messages.map((v) => v.result);
       expect(values).toStrictEqual(expectedValues);
       expect((await outputResult)[0]?.toString()).toStrictEqual(
         JSON.stringify({
           method: methodName,
-          type: 'JsonRpcRequest',
           jsonrpc: '2.0',
           id: null,
           params,
@@ -95,7 +93,7 @@ describe(`${RPCClient.name}`, () => {
   );
   testProp(
     'generic client stream caller',
-    [rpcTestUtils.jsonRpcRequestArb(), fc.array(fc.jsonValue())],
+    [rpcTestUtils.jsonRpcResponseResultArb(), fc.array(fc.jsonValue())],
     async (message, params) => {
       const inputStream = rpcTestUtils.jsonRpcStream([message]);
       const [outputResult, outputStream] = rpcTestUtils.streamToArray<Buffer>();
@@ -115,11 +113,10 @@ describe(`${RPCClient.name}`, () => {
         await callerInterface.write(param as JSONValue);
       }
       await callerInterface.end();
-      expect(await callerInterface.result).toStrictEqual(message.params);
+      expect(await callerInterface.result).toStrictEqual(message.result);
       const expectedOutput = params.map((v) =>
         JSON.stringify({
           method: methodName,
-          type: 'JsonRpcRequest',
           jsonrpc: '2.0',
           id: null,
           params: v,
@@ -132,7 +129,7 @@ describe(`${RPCClient.name}`, () => {
   );
   testProp(
     'generic unary caller',
-    [rpcTestUtils.jsonRpcRequestArb(), fc.jsonValue()],
+    [rpcTestUtils.jsonRpcResponseResultArb(), fc.jsonValue()],
     async (message, params) => {
       const inputStream = rpcTestUtils.jsonRpcStream([message]);
       const [outputResult, outputStream] = rpcTestUtils.streamToArray();
@@ -149,11 +146,10 @@ describe(`${RPCClient.name}`, () => {
         params as JSONValue,
         {},
       );
-      expect(result).toStrictEqual(message.params);
+      expect(result).toStrictEqual(message.result);
       expect((await outputResult)[0]?.toString()).toStrictEqual(
         JSON.stringify({
           method: methodName,
-          type: 'JsonRpcRequest',
           jsonrpc: '2.0',
           id: null,
           params: params,
