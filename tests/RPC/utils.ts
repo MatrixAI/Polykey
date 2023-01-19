@@ -2,6 +2,7 @@ import type {
   Transformer,
   TransformerFlushCallback,
   TransformerTransformCallback,
+  ReadableWritablePair,
 } from 'stream/web';
 import type { POJO } from '@/types';
 import type {
@@ -229,6 +230,53 @@ function streamToArray<T>(): [Promise<Array<T>>, WritableStream<T>] {
   return [result.p, outputStream];
 }
 
+class TapTransformer<I> implements Transformer<I, I> {
+  protected iteration = 0;
+
+  constructor(
+    protected tapCallback: (chunk: I, iteration: number) => Promise<void>,
+  ) {}
+
+  transform: TransformerTransformCallback<I, I> = async (chunk, controller) => {
+    await this.tapCallback(chunk, this.iteration);
+    controller.enqueue(chunk);
+    this.iteration += 1;
+  };
+}
+
+type TapCallback<T> = (chunk: T, iteration: number) => Promise<void>;
+
+/**
+ * This is used to convert regular chunks into randomly sized chunks based on
+ * a provided pattern. This is to replicate randomness introduced by packets
+ * splitting up the data.
+ */
+class TapTransformerStream<I> extends TransformStream {
+  constructor(tapCallback: TapCallback<I> = async () => {}) {
+    super(new TapTransformer<I>(tapCallback));
+  }
+}
+
+function createTapPairs<A, B>(
+  forwardTapCallback: TapCallback<A> = async () => {},
+  reverseTapCallback: TapCallback<B> = async () => {},
+) {
+  const forwardTap = new TapTransformerStream<A>(forwardTapCallback);
+  const reverseTap = new TapTransformerStream<B>(reverseTapCallback);
+  const clientPair: ReadableWritablePair = {
+    readable: reverseTap.readable,
+    writable: forwardTap.writable,
+  };
+  const serverPair: ReadableWritablePair = {
+    readable: forwardTap.readable,
+    writable: reverseTap.writable,
+  };
+  return {
+    clientPair,
+    serverPair,
+  };
+}
+
 export {
   BufferStreamToSnippedStream,
   BufferStreamToNoisyStream,
@@ -245,4 +293,6 @@ export {
   snippingPatternArb,
   jsonMessagesArb,
   streamToArray,
+  TapTransformerStream,
+  createTapPairs,
 };

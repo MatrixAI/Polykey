@@ -170,8 +170,9 @@ class RPCServer {
         throw Error('TMP Stream closed early');
       }
       const method = leadingMetadataMessage.value.method;
-      const _metadata = leadingMetadataMessage.value.params;
+      const initialParams = leadingMetadataMessage.value.params;
       const dataGen = async function* () {
+        yield initialParams as JSONValue;
         for await (const data of input) {
           yield data.params as JSONValue;
         }
