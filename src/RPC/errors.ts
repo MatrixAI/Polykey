@@ -42,6 +42,11 @@ class ErrorRpcMessageLength<T> extends ErrorRpc<T> {
   exitCode = sysexits.DATAERR;
 }
 
+class ErrorRpcRemoteError<T> extends ErrorRpc<T> {
+  static description = 'RPC Message exceeds maximum size';
+  exitCode = sysexits.UNAVAILABLE;
+}
+
 export {
   ErrorRpc,
   ErrorRpcRunning,
@@ -52,4 +57,5 @@ export {
   ErrorRpcHandlerMissing,
   ErrorRpcProtocal,
   ErrorRpcMessageLength,
+  ErrorRpcRemoteError,
 };

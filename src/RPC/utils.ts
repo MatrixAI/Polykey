@@ -15,9 +15,11 @@ import type {
 } from 'RPC/types';
 import type { JSONValue } from '../types';
 import { TransformStream } from 'stream/web';
+import { AbstractError } from '@matrixai/errors';
 import * as rpcErrors from './errors';
 import * as utils from '../utils';
 import * as validationErrors from '../validation/errors';
+import * as errors from '../errors';
 const jsonStreamParsers = require('@streamparser/json');
 
 class JsonToJsonMessage<T extends JsonRpcMessage>
@@ -313,7 +315,7 @@ function sensitiveReplacer(key: string, value: any) {
 }
 
 /**
- * Serializes Error instances into GRPC errors
+ * Serializes Error instances into RPC errors
  * Use this on the sending side to send exceptions
  * Do not send exceptions to clients you do not trust
  * If sending to an agent (rather than a client), set sensitive to true to
@@ -321,10 +323,106 @@ function sensitiveReplacer(key: string, value: any) {
  */
 function fromError(error: Error, sensitive: boolean = false) {
   if (sensitive) {
-    return { error: JSON.stringify(error, sensitiveReplacer) };
+    return JSON.stringify(error, sensitiveReplacer);
   } else {
-    return { error: JSON.stringify(error, replacer) };
+    return JSON.stringify(error, replacer);
   }
+}
+
+/**
+ * Error constructors for non-Polykey errors
+ * Allows these errors to be reconstructed from GRPC metadata
+ */
+const standardErrors = {
+  Error,
+  TypeError,
+  SyntaxError,
+  ReferenceError,
+  EvalError,
+  RangeError,
+  URIError,
+  AggregateError,
+  AbstractError,
+};
+
+/**
+ * Reviver function for deserialising errors sent over GRPC (used by
+ * `JSON.parse` in `toError`)
+ * The final result returned will always be an error - if the deserialised
+ * data is of an unknown type then this will be wrapped as an
+ * `ErrorPolykeyUnknown`
+ */
+function reviver(key: string, value: any): any {
+  // If the value is an error then reconstruct it
+  if (
+    typeof value === 'object' &&
+    typeof value.type === 'string' &&
+    typeof value.data === 'object'
+  ) {
+    try {
+      let eClass = errors[value.type];
+      if (eClass != null) return eClass.fromJSON(value);
+      eClass = standardErrors[value.type];
+      if (eClass != null) {
+        let e;
+        switch (eClass) {
+          case AbstractError:
+            return eClass.fromJSON();
+          case AggregateError:
+            if (
+              !Array.isArray(value.data.errors) ||
+              typeof value.data.message !== 'string' ||
+              ('stack' in value.data && typeof value.data.stack !== 'string')
+            ) {
+              throw new TypeError(`cannot decode JSON to ${value.type}`);
+            }
+            e = new eClass(value.data.errors, value.data.message);
+            e.stack = value.data.stack;
+            break;
+          default:
+            if (
+              typeof value.data.message !== 'string' ||
+              ('stack' in value.data && typeof value.data.stack !== 'string')
+            ) {
+              throw new TypeError(`Cannot decode JSON to ${value.type}`);
+            }
+            e = new eClass(value.data.message);
+            e.stack = value.data.stack;
+            break;
+        }
+        return e;
+      }
+    } catch (e) {
+      // If `TypeError` which represents decoding failure
+      // then return value as-is
+      // Any other exception is a bug
+      if (!(e instanceof TypeError)) {
+        throw e;
+      }
+    }
+    // Other values are returned as-is
+    return value;
+  } else if (key === '') {
+    // Root key will be ''
+    // Reaching here means the root JSON value is not a valid exception
+    // Therefore ErrorPolykeyUnknown is only ever returned at the top-level
+    const error = new errors.ErrorPolykeyUnknown('Unknown error JSON', {
+      data: {
+        json: value,
+      },
+    });
+    return error;
+  } else {
+    return value;
+  }
+}
+
+function toError(errorData) {
+  if (errorData == null) return new rpcErrors.ErrorRpcRemoteError();
+  const error = JSON.parse(errorData, reviver);
+  return new rpcErrors.ErrorRpcRemoteError(error.message, {
+    cause: error,
+  });
 }
 
 export {
@@ -338,4 +436,5 @@ export {
   parseJsonRpcResponse,
   parseJsonRpcMessage,
   fromError,
+  toError,
 };

@@ -43,6 +43,7 @@ class RPCServer {
   protected handlerMap: Map<string, DuplexStreamHandler<JSONValue, JSONValue>> =
     new Map();
   private activeStreams: Set<PromiseCancellable<void>> = new Set();
+  private events: EventTarget = new EventTarget();
 
   public constructor({
     container,
@@ -137,15 +138,15 @@ class RPCServer {
     // Constructing the PromiseCancellable for tracking the active stream
     let resolve: (value: void | PromiseLike<void>) => void;
     const abortController = new AbortController();
-    const handlerProm2: PromiseCancellable<void> = new PromiseCancellable(
+    const handlerProm: PromiseCancellable<void> = new PromiseCancellable(
       (resolve_) => {
         resolve = resolve_;
       },
       abortController,
     );
     // Putting the PromiseCancellable into the active streams map
-    this.activeStreams.add(handlerProm2);
-    void handlerProm2.finally(() => this.activeStreams.delete(handlerProm2));
+    this.activeStreams.add(handlerProm);
+    void handlerProm.finally(() => this.activeStreams.delete(handlerProm));
     // While ReadableStream can be converted to AsyncIterable, we want it as
     //  a generator.
     const inputGen = async function* () {
@@ -167,7 +168,7 @@ class RPCServer {
       if (ctx.signal.aborted) throw ctx.signal.reason;
       const leadingMetadataMessage = await input.next();
       if (leadingMetadataMessage.done === true) {
-        throw Error('TMP Stream closed early');
+        throw new rpcErrors.ErrorRpcProtocal('Stream ended before response');
       }
       const method = leadingMetadataMessage.value.method;
       const initialParams = leadingMetadataMessage.value.params;

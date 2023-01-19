@@ -19,6 +19,7 @@ import type { JsonValue } from 'fast-check';
 import { ReadableStream, WritableStream, TransformStream } from 'stream/web';
 import { fc } from '@fast-check/jest';
 import * as utils from '@/utils';
+import { fromError } from '@/RPC/utils';
 
 class BufferStreamToSnipped implements Transformer<Buffer, Buffer> {
   protected buffer = Buffer.alloc(0);
@@ -107,6 +108,8 @@ const safeJsonValueArb = fc
   .jsonValue()
   .map((value) => JSON.parse(JSON.stringify(value)));
 
+const idArb = fc.oneof(fc.string(), fc.integer(), fc.constant(null));
+
 const jsonRpcRequestMessageArb = (
   method: fc.Arbitrary<string> = fc.string(),
   params: fc.Arbitrary<JsonValue> = safeJsonValueArb,
@@ -114,14 +117,13 @@ const jsonRpcRequestMessageArb = (
   fc
     .record(
       {
-        type: fc.constant('JsonRpcRequest'),
         jsonrpc: fc.constant('2.0'),
         method: method,
         params: params,
-        id: fc.oneof(fc.string(), fc.integer(), fc.constant(null)),
+        id: idArb,
       },
       {
-        requiredKeys: ['type', 'jsonrpc', 'method', 'id'],
+        requiredKeys: ['jsonrpc', 'method', 'id'],
       },
     )
     .noShrink() as fc.Arbitrary<JsonRpcRequestMessage>;
@@ -133,13 +135,12 @@ const jsonRpcRequestNotificationArb = (
   fc
     .record(
       {
-        type: fc.constant('JsonRpcNotification'),
         jsonrpc: fc.constant('2.0'),
         method: method,
         params: params,
       },
       {
-        requiredKeys: ['type', 'jsonrpc', 'method'],
+        requiredKeys: ['jsonrpc', 'method'],
       },
     )
     .noShrink() as fc.Arbitrary<JsonRpcRequestNotification>;
@@ -160,40 +161,40 @@ const jsonRpcResponseResultArb = (
 ) =>
   fc
     .record({
-      type: fc.constant('JsonRpcResponseResult'),
       jsonrpc: fc.constant('2.0'),
       result: result,
-      id: fc.oneof(fc.string(), fc.integer(), fc.constant(null)),
+      id: idArb,
     })
     .noShrink() as fc.Arbitrary<JsonRpcResponseResult>;
 
-const jsonRpcErrorArb = fc
-  .record(
-    {
-      code: fc.integer(),
-      message: fc.string(),
-      data: safeJsonValueArb,
-    },
-    {
-      requiredKeys: ['code', 'message'],
-    },
-  )
-  .noShrink() as fc.Arbitrary<JsonRpcError>;
+const jsonRpcErrorArb = (error: Error = new Error('test error')) =>
+  fc
+    .record(
+      {
+        code: fc.integer(),
+        message: fc.string(),
+        data: fc.constant(fromError(error)),
+      },
+      {
+        requiredKeys: ['code', 'message'],
+      },
+    )
+    .noShrink() as fc.Arbitrary<JsonRpcError>;
 
-const jsonRpcResponseErrorArb = fc
-  .record({
-    type: fc.constant('JsonRpcResponseError'),
-    jsonrpc: fc.constant('2.0'),
-    error: jsonRpcErrorArb,
-    id: fc.oneof(fc.string(), fc.integer(), fc.constant(null)),
-  })
-  .noShrink() as fc.Arbitrary<JsonRpcResponseError>;
+const jsonRpcResponseErrorArb = (error?: Error) =>
+  fc
+    .record({
+      jsonrpc: fc.constant('2.0'),
+      error: jsonRpcErrorArb(error),
+      id: idArb,
+    })
+    .noShrink() as fc.Arbitrary<JsonRpcResponseError>;
 
 const jsonRpcResponseArb = (
   result: fc.Arbitrary<JsonValue> = safeJsonValueArb,
 ) =>
   fc
-    .oneof(jsonRpcResponseResultArb(result), jsonRpcResponseErrorArb)
+    .oneof(jsonRpcResponseResultArb(result), jsonRpcResponseErrorArb())
     .noShrink() as fc.Arbitrary<JsonRpcResponse>;
 
 const jsonRpcMessageArb = (

@@ -5,12 +5,13 @@ import type {
   ServerCallerInterface,
   StreamPairCreateCallback,
 } from './types';
-import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import type { JSONValue, POJO } from 'types';
+import { PromiseCancellable } from '@matrixai/async-cancellable';
 import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
 import Logger from '@matrixai/logger';
 import * as rpcErrors from './errors';
 import * as rpcUtils from './utils';
+import { promise } from '../utils/index';
 
 interface RPCClient extends CreateDestroy {}
 @CreateDestroy()
@@ -62,6 +63,22 @@ class RPCClient {
     method: string,
     _metadata: POJO,
   ): Promise<DuplexCallerInterface<I, O>> {
+    // Constructing the PromiseCancellable for tracking the active stream
+    const inputFinishedProm = promise<void>();
+    const outputFinishedProm = promise<void>();
+    const abortController = new AbortController();
+    const handlerProm: PromiseCancellable<void> = new PromiseCancellable(
+      (resolve) => {
+        Promise.all([inputFinishedProm.p, outputFinishedProm.p]).finally(() =>
+          resolve(),
+        );
+      },
+      abortController,
+    );
+    // Putting the PromiseCancellable into the active streams map
+    this.activeStreams.add(handlerProm);
+    void handlerProm.finally(() => this.activeStreams.delete(handlerProm));
+
     const streamPair = await this.streamPairCreateCallback();
     const inputStream = streamPair.readable.pipeThrough(
       new rpcUtils.JsonToJsonMessageStream(rpcUtils.parseJsonRpcResponse),
@@ -87,27 +104,32 @@ class RPCClient {
         await writer.abort(e);
       } finally {
         await writer.close();
+        inputFinishedProm.resolveP();
       }
     };
 
     const outputGen = async function* (): AsyncGenerator<O, void, never> {
-      const reader = inputStream.getReader();
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        if ('error' in value) {
-          throw Error('TMP message was an error message', {
-            cause: value.error,
-          });
+      try {
+        for await (const result of inputStream) {
+          if ('error' in result) {
+            throw rpcUtils.toError(result.error.data);
+          }
+          yield result.result as O;
         }
-        yield value.result as O;
+      } finally {
+        outputFinishedProm.resolveP();
       }
     };
     const output = outputGen();
     const input = inputGen();
     // Initiating the input generator
     await input.next();
-
+    // Hooking up abort signals
+    abortController.signal.addEventListener('abort', async () => {
+      await output.throw(abortController.signal.reason);
+      await input.throw(abortController.signal.reason);
+    });
+    // Returning interface
     return {
       read: () => output.next(),
       write: async (value: I) => {
@@ -163,7 +185,11 @@ class RPCClient {
     const output = callerInterface
       .read()
       .then(({ value, done }) => {
-        if (done) throw Error('TMP Stream closed early');
+        if (done) {
+          throw new rpcErrors.ErrorRpcRemoteError(
+            'Stream ended before response',
+          );
+        }
         return value;
       })
       .finally(async () => {
@@ -190,7 +216,9 @@ class RPCClient {
     );
     await callerInterface.write(parameters);
     const output = await callerInterface.read();
-    if (output.done) throw Error('TMP stream ended early');
+    if (output.done) {
+      throw new rpcErrors.ErrorRpcRemoteError('Stream ended before response');
+    }
     await callerInterface.end();
     await callerInterface.close();
     return output.value;

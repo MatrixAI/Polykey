@@ -5,6 +5,7 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { testProp, fc } from '@fast-check/jest';
 import RPCClient from '@/RPC/RPCClient';
 import RPCServer from '@/RPC/RPCServer';
+import * as rpcErrors from '@/RPC/errors';
 import * as rpcTestUtils from './utils';
 
 describe(`${RPCClient.name}`, () => {
@@ -155,6 +156,43 @@ describe(`${RPCClient.name}`, () => {
           params: params,
         }),
       );
+    },
+  );
+
+  testProp.only(
+    'generic duplex caller can throw received error message',
+    [
+      fc.array(rpcTestUtils.jsonRpcResponseResultArb()),
+      rpcTestUtils.jsonRpcResponseErrorArb(),
+    ],
+    async (messages, errorMessage) => {
+      const inputStream = rpcTestUtils.jsonRpcStream([
+        ...messages,
+        errorMessage,
+      ]);
+      const [outputResult, outputStream] = rpcTestUtils.streamToArray<Buffer>();
+      const streamPair: ReadableWritablePair = {
+        readable: inputStream,
+        writable: outputStream,
+      };
+      const rpcClient = await RPCClient.createRPCClient({
+        streamPairCreateCallback: async () => streamPair,
+        logger,
+      });
+      const callerInterface = await rpcClient.duplexStreamCaller<
+        JSONValue,
+        JSONValue
+      >(methodName, { hello: 'world' });
+      const consumeToError = async () => {
+        for await (const _ of callerInterface.outputGenerator) {
+          // No touch, just consume
+        }
+      };
+      await expect(consumeToError()).rejects.toThrow(
+        rpcErrors.ErrorRpcRemoteError,
+      );
+      await callerInterface.end();
+      await outputResult;
     },
   );
 });
