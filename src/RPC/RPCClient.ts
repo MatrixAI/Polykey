@@ -67,7 +67,7 @@ class RPCClient {
     const inputFinishedProm = promise<void>();
     const outputFinishedProm = promise<void>();
     const abortController = new AbortController();
-    const handlerProm: PromiseCancellable<void> = new PromiseCancellable(
+    const handlerProm: PromiseCancellable<void> = new PromiseCancellable<void>(
       (resolve) => {
         Promise.all([inputFinishedProm.p, outputFinishedProm.p]).finally(() =>
           resolve(),
@@ -77,14 +77,16 @@ class RPCClient {
     );
     // Putting the PromiseCancellable into the active streams map
     this.activeStreams.add(handlerProm);
-    void handlerProm.finally(() => this.activeStreams.delete(handlerProm));
+    void handlerProm
+      .finally(() => this.activeStreams.delete(handlerProm))
+      .catch(() => {});
 
     const streamPair = await this.streamPairCreateCallback();
     const inputStream = streamPair.readable.pipeThrough(
       new rpcUtils.JsonToJsonMessageStream(rpcUtils.parseJsonRpcResponse),
     );
     const outputTransform = new rpcUtils.JsonMessageToJsonStream();
-    void outputTransform.readable.pipeTo(streamPair.writable);
+    void outputTransform.readable.pipeTo(streamPair.writable).catch(() => {});
 
     const inputGen = async function* (): AsyncGenerator<void, void, I> {
       const writer = outputTransform.writable.getWriter();
@@ -100,8 +102,6 @@ class RPCClient {
           };
           await writer.write(message);
         }
-      } catch (e) {
-        await writer.abort(e);
       } finally {
         await writer.close();
         inputFinishedProm.resolveP();
@@ -144,7 +144,7 @@ class RPCClient {
         await output.return();
       },
       throw: async (reason: any) => {
-        await input.throw(reason);
+        await input.return();
         await output.throw(reason);
       },
     };

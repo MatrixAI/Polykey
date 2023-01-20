@@ -57,6 +57,7 @@ describe(`${RPCClient.name}`, () => {
       JSON.parse(v.toString()),
     );
     expect(outputMessages).toStrictEqual(expectedMessages);
+    await rpcClient.destroy();
   });
   testProp(
     'generic server stream caller',
@@ -90,6 +91,7 @@ describe(`${RPCClient.name}`, () => {
           params,
         }),
       );
+      await rpcClient.destroy();
     },
   );
   testProp(
@@ -126,6 +128,7 @@ describe(`${RPCClient.name}`, () => {
       expect((await outputResult).map((v) => v.toString())).toStrictEqual(
         expectedOutput,
       );
+      await rpcClient.destroy();
     },
   );
   testProp(
@@ -156,10 +159,11 @@ describe(`${RPCClient.name}`, () => {
           params: params,
         }),
       );
+      await rpcClient.destroy();
     },
   );
 
-  testProp.only(
+  testProp(
     'generic duplex caller can throw received error message',
     [
       fc.array(rpcTestUtils.jsonRpcResponseResultArb()),
@@ -193,6 +197,7 @@ describe(`${RPCClient.name}`, () => {
       );
       await callerInterface.end();
       await outputResult;
+      await rpcClient.destroy();
     },
   );
 });

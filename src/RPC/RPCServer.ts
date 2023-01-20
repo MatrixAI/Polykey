@@ -59,9 +59,11 @@ class RPCServer {
   public async destroy(): Promise<void> {
     this.logger.info(`Destroying ${this.constructor.name}`);
     // Stopping any active steams
-    const activeStreams = this.activeStreams;
-    for await (const [activeStream] of activeStreams.entries()) {
+    for await (const [activeStream] of this.activeStreams.entries()) {
       activeStream.cancel(new rpcErrors.ErrorRpcStopping());
+    }
+    for await (const [activeStream] of this.activeStreams.entries()) {
+      await activeStream;
     }
     this.logger.info(`Destroyed ${this.constructor.name}`);
   }
@@ -146,7 +148,9 @@ class RPCServer {
     );
     // Putting the PromiseCancellable into the active streams map
     this.activeStreams.add(handlerProm);
-    void handlerProm.finally(() => this.activeStreams.delete(handlerProm));
+    void handlerProm
+      .finally(() => this.activeStreams.delete(handlerProm))
+      .catch(() => {});
     // While ReadableStream can be converted to AsyncIterable, we want it as
     //  a generator.
     const inputGen = async function* () {
@@ -238,7 +242,8 @@ class RPCServer {
     });
     void outputStream
       .pipeThrough(new rpcUtils.JsonMessageToJsonStream())
-      .pipeTo(streamPair.writable);
+      .pipeTo(streamPair.writable)
+      .catch(() => {});
   }
 }
 

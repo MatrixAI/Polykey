@@ -32,7 +32,7 @@ describe(`${RPCServer.name}`, () => {
     async (messages) => {
       const stream = rpcTestUtils.jsonRpcStream(messages);
       const container = {};
-      const rpc = await RPCServer.createRPCServer({ container, logger });
+      const rpcServer = await RPCServer.createRPCServer({ container, logger });
       const [outputResult, outputStream] = rpcTestUtils.streamToArray();
       const readWriteStream: ReadableWritablePair = {
         readable: stream,
@@ -47,9 +47,10 @@ describe(`${RPCServer.name}`, () => {
           }
         };
 
-      rpc.registerDuplexStreamHandler(methodName, duplexHandler);
-      rpc.handleStream(readWriteStream, {} as ConnectionInfo);
+      rpcServer.registerDuplexStreamHandler(methodName, duplexHandler);
+      rpcServer.handleStream(readWriteStream, {} as ConnectionInfo);
       await outputResult;
+      await rpcServer.destroy();
     },
   );
 
@@ -59,7 +60,7 @@ describe(`${RPCServer.name}`, () => {
     async (messages) => {
       const stream = rpcTestUtils.jsonRpcStream(messages);
       const container = {};
-      const rpc = await RPCServer.createRPCServer({ container, logger });
+      const rpcServer = await RPCServer.createRPCServer({ container, logger });
       const [outputResult, outputStream] = rpcTestUtils.streamToArray();
       const readWriteStream: ReadableWritablePair = {
         readable: stream,
@@ -75,9 +76,10 @@ describe(`${RPCServer.name}`, () => {
           return count;
         };
 
-      rpc.registerClientStreamHandler(methodName, clientHandler);
-      rpc.handleStream(readWriteStream, {} as ConnectionInfo);
+      rpcServer.registerClientStreamHandler(methodName, clientHandler);
+      rpcServer.handleStream(readWriteStream, {} as ConnectionInfo);
       await outputResult;
+      await rpcServer.destroy();
     },
   );
 
@@ -98,7 +100,7 @@ describe(`${RPCServer.name}`, () => {
     async (messages) => {
       const stream = rpcTestUtils.jsonRpcStream(messages);
       const container = {};
-      const rpc = await RPCServer.createRPCServer({ container, logger });
+      const rpcServer = await RPCServer.createRPCServer({ container, logger });
       const [outputResult, outputStream] = rpcTestUtils.streamToArray();
       const readWriteStream: ReadableWritablePair = {
         readable: stream,
@@ -112,9 +114,10 @@ describe(`${RPCServer.name}`, () => {
           }
         };
 
-      rpc.registerServerStreamHandler(methodName, serverHandler);
-      rpc.handleStream(readWriteStream, {} as ConnectionInfo);
+      rpcServer.registerServerStreamHandler(methodName, serverHandler);
+      rpcServer.handleStream(readWriteStream, {} as ConnectionInfo);
       await outputResult;
+      await rpcServer.destroy();
     },
   );
 
@@ -124,7 +127,7 @@ describe(`${RPCServer.name}`, () => {
     async (messages) => {
       const stream = rpcTestUtils.jsonRpcStream(messages);
       const container = {};
-      const rpc = await RPCServer.createRPCServer({ container, logger });
+      const rpcServer = await RPCServer.createRPCServer({ container, logger });
       const [outputResult, outputStream] = rpcTestUtils.streamToArray();
       const readWriteStream: ReadableWritablePair = {
         readable: stream,
@@ -140,9 +143,10 @@ describe(`${RPCServer.name}`, () => {
         return input;
       };
 
-      rpc.registerUnaryHandler(methodName, unaryHandler);
-      rpc.handleStream(readWriteStream, {} as ConnectionInfo);
+      rpcServer.registerUnaryHandler(methodName, unaryHandler);
+      rpcServer.handleStream(readWriteStream, {} as ConnectionInfo);
       await outputResult;
+      await rpcServer.destroy();
     },
   );
 
@@ -156,7 +160,7 @@ describe(`${RPCServer.name}`, () => {
         B: Symbol('b'),
         C: Symbol('c'),
       };
-      const rpc = await RPCServer.createRPCServer({ container, logger });
+      const rpcServer = await RPCServer.createRPCServer({ container, logger });
       const [outputResult, outputStream] = rpcTestUtils.streamToArray();
       const readWriteStream: ReadableWritablePair = {
         readable: stream,
@@ -171,9 +175,10 @@ describe(`${RPCServer.name}`, () => {
           }
         };
 
-      rpc.registerDuplexStreamHandler(methodName, duplexHandler);
-      rpc.handleStream(readWriteStream, {} as ConnectionInfo);
+      rpcServer.registerDuplexStreamHandler(methodName, duplexHandler);
+      rpcServer.handleStream(readWriteStream, {} as ConnectionInfo);
       await outputResult;
+      await rpcServer.destroy();
     },
   );
 
@@ -191,7 +196,7 @@ describe(`${RPCServer.name}`, () => {
         remotePort: 12341 as Port,
       };
       const container = {};
-      const rpc = await RPCServer.createRPCServer({ container, logger });
+      const rpcServer = await RPCServer.createRPCServer({ container, logger });
       const [outputResult, outputStream] = rpcTestUtils.streamToArray();
       const readWriteStream: ReadableWritablePair = {
         readable: stream,
@@ -205,9 +210,10 @@ describe(`${RPCServer.name}`, () => {
             yield val;
           }
         };
-      rpc.registerDuplexStreamHandler(methodName, duplexHandler);
-      rpc.handleStream(readWriteStream, {} as ConnectionInfo);
+      rpcServer.registerDuplexStreamHandler(methodName, duplexHandler);
+      rpcServer.handleStream(readWriteStream, {} as ConnectionInfo);
       await outputResult;
+      await rpcServer.destroy();
     },
   );
 
@@ -219,7 +225,7 @@ describe(`${RPCServer.name}`, () => {
     async (messages) => {
       const stream = rpcTestUtils.jsonRpcStream(messages);
       const container = {};
-      const rpc = await RPCServer.createRPCServer({ container, logger });
+      const rpcServer = await RPCServer.createRPCServer({ container, logger });
       const [outputResult, outputStream] = rpcTestUtils.streamToArray();
       let thing;
       let lastMessage: JsonRpcMessage | undefined;
@@ -228,7 +234,7 @@ describe(`${RPCServer.name}`, () => {
       //   async (_, iteration) => {
       //     if (iteration === 2) {
       //       // @ts-ignore: kidnap private property
-      //       const activeStreams = rpc.activeStreams.values();
+      //       const activeStreams = rpcServer.activeStreams.values();
       //       for (const activeStream of activeStreams) {
       //         thing = activeStream;
       //         activeStream.cancel(new rpcErrors.ErrorRpcStopping());
@@ -249,19 +255,20 @@ describe(`${RPCServer.name}`, () => {
             yield val;
           }
         };
-      rpc.registerDuplexStreamHandler(methodName, duplexHandler);
-      rpc.handleStream(readWriteStream, {} as ConnectionInfo);
+      rpcServer.registerDuplexStreamHandler(methodName, duplexHandler);
+      rpcServer.handleStream(readWriteStream, {} as ConnectionInfo);
       await outputResult;
       await expect(thing).toResolve();
       // Last message should be an error message
       expect(lastMessage).toBeDefined();
+      await rpcServer.destroy();
     },
   );
 
   testProp('Handler yields nothing', [specificMessageArb], async (messages) => {
     const stream = rpcTestUtils.jsonRpcStream(messages);
     const container = {};
-    const rpc = await RPCServer.createRPCServer({ container, logger });
+    const rpcServer = await RPCServer.createRPCServer({ container, logger });
     const [outputResult, outputStream] = rpcTestUtils.streamToArray();
     const readWriteStream: ReadableWritablePair = {
       readable: stream,
@@ -275,10 +282,11 @@ describe(`${RPCServer.name}`, () => {
         }
       };
 
-    rpc.registerDuplexStreamHandler(methodName, duplexHandler);
-    rpc.handleStream(readWriteStream, {} as ConnectionInfo);
+    rpcServer.registerDuplexStreamHandler(methodName, duplexHandler);
+    rpcServer.handleStream(readWriteStream, {} as ConnectionInfo);
     await outputResult;
     // We're just expecting no errors
+    await rpcServer.destroy();
   });
 
   // TODO:

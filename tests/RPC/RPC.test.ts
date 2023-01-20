@@ -27,7 +27,7 @@ describe('RPC', () => {
       >();
 
       const container = {};
-      const rpc = await RPCServer.createRPCServer({ container, logger });
+      const rpcServer = await RPCServer.createRPCServer({ container, logger });
 
       const duplexHandler: DuplexStreamHandler<JSONValue, JSONValue> =
         async function* (input, _container, _connectionInfo, _ctx) {
@@ -36,8 +36,8 @@ describe('RPC', () => {
           }
         };
 
-      rpc.registerDuplexStreamHandler(methodName, duplexHandler);
-      rpc.handleStream(serverPair, {} as ConnectionInfo);
+      rpcServer.registerDuplexStreamHandler(methodName, duplexHandler);
+      rpcServer.handleStream(serverPair, {} as ConnectionInfo);
 
       const rpcClient = await RPCClient.createRPCClient({
         streamPairCreateCallback: async () => clientPair,
@@ -55,11 +55,13 @@ describe('RPC', () => {
       await callerInterface.end();
       expect((await callerInterface.read()).value).toBeUndefined();
       expect((await callerInterface.read()).done).toBeTrue();
+      await rpcServer.destroy();
+      await rpcClient.destroy();
     },
   );
 
   testProp(
-    'RPC communication with client stream',
+    'RPC communication with server stream',
     [fc.integer({ min: 1, max: 100 })],
     async (value) => {
       const { clientPair, serverPair } = rpcTestUtils.createTapPairs<
@@ -68,7 +70,7 @@ describe('RPC', () => {
       >();
 
       const container = {};
-      const rpc = await RPCServer.createRPCServer({ container, logger });
+      const rpcServer = await RPCServer.createRPCServer({ container, logger });
 
       const serverStreamHandler: ServerStreamHandler<number, number> =
         async function* (input, _container, _connectionInfo, _ctx) {
@@ -77,8 +79,8 @@ describe('RPC', () => {
           }
         };
 
-      rpc.registerServerStreamHandler(methodName, serverStreamHandler);
-      rpc.handleStream(serverPair, {} as ConnectionInfo);
+      rpcServer.registerServerStreamHandler(methodName, serverStreamHandler);
+      rpcServer.handleStream(serverPair, {} as ConnectionInfo);
 
       const rpcClient = await RPCClient.createRPCClient({
         streamPairCreateCallback: async () => clientPair,
@@ -95,13 +97,14 @@ describe('RPC', () => {
         outputs.push(num);
       }
       expect(outputs.length).toEqual(value);
+      await rpcServer.destroy();
+      await rpcClient.destroy();
     },
-    { numRuns: 1 },
   );
 
   testProp(
-    'RPC communication with server stream',
-    [fc.array(fc.integer(), { minLength: 1 })],
+    'RPC communication with client stream',
+    [fc.array(fc.integer(), { minLength: 1 }).noShrink()],
     async (values) => {
       const { clientPair, serverPair } = rpcTestUtils.createTapPairs<
         Buffer,
@@ -109,7 +112,7 @@ describe('RPC', () => {
       >();
 
       const container = {};
-      const rpc = await RPCServer.createRPCServer({ container, logger });
+      const rpcServer = await RPCServer.createRPCServer({ container, logger });
 
       const clientStreamhandler: ClientStreamHandler<number, number> = async (
         input,
@@ -120,8 +123,8 @@ describe('RPC', () => {
         }
         return acc;
       };
-      rpc.registerClientStreamHandler(methodName, clientStreamhandler);
-      rpc.handleStream(serverPair, {} as ConnectionInfo);
+      rpcServer.registerClientStreamHandler(methodName, clientStreamhandler);
+      rpcServer.handleStream(serverPair, {} as ConnectionInfo);
 
       const rpcClient = await RPCClient.createRPCClient({
         streamPairCreateCallback: async () => clientPair,
@@ -139,6 +142,8 @@ describe('RPC', () => {
 
       const expectedResult = values.reduce((p, c) => p + c);
       await expect(callerInterface.result).resolves.toEqual(expectedResult);
+      await rpcServer.destroy();
+      await rpcClient.destroy();
     },
   );
 
@@ -152,12 +157,12 @@ describe('RPC', () => {
       >();
 
       const container = {};
-      const rpc = await RPCServer.createRPCServer({ container, logger });
+      const rpcServer = await RPCServer.createRPCServer({ container, logger });
 
       const unaryCaller: UnaryHandler<JSONValue, JSONValue> = async (input) =>
         input;
-      rpc.registerUnaryHandler(methodName, unaryCaller);
-      rpc.handleStream(serverPair, {} as ConnectionInfo);
+      rpcServer.registerUnaryHandler(methodName, unaryCaller);
+      rpcServer.handleStream(serverPair, {} as ConnectionInfo);
 
       const rpcClient = await RPCClient.createRPCClient({
         streamPairCreateCallback: async () => clientPair,
@@ -170,6 +175,8 @@ describe('RPC', () => {
         {},
       );
       expect(result).toStrictEqual(value);
+      await rpcServer.destroy();
+      await rpcClient.destroy();
     },
   );
 });
