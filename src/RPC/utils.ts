@@ -425,6 +425,56 @@ function toError(errorData) {
   });
 }
 
+class ClientInputTransformer<I extends JSONValue>
+  implements Transformer<I, JsonRpcRequestMessage>
+{
+  constructor(protected method: string) {}
+
+  transform: TransformerTransformCallback<I, JsonRpcRequestMessage<I>> = async (
+    chunk,
+    controller,
+  ) => {
+    const message: JsonRpcRequestMessage<I> = {
+      method: this.method,
+      jsonrpc: '2.0',
+      id: null,
+      params: chunk,
+    };
+    controller.enqueue(message);
+  };
+}
+
+class ClientInputTransformerStream<I extends JSONValue> extends TransformStream<
+  I,
+  JsonRpcRequestMessage<I>
+> {
+  constructor(method: string) {
+    super(new ClientInputTransformer<I>(method));
+  }
+}
+
+class ClientOutputTransformer<O extends JSONValue>
+  implements Transformer<JsonRpcResponse<O>, O>
+{
+  transform: TransformerTransformCallback<JsonRpcResponse<O>, O> = async (
+    chunk,
+    controller,
+  ) => {
+    if ('error' in chunk) {
+      throw toError(chunk.error.data);
+    }
+    controller.enqueue(chunk.result);
+  };
+}
+
+class ClientOutputTransformerStream<
+  O extends JSONValue,
+> extends TransformStream<JsonRpcResponse<O>, O> {
+  constructor() {
+    super(new ClientOutputTransformer<O>());
+  }
+}
+
 export {
   JsonToJsonMessageStream,
   JsonMessageToJsonStream,
@@ -437,4 +487,6 @@ export {
   parseJsonRpcMessage,
   fromError,
   toError,
+  ClientInputTransformerStream,
+  ClientOutputTransformerStream,
 };

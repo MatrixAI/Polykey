@@ -35,14 +35,16 @@ describe(`${RPCClient.name}`, () => {
       JSONValue,
       JSONValue
     >(methodName, { hello: 'world' });
+    const reader = callerInterface.readable.getReader();
+    const writer = callerInterface.writable.getWriter();
     while (true) {
-      const { value, done } = await callerInterface.read();
+      const { value, done } = await reader.read();
       if (done) {
         // We have to end the writer otherwise the stream never closes
-        await callerInterface.end();
+        await writer.close();
         break;
       }
-      await callerInterface.write(value);
+      await writer.write(value);
     }
     const expectedMessages: Array<JsonRpcRequestMessage> = messages.map((v) => {
       const request: JsonRpcRequestMessage = {
@@ -78,7 +80,7 @@ describe(`${RPCClient.name}`, () => {
         JSONValue
       >(methodName, params as JSONValue, {});
       const values: Array<JSONValue> = [];
-      for await (const value of callerInterface.outputGenerator) {
+      for await (const value of callerInterface) {
         values.push(value);
       }
       const expectedValues = messages.map((v) => v.result);
@@ -112,11 +114,12 @@ describe(`${RPCClient.name}`, () => {
         JSONValue,
         JSONValue
       >(methodName, {});
+      const writer = callerInterface.writable.getWriter();
       for (const param of params) {
-        await callerInterface.write(param as JSONValue);
+        await writer.write(param as JSONValue);
       }
-      await callerInterface.end();
-      expect(await callerInterface.result).toStrictEqual(message.result);
+      await writer.close();
+      expect(await callerInterface.output).toStrictEqual(message.result);
       const expectedOutput = params.map((v) =>
         JSON.stringify({
           method: methodName,
@@ -162,7 +165,6 @@ describe(`${RPCClient.name}`, () => {
       await rpcClient.destroy();
     },
   );
-
   testProp(
     'generic duplex caller can throw received error message',
     [
@@ -188,14 +190,14 @@ describe(`${RPCClient.name}`, () => {
         JSONValue
       >(methodName, { hello: 'world' });
       const consumeToError = async () => {
-        for await (const _ of callerInterface.outputGenerator) {
+        for await (const _ of callerInterface.readable) {
           // No touch, just consume
         }
       };
       await expect(consumeToError()).rejects.toThrow(
         rpcErrors.ErrorRpcRemoteError,
       );
-      await callerInterface.end();
+      await callerInterface.writable.close();
       await outputResult;
       await rpcClient.destroy();
     },

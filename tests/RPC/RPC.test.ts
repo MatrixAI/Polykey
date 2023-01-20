@@ -48,13 +48,16 @@ describe('RPC', () => {
         methodName,
         {},
       );
+      const writer = callerInterface.writable.getWriter();
+      const reader = callerInterface.readable.getReader();
       for (const value of values) {
-        await callerInterface.write(value);
-        expect((await callerInterface.read()).value).toStrictEqual(value);
+        await writer.write(value);
+        expect((await reader.read()).value).toStrictEqual(value);
       }
-      await callerInterface.end();
-      expect((await callerInterface.read()).value).toBeUndefined();
-      expect((await callerInterface.read()).done).toBeTrue();
+      await writer.close();
+      const result = await reader.read();
+      expect(result.value).toBeUndefined();
+      expect(result.done).toBeTrue();
       await rpcServer.destroy();
       await rpcClient.destroy();
     },
@@ -93,7 +96,7 @@ describe('RPC', () => {
       >(methodName, value, {});
 
       const outputs: Array<number> = [];
-      for await (const num of callerInterface.outputGenerator) {
+      for await (const num of callerInterface) {
         outputs.push(num);
       }
       expect(outputs.length).toEqual(value);
@@ -135,13 +138,14 @@ describe('RPC', () => {
         number,
         number
       >(methodName, {});
+      const writer = callerInterface.writable.getWriter();
       for (const value of values) {
-        await callerInterface.write(value);
+        await writer.write(value);
       }
-      await callerInterface.end();
+      await writer.close();
 
       const expectedResult = values.reduce((p, c) => p + c);
-      await expect(callerInterface.result).resolves.toEqual(expectedResult);
+      await expect(callerInterface.output).resolves.toEqual(expectedResult);
       await rpcServer.destroy();
       await rpcClient.destroy();
     },
