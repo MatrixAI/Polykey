@@ -202,4 +202,116 @@ describe(`${RPCClient.name}`, () => {
       await rpcClient.destroy();
     },
   );
+  testProp(
+    'withDuplexCaller',
+    [fc.array(rpcTestUtils.jsonRpcResponseResultArb(), { minLength: 1 })],
+    async (messages) => {
+      const inputStream = rpcTestUtils.jsonRpcStream(messages);
+      const [outputResult, outputStream] = rpcTestUtils.streamToArray<Buffer>();
+      const streamPair: ReadableWritablePair = {
+        readable: inputStream,
+        writable: outputStream,
+      };
+      const rpcClient = await RPCClient.createRPCClient({
+        streamPairCreateCallback: async () => streamPair,
+        logger,
+      });
+      let count = 0;
+      await rpcClient.withDuplexCaller(
+        methodName,
+        async function* (output) {
+          for await (const value of output) {
+            count += 1;
+            yield value;
+          }
+        },
+        {},
+      );
+      const result = await outputResult;
+      // We're just checking that it consuming the messages as expected
+      expect(result.length).toEqual(messages.length);
+      expect(count).toEqual(messages.length);
+      await rpcClient.destroy();
+    },
+  );
+  testProp(
+    'withServerCaller',
+    [
+      fc.array(rpcTestUtils.jsonRpcResponseResultArb(), { minLength: 1 }),
+      rpcTestUtils.safeJsonValueArb,
+    ],
+    async (messages, params) => {
+      const inputStream = rpcTestUtils.jsonRpcStream(messages);
+      const [outputResult, outputStream] = rpcTestUtils.streamToArray<Buffer>();
+      const streamPair: ReadableWritablePair = {
+        readable: inputStream,
+        writable: outputStream,
+      };
+      const rpcClient = await RPCClient.createRPCClient({
+        streamPairCreateCallback: async () => streamPair,
+        logger,
+      });
+      let count = 0;
+      await rpcClient.withServerCaller(
+        methodName,
+        params,
+        async (output) => {
+          for await (const _ of output) count += 1;
+        },
+        {},
+      );
+      const result = await outputResult;
+      expect(count).toEqual(messages.length);
+      expect(result.toString()).toStrictEqual(
+        JSON.stringify({
+          method: methodName,
+          jsonrpc: '2.0',
+          id: null,
+          params: params,
+        }),
+      );
+      await rpcClient.destroy();
+    },
+  );
+  testProp(
+    'withClientCaller',
+    [
+      rpcTestUtils.jsonRpcResponseResultArb(),
+      fc.array(rpcTestUtils.safeJsonValueArb, { minLength: 2 }).noShrink(),
+    ],
+    async (message, inputMessages) => {
+      const inputStream = rpcTestUtils.jsonRpcStream([message]);
+      const [outputResult, outputStream] = rpcTestUtils.streamToArray<Buffer>();
+      const streamPair: ReadableWritablePair = {
+        readable: inputStream,
+        writable: outputStream,
+      };
+      const rpcClient = await RPCClient.createRPCClient({
+        streamPairCreateCallback: async () => streamPair,
+        logger,
+      });
+      const result = await rpcClient.withClientCaller(
+        methodName,
+        async function* () {
+          for (const inputMessage of inputMessages) {
+            yield inputMessage;
+          }
+        },
+        {},
+      );
+      const expectedResult = inputMessages.map((v) => {
+        return JSON.stringify({
+          method: methodName,
+          jsonrpc: '2.0',
+          id: null,
+          params: v,
+        });
+      });
+      expect((await outputResult).map((v) => v.toString())).toStrictEqual(
+        expectedResult,
+      );
+      expect(result).toStrictEqual(message.result);
+      await rpcClient.destroy();
+    },
+  );
 });

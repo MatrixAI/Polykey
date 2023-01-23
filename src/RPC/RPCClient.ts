@@ -130,6 +130,64 @@ class RPCClient {
     await writer.close();
     return output.value;
   }
+
+  @ready(new rpcErrors.ErrorRpcDestroyed())
+  public async withDuplexCaller<I extends JSONValue, O extends JSONValue>(
+    method: string,
+    f: (output: AsyncGenerator<O>) => AsyncGenerator<I>,
+    metadata: POJO,
+  ): Promise<void> {
+    const callerInterface = await this.duplexStreamCaller<I, O>(
+      method,
+      metadata,
+    );
+    const outputGenerator = async function* () {
+      for await (const value of callerInterface.readable) {
+        yield value;
+      }
+    };
+    const writer = callerInterface.writable.getWriter();
+    for await (const value of f(outputGenerator())) {
+      await writer.write(value);
+    }
+    await writer.close();
+  }
+
+  @ready(new rpcErrors.ErrorRpcDestroyed())
+  public async withServerCaller<I extends JSONValue, O extends JSONValue>(
+    method: string,
+    parameters: I,
+    f: (output: AsyncGenerator<O>) => Promise<void>,
+    metadata: POJO,
+  ) {
+    const callerInterface = await this.serverStreamCaller<I, O>(
+      method,
+      parameters,
+      metadata,
+    );
+    const outputGenerator = async function* () {
+      yield* callerInterface;
+    };
+    await f(outputGenerator());
+  }
+
+  @ready(new rpcErrors.ErrorRpcDestroyed())
+  public async withClientCaller<I extends JSONValue, O extends JSONValue>(
+    method: string,
+    f: () => AsyncGenerator<I>,
+    metadata: POJO,
+  ): Promise<O> {
+    const callerInterface = await this.clientStreamCaller<I, O>(
+      method,
+      metadata,
+    );
+    const writer = callerInterface.writable.getWriter();
+    for await (const value of f()) {
+      await writer.write(value);
+    }
+    await writer.close();
+    return callerInterface.output;
+  }
 }
 
 export default RPCClient;
