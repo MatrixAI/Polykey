@@ -11,6 +11,7 @@ import type { ReadableWritablePair } from 'stream/web';
 import type { JSONValue, POJO } from '../types';
 import type { ConnectionInfo } from '../network/types';
 import type { UnaryHandler } from './types';
+import type { RPCErrorEvent } from './utils';
 import { ReadableStream } from 'stream/web';
 import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
 import Logger from '@matrixai/logger';
@@ -42,8 +43,8 @@ class RPCServer {
   protected logger: Logger;
   protected handlerMap: Map<string, DuplexStreamHandler<JSONValue, JSONValue>> =
     new Map();
-  private activeStreams: Set<PromiseCancellable<void>> = new Set();
-  private events: EventTarget = new EventTarget();
+  protected activeStreams: Set<PromiseCancellable<void>> = new Set();
+  protected events: EventTarget = new EventTarget();
 
   public constructor({
     container,
@@ -164,6 +165,7 @@ class RPCServer {
     const container = this.container;
     const handlerMap = this.handlerMap;
     const ctx = { signal: abortController.signal };
+    const events = this.events;
     const outputGen = async function* (): AsyncGenerator<JsonRpcMessage> {
       // Step 1, authentication and establishment
       // read the first message, lets assume the first message is always leading
@@ -207,20 +209,29 @@ class RPCServer {
           yield responseMessage;
         }
       } catch (e) {
-        // This would be an error from the handler or the streams. We should
-        // catch this and send an error message back through the stream.
-        const rpcError: JsonRpcError = {
-          code: e.exitCode,
-          message: e.description,
-          data: rpcUtils.fromError(e),
-        };
-        const rpcErrorMessage: JsonRpcResponseError = {
-          jsonrpc: '2.0',
-          error: rpcError,
-          id: null,
-        };
-        // TODO: catch this and emit error in the event emitter
-        yield rpcErrorMessage;
+        if (rpcUtils.isReturnableError(e)) {
+          // We want to convert this error to an error message and pass it along
+          const rpcError: JsonRpcError = {
+            code: e.exitCode,
+            message: e.description,
+            data: rpcUtils.fromError(e),
+          };
+          const rpcErrorMessage: JsonRpcResponseError = {
+            jsonrpc: '2.0',
+            error: rpcError,
+            id: null,
+          };
+          yield rpcErrorMessage;
+        } else {
+          // These errors are emitted to the event system
+          events.dispatchEvent(
+            new rpcUtils.RPCErrorEvent({
+              detail: {
+                error: e,
+              },
+            }),
+          );
+        }
       }
       resolve();
     };
@@ -244,6 +255,22 @@ class RPCServer {
       .pipeThrough(new rpcUtils.JsonMessageToJsonStream())
       .pipeTo(streamPair.writable)
       .catch(() => {});
+  }
+
+  public addEventListener(
+    type: 'error',
+    callback: (event: RPCErrorEvent) => void,
+    options?: boolean | AddEventListenerOptions | undefined,
+  ) {
+    this.events.addEventListener(type, callback, options);
+  }
+
+  public removeEventListener(
+    type: 'error',
+    callback: (event: RPCErrorEvent) => void,
+    options?: boolean | AddEventListenerOptions | undefined,
+  ) {
+    this.events.removeEventListener(type, callback, options);
   }
 }
 

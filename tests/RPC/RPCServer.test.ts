@@ -12,6 +12,7 @@ import type { ReadableWritablePair } from 'stream/web';
 import { testProp, fc } from '@fast-check/jest';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import RPCServer from '@/RPC/RPCServer';
+import * as rpcErrors from '@/RPC/errors';
 import * as rpcTestUtils from './utils';
 
 describe(`${RPCServer.name}`, () => {
@@ -288,6 +289,85 @@ describe(`${RPCServer.name}`, () => {
     // We're just expecting no errors
     await rpcServer.destroy();
   });
+
+  const errorArb = fc.oneof(
+    fc.constant(new rpcErrors.ErrorRpcParse()),
+    fc.constant(new rpcErrors.ErrorRpcHandlerMissing()),
+    fc.constant(new rpcErrors.ErrorRpcProtocal()),
+    fc.constant(new rpcErrors.ErrorRpcMessageLength()),
+    fc.constant(new rpcErrors.ErrorRpcRemoteError()),
+  );
+  testProp(
+    'should send error message',
+    [specificMessageArb, errorArb],
+    async (messages, error) => {
+      const stream = rpcTestUtils.jsonRpcStream(messages);
+      const container = {};
+      const rpcServer = await RPCServer.createRPCServer({ container, logger });
+      let resolve, reject;
+      const errorProm = new Promise((resolve_, reject_) => {
+        resolve = resolve_;
+        reject = reject_;
+      });
+      rpcServer.addEventListener('error', (thing) => {
+        resolve(thing);
+      });
+      const [outputResult, outputStream] = rpcTestUtils.streamToArray();
+      const readWriteStream: ReadableWritablePair = {
+        readable: stream,
+        writable: outputStream,
+      };
+
+      const duplexHandler: DuplexStreamHandler<JSONValue, JSONValue> =
+        async function* (_input, _container, _connectionInfo, _ctx) {
+          throw error;
+        };
+
+      rpcServer.registerDuplexStreamHandler(methodName, duplexHandler);
+      rpcServer.handleStream(readWriteStream, {} as ConnectionInfo);
+      const errorMessage = JSON.parse((await outputResult)[0]!.toString());
+      expect(errorMessage.error.code).toEqual(error.exitCode);
+      expect(errorMessage.error.message).toEqual(error.description);
+      reject();
+      await expect(errorProm).toReject();
+      await rpcServer.destroy();
+    },
+  );
+  testProp(
+    'should emit stream error',
+    [specificMessageArb],
+    async (messages) => {
+      const stream = rpcTestUtils.jsonRpcStream(messages);
+      const container = {};
+      const rpcServer = await RPCServer.createRPCServer({ container, logger });
+      let resolve, reject;
+      const errorProm = new Promise((resolve_, reject_) => {
+        resolve = resolve_;
+        reject = reject_;
+      });
+      rpcServer.addEventListener('error', (thing) => {
+        resolve(thing);
+      });
+      const [outputResult, outputStream] = rpcTestUtils.streamToArray();
+      const readWriteStream: ReadableWritablePair = {
+        readable: stream,
+        writable: outputStream,
+      };
+
+      const duplexHandler: DuplexStreamHandler<JSONValue, JSONValue> =
+        async function* (_input, _container, _connectionInfo, _ctx) {
+          throw new rpcErrors.ErrorRpcPlaceholderConnectionError();
+        };
+
+      rpcServer.registerDuplexStreamHandler(methodName, duplexHandler);
+      rpcServer.handleStream(readWriteStream, {} as ConnectionInfo);
+      await outputResult;
+
+      await rpcServer.destroy();
+      reject();
+      await expect(errorProm).toResolve();
+    },
+  );
 
   // TODO:
   //  - Test odd conditions for handlers, like extra messages where 1 is expected.

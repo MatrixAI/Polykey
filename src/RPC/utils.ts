@@ -475,6 +475,28 @@ class ClientOutputTransformerStream<
   }
 }
 
+function isReturnableError(e: Error): boolean {
+  if (e instanceof rpcErrors.ErrorRpcPlaceholderConnectionError) return false;
+  return true;
+}
+
+class RPCErrorEvent extends Event {
+  public detail: {
+    error: any;
+  };
+
+  constructor(
+    options: EventInit & {
+      detail: {
+        error: any;
+      };
+    },
+  ) {
+    super('error', options);
+    this.detail = options.detail;
+  }
+}
+
 export {
   JsonToJsonMessageStream,
   JsonMessageToJsonStream,
@@ -489,4 +511,6 @@ export {
   toError,
   ClientInputTransformerStream,
   ClientOutputTransformerStream,
+  isReturnableError,
+  RPCErrorEvent,
 };

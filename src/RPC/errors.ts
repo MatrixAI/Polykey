@@ -47,6 +47,11 @@ class ErrorRpcRemoteError<T> extends ErrorRpc<T> {
   exitCode = sysexits.UNAVAILABLE;
 }
 
+class ErrorRpcPlaceholderConnectionError<T> extends ErrorRpc<T> {
+  static description = 'placeholder error for connection stream failure';
+  exitCode = sysexits.UNAVAILABLE;
+}
+
 export {
   ErrorRpc,
   ErrorRpcRunning,
@@ -58,4 +63,5 @@ export {
   ErrorRpcProtocal,
   ErrorRpcMessageLength,
   ErrorRpcRemoteError,
+  ErrorRpcPlaceholderConnectionError,
 };
