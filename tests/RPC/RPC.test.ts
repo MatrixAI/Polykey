@@ -22,8 +22,8 @@ describe('RPC', () => {
     [fc.array(rpcTestUtils.safeJsonValueArb, { minLength: 1 })],
     async (values) => {
       const { clientPair, serverPair } = rpcTestUtils.createTapPairs<
-        Buffer,
-        Buffer
+        Uint8Array,
+        Uint8Array
       >();
 
       const container = {};
@@ -68,8 +68,8 @@ describe('RPC', () => {
     [fc.integer({ min: 1, max: 100 })],
     async (value) => {
       const { clientPair, serverPair } = rpcTestUtils.createTapPairs<
-        Buffer,
-        Buffer
+        Uint8Array,
+        Uint8Array
       >();
 
       const container = {};
@@ -110,8 +110,8 @@ describe('RPC', () => {
     [fc.array(fc.integer(), { minLength: 1 }).noShrink()],
     async (values) => {
       const { clientPair, serverPair } = rpcTestUtils.createTapPairs<
-        Buffer,
-        Buffer
+        Uint8Array,
+        Uint8Array
       >();
 
       const container = {};
@@ -156,8 +156,8 @@ describe('RPC', () => {
     [rpcTestUtils.safeJsonValueArb],
     async (value) => {
       const { clientPair, serverPair } = rpcTestUtils.createTapPairs<
-        Buffer,
-        Buffer
+        Uint8Array,
+        Uint8Array
       >();
 
       const container = {};

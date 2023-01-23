@@ -124,7 +124,7 @@ type UnaryHandler<I extends JSONValue, O extends JSONValue> = Handler<
 >;
 
 type StreamPairCreateCallback = () => Promise<
-  ReadableWritablePair<Buffer, Buffer>
+  ReadableWritablePair<Uint8Array, Uint8Array>
 >;
 
 export type {

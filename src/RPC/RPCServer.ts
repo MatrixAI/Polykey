@@ -133,7 +133,7 @@ class RPCServer {
 
   @ready(new rpcErrors.ErrorRpcDestroyed())
   public handleStream(
-    streamPair: ReadableWritablePair<Buffer, Buffer>,
+    streamPair: ReadableWritablePair<Uint8Array, Uint8Array>,
     connectionInfo: ConnectionInfo,
   ) {
     // This will take a buffer stream of json messages and set up service

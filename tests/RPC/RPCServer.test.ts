@@ -231,7 +231,7 @@ describe(`${RPCServer.name}`, () => {
       let thing;
       let lastMessage: JsonRpcMessage | undefined;
       const tapStream: any = {};
-      // Const tapStream = new rpcTestUtils.TapStream<Buffer>(
+      // Const tapStream = new rpcTestUtils.TapStream<Uint8Array>(
       //   async (_, iteration) => {
       //     if (iteration === 2) {
       //       // @ts-ignore: kidnap private property

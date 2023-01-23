@@ -22,7 +22,8 @@ describe(`${RPCClient.name}`, () => {
 
   testProp('generic duplex caller', [specificMessageArb], async (messages) => {
     const inputStream = rpcTestUtils.jsonRpcStream(messages);
-    const [outputResult, outputStream] = rpcTestUtils.streamToArray<Buffer>();
+    const [outputResult, outputStream] =
+      rpcTestUtils.streamToArray<Uint8Array>();
     const streamPair: ReadableWritablePair = {
       readable: inputStream,
       writable: outputStream,
@@ -101,7 +102,8 @@ describe(`${RPCClient.name}`, () => {
     [rpcTestUtils.jsonRpcResponseResultArb(), fc.array(fc.jsonValue())],
     async (message, params) => {
       const inputStream = rpcTestUtils.jsonRpcStream([message]);
-      const [outputResult, outputStream] = rpcTestUtils.streamToArray<Buffer>();
+      const [outputResult, outputStream] =
+        rpcTestUtils.streamToArray<Uint8Array>();
       const streamPair: ReadableWritablePair = {
         readable: inputStream,
         writable: outputStream,
@@ -176,7 +178,8 @@ describe(`${RPCClient.name}`, () => {
         ...messages,
         errorMessage,
       ]);
-      const [outputResult, outputStream] = rpcTestUtils.streamToArray<Buffer>();
+      const [outputResult, outputStream] =
+        rpcTestUtils.streamToArray<Uint8Array>();
       const streamPair: ReadableWritablePair = {
         readable: inputStream,
         writable: outputStream,
@@ -207,7 +210,8 @@ describe(`${RPCClient.name}`, () => {
     [fc.array(rpcTestUtils.jsonRpcResponseResultArb(), { minLength: 1 })],
     async (messages) => {
       const inputStream = rpcTestUtils.jsonRpcStream(messages);
-      const [outputResult, outputStream] = rpcTestUtils.streamToArray<Buffer>();
+      const [outputResult, outputStream] =
+        rpcTestUtils.streamToArray<Uint8Array>();
       const streamPair: ReadableWritablePair = {
         readable: inputStream,
         writable: outputStream,
@@ -242,7 +246,8 @@ describe(`${RPCClient.name}`, () => {
     ],
     async (messages, params) => {
       const inputStream = rpcTestUtils.jsonRpcStream(messages);
-      const [outputResult, outputStream] = rpcTestUtils.streamToArray<Buffer>();
+      const [outputResult, outputStream] =
+        rpcTestUtils.streamToArray<Uint8Array>();
       const streamPair: ReadableWritablePair = {
         readable: inputStream,
         writable: outputStream,
@@ -281,7 +286,8 @@ describe(`${RPCClient.name}`, () => {
     ],
     async (message, inputMessages) => {
       const inputStream = rpcTestUtils.jsonRpcStream([message]);
-      const [outputResult, outputStream] = rpcTestUtils.streamToArray<Buffer>();
+      const [outputResult, outputStream] =
+        rpcTestUtils.streamToArray<Uint8Array>();
       const streamPair: ReadableWritablePair = {
         readable: inputStream,
         writable: outputStream,

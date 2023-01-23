@@ -23,7 +23,7 @@ import * as errors from '../errors';
 const jsonStreamParsers = require('@streamparser/json');
 
 class JsonToJsonMessage<T extends JsonRpcMessage>
-  implements Transformer<Buffer, T>
+  implements Transformer<Uint8Array, T>
 {
   protected bytesWritten: number = 0;
 
@@ -45,7 +45,7 @@ class JsonToJsonMessage<T extends JsonRpcMessage>
     };
   };
 
-  transform: TransformerTransformCallback<Buffer, T> = async (chunk) => {
+  transform: TransformerTransformCallback<Uint8Array, T> = async (chunk) => {
     try {
       this.bytesWritten += chunk.byteLength;
       this.parser.write(chunk);
@@ -60,7 +60,7 @@ class JsonToJsonMessage<T extends JsonRpcMessage>
 
 // TODO: rename to something more descriptive?
 class JsonToJsonMessageStream<T extends JsonRpcMessage> extends TransformStream<
-  Buffer,
+  Uint8Array,
   T
 > {
   constructor(
@@ -71,8 +71,8 @@ class JsonToJsonMessageStream<T extends JsonRpcMessage> extends TransformStream<
   }
 }
 
-class JsonMessageToJson implements Transformer<JsonRpcMessage, Buffer> {
-  transform: TransformerTransformCallback<JsonRpcMessage, Buffer> = async (
+class JsonMessageToJson implements Transformer<JsonRpcMessage, Uint8Array> {
+  transform: TransformerTransformCallback<JsonRpcMessage, Uint8Array> = async (
     chunk,
     controller,
   ) => {
@@ -81,7 +81,10 @@ class JsonMessageToJson implements Transformer<JsonRpcMessage, Buffer> {
 }
 
 // TODO: rename to something more descriptive?
-class JsonMessageToJsonStream extends TransformStream<JsonRpcMessage, Buffer> {
+class JsonMessageToJsonStream extends TransformStream<
+  JsonRpcMessage,
+  Uint8Array
+> {
   constructor() {
     super(new JsonMessageToJson());
   }

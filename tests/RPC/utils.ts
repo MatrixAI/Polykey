@@ -21,7 +21,7 @@ import { fc } from '@fast-check/jest';
 import * as utils from '@/utils';
 import { fromError } from '@/RPC/utils';
 
-class BufferStreamToSnipped implements Transformer<Buffer, Buffer> {
+class BufferStreamToSnipped implements Transformer<Uint8Array, Uint8Array> {
   protected buffer = Buffer.alloc(0);
   protected iteration = 0;
   protected snippingPattern: Array<number>;
@@ -30,7 +30,7 @@ class BufferStreamToSnipped implements Transformer<Buffer, Buffer> {
     this.snippingPattern = snippingPattern;
   }
 
-  transform: TransformerTransformCallback<Buffer, Buffer> = async (
+  transform: TransformerTransformCallback<Uint8Array, Uint8Array> = async (
     chunk,
     controller,
   ) => {
@@ -46,7 +46,7 @@ class BufferStreamToSnipped implements Transformer<Buffer, Buffer> {
     }
   };
 
-  flush: TransformerFlushCallback<Buffer> = (controller) => {
+  flush: TransformerFlushCallback<Uint8Array> = (controller) => {
     controller.enqueue(this.buffer);
   };
 }
@@ -62,15 +62,15 @@ class BufferStreamToSnippedStream extends TransformStream {
   }
 }
 
-class BufferStreamToNoisy implements Transformer<Buffer, Buffer> {
+class BufferStreamToNoisy implements Transformer<Uint8Array, Uint8Array> {
   protected iteration = 0;
-  protected noise: Array<Buffer>;
+  protected noise: Array<Uint8Array>;
 
-  constructor(noise: Array<Buffer>) {
+  constructor(noise: Array<Uint8Array>) {
     this.noise = noise;
   }
 
-  transform: TransformerTransformCallback<Buffer, Buffer> = async (
+  transform: TransformerTransformCallback<Uint8Array, Uint8Array> = async (
     chunk,
     controller,
   ) => {
@@ -87,13 +87,13 @@ class BufferStreamToNoisy implements Transformer<Buffer, Buffer> {
  * splitting up the data.
  */
 class BufferStreamToNoisyStream extends TransformStream {
-  constructor(noise: Array<Buffer>) {
+  constructor(noise: Array<Uint8Array>) {
     super(new BufferStreamToNoisy(noise));
   }
 }
 
 const jsonRpcStream = (messages: Array<POJO>) => {
-  return new ReadableStream<Buffer>({
+  return new ReadableStream<Uint8Array>({
     async start(controller) {
       for (const arrayElement of messages) {
         // Controller.enqueue(arrayElement)
