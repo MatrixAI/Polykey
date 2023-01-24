@@ -2,6 +2,7 @@ import type {
   Transformer,
   TransformerTransformCallback,
   TransformerStartCallback,
+  TransformerFlushCallback,
 } from 'stream/web';
 import type {
   JsonRpcError,
@@ -14,12 +15,14 @@ import type {
   JsonRpcResponse,
 } from 'RPC/types';
 import type { JSONValue } from '../types';
+import type { JsonValue } from 'fast-check';
 import { TransformStream } from 'stream/web';
 import { AbstractError } from '@matrixai/errors';
 import * as rpcErrors from './errors';
 import * as utils from '../utils';
 import * as validationErrors from '../validation/errors';
 import * as errors from '../errors';
+import { promise } from '../utils';
 const jsonStreamParsers = require('@streamparser/json');
 
 class JsonToJsonMessage<T extends JsonRpcMessage>
@@ -429,27 +432,25 @@ function toError(errorData) {
 }
 
 class ClientInputTransformer<I extends JSONValue>
-  implements Transformer<I, JsonRpcRequestMessage>
+  implements Transformer<I, JsonRpcRequest<JsonValue>>
 {
   constructor(protected method: string) {}
 
-  transform: TransformerTransformCallback<I, JsonRpcRequestMessage<I>> = async (
-    chunk,
-    controller,
-  ) => {
-    const message: JsonRpcRequestMessage<I> = {
-      method: this.method,
-      jsonrpc: '2.0',
-      id: null,
-      params: chunk,
+  transform: TransformerTransformCallback<I, JsonRpcRequest<JsonValue>> =
+    async (chunk, controller) => {
+      const message: JsonRpcRequest<JsonValue> = {
+        method: this.method,
+        jsonrpc: '2.0',
+        id: null,
+        params: chunk,
+      };
+      controller.enqueue(message);
     };
-    controller.enqueue(message);
-  };
 }
 
 class ClientInputTransformerStream<I extends JSONValue> extends TransformStream<
   I,
-  JsonRpcRequestMessage<I>
+  JsonRpcRequest<JSONValue>
 > {
   constructor(method: string) {
     super(new ClientInputTransformer<I>(method));
@@ -479,7 +480,7 @@ class ClientOutputTransformerStream<
 }
 
 function isReturnableError(e: Error): boolean {
-  if (e instanceof rpcErrors.ErrorRpcPlaceholderConnectionError) return false;
+  if (e instanceof rpcErrors.ErrorRpcNoMessageError) return false;
   return true;
 }
 
@@ -500,6 +501,69 @@ class RPCErrorEvent extends Event {
   }
 }
 
+const controllerTransformationFactory = <T>() => {
+  const controllerProm = promise<TransformStreamDefaultController<T>>();
+
+  class ControllerTransform<T> implements Transformer<T, T> {
+    start: TransformerStartCallback<T> = async (controller) => {
+      // @ts-ignore: type mismatch oddity
+      controllerProm.resolveP(controller);
+    };
+
+    transform: TransformerTransformCallback<T, T> = async (
+      chunk,
+      controller,
+    ) => {
+      controller.enqueue(chunk);
+    };
+  }
+
+  class ControllerTransformStream<T> extends TransformStream<T, T> {
+    constructor() {
+      super(new ControllerTransform());
+    }
+  }
+  return {
+    controllerP: controllerProm.p,
+    controllerTransformStream: new ControllerTransformStream<T>(),
+  };
+};
+
+class QueueMergingTransform<T> implements Transformer<T, T> {
+  constructor(protected messageQueue: Array<T>) {}
+
+  start: TransformerStartCallback<T> = async (controller) => {
+    while (true) {
+      const value = this.messageQueue.shift();
+      if (value == null) break;
+      controller.enqueue(value);
+    }
+  };
+
+  transform: TransformerTransformCallback<T, T> = async (chunk, controller) => {
+    while (true) {
+      const value = this.messageQueue.shift();
+      if (value == null) break;
+      controller.enqueue(value);
+    }
+    controller.enqueue(chunk);
+  };
+
+  flush: TransformerFlushCallback<T> = (controller) => {
+    while (true) {
+      const value = this.messageQueue.shift();
+      if (value == null) break;
+      controller.enqueue(value);
+    }
+  };
+}
+
+class QueueMergingTransformStream<T> extends TransformStream<T, T> {
+  constructor(messageQueue: Array<T>) {
+    super(new QueueMergingTransform(messageQueue));
+  }
+}
+
 export {
   JsonToJsonMessageStream,
   JsonMessageToJsonStream,
@@ -516,4 +580,6 @@ export {
   ClientOutputTransformerStream,
   isReturnableError,
   RPCErrorEvent,
+  controllerTransformationFactory,
+  QueueMergingTransformStream,
 };

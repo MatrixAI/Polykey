@@ -2,6 +2,8 @@ import type {
   ClientStreamHandler,
   DuplexStreamHandler,
   JsonRpcMessage,
+  JsonRpcRequest,
+  JsonRpcResponse,
   ServerStreamHandler,
   UnaryHandler,
 } from '@/RPC/types';
@@ -9,7 +11,8 @@ import type { JSONValue } from '@/types';
 import type { ConnectionInfo, Host, Port } from '@/network/types';
 import type { NodeId } from '@/ids';
 import type { ReadableWritablePair } from 'stream/web';
-import { testProp, fc } from '@fast-check/jest';
+import { TransformStream } from 'stream/web';
+import { fc, testProp } from '@fast-check/jest';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import RPCServer from '@/RPC/RPCServer';
 import * as rpcErrors from '@/RPC/errors';
@@ -204,17 +207,19 @@ describe(`${RPCServer.name}`, () => {
         writable: outputStream,
       };
 
+      let handledConnectionInfo;
       const duplexHandler: DuplexStreamHandler<JSONValue, JSONValue> =
         async function* (input, _container, connectionInfo_, _ctx) {
-          expect(connectionInfo_).toBe(connectionInfo);
+          handledConnectionInfo = connectionInfo_;
           for await (const val of input) {
             yield val;
           }
         };
       rpcServer.registerDuplexStreamHandler(methodName, duplexHandler);
-      rpcServer.handleStream(readWriteStream, {} as ConnectionInfo);
+      rpcServer.handleStream(readWriteStream, connectionInfo);
       await outputResult;
       await rpcServer.destroy();
+      expect(handledConnectionInfo).toBe(connectionInfo);
     },
   );
 
@@ -367,6 +372,169 @@ describe(`${RPCServer.name}`, () => {
       reject();
       await expect(errorProm).toResolve();
     },
+  );
+  testProp('forward middlewares', [specificMessageArb], async (messages) => {
+    const stream = rpcTestUtils.jsonRpcStream(messages);
+    const container = {};
+    const rpcServer = await RPCServer.createRPCServer({ container, logger });
+    const [outputResult, outputStream] = rpcTestUtils.streamToArray();
+    const readWriteStream: ReadableWritablePair = {
+      readable: stream,
+      writable: outputStream,
+    };
+
+    const duplexHandler: DuplexStreamHandler<JSONValue, JSONValue> =
+      async function* (input, _container, _connectionInfo, _ctx) {
+        for await (const val of input) {
+          yield val;
+        }
+      };
+
+    rpcServer.registerDuplexStreamHandler(methodName, duplexHandler);
+    rpcServer.registerForwardMiddleware(() => {
+      return (input) =>
+        input.pipeThrough(
+          new TransformStream<
+            JsonRpcRequest<JSONValue>,
+            JsonRpcRequest<JSONValue>
+          >({
+            transform: (chunk, controller) => {
+              chunk.params = 1;
+              controller.enqueue(chunk);
+            },
+          }),
+        );
+    });
+    rpcServer.handleStream(readWriteStream, {} as ConnectionInfo);
+    const out = await outputResult;
+    expect(out.map((v) => v!.toString())).toStrictEqual(
+      messages.map(() => {
+        return JSON.stringify({
+          jsonrpc: '2.0',
+          result: 1,
+          id: null,
+        });
+      }),
+    );
+    await rpcServer.destroy();
+  });
+  testProp('reverse middlewares', [specificMessageArb], async (messages) => {
+    const stream = rpcTestUtils.jsonRpcStream(messages);
+    const container = {};
+    const rpcServer = await RPCServer.createRPCServer({ container, logger });
+    const [outputResult, outputStream] = rpcTestUtils.streamToArray();
+    const readWriteStream: ReadableWritablePair = {
+      readable: stream,
+      writable: outputStream,
+    };
+
+    const duplexHandler: DuplexStreamHandler<JSONValue, JSONValue> =
+      async function* (input, _container, _connectionInfo, _ctx) {
+        for await (const val of input) {
+          yield val;
+        }
+      };
+
+    rpcServer.registerDuplexStreamHandler(methodName, duplexHandler);
+    rpcServer.registerReverseMiddleware(() => {
+      return (input) =>
+        input.pipeThrough(
+          new TransformStream<
+            JsonRpcResponse<JSONValue>,
+            JsonRpcResponse<JSONValue>
+          >({
+            transform: (chunk, controller) => {
+              if ('result' in chunk) {
+                chunk.result = 1;
+              }
+              controller.enqueue(chunk);
+            },
+          }),
+        );
+    });
+    rpcServer.handleStream(readWriteStream, {} as ConnectionInfo);
+    const out = await outputResult;
+    expect(out.map((v) => v!.toString())).toStrictEqual(
+      messages.map(() => {
+        return JSON.stringify({
+          jsonrpc: '2.0',
+          result: 1,
+          id: null,
+        });
+      }),
+    );
+    await rpcServer.destroy();
+  });
+  const validToken = 'VALIDTOKEN';
+  const invalidTokenMessageArb = rpcTestUtils.jsonRpcRequestMessageArb(
+    undefined,
+    fc.record({
+      metadata: fc.record({
+        token: fc.string().filter((v) => v !== validToken),
+      }),
+      data: rpcTestUtils.safeJsonValueArb,
+    }),
+  );
+
+  testProp(
+    'forward middleware authentication',
+    [invalidTokenMessageArb],
+    async (message) => {
+      const stream = rpcTestUtils.jsonRpcStream([message]);
+      const container = {};
+      const rpcServer = await RPCServer.createRPCServer({ container, logger });
+      const [outputResult, outputStream] = rpcTestUtils.streamToArray();
+      const readWriteStream: ReadableWritablePair = {
+        readable: stream,
+        writable: outputStream,
+      };
+
+      const duplexHandler: DuplexStreamHandler<JSONValue, JSONValue> =
+        async function* (input, _container, _connectionInfo, _ctx) {
+          for await (const val of input) {
+            yield val;
+          }
+        };
+
+      rpcServer.registerDuplexStreamHandler(methodName, duplexHandler);
+
+      type TestType = {
+        metadata: {
+          token: string;
+        };
+        data: JSONValue;
+      };
+      rpcServer.registerForwardMiddleware(() => {
+        let first = true;
+        return (input, short) =>
+          input.pipeThrough(
+            new TransformStream<
+              JsonRpcRequest<TestType>,
+              JsonRpcRequest<TestType>
+            >({
+              transform: (chunk, controller) => {
+                if (first && chunk.params?.metadata.token !== validToken) {
+                  short({
+                    jsonrpc: '2.0',
+                    id: null,
+                    error: {
+                      code: 1,
+                      message: 'failure of somekind',
+                    },
+                  });
+                  controller.error(new rpcErrors.ErrorRpcNoMessageError());
+                }
+                first = false;
+                controller.enqueue(chunk);
+              },
+            }),
+          );
+      });
+      rpcServer.handleStream(readWriteStream, {} as ConnectionInfo);
+      await outputResult;
+      await rpcServer.destroy();
+    },
+    { numRuns: 1 },
   );
 
   // TODO:

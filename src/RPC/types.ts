@@ -2,6 +2,7 @@ import type { JSONValue, POJO } from '../types';
 import type { ConnectionInfo } from '../network/types';
 import type { ContextCancellable } from '../contexts/types';
 import type { ReadableWritablePair } from 'stream/web';
+import type { ReadableStream } from 'stream/web';
 
 /**
  * This is the JSON RPC request object. this is the generic message type used for the RPC.
@@ -127,6 +128,13 @@ type StreamPairCreateCallback = () => Promise<
   ReadableWritablePair<Uint8Array, Uint8Array>
 >;
 
+type MiddlewareShort<T, K> = (
+  input: ReadableStream<T>,
+  short: (value: K) => void,
+) => ReadableStream<T>;
+type Middleware<T> = (input: ReadableStream<T>) => ReadableStream<T>;
+type MiddlewareFactory<T> = () => T;
+
 export type {
   JsonRpcRequestMessage,
   JsonRpcRequestNotification,
@@ -141,4 +149,7 @@ export type {
   ClientStreamHandler,
   UnaryHandler,
   StreamPairCreateCallback,
+  MiddlewareShort,
+  Middleware,
+  MiddlewareFactory,
 };

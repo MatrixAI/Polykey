@@ -1,6 +1,11 @@
 import type { ReadableWritablePair } from 'stream/web';
 import type { JSONValue } from '@/types';
-import type { JsonRpcRequestMessage } from '@/RPC/types';
+import type {
+  JsonRpcRequest,
+  JsonRpcRequestMessage,
+  JsonRpcResponse,
+} from '@/RPC/types';
+import { TransformStream } from 'stream/web';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { testProp, fc } from '@fast-check/jest';
 import RPCClient from '@/RPC/RPCClient';
@@ -317,6 +322,124 @@ describe(`${RPCClient.name}`, () => {
         expectedResult,
       );
       expect(result).toStrictEqual(message.result);
+      await rpcClient.destroy();
+    },
+  );
+  testProp(
+    'generic duplex caller with forward Middleware',
+    [specificMessageArb],
+    async (messages) => {
+      const inputStream = rpcTestUtils.jsonRpcStream(messages);
+      const [outputResult, outputStream] =
+        rpcTestUtils.streamToArray<Uint8Array>();
+      const streamPair: ReadableWritablePair = {
+        readable: inputStream,
+        writable: outputStream,
+      };
+      const rpcClient = await RPCClient.createRPCClient({
+        streamPairCreateCallback: async () => streamPair,
+        logger,
+      });
+
+      rpcClient.registerForwardMiddleware(() => {
+        return (input) =>
+          input.pipeThrough(
+            new TransformStream<
+              JsonRpcRequest<JSONValue>,
+              JsonRpcRequest<JSONValue>
+            >({
+              transform: (chunk, controller) => {
+                controller.enqueue({
+                  ...chunk,
+                  params: 'one',
+                });
+              },
+            }),
+          );
+      });
+      const callerInterface = await rpcClient.duplexStreamCaller<
+        JSONValue,
+        JSONValue
+      >(methodName, { hello: 'world' });
+      const reader = callerInterface.readable.getReader();
+      const writer = callerInterface.writable.getWriter();
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) {
+          // We have to end the writer otherwise the stream never closes
+          await writer.close();
+          break;
+        }
+        await writer.write(value);
+      }
+
+      const expectedMessages: Array<JsonRpcRequestMessage> = messages.map(
+        () => {
+          const request: JsonRpcRequestMessage = {
+            jsonrpc: '2.0',
+            method: methodName,
+            id: null,
+            params: 'one',
+          };
+          return request;
+        },
+      );
+      const outputMessages = (await outputResult).map((v) =>
+        JSON.parse(v.toString()),
+      );
+      expect(outputMessages).toStrictEqual(expectedMessages);
+      await rpcClient.destroy();
+    },
+  );
+  testProp.only(
+    'generic duplex caller with reverse Middleware',
+    [specificMessageArb],
+    async (messages) => {
+      const inputStream = rpcTestUtils.jsonRpcStream(messages);
+      const [outputResult, outputStream] =
+        rpcTestUtils.streamToArray<Uint8Array>();
+      const streamPair: ReadableWritablePair = {
+        readable: inputStream,
+        writable: outputStream,
+      };
+      const rpcClient = await RPCClient.createRPCClient({
+        streamPairCreateCallback: async () => streamPair,
+        logger,
+      });
+
+      rpcClient.registerReverseMiddleware(() => {
+        return (input) =>
+          input.pipeThrough(
+            new TransformStream<
+              JsonRpcResponse<JSONValue>,
+              JsonRpcResponse<JSONValue>
+            >({
+              transform: (chunk, controller) => {
+                controller.enqueue({
+                  ...chunk,
+                  result: 'one',
+                });
+              },
+            }),
+          );
+      });
+      const callerInterface = await rpcClient.duplexStreamCaller<
+        JSONValue,
+        JSONValue
+      >(methodName, { hello: 'world' });
+      const reader = callerInterface.readable.getReader();
+      const writer = callerInterface.writable.getWriter();
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) {
+          // We have to end the writer otherwise the stream never closes
+          await writer.close();
+          break;
+        }
+        expect(value).toBe('one');
+        await writer.write(value);
+      }
+      await outputResult;
       await rpcClient.destroy();
     },
   );

@@ -1,6 +1,12 @@
 import type { StreamPairCreateCallback } from './types';
 import type { JSONValue, POJO } from 'types';
 import type { ReadableWritablePair } from 'stream/web';
+import type {
+  JsonRpcRequest,
+  JsonRpcResponse,
+  MiddlewareFactory,
+  Middleware,
+} from './types';
 import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
 import Logger from '@matrixai/logger';
 import * as rpcErrors from './errors';
@@ -50,14 +56,24 @@ class RPCClient {
     _metadata: POJO,
   ): Promise<ReadableWritablePair<O, I>> {
     const streamPair = await this.streamPairCreateCallback();
-    const outputStream = streamPair.readable
-      .pipeThrough(
-        new rpcUtils.JsonToJsonMessageStream(rpcUtils.parseJsonRpcResponse),
-      )
-      .pipeThrough(new rpcUtils.ClientOutputTransformerStream<O>());
+    let reverseMiddlewareStream = streamPair.readable.pipeThrough(
+      new rpcUtils.JsonToJsonMessageStream(rpcUtils.parseJsonRpcResponse),
+    );
+    for (const middleWare of this.reverseMiddleware) {
+      const middle = middleWare();
+      reverseMiddlewareStream = middle(reverseMiddlewareStream);
+    }
+    const outputStream = reverseMiddlewareStream.pipeThrough(
+      new rpcUtils.ClientOutputTransformerStream<O>(),
+    );
     const inputMessageTransformer =
       new rpcUtils.ClientInputTransformerStream<I>(method);
-    void inputMessageTransformer.readable
+    let forwardMiddlewareStream = inputMessageTransformer.readable;
+    for (const middleware of this.forwardMiddleWare) {
+      const middle = middleware();
+      forwardMiddlewareStream = middle(forwardMiddlewareStream);
+    }
+    void forwardMiddlewareStream
       .pipeThrough(new rpcUtils.JsonMessageToJsonStream())
       .pipeTo(streamPair.writable)
       .catch(() => {});
@@ -187,6 +203,39 @@ class RPCClient {
     }
     await writer.close();
     return callerInterface.output;
+  }
+
+  protected forwardMiddleWare: Array<
+    MiddlewareFactory<Middleware<JsonRpcRequest<JSONValue>>>
+  > = [];
+  protected reverseMiddleware: Array<
+    MiddlewareFactory<Middleware<JsonRpcResponse<JSONValue>>>
+  > = [];
+
+  @ready(new rpcErrors.ErrorRpcDestroyed())
+  public registerForwardMiddleware(
+    middlewareFactory: MiddlewareFactory<Middleware<JsonRpcRequest<JSONValue>>>,
+  ) {
+    this.forwardMiddleWare.push(middlewareFactory);
+  }
+
+  @ready(new rpcErrors.ErrorRpcDestroyed())
+  public clearForwardMiddleware() {
+    this.reverseMiddleware = [];
+  }
+
+  @ready(new rpcErrors.ErrorRpcDestroyed())
+  public registerReverseMiddleware(
+    middlewareFactory: MiddlewareFactory<
+      Middleware<JsonRpcResponse<JSONValue>>
+    >,
+  ) {
+    this.reverseMiddleware.push(middlewareFactory);
+  }
+
+  @ready(new rpcErrors.ErrorRpcDestroyed())
+  public clearReverseMiddleware() {
+    this.reverseMiddleware = [];
   }
 }
 

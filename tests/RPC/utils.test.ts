@@ -105,6 +105,37 @@ describe('utils tests', () => {
     { numRuns: 1000 },
   );
 
+  testProp(
+    'merging transformation stream',
+    [fc.array(fc.integer()), fc.array(fc.integer())],
+    async (set1, set2) => {
+      const [outputResult, outputWriterStream] =
+        rpcTestUtils.streamToArray<number>();
+      const { controllerP, controllerTransformStream } =
+        rpcUtils.controllerTransformationFactory<number>();
+      void controllerTransformStream.readable
+        .pipeTo(outputWriterStream)
+        .catch(() => {});
+      const writer = controllerTransformStream.writable.getWriter();
+      const controller = await controllerP;
+      const expectedResult: Array<number> = [];
+      for (let i = 0; i < Math.max(set1.length, set2.length); i++) {
+        if (set1[i] != null) {
+          await writer.write(set1[i]);
+          expectedResult.push(set1[i]);
+        }
+        if (set2[i] != null) {
+          controller.enqueue(set2[i]);
+          expectedResult.push(set2[i]);
+        }
+      }
+      await writer.close();
+
+      expect(await outputResult).toStrictEqual(expectedResult);
+    },
+    { numRuns: 1000 },
+  );
+
   // TODO:
   //  - Test for badly structured data
 });
