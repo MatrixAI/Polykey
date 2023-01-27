@@ -5,7 +5,6 @@ import type {
   JsonRpcRequest,
   JsonRpcResponse,
   MiddlewareFactory,
-  Middleware,
 } from './types';
 import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
 import Logger from '@matrixai/logger';
@@ -55,34 +54,37 @@ class RPCClient {
     method: string,
     _metadata: POJO,
   ): Promise<ReadableWritablePair<O, I>> {
-    const streamPair = await this.streamPairCreateCallback();
-    let reverseMiddlewareStream = streamPair.readable.pipeThrough(
-      new rpcUtils.JsonToJsonMessageStream(rpcUtils.parseJsonRpcResponse),
-    );
-    for (const middleWare of this.reverseMiddleware) {
-      const middle = middleWare();
-      reverseMiddlewareStream = middle(reverseMiddlewareStream);
-    }
-    const outputStream = reverseMiddlewareStream.pipeThrough(
-      new rpcUtils.ClientOutputTransformerStream<O>(),
-    );
-    const inputMessageTransformer =
+    // Creating caller side transforms
+    const outputMessageTransforStream =
+      new rpcUtils.ClientOutputTransformerStream<O>();
+    const inputMessageTransformStream =
       new rpcUtils.ClientInputTransformerStream<I>(method);
-    let forwardMiddlewareStream = inputMessageTransformer.readable;
-    for (const middleware of this.forwardMiddleWare) {
-      const middle = middleware();
-      forwardMiddlewareStream = middle(forwardMiddlewareStream);
+    let reverseStream = outputMessageTransforStream.writable;
+    let forwardStream = inputMessageTransformStream.readable;
+    // Setting up middleware chains
+    for (const middlewareFactory of this.middleware) {
+      const middleware = middlewareFactory();
+      forwardStream = forwardStream.pipeThrough(middleware.forward);
+      void middleware.reverse.readable.pipeTo(reverseStream).catch(() => {});
+      reverseStream = middleware.reverse.writable;
     }
-    void forwardMiddlewareStream
+    // Hooking up agnostic stream side
+    const streamPair = await this.streamPairCreateCallback();
+    void streamPair.readable
+      .pipeThrough(
+        new rpcUtils.JsonToJsonMessageStream(rpcUtils.parseJsonRpcResponse),
+      )
+      .pipeTo(reverseStream)
+      .catch(() => {});
+    void forwardStream
       .pipeThrough(new rpcUtils.JsonMessageToJsonStream())
       .pipeTo(streamPair.writable)
       .catch(() => {});
-    const inputStream = inputMessageTransformer.writable;
 
     // Returning interface
     return {
-      readable: outputStream,
-      writable: inputStream,
+      readable: outputMessageTransforStream.readable,
+      writable: inputMessageTransformStream.writable,
     };
   }
 
@@ -205,37 +207,23 @@ class RPCClient {
     return callerInterface.output;
   }
 
-  protected forwardMiddleWare: Array<
-    MiddlewareFactory<Middleware<JsonRpcRequest<JSONValue>>>
-  > = [];
-  protected reverseMiddleware: Array<
-    MiddlewareFactory<Middleware<JsonRpcResponse<JSONValue>>>
+  protected middleware: Array<
+    MiddlewareFactory<JsonRpcRequest<JSONValue>, JsonRpcResponse<JSONValue>>
   > = [];
 
   @ready(new rpcErrors.ErrorRpcDestroyed())
-  public registerForwardMiddleware(
-    middlewareFactory: MiddlewareFactory<Middleware<JsonRpcRequest<JSONValue>>>,
-  ) {
-    this.forwardMiddleWare.push(middlewareFactory);
-  }
-
-  @ready(new rpcErrors.ErrorRpcDestroyed())
-  public clearForwardMiddleware() {
-    this.reverseMiddleware = [];
-  }
-
-  @ready(new rpcErrors.ErrorRpcDestroyed())
-  public registerReverseMiddleware(
+  public registerMiddleware(
     middlewareFactory: MiddlewareFactory<
-      Middleware<JsonRpcResponse<JSONValue>>
+      JsonRpcRequest<JSONValue>,
+      JsonRpcResponse<JSONValue>
     >,
   ) {
-    this.reverseMiddleware.push(middlewareFactory);
+    this.middleware.push(middlewareFactory);
   }
 
   @ready(new rpcErrors.ErrorRpcDestroyed())
-  public clearReverseMiddleware() {
-    this.reverseMiddleware = [];
+  public clearMiddleware() {
+    this.middleware = [];
   }
 }
 

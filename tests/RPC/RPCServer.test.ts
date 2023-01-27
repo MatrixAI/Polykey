@@ -4,6 +4,7 @@ import type {
   JsonRpcMessage,
   JsonRpcRequest,
   JsonRpcResponse,
+  JsonRpcResponseError,
   ServerStreamHandler,
   UnaryHandler,
 } from '@/RPC/types';
@@ -391,19 +392,16 @@ describe(`${RPCServer.name}`, () => {
       };
 
     rpcServer.registerDuplexStreamHandler(methodName, duplexHandler);
-    rpcServer.registerForwardMiddleware(() => {
-      return (input) =>
-        input.pipeThrough(
-          new TransformStream<
-            JsonRpcRequest<JSONValue>,
-            JsonRpcRequest<JSONValue>
-          >({
-            transform: (chunk, controller) => {
-              chunk.params = 1;
-              controller.enqueue(chunk);
-            },
-          }),
-        );
+    rpcServer.registerMiddleware(() => {
+      return {
+        forward: new TransformStream({
+          transform: (chunk, controller) => {
+            chunk.params = 1;
+            controller.enqueue(chunk);
+          },
+        }),
+        reverse: new TransformStream(),
+      };
     });
     rpcServer.handleStream(readWriteStream, {} as ConnectionInfo);
     const out = await outputResult;
@@ -436,21 +434,16 @@ describe(`${RPCServer.name}`, () => {
       };
 
     rpcServer.registerDuplexStreamHandler(methodName, duplexHandler);
-    rpcServer.registerReverseMiddleware(() => {
-      return (input) =>
-        input.pipeThrough(
-          new TransformStream<
-            JsonRpcResponse<JSONValue>,
-            JsonRpcResponse<JSONValue>
-          >({
-            transform: (chunk, controller) => {
-              if ('result' in chunk) {
-                chunk.result = 1;
-              }
-              controller.enqueue(chunk);
-            },
-          }),
-        );
+    rpcServer.registerMiddleware(() => {
+      return {
+        forward: new TransformStream(),
+        reverse: new TransformStream({
+          transform: (chunk, controller) => {
+            if ('result' in chunk) chunk.result = 1;
+            controller.enqueue(chunk);
+          },
+        }),
+      };
     });
     rpcServer.handleStream(readWriteStream, {} as ConnectionInfo);
     const out = await outputResult;
@@ -504,37 +497,52 @@ describe(`${RPCServer.name}`, () => {
         };
         data: JSONValue;
       };
-      rpcServer.registerForwardMiddleware(() => {
+      const failureMessage: JsonRpcResponseError = {
+        jsonrpc: '2.0',
+        id: null,
+        error: {
+          code: 1,
+          message: 'failure of somekind',
+        },
+      };
+      rpcServer.registerMiddleware(() => {
         let first = true;
-        return (input, short) =>
-          input.pipeThrough(
-            new TransformStream<
-              JsonRpcRequest<TestType>,
-              JsonRpcRequest<TestType>
-            >({
-              transform: (chunk, controller) => {
-                if (first && chunk.params?.metadata.token !== validToken) {
-                  short({
-                    jsonrpc: '2.0',
-                    id: null,
-                    error: {
-                      code: 1,
-                      message: 'failure of somekind',
-                    },
-                  });
-                  controller.error(new rpcErrors.ErrorRpcNoMessageError());
-                }
-                first = false;
-                controller.enqueue(chunk);
-              },
-            }),
-          );
+        let reverseController: TransformStreamDefaultController<
+          JsonRpcResponse<JSONValue>
+        >;
+        return {
+          forward: new TransformStream<
+            JsonRpcRequest<TestType>,
+            JsonRpcRequest<TestType>
+          >({
+            transform: (chunk, controller) => {
+              if (first && chunk.params?.metadata.token !== validToken) {
+                reverseController.enqueue(failureMessage);
+                // Closing streams early
+                controller.terminate();
+                reverseController.terminate();
+              }
+              first = false;
+              controller.enqueue(chunk);
+            },
+          }),
+          reverse: new TransformStream({
+            start: (controller) => {
+              // Kidnapping reverse controller
+              reverseController = controller;
+            },
+            transform: (chunk, controller) => {
+              controller.enqueue(chunk);
+            },
+          }),
+        };
       });
       rpcServer.handleStream(readWriteStream, {} as ConnectionInfo);
-      await outputResult;
+      expect((await outputResult).toString()).toEqual(
+        JSON.stringify(failureMessage),
+      );
       await rpcServer.destroy();
     },
-    { numRuns: 1 },
   );
 
   // TODO:

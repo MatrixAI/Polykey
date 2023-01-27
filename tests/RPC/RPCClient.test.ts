@@ -341,21 +341,21 @@ describe(`${RPCClient.name}`, () => {
         logger,
       });
 
-      rpcClient.registerForwardMiddleware(() => {
-        return (input) =>
-          input.pipeThrough(
-            new TransformStream<
-              JsonRpcRequest<JSONValue>,
-              JsonRpcRequest<JSONValue>
-            >({
-              transform: (chunk, controller) => {
-                controller.enqueue({
-                  ...chunk,
-                  params: 'one',
-                });
-              },
-            }),
-          );
+      rpcClient.registerMiddleware(() => {
+        return {
+          forward: new TransformStream<
+            JsonRpcRequest<JSONValue>,
+            JsonRpcRequest<JSONValue>
+          >({
+            transform: (chunk, controller) => {
+              controller.enqueue({
+                ...chunk,
+                params: 'one',
+              });
+            },
+          }),
+          reverse: new TransformStream(),
+        };
       });
       const callerInterface = await rpcClient.duplexStreamCaller<
         JSONValue,
@@ -391,7 +391,7 @@ describe(`${RPCClient.name}`, () => {
       await rpcClient.destroy();
     },
   );
-  testProp.only(
+  testProp(
     'generic duplex caller with reverse Middleware',
     [specificMessageArb],
     async (messages) => {
@@ -407,21 +407,21 @@ describe(`${RPCClient.name}`, () => {
         logger,
       });
 
-      rpcClient.registerReverseMiddleware(() => {
-        return (input) =>
-          input.pipeThrough(
-            new TransformStream<
-              JsonRpcResponse<JSONValue>,
-              JsonRpcResponse<JSONValue>
-            >({
-              transform: (chunk, controller) => {
-                controller.enqueue({
-                  ...chunk,
-                  result: 'one',
-                });
-              },
-            }),
-          );
+      rpcClient.registerMiddleware(() => {
+        return {
+          forward: new TransformStream(),
+          reverse: new TransformStream<
+            JsonRpcResponse<JSONValue>,
+            JsonRpcResponse<JSONValue>
+          >({
+            transform: (chunk, controller) => {
+              controller.enqueue({
+                ...chunk,
+                result: 'one',
+              });
+            },
+          }),
+        };
       });
       const callerInterface = await rpcClient.duplexStreamCaller<
         JSONValue,
