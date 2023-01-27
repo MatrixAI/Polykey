@@ -13,11 +13,7 @@ import type { ReadableWritablePair } from 'stream/web';
 import type { JSONValue, POJO } from '../types';
 import type { ConnectionInfo } from '../network/types';
 import type { RPCErrorEvent } from './utils';
-import type {
-  MiddlewareFactory,
-  MiddlewareShort,
-  Middleware,
-} from 'tokens/types';
+import type { MiddlewareFactory, MiddlewareShort, Middleware } from './types';
 import { ReadableStream } from 'stream/web';
 import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
 import Logger from '@matrixai/logger';
