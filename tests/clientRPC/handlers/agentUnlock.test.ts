@@ -2,7 +2,6 @@ import type { ConnectionInfo } from '@/network/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import { TransformStream } from 'stream/web';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import KeyRing from '@/keys/KeyRing';
@@ -16,6 +15,8 @@ import {
   agentUnlockCaller,
 } from '@/clientRPC/handlers/agentUnlock';
 import RPCClient from '@/RPC/RPCClient';
+import { Session, SessionManager } from '@/sessions';
+import * as abcUtils from '@/clientRPC/utils';
 import * as rpcTestUtils from '../../RPC/utils';
 
 describe('agentStatus', () => {
@@ -28,6 +29,8 @@ describe('agentStatus', () => {
   let keyRing: KeyRing;
   let taskManager: TaskManager;
   let certManager: CertManager;
+  let session: Session;
+  let sessionManager: SessionManager;
 
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
@@ -35,6 +38,7 @@ describe('agentStatus', () => {
     );
     const keysPath = path.join(dataDir, 'keys');
     const dbPath = path.join(dataDir, 'db');
+    const sessionPath = path.join(dataDir, 'session');
     db = await DB.createDB({
       dbPath,
       logger,
@@ -54,6 +58,15 @@ describe('agentStatus', () => {
       taskManager,
       logger,
     });
+    session = await Session.createSession({
+      sessionTokenPath: sessionPath,
+      logger,
+    });
+    sessionManager = await SessionManager.createSessionManager({
+      db,
+      keyRing,
+      logger,
+    });
   });
   afterEach(async () => {
     await certManager.stop();
@@ -69,25 +82,14 @@ describe('agentStatus', () => {
     // Setup
     const rpcServer = await RPCServer.createRPCServer({
       container: {
-        // KeyRing,
-        // certManager,
         logger,
       },
       logger,
     });
     rpcServer.registerUnaryHandler(agentUnlockName, agentUnlockHandler);
-    rpcServer.registerForwardMiddleware(() => {
-      return (input) => {
-        // This middleware needs to check the first message for the token
-        return input.pipeThrough(
-          new TransformStream({
-            transform: (chunk, controller) => {
-              controller.enqueue(chunk);
-            },
-          }),
-        );
-      };
-    });
+    rpcServer.registerMiddleware(
+      abcUtils.authenticationMiddlewareServer(sessionManager, keyRing),
+    );
     const rpcClient = await RPCClient.createRPCClient({
       streamPairCreateCallback: async () => {
         const { clientPair, serverPair } = rpcTestUtils.createTapPairs();
@@ -96,15 +98,29 @@ describe('agentStatus', () => {
       },
       logger,
     });
+    rpcClient.registerMiddleware(
+      abcUtils.authenticationMiddlewareClient(session),
+    );
 
     // Doing the test
-    const result = await agentUnlockCaller({}, rpcClient);
-    expect(result).toStrictEqual({
-      pid: process.pid,
-      nodeId: keyRing.getNodeId(),
-      publicJwk: JSON.stringify(
-        keysUtils.publicKeyToJWK(keyRing.keyPair.publicKey),
-      ),
+    const result = await agentUnlockCaller(
+      {
+        Authorization: abcUtils.encodeAuthFromPassword(password),
+      },
+      rpcClient,
+    );
+    expect(result).toMatchObject({
+      metadata: {
+        Authorization: expect.any(String),
+      },
+      data: null,
+    });
+    const result2 = await agentUnlockCaller({}, rpcClient);
+    expect(result2).toMatchObject({
+      metadata: {
+        Authorization: expect.any(String),
+      },
+      data: null,
     });
   });
 });

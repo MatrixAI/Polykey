@@ -68,8 +68,8 @@ describe('agentStatus', () => {
     // Setup
     const rpcServer = await RPCServer.createRPCServer({
       container: {
-        // KeyRing,
-        // certManager,
+        keyRing,
+        certManager,
         logger,
       },
       logger,

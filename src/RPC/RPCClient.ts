@@ -1,5 +1,5 @@
 import type { StreamPairCreateCallback } from './types';
-import type { JSONValue, POJO } from 'types';
+import type { JSONValue } from 'types';
 import type { ReadableWritablePair } from 'stream/web';
 import type {
   JsonRpcRequest,
@@ -52,7 +52,6 @@ class RPCClient {
   @ready(new rpcErrors.ErrorRpcDestroyed())
   public async duplexStreamCaller<I extends JSONValue, O extends JSONValue>(
     method: string,
-    _metadata: POJO,
   ): Promise<ReadableWritablePair<O, I>> {
     // Creating caller side transforms
     const outputMessageTransforStream =
@@ -92,12 +91,8 @@ class RPCClient {
   public async serverStreamCaller<I extends JSONValue, O extends JSONValue>(
     method: string,
     parameters: I,
-    metadata: POJO,
   ) {
-    const callerInterface = await this.duplexStreamCaller<I, O>(
-      method,
-      metadata,
-    );
+    const callerInterface = await this.duplexStreamCaller<I, O>(method);
     const writer = callerInterface.writable.getWriter();
     await writer.write(parameters);
     await writer.close();
@@ -108,12 +103,8 @@ class RPCClient {
   @ready(new rpcErrors.ErrorRpcDestroyed())
   public async clientStreamCaller<I extends JSONValue, O extends JSONValue>(
     method: string,
-    metadata: POJO,
   ) {
-    const callerInterface = await this.duplexStreamCaller<I, O>(
-      method,
-      metadata,
-    );
+    const callerInterface = await this.duplexStreamCaller<I, O>(method);
     const reader = callerInterface.readable.getReader();
     const output = reader.read().then(({ value, done }) => {
       if (done) {
@@ -131,12 +122,8 @@ class RPCClient {
   public async unaryCaller<I extends JSONValue, O extends JSONValue>(
     method: string,
     parameters: I,
-    metadata: POJO,
   ): Promise<O> {
-    const callerInterface = await this.duplexStreamCaller<I, O>(
-      method,
-      metadata,
-    );
+    const callerInterface = await this.duplexStreamCaller<I, O>(method);
     const reader = callerInterface.readable.getReader();
     const writer = callerInterface.writable.getWriter();
     await writer.write(parameters);
@@ -153,12 +140,8 @@ class RPCClient {
   public async withDuplexCaller<I extends JSONValue, O extends JSONValue>(
     method: string,
     f: (output: AsyncGenerator<O>) => AsyncGenerator<I>,
-    metadata: POJO,
   ): Promise<void> {
-    const callerInterface = await this.duplexStreamCaller<I, O>(
-      method,
-      metadata,
-    );
+    const callerInterface = await this.duplexStreamCaller<I, O>(method);
     const outputGenerator = async function* () {
       for await (const value of callerInterface.readable) {
         yield value;
@@ -176,12 +159,10 @@ class RPCClient {
     method: string,
     parameters: I,
     f: (output: AsyncGenerator<O>) => Promise<void>,
-    metadata: POJO,
   ) {
     const callerInterface = await this.serverStreamCaller<I, O>(
       method,
       parameters,
-      metadata,
     );
     const outputGenerator = async function* () {
       yield* callerInterface;
@@ -193,12 +174,8 @@ class RPCClient {
   public async withClientCaller<I extends JSONValue, O extends JSONValue>(
     method: string,
     f: () => AsyncGenerator<I>,
-    metadata: POJO,
   ): Promise<O> {
-    const callerInterface = await this.clientStreamCaller<I, O>(
-      method,
-      metadata,
-    );
+    const callerInterface = await this.clientStreamCaller<I, O>(method);
     const writer = callerInterface.writable.getWriter();
     for await (const value of f()) {
       await writer.write(value);

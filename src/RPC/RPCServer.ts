@@ -20,6 +20,7 @@ import Logger from '@matrixai/logger';
 import { PromiseCancellable } from '@matrixai/async-cancellable';
 import * as rpcUtils from './utils';
 import * as rpcErrors from './errors';
+import { sysexits } from '../errors';
 
 interface RPCServer extends CreateDestroy {}
 @CreateDestroy()
@@ -245,8 +246,8 @@ class RPCServer {
           if (rpcUtils.isReturnableError(e)) {
             // We want to convert this error to an error message and pass it along
             const rpcError: JsonRpcError = {
-              code: e.exitCode,
-              message: e.description,
+              code: e.exitCode ?? sysexits.UNKNOWN,
+              message: e.description ?? '',
               data: rpcUtils.fromError(e),
             };
             const rpcErrorMessage: JsonRpcResponseError = {
