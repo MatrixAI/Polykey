@@ -1,7 +1,8 @@
-import type { ConnectionInfo } from '@/network/types';
+import type { Server } from 'https';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import { createServer } from 'https';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import KeyRing from '@/keys/KeyRing';
@@ -17,10 +18,11 @@ import {
 import RPCClient from '@/RPC/RPCClient';
 import { Session, SessionManager } from '@/sessions';
 import * as abcUtils from '@/clientRPC/utils';
-import * as rpcTestUtils from '../../RPC/utils';
+import * as clientRPCUtils from '@/clientRPC/utils';
+import * as testsUtils from '../../utils';
 
-describe('agentStatus', () => {
-  const logger = new Logger('agentStatus test', LogLevel.WARN, [
+describe('agentUnlock', () => {
+  const logger = new Logger('agentUnlock test', LogLevel.INFO, [
     new StreamHandler(),
   ]);
   const password = 'helloworld';
@@ -31,6 +33,7 @@ describe('agentStatus', () => {
   let certManager: CertManager;
   let session: Session;
   let sessionManager: SessionManager;
+  let server: Server;
 
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
@@ -67,8 +70,15 @@ describe('agentStatus', () => {
       keyRing,
       logger,
     });
+    const tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
+    server = createServer({
+      cert: tlsConfig.certChainPem,
+      key: tlsConfig.keyPrivatePem,
+    });
+    server.listen(8080, '127.0.0.1');
   });
   afterEach(async () => {
+    server.close();
     await certManager.stop();
     await taskManager.stop();
     await keyRing.stop();
@@ -90,11 +100,17 @@ describe('agentStatus', () => {
     rpcServer.registerMiddleware(
       abcUtils.authenticationMiddlewareServer(sessionManager, keyRing),
     );
+    clientRPCUtils.createClientServer(
+      server,
+      rpcServer,
+      logger.getChild('server'),
+    );
     const rpcClient = await RPCClient.createRPCClient({
       streamPairCreateCallback: async () => {
-        const { clientPair, serverPair } = rpcTestUtils.createTapPairs();
-        rpcServer.handleStream(serverPair, {} as ConnectionInfo);
-        return clientPair;
+        return clientRPCUtils.startConnection(
+          'wss://localhost:8080',
+          logger.getChild('client'),
+        );
       },
       logger,
     });

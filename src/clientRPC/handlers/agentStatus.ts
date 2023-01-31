@@ -37,7 +37,6 @@ const agentStatusCaller = async (metadata: POJO, rpcClient: RPCClient) => {
   const result = await rpcClient.unaryCaller<null, StatusResult>(
     agentStatusName,
     null,
-    metadata,
   );
   return {
     pid: result.pid,

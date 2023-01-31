@@ -96,6 +96,7 @@
     "@peculiar/webcrypto": "^1.4.0",
     "@peculiar/x509": "^1.8.3",
     "@scure/bip39": "^1.1.0",
+    "@types/ws": "^8.5.4",
     "ajv": "^7.0.4",
     "bip39": "^3.0.3",
     "canonicalize": "^1.0.5",
@@ -118,13 +119,15 @@
     "resource-counter": "^1.2.4",
     "sodium-native": "^3.4.1",
     "threads": "^1.6.5",
-    "utp-native": "^2.5.3",
     "tslib": "^2.4.0",
-    "tsyringe": "^4.7.0"
+    "tsyringe": "^4.7.0",
+    "utp-native": "^2.5.3",
+    "ws": "^8.12.0"
   },
   "devDependencies": {
     "@babel/preset-env": "^7.13.10",
     "@fast-check/jest": "^1.1.0",
+    "@streamparser/json": "^0.0.12",
     "@swc/core": "^1.2.215",
     "@types/cross-spawn": "^6.0.2",
     "@types/google-protobuf": "^3.7.4",
@@ -163,7 +166,6 @@
     "ts-node": "^10.9.1",
     "tsconfig-paths": "^3.9.0",
     "typedoc": "^0.23.21",
-    "typescript": "^4.9.3",
-    "@streamparser/json": "^0.0.12"
+    "typescript": "^4.9.3"
   }
 }

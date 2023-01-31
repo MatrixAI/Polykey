@@ -1,7 +1,8 @@
-import type { ConnectionInfo } from '@/network/types';
+import type { Server } from 'https';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import { createServer } from 'https';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import KeyRing from '@/keys/KeyRing';
@@ -15,7 +16,8 @@ import {
   agentStatusCaller,
 } from '@/clientRPC/handlers/agentStatus';
 import RPCClient from '@/RPC/RPCClient';
-import * as rpcTestUtils from '../../RPC/utils';
+import * as clientRPCUtils from '@/clientRPC/utils';
+import * as testsUtils from '../../utils';
 
 describe('agentStatus', () => {
   const logger = new Logger('agentStatus test', LogLevel.WARN, [
@@ -27,6 +29,7 @@ describe('agentStatus', () => {
   let keyRing: KeyRing;
   let taskManager: TaskManager;
   let certManager: CertManager;
+  let server: Server;
 
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
@@ -53,8 +56,15 @@ describe('agentStatus', () => {
       taskManager,
       logger,
     });
+    const tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
+    server = createServer({
+      cert: tlsConfig.certChainPem,
+      key: tlsConfig.keyPrivatePem,
+    });
+    server.listen(8080, '127.0.0.1');
   });
   afterEach(async () => {
+    server.close();
     await certManager.stop();
     await taskManager.stop();
     await keyRing.stop();
@@ -70,18 +80,24 @@ describe('agentStatus', () => {
       container: {
         keyRing,
         certManager,
-        logger,
+        logger: logger.getChild('container'),
       },
-      logger,
+      logger: logger.getChild('RPCServer'),
     });
     rpcServer.registerUnaryHandler(agentStatusName, agentStatusHandler);
+    clientRPCUtils.createClientServer(
+      server,
+      rpcServer,
+      logger.getChild('server'),
+    );
     const rpcClient = await RPCClient.createRPCClient({
       streamPairCreateCallback: async () => {
-        const { clientPair, serverPair } = rpcTestUtils.createTapPairs();
-        rpcServer.handleStream(serverPair, {} as ConnectionInfo);
-        return clientPair;
+        return clientRPCUtils.startConnection(
+          'wss://localhost:8080',
+          logger.getChild('client'),
+        );
       },
-      logger,
+      logger: logger.getChild('RPCClient'),
     });
 
     // Doing the test
