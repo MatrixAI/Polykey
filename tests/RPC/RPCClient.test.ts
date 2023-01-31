@@ -40,7 +40,7 @@ describe(`${RPCClient.name}`, () => {
     const callerInterface = await rpcClient.duplexStreamCaller<
       JSONValue,
       JSONValue
-    >(methodName, { hello: 'world' });
+    >(methodName);
     const reader = callerInterface.readable.getReader();
     const writer = callerInterface.writable.getWriter();
     while (true) {
@@ -84,7 +84,7 @@ describe(`${RPCClient.name}`, () => {
       const callerInterface = await rpcClient.serverStreamCaller<
         JSONValue,
         JSONValue
-      >(methodName, params as JSONValue, {});
+      >(methodName, params as JSONValue);
       const values: Array<JSONValue> = [];
       for await (const value of callerInterface) {
         values.push(value);
@@ -120,7 +120,7 @@ describe(`${RPCClient.name}`, () => {
       const callerInterface = await rpcClient.clientStreamCaller<
         JSONValue,
         JSONValue
-      >(methodName, {});
+      >(methodName);
       const writer = callerInterface.writable.getWriter();
       for (const param of params) {
         await writer.write(param as JSONValue);
@@ -158,7 +158,6 @@ describe(`${RPCClient.name}`, () => {
       const result = await rpcClient.unaryCaller<JSONValue, JSONValue>(
         methodName,
         params as JSONValue,
-        {},
       );
       expect(result).toStrictEqual(message.result);
       expect((await outputResult)[0]?.toString()).toStrictEqual(
@@ -196,7 +195,7 @@ describe(`${RPCClient.name}`, () => {
       const callerInterface = await rpcClient.duplexStreamCaller<
         JSONValue,
         JSONValue
-      >(methodName, { hello: 'world' });
+      >(methodName);
       const consumeToError = async () => {
         for await (const _ of callerInterface.readable) {
           // No touch, just consume
@@ -226,16 +225,12 @@ describe(`${RPCClient.name}`, () => {
         logger,
       });
       let count = 0;
-      await rpcClient.withDuplexCaller(
-        methodName,
-        async function* (output) {
-          for await (const value of output) {
-            count += 1;
-            yield value;
-          }
-        },
-        {},
-      );
+      await rpcClient.withDuplexCaller(methodName, async function* (output) {
+        for await (const value of output) {
+          count += 1;
+          yield value;
+        }
+      });
       const result = await outputResult;
       // We're just checking that it consuming the messages as expected
       expect(result.length).toEqual(messages.length);
@@ -262,14 +257,9 @@ describe(`${RPCClient.name}`, () => {
         logger,
       });
       let count = 0;
-      await rpcClient.withServerCaller(
-        methodName,
-        params,
-        async (output) => {
-          for await (const _ of output) count += 1;
-        },
-        {},
-      );
+      await rpcClient.withServerCaller(methodName, params, async (output) => {
+        for await (const _ of output) count += 1;
+      });
       const result = await outputResult;
       expect(count).toEqual(messages.length);
       expect(result.toString()).toStrictEqual(
@@ -308,7 +298,6 @@ describe(`${RPCClient.name}`, () => {
             yield inputMessage;
           }
         },
-        {},
       );
       const expectedResult = inputMessages.map((v) => {
         return JSON.stringify({
@@ -360,7 +349,7 @@ describe(`${RPCClient.name}`, () => {
       const callerInterface = await rpcClient.duplexStreamCaller<
         JSONValue,
         JSONValue
-      >(methodName, { hello: 'world' });
+      >(methodName);
       const reader = callerInterface.readable.getReader();
       const writer = callerInterface.writable.getWriter();
       while (true) {
@@ -426,7 +415,7 @@ describe(`${RPCClient.name}`, () => {
       const callerInterface = await rpcClient.duplexStreamCaller<
         JSONValue,
         JSONValue
-      >(methodName, { hello: 'world' });
+      >(methodName);
       const reader = callerInterface.readable.getReader();
       const writer = callerInterface.writable.getWriter();
       while (true) {

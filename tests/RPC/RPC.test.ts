@@ -44,10 +44,7 @@ describe('RPC', () => {
         logger,
       });
 
-      const callerInterface = await rpcClient.duplexStreamCaller(
-        methodName,
-        {},
-      );
+      const callerInterface = await rpcClient.duplexStreamCaller(methodName);
       const writer = callerInterface.writable.getWriter();
       const reader = callerInterface.readable.getReader();
       for (const value of values) {
@@ -93,7 +90,7 @@ describe('RPC', () => {
       const callerInterface = await rpcClient.serverStreamCaller<
         number,
         number
-      >(methodName, value, {});
+      >(methodName, value);
 
       const outputs: Array<number> = [];
       for await (const num of callerInterface) {
@@ -137,7 +134,7 @@ describe('RPC', () => {
       const callerInterface = await rpcClient.clientStreamCaller<
         number,
         number
-      >(methodName, {});
+      >(methodName);
       const writer = callerInterface.writable.getWriter();
       for (const value of values) {
         await writer.write(value);
@@ -176,7 +173,6 @@ describe('RPC', () => {
       const result = await rpcClient.unaryCaller<JSONValue, JSONValue>(
         methodName,
         value,
-        {},
       );
       expect(result).toStrictEqual(value);
       await rpcServer.destroy();
