@@ -1,4 +1,4 @@
-import type { StreamPairCreateCallback } from './types';
+import type { JsonRpcRequestMessage, StreamPairCreateCallback } from './types';
 import type { JSONValue } from 'types';
 import type { ReadableWritablePair } from 'stream/web';
 import type {
@@ -47,6 +47,24 @@ class RPCClient {
   public async destroy(): Promise<void> {
     this.logger.info(`Destroying ${this.constructor.name}`);
     this.logger.info(`Destroyed ${this.constructor.name}`);
+  }
+
+  @ready(new rpcErrors.ErrorRpcDestroyed())
+  public async rawStreamCaller(
+    method: string,
+    params: JSONValue,
+  ): Promise<ReadableWritablePair<Uint8Array, Uint8Array>> {
+    const streamPair = await this.streamPairCreateCallback();
+    const tempWriter = streamPair.writable.getWriter();
+    const header: JsonRpcRequestMessage = {
+      jsonrpc: '2.0',
+      method,
+      params,
+      id: null,
+    };
+    await tempWriter.write(Buffer.from(JSON.stringify(header)));
+    tempWriter.releaseLock();
+    return streamPair;
   }
 
   @ready(new rpcErrors.ErrorRpcDestroyed())
@@ -134,6 +152,25 @@ class RPCClient {
     await reader.cancel();
     await writer.close();
     return output.value;
+  }
+
+  @ready(new rpcErrors.ErrorRpcDestroyed())
+  public async withRawStreamCaller(
+    method: string,
+    params: JSONValue,
+    f: (output: AsyncGenerator<Uint8Array>) => AsyncGenerator<Uint8Array>,
+  ) {
+    const callerInterface = await this.rawStreamCaller(method, params);
+    const outputGenerator = async function* () {
+      for await (const value of callerInterface.readable) {
+        yield value;
+      }
+    };
+    const writer = callerInterface.writable.getWriter();
+    for await (const value of f(outputGenerator())) {
+      await writer.write(value);
+    }
+    await writer.close();
   }
 
   @ready(new rpcErrors.ErrorRpcDestroyed())

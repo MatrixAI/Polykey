@@ -1,6 +1,8 @@
 import type {
   ClientStreamHandler,
   DuplexStreamHandler,
+  JsonRpcRequest,
+  RawDuplexStreamHandler,
   ServerStreamHandler,
   UnaryHandler,
 } from '@/RPC/types';
@@ -17,6 +19,60 @@ describe('RPC', () => {
 
   const methodName = 'testMethod';
 
+  testProp(
+    'RPC communication with raw stream',
+    [rpcTestUtils.rawDataArb],
+    async (inputData) => {
+      const [outputResult, outputWriterStream] =
+        rpcTestUtils.streamToArray<Uint8Array>();
+      const { clientPair, serverPair } = rpcTestUtils.createTapPairs<
+        Uint8Array,
+        Uint8Array
+      >();
+
+      const container = {};
+      const rpcServer = await RPCServer.createRPCServer({ container, logger });
+      let header: JsonRpcRequest | undefined;
+      const rawHandler: RawDuplexStreamHandler = (
+        [input, header_],
+        _container,
+        _connectionInfo,
+        _ctx,
+      ) => {
+        header = header_;
+        return input;
+      };
+
+      rpcServer.registerRawStreamHandler(methodName, rawHandler);
+      rpcServer.handleStream(serverPair, {} as ConnectionInfo);
+
+      const rpcClient = await RPCClient.createRPCClient({
+        streamPairCreateCallback: async () => clientPair,
+        logger,
+      });
+
+      const callerInterface = await rpcClient.rawStreamCaller(methodName, {
+        hello: 'world',
+      });
+      const writer = callerInterface.writable.getWriter();
+      const pipeProm = callerInterface.readable.pipeTo(outputWriterStream);
+      for (const value of inputData) {
+        await writer.write(value);
+      }
+      await writer.close();
+      const expectedHeader: JsonRpcRequest = {
+        jsonrpc: '2.0',
+        method: methodName,
+        params: { hello: 'world' },
+        id: null,
+      };
+      expect(header).toStrictEqual(expectedHeader);
+      expect(await outputResult).toStrictEqual(inputData);
+      await pipeProm;
+      await rpcServer.destroy();
+      await rpcClient.destroy();
+    },
+  );
   testProp(
     'RPC communication with duplex stream',
     [fc.array(rpcTestUtils.safeJsonValueArb, { minLength: 1 })],
@@ -59,7 +115,6 @@ describe('RPC', () => {
       await rpcClient.destroy();
     },
   );
-
   testProp(
     'RPC communication with server stream',
     [fc.integer({ min: 1, max: 100 })],
@@ -101,7 +156,6 @@ describe('RPC', () => {
       await rpcClient.destroy();
     },
   );
-
   testProp(
     'RPC communication with client stream',
     [fc.array(fc.integer(), { minLength: 1 }).noShrink()],
@@ -147,7 +201,6 @@ describe('RPC', () => {
       await rpcClient.destroy();
     },
   );
-
   testProp(
     'RPC communication with unary call',
     [rpcTestUtils.safeJsonValueArb],

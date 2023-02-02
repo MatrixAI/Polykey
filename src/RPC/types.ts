@@ -1,7 +1,7 @@
 import type { JSONValue, POJO } from '../types';
 import type { ConnectionInfo } from '../network/types';
 import type { ContextCancellable } from '../contexts/types';
-import type { ReadableWritablePair } from 'stream/web';
+import type { ReadableStream, ReadableWritablePair } from 'stream/web';
 
 /**
  * This is the JSON RPC request object. this is the generic message type used for the RPC.
@@ -106,6 +106,10 @@ type Handler<I, O> = (
   connectionInfo: ConnectionInfo,
   ctx: ContextCancellable,
 ) => O;
+type RawDuplexStreamHandler = Handler<
+  [ReadableStream<Uint8Array>, JsonRpcRequest<JSONValue>],
+  ReadableStream<Uint8Array>
+>;
 type DuplexStreamHandler<I extends JSONValue, O extends JSONValue> = Handler<
   AsyncGenerator<I>,
   AsyncGenerator<O>
@@ -141,6 +145,7 @@ export type {
   JsonRpcRequest,
   JsonRpcResponse,
   JsonRpcMessage,
+  RawDuplexStreamHandler,
   DuplexStreamHandler,
   ServerStreamHandler,
   ClientStreamHandler,

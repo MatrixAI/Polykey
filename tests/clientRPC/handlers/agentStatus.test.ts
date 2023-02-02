@@ -1,4 +1,5 @@
 import type { Server } from 'https';
+import type { WebSocketServer } from 'ws';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -30,6 +31,9 @@ describe('agentStatus', () => {
   let taskManager: TaskManager;
   let certManager: CertManager;
   let server: Server;
+  let wss: WebSocketServer;
+  const host = '127.0.0.1';
+  let port: number;
 
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
@@ -61,10 +65,11 @@ describe('agentStatus', () => {
       cert: tlsConfig.certChainPem,
       key: tlsConfig.keyPrivatePem,
     });
-    server.listen(8080, '127.0.0.1');
+    port = await clientRPCUtils.listen(server, host);
   });
   afterEach(async () => {
-    server.close();
+    wss?.close();
+    server?.close();
     await certManager.stop();
     await taskManager.stop();
     await keyRing.stop();
@@ -74,7 +79,7 @@ describe('agentStatus', () => {
       recursive: true,
     });
   });
-  test('get status', async () => {
+  test('get status %s', async () => {
     // Setup
     const rpcServer = await RPCServer.createRPCServer({
       container: {
@@ -85,7 +90,7 @@ describe('agentStatus', () => {
       logger: logger.getChild('RPCServer'),
     });
     rpcServer.registerUnaryHandler(agentStatusName, agentStatusHandler);
-    clientRPCUtils.createClientServer(
+    wss = clientRPCUtils.createClientServer(
       server,
       rpcServer,
       logger.getChild('server'),
@@ -93,13 +98,13 @@ describe('agentStatus', () => {
     const rpcClient = await RPCClient.createRPCClient({
       streamPairCreateCallback: async () => {
         return clientRPCUtils.startConnection(
-          'wss://localhost:8080',
+          host,
+          port,
           logger.getChild('client'),
         );
       },
       logger: logger.getChild('RPCClient'),
     });
-
     // Doing the test
     const result = await agentStatusCaller({}, rpcClient);
     expect(result).toStrictEqual({

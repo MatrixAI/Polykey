@@ -136,6 +136,28 @@ describe('utils tests', () => {
     { numRuns: 1000 },
   );
 
+  testProp(
+    'can get the head message',
+    [rpcTestUtils.jsonMessagesArb],
+    async (messages) => {
+      const { firstMessageProm, headTransformStream } =
+        rpcUtils.extractFirstMessageTransform(rpcUtils.parseJsonRpcRequest);
+      const parsedStream = rpcTestUtils
+        .jsonRpcStream(messages)
+        .pipeThrough(new rpcTestUtils.BufferStreamToSnippedStream([7]))
+        .pipeThrough(headTransformStream)
+        .pipeThrough(
+          new rpcUtils.JsonToJsonMessageStream(rpcUtils.parseJsonRpcMessage),
+        ); // Converting back.
+
+      expect(await firstMessageProm).toStrictEqual(messages[0]);
+      expect(await AsyncIterable.as(parsedStream).toArray()).toStrictEqual(
+        messages.slice(1),
+      );
+    },
+    { numRuns: 1000 },
+  );
+
   // TODO:
   //  - Test for badly structured data
 });

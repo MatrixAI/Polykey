@@ -33,6 +33,7 @@ class JsonToJsonMessage<T extends JsonRpcMessage>
   constructor(
     protected messageParser: (message: unknown) => T,
     protected byteLimit: number,
+    protected firstMessage: T | undefined,
   ) {}
 
   protected parser = new jsonStreamParsers.JSONParser({
@@ -41,6 +42,7 @@ class JsonToJsonMessage<T extends JsonRpcMessage>
   });
 
   start: TransformerStartCallback<T> = async (controller) => {
+    if (this.firstMessage != null) controller.enqueue(this.firstMessage);
     this.parser.onValue = (value) => {
       const jsonMessage = this.messageParser(value.value);
       controller.enqueue(jsonMessage);
@@ -69,8 +71,9 @@ class JsonToJsonMessageStream<T extends JsonRpcMessage> extends TransformStream<
   constructor(
     messageParser: (message: unknown) => T,
     byteLimit: number = 1024 * 1024,
+    firstMessage?: T,
   ) {
-    super(new JsonToJsonMessage(messageParser, byteLimit));
+    super(new JsonToJsonMessage(messageParser, byteLimit, firstMessage));
   }
 }
 
@@ -564,6 +567,67 @@ class QueueMergingTransformStream<T> extends TransformStream<T, T> {
   }
 }
 
+function extractFirstMessageTransform<T extends JsonRpcMessage>(
+  messageParser: (message: unknown) => T,
+  byteLimit: number = 1024 * 1024,
+) {
+  const parser = new jsonStreamParsers.JSONParser({
+    separator: '',
+    paths: ['$'],
+  });
+  const messageProm = promise<T | undefined>();
+  let bytesWritten = 0;
+  let lastChunk: Uint8Array | null = null;
+  let passThrough = false;
+  const headTransformStream = new TransformStream<Uint8Array, Uint8Array>({
+    start: (controller) => {
+      parser.onValue = (value) => {
+        let jsonMessage: T;
+        try {
+          jsonMessage = messageParser(value.value);
+        } catch (e) {
+          const error = new rpcErrors.ErrorRpcParse(undefined, { cause: e });
+          messageProm.rejectP(error);
+          controller.error(error);
+          return;
+        }
+        messageProm.resolveP(jsonMessage);
+        const firstMessageBuffer = Buffer.from(JSON.stringify(jsonMessage));
+        const difference = bytesWritten - firstMessageBuffer.length;
+        // Write empty value for the first read that initializes the stream
+        controller.enqueue(new Uint8Array());
+        if (difference > 0) {
+          controller.enqueue(
+            lastChunk?.slice(lastChunk?.byteLength - difference),
+          );
+        }
+        parser.end();
+        passThrough = true;
+      };
+    },
+    transform: (chunk, controller) => {
+      if (passThrough) {
+        controller.enqueue(chunk);
+        return;
+      }
+      try {
+        bytesWritten += chunk.byteLength;
+        lastChunk = chunk;
+        parser.write(chunk);
+      } catch (e) {
+        // Ignore error
+      }
+      if (bytesWritten > byteLimit) {
+        messageProm.rejectP(new rpcErrors.ErrorRpcMessageLength());
+      }
+    },
+    flush: () => {
+      messageProm.resolveP(undefined);
+    },
+  });
+  return { headTransformStream, firstMessageProm: messageProm.p };
+}
+
 export {
   JsonToJsonMessageStream,
   JsonMessageToJsonStream,
@@ -582,4 +646,5 @@ export {
   RPCErrorEvent,
   controllerTransformationFactory,
   QueueMergingTransformStream,
+  extractFirstMessageTransform,
 };

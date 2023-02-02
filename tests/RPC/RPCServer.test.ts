@@ -5,6 +5,7 @@ import type {
   JsonRpcRequest,
   JsonRpcResponse,
   JsonRpcResponseError,
+  RawDuplexStreamHandler,
   ServerStreamHandler,
   UnaryHandler,
 } from '@/RPC/types';
@@ -12,7 +13,7 @@ import type { JSONValue } from '@/types';
 import type { ConnectionInfo, Host, Port } from '@/network/types';
 import type { NodeId } from '@/ids';
 import type { ReadableWritablePair } from 'stream/web';
-import { TransformStream } from 'stream/web';
+import { TransformStream, ReadableStream } from 'stream/web';
 import { fc, testProp } from '@fast-check/jest';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import RPCServer from '@/RPC/RPCServer';
@@ -23,14 +24,83 @@ describe(`${RPCServer.name}`, () => {
   const logger = new Logger(`${RPCServer.name} Test`, LogLevel.WARN, [
     new StreamHandler(),
   ]);
-
   const methodName = 'testMethod';
   const specificMessageArb = fc
     .array(rpcTestUtils.jsonRpcRequestMessageArb(fc.constant(methodName)), {
       minLength: 5,
     })
     .noShrink();
+  const singleNumberMessageArb = fc.array(
+    rpcTestUtils.jsonRpcRequestMessageArb(
+      fc.constant(methodName),
+      fc.integer({ min: 1, max: 20 }),
+    ),
+    {
+      minLength: 2,
+      maxLength: 10,
+    },
+  );
+  const errorArb = fc.oneof(
+    fc.constant(new rpcErrors.ErrorRpcParse()),
+    fc.constant(new rpcErrors.ErrorRpcHandlerMissing()),
+    fc.constant(new rpcErrors.ErrorRpcProtocal()),
+    fc.constant(new rpcErrors.ErrorRpcMessageLength()),
+    fc.constant(new rpcErrors.ErrorRpcRemoteError()),
+  );
+  const validToken = 'VALIDTOKEN';
+  const invalidTokenMessageArb = rpcTestUtils.jsonRpcRequestMessageArb(
+    fc.constant('testMethod'),
+    fc.record({
+      metadata: fc.record({
+        token: fc.string().filter((v) => v !== validToken),
+      }),
+      data: rpcTestUtils.safeJsonValueArb,
+    }),
+  );
 
+  testProp(
+    'can stream data with raw duplex stream handler',
+    [specificMessageArb],
+    async (messages) => {
+      const stream = rpcTestUtils
+        .jsonRpcStream(messages)
+        .pipeThrough(
+          new rpcTestUtils.BufferStreamToSnippedStream([4, 7, 13, 2, 6]),
+        );
+      const container = {};
+      const rpcServer = await RPCServer.createRPCServer({ container, logger });
+      const [outputResult, outputStream] = rpcTestUtils.streamToArray();
+      const readWriteStream: ReadableWritablePair = {
+        readable: stream,
+        writable: outputStream,
+      };
+
+      const rawDuplexHandler: RawDuplexStreamHandler = (
+        [input],
+        _container,
+        _connectionInfo,
+        _ctx,
+      ) => {
+        void (async () => {
+          for await (const _ of input) {
+            // No touch, only consume
+          }
+        })().catch(() => {});
+        return new ReadableStream<Uint8Array>({
+          start: (controller) => {
+            controller.enqueue(Buffer.from('hello world!'));
+            controller.close();
+          },
+        });
+      };
+
+      rpcServer.registerRawStreamHandler(methodName, rawDuplexHandler);
+      rpcServer.handleStream(readWriteStream, {} as ConnectionInfo);
+      await outputResult;
+      await rpcServer.destroy();
+    },
+    { numRuns: 1 },
+  );
   testProp(
     'can stream data with duplex stream handler',
     [specificMessageArb],
@@ -58,7 +128,6 @@ describe(`${RPCServer.name}`, () => {
       await rpcServer.destroy();
     },
   );
-
   testProp(
     'can stream data with client stream handler',
     [specificMessageArb],
@@ -87,18 +156,6 @@ describe(`${RPCServer.name}`, () => {
       await rpcServer.destroy();
     },
   );
-
-  const singleNumberMessageArb = fc.array(
-    rpcTestUtils.jsonRpcRequestMessageArb(
-      fc.constant(methodName),
-      fc.integer({ min: 1, max: 20 }),
-    ),
-    {
-      minLength: 2,
-      maxLength: 10,
-    },
-  );
-
   testProp(
     'can stream data with server stream handler',
     [singleNumberMessageArb],
@@ -125,7 +182,6 @@ describe(`${RPCServer.name}`, () => {
       await rpcServer.destroy();
     },
   );
-
   testProp(
     'can stream data with server stream handler',
     [specificMessageArb],
@@ -154,7 +210,6 @@ describe(`${RPCServer.name}`, () => {
       await rpcServer.destroy();
     },
   );
-
   testProp(
     'Handler is provided with container',
     [specificMessageArb],
@@ -186,7 +241,6 @@ describe(`${RPCServer.name}`, () => {
       await rpcServer.destroy();
     },
   );
-
   testProp(
     'Handler is provided with connectionInfo',
     [specificMessageArb],
@@ -223,7 +277,6 @@ describe(`${RPCServer.name}`, () => {
       expect(handledConnectionInfo).toBe(connectionInfo);
     },
   );
-
   // Problem with the tap stream. It seems to block the whole stream.
   //  If I don't pipe the tap to the output we actually iterate over some data.
   testProp.skip(
@@ -271,7 +324,6 @@ describe(`${RPCServer.name}`, () => {
       await rpcServer.destroy();
     },
   );
-
   testProp('Handler yields nothing', [specificMessageArb], async (messages) => {
     const stream = rpcTestUtils.jsonRpcStream(messages);
     const container = {};
@@ -295,14 +347,6 @@ describe(`${RPCServer.name}`, () => {
     // We're just expecting no errors
     await rpcServer.destroy();
   });
-
-  const errorArb = fc.oneof(
-    fc.constant(new rpcErrors.ErrorRpcParse()),
-    fc.constant(new rpcErrors.ErrorRpcHandlerMissing()),
-    fc.constant(new rpcErrors.ErrorRpcProtocal()),
-    fc.constant(new rpcErrors.ErrorRpcMessageLength()),
-    fc.constant(new rpcErrors.ErrorRpcRemoteError()),
-  );
   testProp(
     'should send error message',
     [specificMessageArb, errorArb],
@@ -458,17 +502,6 @@ describe(`${RPCServer.name}`, () => {
     );
     await rpcServer.destroy();
   });
-  const validToken = 'VALIDTOKEN';
-  const invalidTokenMessageArb = rpcTestUtils.jsonRpcRequestMessageArb(
-    undefined,
-    fc.record({
-      metadata: fc.record({
-        token: fc.string().filter((v) => v !== validToken),
-      }),
-      data: rpcTestUtils.safeJsonValueArb,
-    }),
-  );
-
   testProp(
     'forward middleware authentication',
     [invalidTokenMessageArb],
@@ -544,7 +577,6 @@ describe(`${RPCServer.name}`, () => {
       await rpcServer.destroy();
     },
   );
-
   // TODO:
   //  - Test odd conditions for handlers, like extra messages where 1 is expected.
   //  - Expectations can't be inside the handlers otherwise they're caught.

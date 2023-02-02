@@ -1,4 +1,5 @@
 import type { Server } from 'https';
+import type { WebSocketServer } from 'ws';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -22,7 +23,7 @@ import * as clientRPCUtils from '@/clientRPC/utils';
 import * as testsUtils from '../../utils';
 
 describe('agentUnlock', () => {
-  const logger = new Logger('agentUnlock test', LogLevel.INFO, [
+  const logger = new Logger('agentUnlock test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
   const password = 'helloworld';
@@ -34,6 +35,8 @@ describe('agentUnlock', () => {
   let session: Session;
   let sessionManager: SessionManager;
   let server: Server;
+  let wss: WebSocketServer;
+  let port: number;
 
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
@@ -75,9 +78,10 @@ describe('agentUnlock', () => {
       cert: tlsConfig.certChainPem,
       key: tlsConfig.keyPrivatePem,
     });
-    server.listen(8080, '127.0.0.1');
+    port = await clientRPCUtils.listen(server, '127.0.0.1');
   });
   afterEach(async () => {
+    wss?.close();
     server.close();
     await certManager.stop();
     await taskManager.stop();
@@ -100,7 +104,7 @@ describe('agentUnlock', () => {
     rpcServer.registerMiddleware(
       abcUtils.authenticationMiddlewareServer(sessionManager, keyRing),
     );
-    clientRPCUtils.createClientServer(
+    wss = clientRPCUtils.createClientServer(
       server,
       rpcServer,
       logger.getChild('server'),
@@ -108,7 +112,8 @@ describe('agentUnlock', () => {
     const rpcClient = await RPCClient.createRPCClient({
       streamPairCreateCallback: async () => {
         return clientRPCUtils.startConnection(
-          'wss://localhost:8080',
+          '127.0.0.1',
+          port,
           logger.getChild('client'),
         );
       },

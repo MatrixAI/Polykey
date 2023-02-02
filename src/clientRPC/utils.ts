@@ -15,6 +15,8 @@ import type { ConnectionInfo, Host, Port } from '../network/types';
 import type RPCServer from '../RPC/RPCServer';
 import type { TLSSocket } from 'tls';
 import type { Server } from 'https';
+import type net from 'net';
+import type https from 'https';
 import { ReadableStream, TransformStream, WritableStream } from 'stream/web';
 import WebSocket, { WebSocketServer } from 'ws';
 import * as clientErrors from '../client/errors';
@@ -171,7 +173,7 @@ function readableFromWebSocket(
   return new ReadableStream<Uint8Array>({
     start: (controller) => {
       logger.info('starting');
-      ws.on('message', (data) => {
+      const messageHandler = (data) => {
         logger.debug(`message: ${data.toString()}`);
         ws.pause();
         const message = data as Buffer;
@@ -186,10 +188,11 @@ function readableFromWebSocket(
           return;
         }
         controller.enqueue(message);
-      });
+      };
+      ws.on('message', messageHandler);
       ws.once('close', () => {
         logger.info('closed');
-        ws.removeAllListeners('message');
+        ws.removeListener('message', messageHandler);
         try {
           controller.close();
         } catch {
@@ -266,10 +269,11 @@ function webSocketToWebStreamPair(
 }
 
 function startConnection(
-  target: string,
+  host: string,
+  port: number,
   logger: Logger,
 ): Promise<ReadableWritablePair<Uint8Array, Uint8Array>> {
-  const ws = new WebSocket(target, {
+  const ws = new WebSocket(`wss://${host}:${port}`, {
     // CheckServerIdentity: (
     //   servername: string,
     //   cert: WebSocket.CertMeta,
@@ -283,17 +287,17 @@ function startConnection(
     // Ca: tlsConfig.certChainPem
   });
   ws.once('close', () => logger.info('CLOSED'));
-  ws.once('upgrade', () => {
-    // Const tlsSocket = request.socket as TLSSocket;
-    // Console.log(tlsSocket.getPeerCertificate());
-    logger.info('Test early cancellation');
-    // Request.destroy(Error('some error'));
-    // tlsSocket.destroy(Error('some error'));
-    // ws.close(12345, 'some reason');
-    // TODO: Use the existing verify method from the GRPC implementation
-    // TODO: Have this emit an error on verification failure.
-    //  It's fine for the server side to close abruptly without error
-  });
+  // Ws.once('upgrade', () => {
+  //   // Const tlsSocket = request.socket as TLSSocket;
+  //   // Console.log(tlsSocket.getPeerCertificate());
+  //   logger.info('Test early cancellation');
+  //   // Request.destroy(Error('some error'));
+  //   // tlsSocket.destroy(Error('some error'));
+  //   // ws.close(12345, 'some reason');
+  //   // TODO: Use the existing verify method from the GRPC implementation
+  //   // TODO: Have this emit an error on verification failure.
+  //   //  It's fine for the server side to close abruptly without error
+  // });
   const prom = promise<ReadableWritablePair<Uint8Array, Uint8Array>>();
   ws.once('open', () => {
     logger.info('starting connection');
@@ -336,6 +340,19 @@ function createClientServer(
       remotePort: socket.remotePort! as Port,
     } as unknown as ConnectionInfo);
   });
+  wss.once('close', () => {
+    wss.removeAllListeners('error');
+    wss.removeAllListeners('connection');
+  });
+  return wss;
+}
+
+async function listen(server: https.Server, host?: string, port?: number) {
+  await new Promise<void>((resolve) => {
+    server.listen(port, host ?? '127.0.0.1', undefined, () => resolve());
+  });
+  const addressInfo = server.address() as net.AddressInfo;
+  return addressInfo.port;
 }
 
 export {
@@ -347,4 +364,5 @@ export {
   startConnection,
   handleConnection,
   createClientServer,
+  listen,
 };

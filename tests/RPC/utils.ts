@@ -4,7 +4,7 @@ import type {
   TransformerTransformCallback,
   ReadableWritablePair,
 } from 'stream/web';
-import type { POJO } from '@/types';
+import type { JSONValue, POJO } from '@/types';
 import type {
   JsonRpcError,
   JsonRpcMessage,
@@ -15,7 +15,6 @@ import type {
   JsonRpcResponse,
   JsonRpcRequest,
 } from '@/RPC/types';
-import type { JsonValue } from 'fast-check';
 import { ReadableStream, WritableStream, TransformStream } from 'stream/web';
 import { fc } from '@fast-check/jest';
 import * as utils from '@/utils';
@@ -106,13 +105,13 @@ const jsonRpcStream = (messages: Array<POJO>) => {
 
 const safeJsonValueArb = fc
   .jsonValue()
-  .map((value) => JSON.parse(JSON.stringify(value)));
+  .map((value) => JSON.parse(JSON.stringify(value)) as JSONValue);
 
 const idArb = fc.oneof(fc.string(), fc.integer(), fc.constant(null));
 
 const jsonRpcRequestMessageArb = (
   method: fc.Arbitrary<string> = fc.string(),
-  params: fc.Arbitrary<JsonValue> = safeJsonValueArb,
+  params: fc.Arbitrary<JSONValue> = safeJsonValueArb,
 ) =>
   fc
     .record(
@@ -126,11 +125,11 @@ const jsonRpcRequestMessageArb = (
         requiredKeys: ['jsonrpc', 'method', 'id'],
       },
     )
-    .noShrink() as fc.Arbitrary<JsonRpcRequestMessage>;
+    .noShrink() as fc.Arbitrary<JsonRpcRequestMessage<JSONValue>>;
 
 const jsonRpcRequestNotificationArb = (
   method: fc.Arbitrary<string> = fc.string(),
-  params: fc.Arbitrary<JsonValue> = safeJsonValueArb,
+  params: fc.Arbitrary<JSONValue> = safeJsonValueArb,
 ) =>
   fc
     .record(
@@ -147,7 +146,7 @@ const jsonRpcRequestNotificationArb = (
 
 const jsonRpcRequestArb = (
   method: fc.Arbitrary<string> = fc.string(),
-  params: fc.Arbitrary<JsonValue> = safeJsonValueArb,
+  params: fc.Arbitrary<JSONValue> = safeJsonValueArb,
 ) =>
   fc
     .oneof(
@@ -157,7 +156,7 @@ const jsonRpcRequestArb = (
     .noShrink() as fc.Arbitrary<JsonRpcRequest>;
 
 const jsonRpcResponseResultArb = (
-  result: fc.Arbitrary<JsonValue> = safeJsonValueArb,
+  result: fc.Arbitrary<JSONValue> = safeJsonValueArb,
 ) =>
   fc
     .record({
@@ -191,7 +190,7 @@ const jsonRpcResponseErrorArb = (error?: Error) =>
     .noShrink() as fc.Arbitrary<JsonRpcResponseError>;
 
 const jsonRpcResponseArb = (
-  result: fc.Arbitrary<JsonValue> = safeJsonValueArb,
+  result: fc.Arbitrary<JSONValue> = safeJsonValueArb,
 ) =>
   fc
     .oneof(jsonRpcResponseResultArb(result), jsonRpcResponseErrorArb())
@@ -199,8 +198,8 @@ const jsonRpcResponseArb = (
 
 const jsonRpcMessageArb = (
   method: fc.Arbitrary<string> = fc.string(),
-  params: fc.Arbitrary<JsonValue> = safeJsonValueArb,
-  result: fc.Arbitrary<JsonValue> = safeJsonValueArb,
+  params: fc.Arbitrary<JSONValue> = safeJsonValueArb,
+  result: fc.Arbitrary<JSONValue> = safeJsonValueArb,
 ) =>
   fc
     .oneof(jsonRpcRequestArb(method, params), jsonRpcResponseArb(result))
@@ -213,6 +212,8 @@ const snippingPatternArb = fc
 const jsonMessagesArb = fc
   .array(jsonRpcRequestMessageArb(), { minLength: 2 })
   .noShrink();
+
+const rawDataArb = fc.array(fc.uint8Array({ minLength: 1 }), { minLength: 1 });
 
 function streamToArray<T>(): [Promise<Array<T>>, WritableStream<T>] {
   const outputArray: Array<T> = [];
@@ -293,6 +294,7 @@ export {
   jsonRpcMessageArb,
   snippingPatternArb,
   jsonMessagesArb,
+  rawDataArb,
   streamToArray,
   TapTransformerStream,
   createTapPairs,

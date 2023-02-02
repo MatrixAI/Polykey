@@ -1,5 +1,6 @@
 import type { TLSConfig } from '@/network/types';
 import type { Server } from 'https';
+import type { WebSocketServer } from 'ws';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -21,6 +22,9 @@ describe('websocket', () => {
   let keyRing: KeyRing;
   let tlsConfig: TLSConfig;
   let server: Server;
+  let wss: WebSocketServer;
+  const host = '127.0.0.1';
+  let port: number;
 
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
@@ -37,9 +41,10 @@ describe('websocket', () => {
       cert: tlsConfig.certChainPem,
       key: tlsConfig.keyPrivatePem,
     });
-    server.listen(8080, '127.0.0.1');
+    port = await clientRPCUtils.listen(server, host);
   });
   afterEach(async () => {
+    wss?.close();
     server.close();
     await keyRing.stop();
     await fs.promises.rm(dataDir, { force: true, recursive: true });
@@ -61,18 +66,19 @@ describe('websocket', () => {
       return { hello: 'not world' };
     });
 
-    clientRPCUtils.createClientServer(
+    wss = clientRPCUtils.createClientServer(
       server,
       rpcServer,
       logger.getChild('client'),
     );
 
     // Setting up client
-    const rpcClient = new RPCClient({
+    const rpcClient = await RPCClient.createRPCClient({
       logger: logger.getChild('RPCClient'),
       streamPairCreateCallback: async () => {
         return clientRPCUtils.startConnection(
-          'wss://localhost:8080',
+          host,
+          port,
           logger.getChild('Connection'),
         );
       },

@@ -5,7 +5,7 @@ import type {
   JsonRpcRequestMessage,
   JsonRpcResponse,
 } from '@/RPC/types';
-import { TransformStream } from 'stream/web';
+import { TransformStream, ReadableStream } from 'stream/web';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { testProp, fc } from '@fast-check/jest';
 import RPCClient from '@/RPC/RPCClient';
@@ -25,6 +25,57 @@ describe(`${RPCClient.name}`, () => {
     })
     .noShrink();
 
+  testProp(
+    'raw duplex caller',
+    [
+      rpcTestUtils.safeJsonValueArb,
+      rpcTestUtils.rawDataArb,
+      rpcTestUtils.rawDataArb,
+    ],
+    async (headerParams, inputData, outputData) => {
+      const [inputResult, inputWritableStream] =
+        rpcTestUtils.streamToArray<Uint8Array>();
+      const [outputResult, outputWritableStream] =
+        rpcTestUtils.streamToArray<Uint8Array>();
+      const streamPair: ReadableWritablePair<Uint8Array, Uint8Array> = {
+        readable: new ReadableStream<Uint8Array>({
+          start: (controller) => {
+            for (const datum of outputData) {
+              controller.enqueue(datum);
+            }
+            controller.close();
+          },
+        }),
+        writable: inputWritableStream,
+      };
+      const rpcClient = await RPCClient.createRPCClient({
+        streamPairCreateCallback: async () => streamPair,
+        logger,
+      });
+      const callerInterface = await rpcClient.rawStreamCaller(
+        'testMethod',
+        headerParams,
+      );
+      await callerInterface.readable.pipeTo(outputWritableStream);
+      const writer = callerInterface.writable.getWriter();
+      for (const inputDatum of inputData) {
+        await writer.write(inputDatum);
+      }
+      await writer.close();
+
+      const expectedHeader: JsonRpcRequest = {
+        jsonrpc: '2.0',
+        method: methodName,
+        params: headerParams,
+        id: null,
+      };
+      expect(await inputResult).toStrictEqual([
+        Buffer.from(JSON.stringify(expectedHeader)),
+        ...inputData,
+      ]);
+      expect(await outputResult).toStrictEqual(outputData);
+    },
+  );
   testProp('generic duplex caller', [specificMessageArb], async (messages) => {
     const inputStream = rpcTestUtils.jsonRpcStream(messages);
     const [outputResult, outputStream] =
@@ -207,6 +258,57 @@ describe(`${RPCClient.name}`, () => {
       await callerInterface.writable.close();
       await outputResult;
       await rpcClient.destroy();
+    },
+  );
+  testProp(
+    'withRawStreamCaller',
+    [
+      rpcTestUtils.safeJsonValueArb,
+      rpcTestUtils.rawDataArb,
+      rpcTestUtils.rawDataArb,
+    ],
+    async (headerParams, inputData, outputData) => {
+      const [inputResult, inputWritableStream] =
+        rpcTestUtils.streamToArray<Uint8Array>();
+      const streamPair: ReadableWritablePair<Uint8Array, Uint8Array> = {
+        readable: new ReadableStream<Uint8Array>({
+          start: (controller) => {
+            for (const datum of outputData) {
+              controller.enqueue(datum);
+            }
+            controller.close();
+          },
+        }),
+        writable: inputWritableStream,
+      };
+      const rpcClient = await RPCClient.createRPCClient({
+        streamPairCreateCallback: async () => streamPair,
+        logger,
+      });
+      const outputResult: Array<Uint8Array> = [];
+      await rpcClient.withRawStreamCaller(
+        methodName,
+        headerParams,
+        async function* (output) {
+          for await (const outputValue of output) {
+            outputResult.push(outputValue);
+          }
+          for (const inputDatum of inputData) {
+            yield inputDatum;
+          }
+        },
+      );
+      const expectedHeader: JsonRpcRequest = {
+        jsonrpc: '2.0',
+        method: methodName,
+        params: headerParams,
+        id: null,
+      };
+      expect(await inputResult).toStrictEqual([
+        Buffer.from(JSON.stringify(expectedHeader)),
+        ...inputData,
+      ]);
+      expect(outputResult).toStrictEqual(outputData);
     },
   );
   testProp(
