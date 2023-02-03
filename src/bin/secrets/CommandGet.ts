@@ -64,6 +64,9 @@ class CommandGet extends CommandPolykey {
           (auth) => pkClient.grpcClient.vaultsSecretsGet(secretMessage, auth),
           meta,
         );
+        const secretContent = Buffer.from(response.getSecretContent_asU8())
+          .toString('utf-8')
+          .trim();
         if (isEnv) {
           process.stdout.write(
             binUtils.outputFormatter({
@@ -72,7 +75,7 @@ class CommandGet extends CommandPolykey {
                 `Export ${secretMessage
                   .getSecretName()
                   .toUpperCase()
-                  .replace('-', '_')}='${response.getSecretName()}`,
+                  .replace('-', '_')}='${secretContent}'`,
               ],
             }),
           );
@@ -80,9 +83,7 @@ class CommandGet extends CommandPolykey {
           process.stdout.write(
             binUtils.outputFormatter({
               type: options.format === 'json' ? 'json' : 'list',
-              data: [
-                `${secretMessage.getSecretName()}:\t\t${response.getSecretName()}`,
-              ],
+              data: [`${secretMessage.getSecretName()}: ${secretContent}`],
             }),
           );
         }
