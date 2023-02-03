@@ -394,6 +394,9 @@ class PolykeyAgent {
           logger: logger.getChild(SessionManager.name),
           fresh,
         }));
+      // If a recovery code is provided then we reset any sessions in case the
+      //  password changed.
+      if (keyRingConfig.recoveryCode != null) await sessionManager.resetKey();
       grpcServerClient =
         grpcServerClient ??
         new GRPCServer({
