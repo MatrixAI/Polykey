@@ -83,15 +83,21 @@ function decryptWithKey(
   const plainText = Buffer.allocUnsafeSlow(
     macAndCipherText.byteLength - macSize,
   );
-  // This returns the number of bytes that has been decrypted
-  const decrypted = sodium.crypto_aead_xchacha20poly1305_ietf_decrypt(
-    plainText,
-    null,
-    macAndCipherText,
-    additionalData,
-    nonce,
-    key,
-  );
+  let decrypted: number;
+  try {
+    // This returns the number of bytes that has been decrypted
+    // It will throw if the MAC cannot be authenticated
+    decrypted = sodium.crypto_aead_xchacha20poly1305_ietf_decrypt(
+      plainText,
+      null,
+      macAndCipherText,
+      additionalData,
+      nonce,
+      key,
+    );
+  } catch {
+    return;
+  }
   if (decrypted !== plainText.byteLength) {
     return;
   }
