@@ -7,15 +7,73 @@
 // import * as binUtils from '../utils';
 // import * as CLIErrors from '../errors';
 // import * as grpcErrors from '../../grpc/errors';
-
 // import CommandPolykey from '../CommandPolykey';
 // import * as binOptions from '../utils/options';
 
-// class CommandEnv extends CommandPolykey {
-//   constructor(...args: ConstructorParameters<typeof CommandPolykey>) {
-//     super(...args);
-//     this.name('env');
-//     this.description('Secrets Env');
+import type PolykeyClient from '../../PolykeyClient';
+import type * as agentPB from '../../proto/js/polykey/v1/agent/agent_pb';
+import CommandPolykey from '../CommandPolykey';
+import * as binUtils from '../utils';
+import * as binOptions from '../utils/options';
+import * as binProcessors from '../utils/processors';
+
+class CommandEnv extends CommandPolykey {
+  constructor(...args: ConstructorParameters<typeof CommandPolykey>) {
+    super(...args);
+    this.name('env');
+    this.description('Run a program with secrets injected into its environment');
+    // this.argument(
+    //   '<directoryPath>',
+    //   'On disk path to the secret file with the contents of the new secret',
+    // );
+
+    this.option(
+      '-i, --ignore-environment',
+      'start with an empty environment',
+    );
+    this.option(
+      '-C, --chdir <dir>',
+      'change working directory',
+    );
+    this.argument(
+      '<[NAME=<vaultName>:<secretPath>]... <command> [arg]...>',
+      'List of secrets to inject and the command to run'
+    );
+    this.addOption(binOptions.nodeId);
+    this.addOption(binOptions.clientHost);
+    this.addOption(binOptions.clientPort);
+    this.action(async (args: Array<string>, options) => {
+      const secrets: Array<{
+        envName: string;
+        vaultName: string;
+        secretPath: string;
+      }> = [];
+      let argIndex = 0;
+      for (const arg of args) {
+        const secretMatches = arg.match(
+          /([A-Z]+)=([a-zA-Z0-9]+):([a-zA-Z0-9._\-\/\s]+)/
+        );
+        if (secretMatches != null) {
+          secrets.push({
+            envName: secretMatches[1],
+            vaultName: secretMatches[2],
+            secretPath: secretMatches[3],
+          });
+        } else {
+          break;
+        }
+        argIndex++;
+      }
+      console.log(secrets);
+      const commandArgs = args.slice(argIndex);
+      console.log(commandArgs);
+
+
+      // console.log(args);
+      // console.log(options);
+    });
+
+
 //     this.option(
 //       '--command <command>',
 //       'In the environment of the derivation, run the shell command cmd in an interactive shell (Use --run to use a non-interactive shell instead)',
@@ -24,17 +82,14 @@
 //       '--run <run>',
 //       'In the environment of the derivation, run the shell command cmd in a non-interactive shell, meaning (among other things) that if you hit Ctrl-C while the command is running, the shell exits (Use --command to use an interactive shell instead)',
 //     );
-//     this.arguments(
-//       "Secrets to inject into env, of the format '<vaultName>:<secretPath>[=<variableName>]', you can also control what the environment variable will be called using '[<variableName>]' (defaults to upper, snake case of the original secret name)",
-//     );
 //     this.addOption(binOptions.nodeId);
 //     this.addOption(binOptions.clientHost);
 //     this.addOption(binOptions.clientPort);
 //     this.action(async (options, command) => {
 
 //     });
-//   }
-// }
+  }
+}
 
 // export default CommandEnv;
 
@@ -176,4 +231,4 @@
 //   }
 // });
 
-// export default env;
+export default CommandEnv;
