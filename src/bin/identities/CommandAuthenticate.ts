@@ -16,15 +16,10 @@ class CommandAuthenticate extends CommandPolykey {
       'Name of the digital identity provider',
       parsers.parseProviderId,
     );
-    this.argument(
-      '<identityId>',
-      'Digital identity to authenticate',
-      parsers.parseIdentityId,
-    );
     this.addOption(binOptions.nodeId);
     this.addOption(binOptions.clientHost);
     this.addOption(binOptions.clientPort);
-    this.action(async (providerId, identityId, options) => {
+    this.action(async (providerId, options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
       const identitiesPB = await import(
         '../../proto/js/polykey/v1/identities/identities_pb'
@@ -59,7 +54,6 @@ class CommandAuthenticate extends CommandPolykey {
         });
         const providerMessage = new identitiesPB.Provider();
         providerMessage.setProviderId(providerId);
-        providerMessage.setIdentityId(identityId);
         await binUtils.retryAuthentication(async (auth) => {
           genReadable = pkClient.grpcClient.identitiesAuthenticate(
             providerMessage,
@@ -90,7 +84,7 @@ class CommandAuthenticate extends CommandPolykey {
               case identitiesPB.AuthenticationProcess.StepCase.RESPONSE: {
                 const authResponse = message.getResponse()!;
                 this.logger.info(
-                  `Authenticated digital identity provider ${providerId} with identity ${identityId}`,
+                  `Authenticated digital identity provider ${providerId}`,
                 );
                 process.stdout.write(
                   binUtils.outputFormatter({
