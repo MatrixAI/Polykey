@@ -134,7 +134,7 @@ describe('CLI secrets', () => {
           env: {},
           cwd: dataDir,
         });
-        expect(result.stdout).toBe('MySecret: this is the secret\n')
+        expect(result.stdout).toBe('MySecret: this is the secret\n');
         expect(result.exitCode).toBe(0);
       },
     );

@@ -127,8 +127,9 @@ function outputFormatter(msg: OutputObject): string {
           output += ` - ${currError.message}`;
         }
         output += '\n';
-        output += `${indent}exitCode\t${currError.exitCode}\n`;
-        output += `${indent}timestamp\t${currError.timestamp}\n`;
+        // Disabled to streamline output
+        // output += `${indent}exitCode\t${currError.exitCode}\n`;
+        // output += `${indent}timestamp\t${currError.timestamp}\n`;
         if (currError.data && !utils.isEmptyObject(currError.data)) {
           output += `${indent}data\t${JSON.stringify(currError.data)}\n`;
         }

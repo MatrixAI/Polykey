@@ -10,6 +10,7 @@ import type { PolykeyWorkerManagerInterface } from '../../workers/types';
 import path from 'path';
 import childProcess from 'child_process';
 import process from 'process';
+import * as keysErrors from '../../keys/errors';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
 import * as binOptions from '../utils/options';
@@ -218,11 +219,18 @@ class CommandStart extends CommandPolykey {
           await workerManager?.destroy();
           await pkAgent?.stop();
         });
-        pkAgent = await PolykeyAgent.createPolykeyAgent({
-          fs: this.fs,
-          logger: this.logger.getChild(PolykeyAgent.name),
-          ...agentConfig,
-        });
+        try {
+          pkAgent = await PolykeyAgent.createPolykeyAgent({
+            fs: this.fs,
+            logger: this.logger.getChild(PolykeyAgent.name),
+            ...agentConfig,
+          });
+        } catch (e) {
+          if (e instanceof keysErrors.ErrorKeyPairParse) {
+            throw new binErrors.ErrorCLIPasswordWrong();
+          }
+          throw e;
+        }
         if (options.workers !== 0) {
           workerManager = await workersUtils.createWorkerManager({
             cores: options.workers,

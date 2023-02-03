@@ -31,6 +31,11 @@ class ErrorCLIClientOptions<T> extends ErrorCLI<T> {
   exitCode = sysexits.USAGE;
 }
 
+class ErrorCLIPasswordWrong<T> extends ErrorCLI<T> {
+  static description = 'Wrong password, please try again';
+  exitCode = sysexits.USAGE;
+}
+
 class ErrorCLIPasswordMissing<T> extends ErrorCLI<T> {
   static description =
     'Password is necessary, provide it via --password-file, PK_PASSWORD or when prompted';
@@ -90,6 +95,7 @@ export {
   ErrorCLI,
   ErrorCLINodePath,
   ErrorCLIClientOptions,
+  ErrorCLIPasswordWrong,
   ErrorCLIPasswordMissing,
   ErrorCLIPasswordFileRead,
   ErrorCLIRecoveryCodeFileRead,
