@@ -27,6 +27,10 @@ function verboseToLogLevel(c: number = 0): LogLevel {
 
 type OutputObject =
   | {
+      type: 'raw';
+      data: string | Uint8Array;
+    }
+  | {
       type: 'list';
       data: Array<string>;
     }
@@ -47,9 +51,11 @@ type OutputObject =
       data: Error;
     };
 
-function outputFormatter(msg: OutputObject): string {
+function outputFormatter(msg: OutputObject): string | Uint8Array {
   let output = '';
-  if (msg.type === 'list') {
+  if (msg.type === 'raw') {
+    return msg.data;
+  } else if (msg.type === 'list') {
     for (let elem in msg.data) {
       // Empty string for null or undefined values
       if (elem == null) {
@@ -127,8 +133,9 @@ function outputFormatter(msg: OutputObject): string {
           output += ` - ${currError.message}`;
         }
         output += '\n';
-        output += `${indent}exitCode\t${currError.exitCode}\n`;
-        output += `${indent}timestamp\t${currError.timestamp}\n`;
+        // Disabled to streamline output
+        // output += `${indent}exitCode\t${currError.exitCode}\n`;
+        // output += `${indent}timestamp\t${currError.timestamp}\n`;
         if (currError.data && !utils.isEmptyObject(currError.data)) {
           output += `${indent}data\t${JSON.stringify(currError.data)}\n`;
         }

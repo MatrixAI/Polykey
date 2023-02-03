@@ -15,10 +15,6 @@ class CommandGet extends CommandPolykey {
       'Path to where the secret to be retrieved, specified as <vaultName>:<directoryPath>',
       parsers.parseSecretPath,
     );
-    this.option(
-      '-e, --env',
-      'Wrap the secret in an environment variable declaration',
-    );
     this.addOption(binOptions.nodeId);
     this.addOption(binOptions.clientHost);
     this.addOption(binOptions.clientPort);
@@ -54,7 +50,6 @@ class CommandGet extends CommandPolykey {
           port: clientOptions.clientPort,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-        const isEnv: boolean = options.env ?? false;
         const secretMessage = new secretsPB.Secret();
         const vaultMessage = new vaultsPB.Vault();
         vaultMessage.setNameOrId(secretPath[0]);
@@ -64,28 +59,13 @@ class CommandGet extends CommandPolykey {
           (auth) => pkClient.grpcClient.vaultsSecretsGet(secretMessage, auth),
           meta,
         );
-        if (isEnv) {
-          process.stdout.write(
-            binUtils.outputFormatter({
-              type: options.format === 'json' ? 'json' : 'list',
-              data: [
-                `Export ${secretMessage
-                  .getSecretName()
-                  .toUpperCase()
-                  .replace('-', '_')}='${response.getSecretName()}`,
-              ],
-            }),
-          );
-        } else {
-          process.stdout.write(
-            binUtils.outputFormatter({
-              type: options.format === 'json' ? 'json' : 'list',
-              data: [
-                `${secretMessage.getSecretName()}:\t\t${response.getSecretName()}`,
-              ],
-            }),
-          );
-        }
+        const secretContent = response.getSecretContent_asU8();
+        process.stdout.write(
+          binUtils.outputFormatter({
+            type: 'raw',
+            data: secretContent,
+          }),
+        );
       } finally {
         if (pkClient! != null) await pkClient.stop();
       }

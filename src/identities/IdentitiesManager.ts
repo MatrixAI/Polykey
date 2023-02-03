@@ -243,7 +243,9 @@ class IdentitiesManager {
     }
     const identities = await provider.getAuthIdentityIds();
     if (!identities.includes(identityId)) {
-      throw new identitiesErrors.ErrorProviderUnauthenticated();
+      throw new identitiesErrors.ErrorProviderIdentityMissing(
+        `Authenticated identities: ${JSON.stringify(identities)}`,
+      );
     }
     // Create identity claim on our node
     const publishedClaimProm = promise<IdentitySignedClaim>();
@@ -258,11 +260,11 @@ class IdentitiesManager {
         async (token) => {
           // Publishing in the callback to avoid adding bad claims
           const claim = token.toSigned();
-          const asd = await provider.publishClaim(
+          const identitySignedClaim = await provider.publishClaim(
             identityId,
             claim as SignedClaim<ClaimLinkIdentity>,
           );
-          publishedClaimProm.resolveP(asd);
+          publishedClaimProm.resolveP(identitySignedClaim);
           return token;
         },
         tran,
