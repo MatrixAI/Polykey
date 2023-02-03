@@ -68,7 +68,7 @@ async function dirEmpty(fs: FileSystem, path): Promise<boolean> {
     return entries.length === 0;
   } catch (e) {
     if (e.code === 'ENOENT') {
-      return false;
+      return true;
     }
     throw e;
   }
