@@ -144,7 +144,7 @@ class NodeManager {
     const seedNodes = this.nodeConnectionManager.getSeedNodes();
     const allInactive = !seedNodes
       .map((nodeId) => this.nodeConnectionManager.hasConnection(nodeId))
-      .reduce((a, b) => a || b);
+      .reduce((a, b) => a || b, false);
     try {
       if (allInactive) {
         this.logger.debug(
