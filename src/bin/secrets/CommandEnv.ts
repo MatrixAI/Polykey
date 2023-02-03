@@ -22,18 +22,13 @@ class CommandEnv extends CommandPolykey {
     super(...args);
     this.name('env');
     this.description('Run a program with secrets injected into its environment');
-    // this.argument(
-    //   '<directoryPath>',
-    //   'On disk path to the secret file with the contents of the new secret',
-    // );
-
     this.option(
-      '-i, --ignore-environment',
-      'start with an empty environment',
+      '-ie, --ignore-environment',
+      'Start with an empty environment',
     );
     this.option(
-      '-C, --chdir <dir>',
-      'change working directory',
+      '-ee, --export-environment',
+      'Exports secrets into the shell',
     );
     this.argument(
       '<[NAME=<vaultName>:<secretPath>]... <command> [arg]...>',

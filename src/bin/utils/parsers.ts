@@ -78,18 +78,17 @@ function parseCoreCount(v: string): number | undefined {
   return parseInt(v);
 }
 
-function parseSecretPath(secretPath: string): [string, string, string?] {
+function parseSecretPath(secretAddress: string): [string, string] {
   // E.g. If 'vault1:a/b/c', ['vault1', 'a/b/c'] is returned
-  //      If 'vault1:a/b/c=VARIABLE', ['vault1, 'a/b/c', 'VARIABLE'] is returned
-  const secretPathRegex =
-    /^([\w-]+)(?::)([\w\-\\\/\.\$]+)(?:=)?([a-zA-Z_][\w]+)?$/;
-  if (!secretPathRegex.test(secretPath)) {
+  const secretAddressRegex = /^([a-zA-Z0-9-_]+):([\w\-\\\/\.\$]+)$/;
+  const matches = secretAddress.match(secretAddressRegex);
+  if (matches == null) {
     throw new commander.InvalidArgumentError(
-      `${secretPath} is not of the format <vaultName>:<directoryPath>`,
+      `${secretAddress} is not of the format <vaultName>:<secretPath>`,
     );
   }
-  const [, vaultName, directoryPath] = secretPath.match(secretPathRegex)!;
-  return [vaultName, directoryPath, undefined];
+  const [, vaultName, secretPath] = matches;
+  return [vaultName, secretPath];
 }
 
 export {
