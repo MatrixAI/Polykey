@@ -38,6 +38,11 @@ class ErrorProviderUnauthenticated<T> extends ErrorIdentities<T> {
   exitCode = sysexits.NOPERM;
 }
 
+class ErrorProviderIdentityMissing<T> extends ErrorIdentities<T> {
+  static description = 'Identity is not authenticated with the provider';
+  exitCode = sysexits.NOPERM;
+}
+
 class ErrorProviderUnimplemented<T> extends ErrorIdentities<T> {
   static description = 'Functionality is unavailable';
   exitCode = sysexits.USAGE;
@@ -58,5 +63,6 @@ export {
   ErrorProviderAuthentication,
   ErrorProviderUnauthenticated,
   ErrorProviderUnimplemented,
+  ErrorProviderIdentityMissing,
   ErrorProviderMissing,
 };

@@ -243,7 +243,9 @@ class IdentitiesManager {
     }
     const identities = await provider.getAuthIdentityIds();
     if (!identities.includes(identityId)) {
-      throw new identitiesErrors.ErrorProviderUnauthenticated();
+      throw new identitiesErrors.ErrorProviderIdentityMissing(
+        `Authenticated identities: ${JSON.stringify(identities)}`
+      );
     }
     // Create identity claim on our node
     const publishedClaimProm = promise<IdentitySignedClaim>();
