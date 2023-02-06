@@ -47,6 +47,7 @@ describe('RPC', () => {
       rpcServer.handleStream(serverPair, {} as ConnectionInfo);
 
       const rpcClient = await RPCClient.createRPCClient({
+        manifest: {},
         streamPairCreateCallback: async () => clientPair,
         logger,
       });
@@ -96,6 +97,7 @@ describe('RPC', () => {
       rpcServer.handleStream(serverPair, {} as ConnectionInfo);
 
       const rpcClient = await RPCClient.createRPCClient({
+        manifest: {},
         streamPairCreateCallback: async () => clientPair,
         logger,
       });
@@ -138,6 +140,7 @@ describe('RPC', () => {
       rpcServer.handleStream(serverPair, {} as ConnectionInfo);
 
       const rpcClient = await RPCClient.createRPCClient({
+        manifest: {},
         streamPairCreateCallback: async () => clientPair,
         logger,
       });
@@ -181,6 +184,7 @@ describe('RPC', () => {
       rpcServer.handleStream(serverPair, {} as ConnectionInfo);
 
       const rpcClient = await RPCClient.createRPCClient({
+        manifest: {},
         streamPairCreateCallback: async () => clientPair,
         logger,
       });
@@ -219,6 +223,7 @@ describe('RPC', () => {
       rpcServer.handleStream(serverPair, {} as ConnectionInfo);
 
       const rpcClient = await RPCClient.createRPCClient({
+        manifest: {},
         streamPairCreateCallback: async () => clientPair,
         logger,
       });

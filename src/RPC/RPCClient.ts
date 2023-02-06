@@ -1,28 +1,44 @@
-import type { JsonRpcRequestMessage, StreamPairCreateCallback } from './types';
+import type {
+  HandlerType,
+  JsonRpcRequestMessage,
+  Manifest,
+  MapWithHandlers,
+  StreamPairCreateCallback,
+} from './types';
 import type { JSONValue } from 'types';
-import type { ReadableWritablePair } from 'stream/web';
+import type {
+  ReadableWritablePair,
+  ReadableStream,
+  WritableStream,
+} from 'stream/web';
 import type {
   JsonRpcRequest,
   JsonRpcResponse,
   MiddlewareFactory,
+  MapHandlers,
 } from './types';
 import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
 import Logger from '@matrixai/logger';
 import * as rpcErrors from './errors';
 import * as rpcUtils from './utils';
+import { getHandlerTypes } from './utils';
 
-interface RPCClient extends CreateDestroy {}
+// eslint-disable-next-line
+interface RPCClient<M extends Manifest> extends CreateDestroy {}
 @CreateDestroy()
-class RPCClient {
-  static async createRPCClient({
+class RPCClient<M extends Manifest> {
+  static async createRPCClient<M extends Manifest>({
+    manifest,
     streamPairCreateCallback,
     logger = new Logger(this.name),
   }: {
+    manifest: M;
     streamPairCreateCallback: StreamPairCreateCallback;
     logger: Logger;
   }) {
     logger.info(`Creating ${this.name}`);
     const rpcClient = new this({
+      manifest,
       streamPairCreateCallback,
       logger,
     });
@@ -32,21 +48,79 @@ class RPCClient {
 
   protected logger: Logger;
   protected streamPairCreateCallback: StreamPairCreateCallback;
+  protected callerTypes: Record<string, HandlerType>;
+  // Method proxies
+  protected methodsProxy = new Proxy(
+    {},
+    {
+      get: (_, method) => {
+        if (typeof method === 'symbol') throw Error('invalid symbol');
+        switch (this.callerTypes[method]) {
+          case 'DUPLEX':
+            return () => this.duplexStreamCaller(method);
+          case 'SERVER':
+            return (params) => this.serverStreamCaller(method, params);
+          case 'CLIENT':
+            return () => this.clientStreamCaller(method);
+          case 'UNARY':
+            return (params) => this.unaryCaller(method, params);
+          case 'RAW':
+            return (params) => this.rawStreamCaller(method, params);
+          default:
+            return;
+        }
+      },
+    },
+  );
+  protected withMethodsProxy = new Proxy(
+    {},
+    {
+      get: (_, method) => {
+        if (typeof method === 'symbol') throw Error('invalid symbol');
+        switch (this.callerTypes[method]) {
+          case 'DUPLEX':
+            return (f) => this.withDuplexCaller(method, f);
+          case 'SERVER':
+            return (params, f) => this.withServerCaller(method, params, f);
+          case 'CLIENT':
+            return (f) => this.withClientCaller(method, f);
+          case 'RAW':
+            return (params, f) => this.withRawStreamCaller(method, params, f);
+          case 'UNARY':
+          default:
+            return;
+        }
+      },
+    },
+  );
 
   public constructor({
+    manifest,
     streamPairCreateCallback,
     logger,
   }: {
+    manifest: M;
     streamPairCreateCallback: StreamPairCreateCallback;
     logger: Logger;
   }) {
-    this.logger = logger;
+    this.callerTypes = getHandlerTypes(manifest);
     this.streamPairCreateCallback = streamPairCreateCallback;
+    this.logger = logger;
   }
 
   public async destroy(): Promise<void> {
     this.logger.info(`Destroying ${this.constructor.name}`);
     this.logger.info(`Destroyed ${this.constructor.name}`);
+  }
+
+  @ready(new rpcErrors.ErrorRpcDestroyed())
+  public get methods(): MapHandlers<M> {
+    return this.methodsProxy as MapHandlers<M>;
+  }
+
+  @ready(new rpcErrors.ErrorRpcDestroyed())
+  public get withMethods(): MapWithHandlers<M> {
+    return this.withMethodsProxy as MapWithHandlers<M>;
   }
 
   @ready(new rpcErrors.ErrorRpcDestroyed())
@@ -109,7 +183,7 @@ class RPCClient {
   public async serverStreamCaller<I extends JSONValue, O extends JSONValue>(
     method: string,
     parameters: I,
-  ) {
+  ): Promise<ReadableStream<O>> {
     const callerInterface = await this.duplexStreamCaller<I, O>(method);
     const writer = callerInterface.writable.getWriter();
     await writer.write(parameters);
@@ -121,7 +195,10 @@ class RPCClient {
   @ready(new rpcErrors.ErrorRpcDestroyed())
   public async clientStreamCaller<I extends JSONValue, O extends JSONValue>(
     method: string,
-  ) {
+  ): Promise<{
+    output: Promise<O>;
+    writable: WritableStream<I>;
+  }> {
     const callerInterface = await this.duplexStreamCaller<I, O>(method);
     const reader = callerInterface.readable.getReader();
     const output = reader.read().then(({ value, done }) => {
@@ -159,7 +236,7 @@ class RPCClient {
     method: string,
     params: JSONValue,
     f: (output: AsyncGenerator<Uint8Array>) => AsyncGenerator<Uint8Array>,
-  ) {
+  ): Promise<void> {
     const callerInterface = await this.rawStreamCaller(method, params);
     const outputGenerator = async function* () {
       for await (const value of callerInterface.readable) {
@@ -196,7 +273,7 @@ class RPCClient {
     method: string,
     parameters: I,
     f: (output: AsyncGenerator<O>) => Promise<void>,
-  ) {
+  ): Promise<void> {
     const callerInterface = await this.serverStreamCaller<I, O>(
       method,
       parameters,

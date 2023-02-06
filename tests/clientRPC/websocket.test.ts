@@ -74,6 +74,7 @@ describe('websocket', () => {
 
     // Setting up client
     const rpcClient = await RPCClient.createRPCClient({
+      manifest: {},
       logger: logger.getChild('RPCClient'),
       streamPairCreateCallback: async () => {
         return clientRPCUtils.startConnection(

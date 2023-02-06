@@ -1,7 +1,11 @@
 import type { JSONValue, POJO } from '../types';
 import type { ConnectionInfo } from '../network/types';
 import type { ContextCancellable } from '../contexts/types';
-import type { ReadableStream, ReadableWritablePair } from 'stream/web';
+import type {
+  ReadableStream,
+  ReadableWritablePair,
+  WritableStream,
+} from 'stream/web';
 
 /**
  * This is the JSON RPC request object. this is the generic message type used for the RPC.
@@ -136,6 +140,155 @@ type MiddlewareFactory<F, R> = () => {
   reverse: ReadableWritablePair<R, R>;
 };
 
+type DuplexStreamCaller<
+  I extends JSONValue,
+  O extends JSONValue,
+> = () => Promise<ReadableWritablePair<O, I>>;
+
+type ServerStreamCaller<I extends JSONValue, O extends JSONValue> = (
+  parameters: I,
+) => Promise<ReadableStream<O>>;
+
+type ClientStreamCaller<
+  I extends JSONValue,
+  O extends JSONValue,
+> = () => Promise<{
+  output: Promise<O>;
+  writable: WritableStream<I>;
+}>;
+
+type UnaryCaller<I extends JSONValue, O extends JSONValue> = (
+  parameters: I,
+) => Promise<O>;
+
+type RawStreamCaller = (
+  params: JSONValue,
+) => Promise<ReadableWritablePair<Uint8Array, Uint8Array>>;
+
+type ConvertDuplexStreamHandler<T> = T extends DuplexStreamHandler<
+  infer I,
+  infer O
+>
+  ? DuplexStreamCaller<I, O>
+  : never;
+
+type ConvertServerStreamHandler<T> = T extends ServerStreamHandler<
+  infer I,
+  infer O
+>
+  ? ServerStreamCaller<I, O>
+  : never;
+
+type ConvertClientStreamHandler<T> = T extends ClientStreamHandler<
+  infer I,
+  infer O
+>
+  ? ClientStreamCaller<I, O>
+  : never;
+
+type ConvertUnaryCaller<T> = T extends UnaryHandler<infer I, infer O>
+  ? UnaryCaller<I, O>
+  : never;
+
+type ConvertHandler<T> = T extends DuplexStreamHandler<JSONValue, JSONValue>
+  ? ConvertDuplexStreamHandler<T>
+  : T extends ServerStreamHandler<JSONValue, JSONValue>
+  ? ConvertServerStreamHandler<T>
+  : T extends ClientStreamHandler<JSONValue, JSONValue>
+  ? ConvertClientStreamHandler<T>
+  : T extends UnaryHandler<JSONValue, JSONValue>
+  ? ConvertUnaryCaller<T>
+  : T extends RawDuplexStreamHandler
+  ? RawStreamCaller
+  : never;
+
+type WithDuplexStreamCaller<I extends JSONValue, O extends JSONValue> = (
+  f: (output: AsyncGenerator<O>) => AsyncGenerator<I>,
+) => Promise<void>;
+
+type WithServerStreamCaller<I extends JSONValue, O extends JSONValue> = (
+  parameters: I,
+  f: (output: AsyncGenerator<O>) => Promise<void>,
+) => Promise<void>;
+
+type WithClientStreamCaller<I extends JSONValue, O extends JSONValue> = (
+  f: () => AsyncGenerator<I>,
+) => Promise<O>;
+
+type WithRawStreamCaller = (
+  params: JSONValue,
+  f: (output: AsyncGenerator<Uint8Array>) => AsyncGenerator<Uint8Array>,
+) => Promise<void>;
+
+type ConvertWithDuplexStreamHandler<T> = T extends DuplexStreamHandler<
+  infer I,
+  infer O
+>
+  ? WithDuplexStreamCaller<I, O>
+  : never;
+
+type ConvertWithServerStreamHandler<T> = T extends ServerStreamHandler<
+  infer I,
+  infer O
+>
+  ? WithServerStreamCaller<I, O>
+  : never;
+
+type ConvertWithClientStreamHandler<T> = T extends ClientStreamHandler<
+  infer I,
+  infer O
+>
+  ? WithClientStreamCaller<I, O>
+  : never;
+
+type ConvertWithHandler<T> = T extends DuplexStreamHandler<JSONValue, JSONValue>
+  ? ConvertWithDuplexStreamHandler<T>
+  : T extends ServerStreamHandler<JSONValue, JSONValue>
+  ? ConvertWithServerStreamHandler<T>
+  : T extends ClientStreamHandler<JSONValue, JSONValue>
+  ? ConvertWithClientStreamHandler<T>
+  : T extends RawDuplexStreamHandler
+  ? WithRawStreamCaller
+  : never;
+
+type HandlerType = 'DUPLEX' | 'SERVER' | 'CLIENT' | 'UNARY' | 'RAW';
+
+type ManifestItem<I extends JSONValue, O extends JSONValue> =
+  | {
+      type: 'DUPLEX';
+      handler: DuplexStreamHandler<I, O>;
+    }
+  | {
+      type: 'SERVER';
+      handler: ServerStreamHandler<I, O>;
+    }
+  | {
+      type: 'CLIENT';
+      handler: ClientStreamHandler<I, O>;
+    }
+  | {
+      type: 'UNARY';
+      handler: UnaryHandler<I, O>;
+    }
+  | {
+      type: 'RAW';
+      handler: RawDuplexStreamHandler;
+    };
+
+type Manifest = Record<string, ManifestItem<JSONValue, JSONValue>>;
+
+type ExtractHandler<T> = T extends ManifestItem<JSONValue, JSONValue>
+  ? T['handler']
+  : never;
+
+type MapHandlers<T extends Manifest> = {
+  [P in keyof T]: ConvertHandler<ExtractHandler<T[P]>>;
+};
+
+type MapWithHandlers<T extends Manifest> = {
+  [P in keyof T]: ConvertWithHandler<ExtractHandler<T[P]>>;
+};
+
 export type {
   JsonRpcRequestMessage,
   JsonRpcRequestNotification,
@@ -152,4 +305,9 @@ export type {
   UnaryHandler,
   StreamPairCreateCallback,
   MiddlewareFactory,
+  HandlerType,
+  ManifestItem,
+  Manifest,
+  MapHandlers,
+  MapWithHandlers,
 };

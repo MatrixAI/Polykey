@@ -96,6 +96,7 @@ describe('agentStatus', () => {
       logger.getChild('server'),
     );
     const rpcClient = await RPCClient.createRPCClient({
+      manifest: {},
       streamPairCreateCallback: async () => {
         return clientRPCUtils.startConnection(
           host,

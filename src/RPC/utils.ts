@@ -16,6 +16,7 @@ import type {
 } from 'RPC/types';
 import type { JSONValue } from '../types';
 import type { JsonValue } from 'fast-check';
+import type { HandlerType, Manifest } from 'RPC/types';
 import { TransformStream } from 'stream/web';
 import { AbstractError } from '@matrixai/errors';
 import * as rpcErrors from './errors';
@@ -628,6 +629,14 @@ function extractFirstMessageTransform<T extends JsonRpcMessage>(
   return { headTransformStream, firstMessageProm: messageProm.p };
 }
 
+function getHandlerTypes(manifest: Manifest): Record<string, HandlerType> {
+  const out: Record<string, HandlerType> = {};
+  for (const [k, v] of Object.entries(manifest)) {
+    out[k] = v.type;
+  }
+  return out;
+}
+
 export {
   JsonToJsonMessageStream,
   JsonMessageToJsonStream,
@@ -647,4 +656,5 @@ export {
   controllerTransformationFactory,
   QueueMergingTransformStream,
   extractFirstMessageTransform,
+  getHandlerTypes,
 };
