@@ -10,6 +10,7 @@ import process from 'process';
 import Logger from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { CreateDestroyStartStop } from '@matrixai/async-init/dist/CreateDestroyStartStop';
+import { WorkerManager } from '@matrixai/workers';
 import * as networkUtils from './network/utils';
 import KeyRing from './keys/KeyRing';
 import CertManager from './keys/CertManager';
@@ -37,6 +38,7 @@ import * as errors from './errors';
 import * as utils from './utils';
 import * as keysUtils from './keys/utils';
 import * as nodesUtils from './nodes/utils';
+import * as workersUtils from './workers/utils';
 import TaskManager from './tasks/TaskManager';
 
 type NetworkConfig = {
@@ -81,6 +83,7 @@ class PolykeyAgent {
     proxyConfig = {},
     nodeConnectionManagerConfig = {},
     seedNodes = {},
+    workers,
     // Optional dependencies
     status,
     schema,
@@ -134,6 +137,7 @@ class PolykeyAgent {
     };
     networkConfig?: NetworkConfig;
     seedNodes?: SeedNodes;
+    workers?: number;
     status?: Status;
     schema?: Schema;
     keyRing?: KeyRing;
@@ -455,6 +459,7 @@ class PolykeyAgent {
     await pkAgent.start({
       password,
       networkConfig,
+      workers,
       fresh,
     });
     logger.info(`Created ${this.name}`);
@@ -485,6 +490,7 @@ class PolykeyAgent {
   public readonly events: EventBus;
   public readonly fs: FileSystem;
   public readonly logger: Logger;
+  protected workerManager: PolykeyWorkerManagerInterface | undefined;
 
   constructor({
     nodePath,
@@ -566,10 +572,12 @@ class PolykeyAgent {
   public async start({
     password,
     networkConfig = {},
+    workers,
     fresh = false,
   }: {
     password: string;
     networkConfig?: NetworkConfig;
+    workers?: number;
     fresh?: boolean;
   }) {
     try {
@@ -748,6 +756,15 @@ class PolykeyAgent {
       await this.notificationsManager.start({ fresh });
       await this.sessionManager.start({ fresh });
       await this.taskManager.startProcessing();
+      if (workers != null) {
+        this.workerManager = await workersUtils.createWorkerManager({
+          // 0 means max workers
+          cores: workers === 0 ? undefined : workers,
+          logger: this.logger.getChild(WorkerManager.name),
+        });
+        this.vaultManager.setWorkerManager(this.workerManager);
+        this.db.setWorkerManager(this.workerManager);
+      }
       await this.status.finishStart({
         pid: process.pid,
         nodeId: this.keyRing.getNodeId(),
@@ -786,6 +803,9 @@ class PolykeyAgent {
       await this.db?.stop();
       await this.keyRing?.stop();
       await this.schema?.stop();
+      this.vaultManager.unsetWorkerManager();
+      this.db.unsetWorkerManager();
+      await this.workerManager?.destroy();
       await this.status?.stop({});
       throw e;
     }
@@ -819,6 +839,9 @@ class PolykeyAgent {
     await this.db.stop();
     await this.keyRing.stop();
     await this.schema.stop();
+    this.vaultManager.unsetWorkerManager();
+    this.db.unsetWorkerManager();
+    await this.workerManager?.destroy();
     await this.status.stop({});
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
@@ -869,16 +892,6 @@ class PolykeyAgent {
     await this.keyRing.destroy();
     await this.schema.destroy();
     this.logger.info(`Destroyed ${this.constructor.name}`);
-  }
-
-  public setWorkerManager(workerManager: PolykeyWorkerManagerInterface) {
-    this.db.setWorkerManager(workerManager);
-    this.vaultManager.setWorkerManager(workerManager);
-  }
-
-  public unsetWorkerManager() {
-    this.db.unsetWorkerManager();
-    this.vaultManager.unsetWorkerManager();
   }
 }
 

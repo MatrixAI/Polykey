@@ -72,10 +72,17 @@ const parseProviderIdList = validateParserToArgListParser(
 );
 
 function parseCoreCount(v: string): number | undefined {
-  if (v === 'all') {
-    return undefined;
+  switch (v) {
+    case 'all':
+      return 0;
+    case 'none':
+    case 'no':
+    case 'false':
+    case 'null':
+      return undefined;
+    default:
+      return parseInt(v);
   }
-  return parseInt(v);
 }
 
 function parseSecretPath(secretPath: string): [string, string, string?] {

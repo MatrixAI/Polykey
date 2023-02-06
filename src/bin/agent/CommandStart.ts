@@ -6,7 +6,6 @@ import type {
 } from '../types';
 import type PolykeyAgent from '../../PolykeyAgent';
 import type { RecoveryCode } from '../../keys/types';
-import type { PolykeyWorkerManagerInterface } from '../../workers/types';
 import path from 'path';
 import childProcess from 'child_process';
 import process from 'process';
@@ -46,9 +45,6 @@ class CommandStart extends CommandPolykey {
       options.clientPort =
         options.clientPort ?? config.defaults.networkConfig.clientPort;
       const { default: PolykeyAgent } = await import('../../PolykeyAgent');
-      const { WorkerManager, utils: workersUtils } = await import(
-        '../../workers'
-      );
       const nodesUtils = await import('../../nodes/utils');
       const keysUtils = await import('../../keys/utils/index');
       let password: string | undefined;
@@ -113,6 +109,7 @@ class CommandStart extends CommandPolykey {
           proxyPort: options.proxyPort,
         },
         seedNodes: seedNodes_,
+        workers: options.workers,
         fresh: options.fresh,
       };
       let statusLiveData: AgentStatusLiveData;
@@ -212,11 +209,7 @@ class CommandStart extends CommandPolykey {
         process.title = 'polykey-agent';
         // eslint-disable-next-line prefer-const
         let pkAgent: PolykeyAgent;
-        // eslint-disable-next-line prefer-const
-        let workerManager: PolykeyWorkerManagerInterface;
         this.exitHandlers.handlers.push(async () => {
-          pkAgent?.unsetWorkerManager();
-          await workerManager?.destroy();
           await pkAgent?.stop();
         });
         try {
@@ -230,13 +223,6 @@ class CommandStart extends CommandPolykey {
             throw new binErrors.ErrorCLIPasswordWrong();
           }
           throw e;
-        }
-        if (options.workers !== 0) {
-          workerManager = await workersUtils.createWorkerManager({
-            cores: options.workers,
-            logger: this.logger.getChild(WorkerManager.name),
-          });
-          pkAgent.setWorkerManager(workerManager);
         }
         recoveryCodeOut = pkAgent.keyRing.recoveryCode;
         statusLiveData = {

@@ -138,10 +138,10 @@ const network = new commander.Option(
 
 const workers = new commander.Option(
   '-w --workers <count>',
-  'Number of workers to use, defaults to number of cores with `all`, 0 means no multi-threading',
+  'Number of workers to use, defaults to number of cores with `all`, 0 means all cores, `false`|`null`|`none`|`no` means no multi-threading',
 )
   .argParser(binParsers.parseCoreCount)
-  .default(undefined);
+  .default(0, 'all');
 
 const pullVault = new commander.Option(
   '-pv, --pull-vault <pullVaultNameOrId>',
