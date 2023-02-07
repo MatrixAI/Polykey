@@ -14,8 +14,8 @@ import CertManager from '@/keys/CertManager';
 import { agentUnlock } from '@/clientRPC/handlers/agentUnlock';
 import RPCClient from '@/RPC/RPCClient';
 import { Session, SessionManager } from '@/sessions';
-import * as abcUtils from '@/clientRPC/utils';
 import * as clientRPCUtils from '@/clientRPC/utils';
+import * as rpcUtils from '@/RPC/utils';
 import * as testsUtils from '../../utils';
 
 describe('agentUnlock', () => {
@@ -95,14 +95,14 @@ describe('agentUnlock', () => {
     };
     const rpcServer = await RPCServer.createRPCServer({
       manifest,
+      middleware: rpcUtils.defaultMiddlewareWrapper(
+        clientRPCUtils.authenticationMiddlewareServer(sessionManager, keyRing),
+      ),
       container: {
         logger,
       },
       logger,
     });
-    rpcServer.registerMiddleware(
-      abcUtils.authenticationMiddlewareServer(sessionManager, keyRing),
-    );
     wss = clientRPCUtils.createClientServer(
       server,
       rpcServer,
@@ -120,13 +120,13 @@ describe('agentUnlock', () => {
       logger,
     });
     rpcClient.registerMiddleware(
-      abcUtils.authenticationMiddlewareClient(session),
+      clientRPCUtils.authenticationMiddlewareClient(session),
     );
 
     // Doing the test
     const result = await rpcClient.methods.agentUnlock({
       metadata: {
-        Authorization: abcUtils.encodeAuthFromPassword(password),
+        Authorization: clientRPCUtils.encodeAuthFromPassword(password),
       },
       data: null,
     });

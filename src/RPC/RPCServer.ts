@@ -31,16 +31,24 @@ class RPCServer {
   static async createRPCServer({
     manifest,
     container,
+    middleware = rpcUtils.defaultMiddlewareWrapper(),
     logger = new Logger(this.name),
   }: {
     manifest: Manifest;
     container: POJO;
+    middleware?: MiddlewareFactory<
+      JsonRpcRequest<JSONValue>,
+      Uint8Array,
+      Uint8Array,
+      JsonRpcResponseResult<JSONValue>
+    >;
     logger?: Logger;
   }): Promise<RPCServer> {
     logger.info(`Creating ${this.name}`);
     const rpcServer = new this({
       manifest,
       container,
+      middleware,
       logger,
     });
     logger.info(`Created ${this.name}`);
@@ -53,14 +61,27 @@ class RPCServer {
   protected handlerMap: Map<string, RawDuplexStreamHandler> = new Map();
   protected activeStreams: Set<PromiseCancellable<void>> = new Set();
   protected events: EventTarget = new EventTarget();
+  protected middleware: MiddlewareFactory<
+    JsonRpcRequest<JSONValue>,
+    Uint8Array,
+    Uint8Array,
+    JsonRpcResponseResult<JSONValue>
+  >;
 
   public constructor({
     manifest,
     container,
+    middleware,
     logger,
   }: {
     manifest: Manifest;
     container: POJO;
+    middleware: MiddlewareFactory<
+      JsonRpcRequest<JSONValue>,
+      Uint8Array,
+      Uint8Array,
+      JsonRpcResponseResult<JSONValue>
+    >;
     logger: Logger;
   }) {
     for (const [key, manifestItem] of Object.entries(manifest)) {
@@ -85,6 +106,7 @@ class RPCServer {
       }
     }
     this.container = container;
+    this.middleware = middleware;
     this.logger = logger;
   }
 
@@ -120,23 +142,10 @@ class RPCServer {
       connectionInfo,
       ctx,
     ) => {
-      // Middleware
-      const outputTransformStream = new rpcUtils.JsonMessageToJsonStream();
-      const outputReadableSteam = outputTransformStream.readable;
-      let forwardStream = input.pipeThrough(
-        new rpcUtils.JsonToJsonMessageStream(
-          rpcUtils.parseJsonRpcRequest,
-          undefined,
-          header,
-        ),
-      );
-      let reverseStream = outputTransformStream.writable;
-      for (const middlewareFactory of this.middleware) {
-        const middleware = middlewareFactory();
-        forwardStream = forwardStream.pipeThrough(middleware.forward);
-        void middleware.reverse.readable.pipeTo(reverseStream).catch(() => {});
-        reverseStream = middleware.reverse.writable;
-      }
+      // Setting up middleware
+      const middleware = this.middleware(header);
+      const forwardStream = input.pipeThrough(middleware.forward);
+      const reverseStream = middleware.reverse.writable;
       const events = this.events;
       const outputGen = async function* (): AsyncGenerator<
         JsonRpcResponse<JSONValue>
@@ -206,7 +215,7 @@ class RPCServer {
       });
       void reverseMiddlewareStream.pipeTo(reverseStream).catch(() => {});
 
-      return outputReadableSteam;
+      return middleware.reverse.readable;
     };
 
     this.registerRawStreamHandler(method, rawSteamHandler);
@@ -343,25 +352,6 @@ class RPCServer {
     options?: boolean | AddEventListenerOptions | undefined,
   ) {
     this.events.removeEventListener(type, callback, options);
-  }
-
-  protected middleware: Array<
-    MiddlewareFactory<JsonRpcRequest<JSONValue>, JsonRpcResponse<JSONValue>>
-  > = [];
-
-  @ready(new rpcErrors.ErrorRpcDestroyed())
-  public registerMiddleware(
-    middlewareFactory: MiddlewareFactory<
-      JsonRpcRequest<JSONValue>,
-      JsonRpcResponse<JSONValue>
-    >,
-  ) {
-    this.middleware.push(middlewareFactory);
-  }
-
-  @ready(new rpcErrors.ErrorRpcDestroyed())
-  public clearMiddleware() {
-    this.middleware = [];
   }
 }
 

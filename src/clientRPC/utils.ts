@@ -77,6 +77,8 @@ function authenticationMiddlewareServer(
   keyRing: KeyRing,
 ): MiddlewareFactory<
   JsonRpcRequest<ClientDataAndMetadata<JSONValue>>,
+  JsonRpcRequest<ClientDataAndMetadata<JSONValue>>,
+  JsonRpcResponse<ClientDataAndMetadata<JSONValue>>,
   JsonRpcResponse<ClientDataAndMetadata<JSONValue>>
 > {
   return () => {
@@ -127,6 +129,8 @@ function authenticationMiddlewareClient(
   session: Session,
 ): MiddlewareFactory<
   JsonRpcRequest<ClientDataAndMetadata<JSONValue>>,
+  JsonRpcRequest<ClientDataAndMetadata<JSONValue>>,
+  JsonRpcResponse<ClientDataAndMetadata<JSONValue>>,
   JsonRpcResponse<ClientDataAndMetadata<JSONValue>>
 > {
   return () => {

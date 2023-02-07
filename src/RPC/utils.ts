@@ -13,6 +13,7 @@ import type {
   JsonRpcResponseResult,
   JsonRpcRequest,
   JsonRpcResponse,
+  MiddlewareFactory,
 } from 'RPC/types';
 import type { JSONValue } from '../types';
 import type { JsonValue } from 'fast-check';
@@ -637,6 +638,59 @@ function getHandlerTypes(manifest: Manifest): Record<string, HandlerType> {
   return out;
 }
 
+const defaultMiddleware: MiddlewareFactory<
+  JsonRpcRequest<JSONValue>,
+  JsonRpcRequest<JSONValue>,
+  JsonRpcResponse<JSONValue>,
+  JsonRpcResponse<JSONValue>
+> = () => {
+  return {
+    forward: new TransformStream(),
+    reverse: new TransformStream(),
+  };
+};
+
+const defaultMiddlewareWrapper = (
+  middleware: MiddlewareFactory<
+    JsonRpcRequest<JSONValue>,
+    JsonRpcRequest<JSONValue>,
+    JsonRpcResponse<JSONValue>,
+    JsonRpcResponse<JSONValue>
+  > = defaultMiddleware,
+) => {
+  return (header: JsonRpcRequest<JSONValue>) => {
+    const inputTransformStream = new JsonToJsonMessageStream(
+      parseJsonRpcRequest,
+      undefined,
+      header,
+    );
+    const outputTransformStream = new TransformStream<
+      JsonRpcResponseResult<JSONValue>,
+      JsonRpcResponseResult<JSONValue>
+    >();
+
+    const middleMiddleware = middleware(header);
+
+    const forwardReadable = inputTransformStream.readable.pipeThrough(
+      middleMiddleware.forward,
+    ); // Usual middleware here
+    const reverseReadable = outputTransformStream.readable
+      .pipeThrough(middleMiddleware.reverse) // Usual middleware here
+      .pipeThrough(new JsonMessageToJsonStream());
+
+    return {
+      forward: {
+        readable: forwardReadable,
+        writable: inputTransformStream.writable,
+      },
+      reverse: {
+        readable: reverseReadable,
+        writable: outputTransformStream.writable,
+      },
+    };
+  };
+};
+
 export {
   JsonToJsonMessageStream,
   JsonMessageToJsonStream,
@@ -657,4 +711,6 @@ export {
   QueueMergingTransformStream,
   extractFirstMessageTransform,
   getHandlerTypes,
+  defaultMiddleware,
+  defaultMiddlewareWrapper,
 };

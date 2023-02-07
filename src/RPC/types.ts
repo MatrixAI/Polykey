@@ -135,9 +135,11 @@ type StreamPairCreateCallback = () => Promise<
   ReadableWritablePair<Uint8Array, Uint8Array>
 >;
 
-type MiddlewareFactory<F, R> = () => {
-  forward: ReadableWritablePair<F, F>;
-  reverse: ReadableWritablePair<R, R>;
+type MiddlewareFactory<FR, FW, RR, RW> = (
+  header?: JsonRpcRequest<JSONValue>,
+) => {
+  forward: ReadableWritablePair<FR, FW>;
+  reverse: ReadableWritablePair<RR, RW>;
 };
 
 type DuplexStreamCaller<

@@ -14,6 +14,7 @@ import { fc, testProp } from '@fast-check/jest';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import RPCServer from '@/RPC/RPCServer';
 import * as rpcErrors from '@/RPC/errors';
+import * as rpcUtils from '@/RPC/utils';
 import * as rpcTestUtils from './utils';
 
 describe(`${RPCServer.name}`, () => {
@@ -472,19 +473,7 @@ describe(`${RPCServer.name}`, () => {
       },
     };
     const container = {};
-    const rpcServer = await RPCServer.createRPCServer({
-      manifest: {
-        testMethod,
-      },
-      container,
-      logger,
-    });
-    const [outputResult, outputStream] = rpcTestUtils.streamToArray();
-    const readWriteStream: ReadableWritablePair = {
-      readable: stream,
-      writable: outputStream,
-    };
-    rpcServer.registerMiddleware(() => {
+    const middleware = rpcUtils.defaultMiddlewareWrapper(() => {
       return {
         forward: new TransformStream({
           transform: (chunk, controller) => {
@@ -495,6 +484,19 @@ describe(`${RPCServer.name}`, () => {
         reverse: new TransformStream(),
       };
     });
+    const rpcServer = await RPCServer.createRPCServer({
+      manifest: {
+        testMethod,
+      },
+      middleware,
+      container,
+      logger,
+    });
+    const [outputResult, outputStream] = rpcTestUtils.streamToArray();
+    const readWriteStream: ReadableWritablePair = {
+      readable: stream,
+      writable: outputStream,
+    };
     rpcServer.handleStream(readWriteStream, {} as ConnectionInfo);
     const out = await outputResult;
     expect(out.map((v) => v!.toString())).toStrictEqual(
@@ -519,19 +521,7 @@ describe(`${RPCServer.name}`, () => {
       },
     };
     const container = {};
-    const rpcServer = await RPCServer.createRPCServer({
-      manifest: {
-        testMethod,
-      },
-      container,
-      logger,
-    });
-    const [outputResult, outputStream] = rpcTestUtils.streamToArray();
-    const readWriteStream: ReadableWritablePair = {
-      readable: stream,
-      writable: outputStream,
-    };
-    rpcServer.registerMiddleware(() => {
+    const middleware = rpcUtils.defaultMiddlewareWrapper(() => {
       return {
         forward: new TransformStream(),
         reverse: new TransformStream({
@@ -542,6 +532,19 @@ describe(`${RPCServer.name}`, () => {
         }),
       };
     });
+    const rpcServer = await RPCServer.createRPCServer({
+      manifest: {
+        testMethod,
+      },
+      middleware,
+      container,
+      logger,
+    });
+    const [outputResult, outputStream] = rpcTestUtils.streamToArray();
+    const readWriteStream: ReadableWritablePair = {
+      readable: stream,
+      writable: outputStream,
+    };
     rpcServer.handleStream(readWriteStream, {} as ConnectionInfo);
     const out = await outputResult;
     expect(out.map((v) => v!.toString())).toStrictEqual(
@@ -569,33 +572,7 @@ describe(`${RPCServer.name}`, () => {
         },
       };
       const container = {};
-      const rpcServer = await RPCServer.createRPCServer({
-        manifest: {
-          testMethod,
-        },
-        container,
-        logger,
-      });
-      const [outputResult, outputStream] = rpcTestUtils.streamToArray();
-      const readWriteStream: ReadableWritablePair = {
-        readable: stream,
-        writable: outputStream,
-      };
-      type TestType = {
-        metadata: {
-          token: string;
-        };
-        data: JSONValue;
-      };
-      const failureMessage: JsonRpcResponseError = {
-        jsonrpc: '2.0',
-        id: null,
-        error: {
-          code: 1,
-          message: 'failure of somekind',
-        },
-      };
-      rpcServer.registerMiddleware(() => {
+      const middleware = rpcUtils.defaultMiddlewareWrapper(() => {
         let first = true;
         let reverseController: TransformStreamDefaultController<
           JsonRpcResponse<JSONValue>
@@ -627,6 +604,33 @@ describe(`${RPCServer.name}`, () => {
           }),
         };
       });
+      const rpcServer = await RPCServer.createRPCServer({
+        manifest: {
+          testMethod,
+        },
+        middleware,
+        container,
+        logger,
+      });
+      const [outputResult, outputStream] = rpcTestUtils.streamToArray();
+      const readWriteStream: ReadableWritablePair = {
+        readable: stream,
+        writable: outputStream,
+      };
+      type TestType = {
+        metadata: {
+          token: string;
+        };
+        data: JSONValue;
+      };
+      const failureMessage: JsonRpcResponseError = {
+        jsonrpc: '2.0',
+        id: null,
+        error: {
+          code: 1,
+          message: 'failure of somekind',
+        },
+      };
       rpcServer.handleStream(readWriteStream, {} as ConnectionInfo);
       expect((await outputResult).toString()).toEqual(
         JSON.stringify(failureMessage),

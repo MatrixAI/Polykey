@@ -70,7 +70,7 @@ describe('websocket', () => {
       test1,
       test2,
     };
-    const rpcServer = new RPCServer({
+    const rpcServer = await RPCServer.createRPCServer({
       manifest,
       container: {},
       logger: logger.getChild('RPCServer'),

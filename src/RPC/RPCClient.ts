@@ -299,13 +299,20 @@ class RPCClient<M extends Manifest> {
   }
 
   protected middleware: Array<
-    MiddlewareFactory<JsonRpcRequest<JSONValue>, JsonRpcResponse<JSONValue>>
+    MiddlewareFactory<
+      JsonRpcRequest<JSONValue>,
+      JsonRpcRequest<JSONValue>,
+      JsonRpcResponse<JSONValue>,
+      JsonRpcResponse<JSONValue>
+    >
   > = [];
 
   @ready(new rpcErrors.ErrorRpcDestroyed())
   public registerMiddleware(
     middlewareFactory: MiddlewareFactory<
       JsonRpcRequest<JSONValue>,
+      JsonRpcRequest<JSONValue>,
+      JsonRpcResponse<JSONValue>,
       JsonRpcResponse<JSONValue>
     >,
   ) {
