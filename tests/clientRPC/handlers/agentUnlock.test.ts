@@ -11,11 +11,7 @@ import * as keysUtils from '@/keys/utils';
 import RPCServer from '@/RPC/RPCServer';
 import TaskManager from '@/tasks/TaskManager';
 import CertManager from '@/keys/CertManager';
-import {
-  agentUnlockName,
-  agentUnlockHandler,
-  agentUnlockCaller,
-} from '@/clientRPC/handlers/agentUnlock';
+import { agentUnlock } from '@/clientRPC/handlers/agentUnlock';
 import RPCClient from '@/RPC/RPCClient';
 import { Session, SessionManager } from '@/sessions';
 import * as abcUtils from '@/clientRPC/utils';
@@ -94,13 +90,16 @@ describe('agentUnlock', () => {
   });
   test('get status', async () => {
     // Setup
+    const manifest = {
+      agentUnlock,
+    };
     const rpcServer = await RPCServer.createRPCServer({
+      manifest,
       container: {
         logger,
       },
       logger,
     });
-    rpcServer.registerUnaryHandler(agentUnlockName, agentUnlockHandler);
     rpcServer.registerMiddleware(
       abcUtils.authenticationMiddlewareServer(sessionManager, keyRing),
     );
@@ -110,6 +109,7 @@ describe('agentUnlock', () => {
       logger.getChild('server'),
     );
     const rpcClient = await RPCClient.createRPCClient({
+      manifest,
       streamPairCreateCallback: async () => {
         return clientRPCUtils.startConnection(
           '127.0.0.1',
@@ -124,19 +124,22 @@ describe('agentUnlock', () => {
     );
 
     // Doing the test
-    const result = await agentUnlockCaller(
-      {
+    const result = await rpcClient.methods.agentUnlock({
+      metadata: {
         Authorization: abcUtils.encodeAuthFromPassword(password),
       },
-      rpcClient,
-    );
+      data: null,
+    });
     expect(result).toMatchObject({
       metadata: {
         Authorization: expect.any(String),
       },
       data: null,
     });
-    const result2 = await agentUnlockCaller({}, rpcClient);
+    const result2 = await rpcClient.methods.agentUnlock({
+      metadata: {},
+      data: null,
+    });
     expect(result2).toMatchObject({
       metadata: {
         Authorization: expect.any(String),

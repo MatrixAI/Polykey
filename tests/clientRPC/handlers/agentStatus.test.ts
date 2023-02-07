@@ -11,13 +11,10 @@ import * as keysUtils from '@/keys/utils';
 import RPCServer from '@/RPC/RPCServer';
 import TaskManager from '@/tasks/TaskManager';
 import CertManager from '@/keys/CertManager';
-import {
-  agentStatusName,
-  agentStatusHandler,
-  agentStatusCaller,
-} from '@/clientRPC/handlers/agentStatus';
+import { agentStatus } from '@/clientRPC/handlers/agentStatus';
 import RPCClient from '@/RPC/RPCClient';
 import * as clientRPCUtils from '@/clientRPC/utils';
+import * as nodesUtils from '@/nodes/utils';
 import * as testsUtils from '../../utils';
 
 describe('agentStatus', () => {
@@ -81,7 +78,11 @@ describe('agentStatus', () => {
   });
   test('get status %s', async () => {
     // Setup
+    const manifest = {
+      agentStatus,
+    };
     const rpcServer = await RPCServer.createRPCServer({
+      manifest,
       container: {
         keyRing,
         certManager,
@@ -89,14 +90,13 @@ describe('agentStatus', () => {
       },
       logger: logger.getChild('RPCServer'),
     });
-    rpcServer.registerUnaryHandler(agentStatusName, agentStatusHandler);
     wss = clientRPCUtils.createClientServer(
       server,
       rpcServer,
       logger.getChild('server'),
     );
     const rpcClient = await RPCClient.createRPCClient({
-      manifest: {},
+      manifest,
       streamPairCreateCallback: async () => {
         return clientRPCUtils.startConnection(
           host,
@@ -107,10 +107,10 @@ describe('agentStatus', () => {
       logger: logger.getChild('RPCClient'),
     });
     // Doing the test
-    const result = await agentStatusCaller({}, rpcClient);
+    const result = await rpcClient.methods.agentStatus(null);
     expect(result).toStrictEqual({
       pid: process.pid,
-      nodeId: keyRing.getNodeId(),
+      nodeId: nodesUtils.encodeNodeId(keyRing.getNodeId()),
       publicJwk: JSON.stringify(
         keysUtils.publicKeyToJWK(keyRing.keyPair.publicKey),
       ),

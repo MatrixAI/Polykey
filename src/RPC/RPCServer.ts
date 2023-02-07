@@ -6,6 +6,7 @@ import type {
   JsonRpcResponse,
   JsonRpcResponseError,
   JsonRpcResponseResult,
+  Manifest,
   RawDuplexStreamHandler,
   ServerStreamHandler,
   UnaryHandler,
@@ -21,20 +22,24 @@ import Logger from '@matrixai/logger';
 import { PromiseCancellable } from '@matrixai/async-cancellable';
 import * as rpcUtils from './utils';
 import * as rpcErrors from './errors';
+import { never } from '../utils/utils';
 import { sysexits } from '../errors';
 
 interface RPCServer extends CreateDestroy {}
 @CreateDestroy()
 class RPCServer {
   static async createRPCServer({
+    manifest,
     container,
     logger = new Logger(this.name),
   }: {
+    manifest: Manifest;
     container: POJO;
     logger?: Logger;
   }): Promise<RPCServer> {
     logger.info(`Creating ${this.name}`);
     const rpcServer = new this({
+      manifest,
       container,
       logger,
     });
@@ -50,12 +55,35 @@ class RPCServer {
   protected events: EventTarget = new EventTarget();
 
   public constructor({
+    manifest,
     container,
     logger,
   }: {
+    manifest: Manifest;
     container: POJO;
     logger: Logger;
   }) {
+    for (const [key, manifestItem] of Object.entries(manifest)) {
+      switch (manifestItem.type) {
+        case 'RAW':
+          this.registerRawStreamHandler(key, manifestItem.handler);
+          continue;
+        case 'DUPLEX':
+          this.registerDuplexStreamHandler(key, manifestItem.handler);
+          continue;
+        case 'SERVER':
+          this.registerServerStreamHandler(key, manifestItem.handler);
+          continue;
+        case 'CLIENT':
+          this.registerClientStreamHandler(key, manifestItem.handler);
+          continue;
+        case 'UNARY':
+          this.registerUnaryHandler(key, manifestItem.handler);
+          continue;
+        default:
+          never();
+      }
+    }
     this.container = container;
     this.logger = logger;
   }
@@ -72,19 +100,17 @@ class RPCServer {
     this.logger.info(`Destroyed ${this.constructor.name}`);
   }
 
-  @ready(new rpcErrors.ErrorRpcDestroyed())
-  public registerRawStreamHandler(
+  protected registerRawStreamHandler(
     method: string,
     handler: RawDuplexStreamHandler,
   ) {
     this.handlerMap.set(method, handler);
   }
 
-  @ready(new rpcErrors.ErrorRpcDestroyed())
-  public registerDuplexStreamHandler<I extends JSONValue, O extends JSONValue>(
-    method: string,
-    handler: DuplexStreamHandler<I, O>,
-  ) {
+  protected registerDuplexStreamHandler<
+    I extends JSONValue,
+    O extends JSONValue,
+  >(method: string, handler: DuplexStreamHandler<I, O>) {
     // This needs to handle all the message parsing and conversion from
     // generators to the raw streams.
 
@@ -186,8 +212,7 @@ class RPCServer {
     this.registerRawStreamHandler(method, rawSteamHandler);
   }
 
-  @ready(new rpcErrors.ErrorRpcDestroyed())
-  public registerUnaryHandler<I extends JSONValue, O extends JSONValue>(
+  protected registerUnaryHandler<I extends JSONValue, O extends JSONValue>(
     method: string,
     handler: UnaryHandler<I, O>,
   ) {
@@ -205,11 +230,10 @@ class RPCServer {
     this.registerDuplexStreamHandler(method, wrapperDuplex);
   }
 
-  @ready(new rpcErrors.ErrorRpcDestroyed())
-  public registerServerStreamHandler<I extends JSONValue, O extends JSONValue>(
-    method: string,
-    handler: ServerStreamHandler<I, O>,
-  ) {
+  protected registerServerStreamHandler<
+    I extends JSONValue,
+    O extends JSONValue,
+  >(method: string, handler: ServerStreamHandler<I, O>) {
     const wrapperDuplex: DuplexStreamHandler<I, O> = async function* (
       input,
       container,
@@ -224,11 +248,10 @@ class RPCServer {
     this.registerDuplexStreamHandler(method, wrapperDuplex);
   }
 
-  @ready(new rpcErrors.ErrorRpcDestroyed())
-  public registerClientStreamHandler<I extends JSONValue, O extends JSONValue>(
-    method: string,
-    handler: ClientStreamHandler<I, O>,
-  ) {
+  protected registerClientStreamHandler<
+    I extends JSONValue,
+    O extends JSONValue,
+  >(method: string, handler: ClientStreamHandler<I, O>) {
     const wrapperDuplex: DuplexStreamHandler<I, O> = async function* (
       input,
       container,

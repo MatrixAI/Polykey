@@ -1,11 +1,4 @@
-import type {
-  ClientStreamHandler,
-  DuplexStreamHandler,
-  JsonRpcRequest,
-  RawDuplexStreamHandler,
-  ServerStreamHandler,
-  UnaryHandler,
-} from '@/RPC/types';
+import type { JsonRpcRequest, ManifestItem } from '@/RPC/types';
 import type { ConnectionInfo } from '@/network/types';
 import type { JSONValue } from '@/types';
 import { fc, testProp } from '@fast-check/jest';
@@ -16,8 +9,6 @@ import * as rpcTestUtils from './utils';
 
 describe('RPC', () => {
   const logger = new Logger(`RPC Test`, LogLevel.WARN, [new StreamHandler()]);
-
-  const methodName = 'testMethod';
 
   testProp(
     'RPC communication with raw stream',
@@ -30,29 +21,32 @@ describe('RPC', () => {
         Uint8Array
       >();
 
-      const container = {};
-      const rpcServer = await RPCServer.createRPCServer({ container, logger });
       let header: JsonRpcRequest | undefined;
-      const rawHandler: RawDuplexStreamHandler = (
-        [input, header_],
-        _container,
-        _connectionInfo,
-        _ctx,
-      ) => {
-        header = header_;
-        return input;
+      const testMethod: ManifestItem<JSONValue, JSONValue> = {
+        type: 'RAW',
+        handler: ([input, header_], _container, _connectionInfo, _ctx) => {
+          header = header_;
+          return input;
+        },
       };
-
-      rpcServer.registerRawStreamHandler(methodName, rawHandler);
+      const manifest = {
+        testMethod,
+      };
+      const container = {};
+      const rpcServer = await RPCServer.createRPCServer({
+        manifest,
+        container,
+        logger,
+      });
       rpcServer.handleStream(serverPair, {} as ConnectionInfo);
 
       const rpcClient = await RPCClient.createRPCClient({
-        manifest: {},
+        manifest,
         streamPairCreateCallback: async () => clientPair,
         logger,
       });
 
-      const callerInterface = await rpcClient.rawStreamCaller(methodName, {
+      const callerInterface = await rpcClient.methods.testMethod({
         hello: 'world',
       });
       const writer = callerInterface.writable.getWriter();
@@ -63,7 +57,7 @@ describe('RPC', () => {
       await writer.close();
       const expectedHeader: JsonRpcRequest = {
         jsonrpc: '2.0',
-        method: methodName,
+        method: 'testMethod',
         params: { hello: 'world' },
         id: null,
       };
@@ -83,26 +77,32 @@ describe('RPC', () => {
         Uint8Array
       >();
 
-      const container = {};
-      const rpcServer = await RPCServer.createRPCServer({ container, logger });
-
-      const duplexHandler: DuplexStreamHandler<JSONValue, JSONValue> =
-        async function* (input, _container, _connectionInfo, _ctx) {
+      const testMethod: ManifestItem<JSONValue, JSONValue> = {
+        type: 'DUPLEX',
+        handler: async function* (input, _container, _connectionInfo, _ctx) {
           for await (const val of input) {
             yield val;
           }
-        };
-
-      rpcServer.registerDuplexStreamHandler(methodName, duplexHandler);
+        },
+      };
+      const manifest = {
+        testMethod,
+      };
+      const container = {};
+      const rpcServer = await RPCServer.createRPCServer({
+        manifest,
+        container,
+        logger,
+      });
       rpcServer.handleStream(serverPair, {} as ConnectionInfo);
 
       const rpcClient = await RPCClient.createRPCClient({
-        manifest: {},
+        manifest,
         streamPairCreateCallback: async () => clientPair,
         logger,
       });
 
-      const callerInterface = await rpcClient.duplexStreamCaller(methodName);
+      const callerInterface = await rpcClient.methods.testMethod();
       const writer = callerInterface.writable.getWriter();
       const reader = callerInterface.readable.getReader();
       for (const value of values) {
@@ -126,29 +126,32 @@ describe('RPC', () => {
         Uint8Array
       >();
 
-      const container = {};
-      const rpcServer = await RPCServer.createRPCServer({ container, logger });
-
-      const serverStreamHandler: ServerStreamHandler<number, number> =
-        async function* (input, _container, _connectionInfo, _ctx) {
+      const testMethod: ManifestItem<number, number> = {
+        type: 'SERVER',
+        handler: async function* (input, _container, _connectionInfo, _ctx) {
           for (let i = 0; i < input; i++) {
             yield i;
           }
-        };
-
-      rpcServer.registerServerStreamHandler(methodName, serverStreamHandler);
+        },
+      };
+      const manifest = {
+        testMethod,
+      };
+      const container = {};
+      const rpcServer = await RPCServer.createRPCServer({
+        manifest,
+        container,
+        logger,
+      });
       rpcServer.handleStream(serverPair, {} as ConnectionInfo);
 
       const rpcClient = await RPCClient.createRPCClient({
-        manifest: {},
+        manifest,
         streamPairCreateCallback: async () => clientPair,
         logger,
       });
 
-      const callerInterface = await rpcClient.serverStreamCaller<
-        number,
-        number
-      >(methodName, value);
+      const callerInterface = await rpcClient.methods.testMethod(value);
 
       const outputs: Array<number> = [];
       for await (const num of callerInterface) {
@@ -168,31 +171,34 @@ describe('RPC', () => {
         Uint8Array
       >();
 
-      const container = {};
-      const rpcServer = await RPCServer.createRPCServer({ container, logger });
-
-      const clientStreamhandler: ClientStreamHandler<number, number> = async (
-        input,
-      ) => {
-        let acc = 0;
-        for await (const number of input) {
-          acc += number;
-        }
-        return acc;
+      const testMethod: ManifestItem<number, number> = {
+        type: 'CLIENT',
+        handler: async (input) => {
+          let acc = 0;
+          for await (const number of input) {
+            acc += number;
+          }
+          return acc;
+        },
       };
-      rpcServer.registerClientStreamHandler(methodName, clientStreamhandler);
+      const manifest = {
+        testMethod,
+      };
+      const container = {};
+      const rpcServer = await RPCServer.createRPCServer({
+        manifest,
+        container,
+        logger,
+      });
       rpcServer.handleStream(serverPair, {} as ConnectionInfo);
 
       const rpcClient = await RPCClient.createRPCClient({
-        manifest: {},
+        manifest,
         streamPairCreateCallback: async () => clientPair,
         logger,
       });
 
-      const callerInterface = await rpcClient.clientStreamCaller<
-        number,
-        number
-      >(methodName);
+      const callerInterface = await rpcClient.methods.testMethod();
       const writer = callerInterface.writable.getWriter();
       for (const value of values) {
         await writer.write(value);
@@ -214,24 +220,28 @@ describe('RPC', () => {
         Uint8Array
       >();
 
+      const testMethod: ManifestItem<JSONValue, JSONValue> = {
+        type: 'UNARY',
+        handler: async (input) => input,
+      };
+      const manifest = {
+        testMethod,
+      };
       const container = {};
-      const rpcServer = await RPCServer.createRPCServer({ container, logger });
-
-      const unaryCaller: UnaryHandler<JSONValue, JSONValue> = async (input) =>
-        input;
-      rpcServer.registerUnaryHandler(methodName, unaryCaller);
+      const rpcServer = await RPCServer.createRPCServer({
+        manifest,
+        container,
+        logger,
+      });
       rpcServer.handleStream(serverPair, {} as ConnectionInfo);
 
       const rpcClient = await RPCClient.createRPCClient({
-        manifest: {},
+        manifest,
         streamPairCreateCallback: async () => clientPair,
         logger,
       });
 
-      const result = await rpcClient.unaryCaller<JSONValue, JSONValue>(
-        methodName,
-        value,
-      );
+      const result = await rpcClient.methods.testMethod(value);
       expect(result).toStrictEqual(value);
       await rpcServer.destroy();
       await rpcClient.destroy();

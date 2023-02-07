@@ -1,6 +1,8 @@
 import type { TLSConfig } from '@/network/types';
 import type { Server } from 'https';
 import type { WebSocketServer } from 'ws';
+import type { ManifestItem } from '@/RPC/types';
+import type { JSONValue } from '@/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -52,20 +54,27 @@ describe('websocket', () => {
 
   test('websocket should work with RPC', async () => {
     // Setting up server
+    const test1: ManifestItem<JSONValue, JSONValue> = {
+      type: 'UNARY',
+      handler: async (params, _container, _connectionInfo) => {
+        return params;
+      },
+    };
+    const test2: ManifestItem<JSONValue, JSONValue> = {
+      type: 'UNARY',
+      handler: async () => {
+        return { hello: 'not world' };
+      },
+    };
+    const manifest = {
+      test1,
+      test2,
+    };
     const rpcServer = new RPCServer({
+      manifest,
       container: {},
       logger: logger.getChild('RPCServer'),
     });
-    rpcServer.registerUnaryHandler(
-      'test1',
-      async (params, _container, _connectionInfo) => {
-        return params;
-      },
-    );
-    rpcServer.registerUnaryHandler('test2', async () => {
-      return { hello: 'not world' };
-    });
-
     wss = clientRPCUtils.createClientServer(
       server,
       rpcServer,
@@ -74,7 +83,7 @@ describe('websocket', () => {
 
     // Setting up client
     const rpcClient = await RPCClient.createRPCClient({
-      manifest: {},
+      manifest,
       logger: logger.getChild('RPCClient'),
       streamPairCreateCallback: async () => {
         return clientRPCUtils.startConnection(
@@ -87,10 +96,10 @@ describe('websocket', () => {
 
     // Making the call
     await expect(
-      rpcClient.unaryCaller('test1', { hello: 'world2' }),
+      rpcClient.methods.test1({ hello: 'world2' }),
     ).resolves.toStrictEqual({ hello: 'world2' });
     await expect(
-      rpcClient.unaryCaller('test2', { hello: 'world2' }),
+      rpcClient.methods.test2({ hello: 'world2' }),
     ).resolves.toStrictEqual({ hello: 'not world' });
     await expect(
       rpcClient.unaryCaller('test3', { hello: 'world2' }),
