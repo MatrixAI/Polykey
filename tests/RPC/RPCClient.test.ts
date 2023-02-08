@@ -79,7 +79,7 @@ describe(`${RPCClient.name}`, () => {
     },
   );
   testProp('generic duplex caller', [specificMessageArb], async (messages) => {
-    const inputStream = rpcTestUtils.jsonRpcStream(messages);
+    const inputStream = rpcTestUtils.messagesToReadableStream(messages);
     const [outputResult, outputStream] =
       rpcTestUtils.streamToArray<Uint8Array>();
     const streamPair: ReadableWritablePair = {
@@ -125,7 +125,7 @@ describe(`${RPCClient.name}`, () => {
     'generic server stream caller',
     [specificMessageArb, rpcTestUtils.safeJsonValueArb],
     async (messages, params) => {
-      const inputStream = rpcTestUtils.jsonRpcStream(messages);
+      const inputStream = rpcTestUtils.messagesToReadableStream(messages);
       const [outputResult, outputStream] = rpcTestUtils.streamToArray();
       const streamPair: ReadableWritablePair = {
         readable: inputStream,
@@ -164,7 +164,7 @@ describe(`${RPCClient.name}`, () => {
       fc.array(rpcTestUtils.safeJsonValueArb),
     ],
     async (message, params) => {
-      const inputStream = rpcTestUtils.jsonRpcStream([message]);
+      const inputStream = rpcTestUtils.messagesToReadableStream([message]);
       const [outputResult, outputStream] =
         rpcTestUtils.streamToArray<Uint8Array>();
       const streamPair: ReadableWritablePair = {
@@ -204,7 +204,7 @@ describe(`${RPCClient.name}`, () => {
     'generic unary caller',
     [rpcTestUtils.jsonRpcResponseResultArb(), rpcTestUtils.safeJsonValueArb],
     async (message, params) => {
-      const inputStream = rpcTestUtils.jsonRpcStream([message]);
+      const inputStream = rpcTestUtils.messagesToReadableStream([message]);
       const [outputResult, outputStream] = rpcTestUtils.streamToArray();
       const streamPair: ReadableWritablePair = {
         readable: inputStream,
@@ -238,7 +238,7 @@ describe(`${RPCClient.name}`, () => {
       rpcTestUtils.jsonRpcResponseErrorArb(),
     ],
     async (messages, errorMessage) => {
-      const inputStream = rpcTestUtils.jsonRpcStream([
+      const inputStream = rpcTestUtils.messagesToReadableStream([
         ...messages,
         errorMessage,
       ]);
@@ -326,7 +326,7 @@ describe(`${RPCClient.name}`, () => {
     'withDuplexCaller',
     [fc.array(rpcTestUtils.jsonRpcResponseResultArb(), { minLength: 1 })],
     async (messages) => {
-      const inputStream = rpcTestUtils.jsonRpcStream(messages);
+      const inputStream = rpcTestUtils.messagesToReadableStream(messages);
       const [outputResult, outputStream] =
         rpcTestUtils.streamToArray<Uint8Array>();
       const streamPair: ReadableWritablePair = {
@@ -346,7 +346,7 @@ describe(`${RPCClient.name}`, () => {
         }
       });
       const result = await outputResult;
-      // We're just checking that it consuming the messages as expected
+      // We're just checking that it's consuming the messages as expected
       expect(result.length).toEqual(messages.length);
       expect(count).toEqual(messages.length);
       await rpcClient.destroy();
@@ -359,7 +359,7 @@ describe(`${RPCClient.name}`, () => {
       rpcTestUtils.safeJsonValueArb,
     ],
     async (messages, params) => {
-      const inputStream = rpcTestUtils.jsonRpcStream(messages);
+      const inputStream = rpcTestUtils.messagesToReadableStream(messages);
       const [outputResult, outputStream] =
         rpcTestUtils.streamToArray<Uint8Array>();
       const streamPair: ReadableWritablePair = {
@@ -395,7 +395,7 @@ describe(`${RPCClient.name}`, () => {
       fc.array(rpcTestUtils.safeJsonValueArb, { minLength: 2 }).noShrink(),
     ],
     async (message, inputMessages) => {
-      const inputStream = rpcTestUtils.jsonRpcStream([message]);
+      const inputStream = rpcTestUtils.messagesToReadableStream([message]);
       const [outputResult, outputStream] =
         rpcTestUtils.streamToArray<Uint8Array>();
       const streamPair: ReadableWritablePair = {
@@ -434,7 +434,7 @@ describe(`${RPCClient.name}`, () => {
     'generic duplex caller with forward Middleware',
     [specificMessageArb],
     async (messages) => {
-      const inputStream = rpcTestUtils.jsonRpcStream(messages);
+      const inputStream = rpcTestUtils.messagesToReadableStream(messages);
       const [outputResult, outputStream] =
         rpcTestUtils.streamToArray<Uint8Array>();
       const streamPair: ReadableWritablePair = {
@@ -449,10 +449,7 @@ describe(`${RPCClient.name}`, () => {
 
       rpcClient.registerMiddleware(() => {
         return {
-          forward: new TransformStream<
-            JsonRpcRequest<JSONValue>,
-            JsonRpcRequest<JSONValue>
-          >({
+          forward: new TransformStream<JsonRpcRequest, JsonRpcRequest>({
             transform: (chunk, controller) => {
               controller.enqueue({
                 ...chunk,
@@ -501,7 +498,7 @@ describe(`${RPCClient.name}`, () => {
     'generic duplex caller with reverse Middleware',
     [specificMessageArb],
     async (messages) => {
-      const inputStream = rpcTestUtils.jsonRpcStream(messages);
+      const inputStream = rpcTestUtils.messagesToReadableStream(messages);
       const [outputResult, outputStream] =
         rpcTestUtils.streamToArray<Uint8Array>();
       const streamPair: ReadableWritablePair = {
@@ -517,10 +514,7 @@ describe(`${RPCClient.name}`, () => {
       rpcClient.registerMiddleware(() => {
         return {
           forward: new TransformStream(),
-          reverse: new TransformStream<
-            JsonRpcResponse<JSONValue>,
-            JsonRpcResponse<JSONValue>
-          >({
+          reverse: new TransformStream<JsonRpcResponse, JsonRpcResponse>({
             transform: (chunk, controller) => {
               controller.enqueue({
                 ...chunk,
@@ -558,7 +552,7 @@ describe(`${RPCClient.name}`, () => {
       }),
     ],
     async (messages) => {
-      const inputStream = rpcTestUtils.jsonRpcStream(messages);
+      const inputStream = rpcTestUtils.messagesToReadableStream(messages);
       const [outputResult, outputStream] = rpcTestUtils.streamToArray<string>();
       const streamPair: ReadableWritablePair = {
         readable: inputStream,
@@ -612,7 +606,7 @@ describe(`${RPCClient.name}`, () => {
     'manifest server call',
     [specificMessageArb, fc.string()],
     async (messages, params) => {
-      const inputStream = rpcTestUtils.jsonRpcStream(messages);
+      const inputStream = rpcTestUtils.messagesToReadableStream(messages);
       const [outputResult, outputStream] = rpcTestUtils.streamToArray<string>();
       const streamPair: ReadableWritablePair = {
         readable: inputStream,
@@ -656,7 +650,7 @@ describe(`${RPCClient.name}`, () => {
       fc.array(fc.string(), { minLength: 5 }),
     ],
     async (message, params) => {
-      const inputStream = rpcTestUtils.jsonRpcStream([message]);
+      const inputStream = rpcTestUtils.messagesToReadableStream([message]);
       const [outputResult, outputStream] =
         rpcTestUtils.streamToArray<Uint8Array>();
       const streamPair: ReadableWritablePair = {
@@ -701,7 +695,7 @@ describe(`${RPCClient.name}`, () => {
     'manifest unary call',
     [rpcTestUtils.jsonRpcResponseResultArb().noShrink(), fc.string()],
     async (message, params) => {
-      const inputStream = rpcTestUtils.jsonRpcStream([message]);
+      const inputStream = rpcTestUtils.messagesToReadableStream([message]);
       const [outputResult, outputStream] = rpcTestUtils.streamToArray();
       const streamPair: ReadableWritablePair = {
         readable: inputStream,
@@ -754,7 +748,7 @@ describe(`${RPCClient.name}`, () => {
         }),
         writable: inputWritableStream,
       };
-      const raw: ManifestItem<JSONValue, JSONValue> = {
+      const raw: ManifestItem = {
         type: 'RAW',
         handler: ([input]) => input,
       };
@@ -794,7 +788,7 @@ describe(`${RPCClient.name}`, () => {
       }),
     ],
     async (messages) => {
-      const inputStream = rpcTestUtils.jsonRpcStream(messages);
+      const inputStream = rpcTestUtils.messagesToReadableStream(messages);
       const [outputResult, outputStream] =
         rpcTestUtils.streamToArray<Uint8Array>();
       const streamPair: ReadableWritablePair = {
@@ -835,7 +829,7 @@ describe(`${RPCClient.name}`, () => {
       fc.string(),
     ],
     async (messages, params) => {
-      const inputStream = rpcTestUtils.jsonRpcStream(messages);
+      const inputStream = rpcTestUtils.messagesToReadableStream(messages);
       const [outputResult, outputStream] =
         rpcTestUtils.streamToArray<Uint8Array>();
       const streamPair: ReadableWritablePair = {
@@ -879,7 +873,7 @@ describe(`${RPCClient.name}`, () => {
       fc.array(fc.string(), { minLength: 2 }).noShrink(),
     ],
     async (message, inputMessages) => {
-      const inputStream = rpcTestUtils.jsonRpcStream([message]);
+      const inputStream = rpcTestUtils.messagesToReadableStream([message]);
       const [outputResult, outputStream] =
         rpcTestUtils.streamToArray<Uint8Array>();
       const streamPair: ReadableWritablePair = {
@@ -940,7 +934,7 @@ describe(`${RPCClient.name}`, () => {
         }),
         writable: inputWritableStream,
       };
-      const raw: ManifestItem<JSONValue, JSONValue> = {
+      const raw: ManifestItem = {
         type: 'RAW',
         handler: ([input]) => input,
       };

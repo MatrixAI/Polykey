@@ -11,9 +11,9 @@ describe('utils tests', () => {
     [rpcTestUtils.jsonMessagesArb],
     async (messages) => {
       const parsedStream = rpcTestUtils
-        .jsonRpcStream(messages)
+        .messagesToReadableStream(messages)
         .pipeThrough(
-          new rpcUtils.JsonToJsonMessageStream(rpcUtils.parseJsonRpcMessage),
+          rpcUtils.binaryToJsonMessageStream(rpcUtils.parseJsonRpcMessage),
         ); // Converting back.
 
       const asd = await AsyncIterable.as(parsedStream).toArray();
@@ -27,10 +27,10 @@ describe('utils tests', () => {
     [rpcTestUtils.jsonMessagesArb, rpcTestUtils.snippingPatternArb],
     async (messages, snippattern) => {
       const parsedStream = rpcTestUtils
-        .jsonRpcStream(messages)
-        .pipeThrough(new rpcTestUtils.BufferStreamToSnippedStream(snippattern)) // Imaginary internet here
+        .messagesToReadableStream(messages)
+        .pipeThrough(rpcTestUtils.binaryStreamToSnippedStream(snippattern)) // Imaginary internet here
         .pipeThrough(
-          new rpcUtils.JsonToJsonMessageStream(rpcUtils.parseJsonRpcMessage),
+          rpcUtils.binaryToJsonMessageStream(rpcUtils.parseJsonRpcMessage),
         ); // Converting back.
 
       const asd = await AsyncIterable.as(parsedStream).toArray();
@@ -51,11 +51,11 @@ describe('utils tests', () => {
     [rpcTestUtils.jsonMessagesArb, rpcTestUtils.snippingPatternArb, noiseArb],
     async (messages, snippattern, noise) => {
       const parsedStream = rpcTestUtils
-        .jsonRpcStream(messages)
-        .pipeThrough(new rpcTestUtils.BufferStreamToSnippedStream(snippattern)) // Imaginary internet here
-        .pipeThrough(new rpcTestUtils.BufferStreamToNoisyStream(noise)) // Adding bad data to the stream
+        .messagesToReadableStream(messages)
+        .pipeThrough(rpcTestUtils.binaryStreamToSnippedStream(snippattern)) // Imaginary internet here
+        .pipeThrough(rpcTestUtils.binaryStreamToNoisyStream(noise)) // Adding bad data to the stream
         .pipeThrough(
-          new rpcUtils.JsonToJsonMessageStream(rpcUtils.parseJsonRpcMessage),
+          rpcUtils.binaryToJsonMessageStream(rpcUtils.parseJsonRpcMessage),
         ); // Converting back.
 
       await expect(AsyncIterable.as(parsedStream).toArray()).rejects.toThrow(
@@ -86,13 +86,10 @@ describe('utils tests', () => {
     ],
     async (messages) => {
       const parsedStream = rpcTestUtils
-        .jsonRpcStream(messages)
-        .pipeThrough(new rpcTestUtils.BufferStreamToSnippedStream([10]))
+        .messagesToReadableStream(messages)
+        .pipeThrough(rpcTestUtils.binaryStreamToSnippedStream([10]))
         .pipeThrough(
-          new rpcUtils.JsonToJsonMessageStream(
-            rpcUtils.parseJsonRpcMessage,
-            50,
-          ),
+          rpcUtils.binaryToJsonMessageStream(rpcUtils.parseJsonRpcMessage, 50),
         );
 
       const doThing = async () => {
@@ -143,11 +140,11 @@ describe('utils tests', () => {
       const { firstMessageProm, headTransformStream } =
         rpcUtils.extractFirstMessageTransform(rpcUtils.parseJsonRpcRequest);
       const parsedStream = rpcTestUtils
-        .jsonRpcStream(messages)
-        .pipeThrough(new rpcTestUtils.BufferStreamToSnippedStream([7]))
+        .messagesToReadableStream(messages)
+        .pipeThrough(rpcTestUtils.binaryStreamToSnippedStream([7]))
         .pipeThrough(headTransformStream)
         .pipeThrough(
-          new rpcUtils.JsonToJsonMessageStream(rpcUtils.parseJsonRpcMessage),
+          rpcUtils.binaryToJsonMessageStream(rpcUtils.parseJsonRpcMessage),
         ); // Converting back.
 
       expect(await firstMessageProm).toStrictEqual(messages[0]);

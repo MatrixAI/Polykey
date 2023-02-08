@@ -1,5 +1,4 @@
 import type {
-  JsonRpcMessage,
   JsonRpcRequest,
   JsonRpcResponse,
   JsonRpcResponseError,
@@ -39,8 +38,6 @@ describe(`${RPCServer.name}`, () => {
   );
   const errorArb = fc.oneof(
     fc.constant(new rpcErrors.ErrorRpcParse()),
-    fc.constant(new rpcErrors.ErrorRpcHandlerMissing()),
-    fc.constant(new rpcErrors.ErrorRpcProtocal()),
     fc.constant(new rpcErrors.ErrorRpcMessageLength()),
     fc.constant(new rpcErrors.ErrorRpcRemoteError()),
   );
@@ -60,11 +57,11 @@ describe(`${RPCServer.name}`, () => {
     [specificMessageArb],
     async (messages) => {
       const stream = rpcTestUtils
-        .jsonRpcStream(messages)
+        .messagesToReadableStream(messages)
         .pipeThrough(
-          new rpcTestUtils.BufferStreamToSnippedStream([4, 7, 13, 2, 6]),
+          rpcTestUtils.binaryStreamToSnippedStream([4, 7, 13, 2, 6]),
         );
-      const testMethod: ManifestItem<JSONValue, JSONValue> = {
+      const testMethod: ManifestItem = {
         type: 'RAW',
         handler: ([input]) => {
           void (async () => {
@@ -103,8 +100,8 @@ describe(`${RPCServer.name}`, () => {
     'can stream data with duplex stream handler',
     [specificMessageArb],
     async (messages) => {
-      const stream = rpcTestUtils.jsonRpcStream(messages);
-      const testMethod: ManifestItem<JSONValue, JSONValue> = {
+      const stream = rpcTestUtils.messagesToReadableStream(messages);
+      const testMethod: ManifestItem = {
         type: 'DUPLEX',
         handler: async function* (input, _container, _connectionInfo, _ctx) {
           for await (const val of input) {
@@ -135,8 +132,8 @@ describe(`${RPCServer.name}`, () => {
     'can stream data with client stream handler',
     [specificMessageArb],
     async (messages) => {
-      const stream = rpcTestUtils.jsonRpcStream(messages);
-      const testMethod: ManifestItem<JSONValue, JSONValue> = {
+      const stream = rpcTestUtils.messagesToReadableStream(messages);
+      const testMethod: ManifestItem = {
         type: 'CLIENT',
         handler: async function (input, _container, _connectionInfo, _ctx) {
           let count = 0;
@@ -168,7 +165,7 @@ describe(`${RPCServer.name}`, () => {
     'can stream data with server stream handler',
     [singleNumberMessageArb],
     async (messages) => {
-      const stream = rpcTestUtils.jsonRpcStream(messages);
+      const stream = rpcTestUtils.messagesToReadableStream(messages);
       const testMethod: ManifestItem<number, number> = {
         type: 'SERVER',
         handler: async function* (input, _container, _connectionInfo, _ctx) {
@@ -199,8 +196,8 @@ describe(`${RPCServer.name}`, () => {
     'can stream data with server stream handler',
     [specificMessageArb],
     async (messages) => {
-      const stream = rpcTestUtils.jsonRpcStream(messages);
-      const testMethod: ManifestItem<JSONValue, JSONValue> = {
+      const stream = rpcTestUtils.messagesToReadableStream(messages);
+      const testMethod: ManifestItem = {
         type: 'UNARY',
         handler: async (input, _container, _connectionInfo, _ctx) => input,
       };
@@ -226,8 +223,8 @@ describe(`${RPCServer.name}`, () => {
     'Handler is provided with container',
     [specificMessageArb],
     async (messages) => {
-      const stream = rpcTestUtils.jsonRpcStream(messages);
-      const testMethod: ManifestItem<JSONValue, JSONValue> = {
+      const stream = rpcTestUtils.messagesToReadableStream(messages);
+      const testMethod: ManifestItem = {
         type: 'DUPLEX',
         handler: async function* (input, container_, _connectionInfo, _ctx) {
           expect(container_).toBe(container);
@@ -262,7 +259,7 @@ describe(`${RPCServer.name}`, () => {
     'Handler is provided with connectionInfo',
     [specificMessageArb],
     async (messages) => {
-      const stream = rpcTestUtils.jsonRpcStream(messages);
+      const stream = rpcTestUtils.messagesToReadableStream(messages);
       const connectionInfo: ConnectionInfo = {
         localHost: 'hostA' as Host,
         localPort: 12341 as Port,
@@ -272,7 +269,7 @@ describe(`${RPCServer.name}`, () => {
         remotePort: 12341 as Port,
       };
       let handledConnectionInfo;
-      const testMethod: ManifestItem<JSONValue, JSONValue> = {
+      const testMethod: ManifestItem = {
         type: 'DUPLEX',
         handler: async function* (input, _container, connectionInfo_, _ctx) {
           handledConnectionInfo = connectionInfo_;
@@ -302,60 +299,59 @@ describe(`${RPCServer.name}`, () => {
   );
   // Problem with the tap stream. It seems to block the whole stream.
   //  If I don't pipe the tap to the output we actually iterate over some data.
-  testProp.skip(
-    'Handler can be aborted',
-    [specificMessageArb],
-    async (messages) => {
-      const stream = rpcTestUtils.jsonRpcStream(messages);
-      const testMethod: ManifestItem<JSONValue, JSONValue> = {
-        type: 'DUPLEX',
-        handler: async function* (input, _container, _connectionInfo, ctx) {
-          for await (const val of input) {
-            if (ctx.signal.aborted) throw ctx.signal.reason;
-            yield val;
+  testProp('Handler can be aborted', [specificMessageArb], async (messages) => {
+    const stream = rpcTestUtils.messagesToReadableStream(messages);
+    const testMethod: ManifestItem = {
+      type: 'DUPLEX',
+      handler: async function* (input, _container, _connectionInfo, ctx) {
+        for await (const val of input) {
+          if (ctx.signal.aborted) throw ctx.signal.reason;
+          yield val;
+        }
+      },
+    };
+    const container = {};
+    const rpcServer = await RPCServer.createRPCServer({
+      manifest: {
+        testMethod,
+      },
+      container,
+      logger,
+    });
+    const [outputResult, outputStream] =
+      rpcTestUtils.streamToArray<Uint8Array>();
+    let thing;
+    const tapStream = rpcTestUtils.tapTransformStream<Uint8Array>(
+      async (_, iteration) => {
+        if (iteration === 2) {
+          // @ts-ignore: kidnap private property
+          const activeStreams = rpcServer.activeStreams.values();
+          // @ts-ignore: kidnap private property
+          for (const activeStream of activeStreams) {
+            thing = activeStream;
+            activeStream.cancel(new rpcErrors.ErrorRpcStopping());
           }
-        },
-      };
-      const container = {};
-      const rpcServer = await RPCServer.createRPCServer({
-        manifest: {
-          testMethod,
-        },
-        container,
-        logger,
-      });
-      const [outputResult, outputStream] = rpcTestUtils.streamToArray();
-      let thing;
-      let lastMessage: JsonRpcMessage | undefined;
-      const tapStream: any = {};
-      // Const tapStream = new rpcTestUtils.TapStream<Uint8Array>(
-      //   async (_, iteration) => {
-      //     if (iteration === 2) {
-      //       // @ts-ignore: kidnap private property
-      //       const activeStreams = rpcServer.activeStreams.values();
-      //       for (const activeStream of activeStreams) {
-      //         thing = activeStream;
-      //         activeStream.cancel(new rpcErrors.ErrorRpcStopping());
-      //       }
-      //     }
-      //   },
-      // );
-      await tapStream.readable.pipeTo(outputStream);
-      const readWriteStream: ReadableWritablePair = {
-        readable: stream,
-        writable: tapStream.writable,
-      };
-      rpcServer.handleStream(readWriteStream, {} as ConnectionInfo);
-      await outputResult;
-      await expect(thing).toResolve();
-      // Last message should be an error message
-      expect(lastMessage).toBeDefined();
-      await rpcServer.destroy();
-    },
-  );
+        }
+      },
+    );
+    void tapStream.readable.pipeTo(outputStream).catch(() => {});
+    const readWriteStream: ReadableWritablePair = {
+      readable: stream,
+      writable: tapStream.writable,
+    };
+    rpcServer.handleStream(readWriteStream, {} as ConnectionInfo);
+    const result = await outputResult;
+    const lastMessage = result[result.length - 1];
+    await expect(thing).toResolve();
+    expect(lastMessage).toBeDefined();
+    expect(() =>
+      rpcUtils.parseJsonRpcResponseError(JSON.parse(lastMessage.toString())),
+    ).not.toThrow();
+    await rpcServer.destroy();
+  });
   testProp('Handler yields nothing', [specificMessageArb], async (messages) => {
-    const stream = rpcTestUtils.jsonRpcStream(messages);
-    const testMethod: ManifestItem<JSONValue, JSONValue> = {
+    const stream = rpcTestUtils.messagesToReadableStream(messages);
+    const testMethod: ManifestItem = {
       type: 'DUPLEX',
       handler: async function* (input, _container, _connectionInfo, _ctx) {
         for await (const _ of input) {
@@ -385,8 +381,8 @@ describe(`${RPCServer.name}`, () => {
     'should send error message',
     [specificMessageArb, errorArb],
     async (messages, error) => {
-      const stream = rpcTestUtils.jsonRpcStream(messages);
-      const testMethod: ManifestItem<JSONValue, JSONValue> = {
+      const stream = rpcTestUtils.messagesToReadableStream(messages);
+      const testMethod: ManifestItem = {
         type: 'DUPLEX',
         handler: async function* (_input, _container, _connectionInfo, _ctx) {
           throw error;
@@ -426,8 +422,8 @@ describe(`${RPCServer.name}`, () => {
     'should emit stream error',
     [specificMessageArb],
     async (messages) => {
-      const stream = rpcTestUtils.jsonRpcStream(messages);
-      const testMethod: ManifestItem<JSONValue, JSONValue> = {
+      const stream = rpcTestUtils.messagesToReadableStream(messages);
+      const testMethod: ManifestItem = {
         type: 'DUPLEX',
         handler: async function* (_input, _container, _connectionInfo, _ctx) {
           throw new rpcErrors.ErrorRpcPlaceholderConnectionError();
@@ -463,8 +459,8 @@ describe(`${RPCServer.name}`, () => {
     },
   );
   testProp('forward middlewares', [specificMessageArb], async (messages) => {
-    const stream = rpcTestUtils.jsonRpcStream(messages);
-    const testMethod: ManifestItem<JSONValue, JSONValue> = {
+    const stream = rpcTestUtils.messagesToReadableStream(messages);
+    const testMethod: ManifestItem = {
       type: 'DUPLEX',
       handler: async function* (input, _container, _connectionInfo, _ctx) {
         for await (const val of input) {
@@ -511,8 +507,8 @@ describe(`${RPCServer.name}`, () => {
     await rpcServer.destroy();
   });
   testProp('reverse middlewares', [specificMessageArb], async (messages) => {
-    const stream = rpcTestUtils.jsonRpcStream(messages);
-    const testMethod: ManifestItem<JSONValue, JSONValue> = {
+    const stream = rpcTestUtils.messagesToReadableStream(messages);
+    const testMethod: ManifestItem = {
       type: 'DUPLEX',
       handler: async function* (input, _container, _connectionInfo, _ctx) {
         for await (const val of input) {
@@ -562,8 +558,8 @@ describe(`${RPCServer.name}`, () => {
     'forward middleware authentication',
     [invalidTokenMessageArb],
     async (message) => {
-      const stream = rpcTestUtils.jsonRpcStream([message]);
-      const testMethod: ManifestItem<JSONValue, JSONValue> = {
+      const stream = rpcTestUtils.messagesToReadableStream([message]);
+      const testMethod: ManifestItem = {
         type: 'DUPLEX',
         handler: async function* (input, _container, _connectionInfo, _ctx) {
           for await (const val of input) {
@@ -574,9 +570,7 @@ describe(`${RPCServer.name}`, () => {
       const container = {};
       const middleware = rpcUtils.defaultMiddlewareWrapper(() => {
         let first = true;
-        let reverseController: TransformStreamDefaultController<
-          JsonRpcResponse<JSONValue>
-        >;
+        let reverseController: TransformStreamDefaultController<JsonRpcResponse>;
         return {
           forward: new TransformStream<
             JsonRpcRequest<TestType>,
@@ -628,7 +622,7 @@ describe(`${RPCServer.name}`, () => {
         id: null,
         error: {
           code: 1,
-          message: 'failure of somekind',
+          message: 'failure of some kind',
         },
       };
       rpcServer.handleStream(readWriteStream, {} as ConnectionInfo);

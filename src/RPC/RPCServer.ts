@@ -37,10 +37,10 @@ class RPCServer {
     manifest: Manifest;
     container: POJO;
     middleware?: MiddlewareFactory<
-      JsonRpcRequest<JSONValue>,
+      JsonRpcRequest,
       Uint8Array,
       Uint8Array,
-      JsonRpcResponseResult<JSONValue>
+      JsonRpcResponseResult
     >;
     logger?: Logger;
   }): Promise<RPCServer> {
@@ -62,10 +62,10 @@ class RPCServer {
   protected activeStreams: Set<PromiseCancellable<void>> = new Set();
   protected events: EventTarget = new EventTarget();
   protected middleware: MiddlewareFactory<
-    JsonRpcRequest<JSONValue>,
+    JsonRpcRequest,
     Uint8Array,
     Uint8Array,
-    JsonRpcResponseResult<JSONValue>
+    JsonRpcResponseResult
   >;
 
   public constructor({
@@ -77,10 +77,10 @@ class RPCServer {
     manifest: Manifest;
     container: POJO;
     middleware: MiddlewareFactory<
-      JsonRpcRequest<JSONValue>,
+      JsonRpcRequest,
       Uint8Array,
       Uint8Array,
-      JsonRpcResponseResult<JSONValue>
+      JsonRpcResponseResult
     >;
     logger: Logger;
   }) {
@@ -147,9 +147,7 @@ class RPCServer {
       const forwardStream = input.pipeThrough(middleware.forward);
       const reverseStream = middleware.reverse.writable;
       const events = this.events;
-      const outputGen = async function* (): AsyncGenerator<
-        JsonRpcResponse<JSONValue>
-      > {
+      const outputGen = async function* (): AsyncGenerator<JsonRpcResponse> {
         if (ctx.signal.aborted) throw ctx.signal.reason;
         const dataGen = async function* () {
           for await (const data of forwardStream) {
@@ -162,7 +160,7 @@ class RPCServer {
           connectionInfo,
           ctx,
         )) {
-          const responseMessage: JsonRpcResponseResult<JSONValue> = {
+          const responseMessage: JsonRpcResponseResult = {
             jsonrpc: '2.0',
             result: response,
             id: null,
@@ -171,9 +169,7 @@ class RPCServer {
         }
       };
       const outputGenerator = outputGen();
-      const reverseMiddlewareStream = new ReadableStream<
-        JsonRpcResponse<JSONValue>
-      >({
+      const reverseMiddlewareStream = new ReadableStream<JsonRpcResponse>({
         pull: async (controller) => {
           try {
             const { value, done } = await outputGenerator.next();
@@ -206,6 +202,9 @@ class RPCServer {
                 }),
               );
             }
+            await forwardStream.cancel(
+              new rpcErrors.ErrorRpcHandlerFailed('Error clean up'),
+            );
             controller.close();
           }
         },
@@ -280,60 +279,63 @@ class RPCServer {
     // This will take a buffer stream of json messages and set up service
     //  handling for it.
     // Constructing the PromiseCancellable for tracking the active stream
-    const handlerProm: PromiseCancellable<void> = new PromiseCancellable(
-      (resolve, reject, signal) => {
-        const prom = (async () => {
-          const { firstMessageProm, headTransformStream } =
-            rpcUtils.extractFirstMessageTransform(rpcUtils.parseJsonRpcRequest);
-          const inputStreamEndProm = streamPair.readable.pipeTo(
-            headTransformStream.writable,
-          );
-          const inputStream = headTransformStream.readable;
-          // Read a single empty value to consume the first message
-          const reader = inputStream.getReader();
-          await reader.read();
-          reader.releaseLock();
-          const leadingMetadataMessage = await firstMessageProm;
-          // If the stream ends early then we just stop processing
-          if (leadingMetadataMessage == null) {
-            await inputStream.cancel();
-            await streamPair.writable.close();
-            await inputStreamEndProm;
-            return;
-          }
-          const method = leadingMetadataMessage.method;
-          const handler = this.handlerMap.get(method);
-          if (handler == null) {
-            await inputStream.cancel();
-            await streamPair.writable.close();
-            await inputStreamEndProm;
-            return;
-          }
-          if (signal.aborted) {
-            await inputStream.cancel();
-            await streamPair.writable.close();
-            await inputStreamEndProm;
-            return;
-          }
-          const outputStream = handler(
-            [inputStream, leadingMetadataMessage],
-            this.container,
-            connectionInfo,
-            { signal },
-          );
-          await Promise.allSettled([
-            inputStreamEndProm,
-            outputStream.pipeTo(streamPair.writable),
-          ]);
-        })();
-        prom.then(resolve, reject);
-      },
+    const abortController = new AbortController();
+    const prom = (async () => {
+      const { firstMessageProm, headTransformStream } =
+        rpcUtils.extractFirstMessageTransform(rpcUtils.parseJsonRpcRequest);
+      const inputStreamEndProm = streamPair.readable
+        .pipeTo(headTransformStream.writable)
+        .catch(() => {});
+      const inputStream = headTransformStream.readable;
+      // Read a single empty value to consume the first message
+      const reader = inputStream.getReader();
+      await reader.read();
+      reader.releaseLock();
+      const leadingMetadataMessage = await firstMessageProm;
+      // If the stream ends early then we just stop processing
+      if (leadingMetadataMessage == null) {
+        await inputStream.cancel(
+          new rpcErrors.ErrorRpcHandlerFailed('Missing header'),
+        );
+        await streamPair.writable.close();
+        await inputStreamEndProm;
+        return;
+      }
+      const method = leadingMetadataMessage.method;
+      const handler = this.handlerMap.get(method);
+      if (handler == null) {
+        await inputStream.cancel(
+          new rpcErrors.ErrorRpcHandlerFailed('Missing handler'),
+        );
+        await streamPair.writable.close();
+        await inputStreamEndProm;
+        return;
+      }
+      if (abortController.signal.aborted) {
+        await inputStream.cancel(
+          new rpcErrors.ErrorRpcHandlerFailed('Aborted'),
+        );
+        await streamPair.writable.close();
+        await inputStreamEndProm;
+        return;
+      }
+      const outputStream = handler(
+        [inputStream, leadingMetadataMessage],
+        this.container,
+        connectionInfo,
+        { signal: abortController.signal },
+      );
+      await Promise.allSettled([
+        inputStreamEndProm,
+        outputStream.pipeTo(streamPair.writable),
+      ]);
+    })();
+    const handlerProm = PromiseCancellable.from(prom).finally(
+      () => this.activeStreams.delete(handlerProm),
+      abortController,
     );
     // Putting the PromiseCancellable into the active streams map
     this.activeStreams.add(handlerProm);
-    void handlerProm
-      .finally(() => this.activeStreams.delete(handlerProm))
-      .catch(() => {});
   }
 
   @ready(new rpcErrors.ErrorRpcDestroyed())

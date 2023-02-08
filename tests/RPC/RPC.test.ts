@@ -1,6 +1,5 @@
 import type { JsonRpcRequest, ManifestItem } from '@/RPC/types';
 import type { ConnectionInfo } from '@/network/types';
-import type { JSONValue } from '@/types';
 import { fc, testProp } from '@fast-check/jest';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import RPCServer from '@/RPC/RPCServer';
@@ -22,7 +21,7 @@ describe('RPC', () => {
       >();
 
       let header: JsonRpcRequest | undefined;
-      const testMethod: ManifestItem<JSONValue, JSONValue> = {
+      const testMethod: ManifestItem = {
         type: 'RAW',
         handler: ([input, header_], _container, _connectionInfo, _ctx) => {
           header = header_;
@@ -77,7 +76,7 @@ describe('RPC', () => {
         Uint8Array
       >();
 
-      const testMethod: ManifestItem<JSONValue, JSONValue> = {
+      const testMethod: ManifestItem = {
         type: 'DUPLEX',
         handler: async function* (input, _container, _connectionInfo, _ctx) {
           for await (const val of input) {
@@ -220,7 +219,7 @@ describe('RPC', () => {
         Uint8Array
       >();
 
-      const testMethod: ManifestItem<JSONValue, JSONValue> = {
+      const testMethod: ManifestItem = {
         type: 'UNARY',
         handler: async (input) => input,
       };

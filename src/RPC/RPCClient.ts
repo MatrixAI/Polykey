@@ -21,7 +21,6 @@ import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
 import Logger from '@matrixai/logger';
 import * as rpcErrors from './errors';
 import * as rpcUtils from './utils';
-import { getHandlerTypes } from './utils';
 
 // eslint-disable-next-line
 interface RPCClient<M extends Manifest> extends CreateDestroy {}
@@ -50,7 +49,7 @@ class RPCClient<M extends Manifest> {
   protected streamPairCreateCallback: StreamPairCreateCallback;
   protected callerTypes: Record<string, HandlerType>;
   // Method proxies
-  protected methodsProxy = new Proxy(
+  public readonly methodsProxy = new Proxy(
     {},
     {
       get: (_, method) => {
@@ -103,7 +102,7 @@ class RPCClient<M extends Manifest> {
     streamPairCreateCallback: StreamPairCreateCallback;
     logger: Logger;
   }) {
-    this.callerTypes = getHandlerTypes(manifest);
+    this.callerTypes = rpcUtils.getHandlerTypes(manifest);
     this.streamPairCreateCallback = streamPairCreateCallback;
     this.logger = logger;
   }
@@ -147,9 +146,9 @@ class RPCClient<M extends Manifest> {
   ): Promise<ReadableWritablePair<O, I>> {
     // Creating caller side transforms
     const outputMessageTransforStream =
-      new rpcUtils.ClientOutputTransformerStream<O>();
+      rpcUtils.clientOutputTransformStream<O>();
     const inputMessageTransformStream =
-      new rpcUtils.ClientInputTransformerStream<I>(method);
+      rpcUtils.clientInputTransformStream<I>(method);
     let reverseStream = outputMessageTransforStream.writable;
     let forwardStream = inputMessageTransformStream.readable;
     // Setting up middleware chains
@@ -163,12 +162,12 @@ class RPCClient<M extends Manifest> {
     const streamPair = await this.streamPairCreateCallback();
     void streamPair.readable
       .pipeThrough(
-        new rpcUtils.JsonToJsonMessageStream(rpcUtils.parseJsonRpcResponse),
+        rpcUtils.binaryToJsonMessageStream(rpcUtils.parseJsonRpcResponse),
       )
       .pipeTo(reverseStream)
       .catch(() => {});
     void forwardStream
-      .pipeThrough(new rpcUtils.JsonMessageToJsonStream())
+      .pipeThrough(rpcUtils.jsonMessageToBinaryStream())
       .pipeTo(streamPair.writable)
       .catch(() => {});
 
@@ -300,20 +299,20 @@ class RPCClient<M extends Manifest> {
 
   protected middleware: Array<
     MiddlewareFactory<
-      JsonRpcRequest<JSONValue>,
-      JsonRpcRequest<JSONValue>,
-      JsonRpcResponse<JSONValue>,
-      JsonRpcResponse<JSONValue>
+      JsonRpcRequest,
+      JsonRpcRequest,
+      JsonRpcResponse,
+      JsonRpcResponse
     >
   > = [];
 
   @ready(new rpcErrors.ErrorRpcDestroyed())
   public registerMiddleware(
     middlewareFactory: MiddlewareFactory<
-      JsonRpcRequest<JSONValue>,
-      JsonRpcRequest<JSONValue>,
-      JsonRpcResponse<JSONValue>,
-      JsonRpcResponse<JSONValue>
+      JsonRpcRequest,
+      JsonRpcRequest,
+      JsonRpcResponse,
+      JsonRpcResponse
     >,
   ) {
     this.middleware.push(middlewareFactory);

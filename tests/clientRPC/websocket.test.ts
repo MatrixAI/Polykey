@@ -2,7 +2,6 @@ import type { TLSConfig } from '@/network/types';
 import type { Server } from 'https';
 import type { WebSocketServer } from 'ws';
 import type { ManifestItem } from '@/RPC/types';
-import type { JSONValue } from '@/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -27,6 +26,8 @@ describe('websocket', () => {
   let wss: WebSocketServer;
   const host = '127.0.0.1';
   let port: number;
+  let rpcServer: RPCServer;
+  let rpcClient_: RPCClient;
 
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
@@ -46,6 +47,8 @@ describe('websocket', () => {
     port = await clientRPCUtils.listen(server, host);
   });
   afterEach(async () => {
+    await rpcClient_?.destroy();
+    await rpcServer?.destroy();
     wss?.close();
     server.close();
     await keyRing.stop();
@@ -54,13 +57,13 @@ describe('websocket', () => {
 
   test('websocket should work with RPC', async () => {
     // Setting up server
-    const test1: ManifestItem<JSONValue, JSONValue> = {
+    const test1: ManifestItem = {
       type: 'UNARY',
       handler: async (params, _container, _connectionInfo) => {
         return params;
       },
     };
-    const test2: ManifestItem<JSONValue, JSONValue> = {
+    const test2: ManifestItem = {
       type: 'UNARY',
       handler: async () => {
         return { hello: 'not world' };
@@ -70,7 +73,7 @@ describe('websocket', () => {
       test1,
       test2,
     };
-    const rpcServer = await RPCServer.createRPCServer({
+    rpcServer = await RPCServer.createRPCServer({
       manifest,
       container: {},
       logger: logger.getChild('RPCServer'),
@@ -93,6 +96,7 @@ describe('websocket', () => {
         );
       },
     });
+    rpcClient_ = rpcClient;
 
     // Making the call
     await expect(

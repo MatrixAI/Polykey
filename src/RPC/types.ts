@@ -10,7 +10,7 @@ import type {
 /**
  * This is the JSON RPC request object. this is the generic message type used for the RPC.
  */
-type JsonRpcRequestMessage<T extends JSONValue | unknown = unknown> = {
+type JsonRpcRequestMessage<T extends JSONValue = JSONValue> = {
   // A String specifying the version of the JSON-RPC protocol. MUST be exactly "2.0"
   jsonrpc: '2.0';
   // A String containing the name of the method to be invoked. Method names that begin with the word rpc followed by a
@@ -26,7 +26,7 @@ type JsonRpcRequestMessage<T extends JSONValue | unknown = unknown> = {
   id: string | number | null;
 };
 
-type JsonRpcRequestNotification<T extends JSONValue | unknown = unknown> = {
+type JsonRpcRequestNotification<T extends JSONValue = JSONValue> = {
   // A String specifying the version of the JSON-RPC protocol. MUST be exactly "2.0"
   jsonrpc: '2.0';
   // A String containing the name of the method to be invoked. Method names that begin with the word rpc followed by a
@@ -38,7 +38,7 @@ type JsonRpcRequestNotification<T extends JSONValue | unknown = unknown> = {
   params?: T;
 };
 
-type JsonRpcResponseResult<T extends JSONValue | unknown = unknown> = {
+type JsonRpcResponseResult<T extends JSONValue = JSONValue> = {
   // A String specifying the version of the JSON-RPC protocol. MUST be exactly "2.0".
   jsonrpc: '2.0';
   // This member is REQUIRED on success.
@@ -91,15 +91,15 @@ type JsonRpcError = {
   data?: JSONValue;
 };
 
-type JsonRpcRequest<T extends JSONValue | unknown = unknown> =
+type JsonRpcRequest<T extends JSONValue = JSONValue> =
   | JsonRpcRequestMessage<T>
   | JsonRpcRequestNotification<T>;
 
-type JsonRpcResponse<T extends JSONValue | unknown = unknown> =
+type JsonRpcResponse<T extends JSONValue = JSONValue> =
   | JsonRpcResponseResult<T>
   | JsonRpcResponseError;
 
-type JsonRpcMessage<T extends JSONValue | unknown = unknown> =
+type JsonRpcMessage<T extends JSONValue = JSONValue> =
   | JsonRpcRequest<T>
   | JsonRpcResponse<T>;
 
@@ -111,57 +111,57 @@ type Handler<I, O> = (
   ctx: ContextCancellable,
 ) => O;
 type RawDuplexStreamHandler = Handler<
-  [ReadableStream<Uint8Array>, JsonRpcRequest<JSONValue>],
+  [ReadableStream<Uint8Array>, JsonRpcRequest],
   ReadableStream<Uint8Array>
 >;
-type DuplexStreamHandler<I extends JSONValue, O extends JSONValue> = Handler<
-  AsyncGenerator<I>,
-  AsyncGenerator<O>
->;
-type ServerStreamHandler<I extends JSONValue, O extends JSONValue> = Handler<
-  I,
-  AsyncGenerator<O>
->;
-type ClientStreamHandler<I extends JSONValue, O extends JSONValue> = Handler<
-  AsyncGenerator<I>,
-  Promise<O>
->;
-type UnaryHandler<I extends JSONValue, O extends JSONValue> = Handler<
-  I,
-  Promise<O>
->;
+type DuplexStreamHandler<
+  I extends JSONValue = JSONValue,
+  O extends JSONValue = JSONValue,
+> = Handler<AsyncGenerator<I>, AsyncGenerator<O>>;
+type ServerStreamHandler<
+  I extends JSONValue = JSONValue,
+  O extends JSONValue = JSONValue,
+> = Handler<I, AsyncGenerator<O>>;
+type ClientStreamHandler<
+  I extends JSONValue = JSONValue,
+  O extends JSONValue = JSONValue,
+> = Handler<AsyncGenerator<I>, Promise<O>>;
+type UnaryHandler<
+  I extends JSONValue = JSONValue,
+  O extends JSONValue = JSONValue,
+> = Handler<I, Promise<O>>;
 
 type StreamPairCreateCallback = () => Promise<
   ReadableWritablePair<Uint8Array, Uint8Array>
 >;
 
-type MiddlewareFactory<FR, FW, RR, RW> = (
-  header?: JsonRpcRequest<JSONValue>,
-) => {
+type MiddlewareFactory<FR, FW, RR, RW> = (header?: JsonRpcRequest) => {
   forward: ReadableWritablePair<FR, FW>;
   reverse: ReadableWritablePair<RR, RW>;
 };
 
 type DuplexStreamCaller<
-  I extends JSONValue,
-  O extends JSONValue,
+  I extends JSONValue = JSONValue,
+  O extends JSONValue = JSONValue,
 > = () => Promise<ReadableWritablePair<O, I>>;
 
-type ServerStreamCaller<I extends JSONValue, O extends JSONValue> = (
-  parameters: I,
-) => Promise<ReadableStream<O>>;
+type ServerStreamCaller<
+  I extends JSONValue = JSONValue,
+  O extends JSONValue = JSONValue,
+> = (parameters: I) => Promise<ReadableStream<O>>;
 
 type ClientStreamCaller<
-  I extends JSONValue,
-  O extends JSONValue,
+  I extends JSONValue = JSONValue,
+  O extends JSONValue = JSONValue,
 > = () => Promise<{
   output: Promise<O>;
   writable: WritableStream<I>;
 }>;
 
-type UnaryCaller<I extends JSONValue, O extends JSONValue> = (
-  parameters: I,
-) => Promise<O>;
+type UnaryCaller<
+  I extends JSONValue = JSONValue,
+  O extends JSONValue = JSONValue,
+> = (parameters: I) => Promise<O>;
 
 type RawStreamCaller = (
   params: JSONValue,
@@ -192,30 +192,35 @@ type ConvertUnaryCaller<T> = T extends UnaryHandler<infer I, infer O>
   ? UnaryCaller<I, O>
   : never;
 
-type ConvertHandler<T> = T extends DuplexStreamHandler<JSONValue, JSONValue>
+type ConvertHandler<T> = T extends DuplexStreamHandler
   ? ConvertDuplexStreamHandler<T>
-  : T extends ServerStreamHandler<JSONValue, JSONValue>
+  : T extends ServerStreamHandler
   ? ConvertServerStreamHandler<T>
-  : T extends ClientStreamHandler<JSONValue, JSONValue>
+  : T extends ClientStreamHandler
   ? ConvertClientStreamHandler<T>
-  : T extends UnaryHandler<JSONValue, JSONValue>
+  : T extends UnaryHandler
   ? ConvertUnaryCaller<T>
   : T extends RawDuplexStreamHandler
   ? RawStreamCaller
   : never;
 
-type WithDuplexStreamCaller<I extends JSONValue, O extends JSONValue> = (
-  f: (output: AsyncGenerator<O>) => AsyncGenerator<I>,
-) => Promise<void>;
+type WithDuplexStreamCaller<
+  I extends JSONValue = JSONValue,
+  O extends JSONValue = JSONValue,
+> = (f: (output: AsyncGenerator<O>) => AsyncGenerator<I>) => Promise<void>;
 
-type WithServerStreamCaller<I extends JSONValue, O extends JSONValue> = (
+type WithServerStreamCaller<
+  I extends JSONValue = JSONValue,
+  O extends JSONValue = JSONValue,
+> = (
   parameters: I,
   f: (output: AsyncGenerator<O>) => Promise<void>,
 ) => Promise<void>;
 
-type WithClientStreamCaller<I extends JSONValue, O extends JSONValue> = (
-  f: () => AsyncGenerator<I>,
-) => Promise<O>;
+type WithClientStreamCaller<
+  I extends JSONValue = JSONValue,
+  O extends JSONValue = JSONValue,
+> = (f: () => AsyncGenerator<I>) => Promise<O>;
 
 type WithRawStreamCaller = (
   params: JSONValue,
@@ -243,11 +248,11 @@ type ConvertWithClientStreamHandler<T> = T extends ClientStreamHandler<
   ? WithClientStreamCaller<I, O>
   : never;
 
-type ConvertWithHandler<T> = T extends DuplexStreamHandler<JSONValue, JSONValue>
+type ConvertWithHandler<T> = T extends DuplexStreamHandler
   ? ConvertWithDuplexStreamHandler<T>
-  : T extends ServerStreamHandler<JSONValue, JSONValue>
+  : T extends ServerStreamHandler
   ? ConvertWithServerStreamHandler<T>
-  : T extends ClientStreamHandler<JSONValue, JSONValue>
+  : T extends ClientStreamHandler
   ? ConvertWithClientStreamHandler<T>
   : T extends RawDuplexStreamHandler
   ? WithRawStreamCaller
@@ -255,7 +260,10 @@ type ConvertWithHandler<T> = T extends DuplexStreamHandler<JSONValue, JSONValue>
 
 type HandlerType = 'DUPLEX' | 'SERVER' | 'CLIENT' | 'UNARY' | 'RAW';
 
-type ManifestItem<I extends JSONValue, O extends JSONValue> =
+type ManifestItem<
+  I extends JSONValue = JSONValue,
+  O extends JSONValue = JSONValue,
+> =
   | {
       type: 'DUPLEX';
       handler: DuplexStreamHandler<I, O>;
@@ -277,18 +285,14 @@ type ManifestItem<I extends JSONValue, O extends JSONValue> =
       handler: RawDuplexStreamHandler;
     };
 
-type Manifest = Record<string, ManifestItem<JSONValue, JSONValue>>;
-
-type ExtractHandler<T> = T extends ManifestItem<JSONValue, JSONValue>
-  ? T['handler']
-  : never;
+type Manifest = Record<string, ManifestItem>;
 
 type MapHandlers<T extends Manifest> = {
-  [P in keyof T]: ConvertHandler<ExtractHandler<T[P]>>;
+  [K in keyof T]: ConvertHandler<T[K]['handler']>;
 };
 
 type MapWithHandlers<T extends Manifest> = {
-  [P in keyof T]: ConvertWithHandler<ExtractHandler<T[P]>>;
+  [K in keyof T]: ConvertWithHandler<T[K]['handler']>;
 };
 
 export type {

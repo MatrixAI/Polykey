@@ -1,10 +1,5 @@
-import type {
-  Transformer,
-  TransformerFlushCallback,
-  TransformerTransformCallback,
-  ReadableWritablePair,
-} from 'stream/web';
-import type { JSONValue, POJO } from '@/types';
+import type { ReadableWritablePair } from 'stream/web';
+import type { JSONValue } from '@/types';
 import type {
   JsonRpcError,
   JsonRpcMessage,
@@ -20,34 +15,30 @@ import { fc } from '@fast-check/jest';
 import * as utils from '@/utils';
 import { fromError } from '@/RPC/utils';
 
-class BufferStreamToSnipped implements Transformer<Uint8Array, Uint8Array> {
-  protected buffer = Buffer.alloc(0);
-  protected iteration = 0;
-  protected snippingPattern: Array<number>;
-
-  constructor(snippingPattern: Array<number>) {
-    this.snippingPattern = snippingPattern;
-  }
-
-  transform: TransformerTransformCallback<Uint8Array, Uint8Array> = async (
-    chunk,
-    controller,
-  ) => {
-    this.buffer = Buffer.concat([this.buffer, chunk]);
-    while (true) {
-      const snipAmount =
-        this.snippingPattern[this.iteration % this.snippingPattern.length];
-      if (snipAmount > this.buffer.length) break;
-      this.iteration += 1;
-      const returnBuffer = this.buffer.subarray(0, snipAmount);
-      controller.enqueue(returnBuffer);
-      this.buffer = this.buffer.subarray(snipAmount);
-    }
-  };
-
-  flush: TransformerFlushCallback<Uint8Array> = (controller) => {
-    controller.enqueue(this.buffer);
-  };
+/**
+ * This is used to convert regular chunks into randomly sized chunks based on
+ * a provided pattern. This is to replicate randomness introduced by packets
+ * splitting up the data.
+ */
+function binaryStreamToSnippedStream(snippingPattern: Array<number>) {
+  let buffer = Buffer.alloc(0);
+  let iteration = 0;
+  return new TransformStream<Uint8Array, Uint8Array>({
+    transform: (chunk, controller) => {
+      buffer = Buffer.concat([buffer, chunk]);
+      while (true) {
+        const snipAmount = snippingPattern[iteration % snippingPattern.length];
+        if (snipAmount > buffer.length) break;
+        iteration += 1;
+        const returnBuffer = buffer.subarray(0, snipAmount);
+        controller.enqueue(returnBuffer);
+        buffer = buffer.subarray(snipAmount);
+      }
+    },
+    flush: (controller) => {
+      controller.enqueue(buffer);
+    },
+  });
 }
 
 /**
@@ -55,43 +46,23 @@ class BufferStreamToSnipped implements Transformer<Uint8Array, Uint8Array> {
  * a provided pattern. This is to replicate randomness introduced by packets
  * splitting up the data.
  */
-class BufferStreamToSnippedStream extends TransformStream {
-  constructor(snippingPattern: Array<number>) {
-    super(new BufferStreamToSnipped(snippingPattern));
-  }
-}
-
-class BufferStreamToNoisy implements Transformer<Uint8Array, Uint8Array> {
-  protected iteration = 0;
-  protected noise: Array<Uint8Array>;
-
-  constructor(noise: Array<Uint8Array>) {
-    this.noise = noise;
-  }
-
-  transform: TransformerTransformCallback<Uint8Array, Uint8Array> = async (
-    chunk,
-    controller,
-  ) => {
-    const noiseBuffer = this.noise[this.iteration % this.noise.length];
-    const newBuffer = Buffer.from(Buffer.concat([chunk, noiseBuffer]));
-    controller.enqueue(newBuffer);
-    this.iteration += 1;
-  };
+function binaryStreamToNoisyStream(noise: Array<Uint8Array>) {
+  let iteration: number = 0;
+  return new TransformStream<Uint8Array, Uint8Array>({
+    transform: (chunk, controller) => {
+      const noiseBuffer = noise[iteration % noise.length];
+      const newBuffer = Buffer.from(Buffer.concat([chunk, noiseBuffer]));
+      controller.enqueue(newBuffer);
+      iteration += 1;
+    },
+  });
 }
 
 /**
- * This is used to convert regular chunks into randomly sized chunks based on
- * a provided pattern. This is to replicate randomness introduced by packets
- * splitting up the data.
+ * This takes an array of JsonRpcMessages and converts it to a readable stream.
+ * Used to seed input for handlers and output for callers.
  */
-class BufferStreamToNoisyStream extends TransformStream {
-  constructor(noise: Array<Uint8Array>) {
-    super(new BufferStreamToNoisy(noise));
-  }
-}
-
-const jsonRpcStream = (messages: Array<POJO>) => {
+const messagesToReadableStream = (messages: Array<JsonRpcMessage>) => {
   return new ReadableStream<Uint8Array>({
     async start(controller) {
       for (const arrayElement of messages) {
@@ -103,6 +74,11 @@ const jsonRpcStream = (messages: Array<POJO>) => {
   });
 };
 
+/**
+ * Out RPC data is in form of JSON objects.
+ * This creates a JSON object of the type `JSONValue` and will be unchanged by
+ * a json stringify and parse cycle.
+ */
 const safeJsonValueArb = fc
   .jsonValue()
   .map((value) => JSON.parse(JSON.stringify(value)) as JSONValue);
@@ -125,7 +101,7 @@ const jsonRpcRequestMessageArb = (
         requiredKeys: ['jsonrpc', 'method', 'id'],
       },
     )
-    .noShrink() as fc.Arbitrary<JsonRpcRequestMessage<JSONValue>>;
+    .noShrink() as fc.Arbitrary<JsonRpcRequestMessage>;
 
 const jsonRpcRequestNotificationArb = (
   method: fc.Arbitrary<string> = fc.string(),
@@ -232,20 +208,6 @@ function streamToArray<T>(): [Promise<Array<T>>, WritableStream<T>] {
   return [result.p, outputStream];
 }
 
-class TapTransformer<I> implements Transformer<I, I> {
-  protected iteration = 0;
-
-  constructor(
-    protected tapCallback: (chunk: I, iteration: number) => Promise<void>,
-  ) {}
-
-  transform: TransformerTransformCallback<I, I> = async (chunk, controller) => {
-    await this.tapCallback(chunk, this.iteration);
-    controller.enqueue(chunk);
-    this.iteration += 1;
-  };
-}
-
 type TapCallback<T> = (chunk: T, iteration: number) => Promise<void>;
 
 /**
@@ -253,18 +215,27 @@ type TapCallback<T> = (chunk: T, iteration: number) => Promise<void>;
  * a provided pattern. This is to replicate randomness introduced by packets
  * splitting up the data.
  */
-class TapTransformerStream<I> extends TransformStream {
-  constructor(tapCallback: TapCallback<I> = async () => {}) {
-    super(new TapTransformer<I>(tapCallback));
-  }
+function tapTransformStream<I>(tapCallback: TapCallback<I> = async () => {}) {
+  let iteration: number = 0;
+  return new TransformStream<I, I>({
+    transform: async (chunk, controller) => {
+      try {
+        await tapCallback(chunk, iteration);
+      } catch (e) {
+        // Ignore errors here
+      }
+      controller.enqueue(chunk);
+      iteration += 1;
+    },
+  });
 }
 
 function createTapPairs<A, B>(
   forwardTapCallback: TapCallback<A> = async () => {},
   reverseTapCallback: TapCallback<B> = async () => {},
 ) {
-  const forwardTap = new TapTransformerStream<A>(forwardTapCallback);
-  const reverseTap = new TapTransformerStream<B>(reverseTapCallback);
+  const forwardTap = tapTransformStream<A>(forwardTapCallback);
+  const reverseTap = tapTransformStream<B>(reverseTapCallback);
   const clientPair: ReadableWritablePair = {
     readable: reverseTap.readable,
     writable: forwardTap.writable,
@@ -280,9 +251,9 @@ function createTapPairs<A, B>(
 }
 
 export {
-  BufferStreamToSnippedStream,
-  BufferStreamToNoisyStream,
-  jsonRpcStream,
+  binaryStreamToSnippedStream,
+  binaryStreamToNoisyStream,
+  messagesToReadableStream,
   safeJsonValueArb,
   jsonRpcRequestMessageArb,
   jsonRpcRequestNotificationArb,
@@ -296,6 +267,6 @@ export {
   jsonMessagesArb,
   rawDataArb,
   streamToArray,
-  TapTransformerStream,
+  tapTransformStream,
   createTapPairs,
 };
