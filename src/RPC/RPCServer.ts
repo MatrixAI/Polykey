@@ -1,18 +1,18 @@
 import type {
-  ClientStreamHandler,
-  DuplexStreamHandler,
+  ClientHandlerImplementation,
+  DuplexHandlerImplementation,
   JsonRpcError,
   JsonRpcRequest,
   JsonRpcResponse,
   JsonRpcResponseError,
   JsonRpcResponseResult,
-  Manifest,
-  RawDuplexStreamHandler,
-  ServerStreamHandler,
-  UnaryHandler,
+  ServerManifest,
+  RawHandlerImplementation,
+  ServerHandlerImplementation,
+  UnaryHandlerImplementation,
 } from './types';
 import type { ReadableWritablePair } from 'stream/web';
-import type { JSONValue, POJO } from '../types';
+import type { JSONValue } from '../types';
 import type { ConnectionInfo } from '../network/types';
 import type { RPCErrorEvent } from './utils';
 import type { MiddlewareFactory } from './types';
@@ -20,6 +20,13 @@ import { ReadableStream } from 'stream/web';
 import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
 import Logger from '@matrixai/logger';
 import { PromiseCancellable } from '@matrixai/async-cancellable';
+import {
+  ClientHandler,
+  DuplexHandler,
+  RawHandler,
+  ServerHandler,
+  UnaryHandler,
+} from './handlers';
 import * as rpcUtils from './utils';
 import * as rpcErrors from './errors';
 import { never } from '../utils/utils';
@@ -30,12 +37,10 @@ interface RPCServer extends CreateDestroy {}
 class RPCServer {
   static async createRPCServer({
     manifest,
-    container,
     middleware = rpcUtils.defaultMiddlewareWrapper(),
     logger = new Logger(this.name),
   }: {
-    manifest: Manifest;
-    container: POJO;
+    manifest: ServerManifest;
     middleware?: MiddlewareFactory<
       JsonRpcRequest,
       Uint8Array,
@@ -47,7 +52,6 @@ class RPCServer {
     logger.info(`Creating ${this.name}`);
     const rpcServer = new this({
       manifest,
-      container,
       middleware,
       logger,
     });
@@ -56,9 +60,8 @@ class RPCServer {
   }
 
   // Properties
-  protected container: POJO;
   protected logger: Logger;
-  protected handlerMap: Map<string, RawDuplexStreamHandler> = new Map();
+  protected handlerMap: Map<string, RawHandlerImplementation> = new Map();
   protected activeStreams: Set<PromiseCancellable<void>> = new Set();
   protected events: EventTarget = new EventTarget();
   protected middleware: MiddlewareFactory<
@@ -70,12 +73,10 @@ class RPCServer {
 
   public constructor({
     manifest,
-    container,
     middleware,
     logger,
   }: {
-    manifest: Manifest;
-    container: POJO;
+    manifest: ServerManifest;
     middleware: MiddlewareFactory<
       JsonRpcRequest,
       Uint8Array,
@@ -85,27 +86,32 @@ class RPCServer {
     logger: Logger;
   }) {
     for (const [key, manifestItem] of Object.entries(manifest)) {
-      switch (manifestItem.type) {
-        case 'RAW':
-          this.registerRawStreamHandler(key, manifestItem.handler);
-          continue;
-        case 'DUPLEX':
-          this.registerDuplexStreamHandler(key, manifestItem.handler);
-          continue;
-        case 'SERVER':
-          this.registerServerStreamHandler(key, manifestItem.handler);
-          continue;
-        case 'CLIENT':
-          this.registerClientStreamHandler(key, manifestItem.handler);
-          continue;
-        case 'UNARY':
-          this.registerUnaryHandler(key, manifestItem.handler);
-          continue;
-        default:
-          never();
+      if (manifestItem instanceof RawHandler) {
+        this.registerRawStreamHandler(key, manifestItem.handle);
+        continue;
       }
+      if (manifestItem instanceof DuplexHandler) {
+        this.registerDuplexStreamHandler(key, manifestItem.handle);
+        continue;
+      }
+      if (manifestItem instanceof ServerHandler) {
+        this.registerServerStreamHandler(key, manifestItem.handle);
+        continue;
+      }
+      if (manifestItem instanceof ClientHandler) {
+        this.registerClientStreamHandler(key, manifestItem.handle);
+        continue;
+      }
+      if (manifestItem instanceof ClientHandler) {
+        this.registerClientStreamHandler(key, manifestItem.handle);
+        continue;
+      }
+      if (manifestItem instanceof UnaryHandler) {
+        this.registerUnaryHandler(key, manifestItem.handle);
+        continue;
+      }
+      never();
     }
-    this.container = container;
     this.middleware = middleware;
     this.logger = logger;
   }
@@ -124,7 +130,7 @@ class RPCServer {
 
   protected registerRawStreamHandler(
     method: string,
-    handler: RawDuplexStreamHandler,
+    handler: RawHandlerImplementation,
   ) {
     this.handlerMap.set(method, handler);
   }
@@ -132,13 +138,12 @@ class RPCServer {
   protected registerDuplexStreamHandler<
     I extends JSONValue,
     O extends JSONValue,
-  >(method: string, handler: DuplexStreamHandler<I, O>) {
+  >(method: string, handler: DuplexHandlerImplementation<I, O>) {
     // This needs to handle all the message parsing and conversion from
     // generators to the raw streams.
 
-    const rawSteamHandler: RawDuplexStreamHandler = (
+    const rawSteamHandler: RawHandlerImplementation = (
       [input, header],
-      container,
       connectionInfo,
       ctx,
     ) => {
@@ -154,12 +159,7 @@ class RPCServer {
             yield data.params as I;
           }
         };
-        for await (const response of handler(
-          dataGen(),
-          container,
-          connectionInfo,
-          ctx,
-        )) {
+        for await (const response of handler(dataGen(), connectionInfo, ctx)) {
           const responseMessage: JsonRpcResponseResult = {
             jsonrpc: '2.0',
             result: response,
@@ -222,16 +222,15 @@ class RPCServer {
 
   protected registerUnaryHandler<I extends JSONValue, O extends JSONValue>(
     method: string,
-    handler: UnaryHandler<I, O>,
+    handler: UnaryHandlerImplementation<I, O>,
   ) {
-    const wrapperDuplex: DuplexStreamHandler<I, O> = async function* (
+    const wrapperDuplex: DuplexHandlerImplementation<I, O> = async function* (
       input,
-      container,
       connectionInfo,
       ctx,
     ) {
       for await (const inputVal of input) {
-        yield handler(inputVal, container, connectionInfo, ctx);
+        yield handler(inputVal, connectionInfo, ctx);
         break;
       }
     };
@@ -241,15 +240,14 @@ class RPCServer {
   protected registerServerStreamHandler<
     I extends JSONValue,
     O extends JSONValue,
-  >(method: string, handler: ServerStreamHandler<I, O>) {
-    const wrapperDuplex: DuplexStreamHandler<I, O> = async function* (
+  >(method: string, handler: ServerHandlerImplementation<I, O>) {
+    const wrapperDuplex: DuplexHandlerImplementation<I, O> = async function* (
       input,
-      container,
       connectionInfo,
       ctx,
     ) {
       for await (const inputVal of input) {
-        yield* handler(inputVal, container, connectionInfo, ctx);
+        yield* handler(inputVal, connectionInfo, ctx);
         break;
       }
     };
@@ -259,14 +257,13 @@ class RPCServer {
   protected registerClientStreamHandler<
     I extends JSONValue,
     O extends JSONValue,
-  >(method: string, handler: ClientStreamHandler<I, O>) {
-    const wrapperDuplex: DuplexStreamHandler<I, O> = async function* (
+  >(method: string, handler: ClientHandlerImplementation<I, O>) {
+    const wrapperDuplex: DuplexHandlerImplementation<I, O> = async function* (
       input,
-      container,
       connectionInfo,
       ctx,
     ) {
-      yield handler(input, container, connectionInfo, ctx);
+      yield handler(input, connectionInfo, ctx);
     };
     this.registerDuplexStreamHandler(method, wrapperDuplex);
   }
@@ -321,7 +318,6 @@ class RPCServer {
       }
       const outputStream = handler(
         [inputStream, leadingMetadataMessage],
-        this.container,
         connectionInfo,
         { signal: abortController.signal },
       );

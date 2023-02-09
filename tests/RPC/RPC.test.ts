@@ -1,9 +1,31 @@
-import type { JsonRpcRequest, ManifestItem } from '@/RPC/types';
+import type {
+  ClientHandlerImplementation,
+  ContainerType,
+  DuplexHandlerImplementation,
+  JsonRpcRequest,
+  RawHandlerImplementation,
+  ServerHandlerImplementation,
+  UnaryHandlerImplementation,
+} from '@/RPC/types';
 import type { ConnectionInfo } from '@/network/types';
 import { fc, testProp } from '@fast-check/jest';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import RPCServer from '@/RPC/RPCServer';
 import RPCClient from '@/RPC/RPCClient';
+import {
+  ClientHandler,
+  DuplexHandler,
+  RawHandler,
+  ServerHandler,
+  UnaryHandler,
+} from '@/RPC/handlers';
+import {
+  ClientCaller,
+  DuplexCaller,
+  RawCaller,
+  ServerCaller,
+  UnaryCaller,
+} from '@/RPC/callers';
 import * as rpcTestUtils from './utils';
 
 describe('RPC', () => {
@@ -21,26 +43,24 @@ describe('RPC', () => {
       >();
 
       let header: JsonRpcRequest | undefined;
-      const testMethod: ManifestItem = {
-        type: 'RAW',
-        handler: ([input, header_], _container, _connectionInfo, _ctx) => {
+      class TestMethod extends RawHandler {
+        public handle: RawHandlerImplementation = ([input, header_]) => {
           header = header_;
           return input;
-        },
-      };
-      const manifest = {
-        testMethod,
-      };
-      const container = {};
+        };
+      }
       const rpcServer = await RPCServer.createRPCServer({
-        manifest,
-        container,
+        manifest: {
+          testMethod: new TestMethod({}),
+        },
         logger,
       });
       rpcServer.handleStream(serverPair, {} as ConnectionInfo);
 
       const rpcClient = await RPCClient.createRPCClient({
-        manifest,
+        manifest: {
+          testMethod: new RawCaller(),
+        },
         streamPairCreateCallback: async () => clientPair,
         logger,
       });
@@ -75,28 +95,25 @@ describe('RPC', () => {
         Uint8Array,
         Uint8Array
       >();
-
-      const testMethod: ManifestItem = {
-        type: 'DUPLEX',
-        handler: async function* (input, _container, _connectionInfo, _ctx) {
+      class TestMethod extends DuplexHandler {
+        public handle: DuplexHandlerImplementation = async function* (input) {
           for await (const val of input) {
             yield val;
           }
-        },
-      };
-      const manifest = {
-        testMethod,
-      };
-      const container = {};
+        };
+      }
       const rpcServer = await RPCServer.createRPCServer({
-        manifest,
-        container,
+        manifest: {
+          testMethod: new TestMethod({}),
+        },
         logger,
       });
       rpcServer.handleStream(serverPair, {} as ConnectionInfo);
 
       const rpcClient = await RPCClient.createRPCClient({
-        manifest,
+        manifest: {
+          testMethod: new DuplexCaller(),
+        },
         streamPairCreateCallback: async () => clientPair,
         logger,
       });
@@ -125,27 +142,27 @@ describe('RPC', () => {
         Uint8Array
       >();
 
-      const testMethod: ManifestItem<number, number> = {
-        type: 'SERVER',
-        handler: async function* (input, _container, _connectionInfo, _ctx) {
-          for (let i = 0; i < input; i++) {
-            yield i;
-          }
-        },
-      };
-      const manifest = {
-        testMethod,
-      };
-      const container = {};
+      class TestMethod extends ServerHandler<ContainerType, number, number> {
+        public handle: ServerHandlerImplementation<number, number> =
+          async function* (input) {
+            for (let i = 0; i < input; i++) {
+              yield i;
+            }
+          };
+      }
+
       const rpcServer = await RPCServer.createRPCServer({
-        manifest,
-        container,
+        manifest: {
+          testMethod: new TestMethod({}),
+        },
         logger,
       });
       rpcServer.handleStream(serverPair, {} as ConnectionInfo);
 
       const rpcClient = await RPCClient.createRPCClient({
-        manifest,
+        manifest: {
+          testMethod: new ServerCaller<number, number>(),
+        },
         streamPairCreateCallback: async () => clientPair,
         logger,
       });
@@ -170,29 +187,29 @@ describe('RPC', () => {
         Uint8Array
       >();
 
-      const testMethod: ManifestItem<number, number> = {
-        type: 'CLIENT',
-        handler: async (input) => {
+      class TestMethod extends ClientHandler<ContainerType, number, number> {
+        public handle: ClientHandlerImplementation<number, number> = async (
+          input,
+        ) => {
           let acc = 0;
           for await (const number of input) {
             acc += number;
           }
           return acc;
-        },
-      };
-      const manifest = {
-        testMethod,
-      };
-      const container = {};
+        };
+      }
       const rpcServer = await RPCServer.createRPCServer({
-        manifest,
-        container,
+        manifest: {
+          testMethod: new TestMethod({}),
+        },
         logger,
       });
       rpcServer.handleStream(serverPair, {} as ConnectionInfo);
 
       const rpcClient = await RPCClient.createRPCClient({
-        manifest,
+        manifest: {
+          testMethod: new ClientCaller<number, number>(),
+        },
         streamPairCreateCallback: async () => clientPair,
         logger,
       });
@@ -219,23 +236,21 @@ describe('RPC', () => {
         Uint8Array
       >();
 
-      const testMethod: ManifestItem = {
-        type: 'UNARY',
-        handler: async (input) => input,
-      };
-      const manifest = {
-        testMethod,
-      };
-      const container = {};
+      class TestMethod extends UnaryHandler {
+        public handle: UnaryHandlerImplementation = async (input) => input;
+      }
       const rpcServer = await RPCServer.createRPCServer({
-        manifest,
-        container,
+        manifest: {
+          testMethod: new TestMethod({}),
+        },
         logger,
       });
       rpcServer.handleStream(serverPair, {} as ConnectionInfo);
 
       const rpcClient = await RPCClient.createRPCClient({
-        manifest,
+        manifest: {
+          testMethod: new UnaryCaller(),
+        },
         streamPairCreateCallback: async () => clientPair,
         logger,
       });

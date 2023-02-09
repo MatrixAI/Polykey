@@ -1,10 +1,12 @@
-import type { ManifestItem } from '../../RPC/types';
+import type { UnaryHandlerImplementation } from '../../RPC/types';
 import type KeyRing from '../../keys/KeyRing';
 import type CertManager from '../../keys/CertManager';
 import type Logger from '@matrixai/logger';
 import type { NodeIdEncoded } from '../../ids';
 import * as nodesUtils from '../../nodes/utils';
 import * as keysUtils from '../../keys/utils';
+import { UnaryHandler } from '../../RPC/handlers';
+import { UnaryCaller } from '../../RPC/callers';
 
 type StatusResult = {
   pid: number;
@@ -12,26 +14,26 @@ type StatusResult = {
   publicJwk: string;
 };
 
-const agentStatus: ManifestItem<null, StatusResult> = {
-  type: 'UNARY',
-  handler: async (
-    input,
-    container: {
-      keyRing: KeyRing;
-      certManager: CertManager;
-      logger: Logger;
-    },
-    _connectionInfo,
-    _ctx,
-  ) => {
+const agentStatusCaller = new UnaryCaller<null, StatusResult>();
+
+class AgentStatusHandler extends UnaryHandler<
+  {
+    keyRing: KeyRing;
+    certManager: CertManager;
+    logger: Logger;
+  },
+  null,
+  StatusResult
+> {
+  public handle: UnaryHandlerImplementation<null, StatusResult> = async () => {
     return {
       pid: process.pid,
-      nodeId: nodesUtils.encodeNodeId(container.keyRing.getNodeId()),
+      nodeId: nodesUtils.encodeNodeId(this.container.keyRing.getNodeId()),
       publicJwk: JSON.stringify(
-        keysUtils.publicKeyToJWK(container.keyRing.keyPair.publicKey),
+        keysUtils.publicKeyToJWK(this.container.keyRing.keyPair.publicKey),
       ),
     };
-  },
-};
+  };
+}
 
-export { agentStatus };
+export { AgentStatusHandler, agentStatusCaller };

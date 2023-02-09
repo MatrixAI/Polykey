@@ -1,7 +1,7 @@
 import type { TLSConfig } from '@/network/types';
 import type { Server } from 'https';
 import type { WebSocketServer } from 'ws';
-import type { ManifestItem } from '@/RPC/types';
+import type { ClientManifest } from '@/RPC/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -11,6 +11,8 @@ import RPCServer from '@/RPC/RPCServer';
 import RPCClient from '@/RPC/RPCClient';
 import { KeyRing } from '@/keys/index';
 import * as clientRPCUtils from '@/clientRPC/utils';
+import { UnaryHandler } from '@/RPC/handlers';
+import { UnaryCaller } from '@/RPC/callers';
 import * as testsUtils from '../utils/index';
 
 describe('websocket', () => {
@@ -27,7 +29,7 @@ describe('websocket', () => {
   const host = '127.0.0.1';
   let port: number;
   let rpcServer: RPCServer;
-  let rpcClient_: RPCClient;
+  let rpcClient_: RPCClient<ClientManifest>;
 
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
@@ -57,25 +59,21 @@ describe('websocket', () => {
 
   test('websocket should work with RPC', async () => {
     // Setting up server
-    const test1: ManifestItem = {
-      type: 'UNARY',
-      handler: async (params, _container, _connectionInfo) => {
+    class Test1 extends UnaryHandler {
+      public handle = async (params) => {
         return params;
-      },
-    };
-    const test2: ManifestItem = {
-      type: 'UNARY',
-      handler: async () => {
+      };
+    }
+    class Test2 extends UnaryHandler {
+      public handle = async () => {
         return { hello: 'not world' };
-      },
-    };
-    const manifest = {
-      test1,
-      test2,
-    };
+      };
+    }
     rpcServer = await RPCServer.createRPCServer({
-      manifest,
-      container: {},
+      manifest: {
+        test1: new Test1({}),
+        test2: new Test2({}),
+      },
       logger: logger.getChild('RPCServer'),
     });
     wss = clientRPCUtils.createClientServer(
@@ -86,7 +84,10 @@ describe('websocket', () => {
 
     // Setting up client
     const rpcClient = await RPCClient.createRPCClient({
-      manifest,
+      manifest: {
+        test1: new UnaryCaller(),
+        test2: new UnaryCaller(),
+      },
       logger: logger.getChild('RPCClient'),
       streamPairCreateCallback: async () => {
         return clientRPCUtils.startConnection(

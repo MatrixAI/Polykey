@@ -1,8 +1,13 @@
 import type {
+  ClientHandlerImplementation,
+  ContainerType,
+  DuplexHandlerImplementation,
   JsonRpcRequest,
   JsonRpcResponse,
   JsonRpcResponseError,
-  ManifestItem,
+  RawHandlerImplementation,
+  ServerHandlerImplementation,
+  UnaryHandlerImplementation,
 } from '@/RPC/types';
 import type { JSONValue } from '@/types';
 import type { ConnectionInfo, Host, Port } from '@/network/types';
@@ -14,6 +19,13 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import RPCServer from '@/RPC/RPCServer';
 import * as rpcErrors from '@/RPC/errors';
 import * as rpcUtils from '@/RPC/utils';
+import {
+  ClientHandler,
+  DuplexHandler,
+  RawHandler,
+  ServerHandler,
+  UnaryHandler,
+} from '@/RPC/handlers';
 import * as rpcTestUtils from './utils';
 
 describe(`${RPCServer.name}`, () => {
@@ -61,9 +73,8 @@ describe(`${RPCServer.name}`, () => {
         .pipeThrough(
           rpcTestUtils.binaryStreamToSnippedStream([4, 7, 13, 2, 6]),
         );
-      const testMethod: ManifestItem = {
-        type: 'RAW',
-        handler: ([input]) => {
+      class TestHandler extends RawHandler {
+        public handle: RawHandlerImplementation = ([input]) => {
           void (async () => {
             for await (const _ of input) {
               // No touch, only consume
@@ -75,14 +86,12 @@ describe(`${RPCServer.name}`, () => {
               controller.close();
             },
           });
-        },
-      };
-      const container = {};
+        };
+      }
       const rpcServer = await RPCServer.createRPCServer({
         manifest: {
-          testMethod,
+          testMethod: new TestHandler({}),
         },
-        container,
         logger,
       });
       const [outputResult, outputStream] = rpcTestUtils.streamToArray();
@@ -101,21 +110,18 @@ describe(`${RPCServer.name}`, () => {
     [specificMessageArb],
     async (messages) => {
       const stream = rpcTestUtils.messagesToReadableStream(messages);
-      const testMethod: ManifestItem = {
-        type: 'DUPLEX',
-        handler: async function* (input, _container, _connectionInfo, _ctx) {
+      class TestMethod extends DuplexHandler {
+        public handle: DuplexHandlerImplementation = async function* (input) {
           for await (const val of input) {
             yield val;
             break;
           }
-        },
-      };
-      const container = {};
+        };
+      }
       const rpcServer = await RPCServer.createRPCServer({
         manifest: {
-          testMethod,
+          testMethod: new TestMethod({}),
         },
-        container,
         logger,
       });
       const [outputResult, outputStream] = rpcTestUtils.streamToArray();
@@ -133,22 +139,19 @@ describe(`${RPCServer.name}`, () => {
     [specificMessageArb],
     async (messages) => {
       const stream = rpcTestUtils.messagesToReadableStream(messages);
-      const testMethod: ManifestItem = {
-        type: 'CLIENT',
-        handler: async function (input, _container, _connectionInfo, _ctx) {
+      class TestMethod extends ClientHandler {
+        public handle: ClientHandlerImplementation = async function (input) {
           let count = 0;
           for await (const _ of input) {
             count += 1;
           }
           return count;
-        },
-      };
-      const container = {};
+        };
+      }
       const rpcServer = await RPCServer.createRPCServer({
         manifest: {
-          testMethod,
+          testMethod: new TestMethod({}),
         },
-        container,
         logger,
       });
       const [outputResult, outputStream] = rpcTestUtils.streamToArray();
@@ -166,20 +169,18 @@ describe(`${RPCServer.name}`, () => {
     [singleNumberMessageArb],
     async (messages) => {
       const stream = rpcTestUtils.messagesToReadableStream(messages);
-      const testMethod: ManifestItem<number, number> = {
-        type: 'SERVER',
-        handler: async function* (input, _container, _connectionInfo, _ctx) {
-          for (let i = 0; i < input; i++) {
-            yield i;
-          }
-        },
-      };
-      const container = {};
+      class TestMethod extends ServerHandler<ContainerType, number, number> {
+        public handle: ServerHandlerImplementation<number, number> =
+          async function* (input) {
+            for (let i = 0; i < input; i++) {
+              yield i;
+            }
+          };
+      }
       const rpcServer = await RPCServer.createRPCServer({
         manifest: {
-          testMethod,
+          testMethod: new TestMethod({}),
         },
-        container,
         logger,
       });
       const [outputResult, outputStream] = rpcTestUtils.streamToArray();
@@ -197,16 +198,13 @@ describe(`${RPCServer.name}`, () => {
     [specificMessageArb],
     async (messages) => {
       const stream = rpcTestUtils.messagesToReadableStream(messages);
-      const testMethod: ManifestItem = {
-        type: 'UNARY',
-        handler: async (input, _container, _connectionInfo, _ctx) => input,
-      };
-      const container = {};
+      class TestMethod extends UnaryHandler {
+        public handle: UnaryHandlerImplementation = async (input) => input;
+      }
       const rpcServer = await RPCServer.createRPCServer({
         manifest: {
-          testMethod,
+          testMethod: new TestMethod({}),
         },
-        container,
         logger,
       });
       const [outputResult, outputStream] = rpcTestUtils.streamToArray();
@@ -224,25 +222,24 @@ describe(`${RPCServer.name}`, () => {
     [specificMessageArb],
     async (messages) => {
       const stream = rpcTestUtils.messagesToReadableStream(messages);
-      const testMethod: ManifestItem = {
-        type: 'DUPLEX',
-        handler: async function* (input, container_, _connectionInfo, _ctx) {
-          expect(container_).toBe(container);
-          for await (const val of input) {
-            yield val;
-          }
-        },
-      };
       const container = {
         a: Symbol('a'),
         B: Symbol('b'),
         C: Symbol('c'),
       };
+      class TestMethod extends DuplexHandler<typeof container> {
+        public handle: DuplexHandlerImplementation = async function* (input) {
+          expect(this.container).toBe(container);
+          for await (const val of input) {
+            yield val;
+          }
+        };
+      }
+
       const rpcServer = await RPCServer.createRPCServer({
         manifest: {
-          testMethod,
+          testMethod: new TestMethod(container),
         },
-        container,
         logger,
       });
       const [outputResult, outputStream] = rpcTestUtils.streamToArray();
@@ -269,21 +266,21 @@ describe(`${RPCServer.name}`, () => {
         remotePort: 12341 as Port,
       };
       let handledConnectionInfo;
-      const testMethod: ManifestItem = {
-        type: 'DUPLEX',
-        handler: async function* (input, _container, connectionInfo_, _ctx) {
+      class TestMethod extends DuplexHandler {
+        public handle: DuplexHandlerImplementation = async function* (
+          input,
+          connectionInfo_,
+        ) {
           handledConnectionInfo = connectionInfo_;
           for await (const val of input) {
             yield val;
           }
-        },
-      };
-      const container = {};
+        };
+      }
       const rpcServer = await RPCServer.createRPCServer({
         manifest: {
-          testMethod,
+          testMethod: new TestMethod({}),
         },
-        container,
         logger,
       });
       const [outputResult, outputStream] = rpcTestUtils.streamToArray();
@@ -301,21 +298,22 @@ describe(`${RPCServer.name}`, () => {
   //  If I don't pipe the tap to the output we actually iterate over some data.
   testProp('Handler can be aborted', [specificMessageArb], async (messages) => {
     const stream = rpcTestUtils.messagesToReadableStream(messages);
-    const testMethod: ManifestItem = {
-      type: 'DUPLEX',
-      handler: async function* (input, _container, _connectionInfo, ctx) {
+    class TestMethod extends DuplexHandler {
+      public handle: DuplexHandlerImplementation = async function* (
+        input,
+        _connectionInf,
+        ctx,
+      ) {
         for await (const val of input) {
           if (ctx.signal.aborted) throw ctx.signal.reason;
           yield val;
         }
-      },
-    };
-    const container = {};
+      };
+    }
     const rpcServer = await RPCServer.createRPCServer({
       manifest: {
-        testMethod,
+        testMethod: new TestMethod({}),
       },
-      container,
       logger,
     });
     const [outputResult, outputStream] =
@@ -351,20 +349,17 @@ describe(`${RPCServer.name}`, () => {
   });
   testProp('Handler yields nothing', [specificMessageArb], async (messages) => {
     const stream = rpcTestUtils.messagesToReadableStream(messages);
-    const testMethod: ManifestItem = {
-      type: 'DUPLEX',
-      handler: async function* (input, _container, _connectionInfo, _ctx) {
+    class TestMethod extends DuplexHandler {
+      public handle: DuplexHandlerImplementation = async function* (input) {
         for await (const _ of input) {
           // Do nothing, just consume
         }
-      },
-    };
-    const container = {};
+      };
+    }
     const rpcServer = await RPCServer.createRPCServer({
       manifest: {
-        testMethod,
+        testMethod: new TestMethod({}),
       },
-      container,
       logger,
     });
     const [outputResult, outputStream] = rpcTestUtils.streamToArray();
@@ -382,18 +377,15 @@ describe(`${RPCServer.name}`, () => {
     [specificMessageArb, errorArb],
     async (messages, error) => {
       const stream = rpcTestUtils.messagesToReadableStream(messages);
-      const testMethod: ManifestItem = {
-        type: 'DUPLEX',
-        handler: async function* (_input, _container, _connectionInfo, _ctx) {
+      class TestMethod extends DuplexHandler {
+        public handle: DuplexHandlerImplementation = async function* () {
           throw error;
-        },
-      };
-      const container = {};
+        };
+      }
       const rpcServer = await RPCServer.createRPCServer({
         manifest: {
-          testMethod,
+          testMethod: new TestMethod({}),
         },
-        container,
         logger,
       });
       let resolve, reject;
@@ -423,18 +415,15 @@ describe(`${RPCServer.name}`, () => {
     [specificMessageArb],
     async (messages) => {
       const stream = rpcTestUtils.messagesToReadableStream(messages);
-      const testMethod: ManifestItem = {
-        type: 'DUPLEX',
-        handler: async function* (_input, _container, _connectionInfo, _ctx) {
+      class TestMethod extends DuplexHandler {
+        public handle: DuplexHandlerImplementation = async function* () {
           throw new rpcErrors.ErrorRpcPlaceholderConnectionError();
-        },
-      };
-      const container = {};
+        };
+      }
       const rpcServer = await RPCServer.createRPCServer({
         manifest: {
-          testMethod,
+          testMethod: new TestMethod({}),
         },
-        container,
         logger,
       });
       let resolve, reject;
@@ -460,15 +449,13 @@ describe(`${RPCServer.name}`, () => {
   );
   testProp('forward middlewares', [specificMessageArb], async (messages) => {
     const stream = rpcTestUtils.messagesToReadableStream(messages);
-    const testMethod: ManifestItem = {
-      type: 'DUPLEX',
-      handler: async function* (input, _container, _connectionInfo, _ctx) {
+    class TestMethod extends DuplexHandler {
+      public handle: DuplexHandlerImplementation = async function* (input) {
         for await (const val of input) {
           yield val;
         }
-      },
-    };
-    const container = {};
+      };
+    }
     const middleware = rpcUtils.defaultMiddlewareWrapper(() => {
       return {
         forward: new TransformStream({
@@ -482,10 +469,9 @@ describe(`${RPCServer.name}`, () => {
     });
     const rpcServer = await RPCServer.createRPCServer({
       manifest: {
-        testMethod,
+        testMethod: new TestMethod({}),
       },
       middleware,
-      container,
       logger,
     });
     const [outputResult, outputStream] = rpcTestUtils.streamToArray();
@@ -508,15 +494,13 @@ describe(`${RPCServer.name}`, () => {
   });
   testProp('reverse middlewares', [specificMessageArb], async (messages) => {
     const stream = rpcTestUtils.messagesToReadableStream(messages);
-    const testMethod: ManifestItem = {
-      type: 'DUPLEX',
-      handler: async function* (input, _container, _connectionInfo, _ctx) {
+    class TestMethod extends DuplexHandler {
+      public handle: DuplexHandlerImplementation = async function* (input) {
         for await (const val of input) {
           yield val;
         }
-      },
-    };
-    const container = {};
+      };
+    }
     const middleware = rpcUtils.defaultMiddlewareWrapper(() => {
       return {
         forward: new TransformStream(),
@@ -530,10 +514,9 @@ describe(`${RPCServer.name}`, () => {
     });
     const rpcServer = await RPCServer.createRPCServer({
       manifest: {
-        testMethod,
+        testMethod: new TestMethod({}),
       },
       middleware,
-      container,
       logger,
     });
     const [outputResult, outputStream] = rpcTestUtils.streamToArray();
@@ -559,15 +542,13 @@ describe(`${RPCServer.name}`, () => {
     [invalidTokenMessageArb],
     async (message) => {
       const stream = rpcTestUtils.messagesToReadableStream([message]);
-      const testMethod: ManifestItem = {
-        type: 'DUPLEX',
-        handler: async function* (input, _container, _connectionInfo, _ctx) {
+      class TestMethod extends DuplexHandler {
+        public handle: DuplexHandlerImplementation = async function* (input) {
           for await (const val of input) {
             yield val;
           }
-        },
-      };
-      const container = {};
+        };
+      }
       const middleware = rpcUtils.defaultMiddlewareWrapper(() => {
         let first = true;
         let reverseController: TransformStreamDefaultController<JsonRpcResponse>;
@@ -600,10 +581,9 @@ describe(`${RPCServer.name}`, () => {
       });
       const rpcServer = await RPCServer.createRPCServer({
         manifest: {
-          testMethod,
+          testMethod: new TestMethod({}),
         },
         middleware,
-        container,
         logger,
       });
       const [outputResult, outputStream] = rpcTestUtils.streamToArray();

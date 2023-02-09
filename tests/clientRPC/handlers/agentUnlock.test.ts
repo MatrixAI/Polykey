@@ -11,7 +11,10 @@ import * as keysUtils from '@/keys/utils';
 import RPCServer from '@/RPC/RPCServer';
 import TaskManager from '@/tasks/TaskManager';
 import CertManager from '@/keys/CertManager';
-import { agentUnlock } from '@/clientRPC/handlers/agentUnlock';
+import {
+  agentUnlockCaller,
+  AgentUnlockHandler,
+} from '@/clientRPC/handlers/agentUnlock';
 import RPCClient from '@/RPC/RPCClient';
 import { Session, SessionManager } from '@/sessions';
 import * as clientRPCUtils from '@/clientRPC/utils';
@@ -90,17 +93,13 @@ describe('agentUnlock', () => {
   });
   test('get status', async () => {
     // Setup
-    const manifest = {
-      agentUnlock,
-    };
     const rpcServer = await RPCServer.createRPCServer({
-      manifest,
+      manifest: {
+        agentUnlock: new AgentUnlockHandler({ logger }),
+      },
       middleware: rpcUtils.defaultMiddlewareWrapper(
         clientRPCUtils.authenticationMiddlewareServer(sessionManager, keyRing),
       ),
-      container: {
-        logger,
-      },
       logger,
     });
     wss = clientRPCUtils.createClientServer(
@@ -109,7 +108,9 @@ describe('agentUnlock', () => {
       logger.getChild('server'),
     );
     const rpcClient = await RPCClient.createRPCClient({
-      manifest,
+      manifest: {
+        agentUnlock: agentUnlockCaller,
+      },
       streamPairCreateCallback: async () => {
         return clientRPCUtils.startConnection(
           '127.0.0.1',

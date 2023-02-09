@@ -4,7 +4,6 @@ import type {
   JsonRpcRequest,
   JsonRpcRequestMessage,
   JsonRpcResponse,
-  ManifestItem,
 } from '@/RPC/types';
 import { TransformStream, ReadableStream } from 'stream/web';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
@@ -12,6 +11,13 @@ import { testProp, fc } from '@fast-check/jest';
 import RPCClient from '@/RPC/RPCClient';
 import RPCServer from '@/RPC/RPCServer';
 import * as rpcErrors from '@/RPC/errors';
+import {
+  ClientCaller,
+  DuplexCaller,
+  RawCaller,
+  ServerCaller,
+  UnaryCaller,
+} from '@/RPC/callers';
 import * as rpcTestUtils from './utils';
 
 describe(`${RPCClient.name}`, () => {
@@ -558,15 +564,9 @@ describe(`${RPCClient.name}`, () => {
         readable: inputStream,
         writable: outputStream,
       };
-      const duplex: ManifestItem<string, string> = {
-        type: 'DUPLEX',
-        handler: async function* (input) {
-          yield* input;
-        },
-      };
       const rpcClient = await RPCClient.createRPCClient({
         manifest: {
-          duplex,
+          duplex: new DuplexCaller<string, string>(),
         },
         streamPairCreateCallback: async () => streamPair,
         logger,
@@ -612,15 +612,9 @@ describe(`${RPCClient.name}`, () => {
         readable: inputStream,
         writable: outputStream,
       };
-      const server: ManifestItem<string, string> = {
-        type: 'SERVER',
-        handler: async function* (input) {
-          yield* input;
-        },
-      };
       const rpcClient = await RPCClient.createRPCClient({
         manifest: {
-          server,
+          server: new ServerCaller<string, string>(),
         },
         streamPairCreateCallback: async () => streamPair,
         logger,
@@ -657,15 +651,9 @@ describe(`${RPCClient.name}`, () => {
         readable: inputStream,
         writable: outputStream,
       };
-      const client: ManifestItem<string, string> = {
-        type: 'CLIENT',
-        handler: async (_) => {
-          return 'hello';
-        },
-      };
       const rpcClient = await RPCClient.createRPCClient({
         manifest: {
-          client,
+          client: new ClientCaller<string, string>(),
         },
         streamPairCreateCallback: async () => streamPair,
         logger,
@@ -701,13 +689,9 @@ describe(`${RPCClient.name}`, () => {
         readable: inputStream,
         writable: outputStream,
       };
-      const unary: ManifestItem<string, string> = {
-        type: 'UNARY',
-        handler: async (input) => input,
-      };
       const rpcClient = await RPCClient.createRPCClient({
         manifest: {
-          unary,
+          unary: new UnaryCaller<string, string>(),
         },
         streamPairCreateCallback: async () => streamPair,
         logger,
@@ -748,13 +732,9 @@ describe(`${RPCClient.name}`, () => {
         }),
         writable: inputWritableStream,
       };
-      const raw: ManifestItem = {
-        type: 'RAW',
-        handler: ([input]) => input,
-      };
       const rpcClient = await RPCClient.createRPCClient({
         manifest: {
-          raw,
+          raw: new RawCaller(),
         },
         streamPairCreateCallback: async () => streamPair,
         logger,
@@ -795,15 +775,9 @@ describe(`${RPCClient.name}`, () => {
         readable: inputStream,
         writable: outputStream,
       };
-      const duplex: ManifestItem<string, string> = {
-        type: 'DUPLEX',
-        handler: async function* (input) {
-          yield* input;
-        },
-      };
       const rpcClient = await RPCClient.createRPCClient({
         manifest: {
-          duplex,
+          duplex: new DuplexCaller<string, string>(),
         },
         streamPairCreateCallback: async () => streamPair,
         logger,
@@ -836,15 +810,9 @@ describe(`${RPCClient.name}`, () => {
         readable: inputStream,
         writable: outputStream,
       };
-      const server: ManifestItem<string, string> = {
-        type: 'SERVER',
-        handler: async function* (input) {
-          yield input;
-        },
-      };
       const rpcClient = await RPCClient.createRPCClient({
         manifest: {
-          server,
+          server: new ServerCaller<string, string>(),
         },
         streamPairCreateCallback: async () => streamPair,
         logger,
@@ -880,15 +848,9 @@ describe(`${RPCClient.name}`, () => {
         readable: inputStream,
         writable: outputStream,
       };
-      const client: ManifestItem<string, string> = {
-        type: 'CLIENT',
-        handler: async (_) => {
-          return 'someValue';
-        },
-      };
       const rpcClient = await RPCClient.createRPCClient({
         manifest: {
-          client,
+          client: new ClientCaller<string, string>(),
         },
         streamPairCreateCallback: async () => streamPair,
         logger,
@@ -934,13 +896,9 @@ describe(`${RPCClient.name}`, () => {
         }),
         writable: inputWritableStream,
       };
-      const raw: ManifestItem = {
-        type: 'RAW',
-        handler: ([input]) => input,
-      };
       const rpcClient = await RPCClient.createRPCClient({
         manifest: {
-          raw,
+          raw: new RawCaller(),
         },
         streamPairCreateCallback: async () => streamPair,
         logger,

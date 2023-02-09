@@ -8,9 +8,10 @@ import type {
   JsonRpcRequest,
   JsonRpcResponse,
   MiddlewareFactory,
+  HandlerType,
+  ClientManifest,
 } from 'RPC/types';
 import type { JSONValue } from '../types';
-import type { HandlerType, Manifest } from 'RPC/types';
 import { TransformStream } from 'stream/web';
 import { AbstractError } from '@matrixai/errors';
 import * as rpcErrors from './errors';
@@ -563,7 +564,9 @@ function extractFirstMessageTransform<T extends JsonRpcMessage>(
   return { headTransformStream, firstMessageProm: messageProm.p };
 }
 
-function getHandlerTypes(manifest: Manifest): Record<string, HandlerType> {
+function getHandlerTypes(
+  manifest: ClientManifest,
+): Record<string, HandlerType> {
   const out: Record<string, HandlerType> = {};
   for (const [k, v] of Object.entries(manifest)) {
     out[k] = v.type;

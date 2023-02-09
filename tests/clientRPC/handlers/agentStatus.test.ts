@@ -11,7 +11,10 @@ import * as keysUtils from '@/keys/utils';
 import RPCServer from '@/RPC/RPCServer';
 import TaskManager from '@/tasks/TaskManager';
 import CertManager from '@/keys/CertManager';
-import { agentStatus } from '@/clientRPC/handlers/agentStatus';
+import {
+  agentStatusCaller,
+  AgentStatusHandler,
+} from '@/clientRPC/handlers/agentStatus';
 import RPCClient from '@/RPC/RPCClient';
 import * as clientRPCUtils from '@/clientRPC/utils';
 import * as nodesUtils from '@/nodes/utils';
@@ -78,15 +81,13 @@ describe('agentStatus', () => {
   });
   test('get status %s', async () => {
     // Setup
-    const manifest = {
-      agentStatus,
-    };
     const rpcServer = await RPCServer.createRPCServer({
-      manifest,
-      container: {
-        keyRing,
-        certManager,
-        logger: logger.getChild('container'),
+      manifest: {
+        agentStatus: new AgentStatusHandler({
+          keyRing,
+          certManager,
+          logger: logger.getChild('container'),
+        }),
       },
       logger: logger.getChild('RPCServer'),
     });
@@ -96,7 +97,9 @@ describe('agentStatus', () => {
       logger.getChild('server'),
     );
     const rpcClient = await RPCClient.createRPCClient({
-      manifest,
+      manifest: {
+        agentStatus: agentStatusCaller,
+      },
       streamPairCreateCallback: async () => {
         return clientRPCUtils.startConnection(
           host,

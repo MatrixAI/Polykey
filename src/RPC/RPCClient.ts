@@ -1,9 +1,9 @@
 import type {
   HandlerType,
   JsonRpcRequestMessage,
-  Manifest,
-  MapWithHandlers,
   StreamPairCreateCallback,
+  ClientManifest,
+  MapWithCallers,
 } from './types';
 import type { JSONValue } from 'types';
 import type {
@@ -15,7 +15,7 @@ import type {
   JsonRpcRequest,
   JsonRpcResponse,
   MiddlewareFactory,
-  MapHandlers,
+  MapCallers,
 } from './types';
 import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
 import Logger from '@matrixai/logger';
@@ -23,10 +23,10 @@ import * as rpcErrors from './errors';
 import * as rpcUtils from './utils';
 
 // eslint-disable-next-line
-interface RPCClient<M extends Manifest> extends CreateDestroy {}
+interface RPCClient<M extends ClientManifest> extends CreateDestroy {}
 @CreateDestroy()
-class RPCClient<M extends Manifest> {
-  static async createRPCClient<M extends Manifest>({
+class RPCClient<M extends ClientManifest> {
+  static async createRPCClient<M extends ClientManifest>({
     manifest,
     streamPairCreateCallback,
     logger = new Logger(this.name),
@@ -113,13 +113,13 @@ class RPCClient<M extends Manifest> {
   }
 
   @ready(new rpcErrors.ErrorRpcDestroyed())
-  public get methods(): MapHandlers<M> {
-    return this.methodsProxy as MapHandlers<M>;
+  public get methods(): MapCallers<M> {
+    return this.methodsProxy as MapCallers<M>;
   }
 
   @ready(new rpcErrors.ErrorRpcDestroyed())
-  public get withMethods(): MapWithHandlers<M> {
-    return this.withMethodsProxy as MapWithHandlers<M>;
+  public get withMethods(): MapWithCallers<M> {
+    return this.withMethodsProxy as MapWithCallers<M>;
   }
 
   @ready(new rpcErrors.ErrorRpcDestroyed())
