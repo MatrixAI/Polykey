@@ -2,7 +2,7 @@ import type { SessionToken } from '../sessions/types';
 import type KeyRing from '../keys/KeyRing';
 import type SessionManager from '../sessions/SessionManager';
 import type { Session } from '../sessions';
-import type { WithMetadata } from './types';
+import type { RPCResponseResult, RPCRequestParams } from './types';
 import type {
   JsonRpcRequest,
   JsonRpcResponse,
@@ -25,7 +25,7 @@ import { promise } from '../utils';
 async function authenticate(
   sessionManager: SessionManager,
   keyRing: KeyRing,
-  message: JsonRpcRequest<WithMetadata>,
+  message: JsonRpcRequest<RPCRequestParams>,
 ) {
   if (message.params == null) throw new clientErrors.ErrorClientAuthMissing();
   if (message.params.metadata == null) {
@@ -58,7 +58,7 @@ async function authenticate(
   return `Bearer ${token}`;
 }
 
-function decodeAuth(messageParams: WithMetadata) {
+function decodeAuth(messageParams: RPCRequestParams) {
   const auth = messageParams.metadata?.Authorization;
   if (auth == null || !auth.startsWith('Bearer ')) {
     return;
@@ -75,10 +75,10 @@ function authenticationMiddlewareServer(
   sessionManager: SessionManager,
   keyRing: KeyRing,
 ): MiddlewareFactory<
-  JsonRpcRequest<WithMetadata>,
-  JsonRpcRequest<WithMetadata>,
-  JsonRpcResponse<WithMetadata>,
-  JsonRpcResponse<WithMetadata>
+  JsonRpcRequest<RPCRequestParams>,
+  JsonRpcRequest<RPCRequestParams>,
+  JsonRpcResponse<RPCResponseResult>,
+  JsonRpcResponse<RPCResponseResult>
 > {
   return () => {
     let forwardFirst = true;
@@ -86,8 +86,8 @@ function authenticationMiddlewareServer(
     let outgoingToken: string | null = null;
     return {
       forward: new TransformStream<
-        JsonRpcRequest<WithMetadata>,
-        JsonRpcRequest<WithMetadata>
+        JsonRpcRequest<RPCRequestParams>,
+        JsonRpcRequest<RPCRequestParams>
       >({
         transform: async (chunk, controller) => {
           if (forwardFirst) {
@@ -132,17 +132,17 @@ function authenticationMiddlewareServer(
 function authenticationMiddlewareClient(
   session: Session,
 ): MiddlewareFactory<
-  JsonRpcRequest<WithMetadata>,
-  JsonRpcRequest<WithMetadata>,
-  JsonRpcResponse<WithMetadata>,
-  JsonRpcResponse<WithMetadata>
+  JsonRpcRequest<RPCRequestParams>,
+  JsonRpcRequest<RPCRequestParams>,
+  JsonRpcResponse<RPCResponseResult>,
+  JsonRpcResponse<RPCResponseResult>
 > {
   return () => {
     let forwardFirst = true;
     return {
       forward: new TransformStream<
-        JsonRpcRequest<WithMetadata>,
-        JsonRpcRequest<WithMetadata>
+        JsonRpcRequest<RPCRequestParams>,
+        JsonRpcRequest<RPCRequestParams>
       >({
         transform: async (chunk, controller) => {
           if (forwardFirst) {
@@ -164,8 +164,8 @@ function authenticationMiddlewareClient(
         },
       }),
       reverse: new TransformStream<
-        JsonRpcResponse<WithMetadata>,
-        JsonRpcResponse<WithMetadata>
+        JsonRpcResponse<RPCResponseResult>,
+        JsonRpcResponse<RPCResponseResult>
       >({
         transform: async (chunk, controller) => {
           controller.enqueue(chunk);

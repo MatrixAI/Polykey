@@ -2,7 +2,7 @@ import type KeyRing from '../../keys/KeyRing';
 import type CertManager from '../../keys/CertManager';
 import type Logger from '@matrixai/logger';
 import type { NodeIdEncoded } from '../../ids';
-import type { WithMetadata } from '../types';
+import type { RPCRequestParams, RPCResponseResult } from '../types';
 import * as nodesUtils from '../../nodes/utils';
 import * as keysUtils from '../../keys/utils';
 import { UnaryHandler } from '../../RPC/handlers';
@@ -15,8 +15,8 @@ type StatusResult = {
 };
 
 const agentStatusCaller = new UnaryCaller<
-  WithMetadata,
-  WithMetadata<StatusResult>
+  RPCRequestParams,
+  RPCResponseResult<StatusResult>
 >();
 
 class AgentStatusHandler extends UnaryHandler<
@@ -25,10 +25,10 @@ class AgentStatusHandler extends UnaryHandler<
     certManager: CertManager;
     logger: Logger;
   },
-  WithMetadata,
-  WithMetadata<StatusResult>
+  RPCRequestParams,
+  RPCResponseResult<StatusResult>
 > {
-  public async handle(): Promise<WithMetadata<StatusResult>> {
+  public async handle(): Promise<RPCResponseResult<StatusResult>> {
     return {
       pid: process.pid,
       nodeId: nodesUtils.encodeNodeId(this.container.keyRing.getNodeId()),
