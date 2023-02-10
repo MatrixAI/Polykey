@@ -37,7 +37,7 @@ interface RPCServer extends CreateDestroy {}
 class RPCServer {
   static async createRPCServer({
     manifest,
-    middleware = rpcUtils.defaultMiddlewareWrapper(),
+    middleware = rpcUtils.defaultServerMiddlewareWrapper(),
     logger = new Logger(this.name),
   }: {
     manifest: ServerManifest;

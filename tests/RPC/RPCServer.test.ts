@@ -456,7 +456,7 @@ describe(`${RPCServer.name}`, () => {
         }
       };
     }
-    const middleware = rpcUtils.defaultMiddlewareWrapper(() => {
+    const middleware = rpcUtils.defaultServerMiddlewareWrapper(() => {
       return {
         forward: new TransformStream({
           transform: (chunk, controller) => {
@@ -501,7 +501,7 @@ describe(`${RPCServer.name}`, () => {
         }
       };
     }
-    const middleware = rpcUtils.defaultMiddlewareWrapper(() => {
+    const middleware = rpcUtils.defaultServerMiddlewareWrapper(() => {
       return {
         forward: new TransformStream(),
         reverse: new TransformStream({
@@ -549,7 +549,7 @@ describe(`${RPCServer.name}`, () => {
           }
         };
       }
-      const middleware = rpcUtils.defaultMiddlewareWrapper(() => {
+      const middleware = rpcUtils.defaultServerMiddlewareWrapper(() => {
         let first = true;
         let reverseController: TransformStreamDefaultController<JsonRpcResponse>;
         return {

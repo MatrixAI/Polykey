@@ -586,7 +586,7 @@ const defaultMiddleware: MiddlewareFactory<
   };
 };
 
-const defaultMiddlewareWrapper = (
+const defaultServerMiddlewareWrapper = (
   middleware: MiddlewareFactory<
     JsonRpcRequest,
     JsonRpcRequest,
@@ -627,6 +627,50 @@ const defaultMiddlewareWrapper = (
   };
 };
 
+const defaultClientMiddlewareWrapper = (
+  middleware: MiddlewareFactory<
+    JsonRpcRequest,
+    JsonRpcRequest,
+    JsonRpcResponse,
+    JsonRpcResponse
+  > = defaultMiddleware,
+): MiddlewareFactory<
+  Uint8Array,
+  JsonRpcRequest,
+  JsonRpcResponse,
+  Uint8Array
+> => {
+  return () => {
+    const outputTransformStream = binaryToJsonMessageStream(
+      parseJsonRpcResponse,
+      undefined,
+    );
+    const inputTransformStream = new TransformStream<
+      JsonRpcRequest,
+      JsonRpcRequest
+    >();
+
+    const middleMiddleware = middleware();
+    const forwardReadable = inputTransformStream.readable
+      .pipeThrough(middleMiddleware.forward) // Usual middleware here
+      .pipeThrough(jsonMessageToBinaryStream());
+    const reverseReadable = outputTransformStream.readable.pipeThrough(
+      middleMiddleware.reverse,
+    ); // Usual middleware here
+
+    return {
+      forward: {
+        readable: forwardReadable,
+        writable: inputTransformStream.writable,
+      },
+      reverse: {
+        readable: reverseReadable,
+        writable: outputTransformStream.writable,
+      },
+    };
+  };
+};
+
 export {
   binaryToJsonMessageStream,
   jsonMessageToBinaryStream,
@@ -648,5 +692,6 @@ export {
   extractFirstMessageTransform,
   getHandlerTypes,
   defaultMiddleware,
-  defaultMiddlewareWrapper,
+  defaultServerMiddlewareWrapper,
+  defaultClientMiddlewareWrapper,
 };

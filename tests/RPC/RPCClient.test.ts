@@ -18,6 +18,7 @@ import {
   ServerCaller,
   UnaryCaller,
 } from '@/RPC/callers';
+import * as rpcUtils from '@/RPC/utils';
 import * as rpcTestUtils from './utils';
 
 describe(`${RPCClient.name}`, () => {
@@ -309,22 +310,22 @@ describe(`${RPCClient.name}`, () => {
       const rpcClient = await RPCClient.createRPCClient({
         manifest: {},
         streamPairCreateCallback: async () => streamPair,
+        middleware: rpcUtils.defaultClientMiddlewareWrapper(() => {
+          return {
+            forward: new TransformStream<JsonRpcRequest, JsonRpcRequest>({
+              transform: (chunk, controller) => {
+                controller.enqueue({
+                  ...chunk,
+                  params: 'one',
+                });
+              },
+            }),
+            reverse: new TransformStream(),
+          };
+        }),
         logger,
       });
 
-      rpcClient.registerMiddleware(() => {
-        return {
-          forward: new TransformStream<JsonRpcRequest, JsonRpcRequest>({
-            transform: (chunk, controller) => {
-              controller.enqueue({
-                ...chunk,
-                params: 'one',
-              });
-            },
-          }),
-          reverse: new TransformStream(),
-        };
-      });
       const callerInterface = await rpcClient.rawDuplexStreamCaller<
         JSONValue,
         JSONValue
@@ -373,22 +374,22 @@ describe(`${RPCClient.name}`, () => {
       const rpcClient = await RPCClient.createRPCClient({
         manifest: {},
         streamPairCreateCallback: async () => streamPair,
+        middleware: rpcUtils.defaultClientMiddlewareWrapper(() => {
+          return {
+            forward: new TransformStream(),
+            reverse: new TransformStream<JsonRpcResponse, JsonRpcResponse>({
+              transform: (chunk, controller) => {
+                controller.enqueue({
+                  ...chunk,
+                  result: 'one',
+                });
+              },
+            }),
+          };
+        }),
         logger,
       });
 
-      rpcClient.registerMiddleware(() => {
-        return {
-          forward: new TransformStream(),
-          reverse: new TransformStream<JsonRpcResponse, JsonRpcResponse>({
-            transform: (chunk, controller) => {
-              controller.enqueue({
-                ...chunk,
-                result: 'one',
-              });
-            },
-          }),
-        };
-      });
       const callerInterface = await rpcClient.rawDuplexStreamCaller<
         JSONValue,
         JSONValue

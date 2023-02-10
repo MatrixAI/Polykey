@@ -17,6 +17,10 @@ import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
 import Logger from '@matrixai/logger';
 import * as rpcErrors from './errors';
 import * as rpcUtils from './utils';
+import {
+  clientInputTransformStream,
+  clientOutputTransformStream,
+} from './utils';
 import { never } from '../utils';
 
 // eslint-disable-next-line
@@ -26,16 +30,24 @@ class RPCClient<M extends ClientManifest> {
   static async createRPCClient<M extends ClientManifest>({
     manifest,
     streamPairCreateCallback,
+    middleware = rpcUtils.defaultClientMiddlewareWrapper(),
     logger = new Logger(this.name),
   }: {
     manifest: M;
     streamPairCreateCallback: StreamPairCreateCallback;
-    logger: Logger;
+    middleware?: MiddlewareFactory<
+      Uint8Array,
+      JsonRpcRequest,
+      JsonRpcResponse,
+      Uint8Array
+    >;
+    logger?: Logger;
   }) {
     logger.info(`Creating ${this.name}`);
     const rpcClient = new this({
       manifest,
       streamPairCreateCallback,
+      middleware,
       logger,
     });
     logger.info(`Created ${this.name}`);
@@ -44,6 +56,12 @@ class RPCClient<M extends ClientManifest> {
 
   protected logger: Logger;
   protected streamPairCreateCallback: StreamPairCreateCallback;
+  protected middleware: MiddlewareFactory<
+    Uint8Array,
+    JsonRpcRequest,
+    JsonRpcResponse,
+    Uint8Array
+  >;
   protected callerTypes: Record<string, HandlerType>;
   // Method proxies
   public readonly methodsProxy = new Proxy(
@@ -90,14 +108,22 @@ class RPCClient<M extends ClientManifest> {
   public constructor({
     manifest,
     streamPairCreateCallback,
+    middleware,
     logger,
   }: {
     manifest: M;
     streamPairCreateCallback: StreamPairCreateCallback;
+    middleware: MiddlewareFactory<
+      Uint8Array,
+      JsonRpcRequest,
+      JsonRpcResponse,
+      Uint8Array
+    >;
     logger: Logger;
   }) {
     this.callerTypes = rpcUtils.getHandlerTypes(manifest);
     this.streamPairCreateCallback = streamPairCreateCallback;
+    this.middleware = middleware;
     this.logger = logger;
   }
 
@@ -199,36 +225,23 @@ class RPCClient<M extends ClientManifest> {
   public async rawDuplexStreamCaller<I extends JSONValue, O extends JSONValue>(
     method: string,
   ): Promise<ReadableWritablePair<O, I>> {
-    // Creating caller side transforms
-    const outputMessageTransforStream =
-      rpcUtils.clientOutputTransformStream<O>();
-    const inputMessageTransformStream =
-      rpcUtils.clientInputTransformStream<I>(method);
-    let reverseStream = outputMessageTransforStream.writable;
-    let forwardStream = inputMessageTransformStream.readable;
-    // Setting up middleware chains
-    for (const middlewareFactory of this.middleware) {
-      const middleware = middlewareFactory();
-      forwardStream = forwardStream.pipeThrough(middleware.forward);
-      void middleware.reverse.readable.pipeTo(reverseStream).catch(() => {});
-      reverseStream = middleware.reverse.writable;
-    }
+    const outputMessageTransformStream = clientOutputTransformStream<O>();
+    const inputMessageTransformStream = clientInputTransformStream<I>(method);
+    const middleware = this.middleware();
     // Hooking up agnostic stream side
     const streamPair = await this.streamPairCreateCallback();
     void streamPair.readable
-      .pipeThrough(
-        rpcUtils.binaryToJsonMessageStream(rpcUtils.parseJsonRpcResponse),
-      )
-      .pipeTo(reverseStream)
+      .pipeThrough(middleware.reverse)
+      .pipeTo(outputMessageTransformStream.writable)
       .catch(() => {});
-    void forwardStream
-      .pipeThrough(rpcUtils.jsonMessageToBinaryStream())
+    void inputMessageTransformStream.readable
+      .pipeThrough(middleware.forward)
       .pipeTo(streamPair.writable)
       .catch(() => {});
 
     // Returning interface
     return {
-      readable: outputMessageTransforStream.readable,
+      readable: outputMessageTransformStream.readable,
       writable: inputMessageTransformStream.writable,
     };
   }
@@ -272,32 +285,6 @@ class RPCClient<M extends ClientManifest> {
       output,
       writable: callerInterface.writable,
     };
-  }
-
-  protected middleware: Array<
-    MiddlewareFactory<
-      JsonRpcRequest,
-      JsonRpcRequest,
-      JsonRpcResponse,
-      JsonRpcResponse
-    >
-  > = [];
-
-  @ready(new rpcErrors.ErrorRpcDestroyed())
-  public registerMiddleware(
-    middlewareFactory: MiddlewareFactory<
-      JsonRpcRequest,
-      JsonRpcRequest,
-      JsonRpcResponse,
-      JsonRpcResponse
-    >,
-  ) {
-    this.middleware.push(middlewareFactory);
-  }
-
-  @ready(new rpcErrors.ErrorRpcDestroyed())
-  public clearMiddleware() {
-    this.middleware = [];
   }
 }
 

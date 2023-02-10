@@ -97,7 +97,7 @@ describe('agentUnlock', () => {
       manifest: {
         agentUnlock: new AgentUnlockHandler({ logger }),
       },
-      middleware: rpcUtils.defaultMiddlewareWrapper(
+      middleware: rpcUtils.defaultServerMiddlewareWrapper(
         clientRPCUtils.authenticationMiddlewareServer(sessionManager, keyRing),
       ),
       logger,
@@ -118,11 +118,11 @@ describe('agentUnlock', () => {
           logger.getChild('client'),
         );
       },
+      middleware: rpcUtils.defaultClientMiddlewareWrapper(
+        clientRPCUtils.authenticationMiddlewareClient(session),
+      ),
       logger,
     });
-    rpcClient.registerMiddleware(
-      clientRPCUtils.authenticationMiddlewareClient(session),
-    );
 
     // Doing the test
     const result = await rpcClient.methods.agentUnlock({
