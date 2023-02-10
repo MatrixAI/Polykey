@@ -2,8 +2,7 @@ import type { SessionToken } from '../sessions/types';
 import type KeyRing from '../keys/KeyRing';
 import type SessionManager from '../sessions/SessionManager';
 import type { Session } from '../sessions';
-import type { ClientDataAndMetadata } from './types';
-import type { JSONValue } from '../types';
+import type { WithMetadata } from './types';
 import type {
   JsonRpcRequest,
   JsonRpcResponse,
@@ -26,7 +25,7 @@ import { promise } from '../utils';
 async function authenticate(
   sessionManager: SessionManager,
   keyRing: KeyRing,
-  message: JsonRpcRequest<ClientDataAndMetadata<JSONValue>>,
+  message: JsonRpcRequest<WithMetadata>,
 ) {
   if (message.params == null) throw new clientErrors.ErrorClientAuthMissing();
   if (message.params.metadata == null) {
@@ -59,8 +58,8 @@ async function authenticate(
   return `Bearer ${token}`;
 }
 
-function decodeAuth(messageParams: ClientDataAndMetadata<JSONValue>) {
-  const auth = messageParams.metadata.Authorization;
+function decodeAuth(messageParams: WithMetadata) {
+  const auth = messageParams.metadata?.Authorization;
   if (auth == null || !auth.startsWith('Bearer ')) {
     return;
   }
@@ -76,10 +75,10 @@ function authenticationMiddlewareServer(
   sessionManager: SessionManager,
   keyRing: KeyRing,
 ): MiddlewareFactory<
-  JsonRpcRequest<ClientDataAndMetadata<JSONValue>>,
-  JsonRpcRequest<ClientDataAndMetadata<JSONValue>>,
-  JsonRpcResponse<ClientDataAndMetadata<JSONValue>>,
-  JsonRpcResponse<ClientDataAndMetadata<JSONValue>>
+  JsonRpcRequest<WithMetadata>,
+  JsonRpcRequest<WithMetadata>,
+  JsonRpcResponse<WithMetadata>,
+  JsonRpcResponse<WithMetadata>
 > {
   return () => {
     let forwardFirst = true;
@@ -87,8 +86,8 @@ function authenticationMiddlewareServer(
     let outgoingToken: string | null = null;
     return {
       forward: new TransformStream<
-        JsonRpcRequest<ClientDataAndMetadata<JSONValue>>,
-        JsonRpcRequest<ClientDataAndMetadata<JSONValue>>
+        JsonRpcRequest<WithMetadata>,
+        JsonRpcRequest<WithMetadata>
       >({
         transform: async (chunk, controller) => {
           if (forwardFirst) {
@@ -115,6 +114,9 @@ function authenticationMiddlewareServer(
         transform: (chunk, controller) => {
           // Add the outgoing metadata to the next message.
           if (outgoingToken != null && 'result' in chunk) {
+            if (chunk.result.metadata == null) chunk.result.metadata = {
+              Authorization: '',
+            }
             chunk.result.metadata.Authorization = outgoingToken;
             outgoingToken = null;
           }
@@ -128,24 +130,27 @@ function authenticationMiddlewareServer(
 function authenticationMiddlewareClient(
   session: Session,
 ): MiddlewareFactory<
-  JsonRpcRequest<ClientDataAndMetadata<JSONValue>>,
-  JsonRpcRequest<ClientDataAndMetadata<JSONValue>>,
-  JsonRpcResponse<ClientDataAndMetadata<JSONValue>>,
-  JsonRpcResponse<ClientDataAndMetadata<JSONValue>>
+  JsonRpcRequest<WithMetadata>,
+  JsonRpcRequest<WithMetadata>,
+  JsonRpcResponse<WithMetadata>,
+  JsonRpcResponse<WithMetadata>
 > {
   return () => {
     let forwardFirst = true;
     return {
       forward: new TransformStream<
-        JsonRpcRequest<ClientDataAndMetadata<JSONValue>>,
-        JsonRpcRequest<ClientDataAndMetadata<JSONValue>>
+        JsonRpcRequest<WithMetadata>,
+        JsonRpcRequest<WithMetadata>
       >({
         transform: async (chunk, controller) => {
           if (forwardFirst) {
             if (chunk.params == null) utils.never();
-            if (chunk.params.metadata.Authorization == null) {
+            if (chunk.params.metadata?.Authorization == null) {
               const token = await session.readToken();
               if (token != null) {
+                if (chunk.params.metadata == null) chunk.params.metadata = {
+                  Authorization: '',
+                }
                 chunk.params.metadata.Authorization = `Bearer ${token}`;
               }
             }
@@ -155,8 +160,8 @@ function authenticationMiddlewareClient(
         },
       }),
       reverse: new TransformStream<
-        JsonRpcResponse<ClientDataAndMetadata<JSONValue>>,
-        JsonRpcResponse<ClientDataAndMetadata<JSONValue>>
+        JsonRpcResponse<WithMetadata>,
+        JsonRpcResponse<WithMetadata>
       >({
         transform: async (chunk, controller) => {
           controller.enqueue(chunk);

@@ -1,10 +1,12 @@
 import type { JSONValue } from '../types';
 
-type ClientDataAndMetadata<T extends JSONValue> = {
-  metadata: JSONValue & {
-    Authorization?: string;
-  };
-  data: T;
-};
+// eslint-disable-next-line
+type NoData = {};
 
-export type { ClientDataAndMetadata };
+type WithMetadata<T extends Record<string, JSONValue> = NoData> = {
+  metadata?: {
+    [Key: string]: JSONValue;
+  } & Partial<{ Authorization: string }>;
+} & Omit<T, 'metadata'>;
+
+export type { WithMetadata, NoData };

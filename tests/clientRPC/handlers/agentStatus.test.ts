@@ -110,7 +110,7 @@ describe('agentStatus', () => {
       logger: logger.getChild('RPCClient'),
     });
     // Doing the test
-    const result = await rpcClient.methods.agentStatus(null);
+    const result = await rpcClient.methods.agentStatus({});
     expect(result).toStrictEqual({
       pid: process.pid,
       nodeId: nodesUtils.encodeNodeId(keyRing.getNodeId()),

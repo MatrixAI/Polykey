@@ -7,6 +7,7 @@ import * as nodesUtils from '../../nodes/utils';
 import * as keysUtils from '../../keys/utils';
 import { UnaryHandler } from '../../RPC/handlers';
 import { UnaryCaller } from '../../RPC/callers';
+import { WithMetadata } from "@/clientRPC/types";
 
 type StatusResult = {
   pid: number;
@@ -14,7 +15,7 @@ type StatusResult = {
   publicJwk: string;
 };
 
-const agentStatusCaller = new UnaryCaller<null, StatusResult>();
+const agentStatusCaller = new UnaryCaller<WithMetadata, WithMetadata<StatusResult>>();
 
 class AgentStatusHandler extends UnaryHandler<
   {
@@ -22,10 +23,10 @@ class AgentStatusHandler extends UnaryHandler<
     certManager: CertManager;
     logger: Logger;
   },
-  null,
-  StatusResult
+  WithMetadata,
+  WithMetadata<StatusResult>
 > {
-  public handle: UnaryHandlerImplementation<null, StatusResult> = async () => {
+  public handle: UnaryHandlerImplementation<WithMetadata, WithMetadata<StatusResult>> = async () => {
     return {
       pid: process.pid,
       nodeId: nodesUtils.encodeNodeId(this.container.keyRing.getNodeId()),
