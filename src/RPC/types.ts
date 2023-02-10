@@ -1,11 +1,7 @@
 import type { JSONValue } from '../types';
 import type { ConnectionInfo } from '../network/types';
 import type { ContextCancellable } from '../contexts/types';
-import type {
-  ReadableStream,
-  ReadableWritablePair,
-  WritableStream,
-} from 'stream/web';
+import type { ReadableStream, ReadableWritablePair } from 'stream/web';
 import type { Handler } from './handlers';
 import type {
   Caller,
@@ -150,32 +146,38 @@ type MiddlewareFactory<FR, FW, RR, RW> = (header?: JsonRpcRequest) => {
   reverse: ReadableWritablePair<RR, RW>;
 };
 
-type RawCallerImplementation = (
-  params: JSONValue,
-) => Promise<ReadableWritablePair<Uint8Array, Uint8Array>>;
-
-type DuplexCallerImplementation<
-  I extends JSONValue = JSONValue,
-  O extends JSONValue = JSONValue,
-> = () => Promise<ReadableWritablePair<O, I>>;
-
-type ServerCallerImplementation<
-  I extends JSONValue = JSONValue,
-  O extends JSONValue = JSONValue,
-> = (parameters: I) => Promise<ReadableStream<O>>;
-
-type ClientCallerImplementation<
-  I extends JSONValue = JSONValue,
-  O extends JSONValue = JSONValue,
-> = () => Promise<{
-  output: Promise<O>;
-  writable: WritableStream<I>;
-}>;
+// Convenience callers
 
 type UnaryCallerImplementation<
   I extends JSONValue = JSONValue,
   O extends JSONValue = JSONValue,
 > = (parameters: I) => Promise<O>;
+
+type ServerCallerImplementation<
+  I extends JSONValue = JSONValue,
+  O extends JSONValue = JSONValue,
+> = (parameters: I) => Promise<AsyncGenerator<O>>;
+
+type ClientCallerImplementation<
+  I extends JSONValue = JSONValue,
+  O extends JSONValue = JSONValue,
+> = (f: (output: Promise<O>) => AsyncGenerator<I | undefined>) => Promise<void>;
+
+type DuplexCallerImplementation<
+  I extends JSONValue = JSONValue,
+  O extends JSONValue = JSONValue,
+> = (f: (output: AsyncGenerator<O>) => AsyncGenerator<I>) => Promise<void>;
+
+// Raw callers
+
+type RawDuplexCallerImplementation<
+  I extends JSONValue = JSONValue,
+  O extends JSONValue = JSONValue,
+> = () => Promise<ReadableWritablePair<O, I>>;
+
+type RawCallerImplementation = (
+  params: JSONValue,
+) => Promise<ReadableWritablePair<Uint8Array, Uint8Array>>;
 
 type ConvertDuplexCaller<T> = T extends DuplexCaller<infer I, infer O>
   ? DuplexCallerImplementation<I, O>
@@ -201,62 +203,16 @@ type ConvertCaller<T extends Caller> = T extends DuplexCaller
   ? ConvertClientCaller<T>
   : T extends UnaryCaller
   ? ConvertUnaryCaller<T>
+  : never;
+
+type ConvertRawDuplexStreamHandler<T> = T extends DuplexCaller<infer I, infer O>
+  ? RawDuplexCallerImplementation<I, O>
+  : never;
+
+type ConvertRawCaller<T> = T extends DuplexCaller
+  ? ConvertRawDuplexStreamHandler<T>
   : T extends RawCaller
   ? RawCallerImplementation
-  : never;
-
-type WithDuplexCallerImplementation<
-  I extends JSONValue = JSONValue,
-  O extends JSONValue = JSONValue,
-> = (f: (output: AsyncGenerator<O>) => AsyncGenerator<I>) => Promise<void>;
-
-type WithServerCallerImplementation<
-  I extends JSONValue = JSONValue,
-  O extends JSONValue = JSONValue,
-> = (
-  parameters: I,
-  f: (output: AsyncGenerator<O>) => Promise<void>,
-) => Promise<void>;
-
-type WithClientCallerImplementation<
-  I extends JSONValue = JSONValue,
-  O extends JSONValue = JSONValue,
-> = (f: () => AsyncGenerator<I>) => Promise<O>;
-
-type WithRawCallerImplementation = (
-  params: JSONValue,
-  f: (output: AsyncGenerator<Uint8Array>) => AsyncGenerator<Uint8Array>,
-) => Promise<void>;
-
-type ConvertWithDuplexStreamHandler<T> = T extends DuplexCaller<
-  infer I,
-  infer O
->
-  ? WithDuplexCallerImplementation<I, O>
-  : never;
-
-type ConvertWithServerStreamHandler<T> = T extends ServerCaller<
-  infer I,
-  infer O
->
-  ? WithServerCallerImplementation<I, O>
-  : never;
-
-type ConvertWithClientStreamHandler<T> = T extends ClientCaller<
-  infer I,
-  infer O
->
-  ? WithClientCallerImplementation<I, O>
-  : never;
-
-type ConvertWithHandler<T> = T extends DuplexCaller
-  ? ConvertWithDuplexStreamHandler<T>
-  : T extends ServerCaller
-  ? ConvertWithServerStreamHandler<T>
-  : T extends ClientCaller
-  ? ConvertWithClientStreamHandler<T>
-  : T extends RawCaller
-  ? WithRawCallerImplementation
   : never;
 
 type ServerManifest = Record<string, Handler>;
@@ -268,8 +224,8 @@ type MapCallers<T extends ClientManifest> = {
   [K in keyof T]: ConvertCaller<T[K]>;
 };
 
-type MapWithCallers<T extends ClientManifest> = {
-  [K in keyof T]: ConvertWithHandler<T[K]>;
+type MapRawCallers<T extends ClientManifest> = {
+  [K in keyof T]: ConvertRawCaller<T[K]>;
 };
 
 export type {
@@ -294,5 +250,5 @@ export type {
   ClientManifest,
   HandlerType,
   MapCallers,
-  MapWithCallers,
+  MapRawCallers,
 };

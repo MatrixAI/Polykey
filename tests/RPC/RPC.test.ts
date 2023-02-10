@@ -65,7 +65,7 @@ describe('RPC', () => {
         logger,
       });
 
-      const callerInterface = await rpcClient.methods.testMethod({
+      const callerInterface = await rpcClient.rawMethods.testMethod({
         hello: 'world',
       });
       const writer = callerInterface.writable.getWriter();
@@ -118,7 +118,7 @@ describe('RPC', () => {
         logger,
       });
 
-      const callerInterface = await rpcClient.methods.testMethod();
+      const callerInterface = await rpcClient.rawMethods.testMethod();
       const writer = callerInterface.writable.getWriter();
       const reader = callerInterface.readable.getReader();
       for (const value of values) {
@@ -214,15 +214,17 @@ describe('RPC', () => {
         logger,
       });
 
-      const callerInterface = await rpcClient.methods.testMethod();
-      const writer = callerInterface.writable.getWriter();
-      for (const value of values) {
-        await writer.write(value);
-      }
-      await writer.close();
+      await rpcClient.methods.testMethod(async function* (output) {
+        for (const value of values) {
+          yield value;
+        }
+        // Ending writes
+        yield undefined;
+        // Checking output
+        const expectedResult = values.reduce((p, c) => p + c);
+        await expect(output).resolves.toEqual(expectedResult);
+      });
 
-      const expectedResult = values.reduce((p, c) => p + c);
-      await expect(callerInterface.output).resolves.toEqual(expectedResult);
       await rpcServer.destroy();
       await rpcClient.destroy();
     },

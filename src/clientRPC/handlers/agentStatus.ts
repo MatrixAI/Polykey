@@ -3,11 +3,11 @@ import type KeyRing from '../../keys/KeyRing';
 import type CertManager from '../../keys/CertManager';
 import type Logger from '@matrixai/logger';
 import type { NodeIdEncoded } from '../../ids';
+import type { WithMetadata } from '../types';
 import * as nodesUtils from '../../nodes/utils';
 import * as keysUtils from '../../keys/utils';
 import { UnaryHandler } from '../../RPC/handlers';
 import { UnaryCaller } from '../../RPC/callers';
-import { WithMetadata } from "@/clientRPC/types";
 
 type StatusResult = {
   pid: number;
@@ -15,7 +15,10 @@ type StatusResult = {
   publicJwk: string;
 };
 
-const agentStatusCaller = new UnaryCaller<WithMetadata, WithMetadata<StatusResult>>();
+const agentStatusCaller = new UnaryCaller<
+  WithMetadata,
+  WithMetadata<StatusResult>
+>();
 
 class AgentStatusHandler extends UnaryHandler<
   {
@@ -26,7 +29,10 @@ class AgentStatusHandler extends UnaryHandler<
   WithMetadata,
   WithMetadata<StatusResult>
 > {
-  public handle: UnaryHandlerImplementation<WithMetadata, WithMetadata<StatusResult>> = async () => {
+  public handle: UnaryHandlerImplementation<
+    WithMetadata,
+    WithMetadata<StatusResult>
+  > = async () => {
     return {
       pid: process.pid,
       nodeId: nodesUtils.encodeNodeId(this.container.keyRing.getNodeId()),

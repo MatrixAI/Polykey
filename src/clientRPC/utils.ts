@@ -114,8 +114,10 @@ function authenticationMiddlewareServer(
         transform: (chunk, controller) => {
           // Add the outgoing metadata to the next message.
           if (outgoingToken != null && 'result' in chunk) {
-            if (chunk.result.metadata == null) chunk.result.metadata = {
-              Authorization: '',
+            if (chunk.result.metadata == null) {
+              chunk.result.metadata = {
+                Authorization: '',
+              };
             }
             chunk.result.metadata.Authorization = outgoingToken;
             outgoingToken = null;
@@ -148,8 +150,10 @@ function authenticationMiddlewareClient(
             if (chunk.params.metadata?.Authorization == null) {
               const token = await session.readToken();
               if (token != null) {
-                if (chunk.params.metadata == null) chunk.params.metadata = {
-                  Authorization: '',
+                if (chunk.params.metadata == null) {
+                  chunk.params.metadata = {
+                    Authorization: '',
+                  };
                 }
                 chunk.params.metadata.Authorization = `Bearer ${token}`;
               }
