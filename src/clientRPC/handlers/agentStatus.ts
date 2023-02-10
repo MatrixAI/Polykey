@@ -1,4 +1,3 @@
-import type { UnaryHandlerImplementation } from '../../RPC/types';
 import type KeyRing from '../../keys/KeyRing';
 import type CertManager from '../../keys/CertManager';
 import type Logger from '@matrixai/logger';
@@ -29,10 +28,7 @@ class AgentStatusHandler extends UnaryHandler<
   WithMetadata,
   WithMetadata<StatusResult>
 > {
-  public handle: UnaryHandlerImplementation<
-    WithMetadata,
-    WithMetadata<StatusResult>
-  > = async () => {
+  public async handle(): Promise<WithMetadata<StatusResult>> {
     return {
       pid: process.pid,
       nodeId: nodesUtils.encodeNodeId(this.container.keyRing.getNodeId()),
@@ -40,7 +36,7 @@ class AgentStatusHandler extends UnaryHandler<
         keysUtils.publicKeyToJWK(this.container.keyRing.keyPair.publicKey),
       ),
     };
-  };
+  }
 }
 
 export { AgentStatusHandler, agentStatusCaller };

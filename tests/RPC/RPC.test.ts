@@ -1,13 +1,7 @@
-import type {
-  ClientHandlerImplementation,
-  ContainerType,
-  DuplexHandlerImplementation,
-  JsonRpcRequest,
-  RawHandlerImplementation,
-  ServerHandlerImplementation,
-  UnaryHandlerImplementation,
-} from '@/RPC/types';
+import type { ContainerType, JsonRpcRequest } from '@/RPC/types';
 import type { ConnectionInfo } from '@/network/types';
+import type { ReadableStream } from 'stream/web';
+import type { JSONValue } from '@/types';
 import { fc, testProp } from '@fast-check/jest';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import RPCServer from '@/RPC/RPCServer';
@@ -44,10 +38,13 @@ describe('RPC', () => {
 
       let header: JsonRpcRequest | undefined;
       class TestMethod extends RawHandler {
-        public handle: RawHandlerImplementation = ([input, header_]) => {
+        public handle(
+          input: [ReadableStream<Uint8Array>, JsonRpcRequest],
+        ): ReadableStream<Uint8Array> {
+          const [stream, header_] = input;
           header = header_;
-          return input;
-        };
+          return stream;
+        }
       }
       const rpcServer = await RPCServer.createRPCServer({
         manifest: {
@@ -96,11 +93,11 @@ describe('RPC', () => {
         Uint8Array
       >();
       class TestMethod extends DuplexHandler {
-        public handle: DuplexHandlerImplementation = async function* (input) {
-          for await (const val of input) {
-            yield val;
-          }
-        };
+        public async *handle(
+          input: AsyncIterable<JSONValue>,
+        ): AsyncIterable<JSONValue> {
+          yield* input;
+        }
       }
       const rpcServer = await RPCServer.createRPCServer({
         manifest: {
@@ -143,12 +140,11 @@ describe('RPC', () => {
       >();
 
       class TestMethod extends ServerHandler<ContainerType, number, number> {
-        public handle: ServerHandlerImplementation<number, number> =
-          async function* (input) {
-            for (let i = 0; i < input; i++) {
-              yield i;
-            }
-          };
+        public async *handle(input: number): AsyncIterable<number> {
+          for (let i = 0; i < input; i++) {
+            yield i;
+          }
+        }
       }
 
       const rpcServer = await RPCServer.createRPCServer({
@@ -188,15 +184,13 @@ describe('RPC', () => {
       >();
 
       class TestMethod extends ClientHandler<ContainerType, number, number> {
-        public handle: ClientHandlerImplementation<number, number> = async (
-          input,
-        ) => {
+        public async handle(input: AsyncIterable<number>): Promise<number> {
           let acc = 0;
           for await (const number of input) {
             acc += number;
           }
           return acc;
-        };
+        }
       }
       const rpcServer = await RPCServer.createRPCServer({
         manifest: {
@@ -239,7 +233,9 @@ describe('RPC', () => {
       >();
 
       class TestMethod extends UnaryHandler {
-        public handle: UnaryHandlerImplementation = async (input) => input;
+        public async handle(input: JSONValue): Promise<JSONValue> {
+          return input;
+        }
       }
       const rpcServer = await RPCServer.createRPCServer({
         manifest: {

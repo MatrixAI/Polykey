@@ -1,12 +1,9 @@
 import type { JSONValue } from 'types';
-import type {
-  ClientHandlerImplementation,
-  DuplexHandlerImplementation,
-  RawHandlerImplementation,
-  ServerHandlerImplementation,
-  UnaryHandlerImplementation,
-  ContainerType,
-} from 'RPC/types';
+import type { ContainerType } from 'RPC/types';
+import type { ReadableStream } from 'stream/web';
+import type { JsonRpcRequest } from 'RPC/types';
+import type { ConnectionInfo } from '../network/types';
+import type { ContextCancellable } from '../contexts/types';
 
 abstract class Handler<
   Container extends ContainerType = ContainerType,
@@ -22,7 +19,11 @@ abstract class Handler<
 abstract class RawHandler<
   Container extends ContainerType = ContainerType,
 > extends Handler<Container> {
-  abstract handle: RawHandlerImplementation;
+  abstract handle(
+    input: [ReadableStream<Uint8Array>, JsonRpcRequest],
+    connectionInfo: ConnectionInfo,
+    ctx: ContextCancellable,
+  ): ReadableStream<Uint8Array>;
 }
 
 abstract class DuplexHandler<
@@ -30,7 +31,11 @@ abstract class DuplexHandler<
   Input extends JSONValue = JSONValue,
   Output extends JSONValue = JSONValue,
 > extends Handler<Container, Input, Output> {
-  abstract handle: DuplexHandlerImplementation<Input, Output>;
+  abstract handle(
+    input: AsyncIterable<Input>,
+    connectionInfo: ConnectionInfo,
+    ctx: ContextCancellable,
+  ): AsyncIterable<Output>;
 }
 
 abstract class ServerHandler<
@@ -38,7 +43,11 @@ abstract class ServerHandler<
   Input extends JSONValue = JSONValue,
   Output extends JSONValue = JSONValue,
 > extends Handler<Container, Input, Output> {
-  abstract handle: ServerHandlerImplementation<Input, Output>;
+  abstract handle(
+    input: Input,
+    connectionInfo: ConnectionInfo,
+    ctx: ContextCancellable,
+  ): AsyncIterable<Output>;
 }
 
 abstract class ClientHandler<
@@ -46,7 +55,11 @@ abstract class ClientHandler<
   Input extends JSONValue = JSONValue,
   Output extends JSONValue = JSONValue,
 > extends Handler<Container, Input, Output> {
-  abstract handle: ClientHandlerImplementation<Input, Output>;
+  abstract handle(
+    input: AsyncIterable<Input>,
+    connectionInfo: ConnectionInfo,
+    ctx: ContextCancellable,
+  ): Promise<Output>;
 }
 
 abstract class UnaryHandler<
@@ -54,7 +67,11 @@ abstract class UnaryHandler<
   Input extends JSONValue = JSONValue,
   Output extends JSONValue = JSONValue,
 > extends Handler<Container, Input, Output> {
-  abstract handle: UnaryHandlerImplementation<Input, Output>;
+  abstract handle(
+    input: Input,
+    connectionInfo: ConnectionInfo,
+    ctx: ContextCancellable,
+  ): Promise<Output>;
 }
 
 export {

@@ -1,4 +1,3 @@
-import type { UnaryHandlerImplementation } from '../../RPC/types';
 import type Logger from '@matrixai/logger';
 import type { WithMetadata } from '../types';
 import { UnaryHandler } from '../../RPC/handlers';
@@ -11,17 +10,12 @@ class AgentUnlockHandler extends UnaryHandler<
   WithMetadata,
   WithMetadata
 > {
-  public handle: UnaryHandlerImplementation<WithMetadata, WithMetadata> =
-    async () => {
-      // This is a NOP handler,
-      // authentication and unlocking is handled via middleware.
-      // Failure to authenticate will be an error from the middleware layer.
-      return {
-        metadata: {
-          Authorization: '',
-        },
-      };
-    };
+  public async handle(): Promise<WithMetadata> {
+    // This is a NOP handler,
+    // authentication and unlocking is handled via middleware.
+    // Failure to authenticate will be an error from the middleware layer.
+    return {};
+  }
 }
 
 export { agentUnlockCaller, AgentUnlockHandler };

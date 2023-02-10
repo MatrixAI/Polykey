@@ -1,18 +1,14 @@
 import type {
-  ClientHandlerImplementation,
   ContainerType,
-  DuplexHandlerImplementation,
   JsonRpcRequest,
   JsonRpcResponse,
   JsonRpcResponseError,
-  RawHandlerImplementation,
-  ServerHandlerImplementation,
-  UnaryHandlerImplementation,
 } from '@/RPC/types';
 import type { JSONValue } from '@/types';
 import type { ConnectionInfo, Host, Port } from '@/network/types';
 import type { NodeId } from '@/ids';
 import type { ReadableWritablePair } from 'stream/web';
+import type { ContextCancellable } from '@/contexts/types';
 import { TransformStream, ReadableStream } from 'stream/web';
 import { fc, testProp } from '@fast-check/jest';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
@@ -74,7 +70,7 @@ describe(`${RPCServer.name}`, () => {
           rpcTestUtils.binaryStreamToSnippedStream([4, 7, 13, 2, 6]),
         );
       class TestHandler extends RawHandler {
-        public handle: RawHandlerImplementation = ([input]) => {
+        public handle([input, _header]): ReadableStream<Uint8Array> {
           void (async () => {
             for await (const _ of input) {
               // No touch, only consume
@@ -86,7 +82,7 @@ describe(`${RPCServer.name}`, () => {
               controller.close();
             },
           });
-        };
+        }
       }
       const rpcServer = await RPCServer.createRPCServer({
         manifest: {
@@ -111,12 +107,14 @@ describe(`${RPCServer.name}`, () => {
     async (messages) => {
       const stream = rpcTestUtils.messagesToReadableStream(messages);
       class TestMethod extends DuplexHandler {
-        public handle: DuplexHandlerImplementation = async function* (input) {
+        public async *handle(
+          input: AsyncIterable<JSONValue>,
+        ): AsyncIterable<JSONValue> {
           for await (const val of input) {
             yield val;
             break;
           }
-        };
+        }
       }
       const rpcServer = await RPCServer.createRPCServer({
         manifest: {
@@ -140,13 +138,15 @@ describe(`${RPCServer.name}`, () => {
     async (messages) => {
       const stream = rpcTestUtils.messagesToReadableStream(messages);
       class TestMethod extends ClientHandler {
-        public handle: ClientHandlerImplementation = async function (input) {
+        public async handle(
+          input: AsyncIterable<JSONValue>,
+        ): Promise<JSONValue> {
           let count = 0;
           for await (const _ of input) {
             count += 1;
           }
           return count;
-        };
+        }
       }
       const rpcServer = await RPCServer.createRPCServer({
         manifest: {
@@ -170,12 +170,11 @@ describe(`${RPCServer.name}`, () => {
     async (messages) => {
       const stream = rpcTestUtils.messagesToReadableStream(messages);
       class TestMethod extends ServerHandler<ContainerType, number, number> {
-        public handle: ServerHandlerImplementation<number, number> =
-          async function* (input) {
-            for (let i = 0; i < input; i++) {
-              yield i;
-            }
-          };
+        public async *handle(input: number): AsyncIterable<number> {
+          for (let i = 0; i < input; i++) {
+            yield i;
+          }
+        }
       }
       const rpcServer = await RPCServer.createRPCServer({
         manifest: {
@@ -199,7 +198,9 @@ describe(`${RPCServer.name}`, () => {
     async (messages) => {
       const stream = rpcTestUtils.messagesToReadableStream(messages);
       class TestMethod extends UnaryHandler {
-        public handle: UnaryHandlerImplementation = async (input) => input;
+        public async handle(input: JSONValue): Promise<JSONValue> {
+          return input;
+        }
       }
       const rpcServer = await RPCServer.createRPCServer({
         manifest: {
@@ -228,12 +229,14 @@ describe(`${RPCServer.name}`, () => {
         C: Symbol('c'),
       };
       class TestMethod extends DuplexHandler<typeof container> {
-        public handle: DuplexHandlerImplementation = async function* (input) {
+        public async *handle(
+          input: AsyncIterable<JSONValue>,
+        ): AsyncIterable<JSONValue> {
           expect(this.container).toBe(container);
           for await (const val of input) {
             yield val;
           }
-        };
+        }
       }
 
       const rpcServer = await RPCServer.createRPCServer({
@@ -267,15 +270,15 @@ describe(`${RPCServer.name}`, () => {
       };
       let handledConnectionInfo;
       class TestMethod extends DuplexHandler {
-        public handle: DuplexHandlerImplementation = async function* (
-          input,
-          connectionInfo_,
-        ) {
+        public async *handle(
+          input: AsyncIterable<JSONValue>,
+          connectionInfo_: ConnectionInfo,
+        ): AsyncIterable<JSONValue> {
           handledConnectionInfo = connectionInfo_;
           for await (const val of input) {
             yield val;
           }
-        };
+        }
       }
       const rpcServer = await RPCServer.createRPCServer({
         manifest: {
@@ -294,21 +297,19 @@ describe(`${RPCServer.name}`, () => {
       expect(handledConnectionInfo).toBe(connectionInfo);
     },
   );
-  // Problem with the tap stream. It seems to block the whole stream.
-  //  If I don't pipe the tap to the output we actually iterate over some data.
   testProp('Handler can be aborted', [specificMessageArb], async (messages) => {
     const stream = rpcTestUtils.messagesToReadableStream(messages);
     class TestMethod extends DuplexHandler {
-      public handle: DuplexHandlerImplementation = async function* (
-        input,
-        _connectionInf,
-        ctx,
-      ) {
+      public async *handle(
+        input: AsyncIterable<JSONValue>,
+        connectionInfo_: ConnectionInfo,
+        ctx: ContextCancellable,
+      ): AsyncIterable<JSONValue> {
         for await (const val of input) {
           if (ctx.signal.aborted) throw ctx.signal.reason;
           yield val;
         }
-      };
+      }
     }
     const rpcServer = await RPCServer.createRPCServer({
       manifest: {
@@ -350,11 +351,13 @@ describe(`${RPCServer.name}`, () => {
   testProp('Handler yields nothing', [specificMessageArb], async (messages) => {
     const stream = rpcTestUtils.messagesToReadableStream(messages);
     class TestMethod extends DuplexHandler {
-      public handle: DuplexHandlerImplementation = async function* (input) {
+      public async *handle(
+        input: AsyncIterable<JSONValue>,
+      ): AsyncIterable<JSONValue> {
         for await (const _ of input) {
           // Do nothing, just consume
         }
-      };
+      }
     }
     const rpcServer = await RPCServer.createRPCServer({
       manifest: {
@@ -378,9 +381,9 @@ describe(`${RPCServer.name}`, () => {
     async (messages, error) => {
       const stream = rpcTestUtils.messagesToReadableStream(messages);
       class TestMethod extends DuplexHandler {
-        public handle: DuplexHandlerImplementation = async function* () {
+        public async *handle(): AsyncIterable<JSONValue> {
           throw error;
-        };
+        }
       }
       const rpcServer = await RPCServer.createRPCServer({
         manifest: {
@@ -416,9 +419,9 @@ describe(`${RPCServer.name}`, () => {
     async (messages) => {
       const stream = rpcTestUtils.messagesToReadableStream(messages);
       class TestMethod extends DuplexHandler {
-        public handle: DuplexHandlerImplementation = async function* () {
+        public async *handle(): AsyncIterable<JSONValue> {
           throw new rpcErrors.ErrorRpcPlaceholderConnectionError();
-        };
+        }
       }
       const rpcServer = await RPCServer.createRPCServer({
         manifest: {
@@ -450,11 +453,11 @@ describe(`${RPCServer.name}`, () => {
   testProp('forward middlewares', [specificMessageArb], async (messages) => {
     const stream = rpcTestUtils.messagesToReadableStream(messages);
     class TestMethod extends DuplexHandler {
-      public handle: DuplexHandlerImplementation = async function* (input) {
-        for await (const val of input) {
-          yield val;
-        }
-      };
+      public async *handle(
+        input: AsyncIterable<JSONValue>,
+      ): AsyncIterable<JSONValue> {
+        yield* input;
+      }
     }
     const middleware = rpcUtils.defaultServerMiddlewareWrapper(() => {
       return {
@@ -495,11 +498,11 @@ describe(`${RPCServer.name}`, () => {
   testProp('reverse middlewares', [specificMessageArb], async (messages) => {
     const stream = rpcTestUtils.messagesToReadableStream(messages);
     class TestMethod extends DuplexHandler {
-      public handle: DuplexHandlerImplementation = async function* (input) {
-        for await (const val of input) {
-          yield val;
-        }
-      };
+      public async *handle(
+        input: AsyncIterable<JSONValue>,
+      ): AsyncIterable<JSONValue> {
+        yield* input;
+      }
     }
     const middleware = rpcUtils.defaultServerMiddlewareWrapper(() => {
       return {
@@ -543,11 +546,11 @@ describe(`${RPCServer.name}`, () => {
     async (message) => {
       const stream = rpcTestUtils.messagesToReadableStream([message]);
       class TestMethod extends DuplexHandler {
-        public handle: DuplexHandlerImplementation = async function* (input) {
-          for await (const val of input) {
-            yield val;
-          }
-        };
+        public async *handle(
+          input: AsyncIterable<JSONValue>,
+        ): AsyncIterable<JSONValue> {
+          yield* input;
+        }
       }
       const middleware = rpcUtils.defaultServerMiddlewareWrapper(() => {
         let first = true;

@@ -2,6 +2,7 @@ import type { TLSConfig } from '@/network/types';
 import type { Server } from 'https';
 import type { WebSocketServer } from 'ws';
 import type { ClientManifest } from '@/RPC/types';
+import type { JSONValue } from '@/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -60,14 +61,14 @@ describe('websocket', () => {
   test('websocket should work with RPC', async () => {
     // Setting up server
     class Test1 extends UnaryHandler {
-      public handle = async (params) => {
-        return params;
-      };
+      public async handle(input: JSONValue): Promise<JSONValue> {
+        return input;
+      }
     }
     class Test2 extends UnaryHandler {
-      public handle = async () => {
+      public async handle(): Promise<JSONValue> {
         return { hello: 'not world' };
-      };
+      }
     }
     rpcServer = await RPCServer.createRPCServer({
       manifest: {

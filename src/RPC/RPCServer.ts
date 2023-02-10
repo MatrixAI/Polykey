@@ -87,27 +87,42 @@ class RPCServer {
   }) {
     for (const [key, manifestItem] of Object.entries(manifest)) {
       if (manifestItem instanceof RawHandler) {
-        this.registerRawStreamHandler(key, manifestItem.handle);
+        this.registerRawStreamHandler(
+          key,
+          manifestItem.handle.bind(manifestItem),
+        );
         continue;
       }
       if (manifestItem instanceof DuplexHandler) {
-        this.registerDuplexStreamHandler(key, manifestItem.handle);
+        this.registerDuplexStreamHandler(
+          key,
+          manifestItem.handle.bind(manifestItem),
+        );
         continue;
       }
       if (manifestItem instanceof ServerHandler) {
-        this.registerServerStreamHandler(key, manifestItem.handle);
+        this.registerServerStreamHandler(
+          key,
+          manifestItem.handle.bind(manifestItem),
+        );
         continue;
       }
       if (manifestItem instanceof ClientHandler) {
-        this.registerClientStreamHandler(key, manifestItem.handle);
+        this.registerClientStreamHandler(
+          key,
+          manifestItem.handle.bind(manifestItem),
+        );
         continue;
       }
       if (manifestItem instanceof ClientHandler) {
-        this.registerClientStreamHandler(key, manifestItem.handle);
+        this.registerClientStreamHandler(
+          key,
+          manifestItem.handle.bind(manifestItem),
+        );
         continue;
       }
       if (manifestItem instanceof UnaryHandler) {
-        this.registerUnaryHandler(key, manifestItem.handle);
+        this.registerUnaryHandler(key, manifestItem.handle.bind(manifestItem));
         continue;
       }
       never();
