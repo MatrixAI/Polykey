@@ -121,15 +121,15 @@ type RawHandlerImplementation = HandlerImplementation<
 type DuplexHandlerImplementation<
   I extends JSONValue = JSONValue,
   O extends JSONValue = JSONValue,
-> = HandlerImplementation<AsyncGenerator<I>, AsyncGenerator<O>>;
+> = HandlerImplementation<AsyncIterable<I>, AsyncIterable<O>>;
 type ServerHandlerImplementation<
   I extends JSONValue = JSONValue,
   O extends JSONValue = JSONValue,
-> = HandlerImplementation<I, AsyncGenerator<O>>;
+> = HandlerImplementation<I, AsyncIterable<O>>;
 type ClientHandlerImplementation<
   I extends JSONValue = JSONValue,
   O extends JSONValue = JSONValue,
-> = HandlerImplementation<AsyncGenerator<I>, Promise<O>>;
+> = HandlerImplementation<AsyncIterable<I>, Promise<O>>;
 type UnaryHandlerImplementation<
   I extends JSONValue = JSONValue,
   O extends JSONValue = JSONValue,
@@ -156,17 +156,17 @@ type UnaryCallerImplementation<
 type ServerCallerImplementation<
   I extends JSONValue = JSONValue,
   O extends JSONValue = JSONValue,
-> = (parameters: I) => Promise<AsyncGenerator<O>>;
+> = (parameters: I) => Promise<AsyncIterable<O>>;
 
 type ClientCallerImplementation<
   I extends JSONValue = JSONValue,
   O extends JSONValue = JSONValue,
-> = (f: (output: Promise<O>) => AsyncGenerator<I | undefined>) => Promise<void>;
+> = (f: (output: Promise<O>) => AsyncIterable<I | undefined>) => Promise<void>;
 
 type DuplexCallerImplementation<
   I extends JSONValue = JSONValue,
   O extends JSONValue = JSONValue,
-> = (f: (output: AsyncGenerator<O>) => AsyncGenerator<I>) => Promise<void>;
+> = (f: (output: AsyncIterable<O>) => AsyncIterable<I>) => Promise<void>;
 
 // Raw callers
 

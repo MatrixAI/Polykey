@@ -154,7 +154,7 @@ class RPCServer {
       const events = this.events;
       const outputGen = async function* (): AsyncGenerator<JsonRpcResponse> {
         if (ctx.signal.aborted) throw ctx.signal.reason;
-        const dataGen = async function* () {
+        const dataGen = async function* (): AsyncIterable<I> {
           for await (const data of forwardStream) {
             yield data.params as I;
           }

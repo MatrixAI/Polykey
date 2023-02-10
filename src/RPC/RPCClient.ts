@@ -166,7 +166,7 @@ class RPCClient<M extends ClientManifest> {
   public async serverStreamCaller<I extends JSONValue, O extends JSONValue>(
     method: string,
     parameters: I,
-  ): Promise<AsyncGenerator<O>> {
+  ): Promise<AsyncIterable<O>> {
     const callerInterface = await this.rawDuplexStreamCaller<I, O>(method);
     const writer = callerInterface.writable.getWriter();
     await writer.write(parameters);
@@ -183,7 +183,7 @@ class RPCClient<M extends ClientManifest> {
   @ready(new rpcErrors.ErrorRpcDestroyed())
   public async clientStreamCaller<I extends JSONValue, O extends JSONValue>(
     method: string,
-    f: (output: Promise<O>) => AsyncGenerator<I | undefined>,
+    f: (output: Promise<O>) => AsyncIterable<I | undefined>,
   ): Promise<void> {
     const callerInterface = await this.rawClientStreamCaller<I, O>(method);
     const writer = callerInterface.writable.getWriter();
@@ -203,7 +203,7 @@ class RPCClient<M extends ClientManifest> {
   @ready(new rpcErrors.ErrorRpcDestroyed())
   public async duplexStreamCaller<I extends JSONValue, O extends JSONValue>(
     method: string,
-    f: (output: AsyncGenerator<O>) => AsyncGenerator<I>,
+    f: (output: AsyncIterable<O>) => AsyncIterable<I>,
   ): Promise<void> {
     const callerInterface = await this.rawDuplexStreamCaller<I, O>(method);
     const outputGenerator = async function* () {
