@@ -208,17 +208,14 @@ describe('RPC', () => {
         logger,
       });
 
-      await rpcClient.methods.testMethod(async function* (output) {
-        for (const value of values) {
-          yield value;
-        }
-        // Ending writes
-        yield undefined;
-        // Checking output
-        const expectedResult = values.reduce((p, c) => p + c);
-        await expect(output).resolves.toEqual(expectedResult);
-      });
-
+      const { output, writable } = await rpcClient.methods.testMethod();
+      const writer = writable.getWriter();
+      for (const value of values) {
+        await writer.write(value);
+      }
+      await writer.close();
+      const expectedResult = values.reduce((p, c) => p + c);
+      await expect(output).resolves.toEqual(expectedResult);
       await rpcServer.destroy();
       await rpcClient.destroy();
     },

@@ -175,16 +175,16 @@ describe(`${RPCClient.name}`, () => {
         streamPairCreateCallback: async () => streamPair,
         logger,
       });
-      await rpcClient.clientStreamCaller<JSONValue, JSONValue>(
-        methodName,
-        async function* (output) {
-          for (const param of params) {
-            yield param;
-          }
-          yield undefined;
-          expect(await output).toStrictEqual(message.result);
-        },
-      );
+      const { output, writable } = await rpcClient.clientStreamCaller<
+        JSONValue,
+        JSONValue
+      >(methodName);
+      const writer = writable.getWriter();
+      for (const param of params) {
+        await writer.write(param);
+      }
+      await writer.close();
+      expect(await output).toStrictEqual(message.result);
       const expectedOutput = params.map((v) =>
         JSON.stringify({
           method: methodName,
@@ -518,13 +518,13 @@ describe(`${RPCClient.name}`, () => {
         streamPairCreateCallback: async () => streamPair,
         logger,
       });
-      await rpcClient.methods.client(async function* (output) {
-        for (const param of params) {
-          yield param;
-        }
-        yield undefined;
-        expect(await output).toStrictEqual(message.result);
-      });
+      const { output, writable } = await rpcClient.methods.client();
+      const writer = writable.getWriter();
+      for (const param of params) {
+        await writer.write(param);
+      }
+      expect(await output).toStrictEqual(message.result);
+      await writer.close();
       const expectedOutput = params.map((v) =>
         JSON.stringify({
           method: 'client',

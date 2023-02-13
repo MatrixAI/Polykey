@@ -161,7 +161,7 @@ type ServerCallerImplementation<
 type ClientCallerImplementation<
   I extends JSONValue = JSONValue,
   O extends JSONValue = JSONValue,
-> = (f: (output: Promise<O>) => AsyncIterable<I | undefined>) => Promise<void>;
+> = () => Promise<{ output: Promise<O>; writable: WritableStream<I> }>;
 
 type DuplexCallerImplementation<
   I extends JSONValue = JSONValue,

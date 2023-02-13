@@ -75,7 +75,7 @@ class RPCClient<M extends ClientManifest> {
           case 'SERVER':
             return (params) => this.serverStreamCaller(method, params);
           case 'CLIENT':
-            return (f) => this.clientStreamCaller(method, f);
+            return () => this.clientStreamCaller(method);
           case 'DUPLEX':
             return (f) => this.duplexStreamCaller(method, f);
           case 'RAW':
@@ -142,8 +142,6 @@ class RPCClient<M extends ClientManifest> {
     return this.rawMethodsProxy as MapRawCallers<M>;
   }
 
-  // Convenience methods
-
   @ready(new rpcErrors.ErrorRpcDestroyed())
   public async unaryCaller<I extends JSONValue, O extends JSONValue>(
     method: string,
@@ -183,21 +181,22 @@ class RPCClient<M extends ClientManifest> {
   @ready(new rpcErrors.ErrorRpcDestroyed())
   public async clientStreamCaller<I extends JSONValue, O extends JSONValue>(
     method: string,
-    f: (output: Promise<O>) => AsyncIterable<I | undefined>,
-  ): Promise<void> {
-    const callerInterface = await this.rawClientStreamCaller<I, O>(method);
-    const writer = callerInterface.writable.getWriter();
-    let running = true;
-    for await (const value of f(callerInterface.output)) {
-      if (value === undefined) {
-        await writer.close();
-        running = false;
+  ): Promise<{
+    output: Promise<O>;
+    writable: WritableStream<I>;
+  }> {
+    const callerInterface = await this.rawDuplexStreamCaller<I, O>(method);
+    const reader = callerInterface.readable.getReader();
+    const output = reader.read().then(({ value, done }) => {
+      if (done) {
+        throw new rpcErrors.ErrorRpcRemoteError('Stream ended before response');
       }
-      // Write while running otherwise consume until ended
-      if (running) await writer.write(value);
-    }
-    // If ended before finish running then close writer
-    if (running) await writer.close();
+      return value;
+    });
+    return {
+      output,
+      writable: callerInterface.writable,
+    };
   }
 
   @ready(new rpcErrors.ErrorRpcDestroyed())
@@ -262,29 +261,6 @@ class RPCClient<M extends ClientManifest> {
     await tempWriter.write(Buffer.from(JSON.stringify(header)));
     tempWriter.releaseLock();
     return streamPair;
-  }
-
-  protected async rawClientStreamCaller<
-    I extends JSONValue,
-    O extends JSONValue,
-  >(
-    method: string,
-  ): Promise<{
-    output: Promise<O>;
-    writable: WritableStream<I>;
-  }> {
-    const callerInterface = await this.rawDuplexStreamCaller<I, O>(method);
-    const reader = callerInterface.readable.getReader();
-    const output = reader.read().then(({ value, done }) => {
-      if (done) {
-        throw new rpcErrors.ErrorRpcRemoteError('Stream ended before response');
-      }
-      return value;
-    });
-    return {
-      output,
-      writable: callerInterface.writable,
-    };
   }
 }
 
