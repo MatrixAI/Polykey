@@ -44,11 +44,6 @@ describe(`${RPCServer.name}`, () => {
       maxLength: 10,
     },
   );
-  const errorArb = fc.oneof(
-    fc.constant(new rpcErrors.ErrorRpcParse()),
-    fc.constant(new rpcErrors.ErrorRpcMessageLength()),
-    fc.constant(new rpcErrors.ErrorRpcRemoteError()),
-  );
   const validToken = 'VALIDTOKEN';
   const invalidTokenMessageArb = rpcTestUtils.jsonRpcRequestMessageArb(
     fc.constant('testMethod'),
@@ -377,7 +372,7 @@ describe(`${RPCServer.name}`, () => {
   });
   testProp(
     'should send error message',
-    [specificMessageArb, errorArb],
+    [specificMessageArb, rpcTestUtils.errorArb(rpcTestUtils.errorArb())],
     async (messages, error) => {
       const stream = rpcTestUtils.messagesToReadableStream(messages);
       class TestMethod extends DuplexHandler {
@@ -405,7 +400,50 @@ describe(`${RPCServer.name}`, () => {
         writable: outputStream,
       };
       rpcServer.handleStream(readWriteStream, {} as ConnectionInfo);
-      const errorMessage = JSON.parse((await outputResult)[0]!.toString());
+      const rawErrorMessage = (await outputResult)[0]!.toString();
+      expect(rawErrorMessage).toInclude('stack');
+      const errorMessage = JSON.parse(rawErrorMessage);
+      expect(errorMessage.error.code).toEqual(error.exitCode);
+      expect(errorMessage.error.message).toEqual(error.description);
+      reject();
+      await expect(errorProm).toReject();
+      await rpcServer.destroy();
+    },
+  );
+  testProp(
+    'should send error message with sensitive',
+    [specificMessageArb, rpcTestUtils.errorArb(rpcTestUtils.errorArb())],
+    async (messages, error) => {
+      const stream = rpcTestUtils.messagesToReadableStream(messages);
+      class TestMethod extends DuplexHandler {
+        public async *handle(): AsyncIterable<JSONValue> {
+          throw error;
+        }
+      }
+      const rpcServer = await RPCServer.createRPCServer({
+        manifest: {
+          testMethod: new TestMethod({}),
+        },
+        sensitive: true,
+        logger,
+      });
+      let resolve, reject;
+      const errorProm = new Promise((resolve_, reject_) => {
+        resolve = resolve_;
+        reject = reject_;
+      });
+      rpcServer.addEventListener('error', (thing) => {
+        resolve(thing);
+      });
+      const [outputResult, outputStream] = rpcTestUtils.streamToArray();
+      const readWriteStream: ReadableWritablePair = {
+        readable: stream,
+        writable: outputStream,
+      };
+      rpcServer.handleStream(readWriteStream, {} as ConnectionInfo);
+      const rawErrorMessage = (await outputResult)[0]!.toString();
+      expect(rawErrorMessage).not.toInclude('stack');
+      const errorMessage = JSON.parse(rawErrorMessage);
       expect(errorMessage.error.code).toEqual(error.exitCode);
       expect(errorMessage.error.message).toEqual(error.description);
       reject();

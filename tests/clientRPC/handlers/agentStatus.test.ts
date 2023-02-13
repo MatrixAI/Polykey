@@ -79,7 +79,7 @@ describe('agentStatus', () => {
       recursive: true,
     });
   });
-  test('get status %s', async () => {
+  test('get status', async () => {
     // Setup
     const rpcServer = await RPCServer.createRPCServer({
       manifest: {

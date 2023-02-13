@@ -38,6 +38,7 @@ class RPCServer {
   static async createRPCServer({
     manifest,
     middleware = rpcUtils.defaultServerMiddlewareWrapper(),
+    sensitive = false,
     logger = new Logger(this.name),
   }: {
     manifest: ServerManifest;
@@ -47,12 +48,14 @@ class RPCServer {
       Uint8Array,
       JsonRpcResponseResult
     >;
+    sensitive?: boolean;
     logger?: Logger;
   }): Promise<RPCServer> {
     logger.info(`Creating ${this.name}`);
     const rpcServer = new this({
       manifest,
       middleware,
+      sensitive,
       logger,
     });
     logger.info(`Created ${this.name}`);
@@ -63,6 +66,7 @@ class RPCServer {
   protected logger: Logger;
   protected handlerMap: Map<string, RawHandlerImplementation> = new Map();
   protected activeStreams: Set<PromiseCancellable<void>> = new Set();
+  protected sensitive: boolean;
   protected events: EventTarget = new EventTarget();
   protected middleware: MiddlewareFactory<
     JsonRpcRequest,
@@ -74,6 +78,7 @@ class RPCServer {
   public constructor({
     manifest,
     middleware,
+    sensitive,
     logger,
   }: {
     manifest: ServerManifest;
@@ -83,6 +88,7 @@ class RPCServer {
       Uint8Array,
       JsonRpcResponseResult
     >;
+    sensitive: boolean;
     logger: Logger;
   }) {
     for (const [key, manifestItem] of Object.entries(manifest)) {
@@ -128,6 +134,7 @@ class RPCServer {
       never();
     }
     this.middleware = middleware;
+    this.sensitive = sensitive;
     this.logger = logger;
   }
 
@@ -199,7 +206,7 @@ class RPCServer {
               const rpcError: JsonRpcError = {
                 code: e.exitCode ?? sysexits.UNKNOWN,
                 message: e.description ?? '',
-                data: rpcUtils.fromError(e),
+                data: rpcUtils.fromError(e, this.sensitive),
               };
               const rpcErrorMessage: JsonRpcResponseError = {
                 jsonrpc: '2.0',

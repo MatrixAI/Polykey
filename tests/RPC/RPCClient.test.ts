@@ -234,7 +234,80 @@ describe(`${RPCClient.name}`, () => {
     'generic duplex caller can throw received error message',
     [
       fc.array(rpcTestUtils.jsonRpcResponseResultArb()),
-      rpcTestUtils.jsonRpcResponseErrorArb(),
+      rpcTestUtils.jsonRpcResponseErrorArb(rpcTestUtils.errorArb()),
+    ],
+    async (messages, errorMessage) => {
+      const inputStream = rpcTestUtils.messagesToReadableStream([
+        ...messages,
+        errorMessage,
+      ]);
+      const [outputResult, outputStream] =
+        rpcTestUtils.streamToArray<Uint8Array>();
+      const streamPair: ReadableWritablePair = {
+        readable: inputStream,
+        writable: outputStream,
+      };
+      const rpcClient = await RPCClient.createRPCClient({
+        manifest: {},
+        streamPairCreateCallback: async () => streamPair,
+        logger,
+      });
+      const callProm = rpcClient.duplexStreamCaller<JSONValue, JSONValue>(
+        methodName,
+        async function* (output) {
+          for await (const _ of output) {
+            // No touch, just consume
+          }
+        },
+      );
+      await expect(callProm).rejects.toThrow(rpcErrors.ErrorRpcRemoteError);
+      await outputResult;
+      await rpcClient.destroy();
+    },
+  );
+  testProp(
+    'generic duplex caller can throw received error message with sensitive',
+    [
+      fc.array(rpcTestUtils.jsonRpcResponseResultArb()),
+      rpcTestUtils.jsonRpcResponseErrorArb(rpcTestUtils.errorArb(), true),
+    ],
+    async (messages, errorMessage) => {
+      const inputStream = rpcTestUtils.messagesToReadableStream([
+        ...messages,
+        errorMessage,
+      ]);
+      const [outputResult, outputStream] =
+        rpcTestUtils.streamToArray<Uint8Array>();
+      const streamPair: ReadableWritablePair = {
+        readable: inputStream,
+        writable: outputStream,
+      };
+      const rpcClient = await RPCClient.createRPCClient({
+        manifest: {},
+        streamPairCreateCallback: async () => streamPair,
+        logger,
+      });
+      const callProm = rpcClient.duplexStreamCaller<JSONValue, JSONValue>(
+        methodName,
+        async function* (output) {
+          for await (const _ of output) {
+            // No touch, just consume
+          }
+        },
+      );
+      await expect(callProm).rejects.toThrow(rpcErrors.ErrorRpcRemoteError);
+      await outputResult;
+      await rpcClient.destroy();
+    },
+  );
+  testProp(
+    'generic duplex caller can throw received error message with causes',
+    [
+      fc.array(rpcTestUtils.jsonRpcResponseResultArb()),
+      rpcTestUtils.jsonRpcResponseErrorArb(
+        rpcTestUtils.errorArb(rpcTestUtils.errorArb()),
+        true,
+      ),
     ],
     async (messages, errorMessage) => {
       const inputStream = rpcTestUtils.messagesToReadableStream([

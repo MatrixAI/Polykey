@@ -20,6 +20,7 @@ import {
   ServerCaller,
   UnaryCaller,
 } from '@/RPC/callers';
+import * as rpcErrors from '@/RPC/errors';
 import * as rpcTestUtils from './utils';
 
 describe('RPC', () => {
@@ -252,6 +253,101 @@ describe('RPC', () => {
 
       const result = await rpcClient.methods.testMethod(value);
       expect(result).toStrictEqual(value);
+      await rpcServer.destroy();
+      await rpcClient.destroy();
+    },
+  );
+  testProp(
+    'RPC handles and sends errors',
+    [
+      rpcTestUtils.safeJsonValueArb,
+      rpcTestUtils.errorArb(rpcTestUtils.errorArb()),
+    ],
+    async (value, error) => {
+      const { clientPair, serverPair } = rpcTestUtils.createTapPairs<
+        Uint8Array,
+        Uint8Array
+      >();
+
+      class TestMethod extends UnaryHandler {
+        public async handle(): Promise<JSONValue> {
+          throw error;
+        }
+      }
+      const rpcServer = await RPCServer.createRPCServer({
+        manifest: {
+          testMethod: new TestMethod({}),
+        },
+        logger,
+      });
+      rpcServer.handleStream(serverPair, {} as ConnectionInfo);
+
+      const rpcClient = await RPCClient.createRPCClient({
+        manifest: {
+          testMethod: new UnaryCaller(),
+        },
+        streamPairCreateCallback: async () => clientPair,
+        logger,
+      });
+
+      const callProm = rpcClient.methods.testMethod(value);
+      await expect(callProm).rejects.toThrow(rpcErrors.ErrorRpcRemoteError);
+      await expect(
+        callProm.catch((e) => {
+          throw e.cause;
+        }),
+      ).rejects.toThrow(error);
+      expect(await callProm.catch((e) => JSON.stringify(e.cause))).toInclude(
+        'stack',
+      );
+      await rpcServer.destroy();
+      await rpcClient.destroy();
+    },
+  );
+  testProp(
+    'RPC handles and sends sensitive errors',
+    [
+      rpcTestUtils.safeJsonValueArb,
+      rpcTestUtils.errorArb(rpcTestUtils.errorArb()),
+    ],
+    async (value, error) => {
+      const { clientPair, serverPair } = rpcTestUtils.createTapPairs<
+        Uint8Array,
+        Uint8Array
+      >();
+
+      class TestMethod extends UnaryHandler {
+        public async handle(): Promise<JSONValue> {
+          throw error;
+        }
+      }
+      const rpcServer = await RPCServer.createRPCServer({
+        manifest: {
+          testMethod: new TestMethod({}),
+        },
+        sensitive: true,
+        logger,
+      });
+      rpcServer.handleStream(serverPair, {} as ConnectionInfo);
+
+      const rpcClient = await RPCClient.createRPCClient({
+        manifest: {
+          testMethod: new UnaryCaller(),
+        },
+        streamPairCreateCallback: async () => clientPair,
+        logger,
+      });
+
+      const callProm = rpcClient.methods.testMethod(value);
+      await expect(callProm).rejects.toThrow(rpcErrors.ErrorRpcRemoteError);
+      await expect(
+        callProm.catch((e) => {
+          throw e.cause;
+        }),
+      ).rejects.toThrow(error);
+      expect(
+        await callProm.catch((e) => JSON.stringify(e.cause)),
+      ).not.toInclude('stack');
       await rpcServer.destroy();
       await rpcClient.destroy();
     },

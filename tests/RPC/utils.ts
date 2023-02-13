@@ -14,6 +14,7 @@ import { ReadableStream, WritableStream, TransformStream } from 'stream/web';
 import { fc } from '@fast-check/jest';
 import * as utils from '@/utils';
 import { fromError } from '@/RPC/utils';
+import * as rpcErrors from '@/RPC/errors';
 
 /**
  * This is used to convert regular chunks into randomly sized chunks based on
@@ -141,14 +142,16 @@ const jsonRpcResponseResultArb = (
       id: idArb,
     })
     .noShrink() as fc.Arbitrary<JsonRpcResponseResult>;
-
-const jsonRpcErrorArb = (error: Error = new Error('test error')) =>
+const jsonRpcErrorArb = (
+  error: fc.Arbitrary<Error> = fc.constant(new Error('test error')),
+  sensitive: boolean = false,
+) =>
   fc
     .record(
       {
         code: fc.integer(),
         message: fc.string(),
-        data: fc.constant(fromError(error)),
+        data: error.map((e) => fromError(e, sensitive)),
       },
       {
         requiredKeys: ['code', 'message'],
@@ -156,11 +159,14 @@ const jsonRpcErrorArb = (error: Error = new Error('test error')) =>
     )
     .noShrink() as fc.Arbitrary<JsonRpcError>;
 
-const jsonRpcResponseErrorArb = (error?: Error) =>
+const jsonRpcResponseErrorArb = (
+  error?: fc.Arbitrary<Error>,
+  sensitive: boolean = false,
+) =>
   fc
     .record({
       jsonrpc: fc.constant('2.0'),
-      error: jsonRpcErrorArb(error),
+      error: jsonRpcErrorArb(error, sensitive),
       id: idArb,
     })
     .noShrink() as fc.Arbitrary<JsonRpcResponseError>;
@@ -250,6 +256,17 @@ function createTapPairs<A, B>(
   };
 }
 
+const errorArb = (
+  cause: fc.Arbitrary<Error | undefined> = fc.constant(undefined),
+) =>
+  cause.chain((cause) =>
+    fc.oneof(
+      fc.constant(new rpcErrors.ErrorRpcParse(undefined, { cause })),
+      fc.constant(new rpcErrors.ErrorRpcMessageLength(undefined, { cause })),
+      fc.constant(new rpcErrors.ErrorRpcRemoteError(undefined, { cause })),
+    ),
+  );
+
 export {
   binaryStreamToSnippedStream,
   binaryStreamToNoisyStream,
@@ -269,4 +286,5 @@ export {
   streamToArray,
   tapTransformStream,
   createTapPairs,
+  errorArb,
 };
