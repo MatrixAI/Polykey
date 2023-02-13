@@ -22,6 +22,7 @@ import {
   ServerHandler,
   UnaryHandler,
 } from '@/RPC/handlers';
+import * as middlewareUtils from '@/RPC/middleware';
 import * as rpcTestUtils from './utils';
 
 describe(`${RPCServer.name}`, () => {
@@ -497,7 +498,7 @@ describe(`${RPCServer.name}`, () => {
         yield* input;
       }
     }
-    const middleware = rpcUtils.defaultServerMiddlewareWrapper(() => {
+    const middleware = middlewareUtils.defaultServerMiddlewareWrapper(() => {
       return {
         forward: new TransformStream({
           transform: (chunk, controller) => {
@@ -542,7 +543,7 @@ describe(`${RPCServer.name}`, () => {
         yield* input;
       }
     }
-    const middleware = rpcUtils.defaultServerMiddlewareWrapper(() => {
+    const middleware = middlewareUtils.defaultServerMiddlewareWrapper(() => {
       return {
         forward: new TransformStream(),
         reverse: new TransformStream({
@@ -590,7 +591,7 @@ describe(`${RPCServer.name}`, () => {
           yield* input;
         }
       }
-      const middleware = rpcUtils.defaultServerMiddlewareWrapper(() => {
+      const middleware = middlewareUtils.defaultServerMiddlewareWrapper(() => {
         let first = true;
         let reverseController: TransformStreamDefaultController<JsonRpcResponse>;
         return {

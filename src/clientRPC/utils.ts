@@ -1,13 +1,8 @@
 import type { SessionToken } from '../sessions/types';
 import type KeyRing from '../keys/KeyRing';
 import type SessionManager from '../sessions/SessionManager';
-import type { Session } from '../sessions';
-import type { RPCResponseResult, RPCRequestParams } from './types';
-import type {
-  JsonRpcRequest,
-  JsonRpcResponse,
-  MiddlewareFactory,
-} from '../RPC/types';
+import type { RPCRequestParams } from './types';
+import type { JsonRpcRequest } from '../RPC/types';
 import type { ReadableWritablePair } from 'stream/web';
 import type Logger from '@matrixai/logger';
 import type { ConnectionInfo, Host, Port } from '../network/types';
@@ -16,10 +11,9 @@ import type { TLSSocket } from 'tls';
 import type { Server } from 'https';
 import type net from 'net';
 import type https from 'https';
-import { ReadableStream, TransformStream, WritableStream } from 'stream/web';
+import { ReadableStream, WritableStream } from 'stream/web';
 import WebSocket, { WebSocketServer } from 'ws';
 import * as clientErrors from '../client/errors';
-import * as utils from '../utils';
 import { promise } from '../utils';
 
 async function authenticate(
@@ -69,114 +63,6 @@ function decodeAuth(messageParams: RPCRequestParams) {
 function encodeAuthFromPassword(password: string): string {
   const encoded = Buffer.from(`:${password}`).toString('base64');
   return `Basic ${encoded}`;
-}
-
-function authenticationMiddlewareServer(
-  sessionManager: SessionManager,
-  keyRing: KeyRing,
-): MiddlewareFactory<
-  JsonRpcRequest<RPCRequestParams>,
-  JsonRpcRequest<RPCRequestParams>,
-  JsonRpcResponse<RPCResponseResult>,
-  JsonRpcResponse<RPCResponseResult>
-> {
-  return () => {
-    let forwardFirst = true;
-    let reverseController;
-    let outgoingToken: string | null = null;
-    return {
-      forward: new TransformStream<
-        JsonRpcRequest<RPCRequestParams>,
-        JsonRpcRequest<RPCRequestParams>
-      >({
-        transform: async (chunk, controller) => {
-          if (forwardFirst) {
-            try {
-              outgoingToken = await authenticate(
-                sessionManager,
-                keyRing,
-                chunk,
-              );
-            } catch (e) {
-              controller.terminate();
-              reverseController.terminate();
-              return;
-            }
-          }
-          forwardFirst = false;
-          controller.enqueue(chunk);
-        },
-      }),
-      reverse: new TransformStream({
-        start: (controller) => {
-          reverseController = controller;
-        },
-        transform: (chunk, controller) => {
-          // Add the outgoing metadata to the next message.
-          if (outgoingToken != null && 'result' in chunk) {
-            if (chunk.result.metadata == null) {
-              chunk.result.metadata = {
-                Authorization: '',
-              };
-            }
-            chunk.result.metadata.Authorization = outgoingToken;
-            outgoingToken = null;
-          }
-          controller.enqueue(chunk);
-        },
-      }),
-    };
-  };
-}
-
-function authenticationMiddlewareClient(
-  session: Session,
-): MiddlewareFactory<
-  JsonRpcRequest<RPCRequestParams>,
-  JsonRpcRequest<RPCRequestParams>,
-  JsonRpcResponse<RPCResponseResult>,
-  JsonRpcResponse<RPCResponseResult>
-> {
-  return () => {
-    let forwardFirst = true;
-    return {
-      forward: new TransformStream<
-        JsonRpcRequest<RPCRequestParams>,
-        JsonRpcRequest<RPCRequestParams>
-      >({
-        transform: async (chunk, controller) => {
-          if (forwardFirst) {
-            if (chunk.params == null) utils.never();
-            if (chunk.params.metadata?.Authorization == null) {
-              const token = await session.readToken();
-              if (token != null) {
-                if (chunk.params.metadata == null) {
-                  chunk.params.metadata = {
-                    Authorization: '',
-                  };
-                }
-                chunk.params.metadata.Authorization = `Bearer ${token}`;
-              }
-            }
-          }
-          forwardFirst = false;
-          controller.enqueue(chunk);
-        },
-      }),
-      reverse: new TransformStream<
-        JsonRpcResponse<RPCResponseResult>,
-        JsonRpcResponse<RPCResponseResult>
-      >({
-        transform: async (chunk, controller) => {
-          controller.enqueue(chunk);
-          if (!('result' in chunk)) return;
-          const token = decodeAuth(chunk.result);
-          if (token == null) return;
-          await session.writeToken(token);
-        },
-      }),
-    };
-  };
 }
 
 function readableFromWebSocket(
@@ -372,8 +258,6 @@ export {
   authenticate,
   decodeAuth,
   encodeAuthFromPassword,
-  authenticationMiddlewareServer,
-  authenticationMiddlewareClient,
   startConnection,
   handleConnection,
   createClientServer,

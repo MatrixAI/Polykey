@@ -29,6 +29,7 @@ import {
 } from './handlers';
 import * as rpcUtils from './utils';
 import * as rpcErrors from './errors';
+import * as middlewareUtils from './middleware';
 import { never } from '../utils/utils';
 import { sysexits } from '../errors';
 
@@ -37,7 +38,7 @@ interface RPCServer extends CreateDestroy {}
 class RPCServer {
   static async createRPCServer({
     manifest,
-    middleware = rpcUtils.defaultServerMiddlewareWrapper(),
+    middleware = middlewareUtils.defaultServerMiddlewareWrapper(),
     sensitive = false,
     logger = new Logger(this.name),
   }: {

@@ -1,5 +1,6 @@
 import type { Server } from 'https';
 import type { WebSocketServer } from 'ws';
+import type { RPCRequestParams, RPCResponseResult } from '@/clientRPC/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -11,16 +12,14 @@ import * as keysUtils from '@/keys/utils';
 import RPCServer from '@/RPC/RPCServer';
 import TaskManager from '@/tasks/TaskManager';
 import CertManager from '@/keys/CertManager';
-import {
-  agentUnlockCaller,
-  AgentUnlockHandler,
-} from '@/clientRPC/handlers/agentUnlock';
 import RPCClient from '@/RPC/RPCClient';
 import { Session, SessionManager } from '@/sessions';
 import * as clientRPCUtils from '@/clientRPC/utils';
 import * as authMiddleware from '@/clientRPC/authenticationMiddleware';
+import { UnaryCaller } from '@/RPC/callers';
+import { UnaryHandler } from '@/RPC/handlers';
 import * as middlewareUtils from '@/RPC/middleware';
-import * as testsUtils from '../../utils';
+import * as testsUtils from '../utils';
 
 describe('agentUnlock', () => {
   const logger = new Logger('agentUnlock test', LogLevel.WARN, [
@@ -92,11 +91,20 @@ describe('agentUnlock', () => {
       recursive: true,
     });
   });
-  test('unlock', async () => {
+  test('get status', async () => {
     // Setup
+    class EchoHandler extends UnaryHandler<
+      { logger: Logger },
+      RPCRequestParams,
+      RPCResponseResult
+    > {
+      public async handle(input: RPCRequestParams): Promise<RPCResponseResult> {
+        return input;
+      }
+    }
     const rpcServer = await RPCServer.createRPCServer({
       manifest: {
-        agentUnlock: new AgentUnlockHandler({ logger }),
+        agentUnlock: new EchoHandler({ logger }),
       },
       middleware: middlewareUtils.defaultServerMiddlewareWrapper(
         authMiddleware.authenticationMiddlewareServer(sessionManager, keyRing),
@@ -110,7 +118,7 @@ describe('agentUnlock', () => {
     );
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
-        agentUnlock: agentUnlockCaller,
+        agentUnlock: new UnaryCaller<RPCRequestParams, RPCResponseResult>(),
       },
       streamPairCreateCallback: async () => {
         return clientRPCUtils.startConnection(

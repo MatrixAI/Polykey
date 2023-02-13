@@ -15,6 +15,7 @@ import type {
 } from './types';
 import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
 import Logger from '@matrixai/logger';
+import * as middlewareUtils from './middleware';
 import * as rpcErrors from './errors';
 import * as rpcUtils from './utils';
 import {
@@ -30,7 +31,7 @@ class RPCClient<M extends ClientManifest> {
   static async createRPCClient<M extends ClientManifest>({
     manifest,
     streamPairCreateCallback,
-    middleware = rpcUtils.defaultClientMiddlewareWrapper(),
+    middleware = middlewareUtils.defaultClientMiddlewareWrapper(),
     logger = new Logger(this.name),
   }: {
     manifest: M;

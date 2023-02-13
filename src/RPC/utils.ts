@@ -1,67 +1,24 @@
 import type {
+  ClientManifest,
+  HandlerType,
   JsonRpcError,
   JsonRpcMessage,
-  JsonRpcRequestNotification,
+  JsonRpcRequest,
   JsonRpcRequestMessage,
+  JsonRpcRequestNotification,
+  JsonRpcResponse,
   JsonRpcResponseError,
   JsonRpcResponseResult,
-  JsonRpcRequest,
-  JsonRpcResponse,
-  MiddlewareFactory,
-  HandlerType,
-  ClientManifest,
 } from 'RPC/types';
 import type { JSONValue } from '../types';
 import { TransformStream } from 'stream/web';
 import { AbstractError } from '@matrixai/errors';
 import * as rpcErrors from './errors';
 import * as utils from '../utils';
+import { promise } from '../utils';
 import * as validationErrors from '../validation/errors';
 import * as errors from '../errors';
-import { promise } from '../utils';
 const jsonStreamParsers = require('@streamparser/json');
-
-function binaryToJsonMessageStream<T extends JsonRpcMessage>(
-  messageParser: (message: unknown) => T,
-  byteLimit: number = 1024 * 1024,
-  firstMessage?: T,
-) {
-  const parser = new jsonStreamParsers.JSONParser({
-    separator: '',
-    paths: ['$'],
-  });
-  let bytesWritten: number = 0;
-
-  return new TransformStream<Uint8Array, T>({
-    start: (controller) => {
-      if (firstMessage != null) controller.enqueue(firstMessage);
-      parser.onValue = (value) => {
-        const jsonMessage = messageParser(value.value);
-        controller.enqueue(jsonMessage);
-        bytesWritten = 0;
-      };
-    },
-    transform: (chunk) => {
-      try {
-        bytesWritten += chunk.byteLength;
-        parser.write(chunk);
-      } catch (e) {
-        throw new rpcErrors.ErrorRpcParse(undefined, { cause: e });
-      }
-      if (bytesWritten > byteLimit) {
-        throw new rpcErrors.ErrorRpcMessageLength();
-      }
-    },
-  });
-}
-
-function jsonMessageToBinaryStream() {
-  return new TransformStream<JsonRpcMessage, Uint8Array>({
-    transform: (chunk, controller) => {
-      controller.enqueue(Buffer.from(JSON.stringify(chunk)));
-    },
-  });
-}
 
 function parseJsonRpcRequest<T extends JSONValue>(
   message: unknown,
@@ -382,12 +339,11 @@ function reviver(key: string, value: any): any {
     // Root key will be ''
     // Reaching here means the root JSON value is not a valid exception
     // Therefore ErrorPolykeyUnknown is only ever returned at the top-level
-    const error = new errors.ErrorPolykeyUnknown('Unknown error JSON', {
+    return new errors.ErrorPolykeyUnknown('Unknown error JSON', {
       data: {
         json: value,
       },
     });
-    return error;
   } else {
     return value;
   }
@@ -427,8 +383,7 @@ function clientOutputTransformStream<O extends JSONValue>() {
 }
 
 function isReturnableError(e: Error): boolean {
-  if (e instanceof rpcErrors.ErrorRpcNoMessageError) return false;
-  return true;
+  return !(e instanceof rpcErrors.ErrorRpcNoMessageError);
 }
 
 class RPCErrorEvent extends Event {
@@ -446,61 +401,6 @@ class RPCErrorEvent extends Event {
     super('error', options);
     this.detail = options.detail;
   }
-}
-
-const controllerTransformationFactory = <T>() => {
-  const controllerProm = promise<TransformStreamDefaultController<T>>();
-
-  class ControllerTransform<T> implements Transformer<T, T> {
-    start: TransformerStartCallback<T> = async (controller) => {
-      // @ts-ignore: type mismatch oddity
-      controllerProm.resolveP(controller);
-    };
-
-    transform: TransformerTransformCallback<T, T> = async (
-      chunk,
-      controller,
-    ) => {
-      controller.enqueue(chunk);
-    };
-  }
-
-  class ControllerTransformStream<T> extends TransformStream<T, T> {
-    constructor() {
-      super(new ControllerTransform());
-    }
-  }
-  return {
-    controllerP: controllerProm.p,
-    controllerTransformStream: new ControllerTransformStream<T>(),
-  };
-};
-
-function queueMergingTransformStream<T>(messageQueue: Array<T>) {
-  return new TransformStream<T, T>({
-    start: (controller) => {
-      while (true) {
-        const value = messageQueue.shift();
-        if (value == null) break;
-        controller.enqueue(value);
-      }
-    },
-    transform: (chunk, controller) => {
-      while (true) {
-        const value = messageQueue.shift();
-        if (value == null) break;
-        controller.enqueue(value);
-      }
-      controller.enqueue(chunk);
-    },
-    flush: (controller) => {
-      while (true) {
-        const value = messageQueue.shift();
-        if (value == null) break;
-        controller.enqueue(value);
-      }
-    },
-  });
 }
 
 function extractFirstMessageTransform<T extends JsonRpcMessage>(
@@ -574,106 +474,7 @@ function getHandlerTypes(
   return out;
 }
 
-const defaultMiddleware: MiddlewareFactory<
-  JsonRpcRequest,
-  JsonRpcRequest,
-  JsonRpcResponse,
-  JsonRpcResponse
-> = () => {
-  return {
-    forward: new TransformStream(),
-    reverse: new TransformStream(),
-  };
-};
-
-const defaultServerMiddlewareWrapper = (
-  middleware: MiddlewareFactory<
-    JsonRpcRequest,
-    JsonRpcRequest,
-    JsonRpcResponse,
-    JsonRpcResponse
-  > = defaultMiddleware,
-) => {
-  return (header: JsonRpcRequest) => {
-    const inputTransformStream = binaryToJsonMessageStream(
-      parseJsonRpcRequest,
-      undefined,
-      header,
-    );
-    const outputTransformStream = new TransformStream<
-      JsonRpcResponseResult,
-      JsonRpcResponseResult
-    >();
-
-    const middleMiddleware = middleware(header);
-
-    const forwardReadable = inputTransformStream.readable.pipeThrough(
-      middleMiddleware.forward,
-    ); // Usual middleware here
-    const reverseReadable = outputTransformStream.readable
-      .pipeThrough(middleMiddleware.reverse) // Usual middleware here
-      .pipeThrough(jsonMessageToBinaryStream());
-
-    return {
-      forward: {
-        readable: forwardReadable,
-        writable: inputTransformStream.writable,
-      },
-      reverse: {
-        readable: reverseReadable,
-        writable: outputTransformStream.writable,
-      },
-    };
-  };
-};
-
-const defaultClientMiddlewareWrapper = (
-  middleware: MiddlewareFactory<
-    JsonRpcRequest,
-    JsonRpcRequest,
-    JsonRpcResponse,
-    JsonRpcResponse
-  > = defaultMiddleware,
-): MiddlewareFactory<
-  Uint8Array,
-  JsonRpcRequest,
-  JsonRpcResponse,
-  Uint8Array
-> => {
-  return () => {
-    const outputTransformStream = binaryToJsonMessageStream(
-      parseJsonRpcResponse,
-      undefined,
-    );
-    const inputTransformStream = new TransformStream<
-      JsonRpcRequest,
-      JsonRpcRequest
-    >();
-
-    const middleMiddleware = middleware();
-    const forwardReadable = inputTransformStream.readable
-      .pipeThrough(middleMiddleware.forward) // Usual middleware here
-      .pipeThrough(jsonMessageToBinaryStream());
-    const reverseReadable = outputTransformStream.readable.pipeThrough(
-      middleMiddleware.reverse,
-    ); // Usual middleware here
-
-    return {
-      forward: {
-        readable: forwardReadable,
-        writable: inputTransformStream.writable,
-      },
-      reverse: {
-        readable: reverseReadable,
-        writable: outputTransformStream.writable,
-      },
-    };
-  };
-};
-
 export {
-  binaryToJsonMessageStream,
-  jsonMessageToBinaryStream,
   parseJsonRpcRequest,
   parseJsonRpcRequestMessage,
   parseJsonRpcRequestNotification,
@@ -687,11 +488,6 @@ export {
   clientOutputTransformStream,
   isReturnableError,
   RPCErrorEvent,
-  controllerTransformationFactory,
-  queueMergingTransformStream,
   extractFirstMessageTransform,
   getHandlerTypes,
-  defaultMiddleware,
-  defaultServerMiddlewareWrapper,
-  defaultClientMiddlewareWrapper,
 };

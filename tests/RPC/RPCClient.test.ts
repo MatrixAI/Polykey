@@ -18,7 +18,7 @@ import {
   ServerCaller,
   UnaryCaller,
 } from '@/RPC/callers';
-import * as rpcUtils from '@/RPC/utils';
+import * as middlewareUtils from '@/RPC/middleware';
 import * as rpcTestUtils from './utils';
 
 describe(`${RPCClient.name}`, () => {
@@ -383,7 +383,7 @@ describe(`${RPCClient.name}`, () => {
       const rpcClient = await RPCClient.createRPCClient({
         manifest: {},
         streamPairCreateCallback: async () => streamPair,
-        middleware: rpcUtils.defaultClientMiddlewareWrapper(() => {
+        middleware: middlewareUtils.defaultClientMiddlewareWrapper(() => {
           return {
             forward: new TransformStream<JsonRpcRequest, JsonRpcRequest>({
               transform: (chunk, controller) => {
@@ -447,7 +447,7 @@ describe(`${RPCClient.name}`, () => {
       const rpcClient = await RPCClient.createRPCClient({
         manifest: {},
         streamPairCreateCallback: async () => streamPair,
-        middleware: rpcUtils.defaultClientMiddlewareWrapper(() => {
+        middleware: middlewareUtils.defaultClientMiddlewareWrapper(() => {
           return {
             forward: new TransformStream(),
             reverse: new TransformStream<JsonRpcResponse, JsonRpcResponse>({
