@@ -156,7 +156,7 @@ type UnaryCallerImplementation<
 type ServerCallerImplementation<
   I extends JSONValue = JSONValue,
   O extends JSONValue = JSONValue,
-> = (parameters: I) => Promise<AsyncIterable<O>>;
+> = (parameters: I) => Promise<ReadableStream<O>>;
 
 type ClientCallerImplementation<
   I extends JSONValue = JSONValue,
@@ -166,17 +166,10 @@ type ClientCallerImplementation<
 type DuplexCallerImplementation<
   I extends JSONValue = JSONValue,
   O extends JSONValue = JSONValue,
-> = (f: (output: AsyncIterable<O>) => AsyncIterable<I>) => Promise<void>;
-
-// Raw callers
-
-type RawDuplexCallerImplementation<
-  I extends JSONValue = JSONValue,
-  O extends JSONValue = JSONValue,
 > = () => Promise<ReadableWritablePair<O, I>>;
 
 type RawCallerImplementation = (
-  params: JSONValue,
+  headerParams: JSONValue,
 ) => Promise<ReadableWritablePair<Uint8Array, Uint8Array>>;
 
 type ConvertDuplexCaller<T> = T extends DuplexCaller<infer I, infer O>
@@ -203,14 +196,6 @@ type ConvertCaller<T extends Caller> = T extends DuplexCaller
   ? ConvertClientCaller<T>
   : T extends UnaryCaller
   ? ConvertUnaryCaller<T>
-  : never;
-
-type ConvertRawDuplexStreamHandler<T> = T extends DuplexCaller<infer I, infer O>
-  ? RawDuplexCallerImplementation<I, O>
-  : never;
-
-type ConvertRawCaller<T> = T extends DuplexCaller
-  ? ConvertRawDuplexStreamHandler<T>
   : T extends RawCaller
   ? RawCallerImplementation
   : never;
@@ -222,10 +207,6 @@ type HandlerType = 'DUPLEX' | 'SERVER' | 'CLIENT' | 'UNARY' | 'RAW';
 
 type MapCallers<T extends ClientManifest> = {
   [K in keyof T]: ConvertCaller<T[K]>;
-};
-
-type MapRawCallers<T extends ClientManifest> = {
-  [K in keyof T]: ConvertRawCaller<T[K]>;
 };
 
 export type {
@@ -250,5 +231,4 @@ export type {
   ClientManifest,
   HandlerType,
   MapCallers,
-  MapRawCallers,
 };

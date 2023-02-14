@@ -63,7 +63,7 @@ describe('RPC', () => {
         logger,
       });
 
-      const callerInterface = await rpcClient.rawMethods.testMethod({
+      const callerInterface = await rpcClient.methods.testMethod({
         hello: 'world',
       });
       const writer = callerInterface.writable.getWriter();
@@ -116,7 +116,7 @@ describe('RPC', () => {
         logger,
       });
 
-      const callerInterface = await rpcClient.rawMethods.testMethod();
+      const callerInterface = await rpcClient.methods.testMethod();
       const writer = callerInterface.writable.getWriter();
       const reader = callerInterface.readable.getReader();
       for (const value of values) {

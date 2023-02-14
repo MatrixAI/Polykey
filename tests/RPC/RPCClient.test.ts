@@ -98,12 +98,15 @@ describe(`${RPCClient.name}`, () => {
       streamPairCreateCallback: async () => streamPair,
       logger,
     });
-    await rpcClient.duplexStreamCaller<JSONValue, JSONValue>(
-      methodName,
-      async function* (output) {
-        yield* output;
-      },
-    );
+    const callerInterface = await rpcClient.duplexStreamCaller<
+      JSONValue,
+      JSONValue
+    >(methodName);
+    const writable = callerInterface.writable.getWriter();
+    for await (const value of callerInterface.readable) {
+      await writable.write(value);
+    }
+    await writable.close();
 
     const expectedMessages: Array<JsonRpcRequestMessage> = messages.map((v) => {
       const request: JsonRpcRequestMessage = {
@@ -252,14 +255,16 @@ describe(`${RPCClient.name}`, () => {
         streamPairCreateCallback: async () => streamPair,
         logger,
       });
-      const callProm = rpcClient.duplexStreamCaller<JSONValue, JSONValue>(
-        methodName,
-        async function* (output) {
-          for await (const _ of output) {
-            // No touch, just consume
-          }
-        },
-      );
+      const callerInterface = await rpcClient.duplexStreamCaller<
+        JSONValue,
+        JSONValue
+      >(methodName);
+      await callerInterface.writable.close();
+      const callProm = (async () => {
+        for await (const _ of callerInterface.readable) {
+          // Only consume
+        }
+      })();
       await expect(callProm).rejects.toThrow(rpcErrors.ErrorRpcRemoteError);
       await outputResult;
       await rpcClient.destroy();
@@ -287,14 +292,16 @@ describe(`${RPCClient.name}`, () => {
         streamPairCreateCallback: async () => streamPair,
         logger,
       });
-      const callProm = rpcClient.duplexStreamCaller<JSONValue, JSONValue>(
-        methodName,
-        async function* (output) {
-          for await (const _ of output) {
-            // No touch, just consume
-          }
-        },
-      );
+      const callerInterface = await rpcClient.duplexStreamCaller<
+        JSONValue,
+        JSONValue
+      >(methodName);
+      await callerInterface.writable.close();
+      const callProm = (async () => {
+        for await (const _ of callerInterface.readable) {
+          // Only consume
+        }
+      })();
       await expect(callProm).rejects.toThrow(rpcErrors.ErrorRpcRemoteError);
       await outputResult;
       await rpcClient.destroy();
@@ -325,47 +332,18 @@ describe(`${RPCClient.name}`, () => {
         streamPairCreateCallback: async () => streamPair,
         logger,
       });
-      const callProm = rpcClient.duplexStreamCaller<JSONValue, JSONValue>(
-        methodName,
-        async function* (output) {
-          for await (const _ of output) {
-            // No touch, just consume
-          }
-        },
-      );
+      const callerInterface = await rpcClient.duplexStreamCaller<
+        JSONValue,
+        JSONValue
+      >(methodName);
+      await callerInterface.writable.close();
+      const callProm = (async () => {
+        for await (const _ of callerInterface.readable) {
+          // Only consume
+        }
+      })();
       await expect(callProm).rejects.toThrow(rpcErrors.ErrorRpcRemoteError);
       await outputResult;
-      await rpcClient.destroy();
-    },
-  );
-  testProp(
-    'rawDuplexStreamCaller',
-    [fc.array(rpcTestUtils.jsonRpcResponseResultArb(), { minLength: 1 })],
-    async (messages) => {
-      const inputStream = rpcTestUtils.messagesToReadableStream(messages);
-      const [outputResult, outputStream] =
-        rpcTestUtils.streamToArray<Uint8Array>();
-      const streamPair: ReadableWritablePair = {
-        readable: inputStream,
-        writable: outputStream,
-      };
-      const rpcClient = await RPCClient.createRPCClient({
-        manifest: {},
-        streamPairCreateCallback: async () => streamPair,
-        logger,
-      });
-      let count = 0;
-      const callerInterface = await rpcClient.rawDuplexStreamCaller(methodName);
-      const writer = callerInterface.writable.getWriter();
-      for await (const val of callerInterface.readable) {
-        count += 1;
-        await writer.write(val);
-      }
-      await writer.close();
-      const result = await outputResult;
-      // We're just checking that it's consuming the messages as expected
-      expect(result.length).toEqual(messages.length);
-      expect(count).toEqual(messages.length);
       await rpcClient.destroy();
     },
   );
@@ -399,7 +377,7 @@ describe(`${RPCClient.name}`, () => {
         logger,
       });
 
-      const callerInterface = await rpcClient.rawDuplexStreamCaller<
+      const callerInterface = await rpcClient.duplexStreamCaller<
         JSONValue,
         JSONValue
       >(methodName);
@@ -463,7 +441,7 @@ describe(`${RPCClient.name}`, () => {
         logger,
       });
 
-      const callerInterface = await rpcClient.rawDuplexStreamCaller<
+      const callerInterface = await rpcClient.duplexStreamCaller<
         JSONValue,
         JSONValue
       >(methodName);
@@ -480,58 +458,6 @@ describe(`${RPCClient.name}`, () => {
         await writer.write(value);
       }
       await outputResult;
-      await rpcClient.destroy();
-    },
-  );
-  testProp(
-    'manifest raw duplex call',
-    [
-      fc.array(rpcTestUtils.jsonRpcResponseResultArb(fc.string()), {
-        minLength: 5,
-      }),
-    ],
-    async (messages) => {
-      const inputStream = rpcTestUtils.messagesToReadableStream(messages);
-      const [outputResult, outputStream] = rpcTestUtils.streamToArray<string>();
-      const streamPair: ReadableWritablePair = {
-        readable: inputStream,
-        writable: outputStream,
-      };
-      const rpcClient = await RPCClient.createRPCClient({
-        manifest: {
-          duplex: new DuplexCaller<string, string>(),
-        },
-        streamPairCreateCallback: async () => streamPair,
-        logger,
-      });
-      const callerInterface = await rpcClient.rawMethods.duplex();
-      const reader = callerInterface.readable.getReader();
-      const writer = callerInterface.writable.getWriter();
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) {
-          // We have to end the writer otherwise the stream never closes
-          await writer.close();
-          break;
-        }
-        await writer.write(value);
-      }
-      const expectedMessages: Array<JsonRpcRequestMessage> = messages.map(
-        (v) => {
-          const request: JsonRpcRequestMessage = {
-            jsonrpc: '2.0',
-            method: 'duplex',
-            id: null,
-            ...(v.result === undefined ? {} : { params: v.result }),
-          };
-          return request;
-        },
-      );
-      const outputMessages = (await outputResult).map((v) =>
-        JSON.parse(v.toString()),
-      );
-      expect(outputMessages).toStrictEqual(expectedMessages);
-
       await rpcClient.destroy();
     },
   );
@@ -643,7 +569,7 @@ describe(`${RPCClient.name}`, () => {
     },
   );
   testProp(
-    'manifest raw duplex caller',
+    'manifest raw caller',
     [
       rpcTestUtils.safeJsonValueArb,
       rpcTestUtils.rawDataArb,
@@ -672,7 +598,7 @@ describe(`${RPCClient.name}`, () => {
         streamPairCreateCallback: async () => streamPair,
         logger,
       });
-      const callerInterface = await rpcClient.rawMethods.raw(headerParams);
+      const callerInterface = await rpcClient.methods.raw(headerParams);
       await callerInterface.readable.pipeTo(outputWritableStream);
       const writer = callerInterface.writable.getWriter();
       for (const inputDatum of inputData) {
@@ -716,12 +642,13 @@ describe(`${RPCClient.name}`, () => {
         logger,
       });
       let count = 0;
-      await rpcClient.methods.duplex(async function* (output) {
-        for await (const value of output) {
-          count += 1;
-          yield value;
-        }
-      });
+      const callerInterface = await rpcClient.methods.duplex();
+      const writer = callerInterface.writable.getWriter();
+      for await (const value of callerInterface.readable) {
+        count += 1;
+        await writer.write(value);
+      }
+      await writer.close();
       const result = await outputResult;
       // We're just checking that it's consuming the messages as expected
       expect(result.length).toEqual(messages.length);
