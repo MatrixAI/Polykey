@@ -191,7 +191,6 @@ class CommandStart extends CommandPolykey {
         const messageIn: AgentChildProcessInput = {
           logLevel: this.logger.getEffectiveLevel(),
           format: options.format,
-          workers: options.workers,
           agentConfig,
         };
         agentProcess.send(messageIn, (e) => {

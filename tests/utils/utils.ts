@@ -29,7 +29,7 @@ async function setupTestAgent(logger: Logger) {
       '--proxy-host',
       '127.0.0.1',
       '--workers',
-      '0',
+      'none',
       '--format',
       'json',
       '--verbose',

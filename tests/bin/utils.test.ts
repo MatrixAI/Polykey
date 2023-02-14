@@ -141,8 +141,6 @@ describe('bin/utils', () => {
       ).toBe(`${standardError.name}: ${standardError.message}\n`);
       expect(binUtils.outputFormatter({ type: 'error', data: pkError })).toBe(
         `${pkError.name}: ${pkError.description} - ${pkError.message}\n` +
-          `  exitCode\t${pkError.exitCode}\n` +
-          `  timestamp\t${timestamp.toString()}\n` +
           `  data\t${JSON.stringify(data)}\n`,
       );
       expect(
@@ -155,8 +153,6 @@ describe('bin/utils', () => {
           `  port\t${port}\n` +
           `  timestamp\t${timestamp.toString()}\n` +
           `  cause: ${remoteError.cause.name}: ${remoteError.cause.description} - ${remoteError.cause.message}\n` +
-          `    exitCode\t${pkError.exitCode}\n` +
-          `    timestamp\t${timestamp.toString()}\n` +
           `    data\t${JSON.stringify(data)}\n`,
       );
       expect(
@@ -175,8 +171,6 @@ describe('bin/utils', () => {
           `    port\t${port}\n` +
           `    timestamp\t${timestamp.toString()}\n` +
           `    cause: ${twoRemoteErrors.cause.cause.name}: ${twoRemoteErrors.cause.cause.description} - ${twoRemoteErrors.cause.cause.message}\n` +
-          `      exitCode\t${pkError.exitCode}\n` +
-          `      timestamp\t${timestamp.toString()}\n` +
           `      cause: ${standardError.name}: ${standardError.message}\n`,
       );
       // JSON

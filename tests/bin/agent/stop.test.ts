@@ -37,7 +37,7 @@ describe('stop', () => {
           '--proxy-host',
           '127.0.0.1',
           '--workers',
-          '0',
+          'none',
         ],
         {
           env: {
@@ -103,7 +103,7 @@ describe('stop', () => {
           '--proxy-host',
           '127.0.0.1',
           '--workers',
-          '0',
+          'none',
         ],
         {
           env: {
@@ -201,7 +201,7 @@ describe('stop', () => {
           '--proxy-host',
           '127.0.0.1',
           '--workers',
-          '0',
+          'none',
           '--verbose',
         ],
         {
@@ -255,7 +255,7 @@ describe('stop', () => {
           '--proxy-host',
           '127.0.0.1',
           '--workers',
-          '0',
+          'none',
         ],
         {
           env: {

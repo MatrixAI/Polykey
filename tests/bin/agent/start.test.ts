@@ -47,7 +47,7 @@ describe('start', () => {
           '--proxy-host',
           '127.0.0.1',
           '--workers',
-          '0',
+          'none',
           '--verbose',
           '--format',
           'json',
@@ -124,7 +124,7 @@ describe('start', () => {
           '--background-err-file',
           path.join(dataDir, 'err.log'),
           '--workers',
-          '0',
+          'none',
           '--verbose',
           '--format',
           'json',
@@ -223,7 +223,7 @@ describe('start', () => {
             '--proxy-host',
             '127.0.0.1',
             '--workers',
-            '0',
+            'none',
             '--verbose',
             '--format',
             'json',
@@ -249,7 +249,7 @@ describe('start', () => {
             '--proxy-host',
             '127.0.0.1',
             '--workers',
-            '0',
+            'none',
             '--verbose',
             '--format',
             'json',
@@ -323,7 +323,7 @@ describe('start', () => {
             '--proxy-host',
             '127.0.0.1',
             '--workers',
-            '0',
+            'none',
             '--verbose',
             '--format',
             'json',
@@ -385,7 +385,6 @@ describe('start', () => {
           errorStatusLocked,
         ]);
         bootstrapProcess.kill('SIGTERM');
-      } else if (index === 1) {
         testUtils.expectProcessError(exitCode!, stdErrLine2, [
           errorStatusLocked,
         ]);
@@ -409,7 +408,7 @@ describe('start', () => {
           '--proxy-host',
           '127.0.0.1',
           '--workers',
-          '0',
+          'none',
           '--verbose',
         ],
         {
@@ -439,7 +438,7 @@ describe('start', () => {
           '--proxy-host',
           '127.0.0.1',
           '--workers',
-          '0',
+          'none',
           '--verbose',
         ],
         {
@@ -487,7 +486,7 @@ describe('start', () => {
           '--proxy-host',
           '127.0.0.1',
           '--workers',
-          '0',
+          'none',
           '--verbose',
         ],
         {
@@ -528,7 +527,7 @@ describe('start', () => {
           '--proxy-host',
           '127.0.0.1',
           '--workers',
-          '0',
+          'none',
           '--fresh',
           '--verbose',
           '--format',
@@ -615,7 +614,7 @@ describe('start', () => {
           '--proxy-host',
           '127.0.0.1',
           '--workers',
-          '0',
+          'none',
           '--verbose',
           '--format',
           'json',
@@ -655,7 +654,7 @@ describe('start', () => {
           '--proxy-host',
           '127.0.0.1',
           '--workers',
-          '0',
+          'none',
           '--verbose',
         ],
         {
@@ -678,7 +677,7 @@ describe('start', () => {
       await testUtils.processExit(agentProcess2);
       // Check that the password has changed
       const agentProcess3 = await testUtils.pkSpawn(
-        ['agent', 'start', '--workers', '0', '--verbose'],
+        ['agent', 'start', '--workers', 'none', '--verbose'],
         {
           env: {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -712,7 +711,7 @@ describe('start', () => {
           '--proxy-host',
           '127.0.0.1',
           '--workers',
-          '0',
+          'none',
           '--verbose',
         ],
         {
@@ -763,7 +762,7 @@ describe('start', () => {
           'agent',
           'start',
           '--workers',
-          '0',
+          'none',
           '--client-host',
           clientHost,
           '--client-port',
@@ -833,7 +832,7 @@ describe('start', () => {
           'agent',
           'start',
           '--workers',
-          '0',
+          'none',
           '--verbose',
           '--private-key-file',
           privateKeyPath,
@@ -931,7 +930,7 @@ describe('start', () => {
             '--proxy-host',
             '127.0.0.1',
             '--workers',
-            '0',
+            'none',
             '--seed-nodes',
             `${seedNodeId1}@${seedNodeHost1}:${seedNodePort1};<defaults>`,
             '--network',
@@ -998,7 +997,7 @@ describe('start', () => {
             '--proxy-host',
             '127.0.0.1',
             '--workers',
-            '0',
+            'none',
             '--verbose',
           ],
           {

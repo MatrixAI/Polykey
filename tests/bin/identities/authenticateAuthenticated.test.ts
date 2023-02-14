@@ -140,22 +140,10 @@ describe('authenticate/authenticated', () => {
         },
       ));
       expect(exitCode).toBe(sysexits.USAGE);
-      // Invalid identity
-      ({ exitCode } = await testUtils.pkStdio(
-        ['identities', 'authenticate', testToken.providerId, ''],
-        {
-          env: {
-            PK_NODE_PATH: nodePath,
-            PK_PASSWORD: password,
-          },
-          cwd: dataDir,
-        },
-      ));
-      expect(exitCode).toBe(sysexits.USAGE);
       // Authenticated
       // Invalid provider
       ({ exitCode } = await testUtils.pkStdio(
-        ['identities', 'authenticate', '--provider-id', ''],
+        ['identities', 'authenticate', ''],
         {
           env: {
             PK_NODE_PATH: nodePath,

@@ -38,7 +38,7 @@ describe('polykey', () => {
         '--proxy-host',
         '127.0.0.1',
         '--workers',
-        '0',
+        'none',
         '--verbose',
         '--format',
         'json',

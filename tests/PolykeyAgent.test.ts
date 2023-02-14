@@ -63,6 +63,7 @@ describe('PolykeyAgent', () => {
         passwordMemLimit: keysUtils.passwordMemLimits.min,
         strictMemoryLock: false,
       },
+      workers: 0,
     });
     let nodePathContents = await fs.promises.readdir(nodePath);
     expect(nodePathContents).toContain(config.defaults.statusBase);
