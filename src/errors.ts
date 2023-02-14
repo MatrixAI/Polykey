@@ -80,3 +80,4 @@ export * from './schema/errors';
 export * from './status/errors';
 export * from './validation/errors';
 export * from './utils/errors';
+export * from './RPC/errors';
