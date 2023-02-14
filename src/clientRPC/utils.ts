@@ -146,7 +146,7 @@ function writeableFromWebSocket(
       const wait = promise<void>();
       ws.send(chunk, (e) => {
         if (e != null) {
-          logger.error(`error: ${e}`);
+          // Logger.error(`${e}`);
           controller.error(e);
         }
         wait.resolveP();
@@ -186,9 +186,10 @@ function startConnection(
     // Ca: tlsConfig.certChainPem
   });
   ws.once('close', () => logger.info('CLOSED'));
-  // Ws.once('upgrade', () => {
-  //   // Const tlsSocket = request.socket as TLSSocket;
-  //   // Console.log(tlsSocket.getPeerCertificate());
+  // Ws.once('upgrade', (request) => {
+  //   const tlsSocket = request.socket as TLSSocket;
+  //   const peerCert = tlsSocket.getPeerCertificate();
+  //   console.log(peerCert.issuer.CN);
   //   logger.info('Test early cancellation');
   //   // Request.destroy(Error('some error'));
   //   // tlsSocket.destroy(Error('some error'));
