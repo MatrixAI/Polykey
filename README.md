@@ -7,11 +7,13 @@ Polykey is an open-source decentralized secrets management and sharing system. I
 
 * Decentralized Encrypted Storage - No storage of secrets on third parties, secrets are stored on your device and synchronised point-to-point between Polykey nodes.
 * Secure Peer-to-Peer Communications - Polykey bootstraps TLS keys by federating trusted social identities (e.g. GitHub).
-* Secure Computational Workflows - Use Polykey to share secrets (passwords, keys, tokens and certificates) with people, between teams, and across machine infrastructure.
+* Secure Computational Workflows - Share secrets (passwords, keys, tokens and certificates) with people, between teams, and across machine infrastructure.
 
-![CLI Demo](./images/cli_demo.gif)
+<p align="center">
+  <img src="./images/cli_demo.gif" alt="Polykey CLI Demo"/>
+</p>
 
-Polykey was spun out of work on a cloud orchestration platform. However it now synthesizes a unified workflow between interactive password management and infrastructure key management.
+Polykey synthesizes a unified workflow between interactive password management and infrastructure key management.
 
 You have complete end-to-end control and privacy over your secrets, with no third-party data collection.
 
