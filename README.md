@@ -3,32 +3,36 @@
 staging:[![pipeline status](https://gitlab.com/MatrixAI/open-source/Polykey/badges/staging/pipeline.svg)](https://gitlab.com/MatrixAI/open-source/Polykey/commits/staging)
 master:[![pipeline status](https://gitlab.com/MatrixAI/open-source/Polykey/badges/master/pipeline.svg)](https://gitlab.com/MatrixAI/open-source/Polykey/commits/master)
 
-Secrets management for today's decentralized world of people, services and devices.
+Polykey is an open-source decentralized secrets management and sharing system. It is made for today's decentralized world of people, services and devices.
 
-Use Polykey to share secrets (passwords, keys, tokens and certificates) with people, between teams, and across machine infrastructure
+* Decentralized Encrypted Storage - No storage of secrets on third parties, secrets are stored on your device and synchronised point-to-point between Polykey nodes.
+* Secure Peer-to-Peer Communications - Polykey bootstraps TLS keys by federating trusted social identities (e.g. GitHub).
+* Secure Computational Workflows - Use Polykey to share secrets (passwords, keys, tokens and certificates) with people, between teams, and across machine infrastructure.
 
-Polykey is an open-source peer to peer decentralized application for secrets management. It is intended to be used by both humans and machines. It synthesizes a unified workflow between interactive password management and infrastructure key management.
+Polykey was spun out of work on a cloud orchestration platform. However it now synthesizes a unified workflow between interactive password management and infrastructure key management.
 
 You have complete end-to-end control and privacy over your secrets, with no third-party data collection.
 
-Polykey runs on distributed keynodes referred to as "nodes". Any computing system can run multiple keynodes. Each node manages one or more vaults which are encrypted filesystems with automatic version history. Vaults are shared between the nodes.
+Polykey runs on distributed keynodes referred to as "nodes". Any computing system can run multiple keynodes. Each node manages one or more vaults which are encrypted filesystems with automatic version history. Vaults can be shared between the nodes.
 
-This is the core library for running PolyKey. It provides a CLI `polykey` or `pk` for interacting with the PolyKey system.
+This repository is the core library for Polykey.
 
-For tutorials, how-to guides, reference and theory, see the [wiki](https://github.com/MatrixAI/Polykey/wiki).
+The Polykey project is split up into these main repositories:
 
-* [Polykey](https://github.com/MatrixAI/Polykey) - Polykey core library
-* ~[Polykey-CLI](https://github.com/MatrixAI/Polykey-CLI) - CLI of Polykey~ - TBD
+* [Polykey](https://github.com/MatrixAI/Polykey) - Polykey Core Library
+* [Polykey-CLI](https://github.com/MatrixAI/Polykey-CLI) - CLI of Polykey
 * [Polykey-Desktop](https://github.com/MatrixAI/Polykey-Desktop) - Polykey Desktop (Windows, Mac, Linux) application
 * [Polykey-Mobile](https://github.com/MatrixAI/Polykey-Mobile) - Polykey Mobile (iOS & Android) Application
 
+At the moment, the CLI is embedded in this Polykey Core Library repository. This means it provides the CLI `polykey` or `pk` for interacting with the Polykey system. In the future these will be moved to [Polykey-CLI](https://github.com/MatrixAI/Polykey-CLI).
+
 Have a bug or a feature-request? Please submit it the issues of the relevant subproject above.
 
-Have a question? Join our discussion board: https://github.com/MatrixAI/Polykey/discussions
+For tutorials, how-to guides, reference and theory, see the [docs](https://polykey.io/docs).
 
-Want to learn the theory of secret management? Or how to start using Polykey? Check out our wiki: https://github.com/MatrixAI/Polykey/wiki
+Have a question? Join our [discussion board](https://github.com/MatrixAI/Polykey/discussions).
 
-See our website https://polykey.io for more details!
+Our main website is https://polykey.io
 
 ## Installation
 
