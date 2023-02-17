@@ -1,5 +1,6 @@
 import type { ReadableWritablePair } from 'stream/web';
 import type { TLSConfig } from '@/network/types';
+import type { WebSocket } from 'uWebSockets.js';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -8,6 +9,7 @@ import { testProp, fc } from '@fast-check/jest';
 import { KeyRing } from '@/keys/index';
 import ClientServer from '@/clientRPC/ClientServer';
 import * as clientRPCUtils from '@/clientRPC/utils';
+import { promise } from '@/utils';
 import * as testsUtils from '../utils';
 
 describe('ClientServer', () => {
@@ -16,7 +18,7 @@ describe('ClientServer', () => {
       formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
     ),
   ]);
-  const loudLogger = new Logger('websocket test', LogLevel.WARN, [
+  const loudLogger = new Logger('websocket test', LogLevel.DEBUG, [
     new StreamHandler(
       formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
     ),
@@ -53,7 +55,7 @@ describe('ClientServer', () => {
         void streamPair.readable
           .pipeTo(streamPair.writable)
           .catch(() => {})
-          .finally(() => logger.info('STREAM HANDLING ENDED'));
+          .finally(() => loudLogger.info('STREAM HANDLING ENDED'));
       },
       basePath: dataDir,
       tlsConfig,
@@ -289,5 +291,123 @@ describe('ClientServer', () => {
       // No touch, only consume
     }
     logger.info('ending');
+  });
+  test('Writable backpressure', async () => {
+    let context: { writeBackpressure: boolean } | undefined;
+    const backpressure = promise<void>();
+    const resumeWriting = promise<void>();
+    clientServer = await ClientServer.createWSServer({
+      connectionCallback: (streamPair) => {
+        logger.info('inside callback');
+        void Promise.allSettled([
+          (async () => {
+            for await (const _ of streamPair.readable) {
+              // No touch, only consume
+            }
+          })(),
+          (async () => {
+            // Kidnap the context
+            let ws: WebSocket<{ writeBackpressure: boolean }> | null = null;
+            // @ts-ignore: kidnap protected property
+            for (const websocket of clientServer.activeSockets.values()) {
+              ws = websocket;
+            }
+            if (ws == null) {
+              await streamPair.writable.close();
+              return;
+            }
+            context = ws.getUserData();
+            // Write until backPressured
+            const message = Buffer.alloc(128, 0xf0);
+            const writer = streamPair.writable.getWriter();
+            while (!context.writeBackpressure) {
+              await writer.write(message);
+            }
+            loudLogger.info('BACK PRESSURED');
+            backpressure.resolveP();
+            await resumeWriting.p;
+            for (let i = 0; i < 100; i++) {
+              await writer.write(message);
+            }
+            await writer.close();
+            loudLogger.info('WRITING ENDED');
+          })(),
+        ]).catch((e) => logger.error(e.toString()));
+      },
+      basePath: dataDir,
+      tlsConfig,
+      host,
+      logger: loudLogger.getChild('server'),
+    });
+    logger.info(`Server started on port ${clientServer.port}`);
+    const websocket = await clientRPCUtils.startConnection(
+      host,
+      clientServer.port,
+      logger.getChild('Connection'),
+    );
+    await websocket.writable.close();
+
+    await backpressure.p;
+    expect(context?.writeBackpressure).toBeTrue();
+    resumeWriting.resolveP();
+    // Consume all of the back-pressured data
+    for await (const _ of websocket.readable) {
+      // No touch, only consume
+    }
+    expect(context?.writeBackpressure).toBeFalse();
+    loudLogger.info('ending');
+  });
+  // Readable backpressure is not actually supported. We're dealing with it by
+  //  using an buffer with a provided limit that can be very large.
+  test.only('Exceeding readable buffer limit causes error', async () => {
+    const startReading = promise<void>();
+    const handlingProm = promise<void>();
+    clientServer = await ClientServer.createWSServer({
+      connectionCallback: (streamPair) => {
+        logger.info('inside callback');
+        Promise.all([
+          (async () => {
+            await startReading.p;
+            loudLogger.info('Starting consumption');
+            for await (const _ of streamPair.readable) {
+              // No touch, only consume
+            }
+            loudLogger.info('Reads ended');
+          })(),
+          (async () => {
+            await streamPair.writable.close();
+          })(),
+        ])
+          .catch(() => {})
+          .finally(() => handlingProm.resolveP());
+      },
+      basePath: dataDir,
+      tlsConfig,
+      host,
+      // Setting a really low buffer limit
+      maxReadBufferBytes: 1500,
+      logger: loudLogger.getChild('server'),
+    });
+    logger.info(`Server started on port ${clientServer.port}`);
+    const websocket = await clientRPCUtils.startConnection(
+      host,
+      clientServer.port,
+      loudLogger.getChild('Connection'),
+    );
+    const message = Buffer.alloc(1_000, 0xf0);
+    const writer = websocket.writable.getWriter();
+    loudLogger.info('Starting writes');
+    await expect(async () => {
+      for (let i = 0; i < 100; i++) {
+        await writer.write(message);
+      }
+    }).rejects.toThrow();
+    startReading.resolveP();
+    loudLogger.info('writes ended');
+    for await (const _ of websocket.readable) {
+      // No touch, only consume
+    }
+    await handlingProm.p;
+    loudLogger.info('ending');
   });
 });

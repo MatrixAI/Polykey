@@ -142,11 +142,10 @@ function writeableFromWebSocket(
       ws.close();
     },
     write: async (chunk, controller) => {
-      logger.debug(`writing: ${chunk?.toString()}`);
+      // Logger.debug(`writing: ${chunk?.toString()}`);
       const wait = promise<void>();
       ws.send(chunk, (e) => {
         if (e != null) {
-          // Logger.error(`${e}`);
           controller.error(e);
         }
         wait.resolveP();

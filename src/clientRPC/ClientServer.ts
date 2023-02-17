@@ -22,6 +22,7 @@ type Context = {
   drain: (ws: WebSocket<any>) => void;
   close: (ws: WebSocket<any>, code: number, message: ArrayBuffer) => void;
   logger: Logger;
+  writeBackpressure: boolean;
 };
 
 // TODO:
@@ -38,6 +39,7 @@ class ClientServer {
     host,
     port,
     fs = require('fs'),
+    maxReadBufferBytes = 1_000_000_000, // About 1 GB
     logger = new Logger(this.name),
   }: {
     connectionCallback: ConnectionCallback;
@@ -46,10 +48,11 @@ class ClientServer {
     host?: string;
     port?: number;
     fs?: FileSystem;
+    maxReadBufferBytes?: number;
     logger?: Logger;
   }) {
     logger.info(`Creating ${this.name}`);
-    const wsServer = new this(logger, fs);
+    const wsServer = new this(logger, fs, maxReadBufferBytes);
     await wsServer.start({
       connectionCallback,
       tlsConfig,
@@ -68,7 +71,17 @@ class ClientServer {
   protected activeSockets: Set<WebSocket<any>> = new Set();
   protected waitForActive: PromiseDeconstructed<void> | null = null;
 
-  constructor(protected logger: Logger, protected fs: FileSystem) {}
+  /**
+   *
+   * @param logger
+   * @param fs
+   * @param maxReadBufferBytes Max number of bytes stored in read buffer before error
+   */
+  constructor(
+    protected logger: Logger,
+    protected fs: FileSystem,
+    protected maxReadBufferBytes,
+  ) {}
 
   public async start({
     connectionCallback,
@@ -119,7 +132,8 @@ class ClientServer {
         // Set up streams and context
         this.handleOpen(ws);
       },
-      message: (ws: WebSocket<Context>, message, isBinary) => {
+      // TODO: could this take an async and apply backpressure implicitly?
+      message: async (ws: WebSocket<Context>, message, isBinary) => {
         ws.getUserData().message(ws, message, isBinary);
       },
       close: (ws, code, message) => {
@@ -186,21 +200,34 @@ class ClientServer {
     logger.info('WS opened');
     let writableClosed = false;
     let readableClosed = false;
+    let backpressure: PromiseDeconstructed<void> | null = null;
+    context.drain = () => {
+      logger.debug('DRAINING CALLED');
+      backpressure?.resolveP();
+    };
     // Setting up the writable stream
     const writableStream = new WritableStream<Uint8Array>({
-      write: (chunk) => {
-        logger.info('WRITABLE WRITE');
+      write: async (chunk, controller) => {
+        // Logger.debug('WRITABLE WRITE');
+        await backpressure?.p;
         const writeResult = ws.send(chunk, true);
         switch (writeResult) {
-          case 0:
-            logger.info('DROPPED, backpressure');
-            break;
+          default:
           case 2:
-            logger.info('BACKPRESSURE');
+            // Write failure, emit error
+            controller.error(Error('TMP Failed to write'));
+            break;
+          case 0:
+            logger.info('Write backpressure');
+            // Signal backpressure
+            backpressure = promise();
+            context.writeBackpressure = true;
+            backpressure.p.finally(() => {
+              context.writeBackpressure = false;
+            });
             break;
           case 1:
-          default:
-            // Do nothing
+            // Success
             break;
         }
       },
@@ -221,44 +248,56 @@ class ClientServer {
       },
     });
     // Setting up the readable stream
-    const readableStream = new ReadableStream<Uint8Array>({
-      start: (controller) => {
-        context.message = (ws, message, _) => {
-          logger.debug('MESSAGE CALLED');
-          if (message.byteLength === 0) {
-            logger.debug('NULL MESSAGE, CLOSING');
+    const readableStream = new ReadableStream<Uint8Array>(
+      {
+        start: (controller) => {
+          context.message = (ws, message, _) => {
+            // Logger.debug('MESSAGE CALLED');
+            if (message.byteLength === 0) {
+              logger.debug('NULL MESSAGE, CLOSING');
+              if (!readableClosed) {
+                logger.debug('CLOSING READABLE');
+                controller.close();
+                readableClosed = true;
+                if (writableClosed) {
+                  ws.end();
+                }
+              }
+              return;
+            }
+            controller.enqueue(Buffer.from(message));
+            if (
+              controller.desiredSize != null &&
+              controller.desiredSize < -1000
+            ) {
+              logger.error('Read stream buffer full');
+              const err = Error('TMP read buffer limit');
+              ws.end(4001, err.toString());
+              controller.error(err);
+            }
+          };
+          context.close = () => {
+            logger.debug('CLOSING CALLED');
             if (!readableClosed) {
               logger.debug('CLOSING READABLE');
               controller.close();
               readableClosed = true;
-              if (writableClosed) {
-                ws.end();
-              }
             }
-            return;
+          };
+        },
+        cancel: () => {
+          readableClosed = true;
+          if (writableClosed) {
+            logger.debug('ENDING WS');
+            ws.end();
           }
-          controller.enqueue(Buffer.from(message));
-        };
-        context.close = () => {
-          logger.debug('CLOSING CALLED');
-          if (!readableClosed) {
-            logger.debug('CLOSING READABLE');
-            controller.close();
-            readableClosed = true;
-          }
-        };
-        context.drain = () => {
-          logger.debug('DRAINING CALLED');
-        };
+        },
       },
-      cancel: () => {
-        readableClosed = true;
-        if (writableClosed) {
-          logger.debug('ENDING WS');
-          ws.end();
-        }
+      {
+        highWaterMark: this.maxReadBufferBytes,
+        size: (chunk) => chunk?.byteLength ?? 0,
       },
-    });
+    );
     logger.info('callback');
     try {
       this.connectionCallback({
