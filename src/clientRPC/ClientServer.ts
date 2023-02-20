@@ -177,8 +177,8 @@ class ClientServer {
     uWebsocket.us_listen_socket_close(this.listenSocket);
     // Shutting down active websockets
     if (force) {
-      for (const ws of this.activeSockets.values()) {
-        ws.close();
+      for (const ws of this.activeSockets) {
+        ws.end();
       }
     }
     // Wait for all active websockets to close
@@ -196,6 +196,7 @@ class ClientServer {
     logger.info('WS opened');
     let writableClosed = false;
     let readableClosed = false;
+    let wsClosed = false;
     let backpressure: PromiseDeconstructed<void> | null = null;
     context.drain = () => {
       logger.debug('DRAINING CALLED');
@@ -204,7 +205,7 @@ class ClientServer {
     // Setting up the writable stream
     const writableStream = new WritableStream<Uint8Array>({
       write: async (chunk, controller) => {
-        // Logger.debug('WRITABLE WRITE');
+        // Logger.debug(`WRITABLE WRITE ${chunk.toString()}`);
         await backpressure?.p;
         const writeResult = ws.send(chunk, true);
         switch (writeResult) {
@@ -229,15 +230,16 @@ class ClientServer {
       },
       close: () => {
         logger.info('WRITABLE CLOSE');
+        if (!wsClosed) ws.send(Buffer.from([]), true);
         writableClosed = true;
-        if (readableClosed) {
+        if (readableClosed && !wsClosed) {
           logger.debug('ENDING WS');
           ws.end();
         }
       },
       abort: () => {
         logger.info('WRITABLE ABORT');
-        if (readableClosed) {
+        if (readableClosed && !wsClosed) {
           logger.debug('ENDING WS');
           ws.end();
         }
@@ -248,14 +250,14 @@ class ClientServer {
       {
         start: (controller) => {
           context.message = (ws, message, _) => {
-            // Logger.debug('MESSAGE CALLED');
+            // Logger.debug(`MESSAGE CALLED ${message.toString()}`);
             if (message.byteLength === 0) {
               logger.debug('NULL MESSAGE, CLOSING');
               if (!readableClosed) {
                 logger.debug('CLOSING READABLE');
                 controller.close();
                 readableClosed = true;
-                if (writableClosed) {
+                if (writableClosed && !wsClosed) {
                   ws.end();
                 }
               }
@@ -268,12 +270,13 @@ class ClientServer {
             ) {
               logger.error('Read stream buffer full');
               const err = Error('TMP read buffer limit');
-              ws.end(4001, err.toString());
+              if (!wsClosed) ws.end(4001, err.toString());
               controller.error(err);
             }
           };
           context.close = () => {
             logger.debug('CLOSING CALLED');
+            wsClosed = true;
             if (!readableClosed) {
               logger.debug('CLOSING READABLE');
               controller.close();
@@ -283,7 +286,7 @@ class ClientServer {
         },
         cancel: () => {
           readableClosed = true;
-          if (writableClosed) {
+          if (writableClosed && !wsClosed) {
             logger.debug('ENDING WS');
             ws.end();
           }
@@ -301,7 +304,6 @@ class ClientServer {
         writable: writableStream,
       });
     } catch (e) {
-      logger.error(e);
       // TODO: If the callback failed then we need to handle clean up
       logger.error(e.toString());
     }

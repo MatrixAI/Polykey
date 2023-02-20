@@ -8,8 +8,8 @@ import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { testProp, fc } from '@fast-check/jest';
 import { KeyRing } from '@/keys/index';
 import ClientServer from '@/clientRPC/ClientServer';
-import * as clientRPCUtils from '@/clientRPC/utils';
 import { promise } from '@/utils';
+import ClientClient from '@/clientRPC/ClientClient';
 import * as testsUtils from '../utils';
 
 describe('ClientServer', () => {
@@ -29,6 +29,31 @@ describe('ClientServer', () => {
   let tlsConfig: TLSConfig;
   const host = '127.0.0.2';
   let clientServer: ClientServer;
+  let clientClient: ClientClient;
+
+  const messagesArb = fc.array(
+    fc.uint8Array({ minLength: 1 }).map((d) => Buffer.from(d)),
+  );
+  const streamsArb = fc.array(messagesArb, { minLength: 1 }).noShrink();
+  const asyncReadWrite = async (
+    messages: Array<Buffer>,
+    streampair: ReadableWritablePair<Uint8Array, Uint8Array>,
+  ) => {
+    await Promise.allSettled([
+      (async () => {
+        const writer = streampair.writable.getWriter();
+        for (const message of messages) {
+          await writer.write(message);
+        }
+        await writer.close();
+      })(),
+      (async () => {
+        for await (const _ of streampair.readable) {
+          // No touch, only consume
+        }
+      })(),
+    ]);
+  };
 
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
@@ -43,12 +68,14 @@ describe('ClientServer', () => {
     tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
   });
   afterEach(async () => {
+    logger.info('AFTEREACH');
     await clientServer.stop(true);
+    await clientClient.destroy();
     await keyRing.stop();
     await fs.promises.rm(dataDir, { force: true, recursive: true });
   });
 
-  test('Handles a connection', async () => {
+  test('makes a connection', async () => {
     clientServer = await ClientServer.createClientServer({
       connectionCallback: (streamPair) => {
         logger.info('inside callback');
@@ -63,11 +90,14 @@ describe('ClientServer', () => {
       logger: loudLogger.getChild('server'),
     });
     logger.info(`Server started on port ${clientServer.port}`);
-    const websocket = await clientRPCUtils.startConnection(
+    clientClient = await ClientClient.createClientClient({
       host,
-      clientServer.port,
-      logger.getChild('Connection'),
-    );
+      port: clientServer.port,
+      nodeId: keyRing.getNodeId(),
+      logger: logger.getChild('clientClient'),
+    });
+    const websocket = await clientClient.startConnection();
+
     const writer = websocket.writable.getWriter();
     const reader = websocket.readable.getReader();
     const message1 = Buffer.from('1request1');
@@ -95,20 +125,18 @@ describe('ClientServer', () => {
       logger: loudLogger.getChild('server'),
     });
     logger.info(`Server started on port ${clientServer.port}`);
-    const websocket = await clientRPCUtils.startConnection(
+    clientClient = await ClientClient.createClientClient({
       host,
-      clientServer.port,
-      logger.getChild('Connection'),
-    );
+      port: clientServer.port,
+      nodeId: keyRing.getNodeId(),
+      logger: logger.getChild('clientClient'),
+    });
+    const websocket = await clientClient.startConnection();
     await websocket.writable.close();
     const reader = websocket.readable.getReader();
     expect((await reader.read()).done).toBeTrue();
     logger.info('ending');
   });
-  const messagesArb = fc.array(
-    fc.uint8Array({ minLength: 1 }).map((d) => Buffer.from(d)),
-  );
-  const streamsArb = fc.array(messagesArb, { minLength: 1 }).noShrink();
   testProp(
     'Handles multiple connections',
     [streamsArb],
@@ -128,13 +156,15 @@ describe('ClientServer', () => {
           logger: loudLogger.getChild('server'),
         });
         logger.info(`Server started on port ${clientServer.port}`);
+        clientClient = await ClientClient.createClientClient({
+          host,
+          port: clientServer.port,
+          nodeId: keyRing.getNodeId(),
+          logger: logger.getChild('clientClient'),
+        });
 
         const testStream = async (messages: Array<Buffer>) => {
-          const websocket = await clientRPCUtils.startConnection(
-            host,
-            clientServer.port,
-            logger.getChild('Connection'),
-          );
+          const websocket = await clientClient.startConnection();
           const writer = websocket.writable.getWriter();
           const reader = websocket.readable.getReader();
           for (const message of messages) {
@@ -157,25 +187,6 @@ describe('ClientServer', () => {
       }
     },
   );
-  const asyncReadWrite = async (
-    messages: Array<Buffer>,
-    streampair: ReadableWritablePair<Uint8Array, Uint8Array>,
-  ) => {
-    await Promise.allSettled([
-      (async () => {
-        const writer = streampair.writable.getWriter();
-        for (const message of messages) {
-          await writer.write(message);
-        }
-        await writer.close();
-      })(),
-      (async () => {
-        for await (const _ of streampair.readable) {
-          // No touch, only consume
-        }
-      })(),
-    ]);
-  };
   testProp(
     'allows half closed writable closes first',
     [messagesArb, messagesArb],
@@ -201,11 +212,13 @@ describe('ClientServer', () => {
           logger: loudLogger.getChild('server'),
         });
         logger.info(`Server started on port ${clientServer.port}`);
-        const websocket = await clientRPCUtils.startConnection(
+        clientClient = await ClientClient.createClientClient({
           host,
-          clientServer.port,
-          logger.getChild('Connection'),
-        );
+          port: clientServer.port,
+          nodeId: keyRing.getNodeId(),
+          logger: logger.getChild('clientClient'),
+        });
+        const websocket = await clientClient.startConnection();
         await asyncReadWrite(messages1, websocket);
         logger.info('ending');
       } finally {
@@ -238,11 +251,13 @@ describe('ClientServer', () => {
           logger: loudLogger.getChild('server'),
         });
         logger.info(`Server started on port ${clientServer.port}`);
-        const websocket = await clientRPCUtils.startConnection(
+        clientClient = await ClientClient.createClientClient({
           host,
-          clientServer.port,
-          logger.getChild('Connection'),
-        );
+          port: clientServer.port,
+          nodeId: keyRing.getNodeId(),
+          logger: logger.getChild('clientClient'),
+        });
+        const websocket = await clientClient.startConnection();
         await asyncReadWrite(messages1, websocket);
         logger.info('ending');
       } finally {
@@ -273,11 +288,13 @@ describe('ClientServer', () => {
           logger: loudLogger.getChild('server'),
         });
         logger.info(`Server started on port ${clientServer.port}`);
-        const websocket = await clientRPCUtils.startConnection(
+        clientClient = await ClientClient.createClientClient({
           host,
-          clientServer.port,
-          logger.getChild('Connection'),
-        );
+          port: clientServer.port,
+          nodeId: keyRing.getNodeId(),
+          logger: logger.getChild('clientClient'),
+        });
+        const websocket = await clientClient.startConnection();
         await asyncReadWrite(messages1, websocket);
         logger.info('ending');
       } finally {
@@ -299,15 +316,45 @@ describe('ClientServer', () => {
       logger: loudLogger.getChild('server'),
     });
     logger.info(`Server started on port ${clientServer.port}`);
-    const websocket = await clientRPCUtils.startConnection(
+    clientClient = await ClientClient.createClientClient({
       host,
-      clientServer.port,
-      logger.getChild('Connection'),
-    );
+      port: clientServer.port,
+      nodeId: keyRing.getNodeId(),
+      logger: logger.getChild('clientClient'),
+    });
+    const websocket = await clientClient.startConnection();
     await clientServer.stop(true);
     for await (const _ of websocket.readable) {
       // No touch, only consume
     }
+    logger.info('ending');
+  });
+  test('Destroying ClientClient stops all connections', async () => {
+    clientServer = await ClientServer.createClientServer({
+      connectionCallback: (streamPair) => {
+        logger.info('inside callback');
+        void streamPair.readable.pipeTo(streamPair.writable).catch((e) => {
+          logger.error(e);
+        });
+      },
+      basePath: dataDir,
+      tlsConfig,
+      host,
+      logger: loudLogger.getChild('server'),
+    });
+    logger.info(`Server started on port ${clientServer.port}`);
+    clientClient = await ClientClient.createClientClient({
+      host,
+      port: clientServer.port,
+      nodeId: keyRing.getNodeId(),
+      logger: logger.getChild('clientClient'),
+    });
+    const websocket = await clientClient.startConnection();
+    await clientClient.destroy(true);
+    for await (const _ of websocket.readable) {
+      // No touch, only consume
+    }
+    await clientServer.stop();
     logger.info('ending');
   });
   test('Writable backpressure', async () => {
@@ -358,11 +405,13 @@ describe('ClientServer', () => {
       logger: loudLogger.getChild('server'),
     });
     logger.info(`Server started on port ${clientServer.port}`);
-    const websocket = await clientRPCUtils.startConnection(
+    clientClient = await ClientClient.createClientClient({
       host,
-      clientServer.port,
-      logger.getChild('Connection'),
-    );
+      port: clientServer.port,
+      nodeId: keyRing.getNodeId(),
+      logger: logger.getChild('clientClient'),
+    });
+    const websocket = await clientClient.startConnection();
     await websocket.writable.close();
 
     await backpressure.p;
@@ -407,11 +456,13 @@ describe('ClientServer', () => {
       logger: loudLogger.getChild('server'),
     });
     logger.info(`Server started on port ${clientServer.port}`);
-    const websocket = await clientRPCUtils.startConnection(
+    clientClient = await ClientClient.createClientClient({
       host,
-      clientServer.port,
-      loudLogger.getChild('Connection'),
-    );
+      port: clientServer.port,
+      nodeId: keyRing.getNodeId(),
+      logger: logger.getChild('clientClient'),
+    });
+    const websocket = await clientClient.startConnection();
     const message = Buffer.alloc(1_000, 0xf0);
     const writer = websocket.writable.getWriter();
     loudLogger.info('Starting writes');
@@ -428,4 +479,7 @@ describe('ClientServer', () => {
     await handlingProm.p;
     loudLogger.info('ending');
   });
+  test.todo('client ends connection abruptly');
+  test.todo('Server ends connection abruptly');
+  test.todo('Client rejects bad server certificate');
 });
