@@ -4,7 +4,7 @@ import type { TLSConfig } from 'network/types';
 import type { WebSocket } from 'uWebSockets.js';
 import { WritableStream, ReadableStream } from 'stream/web';
 import path from 'path';
-import { createDestroy } from '@matrixai/async-init';
+import { startStop } from '@matrixai/async-init';
 import Logger from '@matrixai/logger';
 import uWebsocket from 'uWebSockets.js';
 import { promise } from '../utils';
@@ -25,14 +25,10 @@ type Context = {
   writeBackpressure: boolean;
 };
 
-// TODO:
-//  - shutting down active connections
-//  - propagating backpressure.
-
-interface ClientServer extends createDestroy.CreateDestroy {}
-@createDestroy.CreateDestroy()
+interface ClientServer extends startStop.StartStop {}
+@startStop.StartStop()
 class ClientServer {
-  static async createWSServer({
+  static async createClientServer({
     connectionCallback,
     tlsConfig,
     basePath,
@@ -175,8 +171,8 @@ class ClientServer {
     this.logger.info(`Started ${this.constructor.name}`);
   }
 
-  public async destroy(force: boolean = false): Promise<void> {
-    this.logger.info(`Destroying ${this.constructor.name}`);
+  public async stop(force: boolean = false): Promise<void> {
+    this.logger.info(`Stopping ${this.constructor.name}`);
     // Close the server by closing the underlying socket
     uWebsocket.us_listen_socket_close(this.listenSocket);
     // Shutting down active websockets
@@ -187,7 +183,7 @@ class ClientServer {
     }
     // Wait for all active websockets to close
     await this.waitForActive?.p;
-    this.logger.info(`Destroyed ${this.constructor.name}`);
+    this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
   get port() {

@@ -18,7 +18,7 @@ describe('ClientServer', () => {
       formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
     ),
   ]);
-  const loudLogger = new Logger('websocket test', LogLevel.DEBUG, [
+  const loudLogger = new Logger('websocket test', LogLevel.WARN, [
     new StreamHandler(
       formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
     ),
@@ -43,13 +43,13 @@ describe('ClientServer', () => {
     tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
   });
   afterEach(async () => {
-    await clientServer.destroy(true);
+    await clientServer.stop(true);
     await keyRing.stop();
     await fs.promises.rm(dataDir, { force: true, recursive: true });
   });
 
   test('Handles a connection', async () => {
-    clientServer = await ClientServer.createWSServer({
+    clientServer = await ClientServer.createClientServer({
       connectionCallback: (streamPair) => {
         logger.info('inside callback');
         void streamPair.readable
@@ -81,7 +81,7 @@ describe('ClientServer', () => {
     logger.info('ending');
   });
   test('Handles a connection and closes before message', async () => {
-    clientServer = await ClientServer.createWSServer({
+    clientServer = await ClientServer.createClientServer({
       connectionCallback: (streamPair) => {
         logger.info('inside callback');
         void streamPair.readable
@@ -113,42 +113,48 @@ describe('ClientServer', () => {
     'Handles multiple connections',
     [streamsArb],
     async (streamsData) => {
-      clientServer = await ClientServer.createWSServer({
-        connectionCallback: (streamPair) => {
-          logger.info('inside callback');
-          void streamPair.readable
-            .pipeTo(streamPair.writable)
-            .catch(() => {})
-            .finally(() => logger.info('STREAM HANDLING ENDED'));
-        },
-        basePath: dataDir,
-        tlsConfig,
-        host,
-        logger: loudLogger.getChild('server'),
-      });
-      logger.info(`Server started on port ${clientServer.port}`);
-
-      const testStream = async (messages: Array<Buffer>) => {
-        const websocket = await clientRPCUtils.startConnection(
+      try {
+        clientServer = await ClientServer.createClientServer({
+          connectionCallback: (streamPair) => {
+            logger.info('inside callback');
+            void streamPair.readable
+              .pipeTo(streamPair.writable)
+              .catch(() => {})
+              .finally(() => logger.info('STREAM HANDLING ENDED'));
+          },
+          basePath: dataDir,
+          tlsConfig,
           host,
-          clientServer.port,
-          logger.getChild('Connection'),
-        );
-        const writer = websocket.writable.getWriter();
-        const reader = websocket.readable.getReader();
-        for (const message of messages) {
-          await writer.write(message);
-          const response = await reader.read();
-          expect(response.done).toBeFalse();
-          expect(response.value?.toString()).toStrictEqual(message.toString());
-        }
-        await writer.close();
-        expect((await reader.read()).done).toBeTrue();
-      };
-      const streams = streamsData.map((messages) => testStream(messages));
-      await Promise.all(streams);
+          logger: loudLogger.getChild('server'),
+        });
+        logger.info(`Server started on port ${clientServer.port}`);
 
-      logger.info('ending');
+        const testStream = async (messages: Array<Buffer>) => {
+          const websocket = await clientRPCUtils.startConnection(
+            host,
+            clientServer.port,
+            logger.getChild('Connection'),
+          );
+          const writer = websocket.writable.getWriter();
+          const reader = websocket.readable.getReader();
+          for (const message of messages) {
+            await writer.write(message);
+            const response = await reader.read();
+            expect(response.done).toBeFalse();
+            expect(response.value?.toString()).toStrictEqual(
+              message.toString(),
+            );
+          }
+          await writer.close();
+          expect((await reader.read()).done).toBeTrue();
+        };
+        const streams = streamsData.map((messages) => testStream(messages));
+        await Promise.all(streams);
+
+        logger.info('ending');
+      } finally {
+        await clientServer.stop(true);
+      }
     },
   );
   const asyncReadWrite = async (
@@ -174,101 +180,113 @@ describe('ClientServer', () => {
     'allows half closed writable closes first',
     [messagesArb, messagesArb],
     async (messages1, messages2) => {
-      clientServer = await ClientServer.createWSServer({
-        connectionCallback: (streamPair) => {
-          logger.info('inside callback');
-          void (async () => {
-            const writer = streamPair.writable.getWriter();
-            for await (const val of messages2) {
-              await writer.write(val);
-            }
-            await writer.close();
-            for await (const _ of streamPair.readable) {
-              // No touch, only consume
-            }
-          })().catch((e) => logger.error(e));
-        },
-        basePath: dataDir,
-        tlsConfig,
-        host,
-        logger: loudLogger.getChild('server'),
-      });
-      logger.info(`Server started on port ${clientServer.port}`);
-      const websocket = await clientRPCUtils.startConnection(
-        host,
-        clientServer.port,
-        logger.getChild('Connection'),
-      );
-      await asyncReadWrite(messages1, websocket);
-      logger.info('ending');
+      try {
+        clientServer = await ClientServer.createClientServer({
+          connectionCallback: (streamPair) => {
+            logger.info('inside callback');
+            void (async () => {
+              const writer = streamPair.writable.getWriter();
+              for await (const val of messages2) {
+                await writer.write(val);
+              }
+              await writer.close();
+              for await (const _ of streamPair.readable) {
+                // No touch, only consume
+              }
+            })().catch((e) => logger.error(e));
+          },
+          basePath: dataDir,
+          tlsConfig,
+          host,
+          logger: loudLogger.getChild('server'),
+        });
+        logger.info(`Server started on port ${clientServer.port}`);
+        const websocket = await clientRPCUtils.startConnection(
+          host,
+          clientServer.port,
+          logger.getChild('Connection'),
+        );
+        await asyncReadWrite(messages1, websocket);
+        logger.info('ending');
+      } finally {
+        await clientServer.stop(true);
+      }
     },
   );
   testProp(
     'allows half closed readable closes first',
     [messagesArb, messagesArb],
     async (messages1, messages2) => {
-      clientServer = await ClientServer.createWSServer({
-        connectionCallback: (streamPair) => {
-          logger.info('inside callback');
-          void (async () => {
-            for await (const _ of streamPair.readable) {
-              // No touch, only consume
-            }
-            const writer = streamPair.writable.getWriter();
-            for await (const val of messages2) {
-              await writer.write(val);
-            }
-            await writer.close();
-          })().catch((e) => logger.error(e));
-        },
-        basePath: dataDir,
-        tlsConfig,
-        host,
-        logger: loudLogger.getChild('server'),
-      });
-      logger.info(`Server started on port ${clientServer.port}`);
-      const websocket = await clientRPCUtils.startConnection(
-        host,
-        clientServer.port,
-        logger.getChild('Connection'),
-      );
-      await asyncReadWrite(messages1, websocket);
-      logger.info('ending');
+      try {
+        clientServer = await ClientServer.createClientServer({
+          connectionCallback: (streamPair) => {
+            logger.info('inside callback');
+            void (async () => {
+              for await (const _ of streamPair.readable) {
+                // No touch, only consume
+              }
+              const writer = streamPair.writable.getWriter();
+              for await (const val of messages2) {
+                await writer.write(val);
+              }
+              await writer.close();
+            })().catch((e) => logger.error(e));
+          },
+          basePath: dataDir,
+          tlsConfig,
+          host,
+          logger: loudLogger.getChild('server'),
+        });
+        logger.info(`Server started on port ${clientServer.port}`);
+        const websocket = await clientRPCUtils.startConnection(
+          host,
+          clientServer.port,
+          logger.getChild('Connection'),
+        );
+        await asyncReadWrite(messages1, websocket);
+        logger.info('ending');
+      } finally {
+        await clientServer.stop(true);
+      }
     },
   );
   testProp(
     'handles early close of readable',
     [messagesArb, messagesArb],
     async (messages1, messages2) => {
-      clientServer = await ClientServer.createWSServer({
-        connectionCallback: (streamPair) => {
-          logger.info('inside callback');
-          void (async () => {
-            await streamPair.readable.cancel();
-            const writer = streamPair.writable.getWriter();
-            for await (const val of messages2) {
-              await writer.write(val);
-            }
-            await writer.close();
-          })().catch((e) => logger.error(e));
-        },
-        basePath: dataDir,
-        tlsConfig,
-        host,
-        logger: loudLogger.getChild('server'),
-      });
-      logger.info(`Server started on port ${clientServer.port}`);
-      const websocket = await clientRPCUtils.startConnection(
-        host,
-        clientServer.port,
-        logger.getChild('Connection'),
-      );
-      await asyncReadWrite(messages1, websocket);
-      logger.info('ending');
+      try {
+        clientServer = await ClientServer.createClientServer({
+          connectionCallback: (streamPair) => {
+            logger.info('inside callback');
+            void (async () => {
+              await streamPair.readable.cancel();
+              const writer = streamPair.writable.getWriter();
+              for await (const val of messages2) {
+                await writer.write(val);
+              }
+              await writer.close();
+            })().catch((e) => logger.error(e));
+          },
+          basePath: dataDir,
+          tlsConfig,
+          host,
+          logger: loudLogger.getChild('server'),
+        });
+        logger.info(`Server started on port ${clientServer.port}`);
+        const websocket = await clientRPCUtils.startConnection(
+          host,
+          clientServer.port,
+          logger.getChild('Connection'),
+        );
+        await asyncReadWrite(messages1, websocket);
+        logger.info('ending');
+      } finally {
+        await clientServer.stop(true);
+      }
     },
   );
   test('Destroying ClientServer stops all connections', async () => {
-    clientServer = await ClientServer.createWSServer({
+    clientServer = await ClientServer.createClientServer({
       connectionCallback: (streamPair) => {
         logger.info('inside callback');
         void streamPair.readable
@@ -286,7 +304,7 @@ describe('ClientServer', () => {
       clientServer.port,
       logger.getChild('Connection'),
     );
-    await clientServer.destroy(true);
+    await clientServer.stop(true);
     for await (const _ of websocket.readable) {
       // No touch, only consume
     }
@@ -296,7 +314,7 @@ describe('ClientServer', () => {
     let context: { writeBackpressure: boolean } | undefined;
     const backpressure = promise<void>();
     const resumeWriting = promise<void>();
-    clientServer = await ClientServer.createWSServer({
+    clientServer = await ClientServer.createClientServer({
       connectionCallback: (streamPair) => {
         logger.info('inside callback');
         void Promise.allSettled([
@@ -359,10 +377,10 @@ describe('ClientServer', () => {
   });
   // Readable backpressure is not actually supported. We're dealing with it by
   //  using an buffer with a provided limit that can be very large.
-  test.only('Exceeding readable buffer limit causes error', async () => {
+  test('Exceeding readable buffer limit causes error', async () => {
     const startReading = promise<void>();
     const handlingProm = promise<void>();
-    clientServer = await ClientServer.createWSServer({
+    clientServer = await ClientServer.createClientServer({
       connectionCallback: (streamPair) => {
         logger.info('inside callback');
         Promise.all([

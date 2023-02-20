@@ -120,7 +120,7 @@ describe('websocket', () => {
 
   test('Using uws', async () => {
     tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
-    const server = await ClientServer.createWSServer({
+    const server = await ClientServer.createClientServer({
       connectionCallback: (streamPair) => {
         logger.info('inside callback');
         void streamPair.readable
