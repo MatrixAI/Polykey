@@ -194,8 +194,212 @@ describe('ClientRPC', () => {
       }
     },
   );
-  test.todo('client ends connection abruptly');
-  test.todo('Server ends connection abruptly');
+  test('reverse backpressure', async () => {
+    let context: { writeBackpressure: boolean } | undefined;
+    const backpressure = promise<void>();
+    const resumeWriting = promise<void>();
+    clientServer = await ClientServer.createClientServer({
+      connectionCallback: (streamPair) => {
+        logger.info('inside callback');
+        void Promise.allSettled([
+          (async () => {
+            for await (const _ of streamPair.readable) {
+              // No touch, only consume
+            }
+          })(),
+          (async () => {
+            // Kidnap the context
+            let ws: WebSocket<{ writeBackpressure: boolean }> | null = null;
+            // @ts-ignore: kidnap protected property
+            for (const websocket of clientServer.activeSockets.values()) {
+              ws = websocket;
+            }
+            if (ws == null) {
+              await streamPair.writable.close();
+              return;
+            }
+            context = ws.getUserData();
+            // Write until backPressured
+            const message = Buffer.alloc(128, 0xf0);
+            const writer = streamPair.writable.getWriter();
+            while (!context.writeBackpressure) {
+              await writer.write(message);
+            }
+            loudLogger.info('BACK PRESSURED');
+            backpressure.resolveP();
+            await resumeWriting.p;
+            for (let i = 0; i < 100; i++) {
+              await writer.write(message);
+            }
+            await writer.close();
+            loudLogger.info('WRITING ENDED');
+          })(),
+        ]).catch((e) => logger.error(e.toString()));
+      },
+      basePath: dataDir,
+      tlsConfig,
+      host,
+      logger: loudLogger.getChild('server'),
+    });
+    logger.info(`Server started on port ${clientServer.port}`);
+    clientClient = await ClientClient.createClientClient({
+      host,
+      port: clientServer.port,
+      expectedNodeIds: [keyRing.getNodeId()],
+      logger: logger.getChild('clientClient'),
+    });
+    const websocket = await clientClient.startConnection();
+    await websocket.writable.close();
+
+    await backpressure.p;
+    expect(context?.writeBackpressure).toBeTrue();
+    resumeWriting.resolveP();
+    // Consume all of the back-pressured data
+    for await (const _ of websocket.readable) {
+      // No touch, only consume
+    }
+    expect(context?.writeBackpressure).toBeFalse();
+    loudLogger.info('ending');
+  });
+  // Readable backpressure is not actually supported. We're dealing with it by
+  //  using an buffer with a provided limit that can be very large.
+  test('Exceeding readable buffer limit causes error', async () => {
+    const startReading = promise<void>();
+    const handlingProm = promise<void>();
+    clientServer = await ClientServer.createClientServer({
+      connectionCallback: (streamPair) => {
+        logger.info('inside callback');
+        Promise.all([
+          (async () => {
+            await startReading.p;
+            loudLogger.info('Starting consumption');
+            for await (const _ of streamPair.readable) {
+              // No touch, only consume
+            }
+            loudLogger.info('Reads ended');
+          })(),
+          (async () => {
+            await streamPair.writable.close();
+          })(),
+        ])
+          .catch(() => {})
+          .finally(() => handlingProm.resolveP());
+      },
+      basePath: dataDir,
+      tlsConfig,
+      host,
+      // Setting a really low buffer limit
+      maxReadBufferBytes: 1500,
+      logger: loudLogger.getChild('server'),
+    });
+    logger.info(`Server started on port ${clientServer.port}`);
+    clientClient = await ClientClient.createClientClient({
+      host,
+      port: clientServer.port,
+      expectedNodeIds: [keyRing.getNodeId()],
+      logger: logger.getChild('clientClient'),
+    });
+    const websocket = await clientClient.startConnection();
+    const message = Buffer.alloc(1_000, 0xf0);
+    const writer = websocket.writable.getWriter();
+    loudLogger.info('Starting writes');
+    await expect(async () => {
+      for (let i = 0; i < 100; i++) {
+        await writer.write(message);
+      }
+    }).rejects.toThrow();
+    startReading.resolveP();
+    loudLogger.info('writes ended');
+    for await (const _ of websocket.readable) {
+      // No touch, only consume
+    }
+    await handlingProm.p;
+    loudLogger.info('ending');
+  });
+  // To fully test these two I need to start the client or server in a separate process and kill that process.
+  // These require the ping/pong connection watchdogs to be implemented.
+  test.skip('client ends connection abruptly', async () => {
+    const handlerProm = promise<void>();
+    clientServer = await ClientServer.createClientServer({
+      connectionCallback: (streamPair) => {
+        logger.info('inside callback');
+        void streamPair.readable
+          .pipeTo(streamPair.writable)
+          .then(handlerProm.resolveP, handlerProm.rejectP)
+          .finally(() => loudLogger.info('STREAM HANDLING ENDED'));
+      },
+      basePath: dataDir,
+      tlsConfig,
+      host,
+      logger: loudLogger.getChild('server'),
+    });
+    logger.info(`Server started on port ${clientServer.port}`);
+    clientClient = await ClientClient.createClientClient({
+      host,
+      port: clientServer.port,
+      expectedNodeIds: [keyRing.getNodeId()],
+      logger: logger.getChild('clientClient'),
+    });
+    const websocket = await clientClient.startConnection();
+    // @ts-ignore: kidnap protected property
+    const activeConnections = clientClient.activeConnections;
+    for (const activeConnection of activeConnections) {
+      activeConnection.cancel();
+    }
+    await expect(handlerProm.p).toResolve();
+    for await (const _ of websocket.readable) {
+      // Do nothing
+    }
+    logger.info('ending');
+  });
+  test.skip('Server ends connection abruptly', async () => {
+    const streamPairProm =
+      promise<ReadableWritablePair<Uint8Array, Uint8Array>>();
+    clientServer = await ClientServer.createClientServer({
+      connectionCallback: (streamPair_) => {
+        logger.info('inside callback');
+        // Don't do anything with the handler
+        streamPairProm.resolveP(streamPair_);
+      },
+      basePath: dataDir,
+      tlsConfig,
+      host,
+      logger: loudLogger.getChild('server'),
+    });
+    logger.info(`Server started on port ${clientServer.port}`);
+    clientClient = await ClientClient.createClientClient({
+      host,
+      port: clientServer.port,
+      expectedNodeIds: [keyRing.getNodeId()],
+      logger: logger.getChild('clientClient'),
+    });
+    const websocket = await clientClient.startConnection();
+    // @ts-ignore: kidnap protected property
+    const activeSockets = clientServer.activeSockets;
+    for (const activeSocket of activeSockets) {
+      activeSocket.close();
+    }
+    const streamPair = await streamPairProm.p;
+    // Expect both readable to throw
+    const handlerReadProm = (async () => {
+      for await (const _ of streamPair.readable) {
+        // Do nothing
+      }
+    })();
+    await expect(handlerReadProm).rejects.toThrow();
+    const clientReadProm = (async () => {
+      for await (const _ of websocket.readable) {
+        // Do nothing
+      }
+    })();
+    await expect(clientReadProm).rejects.toThrow();
+    // Both writables should throw.
+    const handlerWritable = streamPair.writable.getWriter();
+    await expect(handlerWritable.write(Buffer.from('test'))).rejects.toThrow();
+    const clientWritable = websocket.writable.getWriter();
+    await expect(clientWritable.write(Buffer.from('test'))).rejects.toThrow();
+    logger.info('ending');
+  });
 
   // These describe blocks contains tests specific to either the client or server
   describe('ClientServer', () => {
@@ -315,12 +519,13 @@ describe('ClientRPC', () => {
       },
     );
     test('Destroying ClientServer stops all connections', async () => {
+      const handlerProm = promise<void>();
       clientServer = await ClientServer.createClientServer({
         connectionCallback: (streamPair) => {
           logger.info('inside callback');
           void streamPair.readable
             .pipeTo(streamPair.writable)
-            .catch((e) => logger.error(e));
+            .then(handlerProm.resolveP, handlerProm.rejectP);
         },
         basePath: dataDir,
         tlsConfig,
@@ -336,132 +541,16 @@ describe('ClientRPC', () => {
       });
       const websocket = await clientClient.startConnection();
       await clientServer.stop(true);
-      for await (const _ of websocket.readable) {
-        // No touch, only consume
-      }
-      logger.info('ending');
-    });
-    test('Writable backpressure', async () => {
-      let context: { writeBackpressure: boolean } | undefined;
-      const backpressure = promise<void>();
-      const resumeWriting = promise<void>();
-      clientServer = await ClientServer.createClientServer({
-        connectionCallback: (streamPair) => {
-          logger.info('inside callback');
-          void Promise.allSettled([
-            (async () => {
-              for await (const _ of streamPair.readable) {
-                // No touch, only consume
-              }
-            })(),
-            (async () => {
-              // Kidnap the context
-              let ws: WebSocket<{ writeBackpressure: boolean }> | null = null;
-              // @ts-ignore: kidnap protected property
-              for (const websocket of clientServer.activeSockets.values()) {
-                ws = websocket;
-              }
-              if (ws == null) {
-                await streamPair.writable.close();
-                return;
-              }
-              context = ws.getUserData();
-              // Write until backPressured
-              const message = Buffer.alloc(128, 0xf0);
-              const writer = streamPair.writable.getWriter();
-              while (!context.writeBackpressure) {
-                await writer.write(message);
-              }
-              loudLogger.info('BACK PRESSURED');
-              backpressure.resolveP();
-              await resumeWriting.p;
-              for (let i = 0; i < 100; i++) {
-                await writer.write(message);
-              }
-              await writer.close();
-              loudLogger.info('WRITING ENDED');
-            })(),
-          ]).catch((e) => logger.error(e.toString()));
-        },
-        basePath: dataDir,
-        tlsConfig,
-        host,
-        logger: loudLogger.getChild('server'),
-      });
-      logger.info(`Server started on port ${clientServer.port}`);
-      clientClient = await ClientClient.createClientClient({
-        host,
-        port: clientServer.port,
-        expectedNodeIds: [keyRing.getNodeId()],
-        logger: logger.getChild('clientClient'),
-      });
-      const websocket = await clientClient.startConnection();
-      await websocket.writable.close();
-
-      await backpressure.p;
-      expect(context?.writeBackpressure).toBeTrue();
-      resumeWriting.resolveP();
-      // Consume all of the back-pressured data
-      for await (const _ of websocket.readable) {
-        // No touch, only consume
-      }
-      expect(context?.writeBackpressure).toBeFalse();
-      loudLogger.info('ending');
-    });
-    // Readable backpressure is not actually supported. We're dealing with it by
-    //  using an buffer with a provided limit that can be very large.
-    test('Exceeding readable buffer limit causes error', async () => {
-      const startReading = promise<void>();
-      const handlingProm = promise<void>();
-      clientServer = await ClientServer.createClientServer({
-        connectionCallback: (streamPair) => {
-          logger.info('inside callback');
-          Promise.all([
-            (async () => {
-              await startReading.p;
-              loudLogger.info('Starting consumption');
-              for await (const _ of streamPair.readable) {
-                // No touch, only consume
-              }
-              loudLogger.info('Reads ended');
-            })(),
-            (async () => {
-              await streamPair.writable.close();
-            })(),
-          ])
-            .catch(() => {})
-            .finally(() => handlingProm.resolveP());
-        },
-        basePath: dataDir,
-        tlsConfig,
-        host,
-        // Setting a really low buffer limit
-        maxReadBufferBytes: 1500,
-        logger: loudLogger.getChild('server'),
-      });
-      logger.info(`Server started on port ${clientServer.port}`);
-      clientClient = await ClientClient.createClientClient({
-        host,
-        port: clientServer.port,
-        expectedNodeIds: [keyRing.getNodeId()],
-        logger: logger.getChild('clientClient'),
-      });
-      const websocket = await clientClient.startConnection();
-      const message = Buffer.alloc(1_000, 0xf0);
-      const writer = websocket.writable.getWriter();
-      loudLogger.info('Starting writes');
-      await expect(async () => {
-        for (let i = 0; i < 100; i++) {
-          await writer.write(message);
+      const clientReadProm = (async () => {
+        for await (const _ of websocket.readable) {
+          // No touch, only consume
         }
-      }).rejects.toThrow();
-      startReading.resolveP();
-      loudLogger.info('writes ended');
-      for await (const _ of websocket.readable) {
-        // No touch, only consume
-      }
-      await handlingProm.p;
-      loudLogger.info('ending');
+      })();
+      await expect(clientReadProm).rejects.toThrow();
+      const writer = websocket.writable.getWriter();
+      await expect(handlerProm).toReject();
+      await expect(writer.write(Buffer.from('test'))).rejects.toThrow();
+      logger.info('ending');
     });
   });
 
