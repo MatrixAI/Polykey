@@ -6,6 +6,7 @@ import { createDestroy } from '@matrixai/async-init';
 import Logger from '@matrixai/logger';
 import WebSocket from 'ws';
 import { PromiseCancellable } from '@matrixai/async-cancellable';
+import * as clientRpcUtils from './utils';
 import { promise } from '../utils';
 
 interface ClientClient extends createDestroy.CreateDestroy {}
@@ -14,13 +15,13 @@ class ClientClient {
   static async createClientClient({
     host,
     port,
-    nodeId,
+    expectedNodeIds,
     maxReadableStreamBytes = 1000, // About 1kB
     logger = new Logger(this.name),
   }: {
     host: string;
     port: number;
-    nodeId: NodeId;
+    expectedNodeIds: Array<NodeId>;
     maxReadableStreamBytes?: number;
     logger?: Logger;
   }): Promise<ClientClient> {
@@ -30,7 +31,7 @@ class ClientClient {
       host,
       port,
       maxReadableStreamBytes,
-      nodeId,
+      expectedNodeIds,
     );
     logger.info(`Created ${this.name}`);
     return clientClient;
@@ -43,7 +44,7 @@ class ClientClient {
     protected host: string,
     protected port: number,
     protected maxReadableStreamBytes: number,
-    protected nodeId: NodeId,
+    protected expectedNodeIds: Array<NodeId>,
   ) {}
 
   public async destroy(force: boolean = false) {
@@ -66,6 +67,7 @@ class ClientClient {
     const address = `wss://${this.host}:${this.port}`;
     this.logger.info(`Connecting to ${address}`);
     const connectProm = promise<void>();
+    const authenticateProm = promise<NodeId>();
     const ws = new WebSocket(address, {
       rejectUnauthorized: false,
     });
@@ -83,25 +85,36 @@ class ClientClient {
     abortController.signal.addEventListener('abort', abortHandler);
     this.activeConnections.add(connectionProm);
     connectionProm.finally(() => this.activeConnections.delete(connectionProm));
-
     // Handle connection failure
     const openErrorHandler = (e) => {
       connectProm.rejectP(Error('TMP ERROR Connection failure', { cause: e }));
     };
     ws.once('error', openErrorHandler);
     // Authenticate server's certificates
-    ws.once('upgrade', (request) => {
+    ws.once('upgrade', async (request) => {
       const tlsSocket = request.socket as TLSSocket;
-      const peerCert = tlsSocket.getPeerCertificate();
-      // TODO: custom authentication here
-      this.logger.info(`server NodeId ${peerCert.issuer.CN}`);
+      const peerCert = tlsSocket.getPeerCertificate(true);
+      clientRpcUtils
+        .verifyServerCertificateChain(
+          this.expectedNodeIds,
+          clientRpcUtils.detailedToCertChain(peerCert),
+        )
+        .then(authenticateProm.resolveP, authenticateProm.rejectP);
     });
     ws.once('open', () => {
       this.logger.info('starting connection');
       connectProm.resolveP();
     });
     // TODO: Race with a connection timeout here
-    await connectProm.p;
+    try {
+      await Promise.all([authenticateProm.p, connectProm.p]);
+    } catch (e) {
+      // Clean up
+      ws.close();
+      await connectionProm;
+      throw e;
+    }
+
     // Cleaning up connection error
     ws.removeEventListener('error', openErrorHandler);
 

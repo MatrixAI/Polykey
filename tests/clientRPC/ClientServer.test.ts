@@ -1,6 +1,7 @@
 import type { ReadableWritablePair } from 'stream/web';
 import type { TLSConfig } from '@/network/types';
 import type { WebSocket } from 'uWebSockets.js';
+import type { KeyPair } from '@/keys/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -10,6 +11,9 @@ import { KeyRing } from '@/keys/index';
 import ClientServer from '@/clientRPC/ClientServer';
 import { promise } from '@/utils';
 import ClientClient from '@/clientRPC/ClientClient';
+import * as keysUtils from '@/keys/utils';
+import * as networkErrors from '@/network/errors';
+import * as testNodeUtils from '../nodes/utils';
 import * as testsUtils from '../utils';
 
 describe('ClientServer', () => {
@@ -93,7 +97,7 @@ describe('ClientServer', () => {
     clientClient = await ClientClient.createClientClient({
       host,
       port: clientServer.port,
-      nodeId: keyRing.getNodeId(),
+      expectedNodeIds: [keyRing.getNodeId()],
       logger: logger.getChild('clientClient'),
     });
     const websocket = await clientClient.startConnection();
@@ -128,7 +132,7 @@ describe('ClientServer', () => {
     clientClient = await ClientClient.createClientClient({
       host,
       port: clientServer.port,
-      nodeId: keyRing.getNodeId(),
+      expectedNodeIds: [keyRing.getNodeId()],
       logger: logger.getChild('clientClient'),
     });
     const websocket = await clientClient.startConnection();
@@ -159,7 +163,7 @@ describe('ClientServer', () => {
         clientClient = await ClientClient.createClientClient({
           host,
           port: clientServer.port,
-          nodeId: keyRing.getNodeId(),
+          expectedNodeIds: [keyRing.getNodeId()],
           logger: logger.getChild('clientClient'),
         });
 
@@ -215,7 +219,7 @@ describe('ClientServer', () => {
         clientClient = await ClientClient.createClientClient({
           host,
           port: clientServer.port,
-          nodeId: keyRing.getNodeId(),
+          expectedNodeIds: [keyRing.getNodeId()],
           logger: logger.getChild('clientClient'),
         });
         const websocket = await clientClient.startConnection();
@@ -254,7 +258,7 @@ describe('ClientServer', () => {
         clientClient = await ClientClient.createClientClient({
           host,
           port: clientServer.port,
-          nodeId: keyRing.getNodeId(),
+          expectedNodeIds: [keyRing.getNodeId()],
           logger: logger.getChild('clientClient'),
         });
         const websocket = await clientClient.startConnection();
@@ -291,7 +295,7 @@ describe('ClientServer', () => {
         clientClient = await ClientClient.createClientClient({
           host,
           port: clientServer.port,
-          nodeId: keyRing.getNodeId(),
+          expectedNodeIds: [keyRing.getNodeId()],
           logger: logger.getChild('clientClient'),
         });
         const websocket = await clientClient.startConnection();
@@ -319,7 +323,7 @@ describe('ClientServer', () => {
     clientClient = await ClientClient.createClientClient({
       host,
       port: clientServer.port,
-      nodeId: keyRing.getNodeId(),
+      expectedNodeIds: [keyRing.getNodeId()],
       logger: logger.getChild('clientClient'),
     });
     const websocket = await clientClient.startConnection();
@@ -346,7 +350,7 @@ describe('ClientServer', () => {
     clientClient = await ClientClient.createClientClient({
       host,
       port: clientServer.port,
-      nodeId: keyRing.getNodeId(),
+      expectedNodeIds: [keyRing.getNodeId()],
       logger: logger.getChild('clientClient'),
     });
     const websocket = await clientClient.startConnection();
@@ -408,7 +412,7 @@ describe('ClientServer', () => {
     clientClient = await ClientClient.createClientClient({
       host,
       port: clientServer.port,
-      nodeId: keyRing.getNodeId(),
+      expectedNodeIds: [keyRing.getNodeId()],
       logger: logger.getChild('clientClient'),
     });
     const websocket = await clientClient.startConnection();
@@ -459,7 +463,7 @@ describe('ClientServer', () => {
     clientClient = await ClientClient.createClientClient({
       host,
       port: clientServer.port,
-      nodeId: keyRing.getNodeId(),
+      expectedNodeIds: [keyRing.getNodeId()],
       logger: logger.getChild('clientClient'),
     });
     const websocket = await clientClient.startConnection();
@@ -481,5 +485,100 @@ describe('ClientServer', () => {
   });
   test.todo('client ends connection abruptly');
   test.todo('Server ends connection abruptly');
-  test.todo('Client rejects bad server certificate');
+  test('Client rejects bad server certificate', async () => {
+    const invalidNodeId = testNodeUtils.generateRandomNodeId();
+    clientServer = await ClientServer.createClientServer({
+      connectionCallback: (streamPair) => {
+        logger.info('inside callback');
+        void streamPair.readable
+          .pipeTo(streamPair.writable)
+          .catch(() => {})
+          .finally(() => loudLogger.info('STREAM HANDLING ENDED'));
+      },
+      basePath: dataDir,
+      tlsConfig,
+      host,
+      logger: loudLogger.getChild('server'),
+    });
+    logger.info(`Server started on port ${clientServer.port}`);
+    clientClient = await ClientClient.createClientClient({
+      host,
+      port: clientServer.port,
+      expectedNodeIds: [invalidNodeId],
+      logger: logger.getChild('clientClient'),
+    });
+    await expect(clientClient.startConnection()).rejects.toThrow(
+      networkErrors.ErrorCertChainUnclaimed,
+    );
+    // @ts-ignore: kidnap protected property
+    const activeConnections = clientClient.activeConnections;
+    expect(activeConnections.size).toBe(0);
+    logger.info('ending');
+  });
+  test('Client authenticates with multiple certs in chain', async () => {
+    const keyPairs: Array<KeyPair> = [
+      keyRing.keyPair,
+      keysUtils.generateKeyPair(),
+      keysUtils.generateKeyPair(),
+      keysUtils.generateKeyPair(),
+      keysUtils.generateKeyPair(),
+    ];
+    const tlsConfig = await testsUtils.createTLSConfigWithChain(keyPairs);
+    const nodeId = keysUtils.publicKeyToNodeId(keyPairs[1].publicKey);
+    clientServer = await ClientServer.createClientServer({
+      connectionCallback: (streamPair) => {
+        logger.info('inside callback');
+        void streamPair.readable
+          .pipeTo(streamPair.writable)
+          .catch(() => {})
+          .finally(() => loudLogger.info('STREAM HANDLING ENDED'));
+      },
+      basePath: dataDir,
+      tlsConfig,
+      host,
+      logger: loudLogger.getChild('server'),
+    });
+    logger.info(`Server started on port ${clientServer.port}`);
+    clientClient = await ClientClient.createClientClient({
+      host,
+      port: clientServer.port,
+      expectedNodeIds: [nodeId],
+      logger: logger.getChild('clientClient'),
+    });
+    const connProm = clientClient.startConnection();
+    await connProm;
+    await expect(connProm).toResolve();
+    // @ts-ignore: kidnap protected property
+    const activeConnections = clientClient.activeConnections;
+    expect(activeConnections.size).toBe(1);
+    logger.info('ending');
+  });
+  test('Client authenticates with multiple expected nodes', async () => {
+    const alternativeNodeId = testNodeUtils.generateRandomNodeId();
+    clientServer = await ClientServer.createClientServer({
+      connectionCallback: (streamPair) => {
+        logger.info('inside callback');
+        void streamPair.readable
+          .pipeTo(streamPair.writable)
+          .catch(() => {})
+          .finally(() => loudLogger.info('STREAM HANDLING ENDED'));
+      },
+      basePath: dataDir,
+      tlsConfig,
+      host,
+      logger: loudLogger.getChild('server'),
+    });
+    logger.info(`Server started on port ${clientServer.port}`);
+    clientClient = await ClientClient.createClientClient({
+      host,
+      port: clientServer.port,
+      expectedNodeIds: [keyRing.getNodeId(), alternativeNodeId],
+      logger: logger.getChild('clientClient'),
+    });
+    await expect(clientClient.startConnection()).toResolve();
+    // @ts-ignore: kidnap protected property
+    const activeConnections = clientClient.activeConnections;
+    expect(activeConnections.size).toBe(1);
+    logger.info('ending');
+  });
 });

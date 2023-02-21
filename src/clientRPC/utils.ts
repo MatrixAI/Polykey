@@ -3,18 +3,13 @@ import type KeyRing from '../keys/KeyRing';
 import type SessionManager from '../sessions/SessionManager';
 import type { RPCRequestParams } from './types';
 import type { JsonRpcRequest } from '../RPC/types';
-import type { ReadableWritablePair } from 'stream/web';
-import type Logger from '@matrixai/logger';
-import type { ConnectionInfo, Host, Port } from '../network/types';
-import type RPCServer from '../RPC/RPCServer';
-import type { TLSSocket } from 'tls';
-import type { Server } from 'https';
-import type net from 'net';
-import type https from 'https';
-import { ReadableStream, WritableStream } from 'stream/web';
-import WebSocket, { WebSocketServer } from 'ws';
+import type { Certificate } from 'keys/types';
+import type { DetailedPeerCertificate } from 'tls';
+import type { NodeId } from 'ids/index';
+import * as x509 from '@peculiar/x509';
 import * as clientErrors from '../client/errors';
-import { promise } from '../utils';
+import * as networkErrors from '../network/errors';
+import * as keysUtils from '../keys/utils/index';
 
 async function authenticate(
   sessionManager: SessionManager,
@@ -65,201 +60,149 @@ function encodeAuthFromPassword(password: string): string {
   return `Basic ${encoded}`;
 }
 
-function readableFromWebSocket(
-  ws: WebSocket,
-  logger: Logger,
-): ReadableStream<Uint8Array> {
-  return new ReadableStream<Uint8Array>({
-    start: (controller) => {
-      logger.info('starting');
-      const messageHandler = (data) => {
-        logger.debug(`message: ${data.toString()}`);
-        ws.pause();
-        const message = data as Buffer;
-        if (message.length === 0) {
-          logger.info('ENDING');
-          ws.removeAllListeners('message');
-          try {
-            controller.close();
-          } catch {
-            // Ignore already closed
-          }
-          return;
-        }
-        controller.enqueue(message);
-      };
-      ws.on('message', messageHandler);
-      ws.once('close', () => {
-        logger.info('closed');
-        ws.removeListener('message', messageHandler);
-        try {
-          controller.close();
-        } catch {
-          // Ignore already closed
-        }
-      });
-      ws.once('error', (e) => {
-        controller.error(e);
-      });
-    },
-    cancel: () => {
-      logger.info('cancelled');
-      ws.close();
-    },
-    pull: () => {
-      logger.debug('resuming');
-      ws.resume();
-    },
-  });
+function detailedToCertChain(
+  cert: DetailedPeerCertificate,
+): Array<Certificate> {
+  const certChain: Array<Certificate> = [];
+  let currentCert = cert;
+  while (true) {
+    certChain.unshift(new x509.X509Certificate(currentCert.raw));
+    if (currentCert === currentCert.issuerCertificate) break;
+    currentCert = currentCert.issuerCertificate;
+  }
+  return certChain;
 }
 
-function writeableFromWebSocket(
-  ws: WebSocket,
-  holdOpen: boolean,
-  logger: Logger,
-): WritableStream<Uint8Array> {
-  return new WritableStream<Uint8Array>({
-    start: (controller) => {
-      logger.info('starting');
-      ws.once('error', (e) => {
-        logger.error(`error: ${e}`);
-        controller.error(e);
-      });
-      ws.once('close', (code, reason) => {
-        logger.info(
-          `ws closing early! with code: ${code} and reason: ${reason.toString()}`,
+/**
+ * Verify the server certificate chain when connecting to it from a client
+ * This is a custom verification intended to verify that the server owned
+ * the relevant NodeId.
+ * It is possible that the server has a new NodeId. In that case we will
+ * verify that the new NodeId is the true descendant of the target NodeId.
+ */
+async function verifyServerCertificateChain(
+  nodeIds: Array<NodeId>,
+  certChain: Array<Certificate>,
+): Promise<NodeId> {
+  if (!certChain.length) {
+    throw new networkErrors.ErrorCertChainEmpty(
+      'No certificates available to verify',
+    );
+  }
+  if (!nodeIds.length) {
+    throw new networkErrors.ErrorConnectionNodesEmpty(
+      'No nodes were provided to verify against',
+    );
+  }
+  const now = new Date();
+  let certClaim: Certificate | null = null;
+  let certClaimIndex: number | null = null;
+  let verifiedNodeId: NodeId | null = null;
+  for (let certIndex = 0; certIndex < certChain.length; certIndex++) {
+    const cert = certChain[certIndex];
+    if (now < cert.notBefore || now > cert.notAfter) {
+      throw new networkErrors.ErrorCertChainDateInvalid(
+        'Chain certificate date is invalid',
+        {
+          data: {
+            cert,
+            certIndex,
+            notBefore: cert.notBefore,
+            notAfter: cert.notAfter,
+            now,
+          },
+        },
+      );
+    }
+    const certNodeId = keysUtils.certNodeId(cert);
+    if (certNodeId == null) {
+      throw new networkErrors.ErrorCertChainNameInvalid(
+        'Chain certificate common name attribute is missing',
+        {
+          data: {
+            cert,
+            certIndex,
+          },
+        },
+      );
+    }
+    const certPublicKey = keysUtils.certPublicKey(cert);
+    if (certPublicKey == null) {
+      throw new networkErrors.ErrorCertChainKeyInvalid(
+        'Chain certificate public key is missing',
+        {
+          data: {
+            cert,
+            certIndex,
+          },
+        },
+      );
+    }
+    if (!(await keysUtils.certNodeSigned(cert))) {
+      throw new networkErrors.ErrorCertChainSignatureInvalid(
+        'Chain certificate does not have a valid node-signature',
+        {
+          data: {
+            cert,
+            certIndex,
+            nodeId: keysUtils.publicKeyToNodeId(certPublicKey),
+            commonName: certNodeId,
+          },
+        },
+      );
+    }
+    for (const nodeId of nodeIds) {
+      if (certNodeId.equals(nodeId)) {
+        // Found the certificate claiming the nodeId
+        certClaim = cert;
+        certClaimIndex = certIndex;
+        verifiedNodeId = nodeId;
+      }
+    }
+    // If cert is found then break out of loop
+    if (verifiedNodeId != null) break;
+  }
+  if (certClaimIndex == null || certClaim == null || verifiedNodeId == null) {
+    throw new networkErrors.ErrorCertChainUnclaimed(
+      'Node IDs is not claimed by any certificate',
+      {
+        data: { nodeIds },
+      },
+    );
+  }
+  if (certClaimIndex > 0) {
+    let certParent: Certificate;
+    let certChild: Certificate;
+    for (let certIndex = certClaimIndex; certIndex > 0; certIndex--) {
+      certParent = certChain[certIndex];
+      certChild = certChain[certIndex - 1];
+      if (
+        !keysUtils.certIssuedBy(certParent, certChild) ||
+        !(await keysUtils.certSignedBy(
+          certParent,
+          keysUtils.certPublicKey(certChild)!,
+        ))
+      ) {
+        throw new networkErrors.ErrorCertChainBroken(
+          'Chain certificate is not signed by parent certificate',
+          {
+            data: {
+              cert: certChild,
+              certIndex: certIndex - 1,
+              certParent,
+            },
+          },
         );
-        controller.error(Error('TMP WebSocket Closed early'));
-      });
-    },
-    close: () => {
-      logger.info('stream closing');
-      ws.send(Buffer.from([]));
-      if (!holdOpen) ws.terminate();
-    },
-    abort: () => {
-      logger.info('aborting');
-      ws.close();
-    },
-    write: async (chunk, controller) => {
-      // Logger.debug(`writing: ${chunk?.toString()}`);
-      const wait = promise<void>();
-      ws.send(chunk, (e) => {
-        if (e != null) {
-          controller.error(e);
-        }
-        wait.resolveP();
-      });
-      await wait.p;
-    },
-  });
-}
-
-function webSocketToWebStreamPair(
-  ws: WebSocket,
-  holdOpen: boolean,
-  logger: Logger,
-): ReadableWritablePair<Uint8Array, Uint8Array> {
-  return {
-    readable: readableFromWebSocket(ws, logger.getChild('readable')),
-    writable: writeableFromWebSocket(ws, holdOpen, logger.getChild('writable')),
-  };
-}
-
-function startConnection(
-  host: string,
-  port: number,
-  logger: Logger,
-): Promise<ReadableWritablePair<Uint8Array, Uint8Array>> {
-  const ws = new WebSocket(`wss://${host}:${port}`, {
-    // CheckServerIdentity: (
-    //   servername: string,
-    //   cert: WebSocket.CertMeta,
-    // ): boolean => {
-    //   console.log('CHECKING IDENTITY');
-    //   console.log(servername);
-    //   console.log(cert);
-    //   return false;
-    // },
-    rejectUnauthorized: false,
-    // Ca: tlsConfig.certChainPem
-  });
-  ws.once('close', () => logger.info('CLOSED'));
-  // Ws.once('upgrade', (request) => {
-  //   const tlsSocket = request.socket as TLSSocket;
-  //   const peerCert = tlsSocket.getPeerCertificate();
-  //   console.log(peerCert.issuer.CN);
-  //   logger.info('Test early cancellation');
-  //   // Request.destroy(Error('some error'));
-  //   // tlsSocket.destroy(Error('some error'));
-  //   // ws.close(12345, 'some reason');
-  //   // TODO: Use the existing verify method from the GRPC implementation
-  //   // TODO: Have this emit an error on verification failure.
-  //   //  It's fine for the server side to close abruptly without error
-  // });
-  const prom = promise<ReadableWritablePair<Uint8Array, Uint8Array>>();
-  ws.once('open', () => {
-    logger.info('starting connection');
-    prom.resolveP(webSocketToWebStreamPair(ws, true, logger));
-  });
-  return prom.p;
-}
-
-function handleConnection(ws: WebSocket, logger: Logger): void {
-  ws.once('close', () => logger.info('CLOSED'));
-  const readable = readableFromWebSocket(ws, logger.getChild('readable'));
-  const writable = writeableFromWebSocket(
-    ws,
-    false,
-    logger.getChild('writable'),
-  );
-  void readable.pipeTo(writable).catch((e) => logger.error(e));
-}
-
-function createClientServer(
-  server: Server,
-  rpcServer: RPCServer,
-  logger: Logger,
-) {
-  logger.info('created server');
-  const wss = new WebSocketServer({
-    server,
-  });
-  wss.on('error', (e) => logger.error(e));
-  logger.info('created wss');
-  wss.on('connection', (ws, req) => {
-    logger.info('connection!');
-    const socket = req.socket as TLSSocket;
-    const streamPair = webSocketToWebStreamPair(ws, false, logger);
-    rpcServer.handleStream(streamPair, {
-      localHost: socket.localAddress! as Host,
-      localPort: socket.localPort! as Port,
-      remoteCertificates: socket.getPeerCertificate(),
-      remoteHost: socket.remoteAddress! as Host,
-      remotePort: socket.remotePort! as Port,
-    } as unknown as ConnectionInfo);
-  });
-  wss.once('close', () => {
-    wss.removeAllListeners('error');
-    wss.removeAllListeners('connection');
-  });
-  return wss;
-}
-
-async function listen(server: https.Server, host?: string, port?: number) {
-  await new Promise<void>((resolve) => {
-    server.listen(port, host ?? '127.0.0.1', undefined, () => resolve());
-  });
-  const addressInfo = server.address() as net.AddressInfo;
-  return addressInfo.port;
+      }
+    }
+  }
+  return verifiedNodeId;
 }
 
 export {
   authenticate,
   decodeAuth,
   encodeAuthFromPassword,
-  startConnection,
-  handleConnection,
-  createClientServer,
-  listen,
+  detailedToCertChain,
+  verifyServerCertificateChain,
 };

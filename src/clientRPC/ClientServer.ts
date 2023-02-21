@@ -109,7 +109,6 @@ class ClientServer {
     await this.fs.promises.rm(certFile);
     this.server.ws('/*', {
       upgrade: (res, req, context) => {
-        // Req.forEach((k, v) => console.log(k, ':', v));
         const logger = this.logger.getChild(`Connection ${count}`);
         res.upgrade<Partial<Context>>(
           {
