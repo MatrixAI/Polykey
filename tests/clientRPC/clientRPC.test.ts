@@ -2,9 +2,11 @@ import type { ReadableWritablePair } from 'stream/web';
 import type { TLSConfig } from '@/network/types';
 import type { WebSocket } from 'uWebSockets.js';
 import type { KeyPair } from '@/keys/types';
+import type http from 'http';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import https from 'https';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { testProp, fc } from '@fast-check/jest';
 import { KeyRing } from '@/keys/index';
@@ -75,8 +77,8 @@ describe('ClientRPC', () => {
   });
   afterEach(async () => {
     logger.info('AFTEREACH');
-    await clientServer.stop(true);
-    await clientClient.destroy();
+    await clientServer?.stop(true);
+    await clientClient?.destroy(true);
     await keyRing.stop();
     await fs.promises.rm(dataDir, { force: true, recursive: true });
   });
@@ -546,11 +548,44 @@ describe('ClientRPC', () => {
           // No touch, only consume
         }
       })();
-      await expect(clientReadProm).rejects.toThrow();
+      await expect(clientReadProm).toResolve();
       const writer = websocket.writable.getWriter();
-      await expect(handlerProm).toReject();
+      await expect(handlerProm.p).toResolve();
       await expect(writer.write(Buffer.from('test'))).rejects.toThrow();
       logger.info('ending');
+    });
+    test('Server rejects normal HTTPS requests', async () => {
+      clientServer = await ClientServer.createClientServer({
+        connectionCallback: (streamPair) => {
+          logger.info('inside callback');
+          void streamPair.readable
+            .pipeTo(streamPair.writable)
+            .catch(() => {})
+            .finally(() => loudLogger.info('STREAM HANDLING ENDED'));
+        },
+        basePath: dataDir,
+        tlsConfig,
+        host,
+        logger: loudLogger.getChild('server'),
+      });
+      logger.info(`Server started on port ${clientServer.port}`);
+      const getResProm = promise<http.IncomingMessage>();
+      https.get(
+        `https://${host}:${clientServer.port}/`,
+        { rejectUnauthorized: false },
+        getResProm.resolveP,
+      );
+      const res = await getResProm.p;
+      const contentProm = promise<string>();
+      res.once('data', (d) => contentProm.resolveP(d.toString()));
+      const endProm = promise<string>();
+      res.on('error', endProm.rejectP);
+      res.on('close', endProm.resolveP);
+
+      expect(res.statusCode).toBe(426);
+      await expect(contentProm.p).resolves.toBe('426 Upgrade Required');
+      expect(res.headers['connection']).toBe('Upgrade');
+      expect(res.headers['upgrade']).toBe('websocket');
     });
   });
 

@@ -143,6 +143,13 @@ class ClientServer {
     const listenProm = promise<void>();
     if (host != null) {
       // With custom host
+      this.server.any('/*', (res, req) => {
+        res
+          .writeStatus('426')
+          .writeHeader('connection', 'Upgrade')
+          .writeHeader('upgrade', 'websocket')
+          .end('426 Upgrade Required', true);
+      });
       this.server.listen(host, port ?? 0, (listenSocket) => {
         if (listenSocket) {
           this.listenSocket = listenSocket;
