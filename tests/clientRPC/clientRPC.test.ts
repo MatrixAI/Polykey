@@ -9,6 +9,7 @@ import os from 'os';
 import https from 'https';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { testProp, fc } from '@fast-check/jest';
+import { Timer } from '@matrixai/timer';
 import { KeyRing } from '@/keys/index';
 import ClientServer from '@/clientRPC/ClientServer';
 import { promise } from '@/utils';
@@ -588,7 +589,6 @@ describe('ClientRPC', () => {
       expect(res.headers['upgrade']).toBe('websocket');
     });
   });
-
   describe('ClientClient', () => {
     test('Destroying ClientClient stops all connections', async () => {
       clientServer = await ClientServer.createClientServer({
@@ -714,8 +714,21 @@ describe('ClientRPC', () => {
       expect(activeConnections.size).toBe(1);
       logger.info('ending');
     });
-    test.todo('Writable backpressure');
-    test.todo('Readable backpressure');
-    test.todo('Connection times out');
+    test('Connection times out', async () => {
+      clientClient = await ClientClient.createClientClient({
+        host,
+        port: 12345,
+        expectedNodeIds: [keyRing.getNodeId()],
+        connectionTimeout: 0,
+        logger: logger.getChild('clientClient'),
+      });
+      await expect(clientClient.startConnection({})).rejects.toThrow();
+      await expect(
+        clientClient.startConnection({
+          timeoutTimer: new Timer({ delay: 0 }),
+        }),
+      ).rejects.toThrow();
+      logger.info('ending');
+    });
   });
 });

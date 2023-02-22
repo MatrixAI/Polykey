@@ -143,7 +143,7 @@ class ClientServer {
     const listenProm = promise<void>();
     if (host != null) {
       // With custom host
-      this.server.any('/*', (res, req) => {
+      this.server.any('/*', (res, _) => {
         res
           .writeStatus('426')
           .writeHeader('connection', 'Upgrade')

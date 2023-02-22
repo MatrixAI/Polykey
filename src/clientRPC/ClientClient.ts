@@ -6,8 +6,11 @@ import { createDestroy } from '@matrixai/async-init';
 import Logger from '@matrixai/logger';
 import WebSocket from 'ws';
 import { PromiseCancellable } from '@matrixai/async-cancellable';
+import { Timer } from '@matrixai/timer';
 import * as clientRpcUtils from './utils';
 import { promise } from '../utils';
+
+const timeoutSymbol = Symbol('TimedOutSymbol');
 
 interface ClientClient extends createDestroy.CreateDestroy {}
 @createDestroy.CreateDestroy()
@@ -16,12 +19,14 @@ class ClientClient {
     host,
     port,
     expectedNodeIds,
+    connectionTimeout,
     maxReadableStreamBytes = 1000, // About 1kB
     logger = new Logger(this.name),
   }: {
     host: string;
     port: number;
     expectedNodeIds: Array<NodeId>;
+    connectionTimeout?: number;
     maxReadableStreamBytes?: number;
     logger?: Logger;
   }): Promise<ClientClient> {
@@ -32,6 +37,7 @@ class ClientClient {
       port,
       maxReadableStreamBytes,
       expectedNodeIds,
+      connectionTimeout,
     );
     logger.info(`Created ${this.name}`);
     return clientClient;
@@ -45,6 +51,7 @@ class ClientClient {
     protected port: number,
     protected maxReadableStreamBytes: number,
     protected expectedNodeIds: Array<NodeId>,
+    protected connectionTimeout: number | undefined,
   ) {}
 
   public async destroy(force: boolean = false) {
@@ -61,9 +68,19 @@ class ClientClient {
   }
 
   @createDestroy.ready(Error('TMP destroyed'))
-  public async startConnection(): Promise<
-    ReadableWritablePair<Uint8Array, Uint8Array>
-  > {
+  public async startConnection({
+    timeoutTimer,
+  }: {
+    timeoutTimer?: Timer;
+  } = {}): Promise<ReadableWritablePair<Uint8Array, Uint8Array>> {
+    // Use provided timer
+    let timer: Timer<void> | undefined = timeoutTimer;
+    // If no timer provided use provided default timeout
+    if (timeoutTimer == null && this.connectionTimeout != null) {
+      timer = new Timer({
+        delay: this.connectionTimeout,
+      });
+    }
     const address = `wss://${this.host}:${this.port}`;
     this.logger.info(`Connecting to ${address}`);
     const connectProm = promise<void>();
@@ -76,15 +93,17 @@ class ClientClient {
       ws.terminate();
     };
     const abortController = new AbortController();
-    const connectionProm = new PromiseCancellable<void>((resolve) => {
+    const activeConnectionProm = new PromiseCancellable<void>((resolve) => {
       ws.once('close', () => {
         abortController.signal.removeEventListener('abort', abortHandler);
         resolve();
       });
     }, abortController);
     abortController.signal.addEventListener('abort', abortHandler);
-    this.activeConnections.add(connectionProm);
-    connectionProm.finally(() => this.activeConnections.delete(connectionProm));
+    this.activeConnections.add(activeConnectionProm);
+    activeConnectionProm.finally(() =>
+      this.activeConnections.delete(activeConnectionProm),
+    );
     // Handle connection failure
     const openErrorHandler = (e) => {
       connectProm.rejectP(Error('TMP ERROR Connection failure', { cause: e }));
@@ -106,12 +125,27 @@ class ClientClient {
       connectProm.resolveP();
     });
     // TODO: Race with a connection timeout here
+    // There are 3 resolve conditions here.
+    //  1. Connection established and authenticated
+    //  2. connection error or authentication failure
+    //  3. connection timed out
     try {
-      await Promise.all([authenticateProm.p, connectProm.p]);
+      const result = await Promise.race([
+        timer?.then(() => timeoutSymbol) ?? new Promise(() => {}),
+        await Promise.all([authenticateProm.p, connectProm.p]),
+      ]);
+      if (result === timeoutSymbol) throw Error('TMP timed out');
     } catch (e) {
       // Clean up
-      ws.close();
-      await connectionProm;
+      // unregister handlers
+      ws.removeAllListeners('error');
+      ws.removeAllListeners('upgrade');
+      ws.removeAllListeners('open');
+      // Close the ws if it's open at this stage
+      ws.terminate();
+      // Ensure the connection is removed from the active connection set before
+      //  returning.
+      await activeConnectionProm;
       throw e;
     }
 
