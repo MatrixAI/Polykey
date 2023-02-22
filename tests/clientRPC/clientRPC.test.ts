@@ -16,18 +16,19 @@ import { promise } from '@/utils';
 import ClientClient from '@/clientRPC/ClientClient';
 import * as keysUtils from '@/keys/utils';
 import * as networkErrors from '@/network/errors';
+import * as nodesUtils from '@/nodes/utils';
 import * as testNodeUtils from '../nodes/utils';
 import * as testsUtils from '../utils';
 
 // This file tests both the client and server together. They're too interlinked
 //  to be separate.
 describe('ClientRPC', () => {
-  const logger = new Logger('websocket test', LogLevel.WARN, [
+  const logger = new Logger('websocket test', LogLevel.DEBUG, [
     new StreamHandler(
       formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
     ),
   ]);
-  const loudLogger = new Logger('websocket test', LogLevel.WARN, [
+  const loudLogger = new Logger('websocket test', LogLevel.DEBUG, [
     new StreamHandler(
       formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
     ),
@@ -321,7 +322,7 @@ describe('ClientRPC', () => {
   });
   // To fully test these two I need to start the client or server in a separate process and kill that process.
   // These require the ping/pong connection watchdogs to be implemented.
-  test.skip('client ends connection abruptly', async () => {
+  test('client ends connection abruptly', async () => {
     const handlerProm = promise<void>();
     clientServer = await ClientServer.createClientServer({
       connectionCallback: (streamPair) => {
@@ -337,69 +338,101 @@ describe('ClientRPC', () => {
       logger: loudLogger.getChild('server'),
     });
     logger.info(`Server started on port ${clientServer.port}`);
+
+    const testProcess = await testsUtils.spawn(
+      'ts-node',
+      [
+        '--project',
+        testsUtils.tsConfigPath,
+        `${globalThis.testDir}/clientRPC/testClient.ts`,
+      ],
+      {
+        env: {
+          PK_TEST_HOST: host,
+          PK_TEST_PORT: `${clientServer.port}`,
+          PK_TEST_NODE_ID: nodesUtils.encodeNodeId(keyRing.getNodeId()),
+        },
+      },
+      logger,
+    );
+    const startedProm = promise<string>();
+    testProcess.stdout!.on('data', (data) => {
+      startedProm.resolveP(data.toString());
+    });
+    testProcess.stderr!.on('data', (data) =>
+      startedProm.rejectP(data.toString()),
+    );
+    const exitedProm = promise<void>();
+    testProcess.once('exit', () => exitedProm.resolveP());
+    await startedProm.p;
+
+    // Killing the client
+    testProcess.kill('SIGTERM');
+    await exitedProm.p;
+
+    // @ts-ignore: kidnap protected property
+    const activeSockets = clientServer.activeSockets;
+    expect(activeSockets.size).toBe(0);
+    // Connection failure should cause handler to error
+    await expect(handlerProm.p).toResolve();
+    logger.info('ending');
+  });
+  test('Server ends connection abruptly', async () => {
+    const testProcess = await testsUtils.spawn(
+      'ts-node',
+      [
+        '--project',
+        testsUtils.tsConfigPath,
+        `${globalThis.testDir}/clientRPC/testServer.ts`,
+      ],
+      {
+        env: {
+          PK_TEST_KEY_PRIVATE_PEM: tlsConfig.keyPrivatePem,
+          PK_TEST_CERT_CHAIN_PEM: tlsConfig.certChainPem,
+          PK_TEST_HOST: host,
+        },
+      },
+      logger,
+    );
+    const startedProm = promise<number>();
+    testProcess.stdout!.on('data', (data) => {
+      startedProm.resolveP(parseInt(data.toString()));
+    });
+    testProcess.stderr!.on('data', (data) =>
+      startedProm.rejectP(data.toString()),
+    );
+    const exitedProm = promise<void>();
+    testProcess.once('exit', () => exitedProm.resolveP());
+
+    logger.info(`Server started on port ${await startedProm.p}`);
     clientClient = await ClientClient.createClientClient({
       host,
-      port: clientServer.port,
+      port: await startedProm.p,
       expectedNodeIds: [keyRing.getNodeId()],
       logger: logger.getChild('clientClient'),
     });
     const websocket = await clientClient.startConnection();
+
+    // Killing the server
+    testProcess.kill('SIGTERM');
+    await exitedProm.p;
+
     // @ts-ignore: kidnap protected property
     const activeConnections = clientClient.activeConnections;
     for (const activeConnection of activeConnections) {
-      activeConnection.cancel();
+      await activeConnection;
     }
-    await expect(handlerProm.p).toResolve();
-    for await (const _ of websocket.readable) {
-      // Do nothing
-    }
-    logger.info('ending');
-  });
-  test.skip('Server ends connection abruptly', async () => {
-    const streamPairProm =
-      promise<ReadableWritablePair<Uint8Array, Uint8Array>>();
-    clientServer = await ClientServer.createClientServer({
-      connectionCallback: (streamPair_) => {
-        logger.info('inside callback');
-        // Don't do anything with the handler
-        streamPairProm.resolveP(streamPair_);
-      },
-      basePath: dataDir,
-      tlsConfig,
-      host,
-      logger: loudLogger.getChild('server'),
-    });
-    logger.info(`Server started on port ${clientServer.port}`);
-    clientClient = await ClientClient.createClientClient({
-      host,
-      port: clientServer.port,
-      expectedNodeIds: [keyRing.getNodeId()],
-      logger: logger.getChild('clientClient'),
-    });
-    const websocket = await clientClient.startConnection();
-    // @ts-ignore: kidnap protected property
-    const activeSockets = clientServer.activeSockets;
-    for (const activeSocket of activeSockets) {
-      activeSocket.close();
-    }
-    const streamPair = await streamPairProm.p;
-    // Expect both readable to throw
-    const handlerReadProm = (async () => {
-      for await (const _ of streamPair.readable) {
-        // Do nothing
-      }
-    })();
-    await expect(handlerReadProm).rejects.toThrow();
+    // Checking client's response to connection dropping
+    // client's readable should throw
     const clientReadProm = (async () => {
       for await (const _ of websocket.readable) {
         // Do nothing
       }
     })();
     await expect(clientReadProm).rejects.toThrow();
-    // Both writables should throw.
-    const handlerWritable = streamPair.writable.getWriter();
-    await expect(handlerWritable.write(Buffer.from('test'))).rejects.toThrow();
+    // Client's writable should throw
     const clientWritable = websocket.writable.getWriter();
+    logger.info('asd');
     await expect(clientWritable.write(Buffer.from('test'))).rejects.toThrow();
     logger.info('ending');
   });

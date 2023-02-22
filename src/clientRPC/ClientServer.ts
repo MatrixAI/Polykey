@@ -4,6 +4,8 @@ import type { TLSConfig } from 'network/types';
 import type { WebSocket } from 'uWebSockets.js';
 import { WritableStream, ReadableStream } from 'stream/web';
 import path from 'path';
+import os from 'os';
+import fs from 'fs';
 import { startStop } from '@matrixai/async-init';
 import Logger from '@matrixai/logger';
 import uWebsocket from 'uWebSockets.js';
@@ -40,7 +42,7 @@ class ClientServer {
   }: {
     connectionCallback: ConnectionCallback;
     tlsConfig: TLSConfig;
-    basePath: string;
+    basePath?: string;
     host?: string;
     port?: number;
     fs?: FileSystem;
@@ -82,13 +84,13 @@ class ClientServer {
   public async start({
     connectionCallback,
     tlsConfig,
-    basePath,
+    basePath = os.tmpdir(),
     host,
     port,
   }: {
     connectionCallback: ConnectionCallback;
     tlsConfig: TLSConfig;
-    basePath: string;
+    basePath?: string;
     host?: string;
     port?: number;
   }): Promise<void> {
@@ -97,8 +99,9 @@ class ClientServer {
     // TODO: take a TLS config, write the files in the temp directory and
     //  load them.
     let count = 0;
-    const keyFile = path.join(basePath, 'keyFile.pem');
-    const certFile = path.join(basePath, 'certFile.pem');
+    const tmpDir = await fs.promises.mkdtemp(path.join(basePath, 'polykey-'));
+    const keyFile = path.join(tmpDir, 'keyFile.pem');
+    const certFile = path.join(tmpDir, 'certFile.pem');
     await this.fs.promises.writeFile(keyFile, tlsConfig.keyPrivatePem);
     await this.fs.promises.writeFile(certFile, tlsConfig.certChainPem);
     this.server = uWebsocket.SSLApp({
