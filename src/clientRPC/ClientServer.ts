@@ -12,6 +12,7 @@ import os from 'os';
 import { startStop } from '@matrixai/async-init';
 import Logger from '@matrixai/logger';
 import uWebsocket from 'uWebSockets.js';
+import * as clientRPCErrors from './errors';
 import { promise } from '../utils';
 
 type ConnectionCallback = (
@@ -109,7 +110,7 @@ class ClientServer {
     tlsConfig,
     basePath = os.tmpdir(),
     host,
-    port,
+    port = 0,
   }: {
     connectionCallback: ConnectionCallback;
     tlsConfig: TLSConfig;
@@ -119,12 +120,11 @@ class ClientServer {
   }): Promise<void> {
     this.logger.info(`Starting ${this.constructor.name}`);
     this.connectionCallback = connectionCallback;
-    // TODO: take a TLS config, write the files in the temp directory and
-    //  load them.
     let count = 0;
     const tmpDir = await this.fs.promises.mkdtemp(
       path.join(basePath, 'polykey-'),
     );
+    // TODO: The key file needs to be in the encrypted format
     const keyFile = path.join(tmpDir, 'keyFile.pem');
     const certFile = path.join(tmpDir, 'certFile.pem');
     await this.fs.promises.writeFile(keyFile, tlsConfig.keyPrivatePem);
@@ -170,38 +170,33 @@ class ClientServer {
         ws.getUserData().drain(ws);
       },
     });
+    this.server.any('/*', (res, _) => {
+      // Reject normal requests with an upgrade code
+      res
+        .writeStatus('426')
+        .writeHeader('connection', 'Upgrade')
+        .writeHeader('upgrade', 'websocket')
+        .end('426 Upgrade Required', true);
+    });
     const listenProm = promise<void>();
+    const listenCallback = (listenSocket) => {
+      if (listenSocket) {
+        this.listenSocket = listenSocket;
+        listenProm.resolveP();
+      } else {
+        listenProm.rejectP(new clientRPCErrors.ErrorServerPortUnavailable());
+      }
+    };
     if (host != null) {
       // With custom host
-      this.server.any('/*', (res, _) => {
-        res
-          .writeStatus('426')
-          .writeHeader('connection', 'Upgrade')
-          .writeHeader('upgrade', 'websocket')
-          .end('426 Upgrade Required', true);
-      });
-      this.server.listen(host, port ?? 0, (listenSocket) => {
-        if (listenSocket) {
-          this.listenSocket = listenSocket;
-          listenProm.resolveP();
-        } else {
-          listenProm.rejectP(Error('TMP, no port'));
-        }
-      });
+      this.server.listen(host, port ?? 0, listenCallback);
     } else {
       // With default host
-      this.server.listen(port ?? 0, (listenSocket) => {
-        if (listenSocket) {
-          this.listenSocket = listenSocket;
-          listenProm.resolveP();
-        } else {
-          listenProm.rejectP(Error('TMP, no port'));
-        }
-      });
+      this.server.listen(port, listenCallback);
     }
     await listenProm.p;
     this.logger.debug(
-      `bound to port ${uWebsocket.us_socket_local_port(this.listenSocket)}`,
+      `Listening on port ${uWebsocket.us_socket_local_port(this.listenSocket)}`,
     );
     this.host = host ?? '127.0.0.1';
     this.logger.info(`Started ${this.constructor.name}`);
@@ -236,23 +231,25 @@ class ClientServer {
     let backpressure: PromiseDeconstructed<void> | null = null;
     let writableController: WritableStreamDefaultController | undefined;
     let readableController: ReadableStreamController<Uint8Array> | undefined;
+    const writableLogger = logger.getChild('Writable');
+    const readableLogger = logger.getChild('Readable');
     // Setting up the writable stream
     const writableStream = new WritableStream<Uint8Array>({
       start: (controller) => {
         writableController = controller;
       },
       write: async (chunk, controller) => {
-        // Logger.debug(`WRITABLE WRITE ${chunk.toString()}`);
         await backpressure?.p;
         const writeResult = ws.send(chunk, true);
         switch (writeResult) {
           default:
           case 2:
             // Write failure, emit error
-            controller.error(Error('TMP Failed to write'));
+            writableLogger.error('Send error');
+            controller.error(new clientRPCErrors.ErrorServerSendFailed());
             break;
           case 0:
-            logger.info('Write backpressure');
+            writableLogger.info('Write backpressure');
             // Signal backpressure
             backpressure = promise();
             context.writeBackpressure = true;
@@ -262,22 +259,23 @@ class ClientServer {
             break;
           case 1:
             // Success
+            writableLogger.debug(`Sending ${chunk.toString()}`);
             break;
         }
       },
       close: () => {
-        logger.info('WRITABLE CLOSE');
+        writableLogger.info('Closed, sending null message');
         if (!wsClosed) ws.send(Buffer.from([]), true);
         writableClosed = true;
         if (readableClosed && !wsClosed) {
-          logger.debug('ENDING WS');
+          writableLogger.debug('Ending socket');
           ws.end();
         }
       },
       abort: () => {
-        logger.info('WRITABLE ABORT');
+        writableLogger.info('Aborted');
         if (readableClosed && !wsClosed) {
-          logger.debug('ENDING WS');
+          writableLogger.debug('Ending socket');
           ws.end();
         }
       },
@@ -288,35 +286,34 @@ class ClientServer {
         start: (controller) => {
           readableController = controller;
           context.message = (ws, message, _) => {
-            // Logger.debug(`MESSAGE CALLED ${message.toString()}`);
+            readableLogger.debug(`Received ${message.toString()}`);
             if (message.byteLength === 0) {
-              logger.debug('NULL MESSAGE, CLOSING');
+              readableLogger.debug('Null message received');
               if (!readableClosed) {
-                logger.debug('CLOSING READABLE');
-                controller.close();
                 readableClosed = true;
+                readableLogger.debug('Closing');
+                controller.close();
                 if (writableClosed && !wsClosed) {
+                  readableLogger.debug('Ending socket');
                   ws.end();
                 }
               }
               return;
             }
             controller.enqueue(Buffer.from(message));
-            if (
-              controller.desiredSize != null &&
-              controller.desiredSize < -1000
-            ) {
-              logger.error('Read stream buffer full');
-              const err = Error('TMP read buffer limit');
-              if (!wsClosed) ws.end(4001, err.toString());
-              controller.error(err);
+            if (controller.desiredSize != null && controller.desiredSize < 0) {
+              readableLogger.error('Read stream buffer full');
+              if (!wsClosed) ws.end(4001, 'Read stream buffer full');
+              controller.error(
+                new clientRPCErrors.ErrorServerReadableBufferLimit(),
+              );
             }
           };
         },
         cancel: () => {
           readableClosed = true;
           if (writableClosed && !wsClosed) {
-            logger.debug('ENDING WS');
+            readableLogger.debug('Ending socket');
             ws.end();
           }
         },
@@ -331,39 +328,42 @@ class ClientServer {
       ws.ping();
     }, this.pingInterval);
     const pingTimeoutTimer = setTimeout(() => {
-      logger.debug('ping timed out');
+      logger.debug('Ping timed out');
       ws.end();
     }, this.pingTimeout);
     context.pong = () => {
-      logger.debug('received pong');
+      logger.debug('Received pong');
       pingTimeoutTimer.refresh();
     };
     context.close = () => {
-      logger.debug('CLOSING CALLED');
+      logger.debug('Closing');
       wsClosed = true;
       // Cleaning up timers
       logger.debug('Cleaning up timers');
       clearTimeout(pingTimer);
       clearTimeout(pingTimeoutTimer);
       // Closing streams
-      logger.debug('cleaning streams');
+      logger.debug('Cleaning streams');
       if (!readableClosed) {
-        logger.debug('CLOSING READABLE');
-        readableController?.error(Error('TMP Web stream closed early SR'));
         readableClosed = true;
+        readableLogger.debug('Closing');
+        readableController?.error(
+          new clientRPCErrors.ErrorServerConnectionEndedEarly(),
+        );
       }
       if (!writableClosed) {
-        logger.debug('CLOSING Writable');
-        writableController?.error(Error('TMP Web stream closed early SW'));
         writableClosed = true;
+        writableLogger.debug('Closing');
+        writableController?.error(
+          new clientRPCErrors.ErrorServerConnectionEndedEarly(),
+        );
       }
     };
     context.drain = () => {
-      logger.debug('DRAINING CALLED');
+      logger.debug('Drained');
       backpressure?.resolveP();
     };
-
-    logger.info('callback');
+    logger.debug('Calling handler callback');
     try {
       this.connectionCallback({
         readable: readableStream,
