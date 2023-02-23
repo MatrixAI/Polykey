@@ -12,7 +12,7 @@ import { testProp, fc } from '@fast-check/jest';
 import { Timer } from '@matrixai/timer';
 import { KeyRing } from '@/keys/index';
 import ClientServer from '@/clientRPC/ClientServer';
-import { promise } from '@/utils';
+import { promise, sleep } from '@/utils';
 import ClientClient from '@/clientRPC/ClientClient';
 import * as keysUtils from '@/keys/utils';
 import * as networkErrors from '@/network/errors';
@@ -314,23 +314,23 @@ describe('ClientRPC', () => {
     }).rejects.toThrow();
     startReading.resolveP();
     loudLogger.info('writes ended');
-    for await (const _ of websocket.readable) {
-      // No touch, only consume
-    }
+    await expect(async () => {
+      for await (const _ of websocket.readable) {
+        // No touch, only consume
+      }
+    }).rejects.toThrow();
     await handlingProm.p;
     loudLogger.info('ending');
   });
   // To fully test these two I need to start the client or server in a separate process and kill that process.
   // These require the ping/pong connection watchdogs to be implemented.
   test('client ends connection abruptly', async () => {
-    const handlerProm = promise<void>();
+    const streamPairProm =
+      promise<ReadableWritablePair<Uint8Array, Uint8Array>>();
     clientServer = await ClientServer.createClientServer({
       connectionCallback: (streamPair) => {
         logger.info('inside callback');
-        void streamPair.readable
-          .pipeTo(streamPair.writable)
-          .then(handlerProm.resolveP, handlerProm.rejectP)
-          .finally(() => loudLogger.info('STREAM HANDLING ENDED'));
+        streamPairProm.resolveP(streamPair);
       },
       basePath: dataDir,
       tlsConfig,
@@ -370,11 +370,15 @@ describe('ClientRPC', () => {
     testProcess.kill('SIGTERM');
     await exitedProm.p;
 
-    // @ts-ignore: kidnap protected property
-    const activeSockets = clientServer.activeSockets;
-    expect(activeSockets.size).toBe(0);
-    // Connection failure should cause handler to error
-    await expect(handlerProm.p).toResolve();
+    const streamPair = await streamPairProm.p;
+    // Everything should throw after websocket ends early
+    await expect(async () => {
+      for await (const _ of streamPair.readable) {
+        // No touch, only consume
+      }
+    }).rejects.toThrow();
+    const serverWritable = streamPair.writable.getWriter();
+    await expect(serverWritable.write(Buffer.from('test'))).rejects.toThrow();
     logger.info('ending');
   });
   test('Server ends connection abruptly', async () => {
@@ -423,17 +427,43 @@ describe('ClientRPC', () => {
       await activeConnection;
     }
     // Checking client's response to connection dropping
-    // client's readable should throw
-    const clientReadProm = (async () => {
+    await expect(async () => {
       for await (const _ of websocket.readable) {
-        // Do nothing
+        // No touch, only consume
       }
-    })();
-    await expect(clientReadProm).rejects.toThrow();
-    // Client's writable should throw
+    }).rejects.toThrow();
     const clientWritable = websocket.writable.getWriter();
-    logger.info('asd');
     await expect(clientWritable.write(Buffer.from('test'))).rejects.toThrow();
+    logger.info('ending');
+  });
+  test('ping pong', async () => {
+    const waitP = promise();
+    clientServer = await ClientServer.createClientServer({
+      connectionCallback: (streamPair) => {
+        logger.info('inside callback');
+        void waitP.p.then(() => {
+          void streamPair.readable
+            .pipeTo(streamPair.writable)
+            .catch(() => {})
+            .finally(() => loudLogger.info('STREAM HANDLING ENDED'));
+        });
+      },
+      basePath: dataDir,
+      tlsConfig,
+      host,
+      logger: loudLogger.getChild('server'),
+    });
+    logger.info(`Server started on port ${clientServer.port}`);
+    clientClient = await ClientClient.createClientClient({
+      host,
+      port: clientServer.port,
+      expectedNodeIds: [keyRing.getNodeId()],
+      logger: logger.getChild('clientClient'),
+    });
+    const websocket = await clientClient.startConnection();
+    await sleep(10000);
+    waitP.resolveP();
+    await asyncReadWrite([], websocket);
     logger.info('ending');
   });
 
@@ -555,13 +585,12 @@ describe('ClientRPC', () => {
       },
     );
     test('Destroying ClientServer stops all connections', async () => {
-      const handlerProm = promise<void>();
+      const streamPairProm =
+        promise<ReadableWritablePair<Uint8Array, Uint8Array>>();
       clientServer = await ClientServer.createClientServer({
         connectionCallback: (streamPair) => {
           logger.info('inside callback');
-          void streamPair.readable
-            .pipeTo(streamPair.writable)
-            .then(handlerProm.resolveP, handlerProm.rejectP);
+          streamPairProm.resolveP(streamPair);
         },
         basePath: dataDir,
         tlsConfig,
@@ -577,15 +606,22 @@ describe('ClientRPC', () => {
       });
       const websocket = await clientClient.startConnection();
       await clientServer.stop(true);
-      const clientReadProm = (async () => {
+      const streamPair = await streamPairProm.p;
+      // Everything should throw after websocket ends early
+      await expect(async () => {
         for await (const _ of websocket.readable) {
           // No touch, only consume
         }
-      })();
-      await expect(clientReadProm).toResolve();
-      const writer = websocket.writable.getWriter();
-      await expect(handlerProm.p).toResolve();
-      await expect(writer.write(Buffer.from('test'))).rejects.toThrow();
+      }).rejects.toThrow();
+      await expect(async () => {
+        for await (const _ of streamPair.readable) {
+          // No touch, only consume
+        }
+      }).rejects.toThrow();
+      const clientWritable = websocket.writable.getWriter();
+      const serverWritable = streamPair.writable.getWriter();
+      await expect(clientWritable.write(Buffer.from('test'))).rejects.toThrow();
+      await expect(serverWritable.write(Buffer.from('test'))).rejects.toThrow();
       logger.info('ending');
     });
     test('Server rejects normal HTTPS requests', async () => {
@@ -624,12 +660,12 @@ describe('ClientRPC', () => {
   });
   describe('ClientClient', () => {
     test('Destroying ClientClient stops all connections', async () => {
+      const streamPairProm =
+        promise<ReadableWritablePair<Uint8Array, Uint8Array>>();
       clientServer = await ClientServer.createClientServer({
         connectionCallback: (streamPair) => {
           logger.info('inside callback');
-          void streamPair.readable.pipeTo(streamPair.writable).catch((e) => {
-            logger.error(e);
-          });
+          streamPairProm.resolveP(streamPair);
         },
         basePath: dataDir,
         tlsConfig,
@@ -644,10 +680,24 @@ describe('ClientRPC', () => {
         logger: logger.getChild('clientClient'),
       });
       const websocket = await clientClient.startConnection();
+      // Destroying the client, force close connections
       await clientClient.destroy(true);
-      for await (const _ of websocket.readable) {
-        // No touch, only consume
-      }
+      const streamPair = await streamPairProm.p;
+      // Everything should throw after websocket ends early
+      await expect(async () => {
+        for await (const _ of websocket.readable) {
+          // No touch, only consume
+        }
+      }).rejects.toThrow();
+      await expect(async () => {
+        for await (const _ of streamPair.readable) {
+          // No touch, only consume
+        }
+      }).rejects.toThrow();
+      const clientWritable = websocket.writable.getWriter();
+      const serverWritable = streamPair.writable.getWriter();
+      await expect(clientWritable.write(Buffer.from('test'))).rejects.toThrow();
+      await expect(serverWritable.write(Buffer.from('test'))).rejects.toThrow();
       await clientServer.stop();
       logger.info('ending');
     });

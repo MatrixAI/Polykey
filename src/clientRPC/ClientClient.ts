@@ -20,6 +20,8 @@ class ClientClient {
     port,
     expectedNodeIds,
     connectionTimeout,
+    pingInterval = 1000,
+    pingTimeout = 10000,
     maxReadableStreamBytes = 1000, // About 1kB
     logger = new Logger(this.name),
   }: {
@@ -27,6 +29,8 @@ class ClientClient {
     port: number;
     expectedNodeIds: Array<NodeId>;
     connectionTimeout?: number;
+    pingInterval?: number;
+    pingTimeout?: number;
     maxReadableStreamBytes?: number;
     logger?: Logger;
   }): Promise<ClientClient> {
@@ -38,6 +42,8 @@ class ClientClient {
       maxReadableStreamBytes,
       expectedNodeIds,
       connectionTimeout,
+      pingInterval,
+      pingTimeout,
     );
     logger.info(`Created ${this.name}`);
     return clientClient;
@@ -52,6 +58,8 @@ class ClientClient {
     protected maxReadableStreamBytes: number,
     protected expectedNodeIds: Array<NodeId>,
     protected connectionTimeout: number | undefined,
+    protected pingInterval: number,
+    protected pingTimeout: number,
   ) {}
 
   public async destroy(force: boolean = false) {
@@ -148,7 +156,6 @@ class ClientClient {
       await activeConnectionProm;
       throw e;
     }
-
     // Cleaning up connection error
     ws.removeEventListener('error', openErrorHandler);
 
@@ -190,7 +197,7 @@ class ClientClient {
             readableLogger.info('CLOSED, WS CLOSED');
             ws.removeListener('message', messageHandler);
             if (!readableClosed) {
-              controller.close();
+              controller.error(Error('TMP WebSocket Closed early CR'));
               readableClosed = true;
             }
           });
@@ -228,7 +235,7 @@ class ClientClient {
             writableLogger.info(
               `ws closing early! with code: ${code} and reason: ${reason.toString()}`,
             );
-            controller.error(Error('TMP WebSocket Closed early'));
+            controller.error(Error('TMP WebSocket Closed early CW'));
           }
         });
       },
@@ -259,6 +266,30 @@ class ClientClient {
         await wait.p;
       },
     });
+
+    // Setting up heartbeat
+    const pingTimer = setInterval(() => {
+      ws.ping();
+    }, this.pingInterval);
+    const pingTimeoutTimer = setTimeout(() => {
+      this.logger.debug('PING TIMED OUT');
+      ws.close(4002, 'Timed out');
+    }, this.pingTimeout);
+    ws.on('ping', () => {
+      this.logger.debug('received ping');
+      ws.pong();
+    });
+    ws.on('pong', () => {
+      this.logger.debug('received pong');
+      pingTimeoutTimer.refresh();
+    });
+    ws.once('close', () => {
+      this.logger.debug('Cleaning up timers');
+      // Clean up timers
+      clearTimeout(pingTimer);
+      clearTimeout(pingTimeoutTimer);
+    });
+
     return {
       readable: readableStream,
       writable: writableStream,

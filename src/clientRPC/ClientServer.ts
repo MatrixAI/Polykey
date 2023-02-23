@@ -1,11 +1,14 @@
-import type { ReadableWritablePair } from 'stream/web';
+import type {
+  ReadableStreamController,
+  ReadableWritablePair,
+  WritableStreamDefaultController,
+} from 'stream/web';
 import type { FileSystem, PromiseDeconstructed } from 'types';
 import type { TLSConfig } from 'network/types';
 import type { WebSocket } from 'uWebSockets.js';
 import { WritableStream, ReadableStream } from 'stream/web';
 import path from 'path';
 import os from 'os';
-import fs from 'fs';
 import { startStop } from '@matrixai/async-init';
 import Logger from '@matrixai/logger';
 import uWebsocket from 'uWebSockets.js';
@@ -23,6 +26,7 @@ type Context = {
   ) => void;
   drain: (ws: WebSocket<any>) => void;
   close: (ws: WebSocket<any>, code: number, message: ArrayBuffer) => void;
+  pong: (ws: WebSocket<any>, message: ArrayBuffer) => void;
   logger: Logger;
   writeBackpressure: boolean;
 };
@@ -36,6 +40,7 @@ class ClientServer {
     basePath,
     host,
     port,
+    idleTimeout,
     fs = require('fs'),
     maxReadBufferBytes = 1_000_000_000, // About 1 GB
     logger = new Logger(this.name),
@@ -45,12 +50,13 @@ class ClientServer {
     basePath?: string;
     host?: string;
     port?: number;
+    idleTimeout?: number;
     fs?: FileSystem;
     maxReadBufferBytes?: number;
     logger?: Logger;
   }) {
     logger.info(`Creating ${this.name}`);
-    const wsServer = new this(logger, fs, maxReadBufferBytes);
+    const wsServer = new this(logger, fs, maxReadBufferBytes, idleTimeout);
     await wsServer.start({
       connectionCallback,
       tlsConfig,
@@ -74,11 +80,13 @@ class ClientServer {
    * @param logger
    * @param fs
    * @param maxReadBufferBytes Max number of bytes stored in read buffer before error
+   * @param idleTimeout
    */
   constructor(
     protected logger: Logger,
     protected fs: FileSystem,
     protected maxReadBufferBytes,
+    protected idleTimeout: number | undefined,
   ) {}
 
   public async start({
@@ -99,7 +107,9 @@ class ClientServer {
     // TODO: take a TLS config, write the files in the temp directory and
     //  load them.
     let count = 0;
-    const tmpDir = await fs.promises.mkdtemp(path.join(basePath, 'polykey-'));
+    const tmpDir = await this.fs.promises.mkdtemp(
+      path.join(basePath, 'polykey-'),
+    );
     const keyFile = path.join(tmpDir, 'keyFile.pem');
     const certFile = path.join(tmpDir, 'certFile.pem');
     await this.fs.promises.writeFile(keyFile, tlsConfig.keyPrivatePem);
@@ -111,6 +121,8 @@ class ClientServer {
     await this.fs.promises.rm(keyFile);
     await this.fs.promises.rm(certFile);
     this.server.ws('/*', {
+      sendPingsAutomatically: true,
+      idleTimeout: this.idleTimeout,
       upgrade: (res, req, context) => {
         const logger = this.logger.getChild(`Connection ${count}`);
         res.upgrade<Partial<Context>>(
@@ -207,12 +219,31 @@ class ClientServer {
     let readableClosed = false;
     let wsClosed = false;
     let backpressure: PromiseDeconstructed<void> | null = null;
+    let writableController: WritableStreamDefaultController | undefined;
+    let readableController: ReadableStreamController<Uint8Array> | undefined;
+    context.close = () => {
+      logger.debug('CLOSING CALLED');
+      wsClosed = true;
+      if (!readableClosed) {
+        logger.debug('CLOSING READABLE');
+        readableController?.error(Error('TMP Web stream closed early SR'));
+        readableClosed = true;
+      }
+      if (!writableClosed) {
+        logger.debug('CLOSING Writable');
+        writableController?.error(Error('TMP Web stream closed early SW'));
+        writableClosed = true;
+      }
+    };
     context.drain = () => {
       logger.debug('DRAINING CALLED');
       backpressure?.resolveP();
     };
     // Setting up the writable stream
     const writableStream = new WritableStream<Uint8Array>({
+      start: (controller) => {
+        writableController = controller;
+      },
       write: async (chunk, controller) => {
         // Logger.debug(`WRITABLE WRITE ${chunk.toString()}`);
         await backpressure?.p;
@@ -258,6 +289,7 @@ class ClientServer {
     const readableStream = new ReadableStream<Uint8Array>(
       {
         start: (controller) => {
+          readableController = controller;
           context.message = (ws, message, _) => {
             // Logger.debug(`MESSAGE CALLED ${message.toString()}`);
             if (message.byteLength === 0) {
@@ -283,15 +315,6 @@ class ClientServer {
               controller.error(err);
             }
           };
-          context.close = () => {
-            logger.debug('CLOSING CALLED');
-            wsClosed = true;
-            if (!readableClosed) {
-              logger.debug('CLOSING READABLE');
-              controller.close();
-              readableClosed = true;
-            }
-          };
         },
         cancel: () => {
           readableClosed = true;
@@ -313,7 +336,7 @@ class ClientServer {
         writable: writableStream,
       });
     } catch (e) {
-      // TODO: If the callback failed then we need to handle clean up
+      context.close(ws, 0, Buffer.from(''));
       logger.error(e.toString());
     }
   }
