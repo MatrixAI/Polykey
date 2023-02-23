@@ -41,6 +41,8 @@ class ClientServer {
     host,
     port,
     idleTimeout,
+    pingInterval = 1000,
+    pingTimeout = 10000,
     fs = require('fs'),
     maxReadBufferBytes = 1_000_000_000, // About 1 GB
     logger = new Logger(this.name),
@@ -51,12 +53,21 @@ class ClientServer {
     host?: string;
     port?: number;
     idleTimeout?: number;
+    pingInterval?: number;
+    pingTimeout?: number;
     fs?: FileSystem;
     maxReadBufferBytes?: number;
     logger?: Logger;
   }) {
     logger.info(`Creating ${this.name}`);
-    const wsServer = new this(logger, fs, maxReadBufferBytes, idleTimeout);
+    const wsServer = new this(
+      logger,
+      fs,
+      maxReadBufferBytes,
+      idleTimeout,
+      pingInterval,
+      pingTimeout,
+    );
     await wsServer.start({
       connectionCallback,
       tlsConfig,
@@ -81,12 +92,16 @@ class ClientServer {
    * @param fs
    * @param maxReadBufferBytes Max number of bytes stored in read buffer before error
    * @param idleTimeout
+   * @param pingInterval
+   * @param pingTimeout
    */
   constructor(
     protected logger: Logger,
     protected fs: FileSystem,
     protected maxReadBufferBytes,
     protected idleTimeout: number | undefined,
+    protected pingInterval: number,
+    protected pingTimeout: number,
   ) {}
 
   public async start({
@@ -221,24 +236,6 @@ class ClientServer {
     let backpressure: PromiseDeconstructed<void> | null = null;
     let writableController: WritableStreamDefaultController | undefined;
     let readableController: ReadableStreamController<Uint8Array> | undefined;
-    context.close = () => {
-      logger.debug('CLOSING CALLED');
-      wsClosed = true;
-      if (!readableClosed) {
-        logger.debug('CLOSING READABLE');
-        readableController?.error(Error('TMP Web stream closed early SR'));
-        readableClosed = true;
-      }
-      if (!writableClosed) {
-        logger.debug('CLOSING Writable');
-        writableController?.error(Error('TMP Web stream closed early SW'));
-        writableClosed = true;
-      }
-    };
-    context.drain = () => {
-      logger.debug('DRAINING CALLED');
-      backpressure?.resolveP();
-    };
     // Setting up the writable stream
     const writableStream = new WritableStream<Uint8Array>({
       start: (controller) => {
@@ -329,6 +326,43 @@ class ClientServer {
         size: (chunk) => chunk?.byteLength ?? 0,
       },
     );
+
+    const pingTimer = setInterval(() => {
+      ws.ping();
+    }, this.pingInterval);
+    const pingTimeoutTimer = setTimeout(() => {
+      logger.debug('ping timed out');
+      ws.end();
+    }, this.pingTimeout);
+    context.pong = () => {
+      logger.debug('received pong');
+      pingTimeoutTimer.refresh();
+    };
+    context.close = () => {
+      logger.debug('CLOSING CALLED');
+      wsClosed = true;
+      // Cleaning up timers
+      logger.debug('Cleaning up timers');
+      clearTimeout(pingTimer);
+      clearTimeout(pingTimeoutTimer);
+      // Closing streams
+      logger.debug('cleaning streams');
+      if (!readableClosed) {
+        logger.debug('CLOSING READABLE');
+        readableController?.error(Error('TMP Web stream closed early SR'));
+        readableClosed = true;
+      }
+      if (!writableClosed) {
+        logger.debug('CLOSING Writable');
+        writableController?.error(Error('TMP Web stream closed early SW'));
+        writableClosed = true;
+      }
+    };
+    context.drain = () => {
+      logger.debug('DRAINING CALLED');
+      backpressure?.resolveP();
+    };
+
     logger.info('callback');
     try {
       this.connectionCallback({

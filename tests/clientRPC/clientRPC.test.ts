@@ -12,7 +12,7 @@ import { testProp, fc } from '@fast-check/jest';
 import { Timer } from '@matrixai/timer';
 import { KeyRing } from '@/keys/index';
 import ClientServer from '@/clientRPC/ClientServer';
-import { promise, sleep } from '@/utils';
+import { promise } from '@/utils';
 import ClientClient from '@/clientRPC/ClientClient';
 import * as keysUtils from '@/keys/utils';
 import * as networkErrors from '@/network/errors';
@@ -436,36 +436,6 @@ describe('ClientRPC', () => {
     await expect(clientWritable.write(Buffer.from('test'))).rejects.toThrow();
     logger.info('ending');
   });
-  test('ping pong', async () => {
-    const waitP = promise();
-    clientServer = await ClientServer.createClientServer({
-      connectionCallback: (streamPair) => {
-        logger.info('inside callback');
-        void waitP.p.then(() => {
-          void streamPair.readable
-            .pipeTo(streamPair.writable)
-            .catch(() => {})
-            .finally(() => loudLogger.info('STREAM HANDLING ENDED'));
-        });
-      },
-      basePath: dataDir,
-      tlsConfig,
-      host,
-      logger: loudLogger.getChild('server'),
-    });
-    logger.info(`Server started on port ${clientServer.port}`);
-    clientClient = await ClientClient.createClientClient({
-      host,
-      port: clientServer.port,
-      expectedNodeIds: [keyRing.getNodeId()],
-      logger: logger.getChild('clientClient'),
-    });
-    const websocket = await clientClient.startConnection();
-    await sleep(10000);
-    waitP.resolveP();
-    await asyncReadWrite([], websocket);
-    logger.info('ending');
-  });
 
   // These describe blocks contains tests specific to either the client or server
   describe('ClientServer', () => {
@@ -657,6 +627,29 @@ describe('ClientRPC', () => {
       expect(res.headers['connection']).toBe('Upgrade');
       expect(res.headers['upgrade']).toBe('websocket');
     });
+    test('ping timeout', async () => {
+      clientServer = await ClientServer.createClientServer({
+        connectionCallback: (_) => {
+          logger.info('inside callback');
+          // Hang connection
+        },
+        basePath: dataDir,
+        tlsConfig,
+        host,
+        pingTimeout: 100,
+        logger: loudLogger.getChild('server'),
+      });
+      logger.info(`Server started on port ${clientServer.port}`);
+      clientClient = await ClientClient.createClientClient({
+        host,
+        port: clientServer.port,
+        expectedNodeIds: [keyRing.getNodeId()],
+        logger: logger.getChild('clientClient'),
+      });
+      await clientClient.startConnection();
+      await clientClient.destroy();
+      logger.info('ending');
+    });
   });
   describe('ClientClient', () => {
     test('Destroying ClientClient stops all connections', async () => {
@@ -811,6 +804,29 @@ describe('ClientRPC', () => {
           timeoutTimer: new Timer({ delay: 0 }),
         }),
       ).rejects.toThrow();
+      logger.info('ending');
+    });
+    test('ping timeout', async () => {
+      clientServer = await ClientServer.createClientServer({
+        connectionCallback: (_) => {
+          logger.info('inside callback');
+          // Hang connection
+        },
+        basePath: dataDir,
+        tlsConfig,
+        host,
+        logger: loudLogger.getChild('server'),
+      });
+      logger.info(`Server started on port ${clientServer.port}`);
+      clientClient = await ClientClient.createClientClient({
+        host,
+        port: clientServer.port,
+        expectedNodeIds: [keyRing.getNodeId()],
+        pingTimeout: 100,
+        logger: logger.getChild('clientClient'),
+      });
+      await clientClient.startConnection();
+      await clientClient.destroy();
       logger.info('ending');
     });
   });
