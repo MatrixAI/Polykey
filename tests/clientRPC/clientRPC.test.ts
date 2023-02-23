@@ -121,6 +121,41 @@ describe('ClientRPC', () => {
     expect((await reader.read()).done).toBeTrue();
     logger.info('ending');
   });
+  test('makes a connection over IPv6', async () => {
+    clientServer = await ClientServer.createClientServer({
+      connectionCallback: (streamPair) => {
+        logger.info('inside callback');
+        void streamPair.readable
+          .pipeTo(streamPair.writable)
+          .catch(() => {})
+          .finally(() => loudLogger.info('STREAM HANDLING ENDED'));
+      },
+      basePath: dataDir,
+      tlsConfig,
+      host: '::1',
+      logger: loudLogger.getChild('server'),
+    });
+    logger.info(`Server started on port ${clientServer.port}`);
+    clientClient = await ClientClient.createClientClient({
+      host: '::1',
+      port: clientServer.port,
+      expectedNodeIds: [keyRing.getNodeId()],
+      logger: logger.getChild('clientClient'),
+    });
+    const websocket = await clientClient.startConnection();
+
+    const writer = websocket.writable.getWriter();
+    const reader = websocket.readable.getReader();
+    const message1 = Buffer.from('1request1');
+    await writer.write(message1);
+    expect((await reader.read()).value).toStrictEqual(message1);
+    const message2 = Buffer.from('1request2');
+    await writer.write(message2);
+    expect((await reader.read()).value).toStrictEqual(message2);
+    await writer.close();
+    expect((await reader.read()).done).toBeTrue();
+    logger.info('ending');
+  });
   test('Handles a connection and closes before message', async () => {
     clientServer = await ClientServer.createClientServer({
       connectionCallback: (streamPair) => {

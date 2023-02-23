@@ -7,6 +7,7 @@ import Logger from '@matrixai/logger';
 import WebSocket from 'ws';
 import { PromiseCancellable } from '@matrixai/async-cancellable';
 import { Timer } from '@matrixai/timer';
+import { Validator } from 'ip-num';
 import * as clientRpcUtils from './utils';
 import { promise } from '../utils';
 
@@ -49,18 +50,28 @@ class ClientClient {
     return clientClient;
   }
 
+  protected host: string;
+
   protected activeConnections: Set<PromiseCancellable<void>> = new Set();
 
   constructor(
     protected logger: Logger,
-    protected host: string,
+    host: string,
     protected port: number,
     protected maxReadableStreamBytes: number,
     protected expectedNodeIds: Array<NodeId>,
     protected connectionTimeout: number | undefined,
     protected pingInterval: number,
     protected pingTimeout: number,
-  ) {}
+  ) {
+    if (Validator.isValidIPv4String(host)[0]) {
+      this.host = host;
+    } else if (Validator.isValidIPv6String(host)[0]) {
+      this.host = `[${host}]`;
+    } else {
+      throw Error('TMP Invalid host');
+    }
+  }
 
   public async destroy(force: boolean = false) {
     this.logger.info(`Destroying ${this.constructor.name}`);
