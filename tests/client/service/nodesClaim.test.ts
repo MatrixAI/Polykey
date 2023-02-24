@@ -211,7 +211,7 @@ describe('nodesClaim', () => {
   test('cannot claim an invalid node', async () => {
     const request = new nodesPB.Claim();
     request.setNodeId('nodeId');
-    await testUtils.expectRemoteError(
+    await testUtils.expectRemoteErrorOLD(
       grpcClient.nodesClaim(
         request,
         clientUtils.encodeAuthFromPassword(password),

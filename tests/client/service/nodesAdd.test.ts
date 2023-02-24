@@ -180,7 +180,7 @@ describe('nodesAdd', () => {
     request.setForce(false);
     request.setNodeId('vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0');
     request.setAddress(addressMessage);
-    await testsUtils.expectRemoteError(
+    await testsUtils.expectRemoteErrorOLD(
       grpcClient.nodesAdd(
         request,
         clientUtils.encodeAuthFromPassword(password),
@@ -190,7 +190,7 @@ describe('nodesAdd', () => {
     // Invalid port
     addressMessage.setHost('127.0.0.1');
     addressMessage.setPort(111111);
-    await testsUtils.expectRemoteError(
+    await testsUtils.expectRemoteErrorOLD(
       grpcClient.nodesAdd(
         request,
         clientUtils.encodeAuthFromPassword(password),
@@ -200,7 +200,7 @@ describe('nodesAdd', () => {
     // Invalid nodeid
     addressMessage.setPort(11111);
     request.setNodeId('nodeId');
-    await testsUtils.expectRemoteError(
+    await testsUtils.expectRemoteErrorOLD(
       grpcClient.nodesAdd(
         request,
         clientUtils.encodeAuthFromPassword(password),

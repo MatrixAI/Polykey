@@ -112,7 +112,7 @@ function outputFormatter(msg: OutputObject): string | Uint8Array {
     let currError = msg.data;
     let indent = '  ';
     while (currError != null) {
-      if (currError instanceof grpcErrors.ErrorPolykeyRemote) {
+      if (currError instanceof grpcErrors.ErrorPolykeyRemoteOLD) {
         output += `${currError.name}: ${currError.description}`;
         if (currError.message && currError.message !== '') {
           output += ` - ${currError.message}`;
@@ -222,7 +222,7 @@ async function retryAuthentication<T>(
 function remoteErrorCause(e: any): [any, number] {
   let errorCause = e;
   let depth = 0;
-  while (errorCause instanceof grpcErrors.ErrorPolykeyRemote) {
+  while (errorCause instanceof grpcErrors.ErrorPolykeyRemoteOLD) {
     errorCause = errorCause.cause;
     depth++;
   }

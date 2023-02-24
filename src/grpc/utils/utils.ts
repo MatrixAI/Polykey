@@ -200,7 +200,7 @@ function toError(
     if (isNaN(parseInt(key)) && e.code === grpc.status[key]) {
       if (key === 'UNKNOWN' && errorData != null) {
         const error: Error = JSON.parse(errorData, reviver);
-        const remoteError = new grpcErrors.ErrorPolykeyRemote(
+        const remoteError = new grpcErrors.ErrorPolykeyRemoteOLD(
           metadata,
           error.message,
           {

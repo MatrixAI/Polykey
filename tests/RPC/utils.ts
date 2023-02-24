@@ -263,7 +263,7 @@ const errorArb = (
     fc.oneof(
       fc.constant(new rpcErrors.ErrorRpcParse(undefined, { cause })),
       fc.constant(new rpcErrors.ErrorRpcMessageLength(undefined, { cause })),
-      fc.constant(new rpcErrors.ErrorRpcRemoteError(undefined, { cause })),
+      fc.constant(new rpcErrors.ErrorRemoteError(undefined, { cause })),
     ),
   );
 

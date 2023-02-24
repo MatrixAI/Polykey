@@ -50,7 +50,7 @@ class ErrorGRPCServerVerification<T> extends ErrorGRPC<T> {
   exitCode = sysexits.UNAVAILABLE;
 }
 
-class ErrorPolykeyRemote<T> extends ErrorPolykey<T> {
+class ErrorPolykeyRemoteOLD<T> extends ErrorPolykey<T> {
   static description = 'Remote error from RPC call';
   exitCode: number = sysexits.UNAVAILABLE;
   metadata: ClientMetadata;
@@ -112,5 +112,5 @@ export {
   ErrorGRPCServerShutdown,
   ErrorGRPCServerNotSecured,
   ErrorGRPCServerVerification,
-  ErrorPolykeyRemote,
+  ErrorPolykeyRemoteOLD,
 };

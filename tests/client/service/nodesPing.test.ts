@@ -178,7 +178,7 @@ describe('nodesPing', () => {
   test('cannot ping an invalid node', async () => {
     const request = new nodesPB.Node();
     request.setNodeId('nodeId');
-    await testUtils.expectRemoteError(
+    await testUtils.expectRemoteErrorOLD(
       grpcClient.nodesPing(
         request,
         clientUtils.encodeAuthFromPassword(password),

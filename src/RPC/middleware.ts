@@ -8,6 +8,7 @@ import type {
 import { TransformStream } from 'stream/web';
 import * as rpcErrors from './errors';
 import * as rpcUtils from './utils';
+import { promise } from '../utils';
 const jsonStreamParsers = require('@streamparser/json');
 
 function binaryToJsonMessageStream<T extends JsonRpcMessage>(
@@ -22,6 +23,13 @@ function binaryToJsonMessageStream<T extends JsonRpcMessage>(
   let bytesWritten: number = 0;
 
   return new TransformStream<Uint8Array, T>({
+    flush: async () => {
+      // Avoid potential race conditions by allowing parser to end first
+      const waitP = promise();
+      parser.onEnd = () => waitP.resolveP();
+      parser.end();
+      await waitP.p;
+    },
     start: (controller) => {
       if (firstMessage != null) controller.enqueue(firstMessage);
       parser.onValue = (value) => {

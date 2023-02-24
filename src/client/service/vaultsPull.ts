@@ -89,7 +89,10 @@ function vaultsPull({
       !clientUtils.isClientClientError(e, [
         vaultsErrors.ErrorVaultsVaultUndefined,
         nodesErrors.ErrorNodeGraphNodeIdNotFound,
-        [grpcErrors.ErrorPolykeyRemote, vaultsErrors.ErrorVaultsVaultUndefined],
+        [
+          grpcErrors.ErrorPolykeyRemoteOLD,
+          vaultsErrors.ErrorVaultsVaultUndefined,
+        ],
       ]) && logger.error(`${vaultsPull.name}:${e}`);
       return;
     }

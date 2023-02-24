@@ -291,7 +291,7 @@ describe('RPC', () => {
       });
 
       const callProm = rpcClient.methods.testMethod(value);
-      await expect(callProm).rejects.toThrow(rpcErrors.ErrorRpcRemoteError);
+      await expect(callProm).rejects.toThrow(rpcErrors.ErrorPolykeyRemote);
       await expect(
         callProm.catch((e) => {
           throw e.cause;
@@ -339,7 +339,7 @@ describe('RPC', () => {
       });
 
       const callProm = rpcClient.methods.testMethod(value);
-      await expect(callProm).rejects.toThrow(rpcErrors.ErrorRpcRemoteError);
+      await expect(callProm).rejects.toThrow(rpcErrors.ErrorPolykeyRemote);
       await expect(
         callProm.catch((e) => {
           throw e.cause;

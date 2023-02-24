@@ -12,6 +12,7 @@ import type {
 } from './callers';
 import type { NodeId } from '../nodes/types';
 import type { Certificate } from '../keys/types';
+import type { POJO } from '../types';
 
 /**
  * This is the JSON RPC request object. this is the generic message type used for the RPC.
@@ -228,6 +229,13 @@ type MapCallers<T extends ClientManifest> = {
   [K in keyof T]: ConvertCaller<T[K]>;
 };
 
+type ClientMetadata = {
+  nodeId: NodeId;
+  host: string;
+  port: number;
+  command: string;
+} & POJO;
+
 export type {
   JsonRpcRequestMessage,
   JsonRpcRequestNotification,
@@ -251,4 +259,5 @@ export type {
   ClientManifest,
   HandlerType,
   MapCallers,
+  ClientMetadata,
 };

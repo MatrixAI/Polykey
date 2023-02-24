@@ -10,7 +10,7 @@ import RPCServer from '@/RPC/RPCServer';
 import TaskManager from '@/tasks/TaskManager';
 import CertManager from '@/keys/CertManager';
 import {
-  agentUnlockCaller,
+  agentUnlock,
   AgentUnlockHandler,
 } from '@/clientRPC/handlers/agentUnlock';
 import RPCClient from '@/RPC/RPCClient';
@@ -92,7 +92,7 @@ describe('agentUnlock', () => {
     // Setup
     const rpcServer = await RPCServer.createRPCServer({
       manifest: {
-        agentUnlock: new AgentUnlockHandler({ logger }),
+        agentUnlock: new AgentUnlockHandler({}),
       },
       middleware: middlewareUtils.defaultServerMiddlewareWrapper(
         authMiddleware.authenticationMiddlewareServer(sessionManager, keyRing),
@@ -114,7 +114,7 @@ describe('agentUnlock', () => {
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
-        agentUnlock: agentUnlockCaller,
+        agentUnlock,
       },
       streamPairCreateCallback: async () => clientClient.startConnection(),
       middleware: middlewareUtils.defaultClientMiddlewareWrapper(

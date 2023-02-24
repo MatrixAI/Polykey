@@ -3,6 +3,7 @@ import type {
   JsonRpcRequestMessage,
   StreamPairCreateCallback,
   ClientManifest,
+  ClientMetadata,
 } from './types';
 import type { JSONValue } from 'types';
 import type {
@@ -134,7 +135,7 @@ class RPCClient<M extends ClientManifest> {
     await writer.write(parameters);
     const output = await reader.read();
     if (output.done) {
-      throw new rpcErrors.ErrorRpcRemoteError('Stream ended before response');
+      throw new rpcErrors.ErrorRpcMissingResponse();
     }
     await reader.cancel();
     await writer.close();
@@ -165,7 +166,7 @@ class RPCClient<M extends ClientManifest> {
     const reader = callerInterface.readable.getReader();
     const output = reader.read().then(({ value, done }) => {
       if (done) {
-        throw new rpcErrors.ErrorRpcRemoteError('Stream ended before response');
+        throw new rpcErrors.ErrorRpcMissingResponse();
       }
       return value;
     });
@@ -179,7 +180,10 @@ class RPCClient<M extends ClientManifest> {
   public async duplexStreamCaller<I extends JSONValue, O extends JSONValue>(
     method: string,
   ): Promise<ReadableWritablePair<O, I>> {
-    const outputMessageTransformStream = clientOutputTransformStream<O>();
+    // Providing empty metadata here. we don't support it yet.
+    const outputMessageTransformStream = clientOutputTransformStream<O>(
+      {} as ClientMetadata,
+    );
     const inputMessageTransformStream = clientInputTransformStream<I>(method);
     const middleware = this.middleware();
     // Hooking up agnostic stream side

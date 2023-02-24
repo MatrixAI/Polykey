@@ -237,9 +237,9 @@ class WebSocketServer extends EventTarget {
     // TODO: The key file needs to be in the encrypted format
     const keyFile = path.join(tmpDir, 'keyFile.pem');
     const certFile = path.join(tmpDir, 'certFile.pem');
+    await this.fs.promises.writeFile(keyFile, tlsConfig.keyPrivatePem);
+    await this.fs.promises.writeFile(certFile, tlsConfig.certChainPem);
     try {
-      await this.fs.promises.writeFile(keyFile, tlsConfig.keyPrivatePem);
-      await this.fs.promises.writeFile(certFile, tlsConfig.certChainPem);
       this.server = uWebsocket.SSLApp({
         key_file_name: keyFile,
         cert_file_name: certFile,
@@ -247,6 +247,7 @@ class WebSocketServer extends EventTarget {
     } finally {
       await this.fs.promises.rm(keyFile);
       await this.fs.promises.rm(certFile);
+      await this.fs.promises.rm(tmpDir, { recursive: true, force: true });
     }
   }
 

@@ -146,7 +146,7 @@ describe('vaultsSecretsNewDeleteGet', () => {
     expect(deleteResponse).toBeInstanceOf(utilsPB.StatusMessage);
     expect(deleteResponse.getSuccess()).toBeTruthy();
     // Check secret was deleted
-    await testUtils.expectRemoteError(
+    await testUtils.expectRemoteErrorOLD(
       grpcClient.vaultsSecretsGet(
         secretMessage,
         clientUtils.encodeAuthFromPassword(password),

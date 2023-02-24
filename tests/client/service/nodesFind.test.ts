@@ -161,7 +161,7 @@ describe('nodesFind', () => {
   test('cannot find an invalid node', async () => {
     const request = new nodesPB.Node();
     request.setNodeId('nodeId');
-    await testUtils.expectRemoteError(
+    await testUtils.expectRemoteErrorOLD(
       grpcClient.nodesFind(
         request,
         clientUtils.encodeAuthFromPassword(password),

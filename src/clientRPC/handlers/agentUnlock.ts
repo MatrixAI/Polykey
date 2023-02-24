@@ -1,15 +1,12 @@
-import type Logger from '@matrixai/logger';
 import type { RPCRequestParams, RPCResponseResult } from '../types';
+import type { ContainerType } from 'RPC/types';
 import { UnaryHandler } from '../../RPC/handlers';
 import { UnaryCaller } from '../../RPC/callers';
 
-const agentUnlockCaller = new UnaryCaller<
-  RPCRequestParams,
-  RPCResponseResult
->();
+const agentUnlock = new UnaryCaller<RPCRequestParams, RPCResponseResult>();
 
 class AgentUnlockHandler extends UnaryHandler<
-  { logger: Logger },
+  ContainerType,
   RPCRequestParams,
   RPCResponseResult
 > {
@@ -21,4 +18,4 @@ class AgentUnlockHandler extends UnaryHandler<
   }
 }
 
-export { agentUnlockCaller, AgentUnlockHandler };
+export { agentUnlock, AgentUnlockHandler };

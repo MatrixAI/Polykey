@@ -295,21 +295,21 @@ describe('NotificationsManager', () => {
       } as VaultActions,
     };
 
-    await testUtils.expectRemoteError(
+    await testUtils.expectRemoteErrorOLD(
       notificationsManager.sendNotification(
         receiver.keyRing.getNodeId(),
         generalNotification,
       ),
       notificationsErrors.ErrorNotificationsPermissionsNotFound,
     );
-    await testUtils.expectRemoteError(
+    await testUtils.expectRemoteErrorOLD(
       notificationsManager.sendNotification(
         receiver.keyRing.getNodeId(),
         gestaltNotification,
       ),
       notificationsErrors.ErrorNotificationsPermissionsNotFound,
     );
-    await testUtils.expectRemoteError(
+    await testUtils.expectRemoteErrorOLD(
       notificationsManager.sendNotification(
         receiver.keyRing.getNodeId(),
         vaultNotification,

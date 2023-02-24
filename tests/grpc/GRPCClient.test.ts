@@ -201,7 +201,7 @@ describe('GRPCClient', () => {
     const m2 = new utilsPB.EchoMessage();
     m2.setChallenge('error');
     pCall = client.unary(m2);
-    await testUtils.expectRemoteError(pCall, grpcErrors.ErrorGRPC);
+    await testUtils.expectRemoteErrorOLD(pCall, grpcErrors.ErrorGRPC);
     meta = await pCall.meta;
     // Expect reflected reflected session token
     expect(clientUtils.decodeAuthToSession(meta)).toBe(

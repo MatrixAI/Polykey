@@ -179,7 +179,7 @@ describe('nodesCrossSignClaim', () => {
     const crossSignMessageUndefinedSingly = new nodesPB.AgentClaim();
     await genClaims.write(crossSignMessageUndefinedSingly);
     await expect(() => genClaims.read()).rejects.toThrow(
-      grpcErrors.ErrorPolykeyRemote,
+      grpcErrors.ErrorPolykeyRemoteOLD,
     );
     expect(genClaims.stream.destroyed).toBe(true);
   });

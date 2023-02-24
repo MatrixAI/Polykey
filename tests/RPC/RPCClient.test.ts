@@ -265,7 +265,7 @@ describe(`${RPCClient.name}`, () => {
           // Only consume
         }
       })();
-      await expect(callProm).rejects.toThrow(rpcErrors.ErrorRpcRemoteError);
+      await expect(callProm).rejects.toThrow(rpcErrors.ErrorPolykeyRemote);
       await outputResult;
       await rpcClient.destroy();
     },
@@ -302,7 +302,7 @@ describe(`${RPCClient.name}`, () => {
           // Only consume
         }
       })();
-      await expect(callProm).rejects.toThrow(rpcErrors.ErrorRpcRemoteError);
+      await expect(callProm).rejects.toThrow(rpcErrors.ErrorPolykeyRemote);
       await outputResult;
       await rpcClient.destroy();
     },
@@ -342,7 +342,7 @@ describe(`${RPCClient.name}`, () => {
           // Only consume
         }
       })();
-      await expect(callProm).rejects.toThrow(rpcErrors.ErrorRpcRemoteError);
+      await expect(callProm).rejects.toThrow(rpcErrors.ErrorPolykeyRemote);
       await outputResult;
       await rpcClient.destroy();
     },

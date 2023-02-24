@@ -151,7 +151,7 @@ describe('vaultsVersion', () => {
       vaultVersionMessage,
       clientUtils.encodeAuthFromPassword(password),
     );
-    await testUtils.expectRemoteError(
+    await testUtils.expectRemoteErrorOLD(
       version,
       vaultsErrors.ErrorVaultReferenceInvalid,
     );
@@ -162,7 +162,7 @@ describe('vaultsVersion', () => {
       vaultVersionMessage,
       clientUtils.encodeAuthFromPassword(password),
     );
-    await testUtils.expectRemoteError(
+    await testUtils.expectRemoteErrorOLD(
       version2,
       vaultsErrors.ErrorVaultReferenceMissing,
     );

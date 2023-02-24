@@ -1,5 +1,6 @@
 import type {
   ClientManifest,
+  ClientMetadata,
   HandlerType,
   JsonRpcError,
   JsonRpcMessage,
@@ -349,10 +350,12 @@ function reviver(key: string, value: any): any {
   }
 }
 
-function toError(errorData) {
-  if (errorData == null) return new rpcErrors.ErrorRpcRemoteError();
-  const error = JSON.parse(errorData, reviver);
-  return new rpcErrors.ErrorRpcRemoteError(error.message, {
+function toError(errorData, metadata: ClientMetadata) {
+  if (errorData == null) {
+    return new rpcErrors.ErrorPolykeyRemote(metadata);
+  }
+  const error: Error = JSON.parse(errorData, reviver);
+  return new rpcErrors.ErrorPolykeyRemote(metadata, error.message, {
     cause: error,
   });
 }
@@ -371,11 +374,14 @@ function clientInputTransformStream<I extends JSONValue>(method: string) {
   });
 }
 
-function clientOutputTransformStream<O extends JSONValue>() {
+function clientOutputTransformStream<O extends JSONValue>(
+  clientMetadata: ClientMetadata,
+) {
   return new TransformStream<JsonRpcResponse<O>, O>({
     transform: (chunk, controller) => {
+      // `error` indicates its an error message
       if ('error' in chunk) {
-        throw toError(chunk.error.data);
+        throw toError(chunk.error.data, clientMetadata);
       }
       controller.enqueue(chunk.result);
     },
