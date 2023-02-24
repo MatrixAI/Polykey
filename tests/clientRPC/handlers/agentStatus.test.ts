@@ -1,9 +1,7 @@
-import type { Server } from 'https';
-import type { WebSocketServer } from 'ws';
+import type { ConnectionInfo, TLSConfig } from '@/network/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import { createServer } from 'https';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import KeyRing from '@/keys/KeyRing';
@@ -16,8 +14,9 @@ import {
   AgentStatusHandler,
 } from '@/clientRPC/handlers/agentStatus';
 import RPCClient from '@/RPC/RPCClient';
-import * as clientRPCUtils from '@/clientRPC/utils';
 import * as nodesUtils from '@/nodes/utils';
+import ClientClient from '@/clientRPC/ClientClient';
+import ClientServer from '@/clientRPC/ClientServer';
 import * as testsUtils from '../../utils';
 
 describe('agentStatus', () => {
@@ -25,15 +24,15 @@ describe('agentStatus', () => {
     new StreamHandler(),
   ]);
   const password = 'helloworld';
+  const host = '127.0.0.1';
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
   let taskManager: TaskManager;
   let certManager: CertManager;
-  let server: Server;
-  let wss: WebSocketServer;
-  const host = '127.0.0.1';
-  let port: number;
+  let clientServer: ClientServer;
+  let clientClient: ClientClient;
+  let tlsConfig: TLSConfig;
 
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
@@ -60,16 +59,11 @@ describe('agentStatus', () => {
       taskManager,
       logger,
     });
-    const tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
-    server = createServer({
-      cert: tlsConfig.certChainPem,
-      key: tlsConfig.keyPrivatePem,
-    });
-    port = await clientRPCUtils.listen(server, host);
+    tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
   });
   afterEach(async () => {
-    wss?.close();
-    server?.close();
+    await clientServer?.stop(true);
+    await clientClient?.destroy(true);
     await certManager.stop();
     await taskManager.stop();
     await keyRing.stop();
@@ -91,22 +85,25 @@ describe('agentStatus', () => {
       },
       logger: logger.getChild('RPCServer'),
     });
-    wss = clientRPCUtils.createClientServer(
-      server,
-      rpcServer,
-      logger.getChild('server'),
-    );
+    clientServer = await ClientServer.createClientServer({
+      connectionCallback: (streamPair) => {
+        rpcServer.handleStream(streamPair, {} as ConnectionInfo);
+      },
+      host,
+      tlsConfig,
+      logger,
+    });
+    clientClient = await ClientClient.createClientClient({
+      expectedNodeIds: [keyRing.getNodeId()],
+      host,
+      port: clientServer.port,
+      logger,
+    });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
         agentStatus: agentStatusCaller,
       },
-      streamPairCreateCallback: async () => {
-        return clientRPCUtils.startConnection(
-          host,
-          port,
-          logger.getChild('client'),
-        );
-      },
+      streamPairCreateCallback: async () => clientClient.startConnection(),
       logger: logger.getChild('RPCClient'),
     });
     // Doing the test

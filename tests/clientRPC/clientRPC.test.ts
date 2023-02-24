@@ -23,17 +23,11 @@ import * as testsUtils from '../utils';
 // This file tests both the client and server together. They're too interlinked
 //  to be separate.
 describe('ClientRPC', () => {
-  const logger = new Logger('websocket test', LogLevel.DEBUG, [
+  const logger = new Logger('websocket test', LogLevel.WARN, [
     new StreamHandler(
       formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
     ),
   ]);
-  const loudLogger = new Logger('websocket test', LogLevel.DEBUG, [
-    new StreamHandler(
-      formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
-    ),
-  ]);
-
   let dataDir: string;
   let keyRing: KeyRing;
   let tlsConfig: TLSConfig;
@@ -93,12 +87,12 @@ describe('ClientRPC', () => {
         void streamPair.readable
           .pipeTo(streamPair.writable)
           .catch(() => {})
-          .finally(() => loudLogger.info('STREAM HANDLING ENDED'));
+          .finally(() => logger.info('STREAM HANDLING ENDED'));
       },
       basePath: dataDir,
       tlsConfig,
       host,
-      logger: loudLogger.getChild('server'),
+      logger: logger.getChild('server'),
     });
     logger.info(`Server started on port ${clientServer.port}`);
     clientClient = await ClientClient.createClientClient({
@@ -128,12 +122,12 @@ describe('ClientRPC', () => {
         void streamPair.readable
           .pipeTo(streamPair.writable)
           .catch(() => {})
-          .finally(() => loudLogger.info('STREAM HANDLING ENDED'));
+          .finally(() => logger.info('STREAM HANDLING ENDED'));
       },
       basePath: dataDir,
       tlsConfig,
       host: '::1',
-      logger: loudLogger.getChild('server'),
+      logger: logger.getChild('server'),
     });
     logger.info(`Server started on port ${clientServer.port}`);
     clientClient = await ClientClient.createClientClient({
@@ -168,7 +162,7 @@ describe('ClientRPC', () => {
       basePath: dataDir,
       tlsConfig,
       host,
-      logger: loudLogger.getChild('server'),
+      logger: logger.getChild('server'),
     });
     logger.info(`Server started on port ${clientServer.port}`);
     clientClient = await ClientClient.createClientClient({
@@ -199,7 +193,7 @@ describe('ClientRPC', () => {
           basePath: dataDir,
           tlsConfig,
           host,
-          logger: loudLogger.getChild('server'),
+          logger: logger.getChild('server'),
         });
         logger.info(`Server started on port ${clientServer.port}`);
         clientClient = await ClientClient.createClientClient({
@@ -264,21 +258,21 @@ describe('ClientRPC', () => {
             while (!context.writeBackpressure) {
               await writer.write(message);
             }
-            loudLogger.info('BACK PRESSURED');
+            logger.info('BACK PRESSURED');
             backpressure.resolveP();
             await resumeWriting.p;
             for (let i = 0; i < 100; i++) {
               await writer.write(message);
             }
             await writer.close();
-            loudLogger.info('WRITING ENDED');
+            logger.info('WRITING ENDED');
           })(),
         ]).catch((e) => logger.error(e.toString()));
       },
       basePath: dataDir,
       tlsConfig,
       host,
-      logger: loudLogger.getChild('server'),
+      logger: logger.getChild('server'),
     });
     logger.info(`Server started on port ${clientServer.port}`);
     clientClient = await ClientClient.createClientClient({
@@ -298,7 +292,7 @@ describe('ClientRPC', () => {
       // No touch, only consume
     }
     expect(context?.writeBackpressure).toBeFalse();
-    loudLogger.info('ending');
+    logger.info('ending');
   });
   // Readable backpressure is not actually supported. We're dealing with it by
   //  using an buffer with a provided limit that can be very large.
@@ -311,11 +305,11 @@ describe('ClientRPC', () => {
         Promise.all([
           (async () => {
             await startReading.p;
-            loudLogger.info('Starting consumption');
+            logger.info('Starting consumption');
             for await (const _ of streamPair.readable) {
               // No touch, only consume
             }
-            loudLogger.info('Reads ended');
+            logger.info('Reads ended');
           })(),
           (async () => {
             await streamPair.writable.close();
@@ -329,7 +323,7 @@ describe('ClientRPC', () => {
       host,
       // Setting a really low buffer limit
       maxReadBufferBytes: 1500,
-      logger: loudLogger.getChild('server'),
+      logger: logger.getChild('server'),
     });
     logger.info(`Server started on port ${clientServer.port}`);
     clientClient = await ClientClient.createClientClient({
@@ -341,24 +335,22 @@ describe('ClientRPC', () => {
     const websocket = await clientClient.startConnection();
     const message = Buffer.alloc(1_000, 0xf0);
     const writer = websocket.writable.getWriter();
-    loudLogger.info('Starting writes');
+    logger.info('Starting writes');
     await expect(async () => {
       for (let i = 0; i < 100; i++) {
         await writer.write(message);
       }
     }).rejects.toThrow();
     startReading.resolveP();
-    loudLogger.info('writes ended');
+    logger.info('writes ended');
     await expect(async () => {
       for await (const _ of websocket.readable) {
         // No touch, only consume
       }
     }).rejects.toThrow();
     await handlingProm.p;
-    loudLogger.info('ending');
+    logger.info('ending');
   });
-  // To fully test these two I need to start the client or server in a separate process and kill that process.
-  // These require the ping/pong connection watchdogs to be implemented.
   test('client ends connection abruptly', async () => {
     const streamPairProm =
       promise<ReadableWritablePair<Uint8Array, Uint8Array>>();
@@ -370,7 +362,7 @@ describe('ClientRPC', () => {
       basePath: dataDir,
       tlsConfig,
       host,
-      logger: loudLogger.getChild('server'),
+      logger: logger.getChild('server'),
     });
     logger.info(`Server started on port ${clientServer.port}`);
 
@@ -496,7 +488,7 @@ describe('ClientRPC', () => {
             basePath: dataDir,
             tlsConfig,
             host,
-            logger: loudLogger.getChild('server'),
+            logger: logger.getChild('server'),
           });
           logger.info(`Server started on port ${clientServer.port}`);
           clientClient = await ClientClient.createClientClient({
@@ -535,7 +527,7 @@ describe('ClientRPC', () => {
             basePath: dataDir,
             tlsConfig,
             host,
-            logger: loudLogger.getChild('server'),
+            logger: logger.getChild('server'),
           });
           logger.info(`Server started on port ${clientServer.port}`);
           clientClient = await ClientClient.createClientClient({
@@ -572,7 +564,7 @@ describe('ClientRPC', () => {
             basePath: dataDir,
             tlsConfig,
             host,
-            logger: loudLogger.getChild('server'),
+            logger: logger.getChild('server'),
           });
           logger.info(`Server started on port ${clientServer.port}`);
           clientClient = await ClientClient.createClientClient({
@@ -600,7 +592,7 @@ describe('ClientRPC', () => {
         basePath: dataDir,
         tlsConfig,
         host,
-        logger: loudLogger.getChild('server'),
+        logger: logger.getChild('server'),
       });
       logger.info(`Server started on port ${clientServer.port}`);
       clientClient = await ClientClient.createClientClient({
@@ -636,12 +628,12 @@ describe('ClientRPC', () => {
           void streamPair.readable
             .pipeTo(streamPair.writable)
             .catch(() => {})
-            .finally(() => loudLogger.info('STREAM HANDLING ENDED'));
+            .finally(() => logger.info('STREAM HANDLING ENDED'));
         },
         basePath: dataDir,
         tlsConfig,
         host,
-        logger: loudLogger.getChild('server'),
+        logger: logger.getChild('server'),
       });
       logger.info(`Server started on port ${clientServer.port}`);
       const getResProm = promise<http.IncomingMessage>();
@@ -672,7 +664,7 @@ describe('ClientRPC', () => {
         tlsConfig,
         host,
         pingTimeout: 100,
-        logger: loudLogger.getChild('server'),
+        logger: logger.getChild('server'),
       });
       logger.info(`Server started on port ${clientServer.port}`);
       clientClient = await ClientClient.createClientClient({
@@ -698,7 +690,7 @@ describe('ClientRPC', () => {
         basePath: dataDir,
         tlsConfig,
         host,
-        logger: loudLogger.getChild('server'),
+        logger: logger.getChild('server'),
       });
       logger.info(`Server started on port ${clientServer.port}`);
       clientClient = await ClientClient.createClientClient({
@@ -737,12 +729,12 @@ describe('ClientRPC', () => {
           void streamPair.readable
             .pipeTo(streamPair.writable)
             .catch(() => {})
-            .finally(() => loudLogger.info('STREAM HANDLING ENDED'));
+            .finally(() => logger.info('STREAM HANDLING ENDED'));
         },
         basePath: dataDir,
         tlsConfig,
         host,
-        logger: loudLogger.getChild('server'),
+        logger: logger.getChild('server'),
       });
       logger.info(`Server started on port ${clientServer.port}`);
       clientClient = await ClientClient.createClientClient({
@@ -775,12 +767,12 @@ describe('ClientRPC', () => {
           void streamPair.readable
             .pipeTo(streamPair.writable)
             .catch(() => {})
-            .finally(() => loudLogger.info('STREAM HANDLING ENDED'));
+            .finally(() => logger.info('STREAM HANDLING ENDED'));
         },
         basePath: dataDir,
         tlsConfig,
         host,
-        logger: loudLogger.getChild('server'),
+        logger: logger.getChild('server'),
       });
       logger.info(`Server started on port ${clientServer.port}`);
       clientClient = await ClientClient.createClientClient({
@@ -805,12 +797,12 @@ describe('ClientRPC', () => {
           void streamPair.readable
             .pipeTo(streamPair.writable)
             .catch(() => {})
-            .finally(() => loudLogger.info('STREAM HANDLING ENDED'));
+            .finally(() => logger.info('STREAM HANDLING ENDED'));
         },
         basePath: dataDir,
         tlsConfig,
         host,
-        logger: loudLogger.getChild('server'),
+        logger: logger.getChild('server'),
       });
       logger.info(`Server started on port ${clientServer.port}`);
       clientClient = await ClientClient.createClientClient({
@@ -850,7 +842,7 @@ describe('ClientRPC', () => {
         basePath: dataDir,
         tlsConfig,
         host,
-        logger: loudLogger.getChild('server'),
+        logger: logger.getChild('server'),
       });
       logger.info(`Server started on port ${clientServer.port}`);
       clientClient = await ClientClient.createClientClient({

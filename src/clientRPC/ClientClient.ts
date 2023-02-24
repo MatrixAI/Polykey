@@ -259,7 +259,7 @@ class ClientClient {
         ws.once('error', (e) => {
           if (!writableClosed) {
             writableClosed = true;
-            writableLogger.error(e.toString());
+            writableLogger.error(e);
             controller.error(e);
           }
         });
@@ -291,12 +291,20 @@ class ClientClient {
         }
       },
       write: async (chunk, controller) => {
+        if (writableClosed) return;
         writableLogger.debug(`Sending ${chunk?.toString()}`);
         const wait = promise<void>();
         ws.send(chunk, (e) => {
-          if (e != null) {
-            writableLogger.error(e.toString());
-            controller.error(e);
+          if (e != null && !writableClosed) {
+            writableClosed = true;
+            // Opting to debug message here and not log an error, sending
+            //  failure is common if we send before the close event.
+            writableLogger.debug('failed to send');
+            controller.error(
+              new clientRPCErrors.ErrorClientConnectionEndedEarly(undefined, {
+                cause: e,
+              }),
+            );
           }
           wait.resolveP();
         });
