@@ -6,6 +6,7 @@ import type {
 import type { FileSystem, PromiseDeconstructed } from 'types';
 import type { TLSConfig } from 'network/types';
 import type { WebSocket } from 'uWebSockets.js';
+import type { ConnectionInfo } from '../RPC/types';
 import { WritableStream, ReadableStream } from 'stream/web';
 import path from 'path';
 import os from 'os';
@@ -17,6 +18,7 @@ import { promise } from '../utils';
 
 type ConnectionCallback = (
   streamPair: ReadableWritablePair<Uint8Array, Uint8Array>,
+  connectionInfo: ConnectionInfo,
 ) => void;
 
 type Context = {
@@ -364,11 +366,21 @@ class ClientServer {
       backpressure?.resolveP();
     };
     logger.debug('Calling handler callback');
+    // There is not nodeId or certs for the client, and we can't get the remote
+    //  port from the `uWebsocket` library.
+    const connectionInfo: ConnectionInfo = {
+      remoteHost: Buffer.from(ws.getRemoteAddressAsText()).toString(),
+      localHost: this.host,
+      localPort: this.port,
+    };
     try {
-      this.connectionCallback({
-        readable: readableStream,
-        writable: writableStream,
-      });
+      this.connectionCallback(
+        {
+          readable: readableStream,
+          writable: writableStream,
+        },
+        connectionInfo,
+      );
     } catch (e) {
       context.close(ws, 0, Buffer.from(''));
       logger.error(e.toString());

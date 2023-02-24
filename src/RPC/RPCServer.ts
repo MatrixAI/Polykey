@@ -10,10 +10,10 @@ import type {
   RawHandlerImplementation,
   ServerHandlerImplementation,
   UnaryHandlerImplementation,
+  ConnectionInfo,
 } from './types';
 import type { ReadableWritablePair } from 'stream/web';
 import type { JSONValue } from '../types';
-import type { ConnectionInfo } from '../network/types';
 import type { RPCErrorEvent } from './utils';
 import type { MiddlewareFactory } from './types';
 import { ReadableStream } from 'stream/web';

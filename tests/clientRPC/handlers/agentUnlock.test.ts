@@ -1,4 +1,4 @@
-import type { ConnectionInfo, TLSConfig } from '@/network/types';
+import type { TLSConfig } from '@/network/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -100,8 +100,8 @@ describe('agentUnlock', () => {
       logger,
     });
     clientServer = await ClientServer.createClientServer({
-      connectionCallback: (streamPair) =>
-        rpcServer.handleStream(streamPair, {} as ConnectionInfo),
+      connectionCallback: (streamPair, connectionInfo) =>
+        rpcServer.handleStream(streamPair, connectionInfo),
       host,
       tlsConfig,
       logger,
