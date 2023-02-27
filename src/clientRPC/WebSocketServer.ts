@@ -5,7 +5,12 @@ import type {
 } from 'stream/web';
 import type { FileSystem, PromiseDeconstructed } from 'types';
 import type { TLSConfig } from 'network/types';
-import type { WebSocket } from 'uWebSockets.js';
+import type {
+  HttpRequest,
+  HttpResponse,
+  us_socket_context_t,
+  WebSocket,
+} from 'uWebSockets.js';
 import type { ConnectionInfo } from '../RPC/types';
 import { WritableStream, ReadableStream } from 'stream/web';
 import path from 'path';
@@ -88,6 +93,7 @@ class WebSocketServer {
   protected connectionCallback: ConnectionCallback;
   protected activeSockets: Set<WebSocket<any>> = new Set();
   protected waitForActive: PromiseDeconstructed<void> | null = null;
+  protected connectionIndex: number = 0;
 
   /**
    *
@@ -122,7 +128,6 @@ class WebSocketServer {
   }): Promise<void> {
     this.logger.info(`Starting ${this.constructor.name}`);
     this.connectionCallback = connectionCallback;
-    let count = 0;
     const tmpDir = await this.fs.promises.mkdtemp(
       path.join(basePath, 'polykey-'),
     );
@@ -140,37 +145,14 @@ class WebSocketServer {
     this.server.ws('/*', {
       sendPingsAutomatically: true,
       idleTimeout: this.idleTimeout,
-      upgrade: (res, req, context) => {
-        const logger = this.logger.getChild(`Connection ${count}`);
-        res.upgrade<Partial<Context>>(
-          {
-            logger,
-          },
-          req.getHeader('sec-websocket-key'),
-          req.getHeader('sec-websocket-protocol'),
-          req.getHeader('sec-websocket-extensions'),
-          context,
-        );
-        count += 1;
-      },
-      open: (ws: WebSocket<Context>) => {
-        if (this.waitForActive == null) this.waitForActive = promise();
-        this.activeSockets.add(ws);
-        // Set up streams and context
-        this.handleOpen(ws);
-      },
-      // TODO: could this take an async and apply backpressure implicitly?
-      message: async (ws: WebSocket<Context>, message, isBinary) => {
-        ws.getUserData().message(ws, message, isBinary);
-      },
-      close: (ws, code, message) => {
-        this.activeSockets.delete(ws);
-        if (this.activeSockets.size === 0) this.waitForActive?.resolveP();
-        ws.getUserData().close(ws, code, message);
-      },
-      drain: (ws) => {
-        ws.getUserData().drain(ws);
-      },
+      upgrade: this.upgrade,
+      open: this.open,
+      message: this.message,
+      close: this.close,
+      drain: this.drain,
+      pong: this.pong,
+      // Ping uses default behaviour.
+      // We don't use subscriptions.
     });
     this.server.any('/*', (res, _) => {
       // Reject normal requests with an upgrade code
@@ -223,7 +205,37 @@ class WebSocketServer {
     return uWebsocket.us_socket_local_port(this.listenSocket);
   }
 
-  protected handleOpen(ws: WebSocket<Context>) {
+  /**
+   * Applies default upgrade behaviour and creates a UserData object we can
+   * mutate for the Context
+   */
+  protected upgrade = (
+    res: HttpResponse,
+    req: HttpRequest,
+    context: us_socket_context_t,
+  ) => {
+    const logger = this.logger.getChild(`Connection ${this.connectionIndex}`);
+    res.upgrade<Partial<Context>>(
+      {
+        logger,
+      },
+      req.getHeader('sec-websocket-key'),
+      req.getHeader('sec-websocket-protocol'),
+      req.getHeader('sec-websocket-extensions'),
+      context,
+    );
+    this.connectionIndex += 1;
+  };
+
+  /**
+   * Handles the creation of the `ReadableWritablePair` and provides it to the
+   * StreamPair handler.
+   */
+  protected open = (ws: WebSocket<Context>) => {
+    if (this.waitForActive == null) this.waitForActive = promise();
+    // Adding socket to the active sockets map
+    this.activeSockets.add(ws);
+
     const context = ws.getUserData();
     const logger = context.logger;
     logger.info('WS opened');
@@ -385,7 +397,37 @@ class WebSocketServer {
       context.close(ws, 0, Buffer.from(''));
       logger.error(e.toString());
     }
-  }
+  };
+
+  /**
+   * Routes incoming messages to each stream using the `Context` message
+   * callback.
+   */
+  protected message = (
+    ws: WebSocket<Context>,
+    message: ArrayBuffer,
+    isBinary: boolean,
+  ) => {
+    ws.getUserData().message(ws, message, isBinary);
+  };
+
+  protected drain = (ws: WebSocket<Context>) => {
+    ws.getUserData().drain(ws);
+  };
+
+  protected close = (
+    ws: WebSocket<Context>,
+    code: number,
+    message: ArrayBuffer,
+  ) => {
+    this.activeSockets.delete(ws);
+    if (this.activeSockets.size === 0) this.waitForActive?.resolveP();
+    ws.getUserData().close(ws, code, message);
+  };
+
+  protected pong = (ws: WebSocket<Context>, message: ArrayBuffer) => {
+    ws.getUserData().pong(ws, message);
+  };
 }
 
 export default WebSocketServer;
