@@ -287,7 +287,7 @@ describe('WebSocket', () => {
     await backpressure.p;
     expect(context?.writeBackpressure).toBeTrue();
     resumeWriting.resolveP();
-    // Consume all of the back-pressured data
+    // Consume all the back-pressured data
     for await (const _ of websocket.readable) {
       // No touch, only consume
     }
@@ -295,7 +295,7 @@ describe('WebSocket', () => {
     logger.info('ending');
   });
   // Readable backpressure is not actually supported. We're dealing with it by
-  //  using an buffer with a provided limit that can be very large.
+  //  using a buffer with a provided limit that can be very large.
   test('Exceeding readable buffer limit causes error', async () => {
     const startReading = promise<void>();
     const handlingProm = promise<void>();
@@ -448,11 +448,8 @@ describe('WebSocket', () => {
     testProcess.kill('SIGTERM');
     await exitedProm.p;
 
-    // @ts-ignore: kidnap protected property
-    const activeConnections = clientClient.activeConnections;
-    for (const activeConnection of activeConnections) {
-      await activeConnection;
-    }
+    // Waiting for connections to end
+    await clientClient.destroy();
     // Checking client's response to connection dropping
     await expect(async () => {
       for await (const _ of websocket.readable) {
@@ -749,6 +746,7 @@ describe('WebSocket', () => {
       // @ts-ignore: kidnap protected property
       const activeConnections = clientClient.activeConnections;
       expect(activeConnections.size).toBe(0);
+      await clientServer.stop();
       logger.info('ending');
     });
     test('Authenticates with multiple certs in chain', async () => {
