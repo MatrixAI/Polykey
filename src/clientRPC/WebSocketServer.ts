@@ -34,10 +34,10 @@ type Context = {
   writeBackpressure: boolean;
 };
 
-interface ClientServer extends startStop.StartStop {}
+interface WebSocketServer extends startStop.StartStop {}
 @startStop.StartStop()
-class ClientServer {
-  static async createClientServer({
+class WebSocketServer {
+  static async createWebSocketServer({
     connectionCallback,
     tlsConfig,
     basePath,
@@ -388,4 +388,4 @@ class ClientServer {
   }
 }
 
-export default ClientServer;
+export default WebSocketServer;

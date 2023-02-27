@@ -8,7 +8,7 @@
 import type { CertificatePEMChain, PrivateKeyPEM } from '@/keys/types';
 import type { TLSConfig } from '@/network/types';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import ClientServer from '@/clientRPC/ClientServer';
+import WebSocketServer from '@/clientRPC/WebSocketServer';
 
 async function main() {
   const logger = new Logger('websocket test', LogLevel.WARN, [
@@ -18,7 +18,7 @@ async function main() {
     keyPrivatePem: process.env.PK_TEST_KEY_PRIVATE_PEM as PrivateKeyPEM,
     certChainPem: process.env.PK_TEST_CERT_CHAIN_PEM as CertificatePEMChain,
   };
-  const clientServer = await ClientServer.createClientServer({
+  const clientServer = await WebSocketServer.createWebSocketServer({
     connectionCallback: (_) => {
       // Ignore streams and hang connections
     },

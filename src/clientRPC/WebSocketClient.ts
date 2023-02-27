@@ -14,10 +14,10 @@ import { promise } from '../utils';
 
 const timeoutSymbol = Symbol('TimedOutSymbol');
 
-interface ClientClient extends createDestroy.CreateDestroy {}
+interface WebSocketClient extends createDestroy.CreateDestroy {}
 @createDestroy.CreateDestroy()
-class ClientClient {
-  static async createClientClient({
+class WebSocketClient {
+  static async createWebSocketClient({
     host,
     port,
     expectedNodeIds,
@@ -35,7 +35,7 @@ class ClientClient {
     pingTimeout?: number;
     maxReadableStreamBytes?: number;
     logger?: Logger;
-  }): Promise<ClientClient> {
+  }): Promise<WebSocketClient> {
     logger.info(`Creating ${this.name}`);
     const clientClient = new this(
       logger,
@@ -342,4 +342,4 @@ class ClientClient {
   }
 }
 
-export default ClientClient;
+export default WebSocketClient;

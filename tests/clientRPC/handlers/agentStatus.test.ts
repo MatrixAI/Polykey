@@ -15,8 +15,8 @@ import {
 } from '@/clientRPC/handlers/agentStatus';
 import RPCClient from '@/RPC/RPCClient';
 import * as nodesUtils from '@/nodes/utils';
-import ClientClient from '@/clientRPC/ClientClient';
-import ClientServer from '@/clientRPC/ClientServer';
+import WebSocketClient from '@/clientRPC/WebSocketClient';
+import WebSocketServer from '@/clientRPC/WebSocketServer';
 import * as testsUtils from '../../utils';
 
 describe('agentStatus', () => {
@@ -30,8 +30,8 @@ describe('agentStatus', () => {
   let keyRing: KeyRing;
   let taskManager: TaskManager;
   let certManager: CertManager;
-  let clientServer: ClientServer;
-  let clientClient: ClientClient;
+  let clientServer: WebSocketServer;
+  let clientClient: WebSocketClient;
   let tlsConfig: TLSConfig;
 
   beforeEach(async () => {
@@ -85,7 +85,7 @@ describe('agentStatus', () => {
       },
       logger: logger.getChild('RPCServer'),
     });
-    clientServer = await ClientServer.createClientServer({
+    clientServer = await WebSocketServer.createWebSocketServer({
       connectionCallback: (streamPair, connectionInfo) => {
         rpcServer.handleStream(streamPair, connectionInfo);
       },
@@ -93,7 +93,7 @@ describe('agentStatus', () => {
       tlsConfig,
       logger,
     });
-    clientClient = await ClientClient.createClientClient({
+    clientClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
       host,
       port: clientServer.port,

@@ -18,8 +18,8 @@ import { Session, SessionManager } from '@/sessions';
 import * as clientRPCUtils from '@/clientRPC/utils';
 import * as authMiddleware from '@/clientRPC/authenticationMiddleware';
 import * as middlewareUtils from '@/RPC/middleware';
-import ClientServer from '@/clientRPC/ClientServer';
-import ClientClient from '@/clientRPC/ClientClient';
+import WebSocketServer from '@/clientRPC/WebSocketServer';
+import WebSocketClient from '@/clientRPC/WebSocketClient';
 import * as testsUtils from '../../utils';
 
 describe('agentUnlock', () => {
@@ -35,8 +35,8 @@ describe('agentUnlock', () => {
   let certManager: CertManager;
   let session: Session;
   let sessionManager: SessionManager;
-  let clientClient: ClientClient;
-  let clientServer: ClientServer;
+  let clientClient: WebSocketClient;
+  let clientServer: WebSocketServer;
   let tlsConfig: TLSConfig;
 
   beforeEach(async () => {
@@ -99,14 +99,14 @@ describe('agentUnlock', () => {
       ),
       logger,
     });
-    clientServer = await ClientServer.createClientServer({
+    clientServer = await WebSocketServer.createWebSocketServer({
       connectionCallback: (streamPair, connectionInfo) =>
         rpcServer.handleStream(streamPair, connectionInfo),
       host,
       tlsConfig,
       logger,
     });
-    clientClient = await ClientClient.createClientClient({
+    clientClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
       host,
       logger,

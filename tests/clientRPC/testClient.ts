@@ -6,14 +6,14 @@
  * @module
  */
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import ClientClient from '@/clientRPC/ClientClient';
+import WebSocketClient from '@/clientRPC/WebSocketClient';
 import * as nodesUtils from '@/nodes/utils';
 
 async function main() {
   const logger = new Logger('websocket test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
-  const clientClient = await ClientClient.createClientClient({
+  const clientClient = await WebSocketClient.createWebSocketClient({
     expectedNodeIds: [nodesUtils.decodeNodeId(process.env.PK_TEST_NODE_ID!)!],
     host: process.env.PK_TEST_HOST ?? '127.0.0.1',
     port: parseInt(process.env.PK_TEST_PORT!),

@@ -17,9 +17,9 @@ import * as authMiddleware from '@/clientRPC/authenticationMiddleware';
 import { UnaryCaller } from '@/RPC/callers';
 import { UnaryHandler } from '@/RPC/handlers';
 import * as middlewareUtils from '@/RPC/middleware';
+import WebSocketServer from '@/clientRPC/WebSocketServer';
+import WebSocketClient from '@/clientRPC/WebSocketClient';
 import * as testsUtils from '../utils';
-import ClientServer from '../../src/clientRPC/ClientServer';
-import ClientClient from '../../src/clientRPC/ClientClient';
 
 describe('agentUnlock', () => {
   const logger = new Logger('agentUnlock test', LogLevel.WARN, [
@@ -34,8 +34,8 @@ describe('agentUnlock', () => {
   let certManager: CertManager;
   let session: Session;
   let sessionManager: SessionManager;
-  let clientServer: ClientServer;
-  let clientClient: ClientClient;
+  let clientServer: WebSocketServer;
+  let clientClient: WebSocketClient;
   let tlsConfig: TLSConfig;
 
   beforeEach(async () => {
@@ -107,7 +107,7 @@ describe('agentUnlock', () => {
       ),
       logger,
     });
-    clientServer = await ClientServer.createClientServer({
+    clientServer = await WebSocketServer.createWebSocketServer({
       connectionCallback: (streamPair, connectionInfo) => {
         rpcServer.handleStream(streamPair, connectionInfo);
       },
@@ -115,7 +115,7 @@ describe('agentUnlock', () => {
       tlsConfig,
       logger,
     });
-    clientClient = await ClientClient.createClientClient({
+    clientClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
       host,
       port: clientServer.port,
