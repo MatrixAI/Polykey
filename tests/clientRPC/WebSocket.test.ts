@@ -1,8 +1,8 @@
 import type { ReadableWritablePair } from 'stream/web';
 import type { TLSConfig } from '@/network/types';
-import type { WebSocket } from 'uWebSockets.js';
 import type { KeyPair } from '@/keys/types';
 import type http from 'http';
+import type WebSocketStream from '@/clientRPC/WebSocketStream';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -32,8 +32,8 @@ describe('WebSocket', () => {
   let keyRing: KeyRing;
   let tlsConfig: TLSConfig;
   const host = '127.0.0.2';
-  let clientServer: WebSocketServer;
-  let clientClient: WebSocketClient;
+  let webSocketServer: WebSocketServer;
+  let webSocketClient: WebSocketClient;
 
   const messagesArb = fc.array(
     fc.uint8Array({ minLength: 1 }).map((d) => Buffer.from(d)),
@@ -73,15 +73,15 @@ describe('WebSocket', () => {
   });
   afterEach(async () => {
     logger.info('AFTEREACH');
-    await clientServer?.stop(true);
-    await clientClient?.destroy(true);
+    await webSocketServer?.stop(true);
+    await webSocketClient?.destroy(true);
     await keyRing.stop();
     await fs.promises.rm(dataDir, { force: true, recursive: true });
   });
 
   // These tests are share between client and server
   test('makes a connection', async () => {
-    clientServer = await WebSocketServer.createWebSocketServer({
+    webSocketServer = await WebSocketServer.createWebSocketServer({
       connectionCallback: (streamPair) => {
         logger.info('inside callback');
         void streamPair.readable
@@ -94,14 +94,14 @@ describe('WebSocket', () => {
       host,
       logger: logger.getChild('server'),
     });
-    logger.info(`Server started on port ${clientServer.port}`);
-    clientClient = await WebSocketClient.createWebSocketClient({
+    logger.info(`Server started on port ${webSocketServer.port}`);
+    webSocketClient = await WebSocketClient.createWebSocketClient({
       host,
-      port: clientServer.port,
+      port: webSocketServer.port,
       expectedNodeIds: [keyRing.getNodeId()],
       logger: logger.getChild('clientClient'),
     });
-    const websocket = await clientClient.startConnection();
+    const websocket = await webSocketClient.startConnection();
 
     const writer = websocket.writable.getWriter();
     const reader = websocket.readable.getReader();
@@ -116,7 +116,7 @@ describe('WebSocket', () => {
     logger.info('ending');
   });
   test('makes a connection over IPv6', async () => {
-    clientServer = await WebSocketServer.createWebSocketServer({
+    webSocketServer = await WebSocketServer.createWebSocketServer({
       connectionCallback: (streamPair) => {
         logger.info('inside callback');
         void streamPair.readable
@@ -129,14 +129,14 @@ describe('WebSocket', () => {
       host: '::1',
       logger: logger.getChild('server'),
     });
-    logger.info(`Server started on port ${clientServer.port}`);
-    clientClient = await WebSocketClient.createWebSocketClient({
+    logger.info(`Server started on port ${webSocketServer.port}`);
+    webSocketClient = await WebSocketClient.createWebSocketClient({
       host: '::1',
-      port: clientServer.port,
+      port: webSocketServer.port,
       expectedNodeIds: [keyRing.getNodeId()],
       logger: logger.getChild('clientClient'),
     });
-    const websocket = await clientClient.startConnection();
+    const websocket = await webSocketClient.startConnection();
 
     const writer = websocket.writable.getWriter();
     const reader = websocket.readable.getReader();
@@ -151,7 +151,7 @@ describe('WebSocket', () => {
     logger.info('ending');
   });
   test('Handles a connection and closes before message', async () => {
-    clientServer = await WebSocketServer.createWebSocketServer({
+    webSocketServer = await WebSocketServer.createWebSocketServer({
       connectionCallback: (streamPair) => {
         logger.info('inside callback');
         void streamPair.readable
@@ -164,14 +164,14 @@ describe('WebSocket', () => {
       host,
       logger: logger.getChild('server'),
     });
-    logger.info(`Server started on port ${clientServer.port}`);
-    clientClient = await WebSocketClient.createWebSocketClient({
+    logger.info(`Server started on port ${webSocketServer.port}`);
+    webSocketClient = await WebSocketClient.createWebSocketClient({
       host,
-      port: clientServer.port,
+      port: webSocketServer.port,
       expectedNodeIds: [keyRing.getNodeId()],
       logger: logger.getChild('clientClient'),
     });
-    const websocket = await clientClient.startConnection();
+    const websocket = await webSocketClient.startConnection();
     await websocket.writable.close();
     const reader = websocket.readable.getReader();
     expect((await reader.read()).done).toBeTrue();
@@ -182,7 +182,7 @@ describe('WebSocket', () => {
     [streamsArb],
     async (streamsData) => {
       try {
-        clientServer = await WebSocketServer.createWebSocketServer({
+        webSocketServer = await WebSocketServer.createWebSocketServer({
           connectionCallback: (streamPair) => {
             logger.info('inside callback');
             void streamPair.readable
@@ -195,16 +195,16 @@ describe('WebSocket', () => {
           host,
           logger: logger.getChild('server'),
         });
-        logger.info(`Server started on port ${clientServer.port}`);
-        clientClient = await WebSocketClient.createWebSocketClient({
+        logger.info(`Server started on port ${webSocketServer.port}`);
+        webSocketClient = await WebSocketClient.createWebSocketClient({
           host,
-          port: clientServer.port,
+          port: webSocketServer.port,
           expectedNodeIds: [keyRing.getNodeId()],
           logger: logger.getChild('clientClient'),
         });
 
         const testStream = async (messages: Array<Buffer>) => {
-          const websocket = await clientClient.startConnection();
+          const websocket = await webSocketClient.startConnection();
           const writer = websocket.writable.getWriter();
           const reader = websocket.readable.getReader();
           for (const message of messages) {
@@ -223,15 +223,15 @@ describe('WebSocket', () => {
 
         logger.info('ending');
       } finally {
-        await clientServer.stop(true);
+        await webSocketServer.stop(true);
       }
     },
   );
   test('reverse backpressure', async () => {
-    let context: { writeBackpressure: boolean } | undefined;
     const backpressure = promise<void>();
     const resumeWriting = promise<void>();
-    clientServer = await WebSocketServer.createWebSocketServer({
+    let webSocketStream: WebSocketStream | null = null;
+    webSocketServer = await WebSocketServer.createWebSocketServer({
       connectionCallback: (streamPair) => {
         logger.info('inside callback');
         void Promise.allSettled([
@@ -242,20 +242,19 @@ describe('WebSocket', () => {
           })(),
           (async () => {
             // Kidnap the context
-            let ws: WebSocket<{ writeBackpressure: boolean }> | null = null;
             // @ts-ignore: kidnap protected property
-            for (const websocket of clientServer.activeSockets.values()) {
-              ws = websocket;
+            for (const websocket of webSocketServer.activeSockets.values()) {
+              webSocketStream = websocket;
             }
-            if (ws == null) {
+            if (webSocketStream == null) {
               await streamPair.writable.close();
               return;
             }
-            context = ws.getUserData();
             // Write until backPressured
             const message = Buffer.alloc(128, 0xf0);
             const writer = streamPair.writable.getWriter();
-            while (!context.writeBackpressure) {
+            // @ts-ignore: kidnap protected property
+            while (!webSocketStream.writeBackpressure) {
               await writer.write(message);
             }
             logger.info('BACK PRESSURED');
@@ -274,24 +273,26 @@ describe('WebSocket', () => {
       host,
       logger: logger.getChild('server'),
     });
-    logger.info(`Server started on port ${clientServer.port}`);
-    clientClient = await WebSocketClient.createWebSocketClient({
+    logger.info(`Server started on port ${webSocketServer.port}`);
+    webSocketClient = await WebSocketClient.createWebSocketClient({
       host,
-      port: clientServer.port,
+      port: webSocketServer.port,
       expectedNodeIds: [keyRing.getNodeId()],
       logger: logger.getChild('clientClient'),
     });
-    const websocket = await clientClient.startConnection();
+    const websocket = await webSocketClient.startConnection();
     await websocket.writable.close();
 
     await backpressure.p;
-    expect(context?.writeBackpressure).toBeTrue();
+    // @ts-ignore: kidnap protected property
+    expect(webSocketStream.writeBackpressure).toBeTrue();
     resumeWriting.resolveP();
     // Consume all the back-pressured data
     for await (const _ of websocket.readable) {
       // No touch, only consume
     }
-    expect(context?.writeBackpressure).toBeFalse();
+    // @ts-ignore: kidnap protected property
+    expect(webSocketStream.writeBackpressure).toBeFalse();
     logger.info('ending');
   });
   // Readable backpressure is not actually supported. We're dealing with it by
@@ -299,7 +300,7 @@ describe('WebSocket', () => {
   test('Exceeding readable buffer limit causes error', async () => {
     const startReading = promise<void>();
     const handlingProm = promise<void>();
-    clientServer = await WebSocketServer.createWebSocketServer({
+    webSocketServer = await WebSocketServer.createWebSocketServer({
       connectionCallback: (streamPair) => {
         logger.info('inside callback');
         Promise.all([
@@ -325,14 +326,14 @@ describe('WebSocket', () => {
       maxReadBufferBytes: 1500,
       logger: logger.getChild('server'),
     });
-    logger.info(`Server started on port ${clientServer.port}`);
-    clientClient = await WebSocketClient.createWebSocketClient({
+    logger.info(`Server started on port ${webSocketServer.port}`);
+    webSocketClient = await WebSocketClient.createWebSocketClient({
       host,
-      port: clientServer.port,
+      port: webSocketServer.port,
       expectedNodeIds: [keyRing.getNodeId()],
       logger: logger.getChild('clientClient'),
     });
-    const websocket = await clientClient.startConnection();
+    const websocket = await webSocketClient.startConnection();
     const message = Buffer.alloc(1_000, 0xf0);
     const writer = websocket.writable.getWriter();
     logger.info('Starting writes');
@@ -354,7 +355,7 @@ describe('WebSocket', () => {
   test('client ends connection abruptly', async () => {
     const streamPairProm =
       promise<ReadableWritablePair<Uint8Array, Uint8Array>>();
-    clientServer = await WebSocketServer.createWebSocketServer({
+    webSocketServer = await WebSocketServer.createWebSocketServer({
       connectionCallback: (streamPair) => {
         logger.info('inside callback');
         streamPairProm.resolveP(streamPair);
@@ -364,7 +365,7 @@ describe('WebSocket', () => {
       host,
       logger: logger.getChild('server'),
     });
-    logger.info(`Server started on port ${clientServer.port}`);
+    logger.info(`Server started on port ${webSocketServer.port}`);
 
     const testProcess = await testsUtils.spawn(
       'ts-node',
@@ -376,7 +377,7 @@ describe('WebSocket', () => {
       {
         env: {
           PK_TEST_HOST: host,
-          PK_TEST_PORT: `${clientServer.port}`,
+          PK_TEST_PORT: `${webSocketServer.port}`,
           PK_TEST_NODE_ID: nodesUtils.encodeNodeId(keyRing.getNodeId()),
         },
       },
@@ -436,20 +437,20 @@ describe('WebSocket', () => {
     testProcess.once('exit', () => exitedProm.resolveP());
 
     logger.info(`Server started on port ${await startedProm.p}`);
-    clientClient = await WebSocketClient.createWebSocketClient({
+    webSocketClient = await WebSocketClient.createWebSocketClient({
       host,
       port: await startedProm.p,
       expectedNodeIds: [keyRing.getNodeId()],
       logger: logger.getChild('clientClient'),
     });
-    const websocket = await clientClient.startConnection();
+    const websocket = await webSocketClient.startConnection();
 
     // Killing the server
     testProcess.kill('SIGTERM');
     await exitedProm.p;
 
     // Waiting for connections to end
-    await clientClient.destroy();
+    await webSocketClient.destroy();
     // Checking client's response to connection dropping
     await expect(async () => {
       for await (const _ of websocket.readable) {
@@ -468,7 +469,7 @@ describe('WebSocket', () => {
       [messagesArb, messagesArb],
       async (messages1, messages2) => {
         try {
-          clientServer = await WebSocketServer.createWebSocketServer({
+          webSocketServer = await WebSocketServer.createWebSocketServer({
             connectionCallback: (streamPair) => {
               logger.info('inside callback');
               void (async () => {
@@ -487,18 +488,18 @@ describe('WebSocket', () => {
             host,
             logger: logger.getChild('server'),
           });
-          logger.info(`Server started on port ${clientServer.port}`);
-          clientClient = await WebSocketClient.createWebSocketClient({
+          logger.info(`Server started on port ${webSocketServer.port}`);
+          webSocketClient = await WebSocketClient.createWebSocketClient({
             host,
-            port: clientServer.port,
+            port: webSocketServer.port,
             expectedNodeIds: [keyRing.getNodeId()],
             logger: logger.getChild('clientClient'),
           });
-          const websocket = await clientClient.startConnection();
+          const websocket = await webSocketClient.startConnection();
           await asyncReadWrite(messages1, websocket);
           logger.info('ending');
         } finally {
-          await clientServer.stop(true);
+          await webSocketServer.stop(true);
         }
       },
     );
@@ -507,7 +508,7 @@ describe('WebSocket', () => {
       [messagesArb, messagesArb],
       async (messages1, messages2) => {
         try {
-          clientServer = await WebSocketServer.createWebSocketServer({
+          webSocketServer = await WebSocketServer.createWebSocketServer({
             connectionCallback: (streamPair) => {
               logger.info('inside callback');
               void (async () => {
@@ -526,18 +527,18 @@ describe('WebSocket', () => {
             host,
             logger: logger.getChild('server'),
           });
-          logger.info(`Server started on port ${clientServer.port}`);
-          clientClient = await WebSocketClient.createWebSocketClient({
+          logger.info(`Server started on port ${webSocketServer.port}`);
+          webSocketClient = await WebSocketClient.createWebSocketClient({
             host,
-            port: clientServer.port,
+            port: webSocketServer.port,
             expectedNodeIds: [keyRing.getNodeId()],
             logger: logger.getChild('clientClient'),
           });
-          const websocket = await clientClient.startConnection();
+          const websocket = await webSocketClient.startConnection();
           await asyncReadWrite(messages1, websocket);
           logger.info('ending');
         } finally {
-          await clientServer.stop(true);
+          await webSocketServer.stop(true);
         }
       },
     );
@@ -546,7 +547,7 @@ describe('WebSocket', () => {
       [messagesArb, messagesArb],
       async (messages1, messages2) => {
         try {
-          clientServer = await WebSocketServer.createWebSocketServer({
+          webSocketServer = await WebSocketServer.createWebSocketServer({
             connectionCallback: (streamPair) => {
               logger.info('inside callback');
               void (async () => {
@@ -563,25 +564,25 @@ describe('WebSocket', () => {
             host,
             logger: logger.getChild('server'),
           });
-          logger.info(`Server started on port ${clientServer.port}`);
-          clientClient = await WebSocketClient.createWebSocketClient({
+          logger.info(`Server started on port ${webSocketServer.port}`);
+          webSocketClient = await WebSocketClient.createWebSocketClient({
             host,
-            port: clientServer.port,
+            port: webSocketServer.port,
             expectedNodeIds: [keyRing.getNodeId()],
             logger: logger.getChild('clientClient'),
           });
-          const websocket = await clientClient.startConnection();
+          const websocket = await webSocketClient.startConnection();
           await asyncReadWrite(messages1, websocket);
           logger.info('ending');
         } finally {
-          await clientServer.stop(true);
+          await webSocketServer.stop(true);
         }
       },
     );
     test('Destroying ClientServer stops all connections', async () => {
       const streamPairProm =
         promise<ReadableWritablePair<Uint8Array, Uint8Array>>();
-      clientServer = await WebSocketServer.createWebSocketServer({
+      webSocketServer = await WebSocketServer.createWebSocketServer({
         connectionCallback: (streamPair) => {
           logger.info('inside callback');
           streamPairProm.resolveP(streamPair);
@@ -591,15 +592,15 @@ describe('WebSocket', () => {
         host,
         logger: logger.getChild('server'),
       });
-      logger.info(`Server started on port ${clientServer.port}`);
-      clientClient = await WebSocketClient.createWebSocketClient({
+      logger.info(`Server started on port ${webSocketServer.port}`);
+      webSocketClient = await WebSocketClient.createWebSocketClient({
         host,
-        port: clientServer.port,
+        port: webSocketServer.port,
         expectedNodeIds: [keyRing.getNodeId()],
         logger: logger.getChild('clientClient'),
       });
-      const websocket = await clientClient.startConnection();
-      await clientServer.stop(true);
+      const websocket = await webSocketClient.startConnection();
+      await webSocketServer.stop(true);
       const streamPair = await streamPairProm.p;
       // Everything should throw after websocket ends early
       await expect(async () => {
@@ -619,7 +620,7 @@ describe('WebSocket', () => {
       logger.info('ending');
     });
     test('Server rejects normal HTTPS requests', async () => {
-      clientServer = await WebSocketServer.createWebSocketServer({
+      webSocketServer = await WebSocketServer.createWebSocketServer({
         connectionCallback: (streamPair) => {
           logger.info('inside callback');
           void streamPair.readable
@@ -632,10 +633,10 @@ describe('WebSocket', () => {
         host,
         logger: logger.getChild('server'),
       });
-      logger.info(`Server started on port ${clientServer.port}`);
+      logger.info(`Server started on port ${webSocketServer.port}`);
       const getResProm = promise<http.IncomingMessage>();
       https.get(
-        `https://${host}:${clientServer.port}/`,
+        `https://${host}:${webSocketServer.port}/`,
         { rejectUnauthorized: false },
         getResProm.resolveP,
       );
@@ -652,7 +653,7 @@ describe('WebSocket', () => {
       expect(res.headers['upgrade']).toBe('websocket');
     });
     test('ping timeout', async () => {
-      clientServer = await WebSocketServer.createWebSocketServer({
+      webSocketServer = await WebSocketServer.createWebSocketServer({
         connectionCallback: (_) => {
           logger.info('inside callback');
           // Hang connection
@@ -663,15 +664,15 @@ describe('WebSocket', () => {
         pingTimeout: 100,
         logger: logger.getChild('server'),
       });
-      logger.info(`Server started on port ${clientServer.port}`);
-      clientClient = await WebSocketClient.createWebSocketClient({
+      logger.info(`Server started on port ${webSocketServer.port}`);
+      webSocketClient = await WebSocketClient.createWebSocketClient({
         host,
-        port: clientServer.port,
+        port: webSocketServer.port,
         expectedNodeIds: [keyRing.getNodeId()],
         logger: logger.getChild('clientClient'),
       });
-      await clientClient.startConnection();
-      await clientClient.destroy();
+      await webSocketClient.startConnection();
+      await webSocketClient.destroy();
       logger.info('ending');
     });
   });
@@ -679,7 +680,7 @@ describe('WebSocket', () => {
     test('Destroying ClientClient stops all connections', async () => {
       const streamPairProm =
         promise<ReadableWritablePair<Uint8Array, Uint8Array>>();
-      clientServer = await WebSocketServer.createWebSocketServer({
+      webSocketServer = await WebSocketServer.createWebSocketServer({
         connectionCallback: (streamPair) => {
           logger.info('inside callback');
           streamPairProm.resolveP(streamPair);
@@ -689,16 +690,16 @@ describe('WebSocket', () => {
         host,
         logger: logger.getChild('server'),
       });
-      logger.info(`Server started on port ${clientServer.port}`);
-      clientClient = await WebSocketClient.createWebSocketClient({
+      logger.info(`Server started on port ${webSocketServer.port}`);
+      webSocketClient = await WebSocketClient.createWebSocketClient({
         host,
-        port: clientServer.port,
+        port: webSocketServer.port,
         expectedNodeIds: [keyRing.getNodeId()],
         logger: logger.getChild('clientClient'),
       });
-      const websocket = await clientClient.startConnection();
+      const websocket = await webSocketClient.startConnection();
       // Destroying the client, force close connections
-      await clientClient.destroy(true);
+      await webSocketClient.destroy(true);
       const streamPair = await streamPairProm.p;
       // Everything should throw after websocket ends early
       await expect(async () => {
@@ -715,12 +716,12 @@ describe('WebSocket', () => {
       const serverWritable = streamPair.writable.getWriter();
       await expect(clientWritable.write(Buffer.from('test'))).rejects.toThrow();
       await expect(serverWritable.write(Buffer.from('test'))).rejects.toThrow();
-      await clientServer.stop();
+      await webSocketServer.stop();
       logger.info('ending');
     });
     test('Authentication rejects bad server certificate', async () => {
       const invalidNodeId = testNodeUtils.generateRandomNodeId();
-      clientServer = await WebSocketServer.createWebSocketServer({
+      webSocketServer = await WebSocketServer.createWebSocketServer({
         connectionCallback: (streamPair) => {
           logger.info('inside callback');
           void streamPair.readable
@@ -733,20 +734,20 @@ describe('WebSocket', () => {
         host,
         logger: logger.getChild('server'),
       });
-      logger.info(`Server started on port ${clientServer.port}`);
-      clientClient = await WebSocketClient.createWebSocketClient({
+      logger.info(`Server started on port ${webSocketServer.port}`);
+      webSocketClient = await WebSocketClient.createWebSocketClient({
         host,
-        port: clientServer.port,
+        port: webSocketServer.port,
         expectedNodeIds: [invalidNodeId],
         logger: logger.getChild('clientClient'),
       });
-      await expect(clientClient.startConnection()).rejects.toThrow(
+      await expect(webSocketClient.startConnection()).rejects.toThrow(
         networkErrors.ErrorCertChainUnclaimed,
       );
       // @ts-ignore: kidnap protected property
-      const activeConnections = clientClient.activeConnections;
+      const activeConnections = webSocketClient.activeConnections;
       expect(activeConnections.size).toBe(0);
-      await clientServer.stop();
+      await webSocketServer.stop();
       logger.info('ending');
     });
     test('Authenticates with multiple certs in chain', async () => {
@@ -759,7 +760,7 @@ describe('WebSocket', () => {
       ];
       const tlsConfig = await testsUtils.createTLSConfigWithChain(keyPairs);
       const nodeId = keysUtils.publicKeyToNodeId(keyPairs[1].publicKey);
-      clientServer = await WebSocketServer.createWebSocketServer({
+      webSocketServer = await WebSocketServer.createWebSocketServer({
         connectionCallback: (streamPair) => {
           logger.info('inside callback');
           void streamPair.readable
@@ -772,24 +773,24 @@ describe('WebSocket', () => {
         host,
         logger: logger.getChild('server'),
       });
-      logger.info(`Server started on port ${clientServer.port}`);
-      clientClient = await WebSocketClient.createWebSocketClient({
+      logger.info(`Server started on port ${webSocketServer.port}`);
+      webSocketClient = await WebSocketClient.createWebSocketClient({
         host,
-        port: clientServer.port,
+        port: webSocketServer.port,
         expectedNodeIds: [nodeId],
         logger: logger.getChild('clientClient'),
       });
-      const connProm = clientClient.startConnection();
+      const connProm = webSocketClient.startConnection();
       await connProm;
       await expect(connProm).toResolve();
       // @ts-ignore: kidnap protected property
-      const activeConnections = clientClient.activeConnections;
+      const activeConnections = webSocketClient.activeConnections;
       expect(activeConnections.size).toBe(1);
       logger.info('ending');
     });
     test('Authenticates with multiple expected nodes', async () => {
       const alternativeNodeId = testNodeUtils.generateRandomNodeId();
-      clientServer = await WebSocketServer.createWebSocketServer({
+      webSocketServer = await WebSocketServer.createWebSocketServer({
         connectionCallback: (streamPair) => {
           logger.info('inside callback');
           void streamPair.readable
@@ -802,37 +803,37 @@ describe('WebSocket', () => {
         host,
         logger: logger.getChild('server'),
       });
-      logger.info(`Server started on port ${clientServer.port}`);
-      clientClient = await WebSocketClient.createWebSocketClient({
+      logger.info(`Server started on port ${webSocketServer.port}`);
+      webSocketClient = await WebSocketClient.createWebSocketClient({
         host,
-        port: clientServer.port,
+        port: webSocketServer.port,
         expectedNodeIds: [keyRing.getNodeId(), alternativeNodeId],
         logger: logger.getChild('clientClient'),
       });
-      await expect(clientClient.startConnection()).toResolve();
+      await expect(webSocketClient.startConnection()).toResolve();
       // @ts-ignore: kidnap protected property
-      const activeConnections = clientClient.activeConnections;
+      const activeConnections = webSocketClient.activeConnections;
       expect(activeConnections.size).toBe(1);
       logger.info('ending');
     });
     test('Connection times out', async () => {
-      clientClient = await WebSocketClient.createWebSocketClient({
+      webSocketClient = await WebSocketClient.createWebSocketClient({
         host,
         port: 12345,
         expectedNodeIds: [keyRing.getNodeId()],
         connectionTimeout: 0,
         logger: logger.getChild('clientClient'),
       });
-      await expect(clientClient.startConnection({})).rejects.toThrow();
+      await expect(webSocketClient.startConnection({})).rejects.toThrow();
       await expect(
-        clientClient.startConnection({
+        webSocketClient.startConnection({
           timeoutTimer: new Timer({ delay: 0 }),
         }),
       ).rejects.toThrow();
       logger.info('ending');
     });
     test('ping timeout', async () => {
-      clientServer = await WebSocketServer.createWebSocketServer({
+      webSocketServer = await WebSocketServer.createWebSocketServer({
         connectionCallback: (_) => {
           logger.info('inside callback');
           // Hang connection
@@ -842,16 +843,16 @@ describe('WebSocket', () => {
         host,
         logger: logger.getChild('server'),
       });
-      logger.info(`Server started on port ${clientServer.port}`);
-      clientClient = await WebSocketClient.createWebSocketClient({
+      logger.info(`Server started on port ${webSocketServer.port}`);
+      webSocketClient = await WebSocketClient.createWebSocketClient({
         host,
-        port: clientServer.port,
+        port: webSocketServer.port,
         expectedNodeIds: [keyRing.getNodeId()],
         pingTimeout: 100,
         logger: logger.getChild('clientClient'),
       });
-      await clientClient.startConnection();
-      await clientClient.destroy();
+      await webSocketClient.startConnection();
+      await webSocketClient.destroy();
       logger.info('ending');
     });
   });

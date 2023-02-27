@@ -97,7 +97,7 @@ abstract class WebSocketStream
    * Signals the end of the ReadableStream. to be used with the extended class
    * to track the streams state.
    */
-  protected endReadable(e?: Error) {
+  protected signalReadableEnd(e?: Error) {
     if (this.readableEnded_) return;
     this.readableEnded_ = true;
     if (e == null) this.readableEndedProm_.resolveP();
@@ -108,7 +108,7 @@ abstract class WebSocketStream
    * Signals the end of the WritableStream. to be used with the extended class
    * to track the streams state.
    */
-  protected endWritable(e?: Error) {
+  protected signalWritableEnd(e?: Error) {
     if (this.writableEnded_) return;
     this.writableEnded_ = true;
     if (e == null) this.writableEndedProm_.resolveP();
@@ -119,7 +119,7 @@ abstract class WebSocketStream
    * Signals the end of the WebSocket. to be used with the extended class
    * to track the streams state.
    */
-  protected endWebSocket(e?: Error) {
+  protected signalWebSocketEnd(e?: Error) {
     if (this.webSocketEnded_) return;
     this.webSocketEnded_ = true;
     if (e == null) this.webSocketEndedProm_.resolveP();

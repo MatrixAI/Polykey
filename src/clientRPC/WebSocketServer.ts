@@ -18,6 +18,7 @@ import os from 'os';
 import { startStop } from '@matrixai/async-init';
 import Logger from '@matrixai/logger';
 import uWebsocket from 'uWebSockets.js';
+import WebSocketStream from './WebSocketStream';
 import * as clientRPCErrors from './errors';
 import { promise } from '../utils';
 
@@ -36,7 +37,6 @@ type Context = {
   close: (ws: WebSocket<any>, code: number, message: ArrayBuffer) => void;
   pong: (ws: WebSocket<any>, message: ArrayBuffer) => void;
   logger: Logger;
-  writeBackpressure: boolean;
 };
 
 interface WebSocketServer extends startStop.StartStop {}
@@ -91,8 +91,7 @@ class WebSocketServer {
   protected listenSocket: uWebsocket.us_listen_socket;
   protected host: string;
   protected connectionCallback: ConnectionCallback;
-  protected activeSockets: Set<WebSocket<any>> = new Set();
-  protected waitForActive: PromiseDeconstructed<void> | null = null;
+  protected activeSockets: Set<WebSocketStream> = new Set();
   protected connectionIndex: number = 0;
 
   /**
@@ -192,12 +191,14 @@ class WebSocketServer {
     uWebsocket.us_listen_socket_close(this.listenSocket);
     // Shutting down active websockets
     if (force) {
-      for (const ws of this.activeSockets) {
-        ws.end();
+      for (const webSocketStream of this.activeSockets) {
+        webSocketStream.end();
       }
     }
     // Wait for all active websockets to close
-    await this.waitForActive?.p;
+    for (const webSocketStream of this.activeSockets) {
+      webSocketStream.endedProm.catch(() => {}); // Ignore errors
+    }
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
@@ -232,152 +233,20 @@ class WebSocketServer {
    * StreamPair handler.
    */
   protected open = (ws: WebSocket<Context>) => {
-    if (this.waitForActive == null) this.waitForActive = promise();
-    // Adding socket to the active sockets map
-    this.activeSockets.add(ws);
-
-    const context = ws.getUserData();
-    const logger = context.logger;
-    logger.info('WS opened');
-    let writableClosed = false;
-    let readableClosed = false;
-    let wsClosed = false;
-    let backpressure: PromiseDeconstructed<void> | null = null;
-    let writableController: WritableStreamDefaultController | undefined;
-    let readableController: ReadableStreamController<Uint8Array> | undefined;
-    const writableLogger = logger.getChild('Writable');
-    const readableLogger = logger.getChild('Readable');
-    // Setting up the writable stream
-    const writableStream = new WritableStream<Uint8Array>({
-      start: (controller) => {
-        writableController = controller;
-      },
-      write: async (chunk, controller) => {
-        await backpressure?.p;
-        const writeResult = ws.send(chunk, true);
-        switch (writeResult) {
-          default:
-          case 2:
-            // Write failure, emit error
-            writableLogger.error('Send error');
-            controller.error(new clientRPCErrors.ErrorServerSendFailed());
-            break;
-          case 0:
-            writableLogger.info('Write backpressure');
-            // Signal backpressure
-            backpressure = promise();
-            context.writeBackpressure = true;
-            backpressure.p.finally(() => {
-              context.writeBackpressure = false;
-            });
-            break;
-          case 1:
-            // Success
-            writableLogger.debug(`Sending ${chunk.toString()}`);
-            break;
-        }
-      },
-      close: () => {
-        writableLogger.info('Closed, sending null message');
-        if (!wsClosed) ws.send(Buffer.from([]), true);
-        writableClosed = true;
-        if (readableClosed && !wsClosed) {
-          writableLogger.debug('Ending socket');
-          ws.end();
-        }
-      },
-      abort: () => {
-        writableLogger.info('Aborted');
-        if (readableClosed && !wsClosed) {
-          writableLogger.debug('Ending socket');
-          ws.end();
-        }
-      },
-    });
-    // Setting up the readable stream
-    const readableStream = new ReadableStream<Uint8Array>(
-      {
-        start: (controller) => {
-          readableController = controller;
-          context.message = (ws, message, _) => {
-            readableLogger.debug(`Received ${message.toString()}`);
-            if (message.byteLength === 0) {
-              readableLogger.debug('Null message received');
-              if (!readableClosed) {
-                readableClosed = true;
-                readableLogger.debug('Closing');
-                controller.close();
-                if (writableClosed && !wsClosed) {
-                  readableLogger.debug('Ending socket');
-                  ws.end();
-                }
-              }
-              return;
-            }
-            controller.enqueue(Buffer.from(message));
-            if (controller.desiredSize != null && controller.desiredSize < 0) {
-              readableLogger.error('Read stream buffer full');
-              if (!wsClosed) ws.end(4001, 'Read stream buffer full');
-              controller.error(
-                new clientRPCErrors.ErrorServerReadableBufferLimit(),
-              );
-            }
-          };
-        },
-        cancel: () => {
-          readableClosed = true;
-          if (writableClosed && !wsClosed) {
-            readableLogger.debug('Ending socket');
-            ws.end();
-          }
-        },
-      },
-      {
-        highWaterMark: this.maxReadBufferBytes,
-        size: (chunk) => chunk?.byteLength ?? 0,
-      },
+    const webSocketStream = new WebSocketStreamServerInternal(
+      ws,
+      this.maxReadBufferBytes,
+      this.pingInterval,
+      this.pingTimeout,
     );
+    // Adding socket to the active sockets map
+    this.activeSockets.add(webSocketStream);
+    webSocketStream.endedProm
+      .catch(() => {}) // Ignore errors here
+      .finally(() => {
+        this.activeSockets.delete(webSocketStream);
+      });
 
-    const pingTimer = setInterval(() => {
-      ws.ping();
-    }, this.pingInterval);
-    const pingTimeoutTimer = setTimeout(() => {
-      logger.debug('Ping timed out');
-      ws.end();
-    }, this.pingTimeout);
-    context.pong = () => {
-      logger.debug('Received pong');
-      pingTimeoutTimer.refresh();
-    };
-    context.close = () => {
-      logger.debug('Closing');
-      wsClosed = true;
-      // Cleaning up timers
-      logger.debug('Cleaning up timers');
-      clearTimeout(pingTimer);
-      clearTimeout(pingTimeoutTimer);
-      // Closing streams
-      logger.debug('Cleaning streams');
-      if (!readableClosed) {
-        readableClosed = true;
-        readableLogger.debug('Closing');
-        readableController?.error(
-          new clientRPCErrors.ErrorServerConnectionEndedEarly(),
-        );
-      }
-      if (!writableClosed) {
-        writableClosed = true;
-        writableLogger.debug('Closing');
-        writableController?.error(
-          new clientRPCErrors.ErrorServerConnectionEndedEarly(),
-        );
-      }
-    };
-    context.drain = () => {
-      logger.debug('Drained');
-      backpressure?.resolveP();
-    };
-    logger.debug('Calling handler callback');
     // There is not nodeId or certs for the client, and we can't get the remote
     //  port from the `uWebsocket` library.
     const connectionInfo: ConnectionInfo = {
@@ -385,17 +254,13 @@ class WebSocketServer {
       localHost: this.host,
       localPort: this.port,
     };
+    const context = ws.getUserData();
+    context.logger.debug('Calling callback');
     try {
-      this.connectionCallback(
-        {
-          readable: readableStream,
-          writable: writableStream,
-        },
-        connectionInfo,
-      );
+      this.connectionCallback(webSocketStream, connectionInfo);
     } catch (e) {
       context.close(ws, 0, Buffer.from(''));
-      logger.error(e.toString());
+      context.logger.error(e.toString());
     }
   };
 
@@ -420,14 +285,171 @@ class WebSocketServer {
     code: number,
     message: ArrayBuffer,
   ) => {
-    this.activeSockets.delete(ws);
-    if (this.activeSockets.size === 0) this.waitForActive?.resolveP();
     ws.getUserData().close(ws, code, message);
   };
 
   protected pong = (ws: WebSocket<Context>, message: ArrayBuffer) => {
     ws.getUserData().pong(ws, message);
   };
+}
+
+class WebSocketStreamServerInternal extends WebSocketStream {
+  protected backPressure: PromiseDeconstructed<void> | null = null;
+  protected writeBackpressure: boolean = false;
+
+  constructor(
+    protected ws: WebSocket<Context>,
+    maxReadBufferBytes: number,
+    pingInterval: number,
+    pingTimeout: number,
+  ) {
+    super();
+    const context = ws.getUserData();
+    const logger = context.logger;
+    logger.info('WS opened');
+    let writableController: WritableStreamDefaultController | undefined;
+    let readableController: ReadableStreamController<Uint8Array> | undefined;
+    const writableLogger = logger.getChild('Writable');
+    const readableLogger = logger.getChild('Readable');
+    // Setting up the writable stream
+    this.writable = new WritableStream<Uint8Array>({
+      start: (controller) => {
+        writableController = controller;
+      },
+      write: async (chunk, controller) => {
+        await this.backPressure?.p;
+        const writeResult = ws.send(chunk, true);
+        switch (writeResult) {
+          default:
+          case 2:
+            // Write failure, emit error
+            writableLogger.error('Send error');
+            controller.error(new clientRPCErrors.ErrorServerSendFailed());
+            break;
+          case 0:
+            writableLogger.info('Write backpressure');
+            // Signal backpressure
+            this.backPressure = promise();
+            this.writeBackpressure = true;
+            this.backPressure.p.finally(() => {
+              this.writeBackpressure = false;
+            });
+            break;
+          case 1:
+            // Success
+            writableLogger.debug(`Sending ${Buffer.from(chunk).toString()}`);
+            break;
+        }
+      },
+      close: () => {
+        writableLogger.info('Closed, sending null message');
+        if (!this.webSocketEnded_) ws.send(Buffer.from([]), true);
+        this.signalWritableEnd();
+        if (this.readableEnded_ && !this.webSocketEnded_) {
+          writableLogger.debug('Ending socket');
+          this.signalWebSocketEnd();
+          ws.end();
+        }
+      },
+      abort: () => {
+        writableLogger.info('Aborted');
+        if (this.readableEnded_ && !this.webSocketEnded_) {
+          writableLogger.debug('Ending socket');
+          this.signalWebSocketEnd(Error('TMP ERROR ABORTED'));
+          ws.end(4001, 'ABORTED');
+        }
+      },
+    });
+    // Setting up the readable stream
+    this.readable = new ReadableStream<Uint8Array>(
+      {
+        start: (controller) => {
+          readableController = controller;
+          context.message = (ws, message, _) => {
+            const messageBuffer = Buffer.from(message);
+            readableLogger.debug(`Received ${messageBuffer.toString()}`);
+            if (message.byteLength === 0) {
+              readableLogger.debug('Null message received');
+              if (!this.readableEnded_) {
+                readableLogger.debug('Closing');
+                this.signalReadableEnd();
+                controller.close();
+                if (this.writableEnded_ && !this.webSocketEnded_) {
+                  readableLogger.debug('Ending socket');
+                  this.signalWebSocketEnd();
+                  ws.end();
+                }
+              }
+              return;
+            }
+            controller.enqueue(messageBuffer);
+            if (controller.desiredSize != null && controller.desiredSize < 0) {
+              readableLogger.error('Read stream buffer full');
+              const err = new clientRPCErrors.ErrorServerReadableBufferLimit();
+              if (!this.webSocketEnded_) {
+                this.signalWebSocketEnd(err);
+                ws.end(4001, 'Read stream buffer full');
+              }
+              controller.error(err);
+            }
+          };
+        },
+        cancel: () => {
+          this.signalReadableEnd(Error('TMP READABLE CANCELLED'));
+          if (this.writableEnded_ && !this.webSocketEnded_) {
+            readableLogger.debug('Ending socket');
+            this.signalWebSocketEnd();
+            ws.end();
+          }
+        },
+      },
+      {
+        highWaterMark: maxReadBufferBytes,
+        size: (chunk) => chunk?.byteLength ?? 0,
+      },
+    );
+
+    const pingTimer = setInterval(() => {
+      ws.ping();
+    }, pingInterval);
+    const pingTimeoutTimer = setTimeout(() => {
+      logger.debug('Ping timed out');
+      ws.end();
+    }, pingTimeout);
+    context.pong = () => {
+      logger.debug('Received pong');
+      pingTimeoutTimer.refresh();
+    };
+    context.close = () => {
+      logger.debug('Closing');
+      this.signalWebSocketEnd();
+      // Cleaning up timers
+      logger.debug('Cleaning up timers');
+      clearTimeout(pingTimer);
+      clearTimeout(pingTimeoutTimer);
+      // Closing streams
+      logger.debug('Cleaning streams');
+      const err = new clientRPCErrors.ErrorServerConnectionEndedEarly();
+      if (!this.readableEnded_) {
+        readableLogger.debug('Closing');
+        this.signalReadableEnd(err);
+        readableController?.error(err);
+      }
+      if (!this.writableEnded_) {
+        writableLogger.debug('Closing');
+        this.signalWritableEnd(err);
+        writableController?.error(err);
+      }
+    };
+    context.drain = () => {
+      logger.debug('Drained');
+      this.backPressure?.resolveP();
+    };
+  }
+
+  end(): void {
+    this.ws.end(4001, 'TMP ENDING CONNECTION');
+  }
 }
 
 export default WebSocketServer;

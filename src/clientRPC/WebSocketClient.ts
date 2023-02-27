@@ -212,12 +212,12 @@ class WebSocketStreamClientInternal extends WebSocketStream {
             if (message.length === 0) {
               readableLogger.debug('Null message received');
               ws.removeListener('message', messageHandler);
-              if (!this.readableEnded) {
-                this.endReadable();
+              if (!this.readableEnded_) {
+                this.signalReadableEnd();
                 readableLogger.debug('Closing');
                 controller.close();
               }
-              if (this.writableEnded) {
+              if (this.writableEnded_) {
                 logger.debug('Closing socket');
                 ws.close();
               }
@@ -230,28 +230,28 @@ class WebSocketStreamClientInternal extends WebSocketStream {
           ws.once('close', (code, reason) => {
             logger.info('Socket closed');
             ws.removeListener('message', messageHandler);
-            if (!this.readableEnded) {
+            if (!this.readableEnded_) {
               readableLogger.debug(
                 `Closed early, ${code}, ${reason.toString()}`,
               );
               const e = new clientRPCErrors.ErrorClientConnectionEndedEarly();
-              this.endReadable(e);
+              this.signalReadableEnd(e);
               controller.error(e);
             }
           });
           ws.once('error', (e) => {
-            if (!this.readableEnded) {
+            if (!this.readableEnded_) {
               readableLogger.error(e);
-              this.endReadable(e);
+              this.signalReadableEnd(e);
               controller.error(e);
             }
           });
         },
         cancel: () => {
           readableLogger.debug('Cancelled');
-          if (!this.writableEnded) {
+          if (!this.writableEnded_) {
             readableLogger.debug('Closing socket');
-            this.endReadable();
+            this.signalReadableEnd();
             ws.close();
           }
         },
@@ -269,17 +269,17 @@ class WebSocketStreamClientInternal extends WebSocketStream {
       start: (controller) => {
         writableLogger.info('Starting');
         ws.once('error', (e) => {
-          if (!this.writableEnded) {
+          if (!this.writableEnded_) {
             writableLogger.error(e);
-            this.endWritable(e);
+            this.signalWritableEnd(e);
             controller.error(e);
           }
         });
         ws.once('close', (code, reason) => {
-          if (!this.writableEnded) {
+          if (!this.writableEnded_) {
             writableLogger.debug(`Closed early, ${code}, ${reason.toString()}`);
             const e = new clientRPCErrors.ErrorClientConnectionEndedEarly();
-            this.endWritable(e);
+            this.signalWritableEnd(e);
             controller.error(e);
           }
         });
@@ -287,26 +287,26 @@ class WebSocketStreamClientInternal extends WebSocketStream {
       close: () => {
         writableLogger.debug('Closing, sending null message');
         ws.send(Buffer.from([]));
-        this.endWritable();
-        if (this.readableEnded) {
+        this.signalWritableEnd();
+        if (this.readableEnded_) {
           writableLogger.debug('Closing socket');
           ws.close();
         }
       },
       abort: () => {
         writableLogger.debug('Aborted');
-        this.endWritable(Error('TMP ABORTED'));
-        if (this.readableEnded) {
+        this.signalWritableEnd(Error('TMP ABORTED'));
+        if (this.readableEnded_) {
           writableLogger.debug('Closing socket');
           ws.close();
         }
       },
       write: async (chunk, controller) => {
-        if (this.writableEnded) return;
+        if (this.writableEnded_) return;
         writableLogger.debug(`Sending ${chunk?.toString()}`);
         const wait = promise<void>();
         ws.send(chunk, (e) => {
-          if (e != null && !this.writableEnded) {
+          if (e != null && !this.writableEnded_) {
             // Opting to debug message here and not log an error, sending
             //  failure is common if we send before the close event.
             writableLogger.debug('failed to send');
@@ -316,7 +316,7 @@ class WebSocketStreamClientInternal extends WebSocketStream {
                 cause: e,
               },
             );
-            this.endWritable(err);
+            this.signalWritableEnd(err);
             controller.error(err);
           }
           wait.resolveP();
@@ -347,7 +347,7 @@ class WebSocketStreamClientInternal extends WebSocketStream {
         code !== 1000
           ? Error(`TMP WebSocket ended with code ${code}, ${reason.toString()}`)
           : undefined;
-      this.endWebSocket(err);
+      this.signalWebSocketEnd(err);
       logger.debug('Cleaning up timers');
       // Clean up timers
       clearTimeout(pingTimer);
@@ -356,7 +356,7 @@ class WebSocketStreamClientInternal extends WebSocketStream {
   }
 
   end(): void {
-    this.ws.terminate();
+    this.ws.close(4001, 'TMP ENDING CONNECTION');
   }
 }
 
