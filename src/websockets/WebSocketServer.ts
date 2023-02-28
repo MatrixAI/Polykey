@@ -20,6 +20,7 @@ import Logger from '@matrixai/logger';
 import uWebsocket from 'uWebSockets.js';
 import WebSocketStream from './WebSocketStream';
 import * as clientRPCErrors from './errors';
+import * as webSocketEvents from './events';
 import { promise } from '../utils';
 
 type ConnectionCallback = (
@@ -39,9 +40,15 @@ type Context = {
   logger: Logger;
 };
 
+/**
+ * Events:
+ * - start
+ * - stop
+ * - connection
+ */
 interface WebSocketServer extends startStop.StartStop {}
 @startStop.StartStop()
-class WebSocketServer {
+class WebSocketServer extends EventTarget {
   static async createWebSocketServer({
     connectionCallback,
     tlsConfig,
@@ -90,7 +97,9 @@ class WebSocketServer {
   protected server: uWebsocket.TemplatedApp;
   protected listenSocket: uWebsocket.us_listen_socket;
   protected host: string;
-  protected connectionCallback: ConnectionCallback;
+  protected connectionEventHandler: (
+    event: webSocketEvents.ConnectionEvent,
+  ) => void;
   protected activeSockets: Set<WebSocketStream> = new Set();
   protected connectionIndex: number = 0;
 
@@ -110,23 +119,35 @@ class WebSocketServer {
     protected idleTimeout: number | undefined,
     protected pingInterval: number,
     protected pingTimeout: number,
-  ) {}
+  ) {
+    super();
+  }
 
   public async start({
-    connectionCallback,
     tlsConfig,
     basePath = os.tmpdir(),
     host,
     port = 0,
+    connectionCallback,
   }: {
-    connectionCallback: ConnectionCallback;
     tlsConfig: TLSConfig;
     basePath?: string;
     host?: string;
     port?: number;
+    connectionCallback?: ConnectionCallback;
   }): Promise<void> {
     this.logger.info(`Starting ${this.constructor.name}`);
-    this.connectionCallback = connectionCallback;
+    if (connectionCallback != null) {
+      this.connectionEventHandler = (
+        event: webSocketEvents.ConnectionEvent,
+      ) => {
+        connectionCallback(
+          event.detail.webSocketStream,
+          event.detail.connectionInfo,
+        );
+      };
+      this.addEventListener('connection', this.connectionEventHandler);
+    }
     await this.setupServer(basePath, tlsConfig);
     this.server.ws('/*', {
       sendPingsAutomatically: true,
@@ -169,6 +190,14 @@ class WebSocketServer {
       `Listening on port ${uWebsocket.us_socket_local_port(this.listenSocket)}`,
     );
     this.host = host ?? '127.0.0.1';
+    this.dispatchEvent(
+      new webSocketEvents.StartEvent({
+        detail: {
+          host: this.host,
+          port: this.port,
+        },
+      }),
+    );
     this.logger.info(`Started ${this.constructor.name}`);
   }
 
@@ -186,6 +215,10 @@ class WebSocketServer {
     for (const webSocketStream of this.activeSockets) {
       webSocketStream.endedProm.catch(() => {}); // Ignore errors
     }
+    if (this.connectionEventHandler != null) {
+      this.removeEventListener('connection', this.connectionEventHandler);
+    }
+    this.dispatchEvent(new webSocketEvents.StopEvent());
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
@@ -265,14 +298,14 @@ class WebSocketServer {
       localHost: this.host,
       localPort: this.port,
     };
-    const context = ws.getUserData();
-    context.logger.debug('Calling callback');
-    try {
-      this.connectionCallback(webSocketStream, connectionInfo);
-    } catch (e) {
-      context.close(ws, 0, Buffer.from(''));
-      context.logger.error(e.toString());
-    }
+    this.dispatchEvent(
+      new webSocketEvents.ConnectionEvent({
+        detail: {
+          webSocketStream,
+          connectionInfo,
+        },
+      }),
+    );
   };
 
   /**
