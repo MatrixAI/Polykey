@@ -18,8 +18,8 @@ import { Session, SessionManager } from '@/sessions';
 import * as clientRPCUtils from '@/clientRPC/utils';
 import * as authMiddleware from '@/clientRPC/authenticationMiddleware';
 import * as middlewareUtils from '@/RPC/middleware';
-import WebSocketServer from '@/clientRPC/WebSocketServer';
-import WebSocketClient from '@/clientRPC/WebSocketClient';
+import WebSocketServer from '@/websockets/WebSocketServer';
+import WebSocketClient from '@/websockets/WebSocketClient';
 import * as testsUtils from '../../utils';
 
 describe('agentUnlock', () => {

@@ -8,7 +8,7 @@
 import type { CertificatePEMChain, PrivateKeyPEM } from '@/keys/types';
 import type { TLSConfig } from '@/network/types';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import WebSocketServer from '@/clientRPC/WebSocketServer';
+import WebSocketServer from '@/websockets/WebSocketServer';
 
 async function main() {
   const logger = new Logger('websocket test', LogLevel.WARN, [

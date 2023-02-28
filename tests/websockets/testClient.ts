@@ -6,7 +6,7 @@
  * @module
  */
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import WebSocketClient from '@/clientRPC/WebSocketClient';
+import WebSocketClient from '@/websockets/WebSocketClient';
 import * as nodesUtils from '@/nodes/utils';
 
 async function main() {

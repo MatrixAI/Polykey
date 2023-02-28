@@ -15,8 +15,8 @@ import {
 } from '@/clientRPC/handlers/agentStatus';
 import RPCClient from '@/RPC/RPCClient';
 import * as nodesUtils from '@/nodes/utils';
-import WebSocketClient from '@/clientRPC/WebSocketClient';
-import WebSocketServer from '@/clientRPC/WebSocketServer';
+import WebSocketClient from '@/websockets/WebSocketClient';
+import WebSocketServer from '@/websockets/WebSocketServer';
 import * as testsUtils from '../../utils';
 
 describe('agentStatus', () => {

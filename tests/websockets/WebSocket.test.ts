@@ -2,7 +2,7 @@ import type { ReadableWritablePair } from 'stream/web';
 import type { TLSConfig } from '@/network/types';
 import type { KeyPair } from '@/keys/types';
 import type http from 'http';
-import type WebSocketStream from '@/clientRPC/WebSocketStream';
+import type WebSocketStream from '@/websockets/WebSocketStream';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -11,11 +11,11 @@ import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { testProp, fc } from '@fast-check/jest';
 import { Timer } from '@matrixai/timer';
 import { KeyRing } from '@/keys/index';
-import WebSocketServer from '@/clientRPC/WebSocketServer';
+import WebSocketServer from '@/websockets/WebSocketServer';
+import WebSocketClient from '@/websockets/WebSocketClient';
 import { promise } from '@/utils';
-import WebSocketClient from '@/clientRPC/WebSocketClient';
 import * as keysUtils from '@/keys/utils';
-import * as networkErrors from '@/network/errors';
+import * as webSocketErrors from '@/websockets/errors';
 import * as nodesUtils from '@/nodes/utils';
 import * as testNodeUtils from '../nodes/utils';
 import * as testsUtils from '../utils';
@@ -372,7 +372,7 @@ describe('WebSocket', () => {
       [
         '--project',
         testsUtils.tsConfigPath,
-        `${globalThis.testDir}/clientRPC/testClient.ts`,
+        `${globalThis.testDir}/websockets/testClient.ts`,
       ],
       {
         env: {
@@ -415,7 +415,7 @@ describe('WebSocket', () => {
       [
         '--project',
         testsUtils.tsConfigPath,
-        `${globalThis.testDir}/clientRPC/testServer.ts`,
+        `${globalThis.testDir}/websockets/testServer.ts`,
       ],
       {
         env: {
@@ -742,7 +742,7 @@ describe('WebSocket', () => {
         logger: logger.getChild('clientClient'),
       });
       await expect(webSocketClient.startConnection()).rejects.toThrow(
-        networkErrors.ErrorCertChainUnclaimed,
+        webSocketErrors.ErrorCertChainUnclaimed,
       );
       // @ts-ignore: kidnap protected property
       const activeConnections = webSocketClient.activeConnections;

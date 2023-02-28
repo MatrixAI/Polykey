@@ -1,66 +1,28 @@
 import { ErrorPolykey, sysexits } from '../errors';
 
-class ErrorClient<T> extends ErrorPolykey<T> {}
+class ErrorRPC<T> extends ErrorPolykey<T> {}
 
-class ErrorClientClient<T> extends ErrorClient<T> {}
+class ErrorRPCClient<T> extends ErrorRPC<T> {}
 
-class ErrorClientDestroyed<T> extends ErrorClientClient<T> {
-  static description = 'ClientClient has been destroyed';
+class ErrorClientAuthMissing<T> extends ErrorRPCClient<T> {
+  static description = 'Authorisation metadata is required but missing';
+  exitCode = sysexits.NOPERM;
+}
+
+class ErrorClientAuthFormat<T> extends ErrorRPCClient<T> {
+  static description = 'Authorisation metadata has invalid format';
   exitCode = sysexits.USAGE;
 }
 
-class ErrorClientInvalidHost<T> extends ErrorClientClient<T> {
-  static description = 'Host must be a valid IPv4 or IPv6 address string';
-  exitCode = sysexits.USAGE;
-}
-
-class ErrorClientConnectionFailed<T> extends ErrorClientClient<T> {
-  static description = 'Failed to establish connection to server';
-  exitCode = sysexits.UNAVAILABLE;
-}
-
-class ErrorClientConnectionTimedOut<T> extends ErrorClientClient<T> {
-  static description = 'Connection timed out';
-  exitCode = sysexits.UNAVAILABLE;
-}
-
-class ErrorClientConnectionEndedEarly<T> extends ErrorClientClient<T> {
-  static description = 'Connection ended before stream ended';
-  exitCode = sysexits.UNAVAILABLE;
-}
-
-class ErrorClientServer<T> extends ErrorClient<T> {}
-
-class ErrorServerPortUnavailable<T> extends ErrorClientServer<T> {
-  static description = 'Failed to bind a free port';
-  exitCode = sysexits.UNAVAILABLE;
-}
-
-class ErrorServerSendFailed<T> extends ErrorClientServer<T> {
-  static description = 'Failed to send message';
-  exitCode = sysexits.UNAVAILABLE;
-}
-
-class ErrorServerReadableBufferLimit<T> extends ErrorClientServer<T> {
-  static description = 'Readable buffer is full, messages received too quickly';
-  exitCode = sysexits.USAGE;
-}
-
-class ErrorServerConnectionEndedEarly<T> extends ErrorClientServer<T> {
-  static description = 'Connection ended before stream ended';
-  exitCode = sysexits.UNAVAILABLE;
+class ErrorClientAuthDenied<T> extends ErrorRPCClient<T> {
+  static description = 'Authorisation metadata is incorrect or expired';
+  exitCode = sysexits.NOPERM;
 }
 
 export {
-  ErrorClientClient,
-  ErrorClientDestroyed,
-  ErrorClientInvalidHost,
-  ErrorClientConnectionFailed,
-  ErrorClientConnectionTimedOut,
-  ErrorClientConnectionEndedEarly,
-  ErrorClientServer,
-  ErrorServerPortUnavailable,
-  ErrorServerSendFailed,
-  ErrorServerReadableBufferLimit,
-  ErrorServerConnectionEndedEarly,
+  ErrorRPC,
+  ErrorRPCClient,
+  ErrorClientAuthMissing,
+  ErrorClientAuthFormat,
+  ErrorClientAuthDenied,
 };

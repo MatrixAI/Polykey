@@ -17,8 +17,8 @@ import * as authMiddleware from '@/clientRPC/authenticationMiddleware';
 import { UnaryCaller } from '@/RPC/callers';
 import { UnaryHandler } from '@/RPC/handlers';
 import * as middlewareUtils from '@/RPC/middleware';
-import WebSocketServer from '@/clientRPC/WebSocketServer';
-import WebSocketClient from '@/clientRPC/WebSocketClient';
+import WebSocketServer from '@/websockets/WebSocketServer';
+import WebSocketClient from '@/websockets/WebSocketClient';
 import * as testsUtils from '../utils';
 
 describe('agentUnlock', () => {
