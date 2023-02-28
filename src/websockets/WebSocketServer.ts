@@ -127,20 +127,7 @@ class WebSocketServer {
   }): Promise<void> {
     this.logger.info(`Starting ${this.constructor.name}`);
     this.connectionCallback = connectionCallback;
-    const tmpDir = await this.fs.promises.mkdtemp(
-      path.join(basePath, 'polykey-'),
-    );
-    // TODO: The key file needs to be in the encrypted format
-    const keyFile = path.join(tmpDir, 'keyFile.pem');
-    const certFile = path.join(tmpDir, 'certFile.pem');
-    await this.fs.promises.writeFile(keyFile, tlsConfig.keyPrivatePem);
-    await this.fs.promises.writeFile(certFile, tlsConfig.certChainPem);
-    this.server = uWebsocket.SSLApp({
-      key_file_name: keyFile,
-      cert_file_name: certFile,
-    });
-    await this.fs.promises.rm(keyFile);
-    await this.fs.promises.rm(certFile);
+    await this.setupServer(basePath, tlsConfig);
     this.server.ws('/*', {
       sendPingsAutomatically: true,
       idleTimeout: this.idleTimeout,
@@ -204,6 +191,30 @@ class WebSocketServer {
 
   get port() {
     return uWebsocket.us_socket_local_port(this.listenSocket);
+  }
+
+  /**
+   * This creates the pem files and starts the server with them. It ensures that
+   * files are cleaned up to the best of its ability.
+   */
+  protected async setupServer(basePath: string, tlsConfig: TLSConfig) {
+    const tmpDir = await this.fs.promises.mkdtemp(
+      path.join(basePath, 'polykey-'),
+    );
+    // TODO: The key file needs to be in the encrypted format
+    const keyFile = path.join(tmpDir, 'keyFile.pem');
+    const certFile = path.join(tmpDir, 'certFile.pem');
+    try {
+      await this.fs.promises.writeFile(keyFile, tlsConfig.keyPrivatePem);
+      await this.fs.promises.writeFile(certFile, tlsConfig.certChainPem);
+      this.server = uWebsocket.SSLApp({
+        key_file_name: keyFile,
+        cert_file_name: certFile,
+      });
+    } finally {
+      await this.fs.promises.rm(keyFile);
+      await this.fs.promises.rm(certFile);
+    }
   }
 
   /**
