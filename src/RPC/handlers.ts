@@ -2,7 +2,7 @@ import type { JSONValue } from 'types';
 import type { ContainerType } from 'RPC/types';
 import type { ReadableStream } from 'stream/web';
 import type { JsonRpcRequest } from 'RPC/types';
-import type { ConnectionInfo } from '../network/types';
+import type { ConnectionInfo } from './types';
 import type { ContextCancellable } from '../contexts/types';
 
 abstract class Handler<

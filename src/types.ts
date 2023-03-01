@@ -110,6 +110,7 @@ interface FileSystem {
     readdir: typeof fs.promises.readdir;
     rename: typeof fs.promises.rename;
     open: typeof fs.promises.open;
+    mkdtemp: typeof fs.promises.mkdtemp;
   };
   constants: typeof fs.constants;
 }

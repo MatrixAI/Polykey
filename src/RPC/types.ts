@@ -1,5 +1,4 @@
 import type { JSONValue } from '../types';
-import type { ConnectionInfo } from '../network/types';
 import type { ContextCancellable } from '../contexts/types';
 import type { ReadableStream, ReadableWritablePair } from 'stream/web';
 import type { Handler } from './handlers';
@@ -11,6 +10,8 @@ import type {
   ClientCaller,
   UnaryCaller,
 } from './callers';
+import type { NodeId } from '../nodes/types';
+import type { Certificate } from '../keys/types';
 
 /**
  * This is the JSON RPC request object. this is the generic message type used for the RPC.
@@ -107,6 +108,24 @@ type JsonRpcResponse<T extends JSONValue = JSONValue> =
 type JsonRpcMessage<T extends JSONValue = JSONValue> =
   | JsonRpcRequest<T>
   | JsonRpcResponse<T>;
+
+/**
+ * Proxy connection information
+ * @property remoteNodeId - NodeId of the remote connecting node
+ * @property remoteCertificates - Certificate chain of the remote connecting node
+ * @property localHost - Proxy host of the local connecting node
+ * @property localPort - Proxy port of the local connecting node
+ * @property remoteHost - Proxy host of the remote connecting node
+ * @property remotePort - Proxy port of the remote connecting node
+ */
+type ConnectionInfo = Partial<{
+  remoteNodeId: NodeId;
+  remoteCertificates: Array<Certificate>;
+  localHost: string;
+  localPort: number;
+  remoteHost: string;
+  remotePort: number;
+}>;
 
 // Handler types
 type HandlerImplementation<I, O> = (
@@ -218,6 +237,7 @@ export type {
   JsonRpcRequest,
   JsonRpcResponse,
   JsonRpcMessage,
+  ConnectionInfo,
   HandlerImplementation,
   RawHandlerImplementation,
   DuplexHandlerImplementation,

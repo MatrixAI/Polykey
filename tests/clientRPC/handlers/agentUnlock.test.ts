@@ -1,9 +1,7 @@
-import type { Server } from 'https';
-import type { WebSocketServer } from 'ws';
+import type { TLSConfig } from '@/network/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import { createServer } from 'https';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import KeyRing from '@/keys/KeyRing';
@@ -20,6 +18,8 @@ import { Session, SessionManager } from '@/sessions';
 import * as clientRPCUtils from '@/clientRPC/utils';
 import * as authMiddleware from '@/clientRPC/authenticationMiddleware';
 import * as middlewareUtils from '@/RPC/middleware';
+import WebSocketServer from '@/websockets/WebSocketServer';
+import WebSocketClient from '@/websockets/WebSocketClient';
 import * as testsUtils from '../../utils';
 
 describe('agentUnlock', () => {
@@ -27,6 +27,7 @@ describe('agentUnlock', () => {
     new StreamHandler(),
   ]);
   const password = 'helloworld';
+  const host = '127.0.0.1';
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
@@ -34,9 +35,9 @@ describe('agentUnlock', () => {
   let certManager: CertManager;
   let session: Session;
   let sessionManager: SessionManager;
-  let server: Server;
-  let wss: WebSocketServer;
-  let port: number;
+  let clientClient: WebSocketClient;
+  let clientServer: WebSocketServer;
+  let tlsConfig: TLSConfig;
 
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
@@ -73,16 +74,11 @@ describe('agentUnlock', () => {
       keyRing,
       logger,
     });
-    const tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
-    server = createServer({
-      cert: tlsConfig.certChainPem,
-      key: tlsConfig.keyPrivatePem,
-    });
-    port = await clientRPCUtils.listen(server, '127.0.0.1');
+    tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
   });
   afterEach(async () => {
-    wss?.close();
-    server.close();
+    await clientServer.stop(true);
+    await clientClient.destroy(true);
     await certManager.stop();
     await taskManager.stop();
     await keyRing.stop();
@@ -103,22 +99,24 @@ describe('agentUnlock', () => {
       ),
       logger,
     });
-    wss = clientRPCUtils.createClientServer(
-      server,
-      rpcServer,
-      logger.getChild('server'),
-    );
+    clientServer = await WebSocketServer.createWebSocketServer({
+      connectionCallback: (streamPair, connectionInfo) =>
+        rpcServer.handleStream(streamPair, connectionInfo),
+      host,
+      tlsConfig,
+      logger,
+    });
+    clientClient = await WebSocketClient.createWebSocketClient({
+      expectedNodeIds: [keyRing.getNodeId()],
+      host,
+      logger,
+      port: clientServer.port,
+    });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
         agentUnlock: agentUnlockCaller,
       },
-      streamPairCreateCallback: async () => {
-        return clientRPCUtils.startConnection(
-          '127.0.0.1',
-          port,
-          logger.getChild('client'),
-        );
-      },
+      streamPairCreateCallback: async () => clientClient.startConnection(),
       middleware: middlewareUtils.defaultClientMiddlewareWrapper(
         authMiddleware.authenticationMiddlewareClient(session),
       ),
