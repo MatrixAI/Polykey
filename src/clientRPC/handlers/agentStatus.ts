@@ -22,10 +22,8 @@ class AgentStatusHandler extends UnaryHandler<
     const { keyRing } = this.container;
     return {
       pid: process.pid,
-      nodeId: nodesUtils.encodeNodeId(keyRing.getNodeId()),
-      publicJwk: JSON.stringify(
-        keysUtils.publicKeyToJWK(keyRing.keyPair.publicKey),
-      ),
+      nodeIdEncoded: nodesUtils.encodeNodeId(keyRing.getNodeId()),
+      publicKeyJwk: keysUtils.publicKeyToJWK(keyRing.keyPair.publicKey),
     };
   }
 }

@@ -21,7 +21,7 @@ import { vaultsDelete, VaultsDeleteHandler } from './vaultsDelete';
 import { vaultsList, VaultsListHandler } from './vaultsList';
 import { vaultsLog, VaultsLogHandler } from './vaultsLog';
 import {
-  VaultsPermisionGetHandler,
+  VaultsPermissionGetHandler,
   vaultsPermissionGet,
 } from './vaultsPermissionGet';
 import {
@@ -145,7 +145,7 @@ import {
   keysPasswordChange,
   KeysPasswordChangeHandler,
 } from './keysPasswordChange';
-import { keysPublicKey, KeysPublicKeyhandler } from './keysPublicKey';
+import { keysPublicKey, KeysPublicKeyHandler } from './keysPublicKey';
 import {
   notificationsClear,
   NotificationsClearHandler,
@@ -268,7 +268,7 @@ const serverManifest = (container: {
     keysKeyPairRenew: new KeysKeyPairRenewHandler(container),
     keysKeyPairReset: new KeysKeyPairResethandler(container),
     keysPasswordChange: new KeysPasswordChangeHandler(container),
-    keysPublicKey: new KeysPublicKeyhandler(container),
+    keysPublicKey: new KeysPublicKeyHandler(container),
     keysSign: new KeysSignHandler(container),
     keysVerify: new KeysVerifyHandler(container),
     nodesAdd: new NodesAddHandler(container),
@@ -285,7 +285,7 @@ const serverManifest = (container: {
     vaultsDelete: new VaultsDeleteHandler(container),
     vaultsList: new VaultsListHandler(container),
     vaultsLog: new VaultsLogHandler(container),
-    vaultsPermissionGet: new VaultsPermisionGetHandler(container),
+    vaultsPermissionGet: new VaultsPermissionGetHandler(container),
     vaultsPermissionSet: new VaultsPermissionSetHandler(container),
     vaultsPermissionUnset: new VaultsPermissionUnsetHandler(container),
     vaultsPull: new VaultsPullHandler(container),

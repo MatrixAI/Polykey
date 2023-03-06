@@ -1,7 +1,7 @@
 import type { RPCRequestParams, RPCResponseResult } from '../types';
-import type KeyRing from 'keys/KeyRing';
+import type KeyRing from '../../keys/KeyRing';
 import type { PasswordMessage, PublicKeyMessage } from './types';
-import * as keysUtils from 'keys/utils/index';
+import * as keysUtils from '../../keys/utils/index';
 import { UnaryCaller } from '../../RPC/callers';
 import { UnaryHandler } from '../../RPC/handlers';
 
@@ -10,7 +10,7 @@ const keysPublicKey = new UnaryCaller<
   RPCResponseResult<PublicKeyMessage>
 >();
 
-class KeysPublicKeyhandler extends UnaryHandler<
+class KeysPublicKeyHandler extends UnaryHandler<
   {
     keyRing: KeyRing;
   },
@@ -26,4 +26,4 @@ class KeysPublicKeyhandler extends UnaryHandler<
   }
 }
 
-export { keysPublicKey, KeysPublicKeyhandler };
+export { keysPublicKey, KeysPublicKeyHandler };

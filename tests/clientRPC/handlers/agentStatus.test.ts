@@ -108,10 +108,8 @@ describe('agentStatus', () => {
     const result = await rpcClient.methods.agentStatus({});
     expect(result).toStrictEqual({
       pid: process.pid,
-      nodeId: nodesUtils.encodeNodeId(keyRing.getNodeId()),
-      publicJwk: JSON.stringify(
-        keysUtils.publicKeyToJWK(keyRing.keyPair.publicKey),
-      ),
+      nodeIdEncoded: nodesUtils.encodeNodeId(keyRing.getNodeId()),
+      publicKeyJwk: keysUtils.publicKeyToJWK(keyRing.keyPair.publicKey),
     });
   });
 });

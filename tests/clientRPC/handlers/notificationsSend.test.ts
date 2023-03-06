@@ -1,58 +1,50 @@
+import type { TLSConfig } from '@/network/types';
+import type GestaltGraph from '../../../src/gestalts/GestaltGraph';
 import type { Host, Port } from '@/network/types';
 import type { SignedNotification } from '@/notifications/types';
-import type GestaltGraph from '@/gestalts/GestaltGraph';
+import type { NodeIdEncoded } from '@/ids/index';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { Metadata } from '@grpc/grpc-js';
+import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
-import TaskManager from '@/tasks/TaskManager';
 import KeyRing from '@/keys/KeyRing';
-import GRPCServer from '@/grpc/GRPCServer';
-import NodeConnectionManager from '@/nodes/NodeConnectionManager';
-import NodeGraph from '@/nodes/NodeGraph';
-import NodeManager from '@/nodes/NodeManager';
-import Sigchain from '@/sigchain/Sigchain';
-import Proxy from '@/network/Proxy';
-import NotificationsManager from '@/notifications/NotificationsManager';
-import ACL from '@/acl/ACL';
-import GRPCClientClient from '@/client/GRPCClientClient';
-import notificationsSend from '@/client/service/notificationsSend';
-import { ClientServiceService } from '@/proto/js/polykey/v1/client_service_grpc_pb';
-import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
-import * as notificationsPB from '@/proto/js/polykey/v1/notifications/notifications_pb';
+import * as keysUtils from '@/keys/utils';
+import RPCServer from '@/RPC/RPCServer';
+import {
+  notificationsSend,
+  NotificationsSendHandler,
+} from '@/clientRPC/handlers/notificationsSend';
+import RPCClient from '@/RPC/RPCClient';
+import WebSocketServer from '@/websockets/WebSocketServer';
+import WebSocketClient from '@/websockets/WebSocketClient';
 import * as nodesUtils from '@/nodes/utils';
 import * as notificationsUtils from '@/notifications/utils';
-import * as clientUtils from '@/client/utils';
-import * as keysUtils from '@/keys/utils/index';
-import * as testsUtils from '../../utils/index';
+import * as testsUtils from '../../utils';
+import NodeGraph from '../../../src/nodes/NodeGraph';
+import TaskManager from '../../../src/tasks/TaskManager';
+import NodeConnectionManager from '../../../src/nodes/NodeConnectionManager';
+import NodeManager from '../../../src/nodes/NodeManager';
+import NotificationsManager from '../../../src/notifications/NotificationsManager';
+import ACL from '../../../src/acl/ACL';
+import Sigchain from '../../../src/sigchain/Sigchain';
+import Proxy from '../../../src/network/Proxy';
 
 describe('notificationsSend', () => {
-  const logger = new Logger('notificationsSend test', LogLevel.WARN, [
-    new StreamHandler(),
+  const logger = new Logger('agentUnlock test', LogLevel.WARN, [
+    new StreamHandler(
+      formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
+    ),
   ]);
-  const password = 'helloworld';
-  const authenticate = async (metaClient, metaServer = new Metadata()) =>
-    metaServer;
-  let mockedSignNotification: jest.SpyInstance;
-  let mockedSendNotification: jest.SpyInstance;
-  beforeAll(async () => {
-    mockedSignNotification = jest
-      .spyOn(notificationsUtils, 'generateNotification')
-      .mockImplementation(async () => {
-        return 'signedNotification' as SignedNotification;
-      });
-    mockedSendNotification = jest
-      .spyOn(NodeConnectionManager.prototype, 'withConnF')
-      .mockImplementation();
-  });
-  afterAll(async () => {
-    mockedSignNotification.mockRestore();
-    mockedSendNotification.mockRestore();
-  });
+  const password = 'helloWorld';
+  const host = '127.0.0.1';
   const authToken = 'abc123';
   let dataDir: string;
+  let db: DB;
+  let keyRing: KeyRing;
+  let webSocketClient: WebSocketClient;
+  let webSocketServer: WebSocketServer;
+  let tlsConfig: TLSConfig;
   let nodeGraph: NodeGraph;
   let taskManager: TaskManager;
   let nodeConnectionManager: NodeConnectionManager;
@@ -61,11 +53,18 @@ describe('notificationsSend', () => {
   let acl: ACL;
   let sigchain: Sigchain;
   let proxy: Proxy;
-  let db: DB;
-  let keyRing: KeyRing;
-  let grpcServer: GRPCServer;
-  let grpcClient: GRPCClientClient;
+  let mockedSignNotification: jest.SpyInstance;
+  let mockedSendNotification: jest.SpyInstance;
+
   beforeEach(async () => {
+    mockedSignNotification = jest.spyOn(
+      notificationsUtils,
+      'generateNotification',
+    );
+    mockedSendNotification = jest.spyOn(
+      NodeConnectionManager.prototype,
+      'withConnF',
+    );
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -78,6 +77,7 @@ describe('notificationsSend', () => {
       passwordMemLimit: keysUtils.passwordMemLimits.min,
       strictMemoryLock: false,
     });
+    tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
       dbPath,
@@ -132,7 +132,7 @@ describe('notificationsSend', () => {
     });
     await nodeManager.start();
     await nodeConnectionManager.start({ nodeManager });
-    await taskManager.startProcessing();
+    await taskManager.start();
     notificationsManager =
       await NotificationsManager.createNotificationsManager({
         acl,
@@ -142,36 +142,19 @@ describe('notificationsSend', () => {
         keyRing,
         logger,
       });
-    const clientService = {
-      notificationsSend: notificationsSend({
-        authenticate,
-        notificationsManager,
-        logger,
-      }),
-    };
-    grpcServer = new GRPCServer({ logger });
-    await grpcServer.start({
-      services: [[ClientServiceService, clientService]],
-      host: '127.0.0.1' as Host,
-      port: 0 as Port,
-    });
-    grpcClient = await GRPCClientClient.createGRPCClientClient({
-      nodeId: keyRing.getNodeId(),
-      host: '127.0.0.1' as Host,
-      port: grpcServer.getPort(),
-      logger,
-    });
   });
   afterEach(async () => {
+    mockedSignNotification.mockRestore();
+    mockedSendNotification.mockRestore();
     await taskManager.stopProcessing();
     await taskManager.stopTasks();
-    await grpcClient.destroy();
-    await grpcServer.stop();
+    await webSocketServer.stop(true);
+    await webSocketClient.destroy(true);
     await notificationsManager.stop();
+    await sigchain.stop();
     await nodeGraph.stop();
     await nodeConnectionManager.stop();
     await nodeManager.stop();
-    await sigchain.stop();
     await proxy.stop();
     await acl.stop();
     await db.stop();
@@ -183,18 +166,47 @@ describe('notificationsSend', () => {
     });
   });
   test('sends a notification', async () => {
+    // Setup
+    const rpcServer = await RPCServer.createRPCServer({
+      manifest: {
+        notificationsSend: new NotificationsSendHandler({
+          notificationsManager,
+        }),
+      },
+      logger,
+    });
+    webSocketServer = await WebSocketServer.createWebSocketServer({
+      connectionCallback: (streamPair, connectionInfo) =>
+        rpcServer.handleStream(streamPair, connectionInfo),
+      host,
+      tlsConfig,
+      logger: logger.getChild('server'),
+    });
+    webSocketClient = await WebSocketClient.createWebSocketClient({
+      expectedNodeIds: [keyRing.getNodeId()],
+      host,
+      logger: logger.getChild('client'),
+      port: webSocketServer.port,
+    });
+    const rpcClient = await RPCClient.createRPCClient({
+      manifest: {
+        notificationsSend,
+      },
+      streamPairCreateCallback: async () => webSocketClient.startConnection(),
+      logger: logger.getChild('clientRPC'),
+    });
+
+    // Doing the test
+    mockedSignNotification.mockImplementation(async () => {
+      return 'signedNotification' as SignedNotification;
+    });
+    mockedSendNotification.mockImplementation();
     const receiverNodeIdEncoded =
-      'vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0';
-    const generalMessage = new notificationsPB.General();
-    generalMessage.setMessage('test');
-    const request = new notificationsPB.Send();
-    request.setData(generalMessage);
-    request.setReceiverId(receiverNodeIdEncoded);
-    const response = await grpcClient.notificationsSend(
-      request,
-      clientUtils.encodeAuthFromPassword(password),
-    );
-    expect(response).toBeInstanceOf(utilsPB.EmptyMessage);
+      'vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0' as NodeIdEncoded;
+    await rpcClient.methods.notificationsSend({
+      nodeIdEncoded: receiverNodeIdEncoded,
+      message: 'test',
+    });
     // Check we signed and sent the notification
     expect(mockedSignNotification.mock.calls.length).toBe(1);
     expect(mockedSendNotification.mock.calls.length).toBe(1);

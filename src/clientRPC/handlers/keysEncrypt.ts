@@ -1,10 +1,10 @@
 import type { RPCRequestParams, RPCResponseResult } from '../types';
-import type KeyRing from 'keys/KeyRing';
+import type KeyRing from '../../keys/KeyRing';
 import type { DataMessage, DecryptMessage } from './types';
-import type { PublicKey } from 'keys/types';
-import { never } from 'utils/index';
-import * as keysUtils from 'keys/utils/index';
-import * as keysErrors from 'keys/errors';
+import type { PublicKey } from '../../keys/types';
+import { never } from '../../utils/index';
+import * as keysUtils from '../../keys/utils/index';
+import * as keysErrors from '../../keys/errors';
 import { UnaryHandler } from '../../RPC/handlers';
 import { UnaryCaller } from '../../RPC/callers';
 

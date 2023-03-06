@@ -44,7 +44,22 @@ class VaultsSecretsStatHandler extends UnaryHandler<
         tran,
       );
       return {
-        stat: JSON.stringify(stat),
+        stat: {
+          dev: stat.dev,
+          ino: stat.ino,
+          mode: stat.mode,
+          nlink: stat.nlink,
+          uid: stat.uid,
+          gid: stat.gid,
+          rdev: stat.rdev,
+          size: stat.size,
+          atime: stat.atime.toString(),
+          mtime: stat.mtime.toString(),
+          ctime: stat.ctime.toString(),
+          birthtime: stat.birthtime.toString(),
+          blksize: stat.blksize,
+          blocks: stat.blocks,
+        },
       };
     });
   }

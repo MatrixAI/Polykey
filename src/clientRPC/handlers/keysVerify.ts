@@ -1,10 +1,10 @@
 import type { RPCRequestParams, RPCResponseResult } from '../types';
-import type KeyRing from 'keys/KeyRing';
-import type { PublicKey, Signature } from 'keys/types';
+import type KeyRing from '../../keys/KeyRing';
+import type { PublicKey, Signature } from '../../keys/types';
 import type { SuccessMessage, VerifySignatureMessage } from './types';
-import * as keysUtils from 'keys/utils/index';
-import { never } from 'utils/index';
-import * as keysErrors from 'keys/errors';
+import * as keysUtils from '../../keys/utils/index';
+import { never } from '../../utils/index';
+import * as keysErrors from '../../keys/errors';
 import { UnaryHandler } from '../../RPC/handlers';
 import { UnaryCaller } from '../../RPC/callers';
 

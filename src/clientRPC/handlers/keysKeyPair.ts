@@ -1,7 +1,7 @@
 import type { RPCRequestParams, RPCResponseResult } from '../types';
 import type { KeyPairMessage, PasswordMessage } from './types';
-import type KeyRing from 'keys/KeyRing';
-import * as keysUtils from 'keys/utils/index';
+import type KeyRing from '../../keys/KeyRing';
+import * as keysUtils from '../../keys/utils/index';
 import { UnaryCaller } from '../../RPC/callers';
 import { UnaryHandler } from '../../RPC/handlers';
 

@@ -2,6 +2,7 @@ import type { RPCRequestParams, RPCResponseResult } from '../types';
 import type VaultManager from '../../vaults/VaultManager';
 import type { SecretDirMessage, SuccessMessage } from './types';
 import type { DB } from '@matrixai/db';
+import type { FileSystem } from 'types';
 import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
 import * as vaultOps from '../../vaults/VaultOps';

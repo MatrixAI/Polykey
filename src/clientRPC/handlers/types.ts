@@ -65,6 +65,7 @@ export type AddressMessage = {
   host: string;
   port: number;
 };
+
 export type NodeAddressMessage = NodeIdMessage & AddressMessage;
 
 export type NodesAddMessage = NodeAddressMessage & {
@@ -248,5 +249,20 @@ export type SecretRenameMessage = SecretIdentifierMessage & {
 
 // Stat is the 'JSON.stringify version of the file stat
 export type SecretStatMessage = {
-  stat: string;
+  stat: {
+    dev: number;
+    ino: number;
+    mode: number;
+    nlink: number;
+    uid: number;
+    gid: number;
+    rdev: number;
+    size: number;
+    atime: string;
+    mtime: string;
+    ctime: string;
+    birthtime: string;
+    blksize: number;
+    blocks: number;
+  };
 };

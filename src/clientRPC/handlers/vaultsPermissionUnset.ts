@@ -5,7 +5,6 @@ import type { DB } from '@matrixai/db';
 import type VaultManager from '../../vaults/VaultManager';
 import type GestaltGraph from '../../gestalts/GestaltGraph';
 import type ACL from '../../acl/ACL';
-import type NotificationsManager from '../../notifications/NotificationsManager';
 import type { PermissionSetMessage, SuccessMessage } from './types';
 import * as vaultsUtils from '../../vaults/utils';
 import * as validationUtils from '../../validation/utils';
@@ -26,7 +25,6 @@ class VaultsPermissionUnsetHandler extends UnaryHandler<
     vaultManager: VaultManager;
     gestaltGraph: GestaltGraph;
     acl: ACL;
-    notificationsManager: NotificationsManager;
   },
   RPCRequestParams<PermissionSetMessage>,
   RPCResponseResult<SuccessMessage>

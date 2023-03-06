@@ -17,7 +17,7 @@ const vaultsPermissionGet = new ServerCaller<
   RPCResponseResult<VaultPermissionMessage>
 >();
 
-class VaultsPermisionGetHandler extends ServerHandler<
+class VaultsPermissionGetHandler extends ServerHandler<
   {
     db: DB;
     vaultManager: VaultManager;
@@ -65,4 +65,4 @@ class VaultsPermisionGetHandler extends ServerHandler<
   }
 }
 
-export { vaultsPermissionGet, VaultsPermisionGetHandler };
+export { vaultsPermissionGet, VaultsPermissionGetHandler };

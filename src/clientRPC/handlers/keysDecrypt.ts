@@ -1,7 +1,7 @@
 import type { RPCRequestParams, RPCResponseResult } from '../types';
-import type KeyRing from 'keys/KeyRing';
+import type KeyRing from '../../keys/KeyRing';
 import type { DataMessage } from './types';
-import { never } from 'utils/index';
+import { never } from '../../utils/index';
 import { UnaryHandler } from '../../RPC/handlers';
 import { UnaryCaller } from '../../RPC/callers';
 
