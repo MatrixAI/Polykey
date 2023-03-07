@@ -19,7 +19,7 @@ class CommandFind extends CommandPolykey {
     this.addOption(binOptions.clientPort);
     this.action(async (nodeId: NodeId, options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
-      const nodesPB = await import('../../proto/js/polykey/v1/nodes/nodes_pb');
+      const { clientManifest } = await import('../../client/handlers');
       const nodesUtils = await import('../../nodes/utils');
       const networkUtils = await import('../../network/utils');
       const nodesErrors = await import('../../nodes/errors');
@@ -32,11 +32,11 @@ class CommandFind extends CommandPolykey {
         this.fs,
         this.logger.getChild(binProcessors.processClientOptions.name),
       );
-      const meta = await binProcessors.processAuthentication(
+      const auth = await binProcessors.processAuthentication(
         options.passwordFile,
         this.fs,
       );
-      let pkClient: PolykeyClient;
+      let pkClient: PolykeyClient<typeof clientManifest>;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
       });
@@ -46,10 +46,9 @@ class CommandFind extends CommandPolykey {
           nodeId: clientOptions.nodeId,
           host: clientOptions.clientHost,
           port: clientOptions.clientPort,
+          manifest: clientManifest,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-        const nodeMessage = new nodesPB.Node();
-        nodeMessage.setNodeId(nodesUtils.encodeNodeId(nodeId));
         const result = {
           success: false,
           message: '',
@@ -59,13 +58,17 @@ class CommandFind extends CommandPolykey {
         };
         try {
           const response = await binUtils.retryAuthentication(
-            (auth) => pkClient.grpcClient.nodesFind(nodeMessage, auth),
-            meta,
+            (auth) =>
+              pkClient.rpcClient.methods.nodesFind({
+                metadata: auth,
+                nodeIdEncoded: nodesUtils.encodeNodeId(nodeId),
+              }),
+            auth,
           );
           result.success = true;
-          result.id = response.getNodeId();
-          result.host = response.getAddress()!.getHost();
-          result.port = response.getAddress()!.getPort();
+          result.id = nodesUtils.encodeNodeId(nodeId);
+          result.host = response.host;
+          result.port = response.port;
           result.message = `Found node at ${networkUtils.buildAddress(
             result.host as Host,
             result.port as Port,

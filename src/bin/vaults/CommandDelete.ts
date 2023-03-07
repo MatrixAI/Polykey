@@ -15,9 +15,7 @@ class CommandDelete extends CommandPolykey {
     this.addOption(binOptions.clientPort);
     this.action(async (vaultName, options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
-      const vaultsPB = await import(
-        '../../proto/js/polykey/v1/vaults/vaults_pb'
-      );
+      const { clientManifest } = await import('../../client/handlers');
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -30,7 +28,7 @@ class CommandDelete extends CommandPolykey {
         options.passwordFile,
         this.fs,
       );
-      let pkClient: PolykeyClient;
+      let pkClient: PolykeyClient<typeof clientManifest>;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
       });
@@ -40,12 +38,15 @@ class CommandDelete extends CommandPolykey {
           nodeId: clientOptions.nodeId,
           host: clientOptions.clientHost,
           port: clientOptions.clientPort,
+          manifest: clientManifest,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-        const vaultMessage = new vaultsPB.Vault();
-        vaultMessage.setNameOrId(vaultName);
         await binUtils.retryAuthentication(
-          (auth) => pkClient.grpcClient.vaultsDelete(vaultMessage, auth),
+          (auth) =>
+            pkClient.rpcClient.methods.vaultsDelete({
+              metadata: auth,
+              nameOrId: vaultName,
+            }),
           meta,
         );
       } finally {

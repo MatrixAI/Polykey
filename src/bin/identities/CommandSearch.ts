@@ -1,5 +1,7 @@
 import type PolykeyClient from '../../PolykeyClient';
-import type { IdentityId, ProviderId } from '../../identities/types';
+import type { IdentityInfoMessage } from '../../client/handlers/types';
+import type { ReadableStream } from 'stream/web';
+import type { RPCResponseResult } from '../../client/types';
 import CommandPolykey from '../CommandPolykey';
 import * as binOptions from '../utils/options';
 import * as binUtils from '../utils';
@@ -43,9 +45,7 @@ class CommandSearch extends CommandPolykey {
     this.addOption(binOptions.clientPort);
     this.action(async (searchTerms, options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
-      const identitiesPB = await import(
-        '../../proto/js/polykey/v1/identities/identities_pb'
-      );
+      const { clientManifest } = await import('../../client/handlers');
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -54,16 +54,12 @@ class CommandSearch extends CommandPolykey {
         this.fs,
         this.logger.getChild(binProcessors.processClientOptions.name),
       );
-      const meta = await binProcessors.processAuthentication(
+      const auth = await binProcessors.processAuthentication(
         options.passwordFile,
         this.fs,
       );
-      let pkClient: PolykeyClient;
-      let genReadable: ReturnType<
-        typeof pkClient.grpcClient.identitiesInfoConnectedGet
-      >;
+      let pkClient: PolykeyClient<typeof clientManifest>;
       this.exitHandlers.handlers.push(async () => {
-        if (genReadable != null) genReadable.stream.cancel();
         if (pkClient != null) await pkClient.stop();
       });
       try {
@@ -72,42 +68,44 @@ class CommandSearch extends CommandPolykey {
           nodeId: clientOptions.nodeId,
           host: clientOptions.clientHost,
           port: clientOptions.clientPort,
+          manifest: clientManifest,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-        const providerSearchMessage = new identitiesPB.ProviderSearch();
-        providerSearchMessage.setSearchTermList(searchTerms);
-        if (options.providerId) {
-          providerSearchMessage.setProviderIdList(options.providerId);
-        }
-        if (options.authIdentityId) {
-          providerSearchMessage.setAuthIdentityId(options.authIdentityId);
-        }
-        if (options.disconnected) {
-          providerSearchMessage.setDisconnected(true);
-        }
-        if (options.limit) {
-          providerSearchMessage.setLimit(options.limit.toString());
-        }
         await binUtils.retryAuthentication(async (auth) => {
+          let readableStream: ReadableStream<
+            RPCResponseResult<IdentityInfoMessage>
+          >;
           if (options.identityId) {
-            providerSearchMessage.setIdentityId(options.identityId);
-            genReadable = pkClient.grpcClient.identitiesInfoGet(
-              providerSearchMessage,
-              auth,
+            readableStream = await pkClient.rpcClient.methods.identitiesInfoGet(
+              {
+                metadata: auth,
+                identityId: options.identityId,
+                authIdentityId: options.authIdentityId,
+                disconnected: options.disconnected,
+                providerIdList: [options.providerId],
+                searchTermList: searchTerms,
+                limit: options.limit,
+              },
             );
           } else {
-            genReadable = pkClient.grpcClient.identitiesInfoConnectedGet(
-              providerSearchMessage,
-              auth,
-            );
+            readableStream =
+              await pkClient.rpcClient.methods.identitiesInfoConnectedGet({
+                metadata: auth,
+                identityId: options.identityId,
+                authIdentityId: options.authIdentityId,
+                disconnected: options.disconnected,
+                providerIdList: [options.providerId],
+                searchTermList: searchTerms,
+                limit: options.limit,
+              });
           }
-          for await (const val of genReadable) {
+          for await (const identityInfoMessage of readableStream) {
             const output = {
-              providerId: val.getProvider()!.getProviderId() as ProviderId,
-              identityId: val.getProvider()!.getIdentityId() as IdentityId,
-              name: val.getName(),
-              email: val.getEmail(),
-              url: val.getUrl(),
+              providerId: identityInfoMessage.providerId,
+              identityId: identityInfoMessage.identityId,
+              name: identityInfoMessage.name,
+              email: identityInfoMessage.email,
+              url: identityInfoMessage.url,
             };
             process.stdout.write(
               binUtils.outputFormatter({
@@ -116,7 +114,7 @@ class CommandSearch extends CommandPolykey {
               }),
             );
           }
-        }, meta);
+        }, auth);
       } finally {
         if (pkClient! != null) await pkClient.stop();
       }

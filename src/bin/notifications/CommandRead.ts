@@ -29,9 +29,7 @@ class CommandRead extends CommandPolykey {
     this.addOption(binOptions.clientPort);
     this.action(async (options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
-      const notificationsPB = await import(
-        '../../proto/js/polykey/v1/notifications/notifications_pb'
-      );
+      const { clientManifest } = await import('../../client/handlers');
       const notificationsUtils = await import('../../notifications/utils');
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
@@ -45,7 +43,7 @@ class CommandRead extends CommandPolykey {
         options.passwordFile,
         this.fs,
       );
-      let pkClient: PolykeyClient;
+      let pkClient: PolykeyClient<typeof clientManifest>;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
       });
@@ -55,29 +53,23 @@ class CommandRead extends CommandPolykey {
           nodeId: clientOptions.nodeId,
           host: clientOptions.clientHost,
           port: clientOptions.clientPort,
+          manifest: clientManifest,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-        const notificationsReadMessage = new notificationsPB.Read();
-        if (options.unread) {
-          notificationsReadMessage.setUnread(true);
-        } else {
-          notificationsReadMessage.setUnread(false);
-        }
-        notificationsReadMessage.setNumber(options.number);
-        notificationsReadMessage.setOrder(options.order);
         const response = await binUtils.retryAuthentication(
           (auth) =>
-            pkClient.grpcClient.notificationsRead(
-              notificationsReadMessage,
-              auth,
-            ),
+            pkClient.rpcClient.methods.notificationsRead({
+              metadata: auth,
+              unread: options.unread,
+              number: options.number,
+              order: options.order,
+            }),
           meta,
         );
-        const notificationMessages = response.getNotificationList();
         const notifications: Array<Notification> = [];
-        for (const message of notificationMessages) {
+        for await (const notificationMessage of response) {
           const notification = notificationsUtils.parseNotification(
-            JSON.parse(message.getContent()),
+            notificationMessage.notification,
           );
           notifications.push(notification);
         }

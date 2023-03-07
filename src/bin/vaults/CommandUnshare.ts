@@ -22,11 +22,8 @@ class CommandUnshare extends CommandPolykey {
     this.addOption(binOptions.clientPort);
     this.action(async (vaultName, nodeId: NodeId, options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
+      const { clientManifest } = await import('../../client/handlers');
       const nodesUtils = await import('../../nodes/utils');
-      const vaultsPB = await import(
-        '../../proto/js/polykey/v1/vaults/vaults_pb'
-      );
-      const nodesPB = await import('../../proto/js/polykey/v1/nodes/nodes_pb');
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -39,7 +36,7 @@ class CommandUnshare extends CommandPolykey {
         options.passwordFile,
         this.fs,
       );
-      let pkClient: PolykeyClient;
+      let pkClient: PolykeyClient<typeof clientManifest>;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
       });
@@ -49,22 +46,17 @@ class CommandUnshare extends CommandPolykey {
           nodeId: clientOptions.nodeId,
           host: clientOptions.clientHost,
           port: clientOptions.clientPort,
+          manifest: clientManifest,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-        const vaultsPermissionsMessage = new vaultsPB.Permissions();
-        const vaultMessage = new vaultsPB.Vault();
-        vaultMessage.setNameOrId(vaultName);
-        const nodeMessage = new nodesPB.Node();
-        nodeMessage.setNodeId(nodesUtils.encodeNodeId(nodeId));
-        vaultsPermissionsMessage.setVault(vaultMessage);
-        vaultsPermissionsMessage.setNode(nodeMessage);
-        vaultsPermissionsMessage.setVaultPermissionsList(['clone', 'pull']);
         await binUtils.retryAuthentication(
           (auth) =>
-            pkClient.grpcClient.vaultsPermissionUnset(
-              vaultsPermissionsMessage,
-              auth,
-            ),
+            pkClient.rpcClient.methods.vaultsPermissionUnset({
+              metadata: auth,
+              nodeIdEncoded: nodesUtils.encodeNodeId(nodeId),
+              nameOrId: vaultName,
+              vaultPermissionList: ['clone', 'pull'],
+            }),
           meta,
         );
       } finally {

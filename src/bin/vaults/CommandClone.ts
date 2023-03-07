@@ -22,11 +22,8 @@ class CommandClone extends CommandPolykey {
     this.addOption(binOptions.clientPort);
     this.action(async (vaultNameOrId, nodeId: NodeId, options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
+      const { clientManifest } = await import('../../client/handlers');
       const nodesUtils = await import('../../nodes/utils');
-      const vaultsPB = await import(
-        '../../proto/js/polykey/v1/vaults/vaults_pb'
-      );
-      const nodesPB = await import('../../proto/js/polykey/v1/nodes/nodes_pb');
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -39,27 +36,26 @@ class CommandClone extends CommandPolykey {
         options.passwordFile,
         this.fs,
       );
-      let pkClient: PolykeyClient;
+      let pkClient: PolykeyClient<typeof clientManifest>;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
       });
       try {
-        const pkClient = await PolykeyClient.createPolykeyClient({
+        pkClient = await PolykeyClient.createPolykeyClient({
           nodePath: options.nodePath,
           nodeId: clientOptions.nodeId,
           host: clientOptions.clientHost,
           port: clientOptions.clientPort,
+          manifest: clientManifest,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-        const vaultMessage = new vaultsPB.Vault();
-        const nodeMessage = new nodesPB.Node();
-        const vaultCloneMessage = new vaultsPB.Clone();
-        vaultCloneMessage.setVault(vaultMessage);
-        vaultCloneMessage.setNode(nodeMessage);
-        nodeMessage.setNodeId(nodesUtils.encodeNodeId(nodeId));
-        vaultMessage.setNameOrId(vaultNameOrId);
         await binUtils.retryAuthentication(
-          (auth) => pkClient.grpcClient.vaultsClone(vaultCloneMessage, auth),
+          (auth) =>
+            pkClient.rpcClient.methods.vaultsClone({
+              metadata: auth,
+              nodeIdEncoded: nodesUtils.encodeNodeId(nodeId),
+              nameOrId: vaultNameOrId,
+            }),
           meta,
         );
       } finally {

@@ -1,5 +1,4 @@
 import type PolykeyClient from '../../PolykeyClient';
-import type { IdentityId, ProviderId } from '../../identities/types';
 import CommandPolykey from '../CommandPolykey';
 import * as binOptions from '../utils/options';
 import * as binUtils from '../utils';
@@ -21,9 +20,7 @@ class CommandAuthenticated extends CommandPolykey {
     this.addOption(binOptions.clientPort);
     this.action(async (options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
-      const identitiesPB = await import(
-        '../../proto/js/polykey/v1/identities/identities_pb'
-      );
+      const { clientManifest } = await import('../../client/handlers');
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -32,16 +29,12 @@ class CommandAuthenticated extends CommandPolykey {
         this.fs,
         this.logger.getChild(binProcessors.processClientOptions.name),
       );
-      const meta = await binProcessors.processAuthentication(
+      const auth = await binProcessors.processAuthentication(
         options.passwordFile,
         this.fs,
       );
-      let pkClient: PolykeyClient;
-      let genReadable: ReturnType<
-        typeof pkClient.grpcClient.identitiesAuthenticatedGet
-      >;
+      let pkClient: PolykeyClient<typeof clientManifest>;
       this.exitHandlers.handlers.push(async () => {
-        if (genReadable != null) genReadable.stream.cancel();
         if (pkClient != null) await pkClient.stop();
       });
       try {
@@ -50,21 +43,19 @@ class CommandAuthenticated extends CommandPolykey {
           nodeId: clientOptions.nodeId,
           host: clientOptions.clientHost,
           port: clientOptions.clientPort,
+          manifest: clientManifest,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-        const optionalProviderMessage = new identitiesPB.OptionalProvider();
-        if (options.providerId) {
-          optionalProviderMessage.setProviderId(options.providerId);
-        }
         await binUtils.retryAuthentication(async (auth) => {
-          const genReadable = pkClient.grpcClient.identitiesAuthenticatedGet(
-            optionalProviderMessage,
-            auth,
-          );
-          for await (const val of genReadable) {
+          const readableStream =
+            await pkClient.rpcClient.methods.identitiesAuthenticatedGet({
+              metadata: auth,
+              providerId: options.providerId,
+            });
+          for await (const identityMessage of readableStream) {
             const output = {
-              providerId: val.getProviderId() as ProviderId,
-              identityId: val.getIdentityId() as IdentityId,
+              providerId: identityMessage.providerId,
+              identityId: identityMessage.identityId,
             };
             process.stdout.write(
               binUtils.outputFormatter({
@@ -73,7 +64,7 @@ class CommandAuthenticated extends CommandPolykey {
               }),
             );
           }
-        }, meta);
+        }, auth);
       } finally {
         if (pkClient! != null) await pkClient.stop();
       }

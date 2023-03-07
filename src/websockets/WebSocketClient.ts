@@ -86,6 +86,16 @@ class WebSocketClient {
   }
 
   @createDestroy.ready(new clientRPCErrors.ErrorClientDestroyed())
+  public async stopConnections() {
+    for (const activeConnection of this.activeConnections) {
+      activeConnection.end();
+    }
+    for (const activeConnection of this.activeConnections) {
+      await activeConnection.endedProm.catch(() => {}); // Ignore errors here
+    }
+  }
+
+  @createDestroy.ready(new clientRPCErrors.ErrorClientDestroyed())
   public async startConnection({
     timeoutTimer,
   }: {

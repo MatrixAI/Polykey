@@ -16,9 +16,7 @@ class CommandList extends CommandPolykey {
     this.addOption(binOptions.clientPort);
     this.action(async (vaultName, options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
-      const vaultsPB = await import(
-        '../../proto/js/polykey/v1/vaults/vaults_pb'
-      );
+      const { clientManifest } = await import('../../client/handlers');
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -27,11 +25,11 @@ class CommandList extends CommandPolykey {
         this.fs,
         this.logger.getChild(binProcessors.processClientOptions.name),
       );
-      const meta = await binProcessors.processAuthentication(
+      const auth = await binProcessors.processAuthentication(
         options.passwordFile,
         this.fs,
       );
-      let pkClient: PolykeyClient;
+      let pkClient: PolykeyClient<typeof clientManifest>;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
       });
@@ -41,21 +39,20 @@ class CommandList extends CommandPolykey {
           nodeId: clientOptions.nodeId,
           host: clientOptions.clientHost,
           port: clientOptions.clientPort,
+          manifest: clientManifest,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-        const vaultMessage = new vaultsPB.Vault();
-        vaultMessage.setNameOrId(vaultName);
         const data = await binUtils.retryAuthentication(async (auth) => {
           const data: Array<string> = [];
-          const stream = pkClient.grpcClient.vaultsSecretsList(
-            vaultMessage,
-            auth,
-          );
+          const stream = await pkClient.rpcClient.methods.vaultsSecretsList({
+            metadata: auth,
+            nameOrId: vaultName,
+          });
           for await (const secret of stream) {
-            data.push(`${secret.getSecretName()}`);
+            data.push(secret.secretName);
           }
           return data;
-        }, meta);
+        }, auth);
         process.stdout.write(
           binUtils.outputFormatter({
             type: options.format === 'json' ? 'json' : 'list',

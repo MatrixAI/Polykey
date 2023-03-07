@@ -1,5 +1,4 @@
 import type PolykeyClient from '../../PolykeyClient';
-import type nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
 import * as binOptions from '../utils/options';
@@ -15,8 +14,7 @@ class CommandGetAll extends CommandPolykey {
     this.addOption(binOptions.clientPort);
     this.action(async (options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
-      const utilsPB = await import('../../proto/js/polykey/v1/utils/utils_pb');
-
+      const { clientManifest } = await import('../../client/handlers');
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -25,41 +23,39 @@ class CommandGetAll extends CommandPolykey {
         this.fs,
         this.logger.getChild(binProcessors.processClientOptions.name),
       );
-      const meta = await binProcessors.processAuthentication(
+      const auth = await binProcessors.processAuthentication(
         options.passwordFile,
         this.fs,
       );
-      let pkClient: PolykeyClient;
+      let pkClient: PolykeyClient<typeof clientManifest>;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
       });
-      let result: nodesPB.NodeBuckets;
       try {
         pkClient = await PolykeyClient.createPolykeyClient({
           nodePath: options.nodePath,
           nodeId: clientOptions.nodeId,
           host: clientOptions.clientHost,
           port: clientOptions.clientPort,
+          manifest: clientManifest,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-        const emptyMessage = new utilsPB.EmptyMessage();
-        result = await binUtils.retryAuthentication(
-          (auth) => pkClient.grpcClient.nodesGetAll(emptyMessage, auth),
-          meta,
+        const result = await binUtils.retryAuthentication(
+          (auth) =>
+            pkClient.rpcClient.methods.nodesGetAll({
+              metadata: auth,
+            }),
+          auth,
         );
-        let output: any = {};
-        for (const [bucketIndex, bucket] of result.getBucketsMap().entries()) {
-          output[bucketIndex] = {};
-          for (const [encodedId, address] of bucket
-            .getNodeTableMap()
-            .entries()) {
-            output[bucketIndex][encodedId] = {};
-            output[bucketIndex][encodedId].host = address.getHost();
-            output[bucketIndex][encodedId].port = address.getPort();
-          }
+        let output: Array<any> = [];
+        for await (const nodesGetMessage of result) {
+          output.push(nodesGetMessage);
         }
         if (options.format === 'human') {
-          output = [result.getBucketsMap().getEntryList()];
+          output = output.map(
+            (value) =>
+              `NodeId ${value.nodeIdEncoded}, Address ${value.host}:${value.port}, bucketIndex ${value.bucketIndex}`,
+          );
         }
         process.stdout.write(
           binUtils.outputFormatter({

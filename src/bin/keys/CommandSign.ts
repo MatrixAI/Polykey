@@ -19,7 +19,7 @@ class CommandSign extends CommandPolykey {
     this.addOption(binOptions.clientPort);
     this.action(async (filePath, options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
-      const keysPB = await import('../../proto/js/polykey/v1/keys/keys_pb');
+      const { clientManifest } = await import('../../client/handlers');
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -28,11 +28,11 @@ class CommandSign extends CommandPolykey {
         this.fs,
         this.logger.getChild(binProcessors.processClientOptions.name),
       );
-      const meta = await binProcessors.processAuthentication(
+      const auth = await binProcessors.processAuthentication(
         options.passwordFile,
         this.fs,
       );
-      let pkClient: PolykeyClient;
+      let pkClient: PolykeyClient<typeof clientManifest>;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
       });
@@ -42,9 +42,9 @@ class CommandSign extends CommandPolykey {
           nodeId: clientOptions.nodeId,
           host: clientOptions.clientHost,
           port: clientOptions.clientPort,
+          manifest: clientManifest,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-        const cryptoMessage = new keysPB.Crypto();
         let data: string;
         try {
           data = await this.fs.promises.readFile(filePath, {
@@ -61,13 +61,16 @@ class CommandSign extends CommandPolykey {
             cause: e,
           });
         }
-        cryptoMessage.setData(data);
         const response = await binUtils.retryAuthentication(
-          (auth) => pkClient.grpcClient.keysSign(cryptoMessage, auth),
-          meta,
+          (auth) =>
+            pkClient.rpcClient.methods.keysSign({
+              metadata: auth,
+              data,
+            }),
+          auth,
         );
         const result = {
-          signature: response.getSignature(),
+          signature: response.signature,
         };
         let output: any = result;
         if (options.format === 'human') {

@@ -21,9 +21,7 @@ class CommandMkdir extends CommandPolykey {
     this.addOption(binOptions.clientPort);
     this.action(async (secretPath, options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
-      const vaultsPB = await import(
-        '../../proto/js/polykey/v1/vaults/vaults_pb'
-      );
+      const { clientManifest } = await import('../../client/handlers');
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -36,7 +34,7 @@ class CommandMkdir extends CommandPolykey {
         options.passwordFile,
         this.fs,
       );
-      let pkClient: PolykeyClient;
+      let pkClient: PolykeyClient<typeof clientManifest>;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
       });
@@ -46,17 +44,17 @@ class CommandMkdir extends CommandPolykey {
           nodeId: clientOptions.nodeId,
           host: clientOptions.clientHost,
           port: clientOptions.clientPort,
+          manifest: clientManifest,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-        const vaultMkdirMessage = new vaultsPB.Mkdir();
-        const vaultMessage = new vaultsPB.Vault();
-        vaultMessage.setNameOrId(secretPath[0]);
-        vaultMkdirMessage.setVault(vaultMessage);
-        vaultMkdirMessage.setDirName(secretPath[1]);
-        vaultMkdirMessage.setRecursive(options.recursive);
         await binUtils.retryAuthentication(
           (auth) =>
-            pkClient.grpcClient.vaultsSecretsMkdir(vaultMkdirMessage, auth),
+            pkClient.rpcClient.methods.vaultsSecretsMkdir({
+              metadata: auth,
+              nameOrId: secretPath[0],
+              dirName: secretPath[1],
+              recursive: options.recursive,
+            }),
           meta,
         );
       } finally {

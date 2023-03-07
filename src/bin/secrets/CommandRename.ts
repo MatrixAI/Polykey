@@ -21,12 +21,7 @@ class CommandRename extends CommandPolykey {
     this.addOption(binOptions.clientPort);
     this.action(async (secretPath, newSecretName, options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
-      const vaultsPB = await import(
-        '../../proto/js/polykey/v1/vaults/vaults_pb'
-      );
-      const secretsPB = await import(
-        '../../proto/js/polykey/v1/secrets/secrets_pb'
-      );
+      const { clientManifest } = await import('../../client/handlers');
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -39,7 +34,7 @@ class CommandRename extends CommandPolykey {
         options.passwordFile,
         this.fs,
       );
-      let pkClient: PolykeyClient;
+      let pkClient: PolykeyClient<typeof clientManifest>;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
       });
@@ -49,19 +44,17 @@ class CommandRename extends CommandPolykey {
           nodeId: clientOptions.nodeId,
           host: clientOptions.clientHost,
           port: clientOptions.clientPort,
+          manifest: clientManifest,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-        const vaultMessage = new vaultsPB.Vault();
-        const secretMessage = new secretsPB.Secret();
-        const secretRenameMessage = new secretsPB.Rename();
-        secretMessage.setVault(vaultMessage);
-        secretRenameMessage.setOldSecret(secretMessage);
-        vaultMessage.setNameOrId(secretPath[0]);
-        secretMessage.setSecretName(secretPath[1]);
-        secretRenameMessage.setNewName(newSecretName);
         await binUtils.retryAuthentication(
           (auth) =>
-            pkClient.grpcClient.vaultsSecretsRename(secretRenameMessage, auth),
+            pkClient.rpcClient.methods.vaultsSecretsRename({
+              metadata: auth,
+              nameOrId: secretPath[0],
+              secretName: secretPath[1],
+              newSecretName: newSecretName,
+            }),
           meta,
         );
       } finally {

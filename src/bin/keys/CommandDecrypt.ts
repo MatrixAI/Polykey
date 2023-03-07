@@ -19,7 +19,7 @@ class CommandDecrypt extends CommandPolykey {
     this.addOption(binOptions.clientPort);
     this.action(async (filePath, options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
-      const keysPB = await import('../../proto/js/polykey/v1/keys/keys_pb');
+      const { clientManifest } = await import('../../client/handlers');
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -28,11 +28,11 @@ class CommandDecrypt extends CommandPolykey {
         this.fs,
         this.logger.getChild(binProcessors.processClientOptions.name),
       );
-      const meta = await binProcessors.processAuthentication(
+      const auth = await binProcessors.processAuthentication(
         options.passwordFile,
         this.fs,
       );
-      let pkClient: PolykeyClient;
+      let pkClient: PolykeyClient<typeof clientManifest>;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
       });
@@ -42,9 +42,9 @@ class CommandDecrypt extends CommandPolykey {
           nodeId: clientOptions.nodeId,
           host: clientOptions.clientHost,
           port: clientOptions.clientPort,
+          manifest: clientManifest,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-        const cryptoMessage = new keysPB.Crypto();
         let cipherText: string;
         try {
           cipherText = await this.fs.promises.readFile(filePath, {
@@ -61,13 +61,16 @@ class CommandDecrypt extends CommandPolykey {
             cause: e,
           });
         }
-        cryptoMessage.setData(cipherText);
         const response = await binUtils.retryAuthentication(
-          (auth) => pkClient.grpcClient.keysDecrypt(cryptoMessage, auth),
-          meta,
+          (auth) =>
+            pkClient.rpcClient.methods.keysDecrypt({
+              metadata: auth,
+              data: cipherText,
+            }),
+          auth,
         );
         const result = {
-          decryptedData: response.getData(),
+          decryptedData: response.data,
         };
         let output: any = result;
         if (options.format === 'human') {

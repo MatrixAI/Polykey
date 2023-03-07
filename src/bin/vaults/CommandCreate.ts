@@ -16,9 +16,7 @@ class CommandCreate extends CommandPolykey {
     this.addOption(binOptions.clientPort);
     this.action(async (vaultName, options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
-      const vaultsPB = await import(
-        '../../proto/js/polykey/v1/vaults/vaults_pb'
-      );
+      const { clientManifest } = await import('../../client/handlers');
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -31,7 +29,7 @@ class CommandCreate extends CommandPolykey {
         options.passwordFile,
         this.fs,
       );
-      let pkClient: PolykeyClient;
+      let pkClient: PolykeyClient<typeof clientManifest>;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
       });
@@ -41,18 +39,21 @@ class CommandCreate extends CommandPolykey {
           nodeId: clientOptions.nodeId,
           host: clientOptions.clientHost,
           port: clientOptions.clientPort,
+          manifest: clientManifest,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-        const vaultMessage = new vaultsPB.Vault();
-        vaultMessage.setNameOrId(vaultName);
         const response = await binUtils.retryAuthentication(
-          (auth) => pkClient.grpcClient.vaultsCreate(vaultMessage, auth),
+          (auth) =>
+            pkClient.rpcClient.methods.vaultsCreate({
+              metadata: auth,
+              vaultName: vaultName,
+            }),
           meta,
         );
         process.stdout.write(
           binUtils.outputFormatter({
             type: options.format === 'json' ? 'json' : 'list',
-            data: [`Vault ${response.getNameOrId()} created successfully`],
+            data: [`Vault ${response.vaultIdEncoded} created successfully`],
           }),
         );
       } finally {

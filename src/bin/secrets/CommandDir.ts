@@ -19,12 +19,7 @@ class CommandDir extends CommandPolykey {
     this.addOption(binOptions.clientPort);
     this.action(async (directoryPath, vaultName, options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
-      const vaultsPB = await import(
-        '../../proto/js/polykey/v1/vaults/vaults_pb'
-      );
-      const secretsPB = await import(
-        '../../proto/js/polykey/v1/secrets/secrets_pb'
-      );
+      const { clientManifest } = await import('../../client/handlers');
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -33,11 +28,11 @@ class CommandDir extends CommandPolykey {
         this.fs,
         this.logger.getChild(binProcessors.processClientOptions.name),
       );
-      const meta = await binProcessors.processAuthentication(
+      const auth = await binProcessors.processAuthentication(
         options.passwordFile,
         this.fs,
       );
-      let pkClient: PolykeyClient;
+      let pkClient: PolykeyClient<typeof clientManifest>;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
       });
@@ -47,20 +42,17 @@ class CommandDir extends CommandPolykey {
           nodeId: clientOptions.nodeId,
           host: clientOptions.clientHost,
           port: clientOptions.clientPort,
+          manifest: clientManifest,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-        const secretDirectoryMessage = new secretsPB.Directory();
-        const vaultMessage = new vaultsPB.Vault();
-        vaultMessage.setNameOrId(vaultName);
-        secretDirectoryMessage.setVault(vaultMessage);
-        secretDirectoryMessage.setSecretDirectory(directoryPath);
         await binUtils.retryAuthentication(
           (auth) =>
-            pkClient.grpcClient.vaultsSecretsNewDir(
-              secretDirectoryMessage,
-              auth,
-            ),
-          meta,
+            pkClient.rpcClient.methods.vaultsSecretsNewDir({
+              metadata: auth,
+              nameOrId: vaultName,
+              dirName: directoryPath,
+            }),
+          auth,
         );
       } finally {
         if (pkClient! != null) await pkClient.stop();

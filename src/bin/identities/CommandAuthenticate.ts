@@ -1,4 +1,7 @@
 import type PolykeyClient from '../../PolykeyClient';
+import type { RPCResponseResult } from '../../client/types';
+import type { AuthProcessMessage } from '../../client/handlers/types';
+import type { ReadableStream } from 'stream/web';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
 import * as binOptions from '../utils/options';
@@ -21,9 +24,8 @@ class CommandAuthenticate extends CommandPolykey {
     this.addOption(binOptions.clientPort);
     this.action(async (providerId, options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
-      const identitiesPB = await import(
-        '../../proto/js/polykey/v1/identities/identities_pb'
-      );
+      const { clientManifest } = await import('../../client/handlers');
+      const { never } = await import('../../utils');
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -32,16 +34,12 @@ class CommandAuthenticate extends CommandPolykey {
         this.fs,
         this.logger.getChild(binProcessors.processClientOptions.name),
       );
-      const meta = await binProcessors.processAuthentication(
+      const auth = await binProcessors.processAuthentication(
         options.passwordFile,
         this.fs,
       );
-      let pkClient: PolykeyClient;
-      let genReadable: ReturnType<
-        typeof pkClient.grpcClient.identitiesAuthenticate
-      >;
+      let pkClient: PolykeyClient<typeof clientManifest>;
       this.exitHandlers.handlers.push(async () => {
-        if (genReadable != null) genReadable.stream.cancel();
         if (pkClient != null) await pkClient.stop();
       });
       try {
@@ -50,53 +48,48 @@ class CommandAuthenticate extends CommandPolykey {
           nodeId: clientOptions.nodeId,
           host: clientOptions.clientHost,
           port: clientOptions.clientPort,
+          manifest: clientManifest,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-        const providerMessage = new identitiesPB.Provider();
-        providerMessage.setProviderId(providerId);
+        let genReadable: ReadableStream<RPCResponseResult<AuthProcessMessage>>;
         await binUtils.retryAuthentication(async (auth) => {
-          genReadable = pkClient.grpcClient.identitiesAuthenticate(
-            providerMessage,
-            auth,
+          genReadable = await pkClient.rpcClient.methods.identitiesAuthenticate(
+            {
+              metadata: auth,
+              providerId: providerId,
+            },
           );
           for await (const message of genReadable) {
-            switch (message.getStepCase()) {
-              case identitiesPB.AuthenticationProcess.StepCase.REQUEST: {
-                const authRequest = message.getRequest()!;
-                this.logger.info(
-                  `Navigate to the URL in order to authenticate`,
-                );
-                this.logger.info(
-                  'Use any additional additional properties to complete authentication',
-                );
-                identitiesUtils.browser(authRequest.getUrl());
-                process.stdout.write(
-                  binUtils.outputFormatter({
-                    type: options.format === 'json' ? 'json' : 'dict',
-                    data: {
-                      url: authRequest.getUrl(),
-                      ...Object.fromEntries(authRequest.getDataMap().entries()),
-                    },
-                  }),
-                );
-                break;
-              }
-              case identitiesPB.AuthenticationProcess.StepCase.RESPONSE: {
-                const authResponse = message.getResponse()!;
-                this.logger.info(
-                  `Authenticated digital identity provider ${providerId}`,
-                );
-                process.stdout.write(
-                  binUtils.outputFormatter({
-                    type: options.format === 'json' ? 'json' : 'list',
-                    data: [authResponse.getIdentityId()],
-                  }),
-                );
-                break;
-              }
+            if (message.request != null) {
+              this.logger.info(`Navigate to the URL in order to authenticate`);
+              this.logger.info(
+                'Use any additional additional properties to complete authentication',
+              );
+              identitiesUtils.browser(message.request.url);
+              process.stdout.write(
+                binUtils.outputFormatter({
+                  type: options.format === 'json' ? 'json' : 'dict',
+                  data: {
+                    url: message.request.url,
+                    ...message.request.dataMap,
+                  },
+                }),
+              );
+            } else if (message.response != null) {
+              this.logger.info(
+                `Authenticated digital identity provider ${providerId}`,
+              );
+              process.stdout.write(
+                binUtils.outputFormatter({
+                  type: options.format === 'json' ? 'json' : 'list',
+                  data: [message.response.identityId],
+                }),
+              );
+            } else {
+              never();
             }
           }
-        }, meta);
+        }, auth);
       } finally {
         if (pkClient! != null) await pkClient.stop();
       }

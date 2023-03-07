@@ -1,14 +1,18 @@
-import type * as grpc from '@grpc/grpc-js';
-import type { Class } from '@matrixai/errors';
-import type ErrorPolykey from '../ErrorPolykey';
+import type { JSONValue } from '../types';
 
-type Authenticate = (
-  metadataClient: grpc.Metadata,
-  metadataServer?: grpc.Metadata,
-) => Promise<grpc.Metadata>;
+// eslint-disable-next-line
+type NoData = {};
 
-type ClientClientErrors = Array<
-  Class<ErrorPolykey<any>> | Array<Class<ErrorPolykey<any>>>
->;
+type RPCRequestParams<T extends Record<string, JSONValue> = NoData> = {
+  metadata?: {
+    [Key: string]: JSONValue;
+  } & Partial<{ Authorization: string }>;
+} & Omit<T, 'metadata'>;
 
-export type { Authenticate, ClientClientErrors };
+type RPCResponseResult<T extends Record<string, JSONValue> = NoData> = {
+  metadata?: {
+    [Key: string]: JSONValue;
+  } & Partial<{ Authorization: string }>;
+} & Omit<T, 'metadata'>;
+
+export type { RPCRequestParams, RPCResponseResult, NoData };

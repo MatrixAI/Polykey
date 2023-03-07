@@ -1,5 +1,5 @@
 import type PolykeyClient from '../../PolykeyClient';
-import type * as agentPB from '../../proto/js/polykey/v1/agent/agent_pb';
+import type { StatusResultMessage } from '../../client/handlers/types';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
 import * as binOptions from '../utils/options';
@@ -15,7 +15,7 @@ class CommandStatus extends CommandPolykey {
     this.addOption(binOptions.clientPort);
     this.action(async (options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
-      const utilsPB = await import('../../proto/js/polykey/v1/utils/utils_pb');
+      const { clientManifest } = await import('../../client/handlers');
       const clientStatus = await binProcessors.processClientStatus(
         options.nodePath,
         options.nodeId,
@@ -38,60 +38,51 @@ class CommandStatus extends CommandPolykey {
           }),
         );
       } else {
-        const meta = await binProcessors.processAuthentication(
+        const auth = await binProcessors.processAuthentication(
           options.passwordFile,
           this.fs,
         );
-        let pkClient: PolykeyClient;
+        let pkClient: PolykeyClient<typeof clientManifest>;
         this.exitHandlers.handlers.push(async () => {
           if (pkClient != null) await pkClient.stop();
         });
-        let response: agentPB.InfoMessage;
+        let response: StatusResultMessage;
         try {
           pkClient = await PolykeyClient.createPolykeyClient({
             nodeId: clientStatus.nodeId!,
             host: clientStatus.clientHost!,
             port: clientStatus.clientPort!,
             nodePath: options.nodePath,
+            manifest: clientManifest,
             logger: this.logger.getChild(PolykeyClient.name),
           });
-          const emptyMessage = new utilsPB.EmptyMessage();
           response = await binUtils.retryAuthentication(
-            (auth) => pkClient.grpcClient.agentStatus(emptyMessage, auth),
-            meta,
+            (auth) =>
+              pkClient.rpcClient.methods.agentStatus({
+                metadata: auth,
+              }),
+            auth,
           );
         } finally {
           if (pkClient! != null) await pkClient.stop();
         }
-        const pid = response.getPid();
-        const nodeId = response.getNodeId();
-        const clientHost = response.getClientHost();
-        const clientPort = response.getClientPort();
-        const proxyHost = response.getProxyHost();
-        const proxyPort = response.getProxyPort();
-        const agentHost = response.getAgentHost();
-        const agentPort = response.getAgentPort();
-        const forwardHost = response.getForwardHost();
-        const forwardPort = response.getForwardPort();
-        const publicKeyJWK = response.getPublicKeyJwk();
-        const certChainPEM = response.getCertChainPem();
         process.stdout.write(
           binUtils.outputFormatter({
             type: options.format === 'json' ? 'json' : 'dict',
             data: {
               status: 'LIVE',
-              pid,
-              nodeId,
-              clientHost,
-              clientPort,
-              proxyHost,
-              proxyPort,
-              agentHost,
-              agentPort,
-              forwardHost,
-              forwardPort,
-              publicKeyJWK,
-              certChainPEM,
+              pid: response.pid,
+              nodeId: response.nodeIdEncoded,
+              clientHost: response.clientHost,
+              clientPort: response.clientPort,
+              proxyHost: response.proxyHost,
+              proxyPort: response.proxyPort,
+              agentHost: response.agentHost,
+              agentPort: response.agentPort,
+              forwardHost: response.forwardHost,
+              forwardPort: response.forwardPort,
+              publicKeyJWK: response.publicKeyJwk,
+              certChainPEM: response.certChainPEM,
             },
           }),
         );

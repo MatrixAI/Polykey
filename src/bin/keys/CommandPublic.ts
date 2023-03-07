@@ -14,7 +14,7 @@ class CommandPublic extends CommandPolykey {
     this.addOption(binOptions.clientPort);
     this.action(async (options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
-      const utilsPB = await import('../../proto/js/polykey/v1/utils/utils_pb');
+      const { clientManifest } = await import('../../client/handlers');
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -23,11 +23,11 @@ class CommandPublic extends CommandPolykey {
         this.fs,
         this.logger.getChild(binProcessors.processClientOptions.name),
       );
-      const meta = await binProcessors.processAuthentication(
+      const auth = await binProcessors.processAuthentication(
         options.passwordFile,
         this.fs,
       );
-      let pkClient: PolykeyClient;
+      let pkClient: PolykeyClient<typeof clientManifest>;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
       });
@@ -37,14 +37,17 @@ class CommandPublic extends CommandPolykey {
           nodeId: clientOptions.nodeId,
           host: clientOptions.clientHost,
           port: clientOptions.clientPort,
+          manifest: clientManifest,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-        const passwordMessage = new utilsPB.EmptyMessage();
         const keyPairJWK = await binUtils.retryAuthentication(
-          (auth) => pkClient.grpcClient.keysPublicKey(passwordMessage, auth),
-          meta,
+          (auth) =>
+            pkClient.rpcClient.methods.keysPublicKey({
+              metadata: auth,
+            }),
+          auth,
         );
-        const publicKeyJWK = JSON.parse(keyPairJWK.getPublicKeyJwk());
+        const publicKeyJWK = keyPairJWK.publicKeyJwk;
         process.stdout.write(
           binUtils.outputFormatter({
             type: options.format === 'json' ? 'json' : 'dict',

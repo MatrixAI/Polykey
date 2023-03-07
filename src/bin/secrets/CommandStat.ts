@@ -1,4 +1,3 @@
-import type { Stat } from 'encryptedfs';
 import type PolykeyClient from '../../PolykeyClient';
 import * as binProcessors from '../utils/processors';
 import * as parsers from '../utils/parsers';
@@ -21,12 +20,7 @@ class CommandStat extends CommandPolykey {
     this.addOption(binOptions.clientPort);
     this.action(async (secretPath, options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
-      const vaultsPB = await import(
-        '../../proto/js/polykey/v1/vaults/vaults_pb'
-      );
-      const secretsPB = await import(
-        '../../proto/js/polykey/v1/secrets/secrets_pb'
-      );
+      const { clientManifest } = await import('../../client/handlers');
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -39,7 +33,7 @@ class CommandStat extends CommandPolykey {
         options.passwordFile,
         this.fs,
       );
-      let pkClient: PolykeyClient;
+      let pkClient: PolykeyClient<typeof clientManifest>;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
       });
@@ -49,24 +43,23 @@ class CommandStat extends CommandPolykey {
           nodeId: clientOptions.nodeId,
           host: clientOptions.clientHost,
           port: clientOptions.clientPort,
+          manifest: clientManifest,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-
-        const secretMessage = new secretsPB.Secret();
-        const vaultMessage = new vaultsPB.Vault();
-        vaultMessage.setNameOrId(secretPath[0]);
-        secretMessage.setVault(vaultMessage);
-        secretMessage.setSecretName(secretPath[1]);
         // Get the secret's stat.
         const response = await binUtils.retryAuthentication(
-          (auth) => pkClient.grpcClient.vaultsSecretsStat(secretMessage, auth),
+          (auth) =>
+            pkClient.rpcClient.methods.vaultsSecretsStat({
+              metadata: auth,
+              nameOrId: secretPath[0],
+              secretName: secretPath[1],
+            }),
           meta,
         );
 
-        const stat: Stat = JSON.parse(response.getJson());
         const data: string[] = [`Stats for "${secretPath[1]}"`];
-        for (const key in stat) {
-          data.push(`${key}: ${stat[key]}`);
+        for (const [key, value] of Object.entries(response.stat)) {
+          data.push(`${key}: ${value}`);
         }
 
         // Print out the result.

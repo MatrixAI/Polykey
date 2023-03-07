@@ -17,9 +17,7 @@ class CommandKeypair extends CommandPolykey {
     this.addOption(binOptions.passwordNewFile);
     this.action(async (options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
-      const sessionsPB = await import(
-        '../../proto/js/polykey/v1/sessions/sessions_pb'
-      );
+      const { clientManifest } = await import('../../client/handlers');
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -28,7 +26,7 @@ class CommandKeypair extends CommandPolykey {
         this.fs,
         this.logger.getChild(binProcessors.processClientOptions.name),
       );
-      const meta = await binProcessors.processAuthentication(
+      const auth = await binProcessors.processAuthentication(
         options.passwordFile,
         this.fs,
       );
@@ -37,7 +35,7 @@ class CommandKeypair extends CommandPolykey {
         this.fs,
         true,
       );
-      let pkClient: PolykeyClient;
+      let pkClient: PolykeyClient<typeof clientManifest>;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
       });
@@ -47,19 +45,20 @@ class CommandKeypair extends CommandPolykey {
           nodeId: clientOptions.nodeId,
           host: clientOptions.clientHost,
           port: clientOptions.clientPort,
+          manifest: clientManifest,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-        const passwordMessage = new sessionsPB.Password();
-        passwordMessage.setPassword(passwordNew);
         const keyPairJWK = await binUtils.retryAuthentication(
-          (auth) => pkClient.grpcClient.keysKeyPair(passwordMessage, auth),
-          meta,
+          (auth) =>
+            pkClient.rpcClient.methods.keysKeyPair({
+              metadata: auth,
+              password: passwordNew,
+            }),
+          auth,
         );
-        const publicKeyJWK = JSON.parse(keyPairJWK.getPublicKeyJwk());
-        const privateKeyJWE = JSON.parse(keyPairJWK.getPrivateKeyJwe());
         const pair = {
-          publicKey: publicKeyJWK,
-          privateKey: privateKeyJWE,
+          publicKey: keyPairJWK.publicKeyJwk,
+          privateKey: keyPairJWK.privateKeyJwe,
         };
         process.stdout.write(
           binUtils.outputFormatter({

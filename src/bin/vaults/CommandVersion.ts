@@ -16,9 +16,7 @@ class CommandVersion extends CommandPolykey {
     this.addOption(binOptions.clientPort);
     this.action(async (vault, versionId, options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
-      const vaultsPB = await import(
-        '../../proto/js/polykey/v1/vaults/vaults_pb'
-      );
+      const { clientManifest } = await import('../../client/handlers');
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -31,7 +29,7 @@ class CommandVersion extends CommandPolykey {
         options.passwordFile,
         this.fs,
       );
-      let pkClient: PolykeyClient;
+      let pkClient: PolykeyClient<typeof clientManifest>;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
       });
@@ -41,16 +39,16 @@ class CommandVersion extends CommandPolykey {
           nodeId: clientOptions.nodeId,
           host: clientOptions.clientHost,
           port: clientOptions.clientPort,
+          manifest: clientManifest,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-        const vaultMessage = new vaultsPB.Vault();
-        const vaultsVersionMessage = new vaultsPB.Version();
-        vaultMessage.setNameOrId(vault);
-        vaultsVersionMessage.setVault(vaultMessage);
-        vaultsVersionMessage.setVersionId(versionId);
         await binUtils.retryAuthentication(
           (auth) =>
-            pkClient.grpcClient.vaultsVersion(vaultsVersionMessage, auth),
+            pkClient.rpcClient.methods.vaultsVersion({
+              metadata: auth,
+              nameOrId: vault,
+              versionId: versionId,
+            }),
           meta,
         );
         /**

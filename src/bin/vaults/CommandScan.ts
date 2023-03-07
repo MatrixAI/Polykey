@@ -1,4 +1,3 @@
-import type { Metadata } from '@grpc/grpc-js';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
 import * as binOptions from '../utils/options';
@@ -15,8 +14,7 @@ class CommandScan extends CommandPolykey {
     this.addOption(binOptions.clientPort);
     this.action(async (nodeId, options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
-      const nodesPB = await import('../../proto/js/polykey/v1/nodes/nodes_pb');
-
+      const { clientManifest } = await import('../../client/handlers');
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -30,6 +28,7 @@ class CommandScan extends CommandPolykey {
         nodeId: clientOptions.nodeId,
         host: clientOptions.clientHost,
         port: clientOptions.clientPort,
+        manifest: clientManifest,
         logger: this.logger.getChild(PolykeyClient.name),
       });
 
@@ -39,24 +38,21 @@ class CommandScan extends CommandPolykey {
       );
 
       try {
-        const grpcClient = client.grpcClient;
-        const nodeMessage = new nodesPB.Node();
-        nodeMessage.setNodeId(nodeId);
-
-        const data = await binUtils.retryAuthentication(
-          async (meta: Metadata) => {
-            const data: Array<string> = [];
-            const stream = grpcClient.vaultsScan(nodeMessage, meta);
-            for await (const vault of stream) {
-              const vaultName = vault.getVaultName();
-              const vaultIdEncoded = vault.getVaultId();
-              const permissions = vault.getVaultPermissionsList().join(',');
-              data.push(`${vaultName}\t\t${vaultIdEncoded}\t\t${permissions}`);
-            }
-            return data;
-          },
-          meta,
-        );
+        const rpcClient = client.rpcClient;
+        const data = await binUtils.retryAuthentication(async (auth) => {
+          const data: Array<string> = [];
+          const stream = await rpcClient.methods.vaultsScan({
+            metadata: auth,
+            nodeIdEncoded: nodeId,
+          });
+          for await (const vault of stream) {
+            const vaultName = vault.vaultName;
+            const vaultIdEncoded = vault.vaultIdEncoded;
+            const permissions = vault.permissions.join(',');
+            data.push(`${vaultName}\t\t${vaultIdEncoded}\t\t${permissions}`);
+          }
+          return data;
+        }, meta);
 
         process.stdout.write(
           binUtils.outputFormatter({

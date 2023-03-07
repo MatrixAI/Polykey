@@ -21,10 +21,7 @@ class CommandDiscover extends CommandPolykey {
     this.addOption(binOptions.clientPort);
     this.action(async (gestaltId: GestaltId, options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
-      const identitiesPB = await import(
-        '../../proto/js/polykey/v1/identities/identities_pb'
-      );
-      const nodesPB = await import('../../proto/js/polykey/v1/nodes/nodes_pb');
+      const { clientManifest } = await import('../../client/handlers');
       const utils = await import('../../utils');
       const nodesUtils = await import('../../nodes/utils');
       const clientOptions = await binProcessors.processClientOptions(
@@ -35,11 +32,11 @@ class CommandDiscover extends CommandPolykey {
         this.fs,
         this.logger.getChild(binProcessors.processClientOptions.name),
       );
-      const meta = await binProcessors.processAuthentication(
+      const auth = await binProcessors.processAuthentication(
         options.passwordFile,
         this.fs,
       );
-      let pkClient: PolykeyClient;
+      let pkClient: PolykeyClient<typeof clientManifest>;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
       });
@@ -49,6 +46,7 @@ class CommandDiscover extends CommandPolykey {
           nodeId: clientOptions.nodeId,
           host: clientOptions.clientHost,
           port: clientOptions.clientPort,
+          manifest: clientManifest,
           logger: this.logger.getChild(PolykeyClient.name),
         });
         const [type, id] = gestaltId;
@@ -56,31 +54,27 @@ class CommandDiscover extends CommandPolykey {
           case 'node':
             {
               // Discovery by Node
-              const nodeMessage = new nodesPB.Node();
-              nodeMessage.setNodeId(nodesUtils.encodeNodeId(id));
               await binUtils.retryAuthentication(
                 (auth) =>
-                  pkClient.grpcClient.gestaltsDiscoveryByNode(
-                    nodeMessage,
-                    auth,
-                  ),
-                meta,
+                  pkClient.rpcClient.methods.gestaltsDiscoveryByNode({
+                    metadata: auth,
+                    nodeIdEncoded: nodesUtils.encodeNodeId(id),
+                  }),
+                auth,
               );
             }
             break;
           case 'identity':
             {
               //  Discovery by Identity
-              const providerMessage = new identitiesPB.Provider();
-              providerMessage.setProviderId(id[0]);
-              providerMessage.setIdentityId(id[1]);
               await binUtils.retryAuthentication(
                 (auth) =>
-                  pkClient.grpcClient.gestaltsDiscoveryByIdentity(
-                    providerMessage,
-                    auth,
-                  ),
-                meta,
+                  pkClient.rpcClient.methods.gestaltsDiscoveryByIdentity({
+                    metadata: auth,
+                    providerId: id[0],
+                    identityId: id[1],
+                  }),
+                auth,
               );
             }
             break;

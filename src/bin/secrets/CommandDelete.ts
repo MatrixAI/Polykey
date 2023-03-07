@@ -21,12 +21,7 @@ class CommandDelete extends CommandPolykey {
     this.addOption(binOptions.clientPort);
     this.action(async (secretPath, options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
-      const vaultsPB = await import(
-        '../../proto/js/polykey/v1/vaults/vaults_pb'
-      );
-      const secretsPB = await import(
-        '../../proto/js/polykey/v1/secrets/secrets_pb'
-      );
+      const { clientManifest } = await import('../../client/handlers');
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -35,11 +30,11 @@ class CommandDelete extends CommandPolykey {
         this.fs,
         this.logger.getChild(binProcessors.processClientOptions.name),
       );
-      const meta = await binProcessors.processAuthentication(
+      const auth = await binProcessors.processAuthentication(
         options.passwordFile,
         this.fs,
       );
-      let pkClient: PolykeyClient;
+      let pkClient: PolykeyClient<typeof clientManifest>;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
       });
@@ -49,17 +44,17 @@ class CommandDelete extends CommandPolykey {
           nodeId: clientOptions.nodeId,
           host: clientOptions.clientHost,
           port: clientOptions.clientPort,
+          manifest: clientManifest,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-        const vaultMessage = new vaultsPB.Vault();
-        const secretMessage = new secretsPB.Secret();
-        vaultMessage.setNameOrId(secretPath[0]);
-        secretMessage.setVault(vaultMessage);
-        secretMessage.setSecretName(secretPath[1]);
         await binUtils.retryAuthentication(
           (auth) =>
-            pkClient.grpcClient.vaultsSecretsDelete(secretMessage, auth),
-          meta,
+            pkClient.rpcClient.methods.vaultsSecretsDelete({
+              metadata: auth,
+              nameOrId: secretPath[0],
+              secretName: secretPath[1],
+            }),
+          auth,
         );
       } finally {
         if (pkClient! != null) await pkClient.stop();

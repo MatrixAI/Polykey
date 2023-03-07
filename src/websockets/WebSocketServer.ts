@@ -4,7 +4,7 @@ import type {
   WritableStreamDefaultController,
 } from 'stream/web';
 import type { FileSystem, PromiseDeconstructed } from 'types';
-import type { TLSConfig } from 'network/types';
+import type { Host, Port, TLSConfig } from 'network/types';
 import type {
   HttpRequest,
   HttpResponse,
@@ -96,7 +96,7 @@ class WebSocketServer extends EventTarget {
 
   protected server: uWebsocket.TemplatedApp;
   protected listenSocket: uWebsocket.us_listen_socket;
-  protected host: string;
+  protected host_: string;
   protected connectionEventHandler: (
     event: webSocketEvents.ConnectionEvent,
   ) => void;
@@ -189,11 +189,11 @@ class WebSocketServer extends EventTarget {
     this.logger.debug(
       `Listening on port ${uWebsocket.us_socket_local_port(this.listenSocket)}`,
     );
-    this.host = host ?? '127.0.0.1';
+    this.host_ = host ?? '127.0.0.1';
     this.dispatchEvent(
       new webSocketEvents.StartEvent({
         detail: {
-          host: this.host,
+          host: this.host_,
           port: this.port,
         },
       }),
@@ -222,8 +222,12 @@ class WebSocketServer extends EventTarget {
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
-  get port() {
-    return uWebsocket.us_socket_local_port(this.listenSocket);
+  get port(): Port {
+    return uWebsocket.us_socket_local_port(this.listenSocket) as Port;
+  }
+
+  get host(): Host {
+    return this.host_ as Host;
   }
 
   /**
@@ -296,7 +300,7 @@ class WebSocketServer extends EventTarget {
     //  port from the `uWebsocket` library.
     const connectionInfo: ConnectionInfo = {
       remoteHost: Buffer.from(ws.getRemoteAddressAsText()).toString(),
-      localHost: this.host,
+      localHost: this.host_,
       localPort: this.port,
     };
     this.dispatchEvent(

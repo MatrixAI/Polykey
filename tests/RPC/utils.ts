@@ -9,6 +9,7 @@ import type {
   JsonRpcResponseResult,
   JsonRpcResponse,
   JsonRpcRequest,
+  ClientMetadata,
 } from '@/RPC/types';
 import { ReadableStream, WritableStream, TransformStream } from 'stream/web';
 import { fc } from '@fast-check/jest';
@@ -263,7 +264,11 @@ const errorArb = (
     fc.oneof(
       fc.constant(new rpcErrors.ErrorRpcParse(undefined, { cause })),
       fc.constant(new rpcErrors.ErrorRpcMessageLength(undefined, { cause })),
-      fc.constant(new rpcErrors.ErrorRemoteError(undefined, { cause })),
+      fc.constant(
+        new rpcErrors.ErrorPolykeyRemote({} as ClientMetadata, undefined, {
+          cause,
+        }),
+      ),
     ),
   );
 

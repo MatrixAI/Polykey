@@ -20,12 +20,7 @@ class CommandGet extends CommandPolykey {
     this.addOption(binOptions.clientPort);
     this.action(async (secretPath, options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
-      const vaultsPB = await import(
-        '../../proto/js/polykey/v1/vaults/vaults_pb'
-      );
-      const secretsPB = await import(
-        '../../proto/js/polykey/v1/secrets/secrets_pb'
-      );
+      const { clientManifest } = await import('../../client/handlers');
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -38,7 +33,7 @@ class CommandGet extends CommandPolykey {
         options.passwordFile,
         this.fs,
       );
-      let pkClient: PolykeyClient;
+      let pkClient: PolykeyClient<typeof clientManifest>;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
       });
@@ -48,18 +43,19 @@ class CommandGet extends CommandPolykey {
           nodeId: clientOptions.nodeId,
           host: clientOptions.clientHost,
           port: clientOptions.clientPort,
+          manifest: clientManifest,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-        const secretMessage = new secretsPB.Secret();
-        const vaultMessage = new vaultsPB.Vault();
-        vaultMessage.setNameOrId(secretPath[0]);
-        secretMessage.setVault(vaultMessage);
-        secretMessage.setSecretName(secretPath[1]);
         const response = await binUtils.retryAuthentication(
-          (auth) => pkClient.grpcClient.vaultsSecretsGet(secretMessage, auth),
+          (auth) =>
+            pkClient.rpcClient.methods.vaultsSecretsGet({
+              metadata: auth,
+              nameOrId: secretPath[0],
+              secretName: secretPath[1],
+            }),
           meta,
         );
-        const secretContent = response.getSecretContent_asU8();
+        const secretContent = Buffer.from(response.secretContent, 'binary');
         process.stdout.write(
           binUtils.outputFormatter({
             type: 'raw',

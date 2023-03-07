@@ -25,9 +25,7 @@ class CommandClaim extends CommandPolykey {
     this.addOption(binOptions.clientPort);
     this.action(async (providerId, identityId, options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
-      const identitiesPB = await import(
-        '../../proto/js/polykey/v1/identities/identities_pb'
-      );
+      const { clientManifest } = await import('../../client/handlers');
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -36,11 +34,11 @@ class CommandClaim extends CommandPolykey {
         this.fs,
         this.logger.getChild(binProcessors.processClientOptions.name),
       );
-      const meta = await binProcessors.processAuthentication(
+      const auth = await binProcessors.processAuthentication(
         options.passwordFile,
         this.fs,
       );
-      let pkClient: PolykeyClient;
+      let pkClient: PolykeyClient<typeof clientManifest>;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
       });
@@ -50,18 +48,21 @@ class CommandClaim extends CommandPolykey {
           nodeId: clientOptions.nodeId,
           host: clientOptions.clientHost,
           port: clientOptions.clientPort,
+          manifest: clientManifest,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-        const providerMessage = new identitiesPB.Provider();
-        providerMessage.setProviderId(providerId);
-        providerMessage.setIdentityId(identityId);
         const claimMessage = await binUtils.retryAuthentication(
-          (auth) => pkClient.grpcClient.identitiesClaim(providerMessage, auth),
-          meta,
+          (auth) =>
+            pkClient.rpcClient.methods.identitiesClaim({
+              metadata: auth,
+              providerId: providerId,
+              identityId: identityId,
+            }),
+          auth,
         );
-        const output = [`Claim Id: ${claimMessage.getClaimId()}`];
-        if (claimMessage.getUrl()) {
-          output.push(`Url: ${claimMessage.getUrl()}`);
+        const output = [`Claim Id: ${claimMessage.claimId}`];
+        if (claimMessage.url) {
+          output.push(`Url: ${claimMessage.url}`);
         }
         process.stdout.write(
           binUtils.outputFormatter({

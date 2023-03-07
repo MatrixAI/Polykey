@@ -1,7 +1,6 @@
 import type { POJO } from '../../types';
 import process from 'process';
 import { LogLevel } from '@matrixai/logger';
-import * as grpc from '@grpc/grpc-js';
 import { AbstractError } from '@matrixai/errors';
 import * as binProcessors from './processors';
 import ErrorPolykey from '../../ErrorPolykey';
@@ -177,8 +176,8 @@ function outputFormatter(msg: OutputObject): string | Uint8Array {
  * Known as "privilege elevation"
  */
 async function retryAuthentication<T>(
-  f: (meta: grpc.Metadata) => Promise<T>,
-  meta: grpc.Metadata = new grpc.Metadata(),
+  f: (meta: { Authorization?: string }) => Promise<T>,
+  meta: { Authorization?: string },
 ): Promise<T> {
   try {
     return await f(meta);
@@ -206,9 +205,11 @@ async function retryAuthentication<T>(
       throw new binErrors.ErrorCLIPasswordMissing();
     }
     // Augment existing metadata
-    clientUtils.encodeAuthFromPassword(password, meta);
+    const auth = {
+      Authorization: clientUtils.encodeAuthFromPassword(password),
+    };
     try {
-      return await f(meta);
+      return await f(auth);
     } catch (e) {
       const [cause] = remoteErrorCause(e);
       // The auth cannot be missing, so when it is denied do we retry

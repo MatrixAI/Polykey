@@ -25,12 +25,7 @@ class CommandUpdate extends CommandPolykey {
     this.addOption(binOptions.clientPort);
     this.action(async (directoryPath, secretPath, options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
-      const vaultsPB = await import(
-        '../../proto/js/polykey/v1/vaults/vaults_pb'
-      );
-      const secretsPB = await import(
-        '../../proto/js/polykey/v1/secrets/secrets_pb'
-      );
+      const { clientManifest } = await import('../../client/handlers');
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -43,7 +38,7 @@ class CommandUpdate extends CommandPolykey {
         options.passwordFile,
         this.fs,
       );
-      let pkClient: PolykeyClient;
+      let pkClient: PolykeyClient<typeof clientManifest>;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
       });
@@ -53,13 +48,9 @@ class CommandUpdate extends CommandPolykey {
           nodeId: clientOptions.nodeId,
           host: clientOptions.clientHost,
           port: clientOptions.clientPort,
+          manifest: clientManifest,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-        const vaultMessage = new vaultsPB.Vault();
-        const secretMessage = new secretsPB.Secret();
-        secretMessage.setVault(vaultMessage);
-        vaultMessage.setNameOrId(secretPath[0]);
-        secretMessage.setSecretName(secretPath[1]);
         let content: Buffer;
         try {
           content = await this.fs.promises.readFile(directoryPath);
@@ -74,9 +65,14 @@ class CommandUpdate extends CommandPolykey {
             cause: e,
           });
         }
-        secretMessage.setSecretContent(content);
         await binUtils.retryAuthentication(
-          (auth) => pkClient.grpcClient.vaultsSecretsEdit(secretMessage, auth),
+          (auth) =>
+            pkClient.rpcClient.methods.vaultsSecretsEdit({
+              metadata: auth,
+              nameOrId: secretPath[0],
+              secretName: secretPath[1],
+              secretContent: content.toString('binary'),
+            }),
           meta,
         );
       } finally {

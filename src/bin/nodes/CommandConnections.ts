@@ -1,5 +1,5 @@
 import type PolykeyClient from '../../PolykeyClient';
-import type nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
+import type { NodeConnectionMessage } from '../../client/handlers/types';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils/utils';
 import * as binProcessors from '../utils/processors';
@@ -11,7 +11,7 @@ class CommandAdd extends CommandPolykey {
     this.description('list all active node connections');
     this.action(async (options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
-      const utilsPB = await import('../../proto/js/polykey/v1/utils/utils_pb');
+      const { clientManifest } = await import('../../client/handlers');
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -20,11 +20,11 @@ class CommandAdd extends CommandPolykey {
         this.fs,
         this.logger.getChild(binProcessors.processClientOptions.name),
       );
-      const meta = await binProcessors.processAuthentication(
+      const auth = await binProcessors.processAuthentication(
         options.passwordFile,
         this.fs,
       );
-      let pkClient: PolykeyClient;
+      let pkClient: PolykeyClient<typeof clientManifest>;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
       });
@@ -34,29 +34,28 @@ class CommandAdd extends CommandPolykey {
           nodeId: clientOptions.nodeId,
           host: clientOptions.clientHost,
           port: clientOptions.clientPort,
+          manifest: clientManifest,
           logger: this.logger.getChild(PolykeyClient.name),
         });
         // DO things here...
         // Like create the message.
-        const emptyMessage = new utilsPB.EmptyMessage();
-
         const connections = await binUtils.retryAuthentication(async (auth) => {
-          const connections = pkClient.grpcClient.nodesListConnections(
-            emptyMessage,
-            auth,
-          );
-          const connectionEntries: Array<nodesPB.NodeConnection.AsObject> = [];
+          const connections =
+            await pkClient.rpcClient.methods.nodesListConnections({
+              metadata: auth,
+            });
+          const connectionEntries: Array<NodeConnectionMessage> = [];
           for await (const connection of connections) {
-            connectionEntries.push(connection.toObject());
+            connectionEntries.push(connection);
           }
           return connectionEntries;
-        }, meta);
+        }, auth);
         if (options.format === 'human') {
           const output: Array<string> = [];
           for (const connection of connections) {
             const hostnameString =
               connection.hostname === '' ? '' : `(${connection.hostname})`;
-            const hostString = `${connection.nodeId}@${connection.host}${hostnameString}:${connection.port}`;
+            const hostString = `${connection.nodeIdEncoded}@${connection.host}${hostnameString}:${connection.port}`;
             const usageCount = connection.usageCount;
             const timeout =
               connection.timeout === -1 ? 'NA' : `${connection.timeout}`;

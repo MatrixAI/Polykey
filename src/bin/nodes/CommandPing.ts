@@ -18,8 +18,8 @@ class CommandPing extends CommandPolykey {
     this.addOption(binOptions.clientPort);
     this.action(async (nodeId: NodeId, options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
+      const { clientManifest } = await import('../../client/handlers');
       const nodesUtils = await import('../../nodes/utils');
-      const nodesPB = await import('../../proto/js/polykey/v1/nodes/nodes_pb');
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -28,11 +28,11 @@ class CommandPing extends CommandPolykey {
         this.fs,
         this.logger.getChild(binProcessors.processClientOptions.name),
       );
-      const meta = await binProcessors.processAuthentication(
+      const auth = await binProcessors.processAuthentication(
         options.passwordFile,
         this.fs,
       );
-      let pkClient: PolykeyClient;
+      let pkClient: PolykeyClient<typeof clientManifest>;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
       });
@@ -42,17 +42,20 @@ class CommandPing extends CommandPolykey {
           nodeId: clientOptions.nodeId,
           host: clientOptions.clientHost,
           port: clientOptions.clientPort,
+          manifest: clientManifest,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-        const nodeMessage = new nodesPB.Node();
-        nodeMessage.setNodeId(nodesUtils.encodeNodeId(nodeId));
         let error;
         const statusMessage = await binUtils.retryAuthentication(
-          (auth) => pkClient.grpcClient.nodesPing(nodeMessage, auth),
-          meta,
+          (auth) =>
+            pkClient.rpcClient.methods.nodesPing({
+              metadata: auth,
+              nodeIdEncoded: nodesUtils.encodeNodeId(nodeId),
+            }),
+          auth,
         );
         const status = { success: false, message: '' };
-        status.success = statusMessage ? statusMessage.getSuccess() : false;
+        status.success = statusMessage ? statusMessage.success : false;
         if (!status.success && !error) {
           error = new binErrors.ErrorCLINodePingFailed('No response received');
         }

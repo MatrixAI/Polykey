@@ -1,6 +1,6 @@
 import type PolykeyClient from '../../PolykeyClient';
 import type { GestaltId } from '../../gestalts/types';
-import type gestaltsPB from '../../proto/js/polykey/v1/gestalts/gestalts_pb';
+import type { GestaltMessage } from '../../client/handlers/types';
 import CommandPolykey from '../CommandPolykey';
 import * as binOptions from '../utils/options';
 import * as binUtils from '../utils';
@@ -24,10 +24,7 @@ class CommandGet extends CommandPolykey {
     this.addOption(binOptions.clientPort);
     this.action(async (gestaltId: GestaltId, options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
-      const identitiesPB = await import(
-        '../../proto/js/polykey/v1/identities/identities_pb'
-      );
-      const nodesPB = await import('../../proto/js/polykey/v1/nodes/nodes_pb');
+      const { clientManifest } = await import('../../client/handlers');
       const utils = await import('../../utils');
       const nodesUtils = await import('../../nodes/utils');
       const clientOptions = await binProcessors.processClientOptions(
@@ -38,11 +35,11 @@ class CommandGet extends CommandPolykey {
         this.fs,
         this.logger.getChild(binProcessors.processClientOptions.name),
       );
-      const meta = await binProcessors.processAuthentication(
+      const auth = await binProcessors.processAuthentication(
         options.passwordFile,
         this.fs,
       );
-      let pkClient: PolykeyClient;
+      let pkClient: PolykeyClient<typeof clientManifest>;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
       });
@@ -52,46 +49,43 @@ class CommandGet extends CommandPolykey {
           nodeId: clientOptions.nodeId,
           host: clientOptions.clientHost,
           port: clientOptions.clientPort,
+          manifest: clientManifest,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-        let res: gestaltsPB.Graph | null = null;
+        let res: GestaltMessage | null = null;
         const [type, id] = gestaltId;
         switch (type) {
           case 'node':
             {
               // Getting from node
-              const nodeMessage = new nodesPB.Node();
-              nodeMessage.setNodeId(nodesUtils.encodeNodeId(id));
               res = await binUtils.retryAuthentication(
                 (auth) =>
-                  pkClient.grpcClient.gestaltsGestaltGetByNode(
-                    nodeMessage,
-                    auth,
-                  ),
-                meta,
+                  pkClient.rpcClient.methods.gestaltsGestaltGetByNode({
+                    metadata: auth,
+                    nodeIdEncoded: nodesUtils.encodeNodeId(id),
+                  }),
+                auth,
               );
             }
             break;
           case 'identity':
             {
               // Getting from identity.
-              const providerMessage = new identitiesPB.Provider();
-              providerMessage.setProviderId(id[0]);
-              providerMessage.setIdentityId(id[1]);
               res = await binUtils.retryAuthentication(
                 (auth) =>
-                  pkClient.grpcClient.gestaltsGestaltGetByIdentity(
-                    providerMessage,
-                    auth,
-                  ),
-                meta,
+                  pkClient.rpcClient.methods.gestaltsGestaltGetByIdentity({
+                    metadata: auth,
+                    providerId: id[0],
+                    identityId: id[1],
+                  }),
+                auth,
               );
             }
             break;
           default:
             utils.never();
         }
-        const gestalt = JSON.parse(res!.getGestaltGraph());
+        const gestalt = res!.gestalt;
         let output: any = gestalt;
         if (options.format !== 'json') {
           // Creating a list.

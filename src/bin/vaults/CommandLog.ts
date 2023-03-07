@@ -1,4 +1,3 @@
-import type { Metadata } from '@grpc/grpc-js';
 import type PolykeyClient from '../../PolykeyClient';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
@@ -21,9 +20,7 @@ class CommandLog extends CommandPolykey {
     this.addOption(binOptions.clientPort);
     this.action(async (vault, options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
-      const vaultsPB = await import(
-        '../../proto/js/polykey/v1/vaults/vaults_pb'
-      );
+      const { clientManifest } = await import('../../client/handlers');
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -36,7 +33,7 @@ class CommandLog extends CommandPolykey {
         options.passwordFile,
         this.fs,
       );
-      let pkClient: PolykeyClient;
+      let pkClient: PolykeyClient<typeof clientManifest>;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
       });
@@ -46,33 +43,25 @@ class CommandLog extends CommandPolykey {
           nodeId: clientOptions.nodeId,
           host: clientOptions.clientHost,
           port: clientOptions.clientPort,
+          manifest: clientManifest,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-        const vaultMessage = new vaultsPB.Vault();
-        vaultMessage.setNameOrId(vault);
-        const vaultsLogMessage = new vaultsPB.Log();
-        vaultsLogMessage.setVault(vaultMessage);
-        vaultsLogMessage.setLogDepth(options.depth);
-        vaultsLogMessage.setCommitId(options.commitId ?? '');
-        const data = await binUtils.retryAuthentication(
-          async (meta: Metadata) => {
-            const data: Array<string> = [];
-            const stream = pkClient.grpcClient.vaultsLog(
-              vaultsLogMessage,
-              meta,
-            );
-            for await (const commit of stream) {
-              const timestamp = commit.getTimeStamp();
-              const date = timestamp!.toDate();
-              data.push(`commit ${commit.getOid()}`);
-              data.push(`committer ${commit.getCommitter()}`);
-              data.push(`Date: ${date.toDateString()}`);
-              data.push(`${commit.getMessage()}`);
-            }
-            return data;
-          },
-          meta,
-        );
+        const data = await binUtils.retryAuthentication(async (auth) => {
+          const data: Array<string> = [];
+          const logStream = await pkClient.rpcClient.methods.vaultsLog({
+            metadata: auth,
+            nameOrId: vault,
+            depth: options.depth,
+            commitId: options.commitId,
+          });
+          for await (const logEntryMessage of logStream) {
+            data.push(`commit ${logEntryMessage.commitId}`);
+            data.push(`committer ${logEntryMessage.committer}`);
+            data.push(`Date: ${logEntryMessage.timestamp}`);
+            data.push(`${logEntryMessage.message}`);
+          }
+          return data;
+        }, meta);
         process.stdout.write(
           binUtils.outputFormatter({
             type: options.format === 'json' ? 'json' : 'list',

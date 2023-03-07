@@ -22,10 +22,8 @@ class CommandSend extends CommandPolykey {
     this.addOption(binOptions.clientPort);
     this.action(async (nodeId: NodeId, message, options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
+      const { clientManifest } = await import('../../client/handlers');
       const nodesUtils = await import('../../nodes/utils');
-      const notificationsPB = await import(
-        '../../proto/js/polykey/v1/notifications/notifications_pb'
-      );
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -34,11 +32,11 @@ class CommandSend extends CommandPolykey {
         this.fs,
         this.logger.getChild(binProcessors.processClientOptions.name),
       );
-      const meta = await binProcessors.processAuthentication(
+      const auth = await binProcessors.processAuthentication(
         options.passwordFile,
         this.fs,
       );
-      let pkClient: PolykeyClient;
+      let pkClient: PolykeyClient<typeof clientManifest>;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
       });
@@ -48,20 +46,17 @@ class CommandSend extends CommandPolykey {
           nodeId: clientOptions.nodeId,
           host: clientOptions.clientHost,
           port: clientOptions.clientPort,
+          manifest: clientManifest,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-        const notificationsSendMessage = new notificationsPB.Send();
-        const generalMessage = new notificationsPB.General();
-        generalMessage.setMessage(message);
-        notificationsSendMessage.setReceiverId(nodesUtils.encodeNodeId(nodeId));
-        notificationsSendMessage.setData(generalMessage);
         await binUtils.retryAuthentication(
           (auth) =>
-            pkClient.grpcClient.notificationsSend(
-              notificationsSendMessage,
-              auth,
-            ),
-          meta,
+            pkClient.rpcClient.methods.notificationsSend({
+              metadata: auth,
+              nodeIdEncoded: nodesUtils.encodeNodeId(nodeId),
+              message: message,
+            }),
+          auth,
         );
       } finally {
         if (pkClient! != null) await pkClient.stop();

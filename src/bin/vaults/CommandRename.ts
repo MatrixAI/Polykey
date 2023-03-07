@@ -16,9 +16,7 @@ class CommandRename extends CommandPolykey {
     this.addOption(binOptions.clientPort);
     this.action(async (vaultName, newVaultName, options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
-      const vaultsPB = await import(
-        '../../proto/js/polykey/v1/vaults/vaults_pb'
-      );
+      const { clientManifest } = await import('../../client/handlers');
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -31,7 +29,7 @@ class CommandRename extends CommandPolykey {
         options.passwordFile,
         this.fs,
       );
-      let pkClient: PolykeyClient;
+      let pkClient: PolykeyClient<typeof clientManifest>;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
       });
@@ -41,15 +39,16 @@ class CommandRename extends CommandPolykey {
           nodeId: clientOptions.nodeId,
           host: clientOptions.clientHost,
           port: clientOptions.clientPort,
+          manifest: clientManifest,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-        const vaultMessage = new vaultsPB.Vault();
-        const vaultRenameMessage = new vaultsPB.Rename();
-        vaultRenameMessage.setVault(vaultMessage);
-        vaultMessage.setNameOrId(vaultName);
-        vaultRenameMessage.setNewName(newVaultName);
         await binUtils.retryAuthentication(
-          (auth) => pkClient.grpcClient.vaultsRename(vaultRenameMessage, auth),
+          (auth) =>
+            pkClient.rpcClient.methods.vaultsRename({
+              metadata: auth,
+              nameOrId: vaultName,
+              newName: newVaultName,
+            }),
           meta,
         );
       } finally {

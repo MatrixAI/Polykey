@@ -1,11 +1,16 @@
-import type { FileSystem, Timer } from './types';
+import type { FileSystem } from './types';
 import type { NodeId } from './ids/types';
 import type { Host, Port } from './network/types';
+import type { ClientManifest } from './RPC/types';
+import type { Timer } from '@matrixai/timer';
 import path from 'path';
 import Logger from '@matrixai/logger';
 import { CreateDestroyStartStop } from '@matrixai/async-init/dist/CreateDestroyStartStop';
+import RPCClient from './RPC/RPCClient';
+import * as middlewareUtils from './RPC/middleware';
+import WebSocketClient from './websockets/WebSocketClient';
+import * as authMiddleware from './client/authenticationMiddleware';
 import { Session } from './sessions';
-import { GRPCClientClient } from './client';
 import * as errors from './errors';
 import * as utils from './utils';
 import config from './config';
@@ -15,20 +20,23 @@ import config from './config';
  * a new GRPCClientClient which attempts to connect to an existing PolykeyAgent's
  * grpc server.
  */
-interface PolykeyClient extends CreateDestroyStartStop {}
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- False positive for M
+interface PolykeyClient<M extends ClientManifest>
+  extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
   new errors.ErrorPolykeyClientRunning(),
   new errors.ErrorPolykeyClientDestroyed(),
 )
-class PolykeyClient {
-  static async createPolykeyClient({
+class PolykeyClient<M extends ClientManifest> {
+  static async createPolykeyClient<M extends ClientManifest>({
     nodeId,
     host,
     port,
     nodePath = config.defaults.nodePath,
     session,
-    grpcClient,
-    timer,
+    manifest,
+    connectionTimeout,
+    pingTimeout,
     fs = require('fs'),
     logger = new Logger(this.name),
     fresh = false,
@@ -39,11 +47,13 @@ class PolykeyClient {
     nodePath?: string;
     timer?: Timer;
     session?: Session;
-    grpcClient?: GRPCClientClient;
+    manifest: M;
+    connectionTimeout?: number;
+    pingTimeout?: number;
     fs?: FileSystem;
     logger?: Logger;
     fresh?: boolean;
-  }): Promise<PolykeyClient> {
+  }): Promise<PolykeyClient<M>> {
     logger.info(`Creating ${this.name}`);
     if (nodePath == null) {
       throw new errors.ErrorUtilsNodePath();
@@ -57,20 +67,26 @@ class PolykeyClient {
         logger: logger.getChild(Session.name),
         fresh,
       }));
-    grpcClient =
-      grpcClient ??
-      (await GRPCClientClient.createGRPCClientClient({
-        nodeId,
-        host,
-        port,
-        tlsConfig: { keyPrivatePem: undefined, certChainPem: undefined },
-        session,
-        timer,
-        logger: logger.getChild(GRPCClientClient.name),
-      }));
+    const webSocketClient = await WebSocketClient.createWebSocketClient({
+      host,
+      port,
+      expectedNodeIds: [nodeId],
+      logger: logger.getChild(WebSocketClient.name),
+      connectionTimeout,
+      pingTimeout,
+    });
+    const rpcClient = await RPCClient.createRPCClient<M>({
+      manifest,
+      streamPairCreateCallback: async () => webSocketClient.startConnection(),
+      middleware: middlewareUtils.defaultClientMiddlewareWrapper(
+        authMiddleware.authenticationMiddlewareClient(session),
+      ),
+      logger: logger.getChild(RPCClient.name),
+    });
     const pkClient = new this({
       nodePath,
-      grpcClient,
+      webSocketClient,
+      rpcClient,
       session,
       fs,
       logger,
@@ -82,20 +98,23 @@ class PolykeyClient {
 
   public readonly nodePath: string;
   public readonly session: Session;
-  public readonly grpcClient: GRPCClientClient;
+  public readonly webSocketClient: WebSocketClient;
+  public readonly rpcClient: RPCClient<M>;
 
   protected fs: FileSystem;
   protected logger: Logger;
 
   constructor({
     nodePath,
+    webSocketClient,
+    rpcClient,
     session,
-    grpcClient,
     fs,
     logger,
   }: {
     nodePath: string;
-    grpcClient: GRPCClientClient;
+    webSocketClient: WebSocketClient;
+    rpcClient: RPCClient<M>;
     session: Session;
     fs: FileSystem;
     logger: Logger;
@@ -103,7 +122,8 @@ class PolykeyClient {
     this.logger = logger;
     this.nodePath = nodePath;
     this.session = session;
-    this.grpcClient = grpcClient;
+    this.webSocketClient = webSocketClient;
+    this.rpcClient = rpcClient;
     this.fs = fs;
   }
 
@@ -114,13 +134,15 @@ class PolykeyClient {
 
   public async stop() {
     this.logger.info(`Stopping ${this.constructor.name}`);
-    await this.grpcClient.destroy();
+    await this.webSocketClient.stopConnections();
     await this.session.stop();
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
   public async destroy() {
     this.logger.info(`Destroying ${this.constructor.name}`);
+    await this.webSocketClient.destroy(true);
+    await this.rpcClient.destroy();
     await this.session.destroy();
     this.logger.info(`Destroyed ${this.constructor.name}`);
   }

@@ -15,7 +15,7 @@ class CommandStop extends CommandPolykey {
     this.addOption(binOptions.clientPort);
     this.action(async (options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
-      const utilsPB = await import('../../proto/js/polykey/v1/utils/utils_pb');
+      const { clientManifest } = await import('../../client/handlers');
       const clientStatus = await binProcessors.processClientStatus(
         options.nodePath,
         options.nodeId,
@@ -34,13 +34,13 @@ class CommandStop extends CommandPolykey {
       } else if (statusInfo?.status === 'STARTING') {
         throw new binErrors.ErrorCLIPolykeyAgentStatus('agent is starting');
       }
-      const meta = await binProcessors.processAuthentication(
+      const auth = await binProcessors.processAuthentication(
         options.passwordFile,
         this.fs,
       );
       // Either the statusInfo is undefined or LIVE
       // Either way, the connection parameters now exist
-      let pkClient: PolykeyClient;
+      let pkClient: PolykeyClient<typeof clientManifest>;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
       });
@@ -50,12 +50,15 @@ class CommandStop extends CommandPolykey {
           nodeId: clientStatus.nodeId!,
           host: clientStatus.clientHost!,
           port: clientStatus.clientPort!,
+          manifest: clientManifest,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-        const emptyMessage = new utilsPB.EmptyMessage();
         await binUtils.retryAuthentication(
-          (auth) => pkClient.grpcClient.agentStop(emptyMessage, auth),
-          meta,
+          (auth) =>
+            pkClient.rpcClient.methods.agentStop({
+              metadata: auth,
+            }),
+          auth,
         );
         this.logger.info('Stopping Agent');
       } finally {
