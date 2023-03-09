@@ -3,7 +3,6 @@ import type {
   JsonRpcRequestMessage,
   StreamPairCreateCallback,
   ClientManifest,
-  ClientMetadata,
 } from './types';
 import type { JSONValue } from 'types';
 import type {
@@ -17,8 +16,10 @@ import type {
   MiddlewareFactory,
   MapCallers,
 } from './types';
+import type { NodeId } from 'ids/index';
 import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
 import Logger from '@matrixai/logger';
+import { IdInternal } from '@matrixai/id';
 import * as middlewareUtils from './middleware';
 import * as rpcErrors from './errors';
 import * as rpcUtils from './utils';
@@ -181,9 +182,12 @@ class RPCClient<M extends ClientManifest> {
     method: string,
   ): Promise<ReadableWritablePair<O, I>> {
     // Providing empty metadata here. we don't support it yet.
-    const outputMessageTransformStream = clientOutputTransformStream<O>(
-      {} as ClientMetadata,
-    );
+    const outputMessageTransformStream = clientOutputTransformStream<O>({
+      nodeId: IdInternal.fromBuffer<NodeId>(Buffer.alloc(32, 0)), // FIXME
+      host: '',
+      port: 0,
+      command: method,
+    });
     const inputMessageTransformStream = clientInputTransformStream<I>(method);
     const middleware = this.middleware();
     // Hooking up agnostic stream side

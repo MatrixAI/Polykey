@@ -10,6 +10,7 @@ import * as clientErrors from '../../client/errors';
 import * as grpcErrors from '../../grpc/errors';
 import * as nodesUtils from '../../nodes/utils';
 import * as utils from '../../utils';
+import * as rpcErrors from '../../RPC/errors';
 
 /**
  * Convert verbosity to LogLevel
@@ -177,7 +178,7 @@ function outputFormatter(msg: OutputObject): string | Uint8Array {
  */
 async function retryAuthentication<T>(
   f: (meta: { Authorization?: string }) => Promise<T>,
-  meta: { Authorization?: string },
+  meta: { Authorization?: string } = {},
 ): Promise<T> {
   try {
     return await f(meta);
@@ -223,7 +224,7 @@ async function retryAuthentication<T>(
 function remoteErrorCause(e: any): [any, number] {
   let errorCause = e;
   let depth = 0;
-  while (errorCause instanceof grpcErrors.ErrorPolykeyRemoteOLD) {
+  while (errorCause instanceof rpcErrors.ErrorPolykeyRemote) {
     errorCause = errorCause.cause;
     depth++;
   }

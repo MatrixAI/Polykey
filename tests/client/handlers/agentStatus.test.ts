@@ -3,17 +3,14 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { DB } from '@matrixai/db';
-import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import RPCServer from '@/RPC/RPCServer';
-import TaskManager from '@/tasks/TaskManager';
-import CertManager from '@/keys/CertManager';
 import { agentStatus, AgentStatusHandler } from '@/client/handlers/agentStatus';
 import RPCClient from '@/RPC/RPCClient';
 import * as nodesUtils from '@/nodes/utils';
 import WebSocketClient from '@/websockets/WebSocketClient';
 import WebSocketServer from '@/websockets/WebSocketServer';
+import PolykeyAgent from '@/PolykeyAgent';
 import * as testsUtils from '../../utils';
 
 describe('agentStatus', () => {
@@ -23,10 +20,7 @@ describe('agentStatus', () => {
   const password = 'helloworld';
   const host = '127.0.0.1';
   let dataDir: string;
-  let db: DB;
-  let keyRing: KeyRing;
-  let taskManager: TaskManager;
-  let certManager: CertManager;
+  let pkAgent: PolykeyAgent;
   let clientServer: WebSocketServer;
   let clientClient: WebSocketClient;
   let tlsConfig: TLSConfig;
@@ -35,36 +29,18 @@ describe('agentStatus', () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
-    const keysPath = path.join(dataDir, 'keys');
-    const dbPath = path.join(dataDir, 'db');
-    db = await DB.createDB({
-      dbPath,
-      logger,
-    });
-    keyRing = await KeyRing.createKeyRing({
+    const nodePath = path.join(dataDir, 'node');
+    pkAgent = await PolykeyAgent.createPolykeyAgent({
+      nodePath,
       password,
-      keysPath,
-      logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
-    });
-    taskManager = await TaskManager.createTaskManager({ db, logger });
-    certManager = await CertManager.createCertManager({
-      db,
-      keyRing,
-      taskManager,
       logger,
     });
-    tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
+    tlsConfig = await testsUtils.createTLSConfig(pkAgent.keyRing.keyPair);
   });
   afterEach(async () => {
     await clientServer?.stop(true);
     await clientClient?.destroy(true);
-    await certManager.stop();
-    await taskManager.stop();
-    await keyRing.stop();
-    await db.stop();
+    await pkAgent.stop();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
@@ -75,7 +51,7 @@ describe('agentStatus', () => {
     const rpcServer = await RPCServer.createRPCServer({
       manifest: {
         agentStatus: new AgentStatusHandler({
-          keyRing,
+          pkAgent,
         }),
       },
       logger: logger.getChild('RPCServer'),
@@ -89,7 +65,7 @@ describe('agentStatus', () => {
       logger,
     });
     clientClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      expectedNodeIds: [pkAgent.keyRing.getNodeId()],
       host,
       port: clientServer.port,
       logger,
@@ -105,8 +81,17 @@ describe('agentStatus', () => {
     const result = await rpcClient.methods.agentStatus({});
     expect(result).toStrictEqual({
       pid: process.pid,
-      nodeIdEncoded: nodesUtils.encodeNodeId(keyRing.getNodeId()),
-      publicKeyJwk: keysUtils.publicKeyToJWK(keyRing.keyPair.publicKey),
+      nodeIdEncoded: nodesUtils.encodeNodeId(pkAgent.keyRing.getNodeId()),
+      clientHost: pkAgent.webSocketServer.host,
+      clientPort: pkAgent.webSocketServer.port,
+      proxyHost: pkAgent.proxy.getProxyHost(),
+      proxyPort: pkAgent.proxy.getProxyPort(),
+      agentHost: pkAgent.grpcServerAgent.getHost(),
+      agentPort: pkAgent.grpcServerAgent.getPort(),
+      forwardHost: pkAgent.proxy.getForwardHost(),
+      forwardPort: pkAgent.proxy.getForwardPort(),
+      publicKeyJwk: keysUtils.publicKeyToJWK(pkAgent.keyRing.keyPair.publicKey),
+      certChainPEM: await pkAgent.certManager.getCertPEMsChainPEM(),
     });
   });
 });

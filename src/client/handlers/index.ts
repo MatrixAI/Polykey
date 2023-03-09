@@ -5,17 +5,15 @@ import type CertManager from '../../keys/CertManager';
 import type PolykeyAgent from '../../PolykeyAgent';
 import type { DB } from '@matrixai/db';
 import type GestaltGraph from '../../gestalts/GestaltGraph';
-import type Discovery from 'discovery/Discovery';
-import type IdentitiesManager from 'identities/IdentitiesManager';
-import type { NotificationsManager } from 'notifications/index';
-import type ACL from 'acl/ACL';
+import type Discovery from '../../discovery/Discovery';
+import type IdentitiesManager from '../../identities/IdentitiesManager';
+import type { NotificationsManager } from '../../notifications/index';
+import type ACL from '../../acl/ACL';
 import type NodeManager from '../../nodes/NodeManager';
 import type NodeConnectionManager from '../../nodes/NodeConnectionManager';
 import type NodeGraph from '../../nodes/NodeGraph';
 import type VaultManager from '../../vaults/VaultManager';
-import type { FileSystem } from 'types';
-import { keysSign, KeysSignHandler } from 'client/handlers/keysSign';
-import { keysVerify, KeysVerifyHandler } from 'client/handlers/keysVerify';
+import type { FileSystem } from '../../types';
 import { vaultsClone, VaultsCloneHandler } from './vaultsClone';
 import { vaultsCreate, VaultsCreatehandler } from './vaultsCreate';
 import { vaultsDelete, VaultsDeleteHandler } from './vaultsDelete';
@@ -193,6 +191,11 @@ import {
   VaultsSecretsStatHandler,
 } from './vaultsSecretsStat';
 import { vaultsVersion, VaultsVersionHandler } from './vaultsVersion';
+import {
+  keysVerify,
+  KeysVerifyHandler,
+} from '../../client/handlers/keysVerify';
+import { keysSign, KeysSignHandler } from '../../client/handlers/keysSign';
 
 const serverManifest = (container: {
   pkAgent: PolykeyAgent;

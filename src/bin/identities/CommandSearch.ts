@@ -82,7 +82,7 @@ class CommandSearch extends CommandPolykey {
                 identityId: options.identityId,
                 authIdentityId: options.authIdentityId,
                 disconnected: options.disconnected,
-                providerIdList: [options.providerId],
+                providerIdList: options.providerId ?? [],
                 searchTermList: searchTerms,
                 limit: options.limit,
               },
@@ -94,7 +94,7 @@ class CommandSearch extends CommandPolykey {
                 identityId: options.identityId,
                 authIdentityId: options.authIdentityId,
                 disconnected: options.disconnected,
-                providerIdList: [options.providerId],
+                providerIdList: options.providerId ?? [],
                 searchTermList: searchTerms,
                 limit: options.limit,
               });

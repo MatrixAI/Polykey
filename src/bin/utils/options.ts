@@ -186,6 +186,16 @@ const privateKeyFile = new commander.Option(
   'Override key creation with a private key JWE from a file',
 );
 
+const depth = new commander.Option(
+  '-d, --depth [depth]',
+  'The number of commits to retrieve',
+).argParser(parseInt);
+
+const commitId = new commander.Option(
+  '-ci, --commit-id [commitId]',
+  'Id for a specific commit to read from',
+);
+
 export {
   nodePath,
   format,
@@ -212,4 +222,6 @@ export {
   privateKeyFile,
   passwordOpsLimit,
   passwordMemLimit,
+  depth,
+  commitId,
 };

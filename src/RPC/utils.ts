@@ -355,9 +355,17 @@ function toError(errorData, metadata: ClientMetadata) {
     return new rpcErrors.ErrorPolykeyRemote(metadata);
   }
   const error: Error = JSON.parse(errorData, reviver);
-  return new rpcErrors.ErrorPolykeyRemote(metadata, error.message, {
-    cause: error,
-  });
+  const remoteError = new rpcErrors.ErrorPolykeyRemote(
+    metadata,
+    error.message,
+    {
+      cause: error,
+    },
+  );
+  if (error instanceof errors.ErrorPolykey) {
+    remoteError.exitCode = error.exitCode;
+  }
+  return remoteError;
 }
 
 function clientInputTransformStream<I extends JSONValue>(method: string) {
@@ -379,7 +387,7 @@ function clientOutputTransformStream<O extends JSONValue>(
 ) {
   return new TransformStream<JsonRpcResponse<O>, O>({
     transform: (chunk, controller) => {
-      // `error` indicates its an error message
+      // `error` indicates it's an error message
       if ('error' in chunk) {
         throw toError(chunk.error.data, clientMetadata);
       }

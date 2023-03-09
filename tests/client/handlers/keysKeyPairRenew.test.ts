@@ -95,8 +95,6 @@ describe('keysKeyPairRenew', () => {
     const nodeId1 = pkAgent.keyRing.getNodeId();
     // @ts-ignore - get protected property
     const fwdTLSConfig1 = pkAgent.proxy.tlsConfig;
-    // @ts-ignore - get protected property
-    const serverTLSConfig1 = pkAgent.grpcServerClient.tlsConfig;
     const expectedTLSConfig1: TLSConfig = {
       keyPrivatePem: keysUtils.privateKeyToPEM(rootKeyPair1.privateKey),
       certChainPem: await pkAgent.certManager.getCertPEMsChainPEM(),
@@ -104,7 +102,6 @@ describe('keysKeyPairRenew', () => {
     const nodeIdStatus1 = pkAgent.keyRing.getNodeId();
     expect(mockedRefreshBuckets).toHaveBeenCalledTimes(0);
     expect(fwdTLSConfig1).toEqual(expectedTLSConfig1);
-    expect(serverTLSConfig1).toEqual(expectedTLSConfig1);
     expect(nodeId1.equals(nodeIdStatus1)).toBe(true);
     // Run command
     await rpcClient.methods.keysKeyPairRenew({
@@ -114,8 +111,6 @@ describe('keysKeyPairRenew', () => {
     const nodeId2 = pkAgent.keyRing.getNodeId();
     // @ts-ignore - get protected property
     const fwdTLSConfig2 = pkAgent.proxy.tlsConfig;
-    // @ts-ignore - get protected property
-    const serverTLSConfig2 = pkAgent.grpcServerClient.tlsConfig;
     const expectedTLSConfig2: TLSConfig = {
       keyPrivatePem: keysUtils.privateKeyToPEM(rootKeyPair2.privateKey),
       certChainPem: await pkAgent.certManager.getCertPEMsChainPEM(),
@@ -123,7 +118,6 @@ describe('keysKeyPairRenew', () => {
     const nodeIdStatus2 = pkAgent.keyRing.getNodeId();
     expect(mockedRefreshBuckets).toHaveBeenCalled();
     expect(fwdTLSConfig2).toEqual(expectedTLSConfig2);
-    expect(serverTLSConfig2).toEqual(expectedTLSConfig2);
     expect(rootKeyPair2.privateKey).not.toBe(rootKeyPair1.privateKey);
     expect(rootKeyPair2.publicKey).not.toBe(rootKeyPair1.publicKey);
     expect(nodeId1).not.toBe(nodeId2);

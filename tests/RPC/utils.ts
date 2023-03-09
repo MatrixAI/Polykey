@@ -9,10 +9,11 @@ import type {
   JsonRpcResponseResult,
   JsonRpcResponse,
   JsonRpcRequest,
-  ClientMetadata,
 } from '@/RPC/types';
+import type { NodeId } from '@/ids';
 import { ReadableStream, WritableStream, TransformStream } from 'stream/web';
 import { fc } from '@fast-check/jest';
+import { IdInternal } from '@matrixai/id';
 import * as utils from '@/utils';
 import { fromError } from '@/RPC/utils';
 import * as rpcErrors from '@/RPC/errors';
@@ -68,7 +69,6 @@ const messagesToReadableStream = (messages: Array<JsonRpcMessage>) => {
   return new ReadableStream<Uint8Array>({
     async start(controller) {
       for (const arrayElement of messages) {
-        // Controller.enqueue(arrayElement)
         controller.enqueue(Buffer.from(JSON.stringify(arrayElement), 'utf-8'));
       }
       controller.close();
@@ -265,9 +265,18 @@ const errorArb = (
       fc.constant(new rpcErrors.ErrorRpcParse(undefined, { cause })),
       fc.constant(new rpcErrors.ErrorRpcMessageLength(undefined, { cause })),
       fc.constant(
-        new rpcErrors.ErrorPolykeyRemote({} as ClientMetadata, undefined, {
-          cause,
-        }),
+        new rpcErrors.ErrorPolykeyRemote(
+          {
+            command: 'someCommand',
+            host: `someHost`,
+            nodeId: IdInternal.fromBuffer<NodeId>(Buffer.alloc(32, 0)),
+            port: 0,
+          },
+          undefined,
+          {
+            cause,
+          },
+        ),
       ),
     ),
   );

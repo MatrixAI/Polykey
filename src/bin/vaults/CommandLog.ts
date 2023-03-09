@@ -10,11 +10,8 @@ class CommandLog extends CommandPolykey {
     this.name('log');
     this.description('Get the Version History of a Vault');
     this.argument('<vaultName>', 'Name of the vault to obtain the log from');
-    this.option(
-      '-ci, --commit-id [commitId]',
-      'Id for a specific commit to read from',
-    );
-    this.option('-d, --depth [depth]', 'The number of commits to retreive');
+    this.addOption(binOptions.commitId);
+    this.addOption(binOptions.depth);
     this.addOption(binOptions.nodeId);
     this.addOption(binOptions.clientHost);
     this.addOption(binOptions.clientPort);

@@ -7,9 +7,12 @@ import type { RPCRequestParams, RPCResponseResult } from './types';
 import type { Session } from '../sessions';
 import type SessionManager from '../sessions/SessionManager';
 import type KeyRing from '../keys/KeyRing';
+import type { JsonRpcError, JsonRpcResponseError } from '../RPC/types';
 import { TransformStream } from 'stream/web';
 import { authenticate, decodeAuth } from './utils';
+import { sysexits } from '../errors';
 import * as utils from '../utils';
+import * as rpcUtils from '../RPC/utils';
 
 function authenticationMiddlewareServer(
   sessionManager: SessionManager,
@@ -39,7 +42,18 @@ function authenticationMiddlewareServer(
               );
             } catch (e) {
               controller.terminate();
-              reverseController.terminate();
+              const rpcError: JsonRpcError = {
+                code: e.exitCode ?? sysexits.UNKNOWN,
+                message: e.description ?? '',
+                data: rpcUtils.fromError(e, true),
+              };
+              const rpcErrorMessage: JsonRpcResponseError = {
+                jsonrpc: '2.0',
+                error: rpcError,
+                id: null,
+              };
+              reverseController.enqueue(rpcErrorMessage);
+              reverseController.end();
               return;
             }
           }

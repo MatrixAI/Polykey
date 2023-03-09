@@ -257,11 +257,12 @@ class WebSocketStreamClientInternal extends WebSocketStream {
             }
           });
         },
-        cancel: () => {
+        cancel: (reason) => {
           readableLogger.debug('Cancelled');
+          this.signalReadableEnd(reason);
           if (!this.writableEnded_) {
             readableLogger.debug('Closing socket');
-            this.signalReadableEnd();
+            this.signalWritableEnd(reason);
             ws.close();
           }
         },

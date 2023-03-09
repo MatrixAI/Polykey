@@ -184,7 +184,7 @@ describe('status', () => {
         agentPort: expect.any(Number),
         forwardHost: expect.any(String),
         forwardPort: expect.any(Number),
-        publicKeyJWK: expect.any(String),
+        publicKeyJWK: expect.any(Object),
         certChainPEM: expect.any(String),
       });
     });
@@ -238,7 +238,7 @@ describe('status', () => {
         agentPort: expect.any(Number),
         forwardHost: expect.any(String),
         forwardPort: expect.any(Number),
-        publicKeyJWK: expect.any(String),
+        publicKeyJWK: expect.any(Object),
         certChainPEM: expect.any(String),
       });
     });

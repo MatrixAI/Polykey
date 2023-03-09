@@ -1,7 +1,8 @@
 import prompts from 'prompts';
 import { mocked } from 'jest-mock';
 import mockedEnv from 'mocked-env';
-import { utils as clientUtils, errors as clientErrors } from '@/client';
+import * as clientUtils from '@/client/utils';
+import * as clientErrors from '@/client/errors';
 import * as binUtils from '@/bin/utils';
 import * as testUtils from '../utils';
 
@@ -108,11 +109,9 @@ describe('bin/utils retryAuthentication', () => {
       // Prompted for password 1 time
       expect(mockedPrompts.mock.calls.length).toBe(1);
       // Authorization metadata was set
-      const auth = mockCall.mock.calls[1][0].get('Authorization')[0];
+      const auth = mockCall.mock.calls[1][0].Authorization;
       expect(auth).toBeDefined();
-      expect(auth).toBe(
-        clientUtils.encodeAuthFromPassword(password).get('Authorization')[0],
-      );
+      expect(auth).toBe(clientUtils.encodeAuthFromPassword(password));
       mockedPrompts.mockClear();
     },
   );
@@ -145,12 +144,10 @@ describe('bin/utils retryAuthentication', () => {
       // Prompted for password 2 times
       expect(mockedPrompts.mock.calls.length).toBe(2);
       // Authorization metadata was set
-      const auth = mockCall.mock.calls[2][0].get('Authorization')[0];
+      const auth = mockCall.mock.calls[2][0].Authorization;
       expect(auth).toBeDefined();
       // Second password succeeded
-      expect(auth).toBe(
-        clientUtils.encodeAuthFromPassword(password2).get('Authorization')[0],
-      );
+      expect(auth).toBe(clientUtils.encodeAuthFromPassword(password2));
       mockedPrompts.mockClear();
     },
   );
@@ -182,12 +179,10 @@ describe('bin/utils retryAuthentication', () => {
       envRestore();
       expect(mockCall.mock.calls.length).toBe(5);
       expect(mockedPrompts.mock.calls.length).toBe(4);
-      const auth = mockCall.mock.calls[4][0].get('Authorization')[0];
+      const auth = mockCall.mock.calls[4][0].Authorization;
       expect(auth).toBeDefined();
       // Second password was the last used
-      expect(auth).toBe(
-        clientUtils.encodeAuthFromPassword(password2).get('Authorization')[0],
-      );
+      expect(auth).toBe(clientUtils.encodeAuthFromPassword(password2));
       mockedPrompts.mockClear();
     },
   );

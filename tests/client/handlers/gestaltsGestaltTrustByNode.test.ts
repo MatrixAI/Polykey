@@ -62,8 +62,8 @@ describe('gestaltsGestaltTrustByNode', () => {
   let testProvider: TestProvider;
   const connectedIdentity = 'trusted-node' as IdentityId;
   const nodeChainData: Record<ClaimId, SignedClaim> = {};
-  let nodeId: NodeId;
-  let nodeIdEncoded: NodeIdEncoded;
+  let nodeIdRemote: NodeId;
+  let nodeIdEncodedRemote: NodeIdEncoded;
   let node: PolykeyAgent;
   let mockedRequestChainData: jest.SpyInstance;
   let nodeDataDir: string;
@@ -96,8 +96,8 @@ describe('gestaltsGestaltTrustByNode', () => {
         strictMemoryLock: false,
       },
     });
-    nodeId = node.keyRing.getNodeId();
-    nodeIdEncoded = nodesUtils.encodeNodeId(nodeId);
+    nodeIdRemote = node.keyRing.getNodeId();
+    nodeIdEncodedRemote = nodesUtils.encodeNodeId(nodeIdRemote);
     node.identitiesManager.registerProvider(testProvider);
     await node.identitiesManager.putToken(testProvider.id, connectedIdentity, {
       accessToken: 'abc123',
@@ -105,7 +105,7 @@ describe('gestaltsGestaltTrustByNode', () => {
     testProvider.users['trusted-node'] = {};
     const identityClaim = {
       typ: 'ClaimLinkIdentity',
-      iss: nodesUtils.encodeNodeId(node.keyRing.getNodeId()),
+      iss: nodeIdEncodedRemote,
       sub: encodeProviderIdentityId([testProvider.id, connectedIdentity]),
     };
     const [claimId, claim] = await node.sigchain.addClaim(identityClaim);
@@ -151,6 +151,10 @@ describe('gestaltsGestaltTrustByNode', () => {
       gestaltGraph,
       logger,
     });
+    identitiesManager.registerProvider(testProvider);
+    await identitiesManager.putToken(testProvider.id, connectedIdentity, {
+      accessToken: 'abc123',
+    });
     proxy = new Proxy({
       authToken,
       logger,
@@ -191,9 +195,7 @@ describe('gestaltsGestaltTrustByNode', () => {
     });
     await nodeManager.start();
     await nodeConnectionManager.start({ nodeManager });
-    nodeId = keyRing.getNodeId();
-    nodeIdEncoded = nodesUtils.encodeNodeId(nodeId);
-    await nodeManager.setNode(nodesUtils.decodeNodeId(nodeIdEncoded)!, {
+    await nodeManager.setNode(nodeIdRemote, {
       host: node.proxy.getProxyHost(),
       port: node.proxy.getProxyPort(),
     });
@@ -270,22 +272,16 @@ describe('gestaltsGestaltTrustByNode', () => {
     });
 
     // Doing the test
-    await gestaltGraph.setNode({ nodeId: nodeId });
+    await gestaltGraph.setNode({ nodeId: nodeIdRemote });
     const request = {
-      nodeIdEncoded,
+      nodeIdEncoded: nodeIdEncodedRemote,
     };
     await rpcClient.methods.gestaltsGestaltTrustByNode(request);
     expect(
-      await gestaltGraph.getGestaltActions([
-        'node',
-        nodesUtils.decodeNodeId(nodeIdEncoded)!,
-      ]),
+      await gestaltGraph.getGestaltActions(['node', nodeIdRemote!]),
     ).toEqual({
       notify: null,
     });
-    // Reverse side effects
-    await gestaltGraph.unsetNode(nodesUtils.decodeNodeId(nodeIdEncoded)!);
-    await gestaltGraph.unsetIdentity([testProvider.id, connectedIdentity]);
   });
   test('trusts a node (new node)', async () => {
     // Setup
@@ -322,20 +318,14 @@ describe('gestaltsGestaltTrustByNode', () => {
 
     // Doing the test
     const request = {
-      nodeIdEncoded,
+      nodeIdEncoded: nodeIdEncodedRemote,
     };
     await rpcClient.methods.gestaltsGestaltTrustByNode(request);
     expect(
-      await gestaltGraph.getGestaltActions([
-        'node',
-        nodesUtils.decodeNodeId(nodeIdEncoded)!,
-      ]),
+      await gestaltGraph.getGestaltActions(['node', nodeIdRemote]),
     ).toEqual({
       notify: null,
     });
-    // Reverse side effects
-    await gestaltGraph.unsetNode(nodesUtils.decodeNodeId(nodeIdEncoded)!);
-    await gestaltGraph.unsetIdentity([testProvider.id, connectedIdentity]);
   });
   test('trust extends to entire gestalt', async () => {
     // Setup
@@ -372,14 +362,11 @@ describe('gestaltsGestaltTrustByNode', () => {
 
     // Doing the test
     const request = {
-      nodeIdEncoded,
+      nodeIdEncoded: nodeIdEncodedRemote,
     };
     await rpcClient.methods.gestaltsGestaltTrustByNode(request);
     expect(
-      await gestaltGraph.getGestaltActions([
-        'node',
-        nodesUtils.decodeNodeId(nodeIdEncoded)!,
-      ]),
+      await gestaltGraph.getGestaltActions(['node', nodeIdRemote]),
     ).toEqual({
       notify: null,
     });
@@ -396,8 +383,5 @@ describe('gestaltsGestaltTrustByNode', () => {
     ).toEqual({
       notify: null,
     });
-    // Reverse side effects
-    await gestaltGraph.unsetNode(nodesUtils.decodeNodeId(nodeIdEncoded)!);
-    await gestaltGraph.unsetIdentity([testProvider.id, connectedIdentity]);
   });
 });
