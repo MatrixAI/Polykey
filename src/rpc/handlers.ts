@@ -3,7 +3,7 @@ import type { ContainerType } from 'rpc/types';
 import type { ReadableStream } from 'stream/web';
 import type { JSONRPCRequest } from 'rpc/types';
 import type { ConnectionInfo } from './types';
-import type { ContextCancellable } from '../contexts/types';
+import type { ContextTimed } from '../contexts/types';
 
 abstract class Handler<
   Container extends ContainerType = ContainerType,
@@ -12,6 +12,7 @@ abstract class Handler<
 > {
   protected _inputType: Input;
   protected _outputType: Output;
+  public timeout?: number;
 
   constructor(protected container: Container) {}
 }
@@ -22,7 +23,7 @@ abstract class RawHandler<
   abstract handle(
     input: [JSONRPCRequest, ReadableStream<Uint8Array>],
     connectionInfo: ConnectionInfo,
-    ctx: ContextCancellable,
+    ctx: ContextTimed,
   ): ReadableStream<Uint8Array>;
 }
 
@@ -39,7 +40,7 @@ abstract class DuplexHandler<
   abstract handle(
     input: AsyncIterable<Input>,
     connectionInfo: ConnectionInfo,
-    ctx: ContextCancellable,
+    ctx: ContextTimed,
   ): AsyncIterable<Output>;
 }
 
@@ -51,7 +52,7 @@ abstract class ServerHandler<
   abstract handle(
     input: Input,
     connectionInfo: ConnectionInfo,
-    ctx: ContextCancellable,
+    ctx: ContextTimed,
   ): AsyncIterable<Output>;
 }
 
@@ -63,7 +64,7 @@ abstract class ClientHandler<
   abstract handle(
     input: AsyncIterable<Input>,
     connectionInfo: ConnectionInfo,
-    ctx: ContextCancellable,
+    ctx: ContextTimed,
   ): Promise<Output>;
 }
 
@@ -75,7 +76,7 @@ abstract class UnaryHandler<
   abstract handle(
     input: Input,
     connectionInfo: ConnectionInfo,
-    ctx: ContextCancellable,
+    ctx: ContextTimed,
   ): Promise<Output>;
 }
 

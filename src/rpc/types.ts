@@ -1,7 +1,7 @@
+import type { JSONValue } from '../types';
+import type { ContextTimed } from '../contexts/types';
 import type { ReadableStream, ReadableWritablePair } from 'stream/web';
 import type { Handler } from './handlers';
-import type { ContextCancellable } from '../contexts/types';
-import type { JSONValue } from '../types';
 import type {
   Caller,
   RawCaller,
@@ -178,7 +178,7 @@ type ConnectionInfo = Partial<{
 type HandlerImplementation<I, O> = (
   input: I,
   connectionInfo: ConnectionInfo,
-  ctx: ContextCancellable,
+  ctx: ContextTimed,
 ) => O;
 
 type RawHandlerImplementation = HandlerImplementation<
