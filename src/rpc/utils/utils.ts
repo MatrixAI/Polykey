@@ -15,11 +15,9 @@ import type { JSONValue } from 'types';
 import { TransformStream } from 'stream/web';
 import { AbstractError } from '@matrixai/errors';
 import * as rpcErrors from '../errors';
-import * as utils from '../../utils/index';
-import { promise } from '../../utils/index';
+import * as utils from '../../utils';
 import * as validationErrors from '../../validation/errors';
 import * as errors from '../../errors';
-const jsonStreamParsers = require('@streamparser/json');
 
 function parseJSONRPCRequest<T extends JSONValue>(
   message: unknown,
@@ -401,70 +399,6 @@ function clientOutputTransformStream<O extends JSONValue>(
   });
 }
 
-function extractFirstMessageTransform<T extends JSONRPCMessage>(
-  messageParser: (message: unknown) => T,
-  byteLimit: number = 1024 * 1024,
-): {
-  headTransformStream: TransformStream<Uint8Array, Uint8Array>;
-  firstMessageProm: Promise<T | undefined>;
-} {
-  const parser = new jsonStreamParsers.JSONParser({
-    separator: '',
-    paths: ['$'],
-  });
-  const messageProm = promise<T | undefined>();
-  let bytesWritten = 0;
-  let lastChunk: Uint8Array | null = null;
-  let passThrough = false;
-  const headTransformStream = new TransformStream<Uint8Array, Uint8Array>({
-    start: (controller) => {
-      parser.onValue = (value) => {
-        let jsonMessage: T;
-        try {
-          jsonMessage = messageParser(value.value);
-        } catch (e) {
-          const error = new rpcErrors.ErrorRPCParse(undefined, { cause: e });
-          messageProm.rejectP(error);
-          controller.error(error);
-          return;
-        }
-        messageProm.resolveP(jsonMessage);
-        const firstMessageBuffer = Buffer.from(JSON.stringify(jsonMessage));
-        const difference = bytesWritten - firstMessageBuffer.length;
-        // Write empty value for the first read that initializes the stream
-        controller.enqueue(new Uint8Array());
-        if (difference > 0) {
-          controller.enqueue(
-            lastChunk?.slice(lastChunk?.byteLength - difference),
-          );
-        }
-        parser.end();
-        passThrough = true;
-      };
-    },
-    transform: (chunk, controller) => {
-      if (passThrough) {
-        controller.enqueue(chunk);
-        return;
-      }
-      try {
-        bytesWritten += chunk.byteLength;
-        lastChunk = chunk;
-        parser.write(chunk);
-      } catch (e) {
-        // Ignore error
-      }
-      if (bytesWritten > byteLimit) {
-        messageProm.rejectP(new rpcErrors.ErrorRPCMessageLength());
-      }
-    },
-    flush: () => {
-      messageProm.resolveP(undefined);
-    },
-  });
-  return { headTransformStream, firstMessageProm: messageProm.p };
-}
-
 function getHandlerTypes(
   manifest: ClientManifest,
 ): Record<string, HandlerType> {
@@ -487,6 +421,5 @@ export {
   toError,
   clientInputTransformStream,
   clientOutputTransformStream,
-  extractFirstMessageTransform,
   getHandlerTypes,
 };

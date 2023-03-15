@@ -31,6 +31,7 @@ import * as rpcEvents from './events';
 import * as rpcUtils from './utils/utils';
 import * as rpcErrors from './errors';
 import * as middlewareUtils from './utils/middleware';
+import { binaryToJsonMessageStream } from './middleware';
 import { never } from '../utils/utils';
 import { sysexits } from '../errors';
 
@@ -206,6 +207,8 @@ class RPCServer extends EventTarget {
       // Setting up middleware
       const middleware = this.middlewareFactory();
       // Forward from the client to the server
+      // Transparent TransformStream that re-inserts the header message into the
+      // stream.
       const headerStream = new TransformStream({
         start(controller) {
           controller.enqueue(Buffer.from(JSON.stringify(header)));
@@ -352,19 +355,23 @@ class RPCServer extends EventTarget {
     // Constructing the PromiseCancellable for tracking the active stream
     const abortController = new AbortController();
     const prom = (async () => {
-      const { firstMessageProm, headTransformStream } =
-        rpcUtils.extractFirstMessageTransform(rpcUtils.parseJSONRPCRequest);
+      const headTransformStream = binaryToJsonMessageStream(
+        rpcUtils.parseJSONRPCRequest,
+      );
       const inputStreamEndProm = streamPair.readable
-        .pipeTo(headTransformStream.writable)
+        .pipeTo(headTransformStream.writable, {
+          preventClose: true,
+          preventCancel: true,
+        })
         .catch(() => {});
       const inputStream = headTransformStream.readable;
       // Read a single empty value to consume the first message
-      const reader = inputStream.getReader();
-      await reader.read();
-      reader.releaseLock();
-      const leadingMetadataMessage = await firstMessageProm;
+      const reader = headTransformStream.readable.getReader();
+      // TODO: race this with abortion
+      const headerMessage = await reader.read();
+      await reader.cancel();
       // If the stream ends early then we just stop processing
-      if (leadingMetadataMessage == null) {
+      if (headerMessage.done) {
         await inputStream.cancel(
           new rpcErrors.ErrorRPCHandlerFailed('Missing header'),
         );
@@ -372,7 +379,7 @@ class RPCServer extends EventTarget {
         await inputStreamEndProm;
         return;
       }
-      const method = leadingMetadataMessage.method;
+      const method = headerMessage.value.method;
       const handler = this.handlerMap.get(method);
       if (handler == null) {
         await inputStream.cancel(
@@ -391,7 +398,7 @@ class RPCServer extends EventTarget {
         return;
       }
       const outputStream = handler(
-        [leadingMetadataMessage, inputStream],
+        [headerMessage.value, streamPair.readable],
         connectionInfo,
         { signal: abortController.signal },
       );
