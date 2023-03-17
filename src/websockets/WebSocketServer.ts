@@ -96,7 +96,7 @@ class WebSocketServer extends EventTarget {
 
   protected server: uWebsocket.TemplatedApp;
   protected listenSocket: uWebsocket.us_listen_socket;
-  protected host_: string;
+  protected _host: string;
   protected connectionEventHandler: (
     event: webSocketEvents.ConnectionEvent,
   ) => void;
@@ -189,11 +189,11 @@ class WebSocketServer extends EventTarget {
     this.logger.debug(
       `Listening on port ${uWebsocket.us_socket_local_port(this.listenSocket)}`,
     );
-    this.host_ = host ?? '127.0.0.1';
+    this._host = host ?? '127.0.0.1';
     this.dispatchEvent(
       new webSocketEvents.StartEvent({
         detail: {
-          host: this.host_,
+          host: this._host,
           port: this.port,
         },
       }),
@@ -227,7 +227,7 @@ class WebSocketServer extends EventTarget {
   }
 
   get host(): Host {
-    return this.host_ as Host;
+    return this._host as Host;
   }
 
   /**
@@ -300,7 +300,7 @@ class WebSocketServer extends EventTarget {
     //  port from the `uWebsocket` library.
     const connectionInfo: ConnectionInfo = {
       remoteHost: Buffer.from(ws.getRemoteAddressAsText()).toString(),
-      localHost: this.host_,
+      localHost: this._host,
       localPort: this.port,
     };
     this.dispatchEvent(
