@@ -350,7 +350,10 @@ function reviver(key: string, value: any): any {
   }
 }
 
-function toError(errorData, metadata: ClientMetadata) {
+function toError(
+  errorData,
+  metadata: ClientMetadata,
+): rpcErrors.ErrorPolykeyRemote<unknown> {
   if (errorData == null) {
     return new rpcErrors.ErrorPolykeyRemote(metadata);
   }
@@ -368,7 +371,9 @@ function toError(errorData, metadata: ClientMetadata) {
   return remoteError;
 }
 
-function clientInputTransformStream<I extends JSONValue>(method: string) {
+function clientInputTransformStream<I extends JSONValue>(
+  method: string,
+): TransformStream<I, JsonRpcRequest> {
   return new TransformStream<I, JsonRpcRequest>({
     transform: (chunk, controller) => {
       const message: JsonRpcRequest = {
@@ -384,7 +389,7 @@ function clientInputTransformStream<I extends JSONValue>(method: string) {
 
 function clientOutputTransformStream<O extends JSONValue>(
   clientMetadata: ClientMetadata,
-) {
+): TransformStream<JsonRpcResponse<O>, O> {
   return new TransformStream<JsonRpcResponse<O>, O>({
     transform: (chunk, controller) => {
       // `error` indicates it's an error message
@@ -420,7 +425,10 @@ class RPCErrorEvent extends Event {
 function extractFirstMessageTransform<T extends JsonRpcMessage>(
   messageParser: (message: unknown) => T,
   byteLimit: number = 1024 * 1024,
-) {
+): {
+  headTransformStream: TransformStream<Uint8Array, Uint8Array>;
+  firstMessageProm: Promise<T | undefined>;
+} {
   const parser = new jsonStreamParsers.JSONParser({
     separator: '',
     paths: ['$'],
