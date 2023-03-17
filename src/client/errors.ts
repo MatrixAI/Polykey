@@ -1,8 +1,6 @@
 import { ErrorPolykey, sysexits } from '../errors';
 
-class ErrorRPC<T> extends ErrorPolykey<T> {}
-
-class ErrorRPCClient<T> extends ErrorRPC<T> {}
+class ErrorRPCClient<T> extends ErrorPolykey<T> {}
 
 class ErrorClientAuthMissing<T> extends ErrorRPCClient<T> {
   static description = 'Authorisation metadata is required but missing';
@@ -20,7 +18,6 @@ class ErrorClientAuthDenied<T> extends ErrorRPCClient<T> {
 }
 
 export {
-  ErrorRPC,
   ErrorRPCClient,
   ErrorClientAuthMissing,
   ErrorClientAuthFormat,
