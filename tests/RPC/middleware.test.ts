@@ -55,7 +55,7 @@ describe('Middleware tests', () => {
           // No touch, only consume
         }
       };
-      await expect(doThing()).rejects.toThrow(rpcErrors.ErrorRpcMessageLength);
+      await expect(doThing()).rejects.toThrow(rpcErrors.ErrorRPCMessageLength);
     },
     { numRuns: 1000 },
   );
@@ -88,7 +88,7 @@ describe('Middleware tests', () => {
         ); // Converting back.
 
       await expect(AsyncIterable.as(parsedStream).toArray()).rejects.toThrow(
-        rpcErrors.ErrorRpcParse,
+        rpcErrors.ErrorRPCParse,
       );
     },
     { numRuns: 1000 },

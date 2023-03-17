@@ -15,7 +15,7 @@ function binaryToJsonMessageStream<T extends JsonRpcMessage>(
   messageParser: (message: unknown) => T,
   byteLimit: number = 1024 * 1024,
   firstMessage?: T,
-) {
+): TransformStream<Uint8Array, T> {
   const parser = new jsonStreamParsers.JSONParser({
     separator: '',
     paths: ['$'],
@@ -43,16 +43,19 @@ function binaryToJsonMessageStream<T extends JsonRpcMessage>(
         bytesWritten += chunk.byteLength;
         parser.write(chunk);
       } catch (e) {
-        throw new rpcErrors.ErrorRpcParse(undefined, { cause: e });
+        throw new rpcErrors.ErrorRPCParse(undefined, { cause: e });
       }
       if (bytesWritten > byteLimit) {
-        throw new rpcErrors.ErrorRpcMessageLength();
+        throw new rpcErrors.ErrorRPCMessageLength();
       }
     },
   });
 }
 
-function jsonMessageToBinaryStream() {
+function jsonMessageToBinaryStream(): TransformStream<
+  JsonRpcMessage,
+  Uint8Array
+> {
   return new TransformStream<JsonRpcMessage, Uint8Array>({
     transform: (chunk, controller) => {
       controller.enqueue(Buffer.from(JSON.stringify(chunk)));

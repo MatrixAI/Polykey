@@ -262,8 +262,8 @@ const errorArb = (
 ) =>
   cause.chain((cause) =>
     fc.oneof(
-      fc.constant(new rpcErrors.ErrorRpcParse(undefined, { cause })),
-      fc.constant(new rpcErrors.ErrorRpcMessageLength(undefined, { cause })),
+      fc.constant(new rpcErrors.ErrorRPCParse(undefined, { cause })),
+      fc.constant(new rpcErrors.ErrorRPCMessageLength(undefined, { cause })),
       fc.constant(
         new rpcErrors.ErrorPolykeyRemote(
           {

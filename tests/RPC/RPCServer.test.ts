@@ -324,7 +324,7 @@ describe(`${RPCServer.name}`, () => {
           // @ts-ignore: kidnap private property
           for (const activeStream of activeStreams) {
             thing = activeStream;
-            activeStream.cancel(new rpcErrors.ErrorRpcStopping());
+            activeStream.cancel(new rpcErrors.ErrorRPCStopping());
           }
         }
       },
@@ -459,7 +459,7 @@ describe(`${RPCServer.name}`, () => {
       const stream = rpcTestUtils.messagesToReadableStream(messages);
       class TestMethod extends DuplexHandler {
         public async *handle(): AsyncIterable<JSONValue> {
-          throw new rpcErrors.ErrorRpcPlaceholderConnectionError();
+          throw new rpcErrors.ErrorRPCPlaceholderConnectionError();
         }
       }
       const rpcServer = await RPCServer.createRPCServer({

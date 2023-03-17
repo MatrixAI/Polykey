@@ -397,7 +397,7 @@ function clientOutputTransformStream<O extends JSONValue>(
 }
 
 function isReturnableError(e: Error): boolean {
-  return !(e instanceof rpcErrors.ErrorRpcNoMessageError);
+  return !(e instanceof rpcErrors.ErrorRPCNoMessageError);
 }
 
 class RPCErrorEvent extends Event {
@@ -436,7 +436,7 @@ function extractFirstMessageTransform<T extends JsonRpcMessage>(
         try {
           jsonMessage = messageParser(value.value);
         } catch (e) {
-          const error = new rpcErrors.ErrorRpcParse(undefined, { cause: e });
+          const error = new rpcErrors.ErrorRPCParse(undefined, { cause: e });
           messageProm.rejectP(error);
           controller.error(error);
           return;
@@ -468,7 +468,7 @@ function extractFirstMessageTransform<T extends JsonRpcMessage>(
         // Ignore error
       }
       if (bytesWritten > byteLimit) {
-        messageProm.rejectP(new rpcErrors.ErrorRpcMessageLength());
+        messageProm.rejectP(new rpcErrors.ErrorRPCMessageLength());
       }
     },
     flush: () => {

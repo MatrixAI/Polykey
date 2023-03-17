@@ -143,7 +143,7 @@ class RPCServer {
     this.logger.info(`Destroying ${this.constructor.name}`);
     // Stopping any active steams
     for await (const [activeStream] of this.activeStreams.entries()) {
-      activeStream.cancel(new rpcErrors.ErrorRpcStopping());
+      activeStream.cancel(new rpcErrors.ErrorRPCStopping());
     }
     for await (const [activeStream] of this.activeStreams.entries()) {
       await activeStream;
@@ -226,7 +226,7 @@ class RPCServer {
               );
             }
             await forwardStream.cancel(
-              new rpcErrors.ErrorRpcHandlerFailed('Error clean up'),
+              new rpcErrors.ErrorRPCHandlerFailed('Error clean up'),
             );
             controller.close();
           }
@@ -291,7 +291,7 @@ class RPCServer {
     this.registerDuplexStreamHandler(method, wrapperDuplex);
   }
 
-  @ready(new rpcErrors.ErrorRpcDestroyed())
+  @ready(new rpcErrors.ErrorRPCDestroyed())
   public handleStream(
     streamPair: ReadableWritablePair<Uint8Array, Uint8Array>,
     connectionInfo: ConnectionInfo,
@@ -315,7 +315,7 @@ class RPCServer {
       // If the stream ends early then we just stop processing
       if (leadingMetadataMessage == null) {
         await inputStream.cancel(
-          new rpcErrors.ErrorRpcHandlerFailed('Missing header'),
+          new rpcErrors.ErrorRPCHandlerFailed('Missing header'),
         );
         await streamPair.writable.close();
         await inputStreamEndProm;
@@ -325,7 +325,7 @@ class RPCServer {
       const handler = this.handlerMap.get(method);
       if (handler == null) {
         await inputStream.cancel(
-          new rpcErrors.ErrorRpcHandlerFailed('Missing handler'),
+          new rpcErrors.ErrorRPCHandlerFailed('Missing handler'),
         );
         await streamPair.writable.close();
         await inputStreamEndProm;
@@ -333,7 +333,7 @@ class RPCServer {
       }
       if (abortController.signal.aborted) {
         await inputStream.cancel(
-          new rpcErrors.ErrorRpcHandlerFailed('Aborted'),
+          new rpcErrors.ErrorRPCHandlerFailed('Aborted'),
         );
         await streamPair.writable.close();
         await inputStreamEndProm;
@@ -357,7 +357,7 @@ class RPCServer {
     this.activeStreams.add(handlerProm);
   }
 
-  @ready(new rpcErrors.ErrorRpcDestroyed())
+  @ready(new rpcErrors.ErrorRPCDestroyed())
   public addEventListener(
     type: 'error',
     callback: (event: RPCErrorEvent) => void,
@@ -366,7 +366,7 @@ class RPCServer {
     this.events.addEventListener(type, callback, options);
   }
 
-  @ready(new rpcErrors.ErrorRpcDestroyed())
+  @ready(new rpcErrors.ErrorRPCDestroyed())
   public removeEventListener(
     type: 'error',
     callback: (event: RPCErrorEvent) => void,

@@ -3,19 +3,19 @@ import type { ClientMetadata } from './types';
 import * as nodesUtils from '../nodes/utils';
 import { ErrorPolykey, sysexits } from '../errors';
 
-class ErrorRpc<T> extends ErrorPolykey<T> {}
+class ErrorRPC<T> extends ErrorPolykey<T> {}
 
-class ErrorRpcDestroyed<T> extends ErrorRpc<T> {
+class ErrorRPCDestroyed<T> extends ErrorRPC<T> {
   static description = 'Rpc is destroyed';
   exitCode = sysexits.USAGE;
 }
 
-class ErrorRpcStopping<T> extends ErrorRpc<T> {
+class ErrorRPCStopping<T> extends ErrorRPC<T> {
   static description = 'Rpc is stopping';
   exitCode = sysexits.USAGE;
 }
 
-class ErrorRpcParse<T> extends ErrorRpc<T> {
+class ErrorRPCParse<T> extends ErrorRPC<T> {
   static description = 'Failed to parse Buffer stream';
   exitCode = sysexits.SOFTWARE;
 }
@@ -23,17 +23,17 @@ class ErrorRpcParse<T> extends ErrorRpc<T> {
 /**
  * This is an internal error, it should not reach the top level.
  */
-class ErrorRpcHandlerFailed<T> extends ErrorRpc<T> {
+class ErrorRPCHandlerFailed<T> extends ErrorRPC<T> {
   static description = 'Failed to handle stream';
   exitCode = sysexits.SOFTWARE;
 }
 
-class ErrorRpcMessageLength<T> extends ErrorRpc<T> {
+class ErrorRPCMessageLength<T> extends ErrorRPC<T> {
   static description = 'RPC Message exceeds maximum size';
   exitCode = sysexits.DATAERR;
 }
 
-class ErrorRpcMissingResponse<T> extends ErrorRpc<T> {
+class ErrorRPCMissingResponse<T> extends ErrorRPC<T> {
   static description = 'Stream ended before response';
   exitCode = sysexits.UNAVAILABLE;
 }
@@ -89,24 +89,24 @@ class ErrorPolykeyRemote<T> extends ErrorPolykey<T> {
   }
 }
 
-class ErrorRpcNoMessageError<T> extends ErrorRpc<T> {
+class ErrorRPCNoMessageError<T> extends ErrorRPC<T> {
   static description = 'For errors not to be conveyed to the client';
 }
 
-class ErrorRpcPlaceholderConnectionError<T> extends ErrorRpcNoMessageError<T> {
+class ErrorRPCPlaceholderConnectionError<T> extends ErrorRPCNoMessageError<T> {
   static description = 'placeholder error for connection stream failure';
   exitCode = sysexits.UNAVAILABLE;
 }
 
 export {
-  ErrorRpc,
-  ErrorRpcDestroyed,
-  ErrorRpcStopping,
-  ErrorRpcParse,
-  ErrorRpcHandlerFailed,
-  ErrorRpcMessageLength,
-  ErrorRpcMissingResponse,
+  ErrorRPC,
+  ErrorRPCDestroyed,
+  ErrorRPCStopping,
+  ErrorRPCParse,
+  ErrorRPCHandlerFailed,
+  ErrorRPCMessageLength,
+  ErrorRPCMissingResponse,
   ErrorPolykeyRemote,
-  ErrorRpcNoMessageError,
-  ErrorRpcPlaceholderConnectionError,
+  ErrorRPCNoMessageError,
+  ErrorRPCPlaceholderConnectionError,
 };

@@ -120,12 +120,12 @@ class RPCClient<M extends ClientManifest> {
     this.logger.info(`Destroyed ${this.constructor.name}`);
   }
 
-  @ready(new rpcErrors.ErrorRpcDestroyed())
+  @ready(new rpcErrors.ErrorRPCDestroyed())
   public get methods(): MapCallers<M> {
     return this.methodsProxy as MapCallers<M>;
   }
 
-  @ready(new rpcErrors.ErrorRpcDestroyed())
+  @ready(new rpcErrors.ErrorRPCDestroyed())
   public async unaryCaller<I extends JSONValue, O extends JSONValue>(
     method: string,
     parameters: I,
@@ -136,14 +136,14 @@ class RPCClient<M extends ClientManifest> {
     await writer.write(parameters);
     const output = await reader.read();
     if (output.done) {
-      throw new rpcErrors.ErrorRpcMissingResponse();
+      throw new rpcErrors.ErrorRPCMissingResponse();
     }
     await reader.cancel();
     await writer.close();
     return output.value;
   }
 
-  @ready(new rpcErrors.ErrorRpcDestroyed())
+  @ready(new rpcErrors.ErrorRPCDestroyed())
   public async serverStreamCaller<I extends JSONValue, O extends JSONValue>(
     method: string,
     parameters: I,
@@ -156,7 +156,7 @@ class RPCClient<M extends ClientManifest> {
     return callerInterface.readable;
   }
 
-  @ready(new rpcErrors.ErrorRpcDestroyed())
+  @ready(new rpcErrors.ErrorRPCDestroyed())
   public async clientStreamCaller<I extends JSONValue, O extends JSONValue>(
     method: string,
   ): Promise<{
@@ -167,7 +167,7 @@ class RPCClient<M extends ClientManifest> {
     const reader = callerInterface.readable.getReader();
     const output = reader.read().then(({ value, done }) => {
       if (done) {
-        throw new rpcErrors.ErrorRpcMissingResponse();
+        throw new rpcErrors.ErrorRPCMissingResponse();
       }
       return value;
     });
@@ -177,7 +177,7 @@ class RPCClient<M extends ClientManifest> {
     };
   }
 
-  @ready(new rpcErrors.ErrorRpcDestroyed())
+  @ready(new rpcErrors.ErrorRPCDestroyed())
   public async duplexStreamCaller<I extends JSONValue, O extends JSONValue>(
     method: string,
   ): Promise<ReadableWritablePair<O, I>> {
@@ -208,7 +208,7 @@ class RPCClient<M extends ClientManifest> {
     };
   }
 
-  @ready(new rpcErrors.ErrorRpcDestroyed())
+  @ready(new rpcErrors.ErrorRPCDestroyed())
   public async rawStreamCaller(
     method: string,
     headerParams: JSONValue,
