@@ -11,6 +11,18 @@ import * as rpcUtils from './utils';
 import { promise } from '../utils';
 const jsonStreamParsers = require('@streamparser/json');
 
+/**
+ * This function is a factory to create a TransformStream that will
+ * transform a `Uint8Array` stream to a JSONRPC message stream.
+ * The parsed messages will be validated with the provided messageParser, this
+ * also infers the type of the stream output.
+ * @param messageParser - Validates the JSONRPC messages, so you can select for a
+ *  specific type of message
+ * @param byteLimit - sets the number of bytes buffered before throwing an
+ *  error. This is used to avoid infinitely buffering the input.
+ * @param firstMessage - This is a single message that is inserted into the
+ *  front of the stream.
+ */
 function binaryToJsonMessageStream<T extends JsonRpcMessage>(
   messageParser: (message: unknown) => T,
   byteLimit: number = 1024 * 1024,
@@ -52,6 +64,11 @@ function binaryToJsonMessageStream<T extends JsonRpcMessage>(
   });
 }
 
+/**
+ * This function is a factory for a TransformStream that will transform
+ * JsonRPCMessages into the `Uint8Array` form. This is used for the stream
+ * output.
+ */
 function jsonMessageToBinaryStream(): TransformStream<
   JsonRpcMessage,
   Uint8Array
@@ -63,6 +80,10 @@ function jsonMessageToBinaryStream(): TransformStream<
   });
 }
 
+/**
+ * This function is a factory for creating a pass-through streamPair. It is used
+ * as the default middleware for the middleware wrappers.
+ */
 const defaultMiddleware: MiddlewareFactory<
   JsonRpcRequest,
   JsonRpcRequest,
@@ -75,6 +96,15 @@ const defaultMiddleware: MiddlewareFactory<
   };
 };
 
+/**
+ * This convenience factory for creating wrapping middleware with the basic
+ * message processing and parsing for the server middleware.
+ * In the forward path, it will transform the binary stream into the validated
+ * JsonRPCMessages and pipe it through the provided middleware.
+ * The reverse path will pipe the output stream through the provided middleware
+ * and then transform it back to a binary stream.
+ * @param middleware - The provided middleware
+ */
 const defaultServerMiddlewareWrapper = (
   middleware: MiddlewareFactory<
     JsonRpcRequest,
@@ -116,6 +146,15 @@ const defaultServerMiddlewareWrapper = (
   };
 };
 
+/**
+ * This convenience factory for creating wrapping middleware with the basic
+ * message processing and parsing for the server middleware.
+ * The forward path will pipe the input through the provided middleware and then
+ * transform it to the binary stream.
+ * The reverse path will parse and validate the output and pipe it through the
+ * provided middleware.
+ * @param middleware - the provided middleware
+ */
 const defaultClientMiddlewareWrapper = (
   middleware: MiddlewareFactory<
     JsonRpcRequest,
