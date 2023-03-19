@@ -1,5 +1,5 @@
 import type { FileSystem } from './types';
-import type { ClientManifest, StreamPairCreateCallback } from './RPC/types';
+import type { ClientManifest, StreamFactory } from './RPC/types';
 import path from 'path';
 import Logger from '@matrixai/logger';
 import { CreateDestroyStartStop } from '@matrixai/async-init/dist/CreateDestroyStartStop';
@@ -28,7 +28,7 @@ class PolykeyClient<M extends ClientManifest> {
     nodePath = config.defaults.nodePath,
     session,
     manifest,
-    streamPairCreateCallback,
+    streamFactory,
     fs = require('fs'),
     logger = new Logger(this.name),
     fresh = false,
@@ -36,7 +36,7 @@ class PolykeyClient<M extends ClientManifest> {
     nodePath?: string;
     session?: Session;
     manifest: M;
-    streamPairCreateCallback: StreamPairCreateCallback;
+    streamFactory: StreamFactory;
     fs?: FileSystem;
     logger?: Logger;
     fresh?: boolean;
@@ -56,7 +56,7 @@ class PolykeyClient<M extends ClientManifest> {
       }));
     const rpcClient = await RPCClient.createRPCClient<M>({
       manifest,
-      streamPairCreateCallback,
+      streamFactory,
       middleware: middlewareUtils.defaultClientMiddlewareWrapper(
         authMiddleware.authenticationMiddlewareClient(session),
       ),

@@ -145,7 +145,7 @@ describe('vaultsPull', () => {
   //       vaultsPermissionGet,
   //       vaultsPermissionUnset,
   //     },
-  //     streamPairCreateCallback: async () => webSocketClient.startConnection(),
+  //     streamFactory: async () => webSocketClient.startConnection(),
   //     logger: logger.getChild('clientRPC'),
   //   });
   //

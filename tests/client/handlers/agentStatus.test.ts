@@ -74,7 +74,7 @@ describe('agentStatus', () => {
       manifest: {
         agentStatus,
       },
-      streamPairCreateCallback: async () => clientClient.startConnection(),
+      streamFactory: async () => clientClient.startConnection(),
       logger: logger.getChild('RPCClient'),
     });
     // Doing the test

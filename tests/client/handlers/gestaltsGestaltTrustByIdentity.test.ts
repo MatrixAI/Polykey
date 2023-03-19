@@ -228,7 +228,7 @@ describe('gestaltsGestaltTrustByIdentity', () => {
       manifest: {
         gestaltsGestaltTrustByIdentity,
       },
-      streamPairCreateCallback: async () => webSocketClient.startConnection(),
+      streamFactory: async () => webSocketClient.startConnection(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -291,7 +291,7 @@ describe('gestaltsGestaltTrustByIdentity', () => {
       manifest: {
         gestaltsGestaltTrustByIdentity,
       },
-      streamPairCreateCallback: async () => webSocketClient.startConnection(),
+      streamFactory: async () => webSocketClient.startConnection(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -351,7 +351,7 @@ describe('gestaltsGestaltTrustByIdentity', () => {
       manifest: {
         gestaltsGestaltTrustByIdentity,
       },
-      streamPairCreateCallback: async () => webSocketClient.startConnection(),
+      streamFactory: async () => webSocketClient.startConnection(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -403,7 +403,7 @@ describe('gestaltsGestaltTrustByIdentity', () => {
       manifest: {
         gestaltsGestaltTrustByIdentity,
       },
-      streamPairCreateCallback: async () => webSocketClient.startConnection(),
+      streamFactory: async () => webSocketClient.startConnection(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -470,7 +470,7 @@ describe('gestaltsGestaltTrustByIdentity', () => {
       manifest: {
         gestaltsGestaltTrustByIdentity,
       },
-      streamPairCreateCallback: async () => webSocketClient.startConnection(),
+      streamFactory: async () => webSocketClient.startConnection(),
       logger: logger.getChild('clientRPC'),
     });
 

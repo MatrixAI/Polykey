@@ -119,7 +119,7 @@ describe('vaultsSecretsNewDirList', () => {
         vaultsSecretsNewDir,
         vaultsSecretsList,
       },
-      streamPairCreateCallback: async () => webSocketClient.startConnection(),
+      streamFactory: async () => webSocketClient.startConnection(),
       logger: logger.getChild('clientRPC'),
     });
 

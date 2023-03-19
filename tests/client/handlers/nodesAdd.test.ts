@@ -159,7 +159,7 @@ describe('nodesAdd', () => {
       manifest: {
         nodesAdd,
       },
-      streamPairCreateCallback: async () => webSocketClient.startConnection(),
+      streamFactory: async () => webSocketClient.startConnection(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -208,7 +208,7 @@ describe('nodesAdd', () => {
       manifest: {
         nodesAdd,
       },
-      streamPairCreateCallback: async () => webSocketClient.startConnection(),
+      streamFactory: async () => webSocketClient.startConnection(),
       logger: logger.getChild('clientRPC'),
     });
 

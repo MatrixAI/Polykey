@@ -129,7 +129,7 @@ describe('vaultsLog', () => {
       manifest: {
         vaultsLog,
       },
-      streamPairCreateCallback: async () => webSocketClient.startConnection(),
+      streamFactory: async () => webSocketClient.startConnection(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -174,7 +174,7 @@ describe('vaultsLog', () => {
       manifest: {
         vaultsLog,
       },
-      streamPairCreateCallback: async () => webSocketClient.startConnection(),
+      streamFactory: async () => webSocketClient.startConnection(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -219,7 +219,7 @@ describe('vaultsLog', () => {
       manifest: {
         vaultsLog,
       },
-      streamPairCreateCallback: async () => webSocketClient.startConnection(),
+      streamFactory: async () => webSocketClient.startConnection(),
       logger: logger.getChild('clientRPC'),
     });
 

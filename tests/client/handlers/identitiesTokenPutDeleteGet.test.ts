@@ -128,7 +128,7 @@ describe('identitiesTokenPutDeleteGet', () => {
         identitiesTokenDelete,
         identitiesTokenGet,
       },
-      streamPairCreateCallback: async () => webSocketClient.startConnection(),
+      streamFactory: async () => webSocketClient.startConnection(),
       logger: logger.getChild('clientRPC'),
     });
 

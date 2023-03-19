@@ -159,7 +159,7 @@ describe('identitiesClaim', () => {
       manifest: {
         identitiesClaim,
       },
-      streamPairCreateCallback: async () => webSocketClient.startConnection(),
+      streamFactory: async () => webSocketClient.startConnection(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -206,7 +206,7 @@ describe('identitiesClaim', () => {
       manifest: {
         identitiesClaim,
       },
-      streamPairCreateCallback: async () => webSocketClient.startConnection(),
+      streamFactory: async () => webSocketClient.startConnection(),
       logger: logger.getChild('clientRPC'),
     });
 

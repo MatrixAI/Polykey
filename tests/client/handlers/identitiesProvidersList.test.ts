@@ -112,7 +112,7 @@ describe('identitiesInfoConnectedGet', () => {
       manifest: {
         identitiesProvidersList,
       },
-      streamPairCreateCallback: async () => webSocketClient.startConnection(),
+      streamFactory: async () => webSocketClient.startConnection(),
       logger: logger.getChild('clientRPC'),
     });
 

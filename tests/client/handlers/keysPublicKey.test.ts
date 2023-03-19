@@ -100,7 +100,7 @@ describe('keysPublicKey', () => {
       manifest: {
         keysPublicKey,
       },
-      streamPairCreateCallback: async () => webSocketClient.startConnection(),
+      streamFactory: async () => webSocketClient.startConnection(),
       logger: logger.getChild('clientRPC'),
     });
 

@@ -267,7 +267,7 @@ describe('gestaltsGestaltTrustByNode', () => {
       manifest: {
         gestaltsGestaltTrustByNode,
       },
-      streamPairCreateCallback: async () => webSocketClient.startConnection(),
+      streamFactory: async () => webSocketClient.startConnection(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -312,7 +312,7 @@ describe('gestaltsGestaltTrustByNode', () => {
       manifest: {
         gestaltsGestaltTrustByNode,
       },
-      streamPairCreateCallback: async () => webSocketClient.startConnection(),
+      streamFactory: async () => webSocketClient.startConnection(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -356,7 +356,7 @@ describe('gestaltsGestaltTrustByNode', () => {
       manifest: {
         gestaltsGestaltTrustByNode,
       },
-      streamPairCreateCallback: async () => webSocketClient.startConnection(),
+      streamFactory: async () => webSocketClient.startConnection(),
       logger: logger.getChild('clientRPC'),
     });
 

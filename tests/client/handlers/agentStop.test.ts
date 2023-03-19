@@ -106,7 +106,7 @@ describe('agentStop', () => {
       manifest: {
         agentStop,
       },
-      streamPairCreateCallback: async () => webSocketClient.startConnection(),
+      streamFactory: async () => webSocketClient.startConnection(),
       logger: logger.getChild('clientRPC'),
     });
 

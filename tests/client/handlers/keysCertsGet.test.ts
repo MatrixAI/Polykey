@@ -122,7 +122,7 @@ describe('keysCertsGet', () => {
       manifest: {
         keysCertsGet,
       },
-      streamPairCreateCallback: async () => webSocketClient.startConnection(),
+      streamFactory: async () => webSocketClient.startConnection(),
       logger: logger.getChild('clientRPC'),
     });
 

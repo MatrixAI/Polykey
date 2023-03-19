@@ -157,7 +157,7 @@ type UnaryHandlerImplementation<
 
 type ContainerType = Record<string, any>;
 
-type StreamPairCreateCallback = () => Promise<
+type StreamFactory = () => Promise<
   ReadableWritablePair<Uint8Array, Uint8Array>
 >;
 
@@ -253,7 +253,7 @@ export type {
   ClientHandlerImplementation,
   UnaryHandlerImplementation,
   ContainerType,
-  StreamPairCreateCallback,
+  StreamFactory,
   MiddlewareFactory,
   ServerManifest,
   ClientManifest,

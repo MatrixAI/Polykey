@@ -86,7 +86,7 @@ describe('keysKeyPairRenew', () => {
       manifest: {
         keysKeyPairRenew,
       },
-      streamPairCreateCallback: async () => webSocketClient.startConnection(),
+      streamFactory: async () => webSocketClient.startConnection(),
       logger: logger.getChild('clientRPC'),
     });
 

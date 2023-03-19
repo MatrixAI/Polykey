@@ -112,7 +112,7 @@ describe('gestaltsGestaltList', () => {
       manifest: {
         gestaltsGestaltList,
       },
-      streamPairCreateCallback: async () => webSocketClient.startConnection(),
+      streamFactory: async () => webSocketClient.startConnection(),
       logger: logger.getChild('clientRPC'),
     });
 

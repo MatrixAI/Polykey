@@ -109,7 +109,7 @@ describe('vaultsSecretsRename', () => {
       manifest: {
         vaultsSecretsRename,
       },
-      streamPairCreateCallback: async () => webSocketClient.startConnection(),
+      streamFactory: async () => webSocketClient.startConnection(),
       logger: logger.getChild('clientRPC'),
     });
 

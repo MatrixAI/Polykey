@@ -168,7 +168,7 @@ describe('identitiesClaim', () => {
       manifest: {
         identitiesInvite,
       },
-      streamPairCreateCallback: async () => webSocketClient.startConnection(),
+      streamFactory: async () => webSocketClient.startConnection(),
       logger: logger.getChild('clientRPC'),
     });
 

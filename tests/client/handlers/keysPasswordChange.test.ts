@@ -100,7 +100,7 @@ describe('keysPasswordChange', () => {
       manifest: {
         keysPasswordChange,
       },
-      streamPairCreateCallback: async () => webSocketClient.startConnection(),
+      streamFactory: async () => webSocketClient.startConnection(),
       logger: logger.getChild('clientRPC'),
     });
 

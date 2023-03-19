@@ -103,7 +103,7 @@ describe('keysSignVerify', () => {
         keysSign,
         keysVerify,
       },
-      streamPairCreateCallback: async () => webSocketClient.startConnection(),
+      streamFactory: async () => webSocketClient.startConnection(),
       logger: logger.getChild('clientRPC'),
     });
 

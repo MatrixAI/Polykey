@@ -125,7 +125,7 @@ describe('agentUnlock', () => {
       manifest: {
         agentUnlock: new UnaryCaller<RPCRequestParams, RPCResponseResult>(),
       },
-      streamPairCreateCallback: async () => clientClient.startConnection(),
+      streamFactory: async () => clientClient.startConnection(),
       middleware: middlewareUtils.defaultClientMiddlewareWrapper(
         authMiddleware.authenticationMiddlewareClient(session),
       ),

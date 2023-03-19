@@ -1,7 +1,7 @@
 import type {
   HandlerType,
   JsonRpcRequestMessage,
-  StreamPairCreateCallback,
+  StreamFactory,
   ClientManifest,
 } from './types';
 import type { JSONValue } from 'types';
@@ -35,12 +35,12 @@ interface RPCClient<M extends ClientManifest> extends CreateDestroy {}
 class RPCClient<M extends ClientManifest> {
   static async createRPCClient<M extends ClientManifest>({
     manifest,
-    streamPairCreateCallback,
+    streamFactory,
     middleware = middlewareUtils.defaultClientMiddlewareWrapper(),
     logger = new Logger(this.name),
   }: {
     manifest: M;
-    streamPairCreateCallback: StreamPairCreateCallback;
+    streamFactory: StreamFactory;
     middleware?: MiddlewareFactory<
       Uint8Array,
       JsonRpcRequest,
@@ -52,7 +52,7 @@ class RPCClient<M extends ClientManifest> {
     logger.info(`Creating ${this.name}`);
     const rpcClient = new this({
       manifest,
-      streamPairCreateCallback,
+      streamFactory,
       middleware,
       logger,
     });
@@ -61,7 +61,7 @@ class RPCClient<M extends ClientManifest> {
   }
 
   protected logger: Logger;
-  protected streamPairCreateCallback: StreamPairCreateCallback;
+  protected streamFactory: StreamFactory;
   protected middleware: MiddlewareFactory<
     Uint8Array,
     JsonRpcRequest,
@@ -95,12 +95,12 @@ class RPCClient<M extends ClientManifest> {
 
   public constructor({
     manifest,
-    streamPairCreateCallback,
+    streamFactory,
     middleware,
     logger,
   }: {
     manifest: M;
-    streamPairCreateCallback: StreamPairCreateCallback;
+    streamFactory: StreamFactory;
     middleware: MiddlewareFactory<
       Uint8Array,
       JsonRpcRequest,
@@ -110,7 +110,7 @@ class RPCClient<M extends ClientManifest> {
     logger: Logger;
   }) {
     this.callerTypes = rpcUtils.getHandlerTypes(manifest);
-    this.streamPairCreateCallback = streamPairCreateCallback;
+    this.streamFactory = streamFactory;
     this.middleware = middleware;
     this.logger = logger;
   }
@@ -191,7 +191,7 @@ class RPCClient<M extends ClientManifest> {
     const inputMessageTransformStream = clientInputTransformStream<I>(method);
     const middleware = this.middleware();
     // Hooking up agnostic stream side
-    const streamPair = await this.streamPairCreateCallback();
+    const streamPair = await this.streamFactory();
     void streamPair.readable
       .pipeThrough(middleware.reverse)
       .pipeTo(outputMessageTransformStream.writable)
@@ -213,7 +213,7 @@ class RPCClient<M extends ClientManifest> {
     method: string,
     headerParams: JSONValue,
   ): Promise<ReadableWritablePair<Uint8Array, Uint8Array>> {
-    const streamPair = await this.streamPairCreateCallback();
+    const streamPair = await this.streamFactory();
     const tempWriter = streamPair.writable.getWriter();
     const header: JsonRpcRequestMessage = {
       jsonrpc: '2.0',

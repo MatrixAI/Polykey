@@ -123,7 +123,7 @@ describe('vaultsCreateDeleteList', () => {
         vaultsDelete,
         vaultsList,
       },
-      streamPairCreateCallback: async () => webSocketClient.startConnection(),
+      streamFactory: async () => webSocketClient.startConnection(),
       logger: logger.getChild('clientRPC'),
     });
 

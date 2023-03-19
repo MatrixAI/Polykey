@@ -100,7 +100,7 @@ describe('agentLockAll', () => {
       manifest: {
         agentLockAll,
       },
-      streamPairCreateCallback: async () => webSocketClient.startConnection(),
+      streamFactory: async () => webSocketClient.startConnection(),
       logger: logger.getChild('clientRPC'),
     });
 

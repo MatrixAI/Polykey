@@ -158,7 +158,7 @@ describe('nodesPing', () => {
       manifest: {
         nodesPing,
       },
-      streamPairCreateCallback: async () => webSocketClient.startConnection(),
+      streamFactory: async () => webSocketClient.startConnection(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -197,7 +197,7 @@ describe('nodesPing', () => {
       manifest: {
         nodesPing,
       },
-      streamPairCreateCallback: async () => webSocketClient.startConnection(),
+      streamFactory: async () => webSocketClient.startConnection(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -236,7 +236,7 @@ describe('nodesPing', () => {
       manifest: {
         nodesPing,
       },
-      streamPairCreateCallback: async () => webSocketClient.startConnection(),
+      streamFactory: async () => webSocketClient.startConnection(),
       logger: logger.getChild('clientRPC'),
     });
 

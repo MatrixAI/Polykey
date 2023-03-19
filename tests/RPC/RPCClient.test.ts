@@ -58,7 +58,7 @@ describe(`${RPCClient.name}`, () => {
       };
       const rpcClient = await RPCClient.createRPCClient({
         manifest: {},
-        streamPairCreateCallback: async () => streamPair,
+        streamFactory: async () => streamPair,
         logger,
       });
       const callerInterface = await rpcClient.rawStreamCaller(
@@ -95,7 +95,7 @@ describe(`${RPCClient.name}`, () => {
     };
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {},
-      streamPairCreateCallback: async () => streamPair,
+      streamFactory: async () => streamPair,
       logger,
     });
     const callerInterface = await rpcClient.duplexStreamCaller<
@@ -135,7 +135,7 @@ describe(`${RPCClient.name}`, () => {
       };
       const rpcClient = await RPCClient.createRPCClient({
         manifest: {},
-        streamPairCreateCallback: async () => streamPair,
+        streamFactory: async () => streamPair,
         logger,
       });
       const callerInterface = await rpcClient.serverStreamCaller<
@@ -175,7 +175,7 @@ describe(`${RPCClient.name}`, () => {
       };
       const rpcClient = await RPCClient.createRPCClient({
         manifest: {},
-        streamPairCreateCallback: async () => streamPair,
+        streamFactory: async () => streamPair,
         logger,
       });
       const { output, writable } = await rpcClient.clientStreamCaller<
@@ -214,7 +214,7 @@ describe(`${RPCClient.name}`, () => {
       };
       const rpcClient = await RPCClient.createRPCClient({
         manifest: {},
-        streamPairCreateCallback: async () => streamPair,
+        streamFactory: async () => streamPair,
         logger,
       });
       const result = await rpcClient.unaryCaller<JSONValue, JSONValue>(
@@ -252,7 +252,7 @@ describe(`${RPCClient.name}`, () => {
       };
       const rpcClient = await RPCClient.createRPCClient({
         manifest: {},
-        streamPairCreateCallback: async () => streamPair,
+        streamFactory: async () => streamPair,
         logger,
       });
       const callerInterface = await rpcClient.duplexStreamCaller<
@@ -289,7 +289,7 @@ describe(`${RPCClient.name}`, () => {
       };
       const rpcClient = await RPCClient.createRPCClient({
         manifest: {},
-        streamPairCreateCallback: async () => streamPair,
+        streamFactory: async () => streamPair,
         logger,
       });
       const callerInterface = await rpcClient.duplexStreamCaller<
@@ -329,7 +329,7 @@ describe(`${RPCClient.name}`, () => {
       };
       const rpcClient = await RPCClient.createRPCClient({
         manifest: {},
-        streamPairCreateCallback: async () => streamPair,
+        streamFactory: async () => streamPair,
         logger,
       });
       const callerInterface = await rpcClient.duplexStreamCaller<
@@ -360,7 +360,7 @@ describe(`${RPCClient.name}`, () => {
       };
       const rpcClient = await RPCClient.createRPCClient({
         manifest: {},
-        streamPairCreateCallback: async () => streamPair,
+        streamFactory: async () => streamPair,
         middleware: middlewareUtils.defaultClientMiddlewareWrapper(() => {
           return {
             forward: new TransformStream<JsonRpcRequest, JsonRpcRequest>({
@@ -424,7 +424,7 @@ describe(`${RPCClient.name}`, () => {
       };
       const rpcClient = await RPCClient.createRPCClient({
         manifest: {},
-        streamPairCreateCallback: async () => streamPair,
+        streamFactory: async () => streamPair,
         middleware: middlewareUtils.defaultClientMiddlewareWrapper(() => {
           return {
             forward: new TransformStream(),
@@ -475,7 +475,7 @@ describe(`${RPCClient.name}`, () => {
         manifest: {
           server: new ServerCaller<string, string>(),
         },
-        streamPairCreateCallback: async () => streamPair,
+        streamFactory: async () => streamPair,
         logger,
       });
       const callerInterface = await rpcClient.methods.server(params);
@@ -514,7 +514,7 @@ describe(`${RPCClient.name}`, () => {
         manifest: {
           client: new ClientCaller<string, string>(),
         },
-        streamPairCreateCallback: async () => streamPair,
+        streamFactory: async () => streamPair,
         logger,
       });
       const { output, writable } = await rpcClient.methods.client();
@@ -552,7 +552,7 @@ describe(`${RPCClient.name}`, () => {
         manifest: {
           unary: new UnaryCaller<string, string>(),
         },
-        streamPairCreateCallback: async () => streamPair,
+        streamFactory: async () => streamPair,
         logger,
       });
       const result = await rpcClient.methods.unary(params);
@@ -595,7 +595,7 @@ describe(`${RPCClient.name}`, () => {
         manifest: {
           raw: new RawCaller(),
         },
-        streamPairCreateCallback: async () => streamPair,
+        streamFactory: async () => streamPair,
         logger,
       });
       const callerInterface = await rpcClient.methods.raw(headerParams);
@@ -638,7 +638,7 @@ describe(`${RPCClient.name}`, () => {
         manifest: {
           duplex: new DuplexCaller<string, string>(),
         },
-        streamPairCreateCallback: async () => streamPair,
+        streamFactory: async () => streamPair,
         logger,
       });
       let count = 0;
@@ -659,7 +659,7 @@ describe(`${RPCClient.name}`, () => {
   test('manifest without handler errors', async () => {
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {},
-      streamPairCreateCallback: async () => {
+      streamFactory: async () => {
         return {} as ReadableWritablePair;
       },
       logger,

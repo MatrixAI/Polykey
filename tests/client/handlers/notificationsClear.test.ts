@@ -171,7 +171,7 @@ describe('notificationsClear', () => {
       manifest: {
         notificationsClear,
       },
-      streamPairCreateCallback: async () => webSocketClient.startConnection(),
+      streamFactory: async () => webSocketClient.startConnection(),
       logger: logger.getChild('clientRPC'),
     });
 

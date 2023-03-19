@@ -109,7 +109,7 @@ describe('vaultsSecretsStat', () => {
       manifest: {
         vaultsSecretsStat,
       },
-      streamPairCreateCallback: async () => webSocketClient.startConnection(),
+      streamFactory: async () => webSocketClient.startConnection(),
       logger: logger.getChild('clientRPC'),
     });
 

@@ -195,7 +195,7 @@ describe('gestaltsDiscoverByIdentity', () => {
       manifest: {
         gestaltsDiscoveryByIdentity,
       },
-      streamPairCreateCallback: async () => webSocketClient.startConnection(),
+      streamFactory: async () => webSocketClient.startConnection(),
       logger: logger.getChild('clientRPC'),
     });
 

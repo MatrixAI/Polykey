@@ -113,7 +113,7 @@ describe('agentUnlock', () => {
       manifest: {
         agentUnlock,
       },
-      streamPairCreateCallback: async () => clientClient.startConnection(),
+      streamFactory: async () => clientClient.startConnection(),
       middleware: middlewareUtils.defaultClientMiddlewareWrapper(
         authMiddleware.authenticationMiddlewareClient(session),
       ),

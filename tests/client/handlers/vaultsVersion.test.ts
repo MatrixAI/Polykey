@@ -124,7 +124,7 @@ describe('vaultsVersion', () => {
       manifest: {
         vaultsVersion,
       },
-      streamPairCreateCallback: async () => webSocketClient.startConnection(),
+      streamFactory: async () => webSocketClient.startConnection(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -188,7 +188,7 @@ describe('vaultsVersion', () => {
       manifest: {
         vaultsVersion,
       },
-      streamPairCreateCallback: async () => webSocketClient.startConnection(),
+      streamFactory: async () => webSocketClient.startConnection(),
       logger: logger.getChild('clientRPC'),
     });
 

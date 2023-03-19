@@ -43,7 +43,7 @@ class CommandCert extends CommandPolykey {
           port: clientOptions.clientPort,
         });
         pkClient = await PolykeyClient.createPolykeyClient({
-          streamPairCreateCallback: () => webSocketClient.startConnection(),
+          streamFactory: () => webSocketClient.startConnection(),
           nodePath: options.nodePath,
           manifest: clientManifest,
           logger: this.logger.getChild(PolykeyClient.name),

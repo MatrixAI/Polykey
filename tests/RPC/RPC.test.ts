@@ -59,7 +59,7 @@ describe('RPC', () => {
         manifest: {
           testMethod: new RawCaller(),
         },
-        streamPairCreateCallback: async () => clientPair,
+        streamFactory: async () => clientPair,
         logger,
       });
 
@@ -112,7 +112,7 @@ describe('RPC', () => {
         manifest: {
           testMethod: new DuplexCaller(),
         },
-        streamPairCreateCallback: async () => clientPair,
+        streamFactory: async () => clientPair,
         logger,
       });
 
@@ -160,7 +160,7 @@ describe('RPC', () => {
         manifest: {
           testMethod: new ServerCaller<number, number>(),
         },
-        streamPairCreateCallback: async () => clientPair,
+        streamFactory: async () => clientPair,
         logger,
       });
 
@@ -205,7 +205,7 @@ describe('RPC', () => {
         manifest: {
           testMethod: new ClientCaller<number, number>(),
         },
-        streamPairCreateCallback: async () => clientPair,
+        streamFactory: async () => clientPair,
         logger,
       });
 
@@ -247,7 +247,7 @@ describe('RPC', () => {
         manifest: {
           testMethod: new UnaryCaller(),
         },
-        streamPairCreateCallback: async () => clientPair,
+        streamFactory: async () => clientPair,
         logger,
       });
 
@@ -286,7 +286,7 @@ describe('RPC', () => {
         manifest: {
           testMethod: new UnaryCaller(),
         },
-        streamPairCreateCallback: async () => clientPair,
+        streamFactory: async () => clientPair,
         logger,
       });
 
@@ -334,7 +334,7 @@ describe('RPC', () => {
         manifest: {
           testMethod: new UnaryCaller(),
         },
-        streamPairCreateCallback: async () => clientPair,
+        streamFactory: async () => clientPair,
         logger,
       });
 

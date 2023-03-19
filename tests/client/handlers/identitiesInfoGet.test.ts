@@ -110,7 +110,7 @@ describe('identitiesInfoConnectedGet', () => {
       manifest: {
         identitiesInfoGet,
       },
-      streamPairCreateCallback: async () => webSocketClient.startConnection(),
+      streamFactory: async () => webSocketClient.startConnection(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -176,7 +176,7 @@ describe('identitiesInfoConnectedGet', () => {
       manifest: {
         identitiesInfoGet,
       },
-      streamPairCreateCallback: async () => webSocketClient.startConnection(),
+      streamFactory: async () => webSocketClient.startConnection(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -264,7 +264,7 @@ describe('identitiesInfoConnectedGet', () => {
       manifest: {
         identitiesInfoGet,
       },
-      streamPairCreateCallback: async () => webSocketClient.startConnection(),
+      streamFactory: async () => webSocketClient.startConnection(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -347,7 +347,7 @@ describe('identitiesInfoConnectedGet', () => {
       manifest: {
         identitiesInfoGet,
       },
-      streamPairCreateCallback: async () => webSocketClient.startConnection(),
+      streamFactory: async () => webSocketClient.startConnection(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -416,7 +416,7 @@ describe('identitiesInfoConnectedGet', () => {
       manifest: {
         identitiesInfoGet,
       },
-      streamPairCreateCallback: async () => webSocketClient.startConnection(),
+      streamFactory: async () => webSocketClient.startConnection(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -499,7 +499,7 @@ describe('identitiesInfoConnectedGet', () => {
       manifest: {
         identitiesInfoGet,
       },
-      streamPairCreateCallback: async () => webSocketClient.startConnection(),
+      streamFactory: async () => webSocketClient.startConnection(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -589,7 +589,7 @@ describe('identitiesInfoConnectedGet', () => {
       manifest: {
         identitiesInfoGet,
       },
-      streamPairCreateCallback: async () => webSocketClient.startConnection(),
+      streamFactory: async () => webSocketClient.startConnection(),
       logger: logger.getChild('clientRPC'),
     });
 

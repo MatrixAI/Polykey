@@ -120,7 +120,7 @@ describe('gestaltsGestaltGetByIdentity', () => {
       manifest: {
         gestaltsGestaltGetByIdentity,
       },
-      streamPairCreateCallback: async () => webSocketClient.startConnection(),
+      streamFactory: async () => webSocketClient.startConnection(),
       logger: logger.getChild('clientRPC'),
     });
 

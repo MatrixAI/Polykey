@@ -120,7 +120,7 @@ describe('gestaltsGestaltGetByNode', () => {
       manifest: {
         gestaltsGestaltGetByNode,
       },
-      streamPairCreateCallback: async () => webSocketClient.startConnection(),
+      streamFactory: async () => webSocketClient.startConnection(),
       logger: logger.getChild('clientRPC'),
     });
 
