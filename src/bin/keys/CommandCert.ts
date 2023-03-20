@@ -35,12 +35,14 @@ class CommandCert extends CommandPolykey {
       let pkClient: PolykeyClient<typeof clientManifest>;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
+        if (webSocketClient != null) await webSocketClient.destroy(true);
       });
       try {
         webSocketClient = await WebSocketClient.createWebSocketClient({
           expectedNodeIds: [clientOptions.nodeId],
           host: clientOptions.clientHost,
           port: clientOptions.clientPort,
+          logger: this.logger.getChild(WebSocketClient.name),
         });
         pkClient = await PolykeyClient.createPolykeyClient({
           streamFactory: () => webSocketClient.startConnection(),

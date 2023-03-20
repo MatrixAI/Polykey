@@ -1,4 +1,5 @@
 import type PolykeyClient from '../../PolykeyClient';
+import type WebSocketClient from '../../websockets/WebSocketClient';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
 import * as binOptions from '../utils/options';
@@ -20,6 +21,9 @@ class CommandGet extends CommandPolykey {
     this.addOption(binOptions.clientPort);
     this.action(async (secretPath, options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
+      const { default: WebSocketClient } = await import(
+        '../../websockets/WebSocketClient'
+      );
       const { clientManifest } = await import('../../client/handlers');
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
@@ -33,16 +37,22 @@ class CommandGet extends CommandPolykey {
         options.passwordFile,
         this.fs,
       );
+      let webSocketClient: WebSocketClient;
       let pkClient: PolykeyClient<typeof clientManifest>;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
+        if (webSocketClient != null) await webSocketClient.destroy(true);
       });
       try {
-        pkClient = await PolykeyClient.createPolykeyClient({
-          nodePath: options.nodePath,
-          nodeId: clientOptions.nodeId,
+        webSocketClient = await WebSocketClient.createWebSocketClient({
+          expectedNodeIds: [clientOptions.nodeId],
           host: clientOptions.clientHost,
           port: clientOptions.clientPort,
+          logger: this.logger.getChild(WebSocketClient.name),
+        });
+        pkClient = await PolykeyClient.createPolykeyClient({
+          streamFactory: () => webSocketClient.startConnection(),
+          nodePath: options.nodePath,
           manifest: clientManifest,
           logger: this.logger.getChild(PolykeyClient.name),
         });
@@ -64,6 +74,7 @@ class CommandGet extends CommandPolykey {
         );
       } finally {
         if (pkClient! != null) await pkClient.stop();
+        if (webSocketClient! != null) await webSocketClient.destroy();
       }
     });
   }

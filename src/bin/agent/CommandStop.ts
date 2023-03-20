@@ -1,4 +1,5 @@
 import type PolykeyClient from '../../PolykeyClient';
+import type WebSocketClient from '../../websockets/WebSocketClient';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
 import * as binOptions from '../utils/options';
@@ -15,6 +16,9 @@ class CommandStop extends CommandPolykey {
     this.addOption(binOptions.clientPort);
     this.action(async (options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
+      const { default: WebSocketClient } = await import(
+        '../../websockets/WebSocketClient'
+      );
       const { clientManifest } = await import('../../client/handlers');
       const clientStatus = await binProcessors.processClientStatus(
         options.nodePath,
@@ -40,16 +44,22 @@ class CommandStop extends CommandPolykey {
       );
       // Either the statusInfo is undefined or LIVE
       // Either way, the connection parameters now exist
+      let webSocketClient: WebSocketClient;
       let pkClient: PolykeyClient<typeof clientManifest>;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
+        if (webSocketClient != null) await webSocketClient.destroy(true);
       });
       try {
-        pkClient = await PolykeyClient.createPolykeyClient({
-          nodePath: options.nodePath,
-          nodeId: clientStatus.nodeId!,
+        webSocketClient = await WebSocketClient.createWebSocketClient({
+          expectedNodeIds: [clientStatus.nodeId!],
           host: clientStatus.clientHost!,
           port: clientStatus.clientPort!,
+          logger: this.logger.getChild(WebSocketClient.name),
+        });
+        pkClient = await PolykeyClient.createPolykeyClient({
+          streamFactory: () => webSocketClient.startConnection(),
+          nodePath: options.nodePath,
           manifest: clientManifest,
           logger: this.logger.getChild(PolykeyClient.name),
         });
@@ -63,6 +73,7 @@ class CommandStop extends CommandPolykey {
         this.logger.info('Stopping Agent');
       } finally {
         if (pkClient! != null) await pkClient.stop();
+        if (webSocketClient! != null) await webSocketClient.destroy();
       }
     });
   }
