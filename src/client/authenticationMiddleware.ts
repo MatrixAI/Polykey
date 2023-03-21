@@ -70,10 +70,10 @@ function authenticationMiddlewareServer(
           if (outgoingToken != null && 'result' in chunk) {
             if (chunk.result.metadata == null) {
               chunk.result.metadata = {
-                Authorization: '',
+                authorization: '',
               };
             }
-            chunk.result.metadata.Authorization = outgoingToken;
+            chunk.result.metadata.authorization = outgoingToken;
             outgoingToken = null;
           }
           controller.enqueue(chunk);
@@ -101,15 +101,15 @@ function authenticationMiddlewareClient(
         transform: async (chunk, controller) => {
           if (forwardFirst) {
             if (chunk.params == null) utils.never();
-            if (chunk.params.metadata?.Authorization == null) {
+            if (chunk.params.metadata?.authorization == null) {
               const token = await session.readToken();
               if (token != null) {
                 if (chunk.params.metadata == null) {
                   chunk.params.metadata = {
-                    Authorization: '',
+                    authorization: '',
                   };
                 }
-                chunk.params.metadata.Authorization = `Bearer ${token}`;
+                chunk.params.metadata.authorization = `Bearer ${token}`;
               }
             }
           }

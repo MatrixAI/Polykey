@@ -14,7 +14,7 @@ async function authenticate(
   if (message.params.metadata == null) {
     throw new clientErrors.ErrorClientAuthMissing();
   }
-  const auth = message.params.metadata.Authorization;
+  const auth = message.params.metadata.authorization;
   if (auth == null) {
     throw new clientErrors.ErrorClientAuthMissing();
   }
@@ -42,7 +42,7 @@ async function authenticate(
 }
 
 function decodeAuth(messageParams: RPCRequestParams) {
-  const auth = messageParams.metadata?.Authorization;
+  const auth = messageParams.metadata?.authorization;
   if (auth == null || !auth.startsWith('Bearer ')) {
     return;
   }
@@ -70,7 +70,7 @@ function encodeAuthFromSession(token: SessionToken): string {
 function decodeAuthToSession(
   messageParams: RPCRequestParams,
 ): SessionToken | undefined {
-  const auth = messageParams.metadata?.Authorization;
+  const auth = messageParams.metadata?.authorization;
   if (auth == null || !auth.startsWith('Bearer ')) {
     return;
   }

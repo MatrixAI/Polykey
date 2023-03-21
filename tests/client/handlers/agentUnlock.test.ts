@@ -123,18 +123,18 @@ describe('agentUnlock', () => {
     // Doing the test
     const result = await rpcClient.methods.agentUnlock({
       metadata: {
-        Authorization: clientUtils.encodeAuthFromPassword(password),
+        authorization: clientUtils.encodeAuthFromPassword(password),
       },
     });
     expect(result).toMatchObject({
       metadata: {
-        Authorization: expect.any(String),
+        authorization: expect.any(String),
       },
     });
     const result2 = await rpcClient.methods.agentUnlock({});
     expect(result2).toMatchObject({
       metadata: {
-        Authorization: expect.any(String),
+        authorization: expect.any(String),
       },
     });
   });

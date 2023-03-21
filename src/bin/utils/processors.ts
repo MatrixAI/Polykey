@@ -374,7 +374,7 @@ async function processClientStatus(
 async function processAuthentication(
   passwordFile?: string,
   fs: FileSystem = require('fs'),
-): Promise<{ Authorization?: string }> {
+): Promise<{ authorization?: string }> {
   if (passwordFile != null) {
     let password;
     try {
@@ -391,17 +391,17 @@ async function processAuthentication(
       });
     }
     return {
-      Authorization: clientUtils.encodeAuthFromPassword(password),
+      authorization: clientUtils.encodeAuthFromPassword(password),
     };
   } else if (typeof process.env['PK_PASSWORD'] === 'string') {
     return {
-      Authorization: clientUtils.encodeAuthFromPassword(
+      authorization: clientUtils.encodeAuthFromPassword(
         process.env['PK_PASSWORD'],
       ),
     };
   } else if (typeof process.env['PK_TOKEN'] === 'string') {
     return {
-      Authorization: clientUtils.encodeAuthFromSession(
+      authorization: clientUtils.encodeAuthFromSession(
         process.env['PK_TOKEN'] as SessionToken,
       ),
     };

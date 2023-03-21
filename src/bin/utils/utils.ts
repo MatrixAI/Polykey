@@ -177,15 +177,15 @@ function outputFormatter(msg: OutputObject): string | Uint8Array {
  * Known as "privilege elevation"
  */
 async function retryAuthentication<T>(
-  f: (meta: { Authorization?: string }) => Promise<T>,
-  meta: { Authorization?: string } = {},
+  f: (meta: { authorization?: string }) => Promise<T>,
+  meta: { authorization?: string } = {},
 ): Promise<T> {
   try {
     return await f(meta);
   } catch (e) {
-    // If it is unattended, throw the exception
-    // Don't enter into a retry loop when unattended
-    // Unattended means that either the `PK_PASSWORD` or `PK_TOKEN` was set
+    // If it is unattended, throw the exception.
+    // Don't enter into a retry loop when unattended.
+    // Unattended means that either the `PK_PASSWORD` or `PK_TOKEN` was set.
     if ('PK_PASSWORD' in process.env || 'PK_TOKEN' in process.env) {
       throw e;
     }
@@ -207,7 +207,7 @@ async function retryAuthentication<T>(
     }
     // Augment existing metadata
     const auth = {
-      Authorization: clientUtils.encodeAuthFromPassword(password),
+      authorization: clientUtils.encodeAuthFromPassword(password),
     };
     try {
       return await f(auth);

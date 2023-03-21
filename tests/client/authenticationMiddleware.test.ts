@@ -21,7 +21,7 @@ import WebSocketServer from '@/websockets/WebSocketServer';
 import WebSocketClient from '@/websockets/WebSocketClient';
 import * as testsUtils from '../utils';
 
-describe('agentUnlock', () => {
+describe('authenticationMiddleware', () => {
   const logger = new Logger('agentUnlock test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
@@ -87,7 +87,7 @@ describe('agentUnlock', () => {
       recursive: true,
     });
   });
-  test('get status', async () => {
+  test('middleware', async () => {
     // Setup
     class EchoHandler extends UnaryHandler<
       { logger: Logger },
@@ -100,7 +100,7 @@ describe('agentUnlock', () => {
     }
     const rpcServer = await RPCServer.createRPCServer({
       manifest: {
-        agentUnlock: new EchoHandler({ logger }),
+        testHandler: new EchoHandler({ logger }),
       },
       middleware: middlewareUtils.defaultServerMiddlewareWrapper(
         authMiddleware.authenticationMiddlewareServer(sessionManager, keyRing),
@@ -123,7 +123,7 @@ describe('agentUnlock', () => {
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
-        agentUnlock: new UnaryCaller<RPCRequestParams, RPCResponseResult>(),
+        testHandler: new UnaryCaller<RPCRequestParams, RPCResponseResult>(),
       },
       streamFactory: async () => clientClient.startConnection(),
       middleware: middlewareUtils.defaultClientMiddlewareWrapper(
@@ -133,20 +133,20 @@ describe('agentUnlock', () => {
     });
 
     // Doing the test
-    const result = await rpcClient.methods.agentUnlock({
+    const result = await rpcClient.methods.testHandler({
       metadata: {
-        Authorization: clientRPCUtils.encodeAuthFromPassword(password),
+        authorization: clientRPCUtils.encodeAuthFromPassword(password),
       },
     });
     expect(result).toMatchObject({
       metadata: {
-        Authorization: expect.any(String),
+        authorization: expect.any(String),
       },
     });
-    const result2 = await rpcClient.methods.agentUnlock({});
+    const result2 = await rpcClient.methods.testHandler({});
     expect(result2).toMatchObject({
       metadata: {
-        Authorization: expect.any(String),
+        authorization: expect.any(String),
       },
     });
   });
