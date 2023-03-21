@@ -5,8 +5,8 @@ import type { NodeIdMessage, VaultsScanMessage } from './types';
 import { validateSync } from '../../validation';
 import { matchSync } from '../../utils';
 import * as validationUtils from '../../validation/utils';
-import { ServerCaller } from '../../RPC/callers';
-import { ServerHandler } from '../../RPC/handlers';
+import { ServerCaller } from '../../rpc/callers';
+import { ServerHandler } from '../../rpc/handlers';
 
 const vaultsScan = new ServerCaller<
   ClientRPCRequestParams<NodeIdMessage>,

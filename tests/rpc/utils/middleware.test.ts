@@ -1,10 +1,10 @@
 import { fc, testProp } from '@fast-check/jest';
 import { AsyncIterableX as AsyncIterable } from 'ix/asynciterable';
-import * as rpcUtils from '@/RPC/utils';
+import * as rpcUtils from '@/rpc/utils';
 import 'ix/add/asynciterable-operators/toarray';
-import * as rpcErrors from '@/RPC/errors';
-import * as middleware from '@/RPC/middleware';
-import * as rpcTestUtils from './utils';
+import * as rpcErrors from '@/rpc/errors';
+import * as middleware from '@/rpc/utils/middleware';
+import * as rpcTestUtils from '../utils';
 
 describe('Middleware tests', () => {
   const noiseArb = fc

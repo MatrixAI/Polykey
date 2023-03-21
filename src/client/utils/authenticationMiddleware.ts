@@ -2,17 +2,17 @@ import type {
   JsonRpcRequest,
   JsonRpcResponse,
   MiddlewareFactory,
-} from '../RPC/types';
-import type { ClientRPCRequestParams, ClientRPCResponseResult } from './types';
-import type { Session } from '../sessions';
-import type SessionManager from '../sessions/SessionManager';
-import type KeyRing from '../keys/KeyRing';
-import type { JsonRpcError, JsonRpcResponseError } from '../RPC/types';
+} from 'rpc/types';
+import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
+import type { Session } from '../../sessions/index';
+import type SessionManager from '../../sessions/SessionManager';
+import type KeyRing from '../../keys/KeyRing';
+import type { JsonRpcError, JsonRpcResponseError } from '../../rpc/types';
 import { TransformStream } from 'stream/web';
-import { authenticate, decodeAuth } from './utils';
-import { sysexits } from '../errors';
-import * as utils from '../utils';
-import * as rpcUtils from '../RPC/utils';
+import { authenticate, decodeAuth } from '../utils/utils';
+import { sysexits } from '../../errors';
+import * as utils from '../../utils/index';
+import * as rpcUtils from '../../rpc/utils/utils';
 
 function authenticationMiddlewareServer(
   sessionManager: SessionManager,

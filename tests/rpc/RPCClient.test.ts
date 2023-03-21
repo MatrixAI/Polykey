@@ -4,21 +4,21 @@ import type {
   JsonRpcRequest,
   JsonRpcRequestMessage,
   JsonRpcResponse,
-} from '@/RPC/types';
+} from '@/rpc/types';
 import { TransformStream, ReadableStream } from 'stream/web';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { testProp, fc } from '@fast-check/jest';
-import RPCClient from '@/RPC/RPCClient';
-import RPCServer from '@/RPC/RPCServer';
-import * as rpcErrors from '@/RPC/errors';
+import RPCClient from '@/rpc/RPCClient';
+import RPCServer from '@/rpc/RPCServer';
+import * as rpcErrors from '@/rpc/errors';
 import {
   ClientCaller,
   DuplexCaller,
   RawCaller,
   ServerCaller,
   UnaryCaller,
-} from '@/RPC/callers';
-import * as middlewareUtils from '@/RPC/middleware';
+} from '@/rpc/callers';
+import * as middlewareUtils from '@/rpc/utils/middleware';
 import * as rpcTestUtils from './utils';
 
 describe(`${RPCClient.name}`, () => {

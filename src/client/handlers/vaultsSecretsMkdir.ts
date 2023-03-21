@@ -5,8 +5,8 @@ import type { SecretMkdirMessage, SuccessMessage } from './types';
 import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
 import * as vaultOps from '../../vaults/VaultOps';
-import { UnaryHandler } from '../../RPC/handlers';
-import { UnaryCaller } from '../../RPC/callers';
+import { UnaryHandler } from '../../rpc/handlers';
+import { UnaryCaller } from '../../rpc/callers';
 
 const vaultsSecretsMkdir = new UnaryCaller<
   ClientRPCRequestParams<SecretMkdirMessage>,

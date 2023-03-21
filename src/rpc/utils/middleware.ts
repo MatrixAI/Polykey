@@ -4,11 +4,11 @@ import type {
   JsonRpcResponse,
   JsonRpcResponseResult,
   MiddlewareFactory,
-} from './types';
+} from '../types';
 import { TransformStream } from 'stream/web';
-import * as rpcErrors from './errors';
 import * as rpcUtils from './utils';
-import { promise } from '../utils';
+import * as rpcErrors from '../errors';
+import { promise } from '../../utils/index';
 const jsonStreamParsers = require('@streamparser/json');
 
 /**

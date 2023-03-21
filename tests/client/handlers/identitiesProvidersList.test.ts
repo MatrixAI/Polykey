@@ -9,12 +9,12 @@ import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
-import RPCServer from '@/RPC/RPCServer';
+import RPCServer from '@/rpc/RPCServer';
 import {
   identitiesProvidersList,
   IdentitiesProvidersListHandler,
 } from '@/client/handlers/identitiesProvidersList';
-import RPCClient from '@/RPC/RPCClient';
+import RPCClient from '@/rpc/RPCClient';
 import WebSocketServer from '@/websockets/WebSocketServer';
 import WebSocketClient from '@/websockets/WebSocketClient';
 import IdentitiesManager from '@/identities/IdentitiesManager';

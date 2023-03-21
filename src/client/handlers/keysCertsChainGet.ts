@@ -1,8 +1,8 @@
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type { CertMessage } from './types';
 import type CertManager from 'keys/CertManager';
-import { ServerCaller } from '../../RPC/callers';
-import { ServerHandler } from '../../RPC/handlers';
+import { ServerCaller } from '../../rpc/callers';
+import { ServerHandler } from '../../rpc/handlers';
 
 const keysCertsChainGet = new ServerCaller<
   ClientRPCRequestParams,

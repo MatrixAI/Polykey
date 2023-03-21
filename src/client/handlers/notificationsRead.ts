@@ -2,8 +2,8 @@ import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type { DB } from '@matrixai/db';
 import type NotificationsManager from '../../notifications/NotificationsManager';
 import type { NotificationMessage, NotificationReadMessage } from './types';
-import { ServerHandler } from '../../RPC/handlers';
-import { ServerCaller } from '../../RPC/callers';
+import { ServerHandler } from '../../rpc/handlers';
+import { ServerCaller } from '../../rpc/callers';
 
 const notificationsRead = new ServerCaller<
   ClientRPCRequestParams<NotificationReadMessage>,

@@ -3,8 +3,8 @@ import type VaultManager from '../../vaults/VaultManager';
 import type { DB } from '@matrixai/db';
 import type { VaultIdMessage, VaultNameMessage } from './types';
 import * as vaultsUtils from '../../vaults/utils';
-import { UnaryHandler } from '../../RPC/handlers';
-import { UnaryCaller } from '../../RPC/callers';
+import { UnaryHandler } from '../../rpc/handlers';
+import { UnaryCaller } from '../../rpc/callers';
 
 const vaultsCreate = new UnaryCaller<
   ClientRPCRequestParams<VaultNameMessage>,

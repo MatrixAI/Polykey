@@ -3,8 +3,8 @@ import type { StatusResultMessage } from './types';
 import type PolykeyAgent from '../../PolykeyAgent';
 import * as nodesUtils from '../../nodes/utils';
 import * as keysUtils from '../../keys/utils';
-import { UnaryHandler } from '../../RPC/handlers';
-import { UnaryCaller } from '../../RPC/callers';
+import { UnaryHandler } from '../../rpc/handlers';
+import { UnaryCaller } from '../../rpc/callers';
 
 const agentStatus = new UnaryCaller<
   ClientRPCRequestParams,

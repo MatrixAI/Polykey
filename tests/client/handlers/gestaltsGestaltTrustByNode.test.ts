@@ -10,13 +10,13 @@ import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
-import RPCServer from '@/RPC/RPCServer';
+import RPCServer from '@/rpc/RPCServer';
 import TaskManager from '@/tasks/TaskManager';
 import {
   gestaltsGestaltTrustByNode,
   GestaltsGestaltTrustByNodeHandler,
 } from '@/client/handlers/gestaltsGestaltTrustByNode';
-import RPCClient from '@/RPC/RPCClient';
+import RPCClient from '@/rpc/RPCClient';
 import WebSocketServer from '@/websockets/WebSocketServer';
 import WebSocketClient from '@/websockets/WebSocketClient';
 import GestaltGraph from '@/gestalts/GestaltGraph';

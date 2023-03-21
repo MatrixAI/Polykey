@@ -1,7 +1,7 @@
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
-import type { ContainerType } from 'RPC/types';
-import { UnaryHandler } from '../../RPC/handlers';
-import { UnaryCaller } from '../../RPC/callers';
+import type { ContainerType } from 'rpc/types';
+import { UnaryHandler } from '../../rpc/handlers';
+import { UnaryCaller } from '../../rpc/callers';
 
 const agentUnlock = new UnaryCaller<
   ClientRPCRequestParams,

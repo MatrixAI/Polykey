@@ -1,8 +1,8 @@
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type PolykeyAgent from '../../PolykeyAgent';
 import { running, status } from '@matrixai/async-init';
-import { UnaryHandler } from '../../RPC/handlers';
-import { UnaryCaller } from '../../RPC/callers';
+import { UnaryHandler } from '../../rpc/handlers';
+import { UnaryCaller } from '../../rpc/callers';
 
 const agentStop = new UnaryCaller<
   ClientRPCRequestParams,

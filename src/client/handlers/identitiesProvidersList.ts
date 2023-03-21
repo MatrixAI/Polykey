@@ -1,7 +1,7 @@
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type IdentitiesManager from '../../identities/IdentitiesManager';
-import { UnaryCaller } from '../../RPC/callers';
-import { UnaryHandler } from '../../RPC/handlers';
+import { UnaryCaller } from '../../rpc/callers';
+import { UnaryHandler } from '../../rpc/handlers';
 
 const identitiesProvidersList = new UnaryCaller<
   ClientRPCRequestParams,

@@ -11,7 +11,7 @@ import type {
   us_socket_context_t,
   WebSocket,
 } from 'uWebSockets.js';
-import type { ConnectionInfo } from '../RPC/types';
+import type { ConnectionInfo } from '../rpc/types';
 import { WritableStream, ReadableStream } from 'stream/web';
 import path from 'path';
 import os from 'os';

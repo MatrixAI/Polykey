@@ -10,7 +10,7 @@ import { DB } from '@matrixai/db';
 import GestaltGraph from '@/gestalts/GestaltGraph';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
-import RPCServer from '@/RPC/RPCServer';
+import RPCServer from '@/rpc/RPCServer';
 import {
   vaultsPermissionSet,
   VaultsPermissionSetHandler,
@@ -23,7 +23,7 @@ import {
   vaultsPermissionUnset,
   VaultsPermissionUnsetHandler,
 } from '@/client/handlers/vaultsPermissionUnset';
-import RPCClient from '@/RPC/RPCClient';
+import RPCClient from '@/rpc/RPCClient';
 import WebSocketServer from '@/websockets/WebSocketServer';
 import WebSocketClient from '@/websockets/WebSocketClient';
 import NotificationsManager from '@/notifications/NotificationsManager';

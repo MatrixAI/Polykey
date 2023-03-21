@@ -5,12 +5,12 @@ import { AbstractError } from '@matrixai/errors';
 import * as binProcessors from './processors';
 import ErrorPolykey from '../../ErrorPolykey';
 import * as binErrors from '../errors';
-import * as clientUtils from '../../client/utils';
+import * as clientUtils from '../../client/utils/utils';
 import * as clientErrors from '../../client/errors';
 import * as grpcErrors from '../../grpc/errors';
 import * as nodesUtils from '../../nodes/utils';
 import * as utils from '../../utils';
-import * as rpcErrors from '../../RPC/errors';
+import * as rpcErrors from '../../rpc/errors';
 
 /**
  * Convert verbosity to LogLevel

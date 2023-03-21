@@ -5,8 +5,8 @@ import type { DB } from '@matrixai/db';
 import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
 import * as vaultOps from '../../vaults/VaultOps';
-import { ServerHandler } from '../../RPC/handlers';
-import { ServerCaller } from '../../RPC/callers';
+import { ServerHandler } from '../../rpc/handlers';
+import { ServerCaller } from '../../rpc/callers';
 
 const vaultsSecretsList = new ServerCaller<
   ClientRPCRequestParams<VaultIdentifierMessage>,

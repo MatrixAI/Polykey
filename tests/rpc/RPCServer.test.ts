@@ -3,27 +3,27 @@ import type {
   JsonRpcRequest,
   JsonRpcResponse,
   JsonRpcResponseError,
-} from '@/RPC/types';
+} from '@/rpc/types';
 import type { JSONValue } from '@/types';
 import type { ConnectionInfo, Host, Port } from '@/network/types';
 import type { NodeId } from '@/ids';
 import type { ReadableWritablePair } from 'stream/web';
 import type { ContextCancellable } from '@/contexts/types';
-import type { RPCErrorEvent } from '@/RPC/utils';
+import type { RPCErrorEvent } from '@/rpc/utils';
 import { TransformStream, ReadableStream } from 'stream/web';
 import { fc, testProp } from '@fast-check/jest';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import RPCServer from '@/RPC/RPCServer';
-import * as rpcErrors from '@/RPC/errors';
-import * as rpcUtils from '@/RPC/utils';
+import RPCServer from '@/rpc/RPCServer';
+import * as rpcErrors from '@/rpc/errors';
+import * as rpcUtils from '@/rpc/utils';
 import {
   ClientHandler,
   DuplexHandler,
   RawHandler,
   ServerHandler,
   UnaryHandler,
-} from '@/RPC/handlers';
-import * as middlewareUtils from '@/RPC/middleware';
+} from '@/rpc/handlers';
+import * as middlewareUtils from '@/rpc/utils/middleware';
 import * as rpcTestUtils from './utils';
 
 describe(`${RPCServer.name}`, () => {

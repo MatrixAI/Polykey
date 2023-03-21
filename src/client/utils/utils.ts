@@ -1,9 +1,9 @@
-import type { ClientRPCRequestParams } from './types';
+import type { ClientRPCRequestParams } from '../types';
 import type SessionManager from 'sessions/SessionManager';
 import type KeyRing from 'keys/KeyRing';
-import type { JsonRpcRequest } from 'RPC/types';
+import type { JsonRpcRequest } from 'rpc/types';
 import type { SessionToken } from 'sessions/types';
-import * as clientErrors from './errors';
+import * as clientErrors from '../errors';
 
 async function authenticate(
   sessionManager: SessionManager,

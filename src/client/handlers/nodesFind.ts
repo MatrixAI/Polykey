@@ -6,8 +6,8 @@ import { validateSync } from '../../validation';
 import { matchSync } from '../../utils';
 import * as validationUtils from '../../validation/utils';
 import * as nodesErrors from '../../nodes/errors';
-import { UnaryCaller } from '../../RPC/callers';
-import { UnaryHandler } from '../../RPC/handlers';
+import { UnaryCaller } from '../../rpc/callers';
+import { UnaryHandler } from '../../rpc/handlers';
 
 const nodesFind = new UnaryCaller<
   ClientRPCRequestParams<NodeIdMessage>,

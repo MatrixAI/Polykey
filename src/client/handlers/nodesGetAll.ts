@@ -5,8 +5,8 @@ import type NodeGraph from '../../nodes/NodeGraph';
 import type { NodesGetMessage } from '../handlers/types';
 import { IdInternal } from '@matrixai/id';
 import * as nodesUtils from '../../nodes/utils';
-import { ServerCaller } from '../../RPC/callers';
-import { ServerHandler } from '../../RPC/handlers';
+import { ServerCaller } from '../../rpc/callers';
+import { ServerHandler } from '../../rpc/handlers';
 
 const nodesGetAll = new ServerCaller<
   ClientRPCRequestParams,

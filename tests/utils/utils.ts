@@ -10,7 +10,7 @@ import readline from 'readline';
 import { IdInternal } from '@matrixai/id';
 import * as keysUtils from '@/keys/utils';
 import * as grpcErrors from '@/grpc/errors';
-import * as rpcErrors from '@/RPC/errors';
+import * as rpcErrors from '@/rpc/errors';
 import * as validationUtils from '@/validation/utils';
 import * as utils from '@/utils';
 import * as execUtils from './exec';

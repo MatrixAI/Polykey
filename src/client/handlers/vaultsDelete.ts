@@ -5,8 +5,8 @@ import type { DB } from '@matrixai/db';
 import type { VaultName } from '../../vaults/types';
 import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
-import { UnaryCaller } from '../../RPC/callers';
-import { UnaryHandler } from '../../RPC/handlers';
+import { UnaryCaller } from '../../rpc/callers';
+import { UnaryHandler } from '../../rpc/handlers';
 
 const vaultsDelete = new UnaryCaller<
   ClientRPCRequestParams<VaultIdentifierMessage>,

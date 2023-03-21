@@ -2,8 +2,8 @@ import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type { NodeConnectionMessage } from '../handlers/types';
 import type NodeConnectionManager from '../../nodes/NodeConnectionManager';
 import * as nodesUtils from '../../nodes/utils';
-import { ServerCaller } from '../../RPC/callers';
-import { ServerHandler } from '../../RPC/handlers';
+import { ServerCaller } from '../../rpc/callers';
+import { ServerHandler } from '../../rpc/handlers';
 
 const nodesListConnections = new ServerCaller<
   ClientRPCRequestParams,

@@ -13,7 +13,7 @@ import path from 'path';
 import prompts from 'prompts';
 import Logger from '@matrixai/logger';
 import Status from '../../status/Status';
-import * as clientUtils from '../../client/utils';
+import * as clientUtils from '../../client/utils/utils';
 import * as binErrors from '../errors';
 import { arrayZip } from '../../utils';
 import config from '../../config';

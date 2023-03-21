@@ -5,8 +5,8 @@ import type { PublicKey } from '../../keys/types';
 import { never } from '../../utils/index';
 import * as keysUtils from '../../keys/utils/index';
 import * as keysErrors from '../../keys/errors';
-import { UnaryHandler } from '../../RPC/handlers';
-import { UnaryCaller } from '../../RPC/callers';
+import { UnaryHandler } from '../../rpc/handlers';
+import { UnaryCaller } from '../../rpc/callers';
 
 const keysEncrypt = new UnaryCaller<
   ClientRPCRequestParams<DecryptMessage>,

@@ -5,8 +5,8 @@ import type VaultManager from '../../vaults/VaultManager';
 import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
 import * as vaultOps from '../../vaults/VaultOps';
-import { UnaryHandler } from '../../RPC/handlers';
-import { UnaryCaller } from '../../RPC/callers';
+import { UnaryHandler } from '../../rpc/handlers';
+import { UnaryCaller } from '../../rpc/callers';
 
 const vaultsSecretsRename = new UnaryCaller<
   ClientRPCRequestParams<SecretRenameMessage>,

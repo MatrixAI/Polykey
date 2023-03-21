@@ -6,8 +6,8 @@ import type { ClaimNodeMessage, SuccessMessage } from './types';
 import { matchSync } from '../../utils/index';
 import { validateSync } from '../../validation';
 import * as validationUtils from '../../validation/utils';
-import { UnaryHandler } from '../../RPC/handlers';
-import { UnaryCaller } from '../../RPC/callers';
+import { UnaryHandler } from '../../rpc/handlers';
+import { UnaryCaller } from '../../rpc/callers';
 
 const nodesClaim = new UnaryCaller<
   ClientRPCRequestParams<ClaimNodeMessage>,

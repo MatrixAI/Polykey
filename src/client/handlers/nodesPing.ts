@@ -5,8 +5,8 @@ import type NodeManager from '../../nodes/NodeManager';
 import { validateSync } from '../../validation';
 import { matchSync } from '../../utils';
 import * as validationUtils from '../../validation/utils';
-import { UnaryCaller } from '../../RPC/callers';
-import { UnaryHandler } from '../../RPC/handlers';
+import { UnaryCaller } from '../../rpc/callers';
+import { UnaryHandler } from '../../rpc/handlers';
 
 const nodesPing = new UnaryCaller<
   ClientRPCRequestParams<NodeIdMessage>,

@@ -1,8 +1,8 @@
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type { DB } from '@matrixai/db';
 import type SessionManager from '../../sessions/SessionManager';
-import { UnaryHandler } from '../../RPC/handlers';
-import { UnaryCaller } from '../../RPC/callers';
+import { UnaryHandler } from '../../rpc/handlers';
+import { UnaryCaller } from '../../rpc/callers';
 
 const agentLockAll = new UnaryCaller<
   ClientRPCRequestParams,

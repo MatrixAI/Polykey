@@ -3,8 +3,8 @@ import type VaultManager from '../../vaults/VaultManager';
 import type { VaultListMessage } from './types';
 import type { DB } from '@matrixai/db';
 import * as vaultsUtils from '../../vaults/utils';
-import { ServerCaller } from '../../RPC/callers';
-import { ServerHandler } from '../../RPC/handlers';
+import { ServerCaller } from '../../rpc/callers';
+import { ServerHandler } from '../../rpc/handlers';
 
 const vaultsList = new ServerCaller<
   ClientRPCRequestParams,

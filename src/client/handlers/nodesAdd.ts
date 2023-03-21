@@ -9,8 +9,8 @@ import { matchSync } from '../../utils/index';
 import { validateSync } from '../../validation';
 import * as nodeErrors from '../../nodes/errors';
 import * as validationUtils from '../../validation/utils';
-import { UnaryCaller } from '../../RPC/callers';
-import { UnaryHandler } from '../../RPC/handlers';
+import { UnaryCaller } from '../../rpc/callers';
+import { UnaryHandler } from '../../rpc/handlers';
 
 const nodesAdd = new UnaryCaller<
   ClientRPCRequestParams<NodesAddMessage>,

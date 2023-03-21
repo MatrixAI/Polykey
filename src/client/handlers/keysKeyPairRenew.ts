@@ -1,8 +1,8 @@
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type { PasswordMessage } from './types';
 import type CertManager from 'keys/CertManager';
-import { UnaryHandler } from '../../RPC/handlers';
-import { UnaryCaller } from '../../RPC/callers';
+import { UnaryHandler } from '../../rpc/handlers';
+import { UnaryCaller } from '../../rpc/callers';
 
 const keysKeyPairRenew = new UnaryCaller<
   ClientRPCRequestParams<PasswordMessage>,

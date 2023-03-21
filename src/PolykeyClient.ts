@@ -1,11 +1,11 @@
 import type { FileSystem } from './types';
-import type { ClientManifest, StreamFactory } from './RPC/types';
+import type { ClientManifest, StreamFactory } from './rpc/types';
 import path from 'path';
 import Logger from '@matrixai/logger';
 import { CreateDestroyStartStop } from '@matrixai/async-init/dist/CreateDestroyStartStop';
-import RPCClient from './RPC/RPCClient';
-import * as middlewareUtils from './RPC/middleware';
-import * as authMiddleware from './client/authenticationMiddleware';
+import RPCClient from './rpc/RPCClient';
+import * as middlewareUtils from './rpc/utils/middleware';
+import * as authMiddleware from './client/utils/authenticationMiddleware';
 import { Session } from './sessions';
 import * as errors from './errors';
 import * as utils from './utils';

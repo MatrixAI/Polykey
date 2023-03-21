@@ -11,8 +11,8 @@ import * as validationUtils from '../../validation/utils';
 import { matchSync } from '../../utils';
 import { validateSync } from '../../validation';
 import * as vaultsErrors from '../../vaults/errors';
-import { UnaryCaller } from '../../RPC/callers';
-import { UnaryHandler } from '../../RPC/handlers';
+import { UnaryCaller } from '../../rpc/callers';
+import { UnaryHandler } from '../../rpc/handlers';
 
 const vaultsPermissionUnset = new UnaryCaller<
   ClientRPCRequestParams<PermissionSetMessage>,

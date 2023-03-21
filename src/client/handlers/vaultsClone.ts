@@ -6,8 +6,8 @@ import type { NodeId } from '../../ids';
 import { validateSync } from '../../validation';
 import { matchSync } from '../../utils';
 import * as validationUtils from '../../validation/utils';
-import { UnaryCaller } from '../../RPC/callers';
-import { UnaryHandler } from '../../RPC/handlers';
+import { UnaryCaller } from '../../rpc/callers';
+import { UnaryHandler } from '../../rpc/handlers';
 
 const vaultsClone = new UnaryCaller<
   ClientRPCRequestParams<CloneMessage>,

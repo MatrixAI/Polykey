@@ -1,8 +1,8 @@
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type NotificationsManager from '../../notifications/NotificationsManager';
 import type { DB } from '@matrixai/db';
-import { UnaryHandler } from '../../RPC/handlers';
-import { UnaryCaller } from '../../RPC/callers';
+import { UnaryHandler } from '../../rpc/handlers';
+import { UnaryCaller } from '../../rpc/callers';
 
 const notificationsClear = new UnaryCaller<
   ClientRPCRequestParams,

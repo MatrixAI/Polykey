@@ -5,8 +5,8 @@ import type VaultManager from '../../vaults/VaultManager';
 import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
 import * as vaultOps from '../../vaults/VaultOps';
-import { UnaryCaller } from '../../RPC/callers';
-import { UnaryHandler } from '../../RPC/handlers';
+import { UnaryCaller } from '../../rpc/callers';
+import { UnaryHandler } from '../../rpc/handlers';
 
 const vaultsSecretsNew = new UnaryCaller<
   ClientRPCRequestParams<SecretContentMessage>,

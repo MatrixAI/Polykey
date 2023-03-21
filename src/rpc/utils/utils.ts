@@ -10,15 +10,15 @@ import type {
   JsonRpcResponse,
   JsonRpcResponseError,
   JsonRpcResponseResult,
-} from 'RPC/types';
-import type { JSONValue } from '../types';
+} from '../types';
+import type { JSONValue } from 'types';
 import { TransformStream } from 'stream/web';
 import { AbstractError } from '@matrixai/errors';
-import * as rpcErrors from './errors';
-import * as utils from '../utils';
-import { promise } from '../utils';
-import * as validationErrors from '../validation/errors';
-import * as errors from '../errors';
+import * as rpcErrors from '../errors';
+import * as utils from '../../utils/index';
+import { promise } from '../../utils/index';
+import * as validationErrors from '../../validation/errors';
+import * as errors from '../../errors';
 const jsonStreamParsers = require('@streamparser/json');
 
 function parseJsonRpcRequest<T extends JSONValue>(

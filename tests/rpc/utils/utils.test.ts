@@ -1,9 +1,9 @@
 import { testProp } from '@fast-check/jest';
 import { AsyncIterableX as AsyncIterable } from 'ix/asynciterable';
-import * as rpcUtils from '@/RPC/utils';
+import * as rpcUtils from '@/rpc/utils';
 import 'ix/add/asynciterable-operators/toarray';
-import * as middleware from '@/RPC/middleware';
-import * as rpcTestUtils from './utils';
+import * as middleware from '@/rpc/utils/middleware';
+import * as rpcTestUtils from '../utils';
 
 describe('utils tests', () => {
   testProp(

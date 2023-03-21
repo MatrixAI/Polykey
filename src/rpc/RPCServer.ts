@@ -14,7 +14,6 @@ import type {
 } from './types';
 import type { ReadableWritablePair } from 'stream/web';
 import type { JSONValue } from '../types';
-import type { RPCErrorEvent } from './utils';
 import type { MiddlewareFactory } from './types';
 import { ReadableStream } from 'stream/web';
 import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
@@ -27,9 +26,9 @@ import {
   ServerHandler,
   UnaryHandler,
 } from './handlers';
-import * as rpcUtils from './utils';
+import * as rpcUtils from './utils/utils';
 import * as rpcErrors from './errors';
-import * as middlewareUtils from './middleware';
+import * as middlewareUtils from './utils/middleware';
 import { never } from '../utils/utils';
 import { sysexits } from '../errors';
 
@@ -365,7 +364,7 @@ class RPCServer {
   @ready(new rpcErrors.ErrorRPCDestroyed())
   public addEventListener(
     type: 'error',
-    callback: (event: RPCErrorEvent) => void,
+    callback: (event: rpcUtils.RPCErrorEvent) => void,
     options?: boolean | AddEventListenerOptions | undefined,
   ) {
     this.events.addEventListener(type, callback, options);
@@ -374,7 +373,7 @@ class RPCServer {
   @ready(new rpcErrors.ErrorRPCDestroyed())
   public removeEventListener(
     type: 'error',
-    callback: (event: RPCErrorEvent) => void,
+    callback: (event: rpcUtils.RPCErrorEvent) => void,
     options?: boolean | AddEventListenerOptions | undefined,
   ) {
     this.events.removeEventListener(type, callback, options);

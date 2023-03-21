@@ -9,8 +9,8 @@ import { IdInternal } from '@matrixai/id';
 import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
 import * as nodesUtils from '../../nodes/utils';
-import { ServerCaller } from '../../RPC/callers';
-import { ServerHandler } from '../../RPC/handlers';
+import { ServerCaller } from '../../rpc/callers';
+import { ServerHandler } from '../../rpc/handlers';
 
 const vaultsPermissionGet = new ServerCaller<
   ClientRPCRequestParams<VaultIdentifierMessage>,

@@ -1,26 +1,26 @@
-import type { ContainerType, JsonRpcRequest } from '@/RPC/types';
+import type { ContainerType, JsonRpcRequest } from '@/rpc/types';
 import type { ConnectionInfo } from '@/network/types';
 import type { ReadableStream } from 'stream/web';
 import type { JSONValue } from '@/types';
 import { fc, testProp } from '@fast-check/jest';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import RPCServer from '@/RPC/RPCServer';
-import RPCClient from '@/RPC/RPCClient';
+import RPCServer from '@/rpc/RPCServer';
+import RPCClient from '@/rpc/RPCClient';
 import {
   ClientHandler,
   DuplexHandler,
   RawHandler,
   ServerHandler,
   UnaryHandler,
-} from '@/RPC/handlers';
+} from '@/rpc/handlers';
 import {
   ClientCaller,
   DuplexCaller,
   RawCaller,
   ServerCaller,
   UnaryCaller,
-} from '@/RPC/callers';
-import * as rpcErrors from '@/RPC/errors';
+} from '@/rpc/callers';
+import * as rpcErrors from '@/rpc/errors';
 import * as rpcTestUtils from './utils';
 
 describe('RPC', () => {

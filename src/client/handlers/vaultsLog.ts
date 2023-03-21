@@ -5,8 +5,8 @@ import type { LogEntryMessage, VaultsLogMessage } from './types';
 import type { VaultName } from '../../vaults/types';
 import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
-import { ServerCaller } from '../../RPC/callers';
-import { ServerHandler } from '../../RPC/handlers';
+import { ServerCaller } from '../../rpc/callers';
+import { ServerHandler } from '../../rpc/handlers';
 
 const vaultsLog = new ServerCaller<
   ClientRPCRequestParams<VaultsLogMessage>,

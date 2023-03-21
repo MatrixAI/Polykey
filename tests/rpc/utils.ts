@@ -9,14 +9,14 @@ import type {
   JsonRpcResponseResult,
   JsonRpcResponse,
   JsonRpcRequest,
-} from '@/RPC/types';
+} from '@/rpc/types';
 import type { NodeId } from '@/ids';
 import { ReadableStream, WritableStream, TransformStream } from 'stream/web';
 import { fc } from '@fast-check/jest';
 import { IdInternal } from '@matrixai/id';
 import * as utils from '@/utils';
-import { fromError } from '@/RPC/utils';
-import * as rpcErrors from '@/RPC/errors';
+import { fromError } from '@/rpc/utils';
+import * as rpcErrors from '@/rpc/errors';
 
 /**
  * This is used to convert regular chunks into randomly sized chunks based on

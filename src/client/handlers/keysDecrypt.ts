@@ -2,8 +2,8 @@ import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type KeyRing from '../../keys/KeyRing';
 import type { DataMessage } from './types';
 import { never } from '../../utils/index';
-import { UnaryHandler } from '../../RPC/handlers';
-import { UnaryCaller } from '../../RPC/callers';
+import { UnaryHandler } from '../../rpc/handlers';
+import { UnaryCaller } from '../../rpc/callers';
 
 const keysDecrypt = new UnaryCaller<
   ClientRPCRequestParams<DataMessage>,

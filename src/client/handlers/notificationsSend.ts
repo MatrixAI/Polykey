@@ -6,8 +6,8 @@ import type NotificationsManager from '../../notifications/NotificationsManager'
 import { validateSync } from '../../validation';
 import { matchSync } from '../../utils';
 import * as validationUtils from '../../validation/utils';
-import { UnaryCaller } from '../../RPC/callers';
-import { UnaryHandler } from '../../RPC/handlers';
+import { UnaryCaller } from '../../rpc/callers';
+import { UnaryHandler } from '../../rpc/handlers';
 
 const notificationsSend = new UnaryCaller<
   ClientRPCRequestParams<NotificationSendMessage>,

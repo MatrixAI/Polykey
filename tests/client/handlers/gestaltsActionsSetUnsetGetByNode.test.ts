@@ -7,7 +7,7 @@ import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
-import RPCServer from '@/RPC/RPCServer';
+import RPCServer from '@/rpc/RPCServer';
 import TaskManager from '@/tasks/TaskManager';
 import {
   gestaltsActionsGetByNode,
@@ -21,7 +21,7 @@ import {
   gestaltsActionsUnsetByNode,
   GestaltsActionsUnsetByNodeHandler,
 } from '@/client/handlers/gestaltsActionsUnsetByNode';
-import RPCClient from '@/RPC/RPCClient';
+import RPCClient from '@/rpc/RPCClient';
 import WebSocketServer from '@/websockets/WebSocketServer';
 import WebSocketClient from '@/websockets/WebSocketClient';
 import GestaltGraph from '@/gestalts/GestaltGraph';
