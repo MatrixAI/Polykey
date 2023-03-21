@@ -221,7 +221,7 @@ class RPCServer {
               events.dispatchEvent(
                 new rpcUtils.RPCErrorEvent({
                   detail: {
-                    error: new rpcErrors.ErrorSendErrorFailed(undefined, {
+                    error: new rpcErrors.ErrorRPCSendErrorFailed(undefined, {
                       cause: [e, reason],
                     }),
                   },
