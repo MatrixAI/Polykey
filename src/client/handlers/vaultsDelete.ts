@@ -1,4 +1,4 @@
-import type { RPCRequestParams, RPCResponseResult } from '../types';
+import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type VaultManager from '../../vaults/VaultManager';
 import type { SuccessMessage, VaultIdentifierMessage } from './types';
 import type { DB } from '@matrixai/db';
@@ -9,8 +9,8 @@ import { UnaryCaller } from '../../RPC/callers';
 import { UnaryHandler } from '../../RPC/handlers';
 
 const vaultsDelete = new UnaryCaller<
-  RPCRequestParams<VaultIdentifierMessage>,
-  RPCResponseResult<SuccessMessage>
+  ClientRPCRequestParams<VaultIdentifierMessage>,
+  ClientRPCResponseResult<SuccessMessage>
 >();
 
 class VaultsDeleteHandler extends UnaryHandler<
@@ -18,12 +18,12 @@ class VaultsDeleteHandler extends UnaryHandler<
     db: DB;
     vaultManager: VaultManager;
   },
-  RPCRequestParams<VaultIdentifierMessage>,
-  RPCResponseResult<SuccessMessage>
+  ClientRPCRequestParams<VaultIdentifierMessage>,
+  ClientRPCResponseResult<SuccessMessage>
 > {
   public async handle(
-    input: RPCRequestParams<VaultIdentifierMessage>,
-  ): Promise<RPCResponseResult<SuccessMessage>> {
+    input: ClientRPCRequestParams<VaultIdentifierMessage>,
+  ): Promise<ClientRPCResponseResult<SuccessMessage>> {
     const { db, vaultManager } = this.container;
     await db.withTransactionF(async (tran) => {
       const vaultIdFromName = await vaultManager.getVaultId(

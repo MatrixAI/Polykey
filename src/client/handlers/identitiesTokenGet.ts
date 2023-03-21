@@ -1,4 +1,4 @@
-import type { RPCRequestParams, RPCResponseResult } from '../types';
+import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type IdentitiesManager from '../../identities/IdentitiesManager';
 import type { IdentityMessage } from './types';
 import type { DB } from '@matrixai/db';
@@ -11,8 +11,8 @@ import { matchSync } from '../../utils/index';
 import * as validationUtils from '../../validation/utils';
 
 const identitiesTokenGet = new UnaryCaller<
-  RPCRequestParams<IdentityMessage>,
-  RPCResponseResult<Partial<TokenMessage>>
+  ClientRPCRequestParams<IdentityMessage>,
+  ClientRPCResponseResult<Partial<TokenMessage>>
 >();
 
 class IdentitiesTokenGetHandler extends UnaryHandler<
@@ -20,12 +20,12 @@ class IdentitiesTokenGetHandler extends UnaryHandler<
     db: DB;
     identitiesManager: IdentitiesManager;
   },
-  RPCRequestParams<IdentityMessage>,
-  RPCResponseResult<Partial<TokenMessage>>
+  ClientRPCRequestParams<IdentityMessage>,
+  ClientRPCResponseResult<Partial<TokenMessage>>
 > {
   public async handle(
-    input: RPCRequestParams<IdentityMessage>,
-  ): Promise<RPCResponseResult<Partial<TokenMessage>>> {
+    input: ClientRPCRequestParams<IdentityMessage>,
+  ): Promise<ClientRPCResponseResult<Partial<TokenMessage>>> {
     const { identitiesManager, db } = this.container;
     const {
       providerId,

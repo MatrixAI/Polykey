@@ -1,4 +1,4 @@
-import type { RPCRequestParams, RPCResponseResult } from '../types';
+import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type VaultManager from '../../vaults/VaultManager';
 import type { DB } from '@matrixai/db';
 import type { LogEntryMessage, VaultsLogMessage } from './types';
@@ -9,8 +9,8 @@ import { ServerCaller } from '../../RPC/callers';
 import { ServerHandler } from '../../RPC/handlers';
 
 const vaultsLog = new ServerCaller<
-  RPCRequestParams<VaultsLogMessage>,
-  RPCResponseResult<LogEntryMessage>
+  ClientRPCRequestParams<VaultsLogMessage>,
+  ClientRPCResponseResult<LogEntryMessage>
 >();
 
 class VaultsLogHandler extends ServerHandler<
@@ -18,12 +18,12 @@ class VaultsLogHandler extends ServerHandler<
     db: DB;
     vaultManager: VaultManager;
   },
-  RPCRequestParams<VaultsLogMessage>,
-  RPCResponseResult<LogEntryMessage>
+  ClientRPCRequestParams<VaultsLogMessage>,
+  ClientRPCResponseResult<LogEntryMessage>
 > {
   public async *handle(
-    input: RPCRequestParams<VaultsLogMessage>,
-  ): AsyncGenerator<RPCResponseResult<LogEntryMessage>> {
+    input: ClientRPCRequestParams<VaultsLogMessage>,
+  ): AsyncGenerator<ClientRPCResponseResult<LogEntryMessage>> {
     const { db, vaultManager } = this.container;
     const log = await db.withTransactionF(async (tran) => {
       const vaultIdFromName = await vaultManager.getVaultId(

@@ -1,4 +1,7 @@
-import type { RPCRequestParams, RPCResponseResult } from '@/client/types';
+import type {
+  ClientRPCRequestParams,
+  ClientRPCResponseResult,
+} from '@/client/types';
 import type { TLSConfig } from '../../src/network/types';
 import fs from 'fs';
 import path from 'path';
@@ -91,10 +94,12 @@ describe('authenticationMiddleware', () => {
     // Setup
     class EchoHandler extends UnaryHandler<
       { logger: Logger },
-      RPCRequestParams,
-      RPCResponseResult
+      ClientRPCRequestParams,
+      ClientRPCResponseResult
     > {
-      public async handle(input: RPCRequestParams): Promise<RPCResponseResult> {
+      public async handle(
+        input: ClientRPCRequestParams,
+      ): Promise<ClientRPCResponseResult> {
         return input;
       }
     }
@@ -123,7 +128,10 @@ describe('authenticationMiddleware', () => {
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
-        testHandler: new UnaryCaller<RPCRequestParams, RPCResponseResult>(),
+        testHandler: new UnaryCaller<
+          ClientRPCRequestParams,
+          ClientRPCResponseResult
+        >(),
       },
       streamFactory: async () => clientClient.startConnection(),
       middleware: middlewareUtils.defaultClientMiddlewareWrapper(

@@ -1,7 +1,7 @@
 import type { TLSConfig } from '@/network/types';
 import type { IdentityId } from '@/ids/index';
 import type GestaltGraph from '@/gestalts/GestaltGraph';
-import type { RPCResponseResult } from '@/client/types';
+import type { ClientRPCResponseResult } from '@/client/types';
 import type { IdentityInfoMessage } from '@/client/handlers/types';
 import type { ProviderId } from '@/ids/index';
 import type Sigchain from '../../../src/sigchain/Sigchain';
@@ -152,7 +152,7 @@ describe('identitiesInfoConnectedGet', () => {
       disconnected: false,
       searchTermList: [],
     });
-    const output = Array<RPCResponseResult<IdentityInfoMessage>>();
+    const output = Array<ClientRPCResponseResult<IdentityInfoMessage>>();
     for await (const identityInfoMessage of response) {
       output.push(identityInfoMessage);
     }

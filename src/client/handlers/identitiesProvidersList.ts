@@ -1,11 +1,11 @@
-import type { RPCRequestParams, RPCResponseResult } from '../types';
+import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type IdentitiesManager from '../../identities/IdentitiesManager';
 import { UnaryCaller } from '../../RPC/callers';
 import { UnaryHandler } from '../../RPC/handlers';
 
 const identitiesProvidersList = new UnaryCaller<
-  RPCRequestParams,
-  RPCResponseResult<{
+  ClientRPCRequestParams,
+  ClientRPCResponseResult<{
     providerIds: Array<string>;
   }>
 >();
@@ -14,13 +14,13 @@ class IdentitiesProvidersListHandler extends UnaryHandler<
   {
     identitiesManager: IdentitiesManager;
   },
-  RPCRequestParams,
-  RPCResponseResult<{
+  ClientRPCRequestParams,
+  ClientRPCResponseResult<{
     providerIds: Array<string>;
   }>
 > {
   public async handle(): Promise<
-    RPCResponseResult<{
+    ClientRPCResponseResult<{
       providerIds: Array<string>;
     }>
   > {

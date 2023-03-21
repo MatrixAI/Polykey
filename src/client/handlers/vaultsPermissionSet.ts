@@ -1,4 +1,4 @@
-import type { RPCRequestParams, RPCResponseResult } from '../types';
+import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type VaultManager from '../../vaults/VaultManager';
 import type GestaltGraph from '../../gestalts/GestaltGraph';
 import type ACL from '../../acl/ACL';
@@ -16,8 +16,8 @@ import { UnaryCaller } from '../../RPC/callers';
 import { UnaryHandler } from '../../RPC/handlers';
 
 const vaultsPermissionSet = new UnaryCaller<
-  RPCRequestParams<PermissionSetMessage>,
-  RPCResponseResult<SuccessMessage>
+  ClientRPCRequestParams<PermissionSetMessage>,
+  ClientRPCResponseResult<SuccessMessage>
 >();
 
 class VaultsPermissionSetHandler extends UnaryHandler<
@@ -28,12 +28,12 @@ class VaultsPermissionSetHandler extends UnaryHandler<
     acl: ACL;
     notificationsManager: NotificationsManager;
   },
-  RPCRequestParams<PermissionSetMessage>,
-  RPCResponseResult<SuccessMessage>
+  ClientRPCRequestParams<PermissionSetMessage>,
+  ClientRPCResponseResult<SuccessMessage>
 > {
   public async handle(
-    input: RPCRequestParams<PermissionSetMessage>,
-  ): Promise<RPCResponseResult<SuccessMessage>> {
+    input: ClientRPCRequestParams<PermissionSetMessage>,
+  ): Promise<ClientRPCResponseResult<SuccessMessage>> {
     const { db, vaultManager, gestaltGraph, acl, notificationsManager } =
       this.container;
     await db.withTransactionF(async (tran) => {

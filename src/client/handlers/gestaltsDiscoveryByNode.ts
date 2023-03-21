@@ -1,4 +1,4 @@
-import type { RPCRequestParams, RPCResponseResult } from '../types';
+import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type { NodeId } from 'ids/index';
 import type Discovery from '../../discovery/Discovery';
 import type { NodeIdMessage } from 'client/handlers/types';
@@ -9,20 +9,20 @@ import { matchSync } from '../../utils/index';
 import * as validationUtils from '../../validation/utils';
 
 const gestaltsDiscoveryByNode = new UnaryCaller<
-  RPCRequestParams<NodeIdMessage>,
-  RPCResponseResult
+  ClientRPCRequestParams<NodeIdMessage>,
+  ClientRPCResponseResult
 >();
 
 class GestaltsDiscoveryByNodeHandler extends UnaryHandler<
   {
     discovery: Discovery;
   },
-  RPCRequestParams<NodeIdMessage>,
-  RPCResponseResult
+  ClientRPCRequestParams<NodeIdMessage>,
+  ClientRPCResponseResult
 > {
   public async handle(
-    input: RPCRequestParams<NodeIdMessage>,
-  ): Promise<RPCResponseResult> {
+    input: ClientRPCRequestParams<NodeIdMessage>,
+  ): Promise<ClientRPCResponseResult> {
     const { discovery } = this.container;
     const { nodeId }: { nodeId: NodeId } = validateSync(
       (keyPath, value) => {

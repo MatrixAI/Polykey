@@ -1,4 +1,4 @@
-import type { RPCRequestParams } from './types';
+import type { ClientRPCRequestParams } from './types';
 import type SessionManager from 'sessions/SessionManager';
 import type KeyRing from 'keys/KeyRing';
 import type { JsonRpcRequest } from 'RPC/types';
@@ -8,7 +8,7 @@ import * as clientErrors from './errors';
 async function authenticate(
   sessionManager: SessionManager,
   keyRing: KeyRing,
-  message: JsonRpcRequest<RPCRequestParams>,
+  message: JsonRpcRequest<ClientRPCRequestParams>,
 ) {
   if (message.params == null) throw new clientErrors.ErrorClientAuthMissing();
   if (message.params.metadata == null) {
@@ -41,7 +41,7 @@ async function authenticate(
   return `Bearer ${token}`;
 }
 
-function decodeAuth(messageParams: RPCRequestParams) {
+function decodeAuth(messageParams: ClientRPCRequestParams) {
   const auth = messageParams.metadata?.authorization;
   if (auth == null || !auth.startsWith('Bearer ')) {
     return;
@@ -68,7 +68,7 @@ function encodeAuthFromSession(token: SessionToken): string {
  * The server is expected to only provide bearer tokens
  */
 function decodeAuthToSession(
-  messageParams: RPCRequestParams,
+  messageParams: ClientRPCRequestParams,
 ): SessionToken | undefined {
   const auth = messageParams.metadata?.authorization;
   if (auth == null || !auth.startsWith('Bearer ')) {

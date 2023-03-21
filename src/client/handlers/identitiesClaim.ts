@@ -1,4 +1,4 @@
-import type { RPCRequestParams, RPCResponseResult } from '../types';
+import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type { IdentityId, ProviderId } from 'ids/index';
 import type IdentitiesManager from '../../identities/IdentitiesManager';
 import type { ClaimIdMessage, IdentityMessage } from 'client/handlers/types';
@@ -9,20 +9,20 @@ import { matchSync } from '../../utils/index';
 import * as validationUtils from '../../validation/utils';
 
 const identitiesClaim = new UnaryCaller<
-  RPCRequestParams<IdentityMessage>,
-  RPCResponseResult<ClaimIdMessage>
+  ClientRPCRequestParams<IdentityMessage>,
+  ClientRPCResponseResult<ClaimIdMessage>
 >();
 
 class IdentitiesClaimHandler extends UnaryHandler<
   {
     identitiesManager: IdentitiesManager;
   },
-  RPCRequestParams<IdentityMessage>,
-  RPCResponseResult<ClaimIdMessage>
+  ClientRPCRequestParams<IdentityMessage>,
+  ClientRPCResponseResult<ClaimIdMessage>
 > {
   public async handle(
-    input: RPCRequestParams<IdentityMessage>,
-  ): Promise<RPCResponseResult<ClaimIdMessage>> {
+    input: ClientRPCRequestParams<IdentityMessage>,
+  ): Promise<ClientRPCResponseResult<ClaimIdMessage>> {
     const { identitiesManager } = this.container;
     const {
       providerId,

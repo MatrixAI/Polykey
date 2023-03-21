@@ -1,4 +1,4 @@
-import type { RPCRequestParams, RPCResponseResult } from '../types';
+import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type IdentitiesManager from '../../identities/IdentitiesManager';
 import type { IdentityMessage } from './types';
 import type { DB } from '@matrixai/db';
@@ -10,8 +10,8 @@ import { matchSync } from '../../utils/index';
 import * as validationUtils from '../../validation/utils';
 
 const identitiesTokenDelete = new UnaryCaller<
-  RPCRequestParams<IdentityMessage>,
-  RPCResponseResult
+  ClientRPCRequestParams<IdentityMessage>,
+  ClientRPCResponseResult
 >();
 
 class IdentitiesTokenDeleteHandler extends UnaryHandler<
@@ -19,12 +19,12 @@ class IdentitiesTokenDeleteHandler extends UnaryHandler<
     db: DB;
     identitiesManager: IdentitiesManager;
   },
-  RPCRequestParams<IdentityMessage>,
-  RPCResponseResult
+  ClientRPCRequestParams<IdentityMessage>,
+  ClientRPCResponseResult
 > {
   public async handle(
-    input: RPCRequestParams<IdentityMessage>,
-  ): Promise<RPCResponseResult> {
+    input: ClientRPCRequestParams<IdentityMessage>,
+  ): Promise<ClientRPCResponseResult> {
     const { identitiesManager, db } = this.container;
     const {
       providerId,

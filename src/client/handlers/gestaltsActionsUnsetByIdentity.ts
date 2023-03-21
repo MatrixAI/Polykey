@@ -1,4 +1,4 @@
-import type { RPCRequestParams, RPCResponseResult } from '../types';
+import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type { DB } from '@matrixai/db';
 import type { IdentityId, ProviderId } from 'ids/index';
 import type { GestaltAction } from '../../gestalts/types';
@@ -11,8 +11,8 @@ import { matchSync } from '../../utils/index';
 import * as validationUtils from '../../validation/utils';
 
 const gestaltsActionsUnsetByIdentity = new UnaryCaller<
-  RPCRequestParams<SetIdentityActionMessage>,
-  RPCResponseResult
+  ClientRPCRequestParams<SetIdentityActionMessage>,
+  ClientRPCResponseResult
 >();
 
 class GestaltsActionsUnsetByIdentityHandler extends UnaryHandler<
@@ -20,12 +20,12 @@ class GestaltsActionsUnsetByIdentityHandler extends UnaryHandler<
     gestaltGraph: GestaltGraph;
     db: DB;
   },
-  RPCRequestParams<SetIdentityActionMessage>,
-  RPCResponseResult
+  ClientRPCRequestParams<SetIdentityActionMessage>,
+  ClientRPCResponseResult
 > {
   public async handle(
-    input: RPCRequestParams<SetIdentityActionMessage>,
-  ): Promise<RPCResponseResult> {
+    input: ClientRPCRequestParams<SetIdentityActionMessage>,
+  ): Promise<ClientRPCResponseResult> {
     const { db, gestaltGraph } = this.container;
     const {
       action,

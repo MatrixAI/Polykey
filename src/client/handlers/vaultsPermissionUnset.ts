@@ -1,4 +1,4 @@
-import type { RPCRequestParams, RPCResponseResult } from '../types';
+import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type { VaultAction } from '../../vaults/types';
 import type { NodeId } from '../../ids';
 import type { DB } from '@matrixai/db';
@@ -15,8 +15,8 @@ import { UnaryCaller } from '../../RPC/callers';
 import { UnaryHandler } from '../../RPC/handlers';
 
 const vaultsPermissionUnset = new UnaryCaller<
-  RPCRequestParams<PermissionSetMessage>,
-  RPCResponseResult<SuccessMessage>
+  ClientRPCRequestParams<PermissionSetMessage>,
+  ClientRPCResponseResult<SuccessMessage>
 >();
 
 class VaultsPermissionUnsetHandler extends UnaryHandler<
@@ -26,12 +26,12 @@ class VaultsPermissionUnsetHandler extends UnaryHandler<
     gestaltGraph: GestaltGraph;
     acl: ACL;
   },
-  RPCRequestParams<PermissionSetMessage>,
-  RPCResponseResult<SuccessMessage>
+  ClientRPCRequestParams<PermissionSetMessage>,
+  ClientRPCResponseResult<SuccessMessage>
 > {
   public async handle(
-    input: RPCRequestParams<PermissionSetMessage>,
-  ): Promise<RPCResponseResult<SuccessMessage>> {
+    input: ClientRPCRequestParams<PermissionSetMessage>,
+  ): Promise<ClientRPCResponseResult<SuccessMessage>> {
     const { db, vaultManager, gestaltGraph, acl } = this.container;
     await db.withTransactionF(async (tran) => {
       const vaultIdFromName = await vaultManager.getVaultId(

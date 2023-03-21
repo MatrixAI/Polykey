@@ -1,4 +1,4 @@
-import type { RPCRequestParams, RPCResponseResult } from '../types';
+import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type GestaltGraph from '../../gestalts/GestaltGraph';
 import type { DB } from '@matrixai/db';
 import type { NodeId } from 'ids/index';
@@ -11,8 +11,8 @@ import { matchSync } from '../../utils/index';
 import * as validationUtils from '../../validation/utils';
 
 const gestaltsGestaltGetByNode = new UnaryCaller<
-  RPCRequestParams<NodeIdMessage>,
-  RPCResponseResult<GestaltMessage>
+  ClientRPCRequestParams<NodeIdMessage>,
+  ClientRPCResponseResult<GestaltMessage>
 >();
 
 class GestaltsGestaltGetByNodeHandler extends UnaryHandler<
@@ -20,12 +20,12 @@ class GestaltsGestaltGetByNodeHandler extends UnaryHandler<
     gestaltGraph: GestaltGraph;
     db: DB;
   },
-  RPCRequestParams<NodeIdMessage>,
-  RPCResponseResult<GestaltMessage>
+  ClientRPCRequestParams<NodeIdMessage>,
+  ClientRPCResponseResult<GestaltMessage>
 > {
   public async handle(
-    input: RPCRequestParams<NodeIdMessage>,
-  ): Promise<RPCResponseResult<GestaltMessage>> {
+    input: ClientRPCRequestParams<NodeIdMessage>,
+  ): Promise<ClientRPCResponseResult<GestaltMessage>> {
     const { db, gestaltGraph } = this.container;
     const { nodeId }: { nodeId: NodeId } = validateSync(
       (keyPath, value) => {

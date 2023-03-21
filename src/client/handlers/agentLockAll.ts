@@ -1,20 +1,23 @@
-import type { RPCRequestParams, RPCResponseResult } from '../types';
+import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type { DB } from '@matrixai/db';
 import type SessionManager from '../../sessions/SessionManager';
 import { UnaryHandler } from '../../RPC/handlers';
 import { UnaryCaller } from '../../RPC/callers';
 
-const agentLockAll = new UnaryCaller<RPCRequestParams, RPCResponseResult>();
+const agentLockAll = new UnaryCaller<
+  ClientRPCRequestParams,
+  ClientRPCResponseResult
+>();
 
 class AgentLockAllHandler extends UnaryHandler<
   {
     sessionManager: SessionManager;
     db: DB;
   },
-  RPCRequestParams,
-  RPCResponseResult
+  ClientRPCRequestParams,
+  ClientRPCResponseResult
 > {
-  public async handle(): Promise<RPCResponseResult> {
+  public async handle(): Promise<ClientRPCResponseResult> {
     const { db, sessionManager } = this.container;
     await db.withTransactionF((tran) => sessionManager.resetKey(tran));
     return {};

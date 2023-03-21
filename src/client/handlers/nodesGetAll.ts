@@ -1,4 +1,4 @@
-import type { RPCRequestParams, RPCResponseResult } from '../types';
+import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type KeyRing from 'keys/KeyRing';
 import type { NodeId } from '../../ids';
 import type NodeGraph from '../../nodes/NodeGraph';
@@ -9,8 +9,8 @@ import { ServerCaller } from '../../RPC/callers';
 import { ServerHandler } from '../../RPC/handlers';
 
 const nodesGetAll = new ServerCaller<
-  RPCRequestParams,
-  RPCResponseResult<NodesGetMessage>
+  ClientRPCRequestParams,
+  ClientRPCResponseResult<NodesGetMessage>
 >();
 
 class NodesGetAllHandler extends ServerHandler<
@@ -18,10 +18,12 @@ class NodesGetAllHandler extends ServerHandler<
     nodeGraph: NodeGraph;
     keyRing: KeyRing;
   },
-  RPCRequestParams,
-  RPCResponseResult<NodesGetMessage>
+  ClientRPCRequestParams,
+  ClientRPCResponseResult<NodesGetMessage>
 > {
-  public async *handle(): AsyncGenerator<RPCResponseResult<NodesGetMessage>> {
+  public async *handle(): AsyncGenerator<
+    ClientRPCResponseResult<NodesGetMessage>
+  > {
     const { nodeGraph, keyRing } = this.container;
 
     for await (const bucket of nodeGraph.getBuckets()) {

@@ -1,6 +1,6 @@
 import type PolykeyClient from '../../PolykeyClient';
 import type WebSocketClient from '../../websockets/WebSocketClient';
-import type { RPCResponseResult } from '../../client/types';
+import type { ClientRPCResponseResult } from '../../client/types';
 import type { AuthProcessMessage } from '../../client/handlers/types';
 import type { ReadableStream } from 'stream/web';
 import CommandPolykey from '../CommandPolykey';
@@ -61,7 +61,9 @@ class CommandAuthenticate extends CommandPolykey {
           manifest: clientManifest,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-        let genReadable: ReadableStream<RPCResponseResult<AuthProcessMessage>>;
+        let genReadable: ReadableStream<
+          ClientRPCResponseResult<AuthProcessMessage>
+        >;
         await binUtils.retryAuthentication(async (auth) => {
           genReadable = await pkClient.rpcClient.methods.identitiesAuthenticate(
             {

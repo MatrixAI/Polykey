@@ -1,4 +1,4 @@
-import type { RPCRequestParams, RPCResponseResult } from '../types';
+import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type { NodeConnectionMessage } from '../handlers/types';
 import type NodeConnectionManager from '../../nodes/NodeConnectionManager';
 import * as nodesUtils from '../../nodes/utils';
@@ -6,19 +6,19 @@ import { ServerCaller } from '../../RPC/callers';
 import { ServerHandler } from '../../RPC/handlers';
 
 const nodesListConnections = new ServerCaller<
-  RPCRequestParams,
-  RPCResponseResult<NodeConnectionMessage>
+  ClientRPCRequestParams,
+  ClientRPCResponseResult<NodeConnectionMessage>
 >();
 
 class NodesListConnectionsHandler extends ServerHandler<
   {
     nodeConnectionManager: NodeConnectionManager;
   },
-  RPCRequestParams,
-  RPCResponseResult<NodeConnectionMessage>
+  ClientRPCRequestParams,
+  ClientRPCResponseResult<NodeConnectionMessage>
 > {
   public async *handle(): AsyncGenerator<
-    RPCResponseResult<NodeConnectionMessage>
+    ClientRPCResponseResult<NodeConnectionMessage>
   > {
     const { nodeConnectionManager } = this.container;
     const connections = nodeConnectionManager.listConnections();

@@ -1,4 +1,4 @@
-import type { RPCRequestParams, RPCResponseResult } from '../types';
+import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type { VaultName } from '../../vaults/types';
 import type { NodeId } from '../../ids';
 import type { SuccessMessage, VaultsPullMessage } from './types';
@@ -13,8 +13,8 @@ import { UnaryCaller } from '../../RPC/callers';
 import { UnaryHandler } from '../../RPC/handlers';
 
 const vaultsPull = new UnaryCaller<
-  RPCRequestParams<VaultsPullMessage>,
-  RPCResponseResult<SuccessMessage>
+  ClientRPCRequestParams<VaultsPullMessage>,
+  ClientRPCResponseResult<SuccessMessage>
 >();
 
 class VaultsPullHandler extends UnaryHandler<
@@ -22,12 +22,12 @@ class VaultsPullHandler extends UnaryHandler<
     db: DB;
     vaultManager: VaultManager;
   },
-  RPCRequestParams<VaultsPullMessage>,
-  RPCResponseResult<SuccessMessage>
+  ClientRPCRequestParams<VaultsPullMessage>,
+  ClientRPCResponseResult<SuccessMessage>
 > {
   public async handle(
-    input: RPCRequestParams<VaultsPullMessage>,
-  ): Promise<RPCResponseResult<SuccessMessage>> {
+    input: ClientRPCRequestParams<VaultsPullMessage>,
+  ): Promise<ClientRPCResponseResult<SuccessMessage>> {
     const { db, vaultManager } = this.container;
     let pullVaultId;
     pullVaultId = vaultsUtils.decodeVaultId(input.pullVault);

@@ -1,4 +1,4 @@
-import type { RPCRequestParams, RPCResponseResult } from '../types';
+import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type { NodeId } from '../../ids';
 import type { Host, Hostname, Port } from '../../network/types';
 import type { NodeAddress } from '../../nodes/types';
@@ -13,8 +13,8 @@ import { UnaryCaller } from '../../RPC/callers';
 import { UnaryHandler } from '../../RPC/handlers';
 
 const nodesAdd = new UnaryCaller<
-  RPCRequestParams<NodesAddMessage>,
-  RPCResponseResult
+  ClientRPCRequestParams<NodesAddMessage>,
+  ClientRPCResponseResult
 >();
 
 class NodesAddHandler extends UnaryHandler<
@@ -22,12 +22,12 @@ class NodesAddHandler extends UnaryHandler<
     nodeManager: NodeManager;
     db: DB;
   },
-  RPCRequestParams<NodesAddMessage>,
-  RPCResponseResult
+  ClientRPCRequestParams<NodesAddMessage>,
+  ClientRPCResponseResult
 > {
   public async handle(
-    input: RPCRequestParams<NodesAddMessage>,
-  ): Promise<RPCResponseResult> {
+    input: ClientRPCRequestParams<NodesAddMessage>,
+  ): Promise<ClientRPCResponseResult> {
     const { nodeManager, db } = this.container;
     const {
       nodeId,

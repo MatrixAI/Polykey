@@ -1,4 +1,4 @@
-import type { RPCRequestParams, RPCResponseResult } from '../types';
+import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type VaultManager from '../../vaults/VaultManager';
 import type { CloneMessage, SuccessMessage } from './types';
 import type { DB } from '@matrixai/db';
@@ -10,8 +10,8 @@ import { UnaryCaller } from '../../RPC/callers';
 import { UnaryHandler } from '../../RPC/handlers';
 
 const vaultsClone = new UnaryCaller<
-  RPCRequestParams<CloneMessage>,
-  RPCResponseResult<SuccessMessage>
+  ClientRPCRequestParams<CloneMessage>,
+  ClientRPCResponseResult<SuccessMessage>
 >();
 
 class VaultsCloneHandler extends UnaryHandler<
@@ -19,12 +19,12 @@ class VaultsCloneHandler extends UnaryHandler<
     db: DB;
     vaultManager: VaultManager;
   },
-  RPCRequestParams<CloneMessage>,
-  RPCResponseResult<SuccessMessage>
+  ClientRPCRequestParams<CloneMessage>,
+  ClientRPCResponseResult<SuccessMessage>
 > {
   public async handle(
-    input: RPCRequestParams<CloneMessage>,
-  ): Promise<RPCResponseResult<SuccessMessage>> {
+    input: ClientRPCRequestParams<CloneMessage>,
+  ): Promise<ClientRPCResponseResult<SuccessMessage>> {
     const { db, vaultManager } = this.container;
     const {
       nodeId,

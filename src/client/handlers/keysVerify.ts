@@ -1,4 +1,4 @@
-import type { RPCRequestParams, RPCResponseResult } from '../types';
+import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type KeyRing from '../../keys/KeyRing';
 import type { PublicKey, Signature } from '../../keys/types';
 import type { SuccessMessage, VerifySignatureMessage } from './types';
@@ -9,20 +9,20 @@ import { UnaryHandler } from '../../RPC/handlers';
 import { UnaryCaller } from '../../RPC/callers';
 
 const keysVerify = new UnaryCaller<
-  RPCRequestParams<VerifySignatureMessage>,
-  RPCResponseResult<SuccessMessage>
+  ClientRPCRequestParams<VerifySignatureMessage>,
+  ClientRPCResponseResult<SuccessMessage>
 >();
 
 class KeysVerifyHandler extends UnaryHandler<
   {
     keyRing: KeyRing;
   },
-  RPCRequestParams<VerifySignatureMessage>,
-  RPCResponseResult<SuccessMessage>
+  ClientRPCRequestParams<VerifySignatureMessage>,
+  ClientRPCResponseResult<SuccessMessage>
 > {
   public async handle(
-    input: RPCRequestParams<VerifySignatureMessage>,
-  ): Promise<RPCResponseResult<SuccessMessage>> {
+    input: ClientRPCRequestParams<VerifySignatureMessage>,
+  ): Promise<ClientRPCResponseResult<SuccessMessage>> {
     const { keyRing } = this.container;
     let publicKey: PublicKey | undefined;
     try {

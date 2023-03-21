@@ -1,4 +1,4 @@
-import type { RPCRequestParams, RPCResponseResult } from '../types';
+import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type VaultManager from '../../vaults/VaultManager';
 import type { NodeId } from '../../ids';
 import type { NodeIdMessage, VaultsScanMessage } from './types';
@@ -9,20 +9,20 @@ import { ServerCaller } from '../../RPC/callers';
 import { ServerHandler } from '../../RPC/handlers';
 
 const vaultsScan = new ServerCaller<
-  RPCRequestParams<NodeIdMessage>,
-  RPCResponseResult<VaultsScanMessage>
+  ClientRPCRequestParams<NodeIdMessage>,
+  ClientRPCResponseResult<VaultsScanMessage>
 >();
 
 class VaultsScanHandler extends ServerHandler<
   {
     vaultManager: VaultManager;
   },
-  RPCRequestParams<NodeIdMessage>,
-  RPCResponseResult<VaultsScanMessage>
+  ClientRPCRequestParams<NodeIdMessage>,
+  ClientRPCResponseResult<VaultsScanMessage>
 > {
   public async *handle(
-    input: RPCRequestParams<NodeIdMessage>,
-  ): AsyncGenerator<RPCResponseResult<VaultsScanMessage>> {
+    input: ClientRPCRequestParams<NodeIdMessage>,
+  ): AsyncGenerator<ClientRPCResponseResult<VaultsScanMessage>> {
     const { vaultManager } = this.container;
     const {
       nodeId,

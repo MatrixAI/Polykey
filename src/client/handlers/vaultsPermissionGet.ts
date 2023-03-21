@@ -1,4 +1,4 @@
-import type { RPCRequestParams, RPCResponseResult } from '../types';
+import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type VaultManager from '../../vaults/VaultManager';
 import type { DB } from '@matrixai/db';
 import type ACL from '../../acl/ACL';
@@ -13,8 +13,8 @@ import { ServerCaller } from '../../RPC/callers';
 import { ServerHandler } from '../../RPC/handlers';
 
 const vaultsPermissionGet = new ServerCaller<
-  RPCRequestParams<VaultIdentifierMessage>,
-  RPCResponseResult<VaultPermissionMessage>
+  ClientRPCRequestParams<VaultIdentifierMessage>,
+  ClientRPCResponseResult<VaultPermissionMessage>
 >();
 
 class VaultsPermissionGetHandler extends ServerHandler<
@@ -23,12 +23,12 @@ class VaultsPermissionGetHandler extends ServerHandler<
     vaultManager: VaultManager;
     acl: ACL;
   },
-  RPCRequestParams<VaultIdentifierMessage>,
-  RPCResponseResult<VaultPermissionMessage>
+  ClientRPCRequestParams<VaultIdentifierMessage>,
+  ClientRPCResponseResult<VaultPermissionMessage>
 > {
   public async *handle(
-    input: RPCRequestParams<VaultIdentifierMessage>,
-  ): AsyncGenerator<RPCResponseResult<VaultPermissionMessage>> {
+    input: ClientRPCRequestParams<VaultIdentifierMessage>,
+  ): AsyncGenerator<ClientRPCResponseResult<VaultPermissionMessage>> {
     const { db, vaultManager, acl } = this.container;
     const [rawPermissions, vaultId] = await db.withTransactionF(
       async (tran) => {

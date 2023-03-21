@@ -1,4 +1,4 @@
-import type { RPCRequestParams, RPCResponseResult } from '../types';
+import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type VaultManager from '../../vaults/VaultManager';
 import type { VaultListMessage } from './types';
 import type { DB } from '@matrixai/db';
@@ -7,8 +7,8 @@ import { ServerCaller } from '../../RPC/callers';
 import { ServerHandler } from '../../RPC/handlers';
 
 const vaultsList = new ServerCaller<
-  RPCRequestParams,
-  RPCResponseResult<VaultListMessage>
+  ClientRPCRequestParams,
+  ClientRPCResponseResult<VaultListMessage>
 >();
 
 class VaultsListHandler extends ServerHandler<
@@ -16,10 +16,12 @@ class VaultsListHandler extends ServerHandler<
     db: DB;
     vaultManager: VaultManager;
   },
-  RPCRequestParams,
-  RPCResponseResult<VaultListMessage>
+  ClientRPCRequestParams,
+  ClientRPCResponseResult<VaultListMessage>
 > {
-  public async *handle(): AsyncGenerator<RPCResponseResult<VaultListMessage>> {
+  public async *handle(): AsyncGenerator<
+    ClientRPCResponseResult<VaultListMessage>
+  > {
     const { db, vaultManager } = this.container;
     const vaults = await db.withTransactionF((tran) =>
       vaultManager.listVaults(tran),

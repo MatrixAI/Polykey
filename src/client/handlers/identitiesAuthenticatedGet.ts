@@ -1,4 +1,4 @@
-import type { RPCRequestParams, RPCResponseResult } from '../types';
+import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type { ProviderId } from 'ids/index';
 import type IdentitiesManager from '../../identities/IdentitiesManager';
 import type { IdentityMessage } from 'client/handlers/types';
@@ -9,26 +9,26 @@ import { matchSync } from '../../utils/index';
 import * as validationUtils from '../../validation/utils';
 
 const identitiesAuthenticatedGet = new ServerCaller<
-  RPCRequestParams<{
+  ClientRPCRequestParams<{
     providerId?: string;
   }>,
-  RPCResponseResult<IdentityMessage>
+  ClientRPCResponseResult<IdentityMessage>
 >();
 
 class IdentitiesAuthenticatedGetHandler extends ServerHandler<
   {
     identitiesManager: IdentitiesManager;
   },
-  RPCRequestParams<{
+  ClientRPCRequestParams<{
     providerId?: string;
   }>,
-  RPCResponseResult<IdentityMessage>
+  ClientRPCResponseResult<IdentityMessage>
 > {
   public async *handle(
-    input: RPCRequestParams<{
+    input: ClientRPCRequestParams<{
       providerId?: string;
     }>,
-  ): AsyncGenerator<RPCResponseResult<IdentityMessage>> {
+  ): AsyncGenerator<ClientRPCResponseResult<IdentityMessage>> {
     const { identitiesManager } = this.container;
     let providerId: ProviderId | undefined;
     if (input.providerId != null) {

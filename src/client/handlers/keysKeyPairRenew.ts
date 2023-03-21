@@ -1,24 +1,24 @@
-import type { RPCRequestParams, RPCResponseResult } from '../types';
+import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type { PasswordMessage } from './types';
 import type CertManager from 'keys/CertManager';
 import { UnaryHandler } from '../../RPC/handlers';
 import { UnaryCaller } from '../../RPC/callers';
 
 const keysKeyPairRenew = new UnaryCaller<
-  RPCRequestParams<PasswordMessage>,
-  RPCResponseResult
+  ClientRPCRequestParams<PasswordMessage>,
+  ClientRPCResponseResult
 >();
 
 class KeysKeyPairRenewHandler extends UnaryHandler<
   {
     certManager: CertManager;
   },
-  RPCRequestParams<PasswordMessage>,
-  RPCResponseResult
+  ClientRPCRequestParams<PasswordMessage>,
+  ClientRPCResponseResult
 > {
   public async handle(
-    input: RPCRequestParams<PasswordMessage>,
-  ): Promise<RPCResponseResult> {
+    input: ClientRPCRequestParams<PasswordMessage>,
+  ): Promise<ClientRPCResponseResult> {
     const { certManager } = this.container;
 
     // Other domains will be updated accordingly via the `EventBus` so we

@@ -2,7 +2,7 @@ import type PolykeyClient from '../../PolykeyClient';
 import type WebSocketClient from '../../websockets/WebSocketClient';
 import type { IdentityInfoMessage } from '../../client/handlers/types';
 import type { ReadableStream } from 'stream/web';
-import type { RPCResponseResult } from '../../client/types';
+import type { ClientRPCResponseResult } from '../../client/types';
 import CommandPolykey from '../CommandPolykey';
 import * as binOptions from '../utils/options';
 import * as binUtils from '../utils';
@@ -83,7 +83,7 @@ class CommandSearch extends CommandPolykey {
         });
         await binUtils.retryAuthentication(async (auth) => {
           let readableStream: ReadableStream<
-            RPCResponseResult<IdentityInfoMessage>
+            ClientRPCResponseResult<IdentityInfoMessage>
           >;
           if (options.identityId) {
             readableStream = await pkClient.rpcClient.methods.identitiesInfoGet(

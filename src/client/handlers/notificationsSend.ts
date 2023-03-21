@@ -1,4 +1,4 @@
-import type { RPCRequestParams, RPCResponseResult } from '../types';
+import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type { NodeId } from '../../ids';
 import type { General } from '../../notifications/types';
 import type { NotificationSendMessage } from './types';
@@ -10,20 +10,20 @@ import { UnaryCaller } from '../../RPC/callers';
 import { UnaryHandler } from '../../RPC/handlers';
 
 const notificationsSend = new UnaryCaller<
-  RPCRequestParams<NotificationSendMessage>,
-  RPCResponseResult
+  ClientRPCRequestParams<NotificationSendMessage>,
+  ClientRPCResponseResult
 >();
 
 class NotificationsSendHandler extends UnaryHandler<
   {
     notificationsManager: NotificationsManager;
   },
-  RPCRequestParams<NotificationSendMessage>,
-  RPCResponseResult
+  ClientRPCRequestParams<NotificationSendMessage>,
+  ClientRPCResponseResult
 > {
   public async handle(
-    input: RPCRequestParams<NotificationSendMessage>,
-  ): Promise<RPCResponseResult> {
+    input: ClientRPCRequestParams<NotificationSendMessage>,
+  ): Promise<ClientRPCResponseResult> {
     const { notificationsManager } = this.container;
     const {
       nodeId,

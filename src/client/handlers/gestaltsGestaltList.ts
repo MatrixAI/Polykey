@@ -1,4 +1,4 @@
-import type { RPCRequestParams, RPCResponseResult } from '../types';
+import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type { DB } from '@matrixai/db';
 import type GestaltGraph from '../../gestalts/GestaltGraph';
 import type { GestaltMessage } from 'client/handlers/types';
@@ -7,8 +7,8 @@ import { ServerCaller } from '../../RPC/callers';
 import { ServerHandler } from '../../RPC/handlers';
 
 const gestaltsGestaltList = new ServerCaller<
-  RPCRequestParams,
-  RPCResponseResult<GestaltMessage>
+  ClientRPCRequestParams,
+  ClientRPCResponseResult<GestaltMessage>
 >();
 
 class GestaltsGestaltListHandler extends ServerHandler<
@@ -16,14 +16,16 @@ class GestaltsGestaltListHandler extends ServerHandler<
     gestaltGraph: GestaltGraph;
     db: DB;
   },
-  RPCRequestParams,
-  RPCResponseResult<GestaltMessage>
+  ClientRPCRequestParams,
+  ClientRPCResponseResult<GestaltMessage>
 > {
-  public async *handle(): AsyncGenerator<RPCResponseResult<GestaltMessage>> {
+  public async *handle(): AsyncGenerator<
+    ClientRPCResponseResult<GestaltMessage>
+  > {
     const { db, gestaltGraph } = this.container;
     yield* db.withTransactionG(async function* (
       tran,
-    ): AsyncGenerator<RPCResponseResult<GestaltMessage>> {
+    ): AsyncGenerator<ClientRPCResponseResult<GestaltMessage>> {
       for await (const gestalt of gestaltGraph.getGestalts(tran)) {
         const gestaltMessage: GestaltMessage = {
           gestalt: {

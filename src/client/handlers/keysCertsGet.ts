@@ -1,22 +1,22 @@
-import type { RPCRequestParams, RPCResponseResult } from '../types';
+import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type { CertMessage } from './types';
 import type CertManager from 'keys/CertManager';
 import { UnaryCaller } from '../../RPC/callers';
 import { UnaryHandler } from '../../RPC/handlers';
 
 const keysCertsGet = new UnaryCaller<
-  RPCRequestParams,
-  RPCResponseResult<CertMessage>
+  ClientRPCRequestParams,
+  ClientRPCResponseResult<CertMessage>
 >();
 
 class KeysCertsGetHandler extends UnaryHandler<
   {
     certManager: CertManager;
   },
-  RPCRequestParams,
-  RPCResponseResult<CertMessage>
+  ClientRPCRequestParams,
+  ClientRPCResponseResult<CertMessage>
 > {
-  public async handle(): Promise<RPCResponseResult<CertMessage>> {
+  public async handle(): Promise<ClientRPCResponseResult<CertMessage>> {
     const { certManager } = this.container;
     const cert = await certManager.getCurrentCertPEM();
     return {

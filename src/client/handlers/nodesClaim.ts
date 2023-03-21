@@ -1,4 +1,4 @@
-import type { RPCRequestParams, RPCResponseResult } from '../types';
+import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type { NodeId } from '../../ids';
 import type NodeManager from '../../nodes/NodeManager';
 import type { DB } from '@matrixai/db';
@@ -10,8 +10,8 @@ import { UnaryHandler } from '../../RPC/handlers';
 import { UnaryCaller } from '../../RPC/callers';
 
 const nodesClaim = new UnaryCaller<
-  RPCRequestParams<ClaimNodeMessage>,
-  RPCResponseResult<SuccessMessage>
+  ClientRPCRequestParams<ClaimNodeMessage>,
+  ClientRPCResponseResult<SuccessMessage>
 >();
 
 class NodesClaimHandler extends UnaryHandler<
@@ -19,12 +19,12 @@ class NodesClaimHandler extends UnaryHandler<
     nodeManager: NodeManager;
     db: DB;
   },
-  RPCRequestParams<ClaimNodeMessage>,
-  RPCResponseResult<SuccessMessage>
+  ClientRPCRequestParams<ClaimNodeMessage>,
+  ClientRPCResponseResult<SuccessMessage>
 > {
   public async handle(
-    input: RPCRequestParams<ClaimNodeMessage>,
-  ): Promise<RPCResponseResult<SuccessMessage>> {
+    input: ClientRPCRequestParams<ClaimNodeMessage>,
+  ): Promise<ClientRPCResponseResult<SuccessMessage>> {
     const { nodeManager, db } = this.container;
 
     const {

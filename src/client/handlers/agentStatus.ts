@@ -1,4 +1,4 @@
-import type { RPCRequestParams, RPCResponseResult } from '../types';
+import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type { StatusResultMessage } from './types';
 import type PolykeyAgent from '../../PolykeyAgent';
 import * as nodesUtils from '../../nodes/utils';
@@ -7,18 +7,18 @@ import { UnaryHandler } from '../../RPC/handlers';
 import { UnaryCaller } from '../../RPC/callers';
 
 const agentStatus = new UnaryCaller<
-  RPCRequestParams,
-  RPCResponseResult<StatusResultMessage>
+  ClientRPCRequestParams,
+  ClientRPCResponseResult<StatusResultMessage>
 >();
 
 class AgentStatusHandler extends UnaryHandler<
   {
     pkAgent: PolykeyAgent;
   },
-  RPCRequestParams,
-  RPCResponseResult<StatusResultMessage>
+  ClientRPCRequestParams,
+  ClientRPCResponseResult<StatusResultMessage>
 > {
-  public async handle(): Promise<RPCResponseResult<StatusResultMessage>> {
+  public async handle(): Promise<ClientRPCResponseResult<StatusResultMessage>> {
     const { pkAgent } = this.container;
     return {
       pid: process.pid,

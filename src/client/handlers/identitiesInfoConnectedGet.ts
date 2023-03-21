@@ -1,4 +1,4 @@
-import type { RPCRequestParams, RPCResponseResult } from '../types';
+import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type { IdentityId, ProviderId } from 'ids/index';
 import type IdentitiesManager from '../../identities/IdentitiesManager';
 import type { ProviderSearchMessage, IdentityInfoMessage } from './types';
@@ -11,20 +11,20 @@ import * as validationUtils from '../../validation/utils';
 import * as identitiesErrors from '../../identities/errors';
 
 const identitiesInfoConnectedGet = new ServerCaller<
-  RPCRequestParams<ProviderSearchMessage>,
-  RPCResponseResult<IdentityInfoMessage>
+  ClientRPCRequestParams<ProviderSearchMessage>,
+  ClientRPCResponseResult<IdentityInfoMessage>
 >();
 
 class IdentitiesInfoConnectedGetHandler extends ServerHandler<
   {
     identitiesManager: IdentitiesManager;
   },
-  RPCRequestParams<ProviderSearchMessage>,
-  RPCResponseResult<IdentityInfoMessage>
+  ClientRPCRequestParams<ProviderSearchMessage>,
+  ClientRPCResponseResult<IdentityInfoMessage>
 > {
   public async *handle(
-    input: RPCRequestParams<ProviderSearchMessage>,
-  ): AsyncGenerator<RPCResponseResult<IdentityInfoMessage>> {
+    input: ClientRPCRequestParams<ProviderSearchMessage>,
+  ): AsyncGenerator<ClientRPCResponseResult<IdentityInfoMessage>> {
     const { identitiesManager } = this.container;
     const {
       providerIds,

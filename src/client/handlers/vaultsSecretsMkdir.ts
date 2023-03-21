@@ -1,4 +1,4 @@
-import type { RPCRequestParams, RPCResponseResult } from '../types';
+import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type VaultManager from '../../vaults/VaultManager';
 import type { DB } from '@matrixai/db';
 import type { SecretMkdirMessage, SuccessMessage } from './types';
@@ -9,8 +9,8 @@ import { UnaryHandler } from '../../RPC/handlers';
 import { UnaryCaller } from '../../RPC/callers';
 
 const vaultsSecretsMkdir = new UnaryCaller<
-  RPCRequestParams<SecretMkdirMessage>,
-  RPCResponseResult<SuccessMessage>
+  ClientRPCRequestParams<SecretMkdirMessage>,
+  ClientRPCResponseResult<SuccessMessage>
 >();
 
 class VaultsSecretsMkdirHandler extends UnaryHandler<
@@ -18,12 +18,12 @@ class VaultsSecretsMkdirHandler extends UnaryHandler<
     vaultManager: VaultManager;
     db: DB;
   },
-  RPCRequestParams<SecretMkdirMessage>,
-  RPCResponseResult<SuccessMessage>
+  ClientRPCRequestParams<SecretMkdirMessage>,
+  ClientRPCResponseResult<SuccessMessage>
 > {
   public async handle(
-    input: RPCRequestParams<SecretMkdirMessage>,
-  ): Promise<RPCResponseResult<SuccessMessage>> {
+    input: ClientRPCRequestParams<SecretMkdirMessage>,
+  ): Promise<ClientRPCResponseResult<SuccessMessage>> {
     const { vaultManager, db } = this.container;
     await db.withTransactionF(async (tran) => {
       const vaultIdFromName = await vaultManager.getVaultId(

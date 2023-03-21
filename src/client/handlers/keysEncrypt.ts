@@ -1,4 +1,4 @@
-import type { RPCRequestParams, RPCResponseResult } from '../types';
+import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type KeyRing from '../../keys/KeyRing';
 import type { DataMessage, DecryptMessage } from './types';
 import type { PublicKey } from '../../keys/types';
@@ -9,20 +9,20 @@ import { UnaryHandler } from '../../RPC/handlers';
 import { UnaryCaller } from '../../RPC/callers';
 
 const keysEncrypt = new UnaryCaller<
-  RPCRequestParams<DecryptMessage>,
-  RPCResponseResult<DataMessage>
+  ClientRPCRequestParams<DecryptMessage>,
+  ClientRPCResponseResult<DataMessage>
 >();
 
 class KeysEncryptHandler extends UnaryHandler<
   {
     keyRing: KeyRing;
   },
-  RPCRequestParams<DecryptMessage>,
-  RPCResponseResult<DataMessage>
+  ClientRPCRequestParams<DecryptMessage>,
+  ClientRPCResponseResult<DataMessage>
 > {
   public async handle(
-    input: RPCRequestParams<DecryptMessage>,
-  ): Promise<RPCResponseResult<DataMessage>> {
+    input: ClientRPCRequestParams<DecryptMessage>,
+  ): Promise<ClientRPCResponseResult<DataMessage>> {
     const { keyRing } = this.container;
 
     let publicKey: PublicKey | undefined;

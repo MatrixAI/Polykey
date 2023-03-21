@@ -1,4 +1,4 @@
-import type { RPCRequestParams, RPCResponseResult } from '../types';
+import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type { NodeId } from 'ids/index';
 import type NotificationsManager from 'notifications/NotificationsManager';
 import type Logger from '@matrixai/logger';
@@ -11,8 +11,8 @@ import { matchSync } from '../../utils/index';
 import * as validationUtils from '../../validation/utils';
 
 const identitiesInvite = new UnaryCaller<
-  RPCRequestParams<ClaimNodeMessage>,
-  RPCResponseResult
+  ClientRPCRequestParams<ClaimNodeMessage>,
+  ClientRPCResponseResult
 >();
 
 class IdentitiesInviteHandler extends UnaryHandler<
@@ -21,12 +21,12 @@ class IdentitiesInviteHandler extends UnaryHandler<
     notificationsManager: NotificationsManager;
     logger: Logger;
   },
-  RPCRequestParams<ClaimNodeMessage>,
-  RPCResponseResult
+  ClientRPCRequestParams<ClaimNodeMessage>,
+  ClientRPCResponseResult
 > {
   public async handle(
-    input: RPCRequestParams<ClaimNodeMessage>,
-  ): Promise<RPCResponseResult> {
+    input: ClientRPCRequestParams<ClaimNodeMessage>,
+  ): Promise<ClientRPCResponseResult> {
     const { acl, notificationsManager, logger } = this.container;
     const {
       nodeId,
