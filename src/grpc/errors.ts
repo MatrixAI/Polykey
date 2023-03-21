@@ -14,7 +14,7 @@ class ErrorGRPCClientVerification<T> extends ErrorGRPC<T> {
   static description = 'Client could not verify server certificate';
   exitCode = sysexits.UNAVAILABLE;
 }
-ErrorPolykeyRemote
+
 class ErrorGRPCClientChannelNotReady<T> extends ErrorGRPC<T> {
   static description = 'Client channel or subchannel is not ready';
   exitCode = sysexits.UNAVAILABLE;
