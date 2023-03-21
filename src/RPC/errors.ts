@@ -89,12 +89,8 @@ class ErrorPolykeyRemote<T> extends ErrorPolykey<T> {
   }
 }
 
-class ErrorRPCNoMessageError<T> extends ErrorRPC<T> {
-  static description = 'For errors not to be conveyed to the client';
-}
-
-class ErrorRPCPlaceholderConnectionError<T> extends ErrorRPCNoMessageError<T> {
-  static description = 'placeholder error for connection stream failure';
+class ErrorSendErrorFailed<T> extends ErrorRPC<T> {
+  static description = 'Failed to send error message';
   exitCode = sysexits.UNAVAILABLE;
 }
 
@@ -107,6 +103,5 @@ export {
   ErrorRPCMessageLength,
   ErrorRPCMissingResponse,
   ErrorPolykeyRemote,
-  ErrorRPCNoMessageError,
-  ErrorRPCPlaceholderConnectionError,
+  ErrorSendErrorFailed,
 };

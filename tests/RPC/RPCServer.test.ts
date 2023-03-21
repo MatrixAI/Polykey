@@ -9,6 +9,7 @@ import type { ConnectionInfo, Host, Port } from '@/network/types';
 import type { NodeId } from '@/ids';
 import type { ReadableWritablePair } from 'stream/web';
 import type { ContextCancellable } from '@/contexts/types';
+import type { RPCErrorEvent } from '@/RPC/utils';
 import { TransformStream, ReadableStream } from 'stream/web';
 import { fc, testProp } from '@fast-check/jest';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
@@ -388,9 +389,9 @@ describe(`${RPCServer.name}`, () => {
         logger,
       });
       let resolve, reject;
-      const errorProm = new Promise((resolve_, reject_) => {
-        resolve = resolve_;
-        reject = reject_;
+      const errorProm = new Promise((_resolve, _reject) => {
+        resolve = _resolve;
+        reject = _reject;
       });
       rpcServer.addEventListener('error', (thing) => {
         resolve(thing);
@@ -429,9 +430,9 @@ describe(`${RPCServer.name}`, () => {
         logger,
       });
       let resolve, reject;
-      const errorProm = new Promise((resolve_, reject_) => {
-        resolve = resolve_;
-        reject = reject_;
+      const errorProm = new Promise((_resolve, _reject) => {
+        resolve = _resolve;
+        reject = _reject;
       });
       rpcServer.addEventListener('error', (thing) => {
         resolve(thing);
@@ -456,10 +457,10 @@ describe(`${RPCServer.name}`, () => {
     'should emit stream error',
     [specificMessageArb],
     async (messages) => {
-      const stream = rpcTestUtils.messagesToReadableStream(messages);
       class TestMethod extends DuplexHandler {
-        public async *handle(): AsyncIterable<JSONValue> {
-          throw new rpcErrors.ErrorRPCPlaceholderConnectionError();
+        public async *handle(input): AsyncIterable<JSONValue> {
+          // Echo input
+          yield* input;
         }
       }
       const rpcServer = await RPCServer.createRPCServer({
@@ -468,26 +469,42 @@ describe(`${RPCServer.name}`, () => {
         },
         logger,
       });
-      let resolve, reject;
-      const errorProm = new Promise((resolve_, reject_) => {
-        resolve = resolve_;
-        reject = reject_;
+      let resolve;
+      const errorProm = new Promise<RPCErrorEvent>((_resolve) => {
+        resolve = _resolve;
       });
       rpcServer.addEventListener('error', (thing) => {
         resolve(thing);
       });
-      const [outputResult, outputStream] = rpcTestUtils.streamToArray();
-      const readWriteStream: ReadableWritablePair = {
-        readable: stream,
-        writable: outputStream,
+      const passThroughStreamIn = new TransformStream<Uint8Array, Uint8Array>();
+      const passThroughStreamOut = new TransformStream<
+        Uint8Array,
+        Uint8Array
+      >();
+      const readWriteStream: ReadableWritablePair<Uint8Array, Uint8Array> = {
+        readable: passThroughStreamIn.readable,
+        writable: passThroughStreamOut.writable,
       };
       rpcServer.handleStream(readWriteStream, {} as ConnectionInfo);
-      await outputResult;
-
+      const writer = passThroughStreamIn.writable.getWriter();
+      const reader = passThroughStreamOut.readable.getReader();
+      // Write messages
+      for (const message of messages) {
+        await writer.write(Buffer.from(JSON.stringify(message)));
+        await reader.read();
+      }
+      // Abort stream
+      const writerReason = Symbol('writerAbort');
+      const readerReason = Symbol('readerAbort');
+      await writer.abort(writerReason);
+      await reader.cancel(readerReason);
+      // We should get an error event
+      const event = await errorProm;
+      expect(event.detail.error.cause).toContain(writerReason);
+      expect(event.detail.error.cause).toContain(readerReason);
       await rpcServer.destroy();
-      reject();
-      await expect(errorProm).toResolve();
     },
+    { numRuns: 1 },
   );
   testProp('forward middlewares', [specificMessageArb], async (messages) => {
     const stream = rpcTestUtils.messagesToReadableStream(messages);

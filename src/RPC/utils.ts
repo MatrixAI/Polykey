@@ -401,10 +401,6 @@ function clientOutputTransformStream<O extends JSONValue>(
   });
 }
 
-function isReturnableError(e: Error): boolean {
-  return !(e instanceof rpcErrors.ErrorRPCNoMessageError);
-}
-
 class RPCErrorEvent extends Event {
   public detail: {
     error: any;
@@ -508,7 +504,6 @@ export {
   toError,
   clientInputTransformStream,
   clientOutputTransformStream,
-  isReturnableError,
   RPCErrorEvent,
   extractFirstMessageTransform,
   getHandlerTypes,

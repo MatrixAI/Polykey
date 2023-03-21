@@ -192,6 +192,7 @@ class RPCServer {
         }
       };
       const outputGenerator = outputGen();
+      let reason: any | undefined = undefined;
       const reverseMiddlewareStream = new ReadableStream<JsonRpcResponse>({
         pull: async (controller) => {
           try {
@@ -202,7 +203,7 @@ class RPCServer {
             }
             controller.enqueue(value);
           } catch (e) {
-            if (rpcUtils.isReturnableError(e)) {
+            if (reason == null) {
               // We want to convert this error to an error message and pass it along
               const rpcError: JsonRpcError = {
                 code: e.exitCode ?? sysexits.UNKNOWN,
@@ -217,10 +218,13 @@ class RPCServer {
               controller.enqueue(rpcErrorMessage);
             } else {
               // These errors are emitted to the event system
+              // This contains the original error from enqueuing
               events.dispatchEvent(
                 new rpcUtils.RPCErrorEvent({
                   detail: {
-                    error: e,
+                    error: new rpcErrors.ErrorSendErrorFailed(undefined, {
+                      cause: [e, reason],
+                    }),
                   },
                 }),
               );
@@ -231,8 +235,9 @@ class RPCServer {
             controller.close();
           }
         },
-        cancel: async (reason) => {
-          await outputGenerator.throw(reason);
+        cancel: async (_reason) => {
+          reason = _reason;
+          await outputGenerator.throw(_reason);
         },
       });
       void reverseMiddlewareStream.pipeTo(reverseStream).catch(() => {});
