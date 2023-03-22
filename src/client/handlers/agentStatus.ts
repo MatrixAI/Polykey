@@ -13,18 +13,19 @@ const agentStatus = new UnaryCaller<
 
 class AgentStatusHandler extends UnaryHandler<
   {
-    pkAgent: PolykeyAgent;
+    pkAgentProm: Promise<PolykeyAgent>;
   },
   ClientRPCRequestParams,
   ClientRPCResponseResult<StatusResultMessage>
 > {
   public async handle(): Promise<ClientRPCResponseResult<StatusResultMessage>> {
-    const { pkAgent } = this.container;
+    const { pkAgentProm } = this.container;
+    const pkAgent = await pkAgentProm;
     return {
       pid: process.pid,
       nodeIdEncoded: nodesUtils.encodeNodeId(pkAgent.keyRing.getNodeId()),
-      clientHost: pkAgent.webSocketServer.host,
-      clientPort: pkAgent.webSocketServer.port,
+      clientHost: pkAgent.webSocketServerClient.host,
+      clientPort: pkAgent.webSocketServerClient.port,
       proxyHost: pkAgent.proxy.getProxyHost(),
       proxyPort: pkAgent.proxy.getProxyPort(),
       agentHost: pkAgent.grpcServerAgent.getHost(),

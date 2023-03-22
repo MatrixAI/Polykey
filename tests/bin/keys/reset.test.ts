@@ -102,7 +102,7 @@ describe('reset', () => {
             // this is fixed.
             PK_NODE_ID: nodesUtils.encodeNodeId(oldNodeId),
             PK_CLIENT_HOST: '127.0.0.1',
-            PK_CLIENT_PORT: `${pkAgent.webSocketServer.port}`,
+            PK_CLIENT_PORT: `${pkAgent.webSocketServerClient.port}`,
           },
           cwd: dataDir,
         },
@@ -120,7 +120,7 @@ describe('reset', () => {
             // this is fixed.
             PK_NODE_ID: nodesUtils.encodeNodeId(oldNodeId),
             PK_CLIENT_HOST: '127.0.0.1',
-            PK_CLIENT_PORT: `${pkAgent.webSocketServer.port}`,
+            PK_CLIENT_PORT: `${pkAgent.webSocketServerClient.port}`,
           },
           cwd: dataDir,
         },

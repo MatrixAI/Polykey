@@ -198,7 +198,7 @@ import {
 import { keysSign, KeysSignHandler } from '../../client/handlers/keysSign';
 
 const serverManifest = (container: {
-  pkAgent: PolykeyAgent;
+  pkAgentProm: Promise<PolykeyAgent>;
   keyRing: KeyRing;
   certManager: CertManager;
   db: DB;

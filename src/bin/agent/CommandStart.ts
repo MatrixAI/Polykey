@@ -227,8 +227,8 @@ class CommandStart extends CommandPolykey {
         statusLiveData = {
           pid: process.pid,
           nodeId: nodesUtils.encodeNodeId(pkAgent.keyRing.getNodeId()),
-          clientHost: pkAgent.webSocketServer.host,
-          clientPort: pkAgent.webSocketServer.port,
+          clientHost: pkAgent.webSocketServerClient.host,
+          clientPort: pkAgent.webSocketServerClient.port,
           agentHost: pkAgent.grpcServerAgent.getHost(),
           agentPort: pkAgent.grpcServerAgent.getPort(),
           proxyHost: pkAgent.proxy.getProxyHost(),

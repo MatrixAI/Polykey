@@ -11,13 +11,14 @@ const agentStop = new UnaryCaller<
 
 class AgentStopHandler extends UnaryHandler<
   {
-    pkAgent: PolykeyAgent;
+    pkAgentProm: Promise<PolykeyAgent>;
   },
   ClientRPCRequestParams,
   ClientRPCResponseResult
 > {
   public async handle(): Promise<ClientRPCResponseResult> {
-    const { pkAgent } = this.container;
+    const { pkAgentProm } = this.container;
+    const pkAgent = await pkAgentProm;
     // If not running or in stopping status, then respond successfully
     if (!pkAgent[running] || pkAgent[status] === 'stopping') {
       return {};

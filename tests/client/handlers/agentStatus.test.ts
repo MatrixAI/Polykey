@@ -82,8 +82,8 @@ describe('agentStatus', () => {
     expect(result).toStrictEqual({
       pid: process.pid,
       nodeIdEncoded: nodesUtils.encodeNodeId(pkAgent.keyRing.getNodeId()),
-      clientHost: pkAgent.webSocketServer.host,
-      clientPort: pkAgent.webSocketServer.port,
+      clientHost: pkAgent.webSocketServerClient.host,
+      clientPort: pkAgent.webSocketServerClient.port,
       proxyHost: pkAgent.proxy.getProxyHost(),
       proxyPort: pkAgent.proxy.getProxyPort(),
       agentHost: pkAgent.grpcServerAgent.getHost(),
