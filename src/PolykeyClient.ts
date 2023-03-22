@@ -35,7 +35,7 @@ class PolykeyClient<M extends ClientManifest> {
   }: {
     nodePath?: string;
     session?: Session;
-    manifest: M;
+    manifest: RPCClient<M> | M;
     streamFactory: StreamFactory;
     fs?: FileSystem;
     logger?: Logger;
@@ -54,14 +54,17 @@ class PolykeyClient<M extends ClientManifest> {
         logger: logger.getChild(Session.name),
         fresh,
       }));
-    const rpcClient = await RPCClient.createRPCClient<M>({
-      manifest,
-      streamFactory,
-      middleware: middlewareUtils.defaultClientMiddlewareWrapper(
-        authMiddleware.authenticationMiddlewareClient(session),
-      ),
-      logger: logger.getChild(RPCClient.name),
-    });
+    const rpcClient =
+      manifest instanceof RPCClient
+        ? manifest
+        : await RPCClient.createRPCClient<M>({
+            manifest,
+            streamFactory,
+            middleware: middlewareUtils.defaultClientMiddlewareWrapper(
+              authMiddleware.authenticationMiddlewareClient(session),
+            ),
+            logger: logger.getChild(RPCClient.name),
+          });
     const pkClient = new this({
       nodePath,
       rpcClient,
