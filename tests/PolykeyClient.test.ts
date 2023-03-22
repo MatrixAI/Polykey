@@ -40,29 +40,6 @@ describe('PolykeyClient', () => {
       recursive: true,
     });
   });
-  // Since connections for the client are on a per-call basis, we can't check
-  //  that connection details are correct here.
-  test.todo(
-    'create PolykeyClient and connect to PolykeyAgent',
-    // Async () => {
-    //   const pkClient = await PolykeyClient.createPolykeyClient({
-    //     nodeId: pkAgent.keyRing.getNodeId(),
-    //     host: pkAgent.webSocketServer.host,
-    //     port: pkAgent.webSocketServer.port,
-    //     nodePath,
-    //     fs,
-    //     logger,
-    //     manifest: {},
-    //   });
-    //   expect(pkClient.grpcClient.nodeId).toStrictEqual(
-    //     pkAgent.keyRing.getNodeId(),
-    //   );
-    //   expect(pkClient.grpcClient.host).toBe(pkAgent.grpcServerClient.getHost());
-    //   expect(pkClient.grpcClient.port).toBe(pkAgent.grpcServerClient.getPort());
-    //   expect(pkClient.grpcClient.secured).toBe(true);
-    //   await pkClient.stop();
-    // }
-  );
   test('preserving and destroying session state', async () => {
     const session = await Session.createSession({
       sessionTokenPath: path.join(nodePath, config.defaults.tokenBase),
