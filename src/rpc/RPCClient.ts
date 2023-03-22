@@ -29,15 +29,27 @@ import { never } from '../utils';
 interface RPCClient<M extends ClientManifest> extends CreateDestroy {}
 @CreateDestroy()
 class RPCClient<M extends ClientManifest> {
+  /**
+   * @param obj
+   * @param obj.manifest - Client manifest that defines the types for the rpc
+   * methods.
+   * @param obj.streamFactory - An arrow function that when called, creates a
+   * new stream for each rpc method call.
+   * @param obj.middlewareFactory - Middleware used to process the rpc messages.
+   * The middlewareFactory needs to be a function that creates a pair of
+   * transform streams that convert `JSONRPCRequest` to `Uint8Array` on the forward
+   * path and `Uint8Array` to `JSONRPCResponse` on the reverse path.
+   * @param obj.logger
+   */
   static async createRPCClient<M extends ClientManifest>({
     manifest,
     streamFactory,
-    middleware = middlewareUtils.defaultClientMiddlewareWrapper(),
+    middlewareFactory = middlewareUtils.defaultClientMiddlewareWrapper(),
     logger = new Logger(this.name),
   }: {
     manifest: M;
     streamFactory: StreamFactory;
-    middleware?: MiddlewareFactory<
+    middlewareFactory?: MiddlewareFactory<
       Uint8Array,
       JSONRPCRequest,
       JSONRPCResponse,
@@ -49,7 +61,7 @@ class RPCClient<M extends ClientManifest> {
     const rpcClient = new this({
       manifest,
       streamFactory,
-      middleware,
+      middlewareFactory,
       logger,
     });
     logger.info(`Created ${this.name}`);
@@ -58,7 +70,7 @@ class RPCClient<M extends ClientManifest> {
 
   protected logger: Logger;
   protected streamFactory: StreamFactory;
-  protected middleware: MiddlewareFactory<
+  protected middlewareFactory: MiddlewareFactory<
     Uint8Array,
     JSONRPCRequest,
     JSONRPCResponse,
@@ -92,12 +104,12 @@ class RPCClient<M extends ClientManifest> {
   public constructor({
     manifest,
     streamFactory,
-    middleware,
+    middlewareFactory,
     logger,
   }: {
     manifest: M;
     streamFactory: StreamFactory;
-    middleware: MiddlewareFactory<
+    middlewareFactory: MiddlewareFactory<
       Uint8Array,
       JSONRPCRequest,
       JSONRPCResponse,
@@ -107,7 +119,7 @@ class RPCClient<M extends ClientManifest> {
   }) {
     this.callerTypes = rpcUtils.getHandlerTypes(manifest);
     this.streamFactory = streamFactory;
-    this.middleware = middleware;
+    this.middlewareFactory = middlewareFactory;
     this.logger = logger;
   }
 
@@ -187,7 +199,7 @@ class RPCClient<M extends ClientManifest> {
       });
     const inputMessageTransformStream =
       rpcUtils.clientInputTransformStream<I>(method);
-    const middleware = this.middleware();
+    const middleware = this.middlewareFactory();
     // Hooking up agnostic stream side
     const streamPair = await this.streamFactory();
     void streamPair.readable

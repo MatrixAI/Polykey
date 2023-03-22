@@ -437,7 +437,7 @@ class PolykeyAgent {
             sessionManager: sessionManager,
             vaultManager: vaultManager,
           }),
-          middleware: middlewareUtils.defaultServerMiddlewareWrapper(
+          middlewareFactory: middlewareUtils.defaultServerMiddlewareWrapper(
             authMiddleware.authenticationMiddlewareServer(
               sessionManager,
               keyRing,

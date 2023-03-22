@@ -361,19 +361,21 @@ describe(`${RPCClient.name}`, () => {
       const rpcClient = await RPCClient.createRPCClient({
         manifest: {},
         streamFactory: async () => streamPair,
-        middleware: middlewareUtils.defaultClientMiddlewareWrapper(() => {
-          return {
-            forward: new TransformStream<JSONRPCRequest, JSONRPCRequest>({
-              transform: (chunk, controller) => {
-                controller.enqueue({
-                  ...chunk,
-                  params: 'one',
-                });
-              },
-            }),
-            reverse: new TransformStream(),
-          };
-        }),
+        middlewareFactory: middlewareUtils.defaultClientMiddlewareWrapper(
+          () => {
+            return {
+              forward: new TransformStream<JSONRPCRequest, JSONRPCRequest>({
+                transform: (chunk, controller) => {
+                  controller.enqueue({
+                    ...chunk,
+                    params: 'one',
+                  });
+                },
+              }),
+              reverse: new TransformStream(),
+            };
+          },
+        ),
         logger,
       });
 
@@ -425,19 +427,21 @@ describe(`${RPCClient.name}`, () => {
       const rpcClient = await RPCClient.createRPCClient({
         manifest: {},
         streamFactory: async () => streamPair,
-        middleware: middlewareUtils.defaultClientMiddlewareWrapper(() => {
-          return {
-            forward: new TransformStream(),
-            reverse: new TransformStream<JSONRPCResponse, JSONRPCResponse>({
-              transform: (chunk, controller) => {
-                controller.enqueue({
-                  ...chunk,
-                  result: 'one',
-                });
-              },
-            }),
-          };
-        }),
+        middlewareFactory: middlewareUtils.defaultClientMiddlewareWrapper(
+          () => {
+            return {
+              forward: new TransformStream(),
+              reverse: new TransformStream<JSONRPCResponse, JSONRPCResponse>({
+                transform: (chunk, controller) => {
+                  controller.enqueue({
+                    ...chunk,
+                    result: 'one',
+                  });
+                },
+              }),
+            };
+          },
+        ),
         logger,
       });
 

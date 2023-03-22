@@ -60,7 +60,7 @@ class PolykeyClient<M extends ClientManifest> {
         : await RPCClient.createRPCClient<M>({
             manifest,
             streamFactory,
-            middleware: middlewareUtils.defaultClientMiddlewareWrapper(
+            middlewareFactory: middlewareUtils.defaultClientMiddlewareWrapper(
               authMiddleware.authenticationMiddlewareClient(session),
             ),
             logger: logger.getChild(RPCClient.name),

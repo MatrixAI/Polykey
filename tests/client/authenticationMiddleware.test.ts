@@ -107,7 +107,7 @@ describe('authenticationMiddleware', () => {
       manifest: {
         testHandler: new EchoHandler({ logger }),
       },
-      middleware: middlewareUtils.defaultServerMiddlewareWrapper(
+      middlewareFactory: middlewareUtils.defaultServerMiddlewareWrapper(
         authMiddleware.authenticationMiddlewareServer(sessionManager, keyRing),
       ),
       logger,
@@ -134,7 +134,7 @@ describe('authenticationMiddleware', () => {
         >(),
       },
       streamFactory: async () => clientClient.startConnection(),
-      middleware: middlewareUtils.defaultClientMiddlewareWrapper(
+      middlewareFactory: middlewareUtils.defaultClientMiddlewareWrapper(
         authMiddleware.authenticationMiddlewareClient(session),
       ),
       logger,

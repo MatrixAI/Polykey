@@ -92,7 +92,7 @@ describe('agentUnlock', () => {
       manifest: {
         agentUnlock: new AgentUnlockHandler({}),
       },
-      middleware: middlewareUtils.defaultServerMiddlewareWrapper(
+      middlewareFactory: middlewareUtils.defaultServerMiddlewareWrapper(
         authMiddleware.authenticationMiddlewareServer(sessionManager, keyRing),
       ),
       logger,
@@ -115,7 +115,7 @@ describe('agentUnlock', () => {
         agentUnlock,
       },
       streamFactory: async () => clientClient.startConnection(),
-      middleware: middlewareUtils.defaultClientMiddlewareWrapper(
+      middlewareFactory: middlewareUtils.defaultClientMiddlewareWrapper(
         authMiddleware.authenticationMiddlewareClient(session),
       ),
       logger,

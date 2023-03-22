@@ -35,18 +35,30 @@ import { sysexits } from '../errors';
 interface RPCServer extends CreateDestroy {}
 @CreateDestroy()
 class RPCServer {
+  /**
+   * @param obj
+   * @param obj.manifest - Server manifest used to define the rpc method
+   * handlers.
+   * @param obj.middlewareFactory - Middleware used to process the rpc messages.
+   * The middlewareFactory needs to be a function that creates a pair of
+   * transform streams that convert `Uint8Array` to `JSONRPCRequest` on the forward
+   * path and `JSONRPCResponse` to `Uint8Array` on the reverse path.
+   * @param obj.sensitive - If true, sanitises any rpc error messages of any
+   * sensitive information.
+   * @param obj.logger
+   */
   static async createRPCServer({
     manifest,
-    middleware = middlewareUtils.defaultServerMiddlewareWrapper(),
+    middlewareFactory = middlewareUtils.defaultServerMiddlewareWrapper(),
     sensitive = false,
     logger = new Logger(this.name),
   }: {
     manifest: ServerManifest;
-    middleware?: MiddlewareFactory<
+    middlewareFactory?: MiddlewareFactory<
       JSONRPCRequest,
       Uint8Array,
       Uint8Array,
-      JSONRPCResponseResult
+      JSONRPCResponse
     >;
     sensitive?: boolean;
     logger?: Logger;
@@ -54,7 +66,7 @@ class RPCServer {
     logger.info(`Creating ${this.name}`);
     const rpcServer = new this({
       manifest,
-      middleware,
+      middlewareFactory,
       sensitive,
       logger,
     });
@@ -67,7 +79,7 @@ class RPCServer {
   protected activeStreams: Set<PromiseCancellable<void>> = new Set();
   protected sensitive: boolean;
   protected events: EventTarget = new EventTarget();
-  protected middleware: MiddlewareFactory<
+  protected middlewareFactory: MiddlewareFactory<
     JSONRPCRequest,
     Uint8Array,
     Uint8Array,
@@ -76,12 +88,12 @@ class RPCServer {
 
   public constructor({
     manifest,
-    middleware,
+    middlewareFactory,
     sensitive,
     logger,
   }: {
     manifest: ServerManifest;
-    middleware: MiddlewareFactory<
+    middlewareFactory: MiddlewareFactory<
       JSONRPCRequest,
       Uint8Array,
       Uint8Array,
@@ -132,7 +144,7 @@ class RPCServer {
       }
       never();
     }
-    this.middleware = middleware;
+    this.middlewareFactory = middlewareFactory;
     this.sensitive = sensitive;
     this.logger = logger;
   }
@@ -169,7 +181,7 @@ class RPCServer {
       ctx,
     ) => {
       // Setting up middleware
-      const middleware = this.middleware(header);
+      const middleware = this.middlewareFactory(header);
       const forwardStream = input.pipeThrough(middleware.forward);
       const reverseStream = middleware.reverse.writable;
       const events = this.events;

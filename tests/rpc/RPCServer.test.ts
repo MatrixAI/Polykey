@@ -515,22 +515,24 @@ describe(`${RPCServer.name}`, () => {
         yield* input;
       }
     }
-    const middleware = middlewareUtils.defaultServerMiddlewareWrapper(() => {
-      return {
-        forward: new TransformStream({
-          transform: (chunk, controller) => {
-            chunk.params = 1;
-            controller.enqueue(chunk);
-          },
-        }),
-        reverse: new TransformStream(),
-      };
-    });
+    const middlewareFactory = middlewareUtils.defaultServerMiddlewareWrapper(
+      () => {
+        return {
+          forward: new TransformStream({
+            transform: (chunk, controller) => {
+              chunk.params = 1;
+              controller.enqueue(chunk);
+            },
+          }),
+          reverse: new TransformStream(),
+        };
+      },
+    );
     const rpcServer = await RPCServer.createRPCServer({
       manifest: {
         testMethod: new TestMethod({}),
       },
-      middleware,
+      middlewareFactory: middlewareFactory,
       logger,
     });
     const [outputResult, outputStream] = rpcTestUtils.streamToArray();
@@ -575,7 +577,7 @@ describe(`${RPCServer.name}`, () => {
       manifest: {
         testMethod: new TestMethod({}),
       },
-      middleware,
+      middlewareFactory: middleware,
       logger,
     });
     const [outputResult, outputStream] = rpcTestUtils.streamToArray();
@@ -642,7 +644,7 @@ describe(`${RPCServer.name}`, () => {
         manifest: {
           testMethod: new TestMethod({}),
         },
-        middleware,
+        middlewareFactory: middleware,
         logger,
       });
       const [outputResult, outputStream] = rpcTestUtils.streamToArray();
