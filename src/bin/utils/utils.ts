@@ -112,7 +112,10 @@ function outputFormatter(msg: OutputObject): string | Uint8Array {
     let currError = msg.data;
     let indent = '  ';
     while (currError != null) {
-      if (currError instanceof grpcErrors.ErrorPolykeyRemoteOLD) {
+      if (
+        currError instanceof grpcErrors.ErrorPolykeyRemoteOLD ||
+        currError instanceof rpcErrors.ErrorPolykeyRemote
+      ) {
         output += `${currError.name}: ${currError.description}`;
         if (currError.message && currError.message !== '') {
           output += ` - ${currError.message}`;
