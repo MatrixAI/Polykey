@@ -123,7 +123,7 @@ describe('authenticationMiddleware', () => {
     clientClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
       host,
-      port: clientServer.port,
+      port: clientServer.getPort(),
       logger,
     });
     const rpcClient = await RPCClient.createRPCClient({

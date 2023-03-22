@@ -31,6 +31,11 @@ class ErrorClientConnectionEndedEarly<T> extends ErrorWebSocketClient<T> {
 
 class ErrorWebSocketServer<T> extends ErrorWebSocket<T> {}
 
+class ErrorWebSocketServerNotRunning<T> extends ErrorWebSocketServer<T> {
+  static description = 'WebSocketServer is not running';
+  exitCode = sysexits.USAGE;
+}
+
 class ErrorServerPortUnavailable<T> extends ErrorWebSocketServer<T> {
   static description = 'Failed to bind a free port';
   exitCode = sysexits.UNAVAILABLE;
@@ -104,6 +109,7 @@ export {
   ErrorClientConnectionTimedOut,
   ErrorClientConnectionEndedEarly,
   ErrorWebSocketServer,
+  ErrorWebSocketServerNotRunning,
   ErrorServerPortUnavailable,
   ErrorServerSendFailed,
   ErrorServerReadableBufferLimit,

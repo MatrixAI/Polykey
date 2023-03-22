@@ -94,10 +94,10 @@ describe('WebSocket', () => {
       host,
       logger: logger.getChild('server'),
     });
-    logger.info(`Server started on port ${webSocketServer.port}`);
+    logger.info(`Server started on port ${webSocketServer.getPort()}`);
     webSocketClient = await WebSocketClient.createWebSocketClient({
       host,
-      port: webSocketServer.port,
+      port: webSocketServer.getPort(),
       expectedNodeIds: [keyRing.getNodeId()],
       logger: logger.getChild('clientClient'),
     });
@@ -129,10 +129,10 @@ describe('WebSocket', () => {
       host: '::1',
       logger: logger.getChild('server'),
     });
-    logger.info(`Server started on port ${webSocketServer.port}`);
+    logger.info(`Server started on port ${webSocketServer.getPort()}`);
     webSocketClient = await WebSocketClient.createWebSocketClient({
       host: '::1',
-      port: webSocketServer.port,
+      port: webSocketServer.getPort(),
       expectedNodeIds: [keyRing.getNodeId()],
       logger: logger.getChild('clientClient'),
     });
@@ -164,10 +164,10 @@ describe('WebSocket', () => {
       host,
       logger: logger.getChild('server'),
     });
-    logger.info(`Server started on port ${webSocketServer.port}`);
+    logger.info(`Server started on port ${webSocketServer.getPort()}`);
     webSocketClient = await WebSocketClient.createWebSocketClient({
       host,
-      port: webSocketServer.port,
+      port: webSocketServer.getPort(),
       expectedNodeIds: [keyRing.getNodeId()],
       logger: logger.getChild('clientClient'),
     });
@@ -195,10 +195,10 @@ describe('WebSocket', () => {
           host,
           logger: logger.getChild('server'),
         });
-        logger.info(`Server started on port ${webSocketServer.port}`);
+        logger.info(`Server started on port ${webSocketServer.getPort()}`);
         webSocketClient = await WebSocketClient.createWebSocketClient({
           host,
-          port: webSocketServer.port,
+          port: webSocketServer.getPort(),
           expectedNodeIds: [keyRing.getNodeId()],
           logger: logger.getChild('clientClient'),
         });
@@ -273,10 +273,10 @@ describe('WebSocket', () => {
       host,
       logger: logger.getChild('server'),
     });
-    logger.info(`Server started on port ${webSocketServer.port}`);
+    logger.info(`Server started on port ${webSocketServer.getPort()}`);
     webSocketClient = await WebSocketClient.createWebSocketClient({
       host,
-      port: webSocketServer.port,
+      port: webSocketServer.getPort(),
       expectedNodeIds: [keyRing.getNodeId()],
       logger: logger.getChild('clientClient'),
     });
@@ -326,10 +326,10 @@ describe('WebSocket', () => {
       maxReadBufferBytes: 1500,
       logger: logger.getChild('server'),
     });
-    logger.info(`Server started on port ${webSocketServer.port}`);
+    logger.info(`Server started on port ${webSocketServer.getPort()}`);
     webSocketClient = await WebSocketClient.createWebSocketClient({
       host,
-      port: webSocketServer.port,
+      port: webSocketServer.getPort(),
       expectedNodeIds: [keyRing.getNodeId()],
       logger: logger.getChild('clientClient'),
     });
@@ -365,7 +365,7 @@ describe('WebSocket', () => {
       host,
       logger: logger.getChild('server'),
     });
-    logger.info(`Server started on port ${webSocketServer.port}`);
+    logger.info(`Server started on port ${webSocketServer.getPort()}`);
 
     const testProcess = await testsUtils.spawn(
       'ts-node',
@@ -377,7 +377,7 @@ describe('WebSocket', () => {
       {
         env: {
           PK_TEST_HOST: host,
-          PK_TEST_PORT: `${webSocketServer.port}`,
+          PK_TEST_PORT: `${webSocketServer.getPort()}`,
           PK_TEST_NODE_ID: nodesUtils.encodeNodeId(keyRing.getNodeId()),
         },
       },
@@ -488,10 +488,10 @@ describe('WebSocket', () => {
             host,
             logger: logger.getChild('server'),
           });
-          logger.info(`Server started on port ${webSocketServer.port}`);
+          logger.info(`Server started on port ${webSocketServer.getPort()}`);
           webSocketClient = await WebSocketClient.createWebSocketClient({
             host,
-            port: webSocketServer.port,
+            port: webSocketServer.getPort(),
             expectedNodeIds: [keyRing.getNodeId()],
             logger: logger.getChild('clientClient'),
           });
@@ -527,10 +527,10 @@ describe('WebSocket', () => {
             host,
             logger: logger.getChild('server'),
           });
-          logger.info(`Server started on port ${webSocketServer.port}`);
+          logger.info(`Server started on port ${webSocketServer.getPort()}`);
           webSocketClient = await WebSocketClient.createWebSocketClient({
             host,
-            port: webSocketServer.port,
+            port: webSocketServer.getPort(),
             expectedNodeIds: [keyRing.getNodeId()],
             logger: logger.getChild('clientClient'),
           });
@@ -564,10 +564,10 @@ describe('WebSocket', () => {
             host,
             logger: logger.getChild('server'),
           });
-          logger.info(`Server started on port ${webSocketServer.port}`);
+          logger.info(`Server started on port ${webSocketServer.getPort()}`);
           webSocketClient = await WebSocketClient.createWebSocketClient({
             host,
-            port: webSocketServer.port,
+            port: webSocketServer.getPort(),
             expectedNodeIds: [keyRing.getNodeId()],
             logger: logger.getChild('clientClient'),
           });
@@ -592,10 +592,10 @@ describe('WebSocket', () => {
         host,
         logger: logger.getChild('server'),
       });
-      logger.info(`Server started on port ${webSocketServer.port}`);
+      logger.info(`Server started on port ${webSocketServer.getPort()}`);
       webSocketClient = await WebSocketClient.createWebSocketClient({
         host,
-        port: webSocketServer.port,
+        port: webSocketServer.getPort(),
         expectedNodeIds: [keyRing.getNodeId()],
         logger: logger.getChild('clientClient'),
       });
@@ -633,10 +633,10 @@ describe('WebSocket', () => {
         host,
         logger: logger.getChild('server'),
       });
-      logger.info(`Server started on port ${webSocketServer.port}`);
+      logger.info(`Server started on port ${webSocketServer.getPort()}`);
       const getResProm = promise<http.IncomingMessage>();
       https.get(
-        `https://${host}:${webSocketServer.port}/`,
+        `https://${host}:${webSocketServer.getPort()}/`,
         { rejectUnauthorized: false },
         getResProm.resolveP,
       );
@@ -664,10 +664,10 @@ describe('WebSocket', () => {
         pingTimeout: 100,
         logger: logger.getChild('server'),
       });
-      logger.info(`Server started on port ${webSocketServer.port}`);
+      logger.info(`Server started on port ${webSocketServer.getPort()}`);
       webSocketClient = await WebSocketClient.createWebSocketClient({
         host,
-        port: webSocketServer.port,
+        port: webSocketServer.getPort(),
         expectedNodeIds: [keyRing.getNodeId()],
         logger: logger.getChild('clientClient'),
       });
@@ -690,10 +690,10 @@ describe('WebSocket', () => {
         host,
         logger: logger.getChild('server'),
       });
-      logger.info(`Server started on port ${webSocketServer.port}`);
+      logger.info(`Server started on port ${webSocketServer.getPort()}`);
       webSocketClient = await WebSocketClient.createWebSocketClient({
         host,
-        port: webSocketServer.port,
+        port: webSocketServer.getPort(),
         expectedNodeIds: [keyRing.getNodeId()],
         logger: logger.getChild('clientClient'),
       });
@@ -734,10 +734,10 @@ describe('WebSocket', () => {
         host,
         logger: logger.getChild('server'),
       });
-      logger.info(`Server started on port ${webSocketServer.port}`);
+      logger.info(`Server started on port ${webSocketServer.getPort()}`);
       webSocketClient = await WebSocketClient.createWebSocketClient({
         host,
-        port: webSocketServer.port,
+        port: webSocketServer.getPort(),
         expectedNodeIds: [invalidNodeId],
         logger: logger.getChild('clientClient'),
       });
@@ -773,10 +773,10 @@ describe('WebSocket', () => {
         host,
         logger: logger.getChild('server'),
       });
-      logger.info(`Server started on port ${webSocketServer.port}`);
+      logger.info(`Server started on port ${webSocketServer.getPort()}`);
       webSocketClient = await WebSocketClient.createWebSocketClient({
         host,
-        port: webSocketServer.port,
+        port: webSocketServer.getPort(),
         expectedNodeIds: [nodeId],
         logger: logger.getChild('clientClient'),
       });
@@ -803,10 +803,10 @@ describe('WebSocket', () => {
         host,
         logger: logger.getChild('server'),
       });
-      logger.info(`Server started on port ${webSocketServer.port}`);
+      logger.info(`Server started on port ${webSocketServer.getPort()}`);
       webSocketClient = await WebSocketClient.createWebSocketClient({
         host,
-        port: webSocketServer.port,
+        port: webSocketServer.getPort(),
         expectedNodeIds: [keyRing.getNodeId(), alternativeNodeId],
         logger: logger.getChild('clientClient'),
       });
@@ -843,10 +843,10 @@ describe('WebSocket', () => {
         host,
         logger: logger.getChild('server'),
       });
-      logger.info(`Server started on port ${webSocketServer.port}`);
+      logger.info(`Server started on port ${webSocketServer.getPort()}`);
       webSocketClient = await WebSocketClient.createWebSocketClient({
         host,
-        port: webSocketServer.port,
+        port: webSocketServer.getPort(),
         expectedNodeIds: [keyRing.getNodeId()],
         pingTimeout: 100,
         logger: logger.getChild('clientClient'),

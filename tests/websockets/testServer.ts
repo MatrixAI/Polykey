@@ -26,7 +26,7 @@ async function main() {
     tlsConfig,
     logger,
   });
-  process.stdout.write(`${clientServer.port}`);
+  process.stdout.write(`${clientServer.getPort()}`);
 }
 
 if (require.main === module) {

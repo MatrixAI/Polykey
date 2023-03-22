@@ -19,7 +19,7 @@ import { startStop } from '@matrixai/async-init';
 import Logger from '@matrixai/logger';
 import uWebsocket from 'uWebSockets.js';
 import WebSocketStream from './WebSocketStream';
-import * as clientRPCErrors from './errors';
+import * as webSocketErrors from './errors';
 import * as webSocketEvents from './events';
 import { promise } from '../utils';
 
@@ -96,6 +96,7 @@ class WebSocketServer extends EventTarget {
 
   protected server: uWebsocket.TemplatedApp;
   protected listenSocket: uWebsocket.us_listen_socket;
+  protected _port: number;
   protected _host: string;
   protected connectionEventHandler: (
     event: webSocketEvents.ConnectionEvent,
@@ -175,7 +176,7 @@ class WebSocketServer extends EventTarget {
         this.listenSocket = listenSocket;
         listenProm.resolveP();
       } else {
-        listenProm.rejectP(new clientRPCErrors.ErrorServerPortUnavailable());
+        listenProm.rejectP(new webSocketErrors.ErrorServerPortUnavailable());
       }
     };
     if (host != null) {
@@ -186,15 +187,14 @@ class WebSocketServer extends EventTarget {
       this.server.listen(port, listenCallback);
     }
     await listenProm.p;
-    this.logger.debug(
-      `Listening on port ${uWebsocket.us_socket_local_port(this.listenSocket)}`,
-    );
+    this._port = uWebsocket.us_socket_local_port(this.listenSocket);
+    this.logger.debug(`Listening on port ${this._port}`);
     this._host = host ?? '127.0.0.1';
     this.dispatchEvent(
       new webSocketEvents.StartEvent({
         detail: {
           host: this._host,
-          port: this.port,
+          port: this._port,
         },
       }),
     );
@@ -222,11 +222,13 @@ class WebSocketServer extends EventTarget {
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
-  get port(): Port {
-    return uWebsocket.us_socket_local_port(this.listenSocket) as Port;
+  @startStop.ready(new webSocketErrors.ErrorWebSocketServerNotRunning())
+  public getPort(): Port {
+    return this._port as Port;
   }
 
-  get host(): Host {
+  @startStop.ready(new webSocketErrors.ErrorWebSocketServerNotRunning())
+  public getHost(): Host {
     return this._host as Host;
   }
 
@@ -301,7 +303,7 @@ class WebSocketServer extends EventTarget {
     const connectionInfo: ConnectionInfo = {
       remoteHost: Buffer.from(ws.getRemoteAddressAsText()).toString(),
       localHost: this._host,
-      localPort: this.port,
+      localPort: this._port,
     };
     this.dispatchEvent(
       new webSocketEvents.ConnectionEvent({
@@ -373,7 +375,7 @@ class WebSocketStreamServerInternal extends WebSocketStream {
           case 2:
             // Write failure, emit error
             writableLogger.error('Send error');
-            controller.error(new clientRPCErrors.ErrorServerSendFailed());
+            controller.error(new webSocketErrors.ErrorServerSendFailed());
             break;
           case 0:
             writableLogger.info('Write backpressure');
@@ -434,7 +436,7 @@ class WebSocketStreamServerInternal extends WebSocketStream {
             controller.enqueue(messageBuffer);
             if (controller.desiredSize != null && controller.desiredSize < 0) {
               readableLogger.error('Read stream buffer full');
-              const err = new clientRPCErrors.ErrorServerReadableBufferLimit();
+              const err = new webSocketErrors.ErrorServerReadableBufferLimit();
               if (!this.webSocketEnded_) {
                 this.signalWebSocketEnd(err);
                 ws.end(4001, 'Read stream buffer full');
@@ -478,7 +480,7 @@ class WebSocketStreamServerInternal extends WebSocketStream {
       clearTimeout(pingTimeoutTimer);
       // Closing streams
       logger.debug('Cleaning streams');
-      const err = new clientRPCErrors.ErrorServerConnectionEndedEarly();
+      const err = new webSocketErrors.ErrorServerConnectionEndedEarly();
       if (!this.readableEnded_) {
         readableLogger.debug('Closing');
         this.signalReadableEnd(err);

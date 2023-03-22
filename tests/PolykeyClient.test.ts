@@ -50,8 +50,8 @@ describe('PolykeyClient', () => {
     // Using fresh: true means that any token would be destroyed
     const webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [pkAgent.keyRing.getNodeId()],
-      host: pkAgent.webSocketServerClient.host,
-      port: pkAgent.webSocketServerClient.port,
+      host: pkAgent.webSocketServerClient.getHost(),
+      port: pkAgent.webSocketServerClient.getPort(),
       logger,
     });
     const pkClient = await PolykeyClient.createPolykeyClient({

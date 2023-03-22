@@ -108,7 +108,7 @@ describe('agentUnlock', () => {
       expectedNodeIds: [keyRing.getNodeId()],
       host,
       logger,
-      port: clientServer.port,
+      port: clientServer.getPort(),
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {

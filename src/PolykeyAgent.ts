@@ -816,8 +816,8 @@ class PolykeyAgent {
       await this.status.finishStart({
         pid: process.pid,
         nodeId: this.keyRing.getNodeId(),
-        clientHost: this.webSocketServerClient.host,
-        clientPort: this.webSocketServerClient.port,
+        clientHost: this.webSocketServerClient.getHost(),
+        clientPort: this.webSocketServerClient.getPort(),
         agentHost: this.grpcServerAgent.getHost(),
         agentPort: this.grpcServerAgent.getPort(),
         forwardHost: this.proxy.getForwardHost(),

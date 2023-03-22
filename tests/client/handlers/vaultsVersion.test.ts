@@ -116,7 +116,7 @@ describe('vaultsVersion', () => {
       expectedNodeIds: [keyRing.getNodeId()],
       host,
       logger: logger.getChild('client'),
-      port: webSocketServer.port,
+      port: webSocketServer.getPort(),
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
@@ -180,7 +180,7 @@ describe('vaultsVersion', () => {
       expectedNodeIds: [keyRing.getNodeId()],
       host,
       logger: logger.getChild('client'),
-      port: webSocketServer.port,
+      port: webSocketServer.getPort(),
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {

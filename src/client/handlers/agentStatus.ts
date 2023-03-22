@@ -18,8 +18,8 @@ class AgentStatusHandler extends UnaryHandler<
     return {
       pid: process.pid,
       nodeIdEncoded: nodesUtils.encodeNodeId(pkAgent.keyRing.getNodeId()),
-      clientHost: pkAgent.webSocketServerClient.host,
-      clientPort: pkAgent.webSocketServerClient.port,
+      clientHost: pkAgent.webSocketServerClient.getHost(),
+      clientPort: pkAgent.webSocketServerClient.getPort(),
       proxyHost: pkAgent.proxy.getProxyHost(),
       proxyPort: pkAgent.proxy.getProxyPort(),
       agentHost: pkAgent.grpcServerAgent.getHost(),

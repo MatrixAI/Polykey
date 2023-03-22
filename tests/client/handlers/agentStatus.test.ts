@@ -68,7 +68,7 @@ describe('agentStatus', () => {
     clientClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [pkAgent.keyRing.getNodeId()],
       host,
-      port: clientServer.port,
+      port: clientServer.getPort(),
       logger,
     });
     const rpcClient = await RPCClient.createRPCClient({
@@ -83,8 +83,8 @@ describe('agentStatus', () => {
     expect(result).toStrictEqual({
       pid: process.pid,
       nodeIdEncoded: nodesUtils.encodeNodeId(pkAgent.keyRing.getNodeId()),
-      clientHost: pkAgent.webSocketServerClient.host,
-      clientPort: pkAgent.webSocketServerClient.port,
+      clientHost: pkAgent.webSocketServerClient.getHost(),
+      clientPort: pkAgent.webSocketServerClient.getPort(),
       proxyHost: pkAgent.proxy.getProxyHost(),
       proxyPort: pkAgent.proxy.getProxyPort(),
       agentHost: pkAgent.grpcServerAgent.getHost(),
