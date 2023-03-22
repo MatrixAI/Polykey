@@ -44,6 +44,8 @@ interface RPCServer extends CreateDestroy {}
 @CreateDestroy()
 class RPCServer extends EventTarget {
   /**
+   * Creates RPC server.
+
    * @param obj
    * @param obj.manifest - Server manifest used to define the rpc method
    * handlers.
@@ -55,7 +57,7 @@ class RPCServer extends EventTarget {
    * sensitive information.
    * @param obj.logger
    */
-  static async createRPCServer({
+  public static async createRPCServer({
     manifest,
     middlewareFactory = middlewareUtils.defaultServerMiddlewareWrapper(),
     sensitive = false,
@@ -176,13 +178,18 @@ class RPCServer extends EventTarget {
     this.handlerMap.set(method, handler);
   }
 
+  /**
+   * Registers a duplex stream handler.
+   * This handles all message parsing and conversion from generators
+   * to raw streams.
+   *
+   * @param method - The rpc method name.
+   * @param handler - The handler takes an input async iterable and returns an output async iterable.
+   */
   protected registerDuplexStreamHandler<
     I extends JSONValue,
     O extends JSONValue,
-  >(method: string, handler: DuplexHandlerImplementation<I, O>) {
-    // This needs to handle all the message parsing and conversion from
-    // generators to the raw streams.
-
+  >(method: string, handler: DuplexHandlerImplementation<I, O>): void {
     const rawSteamHandler: RawHandlerImplementation = (
       [input, header],
       connectionInfo,
@@ -190,16 +197,20 @@ class RPCServer extends EventTarget {
     ) => {
       // Setting up middleware
       const middleware = this.middlewareFactory(header);
+      // Forward from the client to the server
       const forwardStream = input.pipeThrough(middleware.forward);
+      // Reverse from the server to the client
       const reverseStream = middleware.reverse.writable;
+      // Generator derived from handler
       const outputGen = async function* (): AsyncGenerator<JSONRPCResponse> {
         if (ctx.signal.aborted) throw ctx.signal.reason;
-        const dataGen = async function* (): AsyncIterable<I> {
+        // Input generator derived from the forward stream
+        const inputGen = async function* (): AsyncIterable<I> {
           for await (const data of forwardStream) {
             yield data.params as I;
           }
         };
-        for await (const response of handler(dataGen(), connectionInfo, ctx)) {
+        for await (const response of handler(inputGen(), connectionInfo, ctx)) {
           const responseMessage: JSONRPCResponseResult = {
             jsonrpc: '2.0',
             result: response,
@@ -256,10 +267,8 @@ class RPCServer extends EventTarget {
         },
       });
       void reverseMiddlewareStream.pipeTo(reverseStream).catch(() => {});
-
       return middleware.reverse.readable;
     };
-
     this.registerRawStreamHandler(method, rawSteamHandler);
   }
 
