@@ -268,7 +268,7 @@ class RPCServer {
       ctx,
     ) {
       for await (const inputVal of input) {
-        yield handler(inputVal, connectionInfo, ctx);
+        yield await handler(inputVal, connectionInfo, ctx);
         break;
       }
     };
@@ -301,7 +301,7 @@ class RPCServer {
       connectionInfo,
       ctx,
     ) {
-      yield handler(input, connectionInfo, ctx);
+      yield await handler(input, connectionInfo, ctx);
     };
     this.registerDuplexStreamHandler(method, wrapperDuplex);
   }
