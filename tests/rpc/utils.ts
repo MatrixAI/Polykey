@@ -1,14 +1,14 @@
 import type { ReadableWritablePair } from 'stream/web';
 import type { JSONValue } from '@/types';
 import type {
-  JsonRpcError,
-  JsonRpcMessage,
-  JsonRpcRequestNotification,
-  JsonRpcRequestMessage,
-  JsonRpcResponseError,
-  JsonRpcResponseResult,
-  JsonRpcResponse,
-  JsonRpcRequest,
+  JSONRPCError,
+  JSONRPCMessage,
+  JSONRPCRequestNotification,
+  JSONRPCRequestMessage,
+  JSONRPCResponseError,
+  JSONRPCResponseResult,
+  JSONRPCResponse,
+  JSONRPCRequest,
 } from '@/rpc/types';
 import type { NodeId } from '@/ids';
 import { ReadableStream, WritableStream, TransformStream } from 'stream/web';
@@ -62,10 +62,10 @@ function binaryStreamToNoisyStream(noise: Array<Uint8Array>) {
 }
 
 /**
- * This takes an array of JsonRpcMessages and converts it to a readable stream.
+ * This takes an array of JSONRPCMessages and converts it to a readable stream.
  * Used to seed input for handlers and output for callers.
  */
-const messagesToReadableStream = (messages: Array<JsonRpcMessage>) => {
+const messagesToReadableStream = (messages: Array<JSONRPCMessage>) => {
   return new ReadableStream<Uint8Array>({
     async start(controller) {
       for (const arrayElement of messages) {
@@ -103,7 +103,7 @@ const jsonRpcRequestMessageArb = (
         requiredKeys: ['jsonrpc', 'method', 'id'],
       },
     )
-    .noShrink() as fc.Arbitrary<JsonRpcRequestMessage>;
+    .noShrink() as fc.Arbitrary<JSONRPCRequestMessage>;
 
 const jsonRpcRequestNotificationArb = (
   method: fc.Arbitrary<string> = fc.string(),
@@ -120,7 +120,7 @@ const jsonRpcRequestNotificationArb = (
         requiredKeys: ['jsonrpc', 'method'],
       },
     )
-    .noShrink() as fc.Arbitrary<JsonRpcRequestNotification>;
+    .noShrink() as fc.Arbitrary<JSONRPCRequestNotification>;
 
 const jsonRpcRequestArb = (
   method: fc.Arbitrary<string> = fc.string(),
@@ -131,7 +131,7 @@ const jsonRpcRequestArb = (
       jsonRpcRequestMessageArb(method, params),
       jsonRpcRequestNotificationArb(method, params),
     )
-    .noShrink() as fc.Arbitrary<JsonRpcRequest>;
+    .noShrink() as fc.Arbitrary<JSONRPCRequest>;
 
 const jsonRpcResponseResultArb = (
   result: fc.Arbitrary<JSONValue> = safeJsonValueArb,
@@ -142,7 +142,7 @@ const jsonRpcResponseResultArb = (
       result: result,
       id: idArb,
     })
-    .noShrink() as fc.Arbitrary<JsonRpcResponseResult>;
+    .noShrink() as fc.Arbitrary<JSONRPCResponseResult>;
 const jsonRpcErrorArb = (
   error: fc.Arbitrary<Error> = fc.constant(new Error('test error')),
   sensitive: boolean = false,
@@ -158,7 +158,7 @@ const jsonRpcErrorArb = (
         requiredKeys: ['code', 'message'],
       },
     )
-    .noShrink() as fc.Arbitrary<JsonRpcError>;
+    .noShrink() as fc.Arbitrary<JSONRPCError>;
 
 const jsonRpcResponseErrorArb = (
   error?: fc.Arbitrary<Error>,
@@ -170,14 +170,14 @@ const jsonRpcResponseErrorArb = (
       error: jsonRpcErrorArb(error, sensitive),
       id: idArb,
     })
-    .noShrink() as fc.Arbitrary<JsonRpcResponseError>;
+    .noShrink() as fc.Arbitrary<JSONRPCResponseError>;
 
 const jsonRpcResponseArb = (
   result: fc.Arbitrary<JSONValue> = safeJsonValueArb,
 ) =>
   fc
     .oneof(jsonRpcResponseResultArb(result), jsonRpcResponseErrorArb())
-    .noShrink() as fc.Arbitrary<JsonRpcResponse>;
+    .noShrink() as fc.Arbitrary<JSONRPCResponse>;
 
 const jsonRpcMessageArb = (
   method: fc.Arbitrary<string> = fc.string(),
@@ -186,7 +186,7 @@ const jsonRpcMessageArb = (
 ) =>
   fc
     .oneof(jsonRpcRequestArb(method, params), jsonRpcResponseArb(result))
-    .noShrink() as fc.Arbitrary<JsonRpcMessage>;
+    .noShrink() as fc.Arbitrary<JSONRPCMessage>;
 
 const snippingPatternArb = fc
   .array(fc.integer({ min: 1, max: 32 }), { minLength: 100, size: 'medium' })

@@ -1,7 +1,7 @@
 import type { JSONValue } from 'types';
 import type { ContainerType } from 'rpc/types';
 import type { ReadableStream } from 'stream/web';
-import type { JsonRpcRequest } from 'rpc/types';
+import type { JSONRPCRequest } from 'rpc/types';
 import type { ConnectionInfo } from './types';
 import type { ContextCancellable } from '../contexts/types';
 
@@ -20,7 +20,7 @@ abstract class RawHandler<
   Container extends ContainerType = ContainerType,
 > extends Handler<Container> {
   abstract handle(
-    input: [ReadableStream<Uint8Array>, JsonRpcRequest],
+    input: [ReadableStream<Uint8Array>, JSONRPCRequest],
     connectionInfo: ConnectionInfo,
     ctx: ContextCancellable,
   ): ReadableStream<Uint8Array>;

@@ -2,14 +2,14 @@ import type {
   ClientManifest,
   ClientMetadata,
   HandlerType,
-  JsonRpcError,
-  JsonRpcMessage,
-  JsonRpcRequest,
-  JsonRpcRequestMessage,
-  JsonRpcRequestNotification,
-  JsonRpcResponse,
-  JsonRpcResponseError,
-  JsonRpcResponseResult,
+  JSONRPCError,
+  JSONRPCMessage,
+  JSONRPCRequest,
+  JSONRPCRequestMessage,
+  JSONRPCRequestNotification,
+  JSONRPCResponse,
+  JSONRPCResponseError,
+  JSONRPCResponseResult,
 } from '../types';
 import type { JSONValue } from 'types';
 import { TransformStream } from 'stream/web';
@@ -21,9 +21,9 @@ import * as validationErrors from '../../validation/errors';
 import * as errors from '../../errors';
 const jsonStreamParsers = require('@streamparser/json');
 
-function parseJsonRpcRequest<T extends JSONValue>(
+function parseJSONRPCRequest<T extends JSONValue>(
   message: unknown,
-): JsonRpcRequest<T> {
+): JSONRPCRequest<T> {
   if (!utils.isObject(message)) {
     throw new validationErrors.ErrorParse('must be a JSON POJO');
   }
@@ -36,13 +36,13 @@ function parseJsonRpcRequest<T extends JSONValue>(
   // If ('params' in message && !utils.isObject(message.params)) {
   //   throw new validationErrors.ErrorParse('`params` property must be a POJO');
   // }
-  return message as JsonRpcRequest<T>;
+  return message as JSONRPCRequest<T>;
 }
 
-function parseJsonRpcRequestMessage<T extends JSONValue>(
+function parseJSONRPCRequestMessage<T extends JSONValue>(
   message: unknown,
-): JsonRpcRequestMessage<T> {
-  const jsonRequest = parseJsonRpcRequest(message);
+): JSONRPCRequestMessage<T> {
+  const jsonRequest = parseJSONRPCRequest(message);
   if (!('id' in jsonRequest)) {
     throw new validationErrors.ErrorParse('`id` property must be defined');
   }
@@ -55,22 +55,22 @@ function parseJsonRpcRequestMessage<T extends JSONValue>(
       '`id` property must be a string, number or null',
     );
   }
-  return jsonRequest as JsonRpcRequestMessage<T>;
+  return jsonRequest as JSONRPCRequestMessage<T>;
 }
 
-function parseJsonRpcRequestNotification<T extends JSONValue>(
+function parseJSONRPCRequestNotification<T extends JSONValue>(
   message: unknown,
-): JsonRpcRequestNotification<T> {
-  const jsonRequest = parseJsonRpcRequest(message);
+): JSONRPCRequestNotification<T> {
+  const jsonRequest = parseJSONRPCRequest(message);
   if ('id' in jsonRequest) {
     throw new validationErrors.ErrorParse('`id` property must not be defined');
   }
-  return jsonRequest as JsonRpcRequestNotification<T>;
+  return jsonRequest as JSONRPCRequestNotification<T>;
 }
 
-function parseJsonRpcResponseResult<T extends JSONValue>(
+function parseJSONRPCResponseResult<T extends JSONValue>(
   message: unknown,
-): JsonRpcResponseResult<T> {
+): JSONRPCResponseResult<T> {
   if (!utils.isObject(message)) {
     throw new validationErrors.ErrorParse('must be a JSON POJO');
   }
@@ -97,10 +97,10 @@ function parseJsonRpcResponseResult<T extends JSONValue>(
       '`id` property must be a string, number or null',
     );
   }
-  return message as JsonRpcResponseResult<T>;
+  return message as JSONRPCResponseResult<T>;
 }
 
-function parseJsonRpcResponseError(message: unknown): JsonRpcResponseError {
+function parseJSONRPCResponseError(message: unknown): JSONRPCResponseError {
   if (!utils.isObject(message)) {
     throw new validationErrors.ErrorParse('must be a JSON POJO');
   }
@@ -112,7 +112,7 @@ function parseJsonRpcResponseError(message: unknown): JsonRpcResponseError {
   if (!('error' in message)) {
     throw new validationErrors.ErrorParse('`error` property must be defined');
   }
-  parseJsonRpcError(message.error);
+  parseJSONRPCError(message.error);
   if (!('id' in message)) {
     throw new validationErrors.ErrorParse('`id` property must be defined');
   }
@@ -125,10 +125,10 @@ function parseJsonRpcResponseError(message: unknown): JsonRpcResponseError {
       '`id` property must be a string, number or null',
     );
   }
-  return message as JsonRpcResponseError;
+  return message as JSONRPCResponseError;
 }
 
-function parseJsonRpcError(message: unknown): JsonRpcError {
+function parseJSONRPCError(message: unknown): JSONRPCError {
   if (!utils.isObject(message)) {
     throw new validationErrors.ErrorParse('must be a JSON POJO');
   }
@@ -149,33 +149,33 @@ function parseJsonRpcError(message: unknown): JsonRpcError {
   // If ('data' in message && !utils.isObject(message.data)) {
   //   throw new validationErrors.ErrorParse('`data` property must be a POJO');
   // }
-  return message as JsonRpcError;
+  return message as JSONRPCError;
 }
 
-function parseJsonRpcResponse<T extends JSONValue>(
+function parseJSONRPCResponse<T extends JSONValue>(
   message: unknown,
-): JsonRpcResponse<T> {
+): JSONRPCResponse<T> {
   if (!utils.isObject(message)) {
     throw new validationErrors.ErrorParse('must be a JSON POJO');
   }
   try {
-    return parseJsonRpcResponseResult(message);
+    return parseJSONRPCResponseResult(message);
   } catch (e) {
     // Do nothing
   }
   try {
-    return parseJsonRpcResponseError(message);
+    return parseJSONRPCResponseError(message);
   } catch (e) {
     // Do nothing
   }
   throw new validationErrors.ErrorParse(
-    'structure did not match a `JsonRpcResponse`',
+    'structure did not match a `JSONRPCResponse`',
   );
 }
 
-function parseJsonRpcMessage<T extends JSONValue>(
+function parseJSONRPCMessage<T extends JSONValue>(
   message: unknown,
-): JsonRpcMessage<T> {
+): JSONRPCMessage<T> {
   if (!utils.isObject(message)) {
     throw new validationErrors.ErrorParse('must be a JSON POJO');
   }
@@ -188,17 +188,17 @@ function parseJsonRpcMessage<T extends JSONValue>(
     );
   }
   try {
-    return parseJsonRpcRequest(message);
+    return parseJSONRPCRequest(message);
   } catch {
     // Do nothing
   }
   try {
-    return parseJsonRpcResponse(message);
+    return parseJSONRPCResponse(message);
   } catch {
     // Do nothing
   }
   throw new validationErrors.ErrorParse(
-    'Message structure did not match a `JsonRpcMessage`',
+    'Message structure did not match a `JSONRPCMessage`',
   );
 }
 
@@ -373,10 +373,10 @@ function toError(
 
 function clientInputTransformStream<I extends JSONValue>(
   method: string,
-): TransformStream<I, JsonRpcRequest> {
-  return new TransformStream<I, JsonRpcRequest>({
+): TransformStream<I, JSONRPCRequest> {
+  return new TransformStream<I, JSONRPCRequest>({
     transform: (chunk, controller) => {
-      const message: JsonRpcRequest = {
+      const message: JSONRPCRequest = {
         method,
         jsonrpc: '2.0',
         id: null,
@@ -389,8 +389,8 @@ function clientInputTransformStream<I extends JSONValue>(
 
 function clientOutputTransformStream<O extends JSONValue>(
   clientMetadata: ClientMetadata,
-): TransformStream<JsonRpcResponse<O>, O> {
-  return new TransformStream<JsonRpcResponse<O>, O>({
+): TransformStream<JSONRPCResponse<O>, O> {
+  return new TransformStream<JSONRPCResponse<O>, O>({
     transform: (chunk, controller) => {
       // `error` indicates it's an error message
       if ('error' in chunk) {
@@ -418,7 +418,7 @@ class RPCErrorEvent extends Event {
   }
 }
 
-function extractFirstMessageTransform<T extends JsonRpcMessage>(
+function extractFirstMessageTransform<T extends JSONRPCMessage>(
   messageParser: (message: unknown) => T,
   byteLimit: number = 1024 * 1024,
 ): {
@@ -493,13 +493,13 @@ function getHandlerTypes(
 }
 
 export {
-  parseJsonRpcRequest,
-  parseJsonRpcRequestMessage,
-  parseJsonRpcRequestNotification,
-  parseJsonRpcResponseResult,
-  parseJsonRpcResponseError,
-  parseJsonRpcResponse,
-  parseJsonRpcMessage,
+  parseJSONRPCRequest,
+  parseJSONRPCRequestMessage,
+  parseJSONRPCRequestNotification,
+  parseJSONRPCResponseResult,
+  parseJSONRPCResponseError,
+  parseJSONRPCResponse,
+  parseJSONRPCMessage,
   fromError,
   toError,
   clientInputTransformStream,

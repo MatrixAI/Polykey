@@ -1,7 +1,7 @@
-import type { JSONValue } from '../types';
-import type { ContextCancellable } from '../contexts/types';
 import type { ReadableStream, ReadableWritablePair } from 'stream/web';
 import type { Handler } from './handlers';
+import type { ContextCancellable } from '../contexts/types';
+import type { JSONValue } from '../types';
 import type {
   Caller,
   RawCaller,
@@ -17,7 +17,7 @@ import type { POJO } from '../types';
 /**
  * This is the JSON RPC request object. this is the generic message type used for the RPC.
  */
-type JsonRpcRequestMessage<T extends JSONValue = JSONValue> = {
+type JSONRPCRequestMessage<T extends JSONValue = JSONValue> = {
   // A String specifying the version of the JSON-RPC protocol. MUST be exactly "2.0"
   jsonrpc: '2.0';
   // A String containing the name of the method to be invoked. Method names that begin with the word rpc followed by a
@@ -33,7 +33,7 @@ type JsonRpcRequestMessage<T extends JSONValue = JSONValue> = {
   id: string | number | null;
 };
 
-type JsonRpcRequestNotification<T extends JSONValue = JSONValue> = {
+type JSONRPCRequestNotification<T extends JSONValue = JSONValue> = {
   // A String specifying the version of the JSON-RPC protocol. MUST be exactly "2.0"
   jsonrpc: '2.0';
   // A String containing the name of the method to be invoked. Method names that begin with the word rpc followed by a
@@ -45,7 +45,7 @@ type JsonRpcRequestNotification<T extends JSONValue = JSONValue> = {
   params?: T;
 };
 
-type JsonRpcResponseResult<T extends JSONValue = JSONValue> = {
+type JSONRPCResponseResult<T extends JSONValue = JSONValue> = {
   // A String specifying the version of the JSON-RPC protocol. MUST be exactly "2.0".
   jsonrpc: '2.0';
   // This member is REQUIRED on success.
@@ -59,13 +59,13 @@ type JsonRpcResponseResult<T extends JSONValue = JSONValue> = {
   id: string | number | null;
 };
 
-type JsonRpcResponseError = {
+type JSONRPCResponseError = {
   // A String specifying the version of the JSON-RPC protocol. MUST be exactly "2.0".
   jsonrpc: '2.0';
   // This member is REQUIRED on error.
   //  This member MUST NOT exist if there was no error triggered during invocation.
   //  The value for this member MUST be an Object as defined in section 5.1.
-  error: JsonRpcError;
+  error: JSONRPCError;
   // This member is REQUIRED.
   //  It MUST be the same as the value of the id member in the Request Object.
   //  If there was an error in detecting the id in the Request object (e.g. Parse error/Invalid Request),
@@ -85,7 +85,7 @@ type JsonRpcResponseError = {
 //  -32603	Internal error	Internal JSON-RPC error.
 //  -32000 to -32099
 
-type JsonRpcError = {
+type JSONRPCError = {
   // A Number that indicates the error type that occurred.
   //  This MUST be an integer.
   code: number;
@@ -98,17 +98,17 @@ type JsonRpcError = {
   data?: JSONValue;
 };
 
-type JsonRpcRequest<T extends JSONValue = JSONValue> =
-  | JsonRpcRequestMessage<T>
-  | JsonRpcRequestNotification<T>;
+type JSONRPCRequest<T extends JSONValue = JSONValue> =
+  | JSONRPCRequestMessage<T>
+  | JSONRPCRequestNotification<T>;
 
-type JsonRpcResponse<T extends JSONValue = JSONValue> =
-  | JsonRpcResponseResult<T>
-  | JsonRpcResponseError;
+type JSONRPCResponse<T extends JSONValue = JSONValue> =
+  | JSONRPCResponseResult<T>
+  | JSONRPCResponseError;
 
-type JsonRpcMessage<T extends JSONValue = JSONValue> =
-  | JsonRpcRequest<T>
-  | JsonRpcResponse<T>;
+type JSONRPCMessage<T extends JSONValue = JSONValue> =
+  | JSONRPCRequest<T>
+  | JSONRPCResponse<T>;
 
 /**
  * Proxy connection information
@@ -135,7 +135,7 @@ type HandlerImplementation<I, O> = (
   ctx: ContextCancellable,
 ) => O;
 type RawHandlerImplementation = HandlerImplementation<
-  [ReadableStream<Uint8Array>, JsonRpcRequest],
+  [ReadableStream<Uint8Array>, JSONRPCRequest],
   ReadableStream<Uint8Array>
 >;
 type DuplexHandlerImplementation<
@@ -161,7 +161,7 @@ type StreamFactory = () => Promise<
   ReadableWritablePair<Uint8Array, Uint8Array>
 >;
 
-type MiddlewareFactory<FR, FW, RR, RW> = (header?: JsonRpcRequest) => {
+type MiddlewareFactory<FR, FW, RR, RW> = (header?: JSONRPCRequest) => {
   forward: ReadableWritablePair<FR, FW>;
   reverse: ReadableWritablePair<RR, RW>;
 };
@@ -237,14 +237,14 @@ type ClientMetadata = {
 } & POJO;
 
 export type {
-  JsonRpcRequestMessage,
-  JsonRpcRequestNotification,
-  JsonRpcResponseResult,
-  JsonRpcResponseError,
-  JsonRpcError,
-  JsonRpcRequest,
-  JsonRpcResponse,
-  JsonRpcMessage,
+  JSONRPCRequestMessage,
+  JSONRPCRequestNotification,
+  JSONRPCResponseResult,
+  JSONRPCResponseError,
+  JSONRPCError,
+  JSONRPCRequest,
+  JSONRPCResponse,
+  JSONRPCMessage,
   ConnectionInfo,
   HandlerImplementation,
   RawHandlerImplementation,

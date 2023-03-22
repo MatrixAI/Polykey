@@ -1,9 +1,9 @@
 import type { ReadableWritablePair } from 'stream/web';
 import type { JSONValue } from '@/types';
 import type {
-  JsonRpcRequest,
-  JsonRpcRequestMessage,
-  JsonRpcResponse,
+  JSONRPCRequest,
+  JSONRPCRequestMessage,
+  JSONRPCResponse,
 } from '@/rpc/types';
 import { TransformStream, ReadableStream } from 'stream/web';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
@@ -72,7 +72,7 @@ describe(`${RPCClient.name}`, () => {
       }
       await writer.close();
 
-      const expectedHeader: JsonRpcRequest = {
+      const expectedHeader: JSONRPCRequest = {
         jsonrpc: '2.0',
         method: methodName,
         params: headerParams,
@@ -108,8 +108,8 @@ describe(`${RPCClient.name}`, () => {
     }
     await writable.close();
 
-    const expectedMessages: Array<JsonRpcRequestMessage> = messages.map((v) => {
-      const request: JsonRpcRequestMessage = {
+    const expectedMessages: Array<JSONRPCRequestMessage> = messages.map((v) => {
+      const request: JSONRPCRequestMessage = {
         jsonrpc: '2.0',
         method: methodName,
         id: null,
@@ -363,7 +363,7 @@ describe(`${RPCClient.name}`, () => {
         streamFactory: async () => streamPair,
         middleware: middlewareUtils.defaultClientMiddlewareWrapper(() => {
           return {
-            forward: new TransformStream<JsonRpcRequest, JsonRpcRequest>({
+            forward: new TransformStream<JSONRPCRequest, JSONRPCRequest>({
               transform: (chunk, controller) => {
                 controller.enqueue({
                   ...chunk,
@@ -393,9 +393,9 @@ describe(`${RPCClient.name}`, () => {
         await writer.write(value);
       }
 
-      const expectedMessages: Array<JsonRpcRequestMessage> = messages.map(
+      const expectedMessages: Array<JSONRPCRequestMessage> = messages.map(
         () => {
-          const request: JsonRpcRequestMessage = {
+          const request: JSONRPCRequestMessage = {
             jsonrpc: '2.0',
             method: methodName,
             id: null,
@@ -428,7 +428,7 @@ describe(`${RPCClient.name}`, () => {
         middleware: middlewareUtils.defaultClientMiddlewareWrapper(() => {
           return {
             forward: new TransformStream(),
-            reverse: new TransformStream<JsonRpcResponse, JsonRpcResponse>({
+            reverse: new TransformStream<JSONRPCResponse, JSONRPCResponse>({
               transform: (chunk, controller) => {
                 controller.enqueue({
                   ...chunk,
@@ -606,7 +606,7 @@ describe(`${RPCClient.name}`, () => {
       }
       await writer.close();
 
-      const expectedHeader: JsonRpcRequest = {
+      const expectedHeader: JSONRPCRequest = {
         jsonrpc: '2.0',
         method: 'raw',
         params: headerParams,

@@ -10,7 +10,7 @@ describe('utils tests', () => {
     'can parse messages',
     [rpcTestUtils.jsonRpcMessageArb()],
     async (message) => {
-      rpcUtils.parseJsonRpcMessage(message);
+      rpcUtils.parseJSONRPCMessage(message);
     },
     { numRuns: 1000 },
   );
@@ -20,13 +20,13 @@ describe('utils tests', () => {
     [rpcTestUtils.jsonMessagesArb],
     async (messages) => {
       const { firstMessageProm, headTransformStream } =
-        rpcUtils.extractFirstMessageTransform(rpcUtils.parseJsonRpcRequest);
+        rpcUtils.extractFirstMessageTransform(rpcUtils.parseJSONRPCRequest);
       const parsedStream = rpcTestUtils
         .messagesToReadableStream(messages)
         .pipeThrough(rpcTestUtils.binaryStreamToSnippedStream([7]))
         .pipeThrough(headTransformStream)
         .pipeThrough(
-          middleware.binaryToJsonMessageStream(rpcUtils.parseJsonRpcMessage),
+          middleware.binaryToJsonMessageStream(rpcUtils.parseJSONRPCMessage),
         ); // Converting back.
 
       expect(await firstMessageProm).toStrictEqual(messages[0]);

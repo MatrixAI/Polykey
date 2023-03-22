@@ -1,6 +1,6 @@
 import type {
   HandlerType,
-  JsonRpcRequestMessage,
+  JSONRPCRequestMessage,
   StreamFactory,
   ClientManifest,
 } from './types';
@@ -11,8 +11,8 @@ import type {
   ReadableStream,
 } from 'stream/web';
 import type {
-  JsonRpcRequest,
-  JsonRpcResponse,
+  JSONRPCRequest,
+  JSONRPCResponse,
   MiddlewareFactory,
   MapCallers,
 } from './types';
@@ -39,8 +39,8 @@ class RPCClient<M extends ClientManifest> {
     streamFactory: StreamFactory;
     middleware?: MiddlewareFactory<
       Uint8Array,
-      JsonRpcRequest,
-      JsonRpcResponse,
+      JSONRPCRequest,
+      JSONRPCResponse,
       Uint8Array
     >;
     logger?: Logger;
@@ -60,8 +60,8 @@ class RPCClient<M extends ClientManifest> {
   protected streamFactory: StreamFactory;
   protected middleware: MiddlewareFactory<
     Uint8Array,
-    JsonRpcRequest,
-    JsonRpcResponse,
+    JSONRPCRequest,
+    JSONRPCResponse,
     Uint8Array
   >;
   protected callerTypes: Record<string, HandlerType>;
@@ -99,8 +99,8 @@ class RPCClient<M extends ClientManifest> {
     streamFactory: StreamFactory;
     middleware: MiddlewareFactory<
       Uint8Array,
-      JsonRpcRequest,
-      JsonRpcResponse,
+      JSONRPCRequest,
+      JSONRPCResponse,
       Uint8Array
     >;
     logger: Logger;
@@ -213,7 +213,7 @@ class RPCClient<M extends ClientManifest> {
   ): Promise<ReadableWritablePair<Uint8Array, Uint8Array>> {
     const streamPair = await this.streamFactory();
     const tempWriter = streamPair.writable.getWriter();
-    const header: JsonRpcRequestMessage = {
+    const header: JSONRPCRequestMessage = {
       jsonrpc: '2.0',
       method,
       params: headerParams,

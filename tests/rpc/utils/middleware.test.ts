@@ -21,7 +21,7 @@ describe('Middleware tests', () => {
       const parsedStream = rpcTestUtils
         .messagesToReadableStream(messages)
         .pipeThrough(
-          middleware.binaryToJsonMessageStream(rpcUtils.parseJsonRpcMessage),
+          middleware.binaryToJsonMessageStream(rpcUtils.parseJSONRPCMessage),
         ); // Converting back.
 
       const asd = await AsyncIterable.as(parsedStream).toArray();
@@ -45,7 +45,7 @@ describe('Middleware tests', () => {
         .pipeThrough(rpcTestUtils.binaryStreamToSnippedStream([10]))
         .pipeThrough(
           middleware.binaryToJsonMessageStream(
-            rpcUtils.parseJsonRpcMessage,
+            rpcUtils.parseJSONRPCMessage,
             50,
           ),
         );
@@ -67,7 +67,7 @@ describe('Middleware tests', () => {
         .messagesToReadableStream(messages)
         .pipeThrough(rpcTestUtils.binaryStreamToSnippedStream(snippattern)) // Imaginary internet here
         .pipeThrough(
-          middleware.binaryToJsonMessageStream(rpcUtils.parseJsonRpcMessage),
+          middleware.binaryToJsonMessageStream(rpcUtils.parseJSONRPCMessage),
         ); // Converting back.
 
       const asd = await AsyncIterable.as(parsedStream).toArray();
@@ -84,7 +84,7 @@ describe('Middleware tests', () => {
         .pipeThrough(rpcTestUtils.binaryStreamToSnippedStream(snippattern)) // Imaginary internet here
         .pipeThrough(rpcTestUtils.binaryStreamToNoisyStream(noise)) // Adding bad data to the stream
         .pipeThrough(
-          middleware.binaryToJsonMessageStream(rpcUtils.parseJsonRpcMessage),
+          middleware.binaryToJsonMessageStream(rpcUtils.parseJSONRPCMessage),
         ); // Converting back.
 
       await expect(AsyncIterable.as(parsedStream).toArray()).rejects.toThrow(

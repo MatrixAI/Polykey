@@ -1,8 +1,8 @@
 import type {
-  JsonRpcMessage,
-  JsonRpcRequest,
-  JsonRpcResponse,
-  JsonRpcResponseResult,
+  JSONRPCMessage,
+  JSONRPCRequest,
+  JSONRPCResponse,
+  JSONRPCResponseResult,
   MiddlewareFactory,
 } from '../types';
 import { TransformStream } from 'stream/web';
@@ -23,7 +23,7 @@ const jsonStreamParsers = require('@streamparser/json');
  * @param firstMessage - This is a single message that is inserted into the
  *  front of the stream.
  */
-function binaryToJsonMessageStream<T extends JsonRpcMessage>(
+function binaryToJsonMessageStream<T extends JSONRPCMessage>(
   messageParser: (message: unknown) => T,
   byteLimit: number = 1024 * 1024,
   firstMessage?: T,
@@ -70,10 +70,10 @@ function binaryToJsonMessageStream<T extends JsonRpcMessage>(
  * output.
  */
 function jsonMessageToBinaryStream(): TransformStream<
-  JsonRpcMessage,
+  JSONRPCMessage,
   Uint8Array
 > {
-  return new TransformStream<JsonRpcMessage, Uint8Array>({
+  return new TransformStream<JSONRPCMessage, Uint8Array>({
     transform: (chunk, controller) => {
       controller.enqueue(Buffer.from(JSON.stringify(chunk)));
     },
@@ -85,10 +85,10 @@ function jsonMessageToBinaryStream(): TransformStream<
  * as the default middleware for the middleware wrappers.
  */
 const defaultMiddleware: MiddlewareFactory<
-  JsonRpcRequest,
-  JsonRpcRequest,
-  JsonRpcResponse,
-  JsonRpcResponse
+  JSONRPCRequest,
+  JSONRPCRequest,
+  JSONRPCResponse,
+  JSONRPCResponse
 > = () => {
   return {
     forward: new TransformStream(),
@@ -107,21 +107,21 @@ const defaultMiddleware: MiddlewareFactory<
  */
 const defaultServerMiddlewareWrapper = (
   middleware: MiddlewareFactory<
-    JsonRpcRequest,
-    JsonRpcRequest,
-    JsonRpcResponse,
-    JsonRpcResponse
+    JSONRPCRequest,
+    JSONRPCRequest,
+    JSONRPCResponse,
+    JSONRPCResponse
   > = defaultMiddleware,
 ) => {
-  return (header: JsonRpcRequest) => {
+  return (header: JSONRPCRequest) => {
     const inputTransformStream = binaryToJsonMessageStream(
-      rpcUtils.parseJsonRpcRequest,
+      rpcUtils.parseJSONRPCRequest,
       undefined,
       header,
     );
     const outputTransformStream = new TransformStream<
-      JsonRpcResponseResult,
-      JsonRpcResponseResult
+      JSONRPCResponseResult,
+      JSONRPCResponseResult
     >();
 
     const middleMiddleware = middleware(header);
@@ -157,25 +157,25 @@ const defaultServerMiddlewareWrapper = (
  */
 const defaultClientMiddlewareWrapper = (
   middleware: MiddlewareFactory<
-    JsonRpcRequest,
-    JsonRpcRequest,
-    JsonRpcResponse,
-    JsonRpcResponse
+    JSONRPCRequest,
+    JSONRPCRequest,
+    JSONRPCResponse,
+    JSONRPCResponse
   > = defaultMiddleware,
 ): MiddlewareFactory<
   Uint8Array,
-  JsonRpcRequest,
-  JsonRpcResponse,
+  JSONRPCRequest,
+  JSONRPCResponse,
   Uint8Array
 > => {
   return () => {
     const outputTransformStream = binaryToJsonMessageStream(
-      rpcUtils.parseJsonRpcResponse,
+      rpcUtils.parseJSONRPCResponse,
       undefined,
     );
     const inputTransformStream = new TransformStream<
-      JsonRpcRequest,
-      JsonRpcRequest
+      JSONRPCRequest,
+      JSONRPCRequest
     >();
 
     const middleMiddleware = middleware();

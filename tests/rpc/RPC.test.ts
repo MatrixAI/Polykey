@@ -1,4 +1,4 @@
-import type { ContainerType, JsonRpcRequest } from '@/rpc/types';
+import type { ContainerType, JSONRPCRequest } from '@/rpc/types';
 import type { ConnectionInfo } from '@/network/types';
 import type { ReadableStream } from 'stream/web';
 import type { JSONValue } from '@/types';
@@ -37,10 +37,10 @@ describe('RPC', () => {
         Uint8Array
       >();
 
-      let header: JsonRpcRequest | undefined;
+      let header: JSONRPCRequest | undefined;
       class TestMethod extends RawHandler {
         public handle(
-          input: [ReadableStream<Uint8Array>, JsonRpcRequest],
+          input: [ReadableStream<Uint8Array>, JSONRPCRequest],
         ): ReadableStream<Uint8Array> {
           const [stream, header_] = input;
           header = header_;
@@ -72,7 +72,7 @@ describe('RPC', () => {
         await writer.write(value);
       }
       await writer.close();
-      const expectedHeader: JsonRpcRequest = {
+      const expectedHeader: JSONRPCRequest = {
         jsonrpc: '2.0',
         method: 'testMethod',
         params: { hello: 'world' },

@@ -1,13 +1,13 @@
 import type {
-  JsonRpcRequest,
-  JsonRpcResponse,
+  JSONRPCRequest,
+  JSONRPCResponse,
   MiddlewareFactory,
 } from 'rpc/types';
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type { Session } from '../../sessions/index';
 import type SessionManager from '../../sessions/SessionManager';
 import type KeyRing from '../../keys/KeyRing';
-import type { JsonRpcError, JsonRpcResponseError } from '../../rpc/types';
+import type { JSONRPCError, JSONRPCResponseError } from '../../rpc/types';
 import { TransformStream } from 'stream/web';
 import { authenticate, decodeAuth } from '../utils/utils';
 import { sysexits } from '../../errors';
@@ -18,10 +18,10 @@ function authenticationMiddlewareServer(
   sessionManager: SessionManager,
   keyRing: KeyRing,
 ): MiddlewareFactory<
-  JsonRpcRequest<ClientRPCRequestParams>,
-  JsonRpcRequest<ClientRPCRequestParams>,
-  JsonRpcResponse<ClientRPCResponseResult>,
-  JsonRpcResponse<ClientRPCResponseResult>
+  JSONRPCRequest<ClientRPCRequestParams>,
+  JSONRPCRequest<ClientRPCRequestParams>,
+  JSONRPCResponse<ClientRPCResponseResult>,
+  JSONRPCResponse<ClientRPCResponseResult>
 > {
   return () => {
     let forwardFirst = true;
@@ -29,8 +29,8 @@ function authenticationMiddlewareServer(
     let outgoingToken: string | null = null;
     return {
       forward: new TransformStream<
-        JsonRpcRequest<ClientRPCRequestParams>,
-        JsonRpcRequest<ClientRPCRequestParams>
+        JSONRPCRequest<ClientRPCRequestParams>,
+        JSONRPCRequest<ClientRPCRequestParams>
       >({
         transform: async (chunk, controller) => {
           if (forwardFirst) {
@@ -42,12 +42,12 @@ function authenticationMiddlewareServer(
               );
             } catch (e) {
               controller.terminate();
-              const rpcError: JsonRpcError = {
+              const rpcError: JSONRPCError = {
                 code: e.exitCode ?? sysexits.UNKNOWN,
                 message: e.description ?? '',
                 data: rpcUtils.fromError(e, true),
               };
-              const rpcErrorMessage: JsonRpcResponseError = {
+              const rpcErrorMessage: JSONRPCResponseError = {
                 jsonrpc: '2.0',
                 error: rpcError,
                 id: null,
@@ -86,17 +86,17 @@ function authenticationMiddlewareServer(
 function authenticationMiddlewareClient(
   session: Session,
 ): MiddlewareFactory<
-  JsonRpcRequest<ClientRPCRequestParams>,
-  JsonRpcRequest<ClientRPCRequestParams>,
-  JsonRpcResponse<ClientRPCResponseResult>,
-  JsonRpcResponse<ClientRPCResponseResult>
+  JSONRPCRequest<ClientRPCRequestParams>,
+  JSONRPCRequest<ClientRPCRequestParams>,
+  JSONRPCResponse<ClientRPCResponseResult>,
+  JSONRPCResponse<ClientRPCResponseResult>
 > {
   return () => {
     let forwardFirst = true;
     return {
       forward: new TransformStream<
-        JsonRpcRequest<ClientRPCRequestParams>,
-        JsonRpcRequest<ClientRPCRequestParams>
+        JSONRPCRequest<ClientRPCRequestParams>,
+        JSONRPCRequest<ClientRPCRequestParams>
       >({
         transform: async (chunk, controller) => {
           if (forwardFirst) {
@@ -118,8 +118,8 @@ function authenticationMiddlewareClient(
         },
       }),
       reverse: new TransformStream<
-        JsonRpcResponse<ClientRPCResponseResult>,
-        JsonRpcResponse<ClientRPCResponseResult>
+        JSONRPCResponse<ClientRPCResponseResult>,
+        JSONRPCResponse<ClientRPCResponseResult>
       >({
         transform: async (chunk, controller) => {
           controller.enqueue(chunk);

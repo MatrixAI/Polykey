@@ -1,11 +1,11 @@
 import type {
   ClientHandlerImplementation,
   DuplexHandlerImplementation,
-  JsonRpcError,
-  JsonRpcRequest,
-  JsonRpcResponse,
-  JsonRpcResponseError,
-  JsonRpcResponseResult,
+  JSONRPCError,
+  JSONRPCRequest,
+  JSONRPCResponse,
+  JSONRPCResponseError,
+  JSONRPCResponseResult,
   ServerManifest,
   RawHandlerImplementation,
   ServerHandlerImplementation,
@@ -43,10 +43,10 @@ class RPCServer {
   }: {
     manifest: ServerManifest;
     middleware?: MiddlewareFactory<
-      JsonRpcRequest,
+      JSONRPCRequest,
       Uint8Array,
       Uint8Array,
-      JsonRpcResponseResult
+      JSONRPCResponseResult
     >;
     sensitive?: boolean;
     logger?: Logger;
@@ -62,17 +62,16 @@ class RPCServer {
     return rpcServer;
   }
 
-  // Properties
   protected logger: Logger;
   protected handlerMap: Map<string, RawHandlerImplementation> = new Map();
   protected activeStreams: Set<PromiseCancellable<void>> = new Set();
   protected sensitive: boolean;
   protected events: EventTarget = new EventTarget();
   protected middleware: MiddlewareFactory<
-    JsonRpcRequest,
+    JSONRPCRequest,
     Uint8Array,
     Uint8Array,
-    JsonRpcResponseResult
+    JSONRPCResponseResult
   >;
 
   public constructor({
@@ -83,10 +82,10 @@ class RPCServer {
   }: {
     manifest: ServerManifest;
     middleware: MiddlewareFactory<
-      JsonRpcRequest,
+      JSONRPCRequest,
       Uint8Array,
       Uint8Array,
-      JsonRpcResponseResult
+      JSONRPCResponseResult
     >;
     sensitive: boolean;
     logger: Logger;
@@ -174,7 +173,7 @@ class RPCServer {
       const forwardStream = input.pipeThrough(middleware.forward);
       const reverseStream = middleware.reverse.writable;
       const events = this.events;
-      const outputGen = async function* (): AsyncGenerator<JsonRpcResponse> {
+      const outputGen = async function* (): AsyncGenerator<JSONRPCResponse> {
         if (ctx.signal.aborted) throw ctx.signal.reason;
         const dataGen = async function* (): AsyncIterable<I> {
           for await (const data of forwardStream) {
@@ -182,7 +181,7 @@ class RPCServer {
           }
         };
         for await (const response of handler(dataGen(), connectionInfo, ctx)) {
-          const responseMessage: JsonRpcResponseResult = {
+          const responseMessage: JSONRPCResponseResult = {
             jsonrpc: '2.0',
             result: response,
             id: null,
@@ -192,7 +191,7 @@ class RPCServer {
       };
       const outputGenerator = outputGen();
       let reason: any | undefined = undefined;
-      const reverseMiddlewareStream = new ReadableStream<JsonRpcResponse>({
+      const reverseMiddlewareStream = new ReadableStream<JSONRPCResponse>({
         pull: async (controller) => {
           try {
             const { value, done } = await outputGenerator.next();
@@ -204,12 +203,12 @@ class RPCServer {
           } catch (e) {
             if (reason == null) {
               // We want to convert this error to an error message and pass it along
-              const rpcError: JsonRpcError = {
+              const rpcError: JSONRPCError = {
                 code: e.exitCode ?? sysexits.UNKNOWN,
                 message: e.description ?? '',
                 data: rpcUtils.fromError(e, this.sensitive),
               };
-              const rpcErrorMessage: JsonRpcResponseError = {
+              const rpcErrorMessage: JSONRPCResponseError = {
                 jsonrpc: '2.0',
                 error: rpcError,
                 id: null,
@@ -306,7 +305,7 @@ class RPCServer {
     const abortController = new AbortController();
     const prom = (async () => {
       const { firstMessageProm, headTransformStream } =
-        rpcUtils.extractFirstMessageTransform(rpcUtils.parseJsonRpcRequest);
+        rpcUtils.extractFirstMessageTransform(rpcUtils.parseJSONRPCRequest);
       const inputStreamEndProm = streamPair.readable
         .pipeTo(headTransformStream.writable)
         .catch(() => {});

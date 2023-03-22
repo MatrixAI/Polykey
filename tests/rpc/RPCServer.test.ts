@@ -1,8 +1,8 @@
 import type {
   ContainerType,
-  JsonRpcRequest,
-  JsonRpcResponse,
-  JsonRpcResponseError,
+  JSONRPCRequest,
+  JSONRPCResponse,
+  JSONRPCResponseError,
 } from '@/rpc/types';
 import type { JSONValue } from '@/types';
 import type { ConnectionInfo, Host, Port } from '@/network/types';
@@ -341,7 +341,7 @@ describe(`${RPCServer.name}`, () => {
     await expect(thing).toResolve();
     expect(lastMessage).toBeDefined();
     expect(() =>
-      rpcUtils.parseJsonRpcResponseError(JSON.parse(lastMessage.toString())),
+      rpcUtils.parseJSONRPCResponseError(JSON.parse(lastMessage.toString())),
     ).not.toThrow();
     await rpcServer.destroy();
   });
@@ -610,11 +610,11 @@ describe(`${RPCServer.name}`, () => {
       }
       const middleware = middlewareUtils.defaultServerMiddlewareWrapper(() => {
         let first = true;
-        let reverseController: TransformStreamDefaultController<JsonRpcResponse>;
+        let reverseController: TransformStreamDefaultController<JSONRPCResponse>;
         return {
           forward: new TransformStream<
-            JsonRpcRequest<TestType>,
-            JsonRpcRequest<TestType>
+            JSONRPCRequest<TestType>,
+            JSONRPCRequest<TestType>
           >({
             transform: (chunk, controller) => {
               if (first && chunk.params?.metadata.token !== validToken) {
@@ -656,7 +656,7 @@ describe(`${RPCServer.name}`, () => {
         };
         data: JSONValue;
       };
-      const failureMessage: JsonRpcResponseError = {
+      const failureMessage: JSONRPCResponseError = {
         jsonrpc: '2.0',
         id: null,
         error: {
